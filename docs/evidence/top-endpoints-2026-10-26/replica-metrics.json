@@ -1,0 +1,3855 @@
+{
+  "at": "2026-10-25T22:50:37.476091+00:00",
+  "replicas": [
+    {
+      "port": 3200,
+      "service": {
+        "role": "api",
+        "commit": "cb69b8df05310c55624b6991d103956361e4aa12"
+      },
+      "runtime": {
+        "instanceId": "c6fdc18e-b3c8-4da6-b214-7250e0328b36",
+        "startedAt": "2026-10-25T21:57:21.305Z",
+        "uptimeSeconds": 3196.2159580830003,
+        "process": {
+          "rssBytes": 174243840,
+          "heapUsedBytes": 72232840,
+          "heapTotalBytes": 86437888,
+          "externalBytes": 8749629,
+          "cpuPercentOfOneCore": 10.279490944946662
+        },
+        "eventLoop": {
+          "p50Ms": 20.217855,
+          "p95Ms": 21.348351,
+          "p99Ms": 26.001407,
+          "maxMs": 367.788031
+        },
+        "gc": {
+          "pauses": 4096,
+          "p50Ms": 2.337319016456604,
+          "p95Ms": 8.7068510055542,
+          "p99Ms": 20.40985894203186,
+          "maxMs": 82.49997997283936
+        },
+        "databasePool": {
+          "acquireErrors": 0,
+          "acquireMs": {
+            "samples": 3193,
+            "p50": 0.08853399998042732,
+            "p95": 0.2136260000988841,
+            "p99": 0.6749929999932647,
+            "max": 19.48905999999988
+          }
+        },
+        "placementPool": {
+          "transactionStartErrors": 0,
+          "transactionStartMs": {
+            "samples": 759,
+            "p50": 1.1872239999938756,
+            "p95": 10.816949000000022,
+            "p99": 71.3177629999991,
+            "max": 299.58757299999706
+          }
+        },
+        "routes": {
+          "GET /api/admin/clans/:clanId/chat": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 14133,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 55.67857200000435,
+              "p95": 55.67857200000435,
+              "p99": 55.67857200000435,
+              "max": 55.67857200000435
+            }
+          },
+          "GET /api/announcements": {
+            "requests": 10,
+            "errors": 0,
+            "responseBytes": 179450,
+            "responseStatuses": {
+              "200": 10
+            },
+            "latencyMs": {
+              "samples": 10,
+              "p50": 32.93249100004323,
+              "p95": 78.0136839998886,
+              "p99": 78.0136839998886,
+              "max": 78.0136839998886
+            }
+          },
+          "GET /api/auth/me": {
+            "requests": 19,
+            "errors": 0,
+            "responseBytes": 6828,
+            "responseStatuses": {
+              "200": 12,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 19,
+              "p50": 19.05060499999672,
+              "p95": 104.7751100000005,
+              "p99": 104.7751100000005,
+              "max": 104.7751100000005
+            }
+          },
+          "GET /api/auth/security": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 752,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 10.000184000004083,
+              "p95": 25.347687000001315,
+              "p99": 25.347687000001315,
+              "max": 25.347687000001315
+            }
+          },
+          "GET /api/chat/messages": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 117672,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 63.47023300000001,
+              "p95": 89.97258099995088,
+              "p99": 89.97258099995088,
+              "max": 89.97258099995088
+            }
+          },
+          "GET /api/chat/unread": {
+            "requests": 79,
+            "errors": 0,
+            "responseBytes": 1109,
+            "responseStatuses": {
+              "200": 74,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 79,
+              "p50": 63.63987900002394,
+              "p95": 198.34350699998322,
+              "p99": 364.1481419999618,
+              "max": 364.1481419999618
+            }
+          },
+          "GET /api/chronicle": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 6496,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 17.474504000041634,
+              "p95": 17.474504000041634,
+              "p99": 17.474504000041634,
+              "max": 17.474504000041634
+            }
+          },
+          "GET /api/clan/badge": {
+            "requests": 80,
+            "errors": 0,
+            "responseBytes": 15515,
+            "responseStatuses": {
+              "200": 77,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 80,
+              "p50": 72.08534600003622,
+              "p95": 183.73983299999963,
+              "p99": 447.69178400000055,
+              "max": 447.69178400000055
+            }
+          },
+          "GET /api/clan/chat": {
+            "requests": 4,
+            "errors": 0,
+            "responseBytes": 27966,
+            "responseStatuses": {
+              "200": 3,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 4,
+              "p50": 63.525334999896586,
+              "p95": 159.825824000407,
+              "p99": 159.825824000407,
+              "max": 159.825824000407
+            }
+          },
+          "GET /api/clan/depot": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 117,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 26.834513999987394,
+              "p95": 26.834513999987394,
+              "p99": 26.834513999987394,
+              "max": 26.834513999987394
+            }
+          },
+          "GET /api/clan/support": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 72,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 21.88252600003034,
+              "p95": 62.50265799998306,
+              "p99": 62.50265799998306,
+              "max": 62.50265799998306
+            }
+          },
+          "GET /api/clan/war": {
+            "requests": 13,
+            "errors": 0,
+            "responseBytes": 4144,
+            "responseStatuses": {
+              "200": 13
+            },
+            "latencyMs": {
+              "samples": 13,
+              "p50": 39.532341999933124,
+              "p95": 231.60899499990046,
+              "p99": 231.60899499990046,
+              "max": 231.60899499990046
+            }
+          },
+          "GET /api/community/policy": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 192,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 29.35164000000077,
+              "p95": 46.635805000085384,
+              "p99": 46.635805000085384,
+              "max": 46.635805000085384
+            }
+          },
+          "GET /api/dm/conversations": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 812,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 36.345757000148296,
+              "p95": 92.28923600004055,
+              "p99": 92.28923600004055,
+              "max": 92.28923600004055
+            }
+          },
+          "GET /api/dm/conversations/:id/messages": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 4379,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 75.02691600006074,
+              "p95": 75.02691600006074,
+              "p99": 75.02691600006074,
+              "max": 75.02691600006074
+            }
+          },
+          "GET /api/dm/unread": {
+            "requests": 58,
+            "errors": 0,
+            "responseBytes": 680,
+            "responseStatuses": {
+              "200": 57,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 58,
+              "p50": 54.40139399981126,
+              "p95": 179.26676400005817,
+              "p99": 200.3001260000001,
+              "max": 200.3001260000001
+            }
+          },
+          "GET /api/galaxy": {
+            "requests": 215,
+            "errors": 0,
+            "responseBytes": 19328717,
+            "responseStatuses": {
+              "200": 214,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 215,
+              "p50": 107.43850499996915,
+              "p95": 311.59840899999836,
+              "p99": 619.26109299995,
+              "max": 702.7155869998969
+            }
+          },
+          "GET /api/galaxy/events": {
+            "requests": 195,
+            "errors": 0,
+            "responseBytes": 93988,
+            "responseStatuses": {
+              "200": 191,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 195,
+              "p50": 23.07166499993764,
+              "p95": 92.39146299999993,
+              "p99": 184.51714300000458,
+              "max": 234.9515019999817
+            }
+          },
+          "GET /api/galaxy/traffic": {
+            "requests": 1183,
+            "errors": 0,
+            "responseBytes": 9469497,
+            "responseStatuses": {
+              "200": 1181,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 1183,
+              "p50": 52.58649899996817,
+              "p95": 219.79616499994881,
+              "p99": 390.5648990001064,
+              "max": 595.7594299999764
+            }
+          },
+          "GET /api/honor/targets/:targetPlanetId": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 34,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 33.93721100012772,
+              "p95": 34.10257099987939,
+              "p99": 34.10257099987939,
+              "max": 34.10257099987939
+            }
+          },
+          "GET /api/intel": {
+            "requests": 107,
+            "errors": 0,
+            "responseBytes": 7880889,
+            "responseStatuses": {
+              "200": 103,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 107,
+              "p50": 83.2461549998261,
+              "p95": 217.35603099999935,
+              "p99": 570.0334750000002,
+              "max": 606.2607690000441
+            }
+          },
+          "GET /api/leaderboard": {
+            "requests": 14,
+            "errors": 0,
+            "responseBytes": 181726,
+            "responseStatuses": {
+              "200": 14
+            },
+            "latencyMs": {
+              "samples": 14,
+              "p50": 33.39834600011818,
+              "p95": 114.82939300034195,
+              "p99": 114.82939300034195,
+              "max": 114.82939300034195
+            }
+          },
+          "GET /api/mining/field": {
+            "requests": 525,
+            "errors": 0,
+            "responseBytes": 1424507,
+            "responseStatuses": {
+              "200": 522,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 525,
+              "p50": 21.3394480003044,
+              "p95": 116.50616500002798,
+              "p99": 298.298311999999,
+              "max": 651.9185399999842
+            }
+          },
+          "GET /api/mining/status": {
+            "requests": 175,
+            "errors": 0,
+            "responseBytes": 150373,
+            "responseStatuses": {
+              "200": 173,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 175,
+              "p50": 56.15140300011262,
+              "p95": 183.03574800025672,
+              "p99": 231.90290100011043,
+              "max": 340.00372400018387
+            }
+          },
+          "GET /api/monuments": {
+            "requests": 101,
+            "errors": 0,
+            "responseBytes": 1514316,
+            "responseStatuses": {
+              "200": 100,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 101,
+              "p50": 172.4419700000435,
+              "p95": 372.10640599997714,
+              "p99": 519.5053930000868,
+              "max": 575.6068459999988
+            }
+          },
+          "GET /api/notifications": {
+            "requests": 139,
+            "errors": 0,
+            "responseBytes": 1264227,
+            "responseStatuses": {
+              "200": 136,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 139,
+              "p50": 52.42815599986352,
+              "p95": 137.78028800012544,
+              "p99": 294.62547900000936,
+              "max": 394.9488539999984
+            }
+          },
+          "GET /api/pirates": {
+            "requests": 138,
+            "errors": 0,
+            "responseBytes": 511940,
+            "responseStatuses": {
+              "200": 134,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 138,
+              "p50": 44.06083600001875,
+              "p95": 141.17597299999943,
+              "p99": 250.12878999998793,
+              "max": 541.0957110000018
+            }
+          },
+          "GET /api/planet": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 63206,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 158.1989239999093,
+              "p95": 499.74971399997594,
+              "p99": 499.74971399997594,
+              "max": 499.74971399997594
+            }
+          },
+          "GET /api/planets": {
+            "requests": 203,
+            "errors": 0,
+            "responseBytes": 8104209,
+            "responseStatuses": {
+              "200": 200,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 203,
+              "p50": 338.1784479999915,
+              "p95": 858.0600130003877,
+              "p99": 1600.8495129998773,
+              "max": 2249.5152429998852
+            }
+          },
+          "GET /api/planets/:planetId": {
+            "requests": 211,
+            "errors": 0,
+            "responseBytes": 2475046,
+            "responseStatuses": {
+              "200": 211
+            },
+            "latencyMs": {
+              "samples": 211,
+              "p50": 156.62540900008753,
+              "p95": 505.879047000024,
+              "p99": 750.9184280000627,
+              "max": 950.7249229999725
+            }
+          },
+          "GET /api/reports": {
+            "requests": 117,
+            "errors": 0,
+            "responseBytes": 9409130,
+            "responseStatuses": {
+              "200": 116,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 117,
+              "p50": 222.19219900015742,
+              "p95": 479.69997900002636,
+              "p99": 713.1157319997437,
+              "max": 806.7028609998524
+            }
+          },
+          "GET /api/return-applications": {
+            "requests": 49,
+            "errors": 0,
+            "responseBytes": 6968,
+            "responseStatuses": {
+              "200": 47,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 49,
+              "p50": 30.042462000157684,
+              "p95": 135.4376489999704,
+              "p99": 222.97321100000045,
+              "max": 222.97321100000045
+            }
+          },
+          "GET /api/rewards": {
+            "requests": 101,
+            "errors": 0,
+            "responseBytes": 434525,
+            "responseStatuses": {
+              "200": 99,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 101,
+              "p50": 121.01825399999507,
+              "p95": 350.8276740000001,
+              "p99": 589.7926449999995,
+              "max": 614.5286440001801
+            }
+          },
+          "GET /api/season": {
+            "requests": 59,
+            "errors": 0,
+            "responseBytes": 71734,
+            "responseStatuses": {
+              "200": 57,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 59,
+              "p50": 35.50423699989915,
+              "p95": 162.48001299984753,
+              "p99": 180.20341100008227,
+              "max": 180.20341100008227
+            }
+          },
+          "GET /api/season-archive": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1703,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 25.387802000157535,
+              "p95": 25.387802000157535,
+              "p99": 25.387802000157535,
+              "max": 25.387802000157535
+            }
+          },
+          "GET /api/servers": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 667,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 10.815277999732643,
+              "p95": 13.13443700002972,
+              "p99": 13.13443700002972,
+              "max": 13.13443700002972
+            }
+          },
+          "GET /api/session/brand-recall": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 520,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 55.85855700005777,
+              "p95": 93.96544499997981,
+              "p99": 93.96544499997981,
+              "max": 93.96544499997981
+            }
+          },
+          "GET /api/session/pending": {
+            "requests": 184,
+            "errors": 0,
+            "responseBytes": 233297,
+            "responseStatuses": {
+              "200": 182,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 184,
+              "p50": 99.70305100036785,
+              "p95": 318.4214460000003,
+              "p99": 602.5378300000011,
+              "max": 680.5897459997796
+            }
+          },
+          "GET /api/session/return": {
+            "requests": 5,
+            "errors": 0,
+            "responseBytes": 788,
+            "responseStatuses": {
+              "200": 4,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 5,
+              "p50": 71.89169099996798,
+              "p95": 85.58278900000005,
+              "p99": 85.58278900000005,
+              "max": 85.58278900000005
+            }
+          },
+          "GET /api/skins": {
+            "requests": 101,
+            "errors": 0,
+            "responseBytes": 44636,
+            "responseStatuses": {
+              "200": 101
+            },
+            "latencyMs": {
+              "samples": 101,
+              "p50": 29.210123000200838,
+              "p95": 132.19385700003477,
+              "p99": 248.4652060000226,
+              "max": 270.83000499987975
+            }
+          },
+          "GET /api/unknown-signals": {
+            "requests": 99,
+            "errors": 0,
+            "responseBytes": 23930,
+            "responseStatuses": {
+              "200": 97,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 99,
+              "p50": 45.49783800030127,
+              "p95": 148.09285099990666,
+              "p99": 316.37507299985737,
+              "max": 316.37507299985737
+            }
+          },
+          "GET /health": {
+            "requests": 111,
+            "errors": 2,
+            "responseBytes": 234760,
+            "responseStatuses": {
+              "200": 109,
+              "503": 2
+            },
+            "latencyMs": {
+              "samples": 111,
+              "p50": 68.0047140000388,
+              "p95": 186.87101199990138,
+              "p99": 216.0944639999998,
+              "max": 497.5661639999598
+            }
+          },
+          "GET /metrics": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 20011,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 73.93909300025553,
+              "p95": 73.93909300025553,
+              "p99": 73.93909300025553,
+              "max": 73.93909300025553
+            }
+          },
+          "OPTIONS *": {
+            "requests": 43,
+            "errors": 0,
+            "responseBytes": 0,
+            "responseStatuses": {
+              "204": 43
+            },
+            "latencyMs": {
+              "samples": 0,
+              "p50": 0,
+              "p95": 0,
+              "p99": 0,
+              "max": 0
+            }
+          },
+          "POST /api/auth/refresh": {
+            "requests": 11,
+            "errors": 0,
+            "responseBytes": 3255,
+            "responseStatuses": {
+              "200": 9,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 11,
+              "p50": 8.745608999975957,
+              "p95": 95.11745699984021,
+              "p99": 95.11745699984021,
+              "max": 95.11745699984021
+            }
+          },
+          "POST /api/chat/reactions": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 56,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 59.10332599992398,
+              "p95": 59.10332599992398,
+              "p99": 59.10332599992398,
+              "max": 59.10332599992398
+            }
+          },
+          "POST /api/chat/read": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 141,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 27.872986999806017,
+              "p95": 50.92898000000059,
+              "p99": 50.92898000000059,
+              "max": 50.92898000000059
+            }
+          },
+          "POST /api/clan/chat/read": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 37,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 84.6335020000115,
+              "p95": 84.6335020000115,
+              "p99": 84.6335020000115,
+              "max": 84.6335020000115
+            }
+          },
+          "POST /api/dm/conversations/:id/read": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 37,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 44.792770999949425,
+              "p95": 44.792770999949425,
+              "p99": 44.792770999949425,
+              "max": 44.792770999949425
+            }
+          },
+          "POST /api/fleet/launch": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 16013,
+            "responseStatuses": {
+              "200": 1,
+              "409": 1
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 101.79433900001459,
+              "p95": 360.62449900014326,
+              "p99": 360.62449900014326,
+              "max": 360.62449900014326
+            }
+          },
+          "POST /api/fleet/transfer": {
+            "requests": 4,
+            "errors": 0,
+            "responseBytes": 48832,
+            "responseStatuses": {
+              "200": 4
+            },
+            "latencyMs": {
+              "samples": 4,
+              "p50": 316.3204759999644,
+              "p95": 484.3553860000102,
+              "p99": 484.3553860000102,
+              "max": 484.3553860000102
+            }
+          },
+          "POST /api/intel/probe": {
+            "requests": 10,
+            "errors": 0,
+            "responseBytes": 1248,
+            "responseStatuses": {
+              "200": 10
+            },
+            "latencyMs": {
+              "samples": 10,
+              "p50": 112.62030299985781,
+              "p95": 189.9748780000955,
+              "p99": 189.9748780000955,
+              "max": 189.9748780000955
+            }
+          },
+          "POST /api/mining/harvest": {
+            "requests": 11,
+            "errors": 0,
+            "responseBytes": 161370,
+            "responseStatuses": {
+              "200": 11
+            },
+            "latencyMs": {
+              "samples": 11,
+              "p50": 303.269999000011,
+              "p95": 528.5459849999752,
+              "p99": 528.5459849999752,
+              "max": 528.5459849999752
+            }
+          },
+          "POST /api/mining/launch": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 29835,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 262.4217480001971,
+              "p95": 278.15265900001395,
+              "p99": 278.15265900001395,
+              "max": 278.15265900001395
+            }
+          },
+          "POST /api/monuments/:monumentId/quote": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 3554,
+            "responseStatuses": {
+              "200": 5,
+              "400": 1
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 93.90793400001712,
+              "p95": 142.70473200036213,
+              "p99": 142.70473200036213,
+              "max": 142.70473200036213
+            }
+          },
+          "POST /api/monuments/:monumentId/send": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1995,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 413.0547319999896,
+              "p95": 413.0547319999896,
+              "p99": 413.0547319999896,
+              "max": 413.0547319999896
+            }
+          },
+          "POST /api/monuments/waves/:waveId/recall": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 2514,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 305.9605740001425,
+              "p95": 305.9605740001425,
+              "p99": 305.9605740001425,
+              "max": 305.9605740001425
+            }
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 1403,
+            "responseStatuses": {
+              "200": 1,
+              "409": 2
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 157.43081900011748,
+              "p95": 195.4186420000624,
+              "p99": 195.4186420000624,
+              "max": 195.4186420000624
+            }
+          },
+          "POST /api/native/auth/refresh": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 498,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 33.86489400000028,
+              "p95": 33.86489400000028,
+              "p99": 33.86489400000028,
+              "max": 33.86489400000028
+            }
+          },
+          "POST /api/notifications/seen": {
+            "requests": 16,
+            "errors": 0,
+            "responseBytes": 192,
+            "responseStatuses": {
+              "200": 16
+            },
+            "latencyMs": {
+              "samples": 16,
+              "p50": 20.152263000025414,
+              "p95": 34.30640400014818,
+              "p99": 34.30640400014818,
+              "max": 34.30640400014818
+            }
+          },
+          "POST /api/planets/:planetId/build": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 12365,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 336.25573499989696,
+              "p95": 336.25573499989696,
+              "p99": 336.25573499989696,
+              "max": 336.25573499989696
+            }
+          },
+          "POST /api/planets/:planetId/collect": {
+            "requests": 29,
+            "errors": 0,
+            "responseBytes": 346778,
+            "responseStatuses": {
+              "200": 29
+            },
+            "latencyMs": {
+              "samples": 29,
+              "p50": 206.99500200001057,
+              "p95": 500.12920600012876,
+              "p99": 502.6570539998356,
+              "max": 502.6570539998356
+            }
+          },
+          "POST /api/planets/:planetId/instrument": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 22693,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 244.9122470000293,
+              "p95": 550.45481799962,
+              "p99": 550.45481799962,
+              "max": 550.45481799962
+            }
+          },
+          "POST /api/planets/:planetId/research": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 10720,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 180.9605299999239,
+              "p95": 180.9605299999239,
+              "p99": 180.9605299999239,
+              "max": 180.9605299999239
+            }
+          },
+          "POST /api/planets/:planetId/upgrade": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 11436,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 216.1482079999987,
+              "p95": 216.1482079999987,
+              "p99": 216.1482079999987,
+              "max": 216.1482079999987
+            }
+          },
+          "POST /api/session/return/seen": {
+            "requests": 16,
+            "errors": 0,
+            "responseBytes": 260,
+            "responseStatuses": {
+              "200": 14,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 16,
+              "p50": 31.254269000026397,
+              "p95": 152.51006499992218,
+              "p99": 152.51006499992218,
+              "max": 152.51006499992218
+            }
+          },
+          "POST /api/unknown-signals/:signalId/dispatch": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 98,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 146.88189499999862,
+              "p95": 146.88189499999862,
+              "p99": 146.88189499999862,
+              "max": 146.88189499999862
+            }
+          }
+        },
+        "refusals": {
+          "GET /api/auth/me": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/chat/unread": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/clan/badge": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/clan/chat": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/dm/unread": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/galaxy": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/galaxy/events": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/galaxy/traffic": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/intel": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/mining/field": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/mining/status": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/monuments": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/notifications": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/pirates": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/planets": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/planets/:planetId": {
+            "PLANET_NOT_OWNED": 1
+          },
+          "GET /api/reports": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/return-applications": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/rewards": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/season": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/session/pending": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/session/return": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/unknown-signals": {
+            "UNAUTHENTICATED": 2
+          },
+          "POST /api/auth/refresh": {
+            "BAD_SESSION": 2
+          },
+          "POST /api/fleet/launch": {
+            "FLEET_ALREADY_COMMITTED": 1
+          },
+          "POST /api/monuments/:monumentId/quote": {
+            "NOT_ENOUGH_SHIPS": 1
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "MONUMENT_NOT_RECALLABLE": 2
+          },
+          "POST /api/session/return/seen": {
+            "UNAUTHENTICATED": 2
+          }
+        },
+        "operations": {}
+      },
+      "projections": {
+        "enabled": true,
+        "commander": {
+          "entries": 5,
+          "hits": 1860,
+          "misses": 413,
+          "bypasses": 0,
+          "invalidations": 98,
+          "evictions": 0,
+          "singleFlightWaits": 20
+        },
+        "sensors": {
+          "entries": 5,
+          "hits": 1171,
+          "misses": 379,
+          "bypasses": 0,
+          "invalidations": 109,
+          "evictions": 0,
+          "singleFlightWaits": 4
+        },
+        "remembered": {
+          "entries": 3,
+          "hits": 65,
+          "misses": 169,
+          "bypasses": 0,
+          "invalidations": 94,
+          "evictions": 0,
+          "singleFlightWaits": 0
+        },
+        "sensorHistory": {
+          "entries": 5,
+          "hits": 1607,
+          "misses": 402,
+          "bypasses": 0,
+          "invalidations": 108,
+          "evictions": 0,
+          "singleFlightWaits": 13
+        },
+        "publicGalaxy": {
+          "entries": 1,
+          "hits": 140,
+          "misses": 75,
+          "bypasses": 0,
+          "invalidations": 18,
+          "evictions": 0,
+          "singleFlightWaits": 0
+        },
+        "traffic": {
+          "entries": 1,
+          "hits": 635,
+          "misses": 552,
+          "bypasses": 0,
+          "invalidations": 299,
+          "evictions": 0,
+          "singleFlightWaits": 63
+        },
+        "mining": {
+          "entries": 1,
+          "hits": 1300,
+          "misses": 576,
+          "bypasses": 0,
+          "invalidations": 270,
+          "evictions": 0,
+          "singleFlightWaits": 41
+        },
+        "pirates": {
+          "entries": 1,
+          "hits": 895,
+          "misses": 421,
+          "bypasses": 0,
+          "invalidations": 9,
+          "evictions": 0,
+          "singleFlightWaits": 24
+        }
+      },
+      "database": {
+        "configuredProcessPoolMax": 8,
+        "configuredPlacementPoolMax": 2,
+        "maxConnections": 100,
+        "asteraConnections": 40,
+        "active": 1,
+        "idle": 39,
+        "waiting": 0,
+        "poolAcquireMs": {
+          "samples": 3193,
+          "p50": 0.08853399998042732,
+          "p95": 0.2136260000988841,
+          "p99": 0.6749929999932647,
+          "max": 19.48905999999988
+        },
+        "poolAcquireErrors": 0,
+        "placementTransactionStartMs": {
+          "samples": 759,
+          "p50": 1.1872239999938756,
+          "p95": 10.816949000000022,
+          "p99": 71.3177629999991,
+          "max": 299.58757299999706
+        },
+        "placementTransactionStartErrors": 0
+      }
+    },
+    {
+      "port": 3201,
+      "service": {
+        "role": "api",
+        "commit": "cb69b8df05310c55624b6991d103956361e4aa12"
+      },
+      "runtime": {
+        "instanceId": "492891ec-5a42-4c5d-93a5-b2e6907bb4f5",
+        "startedAt": "2026-10-25T21:57:33.040Z",
+        "uptimeSeconds": 3184.511550348,
+        "process": {
+          "rssBytes": 190828544,
+          "heapUsedBytes": 81570152,
+          "heapTotalBytes": 94171136,
+          "externalBytes": 8631091,
+          "cpuPercentOfOneCore": 9.600134066173936
+        },
+        "eventLoop": {
+          "p50Ms": 20.217855,
+          "p95Ms": 21.348351,
+          "p99Ms": 25.673727,
+          "maxMs": 359.661567
+        },
+        "gc": {
+          "pauses": 4096,
+          "p50Ms": 2.2701950073242188,
+          "p95Ms": 7.616410970687866,
+          "p99Ms": 14.924849033355713,
+          "maxMs": 150.22694396972656
+        },
+        "databasePool": {
+          "acquireErrors": 0,
+          "acquireMs": {
+            "samples": 3182,
+            "p50": 0.15009799972176552,
+            "p95": 0.2910200000042096,
+            "p99": 0.9695600001141429,
+            "max": 21.22134599974379
+          }
+        },
+        "placementPool": {
+          "transactionStartErrors": 0,
+          "transactionStartMs": {
+            "samples": 902,
+            "p50": 1.120900999987498,
+            "p95": 9.552028000121936,
+            "p99": 133.7052520001307,
+            "max": 423.3769160000011
+          }
+        },
+        "routes": {
+          "GET /api/announcements": {
+            "requests": 14,
+            "errors": 0,
+            "responseBytes": 251230,
+            "responseStatuses": {
+              "200": 14
+            },
+            "latencyMs": {
+              "samples": 14,
+              "p50": 21.254886999959126,
+              "p95": 53.98524500010535,
+              "p99": 53.98524500010535,
+              "max": 53.98524500010535
+            }
+          },
+          "GET /api/auth/me": {
+            "requests": 15,
+            "errors": 0,
+            "responseBytes": 5653,
+            "responseStatuses": {
+              "200": 8,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 15,
+              "p50": 17.622478999983286,
+              "p95": 45.27957800000149,
+              "p99": 45.27957800000149,
+              "max": 45.27957800000149
+            }
+          },
+          "GET /api/auth/security": {
+            "requests": 14,
+            "errors": 0,
+            "responseBytes": 1600,
+            "responseStatuses": {
+              "200": 14
+            },
+            "latencyMs": {
+              "samples": 14,
+              "p50": 12.744728999910876,
+              "p95": 161.31051099998876,
+              "p99": 161.31051099998876,
+              "max": 161.31051099998876
+            }
+          },
+          "GET /api/chat/messages": {
+            "requests": 7,
+            "errors": 0,
+            "responseBytes": 114884,
+            "responseStatuses": {
+              "200": 6,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 7,
+              "p50": 50.058016999973916,
+              "p95": 116.12765499996021,
+              "p99": 116.12765499996021,
+              "max": 116.12765499996021
+            }
+          },
+          "GET /api/chat/reactions": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 109,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 23.0991539999377,
+              "p95": 23.0991539999377,
+              "p99": 23.0991539999377,
+              "max": 23.0991539999377
+            }
+          },
+          "GET /api/chat/unread": {
+            "requests": 63,
+            "errors": 0,
+            "responseBytes": 796,
+            "responseStatuses": {
+              "200": 61,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 63,
+              "p50": 66.91710000000603,
+              "p95": 150.20562999999856,
+              "p99": 213.10031500000332,
+              "max": 213.10031500000332
+            }
+          },
+          "GET /api/clan/badge": {
+            "requests": 75,
+            "errors": 0,
+            "responseBytes": 14846,
+            "responseStatuses": {
+              "200": 71,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 75,
+              "p50": 71.12797500006855,
+              "p95": 188.84086500000012,
+              "p99": 314.41785400011577,
+              "max": 314.41785400011577
+            }
+          },
+          "GET /api/clan/chat": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 45554,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 122.27112100005616,
+              "p95": 141.01255099999253,
+              "p99": 141.01255099999253,
+              "max": 141.01255099999253
+            }
+          },
+          "GET /api/clan/support": {
+            "requests": 5,
+            "errors": 0,
+            "responseBytes": 60,
+            "responseStatuses": {
+              "200": 5
+            },
+            "latencyMs": {
+              "samples": 5,
+              "p50": 17.162522999977227,
+              "p95": 163.95273000001907,
+              "p99": 163.95273000001907,
+              "max": 163.95273000001907
+            }
+          },
+          "GET /api/clan/war": {
+            "requests": 18,
+            "errors": 0,
+            "responseBytes": 5489,
+            "responseStatuses": {
+              "200": 17,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 18,
+              "p50": 26.9827360000927,
+              "p95": 84.56460999976844,
+              "p99": 84.56460999976844,
+              "max": 84.56460999976844
+            }
+          },
+          "GET /api/community/policy": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 64,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 10.37053499976173,
+              "p95": 10.37053499976173,
+              "p99": 10.37053499976173,
+              "max": 10.37053499976173
+            }
+          },
+          "GET /api/dm/unread": {
+            "requests": 82,
+            "errors": 0,
+            "responseBytes": 1112,
+            "responseStatuses": {
+              "200": 77,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 82,
+              "p50": 47.38992999994662,
+              "p95": 126.60971699999936,
+              "p99": 240.48349000001326,
+              "max": 240.48349000001326
+            }
+          },
+          "GET /api/galaxy": {
+            "requests": 259,
+            "errors": 0,
+            "responseBytes": 22533351,
+            "responseStatuses": {
+              "200": 255,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 259,
+              "p50": 89.02867899998091,
+              "p95": 333.60063299996546,
+              "p99": 457.6841009999989,
+              "max": 578.8753279999946
+            }
+          },
+          "GET /api/galaxy/events": {
+            "requests": 235,
+            "errors": 0,
+            "responseBytes": 121326,
+            "responseStatuses": {
+              "200": 233,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 235,
+              "p50": 21.748821999994107,
+              "p95": 71.9863390000537,
+              "p99": 148.47784500010312,
+              "max": 299.61569599993527
+            }
+          },
+          "GET /api/galaxy/traffic": {
+            "requests": 1459,
+            "errors": 0,
+            "responseBytes": 12409126,
+            "responseStatuses": {
+              "200": 1453,
+              "401": 6
+            },
+            "latencyMs": {
+              "samples": 1459,
+              "p50": 36.321777999866754,
+              "p95": 174.10885299975052,
+              "p99": 363.6698250002228,
+              "max": 1011.323619000148
+            }
+          },
+          "GET /api/honor/targets/:targetPlanetId": {
+            "requests": 11,
+            "errors": 0,
+            "responseBytes": 187,
+            "responseStatuses": {
+              "200": 11
+            },
+            "latencyMs": {
+              "samples": 11,
+              "p50": 21.121363999904133,
+              "p95": 68.93627599999309,
+              "p99": 68.93627599999309,
+              "max": 68.93627599999309
+            }
+          },
+          "GET /api/intel": {
+            "requests": 125,
+            "errors": 0,
+            "responseBytes": 10776097,
+            "responseStatuses": {
+              "200": 123,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 125,
+              "p50": 96.4588059997186,
+              "p95": 259.80149300023913,
+              "p99": 503.4234389998019,
+              "max": 558.8393120000001
+            }
+          },
+          "GET /api/leaderboard": {
+            "requests": 9,
+            "errors": 0,
+            "responseBytes": 111540,
+            "responseStatuses": {
+              "200": 9
+            },
+            "latencyMs": {
+              "samples": 9,
+              "p50": 25.563223999983165,
+              "p95": 308.0395879999269,
+              "p99": 308.0395879999269,
+              "max": 308.0395879999269
+            }
+          },
+          "GET /api/mining/field": {
+            "requests": 527,
+            "errors": 0,
+            "responseBytes": 1377595,
+            "responseStatuses": {
+              "200": 527
+            },
+            "latencyMs": {
+              "samples": 527,
+              "p50": 19.756182000041008,
+              "p95": 88.641232999973,
+              "p99": 157.18757800012827,
+              "max": 417.5164419999928
+            }
+          },
+          "GET /api/mining/status": {
+            "requests": 211,
+            "errors": 0,
+            "responseBytes": 192521,
+            "responseStatuses": {
+              "200": 205,
+              "401": 6
+            },
+            "latencyMs": {
+              "samples": 211,
+              "p50": 45.16214599995874,
+              "p95": 158.65732100000605,
+              "p99": 215.6064409999999,
+              "max": 250.97288700006902
+            }
+          },
+          "GET /api/monuments": {
+            "requests": 134,
+            "errors": 0,
+            "responseBytes": 1931085,
+            "responseStatuses": {
+              "200": 129,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 134,
+              "p50": 127.8228029999882,
+              "p95": 495.86402600002475,
+              "p99": 620.7604869999923,
+              "max": 784.8645289996639
+            }
+          },
+          "GET /api/notifications": {
+            "requests": 139,
+            "errors": 0,
+            "responseBytes": 1274453,
+            "responseStatuses": {
+              "200": 138,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 139,
+              "p50": 50.22391499998048,
+              "p95": 139.01421300000038,
+              "p99": 216.0325629999861,
+              "max": 276.6982849999331
+            }
+          },
+          "GET /api/pirates": {
+            "requests": 150,
+            "errors": 0,
+            "responseBytes": 664279,
+            "responseStatuses": {
+              "200": 148,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 150,
+              "p50": 42.859033999964595,
+              "p95": 165.91896699997596,
+              "p99": 559.0677060000016,
+              "max": 728.0972460000194
+            }
+          },
+          "GET /api/planet": {
+            "requests": 7,
+            "errors": 0,
+            "responseBytes": 76545,
+            "responseStatuses": {
+              "200": 7
+            },
+            "latencyMs": {
+              "samples": 7,
+              "p50": 207.2121979999938,
+              "p95": 503.7580850000377,
+              "p99": 503.7580850000377,
+              "max": 503.7580850000377
+            }
+          },
+          "GET /api/planets": {
+            "requests": 213,
+            "errors": 0,
+            "responseBytes": 8731937,
+            "responseStatuses": {
+              "200": 210,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 213,
+              "p50": 309.31309700012207,
+              "p95": 631.2075790000017,
+              "p99": 976.0338989999145,
+              "max": 1144.5750279999338
+            }
+          },
+          "GET /api/planets/:planetId": {
+            "requests": 262,
+            "errors": 0,
+            "responseBytes": 2973195,
+            "responseStatuses": {
+              "200": 257,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 262,
+              "p50": 147.27366499998607,
+              "p95": 419.88523500000883,
+              "p99": 545.299559999723,
+              "max": 712.3879030002281
+            }
+          },
+          "GET /api/reports": {
+            "requests": 126,
+            "errors": 0,
+            "responseBytes": 10373875,
+            "responseStatuses": {
+              "200": 123,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 126,
+              "p50": 215.99382100021467,
+              "p95": 503.10102399997413,
+              "p99": 802.7838700001594,
+              "max": 839.2436420000158
+            }
+          },
+          "GET /api/return-applications": {
+            "requests": 82,
+            "errors": 0,
+            "responseBytes": 11507,
+            "responseStatuses": {
+              "200": 77,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 82,
+              "p50": 30.21163500007242,
+              "p95": 118.6445679999888,
+              "p99": 136.41402500029653,
+              "max": 136.41402500029653
+            }
+          },
+          "GET /api/rewards": {
+            "requests": 114,
+            "errors": 0,
+            "responseBytes": 495991,
+            "responseStatuses": {
+              "200": 113,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 114,
+              "p50": 130.7012490001507,
+              "p95": 333.5280820000917,
+              "p99": 513.509558999911,
+              "max": 792.1369239999913
+            }
+          },
+          "GET /api/season": {
+            "requests": 77,
+            "errors": 0,
+            "responseBytes": 98339,
+            "responseStatuses": {
+              "200": 76,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 77,
+              "p50": 36.134438999928534,
+              "p95": 130.4714680002071,
+              "p99": 335.1692599998787,
+              "max": 335.1692599998787
+            }
+          },
+          "GET /api/season-archive": {
+            "requests": 4,
+            "errors": 0,
+            "responseBytes": 6812,
+            "responseStatuses": {
+              "200": 4
+            },
+            "latencyMs": {
+              "samples": 4,
+              "p50": 36.42681200010702,
+              "p95": 156.6226219998207,
+              "p99": 156.6226219998207,
+              "max": 156.6226219998207
+            }
+          },
+          "GET /api/servers": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 668,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 9.077665999997407,
+              "p95": 14.144625999964774,
+              "p99": 14.144625999964774,
+              "max": 14.144625999964774
+            }
+          },
+          "GET /api/session/brand-recall": {
+            "requests": 5,
+            "errors": 0,
+            "responseBytes": 433,
+            "responseStatuses": {
+              "200": 5
+            },
+            "latencyMs": {
+              "samples": 5,
+              "p50": 47.00209299987182,
+              "p95": 104.26037799997721,
+              "p99": 104.26037799997721,
+              "max": 104.26037799997721
+            }
+          },
+          "GET /api/session/pending": {
+            "requests": 221,
+            "errors": 0,
+            "responseBytes": 283639,
+            "responseStatuses": {
+              "200": 219,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 221,
+              "p50": 91.70187699998496,
+              "p95": 270.83535700000357,
+              "p99": 362.17196199996397,
+              "max": 797.269988999702
+            }
+          },
+          "GET /api/session/return": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 181,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 54.79534300020896,
+              "p95": 54.79534300020896,
+              "p99": 54.79534300020896,
+              "max": 54.79534300020896
+            }
+          },
+          "GET /api/skins": {
+            "requests": 120,
+            "errors": 0,
+            "responseBytes": 53488,
+            "responseStatuses": {
+              "200": 116,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 120,
+              "p50": 26.169962000101805,
+              "p95": 66.15680799999973,
+              "p99": 91.31388199981302,
+              "max": 111.25367599999299
+            }
+          },
+          "GET /api/stream": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 106,
+            "responseStatuses": {
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 2.614479999989271,
+              "p95": 6.654945999966003,
+              "p99": 6.654945999966003,
+              "max": 6.654945999966003
+            }
+          },
+          "GET /api/unknown-signals": {
+            "requests": 98,
+            "errors": 0,
+            "responseBytes": 39443,
+            "responseStatuses": {
+              "200": 94,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 98,
+              "p50": 28.87642000010237,
+              "p95": 119.07135300012305,
+              "p99": 383.31312599987723,
+              "max": 383.31312599987723
+            }
+          },
+          "GET /health": {
+            "requests": 111,
+            "errors": 1,
+            "responseBytes": 234744,
+            "responseStatuses": {
+              "200": 110,
+              "503": 1
+            },
+            "latencyMs": {
+              "samples": 111,
+              "p50": 60.0922009999631,
+              "p95": 183.15503499982879,
+              "p99": 326.09266200001,
+              "max": 330.8065840000054
+            }
+          },
+          "GET /metrics": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 19088,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 39.43766599986702,
+              "p95": 39.43766599986702,
+              "p99": 39.43766599986702,
+              "max": 39.43766599986702
+            }
+          },
+          "OPTIONS *": {
+            "requests": 10,
+            "errors": 0,
+            "responseBytes": 0,
+            "responseStatuses": {
+              "204": 10
+            },
+            "latencyMs": {
+              "samples": 0,
+              "p50": 0,
+              "p95": 0,
+              "p99": 0,
+              "max": 0
+            }
+          },
+          "POST /api/auth/login": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 334,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 91.89915000001201,
+              "p95": 91.89915000001201,
+              "p99": 91.89915000001201,
+              "max": 91.89915000001201
+            }
+          },
+          "POST /api/auth/refresh": {
+            "requests": 16,
+            "errors": 0,
+            "responseBytes": 4437,
+            "responseStatuses": {
+              "200": 12,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 16,
+              "p50": 11.072738000075333,
+              "p95": 83.80636799999047,
+              "p99": 83.80636799999047,
+              "max": 83.80636799999047
+            }
+          },
+          "POST /api/chat/read": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 94,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 46.70109099999536,
+              "p95": 96.40285300009418,
+              "p99": 96.40285300009418,
+              "max": 96.40285300009418
+            }
+          },
+          "POST /api/clan/read": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 37,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 43.95090299996082,
+              "p95": 43.95090299996082,
+              "p99": 43.95090299996082,
+              "max": 43.95090299996082
+            }
+          },
+          "POST /api/fleet/launch": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 28643,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 428.39906399999745,
+              "p95": 439.00601199967787,
+              "p99": 439.00601199967787,
+              "max": 439.00601199967787
+            }
+          },
+          "POST /api/fleet/transfer": {
+            "requests": 9,
+            "errors": 0,
+            "responseBytes": 111596,
+            "responseStatuses": {
+              "200": 9
+            },
+            "latencyMs": {
+              "samples": 9,
+              "p50": 358.87492100009695,
+              "p95": 516.2748900000006,
+              "p99": 516.2748900000006,
+              "max": 516.2748900000006
+            }
+          },
+          "POST /api/intel/probe": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 357,
+            "responseStatuses": {
+              "200": 2,
+              "400": 1
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 112.04752999986522,
+              "p95": 145.2203889999946,
+              "p99": 145.2203889999946,
+              "max": 145.2203889999946
+            }
+          },
+          "POST /api/mining/harvest": {
+            "requests": 13,
+            "errors": 0,
+            "responseBytes": 182487,
+            "responseStatuses": {
+              "200": 13
+            },
+            "latencyMs": {
+              "samples": 13,
+              "p50": 262.47521100007,
+              "p95": 402.96925700013526,
+              "p99": 402.96925700013526,
+              "max": 402.96925700013526
+            }
+          },
+          "POST /api/mining/launch": {
+            "requests": 4,
+            "errors": 0,
+            "responseBytes": 63771,
+            "responseStatuses": {
+              "200": 4
+            },
+            "latencyMs": {
+              "samples": 4,
+              "p50": 300.1154339998029,
+              "p95": 357.85221600020304,
+              "p99": 357.85221600020304,
+              "max": 357.85221600020304
+            }
+          },
+          "POST /api/mining/runs/:runId/recall": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 14356,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 231.3592270000372,
+              "p95": 231.3592270000372,
+              "p99": 231.3592270000372,
+              "max": 231.3592270000372
+            }
+          },
+          "POST /api/monuments/:monumentId/probe": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 548,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 253.28654999984428,
+              "p95": 265.4468569997698,
+              "p99": 265.4468569997698,
+              "max": 265.4468569997698
+            }
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 4136,
+            "responseStatuses": {
+              "200": 4,
+              "400": 1,
+              "409": 1
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 85.52194400003646,
+              "p95": 308.7807410000023,
+              "p99": 308.7807410000023,
+              "max": 308.7807410000023
+            }
+          },
+          "POST /api/notifications/seen": {
+            "requests": 24,
+            "errors": 0,
+            "responseBytes": 288,
+            "responseStatuses": {
+              "200": 24
+            },
+            "latencyMs": {
+              "samples": 24,
+              "p50": 18.049129000050016,
+              "p95": 89.95802900003036,
+              "p99": 1092.6307879998349,
+              "max": 1092.6307879998349
+            }
+          },
+          "POST /api/planets/:planetId/build": {
+            "requests": 5,
+            "errors": 0,
+            "responseBytes": 60637,
+            "responseStatuses": {
+              "200": 5
+            },
+            "latencyMs": {
+              "samples": 5,
+              "p50": 289.42097300011665,
+              "p95": 450.2570359997917,
+              "p99": 450.2570359997917,
+              "max": 450.2570359997917
+            }
+          },
+          "POST /api/planets/:planetId/collect": {
+            "requests": 43,
+            "errors": 0,
+            "responseBytes": 505774,
+            "responseStatuses": {
+              "200": 43
+            },
+            "latencyMs": {
+              "samples": 43,
+              "p50": 200.13804599992,
+              "p95": 330.24336199997924,
+              "p99": 1197.4696400000248,
+              "max": 1197.4696400000248
+            }
+          },
+          "POST /api/planets/:planetId/interceptor/build": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 11315,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 113.0826900000684,
+              "p95": 113.0826900000684,
+              "p99": 113.0826900000684,
+              "max": 113.0826900000684
+            }
+          },
+          "POST /api/planets/:planetId/maintenance": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 35558,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 346.86665400024503,
+              "p95": 2258.720686000306,
+              "p99": 2258.720686000306,
+              "max": 2258.720686000306
+            }
+          },
+          "POST /api/planets/:planetId/repairs": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 12314,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 270.4534370000474,
+              "p95": 270.4534370000474,
+              "p99": 270.4534370000474,
+              "max": 270.4534370000474
+            }
+          },
+          "POST /api/planets/:planetId/research": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 11465,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 333.6774500000756,
+              "p95": 333.6774500000756,
+              "p99": 333.6774500000756,
+              "max": 333.6774500000756
+            }
+          },
+          "POST /api/planets/:planetId/upgrade": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 21772,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 259.309210000094,
+              "p95": 308.97901900019497,
+              "p99": 308.97901900019497,
+              "max": 308.97901900019497
+            }
+          },
+          "POST /api/session/return/seen": {
+            "requests": 15,
+            "errors": 0,
+            "responseBytes": 207,
+            "responseStatuses": {
+              "200": 14,
+              "401": 1
+            },
+            "latencyMs": {
+              "samples": 15,
+              "p50": 44.11984499997925,
+              "p95": 241.16502800001763,
+              "p99": 241.16502800001763,
+              "max": 241.16502800001763
+            }
+          },
+          "POST /api/trade/launch": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 13704,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 259.39132400020026,
+              "p95": 259.39132400020026,
+              "p99": 259.39132400020026,
+              "max": 259.39132400020026
+            }
+          }
+        },
+        "refusals": {
+          "GET /api/auth/me": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/chat/messages": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/chat/unread": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/clan/badge": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/clan/war": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/dm/unread": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/galaxy": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/galaxy/events": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/galaxy/traffic": {
+            "UNAUTHENTICATED": 6
+          },
+          "GET /api/intel": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/mining/status": {
+            "UNAUTHENTICATED": 6
+          },
+          "GET /api/monuments": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/notifications": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/pirates": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/planets": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/planets/:planetId": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/reports": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/return-applications": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/rewards": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/season": {
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/session/pending": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/skins": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/stream": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/unknown-signals": {
+            "UNAUTHENTICATED": 4
+          },
+          "POST /api/auth/refresh": {
+            "BAD_SESSION": 2,
+            "NO_SESSION": 2
+          },
+          "POST /api/intel/probe": {
+            "INSUFFICIENT_RESOURCES": 1
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "BAD_MONUMENT_RECALL": 1,
+            "MONUMENT_NOT_RECALLABLE": 1
+          },
+          "POST /api/session/return/seen": {
+            "UNAUTHENTICATED": 1
+          }
+        },
+        "operations": {}
+      },
+      "projections": {
+        "enabled": true,
+        "commander": {
+          "entries": 5,
+          "hits": 2188,
+          "misses": 428,
+          "bypasses": 0,
+          "invalidations": 100,
+          "evictions": 0,
+          "singleFlightWaits": 19
+        },
+        "sensors": {
+          "entries": 5,
+          "hits": 1478,
+          "misses": 394,
+          "bypasses": 0,
+          "invalidations": 108,
+          "evictions": 0,
+          "singleFlightWaits": 6
+        },
+        "remembered": {
+          "entries": 4,
+          "hits": 103,
+          "misses": 167,
+          "bypasses": 0,
+          "invalidations": 88,
+          "evictions": 0,
+          "singleFlightWaits": 0
+        },
+        "sensorHistory": {
+          "entries": 5,
+          "hits": 1930,
+          "misses": 415,
+          "bypasses": 0,
+          "invalidations": 110,
+          "evictions": 0,
+          "singleFlightWaits": 14
+        },
+        "publicGalaxy": {
+          "entries": 1,
+          "hits": 174,
+          "misses": 81,
+          "bypasses": 0,
+          "invalidations": 18,
+          "evictions": 0,
+          "singleFlightWaits": 0
+        },
+        "traffic": {
+          "entries": 1,
+          "hits": 882,
+          "misses": 578,
+          "bypasses": 0,
+          "invalidations": 298,
+          "evictions": 0,
+          "singleFlightWaits": 72
+        },
+        "mining": {
+          "entries": 1,
+          "hits": 1598,
+          "misses": 599,
+          "bypasses": 0,
+          "invalidations": 268,
+          "evictions": 0,
+          "singleFlightWaits": 59
+        },
+        "pirates": {
+          "entries": 1,
+          "hits": 1173,
+          "misses": 429,
+          "bypasses": 0,
+          "invalidations": 9,
+          "evictions": 0,
+          "singleFlightWaits": 30
+        }
+      },
+      "database": {
+        "configuredProcessPoolMax": 8,
+        "configuredPlacementPoolMax": 2,
+        "maxConnections": 100,
+        "asteraConnections": 40,
+        "active": 1,
+        "idle": 39,
+        "waiting": 0,
+        "poolAcquireMs": {
+          "samples": 3182,
+          "p50": 0.15009799972176552,
+          "p95": 0.2910200000042096,
+          "p99": 0.9695600001141429,
+          "max": 21.22134599974379
+        },
+        "poolAcquireErrors": 0,
+        "placementTransactionStartMs": {
+          "samples": 902,
+          "p50": 1.120900999987498,
+          "p95": 9.552028000121936,
+          "p99": 133.7052520001307,
+          "max": 423.3769160000011
+        },
+        "placementTransactionStartErrors": 0
+      }
+    },
+    {
+      "port": 3202,
+      "service": {
+        "role": "api",
+        "commit": "cb69b8df05310c55624b6991d103956361e4aa12"
+      },
+      "runtime": {
+        "instanceId": "18ef029d-8879-4870-ba3d-9c86d2a21a76",
+        "startedAt": "2026-10-25T21:57:43.878Z",
+        "uptimeSeconds": 3173.7046247259996,
+        "process": {
+          "rssBytes": 191234048,
+          "heapUsedBytes": 74490080,
+          "heapTotalBytes": 96661504,
+          "externalBytes": 8797266,
+          "cpuPercentOfOneCore": 11.137643972862348
+        },
+        "eventLoop": {
+          "p50Ms": 20.217855,
+          "p95Ms": 21.364735,
+          "p99Ms": 25.657343,
+          "maxMs": 417.857535
+        },
+        "gc": {
+          "pauses": 4096,
+          "p50Ms": 2.3321861028671265,
+          "p95Ms": 7.517471075057983,
+          "p99Ms": 13.891798973083496,
+          "maxMs": 110.64767396450043
+        },
+        "databasePool": {
+          "acquireErrors": 0,
+          "acquireMs": {
+            "samples": 3171,
+            "p50": 0.12325000017881393,
+            "p95": 0.22536899999249727,
+            "p99": 0.77772399999958,
+            "max": 153.83798199999728
+          }
+        },
+        "placementPool": {
+          "transactionStartErrors": 0,
+          "transactionStartMs": {
+            "samples": 1174,
+            "p50": 1.0080310000339523,
+            "p95": 8.496993999928236,
+            "p99": 91.49688200000674,
+            "max": 355.88376499991864
+          }
+        },
+        "routes": {
+          "GET /api/admin/account-deletion": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 66,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 14.265477000000828,
+              "p95": 18.145264000166208,
+              "p99": 18.145264000166208,
+              "max": 18.145264000166208
+            }
+          },
+          "GET /api/admin/clans": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1103,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 14.049063000362366,
+              "p95": 14.049063000362366,
+              "p99": 14.049063000362366,
+              "max": 14.049063000362366
+            }
+          },
+          "GET /api/admin/clans/:clanId/chat": {
+            "requests": 7,
+            "errors": 0,
+            "responseBytes": 116140,
+            "responseStatuses": {
+              "200": 7
+            },
+            "latencyMs": {
+              "samples": 7,
+              "p50": 46.2165369996801,
+              "p95": 64.127623999957,
+              "p99": 64.127623999957,
+              "max": 64.127623999957
+            }
+          },
+          "GET /api/announcements": {
+            "requests": 8,
+            "errors": 0,
+            "responseBytes": 143560,
+            "responseStatuses": {
+              "200": 8
+            },
+            "latencyMs": {
+              "samples": 8,
+              "p50": 19.364002999849617,
+              "p95": 189.266646000091,
+              "p99": 189.266646000091,
+              "max": 189.266646000091
+            }
+          },
+          "GET /api/auth/me": {
+            "requests": 21,
+            "errors": 0,
+            "responseBytes": 8540,
+            "responseStatuses": {
+              "200": 14,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 21,
+              "p50": 20.323628999991342,
+              "p95": 26.807237000000896,
+              "p99": 59.39367799999309,
+              "max": 59.39367799999309
+            }
+          },
+          "GET /api/auth/security": {
+            "requests": 16,
+            "errors": 0,
+            "responseBytes": 2038,
+            "responseStatuses": {
+              "200": 16
+            },
+            "latencyMs": {
+              "samples": 16,
+              "p50": 12.474447999615222,
+              "p95": 37.11282300017774,
+              "p99": 37.11282300017774,
+              "max": 37.11282300017774
+            }
+          },
+          "GET /api/chat/messages": {
+            "requests": 9,
+            "errors": 0,
+            "responseBytes": 186303,
+            "responseStatuses": {
+              "200": 9
+            },
+            "latencyMs": {
+              "samples": 9,
+              "p50": 240.40882000001147,
+              "p95": 946.6913380000042,
+              "p99": 946.6913380000042,
+              "max": 946.6913380000042
+            }
+          },
+          "GET /api/chat/unread": {
+            "requests": 78,
+            "errors": 0,
+            "responseBytes": 997,
+            "responseStatuses": {
+              "200": 75,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 78,
+              "p50": 68.00011499971151,
+              "p95": 207.14979900000617,
+              "p99": 505.797038000077,
+              "max": 505.797038000077
+            }
+          },
+          "GET /api/clan/badge": {
+            "requests": 58,
+            "errors": 0,
+            "responseBytes": 11458,
+            "responseStatuses": {
+              "200": 55,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 58,
+              "p50": 65.9221200000029,
+              "p95": 159.9518439997919,
+              "p99": 213.5623439999763,
+              "max": 213.5623439999763
+            }
+          },
+          "GET /api/clan/chat": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 53959,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 63.71254699997371,
+              "p95": 188.70953300001565,
+              "p99": 188.70953300001565,
+              "max": 188.70953300001565
+            }
+          },
+          "GET /api/clan/events": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1531,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 24.80582599993795,
+              "p95": 24.80582599993795,
+              "p99": 24.80582599993795,
+              "max": 24.80582599993795
+            }
+          },
+          "GET /api/clan/me": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1621,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 51.50934600003529,
+              "p95": 51.50934600003529,
+              "p99": 51.50934600003529,
+              "max": 51.50934600003529
+            }
+          },
+          "GET /api/clan/support": {
+            "requests": 14,
+            "errors": 0,
+            "responseBytes": 168,
+            "responseStatuses": {
+              "200": 14
+            },
+            "latencyMs": {
+              "samples": 14,
+              "p50": 20.322403999976814,
+              "p95": 102.78147899999749,
+              "p99": 102.78147899999749,
+              "max": 102.78147899999749
+            }
+          },
+          "GET /api/clan/war": {
+            "requests": 12,
+            "errors": 0,
+            "responseBytes": 3821,
+            "responseStatuses": {
+              "200": 12
+            },
+            "latencyMs": {
+              "samples": 12,
+              "p50": 42.3361829998903,
+              "p95": 350.2453660001047,
+              "p99": 350.2453660001047,
+              "max": 350.2453660001047
+            }
+          },
+          "GET /api/clans/leaderboard": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 1238,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 35.39098899997771,
+              "p95": 35.39098899997771,
+              "p99": 35.39098899997771,
+              "max": 35.39098899997771
+            }
+          },
+          "GET /api/community/policy": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 128,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 13.301864999812096,
+              "p95": 25.30085300002247,
+              "p99": 25.30085300002247,
+              "max": 25.30085300002247
+            }
+          },
+          "GET /api/dm/unread": {
+            "requests": 70,
+            "errors": 0,
+            "responseBytes": 938,
+            "responseStatuses": {
+              "200": 66,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 70,
+              "p50": 54.96538900001906,
+              "p95": 143.22511599998688,
+              "p99": 159.14118400006555,
+              "max": 159.14118400006555
+            }
+          },
+          "GET /api/galaxy": {
+            "requests": 324,
+            "errors": 0,
+            "responseBytes": 28567648,
+            "responseStatuses": {
+              "200": 319,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 324,
+              "p50": 85.15269500017166,
+              "p95": 261.4393149999669,
+              "p99": 457.435083999997,
+              "max": 668.2089000004344
+            }
+          },
+          "GET /api/galaxy/events": {
+            "requests": 372,
+            "errors": 0,
+            "responseBytes": 188455,
+            "responseStatuses": {
+              "200": 369,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 372,
+              "p50": 20.90963599999668,
+              "p95": 89.4971239999868,
+              "p99": 171.85463399998844,
+              "max": 425.80999899999006
+            }
+          },
+          "GET /api/galaxy/traffic": {
+            "requests": 2440,
+            "errors": 0,
+            "responseBytes": 21176417,
+            "responseStatuses": {
+              "200": 2432,
+              "401": 8
+            },
+            "latencyMs": {
+              "samples": 2440,
+              "p50": 19.711259000003338,
+              "p95": 141.39118800032884,
+              "p99": 293.3005739999935,
+              "max": 1008.7523149999324
+            }
+          },
+          "GET /api/honor/targets/:targetPlanetId": {
+            "requests": 16,
+            "errors": 0,
+            "responseBytes": 272,
+            "responseStatuses": {
+              "200": 16
+            },
+            "latencyMs": {
+              "samples": 16,
+              "p50": 21.52255000011064,
+              "p95": 34.9243350001052,
+              "p99": 34.9243350001052,
+              "max": 34.9243350001052
+            }
+          },
+          "GET /api/intel": {
+            "requests": 140,
+            "errors": 0,
+            "responseBytes": 12949543,
+            "responseStatuses": {
+              "200": 136,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 140,
+              "p50": 78.58798899990506,
+              "p95": 277.00948500004597,
+              "p99": 458.3774950001389,
+              "max": 495.9458469999954
+            }
+          },
+          "GET /api/leaderboard": {
+            "requests": 9,
+            "errors": 0,
+            "responseBytes": 112924,
+            "responseStatuses": {
+              "200": 9
+            },
+            "latencyMs": {
+              "samples": 9,
+              "p50": 31.829603999853134,
+              "p95": 97.82423999998719,
+              "p99": 97.82423999998719,
+              "max": 97.82423999998719
+            }
+          },
+          "GET /api/mining/field": {
+            "requests": 826,
+            "errors": 0,
+            "responseBytes": 2316431,
+            "responseStatuses": {
+              "200": 819,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 826,
+              "p50": 13.778404999990016,
+              "p95": 82.92697899999985,
+              "p99": 147.3493749999907,
+              "max": 419.2628259998746
+            }
+          },
+          "GET /api/mining/status": {
+            "requests": 204,
+            "errors": 0,
+            "responseBytes": 169579,
+            "responseStatuses": {
+              "200": 202,
+              "401": 1,
+              "403": 1
+            },
+            "latencyMs": {
+              "samples": 204,
+              "p50": 44.97581500001252,
+              "p95": 165.93678900040686,
+              "p99": 222.95281600020826,
+              "max": 394.9985640000086
+            }
+          },
+          "GET /api/monuments": {
+            "requests": 152,
+            "errors": 0,
+            "responseBytes": 2195594,
+            "responseStatuses": {
+              "200": 148,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 152,
+              "p50": 103.24533599999268,
+              "p95": 349.2249019999872,
+              "p99": 486.05896500032395,
+              "max": 938.6105319997296
+            }
+          },
+          "GET /api/notifications": {
+            "requests": 157,
+            "errors": 0,
+            "responseBytes": 1413698,
+            "responseStatuses": {
+              "200": 151,
+              "401": 6
+            },
+            "latencyMs": {
+              "samples": 157,
+              "p50": 38.15656600007787,
+              "p95": 136.49960999982432,
+              "p99": 537.379273999948,
+              "max": 783.6805290000048
+            }
+          },
+          "GET /api/pirates": {
+            "requests": 207,
+            "errors": 0,
+            "responseBytes": 845709,
+            "responseStatuses": {
+              "200": 202,
+              "401": 4,
+              "403": 1
+            },
+            "latencyMs": {
+              "samples": 207,
+              "p50": 35.85363000025973,
+              "p95": 123.38806399999885,
+              "p99": 153.44902599975467,
+              "max": 440.0467499999795
+            }
+          },
+          "GET /api/planet": {
+            "requests": 13,
+            "errors": 0,
+            "responseBytes": 141973,
+            "responseStatuses": {
+              "200": 13
+            },
+            "latencyMs": {
+              "samples": 13,
+              "p50": 168.1273229997605,
+              "p95": 385.7362219999777,
+              "p99": 385.7362219999777,
+              "max": 385.7362219999777
+            }
+          },
+          "GET /api/planets": {
+            "requests": 245,
+            "errors": 0,
+            "responseBytes": 10103080,
+            "responseStatuses": {
+              "200": 242,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 245,
+              "p50": 329.87945999996737,
+              "p95": 789.5565199999837,
+              "p99": 1115.0595060000196,
+              "max": 1704.712499000132
+            }
+          },
+          "GET /api/planets/:planetId": {
+            "requests": 280,
+            "errors": 0,
+            "responseBytes": 3172337,
+            "responseStatuses": {
+              "200": 274,
+              "401": 6
+            },
+            "latencyMs": {
+              "samples": 280,
+              "p50": 130.8273590002209,
+              "p95": 406.0087320000166,
+              "p99": 598.6347829999868,
+              "max": 1040.9634020002559
+            }
+          },
+          "GET /api/planets/:planetId/abandon": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 79,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 22.755754999998317,
+              "p95": 22.755754999998317,
+              "p99": 22.755754999998317,
+              "max": 22.755754999998317
+            }
+          },
+          "GET /api/reports": {
+            "requests": 130,
+            "errors": 0,
+            "responseBytes": 10207630,
+            "responseStatuses": {
+              "200": 124,
+              "401": 6
+            },
+            "latencyMs": {
+              "samples": 130,
+              "p50": 213.9852869999595,
+              "p95": 441.6560879999888,
+              "p99": 608.1220010000397,
+              "max": 1093.588673000224
+            }
+          },
+          "GET /api/return-applications": {
+            "requests": 102,
+            "errors": 0,
+            "responseBytes": 14706,
+            "responseStatuses": {
+              "200": 100,
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 102,
+              "p50": 25.613881999626756,
+              "p95": 119.79561899998225,
+              "p99": 169.00472499997704,
+              "max": 289.3189280000515
+            }
+          },
+          "GET /api/rewards": {
+            "requests": 87,
+            "errors": 0,
+            "responseBytes": 351437,
+            "responseStatuses": {
+              "200": 80,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 87,
+              "p50": 110.29106399999,
+              "p95": 284.6172880001832,
+              "p99": 689.8098690002225,
+              "max": 689.8098690002225
+            }
+          },
+          "GET /api/season": {
+            "requests": 117,
+            "errors": 0,
+            "responseBytes": 140951,
+            "responseStatuses": {
+              "200": 110,
+              "401": 7
+            },
+            "latencyMs": {
+              "samples": 117,
+              "p50": 32.57107899989933,
+              "p95": 107.72100699995644,
+              "p99": 166.23015299998224,
+              "max": 201.60207999998238
+            }
+          },
+          "GET /api/season-archive": {
+            "requests": 5,
+            "errors": 0,
+            "responseBytes": 8515,
+            "responseStatuses": {
+              "200": 5
+            },
+            "latencyMs": {
+              "samples": 5,
+              "p50": 30.264647000003606,
+              "p95": 46.764608999714255,
+              "p99": 46.764608999714255,
+              "max": 46.764608999714255
+            }
+          },
+          "GET /api/servers": {
+            "requests": 6,
+            "errors": 0,
+            "responseBytes": 1999,
+            "responseStatuses": {
+              "200": 6
+            },
+            "latencyMs": {
+              "samples": 6,
+              "p50": 12.177518000360578,
+              "p95": 16.51982600009069,
+              "p99": 16.51982600009069,
+              "max": 16.51982600009069
+            }
+          },
+          "GET /api/session/brand-recall": {
+            "requests": 4,
+            "errors": 0,
+            "responseBytes": 348,
+            "responseStatuses": {
+              "200": 4
+            },
+            "latencyMs": {
+              "samples": 4,
+              "p50": 47.135465000290424,
+              "p95": 166.93477100000018,
+              "p99": 166.93477100000018,
+              "max": 166.93477100000018
+            }
+          },
+          "GET /api/session/pending": {
+            "requests": 278,
+            "errors": 0,
+            "responseBytes": 347326,
+            "responseStatuses": {
+              "200": 273,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 278,
+              "p50": 88.08957699965686,
+              "p95": 269.0060799999628,
+              "p99": 419.032689999789,
+              "max": 448.86903699999675
+            }
+          },
+          "GET /api/session/return": {
+            "requests": 11,
+            "errors": 0,
+            "responseBytes": 2532,
+            "responseStatuses": {
+              "200": 11
+            },
+            "latencyMs": {
+              "samples": 11,
+              "p50": 78.15892099999473,
+              "p95": 203.93632600002456,
+              "p99": 203.93632600002456,
+              "max": 203.93632600002456
+            }
+          },
+          "GET /api/skins": {
+            "requests": 213,
+            "errors": 0,
+            "responseBytes": 98755,
+            "responseStatuses": {
+              "200": 208,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 213,
+              "p50": 24.93472599994857,
+              "p95": 77.1980109999422,
+              "p99": 114.09734700000263,
+              "max": 193.1671249999199
+            }
+          },
+          "GET /api/stream": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 106,
+            "responseStatuses": {
+              "401": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 1.7490570000372827,
+              "p95": 1.8432920000050217,
+              "p99": 1.8432920000050217,
+              "max": 1.8432920000050217
+            }
+          },
+          "GET /api/unknown-signals": {
+            "requests": 146,
+            "errors": 0,
+            "responseBytes": 39095,
+            "responseStatuses": {
+              "200": 142,
+              "401": 4
+            },
+            "latencyMs": {
+              "samples": 146,
+              "p50": 30.49696999997832,
+              "p95": 114.7909950001631,
+              "p99": 181.90447700000368,
+              "max": 379.434520999901
+            }
+          },
+          "GET /health": {
+            "requests": 111,
+            "errors": 1,
+            "responseBytes": 235153,
+            "responseStatuses": {
+              "200": 110,
+              "503": 1
+            },
+            "latencyMs": {
+              "samples": 111,
+              "p50": 63.55330500006676,
+              "p95": 186.6202250001952,
+              "p99": 229.90558400005102,
+              "max": 235.75774300005287
+            }
+          },
+          "GET /metrics": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 21326,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 56.638066000305116,
+              "p95": 56.638066000305116,
+              "p99": 56.638066000305116,
+              "max": 56.638066000305116
+            }
+          },
+          "OPTIONS *": {
+            "requests": 41,
+            "errors": 0,
+            "responseBytes": 0,
+            "responseStatuses": {
+              "204": 41
+            },
+            "latencyMs": {
+              "samples": 0,
+              "p50": 0,
+              "p95": 0,
+              "p99": 0,
+              "max": 0
+            }
+          },
+          "POST /api/auth/refresh": {
+            "requests": 25,
+            "errors": 0,
+            "responseBytes": 7249,
+            "responseStatuses": {
+              "200": 20,
+              "401": 5
+            },
+            "latencyMs": {
+              "samples": 25,
+              "p50": 8.02140499977395,
+              "p95": 26.705823000054806,
+              "p99": 76.59379899990745,
+              "max": 76.59379899990745
+            }
+          },
+          "POST /api/chat/read": {
+            "requests": 3,
+            "errors": 0,
+            "responseBytes": 141,
+            "responseStatuses": {
+              "200": 3
+            },
+            "latencyMs": {
+              "samples": 3,
+              "p50": 32.64456900022924,
+              "p95": 52.92969099999755,
+              "p99": 52.92969099999755,
+              "max": 52.92969099999755
+            }
+          },
+          "POST /api/clan/chat/read": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 37,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 51.65991699974984,
+              "p95": 51.65991699974984,
+              "p99": 51.65991699974984,
+              "max": 51.65991699974984
+            }
+          },
+          "POST /api/fleet/launch": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 27807,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 538.8845430002548,
+              "p95": 606.2451690000016,
+              "p99": 606.2451690000016,
+              "max": 606.2451690000016
+            }
+          },
+          "POST /api/fleet/settle": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 12117,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 322.33681100000103,
+              "p95": 322.33681100000103,
+              "p99": 322.33681100000103,
+              "max": 322.33681100000103
+            }
+          },
+          "POST /api/fleet/transfer": {
+            "requests": 8,
+            "errors": 0,
+            "responseBytes": 96858,
+            "responseStatuses": {
+              "200": 8
+            },
+            "latencyMs": {
+              "samples": 8,
+              "p50": 291.17231699998956,
+              "p95": 611.1795039999997,
+              "p99": 611.1795039999997,
+              "max": 611.1795039999997
+            }
+          },
+          "POST /api/intel/probe": {
+            "requests": 12,
+            "errors": 0,
+            "responseBytes": 1482,
+            "responseStatuses": {
+              "200": 11,
+              "400": 1
+            },
+            "latencyMs": {
+              "samples": 12,
+              "p50": 99.49488899996504,
+              "p95": 439.89518899982795,
+              "p99": 439.89518899982795,
+              "max": 439.89518899982795
+            }
+          },
+          "POST /api/intel/watch": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 109,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 74.19110799999908,
+              "p95": 74.19110799999908,
+              "p99": 74.19110799999908,
+              "max": 74.19110799999908
+            }
+          },
+          "POST /api/mining/harvest": {
+            "requests": 11,
+            "errors": 0,
+            "responseBytes": 148897,
+            "responseStatuses": {
+              "200": 11
+            },
+            "latencyMs": {
+              "samples": 11,
+              "p50": 313.7859330000356,
+              "p95": 367.8099289999809,
+              "p99": 367.8099289999809,
+              "max": 367.8099289999809
+            }
+          },
+          "POST /api/mining/launch": {
+            "requests": 12,
+            "errors": 0,
+            "responseBytes": 167631,
+            "responseStatuses": {
+              "200": 11,
+              "409": 1
+            },
+            "latencyMs": {
+              "samples": 12,
+              "p50": 302.6267430000007,
+              "p95": 1728.9506299999775,
+              "p99": 1728.9506299999775,
+              "max": 1728.9506299999775
+            }
+          },
+          "POST /api/monuments/:monumentId/probe": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 548,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 262.0727109997533,
+              "p95": 262.1379340002313,
+              "p99": 262.1379340002313,
+              "max": 262.1379340002313
+            }
+          },
+          "POST /api/monuments/:monumentId/quote": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 93,
+            "responseStatuses": {
+              "400": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 185.81444699969143,
+              "p95": 185.81444699969143,
+              "p99": 185.81444699969143,
+              "max": 185.81444699969143
+            }
+          },
+          "POST /api/monuments/waves/:waveId/recall": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 4474,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 280.6841299999505,
+              "p95": 286.079250000068,
+              "p99": 286.079250000068,
+              "max": 286.079250000068
+            }
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "requests": 15,
+            "errors": 0,
+            "responseBytes": 16208,
+            "responseStatuses": {
+              "200": 13,
+              "400": 1,
+              "409": 1
+            },
+            "latencyMs": {
+              "samples": 15,
+              "p50": 69.38322299998254,
+              "p95": 149.27332300000126,
+              "p99": 149.27332300000126,
+              "max": 149.27332300000126
+            }
+          },
+          "POST /api/native/auth/refresh": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 996,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 9.754214000422508,
+              "p95": 16.004813000094146,
+              "p99": 16.004813000094146,
+              "max": 16.004813000094146
+            }
+          },
+          "POST /api/notifications/seen": {
+            "requests": 17,
+            "errors": 0,
+            "responseBytes": 204,
+            "responseStatuses": {
+              "200": 17
+            },
+            "latencyMs": {
+              "samples": 17,
+              "p50": 22.93057999992743,
+              "p95": 60.934551999904215,
+              "p99": 60.934551999904215,
+              "max": 60.934551999904215
+            }
+          },
+          "POST /api/planets/:planetId/abandon": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 11110,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 453.3671830000021,
+              "p95": 453.3671830000021,
+              "p99": 453.3671830000021,
+              "max": 453.3671830000021
+            }
+          },
+          "POST /api/planets/:planetId/build": {
+            "requests": 10,
+            "errors": 0,
+            "responseBytes": 115341,
+            "responseStatuses": {
+              "200": 10
+            },
+            "latencyMs": {
+              "samples": 10,
+              "p50": 215.20742199989036,
+              "p95": 265.9527600000147,
+              "p99": 265.9527600000147,
+              "max": 265.9527600000147
+            }
+          },
+          "POST /api/planets/:planetId/collect": {
+            "requests": 65,
+            "errors": 0,
+            "responseBytes": 757426,
+            "responseStatuses": {
+              "200": 65
+            },
+            "latencyMs": {
+              "samples": 65,
+              "p50": 201.55286699999124,
+              "p95": 393.7860830000136,
+              "p99": 931.6818290001247,
+              "max": 931.6818290001247
+            }
+          },
+          "POST /api/planets/:planetId/maintenance": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 23922,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 245.1898199999705,
+              "p95": 345.9757470000186,
+              "p99": 345.9757470000186,
+              "max": 345.9757470000186
+            }
+          },
+          "POST /api/planets/:planetId/radiation-bombs/build": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 12546,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 149.28609400009736,
+              "p95": 149.28609400009736,
+              "p99": 149.28609400009736,
+              "max": 149.28609400009736
+            }
+          },
+          "POST /api/planets/:planetId/repairs": {
+            "requests": 1,
+            "errors": 0,
+            "responseBytes": 12899,
+            "responseStatuses": {
+              "200": 1
+            },
+            "latencyMs": {
+              "samples": 1,
+              "p50": 449.2312580002472,
+              "p95": 449.2312580002472,
+              "p99": 449.2312580002472,
+              "max": 449.2312580002472
+            }
+          },
+          "POST /api/planets/:planetId/research": {
+            "requests": 2,
+            "errors": 0,
+            "responseBytes": 21173,
+            "responseStatuses": {
+              "200": 2
+            },
+            "latencyMs": {
+              "samples": 2,
+              "p50": 173.56581100000767,
+              "p95": 202.61288200004492,
+              "p99": 202.61288200004492,
+              "max": 202.61288200004492
+            }
+          },
+          "POST /api/planets/:planetId/upgrade": {
+            "requests": 10,
+            "errors": 0,
+            "responseBytes": 110537,
+            "responseStatuses": {
+              "200": 10
+            },
+            "latencyMs": {
+              "samples": 10,
+              "p50": 235.83285800006706,
+              "p95": 598.5535389999859,
+              "p99": 598.5535389999859,
+              "max": 598.5535389999859
+            }
+          },
+          "POST /api/session/return/seen": {
+            "requests": 32,
+            "errors": 0,
+            "responseBytes": 478,
+            "responseStatuses": {
+              "200": 29,
+              "401": 3
+            },
+            "latencyMs": {
+              "samples": 32,
+              "p50": 25.3523180000484,
+              "p95": 108.90156199998455,
+              "p99": 141.32112099975348,
+              "max": 141.32112099975348
+            }
+          }
+        },
+        "refusals": {
+          "GET /api/auth/me": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/chat/unread": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/clan/badge": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/dm/unread": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/galaxy": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/galaxy/events": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/galaxy/traffic": {
+            "UNAUTHENTICATED": 8
+          },
+          "GET /api/intel": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/mining/field": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/mining/status": {
+            "PLANET_NOT_OWNED": 1,
+            "UNAUTHENTICATED": 1
+          },
+          "GET /api/monuments": {
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/notifications": {
+            "UNAUTHENTICATED": 6
+          },
+          "GET /api/pirates": {
+            "NOT_YOUR_PLANET": 1,
+            "UNAUTHENTICATED": 4
+          },
+          "GET /api/planets": {
+            "UNAUTHENTICATED": 3
+          },
+          "GET /api/planets/:planetId": {
+            "UNAUTHENTICATED": 6
+          },
+          "GET /api/reports": {
+            "UNAUTHENTICATED": 6
+          },
+          "GET /api/return-applications": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/rewards": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/season": {
+            "UNAUTHENTICATED": 7
+          },
+          "GET /api/session/pending": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/skins": {
+            "UNAUTHENTICATED": 5
+          },
+          "GET /api/stream": {
+            "UNAUTHENTICATED": 2
+          },
+          "GET /api/unknown-signals": {
+            "UNAUTHENTICATED": 4
+          },
+          "POST /api/auth/refresh": {
+            "BAD_SESSION": 2,
+            "NO_SESSION": 3
+          },
+          "POST /api/intel/probe": {
+            "INSUFFICIENT_RESOURCES": 1
+          },
+          "POST /api/mining/launch": {
+            "NO_FREE_BAY": 1
+          },
+          "POST /api/monuments/:monumentId/quote": {
+            "NOT_ENOUGH_SHIPS": 1
+          },
+          "POST /api/monuments/waves/:waveId/recall/quote": {
+            "BAD_MONUMENT_RECALL": 1,
+            "MONUMENT_NOT_RECALLABLE": 1
+          },
+          "POST /api/session/return/seen": {
+            "UNAUTHENTICATED": 3
+          }
+        },
+        "operations": {}
+      },
+      "projections": {
+        "enabled": true,
+        "commander": {
+          "entries": 5,
+          "hits": 3596,
+          "misses": 473,
+          "bypasses": 0,
+          "invalidations": 104,
+          "evictions": 0,
+          "singleFlightWaits": 17
+        },
+        "sensors": {
+          "entries": 5,
+          "hits": 2511,
+          "misses": 460,
+          "bypasses": 0,
+          "invalidations": 121,
+          "evictions": 0,
+          "singleFlightWaits": 1
+        },
+        "remembered": {
+          "entries": 3,
+          "hits": 146,
+          "misses": 191,
+          "bypasses": 0,
+          "invalidations": 85,
+          "evictions": 0,
+          "singleFlightWaits": 0
+        },
+        "sensorHistory": {
+          "entries": 5,
+          "hits": 3194,
+          "misses": 471,
+          "bypasses": 0,
+          "invalidations": 121,
+          "evictions": 0,
+          "singleFlightWaits": 13
+        },
+        "publicGalaxy": {
+          "entries": 1,
+          "hits": 240,
+          "misses": 79,
+          "bypasses": 0,
+          "invalidations": 18,
+          "evictions": 0,
+          "singleFlightWaits": 1
+        },
+        "traffic": {
+          "entries": 1,
+          "hits": 1769,
+          "misses": 668,
+          "bypasses": 0,
+          "invalidations": 311,
+          "evictions": 0,
+          "singleFlightWaits": 127
+        },
+        "mining": {
+          "entries": 1,
+          "hits": 2813,
+          "misses": 653,
+          "bypasses": 0,
+          "invalidations": 269,
+          "evictions": 0,
+          "singleFlightWaits": 93
+        },
+        "pirates": {
+          "entries": 1,
+          "hits": 2137,
+          "misses": 498,
+          "bypasses": 0,
+          "invalidations": 9,
+          "evictions": 0,
+          "singleFlightWaits": 47
+        }
+      },
+      "database": {
+        "configuredProcessPoolMax": 8,
+        "configuredPlacementPoolMax": 2,
+        "maxConnections": 100,
+        "asteraConnections": 40,
+        "active": 1,
+        "idle": 39,
+        "waiting": 0,
+        "poolAcquireMs": {
+          "samples": 3171,
+          "p50": 0.12325000017881393,
+          "p95": 0.22536899999249727,
+          "p99": 0.77772399999958,
+          "max": 153.83798199999728
+        },
+        "poolAcquireErrors": 0,
+        "placementTransactionStartMs": {
+          "samples": 1174,
+          "p50": 1.0080310000339523,
+          "p95": 8.496993999928236,
+          "p99": 91.49688200000674,
+          "max": 355.88376499991864
+        },
+        "placementTransactionStartErrors": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import postgres from 'postgres';
+const dir='/home/yildirim/.local/state/astera-architecture-audit-20261026';
+const password=fs.readFileSync(`${dir}/postgres.env`,'utf8').match(/^POSTGRES_PASSWORD=(.*)$/m)[1];
+const pg=postgres({host:'127.0.0.1',port:5547,user:'astera',password,database:'astera_audit',max:1,onnotice:()=>{}});
+const {plans}=JSON.parse(fs.readFileSync(`${dir}/top-plans.json`,'utf8'));
+const notification=plans.find(p=>p.group==='notifications');
+const research=plans.find(p=>p.group==='research'&&p.query.includes('jsonb_array_elements'));
+const findings=[];
+const summarize=x=>({ms:x['Execution Time'],planningMs:x['Planning Time'],blocks:x.Plan['Shared Hit Blocks']+x.Plan['Shared Read Blocks'],rows:x.Plan['Actual Rows']});
+async function measure(name,query,params){
+  const runs=[];
+  for(let i=0;i<11;i++){
+    const result=(await pg.unsafe(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,params))[0]['QUERY PLAN'][0];
+    if(i>=2)runs.push(result);
+  }
+  const sorted=runs.toSorted((a,b)=>a['Execution Time']-b['Execution Time']);
+  const median=sorted[Math.floor(sorted.length/2)];
+  findings.push({name,query,params,runs,median:summarize(median)});
+  console.log(JSON.stringify({name,...summarize(median)}));
+  return median;
+}
+try {
+  await pg`set statement_timeout='15s'`;
+  const events=plans.find(p=>p.group==='events'&&p.query.includes('"ends_at" >'));
+  const claims=plans.find(p=>p.query.includes('from "asteroid_claims"'));
+  const originalEvents=await pg.unsafe(events.query,events.params);
+  await measure('events_original',events.query,events.params);
+  await pg`create index audit_events_end on galaxy_event_occurrences (season_id,ends_at,starts_at)`;
+  assert.deepEqual(await pg.unsafe(events.query,events.params),originalEvents);
+  await measure('events_end_index',events.query,events.params);
+  await pg`drop index audit_events_end`;
+  const originalClaims=await pg.unsafe(claims.query,claims.params);
+  const q='select season_id,"index",ore_taken,updated_at from asteroid_claims where season_id=$1 and "index"=ANY($2::integer[])';
+  const params=[claims.params[0],'{'+claims.params.slice(1).join(',')+'}'];
+  const sorted=rows=>rows.toSorted((a,b)=>a.index-b.index);
+  assert.deepEqual(sorted(await pg.unsafe(q,params)),sorted(originalClaims));
+  await measure('claims_in_227',claims.query,claims.params);
+  await measure('claims_any_array',q,params);
+  fs.writeFileSync(`${dir}/top-comparisons.json`,JSON.stringify({equivalent:true,findings},null,2),{mode:0o600});
+}finally{await pg.end();}

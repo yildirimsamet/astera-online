@@ -1,0 +1,64 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import postgres from 'postgres';
+const dir='/home/yildirim/.local/state/astera-architecture-audit-20261026';
+const password=fs.readFileSync(`${dir}/postgres.env`,'utf8').match(/^POSTGRES_PASSWORD=(.*)$/m)[1];
+const pg=postgres({host:'127.0.0.1',port:5547,user:'astera',password,database:'astera_audit',max:1,onnotice:()=>{}});
+const {plans}=JSON.parse(fs.readFileSync(`${dir}/captured-plans.json`,'utf8'));
+const results=[];
+async function measure(name,query,params=[]){
+  const runs=[];
+  for(let i=0;i<11;i++){
+    const p=(await pg.unsafe(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,params))[0]['QUERY PLAN'][0];
+    if(i>=2)runs.push(p);
+  }
+  const median=runs.toSorted((a,b)=>a['Execution Time']-b['Execution Time'])[4];
+  const summary={ms:median['Execution Time'],blocks:median.Plan['Shared Hit Blocks']+median.Plan['Shared Read Blocks'],rows:median.Plan['Actual Rows']};
+  results.push({name,query,params,runs,summary});console.log(JSON.stringify({name,...summary}));
+}
+try {
+ await pg`set statement_timeout='15s'`;
+ const notif=plans.find(p=>p.group==='notifications');
+ const population=await pg`select player_id id,count(*) n from notifications group by player_id order by n`;
+ const typical=population[Math.floor(population.length/2)];
+ const parameters=[typical.id,30];
+ await measure('notifications_median_history_original',notif.query,parameters);
+ await pg`create index audit_notifications_player_time on notifications(player_id,created_at desc)`;
+ await measure('notifications_median_history_new_index',notif.query,parameters);
+ await pg`drop index audit_notifications_player_time`;
+ const research=plans.find(p=>p.group==='research'&&p.query.includes('jsonb_array_elements'));
+ const actors=await pg`select attacker_player_id id,count(*) n from battle_reports group by attacker_player_id order by n desc`;
+ let negative;
+ for(const actor of actors){if(!(await pg.unsafe(research.query,[actor.id,...research.params.slice(1)])).length){negative=actor;break;}}
+ if(negative){
+   const params=[negative.id,...research.params.slice(1)];
+   await measure('research_negative_original',research.query,params);
+   await pg`create index audit_reports_attacker_shield on battle_reports(attacker_player_id,shield_absorbed)`;
+   await measure('research_negative_new_index',research.query,params);
+   await pg`drop index audit_reports_attacker_shield`;
+ }
+ const bay=plans.find(p=>p.group==='planet'&&p.query.startsWith('select (((select count'));
+ const traffic=plans.find(p=>p.group==='traffic'&&p.query.includes('from "missions"'));
+ const pending=plans.find(p=>p.group==='pending'&&p.query.includes('from "missions"'));
+ for(const [label,p] of [['bay',bay],['traffic',traffic],['pending',pending]])await measure(label+'_original',p.query,p.params);
+ await pg`create index audit_missions_active_origin on missions(origin_planet_id) where status='in_flight'`;
+ await pg`create index audit_missions_active_target on missions(target_planet_id) where status='in_flight'`;
+ await pg`create index audit_missions_active_owner on missions(owner_player_id) where status='in_flight'`;
+ for(const [label,p] of [['bay',bay],['traffic',traffic],['pending',pending]])await measure(label+'_active_indexes',p.query,p.params);
+ await pg`drop index audit_missions_active_origin,audit_missions_active_target,audit_missions_active_owner`;
+ const [now]=await pg`select now()::text at`;
+ const queue=`select id from scheduled_events where status='pending' and resolve_at<=$1 order by resolve_at,ref_id,id for update skip locked limit 100`;
+ await measure('queue_candidate_selection_original',queue,[now.at]);
+ await pg`create index audit_events_due_order on scheduled_events(resolve_at,ref_id,id) where status='pending'`;
+ await measure('queue_candidate_selection_ordered_index',queue,[now.at]);
+ await pg`drop index audit_events_due_order`;
+ // Battle feed's two-participant case, copied from reports.ts; support/joint branches
+ // require extra union branches and are deliberately not claimed covered here.
+ const actor=actors[0];
+ const reports=`select * from battle_reports where attacker_player_id=$1 or defender_player_id=$1 order by created_at desc limit 20`;
+ const reportUnion=`select * from ((select * from battle_reports where attacker_player_id=$1 order by created_at desc limit 20) union (select * from battle_reports where defender_player_id=$1 order by created_at desc limit 20)) r order by created_at desc limit 20`;
+ assert.deepEqual((await pg.unsafe(reports,[actor.id])).map(r=>r.id).sort(),(await pg.unsafe(reportUnion,[actor.id])).map(r=>r.id).sort());
+ await measure('battle_feed_two_roles_original',reports,[actor.id]);
+ await measure('battle_feed_two_roles_union',reportUnion,[actor.id]);
+ fs.writeFileSync(`${dir}/extra-comparisons.json`,JSON.stringify({typicalNotificationHistory:Number(typical.n),negativeResearchHistory:negative?Number(negative.n):null,results},null,2),{mode:0o600});
+}finally{await pg.end();}

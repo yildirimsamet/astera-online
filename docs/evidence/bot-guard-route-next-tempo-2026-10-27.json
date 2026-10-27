@@ -1,0 +1,3826 @@
+{
+  "measuredAt": "2026-10-26T23:39:24.528Z",
+  "assumptions": {
+    "actualServerServices": true,
+    "fullAcademyStart": true,
+    "miningOrLootIncome": 0,
+    "rewardClaimsAfterJoining": 0,
+    "combatLosses": 0,
+    "cadence": "7–23 minutes inside explicitly supplied sessions",
+    "futureTempo": true,
+    "caveat": "A fixed paid development route, not a season balance or PvP effectiveness simulation. Session availability is an input; the live demand-based scheduler does not guarantee these windows."
+  },
+  "route": [
+    {
+      "kind": "research",
+      "id": "DEUTERIUM_SYNTHESIS",
+      "target": 1,
+      "minCore": 2,
+      "key": "research:DEUTERIUM_SYNTHESIS:1"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 1,
+      "minCore": 2,
+      "key": "building:DEUTERIUM_PLANT:1"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 3,
+      "minCore": 2,
+      "key": "building:CORE:3"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 3,
+      "minCore": 3,
+      "key": "building:REFINERY:3"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 3,
+      "minCore": 3,
+      "key": "building:EXTRACTOR:3"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 4,
+      "minCore": 3,
+      "key": "building:CORE:4"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 4,
+      "minCore": 4,
+      "key": "building:REFINERY:4"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 4,
+      "minCore": 4,
+      "key": "building:EXTRACTOR:4"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 2,
+      "minCore": 4,
+      "key": "building:DEUTERIUM_PLANT:2"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 5,
+      "minCore": 4,
+      "key": "building:CORE:5"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 5,
+      "minCore": 5,
+      "key": "building:REFINERY:5"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 5,
+      "minCore": 5,
+      "key": "building:EXTRACTOR:5"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 6,
+      "minCore": 5,
+      "key": "building:CORE:6"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 6,
+      "minCore": 6,
+      "key": "building:REFINERY:6"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 6,
+      "minCore": 6,
+      "key": "building:EXTRACTOR:6"
+    },
+    {
+      "kind": "building",
+      "id": "SHIPYARD",
+      "target": 2,
+      "minCore": 6,
+      "key": "building:SHIPYARD:2"
+    },
+    {
+      "kind": "hull",
+      "id": "PROSPECTOR",
+      "target": 2,
+      "minCore": 6,
+      "key": "hull:PROSPECTOR:2"
+    },
+    {
+      "kind": "hull",
+      "id": "THORN",
+      "target": 2,
+      "minCore": 6,
+      "key": "hull:THORN:2"
+    },
+    {
+      "kind": "hull",
+      "id": "HARPOON",
+      "target": 1,
+      "minCore": 6,
+      "key": "hull:HARPOON:1"
+    },
+    {
+      "kind": "hull",
+      "id": "VIPER",
+      "target": 4,
+      "minCore": 6,
+      "key": "hull:VIPER:4"
+    },
+    {
+      "kind": "hull",
+      "id": "SENTINEL",
+      "target": 2,
+      "minCore": 6,
+      "key": "hull:SENTINEL:2"
+    },
+    {
+      "kind": "hull",
+      "id": "COURIER",
+      "target": 2,
+      "minCore": 6,
+      "key": "hull:COURIER:2",
+      "milestone": "early_defence"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 7,
+      "minCore": 6,
+      "key": "building:CORE:7"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 7,
+      "minCore": 7,
+      "key": "building:REFINERY:7"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 7,
+      "minCore": 7,
+      "key": "building:EXTRACTOR:7"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 8,
+      "minCore": 7,
+      "key": "building:CORE:8"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 8,
+      "minCore": 8,
+      "key": "building:REFINERY:8"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 8,
+      "minCore": 8,
+      "key": "building:EXTRACTOR:8"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 9,
+      "minCore": 8,
+      "key": "building:CORE:9"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 9,
+      "minCore": 9,
+      "key": "building:REFINERY:9"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 9,
+      "minCore": 9,
+      "key": "building:EXTRACTOR:9"
+    },
+    {
+      "kind": "satellite",
+      "id": "FOUNDRY",
+      "target": 1,
+      "minCore": 9,
+      "key": "satellite:FOUNDRY:1",
+      "milestone": "economy_9"
+    },
+    {
+      "kind": "research",
+      "id": "DEUTERIUM_SYNTHESIS",
+      "target": 2,
+      "minCore": 9,
+      "key": "research:DEUTERIUM_SYNTHESIS:2"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 3,
+      "minCore": 9,
+      "key": "building:DEUTERIUM_PLANT:3"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 4,
+      "minCore": 9,
+      "key": "building:DEUTERIUM_PLANT:4"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 10,
+      "minCore": 9,
+      "key": "building:CORE:10"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 10,
+      "minCore": 10,
+      "key": "building:REFINERY:10"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 10,
+      "minCore": 10,
+      "key": "building:EXTRACTOR:10"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 11,
+      "minCore": 10,
+      "key": "building:CORE:11"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 11,
+      "minCore": 11,
+      "key": "building:REFINERY:11"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 11,
+      "minCore": 11,
+      "key": "building:EXTRACTOR:11"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 12,
+      "minCore": 11,
+      "key": "building:CORE:12"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 12,
+      "minCore": 12,
+      "key": "building:REFINERY:12"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 12,
+      "minCore": 12,
+      "key": "building:EXTRACTOR:12"
+    },
+    {
+      "kind": "building",
+      "id": "VAULT",
+      "target": 2,
+      "minCore": 12,
+      "key": "building:VAULT:2"
+    },
+    {
+      "kind": "building",
+      "id": "HANGAR",
+      "target": 2,
+      "minCore": 12,
+      "key": "building:HANGAR:2",
+      "milestone": "economy_12"
+    },
+    {
+      "kind": "research",
+      "id": "STARSHIP_ENGINEERING",
+      "target": 1,
+      "minCore": 12,
+      "key": "research:STARSHIP_ENGINEERING:1"
+    },
+    {
+      "kind": "building",
+      "id": "SHIPYARD",
+      "target": 3,
+      "minCore": 12,
+      "key": "building:SHIPYARD:3"
+    },
+    {
+      "kind": "building",
+      "id": "SHIPYARD",
+      "target": 4,
+      "minCore": 12,
+      "key": "building:SHIPYARD:4"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_POWER",
+      "target": 1,
+      "minCore": 12,
+      "key": "research:SHIP_POWER:1"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_POWER",
+      "target": 2,
+      "minCore": 12,
+      "key": "research:SHIP_POWER:2"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_ARMOR",
+      "target": 1,
+      "minCore": 12,
+      "key": "research:SHIP_ARMOR:1"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_ARMOR",
+      "target": 2,
+      "minCore": 12,
+      "key": "research:SHIP_ARMOR:2"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_SHIELDS",
+      "target": 1,
+      "minCore": 12,
+      "key": "research:SHIP_SHIELDS:1"
+    },
+    {
+      "kind": "hull",
+      "id": "THORN",
+      "target": 4,
+      "minCore": 12,
+      "key": "hull:THORN:4"
+    },
+    {
+      "kind": "hull",
+      "id": "HARPOON",
+      "target": 2,
+      "minCore": 12,
+      "key": "hull:HARPOON:2"
+    },
+    {
+      "kind": "hull",
+      "id": "BASTION",
+      "target": 2,
+      "minCore": 12,
+      "key": "hull:BASTION:2"
+    },
+    {
+      "kind": "hull",
+      "id": "TEMPEST",
+      "target": 4,
+      "minCore": 12,
+      "key": "hull:TEMPEST:4"
+    },
+    {
+      "kind": "hull",
+      "id": "BALLISTA",
+      "target": 3,
+      "minCore": 12,
+      "key": "hull:BALLISTA:3"
+    },
+    {
+      "kind": "hull",
+      "id": "PRAETORIAN",
+      "target": 3,
+      "minCore": 12,
+      "key": "hull:PRAETORIAN:3",
+      "milestone": "first_t3_mix"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 13,
+      "minCore": 12,
+      "key": "building:CORE:13"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 13,
+      "minCore": 13,
+      "key": "building:REFINERY:13"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 13,
+      "minCore": 13,
+      "key": "building:EXTRACTOR:13"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 14,
+      "minCore": 13,
+      "key": "building:CORE:14"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 14,
+      "minCore": 14,
+      "key": "building:REFINERY:14"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 14,
+      "minCore": 14,
+      "key": "building:EXTRACTOR:14"
+    },
+    {
+      "kind": "building",
+      "id": "VAULT",
+      "target": 3,
+      "minCore": 14,
+      "key": "building:VAULT:3"
+    },
+    {
+      "kind": "research",
+      "id": "STARSHIP_ENGINEERING",
+      "target": 2,
+      "minCore": 14,
+      "key": "research:STARSHIP_ENGINEERING:2"
+    },
+    {
+      "kind": "building",
+      "id": "SHIPYARD",
+      "target": 5,
+      "minCore": 14,
+      "key": "building:SHIPYARD:5"
+    },
+    {
+      "kind": "building",
+      "id": "SHIPYARD",
+      "target": 6,
+      "minCore": 14,
+      "key": "building:SHIPYARD:6"
+    },
+    {
+      "kind": "building",
+      "id": "HANGAR",
+      "target": 3,
+      "minCore": 14,
+      "key": "building:HANGAR:3"
+    },
+    {
+      "kind": "hull",
+      "id": "CORSAIR",
+      "target": 3,
+      "minCore": 14,
+      "key": "hull:CORSAIR:3"
+    },
+    {
+      "kind": "hull",
+      "id": "CATACLYSM",
+      "target": 3,
+      "minCore": 14,
+      "key": "hull:CATACLYSM:3"
+    },
+    {
+      "kind": "hull",
+      "id": "PALADIN",
+      "target": 2,
+      "minCore": 14,
+      "key": "hull:PALADIN:2",
+      "milestone": "first_t4_mix"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 5,
+      "minCore": 14,
+      "key": "building:DEUTERIUM_PLANT:5"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 6,
+      "minCore": 14,
+      "key": "building:DEUTERIUM_PLANT:6"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 15,
+      "minCore": 14,
+      "key": "building:CORE:15"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 15,
+      "minCore": 15,
+      "key": "building:REFINERY:15"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 15,
+      "minCore": 15,
+      "key": "building:EXTRACTOR:15"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 16,
+      "minCore": 15,
+      "key": "building:CORE:16"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 16,
+      "minCore": 16,
+      "key": "building:REFINERY:16"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 16,
+      "minCore": 16,
+      "key": "building:EXTRACTOR:16"
+    },
+    {
+      "kind": "satellite",
+      "id": "DERRICK",
+      "target": 1,
+      "minCore": 16,
+      "key": "satellite:DERRICK:1"
+    },
+    {
+      "kind": "research",
+      "id": "AI_ROBOTS",
+      "target": 1,
+      "minCore": 16,
+      "key": "research:AI_ROBOTS:1"
+    },
+    {
+      "kind": "research",
+      "id": "YARD_AUTOMATION",
+      "target": 1,
+      "minCore": 16,
+      "key": "research:YARD_AUTOMATION:1"
+    },
+    {
+      "kind": "research",
+      "id": "YARD_AUTOMATION",
+      "target": 2,
+      "minCore": 16,
+      "key": "research:YARD_AUTOMATION:2"
+    },
+    {
+      "kind": "research",
+      "id": "INDUSTRIAL",
+      "target": 1,
+      "minCore": 16,
+      "key": "research:INDUSTRIAL:1"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_POWER",
+      "target": 3,
+      "minCore": 16,
+      "key": "research:SHIP_POWER:3"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_ARMOR",
+      "target": 3,
+      "minCore": 16,
+      "key": "research:SHIP_ARMOR:3"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_SHIELDS",
+      "target": 2,
+      "minCore": 16,
+      "key": "research:SHIP_SHIELDS:2"
+    },
+    {
+      "kind": "research",
+      "id": "DEUTERIUM_SYNTHESIS",
+      "target": 3,
+      "minCore": 16,
+      "key": "research:DEUTERIUM_SYNTHESIS:3"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 7,
+      "minCore": 16,
+      "key": "building:DEUTERIUM_PLANT:7"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 8,
+      "minCore": 16,
+      "key": "building:DEUTERIUM_PLANT:8"
+    },
+    {
+      "kind": "building",
+      "id": "HANGAR",
+      "target": 4,
+      "minCore": 16,
+      "key": "building:HANGAR:4"
+    },
+    {
+      "kind": "hull",
+      "id": "CORSAIR",
+      "target": 12,
+      "minCore": 16,
+      "key": "hull:CORSAIR:12"
+    },
+    {
+      "kind": "hull",
+      "id": "CATACLYSM",
+      "target": 12,
+      "minCore": 16,
+      "key": "hull:CATACLYSM:12"
+    },
+    {
+      "kind": "hull",
+      "id": "PALADIN",
+      "target": 8,
+      "minCore": 16,
+      "key": "hull:PALADIN:8",
+      "milestone": "operational_mix"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 17,
+      "minCore": 16,
+      "key": "building:CORE:17"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 17,
+      "minCore": 17,
+      "key": "building:REFINERY:17"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 17,
+      "minCore": 17,
+      "key": "building:EXTRACTOR:17"
+    },
+    {
+      "kind": "building",
+      "id": "CORE",
+      "target": 18,
+      "minCore": 17,
+      "key": "building:CORE:18"
+    },
+    {
+      "kind": "building",
+      "id": "REFINERY",
+      "target": 18,
+      "minCore": 18,
+      "key": "building:REFINERY:18"
+    },
+    {
+      "kind": "building",
+      "id": "EXTRACTOR",
+      "target": 18,
+      "minCore": 18,
+      "key": "building:EXTRACTOR:18"
+    },
+    {
+      "kind": "satellite",
+      "id": "BEACON",
+      "target": 1,
+      "minCore": 18,
+      "key": "satellite:BEACON:1"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_POWER",
+      "target": 4,
+      "minCore": 18,
+      "key": "research:SHIP_POWER:4"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_ARMOR",
+      "target": 4,
+      "minCore": 18,
+      "key": "research:SHIP_ARMOR:4"
+    },
+    {
+      "kind": "research",
+      "id": "SHIP_SHIELDS",
+      "target": 3,
+      "minCore": 18,
+      "key": "research:SHIP_SHIELDS:3"
+    },
+    {
+      "kind": "research",
+      "id": "DEUTERIUM_SYNTHESIS",
+      "target": 4,
+      "minCore": 18,
+      "key": "research:DEUTERIUM_SYNTHESIS:4"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 9,
+      "minCore": 18,
+      "key": "building:DEUTERIUM_PLANT:9"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 10,
+      "minCore": 18,
+      "key": "building:DEUTERIUM_PLANT:10"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 11,
+      "minCore": 18,
+      "key": "building:DEUTERIUM_PLANT:11"
+    },
+    {
+      "kind": "building",
+      "id": "DEUTERIUM_PLANT",
+      "target": 12,
+      "minCore": 18,
+      "key": "building:DEUTERIUM_PLANT:12"
+    },
+    {
+      "kind": "research",
+      "id": "INDUSTRIAL",
+      "target": 2,
+      "minCore": 18,
+      "key": "research:INDUSTRIAL:2"
+    },
+    {
+      "kind": "building",
+      "id": "HANGAR",
+      "target": 5,
+      "minCore": 18,
+      "key": "building:HANGAR:5"
+    },
+    {
+      "kind": "hull",
+      "id": "CORSAIR",
+      "target": 30,
+      "minCore": 18,
+      "key": "hull:CORSAIR:30"
+    },
+    {
+      "kind": "hull",
+      "id": "CATACLYSM",
+      "target": 30,
+      "minCore": 18,
+      "key": "hull:CATACLYSM:30"
+    },
+    {
+      "kind": "hull",
+      "id": "PALADIN",
+      "target": 20,
+      "minCore": 18,
+      "key": "hull:PALADIN:20",
+      "milestone": "mature_mix"
+    }
+  ],
+  "results": [
+    {
+      "variant": "balanced",
+      "days": 60,
+      "schedule": "three-sessions",
+      "starting": {
+        "buildings": {
+          "CORE": 2,
+          "REFINERY": 2,
+          "EXTRACTOR": 2,
+          "VAULT": 1,
+          "SHIPYARD": 1,
+          "DEUTERIUM_PLANT": 0,
+          "HANGAR": 1
+        },
+        "research": {},
+        "orbit": [
+          "UPLINK"
+        ],
+        "fleet": {
+          "COURIER": 1,
+          "DART": 6,
+          "PROSPECTOR": 1,
+          "WARDEN": 1
+        },
+        "ground": {},
+        "capacity": {
+          "hangar": 80,
+          "hangarUsed": 29,
+          "hangarCeiling": 10,
+          "ground": 40,
+          "groundUsed": 0
+        },
+        "rates": {
+          "alloy": 147,
+          "crystal": 59,
+          "deuterium": 0
+        },
+        "caps": {
+          "alloy": 4524,
+          "crystal": 1810,
+          "deuterium": 905
+        },
+        "stock": {
+          "alloy": 2542,
+          "crystal": 1235,
+          "deuterium": 46
+        },
+        "fleetValue": 4905,
+        "fuelAt1000": 4
+      },
+      "milestones": {
+        "early_defence": {
+          "atDays": 2.0201531327588276,
+          "buildings": {
+            "CORE": 7,
+            "REFINERY": 7,
+            "EXTRACTOR": 7,
+            "VAULT": 1,
+            "SHIPYARD": 2,
+            "DEUTERIUM_PLANT": 2,
+            "HANGAR": 1
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 1
+          },
+          "orbit": [
+            "UPLINK"
+          ],
+          "fleet": {
+            "COURIER": 2,
+            "DART": 6,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "HARPOON": 1,
+            "THORN": 2
+          },
+          "capacity": {
+            "hangar": 80,
+            "hangarUsed": 70,
+            "hangarCeiling": 10,
+            "ground": 90,
+            "groundUsed": 22
+          },
+          "rates": {
+            "alloy": 709,
+            "crystal": 299,
+            "deuterium": 4
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 9224,
+            "deuterium": 4747
+          },
+          "stock": {
+            "alloy": 2269,
+            "crystal": 1916,
+            "deuterium": 225
+          },
+          "fleetValue": 13994,
+          "fuelAt1000": 14
+        },
+        "economy_9": {
+          "atDays": 3,
+          "buildings": {
+            "CORE": 9,
+            "REFINERY": 9,
+            "EXTRACTOR": 9,
+            "VAULT": 1,
+            "SHIPYARD": 2,
+            "DEUTERIUM_PLANT": 4,
+            "HANGAR": 1
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 2
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY"
+          ],
+          "fleet": {
+            "COURIER": 2,
+            "DART": 6,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "HARPOON": 1,
+            "THORN": 2
+          },
+          "capacity": {
+            "hangar": 80,
+            "hangarUsed": 70,
+            "hangarCeiling": 10,
+            "ground": 110,
+            "groundUsed": 22
+          },
+          "rates": {
+            "alloy": 933,
+            "crystal": 439,
+            "deuterium": 11
+          },
+          "caps": {
+            "alloy": 28805,
+            "crystal": 13555,
+            "deuterium": 7107
+          },
+          "stock": {
+            "alloy": 6180,
+            "crystal": 3283,
+            "deuterium": 388
+          },
+          "fleetValue": 13994,
+          "fuelAt1000": 14
+        },
+        "economy_12": {
+          "atDays": 4.270460550595696,
+          "buildings": {
+            "CORE": 12,
+            "REFINERY": 12,
+            "EXTRACTOR": 12,
+            "VAULT": 2,
+            "SHIPYARD": 2,
+            "DEUTERIUM_PLANT": 4,
+            "HANGAR": 2
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 2
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY"
+          ],
+          "fleet": {
+            "COURIER": 2,
+            "DART": 6,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "HARPOON": 1,
+            "THORN": 2
+          },
+          "capacity": {
+            "hangar": 180,
+            "hangarUsed": 70,
+            "hangarCeiling": 10,
+            "ground": 140,
+            "groundUsed": 22
+          },
+          "rates": {
+            "alloy": 1276,
+            "crystal": 638,
+            "deuterium": 11
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          },
+          "stock": {
+            "alloy": 11939,
+            "crystal": 9098,
+            "deuterium": 713
+          },
+          "fleetValue": 13994,
+          "fuelAt1000": 14
+        },
+        "first_t3_mix": {
+          "atDays": 7.5822028730090505,
+          "buildings": {
+            "CORE": 13,
+            "REFINERY": 12,
+            "EXTRACTOR": 12,
+            "VAULT": 2,
+            "SHIPYARD": 4,
+            "DEUTERIUM_PLANT": 4,
+            "HANGAR": 2
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 2,
+            "STARSHIP_ENGINEERING": 1,
+            "SHIP_POWER": 2,
+            "SHIP_ARMOR": 2,
+            "SHIP_SHIELDS": 1
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY"
+          ],
+          "fleet": {
+            "BALLISTA": 3,
+            "COURIER": 2,
+            "DART": 6,
+            "PRAETORIAN": 3,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "TEMPEST": 4,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "BASTION": 2,
+            "HARPOON": 2,
+            "THORN": 4
+          },
+          "capacity": {
+            "hangar": 180,
+            "hangarUsed": 156,
+            "hangarCeiling": 10,
+            "ground": 150,
+            "groundUsed": 80
+          },
+          "rates": {
+            "alloy": 1276,
+            "crystal": 638,
+            "deuterium": 11
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          },
+          "stock": {
+            "alloy": 5860,
+            "crystal": 5556,
+            "deuterium": 1112
+          },
+          "fleetValue": 43614,
+          "fuelAt1000": 46
+        },
+        "first_t4_mix": {
+          "atDays": 12.582989717458581,
+          "buildings": {
+            "CORE": 14,
+            "REFINERY": 14,
+            "EXTRACTOR": 14,
+            "VAULT": 3,
+            "SHIPYARD": 6,
+            "DEUTERIUM_PLANT": 6,
+            "HANGAR": 3
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 2,
+            "STARSHIP_ENGINEERING": 2,
+            "SHIP_POWER": 2,
+            "SHIP_ARMOR": 2,
+            "SHIP_SHIELDS": 1
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY"
+          ],
+          "fleet": {
+            "BALLISTA": 3,
+            "CATACLYSM": 3,
+            "CORSAIR": 3,
+            "COURIER": 2,
+            "DART": 6,
+            "PALADIN": 2,
+            "PRAETORIAN": 3,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "TEMPEST": 4,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "BASTION": 2,
+            "HARPOON": 2,
+            "THORN": 4
+          },
+          "capacity": {
+            "hangar": 470,
+            "hangarUsed": 268,
+            "hangarCeiling": 10,
+            "ground": 160,
+            "groundUsed": 80
+          },
+          "rates": {
+            "alloy": 1746,
+            "crystal": 873,
+            "deuterium": 17
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 21025
+          },
+          "stock": {
+            "alloy": 7028,
+            "crystal": 13069,
+            "deuterium": 2292
+          },
+          "fleetValue": 103454,
+          "fuelAt1000": 104
+        },
+        "operational_mix": {
+          "atDays": 19.25,
+          "buildings": {
+            "CORE": 16,
+            "REFINERY": 16,
+            "EXTRACTOR": 16,
+            "VAULT": 3,
+            "SHIPYARD": 6,
+            "DEUTERIUM_PLANT": 8,
+            "HANGAR": 4
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 3,
+            "YARD_AUTOMATION": 2,
+            "STARSHIP_ENGINEERING": 2,
+            "SHIP_POWER": 3,
+            "SHIP_ARMOR": 3,
+            "AI_ROBOTS": 1,
+            "INDUSTRIAL": 1,
+            "SHIP_SHIELDS": 2
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY",
+            "DERRICK"
+          ],
+          "fleet": {
+            "BALLISTA": 3,
+            "CATACLYSM": 12,
+            "CORSAIR": 12,
+            "COURIER": 2,
+            "DART": 6,
+            "PALADIN": 8,
+            "PRAETORIAN": 3,
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "TEMPEST": 4,
+            "VIPER": 4,
+            "WARDEN": 1
+          },
+          "ground": {
+            "BASTION": 2,
+            "HARPOON": 2,
+            "THORN": 4
+          },
+          "capacity": {
+            "hangar": 810,
+            "hangarUsed": 604,
+            "hangarCeiling": 10,
+            "ground": 180,
+            "groundUsed": 80
+          },
+          "rates": {
+            "alloy": 2300,
+            "crystal": 1150,
+            "deuterium": 24
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          },
+          "stock": {
+            "alloy": 20582,
+            "crystal": 33178,
+            "deuterium": 4494
+          },
+          "fleetValue": 282974,
+          "fuelAt1000": 328
+        },
+        "mature_mix": {
+          "atDays": 28.541666666666668,
+          "buildings": {
+            "CORE": 18,
+            "REFINERY": 18,
+            "EXTRACTOR": 18,
+            "VAULT": 3,
+            "SHIPYARD": 6,
+            "DEUTERIUM_PLANT": 12,
+            "HANGAR": 5
+          },
+          "research": {
+            "DEUTERIUM_SYNTHESIS": 4,
+            "YARD_AUTOMATION": 2,
+            "STARSHIP_ENGINEERING": 2,
+            "SHIP_POWER": 4,
+            "SHIP_ARMOR": 4,
+            "AI_ROBOTS": 1,
+            "INDUSTRIAL": 2,
+            "SHIP_SHIELDS": 3
+          },
+          "orbit": [
+            "UPLINK",
+            "FOUNDRY",
+            "DERRICK",
+            "BEACON"
+          ],
+          "fleet": {
+            "PROSPECTOR": 2,
+            "SENTINEL": 2,
+            "TEMPEST": 4,
+            "VIPER": 4,
+            "WARDEN": 1,
+            "BALLISTA": 3,
+            "CATACLYSM": 30,
+            "CORSAIR": 30,
+            "COURIER": 2,
+            "DART": 6,
+            "PALADIN": 20,
+            "PRAETORIAN": 3
+          },
+          "ground": {
+            "THORN": 4,
+            "BASTION": 2,
+            "HARPOON": 2
+          },
+          "capacity": {
+            "hangar": 1550,
+            "hangarUsed": 1276,
+            "hangarCeiling": 10,
+            "ground": 200,
+            "groundUsed": 80
+          },
+          "rates": {
+            "alloy": 2940,
+            "crystal": 1470,
+            "deuterium": 40
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35889
+          },
+          "stock": {
+            "alloy": 30567,
+            "crystal": 68089,
+            "deuterium": 9491
+          },
+          "fleetValue": 642014,
+          "fuelAt1000": 798
+        }
+      },
+      "purchases": [
+        {
+          "atDays": 0,
+          "goal": "research:DEUTERIUM_SYNTHESIS:1",
+          "count": 1,
+          "cost": {
+            "alloy": 130,
+            "crystal": 80,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2542,
+            "crystal": 1235,
+            "deuterium": 46
+          },
+          "caps": {
+            "alloy": 4524,
+            "crystal": 1810,
+            "deuterium": 905
+          }
+        },
+        {
+          "atDays": 0.01583396646504601,
+          "goal": "building:DEUTERIUM_PLANT:1",
+          "count": 1,
+          "cost": {
+            "alloy": 30,
+            "crystal": 30,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2467,
+            "crystal": 1177,
+            "deuterium": 46
+          },
+          "caps": {
+            "alloy": 4524,
+            "crystal": 1810,
+            "deuterium": 905
+          }
+        },
+        {
+          "atDays": 0.02142490919989844,
+          "goal": "building:REFINERY:3",
+          "count": 1,
+          "cost": {
+            "alloy": 154,
+            "crystal": 20,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2457,
+            "crystal": 1155,
+            "deuterium": 46
+          },
+          "caps": {
+            "alloy": 4524,
+            "crystal": 1810,
+            "deuterium": 964
+          }
+        },
+        {
+          "atDays": 0.027244942474903333,
+          "goal": "building:EXTRACTOR:3",
+          "count": 1,
+          "cost": {
+            "alloy": 77,
+            "crystal": 58,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2329,
+            "crystal": 1143,
+            "deuterium": 46
+          },
+          "caps": {
+            "alloy": 7665,
+            "crystal": 1810,
+            "deuterium": 964
+          }
+        },
+        {
+          "atDays": 0.25,
+          "goal": "building:CORE:4",
+          "count": 1,
+          "cost": {
+            "alloy": 445,
+            "crystal": 120,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3579,
+            "crystal": 1612,
+            "deuterium": 56
+          },
+          "caps": {
+            "alloy": 7665,
+            "crystal": 3066,
+            "deuterium": 1592
+          }
+        },
+        {
+          "atDays": 0.2600943458525257,
+          "goal": "building:REFINERY:4",
+          "count": 1,
+          "cost": {
+            "alloy": 548,
+            "crystal": 69,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3194,
+            "crystal": 1516,
+            "deuterium": 57
+          },
+          "caps": {
+            "alloy": 7665,
+            "crystal": 3066,
+            "deuterium": 1592
+          }
+        },
+        {
+          "atDays": 0.27529487263463026,
+          "goal": "building:EXTRACTOR:4",
+          "count": 1,
+          "cost": {
+            "alloy": 274,
+            "crystal": 206,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2764,
+            "crystal": 1483,
+            "deuterium": 57
+          },
+          "caps": {
+            "alloy": 11141,
+            "crystal": 3066,
+            "deuterium": 1592
+          }
+        },
+        {
+          "atDays": 0.28955200659628544,
+          "goal": "building:DEUTERIUM_PLANT:2",
+          "count": 1,
+          "cost": {
+            "alloy": 66,
+            "crystal": 66,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2613,
+            "crystal": 1321,
+            "deuterium": 58
+          },
+          "caps": {
+            "alloy": 11141,
+            "crystal": 4456,
+            "deuterium": 2287
+          }
+        },
+        {
+          "atDays": 0.5416666666666666,
+          "goal": "building:CORE:5",
+          "count": 1,
+          "cost": {
+            "alloy": 720,
+            "crystal": 194,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4730,
+            "crystal": 2128,
+            "deuterium": 84
+          },
+          "caps": {
+            "alloy": 11141,
+            "crystal": 4456,
+            "deuterium": 2363
+          }
+        },
+        {
+          "atDays": 0.5516224370933034,
+          "goal": "building:REFINERY:5",
+          "count": 1,
+          "cost": {
+            "alloy": 886,
+            "crystal": 111,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4096,
+            "crystal": 1969,
+            "deuterium": 85
+          },
+          "caps": {
+            "alloy": 11141,
+            "crystal": 4456,
+            "deuterium": 2363
+          }
+        },
+        {
+          "atDays": 0.5666705070244562,
+          "goal": "building:EXTRACTOR:5",
+          "count": 1,
+          "cost": {
+            "alloy": 443,
+            "crystal": 333,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3365,
+            "crystal": 1910,
+            "deuterium": 87
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 4456,
+            "deuterium": 2363
+          }
+        },
+        {
+          "atDays": 0.5784481422923919,
+          "goal": "building:CORE:6",
+          "count": 1,
+          "cost": {
+            "alloy": 1147,
+            "crystal": 309,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3058,
+            "crystal": 1624,
+            "deuterium": 88
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1,
+          "goal": "building:REFINERY:6",
+          "count": 1,
+          "cost": {
+            "alloy": 1411,
+            "crystal": 177,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6789,
+            "crystal": 3266,
+            "deuterium": 132
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1,
+          "goal": "hull:PROSPECTOR:2",
+          "count": 1,
+          "cost": {
+            "alloy": 662,
+            "crystal": 293,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 5378,
+            "crystal": 3089,
+            "deuterium": 132
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1.0051685346782,
+          "goal": "building:EXTRACTOR:6",
+          "count": 1,
+          "cost": {
+            "alloy": 706,
+            "crystal": 530,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4776,
+            "crystal": 2820,
+            "deuterium": 133
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1.0051685346782,
+          "goal": "hull:THORN:2",
+          "count": 2,
+          "cost": {
+            "alloy": 1200,
+            "crystal": 300,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4070,
+            "crystal": 2290,
+            "deuterium": 133
+          },
+          "caps": {
+            "alloy": 14890,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1.0160158111351645,
+          "goal": "building:SHIPYARD:2",
+          "count": 1,
+          "cost": {
+            "alloy": 2293,
+            "crystal": 882,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3017,
+            "crystal": 2040,
+            "deuterium": 134
+          },
+          "caps": {
+            "alloy": 18872,
+            "crystal": 5956,
+            "deuterium": 3113
+          }
+        },
+        {
+          "atDays": 1.25,
+          "goal": "hull:HARPOON:1",
+          "count": 1,
+          "cost": {
+            "alloy": 1200,
+            "crystal": 300,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4156,
+            "crystal": 2528,
+            "deuterium": 159
+          },
+          "caps": {
+            "alloy": 18872,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 1.25,
+          "goal": "building:CORE:7",
+          "count": 1,
+          "cost": {
+            "alloy": 1377,
+            "crystal": 564,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2956,
+            "crystal": 2228,
+            "deuterium": 159
+          },
+          "caps": {
+            "alloy": 18872,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 1.5416666666666667,
+          "goal": "hull:VIPER:4",
+          "count": 4,
+          "cost": {
+            "alloy": 3148,
+            "crystal": 1312,
+            "deuterium": 8
+          },
+          "stockBefore": {
+            "alloy": 5857,
+            "crystal": 3375,
+            "deuterium": 189
+          },
+          "caps": {
+            "alloy": 18872,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 1.5416666666666667,
+          "goal": "building:REFINERY:7",
+          "count": 1,
+          "cost": {
+            "alloy": 1559,
+            "crystal": 195,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2709,
+            "crystal": 2063,
+            "deuterium": 181
+          },
+          "caps": {
+            "alloy": 18872,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 2,
+          "goal": "hull:SENTINEL:2",
+          "count": 2,
+          "cost": {
+            "alloy": 1972,
+            "crystal": 820,
+            "deuterium": 6
+          },
+          "stockBefore": {
+            "alloy": 8924,
+            "crystal": 4557,
+            "deuterium": 229
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 2,
+          "goal": "building:EXTRACTOR:7",
+          "count": 1,
+          "cost": {
+            "alloy": 861,
+            "crystal": 646,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6952,
+            "crystal": 3737,
+            "deuterium": 223
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 2.0051762068540686,
+          "goal": "hull:COURIER:2",
+          "count": 1,
+          "cost": {
+            "alloy": 566,
+            "crystal": 302,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6179,
+            "crystal": 3121,
+            "deuterium": 224
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 2.0051762068540686,
+          "goal": "building:CORE:8",
+          "count": 1,
+          "cost": {
+            "alloy": 1941,
+            "crystal": 794,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 5613,
+            "crystal": 2819,
+            "deuterium": 224
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 7549,
+            "deuterium": 3910
+          }
+        },
+        {
+          "atDays": 2.0201531327588276,
+          "goal": "building:REFINERY:8",
+          "count": 1,
+          "cost": {
+            "alloy": 1658,
+            "crystal": 208,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3927,
+            "crystal": 2124,
+            "deuterium": 225
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 9224,
+            "deuterium": 4747
+          }
+        },
+        {
+          "atDays": 2.0287969498662277,
+          "goal": "building:EXTRACTOR:8",
+          "count": 1,
+          "cost": {
+            "alloy": 1042,
+            "crystal": 782,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2416,
+            "crystal": 1978,
+            "deuterium": 226
+          },
+          "caps": {
+            "alloy": 21907,
+            "crystal": 9224,
+            "deuterium": 4747
+          }
+        },
+        {
+          "atDays": 2.25,
+          "goal": "building:CORE:9",
+          "count": 1,
+          "cost": {
+            "alloy": 2720,
+            "crystal": 1113,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 5581,
+            "crystal": 3036,
+            "deuterium": 250
+          },
+          "caps": {
+            "alloy": 24688,
+            "crystal": 10972,
+            "deuterium": 5621
+          }
+        },
+        {
+          "atDays": 2.256802525441162,
+          "goal": "building:REFINERY:9",
+          "count": 1,
+          "cost": {
+            "alloy": 1719,
+            "crystal": 215,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 2991,
+            "crystal": 1981,
+            "deuterium": 250
+          },
+          "caps": {
+            "alloy": 24688,
+            "crystal": 10972,
+            "deuterium": 5621
+          }
+        },
+        {
+          "atDays": 2.262981765975969,
+          "goal": "building:EXTRACTOR:9",
+          "count": 1,
+          "cost": {
+            "alloy": 1255,
+            "crystal": 942,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 1391,
+            "crystal": 1819,
+            "deuterium": 251
+          },
+          "caps": {
+            "alloy": 24688,
+            "crystal": 10972,
+            "deuterium": 5621
+          }
+        },
+        {
+          "atDays": 2.5416666666666665,
+          "goal": "satellite:FOUNDRY:1",
+          "count": 1,
+          "cost": {
+            "alloy": 4109,
+            "crystal": 2055,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 5958,
+            "crystal": 3568,
+            "deuterium": 280
+          },
+          "caps": {
+            "alloy": 27174,
+            "crystal": 12788,
+            "deuterium": 6529
+          }
+        },
+        {
+          "atDays": 2.5416666666666665,
+          "goal": "research:DEUTERIUM_SYNTHESIS:2",
+          "count": 1,
+          "cost": {
+            "alloy": 1538,
+            "crystal": 946,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 1849,
+            "crystal": 1513,
+            "deuterium": 280
+          },
+          "caps": {
+            "alloy": 27174,
+            "crystal": 12788,
+            "deuterium": 6529
+          }
+        },
+        {
+          "atDays": 2.554592721673867,
+          "goal": "building:DEUTERIUM_PLANT:3",
+          "count": 1,
+          "cost": {
+            "alloy": 116,
+            "crystal": 116,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 584,
+            "crystal": 695,
+            "deuterium": 282
+          },
+          "caps": {
+            "alloy": 27174,
+            "crystal": 12788,
+            "deuterium": 6529
+          }
+        },
+        {
+          "atDays": 2.5684326442113767,
+          "goal": "building:DEUTERIUM_PLANT:4",
+          "count": 1,
+          "cost": {
+            "alloy": 411,
+            "crystal": 411,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 761,
+            "crystal": 717,
+            "deuterium": 283
+          },
+          "caps": {
+            "alloy": 27174,
+            "crystal": 12788,
+            "deuterium": 6529
+          }
+        },
+        {
+          "atDays": 3,
+          "goal": "building:CORE:10",
+          "count": 1,
+          "cost": {
+            "alloy": 3797,
+            "crystal": 1553,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 9977,
+            "crystal": 4836,
+            "deuterium": 388
+          },
+          "caps": {
+            "alloy": 28805,
+            "crystal": 13555,
+            "deuterium": 7107
+          }
+        },
+        {
+          "atDays": 3.0054445412191044,
+          "goal": "building:REFINERY:10",
+          "count": 1,
+          "cost": {
+            "alloy": 1729,
+            "crystal": 217,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6302,
+            "crystal": 3341,
+            "deuterium": 390
+          },
+          "caps": {
+            "alloy": 28805,
+            "crystal": 13555,
+            "deuterium": 7107
+          }
+        },
+        {
+          "atDays": 3.0148250536579226,
+          "goal": "building:EXTRACTOR:10",
+          "count": 1,
+          "cost": {
+            "alloy": 1505,
+            "crystal": 1129,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 4782,
+            "crystal": 3222,
+            "deuterium": 392
+          },
+          "caps": {
+            "alloy": 28805,
+            "crystal": 13555,
+            "deuterium": 7107
+          }
+        },
+        {
+          "atDays": 3.25,
+          "goal": "building:CORE:11",
+          "count": 1,
+          "cost": {
+            "alloy": 5282,
+            "crystal": 2161,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 8876,
+            "crystal": 4814,
+            "deuterium": 452
+          },
+          "caps": {
+            "alloy": 31090,
+            "crystal": 15545,
+            "deuterium": 8102
+          }
+        },
+        {
+          "atDays": 3.2626022653602478,
+          "goal": "building:REFINERY:11",
+          "count": 1,
+          "cost": {
+            "alloy": 3599,
+            "crystal": 450,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3898,
+            "crystal": 2805,
+            "deuterium": 456
+          },
+          "caps": {
+            "alloy": 31090,
+            "crystal": 15545,
+            "deuterium": 8102
+          }
+        },
+        {
+          "atDays": 3.5416666666666665,
+          "goal": "building:EXTRACTOR:11",
+          "count": 1,
+          "cost": {
+            "alloy": 1800,
+            "crystal": 1350,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 7703,
+            "crystal": 5726,
+            "deuterium": 527
+          },
+          "caps": {
+            "alloy": 35191,
+            "crystal": 15545,
+            "deuterium": 8102
+          }
+        },
+        {
+          "atDays": 4,
+          "goal": "building:CORE:12",
+          "count": 1,
+          "cost": {
+            "alloy": 7327,
+            "crystal": 2998,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 18438,
+            "crystal": 10577,
+            "deuterium": 644
+          },
+          "caps": {
+            "alloy": 35191,
+            "crystal": 17596,
+            "deuterium": 9127
+          }
+        },
+        {
+          "atDays": 4.007495350131972,
+          "goal": "building:REFINERY:12",
+          "count": 1,
+          "cost": {
+            "alloy": 4290,
+            "crystal": 537,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11316,
+            "crystal": 7681,
+            "deuterium": 646
+          },
+          "caps": {
+            "alloy": 35191,
+            "crystal": 17596,
+            "deuterium": 9127
+          }
+        },
+        {
+          "atDays": 4.013071035084108,
+          "goal": "building:EXTRACTOR:12",
+          "count": 1,
+          "cost": {
+            "alloy": 2145,
+            "crystal": 1609,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 7178,
+            "crystal": 7220,
+            "deuterium": 647
+          },
+          "caps": {
+            "alloy": 35191,
+            "crystal": 17596,
+            "deuterium": 9127
+          }
+        },
+        {
+          "atDays": 4.25,
+          "goal": "building:VAULT:2",
+          "count": 1,
+          "cost": {
+            "alloy": 88,
+            "crystal": 44,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11956,
+            "crystal": 8979,
+            "deuterium": 708
+          },
+          "caps": {
+            "alloy": 39406,
+            "crystal": 19703,
+            "deuterium": 10180
+          }
+        },
+        {
+          "atDays": 4.262012710409342,
+          "goal": "building:HANGAR:2",
+          "count": 1,
+          "cost": {
+            "alloy": 556,
+            "crystal": 150,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 12236,
+            "crystal": 9119,
+            "deuterium": 711
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 4.541666666666667,
+          "goal": "research:STARSHIP_ENGINEERING:1",
+          "count": 1,
+          "cost": {
+            "alloy": 17059,
+            "crystal": 10498,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 20244,
+            "crystal": 13251,
+            "deuterium": 783
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 4.5572511514105525,
+          "goal": "building:SHIPYARD:3",
+          "count": 1,
+          "cost": {
+            "alloy": 3500,
+            "crystal": 1250,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 3662,
+            "crystal": 2992,
+            "deuterium": 787
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 5,
+          "goal": "building:SHIPYARD:4",
+          "count": 1,
+          "cost": {
+            "alloy": 5662,
+            "crystal": 2178,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 13721,
+            "crystal": 8521,
+            "deuterium": 900
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 5,
+          "goal": "research:SHIP_POWER:1",
+          "count": 1,
+          "cost": {
+            "alloy": 6824,
+            "crystal": 4199,
+            "deuterium": 61
+          },
+          "stockBefore": {
+            "alloy": 8059,
+            "crystal": 6343,
+            "deuterium": 900
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 5,
+          "goal": "hull:THORN:4",
+          "count": 2,
+          "cost": {
+            "alloy": 1200,
+            "crystal": 300,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 1235,
+            "crystal": 2144,
+            "deuterium": 839
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 5.541666666666667,
+          "goal": "research:SHIP_POWER:2",
+          "count": 1,
+          "cost": {
+            "alloy": 15694,
+            "crystal": 9658,
+            "deuterium": 141
+          },
+          "stockBefore": {
+            "alloy": 16623,
+            "crystal": 10138,
+            "deuterium": 977
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 6,
+          "goal": "research:SHIP_ARMOR:1",
+          "count": 1,
+          "cost": {
+            "alloy": 4662,
+            "crystal": 2869,
+            "deuterium": 42
+          },
+          "stockBefore": {
+            "alloy": 14965,
+            "crystal": 7498,
+            "deuterium": 953
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 6,
+          "goal": "hull:HARPOON:2",
+          "count": 1,
+          "cost": {
+            "alloy": 1200,
+            "crystal": 300,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 10303,
+            "crystal": 4629,
+            "deuterium": 911
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 6.25,
+          "goal": "research:SHIP_ARMOR:2",
+          "count": 1,
+          "cost": {
+            "alloy": 10721,
+            "crystal": 6598,
+            "deuterium": 96
+          },
+          "stockBefore": {
+            "alloy": 16759,
+            "crystal": 8157,
+            "deuterium": 975
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 6.25,
+          "goal": "hull:BASTION:2",
+          "count": 2,
+          "cost": {
+            "alloy": 4800,
+            "crystal": 1200,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6038,
+            "crystal": 1559,
+            "deuterium": 879
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 6.541666666666667,
+          "goal": "research:SHIP_SHIELDS:1",
+          "count": 1,
+          "cost": {
+            "alloy": 4662,
+            "crystal": 2869,
+            "deuterium": 42
+          },
+          "stockBefore": {
+            "alloy": 10170,
+            "crystal": 4825,
+            "deuterium": 954
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 7,
+          "goal": "hull:TEMPEST:4",
+          "count": 4,
+          "cost": {
+            "alloy": 7952,
+            "crystal": 3044,
+            "deuterium": 24
+          },
+          "stockBefore": {
+            "alloy": 19544,
+            "crystal": 8974,
+            "deuterium": 1029
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 7,
+          "goal": "building:CORE:13",
+          "count": 1,
+          "cost": {
+            "alloy": 10142,
+            "crystal": 4149,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11592,
+            "crystal": 5930,
+            "deuterium": 1005
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 7.25,
+          "goal": "hull:BALLISTA:3",
+          "count": 3,
+          "cost": {
+            "alloy": 5964,
+            "crystal": 2283,
+            "deuterium": 18
+          },
+          "stockBefore": {
+            "alloy": 9106,
+            "crystal": 5609,
+            "deuterium": 1069
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 7.541666666666667,
+          "goal": "hull:PRAETORIAN:3",
+          "count": 3,
+          "cost": {
+            "alloy": 7455,
+            "crystal": 2856,
+            "deuterium": 24
+          },
+          "stockBefore": {
+            "alloy": 12074,
+            "crystal": 7792,
+            "deuterium": 1126
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 8,
+          "goal": "building:REFINERY:13",
+          "count": 1,
+          "cost": {
+            "alloy": 8199,
+            "crystal": 1025,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 18655,
+            "crystal": 11954,
+            "deuterium": 1219
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 8.010051484111075,
+          "goal": "building:EXTRACTOR:13",
+          "count": 1,
+          "cost": {
+            "alloy": 4100,
+            "crystal": 3075,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 10764,
+            "crystal": 11083,
+            "deuterium": 1221
+          },
+          "caps": {
+            "alloy": 49257,
+            "crystal": 24629,
+            "deuterium": 12725
+          }
+        },
+        {
+          "atDays": 8.25,
+          "goal": "building:CORE:14",
+          "count": 1,
+          "cost": {
+            "alloy": 14012,
+            "crystal": 5732,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 14940,
+            "crystal": 11936,
+            "deuterium": 1283
+          },
+          "caps": {
+            "alloy": 57938,
+            "crystal": 28969,
+            "deuterium": 14896
+          }
+        },
+        {
+          "atDays": 8.541666666666666,
+          "goal": "building:REFINERY:14",
+          "count": 1,
+          "cost": {
+            "alloy": 10376,
+            "crystal": 1297,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11434,
+            "crystal": 11457,
+            "deuterium": 1357
+          },
+          "caps": {
+            "alloy": 57938,
+            "crystal": 28969,
+            "deuterium": 14896
+          }
+        },
+        {
+          "atDays": 9,
+          "goal": "building:EXTRACTOR:14",
+          "count": 1,
+          "cost": {
+            "alloy": 5188,
+            "crystal": 3891,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 19643,
+            "crystal": 18414,
+            "deuterium": 1474
+          },
+          "caps": {
+            "alloy": 67409,
+            "crystal": 28969,
+            "deuterium": 14896
+          }
+        },
+        {
+          "atDays": 9.014482519651454,
+          "goal": "building:VAULT:3",
+          "count": 1,
+          "cost": {
+            "alloy": 154,
+            "crystal": 77,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 15062,
+            "crystal": 14784,
+            "deuterium": 1478
+          },
+          "caps": {
+            "alloy": 67409,
+            "crystal": 28969,
+            "deuterium": 14896
+          }
+        },
+        {
+          "atDays": 10.25,
+          "goal": "research:STARSHIP_ENGINEERING:2",
+          "count": 1,
+          "cost": {
+            "alloy": 64092,
+            "crystal": 39442,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 66687,
+            "crystal": 40328,
+            "deuterium": 1794
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 10.541666666666666,
+          "goal": "building:SHIPYARD:5",
+          "count": 1,
+          "cost": {
+            "alloy": 13676,
+            "crystal": 5260,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 14819,
+            "crystal": 6997,
+            "deuterium": 1868
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 11.541666666666666,
+          "goal": "building:SHIPYARD:6",
+          "count": 1,
+          "cost": {
+            "alloy": 32587,
+            "crystal": 12534,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 43052,
+            "crystal": 22692,
+            "deuterium": 2124
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 11.555899195160924,
+          "goal": "building:HANGAR:3",
+          "count": 1,
+          "cost": {
+            "alloy": 2260,
+            "crystal": 609,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11061,
+            "crystal": 10456,
+            "deuterium": 2128
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 12,
+          "goal": "hull:CORSAIR:3",
+          "count": 3,
+          "cost": {
+            "alloy": 15210,
+            "crystal": 5850,
+            "deuterium": 60
+          },
+          "stockBefore": {
+            "alloy": 27413,
+            "crystal": 19153,
+            "deuterium": 2241
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 12,
+          "goal": "building:DEUTERIUM_PLANT:5",
+          "count": 1,
+          "cost": {
+            "alloy": 665,
+            "crystal": 665,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 12203,
+            "crystal": 13303,
+            "deuterium": 2181
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20716
+          }
+        },
+        {
+          "atDays": 12.25,
+          "goal": "hull:CATACLYSM:3",
+          "count": 3,
+          "cost": {
+            "alloy": 15210,
+            "crystal": 5850,
+            "deuterium": 60
+          },
+          "stockBefore": {
+            "alloy": 22015,
+            "crystal": 17877,
+            "deuterium": 2264
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20868
+          }
+        },
+        {
+          "atDays": 12.25,
+          "goal": "building:DEUTERIUM_PLANT:6",
+          "count": 1,
+          "cost": {
+            "alloy": 1059,
+            "crystal": 1059,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 6805,
+            "crystal": 12027,
+            "deuterium": 2204
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 20868
+          }
+        },
+        {
+          "atDays": 12.541666666666666,
+          "goal": "hull:PALADIN:2",
+          "count": 2,
+          "cost": {
+            "alloy": 12674,
+            "crystal": 4876,
+            "deuterium": 50
+          },
+          "stockBefore": {
+            "alloy": 17970,
+            "crystal": 17079,
+            "deuterium": 2325
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 21025
+          }
+        },
+        {
+          "atDays": 13,
+          "goal": "building:CORE:15",
+          "count": 1,
+          "cost": {
+            "alloy": 19326,
+            "crystal": 7906,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 24504,
+            "crystal": 21808,
+            "deuterium": 2465
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 21025
+          }
+        },
+        {
+          "atDays": 13.25,
+          "goal": "building:REFINERY:15",
+          "count": 1,
+          "cost": {
+            "alloy": 13059,
+            "crystal": 1633,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 15655,
+            "crystal": 19140,
+            "deuterium": 2569
+          },
+          "caps": {
+            "alloy": 80891,
+            "crystal": 40445,
+            "deuterium": 21025
+          }
+        },
+        {
+          "atDays": 13.541666666666666,
+          "goal": "building:EXTRACTOR:15",
+          "count": 1,
+          "cost": {
+            "alloy": 6530,
+            "crystal": 4897,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 15762,
+            "crystal": 23619,
+            "deuterium": 2691
+          },
+          "caps": {
+            "alloy": 93221,
+            "crystal": 40445,
+            "deuterium": 21025
+          }
+        },
+        {
+          "atDays": 14,
+          "goal": "building:CORE:16",
+          "count": 1,
+          "cost": {
+            "alloy": 26617,
+            "crystal": 10889,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 31369,
+            "crystal": 29330,
+            "deuterium": 2881
+          },
+          "caps": {
+            "alloy": 93221,
+            "crystal": 46611,
+            "deuterium": 24108
+          }
+        },
+        {
+          "atDays": 14.25,
+          "goal": "building:REFINERY:16",
+          "count": 1,
+          "cost": {
+            "alloy": 16356,
+            "crystal": 2045,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 16826,
+            "crystal": 24478,
+            "deuterium": 2985
+          },
+          "caps": {
+            "alloy": 93221,
+            "crystal": 46611,
+            "deuterium": 24108
+          }
+        },
+        {
+          "atDays": 14.541666666666666,
+          "goal": "building:EXTRACTOR:16",
+          "count": 1,
+          "cost": {
+            "alloy": 8178,
+            "crystal": 6134,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 15216,
+            "crystal": 29476,
+            "deuterium": 3107
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 46611,
+            "deuterium": 24108
+          }
+        },
+        {
+          "atDays": 14.547288565141045,
+          "goal": "satellite:DERRICK:1",
+          "count": 1,
+          "cost": {
+            "alloy": 4109,
+            "crystal": 2055,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 7349,
+            "crystal": 23478,
+            "deuterium": 3109
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 46611,
+            "deuterium": 24108
+          }
+        },
+        {
+          "atDays": 15,
+          "goal": "research:AI_ROBOTS:1",
+          "count": 1,
+          "cost": {
+            "alloy": 9213,
+            "crystal": 5670,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 28227,
+            "crystal": 33260,
+            "deuterium": 3297
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 15.014867446266322,
+          "goal": "research:YARD_AUTOMATION:1",
+          "count": 1,
+          "cost": {
+            "alloy": 7897,
+            "crystal": 4860,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 19835,
+            "crystal": 28000,
+            "deuterium": 3303
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 15.25,
+          "goal": "research:YARD_AUTOMATION:2",
+          "count": 1,
+          "cost": {
+            "alloy": 14214,
+            "crystal": 8747,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 24916,
+            "crystal": 29630,
+            "deuterium": 3401
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 15.256878285984405,
+          "goal": "research:INDUSTRIAL:1",
+          "count": 1,
+          "cost": {
+            "alloy": 7897,
+            "crystal": 4860,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 11082,
+            "crystal": 21072,
+            "deuterium": 3404
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16,
+          "goal": "research:SHIP_POWER:3",
+          "count": 1,
+          "cost": {
+            "alloy": 24658,
+            "crystal": 15174,
+            "deuterium": 221
+          },
+          "stockBefore": {
+            "alloy": 44201,
+            "crystal": 36721,
+            "deuterium": 3713
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16.25,
+          "goal": "research:SHIP_ARMOR:3",
+          "count": 1,
+          "cost": {
+            "alloy": 24658,
+            "crystal": 15174,
+            "deuterium": 221
+          },
+          "stockBefore": {
+            "alloy": 33342,
+            "crystal": 28446,
+            "deuterium": 3596
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16.264306776595507,
+          "goal": "research:SHIP_SHIELDS:2",
+          "count": 1,
+          "cost": {
+            "alloy": 8391,
+            "crystal": 5164,
+            "deuterium": 75
+          },
+          "stockBefore": {
+            "alloy": 9474,
+            "crystal": 13667,
+            "deuterium": 3381
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16.541666666666668,
+          "goal": "research:DEUTERIUM_SYNTHESIS:3",
+          "count": 1,
+          "cost": {
+            "alloy": 4613,
+            "crystal": 2839,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 16392,
+            "crystal": 16157,
+            "deuterium": 3421
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16.571075717315804,
+          "goal": "building:DEUTERIUM_PLANT:7",
+          "count": 1,
+          "cost": {
+            "alloy": 1291,
+            "crystal": 1291,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 13402,
+            "crystal": 14130,
+            "deuterium": 3434
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 16.578299060047396,
+          "goal": "building:DEUTERIUM_PLANT:8",
+          "count": 1,
+          "cost": {
+            "alloy": 1563,
+            "crystal": 1563,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 12510,
+            "crystal": 13038,
+            "deuterium": 3437
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27436
+          }
+        },
+        {
+          "atDays": 17,
+          "goal": "building:HANGAR:4",
+          "count": 1,
+          "cost": {
+            "alloy": 8548,
+            "crystal": 2302,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 34223,
+            "crystal": 23113,
+            "deuterium": 3682
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 17.541666666666668,
+          "goal": "hull:CORSAIR:12",
+          "count": 9,
+          "cost": {
+            "alloy": 45630,
+            "crystal": 17550,
+            "deuterium": 180
+          },
+          "stockBefore": {
+            "alloy": 55572,
+            "crystal": 35760,
+            "deuterium": 4000
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 18.25,
+          "goal": "hull:CATACLYSM:12",
+          "count": 9,
+          "cost": {
+            "alloy": 45630,
+            "crystal": 17550,
+            "deuterium": 180
+          },
+          "stockBefore": {
+            "alloy": 49039,
+            "crystal": 37758,
+            "deuterium": 4236
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 19,
+          "goal": "hull:PALADIN:8",
+          "count": 6,
+          "cost": {
+            "alloy": 38022,
+            "crystal": 14628,
+            "deuterium": 150
+          },
+          "stockBefore": {
+            "alloy": 44805,
+            "crystal": 40907,
+            "deuterium": 4497
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 19.541666666666668,
+          "goal": "building:CORE:17",
+          "count": 1,
+          "cost": {
+            "alloy": 36613,
+            "crystal": 14978,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 36681,
+            "crystal": 41227,
+            "deuterium": 4665
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 20,
+          "goal": "building:REFINERY:17",
+          "count": 1,
+          "cost": {
+            "alloy": 20398,
+            "crystal": 2550,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 25365,
+            "crystal": 38898,
+            "deuterium": 4934
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 20.25,
+          "goal": "building:EXTRACTOR:17",
+          "count": 1,
+          "cost": {
+            "alloy": 10199,
+            "crystal": 7650,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 18766,
+            "crystal": 43248,
+            "deuterium": 5081
+          },
+          "caps": {
+            "alloy": 106535,
+            "crystal": 53267,
+            "deuterium": 27767
+          }
+        },
+        {
+          "atDays": 21,
+          "goal": "building:CORE:18",
+          "count": 1,
+          "cost": {
+            "alloy": 50308,
+            "crystal": 20581,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 55501,
+            "crystal": 58125,
+            "deuterium": 5522
+          },
+          "caps": {
+            "alloy": 120849,
+            "crystal": 60424,
+            "deuterium": 31346
+          }
+        },
+        {
+          "atDays": 21.541666666666668,
+          "goal": "building:REFINERY:18",
+          "count": 1,
+          "cost": {
+            "alloy": 25341,
+            "crystal": 3168,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 39107,
+            "crystal": 54501,
+            "deuterium": 5840
+          },
+          "caps": {
+            "alloy": 120849,
+            "crystal": 60424,
+            "deuterium": 31346
+          }
+        },
+        {
+          "atDays": 21.55070459806205,
+          "goal": "building:EXTRACTOR:18",
+          "count": 1,
+          "cost": {
+            "alloy": 12671,
+            "crystal": 9503,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 14332,
+            "crystal": 51616,
+            "deuterium": 5845
+          },
+          "caps": {
+            "alloy": 120849,
+            "crystal": 60424,
+            "deuterium": 31346
+          }
+        },
+        {
+          "atDays": 22,
+          "goal": "satellite:BEACON:1",
+          "count": 1,
+          "cost": {
+            "alloy": 5136,
+            "crystal": 2568,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 30696,
+            "crystal": 56179,
+            "deuterium": 6109
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 60424,
+            "deuterium": 31346
+          }
+        },
+        {
+          "atDays": 22.541666666666668,
+          "goal": "research:SHIP_POWER:4",
+          "count": 1,
+          "cost": {
+            "alloy": 56714,
+            "crystal": 34901,
+            "deuterium": 507
+          },
+          "stockBefore": {
+            "alloy": 63777,
+            "crystal": 68089,
+            "deuterium": 6427
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35178
+          }
+        },
+        {
+          "atDays": 22.541666666666668,
+          "goal": "building:DEUTERIUM_PLANT:9",
+          "count": 1,
+          "cost": {
+            "alloy": 1883,
+            "crystal": 1883,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 7063,
+            "crystal": 33188,
+            "deuterium": 5920
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35178
+          }
+        },
+        {
+          "atDays": 23.276778904485724,
+          "goal": "research:SHIP_ARMOR:4",
+          "count": 1,
+          "cost": {
+            "alloy": 56714,
+            "crystal": 34901,
+            "deuterium": 507
+          },
+          "stockBefore": {
+            "alloy": 57044,
+            "crystal": 60951,
+            "deuterium": 6415
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 23.541666666666668,
+          "goal": "research:SHIP_SHIELDS:3",
+          "count": 1,
+          "cost": {
+            "alloy": 15103,
+            "crystal": 9294,
+            "deuterium": 135
+          },
+          "stockBefore": {
+            "alloy": 19019,
+            "crystal": 35395,
+            "deuterium": 6088
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24,
+          "goal": "research:DEUTERIUM_SYNTHESIS:4",
+          "count": 1,
+          "cost": {
+            "alloy": 13839,
+            "crystal": 8517,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 36253,
+            "crystal": 42269,
+            "deuterium": 6263
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24.010337016625435,
+          "goal": "research:INDUSTRIAL:2",
+          "count": 1,
+          "cost": {
+            "alloy": 14214,
+            "crystal": 8747,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 23143,
+            "crystal": 34117,
+            "deuterium": 6270
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24.25,
+          "goal": "building:DEUTERIUM_PLANT:10",
+          "count": 1,
+          "cost": {
+            "alloy": 2258,
+            "crystal": 2258,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 25838,
+            "crystal": 33824,
+            "deuterium": 6432
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24.258720163724178,
+          "goal": "building:DEUTERIUM_PLANT:11",
+          "count": 1,
+          "cost": {
+            "alloy": 2699,
+            "crystal": 2699,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 24195,
+            "crystal": 31874,
+            "deuterium": 6438
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24.273324819444678,
+          "goal": "building:DEUTERIUM_PLANT:12",
+          "count": 1,
+          "cost": {
+            "alloy": 3217,
+            "crystal": 3217,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 22527,
+            "crystal": 29690,
+            "deuterium": 6448
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35350
+          }
+        },
+        {
+          "atDays": 24.541666666666668,
+          "goal": "building:HANGAR:5",
+          "count": 1,
+          "cost": {
+            "alloy": 31324,
+            "crystal": 8434,
+            "deuterium": 0
+          },
+          "stockBefore": {
+            "alloy": 38242,
+            "crystal": 35939,
+            "deuterium": 6690
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35889
+          }
+        },
+        {
+          "atDays": 26,
+          "goal": "hull:CORSAIR:30",
+          "count": 18,
+          "cost": {
+            "alloy": 91260,
+            "crystal": 35100,
+            "deuterium": 360
+          },
+          "stockBefore": {
+            "alloy": 109808,
+            "crystal": 68089,
+            "deuterium": 8083
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35889
+          }
+        },
+        {
+          "atDays": 27.03178988386256,
+          "goal": "hull:CATACLYSM:30",
+          "count": 18,
+          "cost": {
+            "alloy": 91260,
+            "crystal": 35100,
+            "deuterium": 360
+          },
+          "stockBefore": {
+            "alloy": 91345,
+            "crystal": 68089,
+            "deuterium": 8709
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35889
+          }
+        },
+        {
+          "atDays": 28.25,
+          "goal": "hull:PALADIN:20",
+          "count": 12,
+          "cost": {
+            "alloy": 76044,
+            "crystal": 29256,
+            "deuterium": 300
+          },
+          "stockBefore": {
+            "alloy": 86033,
+            "crystal": 68089,
+            "deuterium": 9513
+          },
+          "caps": {
+            "alloy": 136178,
+            "crystal": 68089,
+            "deuterium": 35889
+          }
+        }
+      ],
+      "serviceWaits": {
+        "building:DEUTERIUM_PLANT:1/RESEARCH_CEILING": 1,
+        "building:VAULT:2/QUEUE_FULL": 2,
+        "building:DEUTERIUM_PLANT:7/RESEARCH_CEILING": 9,
+        "building:DEUTERIUM_PLANT:10/RESEARCH_CEILING": 5
+      },
+      "capacityWaits": {
+        "research:STARSHIP_ENGINEERING:2": {
+          "count": 9,
+          "cost": {
+            "alloy": 64092,
+            "crystal": 39442,
+            "deuterium": 0
+          },
+          "caps": {
+            "alloy": 57938,
+            "crystal": 28969,
+            "deuterium": 14896
+          }
+        }
+      },
+      "resourceWaits": {
+        "hull:HARPOON:1": 3,
+        "building:CORE:7": 2,
+        "hull:VIPER:4": 4,
+        "building:REFINERY:7": 4,
+        "hull:SENTINEL:2": 3,
+        "building:EXTRACTOR:7": 3,
+        "satellite:FOUNDRY:1": 3,
+        "research:DEUTERIUM_SYNTHESIS:2": 3,
+        "building:CORE:10": 1,
+        "building:CORE:11": 2,
+        "building:EXTRACTOR:11": 2,
+        "building:CORE:12": 3,
+        "research:STARSHIP_ENGINEERING:1": 4,
+        "hull:THORN:4": 9,
+        "building:SHIPYARD:3": 4,
+        "research:SHIP_POWER:1": 4,
+        "building:SHIPYARD:4": 2,
+        "research:SHIP_POWER:2": 7,
+        "hull:HARPOON:2": 11,
+        "building:CORE:13": 24,
+        "research:SHIP_ARMOR:1": 3,
+        "research:SHIP_ARMOR:2": 4,
+        "hull:BASTION:2": 4,
+        "research:SHIP_SHIELDS:1": 3,
+        "hull:TEMPEST:4": 7,
+        "hull:BALLISTA:3": 3,
+        "building:REFINERY:13": 13,
+        "hull:PRAETORIAN:3": 5,
+        "building:CORE:14": 2,
+        "building:REFINERY:14": 3,
+        "research:STARSHIP_ENGINEERING:2": 23,
+        "hull:CORSAIR:3": 43,
+        "building:EXTRACTOR:14": 4,
+        "building:SHIPYARD:5": 20,
+        "building:SHIPYARD:6": 12,
+        "building:DEUTERIUM_PLANT:5": 1,
+        "hull:CATACLYSM:3": 4,
+        "building:DEUTERIUM_PLANT:6": 4,
+        "hull:PALADIN:2": 4,
+        "building:CORE:15": 8,
+        "building:REFINERY:15": 4,
+        "building:EXTRACTOR:15": 3,
+        "building:CORE:16": 3,
+        "building:REFINERY:16": 3,
+        "research:AI_ROBOTS:1": 9,
+        "hull:CORSAIR:12": 46,
+        "building:EXTRACTOR:16": 3,
+        "building:DEUTERIUM_PLANT:7": 19,
+        "research:YARD_AUTOMATION:2": 3,
+        "research:SHIP_POWER:3": 7,
+        "research:SHIP_ARMOR:3": 3,
+        "research:DEUTERIUM_SYNTHESIS:3": 2,
+        "building:CORE:17": 38,
+        "hull:CATACLYSM:12": 8,
+        "hull:PALADIN:8": 8,
+        "building:REFINERY:17": 4,
+        "building:EXTRACTOR:17": 4,
+        "building:CORE:18": 9,
+        "building:REFINERY:18": 7,
+        "research:SHIP_POWER:4": 13,
+        "hull:CORSAIR:30": 58,
+        "satellite:BEACON:1": 2,
+        "building:DEUTERIUM_PLANT:9": 8,
+        "research:SHIP_ARMOR:4": 10,
+        "building:DEUTERIUM_PLANT:10": 17,
+        "research:SHIP_SHIELDS:3": 2,
+        "research:DEUTERIUM_SYNTHESIS:4": 4,
+        "building:HANGAR:5": 1,
+        "hull:CATACLYSM:30": 16,
+        "hull:PALADIN:20": 15
+      },
+      "unexpectedErrors": [],
+      "spent": {
+        "alloy": 1331056,
+        "crystal": 601426,
+        "deuterium": 3828
+      },
+      "minimumResources": 35,
+      "paymentChecks": 116,
+      "turns": 388,
+      "finished": true,
+      "final": {
+        "buildings": {
+          "CORE": 18,
+          "REFINERY": 18,
+          "EXTRACTOR": 18,
+          "VAULT": 3,
+          "SHIPYARD": 6,
+          "DEUTERIUM_PLANT": 12,
+          "HANGAR": 5
+        },
+        "research": {
+          "DEUTERIUM_SYNTHESIS": 4,
+          "YARD_AUTOMATION": 2,
+          "STARSHIP_ENGINEERING": 2,
+          "SHIP_POWER": 4,
+          "SHIP_ARMOR": 4,
+          "AI_ROBOTS": 1,
+          "INDUSTRIAL": 2,
+          "SHIP_SHIELDS": 3
+        },
+        "orbit": [
+          "UPLINK",
+          "FOUNDRY",
+          "DERRICK",
+          "BEACON"
+        ],
+        "fleet": {
+          "PROSPECTOR": 2,
+          "SENTINEL": 2,
+          "TEMPEST": 4,
+          "VIPER": 4,
+          "WARDEN": 1,
+          "BALLISTA": 3,
+          "CATACLYSM": 30,
+          "CORSAIR": 30,
+          "COURIER": 2,
+          "DART": 6,
+          "PALADIN": 20,
+          "PRAETORIAN": 3
+        },
+        "ground": {
+          "THORN": 4,
+          "BASTION": 2,
+          "HARPOON": 2
+        },
+        "capacity": {
+          "hangar": 1550,
+          "hangarUsed": 1276,
+          "hangarCeiling": 10,
+          "ground": 200,
+          "groundUsed": 80
+        },
+        "rates": {
+          "alloy": 2940,
+          "crystal": 1470,
+          "deuterium": 40
+        },
+        "caps": {
+          "alloy": 136178,
+          "crystal": 68089,
+          "deuterium": 35889
+        },
+        "stock": {
+          "alloy": 30567,
+          "crystal": 68089,
+          "deuterium": 9491
+        },
+        "fleetValue": 642014,
+        "fuelAt1000": 798
+      },
+      "remaining": []
+    }
+  ]
+}

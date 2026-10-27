@@ -1,0 +1,43 @@
+import collections
+import datetime as dt
+import json
+import math
+import re
+import sys
+from pathlib import Path
+
+ROW=re.compile(r'astera_web:\s+\S+\s+\[([^\]]+)\]\s+"([A-Z]+)\s+(\S+)\s+HTTP/[^\"]+"\s+(\d{3})\s+(\d+)\s+([\d.]+)')
+UUID=re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}')
+
+def summarize(lines,start,end):
+    routes={}; all_count=0; api_count=0; first=None;last=None
+    for line in lines:
+        match=ROW.search(line)
+        if not match:continue
+        timestamp,method,path,status,size,duration=match.groups()
+        at=dt.datetime.strptime(timestamp,'%d/%b/%Y:%H:%M:%S %z')
+        if not start<=at<end:continue
+        all_count+=1;first=min(first,at) if first else at;last=max(last,at) if last else at
+        path=path.split('?',1)[0]
+        if not path.startswith('/api/'):continue
+        api_count+=1
+        key=method+' '+UUID.sub(':id',path)
+        r=routes.setdefault(key,{'route':key,'count':0,'bytes':0,'statuses':collections.Counter(),'times':[]})
+        r['count']+=1;r['bytes']+=int(size);r['statuses'][status]+=1;r['times'].append(float(duration)*1000)
+    result=[]
+    for r in routes.values():
+        times=sorted(r.pop('times'));r['statuses']=dict(r['statuses'])
+        for name,p in [('p50Ms',.5),('p95Ms',.95),('p99Ms',.99)]:r[name]=times[max(0,math.ceil(len(times)*p)-1)]
+        r['totalRequestSeconds']=sum(times)/1000;r['maxMs']=times[-1];r['sharePercent']=100*r['count']/api_count
+        result.append(r)
+    return {'start':start.isoformat(),'endExclusive':end.isoformat(),'firstLogged':first.isoformat() if first else None,'lastLogged':last.isoformat() if last else None,'allRequests':all_count,'apiRequests':api_count,'routes':sorted(result,key=lambda r:(-r['count'],r['route']))}
+
+if __name__=='__main__':
+    end=dt.datetime.now(dt.timezone.utc).replace(microsecond=0);start=end-dt.timedelta(hours=1)
+    files=[Path('/var/log/astera')/('runtime-'+d.isoformat()+'.log') for d in sorted({start.date(),end.date()})]
+    def lines():
+        for file in files:
+            with file.open() as f:yield from f
+    result=summarize(lines(),start,end)
+    result['source']='Astera Nginx completed request records; all statuses; UUID paths normalized; query strings omitted'
+    print(json.dumps(result,indent=2))

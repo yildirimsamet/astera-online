@@ -1,0 +1,26 @@
+import unittest
+from datetime import datetime, timezone
+from astera_request_summary import summarize
+
+class SummaryTests(unittest.TestCase):
+    def test_window_normalization_and_status(self):
+        def row(at,path,status=200):
+            return f'x astera_web: 127.0.0.1 [{at} +0000] "GET {path} HTTP/2.0" {status} 100 0.125\n'
+        lines=[row('25/Oct/2026:22:00:00','/api/planets/12345678-1234-1234-1234-123456789abc?secret=x'),
+               row('25/Oct/2026:22:30:00','/api/planets/87654321-1234-1234-1234-123456789abc',401),
+               row('25/Oct/2026:21:59:59','/api/old'),row('25/Oct/2026:23:00:00','/api/future'),
+               row('25/Oct/2026:22:30:00','/assets/image.webp'),'bad row']
+        result=summarize(lines,datetime(2026,10,25,22,tzinfo=timezone.utc),datetime(2026,10,25,23,tzinfo=timezone.utc))
+        self.assertEqual(result['apiRequests'],2)
+        self.assertEqual(result['allRequests'],3)
+        route=result['routes'][0]
+        self.assertEqual(route['route'],'GET /api/planets/:id')
+        self.assertEqual(route['statuses'],{'200':1,'401':1})
+        self.assertEqual(route['p95Ms'],125)
+        self.assertEqual(route['bytes'],200)
+        self.assertNotIn('secret',str(result))
+    def test_empty(self):
+        at=datetime(2026,1,1,tzinfo=timezone.utc)
+        self.assertEqual(summarize([],at,at)['routes'],[])
+
+if __name__=='__main__':unittest.main()

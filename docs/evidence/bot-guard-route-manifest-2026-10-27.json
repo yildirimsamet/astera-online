@@ -1,0 +1,144 @@
+{
+  "sourceCommit": "22af81a694d8b84f6a25646eb7c8ca5d7832503d",
+  "sourceHashes": {
+    "tools/bot-guard-route.mjs": "5fed03c428e49bb0f986a7ec3e561ee9189d12eb65b2bb990dd6762a5d192c80",
+    "tools/bot-guard-route-study.mjs": "eba1fef20069a68e97fd48fb5bba2b62f601ee3f9bb503fa3337bf9a6aafdaac",
+    "tools/bot-guard-route.test.mjs": "d86a70dcdb94b9aec52e0ffe4620b4b6ff8a3e852ee570eb213d61e4a9076bbb",
+    "apps/server/src/services/build.ts": "6f08342edc49394f400bc8befd4165752b066c4c7ceee1e2384e0e640a43538b",
+    "apps/server/src/services/buildQueue.ts": "faeba5faebd92c08d4499dbb1993b8813bdfadff92969f5a7717662a7ab3d5e9",
+    "apps/server/src/services/research.ts": "8e351b414d96a7c9f43395ac3965488639135ae3cefec0272b46ebb09f43971c",
+    "apps/server/src/services/player.ts": "e225f718415aca06446e7ba9c5354c42a31f3bc67270f162262d03bc73af644d",
+    "apps/server/src/services/planet.ts": "e17d7fbb864c2dfbd2f73cfd6ff6fe80f4466fa2b31812afe87473d6c2c026d0",
+    "apps/server/src/services/rewards.ts": "3b887750b5004745c2944b738ce648f044fa59a4cc78532ebd8d9410dff598f8"
+  },
+  "currentRulesTreeSha256": "800a380251d45d6c52bf69e845085e197d28a443c58ba6cf1332fc74b40fcc10",
+  "futureRulesTreeSha256": "83a5631da30796c5ac0e372a3b932d94ace91ea7d6c51c5d6aeec9a673b314d6",
+  "integrityChecks": "Every receipt fits its pre-purchase bank and cap; costs sum to spending; no negative balances; no unexpected service errors; reward ids unique. Sparse-session noncompletion is an observed failure, not hidden.",
+  "runs": [
+    {
+      "file": "docs/evidence/bot-guard-route-current-2026-10-27.json",
+      "variant": "balanced",
+      "schedule": "three-sessions",
+      "finished": true,
+      "purchases": 96,
+      "milestones": {
+        "early_defence": 1.5647209455569586,
+        "economy_9": 2.5416666666666665,
+        "economy_12": 4.007495350131972,
+        "first_t3_mix": 6.286643363951912,
+        "first_t4_mix": 11.25,
+        "operational_mix": 16.541666666666668
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-current-2026-10-27.json",
+      "variant": "early-engineering",
+      "schedule": "three-sessions",
+      "finished": true,
+      "purchases": 99,
+      "milestones": {
+        "early_defence": 1.5647209455569586,
+        "economy_9": 2.5416666666666665,
+        "economy_12": 4.007495350131972,
+        "first_t3_mix": 6.286643363951912,
+        "first_t4_mix": 10.580695432150323,
+        "operational_mix": 18
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-current-2026-10-27.json",
+      "variant": "early-robots",
+      "schedule": "three-sessions",
+      "finished": true,
+      "purchases": 96,
+      "milestones": {
+        "early_defence": 1.5647209455569586,
+        "economy_9": 2.5416666666666665,
+        "economy_12": 4.262012710409342,
+        "first_t3_mix": 7,
+        "first_t4_mix": 11.287326113496803,
+        "operational_mix": 17
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-earned-rewards-next-2026-10-27.json",
+      "variant": "earned-rewards",
+      "schedule": "three-sessions",
+      "finished": true,
+      "purchases": 116,
+      "milestones": {
+        "early_defence": 1.2671104569583096,
+        "economy_9": 2.25,
+        "economy_12": 4,
+        "first_t3_mix": 7,
+        "first_t4_mix": 12.25,
+        "operational_mix": 19,
+        "mature_mix": 28
+      },
+      "rewardCount": 16,
+      "rewardTotals": {
+        "alloy": 11372,
+        "crystal": 5575,
+        "deuterium": 0
+      }
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-missed-day-2026-10-27.json",
+      "variant": "balanced",
+      "schedule": "missed-day",
+      "finished": true,
+      "purchases": 116,
+      "milestones": {
+        "early_defence": 3.0201531327588276,
+        "economy_9": 4,
+        "economy_12": 5.262012710409342,
+        "first_t3_mix": 8.25,
+        "first_t4_mix": 13.541666666666666,
+        "operational_mix": 20.25,
+        "mature_mix": 29.25
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-next-tempo-2026-10-27.json",
+      "variant": "balanced",
+      "schedule": "three-sessions",
+      "finished": true,
+      "purchases": 116,
+      "milestones": {
+        "early_defence": 2.0201531327588276,
+        "economy_9": 3,
+        "economy_12": 4.270460550595696,
+        "first_t3_mix": 7.5822028730090505,
+        "first_t4_mix": 12.582989717458581,
+        "operational_mix": 19.25,
+        "mature_mix": 28.541666666666668
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    },
+    {
+      "file": "docs/evidence/bot-guard-route-sparse-2026-10-27.json",
+      "variant": "balanced",
+      "schedule": "one-session",
+      "finished": false,
+      "purchases": 95,
+      "milestones": {
+        "early_defence": 4.008694551196984,
+        "economy_9": 6,
+        "economy_12": 9.014825053657923,
+        "first_t3_mix": 13.032643418650453,
+        "first_t4_mix": 21.036736313499407
+      },
+      "rewardCount": 0,
+      "rewardTotals": {}
+    }
+  ]
+}

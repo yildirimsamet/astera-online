@@ -1,0 +1,57 @@
+import { afterAll, expect, it } from 'vitest';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq } from 'drizzle-orm';
+import { pino } from 'pino';
+import { writeFileSync } from 'node:fs';
+import { MULTI_WORLD } from '@astera/rules';
+import { createDb, schema } from '../src/db/client.js';
+import { buildApp } from '../src/app.js';
+import { seedWorld, testDb, testEnv, TEST_DATABASE_URL, setLevel, giveInstrument, giveSatellite } from './helpers.js';
+
+afterAll(async () => { await (await testDb()).close(); });
+
+it('records cold and warm SQL work with four owned worlds and an eligible telescope watch', async () => {
+  const f = await seedWorld(5);
+  for (const id of f.planetIds.slice(1, 4)) await f.db.update(schema.planets)
+    .set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(schema.planets.id, id));
+  await setLevel(f.db, f.planetIds[0]!, 'CORE', 8);
+  await giveSatellite(f.db, f.planetIds[0]!, 'UPLINK');
+  await giveInstrument(f.db, f.planetIds[0]!, 'TELESCOPE', 5);
+  await f.db.insert(schema.watches).values({ observerPlayerId: f.playerIds[0]!, observerPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[4]!, slot: 0 });
+  const pool = createDb(TEST_DATABASE_URL, { max: 8 });
+  const queries: string[] = [];
+  const db = drizzle(pool.sql, { schema, logger: { logQuery(q) { queries.push(q); } } });
+  const built = buildApp({ db, env: testEnv({ ROLE: 'api' }), clock: f.clock, logger: pino({ level: 'silent' }) });
+  const samples: unknown[] = [];
+  try {
+    await built.app.ready();
+    await built.app.bus.start();
+    const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+    // Warm presence independently of measured routes.
+    await built.app.presence.touch(f.accountIds[0]!);
+    for (const rulesetVersion of [1, MULTI_WORLD.monumentRulesetVersion]) {
+      await f.db.update(schema.seasons).set({ rulesetVersion }).where(eq(schema.seasons.id, f.seasonId));
+      built.app.projections.invalidate(f.seasonId);
+      for (const url of ['/api/galaxy', '/api/galaxy/traffic', '/api/leaderboard', '/api/planets', `/api/planets/${f.planetIds[0]!}`, '/api/session/pending', '/api/intel']) {
+        for (const pass of [1, 2]) {
+          queries.length = 0;
+          const response = await built.app.inject({ url, headers: { authorization } });
+          expect(response.statusCode, response.body).toBe(200);
+          expect(built.app.projections.status().enabled).toBe(true);
+          const tables: Record<string, number> = {};
+          for (const query of queries) {
+            const table = /\bfrom "([^"]+)"/.exec(query)?.[1] ?? query.split(' ')[0]!;
+            tables[table] = (tables[table] ?? 0) + 1;
+          }
+          samples.push({ rulesetVersion, url: url.replace(f.planetIds[0]!, ':id'), pass,
+            statements: queries.length, tables, bytes: Buffer.byteLength(response.body),
+            rowLocks: queries.filter(q => /for (share|update)/.test(q)).length });
+        }
+      }
+    }
+    writeFileSync('/tmp/astera-architecture-query-evidence.json', JSON.stringify({
+      scope: 'Local isolated PG16; 5 commanders, first owns 4 worlds; 1 watch; no active flights, clan, Honor or monuments. Main Drizzle handle only: excludes placement-pool SQL, BEGIN/COMMIT and EventBus connection. Pass 2 is warm; pass 1 may reuse earlier route projections. Fixed clock; not a latency/load benchmark.',
+      samples,
+    }, null, 2));
+  } finally { await built.close(); await pool.close(); }
+});

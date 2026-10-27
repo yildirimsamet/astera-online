@@ -30,3 +30,13 @@ Tests first: exact 3× and just below, old 3.5× still qualifies, actual escaped
 - Production web build and fresh old/new-image restore rehearsal PASS for the first candidate. This follow-up changes only that test assertion and this record; final artifacts are rebuilt from its pinned SHA before release.
 - Remaining release gates: final tools/simulator lint, rebuilt artifacts/restore proof, all-role health and external acceptance. Runtime deployment evidence goes in ignored `out/escape-recovery-release-20261021/` and the private timestamped VPS backup directory.
 - Scope isolation: release starts at deployed `d3595171` and includes only the 22 selected files plus this note. Concurrent engine-flame work and `tools/visual.mjs` edits are excluded. Preserve the already-deployed Arena code/UI and its running service/image.
+
+## Deployment acceptance — 2026-10-21
+
+Deployed `527e6ca853e34c9834db9c0c4e4eec6f548145dd` from `origin/release/escape-recovery-20261021`, based on live `d3595171`. Image: `sha256:8d41e9cecc196f76d3a1f072877062af9c6ab067b8fc07002f095f1727ea2c61`.
+
+All 3 APIs, singleton worker and public web match the final SHA. Health/queue, pending migrations 0, world invariants, CSP/server time, old assets, mobile layout and published Wiki values passed. All required type/lint checks passed; 3,290 distinct related tests passed. The Wiki assertion was retested and relinted after its nullability fix. No production migration or season/data rewrite occurred. Existing Arena service/image and runtime settings were preserved.
+
+Private rollback backup/pin: `/home/yildirim/backups/astera-escape-recovery-20261021T202932Z/`, under the existing 30-day policy, with its nonpersonal root `pinned-compose.yml` preserved. The restored database and temporary static-check container/source were removed. Final evidence: `out/escape-recovery-release-20261021/deployment-result.json`. Earlier preparation notes above describe their point in time; all release gates are now complete.
+
+The shared root contains concurrent work. The deployed release includes only the 23 selected task files, excluding root engine-flame assets and visual-tool edits. Future releases must preserve this deployed baseline rather than assuming root master equals production.

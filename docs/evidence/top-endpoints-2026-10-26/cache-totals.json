@@ -1,0 +1,74 @@
+{
+  "commander": {
+    "entries": 15,
+    "hits": 7644,
+    "misses": 1314,
+    "bypasses": 0,
+    "invalidations": 302,
+    "evictions": 0,
+    "singleFlightWaits": 56
+  },
+  "sensors": {
+    "entries": 15,
+    "hits": 5160,
+    "misses": 1233,
+    "bypasses": 0,
+    "invalidations": 338,
+    "evictions": 0,
+    "singleFlightWaits": 11
+  },
+  "remembered": {
+    "entries": 10,
+    "hits": 314,
+    "misses": 527,
+    "bypasses": 0,
+    "invalidations": 267,
+    "evictions": 0,
+    "singleFlightWaits": 0
+  },
+  "sensorHistory": {
+    "entries": 15,
+    "hits": 6731,
+    "misses": 1288,
+    "bypasses": 0,
+    "invalidations": 339,
+    "evictions": 0,
+    "singleFlightWaits": 40
+  },
+  "publicGalaxy": {
+    "entries": 3,
+    "hits": 554,
+    "misses": 235,
+    "bypasses": 0,
+    "invalidations": 54,
+    "evictions": 0,
+    "singleFlightWaits": 1
+  },
+  "traffic": {
+    "entries": 3,
+    "hits": 3286,
+    "misses": 1798,
+    "bypasses": 0,
+    "invalidations": 908,
+    "evictions": 0,
+    "singleFlightWaits": 262
+  },
+  "mining": {
+    "entries": 3,
+    "hits": 5711,
+    "misses": 1828,
+    "bypasses": 0,
+    "invalidations": 807,
+    "evictions": 0,
+    "singleFlightWaits": 193
+  },
+  "pirates": {
+    "entries": 3,
+    "hits": 4205,
+    "misses": 1348,
+    "bypasses": 0,
+    "invalidations": 27,
+    "evictions": 0,
+    "singleFlightWaits": 101
+  }
+}

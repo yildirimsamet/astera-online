@@ -1,0 +1,57 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import postgres from 'postgres';
+const dir='/home/yildirim/.local/state/astera-architecture-audit-20261026';
+const password=fs.readFileSync(`${dir}/postgres.env`,'utf8').match(/^POSTGRES_PASSWORD=(.*)$/m)[1];
+const pg=postgres({host:'127.0.0.1',port:5547,user:'astera',password,database:'astera_audit',max:1,onnotice:()=>{}});
+const {plans}=JSON.parse(fs.readFileSync(`${dir}/captured-plans.json`,'utf8'));
+const notification=plans.find(p=>p.group==='notifications');
+const research=plans.find(p=>p.group==='research'&&p.query.includes('jsonb_array_elements'));
+const findings=[];
+const summarize=x=>({ms:x['Execution Time'],planningMs:x['Planning Time'],blocks:x.Plan['Shared Hit Blocks']+x.Plan['Shared Read Blocks'],rows:x.Plan['Actual Rows']});
+async function measure(name,query,params){
+  const runs=[];
+  for(let i=0;i<11;i++){
+    const result=(await pg.unsafe(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,params))[0]['QUERY PLAN'][0];
+    if(i>=2)runs.push(result);
+  }
+  const sorted=runs.toSorted((a,b)=>a['Execution Time']-b['Execution Time']);
+  const median=sorted[Math.floor(sorted.length/2)];
+  findings.push({name,query,params,runs,median:summarize(median)});
+  console.log(JSON.stringify({name,...summarize(median)}));
+  return median;
+}
+try{
+  await pg`set statement_timeout='15s'`;
+  const expectedNotifications=await pg.unsafe(notification.query,notification.params);
+  const predicate='where "notifications"."player_id" = $1';
+  assert.ok(notification.query.includes(predicate));
+  const branch=seen=>notification.query.replace(predicate,`${predicate} and "notifications"."seen" = ${seen}`);
+  const union=`select * from ((${branch(false)}) union all (${branch(true)})) latest order by created_at desc limit $2`;
+  assert.deepEqual((await pg.unsafe(union,notification.params)).map(r=>r.id).sort(),expectedNotifications.map(r=>r.id).sort());
+  await measure('notifications_original',notification.query,notification.params);
+  await measure('notifications_two_index_branches',union,notification.params);
+  await pg`create index audit_notifications_player_time on notifications (player_id,created_at desc)`;
+  await measure('notifications_new_time_index',notification.query,notification.params);
+  assert.deepEqual((await pg.unsafe(notification.query,notification.params)).map(r=>r.id).sort(),expectedNotifications.map(r=>r.id).sort());
+  const [size]=await pg`select pg_relation_size('audit_notifications_player_time') bytes`;
+  console.log(JSON.stringify({newNotificationIndexBytes:Number(size.bytes)}));
+  await pg`drop index audit_notifications_player_time`;
+  const rewrite=`with candidate as materialized (
+    select id,shield_absorbed,(select coalesce(sum((r ->> 'attackerDamage')::double precision),0)
+      from jsonb_array_elements(rounds) r) damage
+    from battle_reports where attacker_player_id=$1 and shield_absorbed>$2
+  ) select id from candidate where damage>0 and shield_absorbed>=damage*$3 limit $4`;
+  const actors=await pg`select attacker_player_id id,count(*) n from battle_reports group by attacker_player_id order by n desc limit 20`;
+  for(const actor of actors){
+    const params=[actor.id,...research.params.slice(1)];
+    assert.equal((await pg.unsafe(research.query,params)).length>0,(await pg.unsafe(rewrite,params)).length>0);
+  }
+  await measure('research_original',research.query,research.params);
+  await measure('research_single_json_aggregate',rewrite,research.params);
+  await pg`create index audit_reports_attacker_shield on battle_reports (attacker_player_id,shield_absorbed)`;
+  await measure('research_original_with_shield_index',research.query,research.params);
+  await measure('research_single_aggregate_with_shield_index',rewrite,research.params);
+  await pg`drop index audit_reports_attacker_shield`;
+  fs.writeFileSync(`${dir}/comparisons.json`,JSON.stringify({notificationEquivalence:'same 30 IDs on copied snapshot',researchEquivalence:'same discovery boolean for 20 attackers',newNotificationIndexBytes:Number(size.bytes),findings},null,2),{mode:0o600});
+}finally{await pg.end();}

@@ -1,0 +1,44 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import * as schema from './src/db/schema.ts';
+import { activeGalaxyEvents, nextPublicGalaxyEvent } from './src/services/galaxyEvents.ts';
+import { loadMiningSnapshot } from './src/services/mining.ts';
+import { listNotifications, pendingThreads } from './src/services/session.ts';
+import { loadResearchViewData } from './src/services/researchState.ts';
+import { loadTrafficSnapshot } from './src/services/traffic.ts';
+import { publicWorlds } from './src/services/publicGalaxy.ts';
+import { honorPodium } from './src/services/honorPodium.ts';
+import { readPublicMonumentFacts } from './src/services/monumentView.ts';
+import { readBattleReports } from './src/services/reports.ts';
+import { loadPlanetViewData } from './src/services/planetView.ts';
+const privateDir='/home/yildirim/.local/state/astera-architecture-audit-20261026';
+const password=fs.readFileSync(`${privateDir}/postgres.env`,'utf8').match(/^POSTGRES_PASSWORD=(.*)$/m)[1];
+const pg=postgres({host:'127.0.0.1',port:5547,user:'astera',password,database:'astera_audit',max:1,onnotice:()=>{}});
+let group=''; const statements=[];
+const db=drizzle(pg,{schema,logger:{logQuery(query,params){if(query.startsWith('select '))statements.push({group,query,params});}}});
+const census={};
+try {
+  await pg`set statement_timeout='15s'`;
+  const [season]=await pg`select s.id,count(p.id) n from seasons s join shards sh on sh.id=s.shard_id join players p on p.season_id=s.id where sh.role='MAIN' and s.status='live' group by s.id order by n desc limit 1`;
+  const [notifications]=await pg`select player_id as id,count(*) n from notifications group by player_id order by n desc limit 1`;
+  const [attacker]=await pg`select attacker_player_id as id,count(*) n from battle_reports group by attacker_player_id order by n desc limit 1`;
+  const [world]=await pg`select origin_planet_id as id,count(*) n from missions where status='in_flight' group by origin_planet_id order by n desc limit 1`;
+  Object.assign(census,{seasonPlayers:Number(season.n),notificationHistory:Number(notifications.n),attackerHistory:Number(attacker.n)});
+  const now=new Date(JSON.parse(fs.readFileSync(`${privateDir}/captured-plans.json`,'utf8')).at);
+  const [caller]=await pg`select account_id from players where season_id=${season.id} limit 1`; 
+  const operations=[['events',async()=>{await activeGalaxyEvents(db,caller.account_id,{now:()=>now});await nextPublicGalaxyEvent(db,caller.account_id,{now:()=>now});}],['mining',()=>loadMiningSnapshot(db,season.id,now)]];
+  const errors=[];
+  for(const [name,run] of operations){group=name;try{await run();}catch(error){errors.push({group:name,code:error.code??error.cause?.code??error.name});}}
+  const plans=[];
+  for(const s of statements){
+    try {
+      const result=await pg.unsafe(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${s.query}`,s.params);
+      plans.push({...s,explain:result[0]['QUERY PLAN'][0]});
+    } catch(error){errors.push({group:s.group,stage:'explain',code:error.code??error.name});}
+  }
+  fs.writeFileSync(`${privateDir}/top-plans.json`,JSON.stringify({at:now.toISOString(),census,errors,plans},null,2),{mode:0o600});
+  console.log(JSON.stringify({census,errors,count:plans.length,slowest:plans.map(p=>({group:p.group,table:/from "([^"]+)"/.exec(p.query)?.[1],ms:p.explain['Execution Time'],blocks:p.explain.Plan['Shared Hit Blocks']+p.explain.Plan['Shared Read Blocks']})).sort((a,b)=>b.ms-a.ms).slice(0,18)},null,2));
+  assert.ok(plans.length>0);
+}finally{await pg.end();}

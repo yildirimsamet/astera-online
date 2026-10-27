@@ -1,0 +1,9 @@
+import json,unittest
+from pathlib import Path
+class ComparisonContract(unittest.TestCase):
+ def test_equivalence_and_repeated_plans(self):
+  d=json.loads(Path('/home/yildirim/.local/state/astera-architecture-audit-20261026/top-comparisons.json').read_text())
+  self.assertTrue(d['equivalent'])
+  self.assertEqual(len(d['findings']),4)
+  for f in d['findings']: self.assertEqual(len(f['runs']),9)
+if __name__=='__main__': unittest.main()

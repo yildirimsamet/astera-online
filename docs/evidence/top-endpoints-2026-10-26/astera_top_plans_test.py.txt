@@ -1,0 +1,12 @@
+import json, unittest
+from pathlib import Path
+class CaptureContract(unittest.TestCase):
+ def test_queries_captured_and_explained_without_errors(self):
+  d=json.loads(Path('/home/yildirim/.local/state/astera-architecture-audit-20261026/top-plans.json').read_text())
+  self.assertEqual(d['errors'],[])
+  self.assertTrue({'events','mining'}.issubset({p['group'] for p in d['plans']}))
+  self.assertGreater(d['census']['seasonPlayers'],0)
+  for p in d['plans']:
+   self.assertGreaterEqual(p['explain']['Execution Time'],0)
+   self.assertTrue(p['query'].lower().startswith('select '))
+if __name__=='__main__': unittest.main()

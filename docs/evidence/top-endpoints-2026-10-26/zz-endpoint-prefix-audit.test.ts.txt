@@ -1,0 +1,24 @@
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
+import { expect, it, vi } from 'vitest';
+import { keys } from '../src/api/keys.js';
+import { refreshQueries } from '../src/api/refreshQueries.js';
+
+it('demonstrates that map invalidation also fetches events, and exact matching isolates it', async () => {
+  const client = new QueryClient();
+  const map = vi.fn(async () => 1);
+  const events = vi.fn(async () => 1);
+  client.setQueryData(keys.galaxy, 0);
+  client.setQueryData(keys.galaxyEvents, 0);
+  const a = new QueryObserver(client, { queryKey: keys.galaxy, queryFn: map, staleTime: Infinity });
+  const b = new QueryObserver(client, { queryKey: keys.galaxyEvents, queryFn: events, staleTime: Infinity });
+  const stopA = a.subscribe(() => undefined);
+  const stopB = b.subscribe(() => undefined);
+  try {
+    await refreshQueries(client, { queryKey: keys.galaxy });
+    expect(map).toHaveBeenCalledTimes(1);
+    expect(events).toHaveBeenCalledTimes(1);
+    await refreshQueries(client, { queryKey: keys.galaxy, exact: true });
+    expect(map).toHaveBeenCalledTimes(2);
+    expect(events).toHaveBeenCalledTimes(1);
+  } finally { stopA(); stopB(); client.clear(); }
+});

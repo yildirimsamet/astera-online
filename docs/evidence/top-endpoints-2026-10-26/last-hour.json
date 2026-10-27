@@ -1,0 +1,1780 @@
+{
+  "start": "2026-10-25T21:51:14+00:00",
+  "endExclusive": "2026-10-25T22:51:14+00:00",
+  "firstLogged": "2026-10-25T21:51:16+00:00",
+  "lastLogged": "2026-10-25T22:51:13+00:00",
+  "allRequests": 19012,
+  "apiRequests": 18486,
+  "routes": [
+    {
+      "route": "GET /api/galaxy/traffic",
+      "count": 5628,
+      "bytes": 17871181,
+      "statuses": {
+        "200": 5607,
+        "401": 19,
+        "499": 2
+      },
+      "p50Ms": 33.0,
+      "p95Ms": 176.0,
+      "p99Ms": 351.0,
+      "totalRequestSeconds": 339.362,
+      "maxMs": 1065.0,
+      "sharePercent": 30.44466082440766
+    },
+    {
+      "route": "GET /api/mining/field",
+      "count": 2064,
+      "bytes": 2534821,
+      "statuses": {
+        "200": 2051,
+        "401": 13
+      },
+      "p50Ms": 21.0,
+      "p95Ms": 109.0,
+      "p99Ms": 226.0,
+      "totalRequestSeconds": 70.812,
+      "maxMs": 898.0,
+      "sharePercent": 11.165206101914963
+    },
+    {
+      "route": "GET /api/galaxy/events",
+      "count": 880,
+      "bytes": 411739,
+      "statuses": {
+        "200": 869,
+        "401": 11
+      },
+      "p50Ms": 24.0,
+      "p95Ms": 100.0,
+      "p99Ms": 192.0,
+      "totalRequestSeconds": 33.037,
+      "maxMs": 457.0,
+      "sharePercent": 4.760359190738938
+    },
+    {
+      "route": "GET /api/galaxy",
+      "count": 877,
+      "bytes": 15716767,
+      "statuses": {
+        "200": 865,
+        "401": 12
+      },
+      "p50Ms": 94.0,
+      "p95Ms": 323.0,
+      "p99Ms": 515.0,
+      "totalRequestSeconds": 110.567,
+      "maxMs": 709.0,
+      "sharePercent": 4.744130693497782
+    },
+    {
+      "route": "GET /api/planets/:id",
+      "count": 862,
+      "bytes": 2649425,
+      "statuses": {
+        "200": 820,
+        "401": 12,
+        "499": 30
+      },
+      "p50Ms": 143.0,
+      "p95Ms": 424.0,
+      "p99Ms": 662.0,
+      "totalRequestSeconds": 154.76,
+      "maxMs": 1089.0,
+      "sharePercent": 4.662988207292004
+    },
+    {
+      "route": "GET /api/session/pending",
+      "count": 801,
+      "bytes": 412088,
+      "statuses": {
+        "200": 757,
+        "401": 11,
+        "499": 33
+      },
+      "p50Ms": 93.0,
+      "p95Ms": 282.0,
+      "p99Ms": 526.0,
+      "totalRequestSeconds": 94.363,
+      "maxMs": 808.0,
+      "sharePercent": 4.33300876338851
+    },
+    {
+      "route": "GET /api/planets",
+      "count": 745,
+      "bytes": 4314002,
+      "statuses": {
+        "200": 732,
+        "401": 11,
+        "499": 2
+      },
+      "p50Ms": 328.0,
+      "p95Ms": 794.0,
+      "p99Ms": 1368.0,
+      "totalRequestSeconds": 279.836,
+      "maxMs": 2282.0,
+      "sharePercent": 4.030076814886941
+    },
+    {
+      "route": "GET /api/mining/status",
+      "count": 688,
+      "bytes": 278723,
+      "statuses": {
+        "200": 642,
+        "401": 11,
+        "499": 34,
+        "403": 1
+      },
+      "p50Ms": 50.0,
+      "p95Ms": 186.0,
+      "p99Ms": 276.0,
+      "totalRequestSeconds": 47.106,
+      "maxMs": 398.0,
+      "sharePercent": 3.7217353673049876
+    },
+    {
+      "route": "GET /api/pirates",
+      "count": 550,
+      "bytes": 779869,
+      "statuses": {
+        "200": 535,
+        "401": 12,
+        "403": 1,
+        "499": 2
+      },
+      "p50Ms": 44.0,
+      "p95Ms": 160.0,
+      "p99Ms": 453.0,
+      "totalRequestSeconds": 34.41,
+      "maxMs": 803.0,
+      "sharePercent": 2.9752244942118358
+    },
+    {
+      "route": "GET /api/skins",
+      "count": 483,
+      "bytes": 217917,
+      "statuses": {
+        "200": 472,
+        "401": 11
+      },
+      "p50Ms": 28.0,
+      "p95Ms": 103.0,
+      "p99Ms": 201.0,
+      "totalRequestSeconds": 18.601,
+      "maxMs": 303.0,
+      "sharePercent": 2.6127880558260306
+    },
+    {
+      "route": "GET /api/notifications",
+      "count": 480,
+      "bytes": 1357112,
+      "statuses": {
+        "200": 468,
+        "401": 12
+      },
+      "p50Ms": 51.0,
+      "p95Ms": 153.0,
+      "p99Ms": 323.0,
+      "totalRequestSeconds": 30.998,
+      "maxMs": 787.0,
+      "sharePercent": 2.596559558584875
+    },
+    {
+      "route": "GET /api/monuments",
+      "count": 424,
+      "bytes": 1352581,
+      "statuses": {
+        "200": 413,
+        "401": 11
+      },
+      "p50Ms": 132.0,
+      "p95Ms": 391.0,
+      "p99Ms": 581.0,
+      "totalRequestSeconds": 70.584,
+      "maxMs": 979.0,
+      "sharePercent": 2.2936276100833064
+    },
+    {
+      "route": "GET /api/intel",
+      "count": 418,
+      "bytes": 7583049,
+      "statuses": {
+        "200": 406,
+        "401": 12
+      },
+      "p50Ms": 91.0,
+      "p95Ms": 279.0,
+      "p99Ms": 574.0,
+      "totalRequestSeconds": 47.84,
+      "maxMs": 693.0,
+      "sharePercent": 2.2611706156009954
+    },
+    {
+      "route": "GET /api/reports",
+      "count": 418,
+      "bytes": 7056287,
+      "statuses": {
+        "200": 406,
+        "401": 12
+      },
+      "p50Ms": 220.0,
+      "p95Ms": 504.0,
+      "p99Ms": 794.0,
+      "totalRequestSeconds": 104.452,
+      "maxMs": 1106.0,
+      "sharePercent": 2.2611706156009954
+    },
+    {
+      "route": "GET /api/unknown-signals",
+      "count": 389,
+      "bytes": 78044,
+      "statuses": {
+        "200": 376,
+        "401": 12,
+        "499": 1
+      },
+      "p50Ms": 38.0,
+      "p95Ms": 135.0,
+      "p99Ms": 324.0,
+      "totalRequestSeconds": 21.42,
+      "maxMs": 425.0,
+      "sharePercent": 2.1042951422698257
+    },
+    {
+      "route": "GET /api/rewards",
+      "count": 339,
+      "bytes": 214953,
+      "statuses": {
+        "200": 327,
+        "401": 12
+      },
+      "p50Ms": 130.0,
+      "p95Ms": 338.0,
+      "p99Ms": 607.0,
+      "totalRequestSeconds": 52.102,
+      "maxMs": 804.0,
+      "sharePercent": 1.833820188250568
+    },
+    {
+      "route": "GET /api/season",
+      "count": 284,
+      "bytes": 167901,
+      "statuses": {
+        "200": 272,
+        "401": 12
+      },
+      "p50Ms": 37.0,
+      "p95Ms": 161.0,
+      "p99Ms": 268.0,
+      "totalRequestSeconds": 15.133,
+      "maxMs": 356.0,
+      "sharePercent": 1.5362977388293844
+    },
+    {
+      "route": "GET /api/chat/unread",
+      "count": 265,
+      "bytes": 3507,
+      "statuses": {
+        "200": 253,
+        "401": 12
+      },
+      "p50Ms": 71.0,
+      "p95Ms": 195.0,
+      "p99Ms": 344.0,
+      "totalRequestSeconds": 21.867,
+      "maxMs": 537.0,
+      "sharePercent": 1.4335172563020664
+    },
+    {
+      "route": "GET /api/return-applications",
+      "count": 263,
+      "bytes": 37377,
+      "statuses": {
+        "200": 252,
+        "401": 11
+      },
+      "p50Ms": 31.0,
+      "p95Ms": 138.0,
+      "p99Ms": 292.0,
+      "totalRequestSeconds": 13.489,
+      "maxMs": 647.0,
+      "sharePercent": 1.4226982581412961
+    },
+    {
+      "route": "GET /api/clan/badge",
+      "count": 245,
+      "bytes": 48113,
+      "statuses": {
+        "200": 233,
+        "401": 12
+      },
+      "p50Ms": 79.0,
+      "p95Ms": 197.0,
+      "p99Ms": 440.0,
+      "totalRequestSeconds": 23.436,
+      "maxMs": 484.0,
+      "sharePercent": 1.3253272746943634
+    },
+    {
+      "route": "GET /api/dm/unread",
+      "count": 241,
+      "bytes": 3155,
+      "statuses": {
+        "200": 229,
+        "401": 12
+      },
+      "p50Ms": 62.0,
+      "p95Ms": 162.0,
+      "p99Ms": 250.0,
+      "totalRequestSeconds": 17.906,
+      "maxMs": 418.0,
+      "sharePercent": 1.3036892783728227
+    },
+    {
+      "route": "POST /api/planets/:id/collect",
+      "count": 147,
+      "bytes": 477848,
+      "statuses": {
+        "200": 147
+      },
+      "p50Ms": 204.0,
+      "p95Ms": 396.0,
+      "p99Ms": 937.0,
+      "totalRequestSeconds": 35.373,
+      "maxMs": 1199.0,
+      "sharePercent": 0.7951963648166179
+    },
+    {
+      "route": "POST /api/session/return/seen",
+      "count": 72,
+      "bytes": 1044,
+      "statuses": {
+        "200": 66,
+        "401": 6
+      },
+      "p50Ms": 33.0,
+      "p95Ms": 145.0,
+      "p99Ms": 248.0,
+      "totalRequestSeconds": 3.627,
+      "maxMs": 248.0,
+      "sharePercent": 0.3894839337877313
+    },
+    {
+      "route": "POST /api/notifications/seen",
+      "count": 62,
+      "bytes": 744,
+      "statuses": {
+        "200": 62
+      },
+      "p50Ms": 24.0,
+      "p95Ms": 67.0,
+      "p99Ms": 1130.0,
+      "totalRequestSeconds": 2.758,
+      "maxMs": 1130.0,
+      "sharePercent": 0.33538894298387967
+    },
+    {
+      "route": "GET /api/stream",
+      "count": 57,
+      "bytes": 353772,
+      "statuses": {
+        "200": 51,
+        "401": 5,
+        "499": 1
+      },
+      "p50Ms": 275034.0,
+      "p95Ms": 1558477.0,
+      "p99Ms": 6395864.0,
+      "totalRequestSeconds": 29153.463,
+      "maxMs": 6395864.0,
+      "sharePercent": 0.3083414475819539
+    },
+    {
+      "route": "POST /api/auth/refresh",
+      "count": 51,
+      "bytes": 16235,
+      "statuses": {
+        "200": 46,
+        "401": 5
+      },
+      "p50Ms": 12.0,
+      "p95Ms": 92.0,
+      "p99Ms": 119.0,
+      "totalRequestSeconds": 1.03,
+      "maxMs": 119.0,
+      "sharePercent": 0.275884453099643
+    },
+    {
+      "route": "GET /api/clan/war",
+      "count": 45,
+      "bytes": 14100,
+      "statuses": {
+        "200": 44,
+        "401": 1
+      },
+      "p50Ms": 36.0,
+      "p95Ms": 182.0,
+      "p99Ms": 364.0,
+      "totalRequestSeconds": 2.874,
+      "maxMs": 364.0,
+      "sharePercent": 0.24342745861733203
+    },
+    {
+      "route": "GET /api/planet",
+      "count": 40,
+      "bytes": 102945,
+      "statuses": {
+        "200": 36,
+        "401": 1,
+        "499": 3
+      },
+      "p50Ms": 170.0,
+      "p95Ms": 502.0,
+      "p99Ms": 871.0,
+      "totalRequestSeconds": 9.354,
+      "maxMs": 871.0,
+      "sharePercent": 0.21637996321540626
+    },
+    {
+      "route": "GET /api/auth/security",
+      "count": 38,
+      "bytes": 4660,
+      "statuses": {
+        "200": 38
+      },
+      "p50Ms": 14.0,
+      "p95Ms": 50.0,
+      "p99Ms": 182.0,
+      "totalRequestSeconds": 0.807,
+      "maxMs": 182.0,
+      "sharePercent": 0.20556096505463595
+    },
+    {
+      "route": "POST /api/mining/harvest",
+      "count": 37,
+      "bytes": 144936,
+      "statuses": {
+        "200": 37
+      },
+      "p50Ms": 296.0,
+      "p95Ms": 478.0,
+      "p99Ms": 537.0,
+      "totalRequestSeconds": 11.353,
+      "maxMs": 537.0,
+      "sharePercent": 0.2001514659742508
+    },
+    {
+      "route": "GET /api/honor/targets/:id",
+      "count": 36,
+      "bytes": 612,
+      "statuses": {
+        "200": 36
+      },
+      "p50Ms": 24.0,
+      "p95Ms": 43.0,
+      "p99Ms": 72.0,
+      "totalRequestSeconds": 0.977,
+      "maxMs": 72.0,
+      "sharePercent": 0.19474196689386564
+    },
+    {
+      "route": "GET /api/announcements",
+      "count": 34,
+      "bytes": 252042,
+      "statuses": {
+        "200": 34
+      },
+      "p50Ms": 26.0,
+      "p95Ms": 81.0,
+      "p99Ms": 195.0,
+      "totalRequestSeconds": 1.207,
+      "maxMs": 195.0,
+      "sharePercent": 0.18392296873309533
+    },
+    {
+      "route": "GET /api/leaderboard",
+      "count": 34,
+      "bytes": 148808,
+      "statuses": {
+        "200": 34
+      },
+      "p50Ms": 33.0,
+      "p95Ms": 116.0,
+      "p99Ms": 326.0,
+      "totalRequestSeconds": 1.691,
+      "maxMs": 326.0,
+      "sharePercent": 0.18392296873309533
+    },
+    {
+      "route": "GET /api/chat/messages",
+      "count": 31,
+      "bytes": 114999,
+      "statuses": {
+        "200": 30,
+        "401": 1
+      },
+      "p50Ms": 66.0,
+      "p95Ms": 440.0,
+      "p99Ms": 1010.0,
+      "totalRequestSeconds": 4.128,
+      "maxMs": 1010.0,
+      "sharePercent": 0.16769447149193983
+    },
+    {
+      "route": "GET /api/clan/support",
+      "count": 28,
+      "bytes": 336,
+      "statuses": {
+        "200": 28
+      },
+      "p50Ms": 27.0,
+      "p95Ms": 107.0,
+      "p99Ms": 189.0,
+      "totalRequestSeconds": 1.108,
+      "maxMs": 189.0,
+      "sharePercent": 0.15146597425078437
+    },
+    {
+      "route": "POST /api/intel/probe",
+      "count": 27,
+      "bytes": 3335,
+      "statuses": {
+        "200": 25,
+        "400": 2
+      },
+      "p50Ms": 115.0,
+      "p95Ms": 220.0,
+      "p99Ms": 445.0,
+      "totalRequestSeconds": 3.628,
+      "maxMs": 445.0,
+      "sharePercent": 0.1460564751703992
+    },
+    {
+      "route": "POST /api/monuments/waves/:id/recall/quote",
+      "count": 24,
+      "bytes": 10501,
+      "statuses": {
+        "200": 18,
+        "400": 2,
+        "409": 4
+      },
+      "p50Ms": 76.0,
+      "p95Ms": 198.0,
+      "p99Ms": 316.0,
+      "totalRequestSeconds": 2.455,
+      "maxMs": 316.0,
+      "sharePercent": 0.12982797792924375
+    },
+    {
+      "route": "GET /api/session/brand-recall",
+      "count": 23,
+      "bytes": 1961,
+      "statuses": {
+        "200": 22,
+        "401": 1
+      },
+      "p50Ms": 65.0,
+      "p95Ms": 236.0,
+      "p99Ms": 293.0,
+      "totalRequestSeconds": 2.269,
+      "maxMs": 293.0,
+      "sharePercent": 0.1244184788488586
+    },
+    {
+      "route": "GET /api/session/return",
+      "count": 23,
+      "bytes": 5393,
+      "statuses": {
+        "401": 2,
+        "200": 21
+      },
+      "p50Ms": 80.0,
+      "p95Ms": 205.0,
+      "p99Ms": 213.0,
+      "totalRequestSeconds": 2.113,
+      "maxMs": 213.0,
+      "sharePercent": 0.1244184788488586
+    },
+    {
+      "route": "GET /api/auth/me",
+      "count": 21,
+      "bytes": 12448,
+      "statuses": {
+        "200": 21
+      },
+      "p50Ms": 27.0,
+      "p95Ms": 62.0,
+      "p99Ms": 108.0,
+      "totalRequestSeconds": 0.682,
+      "maxMs": 108.0,
+      "sharePercent": 0.11359948068808828
+    },
+    {
+      "route": "POST /api/fleet/transfer",
+      "count": 21,
+      "bytes": 70349,
+      "statuses": {
+        "200": 21
+      },
+      "p50Ms": 345.0,
+      "p95Ms": 519.0,
+      "p99Ms": 613.0,
+      "totalRequestSeconds": 7.629,
+      "maxMs": 613.0,
+      "sharePercent": 0.11359948068808828
+    },
+    {
+      "route": "POST /api/mining/launch",
+      "count": 20,
+      "bytes": 81891,
+      "statuses": {
+        "200": 19,
+        "409": 1
+      },
+      "p50Ms": 303.0,
+      "p95Ms": 530.0,
+      "p99Ms": 1731.0,
+      "totalRequestSeconds": 7.465,
+      "maxMs": 1731.0,
+      "sharePercent": 0.10818998160770313
+    },
+    {
+      "route": "POST /api/planets/:id/build",
+      "count": 17,
+      "bytes": 54363,
+      "statuses": {
+        "200": 17
+      },
+      "p50Ms": 231.0,
+      "p95Ms": 454.0,
+      "p99Ms": 454.0,
+      "totalRequestSeconds": 4.399,
+      "maxMs": 454.0,
+      "sharePercent": 0.09196148436654766
+    },
+    {
+      "route": "POST /api/chat/read",
+      "count": 15,
+      "bytes": 705,
+      "statuses": {
+        "200": 15
+      },
+      "p50Ms": 35.0,
+      "p95Ms": 127.0,
+      "p99Ms": 127.0,
+      "totalRequestSeconds": 0.766,
+      "maxMs": 127.0,
+      "sharePercent": 0.08114248620577734
+    },
+    {
+      "route": "POST /api/planets/:id/upgrade",
+      "count": 15,
+      "bytes": 43873,
+      "statuses": {
+        "200": 15
+      },
+      "p50Ms": 261.0,
+      "p95Ms": 601.0,
+      "p99Ms": 601.0,
+      "totalRequestSeconds": 4.552,
+      "maxMs": 601.0,
+      "sharePercent": 0.08114248620577734
+    },
+    {
+      "route": "GET /api/clan/chat",
+      "count": 12,
+      "bytes": 33554,
+      "statuses": {
+        "200": 11,
+        "401": 1
+      },
+      "p50Ms": 69.0,
+      "p95Ms": 233.0,
+      "p99Ms": 233.0,
+      "totalRequestSeconds": 1.305,
+      "maxMs": 233.0,
+      "sharePercent": 0.06491398896462187
+    },
+    {
+      "route": "GET /api/season-archive",
+      "count": 11,
+      "bytes": 6204,
+      "statuses": {
+        "200": 11
+      },
+      "p50Ms": 36.0,
+      "p95Ms": 159.0,
+      "p99Ms": 159.0,
+      "totalRequestSeconds": 0.502,
+      "maxMs": 159.0,
+      "sharePercent": 0.05950448988423672
+    },
+    {
+      "route": "GET /api/servers",
+      "count": 10,
+      "bytes": 3334,
+      "statuses": {
+        "200": 10
+      },
+      "p50Ms": 14.0,
+      "p95Ms": 18.0,
+      "p99Ms": 18.0,
+      "totalRequestSeconds": 0.138,
+      "maxMs": 18.0,
+      "sharePercent": 0.054094990803851564
+    },
+    {
+      "route": "GET /api/community/policy",
+      "count": 9,
+      "bytes": 576,
+      "statuses": {
+        "200": 9
+      },
+      "p50Ms": 27.0,
+      "p95Ms": 115.0,
+      "p99Ms": 115.0,
+      "totalRequestSeconds": 0.311,
+      "maxMs": 115.0,
+      "sharePercent": 0.04868549172346641
+    },
+    {
+      "route": "GET /api/admin/clans/:id/chat",
+      "count": 8,
+      "bytes": 30078,
+      "statuses": {
+        "200": 8
+      },
+      "p50Ms": 48.0,
+      "p95Ms": 65.0,
+      "p99Ms": 65.0,
+      "totalRequestSeconds": 0.41,
+      "maxMs": 65.0,
+      "sharePercent": 0.04327599264308125
+    },
+    {
+      "route": "POST /api/fleet/launch",
+      "count": 7,
+      "bytes": 28475,
+      "statuses": {
+        "200": 6,
+        "409": 1
+      },
+      "p50Ms": 441.0,
+      "p95Ms": 616.0,
+      "p99Ms": 616.0,
+      "totalRequestSeconds": 3.053,
+      "maxMs": 616.0,
+      "sharePercent": 0.03786649356269609
+    },
+    {
+      "route": "POST /api/monuments/:id/quote",
+      "count": 7,
+      "bytes": 3647,
+      "statuses": {
+        "200": 5,
+        "400": 2
+      },
+      "p50Ms": 114.0,
+      "p95Ms": 187.0,
+      "p99Ms": 187.0,
+      "totalRequestSeconds": 0.859,
+      "maxMs": 187.0,
+      "sharePercent": 0.03786649356269609
+    },
+    {
+      "route": "OPTIONS /api/mining/status",
+      "count": 6,
+      "bytes": 0,
+      "statuses": {
+        "204": 6
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 11.0,
+      "p99Ms": 11.0,
+      "totalRequestSeconds": 0.023,
+      "maxMs": 11.0,
+      "sharePercent": 0.03245699448231094
+    },
+    {
+      "route": "OPTIONS /api/pirates",
+      "count": 6,
+      "bytes": 0,
+      "statuses": {
+        "204": 6
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.014,
+      "maxMs": 3.0,
+      "sharePercent": 0.03245699448231094
+    },
+    {
+      "route": "POST /api/planets/:id/maintenance",
+      "count": 5,
+      "bytes": 16455,
+      "statuses": {
+        "200": 5
+      },
+      "p50Ms": 348.0,
+      "p95Ms": 2261.0,
+      "p99Ms": 2261.0,
+      "totalRequestSeconds": 3.451,
+      "maxMs": 2261.0,
+      "sharePercent": 0.027047495401925782
+    },
+    {
+      "route": "OPTIONS /api/admin/clans/:id/chat",
+      "count": 4,
+      "bytes": 0,
+      "statuses": {
+        "204": 4
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.008,
+      "maxMs": 3.0,
+      "sharePercent": 0.021637996321540624
+    },
+    {
+      "route": "POST /api/monuments/:id/probe",
+      "count": 4,
+      "bytes": 1096,
+      "statuses": {
+        "200": 4
+      },
+      "p50Ms": 264.0,
+      "p95Ms": 267.0,
+      "p99Ms": 267.0,
+      "totalRequestSeconds": 1.049,
+      "maxMs": 267.0,
+      "sharePercent": 0.021637996321540624
+    },
+    {
+      "route": "POST /api/planets/:id/research",
+      "count": 4,
+      "bytes": 11441,
+      "statuses": {
+        "200": 4
+      },
+      "p50Ms": 183.0,
+      "p95Ms": 336.0,
+      "p99Ms": 336.0,
+      "totalRequestSeconds": 0.9,
+      "maxMs": 336.0,
+      "sharePercent": 0.021637996321540624
+    },
+    {
+      "route": "OPTIONS /api/auth/me",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.008,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/chat/unread",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/clan/badge",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/dm/unread",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.005,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/galaxy",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/galaxy/events",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 4.0,
+      "p99Ms": 4.0,
+      "totalRequestSeconds": 0.006,
+      "maxMs": 4.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/galaxy/traffic",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 5.0,
+      "p99Ms": 5.0,
+      "totalRequestSeconds": 0.007,
+      "maxMs": 5.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/intel",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 12.0,
+      "p99Ms": 12.0,
+      "totalRequestSeconds": 0.016,
+      "maxMs": 12.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/mining/field",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.006,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/monuments",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 4.0,
+      "p95Ms": 11.0,
+      "p99Ms": 11.0,
+      "totalRequestSeconds": 0.017,
+      "maxMs": 11.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/notifications",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 4.0,
+      "p95Ms": 9.0,
+      "p99Ms": 9.0,
+      "totalRequestSeconds": 0.013,
+      "maxMs": 9.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/planet",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 16.0,
+      "p99Ms": 16.0,
+      "totalRequestSeconds": 0.021,
+      "maxMs": 16.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/planets",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.007,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/reports",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.005,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/return-applications",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 11.0,
+      "p99Ms": 11.0,
+      "totalRequestSeconds": 0.016,
+      "maxMs": 11.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/rewards",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.008,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/season",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 5.0,
+      "p99Ms": 5.0,
+      "totalRequestSeconds": 0.01,
+      "maxMs": 5.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/session/brand-recall",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 5.0,
+      "p99Ms": 5.0,
+      "totalRequestSeconds": 0.009,
+      "maxMs": 5.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/session/pending",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.008,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/session/return",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.005,
+      "maxMs": 2.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/session/return/seen",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.005,
+      "maxMs": 3.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/skins",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 1.0,
+      "p99Ms": 1.0,
+      "totalRequestSeconds": 0.003,
+      "maxMs": 1.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/stream",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 1.0,
+      "p99Ms": 1.0,
+      "totalRequestSeconds": 0.003,
+      "maxMs": 1.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "OPTIONS /api/unknown-signals",
+      "count": 3,
+      "bytes": 0,
+      "statuses": {
+        "204": 3
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 5.0,
+      "p99Ms": 5.0,
+      "totalRequestSeconds": 0.006,
+      "maxMs": 5.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "POST /api/monuments/waves/:id/recall",
+      "count": 3,
+      "bytes": 2930,
+      "statuses": {
+        "200": 3
+      },
+      "p50Ms": 288.0,
+      "p95Ms": 308.0,
+      "p99Ms": 308.0,
+      "totalRequestSeconds": 0.878,
+      "maxMs": 308.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "POST /api/native/auth/refresh",
+      "count": 3,
+      "bytes": 1494,
+      "statuses": {
+        "200": 3
+      },
+      "p50Ms": 18.0,
+      "p95Ms": 43.0,
+      "p99Ms": 43.0,
+      "totalRequestSeconds": 0.073,
+      "maxMs": 43.0,
+      "sharePercent": 0.01622849724115547
+    },
+    {
+      "route": "GET /api/admin/account-deletion",
+      "count": 2,
+      "bytes": 66,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 16.0,
+      "p95Ms": 20.0,
+      "p99Ms": 20.0,
+      "totalRequestSeconds": 0.036,
+      "maxMs": 20.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "GET /api/dm/conversations",
+      "count": 2,
+      "bytes": 812,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 40.0,
+      "p95Ms": 94.0,
+      "p99Ms": 94.0,
+      "totalRequestSeconds": 0.134,
+      "maxMs": 94.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/admin/account-deletion",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 20.0,
+      "p99Ms": 20.0,
+      "totalRequestSeconds": 0.021,
+      "maxMs": 20.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/announcements",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 4.0,
+      "p99Ms": 4.0,
+      "totalRequestSeconds": 0.006,
+      "maxMs": 4.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/auth/security",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 2.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/chat/messages",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 3.0,
+      "p95Ms": 9.0,
+      "p99Ms": 9.0,
+      "totalRequestSeconds": 0.012,
+      "maxMs": 9.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/chat/read",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 2.0,
+      "p99Ms": 2.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 2.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/community/policy",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.005,
+      "maxMs": 3.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/leaderboard",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 2.0,
+      "p95Ms": 4.0,
+      "p99Ms": 4.0,
+      "totalRequestSeconds": 0.006,
+      "maxMs": 4.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "OPTIONS /api/planets/:id",
+      "count": 2,
+      "bytes": 0,
+      "statuses": {
+        "204": 2
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 3.0,
+      "p99Ms": 3.0,
+      "totalRequestSeconds": 0.004,
+      "maxMs": 3.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "POST /api/clan/chat/read",
+      "count": 2,
+      "bytes": 74,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 54.0,
+      "p95Ms": 88.0,
+      "p99Ms": 88.0,
+      "totalRequestSeconds": 0.142,
+      "maxMs": 88.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "POST /api/planets/:id/instrument",
+      "count": 2,
+      "bytes": 6070,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 247.0,
+      "p95Ms": 559.0,
+      "p99Ms": 559.0,
+      "totalRequestSeconds": 0.806,
+      "maxMs": 559.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "POST /api/planets/:id/repairs",
+      "count": 2,
+      "bytes": 7030,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 272.0,
+      "p95Ms": 456.0,
+      "p99Ms": 456.0,
+      "totalRequestSeconds": 0.728,
+      "maxMs": 456.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "POST /api/trade/launch",
+      "count": 2,
+      "bytes": 8063,
+      "statuses": {
+        "200": 2
+      },
+      "p50Ms": 262.0,
+      "p95Ms": 437.0,
+      "p99Ms": 437.0,
+      "totalRequestSeconds": 0.699,
+      "maxMs": 437.0,
+      "sharePercent": 0.010818998160770312
+    },
+    {
+      "route": "GET /api/admin/clans",
+      "count": 1,
+      "bytes": 432,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 16.0,
+      "p95Ms": 16.0,
+      "p99Ms": 16.0,
+      "totalRequestSeconds": 0.016,
+      "maxMs": 16.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/chat/reactions",
+      "count": 1,
+      "bytes": 109,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 25.0,
+      "p95Ms": 25.0,
+      "p99Ms": 25.0,
+      "totalRequestSeconds": 0.025,
+      "maxMs": 25.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/chronicle",
+      "count": 1,
+      "bytes": 1880,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 19.0,
+      "p95Ms": 19.0,
+      "p99Ms": 19.0,
+      "totalRequestSeconds": 0.019,
+      "maxMs": 19.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/clan/depot",
+      "count": 1,
+      "bytes": 117,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 34.0,
+      "p95Ms": 34.0,
+      "p99Ms": 34.0,
+      "totalRequestSeconds": 0.034,
+      "maxMs": 34.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/clan/events",
+      "count": 1,
+      "bytes": 576,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 29.0,
+      "p95Ms": 29.0,
+      "p99Ms": 29.0,
+      "totalRequestSeconds": 0.029,
+      "maxMs": 29.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/clan/me",
+      "count": 1,
+      "bytes": 635,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 55.0,
+      "p95Ms": 55.0,
+      "p99Ms": 55.0,
+      "totalRequestSeconds": 0.055,
+      "maxMs": 55.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/clans/leaderboard",
+      "count": 1,
+      "bytes": 634,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 37.0,
+      "p95Ms": 37.0,
+      "p99Ms": 37.0,
+      "totalRequestSeconds": 0.037,
+      "maxMs": 37.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/dm/conversations/:id/messages",
+      "count": 1,
+      "bytes": 1189,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 77.0,
+      "p95Ms": 77.0,
+      "p99Ms": 77.0,
+      "totalRequestSeconds": 0.077,
+      "maxMs": 77.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/planets/:id/abandon",
+      "count": 1,
+      "bytes": 79,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 24.0,
+      "p95Ms": 24.0,
+      "p99Ms": 24.0,
+      "totalRequestSeconds": 0.024,
+      "maxMs": 24.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/skins/polar-pricing",
+      "count": 1,
+      "bytes": 512,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 143.0,
+      "p95Ms": 143.0,
+      "p99Ms": 143.0,
+      "totalRequestSeconds": 0.143,
+      "maxMs": 143.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/skins/polar-shop",
+      "count": 1,
+      "bytes": 16,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 13.0,
+      "p95Ms": 13.0,
+      "p99Ms": 13.0,
+      "totalRequestSeconds": 0.013,
+      "maxMs": 13.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "GET /api/skins/shopier-shop",
+      "count": 1,
+      "bytes": 29,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 16.0,
+      "p95Ms": 16.0,
+      "p99Ms": 16.0,
+      "totalRequestSeconds": 0.016,
+      "maxMs": 16.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "OPTIONS /api/admin/clans",
+      "count": 1,
+      "bytes": 0,
+      "statuses": {
+        "204": 1
+      },
+      "p50Ms": 1.0,
+      "p95Ms": 1.0,
+      "p99Ms": 1.0,
+      "totalRequestSeconds": 0.001,
+      "maxMs": 1.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/auth/login",
+      "count": 1,
+      "bytes": 334,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 94.0,
+      "p95Ms": 94.0,
+      "p99Ms": 94.0,
+      "totalRequestSeconds": 0.094,
+      "maxMs": 94.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/chat/reactions",
+      "count": 1,
+      "bytes": 56,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 61.0,
+      "p95Ms": 61.0,
+      "p99Ms": 61.0,
+      "totalRequestSeconds": 0.061,
+      "maxMs": 61.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/clan/read",
+      "count": 1,
+      "bytes": 37,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 48.0,
+      "p95Ms": 48.0,
+      "p99Ms": 48.0,
+      "totalRequestSeconds": 0.048,
+      "maxMs": 48.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/dm/conversations/:id/read",
+      "count": 1,
+      "bytes": 37,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 49.0,
+      "p95Ms": 49.0,
+      "p99Ms": 49.0,
+      "totalRequestSeconds": 0.049,
+      "maxMs": 49.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/fleet/settle",
+      "count": 1,
+      "bytes": 3313,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 324.0,
+      "p95Ms": 324.0,
+      "p99Ms": 324.0,
+      "totalRequestSeconds": 0.324,
+      "maxMs": 324.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/intel/watch",
+      "count": 1,
+      "bytes": 109,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 76.0,
+      "p95Ms": 76.0,
+      "p99Ms": 76.0,
+      "totalRequestSeconds": 0.076,
+      "maxMs": 76.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/mining/runs/:id/recall",
+      "count": 1,
+      "bytes": 4082,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 234.0,
+      "p95Ms": 234.0,
+      "p99Ms": 234.0,
+      "totalRequestSeconds": 0.234,
+      "maxMs": 234.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/monuments/:id/send",
+      "count": 1,
+      "bytes": 1049,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 415.0,
+      "p95Ms": 415.0,
+      "p99Ms": 415.0,
+      "totalRequestSeconds": 0.415,
+      "maxMs": 415.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/planets/:id/abandon",
+      "count": 1,
+      "bytes": 3018,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 457.0,
+      "p95Ms": 457.0,
+      "p99Ms": 457.0,
+      "totalRequestSeconds": 0.457,
+      "maxMs": 457.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/planets/:id/interceptor/build",
+      "count": 1,
+      "bytes": 3059,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 115.0,
+      "p95Ms": 115.0,
+      "p99Ms": 115.0,
+      "totalRequestSeconds": 0.115,
+      "maxMs": 115.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/planets/:id/radiation-bombs/build",
+      "count": 1,
+      "bytes": 3509,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 151.0,
+      "p95Ms": 151.0,
+      "p99Ms": 151.0,
+      "totalRequestSeconds": 0.151,
+      "maxMs": 151.0,
+      "sharePercent": 0.005409499080385156
+    },
+    {
+      "route": "POST /api/unknown-signals/:id/dispatch",
+      "count": 1,
+      "bytes": 98,
+      "statuses": {
+        "200": 1
+      },
+      "p50Ms": 149.0,
+      "p95Ms": 149.0,
+      "p99Ms": 149.0,
+      "totalRequestSeconds": 0.149,
+      "maxMs": 149.0,
+      "sharePercent": 0.005409499080385156
+    }
+  ],
+  "source": "Astera Nginx completed request records; all statuses; UUID paths normalized; query strings omitted"
+}
