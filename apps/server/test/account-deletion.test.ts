@@ -16,6 +16,8 @@ import {
   notifications,
   planets,
   players,
+  probeReports,
+  probeWorldMemories,
   researchOrders,
   returnApplications,
   scheduledEvents,
@@ -510,6 +512,44 @@ describe('deleting an account at the player’s request', () => {
 
     await deleteAccount(f.db, f.clock, username);
     expect(await f.db.select().from(battleReports)).toHaveLength(0);
+  });
+
+  it.each([false, true])('cleans probes launched from a captured colony and preserves unrelated intel (latest memory survives: %s)', async (latestSurvives) => {
+    const colony = await capture(1);
+    const target = await neutralAt(2);
+    const observer = f.playerIds[1]!;
+    const report = async (originPlanetId: string) => {
+      const [mission] = await f.db.insert(missions).values({
+        seasonId: f.seasonId, kind: 'probe', status: 'resolved', ownerPlayerId: observer,
+        originPlanetId, targetPlanetId: target.id, fleet: {}, fuelPaid: 0, distance: 10,
+        departAt: f.clock.now(), arriveAt: f.clock.now(),
+      }).returning();
+      const [created] = await f.db.insert(probeReports).values({
+        observerPlayerId: observer, targetPlanetId: target.id, missionId: mission!.id,
+        accuracy: 1, stock: { low: 0, high: 0 }, defence: { low: 0, high: 0 },
+        fleetSize: { low: 0, high: 0 }, fleetHome: true, detected: false,
+        createdAt: f.clock.now(), deliveredAt: f.clock.now(),
+      }).returning();
+      return created!;
+    };
+    // Historical observer/target survive; only the former launch world is being erased.
+    const removed = await report(colony.id);
+    const kept = await report(neighbour);
+    await f.db.insert(probeWorldMemories).values({
+      observerPlayerId: observer, targetPlanetId: target.id,
+      reportId: latestSurvives ? kept.id : removed.id, seenAt: f.clock.now(),
+      silhouette: { owner: 'Neutral', controllerPlayerId: null, clan: null,
+        kind: 'NEUTRAL', coreLevel: 1, satellites: [], shielded: false },
+    });
+
+    await deleteAccount(f.db, f.clock, username);
+
+    expect((await f.db.select().from(probeReports)).map(row => row.id)).toEqual([kept.id]);
+    expect((await f.db.select().from(probeWorldMemories)).map(row => row.reportId))
+      .toEqual(latestSurvives ? [kept.id] : []);
+    expect(await f.db.select().from(missions).where(eq(missions.id, removed.missionId))).toHaveLength(0);
+    expect(await f.db.select().from(missions).where(eq(missions.id, kept.missionId))).toHaveLength(1);
+    expect(await f.db.select().from(accounts).where(eq(accounts.id, leaverAccount))).toHaveLength(0);
   });
 
   /** Somebody else's eyes on a world that stops existing come off it too. */

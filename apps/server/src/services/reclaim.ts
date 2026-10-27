@@ -592,17 +592,24 @@ export async function demolish(
   await tx
     .delete(watches)
     .where(or(eq(watches.observerPlayerId, playerId), inArray(watches.targetPlanetId, planetIds)));
+  // A captured launch world can leave another observer's report at a surviving target.
+  // Its memory must go before the report, and the report before its erased mission.
+  const probeReportScope = or(
+    eq(probeReports.observerPlayerId, playerId),
+    inArray(probeReports.targetPlanetId, planetIds),
+    ...(missionIds.length > 0 ? [inArray(probeReports.missionId, missionIds)] : []),
+  );
   await tx
     .delete(probeWorldMemories)
     .where(or(
       eq(probeWorldMemories.observerPlayerId, playerId),
       inArray(probeWorldMemories.targetPlanetId, planetIds),
+      inArray(probeWorldMemories.reportId,
+        tx.select({ id: probeReports.id }).from(probeReports).where(probeReportScope)),
     ));
   await tx
     .delete(probeReports)
-    .where(
-      or(eq(probeReports.observerPlayerId, playerId), inArray(probeReports.targetPlanetId, planetIds)),
-    );
+    .where(probeReportScope);
   await tx
     .delete(scanEvents)
     .where(or(inArray(scanEvents.targetPlanetId, planetIds), inArray(scanEvents.originPlanetId, planetIds)));
