@@ -56,6 +56,7 @@ import { restoreMonumentGarrison, scheduleFlightBoundary, scheduleHoldBoundary }
 import { hpSourcesForSeason } from './radiationSources.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { peakCoreLevels } from './player.js';
+import { attachAdmiral, prepareAdmiral, previewAdmiral } from './admiral.js';
 export { hpSourcesForSeason } from './radiationSources.js';
 
 type MonumentRow = typeof monuments.$inferSelect;
@@ -411,6 +412,8 @@ export interface MonumentSendInput {
   purpose: 'ATTACK' | 'REINFORCE';
   acknowledgeShieldLoss?: boolean;
   acknowledgeRadiationLoss?: boolean;
+  /** The commander ship escorts the wave out (Y9); a quote previews it and reserves nothing. */
+  admiral?: boolean;
   adminUsernames?: ReadonlySet<string>;
   clock: Clock;
 }
@@ -551,14 +554,19 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
     used, reserved, needed: bulk, total: locked.monument.capacity,
   });
   const tech = await techOf(tx, input.senderPlayerId);
-  const speed = fleetPace(fleet, { boost: fleetSpeedMult(origin.orbit), tech });
+  const escort = preview
+    ? { id: null, bonuses: await previewAdmiral(tx, origin, input.admiral ?? false) }
+    : await prepareAdmiral(tx, origin, input.admiral ?? false).then(plan => ({ id: plan?.id ?? null, bonuses: plan?.bonuses ?? null }));
+  // The escort flies the outbound leg; a won wave stays and it turns home alone (owner 2026-10-25).
+  const speed = fleetPace(fleet, { boost: fleetSpeedMult(origin.orbit), tech }) / (escort.bonuses?.time ?? 1);
   if (!(speed > 0) || fleetCount(fleet) === 0) throw new GameError('BAD_FLEET', 'That fleet cannot travel', 400);
   const meeting = monumentFlight(origin,locked.monument,locked.season,speed,origin.now);
   const {arriveAt} = meeting;
   const travelMinutes = meeting.minutes;
   const reserve = monumentMotionStart(locked.season) ? await reserveMonumentHome(tx, input.senderPlayerId, locked.monument, fleet) : null;
-  const outboundFuel = missionFuel(fleet, distance(origin, meeting.at), 1);
-  const fuel = reserve ? outboundFuel + reserve.total : outboundFuel * 2;
+  const plainOutbound = missionFuel(fleet, distance(origin, meeting.at), 1);
+  const outboundFuel = escort.bonuses ? Math.ceil(plainOutbound * escort.bonuses.fuel) : plainOutbound;
+  const fuel = reserve ? outboundFuel + reserve.total : outboundFuel + plainOutbound;
   assertFuel(fuel, origin.deuterium);
   // A native monument wave must reach the target while the season is still
   // open. Once it has arrived, the season-close adapter can transfer it home
@@ -608,7 +616,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
     targetPosition: meeting.at,
     outboundForecast: { doseHp: protectedRadiationHp(doseHp, tech), destroyed: fleetCount(arrival.destroyed), fleet: arrival.fleet, health },
   };
-  return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote, targetAt: meeting.at, reserve };
+  return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote, targetAt: meeting.at, reserve, admiralId: escort.id };
 }
 
 export async function quoteMonument(tx: Tx, input: MonumentSendInput): Promise<MonumentQuote> {
@@ -633,6 +641,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
     sentAt: origin.now, arriveAt: context.arriveAt, radiationSettledAt: origin.now,
   }).returning();
   if (!wave) throw new Error('monument dispatch insert returned no row');
+  await attachAdmiral(tx, context.admiralId, 'monument', wave.id);
   await markProgress(tx, input.senderPlayerId, origin.now); // D212
   const remaining: Fleet = { ...origin.homeFleet };
   for (const [hull, count] of fleetEntries(fleet)) remaining[hull] = (remaining[hull] ?? 0) - count;

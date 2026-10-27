@@ -112,6 +112,7 @@ export const pendingStrip = {
   recallStarted: "プロスペクターが帰還を開始しました",
   craftCount: "{{count}}隻",
   craftUnknown: "艦船の内訳を確認できません",
+  escorted: "+ 司令官艦 · {{ship}} {{level}}",
   incomingHint: "接近警報 · 出発地は霧で不明",
   /**
    * THE SAME WARNING, WHEN THE CRAFT IS ON YOUR DISC. D162.

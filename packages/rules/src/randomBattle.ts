@@ -44,10 +44,12 @@ const ownerId = (stack: JointAttackerStack | DefenderStack): string => 'contribu
 /** Physical order is independent of wave enumeration and identical-wave splitting. */
 function shipsOf(stacks: readonly (JointAttackerStack | DefenderStack)[], maintenance: boolean): Ship[] {
   return stacks.flatMap((stack, owner) => shipHealthGroups(stack.fleet, stack.damage).flatMap(lot => {
-    const tech = hullTech(stack.tech.tech, lot.hull), maxHp = HULLS[lot.hull].hp * tech.hp;
+    // An admiral's hull bonus (Y9 `withAdmiral`) stands on the hull and the ship shield, as in `statsFor`.
+    const hullMult = stack.tech.hullMult ?? 1;
+    const tech = hullTech(stack.tech.tech, lot.hull), maxHp = HULLS[lot.hull].hp * tech.hp * hullMult;
     const hp = maxHp * ((10000 - lot.damageBp) - (lot.remainderBp ?? 0)) / 10000;
     return Array.from({ length: lot.count }, (): Ship => ({ hull: lot.hull, owner, hp, maxHp,
-      shield: stack.tech.shipShields === false ? 0 : shipShieldHp(stack.tech.tech, lot.hull),
+      shield: stack.tech.shipShields === false ? 0 : shipShieldHp(stack.tech.tech, lot.hull) * hullMult,
       attack: HULLS[lot.hull].atk * tech.atk * (stack.tech.damageMult ?? 1),
       canFire: !maintenance || ('maintenanceExempt' in stack && stack.maintenanceExempt === true) || HULLS[lot.hull].ground || shipCanFight(lot),
       retreated: false, arrival: lot, arrivalHp: hp }));

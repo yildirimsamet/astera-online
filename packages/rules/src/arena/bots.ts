@@ -1,9 +1,10 @@
+import { statsOf } from './progression.js';
 import { assistSteer, leadPoint } from './aim.js';
-import { nearestObstacle, segmentObstacles, type Contact } from './collision.js';
+import { nearestObstacle, segmentObstacles, surfaceGap, type Contact } from './collision.js';
 import { sampleAssist } from './controls.js';
 import { ARENA_TUNING as T } from './tuning.js';
 import { alive, type ArenaIntent, type Pilot, type SmokePuff } from './pilot.js';
-import { pilotVisible } from './visibility.js';
+import { pilotInSight } from './visibility.js';
 import { toLocal } from './vec.js';
 import type { Rng } from '../types.js';
 import type { ArenaLayout, Vec3 } from './types.js';
@@ -43,6 +44,10 @@ function steerTo(out: ArenaIntent, bot: Pilot, x: number, y: number, z: number, 
   out.steerY = clamp(-local.y / local.z * gain);
 }
 
+/** The band by the rim and the ceiling that `avoidance` turns every bot back out of. */
+const nearEdge = (layout: ArenaLayout, p: { x: number; y: number; z: number }): boolean =>
+  Math.sqrt(p.x * p.x + p.z * p.z) > layout.radius - 350 || Math.abs(p.y) > layout.halfHeight - 160;
+
 /** Looks ahead along the heading and steers away from rock, the rim and the ceiling. */
 function avoidance(world: BotWorld, bot: Pilot, out: ArenaIntent, ignore: number): void {
   const q = bot.q;
@@ -59,8 +64,7 @@ function avoidance(world: BotWorld, bot: Pilot, out: ArenaIntent, ignore: number
     out.fire = false;
     return;
   }
-  const planar = Math.sqrt(bot.p.x * bot.p.x + bot.p.z * bot.p.z);
-  if (planar > T.arenaRadius - 350 || Math.abs(bot.p.y) > T.arenaHalfHeight - 160) {
+  if (nearEdge(world.layout, bot.p)) {
     steerTo(out, bot, bot.p.x * 0.2, 0, bot.p.z * 0.2, 2);
   }
 }
@@ -79,10 +83,10 @@ function nearestVisible(world: BotWorld, bot: Pilot, range: number): Pilot | und
   let best: Pilot | undefined; let bestDistance = range * range;
   for (let j = 0; j <= world.drones.length; j++) {
     const other = j === 0 ? world.pilot : world.drones[j - 1];
-    if (!other || other === bot || !alive(other) || !pilotVisible(world, bot, other)) continue;
+    if (!other || other === bot || !alive(other)) continue;
     const dx = other.p.x - bot.p.x; const dy = other.p.y - bot.p.y; const dz = other.p.z - bot.p.z;
     const d = dx * dx + dy * dy + dz * dz;
-    if (d < bestDistance) { bestDistance = d; best = other; }
+    if (d < bestDistance && pilotInSight(world, bot, other)) { bestDistance = d; best = other; }
   }
   return best;
 }
@@ -115,16 +119,28 @@ function engage(world: BotWorld, bot: Pilot, brain: BotBrain, target: Pilot, out
   assistSteer(magnet, bot, target.p, velocity, out.steerX, out.steerY, out.fire);
   sampleAssist(out, magnet.x, magnet.y);
   // Badly hurt and chased: smoke, turbo away and break the line of fire.
-  if (bot.hull < T.hull * T.botFleeHull && world.tick - bot.lastDamage < T.tickRate * 2) {
+  if (bot.hull < statsOf(bot).hull * T.botFleeHull && world.tick - bot.lastDamage < T.tickRate * 2) {
     brain.mode = 'flee'; brain.timer = T.tickRate * 6;
   }
+}
+
+/**
+ * True inside a structure's bounds (the cave, a kit building): bots mine in the open. Steering
+ * by avoidance alone, a miner would hang on the walls; and the inside is the pilots' quiet farm.
+ */
+function indoors(layout: ArenaLayout, p: Vec3): boolean {
+  return layout.structures.some(s => {
+    const dx = p.x - s.p.x; const dy = p.y - s.p.y; const dz = p.z - s.p.z;
+    return dx * dx + dy * dy + dz * dz < s.scale * s.scale;
+  });
 }
 
 function nearestCrystal(world: BotWorld, bot: Pilot): number {
   let best = -1; let bestDistance = Infinity;
   world.layout.deposits.forEach((index, slot) => {
     const crystal = world.layout.obstacles[index];
-    if (!crystal || world.dry[slot] || (world.minerals[slot] ?? 0) < 8) return;
+    // A vein in the edge band is out of reach: the edge guard would turn the miner back forever.
+    if (!crystal || world.dry[slot] || (world.minerals[slot] ?? 0) < 8 || nearEdge(world.layout, crystal.p) || indoors(world.layout, crystal.p)) return;
     const dx = crystal.p.x - bot.p.x; const dy = crystal.p.y - bot.p.y; const dz = crystal.p.z - bot.p.z;
     const d = dx * dx + dy * dy + dz * dz;
     if (d < bestDistance) { bestDistance = d; best = index; }
@@ -173,8 +189,8 @@ function mine(world: BotWorld, bot: Pilot, brain: BotBrain, out: ArenaIntent): v
   if (brain.goal < 0 || world.dry[world.layout.deposits.indexOf(brain.goal)]) brain.goal = nearestCrystal(world, bot);
   const crystal = world.layout.obstacles[brain.goal];
   if (!crystal) { out.throttle = 0.5; return; }
-  const dx = crystal.p.x - bot.p.x; const dy = crystal.p.y - bot.p.y; const dz = crystal.p.z - bot.p.z;
-  const surface = Math.sqrt(dx * dx + dy * dy + dz * dz) - crystal.radius;
+  // The real face, not the bounding ball (Y2): beyond 400 m the exact distance does not matter.
+  const surface = surfaceGap(world.layout, brain.goal, bot.p, 400);
   steerTo(out, bot, crystal.p.x, crystal.p.y, crystal.p.z, 2.5);
   out.throttle = surface < 140 ? 0.12 : surface < 400 ? 0.4 : 0.9;
   brain.mode = 'approach';

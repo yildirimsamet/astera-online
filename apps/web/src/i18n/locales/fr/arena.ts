@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "Vaisseau du commandant",
-  "menuHint": "Arène d’essai · récolte du minerai, marque à une sortie",
+  "menuHint": "Le Yarık · récolte du minerai, ramène-le à ta capitale, fais grandir ton vaisseau",
   "join": "Rejoindre",
   "nav": "Vaisseau du commandant",
-  "trial": "Essai de vol",
-  "title": "Pilote ton vaisseau",
-  "intro": "Récolte alliage, cristal et deutérium dans une même zone avec les pilotes invités. Traverse le minerai, pose-toi sur les gisements ; la soute d'un vaisseau abattu se disperse. Chaque unité ramenée à une sortie rapporte des points.",
-  "enter": "Lancer le vol",
   "start": "Démarrer",
   "leave": "Retour à la galaxie",
   "loadingCode": "Chargement des commandes",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "Suis les drones",
   "speedUnit": "m/s",
   "secondsUnit": "s",
-  "trialNote": "Essai de vol · progression non enregistrée",
   "gpuRestore": "Restauration de la vue de vol"
 } as const;

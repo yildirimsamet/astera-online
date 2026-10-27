@@ -17,6 +17,8 @@ import {
   useEffect,
   useRef,
   useState,
+  lazy,
+  Suspense,
   type ReactNode,
   type SyntheticEvent,
 } from 'react';
@@ -129,10 +131,13 @@ function useLiveClanHome(home: ClanHome | undefined): ClanHome | undefined {
 }
 
 /** One mobile-first surface: discovery outside, command console inside. */
-export function ClanScreen({ initialTab = 'overview', onOpenClanChat }: {
+const ArenaTeamPanel = lazy(() => import('../arena/TeamPanel.js'));
+
+export function ClanScreen({ initialTab = 'overview', onOpenClanChat, arena }: {
   initialTab?: ClanTab;
   /** The war room's "Clan chat" (E9): chat, as its own page, on the clan channel. */
   onOpenClanChat?: () => void;
+  arena?: { credential: () => Promise<string | null>; onEnter: () => void };
 }) {
   const { t } = useTranslation();
   const home = useClanHome();
@@ -195,6 +200,9 @@ export function ClanScreen({ initialTab = 'overview', onOpenClanChat }: {
   return (
     <div className="flex flex-col">
       <ClanHeader home={inside} />
+      {arena && tab === 'overview' && <div className="border-y border-v2-line bg-v2-void px-3 py-3">
+        <Suspense fallback={null}><ArenaTeamPanel credential={arena.credential} onEnter={arena.onEnter} prepareOnly /></Suspense>
+      </div>}
       <div className="sticky top-0 z-10 border-y border-v2-line bg-v2-void px-3 py-2">
         <Segmented
           options={tabs}

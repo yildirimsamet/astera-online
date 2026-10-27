@@ -37,6 +37,24 @@ describe('monument reports and actionable news', () => {
       defenderCargoRetreated: true, survivors: 1, unitsLost: 0, lootDeuterium: 0, dominion: 0 });
     expect(describeNotification(event, at.getTime())).toContain('Defending cargo ships retreated.');
   });
+  it('names the escort: home alone after a capture, to repair after a loss, and the attacker’s to the holder (Y9)', () => {
+    const view = (over: object) => {
+      const parsed = reportsSchema.parse({ reports: [{ ...wire, ...over }], rivals: [] }).reports[0];
+      if (parsed?.kind !== 'MONUMENT') throw new Error('Expected a monument report');
+      return render(<MonumentReportSheet report={parsed} onClose={vi.fn()} />);
+    };
+    const admirals = [{ side: 'attack', ship: 'kilavuz', level: 6 }];
+    const won = view({ control: 'ATTACKER', grade: 'DECISIVE', admirals });
+    expect(won.container.querySelector('[data-effect="admiral"]')).toHaveTextContent(/Kılavuz Lv 6.*fleet holds the monument.*flew home alone/i);
+    won.unmount();
+    const lost = view({ admirals });
+    expect(lost.container.querySelector('[data-effect="admiral"]')).toHaveTextContent(/repair for 60 min/i);
+    lost.unmount();
+    const held = view({ attacking: false, admirals: [{ side: 'attack', ship: 'akinci', level: 2 }] });
+    expect(held.container.querySelector('[data-effect="admiral"]')).toHaveTextContent(/attacker’s commander ship.*Akıncı Lv 2/i);
+    held.unmount();
+    expect(view({}).container.querySelector('[data-effect="admiral"]')).toBeNull();
+  });
   it.each([[6, 'Fragmented Dyson Sphere'], [7, 'Sleeping Guardian'], [8, 'Ancient War Cemetery']] as const)(
     'keeps the new monument %i actionable in inbound news, probe deliveries and native battle reports', (ordinal, name) => {
       const added = { ...target, monumentOrdinal: ordinal };

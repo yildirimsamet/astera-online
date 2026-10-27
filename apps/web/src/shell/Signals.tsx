@@ -305,6 +305,9 @@ export function SignalsFeed({
  * is why the exhaustiveness of this map is asserted in `notification-routes.test`.
  */
 export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
+  arena_ship_ready: { panel: 'ship' },
+  arena_team_share: { panel: 'ship' },
+  arena_sortie_end: { panel: 'ship' },
   unknown_signal_result: { panel: null },
   monument_inbound: { panel: null },
   monument_probe_lost: { panel: null },

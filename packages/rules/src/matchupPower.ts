@@ -47,12 +47,14 @@ export interface Matchup { attacker: SidePower; defender: SidePower }
 export function powerUnits(fleet: Fleet, side: CombatSide, damage?: HpDamageLots | null, maintenance = false): PowerUnit[] {
   return shipHealthGroups(fleet, damage).map(lot => {
     const hull = HULLS[lot.hull], tech = hullTech(side.tech, lot.hull);
-    const maxHp = hull.hp * tech.hp;
+    // An admiral's hull bonus stands on the hull and the ship shield alike, as `statsFor` fights it.
+    const hullMult = side.hullMult ?? 1;
+    const maxHp = hull.hp * tech.hp * hullMult;
     const hp = maxHp * (10000 - lot.damageBp - (lot.remainderBp ?? 0)) / 10000;
     const fires = !maintenance || hull.ground || shipCanFight(lot);
     return { hull: lot.hull, cls: hull.cls, count: lot.count, maxHp,
       attack: fires ? hull.atk * tech.atk * (side.damageMult ?? 1) : 0,
-      ehp: hp + (side.shipShields === false ? 0 : shipShieldHp(side.tech, lot.hull)) };
+      ehp: hp + (side.shipShields === false ? 0 : shipShieldHp(side.tech, lot.hull) * hullMult) };
   });
 }
 

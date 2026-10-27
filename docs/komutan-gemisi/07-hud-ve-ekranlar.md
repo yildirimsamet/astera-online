@@ -85,8 +85,9 @@ hasar yaylarına ayrılır (S56). Sahneyi kapatan HUD öğeleri toplamda güvenl
 
 ## 3. Bilgi önceliği (S57)
 
-- **Her zaman:** nişangâh; gövde; yakıt (+ **bu hızla kalan süre**); hız; gaz seviyesi; yetenek
-  durumları; ambar.
+- **Her zaman:** nişangâh; gövde (+ varsa kalkan katmanı, ayrı mavi çizgi ve sayı); yakıt (+ **bu
+  hızla kalan süre**); şarjör (ATEŞ tuşunun halkası + kalan mermi, KG-K29); hız; gaz seviyesi;
+  yetenek durumları; ambar.
 - **Gerektiğinde öne çıkar (bağlam paneli, tek seferde bir; öncelik sırası):** bağlantı kopması
   sayacı > yakıt bitti / kurtarma sayacı > çıkış paneli > doğuş kalkanı sayacı > sınır uyarısı.
 - **Anlık bildirimler (1,5–2 sn):** "KALKAN KALKTI — …" (nedeniyle: ateş / çıkış alanı / kargo /
@@ -117,12 +118,13 @@ hasar yaylarına ayrılır (S56). Sahneyi kapatan HUD öğeleri toplamda güvenl
 
 - **Nişangâh:** ince aralıklı artı, beyaz çekirdek + koyu kontur (her zeminde okunur, S53).
   Onaylı isabette beyaz **X**; öldürmede büyük X + halka.
-- **Düşman çerçevesi:** kırmızı köşe çerçevesi + "RAKİP • 320 m" (izlenen hedefte komutan adı
+- **Düşman çerçevesi:** yalnız **700 m ve altında** (sahip 2026-10-21: daha uzaktakini oyuncu kendisi
+  fark etsin; kenar oku ve ◇ de bu sınırda, `marks.ts`). Kırmızı köşe çerçevesi + "RAKİP • 320 m" (izlenen hedefte komutan adı
   ve küçük gövde çubuğu — "kaçayım mı savaşayım mı" kararı için, S74). Diğer görünür düşmanlarda
   yalnız çerçeve + mesafe. Duman arkasında veya görünmezde **hiçbiri** (S76–S77).
 - **Önleme işareti:** küçük içi boş elmas, kendi rengi; nişangâhtan ayırt edilir ([03 §9](03-ucus-ve-kontroller.md)).
-- **Ekran dışı:** çıkışlar her zaman (turkuaz elmas + mesafe); görünür düşmanlar
-  `offscreenEnemyDist` içinde kenarda kırmızı ok.
+- **Ekran dışı:** çıkışlar her zaman (turkuaz elmas + mesafe); görünür düşmanlar 700 m içinde
+  kenarda kırmızı ok.
 - **Hasar yönü:** nişangâh çevresinde saldırgan yönüne yay; arkadan geliyorsa alt yay +
   arka görüş çerçevesi bir an parlar.
 - **Arka görüşte:** düşmanlara küçük köşe çerçevesi, isim yok.

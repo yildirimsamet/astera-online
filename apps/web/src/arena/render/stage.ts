@@ -1,13 +1,16 @@
 import * as THREE from 'three';
+import { SimplifyModifier } from 'three/addons/modifiers/SimplifyModifier.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '@astera/rules';
-import { ARENA_TUNING as T, type ArenaLayout, type ArenaObstacle, type ArenaWorld, type BoxObstacle } from '@astera/rules/arena';
+import {
+  ARENA_CATALOG, ARENA_TUNING as T, obstacleSize, STRUCTURE_CATALOG, STRUCTURE_MESH_BASE, type ArenaLayout, type ArenaWorld, type BoxObstacle,
+  type MeshObstacle, type Quaternion, type Vec3,
+} from '@astera/rules/arena';
 import { FARM_HEX } from '../farmColors.js';
-import type { ArenaAssets, PreparedModel } from '../assets/load.js';
+import { packTexture, type ArenaAssets, type PreparedModel } from '../assets/load.js';
+import { type BillboardEntry, createBillboards, createHalos } from './halos.js';
 import { hullMaterial, setUniform, tickHull } from './materials.js';
-import { proceduralRock } from './procedural.js';
-
-/** Where an obstacle is drawn, so a landed ship can be set onto its true surface. */
-export interface RockInstance { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4 }
+import { catalogRock } from './procedural.js';
 
 interface BatchMember { id: number; matrix: THREE.Matrix4; x: number; y: number; z: number; radius: number; slot: number; tint: THREE.Color | null }
 const frustum = new THREE.Frustum();
@@ -17,14 +20,75 @@ const eyePoint = new THREE.Vector3();
 const glowColor = new THREE.Color();
 
 /**
- * Every rock of one model in one draw. Each frame only the instances inside the camera's
- * view and reach are written to the front of the buffer, so a narrow portrait view pays
- * for the quarter of the field it actually sees.
+ * Which level of detail a rock of bounding radius `radius`, `distance` metres from the eye,
+ * draws. Full detail — the collider itself — wherever a ship can reach it within seconds;
+ * lighter levels only far off, where the fog and the distance hide the difference.
  */
-class RockBatch {
+export function rockLevel(distance: number, radius: number): number {
+  return distance < 300 + radius * 6 ? 0 : distance < 2400 + radius * 12 ? 1 : 2;
+}
+
+/** Shares of the rock's vertices the lighter levels keep. */
+const LEVEL_SHARES = [0.35, 0.12] as const;
+const simplifier = new SimplifyModifier();
+const cornerKey = (p: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, i: number): string =>
+  `${String(p.getX(i))},${String(p.getY(i))},${String(p.getZ(i))}`;
+
+/**
+ * A lighter copy of one rock part. Welded on position alone first: a UV seam splits a corner in
+ * two, and the modifier would collapse the halves apart and open the seam into a crack. Edge
+ * collapses keep surviving corners where they were, so each output corner takes its UV and
+ * normal back from the source corner at the same spot.
+ */
+function simplified(source: THREE.BufferGeometry, share: number): THREE.BufferGeometry {
+  const shape = new THREE.BufferGeometry();
+  shape.setAttribute('position', source.getAttribute('position'));
+  shape.setIndex(source.index);
+  const welded = mergeVertices(shape);
+  const corners = welded.getAttribute('position').count;
+  const result = simplifier.modify(welded, Math.floor(corners * (1 - share)));
+  const position = source.getAttribute('position'); const uv = source.getAttribute('uv'); const normal = source.getAttribute('normal');
+  // The collider stand-in has no UVs; every part has normals.
+  const mapped = source.hasAttribute('uv');
+  const original = new Map<string, number>();
+  const used = source.index ? Array.from(source.index.array) : Array.from({ length: position.count }, (_, i) => i);
+  for (const i of used) { const key = cornerKey(position, i); if (!original.has(key)) original.set(key, i); }
+  const out = result.getAttribute('position');
+  const uvs = new Float32Array(out.count * 2); const normals = new Float32Array(out.count * 3);
+  for (let i = 0; i < out.count; i++) {
+    const from = original.get(cornerKey(out, i)) ?? 0;
+    if (mapped) { uvs[i * 2] = uv.getX(from); uvs[i * 2 + 1] = uv.getY(from); }
+    normals[i * 3] = normal.getX(from); normals[i * 3 + 1] = normal.getY(from); normals[i * 3 + 2] = normal.getZ(from);
+  }
+  if (mapped) result.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  result.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  result.computeBoundingSphere();
+  return result;
+}
+
+/**
+ * The lighter levels of a rock model (Y3): each rock part simplified, its material shared; a
+ * crystal's glowing shards stay as they are (few triangles, and their shape is the read).
+ */
+export function rockLevels(model: PreparedModel): PreparedModel[] {
+  return LEVEL_SHARES.map(share => ({
+    ...model, lods: [],
+    parts: model.parts.map(part => part.glow ? part : { ...part, geometry: simplified(part.geometry, share) }),
+  }));
+}
+
+/**
+ * Every rock of one catalog shape in a draw per level of detail. Each frame only the
+ * instances inside the camera's view and reach are written to the front of their level's
+ * buffer, so a narrow portrait view pays for the quarter of the field it actually sees.
+ */
+export class RockBatch {
+  /** Per level of detail, full first: one instanced mesh per model part. */
+  readonly levels: THREE.InstancedMesh[][];
   readonly meshes: THREE.InstancedMesh[];
-  constructor(model: PreparedModel, private readonly members: BatchMember[]) {
-    this.meshes = model.parts.map(part => {
+  private readonly counts: number[];
+  constructor(readonly shape: number, readonly model: PreparedModel, readonly members: readonly BatchMember[]) {
+    this.levels = [model, ...(model.lods ?? [])].map(level => level.parts.map(part => {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, members.length);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       if (part.glow) { mesh.userData.glow = true; mesh.setColorAt(0, glowColor.set('#ffffff')); mesh.instanceColor?.setUsage(THREE.DynamicDrawUsage); }
@@ -34,16 +98,21 @@ class RockBatch {
       }
       mesh.frustumCulled = false; mesh.name = 'arena-rock'; mesh.count = 0;
       return mesh;
-    });
+    }));
+    this.meshes = this.levels.flat();
+    this.counts = this.levels.map(() => 0);
   }
   cull(eye: THREE.Vector3, reach: number, world: ArenaWorld): void {
-    let n = 0;
+    this.counts.fill(0);
     for (const m of this.members) {
       const dx = m.x - eye.x; const dy = m.y - eye.y; const dz = m.z - eye.z;
-      if (Math.sqrt(dx * dx + dy * dy + dz * dz) - m.radius > reach) continue;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (distance - m.radius > reach) continue;
       bounds.center.set(m.x, m.y, m.z); bounds.radius = m.radius;
       if (!frustum.intersectsSphere(bounds)) continue;
-      for (const mesh of this.meshes) {
+      const level = Math.min(rockLevel(distance, m.radius), this.levels.length - 1);
+      const n = this.counts[level] ?? 0;
+      for (const mesh of this.levels[level] ?? []) {
         mesh.setMatrixAt(n, m.matrix);
         if (mesh.userData.glow === true && m.slot >= 0) {
           // A crystal's glow follows its reserve: a dry one is dark and easy to tell apart.
@@ -54,18 +123,19 @@ class RockBatch {
           if (m.tint && m.slot >= 0 && !world.dry[m.slot]) mesh.setColorAt(n, m.tint); else mesh.setColorAt(n, glowColor.setRGB(1, 1, 1));
         }
       }
-      n++;
+      this.counts[level] = n + 1;
     }
-    for (const mesh of this.meshes) {
-      mesh.count = n; mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    }
+    this.levels.forEach((level, i) => {
+      for (const mesh of level) {
+        mesh.count = this.counts[i] ?? 0; mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
+    });
   }
 }
 
 export interface Stage {
   scene: THREE.Scene;
-  rockInstances: Map<number, RockInstance>;
   sunDirection: THREE.Vector3;
   /** How deep the camera sits in a belt's haze, and its colour (for the post veil). */
   haze: { color: THREE.Color; amount: number };
@@ -84,11 +154,38 @@ const smooth = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-const hash = (id: number, salt: number): number => {
-  let h = Math.imul(id ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(salt + 1, 0xc2b2ae35);
-  h ^= h >>> 13; h = Math.imul(h, 0x27d4eb2d); h ^= h >>> 15;
-  return (h >>> 0) / 4294967296;
-};
+/**
+ * Every rock and crystal drawn as its collider (Y2: the rock you see is the rock you hit):
+ * the pack's model for its catalog shape, or the collider itself as a stand-in, at the
+ * obstacle's exact position, turn and scale.
+ */
+export function buildRocks(assets: ArenaAssets, layout: ArenaLayout): RockBatch[] {
+  const slots = new Map<number, number>();
+  layout.deposits.forEach((index, slot) => slots.set(index, slot));
+  // Ore-veined rock leans to its farm's colour; a crystal formation glows instead.
+  const veinTint = (o: MeshObstacle): THREE.Color | null => {
+    const slot = slots.get(o.id);
+    if (slot === undefined || o.kind === 'crystal') return null;
+    return new THREE.Color('#ffffff').lerp(new THREE.Color(FARM_HEX[layout.depositKinds[slot] ?? 0] ?? FARM_HEX[0]), 0.55);
+  };
+  const shapes = new Map<number, MeshObstacle[]>();
+  for (const o of layout.obstacles) {
+    if (o.shape !== 'mesh' || o.kind === 'structure') continue;
+    const list = shapes.get(o.mesh) ?? [];
+    list.push(o); shapes.set(o.mesh, list);
+  }
+  const position = new THREE.Vector3(); const turn = new THREE.Quaternion(); const scale = new THREE.Vector3();
+  return Array.from(shapes, ([shape, obstacles]) => {
+    const key = ARENA_CATALOG[shape]?.key;
+    const model = (key === undefined ? undefined : assets.colliders.get(key)) ?? catalogRock(shape);
+    // Built once per model: a pack model keeps its levels across flights.
+    model.lods ??= rockLevels(model);
+    return new RockBatch(shape, model, obstacles.map(o => ({
+      id: o.id, x: o.p.x, y: o.p.y, z: o.p.z, radius: o.radius, slot: slots.get(o.id) ?? -1, tint: veinTint(o),
+      matrix: new THREE.Matrix4().compose(position.set(o.p.x, o.p.y, o.p.z), turn.set(o.q.x, o.q.y, o.q.z, o.q.w), scale.setScalar(o.scale)),
+    })));
+  });
+}
 
 function instanced(model: PreparedModel, count: number): THREE.InstancedMesh[] {
   return model.parts.map(part => {
@@ -104,6 +201,110 @@ function placeModel(model: PreparedModel, scale: number): THREE.Group {
   for (const part of model.parts) group.add(new THREE.Mesh(part.geometry, part.material));
   group.scale.setScalar(scale);
   return group;
+}
+
+/** Where each Rift structure is drawn: exactly its collider's pose, in metres (visual = collision). */
+export function structurePlacements(layout: ArenaLayout): { id: number; key: string; position: Vec3; turn: Quaternion }[] {
+  return layout.obstacles.flatMap(o => {
+    if (o.kind !== 'structure' || o.shape !== 'mesh') return [];
+    const key = STRUCTURE_CATALOG[o.mesh - STRUCTURE_MESH_BASE]?.key;
+    return key ? [{ id: o.id, key, position: o.p, turn: o.q }] : [];
+  });
+}
+
+/** Metres past which a structure is not drawn: the clear-space fog has already hidden it. */
+export const STRUCTURE_FADE = 8000;
+
+/**
+ * A structure model with its levels of detail, each swapped in at a multiple of its size, and
+ * nothing past `STRUCTURE_FADE` (the Rift has ~90 kit pieces: a draw call each, for fog).
+ * The full model holds to ~1 km (owner 2026-10-22: a swap at ~160 m happened in plain sight
+ * inside a building, and the coarse kit levels show hairline holes); a 10 % band each way
+ * keeps a pilot hovering at the line from flickering between two levels.
+ */
+export function structureLevels(model: PreparedModel): THREE.LOD {
+  const lod = new THREE.LOD();
+  const swaps = [Math.max(900, model.radius * 8), Math.min(STRUCTURE_FADE - 1000, Math.max(2000, model.radius * 20))];
+  lod.addLevel(placeModel(model, 1), 0, 0.1);
+  (model.lods ?? []).forEach((level, i) => lod.addLevel(placeModel(level, 1), swaps[Math.min(i, 1)] ?? STRUCTURE_FADE, 0.1));
+  lod.addLevel(new THREE.Object3D(), STRUCTURE_FADE);
+  return lod;
+}
+
+/**
+ * The pilot's lamp (owner 2026-10-22: inside a building you could not tell a wall from a room).
+ * How deep the eye is in or at a structure: 1 within three quarters of a piece's reach, easing
+ * to 0 at its bounding sphere. Out in open space the sun does the lighting.
+ */
+export function lampLevel(layout: ArenaLayout, p: Vec3): number {
+  let level = 0;
+  for (const s of layout.structures) {
+    for (const index of s.colliders) {
+      const o = layout.obstacles[index];
+      if (!o) continue;
+      const d = Math.sqrt((p.x - o.p.x) ** 2 + (p.y - o.p.y) ** 2 + (p.z - o.p.z) ** 2);
+      if (d < o.radius) level = Math.max(level, smooth(o.radius, o.radius * 0.75, d));
+      if (level === 1) return 1;
+    }
+  }
+  return level;
+}
+
+// Lamp light on a surface: from the eye (the view-space origin), falling off over ~150 m, on the
+// surface's own albedo whatever its metalness (a dark metal hull still shows its shape), a third
+// of it even on faces turned away so a room never goes black.
+const LAMP_GLSL = `
+{
+  float lampD = length(vViewPosition);
+  float lampFall = lampLevel * 1.6 / (1.0 + lampD * lampD * 4.4e-5);
+  float lampFace = 0.3 + 0.7 * max(dot(normal, vViewPosition / max(lampD, 1.0)), 0.0);
+  reflectedLight.indirectDiffuse += diffuseColor.rgb * lampFall * lampFace;
+}`;
+
+/** The lamp's uniform and lines, added after the scene's own lights. */
+export function addLamp(shader: { uniforms: Record<string, THREE.IUniform>; fragmentShader: string }, level: { value: number }): void {
+  shader.uniforms.lampLevel = level;
+  shader.fragmentShader = `uniform float lampLevel;\n${shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>${LAMP_GLSL}`)}`;
+}
+
+/**
+ * Puts the lamp into a structure material's own shader: a few instructions on structure pixels
+ * only, one shared uniform, no scene light (a three.js light costs every pixel of every material
+ * and recompiles them all when it comes or goes). Idempotent: shared materials pass here often.
+ */
+export function withLamp<M extends THREE.Material>(material: M, level: { value: number }): M {
+  if (material.userData.lamp === true) return material;
+  material.userData.lamp = true;
+  const compile = material.onBeforeCompile.bind(material);
+  const key = material.customProgramCacheKey.bind(material);
+  material.onBeforeCompile = (shader, renderer) => {
+    compile(shader, renderer);
+    addLamp(shader, level);
+  };
+  material.customProgramCacheKey = () => `${key()}|lamp`;
+  return material;
+}
+
+/**
+ * For something that never moves once placed: its world matrices computed now, and every later
+ * scene update skips it and all below it (perf study 2026-10-22: ~7 % of a frame went on
+ * recomputing still rock, structures and glows).
+ */
+export function freezeStatic(object: THREE.Object3D): void {
+  object.updateMatrixWorld(true);
+  object.traverse(o => { o.matrixAutoUpdate = false; o.matrixWorldAutoUpdate = false; });
+}
+
+/** No model loaded: the collider itself, flat-shaded, so what you see is still what you hit. */
+function structureStandIn(layout: ArenaLayout, o: MeshObstacle, material: THREE.Material): THREE.Mesh {
+  const mesh = layout.meshes[o.mesh];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(mesh?.positions ?? [], 3));
+  geometry.setIndex(new THREE.BufferAttribute(mesh?.indices ?? new Uint32Array(), 1));
+  geometry.computeVertexNormals();
+  const result = new THREE.Mesh(geometry, material);
+  result.scale.setScalar(o.scale);
+  return result;
 }
 
 function boxMesh(o: BoxObstacle, material: THREE.Material): THREE.Mesh {
@@ -134,6 +335,93 @@ function beacon(texture: THREE.Texture | undefined, color: string, height: numbe
   return new THREE.Mesh(geometry, material);
 }
 
+const within = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }, radius: number): boolean =>
+  (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z) <= radius * radius;
+
+/** The exit zone: a fresnel shell, faint face-on and bright at the edge, with slow scan bands. */
+function exitDomeMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    uniforms: { color: { value: new THREE.Color('#2ee6c8') }, time: { value: 0 }, strength: { value: 0.4 } },
+    vertexShader: `varying vec3 vN; varying vec3 vView; varying float vY;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vView = normalize(-mv.xyz);
+        vY = position.y; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 color; uniform float time; uniform float strength; varying vec3 vN; varying vec3 vView; varying float vY;
+      void main(){ float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), 3.0);
+        float band = smoothstep(0.86, 1.0, sin(vY * 0.25 - time * 1.2)) * 0.35;
+        gl_FragColor = vec4(color * (rim * 0.55 + band * rim) * strength, 1.0); }`,
+  });
+}
+
+/** The landing circle's hold arc: dim all round, filling bright as the 3 s hold runs. */
+function exitRingMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { color: { value: new THREE.Color('#2ee6c8') }, progress: { value: 0 }, time: { value: 0 } },
+    vertexShader: 'varying vec2 vP; void main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 color; uniform float progress; uniform float time; varying vec2 vP;
+      void main(){ float turn = fract(atan(vP.x, -vP.y) / 6.2831853 + 1.0);
+        float segment = step(0.18, fract(turn * 24.0));
+        float lit = step(turn, progress);
+        float idle = 0.22 + 0.08 * sin(time * 2.2);
+        gl_FragColor = vec4(color * segment * mix(idle, 1.6, lit), 1.0); }`,
+  });
+}
+
+/**
+ * Ninety big dark rocks for the far parallax: drawn without colliders, so all of each lies at
+ * least a kilometre beyond the boundary (owner item 7: nothing you see is something you fly through).
+ */
+export function farRing(radius: number, halfHeight: number, random: () => number): { x: number; y: number; z: number; rx: number; ry: number; rz: number; scale: number }[] {
+  return Array.from({ length: 90 }, () => {
+    const angle = random() * Math.PI * 2; const distance = radius + 1500 + random() * 6000;
+    const y = (random() * 2 - 1) * halfHeight * 1.2;
+    return { x: Math.cos(angle) * distance, y, z: Math.sin(angle) * distance,
+      rx: random() * 6, ry: random() * 6, rz: random() * 6, scale: 80 + random() * 380 };
+  });
+}
+
+/**
+ * A soft dust puff: round falloff broken by two octaves of value noise, white with alpha, so a
+ * sprite tints it. Built in code: the fx smoke is a frame sheet, which draws as hard blotches.
+ */
+function dustTexture(random: () => number): THREE.DataTexture {
+  const size = 128; const grid = 8;
+  const lattice = Array.from({ length: (grid + 1) * (grid + 1) }, () => random());
+  const noise = (u: number, v: number, scale: number): number => {
+    const x = (u * scale) % grid; const y = (v * scale) % grid;
+    const ix = Math.floor(x); const iy = Math.floor(y); const fx = x - ix; const fy = y - iy;
+    const sx = fx * fx * (3 - 2 * fx); const sy = fy * fy * (3 - 2 * fy);
+    const at = (i: number, j: number): number => lattice[(j % grid) * (grid + 1) + (i % grid)] ?? 0;
+    return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+  };
+  const data = new Uint8Array(size * size * 4);
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      const u = i / size; const v = j / size;
+      const r = Math.hypot(u - 0.5, v - 0.5) * 2;
+      const fall = Math.max(0, 1 - r); const soft = fall * fall * (3 - 2 * fall);
+      const n = noise(u, v, 4) * 0.65 + noise(u, v, 8) * 0.35;
+      const k = (j * size + i) * 4;
+      data[k] = 255; data[k + 1] = 255; data[k + 2] = 255;
+      data[k + 3] = Math.round(255 * soft * (0.35 + 0.65 * n));
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size);
+  texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Clear space (v6 §5): half gone at 3.5 km, nearly all by 6 km; lights still carry. */
+const CLEAR_FOG = 0.00024;
+/** Deep in a dust cloud: ~90 % gone at the 350 m dust sight (V6f). */
+const DUST_FOG = 0.0043;
+/** Scene fog density for how deep the eye is in a dense belt and in a dust cloud (each 0..1). */
+export function fogDensity(belt: number, dust: number): number {
+  return Math.max(CLEAR_FOG + belt * 0.0013, CLEAR_FOG + dust * (DUST_FOG - CLEAR_FOG));
+}
+
 export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: THREE.WebGLRenderer): Stage {
   const scene = new THREE.Scene();
   const disposables: { dispose(): void }[] = [];
@@ -145,13 +433,14 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
     scene.background = assets.sky; scene.backgroundIntensity = 0.95; scene.backgroundBlurriness = 0;
   } else scene.background = new THREE.Color('#03070d');
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envSource = assets.env ?? assets.sky;
+  // PMREM reads an image cube; a KTX2 sky lights the scene only through the pack's own env cube.
+  const envSource = assets.env ?? (assets.sky instanceof THREE.CubeTexture ? assets.sky : null);
   if (envSource) {
     const env = pmrem.fromCubemap(envSource).texture;
     scene.environment = env; scene.environmentIntensity = 0.75; disposables.push(env);
   }
   pmrem.dispose();
-  scene.fog = new THREE.FogExp2('#06111c', 0.00009);
+  scene.fog = new THREE.FogExp2('#06111c', fogDensity(0, 0));
 
   const sun = new THREE.DirectionalLight('#e2ecff', 2.7);
   sun.position.copy(SUN).multiplyScalar(4000);
@@ -170,133 +459,70 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
   }
 
   // --- Rock and crystal: one instanced draw per model part, culled per instance on the CPU.
-  const rockInstances = new Map<number, RockInstance>();
-  const allRocks = assets.rocks.length > 0 ? assets.rocks : [proceduralRock(0), proceduralRock(1), proceduralRock(2)];
-  const triangles = (model: PreparedModel): number => model.parts.reduce((sum, part) =>
-    sum + (part.geometry.index ? part.geometry.index.count : part.geometry.getAttribute('position').count) / 3, 0);
-  // Small rocks are many and far: they get the light meshes; detail goes to big rock.
-  const lightRocks = allRocks.filter(model => triangles(model) <= 900);
-  const rockModels = lightRocks.length > 0 ? lightRocks : allRocks;
-  const heavyRocks = allRocks.filter(model => triangles(model) > 900);
-  const giantModels = assets.giants.length > 0 ? assets.giants : rockModels;
-  const crystalModels = assets.crystals.length > 0 ? assets.crystals : [proceduralRock(3, true)];
-  const groups = new Map<PreparedModel, ArenaObstacle[]>();
-  const crystalSlots = new Map<number, number>();
-  layout.deposits.forEach((index, slot) => crystalSlots.set(index, slot));
-  for (const o of layout.obstacles) {
-    if (o.shape !== 'sphere' || o.kind === 'structure') continue;
-    const list = o.kind === 'crystal' ? crystalModels : o.radius > 100 ? giantModels
-      : o.radius > 34 && heavyRocks.length > 0 ? heavyRocks : rockModels;
-    const model = list[Math.floor(hash(o.id, 1) * list.length)] ?? list[0];
-    if (!model) continue;
-    const members = groups.get(model) ?? [];
-    members.push(o); groups.set(model, members);
-  }
-  const veinTint = (o: ArenaObstacle): THREE.Color | null => {
-    const slot = crystalSlots.get(o.id);
-    if (slot === undefined || o.kind === 'crystal') return null;
-    return new THREE.Color('#ffffff').lerp(new THREE.Color(FARM_HEX[layout.depositKinds[slot] ?? 0] ?? FARM_HEX[0]), 0.55);
-  };
+  const batches = buildRocks(assets, layout);
+  for (const batch of batches) for (const mesh of batch.meshes) scene.add(mesh);
   const pose = new THREE.Object3D();
-  const batches: RockBatch[] = [];
-  for (const [model, obstacles] of groups) {
-    const members = obstacles.map(o => {
-      pose.position.set(o.p.x, o.p.y, o.p.z);
-      pose.rotation.set(hash(o.id, 2) * 6.283, hash(o.id, 3) * 6.283, hash(o.id, 4) * 6.283);
-      // Mean surface on the round collider: dents and bumps average out.
-      const scale = o.radius / Math.max(0.2, model.mean) * 1.02;
-      pose.scale.setScalar(scale); pose.updateMatrix();
-      const member = { id: o.id, matrix: pose.matrix.clone(), x: o.p.x, y: o.p.y, z: o.p.z,
-        radius: model.radius * scale, slot: crystalSlots.get(o.id) ?? -1, tint: veinTint(o) };
-      const first = model.parts[0];
-      if (first) rockInstances.set(o.id, { geometry: first.geometry, matrix: member.matrix });
-      return member;
-    });
-    const batch = new RockBatch(model, members);
-    for (const mesh of batch.meshes) scene.add(mesh);
-    batches.push(batch);
-  }
 
   // Deposit halos in their farm's colour: what a miner is looking for from far away.
   // Veined rock gets a tighter halo than a crystal so the rock still reads as rock.
   const halo = assets.fx.get('glowDot') ?? assets.fx.get('flare');
-  const crystalHalos: THREE.Sprite[] = [];
-  layout.deposits.forEach((index, slot) => {
+  const haloEntries = layout.deposits.map((index, slot) => {
     const o = layout.obstacles[index];
-    if (!o) return;
-    const kind = layout.depositKinds[slot] ?? 1;
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: halo ?? null, color: FARM_HEX[kind] ?? FARM_HEX[1], transparent: true,
-      blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5, toneMapped: false }));
-    sprite.position.set(o.p.x, o.p.y, o.p.z); sprite.scale.setScalar(o.radius * (o.kind === 'crystal' ? 5.5 : 3.4));
-    scene.add(sprite); crystalHalos.push(sprite);
+    return { p: o?.p ?? { x: 0, y: 0, z: 0 }, color: FARM_HEX[layout.depositKinds[slot] ?? 1] ?? FARM_HEX[1],
+      size: o ? obstacleSize(layout, o) * (o.kind === 'crystal' ? 5.5 : 3.4) : 0 };
   });
+  const crystalHalos = createHalos(halo ?? null, haloEntries);
+  scene.add(crystalHalos.mesh);
 
   // --- Structures: the colliders are the hull; models dress them.
-  const detailKey = Array.from(assets.textures.keys()).find(key => key.endsWith('/tex/mining-d.webp'));
-  const detail = detailKey ? assets.textures.get(detailKey) : undefined;
+  const detail = packTexture(assets.textures, 'mining-d');
   const wall = hullMaterial({ detail: detail ?? null, color: '#5f6b78', strip: '#2ee6c8' });
   const deckMaterial = hullMaterial({ detail: detail ?? null, color: '#66727e', strip: '#2ee6c8', deck: true });
-  const warm = hullMaterial({ detail: detail ?? null, color: '#5c5852', strip: '#ffb15c' });
-  hulls.push(wall, deckMaterial, warm);
+  hulls.push(wall, deckMaterial);
   const beacons: THREE.Mesh[] = [];
-  const portals: THREE.Sprite[] = [];
-  // The portal energy is an 8×8 flip-book: one frame shown at a time, shared by every gate.
-  const portalEnergy = assets.fx.get('portalEnergy')?.clone();
-  if (portalEnergy) { portalEnergy.repeat.set(1 / 8, 1 / 8); portalEnergy.needsUpdate = true; }
+  // Exits (owner 2026-10-22, item 5): no ring — a ring says "fly through", the rule is "stop
+  // and wait". The zone is a faint dome you can see the edge of; the deck carries a landing
+  // circle whose arc fills while the 3 s hold runs.
+  const exitDomes: { mesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>; centre: THREE.Vector3 }[] = [];
+  const exitRings: { mesh: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial>; centre: THREE.Vector3 }[] = [];
+  const domeGeometry = new THREE.SphereGeometry(T.exitRadius, 48, 24);
+  const ringGeometry = new THREE.RingGeometry(29, 33, 96, 1);
+  ringGeometry.rotateX(-Math.PI / 2);
+  disposables.push(domeGeometry, ringGeometry);
+  for (const exit of layout.exits) {
+    const dome = new THREE.Mesh(domeGeometry, exitDomeMaterial());
+    dome.position.set(exit.x, exit.y, exit.z); dome.renderOrder = 2; scene.add(dome);
+    exitDomes.push({ mesh: dome, centre: dome.position });
+    const ring = new THREE.Mesh(ringGeometry, exitRingMaterial());
+    ring.position.set(exit.x, exit.y - T.shipHitRadius + 0.4, exit.z); scene.add(ring);
+    exitRings.push({ mesh: ring, centre: new THREE.Vector3(exit.x, exit.y, exit.z) });
+    // A teal column over the deck: the exit read from kilometres away.
+    const column = beacon(undefined, '#2ee6c8', 600, 46);
+    column.position.set(exit.x, exit.y - T.shipHitRadius, exit.z); scene.add(column); beacons.push(column);
+    disposables.push(dome.material, ring.material);
+  }
+  // The heart, the cave, the station, the wreck and the docks: one model each, at its collider's exact pose.
+  const lamp = { value: 0 };
+  let lampTime = 0;
+  const standIn = withLamp(new THREE.MeshStandardMaterial({ color: '#59616b', roughness: 0.9, metalness: 0.1, flatShading: true }), lamp);
+  disposables.push(standIn);
+  for (const model of assets.structures.values()) {
+    for (const level of [model, ...(model.lods ?? [])]) for (const part of level.parts) withLamp(part.material, lamp);
+  }
+  for (const { id, key, position, turn } of structurePlacements(layout)) {
+    const o = layout.obstacles[id];
+    if (o?.shape !== 'mesh') continue;
+    const model = assets.structures.get(key);
+    const object = model ? structureLevels(model) : structureStandIn(layout, o, standIn);
+    if (object instanceof THREE.Mesh) disposables.push(object.geometry);
+    object.position.set(position.x, position.y, position.z); object.quaternion.set(turn.x, turn.y, turn.z, turn.w);
+    scene.add(object);
+  }
+  // A box collider is never invisible: drawn as the hull it is.
   for (const s of layout.structures) {
-    const yaw = Math.atan2(-s.uz, s.ux);
     for (const index of s.colliders) {
       const o = layout.obstacles[index];
-      if (o?.shape !== 'box') continue;
-      if (s.kind === 'wreck' && assets.wrecks.length > 0) continue;
-      scene.add(boxMesh(o, s.decks.includes(index) ? deckMaterial : s.kind === 'outpost' ? warm : wall));
-    }
-    if (s.kind === 'hub' && assets.hub) {
-      const model = placeModel(assets.hub, 170);
-      model.position.set(s.p.x, s.p.y + 70, s.p.z); scene.add(model);
-    }
-    if (s.kind === 'gate') {
-      const deck = layout.obstacles[s.decks[0] ?? -1];
-      const top = deck?.shape === 'box' ? deck.p.y + deck.hy : s.p.y;
-      if (assets.gate) {
-        const model = placeModel(assets.gate, 70);
-        model.position.set(s.p.x, top + 62, s.p.z); model.rotation.y = yaw; scene.add(model);
-      }
-      const energy = new THREE.Sprite(new THREE.SpriteMaterial({ map: portalEnergy ?? halo ?? null, color: '#57ffe0',
-        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.85, toneMapped: false }));
-      energy.position.set(s.p.x, top + 62, s.p.z); energy.scale.setScalar(96);
-      scene.add(energy); portals.push(energy);
-      const column = beacon(undefined, '#2ee6c8', 900, 46);
-      column.position.set(s.p.x, top, s.p.z); scene.add(column); beacons.push(column);
-    }
-    if (s.kind === 'outpost') {
-      const dressing = assets.outposts[s.id % Math.max(1, assets.outposts.length)];
-      if (dressing) {
-        const model = placeModel(dressing, 95);
-        const back = new THREE.Vector3(-s.uz, 0, s.ux).multiplyScalar(130);
-        model.position.set(s.p.x + back.x, s.p.y + 40, s.p.z + back.z); model.rotation.y = yaw; scene.add(model);
-      }
-      if (assets.generator) {
-        const model = placeModel(assets.generator, 18);
-        model.position.set(s.p.x + s.ux * 40, s.p.y + 60 + 18, s.p.z + s.uz * 40); scene.add(model);
-      }
-      const column = beacon(undefined, '#ffb15c', 420, 30);
-      column.position.set(s.p.x, s.p.y + 60, s.p.z); scene.add(column); beacons.push(column);
-    }
-    if (s.kind === 'wreck') {
-      const [bowModel, sternModel] = [assets.wrecks[0], assets.wrecks[1] ?? assets.wrecks[0]];
-      const parts: [PreparedModel | undefined, number][] = [[bowModel, s.colliders[0] ?? -1], [sternModel, s.colliders[1] ?? -1]];
-      for (const [model, index] of parts) {
-        const o = layout.obstacles[index];
-        if (!model || o?.shape !== 'box') continue;
-        const group = placeModel(model, o.hx * 2.15);
-        group.position.set(o.p.x, o.p.y, o.p.z); group.rotation.y = yaw + Math.PI / 2; scene.add(group);
-      }
-    }
-    if (s.kind === 'relay' && assets.relay) {
-      const o = layout.obstacles[s.colliders[0] ?? -1];
-      const model = placeModel(assets.relay, (o?.radius ?? 16) * 1.6);
-      model.position.set(s.p.x, s.p.y, s.p.z); model.rotation.y = hash(s.id, 9) * 6.28; scene.add(model);
+      if (o?.shape === 'box') scene.add(boxMesh(o, s.decks.includes(index) ? deckMaterial : wall));
     }
   }
 
@@ -306,7 +532,10 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
   // take over (one pass, no overdraw).
   const nebula = [assets.fx.get('nebulaBlue'), assets.fx.get('nebulaPink')];
   const palettes = [['#3d78c9', '#5a6fe0'], ['#8a5ac9', '#4f6ad8'], ['#3a8fc4', '#7a5cd0']] as const;
-  const hazes: { sprite: THREE.Sprite; base: number; reach: number }[] = [];
+  // One instanced draw per texture (perf 2026-10-22): each entry was a Sprite and a draw call.
+  type Cloud = BillboardEntry & { base: number; reach: number };
+  const hazes: { cloud: ReturnType<typeof createBillboards>; entries: Cloud[] }[] = [];
+  const nebulaEntries: Cloud[][] = [[], []];
   const belts: { field: (typeof layout.fields)[number]; tint: THREE.Color }[] = [];
   let beltIndex = 0;
   for (const field of layout.fields) {
@@ -314,18 +543,41 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
     const palette = palettes[beltIndex++ % palettes.length] ?? palettes[0];
     belts.push({ field, tint: new THREE.Color(palette[0]).lerp(new THREE.Color(palette[1]), 0.4) });
     for (let i = 0; i < 6; i++) {
-      const map = nebula[i % 2];
       const base = 0.2 + random() * 0.06;
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: map ?? null, color: palette[i % 2],
-        transparent: true, opacity: base, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-      sprite.position.set(field.p.x + (random() * 2 - 1) * field.radius * 0.85, field.p.y + (random() * 2 - 1) * field.height * 0.7,
-        field.p.z + (random() * 2 - 1) * field.radius * 0.85);
+      const p = { x: field.p.x + (random() * 2 - 1) * field.radius * 0.85, y: field.p.y + (random() * 2 - 1) * field.height * 0.7,
+        z: field.p.z + (random() * 2 - 1) * field.radius * 0.85 };
       const size = field.radius * (1.5 + random() * 1.0);
-      sprite.scale.setScalar(size);
-      sprite.material.rotation = random() * 6.28;
-      scene.add(sprite); hazes.push({ sprite, base, reach: size / 2 });
+      nebulaEntries[i % 2]?.push({ p, color: palette[i % 2] ?? palette[0], size, turn: random() * 6.28, base, reach: size / 2 });
     }
   }
+  nebulaEntries.forEach((entries, i) => {
+    if (entries.length) hazes.push({ cloud: createBillboards(nebula[i] ?? null, entries, { blending: THREE.AdditiveBlending, fog: 'none' }), entries });
+  });
+  // --- Dust clouds (V6f): soft dun sprites all through the volume, not additive, so a ship a
+  // little way in shows through few of them and one deep in it through many: the drawn cloud
+  // agrees with the sight rule. They fade out before the lens like the belt haze; inside, the
+  // fog closes to the dust sight instead.
+  const dustMap = dustTexture(random);
+  disposables.push(dustMap);
+  for (const cloud of layout.dust) {
+    const entries: Cloud[] = [];
+    for (let placed = 0; placed < 46;) {
+      const x = random() * 2 - 1; const y = random() * 2 - 1; const z = random() * 2 - 1;
+      if (x * x + y * y + z * z > 1) continue;
+      placed++;
+      const base = 0.16 + random() * 0.08;
+      const color = new THREE.Color('#a88d68').offsetHSL(0, 0, (random() - 0.5) * 0.1);
+      const p = { x: cloud.p.x + x * cloud.radius * 0.8, y: cloud.p.y + y * cloud.radius * 0.8, z: cloud.p.z + z * cloud.radius * 0.8 };
+      const size = 280 + random() * 240;
+      entries.push({ p, color, size, turn: random() * 6.28, base, reach: size / 2 });
+    }
+    hazes.push({ cloud: createBillboards(dustMap, entries, { blending: THREE.NormalBlending, fog: 'mix', centre: cloud.p }), entries });
+  }
+  for (const { cloud } of hazes) scene.add(cloud.mesh);
+  let hazeSpin = 0;
+  const dustTint = new THREE.Color('#8a6f4c');
+  const dustFog = new THREE.Color('#1c160f');
+
   const haze = { color: new THREE.Color('#2a4f86'), amount: 0 };
   const clearFog = new THREE.Color('#06111c');
   const fogTint = new THREE.Color();
@@ -348,16 +600,20 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
   shell.frustumCulled = false; shell.renderOrder = 4; shell.visible = false;
   scene.add(shell);
 
-  // --- Far parallax: big dark rock beyond the boundary gives the void a scale.
-  const far = rockModels[0];
-  if (far) {
-    const ringMeshes = instanced(far, 90);
-    for (let i = 0; i < 90; i++) {
-      const angle = random() * Math.PI * 2; const distance = 4200 + random() * 5200;
-      pose.position.set(Math.cos(angle) * distance, (random() * 2 - 1) * 1600, Math.sin(angle) * distance);
-      pose.rotation.set(random() * 6, random() * 6, random() * 6); pose.scale.setScalar(80 + random() * 380); pose.updateMatrix();
+  // --- Far parallax: big dark rock beyond the boundary gives the void a scale. Ninety of
+  // them are always drawn, so they are the field rock with the fewest triangles.
+  const lightest = ARENA_CATALOG.map((entry, shape) => ({ entry, shape })).filter(({ entry }) => entry.family === 'rock')
+    .sort((a, b) => a.entry.glowFrom - b.entry.glowFrom)[0]?.shape ?? 0;
+  // Always 4 km or more away: the lightest level of detail.
+  const lightModel = batches.find(batch => batch.shape === lightest)?.model;
+  const far = lightModel?.lods?.at(-1) ?? lightModel ?? catalogRock(lightest);
+  {
+    const ring = farRing(layout.radius, layout.halfHeight, random);
+    const ringMeshes = instanced(far, ring.length);
+    ring.forEach((rock, i) => {
+      pose.position.set(rock.x, rock.y, rock.z); pose.rotation.set(rock.rx, rock.ry, rock.rz); pose.scale.setScalar(rock.scale); pose.updateMatrix();
       for (const mesh of ringMeshes) mesh.setMatrixAt(i, pose.matrix);
-    }
+    });
     for (const mesh of ringMeshes) { mesh.computeBoundingSphere(); scene.add(mesh); }
   }
 
@@ -375,34 +631,48 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
   const wallMesh = new THREE.Mesh(new THREE.CylinderGeometry(layout.radius, layout.radius, layout.halfHeight * 2, 128, 1, true), boundary);
   scene.add(wallMesh);
 
+  // Everything placed above stays put; only the haze shell follows the eye.
+  for (const child of scene.children) if (child !== shell) freezeStatic(child);
   return {
-    scene, rockInstances, sunDirection: SUN.clone(), haze,
+    scene, sunDirection: SUN.clone(), haze,
     update(time, world, eye) {
       for (const material of hulls) tickHull(material, time);
+      // The lamp eases in and out over about a third of a second.
+      lamp.value += (lampLevel(layout, eye) - lamp.value) * Math.min(1, Math.max(0, time - lampTime) * 3);
+      lampTime = time;
       setUniform(boundary, 'eye', eye);
       for (const column of beacons) {
         const material = column.material;
         if (material instanceof THREE.ShaderMaterial) setUniform(material, 'time', time);
       }
-      if (portalEnergy) {
-        const frame = Math.floor(time * 18) % 64;
-        portalEnergy.offset.set((frame % 8) / 8, 1 - (Math.floor(frame / 8) + 1) / 8);
+      const pilot = world.pilot;
+      const hold = pilot.extraction / (T.exitHold * T.tickRate);
+      for (const { mesh, centre } of exitDomes) {
+        const inside = within(centre, pilot.p, T.exitRadius);
+        setUniform(mesh.material, 'time', time);
+        // Brighter edge while you are in it: the border you must not leave.
+        setUniform(mesh.material, 'strength', inside ? 0.8 : 0.3);
       }
-      portals.forEach((sprite, i) => {
-        // Fade the energy out as the camera flies through it, so the deck stays readable.
-        const near = Math.min(1, Math.max(0, (sprite.position.distanceTo(eye) - 50) / 120));
-        sprite.material.opacity = (0.75 + 0.15 * Math.sin(time * 1.7 + i)) * near;
-      });
-      for (const { sprite, base, reach } of hazes) {
-        sprite.material.rotation += 0.00025;
-        const near = smooth(reach * 0.55, reach * 1.1, sprite.position.distanceTo(eye));
-        sprite.material.opacity = base * near;
-        sprite.visible = near > 0.01;
+      for (const { mesh, centre } of exitRings) {
+        const inside = within(centre, pilot.p, T.exitRadius);
+        setUniform(mesh.material, 'progress', inside ? hold : 0);
+        setUniform(mesh.material, 'time', time);
       }
-      crystalHalos.forEach((sprite, slot) => {
+      hazeSpin += 0.00025;
+      for (const { cloud, entries } of hazes) {
+        let shown = false;
+        entries.forEach(({ p, base, reach }, i) => {
+          const near = smooth(reach * 0.55, reach * 1.1, Math.sqrt((p.x - eye.x) ** 2 + (p.y - eye.y) ** 2 + (p.z - eye.z) ** 2));
+          cloud.setOpacity(i, near > 0.01 ? base * near : 0);
+          shown ||= near > 0.01;
+        });
+        cloud.mesh.visible = shown;
+        cloud.setSpin(hazeSpin);
+      }
+      haloEntries.forEach(({ p, size }, slot) => {
         const reserve = (world.minerals[slot] ?? T.crystalReserve) / T.crystalReserve;
-        const near = smooth(sprite.scale.x * 0.12, sprite.scale.x * 0.4, sprite.position.distanceTo(eye));
-        sprite.material.opacity = (world.dry[slot] ? 0.05 : 0.18 + reserve * 0.42 + 0.06 * Math.sin(time * 2 + slot)) * near;
+        const near = smooth(size * 0.12, size * 0.4, Math.sqrt((p.x - eye.x) ** 2 + (p.y - eye.y) ** 2 + (p.z - eye.z) ** 2));
+        crystalHalos.setOpacity(slot, (world.dry[slot] ? 0.05 : 0.18 + reserve * 0.42 + 0.06 * Math.sin(time * 2 + slot)) * near);
       });
       // Inside a dense belt (and a little before its edge) the haze thickens; in the open, space is clear.
       let inside = 0;
@@ -413,19 +683,26 @@ export function buildStage(assets: ArenaAssets, layout: ArenaLayout, renderer: T
         if (depth > inside) { inside = depth; haze.color.copy(tint); }
       }
       const thick = Math.min(1, inside * 1.8);
-      haze.amount = thick * 0.06;
-      scene.backgroundIntensity = 0.95 - thick * 0.25;
-      shell.visible = thick > 0.01;
+      // In a dust cloud the murk closes in over its outer 150 m and the sky goes nearly out.
+      let dust = 0;
+      for (const cloud of layout.dust) dust = Math.max(dust, Math.min(1, (cloud.radius - eye.distanceTo(cloud.p)) / 150));
+      if (dust > thick) haze.color.copy(dustTint);
+      const murk = Math.max(thick, dust);
+      haze.amount = thick * 0.06 + dust * 0.03;
+      scene.backgroundIntensity = 0.95 - Math.max(thick * 0.25, dust * 0.92);
+      shell.visible = murk > 0.01;
       if (shell.visible) {
         shell.position.copy(eye);
-        setUniform(shellMaterial, 'strength', thick * 0.34); setUniform(shellMaterial, 'drift', time * 0.004);
+        setUniform(shellMaterial, 'strength', Math.max(thick * 0.34, dust * 0.12)); setUniform(shellMaterial, 'drift', time * 0.004);
         setUniform(shellMaterial, 'color', haze.color);
       }
       // Fogged rock fades towards the dark of space: a bright fog colour turned distant
       // rock into flat pale cut-outs against the darker sky.
       if (scene.fog instanceof THREE.FogExp2) {
-        scene.fog.density = 0.00009 + thick * 0.0013;
-        scene.fog.color.copy(clearFog).lerp(fogTint.copy(haze.color).multiplyScalar(0.08), thick);
+        scene.fog.density = fogDensity(thick, dust);
+        crystalHalos.setFog(scene.fog.density);
+        scene.fog.color.copy(clearFog).lerp(fogTint.copy(haze.color).multiplyScalar(0.08), thick).lerp(dustFog, dust);
+        for (const { cloud } of hazes) cloud.setFog(scene.fog.density, scene.fog.color);
       }
     },
     cull(camera, reach, world) {

@@ -17,6 +17,7 @@ import {
   type PowerRange,
   type TechLevels,
 } from '@astera/rules';
+import type { AdmiralBonuses } from '@astera/rules/arena';
 import type { IntelView, Report } from '../api/schemas.js';
 import { combatClassLabel } from '../i18n/names.js';
 import { serverNow } from './clock.js';
@@ -43,6 +44,7 @@ export function useTargetReading({
   wing,
   damage,
   rulesetVersion,
+  escort,
 }: {
   target: LaunchTarget;
   intel?: IntelView | undefined;
@@ -53,6 +55,8 @@ export function useTargetReading({
   damage?: HpDamageLots;
   /** The season's ruleset, which decides whether the escape rule applies. */
   rulesetVersion: number;
+  /** The commander ship flying with the wing (Y9): its bonus fights in the power range as on the server. */
+  escort?: AdmiralBonuses | null | undefined;
 }) {
   const { t } = useTranslation();
 
@@ -110,8 +114,11 @@ export function useTargetReading({
    * literal every render and a pirate's entry is rebuilt on every poll as it moves; its crew
    * is kept by the query's structural sharing while it is unchanged, and so is the report.
    */
+  // The commander ship flying with the wing (Y9) fights in the range as on the server (`withAdmiral`).
+  const escortDamage = escort?.damage ?? 1; const escortHull = escort?.hull ?? 1;
   const power = useMemo<PowerRange | null>(() => {
-    const flying = { fleet: settled, tech, ...(settledDamage?.length ? { damage: settledDamage } : {}) };
+    const flying = { fleet: settled, tech, ...(settledDamage?.length ? { damage: settledDamage } : {}),
+      ...(escortDamage === 1 ? {} : { damageMult: escortDamage }), ...(escortHull === 1 ? {} : { hullMult: escortHull }) };
     // The wing alone, at neutral counters: what it holds before anybody has looked. Null for no ships.
     const alone = readPowerRange(flying, [], { low: 0, high: 0 });
     if (alone === null) return null;
@@ -129,7 +136,7 @@ export function useTargetReading({
       lines.push({ value: report.support.defence, shape: report.support.classReading });
     }
     return readPowerRange(flying, lines, report.shield ?? { low: 0, high: domeCeiling });
-  }, [settled, settledDamage, tech, pirateCrew, pirateHandicap, report, caretaker, domeCeiling]);
+  }, [settled, settledDamage, tech, pirateCrew, pirateHandicap, report, caretaker, domeCeiling, escortDamage, escortHull]);
 
   /**
    * WHAT THE WING'S CLASSES DO AGAINST THE WALL THE PROBE READ — AND WHAT IT DID NOT READ.

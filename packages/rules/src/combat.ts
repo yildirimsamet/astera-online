@@ -141,10 +141,11 @@ export interface SideStats {
 
 const statsFor = (side: CombatSide): SideStats => {
   const damageMult = side.damageMult ?? 1;
+  const hullMult = side.hullMult ?? 1;
   return {
     atk: (id) => HULLS[id].atk * hullTech(side.tech, id).atk * damageMult,
-    hp: (id) => HULLS[id].hp * hullTech(side.tech, id).hp,
-    shield: (id) => side.shipShields === false ? 0 : shipShieldHp(side.tech, id),
+    hp: (id) => HULLS[id].hp * hullTech(side.tech, id).hp * hullMult,
+    shield: (id) => side.shipShields === false ? 0 : shipShieldHp(side.tech, id) * hullMult,
   };
 };
 
@@ -269,6 +270,8 @@ export interface CombatSide {
    * best, and there is now no seam for it to hide in.
    */
   damageMult?: number;
+  /** A fleet admiral’s temporary durability, outside the research ceiling. */
+  hullMult?: number;
 }
 
 export interface CombatTech {

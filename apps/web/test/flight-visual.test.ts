@@ -8,6 +8,8 @@ import {
   FORMATION_SPACING,
   TRACKING_MARK,
   UNKNOWN_CONTACT_MARK,
+  ESCORT_LENGTH,
+  escortSlot,
   formationAimDirection,
   formationLayout,
   hullVisualScale,
@@ -307,5 +309,24 @@ describe('formation convergence', () => {
 
   it('stays finite for a marker already on the target', () => {
     expect(formationAimDirection([0, 0, 3], 3).every(Number.isFinite)).toBe(true);
+  });
+});
+
+/** Y9 doc 23: the commander ship flies at the very rear of the fleet it escorts. */
+describe('the escort slot', () => {
+  const markers = (hulls: HullId[]): Marker[] => hulls.map((hull, ordinal) => ({ hull, filled: 1, ordinal }));
+  it('sits behind every ship of the wing, centred on its line, clear of the rearmost hull', () => {
+    for (const hulls of [['DART'], ['DART', 'DART', 'DART', 'DART', 'DART', 'DART', 'DART'], ['CITADEL', 'DART', 'PIKE', 'DART']] as HullId[][]) {
+      const layout = formationLayout(markers(hulls), 1);
+      const [x, , z] = escortSlot(layout, 1);
+      const rear = Math.min(...layout.slots.map((slot) => slot[2]));
+      expect(x).toBe(0);
+      // Nose (+Z) on the destination: behind is −Z, by half of each length plus a gap.
+      expect(z).toBeLessThan(rear - (layout.scale + ESCORT_LENGTH) / 2);
+    }
+  });
+  it('trails a lone craft by the same gap', () => {
+    const layout = formationLayout(null, 1);
+    expect(escortSlot(layout, 1)[2]).toBeLessThan(-(1 + ESCORT_LENGTH) / 2);
   });
 });

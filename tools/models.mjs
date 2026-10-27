@@ -68,6 +68,15 @@ const POLICY = {
    */
   drills: { texture: 384, simplify: false },
   /**
+   * The Komutan gemisi hangar (owner, 2026-10-23): one bay the ship stands in, filling the tab.
+   *
+   * A Tripo export of 956k triangles in one mesh, with three 2K maps. It is the whole picture
+   * while it is up and nothing else draws (the galaxy stops behind a full sheet), so it keeps a
+   * 1024 plate. Its surface detail is in the normal map, so a 12% cut (~115k triangles) is not
+   * told apart from the master at that size; 6% visibly softened the edges.
+   */
+  hangar: { texture: 1024, simplify: true, ratio: 0.12, error: 0.002 },
+  /**
    * A missile, in the ten seconds a raid takes to land. D44.
    *
    * The cheapest thing in the fleet to draw and the shortest-lived: it exists for

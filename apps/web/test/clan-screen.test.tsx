@@ -83,7 +83,7 @@ const directory = {
   total: 2,
 };
 
-function show(home: ClanHome, accepted = true) {
+function show(home: ClanHome, accepted = true, arena?: { credential: () => Promise<string | null>; onEnter: () => void }) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'clanHome').mockResolvedValue(home);
   vi.spyOn(api, 'clans').mockResolvedValue(directory);
@@ -191,16 +191,32 @@ function show(home: ClanHome, accepted = true) {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
   );
-  render(<Wrapper><ClanScreen /></Wrapper>);
+  render(<Wrapper><ClanScreen {...(arena ? { arena } : {})} /></Wrapper>);
   return { api, client };
 }
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   await i18n.changeLanguage('en');
 });
 
 describe('clan command surface', () => {
+  it('offers the clan flight preparation without launching or marking an unloaded ship ready', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ playerId: id, clanId: id, capacity: 5,
+      canCreate: false, claims: [], team: { id, leaderId: id, state: 'forming', joined: true,
+        members: [{ playerId: id, name: 'Vantage', ready: false, tactic: 'radar', outcome: null, blocked: null,
+          ship: { class: 'kilavuz', level: 3, fuel: 250, fuelMax: 250, readyAt: null } }] },
+    })))));
+    // The screen lazy-loads the panel; a cold transform of that graph outlasts findBy's one second.
+    await import('../src/arena/TeamPanel.js');
+    const onEnter = vi.fn(); show(member, true, { credential: () => Promise.resolve('tok'), onEnter });
+    await userEvent.click(await screen.findByRole('button', { name: 'Prepare for flight' }));
+    expect(onEnter).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Launch together' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ready' })).toBeNull();
+  });
   it('answers why a clan matters and shows the exact founding gate', () => {
     show(outside);
 

@@ -92,6 +92,7 @@ export const pendingStrip = {
   recallStarted: "Les Prospecteurs ont fait demi-tour · retour en cours",
   craftCount: "{{count}} appareils",
   craftUnknown: "Composition inconnue",
+  escorted: "+ ton vaisseau du commandant · {{ship}} {{level}}",
   incomingHint: "Menace en approche · ressources masquées",
   /** Même alerte lorsque l’appareil est visible dans ton disque. D162. */
   incomingVisible: "Menace en approche · dans tes capteurs — appuie pour voir",

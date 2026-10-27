@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "Komutan gemisi",
-  "menuHint": "Deneme arenası · farm topla, çıkışta puan al",
+  "menuHint": "Yarık · cevher topla, başkentine taşı, gemini büyüt",
   "join": "Katıl",
   "nav": "Komutan gemisi",
-  "trial": "Uçuş denemesi",
-  "title": "Geminin kontrolü sende",
-  "intro": "Davetli pilotlarla aynı alanda alaşım, kristal ve döteryum topla. Parlayan cevherlerin içinden geç, yataklara inip kaz; vurulanın ambarı yere saçılır. Çıkışa ulaştırdığın her birim puan olur.",
-  "enter": "Uçuşu başlat",
   "start": "Başla",
   "leave": "Galaksiye dön",
   "loadingCode": "Uçuş kontrolleri yükleniyor",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "Dronları takip et",
   "speedUnit": "m/sn",
   "secondsUnit": "sn",
-  "trialNote": "Uçuş denemesi · ilerleme kaydedilmez",
   "gpuRestore": "Uçuş görüntüsü yenileniyor"
 } as const;

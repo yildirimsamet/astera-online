@@ -464,6 +464,11 @@ export const reports = {
   /** Everything a battle did beyond the loot line, each said only when true. */
   effects: {
     heading: "何をしたか",
+    admiralYours: 'あなたの司令官艦がフリートに随伴しました：{{ship}} {{level}}。攻撃せず、被弾もしていません。',
+    admiralHeld: 'あなたの司令官艦がフリートに随伴しました：{{ship}} {{level}}。フリートはモニュメントを保持し、艦は単独で帰還しました。',
+    admiralRepair: 'あなたの司令官艦がフリートに随伴しました：{{ship}} {{level}}。戦闘に敗れたため{{minutes}}分間修理に入ります。',
+    admiralRaider: '攻撃側の司令官艦がフリートに随伴しました：{{ship}} {{level}}。ボーナスを与え、被弾しません。',
+    admiralDefence: '防衛ラインに司令官艦がいました：{{ship}} {{level}}。ボーナスを与え、被弾しません。',
     shieldTheirs: "船体が被弾する前に、相手のシールドが{{amount}}ダメージを吸収しました。",
     shieldYours: "船体が被弾する前に、あなたのシールドが{{amount}}ダメージを吸収しました。",
     cargoLimited:

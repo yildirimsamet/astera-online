@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "Nave del comandante",
-  "menuHint": "Arena de prueba · recoge mineral, puntúa en una salida",
+  "menuHint": "El Yarık · recoge mineral, llévalo a tu capital, mejora tu nave",
   "join": "Unirse",
   "nav": "Nave del comandante",
-  "trial": "Prueba de vuelo",
-  "title": "Pilota tu nave",
-  "intro": "Recoge aleación, cristal y deuterio en una misma zona con los pilotos invitados. Atraviesa el mineral, aterriza en los yacimientos y extrae; la bodega de una nave derribada se dispersa. Cada unidad llevada a una salida suma puntos.",
-  "enter": "Iniciar vuelo",
   "start": "Empezar",
   "leave": "Volver a la galaxia",
   "loadingCode": "Cargando controles de vuelo",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "Sigue los drones",
   "speedUnit": "m/s",
   "secondsUnit": "s",
-  "trialNote": "Prueba de vuelo · progreso no guardado",
   "gpuRestore": "Restaurando la vista de vuelo"
 } as const;

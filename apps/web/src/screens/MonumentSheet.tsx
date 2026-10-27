@@ -26,6 +26,10 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { Button, Plate } from '../v2/kit/Surface.js';
 import { Toggle } from '../v2/kit/Toggle.js';
 import { GameActions, useSeasonLocked } from '../session/seasonLock.js';
+import { useCommanderShip } from '../api/commanderShip.js';
+import { escortOf } from '../lib/admiralEscort.js';
+import { serverNow } from '../lib/clock.js';
+import { EscortRow } from '../ui/EscortRow.js';
 
 type ArrivalOutcome = 'JOIN' | 'FIGHT' | 'GARRISON' | 'CAPTURE';
 
@@ -73,11 +77,16 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const pickedBulk = hangarLoad(fleet);
   // D212: Silent Space closes every monument wave; the server would refuse the quote too.
   const silentSpace = origin.silentSpace === true;
-  const input: MonumentSendInput = { originPlanetId: origin.planet.id, purpose, fleet, acknowledgeShieldLoss: shield, acknowledgeRadiationLoss: radiation };
+  // The commander ship may fly the wave out (Y9); the server prices the escorted leg in the quote.
+  const escort = escortOf(useCommanderShip(true).data, serverNow());
+  const [escortWanted, setEscortWanted] = useState(false);
+  const escorted = escortWanted && escort?.kind === 'ready';
+  const input: MonumentSendInput = { originPlanetId: origin.planet.id, purpose, fleet, acknowledgeShieldLoss: shield, acknowledgeRadiationLoss: radiation,
+    ...(escorted ? { admiral: true } : {}) };
   const quotedFleet = useDebouncedValue(fleet);
   const quoteReady = JSON.stringify(quotedFleet) === JSON.stringify(fleet);
-  const quote = useQuery({ queryKey: [...keys.monuments, 'quote', monumentId, origin.planet.id, purpose, quotedFleet],
-    queryFn: () => api.quoteMonument(monumentId, { originPlanetId: origin.planet.id, purpose, fleet: quotedFleet }),
+  const quote = useQuery({ queryKey: [...keys.monuments, 'quote', monumentId, origin.planet.id, purpose, quotedFleet, escorted],
+    queryFn: () => api.quoteMonument(monumentId, { originPlanetId: origin.planet.id, purpose, fleet: quotedFleet, ...(escorted ? { admiral: true } : {}) }),
     enabled: !locked && !silentSpace && !tierBlocked && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0, refetchInterval: target?.motion ? 5000 : false });
   const sendKey = useConfirmationKey(JSON.stringify({ monumentId, ...input }));
   const probeKey = useConfirmationKey(`${monumentId}:${origin.planet.id}:${String(probeConfirmation)}`);
@@ -104,7 +113,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   return <Sheet title={monumentName(target?.ordinal)} eyebrow={controller}
     placement="page" detents={['fit']} onClose={onClose} footer={<GameActions><div data-testid="monument-send">
       <HoldButton label={t('monument.send', { count: picked })} disabledReason={refusal}
-        onCommit={() => { actions.send.mutate({ monumentId, input, key: sendKey }, { onSuccess: () => { setFleet({}); setShield(false); setRadiation(false); } }); }} />
+        onCommit={() => { actions.send.mutate({ monumentId, input, key: sendKey }, { onSuccess: () => { setFleet({}); setShield(false); setRadiation(false); setEscortWanted(false); } }); }} />
       {actions.send.error && <p role="alert" className="mt-1 text-caption text-v2-warn">{describeError(actions.send.error)}</p>}
     </div></GameActions>}>
     <GameActions><div className="flex min-w-0 flex-col gap-3">
@@ -156,6 +165,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
               maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
           </fieldset>
         </div>)}
+        <EscortRow escort={escort} on={escorted} onChange={setEscortWanted} monument />
         {picked > 0 && quote.data && target?.motion && <MonumentRoutePreview from={origin.planet.position} motion={target.motion} arriveAt={quote.data.arriveAt.getTime()} now={now} />}
         {picked > 0 && quoteReady && quote.data && <Plate className="flex flex-col gap-1 p-3">
           <p className="text-micro text-v2-ink-2">{t('monument.selectedBulk', { bulk: full(pickedBulk) })}</p>

@@ -77,11 +77,13 @@ import {
   notifySupporters,
   settleStations,
   standStations,
+  stationAdmirals,
   supportFactorOf,
   supportLossOf,
   supporterIdsOf,
   writeDefenderResults,
 } from './defenderLine.js';
+import { escortedBattle } from './admiral.js';
 import { breakFaults, defenceOnline } from './faults.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
 import { notify, announceUnlocks } from './notifications.js';
@@ -382,7 +384,7 @@ export async function resolveClanWarBattle(
       NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
     at: defender.now,
   });
-  await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now });
+  await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
   // The lift burned before anything reached a hold (see the raid lane).
   const pvpBalance = await commanderPvpBalance(tx, defender.playerId);
@@ -643,6 +645,7 @@ export async function resolveClanWarBattle(
     targetPlanetId: defender.planetId,
     clanWarOperationId: operation.id,
     targetKind: 'PLAYER',
+    admirals: stationAdmirals(stations),
     grade: result.grade,
     rounds: result.rounds,
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },

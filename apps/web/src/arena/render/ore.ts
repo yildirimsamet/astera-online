@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '@astera/rules';
-import { ARENA_TUNING as T, type ArenaLayout, type ArenaWorld } from '@astera/rules/arena';
+import { ARENA_TUNING as T, closestSurface, obstacleSize, type ArenaLayout, type ArenaWorld, type SurfacePoint } from '@astera/rules/arena';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FARM_HEX } from '../farmColors.js';
 
@@ -47,10 +47,12 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
   const geometry = crystalCluster();
   // Veined rock only: the crystal formations are crystals already.
   const veins: Vein[][] = FARM_HEX.map(() => []);
+  const surface: SurfacePoint = { x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, d: 0, inside: false };
   layout.deposits.forEach((index, slot) => {
     const o = layout.obstacles[index];
-    if (o?.shape !== 'sphere' || o.kind === 'crystal') return;
+    if (o?.kind !== 'rock') return;
     const kind = layout.depositKinds[slot] ?? 0;
+    const size = obstacleSize(layout, o);
     const random = mulberry32(7919 + o.id * 31);
     // Two or three clusters, so a rock looks seamed rather than sprinkled.
     const seams = Array.from({ length: 2 + Math.floor(random() * 2) }, () =>
@@ -59,8 +61,13 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
       const seam = seams[i % seams.length] ?? up;
       const d = seam.clone().add(new THREE.Vector3(random() - 0.5, random() - 0.5, random() - 0.5).multiplyScalar(0.55)).normalize();
       const twist = new THREE.Quaternion().setFromAxisAngle(up, random() * Math.PI * 2);
-      veins[kind]?.push({ slot, position: new THREE.Vector3(o.p.x, o.p.y, o.p.z).addScaledVector(d, o.radius * 0.82),
-        quaternion: new THREE.Quaternion().setFromUnitVectors(up, d).multiply(twist), scale: o.radius * (0.32 + random() * 0.18) });
+      const scale = size * (0.32 + random() * 0.18);
+      // Rooted on the real surface the pilot sees (Y2), sunk a little, grown along its normal.
+      const outside = { x: o.p.x + d.x * o.radius * 1.1, y: o.p.y + d.y * o.radius * 1.1, z: o.p.z + d.z * o.radius * 1.1 };
+      if (!closestSurface(layout, o.id, outside, Infinity, surface)) continue;
+      const normal = new THREE.Vector3(surface.nx, surface.ny, surface.nz);
+      veins[kind]?.push({ slot, position: new THREE.Vector3(surface.x, surface.y, surface.z).addScaledVector(normal, -size * 0.18),
+        quaternion: new THREE.Quaternion().setFromUnitVectors(up, normal).multiply(twist), scale });
     }
   });
 

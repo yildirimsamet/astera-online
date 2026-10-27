@@ -1,4 +1,6 @@
 import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
+import { shipReadyNotice } from '../services/arenaReady.js';
+import { finishArenaTeamSeason } from '../services/arenaTeams.js';
 import { commanderPvpBalance } from '../services/pvpBalance.js';
 import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
@@ -183,6 +185,8 @@ import {
   returnAttackUntouched,
 } from '../services/neutral.js';
 import { dockDamaged, dockNotice, landShips, shipsIn } from '../services/shipDamage.js';
+import { admiralForFlight, admiralHomeward, escortedBattle, finishAdmiralLeg, recordAdmiralBattle, reportAdmirals } from '../services/admiral.js';
+import { admiralBonuses, withAdmiral } from '@astera/rules/arena';
 import { applyBuildCompletion } from '../services/buildQueue.js';
 import {
   allocateClanLoot,
@@ -212,6 +216,7 @@ import {
   notifySupporters,
   settleStations,
   standStations,
+  stationAdmirals,
   supportFactorOf,
   supportLossOf,
   supporterIdsOf,
@@ -759,6 +764,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     await tellRadiationLoss(tx, flightWitness(flown), dosed, clock.now());
     if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) {
       await releaseStrike(tx, mission.id);
+      await admiralHomeward(tx, 'mission', mission, null, clock.now());
       return;
     }
 
@@ -920,7 +926,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       now: defender.now,
     });
     const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
-    const replayAttackers = [{ ...soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined), contributionId: missionId, playerId: mission.ownerPlayerId }];
+    // Y9: the commander ship beside the wing lends its bonus; it is not a unit and is never hit.
+    const escort = await admiralForFlight(tx, 'mission', missionId);
+    const replayAttackers = [{ ...soloStack(attackingFleet, withAdmiral({ tech: attackerTech }, escort), flown.damage ?? undefined), contributionId: missionId, playerId: mission.ownerPlayerId }];
     const replayCapture = prepareBattleReplay(replayAttackers, [{ stackId: 'host', playerId: defender.playerId, fleet: defenders,
       tech: { tech: defenderTech }, damage: homePartition.damage.filter(lot => !NON_COMBATANT_HULLS.includes(lot.hull)) }, ...stations.map(station => station.stack)]);
     const raid = resolveRaid({
@@ -1002,7 +1010,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
       at: defender.now,
     });
-    await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now });
+    await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
     /**
      * Two piles, two exposures (D16).
@@ -1268,6 +1276,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
       targetKind: 'PLAYER',
+      admirals: [...reportAdmirals('attack', escort), ...stationAdmirals(stations)],
       defenderCount,
       grade: result.grade,
       rounds: result.rounds,
@@ -1450,6 +1459,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
 
     await clearMissionUnits(tx, mission.originPlanetId, missionId);
+    await recordAdmiralBattle(tx, 'mission', missionId, escortedBattle('attack', result));
+    let returnId: string | null = null;
 
     if (fleetCount(result.attackerSurvivors) > 0) {
       /**
@@ -1477,7 +1488,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         mission.distance,
         result.attackerSurvivors,
         { boost: fleetSpeedMult(attackerOrbit), tech: attackerTech, pace: missionPaceOf(mission.pace) },
-      );
+      ) * (escort ? admiralBonuses(escort.ship, escort.level).time : 1);
       const arriveAt = addMinutes(defender.now, home);
       const [ret] = await tx
         .insert(missions)
@@ -1517,7 +1528,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         refId: ret!.id,
         resolveAt: arriveAt,
       });
+      returnId = ret!.id;
     }
+    await admiralHomeward(tx, 'mission', mission, returnId, defender.now);
 
     // A raid moves stock and destroys units on both sides, so both Wealth figures
     // are stale the moment it resolves — and Wealth gates who may attack whom.
@@ -1735,6 +1748,7 @@ async function settleReturn(
     ? capLoadToSurvivors({ loot: whole(flown.loot), salvage: whole(flown.salvage) }, returning, flown.tech ?? {})
     : { loot: flown.loot, salvage: flown.salvage };
   await clearMissionUnits(tx, storagePlanetId, mission.id);
+  await finishAdmiralLeg(tx, at, 'mission', mission.id, fleetCount(returning));
   // Nothing landed: the hold went with the last ship, and `radiation_lost` said so.
   if (fleetCount(returning) === 0 && fleetCount(dosed.destroyed) > 0) return;
   // The Repair Station judges whatever the wing carried out of its battle. Kalıcı gemi hasarı.
@@ -1933,10 +1947,13 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
       .from(missions)
       .where(eq(missions.id, missionId));
     if (live?.status !== 'in_flight') return;
+    // Y9: a commander ship escorting the raid is named on the warning (owner 2026-10-25).
+    const escort = await admiralForFlight(tx, 'mission', mission.id);
     await notify(tx, {
       playerId: target.controllerPlayerId,
       kind: mission.kind === 'death_star' ? 'strategic_incoming' : 'incoming_fleet',
       payload: {
+        ...(escort ? { admiral: { ship: escort.ship, level: escort.level } } : {}),
         /**
          * THE INSTANT, not only the countdown. D39, applied to a notification.
          *
@@ -2186,6 +2203,7 @@ async function freezeSeason(
     const capturedThrough = event === null
       ? new Date(Math.min(clock.now().getTime(), season.endsAt.getTime()))
       : season.endsAt;
+    await finishArenaTeamSeason(tx, { now: () => capturedThrough }, seasonId);
     await closeSeasonRadiationBombs(tx, seasonId, capturedThrough);
     await closeSeasonMonuments(tx, { seasonId, cutoff: capturedThrough, adminUsernames: [...adminUsernames] });
     const ownedWorlds = await tx
@@ -3107,6 +3125,7 @@ export const onClanSupportExpiry: Handler = async ({ db, clock }, event) => {
 };
 
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
+  arena_ship_ready: ({ db, clock }, event) => shipReadyNotice(db, clock, event),
   unknown_signal_spawn: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('unknown_signal_spawn without player');
     await db.transaction(tx => resolveUnknownSignalSpawn(tx, event.refId!, event.resolveAt, clock));

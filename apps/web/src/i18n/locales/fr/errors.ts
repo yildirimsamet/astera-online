@@ -12,6 +12,12 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  ADMIRAL_RULESET: "L’escorte du vaisseau de commandant arrive avec une nouvelle saison.",
+  ADMIRAL_AWAY: "Ton vaisseau de commandant escorte déjà une autre flotte.",
+  SHIP_NOT_READY: "Ton vaisseau de commandant n’est pas encore prêt : il est en réparation ou en maintenance.",
+  SHIP_FLYING: "Ton vaisseau de commandant est dans le Yarık en ce moment.",
+  SHIP_UNAVAILABLE: "Ton vaisseau de commandant est occupé par un autre ordre. Réessaie dans un instant.",
+  TEAM_LOBBY: "Quitte d’abord ton équipe du Yarık.",
   COMMUNITY_POLICY_REQUIRED: "Consulte et accepte les règles avant de créer un commandant ou de publier. Rouvre l’application si nécessaire.",
   NAME_NOT_ALLOWED: "Choisis un autre nom de commandant. « {{word}} » enfreint les règles de la communauté.",
   CLAN_NAME_NOT_ALLOWED: "Choisis un autre nom ou tag de clan. « {{word}} » enfreint les règles de la communauté.",

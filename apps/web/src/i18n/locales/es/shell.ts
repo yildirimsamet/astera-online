@@ -112,6 +112,7 @@ export const pendingStrip = {
   recallStarted: 'Los Prospector han dado la vuelta y regresan',
   craftCount: '{{count}} nave',
   craftUnknown: 'No se conocen los tipos de nave',
+  escorted: '+ tu nave del comandante · {{ship}} {{level}}',
   incomingHint: 'Advertencia de entrada · origen oculto por la niebla',
   /**
    * THE SAME WARNING, WHEN THE CRAFT IS ON YOUR DISC. D162.

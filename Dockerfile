@@ -44,6 +44,8 @@ FROM web-deps AS web-build
 COPY packages ./packages
 COPY apps/web ./apps/web
 COPY tsconfig.base.json ./
+# The engine flames' recipes, compiled into the client (`src/vfx/engineFlames.ts`).
+COPY assets/source/engine-flames/recipes.json ./assets/source/engine-flames/recipes.json
 # THE MEASUREMENT ID IS BAKED IN HERE OR NOT AT ALL. Vite inlines `import.meta.env`
 # at build time, so this cannot be supplied to the running container — the client
 # is a directory of static files with no environment to read. Absent (the default,

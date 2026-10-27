@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "司令官の船",
-  "menuHint": "テストアリーナ · 鉱石を集めて出口で得点",
+  "menuHint": "Yarık · 鉱石を集めて首都へ運び、船を育てる",
   "join": "参加",
   "nav": "司令官の船",
-  "trial": "飛行テスト",
-  "title": "自分の船を操縦",
-  "intro": "招待されたパイロットと同じ宙域で合金・クリスタル・重水素を集めよう。鉱石を通り抜け、鉱床に着陸して採掘。撃墜された船の積荷は周囲に散らばる。出口へ運んだ1単位ごとに得点。",
-  "enter": "飛行を開始",
   "start": "開始",
   "leave": "銀河に戻る",
   "loadingCode": "飛行操作を読み込み中",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "ドローンを追跡",
   "speedUnit": "m/秒",
   "secondsUnit": "秒",
-  "trialNote": "飛行テスト · 進行は保存されません",
   "gpuRestore": "飛行ビューを復元中"
 } as const;

@@ -2,7 +2,7 @@ import { readBattleReplayMetadata, replayStatusFor } from './battleReplay.js';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { activeBattleFleet, battleCasualties, battleRetreated, fleetCount, fleetDiff, type BattleReplayStatus, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
-import { monumentBattles, monumentBattleParticipants } from '../db/schema.js';
+import { monumentBattles, monumentBattleParticipants, type ReportAdmiral } from '../db/schema.js';
 import { readHonorReceipts, type HonorReportReceipt } from './honorReports.js';
 import { honorEventKey } from './honorAccounting.js';
 
@@ -33,6 +33,8 @@ export interface MonumentReportView {
   honor?: HonorReportReceipt | null;
   opponents: { kind: 'PLAYER' | 'NEUTRAL'; playerId: string | null; name: string;
     clanName: string | null; clanTag: string | null }[];
+  /** Escorts that flew beside the attack (Y9): your own when attacking, the attackers' when holding. */
+  admirals: ReportAdmiral[];
 }
 
 /** The immutable participant is the authority; a live wave/world is unnecessary. */
@@ -66,6 +68,8 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
       : fleetDiff(battle.attackerFleet, battle.attackerSurvivors),
     lootDeuterium: own.lootDeuterium, dominion: own.dominionDelta,
     honor: honor.get(honorEventKey({ source: 'MONUMENT', id: battle.id })) ?? null,
+    admirals: (own.side === 'ATTACK' ? [own] : participants.filter((row) => row.battleId === battle.id && row.side === 'ATTACK'))
+      .flatMap((row) => row.admiral ? [{ side: 'attack' as const, ship: row.admiral.ship, level: row.admiral.level }] : []),
     opponents: (() => {
       const opposing = participants.filter((row) => row.battleId === battle.id && row.side !== own.side);
       if (opposing.length > 0) return [...new Map(opposing.map((row) => [row.playerId, {

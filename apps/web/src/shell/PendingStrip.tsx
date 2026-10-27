@@ -18,6 +18,7 @@ import {
   flightFocus,
   flightRecallInput,
   flightTitle,
+  escortLine,
   incomingDetail,
   runArrival,
   runTitle,
@@ -176,9 +177,9 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
       return {
         key: `thread:${threadKey(thread, index)}`,
         title: flightTitle(thread),
-        detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
+        detail: [incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
           ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
-          : t('pendingStrip.craftUnknown')),
+          : t('pendingStrip.craftUnknown')), escortLine(thread)].filter(part => part !== null).join(' '),
         arrival: arrivalOf(thread),
         leg: thread.leg,
         ...(thread.pace === undefined ? {} : { pace: thread.pace }),

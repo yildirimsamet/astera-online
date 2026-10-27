@@ -794,7 +794,7 @@ export function useMonumentActions() {
   const lane = usePlanetInputLane();
   const refresh = async (): Promise<void> => {
     await Promise.all([keys.monuments, keys.galaxy, keys.planet, keys.planets, keys.pending,
-      keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season].map((queryKey) => refreshQueries(client, { queryKey })));
+      keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season, keys.commanderShip].map((queryKey) => refreshQueries(client, { queryKey })));
   };
   return {
     send: useMutation({
@@ -899,12 +899,13 @@ export function useClanSupportActions() {
     void refreshQueries(client, { queryKey: keys.planet });
     void refreshQueries(client, { queryKey: keys.planets });
     void refreshQueries(client, { queryKey: keys.pending });
+    void refreshQueries(client, { queryKey: keys.commanderShip });
   };
   return {
-    quote: useMutation({ mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+    quote: useMutation({ mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
       api.quoteClanSupport(input) }),
     send: useMutation({
-      mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) => api.sendClanSupport(input),
+      mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) => api.sendClanSupport(input),
       onMutate: ({ originPlanetId }) => lane.enter(originPlanetId),
       onSuccess: async (result) => {
         await applyPlanet(result.planet);
@@ -2258,10 +2259,10 @@ export function useRaidPirate() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { pirateId, fleet, quotedMinutes, acknowledgeRadiationLoss }:
-      { pirateId: string; fleet: Fleet; quotedMinutes?: number; acknowledgeRadiationLoss?: boolean },
+      { pirateId, fleet, quotedMinutes, acknowledgeRadiationLoss, admiral }:
+      { pirateId: string; fleet: Fleet; quotedMinutes?: number; acknowledgeRadiationLoss?: boolean; admiral?: boolean },
       context,
-    ) => api.raidPirate(pirateId, fleet, planetMutationOrigin(context) ?? undefined, quotedMinutes, acknowledgeRadiationLoss),
+    ) => api.raidPirate(pirateId, fleet, planetMutationOrigin(context) ?? undefined, quotedMinutes, acknowledgeRadiationLoss, admiral),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       playSound('launch');
@@ -2270,8 +2271,8 @@ export function useRaidPirate() {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      // The lane the raid flew at is one fewer target and one fewer bay.
-      invalidate(keys.pirates, keys.galaxy);
+      // The lane the raid flew at is one fewer target and one fewer bay; an escort is away.
+      invalidate(keys.pirates, keys.galaxy, keys.commanderShip);
     },
     /*
       A REFUSED LAUNCH LEAVES A STALE QUOTE ON SCREEN. D183.
@@ -2479,17 +2480,17 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
-        acknowledgeRadiation?: boolean;
+        acknowledgeRadiation?: boolean; admiral?: boolean;
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral);
     },
     onMutate: lane.enter,
     onSuccess: async (result) => {
@@ -2515,7 +2516,8 @@ export function useLaunch() {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.galaxy, keys.intel, keys.rewards);
+      // The commander ship may have left with it (Y9).
+      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.commanderShip);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });

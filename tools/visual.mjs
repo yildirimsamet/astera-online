@@ -47,6 +47,12 @@ if (process.argv.includes('--engine-flames')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--arena-team')) {
+  const { verifyArenaTeam } = await import('./arena-team-visual.mjs');
+  await verifyArenaTeam(process.argv[2] ?? 'out/arena-team');
+  process.exit(0);
+}
+
 if (process.argv.includes('--ship-shields')) {
   const { verifyShipShields } = await import('./ship-shields-visual.mjs');
   await verifyShipShields(process.argv[2] ?? 'out/ship-shields');

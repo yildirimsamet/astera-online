@@ -29,4 +29,18 @@ describe('the power against a pirate crew', () => {
       { tech: {}, damageMult: pirateStats(1).damageMult }));
     expect(result.current.opposing?.ageMinutes).toBeNull();
   });
+
+  it('reads the wing with the commander-ship escort\'s bonus when it flies (Y9)', () => {
+    // An even fight, where a sixth more damage and a tenth more hull change the balance.
+    const even = { ...pirate, fleet: { DART: 15 }, damageMult: 1 } as PirateContact;
+    const read = (escort: Parameters<typeof useTargetReading>[0]['escort']) => renderHook(() => useTargetReading({
+      target: { kind: 'pirate', pirate: even }, reports: [], tech: {}, wing: { DART: 20 }, rulesetVersion: 19, escort,
+    })).result.current;
+    const plain = read(null);
+    const led = read({ damage: 1.15, hull: 1.1, time: 1, fuel: 1 });
+    expect(led.power!.ratio.low).toBeGreaterThan(plain.power!.ratio.low);
+    expect(led.power).toEqual(exactPowerRange({ fleet: { DART: 20 }, tech: {}, damageMult: 1.15, hullMult: 1.1 }, { DART: 15 }, { tech: {}, damageMult: 1 }));
+    // A Kılavuz shortens the road and lends the fight nothing.
+    expect(read({ damage: 1, hull: 1, time: 0.97, fuel: 0.95 }).power).toEqual(plain.power);
+  });
 });

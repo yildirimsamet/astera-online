@@ -1,4 +1,10 @@
-# Komutan Gemisi — Güncel geliştirme kaydı
+# Komutan Gemisi — İlk MVP geliştirme kaydı
+
+> **Güncel Yarık çalışması:** [24 Ekim devralma kaydı](19-devralma-2026-10-24.md).
+> **Y8 devamı:** görünüm/kostüm uygulaması, kanıt ve açık sanat/cihaz işleri [21](21-y8-gorunum.md).
+> **Y7 devamı:** takım lobisi/ganimet, dostluk ve seyirci için [20](20-y7-takim.md).
+> Aşağıdaki worktree, portlar ve F7 sırası ilk MVP oturumuna aittir;
+> bugün `blindspace-arena-playtest` ve [14](14-yarik-plani.md)'teki Y sırası kullanılır.
 
 > **2026-10-08:** Yerel oynanabilir MVP v2 (3. şahıs, Subdivision paketi, iniş/kazı, nişan
 > yardımı). F7 sahip incelemesi sürüyor. Bu dosya mevcut kodu anlatır;

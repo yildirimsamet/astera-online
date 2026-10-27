@@ -17,6 +17,10 @@ import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { Figure, Figures } from '../v2/kit/Figure.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
+import { useCommanderShip } from '../api/commanderShip.js';
+import { escortOf } from '../lib/admiralEscort.js';
+import { serverNow } from '../lib/clock.js';
+import { EscortRow } from '../ui/EscortRow.js';
 
 /** How long the picked fleet sits still before its quote is asked for. */
 const QUOTE_SETTLE_MS = 350;
@@ -50,7 +54,11 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
   const [quotedKey, setQuotedKey] = useState<string | null>(null);
   const origin = worlds.find((world) => world.planet.id === originId) ?? worlds[0];
   const available = origin ? origin.fleetCombatReady ?? partitionCombatFleet(origin.fleet, origin.fleetDamage).eligible : {};
-  const quoteKey = `${origin?.planet.id ?? ''}:${JSON.stringify(fleet)}`;
+  // The commander ship may stand with the wave (Y9); the server prices its road in the quote.
+  const escort = escortOf(useCommanderShip(true).data, serverNow());
+  const [escortWanted, setEscortWanted] = useState(false);
+  const escorted = escortWanted && escort?.kind === 'ready';
+  const quoteKey = `${origin?.planet.id ?? ''}:${JSON.stringify(fleet)}:${String(escorted)}`;
   const quote = quotedKey === quoteKey ? actions.quote.data : undefined;
   const picked = fleetCount(fleet);
 
@@ -64,12 +72,13 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
   const originPlanetId = origin?.planet.id ?? null;
   useEffect(() => {
     if (originPlanetId === null || fleetCount(fleet) === 0) return;
-    const asked = `${originPlanetId}:${JSON.stringify(fleet)}`;
+    const asked = `${originPlanetId}:${JSON.stringify(fleet)}:${String(escorted)}`;
     const timer = setTimeout(() => {
-      requestQuote({ originPlanetId, hostPlanetId: host.planetId, fleet }, { onSuccess: () => { setQuotedKey(asked); } });
+      requestQuote({ originPlanetId, hostPlanetId: host.planetId, fleet, ...(escorted ? { admiral: true } : {}) },
+        { onSuccess: () => { setQuotedKey(asked); } });
     }, QUOTE_SETTLE_MS);
     return () => { clearTimeout(timer); };
-  }, [requestQuote, originPlanetId, host.planetId, fleet]);
+  }, [requestQuote, originPlanetId, host.planetId, fleet, escorted]);
 
   const firstRefusal = quote?.refusals[0];
   const refusal = !origin ? t('clanSupport.noOrigin')
@@ -98,8 +107,8 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
             onCommit={() => {
               if (!origin) return;
               actions.send.mutate(
-                { originPlanetId: origin.planet.id, hostPlanetId: host.planetId, fleet },
-                { onSuccess: () => { setFleet({}); setQuotedKey(null); onSent(host.planetName); } },
+                { originPlanetId: origin.planet.id, hostPlanetId: host.planetId, fleet, ...(escorted ? { admiral: true } : {}) },
+                { onSuccess: () => { setFleet({}); setQuotedKey(null); setEscortWanted(false); onSent(host.planetName); } },
               );
             }}
           />
@@ -165,6 +174,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
           </div>
         )}
 
+        {picked > 0 && <EscortRow escort={escort} on={escorted} onChange={setEscortWanted} defence />}
         {quote && (
           <>
             <Figures data-support-figures="">

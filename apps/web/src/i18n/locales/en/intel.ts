@@ -464,6 +464,11 @@ export const reports = {
   /** Everything a battle did beyond the loot line, each said only when true. */
   effects: {
     heading: 'What it did',
+    admiralYours: 'Your commander ship flew beside the fleet: {{ship}} {{level}}. It never fired and was never hit.',
+    admiralHeld: 'Your commander ship flew beside the fleet: {{ship}} {{level}}. The fleet holds the monument; the ship flew home alone.',
+    admiralRepair: 'Your commander ship flew beside the fleet: {{ship}} {{level}}. The battle was lost, so it goes to repair for {{minutes}} min.',
+    admiralRaider: 'The attacker’s commander ship flew beside the fleet: {{ship}} {{level}}. It lends a bonus and is never hit.',
+    admiralDefence: 'A commander ship stood with the defending line: {{ship}} {{level}}. It lends a bonus and is never hit.',
     shieldTheirs: 'Their shield soaked {{amount}} damage before anything reached a hull.',
     shieldYours: 'Your shield soaked {{amount}} damage before anything reached a hull.',
     cargoLimited:

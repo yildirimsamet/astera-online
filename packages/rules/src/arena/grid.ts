@@ -1,6 +1,7 @@
 import type { ArenaLayout } from './types.js';
 
-const CELL = 100;
+// 200 m: the 13 km Rift in ~1.4 MB of cells (100 m would take 11.5 MB on every peer).
+const CELL = 200;
 
 interface ObstacleGrid {
   minX: number; minY: number; minZ: number;

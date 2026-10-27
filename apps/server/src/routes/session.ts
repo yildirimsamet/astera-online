@@ -1,3 +1,4 @@
+import { readCommanderShip } from '../services/arenaShipState.js';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -20,6 +21,7 @@ const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() 
 const returnSeenBody = z.object({ asOf: z.coerce.date() });
 
 export function registerSessionRoutes(app: FastifyInstance): void {
+  app.get('/api/commander-ship', { preHandler: requireAuth }, req => readCommanderShip(app.db, req.accountId!, app.clock));
   const me = async (accountId: string): Promise<string> => {
     const rows = await app.db
       .select({ playerId: players.id })

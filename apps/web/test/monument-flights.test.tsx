@@ -49,6 +49,11 @@ describe('native monument flights in the existing fleet surfaces', () => {
     expect(legStandoff(thread!, [])).toEqual({ start: 0, end: 0 });
     expect(flightTitle(thread!)).toContain('Abandoned Station');
   });
+  it('draws the commander ship at the rear of a wave it escorts (Y9), and none on a plain wave', () => {
+    const led = monumentsSchema.parse({ ...view, waves: [{ ...wave, admiral: { ship: 'kilavuz', level: 2 } }] });
+    expect(monumentPendingThreads(led)[0]?.admiral).toEqual({ ship: 'kilavuz', level: 2 });
+    expect(monumentPendingThreads(view)[0]?.admiral).toBeUndefined();
+  });
   it('keeps indefinite HOLD out of the airborne timer list and uses the real return turn', () => {
     const holding = monumentsSchema.parse({ ...view, waves: [{ ...wave, status: 'HOLD', heldAt: arrive, arriveAt: null, route: [] }] });
     expect(monumentPendingThreads(holding)).toEqual([]);

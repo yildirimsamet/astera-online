@@ -18,7 +18,8 @@ import {
   type Vec3,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
-import { planets, players, units } from '../db/schema.js';
+import { admiralBonuses, admiralOpen } from '@astera/rules/arena';
+import { arenaShips, planets, players, seasons, units } from '../db/schema.js';
 import { GameError, orbitOf } from '../services/planet.js';
 import { ownedPlanet } from '../services/ownership.js';
 import { pirateCallsign, pirateId } from '../services/pirateField.js';
@@ -40,6 +41,8 @@ const raidBody = z.object({
    */
   quotedMinutes: z.number().finite().nonnegative().optional(),
   acknowledgeRadiationLoss: z.boolean().optional(),
+  /** The commander ship escorts the raid (Y9). */
+  admiral: z.boolean().optional(),
 }).strict();
 
 /**
@@ -145,6 +148,17 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       }
     }
     const distinctSpeeds = [...new Set(speedOf.values())].sort((a, b) => b - a);
+    /*
+      A KILAVUZ ESCORT FLIES FASTER (Y9), and a pirate's meeting is an orbit solve the client cannot
+      redo, so its commander gets a second table solved at the escorted speed. Only the Kılavuz
+      changes the road; the other classes fly on `reach`.
+    */
+    const [[season], [ship]] = await Promise.all([
+      app.db.select({ rulesetVersion: seasons.rulesetVersion, admiralStartsAt: seasons.admiralStartsAt }).from(seasons).where(eq(seasons.id, self.seasonId)),
+      app.db.select({ ship: arenaShips.ship, level: arenaShips.level }).from(arenaShips).where(eq(arenaShips.playerId, self.playerId)),
+    ]);
+    const escortTime = season && ship?.ship === 'kilavuz' && admiralOpen(season, now)
+      ? admiralBonuses(ship.ship, ship.level).time : null;
 
     const pirates = snapshot.standing(now).flatMap((spec) => {
       const at = piratePosition(spec, nowMinutes);
@@ -217,6 +231,10 @@ export function registerPirateRoutes(app: FastifyInstance): void {
           ? []
           : [{ hull, minutes: solved.minutes, distance: solved.distance, at: solved.at }];
       });
+      const escortReach = escortTime === null || !origin ? null : [...speedOf.entries()].flatMap(([hull, speed]) => {
+        const solved = interceptOrbit(origin, speed / escortTime, spec, spec.expiresAt, nowMinutes);
+        return solved ? [{ hull, minutes: solved.flightMinutes, distance: distance(origin, solved.at), at: solved.at }] : [];
+      });
 
       return [{
         id: pirateId(snapshot.key, spec.index),
@@ -236,6 +254,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
          * pirate at all.
          */
         reach,
+        ...(escortReach === null ? {} : { escortReach }),
         /** Best combat arrival: a fast unarmed transport cannot promise a raid. */
         reachMinutes: reach.filter((entry) => HULLS[entry.hull].family !== 'CARGO' && HULLS[entry.hull].atk > 0).reduce<number | null>(
           (soonest, e) => (soonest === null || e.minutes < soonest ? e.minutes : soonest),
@@ -270,6 +289,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       owner.playerId,
       body.quotedMinutes,
       body.acknowledgeRadiationLoss,
+      body.admiral ?? false,
     );
   });
 

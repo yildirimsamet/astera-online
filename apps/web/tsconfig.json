@@ -25,5 +25,6 @@
     "public/publisher-pricing.js",
     "public/checkout-page.js",
     "*.ts"
-  ]
+  ],
+  "exclude": ["node_modules", "*.tmp.ts"]
 }

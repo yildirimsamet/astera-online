@@ -23,6 +23,8 @@ import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
+import { ARENA_ECONOMY } from '@astera/rules/arena';
+import { arenaCopy } from '../arena/copy.js';
 
 /**
  * THE CLOSING LINK OF THE LOOP.
@@ -1256,6 +1258,25 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     });
   }
 
+  /*
+    THE COMMANDER SHIP THAT FLEW BESIDE A SIDE (Y9). It never fires and is never hit, so the
+    rounds cannot show it; this line does. The raider is also told what a lost battle costs it.
+  */
+  const arena = arenaCopy();
+  for (const [index, admiral] of (report.admirals ?? []).entries()) {
+    const values = { ship: arena.classes[admiral.ship].name, level: arena.level(admiral.level) };
+    const lost = report.grade === 'REPELLED'
+      || (fleetCount(report.yourFleet) > 0 && fleetCount(report.yourLosses) >= fleetCount(report.yourFleet));
+    lines.push({
+      key: `admiral:${String(index)}`,
+      tone: admiral.side !== 'attack' || !report.attacking ? 'text-v2-ink-2' : lost ? 'text-v2-warn' : 'text-v2-self',
+      text: admiral.side === 'defence' ? t('reports.effects.admiralDefence', values)
+        : !report.attacking ? t('reports.effects.admiralRaider', values)
+          : lost ? t('reports.effects.admiralRepair', { ...values, minutes: ARENA_ECONOMY.repairMinutes })
+            : t('reports.effects.admiralYours', values),
+    });
+  }
+
   // A current report gets the drawn before→after Aegis card above. Keep this
   // sentence only for a legacy report whose old payload knows the absorbed total
   // but cannot honestly reconstruct either endpoint.
@@ -1402,6 +1423,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
         {lines.map((line) => (
           <li
             key={line.key}
+            data-effect={line.key.split(':')[0]}
             className={`text-micro leading-snug ${line.tone}`}
             {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
             {...(line.key === 'escape' ? { 'data-fleet-escape': '' } : {})}

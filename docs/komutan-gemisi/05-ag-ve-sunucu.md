@@ -85,7 +85,7 @@
 
 | Mesaj | İçerik | Not |
 |---|---|---|
-| `hello` | `{v, accessToken, mode, sortieId?}` | ilk mesaj; `mode`: `enter` · `resume` (§3); `sortieId` F8'den itibaren |
+| `hello` | `{v, accessToken, mode, ship, sortieId?}` | ilk mesaj; `mode`: `enter` · `resume` (§3); `ship`: `akinci` · `muhafiz` · `kilavuz` (protokol 8, sonraki uçuşun sınıfı); `sortieId` F8'den itibaren |
 | `in` | `[seq, steerX, steerY, throttle, buttons]` | tick başına; steer ×1000 tamsayı, throttle ×100; `buttons` bit: ateş 1, turbo 2 (basılı durum), duman 4, görünmezlik 8 (basış olayı; §6) |
 | `ping` | `{t}` | ~1 Hz |
 | `dev` | serbest | yalnız `ARENA_DEV` (bot ekle, ağ koşullayıcı, ışınla) |
@@ -95,15 +95,96 @@
 | Mesaj | İçerik |
 |---|---|
 | `welcome` | `{v, pilotId, tick, tickRate, snapshotRate, lifeSeed, layoutVersion, stats, cargo, serverTimeMs, roster}` — `roster`: odadaki pilotlar `[{id, name, clanTag}]` |
-| `snap` | `[tick, ackSeq, self…, others…]` — `ackSeq`: sunucunun bu tick'e kadar uyguladığı son girdi. self: uçuş durumunun **tamamı tam hassasiyetle** (p, q, s, ω, turbo şarjı ve süreleri, yakıt) + gövde, kargo, bayraklar, kalkan/yetenek sayaçları; others (nicemlenmiş): id, konum (cm), yönelim (×10⁴), hız, gövde oranı (0–100, izlenen hedefin çubuğu için), bayraklar (kalkan, duman, turbo, titreşim) |
+| `snap` | `[tick, ackSeq, self…, others…, mid…, far…]` (protokol 7, §9) — `ackSeq`: sunucunun bu tick'e kadar uyguladığı son girdi. self: uçuş durumunun **tamamı tam hassasiyetle** (p, q, s, ω, turbo şarjı ve süreleri, yakıt) + gövde, kargo, bayraklar, kalkan/yetenek sayaçları; others (nicemlenmiş): id, konum (cm), yönelim (×10⁴), hız, gövde oranı (0–100, izlenen hedefin çubuğu için), bayraklar (kalkan, duman, turbo, titreşim) |
 | `ev` | olay dizisi: `join{id, name, clanTag}` · `leave{id}` · `shot{id, shooter, shotNo, p, v, tick}` · `hit{shot, target, p, dmg}` · `shotEnd{shot, reason}` · `shield` · `cloak` · `smoke{pilot, puffs}` · `death{pilot, by, p}` · `drop{id, p, v, amount}` · `pickup{id, by, amount}` · `exit{state, t, reason}` · `result{kind, …}` |
 | `pong` | `{t, serverTimeMs}` |
-| `kick` | `{reason}`: `protocol` · `auth` · `disabled` · `replaced` · `season` · `placement` · `shutdown` · `flood` · `ended` |
+| `kick` | `{reason}`: `protocol` · `version` · `auth` · `disabled` · `replaced` · `season` · `placement` · `shutdown` · `flood` · `ended` · `full` |
 
 İstemci düşük frekanslı mesajları Zod ile, `snap`'i paylaşılan katı çözücüyle okur (KG-T9).
 Self durumu tam hassasiyetle gelir: nicemlenmiş durumdan yeniden oynatma sunucuyla aynı sonucu
 vermez ve her snapshot'ta düzeltme doğurur. Statik dünya (asteroitler, çıkışlar) **gönderilmez**:
 iki taraf da `rules/arena/layout.ts`'i bilir.
+
+**Protokol 5 (V6g, 2026-10-23, `rules/arena/feed.ts`):** mermi, duman, çarpma, kargo ve kristaller
+her pakette tam durum olarak değil, değişiklik olarak gider: doğanlar, bitenler (`*Gone`), değişen
+satırlar. Anahtar kare (`key: 1`) tam durumdur, istemci havuzlarını temizleyip baştan kurar; yalnız
+anlık-görüntü ticklerinde gider: girişte, atlanan gönderimden sonra ve pilot başına 10 sn'de bir.
+Başka sürümden gelen `hello` → `kick: version`; bu sürümden ama çözülemeyen `hello` (sınıf yok) → `kick: protocol`.
+Gerekçe ve ölçüm: `17-paket-kucultme-plani.md`.
+
+**Protokol 8 (Y4, 2026-10-23, `rules/arena/classes.ts`):** kendi satırı sınıfı taşır (faz alanından
+hemen önce, 54 sayı); çözücü yakıt, gövde, şarjör ve ambarı o sınıfın sınırıyla denetler. Kadronun
+her satırında `ship` var; başka geminin satırı sınıf taşımaz, gövdesi en sağlam sınıfın (600) sınırıyla
+denetlenir. Sınıf `hello` ile seçilir ve **bir sonraki uçuşta** geçer; uçuş sürerken değişmez.
+
+**Protokol 9 (Y4c, 2026-10-23, `rules/arena/signatures.ts`, KG-X29):**
+- `hello` artık `tactic` da taşır: `smoke` veya `cloak`.
+- Girdi 8 sayı olur. 7. düğme biti (64) A yuvasıdır; 8. sayı onun hedefidir (pilot id, yoksa −1).
+- Kendi satırı 64 sayıdır. Şarjörden önce şu 10 alan gelir:
+  - taktik
+  - A beklemesi
+  - kilit hedefi ve kilit tiki
+  - tehdit (0–3) ve tehdidin kaynağı (x, y, z)
+  - kalkan ve onarım tikleri
+- Başkalarının bayraklarına iki bit eklenir: 8 kalkan, 16 onarım.
+- Her anlık görüntü canlı füzelerin tamamını taşır. Füze 10 sayıdır: yuva, konum, hız, ömür,
+  sahip, hedef. İstemci iki görüntü arasında füzeyi düz uçurur.
+
+**Protokol 10 (Y4d, 2026-10-23, `rules/arena/tactics.ts`, KG-X30):**
+- `hello` taktiği dört olabilir: `smoke`, `cloak`, `illusion`, `radar`.
+- Düğme bitleri: 128 İllüzyon, 256 Tarama (en çok 511).
+- Kendi satırı 67 sayıdır. Taktikten önce üç alan gelir: taktik beklemesi, kopyanın id'si
+  (yoksa −1), tarama tiki. Tehdit 4 olabilir: tarandın.
+- Çarpma türlerine `hologram` eklenir: kopya kırıldı.
+- Her anlık görüntü `scan` taşır. Bu, alıcının kendi taramasının işaretlediği gemi id'leridir.
+  Bu gemiler görüş ve menzil sınırı olmadan gönderilir; menzil dışındakiler uzak satır olarak.
+
+**Protokol 11 (Y6a, 2026-10-23, `rules/arena/economy.ts`, `services/arenaShips.ts`, KG-X31):**
+- Ambar ham kaynaktır: `hold` alaşım, kristal, döteryum miktarıdır; birim ve puan yoktur.
+- Hesapla gelen pilotun `hello`'sundaki sınıf yok sayılır. Oda uçuşu hangardan açar (`launch`) ve
+  hangarın gemisini, deposunu, şarjörünü ve ambarını uçurur. Konuk `hello`'daki sınıfla uçar.
+- Hangar reddederse oda, sebebi koduyla `kick` gönderir (`SHIP_NOT_READY`, `NOT_ENOUGH_DEUTERIUM`,
+  `SEASON_CLOSING` …); kimse oturtulmaz.
+- Uçuş bitince oda bir kez `sortie` gönderir: sonuç, başkente yatan, günlük tavanın dışarıda
+  bıraktığı, gemi hazır olma anı ve sebebi (tamir/bakım).
+- Oda kapanırken (`preClose`) havadaki uçuşlar `recalled` olarak kapanır, ambar gemide kalır.
+  Çökmeden kalan açık uçuşlar ilk kalkıştan önce bir kez geri çağrılır.
+- Roster kopyayı sahibinin adı ve sınıfıyla, `copyOf` (sahibin id'si) alanıyla taşır. Yeni bir
+  kopya yarım saniyelik roster birikimini beklemez; anlık görüntüden önce gönderilir. Roster en
+  çok `ARENA_MAX_SEATS × 2 + 8` satırdır.
+
+**Protokol 12 (Y6b, 2026-10-23, `rules/arena/progression.ts`, KG-X32):**
+- Kendi satırı geminin seviyesini taşır (indeks 38, öldürmelerden sonra; `PILOT_WIDTH` 68).
+  Satırın sınırları o seviyenin değerleridir. Uzak gövde sınırı en sağlam 20. seviye gövdedir.
+- Roster satırı `level` taşır (1–20). Kopya sahibinin seviyesini gösterir.
+- `sortie` mesajı `xp {earned, kept, banked}` taşır: uçuşun kazandığı, geminin tuttuğu, çubuğa
+  girebilen.
+- `POST /arena/upgrade` bir sonraki seviyeyi başkentin alaşım ve kristaliyle alır. Kilit sırası:
+  sezon → gemi satırı → başkent.
+
+**Protokol 13 (Y6c, 2026-10-24, KG-X34):**
+- Kendi satırı 71 sayı: üç etkin yetenek rütbesi kargodan sonra, sınıf/fazdan önce.
+  Diğer oyuncuların satır genişliği değişmez. Rütbeler 1–5 tam sayı olarak doğrulanır.
+- `arena_ships.abilities`: imza, turbo ve dört taktiğin ayrı satın alma sayıları. Etkin rütbe,
+  sınıf yakınlığıyla hesaplanır. Kalkış bu kaydı okur; `hello` istemciden rütbe/puan almaz.
+- `POST /arena/ability {ability}` yalnız bir kazanılmış puan harcar. Sezon → gemi → başkent
+  kilit sırası, uçuş ve rütbe/puan sınırları korunur. Hangar cevabındaki `abilities` web'in
+  Zod sınırında doğrulanır; gerçek API/DB cevabı `test/arena/contract.test.ts` ile sınanır.
+- `POST /arena/repair {}` aynı oturum/koltuk kapısını kullanır. Bedel ve yeni bitiş sunucudadır
+  (KG-X35); kalan süre yeterince kısaysa yeniden ödeme yapılmaz.
+- Y6c için migration 0199 önce uygulanır; web ve arena protokol 13'e birlikte geçer.
+
+**Protokol 14 (Y7, 2026-10-24, KG-X36):**
+- Kendi satırı 72 sayı; seviye sonrasındaki `mendPower` onarımı gönderenin gücünü korur.
+  Uzaktaki gemilerin satır genişliği değişmez. Roster klan/takım kimliğini sunucudan taşır.
+- `welcome.teamId` ortak kalkışı tanımlar. Biten takım üyesinin snapshot'ında `watching`
+  yaşayan kamera hedefidir; `-1` kalan dost olmadığını bildirir. `watch {pilotId}` yalnız
+  aynı kalkışın yaşayan gerçek pilotunu seçebilir; `hello.mode=spectate` yeni sorti açmaz.
+- `GET /arena/team`; `POST /arena/team/{create,join,leave,remove,ready,start,claim}`. Oturum,
+  Yarık erişimi, klan/lider yetkisi ve bütün kaynak/gemi kararları sunucuda doğrulanır.
+  Lobi kalkışından önce başlangıç geri çağırması tamamlanır; hata olursa yeni uçuş açılmaz.
+- Migration `0200_arena_teams` önce uygulanır; web ve arena birlikte protokol 14'e geçer.
+  Kalıcılık/kilitler ve doğrulama kaydı: [20](20-y7-takim.md).
 
 ## 5. Simülasyon döngüsü (KG-T10)
 
@@ -176,10 +257,26 @@ Gemi–gemi çarpışması olmadığından (KG-T19) başka gemiyle itişme tahmi
 
 ## 9. İlgi alanı (AOI) ve bant genişliği
 
-Pilotlar 500 m'lik ızgarada. Snapshot: `aoiRadius` içindeki gemiler; `shot` olayları da aynı
-yarıçapla süzülür. JSON'da gemi başına ~60–70 B: 20 yakın gemi × 15 Hz ≈ 19 KB/sn, yoğun ateşle
-≈ +10 KB/sn. **Eşik: istemci başına ≤ 30 KB/sn indirme** (en kötü sahne). Oda testi bayt/sn'yi ölçer,
-eşik aşılırsa başarısız olur. Aşılırsa önce alan/hassasiyet kırpılır, sonra ikili kodlamaya geçilir.
+Protokol 7 (KG-X26): her pilota en yakın **50** gemi (`MAX_REMOTE_PILOTS`), 2,4 km'ye kadar, üç
+kademede. Toplam 50'yi, yinelenen id'yi ve kademeler arası tekrarı çözücü reddeder.
+
+| Kademe | Mesafe | Satır | Sıklık |
+|---|---|---|---|
+| `others` | ≤ 800 m (`REMOTE_NEAR_RANGE`) | tam (nicemlenmiş) | her anlık görüntü (15 Hz) |
+| `mid` | 800 m–1,6 km (`REMOTE_FULL_RANGE`) | tam | her `MID_EVERY` = 4 tick (7,5 Hz) |
+| `far` | 1,6–2,4 km (`REMOTE_FAR_RANGE`) | uzak: id, konum, yön, hız, bayrak | her `FAR_EVERY` = 6 tick (5 Hz) |
+
+- Kademe değiştiren geminin satırı o tick gider; anahtar karede bütün kademeler gider.
+- Her sınırda ±50 m bant (`REMOTE_BAND`): sınırda gidip gelen gemi kademe değiştirmez.
+- `MID_EVERY` ≤ `interpDelay` (4 tick): orta kademe gemi hep iki örnek arasında ara değerlenir.
+- İstemci gemiyi kendi kademesinin süresi boyunca görmezse siler; yakın gemi ilk eksik pakette gider
+  (ölen, gizlenen hemen kaybolur).
+- Kilit, nişan, işaret ve ses yalnız tam satırlı gemiye bağlıdır; `shot` olayları da aynı yarıçapla
+  süzülür.
+
+Ölçüm (50 pilotluk savaş, 2026-10-23): paket ort. 4,33 KB (protokol 6) → 3,19 KB.
+**Eşik: istemci başına ≤ 30 KB/sn indirme** (en kötü sahne). Oda testi bayt/sn'yi ölçer, eşik
+aşılırsa başarısız olur. Aşılırsa önce alan/hassasiyet kırpılır, sonra ikili kodlamaya geçilir.
 
 ## 10. Gizlilik ve hile sınırları
 

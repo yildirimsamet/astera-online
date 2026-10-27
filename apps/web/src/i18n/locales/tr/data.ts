@@ -560,6 +560,15 @@ export const directives = {
 } as const;
 
 export const notifications = {
+  arenaShipReady: "Komutan gemin hazır. Hangarı aç.",
+  arenaRepairReady: "Komutan geminin tamiri tamamlandı. Hangarı aç.",
+  arenaServiceReady: "Komutan geminin bakımı tamamlandı. Hangarı aç.",
+  arenaTeamShare: "Takım payın hazır: {{loot}}. Hangarda al.",
+  arenaTeamShareReady: "Takım payın hazır. Hangarda al.",
+  arenaSortieTowed: "Bağlantın koptu; komutan gemin Yarık'ta beklerken çekildi.",
+  arenaSortieDead: "Komutan gemin Yarık'ta düşürüldü; tamirde.",
+  arenaSortieLoot: "Ambardan kaybedilen: {{loot}}.",
+
   incomingFallback: 'Filo geliyor.',
   incomingLanded: 'indi',
   incomingEta: 'Tahmini {{minutes}} dk',
@@ -568,6 +577,7 @@ export const notifications = {
   strategicIncomingHead: 'Stratejik silah geliyor · {{clock}}',
   incomingEstimate: 'yaklaşık {{count}} gemi',
   incomingFrom: 'kalkış: {{origin}}',
+  incomingAdmiral: 'komutan gemisi eşliğinde: {{ship}} {{level}}',
   /** Okuyanın hangi dünyası hedefte. Radar ürünü değil. */
   incomingAt: 'hedef {{world}}',
   commanderAt: '{{username}} · {{planet}} gezegeni',

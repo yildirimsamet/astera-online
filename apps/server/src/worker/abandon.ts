@@ -26,6 +26,7 @@ import { landRunLocked } from '../services/mining.js';
 import { abandonClanWarLeg, clanWarEscrowPlanetIds } from '../services/clanWar.js';
 import { abandonClanSupportLeg } from '../services/clanSupport.js';
 import { resolveRadiationBomb } from '../services/radiationBomb.js';
+import { finishAdmiralLeg } from '../services/admiral.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -167,6 +168,8 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
       ));
     const destinationPlanetId = preferred?.id ?? capital.id;
     const stranded = await fleetOfMission(tx, storagePlanetId, mission.id);
+    // An escorting commander ship comes home with what is left of its fleet.
+    await finishAdmiralLeg(tx, at, 'mission', mission.id, fleetCount(stranded));
     if (fleetEntries(stranded).length > 0) {
       await clearMissionUnits(tx, storagePlanetId, mission.id);
       // A leg the server gives up on is still a landing: the damage aboard is judged,

@@ -5,6 +5,7 @@ import { ARENA_PROTOCOL, ARENA_TUNING as T, decodeArenaSnapshot, type ArenaSnaps
 import { registerArena, type ArenaIdentify } from '../../src/arena/server.js';
 import { systemClock } from '../../src/clock.js';
 import { loadEnv } from '../../src/env.js';
+import { fakeShips } from './fakeShips.js';
 
 /**
  * The live playtest path: no guests, no debug actions. Pilots are real accounts on the
@@ -28,7 +29,8 @@ async function room(pilots = 'alice,bob') {
     ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots });
   const app = Fastify();
   app.decorate('clock', systemClock);
-  const arena = registerArena(app, env, identify);
+  // Every launch is granted: the hangar's own rules are `arena-ships.test.ts` and `sortie.test.ts`.
+  const arena = registerArena(app, env, identify, fakeShips().ships);
   await app.listen({ port: 0, host: '127.0.0.1' });
   closers.push(() => app.close());
   const address = app.server.address();
@@ -50,7 +52,7 @@ function connect(url: string, hello: Record<string, unknown>): Promise<{ socket:
     });
     socket.on('error', reject);
     socket.on('open', () => {
-      socket.send(JSON.stringify({ kind: 'hello', v: ARENA_PROTOCOL, mode: 'enter', ...hello }));
+      socket.send(JSON.stringify({ kind: 'hello', v: ARENA_PROTOCOL, mode: 'enter', ship: 'kilavuz', tactic: 'smoke', ...hello }));
       closers.push(async () => { socket.close(); await Promise.resolve(); });
       resolve({ socket, messages, next: match => new Promise(done => {
         const found = messages.find(match);

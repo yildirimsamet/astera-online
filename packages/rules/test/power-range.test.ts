@@ -166,3 +166,33 @@ describe('the power range of a crew seen exactly', () => {
     expect(r.ratio.high).toBe(r.ratio.low);
   });
 });
+
+/**
+ * A COMMANDER-SHIP ESCORT IS PART OF THE WING (Y9, merged onto combat v3 2026-10-27). The battle
+ * fires the wing with `withAdmiral`'s damage and takes its hits on its hull bonus; a power range
+ * that left either out drew an escorted wing weaker than the one the server fights.
+ */
+describe('an escorted wing', () => {
+  const wing: Fleet = { PIKE: 30, SENTINEL: 10 };
+  it('fires with the escort\'s damage and stands on its hull, ship shields included', () => {
+    const plain = powerUnits(wing, { tech: {} });
+    const led = powerUnits(wing, { tech: {}, damageMult: 1.15, hullMult: 1.1 });
+    led.forEach((unit, i) => {
+      expect(unit.attack).toBeCloseTo(plain[i]!.attack * 1.15, 9);
+      expect(unit.ehp).toBeCloseTo(plain[i]!.ehp * 1.1, 9);
+      expect(unit.maxHp).toBeCloseTo(plain[i]!.maxHp * 1.1, 9);
+    });
+  });
+
+  it('reads stronger against the same wall, by the read and by the exact crew', () => {
+    const crew: Fleet = { DART: 40 };
+    const plain = exactPowerRange({ fleet: wing, tech: {} }, crew, { tech: {} });
+    const led = exactPowerRange({ fleet: wing, tech: {}, damageMult: 1.15, hullMult: 1.1 }, crew, { tech: {} });
+    expect(led.ratio.low).toBeGreaterThan(plain.ratio.low);
+    const line = [{ value: { low: combatValue(crew), high: combatValue(crew) } }];
+    const read = readPowerRange({ fleet: wing, tech: {} }, line, { low: 0, high: 0 })!;
+    const readLed = readPowerRange({ fleet: wing, tech: {}, damageMult: 1.15, hullMult: 1.1 }, line, { low: 0, high: 0 })!;
+    expect(readLed.ratio.low).toBeGreaterThan(read.ratio.low);
+    expect(readLed.ratio.high).toBeGreaterThan(read.ratio.high);
+  });
+});

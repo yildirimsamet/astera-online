@@ -23,6 +23,7 @@ import { recallMonumentFleets } from '../services/monumentRecall.js';
 import { activateSpawnGate } from '../services/spawnGate.js';
 import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
+import { activateAdmiral } from '../services/admiralActivation.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
 import { activateHonorShadow, hideHonorRanking, openHonorRanking } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
@@ -113,6 +114,11 @@ season activate-monument-motion --shard CODE [--yes]
 season activate-tempo-slowdown --shard CODE [--yes]
                                    preserve earned production and retire existing NPC targets;
                                    refuses active pirate raids or merchant convoys
+
+season activate-admiral --shard CODE [--yes]
+                                   open commander ship escorts in a LIVE season dealt
+                                   before ruleset 19, from now on. Flights already in the
+                                   air keep their rules. Dry run unless --yes; safe to rerun.
 
 season activate-radiation-bombs --shard CODE [--yes]
                                    enable bombs, parked-ship exposure and the 50 HP/min cap
@@ -358,6 +364,16 @@ async function main(): Promise<void> {
         if (result.applied) console.log('Applied motion and entity radiation. Current coordinates, season and history were preserved.');
         else console.log('Nothing was written.');
         if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
+        break;
+      }
+      case 'activate-admiral': {
+        if (!values.shard) throw new Error('activate-admiral requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateAdmiral(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt?.toISOString() ?? '-'}`);
+        console.log(result.applied ? 'Opened commander ship escorts. Season rules and flights in the air were preserved.'
+          : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
         break;
       }
       case 'activate-radiation-bombs': {

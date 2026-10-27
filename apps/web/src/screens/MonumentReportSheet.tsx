@@ -12,6 +12,8 @@ import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
 import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey } from '../lib/battleOutcome.js';
 import { MonumentBattleRules } from './MonumentBattleRules.js';
+import { ARENA_ECONOMY } from '@astera/rules/arena';
+import { arenaCopy } from '../arena/copy.js';
 
 export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
   report: MonumentBattleReport; onClose: () => void; onFocusMonument?: (id: string) => void;
@@ -40,6 +42,16 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
       {opponents.length > 0 && <p>{t('monument.reportOpponents', { names: opponents.map((opponent) => opponent.kind === 'NEUTRAL'
         ? t('monument.neutral') : opponent.clanTag ? `${opponent.name} [${opponent.clanTag}]` : opponent.name).join(' · ') })}</p>}
       <p>{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</p>
+      {(report.admirals ?? []).map((admiral, index) => {
+        // Y9: a capture leaves the fleet in the monument and sends the escort home alone; a loss repairs it.
+        const values = { ship: arenaCopy().classes[admiral.ship].name, level: arenaCopy().level(admiral.level) };
+        const won = report.control === 'ATTACKER';
+        return <p key={`admiral:${String(index)}`} data-effect="admiral"
+          className={!report.attacking ? 'text-v2-ink-2' : won ? 'text-v2-self' : 'text-v2-warn'}>
+          {!report.attacking ? t('reports.effects.admiralRaider', values)
+            : won ? t('reports.effects.admiralHeld', values) : t('reports.effects.admiralRepair', { ...values, minutes: ARENA_ECONOMY.repairMinutes })}
+        </p>;
+      })}
       <div className="grid gap-1.5">
         {fleetEntries(report.yourFleet).map(([hull, sent]) => <p key={hull} className="flex items-center justify-between gap-2">
           <span>{hullLabel(hull)}</span><span className="font-v2-mono">{t('monument.reportHull', { sent, left: report.yourSurvivors[hull] ?? 0, lost: report.yourLosses[hull] ?? 0 })}</span>

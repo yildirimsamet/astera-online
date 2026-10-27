@@ -3568,8 +3568,10 @@ export const MULTI_WORLD = {
    * Live v16 seasons adopt the same behavior through a separate explicit idle cutover.
    * 17 → 18: calibrated fixed radiation levels and four-rung Radiation Shielding.
    * Older live seasons adopt them through a separate idle cutover, preserving all other rules.
+   * 18 → 19 on 2026-10-26: the commander ship escorts fleets (`ADMIRAL_RULESET`). A live v18
+   * season takes it through `season activate-admiral`, from one explicit instant.
    */
-  rulesetVersion: 18,
+  rulesetVersion: 19,
   /** Monument and fixed HP radiation are dealt together, after every adapter is complete. */
   monumentRulesetVersion: 16,
   /**

@@ -560,6 +560,15 @@ export const directives = {
 } as const;
 
 export const notifications = {
+  arenaShipReady: "Ton vaisseau de commandement est prêt. Ouvre le hangar.",
+  arenaRepairReady: "Les réparations de ton vaisseau de commandement sont terminées. Ouvre le hangar.",
+  arenaServiceReady: "La maintenance de ton vaisseau de commandement est terminée. Ouvre le hangar.",
+  arenaTeamShare: "Ta part d’équipe est prête : {{loot}}. Récupère-la au hangar.",
+  arenaTeamShareReady: "Ta part d’équipe est prête. Récupère-la au hangar.",
+  arenaSortieTowed: "Ta connexion a coupé ; ton vaisseau de commandement a été remorqué hors du Yarık.",
+  arenaSortieDead: "Ton vaisseau de commandement a été abattu dans le Yarık et est en réparation.",
+  arenaSortieLoot: "Perdu dans la soute : {{loot}}.",
+
   incomingFallback: 'Flotte entrante.',
   incomingLanded: 'atterri',
   incomingEta: 'ETA {{minutes}} min',
@@ -568,6 +577,7 @@ export const notifications = {
   strategicIncomingHead: 'Arme stratégique entrante · {{clock}}',
   incomingEstimate: 'est. {{count}} navires',
   incomingFrom: 'de {{origin}}',
+  incomingAdmiral: 'avec un vaisseau de commandant : {{ship}} {{level}}',
   /** Okuyanın hangi dünyası hedefte. Radar ürünü değil. */
   incomingAt: 'visant {{world}}',
   commanderAt: '{{username}} à {{planet}}',

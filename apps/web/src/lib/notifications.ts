@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { FAULT_KINDS } from '@astera/rules';
+import { SHIP_CLASSES } from '@astera/rules/arena';
+import { arenaCopy } from '../arena/copy.js';
 import type { NotificationView } from '../api/schemas.js';
 import { unknownSignalOutcomeSchema } from '../api/schemas.js';
 import { HULLS } from '@astera/rules';
@@ -86,6 +88,8 @@ const incoming = z.object({
    * rows written before this existed do not carry it.
    */
   targetPlanetName: z.string().optional(),
+  /** Y9: the commander ship escorting the raid. Absent on unescorted raids and older rows. */
+  admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
 });
 
 /** Both halves of one interception: who is reading it, and how far out it died. */
@@ -737,6 +741,24 @@ export function notificationIdentity(notification: NotificationView): Notificati
  * test place a notification either side of its own arrival.
  */
 export function describeNotification(notification: NotificationView, now: number): string | null {
+  if (notification.kind === 'arena_ship_ready') {
+    const ready = z.object({ reason: z.enum(['repair', 'service']) }).safeParse(notification.payload);
+    return i18n.t(ready.success ? ready.data.reason === 'repair' ? 'notifications.arenaRepairReady' : 'notifications.arenaServiceReady' : 'notifications.arenaShipReady');
+  }
+  if (notification.kind === 'arena_team_share') {
+    const amount = z.number().nonnegative();
+    const shared = z.object({ share: z.object({ alloy: amount, crystal: amount, deuterium: amount }) }).safeParse(notification.payload);
+    const loot = shared.success ? spoils(shared.data.share.alloy, shared.data.share.crystal, shared.data.share.deuterium) : [];
+    return loot.length > 0 ? i18n.t('notifications.arenaTeamShare', { loot: loot.join(JOIN()) }) : i18n.t('notifications.arenaTeamShareReady');
+  }
+  if (notification.kind === 'arena_sortie_end') {
+    const amount = z.number().nonnegative();
+    const ended = z.object({ outcome: z.enum(['dead', 'towed']), lost: z.object({ alloy: amount, crystal: amount, deuterium: amount }) }).safeParse(notification.payload);
+    if (!ended.success) return i18n.t('notifications.arenaSortieTowed');
+    const loot = spoils(ended.data.lost.alloy, ended.data.lost.crystal, ended.data.lost.deuterium);
+    const line = i18n.t(ended.data.outcome === 'dead' ? 'notifications.arenaSortieDead' : 'notifications.arenaSortieTowed');
+    return loot.length > 0 ? `${line} ${i18n.t('notifications.arenaSortieLoot', { loot: loot.join(JOIN()) })}` : line;
+  }
   if (notification.kind === 'unknown_signal_result') {
     const parsed = z.object({ outcome: unknownSignalOutcomeSchema }).safeParse(notification.payload);
     if (!parsed.success) return null;
@@ -802,7 +824,7 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         arriveAt, etaMinutes, estimatedShips, mass, fleet: ships,
         originUsername, originClanTag, originPlanetName, originName,
-        targetPlanetName,
+        targetPlanetName, admiral,
       } = parsed.data;
 
       /**
@@ -842,6 +864,10 @@ export function describeNotification(notification: NotificationView, now: number
       }
       else if (estimatedShips !== undefined) {
         parts.push(i18n.t('notifications.incomingEstimate', { count: estimatedShips }));
+      }
+      if (admiral) {
+        const arena = arenaCopy();
+        parts.push(i18n.t('notifications.incomingAdmiral', { ship: arena.classes[admiral.ship].name, level: arena.level(admiral.level) }));
       }
       if (originUsername !== undefined || originPlanetName !== undefined || originName !== undefined) {
         parts.push(i18n.t('notifications.incomingFrom', {
@@ -1484,6 +1510,9 @@ const isPirateNews = (notification: NotificationView): boolean => {
 };
 
 export function signalFamily(notification: NotificationView): SignalFamily {
+  // The commander's own ship: a gain when it is ready or a share waits, a loss to watch when a flight went unseen.
+  if (notification.kind === 'arena_ship_ready' || notification.kind === 'arena_team_share') return 'gain';
+  if (notification.kind === 'arena_sortie_end') return 'watch';
   if (notification.kind === 'unknown_signal_result') {
     const parsed = z.object({ outcome: unknownSignalOutcomeSchema }).safeParse(notification.payload);
     return parsed.success ? parsed.data.outcome.kind === 'PIRATES' ? 'threat' : 'gain' : 'note';
@@ -1674,6 +1703,7 @@ export type SignalGlyph =
   | 'bell';
 
 export function signalGlyph(notification: NotificationView): SignalGlyph {
+  if (notification.kind === 'arena_ship_ready' || notification.kind === 'arena_team_share' || notification.kind === 'arena_sortie_end') return 'returned';
   if (notification.kind === 'unknown_signal_result') return 'scan';
   // Before the kind, because a raid at a pirate and a raid at a commander are the
   // same kind and are not the same news.

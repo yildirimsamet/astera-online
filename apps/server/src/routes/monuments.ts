@@ -21,6 +21,8 @@ const sendBody = z.object({ originPlanetId: z.string().uuid(), purpose: z.enum([
   fleet: z.record(z.number().int().nonnegative().max(2_147_483_647)).refine((fleet) =>
     Object.keys(fleet).every((hull) => allowed.has(hull)) && Object.values(fleet).some((count) => count > 0), 'Choose a nonempty mobile fleet'),
   acknowledgeShieldLoss: z.boolean().default(false), acknowledgeRadiationLoss: z.boolean().default(false),
+  /** The commander ship escorts the wave (Y9). */
+  admiral: z.boolean().default(false),
 }).strict();
 const recallBody = z.object({ selections: z.array(z.object({ lotId: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647) }).strict()).nonempty().max(10_000) }).strict();
 const recallCommand = z.union([recallBody, z.object({ all: z.literal(true) }).strict()]);

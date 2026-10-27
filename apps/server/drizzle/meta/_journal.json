@@ -1394,6 +1394,76 @@
       "when": 1792909588527,
       "tag": "0198_bitter_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1793070000000,
+      "tag": "0199_arena_ships",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1793070060000,
+      "tag": "0200_arena_ship_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1793070120000,
+      "tag": "0201_arena_ability_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1793070180000,
+      "tag": "0202_arena_teams",
+      "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1793070240000,
+      "tag": "0203_arena_ship_ready",
+      "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1793070300000,
+      "tag": "0204_arena_admiral_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1793070360000,
+      "tag": "0205_arena_admiral_defeat",
+      "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1793070420000,
+      "tag": "0206_arena_team_share_admiral_home",
+      "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1793070480000,
+      "tag": "0207_arena_admiral_live",
+      "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1793070540000,
+      "tag": "0208_arena_ship_loadout",
+      "breakpoints": true
     }
   ]
 }

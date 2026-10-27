@@ -472,6 +472,11 @@ export const reports = {
   /** Ce que le combat a provoqué au-delà de la ligne de butin ; affiché uniquement si pertinent. */
   effects: {
     heading: "Conséquences du combat",
+    admiralYours: 'Ton vaisseau de commandant a escorté la flotte : {{ship}} {{level}}. Il n’a jamais tiré ni été touché.',
+    admiralHeld: 'Ton vaisseau de commandant a escorté la flotte : {{ship}} {{level}}. La flotte tient le monument ; le vaisseau est rentré seul.',
+    admiralRepair: 'Ton vaisseau de commandant a escorté la flotte : {{ship}} {{level}}. La bataille est perdue, il part {{minutes}} min en réparation.',
+    admiralRaider: 'Le vaisseau de commandant de l’attaquant a escorté la flotte : {{ship}} {{level}}. Il donne un bonus et n’est jamais touché.',
+    admiralDefence: 'Un vaisseau de commandant tenait la ligne de défense : {{ship}} {{level}}. Il donne un bonus et n’est jamais touché.',
     shieldTheirs:
       "Leur bouclier a absorbé {{amount}} dégâts avant qu’ils n’atteignent les coques.",
     shieldYours:

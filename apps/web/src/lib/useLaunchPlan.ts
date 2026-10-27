@@ -37,6 +37,8 @@ import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import type { LaunchTarget } from '../screens/LaunchSheet.js';
 import type { PirateProfitState } from '../ui/PirateProfitCard.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { useCommanderShip } from '../api/commanderShip.js';
+import { escortOf, escortRoute } from './admiralEscort.js';
 
 /**
  * EVERYTHING A LAUNCH DECIDES BEFORE IT IS DRAWN. Spec B14, F3.4a.
@@ -137,11 +139,23 @@ export function useLaunchPlan({
    * rung that stops being legal falls back to full speed rather than refusing the launch.
    */
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
-  const unpaced = target.kind === 'pirate'
-    ? planPirateRoute(target.pirate.reach, sending, available, planet.ground, mods)
+  /*
+    THE COMMANDER SHIP AS ESCORT (Y9), on a world raid and a pirate raid. It shortens the legs and
+    the fuel the same way the server does, so every figure below already reads with it. A pirate
+    meeting is the server's solve, so a Kılavuz reads the table solved at its speed (`escortReach`).
+  */
+  const commanderShip = useCommanderShip(!lesson);
+  const escort = lesson ? null : escortOf(commanderShip.data, serverNow());
+  const [escortWanted, setEscortWanted] = useState(false);
+  const escortBonus = escortWanted && escort?.kind === 'ready' ? escort.bonuses : null;
+  const pirateReach = target.kind === 'pirate' && escortBonus && escortBonus.time !== 1
+    ? target.pirate.escortReach ?? target.pirate.reach : target.kind === 'pirate' ? target.pirate.reach : [];
+  const rawUnpaced = target.kind === 'pirate'
+    ? planPirateRoute(pirateReach, sending, available, planet.ground, mods)
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, mods,
       );
+  const unpaced = rawUnpaced && escortRoute(rawUnpaced, escortBonus, target.kind === 'pirate');
   /**
    * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
    *
@@ -158,11 +172,12 @@ export function useLaunchPlan({
     : [1 as MissionPace];
   const pace = paces.includes(wantedPace) ? wantedPace : 1;
   const paced = useMemo(() => ({ ...mods, pace }), [mods, pace]);
-  const planned = target.kind === 'pirate'
-    ? planPirateRoute(target.pirate.reach, sending, available, planet.ground, paced)
+  const rawPlanned = target.kind === 'pirate'
+    ? planPirateRoute(pirateReach, sending, available, planet.ground, paced)
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
+  const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate');
   const route = lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
   const aim = route?.rendezvous ?? null;
@@ -392,6 +407,7 @@ export function useLaunchPlan({
     wing: sending,
     damage: selectedHealth?.selectedDamage,
     rulesetVersion: planet.rulesetVersion ?? season.data?.rulesetVersion ?? 0,
+    escort: escortBonus,
   });
 
   /**
@@ -438,10 +454,13 @@ export function useLaunchPlan({
             flight time and the live server would rightly refuse it.
           */
           ...(lesson || route === null ? {} : { quotedMinutes: route.oneWayMinutes }),
+          ...(escortBonus ? { admiral: true } : {}),
         },
         {
           onSuccess: (result) => {
             say(t('pirate.send', { count: fleetCount(result.fleet), duration: duration(result.flightMinutes) }));
+            // F24: the ship flew with that wave; a switch left on prices the next one with a ship already gone.
+            setEscortWanted(false);
             onLaunched();
           },
           onError: (err) => {
@@ -465,12 +484,14 @@ export function useLaunchPlan({
         */
         ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
         pace,
+        ...(escortBonus ? { admiral: true } : {}),
         // The hold on a lethal route is the answer the server asks for (D10).
         ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
       },
       {
         onSuccess: (result) => {
           say(t('launch.launched', { duration: duration(result.exposureMinutes), count: result.homeDefenceAfter }));
+          setEscortWanted(false);
           onLaunched();
         },
         onError: (err) => {
@@ -485,7 +506,7 @@ export function useLaunchPlan({
 
   return {
     sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods,
-    paces, pace, setWantedPace, route, fullSpeedRoute: unpaced,
+    paces, pace, setWantedPace, route, fullSpeedRoute: unpaced, escort, escorted: escortBonus !== null, setEscortWanted,
     paceReset: paces.length > 0 && pace !== wantedPace,
     total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,

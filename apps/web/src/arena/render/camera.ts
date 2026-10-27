@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { queryObstacles, type ArenaLayout } from '@astera/rules/arena';
+import { closestSurface, queryObstacles, type ArenaLayout, type SurfacePoint } from '@astera/rules/arena';
 
 /** The ship pose the camera follows this frame (already interpolated). */
 export interface ChasePose {
@@ -28,9 +28,9 @@ export class ChaseCamera {
   private readonly arm = new THREE.Vector3();
   private readonly look = new THREE.Vector3();
   private readonly up = new THREE.Vector3();
-  private readonly scratch = new THREE.Vector3();
   private readonly probe = new THREE.Vector3();
   private readonly nearby: number[] = [];
+  private readonly surface: SurfacePoint = { x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, d: 0, inside: false };
   private pull = 0;
   private surgeKick = 0;
   private accel = 0;
@@ -97,7 +97,7 @@ export class ChaseCamera {
 
   /**
    * Pulls the arm in towards the ship rather than letting the lens sit inside rock or a
-   * structure's wall (rocks are spheres, structures yaw-rotated boxes).
+   * structure's wall, measured against the same surfaces the ships collide with.
    */
   private keepOutOfRock(ship: THREE.Vector3): void {
     if (!this.layout) return;
@@ -108,12 +108,9 @@ export class ChaseCamera {
     for (let k = 0; k < count; k++) {
       const o = layout.obstacles[this.nearby[k] ?? -1];
       if (!o) continue;
-      const inside = (point: THREE.Vector3): boolean => {
-        if (o.shape === 'sphere') return point.distanceToSquared(this.scratch.set(o.p.x, o.p.y, o.p.z)) < (o.radius + margin) ** 2;
-        const dx = point.x - o.p.x; const dz = point.z - o.p.z;
-        return Math.abs(dx * o.ux + dz * o.uz) < o.hx + margin && Math.abs(point.y - o.p.y) < o.hy + margin
-          && Math.abs(-dx * o.uz + dz * o.ux) < o.hz + margin;
-      };
+      const index = this.nearby[k] ?? -1;
+      const inside = (point: THREE.Vector3): boolean =>
+        closestSurface(layout, index, point, margin, this.surface) && (this.surface.inside === true || this.surface.d < margin);
       if (!inside(p)) continue;
       // Binary search along ship → arm for the last point outside.
       let lo = 0; let hi = 1;

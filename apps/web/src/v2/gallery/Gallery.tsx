@@ -13,6 +13,9 @@ import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
 import type { GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
+import { HangarPanel } from '../../arena/hangar/HangarPanel.js';
+import TeamPanel from '../../arena/TeamPanel.js';
+import { BaseSwitch } from '../hud/BaseSwitch.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
@@ -719,6 +722,19 @@ function GalleryRewards({ state }: { state: string }) {
   </Sheet></div></QueryClientProvider>;
 }
 
+/** `?escort=ready|repair`: the commander ship the raid sheet may take along (Y9); absent, none. */
+function GalleryEscort() {
+  const client = useQueryClient();
+  useState(() => {
+    const escort = new URLSearchParams(window.location.search).get('escort');
+    if (escort !== 'ready' && escort !== 'repair') return null;
+    client.setQueryData(keys.commanderShip, { capitalPlanetId: '00000000-0000-4000-8000-000000000001', rulesetVersion: 19,
+      ship: { class: 'kilavuz', level: 6, status: escort, readyAt: escort === 'repair' ? new Date(Date.now() + 38 * MIN).toISOString() : null } });
+    return null;
+  });
+  return null;
+}
+
 function GalleryResearch() {
   const client = useQueryClient();
   useState(() => {
@@ -739,6 +755,13 @@ function Views({ view }: { view: string }) {
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
+  // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
+  if (view === 'arena-hangar') return <Sheet detents={['full']} quietTitle title="Komutan gemisi" onClose={noop}>
+    <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
+  </Sheet>;
+  if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>
+    <div className="p-3"><TeamPanel credential={() => Promise.resolve('dev')} onEnter={noop} /></div>
+  </Sheet>;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
@@ -881,6 +904,8 @@ function Views({ view }: { view: string }) {
           ? pirateTech[row.id] : 0 })),
     }, { alloy: 40000, crystal: 20000, deuterium: 12000 });
     return (
+      <>
+      <GalleryEscort />
       <LaunchSheet
         planet={view === 'launch' ? launchWorld : pirateWorld}
         {...(view === 'launch' ? { intel: launchIntel } : {})}
@@ -895,6 +920,7 @@ function Views({ view }: { view: string }) {
         onClose={noop}
         onLaunched={noop}
       />
+      </>
     );
   }
   if (view === 'transfer') {

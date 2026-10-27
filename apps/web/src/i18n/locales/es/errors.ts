@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIRAL_RULESET: "La escolta de la nave del comandante llega con una nueva temporada.",
+  ADMIRAL_AWAY: "Tu nave de comandante ya escolta otra flota.",
+  SHIP_NOT_READY: "Tu nave de comandante aún no está lista: está en reparación o mantenimiento.",
+  SHIP_FLYING: "Tu nave de comandante está ahora en el Yarık.",
+  SHIP_UNAVAILABLE: "Tu nave de comandante está ocupada con otra orden. Vuelve a intentarlo en un momento.",
+  TEAM_LOBBY: "Sal primero de tu equipo del Yarık.",
   COMMUNITY_POLICY_REQUIRED: "Revisa y acepta las normas antes de crear un comandante o publicar. Vuelve a abrir la aplicación si es necesario.",
   NAME_NOT_ALLOWED: "Elige otro nombre de comandante. «{{word}}» incumple las normas de la comunidad.",
   CLAN_NAME_NOT_ALLOWED: "Elige otro nombre o etiqueta de clan. «{{word}}» incumple las normas de la comunidad.",

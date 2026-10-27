@@ -131,6 +131,21 @@ export function formationLayout(
   return { slots, scale };
 }
 
+/**
+ * THE COMMANDER SHIP AT THE REAR OF ITS FLEET (Y9, doc 23). Its length in `base` units: larger
+ * than a Dart, so the escort reads as the flagship, smaller than a capital so it never leads.
+ */
+export const ESCORT_LENGTH = 1.15;
+
+/** A warship craft's length on the disc, in `CRAFT_SCALE`s (the fleet route's model). */
+export const FLEET_CRAFT = 0.225;
+
+/** Behind the rearmost slot (the wing flies nose +Z), on the formation's centre line. */
+export function escortSlot(layout: FormationLayout, base: number): Vec3Tuple {
+  const rear = layout.slots.reduce((last, slot) => Math.min(last, slot[2]), 0);
+  return [0, 0, rear - (layout.scale + ESCORT_LENGTH * base) / 2 - layout.scale * 0.3];
+}
+
 export const DEATH_STAR_LIGHT = { glow: '#ff274d', flame: '#ff6b3d' } as const;
 
 /** Ordinary focus geometry stays inside the hull's visual footprint. */

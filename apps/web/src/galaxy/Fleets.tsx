@@ -20,6 +20,7 @@ import { ProbeSkinBeam } from './ProbeSkinBeam.js';
 import {
   Suspense,
   createContext,
+  lazy,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -90,9 +91,12 @@ import { CONTACT_HITBOX_KIND, HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
   DEATH_STAR_LIGHT,
+  ESCORT_LENGTH,
+  FLEET_CRAFT,
   HULL_LIGHT,
   TRACKING_MARK,
   UNKNOWN_CONTACT_MARK,
+  escortSlot,
   formationAimDirection,
   formationAimDistance,
   formationLayout,
@@ -110,6 +114,9 @@ import {
 } from './formationHullInstances.js';
 
 export { threadKey } from './threadKey.js';
+
+/** The commander ship's model pack loads only when a fleet it escorts is in the air (Y9). */
+const EscortShipModel = lazy(() => import('./EscortShip.js'));
 
 /**
  * Things moving between the worlds.
@@ -216,7 +223,7 @@ export const ROUTE_OPACITY_FOCUSED = 0.42;
 const ROUTE = {
   fleet: {
     url: HULL_MODEL.DART,
-    scale: 0.225 * CRAFT_SCALE,
+    scale: FLEET_CRAFT * CRAFT_SCALE,
     flame: '#8fd8ff',
     /** Blue: this is a warship. */
     neon: '#3fa9ff',
@@ -1044,6 +1051,10 @@ function Flight({
           colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
           focused={focused}
         />
+
+        {thread.admiral && markers && <Suspense fallback={null}>
+          <EscortShipModel escort={thread.admiral} at={escortSlot(formation, style.scale)} length={ESCORT_LENGTH * style.scale} />
+        </Suspense>}
 
         <Suspense fallback={null}>
           {markers ? (

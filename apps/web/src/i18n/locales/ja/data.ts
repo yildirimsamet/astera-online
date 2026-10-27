@@ -486,6 +486,15 @@ export const directives = {
 
 /** The seven kinds of news, turned into the sentences a player reads. */
 export const notifications = {
+  arenaShipReady: "司令官の艦が準備できました。格納庫を開いてください。",
+  arenaRepairReady: "司令官の艦の修理が完了しました。格納庫を開いてください。",
+  arenaServiceReady: "司令官の艦の整備が完了しました。格納庫を開いてください。",
+  arenaTeamShare: "チームの取り分が用意できました：{{loot}}。格納庫で受け取ってください。",
+  arenaTeamShareReady: "チームの取り分が用意できました。格納庫で受け取ってください。",
+  arenaSortieTowed: "接続が切れたため、司令官の艦はYarıkから曳航されました。",
+  arenaSortieDead: "司令官の艦はYarıkで撃墜され、修理中です。",
+  arenaSortieLoot: "積荷から失われたもの：{{loot}}。",
+
   incomingFallback: "艦隊が到着します。",
   incomingLanded: "が着陸しました",
   incomingEta: "到着予定時刻 {{minutes}} 分",
@@ -494,6 +503,7 @@ export const notifications = {
   strategicIncomingHead: "戦略兵器入荷・{{clock}}",
   incomingEstimate: "推定 {{count}} 隻",
   incomingFrom: "から{{origin}}",
+  incomingAdmiral: "司令官艦随伴：{{ship}} {{level}}",
   /** Which of the reader's own worlds is under the crosshair. Never a radar product. */
   incomingAt: "は {{world}} を対象としています",
   commanderAt: "{{username}} で {{planet}}",

@@ -44,7 +44,15 @@ export interface PowerWing {
   damage?: HpDamageLots;
   /** Grounded hulls stand in the line and fire nothing. */
   maintenance?: boolean;
+  /** A commander-ship escort's bonus (Y9 `withAdmiral`), as the battle fights it. Absent without one. */
+  damageMult?: number;
+  hullMult?: number;
 }
+
+/** The wing's side as the battle fights it: its research, and an escort's bonus when it has one. */
+const wingSide = (wing: PowerWing): CombatSide => ({ tech: wing.tech,
+  ...(wing.damageMult === undefined ? {} : { damageMult: wing.damageMult }),
+  ...(wing.hullMult === undefined ? {} : { hullMult: wing.hullMult }) });
 
 export interface PowerRange {
   /** This wing's power against the wall. */
@@ -143,7 +151,7 @@ function rangeOf(fights: readonly Matchup[]): PowerRange {
 
 /** The wing against every corner the reading allows; null for a wing with no ships. */
 export function readPowerRange(wing: PowerWing, lines: readonly LineReading[], aegis: PowerSpan): PowerRange | null {
-  const mine = powerUnits(wing.fleet, { tech: wing.tech }, wing.damage, wing.maintenance);
+  const mine = powerUnits(wing.fleet, wingSide(wing), wing.damage, wing.maintenance);
   if (!mine.some((unit) => unit.count > 0)) return null;
   // Every line at each of its share corners, combined across lines.
   let walls: Record<CombatClass, number>[][] = [[]];
@@ -167,7 +175,7 @@ export function readPowerRange(wing: PowerWing, lines: readonly LineReading[], a
 /** A crew under Telescope sight: the very hulls, so the range is one number. */
 export function exactPowerRange(wing: PowerWing, crew: Fleet, side: CombatSide, aegis = 0): PowerRange {
   return rangeOf([matchup(
-    { units: powerUnits(wing.fleet, { tech: wing.tech }, wing.damage, wing.maintenance) },
+    { units: powerUnits(wing.fleet, wingSide(wing), wing.damage, wing.maintenance) },
     { units: powerUnits(crew, side), aegis },
   )]);
 }
