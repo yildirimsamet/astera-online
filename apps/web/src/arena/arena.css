@@ -578,6 +578,12 @@
   .ac-mouse[data-active] { display: block; }
   .ac-mouse i { position: absolute; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--self) 85%, #fff);
     box-shadow: 0 0 8px color-mix(in srgb, var(--self) 60%, transparent); }
+  /* The mouse's reach, faint; and the still centre: the dot inside it flies straight. */
+  .ac-mouse b, .ac-mouse em { position: absolute; border-radius: 50%; }
+  .ac-mouse b { width: calc(var(--reach) * 2); height: calc(var(--reach) * 2); margin: calc(var(--reach) * -1);
+    border: 1px dashed color-mix(in srgb, var(--self) 16%, transparent); }
+  .ac-mouse em { width: calc(var(--still) * 2); height: calc(var(--still) * 2); margin: calc(var(--still) * -1);
+    border: 1px solid color-mix(in srgb, var(--self) 32%, transparent); }
   .arena-mouse-hint { display: block; position: absolute; z-index: 6; left: 50%; bottom: calc(36px + var(--safe-bottom)); transform: translateX(-50%); margin: 0;
     padding: 7px 14px; border-radius: 16px; pointer-events: none; white-space: nowrap; font: 600 11px var(--font-v2-ui); color: #eafff9;
     background: color-mix(in srgb, var(--self) 14%, #061220); border: 1px solid color-mix(in srgb, var(--self) 45%, transparent); box-shadow: 0 6px 18px rgba(0,0,0,.35); }

@@ -106,6 +106,8 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const [map, setMap] = useState(false);
   const [board, setBoard] = useState(false);
   const [mouse, setMouse] = useState(false);
+  // While the wheel's button holds the ping wheel open, the mouse chooses a call and the ship flies on as it was.
+  const pingHeld = useRef(false);
   const [tip, setTip] = useState(0);
   // The page needs the flight's phase. The HUD numbers change ten times a second; the page
   // re-rendering for them rebuilt everything under it, most of an S22 frame (V6g).
@@ -278,7 +280,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       controls.steerWithMouse(held); setMouse(held);
       if (!held) controls.actionUp('fire', MOUSE_POINTER, performance.now());
     };
-    const move = (event: MouseEvent): void => { controls.mouseMove(event.movementX, event.movementY); };
+    const move = (event: MouseEvent): void => { if (!pingHeld.current) controls.mouseMove(event.movementX, event.movementY); };
     const press = (event: MouseEvent): void => {
       if (event.button === 0 && controls.mouseSteering) controls.actionDown('fire', MOUSE_POINTER, event.timeStamp);
     };
@@ -325,6 +327,14 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     audio.ui(); setTactic(next); world.pilot.tactic = next;
     try { localStorage.setItem(TACTIC_KEY, next); } catch { /* As the class. */ }
   };
+  /**
+   * Owner 2026-10-27: on a desktop the flight takes the mouse with the very click that launched it
+   * (the browser allows a pointer lock only inside a click). A touch screen never asks.
+   */
+  const takeMouse = (): void => {
+    if (typeof matchMedia !== 'function' || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    void Promise.resolve(canvas.current?.requestPointerLock()).catch(() => undefined);
+  };
   /** A missile goes on one press; a shield or repair is aimed (input.ts). Q and E press the B slot flown. */
   const arm = (): void => { controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic); };
   const launch = (reserved?: TeamView): void => {
@@ -338,6 +348,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen(member?.outcome ? 'spectate' : 'flight');
+    if (!member?.outcome) takeMouse();
     if (root.current?.requestFullscreen && matchMedia('(pointer: coarse)').matches) void root.current.requestFullscreen().catch(() => undefined);
     const orientation: ScreenOrientation & { lock?: (value: 'portrait') => Promise<void> } = screenOrientation();
     if (orientation.lock) void orientation.lock('portrait').catch(() => undefined);
@@ -348,7 +359,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     else Object.assign(world, createSandboxWorld({ ship, tactic, bots: T.practiceBots }));
     controls.setThrottle(0.5); arm();
     client.current?.reset();
-    setScreen('flight');
+    setScreen('flight'); takeMouse();
   };
 
   /**
@@ -416,7 +427,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     }}>
     <canvas ref={canvas} className="arena-canvas" />
     {screen === 'flight' && <>
-      <PingWheel c={c} aim={(x, y) => client.current?.aim(x, y) ?? null}
+      <PingWheel c={c} aim={(x, y) => client.current?.aim(x, y) ?? null} locked={mouse} onHold={held => { pingHeld.current = held; }}
         onPing={(kind, target) => { if (target) { client.current?.ping(kind, target); audio.ui(true); } }} />
       <ArenaHud store={store} bind={bind} layout={world.layout} map={map} onMap={setMap} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
         connection={mode === 'online' ? <div className={`ah-link is-${connection.phase}`}>
@@ -510,7 +521,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       <GraphicsPicker c={c} value={graphics} onPick={pickGraphics} />
       <label className="is-check"><input type="checkbox" defaultChecked={audio.enabled} onChange={event => { audio.enabled = event.target.checked; }} />{c.sound}</label>
       <p className="ap-keys">{c.keyboard}</p>
-      <button className="ap-launch" onClick={() => { audio.ui(); setMenu(false); }}>{c.resume}</button>
+      <button className="ap-launch" onClick={() => { audio.ui(); setMenu(false); takeMouse(); }}>{c.resume}</button>
       <button className="ap-leave" onClick={leave}>{c.leave}</button>
       <ModelCredits c={c} />
     </section></div>}

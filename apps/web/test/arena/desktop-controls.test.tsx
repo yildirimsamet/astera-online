@@ -4,7 +4,7 @@ import { createSandboxWorld, type Pilot } from '@astera/rules/arena';
 import i18n from '../../src/i18n/index.js';
 import { FlightControls, aimKey, aimTargets } from '../../src/arena/Controls.js';
 import { arenaCopy } from '../../src/arena/copy.js';
-import { GAME_KEY, MOUSE_POINTER, MOUSE_RADIUS, ONE_PRESS_KEYS, createControls } from '../../src/arena/input.js';
+import { GAME_KEY, MOUSE_DEADZONE, MOUSE_POINTER, MOUSE_RADIUS, ONE_PRESS_KEYS, createControls } from '../../src/arena/input.js';
 import { createHudStore } from '../../src/arena/store.js';
 
 /**
@@ -67,6 +67,8 @@ describe('a shield or repair with no one to give it to', () => {
 });
 
 describe('the mouse', () => {
+  // Owner 2026-10-27 (second pass): "mouse'u durdurunca yönümü düzlüyor … dönmeye devam etmeli. Orta alanda
+  // çok ufak bir yüzdelik bırakabiliriz". The mouse is a stick that stays where it was pushed.
   it('steers only while it holds the pointer, saturating at full deflection', () => {
     const controls = createControls();
     controls.mouseMove(MOUSE_RADIUS, 0); controls.sample();
@@ -74,31 +76,36 @@ describe('the mouse', () => {
     controls.steerWithMouse(true);
     controls.mouseMove(MOUSE_RADIUS / 2, 0);
     controls.sample();
-    expect(controls.stick.x).toBeCloseTo(0.5, 6);
+    expect(controls.stick.x).toBeCloseTo((0.5 - MOUSE_DEADZONE) / (1 - MOUSE_DEADZONE), 6);
     controls.mouseMove(MOUSE_RADIUS * 4, -MOUSE_RADIUS * 4);
     controls.sample();
     expect(Math.hypot(controls.stick.x, controls.stick.y)).toBeCloseTo(1, 6);
     expect(controls.stick.x).toBeGreaterThan(0); expect(controls.stick.y).toBeLessThan(0);
   });
 
-  it('eases back to straight flight within half a second of the mouse coming to rest', () => {
+  it('keeps turning while the mouse rests, and flies straight once it is back in the small centre', () => {
     const controls = createControls(); controls.steerWithMouse(true);
-    controls.mouseMove(MOUSE_RADIUS, 0); controls.sample();
-    for (let tick = 0; tick < 15; tick++) controls.sample();
-    expect(Math.abs(controls.stick.x)).toBeLessThan(0.05);
+    controls.mouseMove(MOUSE_RADIUS * 0.6, 0);
+    for (let tick = 0; tick < 90; tick++) controls.sample();
+    expect(controls.stick.x).toBeGreaterThan(0.5);
+    controls.mouseMove(-MOUSE_RADIUS * 0.6 + MOUSE_RADIUS * MOUSE_DEADZONE * 0.5, 0);
+    controls.sample();
+    expect(controls.stick.x).toBe(0);
+    expect(MOUSE_DEADZONE).toBeGreaterThan(0); expect(MOUSE_DEADZONE).toBeLessThanOrEqual(0.08);
+    expect(controls.mouseAim.x).toBeCloseTo(MOUSE_DEADZONE * 0.5, 6);
   });
 
-  it('gives way to WASD, and lets go when the pointer is released', () => {
+  it('gives way to WASD, comes back to where the mouse holds it, and lets go when the pointer is released', () => {
     const controls = createControls(); controls.steerWithMouse(true);
     controls.mouseMove(MOUSE_RADIUS, 0); controls.keyDown('KeyA');
     controls.sample();
     expect(controls.stick.x).toBe(-1);
-    // What the mouse did while a key steered has faded by the time the key lets go.
-    for (let tick = 0; tick < 15; tick++) controls.sample();
     controls.keyUp('KeyA'); controls.sample();
-    expect(Math.abs(controls.stick.x)).toBeLessThan(0.05);
-    controls.mouseMove(MOUSE_RADIUS, 0); controls.steerWithMouse(false);
+    expect(controls.stick.x).toBe(1);
+    controls.steerWithMouse(false);
     controls.sample();
+    expect(controls.stick.x).toBe(0);
+    controls.steerWithMouse(true); controls.sample();
     expect(controls.stick.x).toBe(0);
   });
 

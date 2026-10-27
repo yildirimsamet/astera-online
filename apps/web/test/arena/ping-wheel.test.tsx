@@ -88,3 +88,66 @@ describe('the ping wheel', () => {
     expect(pad?.contains(wheel ?? null)).toBe(false);
   });
 });
+
+/**
+ * Owner 2026-10-27: on a desktop a click opened the wheel ("tıklayınca ekranda bu pingleme açılıyor").
+ * There only the mouse wheel's button calls it: held, pushed towards a call and let go.
+ */
+describe('the ping wheel under a mouse', () => {
+  const c = arenaCopy();
+  const mount = (locked: boolean) => {
+    const onPing = vi.fn(); const onHold = vi.fn();
+    const aim = vi.fn((x: number, y: number) => ({ x, y }));
+    const view = render(<PingWheel c={c} aim={aim} onPing={onPing} locked={locked} onHold={onHold} />);
+    const pad = view.container.querySelector('.ap-ping-pad');
+    if (!(pad instanceof HTMLElement)) throw new Error('no pad');
+    pad.setPointerCapture = () => undefined;
+    return { view, onPing, onHold, aim, pad };
+  };
+  const mouse = (type: 'mousedown' | 'mousemove' | 'mouseup', init: MouseEventInit & { movementX?: number; movementY?: number } = {}): MouseEvent => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, ...init });
+    Object.defineProperties(event, { movementX: { value: init.movementX ?? 0 }, movementY: { value: init.movementY ?? 0 } });
+    act(() => { document.dispatchEvent(event); });
+    return event;
+  };
+
+  it('never opens on a held left or right button', () => {
+    const { view, pad } = mount(false);
+    for (const button of [0, 2]) {
+      act(() => { fireEvent.pointerDown(pad, { pointerId: 1, pointerType: 'mouse', button, clientX: 300, clientY: 300 }); });
+      act(() => { vi.advanceTimersByTime(PING_HOLD_MS * 2); });
+      act(() => { fireEvent.pointerUp(pad, { pointerId: 1, pointerType: 'mouse', button, clientX: 300, clientY: 300 }); });
+    }
+    expect(view.container.querySelector('.ap-wheel')).toBeNull();
+  });
+
+  it('opens at once on the wheel button where the cursor is', () => {
+    const { view, pad, aim } = mount(false);
+    act(() => { fireEvent.pointerDown(pad, { pointerId: 1, pointerType: 'mouse', button: 1, clientX: 300, clientY: 320 }); });
+    expect(view.container.querySelector('.ap-wheel')).not.toBeNull();
+    expect(aim).toHaveBeenCalledWith(300, 320);
+  });
+
+  it('under the pointer lock opens on the crosshair, follows the push and calls on release', () => {
+    const { view, onPing, onHold, aim } = mount(true);
+    const press = mouse('mousedown', { button: 1 });
+    expect(press.defaultPrevented).toBe(true);
+    expect(aim).toHaveBeenCalledWith(window.innerWidth / 2, window.innerHeight / 2);
+    expect(onHold).toHaveBeenLastCalledWith(true);
+    mouse('mousemove', { movementY: -70 });
+    expect(view.container.querySelector('.ap-call.is-enemy')?.classList.contains('is-hot')).toBe(true);
+    mouse('mouseup', { button: 1 });
+    expect(onPing).toHaveBeenCalledWith('enemy', expect.anything());
+    expect(view.container.querySelector('.ap-wheel')).toBeNull();
+    expect(onHold).toHaveBeenLastCalledWith(false);
+  });
+
+  it('calls nothing when let go at its centre, and ignores the other buttons', () => {
+    const { view, onPing } = mount(true);
+    mouse('mousedown', { button: 0 });
+    expect(view.container.querySelector('.ap-wheel')).toBeNull();
+    mouse('mousedown', { button: 1 }); mouse('mousemove', { movementX: 5 }); mouse('mouseup', { button: 1 });
+    expect(onPing).not.toHaveBeenCalled();
+    expect(view.container.querySelector('.ap-wheel')).toBeNull();
+  });
+});

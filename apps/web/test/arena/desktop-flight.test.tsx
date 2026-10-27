@@ -73,6 +73,30 @@ describe('a desktop flight', () => {
     expect(screen.getByText(arenaCopy().mouseHint)).toBeInTheDocument();
   });
 
+  // Owner 2026-10-27 (second pass): "oyun başladığında mouse modu otomatik açılmalı".
+  it('takes the mouse with the launch itself on a desktop, so no second click is needed', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('pointer: fine'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const { controls } = await fly();
+    expect(lock).toHaveBeenCalledOnce();
+    expect(controls.mouseSteering).toBe(true);
+    expect(screen.queryByText(arenaCopy().mouseHint)).toBeNull();
+  });
+
+  it('takes the mouse again when the menu is left for the flight', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('pointer: fine'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    await fly();
+    fireEvent.click(screen.getByRole('button', { name: arenaCopy().settings }));
+    expect(unlock).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: arenaCopy().resume }));
+    expect(lock).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the pointer alone at launch on a touch screen', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('pointer: coarse'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    await fly();
+    expect(lock).not.toHaveBeenCalled();
+  });
+
   it('never takes the pointer from a finger, nor from a click on a key', async () => {
     const { view } = await fly();
     fireEvent.pointerDown(view.container.querySelector('main')!, { pointerType: 'touch' });

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
 import { CLASS_STATS, abilityStats, shipStats, type ShipClass, type Tactic } from '@astera/rules/arena';
-import { AIM_WINDOW_MS, KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, railLevel, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
+import { AIM_WINDOW_MS, KNOB_TRAVEL, MOUSE_DEADZONE, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, railLevel, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
 import { arenaCopy, type ArenaCopy } from './copy.js';
 
@@ -101,6 +101,9 @@ function AimTray({ controls, s, since, nameOf }: { controls: ArenaControls; s: H
   </div>;
 }
 
+/** How far from the screen's centre the mouse's dot sits at full deflection. */
+const MOUSE_REACH_PX = 90;
+
 /** The desktop's key on each control (shown by arena.css only where a fine pointer hovers). */
 const keyCap = (action: ArenaAction, c: ArenaCopy): string => action === 'fire' ? c.keyFire : action === 'turbo' ? 'Shift' : action === 'signature' ? 'Q' : 'E';
 
@@ -123,8 +126,9 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
   const chords = useRef(new Map<number, Set<ArenaAction>>());
   const ring = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
-  // The desktop's mouse: where it holds the stick, a dot off the screen's centre.
+  // The desktop's mouse: its stick drawn round the screen's centre — the reach, the still centre, and a dot where it holds.
   const pointer = useRef<HTMLDivElement>(null);
+  const pointerDot = useRef<HTMLElement>(null);
   const pad = useRef<HTMLDivElement>(null);
   const [held, setHeld] = useState<ReadonlySet<ArenaAction>>(new Set());
   // The strip that holds both, drawn where chordAt finds it: measured from the keys as laid out.
@@ -185,9 +189,10 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
     let frame = 0;
     const paint = (): void => {
       frame = requestAnimationFrame(paint);
-      if (pointer.current) {
+      if (pointer.current && pointerDot.current) {
         pointer.current.toggleAttribute('data-active', controls.mouseSteering);
-        if (controls.mouseSteering) pointer.current.style.transform = `translate(${String(controls.stick.x * 90)}px, ${String(controls.stick.y * 90)}px)`;
+        const aim = controls.mouseAim;
+        if (controls.mouseSteering) pointerDot.current.style.transform = `translate(${String(aim.x * MOUSE_REACH_PX)}px, ${String(aim.y * MOUSE_REACH_PX)}px)`;
       }
       if (!ring.current || !knob.current) return;
       const bounds = padOrigin.current;
@@ -268,7 +273,8 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
       onLostPointerCapture={event => { chord(event, 'cancel'); }}>
       <i className={`ac-link ${held.has('fire') && held.has('turbo') ? 'is-linked' : ''} ${!alive || status.ammo < 1 ? 'is-off' : ''}`} style={link} />
     </div>
-    <div ref={pointer} className="ac-mouse" aria-hidden><i /></div>
+    <div ref={pointer} className="ac-mouse" aria-hidden style={{ '--reach': `${String(MOUSE_REACH_PX)}px`, '--still': `${String(Math.max(7, MOUSE_DEADZONE * MOUSE_REACH_PX))}px` } as React.CSSProperties}>
+      <b /><em /><i ref={pointerDot} /></div>
     {aiming && <AimTray controls={controls} s={status} since={aimSince} nameOf={nameOf} />}
     {(['fire', 'turbo', 'signature', status.tactic] as const).map(action => {
       const wait = seconds(action);

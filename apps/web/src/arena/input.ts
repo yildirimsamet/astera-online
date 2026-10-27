@@ -85,12 +85,12 @@ export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT'
 /** How long the target tray waits for a choice (the tray says who; owner 2026-10-27). */
 export const AIM_WINDOW_MS = 6000;
 /**
- * The desktop's mouse (owner 2026-10-27: "joystick yerine mouse hareketi"): this much travel in
- * one tick is full deflection, and each tick the deflection eases back by MOUSE_RECENTRE, so the
- * ship turns while the mouse moves and flies straight about a quarter second after it rests.
+ * The desktop's mouse (owner 2026-10-27: "joystick yerine mouse hareketi"), a stick that stays where
+ * it was pushed: this much travel from the centre is full deflection, and the ship keeps turning while
+ * the mouse rests ("dönmeye devam etmeli"). Back inside the small centre it flies straight.
  */
-export const MOUSE_RADIUS = 40;
-export const MOUSE_RECENTRE = 0.7;
+export const MOUSE_RADIUS = 240;
+export const MOUSE_DEADZONE = 0.06;
 /** The pointer id the mouse's left button holds FIRE under (a finger's id is never negative). */
 export const MOUSE_POINTER = -1;
 
@@ -163,9 +163,11 @@ export function createControls() {
   /** The tick's steering: a finger on the stick, else the steering keys, else the mouse while it holds the pointer. */
   const steer = (): void => {
     keyboardStick();
-    if (!mouseOn) return;
-    if (stickPointer === null && stick.x === 0 && stick.y === 0) { stick.x = mouse.x; stick.y = mouse.y; }
-    mouse.x *= MOUSE_RECENTRE; mouse.y *= MOUSE_RECENTRE;
+    if (!mouseOn || stickPointer !== null || stick.x !== 0 || stick.y !== 0) return;
+    // Past the centre the deflection grows from nothing, so leaving it never jolts the ship.
+    const length = Math.hypot(mouse.x, mouse.y);
+    const gain = length <= MOUSE_DEADZONE ? 0 : (length - MOUSE_DEADZONE) / (1 - MOUSE_DEADZONE) / length;
+    stick.x = mouse.x * gain; stick.y = mouse.y * gain;
   };
   return {
     stick, stickCenter,
@@ -190,6 +192,8 @@ export function createControls() {
     /** The tray closed without a choice. */
     cancelAim(): void { if (Number.isFinite(aimedAt)) { aimedAt = -Infinity; changed(); } },
     get mouseSteering(): boolean { return mouseOn; },
+    /** Where the mouse holds its stick, as a share of full deflection (the HUD's dot). */
+    get mouseAim(): Readonly<{ x: number; y: number }> { return mouse; },
     /** The page holds the pointer (desktop): the mouse steers until it lets go. */
     steerWithMouse(on: boolean): void { mouseOn = on; mouse.x = 0; mouse.y = 0; if (!on && stickPointer === null) keyboardStick(); },
     /** Mouse travel since the last move, in CSS px; full deflection at MOUSE_RADIUS, never past it. */
