@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astera · Engine Flame Studio</title>
+  </head>
+  <body>
+    <main>
+      <header><a href="/">ASTERA<span>ONLINE</span></a><span class="edition">PROPULSION STUDIES / 01—04</span></header>
+      <section class="intro"><div><p class="eyebrow">ORIGINAL VFX COLLECTION</p><h1>Full burn.</h1><p class="lede">Dört motor. Dört karakter. Sınırına kadar itiş.</p></div><div class="live"><i></i> MOTOR TESTİ AKTİF</div></section>
+      <section class="studio" aria-label="Animasyonlu motor alevleri">
+        <div class="stage-top"><span id="view-label">KARŞILAŞTIRMA / YAN GÖRÜNÜM</span><span id="power-label">%100 İTİŞ</span></div>
+        <canvas aria-label="Dört farklı üç boyutlu roket egzozu"></canvas>
+        <div class="stage-bottom"><span>SAHNEYİ DÖNDÜRMEK İÇİN SÜRÜKLE</span><span id="quality-label">HACİMSEL ALEV · CANLI ANİMASYON</span></div>
+      </section>
+      <section class="controls" aria-label="Motor test kontrolleri">
+        <label class="throttle" for="throttle">İTİŞ <input id="throttle" type="range" min="0" max="100" value="100" /><output id="throttle-value">100%</output></label>
+        <div class="views"><button data-view="side" aria-pressed="true">Yan</button><button data-view="oblique" aria-pressed="false">Çapraz</button><button data-view="rear" aria-pressed="false">Egzozdan</button></div>
+        <button id="pause" aria-pressed="false">Durdur</button>
+      </section>
+      <section class="variants" aria-label="Alev tasarımları"></section>
+      <footer><span>BLENDER → THREE.JS · ASTERA ORIGINALS</span><span>Canlı oyuna bağlı olmayan tasarım stüdyosu</span></footer>
+    </main>
+    <script type="module" src="/src/dev/EngineFlamePreview.ts"></script>
+  </body>
+</html>

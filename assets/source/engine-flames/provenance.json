@@ -1,0 +1,36 @@
+{
+  "origin": "Original procedural artwork authored for Astera Online",
+  "authored": "2026-10-21",
+  "authoring": "Blender 5.2.2 via tools/engine-flames-blender.py; animated Three.js camera-ray volume in apps/web/src/vfx/engineFlames.ts",
+  "reference_direction": "Owner-provided engine photographs: warm inner jet, blue/cyan outer shear layer. Reference photographs are not embedded in these assets.",
+  "axis": "Exhaust along local -Z; nozzle at origin",
+  "glb_note": "Static 480-triangle fallback shells with a packed warm-core/cool-sheath emission atlas. Use EngineFlameBatch for the animated treatment.",
+  "files": [
+    {
+      "file": "cryo.glb",
+      "bytes": 22620,
+      "sha256": "2e962308f3b0b8e38d8c235664703da7f01ccecfe3f90f1245f17d8e35c48682"
+    },
+    {
+      "file": "flow-noise.png",
+      "bytes": 41901,
+      "sha256": "3798870110a74ffb945ba9397e51c1ab98d75fe39b2f0bce885234de0a3ecfc3"
+    },
+    {
+      "file": "siege.glb",
+      "bytes": 22436,
+      "sha256": "113385955a55661b9c6804db52c4fd43dc165bf3625298463c9b6ad09e2b35ef"
+    },
+    {
+      "file": "solar.glb",
+      "bytes": 22348,
+      "sha256": "52ab674394feb5bdddc90aa23e05c984c807016fa4ede46bc840aaa0eb3a4ee8"
+    },
+    {
+      "file": "vacuum.glb",
+      "bytes": 22080,
+      "sha256": "53719cfe5fb6328587819340d890301f2006d73061e657325581392e4f7fba72"
+    }
+  ],
+  "owner_revision": "Full-throttle length halved; shared smooth fade removes the exposed core and fades all emission to zero at the tail."
+}

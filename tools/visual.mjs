@@ -41,6 +41,12 @@ if (process.argv.includes('--six-round-combat')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--engine-flames')) {
+  const { verifyEngineFlames } = await import('./engine-flames-visual.mjs');
+  await verifyEngineFlames(process.argv[2] ?? 'out/engine-flames');
+  process.exit(0);
+}
+
 if (process.argv.includes('--ship-shields')) {
   const { verifyShipShields } = await import('./ship-shields-visual.mjs');
   await verifyShipShields(process.argv[2] ?? 'out/ship-shields');

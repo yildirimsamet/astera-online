@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/vfx/engineFlames.ts",
+    "src/vfx/engineFlameShaders.ts",
+    "src/dev/EngineFlamePreview.ts",
+    "test/engine-flames.test.ts",
+    "test/engine-flame-assets.test.ts"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "solar": {
+    "name": "Solar / Afterburner",
+    "description": "Sarı-beyaz çekirdek, turuncu akış ve çevresinde uzun camgöbeği-mavi zarf.",
+    "expansion": 0.44, "taper": 0.2, "shock": 0.11, "turbulence": 0.86,
+    "speed": 1.15, "cells": 5.2, "rise": 0.3, "sheathGain": 0.4,
+    "hot": [1, 0.55, 0.07], "body": [1, 0.2, 0.012], "tail": [0.8, 0.055, 0.005],
+    "sheath": [0.005, 0.3, 1]
+  },
+  "cryo": {
+    "name": "Cryo / Blue Core",
+    "description": "Beyaz sıcak iç akış, sıkışma hücreleri ve basınçlı mavi-camgöbeği dış jet.",
+    "expansion": 0.26, "taper": 0.26, "shock": 0.78, "turbulence": 0.42,
+    "speed": 1.7, "cells": 6.8, "rise": 0.26, "sheathGain": 0.45,
+    "hot": [0.78, 0.94, 1], "body": [0.055, 0.39, 1], "tail": [0.11, 0.1, 0.65],
+    "sheath": [0.005, 0.44, 1]
+  },
+  "vacuum": {
+    "name": "Veil / Vacuum",
+    "description": "Mavi boğazdan genişleyen, soluk lavanta-mavi yarı saydam vakum egzozu.",
+    "expansion": 1.18, "taper": 0.08, "shock": 0.06, "turbulence": 0.56,
+    "speed": 0.72, "cells": 3.1, "rise": 0.68, "sheathGain": 0.1,
+    "hot": [0.8, 0.91, 1], "body": [0.23, 0.44, 1], "tail": [0.43, 0.18, 0.63],
+    "sheath": [0.1, 0.2, 0.8]
+  },
+  "siege": {
+    "name": "Siege / White Gold",
+    "description": "Yoğun beyaz-altın çekirdek, kehribar türbülans ve çelik mavisi dış saçak.",
+    "expansion": 0.38, "taper": 0.23, "shock": 0.35, "turbulence": 0.75,
+    "speed": 1.42, "cells": 4.8, "rise": 0.28, "sheathGain": 0.3,
+    "hot": [1, 0.88, 0.52], "body": [1, 0.65, 0.13], "tail": [0.95, 0.22, 0.018],
+    "sheath": [0.035, 0.28, 1]
+  }
+}
