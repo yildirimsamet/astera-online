@@ -600,8 +600,17 @@
 .ah-hull em { position: absolute; left: 8px; right: 8px; bottom: 9px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--color-v2-ally) 16%, transparent); }
 .ah-hull em b { display: block; height: 100%; width: calc(var(--shield) * 100%); border-radius: 2px; background: var(--color-v2-ally);
   box-shadow: 0 0 8px var(--color-v2-ally); transition: width .2s; }
+.ah-hold { overflow: visible; }
 .ah-hold i { display: flex; gap: 1px; overflow: hidden; background: color-mix(in srgb, var(--color-v2-ink) 10%, transparent); }
 .ah-hold i b { flex: none; width: auto; height: 100%; border-radius: 0; transition: width .2s; }
+/* Each kind's count under the hold, in its colour: a dot and the number (owner 2026-10-27). */
+/* It ends where the speed box begins (that box sits under the hold's right end) and grows left. */
+.ah-hold-kinds { position: absolute; top: calc(100% + 4px); right: 31px; display: flex; gap: 7px;
+  padding: 2px 6px; border-radius: 7px; background: color-mix(in srgb, var(--color-v2-deep) 72%, transparent); pointer-events: none; }
+.ah-hold-kinds b { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-v2-mono); font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--tone) 70%, var(--color-v2-ink)); }
+.ah-hold-kinds b::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 5px var(--tone); }
+.ah-hold-kinds b.is-empty { opacity: .38; }
 .ah-hold strong small { font-size: 8px; font-weight: 400; letter-spacing: .04em; color: var(--color-v2-ink-3); }
 .ah-hold.is-full { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .ah-hold.is-full strong { color: var(--warn); }

@@ -55,7 +55,8 @@ function HullGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
 
 /**
  * The hold: how much is aboard against the hold, as it would land in the capital (Y6a: one for
- * one); the bar splits it by kind, the label names each.
+ * one); the bar splits it by kind, and under it each kind's own count in its colour (owner
+ * 2026-10-27: the colours alone gave no numbers).
  */
 function HoldGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
   const hold = shipStats(s.ship, s.level).cargoCapacity;
@@ -67,6 +68,11 @@ function HoldGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
     <strong aria-label={aboard.join(' · ') || undefined}>{Math.floor(s.cargo)}<small>/{hold}</small></strong>
     <i aria-hidden>{s.hold.map((units, kind) => units > 0 && <b key={kind}
       style={{ width: `${String(units / hold * 100)}%`, background: FARM_TONE[kind], boxShadow: `0 0 6px ${FARM_TONE[kind] ?? ''}` }} />)}</i>
+    <span className="ah-hold-kinds">{FARM_TONE.map((tone, kind) => {
+      const units = Math.floor(s.hold[kind] ?? 0);
+      return <b key={kind} className={units < 1 ? 'is-empty' : undefined} style={{ '--tone': tone } as React.CSSProperties}
+        aria-label={`${String(units)} ${c.kinds[kind] ?? ''}`}>{units}</b>;
+    })}</span>
   </div>;
 }
 
