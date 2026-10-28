@@ -400,7 +400,7 @@ export const leaderboard = {
   rewards: {
     title: 'Preis zum Saisonende',
     left: '{{duration}} übrig',
-    explain: 'Die ersten {{places}} Plätze können Ressourcen für die nächste Galaxie gewinnen. Bots behalten ihren Platz, erhalten aber keinen Preis; Kommandeure brauchen mindestens {{minimum}} Dominion.',
+    explain: "Die ersten {{places}} Plätze können Ressourcen für die nächste Galaxie gewinnen. Für einen Preis sind mindestens {{minimum}} Dominion nötig.",
     table: 'Preis nach Ort',
     tableCount: 'Top {{places}} Orte · zur Inspektion geöffnet',
     place: 'Rang {{place}}',
@@ -409,7 +409,7 @@ export const leaderboard = {
     standing: 'Rang {{place}}',
     behind: '{{score}} mehr Dominion, um die Spitze zu erreichen {{places}}.',
     minimum: '{{score}} mehr Dominion für einen Preis erforderlich.',
-    botIneligible: 'Bots behalten ihren Rang, erhalten aber keinen Saisonpreis.',
+    botIneligible: "Du kannst in dieser Saison keinen Saisonpreis erhalten.",
     climb: 'Erreiche die Spitze {{places}} und nimm es.',
     unranked: 'Treten Sie dieser Galaxie bei, um an der Rangliste teilzunehmen.',
   },

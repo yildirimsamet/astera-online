@@ -400,7 +400,7 @@ export const leaderboard = {
   rewards: {
     title: 'Premio fin de temporada',
     left: 'Quedan {{duration}}',
-    explain: 'Los {{places}} primeros puestos pueden ganar recursos para la próxima galaxia. Los bots conservan su puesto, pero no reciben premio; se necesita al menos {{minimum}} de Dominio.',
+    explain: "Los {{places}} primeros puestos pueden ganar recursos para la próxima galaxia. Se necesita al menos {{minimum}} de Dominio.",
     table: 'Premio por plaza',
     tableCount: 'Mejores lugares {{places}} · abiertos para inspeccionar',
     place: 'Clasificación {{place}}',
@@ -409,7 +409,7 @@ export const leaderboard = {
     standing: 'Clasificación {{place}}',
     behind: '{{score}} Dominio más para llegar a la cima {{places}}.',
     minimum: '{{score}} más de Dominio para optar al premio.',
-    botIneligible: 'Los bots conservan su puesto, pero no reciben premios de temporada.',
+    botIneligible: "No puedes recibir un premio esta temporada.",
     climb: 'Llega a la cima {{places}} y tómalo.',
     unranked: 'Únete a esta galaxia para entrar en la clasificación.',
   },

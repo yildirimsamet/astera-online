@@ -338,7 +338,7 @@ export const leaderboard = {
   rewards: {
     title: 'Sezon sonu ödülü',
     left: 'bitmesine {{duration}}',
-    explain: 'İlk {{places}} sıra yeni galaksi için kaynak kazandırabilir. Botlar yerini korur ama ödül almaz; komutanlar için en az {{minimum}} Hâkimiyet gerekir.',
+    explain: "İlk {{places}} sıra yeni galaksi için kaynak kazandırabilir. Ödül için en az {{minimum}} Hâkimiyet gerekir.",
     table: 'Sıraya göre ödüller',
     tableCount: 'İlk {{places}} sıra · görmek için aç',
     place: '{{place}}. sıra',
@@ -347,7 +347,7 @@ export const leaderboard = {
     standing: '{{place}}. sıradasın',
     behind: 'İlk {{places}} arasına girmek için {{score}} Hâkimiyet daha lazım.',
     minimum: 'Ödüle hak kazanmak için {{score}} Hâkimiyet daha lazım.',
-    botIneligible: 'Botlar sıralamadaki yerini korur ama sezon ödülü alamaz.',
+    botIneligible: "Bu sezon kaynak ödülü alamazsın.",
     climb: 'İlk {{places}} arasına gir, ödülü al.',
     unranked: 'Bu galaksiye katıl ve sıralamaya gir.',
   },

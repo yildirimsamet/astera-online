@@ -24,7 +24,7 @@ describe('the Yarık\'s own words', () => {
   for (const language of ['tr', 'en'] as const) {
     it(`${language}: no playtest words in the Yarık copy`, async () => {
       await i18n.changeLanguage(language);
-      const found = strings(arenaCopy()).filter(text => /\bfarm|deneme|trial|playtest|savaş alanı|battle zone/i.test(text));
+      const found = strings(arenaCopy()).filter(text => /\bbots?\b|botlar|ボット|\bfarm|deneme|trial|playtest|savaş alanı|battle zone/i.test(text));
       expect(found).toEqual([]);
     });
   }
