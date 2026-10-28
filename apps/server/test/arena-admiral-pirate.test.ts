@@ -113,11 +113,22 @@ describe('the admiral on a pirate raid', () => {
   });
 
   it('flies home alone to repair when the whole fleet is lost', async () => {
+    // This tests a last-ship loss, not a random outcome against the first small
+    // contact. Arrange a pinned hour with a level-4 crew before sending one Dart.
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    await f.db.update(asteroidSpawnHours).set({ pirateLane: { fromMinute: 0, untilMinute: 60, count: 100 } })
+      .where(eq(asteroidSpawnHours.seasonId, f.seasonId));
+    const snapshot = await loadPirateSnapshot(f.db, f.seasonId, f.clock.now());
+    const dangerous = snapshot.standing(f.clock.now()).find(candidate => candidate.level === 4);
+    if (!dangerous) throw new Error('Pinned loss fixture has no level-4 pirate');
+    const position = piratePosition(dangerous, (f.clock.now().getTime() - season!.startsAt.getTime()) / 60_000);
+    await placeAt(f.db, mine, { x: position.x + 100, y: position.y, z: position.z });
+    target = pirateId(snapshot.key, dangerous.index);
     const launched = await raid({ DART: 1 });
     const out = launched.arriveAt.getTime() - launched.departAt.getTime();
     await runTo(new Date(launched.arriveAt.getTime() + 60_000));
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.pirateRaidId, launched.raidId));
-    expect(report!.attackerLosses).toEqual({ DART: 1 });
+    expect(report!.attackerLosses, JSON.stringify(report)).toEqual({ DART: 1 });
     const alone = await ship();
     expect(alone).toMatchObject({ admiralId: null, readyReason: 'repair' });
     // It leaves when the engagement ends, flies the outbound leg's length home, then repairs.

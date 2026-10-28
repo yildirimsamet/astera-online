@@ -523,18 +523,16 @@ export function openLanes(view: PlanetView, seasonAgeMinutes = Number.POSITIVE_I
   const open: Lane[] = ['probe'];
   if ((view.fleet.PROSPECTOR ?? 0) > 0) open.push('mine', 'harvest');
   if (COMBAT_HULLS.some((hull) => (view.fleet[hull] ?? 0) > 0)) {
-    open.push('pirate');
     /*
-      NOBODY IS ATTACKED IN THE FIRST TWELVE HOURS. D170 — see `BOTS.ceasefireMinutes`
-      for the reasoning. The pirate lane above is deliberately outside it: a pirate
-      is not a player, so a bot fighting one is alive rather than hostile.
+      NOTHING IS ATTACKED IN THE FIRST DAY, NOT EVEN A PIRATE. D170 — see
+      `BOTS.ceasefireMinutes` for the reasoning (owner, 2026-10-28).
 
       The default is INFINITY rather than zero, so a caller that has no season age
       to hand gets the behaviour this function always had. A ceasefire that
       switched itself on for want of an argument would silently stop every bot in
       an already-running galaxy from ever raiding again.
     */
-    if (seasonAgeMinutes >= BOTS.ceasefireMinutes) open.push('attack');
+    if (seasonAgeMinutes >= BOTS.ceasefireMinutes) open.push('pirate', 'attack');
   }
   return open;
 }

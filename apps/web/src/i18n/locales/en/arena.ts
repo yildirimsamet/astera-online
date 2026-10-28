@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "Commander ship",
-  "menuHint": "The Yarık · gather ore, bring it home, grow your ship",
-  "join": "Join",
   "nav": "Commander ship",
   "start": "Start",
   "leave": "Return to galaxy",

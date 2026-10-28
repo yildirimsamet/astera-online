@@ -6,18 +6,14 @@ import type { PlanetView } from '../src/services/planetView.js';
 /**
  * THE SERVER'S COMMANDERS DO NOT OPEN A SEASON BY ATTACKING. D170, owner request:
  * *"Botlar server yeni başladığında en az 4 saat savaşmasın."* Raised to twelve
- * hours on 2026-09-13, owner instruction: *"Bu 4 saat'i 12 saat yap."*
+ * hours on 2026-09-13, owner instruction: *"Bu 4 saat'i 12 saat yap."* Raised to a
+ * full day and widened to pirates on 2026-10-28, owner instruction: *"Sezon
+ * başlarında 1 gün hiç bir saldırı yapmasınlar: ne korsanlara ne başka oyunculara."*
  *
- * A galaxy's first hours are when every commander is at their weakest and least
- * defended, and twelve of them are the server's — so a bot that raids at minute
- * thirty is not competition, it is the world arriving already hostile. Twelve
- * hours is long enough for a person to stand a Vault, a gun and a fleet before
- * anything is at stake.
- *
- * IT IS THE PvP LANE ONLY. A pirate is not a player: raiding one costs a bot a
- * bay and a fuel bill and takes nothing from anybody, so the lane that makes bots
- * look alive stays open from the first minute. So do probe, mine and harvest —
- * the point is that nobody is ATTACKED, not that the galaxy sits still.
+ * A galaxy's first day is when every commander is at their weakest and least
+ * defended, and a bot raid report in hour one reads as the world arriving already
+ * hostile. Probe, mine and harvest stay open from the first minute — the point is
+ * that nobody is ATTACKED, not that the galaxy sits still.
  *
  * The bot's own manners, never a rule: `withinTierBand`, the bash limit and the
  * fog all still apply to them exactly as they do to a person. Nothing here
@@ -32,28 +28,25 @@ const armed = {
 const HOUR = 60;
 
 describe('the opening ceasefire', () => {
-  it('opens no attack lane inside the first twelve hours', () => {
-    for (const age of [0, 30, 2 * HOUR, 4 * HOUR, 8 * HOUR, BOTS.ceasefireMinutes - 1]) {
+  it('opens neither a player nor a pirate attack inside the first day', () => {
+    for (const age of [0, 30, 4 * HOUR, 12 * HOUR, 20 * HOUR, BOTS.ceasefireMinutes - 1]) {
       expect(openLanes(armed, age), `minute ${String(age)}`).not.toContain('attack');
+      expect(openLanes(armed, age), `minute ${String(age)}`).not.toContain('pirate');
     }
   });
 
-  it('opens the attack lane once the window has passed', () => {
-    expect(openLanes(armed, BOTS.ceasefireMinutes)).toContain('attack');
-    expect(openLanes(armed, 13 * HOUR)).toContain('attack');
+  it('opens both attack lanes once the day has passed', () => {
+    expect(openLanes(armed, BOTS.ceasefireMinutes)).toEqual(expect.arrayContaining(['attack', 'pirate']));
+    expect(openLanes(armed, 25 * HOUR)).toEqual(expect.arrayContaining(['attack', 'pirate']));
   });
 
-  it('is twelve hours', () => {
-    expect(BOTS.ceasefireMinutes).toBe(12 * 60);
+  it('is one day', () => {
+    expect(BOTS.ceasefireMinutes).toBe(24 * 60);
   });
 
-  /** Everything that takes nothing from a person stays open from minute one. */
-  it('leaves the pirate, probe and mining lanes alone', () => {
-    const lanes = openLanes(armed, 0);
-    expect(lanes).toContain('probe');
-    expect(lanes).toContain('pirate');
-    expect(lanes).toContain('mine');
-    expect(lanes).toContain('harvest');
+  /** Everything that takes nothing from anyone stays open from minute one. */
+  it('leaves the probe and mining lanes alone', () => {
+    expect(openLanes(armed, 0)).toEqual(['probe', 'mine', 'harvest']);
   });
 
   /** A world with no warship still opens no combat lane, ceasefire or not. */

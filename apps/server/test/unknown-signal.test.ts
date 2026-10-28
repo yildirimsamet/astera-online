@@ -675,8 +675,12 @@ describe('unknown signal lifecycle review regressions', () => {
     await f.db.transaction(tx => loadLocked(tx, originId, f.clock));
     await f.db.transaction(tx => resolveUnknownSignalArrival(tx, signal.id, f.clock));
     const actual = await f.db.transaction(tx => loadLocked(tx, originId, f.clock));
-    expect(actual.bufferAlloy).toBeCloseTo(expected.bufferAlloy, 5);
-    expect(actual.bufferCrystal).toBeCloseTo(expected.bufferCrystal, 5);
+    // Alloy/Crystal buffers are PostgreSQL REAL. The delayed path persists an
+    // extra intermediate tick, so compare within two float32 rounding errors.
+    expect(Math.abs(actual.bufferAlloy - expected.bufferAlloy))
+      .toBeLessThanOrEqual(Math.max(1, Math.abs(expected.bufferAlloy)) * 2 ** -22);
+    expect(Math.abs(actual.bufferCrystal - expected.bufferCrystal))
+      .toBeLessThanOrEqual(Math.max(1, Math.abs(expected.bufferCrystal)) * 2 ** -22);
     expect(actual.bufferDeuterium).toBeCloseTo(expected.bufferDeuterium, 5);
     expect(actual.signalBoostUntil).toEqual(until);
   });

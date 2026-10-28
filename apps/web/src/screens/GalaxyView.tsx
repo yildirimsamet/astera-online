@@ -1874,8 +1874,6 @@ export function GalaxyView({
             <CommanderHost name={commander} />
           </div>
           <MenuPanel
-            // F2: one way into the Yarık, through the hangar, where the ship, its price and its readiness are.
-            {...(onEnterArena ? { onEnterArena: () => { onPanel('ship'); } } : {})}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}

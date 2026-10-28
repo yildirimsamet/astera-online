@@ -12,16 +12,16 @@ import { ECONOMY_ADJUSTMENT } from '../src/tempo.js';
 
 describe('monthly economy', () => {
   it('feeds the live economy before the current output tempo overlay', () => {
-    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.56 * 1.25);
-    expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.56);
-    expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.56);
+    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.56 * 0.85 * 1.25);
+    expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.56 * 0.85);
+    expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.56 * 0.85);
     expect(buildingCost('REFINERY', 3)).toEqual(profileBuilding('REFINERY', 4).cost);
     const engineering = profileResearch('STARSHIP_ENGINEERING', 1).cost;
     expect(RESEARCH_PROJECTS.STARSHIP_ENGINEERING.costAt(1)).toEqual({
       ...engineering,
       crystal: Math.round(engineering.crystal * RESEARCH_CRYSTAL_DISCOUNT),
     });
-    expect(collectorCap(80)).toBe(1000);
+    expect(collectorCap(80 * 0.85)).toBe(1000);
     expect(HULLS.DART.alloy).toBe(304); expect(hullBulk('DART')).toBe(3);
     expect(hullTech({ SHIP_PROPULSION: 4 }, 'DART').speed).toBe(1.5);
   });
@@ -37,7 +37,7 @@ describe('monthly economy', () => {
   });
   it('uses a finite monthly development and reset horizon', () => {
     expect(ECONOMY_PROFILE.progressionDays).toBe(30);
-    expect(ECONOMY_PROFILE.seasonDays).toBe(30);
+    expect(ECONOMY_PROFILE.seasonDays).toBe(60);
     expect(ECONOMY_PROFILE.collectorHours).toBe(10);
     expect(ECONOMY_PROFILE.propulsionPerLevel).toBe(0.125);
   });
@@ -73,7 +73,7 @@ describe('monthly economy', () => {
   });
   it('links the other purchases and moving targets to the same economy', () => {
     expect(DEATH_STAR.cost).toEqual({ alloy: 50_000, crystal: 35_000, deuterium: 3_000 });
-    expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
+    expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.strategicBuildTime, 9);
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21550, crystal: 10776, deuterium: 894 });
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
     // The clan's founding price is the owner's (2026-10-16), not an income multiple.

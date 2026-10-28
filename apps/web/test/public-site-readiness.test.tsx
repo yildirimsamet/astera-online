@@ -51,6 +51,15 @@ it.each([
   expect(text).toMatch(once);
 });
 
+it.each([
+  ['/community-guidelines.html', /automated tools/i],
+  ['/topluluk-kurallari.html', /otomatik araçları/i],
+] as const)('describes prohibited automation without account classifications in %s', async (path, automation) => {
+  const text = (await parse(path)).body.textContent;
+  expect(text).not.toMatch(/\bbots?\b|botlar[ıiu]?/iu);
+  expect(text).toMatch(automation);
+});
+
 const socialImage = 'https://asteraonline.space/assets/images/general/og-image.png';
 
 const showLanding = (): void => {

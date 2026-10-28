@@ -33,7 +33,7 @@ import { noteServerTime } from '../lib/clock.js';
 import { capabilities } from '../platform/runtime.js';
 import { createNativeAuthTransport, isSessionPath, type AuthTransport } from '../platform/authTransport.js';
 import { CHAT_MEDIA } from '@astera/rules';
-import { adminArenaPilotSchema, adminArenaPilotsSchema, adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
+import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
 import { adminDeletionQueueSchema, adminDeletionCompletedSchema, adminDeletionMediaSchema } from './adminSchemas.js';
 import {
   tradeRecallSchema,
@@ -631,9 +631,6 @@ export class Api {
   adminChatScopes = () => this.send('/api/admin/clans', adminChatScopesSchema);
   adminMute = (input: AdminMuteInput) => this.send('/api/admin/chat/mute', adminMuteSchema, { method: 'POST', body: { ...input } });
   adminMask = (input: AdminMaskInput) => this.send('/api/admin/chat/mask', adminMaskSchema, { method: 'POST', body: { ...input } });
-  adminArenaPilots = () => this.send('/api/admin/arena-pilots', adminArenaPilotsSchema);
-  adminSetArenaPilot = (username: string, pilot: boolean) =>
-    this.send('/api/admin/arena-pilots', adminArenaPilotSchema, { method: 'POST', body: { username, pilot } });
   adminClanChat = (clanId: string, before?: string) => this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat${before ? `?before=${encodeURIComponent(before)}` : ''}`, clanChatPageSchema);
   adminPostClanChat = (clanId: string, content: string, replyToMessageId?: string, media?: ChatMedia) =>
     this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat`, clanChatPostSchema, { method: 'POST', body: { content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) } });
@@ -1016,6 +1013,7 @@ export class Api {
           xhr.ontimeout = () => { reject(new ApiError('UNREACHABLE', 'Upload timed out; try again', 0)); };
           xhr.setRequestHeader('content-type', 'application/octet-stream');
           xhr.setRequestHeader('x-media-type', file.type);
+          for (const [key, value] of Object.entries(buildHeader())) xhr.setRequestHeader(key, value);
           if (this.token) xhr.setRequestHeader('authorization', `Bearer ${this.token}`);
           if (this.placement) xhr.setRequestHeader('x-placement', this.placement);
           xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
@@ -1026,6 +1024,7 @@ export class Api {
             if (generation !== this.sessionGeneration) { reject(new ApiError('SESSION_CHANGED', 'Session changed', 409)); return; }
             let body: unknown;
             try { body = JSON.parse(xhr.responseText) as unknown; } catch { reject(new ApiError('UNREACHABLE', 'Upload failed; try again', xhr.status)); return; }
+            if (xhr.status === 426 && errorShape(body).error === 'UPDATE_REQUIRED') reportUpdateRequired();
             if (xhr.status < 200 || xhr.status >= 300) { const error = errorShape(body); if (xhr.status === 409 && error.error === 'PLACEMENT_CHANGED') window.dispatchEvent(new Event('astera:placement-changed')); reject(new ApiError(error.error, error.message, xhr.status, error.params)); return; }
             const result = chatMediaUploadSchema.safeParse(body);
             if (result.success) resolve(result.data); else reject(result.error);

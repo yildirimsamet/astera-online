@@ -1,7 +1,8 @@
 import { monthlyPirateSupplyAtRate } from './monthly-supply.js';
+import { MONTHLY_REFERENCE_DAYS } from './economy-profile.js';
 import { activeBattleFleet } from './battleRetreat.js';
 import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
-import { FUEL, PIRATE, SEASON, DEBRIS } from './constants.js';
+import { FUEL, PIRATE, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { missionFuel } from './fuel.js';
@@ -474,7 +475,7 @@ function generatePirateLane(
   const pirates: PirateSpec[] = [];
   if (count <= 0) return pirates;
 
-  const remaining = Array.from({ length: SEASON.days }, (_, day) => {
+  const remaining = Array.from({ length: MONTHLY_REFERENCE_DAYS }, (_, day) => {
     const allowance = monthlyPirateSupplyAtRate(day, PIRATE.legacySeats, spawnPerHour);
     return {
       alloy: allowance.alloy / PIRATE.hoardRewardScale,
@@ -507,7 +508,7 @@ function generatePirateLane(
   }
 
   // Rationing must not spend the entire day's opportunities in its first hour.
-  for (let day = 0; day < SEASON.days; day++) {
+  for (let day = 0; day < MONTHLY_REFERENCE_DAYS; day++) {
     const today = pirates.filter(p => Math.floor(p.appearsAt / 1440) === day);
     const start = Math.max(day * 1440, appearsAtOffset);
     const end = Math.min((day + 1) * 1440, appearsAtOffset + span);
@@ -558,7 +559,7 @@ export interface PirateScheduleOptions {
  */
 export function generatePirateSchedule(
   rng: Rng,
-  span: number = SEASON.days * 24 * 60,
+  span: number = MONTHLY_REFERENCE_DAYS * 24 * 60,
   indexOffset = 0,
   appearsAtOffset = 0,
   options: PirateScheduleOptions = {},

@@ -1211,9 +1211,9 @@ describe('mining', () => {
         alloy: 1000, crystal: 0, createdAt: f.clock.now(),
       });
       const now = f.clock.now().getTime();
-      // The 20% speed cut extends both sides of the previous 2–3 minute boundary by 25%.
-      const tooShort = 2 / 0.8 * 60_000;
-      const enough = 3 / 0.8 * 60_000;
+      // Preserve the boundary test after both the original and new flight slowdowns.
+      const tooShort = 2 / 0.8 / 0.9 * 60_000;
+      const enough = 3 / 0.8 / 0.9 * 60_000;
       await f.db.update(seasons).set({ endsAt: new Date(now + tooShort) })
         .where(eq(seasons.id, f.seasonId));
       await expect(launchHarvest(f.db, mine, field.id, 1, f.clock))

@@ -1,6 +1,37 @@
 # Astera Online — Production deployment
 
 Production: `https://asteraonline.space` · VPS: `ssh yildirim@hoofywood.com` · checkout: `~/astera`.
+
+### 60-day season cutover — prepared source, not deployed
+
+The source profile `season-60-v1` uses global shared rule constants. **Do not roll this
+image/web/native package into a still-running old season.** Complete the reviewed
+[season transition procedure](season-60-tempo-transition-plan.md#62-otomatik-rollover-ile-yarışmayı-önleyen-devir):
+hold only the applicable pending rollover events while old writers are stopped, let the
+old worker finish/seal the original worlds, stop it, take the final consistent backup,
+then let the new worker open successors. Do not delete work or force an early freeze.
+
+At the cutover set `REQUIRE_CURRENT_RULES=true` consistently on every API role.
+Authenticated gameplay compares `x-astera-rules` with `ECONOMY_PROFILE.id`, including before
+the first seasonal placement, and returns the existing
+`426 UPDATE_REQUIRED` response before a stale handler can read/tick/mutate its world.
+The switch defaults off for compatibility preparation/tests, not as a production cutover
+choice. It is a compatibility fence, not authentication; all server rules remain authoritative.
+The profile fence exempts public webhooks/native sign-in and the existing
+account-security/deletion routes. The separate `MIN_NATIVE_BUILD` gate retains its existing
+global behavior for requests declaring an outdated native build; use an updated app or the web
+for those account actions. Direct chat/moderation media reads also remain available with their existing
+authorization and placement checks: HTML images/video cannot attach custom headers.
+The new client supplies the profile on ordinary requests, binary uploads and SSE.
+Web updates offer a full-page reload; query invalidation alone cannot replace old JavaScript.
+Older already-open bundles can show the existing update-required surface without the new
+reload button: require an actual browser refresh and verify fresh asset loading before play.
+
+Android contains its own web/rule bundle. Make the matching native build available before
+turning on `MIN_NATIVE_BUILD=<accepted versionCode>` and opening play. Compose now forwards
+both gate settings. Neither a native package nor these flags have been published/changed live
+by this task. Verify old/current web and native clients and the account-security exceptions.
+
 Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an unsuitable database password.
 
 This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.

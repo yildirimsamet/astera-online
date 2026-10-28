@@ -478,7 +478,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .where(eq(players.seasonId, self.seasonId))
       .orderBy(desc(score), asc(players.joinedAt), asc(players.id));
 
-    const visibleRows = rows.filter(entry => !adminPlayerIds.has(entry.playerId) && (ranking !== 'HONOR' || entry.bot === null));
+    // Bots stay listed on Honor (always 0: a bot-involved event earns none). Leaving
+    // them off would let anyone diff the two ladders to find them. Prizes skip them below.
+    const visibleRows = rows.filter(entry => !adminPlayerIds.has(entry.playerId));
     let rank = 0;
     let previousScore: number | undefined;
     const ladder = visibleRows.map((entry, i) => {

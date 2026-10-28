@@ -345,7 +345,7 @@ export const leaderboard = {
     title: "Récompense de fin de saison",
     left: "se termine dans {{duration}}",
     explain:
-      "Les {{places}} premières places peuvent gagner des ressources pour la prochaine galaxie. Les bots gardent leur place sans prix ; il faut au moins {{minimum}} de Domination.",
+      "Les {{places}} premières places peuvent gagner des ressources pour la prochaine galaxie. Il faut au moins {{minimum}} de Domination.",
     table: "Récompenses selon le classement",
     tableCount: "Top {{places}} · ouvrir pour voir",
     place: "{{place}}e place",
@@ -355,7 +355,7 @@ export const leaderboard = {
     behind:
       "Il te manque {{score}} de Domination pour entrer dans le top {{places}}.",
     minimum: "Encore {{score}} de Domination pour être admissible au prix.",
-    botIneligible: "Les bots gardent leur rang mais ne reçoivent pas de récompense de saison.",
+    botIneligible: "Tu ne peux pas recevoir de prix pour cette saison.",
     climb: "Entre dans le top {{places}} pour obtenir la récompense.",
     unranked: "Rejoins cette galaxie pour entrer dans le classement.",
   },

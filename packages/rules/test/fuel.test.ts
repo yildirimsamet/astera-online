@@ -106,8 +106,8 @@ describe('mission fuel', () => {
     it('makes a full raid cadence consume a meaningful first-refinery day', () => {
       const perDay = deuteriumRate(3) * 24;
       const raid = missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-      expect(perDay / raid).toBeGreaterThan(6 * 0.8);
-      expect(perDay / raid).toBeLessThan(7 * 0.8);
+      expect(perDay / raid).toBeGreaterThan(6 * 0.8 * 0.85);
+      expect(perDay / raid).toBeLessThan(7 * 0.8 * 0.85);
     });
 
     /**
@@ -119,7 +119,7 @@ describe('mission fuel', () => {
       const near = missionFuel({ DART: 200 }, NEIGHBOUR, 2);
       const far = missionFuel({ DART: 200 }, GALAXY_SPAN, 2);
       expect(far).toBeGreaterThan(near * 3);
-      expect(far).toBeLessThan(deuteriumRate(9) * 48);
+      expect(far).toBeLessThan(deuteriumRate(9) * 48 / 0.85);
     });
   });
 
@@ -316,7 +316,7 @@ describe('D195 fuel by hull value', () => {
   it('spends a first-refinery day on about five tier-2 raids after the output slowdown', () => {
     const perDay = deuteriumRate(3) * 24;
     const raids = perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-    expect(raids).toBeGreaterThan(6 * 0.8);
-    expect(raids).toBeLessThan(7 * 0.8);
+    expect(raids).toBeGreaterThan(6 * 0.8 * 0.85);
+    expect(raids).toBeLessThan(7 * 0.8 * 0.85);
   });
 });

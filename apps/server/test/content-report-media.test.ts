@@ -2,6 +2,7 @@ import { mkdtemp, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { ECONOMY_PROFILE } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
@@ -15,15 +16,15 @@ const uploadSchema = z.object({ media: z.object({ kind: z.literal('image'), asse
 const messageSchema = z.object({ message: z.object({ id: z.string().uuid() }) });
 const reportSchema = z.object({ report: z.object({ id: z.string().uuid() }) });
 let f: Fixture; let built: BuiltApp; let directory: string;
-let admin: { authorization: string }; let reporter: { authorization: string }; let cookie: string;
+let admin: { authorization: string; 'x-astera-rules': string }; let reporter: typeof admin; let cookie: string;
 beforeEach(async () => {
   f = await seedWorld(3); directory = await mkdtemp(join(tmpdir(), 'astera-report-media-'));
   await f.db.update(accounts).set({ username: 'reviewoperator' }).where(eq(accounts.id, f.accountIds[0]!));
   await f.db.update(accounts).set({ username: 'evidenceauthor' }).where(eq(accounts.id, f.accountIds[2]!));
-  built = buildApp({ db: f.db, clock: f.clock, env: testEnv({ ADMIN_USERNAMES: 'reviewoperator,evidenceauthor', CHAT_MEDIA_DIR: directory }), logger: pino({ level: 'silent' }) });
+  built = buildApp({ db: f.db, clock: f.clock, env: testEnv({ REQUIRE_CURRENT_RULES: 'true', ADMIN_USERNAMES: 'reviewoperator,evidenceauthor', CHAT_MEDIA_DIR: directory }), logger: pino({ level: 'silent' }) });
   await built.app.ready();
-  admin = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}` };
-  reporter = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[1]!)}` };
+  admin = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`, 'x-astera-rules': ECONOMY_PROFILE.id };
+  reporter = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[1]!)}`, 'x-astera-rules': ECONOMY_PROFILE.id };
   cookie = `bs_refresh=${await built.app.tokens.issueRefresh(f.accountIds[0]!)}`;
 });
 afterEach(async () => { await built.close(); await rm(directory, { recursive: true, force: true }); });
@@ -48,6 +49,8 @@ it('allows only operators to read the exact reported bytes with bearer or same-o
     expect(result.headers['content-type']).toBe('image/png'); expect(result.headers['cache-control']).toBe('private, no-store');
     expect(result.headers['x-content-type-options']).toBe('nosniff');
   }
+  const head = await built.app.inject({ method: 'HEAD', url, headers: { cookie } });
+  expect(head.statusCode).toBe(200); expect(head.rawPayload).toHaveLength(0);
 });
 it('does not expose unreported files through selectors and honors bounded range reads', async () => {
   const { url } = await reportedMedia();
@@ -80,7 +83,7 @@ it('returns a private missing result for erased files or mismatched evidence wit
 });
 
 it('allows evidence review of a reported private DM without making unreported DM media readable', async () => {
-  const author = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[2]!)}` };
+  const author = { authorization: `Bearer ${await built.app.tokens.issueAccess(f.accountIds[2]!)}`, 'x-astera-rules': ECONOMY_PROFILE.id };
   const uploaded = await built.app.inject({ method: 'POST', url: '/api/admin/chat/media', headers: { ...author, 'content-type': 'application/octet-stream', 'x-media-type': 'image/png' }, payload: png });
   const { media } = uploadSchema.parse(uploaded.json<unknown>());
   const sent = await built.app.inject({ method: 'POST', url: '/api/dm/messages', headers: author, payload: { recipientPlayerId: f.playerIds[1], content: 'Private evidence', media } });

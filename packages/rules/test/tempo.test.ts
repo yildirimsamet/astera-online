@@ -4,9 +4,9 @@ import { ECON, ECONOMY_ADJUSTMENT, ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, M
   storageCap, alloyRate, crystalRate, buildingCost, satelliteCost } from '../src/index.js';
 
 describe('monthly economy tempo', () => {
-  it('uses a thirty-day deadline and preserves early work', () => {
-    expect(SEASON.days).toBe(30);
-    expect(ECONOMY_PROFILE.progressionDays).toBe(SEASON.days);
+  it('uses a sixty-day deadline with the unchanged price reference', () => {
+    expect(SEASON.days).toBe(60);
+    expect(ECONOMY_PROFILE.progressionDays).toBe(30);
     expect(profileBuilding('CORE', 2).minutes).toBe(2.72);
     expect(profileBuilding('CORE', 12).minutes).toBeLessThan(60);
   });
@@ -34,7 +34,7 @@ describe('monthly economy tempo', () => {
         expect(profileResearch(p.id, level).minutes).toBeLessThanOrEqual(480);
       }
     }
-    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.buildTime);
+    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.strategicBuildTime);
   });
   it('keeps entry purchases reachable and founding capital separate', () => {
     expect(HULLS.DART.alloy).toBe(304);

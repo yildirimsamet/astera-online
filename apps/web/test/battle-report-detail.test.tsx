@@ -1268,7 +1268,7 @@ it('renders all six rounds and retreats from rounds four and five', async () => 
 it('explains distributed fire only on reports that recorded that model', async () => {
   await openSheet(report({ rounds: [{ ...base.rounds[0]!, distributedFire: true }] }));
   expect(document.querySelector('[data-distributed-fire-rules]')).toHaveTextContent('remaining targets in the same shot');
-  expect(document.querySelector('[data-distributed-fire-rules]')).toHaveTextContent('1–5');
+  expect(document.querySelector('[data-distributed-fire-rules]')).toHaveTextContent('1–7');
 });
 it('does not claim old report damage used the new distribution model', async () => {
   await openSheet(report());

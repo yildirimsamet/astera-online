@@ -2,12 +2,14 @@ import { useTranslation } from 'react-i18next';
 import { AsteraWordmark } from '../brand/Identity.js';
 import { OpeningScene } from '../brand/OpeningScene.js';
 import { runtime } from '../platform/runtime.js';
+import { reloadWebApp } from '../platform/updateGate.js';
 
 const PLAY_STORE = 'https://play.google.com/store/apps/details?id=space.asteraonline.app';
 
-/** The API refused this bundled build: the opening scene, one sentence of why, one way forward. */
+/** The API refused this client: explain why, then reload the web or update the app. */
 export function UpdateRequired() {
   const { t } = useTranslation();
+  const platform = runtime();
   return <main className="brand-loading" aria-labelledby="update-required-title">
     <div className="brand-loading-composition">
       <OpeningScene />
@@ -19,8 +21,14 @@ export function UpdateRequired() {
       </div>
       <div role="alert" className="mx-auto mt-8 w-[min(86%,320px)] text-left">
         <h1 id="update-required-title" className="text-title font-semibold text-bone">{t('app.updateTitle')}</h1>
-        <p className="mt-2 text-body leading-relaxed text-bone/80">{t('app.updateBody')}</p>
-        {runtime() === 'android' && (
+        <p className="mt-2 text-body leading-relaxed text-bone/80">{t(platform === 'web' ? 'app.updateWebBody' : 'app.updateBody')}</p>
+        {platform === 'web' && (
+          <button type="button" onClick={reloadWebApp}
+            className="slab slab-primary mt-4 flex min-h-[52px] w-full items-center justify-center px-6 py-3 text-center text-body">
+            {t('app.reloadGame')}
+          </button>
+        )}
+        {platform === 'android' && (
           <a href={PLAY_STORE} target="_blank" rel="noopener noreferrer"
             className="slab slab-primary mt-4 flex min-h-[52px] w-full items-center justify-center px-6 py-3 text-center text-body">
             {t('app.updateStore')}

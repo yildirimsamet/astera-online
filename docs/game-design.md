@@ -13,26 +13,38 @@ terms: `glossary.md`.
 > galaxy; Fleet V2 preserves those systems while replacing the ordinary space hulls. Public galaxy
 > events and the first Asteroid Shower are implemented for newly created ruleset-v4 seasons.
 
-## Current season geometry and tempo (2026-10-13)
+## Next season geometry and tempo — 60-day transition
 
-The next season uses a radius-`4,500` galaxy with a `450` minimum pair distance: 1,000 player
-addresses, 100 bot addresses and 130 neutral addresses. Neutrals are staged (`15/8/3` initial
-T1/T2/T3 openings, followed by one opening per free colony slot at the census cadence) while the
-full authored address pool remains deterministic. Player mobile hulls use `60%` of their
-profile speed; pirate and merchant anchors also take the additional `20%` slowdown.
-Cargo holds fly `2.5×` their slowed profile speed (2026-10-06). The Prospector travels at `990`,
-returns laden at `495`, and chases rocks in the `262.5–562.5` range; Probe speed is `2632.5`,
-Death Star speed `1500` and Radiation Bomb speed `1300` (owner 2026-10-16), and the Beacon grants
-`20%` extra speed. These craft figures use
-the catalogue scale; flight converts through the shared distance factor. All producer levels
-make `20%` less per hour while keeping their Store and Works resource capacities. Production,
-research and repair work runs `20%` slower (`×1.25` duration). Active seasons preserve pre-release
-income and retire existing pirate/merchant contacts at the explicit idle cutover described in
-`deployment.md`. Asteroid lifetime is unchanged. The earlier geometry update enlarges all three
-planet size anchors and the intervening Core-level ramp by `30%`, preserving their proportions.
+The next and subsequent seasons last exactly **60 days**. The price/progression reference stays
+at 30 days: extending the calendar does not double invoices. War, consolidation and sunset
+announcements keep their existing opening times, approximately day 8.57, 17.14 and 25.71.
+This is a season-boundary release; current live seasons must close on the old build first.
+See [the implementation and cutover plan](season-60-tempo-transition-plan.md).
 
-The convoy clock is 180 minutes. Trade ships use four 180-minute daily windows: `01–04`, `07–10`,
-`15–18` and `21–24`. These are new-season constants; existing live seasons are not migrated.
+The galaxy retains radius `4,500`, minimum pair distance `450`, and the existing capital,
+bot and staged neutral address pools. Ordinary mobile hulls fly at `0.54×` their authored
+profile; cargo keeps its `2.5×` lift, and pirate/merchant anchors follow the same factor.
+Probe speed is `2369.25`, Prospector speed `891` and its laden return `445.5`.
+Asteroids retain `262.5–562.5`; the Beacon, Derrick and Propulsion ratios are unchanged.
+Death Star speed stays `1500`, Radiation Bomb speed stays `1300`.
+
+All three refinery outputs fall **15% below the previous live output**, at every level.
+Store and Works resource capacities stay fixed, so Works now fill in about `14.71` hours.
+Hours-based protection, convoy caps, vacation fees, clan aid/purse limits and Arena daily
+transfer caps use the reduced output; capacity-based clan deuterium shares retain their amounts. Ordinary
+manufacturing/research/ship-repair and colony-fault-repair durations rise **15%**; this means
+100 minutes becomes 115 minutes. Death Star and Radiation Bomb manufacturing is exempt.
+The existing work ceiling becomes `672.75` minutes before applicable automation.
+Vault leakage retains its 60-hour drain parameter and twice-income cap; its legacy
+pre-cutover interval retains the historical 48-hour clock independently of capacity.
+
+Every planet-size anchor and intermediate Core-level radius shrinks another `20%` uniformly.
+The Core 1 / 11 / 22 radii are approximately `0.30135 / 0.56160 / 0.95882` world units.
+Shared flight geometry follows these radii; game distances and sensor ranges do not change.
+The intergalactic convoy still crosses in 180 minutes and merchant windows retain their
+current hours. New seasons keep dynamic pirate/asteroid hours throughout days 31–60;
+legacy static fields retain their frozen 30-day budgets.
+
 Country is part of the public commander identity: new accounts choose an ISO-3166 alpha-2 country,
 legacy accounts are `TR`, and live/archive leaderboards display its flag.
 
@@ -49,14 +61,13 @@ what closes the loop: every fight teaches you something about somebody you will 
 **The session is 4–6 minutes:** open, read what happened, check intel, make one or two
 commitments, close with something in flight.
 
-**The season is 14 days in four acts.** Land grab (1–3): everyone poor and blind, raids
-cheap, learning who the neighbours are. The war (4–9): vision matters most, veils go up,
-players choose an identity. Consolidation (10–13): fleets expensive, one bad read costs a
-day. **The sunset (14):** upgrades no longer repay before the wipe, so everyone hoards.
-
-The sunset is **engineered, not scripted**: because payback is 8–24h and the season ends,
-investment stops being rational on the final day. Every player independently reaches the same
-conclusion, so the whole galaxy is simultaneously rich and undefended. The economy produces
+**The season is 60 days in four acts.** The public transitions retain their former absolute
+dates (about day 8.57 / 17.14 / 25.71); the last act therefore lasts longer. These announcements
+do not script when investment stops paying: that still follows the remaining time and the
+producer's actual payback.
+The sunset is **engineered, not scripted**: when an upgrade cannot repay in the time left,
+investment gives way to spending and competition. That point depends on the producer's level
+and actual payback; the longer calendar does not prescribe a common final-day threshold. The economy produces
 the finale.
 
 ## Ownership — the worlds

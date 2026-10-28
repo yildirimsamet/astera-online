@@ -5,6 +5,7 @@ import { createDb } from '../db/client.js';
 import { players } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { assertCommanderNotVacationing } from './vacation.js';
+import { ECONOMY_PROFILE } from '@astera/rules';
 
 /**
  * THE HOT READS, WHICH CHECK PLACEMENT INSTEAD OF LEASING IT. Resource analysis 2026-10-13.
@@ -58,8 +59,9 @@ const placementChanged = () => new GameError('PLACEMENT_CHANGED', 'Your galaxy c
  * Streams have their own per-frame placement fence and must never hold this lease.
  */
 export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
-  options: { idleInTransactionTimeoutMs?: number } = {}): () => Promise<void> {
-  const pool = createDb(url, { max, applicationName: 'astera-placement-gate', ...options });
+  options: { idleInTransactionTimeoutMs?: number; requireCurrentRules?: boolean } = {}): () => Promise<void> {
+  const { requireCurrentRules = false, ...poolOptions } = options;
+  const pool = createDb(url, { max, applicationName: 'astera-placement-gate', ...poolOptions });
 
   /** The caller's current placement key, or a 409 when the browser holds an older one. */
   const admit = (req: FastifyRequest, current: Placement, reconcile: boolean): string => {
@@ -79,6 +81,15 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
       || route.url.startsWith('/api/auth/email/') || route.url.startsWith('/api/auth/password/reset/')
       || route.url === '/api/mail/resend/webhook') return;
     const handler = route.handler;
+    // HTML images/video cannot send custom headers. These read-only media paths
+    // keep their auth, audience and placement guards without requiring game rules.
+    const mediaRead = (route.method === 'GET' || route.method === 'HEAD')
+      && (route.url === '/api/chat/media/:id' || route.url === '/api/admin/content-reports/:id/media');
+    const assertRules = (req: FastifyRequest): void => {
+      if (requireCurrentRules && !mediaRead && req.headers['x-astera-rules'] !== ECONOMY_PROFILE.id) {
+        throw new GameError('UPDATE_REQUIRED', 'Update Astera Online to use the current season rules', 426);
+      }
+    };
     // /me is the authority used to reconcile. Return endpoints already carry
     // their own versioned intent and expose status needed by older clients.
     const reconcile = route.url === '/api/chat/media/:id' || route.url === '/api/auth/me' || route.url === '/api/return-applications';
@@ -86,6 +97,7 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     if (typeof route.method === 'string' && PLACEMENT_READ_ROUTES.has(`${route.method} ${route.url}`)) {
       route.handler = async function (req, reply) {
         if (!req.accountId) return handler.call(this, req, reply);
+        assertRules(req);
         const [initial] = await app.db.select(PLACEMENT).from(players).where(eq(players.accountId, req.accountId));
         if (!initial) return handler.call(this, req, reply);
         void reply.header('x-placement', admit(req, initial, reconcile));
@@ -101,6 +113,7 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
 
     route.handler = async function (req, reply) {
       if (!req.accountId) return handler.call(this, req, reply);
+      assertRules(req);
       const startedAt = performance.now();
       let transactionStarted = false;
       return pool.db.transaction(async tx => {

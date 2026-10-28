@@ -401,7 +401,7 @@ export const leaderboard = {
   rewards: {
     title: "シーズン終了賞品",
     left: "残り{{duration}}",
-    explain: "最初の {{places}} 位は、次の銀河のリソースを獲得できます。ボットはその地位を保ちますが、賞品は受け取りません。指揮官には少なくとも {{minimum}} ドミニオンが必要です。",
+    explain: "上位{{places}}位は、次の銀河で使える資源を獲得できます。受賞には{{minimum}}以上のドミニオンが必要です。",
     table: "順位別賞金",
     tableCount: "上位 {{places}} の場所 · 検査可能",
     place: "ランク {{place}}",
@@ -410,7 +410,7 @@ export const leaderboard = {
     standing: "ランク {{place}}",
     behind: "{{score}} さらにドミニオンがトップ {{places}} に到達します。",
     minimum: "{{score}} ドミニオンを増やすと賞品を獲得できます。",
-    botIneligible: "ボットはランクを維持しますが、シーズン賞を受け取ることはできません。",
+    botIneligible: "今シーズンの報酬は受け取れません。",
     climb: "一番上の {{places}} に到達して取得します。",
     unranked: "この銀河に参加してランキングに参加してください。",
   },

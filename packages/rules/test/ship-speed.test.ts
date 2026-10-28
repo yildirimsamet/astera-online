@@ -25,8 +25,8 @@ import type { HullId } from '../src/index.js';
 
 /** Base round trips at 1250 units include the ten-second engagement. No research or Beacon. */
 describe('monthly fleet tempo', () => {
-  it('reduces every shipyard fleet hull by 20% from its previous speed', () => {
-    expect(FLEET_SPEED_FACTOR).toBe(0.60);
+  it('reduces every fleet hull another 10% for the sixty-day season', () => {
+    expect(FLEET_SPEED_FACTOR).toBe(0.54);
     for (const id of MOBILE_HULLS) {
       const hull = HULLS[id];
       const authoredRoundTrip = hull.profile === 'TRANSPORT'
@@ -87,7 +87,7 @@ describe('monthly fleet tempo', () => {
   it('keeps ground craft stationary and mining independent', () => {
     for (const id of GROUND_HULLS) expect(HULLS[id].speed).toBe(0);
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
-    expect(PROSPECTOR.speed).toBe(990);
+    expect(PROSPECTOR.speed).toBe(891);
   });
 });
 
@@ -172,9 +172,9 @@ describe('D152 Ship Propulsion ladder', () => {
  * pacing is a separate five-second rule and no longer pretends to be flight time.
  */
 describe('D153 probe speed', () => {
-  it('flies at exactly three quarters of what it flew before', () => {
-    expect(PROBE.speed).toBe(3510 * 0.75);
-    expect(PROBE.speed).toBe(2632.5);
+  it('applies the additional ten-percent slowdown to the current probe speed', () => {
+    expect(PROBE.speed).toBe(3510 * 0.75 * 0.90);
+    expect(PROBE.speed).toBe(2369.25);
   });
 
   it('still outruns every hull in the game, and the drill', () => {
@@ -187,7 +187,7 @@ describe('D153 probe speed', () => {
 
   /** The cut is on the probe alone. Nothing else in the model reads it. */
   it('moves nothing but the probe', () => {
-    expect(PROSPECTOR.speed).toBe(990);
+    expect(PROSPECTOR.speed).toBe(891);
     expect(fleetTravelExact(1250, { DART: 1 }, UNAIDED))
       .toBeCloseTo((15 - 1 / 6) / 2 / FLEET_SPEED_FACTOR);
   });

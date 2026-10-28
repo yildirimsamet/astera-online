@@ -91,9 +91,9 @@ describe('D153 world size by core level', () => {
    * (one uniform factor, and no level that is a jump) did not.
    */
   it('anchors the three authored sizes at the floor, the middle and the cap', () => {
-    expect(worldRadius(1)).toBeCloseTo(0.471 * 0.8, 3);
-    expect(worldRadius(11)).toBeCloseTo(0.8775 * 0.8, 6);
-    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.498 * 0.8, 3);
+    expect(worldRadius(1)).toBeCloseTo(0.471 * 0.8 * 0.8, 3);
+    expect(worldRadius(11)).toBeCloseTo(0.8775 * 0.8 * 0.8, 6);
+    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.498 * 0.8 * 0.8, 3);
   });
 
   /** And the shrink is UNIFORM, which is the property that keeps the ramp's shape. */

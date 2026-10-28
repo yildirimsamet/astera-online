@@ -19,7 +19,7 @@ import { ECON, alloyRate, collectorCap, storageCap, storageHours } from '../src/
  *     protected and the raidable pile together and moves no ratio. `raidable.test.ts`
  *     holds that band and must stay green without being touched.
  */
-const MONTHLY_SCALE = 5.25 / 0.8;
+const MONTHLY_SCALE = 5.25 / 0.8 / 0.85;
 
 describe('the uniform storage lift', () => {
   it('is one dial, and the Vault’s own progression is untouched', () => {

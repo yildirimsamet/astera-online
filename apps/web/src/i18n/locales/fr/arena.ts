@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "Vaisseau du commandant",
-  "menuHint": "Le Yarık · récolte du minerai, ramène-le à ta capitale, fais grandir ton vaisseau",
-  "join": "Rejoindre",
   "nav": "Vaisseau du commandant",
   "start": "Démarrer",
   "leave": "Retour à la galaxie",

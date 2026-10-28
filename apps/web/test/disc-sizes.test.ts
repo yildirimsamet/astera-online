@@ -38,16 +38,15 @@ describe('the rock ladder', () => {
   });
 
   /**
-   * Owner, 2026-10-16: only planets shrink 20%. The richest rock now slightly
-   * exceeds a Core-1 marker; developed worlds remain clearly larger. Keep the
-   * asteroid ladder unchanged when resizing planets.
+   * Only planets take the additional 20% season shrink. Rocks retain their
+   * existing sizes, so their size relative to a planet rises by 1/0.8.
    */
   it('keeps its size while developed worlds remain larger after the planet shrink', () => {
     const richest = asteroidRadius(5);
     expect(richest).toBeCloseTo(0.3825, 9);
-    expect(worldRadius(1)).toBeCloseTo((0.54 * 1.25 * 1.3 / 1.8636) * 0.8, 9);
-    expect(richest).toBeLessThan(worldRadius(11) * 0.6);
-    expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 0.35);
+    expect(worldRadius(1)).toBeCloseTo((0.54 * 1.25 * 1.3 / 1.8636) * 0.8 * 0.8, 9);
+    expect(richest).toBeLessThan(worldRadius(11) * 0.6 / 0.8);
+    expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 0.35 / 0.8);
   });
 });
 
@@ -98,9 +97,11 @@ describe('the merchant', () => {
     expect(TRADE_SHIP_SCALE).toBeCloseTo(TRADE_SHIP_BASE_SCALE * 4, 9);
   });
 
-  /** Still the largest ordinary craft on the disc, and still under a small world. */
-  it('reads as the biggest hull in the lane without competing with a world', () => {
+  /** Its fixed silhouette can exceed a middle world after only planets shrink. */
+  it('retains its own size as planets become smaller around it', () => {
+    expect(TRADE_SHIP_SCALE).toBeCloseTo(1.28, 9);
     expect(TRADE_SHIP_SCALE).toBeGreaterThan(hullVisualScale('CATACLYSM', 0.195 * CRAFT_SCALE));
-    expect(TRADE_SHIP_SCALE).toBeLessThan(worldRadius(11) * 2);
+    expect(TRADE_SHIP_SCALE).toBeGreaterThan(worldRadius(11) * 2);
+    expect(TRADE_SHIP_SCALE).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 2);
   });
 });

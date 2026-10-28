@@ -401,7 +401,7 @@ export const leaderboard = {
   rewards: {
     title: 'End of season prize',
     left: '{{duration}} left',
-    explain: 'The first {{places}} places can earn resources for the next galaxy. Bots keep their place but take no prize; commanders need at least {{minimum}} Dominion.',
+    explain: "The first {{places}} places can earn resources for the next galaxy. At least {{minimum}} Dominion is required to qualify.",
     table: 'Prize by place',
     tableCount: 'Top {{places}} places · open to inspect',
     place: 'Rank {{place}}',
@@ -410,7 +410,7 @@ export const leaderboard = {
     standing: 'Rank {{place}}',
     behind: '{{score}} more Dominion to reach the top {{places}}.',
     minimum: '{{score}} more Dominion to qualify for a prize.',
-    botIneligible: 'Bots keep their rank but cannot receive a season prize.',
+    botIneligible: "You cannot receive a season prize this season.",
     climb: 'Reach the top {{places}} and take it.',
     unranked: 'Join this galaxy to enter the standings.',
   },

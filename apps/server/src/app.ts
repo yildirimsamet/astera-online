@@ -176,7 +176,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
      */
     trustProxy: opts.env.TRUST_PROXY,
   });
-  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX, idleBound);
+  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX,
+    { ...idleBound, requireCurrentRules: opts.env.REQUIRE_CURRENT_RULES });
   const tokens: TokenService = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
@@ -270,7 +271,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       origin: opts.env.NATIVE_APP_ORIGINS,
       credentials: false,
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build', 'x-astera-rules'],
       exposedHeaders: ['x-server-time', 'x-placement', 'Date'],
       maxAge: 600,
     });

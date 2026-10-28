@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
+import { ECONOMY_PROFILE } from '@astera/rules';
 
 class UploadRequest {
   static sent: UploadRequest[] = [];
@@ -31,9 +32,20 @@ function setup() {
   const api = new Api();
   return api;
 }
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('authenticated chat uploads', () => {
+  it('declares the compiled native build alongside the rules on binary uploads', async () => {
+    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '42');
+    const api = setup();
+    const result = api.uploadChatMedia(file(), new AbortController().signal, vi.fn());
+    const request = UploadRequest.sent[0]!;
+    expect(request.headers['x-astera-rules']).toBe(ECONOMY_PROFILE.id);
+    expect(request.headers['x-astera-build']).toBe('42');
+    request.finish(200, { media });
+    await expect(result).resolves.toEqual({ media });
+  });
+
   it('reports progress, sends binary content and parses the server response', async () => {
     const api = setup(); const progress = vi.fn(); const picked = file();
     const result = api.uploadChatMedia(picked, new AbortController().signal, progress);
@@ -41,6 +53,7 @@ describe('authenticated chat uploads', () => {
     expect(request.url).toBe('/api/admin/chat/media');
     expect(request.headers['content-type']).toBe('application/octet-stream');
     expect(request.headers['x-media-type']).toBe('image/png');
+    expect(request.headers['x-astera-rules']).toBe(ECONOMY_PROFILE.id);
     expect(request.withCredentials).toBe(true);
     expect(request.body).toBe(picked);
     request.upload.onprogress?.({ lengthComputable: true, loaded: 3, total: 4 });
@@ -75,6 +88,17 @@ describe('authenticated chat uploads', () => {
       await expect(result).rejects.toMatchObject({ code: 'PLACEMENT_CHANGED' });
       expect(changed).toHaveBeenCalledTimes(1);
     } finally { window.removeEventListener('astera:placement-changed', changed); }
+  });
+
+  it('requests an app update when the upload is refused for stale rules', async () => {
+    const api = setup(); const update = vi.fn();
+    window.addEventListener('astera:update-required', update);
+    try {
+      const result = api.uploadChatMedia(file(), new AbortController().signal, vi.fn());
+      UploadRequest.sent[0]!.finish(426, { error: 'UPDATE_REQUIRED', message: 'Update Astera Online' });
+      await expect(result).rejects.toMatchObject({ code: 'UPDATE_REQUIRED' });
+      expect(update).toHaveBeenCalledOnce();
+    } finally { window.removeEventListener('astera:update-required', update); }
   });
 
   it('refreshes an expired access token once and retries the same file', async () => {

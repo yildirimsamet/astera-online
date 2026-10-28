@@ -65,8 +65,9 @@ async function show({
   noRewards = false,
   liveScore = 0,
   isBot = false,
+  language = 'en',
 } = {}, honorScore: number | null = null) {
-  await i18n.changeLanguage('en');
+  await i18n.changeLanguage(language);
   const fetch = vi.fn();
   if (archiveFailure) fetch.mockRejectedValue(new Error('offline'));
   const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
@@ -372,11 +373,20 @@ describe('season archive surface', () => {
     expect(screen.getByText('1 more Dominion to qualify for a prize.')).toBeVisible();
   });
 
+  it.each(['tr', 'en', 'de', 'fr', 'es', 'ja'])('keeps account classifications private in the %s prize board', async (language) => {
+    await show({ liveScore: 10, language });
+    const board = screen.getByRole('region', { name: i18n.t('leaderboard.rewards.title') });
+    expect(board).not.toHaveTextContent(/\bbots?\b|botlar|ボット/iu);
+    expect(board).toHaveTextContent(i18n.t('leaderboard.rewards.explain', { places: 10, minimum: '1' }));
+    expect(board.querySelector('[data-reward-standing]')).toHaveAttribute('data-reward-standing', 'paid');
+  });
+
   it('does not promise a prize to a bot account with a winning score', async () => {
     await show({ liveScore: 10, isBot: true });
 
     expect(screen.queryByText('Rank 2 · you are winning this')).toBeNull();
-    expect(screen.getByText('Bots keep their rank but cannot receive a season prize.')).toBeVisible();
+    expect(screen.getByText('You cannot receive a season prize this season.')).toBeVisible();
+    expect(screen.getByRole('region', { name: i18n.t('leaderboard.rewards.title') })).not.toHaveTextContent(/\bbots?\b|botlar|ボット/iu);
   });
 
   /** A galaxy whose cycle predates the program promises nothing, and shows nothing. */

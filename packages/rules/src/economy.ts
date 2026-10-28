@@ -998,7 +998,10 @@ export function advanceEconomy(
   */
   const nominal = { alloy: nominalA, crystal: nominalC, deuterium: nominalD };
   const leaking = hasFault(faults, 'VAULT_LEAK');
-  const rate = leaking ? leakRates(nominal, input.vaultLevel, outputFactor) : NO_LEAK;
+  // The pre-October cutover restores a frozen 48-hour drain clock independently
+  // of the income/capacity factor. A new capacity compensation must not speed it up.
+  const rate = leaking ? leakRates(nominal, input.vaultLevel, outputFactor,
+    outputFactor === 1 ? FAULT.leakDrainHours : 48) : NO_LEAK;
   const budget = leaking ? leakBudget(nominal, input.vaultLevel) : NO_LEAK;
   const spent = input.leakedSoFar ?? NO_LEAK;
   const room = (column: keyof Resources): number =>
@@ -1186,17 +1189,19 @@ export interface ProductionRates {
 export function leakRates(
   rates: ProductionRates,
   vaultLevel: number,
-  /** The pre-cutover interval restores both the old income cap and old drain speed. */
-  tempoFactor = 1,
+  /** Restore pre-cutover income without scaling the resource capacity. */
+  incomeFactor = 1,
+  /** Historical leakage has its own frozen clock, independent of producer output. */
+  drainHours: number = FAULT.leakDrainHours,
 ): Resources {
-  const fromStore = (cap: number): number => cap / FAULT.leakDrainHours;
+  const fromStore = (cap: number): number => cap / drainHours;
   return {
-    alloy: Math.min(fromStore(storageCap(rates.alloy, vaultLevel)), rates.alloy * FAULT.leakIncomeCap) * tempoFactor,
-    crystal: Math.min(fromStore(storageCap(rates.crystal, vaultLevel)), rates.crystal * FAULT.leakIncomeCap) * tempoFactor,
+    alloy: Math.min(fromStore(storageCap(rates.alloy, vaultLevel)), rates.alloy * FAULT.leakIncomeCap * incomeFactor),
+    crystal: Math.min(fromStore(storageCap(rates.crystal, vaultLevel)), rates.crystal * FAULT.leakIncomeCap * incomeFactor),
     deuterium: Math.min(
       fromStore(deuteriumStorageCap(rates.deuterium, rates.crystal, vaultLevel)),
-      rates.deuterium * FAULT.leakIncomeCap,
-    ) * tempoFactor,
+      rates.deuterium * FAULT.leakIncomeCap * incomeFactor,
+    ),
   };
 }
 

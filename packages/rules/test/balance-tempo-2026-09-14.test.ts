@@ -64,10 +64,10 @@ describe('the drill and the rock it meets', () => {
   });
 
   it('comes home at half speed laden, not a third', () => {
-    expect(PROSPECTOR.speed).toBe(990);
+    expect(PROSPECTOR.speed).toBe(891);
     expect(PROSPECTOR.returnSpeedFactor).toBe(1 / 2);
-    expect(prospectorReturnSpeed([], true)).toBe(495);
-    expect(prospectorReturnSpeed([], false)).toBe(990);
+    expect(prospectorReturnSpeed([], true)).toBe(445.5);
+    expect(prospectorReturnSpeed([], false)).toBe(891);
     expect(PROSPECTOR.shortTripMinutes).toBe(4 / 3);
   });
 
@@ -205,14 +205,14 @@ describe('fuel', () => {
 });
 
 describe('build and research timers', () => {
-  it('slows the previous shared work rate by 20%', () => {
-    expect(ECONOMY_ADJUSTMENT.buildTime).toBeCloseTo(0.975 / 0.8, 12);
-    expect(ECONOMY_ADJUSTMENT.buildTime).toBe(1.21875);
+  it('adds fifteen percent to the current shared duration', () => {
+    expect(ECONOMY_ADJUSTMENT.buildTime).toBeCloseTo(0.975 / 0.8 * 1.15, 12);
+    expect(ECONOMY_ADJUSTMENT.buildTime).toBeCloseTo(1.4015625, 12);
   });
 
-  it('extends the effective work ceiling from 468 to 585 minutes', () => {
+  it('extends the current capped work by fifteen percent', () => {
     // The authored ceiling is 480 minutes of work; the dial is applied after it.
-    expect(buildingMinutes('CORE', 40, {})).toBeCloseTo(585, 9);
+    expect(buildingMinutes('CORE', 40, {})).toBeCloseTo(585 * 1.15, 9);
   });
 });
 

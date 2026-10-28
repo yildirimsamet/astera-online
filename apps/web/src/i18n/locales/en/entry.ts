@@ -98,6 +98,8 @@ export const app = {
   updateTitle: "Update required",
   updateBody: "This version of Astera Online no longer works with the game server. Update the app to return to the galaxy. Your account and progress are kept on the server.",
   updateStore: "Update on Google Play",
+  updateWebBody: "The game rules have changed. Reload to use the current version. Your account and progress are kept on the server.",
+  reloadGame: "Reload game",
   blockedTitle: "Could not connect to the game",
   blockedRetry: 'Try again',
   /** What `useSession` says when a request failed with no message of its own. */

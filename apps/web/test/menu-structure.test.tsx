@@ -474,17 +474,13 @@ describe('claimable rewards in the galaxy header', () => {
   });
 });
 
-/** Owner 2026-10-20: a seated pilot finds the arena in the menu, one tap from flying. */
-describe('the arena invitation', () => {
-  it('appears only for a seated pilot and opens the flight', () => {
+/** Owner 2026-10-28: the menu draws no Yarık door; the hangar is the one way in (F2). */
+describe('the commander menu and the Yarık', () => {
+  it('draws no arena invitation, even when a caller still hands one over', () => {
     const onEnterArena = vi.fn();
-    const view = show({ onEnterArena });
-    const invite = screen.getByRole('button', { name: named(i18n.t('arena.menuLabel'), i18n.t('arena.menuHint')) });
-    expect(invite).toHaveTextContent(i18n.t('arena.join'));
-    fireEvent.click(invite);
-    expect(onEnterArena).toHaveBeenCalledOnce();
-    view.unmount();
-    show();
-    expect(screen.queryByRole('button', { name: named(i18n.t('arena.menuLabel'), i18n.t('arena.menuHint')) })).toBeNull();
+    // @ts-expect-error the menu no longer takes an arena entry
+    show({ onEnterArena });
+    expect(document.querySelector('[data-menu-arena]')).toBeNull();
+    expect(onEnterArena).not.toHaveBeenCalled();
   });
 });

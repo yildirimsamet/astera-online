@@ -73,14 +73,35 @@ describe('public Honor ranking and client contract', () => {
     expect(galaxy.planets.find(row => row.id === f.planetIds[3])).toMatchObject({ honorRanking: true, honorRank: 3 });
   });
 
-  it('excludes bot identities from Honor without exposing their private classification', async () => {
+  it('lists bots on Honor like every commander, so the two ladders cannot be diffed to find them', async () => {
     await enable();
     await f.db.insert(botProfiles).values({ accountId: f.accountIds[1]!, ordinal: 1, persona: 'RAIDER',
       nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    const ids = (rows: { playerId: string }[]) => rows.map(row => row.playerId).sort();
     const result = await board();
-    expect(result.ladder.some(row => row.playerId === f.playerIds[1])).toBe(false);
-    expect(result.ladder).toHaveLength(3);
+    expect(ids(result.ladder)).toEqual(ids((await board('DOMINION')).ladder));
+    expect(result.ladder).toHaveLength(4);
     expect(result.ladder.every(row => row.rank === 1)).toBe(true);
+    const raw = (await app.inject({ method: 'GET', url: '/api/leaderboard?ranking=HONOR', headers: { authorization } }))
+      .json<{ ladder: Record<string, unknown>[] }>().ladder;
+    const keys = (playerId: string) => Object.keys(raw.find(row => row.playerId === playerId)!).sort();
+    expect(keys(f.playerIds[1]!)).toEqual(keys(f.playerIds[2]!));
+    expect(JSON.stringify(raw)).not.toMatch(/"bot"|isBot|persona|RAIDER/);
+  });
+
+  it('keeps a bot out of the Honor prize order while it shares the zero rank', async () => {
+    await enable();
+    await f.db.insert(botProfiles).values({ accountId: f.accountIds[1]!, ordinal: 1, persona: 'RAIDER',
+      nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    await f.db.insert(honorTotals).values([
+      { seasonId: f.seasonId, playerId: f.playerIds[0]!, score: 50_000_000 },
+      { seasonId: f.seasonId, playerId: f.playerIds[2]!, score: 90_000_000 },
+    ]);
+    const result = await board();
+    expect(result.ladder.map(row => row.rank)).toEqual([1, 2, 3, 3]);
+    expect(result.ladder.slice(0, 2).map(row => row.playerId)).toEqual([f.playerIds[2], f.playerIds[0]]);
+    expect(result.ladder.find(row => row.playerId === f.playerIds[1])).toMatchObject({ rank: 3, honor: 0 });
+    expect(result.honorReward).toMatchObject({ rank: 2, honor: 50_000_000 });
   });
 
   it('publishes the announced opening time and clean totals without leaking the observation epoch', async () => {

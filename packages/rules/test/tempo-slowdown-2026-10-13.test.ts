@@ -16,7 +16,10 @@ import {
 } from '../src/index.js';
 
 const OLD_BUILD_TIME = 0.975;
-const WORK_RATE = 0.8;
+// The original slowdown plus the new 60-day overlay. The historical pre-cutover
+// output and 48-hour leak remain frozen independently of current work durations.
+const WORK_RATE = 0.8 / 1.15;
+const OUTPUT_RATE = 0.8 * 0.85;
 const technologies: readonly TechLevels[] = [{}, { AI_ROBOTS: 5, YARD_AUTOMATION: 5 }];
 const total = (cost: Resources): number => cost.alloy + cost.crystal + cost.deuterium;
 
@@ -33,8 +36,8 @@ const capacityCases = [
   { levels: [6, 6, 6, 6], boost: 1.06, store: [45010, 18004, 10206], works: [9526, 3810, 2160] },
 ] as const;
 
-describe('owner slowdown, 2026-10-13', () => {
-  it('reduces every ordinary mobile hull by 20%, retaining each role and cargo rung', () => {
+describe('owner tempo overlays through the sixty-day season', () => {
+  it('composes flight slowdowns while retaining each role and cargo rung', () => {
     for (const id of MOBILE_HULLS) {
       const hull = HULLS[id];
       const roundTrip = hull.profile === 'TRANSPORT' ? SUPPORT_ROUND_TRIP[hull.tier! - 1]!
@@ -43,19 +46,19 @@ describe('owner slowdown, 2026-10-13', () => {
             : hull.profile === 'ESCORT' ? 18 : 25;
       const oldSpeed = profileFlightSpeed(roundTrip) * 0.75
         * (hull.profile === 'TRANSPORT' ? TRANSPORT_SPEED_MULT : 1);
-      expect(hull.speed, id).toBeCloseTo(oldSpeed * 0.8, 10);
+      expect(hull.speed, id).toBeCloseTo(oldSpeed * 0.8 * 0.9, 10);
       expect(fleetTravelExact(1250, { [id]: 1 }, UNAIDED), id)
-        .toBeCloseTo(1250 / oldSpeed * TRAVEL.distanceFactor / 0.8, 10);
+        .toBeCloseTo(1250 / oldSpeed * TRAVEL.distanceFactor / 0.8 / 0.9, 10);
     }
     for (const id of GROUND_HULLS) expect(HULLS[id].speed, id).toBe(0);
   });
 
-  it('reduces Probe by 25% and the independent Prospector and Death Star by 20%', () => {
-    expect(PROBE.speed).toBe(3510 * 0.75);
-    expect(PROSPECTOR.speed).toBe(1237.5 * 0.8);
-    expect(HULLS.PROSPECTOR.speed).toBe(990);
-    expect(prospectorReturnSpeed([], false)).toBe(990);
-    expect(prospectorReturnSpeed([], true)).toBe(495);
+  it('keeps the probe and mining overlays independent of the preserved Death Star', () => {
+    expect(PROBE.speed).toBe(3510 * 0.75 * 0.9);
+    expect(PROSPECTOR.speed).toBe(1237.5 * 0.8 * 0.9);
+    expect(HULLS.PROSPECTOR.speed).toBe(891);
+    expect(prospectorReturnSpeed([], false)).toBe(891);
+    expect(prospectorReturnSpeed([], true)).toBe(445.5);
     // The owner then raised the Death Star by 50% on 2026-10-16; the slowdown itself stands.
     expect(DEATH_STAR.speed).toBe(1250 * 0.8 * 1.5);
   });
@@ -72,9 +75,9 @@ describe('owner slowdown, 2026-10-13', () => {
     for (let level = 0; level <= 100; level++) {
       const income = profileIncome(level);
       const oldCut = 0.70 * producerOutputMult(level);
-      expect(alloyRate(level)).toBeCloseTo(income.alloy * oldCut * alloyLift(level) * 0.8, 8);
-      expect(crystalRate(level)).toBeCloseTo(income.crystal * oldCut * 0.8, 8);
-      expect(deuteriumRate(level)).toBeCloseTo(income.deuterium * oldCut * 0.8, 8);
+      expect(alloyRate(level)).toBeCloseTo(income.alloy * oldCut * alloyLift(level) * OUTPUT_RATE, 8);
+      expect(crystalRate(level)).toBeCloseTo(income.crystal * oldCut * OUTPUT_RATE, 8);
+      expect(deuteriumRate(level)).toBeCloseTo(income.deuterium * oldCut * OUTPUT_RATE, 8);
       if (level > 0) {
         expect(alloyRate(level)).toBeGreaterThan(alloyRate(level - 1));
         expect(crystalRate(level)).toBeGreaterThan(crystalRate(level - 1));
@@ -107,10 +110,10 @@ describe('owner slowdown, 2026-10-13', () => {
     expect(collect(ticked, input).moved).toEqual({ alloy: 8987, crystal: 3595, deuterium: 2038 });
     expect(minutesUntilCollectorFull(0, alloyRate(6)))
       .toBeCloseTo(8987 / alloyRate(6) * 60, 10);
-    expect(ECON.collectorHours).toBe(12.5);
+    expect(ECON.collectorHours).toBeCloseTo(12.5 / 0.85, 10);
   });
 
-  it('slows every building, instrument and satellite quote by 20% of its work rate', () => {
+  it('composes ordinary work durations with every robot discount', () => {
     for (const tech of technologies) {
       for (const id of BUILDING_IDS) {
         for (const level of [1, 6, 13, 40, 100]) {
@@ -150,7 +153,7 @@ describe('owner slowdown, 2026-10-13', () => {
     }
   });
 
-  it('slows all research projects and both strategic production clocks', () => {
+  it('slows research and interceptor work while preserving Death Star manufacturing', () => {
     for (const id of RESEARCH_PROJECT_IDS) {
       for (let level = 1; level <= RESEARCH_PROJECTS[id].maxLevel; level++) {
         const cost = RESEARCH_PROJECTS[id].costAt(level);
@@ -159,7 +162,7 @@ describe('owner slowdown, 2026-10-13', () => {
         expect(researchMinutes(cost, 6), `${id}:${String(level)}`).toBeCloseTo(oldMinutes / WORK_RATE, 9);
       }
     }
-    expect(DEATH_STAR.buildMinutes).toBe(58.5 / WORK_RATE);
+    expect(DEATH_STAR.buildMinutes).toBe(73.125);
     expect(ANTI_STRATEGIC.buildMinutes).toBe(29.25 / WORK_RATE);
   });
 
@@ -173,10 +176,10 @@ describe('owner slowdown, 2026-10-13', () => {
       expect(defenceMinutes(cost, 6))
         .toBeCloseTo(Math.min(480, amount / defenceThroughput(6)) * OLD_BUILD_TIME / WORK_RATE, 9);
     }
-    expect(BUILD.capMinutes).toBe(585);
+    expect(BUILD.capMinutes).toBeCloseTo(585 * 1.15, 10);
   });
 
-  it('slows colony repair crews by 20%, including both ends of their duration range', () => {
+  it('extends colony repair crews by the ordinary duration overlay at both ends', () => {
     expect(FAULT.repairMinMinutes).toBe(5 / WORK_RATE);
     expect(FAULT.repairMaxMinutes).toBe(15 / WORK_RATE);
     for (const roll of [0, 0.5, 1 - Number.EPSILON]) {
@@ -210,21 +213,21 @@ describe('active-season production cutover', () => {
     const alloy = alloyRate(level), crystal = crystalRate(level), deuterium = deuteriumRate(level);
     const vaultLevel = Math.min(level, 40);
     return {
-      alloy: Math.min(storageCap(alloy, vaultLevel) / 48, alloy / WORK_RATE * 2),
-      crystal: Math.min(storageCap(crystal, vaultLevel) / 48, crystal / WORK_RATE * 2),
-      deuterium: Math.min(deuteriumStorageCap(deuterium, crystal, vaultLevel) / 48, deuterium / WORK_RATE * 2),
+      alloy: Math.min(storageCap(alloy, vaultLevel) / 48, alloy / OUTPUT_RATE * 2),
+      crystal: Math.min(storageCap(crystal, vaultLevel) / 48, crystal / OUTPUT_RATE * 2),
+      deuterium: Math.min(deuteriumStorageCap(deuterium, crystal, vaultLevel) / 48, deuterium / OUTPUT_RATE * 2),
     };
   };
 
-  it('reduces leakage by 20% at every producer level, preserving the production/leak ratio', () => {
+  it('retains the sixty-hour drain and two-hour income cap at the new output', () => {
     expect(FAULT.leakDrainHours).toBe(60);
     for (let level = 0; level <= 100; level++) {
-      const rate = leakRates({ alloy: alloyRate(level), crystal: crystalRate(level), deuterium: deuteriumRate(level) }, Math.min(level, 40));
-      const old = legacyLeak(level);
-      for (const resource of ['alloy', 'crystal', 'deuterium'] as const) {
-        if (old[resource] === 0) expect(rate[resource]).toBe(0);
-        else expect(rate[resource] / old[resource], `${resource} L${String(level)}`).toBeCloseTo(WORK_RATE, 12);
-      }
+      const rates = { alloy: alloyRate(level), crystal: crystalRate(level), deuterium: deuteriumRate(level) };
+      const vault = Math.min(level, 40);
+      const leak = leakRates(rates, vault);
+      expect(leak.alloy).toBeCloseTo(Math.min(storageCap(rates.alloy, vault) / 60, rates.alloy * 2), 10);
+      expect(leak.crystal).toBeCloseTo(Math.min(storageCap(rates.crystal, vault) / 60, rates.crystal * 2), 10);
+      expect(leak.deuterium).toBeCloseTo(Math.min(deuteriumStorageCap(rates.deuterium, rates.crystal, vault) / 60, rates.deuterium * 2), 10);
     }
   });
 
@@ -235,13 +238,14 @@ describe('active-season production cutover', () => {
       faults: ['VAULT_LEAK', 'REFINERY_OUTAGE', 'EXTRACTOR_OUTAGE', 'PLANT_OUTAGE'] as const,
     };
     const old = legacyLeak(6);
+    const current = leakRates({ alloy: alloyRate(6), crystal: crystalRate(6), deuterium: deuteriumRate(6) }, 6);
     const before = advanceEconomy(start, leaking, 60);
     const after = advanceEconomy({ ...start, lastTickMinutes: 60 }, leaking, 120);
     const both = advanceEconomy(start, leaking, 120);
     for (const resource of ['alloy', 'crystal', 'deuterium'] as const) {
       expect(before[resource]).toBeCloseTo(start[resource] - old[resource], 6);
-      expect(after[resource]).toBeCloseTo(start[resource] - old[resource] * WORK_RATE, 6);
-      expect(both[resource]).toBeCloseTo(start[resource] - old[resource] * (1 + WORK_RATE), 6);
+      expect(after[resource]).toBeCloseTo(start[resource] - current[resource], 6);
+      expect(both[resource]).toBeCloseTo(start[resource] - (old[resource] + current[resource]), 6);
     }
     const pending = advanceEconomy(start, { ...leaking, productionTempoStartsAtMinutes: null }, 120);
     expect(pending.alloy).toBeCloseTo(start.alloy - old.alloy * 2, 6);
@@ -249,15 +253,15 @@ describe('active-season production cutover', () => {
 
   it('credits the first hour at the old rate and the next hour at the reduced rate', () => {
     const state = advanceEconomy(empty, input, 120);
-    expect(state.bufferAlloy).toBeCloseTo(87.5 + 70, 10);
-    expect(state.bufferCrystal).toBeCloseTo(35 + 28, 10);
-    expect(state.bufferDeuterium).toBeCloseTo(2.8 + 2.24, 10);
+    expect(state.bufferAlloy).toBeCloseTo(87.5 + 59.5, 10);
+    expect(state.bufferCrystal).toBeCloseTo(35 + 23.8, 10);
+    expect(state.bufferDeuterium).toBeCloseTo(2.8 + 1.904, 10);
   });
 
   it('does not apply the new rate to production before the cutover boundary', () => {
     expect(advanceEconomy(empty, input, 60).bufferAlloy).toBeCloseTo(87.5, 10);
     expect(advanceEconomy({ ...empty, lastTickMinutes: 60 }, input, 120).bufferAlloy)
-      .toBeCloseTo(70, 10);
+      .toBeCloseTo(59.5, 10);
     expect(advanceEconomy(empty, { ...input, productionTempoStartsAtMinutes: null }, 120).bufferAlloy)
       .toBeCloseTo(175, 10);
   });
@@ -281,6 +285,6 @@ describe('active-season production cutover', () => {
     const state = advanceEconomy({ ...empty, disruptedUntilMinutes: 30 }, {
       ...input, recoveryBoostUntilMinutes: 60,
     }, 120);
-    expect(state.bufferAlloy).toBeCloseTo(87.5 * 0.5 * 1.5 + 70, 10);
+    expect(state.bufferAlloy).toBeCloseTo(87.5 * 0.5 * 1.5 + 59.5, 10);
   });
 });

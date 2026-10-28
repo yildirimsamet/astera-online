@@ -1,8 +1,9 @@
 # 60 günlük sezon ve tempo geçişi — uygulama planı
 
-**Durum:** Gereksinimler ve kod incelemesi tamamlandı; oyun değişiklikleri henüz uygulanmadı.
+**Durum:** Yerel uygulama, review ve olağan doğrulama `codex/season-60-tempo` dalında tamamlandı; canlıya yayımlanmadı.
 **Belgenin kapsamı:** Uygulama, regresyon testleri ve sezon sınırındaki yayın için referans plan.
 **Başlangıç:** Önümüzdeki sezon ve onu izleyen sezonlar. Mevcut sezonun süresi ve kuralları korunacak.
+**Worktree:** `../blindspace-season-60-tempo` · Temel: `a8d04cdb` (worktree açıldığı andaki güncel yerel master).
 
 ## 1. Kesinleşen gereksinimler
 
@@ -19,8 +20,8 @@ Oranların tamamı **bugünkü çalışan değerlere ek olarak** uygulanacak; es
 | Oyuncu gemileri, probe ve kazıcı | Mevcut uçuş hızı ×0,90 | Aynı sabit mesafede kesin uçuş süresi ÷0,90. |
 | Korsan ve NPC tüccar | Mevcut hareket hızı ×0,90 | Filo hızından türeyen değerlere ikinci çarpan eklenmeyecek. |
 | Gezegenler | Üç boyut referansı ve aradaki büyüme eğrisi ×0,80 | Gerçek koordinatlar ve harita mesafeleri değişmeyecek. |
-| Depo ve toplama havuzu | Kaynak kapasiteleri korunacak | Aynı seviye ve aynı bonusla aynı miktar kaynak sığacak. |
-| Kasa koruması, konvoy ödül tavanı ve tatil bedeli | Üretim saati kuralları korunacak | Yeni üretime bağlı kaynak karşılıkları azalabilecek. |
+| Depo ve toplama havuzu | Nominal kaynak kapasiteleri korunacak | Aynı seviye/bonusla aynı nominal miktar; tam yarım sınırındaki kayan nokta hesabında ±1 kaynak yuvarlama farkı olabilir. |
+| Üretim saatiyle türeyen koruma, bedel ve limitler | Mevcut saat kuralları korunacak | Kasa, konvoy, tatil, klan yardımı/pay havuzu ve Arena aktarımında kaynak karşılıkları azalabilecek; kapasiteye bağlı döteryum payları ayrı kalır. |
 | Sezon evreleri | Mevcut açılış günleri korunacak | Yaklaşık 8,57 / 17,14 / 25,71. gün. |
 | Ölüm Yıldızı ve radyasyon bombaları | Kendi özellikleri değişmeyecek | İmalat süreleri, uçuş hızları, fiyatlar, hasar ve etki parametreleri korunacak. |
 
@@ -29,6 +30,7 @@ Oranların tamamı **bugünkü çalışan değerlere ek olarak** uygulanacak; es
 - Süre artışı; bina, sensör/cihaz, uydu, araştırma, gemi, kazıcı, toplayıcı, yer savunması, gemi tamiri ve koloni arızası tamirini kapsar. Önleyici mühimmat imalatı da kapsamdadır.
 - Ölüm Yıldızı ve bütün radyasyon bombası seviyeleri, genel imalat süresi artışının istisnasıdır. Onlarla ilişkili araştırmalar normal araştırma kuralını izler; araştırma açılış günleri korunur.
 - Uçuş değişikliği galaksi haritasındaki araçlara uygulanır. Komutan Gemisi / gerçek zamanlı Savaş Alanı pilotaj parametreleri bu harita temposu değişikliğinin kapsamı değildir.
+- Arena'nın uçuş sonrası servis/tamir beklemeleri (28 Ekim güncel master: 3/3 dk), Amiral beklemeleri (10/60 dk) ve ücretli bekleme kısaltması (15–30 dk) üretim kuyruğu değildir; kendi güncel cooldown kuralları korunur. Günlük başkente aktarım tavanı ise aşağıdaki üretim-saati kuralını izler.
 - Asteroit hızları ve ömürleri, anıt hareketi ve üretimi, zamanlı galaksiler arası konvoyun 180 dakikalık hareketi korunur. Bu konvoya gönderilen oyuncu gemileri normal filo kuralıyla yavaşlar.
 - Yakıt tarifeleri, fiyatlar, gemi savaş istatistikleri, kargo kapasiteleri, araştırma/uydu bonus oranları, muharebe süresi, bekleme süreleri, sadakat ve kalkan yenilenme parametreleri yeniden dengelenmez.
 - Görev, kuyruk ve bonus sürelerine toplu bir dünya hızı çarpanı uygulanmaz. Yalnız yukarıdaki hesaplar değiştirilir.
@@ -70,6 +72,7 @@ Kaynaklar: [tempo](../packages/rules/src/tempo.ts), [ekonomi hesapları](../pack
 
 - `alloyRate`, `crystalRate` ve `deuteriumRate` aynı ek azaltımı kullanacak. Erken alaşım artışı ve geç seviye üretim eğrisinin şekli korunacak.
 - `storageCap`, `collectorCap`, `deuteriumStorageCap` ve `deuteriumCollectorCap` aynı seviyelerde bugünkü kaynak miktarlarını vermeye devam edecek.
+- Telafi nominal kapasiteyi korur. Bağımsız eski/yeni kaynak karşılaştırmasında 40.400 kombinasyonun yalnız dördünde, iki yüksek kristal seviyesindeki tam yarım sınırından dolayı ±1 kaynak yuvarlama farkı görüldü (59 ve 87). Bu farkları sıfırlamak için tarihsel kayan nokta hatalarını yeni bir mekanik olarak sabitleyen istisna eklenmez; miktarı sınırlayan regresyon korunur.
 - `storageHours` içindeki aynı seviye rafineri yükseltmesini satın alabilme garantisi korunacak. Telafi hem taban kapasiteyi hem fiyat/üretimden türeyen dalı kapsamalı.
 - Karşılaştırmalar farklı rafineri/Vault seviyeleri, döteryum tesisi 0, FOUNDRY bonusu ve yüksek seviyeleri içerecek. Yalnız eşit seviyeli örnekler yeterli değildir.
 - Üretim kesintisi, Silent Space, recovery ve enerji bonusları altında gerçek üretim yeni orana inerken kapasite hesabı nominal üretimi kullanmaya devam edecek.
@@ -137,6 +140,8 @@ Kaynaklar: [filo profili](../packages/rules/src/economy-profile.ts), [araç sabi
 
 Kapasite telafisi artırıldığında `FAULT.leakDrainHours` kendiliğinden yaklaşık 70,59 saate çıkmamalı. Mevcut **60 saatlik parametre** kapasite telafisinden ayrılıp korunacak. Gelirin iki katı üst sınır ve bir depo toplam kayıp bütçesi mevcut kuralları izlemeye devam edecek; bu nedenle gerçek sızıntı miktarı bazı seviyelerde azalabilir. Bütün seviyelerde tam %15 azalacağı iddia edilmeyecek.
 
+Depo miktarı ve 60 saatlik saat korunurken üretimin azalması, önceden yalnız üretimle karşılanan bir sızıntının artık depodan da çekilmesine yol açabilir. Seviye 6 bunun bir örneğidir. Önce havuzdan, havuz yetmeyince depodan akma önceliği korunur; boş ve dolu başlangıç havuzu ayrı sunucu regresyonlarıyla kontrol edilir.
+
 Eski geçiş dalındaki `producerOutput × producerCapacityTime` çarpımı bugün de hedefte de 0,70 verir. Bu eşitlik testle korunacak; eski dönem üretimi yanlışlıkla yeni azaltımı almamalı. Yeni sezonda geçiş anı başlangıçtır; mevcut sezonda ikinci bir tempo aktivasyonu yapılmayacak.
 
 Enerji bonusunun süresi ve bonus oranı korunacak. Yeni sezondaki kaynak getirisi yeni rafineri üretimini izleyecek. Worker gecikmesiyle sonradan ödenen miktar, zamanında işlenmiş aynı senaryoyla eşleşmeli; kapasite telafisi bonusu ayrıca büyütmemeli.
@@ -149,10 +154,12 @@ Owner kararı: Bu mekaniklerin saat kuralları korunur; kaynak miktarlarını sa
 | --- | --- |
 | Kasa koruması | Açılış tabanı ve saat tavanı nedeniyle her seviyede aynı oranda değişmez; 8 saat tavanına ulaşan koruma yeni üretime göre azalır. |
 | Konvoy kaynak ödül tavanı | Aynı seviyede, yuvarlama farkı dışında yaklaşık %15 azalır. Konvoy hareket süresi değişmez. |
+| Yarık/Arena günlük başkente aktarım tavanı | Mevcut 4 üretim saati kuralı korunur; aynı başkent/bonusla kaynak tavanı yaklaşık %15 azalır. Günlük sıfırlama ve mevcut aktarım muhasebesi değişmez. |
 | Tatil bedeli | Nominal döteryum üretimi üzerinden azalır; süre sınırları ve sezon sonu kontrolleri korunur. |
 | Yenilgi sonrası koruma / ağır kayıp uygunluğu | Üretim saati cinsinden eşik korunur. Aynı kaynak kaybı yeni üretime göre daha fazla emek saati sayılabilir; koruma ve koloni arızası uygunluğu test edilir. |
 | Tarafsız gezegenler | Başlangıç kaynak stokları kapasite telafisiyle korunur; alaşım/kristal yeniden birikimi yavaşlar. |
-| Klan ganimeti / kapasite hesapları | Üretim ve koruma hesapları yeni değerleri kullanırken depo ve kabul sınırları korunur. |
+| Klan yardımı kabulü | Alaşım/kristal için mevcut 4 üretim saati karşılığı yaklaşık %15 azalır; döteryumun %20 depo kapasitesi payı aynı kalır. 24 saatlik taahhüt penceresi korunur. |
+| Klan ganimet payı havuzu | Alaşım/kristalin 2 saatlik nominal tavanı azalır; %49 depo/güvenlik tavanı ve mevcut payları silmeme kuralı korunur. Döteryumun %10 kapasite payı aynı kalır. |
 
 İnceleme sırasında aynı Core 12 örneğinde bir günlük başkent tatil bedeli **531 → 451 döteryum**, 8 saatlik örnek konvoy alaşım tavanı **11.329 → 9.630** çıktı. Aynı örnekte kasa alaşım koruması **11.330 → 9.630** olurken depo kapasitesi değişmedi. Bunlar uygulama sonrası kabul sonuçları değil, mevcut fonksiyonlarla geçici süreç belleğinde hesaplanmış etki örnekleridir.
 
@@ -170,6 +177,8 @@ Owner kararı: Bu mekaniklerin saat kuralları korunur; kaynak miktarlarını sa
 ### 3.4 Görsel boyut değişikliği
 
 Gezegen yarıçapını ×0,80 yapmak ekrandaki yaklaşık alanı ×0,64 yapar. Mobilde seçilebilirlik yalnız %20 küçülmüş gibi değerlendirilmeyecek.
+
+Asteroit ve gemi modelleri küçülmediği için gezegenlere göre görsel oranları ×1,25 artar. En zengin asteroit en küçük gezegen işaretinden büyük kalır; mevcut tüccar silueti de orta boy gezegeni aşabilir. Bunları önlemek için kapsam dışı araç/asteroit küçültmesi eklenmez; boyut ilişkileri ve seçilebilirlik ayrıca doğrulanır.
 
 Kontrol edilecek yüzeyler: varsayılan ve kaplamalı gezegenler, yakın/uzak LOD, seçim halkası ve hitbox, işaretçiler, etiket/örtüşme hesapları, uydu ve Dyson halkaları, kamera odağı, enkaz, bombardıman ve gemilerin yüzey/yörünge açıklıkları.
 
@@ -218,7 +227,7 @@ Bu tablo bağımlılık haritasıdır; her dosyada değişiklik zorunlu değildi
 | Alan | Kabul ölçütü |
 | --- | --- |
 | Çıktı | Desteklenen rafineri seviyelerinde yeni nominal çıktı eski çıktının ×0,85'i; 0 üretim ve seviye monotonluğu korunuyor. |
-| Kapasite | Farklı üretici/Vault seviyeleri ve bonuslarda depo/havuz miktarları mevcut referansla eşleşiyor; döteryum tesisi 0 örneği dahil. |
+| Kapasite | Farklı üretici/Vault seviyeleri ve bonuslarda nominal depo/havuz miktarları korunuyor; tam yarım sınırındaki ±1 kaynak yuvarlaması ayrıca sınırlanıyor. Döteryum tesisi 0 dahil. |
 | Kaynak hareketi | Çevrimdışı birikim, kısmi toplama, dolu havuz, dolu depo, üretim kesintisi ve madencilik dönüşünde taşma kuralları korunuyor. |
 | Bonus/telemetri | Recovery + enerji + FOUNDRY + Silent Space birleşimleri; geciken worker telafisi; eski geçiş öncesi/sonrası parçalı hesap aynı toplamı veriyor. |
 | Genel süreler | Bütün bina/sensör/uydu/araştırma/gövde türleri, toplu işler ve otomasyon seviyelerinde kesin süre ×1,15; saniye yuvarlaması yalnız mevcut sınırda. |
@@ -247,7 +256,7 @@ Bu tablo bağımlılık haritasıdır; her dosyada değişiklik zorunlu değildi
 - Mevcut `tempo.test.ts`, `ship-speed.test.ts` ve `view.test.ts`: **3 dosya, 39 test geçti**. Bunlar değişiklik öncesi sonuçlardır.
 - Mevcut ekonomi fonksiyonlarıyla süreç belleğinde yapılan kapasite telafisi kontrolü: **364 seviye/bonus kombinasyonu, 0 kaynak kapasitesi farkı**. Repo dosyaları değiştirilmedi; bu kontrol kalıcı regresyon testinin yerine geçmez.
 - 1 Kasım 2026 UTC başlangıçlı örnek 60 günlük takvim: **436 olay**, geçersiz/sınır dışı pencere **0**. Üç olay türü de ikinci ayda devam ediyor. Bu sayı farklı başlangıçlar için sabit kabul kriteri değildir.
-- Uygulama sonrası tüm kabul sonuçları henüz alınmadı. Geniş testler, canlı dağıtım veya yeni native paket doğrulaması yapılmış gibi raporlanmayacak.
+- Uygulama sonrası sonuçlar aşağıdaki yerel durum bölümünde ayrıca tutulur. Canlı dağıtım ve yeni native paket doğrulaması bu kayıtlardan çıkarılamaz.
 
 ## 6. Sezon sınırında yayın planı
 
@@ -255,11 +264,16 @@ Bu tablo bağımlılık haritasıdır; her dosyada değişiklik zorunlu değildi
 
 Ortak sabitler sezona göre seçilen ayrı tempo profilleri değil, çalışan sürümün değerleridir. Yeni paketi mevcut sezonda kısmen yayınlamak yalnız gelecek sezonu değiştirmez; mevcut üretim, teklif ve görüntüleri de etkileyebilir. Bu nedenle seçilen yöntem **eski sezon kapandıktan sonra kontrollü sürüm geçişidir**.
 
+Eski `activate-tempo-slowdown` komutu bu geçişin yerine kullanılmayacak. O komut üretim epoch'unu değiştirir; yeni uçuş, geometri ve sezon varsayılanlarını ayrı bir gelecek sezona bağlamaz.
+
 - API, worker ve web aynı kaynak sürümünden hazırlanacak; eski/new tempo karışımıyla trafik açılmayacak.
 - Android production uygulaması web dosyalarını paketinden çalıştırır. Sunucuyu/webroot'u yayınlamak kurulu Android uygulamasını güncellemez. Yeni native paket hazırlanacak; dağıtım erişilebilirliği doğrulandıktan sonra `MIN_NATIVE_BUILD` ile eski paketler mevcut `426 UPDATE_REQUIRED` akışına yönlendirilecek.
 - Yeni kuralları taşıyan native paket ve web bundle mevcut sezonda oynanacak istemci olarak erken devreye alınmayacak. Hazırlama/onay süreçleri ile oyuncuya açılma anı ayrılacak.
 - Web'de `useSession.rollover` sorguları temizler ve yerleşimi sıfırlar; JavaScript paketini yeniden yüklemez. Eski sekmenin yeni sezona eski hız/kapasite hesabıyla girmesi yayın kabulünde başarısızlıktır. Kesimde tam sayfa güncellemesini sağlayan akış eski sekme üzerinden kanıtlanacak; yalnız SSE invalidation veya cache temizliği yeterli kabul edilmeyecek.
-- Önceki plandaki “HTTP/istemci uyumluluğu değişikliği gerekmiyor” varsayımı kullanılmayacak. Yeni bir genel tempo API'si/DB göçü gerekmiyor görünse de, eski web sekmelerinin güncelleme akışı yayın önkoşuludur; mevcut kodda bu güvence doğrulanmış değildir. Bu konu çözümlenmeden dağıtım tamamlandı sayılmayacak.
+- Genel bir tempo API'si veya DB göçü eklenmedi. Yeni istemci, mevcut ortak profil kimliğini `x-astera-rules` başlığında taşır. `REQUIRE_CURRENT_RULES=true` açıldığında kimliği doğrulanmış eski istemcinin oyun istekleri, ilk yerleşim/katılım öncesinde de kontrol edilerek dünya handler'ına girmeden `426 UPDATE_REQUIRED` alır. İmzalı kimlik doğrulama ve bütün kurallar sunucuda kalır; bu başlık yalnız uyumluluk içindir.
+- Switch bakım geçişinde bütün API'lerde birlikte açılır; varsayılan `false` uyumluluk hazırlığı/testler içindir. Hesap güvenliği ve silme için mevcut istisnalar korunur. Native sign-in ve kamuya açık webhook'lar bu yerleşim kontrolüne girmez. Özel başlık gönderemeyen HTML görsel/video okumaları da profil kontrolünden muaftır; kimlik, kanal/mesaj yetkisi ve yerleşim kontrolleri korunur. Dosya yüklemeleri profil/native build başlıklarını taşır.
+- Yeni web yüzeyinde tam sayfa yenileme düğmesi var. Bu koddan önce açılmış bir sekme mevcut güncelleme ekranına geçebilir ancak yeni düğmeyi henüz içermez; gerçek tarayıcı yenilemesi gerekir. Eski paketin yeni dönemde işleme devam edememesi sunucu testinin, güncel paketin yüklenmesi görsel/yayın kabulünün konusudur.
+- İstisnalar yeni profil kapısına aittir. Ayrı `MIN_NATIVE_BUILD` kontrolü eski native build başlığı taşıyan bütün API isteklerini önceki davranışıyla reddeder. O durumda hesap işlemleri için güncel uygulama veya web gerekir; bu görev native build kapısının kapsamını değiştirmez.
 
 ### 6.2 Otomatik rollover ile yarışmayı önleyen devir
 
@@ -287,4 +301,44 @@ Bu adımlar veri değişikliği/dağıtım için önceden yapılmış bir işlem
 
 Bu planın oyun uygulaması; kesin gereksinimler, ilgili olağan testler, görsel doğrulama ve izole geçiş provası tamamlandığında kod açısından hazırdır. Canlı geçiş ise ayrıca bütün sezonların doğru kapanması, tek yeni dönem açılması ve web/native istemcilerin yeni hesapları kullanması kanıtlandığında tamamlanır.
 
-Bu belgeyi hazırlama görevi yalnız planı dosyalaştırır. Oyun kodunu değiştirme, test beklentilerini güncelleme, sezon verisini değiştirme, paket yayınlama veya canlı ortamda bakım başlatma bu belge hazırlanırken yapılmaz.
+Yerel kaynak uygulaması ve doğrulama bu çalışma kapsamındadır. Paket yayınlama, canlı sezon verisini değiştirme ve bakım başlatma ayrı yayın adımlarıdır; yerel test sonuçları bunların yapıldığı anlamına gelmez.
+
+
+## 8. Yerel uygulama kaydı
+
+- Kaynak, `git fetch origin` sonrası `master...origin/master = 76 / 0` doğrulanarak `a8d04cdb` üzerinden ayrı worktree'de açıldı. GitHub ile bu fark canlı dağıtım farkı değildir. Ana worktree'nin ilgisiz dosyaları değiştirilmedi.
+- Bağımlılıklar worktree'ye `pnpm install --offline --frozen-lockfile --ignore-scripts` ile kuruldu. Server'ın `@astera/rules` bağlantısının yeni worktree'ye çözüldüğü doğrulandı.
+- İlk yeni 16 kural testi önce 7 beklenen hata verdi; uygulama sonrasında 16/16 geçti. Statik alan için ayrıca bir kontrat eklendi; son geniş sonuçlarla birlikte doğrulanacak.
+- Yeni uyumluluk sunucu testleri önce 5 hata verdi, uygulama sonrasında **8/8 geçti**. Eski istek dünya kaynaklarını değiştirmedi; güncel profil ve hesap güvenliği istisnaları çalıştı.
+- İlgili web testleri: **5 dosya, 131 test geçti** (profil başlığı, yenileme yüzeyi, native build, i18n, gezegen oranları ve tier yüzeyi).
+- Eski ve yeni kaynaklarda statik korsanların hız/periyot dışındaki kimlik/filo/pencere fingerprint'leri karşılaştırıldı; eşleşti. Hızdan türeyen periyot ayrı fiziksel bağıntıyla kontrol edilir.
+- Son kural taraması: **193 dosya, 3.283 test geçti**. Yeni geçiş dosyasında 21 test var.
+- Sunucu: iki tarama ve gerekli hedefli tekrarların dosya bazında birleşimi **389 dosya; 4.953 geçti, mevcut 3 atlandı; eksik/başarısız dosya 0**. Son düzeltmelerin tekrarında 9 dosya/94 test geçti. Kanıt: `out/season60-server-final-coverage.json`.
+- Web: tam tarama ve dört düzeltilmiş dosyanın tekrarı **694 dosya; 8.014 geçti, mevcut 29 atlandı; eksik/başarısız dosya 0**. Son tekrar 4 dosya/99 test geçti. Kanıt: `out/season60-web-final-coverage.json`.
+- `pnpm --workspace-concurrency=1 -r typecheck`: dört workspace'te hata 0. Sim workspace'inde yalnız derleme tipi kontrol edildi; simülasyon testi çalışmadı.
+- Başlangıç commit'inin bağımsız kopyasıyla karşılaştırma: **762 fiyat, 1.514 iş süresi, 101 Core yarıçapı ve 40.400 kapasite kombinasyonu**. Fiyatlar değişmedi, iş süreleri istenen ×1,15'i aldı, özel silahlar/anıtlar/Arena parametreleri korundu. Kapasitede yalnız yukarıda kayıtlı ±1 kaynak farkları var.
+- Anahtarlı statik korsan alanı ayrıca karşılaştırıldı: **2.809 / 4.250 / 8.490 hedeflik üç aşamada** kimlik, filo, ganimet, pencere ve yörünge geometrisi aynı; yalnız hız ×0,90 ve ters periyot değişiyor.
+- **Sentetik dump/restore geçiş provası geçti.** Ayrı seed/restore test veritabanlarında eski kaynak iki 30 günlük MAIN ve bir miras WAITING oluşturdu. Bekleyen gemi işi eski kodla tamamlandı, üç eski dünya eski kodla mühürlendi ve rollover tutuldu. Yeni kaynakla eşzamanlı/tekrarlı rollover tam iki 60 günlük MAIN açtı; yeni WAITING aynı dönemi miras aldı. Hesap, mühürlü sonuçlar, gemi üretim istatistiği ve örnek depo/havuz kapasitesi korundu. İkinci ayın üç etkinlik türü ve tek end/rollover olayları doğrulandı. Bu bir canlı veritabanı restore'u veya canlı yayın kanıtı değildir.
+- Lint üç ardışık grupta bütün kapsamla geçti; hata 0. Üretim web derlemesi geçti. Derleyicinin büyük chunk uyarısı sürüyor; bu görevde paket bölme refaktörü yapılmadı.
+- `node tools/visual.mjs … --planet-selection` geçti: kendi/keşfedilmemiş gezegen seçimi, seçim kenarı ve gerçek tıklama kontrol edildi. Ayrıca 350/1280 px × Türkçe/İngilizce dört gerçek tarayıcı senaryosunda yenileme düğmesi tam sayfa yükledi, yatay taşma olmadı, üç gerçek Core yarıçapı doğru çıktı ve üç gezegen de seçilebildi. Sayfa hatası 0. Mobil/masaüstü ekran görüntüleri incelendi. Kanıt: `out/season60-selection/results.json`, `out/season60-visual/results.json` ve aynı dizinlerdeki PNG'ler.
+- Son kaynak karşılaştırması ayrıca bağımsız, sabit `a8d04cdb` worktree'si üzerinden tekrarlandı; 40.400 kapasite / 762 fiyat / 1.514 iş / 101 yarıçap sonuçları eşleşti. `git diff --check` temiz.
+- Uzun ekonomi/snowball çalışması, canlı değişiklik, push veya yayın yapılmadı. Native paket hazırlama/mağaza erişimi, fiziksel cihaz kabulü ve gerçek sezon sınırındaki yayın işlemleri bölüm 6'daki ayrı yayın adımlarıdır. Sentetik prova gerçek canlı veri envanterinin yerini almaz.
+
+## 9. Uygulama review kaydı
+
+Bu bölüm kod incelemesi sırasında doğrulanan bulguları ve uygulanan düzeltmeleri tutar. Yerel doğrulama tamamlandı; canlı yayın kabulü bölüm 6'daki koşullara bağlıdır.
+
+| Bulgu | Kanıt ve düzeltme |
+| --- | --- |
+| İlk yerleşimden önce eski istemci kontrolü atlanıyordu. | Yerleşimsiz hesapla okuma/katılım testleri 426 yerine 404/200 aldı. Profil kontrolü iki handler yolunda da ilk yerleşim sorgusunun önüne taşındı; güncel istemcinin katılımı ayrıca doğrulandı. |
+| HTML sohbet ve moderasyon görselleri özel başlık gönderemediği için engelleniyordu. | Profil kapısı açıkken gerçek dosya/range testleri 426 aldı. Yalnız iki salt okunur medya yolu profil kontrolünden ayrıldı; kimlik, sahiplik, kanal/mesaj, moderatör ve yerleşim kontrolleri korundu. |
+| Binary yüklemeler profil/native build başlığı taşımıyordu. | Yeni web testleri eksik başlıkları ve 426'da eksik güncelleme olayını gösterdi. XHR mevcut ortak başlık fonksiyonunu ve güncelleme bildirimini kullanıyor. |
+| Üretim-saatinden türeyen Arena/klan etkileri ilk belgede yeterince açık değildi. | Gerçek cap fonksiyonları incelendi; Arena 4 saat, klan yardım 4 saat ve pay havuzu 2 saat korunuyor. Döteryumun kapasite payları ayrı. Gereksinim tablosu ve bağımsız örnek testleri genişletildi. |
+| Sızıntının üretim/depo ilişkisi değişiyor. | Seviye 6'da korunan depo/60 saat tutarı yeni üretimi aşabiliyor. Kaynak kaybını eski test beklentisine uydurmak yerine boş/dolu havuzla önce havuz, sonra depo kuralı doğrulanıyor. |
+| Eski statik hedef bütçeleri takvim süresine bağlı kalmıştı. | Saf kuralların geniş taraması statik alanın sıfır cevherli ikinci ayını ve kimlik kaymasını gösterdi. Statik üretim ufku dondurulmuş 30 gün; güncel dinamik alan ikinci ayda çalışıyor. |
+| Seyahat fixture'ları eski erişilebilirliği varsayıyordu. | Kazıcı sezon-sonu sınırı yeni hızla, korsan bay testi gerçekten erişilebilir hedefle kuruluyor. Hareketli anıt yakıt testi eskortun kendi buluşma mesafesini ve dönüş rezervini ayrı doğruluyor. |
+| Ortak test veritabanında TRUNCATE ile kilit çakıştı. | PostgreSQL logu çakışan TRUNCATE/okuma işlemlerini gösterdi; çakışan işlemin ayrı bir çalışmadan mı yoksa test yaşam döngüsünden mi geldiği kesinleştirilmedi. Kalan testler yalnız bu worktree için ayrılmış `astera_season60_test` veritabanına taşındı; anıt dönüşü dosyası orada geçti. Bu bulgu oyun kodunda doğrulanmış bir kilit hatası diye sunulmaz. |
+| İki test beklentisi başlangıç commit'inde de eskiydi. | Yeni anıt sezonunda 18 yerine mevcut varsayılan 19, savaş açıklamasında 1–5 yerine mevcut 1–7 aralığı bekleniyor. Üretim kodu veya savaş parametresi bu beklentilere uydurulmadı. |
+| Tam yarım sınırında yüksek seviye kapasitesi farklı yuvarlanıyor. | 40.400 eski/yeni kaynak kombinasyonunda dört ölçümde ±1 kaynak farkı; azami fark 1. Nominal telafi korunuyor, yüksek seviye sınır regresyonları eklendi. |
+
+İstemci kapısı ve medya düzeltmelerinin ilk hedefli doğrulaması sunucuda 24/24, web'de 21/21 geçti. Native build/profil birleşimleri ve medya HEAD senaryoları da son geniş/hedefli kayıtlarda kapsanır. Sonuç: olağan rules/server/web kapsamında **16.250 test geçti; mevcut 32 atlama var**. Tam dosya kapsamı, tekrarların ayrımı, typecheck, lint, derleme, görsel doğrulama ve geçiş provası bölüm 8'de tutulur. İncelenen kapsamda açık, doğrulanmış bir kod hatası kalmadı; fiziksel native cihaz ve canlı yayın kabulü tamamlandı diye sunulmaz.
