@@ -1,6 +1,6 @@
 # 28 Ekim 2026 — 60 günlük sezon yayın hazırlığı
 
-**Canlı geçiş komutu henüz verilmedi.** Bu çalışma hazırlık, paket üretimi ve ayrı stage provasıdır. Canlıya deploy/reset uygulanmaz; owner akşam “başla” dediğinde aşağıdaki son veri kontrolleri ve kesim yapılır.
+**Canlı geçiş ve force reset tamamlandı.** Owner 28 Ekim’de “AAB sonraki iş; web işini hallet, başla” dedi. Web 28 Ekim 2026 18:43 TR’de açıldı. Güncel kabul kaydı: [canlı yayın sonucu](season-60-production-deployment-2026-10-28.md). Aşağıdaki envanter ve karşılaştırmalar geçiş öncesi hazırlığı da içerir.
 
 ## Sabit aday ve mevcut durum
 
@@ -8,12 +8,12 @@
 - Worktree: `../blindspace-season-60-tempo`; güncel master `460e8508` birleşti. Yarık radar düzeltmesi ve 3/3 dakika servis/tamir değişikliği korunuyor; Amiral 10/60 dakika ayrı kalıyor.
 - Server image: `astera-server:af3516bdb58e32639ba16643107b41ca3bb5dce9`; ID `sha256:3e0118913ec663a8b17aa26e3de881891a128ca47a560145dbfba156f586a2b6`.
 - VPS hazırlık dizini: `~/releases/season60-20261028`; gizli yedekler `~/backups/season60-20261028`. Gerçek hesap/sonuç dökümleri ve runtime env yalnız private dizinlerde tutulur.
-- Canlı API1/2/3/worker `35ba732b`; Arena ve public web `460e8508`. Mevcut çalışan config/image'lar role göre saklandı; tek eski image varsayılmadı.
-- Canlı üç dünya: EU-1 / EU-2 / WAIT-1, ruleset16, bitiş 3 Kasım 2026 18:56:16 UTC. Hazırlık snapshot'ı 1.665 hesap içeriyordu; bu sayı akşam yeniden ölçülür.
+- Geçiş öncesi API1/2/3/worker `35ba732b`; Arena ve public web `460e8508`. Mevcut çalışan config/image'lar role göre saklandı; tek eski image varsayılmadı.
+- Geçiş öncesi üç dünya: EU-1 / EU-2 / WAIT-1, ruleset16, bitiş 3 Kasım 2026 18:56:16 UTC. Hazırlık snapshot'ı 1.665 hesap içeriyordu; bu sayı akşam yeniden ölçülür.
 
 ## Yeni sezonda ne açılacak?
 
-| Mekanik | Mevcut canlı | Yeni dönem |
+| Mekanik | Geçiş öncesi | Yeni dönem |
 | --- | --- | --- |
 | Takvim ve tempo | 30 gün; eski tempo | Tam 60 gün; rafineriler ×0,85; sıradan iş süreleri ×1,15; harita araç hızları ×0,90; gezegen yarıçapları ×0,80. Özel silah istisnaları önceki planla aynı. |
 | Honor v4 | MAIN'lerde SHADOW, successorAnnounced=true | İki MAIN'de başlangıçtan ACTIVE; yeni sıralama ve pozitif/negatif puan. WAITING'de yarış yok. |
@@ -39,7 +39,7 @@ Honor ekonomik oranları: pozitif kademede tamir −%5/−%10, konvoy +%15/+%30;
 - Native paket, metin düzeltmeleri dahil `84a52a6a` kaynağından yeniden üretildi; önceki v7 hazırlık dosyası güncel paketle değiştirildi.
 - Native build metadata source SHA'sını, API origin'ini ve upload sertifikasını tutar. Play Console'da sürüm kodu/dağıtım erişimi ve cihaz kabulü ayrı kapıdır. Private signing anahtarı VPS'ye gönderilmedi.
 - Eski stage DB/web/medya ve production hazırlık dump'ı korundu. Dump checksum'ları private dizinde. Stage runtime kendi DB/JWT'sini kullanır; mail ve checkout çıkışları kapalıdır.
-- Production için bakım vhost adayı üretildi ve izole `nginx -t` kontrolü geçti; mevcut canlı vhost henüz değiştirilmedi. Bakım yalnız Astera vhost'unu etkilemeli, Nginx tümden durdurulmaz.
+- Production için bakım vhost adayı üretildi ve izole `nginx -t` kontrolü geçti; bakımda kullanıldı ve sonrasında standart vhost geri alındı. Bakım yalnız Astera vhost'unu etkilemeli, Nginx tümden durdurulmaz.
 
 ## Dominion kararı ve tamamlanan stage provası
 
@@ -72,12 +72,12 @@ Owner, bot sınıflandırmasının oyuncuya açıklanmamasını istedi. İstemci
 
 Önce kırmızı, sonra yeşil testler alındı; 205 ilgili web testi geçti. Web typecheck ve değişen TS dosyalarının lint kontrolü geçti. Mevcut görsel harness’in Dominion ödülü senaryosu altı dil × 350/1280 px olmak üzere 12 kontrolde geçti; TR mobil ekranı ayrıca incelendi. Android v7 AAB/APK bu kaynaktan yeniden üretildi, imza ve bundletool doğrulandı. Play Console kod/dağıtım kararı ve cihaz kabulü hâlâ ayrı kapıdır.
 
-Sunucu/rules dosyaları `af3516bd` ile birebir aynı olduğu için mevcut onaylı server image ve gerçek veri reset kanıtı korunur. Web için **`web-stage-privacy` / `web-production-privacy`** paketleri kullanılacak; önceki `web-production` artık yayın adayı değildir. Web release SHA’sı `84a52a6a`, sunucu image SHA’sı `af3516bd` olacaktır. Her ikisi de aynı `season-60-v1` profilini kullanır. Stage’de yeni web release ve 13 başlangıç asset’i, TR/EN public metinler ve beş servis sağlığı doğrulandı; production henüz değiştirilmedi.
+Sunucu/rules dosyaları `af3516bd` ile birebir aynı olduğu için mevcut onaylı server image ve gerçek veri reset kanıtı korunur. Web için **`web-stage-privacy` / `web-production-privacy`** paketleri kullanılacak; önceki `web-production` artık yayın adayı değildir. Web release SHA’sı `84a52a6a`, sunucu image SHA’sı `af3516bd` olacaktır. Her ikisi de aynı `season-60-v1` profilini kullanır. Stage’de yeni web release ve 13 başlangıç asset’i, TR/EN public metinler ve beş servis sağlığı doğrulandı; production yayını da tamamlandı; kabul kaydı yukarıdaki sonuç belgesindedir.
 
-## Akşam `başla` sonrası kalacak işler
+## `Başla` sonrası uygulanan geçiş sırası (tamamlandı)
 
 1. Taze canlı envanterini, player aktivitesini, writer/config/image değişimlerini ve kuyrukları yeniden kontrol et. Gündüz snapshot'ı akşamın son yedeği değildir.
-2. Native yeni kurallı paketin oyunculara erişilebilirliğini doğrula. `REQUIRE_CURRENT_RULES=true` eski web/native bundle'ları reddeder; yalnız web yayınlamak kurulu Android'i güncellemez.
+2. Owner'ın web önceliği uyarınca Android dağıtımını bu yayından çıkar. `MIN_NATIVE_BUILD=0` korunur; `REQUIRE_CURRENT_RULES=true` eski kurallı gameplay isteklerini reddetmeye devam eder.
 3. Onaylı bakım vhost'unu kur/test et; bakım işaretini aç. **Arena + üç API + singleton worker** durdurulur; PostgreSQL/Valkey çalışır. Son transaction'lar bitmeden kapanışa geçilmez.
 4. Son tutarlı dump + checksum + aynı gerçek veriyle izole restore/prova; eski web/env/nginx/role image'larını sakla. Doğrulama ve hesap silme/retention güvenceleri [ana runbook](deployment.md) ile aynıdır.
 5. Kabul edilen üç Dominion farkı için taze salt ön kontrolü ve owner karar kaydını sakla; sayaçlara/günlüklere düzeltme yazma. Bilinmeyen sapmada dur. Kapanış container’ına yalnız eski audit uyarlayıcısını, doğrulanmış hash ve `SEASON60_ACCEPTED_DOMINION=leaderboard-20261028` ile bağla.
@@ -86,4 +86,4 @@ Sunucu/rules dosyaları `af3516bd` ile birebir aynı olduğu için mevcut onayl�
 8. İki yeni MAIN / tek cycle / 60 gün / 8'er anıt / kalibre radyasyon / spawn gate / takvim / tek lifecycle olayları, kalıcı hesap/cosmetic/sonuç/lifetime/ödül ve foreign key kontrollerini geçir.
 9. Worker, API'ler, Arena; image/SHA/health/schema/queue/SSE/istemci kontrolleri. Hazır `web-production-privacy` paketini eski hashed asset'leri koruyarak yayınla. Dış kabulden sonra bakım işaretini kaldır.
 
-Yeni dünya yazımları başladıktan sonra eski dump geri yüklenmez; ileri düzeltme yapılır. Bu belge şimdi canlı müdahale yetkisi değildir; owner'ın beklenen başlangıç komutu korunur.
+Yeni dünya yazımları başladıktan sonra eski dump geri yüklenmez; ileri düzeltme yapılır. Owner'ın 28 Ekim başlangıç komutuyla bu geçiş uygulandı; aynı reset ikinci kez çalıştırılmaz.
