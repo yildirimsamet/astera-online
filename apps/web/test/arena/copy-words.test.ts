@@ -28,11 +28,4 @@ describe('the Yarık\'s own words', () => {
       expect(found).toEqual([]);
     });
   }
-
-  it('says in every language what the menu\'s door is for, not that it is a test', async () => {
-    for (const language of ['tr', 'en', 'de', 'es', 'fr', 'ja']) {
-      await i18n.changeLanguage(language);
-      expect(i18n.t('arena.menuHint')).not.toMatch(/farm|deneme|playtest|test|prueba|essai|テスト/i);
-    }
-  });
 });

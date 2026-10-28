@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "Nave del comandante",
-  "menuHint": "El Yarık · recoge mineral, llévalo a tu capital, mejora tu nave",
-  "join": "Unirse",
   "nav": "Nave del comandante",
   "start": "Empezar",
   "leave": "Volver a la galaxia",

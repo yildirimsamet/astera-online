@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "司令官の船",
-  "menuHint": "Yarık · 鉱石を集めて首都へ運び、船を育てる",
-  "join": "参加",
   "nav": "司令官の船",
   "start": "開始",
   "leave": "銀河に戻る",

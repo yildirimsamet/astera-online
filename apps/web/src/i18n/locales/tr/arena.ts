@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "Komutan gemisi",
-  "menuHint": "Yarık · cevher topla, başkentine taşı, gemini büyüt",
-  "join": "Katıl",
   "nav": "Komutan gemisi",
   "start": "Başla",
   "leave": "Galaksiye dön",

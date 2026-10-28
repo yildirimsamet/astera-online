@@ -1,7 +1,4 @@
 export const arena = {
-  "menuLabel": "Kommandantenschiff",
-  "menuHint": "Der Yarık · Erz sammeln, zur Hauptwelt bringen, dein Schiff ausbauen",
-  "join": "Beitreten",
   "nav": "Kommandantenschiff",
   "start": "Start",
   "leave": "Zur Galaxie",
