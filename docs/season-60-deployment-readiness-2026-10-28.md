@@ -40,20 +40,30 @@ Honor ekonomik oranları: pozitif kademede tamir −%5/−%10, konvoy +%15/+%30;
 - Eski stage DB/web/medya ve production hazırlık dump'ı korundu. Dump checksum'ları private dizinde. Stage runtime kendi DB/JWT'sini kullanır; mail ve checkout çıkışları kapalıdır.
 - Production için bakım vhost adayı üretildi ve izole `nginx -t` kontrolü geçti; mevcut canlı vhost henüz değiştirilmedi. Bakım yalnız Astera vhost'unu etkilemeli, Nginx tümden durdurulmaz.
 
-## Stage provasında yakalanan kapanış engeli
+## Dominion kararı ve tamamlanan stage provası
 
-28 Ekim canlı kopyası eski `35ba732b` image'ıyla mühürlenirken EU-1'in Dominion audit'i durdu. Aynı salt-okunur karşılaştırma canlıda da üç eski cache farkını doğruladı:
+Owner 28 Ekim’de **“leaderboard’da ne gözüküyorsa onları kabul ederiz”** dedi. Üç eski sayaç farkı nedeniyle oyuncu puanlarını geri çekme önerisi iptal edildi. Canlı puanları, savaş raporları ve işlem günlükleri değiştirilmez.
 
-- İki hesapta `dominion_taken`, işlem günlüğü toplamından 61 fazla.
-- Bir hesapta `dominion_lost`, işlem günlüğü toplamından 182 fazla.
-- Dünya savaş raporları ile `dominion_events.transfer` arasında fark bulunmadı.
-- Klan bakiyeleri için ayrı günlük karşılaştırması da geçti; fark yok. Farkın eski oluşum nedeni kesinleşmiş diye sunulmaz; bu yeni tempo değişikliğinin yazdığı veri değildir.
+Eski image yalnız offline mühürleme sırasında, tam üç kimliğe bağlı +61 kazanılan / +61 kazanılan / +182 kaybedilen tarihsel fark için bir uyarlayıcı kullanır. Uyarlayıcı sadece audit'e verilen sayaç kopyalarından bu farkları çıkarır; eski tam audit bütün işlem denklemlerini doğrulamaya devam eder. Sonuç/sıralama/ödül hesapları özgün sayaçları kullanır. Ek/bilinmeyen fark, başka ruleset, değişen kimlik veya mükerrer uygulama kapanışı durdurur. Bu uyarlayıcı yeni sezon API/worker’ına bağlanmaz.
 
-Kapanış kontrolü kaldırılmadı. Yalnız bu üç kimliği ve tam farkları kabul eden, farklı/ek sapmada duran, tekrar çalışınca değişiklik üretmeyen SQL hazırlandı. İşlem günlüğünü veya savaş kayıtlarını değiştirmez. Stage uygulaması ve akşamki canlı düzeltme için owner kararı istendi; karar gelmeden uygulanmaz. Bu engel çözülmeden “stage reset geçti / canlı hazır” denmez.
+İşletim dosyaları private VPS hazırlık dizinindedir: `dominion-owner-acceptance.json`, `validate-dominion-acceptance.sql`, `dominion-original-old.ts`, `dominion-accepted-old.ts`, `seal-old.ts`. Ön kontrol ROLLBACK ile biter ve sayaç/günlük yazmaz. Orijinal dosya SHA256 `46f17baca082f6a6f9ceb35c57b19074c47373b651708c12048cf7fcaabf4a94`; uyarlanan dosya SHA256 `9ec08e8ac68a2c8cb2f9594bc7a315199ae34bc7dcc6559337609ec7802562b6`. Eski cache düzeltme SQL'i çalıştırılmamalıdır; dosya hata vererek duran bir korumayla değiştirildi.
 
-Onay beklenirken stage eski DB yedeğine ve beş eski app container’ına döndürüldü. Restore sırasında eski dump’ta bulunmayan yeni bir tablonun bağımlılıkları `pg_restore --clean` işlemini engelledi. Yalnız ayrı stage veritabanı boş oluşturulup `--exit-on-error` ile restore edildi; beş stage rolünün `/health` yanıtı `ok=true`, public site HTTP200. Prod’un beş rolü de `ok=true`; prod’a yazım/deploy yapılmadı. Sonraki stage provası da temiz stage DB ile başlamalıdır. Üretimde veritabanı silme/yeniden oluşturma bu adımın kapsamında değildir.
+Uyarlayıcı önce iki beklenen testte başarısız oldu; uygulamadan sonra 8/8 geçti. Onay işareti yokluğu, fazladan 1 puan farkı, bilinmeyen oyuncu, başka ruleset, daha önce düzeltilmiş sayaçlar, bozuk işlem denklemi ve özgün roster'ın değişmemesi kapsandı. Ayrı kapanış betiği testi de tam dünya kimlikleri ve hata sonrası bağlantı temizliğini doğruladı.
 
-Kapanış betiğinin tam kimlik koruması için önce başarısız test, sonra başarılı kontrol alındı: eksik/bozuk/tekrar eden envanter, aynı sayıda farklı dünya ve hata sonrası bağlantı kapanışı kapsandı. Betik `SEASON60_EXPECTED_LIVE_IDS` olmadan mühürlemeye başlamaz; akşam bu değişken taze envanterden oluşturulur.
+**Gerçek canlı kopyasıyla stage kapanışı/reset tamamlandı:**
+
+- Üç eski dünya eski image/kurallarla mühürlendi. Kabul edilen sayaçlarla 787 public sıralama kaydı ve 9 kaynak ödülü doğrulandı. Her ödülün sırası/tutarı public sıralamayla eşleşti; WAITING ve botlara ödül üretilmedi.
+- 1.665 hesap kimliği ve 45 cosmetic kaydı aynı kaldı. Sonuç sayısı kapanışta 686→1.473 oldu ve wipe bu kayıtları korudu; chat/DM arşivleri korundu/arttı.
+- Yeni tek dönemde iki MAIN, ruleset19, tam 60 gün ve 8'er anıt açıldı. Wipe yeni dünyaları oluşturana kadar ölçülen süre yaklaşık 138,5 saniyeydi; tüm bakım süresi bu sayıdan uzundur.
+- Honor ACTIVE4 ile açıldı; **trafik öncesinde** iki MAIN için benefits1 ve misilleme ganimeti %40 doğrulandı.
+- Yeni web `https://stage.asteraonline.space` üzerinde yayınlandı; runtime kaynak SHA’sı hâlâ `af3516bd`.
+- Gerçek stage HTTP kabulünde birinci sıra ödülü 2.000 alloy / 1.500 crystal / 300 deuterium olarak başkente eklendi. Tekrar join aynı makbuzu döndürdü ve kaynakları yeniden eklemedi. Eski profile sahip istemci 426 ile reddedildi.
+
+### Kaynak ödüllerinin aktarılması
+
+Mevcut MAIN sezonunun **kapanış anındaki Dominion sıralaması** esas alınır. İlk 10 sıra, en az 1 Dominion ve gerçek/uygun hesap koşulu vardır; botun yeri boş kalır, alt sıra yukarı taşınmaz. Sıfır/negatif puana ve WAITING'e ödül yoktur. Force reset ödül hakkını da oluşturur; yeni cycle'a bağlanan ödül, oyuncunun yeni sezona katılmasında başkentine **yalnız bir kez** eklenir. Yeni döneme hiç katılmadan o dönem kapanırsa hak sona erer. Bu kapanışta mevcut gizli Honor sıralaması ödül kaynağına dönüştürülmez.
+
+Stage restore için önemli işletim notu: eski dump'ta bulunmayan yeni tablo bağımlılıkları `pg_restore --clean` işlemini engelleyebilir. Bu provada **yalnız ayrı stage DB** boş oluşturulup `--exit-on-error` ile restore edildi. Üretim DB'sini silme/yeniden oluşturma bu prosedürün kapsamında değildir.
 
 ## Akşam `başla` sonrası kalacak işler
 
@@ -61,8 +71,8 @@ Kapanış betiğinin tam kimlik koruması için önce başarısız test, sonra b
 2. Native yeni kurallı paketin oyunculara erişilebilirliğini doğrula. `REQUIRE_CURRENT_RULES=true` eski web/native bundle'ları reddeder; yalnız web yayınlamak kurulu Android'i güncellemez.
 3. Onaylı bakım vhost'unu kur/test et; bakım işaretini aç. **Arena + üç API + singleton worker** durdurulur; PostgreSQL/Valkey çalışır. Son transaction'lar bitmeden kapanışa geçilmez.
 4. Son tutarlı dump + checksum + aynı gerçek veriyle izole restore/prova; eski web/env/nginx/role image'larını sakla. Doğrulama ve hesap silme/retention güvenceleri [ana runbook](deployment.md) ile aynıdır.
-5. Dominion düzeltmesi onaylandıysa taze preview'yi kaydet ve korumalı düzeltmeyi uygula. Bilinmeyen sapmada dur.
-6. Eski image/kurallarla bütün ilgili MAIN/WAITING dünyalarını `forceSeasonEnd` üzerinden mühürle. `SEASON60_EXPECTED_LIVE_IDS` kimlik listesi akşam envanterinden sağlanır; betik birebir eşleşme ister.
+5. Kabul edilen üç Dominion farkı için taze salt ön kontrolü ve owner karar kaydını sakla; sayaçlara/günlüklere düzeltme yazma. Bilinmeyen sapmada dur. Kapanış container’ına yalnız eski audit uyarlayıcısını, doğrulanmış hash ve `SEASON60_ACCEPTED_DOMINION=leaderboard-20261028` ile bağla.
+6. Eski image/kurallarla bütün ilgili MAIN/WAITING dünyalarını `forceSeasonEnd` üzerinden mühürle. `SEASON60_EXPECTED_LIVE_IDS` kimlik listesi akşam envanterinden sağlanır; betik birebir eşleşme ister. Wipe öncesinde dondurulan sıralama ve kaynak ödüllerini özgün sayaçlarla karşılaştır.
 7. Yeni image'la migration; frozen dünyaları `wipe --yes --days 60 --ruleset 19 --seed <kayıtlı>` ile yenile. Yeni sezonda Honor ACTIVE4 ve benefits1 trafik öncesinde zorunludur.
 8. İki yeni MAIN / tek cycle / 60 gün / 8'er anıt / kalibre radyasyon / spawn gate / takvim / tek lifecycle olayları, kalıcı hesap/cosmetic/sonuç/lifetime/ödül ve foreign key kontrollerini geçir.
 9. Worker, API'ler, Arena; image/SHA/health/schema/queue/SSE/istemci kontrolleri. Hazır production web paketini eski hashed asset'leri koruyarak yayınla. Dış kabulden sonra bakım işaretini kaldır.
