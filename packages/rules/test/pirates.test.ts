@@ -636,12 +636,17 @@ describe('the pirate schedule', () => {
       tripped it exactly that way). Everything that decides WHICH contact this is — index, level,
       roster, orbit and window — is still in the hash.
     */
-    // Only derived radius/period tolerate measured final-bit runtime differences.
-    const identity = (field: typeof established): string => orbitFingerprint(field.map(({ hoard: _hoard, ...rest }) => rest));
+    // The 60-day transition changes speed and its inverse orbital period only.
+    // These digests were checked against the unmodified 30-day source with the
+    // same three excluded fields; all RNG/roster/window/identity fields match.
+    const identity = (field: typeof established): string => orbitFingerprint(field.map(({ hoard: _hoard, speed: _speed, period: _period, ...rest }) => rest));
     expect(identity(established))
-      .toBe('bb1f2ad00d1484550acc0356f4f1868834ddf872dfd42ebe92d5e8348e87b29d');
+      .toBe('e3bbb50ce37278e63a491cd04831e3ecfe35192ff9ab89fdb19416acef9bc26b');
     expect(identity(increased))
-      .toBe('7ef3b797a3c9534846a9b7626c025f57f73b4bd0959fb0a70f0f46288b526580');
+      .toBe('c8657bfc57657e6b5198faeba5bdda7af0a2b7af9effb79dbc0fed0089204f24');
+    for (const pirate of increased) {
+      expect(pirate.period * pirate.speed).toBeCloseTo(2 * Math.PI * pirate.radius, 8);
+    }
     // And the prize is still deterministic for a given lane, which the roster above pins.
     expect(established[0]!.hoard).toEqual(increased[0]!.hoard);
   });

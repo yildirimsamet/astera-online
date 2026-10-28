@@ -75,7 +75,7 @@ describe('the producer ladder repays on a curve a player can follow', () => {
     for (const producer of ['REFINERY', 'EXTRACTOR'] as const) {
       for (const from of [10, 11, 12]) {
         const hours = payback(producer, from);
-        expect(days(hours), `${producer} ${String(from)}→${String(from + 1)}`).toBeLessThanOrEqual(1.5 / 0.8);
+        expect(days(hours), `${producer} ${String(from)}→${String(from + 1)}`).toBeLessThanOrEqual(1.5 / 0.8 / 0.85);
         // And still a price: a rung that repays in an hour is not a decision.
         expect(hours, `${producer} ${String(from)}→${String(from + 1)}`).toBeGreaterThanOrEqual(12);
       }
@@ -87,11 +87,11 @@ describe('the producer ladder repays on a curve a player can follow', () => {
    * payback exceeds `investmentHorizonShare` of the season left; for a Refinery-20 world that must
    * land in the last week — around day 24 — not on day 10 (the old ladder) and not never.
    */
-  it('puts the Refinery-20 sunset in the last week of a thirty-day season', () => {
+  it('puts the Refinery-20 sunset in the closing weeks of a sixty-day season', () => {
     const hoursLeftAtSunset = payback('REFINERY', 20) / SEASON.investmentHorizonShare;
-    const sunsetDay = 30 - days(hoursLeftAtSunset);
-    expect(sunsetDay).toBeGreaterThanOrEqual(21);
-    expect(sunsetDay).toBeLessThanOrEqual(25);
+    const sunsetDay = SEASON.days - days(hoursLeftAtSunset);
+    expect(sunsetDay).toBeGreaterThanOrEqual(60 - 9 / 0.85);
+    expect(sunsetDay).toBeLessThanOrEqual(60 - 5 / 0.85);
   });
 
   /** The Plant repays roughly twice as slowly as the Refinery at every rung, and keeps doing so. */
@@ -139,9 +139,9 @@ describe('a world standing at its own Core ceiling', () => {
   });
 
   /** Where the live field is today, a whole level still repays in under three days. */
-  it('repays a whole level at Core 12 inside three days, and at Core 16 inside six', () => {
-    expect(days(levelPayback(12))).toBeLessThanOrEqual(3 / 0.8);
-    expect(days(levelPayback(16))).toBeLessThanOrEqual(6 / 0.8);
+  it('extends whole-level repayment by the additional fifteen-percent output reduction', () => {
+    expect(days(levelPayback(12))).toBeLessThanOrEqual(3 / 0.8 / 0.85);
+    expect(days(levelPayback(16))).toBeLessThanOrEqual(6 / 0.8 / 0.85);
   });
 
   /**
@@ -199,7 +199,7 @@ describe('everything this curve does not own', () => {
       expect(payback('REFINERY', from) / payback('EXTRACTOR', from), `rung ${String(from)}`)
         .toBeCloseTo(1, 2);
     }
-    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400 * 0.8);
+    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400 * 0.8 * 0.85);
     expect(crystalRate(16) / profileIncome(16).crystal).toBeGreaterThan(ECONOMY_ADJUSTMENT.producerOutput);
   });
 });

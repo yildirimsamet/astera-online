@@ -50,7 +50,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
   it('keeps the disposable probe invoice with its October slowdown', () => {
     expect(PROBE.alloy).toBe(65);
     expect(PROBE.crystal).toBe(40);
-    expect(PROBE.speed).toBe(2632.5);
+    expect(PROBE.speed).toBe(2369.25);
   });
 
   it('applies the tapering early Alloy lift after the producer cut, leaving level ten onward unchanged', () => {
@@ -62,9 +62,9 @@ describe('owner 30% economy experiment against the checkpoint', () => {
         : level <= 6 ? 1.25
           : 1 + 0.25 * (10 - level) / 4;
       const late = producerOutputMult(level);
-      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.56 * alloyMultiplier * late, 8);
-      expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.56 * late, 8);
-      expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.56 * late, 8);
+      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.56 * 0.85 * alloyMultiplier * late, 8);
+      expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.56 * 0.85 * late, 8);
+      expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.56 * 0.85 * late, 8);
     }
     for (const id of BUILDING_IDS) {
       expect(buildingCost(id, 5)).toEqual(profileBuilding(id, 6).cost);
@@ -124,7 +124,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
             * ECONOMY_ADJUSTMENT.buildTime, 8);
       }
     }
-    expect(BUILD.capMinutes).toBe(585);
+    expect(BUILD.capMinutes).toBeCloseTo(585 * 1.15, 9);
   });
 
   it('extends every satellite, including the fixed Uplink timer, and strategic crafting', () => {
@@ -136,7 +136,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
           .toBeCloseTo(baseline * robotSpeedMult(tech) * ECONOMY_ADJUSTMENT.buildTime, 8);
       }
     }
-    expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
+    expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.strategicBuildTime, 9);
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
   });
 

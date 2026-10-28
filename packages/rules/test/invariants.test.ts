@@ -16,7 +16,7 @@ import {
   FLEET_SPEED_FACTOR,
   GALAXY,
   LEGACY_ASTEROID_GENERATION,
-  SEASON,
+  MONTHLY_REFERENCE_DAYS,
   HULLS,
   INSTRUMENT_COST_MULT,
   INSTRUMENT_IDS,
@@ -349,7 +349,7 @@ describe('the asteroid field', () => {
   });
 
   it('adds the higher rate after both established lanes without moving a live rock', () => {
-    const span = SEASON.days * 24 * 60;
+    const span = MONTHLY_REFERENCE_DAYS * 24 * 60;
     const baseCount = Math.round((9 * span) / 60);
     const establishedCount = Math.round((10.35 * span) / 60);
     const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
@@ -414,7 +414,7 @@ describe('the asteroid field', () => {
    * end where the field is filling and draining.
    */
   it('holds a steady population, and never empties the sky', () => {
-    const span = SEASON.days * 24 * 60;
+    const span = MONTHLY_REFERENCE_DAYS * 24 * 60;
     // generateGalaxy is the frozen derived field; new hourly snapshots have their own lifetime.
     const meanLife = ((LEGACY_ASTEROID_GENERATION.lifeHoursMin + LEGACY_ASTEROID_GENERATION.lifeHoursMax) / 2) * 60;
     const expected = (GALAXY.asteroidSpawnPerHour / 60) * meanLife;
@@ -1489,8 +1489,8 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * enough that six to eight fit in an evening.
    */
   it('lands a neighbourhood raid inside the chosen window', () => {
-    expect(roundTrip).toBeGreaterThanOrEqual(10 / 0.8);
-    expect(roundTrip).toBeLessThanOrEqual(20 / 0.8);
+    expect(roundTrip).toBeGreaterThanOrEqual(10 / 0.8 / 0.9);
+    expect(roundTrip).toBeLessThanOrEqual(20 / 0.8 / 0.9);
   });
 
   it('keeps a heavy raid on a neighbour inside a single sitting', () => {
@@ -1509,7 +1509,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     expect(widest).toBe(Math.ceil(
       furthest / 1250 * (25 - 1 / 6) / 2 / FLEET_SPEED_FACTOR,
     ));
-    expect(widest).toBeLessThan(150);
+    expect(widest).toBeLessThan(150 / 0.9);
   });
 
   /**
@@ -1564,7 +1564,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     const perEffort = DISRUPTION.decisiveMinutes / roundTrip;
     expect(perEffort).toBeLessThan(9);
     // Flight slows by 20%; disruption is a fixed effect clock, outside the work slowdown.
-    expect(perEffort).toBeGreaterThanOrEqual(0.8);
+    expect(perEffort).toBeGreaterThanOrEqual(0.8 * 0.9);
     expect(DISRUPTION.partialMinutes).toBeLessThan(DISRUPTION.decisiveMinutes);
     expect(DISRUPTION.maxPendingMinutes).toBeGreaterThanOrEqual(DISRUPTION.decisiveMinutes);
   });

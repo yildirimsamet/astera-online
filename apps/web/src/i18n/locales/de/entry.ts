@@ -98,6 +98,8 @@ export const app = {
   updateTitle: "Update erforderlich",
   updateBody: "Diese Version von Astera Online funktioniert nicht mehr mit dem Spielserver. Aktualisiere die App, um in die Galaxie zurückzukehren. Dein Konto und dein Fortschritt bleiben auf dem Server erhalten.",
   updateStore: "Bei Google Play aktualisieren",
+  updateWebBody: "Die Spielregeln wurden aktualisiert. Lade das Spiel neu, um die aktuelle Version zu nutzen. Dein Konto und dein Fortschritt bleiben auf dem Server erhalten.",
+  reloadGame: "Spiel neu laden",
   blockedTitle: "Verbindung zum Spiel fehlgeschlagen",
   blockedRetry: 'Erneut versuchen',
   /** What `useSession` says when a request failed with no message of its own. */

@@ -1,6 +1,7 @@
 import { chatMediaUploadSchema, chatPageSchema, chatPostSchema, clanChatPostSchema, dmPostSchema } from '../../web/src/api/schemas.js';
 import { access, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { ECONOMY_PROFILE } from '@astera/rules';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
@@ -25,16 +26,16 @@ describe('admin chat media', () => {
   let app: FastifyInstance;
   let close: () => Promise<void>;
   let directory: string;
-  let auth: { authorization: string }[];
+  let auth: { authorization: string; 'x-astera-rules': string }[];
   let cookie: string;
   beforeEach(async () => {
     f = await seedWorld(3, 9292);
     await f.db.update(accounts).set({ username: 'mediaadmin' }).where(eq(accounts.id, f.accountIds[0]!));
     directory = await mkdtemp(join(tmpdir(), 'astera-media-'));
-    const built = buildApp({ env: testEnv({ ADMIN_USERNAMES: 'mediaadmin,otheradmin', CHAT_MEDIA_DIR: directory }), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
+    const built = buildApp({ env: testEnv({ REQUIRE_CURRENT_RULES: 'true', ADMIN_USERNAMES: 'mediaadmin,otheradmin', CHAT_MEDIA_DIR: directory }), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
     app = built.app; close = built.close; await app.ready();
     const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
-    auth = await Promise.all(f.accountIds.map(async id => ({ authorization: `Bearer ${await tokens.issueAccess(id)}` })));
+    auth = await Promise.all(f.accountIds.map(async id => ({ authorization: `Bearer ${await tokens.issueAccess(id)}`, 'x-astera-rules': ECONOMY_PROFILE.id })));
     cookie = `bs_refresh=${await tokens.issueRefresh(f.accountIds[1]!)}`;
   });
   afterEach(async () => { await close(); await rm(directory, { recursive: true, force: true }); });
@@ -61,6 +62,9 @@ describe('admin chat media', () => {
     expect(read.rawPayload).toEqual(png.subarray(0, 8));
     expect(read.headers['content-range']).toBe(`bytes 0-7/${png.length}`);
     expect(read.headers['cache-control']).toContain('no-store');
+    const head = await app.inject({ method: 'HEAD', url, headers: { cookie } });
+    expect(head.statusCode).toBe(200);
+    expect(head.rawPayload).toHaveLength(0);
     expect((await app.inject({ method: 'GET', url, headers: { cookie, range: 'bytes=99999-' } })).statusCode).toBe(416);
     expect((await app.inject({ method: 'GET', url: `/api/chat/media/${media.assetId}`, headers: auth[0] })).statusCode).toBe(404);
     const listed = await app.inject({ method: 'GET', url: '/api/chat/messages', headers: auth[1] });

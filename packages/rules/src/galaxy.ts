@@ -1,11 +1,11 @@
 import { monthlySupply } from './monthly-supply.js';
+import { MONTHLY_REFERENCE_DAYS } from './economy-profile.js';
 import {
   ASTEROID_SHOWER_FRONT_LOAD,
   DEBRIS,
   GALAXY,
   MULTI_WORLD,
   PROSPECTOR,
-  SEASON,
 } from './constants.js';
 import { prospectorHoldMult, type TechLevels } from './tech.js';
 import { mulberry32, seededFrom } from './rng.js';
@@ -328,8 +328,8 @@ export function generateGalaxy(
   return { seed, slots, asteroids: generateAsteroidSchedule(field, seasonMinutes, seed) };
 }
 
-/** Minutes in a whole season. The asteroid schedule is laid out across it. */
-const seasonMinutes = SEASON.days * 24 * 60;
+/** Legacy static lanes retain the frozen monthly budget. New seasons use dynamic hours. */
+const seasonMinutes = MONTHLY_REFERENCE_DAYS * 24 * 60;
 
 /**
  * Pick a level from the weight table.
@@ -599,7 +599,7 @@ export function generateAsteroidSchedule(
   // Cap the established field against its original 10% allowance, then apply
   // the ore cut. The public monthly allowance is now 15%; the lane ratio keeps
   // the added allowance available for the new lane.
-  for (let day = 0; day < SEASON.days; day++) {
+  for (let day = 0; day < MONTHLY_REFERENCE_DAYS; day++) {
     const today = asteroids.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const expandedBudget = monthlySupply('mining', day, GALAXY.asteroidBudgetSeats);
     const budgetScale = GALAXY.asteroidOreBudgetShare
@@ -637,7 +637,7 @@ function appendStandingAsteroidIncrease(
   // The expanded allowance belongs to the expanded lane. Existing rocks keep
   // their cut ore; only the new lane is reduced if its independent draws
   // overshoot the remaining resource mix on a particular day.
-  for (let day = 0; day < SEASON.days; day++) {
+  for (let day = 0; day < MONTHLY_REFERENCE_DAYS; day++) {
     const existingToday = established.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const laneToday = lane.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const monthlyBudget = monthlySupply('mining', day, GALAXY.asteroidBudgetSeats);

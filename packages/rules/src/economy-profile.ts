@@ -25,11 +25,14 @@ export const ECONOMY_PROFILE: Readonly<{
   id: string; progressionDays: number; seasonDays: number; collectorHours: number;
   propulsionPerLevel: number; distanceFactor: number; tradeShip: boolean; asteroidShower: boolean;
 }> = {
-  id: 'season-30-v1', progressionDays: 30, seasonDays: 30,
+  // Calendar length is independent of the frozen price/progression reference.
+  id: 'season-60-v1', progressionDays: 30, seasonDays: 60,
   collectorHours: 10, propulsionPerLevel: 0.125, distanceFactor: 1.2,
   tradeShip: true, asteroidShower: true,
 } as const;
 
+/** Legacy static spawn budgets retain their original horizon when the live calendar grows. */
+export const MONTHLY_REFERENCE_DAYS = 30;
 /** Frozen output of the paid, isolated 30-day reference; not a live-player income multiplier. */
 export const MONTHLY_REFERENCE: Readonly<Resources> = {
   alloy: 1517487.4114387825, crystal: 744575.7697515059, deuterium: 20230.384213232468,
@@ -406,8 +409,8 @@ export function profileResearch(id: ResearchProjectId, level: number, days: numb
  */
 export const SUPPORT_ROUND_TRIP = [17, 22, 32, 38] as const;
 
-/** Owner, 2026-10-13: 80% of the previous 0.75 fleet scale; NPC anchors follow it. */
-export const FLEET_SPEED_FACTOR = 0.60;
+/** 60-day season: another 10% below 0.60; pirate and merchant anchors follow it. */
+export const FLEET_SPEED_FACTOR = 0.60 * 0.90;
 
 /**
  * EVERY CARGO HOLD FLIES 2.5x ITS RUNG. Owner instruction, 2026-10-06.

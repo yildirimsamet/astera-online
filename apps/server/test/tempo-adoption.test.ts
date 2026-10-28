@@ -128,9 +128,9 @@ it('preserves earned production in owner reads, probe reads and productive-time 
   f.clock.advance(60);
   const [raw] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
   const spy = await f.db.transaction(tx => standingAt(tx, raw!, f.clock.now()));
-  expect(spy.bufferAlloy).toBeCloseTo(87.5 + 70, 8);
+  expect(spy.bufferAlloy).toBeCloseTo(87.5 + 59.5, 8);
   const owner = await f.db.transaction(tx => loadLocked(tx, f.planetIds[0]!, f.clock));
-  expect(owner.bufferAlloy).toBeCloseTo(87.5 + 70, 8);
+  expect(owner.bufferAlloy).toBeCloseTo(87.5 + 59.5, 8);
   const [saved] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
   expect(saved!.seasonTelemetry.productiveSeconds).toBeCloseTo(7200, 6);
 });

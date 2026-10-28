@@ -46,12 +46,18 @@ describe('season lifecycle', () => {
     f = await seedWorld(3, 4242, { pirates: true });
   });
 
-  it('defaults to a thirty-day season with a real end and rollover', async () => {
-    const { season } = await createSeason(f.db, { shardCode: 'MONTHLY-30', seed: 951, startsAt: f.clock.now() });
-    expect(season.endsAt.getTime() - season.startsAt.getTime()).toBe(30 * 86400000);
+  it('defaults to a sixty-day season with the old act dates and a complete calendar', async () => {
+    const { season } = await createSeason(f.db, { shardCode: 'SEASON-60', seed: 951, startsAt: f.clock.now() });
+    expect(season.endsAt.getTime() - season.startsAt.getTime()).toBe(60 * 86400000);
     const events = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.seasonId, season.id));
     expect(events.filter(e => e.kind === 'season_end')).toHaveLength(1);
     expect(events.filter(e => e.kind === 'season_rollover')).toHaveLength(1);
+    for (const [i, id] of ['war', 'consolidation', 'sunset'].entries()) {
+      const event = events.find(e => e.kind === 'season_act' && e.payload?.act === id);
+      // Date timestamps truncate fractional milliseconds on both the old and new calendar.
+      expect(event?.resolveAt).toEqual(new Date(season.startsAt.getTime() + 30 * 86400000 * (i + 1) * 4 / 14));
+    }
+
     /*
       AND ITS PUBLIC CALENDAR, BOTH KINDS. Owner instruction, 2026-09-12: the
       Asteroid Shower and the merchant ship on (they are kept out of the economy
@@ -63,6 +69,11 @@ describe('season lifecycle', () => {
     expect(occurrences.some((o) => o.kind === 'ASTEROID_SHOWER')).toBe(true);
     expect(occurrences.some((o) => o.kind === 'TRADE_SHIP')).toBe(true);
     expect(events.filter(e => e.kind === 'galaxy_event_start')).toHaveLength(occurrences.length);
+    for (const kind of ['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']) {
+      expect(occurrences.some(o => o.kind === kind && o.startsAt.getTime() >= season.startsAt.getTime() + 30 * 86400000), kind).toBe(true);
+    }
+    expect(occurrences.every(o => o.startsAt >= season.startsAt && o.endsAt <= season.endsAt)).toBe(true);
+
   });
 
   const seasonEndEvent = async () => {
@@ -476,6 +487,8 @@ describe('season lifecycle', () => {
     expect(await f.db.select().from(pirateRaids)).toHaveLength(0);
     expect(await f.db.select().from(pirateState)).toHaveLength(0);
     expect(live).toHaveLength(2);
+    expect(live.every(({ season }) =>
+      season.endsAt.getTime() - season.startsAt.getTime() === 60 * 86400000)).toBe(true);
     // The current ruleset, which stopped being the Fleet V2 boundary at D156.
     expect(live.every(({ season }) =>
       season.rulesetVersion === MULTI_WORLD.rulesetVersion)).toBe(true);

@@ -12,8 +12,8 @@ vi.mock('../src/api/queries.js', () => ({
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 it.each([
-  ['en', '6.25–18.75'], ['tr', '6,25–18,75'], ['de', '6,25–18,75'],
-  ['es', '6,25–18,75'], ['fr', '6,25–18,75'], ['ja', '6.25～18.75'],
+  ['en', '7.19–21.56'], ['tr', '7,19–21,56'], ['de', '7,19–21,56'],
+  ['es', '7,19–21,56'], ['fr', '7,19–21,56'], ['ja', '7.19～21.56'],
 ] as const)('shows the slowed repair range in %s before hiring the crew', async (language, range) => {
   await i18n.changeLanguage(language);
   const fault = {

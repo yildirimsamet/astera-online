@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MONUMENT_CAPACITY, type Fleet } from '@astera/rules';
+import { MONUMENT_CAPACITY, distance, missionFuel, type Fleet } from '@astera/rules';
 import { arenaShips, monumentBattleParticipants, monuments, monumentWaves, planets, seasons } from '../src/db/schema.js';
 import { chooseShip } from '../src/services/arenaShips.js';
 import { readCommanderShip } from '../src/services/arenaShipState.js';
@@ -59,8 +59,13 @@ describe('the admiral on a monument wave', () => {
     const plain = await quote({ DART: 10 }, false);
     const led = await quote({ DART: 10 }, true);
     expect(led.travelMinutes).toBeCloseTo(plain.travelMinutes * 0.97, 4);
-    // Without a motion reserve the price is the outbound leg twice; the escort only flies the first.
-    expect(led.fuel).toBe(Math.ceil(plain.fuel / 2 * 0.95) + plain.fuel / 2);
+    // A moving monument is met at a different point when escorted. Price that
+    // actual outbound leg; the prepaid return reserve receives no escort discount.
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    const outbound = missionFuel({ DART: 10 }, distance(origin!, led.targetPosition), 1);
+    expect(led.outboundFuel).toBe(Math.ceil(outbound * 0.95));
+    expect(led.returnFuelReserve).toBe(plain.returnFuelReserve);
+    expect(led.fuel).toBe(led.outboundFuel! + led.returnFuelReserve!);
     expect((await ship()).admiralId).toBeNull();
     const { wave } = await send({ DART: 10 });
     expect(wave.fuelPaid).toBe(led.fuel);

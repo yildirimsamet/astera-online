@@ -32,7 +32,7 @@ export const RADIATION_BOMB = {
 
 /** Persist this same integer for both remaining work and the completion deadline. */
 export function radiationBombBuildSeconds(level: RadiationBombLevel): number {
-  return Math.ceil(RADIATION_BOMB.levels[level].nominalMinutes * ECONOMY_ADJUSTMENT.buildTime * 60);
+  return Math.ceil(RADIATION_BOMB.levels[level].nominalMinutes * ECONOMY_ADJUSTMENT.strategicBuildTime * 60);
 }
 
 export function radiationBombLevel(type: string): RadiationBombLevel | null {

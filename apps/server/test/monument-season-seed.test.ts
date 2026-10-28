@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty } from '@astera/rules';
+import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, MULTI_WORLD, monumentDifficulty } from '@astera/rules';
 import { hpRadiationSources, monuments } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
@@ -18,7 +18,7 @@ describe('the approved monument season deal', () => {
     const current = await createSeason(f.db, {
       shardCode: 'MONUMENT-DEFAULT', seed: 919, startsAt: f.clock.now(),
     });
-    expect(current.season.rulesetVersion).toBe(18);
+    expect(current.season.rulesetVersion).toBe(MULTI_WORLD.rulesetVersion);
     expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, current.season.id)))
       .toHaveLength(MONUMENT_SEASON_DEFAULTS.count);
     expect(await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, current.season.id)))

@@ -30,7 +30,7 @@ describe('production and cost curves', () => {
     // `base x L x growth^L`: level 0 produces nothing, which is correct — a planet
     // is created with the Refinery at 1 and it can never go down.
     expect(alloyRate(0)).toBe(0);
-    expect(alloyRate(1)).toBeCloseTo(70, 5);
+    expect(alloyRate(1)).toBeCloseTo(59.5, 5);
   });
 
   /**
@@ -96,18 +96,18 @@ describe('production and cost curves', () => {
 
     expect(alloyRate(0)).toBe(0);
     for (let level = 1; level <= 6; level += 1) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 1.25, 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 0.85 * 1.25, 8);
     }
     expect([7, 8, 9].map(lift)).toEqual([1.1875, 1.125, 1.0625]);
     for (let level = 7; level <= 9; level += 1) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * lift(level), 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 0.85 * lift(level), 8);
     }
     for (const level of [10, 11, 12]) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56, 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 0.85, 8);
     }
     // Past 12 the owner's 2026-09-20 late lift rides on top — the opening lift is long gone.
     for (const level of [13, 20, 100]) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * producerOutputMult(level), 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 0.85 * producerOutputMult(level), 8);
     }
 
     // The two rungs the flat bands broke, in the units the screen quotes.
@@ -163,7 +163,7 @@ describe('production and cost curves', () => {
       expect(curve[i]!).toBeGreaterThan(curve[i - 1]!);
     }
     // The opening repayment window extends with the 2026-10-13 output reduction.
-    expect(producerPaybackHours('REFINERY', 1)).toBeLessThan(1 / 0.8);
+    expect(producerPaybackHours('REFINERY', 1)).toBeLessThan(1 / 0.8 / 0.85);
     // ...and the late game has to stop repaying inside a season, or it runs away.
     expect(producerPaybackHours('REFINERY', 10)).toBeGreaterThan(4);
     expect(producerPaybackHours('REFINERY', 18)).toBeGreaterThan(24);
@@ -564,10 +564,10 @@ describe('disruption', () => {
  * world's salvage haul with nowhere to bank it.
  */
 describe('the works preserve capacity while production slows', () => {
-  it('holds 12.5 hours at the reduced output rate', () => {
-    expect(ECON.collectorHours).toBe(12.5);
+  it('retains its capacity across both hourly-output reductions', () => {
+    expect(ECON.collectorHours).toBeCloseTo(12.5 / 0.85, 10);
     for (const rate of [100, 1_000, 3_380]) {
-      expect(collectorCap(rate)).toBe(12.5 * rate);
+      expect(collectorCap(rate * 0.85)).toBe(12.5 * rate);
     }
   });
 
@@ -579,8 +579,8 @@ describe('the works preserve capacity while production slows', () => {
   });
 
   /** The working day is eleven hours, so the day's last hour needs a look. */
-  it('keeps the former ten-hour capacity after the 20% output reduction', () => {
-    expect(ECON.collectorHours * 0.8).toBe(10);
+  it('keeps the former ten-hour resource capacity after both output reductions', () => {
+    expect(ECON.collectorHours * 0.8 * 0.85).toBeCloseTo(10, 10);
   });
 });
 

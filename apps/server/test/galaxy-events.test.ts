@@ -4,6 +4,7 @@ import {
   GALAXY_EVENTS,
   INTERGALACTIC_CONVOY,
   MULTI_WORLD,
+  MONTHLY_REFERENCE_DAYS,
   SEASON,
   TRADE,
   asteroidActive,
@@ -593,7 +594,7 @@ describe('persisted galaxy events', () => {
     const { db, season } = await world(0, 7);
     const baseline = privateAsteroidField(season.asteroidKey);
     const snapshot = await loadMiningSnapshot(db, season.id, START);
-    const establishedCount = Math.round(10.35 * SEASON.days * 24);
+    const establishedCount = Math.round(10.35 * MONTHLY_REFERENCE_DAYS * 24);
 
     expect(snapshot.asteroids.length).toBeGreaterThan(baseline.length);
     expect(snapshot.asteroids.slice(0, establishedCount))

@@ -1,14 +1,15 @@
 import type { Resources, ShipTier } from './types.js';
 
-/** Owner's post-147deca 30% experiment: replaces 25%, not compounded on top of it. */
+/** Next-season source defaults. Deploy only after the old worlds are sealed; see
+ * docs/season-60-tempo-transition-plan.md. Hull pricing retains the 30% experiment. */
 export const ECONOMY_ADJUSTMENT = {
   hullMetalPrice: 1.30,
-  /** Owner, 2026-10-13: another 20% off every producer's previous hourly output. */
-  producerOutput: 0.56,
-  /** Preserve existing Store/Works capacities while their hourly output falls by 20%. */
-  producerCapacityTime: 1.25,
-  /** Every production/repair queue runs at 80% of its previous work rate. */
-  workRate: 0.8,
+  /** 60-day season: 15% below the current 0.56 hourly output at every level. */
+  producerOutput: 0.56 * 0.85,
+  /** Preserve resource capacities; also restores the frozen 0.70 pre-cutover income. */
+  producerCapacityTime: 1.25 / 0.85,
+  /** Colony repair duration rises 15%, matching ordinary queue work. */
+  workRate: 0.8 / 1.15,
   /**
    * Owner instruction, 2026-09-13: a temporary lift on the early Alloy ladder.
    *
@@ -35,14 +36,14 @@ export const ECONOMY_ADJUSTMENT = {
   /** The first rung with no lift left on it. Between the two, the lift decays. */
   alloyLiftEndLevel: 10,
   /**
-   * Shared work timer: owner, 2026-10-13, runs production at 80% of its previous
-   * rate. The previous 0.975 dial is divided by 0.8, giving 1.21875 (×1.25 time).
-   * Buildings, instruments, satellites, research, hulls, ground defence, repairs
-   * and both strategic build clocks inherit it. The work cap follows the same
-   * dial, so capped orders slow by the same factor: 468 → 585 minutes.
+   * Shared work timer: the 60-day season adds 15% to the current 1.21875 dial.
+   * Buildings, instruments, satellites, research, hulls, ground defence and ship
+   * repairs inherit it. Existing capped work rises from 585 to 672.75 minutes.
    * Flight, event, recovery and cooldown clocks are separate from production work.
    */
-  buildTime: 1.21875,
+  buildTime: 1.21875 * 1.15,
+  /** Death Star and Radiation Bomb manufacturing retain their existing timers. */
+  strategicBuildTime: 1.21875,
 } as const;
 
 /** Shift a live hull invoice toward crystal without changing its 1:2 economic value. */

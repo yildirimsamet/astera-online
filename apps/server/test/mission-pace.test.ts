@@ -180,7 +180,9 @@ describe('the pace a launch is flown at', () => {
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5,
     );
     const outbound = minutesBetween(departedAt, slow.arriveAt);
-    expect(slow.exposureMinutes).toBeCloseTo(2 * outbound, 6);
+    // The quote is exact minutes; each persisted Date truncates sub-millisecond
+    // precision. Two legs may therefore differ from twice the stored leg by <2 ms.
+    expect(Math.abs(slow.exposureMinutes - 2 * outbound) * 60_000).toBeLessThan(2);
 
     f.clock.set(settledAt(slow.arriveAt));
     await worker.tick();

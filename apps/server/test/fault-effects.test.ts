@@ -2,7 +2,7 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import {
-  activeAsteroids, FAULT_KINDS, sensorReach, type AsteroidSpec, type FaultKind,
+  activeAsteroids, alloyRate, FAULT_KINDS, sensorReach, type AsteroidSpec, type FaultKind,
 } from '@astera/rules';
 import { battleReports, planetFaults, planets, sensorEpochs, units } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -113,23 +113,23 @@ describe('üretim arızaları gerçek dünyada', () => {
     expect(view.planet.bufferDeuteriumCap).toBeGreaterThan(0);
   });
 
-  /**
-   * SIZINTI ÜRETİMİ GEÇTİĞİ ANDAN İTİBAREN DEPOYA İNER, ve tam çekirdek kapısında
-   * geçmez: core 6'da sızıntı 885/sa, üretim 899/sa. Havuz önce aktığı için üretim
-   * depoyu perdeliyor ve kasadan hiçbir şey çıkmıyor — sahibin *"önce havuzdan akar"*
-   * kuralının doğrudan sonucu, bir kaza değil. Core 7'den itibaren sızıntı öne geçiyor.
-   */
-  it('çekirdek kapısında sızıntı depoya inmez — havuz onu perdeler', async () => {
+  // Depo miktarı ve 60 saatlik sızıntı saati korunurken üretim azalıyor. Seviye 6'da
+  // artık üretimi aşan sızıntı önce mevcut havuzu, ancak o yetmezse depoyu tüketir.
+  it.each([0, 2000])('önce havuzu tüketir; başlangıç havuzu %i ise yalnız açık depoya iner', async buffer => {
     await setLevel(f.db, colony, 'CORE', 6);
     await setLevel(f.db, colony, 'REFINERY', 6);
     await setLevel(f.db, colony, 'VAULT', 6);
-    await grant(f.db, colony, 50_000, 20_000);
+    await grant(f.db, colony, 40_000, 10_000);
+    await f.db.update(planets).set({ bufferAlloy: buffer }).where(eq(planets.id, colony));
     await breakIt(f, colony, 'VAULT_LEAK');
     f.clock.advance(600);
     await f.db.transaction((tx) => planetView(tx, colony, f.clock));
     const [row] = await f.db.select().from(planets).where(eq(planets.id, colony));
-    expect(row!.alloy).toBe(50_000);
-    // Yine de üretim akıyor: kaybedilen, hiç varamayan cevher.
+    // 42,463 is the unchanged level-6 resource capacity. The store-clock branch binds.
+    const excess = (42_463 / 60 - alloyRate(6)) * 10;
+    expect(excess).toBeGreaterThan(0);
+    expect(row!.alloy).toBeCloseTo(40_000 - Math.max(0, excess - buffer), 2);
+    expect(row!.bufferAlloy).toBeCloseTo(Math.max(0, buffer - excess), 2);
     expect(row!.pendingLeakAlloy).toBeGreaterThan(0);
   });
 

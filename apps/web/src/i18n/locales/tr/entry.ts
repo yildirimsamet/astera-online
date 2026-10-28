@@ -95,6 +95,8 @@ export const app = {
   updateTitle: "Güncelleme gerekli",
   updateBody: "Astera Online'ın bu sürümü artık oyun sunucusuyla çalışmıyor. Galaksiye dönmek için uygulamayı güncelle. Hesabın ve ilerlemen sunucuda korunur.",
   updateStore: "Google Play'de güncelle",
+  updateWebBody: "Oyun kuralları güncellendi. Güncel sürümü kullanmak için oyunu yenile. Hesabın ve ilerlemen sunucuda korunur.",
+  reloadGame: "Oyunu yenile",
   blockedTitle: "Oyuna bağlanılamadı",
   blockedRetry: 'Tekrar dene',
   sessionFailed: 'Sunucuya ulaşılamadı',

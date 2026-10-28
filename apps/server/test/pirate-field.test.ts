@@ -78,10 +78,11 @@ describe('the private pirate field', () => {
       everything that decides WHICH contact this is. `packages/rules/test/pirates.test.ts` holds
       the same narrowing for the pure schedule.
     */
-    // Match the rules fingerprints: only derived radius/period tolerate final-bit runtime drift.
-    const identity = (lane: typeof field): string => orbitFingerprint(lane.map(({ hoard: _hoard, ...rest }) => rest));
+    // Checked against the unchanged monthly source: only speed and its inverse
+    // period change. Keys, roster, windows, radius and RNG draws remain identical.
+    const identity = (lane: typeof field): string => orbitFingerprint(lane.map(({ hoard: _hoard, speed: _speed, period: _period, ...rest }) => rest));
     expect(identity(field.slice(0, establishedLength)))
-      .toBe('9111ebd807ca437db51b52fc8eadea05296e1537db1bce054aed2979622129f9');
+      .toBe('03f8a91857b8bd942ea1cbfe3c8aa5e043bb513efd512a3e5642278f9e7c4963');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {

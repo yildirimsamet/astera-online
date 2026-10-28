@@ -104,7 +104,7 @@ describe('a raid at a pirate', () => {
    * same way a player does. `sensorZone` is the one authority on whether the world
    * can see it, which is exactly the gate the launch applies.
    */
-  const findVisible = async (skip: ReadonlySet<number> = new Set()): Promise<Target> => {
+  const findVisible = async (skip: ReadonlySet<number> = new Set(), catchable = false): Promise<Target> => {
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
     const key = season!.asteroidKey;
     const field = privatePirateField(key);
@@ -126,6 +126,7 @@ describe('a raid at a pirate', () => {
       const first = Math.ceil(spec.appearsAt) + 1;
       for (let minute = first; minute < Math.min(spec.expiresAt, seasonMinutes); minute += 1) {
         if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
+        if (catchable && !interceptOrbit(world!, HULLS.DART.speed, spec, spec.expiresAt, minute)) continue;
         f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
         return { spec, id: pirateId(key, spec.index), key };
       }
@@ -418,12 +419,12 @@ describe('a raid at a pirate', () => {
       .where(and(eq(buildings.planetId, mine), eq(buildings.type, 'CORE')));
     const bays = flightSlots(core?.level ?? 0);
     for (let i = 0; i < bays; i++) {
-      const target = await findVisible(seen);
+      const target = await findVisible(seen, true);
       seen.add(target.spec.index);
       await launchPirateRaid(f.db, mine, target.id, { DART: 30 }, f.clock);
     }
     expect(await baysInUse(f.db, mine)).toBe(bays);
-    const extra = await findVisible(seen);
+    const extra = await findVisible(seen, true);
     await expect(
       launchPirateRaid(f.db, mine, extra.id, { DART: 30 }, f.clock),
     ).rejects.toMatchObject({ code: 'NO_FREE_BAY' });

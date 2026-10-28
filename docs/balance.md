@@ -10,35 +10,35 @@ settled by playtest, not by argument.
 comparison. The active tempo profile and its current tables come from `packages/rules/src/tempo.ts`
 and `pnpm balance:economy`; `pnpm balance:goal` validates the fixed progression target.
 
-## Active season profile — 2026-09-26
+## Next season profile — 60-day transition
 
-The following values are the owner-approved profile for the next season boundary. Older sections in
-this document are measurement history; when they disagree with the live constants, the constants
-and this profile win.
+These are the next-season source defaults; they must be released at the coordinated season
+boundary after the old season is sealed. Historical sections below do not override them.
+[Full requirements, effects, tests and cutover](season-60-tempo-transition-plan.md).
 
-- **Galaxy:** radius `4,500`, minimum separation `450`; the address budget is 1,000 player seats,
-  100 bot seats and 130 neutral seats. Neutral addresses open in strata (`T1 76 / T2 38 / T3 16`)
-  under the staged census (`T1 15 / T2 8 / T3 3` initially, then one free colony slot per census),
-  with the T3 target share at `0.13`.
-- **Tempo (owner 2026-10-13):** player mobile hulls use `0.60×` their profile speed (including collectors), and every
-  cargo hold (`TRANSPORT`) flies `2.5×` that (`TRANSPORT_SPEED_MULT`, owner 2026-10-06; a mixed
-  wing still flies at its slowest warship). Pirate and merchant anchors follow the same additional
-  `0.8×` slowdown, retaining their fleet-relative ratios. The Prospector is `990` catalogue
-  units/minute and its laden return `495`; rocks remain `262.5–562.5`. Probe speed is `2632.5`
-  (another `25%` reduction), Death Star speed `1500` (owner 2026-10-16: `+50%`), Radiation Bomb speed
-  `1300` (owner 2026-10-16: `+30%`), and Beacon speed bonus `20%` (`×1.2`).
-  All three producer rates fall another `20%` at every level (`producerOutput = 0.56`).
-  Store and Works capacities retain their resource amounts; the Works now hold `12.5` hours
-  of the reduced output. Work runs at `80%` of its previous rate (`×1.25` duration,
-  `buildTime = 1.21875`, capped work `585` min). Colony repair crews take `6.25–18.75` min.
-  Vault leaks also slow `20%`: the full-store drain clock is `60` hours, retaining
-  the `2×` income cap and one-store total budget. Pre-cutover leakage keeps the old rate.
-  Existing seasons adopt through the idle NPC cutover in
-  [the release runbook](deployment.md), preserving previously earned production.
-  Asteroid lifetime is unchanged.
-  Planet marker radii grew uniformly `1.3×`, then shrank `20%` (owner, 2026-10-16):
-  Core `1 / 11 / 22` anchors are approximately `0.377 / 0.702 / 1.199` world units;
-  the geometric size ramp and development ratios are retained.
+- **Calendar:** 60 × 24 hours; `progressionDays = 30` retains current invoices.
+  Act shares `1/7`, `2/7`, `3/7` preserve the former absolute opening dates.
+- **Galaxy:** radius `4,500`, minimum separation `450`; existing address pools and neutral census.
+- **Flight:** `FLEET_SPEED_FACTOR = 0.54`; Probe `2369.25`; Prospector `891`, laden `445.5`.
+  All ordinary hulls, collectors, pirates and merchant take exactly one additional `×0.90`.
+  Cargo lift `2.5×`, Beacon `1.2×`, Propulsion and Derrick ratios stay fixed.
+  Rocks retain `262.5–562.5`; Death Star `1500` and Radiation Bomb `1300` stay fixed.
+- **Production:** `producerOutput = 0.56 × 0.85 = 0.476` at every producer level.
+  Capacity compensation `1.25 / 0.85` preserves Store/Works resource amounts; Works fill
+  in `12.5 / 0.85 ≈ 14.70588` hours. Protection, convoy caps and vacation retain their
+  hours-based rules. Clan aid/purse Alloy/Crystal limits and Arena daily transfers also follow
+  the reduced hourly rates; capacity-based clan Deuterium shares retain their amounts.
+  No automatic change to fixed rewards, ore or monument production.
+- **Work:** current ordinary queue and repair durations `×1.15`, not `÷0.85`.
+  `buildTime = 1.21875 × 1.15 = 1.4015625`; existing work ceiling `672.75` minutes.
+  Colony repairs `7.1875–21.5625` minutes. Death Star and Radiation Bomb manufacture retain
+  the separate `strategicBuildTime = 1.21875`; interceptor manufacture takes ordinary work.
+- **Leak:** drain parameter remains `60` hours, income cap `2×`, total budget one Store.
+  The historical pre-cutover drain is frozen at `48` hours; capacity compensation cannot
+  accelerate it. Actual current loss may fall when the reduced income cap binds.
+- **Planet size:** another uniform `×0.80`; Core `1 / 11 / 22` radii approximately
+  `0.30135 / 0.56160 / 0.95882`; development ratios, game coordinates and sensor reach stay fixed.
+
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
   slowdown; the Collector's special fuel mass is `200` (card rate `20` deuterium, reduced
   from `90` by owner instruction 2026-10-07). Owner 2026-10-11: chosen pace now

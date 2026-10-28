@@ -103,11 +103,10 @@ describe('what the strategic pair costs', () => {
    * working-tree retune had taken it to four; the battery follows at half, because
    * the reload rule below is the interlock and not a second figure.
    */
-  it('prices the reusable defence reload at half the weapon work', () => {
-    // The owner's hour is the AUTHORED figure. `ECONOMY_ADJUSTMENT.buildTime` then
-    // shaves 2.5% off every timer in the game, and a weapon exempt from the one
-    // global dial would be the exception nobody could predict from.
-    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.buildTime);
-    expect(ANTI_STRATEGIC.buildMinutes).toBe(DEATH_STAR.buildMinutes / 2);
+  it('slows the defence reload while preserving Death Star manufacturing', () => {
+    // The weapon keeps its previous manufacturing dial. Only the defence reload
+    // takes the ordinary queue's additional fifteen-percent duration.
+    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.strategicBuildTime);
+    expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(DEATH_STAR.buildMinutes / 2 * 1.15, 10);
   });
 });

@@ -270,7 +270,8 @@ export const ECON = {
    * to land on a young world, a clan share refused for want of room. Ten against a
    * Vault-0 store of 15.75 clears it at both ends; `economy.test.ts` holds the whole
    * ladder. The 2026-10-13 slowdown preserves those resource amounts; at 80%
-   * output the same Works now hold 12.5 hours of production instead of ten.
+   * output the same Works hold 12.5 hours instead of ten. The 60-day season's
+   * additional 15% output cut preserves that resource capacity at about 14.706 hours.
    */
   collectorHours: ECONOMY_PROFILE.collectorHours * ECONOMY_ADJUSTMENT.producerCapacityTime,
 
@@ -991,7 +992,7 @@ export const BUILD = {
   researchTimeMult: ECONOMY_TEMPO.researchWork,
   /**
    * The authored eight-hour work ceiling follows the shared timer dial:
-   * 9h45m before robots after the 2026-10-13 slowdown, including capped orders.
+   * 585 minutes × 1.15 = 672.75 minutes before robots, including capped orders.
    */
   capMinutes: ECONOMY_TEMPO.buildCapMinutes * ECONOMY_ADJUSTMENT.buildTime,
   /**
@@ -1679,8 +1680,8 @@ export const PROBE = {
    * paced by the five-second interval below; probes do not consume ordinary fleet
    * bays and an airborne probe does not close the target to another paid look.
    */
-  // Owner, 2026-10-13: 25% below the previous 3510 default.
-  speed: 2632.5,
+  // October probe slowdown, then another 10% at the 60-day season boundary.
+  speed: 2632.5 * 0.90,
   /** Five-second, commander-and-target scoped double-tap guard, measured at launch. */
   retargetCooldownMinutes: 5 / 60,
 } as const;
@@ -2046,10 +2047,11 @@ export const PROSPECTOR = {
    * September's wider-disc profile was 618.75 after its 25% slowdown. Owner
    * instruction on 2026-10-04 raised the craft alone 2.5x (1546.875); on
    * 2026-10-06 the owner called that too much and set it to 2x the September
-   * figure, 1237.5. The 2026-10-13 slowdown takes another 20%, to 990.
+   * figure, 1237.5. The 2026-10-13 slowdown takes another 20%, to 990;
+   * the 60-day season takes a further 10%, to 891.
    * Rocks retain 262.5–562.5. Both mining and salvage read this one base speed.
    */
-  speed: 990,
+  speed: 990 * 0.90,
   /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
    * (2026-09-14). The brake stays a brake — a full craft is still the slowest
@@ -3160,9 +3162,10 @@ export const SEASON = {
   investmentHorizonShare: 0.7,
   /** The three public transitions after the opening act. D96. */
   actBoundaries: [
-    { id: 'war', share: 4 / 14 },
-    { id: 'consolidation', share: 8 / 14 },
-    { id: 'sunset', share: 12 / 14 },
+    // Preserve the 30-day season's absolute act and research opening times.
+    { id: 'war', share: 1 / 7 },
+    { id: 'consolidation', share: 2 / 7 },
+    { id: 'sunset', share: 3 / 7 },
   ],
 } as const;
 
@@ -3829,10 +3832,10 @@ export const DEATH_STAR = {
   cost: { alloy: 50_000, crystal: 35_000, deuterium: 3_000 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
-   * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`
-   * is half of this and moves with it.
+   * olmalı"*. The economy table had taken it to four. Retains the current 73.125
+   * minutes at the 60-day boundary; interceptor work takes the ordinary 15% increase.
    */
-  buildMinutes: 60 * ECONOMY_ADJUSTMENT.buildTime,
+  buildMinutes: 60 * ECONOMY_ADJUSTMENT.strategicBuildTime,
   /**
    * Owner, 2026-10-13: 20% below the approved 1,250-unit strategic speed — then 50% faster on
    * 2026-10-16 (*"Ölüm yıldızının hızını şu anki hızından %50 daha fazla yap"*).
@@ -4011,8 +4014,8 @@ export const FAULT = {
    * Hours for a FULL store to drain. The owner's figure, and on its own it was a
    * wipe rather than a leak — see `leakIncomeCap`.
    */
-  // Owner, 2026-10-13: leak also slows 20%, preserving its ratio to production.
-  leakDrainHours: 48 * ECONOMY_ADJUSTMENT.producerCapacityTime,
+  // Keep the current drain clock independent of the new capacity compensation.
+  leakDrainHours: 60,
   /**
    * THE SECOND CLAUSE, AND IT IS WHAT MAKES THE FIRST ONE MEAN THE SAME THING AT
    * EVERY LEVEL. Owner instruction: *"üretim hızı 8bin iken milyonlarca sızıntı hızı
