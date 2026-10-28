@@ -80,6 +80,8 @@ export interface ArenaShips {
   spectate(accountId: string): Promise<Launch>;
   end(accountId: string, sortieId: string, end: SortieEnd): Promise<SortieResult | null>;
   recallOpen(): Promise<number>;
+  /** The game tab is closed while the Yarık flies: the room's heartbeat is what keeps a commander online. */
+  playing(accountId: string): Promise<unknown>;
 }
 const dbShips = (app: FastifyInstance): ArenaShips => ({
   hangar: accountId => readHangar(app.db, app.clock, accountId),
@@ -92,6 +94,7 @@ const dbShips = (app: FastifyInstance): ArenaShips => ({
   spectate: accountId => spectateTeam(app.db, app.clock, accountId),
   end: (accountId, sortieId, end) => endSortie(app.db, app.clock, accountId, sortieId, end),
   recallOpen: () => recallOpenSorties(app.db, app.clock),
+  playing: accountId => app.presence.touch(accountId),
 });
 /** A failed report is tried this often, this far apart, before it is left to the next start's recall. */
 const REPORT_TRIES = 3; const REPORT_RETRY_MS = 1000;
@@ -520,7 +523,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
         return;
       }
       const entry = participant; if (!entry) { kick(socket, 'auth'); return; }
-      if (msg.kind === 'ping') { send(socket, { kind: 'pong', t: msg.t, serverTimeMs: app.clock.now().getTime() }); return; }
+      if (msg.kind === 'ping') { if (entry.accountId) void ships.playing(entry.accountId); send(socket, { kind: 'pong', t: msg.t, serverTimeMs: app.clock.now().getTime() }); return; }
       if (msg.kind === 'settings') { entry.settings.sensitivity = msg.sensitivity; entry.settings.invertPitch = msg.invertPitch; return; }
       if (msg.kind === 'watch') {
         const target = [...participants.values()].find(other => other.pilot.id === msg.pilotId);

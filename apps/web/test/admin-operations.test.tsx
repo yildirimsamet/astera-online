@@ -17,7 +17,7 @@ const scopes = {
   clans: [{ id: clanId, seasonId, name: 'Orion', tag: 'ORI', galaxy: 'Andromeda', galaxyCode: 'andromeda' },
     { id: secondClan, seasonId, name: 'Lyra', tag: 'LYR', galaxy: 'Andromeda', galaxyCode: 'andromeda' }],
 };
-const players = { measuredAt: '2026-10-11T08:00:00Z', onlineWindowMinutes: 5, total: 1, nextBefore: null as string | null, players: [{
+const players = { measuredAt: '2026-10-11T08:00:00Z', onlineWindowMinutes: 15, total: 1, nextBefore: null as string | null, players: [{
   playerId: 'commander', username: 'izci', displayName: 'İzci', seasonId, galaxy: 'Andromeda', galaxyCode: 'andromeda',
   lastActiveAt: '2026-10-11T07:59:00Z', mutes: [],
   resources: { storage: { alloy: 1234, crystal: 456, deuterium: 78 }, buffer: { alloy: 12, crystal: 34, deuterium: 0 } },
@@ -96,7 +96,7 @@ describe('admin player operations', () => {
   it('shows scoped resources/activity and submits exactly the checked mute channels and selected duration', async () => {
     const { calls } = show();
     expect(await screen.findByText('İzci')).toBeInTheDocument();
-    expect(screen.getByText(/Last 5 minutes/)).toBeInTheDocument();
+    expect(screen.getByText(/Last 15 minutes/)).toBeInTheDocument();
     expect(screen.getByText(/20 miners/)).toBeInTheDocument();
     expect(screen.getByText(/17 ships/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Moderate İzci' }));

@@ -273,7 +273,7 @@ describe('admin operations and channel moderation', () => {
   });
 
   it('returns online players, current resources without writes, and owner-attributed 24h dispatches', async () => {
-    await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 5 * 60_000 - 1) }).where(eq(players.id, f.playerIds[2]!));
+    await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 15 * 60_000 - 1) }).where(eq(players.id, f.playerIds[2]!));
     const now = f.clock.now();
     const cutoff = new Date(now.getTime() - 24 * 3600_000);
     for (const [targetKind, craft, departAt] of [['asteroid', 3, cutoff], ['asteroid', 5, now], ['asteroid', 99, new Date(cutoff.getTime() - 1)], ['debris', 10, now]] as const) {
@@ -315,10 +315,11 @@ describe('admin operations and channel moderation', () => {
   it('counts only human online players and includes the exact activity boundary', async () => {
     await f.db.insert(botProfiles).values({ accountId: f.accountIds[2]!, ordinal: 0, persona: 'RAIDER',
       nextActionAt: f.clock.now(), createdAt: f.clock.now() });
-    const boundary = new Date(f.clock.now().getTime() - 5 * 60_000);
+    // The desk reads a quarter hour (owner 2026-10-28), not the five minutes the galaxy list uses.
+    const boundary = new Date(f.clock.now().getTime() - 15 * 60_000);
     await f.db.update(players).set({ lastActiveAt: boundary }).where(eq(players.id, f.playerIds[1]!));
     const first = await request({ method: 'GET', url: '/api/admin/players' });
-    expect(first.json<{ total: number }>().total).toBe(2);
+    expect(first.json<{ total: number; onlineWindowMinutes: number }>()).toMatchObject({ total: 2, onlineWindowMinutes: 15 });
     await f.db.update(players).set({ lastActiveAt: new Date(boundary.getTime() - 1) }).where(eq(players.id, f.playerIds[1]!));
     const next = await request({ method: 'GET', url: '/api/admin/players' });
     expect(next.json<{ total: number }>().total).toBe(1);

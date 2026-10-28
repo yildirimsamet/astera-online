@@ -5,7 +5,7 @@ import { GameError } from '../../src/services/planet.js';
 
 /** The hangar port without a database: every launch flies a full Kılavuz unless told otherwise; every call is recorded. */
 export function fakeShips(over: Partial<ArenaShips> = {}) {
-  const calls = { launch: [] as string[], end: [] as { accountId: string; sortieId: string; end: SortieEnd }[], recall: 0, choose: [] as string[], upgrade: [] as string[], repair: [] as string[] };
+  const calls = { launch: [] as string[], end: [] as { accountId: string; sortieId: string; end: SortieEnd }[], recall: 0, choose: [] as string[], upgrade: [] as string[], repair: [] as string[], playing: [] as string[] };
   let flights = 0;
   const zero = { alloy: 0, crystal: 0, deuterium: 0 };
   const view: HangarView = { core: 9, minCore: 9, ship: null, refill: { fuel: 0, ammo: 0, total: 0 }, deuterium: 100, alloy: 0, crystal: 0, cap: zero, sent: zero,
@@ -29,6 +29,7 @@ export function fakeShips(over: Partial<ArenaShips> = {}) {
         readyAt: null, readyReason: end.outcome === 'dead' ? 'repair' : 'service', xp: { earned: 10, kept: 10, banked: 10 } });
     },
     recallOpen: () => { calls.recall++; return Promise.resolve(0); },
+    playing: accountId => { calls.playing.push(accountId); return Promise.resolve(); },
     ...over,
   };
   return { ships, calls };

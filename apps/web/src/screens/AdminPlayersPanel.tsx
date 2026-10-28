@@ -50,7 +50,7 @@ export function AdminPlayersPanel() {
           className="rounded-chip border border-v2-line-hi bg-v2-deep px-2 py-0.5 font-v2-mono text-body font-semibold tabular-nums text-v2-ink">{full(onlineTotal)}</span> : null}
         <Button size="sm" disabled={players.isFetching} onClick={() => { void players.refetch(); }}>{t('community.admin.ops.refresh')}</Button>
       </span>} />
-      <p className="text-micro text-v2-ink-3">{t('community.admin.ops.onlineWindow', { minutes: players.data?.pages[0]?.onlineWindowMinutes ?? 5 })}</p>
+      <p className="text-micro text-v2-ink-3">{t('community.admin.ops.onlineWindow', { minutes: players.data?.pages[0]?.onlineWindowMinutes ?? 15 })}</p>
       {players.isError ? <Unreachable what={t('community.admin.ops.online')} onRetry={() => { void players.refetch(); }} />
         : !players.data ? <Waiting>{t('community.admin.ops.loading')}</Waiting>
           : <>

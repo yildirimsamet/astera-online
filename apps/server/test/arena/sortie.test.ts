@@ -268,6 +268,20 @@ describe('a commander\'s sortie', () => {
   });
 });
 
+describe('a pilot in the air', () => {
+  // The game tab is closed while the Yarık flies, so the admin desk's online list
+  // only sees a pilot through the room's own heartbeat.
+  it('counts as playing on every ping, and a guest never does', async () => {
+    const { ships, calls } = fakeShips(); const { url } = await room(ships, true);
+    const alice = await connect(url, { token: 'token-alice' }); await alice.next(kind('welcome'));
+    const guest = await connect(url, { guestId: 'guest-presence-test-1' }); await guest.next(kind('welcome'));
+    expect(calls.playing).toEqual([]);
+    alice.socket.send(JSON.stringify({ kind: 'ping', t: 1 })); await alice.next(kind('pong'));
+    guest.socket.send(JSON.stringify({ kind: 'ping', t: 1 })); await guest.next(kind('pong'));
+    expect(calls.playing).toEqual(['acc-alice']);
+  });
+});
+
 describe('a full room', () => {
   // Codex review CR1: the seat used to be checked after the hangar had filled and launched the ship.
   it('refuses a commander before the hangar launches anything', async () => {
