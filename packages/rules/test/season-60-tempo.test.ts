@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENA_ECONOMY, dailyCap, repairQuote } from '../src/arena/index.js';
+import { ADMIRAL_WAIT, ARENA_ECONOMY, dailyCap, repairQuote } from '../src/arena/index.js';
 import {
   ANTI_STRATEGIC, BUILD, DEATH_STAR, ECONOMY_PROFILE, FAULT, GALAXY, HULLS,
   PIRATE, PROBE, PROSPECTOR, RADIATION_BOMB, RESEARCH_PROJECTS, SEASON, TRADE,
@@ -129,9 +129,10 @@ describe('60-day season transition', () => {
     expect(leakRates(rates, 12).alloy).toBeCloseTo(Math.min(148701 / 60, rates.alloy * 2), 9);
   });
 
-  it('preserves Arena post-flight cooldowns and paid cooldown shortening', () => {
-    expect(ARENA_ECONOMY.repairMinutes).toBe(60);
-    expect(ARENA_ECONOMY.serviceMinutes).toBe(10);
+  it('preserves the latest Arena and escort cooldowns and paid cooldown shortening', () => {
+    expect(ARENA_ECONOMY.repairMinutes).toBe(3);
+    expect(ARENA_ECONOMY.serviceMinutes).toBe(3);
+    expect(ADMIRAL_WAIT).toEqual({ repairMinutes: 60, serviceMinutes: 10 });
     expect(repairQuote(1)).toEqual({ minutes: 15, cost: { alloy: 175, crystal: 60, deuterium: 0 } });
     expect(repairQuote(20)).toEqual({ minutes: 30, cost: { alloy: 650, crystal: 250, deuterium: 0 } });
   });

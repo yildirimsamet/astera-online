@@ -30,7 +30,7 @@ Oranların tamamı **bugünkü çalışan değerlere ek olarak** uygulanacak; es
 - Süre artışı; bina, sensör/cihaz, uydu, araştırma, gemi, kazıcı, toplayıcı, yer savunması, gemi tamiri ve koloni arızası tamirini kapsar. Önleyici mühimmat imalatı da kapsamdadır.
 - Ölüm Yıldızı ve bütün radyasyon bombası seviyeleri, genel imalat süresi artışının istisnasıdır. Onlarla ilişkili araştırmalar normal araştırma kuralını izler; araştırma açılış günleri korunur.
 - Uçuş değişikliği galaksi haritasındaki araçlara uygulanır. Komutan Gemisi / gerçek zamanlı Savaş Alanı pilotaj parametreleri bu harita temposu değişikliğinin kapsamı değildir.
-- Arena'nın uçuş sonrası servis/tamir beklemeleri (10/60 dk) ve ücretli bekleme kısaltması (15–30 dk) üretim kuyruğu değildir; mevcut cooldown kuralları korunur. Günlük başkente aktarım tavanı ise aşağıdaki üretim-saati kuralını izler.
+- Arena'nın uçuş sonrası servis/tamir beklemeleri (28 Ekim güncel master: 3/3 dk), Amiral beklemeleri (10/60 dk) ve ücretli bekleme kısaltması (15–30 dk) üretim kuyruğu değildir; kendi güncel cooldown kuralları korunur. Günlük başkente aktarım tavanı ise aşağıdaki üretim-saati kuralını izler.
 - Asteroit hızları ve ömürleri, anıt hareketi ve üretimi, zamanlı galaksiler arası konvoyun 180 dakikalık hareketi korunur. Bu konvoya gönderilen oyuncu gemileri normal filo kuralıyla yavaşlar.
 - Yakıt tarifeleri, fiyatlar, gemi savaş istatistikleri, kargo kapasiteleri, araştırma/uydu bonus oranları, muharebe süresi, bekleme süreleri, sadakat ve kalkan yenilenme parametreleri yeniden dengelenmez.
 - Görev, kuyruk ve bonus sürelerine toplu bir dünya hızı çarpanı uygulanmaz. Yalnız yukarıdaki hesaplar değiştirilir.
