@@ -32,6 +32,16 @@ services:
     container_name: astera-postgres-stage
     mem_limit: ${STAGE_POSTGRES_MEMORY_LIMIT:-1g}
     mem_reservation: ${STAGE_POSTGRES_MEMORY_RESERVATION:-256m}
+    # Stage never archives and never holds the repository keys: a second cluster
+    # pushing to production's stanza poisons the backup.
+    command: [postgres]
+    environment:
+      PGBACKREST_REPO1_S3_BUCKET: ''
+      PGBACKREST_REPO1_S3_ENDPOINT: ''
+      PGBACKREST_REPO1_S3_REGION: ''
+      PGBACKREST_REPO1_S3_KEY: ''
+      PGBACKREST_REPO1_S3_KEY_SECRET: ''
+      PGBACKREST_REPO1_CIPHER_PASS: ''
     # These use the base's same variables, so Compose merges each port once.
     ports:
       - '127.0.0.1:${POSTGRES_PORT:?Set POSTGRES_PORT=5546 in the stage environment}:5432'

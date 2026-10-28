@@ -134,15 +134,54 @@ x-api: &api
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: astera-postgres:16-pgbackrest
+    build: deploy/postgres
     container_name: astera-postgres-prod
     restart: unless-stopped
     mem_limit: ${POSTGRES_MEMORY_LIMIT:-4g}
     mem_reservation: ${POSTGRES_MEMORY_RESERVATION:-1g}
+    # Continuous backup (docs/deployment.md, "Continuous backup"): every WAL segment
+    # reaches the encrypted off-site pgBackRest repository within a minute; cron takes
+    # the daily full backup. Changing this list restarts the database.
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=60
+      - -c
+      - archive_command=pgbackrest --stanza=astera archive-push %p
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - auto_explain.log_min_duration=1s
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-astera}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-astera}
+      PGBACKREST_STANZA: astera
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/data
+      PGBACKREST_PG1_USER: ${POSTGRES_USER:-astera}
+      PGBACKREST_PG1_SOCKET_PATH: /var/run/postgresql
+      PGBACKREST_REPO1_TYPE: s3
+      PGBACKREST_REPO1_PATH: /astera-prod
+      PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_REPO1_S3_BUCKET:-}
+      PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_REPO1_S3_ENDPOINT:-}
+      PGBACKREST_REPO1_S3_REGION: ${PGBACKREST_REPO1_S3_REGION:-}
+      PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_REPO1_S3_KEY:-}
+      PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_REPO1_S3_KEY_SECRET:-}
+      PGBACKREST_REPO1_CIPHER_TYPE: aes-256-cbc
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:-}
+      # Daily full backups: the oldest restorable moment is 14 days back, inside the
+      # 30-day personal-data ceiling.
+      PGBACKREST_REPO1_RETENTION_FULL: '14'
+      PGBACKREST_COMPRESS_TYPE: zst
+      # Each B2 request costs ~0.3 s from the VPS; one object per relation file made
+      # an empty cluster's full backup take ~10 minutes. Bundles pack small files.
+      PGBACKREST_REPO1_BUNDLE: 'y'
+      PGBACKREST_PROCESS_MAX: '2'
+      PGBACKREST_START_FAST: 'y'
+      PGBACKREST_LOG_LEVEL_FILE: 'off'
     volumes:
       - astera_pgdata:/var/lib/postgresql/data
     ports:

@@ -892,6 +892,33 @@ Nightly backup: `./deploy/backup.sh` (retains at most fourteen daily pairs). All
 17 3 * * * cd /home/yildirim/astera && ./deploy/backup.sh >> /home/yildirim/backups/astera-backup.log 2>&1
 ```
 
+### Continuous backup
+
+Production PostgreSQL archives every WAL segment to an encrypted pgBackRest repository in Backblaze B2 (`astera-online`, `eu-central-003`, path `/astera-prod`) within `archive_timeout=60` seconds, and cron takes a full backup daily. A lost VPS loses at most about a minute. Configuration is the `postgres` service in `docker-compose.prod.yml` plus the six `PGBACKREST_REPO1_*` values in `~/astera/.env`; the image is `deploy/postgres/Dockerfile`, pinned to the PostgreSQL build production ran before archiving. Stage overrides it and never archives.
+
+- **The cipher pass is the backup.** Keep a copy outside the VPS (the owner's password manager). Without it the repository is unreadable.
+- **Personal-data ceiling:** 14 daily fulls (`PGBACKREST_REPO1_RETENTION_FULL`) keep the oldest restorable moment 14 days back. The bucket lifecycle must be "Keep only the last version", or expired files linger as hidden versions past 30 days.
+- **Release trap:** any `compose up` that includes `postgres` (`deploy.sh` does) recreates the database from the checkout's compose file. A release branch without this service definition silently turns archiving off and restarts the database. Build every release on a commit that has it.
+- **Changing** the `command` list or the image restarts the database: a planned step with owner approval, never a side effect of a release.
+
+Cron (after the first `stanza-create`; 01:47 UTC is 04:47 Istanbul, the quietest hour measured over 22 days):
+
+```cron
+47 1 * * * docker exec -u postgres astera-postgres-prod pgbackrest --type=full backup --log-level-console=info >> /home/yildirim/backups/astera-pitr.log 2>&1
+```
+
+Health: `docker exec -u postgres astera-postgres-prod pgbackrest info` lists the backups and the WAL range; `select archived_count, failed_count, last_archived_time, last_failed_time from pg_stat_archiver` must show a `last_archived_time` under two minutes old. A failing archive does not lose data, but PostgreSQL keeps every unarchived segment in `pg_wal` (about 1.25 GB a day measured on 2026-10-28), so a stuck archive eventually fills the disk.
+
+Point-in-time restore, always into a scratch container first: create an empty mode-700 data volume owned by `postgres`, then
+
+```bash
+docker run --rm -u postgres --env-file <private env with the PGBACKREST_* values> \
+  -v <scratch volume>:/var/lib/postgresql/data --entrypoint pgbackrest astera-postgres:16-pgbackrest \
+  restore --type=time --target='2026-10-28 18:52:42+00' --target-action=promote
+```
+
+and start `postgres` on that volume with the same env (it fetches WAL through `archive-get`) and without `archive_mode=on`, so the copy never pushes into the production stanza. Moving a restored copy into production follows "Restoring a backup without reopening erased accounts" (§12).
+
 Grant the hand-checked @JoinAstera reward with package CLI `reward 'ExactCaseSensitiveName'`. It unlocks an account-level, cross-season idempotent grant for in-game claim, including between seasons. Use `api1`, not removed `astera-api-prod`; SSH `exec` uses `-T`.
 
 Capacity qualification runs only on isolated fixtures, never production. Existing benchmark profiles: normal 300 users/connections for 3600s; normal 600/600 for 3600s with 100 wave launches and reconnect at 1200s; quiet 600 users/750 connections for 600s. Use `deploy/capacity.sh` / `pnpm capacity:test`, the staging-only secret, dedicated `astera_capacity` DB on 5645, balanced API 3380, login/metrics replicas 3300/3301/3302 and worker metrics 3310. Preserve JSON reports. These historical profiles do not certify today's 1000-seat setting.
