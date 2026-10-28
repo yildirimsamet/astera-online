@@ -12,15 +12,17 @@ import type { Quaternion, Vec3 } from './types.js';
  * The B slot's last two tactics (Y4d, plan 14 §4). Illusion: a copy born inside the ship flies
  * the mirror of its pilot (right is left, up is down), looks and fires like the ship (blanks) and
  * breaks like a hologram. Radar sweep: every enemy in the arena marked for a few seconds, the landed behind
- * rock too, never the cloaked or a copy; the scanned are warned, from where the sweep came.
+ * rock too, never the cloaked or a copy; the scanned are warned, but never from where (owner
+ * 2026-10-27): the warning carries the scanned ship's own place, so a page that draws it rings itself.
  */
-export interface Scan { owner: number; ticks: number; x: number; y: number; z: number; targets: number[] }
+export interface Scan { owner: number; ticks: number; targets: number[] }
 export interface TacticWorld extends CombatWorld { nextId: number; scans: Scan[] }
 
 /** The level a scanned ship is warned at (`Pilot.threat`). */
 export const SCANNED = 4;
 const ships = (world: CombatWorld): Pilot[] => [world.pilot, ...world.drones];
 const ticks = (seconds: number): number => Math.round(seconds * T.tickRate);
+const warnScanned = (ship: Pilot): void => { warn(ship, SCANNED, ship.p.x, ship.p.y, ship.p.z); };
 
 /** The copy takes the ship's place, heading, speed and everything another pilot can see of it. */
 function castIllusion(world: TacticWorld, pilot: Pilot): void {
@@ -46,8 +48,8 @@ function castRadar(world: TacticWorld, pilot: Pilot): void {
   const duration = abilityStats(pilot.ship, 'radar', pilot.ranks.tactic).duration;
   const targets = ships(world).filter(ship => !sameSide(pilot, ship) && ship.decoyOf < 0 && alive(ship) && ship.cloak === 0);
   world.scans = world.scans.filter(scan => scan.owner !== pilot.id);
-  world.scans.push({ owner: pilot.id, ticks: ticks(duration), x: pilot.p.x, y: pilot.p.y, z: pilot.p.z, targets: targets.map(ship => ship.id) });
-  for (const target of targets) warn(target, SCANNED, pilot.p.x, pilot.p.y, pilot.p.z);
+  world.scans.push({ owner: pilot.id, ticks: ticks(duration), targets: targets.map(ship => ship.id) });
+  for (const target of targets) warnScanned(target);
   pilot.scan = ticks(duration);
 }
 
@@ -62,7 +64,7 @@ export function castTactic(world: TacticWorld, pilot: Pilot, input: ArenaIntent)
 export function stepScans(world: TacticWorld): void {
   world.scans = world.scans.filter(scan => --scan.ticks > 0);
   for (const scan of world.scans) {
-    for (const ship of ships(world)) if (scan.targets.includes(ship.id) && alive(ship) && ship.cloak === 0) warn(ship, SCANNED, scan.x, scan.y, scan.z);
+    for (const ship of ships(world)) if (scan.targets.includes(ship.id) && alive(ship) && ship.cloak === 0) warnScanned(ship);
   }
 }
 

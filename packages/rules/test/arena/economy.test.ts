@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_ECONOMY as E, ARENA_TUNING as T, CLASS_STATS, FIELD_SPAWNS, FULL_LOADOUT, LOADOUT, classChangeOpen, dailyCap, entryOpen, launchLoad, loadoutPlan, refillCost, repairQuote, settleHold, shipStats,
+  ADMIRAL_WAIT, ARENA_ECONOMY as E, ARENA_TUNING as T, CLASS_STATS, FIELD_SPAWNS, FULL_LOADOUT, LOADOUT, classChangeOpen, dailyCap, entryOpen, launchLoad, loadoutPlan, refillCost, repairQuote, settleHold, shipStats,
 } from '../../src/arena/index.js';
 
 /**
@@ -107,7 +107,8 @@ describe('class and entry windows', () => {
     expect(entryOpen(ends, new Date('2026-10-31T23:49:59Z'))).toBe(true);
     expect(entryOpen(ends, new Date('2026-10-31T23:50:00Z'))).toBe(false);
     expect(E.minCore).toBe(9);
-    expect([E.repairMinutes, E.serviceMinutes]).toEqual([60, 10]);
+    // Owner 2026-10-28 ("şuanlık 3 dk … biraz oynasınlar alışsınlar"): death and extraction wait alike, for now.
+    expect([E.repairMinutes, E.serviceMinutes]).toEqual([3, 3]);
   });
 });
 
@@ -120,7 +121,9 @@ describe('paid repair (plan 14 §7.4)', () => {
     ]);
     for (let level = 1; level <= 20; level++) {
       expect(repairQuote(level).minutes).toBeGreaterThan(0);
-      expect(repairQuote(level).minutes).toBeLessThan(E.repairMinutes);
+      // A Yarık repair is already shorter than any quote; payment shortens only an escort's lost battle.
+      expect(repairQuote(level).minutes).toBeGreaterThanOrEqual(E.repairMinutes);
+      expect(repairQuote(level).minutes).toBeLessThan(ADMIRAL_WAIT.repairMinutes);
     }
   });
 

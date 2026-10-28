@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ADMIRAL_XP, ARENA_ECONOMY, type ShipClass } from '@astera/rules/arena';
+import { ADMIRAL_WAIT, ADMIRAL_XP, type ShipClass } from '@astera/rules/arena';
 import { arenaCopy } from '../arena/copy.js';
 import { clockText } from '../arena/hangarDesk.js';
 import { SHIP_TONE } from '../arena/shipTone.js';
@@ -74,10 +74,10 @@ export function EscortRow({ escort, on, onChange, now, defence = false, monument
           <span className={`absolute top-0.5 size-3.5 rounded-full ${lit ? 'right-0.5' : 'left-0.5 bg-v2-ink-3'}`} style={lit ? { background: 'var(--ship)' } : undefined} />
         </span>
       </button>
-      {ready && <p className="px-1 text-micro leading-snug text-v2-ink-3">{t(defence ? 'launch.escortRuleDefence' : 'launch.escortRule', { minutes: ARENA_ECONOMY.repairMinutes })}</p>}
+      {ready && <p className="px-1 text-micro leading-snug text-v2-ink-3">{t(defence ? 'launch.escortRuleDefence' : 'launch.escortRule', { minutes: ADMIRAL_WAIT.repairMinutes })}</p>}
       {/* F23: what it earns, beside what it risks, and the service every return costs. */}
       {ready && <p data-escort-gain className="px-1 text-micro leading-snug text-v2-ink-2">
-        {monument && `${t('launch.escortMonument')} `}{t('launch.escortGain', { min: ADMIRAL_XP.min, max: ADMIRAL_XP.max, idle: ADMIRAL_XP.idle, service: ARENA_ECONOMY.serviceMinutes })}</p>}
+        {monument && `${t('launch.escortMonument')} `}{t('launch.escortGain', { min: ADMIRAL_XP.min, max: ADMIRAL_XP.max, idle: ADMIRAL_XP.idle, service: ADMIRAL_WAIT.serviceMinutes })}</p>}
     </div>
   );
 }

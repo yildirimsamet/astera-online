@@ -1,4 +1,4 @@
-import { ARENA_TUNING as T, RING_DISTANCE, type ShipClass } from '@astera/rules/arena';
+import { ARENA_ECONOMY as E, ARENA_TUNING as T, RING_DISTANCE, type ShipClass } from '@astera/rules/arena';
 import i18n from '../i18n/index.js';
 
 // Prototype copy stays local until the owner accepts the gameplay; localisation follows (KG-K14).
@@ -74,8 +74,8 @@ const tr = {
   rules: ['Çıkıştan geçen kargo başkentine aynen gider.',
     'Her kaynaktan günde en çok başkentinin 4 saatlik üretimi gider. Fazlası gitmez.',
     'Yakıt ve mermi başkentin döteryumuyla dolar. Artan gemide kalır.',
-    'Gemin yok edilirse kargo enkaza düşer. Tamir 60 dk sürer.',
-    'Her uçuştan sonra gemin 10 dk bakımda kalır.',
+    `Gemin yok edilirse kargo enkaza düşer. Tamir ${String(E.repairMinutes)} dk sürer.`,
+    `Her uçuştan sonra gemin ${String(E.serviceMinutes)} dk bakımda kalır.`,
     'Sınıfın sezon sonuna dek sabit. İlk 24 saatte bir kez ücretsiz değiştirebilirsin.',
     'XP: çıkışa getirdiğin her 10 kaynak 1, düşürdüğün pilot 40, asist 15, her uçuş 10. Ölürsen %40\'ı kalır. Botlar XP vermez.',
     'Çubuk dolunca alaşım ve kristalle yükseltirsin. Dolu çubuk XP almaz; seviye Komuta Çekirdeği\'ni geçemez.',
@@ -259,8 +259,8 @@ const en: typeof tr = {
   rules: ['Cargo you fly through an exit lands in your capital as it is.',
     'Each day, each resource lands up to 4 hours of your capital\'s production. The rest does not land.',
     'Fuel and ammunition fill from your capital\'s deuterium. What is left stays aboard.',
-    'If your ship is destroyed, its cargo falls with the wreck. Repair takes 60 min.',
-    'After every flight your ship spends 10 min in maintenance.',
+    `If your ship is destroyed, its cargo falls with the wreck. Repair takes ${String(E.repairMinutes)} min.`,
+    `After every flight your ship spends ${String(E.serviceMinutes)} min in maintenance.`,
     'Your class is set until the season ends. You can change it once for free in the first 24 hours.',
     'XP: 1 for every 10 resources you fly out, 40 for each pilot you bring down, 15 for an assist, 10 for each flight. If you die, 40% is kept. Bots give no XP.',
     'When the bar is full, upgrade with alloy and crystal. A full bar takes no XP; the level cannot pass your Command Core.',

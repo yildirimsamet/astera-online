@@ -12,7 +12,7 @@ import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
 import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey } from '../lib/battleOutcome.js';
 import { MonumentBattleRules } from './MonumentBattleRules.js';
-import { ARENA_ECONOMY } from '@astera/rules/arena';
+import { ADMIRAL_WAIT } from '@astera/rules/arena';
 import { arenaCopy } from '../arena/copy.js';
 
 export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
@@ -49,7 +49,7 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
         return <p key={`admiral:${String(index)}`} data-effect="admiral"
           className={!report.attacking ? 'text-v2-ink-2' : won ? 'text-v2-self' : 'text-v2-warn'}>
           {!report.attacking ? t('reports.effects.admiralRaider', values)
-            : won ? t('reports.effects.admiralHeld', values) : t('reports.effects.admiralRepair', { ...values, minutes: ARENA_ECONOMY.repairMinutes })}
+            : won ? t('reports.effects.admiralHeld', values) : t('reports.effects.admiralRepair', { ...values, minutes: ADMIRAL_WAIT.repairMinutes })}
         </p>;
       })}
       <div className="grid gap-1.5">

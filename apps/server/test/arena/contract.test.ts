@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
+import { ADMIRAL_WAIT } from '@astera/rules/arena';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildApp, type BuiltApp } from '../../src/app.js';
 import { TokenService } from '../../src/auth/tokens.js';
@@ -84,6 +85,8 @@ describe('Yarık hangar contract', () => {
     expect(hangarSchema.parse(rank.json()).ship?.abilities).toEqual({ smoke: 1 });
     const flight = await launchSortie(f.db, f.clock, account);
     await endSortie(f.db, f.clock, account, flight.sortieId, { outcome: 'dead', fuel: 0, ammo: 0, hold: [0, 0, 0], pilotKills: 0, assists: 0 });
+    // Owner 2026-10-28: a Yarık repair is shorter than any quote; payment shortens an escort-length one.
+    await f.db.update(arenaShips).set({ readyAt: new Date(f.clock.now().getTime() + ADMIRAL_WAIT.repairMinutes * 60_000) }).where(eq(arenaShips.playerId, f.playerIds[0]!));
     const repair = await built.app.inject({ method: 'POST', url: '/arena/repair', headers, payload: {} });
     expect(repair.statusCode).toBe(200);
     const view = hangarSchema.parse(repair.json());

@@ -12,7 +12,7 @@ import { createFrameDriver } from './driver.js';
 import type { ArenaControls } from './input.js';
 import type { ArenaNetwork } from './network.js';
 import { altitudeShare, selfTransform } from './map.js';
-import { MARK_RANGE, edgePoint, enemyMarked, friendTarget, sighting, type EdgeMark, type Sighting } from './marks.js';
+import { MARK_RANGE, edgePoint, enemyMarked, friendTarget, sighting, threatPointed, type EdgeMark, type Sighting } from './marks.js';
 import { ChaseCamera } from './render/camera.js';
 import { createDust, RUSH_DUST } from './render/dust.js';
 import { Effects } from './render/effects.js';
@@ -375,8 +375,9 @@ export function createArenaClient(options: ClientOptions) {
     for (let i = slot; i < hud.enemies.length; i++) { const node = hud.enemies[i]; if (node) node.style.display = 'none'; }
     for (let i = threat; i < hud.threats.length; i++) { const node = hud.threats[i]; if (node) node.style.display = 'none'; }
     // A lock or a missile on the pilot points at its source: on it in view, on the edge towards it when not.
+    // A radar sweep is only told in the note: where it came from is never drawn.
     if (hud.incoming) {
-      const level = flying ? pilot.threat : 0;
+      const level = flying && threatPointed(pilot.threat) ? pilot.threat : 0;
       if (level > 0) {
         const p = project(pilot.threatX, pilot.threatY, pilot.threatZ);
         const inside = !p.behind && p.x > 24 && p.x < width - 24 && p.y > 60 && p.y < height - 120;

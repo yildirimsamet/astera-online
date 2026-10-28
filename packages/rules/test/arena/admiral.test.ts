@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MULTI_WORLD } from '../../src/constants.js';
-import { admiralBonuses, admiralDefeated, admiralOpen, admiralOutcome, admiralApplies, admiralXp } from '../../src/arena/admiral.js';
+import { ADMIRAL_WAIT, admiralBonuses, admiralDefeated, admiralOpen, admiralOutcome, admiralApplies, admiralXp } from '../../src/arena/admiral.js';
 
 describe('the commander as a fleet admiral', () => {
   it('gates the new bonuses on the new season and bounds class/level effects to the approved ceilings', () => {
@@ -33,6 +33,8 @@ describe('the commander as a fleet admiral', () => {
     expect(admiralXp(true, Number.NaN)).toBe(10);
   });
   it('never dies with its fleet: a lost battle or a fleet gone to the last ship sends it to repair, otherwise service', () => {
+    // Owner 2026-10-28: the Yarık's waits went to 3 min for now; an escort keeps its own 60 / 10.
+    expect(ADMIRAL_WAIT).toEqual({ repairMinutes: 60, serviceMinutes: 10 });
     expect(admiralOutcome({ fought: false, lost: false, landedShips: 3, lostValue: 0 })).toEqual({ xp: 5, readyReason: 'service', minutes: 10 });
     expect(admiralOutcome({ fought: true, lost: false, landedShips: 8, lostValue: 8_000 })).toEqual({ xp: 40, readyReason: 'service', minutes: 10 });
     expect(admiralOutcome({ fought: true, lost: true, landedShips: 4, lostValue: 8_000 })).toEqual({ xp: 40, readyReason: 'repair', minutes: 60 });

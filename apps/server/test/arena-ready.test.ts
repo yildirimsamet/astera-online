@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { ADMIRAL_WAIT } from '@astera/rules/arena';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { arenaShips, notifications, scheduledEvents, seasons } from '../src/db/schema.js';
 import { chooseShip, endSortie, launchSortie, repairShip } from '../src/services/arenaShips.js';
@@ -22,7 +23,12 @@ describe('the commander ship is ready, told once', () => {
     expect(await notes()).toHaveLength(1); expect((await notes())[0]?.payload).toMatchObject({ ship: 'kilavuz', reason: 'service' });
   });
   it('notifies the shortened paid repair and ignores the obsolete old deadline', async () => {
-    const { event } = await ended('dead'); if (!event) throw new Error('no repair event');
+    const { event: yarik } = await ended('dead'); if (!yarik) throw new Error('no repair event');
+    // Owner 2026-10-28: only a repair longer than any quote (an escort's lost battle) is worth paying for.
+    const long = new Date(f.clock.now().getTime() + ADMIRAL_WAIT.repairMinutes * 60_000);
+    await f.db.update(arenaShips).set({ readyAt: long });
+    await f.db.update(scheduledEvents).set({ resolveAt: long }).where(eq(scheduledEvents.id, yarik.id));
+    const event = { ...yarik, resolveAt: long };
     await repairShip(f.db, f.clock, f.accountIds[0]!);
     const events = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.kind, 'arena_ship_ready'));
     const early = events.find(e => e.resolveAt < event.resolveAt); if (!early) throw new Error('no shortened event');

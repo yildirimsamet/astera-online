@@ -9,7 +9,7 @@ import { layoutWith, sphere } from './helpers.js';
  * Y4d (plan 14 §4): the last two B-slot tactics. Illusion: a copy born inside the ship flies the
  * mirror of its pilot's stick for a few seconds, looks and fires like the ship, and breaks like a
  * hologram. Radar: every enemy in the arena is marked for a few seconds, the landed behind rock
- * too, never the cloaked or a copy; the scanned are told, and told from where.
+ * too, never the cloaked or a copy; the scanned are told, but never from where (owner 2026-10-27).
  */
 const intent = (patch: Partial<ArenaIntent> = {}): ArenaIntent => ({ ...createInput(), ...patch });
 const ticks = (seconds: number): number => Math.round(seconds * T.tickRate);
@@ -268,15 +268,22 @@ describe('radar sweep', () => {
     expect(world.pilot.scan).toBe(0);
   });
 
-  it('tells the scanned it was scanned, and from where, for as long as it lasts', () => {
+  it('tells the scanned it was scanned for as long as it lasts, never from where (owner 2026-10-27)', () => {
     const world = arena('radar');
     const foe = enemy(world, 'muhafiz', 300, 0);
-    world.pilot.p.z = 10;
+    Object.assign(world.pilot.p, { x: 40, y: 25, z: 10 });
+    const ownPlace = (ship: Pilot): number[] => [ship.p.x, ship.p.y, ship.p.z];
     run(world, 1, intent({ radar: true }));
-    expect([foe.threat, foe.threatX, foe.threatZ]).toEqual([4, 0, 10]);
+    // The warning carries the scanned ship's own place: nothing of the scanner's travels, not even on the wire.
+    expect(foe.threat).toBe(4);
+    expect([foe.threatX, foe.threatY, foe.threatZ]).toEqual(ownPlace(foe));
+    const wire = unpackPilot(packPilot(foe));
+    expect([wire.threat, wire.threatX, wire.threatY, wire.threatZ]).toEqual([4, ...ownPlace(foe)]);
     expect(world.pilot.threat).toBe(0);
+    foe.p.x = 520; foe.p.z = -60;
     run(world, ticks(T.radarDuration * 1.1) - 1);
     expect(foe.threat).toBe(4);
+    expect([foe.threatX, foe.threatY, foe.threatZ]).toEqual(ownPlace(foe));
     run(world, 1);
     expect(foe.threat).toBe(0);
   });

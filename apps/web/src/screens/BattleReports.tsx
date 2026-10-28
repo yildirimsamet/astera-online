@@ -23,7 +23,7 @@ import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
-import { ARENA_ECONOMY } from '@astera/rules/arena';
+import { ADMIRAL_WAIT } from '@astera/rules/arena';
 import { arenaCopy } from '../arena/copy.js';
 
 /**
@@ -1272,7 +1272,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
       tone: admiral.side !== 'attack' || !report.attacking ? 'text-v2-ink-2' : lost ? 'text-v2-warn' : 'text-v2-self',
       text: admiral.side === 'defence' ? t('reports.effects.admiralDefence', values)
         : !report.attacking ? t('reports.effects.admiralRaider', values)
-          : lost ? t('reports.effects.admiralRepair', { ...values, minutes: ARENA_ECONOMY.repairMinutes })
+          : lost ? t('reports.effects.admiralRepair', { ...values, minutes: ADMIRAL_WAIT.repairMinutes })
             : t('reports.effects.admiralYours', values),
     });
   }

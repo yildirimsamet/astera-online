@@ -1,7 +1,6 @@
 import type { CombatSide } from '../combat.js';
 import type { Grade } from '../types.js';
 import { levelOf } from './progression.js';
-import { ARENA_ECONOMY as E } from './economy.js';
 import type { ShipClass } from './classes.js';
 
 /** A season dealt at this ruleset carries escorts from its start. */
@@ -46,6 +45,9 @@ export function admiralXp(fought: boolean, lostValue: number): number {
 export const admiralDefeated = (side: 'attack' | 'defence', grade: Grade): boolean =>
   side === 'attack' ? grade === 'REPELLED' : grade === 'DECISIVE';
 
+/** An escort's waits (owner 2026-10-28): the Yarık's went to 3 min for now, these stay. */
+export const ADMIRAL_WAIT = { repairMinutes: 60, serviceMinutes: 10 } as const;
+
 /**
  * The admiral never fights and never dies (owner 2026-10-25): a lost battle, or a fleet lost to the
  * last ship, sends it home to repair; any other return is the bay's service.
@@ -55,7 +57,7 @@ export function admiralOutcome(input: { fought: boolean; lost: boolean; landedSh
 } {
   const repair = input.lost || input.landedShips <= 0;
   return { xp: admiralXp(input.fought, input.lostValue),
-    readyReason: repair ? 'repair' : 'service', minutes: repair ? E.repairMinutes : E.serviceMinutes };
+    readyReason: repair ? 'repair' : 'service', minutes: repair ? ADMIRAL_WAIT.repairMinutes : ADMIRAL_WAIT.serviceMinutes };
 }
 
 /** Preserve other combat modifiers and the research snapshot; only this fleet receives its escort. */

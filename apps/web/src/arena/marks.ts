@@ -2,7 +2,7 @@
  * Enemy brackets, edge arrows and the lead mark reach this far, no further (owner 2026-10-21):
  * a ship beyond it is the pilot's own to spot.
  */
-import { alive, sameSide, type Pilot } from '@astera/rules/arena';
+import { SCANNED, alive, sameSide, type Pilot } from '@astera/rules/arena';
 
 export const MARK_RANGE = 700;
 /** Enemy brackets on screen at once, nearest first: the room may send fifty ships, the HUD marks a dozen. */
@@ -14,6 +14,9 @@ export const ENEMY_MARKS = 12;
  */
 export const enemyMarked = (drone: { landed: number; mining: boolean }, distance: number, scanned = false): boolean =>
   scanned || (distance <= MARK_RANGE && (!drone.landed || drone.mining || distance <= 320));
+
+/** Is the warning on the pilot pointed at on screen? A lock or a missile is; a radar sweep is only told (owner 2026-10-27). */
+export const threatPointed = (threat: number): boolean => threat > 0 && threat !== SCANNED;
 
 /** Seconds a ship that went behind rock keeps its marks at the point it was last seen (owner 2026-10-22). */
 export const LAST_SEEN = 2;

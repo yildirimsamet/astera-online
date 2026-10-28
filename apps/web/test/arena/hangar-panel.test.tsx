@@ -460,7 +460,8 @@ describe('the ship\'s desk', () => {
     if (!toggle) throw new Error('no rules button');
     fireEvent.click(toggle);
     const rules = view.querySelector('ul')?.textContent ?? '';
-    for (const fact of ['60', '10', '4', '24', '500 m']) expect(rules).toContain(fact);
+    // Owner 2026-10-28: repair and maintenance are 3 min for now.
+    for (const fact of ['Tamir 3 dk', '3 dk bakımda', '4', '24', '500 m']) expect(rules).toContain(fact);
   });
 
   it('compares the classes at the ship\'s own level in one table, the best of each row marked', () => {
