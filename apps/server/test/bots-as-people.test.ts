@@ -67,6 +67,9 @@ describe('a bot’s first day', () => {
   it('is waited out: no raid leaves while the bot’s own shield stands', async () => {
     const [bot, target] = await seats();
     f.clock.advance(BOTS.ceasefireMinutes + 1);
+    // Past the galaxy's opening ceasefire, but seated late: its own day still stands.
+    await f.db.update(players).set({ newcomerShieldUntil: new Date(f.clock.now().getTime() + 6 * 3_600_000) })
+      .where(eq(players.id, bot!.playerId));
     // A fresh, open reading of a world it could otherwise hit.
     const [scout] = await f.db.insert(missions).values({
       fuelPaid: 0,

@@ -199,25 +199,21 @@ export const BOTS = {
 
   /**
    * THE OPENING CEASEFIRE. D170, owner instruction: *"Botlar server yeni
-   * başladığında en az 4 saat savaşmasın."* Raised to TWELVE hours on 2026-09-13,
-   * owner instruction: *"Bu 4 saat'i 12 saat yap."*
+   * başladığında en az 4 saat savaşmasın."* Raised to TWELVE hours on 2026-09-13
+   * (*"Bu 4 saat'i 12 saat yap."*), then to a full DAY covering pirates as well on
+   * 2026-10-28: *"Sezon başlarında 1 gün hiç bir saldırı yapmasınlar: ne korsanlara
+   * ne başka oyunculara."*
    *
-   * A galaxy's first hours are when every commander is weakest and least defended,
-   * and eight of them are the server's own — so a bot raiding at minute thirty is
-   * not competition, it is a world that arrived already hostile. Twelve hours is
-   * long enough for a person to stand a Vault, a gun and a fleet before anything
-   * they own is at stake.
-   *
-   * THE PvP LANE ONLY. A pirate is not a player: raiding one costs the bot a bay
-   * and a fuel bill and takes nothing from anybody, so it stays open from the
-   * first minute along with probing, mining and salvage. The galaxy is busy from
-   * the start; it is simply not hostile.
+   * A galaxy's first day is when every commander is weakest and least defended,
+   * and a bot raid report in hour one reads as a world that arrived already
+   * hostile. Probing, mining and salvage stay open from the first minute: the
+   * galaxy is busy from the start; it is simply not hostile.
    *
    * IT IS THE BOT'S OWN MANNERS AND CHANGES NO RULE. `withinTierBand`, the bash
    * limit, the newcomer grace and the fog all still bind them exactly as they bind
    * a person, and nothing here alters what a player may do to another player.
    */
-  ceasefireMinutes: 12 * 60,
+  ceasefireMinutes: 24 * 60,
 
   /** How long a commander sits between two things they do. */
   turnGapMinutes: { min: 7, max: 23 },
