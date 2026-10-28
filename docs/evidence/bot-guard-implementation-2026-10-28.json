@@ -1,0 +1,146 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "460e85081deff716c841eedc90ee20c39ddbe3c2",
+  "scope": "Local implementation and ordinary regressions; no production connection, data write or deployment in this implementation turn.",
+  "sourceSha256": {
+    "apps/server/src/services/bots/brain.ts": "a0256790163a8a6ab99616483cfcbd49c052ba8f8ff3be0be2e6bf45c1abefdb",
+    "apps/server/src/services/bots/personas.ts": "15091820450d4473acdb45eb3660797c4bc375b5c208f8a91318f3a0c2bd589e",
+    "apps/server/src/services/bots/sweep.ts": "3d6b1cc05d4ec3d5770a6fef6e1dc082e86bf05177e46cd1121ac748b99f0559",
+    "apps/server/src/services/bots/guard.ts": "ceac5b4287b986d2863c04e3c124d45371bcf7e0887a4c04714d5741bdffe719",
+    "apps/server/src/services/bots/guardPolicy.ts": "a34217c57dbca24362b7108d38a3eb112738be8fe77e0f9614aacf8f15c3d992",
+    "apps/server/src/services/bots/guardRoute.ts": "4a8e440a19bc56eafa156f333c991b26c3d6232eec362527842d759adfa0941e",
+    "apps/server/test/bots-guard.test.ts": "b8156699139cc5d2f4ec60af6680d4331c1f51910a4d594cde05820849d65e47",
+    "apps/server/test/bots-guard-policy.test.ts": "87f641c796794d6d3ad8c4d18a2f222ef99b1bafd5c3832257d1ea99d7ffc909",
+    "apps/server/test/bots-turn.test.ts": "1664a0a5697300f2903b56a97650b63fd5adee1b3090d8932a73b67cd1bbdbfb",
+    "apps/server/test/bots-population-worker.test.ts": "f2b869c3bbdcc53cd754150278d4ed9f8aae192a2aaa002b1e411dbd51ab480c",
+    "tools/bot-guard-route.test.mjs": "4ae32f3c6fa2a86d46a38216778e4c219d9ea9777918ed164aa707d049060c91"
+  },
+  "serverRegression": {
+    "files": 19,
+    "uniqueScenarios": 285,
+    "initialResult": "284 pass, 1 expected new cargo-hull regression fail; that logic was fixed.",
+    "affectedRerun": {
+      "files": 2,
+      "passed": 15,
+      "command": "nice -n 10 env NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @astera/server exec vitest run test/bots-guard.test.ts test/bots-guard-policy.test.ts --maxWorkers=1 --minWorkers=1 --no-file-parallelism",
+      "logSha256": "ce73aea10dfd6a5d436a600f0a08607ad63703a70486b385a239478cb840cdf7"
+    },
+    "logSha256": "503e179b60635736c349afc269aeed26a3b9d4359b2bb76f33f82fef4ca2e78f"
+  },
+  "routeRegression": {
+    "passed": 6,
+    "skippedLongMeasurements": 2,
+    "command": "nice -n 10 env ASTERA_INCLUDE_LONG_TESTS=0 NODE_OPTIONS=--max-old-space-size=4096 pnpm exec vitest run tools/bot-guard-route.test.mjs --maxWorkers=1 --minWorkers=1 --no-file-parallelism"
+  },
+  "typecheck": {
+    "passed": true,
+    "command": "nice -n 10 env NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @astera/server typecheck"
+  },
+  "lint": {
+    "passed": true,
+    "scope": "Server, root config and modified route test tool; no full-web lint claim.",
+    "command": "nice -n 10 env NODE_OPTIONS=--max-old-space-size=4096 pnpm lint --ignore-pattern 'apps/web/**' --ignore-pattern 'packages/**' --ignore-pattern 'tools/*' --ignore-pattern '!tools/bot-guard-route.test.mjs'"
+  },
+  "diffCheck": true,
+  "newMigrations": 0,
+  "longSnowballOrSeasonSimulationRerun": false,
+  "review": {
+    "date": "2026-10-28",
+    "scope": "Supersedes the initial implementation snapshot above. Local code review and ordinary regression fixes; no production connection, writes or deployment.",
+    "confirmedFindingsFixed": 7,
+    "newRegressionCases": 10,
+    "newFailingCasesObservedBeforeFix": 8,
+    "sourceSha256": {
+      "apps/server/src/services/bots/brain.ts": "4b3d3131f2c218cd53ae9613f3a69399b38b61ed20d1fae06e88dc859d5a378f",
+      "apps/server/src/services/bots/personas.ts": "15091820450d4473acdb45eb3660797c4bc375b5c208f8a91318f3a0c2bd589e",
+      "apps/server/src/services/bots/sweep.ts": "3d6b1cc05d4ec3d5770a6fef6e1dc082e86bf05177e46cd1121ac748b99f0559",
+      "apps/server/src/services/bots/guard.ts": "ceac5b4287b986d2863c04e3c124d45371bcf7e0887a4c04714d5741bdffe719",
+      "apps/server/src/services/bots/guardPolicy.ts": "a34217c57dbca24362b7108d38a3eb112738be8fe77e0f9614aacf8f15c3d992",
+      "apps/server/src/services/bots/guardRoute.ts": "fd43630cc69149bf4da712a01b450e4915f6857147e4d7bd510001a91a344dbf",
+      "apps/server/test/bots-guard.test.ts": "43174946ae1cfc24fa5d631fc851d1150f5338ed11c87d5cc962118fa6da325f",
+      "apps/server/test/bots-guard-policy.test.ts": "87f641c796794d6d3ad8c4d18a2f222ef99b1bafd5c3832257d1ea99d7ffc909",
+      "apps/server/test/bots-turn.test.ts": "5859a78e2ddea993476a21d3c1da21aac983fc8bbe0a9cc3cbebceb6e7b16fea",
+      "apps/server/test/bots-population-worker.test.ts": "f2b869c3bbdcc53cd754150278d4ed9f8aae192a2aaa002b1e411dbd51ab480c",
+      "tools/bot-guard-route.test.mjs": "4ae32f3c6fa2a86d46a38216778e4c219d9ea9777918ed164aa707d049060c91"
+    },
+    "isolatedDatabase": "astera_guard_review_test",
+    "broadRegression": {
+      "files": 20,
+      "passed": 306,
+      "revision": "Before final ordinary-bot ground capacity fix; includes 124 unchanged shared-service scenarios."
+    },
+    "finalBotRegression": {
+      "files": 15,
+      "uniquePassed": 184,
+      "initialRun": "182 pass / 2 legacy mobile fixture failures due to newly functioning ground orders. Assertions preserved; fixtures explicitly pre-staffed ground defence. Duplicate-batch test also owns both utility targets so a warship must be ordered.",
+      "affectedFileRerunPassed": 41
+    },
+    "serverUniqueScenariosValidated": 308,
+    "routeRegression": {
+      "passed": 6,
+      "skippedLongMeasurements": 2,
+      "command": "nice -n 10 env ASTERA_INCLUDE_LONG_TESTS=0 NODE_OPTIONS=--max-old-space-size=4096 pnpm exec vitest run tools/bot-guard-route.test.mjs --maxWorkers=1 --minWorkers=1 --no-file-parallelism"
+    },
+    "totalUniqueOrdinaryScenariosValidated": 314,
+    "runner": "nice -n 10, NODE_OPTIONS=--max-old-space-size=4096, --maxWorkers=1 --minWorkers=1 --no-file-parallelism; sequential checks. Persistence commands set DATABASE_URL to the isolated local _test DB.",
+    "typecheck": {
+      "passed": true,
+      "command": "nice -n 10 env NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @astera/server typecheck"
+    },
+    "lint": {
+      "passed": true,
+      "scope": "Server, root config and modified route test tool; no full-web lint claim.",
+      "command": "nice -n 10 env NODE_OPTIONS=--max-old-space-size=4096 pnpm lint --ignore-pattern 'apps/web/**' --ignore-pattern 'packages/**' --ignore-pattern 'tools/*' --ignore-pattern '!tools/bot-guard-route.test.mjs'"
+    },
+    "diffCheck": true,
+    "logs": {
+      "capacityRed": {
+        "path": "/tmp/astera-guard-review-red.log",
+        "sha256": "7feb4710476e3d1ec67d40f62e5d1d64d1a3d97692a75904177260352aec7b78"
+      },
+      "probeRed": {
+        "path": "/tmp/astera-guard-review-probe-red.log",
+        "sha256": "c08234fd7169a51e42ef6a1be806ff10d21f670662c28a82e6805b4f89af5265"
+      },
+      "economicRecoveryRed": {
+        "path": "/tmp/astera-guard-review-recovery-red.log",
+        "sha256": "801b51c24d6303f1d552db861f7c5aaf439b4e111e8c5966028d0f3c6177b8c8"
+      },
+      "groundRed": {
+        "path": "/tmp/astera-guard-review-ground-red.log",
+        "sha256": "b30e2ed7cab36be0a6a7bb3997a8c7c3397d3f399d4a53f878f30c41475da5fb"
+      },
+      "broadIsolatedGreen": {
+        "path": "/tmp/astera-guard-review-isolated-regressions.log",
+        "sha256": "c3a03af6aeb747e766f097ab10af17851918077c5b0c745d4ac00458f325808a"
+      },
+      "finalBotSweepWithTwoFixtureFailures": {
+        "path": "/tmp/astera-guard-review-final-bots.log",
+        "sha256": "25362e114787a245e3476062bd53f416dc8402ba9c4105bb6acae8670fc1300c"
+      },
+      "affectedFileGreenAfterFixtureCorrection": {
+        "path": "/tmp/astera-guard-review-turn-final.log",
+        "sha256": "d1f8649ca657e004da795982e61318f06d39d0e844513493b830c3f7e91ac9ac"
+      },
+      "routeGreen": {
+        "path": "/tmp/astera-guard-review-route.log",
+        "sha256": "202d04c40b9d1e63aaaac2e98f2df23f30a8fcad64ca8712d9c8e006ab96a535"
+      },
+      "typecheckGreen": {
+        "path": "/tmp/astera-guard-review-typecheck.log",
+        "sha256": "78b7c0dffafe2ab036c9aec8d9c4c5cc4d6f17b285f9f340bf27cd9de53d6c3e"
+      },
+      "lintGreen": {
+        "path": "/tmp/astera-guard-review-lint.log",
+        "sha256": "ea09461d5a4aa79f728e599092fc2582c4972e226ed5deb3c37109b990d34117"
+      }
+    },
+    "newMigrations": 0,
+    "longSimulationsRerun": false,
+    "productionAccess": false,
+    "remainingValidationLimits": [
+      "No live PvP effectiveness or human bot-perception measurement.",
+      "Final 60-day tempo package is not changed or validated by this review."
+    ]
+  }
+}

@@ -253,6 +253,8 @@ describe('population driven bot worker', () => {
 
   it('applies one gradual reduction when two sweeps overlap in a five-minute bucket', async () => {
     for (let i = 0; i < 5; i++) await addBot(f.db, `ScaleDown${String(i)}`, f.clock);
+    // This exercises ordinary population-driven sessions; guards have their own session budget.
+    await f.db.update(botProfiles).set({ persona: 'BALANCED' });
     const evening = new Date('2026-01-01T17:00:00.000Z');
     f.clock.set(evening);
     expect(await ensureBotSeats(f.db, f.clock, silent, 100)).toBe(4);

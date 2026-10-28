@@ -9,10 +9,11 @@ import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
 import {
   BOT_ACTIVITY_BUCKET_MS, BOT_SEAT_BATCH, BOT_SEAT_INTERVAL_MS, botAwakeTarget, botQuietAt, botSeatTarget,
-  planBotSessions, type BotSessionCandidate,
+  type BotSessionCandidate,
 } from './population.js';
 import { isPerson, peopleIn } from '../people.js';
 import { runBotTurn, type BotSeat } from './brain.js';
+import { guardPlayerIds, guardWindow, planRosterSessions } from './guardPolicy.js';
 
 /**
  * THE ONE THING THAT DRIVES THEM. D159.
@@ -276,7 +277,8 @@ async function reconcileSessions(db: Db, now: Date): Promise<void> {
         startedAt: row.startedAt,
         untilAt: row.untilAt,
       }));
-      const plan = planBotSessions(candidates, botAwakeTarget(active?.n ?? 0, rows.length), now);
+      const guards = await guardPlayerIds(tx, season.seasonId);
+      const plan = planRosterSessions(candidates, botAwakeTarget(active?.n ?? 0, rows.length), now, guards);
       if (plan.stop.length > 0) {
         await tx.update(botProfiles).set({ sessionUntilAt: now })
           .where(and(inArray(botProfiles.accountId, plan.stop), isNull(botProfiles.retiredAt)));
@@ -470,7 +472,9 @@ export async function botStatus(
       activePeople,
       targetSeats: BOTS.excludedShardCodes.includes(season.code) ? 0 : botSeatTarget(people, operatorCap),
       seated,
-      targetAwake: botQuietAt(now) ? 0 : botAwakeTarget(activePeople, seated),
+      targetAwake: botQuietAt(now) ? 0 : Math.max(botAwakeTarget(activePeople, seated),
+        [...await guardPlayerIds(db, season.seasonId)].filter(id => guardWindow(id, now) !== null
+          && bots.some(bot => bot.playerId === id)).length),
       awake: awake.filter((bot) => bot.seasonId === season.seasonId).length,
     };
   }));

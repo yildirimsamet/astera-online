@@ -114,6 +114,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },
       { project: 'STARSHIP_ENGINEERING', level: 1 },
       { project: 'SHIP_POWER', level: 2 },
+      { project: 'ISOTOPE_SPECTROMETRY', level: 1 },
       { project: 'DENSE_FUEL_CELLS', level: 1 },
       { project: 'SHIP_PROPULSION', level: 2 },
     ],
@@ -241,9 +242,10 @@ export const BOTS = {
   /**
    * WHERE THEY STOP. Owner decision: a middle ceiling, and no season rewards.
    *
-   * Rewards need no code — every reward in this game is CLAIMED and none of these
-   * commanders ever opens the screen that claims one. The ceiling is what keeps
-   * them off the podium, and it is the whole of "exempt": eight tireless
+   * Ordinary commanders keep this ceiling; the two guard candidates use their
+   * paid development route instead. Guards claim earned progression rewards;
+   * season ranking rewards remain outside every bot's autonomous actions.
+   * The ordinary ceiling keeps those commanders off the podium: eight tireless
    * commanders with no ceiling would own the top of a ladder that exists for the
    * people playing.
    *
@@ -310,9 +312,10 @@ export const BOTS = {
    */
   wallMargin: 1.25,
   /**
-   * HOURS OF ALLOY PRODUCTION A BOT NEVER SPENDS ON BUILDINGS OR INSTRUMENTS. Owner
+   * HOURS OF ALLOY PRODUCTION AN ORDINARY BOT NEVER SPENDS ON BUILDINGS OR INSTRUMENTS. Owner
    * decision, 2026-09-19: the roster is the outlet that takes raids off people, and
-   * a store scraped to zero every turn is an outlet nobody probes twice. Guns and
+   * a store scraped to zero every turn is an outlet nobody probes twice.
+   * Guard development uses its committed purchase budget instead. Guns and
    * ships are not held to it — insurance and the fleet are what a person spends a
    * store on first, too.
    */

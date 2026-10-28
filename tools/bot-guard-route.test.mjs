@@ -3,6 +3,12 @@ import { TUTORIAL_EXIT, HULLS, plantCeiling, satelliteSlots, hangarCapacity, han
   RESEARCH_PROJECTS, researchPrerequisiteMet, hullRequirementsMet } from '../packages/rules/src/index.ts';
 import { claimableRouteRewards, guardRoute, projectedLevel, quoteGoal, selectedGoals } from './bot-guard-route.mjs';
 import { runGuardRouteStudy } from './bot-guard-route-study.mjs';
+import { guardRoute as serverGuardRoute } from '../apps/server/src/services/bots/guardRoute.ts';
+
+it('ships the measured ordering in the runtime server', () => {
+  const measured = guardRoute('balanced', true).map(({ kind, id, target, minCore }) => ({ kind, id, target, minCore }));
+  expect(serverGuardRoute()).toEqual(measured);
+});
 
 it.each([false, true])('orders a paid path with all prerequisites (extended: %s)', extended => {
   const buildings = { ...TUTORIAL_EXIT.buildings }, research = {}, fleet = { ...TUTORIAL_EXIT.fleet };

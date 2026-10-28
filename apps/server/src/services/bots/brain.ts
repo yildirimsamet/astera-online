@@ -5,6 +5,7 @@ import {
   BUILD,
   COMBAT_HULLS,
   HULLS,
+  PROBE,
   INSTRUMENT_IDS,
   SATELLITE_IDS,
   SHIP_DAMAGE,
@@ -21,6 +22,7 @@ import {
   buildingCost,
   distance,
   fleetValue,
+  groundLoad,
   hangarCeiling,
   hangarLoad,
   hashSeed,
@@ -33,6 +35,7 @@ import {
   plantCeiling,
   satelliteSlots,
   withinTierBand,
+  worthInvesting,
 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
@@ -56,6 +59,8 @@ import { peakCoreLevels } from '../player.js';
 import { researchLevels, techOf } from '../researchState.js';
 import type { PlanetView } from '../planetView.js';
 import { BOTS, personaNamed, type BotPersona } from './personas.js';
+import { guardPlayerIds } from './guardPolicy.js';
+import { developGuard } from './guard.js';
 import {
   isBully, planPirateRaid, planWorldRaid, researchOf, type ForecastBudget, type WallReading,
 } from './judgement.js';
@@ -123,7 +128,9 @@ export async function runBotTurn(
   seat: BotSeat,
   log: FastifyBaseLogger,
 ): Promise<BotTurnResult> {
-  const persona = personaNamed(seat.persona);
+  const guard = seat.persona === 'RAIDER' && (await guardPlayerIds(db, seat.seasonId)).has(seat.playerId);
+  const basePersona = personaNamed(seat.persona);
+  const persona: BotPersona = guard ? { ...basePersona, composition: { CORSAIR: 0.4, CATACLYSM: 0.35, PALADIN: 0.25 } } : basePersona;
   const did: string[] = [];
   const rng = mulberry32(hashSeed('astera:bots:turn', seat.playerId, clock.now().getTime()));
 
@@ -141,11 +148,25 @@ export async function runBotTurn(
   }
 
   view = await repairDocked(db, clock, seat, view, did, log);
-  await buyGroundDefence(db, clock, seat, persona, view, did, log);
-  await raiseOneBuilding(db, clock, seat, persona, view, did, log);
-  await buyOneInstrument(db, clock, seat, persona, view, did, log);
-  await orderResearch(db, clock, seat, persona, view, did, log);
-  await buyShips(db, clock, seat, persona, view, did, log, rng);
+  if (guard) {
+    const development = await developGuard(db, clock, seat, view, did, log);
+    view = development.view;
+    if (development.complete) {
+      view = await raiseOneBuilding(db, clock, seat, persona, view, did, log, true);
+      view = await buyShips(db, clock, seat, persona, view, did, log, rng, true);
+    }
+    // Every currency committed to an earlier project is unavailable to optional flights.
+    view = { ...view, planet: { ...view.planet,
+      alloy: Math.max(0, view.planet.alloy - development.reserved.alloy),
+      crystal: Math.max(0, view.planet.crystal - development.reserved.crystal),
+      deuterium: Math.max(0, view.planet.deuterium - development.reserved.deuterium) } };
+  } else {
+    view = await buyGroundDefence(db, clock, seat, persona, view, did, log);
+    view = await raiseOneBuilding(db, clock, seat, persona, view, did, log);
+    view = await buyOneInstrument(db, clock, seat, persona, view, did, log);
+    view = await orderResearch(db, clock, seat, persona, view, did, log);
+    view = await buyShips(db, clock, seat, persona, view, did, log, rng);
+  }
   await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
 
   return { did };
@@ -165,6 +186,9 @@ const affordable = (view: PlanetView, cost: { alloy: number; crystal: number; de
   && view.planet.crystal - cost.crystal >= 0
   && view.planet.deuterium - cost.deuterium >= 0;
 
+const canAffordProbe = (view: PlanetView): boolean =>
+  affordable(view, { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 });
+
 /** The alloy a bot's buildings and instruments never spend. See `BOTS.stockReserveHours`. */
 const storeReserve = (view: PlanetView): number => view.planet.alloyPerHour * BOTS.stockReserveHours;
 
@@ -173,8 +197,8 @@ const storeReserve = (view: PlanetView): number => view.planet.alloyPerHour * BO
  *
  * A repair costs the damaged share of a new ship, so a hull in the Repair Station is
  * the cheapest hull there is — and while it waits it neither flies nor defends, so it
- * is the cheapest defence too. It goes first because it is the one step read off a
- * fresh store: every step after this one decides on the turn's opening view.
+ * is the cheapest defence too. It goes first; later purchases use the state
+ * returned by the preceding service, including this repair bill.
  *
  * Cheapest lots first, as many as the store pays for in full. A lot the store cannot
  * pay for waits for a richer turn; one job carries them all through the phone's door.
@@ -239,16 +263,17 @@ async function repairDocked(
 async function buyGroundDefence(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger,
-): Promise<void> {
+): Promise<PlanetView> {
   const raidable = Math.max(0,
     (view.planet.alloy - view.planet.vaultProtected.alloy)
     + (view.planet.crystal - view.planet.vaultProtected.crystal));
   const shortfall = raidable * persona.defenceRatio - fleetValue(view.ground);
-  if (shortfall <= 0) return;
-  if (view.queues.YARD.length >= BUILD.queueDepth) return;
+  if (shortfall <= 0) return view;
+  if (view.queues.YARD.length >= BUILD.queueDepth) return view;
 
-  const room = view.capacity.ground - view.capacity.groundUsed;
-  if (room <= 0) return;
+  const room = view.capacity.ground - view.capacity.groundUsed
+    - view.queues.YARD.reduce((sum, order) => sum + groundLoad({ [order.subject]: order.count }), 0);
+  if (room <= 0) return view;
 
   for (const [hull, share] of Object.entries(persona.groundMix) as [GroundHullId, number][]) {
     const spec = HULLS[hull];
@@ -258,14 +283,16 @@ async function buyGroundDefence(
     // Never more than half the store on one batch: a world that spends everything
     // on guns stops growing, and a world that stops growing stops being worth raiding.
     const n = Math.min(
-      want, room,
+      want, Math.floor(room / hullBulk(hull)),
       Math.floor((view.planet.alloy * 0.5) / Math.max(1, spec.alloy)),
       spec.crystal > 0 ? Math.floor((view.planet.crystal * 0.5) / spec.crystal) : Number.MAX_SAFE_INTEGER,
     );
     if (n < 1) continue;
-    if (await attempt(did, `ground:${hull}`, log, () =>
-      buildUnits(db, seat.planetId, hull, n, clock, seat.playerId))) return;
+    if (await attempt(did, `ground:${hull}`, log, async () => {
+      view = (await buildUnits(db, seat.planetId, hull, n, clock, seat.playerId)).planet;
+    })) return view;
   }
+  return view;
 }
 
 /**
@@ -277,12 +304,15 @@ async function buyGroundDefence(
  */
 async function raiseOneBuilding(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
-  view: PlanetView, did: string[], log: FastifyBaseLogger,
-): Promise<void> {
-  if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return;
+  view: PlanetView, did: string[], log: FastifyBaseLogger, guard = false,
+): Promise<PlanetView> {
+  if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return view;
   const levelOf = (type: BuildingId): number =>
     view.buildings[type] + queuedCount(view, 'CONSTRUCTION', type);
   const core = levelOf('CORE');
+  const [season] = guard
+    ? await db.select({ endsAt: seasons.endsAt }).from(seasons).where(eq(seasons.id, seat.seasonId)) : [];
+  const hours = season ? (season.endsAt.getTime() - clock.now().getTime()) / 3_600_000 : 0;
 
   for (const type of persona.buildOrder) {
     const level = levelOf(type);
@@ -294,7 +324,12 @@ async function raiseOneBuilding(
       Twelve tireless commanders with no ceiling would own the top of a ladder that
       exists for the people playing.
     */
-    if (type === 'CORE' && level >= BOTS.coreCeiling) continue;
+    if (!guard && type === 'CORE' && level >= BOTS.coreCeiling) continue;
+    if (guard) {
+      // Continue beyond the measured milestone only while economic investment can repay.
+      if (type === 'CORE' && !worthInvesting('REFINERY', core, hours)) continue;
+      if ((type === 'REFINERY' || type === 'EXTRACTOR' || type === 'DEUTERIUM_PLANT') && !worthInvesting(type, level, hours)) continue;
+    }
     // The Hangar climbs its own ladder, free of the Core since plan 2B.6; everything else answers
     // to the Core.
     if (type === 'HANGAR' ? level >= hangarCeiling(core) : type !== 'CORE' && level >= core) continue;
@@ -306,11 +341,13 @@ async function raiseOneBuilding(
     const cost = buildingCost(type, level);
     // Keep a store back, so the world is never scraped to zero the instant before
     // somebody arrives — and is worth somebody arriving at. `BOTS.stockReserveHours`.
-    if (!affordable(view, cost, storeReserve(view))) continue;
-    if (await attempt(did, `build:${type}`, log, () =>
-      upgradeBuilding(db, seat.planetId, type, clock, seat.playerId,
-        type === 'CORE' && level === 9 ? { confirmedLevel: 10 } : {}))) return;
+    if (!affordable(view, cost, guard ? 0 : storeReserve(view))) continue;
+    if (await attempt(did, `build:${type}`, log, async () => {
+      view = (await upgradeBuilding(db, seat.planetId, type, clock, seat.playerId,
+        type === 'CORE' && level === 9 ? { confirmedLevel: 10 } : {})).planet;
+    })) return view;
   }
+  return view;
 }
 
 /**
@@ -324,8 +361,8 @@ async function raiseOneBuilding(
 async function buyOneInstrument(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger,
-): Promise<void> {
-  if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return;
+): Promise<PlanetView> {
+  if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return view;
   const reserve = Math.max(view.planet.alloy * persona.militaryShare, storeReserve(view));
 
   for (const want of persona.wants) {
@@ -335,17 +372,20 @@ async function buyOneInstrument(
       if (view.orbit.length >= satelliteSlots(view.buildings.CORE)) continue;
       const cost = (view.satelliteCosts as Partial<Record<SatelliteId, Resources>>)[id];
       if (!cost || !affordable(view, cost, reserve)) continue;
-      if (await attempt(did, `satellite:${id}`, log, () =>
-        installSatellite(db, seat.planetId, id, clock, seat.playerId))) return;
+      if (await attempt(did, `satellite:${id}`, log, async () => {
+        view = (await installSatellite(db, seat.planetId, id, clock, seat.playerId)).planet;
+      })) return view;
       continue;
     }
     const id = want as InstrumentId;
     if (!(INSTRUMENT_IDS as readonly string[]).includes(id)) continue;
     const cost = (view.instrumentCosts as Partial<Record<InstrumentId, Resources>>)[id];
     if (!cost || !affordable(view, cost, reserve)) continue;
-    if (await attempt(did, `instrument:${id}`, log, () =>
-      raiseInstrument(db, seat.planetId, id, clock, seat.playerId))) return;
+    if (await attempt(did, `instrument:${id}`, log, async () => {
+      view = (await raiseInstrument(db, seat.planetId, id, clock, seat.playerId)).planet;
+    })) return view;
   }
+  return view;
 }
 
 /**
@@ -358,8 +398,8 @@ async function buyOneInstrument(
 async function orderResearch(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger,
-): Promise<void> {
-  if (view.researchQueue.length >= BUILD.queueDepth) return;
+): Promise<PlanetView> {
+  if (view.researchQueue.length >= BUILD.queueDepth) return view;
   const held = await researchLevels(db, seat.playerId);
   const queued = new Map<ResearchProjectId, number>();
   for (const order of view.researchQueue) {
@@ -369,9 +409,11 @@ async function orderResearch(
   for (const want of persona.research) {
     const level = Math.max(held.get(want.project) ?? 0, queued.get(want.project) ?? 0);
     if (level >= want.level) continue;
-    if (await attempt(did, `research:${want.project}`, log, () =>
-      completeResearch(db, seat.planetId, want.project, clock, seat.playerId))) return;
+    if (await attempt(did, `research:${want.project}`, log, async () => {
+      view = (await completeResearch(db, seat.planetId, want.project, clock, seat.playerId)).planet;
+    })) return view;
   }
+  return view;
 }
 
 /**
@@ -384,9 +426,9 @@ async function orderResearch(
  */
 async function buyShips(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
-  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
-): Promise<void> {
-  if (view.queues.YARD.length >= BUILD.queueDepth) return;
+  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number, guard = false,
+): Promise<PlanetView> {
+  if (view.queues.YARD.length >= BUILD.queueDepth) return view;
 
   // A ship in the Repair Station is still this commander's: it comes back repaired.
   const owned = fleetValue(view.fleet) + fleetValue(view.fleetAway) + fleetValue(view.fleetDocked);
@@ -404,8 +446,9 @@ async function buyShips(
     + (view.fleetDocked.PROSPECTOR ?? 0) + queuedCount(view, 'YARD', 'PROSPECTOR');
   if (prospectors < persona.prospectorTarget && view.buildings.SHIPYARD >= HULLS.PROSPECTOR.minShipyard
     && room >= hullBulk('PROSPECTOR')) {
-    if (await attempt(did, 'ship:PROSPECTOR', log, () =>
-      buildUnits(db, seat.planetId, 'PROSPECTOR', 1, clock, seat.playerId))) return;
+    if (await attempt(did, 'ship:PROSPECTOR', log, async () => {
+      view = (await buildUnits(db, seat.planetId, 'PROSPECTOR', 1, clock, seat.playerId)).planet;
+    })) return view;
   }
   /*
     A HOLD FOR THE HAUL. A warship carries thirty to fifty; a raid of ten Darts
@@ -416,20 +459,25 @@ async function buyShips(
     + (view.fleetDocked.COURIER ?? 0) + queuedCount(view, 'YARD', 'COURIER');
   const courierWant = Math.min(BOTS.courierTarget - couriers, Math.floor(room / hullBulk('COURIER')));
   if (courierWant > 0 && view.buildings.SHIPYARD >= HULLS.COURIER.minShipyard) {
-    if (await attempt(did, 'ship:COURIER', log, () =>
-      buildUnits(db, seat.planetId, 'COURIER', courierWant, clock, seat.playerId))) return;
+    if (await attempt(did, 'ship:COURIER', log, async () => {
+      view = (await buildUnits(db, seat.planetId, 'COURIER', courierWant, clock, seat.playerId)).planet;
+    })) return view;
   }
   room = Math.max(0, room);
 
-  if (owned >= BOTS.fleetValueCeiling) return;
+  if (!guard && owned >= BOTS.fleetValueCeiling) return view;
 
   const budget = view.planet.alloy * persona.militaryShare;
   const tech = await techOf(db, seat.playerId);
   const open = (Object.entries(persona.composition) as [MobileHullId, number][])
-    .filter(([hull]) => hullBuildable(hull, view.buildings.SHIPYARD, tech))
-    .sort((a, b) => b[1] - a[1]);
+    .filter(([hull, share]) => share > 0 && hullBuildable(hull, view.buildings.SHIPYARD, tech));
   const total = open.reduce((sum, [, share]) => sum + share, 0);
-  if (total <= 0) return;
+  if (total <= 0) return view;
+  // Compare value already owned/ordered against the intended shares; repeatedly walking
+  // descending weights bought only the first hull, even when every other class was missing.
+  const heldValue = (hull: MobileHullId): number => fleetValue({ [hull]: (view.fleet[hull] ?? 0)
+    + (view.fleetAway[hull] ?? 0) + (view.fleetDocked[hull] ?? 0) + queuedCount(view, 'YARD', hull) });
+  open.sort(([a, aShare], [b, bShare]) => heldValue(a) / aShare - heldValue(b) / bShare);
 
   // A little wobble, so twelve commanders with the same habit do not place twelve
   // identical orders in the same minute.
@@ -444,9 +492,11 @@ async function buyShips(
       Math.floor(room / hullBulk(hull)),
     );
     if (n < 1) continue;
-    if (await attempt(did, `ship:${hull}`, log, () =>
-      buildUnits(db, seat.planetId, hull, n, clock, seat.playerId))) return;
+    if (await attempt(did, `ship:${hull}`, log, async () => {
+      view = (await buildUnits(db, seat.planetId, hull, n, clock, seat.playerId)).planet;
+    })) return view;
   }
+  return view;
 }
 
 /* ── the one flight ─────────────────────────────────────────── */
@@ -642,6 +692,7 @@ async function sendProbe(
   db: Db, clock: Clock, seat: BotSeat, view: PlanetView,
   did: string[], log: FastifyBaseLogger, rng: () => number,
 ): Promise<void> {
+  if (!canAffordProbe(view)) return;
   const candidates = await probeCandidates(db, clock.now(), seat, view);
   const total = candidates.reduce((sum, world) => sum + world.weight, 0);
   if (total <= 0) return;
@@ -960,7 +1011,7 @@ async function sendRaid(
       a probe already in the air is the look, and the next turn waits for it.
     */
     if (now.getTime() - reading.seenAt.getTime() > BOTS.readingFreshMinutes * 60_000) {
-      if ((await probesInFlight(db, seat.playerId)).has(pick.planetId)) continue;
+      if (!canAffordProbe(view) || (await probesInFlight(db, seat.playerId)).has(pick.planetId)) continue;
       return attempt(did, 'probe', log, () =>
         launchProbe(db, seat.planetId, pick.planetId, clock, seat.playerId));
     }

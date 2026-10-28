@@ -195,6 +195,36 @@ beforeEach(async () => {
 });
 
 describe('a bot turn', () => {
+  it.each([
+    { thorns: 28, queuedHarpoons: 0, expected: 'HARPOON' },
+    { thorns: 27, queuedHarpoons: 1, expected: 'THORN' },
+  ])('fills the actual remaining ground room (queued guns: $queuedHarpoons)', async ({ thorns, queuedHarpoons, expected }) => {
+    for (const id of ['CORE', 'REFINERY', 'EXTRACTOR'] as const) await setLevel(f.db, seat.planetId, id, 16);
+    await setLevel(f.db, seat.planetId, 'VAULT', 6);
+    await setLevel(f.db, seat.planetId, 'SHIPYARD', 1);
+    await giveUnits(f.db, seat.planetId, { THORN: thorns });
+    await grant(f.db, seat.planetId, 100_000, 50_000);
+    if (queuedHarpoons) await buildUnits(f.db, seat.planetId, 'HARPOON', queuedHarpoons, f.clock, seat.playerId);
+    const before = new Set((await viewOf()).queues.YARD.map(order => order.id));
+    const result = await runBotTurn(f.db, f.clock, seat, silent);
+    expect(result.did).toContain(`ground:${expected}`);
+    const orders = (await viewOf()).queues.YARD.filter(order => !before.has(order.id));
+    expect(orders.find(order => order.subject === expected)?.count).toBe(1);
+  });
+
+  it('buys missing composition before adding more of the already dominant hull', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', BOTS.coreCeiling);
+    await setLevel(f.db, seat.planetId, 'REFINERY', BOTS.coreCeiling);
+    await setLevel(f.db, seat.planetId, 'EXTRACTOR', BOTS.coreCeiling);
+    await setLevel(f.db, seat.planetId, 'SHIPYARD', 1);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 5);
+    await giveUnits(f.db, seat.planetId, { DART: 120, PROSPECTOR: 1, COURIER: 2 });
+    await grant(f.db, seat.planetId, 10_000, 5_000);
+    const result = await runBotTurn(f.db, f.clock, seat, silent);
+    expect(result.did.some(step => step === 'ship:WARDEN' || step === 'ship:PIKE')).toBe(true);
+    expect(result.did).not.toContain('ship:DART');
+  });
+
   it('spends what it has rather than sitting on it', async () => {
     await grant(f.db, seat.planetId, 200_000, 80_000);
     const result = await runBotTurn(f.db, f.clock, seat, silent);
@@ -232,6 +262,8 @@ describe('a bot turn', () => {
     expect(BOTS.courierTarget).toBe(2);
     await grant(f.db, seat.planetId, 200_000, 80_000);
     await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+    // Isolate mobile purchases: real ground orders now use the same yard slots correctly.
+    await giveUnits(f.db, seat.planetId, { THORN: Math.floor((await viewOf()).capacity.ground / hullBulk('THORN')) });
     // One yard order a turn, and the Prospector is ordered first.
     const did: string[] = [];
     for (let turn = 0; turn < 3; turn++) {
@@ -300,15 +332,18 @@ describe('a bot turn', () => {
     await setLevel(f.db, seat.planetId, 'SHIPYARD', 4);
     await grant(f.db, seat.planetId, 2_000_000, 600_000);
     await setLevel(f.db, seat.planetId, 'HANGAR', 1);
+    // Keep the last yard slot available for the mobile order whose room this test measures.
+    await giveUnits(f.db, seat.planetId, { THORN: Math.floor((await viewOf()).capacity.ground / hullBulk('THORN')) });
     const dart = hullBulk('DART');
     // 80 room: 20 standing, 2 × 15 queued in two batches, 30 genuinely free.
-    // Its Prospectors are already owned, so the only ship it can buy is a warship.
-    await giveUnits(f.db, seat.planetId, { RAMPART: 12 / hullBulk('RAMPART'), PROSPECTOR: 2 });
+    // Both utility targets are owned, so a successful purchase must use the warship room calculation.
+    await giveUnits(f.db, seat.planetId, { DART: 2, PROSPECTOR: 2, COURIER: 2 });
     await buildUnits(f.db, seat.planetId, 'DART', 15 / dart, f.clock);
     await buildUnits(f.db, seat.planetId, 'DART', 15 / dart, f.clock);
 
     const result = await runBotTurn(f.db, f.clock, seat, silent);
     expect(result.did.filter((step) => step.startsWith('ship:'))).not.toHaveLength(0);
+    expect(result.did).not.toContain('ship:COURIER');
     const view = await viewOf();
     const queued = view.queues.YARD.reduce(
       (sum, order) => sum + hangarLoad({ [order.subject]: order.count }), 0);
