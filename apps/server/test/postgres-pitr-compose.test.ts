@@ -20,8 +20,8 @@ const postgresConfig = z.object({ services: z.object({ postgres: z.object({
   environment: z.record(z.string(), z.string().nullable()),
 }) }) });
 const secrets = {
-  PGBACKREST_REPO1_S3_BUCKET: 'fixture-bucket', PGBACKREST_REPO1_S3_ENDPOINT: 's3.eu-central-003.backblazeb2.com',
-  PGBACKREST_REPO1_S3_REGION: 'eu-central-003', PGBACKREST_REPO1_S3_KEY: 'fixture-key-id',
+  PGBACKREST_REPO1_S3_BUCKET: 'fixture-bucket', PGBACKREST_REPO1_S3_ENDPOINT: 'fixture-account.r2.cloudflarestorage.com',
+  PGBACKREST_REPO1_S3_REGION: 'auto', PGBACKREST_REPO1_S3_KEY: 'fixture-key-id',
   PGBACKREST_REPO1_S3_KEY_SECRET: 'fixture-application-key', PGBACKREST_REPO1_CIPHER_PASS: 'fixture-cipher-pass',
 };
 
@@ -59,7 +59,7 @@ it('keeps the 30-day personal-data ceiling: the repository expires full backups 
 });
 
 it('bundles small files and uploads in parallel: one object per file took ~10 minutes for an empty cluster', () => {
-  // Measured 2026-10-28 from the VPS: ~0.3 s per B2 request, ~1,000 relation files.
+  // Measured 2026-10-28 from the VPS: ~0.3 s per object-store request, ~1,000 relation files.
   expect(postgres(false).service.environment).toMatchObject({ PGBACKREST_REPO1_BUNDLE: 'y', PGBACKREST_PROCESS_MAX: '2' });
 });
 

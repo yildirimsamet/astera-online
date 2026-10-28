@@ -894,10 +894,11 @@ Nightly backup: `./deploy/backup.sh` (retains at most fourteen daily pairs). All
 
 ### Continuous backup
 
-Production PostgreSQL archives every WAL segment to an encrypted pgBackRest repository in Backblaze B2 (`astera-online`, `eu-central-003`, path `/astera-prod`) within `archive_timeout=60` seconds, and cron takes a full backup daily. A lost VPS loses at most about a minute. Configuration is the `postgres` service in `docker-compose.prod.yml` plus the six `PGBACKREST_REPO1_*` values in `~/astera/.env`; the image is `deploy/postgres/Dockerfile`, pinned to the PostgreSQL build production ran before archiving. Stage overrides it and never archives.
+Production PostgreSQL archives every WAL segment to an encrypted pgBackRest repository in Cloudflare R2 (bucket `astera-backup`, region `auto`, path `/astera-prod`) within `archive_timeout=60` seconds, and cron takes a full backup daily. A lost VPS loses at most about a minute. Configuration is the `postgres` service in `docker-compose.prod.yml` plus the six `PGBACKREST_REPO1_*` values in `~/astera/.env`; the image is `deploy/postgres/Dockerfile`, pinned to the PostgreSQL build production ran before archiving. Stage overrides it and never archives.
 
 - **The cipher pass is the backup.** Keep a copy outside the VPS (the owner's password manager). Without it the repository is unreadable.
-- **Personal-data ceiling:** 14 daily fulls (`PGBACKREST_REPO1_RETENTION_FULL`) keep the oldest restorable moment 14 days back. The bucket lifecycle must be "Keep only the last version", or expired files linger as hidden versions past 30 days.
+- **Personal-data ceiling:** 14 daily fulls (`PGBACKREST_REPO1_RETENTION_FULL`) keep the oldest restorable moment 14 days back. Keep R2 object versioning off, or expired files linger past 30 days.
+- **Why R2:** its free tier counts requests per month (1 M writes, 10 M reads) and never charges downloads; archiving alone makes ~1,440 pushes a day, which used most of Backblaze B2's 2,500-a-day free cap (moved 2026-10-29).
 - **Release trap:** any `compose up` that includes `postgres` (`deploy.sh` does) recreates the database from the checkout's compose file. A release branch without this service definition silently turns archiving off and restarts the database. Build every release on a commit that has it.
 - **Changing** the `command` list or the image restarts the database: a planned step with owner approval, never a side effect of a release.
 

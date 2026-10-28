@@ -176,7 +176,7 @@ services:
       # 30-day personal-data ceiling.
       PGBACKREST_REPO1_RETENTION_FULL: '14'
       PGBACKREST_COMPRESS_TYPE: zst
-      # Each B2 request costs ~0.3 s from the VPS; one object per relation file made
+      # Each object-store request costs ~0.3 s from the VPS; one object per relation file made
       # an empty cluster's full backup take ~10 minutes. Bundles pack small files.
       PGBACKREST_REPO1_BUNDLE: 'y'
       PGBACKREST_PROCESS_MAX: '2'
