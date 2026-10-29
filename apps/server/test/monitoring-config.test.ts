@@ -39,6 +39,7 @@ it('pins every image and keeps every listener on loopback', () => {
   expect(config.status, config.stderr).toBe(0);
   const services = z.object({ name: z.string(), services: z.record(z.string(), z.object({
     image: z.string(), command: z.array(z.string()).nullish(), network_mode: z.string().optional(), ports: z.array(z.unknown()).optional(),
+    volumes: z.array(z.object({ type: z.string(), source: z.string().optional() })).optional(),
   })) }).parse(JSON.parse(config.stdout));
   expect(services.name).toBe('astera-monitoring');
   for (const [name, service] of Object.entries(services.services)) {
@@ -48,6 +49,11 @@ it('pins every image and keeps every listener on loopback', () => {
     expect(service.ports, name).toBeUndefined();
     const listen = (service.command ?? []).find(arg => arg.includes('listen-address='));
     expect(listen, name).toMatch(/=127\.0\.0\.1:\d+$/);
+    // A deploy that checks out an older commit deletes files the checkout owns; a
+    // bind-mounted file that vanished stops the container at its next restart.
+    for (const volume of service.volumes ?? []) {
+      if (volume.type === 'bind') expect(volume.source, name).not.toMatch(new RegExp(`^${root}/`));
+    }
   }
 });
 

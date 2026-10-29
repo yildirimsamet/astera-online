@@ -924,15 +924,26 @@ and start `postgres` on that volume with the same env (it fetches WAL through `a
 
 `docker-compose.monitoring.yml` is its own Compose project (`astera-monitoring`): Prometheus (15 days), Alertmanager and node_exporter, all on host networking and listening on 127.0.0.1 only. Game deploys never touch it. Prometheus scrapes production's loopback `/metrics?format=prometheus` on 3200–3202, 3210 and 3220 (never stage) plus node_exporter; the series are named in `apps/server/src/services/prometheusMetrics.ts`. Every alert in `deploy/monitoring/alerts.yml` has a firing case in `alerts.test.yml`, replayed by `promtool` in `apps/server/test/monitoring-config.test.ts`.
 
-Runtime files live in `~/monitoring` (`MONITORING_DIR`, outside the checkout): `alertmanager.yml` rendered from `deploy/monitoring/alertmanager.yml.template` with `ALERT_EMAIL` from `~/astera/.env`, `smtp_password` (the game's Resend API key; Alertmanager mails through `smtp.resend.com:587` as `alerts@account.asteraonline.space`), `data/`, and `textfile/backup.prom`, which the backup cron rewrites after each successful full backup. Both secret files are mode 600; Alertmanager runs as the operator (`MONITORING_UID`/`MONITORING_GID`, default 1000) to read them.
+Runtime files live in `~/monitoring` (`MONITORING_DIR`, outside the checkout, so a deploy that checks out an older commit cannot delete what a restarting container mounts): `prometheus.yml` and `alerts.yml` copied from `deploy/monitoring/`, `alertmanager.yml` rendered from `deploy/monitoring/alertmanager.yml.template` with `ALERT_EMAIL` from `~/astera/.env`, `smtp_password` (the game's Resend API key; Alertmanager mails through `smtp.resend.com:587` as `alerts@account.asteraonline.space`), `data/`, and `textfile/backup.prom`, which the backup cron rewrites after each successful full backup. Both secret files are mode 600; Alertmanager runs as the operator (`MONITORING_UID`/`MONITORING_GID`, default 1000) to read them.
 
 ```bash
 cd ~/astera && mkdir -p -m 700 ~/monitoring/data ~/monitoring/textfile
+install -m 644 deploy/monitoring/prometheus.yml deploy/monitoring/alerts.yml ~/monitoring/
 sed "s|__ALERT_EMAIL__|$(grep '^ALERT_EMAIL=' .env | cut -d= -f2-)|" deploy/monitoring/alertmanager.yml.template > ~/monitoring/alertmanager.yml
 grep '^RESEND_API_KEY=' .env | cut -d= -f2- | tr -d '"\n' > ~/monitoring/smtp_password
 chmod 600 ~/monitoring/alertmanager.yml ~/monitoring/smtp_password
 docker compose -f docker-compose.monitoring.yml up -d
 ```
+
+Changed rules reach Prometheus by copying them again (`install` line above) and `docker kill -s HUP astera-monitoring-prometheus-1`.
+
+A planned stop longer than two minutes (`deploy.sh` stops every role for migrations) pages `AsteraServiceDown`. Silence it for the window first:
+
+```bash
+docker exec astera-monitoring-alertmanager-1 amtool --alertmanager.url=http://127.0.0.1:9093 silence add alertname=AsteraServiceDown --duration=20m --comment="planned deploy"
+```
+
+An outside check covers what this stack cannot see (the host or its network down): poll `https://asteraonline.space/api/servers` — public, and it answers only when nginx, an API replica and PostgreSQL are all up.
 
 Open it through a tunnel: `ssh -L 9090:127.0.0.1:9090 -L 9093:127.0.0.1:9093 yildirim@hoofywood.com`, then `localhost:9090/alerts`. The `astera` job needs a release whose app answers `?format=prometheus`; an older one returns JSON and reads as down.
 

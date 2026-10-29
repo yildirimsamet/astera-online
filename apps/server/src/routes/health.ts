@@ -278,7 +278,8 @@ export function registerHealthRoutes(
         ...(workerRole ? { worker: {
           status: worker,
           oldestDueSeconds: (await oldestPendingAge(app.db, now)) ?? 0,
-          lastTickSeconds: worker.lastTickAt === null ? NaN : (Date.now() - Date.parse(worker.lastTickAt)) / 1000,
+          // Never ticked: the process's age, so a worker stuck before its first tick still alerts.
+          lastTickSeconds: worker.lastTickAt === null ? process.uptime() : (Date.now() - Date.parse(worker.lastTickAt)) / 1000,
         } } : {}),
         ...(archive ? { archive: {
           enabled: archive.enabled, lastSuccessAgeSeconds: archive.age, failing: archive.failing, failedTotal: archive.failed,

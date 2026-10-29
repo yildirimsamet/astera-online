@@ -69,6 +69,7 @@ export function metricFamilies(input: PrometheusInput): MetricFamily[] {
     gauge('astera_route_statements', 'SQL statements per request by route, recent samples.', routes.flatMap(([route, r]) => quantiles(r.statements, { route }))),
     gauge('astera_stream_active', 'Open live (SSE) connections.', [{ value: input.streams.active }]),
     counter('astera_stream_slow_closed_total', 'Live connections closed for falling behind.', [{ value: input.streams.slowClosed }]),
+    counter('astera_stream_superseded_total', 'Live connections closed for a newer one on the same account.', [{ value: input.streams.supersededClosed }]),
   ];
   if (input.worker) {
     const { status } = input.worker;

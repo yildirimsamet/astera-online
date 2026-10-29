@@ -19,8 +19,10 @@ services:
       - --storage.tsdb.retention.time=15d
       - --web.listen-address=127.0.0.1:9090
     volumes:
-      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      # Copied into $MONITORING_DIR from deploy/monitoring: a deploy that checks out an
+      # older commit must not delete what a running Prometheus restarts from.
+      - ${MONITORING_DIR:-../monitoring}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${MONITORING_DIR:-../monitoring}/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
 
