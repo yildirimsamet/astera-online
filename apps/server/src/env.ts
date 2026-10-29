@@ -233,7 +233,7 @@ const schema = z.object({
   SILENT_SPACE_EXEMPT_ACCOUNT_IDS: z.string().default('')
     .transform(value => value.split(',').map(id => id.trim()).filter(Boolean))
     .pipe(z.array(z.string().uuid()).max(20)).transform(ids => [...new Set(ids)]),
-  WORKER_POLL_MS: z.coerce.number().default(1000),
+  WORKER_POLL_MS: z.coerce.number().default(250),
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */
   WORKER_STALE_MINUTES: z.coerce.number().default(5),

@@ -924,6 +924,21 @@ Testler:
 
 **F1.3 Worker'ın tam zamanında uyanması ve bakımın kritik yoldan çıkması (M7, M8).**
 
+> **30 Eki: yapıldı, prod'da 250 ms poll ile.** Her drain'den sonra `nextDueAt(cutoff, cutoff + poll)`
+> (`events_due_idx`) sıradaki anı okur, tek seferlik zamanlayıcı o ana +1 ms kurulur; poll yalnız sonradan
+> eklenen olayın en geç ne kadar bekleyeceğidir (varsayılan 250 ms). Bakım (reaper, takılı uçuş taraması, spawn
+> kapısı, sinyal onarımı, botlar, Silent Space/medya başlatma) canlı döngüde kendi 1 sn'lik zamanlayıcısında,
+> kendisiyle çakışmadan koşar; adımlanan `tick()` testler için yine "bakım → claim" sırasını korur.
+> **Plana ek iki karar:** (1) Hata veren handler veya claim'den sonra canlı döngü 1 sn bekler: D28'in 5 deneme
+> bütçesi saniyede bir için ölçülmüştü, 250 ms poll onu 4 kat hızlı tüketirdi. (2) Bakım artık worker'ı
+> kilitlemediği için takılan bakımın kendi alarmı var: `astera_worker_last_maintenance_seconds > 180` 2 dk
+> (`AsteraWorkerMaintenanceStalled`) ve `astera_worker_maintenance_errors_total`. "Kendi lease'i" süreç içi
+> tek-görev korumasıdır; prod'da tek worker var, süreçler arası lider kilidi F4a'nın işi.
+> Boş poll iki indeksli sorgudur (claim + `nextDueAt`): saniyede ~8, eskiden 2. Prod `.env` ve pin
+> `WORKER_POLL_MS`'i açıkça yazar; deploy ikisini de 250'ye çekti. 100'e inmek için önce `astera_worker_lateness_ms` p95'ine bakılır. Testler: `worker-wake.test.ts`,
+> `worker-next-due.test.ts`, `worker-scheduling.test.ts` (tekrar temposu), `metrics-prometheus.test.ts`,
+> `alerts.test.yml`.
+
 Dosyalar: `worker/loop.ts:168–360, 437–461`, `worker/queue.ts` (yeni `nextDueAt`; `events_due_idx`
 kullanılır), `env.ts` (`WORKER_POLL_MS` 1000 → 250), `docs/architecture.md` ("late by at most one
 WORKER_POLL_MS" satırı).

@@ -280,6 +280,8 @@ export function registerHealthRoutes(
           oldestDueSeconds: (await oldestPendingAge(app.db, now)) ?? 0,
           // Never ticked: the process's age, so a worker stuck before its first tick still alerts.
           lastTickSeconds: worker.lastTickAt === null ? process.uptime() : (Date.now() - Date.parse(worker.lastTickAt)) / 1000,
+          lastMaintenanceSeconds: worker.maintenance.lastAt === null
+            ? process.uptime() : (Date.now() - Date.parse(worker.maintenance.lastAt)) / 1000,
         } } : {}),
         ...(archive ? { archive: {
           enabled: archive.enabled, lastSuccessAgeSeconds: archive.age, failing: archive.failing, failedTotal: archive.failed,

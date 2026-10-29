@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, lt, lte, sql } from 'drizzle-orm';
 import type { Db, Queryable } from '../db/client.js';
 import { scheduledEvents } from '../db/schema.js';
 
@@ -49,6 +49,25 @@ export async function claimDue(db: Db, batch: number, now: Date): Promise<EventR
     a.resolveAt.getTime() - b.resolveAt.getTime()
     || (a.refId ?? '').localeCompare(b.refId ?? '')
     || a.id.localeCompare(b.id));
+}
+
+/**
+ * The next moment an event falls due after a claim, if it is before `before`.
+ * Scaling plan F1.3.
+ *
+ * Strictly AFTER the claim's cutoff: a pending row at or before it was skipped
+ * (locked by another worker) or has just failed back to pending, and a wake for it
+ * would fire at once and spin. The poll and the retry pace own those.
+ */
+export async function nextDueAt(db: Db, after: Date, before: Date): Promise<Date | null> {
+  const [row] = await db
+    .select({ resolveAt: scheduledEvents.resolveAt })
+    .from(scheduledEvents)
+    .where(and(eq(scheduledEvents.status, 'pending'), gt(scheduledEvents.resolveAt, after),
+      lte(scheduledEvents.resolveAt, before)))
+    .orderBy(asc(scheduledEvents.resolveAt))
+    .limit(1);
+  return row?.resolveAt ?? null;
 }
 
 interface RawEventRow {

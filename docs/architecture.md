@@ -249,8 +249,12 @@ rounded-up label a human may read. The distinction became load-bearing when D63
 shortened flights enough for one rounded minute to flatten different hull speeds.
 Mining interception already obeyed the continuous model.
 
-A scheduled moment is late by at most one `WORKER_POLL_MS`, which is why it is **one second**:
-that latency is directly visible as a squadron holding over a world it has finished bombarding.
+A scheduled moment the worker already knows about resolves on its moment: after each drain it sets
+a one-shot timer for the next event due before the next poll (scaling plan F1.3). One scheduled
+since then is late by at most one `WORKER_POLL_MS`, which is why it is **a quarter second**: that
+latency is directly visible as a squadron holding over a world it has finished bombarding. The
+repairs (reaper, stranded sweep, spawn gate, bots) run on their own timer and never delay a claim;
+a failed claim or handler waits one second, so a short poll cannot spend D28's retry budget faster.
 
 ## Why a fleet can never disappear
 

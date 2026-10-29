@@ -45,7 +45,7 @@ export interface PrometheusInput {
   streams: StreamStatus;
   connections: { active: number | null; idle: number | null; waiting: number | null };
   /** Worker roles only, so a figure is never reported three times. */
-  worker?: { status: WorkerStatus; oldestDueSeconds: number; lastTickSeconds: number };
+  worker?: { status: WorkerStatus; oldestDueSeconds: number; lastTickSeconds: number; lastMaintenanceSeconds: number };
   archive?: { enabled: boolean; lastSuccessAgeSeconds: number | null; failing: boolean; failedTotal: number };
 }
 
@@ -76,6 +76,9 @@ export function metricFamilies(input: PrometheusInput): MetricFamily[] {
     families.push(
       gauge('astera_worker_oldest_due_seconds', 'Age of the oldest event that is due and still pending.', [{ value: input.worker.oldestDueSeconds }]),
       gauge('astera_worker_last_tick_seconds', 'Seconds since the worker last finished a tick.', [{ value: input.worker.lastTickSeconds }]),
+      gauge('astera_worker_last_maintenance_seconds', 'Seconds since the worker last finished a maintenance pass.',
+        [{ value: input.worker.lastMaintenanceSeconds }]),
+      counter('astera_worker_maintenance_errors_total', 'Maintenance passes that threw.', [{ value: status.maintenance.errors }]),
       gauge('astera_worker_lateness_ms', 'How late events resolved, recent samples.', quantiles(status.latenessMs)),
       counter('astera_worker_processed_total', 'Events resolved.', [{ value: status.processed }]),
       counter('astera_worker_handler_failures_total', 'Event handler failures (retried).', [{ value: status.handlerFailures }]),
