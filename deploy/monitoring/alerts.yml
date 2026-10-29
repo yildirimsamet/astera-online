@@ -27,6 +27,14 @@ groups:
           summary: 'Worker {{ $value | printf "%.0f" }} sn''dir tur atmıyor'
           description: 'Worker döngüsü takılmış olabilir. Kontrol: worker logları; gerekirse worker container yeniden başlatılır.'
 
+      - alert: AsteraWorkerMaintenanceStalled
+        expr: astera_worker_last_maintenance_seconds > 180
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Worker bakımı {{ $value | printf "%.0f" }} sn''dir bitmiyor'
+          description: 'Reaper ve takılı uçuş taraması çalışmıyor; olaylar çözülmeye devam eder ama çöken bir claim geri alınmaz. Kontrol: worker loglarında "maintenance pass failed"; gerekirse worker container yeniden başlatılır.'
+
       - alert: AsteraEventsAbandoned
         expr: increase(astera_worker_abandoned_total[15m]) > 0
         labels: { severity: warning }

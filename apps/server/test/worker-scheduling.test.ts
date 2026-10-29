@@ -32,6 +32,7 @@ beforeEach(() => {
   clock.set(new Date('2026-01-01T00:00:00Z'));
   vi.spyOn(queue, 'reap').mockResolvedValue(0);
   vi.spyOn(queue, 'claimDue').mockResolvedValue([]);
+  vi.spyOn(queue, 'nextDueAt').mockResolvedValue(null);
   vi.spyOn(queue, 'complete').mockResolvedValue(undefined);
   vi.spyOn(queue, 'fail').mockResolvedValue({ exhausted: false });
   vi.spyOn(repairs, 'sweepStranded').mockResolvedValue(0);
@@ -65,23 +66,30 @@ it('checks once after an exactly full batch and sleeps when that check is empty'
   expect(queue.claimDue).toHaveBeenCalledTimes(2);
 });
 
-it('waits for the normal poll after a handler fails instead of burning retries', async () => {
+// The retry pace (one second, D28) outlasts a poll, so a poll inside it claims nothing.
+const pollAfterRetryPace = async (): Promise<void> => {
+  vi.mocked(setInterval).mock.calls[0]![0]();
+  expect(queue.claimDue).toHaveBeenCalledTimes(1);
+  await new Promise(resolve => setTimeout(resolve, 1_050));
+  vi.mocked(setInterval).mock.calls[0]![0]();
+  await vi.waitFor(() => { expect(queue.claimDue).toHaveBeenCalledTimes(2); });
+};
+
+it('waits for the retry pace after a handler fails instead of burning retries', async () => {
   vi.mocked(queue.claimDue).mockResolvedValue([event('first'), event('second')]);
   lifecycleHandler.mockRejectedValue(new Error('temporary failure'));
   worker.start();
   await vi.waitFor(() => { expect(worker.status().ticks).toBe(1); });
   expect(queue.claimDue).toHaveBeenCalledTimes(1);
-  vi.mocked(setInterval).mock.calls[0]![0]();
-  await vi.waitFor(() => { expect(queue.claimDue).toHaveBeenCalledTimes(2); });
+  await pollAfterRetryPace();
 });
 
-it('waits for the normal poll after a claim fails', async () => {
+it('waits for the retry pace after a claim fails', async () => {
   vi.mocked(queue.claimDue).mockRejectedValueOnce(new Error('database unavailable'));
   worker.start();
   await vi.waitFor(() => { expect(worker.status().tickErrors).toBe(1); });
   expect(queue.claimDue).toHaveBeenCalledTimes(1);
-  vi.mocked(setInterval).mock.calls[0]![0]();
-  await vi.waitFor(() => { expect(queue.claimDue).toHaveBeenCalledTimes(2); });
+  await pollAfterRetryPace();
 });
 
 it('finishes the current batch on stop without starting another or overlapping a timer tick', async () => {

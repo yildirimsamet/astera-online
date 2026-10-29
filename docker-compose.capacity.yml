@@ -110,7 +110,7 @@ services:
       PORT: 3210
       DB_POOL_MAX: 12
       RATE_LIMIT_REDIS_URL: ''
-      WORKER_POLL_MS: 1000
+      WORKER_POLL_MS: 250
       WORKER_BATCH: 100
     ports: ['127.0.0.1:${CAPACITY_WORKER_PORT:-3310}:3210']
     depends_on:

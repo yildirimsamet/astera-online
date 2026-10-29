@@ -45,6 +45,9 @@ it('renders route, worker and archive figures as text exposition', async () => {
   expect(sample(text, 'astera_worker_oldest_due_seconds')).toBe(0);
   // A worker that never finished a tick reports its age, not NaN: NaN > 60 never fires the stall alert.
   expect(Number.isFinite(sample(text, 'astera_worker_last_tick_seconds'))).toBe(true);
+  // Maintenance runs apart from the queue (F1.3); a hung pass needs its own alarm.
+  expect(Number.isFinite(sample(text, 'astera_worker_last_maintenance_seconds'))).toBe(true);
+  expect(sample(text, 'astera_worker_maintenance_errors_total')).toBe(0);
   expect(sample(text, 'astera_stream_superseded_total')).toBe(0);
   expect(sample(text, 'astera_worker_handler_failures_total')).toBe(0);
   // The test cluster does not archive; production reports the age of the last segment.

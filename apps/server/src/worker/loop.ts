@@ -6,7 +6,7 @@ import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
 import { runBotSweep } from '../services/bots/sweep.js';
 import { BOTS } from '../services/bots/personas.js';
-import { claimDue, complete, fail, reap } from './queue.js';
+import { claimDue, complete, fail, nextDueAt, reap } from './queue.js';
 import { performance } from 'node:perf_hooks';
 import { eq, sql } from 'drizzle-orm';
 import { scheduledEvents } from '../db/schema.js';
@@ -82,6 +82,8 @@ export interface WorkerStatus {
     p99: number;
     max: number;
   };
+  /** The repairs, apart from the queue (F1.3): a pass that never returns stops them in silence. */
+  maintenance: { lastAt: string | null; errors: number };
   /** SQL statements each event kind's handler ran (F0.2). */
   eventStatements: Record<string, { events: number; statements: ReturnType<SampleWindow['summary']> }>;
 }
@@ -107,9 +109,30 @@ export interface WorkerStatus {
 const SWEEP_EVERY_MS = 30_000;
 /** Spawn gate decisions (owner rule 2026-10-17): a planned birth waits at most this long to be shown. */
 const SPAWN_GATE_EVERY_MS = 15_000;
+/**
+ * How soon the live loop claims again after a handler or a claim failed, however
+ * short the poll. The retry budget is counted in attempts (D28) and was sized at
+ * one a second; a quarter-second poll must not spend it four times as fast.
+ */
+const RETRY_AFTER_MS = 1_000;
+/** How often the live loop runs the repairs, apart from the queue. Scaling plan F1.3. */
+const MAINTENANCE_EVERY_MS = 1_000;
+
+interface Maintained { reaped: number; stranded: number; botTurns: number }
+interface Drained { claimed: number; processed: number; failed: number; abandoned: number; cutoff: Date }
 
 export class EventWorker {
   private timer: NodeJS.Timeout | null = null;
+  private maintenanceTimer: NodeJS.Timeout | null = null;
+  private maintenanceTask: Promise<void> | null = null;
+  /** One-shot timer for the next event due before the next poll. */
+  private wakeTimer: NodeJS.Timeout | null = null;
+  /** The due moment the last wake fired for; a second wake for it would spin. */
+  private wokeFor: number | null = null;
+  /** `performance.now()` before which the live loop does not claim. */
+  private retryAt = 0;
+  private maintainedAt: Date | null = null;
+  private maintenanceErrors = 0;
   private running = false;
   private stopped = false;
   /** When the stranded sweep last ran. `-Infinity` so the first tick always does. */
@@ -148,10 +171,24 @@ export class EventWorker {
     private readonly log: FastifyBaseLogger,
   ) {}
 
+  /** Maintenance, then the queue, in that order: what tests step through. */
   async tick(): Promise<TickResult> {
+    return this.measured(async () => {
+      const maintained = await this.maintain(this.clock.now());
+      const { cutoff: _, ...drained } = await this.drain();
+      // Silent Space bridge: disabling transfers must preserve every commander.
+      // Never fall back to destructive reclaim while the transfer engine is offline.
+      return { ...drained, reaped: maintained.reaped, abandoned: drained.abandoned + maintained.stranded,
+        reclaimed: 0, botTurns: maintained.botTurns };
+    });
+  }
+
+  private async measured<T extends Pick<TickResult, 'processed' | 'failed' | 'abandoned'>>(
+    pass: () => Promise<T>,
+  ): Promise<T> {
     const started = performance.now();
     try {
-      const result = await this.executeTick();
+      const result = await pass();
       this.ticks += 1;
       this.processed += result.processed;
       this.handlerFailures += result.failed;
@@ -169,8 +206,14 @@ export class EventWorker {
     }
   }
 
-  private async executeTick(): Promise<TickResult> {
-    const now = this.clock.now();
+  /**
+   * THE REPAIRS. Scaling plan F1.3 (M7).
+   *
+   * The live loop runs these on their own timer and never waits for them: a two-second
+   * sweep used to be two seconds on every battle due behind it. `tick()` still runs
+   * them before its claim, so a test can step through both in order.
+   */
+  private async maintain(now: Date): Promise<Maintained> {
     const reaped = await reap(this.db, this.opts.staleMinutes, now);
     if (reaped > 0) {
       this.log.warn({ reaped }, 'returned abandoned events to the queue');
@@ -246,10 +289,6 @@ export class EventWorker {
       catch (err) { this.log.error({ err }, 'unknown signal clock repair failed; queue processing continues'); }
     }
 
-    // Silent Space bridge: disabling transfers must preserve every commander.
-    // Never fall back to destructive reclaim while the transfer engine is offline.
-    const reclaimed = 0;
-
     /**
      * THE COMMANDERS THE SERVER PLAYS. D159, and on the same terms as the
      * stranded sweep above: its own clock, its own `try/catch`, and no claim on the queue.
@@ -275,9 +314,15 @@ export class EventWorker {
       }
     }
 
-    // Repairs and bot turns may take time: claim everything due when we actually
-    // reach the queue, rather than waiting another poll for that elapsed window.
-    const due = await claimDue(this.db, this.opts.batch, this.clock.now());
+    this.startBackgroundMaintenance(now);
+    this.maintainedAt = new Date();
+    return { reaped, stranded, botTurns };
+  }
+
+  private async drain(): Promise<Drained> {
+    // Read the clock at the queue, not at the pass start: everything due by now is claimed.
+    const cutoff = this.clock.now();
+    const due = await claimDue(this.db, this.opts.batch, cutoff);
     let processed = 0;
     let failed = 0;
     let abandoned = 0;
@@ -356,6 +401,10 @@ export class EventWorker {
       }
     }
 
+    return { claimed: due.length, processed, failed, abandoned, cutoff };
+  }
+
+  private startBackgroundMaintenance(now: Date): void {
     // A separate promise owns maintenance: fleet resolution never awaits a move.
     if (this.opts.silentSpaceEnabled && !this.stopped && this.silentSpaceTask === null
       && now.getTime() - this.silentSpaceAt >= SILENT_SPACE_INTERVAL_MS) {
@@ -393,16 +442,6 @@ export class EventWorker {
         .catch(() => { this.log.error('Content report expiry unavailable; retrying next minute'); })
         .finally(() => { this.mediaDeletionTask = null; });
     }
-
-    return {
-      claimed: due.length,
-      processed,
-      failed,
-      reaped,
-      abandoned: abandoned + stranded,
-      reclaimed,
-      botTurns,
-    };
   }
 
   private observeEventStatements(kind: string, statements: number): void {
@@ -444,6 +483,7 @@ export class EventWorker {
         p99: latenessAt(0.99),
         max: lateness.at(-1) ?? 0,
       },
+      maintenance: { lastAt: this.maintainedAt?.toISOString() ?? null, errors: this.maintenanceErrors },
       eventStatements: Object.fromEntries([...this.eventStatements].sort(([a], [b]) => a.localeCompare(b))
         .map(([kind, samples]) => [kind, { events: samples.events, statements: samples.statements.summary() }])),
     };
@@ -453,43 +493,92 @@ export class EventWorker {
    * On startup this drains everything already overdue, in resolve_at order. A
    * server that was down for six hours resolves six hours of history correctly,
    * because every event carries the time it was meant to fire at.
+   *
+   * WHEN IT WAKES. Scaling plan F1.3 (M8). After each drain it asks for the next
+   * moment due before the next poll and sets a one-shot timer for it, so an event
+   * known to this queue resolves on its moment; the poll only bounds how late an
+   * event scheduled since then can be. The repairs run on their own timer beside it.
    */
   start(): void {
     if (this.timer) return;
     this.stopped = false;
     const run = async () => {
       // The batch loop checks stopped before every claim, including the first.
-      if (this.running) return;
+      if (this.running || performance.now() < this.retryAt) return;
       this.running = true;
       try {
         while (!this.stopped) {
-          const result = await this.tick();
+          const { cutoff, ...result } = await this.measured(() => this.drain());
           if (result.claimed > 0) this.log.info(result, 'worker tick');
-          // Full successful batches imply possible backlog. Failed events retain
-          // the normal poll delay so immediate draining cannot burn their retries.
-          if (result.claimed === 0 || result.claimed < this.opts.batch || result.failed > 0) break;
+          if (result.failed > 0) {
+            // Failed events keep the retry pace so immediate draining cannot burn their retries.
+            this.retryAt = performance.now() + RETRY_AFTER_MS;
+            break;
+          }
+          // A full batch implies possible backlog; anything less is the queue caught up.
+          if (result.claimed < this.opts.batch) {
+            await this.armWake(cutoff, run);
+            break;
+          }
           // Keep batches sequential while allowing shutdown and HTTP to progress.
           await new Promise<void>(resolve => setImmediate(resolve));
         }
       } catch (err) {
         this.log.error({ err }, 'worker tick failed');
+        this.retryAt = performance.now() + RETRY_AFTER_MS;
       } finally {
         this.running = false;
       }
     };
+    const maintain = () => {
+      if (this.maintenanceTask || this.stopped) return;
+      this.maintenanceTask = this.maintain(this.clock.now())
+        .then(() => undefined, (err: unknown) => {
+          this.maintenanceErrors += 1;
+          this.log.error({ err }, 'maintenance pass failed; the queue carries on regardless');
+        })
+        .finally(() => { this.maintenanceTask = null; });
+    };
     void run();
     this.timer = setInterval(() => void run(), this.opts.pollMs);
     this.timer.unref();
+    maintain();
+    this.maintenanceTimer = setInterval(maintain, MAINTENANCE_EVERY_MS);
+    this.maintenanceTimer.unref();
+  }
+
+  private async armWake(cutoff: Date, run: () => Promise<void>): Promise<void> {
+    let next: Date | null;
+    try {
+      next = await nextDueAt(this.db, cutoff, new Date(cutoff.getTime() + this.opts.pollMs));
+    } catch (err) {
+      this.log.error({ err }, 'next-due lookup failed; the poll carries on');
+      return;
+    }
+    // Already woken for it and the clock had not reached it: the poll takes it.
+    if (next === null || this.stopped || next.getTime() === this.wokeFor) return;
+    if (this.wakeTimer) clearTimeout(this.wakeTimer);
+    const due = next.getTime();
+    // One millisecond late rather than early: a timer may fire just before its time.
+    const delay = Math.max(0, Math.ceil(due - this.clock.now().getTime())) + 1;
+    this.wakeTimer = setTimeout(() => {
+      this.wakeTimer = null;
+      this.wokeFor = due;
+      void run();
+    }, delay);
+    this.wakeTimer.unref();
   }
 
   async stop(): Promise<void> {
     this.stopped = true;
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    for (const timer of [this.timer, this.maintenanceTimer]) if (timer) clearInterval(timer);
+    if (this.wakeTimer) clearTimeout(this.wakeTimer);
+    this.timer = null;
+    this.maintenanceTimer = null;
+    this.wakeTimer = null;
     // Let an in-flight tick finish rather than tearing its transaction down.
     while (this.running) await new Promise((r) => setTimeout(r, 20));
+    await this.maintenanceTask;
     await this.silentSpaceTask;
     await this.mediaDeletionTask;
   }

@@ -32,6 +32,8 @@ tests:
         values: '1 90 90'
       - series: 'astera_worker_abandoned_total{job="astera",service="worker",instance="127.0.0.1:3210"}'
         values: '0 0 1 1'
+      - series: 'astera_worker_last_maintenance_seconds{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '1 1 200 260 320'
     alert_rule_test:
       - eval_time: 3m
         alertname: AsteraWorkerBehind
@@ -47,6 +49,16 @@ tests:
             exp_annotations:
               summary: 'Worker 90 sn''dir tur atmıyor'
               description: 'Worker döngüsü takılmış olabilir. Kontrol: worker logları; gerekirse worker container yeniden başlatılır.'
+      - eval_time: 3m
+        alertname: AsteraWorkerMaintenanceStalled
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: AsteraWorkerMaintenanceStalled
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'Worker bakımı 320 sn''dir bitmiyor'
+              description: 'Reaper ve takılı uçuş taraması çalışmıyor; olaylar çözülmeye devam eder ama çöken bir claim geri alınmaz. Kontrol: worker loglarında "maintenance pass failed"; gerekirse worker container yeniden başlatılır.'
       - eval_time: 3m
         alertname: AsteraEventsAbandoned
         exp_alerts:

@@ -254,7 +254,7 @@ services:
       ROLE: worker
       PORT: 3210
       DB_POOL_MAX: ${WORKER_DB_POOL_MAX:-12}
-      WORKER_POLL_MS: ${WORKER_POLL_MS:-1000}
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-250}
       WORKER_BATCH: ${WORKER_BATCH:-100}
       # The commanders the server plays. D159. Off unless the .env says otherwise,
       # and only ever here: an API replica never consults it. Names come from
