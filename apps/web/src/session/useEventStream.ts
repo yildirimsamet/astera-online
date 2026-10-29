@@ -39,6 +39,13 @@ export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
 export const RESUME_RESYNC_MS = 15_000;
 
 /**
+ * A superseded tab that stays shown returns after this even without focus. Scaling
+ * plan F1.1 (O5): the server keeps three streams per account and closes the oldest,
+ * so reconnecting at once would supersede the next tab, which would do the same.
+ */
+export const SUPERSEDED_RETRY_MS = 60_000;
+
+/**
  * Every read a player event can move — and the same set a RECONNECTION moves.
  *
  * A craft is drawn from whichever of these carries it: your own fleets from
@@ -228,7 +235,13 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }, Math.random() * RECONNECT_RESYNC_MAX_MS);
     };
 
+    // Set by the server's `superseded` frame; the loop below then waits to be wanted.
+    const lastClose = { superseded: false };
     const refresh = (kind: string): void => {
+      if (kind === 'superseded') {
+        lastClose.superseded = true;
+        return;
+      }
       if (kind === 'shard:rollover' || kind === 'placement_changed') {
         onPlacementChanged();
         return;
@@ -316,6 +329,23 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         controller.signal.addEventListener('abort', onAbort, { once: true });
       });
 
+    /** Hidden: until shown. Shown: until focused, or a minute has passed. Abort ends it. */
+    const resumeAfterSuperseded = (): Promise<void> =>
+      new Promise((resolve) => {
+        const resume = (): void => {
+          if (!controller.signal.aborted && !isAppActive()) return;
+          clearTimeout(timer);
+          stopWatching();
+          window.removeEventListener('focus', resume);
+          controller.signal.removeEventListener('abort', resume);
+          resolve();
+        };
+        const timer = setTimeout(resume, SUPERSEDED_RETRY_MS);
+        const stopWatching = watchAppActivity(resume);
+        window.addEventListener('focus', resume);
+        controller.signal.addEventListener('abort', resume, { once: true });
+      });
+
     void (async () => {
       let attempt = 0;
       let hasOpened = false;
@@ -347,6 +377,12 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
          * a second, per tab, forever. Only a connection that actually held for a
          * while has earned a reset.
          */
+        if (lastClose.superseded) {
+          lastClose.superseded = false;
+          attempt = 0;
+          await resumeAfterSuperseded();
+          continue;
+        }
         attempt = Date.now() - openedAt > HEALTHY_MS ? 0 : attempt + 1;
         await pause(backoffMs(attempt));
       }

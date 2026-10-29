@@ -8,6 +8,7 @@ import {
   RECONNECT_RESYNC_MAX_MS,
   RESUME_RESYNC_MS,
   STRATEGIC_SIGHT_CONSISTENCY_MS,
+  SUPERSEDED_RETRY_MS,
   useEventStream,
 } from '../src/session/useEventStream.js';
 import { COALESCE_MS, HEAVY_COALESCE_MS } from '../src/session/shardEvents.js';
@@ -33,10 +34,13 @@ let onEvent: ((kind: string) => void) | null = null;
  * AFTER it does.
  */
 let closeSocket: (() => void) | null = null;
+/** How many times the loop has opened the socket. */
+let opens = 0;
 
 const fakeApi = (): Api =>
   ({
     stream: (handler: (kind: string) => void, _signal: AbortSignal, onOpen?: () => void) => {
+      opens += 1;
       onEvent = handler;
       // Opens immediately, as a working connection does.
       onOpen?.();
@@ -65,6 +69,7 @@ describe('the event stream', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     onEvent = null;
     closeSocket = null;
+    opens = 0;
     asked = [];
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.invalidateQueries = (filters?: { queryKey?: readonly unknown[] }) => {
@@ -457,6 +462,58 @@ describe('the event stream', () => {
   });
 
   /** An unmounted tab must not flush a window it armed on the way out. */
+  /**
+   * A FIFTH TAB MUST NOT START A WAR BETWEEN THE OTHER FOUR. Scaling plan F1.1 (O5).
+   *
+   * The server keeps three streams per account and closes the oldest as `superseded`.
+   * A loop that simply reconnected would supersede the next-oldest, which would
+   * reconnect in turn — every tab closing another forever, each pass a full resync.
+   * So a superseded tab waits: hidden, until it is shown; shown, until it is focused
+   * or a minute has passed. Being superseded is not news about the commander either.
+   */
+  it('keeps a tab superseded while hidden closed until it is shown again', async () => {
+    mountCaughtUp();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    fire('superseded');
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+    });
+    expect(opens).toBe(1);
+    expect(asked).toEqual([]);
+
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(opens).toBe(2);
+  });
+
+  it('reopens a superseded visible tab only on focus or after a minute', async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    mountCaughtUp();
+    fire('superseded');
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(SUPERSEDED_RETRY_MS - 1_000);
+    });
+    expect(opens).toBe(1);
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(opens).toBe(2);
+
+    fire('superseded');
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(SUPERSEDED_RETRY_MS);
+    });
+    expect(opens).toBe(3);
+  });
+
   it('drops a pending shard flush on unmount', () => {
     const view = mountCaughtUp();
     fire('shard:launch');

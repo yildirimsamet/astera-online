@@ -101,6 +101,10 @@ const connectionCount = intArg('connections', values.connections ?? values.users
 if (connectionCount < userCount) {
   throw new Error('--connections must be at least --users; every claimed active account needs a live client');
 }
+// The server closes an account's oldest stream beyond three (STREAMS_PER_ACCOUNT, F1.1).
+if (connectionCount > userCount * 3) {
+  throw new Error('--connections cannot exceed 3 per --users account; the server supersedes the oldest stream beyond that');
+}
 const durationSeconds = intArg('duration-seconds', values['duration-seconds'], 10, 43_200);
 const rampSeconds = intArg('ramp-seconds', values['ramp-seconds'], 0, 1800);
 const seed = intArg('seed', values.seed, 1, 2_000_000_000);

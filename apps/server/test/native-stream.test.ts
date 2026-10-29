@@ -12,6 +12,8 @@ beforeEach(async () => {
   built = buildApp({ db: fixture.db, clock: fixture.clock,
     env: testEnv({ NATIVE_AUTH_ENABLED: 'true', NATIVE_APP_ORIGINS: 'https://localhost', SSE_HEARTBEAT_MS: '100' }), logger: pino({ level: 'silent' }) });
   await built.app.ready();
+  // A logout reaches the open stream as a trigger NOTIFY on the bus (F1.1), as in production.
+  await built.bus.start();
   await built.app.listen({ port: 0, host: '127.0.0.1' });
 });
 afterEach(async () => { await built.close(); });

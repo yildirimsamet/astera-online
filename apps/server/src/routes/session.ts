@@ -2,7 +2,7 @@ import { readCommanderShip } from '../services/arenaShipState.js';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { accounts, planets, players } from '../db/schema.js';
+import { planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import {
   acknowledgeReturn,
@@ -14,11 +14,18 @@ import {
 } from '../services/session.js';
 import { readBattleReplay } from '../services/battleReplay.js';
 import { readBattleReports } from '../services/reports.js';
+import type { StreamCloseReason } from '../services/streamRegistry.js';
+import { SHARD_PREFIX, STREAM_REVOKED } from '../stream/bus.js';
+import type { FencedStream } from '../stream/fence.js';
 import { requireAuth } from './auth.js';
 
 const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() });
 /** The instant the return story was read (`asOf`): the window closes up to there. S3. */
 const returnSeenBody = z.object({ asOf: z.coerce.date() });
+
+const PLACEMENT_CHANGED_FRAME = 'event: placement_changed\ndata: {"kind":"placement_changed"}\n\n';
+/** Closed for a newer stream on the same account; the client waits before it returns. */
+const SUPERSEDED_FRAME = 'event: superseded\ndata: {"kind":"superseded"}\n\n';
 
 export function registerSessionRoutes(app: FastifyInstance): void {
   app.get('/api/commander-ship', { preHandler: requireAuth }, req => readCommanderShip(app.db, req.accountId!, app.clock));
@@ -198,7 +205,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       // Tells nginx and friends not to buffer, which would defeat the whole point.
       'X-Accel-Buffering': 'no',
     });
-    let cleanup: (reason?: 'client' | 'error' | 'slow' | 'shutdown') => void = () => undefined;
+    let cleanup: (reason?: StreamCloseReason) => void = () => undefined;
     const write = (frame: string): boolean => {
       if (reply.raw.destroyed || reply.raw.writableEnded) return false;
       reply.raw.write(frame);
@@ -210,16 +217,32 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       }
       return true;
     };
-    // Serialize event frames behind a placement check: no old-shard frame may follow
-    // a committed transfer. A plain read is enough — a transfer bumps the version and
-    // publishes `placement_changed` in one transaction, so a frame that passes an
-    // uncommitted move is only a refetch hint the gate then refuses with 409. The row
-    // lock this used to take cost every frame an xid and a WAL flush (resource
-    // analysis 2026-10-13). Bound the pending queue as well as the socket.
-    const tokenVersion = req.authVersion;
+    const end = (reason: StreamCloseReason, frame?: string): void => {
+      if (frame) write(frame);
+      cleanup(reason);
+      if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.end();
+    };
+    /**
+     * DELIVERED FROM MEMORY. Scaling plan F1.1.
+     *
+     * This read `players ⋈ accounts` before every frame and heartbeat — one SELECT
+     * per recipient per event. The epoch is now read once (`streamFence.admit`), and
+     * what ends it arrives on this player's topic from the triggers in migration
+     * 0210: a credential change or a deleted seat closes the socket so the reconnect
+     * re-authenticates; a transfer sends `placement_changed` first. NOTIFYs reach the
+     * one LISTEN socket in commit order and dispatch is synchronous, so no frame
+     * committed after a revocation can be written before it. After a LISTEN gap,
+     * frames wait for the fence's batched re-check. Bound the pending queue as well
+     * as the socket.
+     */
+    const fenced: FencedStream = {
+      playerId, accountId: req.accountId!, authVersion: req.authVersion!, seasonId, placementVersion,
+      ...(req.nativeSessionId ? { nativeSessionId: req.nativeSessionId } : {}),
+      revoke: (reason) => { end('client', reason === 'placement' ? PLACEMENT_CHANGED_FRAME : undefined); },
+    };
     let pendingBytes = 0;
     let delivery = Promise.resolve();
-    const enqueue = (frame: string): void => {
+    const enqueue = (frame: string, afterWrite?: () => void): void => {
       if (reply.raw.destroyed || reply.raw.writableEnded) return;
       const bytes = Buffer.byteLength(frame);
       pendingBytes += bytes;
@@ -229,32 +252,23 @@ export function registerSessionRoutes(app: FastifyInstance): void {
         return;
       }
       delivery = delivery.then(async () => {
+        await app.streamFence.settled();
         if (reply.raw.destroyed || reply.raw.writableEnded) return;
-        const [current] = await app.db.select({ seasonId: players.seasonId,
-          placementVersion: players.placementVersion, authVersion: accounts.authVersion }).from(players)
-          .innerJoin(accounts, eq(accounts.id, players.accountId))
-          .where(eq(players.id, playerId));
-        if (!current || current.authVersion !== tokenVersion
-          || (req.nativeSessionId && !await app.nativeSessions.isCurrent(req.nativeSessionId, req.accountId!, tokenVersion))) {
-          cleanup('client');
-          reply.raw.end();
-          return;
-        }
-        if (current.seasonId !== seasonId || current.placementVersion !== placementVersion) {
-          write('event: placement_changed\ndata: {"kind":"placement_changed"}\n\n');
-          cleanup('client');
-          reply.raw.end();
-          return;
-        }
         write(frame);
+        afterWrite?.();
       }).catch((err: unknown) => {
-        app.log.warn({ err, playerId }, 'stream placement check failed');
+        app.log.warn({ err, playerId }, 'stream delivery failed');
         cleanup('error');
         reply.raw.destroy();
       }).finally(() => { pendingBytes -= bytes; });
     };
     const send = (event: { kind: string }): void => {
-      enqueue(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
+      if (event.kind === STREAM_REVOKED) { fenced.revoke('auth'); return; }
+      if (event.kind === 'placement_changed') { fenced.revoke('placement'); return; }
+      const frame = `event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`;
+      // A rolled-over galaxy is told, then closed: whatever it becomes is read on reconnect.
+      if (event.kind === `${SHARD_PREFIX}rollover`) enqueue(frame, () => { end('client'); });
+      else enqueue(frame);
     };
     // Subscribe before the first byte makes the response visible to the client.
     // Once fetch resolves its headers the client considers the channel live; a
@@ -263,16 +277,18 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const unsubscribe = app.bus.subscribe(playerId, send);
     const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
     const unsubscribeGlobal = app.bus.subscribeGlobal(send);
+    // Read after subscribing: a revocation committed before this read is seen by it,
+    // and one committed after arrives on the topic. Frames queue behind it.
+    delivery = app.streamFence.admit(fenced);
 
-    // The comment keeps proxies alive and checks the account version even when
-    // no events arrive, so a revoked idle socket closes on the next heartbeat.
+    // Keeps proxies alive; it carries nothing, so it needs no check of its own.
     const heartbeat = setInterval(() => {
       enqueue(`: ping\n\n`);
     }, app.sseHeartbeatMs);
 
-    const lease = app.streams.open(() => {
-      cleanup('shutdown');
-      if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.end();
+    const lease = app.streams.open(req.accountId!, {
+      shutdown: () => { end('shutdown'); },
+      superseded: () => { end('superseded', SUPERSEDED_FRAME); },
     });
     let cleaned = false;
     cleanup = (reason = 'client'): void => {
@@ -282,6 +298,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       unsubscribe();
       unsubscribeShard();
       unsubscribeGlobal();
+      app.streamFence.remove(fenced);
       lease.release(reason);
     };
     // Both events matter: 'close' for a client that goes away, 'error' for a

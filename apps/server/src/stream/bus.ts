@@ -83,6 +83,11 @@ export type GlobalEventKind = 'announcement' | 'chat-badges';
 export const SHARD_PREFIX = 'shard:';
 export const PRIVATE_PREFIX = 'private:';
 export const GLOBAL_PREFIX = 'global:';
+/**
+ * A stream's credentials or seat are gone. Published by the triggers in migration
+ * 0210 (keep the literal there in step), intercepted by `/api/stream`, never sent on.
+ */
+export const STREAM_REVOKED = `${PRIVATE_PREFIX}auth`;
 
 /**
  * APPEND-ONLY. A client that does not know a kind ignores it; a client that

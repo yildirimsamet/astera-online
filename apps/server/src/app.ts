@@ -46,6 +46,7 @@ import { registerIntergalacticConvoyRoutes } from './routes/intergalacticConvoy.
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 import { EventBus } from './stream/bus.js';
+import { StreamFence } from './stream/fence.js';
 import { registerSessionRoutes } from './routes/session.js';
 import { registerSeasonRoutes } from './routes/season.js';
 import { registerServerRoutes } from './routes/servers.js';
@@ -110,6 +111,7 @@ declare module 'fastify' {
     rateLimitBackend: RateLimitBackend;
     metrics: RuntimeMetrics;
     streams: StreamRegistry;
+    streamFence: StreamFence;
     sseMaxBufferBytes: number;
     sseHeartbeatMs: number;
     dbPoolMax: number;
@@ -222,6 +224,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('worker', worker);
   const bus = new EventBus(opts.env.DATABASE_URL, log);
   app.decorate('bus', bus);
+  const streamFence = new StreamFence(db, clock, bus, log);
+  app.decorate('streamFence', streamFence);
   const projections = new Projections(db, bus, {
     enabled: opts.env.PROJECTION_CACHE_ENABLED,
     maxSeasons: opts.env.PROJECTION_CACHE_MAX_SEASONS,
@@ -541,6 +545,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       streams.drain();
       await closing;
       projections.close();
+      streamFence.close();
       await bus.stop();
       await rateLimitBackend.stop();
       metrics.close();
