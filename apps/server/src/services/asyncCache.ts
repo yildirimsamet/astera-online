@@ -13,8 +13,8 @@ interface Entry<T> {
   pending: boolean;
   expiresAt: number;
   promise: Promise<T>;
-  /** The settled value, for `invalidateWhere`. */
-  value?: T;
+  /** Present once the fill settled, for `invalidateWhere`. */
+  settled?: { value: T };
 }
 
 /**
@@ -30,6 +30,8 @@ export class AsyncCache<T> {
   private readonly entries = new Map<string, Entry<T>>();
   /** Only fills invalidated while pending; bounded by the entry ceiling. */
   private readonly invalidatedFills = new Set<symbol>();
+  /** `invalidateWhere` selectors that reached a fill before it settled; bounded the same way. */
+  private readonly pendingSelectors = new Map<symbol, ((key: string, value: T) => boolean)[]>();
   private hits = 0;
   private misses = 0;
   private bypasses = 0;
@@ -67,13 +69,22 @@ export class AsyncCache<T> {
     const token = Symbol(key);
     const promise = load()
       .then((value): T | Promise<T> => {
+        const selectors = this.pendingSelectors.get(token) ?? [];
+        this.pendingSelectors.delete(token);
         if (this.invalidatedFills.delete(token)) {
           return this.get(key, load);
         }
         const current = this.entries.get(key);
+        if (selectors.some((selects) => selects(key, value))) {
+          if (current?.token === token) {
+            this.entries.delete(key);
+            this.invalidations += 1;
+          }
+          return this.get(key, load);
+        }
         if (current?.token === token) {
           current.pending = false;
-          current.value = value;
+          current.settled = { value };
           current.expiresAt = this.now() + this.ttlMs;
           this.touch(key, current);
         }
@@ -81,6 +92,7 @@ export class AsyncCache<T> {
       })
       .catch((error: unknown) => {
         this.invalidatedFills.delete(token);
+        this.pendingSelectors.delete(token);
         if (this.entries.get(key)?.token === token) this.entries.delete(key);
         throw error;
       });
@@ -109,12 +121,17 @@ export class AsyncCache<T> {
   }
 
   /**
-   * Drops every entry `selects` picks. A pending fill passes no value: what it will
-   * hold is not known yet, so a selector on the value must take it.
+   * Drops every entry `selects` picks. A pending fill is judged when it settles, by
+   * the value it settles to: it may have read the state the caller is retiring, and
+   * one that does not match must not be cancelled for someone else's change.
    */
-  invalidateWhere(selects: (key: string, value: T | undefined) => boolean): void {
+  invalidateWhere(selects: (key: string, value: T) => boolean): void {
     for (const [key, entry] of this.entries) {
-      if (selects(key, entry.pending ? undefined : entry.value)) this.invalidate(key);
+      if (entry.settled) {
+        if (selects(key, entry.settled.value)) this.invalidate(key);
+      } else {
+        this.pendingSelectors.set(entry.token, [...this.pendingSelectors.get(entry.token) ?? [], selects]);
+      }
     }
   }
 

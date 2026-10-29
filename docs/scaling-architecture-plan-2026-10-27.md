@@ -892,11 +892,15 @@ Testler:
 
 **F1.2 Galaksiye göre cache izolasyonu (M4).**
 
-> **29 Eki: yapıldı (commit bekliyor, deploy edilmedi).** `sensors`, `remembered`, `sensorHistory` anahtarları
-> `${season}:${player}`; ownership shard olayı yalnız o sezonun prefix'ini, oyuncu olayı yalnız `:${player}`
-> sonekini siler. `commanders` hesap anahtarlı kaldı (sezon, topoloji okunmadan bilinmiyor); yeni
-> `AsyncCache.invalidateWhere` yerleşik değerin `seasonId`'sine bakar, bekleyen dolumu her zaman siler.
-> `reconcilePlacement` gate'in okuduğu `{ id, seasonId, placementVersion }` satırını alır, harita LRU.
+> **29 Eki: yapıldı (bf027768 + code review düzeltmesi, deploy edilmedi).** `sensors`, `remembered`,
+> `sensorHistory` anahtarları `${season}:${player}`; ownership shard olayı yalnız o sezonun prefix'ini, oyuncu
+> olayı yalnız `:${player}` sonekini siler. `commanders` hesap anahtarlı kaldı (sezon, topoloji okunmadan
+> bilinmiyor); `AsyncCache.invalidateWhere` yerleşik değerin `seasonId`'sine bakar, bekleyen dolumu
+> yerleştiği değere göre yargılar (başka galaksinin dolumu iptal olmaz). `reconcilePlacement` gate'in okuduğu
+> `{ id, seasonId, placementVersion }` satırını alır, harita LRU. İlk görüşte (deploy sonrası her taşınmış
+> komutan) yalnız hesabın kendi entry'leri silinir, hiçbir galaksinin kamusal cache'i silinmez; bu süreçte
+> izlenen bir taşınmada ek olarak katılınan galaksinin kamusal entry'si bir kez silinir. Galaksi çapındaki
+> etki taşınmanın kendi shard olaylarınındır (`commanderTransfer` iki galakside de `world` yayınlar).
 > **Bilerek yapılmadı:** `private:strategic-sight` hâlâ bütün trafik cache'ini siler. Olay izleyici listesindeki
 > her oyuncuya ayrı gider ve listede bu sürecin tanımadığı biri neredeyse hep vardır (oyuncular 3 replikaya
 > dağılır); bilinmeyen oyuncuda güvenli yol yine tam silmedir, olay da nadirdir (Death Star). Testler:

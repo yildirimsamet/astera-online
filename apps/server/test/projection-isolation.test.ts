@@ -153,6 +153,7 @@ it('a moved commander sees neither galaxy\'s old topology, even before any notif
   const before = await privateView(accountId);
   const oldWorlds = await projections.worlds(f.seasonId, f.clock.now());
   const newWorlds = await projections.worlds(other.seasonId, f.clock.now());
+  const neighbour = await privateView(other.accountId);
 
   // The relocation commits without a shard event reaching this replica.
   await f.db.update(players).set({ placementVersion: 1, seasonId: other.seasonId }).where(eq(players.id, playerId));
@@ -162,14 +163,18 @@ it('a moved commander sees neither galaxy\'s old topology, even before any notif
   const after = await privateView(accountId);
   expect(after.commander.seasonId).toBe(other.seasonId);
   expectFresh(after, before);
-  expect(await projections.worlds(f.seasonId, f.clock.now())).not.toBe(oldWorlds);
+  // The galaxy it joined is drawn fresh for it; everything else in either galaxy is
+  // the move's own shard events' to clear (commanderTransfer publishes in both).
   expect(await projections.worlds(other.seasonId, f.clock.now())).not.toBe(newWorlds);
+  expect(await projections.worlds(f.seasonId, f.clock.now())).toBe(oldWorlds);
+  expectSame(await privateView(other.accountId), neighbour);
 });
 
-it('a process that sees 2,000 commanders never clears every galaxy', async () => {
+it('a process that sees 2,000 commanders never clears a galaxy for them', async () => {
   await start();
   const there = await privateView(other.accountId);
   const thereWorlds = await projections.worlds(other.seasonId, f.clock.now());
+  const hereWorlds = await projections.worlds(f.seasonId, f.clock.now());
 
   // Moved commanders seen for the first time: their previous galaxy is unknown here.
   for (let i = 0; i < 2_000; i++) {
@@ -178,19 +183,24 @@ it('a process that sees 2,000 commanders never clears every galaxy', async () =>
 
   expectSame(await privateView(other.accountId), there);
   expect(await projections.worlds(other.seasonId, f.clock.now())).toBe(thereWorlds);
+  // Not even the galaxy they are in: after a deploy every moved commander is new here.
+  expect(await projections.worlds(f.seasonId, f.clock.now())).toBe(hereWorlds);
 });
 
 it('the placement map forgets its least recently seen commander, not all of them', async () => {
   await start({ maxAccounts: 300 });
-  for (let i = 0; i < 300; i++) {
+  const moved = { id: f.playerIds[0]!, seasonId: f.seasonId, placementVersion: 1 };
+  projections.reconcilePlacement(f.accountIds[0]!, moved);
+  for (let i = 1; i < 300; i++) {
     projections.reconcilePlacement(`account-${String(i)}`, { id: `player-${String(i)}`, seasonId: f.seasonId, placementVersion: 1 });
   }
-  const worlds = await projections.worlds(f.seasonId, f.clock.now());
+  const warm = await projections.commander(f.accountIds[0]!);
 
-  // Seen again, so the 301st commander evicts account-1 rather than account-0.
-  projections.reconcilePlacement('account-0', { id: 'player-0', seasonId: f.seasonId, placementVersion: 1 });
+  // Seen again, so the 301st commander evicts account-1 rather than this one; a
+  // map that reset itself would greet it as a fresh move and drop its topology.
+  projections.reconcilePlacement(f.accountIds[0]!, moved);
   projections.reconcilePlacement('account-300', { id: 'player-300', seasonId: f.seasonId, placementVersion: 0 });
-  projections.reconcilePlacement('account-0', { id: 'player-0', seasonId: f.seasonId, placementVersion: 1 });
+  projections.reconcilePlacement(f.accountIds[0]!, moved);
 
-  expect(await projections.worlds(f.seasonId, f.clock.now())).toBe(worlds);
+  expect(await projections.commander(f.accountIds[0]!)).toBe(warm);
 });

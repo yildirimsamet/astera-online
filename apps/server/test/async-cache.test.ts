@@ -14,19 +14,26 @@ it('invalidates only the addressed caller, including a pending fill', async () =
   expect(cache.status()).toMatchObject({ entries: 2, invalidations: 1 });
 });
 
-it('selects settled entries by value and hands a pending fill no value to judge', async () => {
+it('selects entries by value, judging a pending fill by the value it settles to', async () => {
   const cache = new AsyncCache<{ season: string }>(4, 1000);
-  const pending = deferred<{ season: string }>();
-  const load = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue({ season: 'A' });
-  const read = cache.get('carol', load);
+  const elsewhere = deferred<{ season: string }>();
+  const selected = deferred<{ season: string }>();
+  const keep = vi.fn().mockReturnValueOnce(elsewhere.promise);
+  const refill = vi.fn().mockReturnValueOnce(selected.promise).mockResolvedValue({ season: 'A' });
+  const kept = cache.get('dave', keep);
+  const refilled = cache.get('carol', refill);
   const there = await cache.get('alice', () => Promise.resolve({ season: 'B' }));
   await cache.get('bob', () => Promise.resolve({ season: 'A' }));
-  // Scaling plan F1.2: the fill may resolve to the selected galaxy, so it must go too.
-  cache.invalidateWhere((_, value) => value === undefined || value.season === 'A');
-  pending.resolve({ season: 'A' });
-  await read;
-  expect(load).toHaveBeenCalledTimes(2);
+  // Scaling plan F1.2: one galaxy's event may not cancel another galaxy's fill.
+  cache.invalidateWhere((_, value) => value.season === 'A');
+  elsewhere.resolve({ season: 'B' });
+  selected.resolve({ season: 'A' });
+  expect(await kept).toEqual({ season: 'B' });
+  await refilled;
+  expect(keep).toHaveBeenCalledTimes(1);
+  expect(refill).toHaveBeenCalledTimes(2);
   expect(await cache.get('alice', () => Promise.resolve({ season: 'wrong' }))).toBe(there);
+  expect(await cache.get('dave', () => Promise.resolve({ season: 'wrong' }))).toEqual({ season: 'B' });
   expect(cache.status()).toMatchObject({ invalidations: 2 });
 });
 

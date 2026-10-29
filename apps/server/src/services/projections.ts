@@ -30,7 +30,9 @@ export interface CommanderPlacement {
   placementVersion: number;
 }
 
-/** A `${seasonId}:${playerId}` key, in whichever galaxy the player is. */
+/** Caller-keyed entries are `${seasonId}:${playerId}`; these build and select them (F1.2). */
+const playerKey = (seasonId: string, playerId: string): string => `${seasonId}:${playerId}`;
+const inGalaxy = (seasonId: string): string => `${seasonId}:`;
 const ownedBy = (playerId: string) => (key: string): boolean => key.endsWith(`:${playerId}`);
 
 export interface ProjectionStatus {
@@ -75,7 +77,7 @@ export class Projections {
   /**
    * WHAT EACH COMMANDER CAN SEE MOVING. D123.
    *
-   * Player-keyed and cleared in exactly the branches that clear `commanders`,
+   * Keyed by galaxy and player, and cleared in exactly the branches that clear `commanders`,
    * because the two have to agree: a captured colony brings both a world id and
    * that world's eyes, and a horizon computed from a fresher world list than the
    * one the caller is filtering with would publish contacts around a planet the
@@ -83,7 +85,7 @@ export class Projections {
    *
    * A completed build invalidates its owner's exact entry before the waking client
    * can reuse it. An impact has no player id by design, so the rare destructive
-   * event clears the bounded set: a lowered Core may shrink a Telescope or Radar,
+   * event clears its galaxy's entries: a lowered Core may shrink a Telescope or Radar,
    * and serving the old wider horizon even briefly would reveal unearned data.
    * TTL remains only a repair net; it is never the correctness mechanism.
    */
@@ -91,7 +93,7 @@ export class Projections {
   /**
    * WHAT EACH COMMANDER REMEMBERS ABOUT WORLDS THEY CANNOT SEE. D127.
    *
-   * Player-keyed and cleared with `commanders`, for the same reason: a captured
+   * Keyed by galaxy and player, and cleared with `commanders`, for the same reason: a captured
    * colony changes both what a caller controls and what they can resolve without
    * a probe, and the two may never be read from different generations.
    *
@@ -158,14 +160,16 @@ export class Projections {
   private readonly placements = new Map<string, CommanderPlacement>();
 
   /**
-   * The database placement check is authoritative even if NOTIFY arrives late.
+   * The database placement check is authoritative even if NOTIFY arrives late, for
+   * the caller: a move forgets this commander's own entries in every galaxy.
    *
-   * Scaling plan F1.2 (M4): a move forgets this commander and the galaxies it
-   * touched, never every galaxy. A moved commander seen here for the first time
-   * came from a galaxy this process cannot name; that galaxy's public entries go
-   * with the move's own shard event. The map drops its least recently seen account
-   * at its bound: clearing it whole made every moved commander's next request look
-   * like a fresh move.
+   * What the move did to either galaxy is its own shard events' to clear;
+   * `commanderTransfer` publishes `world` in both, in its transaction. Scaling plan
+   * F1.2 (M4): clearing galaxies here as well repeated for every moved commander a
+   * process meets for the first time, which after a deploy is all of them. A move
+   * this process watched (it held the old placement) also draws the joined galaxy
+   * fresh once, as the caller is about to read it. The map drops its least recently
+   * seen account at its bound; resetting it made every one of them look moved again.
    */
   reconcilePlacement(accountId: string, current: CommanderPlacement): void {
     const known = this.placements.get(accountId);
@@ -178,12 +182,7 @@ export class Projections {
     // A first request from an unmoved commander must not flush shared public data.
     if (!known && current.placementVersion === 0) return;
     this.forgetAccount(accountId, current.id);
-    this.invalidate(current.seasonId);
-    if (!known) return;
-    this.forgetAccount(accountId, known.id);
-    this.forgetCommanders(current.seasonId);
-    this.forgetCommanders(known.seasonId);
-    this.invalidate(known.seasonId);
+    if (known) this.invalidate(current.seasonId);
   }
 
   async worlds(seasonId: string, now: Date): Promise<PublicWorld[]> {
@@ -204,16 +203,16 @@ export class Projections {
 
   /** The caller's own sensor posts, for the traffic horizon. D123. */
   sensorsFor(playerId: string, seasonId: string, planetIds: readonly string[]): Promise<SensorPost[]> {
-    return this.sensors.get(`${seasonId}:${playerId}`, () => sensorPosts(this.db, planetIds));
+    return this.sensors.get(playerKey(seasonId, playerId), () => sensorPosts(this.db, planetIds));
   }
 
   /** The caller's own probe memory, for the three galaxy intel states. D127. */
   rememberedFor(playerId: string, seasonId: string): Promise<RememberedWorlds> {
-    return this.remembered.get(`${seasonId}:${playerId}`, () => rememberedWorlds(this.db, playerId));
+    return this.remembered.get(playerKey(seasonId, playerId), () => rememberedWorlds(this.db, playerId));
   }
 
   historyFor(playerId: string, seasonId: string): Promise<SensorEpoch[]> {
-    return this.sensorHistory.get(`${seasonId}:${playerId}`,
+    return this.sensorHistory.get(playerKey(seasonId, playerId),
       () => sensorHistoryForPlayer(this.db, playerId, seasonId));
   }
 
@@ -293,14 +292,14 @@ export class Projections {
 
   /**
    * One galaxy's caller-keyed entries. They are read together in one request and
-   * may never come from different generations. A pending topology fill may belong
-   * to any galaxy, so it goes too.
+   * may never come from different generations. A topology is account-keyed, as its
+   * galaxy is only known once read, so it is selected by the galaxy it holds.
    */
   private forgetCommanders(seasonId: string): void {
-    this.commanders.invalidateWhere((_, topology) => topology === undefined || topology.seasonId === seasonId);
-    this.sensors.invalidatePrefix(`${seasonId}:`);
-    this.remembered.invalidatePrefix(`${seasonId}:`);
-    this.sensorHistory.invalidatePrefix(`${seasonId}:`);
+    this.commanders.invalidateWhere((_, topology) => topology.seasonId === seasonId);
+    this.sensors.invalidatePrefix(inGalaxy(seasonId));
+    this.remembered.invalidatePrefix(inGalaxy(seasonId));
+    this.sensorHistory.invalidatePrefix(inGalaxy(seasonId));
   }
 
   /** One commander's caller-keyed entries, in every galaxy. */
@@ -382,8 +381,8 @@ export class Projections {
       // The event intentionally names no target. An impact can lower Core and
       // therefore clamp either sensor, so clearing this galaxy's sensor entries is
       // the only safe invalidation that does not add information to the event.
-      this.sensors.invalidatePrefix(`${event.shard}:`);
-      this.sensorHistory.invalidatePrefix(`${event.shard}:`);
+      this.sensors.invalidatePrefix(inGalaxy(event.shard));
+      this.sensorHistory.invalidatePrefix(inGalaxy(event.shard));
     }
     if (
       kind === 'shard:world'
