@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { worldUnitsPerPixel } from './craftPick.js';
 import { MODEL_PICK_SCALE } from './planetLod.js';
 import { PLANET_SKIN_BODY_SCALE, PLANET_SKIN_SPIN_RATE, planetSkinPhase } from './planetSkinAttachments.js';
 
@@ -34,19 +35,6 @@ export function placeBodies(mesh: THREE.InstancedMesh, nodes: readonly Body[], s
 }
 
 
-/**
- * PLACE A GROUP'S PICK SPHERES, ONCE PER CHANGE OF MEMBERS — and measure the bounding
- * sphere from them there (owner, on a phone: "bazı gezegenlere tıklayabiliyorum
- * bazılarına tıklayamıyorum").
- *
- * Three.js tests a ray against an instanced mesh's bounding sphere before any instance
- * and computes that sphere once, at the first raycast, from the matrices of that moment.
- * Placed in the frame loop, a group raycast before its first frame kept a sphere at the
- * origin — nothing in it could ever be tapped — and a group whose worlds changed tier as
- * the camera zoomed kept its old members' sphere, so the newcomers could not be tapped.
- *
- * A pick sphere does not turn with the world, so it never needs the frame loop at all.
- */
 /** Seats `member` at `index` of a compacting pass, and says whether that seat held someone else. */
 export function seat<T>(members: T[], index: number, member: T): boolean {
   const changed = members[index] !== member;
@@ -70,12 +58,18 @@ export function settleMembers(mesh: THREE.InstancedMesh, members: unknown[], dra
   if (moved) mesh.computeBoundingSphere();
 }
 
-export function placePickSpheres(mesh: THREE.InstancedMesh, nodes: readonly Pickable[]): void {
+/** A modest 24 CSS pixel diameter; close worlds retain their body-relative target. */
+export function planetPickRadius(radius: number, camera: THREE.Camera, position: THREE.Vector3, height: number): number {
+  return Math.max(radius * MODEL_PICK_SCALE, 12 * worldUnitsPerPixel(camera, position, height));
+}
+
+/** Refresh Three's cached broad phase whenever members or camera-dependent radii change. */
+export function placePickSpheres(mesh: THREE.InstancedMesh, nodes: readonly Pickable[], camera?: THREE.Camera, height = 1): void {
   mesh.count = nodes.length;
   nodes.forEach((node, i) => {
     PLACE.position.set(node.position[0], node.position[1], node.position[2]);
     PLACE.rotation.set(0, 0, 0);
-    PLACE.scale.setScalar(node.radius * MODEL_PICK_SCALE);
+    PLACE.scale.setScalar(camera ? planetPickRadius(node.radius, camera, PLACE.position, height) : node.radius * MODEL_PICK_SCALE);
     PLACE.updateMatrix();
     mesh.setMatrixAt(i, PLACE.matrix);
   });

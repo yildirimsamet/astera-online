@@ -1,3 +1,4 @@
+import type { CraftPicking } from './CraftHitTargets.js';
 import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
 import type { ShipCosmeticEquipment } from '@astera/rules';
@@ -12,7 +13,7 @@ import { towCablePoint, towAnchor, towRoll, type TowedHull } from './towing.js';
 import type { Marker } from './Squadrons.js';
 import type { Vec3Tuple } from './scene.js';
 
-interface Props {
+interface Props extends CraftPicking {
   tows: readonly TowedHull[];
   tug: Marker;
   tugSlot: Vec3Tuple;
@@ -27,7 +28,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const ORIGIN: Vec3Tuple[] = [[0, 0, 0]];
 
 /** All interlocking links and attachment collars share one draw call and one tiny torus. */
-export function TowedShips({tows, tug, tugSlot, scale, aimDistance, focused, HullsComponent, shipSkins}: Props) {
+export function TowedShips({tows, tug, tugSlot, scale, aimDistance, focused, HullsComponent, shipSkins, onPointerUp}: Props) {
   const chain = useRef<THREE.InstancedMesh>(null);
   const canCull = useGalaxyCulling();
   const visibility = useMemo(createLocalVisibility, []);
@@ -110,11 +111,11 @@ export function TowedShips({tows, tug, tugSlot, scale, aimDistance, focused, Hul
       <meshStandardMaterial color="#a0a6ac" metalness={.65} roughness={.48} emissive="#4e5964" emissiveIntensity={.1} />
     </instancedMesh>
     {tows.map((tow, index) => <TowedShip key={`${tow.hull}:${index}`} tow={tow} index={index}
-      scale={scale} focused={focused} HullsComponent={HullsComponent} />)}
+      scale={scale} focused={focused} HullsComponent={HullsComponent} onPointerUp={onPointerUp} />)}
   </group>;
 }
 
-function TowedShip({tow, index, scale, focused, HullsComponent}: {
+function TowedShip({tow, index, scale, focused, HullsComponent, onPointerUp}: CraftPicking & {
   tow: TowedHull; index: number; scale: number; focused: boolean; HullsComponent: typeof FormationHulls;
 }) {
   const hull = useRef<THREE.Group>(null);
@@ -125,6 +126,6 @@ function TowedShip({tow, index, scale, focused, HullsComponent}: {
     if (hull.current) hull.current.rotation.z = towRoll(serverNow(), index);
   });
   return <group name="towed-prize" position={tow.position} ref={hull} userData={{hull: tow.hull, chainIndex: index}}>
-    <HullsComponent markers={markers} slots={ORIGIN} scale={scale} aimDistance={aim} focused={focused} />
+    <HullsComponent markers={markers} slots={ORIGIN} scale={scale} aimDistance={aim} focused={focused} onPointerUp={onPointerUp} />
   </group>;
 }

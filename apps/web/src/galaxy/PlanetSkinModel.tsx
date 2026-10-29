@@ -1,3 +1,4 @@
+import { createViewMemo, viewChanged } from './viewMemo.js';
 import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
@@ -10,8 +11,8 @@ import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
 import { addPlanetImpact, planetImpactGroups } from './planetImpactMaterial.js';
-import { MODEL_PICK_SCALE, type PlanetLod } from './planetLod.js';
-import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
+import type { PlanetLod } from './planetLod.js';
+import { placeBodies, placePickSpheres, planetPickRadius, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
@@ -314,6 +315,7 @@ function LoadedPlanetSkinModel({
   const tint = useMemo(() => new THREE.Color(), []);
   const projection = useMemo(() => new THREE.Matrix4(), []);
   const frustum = useMemo(() => new THREE.Frustum(), []);
+  const pickView = useMemo(createViewMemo, []);
 
   useEffect(() => () => {
     // Geometry is owned by the weak GLTF mesh cache and shared by every look.
@@ -332,7 +334,9 @@ function LoadedPlanetSkinModel({
     }
   }, [tint]);
 
-  useFrame(({ camera, clock }) => {
+  useFrame(({ camera, clock, size }) => {
+    camera.updateWorldMatrix(true, false);
+    const pickChanged = viewChanged(pickView, camera, nodes, size.height);
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
     if (lowDressed?.uniforms) lowDressed.uniforms.time.value = clock.elapsedTime;
     const full = fullBody.current;
@@ -344,10 +348,10 @@ function LoadedPlanetSkinModel({
     let lowCount = 0;
     let hitCount = 0;
     let seated = false;
-    nodes.forEach((node) => {
+    for (const node of nodes) {
       const distance = camera.position.distanceTo(helper.position.set(...node.position));
       const lod = galaxyLod ? planetSkinLod(node.radius, distance) : 'full';
-      if (!sphereInFrustum(frustum, node.position, node.radius)) return;
+      if (!sphereInFrustum(frustum, node.position, node.radius)) continue;
       helper.position.set(...node.position);
       helper.rotation.set(
         0,
@@ -362,13 +366,12 @@ function LoadedPlanetSkinModel({
       const light = bodyLight(node.stance, node.intel);
       const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
       mesh.setColorAt(index, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
-      // The pick sphere covers the card's area, as a default world's does (`MODEL_PICK_SCALE`).
-      helper.scale.setScalar(node.radius * MODEL_PICK_SCALE);
+      helper.scale.setScalar(planetPickRadius(node.radius, camera, helper.position, size.height));
       helper.updateMatrix();
       hits.current?.setMatrixAt(hitCount, helper.matrix);
       if (seat(hitNodes.current, hitCount, node)) seated = true;
       hitCount += 1;
-    });
+    }
     for (const [mesh, count] of [[full, fullCount], [low, lowCount]] as const) {
       mesh.count = count;
       mesh.visible = count > 0;
@@ -381,7 +384,7 @@ function LoadedPlanetSkinModel({
       or view — a skinned world could not be tapped (F9's phone fault, on this path).
     */
     if (hits.current) {
-      settleMembers(hits.current, hitNodes.current, hitCount, seated);
+      settleMembers(hits.current, hitNodes.current, hitCount, seated || pickChanged);
       hits.current.visible = hitCount > 0;
     }
     if (onRendered && fullCount > 0 && !reportedRender.current) {
@@ -518,12 +521,16 @@ function ModelInstances({
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
   const visible = useMemo(() => createInstanceVisibility<SkinNode>(), []);
+  const pickView = useMemo(createViewMemo, []);
+  const camera = useThree(state => state.camera);
+  const height = useThree(state => state.size.height);
 
   useLayoutEffect(() => {
     const mesh = body.current;
     if (!mesh) return;
-    // Picking keeps the complete, stable node order and its original touch area.
-    if (hits.current) placePickSpheres(hits.current, nodes);
+    camera.updateWorldMatrix(true, false);
+    if (hits.current) placePickSpheres(hits.current, nodes, camera, height);
+    pickView.primed = false;
     mesh.count = 0;
     // An empty bucket leaves the render list (shaders still compile: `compile` walks hidden meshes).
     mesh.visible = false;
@@ -533,9 +540,13 @@ function ModelInstances({
     mesh.setColorAt(0, tint.setRGB(1, 1, 1));
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
     invalidate();
-  }, [nodes, tint, dressed, invalidate, capacity, geometry, visible, turning]);
+  }, [nodes, tint, dressed, invalidate, capacity, geometry, visible, turning, camera, height, pickView]);
 
-  useVisualFrame(({ camera, clock }) => {
+  useVisualFrame(({ camera, clock, size }) => {
+    camera.updateWorldMatrix(true, false);
+    if (hits.current && viewChanged(pickView, camera, nodes, size.height)) {
+      placePickSpheres(hits.current, nodes, camera, size.height);
+    }
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
     const mesh = body.current;
     if (!mesh) return;

@@ -7,7 +7,6 @@ import { MODEL } from '../ui/assets.js';
 import { Exhaust, Hull } from './Fleets.jsx';
 import { CRAFT_SCALE, isHeading, tradeShipWorldPosition } from './scene.js';
 import { markHit, wasTap } from './tap.js';
-import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 
 /**
@@ -84,17 +83,6 @@ const TRADE_SHIP_GLOW = '#ffcf6e';
 const TRADE_SHIP_FLAME = '#ffe9b8';
 
 /**
- * A SEPARATE, GENEROUS, INVISIBLE HIT TARGET — the same answer `Asteroids.tsx`
- * reached, for the same reason: a fingertip on a phone is nowhere near the
- * precision of a hull, and raycasting the model itself means the hit area changes
- * shape as the ship turns. A plain sphere is stable and forgiving.
- *
- * `opacity={0}` rather than `visible={false}`: an invisible object is not raycast
- * at all, which would leave nothing to press.
- */
-export const TRADE_SHIP_HIT_RADIUS = TRADE_SHIP_SCALE * 1.25;
-
-/**
  * How far ahead the heading sample looks, in milliseconds.
  *
  * `TRADE.speed` is a slow, deliberate pace (D156: half an Argosy) so a short
@@ -168,14 +156,11 @@ export function TradeShip({
         scale={TRADE_SHIP_SCALE}
         glow={TRADE_SHIP_GLOW}
         focused={focused}
+        onPointerUp={onSelect ? pick : undefined}
+        hitboxKind="trade"
       />
       <Exhaust url={MODEL.tradeShip} colour={TRADE_SHIP_FLAME} scale={TRADE_SHIP_SCALE} />
-      {onSelect && (
-        <mesh name="trade-ship-hit" onPointerUp={pick} renderOrder={-1}>
-          <sphereGeometry args={[TRADE_SHIP_HIT_RADIUS, 8, 6]} />
-          <HitboxMaterial kind="trade" />
-        </mesh>
-      )}
+
     </group>
   );
 }

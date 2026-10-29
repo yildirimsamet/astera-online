@@ -128,10 +128,11 @@ describe('a modelled world’s pick volume', () => {
     expect(Math.PI * (MODEL_PICK_SCALE * radius) ** 2).toBeCloseTo((2 * radius) ** 2);
   });
 
-  it('is placed once per change of members, never in the frame loop (`planetPick.ts`)', () => {
+  it('refreshes pick bounds when zoom or viewport changes', () => {
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
     const defaults = model.slice(model.indexOf('function ModelInstances('));
-    expect(defaults).toMatch(/placePickSpheres\(hits\.current, nodes\)/);
+    expect(defaults).toContain('placePickSpheres(hits.current, nodes, camera, size.height)');
+    expect(defaults).toContain('viewChanged(pickView, camera, nodes, size.height)');
     expect(defaults).not.toMatch(/hits\.current\?\.setMatrixAt/);
     expect(defaults).toMatch(/<HitboxMaterial kind="planet" \/>/);
   });
@@ -140,7 +141,7 @@ describe('a modelled world’s pick volume', () => {
   it('is the same size for a skinned world as for a default one', () => {
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
     const skins = model.slice(model.indexOf('function LoadedPlanetSkinModel('), model.indexOf('export function DefaultPlanetModel('));
-    expect(skins).toMatch(/setScalar\(node\.radius \* MODEL_PICK_SCALE\);\s*helper\.updateMatrix\(\);\s*hits\.current\?\.setMatrixAt\(hitCount, helper\.matrix\)/);
+    expect(skins).toContain('planetPickRadius(node.radius, camera, helper.position, size.height)');
   });
 });
 

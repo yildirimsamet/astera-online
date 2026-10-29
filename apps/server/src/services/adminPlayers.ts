@@ -1,5 +1,5 @@
 import { and, asc, count, eq, gt, gte, inArray, isNull, lte, or, sql, sum } from 'drizzle-orm';
-import { SERVERS, SILENT_SPACE, type Resources } from '@astera/rules';
+import { SILENT_SPACE, type Resources } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { accounts, buildings, chatMutes, miningRuns, planetFaults, planets, players, satellites, seasons, shards } from '../db/schema.js';
 import { buildingLevelsFrom, economyAt, hardwareOf } from './planet.js';
@@ -7,10 +7,13 @@ import { isPerson } from './people.js';
 
 const zero = (): Resources => ({ alloy: 0, crystal: 0, deuterium: 0 });
 
+/** The desk counts a quarter hour as online (owner, 2026-10-28); the galaxy list keeps `SERVERS.onlineWindowMinutes`. */
+const ADMIN_ONLINE_WINDOW_MINUTES = 15;
+
 /** Bounded page with batched holdings/hardware/activity. This read never advances economy rows. */
 export async function listAdminPlayers(db: Db, input: { before?: string; limit: number }, now: Date) {
   return db.transaction(async tx => {
-    const onlineSince = new Date(now.getTime() - SERVERS.onlineWindowMinutes * 60_000);
+    const onlineSince = new Date(now.getTime() - ADMIN_ONLINE_WINDOW_MINUTES * 60_000);
     const online = and(isPerson, gte(players.lastActiveAt, onlineSince));
     const [summary] = await tx.select({ total: count() }).from(players).where(online);
     const total = summary?.total ?? 0;
@@ -25,7 +28,7 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
       .where(and(online, input.before ? gt(players.id, input.before) : undefined))
       .orderBy(asc(players.id)).limit(input.limit + 1);
     const page = rows.slice(0, input.limit);
-    if (page.length === 0) return { total, players: [], nextBefore: null, measuredAt: now, onlineWindowMinutes: SERVERS.onlineWindowMinutes };
+    if (page.length === 0) return { total, players: [], nextBefore: null, measuredAt: now, onlineWindowMinutes: ADMIN_ONLINE_WINDOW_MINUTES };
     const ids = page.map(row => row.playerId);
     const holdings = await tx.select({ world: planets, season: seasons, role: shards.role }).from(planets)
       .innerJoin(seasons, eq(seasons.id, planets.seasonId))
@@ -78,7 +81,7 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
         mutes: mutes.filter(mute => mute.accountId === accountId).map(({ channel, expiresAt }) => ({ channel, expiresAt })),
       })),
       nextBefore: rows.length > input.limit ? page.at(-1)?.playerId ?? null : null,
-      measuredAt: now, onlineWindowMinutes: SERVERS.onlineWindowMinutes,
+      measuredAt: now, onlineWindowMinutes: ADMIN_ONLINE_WINDOW_MINUTES,
     };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }

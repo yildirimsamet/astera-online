@@ -9,7 +9,7 @@ import { LIMB_PEAK, limbTexture, softGlow } from './Environment.jsx';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
 import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
-import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { partitionPlanetSkins, planetSkinVisual } from '../ui/planetSkins.js';
 import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
@@ -19,7 +19,7 @@ import {
   PlanetWarmup,
 } from './PlanetSkinModel.jsx';
 import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, selectPlanetWarmupTargets, type PlanetLod } from './planetLod.js';
-import { seat, settleMembers } from './planetPick.js';
+import { planetPickRadius, seat, settleMembers } from './planetPick.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
 import {
@@ -582,8 +582,8 @@ function PlanetInstances({
   const invalidate = useThree((state) => state.invalidate);
   const count = group.nodes.length;
   const visibleNodes = useRef<PlanetNode[]>([]);
-  const debug = useHitboxDebug();
   const hitboxes = useRef<THREE.InstancedMesh>(null);
+  const height = useThree(state => state.size.height);
 
   /**
    * Ignorance is literally dark: an unwatched world is dimmed per instance, so the
@@ -602,6 +602,7 @@ function PlanetInstances({
     painted: THREE.InstancedMesh | null,
     paintColours: boolean,
   ): void => {
+    camera.updateWorldMatrix(true, false);
     const needsMaterialUpdate = mesh.instanceColor === null;
     let drawn = 0;
     let seated = false;
@@ -638,17 +639,22 @@ function PlanetInstances({
       UP.scale.setScalar(node.radius * 2);
       UP.updateMatrix();
       mesh.setMatrixAt(drawn, UP.matrix);
-      painted?.setMatrixAt(drawn, UP.matrix);
+      if (painted) {
+        UP.scale.setScalar(planetPickRadius(node.radius, camera, UP.position, height));
+        UP.updateMatrix();
+        painted.setMatrixAt(drawn, UP.matrix);
+      }
       if (seat(visibleNodes.current, drawn, node)) seated = true;
       drawn += 1;
     }
-    // The billboard is its own pick target: measured again whenever its members move (`planetPick`).
+    // The pick spheres keep separate, camera-dependent bounds from the body membership.
     settleMembers(mesh, visibleNodes.current, drawn, seated);
     mesh.visible = drawn > 0;
     if (painted) {
       painted.count = drawn;
       painted.visible = drawn > 0;
       painted.instanceMatrix.needsUpdate = true;
+      painted.computeBoundingSphere();
     }
 
     if (paintColours && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -659,7 +665,7 @@ function PlanetInstances({
       mesh.material.needsUpdate = true;
     }
 
-  }, [camera, group.nodes, tint]);
+  }, [camera, group.nodes, tint, height]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -668,25 +674,9 @@ function PlanetInstances({
     // A group whose worlds changed as the camera came to rest (F9's tiers) is faced by the next
     // frame, and the disc draws on demand: ask for that frame.
     invalidate();
-  }, [debug, writeInstances, invalidate]);
+  }, [writeInstances, invalidate]);
 
-  /**
-   * A WORLD'S PICK VOLUME, AND WHY IT IS THE ONE THAT NEEDS A SECOND MESH.
-   *
-   * Everything else tappable on the disc carries an invisible solid that exists
-   * only to be raycast, so `hitboxDebug` paints it by swapping its material. A
-   * world has no such solid: the quad below IS the hit target AND the thing the
-   * planet art is drawn on, and it cannot wear a debug colour without taking the
-   * galaxy's worlds with it.
-   *
-   * So the debug view gets its own instanced quad on exactly the same matrices —
-   * written in the same two places, from the same `UP`, so it can never drift from
-   * the volume it is reporting. `raycast` is disabled on it: a second hit target
-   * stacked on every world would be the one bug this whole feature exists to find.
-   *
-   * WHAT IT SHOWS, and it is worth knowing: the quad is a SQUARE of side
-   * `radius * 2`, while the art inside it is a disc. The corners are tappable.
-   */
+  // The fallback art keeps its visual size; a separate sphere owns the minimum touch area.
   /**
    * Billboarding, once per rendered frame IN WHICH THE VIEW MOVED.
    *
@@ -706,7 +696,7 @@ function PlanetInstances({
       faced.current = { mesh, painted };
       view.current.primed = false;
     }
-    if (!viewChanged(view.current, camera, group.nodes, 0)) return;
+    if (!viewChanged(view.current, camera, group.nodes, height)) return;
     writeInstances(mesh, painted, false);
   });
 
@@ -728,7 +718,7 @@ function PlanetInstances({
         ref={ref}
         name="planet-worlds"
         args={[undefined, undefined, count]}
-        onPointerUp={pick}
+        raycast={() => null}
         /**
          * #4 — worlds vanishing at certain angles.
          *
@@ -759,19 +749,17 @@ function PlanetInstances({
           customProgramCacheKey={group.opaquePreview ? opaquePlanetBillboardProgramKey : undefined}
         />
       </instancedMesh>
-      {debug && (
-        <instancedMesh
-          ref={hitboxes}
-          name="planet-hitboxes"
-          args={[undefined, undefined, count]}
-          raycast={() => null}
-          frustumCulled={false}
-          renderOrder={1}
-        >
-          <planeGeometry args={[1, 1]} />
-          <HitboxMaterial kind="planet" />
-        </instancedMesh>
-      )}
+      <instancedMesh
+        ref={hitboxes}
+        name="planet-hitboxes"
+        args={[undefined, undefined, count]}
+        onPointerUp={pick}
+        frustumCulled={false}
+        renderOrder={1}
+      >
+        <sphereGeometry args={[1, 12, 8]} />
+        <HitboxMaterial kind="planet" />
+      </instancedMesh>
     </>
   );
 }

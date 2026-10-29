@@ -6,8 +6,8 @@ import type { Contact } from '../api/schemas.js';
  * THE PICK VOLUMES, PAINTED.
  *
  * Everything tappable on the disc is an INVISIBLE solid, and none of them are the
- * shape of the thing they belong to: a squadron is a padded box round its whole
- * formation, a rock is a sphere at 2.4x its radius with a floor under it, a wreck
+ * shape of the thing they belong to: squadrons and convoys have a posed box per
+ * hull with screen-space padding, a rock has a generous sphere, a wreck
  * is a torus that deliberately leaves its own world's centre open, a pirate is one
  * slim box per hull rather than one box across the wedge. Every one of those numbers
  * was chosen against a fingertip on a 350px phone, and not one of them can be
@@ -29,9 +29,8 @@ import type { Contact } from '../api/schemas.js';
  * WHAT IT DELIBERATELY DOES NOT DO: change the pick meshes. The volumes drawn here
  * ARE the volumes that are raycast — the same mesh, the same geometry, the same
  * transform — because a debug view built from a parallel copy is a debug view that
- * drifts and then lies. The single exception is a world, whose pick target is its
- * own billboard with the planet's art on it; that one gets a second quad on the
- * same matrices, and that quad is never raycast (see `PlanetField`).
+ * drifts and then lies. Planet spheres also keep the same minimum screen-space
+ * radius while their fallback art keeps its own visual scale.
  *
  * THE ONE HONEST DIFFERENCE: while the switch is on the material is DoubleSide, so
  * a volume the camera is standing inside is still drawn — and, because Three.js
@@ -40,13 +39,13 @@ import type { Contact } from '../api/schemas.js';
  */
 
 export type HitboxKind =
-  /** A world. Its pick target is the billboard the art is drawn on. */
+  /** A world: its body-relative sphere, with a minimum screen-space radius. */
   | 'planet'
   /** A rock: a sphere well outside the tumbling body. */
   | 'asteroid'
   /** A ring of debris round a world, hollow on purpose. */
   | 'wreck'
-  /** Your own squadron — one box round the whole formation. */
+  /** Your own squadron — a tight posed box per hull, leaving gaps open. */
   | 'fleet'
   /** A scout, yours or somebody else's. */
   | 'probe'
@@ -60,7 +59,7 @@ export type HitboxKind =
   | 'pirate'
   /** The merchant. */
   | 'trade'
-  /** The intergalactic convoy, with a narrow box along the train. */
+  /** The intergalactic convoy — one moving target per hull. */
   | 'convoy'
   /** A monument: a sphere round the hull. */
   | 'monument';

@@ -1,3 +1,4 @@
+import { CraftHitTargets, type CraftPicking } from './CraftHitTargets.js';
 import { towingFormation } from './towing.js';
 import { TowedShips } from './TowedShips.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
@@ -23,7 +24,6 @@ import {
   lazy,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +39,6 @@ import {
   engagementEndsAt,
   isEngaging,
   seededFrom,
-  type HullId,
 } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import {
@@ -81,13 +80,12 @@ import {
 import { trackingMarkStyle, trackingTicksGeometry, type TrackingKind } from './trackingMark.js';
 import {
   PER_MODEL,
-  formationHitBox,
   markersFor,
   type Marker,
 } from './Squadrons.js';
 import { STAR, rankLayout, rankRow, type RankGlyph } from './rank.js';
 import { markHit, wasTap } from './tap.js';
-import { CONTACT_HITBOX_KIND, HitboxMaterial } from './hitboxDebug.jsx';
+import { CONTACT_HITBOX_KIND } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
   DEATH_STAR_LIGHT,
@@ -275,7 +273,7 @@ export function Hull(props: HullProps) {
   );
 }
 
-interface HullProps {
+interface HullProps extends CraftPicking {
   url: string;
   scale: number;
   glow: string;
@@ -291,7 +289,7 @@ function craftPose(url: string) {
   return hull ? { rotation: [0, 0, 0] as const, height: hullPoseLift(hull) } : MODEL_POSE[url];
 }
 
-function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }: HullProps) {
+function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true, onPointerUp, hitboxKind }: HullProps) {
   const { scene } = useGLTF(url, false);
 
   const model = useMemo(() => {
@@ -326,6 +324,8 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
     });
     return clone;
   }, [scene, url, fog, foreground]);
+
+  const pickBounds = useMemo(() => new THREE.Box3().setFromObject(model), [model]);
 
   /*
     Owner, 2026-10-12: halve the previous 0.008 rim width and reduce opacity by 25%.
@@ -383,6 +383,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
 
   return (
     <group scale={scale} name="craft-hull">
+      {onPointerUp && <CraftHitTargets bounds={pickBounds} onPointerUp={onPointerUp} hitboxKind={hitboxKind} />}
       <primitive object={outline} name="craft-silhouette-rim" />
       <primitive object={model} />
       <ProbeSkinBeam url={url} />
@@ -426,7 +427,9 @@ export function FormationHulls({
   shipSkins,
   longitudinalOffset,
   longitudinalOffsetBound = 0,
-}: {
+  onPointerUp,
+  hitboxKind,
+}: CraftPicking & {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
   scale: number;
@@ -452,13 +455,15 @@ export function FormationHulls({
           shipSkins={shipSkins}
           longitudinalOffset={longitudinalOffset}
           longitudinalOffsetBound={longitudinalOffsetBound}
+          onPointerUp={onPointerUp}
+          hitboxKind={hitboxKind}
         />
       ))}
     </>
   );
 }
 
-interface FormationHullBucketProps {
+interface FormationHullBucketProps extends CraftPicking {
   hull: Marker['hull'];
   members: readonly FormationHullMember[];
   scale: number;
@@ -485,7 +490,7 @@ function FormationHullBucket(props: FormationHullBucketProps) {
   );
 }
 
-function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl, longitudinalOffset, longitudinalOffsetBound }:
+function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl, longitudinalOffset, longitudinalOffsetBound, onPointerUp, hitboxKind }:
   FormationHullBucketProps & { url: string; lowUrl: string }) {
   const [full, low] = useGltfPair(url, lowUrl);
   const scene = full.scene;
@@ -496,9 +501,27 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
     if (lowScene === scene) return fullParts;
     return formationLodParts(lowScene, url, fullParts);
   }, [lowScene, scene, url, fullParts]);
+  const pickBounds = useMemo(() => {
+    const box = new THREE.Box3();
+    for (const part of fullParts) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox.clone().applyMatrix4(part.matrix));
+    }
+    return box;
+  }, [fullParts]);
+  const pickScratch = useMemo(createFormationHullMatrixScratch, []);
+  const pickOffset = useMemo<Vec3Tuple>(() => [0, 0, 0], []);
   const anchor = useRef<THREE.Group>(null);
   return (
     <group ref={anchor} name={`formation-hulls-${hull.toLowerCase()}`}>
+      {onPointerUp && <CraftHitTargets bounds={pickBounds} count={members.length} onPointerUp={onPointerUp} hitboxKind={hitboxKind}
+        place={(index, matrix, seconds) => {
+          const member = members[index]!;
+          pickOffset[0] = member.offset[0];
+          pickOffset[1] = member.offset[1];
+          pickOffset[2] = member.offset[2] + (longitudinalOffset?.(member.index, seconds) ?? 0);
+          formationHullMatrix(member.marker, pickOffset, scale, aimDistance.current, matrix, pickScratch);
+        }} />}
       {fullParts.map((part, index) => (
         <FormationHullPartMesh
           key={`full:${part.geometry.uuid}:${String(index)}`}
@@ -708,6 +731,7 @@ function FormationHullPartMesh({
  */
 /** Last in the transparent queue, still depth-tested against the worlds. */
 const SHIP_ORDER = 999;
+const UNKNOWN_PICK_BOUNDS = new THREE.Box3(new THREE.Vector3(-.15, -.15, -.15), new THREE.Vector3(.15, .15, .15));
 
 /**
  * `instanceof Mesh` narrows to `Mesh<any, any, any>` in three's own types, which
@@ -904,9 +928,6 @@ function Flight({
   const formation = useMemo(() => markers ? towing : formationLayout(null, style.scale), [markers, towing, style.scale]);
   const slots = formation.slots;
   const formationScale = formation.scale;
-  const hitBox = useMemo(() => formationHitBox([...slots, ...towing.tows.map(tow => tow.position)],
-    Math.max(formationScale, ...towing.tows.map(tow => hullVisualScale(tow.hull, style.scale)))),
-    [slots, formationScale, towing.tows, style.scale]);
 
   const engaging = useEngagement(
     path ? path.arriveAt.getTime() : null,
@@ -1002,6 +1023,13 @@ function Flight({
     points.needsUpdate = true;
   });
 
+  const pickFleet = (event: ThreeEvent<PointerEvent>): void => {
+    if (!wasTap()) return;
+    markHit();
+    event.stopPropagation();
+    onSelect();
+  };
+
   if (!path || spent || perished) return null;
 
   return (
@@ -1027,23 +1055,6 @@ function Flight({
       <group ref={group} name="flight" userData={{ craftId: id }}>
         {!isProbe && !isDeathStar && !isBomb && appearance?.flagId &&
           <Suspense fallback={null}><FleetCosmeticFlag id={appearance.flagId} scale={formationScale} /></Suspense>}
-        {/*
-          One generous invisible target for the whole squadron. Picking an
-          individual model would be fiddly on a phone and would say the models are
-          separately meaningful, which they are not — the squadron is the object.
-        */}
-        <mesh
-          position={hitBox.centre}
-          onPointerUp={(event) => {
-            if (!wasTap()) return;
-            markHit();
-            event.stopPropagation();
-            onSelect();
-          }}
-        >
-          <boxGeometry args={hitBox.size} />
-          <HitboxMaterial kind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'} />
-        </mesh>
 
         <TrackingMark
           kind={isBomb ? 'radiation_bomb' : isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
@@ -1083,8 +1094,10 @@ function Flight({
                 aimDistance={formationAim}
                 focused={focused}
                 shipSkins={appearance?.shipSkins}
+                onPointerUp={pickFleet}
+                hitboxKind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'}
               />
-              {towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={appearance?.shipSkins}
+              {towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={appearance?.shipSkins} onPointerUp={pickFleet}
                 tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}
                 scale={style.scale} aimDistance={formationAim} focused={focused} />}
             </>
@@ -1100,6 +1113,8 @@ function Flight({
                 scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
+                onPointerUp={pickFleet}
+                hitboxKind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'}
               />
               {isDeathStar ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
@@ -2483,58 +2498,6 @@ function PirateMark({ scale, focused }: {
   );
 }
 
-/** A slim pick volume follows each pirate hull along the formation's heading. */
-export function formationMarkerHitSize(hull: HullId, baseScale: number): Vec3Tuple {
-  const size = hullVisualScale(hull, baseScale);
-  return [size * 0.82, size * 0.68, size * 1.3];
-}
-
-/**
- * A pirate formation contains large empty wedges between its visible hulls.
- * One narrow box per craft follows those slots without covering the gaps.
- */
-function PirateFormationHitTarget({
-  markers,
-  slots,
-  scale,
-  onPointerUp,
-}: {
-  markers: readonly Marker[];
-  slots: readonly Vec3Tuple[];
-  scale: number;
-  onPointerUp: (event: ThreeEvent<PointerEvent>) => void;
-}) {
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  const transform = useMemo(() => new THREE.Object3D(), []);
-
-  useLayoutEffect(() => {
-    const node = mesh.current;
-    if (!node) return;
-    markers.forEach((marker, index) => {
-      transform.position.set(...(slots[index] ?? [0, 0, 0]));
-      transform.scale.set(...formationMarkerHitSize(marker.hull, scale));
-      transform.updateMatrix();
-      node.setMatrixAt(index, transform.matrix);
-    });
-    node.instanceMatrix.needsUpdate = true;
-    node.computeBoundingSphere();
-  }, [markers, scale, slots, transform]);
-
-  return (
-    <instancedMesh
-      ref={mesh}
-      name="pirate-formation-hit-targets"
-      args={[undefined, undefined, markers.length]}
-      frustumCulled={false}
-      onPointerUp={onPointerUp}
-      renderOrder={-1}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-      <HitboxMaterial kind="pirate" />
-    </instancedMesh>
-  );
-}
-
 /**
  * The existing batched flame field, made explicit and brighter for pirates: one
  * point-bank draw, not 13 sprites per ship.
@@ -2707,9 +2670,6 @@ function Foreign({
     [contact.kind, contact.fleet, towing, markers, style.scale]);
   const slots = formation.slots;
   const formationScale = formation.scale;
-  const hitBox = useMemo(() => formationHitBox([...slots, ...towing.tows.map(tow => tow.position)],
-    Math.max(formationScale, ...towing.tows.map(tow => hullVisualScale(tow.hull, style.scale)))),
-    [slots, formationScale, towing.tows, style.scale]);
 
 
   useFrame((_, delta) => {
@@ -2794,19 +2754,8 @@ function Foreign({
           cannot select reads as scenery — which is the opposite of the liveliness
           this is for.
         */}
-        {contact.kind === 'pirate' && markers ? (
-          <PirateFormationHitTarget
-            markers={markers}
-            slots={slots}
-            scale={style.scale}
-            onPointerUp={pickContact}
-          />
-        ) : (
-          <mesh position={hitBox.centre} onPointerUp={pickContact}>
-            <boxGeometry args={hitBox.size} />
-            <HitboxMaterial kind={CONTACT_HITBOX_KIND[contact.kind]} />
-          </mesh>
-        )}
+        {contact.kind === 'unknown' && <CraftHitTargets bounds={UNKNOWN_PICK_BOUNDS}
+          onPointerUp={pickContact} hitboxKind="contact" />}
 
         <TrackingMark
           kind={contact.kind}
@@ -2878,8 +2827,10 @@ function Foreign({
                 aimDistance={formationAim}
                 focused={focused}
                 shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
+                onPointerUp={pickContact}
+                hitboxKind={CONTACT_HITBOX_KIND[contact.kind]}
               />
-              {contact.kind === 'fleet' && towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={contact.appearance?.shipSkins}
+              {contact.kind === 'fleet' && towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={contact.appearance?.shipSkins} onPointerUp={pickContact}
                 tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}
                 scale={style.scale} aimDistance={formationAim} focused={focused} />}
               {contact.kind === 'pirate' && (
@@ -2910,6 +2861,8 @@ function Foreign({
                 scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
+                onPointerUp={pickContact}
+                hitboxKind={CONTACT_HITBOX_KIND[contact.kind]}
               />
               {contact.kind === 'death_star' ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />

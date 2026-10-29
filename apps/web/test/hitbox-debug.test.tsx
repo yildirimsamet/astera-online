@@ -203,8 +203,10 @@ describe('the legend', () => {
 describe('every pick volume in the galaxy', () => {
   it.each(HIT_SITES)('%s paints its volume as %s', (file, kind) => {
     const text = source(file);
-    expect(text).toContain('HitboxMaterial');
-    expect(text).toContain(`kind="${kind}"`);
+    expect(text).toMatch(/HitboxMaterial|hitboxKind/);
+    if (file === 'src/galaxy/Fleets.tsx' && kind === 'pirate') {
+      expect(text).toContain('CONTACT_HITBOX_KIND[contact.kind]');
+    } else expect(text).toMatch(new RegExp(`(?:kind|hitboxKind)="${kind}"`));
   });
 
   it('leaves no hand-written invisible material behind', () => {
@@ -213,22 +215,18 @@ describe('every pick volume in the galaxy', () => {
     }
   });
 
-  /**
-   * A world's pick target IS its billboard, with the planet's own art on it, so
-   * this is the one volume that cannot simply change material. It gets a second
-   * instanced quad on the same matrices — which must never be raycast, or every
-   * world on the disc would have two hit targets stacked on it.
-   */
-  it('gives a world a separate painted quad that is not itself tappable', () => {
+  it('gives a fallback world its real minimum-sized sphere and disables billboard picking', () => {
     const text = source('src/galaxy/PlanetField.tsx');
     expect(text).toContain('name="planet-hitboxes"');
-    expect(text).toMatch(/name="planet-hitboxes"[\s\S]*?raycast=\{\(\) => null\}/);
+    expect(text).toMatch(/name="planet-hitboxes"[\s\S]*?onPointerUp=\{pick\}/);
+    expect(text).toMatch(/name="planet-worlds"[\s\S]*?raycast=\{\(\) => null\}/);
+    expect(text).toContain('planetPickRadius(node.radius, camera, UP.position, height)');
   });
 
   it('tells a squadron, a probe and a strategic weapon apart', () => {
     const text = source('src/galaxy/Fleets.tsx');
     // Your own craft: one box, three meanings, chosen from the flags already here.
-    expect(text).toMatch(/<HitboxMaterial[\s\S]{0,160}'deathStar'[\s\S]{0,160}'probe'/);
+    expect(text).toContain("hitboxKind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'}");
     // Somebody else's craft: the radar's own vocabulary, mapped once.
     expect(text).toContain('CONTACT_HITBOX_KIND[contact.kind]');
   });

@@ -72,7 +72,7 @@ export const FOOTPRINT_EXPONENT = 1.6;
 
 export interface FormationLayout {
   readonly slots: Vec3Tuple[];
-  /** Largest world-space hull size; also the padding basis for the hit target. */
+  /** Largest world-space hull size, shared by formation decorations. */
   readonly scale: number;
 }
 

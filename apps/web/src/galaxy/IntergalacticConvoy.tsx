@@ -13,7 +13,6 @@ import {
   toWorld,
 } from './scene.js';
 import { markHit, wasTap } from './tap.js';
-import { HitboxMaterial } from './hitboxDebug.jsx';
 
 export const CONVOY_BASE_HULL_SCALE = 0.14 * CRAFT_SCALE;
 export const CONVOY_HULL_SCALE_MULT = 2;
@@ -56,28 +55,6 @@ export const CONVOY_FOCUS_DISTANCE =
   CONVOY_FORMATION_LENGTH / 2
   / Math.tan(FOCUS_FOV_RADIANS / 2)
   * FOCUS_VERTICAL_PADDING;
-
-/** Local +Z is the train's heading, so this thin box turns with the convoy. */
-export function convoyPickBox(slots: readonly VisualSlot[]): {
-  centre: Vec3Tuple;
-  size: Vec3Tuple;
-} {
-  if (slots.length === 0) return { centre: [0, 0, 0], size: [0, 0, 0] };
-  const low: Vec3Tuple = [Infinity, Infinity, Infinity];
-  const high: Vec3Tuple = [-Infinity, -Infinity, -Infinity];
-  for (const slot of slots) {
-    const halfHull = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale * 0.7;
-    for (const axis of [0, 1, 2] as const) {
-      const drift = axis === 2 ? CONVOY_DRIFT_AMPLITUDE : 0;
-      low[axis] = Math.min(low[axis], slot.position[axis] - halfHull - drift);
-      high[axis] = Math.max(high[axis], slot.position[axis] + halfHull + drift);
-    }
-  }
-  return {
-    centre: [(low[0] + high[0]) / 2, (low[1] + high[1]) / 2, (low[2] + high[2]) / 2],
-    size: [high[0] - low[0], high[1] - low[1], high[2] - low[2]],
-  };
-}
 
 /** How fast the air streams past, in convoy spans per second. */
 const WIND_SPEED = 0.42;
@@ -283,7 +260,6 @@ export function IntergalacticConvoy({
       slot.localPosition.z / SCALE,
     ],
   })), [slots]);
-  const hitBox = useMemo(() => convoyPickBox(visualSlots), [visualSlots]);
   const markers = useMemo(() => visualSlots.map((slot, ordinal) => ({
     hull: slot.hull,
     filled: 1,
@@ -371,14 +347,11 @@ export function IntergalacticConvoy({
           focused={focused}
           longitudinalOffset={convoyLongitudinalOffset}
           longitudinalOffsetBound={CONVOY_DRIFT_AMPLITUDE}
+          onPointerUp={onSelect ? pick : undefined}
+          hitboxKind="convoy"
         />
       </HullBatchLayer>
-      {onSelect ? (
-        <mesh name="intergalactic-convoy-hit" position={hitBox.centre} onPointerUp={pick} renderOrder={-1}>
-          <boxGeometry args={hitBox.size} />
-          <HitboxMaterial kind="convoy" />
-        </mesh>
-      ) : null}
+
     </group>
   );
 }

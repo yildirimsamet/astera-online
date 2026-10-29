@@ -59,6 +59,12 @@ if (process.argv.includes('--ship-shields')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--hitboxes')) {
+  const { verifyHitboxes } = await import('./hitboxes-visual.mjs');
+  await verifyHitboxes(process.argv[2] ?? 'out/hitboxes/visual');
+  process.exit(0);
+}
+
 if (process.argv.includes('--fleet-towing')) {
   const { verifyFleetTowing } = await import('./fleet-towing-visual.mjs');
   await verifyFleetTowing(process.argv[2] ?? 'out/fleet-towing');

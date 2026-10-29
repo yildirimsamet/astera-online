@@ -163,3 +163,37 @@ describe('a world’s body', () => {
     expect(model).toMatch(/if \(!turning\) return;/);
   });
 });
+
+describe('distant planet minimum touch area', () => {
+  it.each([30, 100, 500])('keeps a speck 24 CSS pixels across at distance %s', distance => {
+    const camera = new THREE.PerspectiveCamera(45, 1, .01, 2000);
+    camera.position.z = distance;
+    camera.updateMatrixWorld();
+    const mesh = pickMesh(1);
+    const tiny = {...node('tiny', 0), radius: .01};
+    placePickSpheres(mesh, [tiny], camera, 800);
+    const scale = new THREE.Vector3();
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+    const pixels = scale.x / distance / Math.tan(Math.PI / 8) * 400;
+    expect(pixels).toBeCloseTo(12);
+  });
+
+  it('keeps a nearby planet’s original size and refreshes raycast bounds on zoom', () => {
+    const camera = new THREE.PerspectiveCamera(45, 1, .01, 2000);
+    const mesh = pickMesh(1);
+    camera.position.z = 5;
+    camera.updateMatrixWorld();
+    placePickSpheres(mesh, [node('a', 0)], camera, 800);
+    expect(tap(mesh, 1)).toBe(0);
+    camera.position.z = 500;
+    camera.updateMatrixWorld();
+    placePickSpheres(mesh, [node('a', 0)], camera, 800);
+    expect(tap(mesh, 5)).toBe(0);
+    camera.position.z = 5;
+    camera.updateMatrixWorld();
+    placePickSpheres(mesh, [node('a', 0)], camera, 800);
+    expect(tap(mesh, 5)).toBeUndefined();
+  });
+});

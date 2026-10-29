@@ -7,9 +7,12 @@ import { DefaultPlanetModel } from '../src/galaxy/PlanetSkinModel.js';
 import { placeBodies } from '../src/galaxy/planetPick.js';
 import { GalaxyVisualPhase } from '../src/galaxy/visualFrame.js';
 
-const assets = vi.hoisted(() => ({ read: vi.fn<() => { scene: THREE.Group }>(), invalidate: vi.fn() }));
+const assets = vi.hoisted(() => ({ read: vi.fn<() => { scene: THREE.Group }>(), invalidate: vi.fn(), camera: null as THREE.PerspectiveCamera | null }));
 vi.mock('@react-three/drei', () => ({ useGLTF: Object.assign(() => assets.read(), { preload: vi.fn() }) }));
-vi.mock('@react-three/fiber', () => ({ useFrame: vi.fn(), useThree: () => assets.invalidate }));
+vi.mock('@react-three/fiber', () => ({ useFrame: vi.fn(), useThree: (select: (state: Pick<RootState, 'camera' | 'size' | 'invalidate'>) => unknown) => {
+  if (!assets.camera) throw new Error('Missing camera fixture');
+  return select({ camera: assets.camera, size: { width: 800, height: 800, top: 0, left: 0 }, invalidate: assets.invalidate });
+} }));
 vi.mock('../src/galaxy/tap.js', () => ({ wasTap: () => true, markHit: vi.fn() }));
 
 interface DrawProps {
@@ -42,6 +45,8 @@ function evaluate<P>(element: ReactElement<P>): ReactNode {
 const node = (id: string, x: number): ComponentProps<typeof DefaultPlanetModel>['nodes'][number] => ({ id, position: [x, 0, -10] as [number, number, number], radius: 1, stance: 'watched' as const, intel: 'RESOLVED' as const });
 
 it.each(['full', 'far'] as const)('keeps %s body compaction separate from pick identity and restores current matrices', lod => {
+  const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
+  assets.camera = camera;
   const scene = new THREE.Group();
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial()));
   assets.read.mockReturnValue({ scene });
@@ -59,8 +64,7 @@ it.each(['full', 'far'] as const)('keeps %s body compaction separate from pick i
     hitsElement.props.ref.current = hits;
     return { body, hits, pick: hitsElement.props.onPointerUp };
   }, { initialProps: { members: nodes }, wrapper: GalaxyVisualPhase });
-  const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
-  const state = { camera, clock: { elapsedTime: 1 } } as RootState;
+  const state = { camera, size: { height: 800 }, clock: { elapsedTime: 1 } } as RootState;
   const frame = () => { vi.mocked(useFrame).mock.lastCall![0](state, 0); };
   const mesh = result.current.body;
   // 2026-10-20 admin profile: an empty bucket still walked the whole render path every frame.
