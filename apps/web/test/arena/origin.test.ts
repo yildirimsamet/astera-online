@@ -35,12 +35,23 @@ describe('arena origin', () => {
       'https://asteraonline.space/arena/access', 'https://asteraonline.space/arena/team', 'https://asteraonline.space/arena/hangar']);
   });
 
-  /** The pack's cookie is SameSite=Strict on the API host; an app page can never send it (KG-K17). */
-  it('does not ask for the reference pack from a bundled app', async () => {
+  /** Owner 2026-10-30: an app carries its own webp pack, so it never asks the server for one. */
+  it('reads the reference pack an app carries, without asking the server', async () => {
     vi.stubEnv('VITE_ASTERA_PLATFORM', APP.VITE_ASTERA_PLATFORM);
     vi.stubEnv('VITE_ASTERA_API_URL', APP.VITE_ASTERA_API_URL);
-    const fetcher = vi.fn<typeof fetch>(() => Promise.resolve(new Response(null, { status: 204 })));
-    expect(await openReferenceSession('token', fetcher)).toBe(false);
+    const fetcher = vi.fn<typeof fetch>(() => Promise.resolve(new Response(null, { status: 404 })));
+    expect(await openReferenceSession('token', fetcher)).toBe(true);
+    expect(await openReferenceSession(null, fetcher)).toBe(false);
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  /** It carries only the webp pack: the KTX2 transcoder (and its `/basis/` files) never starts. */
+  it('starts no KTX2 transcoder in an app', async () => {
+    vi.stubEnv('VITE_ASTERA_PLATFORM', APP.VITE_ASTERA_PLATFORM);
+    vi.resetModules();
+    const { ktx2Ready } = await import('../../src/arena/assets/memory.js');
+    const make = vi.fn(() => ({ parse: vi.fn() }));
+    expect(await ktx2Ready(make, () => true)).toBeNull();
+    expect(make).not.toHaveBeenCalled();
   });
 });

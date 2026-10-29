@@ -44,6 +44,7 @@ inceler, uygun modelleri/parçaları/sesleri çıkarır. Bunlar **geçicidir**, 
 geliştirmede** kullanılır; yayına ve public depoya **asla** girmez. Depolama konumu için
 sonraki sahip talimatı KG-K17 geçerlidir.
 Sahip "Tamam, oyun oldu" dediğinde hepsi Astera'nın kendi modelleriyle değiştirilir.
+**Durum 2026-10-30:** sunucudaki paket kendi varlıklarımızla değişti; yayın kısıtı paket için kalktı ([decisions.md](../decisions.md) 2026-10-30).
 Prosedür: [09](09-varliklar-ve-referans-cikarma.md).
 
 #### KG-K7
@@ -102,6 +103,7 @@ minimum tutulur. Prototip geçicidir; sahip son görüntünün yakın, tamamen A
 karşılıklarını yaptıracaktır. Proje içindeki klasör **Git dışında** ve yalnız dev servisidir;
 KG-K6'nın yayına/public depoya dâhil etmeme kuralı sürer. Özel biçimlerde çözülemeyen içerik
 ham hâliyle ve açık dönüşüm notlarıyla saklanır; dönüştürülmüş diye sunulmaz.
+**Durum 2026-10-30:** servis edilen paket artık bizim; build/uygulama kısıtı kalktı ([decisions.md](../decisions.md) 2026-10-30). Ham arşivdeki yabancı orijinaller public depoya yine girmez.
 
 #### KG-K18
 **Referans oyunları doğrudan incele** (2026-10-08). Belgedeki oyunlar APK veya internet

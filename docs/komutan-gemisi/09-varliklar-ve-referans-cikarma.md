@@ -41,6 +41,9 @@
 
 1. Depo **public**. Referans varlık, ondan türetilmiş dosya, ekran görüntüsü veya katalog **git'e
    girmez**, `public/`'e, `assets/source/`'a, CI'ya, prod build'e, PR/issue'ya **girmez**.
+   **2026-10-30:** servis edilen paket (`dist/v2`, `audio/v2`) artık tamamen bizim; prod build ve APK
+   kısıtı onun için kalktı, native build webp lite paketi gömer ([decisions.md](../decisions.md) 2026-10-30).
+   Paket git'e yine girmez; ham arşivdeki yabancı orijinaller hiçbir yere girmez.
 2. Telefonda **yalnız okuma**: kurma, kaldırma, `pm clear`, `pm disable`, `am force-stop`,
    `push`, `rm`, `settings put`, `run-as`, `su`/root, `adb backup`, Shizuku vb. **yok**. Telefona bir
    şey kurmak gerekirse önce sahibe sorulur.
@@ -104,8 +107,8 @@ gelir. Gemi motor noktaları modellerin nozul ağlarından ölçülüp `prepare_
   `.env.local`'dan `process.env`'e yüklemez: `vite.config.ts` değeri `loadEnv(mode, root, '')` ile
   okuyup eklentiye verir (önce kabuk ortamı).
 - Koruyucular: `.gitignore`'a `astera-refs/`, `astera-ref-assets/`, `**/__ref/**`, `*.ref.glb`; `git ls-files`
-  ile bu desenlerde izlenen dosya olmadığını doğrulayan kontrol; build'e referans dosyası
-  kopyalanmadığı ve prod'da dev servisinin bulunmadığı kontrolü; kayıt defterinin varsayılanları
+  ile bu desenlerde izlenen dosya olmadığını doğrulayan kontrol; web build'ine paket dosyası
+  kopyalanmadığı (native build yalnız webp lite paketi `__ref/` altına gömer, 2026-10-30) ve prod'da dev servisinin bulunmadığı kontrolü; kayıt defterinin varsayılanları
   `/__ref/`'e işaret etmez. Kodda sınır doğrulama için `/__ref/` metni bulunması varlığın paketlendiği anlamına gelmez.
 - Referans varlıklar **`tools/models.mjs`'ten geçirilmez** (çıktısı `public/`'e yazar).
 - İçinde referans varlık görünen görüntü/video yalnız `.dev/arena/` veya `$DIR/captures`.

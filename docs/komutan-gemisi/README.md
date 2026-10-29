@@ -50,6 +50,7 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
    otorite.** Diğer bağlayıcı belgeler: `CLAUDE.md`, `docs/engineering-standards.md`.
 4. **Depo public.** Telefondan çıkarılan referans varlıklar ve onlardan türeyen hiçbir şey git'e,
    `public/`'e, build'e ya da PR'a girmez ([09](09-varliklar-ve-referans-cikarma.md)).
+   2026-10-30: servis edilen paket artık bizim; APK webp lite paketi gömer, git'e yine girmez ([decisions.md](../decisions.md)).
 5. **F7 kapısı:** sahip "kontrol rahatlığı ve savaş hissi yeterince iyi" demeden F8 ve sonrası başlamaz.
 6. Belgeleri kodla **aynı commit'te** güncel tut ([Belge bakımı](#belge-bakimi)).
 
