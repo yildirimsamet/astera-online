@@ -81,7 +81,7 @@ describe('candidate simultaneous accounting in a real shadow journal', () => {
     const rewards = await f.db.transaction(async tx => {
       deferHonor(tx, f.seasonId, event('a'));
       deferHonor(tx, f.seasonId, event('z', true));
-      return sealHonor(tx, { seasonId: f.seasonId, at: f.clock.now(), humanPlayerIds: f.playerIds });
+      return sealHonor(tx, { seasonId: f.seasonId, at: f.clock.now(), playerIds: f.playerIds });
     });
     expect(rewards).toBeNull();
     expect(await score(0)).toBe(50_000_000);

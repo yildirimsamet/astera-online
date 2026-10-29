@@ -6,7 +6,7 @@ import { CHAT } from '@astera/rules';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, dmArchive, dmConversations, dmMessages, players } from '../src/db/schema.js';
+import { accounts, botProfiles, dmArchive, dmConversations, dmMessages, players } from '../src/db/schema.js';
 import { deleteAccount } from '../src/services/accountDeletion.js';
 import { createSeason } from '../src/services/season.js';
 import { wipeAllServers } from '../src/services/servers.js';
@@ -73,6 +73,15 @@ describe('seasonal direct messages', () => {
     const id = conversationResult.parse(mine.json()).conversations[0]!.id;
     expect((await app.inject({ method: 'GET', url: `/api/dm/conversations/${id}/messages`, headers: auth[2] })).statusCode).toBe(404);
     expect((await app.inject({ method: 'POST', url: `/api/dm/conversations/${id}/read`, headers: auth[2], payload: { messageId: conversationResult.parse(mine.json()).conversations[0]!.lastMessage.id } })).statusCode).toBe(404);
+  });
+
+  it('finds and delivers to a server-run commander like anyone else', async () => {
+    await fixture.db.insert(botProfiles).values({ accountId: fixture.accountIds[1]!, ordinal: 1, persona: 'RAIDER',
+      nextActionAt: fixture.clock.now(), createdAt: fixture.clock.now() });
+    expect(contactsResult.parse((await app.inject({ method: 'GET', url: '/api/dm/contacts?q=Tester1', headers: auth[0] })).json()).contacts)
+      .toMatchObject([{ playerId: fixture.playerIds[1] }]);
+    const sent = await send(0, fixture.playerIds[1]!);
+    expect(sent.statusCode, sent.body).toBe(200);
   });
 
   it('refuses a profane direct message and opens no conversation', async () => {

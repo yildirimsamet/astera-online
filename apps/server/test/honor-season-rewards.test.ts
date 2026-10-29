@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { honorSeasons, honorTotals, players, seasonResults, seasonRewardEntitlements } from '../src/db/schema.js';
+import { botProfiles, honorSeasons, honorTotals, players, seasonResults, seasonRewardEntitlements } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
 import { forceSeasonEnd } from '../src/worker/handlers.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
@@ -38,6 +38,23 @@ describe('Honor season rewards preserve the existing Dominion promise', () => {
     const rewards = await f.db.select().from(seasonRewardEntitlements);
     expect(rewards).toHaveLength(1);
     expect(rewards[0]).toMatchObject({ ranking: 'DOMINION', alloy: 2000, crystal: 1500, deuterium: 300 });
+  });
+
+  it('leaves a bot winner\'s Honor prize unclaimed instead of promoting the commander below it', async () => {
+    await enable();
+    await f.db.insert(botProfiles).values({ accountId: f.accountIds[1]!, ordinal: 1, persona: 'RAIDER',
+      nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    await f.db.insert(honorTotals).values([
+      { seasonId: f.seasonId, playerId: f.playerIds[1]!, score: 300_000_000 },
+      { seasonId: f.seasonId, playerId: f.playerIds[0]!, score: 200_000_000 },
+    ]);
+    await close();
+    const results = await f.db.select().from(seasonResults);
+    expect(results.find(row => row.accountId === f.accountIds[1])).toMatchObject({ honorRank: 1 });
+    expect(results.find(row => row.accountId === f.accountIds[0])).toMatchObject({ honorRank: 2 });
+    const rewards = await f.db.select().from(seasonRewardEntitlements);
+    expect(rewards).toHaveLength(1);
+    expect(rewards[0]).toMatchObject({ accountId: f.accountIds[0], ranking: 'HONOR', rewardPlace: 2, displayRank: 2 });
   });
 
   it('shadow evidence never grants a ranked archive entry or a persistent reward', async () => {

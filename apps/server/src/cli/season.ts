@@ -25,7 +25,7 @@ import { activateMonumentRadiation } from '../services/monumentRadiationAdoption
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateAdmiral } from '../services/admiralActivation.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
-import { activateHonorShadow, hideHonorRanking, openHonorRanking } from '../services/honorActivation.js';
+import { activateHonorShadow, hideHonorRanking, openHonorRanking, refreshHonorEligibility } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
 import { enableHonorLootWeight } from '../services/honorLootWeight.js';
 import {
@@ -153,6 +153,11 @@ season honor-benefits --season UUID [--yes]
                                    Honor season. Dry run unless --yes. Existing paid
                                    repairs and launched flights keep their terms.
 
+season honor-refresh --season UUID [--yes]
+                                   once after the 2026-10-29 rollout: re-judge unsettled
+                                   flights frozen under the old bot exclusion. Settled
+                                   battles keep their points. Dry run unless --yes.
+
 season honor-loot --season UUID [--yes]
                                    use 40% loot in new Honor dispatch contracts.
                                    Dry run unless --yes. Preserves old flights,
@@ -255,6 +260,17 @@ async function main(): Promise<void> {
 
   try {
     switch (command) {
+      case 'honor-refresh': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-refresh --season UUID [--yes]');
+        }
+        const result = await refreshHonorEligibility(db, { seasonId: values.season,
+          adminUsernames: new Set(env.ADMIN_USERNAMES), apply: values.yes === true });
+        console.log(JSON.stringify(result));
+        console.log(result.applied ? `${String(result.refreshed.length)} unsettled flights now count for Honor.` : 'Nothing was written; pass --yes to apply.');
+        break;
+      }
       case 'honor-loot': {
         if (!values.season || positionals.length !== 1
           || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {

@@ -13,7 +13,7 @@ Owner onayı: 19 Ekim 2026. Önce plan ve etki incelemesi, sonra TDD ile uygulam
 - En yüksek kademe, mevcut galaksi üyelerinin Honor'da kullanılan sezonluk
   kademe zirveleri ve henüz gözleme yazılmamış mevcut Core'ları ile belirlenir.
   Ayrılan oyuncular, başka galaksiler ve sahipsiz dünyalar zirveyi yükseltmez.
-  Honor'a katılmayan bot ve yönetici hesapları da zirveyi belirlemez; mevcut
+  Honor'a katılmayan yönetici hesapları zirveyi belirlemez (botlar 2026-10-29'dan beri belirler, bkz. `docs/decisions.md`); mevcut
   Honor uygunluk kuralları kullanılır.
 - Gönderimde `galaxyTopTier` sabitlenir. Uçuş, geç sonuç ve yeniden hesaplama
   güncel galaksi zirvesini tekrar okumaz. Alanı bulunmayan eski kayıtlar eski

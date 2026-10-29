@@ -36,7 +36,10 @@ export async function readHonorRelations(db: Queryable, input: {
         eq(clanAidCommitments.status, 'DELIVERED'), gt(clanAidCommitments.resolvedAt, since),
         lte(clanAidCommitments.resolvedAt, input.at))),
   ]);
-  const eligible = defence.length > 0 && actors.every(row => row.bot === null && !input.adminUsernames.has(row.username))
+  // Owner 2026-10-29: a bot scores like a person so its Honor never gives it away;
+  // only a fight with no person in it is ineligible, so bots cannot farm each other.
+  const eligible = defence.length > 0 && actors.some(row => row.bot === null)
+    && actors.every(row => !input.adminUsernames.has(row.username))
     && new Set(actors.map(row => row.accountId)).size === actors.length;
   const relations = attack.flatMap(a => defence.map(b => {
     const recentClan = memberships.filter(row => row.playerId === a).some(left =>

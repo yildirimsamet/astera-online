@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, lte, notInArray, sql } from 'drizzle-orm';
 import { coreTier, honorReferenceAt } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { accounts, botProfiles, buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
+import { accounts, buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
 import { ownedHonorNavy } from './honorNavy.js';
 
 /**
@@ -48,15 +48,15 @@ export async function honorOwnerReference(db: Queryable, seasonId: string, playe
 
 /** One read snapshot, no new locks. Match Honor's season Core peak, including
  * current Core not yet journalled, but only for commanders still in this galaxy.
- * A neutral world, old resident, bot, admin or another galaxy cannot move it. */
+ * A neutral world, old resident, admin or another galaxy cannot move it; a bot
+ * competes for Honor like anybody, so it can. */
 export async function honorGalaxyTopTier(db: Queryable, seasonId: string, at: Date,
   adminUsernames: ReadonlySet<string>): Promise<number> {
   const [row] = await db.execute<{ tier: number; level: number }>(sql`
     WITH honor_contenders AS (
       SELECT ${players.id} FROM ${players}
       INNER JOIN ${accounts} ON ${accounts.id} = ${players.accountId}
-      LEFT JOIN ${botProfiles} ON ${botProfiles.accountId} = ${players.accountId}
-      WHERE ${players.seasonId} = ${seasonId} AND ${botProfiles.accountId} IS NULL
+      WHERE ${players.seasonId} = ${seasonId}
         AND ${adminUsernames.size > 0 ? notInArray(accounts.username, [...adminUsernames]) : sql`true`}
     )
     SELECT

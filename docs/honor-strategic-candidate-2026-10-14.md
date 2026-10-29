@@ -19,7 +19,7 @@ olmadığı, yöntemin zorbalığı görünmez kılmaması gerektiği açık.
   ikinci **−32,4**, üçüncü ve sonrası **−43,2**. Başlangıç cezası silahın donmuş
   ortak değerinin %10 / 1000'idir. Bu ölçülmüş optimum değil, mevcut başarısız
   saldırı risk katsayısıyla tutarlı tasarım adayıdır.
-- Etkisiz saldırı, korumaya çarpma, hedef sahibinin değişmesi, NPC/bot/admin:
+- Etkisiz saldırı, korumaya çarpma, hedef sahibinin değişmesi, NPC/admin (bot 2026-10-29'dan beri yalnız bot-bot savaşta):
   puan ve baskı bütçesi yok. Olay tekrarı bir kez settlement üretir.
 - Önceki gerçek zarar için dar karşılık mevcut tüketilen bütçeyi kullanır.
   Basınç olayı için bütçe eşdeğeri 432.000 fifth (86.400 ortak değer), mevcut

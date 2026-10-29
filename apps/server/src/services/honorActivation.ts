@@ -1,10 +1,12 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { HONOR_LAUNCH_VERSION, isHonorCandidate, HONOR_HISTORY_HOURS, isSupportedHonorVersion } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { honorCommitments, honorEvents, honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
 import { pendingHonorLegacySources, prepareHonorSeason } from './honorLedger.js';
+import { honorCommitmentSchema } from './honorCommitment.js';
+import { readHonorRelations } from './honorRelations.js';
 import { emptyHonorState, honorEventKey, honorStateSchema, replayHonor } from './honorAccounting.js';
 import { honorOwnerReference, observeHonorOwner } from './honorReference.js';
 import { publishShard } from '../stream/bus.js';
@@ -152,5 +154,47 @@ export async function hideHonorRanking(db: Db, input: { seasonId: string; clock:
     }
     return { status: active ? 'READY' as const : 'ALREADY_HIDDEN' as const, applied, seasonId, mode: 'SHADOW' as const,
       version: config.version, rankedEvents: events.filter(row => row.ranked).length };
+  }, input.apply ? undefined : { isolationLevel: 'repeatable read', accessMode: 'read only' });
+}
+
+/**
+ * Owner 2026-10-29: a fight with a bot counts unless no person is in it. A flight
+ * committed by an older image froze the old bot exclusion, so one explicit run after
+ * the rollout re-judges every unsettled ineligible commitment under today's rule.
+ * Settled sources keep their evidence; relations and conditions stay frozen.
+ */
+export async function refreshHonorEligibility(db: Db, input: {
+  seasonId: string; adminUsernames: ReadonlySet<string>; apply: boolean;
+}) {
+  const seasonId = z.string().uuid().parse(input.seasonId);
+  return db.transaction(async tx => {
+    // The parent UPDATE lock orders every launch and settlement, as in the ranked cutover.
+    if (input.apply) await tx.select({ id: seasons.id }).from(seasons).where(eq(seasons.id, seasonId)).for('update');
+    const [config] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
+    if (config?.closedAt !== null) throw new Error('An open Honor season is required');
+    const rows = await tx.select().from(honorCommitments).where(eq(honorCommitments.seasonId, seasonId))
+      .orderBy(asc(honorCommitments.source), asc(honorCommitments.sourceId));
+    const refreshed: string[] = [];
+    for (const row of rows) {
+      const snapshot = honorCommitmentSchema.parse(row.snapshot);
+      if (snapshot.eligible || snapshot.exclusion || snapshot.defence.length === 0) continue;
+      const [settled] = await tx.select({ at: honorEvents.at }).from(honorEvents).where(and(eq(honorEvents.seasonId, seasonId),
+        eq(honorEvents.source, row.source), eq(honorEvents.sourceId, row.sourceId))).limit(1);
+      if (settled) continue;
+      const actors = [...new Set([...snapshot.attack, ...snapshot.defence].map(member => member.id))];
+      // Somebody who has since left the galaxy cannot be judged here; their flight keeps its terms.
+      const present = await tx.select({ id: players.id }).from(players)
+        .where(and(eq(players.seasonId, seasonId), inArray(players.id, actors)));
+      if (present.length !== actors.length) continue;
+      const facts = await readHonorRelations(tx, { seasonId, adminUsernames: input.adminUsernames, at: new Date(snapshot.at),
+        attack: snapshot.attack.map(member => member.id), defence: snapshot.defence.map(member => member.id) });
+      if (!facts.eligible) continue;
+      refreshed.push(`${row.source}:${row.sourceId}`);
+      if (input.apply) {
+        await tx.update(honorCommitments).set({ snapshot: { ...snapshot, eligible: true } }).where(and(
+          eq(honorCommitments.seasonId, seasonId), eq(honorCommitments.source, row.source), eq(honorCommitments.sourceId, row.sourceId)));
+      }
+    }
+    return { seasonId, applied: input.apply, refreshed };
   }, input.apply ? undefined : { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }

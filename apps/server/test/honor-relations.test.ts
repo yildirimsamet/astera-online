@@ -70,10 +70,16 @@ describe('server-owned Honor eligibility and relationships', () => {
     expect((await read()).relations[0]?.related).toBe(false);
   });
 
-  it('excludes retired bots and configured administrators from competitive sources', async () => {
+  // Owner 2026-10-29: a fight with a bot counts like any other, so nobody can tell
+  // a bot from its Honor; only a fight with no person in it produces nothing.
+  it('scores a person against a bot, never bots alone, and excludes configured administrators', async () => {
     const [actor] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    const [target] = await f.db.select().from(players).where(eq(players.id, f.playerIds[1]!));
     await f.db.insert(botProfiles).values({ accountId: actor!.accountId, ordinal: 1, persona: 'balanced',
       createdAt: at(-day), nextActionAt: at(day), retiredAt: at(-1) });
+    expect(await read()).toMatchObject({ eligible: true, relations: [{ related: false }] });
+    await f.db.insert(botProfiles).values({ accountId: target!.accountId, ordinal: 2, persona: 'balanced',
+      createdAt: at(-day), nextActionAt: at(day) });
     expect((await read()).eligible).toBe(false);
     await f.db.delete(botProfiles);
     const { accounts } = await import('../src/db/schema.js');

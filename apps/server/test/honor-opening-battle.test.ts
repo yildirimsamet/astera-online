@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MULTI_WORLD } from '@astera/rules';
-import { battleReports, honorCommitments, honorEvents, honorSeasons, honorTotals, missions, scheduledEvents, seasons } from '../src/db/schema.js';
+import { battleReports, botProfiles, honorCommitments, honorEvents, honorSeasons, honorTotals, missions, scheduledEvents, seasons } from '../src/db/schema.js';
 import { openHonorRanking } from '../src/services/honorActivation.js';
 import { launchAttack } from '../src/services/mission.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
@@ -54,6 +54,28 @@ describe('real raids crossing the announced Honor boundary', () => {
     const reports = await readBattleReports(f.db, f.playerIds[0]!);
     expect(reports.reports.find(report => report.kind === 'BATTLE')?.honor)
       .toMatchObject({ delta: entry!.outcome.attack.total });
+  });
+
+  it('scores a raid on a server-run commander exactly like a raid on a person', async () => {
+    await f.db.insert(botProfiles).values({ accountId: f.accountIds[1]!, ordinal: 1, persona: 'RAIDER',
+      nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    await open(); const raid = await launch(); await land(raid);
+    const [entry] = await f.db.select().from(honorEvents);
+    expect(entry!.evidence.eligible).toBe(true);
+    expect(entry!.outcome.attack.total).not.toBe(0);
+    const honor = (await readBattleReports(f.db, f.playerIds[0]!)).reports.find(report => report.kind === 'BATTLE')?.honor;
+    expect(honor).toMatchObject({ delta: entry!.outcome.attack.total });
+    expect(honor?.breakdown).toBeDefined();
+    expect(honor?.reason).not.toBe('INELIGIBLE');
+  });
+
+  it('a fight between server-run commanders alone produces no Honor', async () => {
+    await f.db.insert(botProfiles).values(f.accountIds.map((accountId, index) => ({ accountId, ordinal: index + 1,
+      persona: 'RAIDER', nextActionAt: f.clock.now(), createdAt: f.clock.now() })));
+    await open(); const raid = await launch(); await land(raid);
+    const [entry] = await f.db.select().from(honorEvents);
+    expect(entry!.evidence.eligible).toBe(false);
+    expect(entry!.outcome.attack.total).toBe(0);
   });
 
   it('keeps finished shadow reports hidden after opening and resets their points', async () => {

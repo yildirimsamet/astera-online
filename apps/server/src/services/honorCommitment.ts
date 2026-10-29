@@ -151,10 +151,11 @@ export async function worldHonorCommitment(tx: Tx, input: {
       if (frozen.version !== HONOR_LAUNCH_VERSION) exclusion = 'PARTICIPANT_JOINED_LATE';
     }
   }
+  // Eligibility is judged on everyone together; a late joiner's own read only supplies
+  // relations, because the joiner and the attack alone may include no person.
   const facts = await readHonorRelations(tx, { ...input, at, attack: frozen.attack.map(row => row.id), defence: ids });
   for (const [id, time] of lateTimes) {
     const joined = await readHonorRelations(tx, { ...input, at: time, attack: frozen.attack.map(row => row.id), defence: [id] });
-    facts.eligible = facts.eligible && joined.eligible;
     facts.relations = facts.relations.filter(row => row.b !== id).concat(joined.relations);
   }
   return { ...frozen, defence, selectedDefenders: frozen.selectedDefenders ?? frozen.defence.map(row => row.id),
@@ -203,10 +204,11 @@ export async function monumentHonorCommitment(tx: Tx, input: {
       }
     }
   }
+  // Eligibility is judged on everyone together; a late joiner's own read only supplies
+  // relations, because the joiner and the attack alone may include no person.
   const facts = await readHonorRelations(tx, { ...input, at: new Date(frozen.at), attack: frozen.attack.map(member => member.id), defence: ids });
   for (const [id, time] of lateTimes) {
     const joined = await readHonorRelations(tx, { ...input, at: time, attack: frozen.attack.map(row => row.id), defence: [id] });
-    facts.eligible = facts.eligible && joined.eligible;
     facts.relations = facts.relations.filter(row => row.b !== id).concat(joined.relations);
   }
   return { ...frozen, defence, selectedDefenders: frozen.selectedDefenders ?? frozen.defence.map(row => row.id),

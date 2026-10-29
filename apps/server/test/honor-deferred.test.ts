@@ -65,7 +65,7 @@ describe('deferred Honor is part of the same gameplay commit', () => {
     await f.db.transaction(async tx => {
       const e = evidence();
       deferHonor(tx, f.seasonId, e);
-      await sealHonor(tx, { seasonId: f.seasonId, at: f.clock.now(), humanPlayerIds: f.playerIds });
+      await sealHonor(tx, { seasonId: f.seasonId, at: f.clock.now(), playerIds: f.playerIds });
       expect(await tx.select().from(honorEvents)).toHaveLength(1);
     });
     expect(await f.db.select().from(honorEvents)).toHaveLength(1);

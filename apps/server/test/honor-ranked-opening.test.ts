@@ -186,7 +186,7 @@ describe.each([3, 4] as const)('announced Honor v%s opening after invisible obse
   it('season rewards ignore shadow history when the ranked race has no positive score', async () => {
     await settle(evidence()); await open(true);
     const rewards = await f.db.transaction(tx => sealHonor(tx, { seasonId: f.seasonId,
-      at: f.clock.now(), humanPlayerIds: f.playerIds }));
+      at: f.clock.now(), playerIds: f.playerIds }));
     expect(rewards!.every(row => row.reward.alloy === 0 && row.reward.crystal === 0 && row.reward.deuterium === 0)).toBe(true);
   });
 
@@ -194,7 +194,7 @@ describe.each([3, 4] as const)('announced Honor v%s opening after invisible obse
     await open(true);
     const before = await snapshot();
     await expect(f.db.transaction(tx => sealHonor(tx, { seasonId: f.seasonId,
-      at: new Date(f.clock.now().getTime() - 1), humanPlayerIds: f.playerIds })))
+      at: new Date(f.clock.now().getTime() - 1), playerIds: f.playerIds })))
       .rejects.toThrow('Invalid Honor season boundary');
     expect(await snapshot()).toEqual(before);
   });

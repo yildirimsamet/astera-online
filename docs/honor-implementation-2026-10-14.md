@@ -125,7 +125,7 @@ bozulmamalı. Gecikmiş fiziksel varışın zamanı ile güncel toplam envanteri
 zamanı ayrı tutulmalı. Eski zamana güncel toplam yazılması reddedilir. Özellikle
 anıt catch-up, radyasyon, dönüş/iptal, üretim ve koloninin el değiştirmesi kapsamda.
 
-İlişki okuyucusu: yalnız sunucudaki sezon kimlikleri; bot emekli olsa da bot;
+İlişki okuyucusu *(2026-10-29'dan beri geçersiz: içinde en az bir insan olan bot savaşı Honor sayar, bot sıralamada ve ödül sırasında yerini tutar; yalnız botlardan oluşan savaş sayılmaz. Bkz. `docs/decisions.md` 2026-10-29.)*: yalnız sunucudaki sezon kimlikleri; bot emekli olsa da bot;
 admin kimliği dış yapılandırmadan; aynı hesap rekabetçi değil. Yedi günlük klan
 kontrolü aynı klanda gerçekten çakışan üyelik aralığını arar (birbirini hiç
 görmemiş eski/yeni üyeyi cezalandırmaz). Teslim edilmiş gönüllü yardım, teslim

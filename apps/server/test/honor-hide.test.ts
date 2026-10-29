@@ -69,7 +69,7 @@ describe('hiding an opened Honor race until the next season', () => {
     expect(await f.db.transaction(tx => readHonorReceipts(tx, f.playerIds[0]!, [ranked]))).toEqual(new Map());
     expect((await honorPodium(f.db, f.seasonId, new Set())).active).toBe(false);
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
-    expect(await f.db.transaction(tx => sealHonor(tx, { seasonId: f.seasonId, at: season!.endsAt, humanPlayerIds: f.playerIds }))).toBeNull();
+    expect(await f.db.transaction(tx => sealHonor(tx, { seasonId: f.seasonId, at: season!.endsAt, playerIds: f.playerIds }))).toBeNull();
   });
 
   it('keeps collecting invisible evidence consistently after hiding, late events included', async () => {

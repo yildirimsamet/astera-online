@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { honorChallenge } from '@astera/rules';
+import { coreTier, honorChallenge } from '@astera/rules';
 import { accounts, botProfiles, honorCommitments, honorObservations, honorSeasons, planets, players, seasons } from '../src/db/schema.js';
 import { commitHonor, honorCommitmentSchema } from '../src/services/honorCommitment.js';
 import { honorBattleEvidence } from '../src/services/honorBattleEvidence.js';
@@ -52,21 +52,25 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
     expect(await preview()).toMatchObject({ kind: 'WEAK' });
   });
 
-  it.each(['bot', 'admin'] as const)('does not let a non-competing %s raise the human Honor ceiling', async kind => {
+  it('does not let a non-competing admin raise the Honor ceiling', async () => {
     await setLevel(f.db, f.planetIds[2]!, 'CORE', 25);
     await f.db.transaction(tx => observeHonorOwner(tx, f.playerIds[2]!, f.clock.now()));
-    const excluded = new Set<string>();
-    if (kind === 'bot') {
-      await f.db.insert(botProfiles).values({ accountId: f.accountIds[2]!, ordinal: 1, persona: 'RAIDER',
-        nextActionAt: f.clock.now(), createdAt: f.clock.now() });
-    } else {
-      const [account] = await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[2]!));
-      excluded.add(account!.username);
-    }
+    const [account] = await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[2]!));
+    const excluded = new Set([account!.username]);
     expect(await honorTargetPreview(f.db, f.playerIds[0]!, f.planetIds[1]!, f.clock, excluded))
       .toMatchObject({ kind: 'PEER', topTierPeer: true });
     expect(await f.db.transaction(tx => commitHonor(tx, { ...request(), adminUsernames: excluded })))
       .toMatchObject({ galaxyTopTier: 8 });
+  });
+
+  it('lets a bot set the Honor ceiling like any commander', async () => {
+    await setLevel(f.db, f.planetIds[2]!, 'CORE', 25);
+    await f.db.transaction(tx => observeHonorOwner(tx, f.playerIds[2]!, f.clock.now()));
+    await f.db.insert(botProfiles).values({ accountId: f.accountIds[2]!, ordinal: 1, persona: 'RAIDER',
+      nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    expect(await preview()).toMatchObject({ kind: 'WEAK' });
+    expect(await f.db.transaction(tx => commitHonor(tx, request())))
+      .toMatchObject({ galaxyTopTier: coreTier(25) });
   });
 
   it('ignores high neutral worlds', async () => {

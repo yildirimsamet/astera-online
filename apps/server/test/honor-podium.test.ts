@@ -14,15 +14,23 @@ describe('the public podium follows the active Honor competition', () => {
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock));
     expect((await honorPodium(f.db, f.seasonId, new Set())).active).toBe(false);
   });
-  it('shares positive podium places fairly and excludes bots, operators and nonpositive scores', async () => {
+  it('shares positive podium places fairly and excludes operators and nonpositive scores', async () => {
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
     await f.db.insert(honorTotals).values(f.playerIds.map((playerId, index) => ({ seasonId: f.seasonId, playerId,
       score: index < 2 ? 20_000_000 : index === 2 ? 0 : 100_000_000 })));
+    const result = await honorPodium(f.db, f.seasonId, new Set([f.playerIds[3]!]));
+    expect(result).toEqual({ active: true, ranks: new Map([[f.playerIds[0], 1], [f.playerIds[1], 1]]) });
+    expect((await honorPodium(f.db, f.seasonId, new Set([f.playerIds[0]!, f.playerIds[3]!]))).ranks)
+      .toEqual(new Map([[f.playerIds[1], 1]]));
+  });
+  it('crowns a bot that holds a podium place like anybody else', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    await f.db.insert(honorTotals).values(f.playerIds.map((playerId, index) => ({ seasonId: f.seasonId, playerId,
+      score: (index + 1) * 10_000_000 })));
     await f.db.insert(botProfiles).values({ accountId: f.accountIds[3]!, ordinal: 1, persona: 'RAIDER',
       nextActionAt: f.clock.now(), createdAt: f.clock.now() });
-    const result = await honorPodium(f.db, f.seasonId, new Set());
-    expect(result).toEqual({ active: true, ranks: new Map([[f.playerIds[0], 1], [f.playerIds[1], 1]]) });
-    expect((await honorPodium(f.db, f.seasonId, new Set([f.playerIds[0]!]))).ranks).toEqual(new Map([[f.playerIds[1], 1]]));
+    expect((await honorPodium(f.db, f.seasonId, new Set())).ranks)
+      .toEqual(new Map([[f.playerIds[3], 1], [f.playerIds[2], 2], [f.playerIds[1], 3]]));
   });
   it('marks the primary competition even when a world has no Honor podium place', () => {
     const worlds = [{ id: 'a', controller: { kind: 'PLAYER', playerId: 'a' }, dominionRank: 1 as const },

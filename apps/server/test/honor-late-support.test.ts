@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { buildings, honorCommitments, players, units } from '../src/db/schema.js';
+import { HONOR_LAUNCH_VERSION } from '@astera/rules';
+import { botProfiles, buildings, honorCommitments, honorSeasons, players, units } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
-import { commitHonor, worldHonorCommitment, monumentHonorCommitment } from '../src/services/honorCommitment.js';
+import { commitHonor, honorCommitmentSchema, worldHonorCommitment, monumentHonorCommitment } from '../src/services/honorCommitment.js';
 import { observeHonorOwner, honorOwnerReference } from '../src/services/honorReference.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
 
@@ -91,6 +92,31 @@ describe('support arriving after the raid was committed', () => {
     expect(result?.exclusion).toBe('PARTICIPANT_JOINED_LATE');
     expect(result?.defence).toHaveLength(2);
   });
+  it('a server-run newcomer backing a person against a server-run raider keeps the fight scored', async () => {
+    await f.db.delete(honorSeasons);
+    await f.db.transaction(async tx => {
+      await prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock, HONOR_LAUNCH_VERSION);
+      for (const id of [...f.playerIds].sort()) await observeHonorOwner(tx, id, f.clock.now());
+    });
+    await f.db.insert(botProfiles).values([0, 2].map((index, ordinal) => ({ accountId: f.accountIds[index]!,
+      ordinal: ordinal + 1, persona: 'RAIDER', nextActionAt: f.clock.now(), createdAt: f.clock.now() })));
+    const id = randomUUID(); await commit(id);
+    const [row] = await f.db.select().from(honorCommitments).where(eq(honorCommitments.sourceId, id));
+    const snapshot = honorCommitmentSchema.parse(row!.snapshot);
+    await f.db.update(honorCommitments).set({ snapshot: { ...snapshot,
+      presentAtLaunch: snapshot.presentAtLaunch?.filter(player => player !== f.playerIds[2]) } })
+      .where(eq(honorCommitments.sourceId, id));
+    const { honorObservations } = await import('../src/db/schema.js');
+    await f.db.delete(honorObservations).where(eq(honorObservations.playerId, f.playerIds[2]!));
+    await f.db.update(players).set({ joinedAt: new Date(f.clock.now().getTime() + 1) }).where(eq(players.id, f.playerIds[2]!));
+    f.clock.advance(1);
+    await f.db.transaction(tx => observeHonorOwner(tx, f.playerIds[2]!, f.clock.now()));
+    const result = await f.db.transaction(tx => worldHonorCommitment(tx, { seasonId: f.seasonId,
+      missionId: id, host: f.playerIds[1]!, supporters: [f.playerIds[2]!], adminUsernames: new Set(), observedAt: f.clock.now() }));
+    expect(result).toMatchObject({ eligible: true });
+    expect(result?.exclusion).toBeUndefined();
+  });
+
   it('keeps an ordinary world battle moving when a genuine new entrant supplies late support', async () => {
     const id = randomUUID(); await commit(id);
     const { honorObservations } = await import('../src/db/schema.js');

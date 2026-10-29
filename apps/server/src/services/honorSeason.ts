@@ -4,9 +4,10 @@ import type { Tx } from '../db/client.js';
 import { flushBeforeCommit } from '../db/finalizers.js';
 import { honorSeasons, honorTotals, seasons } from '../db/schema.js';
 
-/** Closing owns the exclusive season lock, so queued battles can flush before rank/rewards freeze. */
+/** Closing owns the exclusive season lock, so queued battles can flush before rank/rewards freeze.
+ * Ranks every listed commander, bots included; the caller decides who may collect. */
 export async function sealHonor(tx: Tx, input: {
-  seasonId: string; at: Date; humanPlayerIds: readonly string[];
+  seasonId: string; at: Date; playerIds: readonly string[];
 }): Promise<HonorRankReward[] | null> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, input.seasonId)).for('update');
   if (!season) throw new Error('Missing Honor season');
@@ -22,7 +23,7 @@ export async function sealHonor(tx: Tx, input: {
   if (config.closedAt !== null && config.closedAt.getTime() !== input.at.getTime()) throw new Error('Honor boundary is immutable');
   await tx.update(honorSeasons).set({ closedAt: input.at }).where(eq(honorSeasons.seasonId, input.seasonId));
   if (config.mode !== 'ACTIVE') return null;
-  const ids = [...new Set(input.humanPlayerIds)];
+  const ids = [...new Set(input.playerIds)];
   const totals = ids.length === 0 ? [] : await tx.select().from(honorTotals)
     .where(and(eq(honorTotals.seasonId, input.seasonId), inArray(honorTotals.playerId, ids)));
   const scores = new Map(totals.map(row => [row.playerId, row.score]));

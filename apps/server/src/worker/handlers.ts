@@ -2364,8 +2364,9 @@ async function freezeSeason(
       membership.clanId,
     ]));
     const botAccountIds = new Set(botRows.map((bot) => bot.accountId));
+    // Bots hold their Honor places like Dominion ones; `earned` below skips their prizes.
     const honorRanks = await sealHonor(tx, { seasonId, at: capturedThrough,
-      humanPlayerIds: roster.filter(player => !botAccountIds.has(player.accountId)).map(player => player.playerId) });
+      playerIds: roster.map(player => player.playerId) });
     const honorByPlayer = new Map(honorRanks?.map(row => [row.actor, row]) ?? []);
     /*
       THE SEASON'S ROWS, INDEXED BY COMMANDER ONCE INSTEAD OF RESCANNED PER HEAD.

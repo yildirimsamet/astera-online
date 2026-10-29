@@ -123,7 +123,7 @@ C=200, bir çiftten kazanılabilecek toplamın yaklaşılabilen üst sınırıd�
 
 ## 5. Anlaşma, hesap ilişkisi ve sınırlar
 
-- Bot, NPC, pirate, neutral, kendi hesap kimliği: rekabetçi Honor kaynağı değil. Normal Hakimiyet uygunluğu ayrıca mevcut kuralını korur.
+- Bot, NPC, pirate, neutral, kendi hesap kimliği: rekabetçi Honor kaynağı değil. Normal Hakimiyet uygunluğu ayrıca mevcut kuralını korur. *(2026-10-29'dan beri geçersiz: içinde en az bir insan olan bot savaşı Honor sayar, bot sıralamada ve ödül sırasında yerini tutar; yalnız botlardan oluşan savaş sayılmaz. Bkz. `docs/decisions.md` 2026-10-29.)*
 - Aynı klan, son 7 günde aynı klanda bulunma veya son 7 günde doğrudan gönüllü filo/kaynak desteği: o çift pozitif Honor üretmez. Çatışma ganimeti “gönüllü destek” diye işaretlenmez. Negatif saldırı sonuçları silinmez. Klandan çıkıp aynı gün düello puanı basmak açılmaz.
 - Sadece aynı IP'ye göre otomatik suç/ceza yok. Ayrı ve ilişkisiz görünen yan hesapları puan formülü kesin teşhis edemez. Ödül sırası, özellikle tekrarlı tek yönlü gemi besleme ve ilişkili kaynak akışı açısından delille incelenebilir; flag otomatik suç kararı değildir.
 - Mikro-Honor ile muhasebe: 1 Honor = 1.000.000 iç birim. Bir kaybın küçük olduğu için her saldırıda sıfıra yuvarlanıp bedava denemeye dönüşmesi engellenir. UI ayrıntıda küsuratı göstermeli; 0,0546 kaybı gizlice 0 yazmamalı.

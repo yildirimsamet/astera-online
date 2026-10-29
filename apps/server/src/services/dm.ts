@@ -2,12 +2,12 @@ import { accountForPlayer, chatVisibleTo, lockCommunityPair } from './communityB
 import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
-import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { CHAT } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
-  accounts, botProfiles, dmBlocks, dmConversations, dmMessages, dmReadMarkers,
+  accounts, dmBlocks, dmConversations, dmMessages, dmReadMarkers,
   players, seasons, shards,
 } from '../db/schema.js';
 import { CHANNEL, publish } from '../stream/bus.js';
@@ -72,9 +72,8 @@ export async function dmContacts(db: Db, accountId: string, query: string) {
     playerId: players.id, username: accounts.displayName, country: accounts.countryCode,
   }).from(players)
     .innerJoin(accounts, eq(accounts.id, players.accountId))
-    .leftJoin(botProfiles, eq(botProfiles.accountId, accounts.id))
     .where(and(
-      eq(players.seasonId, me.seasonId), isNull(botProfiles.accountId),
+      eq(players.seasonId, me.seasonId),
       chatVisibleTo(accountId, players.id),
       sql`${players.id} <> ${me.id}`,
       sql`${accounts.displayName} ILIKE ${pattern} ESCAPE '\\'`,
@@ -224,9 +223,6 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
       .from(players).where(inArray(players.id, pair)).orderBy(asc(players.id)).for('update');
     const recipient = locked.find((row) => row.id === recipientPlayerId);
     if (!recipient) throw new GameError('DM_RECIPIENT_NOT_FOUND', 'Commander not found', 404);
-    const [bot] = await tx.select({ accountId: botProfiles.accountId }).from(botProfiles)
-      .where(eq(botProfiles.accountId, recipient.accountId)).limit(1);
-    if (bot) throw new GameError('DM_RECIPIENT_NOT_FOUND', 'Commander not found', 404);
     if (me.role !== 'MAIN' || me.seasonStatus !== 'live' || recipient.seasonId !== me.seasonId) {
       throw new GameError('DM_UNAVAILABLE', 'Both commanders must be in the same live galaxy', 409);
     }

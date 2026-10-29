@@ -454,14 +454,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         score,
         dominion: playerDominionSql,
         honor,
-        bot: botProfiles.accountId,
         clanId: clans.id,
         clanName: clans.name,
         clanTag: clans.tag,
       })
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
-      .leftJoin(botProfiles, eq(botProfiles.accountId, accounts.id))
       .leftJoin(honorTotals, and(eq(honorTotals.seasonId, self.seasonId), eq(honorTotals.playerId, players.id)))
       .innerJoin(
         planets,
@@ -478,8 +476,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .where(eq(players.seasonId, self.seasonId))
       .orderBy(desc(score), asc(players.joinedAt), asc(players.id));
 
-    // Bots stay listed on Honor (always 0: a bot-involved event earns none). Leaving
-    // them off would let anyone diff the two ladders to find them. Prizes skip them below.
+    // Bots are listed and ranked on Honor like everyone; leaving them off would let
+    // anyone diff the two ladders to find them. A bot keeps its place in the prize
+    // order too, so the prize shown always belongs to the rank shown.
     const visibleRows = rows.filter(entry => !adminPlayerIds.has(entry.playerId));
     let rank = 0;
     let previousScore: number | undefined;
@@ -527,7 +526,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     });
 
     const you = ladder.find((entry) => entry.playerId === self.playerId);
-    const prize = honorEnabled ? honorRankRewards(rows.filter(entry => !adminPlayerIds.has(entry.playerId) && entry.bot === null)
+    const prize = honorEnabled ? honorRankRewards(visibleRows
       .map(entry => ({ actor: entry.playerId, honor: entry.honor }))).find(entry => entry.actor === self.playerId) : undefined;
     const honorReward = prize ? { rank: prize.rank, honor: prize.honor, nominal: prize.nominal, reward: prize.reward,
       fullThreshold: Number((BigInt(honorResourceValue(prize.nominal)) * 1_000_000n + 199n) / 200n) } : null;

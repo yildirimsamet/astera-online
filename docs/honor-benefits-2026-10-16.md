@@ -7,7 +7,7 @@ Kullanıcının onayladığı yön: galakside güncel ilk üç Honor'dan; chat k
 - Aktif Honor galaksisinde kürsü zaten Honor'dan seçiliyor. Pozitif puan gerekir; eşitlikler 1,1,3 şeklindedir. Honor kürsüsünde olmayan Hakimiyet lideri Honor rozeti alamaz.
 - Chat önceki donmuş sezonun Honor derecesini zaten okuyabiliyor. Eski Honor'suz sezonların kazanılmış kupaları Hakimiyet kaydı olarak korunur; geçmiş sıralama yeniden hesaplanmaz.
 - Chat kupasının yanında Honor simgesi ve mobilde açık kaynak açıklaması eklendi. Metal kenarlık aynı gerçek dereceyi kullanıyor.
-- Genel/klan/DM post ve tarihçe cevaplarında derecenin kaynağı sözleşme testiyle doğrulandı. Sıfır puana, botlara, operatörlere ve SHADOW sonuçlarına kazanılmış Honor rozeti verilmez.
+- Genel/klan/DM post ve tarihçe cevaplarında derecenin kaynağı sözleşme testiyle doğrulandı. Sıfır puana, operatörlere ve SHADOW sonuçlarına kazanılmış Honor rozeti verilmez; botlar 2026-10-29'dan beri sıralama derecesine göre herkes gibi rozet alır (bkz. `docs/decisions.md` 2026-10-29).
 
 ## Kabul edilen ekonomik oranlar — henüz etkin değil
 

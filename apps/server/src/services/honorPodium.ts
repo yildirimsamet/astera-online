@@ -1,18 +1,18 @@
-import { and, asc, desc, eq, gt, isNull, notInArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, notInArray } from 'drizzle-orm';
 import type { Queryable } from '../db/client.js';
-import { botProfiles, honorSeasons, honorTotals, players } from '../db/schema.js';
+import { honorSeasons, honorTotals, players } from '../db/schema.js';
 
 type Place = 1 | 2 | 3;
 interface HonorPodium { active: boolean; ranks: ReadonlyMap<string, Place> }
 
-/** Positive human achievements only; tied ranks follow the same competition ladder. */
+/** Positive achievements only; tied ranks follow the same competition ladder. A bot
+ * is crowned like anybody, since a crown that skips a ladder place would expose it. */
 export async function honorPodium(db: Queryable, seasonId: string, excluded: ReadonlySet<string>): Promise<HonorPodium> {
   const [config] = await db.select({ mode: honorSeasons.mode }).from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
   if (config?.mode !== 'ACTIVE') return { active: false, ranks: new Map() };
   const rows = await db.select({ id: players.id, score: honorTotals.score }).from(honorTotals)
     .innerJoin(players, and(eq(players.id, honorTotals.playerId), eq(players.seasonId, seasonId)))
-    .leftJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
-    .where(and(eq(honorTotals.seasonId, seasonId), gt(honorTotals.score, 0), isNull(botProfiles.accountId),
+    .where(and(eq(honorTotals.seasonId, seasonId), gt(honorTotals.score, 0),
       excluded.size > 0 ? notInArray(players.id, [...excluded]) : undefined))
     .orderBy(desc(honorTotals.score), asc(players.id));
   const ranks = new Map<string, Place>();
