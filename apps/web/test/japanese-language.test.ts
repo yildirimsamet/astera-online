@@ -204,7 +204,7 @@ describe('Japanese language support', () => {
     expect(ja.research.gridDetail).toContain('迎撃弾');
     expect(ja.research.stockpileDetail).toContain('迎撃弾');
     expect(ja.skins.oneTime).toContain('運営期間中');
-    expect(ja.skins.shopierStepPaste).toContain('注文メモ');
+    expect(ja.skins.shopierWhy).toContain('メモを書く必要はありません');
     expect(ja.skins.worldsHint).toContain('外せます');
     expect(ja.seasonRecap.clan.recordOnly).toContain('戦力');
   });

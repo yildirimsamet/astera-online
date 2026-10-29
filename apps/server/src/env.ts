@@ -84,20 +84,20 @@ const schema = z.object({
     productId: z.string().uuid(), eurAmount: z.number().int().positive(), tryAmount: z.number().int().positive().optional(),
   }).strict()).refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
   POLAR_RETURN_URL: z.string().url().default('http://localhost:5173/'),
-  /** Shopier TRY sales with automatic delivery; a buyer's note carries the purchase code. */
+  /** Shopier TRY sales with automatic delivery: each press opens the commander's own hidden product. */
   SHOPIER_CHECKOUT_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   SHOPIER_ACCESS_TOKEN: z.string().default(''),
-  /** Returned once by Shopier when the webhook subscription is created. */
-  SHOPIER_WEBHOOK_TOKEN: z.string().default(''),
-  SHOPIER_PRODUCTS: z.string().default('{}').transform((value, ctx): unknown => {
+  /** One token per webhook subscription: Shopier signs each subscription with its own (2026-10-29). */
+  SHOPIER_WEBHOOK_TOKENS: z.string().default('').transform(value => value.split(',').map(token => token.trim()).filter(Boolean)),
+  /** Lira prices in kuruş, by item. The product on Shopier is created at this price. */
+  SHOPIER_PRICES: z.string().default('{}').transform((value, ctx): unknown => {
     try { return JSON.parse(value.trim() || '{}') as unknown; }
-    catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Shopier product JSON' }); return z.NEVER; }
-  }).pipe(z.record(z.enum([...COSMETIC_IDS, 'bundle']), z.object({
-    productId: z.string().regex(/^\d{1,20}$/), tryAmount: z.number().int().positive(),
-  }).strict())
-    .refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')
-    .refine(items => new Set(Object.values(items).map(item => item.productId)).size === Object.keys(items).length,
-      'Each Shopier product sells one item')),
+    catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Shopier price JSON' }); return z.NEVER; }
+  }).pipe(z.record(z.enum([...COSMETIC_IDS, 'bundle']), z.number().int().positive())
+    .refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
+  /** Public folder of `<item>.jpg`; Shopier fetches the product image from here (jpg/png only). */
+  SHOPIER_IMAGE_BASE_URL: z.literal('').or(z.string().url().startsWith('https://')).default('')
+    .transform(value => value.replace(/\/+$/, '')),
   POLAR_PRODUCT_LAVA: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_ICE: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_TOXIC: z.string().uuid().or(z.literal('')).default(''),

@@ -4846,27 +4846,35 @@ export const polarReversals = pgTable('polar_reversals', {
 });
 
 /**
- * Shopier orders carry no account or metadata field, only the buyer's note. A single-use code
- * written there binds the order to the commander who asked for it. One open code per item.
+ * SHOPIER CANNOT KNOW THE COMMANDER (owner 2026-10-29). Its order has no account field, so each
+ * press opens a hidden, single-stock Shopier product for this commander and look; the paid
+ * order's `productId` names the buyer. Rows are never deleted: a paid order on any of them
+ * delivers whatever its status. `removedAt` records that the product is gone from Shopier.
  */
-export const shopierPurchaseCodes = pgTable('shopier_purchase_codes', {
+export const shopierCheckouts = pgTable('shopier_checkouts', {
   id: uuid('id').primaryKey().defaultRandom(),
   accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   itemId: text('item_id').notNull(),
-  code: text('code').notNull(),
-  status: text('status').$type<'OPEN' | 'USED'>().notNull().default('OPEN'),
+  /** Kuruş, fixed at the press: the product on Shopier carries this price. */
+  amount: integer('amount').notNull(),
+  status: text('status').$type<'PENDING' | 'OPEN' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'FAILED'>().notNull().default('PENDING'),
+  productId: text('product_id'),
+  url: text('url'),
   orderId: text('order_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  usedAt: timestamp('used_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  removedAt: timestamp('removed_at', { withTimezone: true }),
 }, (t) => [
-  uniqueIndex('shopier_purchase_codes_code_idx').on(t.code),
-  uniqueIndex('shopier_purchase_codes_open_idx').on(t.accountId, t.itemId)
-    .where(sql`${t.status} = 'OPEN' AND ${t.accountId} IS NOT NULL`),
+  uniqueIndex('shopier_checkouts_product_idx').on(t.productId),
+  uniqueIndex('shopier_checkouts_live_idx').on(t.accountId, t.itemId)
+    .where(sql`${t.status} IN ('PENDING', 'OPEN') AND ${t.accountId} IS NOT NULL`),
+  index('shopier_checkouts_status_idx').on(t.status, t.expiresAt),
 ]);
 
 /**
  * Every Shopier order seen once, by Shopier's order ID. Doubles as the operator's queue:
- * an order the code could not bind waits here as UNMATCHED with its reason. A refund that
+ * an order no product of ours could bind waits here as UNMATCHED with its reason. A refund that
  * arrives first leaves a REFUNDED row, so the later order can never grant.
  */
 export const shopierOrders = pgTable('shopier_orders', {
@@ -4875,7 +4883,7 @@ export const shopierOrders = pgTable('shopier_orders', {
   reason: text('reason'),
   itemId: text('item_id'),
   accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
-  code: text('code'),
+  checkoutId: uuid('checkout_id').references(() => shopierCheckouts.id, { onDelete: 'set null' }),
   note: text('note'),
   total: text('total'),
   currency: text('currency'),

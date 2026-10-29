@@ -1,5 +1,8 @@
 # Shopier otomatik teslim — gereksinim, kenar durumlar, etki (16 Ekim 2026)
 
+> **29 Ekim 2026:** "notta kod" bağlama yöntemi yerini oyuncuya özel geçici ürüne bıraktı —
+> bkz. `docs/shopier-gecici-urun-plani-2026-10-29.md`. Aşağıdaki Shopier gerçekleri geçerli.
+
 İstek: Polar'ın sabit işlem ücreti (5% + 50¢ + yurt dışı kart 1,5%) ₺49–99'luk TL satışların
 yarısına yakınını alıyor. Türkiye'deki TL ödemeleri Shopier üzerinden **otomatik teslimle**
 alınacak; Türkiye dışı satışlar Polar'da değişmeden kalacak. Bugünkü elle teslim (sipariş

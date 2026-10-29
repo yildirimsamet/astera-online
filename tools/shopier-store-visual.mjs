@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 /**
- * The Shopier code flow in the real store and admin components, against an isolated fixture
+ * The Shopier own-page flow in the real store and admin components, against an isolated fixture
  * API: no account, no order and no Shopier call is real. Phone and desktop, Turkish and English.
  */
 export async function verifyShopierStore(output) {
@@ -36,12 +36,12 @@ export async function verifyShopierStore(output) {
         const euro = { formatted: '€2.99', currencyCode: 'EUR', amount: 299 };
         const now = new Date();
         const queue = [
-          { orderId: '329289771', status: 'UNMATCHED', reason: 'NO_CODE', itemId: 'planet-toxic', username: null, code: null,
+          { orderId: '329289771', status: 'UNMATCHED', reason: 'ACCOUNT_MISSING', itemId: 'planet-toxic', username: null,
             note: 'komutanim_uzun_bir_isim_123', total: '99.00', currency: 'TRY', receivedAt: now, closed: false },
-          { orderId: '329289772', status: 'UNMATCHED', reason: 'UNKNOWN_PRODUCT', itemId: null, username: null, code: null,
+          { orderId: '329289772', status: 'UNMATCHED', reason: 'UNKNOWN_PRODUCT', itemId: null, username: null,
             note: '', total: '499.00', currency: 'TRY', receivedAt: now, closed: false },
-          { orderId: '329289773', status: 'MATCHED', reason: null, itemId: 'ring-aurora', username: 'izci', code: 'AST-7K3M9Q',
-            note: 'AST-7K3M9Q', total: '49.00', currency: 'TRY', receivedAt: now, closed: true },
+          { orderId: '329289773', status: 'MATCHED', reason: null, itemId: 'ring-aurora', username: 'izci',
+            note: '', total: '49.00', currency: 'TRY', receivedAt: now, closed: true },
         ];
         const review = { calls: [], unexpected: [] };
         const api = new Api({ fetch: async input => {
@@ -56,7 +56,8 @@ export async function verifyShopierStore(output) {
             'planet-germany': euro, 'planet-france': euro, 'planet-spain': euro, 'planet-japan': euro, bundle: lira(279), 'ring-aurora': lira(49) } };
           else if (url.pathname === '/api/skins/shopier-shop') answer = { enabled: true, prices: {
             'planet-lava': 9900, 'planet-ice': 9900, 'planet-toxic': 9900, 'planet-desert': 9900, 'planet-turkey': 9900, bundle: 27900, 'ring-aurora': 4900 } };
-          else if (url.pathname === '/api/skins/shopier-code') answer = { code: 'AST-7K3M9Q', url: 'https://www.shopier.com/51278683', amount: 9900, currency: 'TRY' };
+          else if (url.pathname === '/api/skins/shopier-checkout') answer = { url: 'https://www.shopier.com/61000001', amount: 9900, currency: 'TRY',
+            expiresAt: new Date(Date.now() + 48 * 3_600_000).toISOString() };
           else if (url.pathname === '/api/admin/shopier/orders') answer = { orders: queue };
           else { review.unexpected.push(url.pathname); throw new Error(`Unexpected fixture request: ${url.pathname}`); }
           return new Response(JSON.stringify(answer), { headers: { 'content-type': 'application/json' } });
@@ -73,17 +74,17 @@ export async function verifyShopierStore(output) {
         window.__shopierReview = review;
       }, language);
       const t = language === 'tr'
-        ? { pay: 'Shopier ile öde · ₺99', code: 'Ödeme kodun', tab: 'Shopier', toxic: /Zehir/ }
-        : { pay: 'Pay with Shopier · ₺99', code: 'Your payment code', tab: 'Shopier', toxic: /Toxic/ };
+        ? { pay: 'Shopier ile öde · ₺99', page: 'Sana özel ödeme sayfası', tab: 'Shopier', toxic: /Zehir/ }
+        : { pay: 'Pay with Shopier · ₺99', page: 'Your own payment page', tab: 'Shopier', toxic: /Toxic/ };
       // The store's 3D stage overflows on purpose (orbit, embers); only this work's surfaces are measured.
       const measure = async name => {
-        const geometry = await page.evaluate(codeTitle => {
+        const geometry = await page.evaluate(pageTitle => {
           const mount = document.body.lastElementChild;
-          const panel = mount.querySelector(`[aria-label="${codeTitle}"]`);
+          const panel = mount.querySelector(`[aria-label="${pageTitle}"]`);
           const checked = [...mount.querySelectorAll('li, button, a'), ...(panel ? [panel, ...panel.querySelectorAll('*')] : [])];
           return { fits: mount.scrollWidth <= innerWidth,
             overflow: checked.filter(element => element.scrollWidth > element.clientWidth + 1).map(element => element.textContent?.slice(0, 40)) };
-        }, t.code);
+        }, t.page);
         assert(geometry.fits && geometry.overflow.length === 0, JSON.stringify({ width, language, name, ...geometry }));
         measurements.push({ width, language, name, ...geometry });
       };
@@ -92,12 +93,12 @@ export async function verifyShopierStore(output) {
       await measure('store');
       await page.screenshot({ path: join(output, `${width}-${language}-store.png`), fullPage: false });
       await page.getByRole('button', { name: t.pay }).click();
-      const panel = page.getByRole('region', { name: t.code });
+      const panel = page.getByRole('region', { name: t.page });
       await panel.waitFor();
       await panel.scrollIntoViewIfNeeded();
-      await measure('code');
-      await panel.screenshot({ path: join(output, `${width}-${language}-code-panel.png`) });
-      await page.screenshot({ path: join(output, `${width}-${language}-code.png`) });
+      await measure('page');
+      await panel.screenshot({ path: join(output, `${width}-${language}-page-panel.png`) });
+      await page.screenshot({ path: join(output, `${width}-${language}-page.png`) });
       await page.evaluate(() => { window.__shopierReview.renderAdmin(); });
       await page.getByRole('tab', { name: t.tab, exact: true }).click();
       await page.getByText('komutanim_uzun_bir_isim_123').waitFor();

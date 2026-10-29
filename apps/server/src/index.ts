@@ -6,6 +6,7 @@ import { loadDotEnv, loadEnv } from './env.js';
 import { ensureNeutralCensusEvents, ensureSeasonActs } from './services/season.js';
 import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
 import { ensureAsteroidHourEvents } from './services/asteroidSpawn.js';
+import { sweepShopierCheckouts } from './services/shopierSales.js';
 import { systemClock } from './clock.js';
 
 loadDotEnv();
@@ -57,6 +58,12 @@ async function main(): Promise<void> {
     mail.start();
     worker.start();
     log.info('event worker started');
+    // Shopier clean-up on its own timer, never inside a tick: a slow Shopier must not delay a raid.
+    // A round is at most 20 deletes of 3 s, far inside its ten minutes, so rounds never overlap.
+    setInterval(() => {
+      void sweepShopierCheckouts(db, env, systemClock.now())
+        .catch((err: unknown) => { log.error({ err }, 'Shopier clean-up failed; the next round retries'); });
+    }, 10 * 60_000).unref();
   }
   if (env.ROLE === 'api' || env.ROLE === 'both') {
     try {

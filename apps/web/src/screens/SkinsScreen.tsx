@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
 import type { z } from 'zod';
 import type { polarPricingSchema, skinCollectionSchema } from '../api/schemas.js';
-import { usePolarPricing, usePolarShop, usePurchasePolarSkin, useShopierCode, useShopierShop, useSkins } from '../api/queries.js';
+import { usePolarPricing, usePolarShop, usePurchasePolarSkin, useOpenShopierCheckout, useShopierShop, useSkins } from '../api/queries.js';
 import {
   BUNDLE_PRICE,
   SKIN_PRICE,
@@ -139,7 +139,7 @@ function PlanetShopContent({
   pricingState?: 'loading' | 'error' | 'ready';
   onRetryPricing?: () => void;
   onPurchase?: (itemId: ItemId) => void | Promise<void>;
-  /** Shopier is open: its lira prices and the code request. Offered only in Turkey. */
+  /** Shopier is open: its lira prices and the commander's own page. Offered only in Turkey. */
   shopier?: ShopierOffer;
 }) {
   const { t } = useTranslation();
@@ -316,7 +316,7 @@ function PlanetShopContent({
         {purchaseError?.itemId === selected && <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">
           {purchaseError.message}
         </p>}
-        {/* After the Shopier press: its code and steps. Polar stays below as the second way. */}
+        {/* After the Shopier press: the commander's own page. Polar stays below as the second way. */}
         {lira !== undefined && <ShopierProgress state={checkout.of(selected)} />}
         {lira !== undefined && buyReady && (
           <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`mt-2 ${SECOND_PRESS} disabled:opacity-60`}>
@@ -459,7 +459,7 @@ function WebSkinsScreen({ commander, onOpenInventory, onTry, initialId }: { comm
   const pricing = usePolarPricing();
   const purchase = usePurchasePolarSkin();
   const shopierShop = useShopierShop();
-  const shopierCode = useShopierCode();
+  const shopierCheckout = useOpenShopierCheckout();
   const [checkoutFailure, setCheckoutFailure] = useState<{ itemId: ItemId; reason: unknown } | null>(null);
   const onPurchase = async (itemId: ItemId): Promise<void> => {
     if (!shop.data?.enabled) return;
@@ -478,5 +478,5 @@ function WebSkinsScreen({ commander, onOpenInventory, onTry, initialId }: { comm
       message: checkoutFailure.reason instanceof ApiError ? describeError(checkoutFailure.reason) : t('skins.checkoutError') } : undefined}
     pricingState={pricing.isPending || (pricing.isFetching && !pricing.data) ? 'loading' : pricing.isError ? 'error' : 'ready'}
     onRetryPricing={() => { void pricing.refetch(); }} onPurchase={onPurchase}
-    shopier={shopierShop.data?.enabled ? { prices: shopierShop.data.prices, requestCode: itemId => shopierCode.mutateAsync(itemId) } : undefined} />;
+    shopier={shopierShop.data?.enabled ? { prices: shopierShop.data.prices, requestCheckout: itemId => shopierCheckout.mutateAsync(itemId) } : undefined} />;
 }

@@ -1717,15 +1717,15 @@ export const polarPurchaseSchema = z.object({ checkoutId: z.string().uuid(),
   }) });
 /** Shopier sells in lira: prices are kuruş, only for items with a Shopier product. */
 export const shopierShopSchema = z.object({ enabled: z.boolean(), prices: z.record(z.number().int().positive()) });
-/** The single-use code the buyer writes in the Shopier order note, and the product to pay on. */
-export const shopierCodeSchema = z.object({
-  code: z.string().regex(/^AST-[2-9A-HJKMNP-TV-Z]{6}$/),
+/** This commander's own hidden Shopier product: paying on it is what names the buyer. */
+export const shopierCheckoutSchema = z.object({
   url: z.string().url().refine(value => {
     const url = new URL(value);
     return url.protocol === 'https:' && url.hostname === 'www.shopier.com';
   }),
   amount: z.number().int().positive(),
   currency: z.literal('TRY'),
+  expiresAt: z.coerce.date(),
 });
 export const shopierQueueSchema = z.object({ orders: z.array(z.object({
   orderId: z.string(),
@@ -1733,7 +1733,6 @@ export const shopierQueueSchema = z.object({ orders: z.array(z.object({
   reason: z.string().nullable(),
   itemId: z.string().nullable(),
   username: z.string().nullable(),
-  code: z.string().nullable(),
   note: z.string().nullable(),
   total: z.string().nullable(),
   currency: z.string().nullable(),

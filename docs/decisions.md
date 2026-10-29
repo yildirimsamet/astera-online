@@ -3,6 +3,16 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-10-29 — Shopier: oyuncuya özel geçici ürün (notta kod yöntemi kaldırıldı).**
+  Owner: alıcı adını veya kodu yazmasa da kim olduğu anlaşılmalı; görünümler yalnız oyun
+  içinden alınır. "Shopier ile öde" basışı o komutan + görünüm için gizli, dijital, stoğu 1
+  bir Shopier ürünü açar; ödenen siparişin `productId`'si hesabı söyler. Ödenmeyen ürün 48 saat
+  açık kalır, her basışta süre baştan başlar. Çakışan açık ürünler (paket ↔ içindeki görünümler)
+  kapanır; yine de çift ödeme olursa sipariş kuyruğa düşer, iadeyi sahip elle yapar. KDV boş
+  (sahip henüz mükellef değil). Dükkândaki 9 görünüm ürünü silinir (gizlenmez), 4 destek kartı
+  kalır. Canlı deneme sonuçları ve plan: `docs/shopier-gecici-urun-plani-2026-10-29.md`.
+  Durum: kod 29 Ekim'de yayına çıktı, bayrak kapalı; satışın açılışı (ürün silme, sepet, webhook) ayrı adım.
+
 - **2026-10-23 — Savaşta hasarın bütün uygun hedeflere rastgele dağıtılması:**
   [Onaylanan savaş sözleşmesi](combat-random-distribution-decision-2026-10-23.md).
   Hurdacı, yük gemileriyle aynı korunan hedef grubundadır.

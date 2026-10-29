@@ -19,7 +19,7 @@ describe('a look without a Shopier product', () => {
 
   it('is sold through Polar alone, even in Turkey', () => {
     render(<SkinShopContent collection={collection} commander="Samet" onOpenInventory={vi.fn()} prices={prices} enabled onPurchase={vi.fn()}
-      countryCode="TR" shopier={{ prices: { 'planet-lava': 9900 }, requestCode: vi.fn() }} />);
+      countryCode="TR" shopier={{ prices: { 'planet-lava': 9900 }, requestCheckout: vi.fn() }} />);
     pick();
     expect(screen.queryByRole('button', { name: /shopier/i })).toBeNull();
     expect(screen.getByRole('button', { name: /buy.*€2\.99/i })).toBeEnabled();

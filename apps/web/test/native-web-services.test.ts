@@ -13,7 +13,7 @@ describe.each(['android', 'ios'])('%s web service isolation', platform => {
     for (const operation of [
       () => api.skinShop(), () => api.skinPricing(), () => api.purchaseSkin('planet-lava'),
       () => api.polarShop(), () => api.polarPricing(), () => api.purchasePolarSkin('planet-lava'),
-      () => api.shopierShop(), () => api.shopierCode('planet-lava'),
+      () => api.shopierShop(), () => api.shopierCheckout('planet-lava'),
     ]) await expect(operation()).rejects.toThrow(/checkout/i);
     expect(fetcher).not.toHaveBeenCalled();
   });

@@ -313,9 +313,9 @@ export function useShopierShop() {
   return useQuery({ queryKey: keys.shopierShop, queryFn: api.shopierShop, staleTime: 30_000, refetchOnWindowFocus: true });
 }
 
-export function useShopierCode() {
+export function useOpenShopierCheckout() {
   const api = useApi();
-  return useMutation({ mutationFn: (itemId: CosmeticId | 'bundle') => api.shopierCode(itemId) });
+  return useMutation({ mutationFn: (itemId: CosmeticId | 'bundle') => api.shopierCheckout(itemId) });
 }
 
 export function useShopierQueue() {

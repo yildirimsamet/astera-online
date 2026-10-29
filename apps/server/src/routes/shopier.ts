@@ -4,21 +4,21 @@ import { usernameSchema } from '../auth/credentials.js';
 import type { Env } from '../env.js';
 import { GameError } from '../services/planet.js';
 import { verifyShopierSignature } from '../services/shopier.js';
-import { dismissShopierOrder, grantShopierOrder, issueShopierCode, processShopierEvent, revokeShopierOrder,
-  shopierItemIds, shopierQueue, shopierShop, syncShopierOrders } from '../services/shopierSales.js';
+import { dismissShopierOrder, grantShopierOrder, processShopierEvent, revokeShopierOrder, shopierItemIds, shopierQueue,
+  shopierShop, startShopierCheckout, syncShopierOrders } from '../services/shopierSales.js';
 import { requireAuth } from './auth.js';
 import { requireAdmin } from './community.js';
 
-const codeBody = z.object({ itemId: z.enum(shopierItemIds) }).strict();
+const checkoutBody = z.object({ itemId: z.enum(shopierItemIds) }).strict();
 const orderParam = z.object({ orderId: z.string().regex(/^\d{1,20}$/) });
 const grantBody = z.object({ username: usernameSchema }).strict();
 
 export function registerShopierRoutes(app: FastifyInstance, env: Env): void {
   app.get('/api/skins/shopier-shop', () => shopierShop(env));
-  app.post('/api/skins/shopier-code', { preHandler: requireAuth,
+  app.post('/api/skins/shopier-checkout', { preHandler: requireAuth,
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, req => {
-    const { itemId } = codeBody.parse(req.body ?? {});
-    return issueShopierCode(app.db, env, req.accountId!, itemId);
+    const { itemId } = checkoutBody.parse(req.body ?? {});
+    return startShopierCheckout(app.db, env, req.accountId!, itemId, app.clock.now());
   });
 
   app.get('/api/admin/shopier/orders', { preHandler: requireAdmin }, () => shopierQueue(app.db));
@@ -39,12 +39,12 @@ export function registerShopierRoutes(app: FastifyInstance, env: Env): void {
     scope.addContentTypeParser('application/json', { parseAs: 'string', bodyLimit: 256 * 1024 },
       (_req, body, parsed) => { parsed(null, body); });
     scope.post('/api/shopier/webhook', { bodyLimit: 256 * 1024 }, async req => {
-      if (!env.SHOPIER_WEBHOOK_TOKEN.trim()) throw new GameError('SHOPIER_WEBHOOK_UNAVAILABLE', 'Shopier webhook is not configured', 503);
+      if (env.SHOPIER_WEBHOOK_TOKENS.length === 0) throw new GameError('SHOPIER_WEBHOOK_UNAVAILABLE', 'Shopier webhook is not configured', 503);
       const signature = req.headers['shopier-signature'];
       const webhookId = req.headers['shopier-webhook-id'];
       const eventType = req.headers['shopier-event'];
       if (typeof req.body !== 'string' || typeof webhookId !== 'string' || typeof eventType !== 'string'
-        || !verifyShopierSignature(req.body, typeof signature === 'string' ? signature : undefined, env.SHOPIER_WEBHOOK_TOKEN)) {
+        || !verifyShopierSignature(req.body, typeof signature === 'string' ? signature : undefined, env.SHOPIER_WEBHOOK_TOKENS)) {
         // The shape of the refusal, never the values: enough to tell a format change from a forgery.
         req.log.warn({ event: typeof eventType === 'string' ? eventType.slice(0, 64) : null, hasWebhookId: typeof webhookId === 'string',
           signatureLength: typeof signature === 'string' ? signature.length : null, bodyBytes: typeof req.body === 'string' ? req.body.length : null },

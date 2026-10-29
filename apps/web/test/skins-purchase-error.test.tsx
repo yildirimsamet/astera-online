@@ -16,7 +16,7 @@ vi.mock('../src/api/queries.js', () => ({
   usePolarPricing: () => ({ data: { prices: { 'planet-lava': { formatted: '€2.99', currencyCode: 'EUR', amount: 299 } } } }),
   usePurchasePolarSkin: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
   useShopierShop: () => ({ data: { enabled: false, prices: {} } }),
-  useShopierCode: () => ({ mutateAsync: vi.fn() }),
+  useOpenShopierCheckout: () => ({ mutateAsync: vi.fn() }),
 }));
 
 beforeEach(async () => {

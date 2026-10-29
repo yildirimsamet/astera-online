@@ -25,7 +25,7 @@ function compose(stage: boolean, image = `astera-server:${sha}`, native: Record<
       POLAR_CHECKOUT_ENABLED: 'true', POLAR_ACCESS_TOKEN: 'production-token-must-be-cleared',
       POLAR_WEBHOOK_SECRET: 'production-secret-must-be-cleared',
       SHOPIER_CHECKOUT_ENABLED: 'true', SHOPIER_ACCESS_TOKEN: 'production-token-must-be-cleared',
-      shopier_prod_access_token: 'production-token-must-be-cleared', SHOPIER_WEBHOOK_TOKEN: 'production-secret-must-be-cleared',
+      shopier_prod_access_token: 'production-token-must-be-cleared', SHOPIER_WEBHOOK_TOKENS: 'production-secret-must-be-cleared',
       ...(stage ? {
         POSTGRES_PORT: '5546', API_PORT_1: '3300', API_PORT_2: '3301', API_PORT_3: '3302', WORKER_PORT: '3310',
       } : {
@@ -73,7 +73,7 @@ describe('stage uses production topology with its own resources', () => {
           PADDLE_CLIENT_SIDE_TOKEN: '', PADDLE_WEBHOOK_SECRET: '',
           POLAR_CHECKOUT_ENABLED: 'false', POLAR_ENV: 'sandbox', POLAR_ACCESS_TOKEN: '', POLAR_WEBHOOK_SECRET: '',
           POLAR_RETURN_URL: 'https://stage.asteraonline.space/',
-          SHOPIER_CHECKOUT_ENABLED: 'false', SHOPIER_ACCESS_TOKEN: '', shopier_prod_access_token: '', SHOPIER_WEBHOOK_TOKEN: '',
+          SHOPIER_CHECKOUT_ENABLED: 'false', SHOPIER_ACCESS_TOKEN: '', shopier_prod_access_token: '', SHOPIER_WEBHOOK_TOKENS: '',
         },
       } } });
     }

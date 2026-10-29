@@ -15,7 +15,7 @@ import { joinSettled, giveUnits, fuelUp, placeAt, TEST_SPACING } from './helpers
 import { createSeason } from '../src/services/season.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
-import { announcements, chatMediaAssets, commanderTransfers, returnApplications, paddleSkinOrders, polarSkinOrders, shopierOrders, shopierPurchaseCodes, mediaDeletionQueue } from '../src/db/schema.js';
+import { announcements, chatMediaAssets, commanderTransfers, returnApplications, paddleSkinOrders, polarSkinOrders, shopierCheckouts, shopierOrders, mediaDeletionQueue } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 
 const password = 'fixture-correct-horse-battery';
@@ -94,14 +94,14 @@ describe('operator approval of a verified deletion request', () => {
     const { owner, requestId } = await pending(); const operator = await register('PolicyOperator');
     await built.db.insert(paddleSkinOrders).values({ accountId: owner.accountId, itemId: 'planet-lava', priceId: 'fixture-price', transactionId: 'fixture-transaction', customerId: 'private-customer', status: 'COMPLETED' });
     await built.db.insert(polarSkinOrders).values({ accountId: owner.accountId, itemId: 'planet-lava', productId: assetId, checkoutId: assetId, orderId: assetId, checkoutUrl: 'https://checkout.example.test/private-capability', status: 'COMPLETED' });
-    await built.db.insert(shopierOrders).values({ orderId: 'fixture-order', accountId: owner.accountId, itemId: 'planet-lava', status: 'MATCHED', code: 'AST-PRIVATE', note: 'personal@example.test', total: '99', currency: 'TRY' });
-    await built.db.insert(shopierPurchaseCodes).values({ accountId: owner.accountId, itemId: 'planet-lava', code: 'AST-PRIVATE', status: 'USED', orderId: 'fixture-order' });
+    await built.db.insert(shopierOrders).values({ orderId: 'fixture-order', accountId: owner.accountId, itemId: 'planet-lava', status: 'MATCHED', note: 'personal@example.test', total: '99', currency: 'TRY' });
+    await built.db.insert(shopierCheckouts).values({ accountId: owner.accountId, itemId: 'planet-lava', amount: 9900, status: 'OPEN', productId: '61000000', url: 'https://www.shopier.com/61000000', expiresAt: new Date(Date.now() + 3_600_000) });
     expect((await approve(requestId, operator.headers)).statusCode).toBe(200);
     expect((await complete(requestId, operator.headers)).statusCode).toBe(200);
     expect(await built.db.select().from(paddleSkinOrders)).toMatchObject([{ accountId: null, transactionId: 'fixture-transaction', customerId: null, status: 'COMPLETED' }]);
     expect(await built.db.select().from(polarSkinOrders)).toMatchObject([{ accountId: null, orderId: assetId, checkoutUrl: null, status: 'COMPLETED' }]);
-    expect(await built.db.select().from(shopierOrders)).toMatchObject([{ accountId: null, orderId: 'fixture-order', note: null, code: null, total: '99' }]);
-    expect(await built.db.select().from(shopierPurchaseCodes)).toHaveLength(0);
+    expect(await built.db.select().from(shopierOrders)).toMatchObject([{ accountId: null, orderId: 'fixture-order', note: null, total: '99' }]);
+    expect(await built.db.select().from(shopierCheckouts)).toMatchObject([{ accountId: null, productId: '61000000', url: null, status: 'OPEN' }]);
   });
   it('retries anonymous file jobs without requiring a surviving account request and protects live media references', async () => {
     const owner = await register(); const operator = await register('PolicyOperator');

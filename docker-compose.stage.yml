@@ -19,7 +19,7 @@ x-stage-environment: &stage-environment
   SHOPIER_CHECKOUT_ENABLED: 'false'
   SHOPIER_ACCESS_TOKEN: ''
   shopier_prod_access_token: ''
-  SHOPIER_WEBHOOK_TOKEN: ''
+  SHOPIER_WEBHOOK_TOKENS: ''
 
 x-stage-api: &stage-api
   image: ${ASTERA_STAGE_IMAGE:?Set a commit-tagged ASTERA_STAGE_IMAGE in the stage environment}

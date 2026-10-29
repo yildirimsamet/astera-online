@@ -1478,6 +1478,13 @@
       "when": 1793267036813,
       "tag": "0210_stream_revocation_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1793273537752,
+      "tag": "0211_shopier_checkouts",
+      "breakpoints": true
     }
   ]
 }

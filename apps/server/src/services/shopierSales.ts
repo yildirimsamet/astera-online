@@ -1,43 +1,59 @@
-import { randomInt } from 'node:crypto';
-import { and, desc, eq, inArray, isNull, like, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, like, lte, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { COSMETIC_IDS, type CosmeticId } from '@astera/rules';
+import { COSMETIC_IDS, cosmeticById, type CosmeticCategory, type CosmeticId } from '@astera/rules';
 import { normaliseUsername } from '../auth/credentials.js';
 import type { Db, Tx } from '../db/client.js';
-import { accounts, cosmeticEntitlements, planets, players, shopierOrders, shopierPurchaseCodes,
+import { accounts, cosmeticEntitlements, planets, players, shopierCheckouts, shopierOrders,
   shopierWebhookEvents } from '../db/schema.js';
 import type { Env } from '../env.js';
 import { publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
-import { closeShopierOrder, listShopierOrders, shopierProductUrl, shopierReady } from './shopier.js';
+import { closeShopierOrder, createShopierProduct, deleteShopierProduct, listShopierOrders, shopierReady } from './shopier.js';
 
 export const shopierItemIds = [...COSMETIC_IDS, 'bundle'] as const;
 type ShopierItemId = (typeof shopierItemIds)[number];
 const elementalIds = ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'] as const;
 const skinsFor = (itemId: ShopierItemId): readonly CosmeticId[] => itemId === 'bundle' ? elementalIds : [itemId];
+/** The set and its four looks cannot both be open: paying both would buy a look twice. */
+const overlapping = (itemId: ShopierItemId): readonly ShopierItemId[] => itemId === 'bundle'
+  ? ['bundle', ...elementalIds] : elementalIds.some(id => id === itemId) ? [itemId, 'bundle'] : [itemId];
 
-/** No 0/O, 1/I/L or U: a code read aloud or retyped from a phone survives. */
-const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
-const CODE_PATTERN = /AST[\s\-_:.]*([2-9A-HJKMNP-TV-Z]{6})(?![0-9A-Z])/g;
-const newCode = (): string => `AST-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('')}`;
-/** Phone keyboards and copy menus slip invisible marks into pasted text; they are not the buyer's. */
-const INVISIBLE = /[\u00AD\u200B-\u200D\u2060\uFEFF]/g;
-export const codesInNote = (note: string): string[] =>
-  [...note.replace(INVISIBLE, '').toUpperCase().matchAll(CODE_PATTERN)].map(match => `AST-${match[1]!}`);
+/** Owner 2026-10-29: an unpaid product stays open 48 hours, counted again from every press. */
+const CHECKOUT_LIFETIME_MS = 48 * 3_600_000;
+/** Shopier answers a create in well under its 5 s timeout; a press pending a minute never got there. */
+const CHECKOUT_START_TIMEOUT_MS = 60_000;
+const OPEN_LIMIT = 5;
+/** New products per commander per hour: Shopier allows 200 calls a minute for the whole shop. */
+const HOURLY_LIMIT = 12;
+/** Deletes per clean-up round: 20 × 3 s stays far inside the round's ten minutes. */
+const SWEEP_BATCH = 20;
+
+/** What the buyer reads on Shopier's page; the image beside it shows the look itself. */
+const TITLES: Record<CosmeticCategory | 'bundle', string> = {
+  PLANET: 'Gezegen görünümü', RING: 'Gezegen halkası görünümü', SHIP: 'Gemi görünümü', PROBE: 'Probe görünümü',
+  MINER: 'Kazıcı görünümü', ENGINE: 'Motor alevi görünümü', FLAG: 'Klan bayrağı', bundle: '4\'lü gezegen görünümü paketi',
+};
+const titleFor = (itemId: ShopierItemId): string =>
+  `Astera Online · ${TITLES[itemId === 'bundle' ? 'bundle' : cosmeticById(itemId)?.category ?? 'PLANET']}`;
 
 /** Prices the store may show beside a Shopier press, in kuruş. Nothing while closed. */
 export function shopierShop(env: Env) {
   if (!shopierReady(env)) return { enabled: false, prices: {} };
-  return { enabled: true, prices: Object.fromEntries(Object.entries(env.SHOPIER_PRODUCTS).map(([id, item]) => [id, item.tryAmount])) };
+  return { enabled: true, prices: env.SHOPIER_PRICES };
 }
 
-/** The open code for this commander and item, created once. The code is never a payment. */
-export async function issueShopierCode(db: Db, env: Env, accountId: string, itemId: ShopierItemId) {
+/**
+ * THE COMMANDER'S OWN PRODUCT (owner 2026-10-29). The local row is written before Shopier is
+ * called, so a fast webhook always finds its owner; the same look pressed again returns the
+ * same product and restarts its 48 hours. Mirrors `startPolarPurchase`.
+ */
+export async function startShopierCheckout(db: Db, env: Env, accountId: string, itemId: ShopierItemId, now: Date) {
   if (!shopierReady(env)) throw new GameError('SKIN_SHOP_CLOSED', 'Skin sales are not available yet', 503);
-  const product = env.SHOPIER_PRODUCTS[itemId];
-  if (!product) throw new GameError('SHOPIER_PRODUCT_MISSING', 'This item is not sold on Shopier', 404);
-  const offer = { url: shopierProductUrl(product.productId), amount: product.tryAmount, currency: 'TRY' as const };
-  return db.transaction(async tx => {
+  const amount = env.SHOPIER_PRICES[itemId];
+  if (!amount) throw new GameError('SHOPIER_PRODUCT_MISSING', 'This item is not sold on Shopier', 404);
+  const expiresAt = new Date(now.getTime() + CHECKOUT_LIFETIME_MS);
+  const offer = { amount, currency: 'TRY' as const, expiresAt };
+  const reservation = await db.transaction(async tx => {
     const [account] = await tx.select({ id: accounts.id }).from(accounts)
       .where(eq(accounts.id, accountId)).for('update').limit(1);
     if (!account) throw new GameError('ACCOUNT_NOT_FOUND', 'Account not found', 404);
@@ -45,18 +61,53 @@ export async function issueShopierCode(db: Db, env: Env, accountId: string, item
       .where(and(eq(cosmeticEntitlements.accountId, accountId),
         inArray(cosmeticEntitlements.cosmeticId, skinsFor(itemId)), isNull(cosmeticEntitlements.revokedAt))).limit(1);
     if (owned) throw new GameError('SKIN_ALREADY_OWNED', 'This account already owns part of this offer', 409);
-    const [open] = await tx.select({ code: shopierPurchaseCodes.code }).from(shopierPurchaseCodes)
-      .where(and(eq(shopierPurchaseCodes.accountId, accountId), eq(shopierPurchaseCodes.itemId, itemId),
-        eq(shopierPurchaseCodes.status, 'OPEN'))).limit(1);
-    if (open) return { code: open.code, ...offer };
-    // 30^6 codes: a collision is a retry, not an error.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const [created] = await tx.insert(shopierPurchaseCodes).values({ accountId, itemId, code: newCode() })
-        .onConflictDoNothing().returning({ code: shopierPurchaseCodes.code });
-      if (created) return { code: created.code, ...offer };
+    // Kept, not deleted: a product that did appear late can still be paid and must still deliver.
+    await tx.update(shopierCheckouts).set({ status: 'FAILED' }).where(and(eq(shopierCheckouts.accountId, accountId),
+      eq(shopierCheckouts.status, 'PENDING'), lte(shopierCheckouts.createdAt, new Date(now.getTime() - CHECKOUT_START_TIMEOUT_MS))));
+    const live = await tx.select().from(shopierCheckouts).where(and(eq(shopierCheckouts.accountId, accountId),
+      inArray(shopierCheckouts.status, ['PENDING', 'OPEN']))).orderBy(asc(shopierCheckouts.createdAt));
+    const same = live.find(row => row.itemId === itemId);
+    if (same?.status === 'PENDING') throw new GameError('SKIN_CHECKOUT_STARTING', 'Checkout is still starting; try again shortly', 409);
+    if (same?.url && same.amount === amount) {
+      await tx.update(shopierCheckouts).set({ expiresAt }).where(eq(shopierCheckouts.id, same.id));
+      return { url: same.url };
     }
-    throw new GameError('SHOPIER_CODE_UNAVAILABLE', 'Try again shortly', 503);
+    const [recent] = await tx.select({ count: sql<number>`count(*)::int` }).from(shopierCheckouts).where(and(
+      eq(shopierCheckouts.accountId, accountId), gt(shopierCheckouts.createdAt, new Date(now.getTime() - 3_600_000))));
+    if ((recent?.count ?? 0) >= HOURLY_LIMIT) {
+      throw new GameError('SHOPIER_CHECKOUT_LIMIT', 'Too many payment pages opened; try again later', 429);
+    }
+    // Replaced: the same look at an old price, an overlapping look or set, and the oldest past the limit.
+    const replaced = live.filter(row => row.itemId === itemId || overlapping(itemId).some(id => id === row.itemId));
+    const kept = live.filter(row => !replaced.includes(row));
+    replaced.push(...kept.slice(0, Math.max(0, kept.length - (OPEN_LIMIT - 1))));
+    if (replaced.length > 0) {
+      await tx.update(shopierCheckouts).set({ status: 'CANCELLED' }).where(inArray(shopierCheckouts.id, replaced.map(row => row.id)));
+    }
+    const [intent] = await tx.insert(shopierCheckouts).values({ accountId, itemId, amount, createdAt: now, expiresAt })
+      .returning({ id: shopierCheckouts.id });
+    if (!intent) throw new GameError('SKIN_CHECKOUT_STARTING', 'Checkout is still starting; try again shortly', 409);
+    return { intentId: intent.id };
   });
+  if ('url' in reservation) return { url: reservation.url, ...offer };
+  const { intentId } = reservation;
+  let product: { productId: string; url: string };
+  try {
+    product = await createShopierProduct(env, {
+      title: titleFor(itemId), amount, imageUrl: `${env.SHOPIER_IMAGE_BASE_URL}/${itemId}.jpg`,
+      description: `Astera Online oyun içi görünüm. Bu ödeme sayfası tek bir komutan için açıldı; ödeme gelince görünüm onun hesabına kendiliğinden eklenir. Ref: ${intentId.slice(0, 8)}`,
+    });
+  } catch {
+    await db.update(shopierCheckouts).set({ status: 'FAILED' })
+      .where(and(eq(shopierCheckouts.id, intentId), eq(shopierCheckouts.status, 'PENDING')));
+    throw new GameError('SHOPIER_UNAVAILABLE', 'Shopier did not answer', 502);
+  }
+  // The product is recorded even if a newer press replaced this one meanwhile: clean-up deletes it.
+  await db.update(shopierCheckouts).set({ productId: product.productId, url: product.url }).where(eq(shopierCheckouts.id, intentId));
+  const [opened] = await db.update(shopierCheckouts).set({ status: 'OPEN' })
+    .where(and(eq(shopierCheckouts.id, intentId), eq(shopierCheckouts.status, 'PENDING'))).returning({ id: shopierCheckouts.id });
+  if (!opened) throw new GameError('SKIN_CHECKOUT_STARTING', 'Checkout is still starting; try again shortly', 409);
+  return { url: product.url, ...offer };
 }
 
 const kurus = (value: string): number | null => {
@@ -82,7 +133,7 @@ const refundSchema = z.object({ type: z.string(), status: z.string(), orderId })
 const text = (value: unknown, max: number): string | null => typeof value === 'string' ? value.slice(0, max) : null;
 
 interface Outcome { status: 'MATCHED' | 'UNMATCHED'; reason: string | null; itemId: ShopierItemId | null;
-  accountId: string | null; code: string | null }
+  accountId: string | null; checkoutId: string | null }
 
 /** Rights for one order; replays insert nothing. Returns how many looks were new. */
 async function grantOrder(tx: Tx, accountId: string, itemId: ShopierItemId, orderId: string): Promise<number> {
@@ -122,34 +173,27 @@ async function revokeOrder(tx: Tx, orderId: string): Promise<void> {
   for (const seasonId of seasons) await publishShard(tx, seasonId, 'world');
 }
 
-async function match(tx: Tx, env: Env, order: ShopierOrder): Promise<Outcome> {
-  const none = { itemId: null, accountId: null, code: null };
+/** The product names the buyer. A paid order on one of ours delivers whatever the row's status. */
+async function match(tx: Tx, order: ShopierOrder): Promise<Outcome> {
+  const none = { itemId: null, accountId: null, checkoutId: null };
   const unmatched = (reason: string, known: Partial<Outcome> = {}): Outcome => ({ ...none, ...known, status: 'UNMATCHED', reason });
   if (order.paymentStatus !== 'paid') return unmatched('NOT_PAID');
   const [line, ...rest] = order.lineItems;
   if (!line || rest.length > 0 || line.quantity !== 1) return unmatched('MULTI_ITEM');
-  const entry = Object.entries(env.SHOPIER_PRODUCTS).find(([, product]) => product.productId === line.productId);
-  const itemId = z.enum(shopierItemIds).safeParse(entry?.[0]);
-  if (!entry || !itemId.success) return unmatched('UNKNOWN_PRODUCT');
-  const known = { itemId: itemId.data };
-  if (order.currency !== 'TRY' || kurus(order.totals.total) !== entry[1].tryAmount) return unmatched('AMOUNT_MISMATCH', known);
-  const written = codesInNote(order.note ?? '');
-  if (written.length === 0) return unmatched('NO_CODE', known);
-  const candidates = await tx.select().from(shopierPurchaseCodes)
-    .where(inArray(shopierPurchaseCodes.code, written)).for('update');
-  const usable = candidates.find(row => row.status === 'OPEN' && row.itemId === itemId.data);
-  if (!usable) {
-    // Show the operator the code that concerns the paid item, when the note holds one.
-    const shown = candidates.find(row => row.itemId === itemId.data) ?? candidates[0];
-    const reason = !shown ? 'CODE_UNKNOWN' : shown.itemId === itemId.data ? 'CODE_USED' : 'CODE_ITEM_MISMATCH';
-    return unmatched(reason, { ...known, accountId: shown?.accountId ?? null, code: shown?.code ?? written[0]! });
+  const [checkout] = await tx.select().from(shopierCheckouts)
+    .where(eq(shopierCheckouts.productId, line.productId)).for('update');
+  const itemId = z.enum(shopierItemIds).safeParse(checkout?.itemId);
+  if (!checkout || !itemId.success) return unmatched('UNKNOWN_PRODUCT');
+  const known = { itemId: itemId.data, accountId: checkout.accountId, checkoutId: checkout.id };
+  // A paid single unit spent the product's only stock: it is sold, whatever this order delivers.
+  if (checkout.status !== 'PAID') {
+    await tx.update(shopierCheckouts).set({ status: 'PAID', orderId: order.id, paidAt: new Date() })
+      .where(eq(shopierCheckouts.id, checkout.id));
   }
-  const bound = { ...known, code: usable.code, accountId: usable.accountId };
-  if (!usable.accountId) return unmatched('ACCOUNT_MISSING', bound);
-  const granted = await grantOrder(tx, usable.accountId, itemId.data, order.id);
-  await tx.update(shopierPurchaseCodes).set({ status: 'USED', orderId: order.id, usedAt: new Date() })
-    .where(eq(shopierPurchaseCodes.id, usable.id));
-  return granted > 0 ? { ...bound, status: 'MATCHED', reason: null } : unmatched('ALREADY_OWNED', bound);
+  if (order.currency !== 'TRY' || kurus(order.totals.total) !== checkout.amount) return unmatched('AMOUNT_MISMATCH', known);
+  if (!checkout.accountId) return unmatched('ACCOUNT_MISSING', known);
+  const granted = await grantOrder(tx, checkout.accountId, itemId.data, order.id);
+  return granted > 0 ? { ...known, status: 'MATCHED', reason: null } : unmatched('ALREADY_OWNED', known);
 }
 
 /**
@@ -157,7 +201,7 @@ async function match(tx: Tx, env: Env, order: ShopierOrder): Promise<Outcome> {
  * whose shape this code cannot read is queued as UNREADABLE rather than lost: the buyer paid.
  * Returns the order ID when the look was delivered.
  */
-async function recordOrder(tx: Tx, env: Env, payload: unknown): Promise<string | null> {
+async function recordOrder(tx: Tx, payload: unknown): Promise<string | null> {
   const sighting = sightingSchema.safeParse(payload);
   if (!sighting.success) return null;
   const seen = sighting.data;
@@ -166,8 +210,8 @@ async function recordOrder(tx: Tx, env: Env, payload: unknown): Promise<string |
     .onConflictDoNothing().returning({ orderId: shopierOrders.orderId });
   if (!fresh) return null;
   const order = orderSchema.safeParse(payload);
-  const outcome: Outcome = order.success ? await match(tx, env, order.data)
-    : { status: 'UNMATCHED', reason: 'UNREADABLE', itemId: null, accountId: null, code: null };
+  const outcome: Outcome = order.success ? await match(tx, order.data)
+    : { status: 'UNMATCHED', reason: 'UNREADABLE', itemId: null, accountId: null, checkoutId: null };
   await tx.update(shopierOrders).set(outcome).where(eq(shopierOrders.orderId, seen.id));
   return outcome.status === 'MATCHED' ? seen.id : null;
 }
@@ -184,7 +228,7 @@ export async function processShopierEvent(db: Db, env: Env, webhookId: string, e
     const [seen] = await tx.insert(shopierWebhookEvents).values({ id: webhookId.slice(0, 200), eventType: eventType.slice(0, 64) })
       .onConflictDoNothing().returning({ id: shopierWebhookEvents.id });
     if (!seen) return null;
-    if (eventType === 'order.created') return recordOrder(tx, env, payload);
+    if (eventType === 'order.created') return recordOrder(tx, payload);
     if (eventType === 'refund.updated') {
       const refund = refundSchema.safeParse(payload);
       if (!refund.success || refund.data.status !== 'succeeded' || refund.data.type !== 'full') return null;
@@ -213,7 +257,7 @@ export async function shopierQueue(db: Db) {
     .orderBy(desc(shopierOrders.receivedAt), desc(shopierOrders.orderId)).limit(limit);
   const rows = [...await list(true, 200), ...await list(false, 50)];
   return { orders: rows.map(({ row, username }) => ({ orderId: row.orderId, status: row.status, reason: row.reason,
-    itemId: row.itemId, username, code: row.code, note: row.note, total: row.total, currency: row.currency,
+    itemId: row.itemId, username, note: row.note, total: row.total, currency: row.currency,
     receivedAt: row.receivedAt, closed: row.closedAt !== null })) };
 }
 
@@ -223,7 +267,7 @@ async function lockedOrder(tx: Tx, orderId: string) {
   return row;
 }
 
-/** The operator names the commander for an order the code could not bind. */
+/** The operator names the commander for an order no product of ours could bind. */
 export async function grantShopierOrder(db: Db, env: Env, orderId: string, username: string) {
   const accountId = await db.transaction(async tx => {
     const row = await lockedOrder(tx, orderId);
@@ -287,10 +331,50 @@ export async function syncShopierOrders(db: Db, env: Env) {
     const [known] = await db.select().from(shopierOrders).where(eq(shopierOrders.orderId, id));
     if (!known) {
       recorded++;
-      if (await db.transaction(tx => recordOrder(tx, env, item)) && await markClosed(db, env, id)) closed++;
+      if (await db.transaction(tx => recordOrder(tx, item)) && await markClosed(db, env, id)) closed++;
     } else if (['MATCHED', 'RESOLVED', 'DISMISSED'].includes(known.status) && !known.closedAt) {
       if (await markClosed(db, env, id)) closed++;
     }
   }
   return { recorded, closed };
+}
+
+/**
+ * THE CLEAN-UP ROUND, every ten minutes on the worker (index.ts). An unpaid product past its 48
+ * hours expires; an open one whose look arrived another way, whose commander left or whose
+ * price moved is cancelled; then every product no longer for sale is deleted from Shopier. Stage 0
+ * showed deleting a paid order's product leaves the order and its payout intact. A failed delete
+ * keeps `removedAt` empty and the next round tries again.
+ */
+export async function sweepShopierCheckouts(db: Db, env: Env, now: Date) {
+  const result = { expired: 0, cancelled: 0, removed: 0 };
+  if (!env.SHOPIER_ACCESS_TOKEN.trim()) return result;
+  result.expired = (await db.update(shopierCheckouts).set({ status: 'EXPIRED' })
+    .where(and(eq(shopierCheckouts.status, 'OPEN'), lte(shopierCheckouts.expiresAt, now)))
+    .returning({ id: shopierCheckouts.id })).length;
+  const open = await db.select().from(shopierCheckouts).where(eq(shopierCheckouts.status, 'OPEN'));
+  const owners = [...new Set(open.flatMap(row => row.accountId ? [row.accountId] : []))];
+  const rights = owners.length === 0 ? [] : await db.select({ accountId: cosmeticEntitlements.accountId, cosmeticId: cosmeticEntitlements.cosmeticId })
+    .from(cosmeticEntitlements).where(and(inArray(cosmeticEntitlements.accountId, owners), isNull(cosmeticEntitlements.revokedAt)));
+  const owned = new Set(rights.map(right => `${right.accountId}:${right.cosmeticId}`));
+  const stale = open.filter(row => {
+    const item = z.enum(shopierItemIds).safeParse(row.itemId);
+    return !row.accountId || !item.success || env.SHOPIER_PRICES[item.data] !== row.amount
+      || skinsFor(item.data).some(id => owned.has(`${row.accountId}:${id}`));
+  });
+  if (stale.length > 0) {
+    result.cancelled = (await db.update(shopierCheckouts).set({ status: 'CANCELLED' }).where(and(
+      inArray(shopierCheckouts.id, stale.map(row => row.id)), eq(shopierCheckouts.status, 'OPEN')))
+      .returning({ id: shopierCheckouts.id })).length;
+  }
+  const gone = await db.select({ id: shopierCheckouts.id, productId: shopierCheckouts.productId }).from(shopierCheckouts)
+    .where(and(isNotNull(shopierCheckouts.productId), isNull(shopierCheckouts.removedAt),
+      notInArray(shopierCheckouts.status, ['PENDING', 'OPEN'])))
+    .orderBy(asc(shopierCheckouts.createdAt)).limit(SWEEP_BATCH);
+  for (const row of gone) {
+    if (!row.productId || !await deleteShopierProduct(env, row.productId)) continue;
+    await db.update(shopierCheckouts).set({ removedAt: now }).where(eq(shopierCheckouts.id, row.id));
+    result.removed++;
+  }
+  return result;
 }

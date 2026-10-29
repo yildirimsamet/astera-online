@@ -22,10 +22,10 @@ const STATUS_TONE: Record<ShopierOrder['status'], string> = {
 };
 
 /**
- * THE SHOPIER QUEUE (owner 2026-10-16). A paid order is granted by itself only when its note
- * carries the commander's purchase code. Every other order waits here with the reason it did
- * not bind and the buyer's note, so the operator can name the commander, close a donation, or
- * take back what a chargeback paid for.
+ * THE SHOPIER QUEUE (owner 2026-10-16, 2026-10-29). A paid order is granted by itself only when
+ * it was paid on a commander's own product. Every other order — a support card, an old product,
+ * a wrong amount — waits here with its reason and the buyer's note, so the operator can name the
+ * commander, close it, or take back what a chargeback paid for.
  */
 export function AdminShopierQueue() {
   const { t } = useTranslation();
@@ -75,7 +75,7 @@ function ShopierOrderRow({ order }: { order: ShopierOrder }) {
       {order.reason && <p className="text-micro text-v2-warn">{t(`community.admin.shopier.reason.${order.reason}`, { defaultValue: order.reason })}</p>}
       {order.note && <p className="break-words rounded-cell bg-v2-deep/70 px-2 py-1 text-micro text-v2-ink-2">
         <span className="text-v2-ink-3">{t('community.admin.shopier.noteLabel')}: </span>{order.note}</p>}
-      {order.username && <p className="text-micro text-v2-ink-2">@{order.username}{order.code ? ` · ${order.code}` : ''}</p>}
+      {order.username && <p className="text-micro text-v2-ink-2">@{order.username}</p>}
       {!order.closed && (delivered || order.status === 'DISMISSED') && <p className="text-micro text-v2-ink-3">{t('community.admin.shopier.unclosed')}</p>}
       {waiting && order.itemId && (
         <form className="flex gap-1.5" onSubmit={event => {

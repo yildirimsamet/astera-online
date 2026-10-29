@@ -67,7 +67,7 @@ import {
   paddleSkinOrders,
   polarSkinOrders,
   shopierOrders,
-  shopierPurchaseCodes,
+  shopierCheckouts,
   planets,
   players,
   returnApplications,
@@ -138,8 +138,8 @@ async function forgetAccount(tx: Tx, accountId: string, requestId: string = rand
   // Keep immutable delivery/refund references, without customer details or checkout capabilities.
   await tx.update(paddleSkinOrders).set({ customerId: null }).where(eq(paddleSkinOrders.accountId, accountId));
   await tx.update(polarSkinOrders).set({ checkoutUrl: null }).where(eq(polarSkinOrders.accountId, accountId));
-  await tx.update(shopierOrders).set({ note: null, code: null }).where(eq(shopierOrders.accountId, accountId));
-  await tx.delete(shopierPurchaseCodes).where(eq(shopierPurchaseCodes.accountId, accountId));
+  await tx.update(shopierOrders).set({ note: null }).where(eq(shopierOrders.accountId, accountId));
+  await tx.update(shopierCheckouts).set({ url: null }).where(eq(shopierCheckouts.accountId, accountId));
   await tx.delete(accounts).where(eq(accounts.id, accountId));
 }
 

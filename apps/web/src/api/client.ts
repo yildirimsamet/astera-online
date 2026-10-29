@@ -102,7 +102,7 @@ import {
   polarPricingSchema,
   polarPurchaseSchema,
   shopierShopSchema,
-  shopierCodeSchema,
+  shopierCheckoutSchema,
   shopierQueueSchema,
   shopierOrderActionSchema,
   shopierSyncSchema,
@@ -381,7 +381,7 @@ export class Api {
     opts.signal?.throwIfAborted();
     // Defence against an old mounted screen or accidental direct hook/API use.
     // This is a client distribution rule, never proof of platform to the server.
-    if (!capabilities().webCheckout && /^\/api\/skins\/(?:shop|pricing|purchase|polar-shop|polar-pricing|polar-purchase|shopier-shop|shopier-code)$/.test(path)) {
+    if (!capabilities().webCheckout && /^\/api\/skins\/(?:shop|pricing|purchase|polar-shop|polar-pricing|polar-purchase|shopier-shop|shopier-checkout)$/.test(path)) {
       throw new ApiError('CHECKOUT_UNAVAILABLE', 'Web checkout is unavailable in this app', 403);
     }
     /**
@@ -759,9 +759,9 @@ export class Api {
   purchasePolarSkin = (itemId: CosmeticId | 'bundle') =>
     this.send('/api/skins/polar-purchase', polarPurchaseSchema, { method: 'POST', body: { itemId } });
   shopierShop = () => this.send('/api/skins/shopier-shop', shopierShopSchema);
-  /** The open purchase code for this item; asking again returns the same one. */
-  shopierCode = (itemId: CosmeticId | 'bundle') =>
-    this.send('/api/skins/shopier-code', shopierCodeSchema, { method: 'POST', body: { itemId } });
+  /** This commander's own Shopier page for the item; asking again returns the same one. */
+  shopierCheckout = (itemId: CosmeticId | 'bundle') =>
+    this.send('/api/skins/shopier-checkout', shopierCheckoutSchema, { method: 'POST', body: { itemId } });
   shopierQueue = () => this.send('/api/admin/shopier/orders', shopierQueueSchema);
   shopierGrant = (orderId: string, username: string) =>
     this.send(`/api/admin/shopier/orders/${encodeURIComponent(orderId)}/grant`, shopierOrderActionSchema, { method: 'POST', body: { username } });
