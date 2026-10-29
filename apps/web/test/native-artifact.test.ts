@@ -16,6 +16,7 @@ function artifact() {
   writeFileSync(join(root, 'native-build.json'), JSON.stringify({ target: 'native-staging', apiUrl: 'https://api.example.test', bundled: true, storeReady: false }));
   mkdirSync(join(root, 'assets')); writeFileSync(join(root, 'assets/app.js'), 'console.log("game");');
   writeFileSync(join(root, NATIVE_STARTUP_PATH), nativeStartupHtml());
+  mkdirSync(join(root, '__ref/dist/v2'), { recursive: true }); writeFileSync(join(root, '__ref/dist/v2/manifest-lite.json'), '{}');
   return root;
 }
 const expected = { target: 'native-staging', apiUrl: 'https://api.example.test' };
@@ -51,4 +52,9 @@ it('refuses to export a native app without its independent startup help page', (
 it('rejects a stale startup placeholder instead of exporting broken recovery', () => {
   const root = artifact(); writeFileSync(join(root, NATIVE_STARTUP_PATH), '<html>placeholder</html>');
   expect(() => { assertNativeArtifacts(root, expected); }).toThrow(/startup/i);
+});
+
+it('refuses to export an app without its arena reference pack', () => {
+  const root = artifact(); rmSync(join(root, '__ref'), { recursive: true });
+  expect(() => { assertNativeArtifacts(root, expected); }).toThrow(/reference pack/i);
 });

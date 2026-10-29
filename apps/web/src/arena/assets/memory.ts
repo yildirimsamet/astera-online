@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { KTX2Loader, type KTX2LoaderWorkerConfig } from 'three/addons/loaders/KTX2Loader.js';
 import type { ArenaAssets, PreparedModel } from './load.js';
 import { roomyRenderer } from '../room.js';
+import { bundledApp } from '../origin.js';
 
 export { roomyRenderer };
 
@@ -88,7 +89,8 @@ export function ktx2Ready(make: () => Probeable = sharedKtx2, room: () => boolea
   const asked = released;
   ready = (async () => {
     // No room: not even the attempt, which reserves a heap the galaxy may need next.
-    if (!room()) { refused = true; return null; }
+    // An app carries only the webp pack, so it never needs the transcoder (2026-10-30).
+    if (bundledApp() || !room()) { refused = true; return null; }
     const loader = make();
     if (await probeTranscoder(loader)) return loader;
     // A probe whose transcoder was let go while it waited proves nothing.

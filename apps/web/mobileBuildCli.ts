@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { mobileBuild, NATIVE_STARTUP_PATH } from './mobileBuild.js';
+import { NATIVE_REFERENCE_MANIFEST } from './nativeBundlePlugin.js';
 import { androidRelease } from './androidRelease.js';
 
 const metadataSchema = z.object({ target: z.string(), apiUrl: z.string().url(), bundled: z.literal(true), storeReady: z.literal(false) });
@@ -14,8 +15,9 @@ export function assertNativeArtifacts(directory: string, expected: { target: str
   const metadata = metadataSchema.parse(JSON.parse(readFileSync(resolve(directory, 'native-build.json'), 'utf8')));
   if (metadata.target !== expected.target || metadata.apiUrl !== expected.apiUrl) throw new Error('Native artifact metadata/API mismatch');
   for (const entry of readdirSync(directory)) {
-    if (!['index.html', 'native-build.json', 'assets', 'icons'].includes(entry)) throw new Error(`Unexpected native artifact: ${entry}`);
+    if (!['index.html', 'native-build.json', 'assets', 'icons', '__ref'].includes(entry)) throw new Error(`Unexpected native artifact: ${entry}`);
   }
+  if (!existsSync(resolve(directory, '__ref', NATIVE_REFERENCE_MANIFEST))) throw new Error('Missing arena reference pack');
   const html = readFileSync(resolve(directory, 'index.html'), 'utf8');
   const startup = resolve(directory, NATIVE_STARTUP_PATH);
   if (!existsSync(startup) || !readFileSync(startup, 'utf8').includes('data-native-startup')) throw new Error('Missing native startup help page');

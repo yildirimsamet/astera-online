@@ -40,12 +40,13 @@ export async function probeArenaAccess(token: string | null, fetcher: typeof fet
 }
 
 /**
- * The private playtest's reference pack: the arena sets a short cookie scoped to `/__ref/`
+ * The arena's reference pack on the web: the arena sets a short cookie scoped to `/__ref/`
  * for a seated pilot. Anything but its 204 keeps the procedural set.
  */
 export async function openReferenceSession(token: string | null, fetcher: typeof fetch = fetch): Promise<boolean> {
-  // The cookie is SameSite=Strict on the API host; an app page never sends it.
-  if (!token || bundledApp()) return false;
+  if (!token) return false;
+  // An app carries its own webp pack under `__ref/` (owner 2026-10-30).
+  if (bundledApp()) return true;
   try {
     const response = await fetcher('/arena/ref-session', { method: 'POST', credentials: 'same-origin', headers: { authorization: `Bearer ${token}` } });
     return response.status === 204;

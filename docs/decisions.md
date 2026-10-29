@@ -3,6 +3,21 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-10-30 — Komutan Gemisi varlık paketi artık tamamen bizim; referans kısıtı kalktı.**
+  Owner: *"O başka oyundan çıkarılmış referansların hepsi değişti. Artık kafamıza göre
+  takılabiliriz."* Sunucudaki pakette (`ARENA_REF_DIR`, `/__ref/`) bulunan gemi, kaya,
+  bina, doku, efekt ve seslerin hepsi Astera'nın kendi varlıkları. KG-K6 ile KG-K17'nin
+  "yayına, build'e ve uygulamaya girmez" kısıtı ve 2026-10-20 "yalnız özel deneme" gerekçesi
+  bu paket için geçersiz. Uygulama: **webp lite paket** (`manifest-lite.json` ve kullandığı
+  dosyalar, ~40 MB) native build'de APK'nın içine gömülür (`__ref/`); uygulama KTX2
+  dekoderini başlatmaz, sunucudan paket istemez. Web değişmedi: KTX2/full paketi oturmuş
+  pilota sunucudan alır. Build paketi `ASTERA_REF_ASSETS_DIR` ya da `astera-refs/`'ten
+  kopyalar, paket yoksa native build durur; kaynak sunucudaki paketle aynı olmalı
+  (2026-10-30'da 189 dosya sha256 ile eşleşti). Model değişince yeni APK gerekir. Paket
+  dosyaları git'e yine girmez (boyut ve public depo), lisans gerekçesi kalmadı. İstisna:
+  yerel `astera-refs/` ham çıkarım arşivinde başka oyunlara ait orijinaller hâlâ duruyorsa
+  onlar bizim değildir; public depoya ve yayına girmez.
+
 - **2026-10-29 — Bot savaşları Honor sayar; bot sırasını tutar (BOT = İNSAN).**
   Owner: *"Bot savaşlarında da honor sayılmalı, insanlar botların bot oldugunu
   anlamamalı."* Canlı sezonda insan→bot baskını raporda "Honor yarışının dışında"

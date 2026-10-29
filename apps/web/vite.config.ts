@@ -38,14 +38,14 @@ export default defineConfig(({ command, mode }) => {
   const mobile = mobileBuild(env);
   const { target } = mobile;
   const references = command === 'serve' ? referenceArtPlugin(fileURLToPath(new URL('../..', import.meta.url))) : null;
-  // Arena reference pack (Komutan Gemisi); dev server only, never in a build.
+  const refsDirectory = process.env.ASTERA_REF_ASSETS_DIR ?? loadEnv(mode, process.cwd(), '').ASTERA_REF_ASSETS_DIR;
+  // Arena reference pack (Komutan Gemisi): served by the dev server; a native build embeds its webp lite pack (2026-10-30).
   const arenaReferences = command === 'serve' ? refAssetsPlugin(
-    process.env.ASTERA_REF_ASSETS_DIR ?? loadEnv(mode, process.cwd(), '').ASTERA_REF_ASSETS_DIR
-      ?? (existsSync(resolve(referenceDirectory, 'manifest.json')) ? referenceDirectory : undefined),
+    refsDirectory ?? (existsSync(resolve(referenceDirectory, 'manifest.json')) ? referenceDirectory : undefined),
     resolve(process.cwd(), '../..')) : null;
   return {
   plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), target === 'web' && landingPlugin(), references, arenaReferences,
-    mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)))],
+    mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)), refsDirectory ?? referenceDirectory)],
   publicDir: target === 'web' ? 'public' : false,
   define: {
     'import.meta.env.VITE_ASTERA_PLATFORM': JSON.stringify(target),
