@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
@@ -9,6 +10,12 @@ export type Db = PostgresJsDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 /** Either works for reads; only Tx may mutate. */
 export type Queryable = Db | Tx;
+
+/** Statements one request or worker event issued. Scaling plan F0.2. */
+export interface StatementCount { statements: number }
+const statementScope = new AsyncLocalStorage<StatementCount>();
+/** Counts every statement any `createDb` pool issues while `run` and its awaits execute. */
+export const countStatements = <T>(scope: StatementCount, run: () => T): T => statementScope.run(scope, run);
 
 export function createDb(
   url: string,
@@ -28,7 +35,10 @@ export function createDb(
     // migrations and they are not actionable at runtime.
     onnotice: () => undefined,
   });
-  const db = drizzle(sql, { schema });
+  const db = drizzle(sql, { schema, logger: { logQuery: () => {
+    const scope = statementScope.getStore();
+    if (scope) scope.statements += 1;
+  } } });
   const transaction = db.transaction.bind(db);
   db.transaction = <T>(action: (tx: Tx) => Promise<T>, config?: PgTransactionConfig): Promise<T> =>
     transaction(async tx => {

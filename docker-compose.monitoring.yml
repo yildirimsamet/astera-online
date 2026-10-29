@@ -1,0 +1,63 @@
+# Astera Online — monitoring and alerts (scaling plan F0.6; docs/deployment.md, "Monitoring").
+#
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# A separate project: deploys of the game never touch it. Every service uses host
+# networking to reach the app's loopback-only ports and listens on 127.0.0.1 only;
+# nothing here is reachable from the internet. Open it through an SSH tunnel.
+name: astera-monitoring
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    network_mode: host
+    mem_limit: 512m
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.listen-address=127.0.0.1:9090
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    network_mode: host
+    mem_limit: 128m
+    # Runs as the host operator so the relay password can stay mode 600.
+    user: ${MONITORING_UID:-1000}:${MONITORING_GID:-1000}
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=127.0.0.1:9093
+      - --cluster.listen-address=
+    volumes:
+      # Rendered into $MONITORING_DIR (outside the checkout) from
+      # deploy/monitoring/alertmanager.yml.template; address and relay key never reach git.
+      - ${MONITORING_DIR:-../monitoring}/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${MONITORING_DIR:-../monitoring}/smtp_password:/etc/alertmanager/smtp_password:ro
+      - ${MONITORING_DIR:-../monitoring}/data:/alertmanager
+    logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    mem_limit: 64m
+    command:
+      - --path.rootfs=/host
+      - --collector.textfile.directory=/textfile
+      - --web.listen-address=127.0.0.1:9100
+    volumes:
+      - /:/host:ro,rslave
+      - ${MONITORING_DIR:-../monitoring}/textfile:/textfile:ro
+    logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
+
+volumes:
+  prometheus_data:

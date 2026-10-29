@@ -1,0 +1,107 @@
+# Alert rules (scaling plan F0.6). Every rule has a firing case in alerts.test.yml.
+# Annotations are Turkish: they are mailed to the owner.
+groups:
+  - name: astera
+    rules:
+      - alert: AsteraServiceDown
+        expr: up{job="astera"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: '{{ $labels.service }} 2 dakikadır yanıt vermiyor'
+          description: 'Prometheus {{ $labels.instance }} adresindeki /metrics sayfasına ulaşamıyor. Kontrol: docker ps ve curl {{ $labels.instance }}/health.'
+
+      - alert: AsteraWorkerBehind
+        expr: astera_worker_oldest_due_seconds > 5
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Worker geride: en eski bekleyen olay {{ $value | printf "%.0f" }} sn gecikmiş'
+          description: 'Filo varışları ve inşa bitişleri zamanında çözülmüyor. Kontrol: curl 127.0.0.1:3210/health ve worker logları.'
+
+      - alert: AsteraWorkerStalled
+        expr: astera_worker_last_tick_seconds > 60
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Worker {{ $value | printf "%.0f" }} sn''dir tur atmıyor'
+          description: 'Worker döngüsü takılmış olabilir. Kontrol: worker logları; gerekirse worker container yeniden başlatılır.'
+
+      - alert: AsteraEventsAbandoned
+        expr: increase(astera_worker_abandoned_total[15m]) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: 'Son 15 dakikada denemeleri tükenen olay var'
+          description: 'Bir olay 5 denemede çözülemedi ve bırakıldı; ilgili filo serbest bırakılmıştır. Kontrol: worker loglarında "event abandoned".'
+
+      - alert: AsteraServerErrors
+        expr: sum by (service) (increase(astera_route_errors_total[10m])) > 10
+        labels: { severity: warning }
+        annotations:
+          summary: '{{ $labels.service }} son 10 dakikada {{ $value | printf "%.0f" }} sunucu hatası (5xx) verdi'
+          description: 'Oyuncular hata görüyor olabilir. Kontrol: ilgili API logları.'
+
+      - alert: AsteraArchiveFailing
+        expr: astera_pg_archive_enabled == 1 and astera_pg_archive_failing == 1
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: 'WAL arşivi 5 dakikadır başarısız'
+          description: 'Sürekli backup R2''ye yazamıyor; WAL dosyaları diskte birikiyor. Kontrol: docker logs astera-postgres-prod ve pgbackrest check.'
+
+      - alert: AsteraArchiveStale
+        expr: astera_pg_archive_last_success_age_seconds > 600 and astera_pg_archive_enabled == 1
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Son başarılı WAL arşivi {{ $value | printf "%.0f" }} sn önce'
+          description: 'Sürekli backup durmuş olabilir. Kontrol: pg_stat_archiver ve pgbackrest info.'
+
+      - alert: AsteraBackupStale
+        expr: time() - astera_backup_last_success_timestamp_seconds > 26 * 3600
+        labels: { severity: warning }
+        annotations:
+          summary: 'Son başarılı tam backup 26 saatten eski'
+          description: 'Gece tam backup cron''u çalışmamış veya başarısız. Kontrol: ~/backups/astera-pitr.log.'
+
+      - alert: AsteraBackupMissing
+        expr: absent(astera_backup_last_success_timestamp_seconds)
+        for: 26h
+        labels: { severity: warning }
+        annotations:
+          summary: 'Tam backup kaydı 26 saattir yok'
+          description: 'Backup cron''u başarı kaydı yazmıyor. Kontrol: crontab ve ~/backups/astera-pitr.log.'
+
+  - name: host
+    rules:
+      - alert: HostDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Diskte boş yer az: {{ $value | humanizePercentage }}'
+          description: 'Kontrol: df -h ve docker system df. Eski backup ve image''lar temizlenebilir.'
+
+      - alert: HostDiskCritical
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.08
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Disk dolmak üzere: {{ $value | humanizePercentage }} boş'
+          description: 'Disk dolarsa PostgreSQL durur. Hemen yer açılmalı.'
+
+      - alert: HostMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Kullanılabilir bellek az: {{ $value | humanizePercentage }}'
+          description: 'Kontrol: docker stats.'
+
+      - alert: MonitoringHostExporterDown
+        expr: up{job="node"} == 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'node_exporter 5 dakikadır yanıt vermiyor'
+          description: 'Disk ve bellek alarmları çalışmıyor. Kontrol: docker compose -f docker-compose.monitoring.yml ps.'

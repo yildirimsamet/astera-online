@@ -27,7 +27,7 @@ import { pino } from 'pino';
 import type { Env } from './env.js';
 import type { Clock } from './clock.js';
 import { systemClock } from './clock.js';
-import { createDb, type Db } from './db/client.js';
+import { countStatements, createDb, type Db, type StatementCount } from './db/client.js';
 import { InvalidSessionError, TokenService } from './auth/tokens.js';
 import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
@@ -125,6 +125,7 @@ declare module 'fastify' {
     nativeSessionId?: string;
     capacityStartedAt?: number;
     capacityResponseBytes?: number;
+    dbStatements?: StatementCount;
   }
 }
 
@@ -379,14 +380,18 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
 
   app.addHook('onRequest', (req, _reply, done) => {
     req.capacityStartedAt = performance.now();
-    done();
+    req.dbStatements = { statements: 0 };
+    countStatements(req.dbStatements, done);
   });
-  app.addHook('onSend', (req, _reply, payload, done) => {
+  // The count is internal: production keeps it in /metrics only (F0.2).
+  const exposeStatements = opts.env.NODE_ENV !== 'production';
+  app.addHook('onSend', (req, reply, payload, done) => {
     req.capacityResponseBytes = typeof payload === 'string'
       ? Buffer.byteLength(payload)
       : Buffer.isBuffer(payload)
         ? payload.byteLength
         : 0;
+    if (exposeStatements) reply.header('x-db-statements', String(req.dbStatements?.statements ?? 0));
     done(null, payload);
   });
   app.addHook('onResponse', (req, reply, done) => {
@@ -396,6 +401,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       reply.statusCode,
       performance.now() - (req.capacityStartedAt ?? performance.now()),
       req.capacityResponseBytes ?? 0,
+      req.dbStatements?.statements ?? 0,
     );
     done();
   });

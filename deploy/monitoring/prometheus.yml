@@ -1,0 +1,39 @@
+# Scrapes production only (scaling plan F0.6). Stage (33xx) is never scraped.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['127.0.0.1:9093']
+
+scrape_configs:
+  - job_name: astera
+    metrics_path: /metrics
+    params:
+      format: [prometheus]
+    static_configs:
+      - targets: ['127.0.0.1:3200']
+        labels: { service: api1 }
+      - targets: ['127.0.0.1:3201']
+        labels: { service: api2 }
+      - targets: ['127.0.0.1:3202']
+        labels: { service: api3 }
+      - targets: ['127.0.0.1:3210']
+        labels: { service: worker }
+      - targets: ['127.0.0.1:3220']
+        labels: { service: arena }
+
+  - job_name: node
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+        labels: { service: host }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['127.0.0.1:9090']
+        labels: { service: prometheus }

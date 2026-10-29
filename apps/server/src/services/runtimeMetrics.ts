@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 const SAMPLE_CAPACITY = 4096;
 
-class SampleWindow {
+export class SampleWindow {
   private readonly values = new Float64Array(SAMPLE_CAPACITY);
   private size = 0;
   private cursor = 0;
@@ -31,6 +31,7 @@ interface RouteSamples {
   errors: number;
   responseBytes: number;
   latency: SampleWindow;
+  statements: SampleWindow;
   responseStatuses: Map<number, number>;
 }
 
@@ -62,6 +63,8 @@ export interface RuntimeStatus {
     responseBytes: number;
     responseStatuses: Record<number, number>;
     latencyMs: ReturnType<SampleWindow['summary']>;
+    /** SQL statements per request (F0.2). */
+    statements: ReturnType<SampleWindow['summary']>;
   }>;
   /** Stable client-facing error codes by route; never includes player identity. */
   refusals: Record<string, Record<string, number>>;
@@ -107,6 +110,7 @@ export class RuntimeMetrics {
     statusCode: number,
     latencyMs: number,
     responseBytes: number,
+    statements = 0,
   ): void {
     const key = `${method.toUpperCase()} ${route}`;
     const samples = this.routes.get(key) ?? {
@@ -114,12 +118,14 @@ export class RuntimeMetrics {
       errors: 0,
       responseBytes: 0,
       latency: new SampleWindow(),
+      statements: new SampleWindow(),
       responseStatuses: new Map<number, number>(),
     };
     samples.requests += 1;
     if (statusCode >= 500) samples.errors += 1;
     samples.responseBytes += responseBytes;
     samples.latency.add(latencyMs);
+    samples.statements.add(statements);
     samples.responseStatuses.set(statusCode, (samples.responseStatuses.get(statusCode) ?? 0) + 1);
     this.routes.set(key, samples);
   }
@@ -164,6 +170,7 @@ export class RuntimeMetrics {
           [...samples.responseStatuses].sort(([a], [b]) => a - b),
         ),
         latencyMs: samples.latency.summary(),
+        statements: samples.statements.summary(),
       };
     }
     return {

@@ -905,7 +905,7 @@ Production PostgreSQL archives every WAL segment to an encrypted pgBackRest repo
 Cron (after the first `stanza-create`; 01:47 UTC is 04:47 Istanbul, the quietest hour measured over 22 days):
 
 ```cron
-47 1 * * * docker exec -u postgres astera-postgres-prod pgbackrest --type=full backup --log-level-console=info >> /home/yildirim/backups/astera-pitr.log 2>&1
+47 1 * * * docker exec -u postgres astera-postgres-prod pgbackrest --type=full backup --log-level-console=info >> /home/yildirim/backups/astera-pitr.log 2>&1 && echo "astera_backup_last_success_timestamp_seconds $(date +\%s)" > /home/yildirim/monitoring/textfile/backup.prom.tmp && mv /home/yildirim/monitoring/textfile/backup.prom.tmp /home/yildirim/monitoring/textfile/backup.prom
 ```
 
 Health: `docker exec -u postgres astera-postgres-prod pgbackrest info` lists the backups and the WAL range; `select archived_count, failed_count, last_archived_time, last_failed_time from pg_stat_archiver` must show a `last_archived_time` under two minutes old. A failing archive does not lose data, but PostgreSQL keeps every unarchived segment in `pg_wal` (about 1.25 GB a day measured on 2026-10-28), so a stuck archive eventually fills the disk.
@@ -919,6 +919,22 @@ docker run --rm -u postgres --env-file <private env with the PGBACKREST_* values
 ```
 
 and start `postgres` on that volume with the same env (it fetches WAL through `archive-get`) and without `archive_mode=on`, so the copy never pushes into the production stanza. Moving a restored copy into production follows "Restoring a backup without reopening erased accounts" (§12).
+
+### Monitoring
+
+`docker-compose.monitoring.yml` is its own Compose project (`astera-monitoring`): Prometheus (15 days), Alertmanager and node_exporter, all on host networking and listening on 127.0.0.1 only. Game deploys never touch it. Prometheus scrapes production's loopback `/metrics?format=prometheus` on 3200–3202, 3210 and 3220 (never stage) plus node_exporter; the series are named in `apps/server/src/services/prometheusMetrics.ts`. Every alert in `deploy/monitoring/alerts.yml` has a firing case in `alerts.test.yml`, replayed by `promtool` in `apps/server/test/monitoring-config.test.ts`.
+
+Runtime files live in `~/monitoring` (`MONITORING_DIR`, outside the checkout): `alertmanager.yml` rendered from `deploy/monitoring/alertmanager.yml.template` with `ALERT_EMAIL` from `~/astera/.env`, `smtp_password` (the game's Resend API key; Alertmanager mails through `smtp.resend.com:587` as `alerts@account.asteraonline.space`), `data/`, and `textfile/backup.prom`, which the backup cron rewrites after each successful full backup. Both secret files are mode 600; Alertmanager runs as the operator (`MONITORING_UID`/`MONITORING_GID`, default 1000) to read them.
+
+```bash
+cd ~/astera && mkdir -p -m 700 ~/monitoring/data ~/monitoring/textfile
+sed "s|__ALERT_EMAIL__|$(grep '^ALERT_EMAIL=' .env | cut -d= -f2-)|" deploy/monitoring/alertmanager.yml.template > ~/monitoring/alertmanager.yml
+grep '^RESEND_API_KEY=' .env | cut -d= -f2- | tr -d '"\n' > ~/monitoring/smtp_password
+chmod 600 ~/monitoring/alertmanager.yml ~/monitoring/smtp_password
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+Open it through a tunnel: `ssh -L 9090:127.0.0.1:9090 -L 9093:127.0.0.1:9093 yildirim@hoofywood.com`, then `localhost:9090/alerts`. The `astera` job needs a release whose app answers `?format=prometheus`; an older one returns JSON and reads as down.
 
 Grant the hand-checked @JoinAstera reward with package CLI `reward 'ExactCaseSensitiveName'`. It unlocks an account-level, cross-season idempotent grant for in-game claim, including between seasons. Use `api1`, not removed `astera-api-prod`; SSH `exec` uses `-T`.
 

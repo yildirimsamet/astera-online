@@ -1,0 +1,191 @@
+# promtool test rules alerts.test.yml — run by apps/server/test/monitoring-config.test.ts.
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+
+tests:
+  - name: a silent service pages after two minutes, a live one never
+    interval: 1m
+    input_series:
+      - series: 'up{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '1 0 0 0'
+      - series: 'up{job="astera",service="api1",instance="127.0.0.1:3200"}'
+        values: '1 1 1 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: AsteraServiceDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: AsteraServiceDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'worker 2 dakikadır yanıt vermiyor'
+              description: 'Prometheus 127.0.0.1:3210 adresindeki /metrics sayfasına ulaşamıyor. Kontrol: docker ps ve curl 127.0.0.1:3210/health.'
+
+  - name: the worker falling behind or freezing
+    interval: 1m
+    input_series:
+      - series: 'astera_worker_oldest_due_seconds{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '0 10 10 10'
+      - series: 'astera_worker_last_tick_seconds{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '1 90 90'
+      - series: 'astera_worker_abandoned_total{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '0 0 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AsteraWorkerBehind
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'Worker geride: en eski bekleyen olay 10 sn gecikmiş'
+              description: 'Filo varışları ve inşa bitişleri zamanında çözülmüyor. Kontrol: curl 127.0.0.1:3210/health ve worker logları.'
+      - eval_time: 2m
+        alertname: AsteraWorkerStalled
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'Worker 90 sn''dir tur atmıyor'
+              description: 'Worker döngüsü takılmış olabilir. Kontrol: worker logları; gerekirse worker container yeniden başlatılır.'
+      - eval_time: 3m
+        alertname: AsteraEventsAbandoned
+        exp_alerts:
+          - exp_labels: { severity: warning, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'Son 15 dakikada denemeleri tükenen olay var'
+              description: 'Bir olay 5 denemede çözülemedi ve bırakıldı; ilgili filo serbest bırakılmıştır. Kontrol: worker loglarında "event abandoned".'
+
+  - name: a burst of server errors
+    interval: 1m
+    input_series:
+      - series: 'astera_route_errors_total{job="astera",service="api1",instance="127.0.0.1:3200",route="GET /api/planets"}'
+        values: '0 5 12 20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AsteraServerErrors
+        exp_alerts:
+          - exp_labels: { severity: warning, service: api1 }
+            exp_annotations:
+              summary: 'api1 son 10 dakikada 20 sunucu hatası (5xx) verdi'
+              description: 'Oyuncular hata görüyor olabilir. Kontrol: ilgili API logları.'
+
+  - name: the WAL archive failing or going quiet, only where archiving is on
+    interval: 1m
+    input_series:
+      - series: 'astera_pg_archive_enabled{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '1x8'
+      - series: 'astera_pg_archive_failing{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '0 1x7'
+      - series: 'astera_pg_archive_last_success_age_seconds{job="astera",service="worker",instance="127.0.0.1:3210"}'
+        values: '30 700x7'
+      - series: 'astera_pg_archive_enabled{job="astera",service="stage",instance="127.0.0.1:3310"}'
+        values: '0x8'
+      - series: 'astera_pg_archive_failing{job="astera",service="stage",instance="127.0.0.1:3310"}'
+        values: '1x8'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: AsteraArchiveFailing
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: AsteraArchiveFailing
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'WAL arşivi 5 dakikadır başarısız'
+              description: 'Sürekli backup R2''ye yazamıyor; WAL dosyaları diskte birikiyor. Kontrol: docker logs astera-postgres-prod ve pgbackrest check.'
+      - eval_time: 7m
+        alertname: AsteraArchiveStale
+        exp_alerts:
+          - exp_labels: { severity: critical, job: astera, service: worker, instance: '127.0.0.1:3210' }
+            exp_annotations:
+              summary: 'Son başarılı WAL arşivi 700 sn önce'
+              description: 'Sürekli backup durmuş olabilir. Kontrol: pg_stat_archiver ve pgbackrest info.'
+
+  - name: the nightly full backup going stale or never reporting
+    interval: 1h
+    input_series:
+      - series: 'astera_backup_last_success_timestamp_seconds{job="node",service="host",instance="127.0.0.1:9100"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: AsteraBackupStale
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: AsteraBackupStale
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, service: host, instance: '127.0.0.1:9100' }
+            exp_annotations:
+              summary: 'Son başarılı tam backup 26 saatten eski'
+              description: 'Gece tam backup cron''u çalışmamış veya başarısız. Kontrol: ~/backups/astera-pitr.log.'
+      - eval_time: 27h
+        alertname: AsteraBackupMissing
+        exp_alerts: []
+
+  - name: no backup record at all
+    interval: 1h
+    input_series:
+      - series: 'up{job="node",service="host",instance="127.0.0.1:9100"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: AsteraBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: 'Tam backup kaydı 26 saattir yok'
+              description: 'Backup cron''u başarı kaydı yazmıyor. Kontrol: crontab ve ~/backups/astera-pitr.log.'
+
+  - name: the host running out of disk or memory
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node",service="host",instance="127.0.0.1:9100",mountpoint="/",device="/dev/sda1",fstype="ext4"}'
+        values: '10x12'
+      - series: 'node_filesystem_size_bytes{job="node",service="host",instance="127.0.0.1:9100",mountpoint="/",device="/dev/sda1",fstype="ext4"}'
+        values: '100x12'
+      - series: 'node_memory_MemAvailable_bytes{job="node",service="host",instance="127.0.0.1:9100"}'
+        values: '5x12'
+      - series: 'node_memory_MemTotal_bytes{job="node",service="host",instance="127.0.0.1:9100"}'
+        values: '100x12'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: HostDiskLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, service: host, instance: '127.0.0.1:9100', mountpoint: '/', device: /dev/sda1, fstype: ext4 }
+            exp_annotations:
+              summary: 'Diskte boş yer az: 10%'
+              description: 'Kontrol: df -h ve docker system df. Eski backup ve image''lar temizlenebilir.'
+      - eval_time: 11m
+        alertname: HostDiskCritical
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: HostMemoryLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, service: host, instance: '127.0.0.1:9100' }
+            exp_annotations:
+              summary: 'Kullanılabilir bellek az: 5%'
+              description: 'Kontrol: docker stats.'
+
+  - name: the disk about to fill
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node",service="host",instance="127.0.0.1:9100",mountpoint="/",device="/dev/sda1",fstype="ext4"}'
+        values: '5x8'
+      - series: 'node_filesystem_size_bytes{job="node",service="host",instance="127.0.0.1:9100",mountpoint="/",device="/dev/sda1",fstype="ext4"}'
+        values: '100x8'
+      - series: 'up{job="node",service="host",instance="127.0.0.1:9100"}'
+        values: '0x8'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: HostDiskCritical
+        exp_alerts:
+          - exp_labels: { severity: critical, job: node, service: host, instance: '127.0.0.1:9100', mountpoint: '/', device: /dev/sda1, fstype: ext4 }
+            exp_annotations:
+              summary: 'Disk dolmak üzere: 5% boş'
+              description: 'Disk dolarsa PostgreSQL durur. Hemen yer açılmalı.'
+      - eval_time: 6m
+        alertname: MonitoringHostExporterDown
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, service: host, instance: '127.0.0.1:9100' }
+            exp_annotations:
+              summary: 'node_exporter 5 dakikadır yanıt vermiyor'
+              description: 'Disk ve bellek alarmları çalışmıyor. Kontrol: docker compose -f docker-compose.monitoring.yml ps.'

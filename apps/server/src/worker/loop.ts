@@ -1,7 +1,7 @@
 import { runSilentSpaceSweep, SILENT_SPACE_INTERVAL_MS } from '../services/silentSpace.js';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Clock } from '../clock.js';
-import type { Db } from '../db/client.js';
+import { countStatements, type Db } from '../db/client.js';
 import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
 import { runBotSweep } from '../services/bots/sweep.js';
@@ -16,6 +16,7 @@ import { repairUnknownSignals } from '../services/unknownSignal.js';
 import { processMediaDeletionQueue } from '../services/mediaErasure.js';
 import { pruneErasureJournal } from '../services/erasureJournal.js';
 import { expireContentReports } from '../services/contentReports.js';
+import { SampleWindow } from '../services/runtimeMetrics.js';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -81,6 +82,8 @@ export interface WorkerStatus {
     p99: number;
     max: number;
   };
+  /** SQL statements each event kind's handler ran (F0.2). */
+  eventStatements: Record<string, { events: number; statements: ReturnType<SampleWindow['summary']> }>;
 }
 
 /**
@@ -136,6 +139,7 @@ export class EventWorker {
   private lastDurationMs: number | null = null;
   private readonly durations: number[] = [];
   private readonly lateness: number[] = [];
+  private readonly eventStatements = new Map<string, { events: number; statements: SampleWindow }>();
 
   constructor(
     private readonly db: Db,
@@ -291,11 +295,18 @@ export class EventWorker {
         continue;
       }
       try {
-        const run = () => handler({
-          db: this.db,
-          clock: this.clock,
-          adminUsernames: this.opts.adminUsernames,
-        }, event);
+        const run = async () => {
+          const scope = { statements: 0 };
+          try {
+            await countStatements(scope, () => handler({
+              db: this.db,
+              clock: this.clock,
+              adminUsernames: this.opts.adminUsernames,
+            }, event));
+          } finally {
+            this.observeEventStatements(event.kind, scope.statements);
+          }
+        };
         if (VACATION_EVENT_KINDS.has(event.kind)) {
           const ran = await this.db.transaction(async tx => {
             // Admission waits on this fence BEFORE locking the season. Holding a
@@ -394,6 +405,13 @@ export class EventWorker {
     };
   }
 
+  private observeEventStatements(kind: string, statements: number): void {
+    const samples = this.eventStatements.get(kind) ?? { events: 0, statements: new SampleWindow() };
+    samples.events += 1;
+    samples.statements.add(statements);
+    this.eventStatements.set(kind, samples);
+  }
+
   status(): WorkerStatus {
     const sorted = [...this.durations].sort((a, b) => a - b);
     const p95Index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
@@ -426,6 +444,8 @@ export class EventWorker {
         p99: latenessAt(0.99),
         max: lateness.at(-1) ?? 0,
       },
+      eventStatements: Object.fromEntries([...this.eventStatements].sort(([a], [b]) => a.localeCompare(b))
+        .map(([kind, samples]) => [kind, { events: samples.events, statements: samples.statements.summary() }])),
     };
   }
 

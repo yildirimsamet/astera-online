@@ -7,6 +7,8 @@ import { strandedBuildCount, strandedFlightCount } from '../worker/abandon.js';
 import { idleSeatCount } from '../services/reclaim.js';
 import { botStatus } from '../services/bots/sweep.js';
 import { missions, planets, scheduledEvents } from '../db/schema.js';
+import { metricFamilies, prometheusText } from '../services/prometheusMetrics.js';
+import { z } from 'zod';
 
 /**
  * Health checks the database, the event queue AND the live channel.
@@ -28,6 +30,8 @@ import { missions, planets, scheduledEvents } from '../db/schema.js';
  * worker role intentionally has no LISTEN socket and is exempt from this check.
  */
 const MAX_QUEUE_LAG_SECONDS = 120;
+/** `?format=prometheus` asks /metrics for text exposition (F0.6). */
+const prometheusQuery = z.object({ format: z.literal('prometheus') });
 
 function hostAvailableMemory(): number {
   try {
@@ -224,7 +228,7 @@ export function registerHealthRoutes(
   });
 
   /** Process-local capacity report. Nginx exposes this to loopback only. */
-  app.get('/metrics', { config: { rateLimit: false } }, async (_req, reply) => {
+  app.get('/metrics', { config: { rateLimit: false } }, async (req, reply) => {
     reply.header('Cache-Control', 'no-store');
     const runtime = app.metrics.status();
     const constrainedMemory = process.constrainedMemory();
@@ -251,6 +255,36 @@ export function registerHealthRoutes(
         FROM pg_stat_activity
        WHERE datname = current_database()
     `);
+    if (prometheusQuery.safeParse(req.query).success) {
+      const workerRole = options.role === 'worker' || options.role === 'both';
+      const now = app.clock.now();
+      const worker = app.worker.status();
+      const [archive] = workerRole ? await app.db.execute<{
+        enabled: boolean; age: number | null; failing: boolean; failed: number;
+      }>(sql`
+        SELECT current_setting('archive_mode') = 'on' AS enabled,
+               extract(epoch FROM now() - last_archived_time)::float8 AS age,
+               coalesce(last_failed_time > coalesce(last_archived_time, '-infinity'), false) AS failing,
+               failed_count::int AS failed
+          FROM pg_stat_archiver
+      `) : [];
+      reply.type('text/plain; version=0.0.4; charset=utf-8');
+      return prometheusText(metricFamilies({
+        role: options.role,
+        commit: process.env.ASTERA_GIT_COMMIT ?? '',
+        runtime,
+        streams: app.streams.status(),
+        connections: { active: database?.active ?? null, idle: database?.idle ?? null, waiting: database?.waiting ?? null },
+        ...(workerRole ? { worker: {
+          status: worker,
+          oldestDueSeconds: (await oldestPendingAge(app.db, now)) ?? 0,
+          lastTickSeconds: worker.lastTickAt === null ? NaN : (Date.now() - Date.parse(worker.lastTickAt)) / 1000,
+        } } : {}),
+        ...(archive ? { archive: {
+          enabled: archive.enabled, lastSuccessAgeSeconds: archive.age, failing: archive.failing, failedTotal: archive.failed,
+        } } : {}),
+      }));
+    }
     return {
       service: {
         role: options.role,
