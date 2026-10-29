@@ -845,7 +845,7 @@ aynı kalır; eski native build'ler etkilenmez.
 
 **F1.1 SSE teslimini bellek içi epoch ile korumak (M1, M10).**
 
-> **29 Eki: yapıldı (commit bekliyor, deploy edilmedi).** `src/stream/fence.ts` (StreamFence: bağlantıda tek epoch
+> **29 Eki: yapıldı, 962587e6; 29 Eki 12:21 UTC prod'da.** `src/stream/fence.ts` (StreamFence: bağlantıda tek epoch
 > okuması, LISTEN boşluğundan sonra frame'lerden önce toplu kontrol, 60 sn'lik toplu tarama, native expiry
 > zamanlayıcısı), migration 0210 (accounts.auth_version, native_sessions.revoked_at, players.season_id/placement_version
 > güncellemesi ve players silinmesi → `private:auth` / `placement_changed` NOTIFY), `StreamRegistry` hesap başına 3
@@ -891,6 +891,16 @@ Testler:
    sınırlı kalır).
 
 **F1.2 Galaksiye göre cache izolasyonu (M4).**
+
+> **29 Eki: yapıldı (commit bekliyor, deploy edilmedi).** `sensors`, `remembered`, `sensorHistory` anahtarları
+> `${season}:${player}`; ownership shard olayı yalnız o sezonun prefix'ini, oyuncu olayı yalnız `:${player}`
+> sonekini siler. `commanders` hesap anahtarlı kaldı (sezon, topoloji okunmadan bilinmiyor); yeni
+> `AsyncCache.invalidateWhere` yerleşik değerin `seasonId`'sine bakar, bekleyen dolumu her zaman siler.
+> `reconcilePlacement` gate'in okuduğu `{ id, seasonId, placementVersion }` satırını alır, harita LRU.
+> **Bilerek yapılmadı:** `private:strategic-sight` hâlâ bütün trafik cache'ini siler. Olay izleyici listesindeki
+> her oyuncuya ayrı gider ve listede bu sürecin tanımadığı biri neredeyse hep vardır (oyuncular 3 replikaya
+> dağılır); bilinmeyen oyuncuda güvenli yol yine tam silmedir, olay da nadirdir (Death Star). Testler:
+> `projection-isolation.test.ts`, `async-cache.test.ts` (bekleyen dolum).
 
 Dosyalar: `services/projections.ts:147–152, 307, 318–345`, `services/asyncCache.ts`, `routes/galaxy.ts`'teki
 çağıranlar.

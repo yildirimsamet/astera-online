@@ -83,7 +83,7 @@ describe('event bus reconnect', () => {
    * addressed to that one commander.
    */
   it('forgets one commander’s probe memory the moment a report lands', async () => {
-    await projections.rememberedFor(f.playerIds[0]!);
+    await projections.rememberedFor(f.playerIds[0]!, f.seasonId);
     expect(projections.status().remembered).toMatchObject({ entries: 1, invalidations: 0 });
 
     await publish(f.db, f.playerIds[0]!, 'probe_report');
@@ -99,7 +99,7 @@ describe('event bus reconnect', () => {
 
   /** Some other private event must not cost a cache entry it cannot have moved. */
   it('ignores every other private event', async () => {
-    await projections.rememberedFor(f.playerIds[0]!);
+    await projections.rememberedFor(f.playerIds[0]!, f.seasonId);
 
     let delivered = 0;
     const unsubscribe = bus.subscribe(f.playerIds[0]!, () => { delivered += 1; });
@@ -116,7 +116,7 @@ describe('event bus reconnect', () => {
     await setLevel(f.db, planetId, 'CORE', 5);
     await giveSatellite(f.db, planetId, 'UPLINK');
 
-    const before = await projections.sensorsFor(playerId, [planetId]);
+    const before = await projections.sensorsFor(playerId, f.seasonId, [planetId]);
     expect(before[0]).toMatchObject({ telescope: false, identify: SENSOR.baseRadius });
     expect(projections.status().sensors).toMatchObject({ entries: 1, invalidations: 0 });
 
@@ -130,7 +130,7 @@ describe('event bus reconnect', () => {
       'the completed build to invalidate its owner’s sensors',
     );
 
-    const after = await projections.sensorsFor(playerId, [planetId]);
+    const after = await projections.sensorsFor(playerId, f.seasonId, [planetId]);
     expect(after[0]?.telescope).toBe(true);
     expect(after[0]?.identify).toBeGreaterThan(before[0]!.identify);
     // A private build changes neither the shared galaxy nor another private fact.
@@ -146,7 +146,7 @@ describe('event bus reconnect', () => {
     await giveInstrument(f.db, planetId, 'TELESCOPE', 8);
     await giveInstrument(f.db, planetId, 'RADAR', 8);
 
-    const before = await projections.sensorsFor(playerId, [planetId]);
+    const before = await projections.sensorsFor(playerId, f.seasonId, [planetId]);
     expect(before[0]).toMatchObject({ telescope: true, identify: SENSOR.maxRadius });
 
     // A real Death Star impact removes exactly one Core level and emits no target
@@ -164,7 +164,7 @@ describe('event bus reconnect', () => {
       'the impact to clear cached sensor entitlement',
     );
 
-    const after = await projections.sensorsFor(playerId, [planetId]);
+    const after = await projections.sensorsFor(playerId, f.seasonId, [planetId]);
     expect(after[0]?.identify).toBeLessThan(before[0]!.identify);
     expect(after[0]?.detect).toBeLessThan(before[0]!.detect);
     expect(after[0]?.warn).toBeLessThan(before[0]!.warn);
@@ -188,8 +188,8 @@ describe('event bus reconnect', () => {
        * how that class of bug survives, so both of the caller-keyed projections
        * are filled and asserted alongside the shared ones.
        */
-      projections.sensorsFor(f.playerIds[0]!, f.planetIds),
-      projections.rememberedFor(f.playerIds[0]!),
+      projections.sensorsFor(f.playerIds[0]!, f.seasonId, f.planetIds),
+      projections.rememberedFor(f.playerIds[0]!, f.seasonId),
       projections.historyFor(f.playerIds[0]!, f.seasonId),
     ]);
     expect(before[0]?.name).not.toBe('After reconnect');

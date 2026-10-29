@@ -14,6 +14,22 @@ it('invalidates only the addressed caller, including a pending fill', async () =
   expect(cache.status()).toMatchObject({ entries: 2, invalidations: 1 });
 });
 
+it('selects settled entries by value and hands a pending fill no value to judge', async () => {
+  const cache = new AsyncCache<{ season: string }>(4, 1000);
+  const pending = deferred<{ season: string }>();
+  const load = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue({ season: 'A' });
+  const read = cache.get('carol', load);
+  const there = await cache.get('alice', () => Promise.resolve({ season: 'B' }));
+  await cache.get('bob', () => Promise.resolve({ season: 'A' }));
+  // Scaling plan F1.2: the fill may resolve to the selected galaxy, so it must go too.
+  cache.invalidateWhere((_, value) => value === undefined || value.season === 'A');
+  pending.resolve({ season: 'A' });
+  await read;
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(await cache.get('alice', () => Promise.resolve({ season: 'wrong' }))).toBe(there);
+  expect(cache.status()).toMatchObject({ invalidations: 2 });
+});
+
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   const promise = new Promise<T>((done) => {

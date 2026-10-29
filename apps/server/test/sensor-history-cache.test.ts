@@ -32,7 +32,7 @@ it('single-flights private history, isolates commanders/seasons and invalidates 
     expect(projections.status().sensorHistory).toMatchObject({ misses: 1, singleFlightWaits: 1 });
     expect(await projections.historyFor(f.playerIds[1]!, f.seasonId)).not.toEqual(first);
     expect(await projections.historyFor(playerId, '00000000-0000-4000-8000-000000000001')).toEqual([]);
-    const before = await projections.sensorsFor(playerId, [mine]);
+    const before = await projections.sensorsFor(playerId, f.seasonId, [mine]);
     f.clock.advance(1);
     await f.db.transaction(async tx => {
       await tx.update(satellites).set({ level: 1 }).where(and(eq(satellites.planetId, mine), eq(satellites.type, 'TELESCOPE')));
@@ -43,7 +43,7 @@ it('single-flights private history, isolates commanders/seasons and invalidates 
     const after = await projections.historyFor(playerId, f.seasonId);
     expect(after).toHaveLength(first.length + 1);
     expect(after.at(-1)?.reach).toBeLessThan(first.at(-1)!.reach);
-    expect((await projections.sensorsFor(playerId, [mine]))[0]!.identify).toBeLessThan(before[0]!.identify);
+    expect((await projections.sensorsFor(playerId, f.seasonId, [mine]))[0]!.identify).toBeLessThan(before[0]!.identify);
     expect(projections.status().sensorHistory.entries).toBe(2); // other commander survives
   } finally { projections.close(); await bus.stop(); }
 });

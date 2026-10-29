@@ -95,7 +95,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
 
     const [snapshot, sensors, epochs] = await Promise.all([
       app.projections.pirateSnapshot(self.seasonId, now),
-      app.projections.sensorsFor(self.playerId, self.planetIds),
+      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
       // The commander's own sensor history: what memory is still holding open. D158.
       app.projections.historyFor(self.playerId, self.seasonId),
     ]);

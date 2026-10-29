@@ -56,7 +56,7 @@ const placementChanged = () => new GameError('PLACEMENT_CHANGED', 'Your galaxy c
  * take the exclusive side before world locks, so a multi-query write cannot
  * straddle relocation. A separate pool (two connections by default) avoids
  * exhausting gameplay connections with leases whose handlers need that pool too.
- * Streams have their own per-frame placement fence and must never hold this lease.
+ * Streams have their own placement fence (`StreamFence`) and must never hold this lease.
  */
 export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
   options: { idleInTransactionTimeoutMs?: number; requireCurrentRules?: boolean } = {}): () => Promise<void> {
@@ -70,7 +70,7 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     if (!reconcile && (expected !== undefined ? expected !== placement : current.placementVersion !== 0)) {
       throw placementChanged();
     }
-    app.projections.reconcilePlacement(req.accountId!, placement);
+    app.projections.reconcilePlacement(req.accountId!, current);
     return placement;
   };
 

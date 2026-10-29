@@ -13,6 +13,8 @@ interface Entry<T> {
   pending: boolean;
   expiresAt: number;
   promise: Promise<T>;
+  /** The settled value, for `invalidateWhere`. */
+  value?: T;
 }
 
 /**
@@ -71,6 +73,7 @@ export class AsyncCache<T> {
         const current = this.entries.get(key);
         if (current?.token === token) {
           current.pending = false;
+          current.value = value;
           current.expiresAt = this.now() + this.ttlMs;
           this.touch(key, current);
         }
@@ -102,6 +105,16 @@ export class AsyncCache<T> {
   invalidatePrefix(prefix: string): void {
     for (const key of this.entries.keys()) {
       if (key.startsWith(prefix)) this.invalidate(key);
+    }
+  }
+
+  /**
+   * Drops every entry `selects` picks. A pending fill passes no value: what it will
+   * hold is not known yet, so a selector on the value must take it.
+   */
+  invalidateWhere(selects: (key: string, value: T | undefined) => boolean): void {
+    for (const [key, entry] of this.entries) {
+      if (selects(key, entry.pending ? undefined : entry.value)) this.invalidate(key);
     }
   }
 

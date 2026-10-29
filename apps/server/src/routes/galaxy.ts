@@ -73,8 +73,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows, radiation] = await Promise.all([
       app.projections.worlds(self.seasonId, now),
       readTelescopes(app.db, self.playerId, app.clock),
-      app.projections.sensorsFor(self.playerId, self.planetIds),
-      app.projections.rememberedFor(self.playerId),
+      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
+      app.projections.rememberedFor(self.playerId, self.seasonId),
       readClanPresence(app.db, self.playerId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
       self.planetIds.length === 0
@@ -389,7 +389,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     // the ownership filter must never disagree about which worlds are theirs.
     const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
       app.projections.trafficSnapshot(self.seasonId, now),
-      app.projections.sensorsFor(self.playerId, self.planetIds),
+      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
       app.projections.miningSnapshot(self.seasonId, now),
       app.projections.historyFor(self.playerId, self.seasonId),
       app.projections.pirateSnapshot(self.seasonId, now),
@@ -427,8 +427,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const requested = z.object({ ranking: z.enum(['HONOR', 'DOMINION']).default('DOMINION') }).parse(req.query).ranking;
 
     const [sensors, remembered, adminPlayerIds, botRows, configs, benefits] = await Promise.all([
-      app.projections.sensorsFor(self.playerId, self.planetIds),
-      app.projections.rememberedFor(self.playerId),
+      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
+      app.projections.rememberedFor(self.playerId, self.seasonId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
       app.db.select({ accountId: botProfiles.accountId }).from(botProfiles)
         .where(eq(botProfiles.accountId, req.accountId!)).limit(1),

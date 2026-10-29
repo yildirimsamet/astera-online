@@ -32,8 +32,8 @@ export function registerChatRoutes(app: FastifyInstance): void {
     const query = listQuery.parse(req.query);
     const self = await app.projections.commander(req.accountId!);
     const [sensors, remembered] = await Promise.all([
-      app.projections.sensorsFor(self.playerId, self.planetIds),
-      app.projections.rememberedFor(self.playerId),
+      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
+      app.projections.rememberedFor(self.playerId, self.seasonId),
     ]);
     return readChat(
       app.db, req.accountId!, query.limit, { sensors, remembered },

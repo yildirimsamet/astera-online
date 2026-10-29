@@ -41,7 +41,7 @@ describe('hidden admin capital', () => {
       expect(view.planets.find(row => row.id === f.planetIds[1])?.controller).toBeDefined();
       const normal = (await built.app.inject({ method: 'GET', url: '/api/galaxy', headers: user })).json<{ planets: { id: string }[] }>();
       expect(normal.planets.map(row => row.id)).not.toContain(world.id);
-      const ordinarySight = await built.projections.sensorsFor(f.playerIds[1]!, [f.planetIds[1]!]);
+      const ordinarySight = await built.projections.sensorsFor(f.playerIds[1]!, f.seasonId, [f.planetIds[1]!]);
       expect(ordinarySight[0]!.identify).toBeLessThan(4400);
       const sent = await built.app.inject({ method: 'POST', url: '/api/chat/messages', headers: admin, payload: { content: 'Operator' } });
       expect(sent.statusCode).toBe(200);
