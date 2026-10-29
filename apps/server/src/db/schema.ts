@@ -4516,6 +4516,9 @@ export const notifications = pgTable('notifications', {
   refId: uuid('ref_id'),
 }, (t) => [
   index('notifications_player_idx').on(t.playerId, t.seen, t.createdAt),
+  // The mailbox page in its exact order (listNotifications), read without a sort. Q1.
+  // NULLS FIRST is what a plain DESC means; drizzle's default NULLS LAST would not match it.
+  index('notifications_player_time_idx').on(t.playerId, t.createdAt.desc().nullsFirst(), t.id.desc().nullsFirst()),
   uniqueIndex('notifications_ref_idx').on(t.playerId, t.kind, t.refId),
 ]);
 

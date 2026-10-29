@@ -1,0 +1,1 @@
+CREATE INDEX "notifications_player_time_idx" ON "notifications" USING btree ("player_id","created_at" DESC NULLS FIRST,"id" DESC NULLS FIRST);

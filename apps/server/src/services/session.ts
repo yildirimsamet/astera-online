@@ -1296,7 +1296,8 @@ export async function listNotifications(
     .select()
     .from(notifications)
     .where(where)
-    .orderBy(desc(notifications.createdAt))
+    // Equal instants are common (one battle, several rows); id keeps the page stable. Q1.
+    .orderBy(desc(notifications.createdAt), desc(notifications.id))
     .limit(Math.min(opts.limit ?? 30, 100));
 }
 

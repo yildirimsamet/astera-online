@@ -657,8 +657,11 @@ describe('the unlock cascade', () => {
         .map((r) => r.payload.unlock);
 
     expect(await unlocked(f.playerIds[0]!)).toEqual(['TELESCOPE']);
-    // Being on the receiving end is what opens the radar.
-    expect(await unlocked(f.playerIds[1]!)).toEqual(['TELESCOPE', 'RADAR']);
+    // Being on the receiving end is what opens the radar. Both rows share one
+    // transaction and `newsFor` has no ORDER BY, so their order is not the rule.
+    const hit = await unlocked(f.playerIds[1]!);
+    expect(hit).toHaveLength(2);
+    expect(hit).toEqual(expect.arrayContaining(['TELESCOPE', 'RADAR']));
   });
 
   it('records what it has announced, so a second battle repeats nothing', async () => {

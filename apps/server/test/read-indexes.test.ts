@@ -39,3 +39,18 @@ it('finds the ships aboard named flights without scanning every unit', async () 
     where location in ('pirate:00000000-0000-4000-8000-000000000001', 'trade:00000000-0000-4000-8000-000000000002')`);
   expect(text).toMatch(/\bunits_location_idx\b/);
 });
+
+/**
+ * The notification page behind every mailbox open. Scaling plan Q1, audit 2026-10-26 §6.1:
+ * the `(player_id, seen, created_at)` index cannot give one commander's rows in time
+ * order across both `seen` values, so a busy mailbox read all 8,679 rows and sorted
+ * them for 30 (3.96 ms → 0.031 ms with an index in page order). No Sort node means
+ * the page is read straight off the index, however long the mailbox grows.
+ */
+it('reads a commander’s newest notifications in page order, without sorting the mailbox', async () => {
+  const text = await plan(sql`select * from notifications
+    where player_id = '00000000-0000-4000-8000-000000000001'
+    order by created_at desc, id desc limit 30`);
+  expect(text).toMatch(/\bnotifications_player_time_idx\b/);
+  expect(text).not.toMatch(/Sort/);
+});

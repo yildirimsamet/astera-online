@@ -689,6 +689,36 @@ describe('notifications', () => {
     const rows = await listNotifications(f.db, myPlayer, { limit: 9999 });
     expect(rows.length).toBeLessThanOrEqual(100);
   });
+
+  /**
+   * ONE ORDER, EVEN WHEN THE CLOCK TIES. Scaling plan Q1.
+   *
+   * A battle writes several notifications in one transaction, so equal instants are
+   * normal. Ordered by time alone, which 30 of them made the page — and their order —
+   * was whatever the plan happened to produce, and could change between two opens of
+   * the same mailbox. Newest first, then id: rows with distinct instants keep exactly
+   * the order they always had.
+   */
+  it('orders the newest page by time, then id, so equal instants never reshuffle', async () => {
+    const base = new Date('2026-10-29T12:00:00Z').getTime();
+    const tie = new Date(base + 60_000);
+    await f.db.insert(notifications).values([
+      ...Array.from({ length: 20 }, (_, i) => ({ playerId: myPlayer, kind: 'raided' as const, payload: { i }, createdAt: new Date(base + i * 1000) })),
+      ...Array.from({ length: 20 }, (_, i) => ({ playerId: myPlayer, kind: 'raided' as const, payload: { tie: i }, createdAt: tie })),
+    ]);
+    const mine = await f.db.select({ id: notifications.id, createdAt: notifications.createdAt, seen: notifications.seen })
+      .from(notifications).where(eq(notifications.playerId, myPlayer));
+    // PostgreSQL compares uuids byte by byte; fixed-position lowercase hex sorts the same way.
+    const pageOrder = (rows: typeof mine) => rows.toSorted((a, b) =>
+      b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)).slice(0, 30).map(r => r.id);
+
+    expect((await listNotifications(f.db, myPlayer)).map(r => r.id)).toEqual(pageOrder(mine));
+
+    const seen = mine.filter((_, i) => i % 3 === 0).map(r => r.id);
+    await markNotificationsSeen(f.db, myPlayer, seen);
+    expect((await listNotifications(f.db, myPlayer, { unseenOnly: true })).map(r => r.id))
+      .toEqual(pageOrder(mine.filter(r => !seen.includes(r.id))));
+  });
 });
 
 describe('the event bus', () => {
