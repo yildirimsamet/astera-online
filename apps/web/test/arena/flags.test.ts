@@ -14,9 +14,11 @@ describe('arena entry flags', () => {
     expect(canEnterArena({ DEV: false, VITE_ARENA: '1' }, true)).toBe(true);
   });
 
-  it('keeps the door shut in a bundled app, whose socket has no arena host', () => {
-    expect(canEnterArena({ DEV: false, VITE_ARENA: '1', VITE_ASTERA_PLATFORM: 'android' }, true)).toBe(false);
-    expect(canEnterArena({ DEV: false, VITE_ARENA: '1', VITE_ASTERA_PLATFORM: 'web' }, true)).toBe(true);
+  it('opens the door in a bundled app too, whose socket reaches the arena beside its API', () => {
+    const app = { DEV: false, VITE_ARENA: '1', VITE_ASTERA_PLATFORM: 'native-production' };
+    expect(canEnterArena(app, true)).toBe(true);
+    expect(canEnterArena(app, false)).toBe(false);
+    expect(canEnterArena({ ...app, VITE_ARENA: '' }, true)).toBe(false);
   });
 
   it('opens an unauthenticated sandbox only in development or an explicit visual-test build', () => {

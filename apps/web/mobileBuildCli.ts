@@ -58,7 +58,8 @@ function main(): void {
   const releaseConfig = release ? androidRelease({ ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl }, root) : undefined;
   const web = resolve(root, 'apps/web');
   const android = resolve(web, 'android');
-  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ASTERA_NATIVE_BUILD: mobile.nativeBuild,
+  // Komutan Gemisi ships in every app; the arena's own `/arena/access` still decides who enters.
+  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ASTERA_NATIVE_BUILD: mobile.nativeBuild, VITE_ARENA: '1',
     ASTERA_MOBILE_DEBUG: '', ASTERA_MOBILE_DEV_URL: '', NODE_OPTIONS: '--max-old-space-size=4096',
     JAVA_HOME: process.env.JAVA_HOME ?? resolve(homedir(), '.local/share/astera/jdk-21') };
   function run(command: string, commandArgs: string[], cwd: string) {

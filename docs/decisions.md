@@ -3,6 +3,21 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-10-29 — Bot savaşları Honor sayar; bot sırasını tutar (BOT = İNSAN).**
+  Owner: *"Bot savaşlarında da honor sayılmalı, insanlar botların bot oldugunu
+  anlamamalı."* Canlı sezonda insan→bot baskını raporda "Honor yarışının dışında"
+  yazıyordu; bu ifşaydı. Artık en az bir insanın olduğu savaş normal Honor üretir.
+  Yalnız botlardan oluşan savaş Honor üretmez; o raporu hiçbir insan görmez, botlar
+  da birbirini kasıp sıralamayı şişiremez. Admin ve aynı hesap hâlâ Honor dışı.
+  Puanı olan bot, Honor kürsüsünde ve galaksi zirve kademesinde herkes gibi sayılır.
+  Ödül: bot, Honor'da da Hakimiyet'teki gibi sırasını tutar. Bot 1. ise 1.lik ödül
+  dağıtılmaz, insanlar görünen sıralarının ödülünü alır. Bu kayıt, 2026-10-28
+  KİLİTLİ kaydındaki "kürsü, Honor kaynağı" dışlamasının yerini alır. Kural canlıya
+  çıkmadan sonuçlanan bot savaşları geriye dönük puanlanmaz. Eski kodla yola çıkıp
+  henüz sonuçlanmamış uçuşlar için, deploy'dan sonra her canlı sezonda bir kez
+  `season honor-refresh --season UUID --yes` çalıştırılır. DM'de de bot herkes gibi
+  aranır ve mesaj alır (owner: "DM alıcı listesi botları çıkartmasın").
+
 - **2026-10-29 — Shopier: oyuncuya özel geçici ürün (notta kod yöntemi kaldırıldı).**
   Owner: alıcı adını veya kodu yazmasa da kim olduğu anlaşılmalı; görünümler yalnız oyun
   içinden alınır. "Shopier ile öde" basışı o komutan + görünüm için gizli, dijital, stoğu 1

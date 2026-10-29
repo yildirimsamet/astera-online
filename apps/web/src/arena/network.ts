@@ -5,6 +5,7 @@ import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_ROSTER_MAX, ARENA_TUNING as T, FAR_
 import { createIdempotencyKey } from '../api/client.js';
 import { sortieSchema, type SortieReport } from './hangarDesk.js';
 import { absorbCorrection, createCorrection } from './smoothing.js';
+import { arenaSocketUrl } from './origin.js';
 
 const rosterRow = z.object({ id: z.number().int().nonnegative(), name: z.string().max(32), ship: z.enum(SHIP_CLASSES),
   /** Y6b: the ship's level; a row without one is level one (a bot). */
@@ -174,7 +175,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
   const open = (): void => {
     if (stopped) return;
     notify({ phase: welcomed ? 'reconnecting' : 'connecting', reason: '' });
-    const connection = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/arena/ws`);
+    const connection = new WebSocket(arenaSocketUrl());
     socket = connection;
     const timeout = setTimeout(() => { if (!connected) connection.close(); }, 5000);
     connection.onopen = () => {

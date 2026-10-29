@@ -130,7 +130,8 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   ships: ArenaShips = dbShips(app)): { world: ArenaWorld } {
   const admits = (account: { username: string; pilot: boolean }): boolean =>
     account.pilot || env.ARENA_PILOTS.includes('*') || env.ARENA_PILOTS.includes(account.username);
-  const origins = new Set(env.ARENA_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean));
+  // The bundled app's page origin is trusted by the API's CORS; its socket is the same app.
+  const origins = new Set([...env.ARENA_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean), ...env.NATIVE_APP_ORIGINS]);
   const sockets = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 4096 });
   // Owner 2026-10-21 flew three bots (hunter, patrol, miner) in the live room; 2026-10-27 turned them off.
   const world = createSandboxWorld({ seed: Date.now() >>> 0, bots: env.ARENA_BOTS });

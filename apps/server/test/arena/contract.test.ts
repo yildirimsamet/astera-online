@@ -7,8 +7,7 @@ import { TokenService } from '../../src/auth/tokens.js';
 import { arenaPilots, arenaShips, arenaTeams, clanMemberships, clans, planets } from '../../src/db/schema.js';
 import { createTeam, readyTeam, startTeam } from '../../src/services/arenaTeams.js';
 import { chooseShip, endSortie, launchSortie } from '../../src/services/arenaShips.js';
-import { hangarSchema } from '../../../web/src/arena/hangarDesk.js';
-import { teamSchema } from '../../../web/src/arena/teamDesk.js';
+import { hangarSchema, teamSchema } from '../../../web/src/arena/deskSchemas.js';
 import { seedWorld, setLevel, testDb, testEnv } from '../helpers.js';
 
 /** Real routes and DB answers must parse through the client's own boundary, including the new ranks. */

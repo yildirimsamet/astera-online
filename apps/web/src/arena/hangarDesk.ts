@@ -1,32 +1,15 @@
 import { z } from 'zod';
-import { SHIP_CLASSES, repairQuote, type Ability, type ArenaResources, type LoadoutPlan, type ShipClass } from '@astera/rules/arena';
+import { repairQuote, type Ability, type ArenaResources, type LoadoutPlan, type ShipClass } from '@astera/rules/arena';
+import { arenaUrl } from './origin.js';
+import { hangarSchema, resources } from './deskSchemas.js';
+
+export { hangarSchema };
 
 /**
  * The hangar desk (Y6a, plan 14 §7): the commander's ship, its timers, what filling it costs the
  * capital, and what the capital can still take from the Yarık today. The arena process answers it;
  * the launch itself goes through the room's hello, which checks all of this again.
  */
-const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
-const points = z.number().int().min(0).max(4).optional();
-const abilities = z.object({ signature: points, turbo: points, smoke: points, cloak: points, illusion: points, radar: points }).strict();
-export const hangarSchema = z.object({
-  core: z.number().int(), minCore: z.number().int(),
-  ship: z.object({ class: z.enum(SHIP_CLASSES), changeUntil: z.string().nullable(), fuel: z.number(), ammo: z.number(),
-    hold: z.array(z.number()), readyAt: z.string().nullable(), readyReason: z.enum(['repair', 'service']).nullable(), flying: z.boolean(),
-    /** Y9: out with a fleet, or flying home alone until `homeAt`. Defaulted for a desk from before the deploy. */
-    away: z.enum(['escort', 'homeward']).nullable().default(null), homeAt: z.string().nullable().default(null),
-    level: z.number().int().min(1).max(20), xp: z.number().int().nonnegative(), xpNext: z.number().int().nonnegative(),
-    levelCap: z.number().int().min(1).max(20), upgrade: resources, abilities,
-    /** What the launch tops the tank and the magazine up to, in percent (owner 2026-10-27); full on a desk from before. */
-    plan: z.object({ fuel: z.number().int(), ammo: z.number().int() }).default({ fuel: 100, ammo: 100 }) }).nullable(),
-  refill: z.object({ fuel: z.number(), ammo: z.number(), total: z.number() }),
-  /** The capital's stock: what pays a refill and a level. */
-  deuterium: z.number(), alloy: z.number(), crystal: z.number(), cap: resources, sent: resources, resetsAt: z.string(), entryClosesAt: z.string(),
-  /** Who flies the Yarık right now (bots are not pilots). Optional for a rolling deploy. */
-  live: z.object({ pilots: z.number().int().nonnegative(),
-    /** The asker's own ship is in the room and alive: a closed page can fly it on (F22). */
-    yours: z.boolean().default(false) }).optional(),
-});
 export type Hangar = z.infer<typeof hangarSchema>;
 export type HangarAnswer = { ok: true; hangar: Hangar } | { ok: false; error: string; params: Record<string, string | number> };
 
@@ -43,7 +26,7 @@ async function ask(token: string | null, url: string, body: unknown, fetcher: ty
   if (!token) return { ok: false, error: 'auth', params: {} };
   const authorization = `Bearer ${token}`;
   try {
-    const response = await fetcher(url, body === undefined ? { headers: { authorization } }
+    const response = await fetcher(arenaUrl(url), body === undefined ? { headers: { authorization } }
       : { method: 'POST', headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const answer: unknown = await response.json();
     if (!response.ok) {

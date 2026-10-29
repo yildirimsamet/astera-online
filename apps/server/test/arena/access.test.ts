@@ -24,9 +24,9 @@ const identify: ArenaIdentify = token => Promise.resolve(ACCOUNTS[token] ?? null
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => { while (closers.length) await closers.pop()?.(); });
 
-async function room(pilots = 'alice,bob') {
+async function room(pilots = 'alice,bob', extra: Record<string, string> = {}) {
   const env = loadEnv({ DATABASE_URL: 'postgres://test/arena_test', JWT_SECRET: 'test-secret-that-is-long-enough',
-    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots, ARENA_BOTS: '3' });
+    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots, ARENA_BOTS: '3', ...extra });
   const app = Fastify();
   app.decorate('clock', systemClock);
   // Every launch is granted: the hangar's own rules are `arena-ships.test.ts` and `sortie.test.ts`.
@@ -39,9 +39,9 @@ async function room(pilots = 'alice,bob') {
 }
 
 type Waiter = (match: (m: unknown) => boolean) => Promise<unknown>;
-function connect(url: string, hello: Record<string, unknown>): Promise<{ socket: WebSocket; messages: unknown[]; next: Waiter }> {
+function connect(url: string, hello: Record<string, unknown>, origin = ORIGIN): Promise<{ socket: WebSocket; messages: unknown[]; next: Waiter }> {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(url, { origin: ORIGIN });
+    const socket = new WebSocket(url, { origin });
     const messages: unknown[] = [];
     const waiters: { match: (m: unknown) => boolean; done: (m: unknown) => void }[] = [];
     socket.on('message', raw => {
@@ -196,6 +196,21 @@ describe('farm points', () => {
     Object.assign(ship, { hold: [50, 0, 0], cargo: 50, phase: 'dead' });
     const roster = await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.deaths === 1));
     expect(pilotsOf(roster).find(p => p.id === id)?.points).toBe(0);
+  });
+});
+
+describe('arena socket origins', () => {
+  /** The bundled app's page is https://localhost; the API already trusts it through NATIVE_APP_ORIGINS. */
+  it('admits the bundled app\'s origin the API trusts, and nothing else', async () => {
+    const { url } = await room('alice', { NATIVE_APP_ORIGINS: 'https://localhost' });
+    const app = await connect(url, { token: 'token-alice' }, 'https://localhost');
+    expect(await app.next(kind('welcome'))).toMatchObject({ kind: 'welcome' });
+    await expect(connect(url, { token: 'token-alice' }, 'https://evil.example')).rejects.toThrow(/403/);
+  });
+
+  it('keeps the app\'s origin out while the API does not trust it', async () => {
+    const { url } = await room('alice');
+    await expect(connect(url, { token: 'token-alice' }, 'https://localhost')).rejects.toThrow(/403/);
   });
 });
 

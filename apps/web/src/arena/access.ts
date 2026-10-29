@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import type { Api } from '../api/client.js';
+import { arenaUrl, bundledApp } from './origin.js';
 
 type TokenSource = Pick<Api, 'accessToken' | 'restore'>;
 
@@ -31,7 +32,7 @@ const accessSchema = z.object({ allowed: z.boolean() });
 export async function probeArenaAccess(token: string | null, fetcher: typeof fetch = fetch): Promise<boolean> {
   if (!token) return false;
   try {
-    const response = await fetcher('/arena/access', { headers: { authorization: `Bearer ${token}` } });
+    const response = await fetcher(arenaUrl('/arena/access'), { headers: { authorization: `Bearer ${token}` } });
     if (!response.ok) return false;
     const parsed = accessSchema.safeParse(await response.json());
     return parsed.success && parsed.data.allowed;
@@ -43,7 +44,8 @@ export async function probeArenaAccess(token: string | null, fetcher: typeof fet
  * for a seated pilot. Anything but its 204 keeps the procedural set.
  */
 export async function openReferenceSession(token: string | null, fetcher: typeof fetch = fetch): Promise<boolean> {
-  if (!token) return false;
+  // The cookie is SameSite=Strict on the API host; an app page never sends it.
+  if (!token || bundledApp()) return false;
   try {
     const response = await fetcher('/arena/ref-session', { method: 'POST', credentials: 'same-origin', headers: { authorization: `Bearer ${token}` } });
     return response.status === 204;
