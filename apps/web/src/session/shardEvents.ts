@@ -218,6 +218,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** A mission began or an operator granted a reward while this commander was online. */
     case 'reward':
       return [keys.rewards];
+    /** A Shopier look paid in another tab arrived, or a refund took it back. */
+    case 'cosmetics':
+      return [keys.skins];
     /**
      * A CRAFT OF THIS COMMANDER'S REACHED A WORLD AND WROTE DOWN WHAT IT FOUND. D151.
      *

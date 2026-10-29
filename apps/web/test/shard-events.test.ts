@@ -378,6 +378,11 @@ describe('what a private clan event asks the client to read', () => {
     expect(readsForPrivateEvent('private:reward')).toEqual([keys.rewards]);
   });
 
+  /** A Shopier look paid in another tab arrives (or a refund takes it) while the game is open. */
+  it('refreshes only the looks the commander owns when a purchase lands or is refunded', () => {
+    expect(readsForPrivateEvent('private:cosmetics')).toEqual([keys.skins]);
+  });
+
   /**
    * The opposite default to the shard table's inert `[]`. A newer server naming a
    * kind this build has never heard of still described something that happened to

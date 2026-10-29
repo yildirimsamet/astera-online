@@ -13,11 +13,15 @@ import type * as Bus from '../src/stream/bus.js';
 
 // A pass-through spy: the real notification still goes out; the test only records it.
 const published = vi.hoisted(() => [] as { shard: string; kind: string }[]);
+const personal = vi.hoisted(() => [] as { playerId: string; kind: string }[]);
 vi.mock('../src/stream/bus.js', async (importOriginal) => {
   const actual = await importOriginal<typeof Bus>();
   return { ...actual, publishShard: (...args: Parameters<typeof Bus.publishShard>) => {
     published.push({ shard: args[1], kind: args[2] });
     return actual.publishShard(...args);
+  }, publish: (...args: Parameters<typeof Bus.publish>) => {
+    personal.push({ playerId: args[1], kind: args[2] });
+    return actual.publish(...args);
   } };
 });
 
@@ -340,6 +344,16 @@ describe('Shopier sales', () => {
       expect((await checkoutFor('planet-lava')).statusCode).toBe(409);
     });
 
+    it('tells the buyer\'s open game the look arrived, so the store updates without a reload', async () => {
+      const body = order(await opened('planet-lava'));
+      personal.length = 0;
+      await webhook('order.created', body);
+      expect(personal).toContainEqual({ playerId: fixture.playerIds[1], kind: 'private:cosmetics' });
+      personal.length = 0;
+      await webhook('order.created', { ...body, id: String(orderSeq++) });
+      expect(personal).toEqual([]);
+    });
+
     it('delivers even when the product had expired or been replaced: the buyer paid', async () => {
       const lava = await opened('planet-lava');
       fixture.clock.advance(49 * 60);
@@ -476,6 +490,14 @@ describe('Shopier sales', () => {
       expect(published).toContainEqual({ shard: fixture.seasonId, kind: 'world' });
     });
 
+    it('tells the buyer\'s open game a refunded look is gone', async () => {
+      const body = order(await opened('planet-lava'));
+      await webhook('order.created', body);
+      personal.length = 0;
+      await webhook('refund.updated', refund(body.id));
+      expect(personal).toContainEqual({ playerId: fixture.playerIds[1], kind: 'private:cosmetics' });
+    });
+
     it('remembers a refund that arrives before its order', async () => {
       const body = order(await opened('planet-lava'));
       await webhook('refund.updated', refund(body.id));
@@ -603,6 +625,7 @@ describe('Shopier sales', () => {
       const granted = await post(`orders/${body.id}/grant`, { username: playerUsername.toUpperCase() });
       expect(granted.statusCode, granted.body).toBe(200);
       expect(await owned()).toEqual(['planet-lava']);
+      expect(personal).toContainEqual({ playerId: fixture.playerIds[1], kind: 'private:cosmetics' });
       expect(await row(body.id)).toMatchObject({ status: 'RESOLVED', accountId: fixture.accountIds[1], closedAt: expect.any(Date) as Date });
       expect((await post(`orders/${body.id}/grant`, { username: playerUsername })).statusCode).toBe(409);
       expect(closes()).toHaveLength(1);

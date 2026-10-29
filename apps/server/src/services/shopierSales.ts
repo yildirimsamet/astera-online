@@ -6,7 +6,7 @@ import type { Db, Tx } from '../db/client.js';
 import { accounts, cosmeticEntitlements, planets, players, shopierCheckouts, shopierOrders,
   shopierWebhookEvents } from '../db/schema.js';
 import type { Env } from '../env.js';
-import { publishShard } from '../stream/bus.js';
+import { publish, publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
 import { closeShopierOrder, createShopierProduct, deleteShopierProduct, listShopierOrders, shopierReady } from './shopier.js';
 
@@ -135,6 +135,12 @@ const text = (value: unknown, max: number): string | null => typeof value === 's
 interface Outcome { status: 'MATCHED' | 'UNMATCHED'; reason: string | null; itemId: ShopierItemId | null;
   accountId: string | null; checkoutId: string | null }
 
+/** The buyer pays in another tab: their open game re-reads its looks instead of waiting for a reload. */
+async function tellOwner(tx: Tx, accountId: string): Promise<void> {
+  const commanders = await tx.select({ id: players.id }).from(players).where(eq(players.accountId, accountId));
+  for (const { id } of commanders) await publish(tx, id, 'private:cosmetics');
+}
+
 /** Rights for one order; replays insert nothing. Returns how many looks were new. */
 async function grantOrder(tx: Tx, accountId: string, itemId: ShopierItemId, orderId: string): Promise<number> {
   let granted = 0;
@@ -143,6 +149,7 @@ async function grantOrder(tx: Tx, accountId: string, itemId: ShopierItemId, orde
       orderRef: `${orderId}:${cosmeticId}` }).onConflictDoNothing().returning({ id: cosmeticEntitlements.id });
     granted += inserted.length;
   }
+  if (granted > 0) await tellOwner(tx, accountId);
   return granted;
 }
 
@@ -171,6 +178,7 @@ async function revokeOrder(tx: Tx, orderId: string): Promise<void> {
     for (const row of commanders) seasons.add(row.seasonId);
   }
   for (const seasonId of seasons) await publishShard(tx, seasonId, 'world');
+  for (const accountId of owners) await tellOwner(tx, accountId);
 }
 
 /** The product names the buyer. A paid order on one of ours delivers whatever the row's status. */
