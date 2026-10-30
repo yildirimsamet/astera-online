@@ -191,6 +191,9 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
  * which is why presence is stamped here (D21) rather than in a global hook that
  * would also fire for the health check and the login form.
  */
+/** A request that changes nothing: its identity may come from the cache (F1.8 C1). */
+export const isRead = (req: FastifyRequest): boolean => req.method === 'GET' || req.method === 'HEAD';
+
 export async function requireAuth(req: FastifyRequest): Promise<void> {
   if (req.accountId && req.authVersion !== undefined) {
     await req.server.presence.touch(req.accountId);
@@ -202,7 +205,7 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
   }
   let accountId: string;
   try {
-    const identity = await req.server.tokens.identity(header.slice(7), 'access');
+    const identity = await req.server.tokens.identity(header.slice(7), 'access', isRead(req));
     accountId = identity.accountId;
     req.authVersion = identity.version;
     req.nativeSessionId = identity.nativeSessionId;
@@ -229,7 +232,7 @@ export async function optionalAuth(req: FastifyRequest): Promise<void> {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return;
   try {
-    const identity = await req.server.tokens.identity(header.slice(7), 'access');
+    const identity = await req.server.tokens.identity(header.slice(7), 'access', isRead(req));
     req.accountId = identity.accountId;
     req.authVersion = identity.version;
     req.nativeSessionId = identity.nativeSessionId;

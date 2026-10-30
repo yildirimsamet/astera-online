@@ -4,6 +4,7 @@ import { accountIsBanned } from './accountBan.js';
 import type { Db } from '../db/client.js';
 import { accounts, nativeSessions } from '../db/schema.js';
 import type { Clock } from '../clock.js';
+import type { IdentityGrant } from '../auth/identityCache.js';
 import type { TokenService } from '../auth/tokens.js';
 import { findAccount, type AccountRecord } from './account.js';
 import { GameError } from './planet.js';
@@ -64,15 +65,15 @@ export class NativeSessions {
     });
   }
 
-  /** Plain read for request/stream fences; never write or take a lock per frame. */
-  async isCurrent(id: string, accountId: string, version: number): Promise<boolean> {
-    const [row] = await this.db.select({ id: nativeSessions.id }).from(nativeSessions)
+  /** Plain read for request/stream fences; never write or take a lock per frame. Its expiry while current, else null. */
+  async currentGrant(id: string, accountId: string, version: number): Promise<IdentityGrant | null> {
+    const [row] = await this.db.select({ until: nativeSessions.expiresAt }).from(nativeSessions)
       .innerJoin(accounts, eq(accounts.id, nativeSessions.accountId))
       .where(and(eq(nativeSessions.id, id), eq(nativeSessions.accountId, accountId),
         eq(nativeSessions.version, version), eq(accounts.authVersion, version),
         isNull(accounts.deletionApprovedAt), not(accountIsBanned),
         isNull(nativeSessions.revokedAt), gt(nativeSessions.expiresAt, this.clock.now())));
-    return row !== undefined;
+    return row ?? null;
   }
 
   private expiry(now: Date): Date { return new Date(now.getTime() + this.tokens.refreshDays * 86_400_000); }

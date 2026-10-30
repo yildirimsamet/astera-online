@@ -28,7 +28,8 @@ export class TokenService {
      * is signed in and an API that does not.
      */
     readonly refreshDays: number,
-    private readonly isCurrent?: (accountId: string, version: number, nativeSessionId?: string) => Promise<boolean>,
+    /** `read`: a read may be answered from the identity cache; a command never is (F1.8 C1). */
+    private readonly isCurrent?: (accountId: string, version: number, nativeSessionId: string | undefined, read: boolean) => Promise<boolean>,
   ) {
     this.key = new TextEncoder().encode(secret);
   }
@@ -58,7 +59,7 @@ export class TokenService {
    * The `typ` check matters: without it a refresh token — which lives in a cookie
    * for thirty days — would be accepted as an access token.
    */
-  async identity(token: string, expected: 'access' | 'refresh'): Promise<{ accountId: string; version: number; nativeSessionId?: string }> {
+  async identity(token: string, expected: 'access' | 'refresh', read = false): Promise<{ accountId: string; version: number; nativeSessionId?: string }> {
     let payload: JWTPayload;
     try {
       ({ payload } = await jwtVerify(token, this.key, { algorithms: ['HS256'] }));
@@ -74,7 +75,9 @@ export class TokenService {
     if (native && !sessionId?.success) throw new InvalidSessionError('invalid native session');
     if (!native && payload.sid !== undefined) throw new InvalidSessionError('unexpected native session');
     const nativeSessionId = sessionId?.success ? sessionId.data : undefined;
-    if (this.isCurrent && !await this.isCurrent(payload.sub, version, nativeSessionId)) throw new InvalidSessionError('revoked session');
+    if (this.isCurrent && !await this.isCurrent(payload.sub, version, nativeSessionId, read && expected === 'access')) {
+      throw new InvalidSessionError('revoked session');
+    }
     return { accountId: payload.sub, version, ...(nativeSessionId ? { nativeSessionId } : {}) };
   }
 

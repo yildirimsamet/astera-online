@@ -29,8 +29,9 @@ import type { Clock } from './clock.js';
 import { systemClock } from './clock.js';
 import { countStatements, createDb, type Db, type StatementCount } from './db/client.js';
 import { InvalidSessionError, TokenService } from './auth/tokens.js';
+import { IdentityCache, type IdentityGrant } from './auth/identityCache.js';
 import { GameError } from './services/planet.js';
-import { registerAuthRoutes } from './routes/auth.js';
+import { isRead, registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
 import { registerVacationRoutes } from './routes/vacation.js';
 import { registerNotificationCenterRoutes } from './routes/notificationCenter.js';
@@ -110,6 +111,7 @@ declare module 'fastify' {
     worker: EventWorker;
     bus: EventBus;
     projections: Projections;
+    identityCache: IdentityCache;
     rateLimitBackend: RateLimitBackend;
     metrics: RuntimeMetrics;
     streams: StreamRegistry;
@@ -187,10 +189,14 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
     opts.env.REFRESH_TOKEN_DAYS,
-    async (id, version, nativeSessionId) => {
-      if (nativeSessionId) return nativeSessions.isCurrent(nativeSessionId, id, version);
-      const [account] = await db.select({ version: accounts.authVersion, deletionApprovedAt: accounts.deletionApprovedAt }).from(accounts).where(and(eq(accounts.id, id), not(accountIsBanned)));
-      return account?.version === version && account.deletionApprovedAt === null;
+    async (id, version, nativeSessionId, read) => {
+      const load = async (): Promise<IdentityGrant | null> => {
+        if (nativeSessionId) return nativeSessions.currentGrant(nativeSessionId, id, version);
+        const [account] = await db.select({ version: accounts.authVersion, deletionApprovedAt: accounts.deletionApprovedAt }).from(accounts).where(and(eq(accounts.id, id), not(accountIsBanned)));
+        return account?.version === version && account.deletionApprovedAt === null ? { until: null } : null;
+      };
+      // F1.8 C1: a read may trust what this process was last told; a command asks the database.
+      return read ? identityCache.current(id, version, nativeSessionId, clock.now(), load) : await load() !== null;
     },
   );
   const nativeSessions = new NativeSessions(db, clock, tokens);
@@ -228,6 +234,9 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('bus', bus);
   const streamFence = new StreamFence(db, clock, bus, log);
   app.decorate('streamFence', streamFence);
+  const identityCache = new IdentityCache(bus, { enabled: opts.env.PROJECTION_CACHE_ENABLED,
+    maxAccounts: opts.env.PROJECTION_CACHE_MAX_ACCOUNTS, ttlMs: opts.env.PUBLIC_CACHE_TTL_MS });
+  app.decorate('identityCache', identityCache);
   const projections = new Projections(db, bus, {
     enabled: opts.env.PROJECTION_CACHE_ENABLED,
     maxSeasons: opts.env.PROJECTION_CACHE_MAX_SEASONS,
@@ -336,7 +345,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       const header = req.headers.authorization;
       if (!header?.startsWith('Bearer ')) return ipLimitKey(req);
       try {
-        const identity = await tokens.identity(header.slice(7), 'access');
+        const identity = await tokens.identity(header.slice(7), 'access', isRead(req));
         const accountId = identity.accountId;
         req.accountId = accountId;
         req.authVersion = identity.version;
@@ -549,6 +558,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       streams.drain();
       await closing;
       projections.close();
+      identityCache.close();
       streamFence.close();
       await bus.stop();
       await rateLimitBackend.stop();

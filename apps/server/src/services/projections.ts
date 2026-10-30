@@ -340,8 +340,9 @@ export class Projections {
   }
 
   private onEvent(event: StreamEvent): void {
-    // Global operator content has no bearing on game projections.
-    if ('global' in event) return;
+    // Global operator content has no bearing on game projections; an account's token
+    // ending is the identity cache's (`auth/identityCache.ts`).
+    if ('global' in event || 'account' in event) return;
     if ('playerId' in event) {
       const owned = ownedBy(event.playerId);
       if (event.kind === 'private:sensors') {

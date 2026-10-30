@@ -37,7 +37,12 @@ export const CHANNEL = 'astera_events';
 const playerEvent = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
 const shardEvent = z.object({ shard: z.string().min(1), kind: z.string().min(1) });
 const globalEvent = z.object({ global: z.literal(true), kind: z.string().min(1) });
-const eventPayload = z.union([playerEvent, shardEvent, globalEvent]);
+/**
+ * A token's end, said for the account (migration 0214, F1.8 C1). Only the identity
+ * cache observes it; no stream subscribes to an account topic, so no client hears it.
+ */
+const accountEvent = z.object({ account: z.string().uuid(), kind: z.literal('account:auth') });
+const eventPayload = z.union([playerEvent, shardEvent, globalEvent, accountEvent]);
 const heartbeatPayload = z.object({ heartbeat: z.string().uuid() });
 
 export type StreamEvent = z.infer<typeof eventPayload>;
@@ -585,6 +590,7 @@ const globalTopic = 'g:all';
 const topicOf = (event: StreamEvent): string => {
   if ('playerId' in event) return playerTopic(event.playerId);
   if ('shard' in event) return shardTopic(event.shard);
+  if ('account' in event) return `a:${event.account}`;
   return globalTopic;
 };
 
