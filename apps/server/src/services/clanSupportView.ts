@@ -148,28 +148,10 @@ export async function supportRoomOf(db: Queryable, planetId: string): Promise<Su
 }
 
 /**
- * THE HOST'S "KLAN DESTEĞİ" BAY, for the Hangar page. Null in a season without the rule.
- * Waves that have already turned for home are gone from it.
+ * THE HOST'S "KLAN DESTEĞİ" BAY, for the Hangar page, for several worlds, with each
+ * one's Hangar level already read (scaling plan F1.4). Null in a season without the
+ * rule. Waves that have already turned for home are gone from it.
  */
-export async function clanSupportBayView(
-  db: Queryable,
-  input: { planetId: string; rulesetVersion: number; at?: Date },
-): Promise<{ room: SupportRoom; waves: ClanSupportWaveView[] } | null> {
-  if (!clanDefenseApplies(input.rulesetVersion)) return null;
-  const [room, rows] = await Promise.all([
-    supportRoomOf(db, input.planetId),
-    db.select().from(clanSupportWaves)
-      .where(and(
-        eq(clanSupportWaves.hostPlanetId, input.planetId),
-        inArray(clanSupportWaves.status, [...ROOM_HOLDING]),
-      ))
-      .orderBy(asc(clanSupportWaves.arriveAt), asc(clanSupportWaves.id)),
-  ]);
-  const waves = (await viewWaves(db, rows, input.at)).filter(wave => ROOM_HOLDING.includes(wave.status));
-  return { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves };
-}
-
-/** `clanSupportBayView` for several worlds, with each one's Hangar level already read. Scaling plan F1.4. */
 export async function clanSupportBayViews(
   db: Queryable,
   input: { hangarLevels: ReadonlyMap<string, number>; rulesetVersion: number; at?: Date },

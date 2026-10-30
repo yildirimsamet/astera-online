@@ -964,8 +964,11 @@ Testler:
 > (eskiden ~110); zengin fixture 4 dünya **41** (eskiden 124; aktif aura altındaki bir dünyayla 48), detay 41 (46). Planın "≤30 / detay ≤15"
 > hedefi yerine: dünya eklemek 0 ifade; kalan 31'in 13'ü komutan bağlamı ve auth/yerleşim okumaları, 15'e
 > inmek onları birleştirmeyi ister (ayrı iş). Bir dünyanın üstünde aktif bomba kaynağı varsa radyasyonun
-> koşullu okumaları o dünya için tek tek kalır (nadir). **Kalan:** mutasyon cevaplarının (`mission.ts:589`
-> vb.) kilitli tx içinde salt okuma yolunu kullanması, ayrı commit. Testler: `planet-views-batched.test.ts`
+> koşullu okumaları o dünya için tek tek kalır (nadir). **30 Eki, adım 5:** mutasyon cevapları
+> (`loadPlanetViewData`, ~25 çağıran) aynı toplu yolu tek dünya için kullanır: sezon kilidi, ikinci tick,
+> Aegis/radyasyon/destek dalgası yazımı ve dalga kilidi yok; gezegen satırı `FOR UPDATE` kalır (mutasyonun
+> tutmadığı dünya, ör. terk sonrası başkent, okumalar arasında değişmez). Cevap, commit sonrası GET ile aynı
+> ve onunla aynı sayıda ifade; tek-dünya kopya yükleyici silindi. Testler: `planet-views-batched.test.ts`
 > (zengin fixture deep-equal, Silent Space, tatil, maliyet, tek snapshot, yazı/kilit yok, hata kodları, sıra).
 
 Dosyalar: `services/planetView.ts:113–132`, `services/planet.ts`, `routes/planet.ts:128–140`,

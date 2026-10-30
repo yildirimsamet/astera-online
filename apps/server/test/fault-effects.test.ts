@@ -14,6 +14,7 @@ import { launchMining } from '../src/services/mining.js';
 import { launchTransfer } from '../src/services/movement.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { sensorPosts } from '../src/services/traffic.js';
+import { loadLocked } from '../src/services/planet.js';
 import { planetView } from '../src/services/planetView.js';
 import {
   fuelUp, giveInstrument, giveResearch, giveSatellite, giveUnits, grant, placeAt, seedWorld, setLevel,
@@ -123,7 +124,7 @@ describe('üretim arızaları gerçek dünyada', () => {
     await f.db.update(planets).set({ bufferAlloy: buffer }).where(eq(planets.id, colony));
     await breakIt(f, colony, 'VAULT_LEAK');
     f.clock.advance(600);
-    await f.db.transaction((tx) => planetView(tx, colony, f.clock));
+    await f.db.transaction((tx) => loadLocked(tx, colony, f.clock));
     const [row] = await f.db.select().from(planets).where(eq(planets.id, colony));
     // 42,463 is the unchanged level-6 resource capacity. The store-clock branch binds.
     const excess = (42_463 / 60 - alloyRate(6)) * 10;
@@ -137,7 +138,7 @@ describe('üretim arızaları gerçek dünyada', () => {
     await grant(f.db, colony, 50_000, 20_000);
     await breakIt(f, colony, 'VAULT_LEAK');
     f.clock.advance(120);
-    await f.db.transaction((tx) => planetView(tx, colony, f.clock));
+    await f.db.transaction((tx) => loadLocked(tx, colony, f.clock));
     const [row] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(row!.alloy).toBeLessThan(50_000);
     expect(row!.pendingLeakAlloy).toBeGreaterThan(0);
@@ -147,11 +148,11 @@ describe('üretim arızaları gerçek dünyada', () => {
     await grant(f.db, colony, 50_000, 20_000);
     await breakIt(f, colony, 'VAULT_LEAK');
     f.clock.advance(10);
-    await f.db.transaction((tx) => planetView(tx, colony, f.clock));
+    await f.db.transaction((tx) => loadLocked(tx, colony, f.clock));
     const [first] = await f.db.select().from(planets).where(eq(planets.id, colony));
 
     f.clock.advance(10);
-    await f.db.transaction((tx) => planetView(tx, colony, f.clock));
+    await f.db.transaction((tx) => loadLocked(tx, colony, f.clock));
     const [second] = await f.db.select().from(planets).where(eq(planets.id, colony));
 
     expect(first!.pendingLeakAlloy).toBeGreaterThan(0);
@@ -161,7 +162,7 @@ describe('üretim arızaları gerçek dünyada', () => {
   it('sızıntı yokken hiçbir şey orbite sızmaz', async () => {
     await grant(f.db, colony, 50_000, 20_000);
     f.clock.advance(120);
-    await f.db.transaction((tx) => planetView(tx, colony, f.clock));
+    await f.db.transaction((tx) => loadLocked(tx, colony, f.clock));
     const [row] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(row!.alloy).toBe(50_000);
     expect(row!.pendingLeakAlloy).toBe(0);

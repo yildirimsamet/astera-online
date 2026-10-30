@@ -36,6 +36,7 @@ import {
   startClanWar,
 } from '../src/services/clanWar.js';
 import { rememberWorld } from '../src/services/intel.js';
+import { loadLocked } from '../src/services/planet.js';
 import { planetView } from '../src/services/planetView.js';
 import { grantRecoveryShield } from '../src/services/attackProtection.js';
 import { busy, reclaimIdleSeats } from '../src/services/reclaim.js';
@@ -227,6 +228,8 @@ describe('a combined strike settling', () => {
     await start(f);
     const travelling = await f.db.select().from(missions).where(eq(missions.status, 'in_flight'));
     f.clock.set(new Date(Math.max(...travelling.map(row => row.arriveAt.getTime())) + 20_000));
+    // A view writes nothing (F1.4); settle the row so it holds what the strike will meet.
+    await f.db.transaction(tx => loadLocked(tx, f.planetIds[2]!, f.clock));
     const before = await f.db.transaction(tx => planetView(tx, f.planetIds[2]!, f.clock));
     // The view rounds stock and buffers for display; battle accounting uses the raw ledger.
     const [raw] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[2]!));

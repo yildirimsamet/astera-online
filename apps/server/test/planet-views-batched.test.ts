@@ -12,7 +12,8 @@ import {
 } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
 import { buildPlanetView, loadPlanetViewData, loadPlanetViewsData } from '../src/services/planetView.js';
-import { GameError } from '../src/services/planet.js';
+import { collectWorks } from '../src/services/build.js';
+import { GameError, loadLocked } from '../src/services/planet.js';
 import {
   giveInstrument, giveResearch, giveSatellite, giveUnits, landAndDockShips, seedWorld, setLevel, testDb, testEnv,
   TEST_DATABASE_URL, type Fixture,
@@ -23,8 +24,8 @@ import {
  *
  * `/api/planets` read each world's tables on their own: 117 statements for four
  * worlds on a ruleset 19 galaxy, 25 more for every world. The list now reads each
- * table once for all of them and renders each world from the same pure arithmetic;
- * the oracle here is the single-world loader the mutation responses still use.
+ * table once for all of them and renders each world from the same pure arithmetic.
+ * The oracle renders each world alone, so no world can borrow another's rows.
  */
 const wire: string[] = [];
 const statements: string[] = [];
@@ -134,12 +135,12 @@ async function richWorld(): Promise<{ capital: string; colonies: [string, string
   return { capital, colonies };
 }
 
-/** What the single-world loader renders for each world, in the list's order, in one snapshot. */
+/** Each world rendered alone, in the list's order, in one snapshot. */
 async function oracle(ids: readonly string[]) {
   const now = f.clock.now();
   return f.db.transaction(async tx => {
     const views = [];
-    for (const id of ids) views.push(buildPlanetView(await loadPlanetViewData(tx, id, { now: () => now }, undefined, { readOnly: true })));
+    for (const id of ids) views.push(buildPlanetView((await loadPlanetViewsData(tx, [id], { now: () => now }))[0]!));
     return JSON.parse(JSON.stringify(views)) as unknown;
   }, SNAPSHOT);
 }
@@ -175,7 +176,7 @@ async function app() {
 
 beforeEach(() => { statements.length = 0; });
 
-it('renders every world exactly as the single-world loader does', async () => {
+it('renders every world exactly as it renders alone', async () => {
   const { capital, colonies } = await richWorld();
   const get = await app();
   const expected = await oracle([capital, ...colonies.toSorted()]);
@@ -202,7 +203,7 @@ it.each([
   ['in Silent Space', async () => { await f.db.update(shards).set({ role: 'WAITING' }); }],
   ['on vacation', async () => { await f.db.update(planets).set({ vacationUntil: minutes(600), vacationStartedAt: minutes(-600) })
     .where(eq(planets.controllerPlayerId, f.playerIds[0]!)); }],
-] as const)('renders a commander %s exactly as the single-world loader does', async (_name, vary) => {
+] as const)('renders a commander %s exactly as it renders alone', async (_name, vary) => {
   const { capital, colonies } = await richWorld();
   await vary();
   const get = await app();
@@ -283,4 +284,57 @@ it('writes nothing and locks nothing while it reads', async () => {
   await get('/api/planets');
   const [view] = viewTransactions();
   expect(view!.filter(q => /^(insert|update|delete)\b/i.test(q) || /\bfor (update|share|no key update|key share)\b/i.test(q))).toEqual([]);
+});
+
+/**
+ * A MUTATION ANSWERS WITH THE WORLD AS A GET READS IT. Scaling plan F1.4, step 5.
+ *
+ * The mutation already locked and ticked its world, so the response takes no season
+ * lock, no second tick and no radiation or Aegis write. It keeps the world's row lock:
+ * a world the mutation did not hold (an abandoned colony answers with the capital)
+ * still cannot change under the response between its reads.
+ */
+/** A mutation waits for a finished research order to land; keep the fixture's one queued. */
+async function mutableWorld() {
+  const worlds = await richWorld();
+  await f.db.update(researchOrders).set({ readyAt: minutes(45) });
+  return worlds;
+}
+
+async function wireOf<T>(run: () => Promise<T>) {
+  wire.length = 0;
+  const value = await run();
+  return { value, queries: [...wire] };
+}
+
+it('renders a mutation response for the price of a read-only detail, writing nothing', async () => {
+  const { capital, colonies } = await mutableWorld();
+  const now = f.clock.now();
+  const clock = { now: () => now };
+  // The colony the mutation holds, under a bomb's aura, and a capital it never locked.
+  for (const world of [colonies[0], capital]) {
+    const inside = await db.transaction(async tx => {
+      await loadLocked(tx, colonies[0], clock);
+      return wireOf(() => loadPlanetViewData(tx, world, clock));
+    });
+    // The same world a GET reads once the mutation commits, at the same instant.
+    const read = await db.transaction(tx => wireOf(() => loadPlanetViewsData(tx, [world], clock)), SNAPSHOT);
+    const report = `${world === capital ? 'capital' : 'held colony'}: read ${read.queries.length}, mutation ${inside.queries.length}`;
+    expect(inside.queries.length, report).toBe(read.queries.length);
+    expect(inside.queries.filter(q => /^(insert|update|delete)\b/i.test(q)), report).toEqual([]);
+    expect(inside.queries.filter(q => /\bfor (update|share|no key update|key share)\b/i.test(q)), report)
+      .toEqual([expect.stringMatching(/^select .* from "planets" where "planets"\."id" in \(.*\) for update$/)]);
+    expect(buildPlanetView(inside.value), report).toEqual(buildPlanetView(read.value[0]!));
+  }
+});
+
+it('answers a mutation with the world a GET reads right after it', async () => {
+  const { capital, colonies } = await mutableWorld();
+  const get = await app();
+  for (const world of [colonies[0], capital]) {
+    const collected = await collectWorks(db, world, f.clock, f.playerIds[0]);
+    const { response } = await get(`/api/planets/${world}`);
+    expect(response.statusCode, response.body).toBe(200);
+    expect(JSON.parse(JSON.stringify(collected.planet))).toEqual(response.json());
+  }
 });

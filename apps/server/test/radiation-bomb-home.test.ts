@@ -13,7 +13,7 @@ import { readHomeHealth, writeHomeHealth } from '../src/services/homeHealth.js';
 import { loadLocked } from '../src/services/planet.js';
 import * as planetModule from '../src/services/planet.js';
 import * as radiationHonorModule from '../src/services/honorRadiation.js';
-import { buildPlanetView, loadPlanetViewData, planetView } from '../src/services/planetView.js';
+import { buildPlanetView, loadPlanetViewsData, planetView } from '../src/services/planetView.js';
 import { dockLotsOf, landHpShips } from '../src/services/shipDamage.js';
 import { tellRadiationLoss } from '../src/services/radiation.js';
 import { missions, notifications } from '../src/db/schema.js';
@@ -53,8 +53,8 @@ it('projects parked ship damage on a read without persisting and settles it once
   await hit();
   f.clock.advance(1);
   const [storedBefore] = await f.db.select().from(units).where(and(eq(units.planetId, home), eq(units.hull, 'CITADEL')));
-  const view = buildPlanetView(await f.db.transaction(tx => loadPlanetViewData(tx, home, f.clock, undefined,
-    { readOnly: true }), { accessMode: 'read only' }));
+  const view = buildPlanetView(await f.db.transaction(tx => loadPlanetViewsData(tx, [home], f.clock)
+    .then(views => views[0]!), { accessMode: 'read only' }));
   expect(view.fleetDamage[0]!.damageBp + view.fleetDamage[0]!.remainderBp!).toBeCloseTo(9 / HULLS.CITADEL.hp * 10000);
   const [storedAfter] = await f.db.select().from(units).where(and(eq(units.planetId, home), eq(units.hull, 'CITADEL')));
   expect(storedAfter).toEqual(storedBefore);
@@ -344,7 +344,7 @@ it('keeps dock injuries authoritative in the dock lot, including read-only proje
   await f.db.transaction(tx => writeHomeHealth(tx, home, { CITADEL: 3 }, [{ hull: 'CITADEL', count: 3, damageBp: 5000 }]));
   await maintenanceAction(f.db, f.playerIds[1]!, home, 'DOCK', { source: 'HOME', groups: [{ hull: 'CITADEL', count: 3, damageBp: 5000 }] }, randomUUID(), f.clock);
   await hit(); f.clock.advance(1);
-  const view = buildPlanetView(await f.db.transaction(tx => loadPlanetViewData(tx, home, f.clock, undefined, { readOnly: true }), { accessMode: 'read only' }));
+  const view = buildPlanetView(await f.db.transaction(tx => loadPlanetViewsData(tx, [home], f.clock).then(views => views[0]!), { accessMode: 'read only' }));
   expect(view.dock.lots[0]!.damageBp + (view.dock.lots[0]!.remainderBp ?? 0)).toBeCloseTo(5000 + 9 / HULLS.CITADEL.hp * 10000);
   expect((await f.db.select().from(shipDamageLots))[0]!.damageBp).toBe(5000);
   await f.db.transaction(tx => loadLocked(tx, home, f.clock));

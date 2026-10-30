@@ -7,6 +7,7 @@ import { forceRecoveryShield, grantRecoveryShield } from '../src/services/attack
 import { launchProbe } from '../src/services/intel.js';
 import { reportsSchema } from '../../web/src/api/schemas.js';
 import { launchAttack } from '../src/services/mission.js';
+import { loadLocked } from '../src/services/planet.js';
 import { planetView } from '../src/services/planetView.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -154,6 +155,8 @@ describe('tier-specific PvP settlement and recovery', () => {
     const run = await launchAttack(f.db, mine, theirs, { DART: 10, COURIER: 300 }, f.clock);
     const [mission] = await f.db.select().from(missions).where(eq(missions.id, run.missionId));
     f.clock.set(settledAt(mission!.arriveAt));
+    // A view writes nothing (F1.4); settle the row so it holds what the raid will meet.
+    await f.db.transaction(tx => loadLocked(tx, theirs, f.clock));
     const before = await f.db.transaction(tx => planetView(tx, theirs, f.clock));
     const [rawBefore] = await f.db.select().from(planets).where(eq(planets.id, theirs));
     await new EventWorker(f.db, f.clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, pino({ level: 'silent' })).tick();
@@ -186,6 +189,7 @@ describe('tier-specific PvP settlement and recovery', () => {
     const scout = await launchProbe(f.db, mine, theirs, f.clock);
     f.clock.set(scout.arriveAt);
     await new EventWorker(f.db, f.clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, pino({ level: 'silent' })).tick();
+    await f.db.transaction(tx => loadLocked(tx, theirs, f.clock));
     const view = await f.db.transaction(tx => planetView(tx, theirs, f.clock));
     const p = view.planet;
     const [raw] = await f.db.select().from(planets).where(eq(planets.id, theirs));

@@ -41,15 +41,15 @@ import {
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
-import { baysFor, baysOf } from './flight.js';
-import { loadPlanetViewState, loadPlanetViewStates, GameError, type LockedPlanet } from './planet.js';
+import { baysFor } from './flight.js';
+import { loadPlanetViewStates, type LockedPlanet } from './planet.js';
 import { asTech, buildResearchView, loadResearchViewData } from './researchState.js';
-import { dockLotsFor, dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
+import { dockLotsFor, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
 import { buildDefencePostureView } from './defencePosture.js';
 import { activeClanMembership } from './clanCombat.js';
-import { clanSupportBayView, clanSupportBayViews } from './clanSupportView.js';
-import { workshopRadiation, workshopRadiationFor } from './workshop.js';
+import { clanSupportBayViews } from './clanSupportView.js';
+import { workshopRadiationFor } from './workshop.js';
 import { readHonorPlayerPolicy } from './honorBenefits.js';
 import {
   activeResearchOrders,
@@ -118,7 +118,17 @@ const PAD_HARDWARE = or(
     inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY', 'LAUNCHED'])),
 );
 
-/** A run at the convoy occurrence that is up at `now`. */
+/**
+ * A run at the convoy occurrence that is up at `now`: THIS WORLD HAS ALREADY SPENT ITS
+ * ONE STRIKE. D201.
+ *
+ * A world may strike each occurrence exactly once, ever (a unique index on
+ * `(planet_id, occurrence_id)`), and a crossing lasts three hours while a round trip
+ * rarely lasts one. Publishing only `convoyLaunchLocked`, which clears the moment the
+ * fleet lands, re-armed a control with nothing left to spend and answered the commit
+ * with `CONVOY_ALREADY_RAIDED`. A rule the player cannot SEE is not a usable rule (D124),
+ * so the state travels with the world: one boolean about the convoy that is public now.
+ */
 const convoyStruck = (now: Date) => and(
   // An abandoned outbound run released its ration; the control stays live.
   isNull(intergalacticConvoyRuns.abandonedAt),
@@ -145,81 +155,18 @@ async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
     colonies, pvpBalance, hasMembership: membership !== null, queuedResearch, benefits: honor.benefits, honorTacticalCredit: honor.tacticalCredit };
 }
 
-export async function loadPlanetViewData(
-  tx: Tx, planetId: string, clock: Clock,
-  shared?: Awaited<ReturnType<typeof loadCommanderViewData>>,
-  options: { readOnly?: boolean } = {},
-) {
-  const { planet: p, unitRows, faultRows } = await loadPlanetViewState(tx, planetId, clock, options);
-  if (shared && (shared.playerId !== p.playerId || shared.seasonId !== p.seasonId)) {
-    throw new GameError('PLACEMENT_CHANGED', 'World ownership changed; refresh and try again', 409);
-  }
-  /*
-    ONE PASS, NOT FIVE. Resource analysis follow-up 2026-10-14.
-
-    Everything below reads the same snapshot and depends only on the world state
-    above, so it is issued together and pipelined on this transaction's connection
-    instead of waiting for each answer in turn.
-  */
-  const [commander, assets, queued, [activeConvoy], [spentConvoy], dockLots, flight, clanSupport, workshopIrradiated] = await Promise.all([
-    shared ?? loadCommanderViewData(tx, p),
-    tx.select().from(strategicAssets).where(and(eq(strategicAssets.planetId, planetId), PAD_HARDWARE))
-      .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
-    tx.select().from(buildOrders)
-      .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
-      .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
-    tx.select({ id: intergalacticConvoyRuns.id })
-      .from(intergalacticConvoyRuns)
-      .where(and(
-        eq(intergalacticConvoyRuns.planetId, planetId),
-        ne(intergalacticConvoyRuns.status, 'done'),
-      ))
-      .limit(1),
-    /**
-     * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
-     *
-     * A world may strike each occurrence exactly once, ever — the DB says so with a
-     * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
-     * while a round trip rarely lasts one. So the ordinary case is a commander whose
-     * fleet is safely home, inside the same window, looking at a control that has
-     * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
-     * moment the fleet lands) re-armed that control and let them pick a wing, read a
-     * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
-     *
-     * A rule the player cannot SEE is not a usable rule (D124), so the state travels
-     * with the world rather than living only in the refusal. It names no occurrence
-     * and no run: it is one boolean about the convoy that is public right now.
-     */
-    tx.select({ id: intergalacticConvoyRuns.id })
-      .from(intergalacticConvoyRuns)
-      .innerJoin(
-        galaxyEventOccurrences,
-        eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
-      )
-      .where(and(eq(intergalacticConvoyRuns.planetId, planetId), convoyStruck(p.now)))
-      .limit(1),
-    dockLotsOf(tx, planetId, unitRows),
-    baysOf(tx, planetId, p.buildings.CORE),
-    clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion, at: p.now }),
-    workshopRadiation(tx, p),
-  ]);
-  return { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
-    dockLots, flight, clanSupport, workshopIrradiated };
-}
-
-export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewData>>;
-
 /**
  * EVERY WORLD OF ONE COMMANDER, READ ONLY, ONE READ PER TABLE. Scaling plan F1.4 (M9).
  *
- * What `loadPlanetViewData` captures for each world, read for all of them at once:
- * four worlds cost what one does. In the caller's order, from one clock instant; the
- * first world brings the commander and the rest must belong to the same one.
+ * What a world's view captures, read for all of them at once: four worlds cost what
+ * one does. In the caller's order, from one clock instant; the first world brings the
+ * commander and the rest must belong to the same one.
  */
-export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], clock: Clock): Promise<PlanetViewData[]> {
+export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], clock: Clock,
+  options: { lock?: boolean } = {}) {
   if (planetIds.length === 0) return [];
   const now = clock.now();
-  const states = await loadPlanetViewStates(tx, planetIds, { now: () => now });
+  const states = await loadPlanetViewStates(tx, planetIds, { now: () => now }, options);
   const head = states[0]!.planet;
   const ids = states.map(state => state.planet.planetId);
   const rows = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
@@ -258,6 +205,20 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
     clanSupport: clanSupport.get(p.planetId) ?? null,
     workshopIrradiated: workshop.get(p.planetId) ?? false,
   }));
+}
+
+export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewsData>>[number];
+
+/**
+ * A MUTATION'S ANSWER: the world as a GET reads it. Scaling plan F1.4.
+ *
+ * The mutation already ticked and settled the world under its own lock, so the view
+ * takes no season lock and writes nothing. It keeps the world's row lock: a world the
+ * mutation did not hold (the capital after a colony is abandoned) cannot change under
+ * it between its reads.
+ */
+export async function loadPlanetViewData(tx: Tx, planetId: string, clock: Clock): Promise<PlanetViewData> {
+  return (await loadPlanetViewsData(tx, [planetId], clock, { lock: true }))[0]!;
 }
 
 /** Apply to the transaction promise, so rendering never prolongs its world locks. */
