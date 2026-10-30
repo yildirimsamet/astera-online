@@ -2,6 +2,8 @@ import { AccountSecurityEntry } from '../screens/AccountSecuritySheet.js';
 import { AccountDeletionEntry } from '../screens/AccountDeletionSheet.js';
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { VacationSheet } from '../screens/VacationSheet.js';
+import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
+import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
 import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
 import { useAnnouncements, useLeaderboard, useRewards } from '../api/queries.js';
@@ -43,6 +45,7 @@ import {
   HeartIcon,
   HonorIcon,
   AttackIcon,
+  BroadcastIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { publisherUrl } from '../lib/publisherPages.js';
@@ -194,6 +197,10 @@ export function MenuPanel({
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [vacationOpen, setVacationOpen] = useState(false);
+  const [centerOpen, setCenterOpen] = useState(false);
+  const center = useNotificationCenter(platform.notificationCenter).data;
+  // Built, and the next attack alert at the commander's timing would not go out.
+  const centerEmpty = center?.built === true && center.wallet < center.prices.incoming_attack[center.timing];
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   // Focus returns to the tile that opened the simulator.
   const simulatorOpener = useRef<HTMLElement | null>(null);
@@ -327,6 +334,16 @@ export function MenuPanel({
             onOpen('rewards');
           }}
         />
+        <MenuTile
+          icon={<BroadcastIcon className="size-5" />}
+          label={t('notificationCenter.title')}
+          art={ATMOSPHERE.notificationCenter}
+          hint={t('notificationCenter.menuHint')}
+          attention={centerEmpty}
+          {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
+          onClick={() => { setCenterOpen(true); }}
+        />
+        {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
       </MenuGroup>
 
       <MenuGroup label={t('menu.asteraHeading')}>

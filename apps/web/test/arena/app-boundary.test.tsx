@@ -15,6 +15,7 @@ vi.mock('../../src/session/useEventStream.js', () => ({ useEventStream: vi.fn() 
 vi.mock('../../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: vi.fn() }));
 vi.mock('../../src/api/context.js', () => ({ useApi: () => ({ accessToken: null, restore: () => Promise.resolve(false) }) }));
 vi.mock('../../src/lib/music.js', () => ({ useAmbientMusic: vi.fn() }));
+vi.mock('../../src/shell/LocalAlertSync.js', () => ({ LocalAlertSync: () => null }));
 vi.mock('../../src/api/world.js', () => ({ WorldProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('../../src/v2/shell/GameShell.js', () => ({ GameShell:
   ({ galaxy }: { galaxy: (props: object) => ReactNode }) => galaxy({}),

@@ -573,6 +573,18 @@ export function HelpIcon(props: IconProps) {
   );
 }
 
+/** Bildirim Merkezi: a relay mast sending past the game, to a closed phone. */
+export function BroadcastIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="8.6" r="1.6" />
+      <path d="M12 10.4 9.2 20M12 10.4l2.8 9.6M10 17.2h4" />
+      <path d="M8.6 5.6a4.8 4.8 0 0 0 0 6M15.4 5.6a4.8 4.8 0 0 1 0 6" />
+      <path d="M6.1 3.4a8 8 0 0 0 0 10.4M17.9 3.4a8 8 0 0 1 0 10.4" strokeOpacity=".55" />
+    </Glyph>
+  );
+}
+
 export function BellIcon(props: IconProps) {
   return (
     <Glyph {...props}>

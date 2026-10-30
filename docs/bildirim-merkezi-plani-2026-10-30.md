@@ -68,6 +68,20 @@ kayıt `provenance.json`. Codex (`codex exec`) üretir, Radar/Teleskop yanında 
 webp'ye optimize edilir, oyunda ekran görüntüsüyle doğrulanır. Bildirim türü ikonları SVG
 (`v2/icons.tsx`).
 
+## Uygulanan (2026-10-30)
+
+- Kurallar `8b805f56`, sunucu `e0df7688`; istemci: Ana Menü "Bu sezon" grubunda kutucuk, Merkez ekranı
+  (kurulum, kasa, onaylı aktarım, zamanlama fiyatları, tür anahtarları, son uyarılar, kural detayı),
+  web'de Play bağlantısı, sonda raporunda (Hedef dosyası) Merkez okuması.
+- Yerel kuyruk uyarıları **Merkez kurulmadan da** kullanılabilir (ücretsiz, binaya bağlı değil).
+  Ayar cihazda, varsayılan kapalı; izin istemi yalnız oyuncu açınca. Telefon izni hiç saklanmaz:
+  her açılışta ve uygulama öne her geldiğinde okunur; ayarlardan kapatılırsa ekranda söylenir.
+  Senkron tek seferde bir tane çalışır (eskiyen plan atlanır), dil değişince metin yenilenir,
+  çıkışta cihazdaki kuyruk uyarıları silinir. Android 12+ tam zamanlı alarm izni yoksa uyarı
+  birkaç dakika gecikebilir; ekran bunu söyler ve ayarı açar.
+- Görseller: `images/atmosphere/notification-center-v1.webp` (sahne/başlık/kutucuk),
+  `images/general/notification_center_1.webp` (donanım); tank penceresi kanonik döteryum yeşili.
+
 ## Açık işler
 
 - Sahip: Firebase projesi + `google-services.json` (FCM için).

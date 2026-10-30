@@ -24,6 +24,7 @@ import { PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
+import { NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
@@ -750,6 +751,28 @@ function GalleryResearch() {
   return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
 }
 
+/** Bildirim Merkezi (owner 2026-10-30): built with a ledger, not yet built, and the web's install prompt. */
+function GalleryNotificationCenter({ state }: { state: 'built' | 'new' | 'web' }) {
+  const client = useQueryClient();
+  useState(() => {
+    const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
+    client.setQueryData(['planet'], planetView({}, { id: 'p-1', name: 'Thistle', alloy: 4_200, crystal: 900, deuterium: 640 }));
+    client.setQueryData(keys.notificationCenter, {
+      built: state === 'built', wallet: 95, timing: 'T5', muted: ['incoming_strategic'],
+      buildCost: { alloy: 1510, crystal: 1133, deuterium: 0 }, deuteriumPerHour: 12.4,
+      prices: { incoming_attack: prices, incoming_strategic: { T3: 30, T5: 45, T15: 90, RADAR: 150 }, probe_detected: 20 },
+      unfunded: 1,
+      recent: state !== 'built' ? [] : [
+        { kind: 'incoming_attack', status: 'SENT', price: 30, sendAt: new Date(NOW - 40 * MIN), payload: { targetPlanetName: 'Thistle' } },
+        { kind: 'probe_detected', status: 'UNFUNDED', price: 20, sendAt: new Date(NOW - 180 * MIN), payload: { targetPlanetName: 'Vela' } },
+        { kind: 'incoming_attack', status: 'CANCELLED', price: null, sendAt: new Date(NOW - 600 * MIN), payload: { targetPlanetName: 'Thistle' } },
+      ],
+    });
+    return null;
+  });
+  return <NotificationCenterSheet onClose={noop} native={state !== 'web'} />;
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
@@ -763,6 +786,9 @@ function Views({ view }: { view: string }) {
     <div className="p-3"><TeamPanel credential={() => Promise.resolve('dev')} onEnter={noop} /></div>
   </Sheet>;
   if (view === 'intel') return <GalleryIntel />;
+  if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
+  if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
+  if (view === 'notification-center-web') return <GalleryNotificationCenter state="web" />;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
   if (view === 'base-research') return <GalleryResearch />;

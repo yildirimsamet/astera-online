@@ -90,6 +90,35 @@ it.each(['android', 'ios'])('retains inventory and account controls without web 
   expect(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') })).toBeVisible();
 });
 
+/** Bildirim Merkezi (owner 2026-10-30): in the season group; the web is sent to the app. */
+it('opens the Notification Center from the season group, as an install prompt on the web', async () => {
+  const view = show();
+  const season = [...view.container.querySelectorAll('[data-menu-group]')]
+    .find(group => group.querySelector('h2')?.textContent === i18n.t('menu.seasonHeading'));
+  const tile = screen.getByRole('button', { name: named(i18n.t('notificationCenter.title'), i18n.t('notificationCenter.menuHint')) });
+  expect(season?.contains(tile)).toBe(true);
+  fireEvent.click(tile);
+  expect(await screen.findByRole('link', { name: i18n.t('notificationCenter.install') })).toBeInTheDocument();
+});
+
+it('marks the Notification Center tile when its wallet cannot pay the next alert', async () => {
+  vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+  vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+  const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
+  const center = { built: true, wallet: 10, timing: 'T5', muted: [], buildCost: { alloy: 1, crystal: 1, deuterium: 0 }, deuteriumPerHour: 0,
+    prices: { incoming_attack: prices, incoming_strategic: prices, probe_detected: 20 }, unfunded: 0, recent: [] };
+  const fetch = vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url.includes('/api/notification-center') ? center : { servers: [], placement: null }),
+    { status: 200, headers: { 'content-type': 'application/json' } })));
+  const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+  const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}>
+    <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={new Date(Date.now() + 3_600_000)} onOpen={vi.fn()} onSignOut={vi.fn()} />
+  </ApiProvider></QueryClientProvider>);
+  const tile = screen.getByRole('button', { name: named(i18n.t('notificationCenter.title'), i18n.t('notificationCenter.menuHint')) });
+  await waitFor(() => { expect(tile.querySelector('[data-menu-badge]')).toHaveTextContent(i18n.t('notificationCenter.menuEmpty')); });
+  vi.restoreAllMocks();
+});
+
 const follows = (first: Element | null | undefined, second: Element | null): boolean => {
   if (!first || !second) return false;
   return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
@@ -104,7 +133,7 @@ describe('the menu groups what it offers', () => {
     const onOpen = vi.fn();
     const view = show({ onOpen });
     const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
-    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(7);
+    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(8);
     const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
     expect(rewards.querySelector('img')).toHaveAttribute('alt', '');
     fireEvent.click(rewards);

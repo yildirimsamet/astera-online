@@ -2526,6 +2526,11 @@ export const intelSchema = z.object({
        */
       loyalty: z.number().nonnegative().optional(),
       /**
+       * THEIR BİLDİRİM MERKEZİ AT THE LOOK (owner 2026-10-30, decision 8): built or not and
+       * a wallet band, sometimes misread by a weaker probe. Absent means never measured.
+       */
+      notificationCenter: z.enum(['NONE', 'EMPTY', 'FEW', 'PLENTY', 'UNKNOWN']).optional(),
+      /**
        * THE THREE READINGS D199 ADDED: the shape of what fires, the Aegis charge at
        * arrival and the hulls in the line that fire nothing. Absent on a report
        * written before them — which is "never measured", never "measured at zero".

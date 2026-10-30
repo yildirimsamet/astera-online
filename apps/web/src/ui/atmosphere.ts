@@ -33,6 +33,8 @@ export const ATMOSPHERE = {
   /** Owner 2026-10-27: the Base's other two pages had no header art. */
   baseWorld: { src: `${BASE}/base-world-v1.webp`, position: '60% 42%' },
   commanderShip: { src: `${BASE}/commander-ship-v1.webp`, position: '55% 52%' },
+  /** Bildirim Merkezi, owner 2026-10-30. */
+  notificationCenter: { src: `${BASE}/notification-center-v1.webp`, position: '50% 30%' },
 } satisfies Record<string, AtmosphereArt>;
 
 

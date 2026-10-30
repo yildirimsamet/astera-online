@@ -4,7 +4,7 @@ import { OpeningScene } from '../brand/OpeningScene.js';
 import { runtime } from '../platform/runtime.js';
 import { reloadWebApp } from '../platform/updateGate.js';
 
-const PLAY_STORE = 'https://play.google.com/store/apps/details?id=space.asteraonline.app';
+export const PLAY_STORE = 'https://play.google.com/store/apps/details?id=space.asteraonline.app';
 
 /** The API refused this client: explain why, then reload the web or update the app. */
 export function UpdateRequired() {
