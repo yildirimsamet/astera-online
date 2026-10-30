@@ -24,7 +24,7 @@ export function resolveCapabilities(platform: Runtime, buildTarget: string) {
     nativeRewardedAds: false,
     /** Free queue alerts scheduled on the phone (Bildirim Merkezi, decision 3). */
     localNotifications: platform === 'android',
-    nativePush: false,
+    nativePush: platform === 'android',
     /** Bildirim Merkezi: Android first, never on the web (owner 2026-10-30). */
     notificationCenter: platform === 'android',
   };

@@ -17,6 +17,8 @@ const clearLocalAlerts = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 vi.mock('../src/platform/localNotifications.js', async importOriginal => ({
   ...await importOriginal<Record<string, unknown>>(), clearLocalAlerts,
 }));
+const disconnectPush = vi.hoisted(() => vi.fn((_api: unknown) => Promise.resolve()));
+vi.mock('../src/platform/push.js', () => ({ disconnectPush }));
 
 /**
  * WHICH SCREEN OPENS, AND WHY. D21.
@@ -652,6 +654,8 @@ describe('the session machine', () => {
     expect(result.current.session).toMatchObject({ open: 'login' });
     // The next commander on this phone must not hear this one's queues.
     expect(clearLocalAlerts).toHaveBeenCalledOnce();
+    // Nor this one's raids: the phone's push address leaves the account while it is still signed in.
+    expect(disconnectPush).toHaveBeenCalledOnce();
   });
   it.each([false, true])('prefills the verified email after cookie restore when logout is offline=%s', async offline => {
     const { wrapper, api } = harness({ ...placed, '/api/auth/refresh': { ...SESSION, loginEmail: 'pilot@example.com' },

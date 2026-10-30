@@ -36,7 +36,12 @@ vi.mock('../src/platform/localNotifications.js', () => ({
   disableLocalAlerts: () => { disable(); },
   setLocalAlertPrefs: (prefs: unknown) => { setPrefs(prefs); },
 }));
+const pushApi = { marker: 'api' };
+vi.mock('../src/api/context.js', () => ({ useApi: () => pushApi }));
+const connectPush = vi.fn((_api: unknown, _options: { locale: string; channelName: string; ask: boolean }) => Promise.resolve('on'));
+vi.mock('../src/platform/push.js', () => ({ connectPush: (api: unknown, options: { locale: string; channelName: string; ask: boolean }) => connectPush(api, options) }));
 afterEach(() => {
+  connectPush.mockClear(); connectPush.mockImplementation(() => Promise.resolve('on'));
   phone.enabled = false; permission.display = 'prompt'; permission.exact = 'granted'; allowExact.mockClear(); enable.mockClear(); disable.mockClear(); setPrefs.mockClear(); caps.localNotifications = true;
   view = fresh(); caps.notificationCenter = true; queried = []; world.deuterium = 400; world.alloy = 5000;
   build.mockClear(); fund.mockClear(); settings.mockClear();
@@ -50,16 +55,56 @@ it('offers the one-time build from the selected world and says what is short', (
   expect(build).toHaveBeenCalledWith('home', expect.anything());
 });
 
+it('asks for notifications the moment the center is built, since it exists to reach the phone', () => {
+  view = { ...fresh(), built: false };
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Build the center' }));
+  expect(connectPush).not.toHaveBeenCalled();
+  const options = build.mock.calls[0]?.[1] as { onSuccess: () => void };
+  options.onSuccess();
+  expect(connectPush).toHaveBeenCalledWith(pushApi, { locale: 'en', channelName: 'Raid alerts', ask: true });
+});
+
+it('warns that raid alerts cannot reach a phone without notifications, and asks for them there', async () => {
+  permission.display = 'prompt';
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  const card = document.querySelector('[data-push-off]');
+  expect(card).toHaveTextContent("Raid alerts can't reach this phone");
+  expect(card).toHaveTextContent(/no deuterium leaves the wallet/);
+  fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Allow notifications' }));
+  expect(connectPush).toHaveBeenCalledWith(pushApi, expect.objectContaining({ ask: true }));
+  expect(await within(card as HTMLElement).findByRole('button', { name: 'Allow notifications' })).toBeEnabled();
+});
+
+it('points to the phone settings when Android will not ask again', async () => {
+  permission.display = 'denied';
+  connectPush.mockImplementation(() => Promise.resolve('denied'));
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Allow notifications' }));
+  expect(await screen.findByText(/Allow notifications for Astera Online in the phone settings/)).toBeInTheDocument();
+});
+
+it('shows no push warning while the phone allows notifications, nor before the center is built', () => {
+  permission.display = 'granted';
+  const { unmount } = render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(document.querySelector('[data-push-off]')).toBeNull();
+  unmount();
+  permission.display = 'prompt';
+  view = { ...fresh(), built: false };
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(document.querySelector('[data-push-off]')).toBeNull();
+});
+
 it('cannot build while the selected world is short', () => {
   view = { ...fresh(), built: false }; world.alloy = 100;
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   expect(screen.getByRole('button', { name: 'Build the center' })).toBeDisabled();
 });
 
-it('says how many attack alerts the wallet pays for at the chosen timing', () => {
+it('says how many attack alerts the wallet pays for, naming the chosen timing', () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   // 95 at 30 a piece.
-  expect(screen.getByText('Pays for 3 attack alerts at this timing')).toBeInTheDocument();
+  expect(screen.getByText('Pays for 3 attack alerts at “5 minutes before it lands”')).toBeInTheDocument();
 });
 
 it('warns when the wallet cannot pay for the next alert and counts what was missed', () => {
@@ -69,13 +114,22 @@ it('warns when the wallet cannot pay for the next alert and counts what was miss
   expect(screen.getByText(/2 alerts were not sent in the last 24 hours/)).toBeInTheDocument();
 });
 
-it('prices every timing and saves the one chosen', () => {
+it('asks when an attack alert should arrive, as a setting with its price per alert', () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  const group = screen.getByRole('radiogroup', { name: 'When to alert' });
-  expect(within(group).getByRole('radio', { checked: true })).toHaveTextContent('5 min');
-  expect(within(group).getByRole('radio', { name: /On radar/ })).toHaveTextContent('100');
-  fireEvent.click(within(group).getByRole('radio', { name: /15 min/ }));
+  const group = screen.getByRole('radiogroup', { name: 'When should an attack alert reach you?' });
+  expect(within(group).getAllByRole('radio').map(radio => radio.textContent)).toEqual([
+    expect.stringContaining('3 minutes before it lands'), expect.stringContaining('5 minutes before it lands'),
+    expect.stringContaining('15 minutes before it lands'), expect.stringContaining('As soon as radar sees it'),
+  ]);
+  expect(within(group).getByRole('radio', { checked: true })).toHaveTextContent('5 minutes before it lands');
+  expect(within(group).getByRole('radio', { name: /As soon as radar sees it/ })).toHaveTextContent(/100\s*per alert/);
+  fireEvent.click(within(group).getByRole('radio', { name: /15 minutes/ }));
   expect(settings).toHaveBeenCalledWith({ timing: 'T15' });
+});
+
+it('says the one wallet pays for every alert, whatever the timing', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.getByText(/One wallet pays for every alert/)).toBeInTheDocument();
 });
 
 it('turns a paid kind off and on', () => {
@@ -107,11 +161,23 @@ it('refuses a transfer the selected world cannot cover or that is not a whole po
   }
 });
 
-it('fills the amount from the quick picks, capped by the store', () => {
+it('offers no alert-count picks, only the whole store', () => {
   world.deuterium = 70;
   render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: /^\d+ alerts?$/ })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'All' }));
   expect(screen.getByRole('spinbutton', { name: 'Deuterium to transfer' })).toHaveValue(70);
+});
+
+it('shows what the wallet becomes and how many attack alerts that pays for, as the amount is typed', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  const amount = screen.getByRole('spinbutton', { name: 'Deuterium to transfer' });
+  expect(screen.queryByText(/Wallet after/)).toBeNull();
+  // 95 + 150 = 245, at 30 a piece.
+  fireEvent.change(amount, { target: { value: '150' } });
+  expect(screen.getByText('Wallet after: 245 · enough for 8 attack alerts at this timing')).toBeInTheDocument();
+  fireEvent.change(amount, { target: { value: '401' } });
+  expect(screen.queryByText(/Wallet after/)).toBeNull();
 });
 
 it('lists recent alerts with what each one cost', () => {

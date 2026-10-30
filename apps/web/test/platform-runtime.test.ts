@@ -32,7 +32,14 @@ describe('one platform boundary for web, PWA, Android and iOS', () => {
 
   it('does not enable store or advertising SDKs just because a native bridge exists', () => {
     for (const platform of ['web', 'android', 'ios', 'unsupported-native'] as const) {
-      expect(resolveCapabilities(platform, 'native-production')).toMatchObject({ storeBilling: false, nativeRewardedAds: false, nativePush: false });
+      expect(resolveCapabilities(platform, 'native-production')).toMatchObject({ storeBilling: false, nativeRewardedAds: false });
+    }
+  });
+
+  it('sends paid raid alerts by push in the Android app only (owner 2026-10-31)', () => {
+    expect(resolveCapabilities('android', 'native-production').nativePush).toBe(true);
+    for (const platform of ['web', 'ios', 'unsupported-native'] as const) {
+      expect(resolveCapabilities(platform, 'native-production').nativePush).toBe(false);
     }
   });
 

@@ -139,7 +139,8 @@ export function MenuPanel({
   const [centerOpen, setCenterOpen] = useState(false);
   const center = useNotificationCenter(platform.notificationCenter).data;
   // Built, and the next attack alert at the commander's timing would not go out.
-  const centerEmpty = center?.built === true && center.wallet < center.prices.incoming_attack[center.timing];
+  const centerCovers = center?.built === true ? Math.floor(center.wallet / center.prices.incoming_attack[center.timing]) : null;
+  const centerEmpty = centerCovers === 0;
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   // Focus returns to the tile that opened the simulator.
   const simulatorOpener = useRef<HTMLElement | null>(null);
@@ -202,12 +203,16 @@ export function MenuPanel({
             {waiting > 0 && <MenuRow icon={<RewardIcon className="size-5" />} label={t('menu.navigation.rewardsReady', { count: waiting })} hint={t('menu.rewardsHint')} onClick={() => { onOpen('rewards'); }} />}
           </div>}
           <ShopShowcase compact onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />
+          {platform.notificationCenter && <CenterCard
+            status={centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
+            {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
+            onClick={() => { haptic('tap'); setCenterOpen(true); }} />}
           <nav aria-label={t('menu.navigation.title')} className="divide-y divide-v2-line">
             <MenuCategory id="season" icon={<LeaderboardIcon className="size-5" />} label={t('menu.navigation.season')} hint={t('menu.navigation.seasonHint')} onClick={() => { navigate('season'); }} />
             <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
             <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
             {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
-            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} badge={centerEmpty ? t('notificationCenter.menuEmpty') : undefined} onClick={() => { navigate('settings'); }} />
+            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} onClick={() => { navigate('settings'); }} />
           </nav>
           {marks.length > 0 && (
             <section data-menu-group className="flex flex-col gap-2">
@@ -349,15 +354,6 @@ export function MenuPanel({
 
           )}
           {page === 'settings' && <>
-              {platform.notificationCenter && <MenuTile
-                icon={<BroadcastIcon className="size-5" />}
-                label={t('notificationCenter.title')}
-                art={ATMOSPHERE.notificationCenter}
-                hint={t('notificationCenter.menuHint')}
-                attention={centerEmpty}
-                {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
-                onClick={() => { setCenterOpen(true); }}
-              />}
             <Section label={t('menu.deviceHeading')}>
               <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
                 <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
@@ -419,6 +415,24 @@ function MenuCategory({ id, icon, label, hint, badge, primary = false, onClick }
     <span className="min-w-0 flex-1"><span className="block text-caption font-semibold">{label}</span><span className="mt-1 block text-label leading-snug text-v2-ink-2">{hint}</span></span>
     {badge && <span className="max-w-24 rounded-chip border border-v2-self/25 bg-v2-self/8 px-1.5 py-1 text-micro text-v2-self">{badge}</span>}
     <ChevronIcon className="size-3.5 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
+  </button>;
+}
+
+/**
+ * BİLDİRİM MERKEZİ, under the inventory (owner 2026-10-31): the one menu card that says whether
+ * the commander will hear of a raid, so it states the wallet's reach rather than a slogan.
+ */
+function CenterCard({ status, badge, onClick }: { status: string; badge?: string; onClick: () => void }) {
+  const { t } = useTranslation();
+  const label = t('notificationCenter.title');
+  return <button type="button" data-menu-center onClick={onClick} aria-label={`${label}. ${status}${badge ? `. ${badge}` : ''}`}
+    className={`scene-panel inventory-scene relative overflow-hidden rounded-control border bg-v2-panel p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-v2-self ${
+      badge ? 'border-v2-warn/45 hover:border-v2-warn/70' : 'border-v2-line hover:border-v2-line-hi'}`}>
+    <AtmosphereImage art={ATMOSPHERE.notificationCenter} />
+    <BroadcastIcon className={`size-4 ${badge ? 'text-v2-warn' : 'text-v2-ink-2'}`} />
+    <span className="mt-4 block text-caption font-semibold text-v2-ink">{label}</span>
+    <span className={`mt-1 block text-label leading-snug ${badge ? 'text-v2-warn' : 'text-v2-ink-2'}`}>{status}</span>
+    {badge && <span className="absolute right-2.5 top-2.5 rounded-chip border border-v2-warn/40 bg-v2-warn/15 px-1.5 py-0.5 text-micro font-semibold leading-none text-v2-warn">{badge}</span>}
   </button>;
 }
 

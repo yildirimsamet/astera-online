@@ -13,6 +13,7 @@ import { rememberCommander } from '../lib/returning.js';
 import { academyPreview } from '../onboarding/academyWorld.js';
 import { serverNow } from '../lib/clock.js';
 import { clearLocalAlerts } from '../platform/localNotifications.js';
+import { disconnectPush } from '../platform/push.js';
 import { isAppActive, isAppActivityKnown, watchAppActivity } from '../platform/activity.js';
 import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
 
@@ -442,6 +443,9 @@ export function useSession() {
     const startedAt = ++revision.current;
     const loginEmail = api.verifiedEmail;
     void clearLocalAlerts();
+    // While the session still stands: the server forgets this phone only for its owner. Bounded,
+    // so a dead network never holds the sign-out; the next sign-in moves the token anyway.
+    await Promise.race([disconnectPush(api), new Promise(resolve => setTimeout(resolve, 1_500))]);
     forgetReady();
     setResumed(false);
     setSession({ phase: 'starting' });
