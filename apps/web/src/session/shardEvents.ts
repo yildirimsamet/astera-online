@@ -154,18 +154,19 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
  * reward progress counted off them. A sensor change publishes `private:sensors` and a
  * public change publishes `shard:world`, so traffic, mining field and the public map
  * have their own events. `galaxy` stays on a build so the owner's own world redraws
- * at once rather than on the heavy lane.
+ * at once rather than on the heavy lane. `planets` writes every world's own view as
+ * it lands (`readWorldSnapshots`), so `planet` is not read a second time (F1.8 Q15).
  *
  * `null` means "not one of these" and the caller keeps the full resync.
  */
 export function readsForPlayerEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind) {
     case 'build_complete':
-      return [keys.planet, keys.planets, keys.pending, keys.rewards, keys.galaxy];
+      return [keys.planets, keys.pending, keys.rewards, keys.galaxy];
     case 'research_complete':
-      return [keys.planet, keys.planets, keys.pending, keys.rewards, keys.miningStatus];
+      return [keys.planets, keys.pending, keys.rewards, keys.miningStatus];
     case 'death_star_ready':
-      return [keys.planet, keys.planets, keys.pending];
+      return [keys.planets, keys.pending];
     default:
       return null;
   }
@@ -205,9 +206,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
       return [keys.traffic, keys.miningField, keys.pirates, keys.galaxy];
     case 'monument':
       return [keys.monuments, keys.pending, keys.planet, keys.planets, keys.notifications, keys.reports, keys.galaxy, keys.traffic, keys.clanWar];
-    /** A world this commander watches launched or recovered combat craft. */
+    /** A world this commander watches launched or recovered combat craft. `intel` also writes the map's readings (`sightCache.ts`). */
     case 'sight':
-      return [keys.galaxy, keys.intel];
+      return [keys.intel];
     /**
      * An entitled commander can now render the eight-second interceptor scene — and the
      * weapon it hunts has already left the participants' own lists (the attacker's craft,

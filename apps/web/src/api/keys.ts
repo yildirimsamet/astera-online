@@ -32,7 +32,8 @@ export const keys = {
   polarPricing: ['skins', 'polar-pricing'],
   shopierShop: ['skins', 'shopier-shop'],
   shopierQueue: ['admin', 'shopier-orders'],
-  galaxyEvents: ['galaxy', 'events'],
+  /** Not under `galaxy`: every map refresh re-read the calendar through that prefix (F1.8 Q14). */
+  galaxyEvents: ['galaxy-events'],
   maintenance: ['maintenance'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],

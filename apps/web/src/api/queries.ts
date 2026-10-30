@@ -53,6 +53,7 @@ import type { ClanAidInput, FlightRecallInput, IntergalacticConvoyLaunchInput, M
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
+import { readIntelSnapshot } from './sightCache.js';
 import { serverNow } from '../lib/clock.js';
 import { worksAt } from '../lib/projection.js';
 import {
@@ -391,9 +392,10 @@ export function useEquipSkin() {
 
 export function useIntel() {
   const api = useApi();
+  const client = useQueryClient();
   return useQuery({
     queryKey: keys.intel,
-    queryFn: api.intel,
+    queryFn: () => readIntelSnapshot(client, api.intel),
     ...READ,
     // Telescope uncertainty and ages move with time even in a quiet galaxy.
     refetchInterval: NET_MS,

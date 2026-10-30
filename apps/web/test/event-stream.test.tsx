@@ -125,13 +125,29 @@ describe('the event stream', () => {
    * world changes already have their own events (`private:sensors`, `shard:world`).
    */
   it.each([
-    ['build_complete', ['galaxy', 'pending', 'planet', 'planets', 'rewards']],
-    ['research_complete', ['mining', 'pending', 'planet', 'planets', 'rewards']],
-    ['death_star_ready', ['pending', 'planet', 'planets']],
+    // `planets` writes every world's own view as it lands (F1.8 Q15): no second `planet` read.
+    ['build_complete', ['galaxy', 'pending', 'planets', 'rewards']],
+    ['research_complete', ['mining', 'pending', 'planets', 'rewards']],
+    ['death_star_ready', ['pending', 'planets']],
   ])('refreshes only the world reads when %s', (kind, expected) => {
     mountCaughtUp();
     fire(kind);
     expect([...new Set(asked)].sort()).toEqual(expected);
+  });
+
+  /** The galaxy's readings are copied off `intel` as it lands (F1.8 Q15): one telescope read, not two. */
+  it('reads a watched world\'s new reading once', () => {
+    mountCaughtUp();
+    fire('private:sight');
+    act(() => { vi.advanceTimersByTime(COALESCE_MS + 1); });
+    expect([...new Set(asked)]).toEqual(['intel']);
+  });
+
+  /** A lost stream can have lost a `shard:galaxy-event`; a map refresh no longer covers the calendar (F1.8 Q14). */
+  it('re-reads the event calendar on a resync', () => {
+    mountCaughtUp();
+    fire('raided');
+    expect(asked).toContain('galaxy-events');
   });
 
   it('puts a returned probe onto both the Intel screen and the galaxy immediately', () => {

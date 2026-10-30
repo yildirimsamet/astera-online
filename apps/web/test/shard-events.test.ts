@@ -1,3 +1,4 @@
+import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '../src/api/queries.js';
 import {
@@ -106,6 +107,16 @@ describe('what a shard event asks the client to read', () => {
       keys.chronicle,
       keys.miningField,
     ]);
+  });
+
+  /** F1.8 Q14: every map refresh used to re-read the event calendar through the `galaxy` prefix. */
+  it('leaves the event calendar alone when the map refreshes', async () => {
+    const client = new QueryClient();
+    client.setQueryData(keys.galaxy, {});
+    client.setQueryData(keys.galaxyEvents, { events: [] });
+    await client.invalidateQueries({ queryKey: keys.galaxy });
+    expect(client.getQueryState(keys.galaxy)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.galaxyEvents)?.isInvalidated).toBe(false);
   });
 
   /**
@@ -361,8 +372,8 @@ describe('what a private clan event asks the client to read', () => {
     ]);
   });
 
-  it('refreshes only the two Telescope surfaces when a watched fleet moves', () => {
-    expect(readsForPrivateEvent('private:sight')).toEqual([keys.galaxy, keys.intel]);
+  it('refreshes both Telescope surfaces through one read when a watched fleet moves', () => {
+    expect(readsForPrivateEvent('private:sight')).toEqual([keys.intel]);
   });
 
   /**

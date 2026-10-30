@@ -66,6 +66,7 @@ const LIVE_READS = [
   keys.planet,
   keys.planets,
   keys.galaxy,
+  keys.galaxyEvents,
   keys.intel,
   keys.notifications,
   keys.pending,
