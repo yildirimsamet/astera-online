@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { MULTI_WORLD, fleetCargo, fleetValue } from '@astera/rules';
 import { pino } from 'pino';
@@ -241,6 +242,34 @@ describe('event worker', () => {
         p99: 1_500,
         max: 1_500,
       });
+    });
+
+    /**
+     * WAKING LATE AND WAITING IN LINE ARE DIFFERENT PROBLEMS (scaling plan F1.3/F7).
+     * A shorter poll fixes the first; only faster handlers or parallel lanes fix the
+     * second. The capacity run reads both, the time each kind takes and how busy the
+     * one worker was, to say which one a galaxy needs.
+     */
+    it('splits lateness into the wake and the wait behind the batch, and times each kind', async () => {
+      for (let i = 0; i < 2; i++) {
+        await schedule(f.db, { seasonId: f.seasonId, kind: 'unknown_signal_expire', refId: randomUUID(),
+          resolveAt: new Date(f.clock.now().getTime() - 1_500) });
+      }
+      const worker = makeWorker(f);
+
+      await worker.tick();
+
+      const status = worker.status();
+      // The test clock stands still: all 1.5 s of it was the claim coming late.
+      expect(status.wakeMs).toMatchObject({ samples: 2, p50: 1_500, max: 1_500 });
+      const kind = status.eventStatements.unknown_signal_expire!;
+      expect(kind.durationMs.samples).toBe(2);
+      expect(kind.durationMs.p50).toBeGreaterThan(0);
+      // The second event waited for the whole of the first one's run.
+      expect(status.queueMs.samples).toBe(2);
+      expect(status.queueMs.max).toBeGreaterThanOrEqual(kind.durationMs.p50);
+      // Busy time is every run added up: the share of the wall clock the worker spent working.
+      expect(status.busyMs).toBeCloseTo(kind.durationMs.p50 + kind.durationMs.max, 6);
     });
   });
 

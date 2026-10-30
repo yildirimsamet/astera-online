@@ -80,12 +80,17 @@ export function metricFamilies(input: PrometheusInput): MetricFamily[] {
         [{ value: input.worker.lastMaintenanceSeconds }]),
       counter('astera_worker_maintenance_errors_total', 'Maintenance passes that threw.', [{ value: status.maintenance.errors }]),
       gauge('astera_worker_lateness_ms', 'How late events resolved, recent samples.', quantiles(status.latenessMs)),
+      gauge('astera_worker_wake_ms', 'How late the claim came after an event was due, recent samples.', quantiles(status.wakeMs)),
+      gauge('astera_worker_queue_ms', 'Wait from the claim to the handler starting, recent samples.', quantiles(status.queueMs)),
+      counter('astera_worker_busy_ms_total', 'Milliseconds spent running events.', [{ value: status.busyMs }]),
       counter('astera_worker_processed_total', 'Events resolved.', [{ value: status.processed }]),
       counter('astera_worker_handler_failures_total', 'Event handler failures (retried).', [{ value: status.handlerFailures }]),
       counter('astera_worker_abandoned_total', 'Events abandoned after exhausting retries.', [{ value: status.abandoned }]),
       counter('astera_worker_tick_errors_total', 'Ticks that threw.', [{ value: status.tickErrors }]),
       gauge('astera_worker_event_statements', 'SQL statements per event by kind, recent samples.',
         Object.entries(status.eventStatements).flatMap(([kind, e]) => quantiles(e.statements, { kind }))),
+      gauge('astera_worker_event_duration_ms', 'Run time per event by kind, recent samples.',
+        Object.entries(status.eventStatements).flatMap(([kind, e]) => quantiles(e.durationMs, { kind }))),
     );
   }
   if (input.archive) {
