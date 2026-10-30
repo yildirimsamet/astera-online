@@ -40,7 +40,8 @@ const config: CapacitorConfig = mobile.target === 'web' ? {
   server: { androidScheme: mobile.androidScheme, cleartext: mobile.cleartext, allowNavigation: [], errorPath: NATIVE_STARTUP_PATH },
   android: { backgroundColor: '#05070D', loggingBehavior: 'none', useLegacyBridge: false },
   plugins: { App: { disableBackButtonHandler: true }, SystemBars: { hidden: true, style: 'DARK', insetsHandling: 'css' },
-    CapacitorHttp: { enabled: false }, AsteraSession: { apiUrl: mobile.apiUrl, target: mobile.target } },
+    CapacitorHttp: { enabled: false }, AsteraSession: { apiUrl: mobile.apiUrl, target: mobile.target },
+    PushNotifications: { presentationOptions: ['sound', 'alert'] }, LocalNotifications: { smallIcon: 'ic_stat_astera', iconColor: '#2EE6C8' } },
 };
 
 export default config;

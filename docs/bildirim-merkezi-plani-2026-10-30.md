@@ -86,8 +86,30 @@ webp'ye optimize edilir, oyunda ekran görüntüsüyle doğrulanır. Bildirim t�
 - Görseller: `images/atmosphere/notification-center-v1.webp` (sahne/başlık/kutucuk),
   `images/general/notification_center_1.webp` (donanım); tank penceresi kanonik döteryum yeşili.
 
+## Uygulanan (2026-10-31)
+
+- Menü: kart Ayarlar'dan Ana Menü'ye, Envanter'in altına taşındı; kasanın kaç saldırı uyarısına
+  yettiğini ya da boş olduğunu kartın kendisi söyler.
+- Ekran: "1 uyarı / 5 uyarı" seçicileri kaldırıldı (bilet satın alma gibi okunuyordu). Döteryum
+  ekleme kasa kartının içinde: yazılan miktar için "aktarımdan sonra kasa · bu ayarla N uyarı".
+  Zamanlama gerçek bir ayar listesi ("İnişe 5 dakika kala", fiyat "/ uyarı" olarak ikincil);
+  "tek kasa, zamanlama yalnız bir uyarının fiyatını değiştirir" notu.
+- FCM (HTTP v1): sunucu `services/fcm.ts` servis hesabıyla JWT-bearer girişi (RS256, ≤1 sa,
+  `firebase.messaging`), token bitmeden 1 dk önce yenilenir, 401'de bir kez yeniden giriş. Telefon
+  başına bir mesaj, `android.priority HIGH`, `notification.channelId 'alerts'`, `tag` = baskın id.
+  404 `UNREGISTERED` ve "registration token" diyen 400 `INVALID_ARGUMENT` telefonu siler; başka
+  hata telefonu tutar ve loglanır; gönderici asla fırlatmaz (ücret zaten COMMIT edildi).
+  Env: `FCM_SERVICE_ACCOUNT` = servis hesabı JSON'unun base64'ü; yalnız worker gönderir;
+  boşsa uyarılar kaydedilir, gönderilmez.
+- İstemci `platform/push.ts`: izin yalnız oyuncu isteyince (Merkez kurulunca + Merkezdeki sarı
+  kart) sorulur; izinli telefon her açılışta ve dil değişince sessizce bağlanır. `alerts` kanalı
+  token'dan önce kurulur. Token cihazda saklanır: çıkışta ve telefon ayarlarından bildirim
+  kapatılınca sunucudan silinir, böylece görülmeyecek uyarıya ücret kesilmez (`NO_DEVICE`).
+  Ön planda da gösterilir (`presentationOptions: sound, alert`). Durum çubuğu simgesi
+  `ic_stat_astera` (beyaz/saydam halkalı gezegen), push ve kuyruk uyarılarında ortak.
+- Firebase dosyaları repo dışında: `~/.local/share/astera/firebase/` (600). Derleme için
+  `google-services.json` `apps/web/android/app/` altına kopyalanır ve git'te yok sayılır.
+
 ## Açık işler
 
-- Sahip: Firebase projesi + `google-services.json` (FCM için).
-- Uygulama sırası: kurallar + testler → sunucu (kasa, aktarım, zamanlama, sonda) → istemci ekranı
-  ve yerel bildirim → görseller → FCM → bot davranışı. Her adım TDD.
+- Bot davranışı (Merkez kurma/fonlama). Gerçek telefonda uçtan uca push testi.

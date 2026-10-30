@@ -6,16 +6,19 @@ import {
   useBuildNotificationCenter, useFundNotificationCenter, useNotificationCenter, useNotificationCenterSettings,
 } from '../api/notificationCenter.js';
 import { PAID_ALERT_KINDS, type NotificationCenter } from '../api/notificationCenterSchemas.js';
+import { useApi } from '../api/context.js';
 import { usePlanet } from '../api/queries.js';
+import { LANGUAGES, type Language } from '../i18n/languages.js';
 import { full } from '../lib/format.js';
 import { useProjected } from '../lib/projection.js';
 import { LOCAL_ALERT_CATEGORIES } from '../lib/localAlerts.js';
 import {
   allowExactLocalAlerts, disableLocalAlerts, enableLocalAlerts, setLocalAlertPrefs, useLocalAlertSettings, usePhonePermission,
 } from '../platform/localNotifications.js';
+import { connectPush } from '../platform/push.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { ClockIcon, DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
+import { BroadcastIcon, ClockIcon, DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
 import { Confirm, ConfirmLine } from '../ui/kit/Confirm.js';
 import { describe } from '../ui/Toast.js';
 import { Cost } from '../v2/kit/Cost.js';
@@ -90,6 +93,15 @@ function KindsPreview() {
   </ul>;
 }
 
+/** Asks the phone for notifications and hands its FCM address to the server (`platform/push.ts`). */
+function useAskPush() {
+  const api = useApi();
+  const { t, i18n } = useTranslation();
+  const resolved = i18n.resolvedLanguage;
+  const locale: Language = LANGUAGES.find(language => language === resolved) ?? 'en';
+  return () => connectPush(api, { locale, channelName: t('notificationCenter.pushChannel'), ask: true });
+}
+
 function useSelectedWorld() {
   const { data, dataUpdatedAt } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
@@ -100,6 +112,7 @@ function Unbuilt({ view }: { view: NotificationCenter }) {
   const { t } = useTranslation();
   const world = useSelectedWorld();
   const build = useBuildNotificationCenter();
+  const askPush = useAskPush();
   const cost = view.buildCost;
   const short = !world || world.held.alloy < cost.alloy || world.held.crystal < cost.crystal || world.held.deuterium < cost.deuterium;
   return <>
@@ -116,7 +129,7 @@ function Unbuilt({ view }: { view: NotificationCenter }) {
         </div>
       </div>
       <Button size="lg" full variant="primary" disabled={short || build.isPending}
-        onClick={() => { if (world) build.mutate(world.id, {}); }}>{t('notificationCenter.build')}</Button>
+        onClick={() => { if (world) build.mutate(world.id, { onSuccess: () => { void askPush(); } }); }}>{t('notificationCenter.build')}</Button>
       {short && world && <p className="text-micro text-v2-warn">{t('notificationCenter.buildShort')}</p>}
     </div>
     {build.error && <Note>{describe(build.error)}</Note>}
@@ -132,29 +145,39 @@ function Built({ view }: { view: NotificationCenter }) {
     settings.mutate({ muted: on ? view.muted.filter(k => k !== kind) : [...view.muted, kind] });
   };
   return <>
+    <PushOff />
     <section aria-label={t('notificationCenter.wallet')}
-      className={`flex flex-col gap-1.5 rounded-control border p-3 ${covers > 0 ? 'border-v2-self/30 bg-v2-self/5' : 'border-v2-warn/40 bg-v2-warn/5'}`}>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('notificationCenter.wallet')}</span>
-        <Deuterium amount={view.wallet} className={`text-title ${covers > 0 ? 'text-v2-self' : 'text-v2-warn'}`} />
+      className={`flex flex-col gap-3 rounded-control border p-3 ${covers > 0 ? 'border-v2-self/30 bg-v2-self/5' : 'border-v2-warn/40 bg-v2-warn/5'}`}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('notificationCenter.wallet')}</span>
+          <Deuterium amount={view.wallet} className={`text-title ${covers > 0 ? 'text-v2-self' : 'text-v2-warn'}`} />
+        </div>
+        <p className={`text-caption leading-snug ${covers > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
+          {covers > 0 ? t('notificationCenter.covers', { count: covers, timing: t(`notificationCenter.timingOption.${view.timing}`) }) : t('notificationCenter.empty')}</p>
+        {view.unfunded > 0 && <p className="text-caption leading-snug text-v2-warn">{t('notificationCenter.unfunded', { count: view.unfunded })}</p>}
+        <p className="text-micro leading-snug text-v2-ink-3">{t('notificationCenter.walletRule')}</p>
       </div>
-      <p className={`text-caption leading-snug ${covers > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
-        {covers > 0 ? t('notificationCenter.covers', { count: covers }) : t('notificationCenter.empty')}</p>
-      {view.unfunded > 0 && <p className="text-caption leading-snug text-v2-warn">{t('notificationCenter.unfunded', { count: view.unfunded })}</p>}
+      <Transfer view={view} />
     </section>
 
-    <Transfer view={view} />
-
     <Section label={t('notificationCenter.timingTitle')}>
-      <div role="radiogroup" aria-label={t('notificationCenter.timingTitle')} className="grid grid-cols-4 gap-1.5">
+      {/* A setting, not a price list: the moment is the choice, the price per alert its consequence. */}
+      <div role="radiogroup" aria-label={t('notificationCenter.timingTitle')}
+        className="flex flex-col divide-y divide-v2-line rounded-control border border-v2-line bg-v2-panel">
         {ALERT_TIMINGS.map(timing => {
           const on = timing === view.timing;
           return <button key={timing} type="button" role="radio" aria-checked={on} disabled={settings.isPending}
             onClick={() => { if (!on) settings.mutate({ timing }); }}
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-control border px-1 py-1.5 transition-colors ${
-              on ? 'border-v2-self/60 bg-v2-self/10 text-v2-self' : 'border-v2-line bg-v2-panel text-v2-ink-2 hover:border-v2-line-hi'}`}>
-            <span className="text-caption font-semibold leading-tight">{t(`notificationCenter.timing.${timing}`)}</span>
-            <Deuterium amount={view.prices.incoming_attack[timing]} className="text-micro" />
+            className="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left transition-colors first:rounded-t-control last:rounded-b-control hover:bg-v2-raise focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-v2-self">
+            <span aria-hidden="true" className={`grid size-4 shrink-0 place-items-center rounded-full border ${on ? 'border-v2-self' : 'border-v2-line-hi'}`}>
+              {on && <span className="size-2 rounded-full bg-v2-self" />}
+            </span>
+            <span className={`min-w-0 flex-1 text-caption ${on ? 'font-semibold text-v2-ink' : 'text-v2-ink-2'}`}>{t(`notificationCenter.timingOption.${timing}`)}</span>
+            <span className="flex shrink-0 items-center gap-1 text-micro text-v2-ink-3">
+              <Deuterium amount={view.prices.incoming_attack[timing]} className={on ? 'text-v2-self' : 'text-v2-ink-2'} />
+              {t('notificationCenter.perAlert')}
+            </span>
           </button>;
         })}
       </div>
@@ -203,6 +226,39 @@ function Built({ view }: { view: NotificationCenter }) {
   </>;
 }
 
+/**
+ * The centre exists to reach the phone: without notifications it cannot, so this leads the
+ * built centre in the same amber as a late alert. Android stops asking after a second refusal,
+ * and then only the phone settings can turn it back on.
+ */
+function PushOff() {
+  const { t } = useTranslation();
+  const { display } = usePhonePermission();
+  const askPush = useAskPush();
+  const [asking, setAsking] = useState(false);
+  const [refused, setRefused] = useState(false);
+  if (display === 'granted' || display === 'unknown') return null;
+  return <div data-push-off role="status" className="flex flex-col gap-2.5 rounded-control border border-v2-warn/50 bg-v2-warn/10 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
+    <div className="flex items-start gap-2.5">
+      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-warn/60 bg-v2-warn/15 text-v2-warn">
+        <BroadcastIcon className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-caption font-semibold text-v2-warn">{t('notificationCenter.pushOffTitle')}</p>
+        <p className="text-micro leading-snug text-v2-ink-2">{t('notificationCenter.pushOff')}</p>
+      </div>
+    </div>
+    <button type="button" disabled={asking} onClick={() => {
+      setAsking(true);
+      void askPush().then(result => { setRefused(result === 'denied'); }).finally(() => { setAsking(false); });
+    }}
+      className="flex min-h-10 items-center justify-center rounded-control bg-v2-warn px-3 text-caption font-semibold text-v2-deep shadow-[0_0_18px_rgb(255_204_77/0.22)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v2-warn disabled:opacity-60">
+      {t('notificationCenter.pushAllow')}</button>
+    {refused && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.pushDenied')}</p>}
+  </div>;
+}
+
+/** Topping up the one wallet: an amount, never a bundle of alerts. */
 function Transfer({ view }: { view: NotificationCenter }) {
   const { t } = useTranslation();
   const world = useSelectedWorld();
@@ -212,25 +268,26 @@ function Transfer({ view }: { view: NotificationCenter }) {
   const store = Math.floor(world?.held.deuterium ?? 0);
   const amount = Number(text);
   const valid = text !== '' && Number.isInteger(amount) && amount >= 1 && amount <= store;
-  const attack = view.prices.incoming_attack[view.timing];
-  const picks = [{ label: t('notificationCenter.alerts', { count: 1 }), amount: attack },
-    { label: t('notificationCenter.alerts', { count: 5 }), amount: attack * 5 },
-    { label: t('notificationCenter.all'), amount: store }];
-  return <Section label={t('notificationCenter.transferTitle')}>
-    <p className="text-caption text-v2-ink-2">{t('notificationCenter.transferFrom', { world: world?.name ?? '—' })} <Deuterium amount={store} className="text-v2-ink" /></p>
+  const after = view.wallet + amount;
+  return <div className="flex flex-col gap-2 border-t border-v2-line pt-3">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+      <span className="text-caption font-semibold text-v2-ink">{t('notificationCenter.transferTitle')}</span>
+      <span className="text-micro text-v2-ink-3">{t('notificationCenter.transferFrom', { world: world?.name ?? '—' })} <Deuterium amount={store} className="text-v2-ink-2" /></span>
+    </div>
     <div className="flex gap-2">
-      <input type="number" inputMode="numeric" min={1} max={store} step={1} value={text}
-        aria-label={t('notificationCenter.amount')} placeholder={t('notificationCenter.amount')}
-        onChange={event => { setText(event.target.value); }}
-        className="min-h-11 min-w-0 flex-1 rounded-control border border-v2-line bg-v2-deep px-3 font-v2-mono text-body text-v2-ink placeholder:font-v2-ui placeholder:text-caption placeholder:text-v2-ink-3 focus-visible:outline-2 focus-visible:outline-v2-self" />
+      <div className="relative min-w-0 flex-1">
+        <input type="number" inputMode="numeric" min={1} max={store} step={1} value={text}
+          aria-label={t('notificationCenter.amount')} placeholder={t('notificationCenter.amount')}
+          onChange={event => { setText(event.target.value); }}
+          className="min-h-11 w-full rounded-control border border-v2-line bg-v2-deep pl-3 pr-16 font-v2-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-body text-v2-ink placeholder:font-v2-ui placeholder:text-caption placeholder:text-v2-ink-3 focus-visible:outline-2 focus-visible:outline-v2-self" />
+        <button type="button" disabled={store < 1} onClick={() => { setText(String(store)); }}
+          className="absolute right-1.5 top-1/2 min-h-8 -translate-y-1/2 rounded-chip px-2 text-micro font-semibold text-v2-self transition-colors hover:bg-v2-self/10 disabled:opacity-40">
+          {t('notificationCenter.all')}</button>
+      </div>
       <Button variant="primary" disabled={!valid || fund.isPending} onClick={() => { setConfirming(true); }}>{t('notificationCenter.transfer')}</Button>
     </div>
-    <div className="flex gap-1.5">
-      {picks.map(pick => <button key={pick.label} type="button" disabled={store < 1}
-        onClick={() => { setText(String(Math.min(pick.amount, store))); }}
-        className="min-h-9 flex-1 rounded-chip border border-v2-line bg-v2-panel px-2 text-micro text-v2-ink-2 transition-colors hover:border-v2-line-hi disabled:opacity-40">
-        {pick.label}</button>)}
-    </div>
+    {valid && <p className="text-micro leading-snug text-v2-ink-2">
+      {t('notificationCenter.transferPreview', { wallet: full(after), count: Math.floor(after / view.prices.incoming_attack[view.timing]) })}</p>}
     {fund.error && <Note>{describe(fund.error)}</Note>}
     {confirming && world && <Confirm eyebrow={t('notificationCenter.title')} title={t('notificationCenter.confirmTitle', { amount: full(amount) })}
       confirmLabel={t('notificationCenter.confirm', { amount: full(amount) })} backLabel={t('notificationCenter.back')} pending={fund.isPending}
@@ -238,10 +295,10 @@ function Transfer({ view }: { view: NotificationCenter }) {
         fund.mutate({ planetId: world.id, amount }, { onSuccess: () => { setConfirming(false); setText(''); } });
       }}>
       <ConfirmLine label={world.name} value={`−${full(amount)}`} />
-      <ConfirmLine label={t('notificationCenter.walletAfter')} value={full(view.wallet + amount)} tone="kept" />
+      <ConfirmLine label={t('notificationCenter.walletAfter')} value={full(after)} tone="kept" />
       <p className="mt-2 text-body leading-relaxed text-v2-ink-2">{t('notificationCenter.confirmBody')}</p>
     </Confirm>}
-  </Section>;
+  </div>;
 }
 
 function Recent({ view }: { view: NotificationCenter }) {

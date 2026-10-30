@@ -47,5 +47,9 @@ describe('bundled mobile configuration', () => {
     expect(config.android?.loggingBehavior).toBe('none');
     expect(config.plugins?.App).toMatchObject({ disableBackButtonHandler: true });
     expect(config.plugins?.SystemBars).toMatchObject({ hidden: true, style: 'DARK', insetsHandling: 'css' });
+    // A raid alert must show while the game is open too; on Android `alert` is what displays it.
+    expect(config.plugins?.PushNotifications).toEqual({ presentationOptions: ['sound', 'alert'] });
+    // The order reminders wear the same status-bar emblem as the raid alerts.
+    expect(config.plugins?.LocalNotifications).toEqual({ smallIcon: 'ic_stat_astera', iconColor: '#2EE6C8' });
   });
 });

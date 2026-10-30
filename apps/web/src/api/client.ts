@@ -1112,6 +1112,11 @@ export class Api {
     this.send('/api/notification-center/fund', notificationCenterSchema, { method: 'POST', body: { planetId, amount, confirm: true } });
   setNotificationCenter = (settings: { timing?: AlertTiming; muted?: PaidAlertKind[] }) =>
     this.send('/api/notification-center/settings', notificationCenterSchema, { method: 'PUT', body: settings });
+  /** This phone's FCM token for the paid raid alerts; the server answers 204. */
+  registerPushDevice = (token: string, locale: string) =>
+    this.send('/api/push/devices', z.null(), { method: 'POST', body: { token, platform: 'android', locale } });
+  forgetPushDevice = (token: string) =>
+    this.send('/api/push/devices', z.null(), { method: 'DELETE', body: { token } });
 
   build = (planetIdOrHull: string, explicitHullOrCount: HullId | number, explicitCount?: number) => {
     const hull = (explicitCount === undefined ? planetIdOrHull : explicitHullOrCount) as HullId;

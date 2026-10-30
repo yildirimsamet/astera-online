@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { COSMETIC_IDS, EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@astera/rules';
 import { ARENA_MAX_SEATS } from '@astera/rules/arena';
 import { BOTS } from './services/bots/personas.js';
+import { parseServiceAccount, type ServiceAccount } from './services/fcm.js';
 
 const schema = z.object({
   CHAT_MEDIA_DIR: z.string().min(1).default('.data/chat-media'),
@@ -95,6 +96,12 @@ const schema = z.object({
     catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Shopier price JSON' }); return z.NEVER; }
   }).pipe(z.record(z.enum([...COSMETIC_IDS, 'bundle']), z.number().int().positive())
     .refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
+  /** Bildirim Merkezi push: the Firebase service-account key file, base64. Unset = alerts are recorded, not sent. */
+  FCM_SERVICE_ACCOUNT: z.string().default('').transform((value, ctx): ServiceAccount | null => {
+    if (!value.trim()) return null;
+    try { return parseServiceAccount(value.trim()); }
+    catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'FCM_SERVICE_ACCOUNT is not a base64 Firebase service-account key' }); return z.NEVER; }
+  }),
   /** Public folder of `<item>.jpg`; Shopier fetches the product image from here (jpg/png only). */
   SHOPIER_IMAGE_BASE_URL: z.literal('').or(z.string().url().startsWith('https://')).default('')
     .transform(value => value.replace(/\/+$/, '')),

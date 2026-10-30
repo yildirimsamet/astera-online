@@ -30,6 +30,17 @@ describe('the local Android host', () => {
       .toEqual(['external-files-path:Pictures/']);
   });
 
+  it('marks raid alerts in the status bar with a white-on-transparent emblem, not the full-colour icon', () => {
+    const manifest = new DOMParser().parseFromString(readAndroid('app/src/main/AndroidManifest.xml'), 'text/xml');
+    const meta = (name: string) => [...manifest.querySelectorAll('application > meta-data')]
+      .find(node => node.getAttribute('android:name') === name)?.getAttribute('android:resource');
+    expect(meta('com.google.firebase.messaging.default_notification_icon')).toBe('@drawable/ic_stat_astera');
+    expect(meta('com.google.firebase.messaging.default_notification_color')).toBe('@color/astera_alert');
+    const icon = readAndroid('app/src/main/res/drawable/ic_stat_astera.xml');
+    expect(icon.match(/android:(?:fill|stroke)Color="([^"]+)"/g)?.every(colour => colour.includes('#FFFFFFFF'))).toBe(true);
+    expect(readAndroid('app/src/main/res/values/colors.xml')).toContain('<color name="astera_alert">#2EE6C8</color>');
+  });
+
   it('keeps the whole emblem inside launcher and splash masks', () => {
     for (const icon of ['ic_launcher', 'ic_launcher_round']) {
       expect(readAndroid(`app/src/main/res/mipmap-anydpi-v26/${icon}.xml`)).toContain('android:drawable="@drawable/astera_icon_adaptive"');

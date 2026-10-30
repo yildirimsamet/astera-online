@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The game's own turquoise (--color-v2-self): tints the alert emblem on the notification. -->
+    <color name="astera_alert">#2EE6C8</color>
+</resources>

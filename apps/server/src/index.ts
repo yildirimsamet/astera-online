@@ -8,6 +8,8 @@ import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
 import { ensureAsteroidHourEvents } from './services/asteroidSpawn.js';
 import { sweepShopierCheckouts } from './services/shopierSales.js';
 import { systemClock } from './clock.js';
+import { fcmTransport } from './services/fcm.js';
+import { setPushTransport } from './services/notificationCenter.js';
 
 loadDotEnv();
 const env = loadEnv();
@@ -54,6 +56,12 @@ async function main(): Promise<void> {
     const neutralCensusesScheduled = await ensureNeutralCensusEvents(db, systemClock.now());
     if (neutralCensusesScheduled > 0) {
       log.info({ neutralCensusesScheduled }, 'scheduled missing neutral censuses');
+    }
+    if (env.FCM_SERVICE_ACCOUNT) {
+      setPushTransport(fcmTransport(env.FCM_SERVICE_ACCOUNT, { onError: (err: unknown) => { log.error({ err }, 'Bildirim Merkezi push failed'); } }));
+      log.info({ project: env.FCM_SERVICE_ACCOUNT.projectId }, 'Bildirim Merkezi push on');
+    } else {
+      log.warn('FCM_SERVICE_ACCOUNT unset: paid alerts are recorded, not sent');
     }
     mail.start();
     worker.start();
