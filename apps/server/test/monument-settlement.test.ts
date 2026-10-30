@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, MONUMENT_CAPACITY, combatValue, type MobileHullId, type TechLevels } from '@astera/rules';
 import { hpRadiationSources, monuments, monumentShipLots, monumentWaves, players, seasons, units } from '../src/db/schema.js';
 import { settleMonument } from '../src/services/monument.js';
 import { recomputePlayerWealth, setUnits } from '../src/services/planet.js';
+import * as stream from '../src/stream/bus.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
@@ -117,6 +118,19 @@ describe('transactional monument HOLD settlement', () => {
     const expectedFirst = 60 * combatValue({ DART: 1 }) / (combatValue({ DART: 1 }) + combatValue({ CITADEL: 1 }));
     expect(await cargo(a.wave.id)).toBeCloseTo(expectedFirst);
     expect(await cargo(a.wave.id) + await cargo(b.wave.id)).toBeCloseTo(120);
+    expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
+  });
+
+  it('tells the galaxy when a held ship dies but the monument keeps its owner', async () => {
+    await hold(0, [{ hull: 'DART', count: 1 }, { hull: 'ARGOSY', count: 1 }]);
+    await cloud(HULLS.DART.hp);
+    const published = vi.spyOn(stream, 'publishShard');
+    try {
+      await settle(afterMinutes(2));
+      // The map's hangar fill is public and cached per galaxy: a quiet loss would leave it full.
+      expect(published.mock.calls.map(([, seasonId, event]) => ({ seasonId, event })))
+        .toContainEqual({ seasonId: f.seasonId, event: 'control' });
+    } finally { published.mockRestore(); }
     expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
   });
 

@@ -12,6 +12,8 @@ import {
   commanderTopology,
   type CommanderTopology,
 } from './ownership.js';
+import { loadGalaxyFacts, type GalaxyFacts } from './galaxyFacts.js';
+import { clanPresenceOf } from './clan.js';
 
 export interface ProjectionConfig {
   enabled: boolean;
@@ -45,7 +47,11 @@ export interface ProjectionStatus {
   traffic: AsyncCacheStats;
   mining: AsyncCacheStats;
   pirates: AsyncCacheStats;
+  galaxyFacts: AsyncCacheStats;
+  clanPresence: AsyncCacheStats;
 }
+
+type ClanPresence = Awaited<ReturnType<typeof clanPresenceOf>>;
 
 /**
  * Replica-local shared projections. D99.
@@ -103,6 +109,15 @@ export class Projections {
    */
   private readonly remembered: AsyncCache<RememberedWorlds>;
   private readonly sensorHistory: AsyncCache<SensorEpoch[]>;
+  /**
+   * THE GALAXY'S SHARED PART OF `/api/galaxy`. Scaling plan F1.8 (C3, C4).
+   *
+   * Season rules, monuments, radiation rows and both podiums: raw rows, projected to
+   * each request's instant afterwards, so time moves them without a write. Caller-free.
+   */
+  private readonly galaxyFacts: AsyncCache<GalaxyFacts | null>;
+  /** One clan's presence, the same for every member who reads it (F1.8, C4). */
+  private readonly clanPresence: AsyncCache<ClanPresence>;
   private readonly stopObserving: () => void;
   private readonly stopObservingResets: () => void;
 
@@ -148,6 +163,8 @@ export class Projections {
       config.miningTtlMs,
       usable,
     );
+    this.galaxyFacts = new AsyncCache<GalaxyFacts | null>(config.maxSeasons, config.publicTtlMs, usable);
+    this.clanPresence = new AsyncCache<ClanPresence>(config.maxAccounts, config.publicTtlMs, usable);
     this.stopObserving = bus.observe((event) => {
       this.onEvent(event);
     });
@@ -195,6 +212,14 @@ export class Projections {
       return this.publicGalaxy.get(seasonId, load);
     }
     return worlds;
+  }
+
+  galaxyFactsFor(seasonId: string, adminUsernames: ReadonlySet<string>, now: Date): Promise<GalaxyFacts | null> {
+    return this.galaxyFacts.get(seasonId, () => loadGalaxyFacts(this.db, seasonId, adminUsernames, now));
+  }
+
+  clanPresenceFor(clanId: string): Promise<ClanPresence> {
+    return this.clanPresence.get(clanId, () => clanPresenceOf(this.db, clanId));
   }
 
   commander(accountId: string): Promise<CommanderTopology> {
@@ -260,6 +285,8 @@ export class Projections {
       traffic: this.traffic.status(),
       mining: this.mining.status(),
       pirates: this.pirates.status(),
+      galaxyFacts: this.galaxyFacts.status(),
+      clanPresence: this.clanPresence.status(),
     };
   }
 
@@ -288,6 +315,8 @@ export class Projections {
     this.traffic.clear();
     this.mining.clear();
     this.pirates.clear();
+    this.galaxyFacts.clear();
+    this.clanPresence.clear();
   }
 
   /**
@@ -358,6 +387,11 @@ export class Projections {
       // event therefore cannot carry a shard id; clearing this bounded cache is
       // the safe price of keeping hidden launch timing off the shard channel.
       if (event.kind === 'private:strategic-sight') this.traffic.clear();
+      // A clanmate opened or closed their door: told to every other member, not the galaxy.
+      if (event.kind === 'posture') {
+        this.clanPresence.invalidateWhere((_, value) =>
+          value.presence?.members.some((member) => member.playerId === event.playerId) ?? false);
+      }
       return;
     }
 
@@ -396,6 +430,37 @@ export class Projections {
       || kind === 'shard:rollover'
     ) {
       this.publicGalaxy.invalidate(event.shard);
+    }
+    /*
+      THE GALAXY'S SHARED FACTS (F1.8). Everything the public worlds move on, and the
+      two doors a monument changes through besides: a wave arriving or recalled, and
+      a weapon launched. A radiation source is written with `world`, a podium moves
+      with `score`, a monument changes hands with `control`.
+    */
+    if (
+      kind === 'shard:world'
+      || kind === 'shard:impact'
+      || kind === 'shard:control'
+      || kind === 'shard:recovery'
+      || kind === 'shard:protection'
+      || kind === 'shard:clan'
+      || kind === 'shard:score'
+      || kind === 'shard:season'
+      || kind === 'shard:rollover'
+      || kind === 'shard:arrival'
+      || kind === 'shard:launch'
+    ) {
+      this.galaxyFacts.invalidate(event.shard);
+    }
+    // Who is in a clan, its name, and its members' worlds.
+    if (
+      kind === 'shard:clan'
+      || kind === 'shard:world'
+      || kind === 'shard:control'
+      || kind === 'shard:season'
+      || kind === 'shard:rollover'
+    ) {
+      this.clanPresence.invalidateWhere((_, value) => value.seasonId === event.shard);
     }
     if (
       kind === 'shard:launch'

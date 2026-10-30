@@ -629,7 +629,8 @@ describe('monument public facts and private manifests over HTTP', () => {
     expect(detail.statusCode).toBe(404);
     const transaction = vi.spyOn(f.db, 'transaction');
     const galaxy = await app.inject({ method: 'GET', url: '/api/galaxy', headers: auth });
-    expect(transaction).not.toHaveBeenCalled();
+    // The galaxy's shared facts are one lock-free snapshot (F1.8); never a monument write or lock.
+    expect(transaction.mock.calls.map(([, config]) => config)).toEqual([{ isolationLevel: 'repeatable read', accessMode: 'read only' }]);
     transaction.mockRestore();
     expect(galaxy.json()).toMatchObject({ monuments: [], hpRadiation: [] });
     expect((await post(`/api/monuments/${m.id}/send`, launchBody())).statusCode).toBe(409);

@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { applyHonorPodium, honorPodium } from '../services/honorPodium.js';
+import { applyHonorPodium } from '../services/honorPodium.js';
 import { readHonorBenefits } from '../services/honorBenefits.js';
-import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, hpRadiationApplies, planetSkinById, honorRankRewards, honorResourceValue } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -15,7 +15,6 @@ import {
   planetFaults,
   planets,
   players,
-  seasons,
 } from '../db/schema.js';
 import { readTelescopes } from '../services/intel.js';
 import {
@@ -25,18 +24,16 @@ import {
 } from '../services/traffic.js';
 import { discoveredAsteroidIndexes } from '../services/asteroidField.js';
 import { discoveredPirateIndexes } from '../services/pirateField.js';
-import { readClanPresence } from '../services/clan.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { locationIsKnown } from '../services/locationSight.js';
 import {
   applyDominionPodium,
-  dominionPodium,
   playerDominionSql,
 } from '../services/dominion.js';
-import { radiationForGalaxy } from '../services/radiation.js';
-import { hpRadiationForGalaxy } from '../services/radiationSources.js';
-import { readPublicMonumentFacts } from '../services/monumentView.js';
 import { requireAuth } from './auth.js';
+import { galaxyFactsAt } from '../services/galaxyFacts.js';
+import { activeClanMembership } from '../services/clanCombat.js';
+import { GameError } from '../services/planet.js';
 
 /**
  * THE GALAXY, AS EVERYBODY SEES IT PLUS WHAT YOU HAVE EARNED.
@@ -60,41 +57,33 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
   app.get('/api/galaxy', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
     const now = app.clock.now();
-    const seasonRows = await app.db.select({ rulesetVersion: seasons.rulesetVersion })
-      .from(seasons).where(eq(seasons.id, self.seasonId));
-    const monumentSeason = hpRadiationApplies(seasonRows[0]?.rulesetVersion ?? 0);
-    const [monuments, hpRadiation] = monumentSeason
-      ? await Promise.all([
-        app.db.transaction((tx) => readPublicMonumentFacts(tx, self.seasonId, now)),
-        hpRadiationForGalaxy(app.db, self.seasonId, now),
-      ])
-      : [[], []] as const;
+    // F1.8: the galaxy's shared part is read once per galaxy, then projected to `now`.
+    const facts = await app.projections.galaxyFactsFor(self.seasonId, app.adminUsernames, now);
+    if (!facts) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
+    const { radiation, radiationModel, monuments, hpRadiation } = galaxyFactsAt(facts, now);
+    const { adminPlayerIds } = facts;
 
-    const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows, radiation] = await Promise.all([
+    const [allWorlds, watching, sensors, remembered, membership, ownFaultRows] = await Promise.all([
       app.projections.worlds(self.seasonId, now),
       readTelescopes(app.db, self.playerId, app.clock),
       app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
       app.projections.rememberedFor(self.playerId, self.seasonId),
-      readClanPresence(app.db, self.playerId),
-      adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
+      activeClanMembership(app.db, self.playerId),
       self.planetIds.length === 0
         ? Promise.resolve([])
         : app.db.select({ planetId: planetFaults.planetId }).from(planetFaults)
           .where(inArray(planetFaults.planetId, self.planetIds)),
-      radiationForGalaxy(app.db, self.seasonId, now),
     ]);
+    const clanPresence = membership ? (await app.projections.clanPresenceFor(membership.clanId)).presence : null;
     // An operator still needs their own world to enter and test the game, but no
     // other admin-owned world is part of a commander's public galaxy.
     const hiddenAdminPlayerIds = new Set(
       [...adminPlayerIds].filter((playerId) => playerId !== self.playerId),
     );
-    const publicPodium = adminPlayerIds.size === 0
-      ? null
-      : await dominionPodium(app.db, self.seasonId, adminPlayerIds);
-    const rankedWorlds = publicPodium === null
+    const rankedWorlds = facts.dominionPodium === null
       ? allWorlds
-      : applyDominionPodium(allWorlds, publicPodium);
-    const primaryWorlds = applyHonorPodium(rankedWorlds, await honorPodium(app.db, self.seasonId, adminPlayerIds));
+      : applyDominionPodium(allWorlds, facts.dominionPodium);
+    const primaryWorlds = applyHonorPodium(rankedWorlds, facts.honorPodium);
     const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !hiddenAdminPlayerIds.has(world.controller.playerId));
@@ -142,7 +131,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     return {
       /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
       radiation,
-      radiationModel: hpRadiationApplies(seasonRows[0]?.rulesetVersion ?? 0) ? 'HP' : 'PCT',
+      radiationModel,
       monuments,
       hpRadiation,
       you: {

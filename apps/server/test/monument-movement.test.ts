@@ -1,13 +1,14 @@
 import { readHomeHealth } from '../src/services/homeHealth.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, MONUMENT_CAPACITY, MULTI_WORLD, type MonumentShipLot } from '@astera/rules';
 import { hpRadiationSources, monuments, monumentShipLots, monumentWaves, planets, scheduledEvents, seasons, shipDamageLots, units } from '../src/db/schema.js';
 import { lockMonument, settleMonument } from '../src/services/monument.js';
 import { recallMonument, resolveMonumentReturn, settleMonumentFlight } from '../src/services/monumentMovement.js';
 import { baysInUse } from '../src/services/flight.js';
 import { loadLocked, totalUnitsOf } from '../src/services/planet.js';
+import * as stream from '../src/stream/bus.js';
 import { grant, seedWorld, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
@@ -60,6 +61,18 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('physical monument recalls and returns', () => {
+  it('tells the galaxy when part of a held garrison leaves', async () => {
+    f.clock.set(at(1));
+    const published = vi.spyOn(stream, 'publishShard');
+    try {
+      await recall([{ lotId: lots.find((lot) => lot.hull === 'COURIER')!.id, count: 1 }]);
+      // The map's hangar fill is public and cached per galaxy: a quiet recall would leave it full.
+      expect(published.mock.calls.map(([, seasonId, event]) => ({ seasonId, event })))
+        .toContainEqual({ seasonId: f.seasonId, event: 'control' });
+    } finally { published.mockRestore(); }
+    expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
+  });
+
   it('settles production first and splits exactly the selected ships, cargo, damage and root bay', async () => {
     f.clock.set(at(1));
     const cargo = lots.find((lot) => lot.hull === 'COURIER')!;

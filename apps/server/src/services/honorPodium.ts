@@ -3,7 +3,7 @@ import type { Queryable } from '../db/client.js';
 import { honorSeasons, honorTotals, players } from '../db/schema.js';
 
 type Place = 1 | 2 | 3;
-interface HonorPodium { active: boolean; ranks: ReadonlyMap<string, Place> }
+export interface HonorPodium { active: boolean; ranks: ReadonlyMap<string, Place> }
 
 /** Positive achievements only; tied ranks follow the same competition ladder. A bot
  * is crowned like anybody, since a crown that skips a ladder place would expose it. */

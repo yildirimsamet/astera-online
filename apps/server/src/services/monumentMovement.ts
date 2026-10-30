@@ -172,6 +172,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
     const segment = path.find((leg) => at.getTime() <= leg.endMs) ?? path[path.length - 1]!;
     position = interpolatePosition(segment.from, segment.to, segment.startMs, segment.endMs, at.getTime());
   }
+  const leavesHold = wave.status === 'HOLD';
   await reanchorWave(tx, locked, wave, home.id);
   const fleet = fleetOf(split.recalled);
   const orbit = await orbitOf(tx, home.id);
@@ -239,6 +240,9 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
     await publishShard(tx, wave.seasonId, 'control');
     await tx.update(monuments).set({ controllerPlayerId: null, controllerClanId: null, emptySince: at, generation: locked.monument.generation })
       .where(eq(monuments.id, locked.monument.id));
+    await publishShard(tx, wave.seasonId, 'control');
+  } else if (leavesHold) {
+    // The owner keeps it, but its public hangar fill dropped.
     await publishShard(tx, wave.seasonId, 'control');
   }
   await schedule(tx, { seasonId: wave.seasonId, kind: 'monument_arrival', refId: returning.id, resolveAt: arriveAt,

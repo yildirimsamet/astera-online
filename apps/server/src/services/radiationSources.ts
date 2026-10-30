@@ -65,6 +65,21 @@ export async function hpSourcesForSeason(tx: Queryable, seasonId: string, scope:
   return rows.flatMap(row => sourceWindows(row, monumentMotionStart(season), season.radiationBombStartsAt));
 }
 
+/**
+ * `hpSourcesForSeason(…, { from: at, until: at + 1ms, targets: monuments })` over rows
+ * already read, in the same order: the monuments' instantaneous dose on a cached read
+ * (F1.8). `rows` must hold every source still active at `at`.
+ */
+export function monumentDoseSources(season: typeof seasons.$inferSelect, rows: readonly (typeof hpRadiationSources.$inferSelect)[],
+  monumentIds: ReadonlySet<string>, at: Date): HpRadiationSource[] {
+  const ms = at.getTime();
+  return rows
+    .filter(row => (row.activeUntil === null || row.activeUntil.getTime() > ms) && row.activeFrom.getTime() < ms + 1
+      && (row.origin === 'ENVIRONMENT' || (row.anchorKind === 'MONUMENT' && row.anchorId !== null && monumentIds.has(row.anchorId))))
+    .sort((a, b) => a.activeFrom.getTime() - b.activeFrom.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .flatMap(row => sourceWindows(row, monumentMotionStart(season), season.radiationBombStartsAt));
+}
+
 /** Current availability never needs the ended source history used by flight settlement. */
 export async function activeHpSourcesForSeason(tx: Queryable, seasonId: string, now: Date): Promise<HpRadiationSource[]> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
@@ -86,17 +101,35 @@ export async function activeHpSources(tx: Queryable, season: typeof seasons.$inf
 export async function hpRadiationForGalaxy(db: Queryable, seasonId: string, now: Date) {
   const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season || !hpRadiationApplies(season.rulesetVersion)) return [];
-  const cutoff = new Date(now.getTime() - 2 * TRAVEL.pacedFlightCapMinutes * 60_000);
-  const rows = await db.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, seasonId),
-    or(isNull(hpRadiationSources.activeUntil), gte(hpRadiationSources.activeUntil, cutoff)),
+  const rows = await galaxyHpRadiationRows(db, seasonId, now);
+  const bodies = monumentMotionStart(season) ? await db.select({ id: monuments.id, x: monuments.x, y: monuments.y, z: monuments.z })
+    .from(monuments).where(eq(monuments.seasonId, seasonId)) : [];
+  return galaxyHpRadiationView(season, rows, bodies, now);
+}
+
+/** How long an ended source stays on the map: the longest a flight can still be crossing it. */
+const MAP_MEMORY_MS = 2 * TRAVEL.pacedFlightCapMinutes * 60_000;
+
+/**
+ * Every row the galaxy may draw at `since` or later, bomb history included (F1.8). A
+ * cached copy loaded earlier is a superset of what a later instant draws; the view
+ * filters it again, and the monuments' own dose reads the same rows.
+ */
+export async function galaxyHpRadiationRows(db: Queryable, seasonId: string, since: Date) {
+  return db.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, seasonId),
+    or(isNull(hpRadiationSources.activeUntil), gte(hpRadiationSources.activeUntil, new Date(since.getTime() - MAP_MEMORY_MS)))))
+    .orderBy(hpRadiationSources.id);
+}
+
+export function galaxyHpRadiationView(season: typeof seasons.$inferSelect, rows: readonly (typeof hpRadiationSources.$inferSelect)[],
+  bodies: readonly { id: string; x: number; y: number; z: number }[], now: Date) {
+  const cutoff = now.getTime() - MAP_MEMORY_MS;
+  const drawn = rows.filter(row => (row.activeUntil === null || row.activeUntil.getTime() >= cutoff)
     // Bomb history is server-only: target auras never irradiate a travelling fleet.
-    or(eq(hpRadiationSources.origin, 'ENVIRONMENT'), gt(hpRadiationSources.activeUntil, now)),
-  )).orderBy(hpRadiationSources.id);
+    && (row.origin === 'ENVIRONMENT' || (row.activeUntil !== null && row.activeUntil.getTime() > now.getTime())));
   const cutover = monumentMotionStart(season);
-  const bodies = cutover ? await db.select({ id: monuments.id, x: monuments.x, y: monuments.y, z: monuments.z }).from(monuments)
-    .where(eq(monuments.seasonId, seasonId)) : [];
-  const byId = new Map(bodies.map(body => [body.id, body]));
-  return rows.flatMap(row => sourceWindows(row, cutover, season.radiationBombStartsAt).map(source => {
+  const byId = new Map((cutover ? bodies : []).map(body => [body.id, body]));
+  return drawn.flatMap(row => sourceWindows(row, cutover, season.radiationBombStartsAt).map(source => {
     const body = source.target?.kind === 'MONUMENT' ? byId.get(source.target.id) : undefined;
     const motion = body ? motionOfMonument(body, season) : undefined;
     const level = row.radiationLevel ?? undefined;

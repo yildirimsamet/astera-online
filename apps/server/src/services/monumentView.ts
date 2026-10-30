@@ -8,7 +8,7 @@ import {
   priceMonumentReturn, protectedRadiationHp,
   type Fleet, type HpRadiationSource, type MonumentShipLot, type Segment, type Vec3,
 } from '@astera/rules';
-import type { Tx } from '../db/client.js';
+import type { Queryable, Tx } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { accounts, arenaAdmiralLegs, arenaAdmirals, clanMemberships, clans, monumentProbes, monuments, monumentShipLots, monumentWaves, planets, players } from '../db/schema.js';
 import { lockMonuments, readMonumentRosters, projectMonumentHold, type LockedMonument } from './monument.js';
@@ -129,7 +129,7 @@ export async function projectMonumentTargets(tx: Tx, input: Reader, ids: readonl
   return due ? reconcileMonumentTargets(tx, input, ids) : targets;
 }
 
-type PublicMonumentTarget = Pick<LockedMonument, 'monument' | 'season' | 'waves' | 'memberships'> & {
+export type PublicMonumentTarget = Pick<LockedMonument, 'monument' | 'season' | 'waves' | 'memberships'> & {
   // Public projections only need the physical occupancy fields.  The private
   // lot shape also carries owner/research data which must never be required by
   // (or accidentally exposed through) the galaxy reader.
@@ -142,11 +142,28 @@ export async function publicMonumentFacts(tx: Tx, targets: readonly PublicMonume
     sourcesBySeason.set(seasonId, await hpSourcesForSeason(tx, seasonId, { from: at, until: new Date(at.getTime() + 1),
       targets: targets.filter(target => target.season.id === seasonId).map(target => ({ kind: 'MONUMENT', id: target.monument.id })) }));
   }
-  const playerIds = targets.flatMap(({ monument }) => monument.controllerPlayerId ? [monument.controllerPlayerId] : []);
-  const clanIds = targets.flatMap(({ monument }) => monument.controllerClanId ? [monument.controllerClanId] : []);
-  const names = playerIds.length === 0 ? [] : await tx.select({ id: players.id, name: accounts.displayName }).from(players)
-    .innerJoin(accounts, eq(accounts.id, players.accountId)).where(inArray(players.id, playerIds));
-  const clanNames = clanIds.length === 0 ? [] : await tx.select({ id: clans.id, name: clans.name, tag: clans.tag }).from(clans).where(inArray(clans.id, clanIds));
+  return projectMonumentFacts(targets, sourcesBySeason, await monumentControllerNames(tx, targets.map(({ monument }) => monument)), at);
+}
+
+export interface MonumentControllerNames {
+  players: readonly { id: string; name: string }[];
+  clans: readonly { id: string; name: string; tag: string }[];
+}
+
+/** The display names of whoever holds each monument. */
+export async function monumentControllerNames(db: Queryable, rows: readonly (typeof monuments.$inferSelect)[]): Promise<MonumentControllerNames> {
+  const playerIds = rows.flatMap((monument) => monument.controllerPlayerId ? [monument.controllerPlayerId] : []);
+  const clanIds = rows.flatMap((monument) => monument.controllerClanId ? [monument.controllerClanId] : []);
+  return {
+    players: playerIds.length === 0 ? [] : await db.select({ id: players.id, name: accounts.displayName }).from(players)
+      .innerJoin(accounts, eq(accounts.id, players.accountId)).where(inArray(players.id, playerIds)),
+    clans: clanIds.length === 0 ? [] : await db.select({ id: clans.id, name: clans.name, tag: clans.tag }).from(clans).where(inArray(clans.id, clanIds)),
+  };
+}
+
+/** The public monument facts at `at`, from rows already read: no query, so a cached read can project them (F1.8). */
+export function projectMonumentFacts(targets: readonly PublicMonumentTarget[], sourcesBySeason: ReadonlyMap<string, readonly HpRadiationSource[]>,
+  { players: names, clans: clanNames }: MonumentControllerNames, at: Date) {
   return targets.map(({ monument: m, season, waves, lots, memberships }) => {
     const held = new Set(waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
     const controller = m.controllerPlayerId !== null ? { kind: 'PLAYER' as const, playerId: m.controllerPlayerId, name: names.find((row) => row.id === m.controllerPlayerId)?.name ?? '' }

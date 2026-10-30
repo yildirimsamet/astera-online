@@ -1039,7 +1039,7 @@ test edilir.
 | Q1 | Bildirim zaman indeksi + deterministik sıra | Eşit `created_at` → `id` ile sabit sıra; eski ve yeni sorgu aynı 30 id; okunmamış filtresi bozulmaz |
 | C1 + Q7 | Kimlik epoch cache'i (F1.1 trigger altyapısı) | İptalden sonraki ilk okuma reddedilir; bus kopukken her istek DB'ye gider; komut transaction'ı DB'den doğrular |
 | C2 + Q8 | Yerleşim epoch'u / tek RR snapshot | Trafik GET'i isabette 0 SQL; relocation yarışında eski yerleşimle veri dönmez |
-| C3 + C4 + Q3 | Sezon kuralları ve galaksi yardımcıları cache'i; GET'te season kilidi yok | `/api/galaxy` isabette ≤3 SQL; yanıt eskisiyle deep-equal; anıt/podium/radyasyon değişince yeni `seq` ile tazelenir |
+| C3 + C4 + Q3 | Sezon kuralları ve galaksi yardımcıları cache'i; GET'te season kilidi yok. **Kod hazır (30 Eki), deploy edilmedi:** galaksinin ortak kısmı (sezon, anıtlar, radyasyon, iki podium) kilitsiz read-only snapshot'la galaksi başına bir kez okunur, istek anına saf fonksiyonla izdüşürülür (`galaxyFacts.ts`); klan varlığı klan başına cache'li. Isınmış okuma 26 → 7 SQL; route'un kendi payı 3 (Telescope, üyelik, kendi arızaları), kalan 4 kimlik/yerleşim kapısı (C1/C2). Kısmi anıt kaybı ve kısmi geri çağırma artık `control` yayınlar | `/api/galaxy` isabette ≤3 SQL; yanıt eskisiyle deep-equal; anıt/podium/radyasyon değişince yeni `seq` ile tazelenir |
 | C5 + Q5 | Araştırma keşfi cache'i + tek toplam | Yeni uygun rapordan sonra keşif hemen görünür; eski ve yeni sonuç aynı |
 | Q4 | Rapor listesi dal başına LIMIT + UNION ALL; dar kolonlar | Aynı 20 id ve sıra; destek ve ortak savaş katılımcı dalları dahil |
 | Q6 | Podium eşik sorgusu | Eşit puanlı oyuncular aynı rank'ı paylaşır; 3. sıradaki eşitlikte hiçbiri düşmez |

@@ -369,6 +369,9 @@ async function settleMonumentInterval(tx: Tx, locked: LockedMonument, at: Date, 
     monument.emptySince = new Date(emptyAt);
     monument.generation += 1;
     await publishShard(tx, season.id, 'control');
+  } else if (result.destroyed.length > 0) {
+    // The owner keeps it, but its public hangar fill dropped.
+    await publishShard(tx, season.id, 'control');
   }
   monument.settledAt = new Date(toMs);
   await tx.update(monuments).set({

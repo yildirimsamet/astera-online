@@ -338,6 +338,9 @@ export async function assertRadiationSafe(tx: Tx, input: {
   }
 }
 
+/** How long an ended cloud stays on the map: the longest a flight can still be crossing it. */
+const MAP_MEMORY_MS = 2 * TRAVEL.pacedFlightCapMinutes * 60_000;
+
 /**
  * THE CLOUDS ON THE MAP. Everything a flight could still be crossing: lit, not yet lit,
  * or ended within the longest a flight can be up (a recalled one flies its outbound time
@@ -345,18 +348,9 @@ export async function assertRadiationSafe(tx: Tx, input: {
  * same dose function the server settles with. A season dealt before the rule shows none:
  * a cloud that does nothing is a lie on the map.
  */
-export async function radiationForGalaxy(db: Queryable, seasonId: string, now: Date) {
-  const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
-    .where(eq(seasons.id, seasonId));
-  if (!season || !shipDamageApplies(season.rulesetVersion) || hpRadiationApplies(season.rulesetVersion)) return [];
-  const since = new Date(now.getTime() - 2 * TRAVEL.pacedFlightCapMinutes * 60_000);
-  const rows = await db.select().from(radiationSources)
-    .where(and(
-      eq(radiationSources.seasonId, seasonId),
-      or(isNull(radiationSources.activeUntil), gt(radiationSources.activeUntil, since)),
-    ))
-    .orderBy(asc(radiationSources.createdAt), asc(radiationSources.id));
-  return rows.map((row) => ({
+export function galaxyRadiationView(rows: readonly (typeof radiationSources.$inferSelect)[], now: Date) {
+  const since = now.getTime() - MAP_MEMORY_MS;
+  return rows.filter((row) => row.activeUntil === null || row.activeUntil.getTime() > since).map((row) => ({
     id: row.id,
     mode: row.mode,
     center: { x: row.x, y: row.y, z: row.z },
@@ -365,6 +359,20 @@ export async function radiationForGalaxy(db: Queryable, seasonId: string, now: D
     activeFrom: row.activeFrom,
     activeUntil: row.activeUntil,
   }));
+}
+
+/**
+ * The rows the map draws at `since` or later (F1.8). A cached copy loaded earlier is a
+ * superset of what a later instant draws, so the view filters it again.
+ */
+export async function galaxyRadiationRows(db: Queryable, seasonId: string, rulesetVersion: number, since: Date) {
+  if (!shipDamageApplies(rulesetVersion) || hpRadiationApplies(rulesetVersion)) return [];
+  return db.select().from(radiationSources)
+    .where(and(
+      eq(radiationSources.seasonId, seasonId),
+      or(isNull(radiationSources.activeUntil), gt(radiationSources.activeUntil, new Date(since.getTime() - MAP_MEMORY_MS))),
+    ))
+    .orderBy(asc(radiationSources.createdAt), asc(radiationSources.id));
 }
 
 /**

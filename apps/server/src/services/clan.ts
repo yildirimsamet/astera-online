@@ -107,14 +107,21 @@ export async function clanActor(db: Queryable, accountId: string): Promise<ClanA
  */
 export async function readClanPresence(db: Queryable, playerId: string) {
   const membership = await activeClanMembership(db, playerId);
-  if (!membership) return null;
+  return membership ? (await clanPresenceOf(db, membership.clanId)).presence : null;
+}
 
+/**
+ * One clan's presence, whoever asks: the same for every member, so it is cached per
+ * clan (scaling plan F1.8, C4). `seasonId` says which galaxy's events clear it.
+ */
+export async function clanPresenceOf(db: Queryable, clanId: string) {
   const [clan] = await db
-    .select({ id: clans.id, name: clans.name, tag: clans.tag })
+    .select({ id: clans.id, name: clans.name, tag: clans.tag, seasonId: clans.seasonId, disbandedAt: clans.disbandedAt })
     .from(clans)
-    .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)))
+    .where(eq(clans.id, clanId))
     .limit(1);
-  if (!clan) return null;
+  if (!clan) return { seasonId: null, presence: null };
+  if (clan.disbandedAt) return { seasonId: clan.seasonId, presence: null };
 
   const rows = await db
     .select({
@@ -134,7 +141,7 @@ export async function readClanPresence(db: Queryable, playerId: string) {
     .innerJoin(accounts, eq(accounts.id, players.accountId))
     .innerJoin(planets, eq(planets.controllerPlayerId, clanMemberships.playerId))
     .where(and(
-      eq(clanMemberships.clanId, membership.clanId),
+      eq(clanMemberships.clanId, clanId),
       isNull(clanMemberships.leftAt),
     ))
     .orderBy(asc(clanMemberships.slot), asc(planets.slotIndex));
@@ -169,7 +176,7 @@ export async function readClanPresence(db: Queryable, playerId: string) {
     members.set(row.playerId, member);
   }
 
-  return { clan, members: [...members.values()] };
+  return { seasonId: clan.seasonId, presence: { clan: { id: clan.id, name: clan.name, tag: clan.tag }, members: [...members.values()] } };
 }
 
 async function assertClanRuleset(
