@@ -1078,6 +1078,9 @@ export const clanCeasefires = pgTable('clan_ceasefires', {
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('clan_ceasefires_low_idx').on(t.playerLowId),
+  index('clan_ceasefires_high_idx').on(t.playerHighId),
   primaryKey({ columns: [t.seasonId, t.playerLowId, t.playerHighId] }),
   index('clan_ceasefires_expiry_idx').on(t.seasonId, t.endsAt),
   check('clan_ceasefires_pair_check', sql`${t.playerLowId} < ${t.playerHighId}`),
@@ -1184,6 +1187,8 @@ export const dmConversations = pgTable('dm_conversations', {
   playerLowId: uuid('player_low_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
   playerHighId: uuid('player_high_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('dm_conversations_low_idx').on(t.playerLowId),
   uniqueIndex('dm_conversations_pair_idx').on(t.seasonId, t.playerLowId, t.playerHighId),
   index('dm_conversations_high_idx').on(t.playerHighId),
   check('dm_conversations_order_check', sql`${t.playerLowId} < ${t.playerHighId}`),
@@ -1207,7 +1212,11 @@ export const dmReadMarkers = pgTable('dm_read_markers', {
   conversationId: uuid('conversation_id').notNull().references(() => dmConversations.id, { onDelete: 'cascade' }),
   playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
   readAt: timestamp('read_at', { withTimezone: true }).notNull(),
-}, (t) => [primaryKey({ columns: [t.conversationId, t.playerId] })]);
+}, (t) => [
+  primaryKey({ columns: [t.conversationId, t.playerId] }),
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('dm_read_markers_player_idx').on(t.playerId),
+]);
 
 /** One current emoji per player per message, with the message's own FK handling removal. */
 export const messageReactions = pgTable('message_reactions', {
@@ -1219,6 +1228,8 @@ export const messageReactions = pgTable('message_reactions', {
   emoji: text('emoji').$type<ReactionEmoji>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('message_reactions_player_idx').on(t.playerId),
   uniqueIndex('message_reactions_chat_player_idx').on(t.chatMessageId, t.playerId),
   uniqueIndex('message_reactions_clan_player_idx').on(t.clanMessageId, t.playerId),
   uniqueIndex('message_reactions_dm_player_idx').on(t.dmMessageId, t.playerId),
@@ -1391,6 +1402,8 @@ export const seasonTelemetrySegments = pgTable('season_telemetry_segments', {
   telemetry: jsonb('telemetry').$type<PlanetSeasonTelemetry>().notNull(),
   closedAt: timestamp('closed_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('season_telemetry_segments_player_idx').on(t.playerId),
   index('season_telemetry_segments_season_player_idx').on(t.seasonId, t.playerId),
 ]);
 
@@ -1540,6 +1553,8 @@ export const planets = pgTable('planets', {
    */
   defencePosture: text('defence_posture').$type<DefencePosture>().notNull().default('ESCAPE'),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('planets_stats_owner_idx').on(t.statsOwnerPlayerId),
   uniqueIndex('planets_capital_player_idx')
     .on(t.controllerPlayerId)
     .where(sql`${t.kind} = 'CAPITAL'`),
@@ -1576,7 +1591,11 @@ export const neutralPlanetState = pgTable('neutral_planet_state', {
   claimPriorityUntil: timestamp('claim_priority_until', { withTimezone: true }),
   nextReinforcementAt: timestamp('next_reinforcement_at', { withTimezone: true }),
   economyAnchorAt: timestamp('economy_anchor_at', { withTimezone: true }).notNull(),
-}, (t) => [check('neutral_planet_tier_check', sql`${t.tier} BETWEEN 1 AND 3`)]);
+}, (t) => [
+  check('neutral_planet_tier_check', sql`${t.tier} BETWEEN 1 AND 3`),
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('neutral_planet_claim_priority_idx').on(t.claimPriorityPlayerId),
+]);
 
 /**
  * WHAT IS BROKEN ON ONE COLONY. `docs/colony-faults-plan.md`.
@@ -1768,6 +1787,8 @@ export const units = pgTable('units', {
   /** Home injury metadata is a subset of count; away health lives on its mission/wave. */
   damage: jsonb('damage').$type<HpDamageLot[]>().notNull().default([]),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('units_owner_idx').on(t.ownerPlayerId),
   primaryKey({ columns: [t.planetId, t.hull, t.location] }),
   // Physical fleets aboard named flights (`pirate:`, `trade:`, waves) are read by
   // location alone; the primary key leads with planet_id and cannot serve that.
@@ -1942,6 +1963,8 @@ export const attackCommitments = pgTable('attack_commitments', {
   launchedAt: timestamp('launched_at', { withTimezone: true }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('attack_commitments_target_idx').on(t.targetPlayerId),
   /**
    * ONE ROW PER ATTACKER PER MISSION — not one row per mission. 2026-09-20.
    *
@@ -1979,6 +2002,8 @@ export const clanAidCommitments = pgTable('clan_aid_commitments', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('clan_aid_sender_home_idx').on(t.senderHomePlanetId),
   index('clan_aid_recipient_window_idx').on(t.recipientPlayerId, t.expiresAt),
   index('clan_aid_sender_idx').on(t.senderPlayerId, t.committedAt),
   check('clan_aid_status_check', sql`${t.status} IN ('OUTBOUND', 'RETURNING', 'DELIVERED', 'RETURNED')`),
@@ -2358,6 +2383,8 @@ export const radiationBombFlights = pgTable('radiation_bomb_flights', {
   interception: jsonb('interception').$type<RadiationBombInterception>(),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('radiation_bomb_flights_owner_idx').on(t.ownerPlayerId),
   uniqueIndex('radiation_bomb_flights_asset_idx').on(t.assetId),
   uniqueIndex('radiation_bomb_flights_charge_idx').on(t.chargeId),
   index('radiation_bomb_flights_origin_status_idx').on(t.originPlanetId, t.status),
@@ -2832,6 +2859,8 @@ export const battleReports = pgTable('battle_reports', {
   defenderCount: integer('defender_count').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('reports_target_planet_idx').on(t.targetPlanetId),
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
   index('reports_attacker_idx').on(t.attackerPlayerId, t.createdAt),
   uniqueIndex('reports_mission_idx').on(t.missionId),
@@ -3174,6 +3203,9 @@ export const clanWarOperations = pgTable('clan_war_operations', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('clan_war_operations_staging_idx').on(t.stagingPlanetId),
+  index('clan_war_operations_leader_idx').on(t.leaderPlayerId),
   /**
    * ONE OPEN OPERATION PER CLAN, ENFORCED BY THE DATABASE.
    *
@@ -3485,6 +3517,8 @@ export const clanTreasuryEvents = pgTable('clan_treasury_events', {
   levelAfter: integer('level_after'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('clan_treasury_events_source_planet_idx').on(t.sourcePlanetId),
   index('clan_treasury_events_clan_idx').on(t.clanId, t.createdAt),
   index('clan_treasury_events_actor_idx').on(t.actorPlayerId, t.createdAt),
   check(
@@ -3565,6 +3599,8 @@ export const strategicImpacts = pgTable('strategic_impacts', {
   loyaltyAfter: real('loyalty_after'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('strategic_impacts_target_idx').on(t.targetPlanetId),
   uniqueIndex('strategic_impacts_mission_idx').on(t.missionId),
   index('strategic_impacts_attacker_idx').on(t.attackerPlayerId, t.createdAt),
   index('strategic_impacts_defender_idx').on(t.defenderPlayerId, t.createdAt),
@@ -3597,6 +3633,9 @@ export const strategicInterceptions = pgTable('strategic_interceptions', {
   collisionZ: real('collision_z').notNull(),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('strategic_interceptions_target_idx').on(t.targetPlanetId),
+  index('strategic_interceptions_attacker_idx').on(t.attackerPlayerId),
   uniqueIndex('strategic_interceptions_mission_idx').on(t.missionId),
   index('strategic_interceptions_season_time_idx').on(t.seasonId, t.launchAt, t.impactAt),
   index('strategic_interceptions_defender_idx').on(t.defenderPlayerId, t.launchAt),
@@ -3612,7 +3651,11 @@ export const scanEvents = pgTable('scan_events', {
   detected: boolean('detected').notNull(),
   bearing: text('bearing'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('scans_target_idx').on(t.targetPlanetId, t.createdAt)]);
+}, (t) => [
+  index('scans_target_idx').on(t.targetPlanetId, t.createdAt),
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('scans_origin_idx').on(t.originPlanetId),
+]);
 
 /**
  * What a probe brought back, for the OBSERVER's eyes only.
@@ -3737,6 +3780,8 @@ export const probeReports = pgTable('probe_reports', {
    */
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('probe_reports_target_idx').on(t.targetPlanetId),
   index('probe_reports_observer_idx').on(t.observerPlayerId, t.createdAt),
   /**
    * THE GALAXY READ'S OWN INDEX. D127.
@@ -3810,6 +3855,8 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
   }>().notNull(),
   seenAt: timestamp('seen_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('probe_world_memories_target_idx').on(t.targetPlanetId),
   primaryKey({ columns: [t.observerPlayerId, t.targetPlanetId] }),
   uniqueIndex('probe_world_memories_report_idx').on(t.reportId),
 ]);
@@ -3835,6 +3882,8 @@ export const watches = pgTable('watches', {
    */
   cooldownUntil: timestamp('cooldown_until', { withTimezone: true }),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('watches_target_idx').on(t.targetPlanetId),
   primaryKey({ columns: [t.observerPlanetId, t.slot] }),
   index('watches_observer_player_idx').on(t.observerPlayerId),
 ]);
@@ -3986,7 +4035,11 @@ export const pirateState = pgTable('pirate_state', {
   destroyedAt: timestamp('destroyed_at', { withTimezone: true }),
   destroyedByPlayerId: uuid('destroyed_by_player_id').references(() => players.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
-}, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
+}, (t) => [
+  primaryKey({ columns: [t.seasonId, t.index] }),
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('pirate_state_destroyed_by_idx').on(t.destroyedByPlayerId),
+]);
 
 /**
  * WRECKAGE LEFT BY A BATTLE. D32.
@@ -4042,6 +4095,8 @@ export const debrisFields = pgTable('debris_fields', {
   takenDeuterium: real('taken_deuterium').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('debris_mission_idx').on(t.missionId),
   index('debris_season_idx').on(t.seasonId, t.createdAt),
   index('debris_planet_idx').on(t.planetId),
   index('debris_pirate_raid_idx').on(t.pirateRaidId),
@@ -4272,6 +4327,8 @@ export const tradeRuns = pgTable('trade_runs', {
   recalledAt: timestamp('recalled_at', { withTimezone: true }),
   recallFrom: jsonb('recall_from').$type<Vec3 & { home: Vec3 }>(),
 }, (t) => [
+  // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
+  index('trade_runs_owner_idx').on(t.ownerPlayerId),
   index('trade_runs_planet_idx').on(t.planetId, t.status),
   index('trade_runs_season_idx').on(t.seasonId, t.status),
   /*

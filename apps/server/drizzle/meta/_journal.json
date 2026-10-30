@@ -1513,6 +1513,13 @@
       "when": 1793398832531,
       "tag": "0215_battle_report_events",
       "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1793400487893,
+      "tag": "0216_reclaim_fk_indexes",
+      "breakpoints": true
     }
   ]
 }
