@@ -95,7 +95,7 @@ export interface WorkerStatus {
   maintenance: { lastAt: string | null; errors: number };
   /** SQL statements each event kind's handler ran (F0.2), and how long each run took. */
   eventStatements: Record<string, { events: number; statements: ReturnType<SampleWindow['summary']>;
-    durationMs: ReturnType<SampleWindow['summary']> }>;
+    durationMs: ReturnType<SampleWindow['summary']>; busyMs: number }>;
 }
 
 /**
@@ -175,7 +175,7 @@ export class EventWorker {
   private readonly wake = new SampleWindow();
   private readonly queue = new SampleWindow();
   private busyMs = 0;
-  private readonly eventStatements = new Map<string, { events: number; statements: SampleWindow; durationMs: SampleWindow }>();
+  private readonly eventStatements = new Map<string, { events: number; statements: SampleWindow; durationMs: SampleWindow; busyMs: number }>();
 
   constructor(
     private readonly db: Db,
@@ -464,7 +464,7 @@ export class EventWorker {
   }
 
   private samplesOf(kind: string) {
-    const samples = this.eventStatements.get(kind) ?? { events: 0, statements: new SampleWindow(), durationMs: new SampleWindow() };
+    const samples = this.eventStatements.get(kind) ?? { events: 0, statements: new SampleWindow(), durationMs: new SampleWindow(), busyMs: 0 };
     this.eventStatements.set(kind, samples);
     return samples;
   }
@@ -477,7 +477,9 @@ export class EventWorker {
 
   /** The handler and its bookkeeping, as long as the next event in the batch waited for it. */
   private observeEventDuration(kind: string, ms: number): void {
-    this.samplesOf(kind).durationMs.add(ms);
+    const samples = this.samplesOf(kind);
+    samples.durationMs.add(ms);
+    samples.busyMs += ms;
     this.busyMs += ms;
   }
 
@@ -519,7 +521,7 @@ export class EventWorker {
       maintenance: { lastAt: this.maintainedAt?.toISOString() ?? null, errors: this.maintenanceErrors },
       eventStatements: Object.fromEntries([...this.eventStatements].sort(([a], [b]) => a.localeCompare(b))
         .map(([kind, samples]) => [kind, { events: samples.events, statements: samples.statements.summary(),
-          durationMs: samples.durationMs.summary() }])),
+          durationMs: samples.durationMs.summary(), busyMs: samples.busyMs }])),
     };
   }
 

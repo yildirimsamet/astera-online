@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/queries.js';
 import { serverNow } from '../lib/clock.js';
+import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from './arrivalTiming.js';
 
 /**
  * REFETCH AT THE MOMENT SOMETHING LANDS, RATHER THAN SOON AFTER.
@@ -31,20 +32,6 @@ import { serverNow } from '../lib/clock.js';
  * It never decides anything. The server remains the only authority on what
  * actually happened; this only decides WHEN to go and ask.
  */
-/**
- * How long after an instant the first ask goes out.
- *
- * Enough to lose the race against the worker's own commit and no more. It used to
- * absorb clock skew as well; `serverNow` does that properly now, so this is only
- * the commit.
- */
-const SETTLE_MARGIN_MS = 400;
-
-/** How often the chase asks again while the world has not caught up yet. */
-const CHASE_MS = 900;
-
-/** And how many times. `WORKER_POLL_MS` is a second; this is generous cover for it. */
-const MAX_CHASES = 12;
 
 export function useArrivals(instants: readonly (Date | null | undefined)[]): void {
   const client = useQueryClient();

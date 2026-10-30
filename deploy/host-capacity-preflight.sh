@@ -49,17 +49,18 @@ if [[ -f .env ]]; then
     || { fail 'docker-compose.prod.yml does not render with production .env'; compose_json='{}'; }
   if [[ "$compose_json" != '{}' ]]; then
     mapfile -t services < <(jq -r '.services | keys[]' <<<"$compose_json")
-    expected=$'api1\napi2\napi3\npostgres\nvalkey\nworker'
+    expected=$'api1\napi2\napi3\narena\npostgres\nvalkey\nworker'
     actual=$(printf '%s\n' "${services[@]}")
     [[ "$actual" == "$expected" ]] \
-      && pass 'exactly three API replicas, one worker, PostgreSQL and Valkey configured' \
+      && pass 'exactly three API replicas, one worker, the arena, PostgreSQL and Valkey configured' \
       || fail "unexpected production services: ${services[*]}"
     [[ "$(jq -r '.services.api1.environment.ROLE' <<<"$compose_json")" == api \
        && "$(jq -r '.services.api2.environment.ROLE' <<<"$compose_json")" == api \
        && "$(jq -r '.services.api3.environment.ROLE' <<<"$compose_json")" == api \
-       && "$(jq -r '.services.worker.environment.ROLE' <<<"$compose_json")" == worker ]] \
-      && pass 'API and singleton worker roles are separated' \
-      || fail 'ROLE layout is not 3×api + 1×worker'
+       && "$(jq -r '.services.worker.environment.ROLE' <<<"$compose_json")" == worker \
+       && "$(jq -r '.services.arena.environment.ROLE' <<<"$compose_json")" == arena ]] \
+      && pass 'API, singleton worker and arena roles are separated' \
+      || fail 'ROLE layout is not 3×api + 1×worker + 1×arena'
     for service in api1 api2 api3 worker; do
       soft=$(jq -r ".services.${service}.ulimits.nofile.soft // 0" <<<"$compose_json")
       hard=$(jq -r ".services.${service}.ulimits.nofile.hard // 0" <<<"$compose_json")
@@ -68,7 +69,7 @@ if [[ -f .env ]]; then
         || fail "$service nofile $soft/$hard; both must be at least 65535"
     done
     for spec in 'api1:1073741824' 'api2:1073741824' 'api3:1073741824' \
-                'worker:805306368' 'postgres:4294967296' 'valkey:134217728'; do
+                'worker:805306368' 'arena:402653184' 'postgres:4294967296' 'valkey:134217728'; do
       service=${spec%%:*}
       expected_limit=${spec##*:}
       limit=$(jq -r ".services.${service}.mem_limit // 0" <<<"$compose_json")

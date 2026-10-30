@@ -46,6 +46,9 @@ import {
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
+import { RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
+import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
 
 const PRODUCTION_HOSTS = new Set([
   'asteraonline.space',
@@ -85,6 +88,7 @@ const { values } = parseArgs({
     'max-rss-mb': { type: 'string', default: '512' },
     'min-worker-events': { type: 'string', default: '1' },
     'database-url': { type: 'string' },
+    'seeded-accounts': { type: 'string' },
   },
 });
 
@@ -96,13 +100,16 @@ const intArg = (name, raw, min, max) => {
   return value;
 };
 
-const userCount = intArg('users', values.users, 1, 600);
-const connectionCount = intArg('connections', values.connections ?? values.users, 1, 750);
+const userCount = intArg('users', values.users, 1, RUNNER_LIMITS.maxUsers);
+const connectionCount = intArg('connections', values.connections ?? values.users, 1,
+  RUNNER_LIMITS.maxUsers * RUNNER_LIMITS.streamsPerAccount);
+// The seed may place more commanders than the run logs in: the rest are offline, fleets in the air.
+const seededAccounts = intArg('seeded-accounts', values['seeded-accounts'] ?? values.users, userCount, RUNNER_LIMITS.maxUsers);
 if (connectionCount < userCount) {
   throw new Error('--connections must be at least --users; every claimed active account needs a live client');
 }
 // The server closes an account's oldest stream beyond three (STREAMS_PER_ACCOUNT, F1.1).
-if (connectionCount > userCount * 3) {
+if (connectionCount > userCount * RUNNER_LIMITS.streamsPerAccount) {
   throw new Error('--connections cannot exceed 3 per --users account; the server supersedes the oldest stream beyond that');
 }
 const durationSeconds = intArg('duration-seconds', values['duration-seconds'], 10, 43_200);
@@ -439,6 +446,7 @@ const request = async (vu, path, options = {}) => {
         if (vu && path.split('?')[0] === '/api/galaxy/traffic') {
           observePublicContacts(vu, body);
         }
+        if (vu && path.split('?')[0] === '/api/session/pending') armArrival(vu, body?.pending);
       }
     }
     return { response, body, valid: succeeded, startedAt: started };
@@ -625,12 +633,58 @@ const safetyNetLoop = async (vu, signal) => {
   while (!signal.aborted) {
     await Promise.all([
       request(vu, '/api/galaxy'),
-      request(vu, '/api/galaxy/traffic'),
       request(vu, '/api/mining/field'),
       request(vu, '/api/mining/status'),
       request(vu, '/api/session/pending'),
     ]);
     await pause(READ_NET_MS, signal);
+  }
+};
+
+/** The web polls traffic on its own clock (`useTraffic`, `TRAFFIC.refreshMs`). */
+const trafficLoop = async (vu, signal) => {
+  await pause(random() * TRAFFIC.refreshMs, signal);
+  while (!signal.aborted) {
+    await request(vu, '/api/galaxy/traffic');
+    await pause(TRAFFIC.refreshMs, signal);
+  }
+};
+
+/**
+ * What `useArrivals` refetches the moment something lands, and how it chases the
+ * world until it has moved on: one timer per client, for the soonest arrival.
+ */
+const arrivalReads = [
+  '/api/session/pending', '/api/mining/field', '/api/galaxy/traffic', '/api/planet', '/api/planets',
+  '/api/galaxy', '/api/reports', '/api/notifications?limit=30',
+];
+const arrivalStats = { armed: 0, followed: 0, chases: 0 };
+const armArrival = (vu, threads) => {
+  if (!Array.isArray(threads) || activityController.signal.aborted) return;
+  const at = soonestArrival(threads.filter((thread) => thread && thread.arriveAt), Date.now());
+  if (at === null || at === vu.arrivalAt) return;
+  if (vu.arrivalTimer !== null) clearTimeout(vu.arrivalTimer);
+  vu.arrivalAt = at;
+  arrivalStats.armed += 1;
+  vu.arrivalTimer = setTimeout(() => {
+    vu.arrivalTimer = null;
+    void followArrival(vu, at);
+  }, Math.max(0, at - Date.now()) + SETTLE_MARGIN_MS);
+};
+const followArrival = async (vu, at) => {
+  const signal = activityController.signal;
+  if (signal.aborted) return;
+  arrivalStats.followed += 1;
+  if (vu.arrivalAt === at) vu.arrivalAt = null;
+  const [pending] = await Promise.all(arrivalReads.map((path) => request(vu, path)));
+  const landed = (body) => !Array.isArray(body?.pending)
+    || !body.pending.some((thread) => new Date(thread?.arriveAt).getTime() === at);
+  let current = pending?.body;
+  for (let chase = 0; chase < MAX_CHASES && !landed(current) && !signal.aborted; chase += 1) {
+    await pause(CHASE_MS, signal);
+    if (signal.aborted) return;
+    arrivalStats.chases += 1;
+    current = (await request(vu, '/api/session/pending')).body;
   }
 };
 
@@ -650,6 +704,7 @@ const launch = async (vu) => {
       });
       if (result.valid && typeof result.body?.missionId === 'string') {
         expectPublicContact(result.body.missionId, vu.accountIndex, intentAt);
+        armArrival(vu, result.body.pending);
         return true;
       }
       if (result.response?.ok) requestIntegrity.invalidPayloads += 1;
@@ -688,12 +743,12 @@ const actionLoop = async (vu, signal) => {
 
 const launchWave = async (vusToUse, signal) => {
   if (waveLaunches === 0) return;
-  // One socket per account, interleaved by its position inside each 300-seat
-  // shard. `slice(0, n)` would put an ostensibly two-galaxy wave entirely in
+  // One socket per account, interleaved by its position inside each galaxy's
+  // seats. `slice(0, n)` would put an ostensibly two-galaxy wave entirely in
   // EU-1 and leave the production fan-out/worker contention untested.
   const unique = [...new Map(vusToUse.map((vu) => [vu.accountIndex, vu])).values()]
     .sort((left, right) => (
-      (left.accountIndex % 300) - (right.accountIndex % 300)
+      (left.accountIndex % SERVERS.capacity) - (right.accountIndex % SERVERS.capacity)
       || left.accountIndex - right.accountIndex
     ));
   const selected = unique.slice(0, waveLaunches);
@@ -832,6 +887,9 @@ const validMetricSnapshot = (snapshot) => Boolean(
       && finite(snapshot.worker?.latenessMs?.samples)
       && finite(snapshot.worker?.latenessMs?.p95)
       && finite(snapshot.worker?.latenessMs?.p99)
+      && finite(snapshot.worker?.busyMs)
+      && finite(snapshot.worker?.wakeMs?.p99)
+      && finite(snapshot.worker?.queueMs?.p99)
     )
   )
 );
@@ -870,6 +928,11 @@ const summarizeMetrics = (frames) => {
   let workerLatenessP99Ms = 0;
   const rssByUrl = new Map();
   const workerByUrl = new Map();
+  const workerFrames = [];
+  let workerWakeP99Ms = 0;
+  let workerQueueP99Ms = 0;
+  let firstWorkerKinds = null;
+  let lastWorkerKinds = null;
 
   for (const frame of frames) {
     const hostSample = frame.snapshots.find((snapshot) => validMetricSnapshot(snapshot));
@@ -970,6 +1033,11 @@ const summarizeMetrics = (frames) => {
           inactiveWorkerRoles += 1;
         } else {
           const processed = Number(snapshot.worker.processed ?? 0);
+          workerFrames.push({ atMs: Date.parse(frame.at), busyMs: snapshot.worker.busyMs });
+          workerWakeP99Ms = Math.max(workerWakeP99Ms, snapshot.worker.wakeMs.p99);
+          workerQueueP99Ms = Math.max(workerQueueP99Ms, snapshot.worker.queueMs.p99);
+          firstWorkerKinds ??= snapshot.worker.eventStatements ?? {};
+          lastWorkerKinds = snapshot.worker.eventStatements ?? {};
           const worker = workerByUrl.get(index) ?? { first: processed, last: processed };
           worker.last = processed;
           workerByUrl.set(index, worker);
@@ -1020,6 +1088,24 @@ const summarizeMetrics = (frames) => {
   for (const worker of workerByUrl.values()) {
     workerProcessed += Math.max(0, worker.last - worker.first);
   }
+  // What each kind cost during the run: the counters' growth from the first frame.
+  const runKinds = Object.fromEntries(Object.entries(lastWorkerKinds ?? {}).map(([kind, last]) => {
+    const first = firstWorkerKinds?.[kind];
+    const restarted = !first || Number(last.busyMs ?? 0) < Number(first.busyMs ?? 0);
+    return [kind, {
+      events: Number(last.events ?? 0) - (restarted ? 0 : Number(first.events ?? 0)),
+      busyMs: Number(last.busyMs ?? 0) - (restarted ? 0 : Number(first.busyMs ?? 0)),
+      durationMs: { p95: Number(last.durationMs?.p95 ?? 0) },
+    }];
+  }));
+  const workerDecision = workerVerdict({
+    frames: workerFrames,
+    lateness: { p99: workerLatenessP99Ms },
+    wake: { p99: workerWakeP99Ms },
+    queue: { p99: workerQueueP99Ms },
+    kinds: runKinds,
+    thresholdMs: 2000,
+  });
   return {
     frames: frames.length,
     expectedSnapshots: frames.length * metricsUrls.length,
@@ -1070,6 +1156,7 @@ const summarizeMetrics = (frames) => {
       p95Ms: workerLatenessP95Ms,
       p99Ms: workerLatenessP99Ms,
     },
+    workerDecision,
     sharedProjectionCache: {
       hits: sharedCacheHits,
       misses: sharedCacheMisses,
@@ -1121,7 +1208,7 @@ const reconcileCapacityDatabase = async () => {
         left join players p on p.season_id = se.id
         left join planets pl on pl.season_id = se.id
         left join neutral_planet_state ns on ns.planet_id = pl.id
-       where sh.ordinal between 1 and 2
+       where sh.ordinal between 1 and ${String(SERVERS.count)}
        group by sh.ordinal, sh.player_cap
        order by sh.ordinal
     `);
@@ -1134,7 +1221,7 @@ const reconcileCapacityDatabase = async () => {
         (select count(*)::int from seasons where status = 'live') as "liveSeasons",
         (select count(*)::int
            from seasons se join shards sh on sh.id = se.shard_id
-          where se.status = 'live' and sh.ordinal not between 1 and 2) as "retiredLiveSeasons",
+          where se.status = 'live' and sh.ordinal not between 1 and ${String(SERVERS.count)}) as "retiredLiveSeasons",
         (select count(*)::int from scheduled_events where status = 'failed') as "failedEvents",
         (select count(*)::int
            from scheduled_events
@@ -1171,11 +1258,10 @@ const reconcileCapacityDatabase = async () => {
           having count(*) > 1
         ) duplicate_notifications) as "duplicateNotifications"
     `);
-    const expectedPlayers = Array.from({ length: 2 }, (_, index) =>
-      Math.max(0, Math.min(300, userCount - index * 300)));
-    const officialShape = official.length === 2 && official.every((row, index) => (
+    const expectedPlayers = seatPlan(seededAccounts);
+    const officialShape = official.length === SERVERS.count && official.every((row, index) => (
       row.ordinal === index + 1
-      && row.capacity === 300
+      && row.capacity === SERVERS.capacity
       && row.players === expectedPlayers[index]
       && row.capitals === expectedPlayers[index]
       && row.neutrals === CAPACITY_NEUTRAL_SHAPE.total
@@ -1185,11 +1271,11 @@ const reconcileCapacityDatabase = async () => {
     ));
     const integrityShape = Boolean(
       integrity
-      && integrity.accounts === userCount
-      && integrity.players === userCount
-      && integrity.capitals === userCount
-      && integrity.totalSeasons === 2
-      && integrity.liveSeasons === 2
+      && integrity.accounts === seededAccounts
+      && integrity.players === seededAccounts
+      && integrity.capitals === seededAccounts
+      && integrity.totalSeasons === SERVERS.count
+      && integrity.liveSeasons === SERVERS.count
       && integrity.retiredLiveSeasons === 0
       && integrity.failedEvents === 0
       && integrity.overdueEvents === 0
@@ -1231,6 +1317,8 @@ const vus = Array.from({ length: connectionCount }, (_, index) => ({
   pendingReads: new Set(),
   pendingEventAt: null,
   coalesceTimer: null,
+  arrivalAt: null,
+  arrivalTimer: null,
   forceReconnect: null,
   forcedReconnectTarget: null,
   reconnectResync: null,
@@ -1257,6 +1345,7 @@ await Promise.all(vus.map(async (vu, index) => {
   streamTasks.push({ label: `stream:${String(vu.index)}`, promise: streamLoop(vu, streamController.signal) });
   activityTasks.push(
     { label: `safety-net:${String(vu.index)}`, promise: safetyNetLoop(vu, activityController.signal) },
+    { label: `traffic:${String(vu.index)}`, promise: trafficLoop(vu, activityController.signal) },
     { label: `actions:${String(vu.index)}`, promise: actionLoop(vu, activityController.signal) },
   );
 }));
@@ -1287,6 +1376,7 @@ streamStats.connectedAtEnd = streamStats.connected;
 streamController.abort();
 for (const vu of vus) {
   if (vu.coalesceTimer !== null) clearTimeout(vu.coalesceTimer);
+  if (vu.arrivalTimer !== null) clearTimeout(vu.arrivalTimer);
 }
 const streamResults = await Promise.allSettled(streamTasks.map((task) => task.promise));
 await Promise.allSettled(vus.flatMap((vu) => vu.reconnectResync ? [vu.reconnectResync] : []));
@@ -1509,7 +1599,7 @@ const gates = {
     && worktreeDirty === false,
 };
 const report = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   commit,
   worktreeDirty,
   serverImageId,
@@ -1528,6 +1618,7 @@ const report = {
   rampSeconds,
   durationSeconds,
   accounts: userCount,
+  seededAccounts,
   connections: connectionCount,
   baseUrls,
   loginBaseUrls,
@@ -1557,6 +1648,7 @@ const report = {
   },
   taskFailures,
   streams: streamStats,
+  arrivals: arrivalStats,
   capacityMetrics,
   databaseReconciliation,
   gates,
@@ -1569,5 +1661,7 @@ const stamp = startedAt.toISOString().replaceAll(':', '-').replaceAll('.', '-');
 const reportPath = resolve(values.report ?? `artifacts/capacity/${stamp}-${values.scenario}-${String(connectionCount)}.json`);
 await mkdir(dirname(reportPath), { recursive: true });
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-process.stdout.write(`${JSON.stringify({ report: reportPath, passed: report.passed, gates }, null, 2)}\n`);
+// The worker's fix is a decision for the owner, not a gate: a run that names F1.7 still ran.
+process.stdout.write(`${JSON.stringify({ report: reportPath, passed: report.passed, gates,
+  worker: capacityMetrics.workerDecision }, null, 2)}\n`);
 if (!report.passed) process.exitCode = 1;

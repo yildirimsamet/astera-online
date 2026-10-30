@@ -2,7 +2,10 @@
  * Deterministic capacity-fixture seeding. NEVER production.
  *
  *   CAPACITY_SEED_CONFIRM=ASTERA_STAGING_ONLY CAPACITY_PASSWORD=... \
- *   pnpm --filter @astera/server capacity:seed -- --yes --users 1000 --seed 99300
+ *   pnpm --filter @astera/server capacity:seed -- --yes --users 2000 --online 1000 --seed 99300
+ *
+ * `--online N`: the run logs in the first N accounts; every account after them is an
+ * offline commander whose fleet is already in the air, as at night (plan §8.2 L3, LR).
  */
 import { parseArgs } from 'node:util';
 import { eq, inArray, sql } from 'drizzle-orm';
@@ -26,8 +29,8 @@ import { liveSeason } from '../services/season.js';
 import { bootstrapServers } from '../services/servers.js';
 import { launchAttack } from '../services/mission.js';
 import { launchHarvest, launchMining, visibleAsteroids } from '../services/mining.js';
+import { assertDisposableDatabase, assertNoRealAccounts } from './capacityGuard.js';
 
-const CONFIRM = 'ASTERA_STAGING_ONLY';
 const USER_PREFIX = 'cap';
 
 const integer = (
@@ -45,20 +48,6 @@ const integer = (
   return value;
 };
 
-function assertDisposableDatabase(databaseUrl: string, confirmed: boolean): void {
-  const parsed = new URL(databaseUrl);
-  const database = decodeURIComponent(parsed.pathname.slice(1));
-  if (!/(?:^|_)(capacity|staging|loadtest)$/.test(database)) {
-    throw new Error(
-      `Refusing to seed database "${database}". Its name must end in _capacity, `
-      + '_staging or _loadtest.',
-    );
-  }
-  if (!confirmed || process.env.CAPACITY_SEED_CONFIRM !== CONFIRM) {
-    throw new Error(`Refusing destructive staging seed. Pass --yes and CAPACITY_SEED_CONFIRM=${CONFIRM}.`);
-  }
-}
-
 const usernameFor = (index: number): string => `${USER_PREFIX}${String(index + 1).padStart(4, '0')}`;
 
 async function main(): Promise<void> {
@@ -72,11 +61,12 @@ async function main(): Promise<void> {
       seed: { type: 'string' },
       missions: { type: 'string' },
       miners: { type: 'string' },
+      online: { type: 'string' },
     },
   });
   loadDotEnv();
   const env = loadEnv();
-  assertDisposableDatabase(env.DATABASE_URL, values.yes === true);
+  assertDisposableDatabase(env.DATABASE_URL, { yes: values.yes === true, confirm: process.env.CAPACITY_SEED_CONFIRM });
 
   const userCount = integer(
     values.users,
@@ -87,6 +77,7 @@ async function main(): Promise<void> {
   const seed = integer(values.seed, 99_300, 1, 2_000_000_000);
   const missionCount = integer(values.missions, Math.min(90, userCount), 0, userCount);
   const minerCount = integer(values.miners, Math.min(45, userCount), 0, userCount);
+  const onlineCount = integer(values.online, userCount, 0, userCount);
   const password = process.env.CAPACITY_PASSWORD;
   if (!password || password.length < 8 || password.length > 200) {
     throw new Error('CAPACITY_PASSWORD must contain 8–200 characters.');
@@ -97,6 +88,7 @@ async function main(): Promise<void> {
     applicationName: 'astera-capacity-seed',
   });
   try {
+    await assertNoRealAccounts(db);
     await runMigrations(db);
 
     // This command is already guarded by the disposable-database name, --yes and
@@ -196,7 +188,8 @@ async function main(): Promise<void> {
       lastTickAt: systemClock.now(),
     }).where(inArray(planets.id, planetIds));
     await db.update(buildings).set({ level: 8 }).where(inArray(buildings.planetId, planetIds));
-    await db.update(players).set({ wealth: 1_000_000 });
+    // A mid-season galaxy: nobody is inside a first-day or recovery shield, so raids can fly.
+    await db.update(players).set({ wealth: 1_000_000, newcomerShieldUntil: null, recoveryShieldUntil: null });
 
     const fleet = [
       ['DART', 800],
@@ -240,6 +233,7 @@ async function main(): Promise<void> {
       .returning({ id: debrisFields.id, seasonId: debrisFields.seasonId });
 
     let launched = 0;
+    const flying = new Set<string>();
     for (let index = 0; index < missionCount; index += 1) {
       const populated = [...placementsBySeason.values()].filter((rows) => rows.length > 1);
       const group = populated[index % populated.length];
@@ -256,7 +250,21 @@ async function main(): Promise<void> {
         systemClock,
         origin.playerId,
       );
+      flying.add(origin.planetId);
       launched += 1;
+    }
+
+    // Offline commanders' fleets are in the air: the worker resolves them while the run
+    // is live, and the galaxy draws them, exactly as overnight.
+    let offlineFlights = 0;
+    for (const origin of placements.slice(onlineCount)) {
+      if (flying.has(origin.planetId)) continue;
+      const group = placementsBySeason.get(origin.seasonId) ?? [];
+      if (group.length < 2) continue;
+      const target = group[(group.indexOf(origin) + Math.min(17, group.length - 1)) % group.length];
+      if (!target || target === origin) continue;
+      await launchAttack(db, origin.planetId, target.planetId, { DART: 3, COURIER: 1 }, systemClock, origin.playerId);
+      offlineFlights += 1;
     }
 
     const rocksBySeason = new Map(await Promise.all(live.map(async ({ season }) => [
@@ -342,7 +350,9 @@ async function main(): Promise<void> {
       accounts: userCount,
       capitals: userCount,
       galaxies: galaxySummary,
+      online: onlineCount,
       missions: launched,
+      offlineFlights,
       miningRuns: miners,
       usernamePattern: `${USER_PREFIX}0001..${usernameFor(userCount - 1)}`,
     }, null, 2)}\n`);
