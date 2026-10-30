@@ -45,6 +45,19 @@ it('answers a warm traffic read with no SQL at all', async () => {
   expect(statements(warm)).toBe(0);
 });
 
+it('checks once more, with one SELECT, after the shared memory it is served was refilled', async () => {
+  await read('/api/galaxy/traffic');
+  // Another commander's read refills the galaxy's shared traffic after this caller's check.
+  built.app.projections.invalidate(f.seasonId);
+  const now = f.clock.now();
+  await Promise.all([built.app.projections.trafficSnapshot(f.seasonId, now), built.app.projections.miningSnapshot(f.seasonId, now),
+    built.app.projections.pirateSnapshot(f.seasonId, now)]);
+  const checked = await read('/api/galaxy/traffic');
+  expect(checked.statusCode).toBe(200);
+  expect(statements(checked)).toBe(1);
+  expect(statements(await read('/api/galaxy/traffic'))).toBe(0);
+});
+
 it('sees a relocation the moment its event lands, and keeps the stale-header rule', async () => {
   await read('/api/galaxy/traffic');
   await f.db.update(players).set({ placementVersion: 1 }).where(eq(players.id, f.playerIds[0]!));
