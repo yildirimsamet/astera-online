@@ -15,6 +15,7 @@ export const keys = {
   communityPolicy: ['community', 'policy'],
   commanderShip: ['commander-ship'],
   vacation: ['vacation'],
+  notificationCenter: ['notification-center'],
   returnStatus: ['return-status'],
   servers: ['servers'],
   season: ['season'],

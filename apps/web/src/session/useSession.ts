@@ -12,6 +12,7 @@ import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
 import { academyPreview } from '../onboarding/academyWorld.js';
 import { serverNow } from '../lib/clock.js';
+import { clearLocalAlerts } from '../platform/localNotifications.js';
 import { isAppActive, isAppActivityKnown, watchAppActivity } from '../platform/activity.js';
 import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
 
@@ -440,6 +441,7 @@ export function useSession() {
   const signOut = useCallback(async (): Promise<void> => {
     const startedAt = ++revision.current;
     const loginEmail = api.verifiedEmail;
+    void clearLocalAlerts();
     forgetReady();
     setResumed(false);
     setSession({ phase: 'starting' });

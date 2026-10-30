@@ -5,9 +5,10 @@ import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
-import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
+import { COSMETIC_IDS, type AlertTiming, type CosmeticCategory, type CosmeticId, type MobileHullId, type PaidAlertKind } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
+import { notificationCenterSchema } from './notificationCenterSchemas.js';
 import { honorTargetSchema } from './schemas.js';
 import { returnStatusSchema } from './schemas.js';
 import { z } from 'zod';
@@ -1088,6 +1089,15 @@ export class Api {
     this.send('/api/vacation', vacationSchema, { method: 'POST', body: input });
   endVacation = (vacationId: string) =>
     this.send('/api/vacation/end', vacationSchema, { method: 'POST', body: { vacationId } });
+
+  notificationCenter = () => this.send('/api/notification-center', notificationCenterSchema);
+  buildNotificationCenter = (planetId: string) =>
+    this.send('/api/notification-center/build', notificationCenterSchema, { method: 'POST', body: { planetId } });
+  /** One way: `confirm` is the player having accepted that the transfer cannot be taken back. */
+  fundNotificationCenter = (planetId: string, amount: number) =>
+    this.send('/api/notification-center/fund', notificationCenterSchema, { method: 'POST', body: { planetId, amount, confirm: true } });
+  setNotificationCenter = (settings: { timing?: AlertTiming; muted?: PaidAlertKind[] }) =>
+    this.send('/api/notification-center/settings', notificationCenterSchema, { method: 'PUT', body: settings });
 
   build = (planetIdOrHull: string, explicitHullOrCount: HullId | number, explicitCount?: number) => {
     const hull = (explicitCount === undefined ? planetIdOrHull : explicitHullOrCount) as HullId;

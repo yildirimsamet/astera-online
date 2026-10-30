@@ -824,6 +824,22 @@
       "origin": "Built-in image_gen edit: deuterium energy changed to canonical green #8eea36; scene geometry and composition preserved",
       "bytes": 112240,
       "sha256": "1880e50f19f8c60bf149edad039c0c0dd6d11a06f53472fad588a746a5909f4e"
+    },
+    {
+      "id": "notification-center-v1",
+      "source": "assets/source/atmosphere/notification-center-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/notification-center-v1.webp",
+      "origin": "Codex built-in image_gen (2026-10-30), original Bildirim Merkezi transmitter in the radar's style (refs: radar_1, telescope_3, radar-t1-v2); tank window edited to canonical deuterium green #8eea36",
+      "bytes": 74484,
+      "sha256": "0095d0289aefe48f30c48a2bae1565e1be0a4453603c233ee9ffc1988ba52f73"
+    },
+    {
+      "id": "notification-center-hw-v1",
+      "source": "assets/source/atmosphere/notification-center-hw-v1.png",
+      "served": "apps/web/public/assets/images/general/notification_center_1.webp",
+      "origin": "Codex built-in image_gen (2026-10-30), original Bildirim Merkezi transmitter in the radar's style (refs: radar_1, telescope_3, radar-t1-v2); tank window edited to canonical deuterium green #8eea36; isolated transparent hardware sprite",
+      "bytes": 24206,
+      "sha256": "2f510dd5b68e51f4a03c5d8ecec711ee65958cdd4db219aed37b803c1d307a26"
     }
   ],
   "policy": "Complete images only. No overlaid object PNG. Tiers without a matching complete scene keep their original art.",

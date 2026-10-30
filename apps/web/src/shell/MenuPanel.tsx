@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
+import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
 import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
 import { useAnnouncements, useLeaderboard, useRewards } from '../api/queries.js';
@@ -39,6 +41,7 @@ import {
   HeartIcon,
   HonorIcon,
   AttackIcon,
+  BroadcastIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
@@ -133,6 +136,10 @@ export function MenuPanel({
   const clan = board?.you?.clan;
   const announcementData = useAnnouncements().data;
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
+  const [centerOpen, setCenterOpen] = useState(false);
+  const center = useNotificationCenter(platform.notificationCenter).data;
+  // Built, and the next attack alert at the commander's timing would not go out.
+  const centerEmpty = center?.built === true && center.wallet < center.prices.incoming_attack[center.timing];
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   // Focus returns to the tile that opened the simulator.
   const simulatorOpener = useRef<HTMLElement | null>(null);
@@ -200,7 +207,7 @@ export function MenuPanel({
             <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
             <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
             {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
-            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} onClick={() => { navigate('settings'); }} />
+            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} badge={centerEmpty ? t('notificationCenter.menuEmpty') : undefined} onClick={() => { navigate('settings'); }} />
           </nav>
           {marks.length > 0 && (
             <section data-menu-group className="flex flex-col gap-2">
@@ -342,6 +349,15 @@ export function MenuPanel({
 
           )}
           {page === 'settings' && <>
+              {platform.notificationCenter && <MenuTile
+                icon={<BroadcastIcon className="size-5" />}
+                label={t('notificationCenter.title')}
+                art={ATMOSPHERE.notificationCenter}
+                hint={t('notificationCenter.menuHint')}
+                attention={centerEmpty}
+                {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
+                onClick={() => { setCenterOpen(true); }}
+              />}
             <Section label={t('menu.deviceHeading')}>
               <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
                 <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
@@ -389,6 +405,7 @@ export function MenuPanel({
           </>}
         </>
       )}
+      {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
     </div>
   );
 }

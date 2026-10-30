@@ -21,7 +21,9 @@ import { flightModifiers, reachMinutes } from '../../lib/navigation.js';
 import { probeAxis } from '../../lib/probeScale.js';
 import { duration } from '../../lib/time.js';
 import { useTargetReading } from '../../lib/useTargetReading.js';
+import { capabilities } from '../../platform/runtime.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
+import { BroadcastIcon } from '../../ui/icons/index.js';
 import { Icon } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { AgeStamp } from '../kit/Freshness.js';
@@ -222,6 +224,19 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
             <span aria-hidden className="h-3 w-0.5 shrink-0 rounded-full bg-v2-self" />
             {t(loot.cargoShort ? 'dossier.page.lootShort' : 'dossier.page.lootHold', { cargo: compact(loot.cargo) })}
           </p>
+        </section>
+      )}
+
+      {report?.notificationCenter !== undefined && capabilities().notificationCenter && (
+        <section data-dossier-center className={SECTION}>
+          <h3 className={HEADING}>
+            <BroadcastIcon className="size-3.5 shrink-0 text-v2-ink-2" />
+            {t('notificationCenter.title')}
+            <span className={TAG}>{sourceLabel('probe')}</span>
+            <span className="ml-auto font-v2-mono text-caption text-v2-ink">{t(`notificationCenter.reading.${report.notificationCenter}`)}</span>
+          </h3>
+          <p className="text-caption leading-snug text-v2-ink-2">{t(`notificationCenter.readingMeaning.${report.notificationCenter}`)}</p>
+          <p className="text-micro text-v2-ink-3">{t('notificationCenter.readingRule')}</p>
         </section>
       )}
 

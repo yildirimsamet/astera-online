@@ -32,8 +32,19 @@ describe('one platform boundary for web, PWA, Android and iOS', () => {
 
   it('does not enable store or advertising SDKs just because a native bridge exists', () => {
     for (const platform of ['web', 'android', 'ios', 'unsupported-native'] as const) {
-      expect(resolveCapabilities(platform, 'native-production')).toMatchObject({ storeBilling: false, nativeRewardedAds: false, localNotifications: false, nativePush: false });
+      expect(resolveCapabilities(platform, 'native-production')).toMatchObject({ storeBilling: false, nativeRewardedAds: false, nativePush: false });
     }
+  });
+
+  it('opens the Notification Center and its free phone alerts in the Android app only (owner 2026-10-30)', () => {
+    expect(resolveCapabilities('android', 'native-production')).toMatchObject({ notificationCenter: true, localNotifications: true });
+    for (const platform of ['web', 'ios', 'unsupported-native'] as const) {
+      expect(resolveCapabilities(platform, 'native-production').localNotifications).toBe(false);
+    }
+    for (const platform of ['web', 'ios', 'unsupported-native'] as const) {
+      expect(resolveCapabilities(platform, 'native-production').notificationCenter).toBe(false);
+    }
+    expect(resolveCapabilities('web', 'web').notificationCenter).toBe(false);
   });
 
   it('does not open web services with an invalid build target', () => {

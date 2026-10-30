@@ -174,6 +174,27 @@ describe('the compact commander menu', () => {
     expect(screen.getByRole('link', { name: new RegExp(`^${i18n.t('menu.navigation.account')}\\.`) })).toHaveAttribute('href', '/profile');
   });
 
+  it('exposes Notification Center in app settings with its unfunded warning on the parent', async () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+    const { wrapper, queries } = harness();
+    const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
+    queries.setQueryData(keys.notificationCenter, { built: true, wallet: 10, timing: 'T5', muted: [], buildCost: { alloy: 1, crystal: 1, deuterium: 0 }, deuteriumPerHour: 0, prices: { incoming_attack: prices, incoming_strategic: prices, probe_detected: 20 }, unfunded: 0, recent: [] });
+    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={vi.fn()} />, { wrapper });
+    expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) })).toHaveTextContent(i18n.t('notificationCenter.menuEmpty'));
+    enter('settings');
+    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('notificationCenter.title'), i18n.t('notificationCenter.menuHint')) }));
+    expect(await screen.findByRole('dialog', { name: i18n.t('notificationCenter.title') })).toBeInTheDocument();
+  });
+
+  it('shows no trace of the Notification Center on the web', () => {
+    const view = show();
+    expect(view.container).not.toHaveTextContent(i18n.t('notificationCenter.menuEmpty'));
+    enter('settings');
+    expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('notificationCenter.title')}`) })).toBeNull();
+    expect(view.container).not.toHaveTextContent(i18n.t('notificationCenter.title'));
+  });
+
   it('respects a restored category when returning from a destination', () => {
     const onOpen = vi.fn();
     show({ page: 'community', onOpen });

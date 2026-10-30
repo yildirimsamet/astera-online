@@ -22,8 +22,11 @@ export function resolveCapabilities(platform: Runtime, buildTarget: string) {
     // A bridge alone does not mean these services have been integrated or configured.
     storeBilling: false,
     nativeRewardedAds: false,
-    localNotifications: false,
+    /** Free queue alerts scheduled on the phone (Bildirim Merkezi, decision 3). */
+    localNotifications: platform === 'android',
     nativePush: false,
+    /** Bildirim Merkezi: Android first, never on the web (owner 2026-10-30). */
+    notificationCenter: platform === 'android',
   };
 }
 

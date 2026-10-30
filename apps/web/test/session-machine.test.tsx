@@ -13,6 +13,11 @@ import { planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
 import { LANGUAGES } from '../src/i18n/languages.js';
 
+const clearLocalAlerts = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+vi.mock('../src/platform/localNotifications.js', async importOriginal => ({
+  ...await importOriginal<Record<string, unknown>>(), clearLocalAlerts,
+}));
+
 /**
  * WHICH SCREEN OPENS, AND WHY. D21.
  *
@@ -645,6 +650,8 @@ describe('the session machine', () => {
     });
     expect(result.current.session.phase).toBe('landing');
     expect(result.current.session).toMatchObject({ open: 'login' });
+    // The next commander on this phone must not hear this one's queues.
+    expect(clearLocalAlerts).toHaveBeenCalledOnce();
   });
   it.each([false, true])('prefills the verified email after cookie restore when logout is offline=%s', async offline => {
     const { wrapper, api } = harness({ ...placed, '/api/auth/refresh': { ...SESSION, loginEmail: 'pilot@example.com' },
