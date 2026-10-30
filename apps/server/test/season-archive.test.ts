@@ -25,7 +25,7 @@ import {
 } from '../src/db/schema.js';
 import { forceSeasonEnd, onSeasonEnd } from '../src/worker/handlers.js';
 import { createSeason } from '../src/services/season.js';
-import { planetView } from '../src/services/planetView.js';
+import { loadLocked } from '../src/services/planet.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
@@ -1017,7 +1017,7 @@ describe('completed season archive', () => {
     const former = fixture.playerIds[0]!;
     const current = fixture.playerIds[1]!;
     fixture.clock.advance(60);
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
     const [carried] = await fixture.db
       .select({ telemetry: planets.seasonTelemetry })
       .from(planets)
@@ -1036,7 +1036,7 @@ describe('completed season archive', () => {
     // figure itself rather than inferred from two equal numbers.
     fixture.clock.advance(30);
     await expect(
-      fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock)),
+      fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock)),
     ).resolves.toBeDefined();
 
     const segments = await fixture.db
@@ -1062,7 +1062,7 @@ describe('completed season archive', () => {
 
     // And it settles: a second advance under the same controller closes nothing.
     fixture.clock.advance(60);
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
     expect(await fixture.db
       .select()
       .from(seasonTelemetrySegments)
@@ -1072,13 +1072,13 @@ describe('completed season archive', () => {
   it('counts only time in which the Works actually produced and stays idempotent at one instant', async () => {
     const planetId = fixture.planetIds[0]!;
     fixture.clock.advance(60);
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
     const [first] = await fixture.db.select().from(planets).where(eq(planets.id, planetId));
     expect(first!.seasonTelemetry.productiveSeconds).toBeCloseTo(3_600, 6);
     expect(first!.seasonTelemetry.produced.alloy).toBeGreaterThan(0);
     expect(first!.seasonTelemetry.produced.crystal).toBeGreaterThan(0);
 
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
     const [second] = await fixture.db.select().from(planets).where(eq(planets.id, planetId));
     expect(second!.seasonTelemetry).toEqual(first!.seasonTelemetry);
   });
@@ -1088,7 +1088,7 @@ describe('completed season archive', () => {
     const disruptedUntil = new Date(fixture.clock.now().getTime() + 60 * 60_000);
     await fixture.db.update(planets).set({ disruptedUntil }).where(eq(planets.id, planetId));
     fixture.clock.set(disruptedUntil);
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
     const [after] = await fixture.db.select().from(planets).where(eq(planets.id, planetId));
     expect(after!.seasonTelemetry).toMatchObject({
       produced: { alloy: 0, crystal: 0, deuterium: 0 },
@@ -1109,7 +1109,7 @@ describe('completed season archive', () => {
     }).where(eq(planets.id, planetId));
     fixture.clock.advance(60);
 
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
 
     const [after] = await fixture.db.select().from(planets).where(eq(planets.id, planetId));
     expect(after!.seasonTelemetry).toMatchObject({
@@ -1138,7 +1138,7 @@ describe('completed season archive', () => {
     }).where(eq(planets.id, planetId));
     fixture.clock.set(new Date(season.endsAt.getTime() + 60 * 60_000));
 
-    await fixture.db.transaction((tx) => planetView(tx, planetId, fixture.clock));
+    await fixture.db.transaction((tx) => loadLocked(tx, planetId, fixture.clock));
 
     const [after] = await fixture.db.select().from(planets).where(eq(planets.id, planetId));
     expect(after!.lastTickAt).toEqual(season.endsAt);

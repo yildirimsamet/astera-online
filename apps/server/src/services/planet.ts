@@ -503,25 +503,9 @@ export async function readPlanetState(tx: Tx, planetId: string, clock: Clock,
   return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: false })).planet;
 }
 
-/**
- * Private views need the whole inventory; command paths keep their home-only read.
- *
- * `readOnly` is for the owned-world GETs: the economy is a pure function of the row
- * and the clock, and every mutation ticks under its own lock first, so a view takes
- * no season or world lock and persists nothing. Mutation responses keep the locked
- * path because they render inside the transaction that already holds the world.
- */
-export async function loadPlanetViewState(tx: Tx, planetId: string, clock: Clock,
-  options: { readOnly?: boolean } = {}) {
-  const readOnly = options.readOnly === true;
-  return loadPlanetState(tx, planetId, clock, {
-    requireLive: false, mutate: !readOnly, lockSeason: !readOnly, allUnits: true,
-  });
-}
-
 async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   options: {
-    requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean; lockSeason?: boolean; radiationAt?: Date;
+    requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; lockSeason?: boolean; radiationAt?: Date;
   }) {
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
@@ -540,7 +524,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId),
-      options.allUnits || season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
+      season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
@@ -639,12 +623,15 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
  * EVERY WORLD OF ONE COMMANDER, READ ONLY, ONE READ PER TABLE. Scaling plan F1.4.
  *
  * The same rows `loadPlanetState` reads one world at a time, read for all of them
- * at once, then rendered by the same arithmetic. No lock and no write: the caller
- * holds a read-only snapshot. Every world must belong to the first one's commander
+ * at once, then rendered by the same arithmetic. No write and no season lock: a GET
+ * holds a read-only snapshot, and a mutation's answer passes `lock` to keep the rows it
+ * renders still under its writes. Every world must belong to the first one's commander
  * and galaxy, as a list read alongside one commander snapshot always required.
  */
-export async function loadPlanetViewStates(tx: Tx, planetIds: readonly string[], clock: Clock) {
-  const rows = await tx.select().from(planets).where(inArray(planets.id, [...planetIds]));
+export async function loadPlanetViewStates(tx: Tx, planetIds: readonly string[], clock: Clock,
+  options: { lock?: boolean } = {}) {
+  const query = tx.select().from(planets).where(inArray(planets.id, [...planetIds]));
+  const rows = options.lock ? await query.for('update') : await query;
   const rowOf = new Map(rows.map(row => [row.id, row]));
   const ordered = planetIds.map(id => rowOf.get(id));
   const first = ordered[0];
