@@ -69,12 +69,27 @@ describe('syncLocalAlerts', () => {
     expect(onTime[0]?.isExactNotification).toBe(true);
   });
 
+  it('sets again an alert scheduled late once the phone allows on-time alarms, and the other way round', async () => {
+    const a = alert('build:c1', 1_000_100);
+    pending.push({ id: a.id, schedule: { at: new Date(a.at) }, extra: { astera: 'queue', key: a.key, lang: 'en', exact: false } });
+    await syncLocalAlerts([a], text, 'en');
+    expect(plugin.cancel).toHaveBeenCalledWith({ notifications: [{ id: a.id }] });
+    const [{ notifications }] = plugin.schedule.mock.calls[0] as [{ notifications: { id: number; isExactNotification: boolean; extra: unknown }[] }];
+    expect(notifications[0]).toMatchObject({ id: a.id, isExactNotification: true, extra: { exact: true } });
+    plugin.cancel.mockClear(); plugin.schedule.mockClear();
+    pending[0] = { ...pending[0]!, extra: { astera: 'queue', key: a.key, lang: 'en', exact: true } };
+    plugin.checkExactNotificationSetting.mockResolvedValue({ exact_alarm: 'denied' });
+    await syncLocalAlerts([a], text, 'en');
+    expect(plugin.cancel).toHaveBeenCalledWith({ notifications: [{ id: a.id }] });
+    expect(plugin.schedule).toHaveBeenCalledOnce();
+  });
+
   it('leaves an unchanged alert alone and cancels one the plan dropped or moved', async () => {
     const kept = alert('build:c1', 1_000_100);
     const moved = alert('ships:y1', 2_000_200);
     pending.push(
-      { id: kept.id, schedule: { at: new Date(kept.at) }, extra: { astera: 'queue', key: kept.key, lang: 'en' } },
-      { id: moved.id, schedule: { at: new Date(moved.at - 60_000) }, extra: { astera: 'queue', key: moved.key, lang: 'en' } },
+      { id: kept.id, schedule: { at: new Date(kept.at) }, extra: { astera: 'queue', key: kept.key, lang: 'en', exact: true } },
+      { id: moved.id, schedule: { at: new Date(moved.at - 60_000) }, extra: { astera: 'queue', key: moved.key, lang: 'en', exact: true } },
       { id: 77, schedule: { at: new Date(5) }, extra: { astera: 'queue', key: 'build:gone' } },
       { id: 88, schedule: { at: new Date(5) }, extra: { other: true } },
     );
@@ -98,7 +113,7 @@ describe('syncLocalAlerts', () => {
 
   it('rewords an alert when the game changes language', async () => {
     const a = alert('build:c1', 1_000_100);
-    pending.push({ id: a.id, schedule: { at: new Date(a.at) }, extra: { astera: 'queue', key: a.key, lang: 'en' } });
+    pending.push({ id: a.id, schedule: { at: new Date(a.at) }, extra: { astera: 'queue', key: a.key, lang: 'en', exact: true } });
     await syncLocalAlerts([a], text, 'tr');
     expect(plugin.cancel).toHaveBeenCalledWith({ notifications: [{ id: a.id }] });
     expect(plugin.schedule).toHaveBeenCalledOnce();

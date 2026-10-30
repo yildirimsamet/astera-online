@@ -97,7 +97,7 @@ export const notificationCenter = {
     "switch": "注文の完了を通知する",
     "denied": "スマホが通知を許可していません。スマホの設定で Astera Online の通知を許可してください。",
     "blocked": "Astera Online の通知はスマホの設定でオフになっています。設定でオンにするまで通知は停止します。",
-    "late": "通知が数分遅れて届くことがあります。",
+    "late": "時間どおりの通知を許可しないと、Android が通知を最大1時間遅らせることがあります。",
     "allowExact": "時間どおりの通知を許可",
     "category": {
       "build": "建設",

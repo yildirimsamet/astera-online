@@ -150,7 +150,7 @@ it('says when the phone settings have blocked alerts the player had on', () => {
 it('offers on-time alerts when the phone would deliver them late', () => {
   phone.enabled = true; permission.display = 'granted'; permission.exact = 'denied';
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByText(/a few minutes late/)).toBeInTheDocument();
+  expect(screen.getByText(/up to an hour/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Allow on-time alerts' }));
   expect(allowExact).toHaveBeenCalledOnce();
 });

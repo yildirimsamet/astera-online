@@ -77,8 +77,12 @@ webp'ye optimize edilir, oyunda ekran görüntüsüyle doğrulanır. Bildirim t�
   Ayar cihazda, varsayılan kapalı; izin istemi yalnız oyuncu açınca. Telefon izni hiç saklanmaz:
   her açılışta ve uygulama öne her geldiğinde okunur; ayarlardan kapatılırsa ekranda söylenir.
   Senkron tek seferde bir tane çalışır (eskiyen plan atlanır), dil değişince metin yenilenir,
-  çıkışta cihazdaki kuyruk uyarıları silinir. Android 12+ tam zamanlı alarm izni yoksa uyarı
-  birkaç dakika gecikebilir; ekran bunu söyler ve ayarı açar.
+  çıkışta cihazdaki kuyruk uyarıları silinir. Android 12+ tam zamanlı alarm izni yoksa Android
+  uyarıyı geciktirir: gecikmenin %75'i kadar, en fazla 1 saat (S22 ölçümü 2026-10-30: +1 sa →
+  45 dk pay, +4/+12 sa → 1 sa pay). Ekran bunu söyler ve ayarı açar; izin değişince kurulu
+  uyarılar yeniden kurulur. Eklentiye `isExactNotification` yalnız izin varken verilir, yoksa
+  eklenti her zamanlamada ayar ekranını kendisi açıyor. İzinsiz +2 dk uyarı, süreç öldürülmüş +
+  zorla derin uyku + güç modunda 16 sn geç geldi.
 - Görseller: `images/atmosphere/notification-center-v1.webp` (sahne/başlık/kutucuk),
   `images/general/notification_center_1.webp` (donanım); tank penceresi kanonik döteryum yeşili.
 

@@ -73,7 +73,7 @@ export function disableLocalAlerts(): void {
 export interface PhonePermission {
   /** May the app show notifications at all. `unknown` until read, or where the bridge cannot say. */
   display: 'granted' | 'denied' | 'prompt' | 'unknown';
-  /** Android 12+: without it an alert can arrive a few minutes late. */
+  /** Android 12+: without it Android may hold an alert back up to an hour. */
   exact: 'granted' | 'denied' | 'unknown';
 }
 let permission: PhonePermission = { display: 'unknown', exact: 'unknown' };
@@ -140,14 +140,19 @@ export async function allowExactLocalAlerts(): Promise<void> {
 
 /* ── the scheduled alerts ──────────────────────────────────────── */
 
-const extraSchema = z.object({ astera: z.literal(TAG), lang: z.string().optional() }).passthrough();
+const extraSchema = z.object({ astera: z.literal(TAG), lang: z.string().optional(), exact: z.boolean().optional() }).passthrough();
 
 interface SyncJob { plan: readonly LocalAlert[]; text: (alert: LocalAlert) => { title: string; body: string }; lang: string }
 let queued: SyncJob | null = null;
 let draining: Promise<void> | null = null;
 
-/** Makes the phone equal one plan. An alert is kept only if its time and language still match. */
+/** Makes the phone equal one plan. An alert is kept only if its time, language and alarm kind still match. */
 async function reconcile({ plan, text, lang }: SyncJob): Promise<void> {
+  // Asked fresh: an on-time alarm the phone refuses makes the plugin open the phone settings
+  // on its own, on every schedule. Without one Android may hold an alert back up to an hour,
+  // so alerts set before the player allowed it are set again.
+  const onTime = await LocalNotifications.checkExactNotificationSetting()
+    .then(status => status.exact_alarm === 'granted', () => false);
   const { notifications } = await LocalNotifications.getPending();
   const wanted = new Map(plan.map(alert => [alert.id, alert]));
   const settled = new Set<number>();
@@ -157,17 +162,13 @@ async function reconcile({ plan, text, lang }: SyncJob): Promise<void> {
     if (!extra.success) continue;
     const alert = wanted.get(pending.id);
     const at = pending.schedule?.at ? new Date(pending.schedule.at).getTime() : null;
-    if (at === alert?.at && extra.data.lang === lang) settled.add(pending.id);
+    if (at === alert?.at && extra.data.lang === lang && extra.data.exact === onTime) settled.add(pending.id);
     else cancel.push({ id: pending.id });
   }
   if (cancel.length > 0) await LocalNotifications.cancel({ notifications: cancel });
   const fresh = plan.filter(alert => !settled.has(alert.id));
   if (fresh.length === 0) return;
   await LocalNotifications.createChannel({ id: CHANNEL, name: 'Astera Online', importance: 3 });
-  // Asked fresh: an on-time alarm the phone refuses makes the plugin open the phone settings
-  // on its own, on every schedule. Without it the alert still comes, a few minutes late.
-  const onTime = await LocalNotifications.checkExactNotificationSetting()
-    .then(status => status.exact_alarm === 'granted', () => false);
   await LocalNotifications.schedule({
     notifications: fresh.map(alert => ({
       id: alert.id,
@@ -175,7 +176,7 @@ async function reconcile({ plan, text, lang }: SyncJob): Promise<void> {
       channelId: CHANNEL,
       isExactNotification: onTime,
       schedule: { at: new Date(alert.at), allowWhileIdle: true },
-      extra: { astera: TAG, key: alert.key, lang },
+      extra: { astera: TAG, key: alert.key, lang, exact: onTime },
     })),
   });
 }
