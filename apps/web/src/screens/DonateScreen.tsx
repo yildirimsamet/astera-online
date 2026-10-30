@@ -2,28 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Note, Section } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
+import { HeartIcon } from '../ui/icons/index.js';
 import { copyText } from '../lib/clipboard.js';
 import { haptic } from '../lib/haptics.js';
 import { capabilities } from '../platform/runtime.js';
 
-/**
- * THE ONE SCREEN IN THE GAME WITH NOTHING TO SELL.
- *
- * Everything else in Astera trades something for something: Alloy for a building,
- * a fleet for a world, Dominion for a risk. This sheet trades nothing — no Alloy,
- * no Crystal, no ships, no premium edge, no in-game status — which means the ONLY
- * thing that can carry it is the prose. Four paragraphs, in this order: who funds
- * the game today, what it costs, why it matters now, and where a contribution
- * actually lands. Then the ways to give, then the line that tells a player who
- * gives nothing that they are still welcome.
- *
- * THE PROSE IS THE FEATURE, not decoration around a payment form. If a future edit
- * shortens this to an address and a button, the surface has become a checkout and
- * `community-screens.test.tsx` will say so.
- *
- * Two ways to give, the cards first (owner 2026-09-27, the Shopier pages are live): a
- * card needs nothing but a tap, a wallet needs a wallet. Drawn in the Gözlemevi language.
- */
+/** Support is optional: explain its purpose before payment, with the full developer note one tap deeper. */
 
 const CRYPTO = [
   { id: 'trc20', labelKey: 'cryptoTrc20', address: 'TPDV6p6QctXvL7nwiW7AMkPzqNqkrG2kGS' },
@@ -66,20 +50,25 @@ function WebDonateScreen({ cards }: { cards: readonly SupportCard[] }) {
   const { t } = useTranslation();
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-1 pb-6 pt-2 font-v2-ui">
-      {/*
-        One block, tight gaps: four paragraphs that are one argument, not four notices.
-        The appeal is the sentence the whole sheet exists to say, so it alone is set in
-        full ink and weight; the case around it is the second ink.
-      */}
-      <div className="flex flex-col gap-2.5 text-body leading-relaxed">
-        <p className="text-v2-ink">{t('community.donate.intro')}</p>
-        <p className="text-v2-ink-2">{t('community.donate.costs')}</p>
-        <p className="font-semibold text-v2-ink">{t('community.donate.appeal')}</p>
-        <p className="text-v2-ink-2">{t('community.donate.impact')}</p>
-      </div>
-
-      <p className="text-caption font-semibold text-v2-ink">{t('community.donate.supportLead')}</p>
+    <div data-support-page className="flex w-full flex-col gap-4 pb-4 font-v2-ui text-v2-ink">
+      <Section label={t('community.donate.aboutHeading')}>
+        <div className="support-introduction rounded-control border border-v2-line bg-v2-deep p-3">
+          <div className="flex items-start gap-3">
+            <HeartIcon className="mt-0.5 size-5 shrink-0 text-v2-self" />
+            <p className="text-caption leading-relaxed text-v2-ink">{t('community.donate.impact')}</p>
+          </div>
+          <details className="group mt-3 border-t border-v2-line pt-2">
+            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 text-label font-semibold text-v2-ink-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+              {t('community.donate.developerNote')}<Icon id="i-chev" className="size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+            </summary>
+            <div className="flex flex-col gap-2 pt-2 text-caption leading-relaxed text-v2-ink-2">
+              <p>{t('community.donate.intro')}</p>
+              <p>{t('community.donate.costs')}</p>
+              <p className="text-v2-ink">{t('community.donate.appeal')}</p>
+            </div>
+          </details>
+        </div>
+      </Section>
 
       {/*
         FOUR ACROSS, AND SMALL. Owner report: two columns drew them "kocaman". The art is

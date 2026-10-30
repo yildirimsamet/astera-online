@@ -1,4 +1,46 @@
 @layer components {
+  .commander-menu [data-menu-identity] {
+    border: 0;
+    border-bottom: 1px solid var(--color-v2-line);
+    border-radius: var(--radius-control);
+    outline: none;
+  }
+  .commander-menu [data-menu-identity]:hover {
+    border-color: var(--color-v2-line-hi);
+    background: var(--color-v2-panel);
+  }
+  .commander-menu [data-menu-identity]:focus-visible {
+    border-color: var(--color-v2-ink-3);
+    background: var(--color-v2-panel);
+  }
+  .menu-avatar {
+    background: radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-v2-self) 20%, transparent), transparent 80%), var(--color-v2-panel);
+  }
+  .menu-shop-tile {
+    background: linear-gradient(120deg, var(--color-v2-panel) 25%, color-mix(in srgb, var(--color-v2-premium) 8%, var(--color-v2-deep)));
+  }
+  .menu-shop-tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--menu-art-shade);
+  }
+  .menu-shop-art {
+    z-index: -2;
+    mask-image: linear-gradient(to right, transparent, black 45%);
+  }
+  .menu-shop-art .shop-showcase-poster {
+    object-position: right top;
+  }
+  .commander-menu [data-menu-tile] {
+    min-height: 104px;
+  }
+  .profile-page {
+    padding-bottom: env(safe-area-inset-bottom);
+    background-image: radial-gradient(ellipse at 80% 0%, color-mix(in srgb, var(--color-v2-self) 4%, transparent), transparent 55%);
+  }
   .shop-showcase-hero {
     background: linear-gradient(115deg, var(--color-v2-deep) 28%, var(--color-v2-store-ground));
   }

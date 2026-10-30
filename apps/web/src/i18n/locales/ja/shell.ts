@@ -209,6 +209,24 @@ export const surface = {
  * and the day one of them is reworded the other must not move with it.
  */
 export const menu = {
+  navigation: {
+    title: "司令官メニュー",
+    season: "シーズン",
+    seasonHint: "名誉・報酬・銀河ランキング",
+    academy: "アカデミー",
+    academyHint: "Wiki・シミュレーター・訓練",
+    community: "コミュニティ",
+    communityHint: "お知らせ・意見",
+    settings: "設定",
+    settingsHint: "音声・画質・言語",
+    account: "司令官プロフィール",
+    back: "メニューに戻る",
+    resume: "ゲームに戻る",
+    shopHint: "外観を選ぶ",
+    inventoryHint: "コレクションを装備",
+    rewardsReady_one: "報酬{{count}}件を受取可能",
+    rewardsReady_other: "報酬{{count}}件を受取可能",
+  },
   /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
   profile: {
     label: "あなたの指揮官",

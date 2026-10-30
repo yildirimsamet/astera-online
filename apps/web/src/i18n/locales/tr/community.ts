@@ -131,9 +131,11 @@ export const community = {
     feedbackEmpty: 'Henüz oyuncu geri bildirimi gelmedi.',
   },
   donate: {
+    aboutHeading: "Oyunun gelişimi",
+    developerNote: "Geliştiriciden bir not",
     eyebrow: 'Astera Online\u0027ın gelişimine destek ol',
     title: "Astera Online'ı Destekle",
-    menuLabel: 'Destek Ol',
+    menuLabel: 'Destek ol',
     menuHint: 'Oyuna destek ol.',
     intro: "Astera Online'ı tamamen kendi imkânlarımla, herhangi bir yatırım veya gelir olmadan geliştiriyorum.",
     costs: 'Oyunun sunucu, yapay zekâ ve diğer teknik giderleri ise düzenli olarak cebimden karşılanıyor. Şu an çalışmadığım için bu masraflar benim için ciddi bir yük oluşturmaya başladı.',

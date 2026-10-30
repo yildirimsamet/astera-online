@@ -10,7 +10,6 @@ import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
-import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { arenaCredential } from '../arena/access.js';
 import { useApi } from '../api/context.js';
@@ -132,7 +131,7 @@ import { RewardsScreen } from './RewardsScreen.jsx';
 import { AnnouncementsScreen } from './AnnouncementsScreen.js';
 import { FeedbackScreen } from './FeedbackScreen.js';
 import { DonateScreen } from './DonateScreen.js';
-import { MenuPanel } from '../shell/MenuPanel.jsx';
+import { MenuPanel, type MenuPage } from '../shell/MenuPanel.jsx';
 import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
 import { Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -234,12 +233,12 @@ const WikiScreen = lazy(async () => { const module = await import('./WikiScreen.
 export const PERF_PANEL_CODES = [
   'planet', 'research', 'intel', 'report', 'leaderboard', 'clan', 'chat', 'chronicle',
   'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
-  'recap', 'menu', 'return', 'wiki', 'ship',
+  'recap', 'menu', 'return', 'wiki', 'ship', 'profile',
 ] as const;
 export const perfPanelCode = (panel: Panel): number =>
   panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
-export type Panel = 'planet' | 'research' | 'ship' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | null;
+export type Panel = 'planet' | 'research' | 'ship' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | 'profile' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -405,6 +404,10 @@ export function GalaxyView({
   const galaxy = useGalaxy();
   const cosmetics = useSkins();
   const [cosmeticTrial, setCosmeticTrial] = useState<CosmeticTrial | null>(null);
+  const [menuPage, setMenuPage] = useState<MenuPage>('home');
+  useEffect(() => {
+    if (panel !== 'menu' && !returnsToMenu(panel)) setMenuPage('home');
+  }, [panel]);
   const [shopSelection, setShopSelection] = useState<CosmeticId | undefined>();
   const planet = usePlanet();
   const intel = useIntel();
@@ -1864,16 +1867,17 @@ export function GalaxyView({
         <V2Sheet
           detents={['full']}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
-          title={commander}
+          title={t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
+          {...(menuPage === 'home' ? {} : { onBack: () => { setMenuPage('home'); } })}
           onClose={() => {
             onPanel(null);
           }}
         >
-          {/* The page the avatar opens starts on the commander (owner, 2026-09-24). */}
-          <div className="mb-4">
-            <CommanderHost name={commander} />
-          </div>
           <MenuPanel
+            commander={commander}
+            page={menuPage}
+            onPageChange={setMenuPage}
+            onResume={() => { onPanel(null); }}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
@@ -1983,8 +1987,8 @@ export function GalaxyView({
         <V2Sheet
           detents={['full']}
           {...menuBack}
-          eyebrow={t('community.donate.eyebrow')}
-          title={t('community.donate.title')}
+          eyebrow={t('galaxy.panelCommanderEyebrow')}
+          title={t('community.donate.menuLabel')}
           onClose={() => { onPanel(null); }}
         >
           <DonateScreen />

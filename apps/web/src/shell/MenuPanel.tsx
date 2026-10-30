@@ -1,7 +1,4 @@
-import { AccountSecurityEntry } from '../screens/AccountSecuritySheet.js';
-import { AccountDeletionEntry } from '../screens/AccountDeletionSheet.js';
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { VacationSheet } from '../screens/VacationSheet.js';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
 import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
@@ -19,16 +16,15 @@ import {
   useMusicVolume,
 } from '../lib/music.js';
 import { rivalColour } from '../galaxy/PlanetField.jsx';
-import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
-import { untilReady } from '../lib/time.js';
+import { useNow, untilReady } from '../lib/time.js';
 import {
   RENDER_QUALITIES,
   setRenderQuality,
   useRenderQuality,
 } from '../lib/quality.js';
 import { Segmented } from '../v2/kit/Segmented.js';
-import { Button, Note, Section, SectionHead } from '../v2/kit/Surface.js';
+import { Section, SectionHead } from '../v2/kit/Surface.js';
 import {
   ChevronIcon,
   BellIcon,
@@ -48,89 +44,24 @@ import {
   BroadcastIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
-import { publisherUrl } from '../lib/publisherPages.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
 import type { CountryCode } from '@astera/rules';
-import { CountryPicker } from '../v2/identity/CountryPicker.js';
 import { InstallButton } from '../brand/Install.js';
 import { Flag } from '../v2/identity/Flag.js';
-import { countryName } from '../v2/identity/country.js';
 import { ShopShowcase } from './ShopShowcase.js';
 import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
 import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { capabilities } from '../platform/runtime.js';
 import { SimulatorHost } from '../battle-simulator/SimulatorHost.js';
 
-/**
- * THE MENU — everything the game has that is not the galaxy.
- *
- * It used to be `CommanderPanel`, it used to live inside `GalaxyView`, and it used
- * to hold only the account. It moved out here when the header's right-hand end ran
- * out of room (see `StatusBar`): what was three controls and a beacon is now a
- * beacon and one way in, and this is what that way in opens.
- *
- * IT IS CHROME, NOT A SCREEN, which is why it sits beside `StatusBar` and
- * `Signals` rather than in `screens/`. `GalaxyView` renders a 3D disc; nothing in
- * this file knows the disc exists, and keeping it here is what lets it be rendered
- * on its own in a test without standing up a WebGL context.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * IT IS A MAP NOW, AND IT USED TO BE A PILE. Owner report:
- *
- *   *"bir gruplama yok, bir hiyeraşi yok, hangi buton nerede nasıl gösterilmeli
- *   gibi bir önem sıralaması yok. Butonlar yatay şekilde uzayıp gereksiz yer
- *   kaplıyor. Yanlış bir buton'a tıklayınca geri dönme yok direk kapatılıyor."*
- *
- * Nine destinations arrived as one undifferentiated column of identical
- * full-width rows — a season shortcut, a bug report and a resolution dial drawn
- * with exactly the same weight, each spending 350 pixels to put a glyph at one end
- * of a line and a chevron at the other. Nothing on the sheet said what mattered,
- * so a reader read all nine every time, and the ninth was below the fold.
- *
- * FOUR RANKS, AND THE SHAPE IS THE RANK. That is the whole design, and it is what
- * lets a ten-year-old and a fifty-year-old read the same sheet without a legend:
- *
- *   1 · A FULL-WIDTH, LIT ROW — something is waiting on YOU. A season that ended,
- *       a placement to apply for. Nothing else is ever allowed this shape, which
- *       is what keeps it meaning something; most sessions show none of them.
- *   2 · A CHIP — a shortcut you made yourself. Rival marks, wearing the same hue
- *       the reticle on the disc wears. Five of them are one wrapped line here and
- *       used to be five full-width rows.
- *   3 · A TILE, TWO TO A ROW, UNDER A NAMED GROUP — a place to go. The name above
- *       the pair is the hierarchy: SEASON is what you came to check, the TEAM
- *       carries the only unread counts, HELP is there for the day you need it.
- *   4 · A LINE IN A PLATE — a preference about the phone in your hand. The least
- *       touched thing in the game, and it used to be the tallest block on the
- *       sheet: three cards with their own glyphs, names and paragraphs, under a
- *       heading that read "Language".
- *
- * And the way out is last, alone, under the account — because the two most
- * destructive controls on a screen should never be adjacent by accident.
- *
- * A WRONG TAP IS RECOVERABLE. Every tile REPLACED this sheet with what it opened,
- * so closing that surface dropped the reader on the galaxy: one mis-tap cost the
- * header control plus finding your place in the list again. `returnsToMenu` in
- * `shell/panelRoute.ts` is the rule, and `Sheet`'s `onBack` is the arrow.
- */
+import { Icon } from '../v2/icons.js';
+import { openProfile } from './profileRoute.js';
 
-/**
- * WHO YOU ARE, WHERE YOU ARE, AND HOW LONG YOU HAVE. D21.
- *
- * The only place sign-out lives, and the sheet is titled with the player's own
- * name — which is what makes the header control that opens it a way OUT and not
- * just a way in. D54's finding was that a control naming something other than what
- * it opens is not a way in at all; the pairing here is what keeps that true now
- * that the name is on the sheet rather than on the button.
- *
- * It states the galaxy by name. With ten of them, "which one am I in" stopped
- * being a question with one possible answer, and a player who cannot name their own
- * galaxy cannot tell a friend where to find them.
- *
- * The season clock came here from the header with the rest of the account. It was
- * always a readout, it was never pressable, and it is one tap away.
- */
+/** Main navigation stays short; details mount only in their selected category. */
+export type MenuPage = 'home' | 'season' | 'academy' | 'community' | 'settings';
+
 export function MenuPanel({
   galaxy,
   shard,
@@ -142,12 +73,18 @@ export function MenuPanel({
   onFocusRival,
   onClearRival,
   onOpen,
-  onSignOut,
   onReplayAcademy,
   isAdmin = false,
   country = 'TR',
-  onCountryChange,
+  commander,
+  page: controlledPage,
+  onPageChange,
+  onResume,
 }: {
+  commander?: string;
+  page?: MenuPage;
+  onPageChange?: (page: MenuPage) => void;
+  onResume?: () => void;
   galaxy: string | null;
   shard: string | null;
   endsAt: Date | null;
@@ -190,13 +127,15 @@ export function MenuPanel({
     if (stored === null) return 'consent.menuUnset';
     return stored.decision === 'granted' ? 'consent.menuGranted' : 'consent.menuDenied';
   })();
-  const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
+  const now = useNow(60_000);
+  const hoursLeft = endsAt === null ? null : (endsAt.getTime() - now) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
-  const honorEnabled = useLeaderboard().data?.honorEnabled ?? false;
+  const board = useLeaderboard().data;
+  const honorEnabled = board?.honorEnabled ?? false;
+  const name = commander ?? board?.you?.username ?? t('menu.eyebrow');
+  const clan = board?.you?.clan;
   const announcementData = useAnnouncements().data;
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
-  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
-  const [vacationOpen, setVacationOpen] = useState(false);
   const [centerOpen, setCenterOpen] = useState(false);
   const center = useNotificationCenter(platform.notificationCenter).data;
   // Built, and the next attack alert at the commander's timing would not go out.
@@ -207,400 +146,282 @@ export function MenuPanel({
 
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
+  const [localPage, setLocalPage] = useState<MenuPage>('home');
+  const page = controlledPage ?? localPage;
+  const root = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const previousPage = useRef<MenuPage | null>(null);
+  const navigate = (next: MenuPage): void => {
+    haptic('tap');
+    setLocalPage(next);
+    onPageChange?.(next);
+  };
+  useLayoutEffect(() => {
+    const previous = previousPage.current;
+    previousPage.current = page;
+    if (previous === page) return;
+    if (page === 'home') {
+      root.current?.querySelector<HTMLElement>(previous === null ? '[data-menu-identity]' : `[data-menu-category="${previous}"]`)?.focus();
+    } else {
+      heading.current?.focus();
+    }
+    const scroller = root.current?.parentElement;
+    if (scroller) scroller.scrollTop = 0;
+  }, [page]);
+  const seasonTime = ended ? t('seasonRecap.ended') : hoursLeft === null ? t('galaxy.commander.endsUnknown') : untilReady(hoursLeft * 60);
+
   return (
-    <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
-      <MenuRow icon={<LockIcon className="size-5" />} label={t('vacation.title')}
-        hint={t('vacation.hint')} onClick={() => { setVacationOpen(true); }} />
-      {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
-      {/**
-       * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
-       *
-       * Both of these appear when the game owes the commander a decision rather
-       * than when they might like one: a season whose result is readable, a
-       * placement in Silent Space that has to be applied for. They are the only
-       * things on this sheet drawn at full width and lit, and most sessions show
-       * neither — which is exactly what makes the shape readable when one appears.
-       */}
-      {(inSilentSpace || hasSeasonResult) && (
-        <div className="flex flex-col gap-2">
-          {inSilentSpace && (
-            <MenuRow
-              icon={<GalaxyIcon className="size-5" />}
-              label={t('silentSpace.menu')}
-              hint={t('silentSpace.menuHint')}
-              onClick={() => {
-                onOpen('return');
+    <div ref={root} data-v2-commander-menu data-menu-page={page} className="commander-menu flex flex-col gap-4 font-v2-ui text-v2-ink">
+      {page === 'home' ? (
+        <>
+          <div className="menu-identity-block">
+            <a href="/profile" data-menu-identity aria-label={`${t('menu.navigation.account')}. ${name}`}
+              onClick={(event) => {
+                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                openProfile();
               }}
-            />
+              className="group flex min-h-14 items-center gap-3 px-1 text-left">
+              {/* px-1 owner decision */}
+              <span aria-hidden="true" className="menu-avatar grid size-11 shrink-0 place-items-center rounded-control border border-v2-line-hi font-semibold text-v2-ink">{Array.from(name).slice(0, 2).join('').toLocaleUpperCase(i18n.resolvedLanguage)}</span>
+              {/* rounded-8 owner decision */}
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5"><Flag code={country} language={i18n.resolvedLanguage ?? 'en'} /><span className="min-w-0 break-words text-body font-semibold">{clan ? `[${clan.tag}] ` : ''}{name}</span></span>
+                <span className="mt-1 block break-words text-label text-v2-ink-2">{clan?.name ?? t('menu.profile.noClan')}</span>
+              </span>
+              <ChevronIcon className="size-4 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
+            </a>
+            <div data-menu-context className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-micro text-v2-ink-2">
+              <span className="flex min-w-0 items-center gap-1.5"><GalaxyIcon className="size-3.5 shrink-0" /><span className="break-words">{galaxy ?? t('galaxy.commander.galaxyUnknown')}{shard && shard !== galaxy ? ` · ${shard}` : ''}</span></span>
+              <span>{t(ended ? 'seasonRecap.seasonLabel' : 'galaxy.commander.endsLabel')} <strong className="font-v2-mono font-medium text-v2-ink">{seasonTime}</strong></span>
+            </div>
+          </div>
+          {(inSilentSpace || hasSeasonResult || waiting > 0) && <div className="flex flex-col gap-2">
+            {inSilentSpace && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} onClick={() => { onOpen('return'); }} />}
+            {hasSeasonResult && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('seasonRecap.menuLabel')} hint={t('seasonRecap.menuHint')} onClick={() => { onOpen('recap'); }} />}
+            {waiting > 0 && <MenuRow icon={<RewardIcon className="size-5" />} label={t('menu.navigation.rewardsReady', { count: waiting })} hint={t('menu.rewardsHint')} onClick={() => { onOpen('rewards'); }} />}
+          </div>}
+          <ShopShowcase compact onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />
+          <nav aria-label={t('menu.navigation.title')} className="divide-y divide-v2-line">
+            <MenuCategory id="season" icon={<LeaderboardIcon className="size-5" />} label={t('menu.navigation.season')} hint={t('menu.navigation.seasonHint')} onClick={() => { navigate('season'); }} />
+            <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
+            <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
+            {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
+            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} badge={centerEmpty ? t('notificationCenter.menuEmpty') : undefined} onClick={() => { navigate('settings'); }} />
+          </nav>
+          {marks.length > 0 && (
+            <section data-menu-group className="flex flex-col gap-2">
+              <SectionHead label={t('menu.marksHeading')} />
+              <div data-rival-chips className="flex flex-wrap gap-1.5">
+                {marks.map((mark) =>
+                  mark.lost ? (
+                    <RivalChip
+                      key={mark.planetId}
+                      slot={mark.slot}
+                      face={t('menu.rivalLostShort')}
+                      name={`${t('menu.rivalLostLabel')}. ${t('menu.rivalLostHint')}`}
+                      lost
+                      onClick={() => {
+                        onClearRival?.(mark.planetId);
+                      }}
+                    />
+                  ) : (
+                    <RivalChip
+                      key={mark.planetId}
+                      slot={mark.slot}
+                      face={mark.owner}
+                      name={`${t('menu.rivalLabel', { commander: mark.owner })}. ${t('menu.rivalHint', { planet: mark.name })}`}
+                      onClick={() => {
+                        onFocusRival?.(mark.planetId);
+                      }}
+                    />
+                  ),
+                )}
+              </div>
+            </section>
           )}
-          {hasSeasonResult && (
-            <MenuRow
-              icon={<GalaxyIcon className="size-5" />}
-              label={t('seasonRecap.menuLabel')}
-              hint={t('seasonRecap.menuHint')}
-              onClick={() => {
-                onOpen('recap');
-              }}
-            />
+
+          <div className="flex items-center justify-between gap-3 border-t border-v2-line pt-2">
+            <InstallButton compact variant="ghost" />
+            {onResume && <button type="button" onClick={onResume} className="ml-auto flex min-h-11 items-center gap-2 text-caption font-medium text-v2-ink-2 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self">{t('menu.navigation.resume')}<Icon id="i-chev" className="size-3.5" /></button>}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={controlledPage === undefined ? 'flex items-center gap-3 border-b border-v2-line pb-3' : 'sr-only'}>
+            {controlledPage === undefined && <button type="button" onClick={() => { navigate('home'); }} aria-label={t('menu.navigation.back')} className="grid size-11 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-panel text-v2-ink-2 hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self"><ChevronIcon className="size-4 rotate-180" /></button>}
+            <h2 ref={heading} tabIndex={-1} className="text-body font-semibold outline-none">{t(`menu.navigation.${page}`)}</h2>
+          </div>
+          {page === 'season' && (
+            <MenuGroup label={t('menu.seasonHeading')}>
+              <MenuTile
+                art={ATMOSPHERE.commander}
+                icon={honorEnabled ? <HonorIcon className="size-5 text-v2-self" /> : <LeaderboardIcon className="size-5" />}
+                label={t(honorEnabled ? 'leaderboard.honorTitle' : 'menu.leaderboardLabel')}
+                hint={t(honorEnabled ? 'leaderboard.honorPrimary' : 'menu.leaderboardHint')}
+                onClick={() => {
+                  onOpen('leaderboard');
+                }}
+              />
+              <MenuTile
+                icon={<RewardIcon className="size-5" />}
+                label={t('menu.rewardsLabel')}
+                art={ATMOSPHERE.rewards}
+                hint={t('menu.rewardsHint')}
+                attention={waiting > 0}
+                {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
+                onClick={() => {
+                  onOpen('rewards');
+                }}
+              />
+
+            </MenuGroup>
+
           )}
-        </div>
-      )}
-
-      <ShopShowcase onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />
-
-      {/*
-        RANK TWO — ONE CHIP PER MARK, WEARING ITS OWN COLOUR. D183.
-
-        The dot is the whole identity of the chip: it is the same hue the reticle on
-        the disc is drawn in, so a commander reading the menu and a commander
-        reading the map are looking at one thing. A chip rather than a row because
-        the entire content of a bookmark is a colour and a name — five of them used
-        to be five full-width rows, some 240 pixels of a phone spent on shortcuts.
-
-        A chip for a mark whose world has gone clears THAT mark alone; the old
-        single-mark version sent `null`, which with five marks would throw four
-        bookmarks away to tidy one.
-      */}
-      {marks.length > 0 && (
-        <section data-menu-group className="flex flex-col gap-2">
-          <SectionHead label={t('menu.marksHeading')} />
-          <div data-rival-chips className="flex flex-wrap gap-1.5">
-            {marks.map((mark) =>
-              mark.lost ? (
-                <RivalChip
-                  key={mark.planetId}
-                  slot={mark.slot}
-                  face={t('menu.rivalLostShort')}
-                  name={`${t('menu.rivalLostLabel')}. ${t('menu.rivalLostHint')}`}
-                  lost
+          {page === 'community' && (
+            <MenuGroup label={t('menu.asteraHeading')}>
+              <MenuTile
+                icon={<BellIcon className="size-5" />}
+                label={t('menu.announcementsLabel')}
+                art={ATMOSPHERE.announcements}
+                hint={t('menu.announcementsHint')}
+                attention={announcementWaiting > 0}
+                {...(announcementWaiting > 0
+                  ? { badge: t('menu.announcementsWaiting', { count: announcementWaiting }) }
+                  : {})}
+                onClick={() => {
+                  onOpen('announcements');
+                }}
+              />
+              <MenuTile
+                icon={<SendIcon className="size-5" />}
+                label={t('menu.feedbackLabel')}
+                art={ATMOSPHERE.feedback}
+                hint={t('menu.feedbackHint')}
+                onClick={() => {
+                  onOpen('feedback');
+                }}
+              />
+              {isAdmin && (
+                <MenuTile
+                  icon={<LockIcon className="size-5" />}
+                  label={t('community.admin.menuLabel')}
+                  hint={t('community.admin.menuHint')}
                   onClick={() => {
-                    onClearRival?.(mark.planetId);
+                    onOpen('admin');
                   }}
                 />
-              ) : (
-                <RivalChip
-                  key={mark.planetId}
-                  slot={mark.slot}
-                  face={mark.owner}
-                  name={`${t('menu.rivalLabel', { commander: mark.owner })}. ${t('menu.rivalHint', { planet: mark.name })}`}
-                  onClick={() => {
-                    onFocusRival?.(mark.planetId);
-                  }}
+              )}
+            </MenuGroup>
+
+          )}
+          {page === 'academy' && (
+            <MenuGroup label={t('menu.helpHeading')}>
+              <MenuTile
+                icon={<GuideIcon className="size-5" />}
+                label={t('menu.guideLabel')}
+                art={ATMOSPHERE.intel}
+                hint={t('menu.guideHint')}
+                onClick={() => { onOpen('wiki'); }}
+              />
+              {/* Over the menu, not instead of it: closing the simulator lands back here. */}
+              <MenuTile
+                icon={<AttackIcon className="size-5" />}
+                label={t('simulator.title')}
+                art={ATMOSPHERE.simulator}
+                hint={t('menu.simulatorHint')}
+                onClick={() => {
+                  simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                  setSimulatorOpen(true);
+                }}
+              />
+              {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); simulatorOpener.current?.focus(); }} />}
+              {onReplayAcademy && (
+                <MenuTile
+                  icon={<GuideIcon className="size-5" />}
+                  label={t('academy.replay')}
+                art={ATMOSPHERE.academy}
+                  hint={t('academy.replayHint')}
+                  onClick={onReplayAcademy}
                 />
-              ),
-            )}
-          </div>
-        </section>
+              )}
+            </MenuGroup>
+
+          )}
+          {page === 'settings' && <>
+              {platform.notificationCenter && <MenuTile
+                icon={<BroadcastIcon className="size-5" />}
+                label={t('notificationCenter.title')}
+                art={ATMOSPHERE.notificationCenter}
+                hint={t('notificationCenter.menuHint')}
+                attention={centerEmpty}
+                {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
+                onClick={() => { setCenterOpen(true); }}
+              />}
+            <Section label={t('menu.deviceHeading')}>
+              <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
+                <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
+                  <LanguageSwitch compact />
+                </SettingRow>
+                <SoundSetting />
+                <EffectsSetting />
+                <NowPlaying />
+                <QualitySetting />
+                <FpsSetting />
+                {/*
+                  THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
+
+                  A consent answer is stored per DEVICE, exactly like the language, the
+                  sound and the resolution above it — so it is a fourth line here
+                  rather than a fifth section heading on a sheet that is already long.
+
+                  IT SHOWS THE ANSWER RATHER THAN ONLY THE DOOR. A row that reads
+                  "Privacy settings ›" makes the player open a dialog to find out where
+                  they stand; this one says it on the line. The rule behind it — what
+                  is stored either way — is one tap deeper, in the notice itself.
+
+                  `reopenGoogleCmp()` first: in the EEA, the UK and Switzerland the
+                  answer lives inside Google's certified message and only Google can
+                  reopen it. Everywhere else that call reports failure and the game's
+                  own notice comes up.
+                */}
+                {(platform.webAds || platform.webAnalytics) && <SettingRow label={t('consent.menuRowLabel')}>
+                  <button
+                    type="button"
+                    data-consent-settings
+                    aria-label={t('consent.menuLabel')}
+                    className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-v2-self"
+                    onClick={() => {
+                      if (!reopenGoogleCmp()) openConsentNotice();
+                    }}
+                  >
+                    <span className="min-w-0 truncate text-label text-v2-ink">{t(consentHint)}</span>
+                    <ChevronIcon className="size-4 shrink-0 text-v2-ink-3" />
+                  </button>
+                </SettingRow>}
+              </div>
+            </Section>
+
+          </>}
+        </>
       )}
-
-      {/**
-       * RANK THREE — WHERE YOU CAN GO, TWO TO A ROW, UNDER A NAME.
-       *
-       * WHAT IS LEFT AFTER THE DISC TOOK THE VERBS. Research, the clan and Intel
-       * are marks on the canvas (`DiscControls`), because they are things a
-       * commander DOES and a menu is where you look things UP. A second door onto
-       * any of them would be one door too many: two ways in to one surface is how a
-       * player learns that neither is the real one.
-       *
-       * THE GROUP NAME IS THE HIERARCHY. Three words do the work that nine
-       * identical rows could not — a reader can tell WITHOUT reading the tiles that
-       * the leaderboard and the sound slider are different kinds of thing, which is
-       * the entire complaint this sheet was rebuilt from.
-       *
-       * The tile's second line is gone from the face and kept on `aria-label`:
-       * "Leaderboard" does not need a sentence under it, the glyph has already said
-       * the rest, and seven sentences is most of a 350-wide phone. A screen reader
-       * still hears the whole thing, and the one reader who genuinely cannot infer
-       * a destination from its name is the reader who cannot see the glyph either.
-       */}
-      <MenuGroup label={t('menu.seasonHeading')}>
-        <MenuTile
-          art={ATMOSPHERE.commander}
-          icon={honorEnabled ? <HonorIcon className="size-5 text-v2-self" /> : <LeaderboardIcon className="size-5" />}
-          label={t(honorEnabled ? 'leaderboard.honorTitle' : 'menu.leaderboardLabel')}
-          hint={t(honorEnabled ? 'leaderboard.honorPrimary' : 'menu.leaderboardHint')}
-          onClick={() => {
-            onOpen('leaderboard');
-          }}
-        />
-        <MenuTile
-          icon={<RewardIcon className="size-5" />}
-          label={t('menu.rewardsLabel')}
-          art={ATMOSPHERE.rewards}
-          hint={t('menu.rewardsHint')}
-          attention={waiting > 0}
-          {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
-          onClick={() => {
-            onOpen('rewards');
-          }}
-        />
-        {platform.notificationCenter && <MenuTile
-          icon={<BroadcastIcon className="size-5" />}
-          label={t('notificationCenter.title')}
-          art={ATMOSPHERE.notificationCenter}
-          hint={t('notificationCenter.menuHint')}
-          attention={centerEmpty}
-          {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
-          onClick={() => { setCenterOpen(true); }}
-        />}
-        {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
-      </MenuGroup>
-
-      <MenuGroup label={t('menu.asteraHeading')}>
-        <MenuTile
-          icon={<BellIcon className="size-5" />}
-          label={t('menu.announcementsLabel')}
-          art={ATMOSPHERE.announcements}
-          hint={t('menu.announcementsHint')}
-          attention={announcementWaiting > 0}
-          {...(announcementWaiting > 0
-            ? { badge: t('menu.announcementsWaiting', { count: announcementWaiting }) }
-            : {})}
-          onClick={() => {
-            onOpen('announcements');
-          }}
-        />
-        <MenuTile
-          icon={<SendIcon className="size-5" />}
-          label={t('menu.feedbackLabel')}
-          art={ATMOSPHERE.feedback}
-          hint={t('menu.feedbackHint')}
-          onClick={() => {
-            onOpen('feedback');
-          }}
-        />
-        {/* Open since its Shopier pages went live (owner 2026-09-27). */}
-        {platform.webCheckout && <MenuTile
-          icon={<HeartIcon className="size-5" />}
-          label={t('community.donate.menuLabel')}
-          art={ATMOSPHERE.donate}
-          hint={t('community.donate.menuHint')}
-          attention
-          onClick={() => {
-            onOpen('donate');
-          }}
-        />}
-        {isAdmin && (
-          <MenuTile
-            icon={<LockIcon className="size-5" />}
-            label={t('community.admin.menuLabel')}
-            hint={t('community.admin.menuHint')}
-            onClick={() => {
-              onOpen('admin');
-            }}
-          />
-        )}
-      </MenuGroup>
-
-      {/* The Wiki shares the public edition without leaving the live galaxy. */}
-      <MenuGroup label={t('menu.helpHeading')}>
-        <MenuTile
-          icon={<GuideIcon className="size-5" />}
-          label={t('menu.guideLabel')}
-          art={ATMOSPHERE.intel}
-          hint={t('menu.guideHint')}
-          onClick={() => { onOpen('wiki'); }}
-        />
-        {/* Over the menu, not instead of it: closing the simulator lands back here. */}
-        <MenuTile
-          icon={<AttackIcon className="size-5" />}
-          label={t('simulator.title')}
-          art={ATMOSPHERE.simulator}
-          hint={t('menu.simulatorHint')}
-          onClick={() => {
-            simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-            setSimulatorOpen(true);
-          }}
-        />
-        {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); simulatorOpener.current?.focus(); }} />}
-        {onReplayAcademy && (
-          <MenuTile
-            icon={<GuideIcon className="size-5" />}
-            label={t('academy.replay')}
-          art={ATMOSPHERE.academy}
-            hint={t('academy.replayHint')}
-            onClick={onReplayAcademy}
-          />
-        )}
-      </MenuGroup>
-
-      {/**
-       * RANK FOUR — THE PHONE IN YOUR HAND, one line each.
-       *
-       * Language, sound and resolution are one category: a preference about the
-       * DEVICE rather than about the commander or the season, which is why all
-       * three are stored per device and why all three live together. They used to
-       * be three stacked cards, each with a glyph socket, a name, a sentence and
-       * its own control — the tallest block on the sheet, for the least often
-       * touched thing in the game — under a section heading that read "Language",
-       * which is the grouping failure in miniature: a group named after one of the
-       * three things in it.
-       *
-       * The resolution keeps its sentence and nothing else does, because it is the
-       * one rung whose NAME does not say what it buys (`docs/interface.md` I1:
-       * "Balanced" alone does not say what it balances). Language and sound show
-       * their state in the control itself.
-       */}
-      <Section label={t('menu.deviceHeading')}>
-        <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
-          <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
-            <LanguageSwitch compact />
-          </SettingRow>
-          <SoundSetting />
-          <EffectsSetting />
-          <NowPlaying />
-          <QualitySetting />
-          <FpsSetting />
-          {/*
-            THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
-
-            A consent answer is stored per DEVICE, exactly like the language, the
-            sound and the resolution above it — so it is a fourth line here
-            rather than a fifth section heading on a sheet that is already long.
-
-            IT SHOWS THE ANSWER RATHER THAN ONLY THE DOOR. A row that reads
-            "Privacy settings ›" makes the player open a dialog to find out where
-            they stand; this one says it on the line. The rule behind it — what
-            is stored either way — is one tap deeper, in the notice itself.
-
-            `reopenGoogleCmp()` first: in the EEA, the UK and Switzerland the
-            answer lives inside Google's certified message and only Google can
-            reopen it. Everywhere else that call reports failure and the game's
-            own notice comes up.
-          */}
-          {(platform.webAds || platform.webAnalytics) && <SettingRow label={t('consent.menuRowLabel')}>
-            <button
-              type="button"
-              data-consent-settings
-              aria-label={t('consent.menuLabel')}
-              className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-v2-self"
-              onClick={() => {
-                if (!reopenGoogleCmp()) openConsentNotice();
-              }}
-            >
-              <span className="min-w-0 truncate text-label text-v2-ink">{t(consentHint)}</span>
-              <ChevronIcon className="size-4 shrink-0 text-v2-ink-3" />
-            </button>
-          </SettingRow>}
-        </div>
-      </Section>
-
-      {/*
-        NO CUT CORNERS HERE. `Plate`'s own rule: the shear is an ACCENT for the
-        directive, the commit surface, the active dock plate — never the default
-        card. These two were the only cut plates on the sheet and they are the
-        two least actionable things on it, a galaxy name and a clock, while the
-        pressable rows above them were plain. The accent was spent exactly
-        backwards.
-      */}
-      <Section label={t('menu.accountHeading')}>
-        <AccountSecurityEntry />
-        <AccountDeletionEntry />
-        <div className="flex items-center justify-between gap-2 border-b border-v2-line pb-3">
-          <div className="min-w-0"><p className="brand-small">Astera Online</p><p className="mt-1 select-all font-v2-mono text-micro text-v2-ink-2">asteraonline.space</p></div>
-          <InstallButton compact />
-        </div>
-        {onCountryChange && (
-          <div className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
-            <SettingRow label={t('country.label')} title={countryName(country, i18n.resolvedLanguage ?? 'en')}>
-              <button
-                type="button"
-                className="flex items-center gap-2 text-left text-label text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
-                onClick={() => { setCountryPickerOpen(true); }}
-              >
-                <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} />
-                <span>{countryName(country, i18n.resolvedLanguage ?? 'en')}</span>
-                <span className="text-v2-ink-3">{t('country.change')}</span>
-              </button>
-            </SettingRow>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          <div data-menu-galaxy className="scene-panel menu-account-scene flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
-            <AtmosphereImage art={ATMOSPHERE.galaxyAccount} />
-            <p className="v2-legend">{t('galaxy.commander.galaxyLabel')}</p>
-            <p className="truncate text-caption font-semibold text-v2-ink">
-              {galaxy ?? t('galaxy.commander.galaxyUnknown')}
-            </p>
-            {shard !== null && shard !== galaxy && (
-              <p className="text-label text-v2-ink-3">{shard}</p>
-            )}
-          </div>
-          <div data-menu-season className="scene-panel menu-account-scene flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
-            <AtmosphereImage art={ATMOSPHERE.seasonAccount} />
-            <p className="v2-legend">
-              {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
-            </p>
-            <p className="font-v2-mono text-caption font-semibold text-v2-ink">
-              {ended
-                ? t('seasonRecap.ended')
-                : hoursLeft === null
-                ? t('galaxy.commander.endsUnknown')
-                : untilReady(hoursLeft * 60)}
-            </p>
-          </div>
-        </div>
-        {/*
-          ONE CLAUSE, UNDER THE CLOCK IT IS ABOUT.
-
-          This was three lines of prose in the middle of a settings sheet, and it
-          carried two unrelated facts: that a commander is a name and a password,
-          and that the wipe resets every galaxy. The first is reassurance nobody
-          reads twice; the second is a real rule, and it belongs beside the
-          countdown rather than in a paragraph of its own.
-        */}
-        <Note>{t('galaxy.commander.wipeNote')}</Note>
-
-              <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-v2-line pt-3">
-        {(
-          [
-            ['privacy', 'landing.privacyLink'],
-            ['terms', 'landing.termsLink'],
-            ['contact', 'landing.contactLink'],
-          ] as const
-        ).map(([page, label]) => (
-          <a
-            key={page}
-            className="text-caption text-v2-ink-3 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
-            href={publisherUrl(page, i18n.resolvedLanguage)}
-          >
-            {t(label)}
-          </a>
-        ))}
-      </nav>
-
-        {/*
-          THE WAY OUT IS LAST AND IT IS ALONE. It sits under the account it ends
-          rather than beside the language pair, because the two most destructive
-          controls on a screen should never be adjacent by accident.
-        */}
-        <Button variant="ghost" size="md" full onClick={onSignOut}>
-          {t('galaxy.commander.signOut')}
-        </Button>
-      </Section>
-      {countryPickerOpen && onCountryChange && (
-        <CountryPicker
-          value={country}
-          onSelect={(next) => {
-            setCountryPickerOpen(false);
-            void onCountryChange(next);
-          }}
-          onClose={() => { setCountryPickerOpen(false); }}
-        />
-      )}
+      {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
     </div>
   );
 }
 
-/**
- * A NAMED GROUP OF DESTINATIONS, TWO TO A ROW.
- *
- * The grid is the answer to *"butonlar yatay şekilde uzayıp gereksiz yer
- * kaplıyor"*: a destination does not need 350 pixels to say LEADERBOARD, and the
- * pair costs one row's height instead of two. An odd count leaves the last cell
- * empty on purpose — a tile stretched across both columns to tidy the row would be
- * the full-width slab this sheet just stopped drawing.
- */
+function MenuCategory({ id, icon, label, hint, badge, primary = false, onClick }: {
+  id: MenuPage | 'donate'; icon: ReactNode; label: string; hint: string; badge?: string | undefined; primary?: boolean; onClick: () => void;
+}) {
+  return <button type="button" data-menu-category={id} aria-label={`${label}. ${hint}${badge ? `. ${badge}` : ''}`} onClick={onClick}
+    className={`menu-category group flex min-h-14 w-full items-center gap-3 rounded-control px-1 py-2.5 text-left transition-colors hover:bg-v2-panel focus-visible:outline-2 focus-visible:outline-v2-self ${primary ? 'text-v2-self' : ''}`}>
+    <span aria-hidden="true" className={`shrink-0 ${primary ? 'text-v2-self' : 'text-v2-ink-2 group-hover:text-v2-ink'}`}>{icon}</span>
+    <span className="min-w-0 flex-1"><span className="block text-caption font-semibold">{label}</span><span className="mt-1 block text-label leading-snug text-v2-ink-2">{hint}</span></span>
+    {badge && <span className="max-w-24 rounded-chip border border-v2-self/25 bg-v2-self/8 px-1.5 py-1 text-micro text-v2-self">{badge}</span>}
+    <ChevronIcon className="size-3.5 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
+  </button>;
+}
+
 function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section data-menu-group className="flex flex-col gap-2">
@@ -610,20 +431,6 @@ function MenuGroup({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-/**
- * ONE PLACE TO GO: a glyph, a name, and a count when something is waiting in it.
- *
- * THE GLYPH SITS ABOVE THE NAME rather than beside it, which is what buys the name
- * the tile's full width — "Liderlik tablosu" and "Akademiyi tekrar oyna" are the
- * two longest things this menu has to say, and a name is the one piece of copy on
- * a dense surface that must never be the thing that gives (`styles.css`, `.name`).
- * It is also the arrangement every phone in the world already uses for a grid of
- * destinations, so nobody has to be taught it.
- *
- * NO CHEVRON. A row needed one to say "this goes somewhere"; a tile in a grid is
- * already shaped like a thing you press, and eight chevrons is eight pieces of
- * furniture saying what the shape has said.
- */
 function MenuTile({
   art,
   icon,
@@ -641,16 +448,6 @@ function MenuTile({
   badge?: string;
   attention?: boolean;
   onClick?: () => void;
-  /**
-   * A TILE THAT GOES TO A URL IS A LINK, NOT A BUTTON.
-   *
-   * Every other tile here opens a surface inside the app, which is a button doing
-   * something. The guide is a real document at a real address, and saying so in
-   * the markup is not pedantry: it is what gives a long-press or a middle-click
-   * the choice of a new tab, what puts the destination in the status bar, and
-   * what lets the browser's own back button lead home afterwards. Same classes,
-   * same shape, same accessible name — only the element changes.
-   */
   href?: string;
 }) {
   const Element = href === undefined ? 'button' : 'a';
@@ -701,14 +498,6 @@ function MenuTile({
   );
 }
 
-/**
- * RANK ONE: THE ONE SHAPE THAT MEANS "THIS IS WAITING ON YOU".
- *
- * Full width, lit, and above every group. It is deliberately the only thing on the
- * sheet drawn this way — a shape that means something has to be scarce, and the
- * two callers (a readable season result, a Silent Space placement) are both cases
- * where the game owes the commander a decision rather than offering one.
- */
 function MenuRow({
   icon,
   label,
@@ -743,18 +532,6 @@ function MenuRow({
   );
 }
 
-/**
- * A MARK'S COLOUR, AND THE COMMANDER IT BELONGS TO. D183.
- *
- * The dot is the same hue the reticle is drawn in on the disc, so the menu and the
- * map are one thing rather than two lists that happen to agree. The name beside it
- * is the commander's, because a mark is about a PERSON and the world in it is only
- * where the press landed.
- *
- * A LOST MARK WEARS A CROSS AND CLEARS ITSELF. Its face has to be short enough for
- * a chip, so the full sentence stays on the accessible name — which is also what
- * every test that reaches for this chip reads.
- */
 function RivalChip({
   slot,
   face,
@@ -793,16 +570,6 @@ function RivalChip({
   );
 }
 
-/**
- * ONE PREFERENCE, ONE LINE: its name on the left, the control that sets it filling
- * the rest.
- *
- * `below` is for the one setting whose chosen value does not explain itself. Every
- * other sentence that used to sit under one of these was describing a control that
- * already shows its own state — a speaker glyph that is lit or not, a language pair
- * where one half is raised — and three of those is a paragraph of a phone screen
- * spent restating what is on it.
- */
 function SettingRow({
   label,
   children,
@@ -814,8 +581,7 @@ function SettingRow({
   children: ReactNode;
   below?: string;
   title?: string;
-  /** The control takes the whole line under its label: three words in a row need the width. */
-  stack?: boolean;
+    stack?: boolean;
 }) {
   return (
     <div data-setting-row className="px-2 py-2" {...(title === undefined ? {} : { title })}>
@@ -836,16 +602,6 @@ function SettingRow({
   );
 }
 
-/**
- * ON OR OFF AND HOW LOUD, ON ONE LINE.
- *
- * `aria-pressed` rather than a checkbox: this is a control with two states that
- * takes effect immediately, which is exactly what a toggle button is for, and it
- * means a screen reader announces the state rather than the player having to infer
- * it from a label that changed. The sentence that used to sit under it — "the score
- * is playing" — is the toggle's accessible name now, so nothing is lost to anyone
- * who needs it read and the row costs one line instead of three.
- */
 function EffectsSetting() {
   const { t } = useTranslation();
   const on = useEffectsEnabled();
@@ -917,44 +673,13 @@ function SoundSetting() {
   );
 }
 
-/**
- * WHAT IS PLAYING, HOW LONG IT IS, AND WHERE IN IT WE ARE.
- *
- * Owner instruction, and the first of the four questions is what makes it a
- * section rather than a line: the slider above says how LOUD, and says nothing
- * about WHICH of nine pieces is making the sound. A player who wants the piano one
- * and keeps getting the documentary one has no move to make until two arrows exist.
- *
- * THREE FACTS AND TWO CONTROLS, ON TWO LINES.
- *
- *   · The position in the list — "3 / 9" rather than "3", because a bare ordinal
- *     is a number and a pair is a place: it says how far the arrows reach and that
- *     there is something on the other side of them.
- *   · The clock, elapsed against total, in the tabular face so the digits do not
- *     shuffle sideways once a second.
- *   · The bar, which is the clock again as a shape. It is `aria-hidden` for
- *     exactly that reason — a screen reader that reads both reads the same fact
- *     twice, a second apart.
- *
- * NO TRACK LIST, NO SHUFFLE, NO FAVOURITES. Nine pieces of background score do not
- * earn a media library on a 350-wide phone, and every one of them is two taps away
- * at the worst. The fourth question — what does this cost to use — answers itself
- * when the whole control is 28 pixels of arrow at each end of a row that was
- * already there.
- *
- * IT STAYS LIVE AND USABLE WHILE THE SCORE IS SILENCED, dimmed rather than
- * disabled: choosing the piece you want before you turn the sound back on is a
- * perfectly ordinary thing to do, and a control that vanishes when it is muted
- * makes the player unmute to find out what they would be unmuting into.
- */
 function NowPlaying() {
   const { t } = useTranslation();
   const on = useMusicEnabled();
   const { track, position, duration } = useMusicPlayback();
 
   const elapsed = formatTrackTime(position);
-  /** `blankAtZero`: nothing has decoded yet, and `0:00` would state a length. */
-  const total = formatTrackTime(duration, { blankAtZero: true });
+    const total = formatTrackTime(duration, { blankAtZero: true });
   const share = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
 
   const skip = (move: () => void) => () => {
@@ -1016,21 +741,6 @@ function NowPlaying() {
   );
 }
 
-/**
- * HOW SHARP THE GALAXY IS DRAWN, AND WHAT IT COSTS THE PHONE.
- *
- * Owner instruction, raised by players reporting heat. `lib/quality.ts` carries
- * the reasoning — including why this dial is the resolution and not bloom or a
- * draw distance, both of which would spend more picture for less power.
- *
- * THREE RUNGS, NOT A SLIDER. A slider implies a continuum somebody can tune, and
- * there is nothing here to tune: there are three sensible ceilings on the device
- * pixel ratio and every value between them looks and costs the same as one of them.
- *
- * THE LINE UNDER THE ROW IS THE CURRENT RUNG'S OWN, and it is the only sentence
- * left in this block. `docs/interface.md` I1: a value the player cannot compare is
- * not yet information, and "Balanced" alone does not say what it balances.
- */
 function QualitySetting() {
   const { t } = useTranslation();
   const quality = useRenderQuality();
@@ -1052,11 +762,6 @@ function QualitySetting() {
   );
 }
 
-/**
- * THE FPS READOUT, ON OR OFF. Owner request, 2026-09-19. The number itself sits in
- * a corner of the galaxy; this row is only the switch, and the line under it says
- * what the number counts so a still disc reading 24 is not taken for a fault.
- */
 function FpsSetting() {
   const { t } = useTranslation();
   const on = useFpsMeterEnabled();

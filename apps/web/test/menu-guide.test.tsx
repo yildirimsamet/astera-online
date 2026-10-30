@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import { MenuPanel } from '../src/shell/MenuPanel.js';
+import { MenuPanel, type MenuPage } from '../src/shell/MenuPanel.js';
+import { ProfilePage } from '../src/shell/ProfilePage.js';
 import { publisherUrl } from '../src/lib/publisherPages.js';
 import i18n from '../src/i18n/index.js';
 import { CONSENT_EVENT, CONSENT_STORAGE_KEY } from '../src/lib/consent.js';
@@ -32,17 +33,18 @@ function harness() {
   return { wrapper };
 }
 
-const show = () => {
+const show = (page: MenuPage | 'profile' = 'academy') => {
   const { wrapper: Wrapper } = harness();
   return render(
     <Wrapper>
-      <MenuPanel
+      {page === 'profile' ? <ProfilePage name="Orion" onBack={vi.fn()} onSignOut={vi.fn()} /> : <MenuPanel
+        page={page}
         galaxy="Vantage"
         shard="EU-1"
         endsAt={null}
         onOpen={vi.fn()}
         onSignOut={vi.fn()}
-      />
+      />}
     </Wrapper>,
   );
 };
@@ -56,7 +58,7 @@ describe('the quick-start guide row', () => {
     const { wrapper } = harness();
     const replay = vi.fn();
     const signOut = vi.fn();
-    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={signOut} onReplayAcademy={replay} />, { wrapper });
+    render(<MenuPanel page="academy" galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={signOut} onReplayAcademy={replay} />, { wrapper });
     fireEvent.click(screen.getByRole('button', { name: /Replay Academy/i }));
     expect(replay).toHaveBeenCalledOnce();
     expect(signOut).not.toHaveBeenCalled();
@@ -72,7 +74,7 @@ describe('the quick-start guide row', () => {
   it('opens the shared Wiki room without navigating away from the game', () => {
     const { wrapper } = harness();
     const onOpen = vi.fn(); const onSignOut = vi.fn();
-    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={onSignOut} />, { wrapper });
+    render(<MenuPanel page="academy" galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={onSignOut} />, { wrapper });
     fireEvent.click(screen.getByRole('button', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }));
     expect(onOpen).toHaveBeenCalledOnce();
     expect(onOpen).toHaveBeenCalledWith('wiki');
@@ -129,22 +131,11 @@ describe('the quick-start guide row', () => {
     expect(handler).not.toContain('window.close()');
   });
 
-  /*
-    APPENDED. Rewards was the last standing row before this; if the guide ever
-    moves above it, every commander who learned the menu has to read it again.
-  */
-  it('sits after the rows that were already there', () => {
-    const view = show();
-    const labels = [...view.container.querySelectorAll('[aria-label]')]
-      .map((node) => node.getAttribute('aria-label') ?? '');
-
-    const rewards = labels.findIndex((label) => label.startsWith(i18n.t('menu.rewardsLabel')));
-    const guide = labels.findIndex((label) => label.startsWith(i18n.t('menu.guideLabel')));
-
-    expect(rewards).toBeGreaterThan(-1);
-    expect(guide).toBeGreaterThan(rewards);
-  });
-});
+  it('keeps the Wiki in Academy without exposing unrelated settings', () => {
+    show();
+    expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.guideLabel')}\\.`) })).toBeVisible();
+    expect(screen.queryByRole('slider')).toBeNull();
+  });});
 
 /**
  * THE PUBLISHER SET, IN THE READER'S OWN LANGUAGE.
@@ -156,7 +147,7 @@ describe('the quick-start guide row', () => {
  */
 describe('publisher links for a signed-in commander', () => {
   it('keeps the privacy, terms and contact pages reachable in English', () => {
-    show();
+    show('profile');
     expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy.html');
     expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms.html');
     expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact.html');
@@ -164,7 +155,7 @@ describe('publisher links for a signed-in commander', () => {
 
   it('shows the Turkish editions to a Turkish commander', async () => {
     await i18n.changeLanguage('tr');
-    show();
+    show('profile');
     expect(screen.getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/gizlilik-politikasi.html');
     expect(screen.getByRole('link', { name: 'Koşullar' })).toHaveAttribute('href', '/kullanim-kosullari.html');
     expect(screen.getByRole('link', { name: 'İletişim' })).toHaveAttribute('href', '/iletisim.html');
@@ -181,7 +172,7 @@ describe('the privacy and cookie settings row', () => {
   const row = (): HTMLElement => screen.getByRole('button', { name: /Privacy & cookie settings/i });
 
   it('reports that nothing has been chosen yet', () => {
-    show();
+    show('settings');
 
     expect(row().textContent).toContain('Not chosen yet');
   });
@@ -191,7 +182,7 @@ describe('the privacy and cookie settings row', () => {
       CONSENT_STORAGE_KEY,
       JSON.stringify({ version: 1, decision: 'denied', at: '2026-09-01T00:00:00.000Z' }),
     );
-    show();
+    show('settings');
 
     expect(row().textContent).toMatch(/Refused/i);
   });
@@ -199,7 +190,7 @@ describe('the privacy and cookie settings row', () => {
   it('reopens the first-party notice when no certified CMP is present', () => {
     const heard = vi.fn();
     window.addEventListener(CONSENT_EVENT, heard);
-    show();
+    show('settings');
 
     fireEvent.click(row());
 
@@ -218,7 +209,7 @@ describe('the privacy and cookie settings row', () => {
     (window as { __tcfapi?: unknown }).__tcfapi = () => undefined;
     (window as { googlefc?: unknown }).googlefc = { showRevocationMessage };
     window.addEventListener(CONSENT_EVENT, heard);
-    show();
+    show('settings');
 
     fireEvent.click(row());
 
@@ -274,11 +265,11 @@ describe('the support row', () => {
     property of the row rather than a colour someone has to eyeball.
   */
   it('wears the menu accent so it is not the seventh identical grey row', () => {
-    show();
+    show('home');
 
     const row = screen.getByRole('button', {
       name: new RegExp(i18n.t('community.donate.menuLabel'), 'i'),
     });
-    expect(row.querySelector('[data-attention]')).not.toBeNull();
+    expect(row).toHaveClass('text-v2-self');
   });
 });

@@ -609,7 +609,8 @@ describe('reaching the way out', () => {
 
     const user = userEvent.setup();
     expect(screen.queryByRole('button', { name: /galaxy chat/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /rewards/i }));
+    await user.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.season')}\\.`) }));
+    await user.click(screen.getByRole('button', { name: /^rewards\./i }));
     expect(onOpen).toHaveBeenCalledWith('rewards');
     await user.click(screen.getByRole('button', { name: /leaderboard/i }));
     expect(onOpen).toHaveBeenCalledWith('leaderboard');
@@ -642,6 +643,7 @@ describe('reaching the way out', () => {
       </Wrapper>,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) }));
     const slider = screen.getByRole('slider', { name: /music volume/i });
     expect(slider).toHaveValue('35');
     fireEvent.change(slider, { target: { value: '36' } });
@@ -710,7 +712,8 @@ describe('reaching the way out', () => {
       </Wrapper>,
     );
 
-    const announcements = screen.getByRole('button', { name: /announcement/i });
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.community')}\\.`) }));
+    const announcements = screen.getByRole('button', { name: /^announcements\./i });
     expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-v2-self');
     expect(announcements).toHaveTextContent('1');
   });

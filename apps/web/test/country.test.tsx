@@ -10,7 +10,7 @@ import { isCountryCode } from '@astera/rules';
 import { browserTimeZone, countryOfTimeZone, detectCountry } from '../src/v2/identity/country.js';
 import { TIME_ZONE_COUNTRIES } from '../src/v2/identity/timeZoneCountries.js';
 import { ClaimDialog } from '../src/onboarding/ClaimDialog.js';
-import { MenuPanel } from '../src/shell/MenuPanel.js';
+import { ProfilePage } from '../src/shell/ProfilePage.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -260,7 +260,7 @@ describe('the country picker', () => {
     render(
       <QueryClientProvider client={client}>
         <ApiProvider api={api}>
-          <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} country="TR" onCountryChange={onCountryChange} onOpen={vi.fn()} onSignOut={vi.fn()} />
+          <ProfilePage name="Orion" country="TR" onCountryChange={onCountryChange} onSignOut={vi.fn()} onBack={vi.fn()} />
         </ApiProvider>
       </QueryClientProvider>,
     );

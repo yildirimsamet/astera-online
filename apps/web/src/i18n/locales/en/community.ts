@@ -131,6 +131,8 @@ export const community = {
     feedbackEmpty: 'No player feedback has arrived yet.',
   },
   donate: {
+    aboutHeading: "Game development",
+    developerNote: "A note from the developer",
     eyebrow: 'Support Astera Online development',
     title: 'Support Astera Online',
     menuLabel: 'Donate',
