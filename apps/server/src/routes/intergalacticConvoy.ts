@@ -10,7 +10,7 @@ import {
 import { idempotentMutation } from '../services/idempotency.js';
 import { commanderForAccount, capitalPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
-import { loadPlanetViewData, buildPlanetResult } from '../services/planetView.js';
+import { loadPlanetViewsData, buildPlanetResult } from '../services/planetView.js';
 import { pendingThreads } from '../services/session.js';
 import { requireAuth } from './auth.js';
 
@@ -85,16 +85,17 @@ async function freshProjection(
   playerId: string,
   requestedPlanetId: string,
 ) {
+  // A read after the command committed: a snapshot, as the planet GET reads, holding no world.
   return app.db.transaction(async (tx) => {
     const [stillMine] = await tx.select({ id: planets.id }).from(planets).where(and(
       eq(planets.id, requestedPlanetId),
       eq(planets.controllerPlayerId, playerId),
     )).limit(1);
     const projectionPlanetId = stillMine?.id ?? (await capitalPlanet(tx, playerId)).id;
-    const planet = await loadPlanetViewData(tx, projectionPlanetId, app.clock);
+    const [planet] = await loadPlanetViewsData(tx, [projectionPlanetId], app.clock);
     const pending = await pendingThreads(tx, projectionPlanetId, app.clock.now());
-    return { planet, pending };
-  }).then(buildPlanetResult);
+    return { planet: planet!, pending };
+  }, { isolationLevel: 'repeatable read', accessMode: 'read only' }).then(buildPlanetResult);
 }
 
 export function registerIntergalacticConvoyRoutes(app: FastifyInstance): void {

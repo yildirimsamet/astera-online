@@ -906,10 +906,30 @@ describe('the intergalactic convoy launch route', () => {
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json<{ error: string }>().error).toBe('IDEMPOTENCY_CONFLICT');
 
+    // The volatile half is a read: a command holding the world must not stall a replay.
+    let release!: () => void;
+    let held!: () => void;
+    const isHeld = new Promise<void>(resolve => { held = resolve; });
+    const holder = f.db.transaction(async tx => {
+      await tx.select().from(planets).where(eq(planets.id, mine)).for('update');
+      held();
+      await new Promise<void>(resolve => { release = resolve; });
+    });
+    await isHeld;
+    const stalled = app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch', headers, payload });
+    const outcome = await Promise.race([
+      stalled.then(() => 'answered'),
+      new Promise(resolve => { setTimeout(() => { resolve('blocked'); }, 3_000); }),
+    ]);
+    release();
+    await holder;
+    expect((await stalled).statusCode).toBe(200);
+    expect(outcome).toBe('answered');
+
     const telemetry = app.metrics.status();
     expect(telemetry.operations['intergalactic-convoy.launch']).toEqual({
       accepted: 1,
-      replay: 1,
+      replay: 2,
     });
     expect(telemetry.refusals['POST /api/intergalactic-convoy/launch']).toMatchObject({
       IDEMPOTENCY_KEY_REQUIRED: 1,
