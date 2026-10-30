@@ -69,6 +69,25 @@ it('refuses a database read whose galaxy moved under it, even when no event ever
   expect((await read('/api/notifications', moved(1))).statusCode).toBe(200);
 });
 
+it('refuses a read from memory that another request refilled after a move this process has not heard of', async () => {
+  await read('/api/galaxy/traffic');
+  await f.db.transaction(async tx => {
+    await tx.execute(sql`alter table players disable trigger players_stream_placement`);
+    await tx.update(players).set({ placementVersion: 1 }).where(eq(players.id, f.playerIds[0]!));
+    await tx.execute(sql`alter table players enable trigger players_stream_placement`);
+  });
+  // A second tab's read refills the commander's memory from the moved state; its own
+  // after check has not run yet. This read is served from that memory alone.
+  const memory = built.app.projections;
+  memory.invalidate(f.seasonId);
+  const now = f.clock.now();
+  await Promise.all([memory.trafficSnapshot(f.seasonId, now), memory.miningSnapshot(f.seasonId, now),
+    memory.pirateSnapshot(f.seasonId, now)]);
+  const response = await read('/api/galaxy/traffic', moved(0));
+  expect(response.statusCode).toBe(409);
+  expect((await read('/api/galaxy/traffic', moved(1))).statusCode).toBe(200);
+});
+
 it('asks the database before refusing a browser that heard of its move first', async () => {
   await read('/api/galaxy/traffic');
   await f.db.transaction(async tx => {

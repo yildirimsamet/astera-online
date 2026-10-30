@@ -1,3 +1,6 @@
+import { performance } from 'node:perf_hooks';
+import { noteCachedRead } from '../db/client.js';
+
 export interface AsyncCacheStats {
   entries: number;
   hits: number;
@@ -13,8 +16,8 @@ interface Entry<T> {
   pending: boolean;
   expiresAt: number;
   promise: Promise<T>;
-  /** Present once the fill settled, for `invalidateWhere`. */
-  settled?: { value: T };
+  /** Present once the fill settled, for `invalidateWhere`; `at` is `performance.now()` then. */
+  settled?: { value: T; at: number };
 }
 
 /**
@@ -60,6 +63,8 @@ export class AsyncCache<T> {
     if (existing && (existing.pending || existing.expiresAt > instant)) {
       this.hits += 1;
       if (existing.pending) this.singleFlightWaits += 1;
+      // The request is answered by someone else's read: say how recent (F1.8 C2).
+      noteCachedRead(existing.settled?.at ?? Infinity);
       this.touch(key, existing);
       return existing.promise;
     }
@@ -84,7 +89,7 @@ export class AsyncCache<T> {
         }
         if (current?.token === token) {
           current.pending = false;
-          current.settled = { value };
+          current.settled = { value, at: performance.now() };
           current.expiresAt = this.now() + this.ttlMs;
           this.touch(key, current);
         }

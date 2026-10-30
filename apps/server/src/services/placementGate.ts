@@ -24,8 +24,9 @@ import { ECONOMY_PROFILE } from '@astera/rules';
  * so if any handler statement saw the moved state, the after-check sees the new
  * version and the response is refused like a stale header. Scaling plan F1.8 (C2):
  * the before check is remembered per account (`Projections.callerPlacement`), and a
- * handler that issued no statement skips the after check, as it read nothing a move
- * could change. Anything not listed here — every write
+ * handler that issued no statement, served only values read before the placement was
+ * last found current, skips the after check: it read nothing a move could change.
+ * Anything not listed here — every write
  * and every GET that writes — keeps the lease: `/api/monuments` applies due
  * transitions, and `/api/galaxy` and `/api/intel` confirm telescope readings.
  */
@@ -106,25 +107,35 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
         const accountId = req.accountId;
         // F1.8 C2: the before check is remembered, kept by the placement triggers.
         const load = async () => (await app.db.select(PLACEMENT).from(players).where(eq(players.accountId, accountId)))[0] ?? null;
-        let initial = await app.projections.callerPlacement(accountId, load);
+        let remembered = await app.projections.callerPlacement(accountId, load);
         // The browser may have heard of a move before this process did: ask before refusing.
-        if (initial && stale(req, initial, reconcile)) {
+        if (remembered && stale(req, remembered.placement, reconcile)) {
           app.projections.forgetCallerPlacement(accountId);
-          initial = await app.projections.callerPlacement(accountId, load);
+          remembered = await app.projections.callerPlacement(accountId, load);
         }
-        if (!initial) return handler.call(this, req, reply);
+        if (!remembered) return handler.call(this, req, reply);
+        const initial = remembered.placement;
         void reply.header('x-placement', admit(req, initial, reconcile));
-        const before = req.dbStatements?.statements;
+        const scope = req.dbStatements;
+        const before = scope?.statements;
+        const outer = scope?.newestRead;
+        if (scope) scope.newestRead = -Infinity;
         const result: unknown = await handler.call(this, req, reply);
-        // Served wholly from memory, the handler read nothing a move could have changed:
-        // its answer and the remembered placement are the same moment.
-        if (before !== undefined && req.dbStatements?.statements === before) return result;
+        const newest = scope?.newestRead ?? Infinity;
+        if (scope) scope.newestRead = Math.max(outer ?? -Infinity, newest);
+        // Served wholly from memory read before the placement was last found current, the
+        // handler saw nothing a move could have changed. A value another request refilled
+        // since may hold a move this process has not heard of yet: that is checked.
+        if (scope && scope.statements === before && newest < remembered.confirmedAt) return result;
+        const checkedAt = performance.now();
         const [current] = await app.db.select(PLACEMENT).from(players).where(eq(players.id, initial.id));
         if (current?.seasonId !== initial.seasonId || current.placementVersion !== initial.placementVersion) {
           app.projections.forgetCallerPlacement(accountId);
           if (current) app.projections.reconcilePlacement(accountId, current);
           throw placementChanged();
         }
+        // Everything the handler was served had been read before this check began.
+        remembered.confirmedAt = Math.max(remembered.confirmedAt, checkedAt);
         return result;
       };
       return;

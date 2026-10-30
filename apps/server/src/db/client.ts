@@ -11,11 +11,21 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 /** Either works for reads; only Tx may mutate. */
 export type Queryable = Db | Tx;
 
-/** Statements one request or worker event issued. Scaling plan F0.2. */
-export interface StatementCount { statements: number }
+/**
+ * Statements one request or worker event issued. Scaling plan F0.2. `newestRead` is
+ * the `performance.now()` by which the newest cached value it was served had been
+ * read (`Infinity` for a fill still in flight), so the placement gate can tell a
+ * value older than its last check from one read since (F1.8 C2).
+ */
+export interface StatementCount { statements: number; newestRead?: number }
 const statementScope = new AsyncLocalStorage<StatementCount>();
 /** Counts every statement any `createDb` pool issues while `run` and its awaits execute. */
 export const countStatements = <T>(scope: StatementCount, run: () => T): T => statementScope.run(scope, run);
+/** The current request was served a value some read finished by `at`. */
+export const noteCachedRead = (at: number): void => {
+  const scope = statementScope.getStore();
+  if (scope) scope.newestRead = Math.max(scope.newestRead ?? -Infinity, at);
+};
 
 export function createDb(
   url: string,

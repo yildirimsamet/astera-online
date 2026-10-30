@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import type { Db, Queryable } from '../db/client.js';
 import type { SensorEpoch } from '@astera/rules';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
@@ -32,6 +33,14 @@ export interface CommanderPlacement {
   seasonId: string;
   placementVersion: number;
 }
+
+/**
+ * A caller's placement as the gate remembers it (F1.8 C2). `confirmedAt` is the
+ * `performance.now()` before the latest database read that found it current; the gate
+ * moves it on after each after check that agrees. A cached value read before it
+ * belongs to the same placement.
+ */
+export interface RememberedPlacement { placement: CommanderPlacement; confirmedAt: number }
 
 /** Caller-keyed entries are `${seasonId}:${playerId}`; these build and select them (F1.2). */
 const playerKey = (seasonId: string, playerId: string): string => `${seasonId}:${playerId}`;
@@ -127,7 +136,7 @@ export class Projections {
    * moves, `private:auth` when one is deleted. An account with no commander is
    * never remembered, as nothing announces one being placed.
    */
-  private readonly callerPlacements: AsyncCache<CommanderPlacement | null>;
+  private readonly callerPlacements: AsyncCache<RememberedPlacement | null>;
   /**
    * WHAT EACH COMMANDER'S RAIDS HAVE FOUND (F1.8, C5): the two battle-found Frontier
    * rungs, for planet reads. Migration 0215's trigger says `private:report` to the
@@ -181,7 +190,7 @@ export class Projections {
     );
     this.galaxyFacts = new AsyncCache<GalaxyFacts | null>(config.maxSeasons, config.publicTtlMs, usable);
     this.clanPresence = new AsyncCache<ClanPresence>(config.maxAccounts, config.publicTtlMs, usable);
-    this.callerPlacements = new AsyncCache<CommanderPlacement | null>(config.maxAccounts, config.publicTtlMs, usable);
+    this.callerPlacements = new AsyncCache<RememberedPlacement | null>(config.maxAccounts, config.publicTtlMs, usable);
     this.researchInsights = new AsyncCache<ResearchInsight>(config.maxAccounts, config.commanderTtlMs, usable);
     this.stopObserving = bus.observe((event) => {
       this.onEvent(event);
@@ -240,10 +249,14 @@ export class Projections {
     return this.clanPresence.get(clanId, () => clanPresenceOf(this.db, clanId));
   }
 
-  async callerPlacement(accountId: string, load: () => Promise<CommanderPlacement | null>): Promise<CommanderPlacement | null> {
-    const placement = await this.callerPlacements.get(accountId, load);
-    if (!placement) this.callerPlacements.invalidate(accountId);
-    return placement;
+  async callerPlacement(accountId: string, load: () => Promise<CommanderPlacement | null>): Promise<RememberedPlacement | null> {
+    const remembered = await this.callerPlacements.get(accountId, async () => {
+      const confirmedAt = performance.now();
+      const placement = await load();
+      return placement ? { placement, confirmedAt } : null;
+    });
+    if (!remembered) this.callerPlacements.invalidate(accountId);
+    return remembered;
   }
 
   researchInsight(playerId: string): Promise<ResearchInsight> {
@@ -428,7 +441,7 @@ export class Projections {
       if (event.kind === `${PRIVATE_PREFIX}report`) this.researchInsights.invalidate(event.playerId);
       // A commander moved or was deleted (migration 0210's triggers).
       if (event.kind === 'placement_changed' || event.kind === 'private:auth') {
-        this.callerPlacements.invalidateWhere((_, placement) => placement?.id === event.playerId);
+        this.callerPlacements.invalidateWhere((_, remembered) => remembered?.placement.id === event.playerId);
       }
       // A clanmate opened or closed their door: told to every other member, not the galaxy.
       if (event.kind === 'posture') {
