@@ -109,6 +109,8 @@ export async function abandonColony(db: Db, planetId: string, playerId: string, 
       throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
     }
     // The returned capital also advances production; include that tick in Wealth.
+    // A view writes nothing (F1.4), so the capital is settled here, under its lock.
+    await loadLocked(tx, home.id, clock);
     const capital = await planetView(tx, home.id, clock);
     const wealth = await recomputePlayerWealth(tx, playerId, clock.now());
     await publishShard(tx, world.seasonId, 'control');
