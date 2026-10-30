@@ -1,6 +1,6 @@
 import { readBattleReplayMetadata, replayStatusFor } from './battleReplay.js';
 import { spatialHistory } from './spatialHistory.js';
-import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { clanWarPlanetTarget } from './clanWar.js';
 import {
@@ -25,7 +25,7 @@ import {
   type Resources,
   type PvpBalance,
 } from '@astera/rules';
-import type { Db, Tx } from '../db/client.js';
+import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   accounts,
   attackCommitments,
@@ -463,6 +463,25 @@ export interface RivalSummaryView {
   lastKnownAt: Date | null;
 }
 
+/**
+ * A commander's newest battle reports: as attacker, as defender, or in a battle they
+ * joined (`joinedReportIds`: joint-war results, clan support). Scaling plan F1.8 (Q4).
+ *
+ * One `OR` over the doors made Postgres gather every report of the season before
+ * keeping `limit`. Each door takes its own newest `limit` from its own index; only
+ * that union is sorted. Newest first, ties by id.
+ */
+export async function recentReportRows(db: Queryable, playerId: string, joinedReportIds: readonly string[], limit: number) {
+  const door = (where: SQL) => sql`(select ${battleReports.id} from ${battleReports} where ${where}
+    order by ${battleReports.createdAt} desc, ${battleReports.id} desc limit ${limit})`;
+  const doors = [door(eq(battleReports.attackerPlayerId, playerId)), door(eq(battleReports.defenderPlayerId, playerId)),
+    ...(joinedReportIds.length > 0 ? [door(inArray(battleReports.id, [...joinedReportIds]))] : [])];
+  return db.select().from(battleReports)
+    .where(sql`${battleReports.id} in (${sql.join(doors, sql` union all `)})`)
+    .orderBy(desc(battleReports.createdAt), desc(battleReports.id))
+    .limit(limit);
+}
+
 export async function readBattleReports(
   db: Db,
   playerId: string,
@@ -494,23 +513,18 @@ async function readBattleReportsIn(
     .from(clanSupportBattleResults)
     .where(and(eq(clanSupportBattleResults.playerId, playerId), eq(clanSupportBattleResults.role, 'SUPPORT'))))
     .map((row) => row.reportId);
+  const joinedReportIds = [...participantReportIds, ...supportedReportIds];
   const mine = or(
     eq(battleReports.attackerPlayerId, playerId),
     eq(battleReports.defenderPlayerId, playerId),
-    ...(participantReportIds.length > 0 ? [inArray(battleReports.id, participantReportIds)] : []),
-    ...(supportedReportIds.length > 0 ? [inArray(battleReports.id, supportedReportIds)] : []),
+    ...(joinedReportIds.length > 0 ? [inArray(battleReports.id, joinedReportIds)] : []),
   );
   const impactMine = or(
     eq(strategicImpacts.attackerPlayerId, playerId),
     eq(strategicImpacts.defenderPlayerId, playerId),
   );
   const [rows, history, impacts] = await Promise.all([
-    tx
-      .select()
-      .from(battleReports)
-      .where(mine)
-      .orderBy(desc(battleReports.createdAt))
-      .limit(Math.min(limit, 50)),
+    recentReportRows(tx, playerId, joinedReportIds, Math.min(limit, 50)),
     // The full-season aggregate does not drag every combat round and loot JSON
     // through memory. Only the identity, ledger and observed-loss fields matter.
     tx
