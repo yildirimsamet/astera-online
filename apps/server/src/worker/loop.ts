@@ -82,10 +82,20 @@ export interface WorkerStatus {
     p99: number;
     max: number;
   };
+  /**
+   * The lateness, split (scaling plan F7). `wakeMs`: how late the claim came after the
+   * moment was due, what the poll and the exact wake decide. `queueMs`: from the claim
+   * to the handler starting, the wait behind earlier events of the batch.
+   */
+  wakeMs: ReturnType<SampleWindow['summary']>;
+  queueMs: ReturnType<SampleWindow['summary']>;
+  /** Wall-clock milliseconds spent running events; `rate()` of it is the worker's load. */
+  busyMs: number;
   /** The repairs, apart from the queue (F1.3): a pass that never returns stops them in silence. */
   maintenance: { lastAt: string | null; errors: number };
-  /** SQL statements each event kind's handler ran (F0.2). */
-  eventStatements: Record<string, { events: number; statements: ReturnType<SampleWindow['summary']> }>;
+  /** SQL statements each event kind's handler ran (F0.2), and how long each run took. */
+  eventStatements: Record<string, { events: number; statements: ReturnType<SampleWindow['summary']>;
+    durationMs: ReturnType<SampleWindow['summary']> }>;
 }
 
 /**
@@ -162,7 +172,10 @@ export class EventWorker {
   private lastDurationMs: number | null = null;
   private readonly durations: number[] = [];
   private readonly lateness: number[] = [];
-  private readonly eventStatements = new Map<string, { events: number; statements: SampleWindow }>();
+  private readonly wake = new SampleWindow();
+  private readonly queue = new SampleWindow();
+  private busyMs = 0;
+  private readonly eventStatements = new Map<string, { events: number; statements: SampleWindow; durationMs: SampleWindow }>();
 
   constructor(
     private readonly db: Db,
@@ -322,6 +335,7 @@ export class EventWorker {
   private async drain(): Promise<Drained> {
     // Read the clock at the queue, not at the pass start: everything due by now is claimed.
     const cutoff = this.clock.now();
+    const claimedAt = performance.now();
     const due = await claimDue(this.db, this.opts.batch, cutoff);
     let processed = 0;
     let failed = 0;
@@ -330,6 +344,9 @@ export class EventWorker {
     for (const event of due) {
       this.lateness.push(Math.max(0, this.clock.now().getTime() - event.resolveAt.getTime()));
       if (this.lateness.length > 512) this.lateness.shift();
+      this.wake.add(Math.max(0, cutoff.getTime() - event.resolveAt.getTime()));
+      const startedAt = performance.now();
+      this.queue.add(startedAt - claimedAt);
       const handler = HANDLERS[event.kind];
       if (!handler) {
         // An unknown kind is a deploy-skew bug, not a transient failure. Mark it
@@ -398,6 +415,8 @@ export class EventWorker {
           );
           abandoned++;
         }
+      } finally {
+        this.observeEventDuration(event.kind, performance.now() - startedAt);
       }
     }
 
@@ -444,11 +463,22 @@ export class EventWorker {
     }
   }
 
+  private samplesOf(kind: string) {
+    const samples = this.eventStatements.get(kind) ?? { events: 0, statements: new SampleWindow(), durationMs: new SampleWindow() };
+    this.eventStatements.set(kind, samples);
+    return samples;
+  }
+
   private observeEventStatements(kind: string, statements: number): void {
-    const samples = this.eventStatements.get(kind) ?? { events: 0, statements: new SampleWindow() };
+    const samples = this.samplesOf(kind);
     samples.events += 1;
     samples.statements.add(statements);
-    this.eventStatements.set(kind, samples);
+  }
+
+  /** The handler and its bookkeeping, as long as the next event in the batch waited for it. */
+  private observeEventDuration(kind: string, ms: number): void {
+    this.samplesOf(kind).durationMs.add(ms);
+    this.busyMs += ms;
   }
 
   status(): WorkerStatus {
@@ -483,9 +513,13 @@ export class EventWorker {
         p99: latenessAt(0.99),
         max: lateness.at(-1) ?? 0,
       },
+      wakeMs: this.wake.summary(),
+      queueMs: this.queue.summary(),
+      busyMs: this.busyMs,
       maintenance: { lastAt: this.maintainedAt?.toISOString() ?? null, errors: this.maintenanceErrors },
       eventStatements: Object.fromEntries([...this.eventStatements].sort(([a], [b]) => a.localeCompare(b))
-        .map(([kind, samples]) => [kind, { events: samples.events, statements: samples.statements.summary() }])),
+        .map(([kind, samples]) => [kind, { events: samples.events, statements: samples.statements.summary(),
+          durationMs: samples.durationMs.summary() }])),
     };
   }
 

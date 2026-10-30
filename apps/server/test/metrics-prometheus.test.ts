@@ -50,6 +50,10 @@ it('renders route, worker and archive figures as text exposition', async () => {
   expect(sample(text, 'astera_worker_maintenance_errors_total')).toBe(0);
   expect(sample(text, 'astera_stream_superseded_total')).toBe(0);
   expect(sample(text, 'astera_worker_handler_failures_total')).toBe(0);
+  // Late waking and waiting in line are told apart, and `rate(busy)` is the worker's load.
+  expect(sample(text, 'astera_worker_wake_ms', 'quantile="0.99"')).toBe(0);
+  expect(sample(text, 'astera_worker_queue_ms', 'quantile="0.99"')).toBe(0);
+  expect(sample(text, 'astera_worker_busy_ms_total')).toBe(0);
   // The test cluster does not archive; production reports the age of the last segment.
   expect(sample(text, 'astera_pg_archive_enabled')).toBe(0);
   expect(sample(text, 'astera_pg_archive_failing')).toBe(0);
