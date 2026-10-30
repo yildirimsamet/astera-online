@@ -20,6 +20,7 @@ export * from './honorBenefits.js';
 export * from './honorValuation.js';
 export * from './honorHistory.js';
 export * from './honorTactical.js';
+export * from './notificationCenter.js';
 export * from './honorRadiation.js';
 export * from './constants.js';
 export * from './pvpBalance.js';
