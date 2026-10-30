@@ -12,6 +12,7 @@
     "erasure:restore": "tsx src/cli/erasureRestore.ts",
     "bots": "tsx src/cli/bots.ts",
     "radiation": "tsx src/cli/radiation.ts",
+    "maintenance": "tsx src/cli/maintenance.ts",
     "capacity:seed": "tsx src/cli/capacity.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

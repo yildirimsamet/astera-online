@@ -39,6 +39,7 @@ import {
 import { type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, radiationBombFlights, units, type seasons } from '../db/schema.js';
+import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { shipHealthGroups } from '@astera/rules';
@@ -572,6 +573,8 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   // open. Once it has arrived, the season-close adapter can transfer it home
   // at the cutoff without inventing a new return flight.
   assertSeasonOpenThrough(origin, arriveAt);
+  // An attack wave lands nowhere inside a planned maintenance window (F0.9, K7); a reinforcement is free.
+  if (input.purpose === 'ATTACK') await assertLandsOutsideMaintenance(tx, [arriveAt]);
   const pvp = input.purpose === 'ATTACK' && holdIds.size > 0;
   if (pvp) {
     for (const playerId of new Set(locked.waves.filter((wave) => holdIds.has(wave.id)).map((wave) => wave.playerId))) {

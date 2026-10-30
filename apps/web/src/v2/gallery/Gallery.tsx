@@ -1184,6 +1184,11 @@ export function Gallery({ view }: { view: string | null }) {
       <Section title="B2 · now line">
         <GalleryNow entries={nowEntries({ now: NOW, threads: [thread('incoming', 4.2), thread('transfer', 9)], runs: [], builds: [], research: [], events: [], shieldUntil: null })} now={NOW} />
         <GalleryNow entries={nowEntries({ now: NOW, threads: [thread('fleet', 18, { leg: 'outbound', fleet: { DART: 12 } })], runs: [], builds: construction, research: [], events: [], shieldUntil: null })} now={NOW} />
+        {/* F0.9: a planned maintenance window in its last three hours, then while under way. */}
+        <GalleryNow entries={nowEntries({ now: NOW, threads: [thread('fleet', 18, { leg: 'outbound', fleet: { DART: 12 } })], runs: [], builds: [], research: [], events: [], shieldUntil: null,
+          maintenance: { startsAt: new Date(NOW + 134 * 60_000), endsAt: new Date(NOW + 179 * 60_000) } })} now={NOW} />
+        <GalleryNow entries={nowEntries({ now: NOW, threads: [], runs: [], builds: [], research: [], events: [], shieldUntil: null,
+          maintenance: { startsAt: new Date(NOW - 10 * 60_000), endsAt: new Date(NOW + 35 * 60_000) } })} now={NOW} />
       </Section>
 
       <div className="flex flex-col gap-5 px-3">

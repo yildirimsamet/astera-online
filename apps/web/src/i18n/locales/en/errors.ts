@@ -147,6 +147,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 research projects are already queued. Wait for one to finish before adding another.',
   BUILD_ORDER_NOT_FOUND: "This production order is no longer active. Check the current queue.",
   PERSONAL_RAID_COOLDOWN: "You can raid this commander again after {{until}} (your local time).",
+  MAINTENANCE_LANDING: "This fleet would land during maintenance, {{from}}–{{to}} (your local time). Send it after maintenance.",
+  MAINTENANCE_IN_FLIGHT: "This weapon would still be flying during maintenance, {{from}}–{{to}} (your local time). Launch it after maintenance.",
   PERSONAL_RAID_PENDING: "You already have a raid on its way to this commander. Wait for it or recall it.",
   BASH_LIMIT: 'You have hit this planet too many times recently',
   TIER_BAND: "That commander is more than one tier above you — attacks compare each side's most developed world",

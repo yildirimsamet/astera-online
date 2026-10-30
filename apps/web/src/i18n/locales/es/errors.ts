@@ -147,6 +147,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 proyectos de investigación ya están en cola. Espere a que termine uno antes de agregar otro.',
   BUILD_ORDER_NOT_FOUND: "Este pedido de producción ya no está activo. Consulta la cola actual.",
   PERSONAL_RAID_COOLDOWN: "Puedes volver a atacar a este comandante después de {{until}} (tu hora local).",
+  MAINTENANCE_LANDING: "Esta flota llegaría durante el mantenimiento, {{from}}–{{to}} (tu hora local). Envíala después del mantenimiento.",
+  MAINTENANCE_IN_FLIGHT: "Esta arma seguiría en vuelo durante el mantenimiento, {{from}}–{{to}} (tu hora local). Lánzala después del mantenimiento.",
   PERSONAL_RAID_PENDING: "Ya tienes un ataque en camino hacia este comandante. Espera o retíralo.",
   BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
   TIER_BAND: "Ese comandante está más de un nivel por encima de ti: se compara el mundo más desarrollado de cada lado.",

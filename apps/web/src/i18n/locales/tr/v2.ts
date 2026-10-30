@@ -75,6 +75,11 @@ export const now = {
   shieldDetail: 'Sonrasında saldırıya açıksın',
   silentSpace: "Sessiz Uzay’a taşınma",
   silentSpaceDetail: "Bina, araştırma, üretim veya saldırı başlat",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "Bakım {{from}}–{{to}}",
+  maintenanceDetail: "Bu sürede inecek saldırı gönderilemez",
+  maintenanceOn: "Bakım sürüyor",
+  maintenanceOnDetail: "Bitince oyun kendiliğinden açılır",
   /** The clock time beside a countdown in the sheet. */
   at: 'saat {{time}}',
 };

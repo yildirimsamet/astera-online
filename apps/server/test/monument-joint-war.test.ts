@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLAN, hangarLoad, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, monumentMotion, motionPositionAt, distance, missionFuel, monumentFuelReserves, priceMonumentReturn, type Fleet } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, clanMemberships, clanWarContributions, clanWarOperations, clans, honorCommitments, honorEvents, honorSeasons, hpRadiationSources, missions, monumentBattleParticipants, monumentBattles, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
+import { accounts, clanMemberships, clanWarContributions, clanWarOperations, clans, honorCommitments, honorEvents, honorSeasons, hpRadiationSources, maintenanceWindows, missions, monumentBattleParticipants, monumentBattles, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
 import { openHonorRanking } from '../src/services/honorActivation.js';
 import { acceptClanRequest, applyToClan, clanActor, createClan } from '../src/services/clan.js';
@@ -279,6 +279,17 @@ describe('the existing clan preparation with a real monument target', () => {
     const [receipt] = (await f.db.select().from(notifications)).filter(row => row.kind === 'fleet_returned' && row.playerId === f.playerIds[1]);
     expect(receipt?.payload).toMatchObject({ trip: 'recalled', fuelRefund: refund });
   });
+  /** F0.9, K7: a joint monument strike is an attack wave; it lands nowhere inside a planned maintenance window. */
+  it('refuses a joint monument strike that would land in a planned maintenance window', async () => {
+    await mark();
+    await stage();
+    await f.db.insert(maintenanceWindows).values({
+      startsAt: f.clock.now(), endsAt: new Date(f.clock.now().getTime() + 12 * 3_600_000), createdAt: f.clock.now(),
+    });
+    await expect(start()).rejects.toMatchObject({ code: 'MAINTENANCE_LANDING' });
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
+  });
+
   it('launches all participants to the same moving meeting at the quoted selected pace', async () => {
     await f.db.update(seasons).set({rulesetVersion:17}).where(eq(seasons.id,f.seasonId));
     await mark();

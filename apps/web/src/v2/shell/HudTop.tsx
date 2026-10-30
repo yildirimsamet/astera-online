@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   useCollect,
   useGalaxyEvents,
+  useMaintenanceNotice,
   useMining,
   useNotifications,
   usePending,
@@ -81,6 +82,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   const threads = [...pending, ...monumentPendingThreads(monuments, now)];
   const runs = useMining().data?.runs ?? [];
   const events = useGalaxyEvents().data?.events ?? [];
+  const maintenance = useMaintenanceNotice();
   const contacts = useTraffic().data?.contacts ?? [];
 
   const data = planet.data;
@@ -155,6 +157,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
     shieldUntil,
     // D212: one figure per commander, published on every world's view.
     silentSpaceAt: data?.silentSpaceAt ?? null,
+    maintenance: maintenance.data?.window ?? null,
   };
   const entries = nowEntries(timers);
   // The sheet under the line lists the whole work queue (owner, 2026-10-06).

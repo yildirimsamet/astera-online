@@ -1,6 +1,6 @@
 import * as rules from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
-import { battleReplays } from '../src/db/schema.js';
+import { battleReplays, maintenanceWindows } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
@@ -154,6 +154,17 @@ describe('a raid at a pirate', () => {
     const result = await launchPirateRaid(f.db, mine, target.id, { DART: 2 }, f.clock);
     const [run] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, result.raidId));
     expect(run?.damage).toEqual([{ ...damage[0], count: 2 }]);
+  });
+
+  /** F0.9, K7: a pirate raid is a hostile arrival, refused inside a planned maintenance window. */
+  it('refuses a raid that would meet the pirate during a planned maintenance window', async () => {
+    const target = await findVisible();
+    await armed({ DART: 2 });
+    await f.db.insert(maintenanceWindows).values({
+      startsAt: f.clock.now(), endsAt: new Date(f.clock.now().getTime() + 12 * 3_600_000), createdAt: f.clock.now(),
+    });
+    await expect(launchPirateRaid(f.db, mine, target.id, { DART: 2 }, f.clock)).rejects.toMatchObject({ code: 'MAINTENANCE_LANDING' });
+    expect(await f.db.select().from(pirateRaids)).toHaveLength(0);
   });
 
   it('requires explicit HP loss acknowledgement for a lethal pirate route', async () => {

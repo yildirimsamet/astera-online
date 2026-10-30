@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { DEATH_STAR } from '@astera/rules';
-import { missions, neutralPlanetState, notifications, planets, playerResearch, scheduledEvents, strategicAssets, strategicImpacts, units } from '../src/db/schema.js';
+import { maintenanceWindows, missions, neutralPlanetState, notifications, planets, playerResearch, scheduledEvents, strategicAssets, strategicImpacts, units } from '../src/db/schema.js';
 import { launchDeathStar } from '../src/services/strategic.js';
 import { onColonySecession } from '../src/services/loyalty.js';
 import { publicWorlds } from '../src/services/publicGalaxy.js';
@@ -43,6 +43,18 @@ describe('rapid Death Star launches and independent impacts', () => {
       planetId: origin, status: 'READY' as const, startedAt: f.clock.now(), remainingSeconds: 0,
     })));
   };
+  /** F0.9 (owner 2026-10-30): an interceptor may meet it anywhere along the leg, so the whole flight must clear a window. */
+  it('refuses a strike that would be in the air during a planned maintenance window', async () => {
+    await arm(origins[0]!);
+    const now = f.clock.now().getTime();
+    await f.db.insert(maintenanceWindows).values({
+      startsAt: new Date(now + 60_000), endsAt: new Date(now + 20 * 60_000), createdAt: f.clock.now(),
+    });
+    await expect(launchDeathStar(f.db, origins[0]!, target, f.clock, f.playerIds[0]))
+      .rejects.toMatchObject({ code: 'MAINTENANCE_IN_FLIGHT' });
+    expect(await f.db.select().from(missions)).toHaveLength(0);
+  });
+
   const arrivals = async (ids: string[]) => f.db.select().from(scheduledEvents)
     .where(and(eq(scheduledEvents.kind, 'mission_arrival'), inArray(scheduledEvents.refId, ids)));
   const world = async () => (await f.db.select().from(planets).where(eq(planets.id, target)))[0]!;

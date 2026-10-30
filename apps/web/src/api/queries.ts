@@ -1,4 +1,5 @@
 import type { ChatMedia } from '@astera/rules';
+import { noteMaintenanceWindow } from '../platform/maintenanceGate.js';
 import { refreshQueries } from './refreshQueries.js';
 import { playSound } from '../lib/sound.js';
 import { ApiError, type MaintenanceAction, type MaintenanceSelection, type RepairRequest } from './client.js';
@@ -191,6 +192,25 @@ export function useGalaxyEvents() {
     queryFn: api.galaxyEvents,
     staleTime: NET_MS,
     refetchInterval: NET_MS,
+  });
+}
+
+/**
+ * The next planned maintenance window (F0.9), for the Now line a day ahead. A slow
+ * poll: a window is planned at least a day out. The gate keeps the last answer so a
+ * lost server inside the window reads as the maintenance it is.
+ */
+export function useMaintenanceNotice() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.maintenance,
+    queryFn: async () => {
+      const notice = await api.maintenanceNotice();
+      noteMaintenanceWindow(notice.window);
+      return notice;
+    },
+    staleTime: 10 * 60_000,
+    refetchInterval: 10 * 60_000,
   });
 }
 

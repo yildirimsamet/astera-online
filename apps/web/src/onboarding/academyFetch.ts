@@ -98,6 +98,7 @@ export function academyFetch(
           case '/api/mining': case '/api/mining/field': case '/api/mining/status': return reply(academyMining(world, time));
           case '/api/pirates': return reply(academyPirates(world));
           case '/api/galaxy/events': return reply({ events: [] });
+          case '/api/maintenance': return reply({ window: null });
           case '/api/clan/badge': return reply({ available: false, membership: null, attention: false, attentionCount: 0, clanChatUnread: 0 });
           case '/api/session/unlocks': return reply({ unlocked: [] });
           case '/api/leaderboard': return reply({ ladder: [], you: null });

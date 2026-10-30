@@ -2,6 +2,7 @@ import { battleReplayResponseSchema } from './battleReplaySchemas.js';
 import { commanderShipSchema } from './commanderShipSchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
+import { reportIfInsideWindow, reportMaintenance } from '../platform/maintenanceGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
@@ -42,6 +43,7 @@ import {
   skinGrantedSchema,
   supporterStatusSchema,
   activeGalaxyEventsSchema,
+  maintenanceWindowSchema,
   announcementPublishedSchema,
   announcementsPageSchema,
   claimSchema,
@@ -411,6 +413,11 @@ export class Api {
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
       credentials: this.auth ? 'omit' : 'same-origin',
       ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+    }).catch((error: unknown) => {
+      // The app cannot read nginx's maintenance answer (no CORS on it): a refused
+      // request inside the planned window is that answer.
+      if (!opts.signal?.aborted) reportIfInsideWindow();
+      throw error;
     });
     noteServerTime(res.headers.get('x-server-time'), res.headers.get('date'), sentAt, Date.now());
 
@@ -420,6 +427,10 @@ export class Api {
     });
     opts.signal?.throwIfAborted();
     if (res.status === 426 && errorShape(body).error === 'UPDATE_REQUIRED') reportUpdateRequired();
+    if (res.status === 503 && errorShape(body).error === 'MAINTENANCE') {
+      const endsAt = errorShape(body).params?.endsAt;
+      reportMaintenance(typeof endsAt === 'string' ? endsAt : null);
+    }
     if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
     // A rejected password is an answered credential check, not an expired token.
     if (res.status === 401 && (opts.retryOnExpiry ?? true) && errorShape(body).error !== 'BAD_CREDENTIALS') {
@@ -458,6 +469,7 @@ export class Api {
        * one means change what you are doing, the other means try again.
        */
       if (body === null) {
+        reportIfInsideWindow();
         throw new ApiError(
           'UNREACHABLE',
           'Lost contact with the server. Try again in a moment.',
@@ -727,6 +739,8 @@ export class Api {
 
   season = () => this.send('/api/season', seasonSchema);
   galaxyEvents = () => this.send('/api/galaxy/events', activeGalaxyEventsSchema);
+  /** The next planned maintenance window, public (F0.9). */
+  maintenanceNotice = () => this.send('/api/maintenance', maintenanceWindowSchema);
   setRival = (planetId: string | null) =>
     this.send('/api/rival', rivalSetSchema, { method: 'POST', body: { planetId } });
   planets = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/planets', planetsSchema, options);
@@ -1453,6 +1467,9 @@ export class Api {
         headers: { ...(this.token ? { authorization: `Bearer ${this.token}` } : {}), ...buildHeader() },
         credentials: this.auth ? 'omit' : 'same-origin',
         signal,
+      }).catch((error: unknown) => {
+        if (!signal.aborted) reportIfInsideWindow();
+        throw error;
       });
       if (generation !== this.sessionGeneration) {
         await response.body?.cancel();
@@ -1474,6 +1491,13 @@ export class Api {
     let res = await open();
     if (res.status === 401 && (await this.restore())) res = await open();
     if (res.status === 426) reportUpdateRequired();
+    // F0.9: a reconnect during maintenance is often the first request to meet the flag.
+    if (!res.ok && res.status !== 401 && res.status !== 426) {
+      const refusal = errorShape(await res.json().catch(() => null));
+      const endsAt = refusal.params?.endsAt;
+      if (res.status === 503 && refusal.error === 'MAINTENANCE') reportMaintenance(typeof endsAt === 'string' ? endsAt : null);
+      else reportIfInsideWindow();
+    }
     if (!res.ok || !res.body) throw new ApiError('STREAM_FAILED', 'Stream unavailable', res.status);
 
     // Headers are in and the body is open: from here the client hears everything.

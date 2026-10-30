@@ -21,6 +21,7 @@ let pending: PendingThread[] = [];
 let monuments: Monuments | undefined;
 let shieldUntil: Date | null = null;
 let claimable = 0;
+let maintenance: { startsAt: Date; endsAt: Date } | null = null;
 const mutate = vi.fn();
 
 vi.mock('../../src/api/queries.js', async () => {
@@ -35,6 +36,7 @@ vi.mock('../../src/api/queries.js', async () => {
     useMonuments: () => ({ data: monuments }),
     useMining: () => ({ data: { runs: [] } }),
     useGalaxyEvents: () => ({ data: { events: [] } }),
+    useMaintenanceNotice: () => ({ data: { window: maintenance } }),
     useTraffic: () => ({ data: { contacts: [] } }),
     useCollect: () => ({ mutate, isPending: false }),
   };
@@ -62,6 +64,7 @@ beforeEach(() => {
   monuments = undefined;
   shieldUntil = null;
   claimable = 0;
+  maintenance = null;
   mutate.mockReset();
 });
 
@@ -123,6 +126,15 @@ describe('the wired top of the shell', () => {
     pending = [{ kind: 'incoming', targetName: 'Kestrel-12', targetPlanetId: 'p1', minutesRemaining: 9, arriveAt: new Date(Date.now() + 9 * 60_000) }];
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
     expect(screen.getByRole('button', { name: /Most urgent timer/ })).toHaveAttribute('data-tone', 'hostile');
+  });
+
+  it('warns of a planned maintenance window on the Now line', () => {
+    maintenance = { startsAt: new Date(Date.now() + 2 * 3_600_000), endsAt: new Date(Date.now() + 2.75 * 3_600_000) };
+    render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    const line = screen.getByRole('button', { name: /Most urgent timer/ });
+    expect(line).toHaveAttribute('data-tone', 'warn');
+    expect(line).toHaveTextContent(/Maintenance/);
+    expect(line).toHaveTextContent(/No attack can land during it/);
   });
 
   it('passes a timer flight to the shell craft focus', async () => {

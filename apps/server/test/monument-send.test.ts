@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MOBILE_HULLS, MONUMENT_CAPACITY, distance, hangarLoad, missionFuel, type Fleet } from '@astera/rules';
-import { clanMemberships, clans, hpRadiationSources, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
+import { clanMemberships, clans, hpRadiationSources, maintenanceWindows, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { quoteMonument, sendMonument } from '../src/services/monument.js';
 import { advanceMonument } from '../src/services/monumentArrival.js';
 import { readMonuments } from '../src/services/monumentView.js';
@@ -56,6 +56,16 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('monument quote and dispatch', () => {
+  /** F0.9, K7: an attack wave is a hostile arrival; a reinforcement is a friendly one, like a transfer. */
+  it('refuses an attack wave that would land in a planned maintenance window, never a reinforcement', async () => {
+    await f.db.insert(maintenanceWindows).values({
+      startsAt: f.clock.now(), endsAt: new Date(f.clock.now().getTime() + 12 * 3_600_000), createdAt: f.clock.now(),
+    });
+    await expect(send()).rejects.toMatchObject({ code: 'MAINTENANCE_LANDING' });
+    await expect(quote()).rejects.toMatchObject({ code: 'MAINTENANCE_LANDING' });
+    await park(1);
+    expect((await send(1, { DART: 1 }, 'REINFORCE')).wave.purpose).toBe('REINFORCE');
+  });
   it('books the paid fuel in Wealth while ships retain their original owner', async () => {
     const initial = await f.db.transaction((tx) => recomputePlayerWealth(tx, f.playerIds[0]!));
     const sent = await send();

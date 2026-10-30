@@ -5203,3 +5203,20 @@ export const battleReplays = pgTable('battle_replays', {
   check('battle_replays_data_check', sql`(${t.status} = 'AVAILABLE' AND ${t.data} IS NOT NULL)
     OR (${t.status} IN ('TOO_LARGE', 'NOT_RECORDED') AND ${t.data} IS NULL)`),
 ]);
+
+/**
+ * A PLANNED MAINTENANCE WINDOW. Scaling plan F0.9, owner K5/K7.
+ *
+ * Created at least `MAINTENANCE.noticeHours` ahead, which is the announcement: from
+ * then on no hostile arrival may land inside it. Cancelled rows stay for the record.
+ */
+export const maintenanceWindows = pgTable('maintenance_windows', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+}, (t) => [
+  index('maintenance_windows_ends_idx').on(t.endsAt),
+  check('maintenance_windows_span_check', sql`${t.endsAt} > ${t.startsAt}`),
+]);

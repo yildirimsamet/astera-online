@@ -54,6 +54,7 @@ import { battleReports, debrisFields, pirateRaids, pirateState, planets, seasons
 import { publish, publishShard } from '../stream/bus.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { notify } from './notifications.js';
 import { schedule } from '../worker/queue.js';
 import { safeHomePlanet } from './ownership.js';
@@ -333,6 +334,8 @@ export async function launchPirateRaid(
     assertFuel(fuel, origin.deuterium);
 
     const arriveAt = atMinute(snapshot.startsAt, hit.meetsAtMinutes);
+    // Nothing hostile lands in a planned maintenance window (F0.9, K7).
+    await assertLandsOutsideMaintenance(tx, [arriveAt]);
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
     const homeMinutes = fleetTravelExact(
       reach,

@@ -75,6 +75,11 @@ export const now = {
   shieldDetail: 'Después, los ataques pueden alcanzarte',
   silentSpace: "Traslado al Espacio Silencioso",
   silentSpaceDetail: "Inicia construcción, investigación, producción o ataque",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "Mantenimiento {{from}}–{{to}}",
+  maintenanceDetail: "Ningún ataque puede llegar durante ese tiempo",
+  maintenanceOn: "Mantenimiento en curso",
+  maintenanceOnDetail: "El juego se reabre solo",
   /** The clock time beside a countdown in the sheet. */
   at: 'a las {{time}}',
 };

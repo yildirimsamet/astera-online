@@ -1,4 +1,5 @@
 import { settlePlanetRadiationAt } from './planetRadiation.js';
+import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { commitHonor } from './honorCommitment.js';
 import { monumentFlight, monumentPosition, monumentMotionStart } from './monumentMotion.js';
 import { reserveMonumentHome } from './monumentFuel.js';
@@ -2728,6 +2729,8 @@ export async function startClanWar(
   }
 
   const arriveAt = addMinutes(now, oneWay);
+  // Nothing hostile lands in a planned maintenance window (F0.9, K7).
+  await assertLandsOutsideMaintenance(tx, [arriveAt]);
   const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
   const hpSources = hpRadiationApplies(season.rulesetVersion)
     ? await hpSourcesForSeason(tx, operation.seasonId, { targets: [] }) : [];
@@ -2900,6 +2903,7 @@ async function startMonumentClanWar(tx: Tx, input: {
   if (pace !== 1 && minutes > TRAVEL.pacedFlightCapMinutes) throw new GameError('PACE_TOO_SLOW', 'Choose a faster flight speed', 400);
   const arriveAt = meeting.arriveAt;
   if (arriveAt >= target.season.endsAt) throw new GameError('CLAN_WAR_SEASON_TOO_SHORT', 'That strike cannot arrive before this galaxy closes', 409);
+  await assertLandsOutsideMaintenance(tx, [arriveAt]);
   const holders = [...new Set(target.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.playerId))];
   if (holders.length > 0) {
     for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {

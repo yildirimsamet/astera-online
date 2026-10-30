@@ -10,6 +10,7 @@ import {
   clanWarMissions,
   clanWarOperations,
   hpRadiationSources,
+  maintenanceWindows,
   missions,
   planets,
   players,
@@ -324,6 +325,20 @@ describe('launching the combined strike', () => {
       .where(eq(missions.id, launched.missionId));
     expect(mission?.status).toBe('in_flight');
     expect((await operationRow(f)).status).toBe('ATTACKING');
+  });
+
+  /** F0.9, K7: the combined strike is a hostile arrival; it is refused inside a planned maintenance window. */
+  it('refuses a strike that would land in a planned maintenance window and keeps the pool staged', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    await f.db.insert(maintenanceWindows).values({
+      startsAt: f.clock.now(), endsAt: new Date(f.clock.now().getTime() + 12 * 3_600_000), createdAt: f.clock.now(),
+    });
+    await expect(start(f)).rejects.toMatchObject({ code: 'MAINTENANCE_LANDING' });
+    expect((await operationRow(f)).status).not.toBe('ATTACKING');
+    expect(await f.db.select().from(clanWarMissions).where(eq(clanWarMissions.leg, 'COMBINED_ATTACK'))).toHaveLength(0);
   });
 
   it('is the leader’s alone', async () => {

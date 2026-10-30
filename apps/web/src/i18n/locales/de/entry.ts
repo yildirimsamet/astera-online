@@ -100,6 +100,12 @@ export const app = {
   updateStore: "Bei Google Play aktualisieren",
   updateWebBody: "Die Spielregeln wurden aktualisiert. Lade das Spiel neu, um die aktuelle Version zu nutzen. Dein Konto und dein Fortschritt bleiben auf dem Server erhalten.",
   reloadGame: "Spiel neu laden",
+  /** F0.9: the screen while nginx holds the maintenance flag. */
+  maintenanceTitle: "Wartung läuft",
+  maintenanceBody: "Der Server ist kurz in Wartung. Dein Konto und dein Fortschritt bleiben auf dem Server erhalten.",
+  maintenanceReturn: "Voraussichtlich zurück um {{time}}",
+  maintenanceLate: "Es dauert etwas länger als geplant.",
+  maintenanceBack: "Das Spiel öffnet sich von selbst, sobald die Wartung endet.",
   blockedTitle: "Verbindung zum Spiel fehlgeschlagen",
   blockedRetry: 'Erneut versuchen',
   /** What `useSession` says when a request failed with no message of its own. */

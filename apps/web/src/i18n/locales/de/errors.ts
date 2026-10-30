@@ -147,6 +147,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 Forschungsprojekte stehen bereits in der Warteschlange. Warten Sie, bis einer fertig ist, bevor Sie einen weiteren hinzufügen.',
   BUILD_ORDER_NOT_FOUND: "Dieser Produktionsauftrag ist nicht mehr aktiv. Prüfe die aktuelle Warteschlange.",
   PERSONAL_RAID_COOLDOWN: "Du kannst diesen Kommandanten nach {{until}} erneut überfallen (deine Ortszeit).",
+  MAINTENANCE_LANDING: "Diese Flotte würde während der Wartung landen, {{from}}–{{to}} (deine Ortszeit). Schick sie nach der Wartung.",
+  MAINTENANCE_IN_FLIGHT: "Diese Waffe wäre während der Wartung noch unterwegs, {{from}}–{{to}} (deine Ortszeit). Starte sie nach der Wartung.",
   PERSONAL_RAID_PENDING: "Ein Überfall auf diesen Kommandanten ist bereits unterwegs. Warte oder rufe ihn zurück.",
   BASH_LIMIT: 'Du bist in letzter Zeit zu oft auf diesem Planeten gelandet',
   TIER_BAND: "Dieser Kommandant liegt mehr als eine Stufe über Ihnen – verglichen wird die am weitesten entwickelte Welt beider Seiten",

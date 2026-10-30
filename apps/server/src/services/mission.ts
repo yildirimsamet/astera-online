@@ -43,6 +43,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
+import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import {
   TIER_BAND_REFUSAL,
   assertAttackProtections,
@@ -408,6 +409,8 @@ export async function launchAttack(
     const escortTime = escort?.bonuses.time ?? 1;
     const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace }) * escortTime;
     const arriveAt = addMinutes(origin.now, oneWay);
+    // Nothing hostile lands in a planned maintenance window (F0.9, K7).
+    await assertLandsOutsideMaintenance(tx, [arriveAt]);
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
     // Home at the same pace it went out (owner, 2026-10-06): the round trip is two equal legs.
     const homeward = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace }) * escortTime;

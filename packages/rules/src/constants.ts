@@ -3154,6 +3154,28 @@ export const CHAT = {
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏'] as const;
 export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
+/**
+ * THE PLANNED MAINTENANCE WINDOW. Scaling plan F0.9, owner K5 (2026-10-28) and K7
+ * (2026-10-28, additions 2026-10-30): a midnight 30–60 minute stop for load tests on
+ * production hardware. Nothing hostile may land inside it.
+ */
+export const MAINTENANCE = {
+  /** It is announced this long before it opens, and the refusal starts with it. */
+  noticeHours: 24,
+  /** Shutting down and starting up take minutes: an arrival this near either edge is refused too. */
+  guardMinutes: 5,
+  minMinutes: 15,
+  maxMinutes: 120,
+  /** Never this near a season's end (K7.2). */
+  seasonEndClearHours: 24,
+  /**
+   * Never this near a big galaxy event (K7.2). Big means contested and time-boxed
+   * (owner, 2026-10-30): the trade ship sails four times a day and may overlap.
+   */
+  eventClearHours: 1,
+  bigEvents: ['INTERGALACTIC_CONVOY', 'ASTEROID_SHOWER'],
+} as const;
+
 export const SEASON = {
   days: ECONOMY_PROFILE.seasonDays,
   /** Frozen finale before the next world opens. D88. */

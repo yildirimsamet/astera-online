@@ -793,6 +793,11 @@ export const activeGalaxyEventsSchema = z.object({
   })),
 });
 
+/** The next planned maintenance window, or none (F0.9). Public. */
+export const maintenanceWindowSchema = z.object({
+  window: z.object({ startsAt: z.coerce.date(), endsAt: z.coerce.date() }).nullable(),
+});
+
 /** The whole set after the press, so the disc never has to work out what changed. */
 export const rivalSetSchema = z.object({
   rivals: z.array(z.object({

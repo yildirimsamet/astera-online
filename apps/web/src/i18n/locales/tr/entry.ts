@@ -97,6 +97,12 @@ export const app = {
   updateStore: "Google Play'de güncelle",
   updateWebBody: "Oyun kuralları güncellendi. Güncel sürümü kullanmak için oyunu yenile. Hesabın ve ilerlemen sunucuda korunur.",
   reloadGame: "Oyunu yenile",
+  /** F0.9: the screen while nginx holds the maintenance flag. */
+  maintenanceTitle: "Bakım sürüyor",
+  maintenanceBody: "Sunucu kısa bir bakımda. Hesabın ve ilerlemen sunucuda korunur.",
+  maintenanceReturn: "Tahmini dönüş {{time}}",
+  maintenanceLate: "Planlanandan biraz uzun sürüyor.",
+  maintenanceBack: "Bakım bitince oyun kendiliğinden açılır.",
   blockedTitle: "Oyuna bağlanılamadı",
   blockedRetry: 'Tekrar dene',
   sessionFailed: 'Sunucuya ulaşılamadı',

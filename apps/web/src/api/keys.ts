@@ -33,6 +33,7 @@ export const keys = {
   shopierShop: ['skins', 'shopier-shop'],
   shopierQueue: ['admin', 'shopier-orders'],
   galaxyEvents: ['galaxy', 'events'],
+  maintenance: ['maintenance'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],
   honorTarget: (planetId: string) => ['honor-target', planetId] as const,

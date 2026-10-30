@@ -79,6 +79,12 @@ export const app = {
   updateStore: "Mettre à jour sur Google Play",
   updateWebBody: "Les règles du jeu ont changé. Recharge le jeu pour utiliser la version actuelle. Ton compte et ta progression sont conservés sur le serveur.",
   reloadGame: "Recharger le jeu",
+  /** F0.9: the screen while nginx holds the maintenance flag. */
+  maintenanceTitle: "Maintenance en cours",
+  maintenanceBody: "Le serveur est en courte maintenance. Ton compte et ta progression sont conservés sur le serveur.",
+  maintenanceReturn: "Retour prévu à {{time}}",
+  maintenanceLate: "Cela prend un peu plus longtemps que prévu.",
+  maintenanceBack: "Le jeu rouvre tout seul à la fin de la maintenance.",
   blockedTitle: "Connexion au jeu impossible",
   blockedRetry: 'Essayer à nouveau',
   sessionFailed: 'Impossible d\'atteindre le serveur',

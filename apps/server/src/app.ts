@@ -50,6 +50,7 @@ import { EventBus } from './stream/bus.js';
 import { StreamFence } from './stream/fence.js';
 import { registerSessionRoutes } from './routes/session.js';
 import { registerSeasonRoutes } from './routes/season.js';
+import { registerMaintenanceRoutes } from './routes/maintenance.js';
 import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
@@ -496,6 +497,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerCommunityBlockRoutes(app);
     registerCommunityPolicyRoutes(app);
     registerServerRoutes(app);
+    registerMaintenanceRoutes(app);
     registerPreviewRoutes(app);
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerSeasonRoutes(app);

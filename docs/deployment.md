@@ -892,6 +892,24 @@ Nightly backup: `./deploy/backup.sh` (retains at most fourteen daily pairs). All
 17 3 * * * cd /home/yildirim/astera && ./deploy/backup.sh >> /home/yildirim/backups/astera-backup.log 2>&1
 ```
 
+### Planned maintenance window (F0.9, K5/K7)
+
+Plan the window at least 24 hours ahead; from then on the game names it on every player's Now line and refuses any attack, pirate raid, monument attack wave or joint strike that would land inside it (±5 min), and any Death Star or radiation bomb whose flight crosses it. Probes and transfers stay free. The scheduler refuses a window within 24 h of a live season's end or within 1 h of a convoy or asteroid shower, and prints what it collided with.
+
+```bash
+docker compose -f docker-compose.prod.yml run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/maintenance.ts schedule --at 2026-11-02T00:30:00Z --minutes 45 </dev/null
+# … maintenance.ts list | cancel <id>
+```
+
+Inside the window, raise the flag before stopping anything and take it down once health is green; every `/api` door then answers 503 with the reopening, the client shows the maintenance screen and returns by itself within ~30 s of `off`:
+
+```bash
+./deploy/maintenance.sh on 2026-11-02T01:15:00Z   # status | off
+```
+
+The flag lives in `/var/www/astera-maintenance/`; the vhost must include the F0.9 `@maintenance` blocks first.
+
 ### Continuous backup
 
 Production PostgreSQL archives every WAL segment to an encrypted pgBackRest repository in Cloudflare R2 (bucket `astera-backup`, region `auto`, path `/astera-prod`) within `archive_timeout=60` seconds, and cron takes a full backup daily. A lost VPS loses at most about a minute. Configuration is the `postgres` service in `docker-compose.prod.yml` plus the six `PGBACKREST_REPO1_*` values in `~/astera/.env`; the image is `deploy/postgres/Dockerfile`, pinned to the PostgreSQL build production ran before archiving. Stage overrides it and never archives.

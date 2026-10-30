@@ -100,6 +100,12 @@ export const app = {
   updateStore: "Google Play でアップデート",
   updateWebBody: "ゲームのルールが更新されました。再読み込みして最新バージョンを使用してください。アカウントと進行状況はサーバーに保存されています。",
   reloadGame: "ゲームを再読み込み",
+  /** F0.9: the screen while nginx holds the maintenance flag. */
+  maintenanceTitle: "メンテナンス中",
+  maintenanceBody: "サーバーは短いメンテナンス中です。アカウントと進行状況はサーバーに保存されています。",
+  maintenanceReturn: "再開予定 {{time}}",
+  maintenanceLate: "予定より少し長引いています。",
+  maintenanceBack: "メンテナンスが終わると自動で再開します。",
   blockedTitle: "ゲームに接続できませんでした",
   blockedRetry: "再試行",
   /** What `useSession` says when a request failed with no message of its own. */

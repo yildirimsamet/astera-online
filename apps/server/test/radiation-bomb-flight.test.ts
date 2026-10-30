@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { MONUMENT_SEASON_DEFAULTS, RADIATION_BOMB, RADIATION_BOMB_VISUAL, toWorld, worldRadius, travelExact, distance } from '@astera/rules';
-import { buildings, hpRadiationSources, monuments, notifications, planets, players, radiationBombFlights,
+import { buildings, hpRadiationSources, maintenanceWindows, monuments, notifications, planets, players, radiationBombFlights,
   seasons, strategicAssets } from '../src/db/schema.js';
 import { buildRadiationBomb, launchRadiationBomb, resolveRadiationBomb } from '../src/services/radiationBomb.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -173,4 +173,16 @@ it('flies to a real moving monument without creating a fake planet mission and i
   expect(flight).toMatchObject({ targetKind: 'MONUMENT', targetPlanetId: null, targetMonumentId: monument!.id, status: 'HIT' });
   const [source] = await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.bombFlightId, result.flightId));
   expect(source).toMatchObject({ anchorKind: 'MONUMENT', anchorId: monument!.id, intensityHpPerMinute: 12.5 });
+});
+
+/** F0.9 (owner 2026-10-30): an interceptor may meet a bomb anywhere along its leg, so the flight must clear a window. */
+it('refuses a bomb that would be in the air during a planned maintenance window', async () => {
+  const asset = await ready();
+  const now = f.clock.now().getTime();
+  await f.db.insert(maintenanceWindows).values({
+    startsAt: new Date(now + 60_000), endsAt: new Date(now + 20 * 60_000), createdAt: f.clock.now(),
+  });
+  await expect(launch()).rejects.toMatchObject({ code: 'MAINTENANCE_IN_FLIGHT' });
+  expect(await f.db.select().from(radiationBombFlights)).toHaveLength(0);
+  expect((await f.db.select().from(strategicAssets).where(eq(strategicAssets.id, asset)))[0]?.status).toBe('READY');
 });

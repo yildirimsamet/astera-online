@@ -75,6 +75,11 @@ export const now = {
   shieldDetail: 'Ensuite, les raids peuvent t’atteindre',
   silentSpace: "Départ vers l’Espace Silencieux",
   silentSpaceDetail: "Lance construction, recherche, production ou attaque",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "Maintenance {{from}}–{{to}}",
+  maintenanceDetail: "Aucune attaque ne peut arriver pendant ce temps",
+  maintenanceOn: "Maintenance en cours",
+  maintenanceOnDetail: "Le jeu rouvre tout seul",
   /** The clock time beside a countdown in the sheet. */
   at: 'à {{time}}',
 };

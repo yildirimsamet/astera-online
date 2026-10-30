@@ -7,6 +7,7 @@ import type { Db, Tx } from '../db/client.js';
 import { buildings, hpRadiationSources, planets, radiationBombFlights, seasons, strategicAssets } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, lockSeason, saveResources } from './planet.js';
+import { assertFliesOutsideMaintenance } from './maintenanceWindow.js';
 import { buildPlanetResult, loadPlanetViewData } from './planetView.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { lockWorlds } from './ownership.js';
@@ -145,6 +146,8 @@ export async function launchRadiationBomb(db: Db, input: RadiationBombLaunch) {
     }
     assertSeasonOpenThrough(origin, arriveAt);
     if (arriveAt >= season.endsAt) throw new GameError('SEASON_ENDS_BEFORE_RETURN', 'That bomb cannot arrive before the season ends', 409);
+    // Clear of a planned maintenance window from launch to impact (F0.9, K7).
+    await assertFliesOutsideMaintenance(tx, origin.now, arriveAt);
     const [asset] = await tx.select().from(strategicAssets).where(and(eq(strategicAssets.planetId, origin.planetId),
       eq(strategicAssets.type, RADIATION_BOMB.levels[input.level].type), eq(strategicAssets.status, 'READY'))).for('update');
     if (!asset) throw new GameError('RADIATION_BOMB_NOT_READY', 'No bomb of that level is ready', 409);

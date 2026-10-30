@@ -100,6 +100,12 @@ export const app = {
   updateStore: "Update on Google Play",
   updateWebBody: "The game rules have changed. Reload to use the current version. Your account and progress are kept on the server.",
   reloadGame: "Reload game",
+  /** F0.9: the screen while nginx holds the maintenance flag. */
+  maintenanceTitle: "Maintenance in progress",
+  maintenanceBody: "The server is down for a short maintenance. Your account and progress are kept on the server.",
+  maintenanceReturn: "Expected back at {{time}}",
+  maintenanceLate: "Taking a little longer than planned.",
+  maintenanceBack: "The game reopens by itself when maintenance ends.",
   blockedTitle: "Could not connect to the game",
   blockedRetry: 'Try again',
   /** What `useSession` says when a request failed with no message of its own. */

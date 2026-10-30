@@ -66,6 +66,16 @@ export function describeError(err: unknown): string {
         until: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'medium' }).format(at),
       });
     }
+    // F0.9: the window in the player's own clock, the day named on its start.
+    if (err.code === 'MAINTENANCE_LANDING' || err.code === 'MAINTENANCE_IN_FLIGHT') {
+      const from = typeof err.params?.startsAt === 'string' ? Date.parse(err.params.startsAt) : NaN;
+      const to = typeof err.params?.endsAt === 'string' ? Date.parse(err.params.endsAt) : NaN;
+      if (!Number.isFinite(from) || !Number.isFinite(to)) return i18n.t('errors.unknown');
+      return i18n.t(`errors.${err.code}`, {
+        from: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(from),
+        to: new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(to),
+      });
+    }
     if (isKnown(err.code)) {
       // `context` rides in with the params, so a code with two wordings — a
       // locked galaxy with or without a frontier to point at — resolves to

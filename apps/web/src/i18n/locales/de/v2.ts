@@ -75,6 +75,11 @@ export const now = {
   shieldDetail: 'Danach können dich Angriffe erreichen',
   silentSpace: "Umzug in den Stillen Raum",
   silentSpaceDetail: "Starte Bau, Forschung, Produktion oder Angriff",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "Wartung {{from}}–{{to}}",
+  maintenanceDetail: "Kein Angriff kann währenddessen landen",
+  maintenanceOn: "Wartung läuft",
+  maintenanceOnDetail: "Das Spiel öffnet sich von selbst",
   /** The clock time beside a countdown in the sheet. */
   at: 'um {{time}}',
 };

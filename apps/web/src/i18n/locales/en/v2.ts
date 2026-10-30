@@ -79,6 +79,11 @@ export const now = {
   shieldDetail: 'Raids can reach you after it',
   silentSpace: "Move to Silent Space",
   silentSpaceDetail: "Start a build, research, production or attack",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "Maintenance {{from}}–{{to}}",
+  maintenanceDetail: "No attack can land during it",
+  maintenanceOn: "Maintenance under way",
+  maintenanceOnDetail: "The game reopens by itself",
   /** The clock time beside a countdown in the sheet. */
   at: 'at {{time}}',
 };

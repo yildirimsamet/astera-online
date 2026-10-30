@@ -143,6 +143,8 @@
   RESEARCH_QUEUE_FULL: 'Il y a déjà 3 recherches dans la file. Attends que l’une d’elles se termine avant d’en ajouter une nouvelle.',
   BUILD_ORDER_NOT_FOUND: "Cette commande de production n’est plus active. Vérifie la file actuelle.",
   PERSONAL_RAID_COOLDOWN: "Tu peux attaquer à nouveau ce commandant après {{until}} (ton heure locale).",
+  MAINTENANCE_LANDING: "Cette flotte arriverait pendant la maintenance, {{from}}–{{to}} (ton heure locale). Envoie-la après la maintenance.",
+  MAINTENANCE_IN_FLIGHT: "Cette arme serait encore en vol pendant la maintenance, {{from}}–{{to}} (ton heure locale). Lance-la après la maintenance.",
   PERSONAL_RAID_PENDING: "Un de tes raids se dirige déjà vers ce commandant. Attends ou rappelle-le.",
   BASH_LIMIT: 'Tu as attaqué cette planète trop souvent récemment',
   TIER_BAND: 'Ce commandant a plus d’un palier d’avance sur toi : on compare le monde le plus développé de chaque camp',

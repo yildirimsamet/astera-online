@@ -143,6 +143,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: 'Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.',
   BUILD_ORDER_NOT_FOUND: "Bu üretim siparişi artık etkin değil. Güncel üretim sırasını kontrol et.",
   PERSONAL_RAID_COOLDOWN: "Bu komutana {{until}} sonrasında yeniden akın gönderebilirsin (yerel saatin).",
+  MAINTENANCE_LANDING: "Bu filo {{from}}–{{to}} bakımı sırasında inerdi (yerel saatin). Bakım bitince gönder.",
+  MAINTENANCE_IN_FLIGHT: "Bu silah {{from}}–{{to}} bakımı sırasında havada olurdu (yerel saatin). Bakım bitince fırlat.",
   PERSONAL_RAID_PENDING: "Bu komutana doğru giden bir akının var. Sonuçlanmasını bekle veya geri çağır.",
   BASH_LIMIT: 'Bu gezegene son zamanlarda fazla yüklendin',
   TIER_BAND: 'Bu komutan senden bir kademeden fazla yukarıda — saldırıda iki tarafın en gelişmiş dünyası karşılaştırılır',

@@ -79,6 +79,11 @@ export const now = {
   shieldDetail: "終了後は襲撃を受ける可能性があります",
   silentSpace: "サイレントスペースへ移動",
   silentSpaceDetail: "建設・研究・生産・攻撃のいずれかを開始",
+  /** F0.9: a planned maintenance window, a day ahead and under way. */
+  maintenance: "メンテナンス {{from}}–{{to}}",
+  maintenanceDetail: "この間に到着する攻撃は送れません",
+  maintenanceOn: "メンテナンス中",
+  maintenanceOnDetail: "終了後、自動で再開します",
   /** The clock time beside a countdown in the sheet. */
   at: "{{time}}に",
 };

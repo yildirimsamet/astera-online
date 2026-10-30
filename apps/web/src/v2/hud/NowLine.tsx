@@ -53,7 +53,8 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
 
   const enemy = head.kind === 'incoming';
   // D212: leaving the galaxy is a warning, never an enemy — amber, not red.
-  const warn = head.kind === 'silentSpace';
+  // F0.9: a planned maintenance window refuses launches; a warning too.
+  const warn = head.kind === 'silentSpace' || head.kind === 'maintenance';
   const { title, detail } = describeNow(head, contacts);
 
   return (
@@ -104,7 +105,7 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
               const focus = 'focus' in entry ? entry.focus : undefined;
               const queued = 'waiting' in entry && entry.waiting;
               const row = <>
-                <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${hostile ? 'bg-v2-hostile' : entry.kind === 'silentSpace' ? 'bg-v2-warn' : 'bg-v2-self'}`} />
+                <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${hostile ? 'bg-v2-hostile' : entry.kind === 'silentSpace' || entry.kind === 'maintenance' ? 'bg-v2-warn' : 'bg-v2-self'}`} />
                 <span className="grid min-w-0 flex-1">
                   <span className="truncate text-caption font-semibold text-v2-ink">{said.title}</span>
                   {said.detail && <span className="truncate text-micro text-v2-ink-3">{said.detail}</span>}

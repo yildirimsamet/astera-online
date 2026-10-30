@@ -26,6 +26,8 @@ import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
 import { useUpdateRequired } from './platform/updateGate.js';
 import { UpdateRequired } from './shell/UpdateRequired.js';
+import { useMaintenance } from './platform/maintenanceGate.js';
+import { MaintenanceScreen } from './shell/MaintenanceScreen.js';
 import { commanderKnownHere } from './lib/returning.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
@@ -286,6 +288,7 @@ export function App() {
   const [sandbox, setSandbox] = useState(() => canOpenArenaSandbox(import.meta.env, location.search));
   const [simulator, setSimulator] = useState(() => new URLSearchParams(location.search).get('simulator') === '1');
   const updateRequired = useUpdateRequired();
+  const maintenance = useMaintenance();
   if (simulator) return <Suspense fallback={<LoadingScreen caption={t('simulator.stageLoading')} />}><BattleSimulator onLeave={() => {
     const url = new URL(location.href); url.searchParams.delete('simulator'); history.replaceState(null, '', url);
     setSimulator(false);
@@ -297,5 +300,6 @@ export function App() {
     setSandbox(false);
   }} />;
   if (updateRequired) return <UpdateRequired />;
+  if (maintenance) return <MaintenanceScreen endsAt={maintenance.endsAt} />;
   return <Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>;
 }

@@ -11,6 +11,7 @@ import i18n from '../i18n/index.js';
 import { researchName } from '../i18n/names.js';
 import { contactFor, flightFocus, flightTitle, incomingDetail, runArrival, runTitle, type FlightFocus } from './flights.js';
 import { buildOrderLabel } from './orders.js';
+import { clockTime } from './time.js';
 
 const MINUTE = 60_000;
 /** Your own strike is lifted over every other arrival in its last ten minutes. */
@@ -23,6 +24,10 @@ export const EVENT_WINDOW_MS = 15 * MINUTE;
 export const SHIELD_WINDOW_MS = 60 * MINUTE;
 /** The move to Silent Space in its last twelve hours: one evening is enough to answer it. D212. */
 export const SILENT_SPACE_WINDOW_MS = 12 * 60 * MINUTE;
+/** A planned maintenance window is announced a day ahead (F0.9, K7). */
+export const MAINTENANCE_NOTICE_MS = 24 * 60 * MINUTE;
+/** In its last three hours a raid sent now could land inside it: then it outranks own timers. */
+export const MAINTENANCE_NEAR_MS = 3 * 60 * MINUTE;
 
 /** Kinds of your own thread that end in a fight at the far end. */
 const STRIKES: ReadonlySet<PendingThread['kind']> = new Set(['fleet', 'pirate', 'death_star']);
@@ -32,6 +37,8 @@ export type NowEntry =
   | { tier: 2; kind: 'strike'; at: number; thread: PendingThread; focus?: FlightFocus }
   /** Losing the galaxy outranks every own timer; only an enemy landing comes first. D212. */
   | { tier: 2; kind: 'silentSpace'; at: number }
+  /** `at` is the start while ahead, the reopening once under way; `until` is always the reopening. */
+  | { tier: 2 | 5; kind: 'maintenance'; at: number; started: boolean; startsAt: number; until: number }
   | { tier: 3; kind: 'flight'; at: number; thread: PendingThread; focus?: FlightFocus }
   | { tier: 3; kind: 'run'; at: number; run: MiningRun; focus: FlightFocus }
   /** `waiting`: behind the head of its lane, so its clock is not running yet (D4). */
@@ -53,6 +60,8 @@ export interface NowInput {
   shieldUntil: Date | null;
   /** When this commander leaves for Silent Space unless they order something first. D212. */
   silentSpaceAt?: Date | null;
+  /** The next planned maintenance window, from the public notice. F0.9. */
+  maintenance?: { startsAt: Date; endsAt: Date } | null;
 }
 
 /**
@@ -109,6 +118,15 @@ export function nowEntries(input: NowInput, scope: 'line' | 'sheet' = 'line'): N
   if (input.silentSpaceAt && within(input.silentSpaceAt.getTime(), SILENT_SPACE_WINDOW_MS)) {
     entries.push({ tier: 2, kind: 'silentSpace', at: input.silentSpaceAt.getTime() });
   }
+  if (input.maintenance) {
+    const startsAt = input.maintenance.startsAt.getTime();
+    const until = input.maintenance.endsAt.getTime();
+    const started = startsAt <= now;
+    if (started ? until > now : within(startsAt, MAINTENANCE_NOTICE_MS)) {
+      entries.push({ tier: started || startsAt - now <= MAINTENANCE_NEAR_MS ? 2 : 5, kind: 'maintenance',
+        at: started ? until : startsAt, started, startsAt, until });
+    }
+  }
   if (input.shieldUntil && within(input.shieldUntil.getTime(), SHIELD_WINDOW_MS)) {
     entries.push({ tier: 6, kind: 'shield', at: input.shieldUntil.getTime() });
   }
@@ -157,5 +175,10 @@ export function describeNow(
       return { title: i18n.t('now.shield'), detail: i18n.t('now.shieldDetail') };
     case 'silentSpace':
       return { title: i18n.t('now.silentSpace'), detail: i18n.t('now.silentSpaceDetail') };
+    case 'maintenance':
+      return entry.started
+        ? { title: i18n.t('now.maintenanceOn'), detail: i18n.t('now.maintenanceOnDetail') }
+        : { title: i18n.t('now.maintenance', { from: clockTime(new Date(entry.startsAt)), to: clockTime(new Date(entry.until)) }),
+          detail: i18n.t('now.maintenanceDetail') };
   }
 }
