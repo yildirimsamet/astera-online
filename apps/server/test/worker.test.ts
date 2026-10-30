@@ -270,6 +270,8 @@ describe('event worker', () => {
       expect(status.queueMs.max).toBeGreaterThanOrEqual(kind.durationMs.p50);
       // Busy time is every run added up: the share of the wall clock the worker spent working.
       expect(status.busyMs).toBeCloseTo(kind.durationMs.p50 + kind.durationMs.max, 6);
+      // And by kind, so the run can name what fills the worker's time.
+      expect(kind.busyMs).toBeCloseTo(status.busyMs, 6);
     });
   });
 
