@@ -39,6 +39,10 @@ describe('the local Android host', () => {
     const icon = readAndroid('app/src/main/res/drawable/ic_stat_astera.xml');
     expect(icon.match(/android:(?:fill|stroke)Color="([^"]+)"/g)?.every(colour => colour.includes('#FFFFFFFF'))).toBe(true);
     expect(readAndroid('app/src/main/res/values/colors.xml')).toContain('<color name="astera_alert">#2EE6C8</color>');
+    // Android's resource compiler refuses malformed XML (a `--` inside a comment, for one) that a browser would shrug off.
+    for (const resource of ['res/values/colors.xml', 'res/drawable/ic_stat_astera.xml']) {
+      expect(readAndroid(`app/src/main/${resource}`).match(/<!--([\s\S]*?)-->/g)?.every(comment => !comment.slice(4, -3).includes('--')) ?? true, resource).toBe(true);
+    }
   });
 
   it('keeps the whole emblem inside launcher and splash masks', () => {
