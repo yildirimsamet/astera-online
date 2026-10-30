@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, notInArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, notInArray, sql } from 'drizzle-orm';
 import type { Queryable } from '../db/client.js';
 import { honorSeasons, honorTotals, players } from '../db/schema.js';
 
@@ -10,10 +10,14 @@ export interface HonorPodium { active: boolean; ranks: ReadonlyMap<string, Place
 export async function honorPodium(db: Queryable, seasonId: string, excluded: ReadonlySet<string>): Promise<HonorPodium> {
   const [config] = await db.select({ mode: honorSeasons.mode }).from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
   if (config?.mode !== 'ACTIVE') return { active: false, ranks: new Map() };
-  const rows = await db.select({ id: players.id, score: honorTotals.score }).from(honorTotals)
-    .innerJoin(players, and(eq(players.id, honorTotals.playerId), eq(players.seasonId, seasonId)))
-    .where(and(eq(honorTotals.seasonId, seasonId), gt(honorTotals.score, 0),
-      excluded.size > 0 ? notInArray(players.id, [...excluded]) : undefined))
+  const eligible = and(eq(honorTotals.seasonId, seasonId), gt(honorTotals.score, 0),
+    excluded.size > 0 ? notInArray(players.id, [...excluded]) : undefined);
+  const seated = and(eq(players.id, honorTotals.playerId), eq(players.seasonId, seasonId));
+  // Whoever ties the third score is still on the podium; nobody below it can be. Only those rows are read.
+  const third = db.select({ score: honorTotals.score }).from(honorTotals).innerJoin(players, seated)
+    .where(eligible).orderBy(desc(honorTotals.score)).offset(2).limit(1);
+  const rows = await db.select({ id: players.id, score: honorTotals.score }).from(honorTotals).innerJoin(players, seated)
+    .where(and(eligible, gte(honorTotals.score, sql`coalesce((${third}), 0)`)))
     .orderBy(desc(honorTotals.score), asc(players.id));
   const ranks = new Map<string, Place>();
   let rank = 0;
