@@ -20,7 +20,8 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 22); // tier 8
     await setLevel(f.db, f.planetIds[1]!, 'CORE', 19); // tier 7
     await giveUnits(f.db, f.planetIds[0]!, { DART: 100 });
-    await giveUnits(f.db, f.planetIds[1]!, { DART: 99 });
+    // 74 %: just below the weak-target band (2026-10-30), so lifting the leader exception still makes it weak.
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 74 });
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock, 4));
     await f.db.update(honorSeasons).set({ mode: 'ACTIVE', rankedAt: f.clock.now() });
   });
@@ -31,7 +32,7 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
 
   it('previews the top-to-adjacent exception and keeps the reverse upward advantage', async () => {
     const before = await f.db.select().from(honorObservations);
-    expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'FULL', topTierPeer: true });
+    expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'HALF', topTierPeer: true });
     expect(await preview(1, 0)).toMatchObject({ kind: 'UPPER', militaryReturn: 'FULL' });
     expect(await f.db.select().from(honorObservations)).toEqual(before);
     expect(JSON.stringify(await preview())).not.toMatch(/galaxyTopTier|navy|playerId|accountId/);

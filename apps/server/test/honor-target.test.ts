@@ -79,7 +79,8 @@ describe('read-only Honor target guidance', () => {
     expect(await preview()).toMatchObject({ enabled: true, eligible: true, kind: 'PEER', related: true });
   });
   it('reads actual pair use and retaliation, and expires only retaliation at the exact 24h boundary', async () => {
-    await setup();
+    // A grant only matters against a weak target (2026-10-30): two tiers down, 20 % navy.
+    await setup('ACTIVE', 100, 20, 9, 3);
     const member = (id: string, loss = 0) => ({ id, tier: 3, navy: 100_000, weight: 10_000,
       civilianWeight: 0, loss, combatLoss: loss, lootLost: 0 });
     await f.db.transaction(tx => settleHonor(tx, f.seasonId, { source: 'WORLD', id: randomUUID(), at: f.clock.now().getTime(),

@@ -40,7 +40,7 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     });
     const [own, enemy] = references;
     if (!own || !enemy) throw new Error('Missing Honor preview reference');
-    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier });
+    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier, weakNavyBand: 75 });
     const relationships = await readHonorRelations(tx, { seasonId: owner.seasonId, attack: [playerId], defence: [target.owner], at: now, adminUsernames });
     if (!relationships.eligible) return { enabled: true as const, eligible: false as const };
     const state = honorStateSchema.parse(config.state), since = now.getTime() - HONOR_HISTORY_HOURS * 3_600_000;
@@ -51,7 +51,8 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
       militaryReturn: comparison.gainFactor === 0 ? 'NONE' as const : comparison.gainFactor === 500_000 ? 'HALF' as const : 'FULL' as const,
       related: relationships.relations.some(row => row.related),
       repeated: state.pairs.some(pair => honorPairKey(pair.a, pair.b) === honorPairKey(playerId, target.owner!) && pair.raw > 0),
-      retaliation: state.retaliations.some(grant => grant.holder === playerId && grant.opponent === target.owner
+      // A grant only neutralises a weak-target sanction; elsewhere it changes nothing.
+      retaliation: comparison.kind === 'WEAK' && state.retaliations.some(grant => grant.holder === playerId && grant.opponent === target.owner
         && grant.at > since && grant.at <= now.getTime() && grant.remaining > 0),
     };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });

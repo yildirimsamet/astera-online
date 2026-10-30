@@ -12,12 +12,12 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
     <div className="flex items-center gap-2 text-body font-semibold text-v2-ink">
       <HonorIcon className="size-4 shrink-0 text-v2-self" />
       <span>Honor</span><span aria-hidden className="text-v2-ink-3">·</span>
-      <span>{t(`leaderboard.honorTarget.${value.kind}`)}</span>
+      <span>{t(value.kind === 'PEER' && value.militaryReturn === 'NONE' ? 'leaderboard.honorTarget.noReturn' : `leaderboard.honorTarget.${value.kind}`)}</span>
     </div>
     {value.topTierPeer && <p className="text-caption leading-relaxed text-v2-self">
       {t('leaderboard.honorTarget.topTierPeer')}
     </p>}
-    {(!value.related || value.kind === 'WEAK') && <p className="text-caption leading-relaxed text-v2-ink-2">
+    {(value.kind === 'WEAK' || (!value.related && value.militaryReturn !== 'NONE')) && <p className="text-caption leading-relaxed text-v2-ink-2">
       {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? 'weakWarning' : 'eligible'}`)}
     </p>}
     {value.related ? <p className="text-caption leading-relaxed text-v2-ink">{t('leaderboard.honorReason.RELATED')}</p>

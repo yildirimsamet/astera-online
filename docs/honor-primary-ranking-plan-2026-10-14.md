@@ -42,7 +42,7 @@ N'nin geçmiş tepe değeri, filo hediye edip hemen küçük görünmeyi zorlaş
 
 Saldıran/hedef sınıfları:
 
-1. Hedefin T'si daha düşük ve N'si saldırandan küçükse **zayıf hedef**. İki tarafın askerî varlığı da sıfırken düşük tier'a sivil yağma da bu sınıftır.
+1. Hedefin T'si daha düşük ve N'si saldırandan küçükse **zayıf hedef**. İki tarafın askerî varlığı da sıfırken düşük tier'a sivil yağma da bu sınıftır. *(2026-10-30'dan beri gönderilen saldırılarda: N'si saldıranın %75'inin altındaysa; %75 ve üstü denk sayılır. Bkz. `docs/decisions.md` 2026-10-30.)*
 2. Hedefin T'si daha yüksek ve N'si en az saldıranınki kadarsa **üst hedef**; üst bonusu ×1,25.
 3. Diğerleri **aynı bonus düzeyi**; ×1. Önemli istisna: düşük Core'da büyük filo kurmuş rakip, N'si saldırandan küçük değilse dokunulmaz “acemi” sayılmaz.
 

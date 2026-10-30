@@ -31,6 +31,7 @@ export function strategicHonorEvidence(intent: HonorCommitment, id: string, at: 
     weight: Math.max(1, row.navy), civilianWeight: 0, loss: 0, combatLoss: 0, lootLost: 0 });
   return { source: 'STRATEGIC_IMPACT', id, at: at.getTime(), eligible: intent.eligible,
     ...(intent.galaxyTopTier === undefined ? {} : { galaxyTopTier: intent.galaxyTopTier }),
+    ...(intent.weakNavyBand === undefined ? {} : { weakNavyBand: intent.weakNavyBand }),
     attack: intent.attack.map(member), defence: intent.defence.map(member),
     relations: intent.relations, selectedDefenders: intent.selectedDefenders };
 }

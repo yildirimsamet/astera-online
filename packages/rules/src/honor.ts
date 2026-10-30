@@ -37,6 +37,9 @@ export function honorNumber(value: bigint): number {
 export interface HonorComparison {
   /** Frozen galaxy/season maximum at dispatch. Absent on historical contracts. */
   galaxyTopTier?: number;
+  /** Frozen at dispatch (owner 2026-10-30): a lower tier is weak only below 75 % of
+   * own navy, the full-return band. Absent on historical contracts: any smaller navy. */
+  weakNavyBand?: 75;
   ownTier: number;
   enemyTier: number;
   ownNavy: number;
@@ -56,7 +59,8 @@ export function honorChallenge(q: HonorComparison): HonorChallenge {
   }
   const a = honorInteger(q.ownNavy), d = honorInteger(q.enemyNavy);
   const topTierPeer = q.ownTier === q.galaxyTopTier && q.enemyTier === q.ownTier - 1;
-  const weak = !topTierPeer && q.enemyTier < q.ownTier && (d < a || d === 0n);
+  const smaller = q.weakNavyBand === undefined ? d < a : 4n * d < 3n * a;
+  const weak = !topTierPeer && q.enemyTier < q.ownTier && (smaller || d === 0n);
   const upper = q.enemyTier > q.ownTier && d >= a && d > 0n;
   return {
     kind: weak ? 'WEAK' : upper ? 'UPPER' : 'PEER',
@@ -102,7 +106,8 @@ export function honorHarmFifths(loss: number, loot: number, lootPercent = 20): b
 }
 
 export function honorSide(q: HonorSideInput): HonorSideResult {
-  const c = honorChallenge({ ...q, galaxyTopTier: q.defending ? undefined : q.galaxyTopTier });
+  const c = honorChallenge({ ...q, galaxyTopTier: q.defending ? undefined : q.galaxyTopTier,
+    weakNavyBand: q.defending ? undefined : q.weakNavyBand });
   const k = honorInteger(q.k), l = honorInteger(q.l);
   const enemyLoss = honorInteger(q.enemyLoss), loot = honorInteger(q.loot);
   const budget = honorInteger(q.retaliationFifths);

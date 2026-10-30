@@ -118,7 +118,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
           <details className="mt-2 text-micro text-v2-ink-2">
             <summary className="cursor-pointer py-1 text-v2-ink underline decoration-v2-line-hi underline-offset-4">{t('leaderboard.honorRules')}</summary>
             <div className="mt-1 space-y-2 leading-relaxed">
-              <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
+              <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleBands')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
               <p>{t('leaderboard.honorRuleRepeat')}</p><p>{t('leaderboard.honorPrizeHint')}</p><p>{t('leaderboard.honorPackageOnce')}</p>
             </div>
           </details>

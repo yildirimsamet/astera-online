@@ -52,7 +52,8 @@ const honorReceipt = z.object({ delta: dominionInteger, reason: z.enum([
 ]), breakdown: z.object({ teamDelta: dominionInteger, rawTeamDelta: dominionInteger,
   participants: z.number().int().nonnegative(), contributionPpm: z.number().int().min(0).max(1_000_000),
   militaryDamage: dominionInteger.nonnegative(), permanentLoss: dominionInteger.nonnegative(),
-  weakTargetDebit: z.boolean().optional(), sharedPositiveBlocked: z.boolean().optional(), tactical: z.boolean().optional() }).optional() });
+  weakTargetDebit: z.boolean().optional(), sharedPositiveBlocked: z.boolean().optional(), tactical: z.boolean().optional(),
+  militaryReturn: z.enum(['NONE', 'HALF', 'FULL']).optional() }).optional() });
 export { honorReceipt as honorReceiptSchema };
 export type HonorReceipt = z.infer<typeof honorReceipt>;
 export const honorTargetSchema = z.union([

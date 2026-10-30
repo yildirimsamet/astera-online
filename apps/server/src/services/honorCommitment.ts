@@ -11,6 +11,7 @@ const reference = z.object({ id: z.string().min(1), tier: z.number().int().posit
   navy: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).strict();
 export const honorCommitmentSchema = z.object({
   galaxyTopTier: honorEvidenceSchema.shape.galaxyTopTier,
+  weakNavyBand: honorEvidenceSchema.shape.weakNavyBand,
   retaliationLootPercent: honorEvidenceSchema.shape.retaliationLootPercent,
   version: z.union([z.literal(HONOR_LEGACY_VERSION), z.literal(HONOR_VERSION), z.literal(HONOR_CANDIDATE_VERSION), z.literal(HONOR_LAUNCH_VERSION)]), at: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   referenceOrder: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
@@ -65,7 +66,7 @@ export async function commitHonor(tx: Tx, input: {
   const roster = config.version === HONOR_LAUNCH_VERSION
     ? await tx.select({ id: players.id }).from(players).where(eq(players.seasonId, input.seasonId)).orderBy(asc(players.id)) : undefined;
   const snapshot = honorCommitmentSchema.parse({ version: config.version, at: input.at.getTime(), referenceOrder,
-    galaxyTopTier: await honorGalaxyTopTier(tx, input.seasonId, input.at, input.adminUsernames),
+    galaxyTopTier: await honorGalaxyTopTier(tx, input.seasonId, input.at, input.adminUsernames), weakNavyBand: 75,
     // Keep the legacy wire shape until every API/worker understands 40% contracts.
     ...(config.retaliationLootPercent === 40 ? { retaliationLootPercent: 40 } : {}),
     ...(roster ? { presentAtLaunch: roster.map(row => row.id) } : {}),

@@ -3,6 +3,21 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-10-30 — Honor: alt kademe ancak %75 donanma bandının altında zayıf hedeftir.**
+  Owner onayı (Honor incelemesi, vantasia → Kaptan Jack Sparrow vakası). Eski kural alt
+  kademedeki hedefi donanması saldırandan *az da olsa* küçükse zayıf sayıyordu: %95'lik,
+  gerçekten riskli bir savaş zorbalık cezası alırken aynı savaş bir Core yukarıda +7,8
+  Honor veriyordu. Artık alt kademe hedef ancak donanması saldıranın %75'inin altındaysa
+  (tam karşılık bandının altı) zayıftır; %75 ve üstü denk sayılır. Sıfır donanma ve
+  zirve kademe istisnası aynen. Kural gönderimde `weakNavyBand: 75` olarak dondurulur;
+  alanı olmayan eski taahhüt ve olaylar eski kuralla hesaplanır, geçmiş puan ve kanıt
+  özeti değişmez. Aynı turda: rapor `breakdown.militaryReturn` ile "rakip donanması
+  yarından azdı, Honor yok" durumunu açıkça yazar (eski metin olguya aykırı "askerî başarı
+  oluşmadı" diyordu); hedef kartı bu durumda "Askerî karşılık yok" başlığı taşır; karşılık
+  hakkı yalnız zayıf hedefte gösterilir; Honor kuralları bant eşiklerini anlatır.
+  İncelemede bilinçli bırakılanlar: kayıp kesintisinin 0,1 ağırlığı (§1, ayar sorusu),
+  24 saat donanma tepesi (filo hediyesi koruması), gönderimde donan sınıf (öngörülebilirlik).
+
 - **2026-10-30 — Komutan Gemisi varlık paketi artık tamamen bizim; referans kısıtı kalktı.**
   Owner: *"O başka oyundan çıkarılmış referansların hepsi değişti. Artık kafamıza göre
   takılabiliriz."* Sunucudaki pakette (`ARENA_REF_DIR`, `/__ref/`) bulunan gemi, kaya,

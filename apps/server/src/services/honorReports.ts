@@ -1,5 +1,6 @@
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
-import { honorSoloCredit, isSupportedHonorVersion, honorNumber, honorSharedSide, honorSideParticipantCount } from '@astera/rules';
+import { HONOR_CANDIDATE_VERSION, HONOR_LAUNCH_VERSION, honorMilitaryReturn, honorSoloCredit, isSupportedHonorVersion, honorNumber,
+  honorSharedSide, honorSideParticipantCount } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { honorEvents, honorSeasons, players } from '../db/schema.js';
 import { honorEventKey, type HonorEvidence } from './honorAccounting.js';
@@ -9,7 +10,9 @@ export interface HonorReportReceipt {
   reason: 'COMBAT' | 'TACTICAL' | 'WEAK_TARGET' | 'ATTACK_LOSS' | 'NO_GAIN' | 'RELATED' | 'INELIGIBLE'
     | 'TARGET_CHANGED' | 'PARTICIPANT_JOINED_LATE' | 'SHARED_SIDE';
   breakdown?: { teamDelta: number; rawTeamDelta: number; participants: number; contributionPpm: number;
-    militaryDamage: number; permanentLoss: number; weakTargetDebit: boolean; sharedPositiveBlocked?: boolean; tactical?: boolean };
+    militaryDamage: number; permanentLoss: number; weakTargetDebit: boolean; sharedPositiveBlocked?: boolean; tactical?: boolean;
+    /** Coarse band behind a genuine kill; explains why destruction paid little or nothing. */
+    militaryReturn?: 'NONE' | 'HALF' | 'FULL' };
 }
 
 /** Read the rebuildable journal, never a stale copy in an immutable battle report.
@@ -45,6 +48,10 @@ async function readReceipts(tx: Tx, playerId: string, filter: ReturnType<typeof 
       : relations.length > 0 && relations.every(relation => relation.related) ? 'RELATED' : 'NO_GAIN');
     const own = attacking ? evidence.attack : evidence.defence;
     const enemy = attacking ? evidence.defence : evidence.attack;
+    // Only beside a reason the band can explain; RELATED/SHARED_SIDE/losses say it themselves.
+    const militaryReturn = evidence.tactical?.length || (reason !== 'NO_GAIN' && reason !== 'COMBAT') ? undefined : honorMilitaryReturn({ ...evidence,
+      defendingCurrentNavy: version === HONOR_LAUNCH_VERSION, defendingZeroNavyFloor: version === HONOR_CANDIDATE_VERSION },
+    playerId, attacking ? 'attack' : 'defence');
     const totalWeight = pool.weights.reduce((total, row) => total + BigInt(row.weight), 0n);
     const ownWeight = BigInt(pool.weights.find(row => row.actor === playerId)?.weight ?? 0);
     const breakdown = evidence.eligible && !evidence.exclusion && !(defending && evidence.tactical?.length) ? {
@@ -57,6 +64,7 @@ async function readReceipts(tx: Tx, playerId: string, filter: ReturnType<typeof 
       permanentLoss: honorNumber(own.reduce((total, row) => total + BigInt(row.loss), 0n)),
       weakTargetDebit: pool.exposures.some(exposure => exposure.bullying
         && exposure.harmFifths > exposure.retaliationSpentFifths),
+      ...(militaryReturn ? { militaryReturn } : {}),
     } : undefined;
     receipts.set(honorEventKey(evidence), { delta, reason, ...(breakdown ? { breakdown } : {}) });
   }

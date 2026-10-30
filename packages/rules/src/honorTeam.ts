@@ -32,6 +32,8 @@ export interface HonorRelation {
 export interface HonorTeamInput {
   /** Frozen galaxy leader exception; applies only to offensive comparisons. */
   galaxyTopTier?: number;
+  /** Frozen dispatch term; applies only to offensive comparisons. Legacy evidence omits it. */
+  weakNavyBand?: 75;
   /** Frozen dispatch term; legacy evidence omits it and retains 20%. */
   retaliationLootPercent?: 20 | 40;
   /** Frozen v3 policy: shared sides retain attacking debits but have no positive gain. */
@@ -114,6 +116,32 @@ export function honorSharedSide(input: Pick<HonorTeamInput, 'attack' | 'defence'
   return honorSideParticipantCount(input, side) > 1;
 }
 
+type HonorComparisonPolicy = Pick<HonorTeamInput, 'galaxyTopTier' | 'weakNavyBand' | 'defendingCurrentNavy' | 'defendingZeroNavyFloor'>;
+
+function memberChallenge(input: HonorComparisonPolicy, a: HonorMember, d: HonorMember, defending: boolean) {
+  const ownNavy = defending && input.defendingCurrentNavy ? Math.max(a.navy, a.defenceNavy ?? a.navy)
+    : defending && input.defendingZeroNavyFloor && a.navy === 0 ? a.weight : a.navy;
+  return honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy, enemyNavy: d.navy,
+    galaxyTopTier: defending ? undefined : input.galaxyTopTier,
+    weakNavyBand: defending ? undefined : input.weakNavyBand });
+}
+
+/** The coarse band behind an owner's military return, so a receipt can say why a
+ * genuine kill paid nothing. Absent when nothing armed of the enemy was destroyed,
+ * and for weak-target pairs, which never earn and are explained by their sanction. */
+export function honorMilitaryReturn(input: HonorComparisonPolicy & Pick<HonorTeamInput, 'attack' | 'defence'>, actor: string,
+  side: 'attack' | 'defence'): 'NONE' | 'HALF' | 'FULL' | undefined {
+  const own = mergeMembers(input[side]).find(row => row.id === actor);
+  if (!own) return undefined;
+  const defending = side === 'defence';
+  const bands = mergeMembers(defending ? input.attack : input.defence).filter(row => row.combatLoss > 0)
+    .map(d => memberChallenge(input, own, d, defending))
+    .filter(c => defending || c.kind !== 'WEAK').map(c => c.gainFactor);
+  if (bands.length === 0) return undefined;
+  const best = Math.max(...bands);
+  return best === 0 ? 'NONE' : best === 500_000 ? 'HALF' : 'FULL';
+}
+
 /** One efficiency calculation per side. There is deliberately no killer/last-hit field. */
 export function honorTeam(input: HonorTeamInput): HonorTeamPool {
   const attack = mergeMembers(input.attack), defence = mergeMembers(input.defence);
@@ -149,10 +177,7 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
       const harmShares = honorSplit(harm, weights);
       for (const a of own) {
         const relation = relations.get(honorPairKey(a.id, d.id));
-        const ownNavy = defending && input.defendingCurrentNavy ? Math.max(a.navy, a.defenceNavy ?? a.navy)
-          : defending && input.defendingZeroNavyFloor && a.navy === 0 ? a.weight : a.navy;
-        const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy, enemyNavy: d.navy,
-          galaxyTopTier: defending ? undefined : input.galaxyTopTier });
+        const c = memberChallenge(input, a, d, defending);
         const bullying = !defending && c.kind === 'WEAK'
           && (input.selectedDefenders === undefined || input.selectedDefenders.includes(d.id));
         const harmFifths = harmShares.find(row => row.actor === a.id)?.points ?? 0;
@@ -180,7 +205,7 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
       const exposure = exposures.find(row => row.actor === a.id && row.enemy === d.id)!;
       const relation = relations.get(honorPairKey(a.id, d.id));
       const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy: a.navy, enemyNavy: d.navy,
-        galaxyTopTier: input.galaxyTopTier });
+        galaxyTopTier: input.galaxyTopTier, weakNavyBand: input.weakNavyBand });
       const pressure = effect.pressureFifths;
       exposure.harmFifths = honorNumber(BigInt(exposure.harmFifths) + BigInt(pressure));
       if (exposure.bullying) {
