@@ -19,10 +19,13 @@ import { ECONOMY_PROFILE } from '@astera/rules';
  * These routes only read. `placement-read.test.ts` watches the wire for writes, row
  * locks and advisory locks on every entry, but on a quiet world: a write that only
  * happens when data exists must be ruled out by reading the handler before a route
- * is added here. They read the placement before the handler and again after it. A
+ * is added here. They check the placement before the handler and again after it. A
  * relocation bumps `placement_version` in the transaction that moves the commander,
  * so if any handler statement saw the moved state, the after-check sees the new
- * version and the response is refused like a stale header. Anything not listed here — every write
+ * version and the response is refused like a stale header. Scaling plan F1.8 (C2):
+ * the before check is remembered per account (`Projections.callerPlacement`), and a
+ * handler that issued no statement skips the after check, as it read nothing a move
+ * could change. Anything not listed here — every write
  * and every GET that writes — keeps the lease: `/api/monuments` applies due
  * transitions, and `/api/galaxy` and `/api/intel` confirm telescope readings.
  */
@@ -63,15 +66,17 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
   const { requireCurrentRules = false, ...poolOptions } = options;
   const pool = createDb(url, { max, applicationName: 'astera-placement-gate', ...poolOptions });
 
+  const keyOf = (current: Placement): string => `${current.id}:${String(current.placementVersion)}`;
+  /** Whether the browser holds a different placement than `current`. */
+  const stale = (req: FastifyRequest, current: Placement, reconcile: boolean): boolean => {
+    const expected = req.headers['x-placement'];
+    return !reconcile && (expected !== undefined ? expected !== keyOf(current) : current.placementVersion !== 0);
+  };
   /** The caller's current placement key, or a 409 when the browser holds an older one. */
   const admit = (req: FastifyRequest, current: Placement, reconcile: boolean): string => {
-    const placement = `${current.id}:${String(current.placementVersion)}`;
-    const expected = req.headers['x-placement'];
-    if (!reconcile && (expected !== undefined ? expected !== placement : current.placementVersion !== 0)) {
-      throw placementChanged();
-    }
+    if (stale(req, current, reconcile)) throw placementChanged();
     app.projections.reconcilePlacement(req.accountId!, current);
-    return placement;
+    return keyOf(current);
   };
 
   app.addHook('onRoute', route => {
@@ -98,12 +103,26 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
       route.handler = async function (req, reply) {
         if (!req.accountId) return handler.call(this, req, reply);
         assertRules(req);
-        const [initial] = await app.db.select(PLACEMENT).from(players).where(eq(players.accountId, req.accountId));
+        const accountId = req.accountId;
+        // F1.8 C2: the before check is remembered, kept by the placement triggers.
+        const load = async () => (await app.db.select(PLACEMENT).from(players).where(eq(players.accountId, accountId)))[0] ?? null;
+        let initial = await app.projections.callerPlacement(accountId, load);
+        // The browser may have heard of a move before this process did: ask before refusing.
+        if (initial && stale(req, initial, reconcile)) {
+          app.projections.forgetCallerPlacement(accountId);
+          initial = await app.projections.callerPlacement(accountId, load);
+        }
         if (!initial) return handler.call(this, req, reply);
         void reply.header('x-placement', admit(req, initial, reconcile));
+        const before = req.dbStatements?.statements;
         const result: unknown = await handler.call(this, req, reply);
+        // Served wholly from memory, the handler read nothing a move could have changed:
+        // its answer and the remembered placement are the same moment.
+        if (before !== undefined && req.dbStatements?.statements === before) return result;
         const [current] = await app.db.select(PLACEMENT).from(players).where(eq(players.id, initial.id));
         if (current?.seasonId !== initial.seasonId || current.placementVersion !== initial.placementVersion) {
+          app.projections.forgetCallerPlacement(accountId);
+          if (current) app.projections.reconcilePlacement(accountId, current);
           throw placementChanged();
         }
         return result;

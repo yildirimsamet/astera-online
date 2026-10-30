@@ -49,6 +49,7 @@ export interface ProjectionStatus {
   pirates: AsyncCacheStats;
   galaxyFacts: AsyncCacheStats;
   clanPresence: AsyncCacheStats;
+  callerPlacements: AsyncCacheStats;
 }
 
 type ClanPresence = Awaited<ReturnType<typeof clanPresenceOf>>;
@@ -118,6 +119,13 @@ export class Projections {
   private readonly galaxyFacts: AsyncCache<GalaxyFacts | null>;
   /** One clan's presence, the same for every member who reads it (F1.8, C4). */
   private readonly clanPresence: AsyncCache<ClanPresence>;
+  /**
+   * WHERE EACH CALLER LIVES, for the hot reads' placement check (F1.8, C2). Kept
+   * honest by the triggers of migration 0210: `placement_changed` when a commander
+   * moves, `private:auth` when one is deleted. An account with no commander is
+   * never remembered, as nothing announces one being placed.
+   */
+  private readonly callerPlacements: AsyncCache<CommanderPlacement | null>;
   private readonly stopObserving: () => void;
   private readonly stopObservingResets: () => void;
 
@@ -165,6 +173,7 @@ export class Projections {
     );
     this.galaxyFacts = new AsyncCache<GalaxyFacts | null>(config.maxSeasons, config.publicTtlMs, usable);
     this.clanPresence = new AsyncCache<ClanPresence>(config.maxAccounts, config.publicTtlMs, usable);
+    this.callerPlacements = new AsyncCache<CommanderPlacement | null>(config.maxAccounts, config.publicTtlMs, usable);
     this.stopObserving = bus.observe((event) => {
       this.onEvent(event);
     });
@@ -220,6 +229,17 @@ export class Projections {
 
   clanPresenceFor(clanId: string): Promise<ClanPresence> {
     return this.clanPresence.get(clanId, () => clanPresenceOf(this.db, clanId));
+  }
+
+  async callerPlacement(accountId: string, load: () => Promise<CommanderPlacement | null>): Promise<CommanderPlacement | null> {
+    const placement = await this.callerPlacements.get(accountId, load);
+    if (!placement) this.callerPlacements.invalidate(accountId);
+    return placement;
+  }
+
+  /** The database disagreed with the remembered placement: forget it. */
+  forgetCallerPlacement(accountId: string): void {
+    this.callerPlacements.invalidate(accountId);
   }
 
   commander(accountId: string): Promise<CommanderTopology> {
@@ -287,6 +307,7 @@ export class Projections {
       pirates: this.pirates.status(),
       galaxyFacts: this.galaxyFacts.status(),
       clanPresence: this.clanPresence.status(),
+      callerPlacements: this.callerPlacements.status(),
     };
   }
 
@@ -317,6 +338,7 @@ export class Projections {
     this.pirates.clear();
     this.galaxyFacts.clear();
     this.clanPresence.clear();
+    this.callerPlacements.clear();
   }
 
   /**
@@ -388,6 +410,10 @@ export class Projections {
       // event therefore cannot carry a shard id; clearing this bounded cache is
       // the safe price of keeping hidden launch timing off the shard channel.
       if (event.kind === 'private:strategic-sight') this.traffic.clear();
+      // A commander moved or was deleted (migration 0210's triggers).
+      if (event.kind === 'placement_changed' || event.kind === 'private:auth') {
+        this.callerPlacements.invalidateWhere((_, placement) => placement?.id === event.playerId);
+      }
       // A clanmate opened or closed their door: told to every other member, not the galaxy.
       if (event.kind === 'posture') {
         this.clanPresence.invalidateWhere((_, value) =>
