@@ -41,7 +41,9 @@ import {
   pirateState,
   missions,
   neutralPlanetState,
+  notificationCenters,
   notifications,
+  paidAlerts,
   planets,
   planetFaults,
   planetResearch,
@@ -669,6 +671,9 @@ export async function wipeAllServers(
     await tx.delete(galaxyEventOccurrences);
     await tx.delete(requestLog);
     await tx.delete(notifications);
+    // Bildirim Merkezi: the ledger and the centre both point at the player. 2026-10-30.
+    await tx.delete(paidAlerts);
+    await tx.delete(notificationCenters);
     await tx.delete(scanEvents);
     await tx.delete(probeWorldMemories);
     await tx.delete(probeReports);

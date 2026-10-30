@@ -44,6 +44,10 @@ import {
   type InstrumentLevels,
   type TelescopeReading,
   SILENT_SPACE,
+  alertPrice,
+  centerReading,
+  centerStatus,
+  type CenterReading,
 } from '@astera/rules';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -52,6 +56,7 @@ import {
   buildings,
   missions,
   neutralPlanetState,
+  notificationCenters,
   planets,
   players,
   planetFaults,
@@ -68,6 +73,7 @@ import {
 } from '../db/schema.js';
 import { standingSupportAt } from './clanSupportView.js';
 import { announceUnlocks } from './notifications.js';
+import { commanderDeuteriumPerHour } from './notificationCenter.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
@@ -1222,12 +1228,19 @@ export async function resolveProbe(
       now,
     ))
     : undefined;
+  /*
+    AND WHETHER A RAID WILL BE ANNOUNCED. Bildirim Merkezi, owner 2026-10-30 (decision 8):
+    built or not and how many of its cheapest alert the wallet buys, read on one ladder
+    that misses as often as the probe is inaccurate. The wallet itself never leaves.
+  */
+  const notificationCenter = owner === null ? undefined : await readCenterForProbe(tx, owner, accuracy, mission.id);
   const silhouette = outside
     ? {
       ...silhouetteOf(outside),
       ...(research === undefined ? {} : { research }),
       ...(owner === null ? {} : { interceptors: charges.length }),
       ...(loyalty === undefined ? {} : { loyalty }),
+      ...(notificationCenter === undefined ? {} : { notificationCenter }),
     }
     : null;
 
@@ -1452,4 +1465,12 @@ export async function readProbeCooldowns(
     if (!held || readyAt > held) latest.set(row.targetPlanetId, readyAt);
   }
   return [...latest].map(([targetPlanetId, readyAt]) => ({ targetPlanetId, readyAt }));
+}
+
+/** The centre under a probe: the truth on the ladder, then the probe's noise on its own stream. */
+async function readCenterForProbe(tx: Tx, playerId: string, accuracy: number, missionId: string): Promise<CenterReading> {
+  const [center] = await tx.select({ wallet: notificationCenters.wallet }).from(notificationCenters)
+    .where(eq(notificationCenters.playerId, playerId));
+  const cheapest = alertPrice('incoming_attack', 'T3', await commanderDeuteriumPerHour(tx, playerId));
+  return centerReading(centerStatus(center !== undefined, center?.wallet ?? 0, cheapest), accuracy, seededFrom(missionId, 0xb1_1d1e));
 }

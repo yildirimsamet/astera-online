@@ -10,7 +10,9 @@ import {
   dominionEvents,
   miningRuns,
   missions,
+  notificationCenters,
   notifications,
+  paidAlerts,
   planets,
   playerRivals,
   players,
@@ -146,6 +148,21 @@ describe('reclaiming idle seats', () => {
     expect(result.reclaimed).toHaveLength(1);
     expect(await gone(idle)).toBe(true);
     expect(await f.db.select().from(playerRivals)).toHaveLength(0);
+  });
+
+  it('frees a seat whose commander built a Bildirim Merkezi and armed an alert', async () => {
+    const at = f.clock.now();
+    await f.db.insert(notificationCenters).values({ playerId: f.playerIds[0]!, builtAt: at, wallet: 50 });
+    await f.db.insert(paidAlerts).values({
+      playerId: f.playerIds[0]!, kind: 'probe_detected', refId: f.planetIds[0]!, sendAt: at, status: 'SENT', payload: {}, createdAt: at,
+    });
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+    expect(result.failed).toBe(0);
+    expect(await gone(idle)).toBe(true);
+    expect(await f.db.select().from(notificationCenters)).toHaveLength(0);
+    expect(await f.db.select().from(paidAlerts)).toHaveLength(0);
   });
 
   it('clears the marks other commanders were keeping ON the reclaimed one', async () => {

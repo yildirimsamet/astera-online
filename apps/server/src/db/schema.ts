@@ -61,6 +61,7 @@ import type {
 } from '@astera/rules';
 import type { ChatLanguage, ReactionEmoji, ChatMedia } from '@astera/rules';
 import type { HonorCatalogue, HonorStrategicCatalogue } from '@astera/rules';
+import type { CenterReading, PaidAlertKind } from '@astera/rules';
 import type { AbilityPoints, ArenaResources, ShipClass, SortieLoadout, SortieOutcome, Tactic } from '@astera/rules/arena';
 import type { HonorAccountedEvent, HonorAccountingState, HonorEvidence } from '../services/honorAccounting.js';
 import type { HonorCommitment } from '../services/honorCommitment.js';
@@ -174,6 +175,8 @@ export const eventKind = pgEnum('event_kind', [
   'unknown_signal_arrival',
   'unknown_signal_return',
   'arena_ship_ready',
+  /** A Bildirim Merkezi push due now: charge the wallet, then send. 2026-10-30. */
+  'paid_alert',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -3721,6 +3724,8 @@ export const probeReports = pgTable('probe_reports', {
      * twenty and a colony at twenty or less goes NEUTRAL. Absent on capitals and neutrals.
      */
     loyalty?: number;
+    /** Bildirim Merkezi as the probe read it: one rung of the ladder, or UNKNOWN (decision 8). */
+    notificationCenter?: CenterReading;
   }>(),
   /**
    * When the probe got home with it. NULL means still in the air.
@@ -4520,6 +4525,66 @@ export const notifications = pgTable('notifications', {
   // NULLS FIRST is what a plain DESC means; drizzle's default NULLS LAST would not match it.
   index('notifications_player_time_idx').on(t.playerId, t.createdAt.desc().nullsFirst(), t.id.desc().nullsFirst()),
   uniqueIndex('notifications_ref_idx').on(t.playerId, t.kind, t.refId),
+]);
+
+/* ── Bildirim Merkezi (docs/bildirim-merkezi-plani-2026-10-30.md) ───────── */
+
+export const alertTiming = pgEnum('alert_timing', ['T3', 'T5', 'T15', 'RADAR']);
+
+/**
+ * THE COMMANDER'S NOTIFICATION CENTRE AND ITS WALLET. Built once per season; the
+ * wallet only ever fills from a world's store (one way, confirmed) and empties into
+ * alerts. Not on a planet, so a raid can never take it.
+ */
+export const notificationCenters = pgTable('notification_centers', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id),
+  builtAt: timestamp('built_at', { withTimezone: true }).notNull(),
+  /** Whole deuterium. */
+  wallet: integer('wallet').notNull().default(0),
+  timing: alertTiming('timing').notNull().default('T5'),
+  /** Which paid kinds the commander buys; a kind missing here is on. */
+  muted: jsonb('muted').$type<PaidAlertKind[]>().notNull().default([]),
+}, (t) => [check('notification_centers_wallet_check', sql`${t.wallet} >= 0`)]);
+
+/** An app install that can receive a push; an account's, so it outlives seasons. */
+export const pushDevices = pgTable('push_devices', {
+  token: text('token').primaryKey(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  platform: text('platform').notNull(),
+  /** The app's language when it last registered: the push is written in it. */
+  locale: text('locale').$type<'en' | 'tr' | 'de' | 'fr' | 'es' | 'ja'>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('push_devices_account_idx').on(t.accountId),
+  check('push_devices_locale_check', sql`${t.locale} in ('en','tr','de','fr','es','ja')`),
+]);
+
+export const paidAlertStatus = pgEnum('paid_alert_status', ['PENDING', 'SENT', 'UNFUNDED', 'CANCELLED', 'NO_DEVICE']);
+
+/**
+ * ONE ALERT, ONE ROW: the ledger and the outbox. Unique per (player, kind, subject),
+ * so a redelivered radar warning can never arm or charge a second time.
+ */
+export const paidAlerts = pgTable('paid_alerts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  kind: text('kind').$type<PaidAlertKind>().notNull(),
+  /** The mission it is about. */
+  refId: uuid('ref_id').notNull(),
+  /** Null for an instant kind. */
+  timing: alertTiming('timing'),
+  sendAt: timestamp('send_at', { withTimezone: true }).notNull(),
+  /** What was charged; set when settled. */
+  price: integer('price'),
+  status: paidAlertStatus('status').notNull().default('PENDING'),
+  /** The push text's facts (target world, arrival). */
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('paid_alerts_ref_idx').on(t.playerId, t.kind, t.refId),
+  index('paid_alerts_player_time_idx').on(t.playerId, t.createdAt),
 ]);
 
 /** Dedupes retried actions — a flaky mobile connection must not double-launch. */
