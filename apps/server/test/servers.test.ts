@@ -13,6 +13,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import {
   accountRewards,
+  notificationCenters,
+  paidAlerts,
   chatMessages,
   researchOrders,
   playerRivals,
@@ -771,6 +773,13 @@ describe('servers', () => {
         planetId: placed.planetId,
         slot: 0,
         createdAt: clock.now(),
+      });
+
+      // Bildirim Merkezi (2026-10-30): the centre and its ledger point at the player too.
+      await db.insert(notificationCenters).values({ playerId: placed.playerId, builtAt: clock.now(), wallet: 10 });
+      await db.insert(paidAlerts).values({
+        playerId: placed.playerId, kind: 'probe_detected', refId: placed.planetId, sendAt: clock.now(),
+        status: 'SENT', payload: {}, createdAt: clock.now(),
       });
 
       const result = await sealAndWipe({ count: 2, capacity: 1 });

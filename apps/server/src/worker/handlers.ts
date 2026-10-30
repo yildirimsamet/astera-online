@@ -148,6 +148,7 @@ import {
 } from '../services/radar.js';
 import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
 import { announceUnlocks, notify } from '../services/notifications.js';
+import { armPaidAlert, settlePaidAlert } from '../services/notificationCenter.js';
 import {
   publicDominionLeader,
   publicPlanetIdentity,
@@ -709,6 +710,14 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
             payload: {},
             at: clock.now(),
             refId: missionId,
+          });
+          await armPaidAlert(tx, {
+            seasonId: mission.seasonId,
+            playerId: target.controllerPlayerId,
+            kind: 'probe_detected',
+            refId: missionId,
+            now: clock.now(),
+            payload: { targetPlanetId: target.id, targetPlanetName: target.name },
           });
           // "Was someone poking at me?" — the feeling that opens the Radar, and
           // the one that opens the Veil. Design Law #2.
@@ -2003,6 +2012,16 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
       at: now,
       refId: missionId,
     });
+    // Bildirim Merkezi: the radar has it now; the paid push leaves at the commander's lead.
+    await armPaidAlert(tx, {
+      seasonId: mission.seasonId,
+      playerId: target.controllerPlayerId,
+      kind: mission.kind === 'death_star' ? 'incoming_strategic' : 'incoming_attack',
+      refId: missionId,
+      now,
+      arriveAt: mission.arriveAt,
+      payload: { targetPlanetId: target.id, targetPlanetName: target.name },
+    });
   });
 };
 
@@ -3155,6 +3174,10 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   clan_support_expiry: onClanSupportExpiry,
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
+  paid_alert: async ({ db, clock }, event) => {
+    if (!event.refId) throw new Error('paid_alert without refId');
+    await settlePaidAlert(db, clock, event.refId);
+  },
   strategic_intercept: onStrategicIntercept,
   strategic_intercept_impact: onStrategicInterceptImpact,
   mining_arrival: onMiningArrival,

@@ -31,7 +31,9 @@ import {
   pirateRaids,
   pirateState,
   missions,
+  notificationCenters,
   notifications,
+  paidAlerts,
   neutralPlanetState,
   planetFaults,
   planets,
@@ -552,6 +554,8 @@ export async function demolish(
   await tx.delete(rewardGrants).where(eq(rewardGrants.playerId, playerId));
   await tx.delete(requestLog).where(eq(requestLog.playerId, playerId));
   await tx.delete(notifications).where(eq(notifications.playerId, playerId));
+  await tx.delete(paidAlerts).where(eq(paidAlerts.playerId, playerId));
+  await tx.delete(notificationCenters).where(eq(notificationCenters.playerId, playerId));
 
   // Clan receipts and score audits deliberately survive their source mission,
   // but personal rows cannot survive their player. Everything else below is a

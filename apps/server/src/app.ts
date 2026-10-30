@@ -33,6 +33,7 @@ import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
 import { registerVacationRoutes } from './routes/vacation.js';
+import { registerNotificationCenterRoutes } from './routes/notificationCenter.js';
 import { registerRewardRoutes } from './routes/rewards.js';
 import { registerBrandRecallRoutes } from './routes/brandRecall.js';
 import { registerIntelRoutes } from './routes/intel.js';
@@ -500,6 +501,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerSeasonRoutes(app);
     registerPlanetRoutes(app);
     registerVacationRoutes(app);
+    registerNotificationCenterRoutes(app);
     registerRewardRoutes(app);
     registerIntelRoutes(app);
     registerGalaxyRoutes(app);

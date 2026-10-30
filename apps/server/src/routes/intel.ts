@@ -120,6 +120,10 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.loyalty === undefined
           ? {}
           : { loyalty: r.report.silhouette.loyalty }),
+        // Bildirim Merkezi as read at the look (decision 8); absent on older reports and caretaker worlds.
+        ...(r.report.silhouette?.notificationCenter === undefined
+          ? {}
+          : { notificationCenter: r.report.silhouette.notificationCenter }),
         /*
           THE THREE READINGS D199 ADDED — the shape of what fires, the Aegis charge
           and the unarmed hulls in the line. ABSENT on a report written before them,

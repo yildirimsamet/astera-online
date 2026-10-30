@@ -33,6 +33,8 @@ export type TransferEventDisposition = 'MOVE' | 'KEEP' | 'DEFER' | 'RECONCILE';
 export const TRANSFER_EVENT_POLICIES = {
   mission_arrival: 'BLOCKER',
   radar_warning: 'BLOCKER',
+  // A Bildirim Merkezi push about an inbound raid: pending exactly as long as its radar warning would be.
+  paid_alert: 'BLOCKER',
   asteroid_impact: 'BLOCKER',
   season_end: 'GLOBAL',
   season_rollover: 'GLOBAL',

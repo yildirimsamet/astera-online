@@ -99,7 +99,7 @@ export async function truncateAll(db: Db): Promise<void> {
              polar_reversals, polar_webhook_events, polar_skin_orders,
              paddle_reversals, paddle_webhook_events, paddle_skin_orders,
              main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries, perf_sessions,
-             account_rewards, reward_grants, request_log, notifications, scan_events,
+             account_rewards, reward_grants, request_log, paid_alerts, notification_centers, push_devices, notifications, scan_events,
              probe_world_memories, probe_reports, watches,
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
