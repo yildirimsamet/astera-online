@@ -1006,7 +1006,7 @@ describe('completed season archive', () => {
    * operator's SQL, the `grant-colony`/`expand-eu1-planets` CLIs, a future writer
    * — leaves the counter pointing at a commander who no longer holds the world.
    *
-   * THE ANSWER MUST NOT BE AN EXCEPTION. `loadLocked` is the gate every screen,
+   * THE ANSWER MUST NOT BE AN EXCEPTION. `loadLocked` is the gate every command,
    * launch and worker tick passes through: throwing there does not lose a season
    * metric, it takes the world off the board for everybody until somebody reads a
    * log — the D47 outage shape. So the next advance closes the former actor's

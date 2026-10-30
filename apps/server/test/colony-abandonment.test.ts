@@ -12,7 +12,7 @@ import {
   scheduledEvents, seasons, shipDamageLots, strategicAssets, strategicInterceptions, tradeRuns, units,
 } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
-import { recomputePlayerWealth } from '../src/services/planet.js';
+import { loadLocked, recomputePlayerWealth } from '../src/services/planet.js';
 import type { StreamEvent } from '../src/stream/bus.js';
 import { giveUnits, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
 
@@ -129,7 +129,12 @@ describe('confirmed colony abandonment', () => {
     expect(result.statusCode, result.body).toBe(200);
     const returned = result.json<{ capital: { score: { wealth: number } } }>().capital.score.wealth;
     const [actor] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
-    const fresh = await f.db.transaction(tx => recomputePlayerWealth(tx, f.playerIds[0]!));
+    // Settle the capital first: a Wealth read off its stale stored row would agree with
+    // a stale answer and prove nothing.
+    const fresh = await f.db.transaction(async tx => {
+      await loadLocked(tx, capital, f.clock);
+      return recomputePlayerWealth(tx, f.playerIds[0]!);
+    });
     expect(returned).toBe(fresh);
     expect(actor!.wealth).toBe(fresh);
   });
