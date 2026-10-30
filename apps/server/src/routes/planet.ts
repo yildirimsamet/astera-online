@@ -14,7 +14,7 @@ import { and, eq } from 'drizzle-orm';
 import { planets } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
 import { startRepair } from '../services/repair.js';
-import { loadPlanetViewData, buildPlanetView, type PlanetViewData } from '../services/planetView.js';
+import { loadPlanetViewsData, buildPlanetView } from '../services/planetView.js';
 import { maintenanceAction } from '../services/maintenance.js';
 import {
   buildUnits,
@@ -137,7 +137,6 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
    * no write and no lock-order hazard against lifecycle writers.
    */
   const VIEW_SNAPSHOT = { isolationLevel: 'repeatable read', accessMode: 'read only' } as const;
-  const READ_ONLY = { readOnly: true } as const;
 
   app.get('/api/planets', { preHandler: requireAuth }, async (req) => {
     const captured = await app.db.transaction(async (tx) => {
@@ -147,18 +146,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       const worlds = owned.toSorted((a, b) =>
         a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === 'CAPITAL' ? -1 : 1,
       );
-      const views: PlanetViewData[] = [];
-      // One clock instant and commander snapshot for the whole response. The first
-      // world brings the commander; the rest share it and load together, pipelined
-      // on this snapshot, instead of one after another.
-      const now = app.clock.now();
-      const at = { now: () => now };
-      const [first, ...rest] = worlds;
-      if (first) {
-        const head = await loadPlanetViewData(tx, first.id, at, undefined, READ_ONLY);
-        views.push(head, ...await Promise.all(rest.map((world) =>
-          loadPlanetViewData(tx, world.id, at, head.commander, READ_ONLY))));
-      }
+      // One clock instant and commander snapshot for the whole response, and one
+      // read per table for all of its worlds (scaling plan F1.4).
+      const views = await loadPlanetViewsData(tx, worlds.map(world => world.id), app.clock);
       return {
         playerId: commander.playerId,
         seasonId: commander.seasonId,
@@ -178,13 +168,14 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         eq(planets.controllerPlayerId, commander.playerId),
       ));
       if (!owned) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-      return loadPlanetViewData(tx, planetId, app.clock, undefined, READ_ONLY);
+      const [view] = await loadPlanetViewsData(tx, [planetId], app.clock);
+      return view!;
     }, VIEW_SNAPSHOT).then(buildPlanetView);
   });
 
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
-    return app.db.transaction(tx => loadPlanetViewData(tx, planetId, app.clock, undefined, READ_ONLY), VIEW_SNAPSHOT)
+    return app.db.transaction(async tx => (await loadPlanetViewsData(tx, [planetId], app.clock))[0]!, VIEW_SNAPSHOT)
       .then(buildPlanetView);
   });
 

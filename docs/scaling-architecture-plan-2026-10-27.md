@@ -956,6 +956,18 @@ Testler:
 
 **F1.4 Gezegen görünümünü toplu okumak (M9). DB ayrımından önce şart.**
 
+> **30 Eki: liste ve detay yapıldı, prod'da.** `loadPlanetViewsData` →
+> `loadPlanetViewStates`: gezegen, bina, uydu, birlik, arıza, bomba ve gezegene bağlı kaynak, strateji, kuyruk,
+> konvoy, dock lotu, hangar sayımı (`baysFor`, `unnest` üzerinde tek ifade), klan desteği ve atölye radyasyonu
+> her tablo için `planet_id = ANY(ids)` tek okuma; hesap `planetEconomy` + `lockedPlanetFrom`, tek-dünya kilitli
+> yolla ortak. Ölçüm (görünüm snapshot'ı içinde, ruleset 19): sade komutan 1 dünya **31**, 4 dünya **31**
+> (eskiden ~110); zengin fixture 4 dünya **41** (eskiden 124; aktif aura altındaki bir dünyayla 48), detay 41 (46). Planın "≤30 / detay ≤15"
+> hedefi yerine: dünya eklemek 0 ifade; kalan 31'in 13'ü komutan bağlamı ve auth/yerleşim okumaları, 15'e
+> inmek onları birleştirmeyi ister (ayrı iş). Bir dünyanın üstünde aktif bomba kaynağı varsa radyasyonun
+> koşullu okumaları o dünya için tek tek kalır (nadir). **Kalan:** mutasyon cevaplarının (`mission.ts:589`
+> vb.) kilitli tx içinde salt okuma yolunu kullanması, ayrı commit. Testler: `planet-views-batched.test.ts`
+> (zengin fixture deep-equal, Silent Space, tatil, maliyet, tek snapshot, yazı/kilit yok, hata kodları, sıra).
+
 Dosyalar: `services/planetView.ts:113–132`, `services/planet.ts`, `routes/planet.ts:128–140`,
 `services/mission.ts:568` (transaction bağlamını yeniden kullanmak).
 

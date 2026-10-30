@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, isNull, lt, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, or } from 'drizzle-orm';
 import { hpRadiationApplies, TRAVEL, type HpRadiationSource } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { hpRadiationSources, monuments, seasons } from '../db/schema.js';
@@ -28,6 +28,19 @@ export async function hpSourcesForTarget(tx: Queryable, season: typeof seasons.$
   const rows = await tx.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, season.id),
     eq(hpRadiationSources.anchorKind, target.kind), eq(hpRadiationSources.anchorId, target.id),
     lt(hpRadiationSources.activeFrom, until), or(isNull(hpRadiationSources.activeUntil), gt(hpRadiationSources.activeUntil, from))));
+  return targetSourcesFrom(season, rows);
+}
+
+/** `hpSourcesForTarget` for every planet in `planetIds`, before each one's own `from`. Scaling plan F1.4. */
+export async function planetAnchoredSources(tx: Queryable, season: typeof seasons.$inferSelect,
+  planetIds: readonly string[], until: Date) {
+  return tx.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, season.id),
+    eq(hpRadiationSources.anchorKind, 'PLANET'), inArray(hpRadiationSources.anchorId, [...planetIds]),
+    lt(hpRadiationSources.activeFrom, until)));
+}
+
+export function targetSourcesFrom(season: typeof seasons.$inferSelect,
+  rows: readonly (typeof hpRadiationSources.$inferSelect)[]): HpRadiationSource[] {
   return rows.flatMap(row => sourceWindows(row, monumentMotionStart(season) ?? season.radiationBombStartsAt ?? undefined,
     season.radiationBombStartsAt));
 }
@@ -55,7 +68,13 @@ export async function hpSourcesForSeason(tx: Queryable, seasonId: string, scope:
 /** Current availability never needs the ended source history used by flight settlement. */
 export async function activeHpSourcesForSeason(tx: Queryable, seasonId: string, now: Date): Promise<HpRadiationSource[]> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
-  if (!season || !hpRadiationApplies(season.rulesetVersion)) return [];
+  return season ? activeHpSources(tx, season, now) : [];
+}
+
+/** `activeHpSourcesForSeason` for a caller already holding the season row. */
+export async function activeHpSources(tx: Queryable, season: typeof seasons.$inferSelect, now: Date): Promise<HpRadiationSource[]> {
+  const seasonId = season.id;
+  if (!hpRadiationApplies(season.rulesetVersion)) return [];
   const rows = await tx.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, seasonId),
     lte(hpRadiationSources.activeFrom, now), or(isNull(hpRadiationSources.activeUntil), gt(hpRadiationSources.activeUntil, now))));
   const at = now.getTime();
