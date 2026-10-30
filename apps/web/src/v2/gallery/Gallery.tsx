@@ -24,7 +24,7 @@ import { PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
-import { NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
+import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
@@ -788,6 +788,7 @@ function Views({ view }: { view: string }) {
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
+  if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
   if (view === 'base-research') return <GalleryResearch />;

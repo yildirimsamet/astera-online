@@ -97,7 +97,8 @@ export const notificationCenter = {
     "switch": "Siparişler bitince uyar",
     "denied": "Telefon bildirimlere izin vermedi. Telefon ayarlarından Astera Online için izin ver.",
     "blocked": "Astera Online uyarıları telefon ayarlarından kapatılmış. Oradan açana kadar uyarılar duraklatıldı.",
-    "late": "Zamanında uyarı izni olmadan Android bir uyarıyı bir saate kadar geciktirebilir.",
+    "lateTitle": "Uyarılar geç gelebilir",
+    "late": "Bu izin olmadan Android bir uyarıyı bir saate kadar geciktirebilir. Siparişin bittiği an haber almak için izin ver.",
     "allowExact": "Zamanında uyarıya izin ver",
     "category": {
       "build": "İnşaat",

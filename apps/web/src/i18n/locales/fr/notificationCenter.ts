@@ -97,7 +97,8 @@ export const notificationCenter = {
     "switch": "Me prévenir quand une commande se termine",
     "denied": "Le téléphone n'a pas autorisé les notifications. Autorise-les pour Astera Online dans les réglages du téléphone.",
     "blocked": "Les alertes d'Astera Online sont désactivées dans les réglages du téléphone. Elles restent en pause jusqu'à ce que tu les réactives.",
-    "late": "Sans alertes à l'heure, Android peut retarder une alerte jusqu'à une heure.",
+    "lateTitle": "Les alertes peuvent arriver en retard",
+    "late": "Sans cette autorisation, Android peut retarder une alerte jusqu'à une heure. Autorise-la pour savoir dès qu'une commande se termine.",
     "allowExact": "Autoriser les alertes à l'heure",
     "category": {
       "build": "Construction",

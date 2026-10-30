@@ -15,7 +15,7 @@ import {
 } from '../platform/localNotifications.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
+import { ClockIcon, DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
 import { Confirm, ConfirmLine } from '../ui/kit/Confirm.js';
 import { describe } from '../ui/Toast.js';
 import { Cost } from '../v2/kit/Cost.js';
@@ -275,6 +275,25 @@ function Recent({ view }: { view: NotificationCenter }) {
  * is the player's choice; the phone's permission is read live, and a block set in the phone
  * settings is said here rather than failing in silence.
  */
+/** Android 12+ without the on-time alarm: in a game of minutes, the one thing on this section worth a tap. Exported for the v2 gallery. */
+export function LateAlerts() {
+  const { t } = useTranslation();
+  return <div data-local-late role="status" className="flex flex-col gap-2.5 rounded-control border border-v2-warn/50 bg-v2-warn/10 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
+    <div className="flex items-start gap-2.5">
+      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-warn/60 bg-v2-warn/15 text-v2-warn">
+        <ClockIcon className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-caption font-semibold text-v2-warn">{t('notificationCenter.local.lateTitle')}</p>
+        <p className="text-micro leading-snug text-v2-ink-2">{t('notificationCenter.local.late')}</p>
+      </div>
+    </div>
+    <button type="button" onClick={() => { void allowExactLocalAlerts(); }}
+      className="flex min-h-10 items-center justify-center rounded-control bg-v2-warn px-3 text-caption font-semibold text-v2-deep shadow-[0_0_18px_rgb(255_204_77/0.22)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v2-warn">
+      {t('notificationCenter.local.allowExact')}</button>
+  </div>;
+}
+
 function PhoneAlerts() {
   const { t } = useTranslation();
   const settings = useLocalAlertSettings();
@@ -298,9 +317,6 @@ function PhoneAlerts() {
     </div>
     {blocked && settings.enabled && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.local.blocked')}</p>}
     {blocked && !settings.enabled && tried && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.local.denied')}</p>}
-    {settings.enabled && permission.display === 'granted' && permission.exact === 'denied' && <div className="flex items-center gap-2">
-      <p className="min-w-0 flex-1 text-micro leading-snug text-v2-ink-3">{t('notificationCenter.local.late')}</p>
-      <Button size="sm" onClick={() => { void allowExactLocalAlerts(); }}>{t('notificationCenter.local.allowExact')}</Button>
-    </div>}
+    {settings.enabled && permission.display === 'granted' && permission.exact === 'denied' && <LateAlerts />}
   </Section>;
 }

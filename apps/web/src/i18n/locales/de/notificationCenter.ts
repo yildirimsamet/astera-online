@@ -97,7 +97,8 @@ export const notificationCenter = {
     "switch": "Melden, wenn Aufträge fertig sind",
     "denied": "Das Handy hat Benachrichtigungen nicht erlaubt. Erlaube sie für Astera Online in den Einstellungen des Handys.",
     "blocked": "Warnungen für Astera Online sind in den Einstellungen des Handys ausgeschaltet. Sie pausieren, bis du sie dort einschaltest.",
-    "late": "Ohne pünktliche Warnungen kann Android eine Warnung bis zu einer Stunde zurückhalten.",
+    "lateTitle": "Warnungen können zu spät kommen",
+    "late": "Ohne diese Erlaubnis kann Android eine Warnung bis zu einer Stunde zurückhalten. Erlaube sie, um sofort zu erfahren, wenn ein Auftrag fertig ist.",
     "allowExact": "Pünktliche Warnungen erlauben",
     "category": {
       "build": "Bau",

@@ -147,11 +147,13 @@ it('says when the phone settings have blocked alerts the player had on', () => {
   expect(screen.getByText(/turned off in the phone settings/)).toBeInTheDocument();
 });
 
-it('offers on-time alerts when the phone would deliver them late', () => {
+it('warns, in its own card, when the phone would deliver alerts late, and offers the fix there', () => {
   phone.enabled = true; permission.display = 'granted'; permission.exact = 'denied';
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByText(/up to an hour/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Allow on-time alerts' }));
+  const card = document.querySelector<HTMLElement>('[data-local-late]');
+  expect(card).toHaveTextContent('Alerts can come late');
+  expect(card).toHaveTextContent(/up to an hour/);
+  fireEvent.click(within(card!).getByRole('button', { name: 'Allow on-time alerts' }));
   expect(allowExact).toHaveBeenCalledOnce();
 });
 
@@ -159,7 +161,7 @@ it('says nothing about permissions while all is well', () => {
   phone.enabled = true; permission.display = 'granted';
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   expect(screen.queryByText(/phone settings/)).not.toBeInTheDocument();
-  expect(screen.queryByText(/minutes late/)).not.toBeInTheDocument();
+  expect(document.querySelector('[data-local-late]')).toBeNull();
 });
 
 it('turns a free category off and the whole thing off', () => {

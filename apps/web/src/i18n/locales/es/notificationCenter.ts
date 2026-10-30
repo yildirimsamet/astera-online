@@ -97,7 +97,8 @@ export const notificationCenter = {
     "switch": "Avisarme cuando terminen los pedidos",
     "denied": "El móvil no permitió las notificaciones. Permítelas para Astera Online en los ajustes del móvil.",
     "blocked": "Los avisos de Astera Online están desactivados en los ajustes del móvil. Quedan en pausa hasta que los actives allí.",
-    "late": "Sin avisos puntuales, Android puede retrasar un aviso hasta una hora.",
+    "lateTitle": "Los avisos pueden llegar tarde",
+    "late": "Sin este permiso, Android puede retrasar un aviso hasta una hora. Permítelo para saber al momento cuándo termina un pedido.",
     "allowExact": "Permitir avisos puntuales",
     "category": {
       "build": "Construcción",
