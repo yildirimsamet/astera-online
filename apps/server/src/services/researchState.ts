@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   DEUTERIUM,
   RESEARCH_PROJECT_IDS,
@@ -113,13 +113,36 @@ export async function researchView(
   return buildResearchView(planet, await loadResearchViewData(db, planet.playerId), projectedLevels);
 }
 
-/** Commander-scoped facts; reuse only within the current response snapshot. */
-export async function loadResearchViewData(db: Queryable, playerId: string) {
-  const attackerDamage = sql<number>`(
-    SELECT COALESCE(SUM((round ->> 'attackerDamage')::double precision), 0)
-    FROM jsonb_array_elements(${battleReports.rounds}) AS round
-  )`;
-  const [rows, cargoInsight, shieldInsight] = await Promise.all([
+/** What a commander's own raids have found: the two battle-found Frontier rungs. */
+export interface ResearchInsight { cargo: boolean; shield: boolean }
+
+/**
+ * Whether any report filed with this commander as the attacker was cargo-limited
+ * (Dense Fuel Cells), and whether any had a shield absorb at least
+ * `graviticDiscoveryShieldShare` of the attack's damage (Gravitic Charges). One
+ * statement; each report's round damage is summed once (F1.8 Q5).
+ */
+export async function loadResearchInsight(db: Queryable, playerId: string): Promise<ResearchInsight> {
+  const [row] = await db.select({
+    cargo: sql<boolean>`exists (select 1 from ${battleReports}
+      where ${battleReports.attackerPlayerId} = ${playerId} and ${battleReports.cargoLimited})`,
+    shield: sql<boolean>`exists (select 1 from ${battleReports}
+      where ${battleReports.attackerPlayerId} = ${playerId} and ${battleReports.shieldAbsorbed} > 0
+        and (select total > 0 and ${battleReports.shieldAbsorbed} >= total * ${DEUTERIUM.graviticDiscoveryShieldShare}
+          from (select coalesce(sum((round ->> 'attackerDamage')::double precision), 0) as total
+            from jsonb_array_elements(${battleReports.rounds}) as round) as damage))`,
+  }).from(sql`(select 1) as one`);
+  return { cargo: row?.cargo ?? false, shield: row?.shield ?? false };
+}
+
+/**
+ * Commander-scoped facts; reuse only within the current response snapshot. A read
+ * may pass the remembered insight (`Projections.researchInsight`, F1.8 C5); a
+ * command reads it here.
+ */
+export async function loadResearchViewData(db: Queryable, playerId: string,
+  insight: (playerId: string) => Promise<ResearchInsight> = id => loadResearchInsight(db, id)) {
+  const [rows, found] = await Promise.all([
     db
       .select({
         projectId: playerResearch.projectId,
@@ -128,31 +151,9 @@ export async function loadResearchViewData(db: Queryable, playerId: string) {
       })
       .from(playerResearch)
       .where(eq(playerResearch.playerId, playerId)),
-    db
-      .select({ id: battleReports.id })
-      .from(battleReports)
-      .where(
-        and(
-          eq(battleReports.attackerPlayerId, playerId),
-          eq(battleReports.cargoLimited, true),
-        ),
-      )
-      .limit(1),
-    db
-      .select({ id: battleReports.id })
-      .from(battleReports)
-      .where(
-        and(
-          eq(battleReports.attackerPlayerId, playerId),
-          gt(battleReports.shieldAbsorbed, 0),
-          sql`${attackerDamage} > 0`,
-          sql`${battleReports.shieldAbsorbed} >= ${attackerDamage}
-            * ${DEUTERIUM.graviticDiscoveryShieldShare}`,
-        ),
-      )
-      .limit(1),
+    insight(playerId),
   ]);
-  return { rows, cargoInsight, shieldInsight };
+  return { rows, insight: found };
 }
 
 export function buildResearchView(
@@ -160,7 +161,7 @@ export function buildResearchView(
   data: Awaited<ReturnType<typeof loadResearchViewData>>,
   projectedLevels: ResearchLevels = new Map(),
 ) {
-  const { rows, cargoInsight, shieldInsight } = data;
+  const { rows, insight } = data;
   const completedAt = new Map(rows.map((row) => [row.projectId, row.completedAt]));
   const held = new Map(rows.map((row) => [row.projectId, row.level]));
   /** Held, plus whatever the construction queue ahead of this order will finish. */
@@ -168,7 +169,7 @@ export function buildResearchView(
   for (const [id, level] of projectedLevels) {
     queued.set(id, Math.max(queued.get(id) ?? 0, level));
   }
-  const graviticInsight = shieldInsight.length > 0;
+  const graviticInsight = insight.shield;
 
   const discoveredWith = (
     id: ResearchProjectId,
@@ -200,7 +201,7 @@ export function buildResearchView(
       case 'ISOTOPE_SPECTROMETRY':
         return researchAvailable(id, planet.nowMinutes);
       case 'DENSE_FUEL_CELLS':
-        return done('ISOTOPE_SPECTROMETRY') && cargoInsight.length > 0;
+        return done('ISOTOPE_SPECTROMETRY') && insight.cargo;
       case 'GRAVITIC_CHARGES':
         return done('ISOTOPE_SPECTROMETRY') && graviticInsight;
       default:

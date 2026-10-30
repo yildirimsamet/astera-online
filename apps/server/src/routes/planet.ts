@@ -138,6 +138,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
    */
   const VIEW_SNAPSHOT = { isolationLevel: 'repeatable read', accessMode: 'read only' } as const;
 
+  // A read's battle-found research rungs come from memory (F1.8 C5); commands read the database.
+  const READ_INSIGHT = { insight: (playerId: string) => app.projections.researchInsight(playerId) };
+
   app.get('/api/planets', { preHandler: requireAuth }, async (req) => {
     const captured = await app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
@@ -148,7 +151,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       );
       // One clock instant and commander snapshot for the whole response, and one
       // read per table for all of its worlds (scaling plan F1.4).
-      const views = await loadPlanetViewsData(tx, worlds.map(world => world.id), app.clock);
+      const views = await loadPlanetViewsData(tx, worlds.map(world => world.id), app.clock, READ_INSIGHT);
       return {
         playerId: commander.playerId,
         seasonId: commander.seasonId,
@@ -168,14 +171,14 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         eq(planets.controllerPlayerId, commander.playerId),
       ));
       if (!owned) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-      const [view] = await loadPlanetViewsData(tx, [planetId], app.clock);
+      const [view] = await loadPlanetViewsData(tx, [planetId], app.clock, READ_INSIGHT);
       return view!;
     }, VIEW_SNAPSHOT).then(buildPlanetView);
   });
 
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
-    return app.db.transaction(async tx => (await loadPlanetViewsData(tx, [planetId], app.clock))[0]!, VIEW_SNAPSHOT)
+    return app.db.transaction(async tx => (await loadPlanetViewsData(tx, [planetId], app.clock, READ_INSIGHT))[0]!, VIEW_SNAPSHOT)
       .then(buildPlanetView);
   });
 

@@ -43,7 +43,7 @@ import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
 import { baysFor } from './flight.js';
 import { loadPlanetViewStates, type LockedPlanet } from './planet.js';
-import { asTech, buildResearchView, loadResearchViewData } from './researchState.js';
+import { asTech, buildResearchView, loadResearchViewData, type ResearchInsight } from './researchState.js';
 import { dockLotsFor, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
 import { buildDefencePostureView } from './defencePosture.js';
@@ -137,10 +137,10 @@ const convoyStruck = (now: Date) => and(
 );
 
 /** Shared only across worlds in one transaction, never across requests or writes. */
-async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
+async function loadCommanderViewData(tx: Tx, p: LockedPlanet, insight?: (playerId: string) => Promise<ResearchInsight>) {
   const [[player], researchData, researchQueue, colonies, membership, honor, pvpBalance] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
-    loadResearchViewData(tx, p.playerId),
+    loadResearchViewData(tx, p.playerId, insight),
     activeResearchOrders(tx, p.playerId),
     colonyStanding(tx, p.playerId),
     clanDefenseApplies(p.rulesetVersion) ? activeClanMembership(tx, p.playerId) : null,
@@ -163,7 +163,7 @@ async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
  * commander and the rest must belong to the same one.
  */
 export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], clock: Clock,
-  options: { lock?: boolean } = {}) {
+  options: { lock?: boolean; insight?: (playerId: string) => Promise<ResearchInsight> } = {}) {
   if (planetIds.length === 0) return [];
   const now = clock.now();
   const states = await loadPlanetViewStates(tx, planetIds, { now: () => now }, options);
@@ -171,7 +171,7 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
   const ids = states.map(state => state.planet.planetId);
   const rows = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
   const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop] = await Promise.all([
-    loadCommanderViewData(tx, head),
+    loadCommanderViewData(tx, head, options.insight),
     tx.select().from(strategicAssets).where(and(inArray(strategicAssets.planetId, ids), PAD_HARDWARE))
       .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
     tx.select().from(buildOrders)

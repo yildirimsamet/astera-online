@@ -1506,6 +1506,13 @@
       "when": 1793396949623,
       "tag": "0214_account_auth_events",
       "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1793398832531,
+      "tag": "0215_battle_report_events",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ import {
 } from './ownership.js';
 import { loadGalaxyFacts, type GalaxyFacts } from './galaxyFacts.js';
 import { clanPresenceOf } from './clan.js';
+import { loadResearchInsight, type ResearchInsight } from './researchState.js';
 
 export interface ProjectionConfig {
   enabled: boolean;
@@ -50,6 +51,7 @@ export interface ProjectionStatus {
   galaxyFacts: AsyncCacheStats;
   clanPresence: AsyncCacheStats;
   callerPlacements: AsyncCacheStats;
+  researchInsights: AsyncCacheStats;
 }
 
 type ClanPresence = Awaited<ReturnType<typeof clanPresenceOf>>;
@@ -126,6 +128,12 @@ export class Projections {
    * never remembered, as nothing announces one being placed.
    */
   private readonly callerPlacements: AsyncCache<CommanderPlacement | null>;
+  /**
+   * WHAT EACH COMMANDER'S RAIDS HAVE FOUND (F1.8, C5): the two battle-found Frontier
+   * rungs, for planet reads. Migration 0215's trigger says `private:report` to the
+   * attacker of every report filed. Commands read the database.
+   */
+  private readonly researchInsights: AsyncCache<ResearchInsight>;
   private readonly stopObserving: () => void;
   private readonly stopObservingResets: () => void;
 
@@ -174,6 +182,7 @@ export class Projections {
     this.galaxyFacts = new AsyncCache<GalaxyFacts | null>(config.maxSeasons, config.publicTtlMs, usable);
     this.clanPresence = new AsyncCache<ClanPresence>(config.maxAccounts, config.publicTtlMs, usable);
     this.callerPlacements = new AsyncCache<CommanderPlacement | null>(config.maxAccounts, config.publicTtlMs, usable);
+    this.researchInsights = new AsyncCache<ResearchInsight>(config.maxAccounts, config.commanderTtlMs, usable);
     this.stopObserving = bus.observe((event) => {
       this.onEvent(event);
     });
@@ -235,6 +244,10 @@ export class Projections {
     const placement = await this.callerPlacements.get(accountId, load);
     if (!placement) this.callerPlacements.invalidate(accountId);
     return placement;
+  }
+
+  researchInsight(playerId: string): Promise<ResearchInsight> {
+    return this.researchInsights.get(playerId, () => loadResearchInsight(this.db, playerId));
   }
 
   /** The database disagreed with the remembered placement: forget it. */
@@ -308,6 +321,7 @@ export class Projections {
       galaxyFacts: this.galaxyFacts.status(),
       clanPresence: this.clanPresence.status(),
       callerPlacements: this.callerPlacements.status(),
+      researchInsights: this.researchInsights.status(),
     };
   }
 
@@ -339,6 +353,7 @@ export class Projections {
     this.galaxyFacts.clear();
     this.clanPresence.clear();
     this.callerPlacements.clear();
+    this.researchInsights.clear();
   }
 
   /**
@@ -410,6 +425,7 @@ export class Projections {
       // event therefore cannot carry a shard id; clearing this bounded cache is
       // the safe price of keeping hidden launch timing off the shard channel.
       if (event.kind === 'private:strategic-sight') this.traffic.clear();
+      if (event.kind === `${PRIVATE_PREFIX}report`) this.researchInsights.invalidate(event.playerId);
       // A commander moved or was deleted (migration 0210's triggers).
       if (event.kind === 'placement_changed' || event.kind === 'private:auth') {
         this.callerPlacements.invalidateWhere((_, placement) => placement?.id === event.playerId);
