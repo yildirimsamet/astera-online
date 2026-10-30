@@ -18,9 +18,6 @@ export const notificationCenter = {
     "incoming_strategic": "Yaklaşan bir Ölüm Yıldızı. Saldırı uyarısının 1,5 katı tutar.",
     "probe_detected": "Dünyalarından birinin üstünde yakalanan bir sonda. Hemen gönderilir."
   },
-  "installTitle": "Android uygulamasında var",
-  "installBody": "Telefon uyarıları için Astera Online uygulaması gerekir. Uygulamayı kur ve merkezi kurmak için bu hesapla giriş yap.",
-  "install": "Google Play'den indir",
   "buildCost": "Kurulum bedeli",
   "buildFrom": "Bedel seçili dünyandan ödenir: {{world}}. Bir kez kurulur ve tüm dünyalarını kapsar.",
   "buildShort": "Seçili dünyada yeterli kaynak yok. Başka bir dünya seç veya bekle.",

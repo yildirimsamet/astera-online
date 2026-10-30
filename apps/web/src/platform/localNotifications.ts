@@ -164,11 +164,16 @@ async function reconcile({ plan, text, lang }: SyncJob): Promise<void> {
   const fresh = plan.filter(alert => !settled.has(alert.id));
   if (fresh.length === 0) return;
   await LocalNotifications.createChannel({ id: CHANNEL, name: 'Astera Online', importance: 3 });
+  // Asked fresh: an on-time alarm the phone refuses makes the plugin open the phone settings
+  // on its own, on every schedule. Without it the alert still comes, a few minutes late.
+  const onTime = await LocalNotifications.checkExactNotificationSetting()
+    .then(status => status.exact_alarm === 'granted', () => false);
   await LocalNotifications.schedule({
     notifications: fresh.map(alert => ({
       id: alert.id,
       ...text(alert),
       channelId: CHANNEL,
+      isExactNotification: onTime,
       schedule: { at: new Date(alert.at), allowWhileIdle: true },
       extra: { astera: TAG, key: alert.key, lang },
     })),

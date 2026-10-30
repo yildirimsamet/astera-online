@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { Capacitor } from '@capacitor/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FAULT, distance, fleetPace, readPowerRange, travelMinutes } from '@astera/rules';
 import type { GalaxyPlanet, IntelView } from '../../src/api/schemas.js';
 import { compact } from '../../src/lib/format.js';
@@ -260,6 +261,11 @@ describe('the target dossier, as the mock draws it', () => {
 describe('the Notification Center reading', () => {
   const withCenter = (reading: 'NONE' | 'EMPTY' | 'FEW' | 'PLENTY' | 'UNKNOWN'): IntelView =>
     ({ ...probed, probeReports: [{ ...probed.probeReports[0]!, notificationCenter: reading }] });
+  beforeEach(() => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+  });
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it('says whether their phone would be warned', () => {
     const { container } = show({ intel: withCenter('EMPTY') });
@@ -277,6 +283,12 @@ describe('the Notification Center reading', () => {
 
   it('draws nothing on a report that never read it', () => {
     const { container } = show();
+    expect(container.querySelector('[data-dossier-center]')).toBeNull();
+  });
+
+  it('draws nothing on the web, where the center does not exist', () => {
+    vi.restoreAllMocks();
+    const { container } = show({ intel: withCenter('PLENTY') });
     expect(container.querySelector('[data-dossier-center]')).toBeNull();
   });
 });

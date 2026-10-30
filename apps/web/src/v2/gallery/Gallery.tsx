@@ -751,8 +751,8 @@ function GalleryResearch() {
   return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
 }
 
-/** Bildirim Merkezi (owner 2026-10-30): built with a ledger, not yet built, and the web's install prompt. */
-function GalleryNotificationCenter({ state }: { state: 'built' | 'new' | 'web' }) {
+/** Bildirim Merkezi (owner 2026-10-30): built with a ledger, and not yet built. */
+function GalleryNotificationCenter({ state }: { state: 'built' | 'new' }) {
   const client = useQueryClient();
   useState(() => {
     const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
@@ -770,7 +770,7 @@ function GalleryNotificationCenter({ state }: { state: 'built' | 'new' | 'web' }
     });
     return null;
   });
-  return <NotificationCenterSheet onClose={noop} native={state !== 'web'} />;
+  return <NotificationCenterSheet onClose={noop} />;
 }
 
 function Views({ view }: { view: string }) {
@@ -788,7 +788,6 @@ function Views({ view }: { view: string }) {
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
-  if (view === 'notification-center-web') return <GalleryNotificationCenter state="web" />;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
   if (view === 'base-research') return <GalleryResearch />;

@@ -42,15 +42,6 @@ afterEach(() => {
   build.mockClear(); fund.mockClear(); settings.mockClear();
 });
 
-it('on the web it asks for the Android app and never reads the centre', () => {
-  caps.notificationCenter = false;
-  render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByRole('link', { name: 'Get it on Google Play' }))
-    .toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=space.asteraonline.app');
-  expect(queried.every(enabled => !enabled)).toBe(true);
-  expect(screen.queryByRole('button', { name: /Build/ })).not.toBeInTheDocument();
-});
-
 it('offers the one-time build from the selected world and says what is short', () => {
   view = { ...fresh(), built: false };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
@@ -180,12 +171,8 @@ it('turns a free category off and the whole thing off', () => {
   expect(disable).toHaveBeenCalledOnce();
 });
 
-it('shows the free phone alerts before the center is built, and never on the web', () => {
+it('shows the free phone alerts before the center is built', () => {
   view = { ...fresh(), built: false };
-  const { unmount } = render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByRole('checkbox', { name: 'Alert me when orders finish' })).toBeInTheDocument();
-  unmount();
-  caps.notificationCenter = false; caps.localNotifications = false;
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.queryByRole('checkbox', { name: 'Alert me when orders finish' })).not.toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Alert me when orders finish' })).toBeInTheDocument();
 });

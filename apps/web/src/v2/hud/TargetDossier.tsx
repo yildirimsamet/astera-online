@@ -21,6 +21,7 @@ import { flightModifiers, reachMinutes } from '../../lib/navigation.js';
 import { probeAxis } from '../../lib/probeScale.js';
 import { duration } from '../../lib/time.js';
 import { useTargetReading } from '../../lib/useTargetReading.js';
+import { capabilities } from '../../platform/runtime.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
 import { BroadcastIcon } from '../../ui/icons/index.js';
 import { Icon } from '../icons.js';
@@ -226,7 +227,7 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
         </section>
       )}
 
-      {report?.notificationCenter !== undefined && (
+      {report?.notificationCenter !== undefined && capabilities().notificationCenter && (
         <section data-dossier-center className={SECTION}>
           <h3 className={HEADING}>
             <BroadcastIcon className="size-3.5 shrink-0 text-v2-ink-2" />

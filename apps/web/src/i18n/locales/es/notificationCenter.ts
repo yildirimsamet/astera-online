@@ -18,9 +18,6 @@ export const notificationCenter = {
     "incoming_strategic": "Una Estrella de la Muerte en camino. Cuesta 1,5 veces un aviso de ataque.",
     "probe_detected": "Una sonda detectada sobre uno de tus mundos. Se envía al momento."
   },
-  "installTitle": "Disponible en la app de Android",
-  "installBody": "Los avisos al móvil necesitan la app de Astera Online. Instálala e inicia sesión con esta cuenta para construir el centro.",
-  "install": "Disponible en Google Play",
   "buildCost": "Coste de construcción",
   "buildFrom": "Lo paga {{world}}, tu mundo seleccionado. Se construye una vez y cubre todos tus mundos.",
   "buildShort": "El mundo seleccionado no tiene recursos suficientes. Elige otro mundo o espera.",

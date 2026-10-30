@@ -13,8 +13,6 @@ import { LOCAL_ALERT_CATEGORIES } from '../lib/localAlerts.js';
 import {
   allowExactLocalAlerts, disableLocalAlerts, enableLocalAlerts, setLocalAlertPrefs, useLocalAlertSettings, usePhonePermission,
 } from '../platform/localNotifications.js';
-import { capabilities } from '../platform/runtime.js';
-import { PLAY_STORE } from '../shell/UpdateRequired.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
@@ -50,29 +48,23 @@ function Deuterium({ amount, className = '' }: { amount: number; className?: str
 
 /**
  * BİLDİRİM MERKEZİ. Owner 2026-10-30, docs/bildirim-merkezi-plani-2026-10-30.md.
- * Android only; the web gets the reason and the way to the app.
+ * Android only: the web has no way in and no trace of it.
  */
-export function NotificationCenterSheet({ onClose, native = capabilities().notificationCenter }: {
-  onClose: () => void;
-  /** Android, where the centre and the phone alerts exist. Overridden only by the v2 gallery. */
-  native?: boolean;
-}) {
+export function NotificationCenterSheet({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  const app = native;
-  const query = useNotificationCenter(app);
+  const query = useNotificationCenter(true);
   const view = query.data;
   return createPortal(<div>
     <Sheet placement="dialog" title={t('notificationCenter.title')} eyebrow={t('notificationCenter.eyebrow')}
       headerArt={ATMOSPHERE.notificationCenter} onClose={onClose} detents={['full']}>
       <div data-notification-center className="flex flex-col gap-4 pb-3">
         <p className="text-caption leading-relaxed text-v2-ink-2">{t('notificationCenter.lead')}</p>
-        {!app ? <InstallApp />
-          : !view ? <>
+        {!view ? <>
             <Note>{query.isError ? t('notificationCenter.loadError') : t('notificationCenter.loading')}</Note>
             {query.isError && <Button onClick={() => { void query.refetch(); }}>{t('notificationCenter.retry')}</Button>}
           </>
           : view.built ? <Built view={view} /> : <Unbuilt view={view} />}
-        {app && <PhoneAlerts />}
+        <PhoneAlerts />
       </div>
     </Sheet>
   </div>, document.body);
@@ -96,25 +88,6 @@ function KindsPreview() {
       </li>;
     })}
   </ul>;
-}
-
-function InstallApp() {
-  const { t } = useTranslation();
-  return <>
-    <KindsPreview />
-    <div className="flex flex-col gap-3 rounded-control border border-v2-self/30 bg-v2-self/5 p-3">
-      <div className="flex items-center gap-3">
-        <Hardware />
-        <div className="flex flex-col gap-1">
-          <p className="font-semibold text-v2-ink">{t('notificationCenter.installTitle')}</p>
-          <p className="text-caption leading-relaxed text-v2-ink-2">{t('notificationCenter.installBody')}</p>
-        </div>
-      </div>
-      <a href={PLAY_STORE} target="_blank" rel="noopener noreferrer"
-        className="flex min-h-11 items-center justify-center rounded-control border border-v2-self/60 bg-v2-self/15 px-4 text-body font-semibold text-v2-self transition-colors hover:bg-v2-self/25 focus-visible:outline-2 focus-visible:outline-v2-self">
-        {t('notificationCenter.install')}</a>
-    </div>
-  </>;
 }
 
 function useSelectedWorld() {

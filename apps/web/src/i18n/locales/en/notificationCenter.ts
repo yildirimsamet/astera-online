@@ -18,9 +18,6 @@ export const notificationCenter = {
     "incoming_strategic": "A Death Star on the way. Costs 1.5× an attack alert.",
     "probe_detected": "A probe caught over one of your worlds. Sent at once."
   },
-  "installTitle": "Available in the Android app",
-  "installBody": "Phone alerts need the Astera Online app. Install it and sign in with this account to build the center.",
-  "install": "Get it on Google Play",
   "buildCost": "Build cost",
   "buildFrom": "Paid from {{world}}, your selected world. Built once, it covers all your worlds.",
   "buildShort": "The selected world does not have enough resources. Select another world or wait.",

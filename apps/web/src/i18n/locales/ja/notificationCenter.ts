@@ -18,9 +18,6 @@ export const notificationCenter = {
     "incoming_strategic": "接近中のデス・スター。攻撃通知の1.5倍の料金です。",
     "probe_detected": "あなたのワールド上空で探査機を検知。すぐに送信されます。"
   },
-  "installTitle": "Androidアプリで利用できます",
-  "installBody": "スマホ通知には Astera Online アプリが必要です。インストールしてこのアカウントでログインし、センターを建設してください。",
-  "install": "Google Play で入手",
   "buildCost": "建設コスト",
   "buildFrom": "選択中のワールド「{{world}}」から支払います。一度建てればすべてのワールドが対象です。",
   "buildShort": "選択中のワールドの資源が足りません。別のワールドを選ぶか、待ってください。",

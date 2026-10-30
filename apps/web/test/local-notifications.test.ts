@@ -54,6 +54,21 @@ describe('syncLocalAlerts', () => {
     expect(notifications[0]?.schedule.at.getTime()).toBe(a.at);
   });
 
+  it('asks for an on-time alarm only where the phone allows one, so the plugin never opens the settings itself', async () => {
+    plugin.checkExactNotificationSetting.mockResolvedValue({ exact_alarm: 'denied' });
+    await syncLocalAlerts([alert('build:c1', 1_000_100)], text, 'en');
+    const [{ notifications: late }] = plugin.schedule.mock.calls[0] as [{ notifications: { isExactNotification: boolean }[] }];
+    expect(late[0]?.isExactNotification).toBe(false);
+    plugin.checkExactNotificationSetting.mockRejectedValue(new Error('no bridge'));
+    await syncLocalAlerts([alert('build:c22', 1_000_100)], text, 'en');
+    const [{ notifications: unknown }] = plugin.schedule.mock.calls[1] as [{ notifications: { isExactNotification: boolean }[] }];
+    expect(unknown[0]?.isExactNotification).toBe(false);
+    plugin.checkExactNotificationSetting.mockResolvedValue({ exact_alarm: 'granted' });
+    await syncLocalAlerts([alert('build:c333', 1_000_100)], text, 'en');
+    const [{ notifications: onTime }] = plugin.schedule.mock.calls[2] as [{ notifications: { isExactNotification: boolean }[] }];
+    expect(onTime[0]?.isExactNotification).toBe(true);
+  });
+
   it('leaves an unchanged alert alone and cancels one the plan dropped or moved', async () => {
     const kept = alert('build:c1', 1_000_100);
     const moved = alert('ships:y1', 2_000_200);

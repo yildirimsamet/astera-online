@@ -18,9 +18,6 @@ export const notificationCenter = {
     "incoming_strategic": "Ein Todesstern im Anflug. Kostet das 1,5-Fache einer Angriffswarnung.",
     "probe_detected": "Eine Sonde über einer deiner Welten entdeckt. Wird sofort gesendet."
   },
-  "installTitle": "In der Android-App verfügbar",
-  "installBody": "Handy-Warnungen brauchen die Astera Online App. Installiere sie und melde dich mit diesem Konto an, um die Zentrale zu bauen.",
-  "install": "Bei Google Play laden",
   "buildCost": "Baukosten",
   "buildFrom": "Bezahlt von {{world}}, deiner ausgewählten Welt. Einmal gebaut, deckt sie alle deine Welten ab.",
   "buildShort": "Die ausgewählte Welt hat nicht genug Ressourcen. Wähle eine andere Welt oder warte.",

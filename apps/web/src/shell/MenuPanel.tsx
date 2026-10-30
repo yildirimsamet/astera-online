@@ -334,7 +334,7 @@ export function MenuPanel({
             onOpen('rewards');
           }}
         />
-        <MenuTile
+        {platform.notificationCenter && <MenuTile
           icon={<BroadcastIcon className="size-5" />}
           label={t('notificationCenter.title')}
           art={ATMOSPHERE.notificationCenter}
@@ -342,7 +342,7 @@ export function MenuPanel({
           attention={centerEmpty}
           {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
           onClick={() => { setCenterOpen(true); }}
-        />
+        />}
         {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
       </MenuGroup>
 

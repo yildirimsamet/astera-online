@@ -90,15 +90,24 @@ it.each(['android', 'ios'])('retains inventory and account controls without web 
   expect(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') })).toBeVisible();
 });
 
-/** Bildirim Merkezi (owner 2026-10-30): in the season group; the web is sent to the app. */
-it('opens the Notification Center from the season group, as an install prompt on the web', async () => {
+/** Bildirim Merkezi (owner 2026-10-30): Android only, in the season group; the web never sees it. */
+it('opens the Notification Center from the season group in the app', async () => {
+  vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+  vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
   const view = show();
   const season = [...view.container.querySelectorAll('[data-menu-group]')]
     .find(group => group.querySelector('h2')?.textContent === i18n.t('menu.seasonHeading'));
   const tile = screen.getByRole('button', { name: named(i18n.t('notificationCenter.title'), i18n.t('notificationCenter.menuHint')) });
   expect(season?.contains(tile)).toBe(true);
   fireEvent.click(tile);
-  expect(await screen.findByRole('link', { name: i18n.t('notificationCenter.install') })).toBeInTheDocument();
+  expect(await screen.findByRole('dialog', { name: i18n.t('notificationCenter.title') })).toBeInTheDocument();
+  vi.restoreAllMocks();
+});
+
+it('shows no trace of the Notification Center on the web', () => {
+  const view = show();
+  expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('notificationCenter.title')}`) })).toBeNull();
+  expect(view.container).not.toHaveTextContent(i18n.t('notificationCenter.title'));
 });
 
 it('marks the Notification Center tile when its wallet cannot pay the next alert', async () => {
@@ -133,7 +142,7 @@ describe('the menu groups what it offers', () => {
     const onOpen = vi.fn();
     const view = show({ onOpen });
     const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
-    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(8);
+    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(7);
     const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
     expect(rewards.querySelector('img')).toHaveAttribute('alt', '');
     fireEvent.click(rewards);
