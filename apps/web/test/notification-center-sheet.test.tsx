@@ -127,7 +127,7 @@ it('lists recent alerts with what each one cost', () => {
   expect(rows[0]).toHaveTextContent('Sent');
   expect(rows[0]).toHaveTextContent('−30');
   expect(rows[1]).toHaveTextContent('Wallet short');
-  expect(rows[2]).toHaveTextContent('Not charged');
+  expect(rows[2]).toHaveTextContent('Nothing taken');
 });
 
 it('offers the free phone alerts in the app, asking the phone only when switched on', async () => {

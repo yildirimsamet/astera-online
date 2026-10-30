@@ -3,7 +3,7 @@ export const notificationCenter = {
   "eyebrow": "Avisos al móvil",
   "menuHint": "Un aviso en tu móvil antes de que llegue un ataque.",
   "menuEmpty": "Caja vacía",
-  "lead": "Cuando tu radar ve llegar un ataque, el centro envía un aviso a tu móvil, aunque el juego esté cerrado. Cada aviso se paga con la caja de deuterio del centro.",
+  "lead": "Cuando tu radar ve llegar un ataque, el centro envía un aviso a tu móvil, aunque el juego esté cerrado. Cada aviso gasta deuterio de la caja del centro.",
   "loading": "Cargando el Centro de Avisos…",
   "loadError": "No se pudo cargar el Centro de Avisos.",
   "retry": "Reintentar",
@@ -15,7 +15,7 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Una flota o una flota conjunta de clan rumbo a uno de tus mundos.",
-    "incoming_strategic": "Una Estrella de la Muerte en camino. Cuesta 1,5 veces un aviso de ataque.",
+    "incoming_strategic": "Una Estrella de la Muerte en camino. Gasta 1,5 veces el deuterio de un aviso de ataque.",
     "probe_detected": "Una sonda detectada sobre uno de tus mundos. Se envía al momento."
   },
   "buildCost": "Coste de construcción",
@@ -47,22 +47,22 @@ export const notificationCenter = {
     "T15": "15 min",
     "RADAR": "En radar"
   },
-  "timingRule": "Minutos antes de que llegue el ataque. Un aviso más temprano cuesta más. Si tu radar ve la flota más tarde, el aviso sale en ese momento.",
-  "kindsTitle": "Avisos de pago",
+  "timingRule": "Minutos antes de que llegue el ataque. Un aviso más temprano gasta más deuterio. Si tu radar ve la flota más tarde, el aviso sale en ese momento.",
+  "kindsTitle": "Avisos de radar",
   "recentTitle": "Avisos recientes",
   "status": {
     "PENDING": "En espera",
     "SENT": "Enviado",
     "UNFUNDED": "Caja vacía",
-    "CANCELLED": "Sin cobro",
+    "CANCELLED": "Nada descontado",
     "NO_DEVICE": "Sin móvil"
   },
   "rulesTitle": "Cómo funcionan los avisos",
   "ruleRadar": "Solo hay aviso para una flota que tu radar ve. Sin detección de radar, no hay aviso.",
-  "ruleRecall": "Si el ataque se retira antes de enviar el aviso, no se cobra nada.",
+  "ruleRecall": "Si el ataque se retira antes de enviar el aviso, no sale deuterio de la caja.",
   "ruleShort": "Si la caja no puede pagar, el aviso no se envía. Aparece aquí como «Caja vacía».",
-  "ruleInGame": "El aviso dentro del juego sigue siendo gratis.",
-  "priceRule": "Un aviso de ataque cuesta unas horas de tu producción de deuterio en todos tus mundos, o su mínimo si es mayor. Tu producción: {{rate}} por hora.",
+  "ruleInGame": "El aviso dentro del juego siempre aparece y no gasta deuterio.",
+  "priceRule": "Un aviso de ataque gasta unas horas de tu producción de deuterio en todos tus mundos, o su mínimo si es mayor. Tu producción: {{rate}} por hora.",
   "reading": {
     "NONE": "Sin construir",
     "EMPTY": "Caja vacía",
@@ -92,8 +92,8 @@ export const notificationCenter = {
       "fleet": "Una flota ha vuelto a su mundo de origen.",
       "unnamed": "Un pedido en {{world}} ha terminado."
     },
-    "section": "Avisos gratis en este móvil",
-    "sectionBody": "Este móvil te avisa cuando termina un pedido. Gratis, y se ajusta solo en este móvil.",
+    "section": "Recordatorios de pedidos en este móvil",
+    "sectionBody": "Este móvil te avisa cuando termina un pedido. No gasta deuterio de la caja y se ajusta solo en este móvil.",
     "switch": "Avisarme cuando terminen los pedidos",
     "denied": "El móvil no permitió las notificaciones. Permítelas para Astera Online en los ajustes del móvil.",
     "blocked": "Los avisos de Astera Online están desactivados en los ajustes del móvil. Quedan en pausa hasta que los actives allí.",

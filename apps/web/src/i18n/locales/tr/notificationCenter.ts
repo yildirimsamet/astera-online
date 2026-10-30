@@ -3,7 +3,7 @@ export const notificationCenter = {
   "eyebrow": "Telefon uyarıları",
   "menuHint": "Saldırı inmeden önce telefonuna uyarı al.",
   "menuEmpty": "Kasa boş",
-  "lead": "Radarın yaklaşan bir saldırıyı görünce merkez telefonuna uyarı gönderir; oyun kapalı olsa da. Her uyarı, merkezin döteryum kasasından ödenir.",
+  "lead": "Radarın yaklaşan bir saldırıyı görünce merkez telefonuna uyarı gönderir; oyun kapalı olsa da. Her uyarı, merkezin kasasından döteryum harcar.",
   "loading": "Bildirim Merkezi yükleniyor…",
   "loadError": "Bildirim Merkezi yüklenemedi.",
   "retry": "Tekrar dene",
@@ -15,7 +15,7 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Dünyalarından birine gelen bir filo veya ortak klan filosu.",
-    "incoming_strategic": "Yaklaşan bir Ölüm Yıldızı. Saldırı uyarısının 1,5 katı tutar.",
+    "incoming_strategic": "Yaklaşan bir Ölüm Yıldızı. Saldırı uyarısının 1,5 katı döteryum harcar.",
     "probe_detected": "Dünyalarından birinin üstünde yakalanan bir sonda. Hemen gönderilir."
   },
   "buildCost": "Kurulum bedeli",
@@ -47,22 +47,22 @@ export const notificationCenter = {
     "T15": "15 dk",
     "RADAR": "Radarda"
   },
-  "timingRule": "Saldırının inmesine kalan dakika. Erken uyarı daha pahalıdır. Radarın filoyu daha geç görürse uyarı o an gönderilir.",
-  "kindsTitle": "Ücretli uyarılar",
+  "timingRule": "Saldırının inmesine kalan dakika. Erken uyarı daha çok döteryum harcar. Radarın filoyu daha geç görürse uyarı o an gönderilir.",
+  "kindsTitle": "Radar uyarıları",
   "recentTitle": "Son uyarılar",
   "status": {
     "PENDING": "Bekliyor",
     "SENT": "Gönderildi",
     "UNFUNDED": "Kasa yetmedi",
-    "CANCELLED": "Ücret alınmadı",
+    "CANCELLED": "Kasadan düşülmedi",
     "NO_DEVICE": "Telefon yok"
   },
   "rulesTitle": "Uyarılar nasıl çalışır",
   "ruleRadar": "Uyarı yalnız radarının gördüğü bir filo için gönderilir. Radar görmezse uyarı yok.",
-  "ruleRecall": "Saldırı, uyarı gönderilmeden geri çağrılırsa ücret alınmaz.",
+  "ruleRecall": "Saldırı, uyarı gönderilmeden geri çağrılırsa kasadan döteryum düşülmez.",
   "ruleShort": "Kasa ödeyemezse uyarı gönderilmez. Burada \"Kasa yetmedi\" olarak listelenir.",
-  "ruleInGame": "Oyun içindeki uyarı ücretsiz kalır.",
-  "priceRule": "Saldırı uyarısının ücreti, tüm dünyalarının toplam döteryum üretiminin birkaç saatlik tutarıdır. Bu tutar alt sınırın altındaysa alt sınır ödenir. Üretimin: saatte {{rate}}.",
+  "ruleInGame": "Oyun içindeki uyarı her zaman görünür ve döteryum harcamaz.",
+  "priceRule": "Bir saldırı uyarısı, tüm dünyalarının toplam döteryum üretiminin birkaç saatlik tutarını harcar. Bu tutar alt sınırın altındaysa alt sınır harcanır. Üretimin: saatte {{rate}}.",
   "reading": {
     "NONE": "Kurulmamış",
     "EMPTY": "Kasa boş",
@@ -92,8 +92,8 @@ export const notificationCenter = {
       "fleet": "Bir filo ana dünyasına döndü.",
       "unnamed": "{{world}}: bir sipariş bitti."
     },
-    "section": "Bu telefona ücretsiz uyarılar",
-    "sectionBody": "Bir sipariş bitince bu telefon haber verir. Ücretsizdir ve yalnız bu telefonda ayarlanır.",
+    "section": "Bu telefonda sipariş hatırlatmaları",
+    "sectionBody": "Bir sipariş bitince bu telefon haber verir. Kasadan döteryum harcamaz ve yalnız bu telefonda ayarlanır.",
     "switch": "Siparişler bitince uyar",
     "denied": "Telefon bildirimlere izin vermedi. Telefon ayarlarından Astera Online için izin ver.",
     "blocked": "Astera Online uyarıları telefon ayarlarından kapatılmış. Oradan açana kadar uyarılar duraklatıldı.",

@@ -3,7 +3,7 @@ export const notificationCenter = {
   "eyebrow": "Alertes sur téléphone",
   "menuHint": "Une alerte sur ton téléphone avant qu'une attaque n'arrive.",
   "menuEmpty": "Caisse vide",
-  "lead": "Quand ton radar voit une attaque arriver, le centre envoie une alerte sur ton téléphone, même jeu fermé. Chaque alerte est payée par la caisse de deutérium du centre.",
+  "lead": "Quand ton radar voit une attaque arriver, le centre envoie une alerte sur ton téléphone, même jeu fermé. Chaque alerte prend du deutérium dans la caisse du centre.",
   "loading": "Chargement du Centre d'alertes…",
   "loadError": "Le Centre d'alertes n'a pas pu être chargé.",
   "retry": "Réessayer",
@@ -15,7 +15,7 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Une flotte ou une flotte de clan commune en route vers l'un de tes mondes.",
-    "incoming_strategic": "Une Étoile de la mort en approche. Coûte 1,5 fois une alerte d'attaque.",
+    "incoming_strategic": "Une Étoile de la mort en approche. Prend 1,5 fois le deutérium d'une alerte d'attaque.",
     "probe_detected": "Une sonde repérée au-dessus de l'un de tes mondes. Envoyée tout de suite."
   },
   "buildCost": "Coût de construction",
@@ -47,22 +47,22 @@ export const notificationCenter = {
     "T15": "15 min",
     "RADAR": "Au radar"
   },
-  "timingRule": "Minutes avant l'arrivée de l'attaque. Une alerte plus tôt coûte plus cher. Si ton radar voit la flotte plus tard, l'alerte part à ce moment-là.",
-  "kindsTitle": "Alertes payantes",
+  "timingRule": "Minutes avant l'arrivée de l'attaque. Une alerte plus tôt prend plus de deutérium. Si ton radar voit la flotte plus tard, l'alerte part à ce moment-là.",
+  "kindsTitle": "Alertes radar",
   "recentTitle": "Alertes récentes",
   "status": {
     "PENDING": "En attente",
     "SENT": "Envoyée",
     "UNFUNDED": "Caisse vide",
-    "CANCELLED": "Non facturée",
+    "CANCELLED": "Rien prélevé",
     "NO_DEVICE": "Pas de téléphone"
   },
   "rulesTitle": "Fonctionnement des alertes",
   "ruleRadar": "Une alerte part seulement pour une flotte que ton radar voit. Sans détection radar, pas d'alerte.",
-  "ruleRecall": "Si l'attaque est rappelée avant l'envoi de l'alerte, rien n'est facturé.",
+  "ruleRecall": "Si l'attaque est rappelée avant l'envoi de l'alerte, aucun deutérium ne quitte la caisse.",
   "ruleShort": "Si la caisse ne peut pas payer, l'alerte n'est pas envoyée. Elle apparaît ici comme « Caisse vide ».",
-  "ruleInGame": "L'avertissement dans le jeu reste gratuit.",
-  "priceRule": "Une alerte d'attaque coûte quelques heures de ta production de deutérium sur tous tes mondes, ou son minimum s'il est plus élevé. Ta production : {{rate}} par heure.",
+  "ruleInGame": "L'avertissement dans le jeu s'affiche toujours et ne prend aucun deutérium.",
+  "priceRule": "Une alerte d'attaque prend quelques heures de ta production de deutérium sur tous tes mondes, ou son minimum s'il est plus élevé. Ta production : {{rate}} par heure.",
   "reading": {
     "NONE": "Non construit",
     "EMPTY": "Caisse vide",
@@ -92,8 +92,8 @@ export const notificationCenter = {
       "fleet": "Une flotte est rentrée sur son monde d'origine.",
       "unnamed": "Une commande sur {{world}} est terminée."
     },
-    "section": "Alertes gratuites sur ce téléphone",
-    "sectionBody": "Ce téléphone te prévient quand une commande se termine. Gratuit, et réglé sur ce téléphone seulement.",
+    "section": "Rappels de commandes sur ce téléphone",
+    "sectionBody": "Ce téléphone te prévient quand une commande se termine. Ne prend aucun deutérium dans la caisse, et se règle sur ce téléphone seulement.",
     "switch": "Me prévenir quand une commande se termine",
     "denied": "Le téléphone n'a pas autorisé les notifications. Autorise-les pour Astera Online dans les réglages du téléphone.",
     "blocked": "Les alertes d'Astera Online sont désactivées dans les réglages du téléphone. Elles restent en pause jusqu'à ce que tu les réactives.",

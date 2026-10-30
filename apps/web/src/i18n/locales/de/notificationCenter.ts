@@ -3,7 +3,7 @@ export const notificationCenter = {
   "eyebrow": "Handy-Warnungen",
   "menuHint": "Eine Warnung aufs Handy, bevor ein Angriff einschlägt.",
   "menuEmpty": "Kasse leer",
-  "lead": "Sieht dein Radar einen Angriff kommen, schickt die Zentrale eine Warnung auf dein Handy, auch wenn das Spiel geschlossen ist. Jede Warnung wird aus der Deuterium-Kasse der Zentrale bezahlt.",
+  "lead": "Sieht dein Radar einen Angriff kommen, schickt die Zentrale eine Warnung auf dein Handy, auch wenn das Spiel geschlossen ist. Jede Warnung verbraucht Deuterium aus der Kasse der Zentrale.",
   "loading": "Benachrichtigungszentrale wird geladen…",
   "loadError": "Die Benachrichtigungszentrale konnte nicht geladen werden.",
   "retry": "Erneut versuchen",
@@ -15,7 +15,7 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Eine Flotte oder eine gemeinsame Clanflotte auf dem Weg zu einer deiner Welten.",
-    "incoming_strategic": "Ein Todesstern im Anflug. Kostet das 1,5-Fache einer Angriffswarnung.",
+    "incoming_strategic": "Ein Todesstern im Anflug. Verbraucht das 1,5-Fache an Deuterium einer Angriffswarnung.",
     "probe_detected": "Eine Sonde über einer deiner Welten entdeckt. Wird sofort gesendet."
   },
   "buildCost": "Baukosten",
@@ -47,22 +47,22 @@ export const notificationCenter = {
     "T15": "15 Min.",
     "RADAR": "Bei Radar"
   },
-  "timingRule": "Minuten vor dem Einschlag. Eine frühere Warnung kostet mehr. Sieht dein Radar die Flotte später, geht die Warnung dann raus.",
-  "kindsTitle": "Bezahlte Warnungen",
+  "timingRule": "Minuten vor dem Einschlag. Eine frühere Warnung verbraucht mehr Deuterium. Sieht dein Radar die Flotte später, geht die Warnung dann raus.",
+  "kindsTitle": "Radarwarnungen",
   "recentTitle": "Letzte Warnungen",
   "status": {
     "PENDING": "Wartet",
     "SENT": "Gesendet",
     "UNFUNDED": "Kasse leer",
-    "CANCELLED": "Nicht berechnet",
+    "CANCELLED": "Nichts abgebucht",
     "NO_DEVICE": "Kein Handy"
   },
   "rulesTitle": "So funktionieren Warnungen",
   "ruleRadar": "Eine Warnung gibt es nur für eine Flotte, die dein Radar sieht. Ohne Radarsichtung keine Warnung.",
-  "ruleRecall": "Wird der Angriff zurückgerufen, bevor die Warnung rausgeht, wird nichts berechnet.",
+  "ruleRecall": "Wird der Angriff zurückgerufen, bevor die Warnung rausgeht, verlässt kein Deuterium die Kasse.",
   "ruleShort": "Kann die Kasse nicht zahlen, wird die Warnung nicht gesendet. Sie steht hier als „Kasse leer“.",
-  "ruleInGame": "Die Warnung im Spiel bleibt kostenlos.",
-  "priceRule": "Eine Angriffswarnung kostet einige Stunden deiner Deuterium-Produktion auf allen Welten, mindestens aber ihren Mindestpreis. Deine Produktion: {{rate}} pro Stunde.",
+  "ruleInGame": "Die Warnung im Spiel erscheint immer und verbraucht kein Deuterium.",
+  "priceRule": "Eine Angriffswarnung verbraucht einige Stunden deiner Deuterium-Produktion auf allen Welten, mindestens aber ihr Minimum. Deine Produktion: {{rate}} pro Stunde.",
   "reading": {
     "NONE": "Nicht gebaut",
     "EMPTY": "Kasse leer",
@@ -92,8 +92,8 @@ export const notificationCenter = {
       "fleet": "Eine Flotte ist zurück auf ihrer Heimatwelt.",
       "unnamed": "Ein Auftrag auf {{world}} ist fertig."
     },
-    "section": "Kostenlose Warnungen auf diesem Handy",
-    "sectionBody": "Dieses Handy meldet sich, wenn ein Auftrag fertig ist. Kostenlos und nur auf diesem Handy eingestellt.",
+    "section": "Auftragserinnerungen auf diesem Handy",
+    "sectionBody": "Dieses Handy meldet sich, wenn ein Auftrag fertig ist. Verbraucht kein Deuterium aus der Kasse und wird nur auf diesem Handy eingestellt.",
     "switch": "Melden, wenn Aufträge fertig sind",
     "denied": "Das Handy hat Benachrichtigungen nicht erlaubt. Erlaube sie für Astera Online in den Einstellungen des Handys.",
     "blocked": "Warnungen für Astera Online sind in den Einstellungen des Handys ausgeschaltet. Sie pausieren, bis du sie dort einschaltest.",

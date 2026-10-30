@@ -3,7 +3,7 @@ export const notificationCenter = {
   "eyebrow": "Phone alerts",
   "menuHint": "Get a phone alert before an attack lands.",
   "menuEmpty": "Empty",
-  "lead": "When your radar sees an attack coming, the center sends an alert to your phone, even with the game closed. Each alert is paid from the center's deuterium wallet.",
+  "lead": "When your radar sees an attack coming, the center sends an alert to your phone, even with the game closed. Each alert uses deuterium from the center's wallet.",
   "loading": "Loading the Notification Center…",
   "loadError": "The Notification Center could not be loaded.",
   "retry": "Try again",
@@ -15,7 +15,7 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "A fleet or a joint clan fleet on the way to one of your worlds.",
-    "incoming_strategic": "A Death Star on the way. Costs 1.5× an attack alert.",
+    "incoming_strategic": "A Death Star on the way. Uses 1.5× the deuterium of an attack alert.",
     "probe_detected": "A probe caught over one of your worlds. Sent at once."
   },
   "buildCost": "Build cost",
@@ -47,22 +47,22 @@ export const notificationCenter = {
     "T15": "15 min",
     "RADAR": "On radar"
   },
-  "timingRule": "Minutes before the attack lands. An earlier alert costs more. If your radar sees the fleet later, the alert goes out when it does.",
-  "kindsTitle": "Paid alerts",
+  "timingRule": "Minutes before the attack lands. An earlier alert uses more deuterium. If your radar sees the fleet later, the alert goes out when it does.",
+  "kindsTitle": "Radar alerts",
   "recentTitle": "Recent alerts",
   "status": {
     "PENDING": "Waiting",
     "SENT": "Sent",
     "UNFUNDED": "Wallet short",
-    "CANCELLED": "Not charged",
+    "CANCELLED": "Nothing taken",
     "NO_DEVICE": "No phone"
   },
   "rulesTitle": "How alerts work",
   "ruleRadar": "An alert goes out only for a fleet your radar sees. No radar sighting, no alert.",
-  "ruleRecall": "If the attack is called back before the alert goes out, nothing is charged.",
+  "ruleRecall": "If the attack is called back before the alert goes out, no deuterium leaves the wallet.",
   "ruleShort": "If the wallet cannot pay, the alert is not sent. It is listed here as wallet short.",
-  "ruleInGame": "The warning inside the game stays free.",
-  "priceRule": "An attack alert costs a number of hours of your deuterium output on all worlds, or its minimum if that is higher. Your output: {{rate}} per hour.",
+  "ruleInGame": "The warning inside the game always shows and uses no deuterium.",
+  "priceRule": "An attack alert uses a few hours of your deuterium output on all worlds, or its minimum if that is higher. Your output: {{rate}} per hour.",
   "reading": {
     "NONE": "Not built",
     "EMPTY": "Wallet empty",
@@ -92,8 +92,8 @@ export const notificationCenter = {
       "fleet": "A fleet is back at its home world.",
       "unnamed": "An order on {{world}} is finished."
     },
-    "section": "Free alerts on this phone",
-    "sectionBody": "This phone tells you when an order finishes. Free, and set on this phone only.",
+    "section": "Order reminders on this phone",
+    "sectionBody": "This phone tells you when an order finishes. Uses no deuterium from the wallet, and is set on this phone only.",
     "switch": "Alert me when orders finish",
     "denied": "The phone did not allow notifications. Allow them for Astera Online in the phone's settings.",
     "blocked": "Alerts for Astera Online are turned off in the phone settings. They stay paused until you turn them on there.",
