@@ -339,6 +339,23 @@ it('also settles radiation deaths in a neutral NPC planet through the offline bo
   expect((await readHomeHealth(f.db, home)).fleet.DART ?? 0).toBe(0);
 });
 
+it('a read-only view already drops a docked ship the radiation killed, exactly as the next settle stores it', async () => {
+  await giveUnits(f.db, home, { DART: 2 });
+  await f.db.transaction(tx => writeHomeHealth(tx, home, { DART: 2 }, [{ hull: 'DART', count: 1, damageBp: 9500 }]));
+  await maintenanceAction(f.db, f.playerIds[1]!, home, 'DOCK', { source: 'HOME', groups: [{ hull: 'DART', count: 1, damageBp: 9500 }] }, randomUUID(), f.clock);
+  await hit();
+  f.clock.advance(61);
+  const read = () => f.db.transaction(tx => loadPlanetViewsData(tx, [home], f.clock).then(views => buildPlanetView(views[0]!)),
+    { accessMode: 'read only' });
+  const before = await read();
+  // The stored lot still holds the ship: only the projection knows it has died.
+  expect(await dockLotsOf(f.db, home)).toHaveLength(1);
+  expect(before.dock.lots).toHaveLength(0);
+  await f.db.transaction(tx => loadLocked(tx, home, f.clock));
+  expect(await dockLotsOf(f.db, home)).toHaveLength(0);
+  expect((await read()).dock).toEqual(before.dock);
+});
+
 it('keeps dock injuries authoritative in the dock lot, including read-only projection and partial evacuation', async () => {
   await giveUnits(f.db, home, { CITADEL: 3 });
   await f.db.transaction(tx => writeHomeHealth(tx, home, { CITADEL: 3 }, [{ hull: 'CITADEL', count: 3, damageBp: 5000 }]));
