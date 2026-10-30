@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lt, or } from 'drizzle-orm';
 import { SHIELD, shieldHp, type Segment } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { buildings, planetAegisEpochs, planetFaults, planets, satellites } from '../db/schema.js';
@@ -6,7 +6,7 @@ import { buildings, planetAegisEpochs, planetFaults, planets, satellites } from 
 import { beginPlanetRadiationBoundary } from './planetRadiation.js';
 
 type Planet = typeof planets.$inferSelect;
-interface Hardware { coreLevel: number; aegisLevel: number; coreOffline: boolean }
+export interface Hardware { coreLevel: number; aegisLevel: number; coreOffline: boolean }
 
 /** A full level protects only once at least one whole HP has recharged. */
 async function stateOf(db: Queryable, world: Planet, hardware?: Hardware) {
@@ -48,12 +48,11 @@ export async function syncPlanetAegis(tx: Tx, world: Planet, at: Date, initialAt
 }
 
 /** Every parked cohort and its death prediction share the same historical protection path. */
-export async function planetRadiationPath(db: Queryable, world: Planet, from: number, until: number): Promise<Segment[]> {
+export async function planetRadiationPath(db: Queryable, world: Planet, from: number, until: number,
+  prefetched?: { epochs: readonly (typeof planetAegisEpochs.$inferSelect)[]; hardware: Hardware }): Promise<Segment[]> {
   if (until <= from) return [];
-  const epochs = await db.select().from(planetAegisEpochs).where(and(eq(planetAegisEpochs.planetId, world.id),
-    lt(planetAegisEpochs.startsAt, new Date(until)), or(isNull(planetAegisEpochs.endsAt), gt(planetAegisEpochs.endsAt, new Date(from)))))
-    .orderBy(asc(planetAegisEpochs.startsAt));
-  const fallback = epochs.length === 0 ? await stateOf(db, world) : null;
+  const epochs = prefetched?.epochs ?? await aegisEpochsOver(db, [world.id], from, until);
+  const fallback = epochs.length === 0 ? await stateOf(db, world, prefetched?.hardware) : null;
   const periods = epochs.length ? epochs : [{ startsAt: new Date(from), endsAt: null, level: fallback?.level ?? 0, activeFrom: fallback?.activeFrom ?? null }];
   const boundaries = [...new Set([from, until, ...periods.flatMap(row => [row.startsAt.getTime(), row.endsAt?.getTime(), row.activeFrom?.getTime()])
     .filter((at): at is number => at !== undefined && at > from && at < until)])].sort((a, b) => a - b);
@@ -63,6 +62,13 @@ export async function planetRadiationPath(db: Queryable, world: Planet, from: nu
     const protection = epoch?.activeFrom && epoch.activeFrom.getTime() <= startMs ? epoch.level : 0;
     return { from: world, to: world, startMs, endMs, target: { kind: 'PLANET', id: world.id }, radiationProtectionHpPerMinute: protection };
   });
+}
+
+/** The epochs `planetRadiationPath` reads, for every world in `planetIds`, oldest first. */
+export async function aegisEpochsOver(db: Queryable, planetIds: readonly string[], from: number, until: number) {
+  return db.select().from(planetAegisEpochs).where(and(inArray(planetAegisEpochs.planetId, [...planetIds]),
+    lt(planetAegisEpochs.startsAt, new Date(until)), or(isNull(planetAegisEpochs.endsAt), gt(planetAegisEpochs.endsAt, new Date(from)))))
+    .orderBy(asc(planetAegisEpochs.startsAt));
 }
 
 /** Physical changes call this after writing charge/hardware, at their actual event instant. */

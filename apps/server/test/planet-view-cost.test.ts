@@ -41,14 +41,15 @@ it('reads commander research and clan membership once for a multi-world response
   const reads = (table: string) => queries.filter(q => q.startsWith('select ') && q.includes(`from "${table}"`));
   expect(reads('player_research')).toHaveLength(1);
   expect(reads('clan_memberships')).toHaveLength(1);
-  expect(reads('strategic_assets')).toHaveLength(2);
+  // One read per table for both worlds (scaling plan F1.4).
+  expect(reads('strategic_assets')).toHaveLength(1);
   expect(reads('research_orders')).toHaveLength(1);
   expect((await built.app.inject({ url: `/api/planets/${f.planetIds[2]!}`, headers: { authorization } })).statusCode).toBe(403);
 });
 
-it('loads every further world concurrently once the commander snapshot is known', async () => {
-  // Resource analysis follow-up 2026-10-14: worlds were loaded one after another,
-  // ~8 dependent round trips each, inside one snapshot that does not need the order.
+it('reads every world of a list in one statement per table', async () => {
+  // Resource analysis follow-up 2026-10-14 loaded the worlds concurrently; scaling
+  // plan F1.4 reads them together, so a third world adds no statement at all.
   const f = await seedWorld(3);
   await f.db.update(schema.seasons).set({ rulesetVersion: 15 }).where(eq(schema.seasons.id, f.seasonId));
   for (const id of [f.planetIds[1]!, f.planetIds[2]!]) {
@@ -57,20 +58,16 @@ it('loads every further world concurrently once the commander snapshot is known'
   }
   built = buildApp({ db, env: testEnv(), clock: f.clock, logger: pino({ level: 'silent' }) });
   const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
-  const events: string[] = [];
-  const load = viewModule.loadPlanetViewData;
-  vi.spyOn(viewModule, 'loadPlanetViewData').mockImplementation(async (...args) => {
-    events.push(`start:${args[1]}`);
-    const data = await load(...args);
-    events.push(`end:${args[1]}`);
-    return data;
-  });
+  const single = vi.spyOn(viewModule, 'loadPlanetViewData');
+  queries.length = 0;
   const response = await built.app.inject({ url: '/api/planets', headers: { authorization } });
   expect(response.statusCode).toBe(200);
-  const colonies = [f.planetIds[1]!, f.planetIds[2]!];
-  const firstColonyEnd = Math.min(...colonies.map(id => events.indexOf(`end:${id}`)));
-  for (const id of colonies) expect(events.indexOf(`start:${id}`)).toBeLessThan(firstColonyEnd);
-  expect(events.slice(0, 2)).toEqual([`start:${f.planetIds[0]!}`, `end:${f.planetIds[0]!}`]);
+  expect(response.json<{ planets: unknown[] }>().planets).toHaveLength(3);
+  expect(single).not.toHaveBeenCalled();
+  // `buildings` is read twice by design: the commander's colony standing reads their cores.
+  for (const table of ['satellites', 'units', 'planet_faults', 'build_orders', 'ship_damage_lots', 'strategic_assets']) {
+    expect(queries.filter(q => q.startsWith('select ') && q.includes(`from "${table}"`)), table).toHaveLength(1);
+  }
 });
 
 it('reads each world unit inventory once when preparing a private view', async () => {

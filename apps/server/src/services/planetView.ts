@@ -41,15 +41,15 @@ import {
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
-import { baysOf } from './flight.js';
-import { loadPlanetViewState, GameError, type LockedPlanet } from './planet.js';
+import { baysFor, baysOf } from './flight.js';
+import { loadPlanetViewState, loadPlanetViewStates, GameError, type LockedPlanet } from './planet.js';
 import { asTech, buildResearchView, loadResearchViewData } from './researchState.js';
-import { dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
+import { dockLotsFor, dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
 import { buildDefencePostureView } from './defencePosture.js';
 import { activeClanMembership } from './clanCombat.js';
-import { clanSupportBayView } from './clanSupportView.js';
-import { workshopRadiation } from './workshop.js';
+import { clanSupportBayView, clanSupportBayViews } from './clanSupportView.js';
+import { workshopRadiation, workshopRadiationFor } from './workshop.js';
 import { readHonorPlayerPolicy } from './honorBenefits.js';
 import {
   activeResearchOrders,
@@ -110,6 +110,22 @@ function departureOf(
   return at < p.seasonEndsAt.getTime() ? new Date(at) : null;
 }
 
+/** What a world's pad and interceptor bay show. */
+const PAD_HARDWARE = or(
+  and(inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
+    inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY'])),
+  and(inArray(strategicAssets.type, ['RADIATION_BOMB_L1', 'RADIATION_BOMB_L2', 'RADIATION_BOMB_L3']),
+    inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY', 'LAUNCHED'])),
+);
+
+/** A run at the convoy occurrence that is up at `now`. */
+const convoyStruck = (now: Date) => and(
+  // An abandoned outbound run released its ration; the control stays live.
+  isNull(intergalacticConvoyRuns.abandonedAt),
+  lte(galaxyEventOccurrences.startsAt, now),
+  gt(galaxyEventOccurrences.endsAt, now),
+);
+
 /** Shared only across worlds in one transaction, never across requests or writes. */
 async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
   const [[player], researchData, researchQueue, colonies, membership, honor, pvpBalance] = await Promise.all([
@@ -147,15 +163,8 @@ export async function loadPlanetViewData(
   */
   const [commander, assets, queued, [activeConvoy], [spentConvoy], dockLots, flight, clanSupport, workshopIrradiated] = await Promise.all([
     shared ?? loadCommanderViewData(tx, p),
-    tx.select().from(strategicAssets).where(and(
-      eq(strategicAssets.planetId, planetId),
-      or(
-        and(inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
-          inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY'])),
-        and(inArray(strategicAssets.type, ['RADIATION_BOMB_L1', 'RADIATION_BOMB_L2', 'RADIATION_BOMB_L3']),
-          inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY', 'LAUNCHED'])),
-      ),
-    )).orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
+    tx.select().from(strategicAssets).where(and(eq(strategicAssets.planetId, planetId), PAD_HARDWARE))
+      .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
     tx.select().from(buildOrders)
       .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
       .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
@@ -187,13 +196,7 @@ export async function loadPlanetViewData(
         galaxyEventOccurrences,
         eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
       )
-      .where(and(
-        eq(intergalacticConvoyRuns.planetId, planetId),
-        // An abandoned outbound run released its ration; the control stays live.
-        isNull(intergalacticConvoyRuns.abandonedAt),
-        lte(galaxyEventOccurrences.startsAt, p.now),
-        gt(galaxyEventOccurrences.endsAt, p.now),
-      ))
+      .where(and(eq(intergalacticConvoyRuns.planetId, planetId), convoyStruck(p.now)))
       .limit(1),
     dockLotsOf(tx, planetId, unitRows),
     baysOf(tx, planetId, p.buildings.CORE),
@@ -205,6 +208,57 @@ export async function loadPlanetViewData(
 }
 
 export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewData>>;
+
+/**
+ * EVERY WORLD OF ONE COMMANDER, READ ONLY, ONE READ PER TABLE. Scaling plan F1.4 (M9).
+ *
+ * What `loadPlanetViewData` captures for each world, read for all of them at once:
+ * four worlds cost what one does. In the caller's order, from one clock instant; the
+ * first world brings the commander and the rest must belong to the same one.
+ */
+export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], clock: Clock): Promise<PlanetViewData[]> {
+  if (planetIds.length === 0) return [];
+  const now = clock.now();
+  const states = await loadPlanetViewStates(tx, planetIds, { now: () => now });
+  const head = states[0]!.planet;
+  const ids = states.map(state => state.planet.planetId);
+  const rows = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
+  const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop] = await Promise.all([
+    loadCommanderViewData(tx, head),
+    tx.select().from(strategicAssets).where(and(inArray(strategicAssets.planetId, ids), PAD_HARDWARE))
+      .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
+    tx.select().from(buildOrders)
+      .where(and(inArray(buildOrders.planetId, ids), eq(buildOrders.status, 'BUILDING')))
+      .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
+    tx.select({ id: intergalacticConvoyRuns.id, planetId: intergalacticConvoyRuns.planetId })
+      .from(intergalacticConvoyRuns)
+      .where(and(inArray(intergalacticConvoyRuns.planetId, ids), ne(intergalacticConvoyRuns.status, 'done'))),
+    tx.select({ id: intergalacticConvoyRuns.id, planetId: intergalacticConvoyRuns.planetId })
+      .from(intergalacticConvoyRuns)
+      .innerJoin(galaxyEventOccurrences, eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId))
+      .where(and(inArray(intergalacticConvoyRuns.planetId, ids), convoyStruck(head.now))),
+    dockLotsFor(tx, new Map(states.map(state => [state.planet.planetId, state.unitRows]))),
+    baysFor(tx, states.map(state => ({ id: state.planet.planetId, coreLevel: state.planet.buildings.CORE }))),
+    clanSupportBayViews(tx, { hangarLevels: new Map(states.map(state => [state.planet.planetId, state.planet.buildings.HANGAR])),
+      rulesetVersion: head.rulesetVersion, at: head.now }),
+    workshopRadiationFor(tx, states[0]!.season, head.now, states.map(state => ({ row: state.row, hardware: {
+      coreLevel: state.buildingRows.find(row => row.type === 'CORE')?.level ?? 0,
+      aegisLevel: state.satelliteRows.find(row => row.type === 'AEGIS')?.level ?? 0,
+      coreOffline: state.faultRows.some(row => row.kind === 'CORE_OUTAGE'),
+    } }))),
+  ]);
+  return states.map(({ planet: p, unitRows, faultRows }) => ({
+    p, commander, unitRows, faultRows,
+    assets: rows(assets, p.planetId),
+    queued: rows(queued, p.planetId),
+    activeConvoy: active.find(run => run.planetId === p.planetId),
+    spentConvoy: spent.find(run => run.planetId === p.planetId),
+    dockLots: dockLots.get(p.planetId) ?? [],
+    flight: flight.get(p.planetId)!,
+    clanSupport: clanSupport.get(p.planetId) ?? null,
+    workshopIrradiated: workshop.get(p.planetId) ?? false,
+  }));
+}
 
 /** Apply to the transaction promise, so rendering never prolongs its world locks. */
 export function buildPlanetResult<T extends { planet: PlanetViewData }>(result: T) {

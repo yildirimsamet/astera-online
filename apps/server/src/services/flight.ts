@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql, type SQL } from 'drizzle-orm';
 import { clanBayAvailable, flightSlots, hasFault, type FaultSet } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
@@ -73,7 +73,7 @@ const isClanWarLeg = sql`EXISTS (
   SELECT 1 FROM ${clanWarMissions} WHERE ${clanWarMissions.missionId} = ${missions.id}
 )`;
 
-const minesOf = (planetId: string) =>
+const minesOf = (planetId: string | SQL) =>
   and(
     eq(missions.status, 'in_flight'),
     // Probes are paid intelligence packets paced per target, not fleet squadrons.
@@ -147,6 +147,22 @@ export const isHostileMission = (
  * Monument fragments share their root's bay until the last fragment returns.
  */
 export async function baysInUse(tx: Queryable, planetId: string): Promise<number> {
+  const [row] = await tx.execute<{ used: number }>(sql`select ${bayCount(tx, planetId)} as used`);
+  return row?.used ?? 0;
+}
+
+/** `baysOf` for several worlds in one statement: the same count, correlated per world. Scaling plan F1.4. */
+export async function baysFor(tx: Queryable, worlds: readonly { id: string; coreLevel: number }[]): Promise<Map<string, BayCount>> {
+  if (worlds.length === 0) return new Map();
+  const ids = sql.join(worlds.map(world => sql`${world.id}::uuid`), sql`, `);
+  const rows = await tx.execute<{ id: string; used: number }>(
+    sql`select w.id, ${bayCount(tx, sql`w.id`)} as used from unnest(array[${ids}]) as w(id)`);
+  const used = new Map(rows.map(row => [row.id, row.used]));
+  return new Map(worlds.map(world => [world.id, { used: used.get(world.id) ?? 0, total: flightSlots(world.coreLevel) }]));
+}
+
+/** `planetId` is a value, or a column a caller correlates the count with. */
+function bayCount(tx: Queryable, planetId: string | SQL): SQL {
   const bombs = tx.select({ n: sql<number>`count(*)::int` }).from(radiationBombFlights)
     .where(and(eq(radiationBombFlights.originPlanetId, planetId), eq(radiationBombFlights.status, 'OUTBOUND')));
   const flights = tx
@@ -210,8 +226,7 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
       or(eq(unknownSignals.originPlanetId, planetId), and(eq(planets.kind, 'CAPITAL'),
         sql`not exists (select 1 from planets p where p.id = ${unknownSignals.originPlanetId} and p.player_id = ${unknownSignals.playerId})`))));
-  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}) + (${bombs}) + (${signals}))::int as used`);
-  return row?.used ?? 0;
+  return sql`((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}) + (${bombs}) + (${signals}))::int`;
 }
 
 export interface BayCount {

@@ -6,7 +6,7 @@ import { beforeCommit } from '../db/finalizers.js';
 import { buildOrders, planets, radiationBombFlights, researchOrders, seasons, shipDamageLots, units } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { techOf } from './researchState.js';
-import { hpSourcesForTarget } from './radiationSources.js';
+import { hpSourcesForTarget, targetSourcesFrom, type planetAnchoredSources } from './radiationSources.js';
 import { GameError, recomputePlayerWealth } from './planet.js';
 import { publish } from '../stream/bus.js';
 import { publishWatchChanges } from './watchEvents.js';
@@ -49,13 +49,32 @@ export function noteRadiationInventoryChange(tx: Tx, playerId: string, observedA
 
 
 /** Read-only and mutation paths run exactly the same projection on physical home/dock rows. */
+/**
+ * The two reads every projection starts with, already made for a whole list of
+ * worlds (scaling plan F1.4): the next bomb due and the sources anchored on it,
+ * read up to the same `until` this function begins from.
+ */
+export interface PrefetchedRadiation {
+  pendingImpact: { arriveAt: Date } | null;
+  anchored: Awaited<ReturnType<typeof planetAnchoredSources>>;
+}
+
+/** `projectPlanetRadiation`'s pending-impact read, for every world in `planetIds`; earliest first. */
+export async function pendingRadiationImpacts(tx: Queryable, planetIds: readonly string[], until: Date) {
+  return tx.select({ targetPlanetId: radiationBombFlights.targetPlanetId, arriveAt: radiationBombFlights.arriveAt })
+    .from(radiationBombFlights)
+    .where(and(inArray(radiationBombFlights.targetPlanetId, [...planetIds]), eq(radiationBombFlights.status, 'OUTBOUND'),
+      lt(radiationBombFlights.arriveAt, until))).orderBy(asc(radiationBombFlights.arriveAt));
+}
+
 export async function projectPlanetRadiation(tx: Queryable, planet: Planet, season: Season,
-  inventory: readonly Unit[], at: Date) {
+  inventory: readonly Unit[], at: Date, prefetched?: PrefetchedRadiation) {
   const epoch = season.radiationBombStartsAt;
   let until = new Date(Math.min(at.getTime(), (season.closedAt ?? season.endsAt).getTime()));
-  const [pendingImpact] = epoch ? await tx.select({ arriveAt: radiationBombFlights.arriveAt }).from(radiationBombFlights)
-    .where(and(eq(radiationBombFlights.targetPlanetId, planet.id), eq(radiationBombFlights.status, 'OUTBOUND'),
-      lt(radiationBombFlights.arriveAt, until))).orderBy(asc(radiationBombFlights.arriveAt)).limit(1) : [];
+  const [pendingImpact] = !epoch ? [] : prefetched ? (prefetched.pendingImpact ? [prefetched.pendingImpact] : [])
+    : await tx.select({ arriveAt: radiationBombFlights.arriveAt }).from(radiationBombFlights)
+      .where(and(eq(radiationBombFlights.targetPlanetId, planet.id), eq(radiationBombFlights.status, 'OUTBOUND'),
+        lt(radiationBombFlights.arriveAt, until))).orderBy(asc(radiationBombFlights.arriveAt)).limit(1);
   if (pendingImpact) until = pendingImpact.arriveAt;
   const from = new Date(Math.max(epoch?.getTime() ?? until.getTime(), planet.radiationSettledAt?.getTime() ?? epoch?.getTime() ?? until.getTime()));
   const noSources: HpRadiationSource[] = [];
@@ -64,7 +83,10 @@ export async function projectPlanetRadiation(tx: Queryable, planet: Planet, seas
     dock: new Map<string, HpDamageLot>(), changed: false, lostHome: false,
     pendingImpact: pendingImpact !== undefined, pendingResearch: false, pendingSource: false };
   if (!epoch || until <= from) return unchanged;
-  const sources = await hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, from, until);
+  const sources = prefetched
+    ? targetSourcesFrom(season, prefetched.anchored.filter(row => row.activeFrom < until
+      && (row.activeUntil === null || row.activeUntil > from)))
+    : await hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, from, until);
   if (sources.length === 0) return unchanged;
   const sourceBoundary = sources.some(source => source.origin === 'ENVIRONMENT'
     && [source.activeFromMs, source.activeUntilMs].some(at => at !== null && at >= from.getTime() && at < until.getTime()));

@@ -81,15 +81,33 @@ export async function dockLotsOf(tx: Queryable, planetId: string, inventory?: re
     eq(units.planetId, planetId),
     inArray(units.location, lots.map((lot) => dockLocation(lot.id))),
   ));
-  const counts = new Map(rows.map((row) => [row.location, row.count]));
-  // Only an explicit projected inventory can override canonical dock HP.
-  const projectedDamage = new Map((inventory ?? []).filter(row => row.damage.length > 0).map(row => [row.location, row.damage[0]! ]));
+  return dockedLots(lots, rows, await runningRepairs(tx, lots), inventory);
+}
+
+/** `dockLotsOf` for several worlds, each with its projected inventory. Scaling plan F1.4. */
+export async function dockLotsFor(tx: Queryable,
+  inventories: ReadonlyMap<string, readonly (typeof units.$inferSelect)[]>): Promise<Map<string, DockedLot[]>> {
+  const lots = await tx.select().from(shipDamageLots)
+    .where(inArray(shipDamageLots.planetId, [...inventories.keys()]))
+    .orderBy(asc(shipDamageLots.createdAt), asc(shipDamageLots.id));
+  const running = await runningRepairs(tx, lots);
+  return new Map([...inventories].map(([planetId, inventory]) => [planetId,
+    dockedLots(lots.filter(lot => lot.planetId === planetId), inventory, running, inventory)]));
+}
+
+async function runningRepairs(tx: Queryable, lots: readonly (typeof shipDamageLots.$inferSelect)[]): Promise<Set<string>> {
   const orderIds = lots.flatMap((lot) => (lot.repairOrderId ? [lot.repairOrderId] : []));
-  const running = new Set(orderIds.length === 0 ? [] : (await tx.select({ id: buildOrders.id })
+  return new Set(orderIds.length === 0 ? [] : (await tx.select({ id: buildOrders.id })
     .from(buildOrders)
     .where(and(inArray(buildOrders.id, orderIds), eq(buildOrders.status, 'BUILDING'))))
     .map((order) => order.id));
+}
 
+function dockedLots(lots: readonly (typeof shipDamageLots.$inferSelect)[], rows: readonly (typeof units.$inferSelect)[],
+  running: ReadonlySet<string>, inventory?: readonly (typeof units.$inferSelect)[]): DockedLot[] {
+  const counts = new Map(rows.map((row) => [row.location, row.count]));
+  // Only an explicit projected inventory can override canonical dock HP.
+  const projectedDamage = new Map((inventory ?? []).filter(row => row.damage.length > 0).map(row => [row.location, row.damage[0]! ]));
   return lots.flatMap((lot) => {
     const count = counts.get(dockLocation(lot.id)) ?? 0;
     if (count <= 0) return [];

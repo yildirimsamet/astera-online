@@ -4,8 +4,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { createDb } from '../src/db/client.js';
-import { eq } from 'drizzle-orm';
-import { planets, scheduledEvents, seasons } from '../src/db/schema.js';
+import { scheduledEvents } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { seedWorld, testEnv, TEST_DATABASE_URL } from './helpers.js';
 
@@ -44,12 +43,10 @@ it('reports the statements one request ran and keeps the per-route distribution'
 });
 
 it('never mixes the counts of concurrent requests', async () => {
-  const { f, get } = await app(3);
-  // A colony makes the first commander's list cost more than the second's single world.
-  await f.db.update(seasons).set({ rulesetVersion: 15 }).where(eq(seasons.id, f.seasonId));
-  await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, f.planetIds[2]!));
+  const { get } = await app(2);
+  // Two routes of different cost: a world list costs the same for one world or four (F1.4).
   const list = () => get('/api/planets');
-  const one = () => get(`/api/planets/${f.planetIds[1]!}`, 1);
+  const one = () => get('/api/auth/me', 1);
   await list(); await one();
   const [listCost, oneCost] = [statements(await list()), statements(await one())];
   expect(listCost).not.toBe(oneCost);

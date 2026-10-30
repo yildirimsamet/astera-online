@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, ne, notLike, or, sql } from 'drizzle-orm';
 import { observeHonorOwner } from './honorReference.js';
-import { persistPlanetRadiation, projectPlanetRadiation } from './planetRadiation.js';
+import { pendingRadiationImpacts, persistPlanetRadiation, projectPlanetRadiation } from './planetRadiation.js';
+import { planetAnchoredSources } from './radiationSources.js';
 import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import {
   BUILDING_IDS,
@@ -533,16 +534,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const season = await seasonRow(tx, identity.seasonId, options.requireLive ?? true, options.lockSeason ?? true);
   const query = tx.select().from(planets).where(eq(planets.id, planetId));
   const [row] = options.mutate ? await query.for('update') : await query;
-  if (!row) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
-  if (row.seasonId !== season.id) {
-    throw new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
-  }
-  if (!row.controllerPlayerId || row.kind === 'NEUTRAL') {
-    throw new GameError('PLANET_NOT_OWNED', 'That world has no commander', 403);
-  }
-  if (options.expectedPlayerId !== undefined && row.controllerPlayerId !== options.expectedPlayerId) {
-    throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-  }
+  assertPlanetRow(row, season, options.expectedPlayerId);
 
   const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
@@ -552,33 +544,8 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
-  const silentSpace = shard?.role === 'WAITING';
-  const faults = faultRows.map((fault) => fault.kind);
-  /*
-    THE LEAK'S OWN CEILING, and it is read off the fault rather than the world.
-
-    `FAULT.leakTotalStores` caps what ONE occurrence may cost. A vault repaired and
-    broken again is a second flood with a second budget, which is what the commander
-    paid the repair for.
-  */
-  const leak = faultRows.find((fault) => fault.kind === 'VAULT_LEAK');
-  /*
-    SPENT = WHAT REACHED ORBIT + WHAT IS ON ITS WAY THERE.
-
-    The fault row counts only what a flush has already turned into a field; the rest is
-    sitting in `pending_leak_*` on this row. Passing the first without the second would
-    let a leak overrun its ceiling by one flush interval every time — and the flush
-    moves the figure between the two columns, so their sum is what the ceiling is
-    actually about.
-  */
-  const leakedSoFar = leak && {
-    alloy: leak.leakedAlloy + row.pendingLeakAlloy,
-    crystal: leak.leakedCrystal + row.pendingLeakCrystal,
-    deuterium: leak.leakedDeuterium + row.pendingLeakDeuterium,
-  };
-
-  const levels = buildingLevelsFrom(buildingRows);
-  const { instruments, effectiveInstruments, orbit, storedOrbit } = hardwareOf(satelliteRows, levels);
+  const inputs: PlanetInputs = { row, season, buildingRows, satelliteRows, unitRows, faultRows, silentSpace: shard?.role === 'WAITING' };
+  const { levels, instruments, faults } = hardwareInputs(inputs);
 
   if (season.radiationBombStartsAt) {
     if (options.mutate) await syncPlanetAegis(tx, row, options.radiationAt ?? clock.now(),
@@ -589,36 +556,8 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     unitRows.splice(0, unitRows.length, ...projection.rows);
   }
 
-  const homeFleet: Fleet = {};
-  const ground: Fleet = {};
-  for (const u of unitRows) {
-    if (u.count <= 0 || u.location !== 'home') continue;
-    (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
-  }
-
-  const { state: advanced, now, produced, productiveSeconds } = economyAt(
-    row,
-    levels,
-    { effectiveInstruments, orbit },
-    season,
-    clock.now(),
-    faults,
-    leakedSoFar ?? undefined,
-    silentSpace ? SILENT_SPACE.productionPace : 1,
-  );
-
-  /*
-    SADAKAT DUVAR SAATİYLE İLERLER, üretken dakikalarla değil.
-
-    The gradual drain is about NEGLECT, not output: a raid that stopped the works
-    did not repair anything, and a world sitting broken through a disruption is
-    still sitting broken.
-    The shield already keeps wall time for the same kind of reason.
-
-    Capitals have no loyalty, while colonies below the fault gate can still lose
-    it in battle and recover it on the same clock as every other colony.
-  */
-  const loyalty = loyaltyAt(row, levels, faults.length, now);
+  const economy = planetEconomy(inputs, clock);
+  const { advanced, now, produced, productiveSeconds, loyalty } = economy;
 
   if (options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
     /*
@@ -693,7 +632,163 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
       .where(eq(planets.id, planetId));
   }
 
-  const planet: LockedPlanet = {
+  return { planet: lockedPlanetFrom(inputs, economy, clock), unitRows, faultRows };
+}
+
+/**
+ * EVERY WORLD OF ONE COMMANDER, READ ONLY, ONE READ PER TABLE. Scaling plan F1.4.
+ *
+ * The same rows `loadPlanetState` reads one world at a time, read for all of them
+ * at once, then rendered by the same arithmetic. No lock and no write: the caller
+ * holds a read-only snapshot. Every world must belong to the first one's commander
+ * and galaxy, as a list read alongside one commander snapshot always required.
+ */
+export async function loadPlanetViewStates(tx: Tx, planetIds: readonly string[], clock: Clock) {
+  const rows = await tx.select().from(planets).where(inArray(planets.id, [...planetIds]));
+  const rowOf = new Map(rows.map(row => [row.id, row]));
+  const ordered = planetIds.map(id => rowOf.get(id));
+  const first = ordered[0];
+  if (!first) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+  const season = await seasonRow(tx, first.seasonId, false, false);
+  const worlds: OwnedPlanet[] = [];
+  for (const row of ordered) {
+    assertPlanetRow(row, season);
+    if (row.controllerPlayerId !== first.controllerPlayerId) {
+      throw new GameError('PLACEMENT_CHANGED', 'World ownership changed; refresh and try again', 409);
+    }
+    worlds.push(row);
+  }
+  const ids = worlds.map(world => world.id);
+  const at = clock.now();
+  const radiation = season.radiationBombStartsAt !== null;
+  // `projectPlanetRadiation`'s first two reads, for every world at once.
+  const until = new Date(Math.min(at.getTime(), (season.closedAt ?? season.endsAt).getTime()));
+  const [buildingRows, satelliteRows, unitRows, faultRows, [shard], impacts, anchored] = await Promise.all([
+    tx.select().from(buildings).where(inArray(buildings.planetId, ids)),
+    tx.select().from(satellites).where(inArray(satellites.planetId, ids)),
+    tx.select().from(units).where(inArray(units.planetId, ids)),
+    tx.select().from(planetFaults).where(inArray(planetFaults.planetId, ids)),
+    tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
+    radiation ? pendingRadiationImpacts(tx, ids, until) : [],
+    radiation ? planetAnchoredSources(tx, season, ids, until) : [],
+  ]);
+  const silentSpace = shard?.role === 'WAITING';
+  const of = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
+  return Promise.all(worlds.map(async row => {
+    const inputs: PlanetInputs = { row, season, silentSpace,
+      buildingRows: of(buildingRows, row.id), satelliteRows: of(satelliteRows, row.id),
+      unitRows: of(unitRows, row.id), faultRows: of(faultRows, row.id) };
+    if (radiation) {
+      const projection = await projectPlanetRadiation(tx, row, season, inputs.unitRows, at, {
+        pendingImpact: impacts.find(impact => impact.targetPlanetId === row.id) ?? null,
+        anchored: anchored.filter(source => source.anchorId === row.id),
+      });
+      inputs.unitRows = projection.rows;
+    }
+    return { planet: lockedPlanetFrom(inputs, planetEconomy(inputs, clock), clock),
+      unitRows: inputs.unitRows, faultRows: inputs.faultRows, row, season, buildingRows: inputs.buildingRows,
+      satelliteRows: inputs.satelliteRows };
+  }));
+}
+
+interface PlanetInputs {
+  row: OwnedPlanet;
+  season: typeof seasons.$inferSelect;
+  buildingRows: (typeof buildings.$inferSelect)[];
+  satelliteRows: (typeof satellites.$inferSelect)[];
+  unitRows: (typeof units.$inferSelect)[];
+  faultRows: (typeof planetFaults.$inferSelect)[];
+  silentSpace: boolean;
+}
+
+type Planet = typeof planets.$inferSelect;
+type OwnedPlanet = Planet & { controllerPlayerId: string; kind: 'CAPITAL' | 'COLONY' };
+
+function assertPlanetRow(row: Planet | undefined, season: typeof seasons.$inferSelect,
+  expectedPlayerId?: string): asserts row is OwnedPlanet {
+  if (!row) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+  if (row.seasonId !== season.id) {
+    throw new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
+  }
+  if (!row.controllerPlayerId || row.kind === 'NEUTRAL') {
+    throw new GameError('PLANET_NOT_OWNED', 'That world has no commander', 403);
+  }
+  if (expectedPlayerId !== undefined && row.controllerPlayerId !== expectedPlayerId) {
+    throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
+  }
+}
+
+function hardwareInputs(inputs: PlanetInputs) {
+  const levels = buildingLevelsFrom(inputs.buildingRows);
+  return { levels, ...hardwareOf(inputs.satelliteRows, levels), faults: inputs.faultRows.map((fault) => fault.kind) };
+}
+
+/** No reads and no writes: the world at `clock`, from the rows it was read from. */
+function planetEconomy(inputs: PlanetInputs, clock: Clock) {
+  const { row, season, faultRows, unitRows, silentSpace } = inputs;
+  const { levels, effectiveInstruments, orbit, faults } = hardwareInputs(inputs);
+  /*
+    THE LEAK'S OWN CEILING, and it is read off the fault rather than the world.
+
+    `FAULT.leakTotalStores` caps what ONE occurrence may cost. A vault repaired and
+    broken again is a second flood with a second budget, which is what the commander
+    paid the repair for.
+  */
+  const leak = faultRows.find((fault) => fault.kind === 'VAULT_LEAK');
+  /*
+    SPENT = WHAT REACHED ORBIT + WHAT IS ON ITS WAY THERE.
+
+    The fault row counts only what a flush has already turned into a field; the rest is
+    sitting in `pending_leak_*` on this row. Passing the first without the second would
+    let a leak overrun its ceiling by one flush interval every time — and the flush
+    moves the figure between the two columns, so their sum is what the ceiling is
+    actually about.
+  */
+  const leakedSoFar = leak && {
+    alloy: leak.leakedAlloy + row.pendingLeakAlloy,
+    crystal: leak.leakedCrystal + row.pendingLeakCrystal,
+    deuterium: leak.leakedDeuterium + row.pendingLeakDeuterium,
+  };
+
+  const homeFleet: Fleet = {};
+  const ground: Fleet = {};
+  for (const u of unitRows) {
+    if (u.count <= 0 || u.location !== 'home') continue;
+    (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
+  }
+
+  const { state: advanced, now, produced, productiveSeconds } = economyAt(
+    row,
+    levels,
+    { effectiveInstruments, orbit },
+    season,
+    clock.now(),
+    faults,
+    leakedSoFar ?? undefined,
+    silentSpace ? SILENT_SPACE.productionPace : 1,
+  );
+
+  /*
+    SADAKAT DUVAR SAATİYLE İLERLER, üretken dakikalarla değil.
+
+    The gradual drain is about NEGLECT, not output: a raid that stopped the works
+    did not repair anything, and a world sitting broken through a disruption is
+    still sitting broken.
+    The shield already keeps wall time for the same kind of reason.
+
+    Capitals have no loyalty, while colonies below the fault gate can still lose
+    it in battle and recover it on the same clock as every other colony.
+  */
+  const loyalty = loyaltyAt(row, levels, faults.length, now);
+
+  return { advanced, now, produced, productiveSeconds, loyalty, homeFleet, ground };
+}
+
+function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof planetEconomy>, clock: Clock): LockedPlanet {
+  const { row, season, unitRows, silentSpace } = inputs;
+  const { levels, instruments, effectiveInstruments, orbit, storedOrbit, faults } = hardwareInputs(inputs);
+  const { advanced, loyalty, homeFleet, ground } = economy;
+  return {
     planetId: row.id,
     playerId: row.controllerPlayerId,
     kind: row.kind,
@@ -740,7 +835,6 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     nowMinutes: minutesSince(season.startsAt, clock.now()),
     now: clock.now() <= season.endsAt ? clock.now() : season.endsAt,
   };
-  return { planet, unitRows, faultRows };
 }
 
 /** Run `fn` with the planet locked and freshly ticked. */

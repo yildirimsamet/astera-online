@@ -169,6 +169,37 @@ export async function clanSupportBayView(
   return { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves };
 }
 
+/** `clanSupportBayView` for several worlds, with each one's Hangar level already read. Scaling plan F1.4. */
+export async function clanSupportBayViews(
+  db: Queryable,
+  input: { hangarLevels: ReadonlyMap<string, number>; rulesetVersion: number; at?: Date },
+): Promise<Map<string, { room: SupportRoom; waves: ClanSupportWaveView[] } | null>> {
+  const planetIds = [...input.hangarLevels.keys()];
+  if (!clanDefenseApplies(input.rulesetVersion)) return new Map(planetIds.map(id => [id, null]));
+  const [held, rows] = await Promise.all([
+    db.select({
+      hostPlanetId: clanSupportWaves.hostPlanetId,
+      status: clanSupportWaves.status,
+      bulk: sql<number>`coalesce(sum(${clanSupportWaves.reservedBulk}), 0)::float8`,
+    })
+      .from(clanSupportWaves)
+      .where(and(inArray(clanSupportWaves.hostPlanetId, planetIds), inArray(clanSupportWaves.status, [...ROOM_HOLDING])))
+      .groupBy(clanSupportWaves.hostPlanetId, clanSupportWaves.status),
+    db.select().from(clanSupportWaves)
+      .where(and(inArray(clanSupportWaves.hostPlanetId, planetIds), inArray(clanSupportWaves.status, [...ROOM_HOLDING])))
+      .orderBy(asc(clanSupportWaves.arriveAt), asc(clanSupportWaves.id)),
+  ]);
+  // `viewWaves` renders row by row, so one call serves every host and keeps each one's order.
+  const views = await viewWaves(db, rows, input.at);
+  return new Map(planetIds.map(planetId => {
+    const of = (status: ClanSupportWaveStatus): number =>
+      held.find((row) => row.hostPlanetId === planetId && row.status === status)?.bulk ?? 0;
+    const room: SupportRoom = { used: of('STATIONED'), reserved: of('OUTBOUND'), total: hangarCapacity(input.hangarLevels.get(planetId) ?? 0) };
+    const waves = views.filter((wave, i) => rows[i]!.hostPlanetId === planetId && ROOM_HOLDING.includes(wave.status));
+    return [planetId, { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves }];
+  }));
+}
+
 /** Every wave of mine still out — the Fleet page's "Klan desteği" group. */
 export async function readMySupport(db: Queryable, playerId: string, at?: Date): Promise<{ waves: ClanSupportWaveView[] }> {
   const rows = await db.select().from(clanSupportWaves)
