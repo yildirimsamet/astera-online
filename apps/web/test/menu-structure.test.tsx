@@ -2,40 +2,15 @@ import type { ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import { MenuPanel } from '../src/shell/MenuPanel.js';
+import { MenuPanel, type MenuPage } from '../src/shell/MenuPanel.js';
 import { returnsToMenu } from '../src/shell/panelRoute.js';
 import { Sheet } from '../src/ui/kit/index.js';
 import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
-
-/**
- * THE MENU IS A MAP, NOT A PILE OF BUTTONS. Owner report.
- *
- * *"bir gruplama yok, bir hiyeraşi yok, hangi buton nerede nasıl gösterilmeli gibi
- * bir önem sıralaması yok. Butonlar yatay şekilde uzayıp gereksiz yer kaplıyor.
- * Yanlış bir buton'a tıklayınca geri dönme yok direk kapatılıyor."*
- *
- * Four separate failures, and each one has its own test below.
- *
- *   · NO GROUPING — nine destinations in one undifferentiated column. A reader
- *     cannot tell that the leaderboard and the sound slider are different KINDS of
- *     thing, so they read all nine every time.
- *   · NO RANK — a season shortcut, a bug report and a resolution dial were drawn
- *     with the same weight, so nothing on the sheet said what mattered.
- *   · FULL-WIDTH SLABS — a 350px row spending three hundred of them on the gap
- *     between a glyph and a chevron, nine times over, is most of a phone screen.
- *   · NO WAY BACK — every row REPLACED the menu, so the cost of a mistaken tap was
- *     the header control plus finding your place in the list again.
- *
- * The shape that answers them: three visual ranks — a full-width row is something
- * that needs you NOW, a chip is a shortcut you made yourself, a tile is a place to
- * go — destinations in named groups two to a row, and a way back on every surface
- * the menu opens.
- */
 
 function harness() {
   const fetch = vi.fn(() =>
@@ -77,267 +52,139 @@ const show = (props: Partial<MenuProps> = {}) => {
 /** A destination's accessible name: what it is, then what is behind it. */
 const named = (label: string, hint: string): string => `${label}. ${hint}`;
 
-it.each(['android', 'ios'])('retains inventory and account controls without web sales/consent on %s', platform => {
-  vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
-  vi.spyOn(Capacitor, 'getPlatform').mockReturnValue(platform);
-  const open = vi.fn();
-  const view = show({ onOpen: open });
-  expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('community.donate.menuLabel')}\\.`) })).toBeNull();
-  expect(view.container.querySelector('[data-consent-settings]')).toBeNull();
-  expect(view.container.querySelector('.shop-showcase-hero')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.skinsInventoryLabel'), i18n.t('menu.skinsInventoryHint')) }));
-  expect(open).toHaveBeenCalledWith('skin-inventory');
-  expect(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') })).toBeVisible();
-});
+beforeEach(async () => { await i18n.changeLanguage('en'); });
+afterEach(() => { vi.restoreAllMocks(); });
 
-const follows = (first: Element | null | undefined, second: Element | null): boolean => {
-  if (!first || !second) return false;
-  return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-};
+const enter = (page: Exclude<MenuPage, 'home'>) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t(`menu.navigation.${page}`)}\\.`) }));
+const back = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.navigation.back') }));
 
-beforeEach(async () => {
-  if (i18n.resolvedLanguage !== 'en') await i18n.changeLanguage('en');
-});
-
-describe('the menu groups what it offers', () => {
-  it('adds subject art to destinations while retaining independent names, badges and routing', async () => {
-    const onOpen = vi.fn();
-    const view = show({ onOpen });
-    const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
-    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(7);
-    const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
-    expect(rewards.querySelector('img')).toHaveAttribute('alt', '');
-    fireEvent.click(rewards);
-    expect(onOpen).toHaveBeenCalledWith('rewards');
-    await waitFor(() => { expect(rewards).toBeVisible(); });
-  });
-
-  it('gives feedback, support and academy their own decorative scene without changing their destinations', () => {
-    const onOpen = vi.fn(), onReplayAcademy = vi.fn();
-    show({ onOpen, onReplayAcademy });
-    for (const [label, destination] of [[i18n.t('menu.feedbackLabel'), 'feedback'], [i18n.t('community.donate.menuLabel'), 'donate']] as const) {
-      const tile = screen.getByRole('button', { name: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`) });
-      expect(tile.querySelector('img[data-atmosphere-image]')).toHaveAttribute('aria-hidden', 'true');
-      fireEvent.click(tile);
-      expect(onOpen).toHaveBeenCalledWith(destination);
-    }
-    const academy = screen.getByRole('button', { name: named(i18n.t('academy.replay'), i18n.t('academy.replayHint')) });
-    expect(academy.querySelector('img[data-atmosphere-image]')).not.toBeNull();
-    fireEvent.click(academy);
-    expect(onReplayAcademy).toHaveBeenCalledOnce();
-  });
-
-  it('keeps the galaxy and season values readable over separate decorative scenes', () => {
-    const view = show();
-    for (const selector of ['[data-menu-galaxy]', '[data-menu-season]']) {
-      const panel = view.container.querySelector(selector);
-      expect(panel?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('alt', '');
-      expect(panel?.querySelector('p')).not.toHaveAttribute('aria-hidden');
-    }
-  });
-
-  /**
-   * A HEADING PER GROUP, AND THE ORDER IS THE RANKING.
-   *
-   * The season first, because it is what a commander came to check; the team
-   * second, because it carries the only unread counts on the sheet; help third;
-   * the device and the account last, which is where the one irreversible control
-   * belongs.
-   */
-  it('names each group, in the order a commander reads them', () => {
-    const view = show();
-
-    const headings = [...view.container.querySelectorAll('h2')].map((node) => node.textContent);
-    expect(headings).toEqual([
-      i18n.t('menu.skinsShopLabel'),
-      i18n.t('menu.seasonHeading'),
-      i18n.t('menu.asteraHeading'),
-      i18n.t('menu.helpHeading'),
-      i18n.t('menu.deviceHeading'),
-      i18n.t('menu.accountHeading'),
-    ]);
-  });
-
-  /**
-   * TWO TO A ROW. The whole of the "uzayıp gereksiz yer kaplıyor" complaint: a
-   * destination does not need 350 pixels to say LEADERBOARD, and nine of them
-   * stacked is a scroll the sheet cannot afford.
-   */
-  it('lays its destinations out two to a row instead of one slab each', () => {
-    const view = show();
-
-    const grids = [...view.container.querySelectorAll('[data-menu-grid]')];
-    expect(grids.length).toBeGreaterThan(0);
-    for (const grid of grids) expect(grid).toHaveClass('grid-cols-2');
-    expect(view.container.querySelectorAll('[data-menu-tile]').length).toBeGreaterThanOrEqual(5);
-  });
-
-  /**
-   * RANK ONE: A FULL-WIDTH ROW MEANS ACT NOW. Both of these exist only while
-   * something is genuinely waiting on the commander — a season that ended, a
-   * placement that has to be applied for — so the sheet's widest, loudest shape is
-   * spent on them. Vacation also has a persistent full-width control; it does
-   * not make an ended season or a pending placement cease to be urgent.
-   */
-  it('puts what needs the commander now above every group, at full width', () => {
-    const view = show({ inSilentSpace: true, hasSeasonResult: true });
-
-    const rows = [...view.container.querySelectorAll('[data-menu-row]')];
-    expect(rows).toHaveLength(3);
-    expect(rows[0]).toHaveAccessibleName(named(i18n.t('vacation.title'), i18n.t('vacation.hint')));
-    expect(follows(rows[1], view.container.querySelector('[data-menu-group]'))).toBe(true);
-    const store = screen.getByRole('region', { name: i18n.t('skins.collection') });
-    expect(follows(rows[2], store)).toBe(true);
-    expect(follows(store, view.container.querySelector('[data-menu-group]'))).toBe(true);
-  });
-
-  it('draws no urgent row when nothing is urgent', () => {
-    const view = show();
-    const rows = [...view.container.querySelectorAll('[data-menu-row]')];
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toHaveAccessibleName(named(i18n.t('vacation.title'), i18n.t('vacation.hint')));
-  });
-
-  /**
-   * RANK TWO: A MARK IS A CHIP. Five marks used to be five full-width rows — some
-   * 240px of a phone spent on bookmarks — and a bookmark is the one thing on this
-   * sheet whose entire content is a colour and a name.
-   */
-  it('folds the rival marks into one wrapping row of chips', () => {
-    const onFocusRival = vi.fn();
-    const view = show({
-      rivals: [
-        { planetId: 'orrery-8', slot: 0, owner: 'Sable', name: 'Orrery-8', lost: false },
-        { planetId: 'kiln-2', slot: 1, owner: 'Ward', name: 'Kiln-2', lost: false },
-      ],
-      onFocusRival,
-    });
-
-    const strip = view.container.querySelector('[data-rival-chips]');
-    expect(strip).not.toBeNull();
-    expect(strip).toHaveClass('flex-wrap');
-    expect(strip?.querySelectorAll('[data-rival-chip]')).toHaveLength(2);
-
-    fireEvent.click(screen.getByRole('button', { name: /rival · sable/i }));
-    expect(onFocusRival).toHaveBeenCalledWith('orrery-8');
-  });
-
-  it('keeps a lost mark clearable on its own, still as a chip', () => {
-    const onClearRival = vi.fn();
-    const view = show({
-      rivals: [
-        { planetId: 'orrery-8', slot: 0, owner: '', name: '', lost: true },
-        { planetId: 'kiln-2', slot: 1, owner: 'Ward', name: 'Kiln-2', lost: false },
-      ],
-      onClearRival,
-      onFocusRival: vi.fn(),
-    });
-
-    expect(view.container.querySelectorAll('[data-rival-chip]')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: /rival signal lost/i }));
-    expect(onClearRival).toHaveBeenCalledWith('orrery-8');
-  });
-
-  it('shows no mark group at all when nothing is marked', () => {
-    const view = show();
-    expect(view.container.querySelector('[data-rival-chips]')).toBeNull();
-  });
-
-  /** Nothing was dropped on the way to a tighter shape. */
-  it('keeps every destination one tap away and named', () => {
-    const onOpen = vi.fn();
-    show({ onOpen, isAdmin: true, onReplayAcademy: vi.fn() });
-
-    const destinations = [
-      [named(i18n.t('menu.leaderboardLabel'), i18n.t('menu.leaderboardHint')), 'leaderboard'],
-      [named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')), 'rewards'],
-      [named(i18n.t('menu.skinsShopLabel'), i18n.t('menu.skinsShopHint')), 'skin-shop'],
-      [named(i18n.t('menu.skinsInventoryLabel'), i18n.t('menu.skinsInventoryHint')), 'skin-inventory'],
-      [named(i18n.t('menu.announcementsLabel'), i18n.t('menu.announcementsHint')), 'announcements'],
-      [named(i18n.t('menu.feedbackLabel'), i18n.t('menu.feedbackHint')), 'feedback'],
-      [named(i18n.t('community.admin.menuLabel'), i18n.t('community.admin.menuHint')), 'admin'],
-    ] as const;
-
-    for (const [name, panel] of destinations) {
-      fireEvent.click(screen.getByRole('button', { name }));
-      expect(onOpen, name).toHaveBeenCalledWith(panel);
-    }
-    expect(
-      screen.getByRole('button', { name: named(i18n.t('menu.guideLabel'), i18n.t('menu.guideHint')) }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: named(i18n.t('academy.replay'), i18n.t('academy.replayHint')) }),
-    ).toBeInTheDocument();
-  });
-
-  /**
-   * RANK FOUR: A PREFERENCE IS A LINE, NOT A CARD. Three stacked cards with their
-   * own glyphs, names and explanatory sentences were the tallest block on the
-   * sheet and the least often touched thing in the game.
-   *
-   * They also sat under a heading reading "Language", which is the grouping
-   * failure in miniature: a section named after one of the three things in it.
-   */
-  /**
-   * FOUR NOW, AND THE FOURTH BELONGS HERE.
-   *
-   * The privacy answer is stored per DEVICE, exactly like the language, the
-   * sound and the resolution — so it is a fourth line in this plate rather than
-   * a fifth section heading on a sheet that is already long. Consent that cannot
-   * be withdrawn is not consent, and this row is the standing route back to it.
-   */
-  it('gathers the device settings into one plate, a line each', () => {
-    const view = show();
-
-    const plate = view.container.querySelector('[data-device-settings]');
-    expect(plate).not.toBeNull();
-    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(6);
-
-    // Every control that was there before is still there, and still live.
-    expect(screen.getByRole('combobox', { name: i18n.t('settings.choose') })).toBeInTheDocument();
-    expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
-    expect(screen.getByRole('slider', { name: i18n.t('menu.effectsVolumeLabel') })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.effectsLabel')) })).toBeInTheDocument();
-    expect(screen.getByRole('tablist', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
-    expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();
-    expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) })).toBeInTheDocument();
-  });
-
-  /** A readout the player turns on, and one line under it saying what it counts. */
-  it('turns the fps readout on and off from the device plate', () => {
+describe('the compact commander menu', () => {
+  it('starts with four categories and keeps detailed controls behind their category', () => {
     show();
-    const toggle = screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) });
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(i18n.t('menu.fpsHint'))).toBeInTheDocument();
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    for (const page of ['season', 'academy', 'community', 'settings'] as const) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t(`menu.navigation.${page}`)}\\.`) })).toBeVisible();
+    }
+    expect(screen.queryByRole('slider')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sign out/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Feedback\./ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Vacation/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Rewards\./ })).toBeNull();
   });
 
-  /** The way out stays last, and stays alone. */
-  it('keeps sign-out at the foot of the sheet', () => {
-    const onSignOut = vi.fn();
-    const view = show({ onSignOut });
+  it('opens support directly above settings and keeps it out of the community submenu', () => {
+    const onOpen = vi.fn();
+    show({ onOpen });
+    const support = screen.getByRole('button', { name: named(i18n.t('community.donate.menuLabel'), i18n.t('community.donate.menuHint')) });
+    const settings = screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) });
+    expect(support.parentElement).toBe(settings.parentElement);
+    expect(support.nextElementSibling).toBe(settings);
+    fireEvent.click(support);
+    expect(onOpen).toHaveBeenCalledWith('donate');
+    enter('community');
+    expect(screen.queryByRole('button', { name: named(i18n.t('community.donate.menuLabel'), i18n.t('community.donate.menuHint')) })).toBeNull();
+  });
 
-    const out = screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') });
-    fireEvent.click(out);
-    expect(onSignOut).toHaveBeenCalledOnce();
+  it('opens a category, announces its heading and returns focus to its entry', () => {
+    show();
+    enter('settings');
+    expect(screen.getByRole('heading', { name: i18n.t('menu.navigation.settings') })).toHaveFocus();
+    expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^Feedback\./ })).toBeNull();
+    back();
+    expect(screen.queryByRole('slider')).toBeNull();
+    expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) })).toHaveFocus();
+  });
 
-    const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
-    expect(follows(tiles.at(-1), out)).toBe(true);
+  it('keeps every existing destination reachable through the right category', () => {
+    const onOpen = vi.fn(), replay = vi.fn();
+    show({ onOpen, onReplayAcademy: replay, isAdmin: true });
+    for (const [label, panel] of [['skinsShop', 'skin-shop'], ['skinsInventory', 'skin-inventory']] as const) {
+      fireEvent.click(screen.getByRole('button', { name: named(i18n.t(`menu.${label}Label`), i18n.t(`menu.${label}Hint`)) }));
+      expect(onOpen).toHaveBeenCalledWith(panel);
+    }
+    enter('season');
+    for (const [label, panel] of [['leaderboard', 'leaderboard'], ['rewards', 'rewards']] as const) {
+      fireEvent.click(screen.getByRole('button', { name: named(i18n.t(`menu.${label}Label`), i18n.t(`menu.${label}Hint`)) }));
+      expect(onOpen).toHaveBeenCalledWith(panel);
+    }
+    back(); enter('community');
+    for (const [name, panel] of [[named(i18n.t('menu.announcementsLabel'), i18n.t('menu.announcementsHint')), 'announcements'], [named(i18n.t('menu.feedbackLabel'), i18n.t('menu.feedbackHint')), 'feedback'], [named(i18n.t('community.admin.menuLabel'), i18n.t('community.admin.menuHint')), 'admin']] as const) {
+      fireEvent.click(screen.getByRole('button', { name }));
+      expect(onOpen).toHaveBeenCalledWith(panel);
+    }
+    back(); enter('academy');
+    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.guideLabel'), i18n.t('menu.guideHint')) }));
+    expect(onOpen).toHaveBeenCalledWith('wiki');
+    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('academy.replay'), i18n.t('academy.replayHint')) }));
+    expect(replay).toHaveBeenCalledOnce();
+  });
+
+  it('surfaces waiting rewards and unread announcements without opening categories', () => {
+    const { wrapper, queries } = harness();
+    queries.setQueryData(keys.rewards, { chains: [], claimable: 3 });
+    queries.setQueryData(keys.announcements, { announcements: [{ seen: false }, { seen: true }] });
+    const onOpen = vi.fn();
+    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
+    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.navigation.rewardsReady', { count: 3 }), i18n.t('menu.rewardsHint')) }));
+    expect(onOpen).toHaveBeenCalledWith('rewards');
+    expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.community')}\\.`) })).toHaveTextContent(i18n.t('menu.announcementsWaiting', { count: 1 }));
+  });
+
+  it('puts season results and placement first, and creates no urgency for vacation', () => {
+    const view = show({ inSilentSpace: true, hasSeasonResult: true });
+    const rows = view.container.querySelectorAll('[data-menu-row]');
+    expect(rows).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('silentSpace.menu')}\\.`) }));
+    expect(screen.queryByRole('button', { name: /^Vacation/ })).toBeNull();
+  });
+
+  it('keeps identity, galaxy and season context at the top; account operations inside the profile', () => {
+    const view = show({ commander: 'Orion' });
+    expect(view.container.querySelector('[data-menu-identity]')).toHaveTextContent('Orion');
+    expect(view.container.querySelector('[data-menu-context]')).toHaveTextContent('Vantage');
+    expect(view.container.querySelector('[data-menu-context]')).toHaveTextContent('EU-1');
+    expect(screen.getByRole('link', { name: new RegExp(`^${i18n.t('menu.navigation.account')}\\.`) })).toHaveAttribute('href', '/profile');
+  });
+
+  it('retains independent rival focus and lost-mark removal without adding rows', () => {
+    const onFocusRival = vi.fn(), onClearRival = vi.fn();
+    const view = show({ rivals: [{ planetId: 'a', slot: 0, owner: 'Sable', name: 'A', lost: false }, { planetId: 'b', slot: 1, owner: '', name: '', lost: true }], onFocusRival, onClearRival });
+    expect(view.container.querySelectorAll('[data-rival-chip]')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: /rival · sable/i }));
+    expect(onFocusRival).toHaveBeenCalledWith('a');
+    fireEvent.click(screen.getByRole('button', { name: /rival signal lost/i }));
+    expect(onClearRival).toHaveBeenCalledWith('b');
+  });
+
+  it.each(['android', 'ios'])('keeps web-only controls absent and account/inventory accessible on %s', platform => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue(platform);
+    const onOpen = vi.fn();
+    show({ onOpen });
+    expect(screen.queryByRole('button', { name: named(i18n.t('community.donate.menuLabel'), i18n.t('community.donate.menuHint')) })).toBeNull();
+    expect(screen.queryByRole('button', { name: named(i18n.t('menu.skinsShopLabel'), i18n.t('menu.skinsShopHint')) })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.skinsInventoryLabel'), i18n.t('menu.skinsInventoryHint')) }));
+    expect(onOpen).toHaveBeenCalledWith('skin-inventory');
+    enter('community');
+    expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('community.donate.menuLabel')}\\.`) })).toBeNull();
+    back(); enter('settings');
+    expect(screen.queryByRole('button', { name: i18n.t('consent.menuLabel') })).toBeNull();
+    back();
+    expect(screen.getByRole('link', { name: new RegExp(`^${i18n.t('menu.navigation.account')}\\.`) })).toHaveAttribute('href', '/profile');
+  });
+
+  it('respects a restored category when returning from a destination', () => {
+    const onOpen = vi.fn();
+    show({ page: 'community', onOpen });
+    expect(screen.getByRole('heading', { name: i18n.t('menu.navigation.community') })).toHaveFocus();
+    expect(screen.getByRole('button', { name: /^Feedback\./ })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /^Feedback\./ }));
+    expect(onOpen).toHaveBeenCalledWith('feedback');
+    expect(screen.queryByRole('slider')).toBeNull();
   });
 });
 
-/**
- * A WRONG TAP IS RECOVERABLE. The fourth complaint, and the only one that is about
- * behaviour rather than shape.
- *
- * Every menu row REPLACED the menu with what it opened, so closing that surface
- * dropped the reader onto the galaxy. The cost of one mis-tap was the header
- * control plus finding your place in the list again — which on a phone is exactly
- * the moment a player stops exploring a menu at all.
- */
 describe('every surface the menu opens can step back to it', () => {
   it('names the destinations the menu owns', () => {
     for (const panel of [

@@ -209,6 +209,24 @@ export const surface = {
  * and the day one of them is reworded the other must not move with it.
  */
 export const menu = {
+  navigation: {
+    title: "Menú del comandante",
+    season: "Temporada",
+    seasonHint: "Honor, recompensas y clasificación",
+    academy: "Academia",
+    academyHint: "Wiki, simulador y entrenamiento",
+    community: "Comunidad",
+    communityHint: "Anuncios y comentarios",
+    settings: "Ajustes",
+    settingsHint: "Sonido, gráficos e idioma",
+    account: "Perfil del comandante",
+    back: "Volver al menú",
+    resume: "Volver al juego",
+    shopHint: "Elige tu estilo",
+    inventoryHint: "Equipa tu colección",
+    rewardsReady_one: "{{count}} recompensa lista",
+    rewardsReady_other: "{{count}} recompensas listas",
+  },
   /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
   profile: {
     label: 'Tu comandante',

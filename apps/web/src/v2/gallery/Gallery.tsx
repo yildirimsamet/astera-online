@@ -58,7 +58,6 @@ import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
-import { CommanderCard } from '../hud/CommanderCard.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -569,10 +568,7 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
         {page === 'menu' ? (
           <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
-              <CommanderCard name="Kestrel Sable" country="TR" clan={{ tag: 'NOVA', name: 'Nova Kolektif' }}
-                galaxy="Vantage" seasonDay={9} rank={{ place: 14, of: 212 }} worlds={{ held: 2, max: 4 }}
-                shield={{ until: NOW + 180 * MIN, kind: 'NEWCOMER' }} now={NOW} />
-              <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} onReplayAcademy={noop} />
+              <MenuPanel commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} onReplayAcademy={noop} />
             </div>
           </Sheet>
         ) : page === 'leaderboard' ? (

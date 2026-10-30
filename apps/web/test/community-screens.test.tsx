@@ -38,6 +38,19 @@ afterEach(async () => {
 });
 
 describe('community surfaces', () => {
+  it('groups support like the other menu pages and keeps the developer note expandable', async () => {
+    const user = userEvent.setup();
+    render(<DonateScreen />);
+    expect(screen.getAllByRole('heading')[0]).toHaveTextContent(i18n.t('community.donate.aboutHeading'));
+    const summary = screen.getByText(i18n.t('community.donate.developerNote'));
+    const note = summary.closest('details');
+    expect(note).not.toBeNull();
+    expect(note).not.toHaveAttribute('open');
+    await user.click(summary);
+    expect(note).toHaveAttribute('open');
+    expect(screen.getByText(i18n.t('community.donate.costs'))).toBeVisible();
+    expect(screen.getAllByRole('link')).toHaveLength(4);
+  });
   it('renders rich announcements and marks only unseen rows as read', async () => {
     const { api, client, Wrapper } = setup();
     const page = {

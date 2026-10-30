@@ -145,6 +145,8 @@ export const community = {
     feedbackEmpty: "Aucun retour de joueur pour le moment.",
   },
   donate: {
+    aboutHeading: "Développement du jeu",
+    developerNote: "Un mot du développeur",
     eyebrow: "Soutenir le développement d’Astera Online",
     title: "Soutenir Astera Online",
     menuLabel: "Soutenir",

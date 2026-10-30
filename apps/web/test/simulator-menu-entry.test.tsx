@@ -22,7 +22,7 @@ describe('the battle simulator in the menu', () => {
     const api = new Api({ fetch: (() => Promise.resolve(new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }))) as unknown as typeof fetch });
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>;
-    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
+    render(<MenuPanel page="academy" galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
     return onOpen;
   };
 

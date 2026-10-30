@@ -131,6 +131,8 @@ export const community = {
     feedbackEmpty: "プレイヤーからのフィードバックはまだ届いていません。",
   },
   donate: {
+    aboutHeading: "ゲーム開発",
+    developerNote: "開発者からのメッセージ",
     eyebrow: "Astera Online 開発をサポート",
     title: "サポート Astera Online",
     menuLabel: "寄付する",

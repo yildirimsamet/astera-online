@@ -40,7 +40,7 @@ const show = () => {
   const { wrapper: Wrapper } = harness();
   return render(
     <Wrapper>
-      <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={vi.fn()} />
+      <MenuPanel page="settings" galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={vi.fn()} />
     </Wrapper>,
   );
 };

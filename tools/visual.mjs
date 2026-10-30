@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--commander-menu')) {
+  const { verifyCommanderMenu } = await import('./commander-menu-visual.mjs');
+  await verifyCommanderMenu(process.argv[2] ?? 'out/commander-menu');
+  process.exit(0);
+}
+
 if (process.argv.includes('--battle-simulator')) {
   const { verifyBattleSimulator } = await import('./battle-simulator-visual.mjs');
   await verifyBattleSimulator(process.argv[2] ?? 'out/battle-simulator');

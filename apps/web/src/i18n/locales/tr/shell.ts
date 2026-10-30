@@ -164,6 +164,24 @@ export const surface = {
  * yazıldığında diğeri onunla birlikte kaymamalı.
  */
 export const menu = {
+  navigation: {
+    title: "Komutan menüsü",
+    season: "Sezon",
+    seasonHint: "Onur, ödüller ve galaksi sıralaması",
+    academy: "Akademi",
+    academyHint: "Wiki, simülatör ve eğitim",
+    community: "Topluluk",
+    communityHint: "Duyurular ve geri bildirim",
+    settings: "Ayarlar",
+    settingsHint: "Ses, görüntü ve dil",
+    account: "Komutan profili",
+    back: "Menüye dön",
+    resume: "Oyuna dön",
+    shopHint: "Görünümünü seç",
+    inventoryHint: "Koleksiyonunu kuşan",
+    rewardsReady_one: "{{count}} ödül hazır",
+    rewardsReady_other: "{{count}} ödül hazır",
+  },
   /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
   profile: {
     label: 'Komutanın',

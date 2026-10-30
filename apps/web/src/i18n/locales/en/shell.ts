@@ -209,6 +209,24 @@ export const surface = {
  * and the day one of them is reworded the other must not move with it.
  */
 export const menu = {
+  navigation: {
+    title: "Commander menu",
+    season: "Season",
+    seasonHint: "Honor, rewards and galaxy rankings",
+    academy: "Academy",
+    academyHint: "Wiki, simulator and training",
+    community: "Community",
+    communityHint: "Announcements and feedback",
+    settings: "Settings",
+    settingsHint: "Sound, graphics and language",
+    account: "Commander profile",
+    back: "Back to menu",
+    resume: "Return to game",
+    shopHint: "Find your look",
+    inventoryHint: "Equip your collection",
+    rewardsReady_one: "{{count}} reward ready",
+    rewardsReady_other: "{{count}} rewards ready",
+  },
   /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
   profile: {
     label: 'Your commander',

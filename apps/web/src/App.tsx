@@ -25,6 +25,8 @@ import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
 import { useUpdateRequired } from './platform/updateGate.js';
 import { UpdateRequired } from './shell/UpdateRequired.js';
+import { dismissProfile, leaveProfile, useProfileRoute } from './shell/profileRoute.js';
+const ProfilePage = lazy(() => import('./shell/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
 import { commanderKnownHere } from './lib/returning.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
@@ -65,6 +67,7 @@ import {
  * of Design Law #1 than a screen shown once and dismissed.
  */
 function SessionApp() {
+  const profileOpen = useProfileRoute();
   /**
    * THE WHOLE TREE SUBSCRIBES TO THE LANGUAGE HERE, AND ONLY HERE.
    *
@@ -133,6 +136,7 @@ function SessionApp() {
     reportMissionId?: string,
     focus?: { planetId?: string; group?: string; itemId?: string },
   ): void => {
+    dismissProfile();
     setPanelStop((current) => nextPanelStop(current, stop, reportMissionId));
     setPanelFocus((current) => nextPanelFocus(current, focus));
     setPanel(next);
@@ -140,6 +144,7 @@ function SessionApp() {
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number; dossier?: boolean; select?: boolean } | null>(null);
   const [craftFocus, setCraftFocus] = useState<{ focus: StripFocus; request: number } | null>(null);
   const focusPlanet = (planetId: string, options?: { dossier?: boolean; select?: boolean }): void => {
+    dismissProfile();
     setPanel(null);
     setPlanetFocus((current) => ({
       planetId,
@@ -239,16 +244,18 @@ function SessionApp() {
         isAdmin={session.me.isAdmin}
         accountId={session.me.accountId}
         commander={session.me.displayName}
-        panel={panel}
+        panel={profileOpen ? 'profile' : panel}
         onPanel={openPanel}
         onFocusPlanet={focusPlanet}
         onFocusCraft={(focus) => {
+          dismissProfile();
           setPanel(null);
           setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
         }}
         galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat }) => (
+          <>
           <GalaxyView
-            panel={panel}
+            panel={profileOpen ? 'profile' : panel}
             onPanel={onPanel}
             panelStop={panelStop}
             panelFocus={panelFocus}
@@ -272,6 +279,9 @@ function SessionApp() {
             clearRequest={clearRequest}
             onOpenChat={onOpenChat}
           />
+          {profileOpen && <ProfilePage name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
+            onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
+          </>
         )}
       />
     </WorldProvider>

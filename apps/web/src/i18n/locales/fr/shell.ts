@@ -162,6 +162,24 @@ export const surface = {
  * ouvrait cette vue ; modifier l’un ne doit pas faire dériver l’autre.
  */
 export const menu = {
+  navigation: {
+    title: "Menu du commandant",
+    season: "Saison",
+    seasonHint: "Honneur, récompenses et classement",
+    academy: "Académie",
+    academyHint: "Wiki, simulateur et entraînement",
+    community: "Communauté",
+    communityHint: "Annonces et retours",
+    settings: "Paramètres",
+    settingsHint: "Son, graphismes et langue",
+    account: "Profil du commandant",
+    back: "Retour au menu",
+    resume: "Reprendre le jeu",
+    shopHint: "Choisir votre style",
+    inventoryHint: "Équiper votre collection",
+    rewardsReady_one: "{{count}} récompense prête",
+    rewardsReady_other: "{{count}} récompenses prêtes",
+  },
   /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
   profile: {
     label: 'Ton commandant',

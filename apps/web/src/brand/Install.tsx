@@ -189,13 +189,13 @@ export function useInstalled(): boolean {
   return useContext(InstallContext)?.installed ?? (runningAsPwa() || remembersInstalledPwa());
 }
 
-export function InstallButton({ compact = false }: { compact?: boolean }) {
+export function InstallButton({ compact = false, variant = 'primary' }: { compact?: boolean; variant?: 'primary' | 'ghost' }) {
   const { t } = useTranslation();
   const install = useContext(InstallContext);
   if (!capabilities().pwaInstall) return null;
   if (install ? install.installed || install.checking : runningAsPwa() || remembersInstalledPwa()) return null;
-  if (!install) return <InstallProvider><InstallButton compact={compact} /></InstallProvider>;
-  return <Button size={compact ? 'sm' : 'md'} variant="primary" onClick={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</Button>;
+  if (!install) return <InstallProvider><InstallButton compact={compact} variant={variant} /></InstallProvider>;
+  return <Button size={compact ? 'sm' : 'md'} variant={variant} onClick={install.request}>{variant === 'ghost' && <Icon id="i-collect" className="size-3.5" />}{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</Button>;
 }
 
 function AsteraAddress() {

@@ -33,6 +33,11 @@
 }
 .sheet-art-head header p { color: var(--color-v2-ink-2); }
 
+.commander-menu {
+  --menu-art-shade: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-deep) 90%, transparent), transparent);
+}
+.commander-menu .atmosphere-image { filter: none; }
+.commander-menu .inventory-scene::before { background: var(--menu-art-shade); }
 .menu-art-tile { isolation: isolate; overflow: hidden; }
 .menu-art-tile .atmosphere-image { z-index: -2; }
 .menu-art-tile::before {
@@ -41,8 +46,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(0deg, rgb(4 6 11 / 90%), transparent 80%),
-    linear-gradient(90deg, rgb(4 6 11 / 30%), transparent);
+  background: var(--menu-art-shade);
 }
 .menu-art-tile > span:first-of-type { background-color: rgb(8 13 24 / 85%); }
 .menu-art-tile > span:last-of-type { text-shadow: 0 1px 3px var(--color-v2-void); }

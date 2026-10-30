@@ -95,11 +95,10 @@ describe('the season day', () => {
   });
 });
 
-describe('the commander page', () => {
-  const galaxy = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
-
-  it('opens on the card, above the menu', () => {
-    const sheet = galaxy.slice(galaxy.indexOf("panel === 'menu' && ("), galaxy.indexOf('<MenuPanel'));
-    expect(sheet).toMatch(/<CommanderHost name={commander} \/>/);
+describe('the commander profile page', () => {
+  const profile = readFileSync('src/shell/ProfilePage.tsx', 'utf8');
+  it('keeps the full commander card on the independent profile page', () => {
+    expect(profile).toContain('<CommanderHost name={name} country={country} />');
+    expect(readFileSync('src/shell/MenuPanel.tsx', 'utf8')).toContain('href="/profile"');
   });
 });
