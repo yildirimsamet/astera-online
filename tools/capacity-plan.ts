@@ -1,4 +1,8 @@
 import { SERVERS } from '../packages/rules/src/index.js';
+import {
+  HEAVY_KINDS, isGlobalEvent, isPrivateEvent, isShardEvent,
+  readsForGlobalEvent, readsForPlayerEvent, readsForPrivateEvent, readsForShardEvent,
+} from '../apps/web/src/session/shardEvents.js';
 
 /**
  * What a capacity run expects and decides, apart from the runner that drives the
@@ -79,4 +83,35 @@ export function workerVerdict(input: {
     latenessP99Ms: input.lateness.p99, wakeP99Ms: input.wake.p99, queueP99Ms: input.queue.p99,
     heaviestKinds,
   };
+}
+
+/** The screens a run keeps open, by the web's query key: what a resync re-reads. */
+const OPEN_READS: readonly (readonly [readonly string[], string])[] = [
+  [['planet'], '/api/planet'], [['planets'], '/api/planets'], [['galaxy'], '/api/galaxy'], [['intel'], '/api/intel'],
+  [['notifications'], '/api/notifications?limit=30'], [['pending'], '/api/session/pending'], [['reports'], '/api/reports'],
+  [['traffic'], '/api/galaxy/traffic'], [['mining', 'field'], '/api/mining/field'], [['mining', 'status'], '/api/mining/status'],
+  [['rewards'], '/api/rewards'], [['chat', 'messages'], '/api/chat/messages'], [['chat', 'unread'], '/api/chat/unread'],
+  [['chronicle'], '/api/chronicle'],
+];
+/** Open too, though a resync does not name them: shard events do. */
+const SHARD_ONLY_READS: readonly (readonly [readonly string[], string])[] = [
+  [['leaderboard'], '/api/leaderboard'], [['season'], '/api/season'],
+];
+export const FULL_READS: readonly string[] = OPEN_READS.map(([, path]) => path);
+
+/**
+ * WHAT A STREAM EVENT MAKES A SESSION READ: the web's own tables (`shardEvents.ts`),
+ * in its dispatch order, limited to the screens a run keeps open. A key refreshes every
+ * open query it prefixes, as `invalidateQueries` does. Scaling plan F0.1.
+ */
+export function eventReads(kind: string): { paths: readonly string[]; heavy: boolean } {
+  if (kind === 'superseded' || kind === 'placement_changed' || kind === 'shard:rollover') return { paths: [], heavy: false };
+  const keys = isGlobalEvent(kind) ? readsForGlobalEvent(kind)
+    : isShardEvent(kind) ? readsForShardEvent(kind)
+      : (isPrivateEvent(kind) ? readsForPrivateEvent(kind) : null) ?? readsForPlayerEvent(kind);
+  if (keys === null) return { paths: FULL_READS, heavy: false };
+  const open = [...OPEN_READS, ...SHARD_ONLY_READS];
+  const paths = keys.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
+    .map(([, path]) => path));
+  return { paths: [...new Set(paths)], heavy: HEAVY_KINDS.has(kind) };
 }

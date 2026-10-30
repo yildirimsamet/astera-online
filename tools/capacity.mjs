@@ -46,7 +46,8 @@ import {
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { eventReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
 
@@ -56,7 +57,6 @@ const PRODUCTION_HOSTS = new Set([
   'api.asteraonline.space',
   'socket.asteraonline.space',
 ]);
-const SHARD_PREFIX = 'shard:';
 const COALESCE_MS = 250;
 const EVENT_DRAIN_MS = 2500;
 const RECONNECT_RESYNC_MAX_MS = 5000;
@@ -465,39 +465,44 @@ const request = async (vu, path, options = {}) => {
   }
 };
 
-const shardReads = (kind) => {
-  switch (kind.slice(SHARD_PREFIX.length)) {
-    case 'launch': return ['/api/galaxy/traffic'];
-    case 'arrival': return ['/api/galaxy/traffic', '/api/mining/field'];
-    case 'mining': return ['/api/mining/field', '/api/galaxy/traffic'];
-    case 'world': return ['/api/galaxy', '/api/leaderboard'];
-    case 'score': return ['/api/leaderboard'];
-    case 'chat': return ['/api/chat/messages', '/api/chat/unread'];
-    case 'chronicle': return ['/api/chronicle'];
-    case 'transfer': return ['/api/galaxy/traffic', '/api/session/pending', '/api/planet', '/api/planets'];
-    case 'impact': return ['/api/galaxy/traffic', '/api/galaxy', '/api/planet', '/api/session/pending'];
-    case 'control': return [
-      '/api/galaxy/traffic', '/api/galaxy', '/api/planet', '/api/planets',
-      '/api/session/pending', '/api/leaderboard',
-    ];
-    case 'recovery':
-    case 'protection': return ['/api/galaxy', '/api/planet'];
-    case 'season': return ['/api/season', '/api/planet', '/api/session/pending', '/api/leaderboard'];
-    default: return [];
-  }
+/**
+ * A stream event costs a session what it costs the web: the web's own tables decide
+ * the reads (`eventReads`), and growth waits on the web's heavy lane — one read at
+ * most every `HEAVY_COALESCE_MS`, never sooner than `CONSISTENCY_MS` after the last event.
+ */
+const flushReads = (vu, due, eventAt) => {
+  void Promise.all(due.map((path) => request(vu, path))).then((results) => {
+    if (eventAt !== null && results.every((result) => result.valid)) {
+      addSample(eventRefreshMs, performance.now() - eventAt);
+    }
+  });
 };
-const fullReads = [
-  '/api/planet', '/api/planets', '/api/galaxy', '/api/intel',
-  '/api/notifications?limit=30', '/api/session/pending', '/api/reports',
-  '/api/galaxy/traffic', '/api/mining/field', '/api/mining/status',
-  '/api/rewards', '/api/chat/messages',
-  '/api/chat/unread', '/api/chronicle',
-];
+const armHeavy = (vu) => {
+  const due = Math.max(vu.heavyFirst + HEAVY_COALESCE_MS, vu.heavyLast + CONSISTENCY_MS);
+  vu.heavyTimer = setTimeout(() => {
+    if (Date.now() < vu.heavyLast + CONSISTENCY_MS) {
+      armHeavy(vu);
+      return;
+    }
+    vu.heavyTimer = null;
+    const reads = [...vu.heavyReads];
+    vu.heavyReads.clear();
+    flushReads(vu, reads, null);
+  }, Math.max(0, due - Date.now()));
+};
 
 const noteEvent = (vu, kind) => {
   streamStats.events += 1;
-  const paths = kind.startsWith(SHARD_PREFIX) ? shardReads(kind) : fullReads;
+  const { paths, heavy } = eventReads(kind);
   if (paths.length === 0) return;
+  if (heavy) {
+    for (const path of paths) vu.heavyReads.add(path);
+    vu.heavyLast = Date.now();
+    if (vu.heavyTimer !== null) return;
+    vu.heavyFirst = vu.heavyLast;
+    armHeavy(vu);
+    return;
+  }
   if (vu.pendingEventAt === null) vu.pendingEventAt = performance.now();
   for (const path of paths) vu.pendingReads.add(path);
   if (vu.coalesceTimer !== null) return;
@@ -507,11 +512,7 @@ const noteEvent = (vu, kind) => {
     vu.pendingReads.clear();
     const eventAt = vu.pendingEventAt;
     vu.pendingEventAt = null;
-    void Promise.all(due.map((path) => request(vu, path))).then((results) => {
-      if (eventAt !== null && results.every((result) => result.valid)) {
-        addSample(eventRefreshMs, performance.now() - eventAt);
-      }
-    });
+    flushReads(vu, due, eventAt);
   }, COALESCE_MS);
 };
 
@@ -567,7 +568,7 @@ const streamLoop = async (vu, signal) => {
       if (vu.streamOpens > 1 && vu.reconnectResync === null) {
         const resync = (async () => {
           await pause(random() * RECONNECT_RESYNC_MAX_MS, signal);
-          if (!signal.aborted) await Promise.all(fullReads.map((path) => request(vu, path)));
+          if (!signal.aborted) await Promise.all(FULL_READS.map((path) => request(vu, path)));
         })();
         vu.reconnectResync = resync;
         void resync.finally(() => {
@@ -1317,6 +1318,10 @@ const vus = Array.from({ length: connectionCount }, (_, index) => ({
   pendingReads: new Set(),
   pendingEventAt: null,
   coalesceTimer: null,
+  heavyReads: new Set(),
+  heavyFirst: 0,
+  heavyLast: 0,
+  heavyTimer: null,
   arrivalAt: null,
   arrivalTimer: null,
   forceReconnect: null,
@@ -1376,6 +1381,7 @@ streamStats.connectedAtEnd = streamStats.connected;
 streamController.abort();
 for (const vu of vus) {
   if (vu.coalesceTimer !== null) clearTimeout(vu.coalesceTimer);
+  if (vu.heavyTimer !== null) clearTimeout(vu.heavyTimer);
   if (vu.arrivalTimer !== null) clearTimeout(vu.arrivalTimer);
 }
 const streamResults = await Promise.allSettled(streamTasks.map((task) => task.promise));

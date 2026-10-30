@@ -328,7 +328,7 @@ export const COALESCE_MS = 250;
 export const HEAVY_COALESCE_MS = 30_000;
 /** How long every replica's projection cache needs to observe a commit. */
 export const CONSISTENCY_MS = 1_500;
-const HEAVY_KINDS: ReadonlySet<string> = new Set(['shard:world', 'shard:score', 'shard:clan']);
+export const HEAVY_KINDS: ReadonlySet<string> = new Set(['shard:world', 'shard:score', 'shard:clan']);
 
 export function shardCoalescer(
   flush: (reads: readonly (readonly string[])[]) => void,

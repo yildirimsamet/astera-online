@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { eventReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -82,5 +82,34 @@ describe('the worker verdict', () => {
       frames: [{ atMs: 0, busyMs: 9_000 }, { atMs: 30_000, busyMs: 12_000 }, { atMs: 60_000, busyMs: 500 }],
       lateness: { p99: 100 }, wake: { p99: 10 }, queue: { p99: 90 } });
     expect(verdict.peakUtilization).toBeCloseTo(0.1, 6);
+  });
+});
+
+/**
+ * A STREAM EVENT COSTS WHAT IT COSTS THE WEB. Scaling plan F0.1.
+ *
+ * The runner answered every event that was not `shard:` with the full resync, while the
+ * web routes private, global and finished-work events to a read or two: a fleet's own
+ * `private:memory` on every arrival was fourteen reads in the run and one on a phone.
+ * The runner now asks the web's own tables, limited to the screens a session keeps open.
+ */
+describe('the reads a stream event provokes', () => {
+  it('follows the web for narrow events', () => {
+    expect(eventReads('private:memory')).toEqual({ paths: ['/api/galaxy'], heavy: false });
+    expect(eventReads('private:sight')).toEqual({ paths: ['/api/intel'], heavy: false });
+    expect(eventReads('build_complete')).toEqual({
+      paths: ['/api/planets', '/api/session/pending', '/api/rewards', '/api/galaxy'], heavy: false });
+    expect(eventReads('shard:launch')).toEqual({ paths: ['/api/galaxy/traffic'], heavy: false });
+  });
+  it('puts growth on the heavy lane', () => {
+    expect(eventReads('shard:world')).toEqual({ paths: ['/api/galaxy', '/api/leaderboard'], heavy: true });
+  });
+  it('resyncs for what happened to you, and for a private kind the web does not know', () => {
+    expect(eventReads('raided')).toEqual({ paths: FULL_READS, heavy: false });
+    expect(eventReads('private:something-new')).toEqual({ paths: FULL_READS, heavy: false });
+  });
+  it('reads nothing for a screen a session does not keep open, or a kind nobody knows', () => {
+    expect(eventReads('global:announcement')).toEqual({ paths: [], heavy: false });
+    expect(eventReads('shard:something-new')).toEqual({ paths: [], heavy: false });
   });
 });
