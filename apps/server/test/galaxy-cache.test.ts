@@ -119,6 +119,20 @@ describe('a warm galaxy read', () => {
     expect((await read(cached)).json()).toEqual((await read(fresh)).json());
   });
 
+  it('lists the worlds in one order, however the rows lie on disk', async () => {
+    // Changing an indexed column and back rewrites the row at the heap's end with new
+    // index entries; without an order the next read lists it elsewhere.
+    const [first] = await f.db.select({ id: planets.id, slot: planets.slotIndex }).from(planets)
+      .where(eq(planets.seasonId, f.seasonId)).orderBy(planets.slotIndex).limit(1);
+    for (const slot of [1_000_000, first!.slot]) {
+      await f.db.update(planets).set({ slotIndex: slot }).where(eq(planets.id, first!.id));
+    }
+    const order = (await f.db.select({ id: planets.id, slot: planets.slotIndex }).from(planets).where(eq(planets.seasonId, f.seasonId)))
+      .sort((a, b) => a.slot - b.slot || (a.id < b.id ? -1 : 1)).map(row => row.id);
+    const listed = (await read(fresh)).json<{ planets: { id: string }[] }>().planets.map(world => world.id);
+    expect(listed.filter(id => order.includes(id))).toEqual(order.filter(id => listed.includes(id)));
+  });
+
   it('draws the monuments and radiation the locked SQL readers draw', async () => {
     const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
     for (const minutes of [0, 25, 90]) {
@@ -159,6 +173,20 @@ describe('what moves it', () => {
     // `setDefencePosture` tells every other member, not the galaxy.
     await f.db.transaction(tx => publishPrivate(tx, f.playerIds[0]!, 'posture'));
     await converges();
+  });
+
+  it('but not a fleet leaving or landing somewhere else', async () => {
+    // The two commonest events in a galaxy move none of its shared facts.
+    await cached.app.inject({ url: '/api/galaxy/traffic', headers: { authorization: `Bearer ${tokens[0]!}` } });
+    const before = cached.app.projections.status();
+    await f.db.transaction(tx => publishShard(tx, f.seasonId, 'launch'));
+    await f.db.transaction(tx => publishShard(tx, f.seasonId, 'arrival'));
+    // Traffic does move on them; once it has, both events have been delivered.
+    await vi.waitFor(() => {
+      expect(cached.app.projections.status().traffic.invalidations).toBeGreaterThanOrEqual(before.traffic.invalidations + 1);
+    }, { timeout: 3_000, interval: 20 });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(cached.app.projections.status().galaxyFacts.invalidations).toBe(before.galaxyFacts.invalidations);
   });
 
   it('a clan renamed', async () => {

@@ -2,7 +2,7 @@ import { readBattleReplay } from '../src/services/battleReplay.js';
 import { battleReplays } from '../src/db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMBAT, MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, normalizeHpDamage, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
 import { clanMemberships, clans, hpRadiationSources, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
@@ -12,6 +12,7 @@ import { readHomeHealth } from '../src/services/homeHealth.js';
 import { readMonumentBattleReports } from '../src/services/monumentReports.js';
 import { assertDominionLedgers } from '../src/services/dominion.js';
 import { totalUnitsOf } from '../src/services/planet.js';
+import * as stream from '../src/stream/bus.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
@@ -299,6 +300,19 @@ describe('chronological monument arrivals and physical battle settlement', () =>
     expect(await f.db.select().from(monumentBattles)).toHaveLength(0);
     const heldCargo = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.hull, 'COURIER'));
     expect(heldCargo.reduce((sum, lot) => sum + lot.deuterium, 0)).toBeCloseTo(120);
+  });
+
+  it('tells the galaxy when a friendly wave joins the hold', async () => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[0]! }).where(eq(monuments.id, m.id));
+    await wave(0, { DART: 1 }, { hold: true });
+    const incoming = await wave(0, { DART: 1 }, { eta: 2, purpose: 'REINFORCE' });
+    const published = vi.spyOn(stream, 'publishShard');
+    try {
+      await arrive(incoming);
+      // The map's hangar fill is public and cached per galaxy: a quiet join would leave it short.
+      expect(published.mock.calls.map(([, seasonId, event]) => ({ seasonId, event })))
+        .toContainEqual({ seasonId: f.seasonId, event: 'control' });
+    } finally { published.mockRestore(); }
   });
 
   it('warns a newly arrived holder about an already outbound hostile attack exactly once', async () => {

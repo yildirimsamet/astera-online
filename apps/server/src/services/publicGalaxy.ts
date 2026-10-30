@@ -1,5 +1,5 @@
 import { accountCosmeticEquipment } from './cosmeticEquipment.js';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import {
   SATELLITE_IDS,
   alloyRate,
@@ -242,7 +242,9 @@ export async function publicWorlds(
     .leftJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
     .where(planetIds === undefined
       ? eq(planets.seasonId, seasonId)
-      : and(eq(planets.seasonId, seasonId), inArray(planets.id, [...planetIds])));
+      : and(eq(planets.seasonId, seasonId), inArray(planets.id, [...planetIds])))
+    // One order on every replica and cache refill, wherever an update left the row.
+    .orderBy(asc(planets.slotIndex), asc(planets.id));
 
   const ids = rows.map((r) => r.planet.id);
   if (ids.length === 0) return [];

@@ -430,6 +430,8 @@ export async function advanceLockedMonument(tx: Tx, locked: LockedMonument, home
       if (friendly(locked, incoming[0]!)) {
         await chooseHold(tx, locked, homes, incoming, at, observedAt);
         for (const wave of incoming) await publish(tx, wave.playerId, 'private:monument');
+        // The owner is unchanged, but its public hangar fill rose.
+        await publishShard(tx, locked.season.id, 'control');
       } else battles.push(await battleAt(tx, locked, incoming, homes, at, new Set(adminUsernames), observedAt));
     }
     await completeMonumentJoint(tx, arrival.waves[0]!.jointOperationId, at);

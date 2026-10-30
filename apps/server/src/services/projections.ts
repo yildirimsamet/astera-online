@@ -432,10 +432,11 @@ export class Projections {
       this.publicGalaxy.invalidate(event.shard);
     }
     /*
-      THE GALAXY'S SHARED FACTS (F1.8). Everything the public worlds move on, and the
-      two doors a monument changes through besides: a wave arriving or recalled, and
-      a weapon launched. A radiation source is written with `world`, a podium moves
-      with `score`, a monument changes hands with `control`.
+      THE GALAXY'S SHARED FACTS (F1.8). The same events the public worlds move on: a
+      radiation source is written with `world`, a podium moves with `score` or a
+      battle's `impact`, and every change to a held monument publishes `control`.
+      `launch` and `arrival`, the commonest events, are absent on purpose: an
+      outbound or returning wave is no public fact.
     */
     if (
       kind === 'shard:world'
@@ -447,8 +448,6 @@ export class Projections {
       || kind === 'shard:score'
       || kind === 'shard:season'
       || kind === 'shard:rollover'
-      || kind === 'shard:arrival'
-      || kind === 'shard:launch'
     ) {
       this.galaxyFacts.invalidate(event.shard);
     }
