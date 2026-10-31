@@ -273,3 +273,27 @@ Madde 0'da istemci tarafı okuma nedenleri sayılır.
 | 9 | 7. Bağlantı bütçesi (R4). |
 | 10 | 6. Trafik canlı akış (R9 ile). |
 | 11 | 9. Yük aracı: üretecin CPU'su ayrı (R5). Ardından kabul koşusu. |
+
+## M sonucu (1 Kasım, ölçüldü)
+
+**Kök sebep:** drizzle her sorguyu postgres.js `unsafe()` ile gönderiyor; `unsafe()` hiç prepare etmiyor ve
+parametreli her sorgu önce tip öğrenmek için ayrı bir gidiş-dönüş yapıyor. Her SQL 2 gidiş-dönüş. Prod VPS'te bir
+gidiş-dönüş 0,6–0,9 ms (Docker ağı ya da fsync değil, sanal makinenin kendisi); tek çekirdek dizüstü
+geliştirme makinesinden ~4 kat yavaş.
+
+**Yapılanlar (`capacity-fixes`):**
+- `195851b8` — pnpm patch: 32 parametreye kadar sorgular bağlantı başına bir kez hazırlanır; `plan_cache_mode =
+  force_custom_plan` (planlar eskisi gibi). Postgres belleği bağlantı başına ~+3,4 MB (bench rotaları).
+- `51e03f24` — yerleşim kapısı yazma isteğinde 4 → 2 sorgu (kilit, ilk okumayla; tatil, kontrol okumasıyla).
+- `71a7681c` — `/api/planet/*` başkenti 2 → 1 sorguda bulur.
+
+**Ölçüm (capacity dump, tek istek, ısınmış):** her gidiş-dönüşe 2 ms ekleyen proxy ile (Nagle kapalı) sıralı
+gidiş-dönüş: collect ~33 (71 SQL), launch ~29, planets ~11, galaxy ~4. Prod tahmini: collect ~210 → ~105 ms,
+launch ~360 → ~110 ms; artık CPU baskın (SQL başına drizzle kurulumu + satır eşleme).
+
+**Denenip bırakılanlar:** önbellekli drizzle `is()` (profil %20 gösterdi, ölçülen kazanç 0); unix socket
+(gidiş-dönüş başına ~0,07 ms).
+
+**Kalan:** bir mutasyon içinde aynı satırların tekrar okunması (collect: gezegen 6×, sezon 3×, buildings/satellites/
+units 3×; kilitli yükleme, radyasyon, wealth ve görünüm ayrı ayrı okuyor). Rota rota, satırları elden ele geçiren
+bir refactor; orta risk, SQL başına ~2 ms prod kazancı. Kapasiteyi daha çok etkileyen 2, 3 ve R7'den sonraya.
