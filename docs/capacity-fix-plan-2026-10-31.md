@@ -205,3 +205,71 @@ Her madde ayrı commit'tir ve kendi testleriyle kapanır. Prod'a çıkış owner
 - 6 ayrı.
 
 Tek bir 1.000 oyunculuk kabul koşusu en sonda yapılır. Ara ölçümler madde 0 ile yereldir.
+
+---
+
+## Review düzeltmeleri (31 Ekim, koda karşı doğrulandı)
+
+### Yanlışlar
+
+**R1. Madde 8: "önce Node'un yerleşik TypeScript desteği" çalışmaz.**
+- Sunucu kodu `.ts` dosyalarını `./app.js` uzantısıyla import ediyor; bu eşlemeyi tsx yapıyor.
+- Node'un tip silme özelliği bu eşlemeyi yapmaz.
+- İmaj `node:22`; tip silme orada bayrak ister.
+- **Doğrusu:** doğrudan esbuild ile paketlemek.
+
+**R2. Madde 1'in kazancı abartılı, mekanizması büyük ihtimalle yanlış.**
+- Planın iddiası: worker'ın bekleyen UPDATE'i, arkasına gelen bütün oyun yazmalarını sıraya sokuyor.
+- PostgreSQL'de satır zaten paylaşımlı kilitliyken yeni bir `FOR SHARE` isteği beklemez, bekleyen UPDATE'in önüne geçer. Ölçülen 329 ms büyük ihtimalle worker'ın kendi beklemesi.
+- UPDATE kilidi aldıktan sonra transaction'da yalnız `pg_notify` kalıyor (`spawnGate.ts:91–94`); oyun yazmalarına etkisi milisaniyeler.
+- **Doğrusu:** önce üç oturumluk bir testle davranış kanıtlanır. Oyunculara etkisi yoksa madde 1 "yalnız değer değişince yaz" seviyesine iner ve sıranın sonuna gider.
+
+### Abartı ve eksik açıklama
+
+**R3. Madde 2: kazancın gerçek nedeni plandakinden farklı.**
+- Throttle API süreci başına tutuluyor (`PresenceTracker.lastWrite` her süreçte ayrı). nginx istekleri 3 API'ye dağıttığı için bir hesap dakikada 3 kez yazıyor. Ölçülen 2.320 yazma bunu doğruluyor: 200 oyuncu × 3 dk ≈ 600 beklenirken.
+- `touch` istek yolunda `await` ediliyor (`auth.ts:199, 217, 229`). Kilit beklemesi doğrudan o isteğin gecikmesine ekleniyor.
+- **Doğrusu:** koşullu UPDATE'teki `last_active_at < now - 60 sn` şartı süreçler arası tekrarı da keser (3 → 1). Ayrıca yazım istek yolundan çıkarılabilir: `await` yerine sıraya al. Bu ikinci kısım ayrı bir karar; hata raporlama korunmalı.
+
+**R4. Madde 7: "48 bağlantı CPU için yarışıyor" zayıf bir iddia.** Örneklerde aynı anda aktif backend sayısı 1–7. Bağlantıların çoğu boştaydı. Sonuç değişmiyor (havuzu büyütme), ama gerekçe şu olmalı: CPU'yu API süreçleri dolduruyor, PostgreSQL bağlantı sayısı değil.
+
+**R5. "Makine ~200'de doyar" kesin değil.** Yük üreteci aynı makinedeydi ve CPU'su ayrıca ölçülmedi: sampler `capacity` adına süzüyordu, yük konteynerinin adı rastgeleydi. Rapordaki tavan, üretecin payı kadar düşük ölçülmüş olabilir.
+- **Doğrusu:** kabul koşusunda üreteç konteynerine sabit ad verilir ve CPU'su ayrı kaydedilir (madde 9'a eklenir).
+
+### Gözden kaçanlar
+
+**R6. Düşük yükte bile yavaş hareketler: planın hiçbir maddesi bunu hedeflemiyordu.** 50 oyuncuda CPU düşükken hareket p95 1,9 sn, fırlatma p50 807 ms. Bu CPU doluluğu değil, hareketin kendi maliyeti ya da bir kilit/kuyruk.
+- **Yeni madde M:** madde 0 ile `fleet/launch`, `planet/collect` ve `planet/build` tek başına ölçülür: SQL sayısı, süre, kilit beklemesi. Kök sebep bulunur. Yüksek öncelik; oyuncunun en çok hissettiği gecikme bu.
+
+**R7. Galaksi önbelleğini ne boşaltıyor? Plan sormamıştı.** `shard:score` da galaksiyi tamamen boşaltıyor (`projections.ts:478–488`). Puan sık değişen bir olay; 180 sn'de 67 yeniden doldurmanın büyük kısmı muhtemelen buradan.
+- **Daha basit çözüm (madde 5'ten önce):** galaksinin hangi alanlarının puana bağlı olduğu bulunur. Puan değişikliği yalnız o alanları günceller ya da puan ayrı küçük bir parçaya taşınır. Gereksiz boşaltmaları kesmek, stale-while-revalidate'ten daha basit olabilir.
+
+**R8. Galaksi neden bu kadar sık okunuyor?** Kişi başı ~27 sn'de bir. Yalnız ucuzlatmak değil, sıklığı azaltmak da seçenek:
+- olay başına okumalar (`readsForShardEvent`, ağır şerit 30 sn);
+- 60 sn güvenlik ağı.
+
+Madde 0'da istemci tarafı okuma nedenleri sayılır.
+
+**R9. Eski mobil uygulama sürümleri (APK) unutulmuştu.** Android uygulaması web paketini içinde taşıyor. Madde 4 (galaksiyi bölmek) ve madde 6 (trafik akışı), eski APK'ların bugünkü `/api/galaxy` ve `/api/galaxy/traffic` çağrılarını kıramaz.
+- **Doğrusu:** eski uç noktalar, minimum APK sürümü yükseltilene kadar aynen kalır. Yeni yollar ek olarak açılır; ikisi aynı önbellekten beslenir. Eşdeğerlik testi bu yüzden kalıcı.
+
+**R10. Madde 4'teki "değişmeyen" alanların değişmediği doğrulanmalı.** Dünya adı, rengi ve kaplaması (`equipped_skin_id`) sezon içinde değişebilir. Gerçekten sabit olan muhtemelen yalnız konum ve tür.
+- **Doğrusu:** alan alan kod taraması; değişebilen her alan "değişen" parçaya.
+
+**R11. Madde 0'da temiz bir CPU profili şart.** Prod'daki profiller açılışla karışıktı: esbuild derlemesi %10–15. "Galaksi en pahalı CPU" iddiası baytla kanıtlı, CPU payıyla değil. Madde 4'ün büyük işine girmeden önce, döküm üzerinde ısınmış süreçten rota başına CPU profili alınır.
+
+### Güncellenmiş sıra
+
+| Sıra | İş |
+|---|---|
+| 1 | 0. Yerel ölçüm düzeneği. Rota ve hareket başına CPU profili, SQL sayısı, süre. İstemci okuma nedenleri (R6, R8, R11). |
+| 2 | M. Hareket maliyetinin kök sebebi (R6). |
+| 3 | 2. Presence: koşullu yazım, süreçler arası tekrarın kesilmesi (R3). |
+| 4 | 3. Galaksiyi yerleşim havuzundan çıkarmak. |
+| 5 | R7. Puan olayının galaksiyi boşaltmasını kesmek; madde 5 ondan sonra hâlâ gerekiyorsa. |
+| 6 | 4. Galaksi yanıtı. Önce bir kez JSON + ETag. Bölme R9 ve R10 ile. |
+| 7 | 1. Spawn kapısı. Önce R2 testi; büyük ihtimalle yalnız "değişince yaz". |
+| 8 | 8. Derlenmiş JS, esbuild ile (R1). |
+| 9 | 7. Bağlantı bütçesi (R4). |
+| 10 | 6. Trafik canlı akış (R9 ile). |
+| 11 | 9. Yük aracı: üretecin CPU'su ayrı (R5). Ardından kabul koşusu. |
