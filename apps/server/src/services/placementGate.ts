@@ -28,9 +28,16 @@ import { ECONOMY_PROFILE } from '@astera/rules';
  * last found current, skips the after check: it read nothing a move could change.
  * Anything not listed here — every write
  * and every GET that writes — keeps the lease: `/api/monuments` applies due
- * transitions, and `/api/galaxy` and `/api/intel` confirm telescope readings.
+ * transitions, and `/api/intel` confirms telescope readings.
+ *
+ * ONE LISTED ROUTE WRITES, ON PURPOSE. `/api/galaxy` confirms telescope readings
+ * (`readTelescopes`) in one statement that re-reads each watch under its row lock and
+ * skips any a relocation detached, so it cannot write across a move; a lease held for
+ * it queued opening waves into 503s (capacity fix plan, item 3).
+ * `placement-read.test.ts` pins that it is the only write and the race with a move.
  */
 export const PLACEMENT_READ_ROUTES: ReadonlySet<string> = new Set([
+  'GET /api/galaxy',
   'GET /api/galaxy/traffic',
   'GET /api/galaxy/events',
   'GET /api/mining/field',
