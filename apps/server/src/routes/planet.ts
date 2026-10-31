@@ -11,10 +11,12 @@ import {
   type HullId,
 } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
-import { planets } from '../db/schema.js';
+import { planets, players } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
 import { startRepair } from '../services/repair.js';
 import { loadPlanetViewsData, buildPlanetView } from '../services/planetView.js';
+import { loadResearchInsight } from '../services/researchState.js';
+import type { Tx } from '../db/client.js';
 import { maintenanceAction } from '../services/maintenance.js';
 import {
   buildUnits,
@@ -138,10 +140,21 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
    */
   const VIEW_SNAPSHOT = { isolationLevel: 'repeatable read', accessMode: 'read only' } as const;
 
-  // A read's battle-found research rungs come from memory (F1.8 C5); commands read the database.
-  const READ_INSIGHT = { insight: (playerId: string) => app.projections.researchInsight(playerId) };
+  /**
+   * A read's battle-found research rungs come from memory (F1.8 C5); commands read the database.
+   * The memory is read BEFORE the view's transaction opens: filling it takes a connection of
+   * the same pool, and transactions that each wait for a second connection while holding one
+   * stop the pool once there are as many of them as connections (capacity run 2026-10-31).
+   * A commander that changed in between is read inside the transaction itself.
+   */
+  const readInsight = async (accountId: string) => {
+    const [player] = await app.db.select({ id: players.id }).from(players).where(eq(players.accountId, accountId));
+    const known = player ? await app.projections.researchInsight(player.id) : null;
+    return (tx: Tx) => ({ insight: (id: string) => known && id === player?.id ? Promise.resolve(known) : loadResearchInsight(tx, id) });
+  };
 
   app.get('/api/planets', { preHandler: requireAuth }, async (req) => {
+    const insight = await readInsight(req.accountId!);
     const captured = await app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
       const owned = await tx.select({ id: planets.id, kind: planets.kind }).from(planets)
@@ -151,7 +164,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       );
       // One clock instant and commander snapshot for the whole response, and one
       // read per table for all of its worlds (scaling plan F1.4).
-      const views = await loadPlanetViewsData(tx, worlds.map(world => world.id), app.clock, READ_INSIGHT);
+      const views = await loadPlanetViewsData(tx, worlds.map(world => world.id), app.clock, insight(tx));
       return {
         playerId: commander.playerId,
         seasonId: commander.seasonId,
@@ -164,6 +177,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
 
   app.get('/api/planets/:planetId', { preHandler: requireAuth }, async (req) => {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    const insight = await readInsight(req.accountId!);
     return app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
       const [owned] = await tx.select({ id: planets.id }).from(planets).where(and(
@@ -171,14 +185,15 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         eq(planets.controllerPlayerId, commander.playerId),
       ));
       if (!owned) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-      const [view] = await loadPlanetViewsData(tx, [planetId], app.clock, READ_INSIGHT);
+      const [view] = await loadPlanetViewsData(tx, [planetId], app.clock, insight(tx));
       return view!;
     }, VIEW_SNAPSHOT).then(buildPlanetView);
   });
 
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
-    return app.db.transaction(async tx => (await loadPlanetViewsData(tx, [planetId], app.clock, READ_INSIGHT))[0]!, VIEW_SNAPSHOT)
+    const insight = await readInsight(req.accountId!);
+    return app.db.transaction(async tx => (await loadPlanetViewsData(tx, [planetId], app.clock, insight(tx)))[0]!, VIEW_SNAPSHOT)
       .then(buildPlanetView);
   });
 
