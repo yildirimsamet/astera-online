@@ -5,7 +5,7 @@ import type { ChatMedia } from '@astera/rules';
 import { and, count, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { CLAN, SEASON, clanChatMessageIsValid } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
-import type { Db, Tx } from '../db/client.js';
+import type { Db, Queryable, Tx } from '../db/client.js';
 import { accounts, clanMemberships, clanMessages, clans, planets, players, seasons } from '../db/schema.js';
 import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
@@ -207,8 +207,8 @@ export async function postClanChat(
   };
 }
 
-async function clanActorForPlayer(tx: Tx, playerId: string) {
-  const [row] = await tx.select({
+async function clanActorForPlayer(db: Queryable, playerId: string) {
+  const [row] = await db.select({
     accountId: accounts.id,
     login: accounts.username,
     seasonId: players.seasonId,
@@ -225,17 +225,21 @@ async function clanActorForPlayer(tx: Tx, playerId: string) {
   return row;
 }
 
+/**
+ * The cursor only moves forward, so a repeated or late mark needs no receipt and no
+ * lock: one conditional update, and a mark that moves nothing writes nothing (F1.8 Q16).
+ */
 export async function markClanChatRead(
-  tx: Tx,
+  db: Queryable,
   input: { playerId: string; messageId: string; now: Date },
 ): Promise<string> {
-  const actor = await clanActorForPlayer(tx, input.playerId);
-  const season = await lockSeason(tx, actor.seasonId, false);
+  const actor = await clanActorForPlayer(db, input.playerId);
+  const [season] = await db.select({ status: seasons.status, endsAt: seasons.endsAt }).from(seasons)
+    .where(eq(seasons.id, actor.seasonId));
   assertClanChatOpen(season, input.now);
-  await lockClanPlayers(tx, [input.playerId]);
-  const membership = await activeClanMembership(tx, input.playerId);
+  const membership = await activeClanMembership(db, input.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
-  const [message] = await tx.select({ createdAt: clanMessages.createdAt })
+  const [message] = await db.select({ createdAt: clanMessages.createdAt })
     .from(clanMessages).where(and(
       eq(clanMessages.id, input.messageId),
       eq(clanMessages.clanId, membership.clanId),
@@ -243,17 +247,16 @@ export async function markClanChatRead(
       gte(clanMessages.createdAt, membership.joinedAt),
     ));
   if (!message) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
-  const [locked] = await tx.select().from(clanMemberships)
-    .where(and(
-      eq(clanMemberships.playerId, input.playerId),
-      eq(clanMemberships.clanId, membership.clanId),
-      sql`${clanMemberships.leftAt} is null`,
-    )).for('update');
-  if (!locked || locked.leftAt) throw new GameError('NOT_IN_CLAN', 'You no longer belong to that clan', 403);
-  const readAt = locked.lastChatReadAt && locked.lastChatReadAt > message.createdAt
-    ? locked.lastChatReadAt
-    : message.createdAt;
-  await tx.update(clanMemberships).set({ lastChatReadAt: readAt })
-    .where(eq(clanMemberships.id, locked.id));
-  return readAt.toISOString();
+  const current = and(
+    eq(clanMemberships.playerId, input.playerId),
+    eq(clanMemberships.clanId, membership.clanId),
+    isNull(clanMemberships.leftAt),
+  );
+  const [moved] = await db.update(clanMemberships).set({ lastChatReadAt: message.createdAt })
+    .where(and(current, or(isNull(clanMemberships.lastChatReadAt), lt(clanMemberships.lastChatReadAt, message.createdAt))))
+    .returning({ readAt: clanMemberships.lastChatReadAt });
+  const [kept] = moved ? [moved] : await db.select({ readAt: clanMemberships.lastChatReadAt })
+    .from(clanMemberships).where(current);
+  if (!kept?.readAt) throw new GameError('NOT_IN_CLAN', 'You no longer belong to that clan', 403);
+  return kept.readAt.toISOString();
 }

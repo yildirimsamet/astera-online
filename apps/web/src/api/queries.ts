@@ -54,6 +54,7 @@ import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
 import { readIntelSnapshot } from './sightCache.js';
+import { CHAT_READ_COALESCE_MS, coalesceLatest } from './coalesceLatest.js';
 import { serverNow } from '../lib/clock.js';
 import { worksAt } from '../lib/projection.js';
 import {
@@ -1096,8 +1097,10 @@ export function useClanActions() {
       void refreshQueries(client, { queryKey: keys.clanBadge });
     },
   });
+  const markClanChatRead = useMemo(() => coalesceLatest((messageId: string) => api.markClanChatRead(messageId),
+    CHAT_READ_COALESCE_MS), [api]);
   const readChat = useMutation({
-    mutationFn: (messageId: string) => api.markClanChatRead(messageId),
+    mutationFn: markClanChatRead,
     retry: 1,
     onMutate: async () => {
       await client.cancelQueries({ queryKey: keys.clanBadge });
@@ -1117,7 +1120,8 @@ export function useClanActions() {
     onError: (_error, _messageId, context) => {
       if (context?.previous !== undefined) client.setQueryData(keys.clanBadge, context.previous);
     },
-    onSettled: () => { void refreshQueries(client, { queryKey: keys.clanBadge }); },
+    // A mark still waiting to be sent would read the badge back unread.
+    onSettled: () => { if (!markClanChatRead.queued()) void refreshQueries(client, { queryKey: keys.clanBadge }); },
   });
   const seen = useMutation({
     mutationFn: () => api.markClanSeen(),
@@ -1381,15 +1385,18 @@ export function usePostChat(language: ChatLanguage = currentLanguage()) {
 export function useMarkChatRead(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   const client = useQueryClient();
+  const markChatRead = useMemo(() => coalesceLatest((messageId: string) => api.markChatRead(language, messageId),
+    CHAT_READ_COALESCE_MS), [api, language]);
   return useMutation({
-    mutationFn: (messageId: string) => api.markChatRead(language, messageId),
+    mutationFn: markChatRead,
     retry: 1,
     onMutate: async () => {
       await client.cancelQueries({ queryKey: keys.chatUnreadFor(language) });
       client.setQueryData(keys.chatUnreadFor(language), { count: 0 });
     },
+    // A mark still waiting to be sent would read the count back unread.
     onSettled: () => {
-      void refreshQueries(client, { queryKey: keys.chatUnreadFor(language) });
+      if (!markChatRead.queued()) void refreshQueries(client, { queryKey: keys.chatUnreadFor(language) });
     },
   });
 }

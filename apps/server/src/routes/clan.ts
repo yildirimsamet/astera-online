@@ -658,19 +658,11 @@ export function registerClanRoutes(app: FastifyInstance): void {
   app.post('/api/clan/chat/read', { preHandler: requireAuth }, async (req) => {
     const body = chatReadBody.parse(req.body);
     const actor = await clanActor(app.db, req.accountId!);
-    const now = app.clock.now();
-    return idempotentMutation(app.db, {
-      playerId: actor.playerId,
-      operation: 'clan.chat.read',
-      key: idempotencyKey(req),
-      body,
-      now,
-    }, (tx) => markClanChatRead(tx, {
+    return { readAt: await markClanChatRead(app.db, {
       playerId: actor.playerId,
       messageId: body.messageId,
-      now,
-    }))
-      .then((readAt) => ({ readAt }));
+      now: app.clock.now(),
+    }) };
   });
 
   app.post('/api/clan/read', { preHandler: requireAuth }, async (req) => {

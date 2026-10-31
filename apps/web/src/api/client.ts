@@ -942,7 +942,7 @@ export class Api {
   postClanChat = (content: string, replyToMessageId?: string, media?: ChatMedia) =>
     this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) });
   markClanChatRead = (messageId: string) =>
-    this.clanMutation('/api/clan/chat/read', clanChatReadSchema, { messageId });
+    this.send('/api/clan/chat/read', clanChatReadSchema, { method: 'POST', body: { messageId } });
   markClanSeen = () => this.clanMutation('/api/clan/read', clanSeenSchema);
 
   chatMessages = (language: ChatLanguage, before?: string) =>

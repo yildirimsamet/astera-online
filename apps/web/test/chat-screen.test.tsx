@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
+import { CHAT_READ_COALESCE_MS } from '../src/api/coalesceLatest.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import i18n, { currentLanguage } from '../src/i18n/index.js';
@@ -753,7 +754,9 @@ describe('galaxy chat surface', () => {
 
     history.scrollTop = 680;
     fireEvent.scroll(history);
-    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'four'); });
+    // A mark this soon after the last one joins the next coalesced write (F1.8 Q16).
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'four'); },
+      { timeout: CHAT_READ_COALESCE_MS + 1_000 });
   });
 
   it('continues following new messages while already at the bottom', async () => {
