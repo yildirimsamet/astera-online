@@ -56,6 +56,13 @@ interface Placement { id: string; seasonId: string; placementVersion: number }
 const placementChanged = () => new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
 
 /**
+ * How long a request waits for a placement connection. Scaling plan F1.6: under
+ * overload the wait is refused as retryable instead of an in-memory queue growing
+ * without bound and stretching every request behind it.
+ */
+export const PLACEMENT_QUEUE_MS = 2_000;
+
+/**
  * Hold a shared galaxy lease through every other authenticated HTTP handler. Transfers
  * take the exclusive side before world locks, so a multi-query write cannot
  * straddle relocation. A separate pool (two connections by default) avoids
@@ -66,6 +73,29 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
   options: { idleInTransactionTimeoutMs?: number; requireCurrentRules?: boolean } = {}): () => Promise<void> {
   const { requireCurrentRules = false, ...poolOptions } = options;
   const pool = createDb(url, { max, applicationName: 'astera-placement-gate', ...poolOptions });
+  // The pool's own queue cannot drop a waiter, so admission is counted here.
+  let leased = 0;
+  const waiting: (() => void)[] = [];
+  const lease = async (): Promise<void> => {
+    if (leased < max) {
+      leased += 1;
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const admit = (): void => { clearTimeout(timer); resolve(); };
+      const timer = setTimeout(() => {
+        waiting.splice(waiting.indexOf(admit), 1);
+        reject(new GameError('RETRYABLE', 'The command centre is busy; try again in a moment', 503));
+      }, PLACEMENT_QUEUE_MS);
+      waiting.push(admit);
+    });
+  };
+  /** Hands the connection to the next waiter, who inherits the count. */
+  const release = (): void => {
+    const next = waiting.shift();
+    if (next) next();
+    else leased -= 1;
+  };
 
   const keyOf = (current: Placement): string => `${current.id}:${String(current.placementVersion)}`;
   /** Whether the browser holds a different placement than `current`. */
@@ -146,9 +176,9 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
       assertRules(req);
       const startedAt = performance.now();
       let transactionStarted = false;
-      return pool.db.transaction(async tx => {
+      return lease().then(() => pool.db.transaction(async tx => {
         transactionStarted = true;
-        // Includes connection establishment and BEGIN, not the galaxy lock or handler.
+        // Includes the lease queue, connection establishment and BEGIN, not the galaxy lock or handler.
         // Observe real requests instead of adding a competing probe to this small pool.
         app.metrics.observePlacementTransactionStart(performance.now() - startedAt);
         const [initial] = await tx.select(PLACEMENT).from(players).where(eq(players.accountId, req.accountId!));
@@ -171,7 +201,7 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
           await assertCommanderNotVacationing(tx, current.id, app.clock.now());
         }
         return handler.call(this, req, reply);
-      }).catch((error: unknown) => {
+      }).finally(release)).catch((error: unknown) => {
         if (!transactionStarted) app.metrics.observePlacementTransactionStartError();
         throw error;
       });

@@ -997,7 +997,10 @@ Testler:
 **F1.6 Placement lease ölçümü (M5).** Lease bekleme p95 >25 ms ise `PLACEMENT_POOL_MAX` bağlantı bütçesi
 içinde 2'den 4'e çıkarılır. Kalıcı çözüm F2.2'de. Aynı işte havuz bekleme kuyruğuna üst sınır konur: bekleme
 2 sn'yi aşarsa istek `503 RETRYABLE` döner. Aşırı yükte bellek içi kuyruk sınırsız büyüyüp bütün gecikmeyi
-şişirmez.
+şişirmez. **Kuyruk sınırı kod hazır (31 Eki), deploy edilmedi:** kabul `placementGate.ts` içinde sayılır
+(postgres.js kuyruğu bekleyeni düşüremez); 2 sn bekleyen istek `503 RETRYABLE` alır ve
+`placementTransactionStartErrors`'a sayılır. `placementTransactionStartMs` artık kuyruk beklemesini de içerir:
+p95 >25 ms kararı F0.1 koşusunda bu metrikle verilir. İstemcinin otomatik tekrarı F1.9'da.
 
 **F1.7 Honor normalizasyonu ve R'den bağımsızlık (N1, N2, R1, R2). Muhasebe semantiği aynen korunur.**
 

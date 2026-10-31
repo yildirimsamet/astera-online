@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, expect, it, vi } from 'vitest';
@@ -115,4 +116,33 @@ it('invalidates a warm commander projection even before the transfer notificatio
   await f.db.update(planets).set({ seasonId: target.season.id }).where(eq(planets.id, f.planetIds[0]!));
   const current = await built.app.inject({ url: '/api/placement-cache-test', headers: { authorization, 'x-placement': `${f.playerIds[0]}:1` } });
   expect(current.json()).toMatchObject({ seasonId: target.season.id });
+});
+
+/** Scaling plan F1.6: under overload the lease queue answers instead of growing without bound. */
+it('refuses a request that waited two seconds for a lease as retryable, and leaks no lease', async () => {
+  const f = await seedWorld(1);
+  built = buildApp({ env: testEnv({ PLACEMENT_POOL_MAX: '1' }), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
+  const { requireAuth } = await import('../src/routes/auth.js');
+  let release = () => { /* assigned synchronously by the promise constructor */ };
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let entered = 0;
+  built.app.get('/api/placement-queue-test', { preHandler: requireAuth }, async () => {
+    if (++entered === 1) await held;
+    return { ok: true };
+  });
+  const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+  const holder = built.app.inject({ url: '/api/placement-queue-test', headers: { authorization } });
+  await vi.waitFor(() => { expect(entered).toBe(1); });
+  const startedAt = performance.now();
+  const queued = await built.app.inject({ url: '/api/placement-queue-test', headers: { authorization } });
+  const waited = performance.now() - startedAt;
+  release();
+  expect(queued.statusCode).toBe(503);
+  expect(queued.json()).toMatchObject({ error: 'RETRYABLE' });
+  expect(waited).toBeGreaterThanOrEqual(1_900);
+  expect(waited).toBeLessThan(3_000);
+  expect(entered).toBe(1);
+  expect((await holder).statusCode).toBe(200);
+  expect((await built.app.inject({ url: '/api/placement-queue-test', headers: { authorization } })).statusCode).toBe(200);
+  expect(built.metrics.status().placementPool.transactionStartErrors).toBe(1);
 });
