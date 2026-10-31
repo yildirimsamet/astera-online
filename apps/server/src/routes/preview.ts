@@ -77,12 +77,8 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
       adminPlayerIdsInSeason(app.db, target.seasonId, app.adminUsernames),
       app.projections.pirateSnapshot(target.seasonId, app.clock.now()),
     ]);
-    const publicPodium = adminPlayerIds.size === 0
-      ? null
-      : await dominionPodium(app.db, target.seasonId, adminPlayerIds);
-    const rankedWorlds = publicPodium === null
-      ? allWorlds
-      : applyDominionPodium(allWorlds, publicPodium);
+    // The cached worlds' badges are not kept current by score events; the podium is (capacity R7).
+    const rankedWorlds = applyDominionPodium(allWorlds, await dominionPodium(app.db, target.seasonId, adminPlayerIds));
     const primaryWorlds = applyHonorPodium(rankedWorlds, await honorPodium(app.db, target.seasonId, adminPlayerIds));
     const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'

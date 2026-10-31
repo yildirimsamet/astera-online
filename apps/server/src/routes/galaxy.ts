@@ -80,9 +80,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const hiddenAdminPlayerIds = new Set(
       [...adminPlayerIds].filter((playerId) => playerId !== self.playerId),
     );
-    const rankedWorlds = facts.dominionPodium === null
-      ? allWorlds
-      : applyDominionPodium(allWorlds, facts.dominionPodium);
+    const rankedWorlds = applyDominionPodium(allWorlds, facts.dominionPodium);
     const primaryWorlds = applyHonorPodium(rankedWorlds, facts.honorPodium);
     const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
