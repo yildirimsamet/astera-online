@@ -28,7 +28,7 @@ import {
 import { launchAttack } from '../services/mission.js';
 import { requireAuth } from './auth.js';
 import { completeResearch } from '../services/research.js';
-import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
+import { capitalIdForAccount, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
 import { buildRadiationBomb, launchRadiationBomb } from '../services/radiationBomb.js';
@@ -118,10 +118,7 @@ const launchBody = z.object({
 
 export function registerPlanetRoutes(app: FastifyInstance): void {
   /** Resolve the caller's planet, or 404. Never trusts a planet id from the client. */
-  const myPlanet = async (accountId: string): Promise<string> => {
-    const commander = await commanderForAccount(app.db, accountId);
-    return (await capitalPlanet(app.db, commander.playerId)).id;
-  };
+  const myPlanet = (accountId: string): Promise<string> => capitalIdForAccount(app.db, accountId);
 
   const explicitPlanet = async (accountId: string, raw: unknown) => {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(raw);
