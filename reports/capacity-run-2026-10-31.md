@@ -44,7 +44,8 @@ birikmiş istek işledi. Kademeler arasına boşalma beklemesi gerekir.
    - `update seasons set spawn_gate_through` 30 çağrı, **ortalama 329 ms**, toplam 9,9 sn. Tek sezon satırı yazılıyor; her yazma işlemi o satırı `FOR SHARE` ile kilitliyor.
    - `select id from players where account_id = $1 for update`: 2.320 çağrı, ortalama 5 ms, toplam 11,8 sn. Sayısı `last_active_at` güncellemesiyle aynı (presence). Presence yazımı oyuncu satırını kilitleyip oyun yazmalarıyla yarışıyor.
    - Transaction içinde `ClientRead` bekleyen bağlantılar: lease transaction'ları CPU bekleyen API'yi bekliyor.
-4. **Tek bir 4,2 sn sorgu:** galaksi başına koltuk/oyuncu sayımı (`sh.player_cap … count(distinct …)`). Hangi rotadan geldiği auto_explain logunda.
+4. ~~Tek bir 4,2 sn sorgu~~: koltuk sayımı (`sh.player_cap … count(distinct …)`) oyunun değil, yük aracının kendi mutabakat sorgusu
+   (`tools/capacity.mjs`). Oyun için bir bulgu değil.
 5. **Postgres ayarsız, prod dahil.** `shared_buffers` 128 MB (11 GB makinede), `work_mem` 4 MB, `effective_cache_size` 4 GB,
    `max_connections` 100. Kapasite DB'si de varsayılandı; ölçüm prod ile aynı koşulda.
 6. **Çok sayıda ucuz ama sık sorgu:**
