@@ -31,6 +31,8 @@ const { values } = parseArgs({ options: {
   routes: { type: 'string' },
   profile: { type: 'string' },
   json: { type: 'string' },
+  // Keeps the pool open after the last route, for reading the database's side of it.
+  hold: { type: 'string', default: '0' },
 } });
 const url = process.env.DATABASE_URL ?? '';
 if (!/_test(\?|$)/.test(url.split('/').pop() ?? '')) throw new Error('DATABASE_URL must name a *_test database');
@@ -135,5 +137,6 @@ for (const probe of probes) {
 }
 if (values.json) await writeFile(values.json, `${JSON.stringify({ accounts: users.length, rounds, concurrency, results }, null, 2)}\n`);
 session?.disconnect();
+await new Promise((resolve) => setTimeout(resolve, Number(values.hold) * 1000));
 await built.close();
 await close();
