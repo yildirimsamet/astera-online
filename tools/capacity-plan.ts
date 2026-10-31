@@ -115,3 +115,18 @@ export function eventReads(kind: string): { paths: readonly string[]; heavy: boo
     .map(([, path]) => path));
   return { paths: [...new Set(paths)], heavy: HEAVY_KINDS.has(kind) };
 }
+
+interface ReadOutcome { valid: boolean; response: { status: number } | null; body: unknown }
+
+/** The reads of a batch that failed, as `path status code`, so a run that stops says why. */
+export function failedReads(paths: readonly string[], outcomes: readonly ReadOutcome[]): string {
+  return outcomes.flatMap((outcome, index) => {
+    if (outcome.valid) return [];
+    const path = paths[index] ?? '?';
+    if (outcome.response === null) return [`${path} no response`];
+    const body = outcome.body;
+    const code = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
+      ? body.error : 'invalid payload';
+    return [`${path} ${String(outcome.response.status)} ${code}`];
+  }).join('; ');
+}

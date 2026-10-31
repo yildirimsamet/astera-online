@@ -46,7 +46,7 @@ import {
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { eventReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { eventReads, failedReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -599,19 +599,13 @@ const streamLoop = async (vu, signal) => {
   }
 };
 
+const COLD_START_READS = ['/api/season', '/api/planets', '/api/galaxy', '/api/galaxy/traffic', '/api/mining/field',
+  '/api/mining/status', '/api/session/pending', '/api/notifications?limit=30'];
+
 const initialReads = async (vu) => {
-  const responses = await Promise.all([
-    request(vu, '/api/season'),
-    request(vu, '/api/planets'),
-    request(vu, '/api/galaxy'),
-    request(vu, '/api/galaxy/traffic'),
-    request(vu, '/api/mining/field'),
-    request(vu, '/api/mining/status'),
-    request(vu, '/api/session/pending'),
-    request(vu, '/api/notifications?limit=30'),
-  ]);
+  const responses = await Promise.all(COLD_START_READS.map((path) => request(vu, path)));
   if (responses.some((result) => !result.valid)) {
-    throw new Error(`cold-start read failed for ${usernameFor(vu.accountIndex)}`);
+    throw new Error(`cold-start read failed for ${usernameFor(vu.accountIndex)}: ${failedReads(COLD_START_READS, responses)}`);
   }
   const galaxy = responses[2]?.body;
   const mining = responses[4]?.body;

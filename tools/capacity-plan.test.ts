@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { eventReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { eventReads, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -111,5 +111,16 @@ describe('the reads a stream event provokes', () => {
   it('reads nothing for a screen a session does not keep open, or a kind nobody knows', () => {
     expect(eventReads('global:announcement')).toEqual({ paths: [], heavy: false });
     expect(eventReads('shard:something-new')).toEqual({ paths: [], heavy: false });
+  });
+});
+
+describe('a cold-start read that failed', () => {
+  it('names each failed read with its status and code, so a run that stops says why', () => {
+    expect(failedReads(['/api/season', '/api/galaxy', '/api/planets', '/api/mining/field'], [
+      { valid: true, response: { status: 200 }, body: {} },
+      { valid: false, response: { status: 503 }, body: { error: 'RETRYABLE' } },
+      { valid: false, response: { status: 200 }, body: { planets: 'no' } },
+      { valid: false, response: null, body: null },
+    ])).toBe('/api/galaxy 503 RETRYABLE; /api/planets 200 invalid payload; /api/mining/field no response');
   });
 });
