@@ -35,6 +35,10 @@ export function createDb(
     max: opts.max ?? 10,
     connection: {
       application_name: opts.applicationName ?? 'astera',
+      // Drizzle's statements are prepared once per connection (patches/drizzle-orm, capacity item M):
+      // one round trip instead of a type lookup and then the query. Every execution is still
+      // planned for its own parameters, as an unprepared statement was.
+      plan_cache_mode: 'force_custom_plan',
       ...(opts.idleInTransactionTimeoutMs === undefined
         ? {}
         : { idle_in_transaction_session_timeout: opts.idleInTransactionTimeoutMs }),

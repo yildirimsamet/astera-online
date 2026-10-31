@@ -30,6 +30,8 @@ WORKDIR /app
 # still validates the whole lockfile, and a missing workspace manifest fails it.
 FROM base AS manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# The lockfile names these patches; a frozen install refuses to run without them.
+COPY patches ./patches
 COPY packages/rules/package.json  packages/rules/
 COPY packages/sim/package.json    packages/sim/
 COPY apps/server/package.json     apps/server/
