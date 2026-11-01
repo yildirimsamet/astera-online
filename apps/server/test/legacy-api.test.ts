@@ -93,7 +93,7 @@ it('counts owners of the same definition, tier and edition rather than everybody
   const detailUrl = `/api/legacy/profiles/${me.publicId}/awards/${second.id}`;
   const detail = legacyAwardDetailSchema.parse((await app.inject({ url: detailUrl, headers: headers[1] })).json());
   expect(detail.owners).toBe(1);
-  await f.db.update(legacyAwards).set({ revokedAt: f.clock.now(), revocationReason: 'Owner count regression' })
+  await f.db.update(legacyAwards).set({ revokedAt: f.clock.now(), revocationReason: 'ADMIN' })
     .where(eq(legacyAwards.accountId, f.accountIds[1]!));
   collection = legacyCollectionSchema.parse((await app.inject({ url, headers: headers[0] })).json());
   expect(collection.awards.find(row => row.id === first.id)?.owners).toBe(1);
