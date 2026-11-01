@@ -30,3 +30,6 @@ astera-refs/
 astera-ref-assets/
 **/__ref/**
 *.ref.glb
+
+# X DM announcements (tools/x-dm.mjs): API key, X session cookie, recipient list and send log.
+.x-dm/

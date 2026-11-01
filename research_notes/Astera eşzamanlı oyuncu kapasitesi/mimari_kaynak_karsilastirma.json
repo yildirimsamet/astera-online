@@ -1,0 +1,3107 @@
+[
+  {
+    "file": "apps/server/src/app.ts",
+    "same": false,
+    "exists": true,
+    "sourceLines": 544,
+    "currentLines": 545,
+    "sourceSha256": "492f2fec87ff7cf2bf4e6fcb3c1cf1e582d83f9b042de51bd81d5fbc517752ab",
+    "currentSha256": "5bf06d011a61004a90999758360d47a396d3e6a7f2332b198ce6075e8fc8c3d0"
+  },
+  {
+    "file": "apps/server/src/arena/playout.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "e7606669bc14ce7cabe034399c3c180c714317a900b002564d2c1d954ca9c6f1",
+    "currentSha256": "e7606669bc14ce7cabe034399c3c180c714317a900b002564d2c1d954ca9c6f1"
+  },
+  {
+    "file": "apps/server/src/arena/references.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 62,
+    "currentLines": 62,
+    "sourceSha256": "9bd647003c3f868d8ef04f9f30905fb2eb4ad856933331c555e2aa200fe5d50d",
+    "currentSha256": "9bd647003c3f868d8ef04f9f30905fb2eb4ad856933331c555e2aa200fe5d50d"
+  },
+  {
+    "file": "apps/server/src/arena/server.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 300,
+    "currentLines": 300,
+    "sourceSha256": "7e83a837a62b9b7535f8f16546b546a326fca84310053373b9c9e08269592418",
+    "currentSha256": "7e83a837a62b9b7535f8f16546b546a326fca84310053373b9c9e08269592418"
+  },
+  {
+    "file": "apps/server/src/auth/credentials.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 71,
+    "currentLines": 71,
+    "sourceSha256": "6adad36be83a29ca6e24ae0f132eabcf3d29e47cce5d7fa13cb945dfa709d7d1",
+    "currentSha256": "6adad36be83a29ca6e24ae0f132eabcf3d29e47cce5d7fa13cb945dfa709d7d1"
+  },
+  {
+    "file": "apps/server/src/auth/email.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 7,
+    "currentLines": 7,
+    "sourceSha256": "be996587b5f0294a38af90371821eb1937277b08ef077f1a8c526daaf01e21f7",
+    "currentSha256": "be996587b5f0294a38af90371821eb1937277b08ef077f1a8c526daaf01e21f7"
+  },
+  {
+    "file": "apps/server/src/auth/password.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 100,
+    "currentLines": 100,
+    "sourceSha256": "40341f942fbade5eab174c5b666c98b12674ccc199929e7e40f619c899c23aa6",
+    "currentSha256": "40341f942fbade5eab174c5b666c98b12674ccc199929e7e40f619c899c23aa6"
+  },
+  {
+    "file": "apps/server/src/auth/tokens.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 85,
+    "currentLines": 85,
+    "sourceSha256": "54e218d1ffe3a23518b26839a834e05ac48ace000f2e60c9a272c486f90a7963",
+    "currentSha256": "54e218d1ffe3a23518b26839a834e05ac48ace000f2e60c9a272c486f90a7963"
+  },
+  {
+    "file": "apps/server/src/cli/bots.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 115,
+    "currentLines": 115,
+    "sourceSha256": "08f9c0ac1cc83b8c948a3922a3d8b54b4ff33dbbf0b345c6f2a9500a3077bfd0",
+    "currentSha256": "08f9c0ac1cc83b8c948a3922a3d8b54b4ff33dbbf0b345c6f2a9500a3077bfd0"
+  },
+  {
+    "file": "apps/server/src/cli/capacity.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 358,
+    "currentLines": 358,
+    "sourceSha256": "7dbc00c1ca0f12250f5b0b52e39e6b91948925125f354542c526bc546cb66069",
+    "currentSha256": "7dbc00c1ca0f12250f5b0b52e39e6b91948925125f354542c526bc546cb66069"
+  },
+  {
+    "file": "apps/server/src/cli/erasureRestore.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 27,
+    "currentLines": 27,
+    "sourceSha256": "505710d7f3bb4f859700daef62215725cebb8ce14cbf4cb80fe9a54199d5f1d9",
+    "currentSha256": "505710d7f3bb4f859700daef62215725cebb8ce14cbf4cb80fe9a54199d5f1d9"
+  },
+  {
+    "file": "apps/server/src/cli/expand-eu1-planets.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 213,
+    "currentLines": 213,
+    "sourceSha256": "3a10c864eb5c44d468a46a6e31cfeb8d264f1b306c3b338361f5717354160746",
+    "currentSha256": "3a10c864eb5c44d468a46a6e31cfeb8d264f1b306c3b338361f5717354160746"
+  },
+  {
+    "file": "apps/server/src/cli/grant-colony.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 99,
+    "currentLines": 99,
+    "sourceSha256": "9f1748bcf44199e80198998457f6224e91dd67bd3884aa7b2e76e73c4a9e3fc5",
+    "currentSha256": "9f1748bcf44199e80198998457f6224e91dd67bd3884aa7b2e76e73c4a9e3fc5"
+  },
+  {
+    "file": "apps/server/src/cli/grant-ships.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 96,
+    "currentLines": 96,
+    "sourceSha256": "38b8de3789f28f1d0a12329eb6b014e4cccd0127dd70336b718d121edca8655e",
+    "currentSha256": "38b8de3789f28f1d0a12329eb6b014e4cccd0127dd70336b718d121edca8655e"
+  },
+  {
+    "file": "apps/server/src/cli/hcaptcha-preview.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 129,
+    "currentLines": 129,
+    "sourceSha256": "8ff953d821f87607c46624178c5d8d52a97ad29c24026cecc27883a9db9f8143",
+    "currentSha256": "8ff953d821f87607c46624178c5d8d52a97ad29c24026cecc27883a9db9f8143"
+  },
+  {
+    "file": "apps/server/src/cli/localWorld.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 63,
+    "currentLines": 63,
+    "sourceSha256": "ee0d55cd08e86482f6c9583c5f7b695ffc03ebd5f973625cc66ca488a7e1864f",
+    "currentSha256": "ee0d55cd08e86482f6c9583c5f7b695ffc03ebd5f973625cc66ca488a7e1864f"
+  },
+  {
+    "file": "apps/server/src/cli/manualAsteroids.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 78,
+    "currentLines": 78,
+    "sourceSha256": "479d6cd9d11cdf6acda98b13a39e6fd8047229af901020066be86a58e3432f13",
+    "currentSha256": "479d6cd9d11cdf6acda98b13a39e6fd8047229af901020066be86a58e3432f13"
+  },
+  {
+    "file": "apps/server/src/cli/migrate.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 27,
+    "currentLines": 27,
+    "sourceSha256": "ed92f1de6f5c91306f0d6e4a9cf5fc73e4cf0fcfefbccf6be7985d3b49a70714",
+    "currentSha256": "ed92f1de6f5c91306f0d6e4a9cf5fc73e4cf0fcfefbccf6be7985d3b49a70714"
+  },
+  {
+    "file": "apps/server/src/cli/peek-pirates.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 42,
+    "currentLines": 42,
+    "sourceSha256": "92f53ba93345b925684244b4a8b6dfb4f285ff483ed0a50273b48f205980b0c9",
+    "currentSha256": "92f53ba93345b925684244b4a8b6dfb4f285ff483ed0a50273b48f205980b0c9"
+  },
+  {
+    "file": "apps/server/src/cli/radiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 67,
+    "currentLines": 67,
+    "sourceSha256": "f528185622cd52673adea4e7a201c2f5a70a38b6c3128f5ff829d58a6490379e",
+    "currentSha256": "f528185622cd52673adea4e7a201c2f5a70a38b6c3128f5ff829d58a6490379e"
+  },
+  {
+    "file": "apps/server/src/cli/radiationCommand.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 156,
+    "currentLines": 156,
+    "sourceSha256": "8d87bdb4c1aa94a0e91c3e453a44858ff22c8c6359ec7fbd45f82a3a9539a7e6",
+    "currentSha256": "8d87bdb4c1aa94a0e91c3e453a44858ff22c8c6359ec7fbd45f82a3a9539a7e6"
+  },
+  {
+    "file": "apps/server/src/cli/removeAsteroids.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 56,
+    "currentLines": 56,
+    "sourceSha256": "7c2005c84193e3ef21d133a30078dbe5387700c63544c76413976993d04bbab0",
+    "currentSha256": "7c2005c84193e3ef21d133a30078dbe5387700c63544c76413976993d04bbab0"
+  },
+  {
+    "file": "apps/server/src/cli/removePirates.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 55,
+    "currentLines": 55,
+    "sourceSha256": "b575cf7b3ee7f0cbd5975cab38439d6b2b5f92cbe69a357f2dbd537ad5747c3d",
+    "currentSha256": "b575cf7b3ee7f0cbd5975cab38439d6b2b5f92cbe69a357f2dbd537ad5747c3d"
+  },
+  {
+    "file": "apps/server/src/cli/season.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 819,
+    "currentLines": 819,
+    "sourceSha256": "7ab951896fa22c7079323313754afec29342d414cd9e5e87e35ab73c9b040c67",
+    "currentSha256": "7ab951896fa22c7079323313754afec29342d414cd9e5e87e35ab73c9b040c67"
+  },
+  {
+    "file": "apps/server/src/cli/set-eu1-core.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 86,
+    "currentLines": 86,
+    "sourceSha256": "6ebd04bd58f841898f2f3a8b9cde1e1577c9ef3eb75d84a5c4729a5b73ba3451",
+    "currentSha256": "6ebd04bd58f841898f2f3a8b9cde1e1577c9ef3eb75d84a5c4729a5b73ba3451"
+  },
+  {
+    "file": "apps/server/src/clock.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 37,
+    "currentLines": 37,
+    "sourceSha256": "983cdc00ace68f11dc6923ed4c20711d3291daebdd889cfdd7921d240eb03384",
+    "currentSha256": "983cdc00ace68f11dc6923ed4c20711d3291daebdd889cfdd7921d240eb03384"
+  },
+  {
+    "file": "apps/server/src/db/client.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 43,
+    "currentLines": 43,
+    "sourceSha256": "d141cf55c3d333eed7b38a683a0448d5d4e935ad392c91af4432836396d57f8c",
+    "currentSha256": "d141cf55c3d333eed7b38a683a0448d5d4e935ad392c91af4432836396d57f8c"
+  },
+  {
+    "file": "apps/server/src/db/finalizers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 29,
+    "currentLines": 29,
+    "sourceSha256": "5a1bf7a9a9084bd59fcdff0edc704e8b939d4d46201070045f02c4a895257570",
+    "currentSha256": "5a1bf7a9a9084bd59fcdff0edc704e8b939d4d46201070045f02c4a895257570"
+  },
+  {
+    "file": "apps/server/src/db/migrate.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 109,
+    "currentLines": 109,
+    "sourceSha256": "74c5ff35bcd40e31fb132f22c0d3aa674e1b5ea696dfe5044816d2de473d77e3",
+    "currentSha256": "74c5ff35bcd40e31fb132f22c0d3aa674e1b5ea696dfe5044816d2de473d77e3"
+  },
+  {
+    "file": "apps/server/src/db/schema.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 4994,
+    "currentLines": 4994,
+    "sourceSha256": "1c3ac5c39a9f44a82922f1873a051cb68b831c8b8ce480b1ad10d7c138f41b08",
+    "currentSha256": "1c3ac5c39a9f44a82922f1873a051cb68b831c8b8ce480b1ad10d7c138f41b08"
+  },
+  {
+    "file": "apps/server/src/env.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 311,
+    "currentLines": 311,
+    "sourceSha256": "180fc5fcff747937a11f64cb4554f7cdae57279e51bbf6c193e13eb294e9e112",
+    "currentSha256": "180fc5fcff747937a11f64cb4554f7cdae57279e51bbf6c193e13eb294e9e112"
+  },
+  {
+    "file": "apps/server/src/index.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 92,
+    "currentLines": 92,
+    "sourceSha256": "cf929de80afee82f106e7893aa1a3d65272a3f987109f60f99c536605017d3dc",
+    "currentSha256": "cf929de80afee82f106e7893aa1a3d65272a3f987109f60f99c536605017d3dc"
+  },
+  {
+    "file": "apps/server/src/routes/accountDeletion.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 61,
+    "currentLines": 61,
+    "sourceSha256": "770ab90dfa5a7bdb1b7462492247bbcd52dbe8a103349cc89f88e8a37d2268f8",
+    "currentSha256": "770ab90dfa5a7bdb1b7462492247bbcd52dbe8a103349cc89f88e8a37d2268f8"
+  },
+  {
+    "file": "apps/server/src/routes/accountSecurity.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 90,
+    "currentLines": 90,
+    "sourceSha256": "275b66b7855caa00d5943c7dec9fe0bdc07db7a7347cb9d3d06a5920ce5b1fa3",
+    "currentSha256": "275b66b7855caa00d5943c7dec9fe0bdc07db7a7347cb9d3d06a5920ce5b1fa3"
+  },
+  {
+    "file": "apps/server/src/routes/admin.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 67,
+    "currentLines": 67,
+    "sourceSha256": "d32c85400188c4da0b624474be53137756aadb9ee79128728bedd1d832ba0936",
+    "currentSha256": "d32c85400188c4da0b624474be53137756aadb9ee79128728bedd1d832ba0936"
+  },
+  {
+    "file": "apps/server/src/routes/auth.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 245,
+    "currentLines": 245,
+    "sourceSha256": "61c6ce6643af1e7b48961c4086e89e77193bd34f023e95fad52ccbdc72479f66",
+    "currentSha256": "61c6ce6643af1e7b48961c4086e89e77193bd34f023e95fad52ccbdc72479f66"
+  },
+  {
+    "file": "apps/server/src/routes/brandRecall.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 16,
+    "currentLines": 16,
+    "sourceSha256": "0c2b0a7d6a05bde748ec3a9f47fd889458c2c62de1dc79fcb57f5f5de1401d03",
+    "currentSha256": "0c2b0a7d6a05bde748ec3a9f47fd889458c2c62de1dc79fcb57f5f5de1401d03"
+  },
+  {
+    "file": "apps/server/src/routes/chat.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 62,
+    "currentLines": 62,
+    "sourceSha256": "f4cfdcf6547bd764300c5b2673172ef039e22c4a70e8240aa076fa11ff6b768b",
+    "currentSha256": "f4cfdcf6547bd764300c5b2673172ef039e22c4a70e8240aa076fa11ff6b768b"
+  },
+  {
+    "file": "apps/server/src/routes/chatMedia.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 85,
+    "currentLines": 85,
+    "sourceSha256": "9196038b6d44b35fc145b2f63a3fa1d708f96fe03d2bd9552059da2bf1506d5f",
+    "currentSha256": "9196038b6d44b35fc145b2f63a3fa1d708f96fe03d2bd9552059da2bf1506d5f"
+  },
+  {
+    "file": "apps/server/src/routes/chronicle.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 17,
+    "currentLines": 17,
+    "sourceSha256": "0d5d78125f3c95a7c622dfe53c57bb4499c1159af52b567b3c1723c29395bed7",
+    "currentSha256": "0d5d78125f3c95a7c622dfe53c57bb4499c1159af52b567b3c1723c29395bed7"
+  },
+  {
+    "file": "apps/server/src/routes/clan.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 682,
+    "currentLines": 682,
+    "sourceSha256": "9159a0d96812354ae9bc099244479c399f58de5981923657b2aa0dae5c25cdb3",
+    "currentSha256": "9159a0d96812354ae9bc099244479c399f58de5981923657b2aa0dae5c25cdb3"
+  },
+  {
+    "file": "apps/server/src/routes/community.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 87,
+    "currentLines": 87,
+    "sourceSha256": "5c9629a96d335ec533f10526482c91feacad524c70db8d4ffdb3929a5469b8ae",
+    "currentSha256": "5c9629a96d335ec533f10526482c91feacad524c70db8d4ffdb3929a5469b8ae"
+  },
+  {
+    "file": "apps/server/src/routes/communityBlocks.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 21,
+    "currentLines": 21,
+    "sourceSha256": "923d688c714f82fc16edd52f5bb4fafd20832a4e77029667b335dda048bb8fea",
+    "currentSha256": "923d688c714f82fc16edd52f5bb4fafd20832a4e77029667b335dda048bb8fea"
+  },
+  {
+    "file": "apps/server/src/routes/communityPolicy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 17,
+    "currentLines": 17,
+    "sourceSha256": "7a167addc8f508e2e542895495e4fa1be58c457661a6629cb418c1b71267fdb4",
+    "currentSha256": "7a167addc8f508e2e542895495e4fa1be58c457661a6629cb418c1b71267fdb4"
+  },
+  {
+    "file": "apps/server/src/routes/contentReports.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "fe289f487b65ee007d299d772ae4aecb6b1e6625ebb674b441acef7aafeb86a9",
+    "currentSha256": "fe289f487b65ee007d299d772ae4aecb6b1e6625ebb674b441acef7aafeb86a9"
+  },
+  {
+    "file": "apps/server/src/routes/cosmetics.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 66,
+    "currentLines": 66,
+    "sourceSha256": "19bf6d815d1c258b4fd6b4bae5dc0045ac7f4d41ec39ec453e0524dbc3107c4d",
+    "currentSha256": "19bf6d815d1c258b4fd6b4bae5dc0045ac7f4d41ec39ec453e0524dbc3107c4d"
+  },
+  {
+    "file": "apps/server/src/routes/dm.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 54,
+    "currentLines": 54,
+    "sourceSha256": "16fbf35af19db1405f7d46b9e6872b66329868a5b9f462884a8feff120dc5e04",
+    "currentSha256": "16fbf35af19db1405f7d46b9e6872b66329868a5b9f462884a8feff120dc5e04"
+  },
+  {
+    "file": "apps/server/src/routes/galaxy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 537,
+    "currentLines": 537,
+    "sourceSha256": "38aa0fca416450a303d9d65fc416ef17a42600f9e19769773bfdc41131e676be",
+    "currentSha256": "38aa0fca416450a303d9d65fc416ef17a42600f9e19769773bfdc41131e676be"
+  },
+  {
+    "file": "apps/server/src/routes/galaxyEvents.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 14,
+    "currentLines": 14,
+    "sourceSha256": "3b6f6ed7ae40477798a795142218561de455f6f4fa42ca121347b923d930a82c",
+    "currentSha256": "3b6f6ed7ae40477798a795142218561de455f6f4fa42ca121347b923d930a82c"
+  },
+  {
+    "file": "apps/server/src/routes/health.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 293,
+    "currentLines": 293,
+    "sourceSha256": "dea44f82121ecf651018cf336091f43186aaed7d1cd49c50b79b92f349410559",
+    "currentSha256": "dea44f82121ecf651018cf336091f43186aaed7d1cd49c50b79b92f349410559"
+  },
+  {
+    "file": "apps/server/src/routes/intel.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 179,
+    "currentLines": 179,
+    "sourceSha256": "0b89e011928b1610d1d70c3fcde3c3ac42320a51d295bba64fa0b7c865642e23",
+    "currentSha256": "0b89e011928b1610d1d70c3fcde3c3ac42320a51d295bba64fa0b7c865642e23"
+  },
+  {
+    "file": "apps/server/src/routes/intergalacticConvoy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 134,
+    "currentLines": 134,
+    "sourceSha256": "fbe523aa9e68472aa8340de1442f84b5ce45252afdc04709fa520cbc5b35561a",
+    "currentSha256": "fbe523aa9e68472aa8340de1442f84b5ce45252afdc04709fa520cbc5b35561a"
+  },
+  {
+    "file": "apps/server/src/routes/mining.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 272,
+    "currentLines": 272,
+    "sourceSha256": "9690599379ccf9fbb4a666ab0a01dd08f24404d2bd855617028faab4c17cf6c2",
+    "currentSha256": "9690599379ccf9fbb4a666ab0a01dd08f24404d2bd855617028faab4c17cf6c2"
+  },
+  {
+    "file": "apps/server/src/routes/monuments.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 115,
+    "currentLines": 115,
+    "sourceSha256": "2510638482c2339688cc2cb2c40ea071aee9c1bbf4857abd6d63642651269730",
+    "currentSha256": "2510638482c2339688cc2cb2c40ea071aee9c1bbf4857abd6d63642651269730"
+  },
+  {
+    "file": "apps/server/src/routes/nativeAuth.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 36,
+    "currentLines": 36,
+    "sourceSha256": "1d38638934a5477adea3e0a621f1ca92f9590248cecfd7d5e00884a98c53cfcd",
+    "currentSha256": "1d38638934a5477adea3e0a621f1ca92f9590248cecfd7d5e00884a98c53cfcd"
+  },
+  {
+    "file": "apps/server/src/routes/onboarding.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 349,
+    "currentLines": 349,
+    "sourceSha256": "6db6a43370cba3502ad15dc2adf44591d04f2f94811eaa4efd37a48d7b8466c8",
+    "currentSha256": "6db6a43370cba3502ad15dc2adf44591d04f2f94811eaa4efd37a48d7b8466c8"
+  },
+  {
+    "file": "apps/server/src/routes/paddle.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 45,
+    "currentLines": 45,
+    "sourceSha256": "a22419c0522ab3dc104e3fe624971be275da4dfdbe443a0623567cd418c2fb2a",
+    "currentSha256": "a22419c0522ab3dc104e3fe624971be275da4dfdbe443a0623567cd418c2fb2a"
+  },
+  {
+    "file": "apps/server/src/routes/pirates.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 284,
+    "currentLines": 284,
+    "sourceSha256": "29970365e401746e1c5eda34f3d4a2b32b8b85276132c767c7e89ef4434966a9",
+    "currentSha256": "29970365e401746e1c5eda34f3d4a2b32b8b85276132c767c7e89ef4434966a9"
+  },
+  {
+    "file": "apps/server/src/routes/planet.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 569,
+    "currentLines": 569,
+    "sourceSha256": "a5de76ba0db6caf8d75d3b02d509f43d0cf66694ebab6dfd32f5cdd0856dd7d3",
+    "currentSha256": "a5de76ba0db6caf8d75d3b02d509f43d0cf66694ebab6dfd32f5cdd0856dd7d3"
+  },
+  {
+    "file": "apps/server/src/routes/polar.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 52,
+    "currentLines": 52,
+    "sourceSha256": "693f44413ae446f547209d96ab737aeb4a03f325a692b051f2458756a7e140c8",
+    "currentSha256": "693f44413ae446f547209d96ab737aeb4a03f325a692b051f2458756a7e140c8"
+  },
+  {
+    "file": "apps/server/src/routes/preview.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 260,
+    "currentLines": 260,
+    "sourceSha256": "4549d6343b493ab8678347705971774e98f80ad97451e546de923354b6660f07",
+    "currentSha256": "4549d6343b493ab8678347705971774e98f80ad97451e546de923354b6660f07"
+  },
+  {
+    "file": "apps/server/src/routes/returnApplications.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 17,
+    "currentLines": 17,
+    "sourceSha256": "5d28179bfebaae55b056358de76624c5ad221c38ccdc85fed4767e388f80432a",
+    "currentSha256": "5d28179bfebaae55b056358de76624c5ad221c38ccdc85fed4767e388f80432a"
+  },
+  {
+    "file": "apps/server/src/routes/rewards.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 43,
+    "currentLines": 43,
+    "sourceSha256": "f353d54f72af5dc311a7b59f0a8dc3fb772cc3097752fbaa8c91c91a196fa989",
+    "currentSha256": "f353d54f72af5dc311a7b59f0a8dc3fb772cc3097752fbaa8c91c91a196fa989"
+  },
+  {
+    "file": "apps/server/src/routes/season.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 729,
+    "currentLines": 729,
+    "sourceSha256": "29daa382c549174b9b7d8223e4e01ed74f69f61dd8e9c2555687e25c68aeec4a",
+    "currentSha256": "29daa382c549174b9b7d8223e4e01ed74f69f61dd8e9c2555687e25c68aeec4a"
+  },
+  {
+    "file": "apps/server/src/routes/servers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 112,
+    "currentLines": 112,
+    "sourceSha256": "9c76480a32cdd46d695211f35fe017293eefdc4032eecd6c4c64955b86d44009",
+    "currentSha256": "9c76480a32cdd46d695211f35fe017293eefdc4032eecd6c4c64955b86d44009"
+  },
+  {
+    "file": "apps/server/src/routes/session.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 299,
+    "currentLines": 299,
+    "sourceSha256": "99fcd04b05c15429f443ad1ee6cfffe2b16b77b39022c38efb8bacb926a6f899",
+    "currentSha256": "99fcd04b05c15429f443ad1ee6cfffe2b16b77b39022c38efb8bacb926a6f899"
+  },
+  {
+    "file": "apps/server/src/routes/shopier.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 62,
+    "currentLines": 62,
+    "sourceSha256": "87328aa81ec1be33e65a838567e75babeddbcbbb32eee4ca8b6f7aa937e85068",
+    "currentSha256": "87328aa81ec1be33e65a838567e75babeddbcbbb32eee4ca8b6f7aa937e85068"
+  },
+  {
+    "file": "apps/server/src/routes/trade.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 100,
+    "currentLines": 100,
+    "sourceSha256": "36a0c774e2a96fd5c22c08d3d2a150ec8c8c5e356251eb581afaa9693741bdb2",
+    "currentSha256": "36a0c774e2a96fd5c22c08d3d2a150ec8c8c5e356251eb581afaa9693741bdb2"
+  },
+  {
+    "file": "apps/server/src/routes/unknownSignals.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 42,
+    "currentLines": 42,
+    "sourceSha256": "2f20563fd191324dc740aebcd09a1fab3cf2a7a617ac8adb0ca3eac92c8e10bc",
+    "currentSha256": "2f20563fd191324dc740aebcd09a1fab3cf2a7a617ac8adb0ca3eac92c8e10bc"
+  },
+  {
+    "file": "apps/server/src/routes/vacation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 25,
+    "currentLines": 25,
+    "sourceSha256": "85e936476f27d7b3f405706ee4a01c46fd7b546b37e10cc859b5b80b7f56612d",
+    "currentSha256": "85e936476f27d7b3f405706ee4a01c46fd7b546b37e10cc859b5b80b7f56612d"
+  },
+  {
+    "file": "apps/server/src/schemas/fleet.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 44,
+    "currentLines": 44,
+    "sourceSha256": "1338bf6f3493819c27532dd2b4433a7d63bdcba74d0ed4a36cafe45729cc9975",
+    "currentSha256": "1338bf6f3493819c27532dd2b4433a7d63bdcba74d0ed4a36cafe45729cc9975"
+  },
+  {
+    "file": "apps/server/src/services/account.ts",
+    "same": false,
+    "exists": true,
+    "sourceLines": 143,
+    "currentLines": 144,
+    "sourceSha256": "6efbdde2fc8574c96eecf1c91a9a1f4de8905d37818c2386644cfa9915f3584c",
+    "currentSha256": "1add274adc7fe86da44b841299a846f3fb84000e8d0748851649607f40c3b380"
+  },
+  {
+    "file": "apps/server/src/services/accountDeletion.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 407,
+    "currentLines": 407,
+    "sourceSha256": "ca51c3332b6cec4bbd4a0e36e63f4b9c366a405899a366537a480ab7fd8caf97",
+    "currentSha256": "ca51c3332b6cec4bbd4a0e36e63f4b9c366a405899a366537a480ab7fd8caf97"
+  },
+  {
+    "file": "apps/server/src/services/accountDeletionRequest.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 130,
+    "currentLines": 130,
+    "sourceSha256": "722d9c740b79d92ee91597a6b3358155e5bd8983a226e07ea72b9465a3be95d8",
+    "currentSha256": "722d9c740b79d92ee91597a6b3358155e5bd8983a226e07ea72b9465a3be95d8"
+  },
+  {
+    "file": "apps/server/src/services/accountSecurity.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 198,
+    "currentLines": 198,
+    "sourceSha256": "5727aac2faa8b940abee43fb452141c0903ba87697c6785f19a502ea25bcc7d0",
+    "currentSha256": "5727aac2faa8b940abee43fb452141c0903ba87697c6785f19a502ea25bcc7d0"
+  },
+  {
+    "file": "apps/server/src/services/admin.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 45,
+    "currentLines": 45,
+    "sourceSha256": "5604135917967841d830224374d0e692e056f9fe6ce1f1422ff2fa943f000b41",
+    "currentSha256": "5604135917967841d830224374d0e692e056f9fe6ce1f1422ff2fa943f000b41"
+  },
+  {
+    "file": "apps/server/src/services/adminCapital.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 67,
+    "currentLines": 67,
+    "sourceSha256": "0328ba61a0683d8fea863ae950f8a9fa8728b64b5227eef6b839baa31efd4546",
+    "currentSha256": "0328ba61a0683d8fea863ae950f8a9fa8728b64b5227eef6b839baa31efd4546"
+  },
+  {
+    "file": "apps/server/src/services/adminPlayers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 85,
+    "currentLines": 85,
+    "sourceSha256": "b810d177f902e555ad387ce3d06bd163e475349db5d765ab2d514ff9b3ce35a5",
+    "currentSha256": "b810d177f902e555ad387ce3d06bd163e475349db5d765ab2d514ff9b3ce35a5"
+  },
+  {
+    "file": "apps/server/src/services/announcementHtml.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 114,
+    "currentLines": 114,
+    "sourceSha256": "ad675d99488ccc33b53270e07445cf48c05f0497107d6c3a1dfdac0bd8fe4d01",
+    "currentSha256": "ad675d99488ccc33b53270e07445cf48c05f0497107d6c3a1dfdac0bd8fe4d01"
+  },
+  {
+    "file": "apps/server/src/services/arenaPilots.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 27,
+    "currentLines": 27,
+    "sourceSha256": "743723f36599a04ff94c2f6950fb76622922dcb3773752e29b38ef1bd2629735",
+    "currentSha256": "743723f36599a04ff94c2f6950fb76622922dcb3773752e29b38ef1bd2629735"
+  },
+  {
+    "file": "apps/server/src/services/asteroidField.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 345,
+    "currentLines": 345,
+    "sourceSha256": "380f6d68f134361d608e40402dea71f775604a205799e45c99dea44c012abc89",
+    "currentSha256": "380f6d68f134361d608e40402dea71f775604a205799e45c99dea44c012abc89"
+  },
+  {
+    "file": "apps/server/src/services/asteroidGeneration.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "674c298f6109cca050c1a4dfa8edf966a473c093b014fdd7d5bb7f0287d2e797",
+    "currentSha256": "674c298f6109cca050c1a4dfa8edf966a473c093b014fdd7d5bb7f0287d2e797"
+  },
+  {
+    "file": "apps/server/src/services/asteroidSpawn.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 450,
+    "currentLines": 450,
+    "sourceSha256": "c2adfa39c948de98a454c116e9aa8fa27afff090fba32fe3e180525773ff1460",
+    "currentSha256": "c2adfa39c948de98a454c116e9aa8fa27afff090fba32fe3e180525773ff1460"
+  },
+  {
+    "file": "apps/server/src/services/asyncCache.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 142,
+    "currentLines": 142,
+    "sourceSha256": "d8858801ca92e125b8271120126a49f2b4bfa566931cd0558f4291653cae03d0",
+    "currentSha256": "d8858801ca92e125b8271120126a49f2b4bfa566931cd0558f4291653cae03d0"
+  },
+  {
+    "file": "apps/server/src/services/attackProtection.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 747,
+    "currentLines": 747,
+    "sourceSha256": "941a91fca10d0d399bd0281f1693b7267b8f321d53e360431a0d94baf6f28ec2",
+    "currentSha256": "941a91fca10d0d399bd0281f1693b7267b8f321d53e360431a0d94baf6f28ec2"
+  },
+  {
+    "file": "apps/server/src/services/battleReplay.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 159,
+    "currentLines": 159,
+    "sourceSha256": "6304f2077ab5dcdebb453ba7f55345c64b9bf355c6d6627d4762d4ea9beb2005",
+    "currentSha256": "6304f2077ab5dcdebb453ba7f55345c64b9bf355c6d6627d4762d4ea9beb2005"
+  },
+  {
+    "file": "apps/server/src/services/battleSettlement.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 113,
+    "currentLines": 113,
+    "sourceSha256": "655df3145527c74bbb9a1d3824d2353dd8e885063997b5a9498be233c27a1e8c",
+    "currentSha256": "655df3145527c74bbb9a1d3824d2353dd8e885063997b5a9498be233c27a1e8c"
+  },
+  {
+    "file": "apps/server/src/services/bots/brain.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1094,
+    "currentLines": 1094,
+    "sourceSha256": "da881edf84fd8456bb12e10a545eb75e942b04340b9c44a89a0dc7a7940051d8",
+    "currentSha256": "da881edf84fd8456bb12e10a545eb75e942b04340b9c44a89a0dc7a7940051d8"
+  },
+  {
+    "file": "apps/server/src/services/bots/identities.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 172,
+    "currentLines": 172,
+    "sourceSha256": "808e7a97c9ee1b0f205010e129e99da7df6b20076ad3eb92ba101f37c5b1b7f5",
+    "currentSha256": "808e7a97c9ee1b0f205010e129e99da7df6b20076ad3eb92ba101f37c5b1b7f5"
+  },
+  {
+    "file": "apps/server/src/services/bots/judgement.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 242,
+    "currentLines": 242,
+    "sourceSha256": "b6fc690056913412ab577038aa430a28f99853d5b6811251d3f4165723a9679e",
+    "currentSha256": "b6fc690056913412ab577038aa430a28f99853d5b6811251d3f4165723a9679e"
+  },
+  {
+    "file": "apps/server/src/services/bots/personas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 353,
+    "currentLines": 353,
+    "sourceSha256": "9d3c16ab2ce65aedc15f371798d19b6833300e29d4a1c0e7cc6861f34a1b15eb",
+    "currentSha256": "9d3c16ab2ce65aedc15f371798d19b6833300e29d4a1c0e7cc6861f34a1b15eb"
+  },
+  {
+    "file": "apps/server/src/services/bots/population.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 150,
+    "currentLines": 150,
+    "sourceSha256": "d2b96f0d07833d984cba30dc888723c6d0bec0ebc38700a65c3f5f0d50f546dc",
+    "currentSha256": "d2b96f0d07833d984cba30dc888723c6d0bec0ebc38700a65c3f5f0d50f546dc"
+  },
+  {
+    "file": "apps/server/src/services/bots/roster.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 219,
+    "currentLines": 219,
+    "sourceSha256": "1631d45b72b252553be1044317bfbb8fafedb80f68a635c93a5849d138a40f4b",
+    "currentSha256": "1631d45b72b252553be1044317bfbb8fafedb80f68a635c93a5849d138a40f4b"
+  },
+  {
+    "file": "apps/server/src/services/bots/sweep.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 479,
+    "currentLines": 479,
+    "sourceSha256": "4e48b22ebfbe57b033e3dbc0e2fd5d71b31c82a7070623cd10fc42414f88bf6c",
+    "currentSha256": "4e48b22ebfbe57b033e3dbc0e2fd5d71b31c82a7070623cd10fc42414f88bf6c"
+  },
+  {
+    "file": "apps/server/src/services/brandRecall.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 62,
+    "currentLines": 62,
+    "sourceSha256": "27bc0e1d9b769151ea4d0bfb397c495d8489285241317712073ad13b52cfc0a3",
+    "currentSha256": "27bc0e1d9b769151ea4d0bfb397c495d8489285241317712073ad13b52cfc0a3"
+  },
+  {
+    "file": "apps/server/src/services/build.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 541,
+    "currentLines": 541,
+    "sourceSha256": "6f08342edc49394f400bc8befd4165752b066c4c7ceee1e2384e0e640a43538b",
+    "currentSha256": "6f08342edc49394f400bc8befd4165752b066c4c7ceee1e2384e0e640a43538b"
+  },
+  {
+    "file": "apps/server/src/services/buildQueue.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 804,
+    "currentLines": 804,
+    "sourceSha256": "faeba5faebd92c08d4499dbb1993b8813bdfadff92969f5a7717662a7ab3d5e9",
+    "currentSha256": "faeba5faebd92c08d4499dbb1993b8813bdfadff92969f5a7717662a7ab3d5e9"
+  },
+  {
+    "file": "apps/server/src/services/chat.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 307,
+    "currentLines": 307,
+    "sourceSha256": "3282cc365122a8591914fd36884adf9b009c004267737037b9af5d49c71e3d6e",
+    "currentSha256": "3282cc365122a8591914fd36884adf9b009c004267737037b9af5d49c71e3d6e"
+  },
+  {
+    "file": "apps/server/src/services/chatArchive.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 84,
+    "currentLines": 84,
+    "sourceSha256": "7cc6f7db0ae6cc917546220dbc0b4fe3934bb4b1d710e2e224eff02b3bbd7ab2",
+    "currentSha256": "7cc6f7db0ae6cc917546220dbc0b4fe3934bb4b1d710e2e224eff02b3bbd7ab2"
+  },
+  {
+    "file": "apps/server/src/services/chatMedia.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 92,
+    "currentLines": 92,
+    "sourceSha256": "6d5f68008ccef1480506ca1de2de527dff88fa3d9a8efff19e0cf15c20a87764",
+    "currentSha256": "6d5f68008ccef1480506ca1de2de527dff88fa3d9a8efff19e0cf15c20a87764"
+  },
+  {
+    "file": "apps/server/src/services/chatModeration.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 101,
+    "currentLines": 101,
+    "sourceSha256": "6bbe9692840e4989bcf4acd196cf1deccd1a9fbe334a125ff3d1f0a02bb70bac",
+    "currentSha256": "6bbe9692840e4989bcf4acd196cf1deccd1a9fbe334a125ff3d1f0a02bb70bac"
+  },
+  {
+    "file": "apps/server/src/services/chronicle.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 182,
+    "currentLines": 182,
+    "sourceSha256": "5a856af7fac209029cb3459fc75fb17ab63e954281447ec9bd6b5c55a9547e2e",
+    "currentSha256": "5a856af7fac209029cb3459fc75fb17ab63e954281447ec9bd6b5c55a9547e2e"
+  },
+  {
+    "file": "apps/server/src/services/clan.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1672,
+    "currentLines": 1672,
+    "sourceSha256": "d94827990c9b8d1a508274e20af278c1447ff495b8a336b00ad3c8d109fc32f2",
+    "currentSha256": "d94827990c9b8d1a508274e20af278c1447ff495b8a336b00ad3c8d109fc32f2"
+  },
+  {
+    "file": "apps/server/src/services/clanAid.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 782,
+    "currentLines": 782,
+    "sourceSha256": "ba34eedc67f14180db2e62a2c5482664eeb623d2b7f93290747b43c40325cdb9",
+    "currentSha256": "ba34eedc67f14180db2e62a2c5482664eeb623d2b7f93290747b43c40325cdb9"
+  },
+  {
+    "file": "apps/server/src/services/clanChat.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 260,
+    "currentLines": 260,
+    "sourceSha256": "824676b4d19e79967cd7cf733caf9b5acc32f58259faf2838a32e0dbb967599c",
+    "currentSha256": "824676b4d19e79967cd7cf733caf9b5acc32f58259faf2838a32e0dbb967599c"
+  },
+  {
+    "file": "apps/server/src/services/clanCombat.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 447,
+    "currentLines": 447,
+    "sourceSha256": "253c5b4cc75e5dcae7152cf380ffdfe22eac509369468abc2ea3cd14fdea1781",
+    "currentSha256": "253c5b4cc75e5dcae7152cf380ffdfe22eac509369468abc2ea3cd14fdea1781"
+  },
+  {
+    "file": "apps/server/src/services/clanLoot.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 392,
+    "currentLines": 392,
+    "sourceSha256": "33565f972cd36a06728744ef2c19cd0217fb6b0fdba07590004f4256af7fbe00",
+    "currentSha256": "33565f972cd36a06728744ef2c19cd0217fb6b0fdba07590004f4256af7fbe00"
+  },
+  {
+    "file": "apps/server/src/services/clanStrength.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 138,
+    "currentLines": 138,
+    "sourceSha256": "4ec93a586e8d335c136765c5d9019ccb8ce98f438864c0c509dcac1172634a21",
+    "currentSha256": "4ec93a586e8d335c136765c5d9019ccb8ce98f438864c0c509dcac1172634a21"
+  },
+  {
+    "file": "apps/server/src/services/clanSupport.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1004,
+    "currentLines": 1004,
+    "sourceSha256": "c339d33e44e8d53af5bc969bb6135fbc12baf6b701f73d18d89c677eec72418f",
+    "currentSha256": "c339d33e44e8d53af5bc969bb6135fbc12baf6b701f73d18d89c677eec72418f"
+  },
+  {
+    "file": "apps/server/src/services/clanSupportRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 122,
+    "currentLines": 122,
+    "sourceSha256": "53c660d7ba1907817d85babd1155549d9cab881f64e685649fd76a85bb257cd5",
+    "currentSha256": "53c660d7ba1907817d85babd1155549d9cab881f64e685649fd76a85bb257cd5"
+  },
+  {
+    "file": "apps/server/src/services/clanSupportView.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 213,
+    "currentLines": 213,
+    "sourceSha256": "301f2d2e90ae232de97d72313179d521e8e243929faa5ff5fe43f610d20a3545",
+    "currentSha256": "301f2d2e90ae232de97d72313179d521e8e243929faa5ff5fe43f610d20a3545"
+  },
+  {
+    "file": "apps/server/src/services/clanTreasury.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 535,
+    "currentLines": 535,
+    "sourceSha256": "0ccfb58576c90c0f09d4fb972c102b7cf881459db5fa3df7f161cf603662d314",
+    "currentSha256": "0ccfb58576c90c0f09d4fb972c102b7cf881459db5fa3df7f161cf603662d314"
+  },
+  {
+    "file": "apps/server/src/services/clanWar.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 3300,
+    "currentLines": 3300,
+    "sourceSha256": "6a59718907a9259e56f3d76df5aca497fa2f0bebf29e71f645c3d8610079f8b5",
+    "currentSha256": "6a59718907a9259e56f3d76df5aca497fa2f0bebf29e71f645c3d8610079f8b5"
+  },
+  {
+    "file": "apps/server/src/services/clanWarRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 98,
+    "currentLines": 98,
+    "sourceSha256": "7283ccbfd8e9911220491b7e93bf575269ebe6e1992c73f59a0d11ef8d7f3303",
+    "currentSha256": "7283ccbfd8e9911220491b7e93bf575269ebe6e1992c73f59a0d11ef8d7f3303"
+  },
+  {
+    "file": "apps/server/src/services/clanWarSettlement.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1094,
+    "currentLines": 1094,
+    "sourceSha256": "becb903bcde038c46c3f19f5329a33561d5505e7fa04653effd89c5bfbf04e08",
+    "currentSha256": "becb903bcde038c46c3f19f5329a33561d5505e7fa04653effd89c5bfbf04e08"
+  },
+  {
+    "file": "apps/server/src/services/colonyAbandonment.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 118,
+    "currentLines": 118,
+    "sourceSha256": "07707cfe9229996e8738b03e5583c022c9dbc6e5a809f8ae3292d0b754733c69",
+    "currentSha256": "07707cfe9229996e8738b03e5583c022c9dbc6e5a809f8ae3292d0b754733c69"
+  },
+  {
+    "file": "apps/server/src/services/commanderTransfer.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 374,
+    "currentLines": 374,
+    "sourceSha256": "524207bafa635ce8bace6b627b6a2f5a28ba493b5eed6352527bf39553c75abd",
+    "currentSha256": "524207bafa635ce8bace6b627b6a2f5a28ba493b5eed6352527bf39553c75abd"
+  },
+  {
+    "file": "apps/server/src/services/community.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 110,
+    "currentLines": 110,
+    "sourceSha256": "ccba5bc25a988f502a9c612c62c30ca29f52499dc620eb770b636c79cc081b1d",
+    "currentSha256": "ccba5bc25a988f502a9c612c62c30ca29f52499dc620eb770b636c79cc081b1d"
+  },
+  {
+    "file": "apps/server/src/services/communityBlocks.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 77,
+    "currentLines": 77,
+    "sourceSha256": "3383bbdd223bab813b03602427efef98630c032b68812f02181373fc9efb9a7c",
+    "currentSha256": "3383bbdd223bab813b03602427efef98630c032b68812f02181373fc9efb9a7c"
+  },
+  {
+    "file": "apps/server/src/services/communityPolicy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "7ab94c9f0a1458993dcf4e5859bcade0191eda4350d104befba0e766dddaafa0",
+    "currentSha256": "7ab94c9f0a1458993dcf4e5859bcade0191eda4350d104befba0e766dddaafa0"
+  },
+  {
+    "file": "apps/server/src/services/contentReports.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 135,
+    "currentLines": 135,
+    "sourceSha256": "9a8173fb5e61815bd2ae225870fc3dcb212c07da40cd42aef02ba8fcdfe7668f",
+    "currentSha256": "9a8173fb5e61815bd2ae225870fc3dcb212c07da40cd42aef02ba8fcdfe7668f"
+  },
+  {
+    "file": "apps/server/src/services/cosmeticEquipment.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 102,
+    "currentLines": 102,
+    "sourceSha256": "026ba09d4010b6205564b86552b7006700f02444d3efdd1f7365297a8e7f8108",
+    "currentSha256": "026ba09d4010b6205564b86552b7006700f02444d3efdd1f7365297a8e7f8108"
+  },
+  {
+    "file": "apps/server/src/services/cosmeticTraffic.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 65,
+    "currentLines": 65,
+    "sourceSha256": "9113130078d66ed3b525aad2feccf9efd752cf685b03094c1cda3c2622455b50",
+    "currentSha256": "9113130078d66ed3b525aad2feccf9efd752cf685b03094c1cda3c2622455b50"
+  },
+  {
+    "file": "apps/server/src/services/cosmetics.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 147,
+    "currentLines": 147,
+    "sourceSha256": "e277e85046e9f1b4e5e575522bdc3ad56f0e9d4292f41f7455c87ee5386d8a8f",
+    "currentSha256": "e277e85046e9f1b4e5e575522bdc3ad56f0e9d4292f41f7455c87ee5386d8a8f"
+  },
+  {
+    "file": "apps/server/src/services/databasePoolProbe.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 75,
+    "currentLines": 75,
+    "sourceSha256": "9b5f67b16eb553f2b004e1e2e6caefe9f0d4f2711968ec193a6804e656bcf7f6",
+    "currentSha256": "9b5f67b16eb553f2b004e1e2e6caefe9f0d4f2711968ec193a6804e656bcf7f6"
+  },
+  {
+    "file": "apps/server/src/services/defencePosture.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 49,
+    "currentLines": 49,
+    "sourceSha256": "800727cac9b836e909acfdcaba259dd8e9fd1963ccaddd0de7951c8c73238702",
+    "currentSha256": "800727cac9b836e909acfdcaba259dd8e9fd1963ccaddd0de7951c8c73238702"
+  },
+  {
+    "file": "apps/server/src/services/defenderLine.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 303,
+    "currentLines": 303,
+    "sourceSha256": "76e3cca7b3056a2fb881d83114948b426de11544e43af2a3888ee3bde2112208",
+    "currentSha256": "76e3cca7b3056a2fb881d83114948b426de11544e43af2a3888ee3bde2112208"
+  },
+  {
+    "file": "apps/server/src/services/dm.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 337,
+    "currentLines": 337,
+    "sourceSha256": "d49e9aadaac4102cc003a54c61270c046c8994791af5d757b1b5cf619d6e2c19",
+    "currentSha256": "d49e9aadaac4102cc003a54c61270c046c8994791af5d757b1b5cf619d6e2c19"
+  },
+  {
+    "file": "apps/server/src/services/dominion.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 297,
+    "currentLines": 297,
+    "sourceSha256": "46f17baca082f6a6f9ceb35c57b19074c47373b651708c12048cf7fcaabf4a94",
+    "currentSha256": "46f17baca082f6a6f9ceb35c57b19074c47373b651708c12048cf7fcaabf4a94"
+  },
+  {
+    "file": "apps/server/src/services/erasureJournal.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 110,
+    "currentLines": 110,
+    "sourceSha256": "c8743b9c7a604500c1c998866d2ec308f93e34ede7fca3ad9dcbab88335e2854",
+    "currentSha256": "c8743b9c7a604500c1c998866d2ec308f93e34ede7fca3ad9dcbab88335e2854"
+  },
+  {
+    "file": "apps/server/src/services/faultRepair.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 219,
+    "currentLines": 219,
+    "sourceSha256": "d40e835da7ad9ebda832c2b58d80d111658ea55823f14d0758a9e31472de7f97",
+    "currentSha256": "d40e835da7ad9ebda832c2b58d80d111658ea55823f14d0758a9e31472de7f97"
+  },
+  {
+    "file": "apps/server/src/services/faults.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 605,
+    "currentLines": 605,
+    "sourceSha256": "c5138de02cc6bf034d607d83b14a8c7dbaddee7172e842850b377a95a64a4b90",
+    "currentSha256": "c5138de02cc6bf034d607d83b14a8c7dbaddee7172e842850b377a95a64a4b90"
+  },
+  {
+    "file": "apps/server/src/services/fleetTowing.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 16,
+    "currentLines": 16,
+    "sourceSha256": "fc34d3f9493557a93f0f8a4f69229cb3d016f751d0f0dc67483eb2bcdbba78d9",
+    "currentSha256": "fc34d3f9493557a93f0f8a4f69229cb3d016f751d0f0dc67483eb2bcdbba78d9"
+  },
+  {
+    "file": "apps/server/src/services/flight.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 302,
+    "currentLines": 302,
+    "sourceSha256": "34fb3889b6a4fec88204e2bdc78f2bd08a1427553c804477bcb5dd3fbc1b59c1",
+    "currentSha256": "34fb3889b6a4fec88204e2bdc78f2bd08a1427553c804477bcb5dd3fbc1b59c1"
+  },
+  {
+    "file": "apps/server/src/services/flightProjection.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 85,
+    "currentLines": 85,
+    "sourceSha256": "aba535898b89268f13609d52b01f522af5783bee81e585d587c5f6b3eef53a2c",
+    "currentSha256": "aba535898b89268f13609d52b01f522af5783bee81e585d587c5f6b3eef53a2c"
+  },
+  {
+    "file": "apps/server/src/services/fuel.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 46,
+    "currentLines": 46,
+    "sourceSha256": "f2534c622f11802386a2e9071af54d6d50041d293c578ae766d0d19a9065a7e6",
+    "currentSha256": "f2534c622f11802386a2e9071af54d6d50041d293c578ae766d0d19a9065a7e6"
+  },
+  {
+    "file": "apps/server/src/services/galaxyEvents.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1145,
+    "currentLines": 1145,
+    "sourceSha256": "9d93e88ea8678cddba4aa0b0260d5c4e905ae842efbb8144c31cf9337c46fd58",
+    "currentSha256": "9d93e88ea8678cddba4aa0b0260d5c4e905ae842efbb8144c31cf9337c46fd58"
+  },
+  {
+    "file": "apps/server/src/services/galaxyRecord.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 156,
+    "currentLines": 156,
+    "sourceSha256": "b2010c40712b30ccc05361f80f1f2c826235e312eed245c80beefe5db0328f9f",
+    "currentSha256": "b2010c40712b30ccc05361f80f1f2c826235e312eed245c80beefe5db0328f9f"
+  },
+  {
+    "file": "apps/server/src/services/homeHealth.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 43,
+    "currentLines": 43,
+    "sourceSha256": "cbefeac7267e9e260e9e0e0a4aec617e9f56b1e8419906f4b65a20d69e49c715",
+    "currentSha256": "cbefeac7267e9e260e9e0e0a4aec617e9f56b1e8419906f4b65a20d69e49c715"
+  },
+  {
+    "file": "apps/server/src/services/honorAccounting.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 362,
+    "currentLines": 362,
+    "sourceSha256": "c3d274fe4317303db884985e0173f4ffc2d94dbfe933f52f687ad949b588a6a5",
+    "currentSha256": "c3d274fe4317303db884985e0173f4ffc2d94dbfe933f52f687ad949b588a6a5"
+  },
+  {
+    "file": "apps/server/src/services/honorActivation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 157,
+    "currentLines": 157,
+    "sourceSha256": "c6966372e9f9563da24fb4f68259a13da11f04f5c0941c55399d4d4af462c9d5",
+    "currentSha256": "c6966372e9f9563da24fb4f68259a13da11f04f5c0941c55399d4d4af462c9d5"
+  },
+  {
+    "file": "apps/server/src/services/honorBattleEvidence.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 71,
+    "currentLines": 71,
+    "sourceSha256": "0b703397c16e3370dd5b9ec7a3bc3153e2dd05f46b5317eb9c4e61820742a137",
+    "currentSha256": "0b703397c16e3370dd5b9ec7a3bc3153e2dd05f46b5317eb9c4e61820742a137"
+  },
+  {
+    "file": "apps/server/src/services/honorBenefits.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 55,
+    "currentLines": 55,
+    "sourceSha256": "b6856e3f0222bd845f4929926d22db722ee62c17113e9f54cdad8a759ebc7b33",
+    "currentSha256": "b6856e3f0222bd845f4929926d22db722ee62c17113e9f54cdad8a759ebc7b33"
+  },
+  {
+    "file": "apps/server/src/services/honorCommitment.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 217,
+    "currentLines": 217,
+    "sourceSha256": "8408f0f3bed1e86edecdde89efda6687b5a8f8378263a34298ffc1a787f361f2",
+    "currentSha256": "8408f0f3bed1e86edecdde89efda6687b5a8f8378263a34298ffc1a787f361f2"
+  },
+  {
+    "file": "apps/server/src/services/honorDeferred.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "741050d6f48ccfc52ac824aff822b6c86c5ff732e621dd0782745d026c505de1",
+    "currentSha256": "741050d6f48ccfc52ac824aff822b6c86c5ff732e621dd0782745d026c505de1"
+  },
+  {
+    "file": "apps/server/src/services/honorLedger.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 178,
+    "currentLines": 178,
+    "sourceSha256": "23812a585a726758ec4d4c6cd2103ac6401cd427c22df5ea5136fd270abd874a",
+    "currentSha256": "23812a585a726758ec4d4c6cd2103ac6401cd427c22df5ea5136fd270abd874a"
+  },
+  {
+    "file": "apps/server/src/services/honorLootWeight.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "11fb8207eb7f05a523605a6cfa5b5f79f0ad135458ef3aaf56583b049720ccd2",
+    "currentSha256": "11fb8207eb7f05a523605a6cfa5b5f79f0ad135458ef3aaf56583b049720ccd2"
+  },
+  {
+    "file": "apps/server/src/services/honorNavy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 38,
+    "currentLines": 38,
+    "sourceSha256": "4d020c549dc5afc177f155d572fa8e7b53d5df4cac0820a6b565aa47b3d7fd7e",
+    "currentSha256": "4d020c549dc5afc177f155d572fa8e7b53d5df4cac0820a6b565aa47b3d7fd7e"
+  },
+  {
+    "file": "apps/server/src/services/honorPlanetBattle.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 31,
+    "currentLines": 31,
+    "sourceSha256": "022106d5d5e728643c82e5ac7622239d99c690c5d6e741c4525d03f2830159c9",
+    "currentSha256": "022106d5d5e728643c82e5ac7622239d99c690c5d6e741c4525d03f2830159c9"
+  },
+  {
+    "file": "apps/server/src/services/honorPodium.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 36,
+    "currentLines": 36,
+    "sourceSha256": "2b2defa98007fb8aa552ad876a33e6e5b53038e3e9fe03c8a4f7646d95aadf6f",
+    "currentSha256": "2b2defa98007fb8aa552ad876a33e6e5b53038e3e9fe03c8a4f7646d95aadf6f"
+  },
+  {
+    "file": "apps/server/src/services/honorProgram.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 41,
+    "currentLines": 41,
+    "sourceSha256": "65b9d5297be750e60bd8bdf6a1c46fe1fedd8221071589eeb1178aa6367b5cf4",
+    "currentSha256": "65b9d5297be750e60bd8bdf6a1c46fe1fedd8221071589eeb1178aa6367b5cf4"
+  },
+  {
+    "file": "apps/server/src/services/honorRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 42,
+    "currentLines": 42,
+    "sourceSha256": "df00ee50da5ce25ef8dfd7b923cf6ea7ca4f3d980604582ad0aea1fe0a3678cf",
+    "currentSha256": "df00ee50da5ce25ef8dfd7b923cf6ea7ca4f3d980604582ad0aea1fe0a3678cf"
+  },
+  {
+    "file": "apps/server/src/services/honorReference.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 78,
+    "currentLines": 78,
+    "sourceSha256": "6b9a4594998f4ca1c50b6c5dc6e4648fbb3b48d685e4ea42ced4f545d256a861",
+    "currentSha256": "6b9a4594998f4ca1c50b6c5dc6e4648fbb3b48d685e4ea42ced4f545d256a861"
+  },
+  {
+    "file": "apps/server/src/services/honorRelations.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 54,
+    "currentLines": 54,
+    "sourceSha256": "33c001c02064eac1474d67a65a6d2ec4bf59d7829e2ae80220dd3b25c929752c",
+    "currentSha256": "33c001c02064eac1474d67a65a6d2ec4bf59d7829e2ae80220dd3b25c929752c"
+  },
+  {
+    "file": "apps/server/src/services/honorReports.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 97,
+    "currentLines": 97,
+    "sourceSha256": "2642a50604fb45d4258cc2112bf7036416f13b7e990c520d8b6e20840d4e679c",
+    "currentSha256": "2642a50604fb45d4258cc2112bf7036416f13b7e990c520d8b6e20840d4e679c"
+  },
+  {
+    "file": "apps/server/src/services/honorSeason.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 31,
+    "currentLines": 31,
+    "sourceSha256": "e66cb5c4db5aec1cd1ce0e03d133ab1a815583b6e4e0095c5158166431ac1909",
+    "currentSha256": "e66cb5c4db5aec1cd1ce0e03d133ab1a815583b6e4e0095c5158166431ac1909"
+  },
+  {
+    "file": "apps/server/src/services/honorStrategic.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 84,
+    "currentLines": 84,
+    "sourceSha256": "ff597420803bd43bd75856a9725b7acba8d003befbd3bd64dd22c7826bc867f3",
+    "currentSha256": "ff597420803bd43bd75856a9725b7acba8d003befbd3bd64dd22c7826bc867f3"
+  },
+  {
+    "file": "apps/server/src/services/honorTarget.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 59,
+    "currentLines": 59,
+    "sourceSha256": "4dc8087b33a39e0f803f18800157a2818644504a3ab548596af93bb6abc5bc62",
+    "currentSha256": "4dc8087b33a39e0f803f18800157a2818644504a3ab548596af93bb6abc5bc62"
+  },
+  {
+    "file": "apps/server/src/services/hullAccess.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 41,
+    "currentLines": 41,
+    "sourceSha256": "5b2d727108cf5ba43c48aa091f3d5202d37c83e2a93b9f84560d86f10852f347",
+    "currentSha256": "5b2d727108cf5ba43c48aa091f3d5202d37c83e2a93b9f84560d86f10852f347"
+  },
+  {
+    "file": "apps/server/src/services/idempotency.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 119,
+    "currentLines": 119,
+    "sourceSha256": "e0aa1ff7e15355d0f4a36847d9668c5b2500b17173571cd439353bf316e19cc4",
+    "currentSha256": "e0aa1ff7e15355d0f4a36847d9668c5b2500b17173571cd439353bf316e19cc4"
+  },
+  {
+    "file": "apps/server/src/services/intel.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1456,
+    "currentLines": 1456,
+    "sourceSha256": "d39af29bf1a30db31e0df1202858560348a1b6a3ff8365cc00d0895a57bde72d",
+    "currentSha256": "d39af29bf1a30db31e0df1202858560348a1b6a3ff8365cc00d0895a57bde72d"
+  },
+  {
+    "file": "apps/server/src/services/intergalacticConvoyField.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 81,
+    "currentLines": 81,
+    "sourceSha256": "c271536b84b06eab5e5c302fa3e0be4e731db24ccfb5fa4c1240c6c098c78264",
+    "currentSha256": "c271536b84b06eab5e5c302fa3e0be4e731db24ccfb5fa4c1240c6c098c78264"
+  },
+  {
+    "file": "apps/server/src/services/intergalacticConvoyRaid.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 719,
+    "currentLines": 719,
+    "sourceSha256": "d8f22b213b204e55c10f47122868056cb5fc357325b3c8ea56cf5318cc27c835",
+    "currentSha256": "d8f22b213b204e55c10f47122868056cb5fc357325b3c8ea56cf5318cc27c835"
+  },
+  {
+    "file": "apps/server/src/services/locationSight.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 19,
+    "currentLines": 19,
+    "sourceSha256": "89f312b7bd8ff863d643bf2bf215c9af30600363a88f992ceb676a2c585fc2c7",
+    "currentSha256": "89f312b7bd8ff863d643bf2bf215c9af30600363a88f992ceb676a2c585fc2c7"
+  },
+  {
+    "file": "apps/server/src/services/loyalty.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 420,
+    "currentLines": 420,
+    "sourceSha256": "094c6662a6fef1948d52c640ed2c99d63d189654e524a5585311cfe3b05f5b4d",
+    "currentSha256": "094c6662a6fef1948d52c640ed2c99d63d189654e524a5585311cfe3b05f5b4d"
+  },
+  {
+    "file": "apps/server/src/services/mail.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 181,
+    "currentLines": 181,
+    "sourceSha256": "20d669b47b042ae9ba17228e6d7fa2f10bccd03339648596b6003aa86e215078",
+    "currentSha256": "20d669b47b042ae9ba17228e6d7fa2f10bccd03339648596b6003aa86e215078"
+  },
+  {
+    "file": "apps/server/src/services/maintenance.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 99,
+    "currentLines": 99,
+    "sourceSha256": "9754b38c063b2adac0fe773d5580d0d781fa31b49ca87c9dc17ecdb9a9073580",
+    "currentSha256": "9754b38c063b2adac0fe773d5580d0d781fa31b49ca87c9dc17ecdb9a9073580"
+  },
+  {
+    "file": "apps/server/src/services/mediaErasure.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 27,
+    "currentLines": 27,
+    "sourceSha256": "29016bb6fbc39fb22dbdde225ac75502a449f18ca7ba699238a3f595c118e309",
+    "currentSha256": "29016bb6fbc39fb22dbdde225ac75502a449f18ca7ba699238a3f595c118e309"
+  },
+  {
+    "file": "apps/server/src/services/messageAccess.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 47,
+    "currentLines": 47,
+    "sourceSha256": "83a54f8332399432207688d2722be7ac2ce47e1f04fd06fc896482c2fff058ff",
+    "currentSha256": "83a54f8332399432207688d2722be7ac2ce47e1f04fd06fc896482c2fff058ff"
+  },
+  {
+    "file": "apps/server/src/services/messageDecorations.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 134,
+    "currentLines": 134,
+    "sourceSha256": "1fcfd34edda01d524699377291a9b922a5c81245fc5a2d42772f06bd4eed5ff6",
+    "currentSha256": "1fcfd34edda01d524699377291a9b922a5c81245fc5a2d42772f06bd4eed5ff6"
+  },
+  {
+    "file": "apps/server/src/services/messageReactions.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 131,
+    "currentLines": 131,
+    "sourceSha256": "4ef39f128f847a2f16e1e1ab26bd278eea4b4fd6e82d242218678718309c99e6",
+    "currentSha256": "4ef39f128f847a2f16e1e1ab26bd278eea4b4fd6e82d242218678718309c99e6"
+  },
+  {
+    "file": "apps/server/src/services/mining.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1578,
+    "currentLines": 1578,
+    "sourceSha256": "4af81b0d2e9819e6e9a3752106f939d70a9c5b9035be71d4ec431c986beecf9a",
+    "currentSha256": "4af81b0d2e9819e6e9a3752106f939d70a9c5b9035be71d4ec431c986beecf9a"
+  },
+  {
+    "file": "apps/server/src/services/mission.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 614,
+    "currentLines": 614,
+    "sourceSha256": "7034880c3684fd5c9b3555d6187ea982dc0ae2614b02afcfef938aa1464c88c4",
+    "currentSha256": "7034880c3684fd5c9b3555d6187ea982dc0ae2614b02afcfef938aa1464c88c4"
+  },
+  {
+    "file": "apps/server/src/services/monument.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 665,
+    "currentLines": 665,
+    "sourceSha256": "b8b1f73c85beb34aca0c44bfa2b657f3fdbca2eaf413e4a3d54b79bb07d031fb",
+    "currentSha256": "b8b1f73c85beb34aca0c44bfa2b657f3fdbca2eaf413e4a3d54b79bb07d031fb"
+  },
+  {
+    "file": "apps/server/src/services/monumentAdoption.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 72,
+    "currentLines": 72,
+    "sourceSha256": "f869d9c4a5b40c9d4054ec8aa46a982077e975faf4e3462a0b205d2789440481",
+    "currentSha256": "f869d9c4a5b40c9d4054ec8aa46a982077e975faf4e3462a0b205d2789440481"
+  },
+  {
+    "file": "apps/server/src/services/monumentArrival.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 423,
+    "currentLines": 423,
+    "sourceSha256": "55e40725e571e39e6bccc88c0073a02df1e0a82bc9d3d8bfa8df3108a81ea64b",
+    "currentSha256": "55e40725e571e39e6bccc88c0073a02df1e0a82bc9d3d8bfa8df3108a81ea64b"
+  },
+  {
+    "file": "apps/server/src/services/monumentBoundaries.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 67,
+    "currentLines": 67,
+    "sourceSha256": "04a4b9abd4b49ff100d9c453f847171290d1ad7f59e2773f7d40d3c81775b066",
+    "currentSha256": "04a4b9abd4b49ff100d9c453f847171290d1ad7f59e2773f7d40d3c81775b066"
+  },
+  {
+    "file": "apps/server/src/services/monumentFuel.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 13,
+    "currentLines": 13,
+    "sourceSha256": "8496a0ccb248dd12981115977129ddcb3ea9bf3303d5dbc2e2b0263631782c82",
+    "currentSha256": "8496a0ccb248dd12981115977129ddcb3ea9bf3303d5dbc2e2b0263631782c82"
+  },
+  {
+    "file": "apps/server/src/services/monumentHonorees.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 57,
+    "currentLines": 57,
+    "sourceSha256": "4d2e62171279eb7030d1c0e3d0846cea6889d396145b6c97932f62bcb18c9805",
+    "currentSha256": "4d2e62171279eb7030d1c0e3d0846cea6889d396145b6c97932f62bcb18c9805"
+  },
+  {
+    "file": "apps/server/src/services/monumentJoint.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 19,
+    "currentLines": 19,
+    "sourceSha256": "b990d4013ab88c6b3595bb74611f22cfaba6aa0d0a3cfddca56dcd80f60d5130",
+    "currentSha256": "b990d4013ab88c6b3595bb74611f22cfaba6aa0d0a3cfddca56dcd80f60d5130"
+  },
+  {
+    "file": "apps/server/src/services/monumentLifecycle.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 39,
+    "currentLines": 39,
+    "sourceSha256": "c015ca045916e4f73c5c4f14c3b890683ca7b7e51b9380ead7a05741edfdf02b",
+    "currentSha256": "c015ca045916e4f73c5c4f14c3b890683ca7b7e51b9380ead7a05741edfdf02b"
+  },
+  {
+    "file": "apps/server/src/services/monumentMembership.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 93,
+    "currentLines": 93,
+    "sourceSha256": "63b9434337c69153cc8c73910b0fd82be3a4f0519a3b49dd2c96447f2aa8179c",
+    "currentSha256": "63b9434337c69153cc8c73910b0fd82be3a4f0519a3b49dd2c96447f2aa8179c"
+  },
+  {
+    "file": "apps/server/src/services/monumentMotion.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 41,
+    "currentLines": 41,
+    "sourceSha256": "e42082b259bcc64d7b6f76251a1fa38689fefdb7e1bc327af85e56a7fd5227d8",
+    "currentSha256": "e42082b259bcc64d7b6f76251a1fa38689fefdb7e1bc327af85e56a7fd5227d8"
+  },
+  {
+    "file": "apps/server/src/services/monumentMotionAdoption.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 39,
+    "currentLines": 39,
+    "sourceSha256": "508e89a28ac6a4714a063a50a2891b5fe66f4e57f3d38ec64d504c7fd110aef0",
+    "currentSha256": "508e89a28ac6a4714a063a50a2891b5fe66f4e57f3d38ec64d504c7fd110aef0"
+  },
+  {
+    "file": "apps/server/src/services/monumentMovement.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 334,
+    "currentLines": 334,
+    "sourceSha256": "58ac4749b2622ff7046b713fb23ba59d6f7142d4c3bb5c3ab225f996c2204d53",
+    "currentSha256": "58ac4749b2622ff7046b713fb23ba59d6f7142d4c3bb5c3ab225f996c2204d53"
+  },
+  {
+    "file": "apps/server/src/services/monumentOwnership.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 58,
+    "currentLines": 58,
+    "sourceSha256": "0d81113f49247fb58df5d3c9b87fa15d7d0aa3f8e43232e96d567f61acef2bcd",
+    "currentSha256": "0d81113f49247fb58df5d3c9b87fa15d7d0aa3f8e43232e96d567f61acef2bcd"
+  },
+  {
+    "file": "apps/server/src/services/monumentProbe.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 126,
+    "currentLines": 126,
+    "sourceSha256": "fb2d75fbd2a4c568f70f21fc63f78901695d0361cfd89be27556ac707e286de2",
+    "currentSha256": "fb2d75fbd2a4c568f70f21fc63f78901695d0361cfd89be27556ac707e286de2"
+  },
+  {
+    "file": "apps/server/src/services/monumentRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 20,
+    "currentLines": 20,
+    "sourceSha256": "33dad14f5752f29cafdd383ef89efc6697effa18f4b96f5974e2d2f29edfed9d",
+    "currentSha256": "33dad14f5752f29cafdd383ef89efc6697effa18f4b96f5974e2d2f29edfed9d"
+  },
+  {
+    "file": "apps/server/src/services/monumentRadiationAdoption.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 61,
+    "currentLines": 61,
+    "sourceSha256": "1b495a65f47e0d44d3d43184bd9be36ba2aaeecc411842ef0b2301ab2fdb4688",
+    "currentSha256": "1b495a65f47e0d44d3d43184bd9be36ba2aaeecc411842ef0b2301ab2fdb4688"
+  },
+  {
+    "file": "apps/server/src/services/monumentRadiationLoss.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 23,
+    "currentLines": 23,
+    "sourceSha256": "d2df1804217906fc4c31db5709ed3c42e1a3300282bd6d3e3074a84f5ca3bff9",
+    "currentSha256": "d2df1804217906fc4c31db5709ed3c42e1a3300282bd6d3e3074a84f5ca3bff9"
+  },
+  {
+    "file": "apps/server/src/services/monumentRecall.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 61,
+    "currentLines": 61,
+    "sourceSha256": "cb4f03d290d5e866b5b7b8f8c18b3ae3f95d83ead816bc836492707f9aa8b37b",
+    "currentSha256": "cb4f03d290d5e866b5b7b8f8c18b3ae3f95d83ead816bc836492707f9aa8b37b"
+  },
+  {
+    "file": "apps/server/src/services/monumentReports.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 81,
+    "currentLines": 81,
+    "sourceSha256": "50bc2e42adf98f41319985b8de335f5804ddc5975c470c76141f2182f5fd0f10",
+    "currentSha256": "50bc2e42adf98f41319985b8de335f5804ddc5975c470c76141f2182f5fd0f10"
+  },
+  {
+    "file": "apps/server/src/services/monumentSeasonClose.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 121,
+    "currentLines": 121,
+    "sourceSha256": "66c78ea4efa5f2f8b881be0560e159bd04494025fc938d66f05c803c61fac3b1",
+    "currentSha256": "66c78ea4efa5f2f8b881be0560e159bd04494025fc938d66f05c803c61fac3b1"
+  },
+  {
+    "file": "apps/server/src/services/monumentTraffic.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 64,
+    "currentLines": 64,
+    "sourceSha256": "aaf476a90a7a707b962993d6d4de570ec233488f3f0f7e9461cc5f8565dd2c97",
+    "currentSha256": "aaf476a90a7a707b962993d6d4de570ec233488f3f0f7e9461cc5f8565dd2c97"
+  },
+  {
+    "file": "apps/server/src/services/monumentView.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 362,
+    "currentLines": 362,
+    "sourceSha256": "82711c5a7e9ce4d6ec3274d9de06ecb0f1abe5384c296f67a9c7ae4aaadbcbc9",
+    "currentSha256": "82711c5a7e9ce4d6ec3274d9de06ecb0f1abe5384c296f67a9c7ae4aaadbcbc9"
+  },
+  {
+    "file": "apps/server/src/services/movement.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1003,
+    "currentLines": 1003,
+    "sourceSha256": "0043cb51eb9c37748685982fb717d513c021c4e09801238efb71b4540bec3bfd",
+    "currentSha256": "0043cb51eb9c37748685982fb717d513c021c4e09801238efb71b4540bec3bfd"
+  },
+  {
+    "file": "apps/server/src/services/nativeSessions.ts",
+    "same": false,
+    "exists": true,
+    "sourceLines": 85,
+    "currentLines": 86,
+    "sourceSha256": "3a0e59049d23a39b4b8ed9ab5b051de6c3f5fcbee31d0419e61e9fb263d92bdf",
+    "currentSha256": "8b5f29a91fe69f6a15e6f28475184da17b54a879a8a01838fe45927fad032af6"
+  },
+  {
+    "file": "apps/server/src/services/neutral.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 641,
+    "currentLines": 641,
+    "sourceSha256": "42480755341823236cc496495527d0e750cde3773697118f7e08e923487e42b7",
+    "currentSha256": "42480755341823236cc496495527d0e750cde3773697118f7e08e923487e42b7"
+  },
+  {
+    "file": "apps/server/src/services/notifications.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 121,
+    "currentLines": 121,
+    "sourceSha256": "a6517f487f77615e9bb2dc341a1d335be123f84ed7d03c3ebcd4e0befe133b60",
+    "currentSha256": "a6517f487f77615e9bb2dc341a1d335be123f84ed7d03c3ebcd4e0befe133b60"
+  },
+  {
+    "file": "apps/server/src/services/ownership.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 470,
+    "currentLines": 470,
+    "sourceSha256": "0ede7d8339db1a6e22a1a0d6702b01e15d82b75e3f8a553ae37e87b8cd6a033b",
+    "currentSha256": "0ede7d8339db1a6e22a1a0d6702b01e15d82b75e3f8a553ae37e87b8cd6a033b"
+  },
+  {
+    "file": "apps/server/src/services/paddleLive.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 283,
+    "currentLines": 283,
+    "sourceSha256": "dfaf7f80219258de3c4f35806af2e35e993a4109406b9bedc6958ee0e56fe202",
+    "currentSha256": "dfaf7f80219258de3c4f35806af2e35e993a4109406b9bedc6958ee0e56fe202"
+  },
+  {
+    "file": "apps/server/src/services/people.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 26,
+    "currentLines": 26,
+    "sourceSha256": "fcb45d2810b8f6c87b9579ad4ff93adfb67a2f3a427cf208c9a61ecdcd873756",
+    "currentSha256": "fcb45d2810b8f6c87b9579ad4ff93adfb67a2f3a427cf208c9a61ecdcd873756"
+  },
+  {
+    "file": "apps/server/src/services/perfSessions.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 86,
+    "currentLines": 86,
+    "sourceSha256": "5393f69672768480fff7fd24e18ea479c119c8a7780cd1af6bdf00d4ccc88045",
+    "currentSha256": "5393f69672768480fff7fd24e18ea479c119c8a7780cd1af6bdf00d4ccc88045"
+  },
+  {
+    "file": "apps/server/src/services/personalRaid.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 51,
+    "currentLines": 51,
+    "sourceSha256": "edf4dd27f79b912911d1715add82e481b0a5054db7259a252ff39fdb8e8982af",
+    "currentSha256": "edf4dd27f79b912911d1715add82e481b0a5054db7259a252ff39fdb8e8982af"
+  },
+  {
+    "file": "apps/server/src/services/pirateField.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 361,
+    "currentLines": 361,
+    "sourceSha256": "6ddd8e18a03273e451c2d76cc275182ea9dc3f2601aa97b5cfc888dd98ecf28a",
+    "currentSha256": "6ddd8e18a03273e451c2d76cc275182ea9dc3f2601aa97b5cfc888dd98ecf28a"
+  },
+  {
+    "file": "apps/server/src/services/pirateRaid.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1265,
+    "currentLines": 1265,
+    "sourceSha256": "ec4df26d525d3029154a49801a215a01c4b131086c20987f981cebac51cdd8ae",
+    "currentSha256": "ec4df26d525d3029154a49801a215a01c4b131086c20987f981cebac51cdd8ae"
+  },
+  {
+    "file": "apps/server/src/services/placementGate.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 139,
+    "currentLines": 139,
+    "sourceSha256": "4bef82435e0441b8d90e287ff387bb2de5daf19dff930578bd8c2397864c4946",
+    "currentSha256": "4bef82435e0441b8d90e287ff387bb2de5daf19dff930578bd8c2397864c4946"
+  },
+  {
+    "file": "apps/server/src/services/planet.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1115,
+    "currentLines": 1115,
+    "sourceSha256": "e17d7fbb864c2dfbd2f73cfd6ff6fe80f4466fa2b31812afe87473d6c2c026d0",
+    "currentSha256": "e17d7fbb864c2dfbd2f73cfd6ff6fe80f4466fa2b31812afe87473d6c2c026d0"
+  },
+  {
+    "file": "apps/server/src/services/planetAegis.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 73,
+    "currentLines": 73,
+    "sourceSha256": "4fbfc1ce8e3dc8d8ef2b447c37df91145aa827d528c8fc384db8ed1e6f8586b8",
+    "currentSha256": "4fbfc1ce8e3dc8d8ef2b447c37df91145aa827d528c8fc384db8ed1e6f8586b8"
+  },
+  {
+    "file": "apps/server/src/services/planetRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 272,
+    "currentLines": 272,
+    "sourceSha256": "8617efc1c221d729c03fcc8a8f8d6c74154431a1cb3cf9f449b40aac43ebe70a",
+    "currentSha256": "8617efc1c221d729c03fcc8a8f8d6c74154431a1cb3cf9f449b40aac43ebe70a"
+  },
+  {
+    "file": "apps/server/src/services/planetView.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 633,
+    "currentLines": 633,
+    "sourceSha256": "b390d8ba8dd3886dc45362a81c9a83d50606466416e016a1c45f7bb710e04eb1",
+    "currentSha256": "b390d8ba8dd3886dc45362a81c9a83d50606466416e016a1c45f7bb710e04eb1"
+  },
+  {
+    "file": "apps/server/src/services/player.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 467,
+    "currentLines": 467,
+    "sourceSha256": "e225f718415aca06446e7ba9c5354c42a31f3bc67270f162262d03bc73af644d",
+    "currentSha256": "e225f718415aca06446e7ba9c5354c42a31f3bc67270f162262d03bc73af644d"
+  },
+  {
+    "file": "apps/server/src/services/polar.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 133,
+    "currentLines": 133,
+    "sourceSha256": "ddd311a5df798cfccd96340bed9df08ffdea0227f60a690c432002f301cc81e0",
+    "currentSha256": "ddd311a5df798cfccd96340bed9df08ffdea0227f60a690c432002f301cc81e0"
+  },
+  {
+    "file": "apps/server/src/services/polarSales.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 163,
+    "currentLines": 163,
+    "sourceSha256": "62d91f8678afbf9cb8d00d4db9d41c31264da2d25e9a7062cb92317a3b57fcc8",
+    "currentSha256": "62d91f8678afbf9cb8d00d4db9d41c31264da2d25e9a7062cb92317a3b57fcc8"
+  },
+  {
+    "file": "apps/server/src/services/presence.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 88,
+    "currentLines": 88,
+    "sourceSha256": "5f2c9ae03db4ced7e75008db22b7525c348ac5e95c1568939257ee3bfde92dde",
+    "currentSha256": "5f2c9ae03db4ced7e75008db22b7525c348ac5e95c1568939257ee3bfde92dde"
+  },
+  {
+    "file": "apps/server/src/services/projections.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 403,
+    "currentLines": 403,
+    "sourceSha256": "8cfd05b5aad946ea46979d0ea96e3a25a4f633f0caacdbc498e99d8b94719ae3",
+    "currentSha256": "8cfd05b5aad946ea46979d0ea96e3a25a4f633f0caacdbc498e99d8b94719ae3"
+  },
+  {
+    "file": "apps/server/src/services/publicGalaxy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 386,
+    "currentLines": 386,
+    "sourceSha256": "192a2334937663e25a62ce747382ce39ebb87c18356a4d0185c435623af8b91b",
+    "currentSha256": "192a2334937663e25a62ce747382ce39ebb87c18356a4d0185c435623af8b91b"
+  },
+  {
+    "file": "apps/server/src/services/pvpBalance.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 10,
+    "currentLines": 10,
+    "sourceSha256": "c364597bd3feb273f492b8caad836edb63c6734f2ecafb5b593f1b437086b137",
+    "currentSha256": "c364597bd3feb273f492b8caad836edb63c6734f2ecafb5b593f1b437086b137"
+  },
+  {
+    "file": "apps/server/src/services/radar.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 243,
+    "currentLines": 243,
+    "sourceSha256": "a5ea81445fbe99949237ee8ed0ab2125379a9e33085633d7dea026e7e2bb39ba",
+    "currentSha256": "a5ea81445fbe99949237ee8ed0ab2125379a9e33085633d7dea026e7e2bb39ba"
+  },
+  {
+    "file": "apps/server/src/services/radiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 630,
+    "currentLines": 630,
+    "sourceSha256": "1296319073e3eca338345378c0bf74862c5b5f52441e028feb208d24086c6369",
+    "currentSha256": "1296319073e3eca338345378c0bf74862c5b5f52441e028feb208d24086c6369"
+  },
+  {
+    "file": "apps/server/src/services/radiationBomb.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 288,
+    "currentLines": 288,
+    "sourceSha256": "b172ea36f58f70efa44433e5654ce66a264afbd58aabcc920e53f5c174b95d32",
+    "currentSha256": "b172ea36f58f70efa44433e5654ce66a264afbd58aabcc920e53f5c174b95d32"
+  },
+  {
+    "file": "apps/server/src/services/radiationBombAdoption.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 45,
+    "currentLines": 45,
+    "sourceSha256": "88b0f0758313bc6b2fbfd2a211ab753a3ce4d94018f2655dc4fa46e70c670319",
+    "currentSha256": "88b0f0758313bc6b2fbfd2a211ab753a3ce4d94018f2655dc4fa46e70c670319"
+  },
+  {
+    "file": "apps/server/src/services/radiationBombInterception.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 78,
+    "currentLines": 78,
+    "sourceSha256": "9abac6214f00fc54624aacf014185dea9aafd74060d11f46ca2d7a5918a9dd2c",
+    "currentSha256": "9abac6214f00fc54624aacf014185dea9aafd74060d11f46ca2d7a5918a9dd2c"
+  },
+  {
+    "file": "apps/server/src/services/radiationBombWarning.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 54,
+    "currentLines": 54,
+    "sourceSha256": "b10aeb92b67398472811f847ba6cb15a84fdb1e51b4ab86848f832b07e95f8be",
+    "currentSha256": "b10aeb92b67398472811f847ba6cb15a84fdb1e51b4ab86848f832b07e95f8be"
+  },
+  {
+    "file": "apps/server/src/services/radiationSources.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 91,
+    "currentLines": 91,
+    "sourceSha256": "e685fb8515f301fcac9b4c3ee594cf741f3eaa55a1f62495f3a856199eb0cbc3",
+    "currentSha256": "e685fb8515f301fcac9b4c3ee594cf741f3eaa55a1f62495f3a856199eb0cbc3"
+  },
+  {
+    "file": "apps/server/src/services/raidLedger.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 108,
+    "currentLines": 108,
+    "sourceSha256": "887b22034f2e26bd3144dbad0fa6b6ece8000a457f9bc6c95b449edf79c17061",
+    "currentSha256": "887b22034f2e26bd3144dbad0fa6b6ece8000a457f9bc6c95b449edf79c17061"
+  },
+  {
+    "file": "apps/server/src/services/rateLimitBackend.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 46,
+    "currentLines": 46,
+    "sourceSha256": "9fdd6c4595a6130df8c77b0cc41a5a7603a1a94c055669d3b7d95bd1483016ef",
+    "currentSha256": "9fdd6c4595a6130df8c77b0cc41a5a7603a1a94c055669d3b7d95bd1483016ef"
+  },
+  {
+    "file": "apps/server/src/services/reclaim.ts",
+    "same": false,
+    "exists": true,
+    "sourceLines": 946,
+    "currentLines": 953,
+    "sourceSha256": "7d4cca247c9dc03ca4ca11c2da5eda1dc5eb7ae8f0f8f8966af1752c12d113d4",
+    "currentSha256": "ded819f7c0abd9708291ea0b7559a102aff6ec028534ee07dd2205f69e99f3d8"
+  },
+  {
+    "file": "apps/server/src/services/repair.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 141,
+    "currentLines": 141,
+    "sourceSha256": "bc3f65041428972b5493a9ae6e3f1161c76f7655ee4f649db886698fbfaf4848",
+    "currentSha256": "bc3f65041428972b5493a9ae6e3f1161c76f7655ee4f649db886698fbfaf4848"
+  },
+  {
+    "file": "apps/server/src/services/reports.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1253,
+    "currentLines": 1253,
+    "sourceSha256": "309d4ff2ec16706e4effdf44de2da66b6bf3f68faf4d73fd3fc16d23868e80c4",
+    "currentSha256": "309d4ff2ec16706e4effdf44de2da66b6bf3f68faf4d73fd3fc16d23868e80c4"
+  },
+  {
+    "file": "apps/server/src/services/research.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 376,
+    "currentLines": 376,
+    "sourceSha256": "8e351b414d96a7c9f43395ac3965488639135ae3cefec0272b46ebb09f43971c",
+    "currentSha256": "8e351b414d96a7c9f43395ac3965488639135ae3cefec0272b46ebb09f43971c"
+  },
+  {
+    "file": "apps/server/src/services/researchQueue.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 46,
+    "currentLines": 46,
+    "sourceSha256": "b75582b00160654f9a8fe0297af357e7e8ea26f286b3fb49f9db0f75c8a5ec05",
+    "currentSha256": "b75582b00160654f9a8fe0297af357e7e8ea26f286b3fb49f9db0f75c8a5ec05"
+  },
+  {
+    "file": "apps/server/src/services/researchState.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 282,
+    "currentLines": 282,
+    "sourceSha256": "d778af039fe090c1305f72ebadbf7ad998200e7f986ac8517655f0c18aadc463",
+    "currentSha256": "d778af039fe090c1305f72ebadbf7ad998200e7f986ac8517655f0c18aadc463"
+  },
+  {
+    "file": "apps/server/src/services/returnQueue.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 111,
+    "currentLines": 111,
+    "sourceSha256": "c8ca0a0fba1f1455a7d8242e6984448c0f0f0538d71a21415014acb3456006d8",
+    "currentSha256": "c8ca0a0fba1f1455a7d8242e6984448c0f0f0538d71a21415014acb3456006d8"
+  },
+  {
+    "file": "apps/server/src/services/returnStatus.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 38,
+    "currentLines": 38,
+    "sourceSha256": "99df3a034c9291b73058a1772ed6f9f55988d12779e0c671d9eeaaefc9c6822f",
+    "currentSha256": "99df3a034c9291b73058a1772ed6f9f55988d12779e0c671d9eeaaefc9c6822f"
+  },
+  {
+    "file": "apps/server/src/services/rewards.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 594,
+    "currentLines": 594,
+    "sourceSha256": "3b887750b5004745c2944b738ce648f044fa59a4cc78532ebd8d9410dff598f8",
+    "currentSha256": "3b887750b5004745c2944b738ce648f044fa59a4cc78532ebd8d9410dff598f8"
+  },
+  {
+    "file": "apps/server/src/services/runtimeMetrics.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 229,
+    "currentLines": 229,
+    "sourceSha256": "4e0292adb3de69b4911afa02805b2cd5633f2fc12a3625dfe7c84c9945676380",
+    "currentSha256": "4e0292adb3de69b4911afa02805b2cd5633f2fc12a3625dfe7c84c9945676380"
+  },
+  {
+    "file": "apps/server/src/services/season.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 771,
+    "currentLines": 771,
+    "sourceSha256": "6304736cd50ac02c14a065b5b1e50d28003f2d59c839260e3d637a68bdc9c5bb",
+    "currentSha256": "6304736cd50ac02c14a065b5b1e50d28003f2d59c839260e3d637a68bdc9c5bb"
+  },
+  {
+    "file": "apps/server/src/services/seasonArchive.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 135,
+    "currentLines": 135,
+    "sourceSha256": "a0a28117571fd151b677e50547dbe2669fb7f0a953b0b798bdf6593b55a44b09",
+    "currentSha256": "a0a28117571fd151b677e50547dbe2669fb7f0a953b0b798bdf6593b55a44b09"
+  },
+  {
+    "file": "apps/server/src/services/seasonRankRewards.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 132,
+    "currentLines": 132,
+    "sourceSha256": "77513eeb41fdfd2683294365d0b25d7477c47eeea20db982294c07468b69a566",
+    "currentSha256": "77513eeb41fdfd2683294365d0b25d7477c47eeea20db982294c07468b69a566"
+  },
+  {
+    "file": "apps/server/src/services/sensorHistory.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 118,
+    "currentLines": 118,
+    "sourceSha256": "ac6109e7adf394c1d76e727baf95b7ef9c001759161f5422a0d72853b9c78e08",
+    "currentSha256": "ac6109e7adf394c1d76e727baf95b7ef9c001759161f5422a0d72853b9c78e08"
+  },
+  {
+    "file": "apps/server/src/services/servers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 757,
+    "currentLines": 757,
+    "sourceSha256": "a35f4c78cbf19fbe0662a723e7b90a86fbfafd0ce74f920a4b5d8bb02daed2b2",
+    "currentSha256": "a35f4c78cbf19fbe0662a723e7b90a86fbfafd0ce74f920a4b5d8bb02daed2b2"
+  },
+  {
+    "file": "apps/server/src/services/session.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1295,
+    "currentLines": 1295,
+    "sourceSha256": "218bb293372efb3160cf4ff300a61feadb70e5b25aeba8a07f1b44a3573fc84c",
+    "currentSha256": "218bb293372efb3160cf4ff300a61feadb70e5b25aeba8a07f1b44a3573fc84c"
+  },
+  {
+    "file": "apps/server/src/services/shipDamage.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 217,
+    "currentLines": 217,
+    "sourceSha256": "23a79737a3aeaabda1b9656e96372386e435c5e7e56b6161efbc157b0bdf7880",
+    "currentSha256": "23a79737a3aeaabda1b9656e96372386e435c5e7e56b6161efbc157b0bdf7880"
+  },
+  {
+    "file": "apps/server/src/services/shopier.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 58,
+    "currentLines": 58,
+    "sourceSha256": "f40d2dbb6b857a9c071050412c8a964752bab8a5d3d4a4040a6d302ab5e53c72",
+    "currentSha256": "f40d2dbb6b857a9c071050412c8a964752bab8a5d3d4a4040a6d302ab5e53c72"
+  },
+  {
+    "file": "apps/server/src/services/shopierSales.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 297,
+    "currentLines": 297,
+    "sourceSha256": "d67b977411a6fc1186e132241315ca878d67ef883507718fac9d0a0b581a0852",
+    "currentSha256": "d67b977411a6fc1186e132241315ca878d67ef883507718fac9d0a0b581a0852"
+  },
+  {
+    "file": "apps/server/src/services/silentSpace.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 151,
+    "currentLines": 151,
+    "sourceSha256": "4fb846fd614d93963c9999980fea502fb0b644a7dd8412c9de685d50981ae61e",
+    "currentSha256": "4fb846fd614d93963c9999980fea502fb0b644a7dd8412c9de685d50981ae61e"
+  },
+  {
+    "file": "apps/server/src/services/spatialHistory.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 22,
+    "currentLines": 22,
+    "sourceSha256": "e33898ea97b510749acec93feb16b32a7400020462d0e1f80cee91328b22d2e4",
+    "currentSha256": "e33898ea97b510749acec93feb16b32a7400020462d0e1f80cee91328b22d2e4"
+  },
+  {
+    "file": "apps/server/src/services/spawnGate.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 138,
+    "currentLines": 138,
+    "sourceSha256": "16a5e795fb5c5a6e0c5020f28d1dddc098162a28025c3cff8722cdbc942cc803",
+    "currentSha256": "16a5e795fb5c5a6e0c5020f28d1dddc098162a28025c3cff8722cdbc942cc803"
+  },
+  {
+    "file": "apps/server/src/services/spawnGateRead.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 33,
+    "currentLines": 33,
+    "sourceSha256": "ff5f00e72f6492f1321f085951e90679ca9894619bb64a72298297c54626e03d",
+    "currentSha256": "ff5f00e72f6492f1321f085951e90679ca9894619bb64a72298297c54626e03d"
+  },
+  {
+    "file": "apps/server/src/services/specialFlightRadiation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 43,
+    "currentLines": 43,
+    "sourceSha256": "d721dae4bd9a370012fecca0ce48924b7fafef1f3bc70036240c843fb1383de8",
+    "currentSha256": "d721dae4bd9a370012fecca0ce48924b7fafef1f3bc70036240c843fb1383de8"
+  },
+  {
+    "file": "apps/server/src/services/strategic.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 707,
+    "currentLines": 707,
+    "sourceSha256": "3a9adf25e425d8db6337ed03e1f917d104408cad6613cf6bb626190e8b8dfb05",
+    "currentSha256": "3a9adf25e425d8db6337ed03e1f917d104408cad6613cf6bb626190e8b8dfb05"
+  },
+  {
+    "file": "apps/server/src/services/strategicInterception.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 412,
+    "currentLines": 412,
+    "sourceSha256": "1b1f58713efbe2efc46c4cee396ba53e21a2cdd3b3678136626e565290254df9",
+    "currentSha256": "1b1f58713efbe2efc46c4cee396ba53e21a2cdd3b3678136626e565290254df9"
+  },
+  {
+    "file": "apps/server/src/services/streamRegistry.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 61,
+    "currentLines": 61,
+    "sourceSha256": "5021b2c5632fef35148aede9098a361b642ad06382c8e19122c98a901cd64ccc",
+    "currentSha256": "5021b2c5632fef35148aede9098a361b642ad06382c8e19122c98a901cd64ccc"
+  },
+  {
+    "file": "apps/server/src/services/supporters.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 49,
+    "currentLines": 49,
+    "sourceSha256": "89a4c35f717312dfd4acb126ce81d9fd0e604727c3b1f0d0b3e797f9acfa236b",
+    "currentSha256": "89a4c35f717312dfd4acb126ce81d9fd0e604727c3b1f0d0b3e797f9acfa236b"
+  },
+  {
+    "file": "apps/server/src/services/tempoAdoption.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 38,
+    "currentLines": 38,
+    "sourceSha256": "95b937527cecc798f8b2470e095cce0b2851007daad336a368ad961775e5fad1",
+    "currentSha256": "95b937527cecc798f8b2470e095cce0b2851007daad336a368ad961775e5fad1"
+  },
+  {
+    "file": "apps/server/src/services/trade.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 748,
+    "currentLines": 748,
+    "sourceSha256": "085cfc071a9773dd7710d227ef8676ede695a0ce117a0953be0645512363213d",
+    "currentSha256": "085cfc071a9773dd7710d227ef8676ede695a0ce117a0953be0645512363213d"
+  },
+  {
+    "file": "apps/server/src/services/tradeField.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 120,
+    "currentLines": 120,
+    "sourceSha256": "5436e0aba08fe49cca750cdd343c717d950d04599a862116333ca4467d28b336",
+    "currentSha256": "5436e0aba08fe49cca750cdd343c717d950d04599a862116333ca4467d28b336"
+  },
+  {
+    "file": "apps/server/src/services/traffic.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 2314,
+    "currentLines": 2314,
+    "sourceSha256": "7cb097eade2cf359ff4c437005239fead1a03374c75a38085714e68c629caaa4",
+    "currentSha256": "7cb097eade2cf359ff4c437005239fead1a03374c75a38085714e68c629caaa4"
+  },
+  {
+    "file": "apps/server/src/services/transferReferences.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 105,
+    "currentLines": 105,
+    "sourceSha256": "59400c567475c81195c75f9e440dbe55f9406a09b2ae66f28c5a2f2c38fd84e9",
+    "currentSha256": "59400c567475c81195c75f9e440dbe55f9406a09b2ae66f28c5a2f2c38fd84e9"
+  },
+  {
+    "file": "apps/server/src/services/unknownSignal.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 447,
+    "currentLines": 447,
+    "sourceSha256": "4e0d8422f6f56fac5f461b3d38deb87d8226d0883d05d24c9991e18b06768da3",
+    "currentSha256": "4e0d8422f6f56fac5f461b3d38deb87d8226d0883d05d24c9991e18b06768da3"
+  },
+  {
+    "file": "apps/server/src/services/unknownSignalSchedule.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 38,
+    "currentLines": 38,
+    "sourceSha256": "ef7e2f3fb164d42e2844e5e679adbddce2b3d4778ef54ab75bc85fe87f74d9ec",
+    "currentSha256": "ef7e2f3fb164d42e2844e5e679adbddce2b3d4778ef54ab75bc85fe87f74d9ec"
+  },
+  {
+    "file": "apps/server/src/services/vacation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 259,
+    "currentLines": 259,
+    "sourceSha256": "55d79ddf7915148dd3692ee30426efd87e2ec2f673a8dbd8c6e79a33e8cc1a27",
+    "currentSha256": "55d79ddf7915148dd3692ee30426efd87e2ec2f673a8dbd8c6e79a33e8cc1a27"
+  },
+  {
+    "file": "apps/server/src/services/waitingRoom.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 45,
+    "currentLines": 45,
+    "sourceSha256": "dfb19d16e9d486c168ee8216b48aabf1a57a0fe850df143636b42ed177a3889b",
+    "currentSha256": "dfb19d16e9d486c168ee8216b48aabf1a57a0fe850df143636b42ed177a3889b"
+  },
+  {
+    "file": "apps/server/src/services/waitingServers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 65,
+    "currentLines": 65,
+    "sourceSha256": "baa1bbb2241694050de4805435fccb227b390c65cecab8609c7963663aa3de0a",
+    "currentSha256": "baa1bbb2241694050de4805435fccb227b390c65cecab8609c7963663aa3de0a"
+  },
+  {
+    "file": "apps/server/src/services/watchEvents.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 50,
+    "currentLines": 50,
+    "sourceSha256": "f5f12abf94dd5c96656e4b0c23fc3a238d471800ffc0c236970ca1618cb75723",
+    "currentSha256": "f5f12abf94dd5c96656e4b0c23fc3a238d471800ffc0c236970ca1618cb75723"
+  },
+  {
+    "file": "apps/server/src/services/workshop.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 22,
+    "currentLines": 22,
+    "sourceSha256": "55068f4c87b6153193b6b2d12a80ff2fb77040fb1aa30da67396213f5d9c4ad8",
+    "currentSha256": "55068f4c87b6153193b6b2d12a80ff2fb77040fb1aa30da67396213f5d9c4ad8"
+  },
+  {
+    "file": "apps/server/src/stream/bus.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 669,
+    "currentLines": 669,
+    "sourceSha256": "5a6d579ba4154af65a4c285a0f51f36afff5384cdacf29688e59e5d7fdcf662f",
+    "currentSha256": "5a6d579ba4154af65a4c285a0f51f36afff5384cdacf29688e59e5d7fdcf662f"
+  },
+  {
+    "file": "apps/server/src/worker/abandon.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 565,
+    "currentLines": 565,
+    "sourceSha256": "1ee128fdc381da758ce8905af59a10010c9d8252bf62e6cd543da43c06fe032e",
+    "currentSha256": "1ee128fdc381da758ce8905af59a10010c9d8252bf62e6cd543da43c06fe032e"
+  },
+  {
+    "file": "apps/server/src/worker/handlers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 3166,
+    "currentLines": 3166,
+    "sourceSha256": "d78aabd2999c6fc385b22166fd8cf7b974bbd61a2f04f9350854ba6099d8970a",
+    "currentSha256": "d78aabd2999c6fc385b22166fd8cf7b974bbd61a2f04f9350854ba6099d8970a"
+  },
+  {
+    "file": "apps/server/src/worker/loop.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 477,
+    "currentLines": 477,
+    "sourceSha256": "d9856ce900d6621ae9676630d4deeb8d59d9bc80cd28068c2c1799065ab76618",
+    "currentSha256": "d9856ce900d6621ae9676630d4deeb8d59d9bc80cd28068c2c1799065ab76618"
+  },
+  {
+    "file": "apps/server/src/worker/monumentHandlers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 72,
+    "currentLines": 72,
+    "sourceSha256": "ac82d763799b2708596b3087a6e2fb7225b23a5e6ed967c410a5bdc9e9bd78b3",
+    "currentSha256": "ac82d763799b2708596b3087a6e2fb7225b23a5e6ed967c410a5bdc9e9bd78b3"
+  },
+  {
+    "file": "apps/server/src/worker/queue.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 202,
+    "currentLines": 202,
+    "sourceSha256": "6bf8512ebc01c009d8573b773cf766ea19be070727069a3a2887e15b43f56bcb",
+    "currentSha256": "6bf8512ebc01c009d8573b773cf766ea19be070727069a3a2887e15b43f56bcb"
+  },
+  {
+    "file": "apps/server/src/worker/radiationBombHandlers.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 65,
+    "currentLines": 65,
+    "sourceSha256": "5bc882200a13d3e38efc8b7d5946e5834146fe7c269ede735378c559d31f2cec",
+    "currentSha256": "5bc882200a13d3e38efc8b7d5946e5834146fe7c269ede735378c559d31f2cec"
+  },
+  {
+    "file": "apps/web/src/api/keys.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 83,
+    "currentLines": 83,
+    "sourceSha256": "3d8f8913697a7d3539d69e9b122144c6c9af4a96b5e9d408e756d2f4341cbc5b",
+    "currentSha256": "3d8f8913697a7d3539d69e9b122144c6c9af4a96b5e9d408e756d2f4341cbc5b"
+  },
+  {
+    "file": "apps/web/src/api/queries.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 2672,
+    "currentLines": 2672,
+    "sourceSha256": "ad4750dcefa0570d3d99599a567bc7072245ffe8f1e79ad23fd2b15eb9dda1d9",
+    "currentSha256": "ad4750dcefa0570d3d99599a567bc7072245ffe8f1e79ad23fd2b15eb9dda1d9"
+  },
+  {
+    "file": "apps/web/src/api/colonyAbandonment.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 51,
+    "currentLines": 51,
+    "sourceSha256": "c31196cbd185e5be14d1296bd4c67f2b3a148047231030af5270cd84561ec6a7",
+    "currentSha256": "c31196cbd185e5be14d1296bd4c67f2b3a148047231030af5270cd84561ec6a7"
+  },
+  {
+    "file": "apps/web/src/api/structural.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 146,
+    "currentLines": 146,
+    "sourceSha256": "299de7ea3845ed49eef4043405bd2acf8623021e01b2863be2a1608410e084bc",
+    "currentSha256": "299de7ea3845ed49eef4043405bd2acf8623021e01b2863be2a1608410e084bc"
+  },
+  {
+    "file": "apps/web/src/api/queryClient.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 40,
+    "currentLines": 40,
+    "sourceSha256": "48f5e76557d6657385fe3328bdb1f85aba64f10b717bbc08a3a5fd4702286f86",
+    "currentSha256": "48f5e76557d6657385fe3328bdb1f85aba64f10b717bbc08a3a5fd4702286f86"
+  },
+  {
+    "file": "apps/web/src/api/contentReportSchemas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 17,
+    "currentLines": 17,
+    "sourceSha256": "41595757c1b325d771400d01eb4b7a6aaab6921b4a705acf271f09c3e202eae1",
+    "currentSha256": "41595757c1b325d771400d01eb4b7a6aaab6921b4a705acf271f09c3e202eae1"
+  },
+  {
+    "file": "apps/web/src/api/adminSchemas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 47,
+    "currentLines": 47,
+    "sourceSha256": "5cea35a5b90b9ed7e0382a2ca9bc60ac99d35994aba6c363a1ab29873443c259",
+    "currentSha256": "5cea35a5b90b9ed7e0382a2ca9bc60ac99d35994aba6c363a1ab29873443c259"
+  },
+  {
+    "file": "apps/web/src/api/world.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 112,
+    "currentLines": 112,
+    "sourceSha256": "23fd0e9bd7871c77ab3a6474d733d18dab87170c2f2e5ef4bf8b100a554c0bd6",
+    "currentSha256": "23fd0e9bd7871c77ab3a6474d733d18dab87170c2f2e5ef4bf8b100a554c0bd6"
+  },
+  {
+    "file": "apps/web/src/api/gatedRead.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 46,
+    "currentLines": 46,
+    "sourceSha256": "c7e268d77003f5fdbdc58465e3442d7fac50af2d827431ad5cc5b5e6248f4069",
+    "currentSha256": "c7e268d77003f5fdbdc58465e3442d7fac50af2d827431ad5cc5b5e6248f4069"
+  },
+  {
+    "file": "apps/web/src/api/communityPolicySchemas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 7,
+    "currentLines": 7,
+    "sourceSha256": "d0c1cf70aebfc08adee958b7956a7a01bf464031af1dcdc8c314a50a23e2d1c5",
+    "currentSha256": "d0c1cf70aebfc08adee958b7956a7a01bf464031af1dcdc8c314a50a23e2d1c5"
+  },
+  {
+    "file": "apps/web/src/api/schemas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 3985,
+    "currentLines": 3985,
+    "sourceSha256": "4a1256f270c0826f70aacd0423c0a716a2f027fd0d7403883a4f6865e780dcf7",
+    "currentSha256": "4a1256f270c0826f70aacd0423c0a716a2f027fd0d7403883a4f6865e780dcf7"
+  },
+  {
+    "file": "apps/web/src/api/communityPolicy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 12,
+    "currentLines": 12,
+    "sourceSha256": "9d49ee45900b1c9b28c33ffeecd1f2be1f4e1aa74a0dbf24848dbdb4291523f1",
+    "currentSha256": "9d49ee45900b1c9b28c33ffeecd1f2be1f4e1aa74a0dbf24848dbdb4291523f1"
+  },
+  {
+    "file": "apps/web/src/api/planetCache.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 72,
+    "currentLines": 72,
+    "sourceSha256": "ae8d269898346e0375bd590562098655f3f9526bdd3458d4d811f81e3f85c2ad",
+    "currentSha256": "ae8d269898346e0375bd590562098655f3f9526bdd3458d4d811f81e3f85c2ad"
+  },
+  {
+    "file": "apps/web/src/api/client.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1525,
+    "currentLines": 1525,
+    "sourceSha256": "46f1ad96b8a8cf47fe8b00fe77d48c62705cb21b525fccdceea7c55d7548982e",
+    "currentSha256": "46f1ad96b8a8cf47fe8b00fe77d48c62705cb21b525fccdceea7c55d7548982e"
+  },
+  {
+    "file": "apps/web/src/api/adminQueries.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 65,
+    "currentLines": 65,
+    "sourceSha256": "84ff0fbcb8a3487645ed8231357508101a3c7553bf82c32a615c9b28bd604e94",
+    "currentSha256": "84ff0fbcb8a3487645ed8231357508101a3c7553bf82c32a615c9b28bd604e94"
+  },
+  {
+    "file": "apps/web/src/api/refreshQueries.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 66,
+    "currentLines": 66,
+    "sourceSha256": "ef0f16a7945cbb554be514dbb84182ddf1bf3b594906882c0914e6640a51219c",
+    "currentSha256": "ef0f16a7945cbb554be514dbb84182ddf1bf3b594906882c0914e6640a51219c"
+  },
+  {
+    "file": "apps/web/src/api/context.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 15,
+    "currentLines": 15,
+    "sourceSha256": "316df956a002e404b8a45ef9a95ad0b5d0c111a23517fd4e3b8862db8eb7e323",
+    "currentSha256": "316df956a002e404b8a45ef9a95ad0b5d0c111a23517fd4e3b8862db8eb7e323"
+  },
+  {
+    "file": "apps/web/src/api/returnQueries.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 19,
+    "currentLines": 19,
+    "sourceSha256": "6a327b575fb3c89807ca6b186466f442a3815e01edfa4161f02b0fe986b7f37e",
+    "currentSha256": "6a327b575fb3c89807ca6b186466f442a3815e01edfa4161f02b0fe986b7f37e"
+  },
+  {
+    "file": "apps/web/src/api/vacation.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 26,
+    "currentLines": 26,
+    "sourceSha256": "ffdebbe4e5ed4490c39ec9e72e093730cf09810edcbb780959e86aeaa815cef5",
+    "currentSha256": "ffdebbe4e5ed4490c39ec9e72e093730cf09810edcbb780959e86aeaa815cef5"
+  },
+  {
+    "file": "apps/web/src/api/battleReplaySchemas.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 42,
+    "currentLines": 42,
+    "sourceSha256": "e508e337bf1404d1e52bd4953c8d7b19073dfdeb1d7a349d16747be64ce0f6c8",
+    "currentSha256": "e508e337bf1404d1e52bd4953c8d7b19073dfdeb1d7a349d16747be64ce0f6c8"
+  },
+  {
+    "file": "apps/web/src/session/shardEvents.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 389,
+    "currentLines": 389,
+    "sourceSha256": "c510af32f3666e4f7257e4ea4489ed648249de323e2d5ba15d95d21cff7e12aa",
+    "currentSha256": "c510af32f3666e4f7257e4ea4489ed648249de323e2d5ba15d95d21cff7e12aa"
+  },
+  {
+    "file": "apps/web/src/session/useReadReportSignals.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 41,
+    "currentLines": 41,
+    "sourceSha256": "31351bc3be21d8bd12697bf077dd26f61e59a229f3a75c7c99e39e02243cfb50",
+    "currentSha256": "31351bc3be21d8bd12697bf077dd26f61e59a229f3a75c7c99e39e02243cfb50"
+  },
+  {
+    "file": "apps/web/src/session/useArrivals.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 171,
+    "currentLines": 171,
+    "sourceSha256": "5029998784a2fc54ec0efe229fa55fdcbc4549db28e2197090ad619ca90c9d99",
+    "currentSha256": "5029998784a2fc54ec0efe229fa55fdcbc4549db28e2197090ad619ca90c9d99"
+  },
+  {
+    "file": "apps/web/src/session/seasonLock.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 53,
+    "currentLines": 53,
+    "sourceSha256": "1e69e2b42b675faa0622f3c8f1c528482b09db7933787aac9994ac4549072ac3",
+    "currentSha256": "1e69e2b42b675faa0622f3c8f1c528482b09db7933787aac9994ac4549072ac3"
+  },
+  {
+    "file": "apps/web/src/session/useSession.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 497,
+    "currentLines": 497,
+    "sourceSha256": "36243dfd9be8105f77c671e72863257874f254f0be4e3ee8b70e7ba972a4b3d0",
+    "currentSha256": "36243dfd9be8105f77c671e72863257874f254f0be4e3ee8b70e7ba972a4b3d0"
+  },
+  {
+    "file": "apps/web/src/session/useLiveAlerts.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 75,
+    "currentLines": 75,
+    "sourceSha256": "90f0d93e6a69711e1e011c0b33fd52a2906f63a07fdee414bc457e20b61786b0",
+    "currentSha256": "90f0d93e6a69711e1e011c0b33fd52a2906f63a07fdee414bc457e20b61786b0"
+  },
+  {
+    "file": "apps/web/src/session/useEventStream.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 368,
+    "currentLines": 368,
+    "sourceSha256": "3150c309de2b4ea3b89015b5d1f4b02f78e4349adaa1a2920d4c8634eb7e97a3",
+    "currentSha256": "3150c309de2b4ea3b89015b5d1f4b02f78e4349adaa1a2920d4c8634eb7e97a3"
+  },
+  {
+    "file": "apps/web/src/platform/env.d.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 8,
+    "currentLines": 8,
+    "sourceSha256": "b00739062874c5f8bfeb68c91476abfc295b7395577e335812b6fe28dddcc8ba",
+    "currentSha256": "b00739062874c5f8bfeb68c91476abfc295b7395577e335812b6fe28dddcc8ba"
+  },
+  {
+    "file": "apps/web/src/platform/activity.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 103,
+    "currentLines": 103,
+    "sourceSha256": "eac1ea7231c1e87e5b384b46786d46fb0d09f4dc9ef56373faabd0a77b9a1927",
+    "currentSha256": "eac1ea7231c1e87e5b384b46786d46fb0d09f4dc9ef56373faabd0a77b9a1927"
+  },
+  {
+    "file": "apps/web/src/platform/updateGate.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 25,
+    "currentLines": 25,
+    "sourceSha256": "7d3b127159589d491679ca27d6192dc5afe50fdc2be06a58eb7ee5f0086451a5",
+    "currentSha256": "7d3b127159589d491679ca27d6192dc5afe50fdc2be06a58eb7ee5f0086451a5"
+  },
+  {
+    "file": "apps/web/src/platform/authTransport.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 66,
+    "currentLines": 66,
+    "sourceSha256": "f157ccae91176c6b4f354af55633883a84e8ff1af8fc402c91f00e80489d926d",
+    "currentSha256": "f157ccae91176c6b4f354af55633883a84e8ff1af8fc402c91f00e80489d926d"
+  },
+  {
+    "file": "apps/web/src/platform/nativeBack.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 52,
+    "currentLines": 52,
+    "sourceSha256": "2ee91b2d0815b5ec9cb22c5e86c195c3aa6473fdffba50e79723343a0f607ab3",
+    "currentSha256": "2ee91b2d0815b5ec9cb22c5e86c195c3aa6473fdffba50e79723343a0f607ab3"
+  },
+  {
+    "file": "apps/web/src/platform/network.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 75,
+    "currentLines": 75,
+    "sourceSha256": "138fa37af71308b8c9017a394caceb642bd37cf6375eda537198cee658e4822a",
+    "currentSha256": "138fa37af71308b8c9017a394caceb642bd37cf6375eda537198cee658e4822a"
+  },
+  {
+    "file": "apps/web/src/platform/runtime.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 32,
+    "currentLines": 32,
+    "sourceSha256": "8ef54cf1425b03a5d90ccaaa46a048acd5c3f19961e77fe843d307b8f2419d34",
+    "currentSha256": "8ef54cf1425b03a5d90ccaaa46a048acd5c3f19961e77fe843d307b8f2419d34"
+  },
+  {
+    "file": "apps/web/src/arena/audio.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 183,
+    "currentLines": 183,
+    "sourceSha256": "0f083e5faf72ba82c1d809df2fc2bfed1d98c8529ad4761e3cf6d4d598e3b7b7",
+    "currentSha256": "0f083e5faf72ba82c1d809df2fc2bfed1d98c8529ad4761e3cf6d4d598e3b7b7"
+  },
+  {
+    "file": "apps/web/src/arena/loading.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 6,
+    "currentLines": 6,
+    "sourceSha256": "4679d0165a2fef0de6fd27dd12fc1ccf11b116cd234710fbedf455a2ea7541a0",
+    "currentSha256": "4679d0165a2fef0de6fd27dd12fc1ccf11b116cd234710fbedf455a2ea7541a0"
+  },
+  {
+    "file": "apps/web/src/arena/input.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 198,
+    "currentLines": 198,
+    "sourceSha256": "3a604faebb428eb8c6ad6d4e1f5653da418fdf6fbc4abc30041b9ee08a9801bb",
+    "currentSha256": "3a604faebb428eb8c6ad6d4e1f5653da418fdf6fbc4abc30041b9ee08a9801bb"
+  },
+  {
+    "file": "apps/web/src/arena/flags.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 16,
+    "currentLines": 16,
+    "sourceSha256": "a5a52531f2d6724a398ff4241190c547b53db9871ad0d8c95efa7868d868b40c",
+    "currentSha256": "a5a52531f2d6724a398ff4241190c547b53db9871ad0d8c95efa7868d868b40c"
+  },
+  {
+    "file": "apps/web/src/arena/copy.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 105,
+    "currentLines": 105,
+    "sourceSha256": "9c40391bed1f4c381fe8640d689cb2848150bef39bff693708674d4df0637595",
+    "currentSha256": "9c40391bed1f4c381fe8640d689cb2848150bef39bff693708674d4df0637595"
+  },
+  {
+    "file": "apps/web/src/arena/store.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 63,
+    "currentLines": 63,
+    "sourceSha256": "3bef511aecd9a0024b46e178995d1067b55e5ff79c9c64a95bb892efabbcc59c",
+    "currentSha256": "3bef511aecd9a0024b46e178995d1067b55e5ff79c9c64a95bb892efabbcc59c"
+  },
+  {
+    "file": "apps/web/src/arena/landing.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 109,
+    "currentLines": 109,
+    "sourceSha256": "f0356394625ad25bfc6fbe492e84c426546957da5a35a2a1fe5f8a33794af19d",
+    "currentSha256": "f0356394625ad25bfc6fbe492e84c426546957da5a35a2a1fe5f8a33794af19d"
+  },
+  {
+    "file": "apps/web/src/arena/farmColors.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 9,
+    "currentLines": 9,
+    "sourceSha256": "07d3ba520feae3fe5680502d20cb54ec085eccdb6b10a0b631dc435879d14d78",
+    "currentSha256": "07d3ba520feae3fe5680502d20cb54ec085eccdb6b10a0b631dc435879d14d78"
+  },
+  {
+    "file": "apps/web/src/arena/client.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 667,
+    "currentLines": 667,
+    "sourceSha256": "4694d66b0052f50e9b979592d235ac8545e65b60aea56f13b16f5ce8dec59432",
+    "currentSha256": "4694d66b0052f50e9b979592d235ac8545e65b60aea56f13b16f5ce8dec59432"
+  },
+  {
+    "file": "apps/web/src/arena/ArenaEntry.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 22,
+    "currentLines": 22,
+    "sourceSha256": "87e043b69e1d8d8268422ac195b4375f33ec2d03f14b65538e389a96f8ea8741",
+    "currentSha256": "87e043b69e1d8d8268422ac195b4375f33ec2d03f14b65538e389a96f8ea8741"
+  },
+  {
+    "file": "apps/web/src/arena/Sandbox.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 307,
+    "currentLines": 307,
+    "sourceSha256": "c295110a805ec7f2836fa99c14816bacb9cb2a3b1afd0a33f802931e35b9b17f",
+    "currentSha256": "c295110a805ec7f2836fa99c14816bacb9cb2a3b1afd0a33f802931e35b9b17f"
+  },
+  {
+    "file": "apps/web/src/arena/smoothing.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 59,
+    "currentLines": 59,
+    "sourceSha256": "ec90fb60d473fe64b94d336e131c294f43b2fab5eacaf8423535d03cb7bbfe37",
+    "currentSha256": "ec90fb60d473fe64b94d336e131c294f43b2fab5eacaf8423535d03cb7bbfe37"
+  },
+  {
+    "file": "apps/web/src/arena/ArenaGate.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 34,
+    "currentLines": 34,
+    "sourceSha256": "cd4810b0106fb1bc6573d912e74d36bd0b4653c920f81822e9343d04dfbe5d70",
+    "currentSha256": "cd4810b0106fb1bc6573d912e74d36bd0b4653c920f81822e9343d04dfbe5d70"
+  },
+  {
+    "file": "apps/web/src/arena/network.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 216,
+    "currentLines": 216,
+    "sourceSha256": "fc9cefe161cb9e6c31c5de98ab09b13f4bb3703fd06eec328ea8a76553aed414",
+    "currentSha256": "fc9cefe161cb9e6c31c5de98ab09b13f4bb3703fd06eec328ea8a76553aed414"
+  },
+  {
+    "file": "apps/web/src/arena/diagnostics.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 41,
+    "currentLines": 41,
+    "sourceSha256": "7aabc3257c6a9b185a371603458ff51e30147ce1ba0f8c9b7eecddf376e2314e",
+    "currentSha256": "7aabc3257c6a9b185a371603458ff51e30147ce1ba0f8c9b7eecddf376e2314e"
+  },
+  {
+    "file": "apps/web/src/arena/access.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 64,
+    "currentLines": 64,
+    "sourceSha256": "8dd19cb6450d757d7ff322bbc3f26ae68b0a52e3f557725aaec4dc48e6cf1dca",
+    "currentSha256": "8dd19cb6450d757d7ff322bbc3f26ae68b0a52e3f557725aaec4dc48e6cf1dca"
+  },
+  {
+    "file": "apps/web/src/arena/Controls.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 168,
+    "currentLines": 168,
+    "sourceSha256": "20fabd5408a48c61a5ff14f683eac79cf9537a19b7c129e04f4e4b6f5e8d4ca9",
+    "currentSha256": "20fabd5408a48c61a5ff14f683eac79cf9537a19b7c129e04f4e4b6f5e8d4ca9"
+  },
+  {
+    "file": "apps/web/src/arena/resolution.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 32,
+    "currentLines": 32,
+    "sourceSha256": "68a5b15a2ee53057da85dffe217802643e54dd57fd354e2db5486d2a515e1d82",
+    "currentSha256": "68a5b15a2ee53057da85dffe217802643e54dd57fd354e2db5486d2a515e1d82"
+  },
+  {
+    "file": "apps/web/src/arena/Hud.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 122,
+    "currentLines": 122,
+    "sourceSha256": "6a166274e1012e75c7fc885199b7d7e0ae123a692a6d2eed0f95c61b508baa21",
+    "currentSha256": "6a166274e1012e75c7fc885199b7d7e0ae123a692a6d2eed0f95c61b508baa21"
+  },
+  {
+    "file": "apps/web/src/arena/driver.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 40,
+    "currentLines": 40,
+    "sourceSha256": "2e9215f32fd6de1ceb81e4114760b17c6ca6d89e14984732e758777bb74a7c86",
+    "currentSha256": "2e9215f32fd6de1ceb81e4114760b17c6ca6d89e14984732e758777bb74a7c86"
+  },
+  {
+    "file": "apps/web/src/main.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 131,
+    "currentLines": 131,
+    "sourceSha256": "5f2e694b2ecf4e80188135a4364a18b7e75148aad97c7ee23a720f2ba7ca3ce7",
+    "currentSha256": "5f2e694b2ecf4e80188135a4364a18b7e75148aad97c7ee23a720f2ba7ca3ce7"
+  },
+  {
+    "file": "apps/web/src/App.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 295,
+    "currentLines": 295,
+    "sourceSha256": "79f0dcd7c9f1af9d911366bf5e624e1909b7974d6bfa2b595abe36766293e61c",
+    "currentSha256": "79f0dcd7c9f1af9d911366bf5e624e1909b7974d6bfa2b595abe36766293e61c"
+  },
+  {
+    "file": "apps/web/src/screens/GalaxyView.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 2605,
+    "currentLines": 2605,
+    "sourceSha256": "77249042a798e3a613aa0d93f8ed5180ab354189146aad4e8a328aeddc937fbe",
+    "currentSha256": "77249042a798e3a613aa0d93f8ed5180ab354189146aad4e8a328aeddc937fbe"
+  },
+  {
+    "file": "apps/web/src/galaxy/GalaxyCanvas.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 2136,
+    "currentLines": 2136,
+    "sourceSha256": "2b11cf6a87b863550cb5d299aefd81a8cd137203783c4afe9088c285ad962711",
+    "currentSha256": "2b11cf6a87b863550cb5d299aefd81a8cd137203783c4afe9088c285ad962711"
+  },
+  {
+    "file": "apps/web/src/galaxy/Fleets.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 3181,
+    "currentLines": 3181,
+    "sourceSha256": "ee45e33b5818f83c88aa7872a8bae2099f2f01d5a9814d41b4861007b0451c9b",
+    "currentSha256": "ee45e33b5818f83c88aa7872a8bae2099f2f01d5a9814d41b4861007b0451c9b"
+  },
+  {
+    "file": "apps/web/src/galaxy/MiningFlights.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 216,
+    "currentLines": 216,
+    "sourceSha256": "da301f05a2df4fb28000c6949bafb78aeed52984e43ef4dc9ad12b8035df011a",
+    "currentSha256": "da301f05a2df4fb28000c6949bafb78aeed52984e43ef4dc9ad12b8035df011a"
+  },
+  {
+    "file": "apps/web/src/galaxy/scene.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 1245,
+    "currentLines": 1245,
+    "sourceSha256": "f01657cba4a705d1ee5397d3a881f5dcb440be502876c0dddb0ed09c66070036",
+    "currentSha256": "f01657cba4a705d1ee5397d3a881f5dcb440be502876c0dddb0ed09c66070036"
+  },
+  {
+    "file": "apps/web/src/galaxy/frames.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 322,
+    "currentLines": 322,
+    "sourceSha256": "a86d3bddcd5f4f779a260ba7263571db446a48a09015b0069ce47e05dbea744a",
+    "currentSha256": "a86d3bddcd5f4f779a260ba7263571db446a48a09015b0069ce47e05dbea744a"
+  },
+  {
+    "file": "apps/web/src/lib/clock.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 119,
+    "currentLines": 119,
+    "sourceSha256": "82a80a7076ae455c1fb4f621d263fc83999806d4f653f9d38740e290de52a590",
+    "currentSha256": "82a80a7076ae455c1fb4f621d263fc83999806d4f653f9d38740e290de52a590"
+  },
+  {
+    "file": "apps/web/src/v2/shell/GameShell.tsx",
+    "same": true,
+    "exists": true,
+    "sourceLines": 332,
+    "currentLines": 332,
+    "sourceSha256": "59d6873817c1bf8f04902260a357a4464df042042407462127621e50ea559ebf",
+    "currentSha256": "59d6873817c1bf8f04902260a357a4464df042042407462127621e50ea559ebf"
+  },
+  {
+    "file": "docker-compose.prod.yml",
+    "same": true,
+    "exists": true,
+    "sourceLines": 287,
+    "currentLines": 287,
+    "sourceSha256": "df3a4c03a95eccc6af5c71549bf6883b48910b7ba8fef6fbf2fed8fa7600b613",
+    "currentSha256": "df3a4c03a95eccc6af5c71549bf6883b48910b7ba8fef6fbf2fed8fa7600b613"
+  },
+  {
+    "file": "deploy/nginx/astera.conf",
+    "same": true,
+    "exists": true,
+    "sourceLines": 413,
+    "currentLines": 413,
+    "sourceSha256": "b8ebc49f9444c7ed7545a6735d8b4f32021f922c015327431a16d92cf7154c65",
+    "currentSha256": "b8ebc49f9444c7ed7545a6735d8b4f32021f922c015327431a16d92cf7154c65"
+  },
+  {
+    "file": "Dockerfile",
+    "same": true,
+    "exists": true,
+    "sourceLines": 106,
+    "currentLines": 106,
+    "sourceSha256": "abe3cec3bd225b73133c663ed76b85c06c58d4756ea4c38367c6cc20a549f21a",
+    "currentSha256": "abe3cec3bd225b73133c663ed76b85c06c58d4756ea4c38367c6cc20a549f21a"
+  },
+  {
+    "file": "packages/rules/src/arena/tuning.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 139,
+    "currentLines": 139,
+    "sourceSha256": "4897c1e09156667e8f8c3a908ee7aa90c963cbe641f4156085eeebb877e0546d",
+    "currentSha256": "4897c1e09156667e8f8c3a908ee7aa90c963cbe641f4156085eeebb877e0546d"
+  },
+  {
+    "file": "packages/rules/src/index.ts",
+    "same": true,
+    "exists": true,
+    "sourceLines": 98,
+    "currentLines": 98,
+    "sourceSha256": "4f21ac7b6445ba85e2991788d9c9deb0e258728a7f8ae7a2c8e6d1acc2b077b7",
+    "currentSha256": "4f21ac7b6445ba85e2991788d9c9deb0e258728a7f8ae7a2c8e6d1acc2b077b7"
+  },
+  {
+    "file": "apps/web/package.json",
+    "same": true,
+    "exists": true,
+    "sourceLines": 69,
+    "currentLines": 69,
+    "sourceSha256": "7a43539699e4d0269decefe904f20d927e1e723dc8f7d2d5013c0632e70928bd",
+    "currentSha256": "7a43539699e4d0269decefe904f20d927e1e723dc8f7d2d5013c0632e70928bd"
+  },
+  {
+    "file": "apps/server/package.json",
+    "same": true,
+    "exists": true,
+    "sourceLines": 46,
+    "currentLines": 46,
+    "sourceSha256": "b6cd842d63de0f706bd327a6fe2de7a4e0ee68fed8b53902ae8f5a3e550c0ec9",
+    "currentSha256": "b6cd842d63de0f706bd327a6fe2de7a4e0ee68fed8b53902ae8f5a3e550c0ec9"
+  }
+]

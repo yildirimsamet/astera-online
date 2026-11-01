@@ -37,7 +37,8 @@
     "models": "node tools/models.mjs",
     "lint": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js .",
     "lint:fix": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js . --fix",
-    "verify": "node tools/verify.mjs"
+    "verify": "node tools/verify.mjs",
+    "dm": "node tools/x-dm.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
