@@ -56,3 +56,15 @@ Staging kabulünden sonra güncel canlı envanteri ve tutarlı özel yedek yenid
 Geçmiş dağıtımı canlı kaynağında aynı servisler ve benzersiz kaynak kimlikleriyle yürür; staging ödül satırları canlıya kopyalanmaz. Canlıda o sırada biriken yeni olaylar kaynak kimliği/toplam sınırı kurallarıyla uzlaştırılır. Hesap bazında küçük transaction’lar ve en fazla iki bağlantı kullanılır. Kesinti gerektiren yeni bir bulgu olursa staging ölçümü ve etkin oyuncu sayısıyla ayrıca ele alınır; normal rolling onayı kesintili işlem varsayımı değildir.
 
 Uyumlu code rollback’inde additive Miras tabloları ve dağıtılmış ödüller yerinde kalır; doğrulanan önceki image/web/runtime geri alınabilir. Oyuncular yeni işlem yaptıktan sonra eski DB dump’ı üstlerine restore edilmez. Birinci tercih kontrollü forward fix’tir. Bütün rollout aşamaları, backfill adetleri ve gözlem sonuçları bu dosyaya eklenecek.
+
+## İlk staging provasının sonuçları
+
+Canlı snapshot’ı üzerindeki ilk prova 69 hesaba 285 ödül verdi: 75 sezon hatırası, 67 yıl pini, 16 Hâkimiyet derecesi, 7 Efsanevi Destekçi, 7 Gösterişçi kademesi, 21 sonda, 15 asteroit ve 77 gemi üretim plaketi. Honor kupası ve diğer başarım türleri için bu snapshot’ta yeterli kanıt/eşik yoktu. Bunlar canlı dağıtımının sabit sayıları değildir; canlı kaynaklar tekrar değerlendirilir.
+
+Migration kilit altında bir saniyelik DB kilit bütçesiyle iptal oldu ve journal/tablolar geri alındı; engelsiz uygulamada journal 218 oldu. Migration ve üç uzlaştırma sonrasında 13 eski veri grubunun satır/hash değerleri aynı kaldı. Önizleme yazmadı; üç uygulamanın tekrarı sıfır yeni ödül üretti ve mevcut ödül kimlik/tarihlerini korudu.
+
+Eski ve yeni image ile `/api/auth/me`, `/api/planet`, ülke yazımı ve kaynak toplama aynı migrated kopyada 200 döndü. Üç staging API, worker ve arena sağlıklı açıldı. Staging’in eski Nginx ayarındaki eksik `/profile` yönlendirmesi canlıdaki mevcut ayarla eşitlendi.
+
+Gerçek tarayıcı kabulünde ödül sahip sayacının bütün ödül sahiplerini saydığı bulundu. Farklı tanım/kademe/edisyon ve geri alınan hakları ayıran regresyon testi önce kırıldı; dış sorgu sütunları açıkça nitelenerek düzeltildi, ilgili 8 API testi geçti. Son yayın SHA’sı bu düzeltmeyi de içerir; staging son image ile yeniden doğrulanmadan canlıya geçilmez.
+
+İlk prova kanıtları VPS’te `/home/yildirim/releases/legacy-113fc7c5beb7/` altında tutulur. Kişi bazındaki liste `stage-allocation.private.csv`; yerel kopyası release worktree’sindeki `out/legacy-release/stage-allocation.private.csv` dosyasıdır. Bu özel dosyalar Git’e eklenmez.

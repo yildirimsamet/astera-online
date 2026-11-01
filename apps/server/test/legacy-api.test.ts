@@ -3,7 +3,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { accounts, adminActions, cosmeticEntitlements, seasonResults, seasons, shards } from '../src/db/schema.js';
+import { accounts, adminActions, cosmeticEntitlements, legacyAwards, seasonResults, seasons, shards } from '../src/db/schema.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { recordLegacyFact } from '../src/services/legacy.js';
@@ -74,6 +74,29 @@ it('returns a precise award detail only inside its owner profile, without privat
   const history = legacySeasonsSchema.parse((await app.inject({ url: `/api/legacy/profiles/${me.publicId}/seasons`, headers: headers[1] })).json());
   expect(history.seasons).toHaveLength(1);
   expect(legacyAwardDetailSchema.parse(detail.json()).season?.galaxy).toBe(history.seasons[0]!.galaxy);
+});
+
+it('counts owners of the same definition, tier and edition rather than everybody with any award', async () => {
+  await f.db.transaction(tx => recordLegacyFact(tx, { accountId: f.accountIds[1]!, seasonId: f.seasonId,
+    metric: 'PROBES', sourceKey: 'api:other-probes', amount: 10, at: f.clock.now() }));
+  const me = legacyProfileSchema.parse((await app.inject({ url: '/api/legacy/me', headers: headers[0] })).json());
+  await app.inject({ url: '/api/legacy/me', headers: headers[1] });
+  const url = `/api/legacy/profiles/${me.publicId}/collection`;
+  let collection = legacyCollectionSchema.parse((await app.inject({ url, headers: headers[0] })).json());
+  const first = collection.awards.find(row => row.definitionId === 'deep-sight' && row.tier === 1)!;
+  const second = collection.awards.find(row => row.definitionId === 'deep-sight' && row.tier === 2)!;
+  expect(first.owners).toBe(2);
+  expect(second.owners).toBe(1);
+  await f.db.insert(legacyAwards).values({ accountId: f.accountIds[1]!, definitionId: 'deep-sight', tier: 2,
+    edition: 'another-edition', sourceSeasonId: f.seasonId, rarity: 'RARE', ruleVersion: 1,
+    grantedAt: f.clock.now(), evidence: {} });
+  const detailUrl = `/api/legacy/profiles/${me.publicId}/awards/${second.id}`;
+  const detail = legacyAwardDetailSchema.parse((await app.inject({ url: detailUrl, headers: headers[1] })).json());
+  expect(detail.owners).toBe(1);
+  await f.db.update(legacyAwards).set({ revokedAt: f.clock.now(), revocationReason: 'Owner count regression' })
+    .where(eq(legacyAwards.accountId, f.accountIds[1]!));
+  collection = legacyCollectionSchema.parse((await app.inject({ url, headers: headers[0] })).json());
+  expect(collection.awards.find(row => row.id === first.id)?.owners).toBe(1);
 });
 
 it('names the season of an award, the podium place and the career summary a visitor reads first', async () => {

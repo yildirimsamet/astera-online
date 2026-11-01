@@ -44,9 +44,11 @@ async function careerOf(db: Queryable, accountId: string) {
   return { seasons: row?.seasons ?? 0, bestHonorRank: row?.bestHonorRank ?? null, bestDominionRank: row?.bestDominionRank ?? null };
 }
 
+// Qualify the outer columns explicitly: single-table selections otherwise strip their
+// table name, letting the correlated subquery resolve them to its own owner alias.
 const awardOwners = sql<number>`(SELECT count(DISTINCT owner.account_id)::int FROM legacy_awards owner
-  WHERE owner.definition_id = ${legacyAwards.definitionId} AND owner.tier = ${legacyAwards.tier}
-    AND owner.edition = ${legacyAwards.edition} AND owner.revoked_at IS NULL)`;
+  WHERE owner.definition_id = "legacy_awards"."definition_id" AND owner.tier = "legacy_awards"."tier"
+    AND owner.edition = "legacy_awards"."edition" AND owner.revoked_at IS NULL)`;
 
 export async function legacyProfileView(db: Queryable, publicId: string, viewerId: string) {
   const identity = await legacyIdentity(db, publicId);
