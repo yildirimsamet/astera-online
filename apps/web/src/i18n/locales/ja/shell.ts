@@ -265,7 +265,7 @@ export const menu = {
   researchLabel: "研究",
   researchHint: "全惑星で共有する研究と必要条件を確認する",
   leaderboardLabel: "リーダーボード",
-  leaderboardHint: "ドミニオンによってランク付けされたすべての指揮官",
+  leaderboardHint: "Honorとドミニオンのランキング",
   announcementsLabel: "お知らせ",
   announcementsHint: "Astera チームからのニュース、更新情報、メモ",
   announcementsWaiting: "新着{{count}}件",
@@ -423,6 +423,10 @@ export const leaderboard = {
     It sits directly above the standings, because that is where the decision is.
   */
   rewards: {
+    honorExplain: "上位{{places}}位の満額報酬です。支給額にはHonorによる上限があり、同点の場合は占有する順位の報酬を均等に分けます。",
+    rowExplain: "司令官の横には現在のスコアと順位に応じた資源報酬を表示します。最終報酬はシーズン終了時に確定します。",
+    currentPrize: "現在のシーズン報酬",
+    noPrize: "報酬なし",
     title: "シーズン終了賞品",
     left: "残り{{duration}}",
     explain: "上位{{places}}位は、次の銀河で使える資源を獲得できます。受賞には{{minimum}}以上のドミニオンが必要です。",

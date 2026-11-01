@@ -28,12 +28,12 @@ describe('delivered Honor prize is a readable receipt, paid only once', () => {
     expect(await deliveredSeasonRankReward(f.db, f.accountIds[0]!, next!.id)).toBeNull();
     const [joined, retry] = await Promise.all([joinSeason(f.db, f.accountIds[0]!, next!.id, f.clock),
       joinSeason(f.db, f.accountIds[0]!, next!.id, f.clock)]);
-    expect(joined.seasonReward).toMatchObject({ ranking: 'HONOR', displayRank: 1, alloy: 4000, crystal: 3000, deuterium: 600 });
+    expect(joined.seasonReward).toMatchObject({ ranking: 'HONOR', displayRank: 1, alloy: 2000, crystal: 1500, deuterium: 300 });
     expect(retry.seasonReward).toEqual(joined.seasonReward);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, joined.planetId));
-    expect(world).toMatchObject({ alloy: PLANET_START.alloy + 4000, crystal: PLANET_START.crystal + 3000, deuterium: PLANET_START.deuterium + 600 });
+    expect(world).toMatchObject({ alloy: PLANET_START.alloy + 2000, crystal: PLANET_START.crystal + 1500, deuterium: PLANET_START.deuterium + 300 });
     const parsedPlacement = placementSchema.parse({ ...joined, shard: 'EU-1', shardName: 'Galaxy', planetName: 'World' });
-    expect(parsedPlacement.seasonReward).toMatchObject({ ranking: 'HONOR', alloy: 4000 });
+    expect(parsedPlacement.seasonReward).toMatchObject({ ranking: 'HONOR', alloy: 2000 });
     const { app, close } = buildApp({ db: f.db, clock: f.clock, env: testEnv(), logger: pino({ level: 'silent' }) });
     try {
       const authorization = `Bearer ${await new TokenService('test-secret-that-is-long-enough', 15, 30).issueAccess(f.accountIds[0]!)}`;

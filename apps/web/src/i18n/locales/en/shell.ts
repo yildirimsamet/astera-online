@@ -265,7 +265,7 @@ export const menu = {
   researchLabel: 'Research',
   researchHint: "View research shared by all your worlds and its requirements",
   leaderboardLabel: 'Leaderboard',
-  leaderboardHint: 'Every commander ranked by Dominion',
+  leaderboardHint: "Honor and Dominion standings",
   announcementsLabel: 'Announcements',
   announcementsHint: 'News, updates and notes from the Astera team',
   announcementsWaiting: '{{count}} new',
@@ -423,6 +423,10 @@ export const leaderboard = {
     It sits directly above the standings, because that is where the decision is.
   */
   rewards: {
+    honorExplain: "Full packages for the top {{places}} places. Honor limits the payout; ties share the packages for their occupied places.",
+    rowExplain: "Prizes beside commanders show resources at the current score and place. Final prizes are decided at season end.",
+    currentPrize: "Current season prize",
+    noPrize: "No prize",
     title: 'End of season prize',
     left: '{{duration}} left',
     explain: "The first {{places}} places can earn resources for the next galaxy. At least {{minimum}} Dominion is required to qualify.",

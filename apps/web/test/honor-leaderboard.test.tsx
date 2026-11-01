@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -23,9 +23,9 @@ describe('Honor is the primary player-visible race', () => {
     client.setQueryData(['leaderboard'], { ranking: 'HONOR', honorEnabled: true, honorSoloCredit, ladder: rows, you: rows[1],
       honorStartsAt: opened ? new Date('2026-10-15T12:00:00Z') : null,
       honorReward: { rank: tied ? 1 : 2, honor: 1_234_567,
-        nominal: tied ? { alloy: 3750, crystal: 2750, deuterium: 550 } : { alloy: 3500, crystal: 2500, deuterium: 500 },
+        nominal: tied ? { alloy: 1875, crystal: 1375, deuterium: 275 } : { alloy: 1750, crystal: 1250, deuterium: 250 },
         reward: tied ? { alloy: 34, crystal: 25, deuterium: 5 } : { alloy: 34, crystal: 24, deuterium: 4 },
-        fullThreshold: tied ? 134_250_000 : 122_500_000 } });
+        fullThreshold: tied ? 67_125_000 : 61_250_000 } });
     const old = [row('me', 900, 1)];
     client.setQueryData(['leaderboard', 'DOMINION'], { ranking: 'DOMINION', honorEnabled: true,
       ladder: old, you: old[0], honorReward: null });
@@ -33,8 +33,8 @@ describe('Honor is the primary player-visible race', () => {
       seasonReward: withReceipt ? { ranking: 'HONOR', sourceSeasonId: 'previous', displayRank: 2, rewardPlace: 2,
         alloy: 34, crystal: 24, deuterium: 4, programVersion: 1 } : null,
       seasonRewards: { version: 1, minimumDominion: 1, tiers: [
-        { place: 1, alloy: 2000, crystal: 1500, deuterium: 300 },
-        { place: 2, alloy: 1750, crystal: 1250, deuterium: 250 },
+        { place: 1, alloy: 1000, crystal: 750, deuterium: 150 },
+        { place: 2, alloy: 875, crystal: 625, deuterium: 125 },
       ] } });
     const Wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>
       <ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>;
@@ -46,7 +46,7 @@ describe('Honor is the primary player-visible race', () => {
     expect(screen.getByRole('button', { name: 'Honor', pressed: true })).toBeInTheDocument();
     expect(screen.getAllByText('1.234567').length).toBeGreaterThan(0);
     expect(screen.getByText('-0.000001')).toBeInTheDocument();
-    expect(screen.getByText(/122.5 Honor/)).toBeInTheDocument();
+    expect(screen.getByText(/61.25 Honor/)).toBeInTheDocument();
     await userEvent.click(screen.getByText('How Honor works'));
     expect(screen.getByText(/Defending never reduces your Honor/)).toBeVisible();
     expect(screen.getByText(/highest tier in the galaxy.*one tier below.*equal-tier/)).toBeVisible();
@@ -86,8 +86,8 @@ describe('Honor is the primary player-visible race', () => {
   });
   it('explains a pooled tied prize without promising every tied rank one a personal double package', async () => {
     await show(false, true);
-    expect(screen.getByText(/134.25 Honor/)).toBeVisible();
-    expect(screen.getByText(/3,750/)).toBeVisible();
+    expect(screen.getByText(/67.125 Honor/)).toBeVisible();
+    expect(screen.getByText(/1,875/)).toBeVisible();
     await userEvent.click(screen.getByText('How Honor works'));
     expect(screen.getByText(/Tied commanders equally share the packages for their occupied places/)).toBeVisible();
     expect(screen.queryByText(/For the same place, Honor’s full package is twice Dominion’s/)).not.toBeInTheDocument();
@@ -97,12 +97,13 @@ describe('Honor is the primary player-visible race', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
     expect(screen.getByText('End of season prize')).toBeVisible();
     expect(screen.getByText('Rank 1 · you are winning this')).toBeVisible();
-    expect(screen.getByText('2,000')).toBeVisible();
+    expect(within(screen.getByRole('region', { name: 'End of season prize' })).getByText('1,000')).toBeVisible();
     expect(screen.getByText(/more valuable package once/)).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: 'Honor' }));
-    expect(screen.queryByText('End of season prize')).not.toBeInTheDocument();
+    expect(screen.getByText('End of season prize')).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
     expect(screen.getByText('Honor season prize')).toBeVisible();
   });
 

@@ -1,3 +1,4 @@
+import { seasonRankRewardProgram } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { SeasonInfo, Leaderboard } from '../api/schemas.js';
 import { useAccordion } from '../lib/accordion.js';
@@ -45,7 +46,12 @@ export function SeasonRewardBoard({
   // Hooks stay above the early return: pre-program cycles still render this
   // component and must not change the hook order when a refetch resolves.
   const tiers = useAccordion('season-reward-tiers', []);
-  const program = season?.seasonRewards ?? null;
+  const honor = board?.ranking === 'HONOR';
+  // Honor is frozen to the v1 basis, independently of the current Dominion program.
+  const basis = honor ? seasonRankRewardProgram(1) : null;
+  const program = honor && basis ? { minimumDominion: 0, tiers: basis.tiers.map(({ place, reward }) => ({
+    place, alloy: reward.alloy * 2, crystal: reward.crystal * 2, deuterium: reward.deuterium * 2,
+  })) } : season?.seasonRewards ?? null;
   if (!program || program.tiers.length === 0) return null;
 
   const places = program.tiers.length;
@@ -92,7 +98,7 @@ export function SeasonRewardBoard({
       </header>
 
       <p className="mt-2 text-label leading-snug text-dim">
-        {t('leaderboard.rewards.explain', { places, minimum: full(program.minimumDominion) })}
+        {honor ? t('leaderboard.rewards.honorExplain', { places }) : t('leaderboard.rewards.explain', { places, minimum: full(program.minimumDominion) })}
       </p>
 
       <div className="plate plate-cut mt-3 overflow-hidden">
@@ -151,7 +157,7 @@ export function SeasonRewardBoard({
       </div>
 
       {/* THE READER'S OWN LINE, STILL ABOVE THE LIVE LADDER. */}
-      <div
+      {!honor || yours === null ? <div
         className={`plate mt-3 px-3 py-3 ${winning ? 'plate-cut' : 'plate-sunk'}`}
         data-reward-standing={winning ? 'paid' : 'unpaid'}
       >
@@ -184,7 +190,7 @@ export function SeasonRewardBoard({
             </p>
           </>
         )}
-      </div>
+      </div> : null}
 
     </section>
   );

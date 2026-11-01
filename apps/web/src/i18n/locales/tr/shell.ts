@@ -209,7 +209,7 @@ export const menu = {
   researchLabel: 'Araştırma',
   researchHint: "Tüm gezegenlerinde geçerli araştırmaları ve koşullarını incele",
   leaderboardLabel: 'Liderlik tablosu',
-  leaderboardHint: 'Galaksideki bütün komutanların Hâkimiyet sırası',
+  leaderboardHint: "Honor ve Hâkimiyet sıralamaları",
   announcementsLabel: 'Duyurular',
   announcementsHint: 'Astera ekibinden haberler, güncellemeler ve kısa notlar',
   announcementsWaiting: '{{count}} yeni',
@@ -360,6 +360,10 @@ export const leaderboard = {
     Sıralamanın hemen üstünde durur, çünkü karar orada veriliyor.
   */
   rewards: {
+    honorExplain: "İlk {{places}} sıranın tam paketleri. Ödemeyi Honor puanı sınırlar; eşit puanlı komutanlar kapladıkları sıraların paketlerini paylaşır.",
+    rowExplain: "Komutanların yanındaki ödüller, mevcut puan ve sıraya göre kaynakları gösterir. Kesin ödül sezon sonunda belirlenir.",
+    currentPrize: "Mevcut sezon ödülü",
+    noPrize: "Ödül yok",
     title: 'Sezon sonu ödülü',
     left: 'bitmesine {{duration}}',
     explain: "İlk {{places}} sıra yeni galaksi için kaynak kazandırabilir. Ödül için en az {{minimum}} Hâkimiyet gerekir.",

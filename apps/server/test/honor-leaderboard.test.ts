@@ -50,8 +50,8 @@ describe('public Honor ranking and client contract', () => {
     expect(result.ladder.map(row => row.rank)).toEqual([1, 1, 3, 4]);
     expect(result.you).toMatchObject({ score: 123_456_789, honor: 123_456_789, dominion: 0 });
     expect(result.honorReward).toMatchObject({ rank: 1, honor: 123_456_789,
-      nominal: { alloy: 3750, crystal: 2750, deuterium: 550 },
-      fullThreshold: 134_250_000 });
+      nominal: { alloy: 1875, crystal: 1375, deuterium: 275 },
+      fullThreshold: 67_125_000 });
     const old = await board('DOMINION');
     expect(old.ladder[0]?.playerId).toBe(f.playerIds[3]);
     expect(old.ranking).toBe('DOMINION');

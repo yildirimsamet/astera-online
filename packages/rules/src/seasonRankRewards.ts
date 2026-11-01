@@ -21,20 +21,22 @@ export const CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION = 1;
  * are private data. This pure table only states what reward place 1..10 pays and
  * the minimum final Dominion required to enter that reward ordering.
  */
+// Owner, 2026-11-01: halve the active schedule, rounding Dominion down before
+// doubling for Honor. Sealed entitlements retain their stored resource amounts.
 const PROGRAM_V1: SeasonRankRewardProgram = {
   version: 1,
   minimumDominion: 1,
   tiers: [
-    { place: 1, reward: { alloy: 2_000, crystal: 1_500, deuterium: 300 } },
-    { place: 2, reward: { alloy: 1_750, crystal: 1_250, deuterium: 250 } },
-    { place: 3, reward: { alloy: 1_500, crystal: 1_000, deuterium: 200 } },
-    { place: 4, reward: { alloy: 1_250, crystal: 750, deuterium: 150 } },
-    { place: 5, reward: { alloy: 1_000, crystal: 500, deuterium: 100 } },
-    { place: 6, reward: { alloy: 750, crystal: 250, deuterium: 50 } },
-    { place: 7, reward: { alloy: 600, crystal: 175, deuterium: 25 } },
-    { place: 8, reward: { alloy: 450, crystal: 150, deuterium: 15 } },
-    { place: 9, reward: { alloy: 250, crystal: 75, deuterium: 10 } },
-    { place: 10, reward: { alloy: 200, crystal: 50, deuterium: 5 } },
+    { place: 1, reward: { alloy: 1_000, crystal: 750, deuterium: 150 } },
+    { place: 2, reward: { alloy: 875, crystal: 625, deuterium: 125 } },
+    { place: 3, reward: { alloy: 750, crystal: 500, deuterium: 100 } },
+    { place: 4, reward: { alloy: 625, crystal: 375, deuterium: 75 } },
+    { place: 5, reward: { alloy: 500, crystal: 250, deuterium: 50 } },
+    { place: 6, reward: { alloy: 375, crystal: 125, deuterium: 25 } },
+    { place: 7, reward: { alloy: 300, crystal: 87, deuterium: 12 } },
+    { place: 8, reward: { alloy: 225, crystal: 75, deuterium: 7 } },
+    { place: 9, reward: { alloy: 125, crystal: 37, deuterium: 5 } },
+    { place: 10, reward: { alloy: 100, crystal: 25, deuterium: 2 } },
   ],
 };
 

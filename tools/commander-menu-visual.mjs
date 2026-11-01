@@ -18,7 +18,7 @@ export async function verifyCommanderMenu(output) {
         const source = await response.text();
         const react = source.match(/from\s+["']([^"']*\/react\.js[^"']*)["']/);
         assert(react);
-        await route.fulfill({ response, body: `import React from ${JSON.stringify(react[1])}; export function GalaxyCanvas({ onReady }) { React.useEffect(onReady, [onReady]); return null; }` });
+        await route.fulfill({ response, body: `import React from ${JSON.stringify(react[1])}; export function GalaxyCanvas({ onReady }) { React.useEffect(onReady, [onReady]); return null; } export function GalaxyCommanderName() { return null; }` });
       });
       await page.goto(`${process.env.WEB ?? 'http://127.0.0.1:5173'}/v2-gallery.html?view=store-discovery&panel=menu&lng=${language}&menu-state=${state}`, { waitUntil: 'domcontentloaded' });
       const menu = page.locator('[data-v2-commander-menu]');
@@ -26,6 +26,8 @@ export async function verifyCommanderMenu(output) {
       await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 60_000 });
       await page.evaluate(() => document.fonts.ready);
       assert.equal(await menu.locator('[data-menu-category]').count(), 5);
+      assert.equal(await menu.locator('[data-menu-leaderboard] .menu-art-tile img').count(), 1);
+      assert.equal(await menu.locator('[data-menu-category="rewards"] img').count(), 0);
       assert.equal(await menu.getByRole('slider').count(), 0);
       assert.equal(await menu.locator('canvas').count(), 0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
@@ -40,13 +42,8 @@ export async function verifyCommanderMenu(output) {
       assert(await support.evaluate(element => element.nextElementSibling?.getAttribute('data-menu-category') === 'settings'));
       await page.screenshot({ path: join(output, `${width}-${language}-${state === 'waiting' ? 'waiting' : 'home'}.png`) });
       const homeSize = await menu.boundingBox();
-      // On a standard phone, the complete normal menu fits without scrolling.
-      if (height >= 812 && state === 'normal') {
-        assert(await menu.evaluate(element => {
-          const parent = element.parentElement;
-          return parent.scrollHeight <= parent.clientHeight + 1;
-        }), 'The normal menu must fit its sheet');
-      }
+      // The extra direct standings entry may scroll on a short phone; every entry stays reachable.
+      const homeScrolls = await menu.evaluate(element => element.parentElement.scrollHeight > element.parentElement.clientHeight + 1);
       if (state === 'waiting') {
         assert.equal(await menu.locator('[data-menu-row]').count(), 1);
         assert(await menu.locator('[data-menu-category="community"]').innerText().then(value => value.includes('1')));
@@ -64,7 +61,7 @@ export async function verifyCommanderMenu(output) {
       assert.equal(await supportPage.locator('details[open]').count(), 1);
       await page.getByRole('dialog').last().locator('header button').first().click();
       await menu.waitFor();
-      for (const category of ['season', 'academy', 'community', 'settings']) {
+      for (const category of ['academy', 'community', 'settings']) {
         await menu.locator(`[data-menu-category="${category}"]`).click();
         await page.locator(`[data-menu-page="${category}"]`).waitFor();
         await menu.locator('img').evaluateAll(images => Promise.all(images.map(image => image.decode().catch(() => undefined))));
@@ -74,6 +71,14 @@ export async function verifyCommanderMenu(output) {
         await dialog.locator('header button').first().click();
         await page.locator('[data-menu-page="home"]').waitFor();
         assert(await menu.locator(`[data-menu-category="${category}"]`).evaluate(element => element === document.activeElement));
+      }
+      for (const destination of ['leaderboard', 'rewards']) {
+        await menu.locator(destination === 'leaderboard' ? '[data-menu-leaderboard] [data-menu-tile]' : '[data-menu-category="rewards"]').click();
+        await menu.waitFor({ state: 'hidden' });
+        assert.equal(await page.locator('[data-menu-page="season"]').count(), 0);
+        await page.screenshot({ path: join(output, `${width}-${language}-${destination}.png`) });
+        await page.getByRole('dialog').last().locator('header button').first().click();
+        await page.locator('[data-menu-page="home"]').waitFor();
       }
       // Following a destination's Back restores its category rather than losing the place.
       await menu.locator('[data-menu-category="community"]').click();
@@ -109,7 +114,7 @@ export async function verifyCommanderMenu(output) {
       await page.goBack();
       await menu.waitFor();
       assert.deepEqual(errors, []);
-      results.push({ width, height, language, homeSize, overflow, categories: 4, supportEntry: true, profileUrl: '/profile', profileFrame, topBar: top, browserBack: true, entryStyle, errors, galaxyStubbed: true });
+      results.push({ width, height, language, homeSize, overflow, categories: 3, directEntries: 2, homeScrolls, supportEntry: true, profileUrl: '/profile', profileFrame, topBar: top, browserBack: true, entryStyle, errors, galaxyStubbed: true });
       await page.close();
       console.log(`PASS ${width}px ${language}: menu, categories, restored navigation, /profile and browser Back`);
     }

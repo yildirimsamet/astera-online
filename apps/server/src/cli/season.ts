@@ -136,11 +136,7 @@ season honor-open --season UUID [--yes]
                                    military history and excludes already sent attacks.
                                    Dry run unless --yes; retries never reset the race.
 
-season honor-hide --season UUID [--yes]
-                                   return an opened Honor race to invisible
-                                   observation: every point becomes evidence again,
-                                   Dominion decides this season and the next season
-                                   starts ranked. Dry run unless --yes.
+season honor-hide                  retired: Honor ranking is permanently active.
 
 season honor-shadow --season UUID [--yes]
                                    collect invisible Honor evidence in ONE open
@@ -308,10 +304,7 @@ async function main(): Promise<void> {
           || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
           throw new Error('Usage: season honor-hide --season UUID [--yes]');
         }
-        const result = await hideHonorRanking(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
-        console.log(JSON.stringify(result));
-        if (result.applied) console.log('Honor is invisible again; Dominion decides this season. The next season starts with ranked Honor.');
-        else console.log(result.status === 'ALREADY_HIDDEN' ? 'Already hidden. Nothing was written.' : 'Nothing was written; pass --yes to apply.');
+        await hideHonorRanking(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
         break;
       }
       case 'honor-shadow': {

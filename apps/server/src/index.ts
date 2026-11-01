@@ -1,5 +1,6 @@
 import { pino } from 'pino';
 import { buildApp } from './app.js';
+import { ensureMainHonorRankings } from './services/honorActivation.js';
 import { assertSchemaCurrent } from './db/migrate.js';
 import { provisionAdminCapitals } from './services/adminCapital.js';
 import { loadDotEnv, loadEnv } from './env.js';
@@ -37,6 +38,8 @@ async function main(): Promise<void> {
    * which one.
    */
   await assertSchemaCurrent(db);
+  const honorOpened = await ensureMainHonorRankings(db, systemClock);
+  if (honorOpened > 0) log.info({ honorOpened }, 'Honor rankings initialized');
   const adminCapitals = await provisionAdminCapitals(db, new Set(env.ADMIN_USERNAMES), systemClock);
   if (adminCapitals > 0) log.info({ adminCapitals }, 'provisioned hidden admin capitals');
 

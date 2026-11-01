@@ -228,7 +228,7 @@ describe('completed season archive', () => {
     expect(body.seasonRewards?.version).toBe(1);
     expect(body.seasonRewards?.tiers).toHaveLength(10);
     expect(body.seasonRewards?.tiers[0]).toEqual({
-      place: 1, alloy: 2_000, crystal: 1_500, deuterium: 300,
+      place: 1, alloy: 1_000, crystal: 750, deuterium: 150,
     });
     // Monotonic, because a table that pays place 4 more than place 3 is not a ladder.
     const value = body.seasonRewards?.tiers.map((tier) =>

@@ -10,6 +10,18 @@ settled by playtest, not by argument.
 comparison. The active tempo profile and its current tables come from `packages/rules/src/tempo.ts`
 and `pnpm balance:economy`; `pnpm balance:goal` validates the fixed progression target.
 
+## Season ranking prizes — owner, 2026-11-01
+
+The active rank reward schedule is reduced by 50% in
+`packages/rules/src/seasonRankRewards.ts`. Round each Dominion resource down to an
+integer first; Honor's full package stays exactly twice that amount. First place
+now pays 1,000 Alloy / 750 Crystal / 150 Deuterium for Dominion, or
+2,000 / 1,500 / 300 for Honor. At the unchanged 200 resource-value per Honor cap,
+73 Honor opens the full first-place package. Ties still pool their occupied places,
+and the season grants only the more valuable of the two ranking packages.
+This owner-approved retuning applies to the active v1 schedule. Already sealed
+entitlements retain their recorded amounts; delivery does not recalculate them.
+
 ## Next season profile — 60-day transition
 
 These are the next-season source defaults; they must be released at the coordinated season

@@ -1,3 +1,4 @@
+import { honorRankRewards, type Resources } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLeaderboard, useSeason } from '../api/queries.js';
@@ -44,6 +45,17 @@ export function LeaderboardScreen({ onFocusPlanet }: {
   const honor = board.data.ranking === 'HONOR';
   const prize = board.data.honorReward;
   const yours = board.data.you;
+  const program = season.data?.seasonRewards;
+  // Calculate against the complete ladder: searching must not change tied prizes.
+  const prizes = new Map<string, Resources>(honor
+    ? honorRankRewards(board.data.ladder.map(row => ({ actor: row.playerId, honor: row.score })))
+      .map(row => [row.actor, row.reward])
+    : board.data.ladder.flatMap(row => {
+      const tier = program && row.score >= program.minimumDominion
+        ? program.tiers.find(tier => tier.place === row.rank) : undefined;
+      return tier ? [[row.playerId, { alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium }]] : [];
+    }));
+  const showPrizes = honor || program != null;
   const next = honor && yours ? board.data.ladder.findLast(row => row.score > yours.score) : undefined;
   /**
    * The widest score in the galaxy, so every bar on the ladder shares one scale.
@@ -124,10 +136,9 @@ export function LeaderboardScreen({ onFocusPlanet }: {
           </details>
         </> : null}
       </section> : null}
-      {!honor ? <>
-        <SeasonRewardBoard season={season.data} board={board.data} />
-        {board.data.honorEnabled ? <p className="border-b border-v2-line px-3 py-2 text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorPackageOnce')}</p> : null}
-      </> : null}
+      <SeasonRewardBoard season={season.data} board={board.data} />
+      {board.data.honorEnabled ? <p className="border-b border-v2-line px-3 py-2 text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorPackageOnce')}</p> : null}
+      {showPrizes ? <p className="border-b border-v2-line px-3 py-2 text-micro text-v2-ink-2">{t('leaderboard.rewards.rowExplain')}</p> : null}
       <div className="sticky top-0 z-10 border-b border-v2-line bg-v2-void px-2 py-3">
         <input
           type="search"
@@ -184,8 +195,9 @@ export function LeaderboardScreen({ onFocusPlanet }: {
             )}
             <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={40} />
             <span className="block min-w-0">
-              <span className="mb-1 block leading-none">
-                <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+              <span className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 leading-none">
+                <span className="block"><Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} /></span>
+                {showPrizes ? <RowPrize reward={prizes.get(row.playerId)} /> : null}
               </span>
               <span className="flex min-w-0 items-baseline gap-1.5">
                 {self ? (
@@ -303,4 +315,19 @@ function NearbyRival({
       <span data-leaderboard-score><RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} /></span>
     </div>
   );
+}
+
+/** Current resources for this ladder, before the season's single-package selection. */
+function RowPrize({ reward }: { reward: Resources | undefined }) {
+  const { t } = useTranslation();
+  if (!reward || (reward.alloy === 0 && reward.crystal === 0 && reward.deuterium === 0)) {
+    return <span className="text-micro text-v2-ink-3">{t('leaderboard.rewards.noPrize')}</span>;
+  }
+  return <span role="group" aria-label={t('leaderboard.rewards.currentPrize')} className="ml-auto inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-micro text-v2-ink-2">
+    <RewardIcon aria-hidden className="size-3 shrink-0 text-v2-self" />
+    {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="inline-flex items-center gap-0.5 whitespace-nowrap">
+      <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} className="size-3.5 shrink-0 object-contain" />
+      <span className="num">{full(reward[resource])}</span>
+    </span>)}
+  </span>;
 }

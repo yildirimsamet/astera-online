@@ -59,9 +59,9 @@ const enter = (page: Exclude<MenuPage, 'home'>) => fireEvent.click(screen.getByR
 const back = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.navigation.back') }));
 
 describe('the compact commander menu', () => {
-  it('starts with four categories and keeps detailed controls behind their category', () => {
+  it('puts standings and rewards on home and keeps detailed controls behind their category', () => {
     show();
-    for (const page of ['season', 'academy', 'community', 'settings'] as const) {
+    for (const page of ['academy', 'community', 'settings'] as const) {
       expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t(`menu.navigation.${page}`)}\\.`) })).toBeVisible();
     }
     expect(screen.queryByRole('slider')).toBeNull();
@@ -69,7 +69,28 @@ describe('the compact commander menu', () => {
     expect(screen.queryByRole('button', { name: /Sign out/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Feedback\./ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Vacation/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Rewards\./ })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Rewards\./ })).toBeVisible();
+  });
+
+  it('opens leaderboard and rewards directly from home without a season submenu', () => {
+    const { wrapper, queries } = harness();
+    queries.setQueryData(keys.leaderboard, { honorEnabled: true, ladder: [], you: null });
+    const onOpen = vi.fn();
+    const view = render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
+    const leaderboard = screen.getByRole('button', { name: named(i18n.t('menu.leaderboardLabel'), i18n.t('menu.leaderboardHint')) });
+    const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
+    expect(leaderboard).toHaveAttribute('data-menu-tile');
+    expect(leaderboard).toHaveClass('menu-art-tile');
+    expect(leaderboard.querySelector('img')).toBeInTheDocument();
+    expect(leaderboard.compareDocumentPosition(rewards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(rewards).not.toHaveAttribute('data-menu-tile');
+    expect(rewards).toHaveAttribute('data-menu-category', 'rewards');
+    fireEvent.click(leaderboard);
+    expect(onOpen).toHaveBeenLastCalledWith('leaderboard');
+    fireEvent.click(rewards);
+    expect(onOpen).toHaveBeenLastCalledWith('rewards');
+    expect(view.container.querySelector('[data-menu-page]')).toHaveAttribute('data-menu-page', 'home');
+    expect(view.container.querySelector('[data-menu-category="season"]')).toBeNull();
   });
 
   it('opens support directly above settings and keeps it out of the community submenu', () => {
@@ -103,12 +124,11 @@ describe('the compact commander menu', () => {
       fireEvent.click(screen.getByRole('button', { name: named(i18n.t(`menu.${label}Label`), i18n.t(`menu.${label}Hint`)) }));
       expect(onOpen).toHaveBeenCalledWith(panel);
     }
-    enter('season');
     for (const [label, panel] of [['leaderboard', 'leaderboard'], ['rewards', 'rewards']] as const) {
       fireEvent.click(screen.getByRole('button', { name: named(i18n.t(`menu.${label}Label`), i18n.t(`menu.${label}Hint`)) }));
       expect(onOpen).toHaveBeenCalledWith(panel);
     }
-    back(); enter('community');
+    enter('community');
     for (const [name, panel] of [[named(i18n.t('menu.announcementsLabel'), i18n.t('menu.announcementsHint')), 'announcements'], [named(i18n.t('menu.feedbackLabel'), i18n.t('menu.feedbackHint')), 'feedback'], [named(i18n.t('community.admin.menuLabel'), i18n.t('community.admin.menuHint')), 'admin']] as const) {
       fireEvent.click(screen.getByRole('button', { name }));
       expect(onOpen).toHaveBeenCalledWith(panel);

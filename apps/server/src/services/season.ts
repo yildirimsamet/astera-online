@@ -18,6 +18,7 @@ import {
   shieldHp,
   storageCap,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
+  HONOR_LAUNCH_VERSION,
   type GalaxySpec,
   type NeutralTier,
   type HonorVersion,
@@ -126,8 +127,8 @@ export interface CreateSeasonInput {
   playerCap?: number;
   /** Immutable activation boundary. New production seasons use Fleet V2 ruleset v4. */
   rulesetVersion?: number;
-  /** Explicit announced successor policy; null opts out, undefined inherits. */
-  honorVersion?: HonorVersion | null;
+  /** Frozen policy override; every main galaxy starts with ranked Honor. */
+  honorVersion?: HonorVersion;
   /** Production galaxies open with the spawn gate on (owner rule 2026-10-17, `spawnGate.ts`). */
   spawnGate?: boolean;
 }
@@ -149,7 +150,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
   // bootstrap transactions. Exact period matches still share the same number.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext('season-cycle-ordinal'))`);
   const honorVersion = (input.role ?? 'MAIN') === 'WAITING' ? undefined
-    : input.honorVersion === undefined ? await inheritedHonorProgram(tx, input.startsAt) : input.honorVersion ?? undefined;
+    : input.honorVersion ?? await inheritedHonorProgram(tx, input.startsAt) ?? HONOR_LAUNCH_VERSION;
   const honorBenefitsVersion = honorVersion === undefined ? null : await inheritedHonorBenefitsProgram(tx, input.startsAt);
   const [existingCycle] = await tx
     .select()

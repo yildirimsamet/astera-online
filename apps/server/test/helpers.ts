@@ -9,6 +9,7 @@ import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import {
   accounts,
+  honorSeasons,
   communityPolicyAcceptances,
   buildOrders,
   debrisFields,
@@ -267,6 +268,9 @@ export async function seedWorld(
     playerCap: 60,
     rulesetVersion: 1,
   });
+  // Generic fixtures model historical pre-Honor worlds. Policy/default tests use
+  // createSeason directly; Honor tests explicitly select their frozen policy.
+  await db.delete(honorSeasons).where(eq(honorSeasons.seasonId, season.id));
   await db.update(seasons).set({ asteroidKey: pinnedKey(seed) }).where(eq(seasons.id, season.id));
   season.asteroidKey = pinnedKey(seed);
   if (options.pirates !== true) await silencePirates(db, season.id);

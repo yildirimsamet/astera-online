@@ -39,7 +39,6 @@ import {
   SpeakerOnIcon,
   GuideIcon,
   HeartIcon,
-  HonorIcon,
   AttackIcon,
   BroadcastIcon,
 } from '../ui/icons/index.js';
@@ -60,7 +59,7 @@ import { Icon } from '../v2/icons.js';
 import { openProfile } from './profileRoute.js';
 
 /** Main navigation stays short; details mount only in their selected category. */
-export type MenuPage = 'home' | 'season' | 'academy' | 'community' | 'settings';
+export type MenuPage = 'home' | 'academy' | 'community' | 'settings';
 
 export function MenuPanel({
   galaxy,
@@ -131,7 +130,6 @@ export function MenuPanel({
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - now) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
   const board = useLeaderboard().data;
-  const honorEnabled = board?.honorEnabled ?? false;
   const name = commander ?? board?.you?.username ?? t('menu.eyebrow');
   const clan = board?.you?.clan;
   const announcementData = useAnnouncements().data;
@@ -208,7 +206,10 @@ export function MenuPanel({
             {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
             onClick={() => { haptic('tap'); setCenterOpen(true); }} />}
           <nav aria-label={t('menu.navigation.title')} className="divide-y divide-v2-line">
-            <MenuCategory id="season" icon={<LeaderboardIcon className="size-5" />} label={t('menu.navigation.season')} hint={t('menu.navigation.seasonHint')} onClick={() => { navigate('season'); }} />
+            <div data-menu-leaderboard className="grid pb-3">
+              <MenuTile art={ATMOSPHERE.commander} icon={<LeaderboardIcon className="size-5" />} label={t('menu.leaderboardLabel')} hint={t('menu.leaderboardHint')} onClick={() => { onOpen('leaderboard'); }} />
+            </div>
+            <MenuCategory id="rewards" icon={<RewardIcon className="size-5" />} label={t('menu.rewardsLabel')} hint={t('menu.rewardsHint')} onClick={() => { haptic('tap'); onOpen('rewards'); }} />
             <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
             <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
             {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
@@ -257,32 +258,6 @@ export function MenuPanel({
             {controlledPage === undefined && <button type="button" onClick={() => { navigate('home'); }} aria-label={t('menu.navigation.back')} className="grid size-11 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-panel text-v2-ink-2 hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self"><ChevronIcon className="size-4 rotate-180" /></button>}
             <h2 ref={heading} tabIndex={-1} className="text-body font-semibold outline-none">{t(`menu.navigation.${page}`)}</h2>
           </div>
-          {page === 'season' && (
-            <MenuGroup label={t('menu.seasonHeading')}>
-              <MenuTile
-                art={ATMOSPHERE.commander}
-                icon={honorEnabled ? <HonorIcon className="size-5 text-v2-self" /> : <LeaderboardIcon className="size-5" />}
-                label={t(honorEnabled ? 'leaderboard.honorTitle' : 'menu.leaderboardLabel')}
-                hint={t(honorEnabled ? 'leaderboard.honorPrimary' : 'menu.leaderboardHint')}
-                onClick={() => {
-                  onOpen('leaderboard');
-                }}
-              />
-              <MenuTile
-                icon={<RewardIcon className="size-5" />}
-                label={t('menu.rewardsLabel')}
-                art={ATMOSPHERE.rewards}
-                hint={t('menu.rewardsHint')}
-                attention={waiting > 0}
-                {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
-                onClick={() => {
-                  onOpen('rewards');
-                }}
-              />
-
-            </MenuGroup>
-
-          )}
           {page === 'community' && (
             <MenuGroup label={t('menu.asteraHeading')}>
               <MenuTile
@@ -407,7 +382,7 @@ export function MenuPanel({
 }
 
 function MenuCategory({ id, icon, label, hint, badge, primary = false, onClick }: {
-  id: MenuPage | 'donate'; icon: ReactNode; label: string; hint: string; badge?: string | undefined; primary?: boolean; onClick: () => void;
+  id: MenuPage | 'rewards' | 'donate'; icon: ReactNode; label: string; hint: string; badge?: string | undefined; primary?: boolean; onClick: () => void;
 }) {
   return <button type="button" data-menu-category={id} aria-label={`${label}. ${hint}${badge ? `. ${badge}` : ''}`} onClick={onClick}
     className={`menu-category group flex min-h-14 w-full items-center gap-3 rounded-control px-1 py-2.5 text-left transition-colors hover:bg-v2-panel focus-visible:outline-2 focus-visible:outline-v2-self ${primary ? 'text-v2-self' : ''}`}>

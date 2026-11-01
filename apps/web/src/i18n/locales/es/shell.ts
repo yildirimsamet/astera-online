@@ -265,7 +265,7 @@ export const menu = {
   researchLabel: 'Investigación',
   researchHint: "Consulta investigaciones compartidas por tus mundos y sus requisitos",
   leaderboardLabel: 'Tabla de clasificación',
-  leaderboardHint: 'Cada comandante clasificado por Dominio',
+  leaderboardHint: "Clasificaciones de Honor y Dominio",
   announcementsLabel: 'Anuncios',
   announcementsHint: 'Noticias, actualizaciones y notas del equipo de Astera.',
   announcementsWaiting: '{{count}} nuevo',
@@ -422,6 +422,10 @@ export const leaderboard = {
     It sits directly above the standings, because that is where the decision is.
   */
   rewards: {
+    honorExplain: "Paquetes completos para los primeros {{places}} puestos. Honor limita el pago; los empates comparten los paquetes de los puestos ocupados.",
+    rowExplain: "Los premios junto a los comandantes muestran recursos según su puntuación y puesto actuales. Los premios definitivos se deciden al final de la temporada.",
+    currentPrize: "Premio de temporada actual",
+    noPrize: "Sin premio",
     title: 'Premio fin de temporada',
     left: 'Quedan {{duration}}',
     explain: "Los {{places}} primeros puestos pueden ganar recursos para la próxima galaxia. Se necesita al menos {{minimum}} de Dominio.",

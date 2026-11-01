@@ -894,6 +894,12 @@ tier 6 one who was refused a raid back. Pirates, transfers and neutral worlds â€
 are outside it entirely. The check is made at launch only; a fleet already in the air is not turned back when either
 commander's tier moves.
 
+**Honor is always active (owner, 2026-11-01).** Every new main galaxy starts with ranked
+Honor in every environment. Startup initializes missing or still-shadow rankings in ongoing
+main seasons at the actual opening time; existing ranked points and boundaries are preserved.
+The former hide operation is rejected. Silent Space and closed historical seasons are not
+competitive races.
+
 **Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
 galaxy/season's highest Honor tier treats an attack on exactly one tier below as
 an equal-tier attack. All commanders tied at the top qualify. The lower-tier

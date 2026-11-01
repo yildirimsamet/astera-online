@@ -1,13 +1,13 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { HONOR_LAUNCH_VERSION, isHonorCandidate, HONOR_HISTORY_HOURS, isSupportedHonorVersion } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { honorCommitments, honorEvents, honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
+import { honorCommitments, honorEvents, honorSeasons, honorTotals, players, seasons, shards } from '../db/schema.js';
 import { pendingHonorLegacySources, prepareHonorSeason } from './honorLedger.js';
 import { honorCommitmentSchema } from './honorCommitment.js';
 import { readHonorRelations } from './honorRelations.js';
-import { emptyHonorState, honorEventKey, honorStateSchema, replayHonor } from './honorAccounting.js';
+import { emptyHonorState, honorStateSchema } from './honorAccounting.js';
 import { honorOwnerReference, observeHonorOwner } from './honorReference.js';
 import { publishShard } from '../stream/bus.js';
 import { isSilentSpaceShard } from './waitingRoom.js';
@@ -52,7 +52,8 @@ export async function activateHonorShadow(db: Db, input: { seasonId: string; clo
  * including launches with an identical millisecond. Trial evidence is preserved;
  * the competitive projection starts empty and retries cannot reset it again.
  */
-export async function openHonorRanking(db: Db, input: { seasonId: string; clock: Clock; apply: boolean }) {
+export async function openHonorRanking(db: Db, input: { seasonId: string; clock: Clock; apply: boolean },
+  initialize = false) {
   const seasonId = z.string().uuid().parse(input.seasonId);
   return db.transaction(async tx => {
     const query = tx.select().from(seasons).where(eq(seasons.id, seasonId));
@@ -63,21 +64,28 @@ export async function openHonorRanking(db: Db, input: { seasonId: string; clock:
       || now >= season.endsAt || await isSilentSpaceShard(tx, season.shardId)) {
       throw new Error('An open main season is required');
     }
-    const [config] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
+    let [config] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
+    // Owner 2026-11-01: every competitive galaxy has Honor, including existing seasons.
+    if (!config && initialize) {
+      await prepareHonorSeason(tx, seasonId, 'SHADOW', { now: () => now }, HONOR_LAUNCH_VERSION);
+      [config] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
+    }
     if (!config) throw new Error('Honor shadow observation must be enabled first');
     if (!isSupportedHonorVersion(config.version)) throw new Error('Unsupported frozen Honor version');
     if (isHonorCandidate(config.version)) throw new Error('Candidate Honor is not ready for ranked opening');
     if (config.closedAt !== null) throw new Error('Honor season is sealed');
     const active = config.mode === 'ACTIVE';
     if (active && !config.rankedAt) throw new Error('Missing Honor ranked boundary');
-    if (!active && (config.rankedAt !== null || now.getTime() - config.createdAt.getTime() < HONOR_HISTORY_HOURS * 3_600_000)) {
+    if (!active && (config.rankedAt !== null || (!initialize && now.getTime() - config.createdAt.getTime() < HONOR_HISTORY_HOURS * 3_600_000))) {
       throw new Error('Honor opening requires at least 24 hours of shadow observation');
     }
     const owners = await tx.select({ id: players.id }).from(players)
       .where(eq(players.seasonId, seasonId)).orderBy(asc(players.id));
     if (!active) {
       honorStateSchema.parse(config.state);
-      // Even a read-only preview must refuse missing inventory history.
+      // Boot adoption records a genuine present sample for legacy seats. It never
+      // invents past inventory; the manual read-only preview still requires history.
+      if (initialize) for (const owner of owners) await observeHonorOwner(tx, owner.id, now);
       for (const owner of owners) await honorOwnerReference(tx, seasonId, owner.id, now);
     }
     const [trial] = await tx.select({ count: sql<number>`count(*)::int` }).from(honorEvents)
@@ -111,50 +119,24 @@ export async function openHonorRanking(db: Db, input: { seasonId: string; clock:
   }, input.apply ? undefined : { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }
 
-/**
- * Owner 2026-10-20: the inverse of the ranked cutover. Every event becomes invisible
- * evidence again and the projection is rebuilt over the whole season, exactly as if
- * the race had never opened; the next cycle still starts with ranked Honor.
- */
-export async function hideHonorRanking(db: Db, input: { seasonId: string; clock: Clock; apply: boolean }) {
-  const seasonId = z.string().uuid().parse(input.seasonId);
-  return db.transaction(async tx => {
-    const query = tx.select().from(seasons).where(eq(seasons.id, seasonId));
-    const [season] = input.apply ? await query.for('update') : await query;
-    const now = input.clock.now();
-    if (season?.status !== 'live' || season.closedAt !== null || now < season.startsAt || now >= season.endsAt) {
-      throw new Error('An open main season is required');
-    }
-    const configQuery = tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, seasonId));
-    const [config] = input.apply ? await configQuery.for('update') : await configQuery;
-    if (!config) throw new Error('No Honor race in this season');
-    if (!isSupportedHonorVersion(config.version)) throw new Error('Unsupported frozen Honor version');
-    if (config.closedAt !== null) throw new Error('Honor season is sealed');
-    if (config.benefitsVersion !== null) throw new Error('Honor benefits are on; hiding would strand their prices');
-    const active = config.mode === 'ACTIVE';
-    const events = await tx.select().from(honorEvents).where(eq(honorEvents.seasonId, seasonId));
-    const applied = input.apply && active;
-    if (applied) {
-      const { events: outcomes, ...state } = replayHonor(events.map(row => row.evidence), config.version);
-      const byKey = new Map(outcomes.map(row => [row.key, row]));
-      for (const row of events) {
-        const outcome = byKey.get(honorEventKey(row.evidence));
-        if (!outcome) throw new Error('Honor replay omitted prior source');
-        await tx.update(honorEvents).set({ ranked: false, outcome }).where(and(eq(honorEvents.seasonId, seasonId),
-          eq(honorEvents.source, row.source), eq(honorEvents.sourceId, row.sourceId)));
-      }
-      await tx.delete(honorTotals).where(eq(honorTotals.seasonId, seasonId));
-      if (state.totals.length > 0) {
-        await tx.insert(honorTotals).values(state.totals.map(row => ({ seasonId, playerId: row.actor, score: row.score })));
-      }
-      await tx.update(honorSeasons).set({ mode: 'SHADOW', rankedAt: null, state, successorAnnounced: true })
-        .where(eq(honorSeasons.seasonId, seasonId));
-      await publishShard(tx, seasonId, 'score');
-      await publishShard(tx, seasonId, 'season');
-    }
-    return { status: active ? 'READY' as const : 'ALREADY_HIDDEN' as const, applied, seasonId, mode: 'SHADOW' as const,
-      version: config.version, rankedEvents: events.filter(row => row.ranked).length };
-  }, input.apply ? undefined : { isolationLevel: 'repeatable read', accessMode: 'read only' });
+/** Boot repair for every environment. The season lock makes concurrent replicas safe. */
+export async function ensureMainHonorRankings(db: Db, clock: Clock): Promise<number> {
+  const now = clock.now();
+  const live = await db.select({ id: seasons.id }).from(seasons)
+    .innerJoin(shards, eq(shards.id, seasons.shardId))
+    .where(and(eq(shards.role, 'MAIN'), eq(seasons.status, 'live'), isNull(seasons.closedAt),
+      lte(seasons.startsAt, now), gt(seasons.endsAt, now)));
+  let opened = 0;
+  for (const season of live) {
+    const result = await openHonorRanking(db, { seasonId: season.id, clock, apply: true }, true);
+    if (result.applied) opened++;
+  }
+  return opened;
+}
+
+/** The former hide command stays a refusal so old operator scripts cannot disable Honor. */
+export function hideHonorRanking(_db: Db, _input: { seasonId: string; clock: Clock; apply: boolean }): Promise<never> {
+  return Promise.reject(new Error('Honor ranking is permanently active'));
 }
 
 /**

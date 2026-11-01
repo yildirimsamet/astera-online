@@ -26,7 +26,7 @@ describe('Honor season rewards preserve the existing Dominion promise', () => {
     const rewards = await f.db.select().from(seasonRewardEntitlements);
     expect(rewards).toHaveLength(2);
     for (const reward of rewards) expect(reward).toMatchObject({ ranking: 'HONOR', rewardPlace: 1,
-      alloy: 3750, crystal: 2750, deuterium: 550 });
+      alloy: 1875, crystal: 1375, deuterium: 275 });
     expect((await f.db.select().from(honorSeasons))[0]?.closedAt).toEqual(f.clock.now());
   });
 
@@ -37,7 +37,7 @@ describe('Honor season rewards preserve the existing Dominion promise', () => {
     await close();
     const rewards = await f.db.select().from(seasonRewardEntitlements);
     expect(rewards).toHaveLength(1);
-    expect(rewards[0]).toMatchObject({ ranking: 'DOMINION', alloy: 2000, crystal: 1500, deuterium: 300 });
+    expect(rewards[0]).toMatchObject({ ranking: 'DOMINION', alloy: 1000, crystal: 750, deuterium: 150 });
   });
 
   it('leaves a bot winner\'s Honor prize unclaimed instead of promoting the commander below it', async () => {

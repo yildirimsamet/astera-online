@@ -209,8 +209,7 @@ export const menu = {
   researchHint:
     "Consulte les recherches communes à tes mondes et leurs conditions",
   leaderboardLabel: "Classement",
-  leaderboardHint:
-    "Classement de Domination de tous les commandants de la galaxie",
+  leaderboardHint: "Classements Honor et Domination",
   announcementsLabel: "Annonces",
   announcementsHint:
     "Actualités, mises à jour et notes brèves de l’équipe Astera",
@@ -366,6 +365,10 @@ export const leaderboard = {
     Elle se trouve juste au-dessus du classement, car c’est là que la décision se prend.
     */
   rewards: {
+    honorExplain: "Lots complets pour les {{places}} premières places. Honor limite le versement ; les ex æquo partagent les lots des places occupées.",
+    rowExplain: "Les prix affichés à côté des commandants indiquent les ressources selon le score et le rang actuels. Les prix définitifs sont fixés en fin de saison.",
+    currentPrize: "Prix de saison actuel",
+    noPrize: "Aucun prix",
     title: "Récompense de fin de saison",
     left: "se termine dans {{duration}}",
     explain:

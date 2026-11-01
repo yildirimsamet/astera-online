@@ -46,8 +46,8 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
         ].sort((a, b) => a.rank - b.rank).map(row => ({ ...row, honor: row.score, country: 'TR', skinId: null, planetName: 'Bellwether',
           clan: { id: 'nova', tag: 'NOVA', name: 'Nova Expedition' } }));
         client.setQueryData(['leaderboard'], { ranking: 'HONOR', honorEnabled: true, honorSoloCredit: true, ladder: rows, you: rows[1],
-          honorReward: { rank: 2, honor: rows[1].score, nominal: { alloy: 3500, crystal: 2500, deuterium: 500 },
-            reward: { alloy: 3442, crystal: 2459, deuterium: 491 }, fullThreshold: 122_500_000 } });
+          honorReward: { rank: 2, honor: rows[1].score, nominal: { alloy: 1750, crystal: 1250, deuterium: 250 },
+            reward: { alloy: 1750, crystal: 1250, deuterium: 250 }, fullThreshold: 61_250_000 } });
         client.setQueryData(['leaderboard', 'DOMINION'], { ranking: 'DOMINION', honorEnabled: true,
           ladder: rows.map(row => ({ ...row, score: row.dominion })), you: { ...rows[1], score: rows[1].dominion } });
         const seasonId = '11111111-1111-4111-8111-111111111111';
@@ -56,8 +56,8 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
         client.setQueryData(['season'], { ...season, honorSoloCredit: true, seasonReward: { ranking: 'HONOR', sourceSeasonId: 'previous',
           displayRank: 2, rewardPlace: 2, programVersion: 1, alloy: 34, crystal: 24, deuterium: 4 },
           seasonRewards: { version: 1, minimumDominion: 1,
-          tiers: [[2000, 1500, 300], [1750, 1250, 250], [1500, 1000, 200], [1250, 750, 150],
-            [1000, 500, 100], [750, 250, 50], [600, 175, 25], [450, 150, 15], [250, 75, 10], [200, 50, 5]]
+          tiers: [[1000, 750, 150], [875, 625, 125], [750, 500, 100], [625, 375, 75],
+            [500, 250, 50], [375, 125, 25], [300, 87, 12], [225, 75, 7], [125, 37, 5], [100, 25, 2]]
             .map(([alloy, crystal, deuterium], index) => ({ place: index + 1, alloy, crystal, deuterium })) } });
         client.setQueryData(['seasonArchive'], { pages: [{ cycles: [{ ...season, galaxies: [season] }], nextCursor: null }], pageParams: [undefined] });
         // Use the exported key builder rather than duplicating archive cache names.
@@ -101,6 +101,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
           } }, shieldAbsorbed: 0, cargoLimited: false,
           defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0, fuelPaid: 100 };
         window.__honorShow = state => {
+          if (state === 'honor-spectator') client.setQueryData(['leaderboard'], previous => ({ ...previous, you: null, honorReward: null }));
           if (state === 'opening') client.setQueryData(['leaderboard'], previous => ({ ...previous,
             honorStartsAt: new Date('2026-10-15T12:00:00Z') }));
           if (state.startsWith('profile-')) {
@@ -147,7 +148,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
             h(RankBadge, { rank: 1, honor: true }),
             h(RankingScores, { honor: Number.MAX_SAFE_INTEGER, dominion: Number.MIN_SAFE_INTEGER }),
             h(RankingScores, { honor: -1, dominion: 0, change: true }))
-            : state === 'leaderboard' || state === 'opening' ? h(LeaderboardScreen, { onFocusPlanet: noop })
+            : state === 'leaderboard' || state === 'opening' || state === 'honor-prizes' || state === 'honor-spectator' ? h(LeaderboardScreen, { key: state, onFocusPlanet: noop })
             : state === 'commander' ? h('div', { className: 'p-3' }, h(CommanderCard, { name: 'Kestrel', country: 'TR',
               clan: rows[1].clan, galaxy: 'Vantage', seasonDay: 12, rank: { place: 2, of: 240 },
               honor: { score: rows[1].score, dominion: rows[1].dominion }, worlds: { held: 3, max: 4 }, shield: null, now: Date.now() }))
@@ -163,7 +164,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
               } } : {}),
             }, word: i18n.t('reports.verdict.title.attacking.DECISIVE') }));
           const surface = state === 'radiation' || state === 'emp' || state === 'emp-launch' ? content : h(Sheet,
-            { title: state === 'commander' || state.startsWith('profile-') ? 'Kestrel' : state === 'leaderboard' || state === 'opening' || state === 'archive' ? 'Honor' : i18n.t('leaderboard.honorBattleResult'),
+            { title: state === 'commander' || state.startsWith('profile-') ? 'Kestrel' : state === 'leaderboard' || state === 'opening' || state === 'archive' || state === 'honor-prizes' || state === 'honor-spectator' ? 'Honor' : i18n.t('leaderboard.honorBattleResult'),
               eyebrow: i18n.t('leaderboard.honorPrimary'), onClose: noop, detents: ['full'], bleed: true }, content);
           root.render(h(QueryClientProvider, { client }, h(ApiProvider, { api }, surface)));
         };
@@ -180,14 +181,25 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
             const buttons = [...document.querySelectorAll('[data-v2-leaderboard] button')];
             buttons.find(button => button.textContent.trim() === i18n.t('leaderboard.score')).click();
           });
-          await page.locator('[data-reward-standing]').waitFor();
+        }
+        if (['dominion-prizes', 'honor-prizes', 'honor-spectator'].includes(state)) {
+          await page.locator('[data-v2-leaderboard]:visible').waitFor();
           await page.evaluate(async () => {
             const { default: i18n } = await import('/src/i18n/index.ts');
             const buttons = [...document.querySelectorAll('button[aria-expanded]')];
             const button = buttons.find(button => button.textContent.includes(i18n.t('leaderboard.rewards.table')));
             if (button.getAttribute('aria-expanded') !== 'true') button.click();
           });
-          await page.locator('#season-reward-tier-list').waitFor();
+          const table = page.getByRole('dialog').last().locator('#season-reward-tier-list');
+          await table.waitFor();
+          assert.equal(await table.locator('li').count(), 10);
+          await table.scrollIntoViewIfNeeded();
+          await page.screenshot({ path: join(output, `${language}-${width}-${state}-table.png`) });
+          const firstPrize = page.locator('[data-v2-leaderboard]:visible > ol li [role="group"]').first();
+          await firstPrize.waitFor();
+          const amounts = await firstPrize.locator('.num').allTextContents();
+          assert.deepEqual(amounts.map(value => value.replace(/[^0-9]/g, '')), state === 'dominion-prizes' ? ['1000', '750', '150'] : ['2000', '1500', '300']);
+          await firstPrize.scrollIntoViewIfNeeded();
         }
         const panel = page.getByRole('dialog').last();
         await panel.locator(state.startsWith('target-') ? '[data-honor-target]' : state === 'dominion-prizes' ? '[data-dominion-score]' : state === 'emp-launch' ? '[data-strike-sheet]' : '[data-honor-score]').first().waitFor();
@@ -241,6 +253,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
           return {
             fits: node.scrollWidth <= node.clientWidth && document.documentElement.scrollWidth <= innerWidth,
             headerVisible: node.getBoundingClientRect().top >= 0 && node.querySelector('header').getBoundingClientRect().bottom <= innerHeight,
+            prizesFit: [...node.querySelectorAll('[data-v2-leaderboard] [role="group"]')].every(prize => prize.scrollWidth <= prize.clientWidth),
             scoresFit: scores.every(score => score.scrollWidth <= score.clientWidth),
             segmentsFit: [...node.querySelectorAll('.v2-segmented-option')].every(segment => segment.scrollWidth <= segment.clientWidth),
             hierarchy: scores.filter(score => score.querySelector('[data-honor-score]') && score.querySelector('[data-dominion-score]'))
@@ -253,7 +266,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
           };
         });
         await page.screenshot({ path: join(output, `${language}-${width}-${state}.png`) });
-        assert(measured.fits && measured.scoresFit, `${language}/${width}/${state}: horizontal overflow`);
+        assert(measured.fits && measured.scoresFit && measured.prizesFit, `${language}/${width}/${state}: horizontal overflow`);
         assert(measured.segmentsFit, `${language}/${width}/${state}: clipped segmented label`);
         assert(measured.headerVisible, `${language}/${width}/${state}: inaccessible sheet heading`);
         assert(measured.hierarchy.every(item => item.size >= 2 && item.weight >= 200 && item.primary !== item.secondary),

@@ -211,7 +211,7 @@ if (process.argv.includes('--vacation')) {
 
 if (process.argv.includes('--honor')) {
   const { verifyHonor } = await import('./honor-visual.mjs');
-  await verifyHonor(process.argv[2] ?? 'out/honor', process.argv.includes('--honor-tactical') ? ['radiation', 'emp', 'emp-launch'] : process.argv.includes('--honor-breakdown') ? ['breakdown'] : undefined);
+  await verifyHonor(process.argv[2] ?? 'out/honor', process.argv.includes('--honor-prizes') ? ['honor-prizes', 'dominion-prizes', 'honor-spectator'] : process.argv.includes('--honor-tactical') ? ['radiation', 'emp', 'emp-launch'] : process.argv.includes('--honor-breakdown') ? ['breakdown'] : undefined);
   process.exit(0);
 }
 

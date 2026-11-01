@@ -81,9 +81,7 @@ describe('next-season Dominion rewards', () => {
       accountId: f.accountIds[1],
       displayRank: 2,
       rewardPlace: 2,
-      alloy: 1_750,
-      crystal: 1_250,
-      deuterium: 250,
+      alloy: 875, crystal: 625, deuterium: 125,
       programVersion: 1,
       status: 'PENDING',
     });
@@ -91,9 +89,7 @@ describe('next-season Dominion rewards', () => {
       accountId: f.accountIds[2],
       displayRank: 3,
       rewardPlace: 3,
-      alloy: 1_500,
-      crystal: 1_000,
-      deuterium: 200,
+      alloy: 750, crystal: 500, deuterium: 100,
       programVersion: 1,
       status: 'PENDING',
     });
@@ -154,13 +150,13 @@ describe('next-season Dominion rewards', () => {
     ]);
     expect(first.planetId).toBe(retry.planetId);
     expect(first.seasonReward).toMatchObject({ ranking: 'DOMINION', displayRank: 1,
-      alloy: 2000, crystal: 1500, deuterium: 300 });
+      alloy: 1000, crystal: 750, deuterium: 150 });
     expect(retry.seasonReward).toEqual(first.seasonReward);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, first.planetId));
     expect(world).toMatchObject({
-      alloy: PLANET_START.alloy + 2_000,
-      crystal: PLANET_START.crystal + 1_500,
-      deuterium: PLANET_START.deuterium + 300,
+      alloy: PLANET_START.alloy + 1_000,
+      crystal: PLANET_START.crystal + 750,
+      deuterium: PLANET_START.deuterium + 150,
     });
     const [delivered] = await f.db.select().from(seasonRewardEntitlements)
       .where(eq(seasonRewardEntitlements.accountId, f.accountIds[0]!));
