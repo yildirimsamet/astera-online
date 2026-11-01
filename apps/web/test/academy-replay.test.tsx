@@ -24,7 +24,7 @@ vi.mock('../src/v2/shell/GameShell.js', () => ({
 }));
 vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ onReplayAcademy }: { onReplayAcademy: () => void }) =>
   <button onClick={onReplayAcademy}>Replay Academy</button> }));
-vi.mock('../src/onboarding/Academy.jsx', () => ({ Academy: ({ onLeave }: { onLeave: () => void }) =>
+vi.mock('../src/onboarding/flightSchool/FlightSchool.js', () => ({ FlightSchool: ({ onLeave }: { onLeave: () => void }) =>
   <button onClick={onLeave}>Leave Academy</button> }));
 
 describe('the replay boundary', () => {

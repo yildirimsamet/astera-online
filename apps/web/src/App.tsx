@@ -10,7 +10,7 @@ import { arenaDoor, pageStorage, takeArenaDoor } from './arena/freshEntry.js';
 import { roomyRenderer } from './arena/room.js';
 import { useApi } from './api/context.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
-const Academy = lazy(() => import('./onboarding/Academy.jsx').then(module => ({ default: module.Academy })));
+const Academy = lazy(() => import('./onboarding/flightSchool/FlightSchool.js').then(module => ({ default: module.FlightSchool })));
 const BattleSimulator = lazy(() => import('./battle-simulator/BattleSimulator.js').then(module => ({ default: module.BattleSimulator })));
 const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(module => ({ default: module.ServersScreen })));
 import type { Panel, PanelStop } from './screens/GalaxyView.jsx';

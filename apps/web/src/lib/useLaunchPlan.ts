@@ -6,6 +6,7 @@ import {
   COMBAT_HULLS,
   ENGAGEMENT_MS,
   fleetCount,
+  fleetEntries,
   partitionCombatFleet,
   splitHealthFleet,
   salvageCapacity,
@@ -29,6 +30,7 @@ import {
   flightModifiers,
 } from '../lib/navigation.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { useTargetReading } from './useTargetReading.js';
 import {
   lethalAfterRefusal, radiationRefusalCount, routeRadiation, routeHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
@@ -77,6 +79,7 @@ export function useLaunchPlan({
     }
   }, [planet.fleet, planet.fleetDamage, sending]);
   const lesson = useAcademyLesson();
+  const school = useSchoolPresentation();
   /**
    * THE COMMANDER'S OWN RAID IMMUNITY, IF THEY STILL HAVE ONE. D183 · 2026-09-14.
    *
@@ -107,7 +110,7 @@ export function useLaunchPlan({
    * reason D168 measures the attack band on the commander.
    */
   const season = useSeason();
-  const honorTarget = useHonorTarget(!lesson && target.kind === 'world'
+  const honorTarget = useHonorTarget(!lesson && !school && target.kind === 'world'
     && target.world.kind !== 'NEUTRAL' && !target.world.isSelf ? target.world.id : null);
   const shieldUntil = season.data?.shieldUntil ?? null;
   const spendsShield = target.kind === 'world'
@@ -144,8 +147,8 @@ export function useLaunchPlan({
     the fuel the same way the server does, so every figure below already reads with it. A pirate
     meeting is the server's solve, so a Kılavuz reads the table solved at its speed (`escortReach`).
   */
-  const commanderShip = useCommanderShip(!lesson);
-  const escort = lesson ? null : escortOf(commanderShip.data, serverNow());
+  const commanderShip = useCommanderShip(!lesson && !school);
+  const escort = lesson || school ? null : escortOf(commanderShip.data, serverNow());
   const [escortWanted, setEscortWanted] = useState(false);
   const escortBonus = escortWanted && escort?.kind === 'ready' ? escort.bonuses : null;
   const pirateReach = target.kind === 'pirate' && escortBonus && escortBonus.time !== 1
@@ -167,7 +170,7 @@ export function useLaunchPlan({
    * AND NOT DURING A LESSON, for the same reason: the Academy pins its leg to six seconds, so a
    * rung would offer to slow down a flight whose length the tutorial has already decided.
    */
-  const paces = target.kind === 'world' && !lesson
+  const paces = target.kind === 'world' && !lesson && !school
     ? allowedPaces(unpaced?.distance ?? 0, sending, mods)
     : [1 as MissionPace];
   const pace = paces.includes(wantedPace) ? wantedPace : 1;
@@ -178,7 +181,7 @@ export function useLaunchPlan({
         planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
   const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate');
-  const route = lesson && planned ? { ...planned,
+  const route = school && planned ? { ...planned, oneWayMinutes: school.legSeconds / 60, exposureMinutes: (school.legSeconds * 2 + 10) / 60 } : lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
   const aim = route?.rendezvous ?? null;
   /**
@@ -225,12 +228,12 @@ export function useLaunchPlan({
   const endpoint = target.kind === 'world' ? target.world.position : route?.rendezvous;
   const arriveMs = departMs + (route?.oneWayMinutes ?? 0) * 60_000;
   const homeMs = departMs + (route?.exposureMinutes ?? 0) * 60_000 + ENGAGEMENT_MS;
-  const hpQuote = hpModel && selectedHealth && route !== null && endpoint && !lesson ? routeHpRadiation({ fleet: sending, tech: mods.tech,
+  const hpQuote = hpModel && selectedHealth && route !== null && endpoint && !lesson && !school ? routeHpRadiation({ fleet: sending, tech: mods.tech,
     damage: selectedHealth.selectedDamage,
     path: [{ from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
       { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
       { from: endpoint, to: planet.planet.position, startMs: arriveMs + ENGAGEMENT_MS, endMs: homeMs }] }, hpSources) : null;
-  const radiation = hpModel ? lethalAfterRefusal(hpQuote, refused, sending) : target.kind === 'world' && route !== null && !lesson
+  const radiation = hpModel ? lethalAfterRefusal(hpQuote, refused, sending) : target.kind === 'world' && route !== null && !lesson && !school
     ? lethalAfterRefusal(routeRadiation({
         fleet: sending,
         damage: selectedHealth?.selectedDamage,
@@ -246,17 +249,17 @@ export function useLaunchPlan({
   const paid = pirate?.lootPaid;
   const pirateLevel = pirate?.level;
   const profitRuleset = planet.rulesetVersion ?? season.data?.rulesetVersion;
-  const outboundHp = hpModel && route !== null && endpoint && !lesson
+  const outboundHp = hpModel && route !== null && endpoint && !lesson && !school
     ? segmentsExposureHp([
       { from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
       { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
     ], hpSources) : 0;
   // Profit settlement consumes raw source doses; the visible quote has shielding applied.
-  const returnHp = hpModel && route !== null && endpoint && !lesson ? segmentsExposureHp([
+  const returnHp = hpModel && route !== null && endpoint && !lesson && !school ? segmentsExposureHp([
     { from: endpoint, to: planet.planet.position, startMs: arriveMs + ENGAGEMENT_MS, endMs: homeMs },
   ], hpSources) : 0;
   const profitInput = useMemo<PirateProfitInput | null>(() => {
-    if (lesson || total === 0 || route === null || !pirate?.fleet || !reward || !paid || profitRuleset === undefined
+    if (lesson || school || total === 0 || route === null || !pirate?.fleet || !reward || !paid || profitRuleset === undefined
       || (pirateLevel !== 1 && pirateLevel !== 2 && pirateLevel !== 3 && pirateLevel !== 4)) return null;
     return { attacker: sending, damage: selectedHealth?.selectedDamage, crew: pirate.fleet, level: pirateLevel, tech: mods.tech,
       rulesetVersion: profitRuleset, hoard: reward, paid, fuel: route.fuel,
@@ -364,7 +367,8 @@ export function useLaunchPlan({
    * disagree. Outside a lesson this is `null` and the sheet is the ordinary one:
    * everything standing at home, up to what is standing at home.
    */
-  const allowance = lesson === 'pirate' || lesson === 'raid' ? academyLessonFleet(lesson) : null;
+  const allowance = school?.fleet ?? (lesson === 'pirate' || lesson === 'raid' ? academyLessonFleet(lesson) : null);
+  const selectionComplete = !school?.fleet || fleetEntries(school.fleet).every(([hull, count]) => (sending[hull] ?? 0) === count);
   const roomFor = (hull: MobileHullId): number => {
     const home = available[hull] ?? 0;
     return allowance ? Math.min(home, allowance[hull] ?? 0) : home;
@@ -418,7 +422,7 @@ export function useLaunchPlan({
    * at this world can catch it; a table with no row for the slowest ship SELECTED means this fleet
    * cannot — a faster one could.
    */
-  const refusal: string | null = shipyardRevolt
+  const refusal: string | null = !selectionComplete ? t('launch.chooseFleet') : shipyardRevolt
     ? t('launch.shipyardRevolt')
     : total === 0
       ? t('launch.chooseFleet')
@@ -440,6 +444,7 @@ export function useLaunchPlan({
    * `onRefused` hands a server refusal back to the surface that asked.
    */
   const commit = (onRefused: () => void): void => {
+    if (!selectionComplete) { onRefused(); return; }
     if (pirate) {
       raid.mutate(
         {
@@ -453,7 +458,7 @@ export function useLaunchPlan({
             `undefined` when the lesson has overridden the figure: the Academy quotes its own
             flight time and the live server would rightly refuse it.
           */
-          ...(lesson || route === null ? {} : { quotedMinutes: route.oneWayMinutes }),
+          ...(lesson || school || route === null ? {} : { quotedMinutes: route.oneWayMinutes }),
           ...(escortBonus ? { admiral: true } : {}),
         },
         {
@@ -505,7 +510,7 @@ export function useLaunchPlan({
   };
 
   return {
-    sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods,
+    sending, set, roomFor, allowance, selectionComplete, lesson, season, honorTarget, spendsShield, pirate, mods,
     paces, pace, setWantedPace, route, fullSpeedRoute: unpaced, escort, escorted: escortBonus !== null, setEscortWanted,
     paceReset: paces.length > 0 && pace !== wantedPace,
     total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,

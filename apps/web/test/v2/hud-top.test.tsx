@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { monumentsSchema, type Monuments, type NotificationView, type PendingThread, type PlanetView } from '../../src/api/schemas.js';
 import { ToastProvider } from '../../src/ui/Toast.js';
+import { SchoolPresentationContext } from '../../src/onboarding/flightSchool/presentation.js';
 import { HudTop } from '../../src/v2/shell/HudTop.js';
 import { planetView } from '../fixtures.js';
 
@@ -219,4 +220,20 @@ describe('the wired top of the shell', () => {
     expect(on.onEconomy).toHaveBeenCalledTimes(1);
     expect(mutate).not.toHaveBeenCalled();
   });
+});
+
+it('holds only the training incoming countdown while preparations are paused', () => {
+  vi.useFakeTimers();
+  const start = Date.now();
+  pending = [{ kind: 'incoming', targetName: 'Aurora', minutesRemaining: .1, arriveAt: new Date(start + 6_500) }];
+  const { rerender } = render(<SchoolPresentationContext.Provider value={{ orderSeconds: 3, legSeconds: 6.5, pausedIncoming: true }}><HudTop commander="Aurora" {...handlers()} /></SchoolPresentationContext.Provider>, { wrapper: ToastProvider });
+  const timer = () => screen.getByRole('button', { name: /Most urgent timer/ }).textContent;
+  const held = timer();
+  act(() => { vi.advanceTimersByTime(60_000); });
+  expect(timer()).toBe(held);
+  pending = [{ ...pending[0]!, arriveAt: new Date(Date.now() + 6_500) }];
+  rerender(<SchoolPresentationContext.Provider value={{ orderSeconds: 3, legSeconds: 6.5, pausedIncoming: false }}><HudTop commander="Aurora" {...handlers()} /></SchoolPresentationContext.Provider>);
+  act(() => { vi.advanceTimersByTime(3_000); });
+  expect(timer()).not.toBe(held);
+  vi.useRealTimers();
 });

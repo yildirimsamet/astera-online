@@ -72,18 +72,18 @@ export const onboarding = {
   haveAccount: 'Zaten bir komutanım var',
 
   claim: {
-    eyebrowName: 'Son adım',
-    headingName: "Komutan adını seç",
-    lineName: 'Dört siparişin hazır. {{name}} senin olduğunda gerçek sayaçları birlikte başlar.',
+    eyebrowName: "Galaksideki kimliğin",
+    headingName: "Komutan adını belirleyelim",
+    lineName: "Diğer oyuncular seni bu adla tanıyacak. Mesajlarında ve sıralamada görünmesini istediğin komutan adını seç.",
     nameLabel: 'Komutan adı',
-    next: 'Devam',
+    next: "Bu adla devam et",
 
-    eyebrowPassword: 'Bir tane daha',
-    headingPassword: "{{name}} için parola belirle",
-    linePassword: "Başka bir cihazda aynı komutanla giriş yapmak için bu parolayı kullanacaksın.",
+    eyebrowPassword: "Komutanına yeniden ulaş",
+    headingPassword: "{{name}} için bir parola seç",
+    linePassword: "Daha sonra kaldığın yerden devam etmek veya başka bir cihazdan komutanına ulaşmak için bu parolayı kullanacaksın.",
     passwordLabel: 'Parola',
-    submit: 'Gezegeni sahiplen',
-    working: "Komutan oluşturuluyor…",
+    submit: "Galaksiye katıl",
+    working: "Galaksi hazırlanıyor…",
     back: 'Geri',
   },
 

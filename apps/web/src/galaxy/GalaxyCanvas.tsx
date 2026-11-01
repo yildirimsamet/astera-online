@@ -9,6 +9,8 @@ import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGu
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
+import { SchoolCamera } from '../onboarding/flightSchool/SchoolCamera.js';
+import { schoolWorldRadius } from '../onboarding/flightSchool/visualStory.js';
 import * as THREE from 'three';
 import type {
   AsteroidView,
@@ -55,6 +57,7 @@ import {
   Sky,
 } from './Environment.jsx';
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
@@ -393,11 +396,16 @@ export function GalaxyCanvas({
   openingDataReady = true,
   openingCovered = false,
 }: GalaxyCanvasProps) {
+  const school = useSchoolPresentation();
   const sceneReady = useRef(false);
   const openingSettled = useRef(!openingCovered);
   const openingWork = useMemo(() => createOpeningPreparation(openingCovered), []);
   const openingMark = useRef<HTMLSpanElement>(null);
-  const nodes = useMemo(() => planetNodes(planets), [planets]);
+  const overview = school?.overview !== undefined;
+  const magnify = school?.overview?.magnify === true;
+  const nodes = useMemo(() => planetNodes(planets).map(node => magnify
+    ? { ...node, radius: schoolWorldRadius(node.coreLevel, node.intel !== 'UNKNOWN') } : node), [planets, magnify]);
+  const visibleBodies = useMemo(() => magnify ? nodes.filter(node => node.intel !== 'UNKNOWN') : nodes, [nodes, magnify]);
   const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
   const home = useMemo<[number, number, number]>(
     () => activeWorldPosition(planets, activePlanetId, homePosition),
@@ -746,7 +754,7 @@ export function GalaxyCanvas({
       <SpaceLighting />
 
       <Sky />
-      <Core />
+      {!school && <Core />}
       <BrightStars />
       <Dust />
       <Meteors shower={meteorShower} />
@@ -829,7 +837,7 @@ export function GalaxyCanvas({
         )}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
-          nodes={nodes}
+          nodes={visibleBodies}
           selectedId={selectedId}
           rivals={rivals}
           onSelect={(id) => {
@@ -897,13 +905,13 @@ export function GalaxyCanvas({
           impacts={interceptionImpacts ?? []}
           nodes={nodes}
         />
-        <Labels
+        {!overview && <Labels
           nodes={nodes}
           hpRadiation={hpRadiation}
           selectedId={selectedId}
           rivals={rivals}
           {...(onOpenCommander ? { onOpenCommander } : {})}
-        />
+        />}
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
         <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady && gpu.live} onDrawn={() => {
           sceneReady.current = true;
@@ -995,6 +1003,7 @@ export function GalaxyCanvas({
       />
       {/* E11: a page docked on the right does not hide the camera's subject. */}
       <ViewOffset />
+      {school && (school.overview !== undefined || school.transit !== undefined) && <SchoolCamera frame={school.overview} transit={school.transit} nodes={nodes} onSelect={id => { onFocus({ kind: 'planet', id }); }} />}
       <AmbientTicker />
       <FpsProbe />
       <PerfProbe

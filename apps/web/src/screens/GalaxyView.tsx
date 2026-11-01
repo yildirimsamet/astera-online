@@ -155,6 +155,7 @@ import {
   runForPlanetTarget,
 } from '../galaxy/scene.js';
 import {
+  focusIdentity,
   focusTapDecision,
   planetFocusRailVisible,
   planetFocusSelection,
@@ -273,6 +274,7 @@ export function GalaxyView({
   onEnterArena,
   onPlacementLost,
   onFocused,
+  onSceneReady,
   planetGroup,
   openWide,
   wideDistance,
@@ -334,6 +336,8 @@ export function GalaxyView({
    * playing itself, which is the thing this whole flow exists not to be.
    */
   onFocused?: (focus: Focus | null) => void;
+  /** The first rendered galaxy is visible after its loading cover. */
+  onSceneReady?: () => void;
   /** Which decision group the planet panel opens on, when something else decides. */
   planetGroup?: PlanetGroup;
   /** Open on the whole disc with nothing selected, for the rehearsal. D56. */
@@ -355,7 +359,7 @@ export function GalaxyView({
    * from outside: while it is set, the subject is followed and every information
    * rail stays shut.
    */
-  coachFocus?: { focus: Focus; request: number } | null;
+  coachFocus?: { focus: Focus; request: number; inspect?: boolean } | null;
   /** Academy: an invisible hit area pinned to whatever `coachFocus` is showing. */
   coachTap?: { label: string; onTap: () => void } | null;
   frameTelescope?: boolean;
@@ -743,6 +747,7 @@ export function GalaxyView({
   const dataSettled =
     !galaxy.isPending && !planet.isPending && !season.isPending && !mining.isPending;
   const covered = useOpeningCover(assets.ready && dataSettled && drawn);
+  useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);
 
 
   // The opening cover owns one seven-second deadline from mount.
@@ -965,13 +970,14 @@ export function GalaxyView({
   /** Academy: a camera move the lesson asked for, with no rail behind it. */
   const handledCoachFocus = useRef<number | null>(null);
   useEffect(() => {
-    if (!coachFocus || handledCoachFocus.current === coachFocus.request) return;
+    if (!drawn || !coachFocus) return;
+    if (handledCoachFocus.current === coachFocus.request && focusIdentity(focus) === focusIdentity(coachFocus.focus)) return;
     handledCoachFocus.current = coachFocus.request;
     setFocus(coachFocus.focus);
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
-  }, [coachFocus]);
+  }, [coachFocus, drawn, focus]);
 
   const handledCraftFocusRequest = useRef<number | null>(null);
   useEffect(() => {
@@ -1152,6 +1158,7 @@ export function GalaxyView({
 
   const close = (): void => {
     setFocus(null);
+    onFocused?.(null);
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
@@ -1251,7 +1258,7 @@ export function GalaxyView({
         planets={displayPlanets}
         unknownSignals={signalData?.signals}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
-        inspectionPlanetId={cosmeticTrial?.planetId}
+        inspectionPlanetId={cosmeticTrial?.planetId ?? (coachFocus?.inspect && coachFocus.focus.kind === 'planet' ? coachFocus.focus.id : undefined)}
         pending={threads}
         contacts={contacts}
         interceptions={interceptions}

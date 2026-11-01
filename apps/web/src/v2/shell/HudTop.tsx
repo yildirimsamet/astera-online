@@ -29,6 +29,7 @@ import { NowLine } from '../hud/NowLine.js';
 import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
 import { BrandMasthead } from '../../brand/Identity.js';
 import { SignalBoostNote } from '../../ui/SignalBoostNote.js';
+import { useSchoolPresentation } from '../../onboarding/flightSchool/presentation.js';
 
 export interface HudTopProps {
   commander: string;
@@ -62,6 +63,7 @@ export interface HudTopProps {
 export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
   const { t, i18n } = useTranslation();
   const now = useNow(1_000);
+  const school = useSchoolPresentation();
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const planet = usePlanet();
   // Every second: the works fill while the player watches, and the planet query has no poll.
@@ -79,7 +81,8 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   const rewards = useRewards().data?.claimable ?? 0;
   const pending = usePending().data?.pending ?? [];
   const monuments = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0)).data;
-  const threads = [...pending, ...monumentPendingThreads(monuments, now)];
+  const threads = [...pending.map(thread => school?.pausedIncoming && thread.kind === 'incoming'
+    ? { ...thread, arriveAt: new Date(now + school.legSeconds * 1000) } : thread), ...monumentPendingThreads(monuments, now)];
   const runs = useMining().data?.runs ?? [];
   const events = useGalaxyEvents().data?.events ?? [];
   const maintenance = useMaintenanceNotice();

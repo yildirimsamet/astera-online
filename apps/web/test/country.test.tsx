@@ -162,7 +162,7 @@ describe('the country picker', () => {
     render(<ClaimDialog planetName="Kestrel" onClaim={vi.fn()} onSignIn={vi.fn()} />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     expect(screen.getByRole('button', { name: /Germany/ })).toBeInTheDocument();
   });
 
@@ -172,7 +172,7 @@ describe('the country picker', () => {
     render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     await user.click(screen.getByRole('button', { name: /United States/ }));
     await user.type(screen.getByRole('searchbox'), 'Japan');
     await user.click(within(screen.getByRole('list', { name: 'Countries' })).getByRole('button', { name: 'Japan' }));
@@ -180,7 +180,7 @@ describe('the country picker', () => {
     expect(screen.getByRole('button', { name: /Japan/ })).toBeInTheDocument();
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', 'JP', policyProof);
   });
 
@@ -190,28 +190,32 @@ describe('the country picker', () => {
     expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
     expect(dialog).toHaveAccessibleName(within(dialog).getByRole('heading').textContent);
     expect(within(dialog).getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'false');
-    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue' }));
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue with this name' }));
     expect(within(dialog).getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'true');
     await userEvent.setup().type(within(dialog).getByLabelText('Commander name'), 'NewPilot');
-    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue' }));
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue with this name' }));
     expect(dialog).toHaveAccessibleName(within(dialog).getByRole('heading').textContent);
   });
 
-  it('lets a taken commander name be edited and resubmitted on the password step', async () => {
+  it('corrects a taken commander name through Back while keeping password and consent', async () => {
     const onClaim = vi.fn(() => Promise.reject(new Error('taken')));
     const view = render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Commander name'), '李 小龙');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     view.rerender(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} error="Name taken" />);
     expect(screen.getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'false');
+    await user.click(screen.getByRole('button', { name: 'Back' }));
     await user.clear(screen.getByLabelText('Commander name'));
     await user.type(screen.getByLabelText('Commander name'), 'عَلِيّ');
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
+    expect(screen.getByLabelText('Password')).toHaveValue('a-real-password');
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(onClaim).toHaveBeenLastCalledWith('عَلِيّ', 'a-real-password', expect.any(String), policyProof);
   });
 
@@ -220,14 +224,14 @@ describe('the country picker', () => {
     const user = userEvent.setup();
     const name = screen.getByLabelText('Commander name');
     await user.type(name, 'A');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     expect(name).toHaveAttribute('aria-invalid', 'true');
     await user.type(name, 'lice');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     const password = screen.getByLabelText('Password');
     await user.type(password, 'short');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(password).toHaveAttribute('aria-invalid', 'true');
     expect(name).toHaveAttribute('aria-invalid', 'false');
   });
@@ -240,15 +244,19 @@ describe('the country picker', () => {
     const view = render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Commander name'), 'First Pilot');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     view.rerender(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} error="Name taken" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Name taken');
+    await user.click(screen.getByRole('button', { name: 'Back' }));
     await user.clear(screen.getByLabelText('Commander name'));
     await user.type(screen.getByLabelText('Commander name'), 'Second Pilot');
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
+    expect(screen.getByLabelText('Password')).toHaveValue('a-real-password');
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     finish?.();
   });

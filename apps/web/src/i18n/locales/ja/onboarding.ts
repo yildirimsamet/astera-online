@@ -74,18 +74,18 @@ export const onboarding = {
 
   /** The wall, at the one moment the player wants something. */
   claim: {
-    eyebrowName: "最後のステップ",
-    headingName: "司令官の名前を選択",
-    lineName: "4件の指示を準備しました。{{name}}を確保すると、実際の建設時間が同時に動き始めます。",
+    eyebrowName: "銀河でのあなたの名前",
+    headingName: "司令官の名前を決めましょう",
+    lineName: "ほかのプレイヤーにはこの名前が表示されます。メッセージやランキングで使いたい司令官名を選んでください。",
     nameLabel: "司令官名",
-    next: "続行",
+    next: "この名前で続ける",
 
-    eyebrowPassword: "あと一歩",
-    headingPassword: "{{name}}のパスワードを設定",
-    linePassword: "別の端末で同じ司令官にログインする際に、このパスワードを使います。",
+    eyebrowPassword: "司令官のもとへ戻るために",
+    headingPassword: "{{name}}のパスワードを決める",
+    linePassword: "あとで続きを遊ぶときや、別の端末から同じ司令官を使うときに、このパスワードを使います。",
     passwordLabel: "パスワード",
-    submit: "惑星を確保する",
-    working: "司令官を作成中…",
+    submit: "銀河に参加する",
+    working: "銀河を準備しています…",
     back: "戻る",
   },
 

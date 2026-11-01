@@ -134,6 +134,7 @@ import { CounterCycle } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { useAccordion } from '../lib/accordion.js';
 import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Segmented } from '../ui/kit/index.js';
@@ -2015,6 +2016,7 @@ function Reach({
   // statement of which band leads, and an index read is `| undefined` here.
   const families = useAccordion('fleet', FLEET_FAMILY_ORDER.slice(0, 1));
   const lesson = useAcademyLesson();
+  const school = useSchoolPresentation();
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
@@ -2327,7 +2329,8 @@ function Reach({
         saved.
       */}
       {FLEET_FAMILY_ORDER.map((family) => {
-        const open = lesson ? family === 'OFFENSIVE' || (lesson === 'courier' && family === 'CARGO') : families.isOpen(family);
+        const guided = HULLS_BY_FAMILY[family].some(id => id === school?.order?.subject);
+        const open = guided || (lesson ? family === 'OFFENSIVE' || (lesson === 'courier' && family === 'CARGO') : families.isOpen(family));
         return (
           <section
             key={family}
@@ -2743,7 +2746,9 @@ function BuildSheet({
   const [cycle, setCycle] = useState(false);
   // The hand points straight to Build. Offer the authored quantity, not the
   // live game's default of one, which the local lesson correctly refuses.
-  const lessonCount = hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? academyBuildCount(lesson)
+  const school = useSchoolPresentation();
+  const lessonCount = school?.order?.subject === hull ? school.order.count
+    : hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? academyBuildCount(lesson)
     : (hull === 'PROSPECTOR' && lesson === 'prospector') || (hull === 'COURIER' && lesson === 'courier') ? 1 : null;
 
   /**

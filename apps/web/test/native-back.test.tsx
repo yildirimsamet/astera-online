@@ -72,7 +72,7 @@ it('returns from the claim password step without creating or switching accounts'
   const view = render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={onSignIn} />);
   const user = userEvent.setup();
   await user.type(view.getByLabelText('Commander name'), 'NewPilot');
-  await user.click(view.getByRole('button', { name: 'Continue' }));
+  await user.click(view.getByRole('button', { name: 'Continue with this name' }));
   expect(view.getByLabelText('Password')).toBeInTheDocument();
   nativeBack(view.getByRole('dialog'));
   expect(view.queryByLabelText('Password')).not.toBeInTheDocument();
@@ -85,7 +85,7 @@ it('consumes Back while a claim is pending without replaying the submission', as
   const view = render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
   const user = userEvent.setup();
   await user.type(view.getByLabelText('Commander name'), 'NewPilot');
-  await user.click(view.getByRole('button', { name: 'Continue' }));
+  await user.click(view.getByRole('button', { name: 'Continue with this name' }));
   await user.type(view.getByLabelText('Password'), 'test-password-only');
   await user.click(view.getByRole('checkbox', { name: /I agree/ }));
   fireEvent.submit(view.getByLabelText('Password').closest('form')!);

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { academyOrderSeconds } from '@astera/rules';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import i18n from '../i18n/index.js';
 import { compact, decimal } from '../lib/format.js';
 import { duration } from '../lib/time.js';
@@ -534,7 +535,8 @@ export function TimeCost({ minutes }: { minutes: number }) {
 /** An order's duration as the player will live it: the Academy runs its orders fast. */
 export function useOrderDuration(minutes: number): string {
   const lesson = useAcademyLesson();
-  return duration(lesson ? academyOrderSeconds(minutes) / 60 : minutes);
+  const school = useSchoolPresentation();
+  return duration(school ? school.orderSeconds / 60 : lesson ? academyOrderSeconds(minutes) / 60 : minutes);
 }
 
 /** A resource value, using the same learnt shapes as prices without implying a cost. */
