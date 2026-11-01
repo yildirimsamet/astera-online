@@ -37,10 +37,6 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     );
   }
   if (!board.data) return <Waiting>{t('surface.waitingLeaderboard')}</Waiting>;
-  if (board.data.ladder.length === 0) {
-    return <div className="px-2 py-2"><EmptyState title={t('leaderboard.empty')} /></div>;
-  }
-
   const mine = board.data.you?.playerId;
   const honor = board.data.ranking === 'HONOR';
   const prize = board.data.honorReward;
@@ -172,7 +168,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
         </section>
       )}
       {rows.length === 0 ? (
-        <div className="px-2 py-6"><EmptyState title={t('leaderboard.noMatch')} /></div>
+        <div className="px-2 py-6"><EmptyState title={t(board.data.ladder.length === 0 ? 'leaderboard.empty' : 'leaderboard.noMatch')} /></div>
       ) : (
     <ol className="divide-y divide-v2-line" aria-label={t('leaderboard.title')}>
       {rows.map((row) => {

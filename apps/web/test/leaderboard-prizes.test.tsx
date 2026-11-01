@@ -40,6 +40,16 @@ describe('season prizes at the point of competition', () => {
     expect(screen.getByText('Join this galaxy to enter the standings.')).toBeVisible();
   });
 
+  it('keeps ranking tabs and Honor prizes visible when a galaxy has no commanders', () => {
+    show('HONOR', [], false);
+    expect(screen.getByRole('button', { name: 'Honor', pressed: true })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Dominion' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /prize by place/i }));
+    expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
+    expect(screen.getByText('No commanders have joined this galaxy yet.')).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Leaderboard' })).toBeNull();
+  });
+
   it('shows a full Honor prize and the score-capped package on rival rows', () => {
     show('HONOR', [row('leader', 1, 200_000_000), row('capped', 2, 1_234_567)]);
     expect(prize('leader')).toHaveTextContent('2,000');
