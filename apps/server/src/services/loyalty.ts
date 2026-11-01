@@ -1,4 +1,5 @@
 import { observeHonorOwner } from './honorReference.js';
+import { recordLegacyColonyLoss } from './legacyEvents.js';
 import { and, eq, inArray, like, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
@@ -220,6 +221,7 @@ export async function secedeColony(
   const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
   if (!world?.controllerPlayerId || world.kind !== 'COLONY') return false;
   const owner = world.controllerPlayerId;
+  if (cause === 'SECESSION') await recordLegacyColonyLoss(tx, planetId, owner, notificationRefId);
 
   /*
     THE FLEET COMES HOME AND THE GUNS DO NOT. Owner's design, and the line is

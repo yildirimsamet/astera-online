@@ -1,6 +1,6 @@
 import * as rules from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
-import { battleReplays, maintenanceWindows } from '../src/db/schema.js';
+import { battleReplays, legacyFacts, maintenanceWindows } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
@@ -699,6 +699,8 @@ describe('what a pirate raid comes home with', () => {
     ));
     expect(state!.destroyedAt).not.toBeNull();
     expect(state!.destroyedByPlayerId).toBe(me);
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'PIRATE_VICTORIES')))
+      .toEqual([expect.objectContaining({ sourceKey: `pirate:${String(target.spec.index)}`, amount: 1 })]);
   });
 
   it('records the damage it did, and marks a wiped pirate destroyed', async () => {

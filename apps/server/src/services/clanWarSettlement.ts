@@ -86,6 +86,7 @@ import {
 import { escortedBattle } from './admiral.js';
 import { breakFaults, defenceOnline } from './faults.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
+import { attributeLegacyColonyLoss, recordPlayerLegacyFact, settleLegacyAttack } from './legacyEvents.js';
 import { notify, announceUnlocks } from './notifications.js';
 import {
   loadLocked,
@@ -477,6 +478,9 @@ export async function resolveClanWarBattle(
       planetId: defender.planetId,
       now: defender.now,
     });
+    if (defender.loyalty > 0 && defender.loyalty - loyaltyLoss <= 0) {
+      await attributeLegacyColonyLoss(tx, defender.planetId, participantIds);
+    }
   }
 
   /* ── the haul, and whose ships carry it ───────────────────────── */
@@ -727,6 +731,10 @@ export async function resolveClanWarBattle(
     dominionDelta: deltaByPlayer.get(playerId) ?? 0,
     createdAt: now,
   })));
+  for (const playerId of participantIds) await recordPlayerLegacyFact(tx, playerId, mission.seasonId,
+    'CLAN_WAR_ATTACKS', `clan-war:${operation.id}`, now);
+  await settleLegacyAttack(tx, { seasonId: mission.seasonId, sourceKey: `clan-war:${mission.id}`,
+    defenders: [defenderPlayerId, ...supporterIds], at: now });
 
   if (scoreEligible) {
     const audit: (typeof clanWarDominionEvents.$inferInsert)[] = [

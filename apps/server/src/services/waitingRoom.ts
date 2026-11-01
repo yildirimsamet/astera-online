@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { Queryable, Tx } from '../db/client.js';
 import { players, shards } from '../db/schema.js';
 import { GameError } from './planet.js';
+import { recordLegacyActivity } from './legacy.js';
 
 /**
  * SILENT SPACE IS A WAITING ROOM. D212, owner rule 2026-10-07.
@@ -20,6 +21,7 @@ import { GameError } from './planet.js';
  */
 export async function markProgress(tx: Tx, playerId: string, at: Date): Promise<void> {
   await tx.update(players).set({ lastProgressAt: at }).where(eq(players.id, playerId));
+  await recordLegacyActivity(tx, playerId, at);
 }
 
 /** A season's shard role never changes, so one primary-key read answers it. */

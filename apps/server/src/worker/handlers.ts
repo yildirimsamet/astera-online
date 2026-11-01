@@ -53,6 +53,9 @@ import {
   type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
+import { attributeLegacyColonyLoss, recordPlayerLegacyFact, settleLegacyAttack } from '../services/legacyEvents.js';
+import { importLegacyArchive, preserveLegacySeasonEvents } from '../services/legacyArchive.js';
+import { deferLegacyRefresh } from '../services/legacy.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
@@ -622,6 +625,10 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         // Nothing came back means a redelivery of an event already handled; the
         // report was marked delivered the first time and its owner already told.
         if (!delivered) return;
+        const [probeLaunch] = await tx.select({ departAt: missions.departAt }).from(missions)
+          .where(eq(missions.id, delivered.missionId));
+        if (probeLaunch) await recordPlayerLegacyFact(tx, delivered.observerPlayerId, mission.seasonId, 'PROBES',
+          `probe:${delivered.missionId}`, probeLaunch.departAt);
 
         if (delivered.silhouette) {
           await rememberWorld(tx, {
@@ -1180,6 +1187,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         planetId: defender.planetId,
         now: defender.now,
       });
+      if (defender.loyalty > 0 && defender.loyalty - loyaltyLoss <= 0) {
+        await attributeLegacyColonyLoss(tx, defender.planetId, [mission.ownerPlayerId]);
+      }
     }
 
     const dominionBreakdown = scoreEligible
@@ -1713,6 +1723,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       }),
       shieldCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), shieldAbsorbed: result.shieldProtectedArmed ?? 0,
     });
+    await settleLegacyAttack(tx, { seasonId: mission.seasonId, sourceKey: `world:${mission.id}`,
+      defenders: [defender.playerId, ...supporterIds], at: defender.now });
   });
 };
 
@@ -2698,6 +2710,15 @@ async function freezeSeason(
       endReason: event === null ? 'FORCED_WIPE' : 'SCHEDULED_END',
       galaxyRecord,
     }).where(eq(seasons.id, seasonId));
+    await preserveLegacySeasonEvents(tx, seasonId, capturedThrough);
+    await importLegacyArchive(tx, seasonId, capturedThrough);
+    const legacyOwners = await tx.execute<{ accountId: string }>(sql`
+      SELECT account_id AS "accountId" FROM legacy_facts WHERE season_id = ${seasonId}
+      UNION SELECT account_id FROM legacy_activity_days WHERE season_id = ${seasonId}
+      UNION SELECT account_id FROM legacy_participation WHERE season_id = ${seasonId}
+      UNION SELECT account_id FROM legacy_monument_intervals WHERE season_id = ${seasonId}
+    `);
+    for (const owner of legacyOwners) deferLegacyRefresh(tx, owner.accountId, capturedThrough);
     await publishShard(tx, seasonId, 'season');
   });
 }

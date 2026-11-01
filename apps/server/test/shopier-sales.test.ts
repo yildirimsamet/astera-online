@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { loadEnv } from '../src/env.js';
-import { accounts, cosmeticEntitlements, planets, shopierCheckouts, shopierOrders } from '../src/db/schema.js';
+import { accounts, cosmeticEntitlements, legacyAwards, planets, shopierCheckouts, shopierOrders } from '../src/db/schema.js';
 import { sweepShopierCheckouts } from '../src/services/shopierSales.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import type * as Bus from '../src/stream/bus.js';
@@ -325,6 +325,7 @@ describe('Shopier sales', () => {
       const body = order(await opened('planet-lava'));
       expect((await webhook('order.created', body, { token: refundToken })).statusCode).toBe(200);
       expect(await owned()).toEqual(['planet-lava']);
+      expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(1);
     });
 
     it('grants a paid order of the commander\'s product without any note, and closes it once', async () => {
@@ -333,6 +334,7 @@ describe('Shopier sales', () => {
       const response = await webhook('order.created', body);
       expect(response.statusCode, response.body).toBe(200);
       expect(await owned()).toEqual(['planet-lava']);
+      expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(1);
       expect(await shopierRights()).toMatchObject([{ accountId: fixture.accountIds[1], cosmeticId: 'planet-lava',
         source: 'SHOPIER', orderRef: `${body.id}:planet-lava` }]);
       const checkout = await checkoutOf(productId);
@@ -465,6 +467,7 @@ describe('Shopier sales', () => {
       await manual(1, 'planet-turkey');
       const body = order(await opened('planet-lava'));
       await webhook('order.created', body);
+      expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(1);
       expect((await app.inject({ method: 'POST', url: `/api/skins/planets/${fixture.planetIds[1]}`, headers: player,
         payload: { skinId: 'planet-lava' } })).statusCode).toBe(200);
       await webhook('refund.updated', refund(body.id, { type: 'partial', total: '10.00' }));
@@ -474,6 +477,7 @@ describe('Shopier sales', () => {
       expect((await webhook('refund.updated', full)).statusCode).toBe(200);
       expect((await webhook('refund.updated', full)).statusCode).toBe(200);
       expect(await owned()).toEqual(['planet-turkey']);
+      expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(0);
       const [world] = await fixture.db.select({ skin: planets.equippedSkinId }).from(planets).where(eq(planets.id, fixture.planetIds[1]!));
       expect(world?.skin).toBeNull();
       expect(await row(body.id)).toMatchObject({ status: 'REFUNDED' });

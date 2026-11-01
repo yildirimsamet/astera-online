@@ -1,6 +1,7 @@
 import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { commitHonor } from './honorCommitment.js';
+import { commitLegacyAttack } from './legacyEvents.js';
 import { monumentFlight, monumentPosition, monumentMotionStart } from './monumentMotion.js';
 import { reserveMonumentHome } from './monumentFuel.js';
 import { randomUUID } from 'node:crypto';
@@ -2841,6 +2842,8 @@ export async function startClanWar(
   await publishWar(tx, clan.id);
   await commitHonor(tx, { seasonId: operation.seasonId, source: 'CLAN_WAR', id: mission.id,
     attack: fighters, defence: [targetPlayerId], at: now, adminUsernames: new Set(input.adminUsernames ?? []) });
+  await commitLegacyAttack(tx, { seasonId: operation.seasonId, sourceKey: `clan-war:${mission.id}`,
+    attackers: fighters, defenders: [targetPlayerId], at: now });
   return {
     missionId: mission.id,
     arriveAt: arriveAt.toISOString(),
@@ -2978,6 +2981,8 @@ async function startMonumentClanWar(tx: Tx, input: {
   await publishWar(tx, clan.id);
   await commitHonor(tx, { seasonId: operation.seasonId, source: 'MONUMENT', id: operation.id,
     attack: fighters, defence: holders, at: now, adminUsernames: new Set(input.adminUsernames ?? []) });
+  await commitLegacyAttack(tx, { seasonId: operation.seasonId, sourceKey: `monument:${operation.id}`,
+    attackers: fighters, defenders: holders, at: now });
   return { missionId: nativeIds[0]!, arriveAt: arriveAt.toISOString(), resolveAt: arriveAt.toISOString(), participants: fighters.length,
     operation: await projectOperation(tx, attacking ?? operation, input.actor.playerId, now) };
 }

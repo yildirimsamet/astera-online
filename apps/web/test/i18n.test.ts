@@ -306,6 +306,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'honorBenefits.atLeast', 'honorBenefits.atMost', 'honorBenefits.range',
   'honorBenefits.negativeRange', 'honorBenefits.neutralRange', 'honorBenefits.difference', // Honor proper name and mathematical inequalities.
   'leaderboard.honorTitle', // Honor is the ranking's proper name in every language.
+  'legacy.seasons.honor', // The same proper name on a Legacy season card.
+  'legacy.reveal.counter', // "2 / 5": digits and a slash in every language.
   'repairStation.maintenance.hangar', // Hangar is the established Turkish building name too.
   // A commander's name, a bullet and the monument's own (translated) name: no words of its own.
   'monument.honoured',

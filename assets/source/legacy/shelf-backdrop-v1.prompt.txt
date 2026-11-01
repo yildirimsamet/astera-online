@@ -1,0 +1,13 @@
+Generate ONE image with your image generation tool and save it as PNG to the absolute path:
+/tmp/claude-1000/-home-yildirim-Desktop-Coding-MyProjects-blindspace/e38e6a1f-cf0a-4600-b972-f1d341f45e99/scratchpad/codex/shelf-backdrop.png
+Do not write any code or modify any other file. Only generate and save the image.
+
+Image brief (portrait, aspect ratio 4:5, e.g. 1024x1280):
+Front view, perfectly symmetric and orthographic-looking, of the interior of an EMPTY premium trophy display cabinet aboard a luxury starship, for a mobile space strategy game called Astera Online.
+- Exactly TWO horizontal shelves stacked vertically, each shelf about 40% of the image height. The top shelf surface sits at about 46% of image height, the bottom shelf surface at about 88%.
+- On each shelf exactly THREE identical empty round display plinths, evenly spaced at 17%, 50% and 83% of the image width. Plinths are low, dark brushed gunmetal with a thin warm gold rim.
+- Above each plinth a soft overhead spotlight creating a gentle pool of warm light on the plinth and a subtle glow on the back wall. Nothing standing on the plinths.
+- Materials: dark walnut side panels with thin brushed brass trim, deep navy-black back wall with subtle hexagonal paneling, faint cool cyan edge light along the shelf fronts.
+- Behind the back wall, at the very top center, a small narrow viewport window showing a quiet blue-violet nebula and stars.
+- Mood: dark, elegant, museum-like, high-end, cinematic, photoreal render quality, slightly desaturated, lots of dark negative space for 3D objects to be placed on top later.
+- Strictly NO trophies, NO medals, NO objects on plinths, NO text, NO letters, NO numbers, NO logos, NO emblems, NO flags, NO symbols, NO people, NO plants.

@@ -63,6 +63,7 @@ import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { takeHomeHealth } from './homeHealth.js';
 import { commitHonor } from './honorCommitment.js';
+import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
 
 export interface LaunchResult {
@@ -572,6 +573,8 @@ export async function launchAttack(
 
     await commitHonor(tx, { seasonId: origin.seasonId, source: 'WORLD', id: mission!.id,
       attack: [me.id], defence: them ? [them.id] : [], at: origin.now, adminUsernames });
+    await commitLegacyAttack(tx, { seasonId: origin.seasonId, sourceKey: `world:${mission!.id}`,
+      attackers: [me.id], defenders: them ? [them.id] : [], at: origin.now });
 
     const homeDefenceAfter =
       fleetCount(remaining) + fleetCount(origin.ground);

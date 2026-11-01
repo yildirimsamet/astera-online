@@ -19,6 +19,7 @@ import {
 } from '@astera/rules';
 import {
   buildings,
+  legacyActivityDays,
   galaxyEventOccurrences,
   hpRadiationSources,
   planets,
@@ -216,8 +217,10 @@ describe('a convoy sent to the merchant', () => {
     const damage = [{ hull: 'COURIER' as const, count: 4, damageBp: 9700, remainderBp: 0.25 }];
     await f.db.transaction((tx) => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
       fleet: { COURIER: 4 }, damage, at: f.clock.now() }));
+    await f.db.delete(legacyActivityDays);
     const result = await launchTrade(f.db, mine, { occurrenceId: merchant.occurrenceId, fleet: { COURIER: 2 },
       give: RES(40), want: RES(0, 20) }, f.clock);
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ accountId: f.accountIds[0] }]);
     const [run] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, result.runId));
     expect(run?.damage).toEqual([{ ...damage[0], count: 2 }]);
     const { resolveTradeArrival, resolveTradeReturn } = await import('../src/services/trade.js');

@@ -10,6 +10,7 @@ import {
   scheduledEvents,
   seasons,
   units,
+  legacyFacts,
 } from '../src/db/schema.js';
 import { buildUnits, raiseInstrument, upgradeBuilding } from '../src/services/build.js';
 import { abandonBuildOrder, cancelBuildOrder } from '../src/services/buildQueue.js';
@@ -70,6 +71,8 @@ describe('ordinary build queues', () => {
     expect(completed.homeFleet.DART).toBe(2);
     expect(world?.builtEver.DART).toBe(2);
     expect((await f.db.select().from(buildOrders))[0]?.status).toBe('COMPLETED');
+    const receipts = await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'SHIPS_BUILT:DART'));
+    expect(receipts).toEqual([expect.objectContaining({ accountId: f.accountIds[0], amount: 2, sourceKey: `build:${order!.id}` })]);
   });
 
   it('reads gates through earlier orders in the same queue', async () => {

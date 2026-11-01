@@ -23,6 +23,7 @@ export const ATMOSPHERE = {
   interceptor: { src: `${BASE}/interceptor-v4.webp`, position: '50% 32%' },
   strategic: { src: `${BASE}/strategic-v2.webp`, position: '50% 45%' },
   commander: { src: `${BASE}/commander-v1.webp`, position: '65% 40%' },
+  legacy: { src: '/assets/legacy/header-gallery-v1.webp', position: '72% 40%' },
   fleet: { src: `${BASE}/fleet-v1.webp`, position: '55% 48%' },
   intel: { src: `${BASE}/intel-v1.webp`, position: '55% 45%' },
   clan: { src: `${BASE}/clan-v1.webp`, position: '60% 56%' },

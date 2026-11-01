@@ -11,7 +11,7 @@ import {
   type Fleet,
   type HullId,
 } from '@astera/rules';
-import { buildOrders, planets, players, seasons, units } from '../src/db/schema.js';
+import { buildOrders, legacyActivityDays, planets, players, seasons, units } from '../src/db/schema.js';
 import { abandonBuildOrder, cancelBuildOrder } from '../src/services/buildQueue.js';
 import { secedeColony } from '../src/services/loyalty.js';
 import { planetView } from '../src/services/planetView.js';
@@ -83,11 +83,13 @@ describe('the Repair Station', () => {
   });
 
   it('repairs a lot for the damaged share of its price and time, and brings the ships home whole', async () => {
+    await f.db.delete(legacyActivityDays);
     const [id] = await dock([lot('BALLISTA', 2, 6400)]);
     const before = await stock();
     const homeBefore = (await homeOf()).BALLISTA ?? 0;
 
     const result = await startRepair(f.db, mine, { lotIds: [id!] }, f.clock, me);
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ accountId: f.accountIds[0] }]);
 
     const bill = shipRepairCost([lot('BALLISTA', 2, 6400)], 100);
     const after = await stock();

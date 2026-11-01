@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { cosmeticEntitlements, polarSkinOrders } from '../src/db/schema.js';
+import { cosmeticEntitlements, legacyAwards, polarSkinOrders } from '../src/db/schema.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
 const ringProductId = '17734747-6204-4a58-bec2-ff49c52e1aa1';
@@ -171,6 +171,7 @@ describe('Polar skin sales', () => {
       .where(eq(cosmeticEntitlements.accountId, fixture.accountIds[0]!));
     expect(rights).toHaveLength(1);
     expect(rights[0]).toMatchObject({ source: 'POLAR', orderRef: `${data.id}:planet-lava` });
+    expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(1);
   });
 
   it('rejects a mismatched product and blocks a single elemental checkout during a pending bundle', async () => {
@@ -220,6 +221,7 @@ describe('Polar skin sales', () => {
     expect(rights[0]).toMatchObject({ source: 'POLAR', orderRef: `${data.id}:planet-lava` });
     expect((await webhook('order.refunded', { ...data, status: 'refunded' })).statusCode).toBe(200);
     expect(await owned()).toEqual([]);
+    expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(0);
     const [replacement] = await fixture.db.select().from(polarSkinOrders)
       .where(eq(polarSkinOrders.checkoutId, nextCheckoutId));
     expect(replacement?.status).toBe('PENDING');

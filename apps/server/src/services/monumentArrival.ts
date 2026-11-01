@@ -1,4 +1,5 @@
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
+import { recordPlayerLegacyFact, settleLegacyAttack } from './legacyEvents.js';
 import { monumentPosition } from './monumentMotion.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -270,6 +271,13 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     }
   }
   await tx.insert(monumentBattleParticipants).values(participants);
+  for (const sourceKey of new Set(incomingWaves.map(wave => `monument:${wave.jointOperationId ?? wave.id}`))) {
+    await settleLegacyAttack(tx, { seasonId: locked.season.id, sourceKey, defenders: [...new Set(dBefore.map(lot => lot.playerId))], at });
+  }
+  for (const wave of incomingWaves) {
+    if (wave.jointOperationId !== null) await recordPlayerLegacyFact(tx, wave.playerId, locked.season.id,
+      'CLAN_WAR_ATTACKS', `clan-war:${wave.jointOperationId}`, at);
+  }
   for (const wave of incomingWaves) {
     await recordAdmiralBattle(tx, 'monument', wave.id, { lost: result.control !== 'ATTACKER',
       lostValue: Math.round(result.attackerLossValue + result.defenderLossValue) });

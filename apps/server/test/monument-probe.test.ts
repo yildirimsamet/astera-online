@@ -1,15 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, PROBE, seededFrom, type Fleet } from '@astera/rules';
-import { hpRadiationSources, monumentProbes, monumentShipLots, monumentWaves, monuments, notifications, planets, scheduledEvents, seasons, units } from '../src/db/schema.js';
+import { HULLS, MOBILE_HULLS, PROBE, seededFrom, type Fleet } from '@astera/rules';
+import { pino } from 'pino';
+import { buildApp } from '../src/app.js';
+import { TokenService } from '../src/auth/tokens.js';
+import { legacyProfileSchema, legacyProgressSchema } from '../../web/src/api/legacySchemas.js';
+import { hpRadiationSources, legacyActivityDays, legacyFacts, legacyMonumentIntervals, monumentProbes, monumentShipLots, monumentWaves, monuments, notifications, planets, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { launchMonumentProbe, readMonumentProbeReports, resolveMonumentProbe } from '../src/services/monumentProbe.js';
 import { advanceMonument } from '../src/services/monumentArrival.js';
 import { hasMonumentActivity, removeTerminalMonumentWaves } from '../src/services/monumentLifecycle.js';
 import { closeSeasonMonuments } from '../src/services/monumentSeasonClose.js';
 import { reanchorMonumentOrigin } from '../src/services/monumentOwnership.js';
 import { onMonumentProbe } from '../src/worker/monumentHandlers.js';
-import { seedWorld, testDb, type Fixture } from './helpers.js';
+import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { preserveLegacySeasonEvents } from '../src/services/legacyArchive.js';
 
 let f: Fixture;
 let m: typeof monuments.$inferSelect;
@@ -54,6 +59,26 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('a monument probe and its private arrival snapshot', () => {
+  it.each([0, 10])('includes ongoing offline duty on legacy reads, stopping at the real last ship death (dose %i)', async intensity => {
+    await holds({ DART: 5 });
+    if (intensity > 0) await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id,
+      x: m.x, y: m.y, z: m.z, radius: 100, intensityHpPerMinute: intensity, mode: 'EMIT', activeFrom: at(0) });
+    f.clock.set(at(60));
+    const built = buildApp({ db: f.db, clock: f.clock, env: testEnv(), logger: pino({ level: 'silent' }) });
+    try {
+      await built.app.ready();
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const headers = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
+      const response = await built.app.inject({ url: '/api/legacy/me/progress', headers });
+      expect(response.statusCode).toBe(200);
+      const expected = intensity === 0 ? 3600 : HULLS.DART.hp / intensity * 60;
+      expect(legacyProgressSchema.parse(response.json()).achievements.find(row => row.id === 'monument-warden')?.progress).toBe(expected);
+      const profile = legacyProfileSchema.parse((await built.app.inject({ url: '/api/legacy/me', headers })).json());
+      expect(profile.collection.count).toBe(intensity === 0 ? 1 : 0);
+      expect(await f.db.select().from(legacyActivityDays)).toEqual([]);
+    } finally { await built.close(); }
+  });
+
   it('uses the normal probe price and serializes a same-target cooldown race', async () => {
     const launch = () => f.db.transaction((tx) => launchMonumentProbe(tx, { playerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, monumentId: m.id, clock: f.clock }));
     const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
@@ -66,6 +91,9 @@ describe('a monument probe and its private arrival snapshot', () => {
     expect(after?.alloy).toBe(before!.alloy - PROBE.alloy);
     expect(after?.crystal).toBe(before!.crystal - PROBE.crystal);
     expect(await f.db.select().from(monumentProbes)).toHaveLength(1);
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'PROBES')))
+      .toMatchObject([{ accountId: f.accountIds[1], amount: 1, occurredAt: at(0) }]);
+    expect(await f.db.select().from(legacyActivityDays)).toEqual([expect.objectContaining({ accountId: f.accountIds[1] })]);
     expect(await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.kind, 'monument_probe'))).toHaveLength(1);
   });
 
@@ -73,6 +101,16 @@ describe('a monument probe and its private arrival snapshot', () => {
     await expect(f.db.transaction((tx) => launchMonumentProbe(tx, { playerId: f.playerIds[1]!, originPlanetId: f.planetIds[0]!, monumentId: m.id, clock: f.clock })))
       .rejects.toMatchObject({ code: 'PLANET_NOT_OWNED' });
     expect(await f.db.select().from(monumentProbes)).toEqual([]);
+  });
+
+  it('restores only a surviving wave’s proven HOLD interval from before legacy tracking', async () => {
+    await holds({ DART: 5 });
+    await f.db.transaction(tx => advanceMonument(tx, { monumentId: m.id, at: at(60) }));
+    await f.db.delete(legacyMonumentIntervals);
+    await f.db.transaction(tx => preserveLegacySeasonEvents(tx, f.seasonId, at(120)));
+    expect(await f.db.select().from(legacyMonumentIntervals)).toMatchObject([
+      { accountId: f.accountIds[0], from: at(0), to: at(60) },
+    ]);
   });
 
   it('keeps a lost probe’s exact enemy roster out of storage and out of all intel reads', async () => {
@@ -102,6 +140,14 @@ describe('a monument probe and its private arrival snapshot', () => {
     expect(notices).toHaveLength(1);
     expect(notices[0]).toMatchObject({ payload: { targetKind: 'MONUMENT', monumentId: m.id,
       monumentOrdinal: m.ordinal, observedAt: row.arriveAt.toISOString(), deliveredAt: returning.homeAt.toISOString() } });
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'PROBES')))
+      .toEqual([expect.objectContaining({ accountId: f.accountIds[1], amount: 1, sourceKey: `monument-probe:${row.id}` })]);
+    await f.db.delete(legacyFacts).where(eq(legacyFacts.metric, 'PROBES'));
+    await f.db.delete(legacyActivityDays);
+    await f.db.transaction(tx => preserveLegacySeasonEvents(tx, f.seasonId, returning.homeAt!));
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'PROBES')))
+      .toEqual([expect.objectContaining({ accountId: f.accountIds[1], amount: 1, sourceKey: `monument-probe:${row.id}`, origin: 'RESTORED' })]);
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ accountId: f.accountIds[1], day: 0, firstActionAt: row.departAt }]);
   });
 
   it('reconciles an earlier probe before a later HOLD read loses the defenders to radiation', async () => {

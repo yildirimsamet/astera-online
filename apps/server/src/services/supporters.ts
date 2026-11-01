@@ -6,6 +6,7 @@ import { accounts, cosmeticEntitlements, players } from '../db/schema.js';
 import { normaliseUsername } from '../auth/credentials.js';
 import { publishGlobal } from '../stream/bus.js';
 import { GameError } from './planet.js';
+import { deferLegacyRefresh } from './legacy.js';
 
 export const SUPPORTER_BADGE_ID = 'badge-supporter';
 
@@ -27,6 +28,7 @@ export async function setSupporterStatus(
     const [account] = await tx.select({ id: accounts.id, displayName: accounts.displayName }).from(accounts)
       .where(eq(accounts.username, normaliseUsername(username))).for('update');
     if (!account) throw new GameError('ACCOUNT_NOT_FOUND', 'Account not found', 404);
+    deferLegacyRefresh(tx, account.id, clock.now());
     const active = and(eq(cosmeticEntitlements.accountId, account.id),
       eq(cosmeticEntitlements.cosmeticId, SUPPORTER_BADGE_ID), isNull(cosmeticEntitlements.revokedAt));
     const [existing] = await tx.select({ grantedAt: cosmeticEntitlements.grantedAt })

@@ -1,3 +1,4 @@
+import { deferLegacyRefresh } from './legacy.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 import { and, desc, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
@@ -246,6 +247,7 @@ export async function processPaddleEvent(db: Db, raw: string): Promise<void> {
       }
       await tx.update(paddleSkinOrders).set({ transactionId: data.id, customerId: data.customer_id ?? null,
         status: 'COMPLETED' }).where(eq(paddleSkinOrders.id, order.id));
+      deferLegacyRefresh(tx, order.accountId, new Date());
       return;
     }
     if (payload.event_type !== 'adjustment.created' && payload.event_type !== 'adjustment.updated') return;
@@ -263,6 +265,7 @@ export async function processPaddleEvent(db: Db, raw: string): Promise<void> {
     if (!offer.success) return;
     await tx.update(paddleSkinOrders).set({ status: 'REVOKED' }).where(eq(paddleSkinOrders.id, order.id));
     if (!order.accountId) return;
+    deferLegacyRefresh(tx, order.accountId, new Date());
     for (const skinId of skinsFor(offer.data)) {
       await tx.update(cosmeticEntitlements).set({ revokedAt: new Date() }).where(and(
         eq(cosmeticEntitlements.source, 'PADDLE'),

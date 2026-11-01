@@ -1,4 +1,5 @@
 import { planetRadiationPath } from './planetAegis.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { RADIATION_BOMB, RADIATION_BOMB_VISUAL, RADIATION_LEVEL_HP_PER_MINUTE, radiationBombBuildSeconds,
   distance, travelExact, visualLeg, worldRadius, monumentVisualScale, segmentsExposureHp, type FaultKind, type RadiationBombLevel, type Vec3 } from '@astera/rules';
@@ -167,6 +168,7 @@ export async function launchRadiationBomb(db: Db, input: RadiationBombLaunch) {
     await tx.update(strategicAssets).set({ status: 'LAUNCHED', readyAt: null, remainingSeconds: 0 })
       .where(eq(strategicAssets.id, asset.id));
     await markProgress(tx, origin.playerId, origin.now);
+    await recordPlayerLegacyFact(tx, origin.playerId, origin.seasonId, 'RADIATION_BOMB_LAUNCHES', `bomb:${flight.id}`, origin.now);
     await schedule(tx, { seasonId: origin.seasonId, kind: 'radiation_bomb_arrival', refId: flight.id,
       dedupeKey: `radiation-bomb-arrival:${flight.id}`, resolveAt: arriveAt });
     await scheduleBombInterception(tx, flight, origin.now);

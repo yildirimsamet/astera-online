@@ -1,4 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
+import { recordLegacyActivity } from './legacy.js';
 import {
   HULLS,
   MULTI_WORLD,
@@ -405,6 +407,7 @@ export async function launchTransfer(
     await publishShard(tx, origin.seasonId, 'launch');
     if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
     await recomputePlayerWealth(tx, ownerPlayerId, clock.now());
+    await recordLegacyActivity(tx, ownerPlayerId, origin.now);
     return {
       missionId: mission.id,
       arriveAt,
@@ -538,6 +541,7 @@ export async function launchSettlement(
     await publishShard(tx, origin.seasonId, 'launch');
     if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
     await recomputePlayerWealth(tx, ownerPlayerId, clock.now());
+    await recordLegacyActivity(tx, ownerPlayerId, origin.now);
     return {
       missionId: mission.id,
       arriveAt,
@@ -961,6 +965,7 @@ export async function resolveSettlement(
     now,
     protectedUntil: addMinutes(now, MULTI_WORLD.occupationMinutes),
   });
+  await recordPlayerLegacyFact(tx, mission.ownerPlayerId, mission.seasonId, 'NEUTRAL_COLONIES', `colony:${target.world.id}`, now);
   await clearReservedFleet(tx, mission);
   await landShips(tx, {
     planetId: target.world.id,

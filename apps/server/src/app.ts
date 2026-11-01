@@ -52,6 +52,7 @@ import { StreamFence } from './stream/fence.js';
 import { registerSessionRoutes } from './routes/session.js';
 import { registerSeasonRoutes } from './routes/season.js';
 import { registerMaintenanceRoutes } from './routes/maintenance.js';
+import { registerLegacyRoutes } from './routes/legacy.js';
 import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
@@ -510,6 +511,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerPreviewRoutes(app);
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerSeasonRoutes(app);
+    registerLegacyRoutes(app);
     registerPlanetRoutes(app);
     registerVacationRoutes(app);
     registerNotificationCenterRoutes(app);

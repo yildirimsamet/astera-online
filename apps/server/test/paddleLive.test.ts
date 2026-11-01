@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { cosmeticEntitlements, paddleSkinOrders, planets } from '../src/db/schema.js';
+import { cosmeticEntitlements, legacyAwards, paddleSkinOrders, planets } from '../src/db/schema.js';
 import { LIVE_PRICE_IDS, verifyPaddleSignature } from '../src/services/paddleLive.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
@@ -119,6 +119,7 @@ describe('live Paddle skin sales', () => {
     expect(new Set(owned)).toEqual(new Set(['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert']));
     const rights = await fixture.db.select().from(cosmeticEntitlements).where(eq(cosmeticEntitlements.accountId, fixture.accountIds[0]!));
     expect(rights).toHaveLength(4);
+    expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(2);
   });
 
   it('does not open a second checkout for an elemental skin already in a pending bundle', async () => {
@@ -134,9 +135,11 @@ describe('live Paddle skin sales', () => {
     const completed = { id: transactionId, status: 'completed', customer_id: 'ctm_01m3fxlive000000000000000',
       items: [{ price: { id: LIVE_PRICE_IDS['planet-lava'] }, quantity: 1 }] };
     await webhook('transaction.completed', completed);
+    expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(1);
     await app.inject({ method: 'POST', url: `/api/skins/planets/${fixture.planetIds[0]}`, headers: { authorization }, payload: { skinId: 'planet-lava' } });
     expect((await webhook('adjustment.updated', { transaction_id: transactionId, action: 'refund', status: 'approved' })).statusCode).toBe(200);
     expect(await readOwned()).toEqual([]);
+    expect((await fixture.db.select().from(legacyAwards)).filter(row => row.definitionId === 'show-off' && row.revokedAt === null)).toHaveLength(0);
     const [world] = await fixture.db.select({ skin: planets.equippedSkinId }).from(planets).where(eq(planets.id, fixture.planetIds[0]!));
     expect(world?.skin).toBeNull();
     const [order] = await fixture.db.select().from(paddleSkinOrders).where(eq(paddleSkinOrders.transactionId, transactionId));

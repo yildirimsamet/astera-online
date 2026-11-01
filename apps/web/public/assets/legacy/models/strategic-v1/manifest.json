@@ -1,0 +1,30 @@
+[
+  {
+    "id": "iron_death_star",
+    "path": "work/strategic-awards/iron_death_star.glb",
+    "runtime": "strategic-v1/iron_death_star.glb",
+    "bytes": 331356,
+    "sha256": "251a1cef0f5e96a52afbe880a40a78f52e7dbaaa116d3edb13e64e1a2f4ecfd4"
+  },
+  {
+    "id": "bronz_death_star",
+    "path": "work/strategic-awards/bronz_death_star.glb",
+    "runtime": "strategic-v1/bronz_death_star.glb",
+    "bytes": 331360,
+    "sha256": "f1a0313421d5a3249f7941d3f0661ad995add35ac1c3794e3b9ca582ef144cb2"
+  },
+  {
+    "id": "silver_death_star",
+    "path": "work/strategic-awards/silver_death_star.glb",
+    "runtime": "strategic-v1/silver_death_star.glb",
+    "bytes": 331360,
+    "sha256": "2061fdde19a1c488706e3840f961597e120aefd6e7dd5b54a98c4755846c9442"
+  },
+  {
+    "id": "golden_death_star",
+    "path": "work/strategic-awards/golden_death_star.glb",
+    "runtime": "strategic-v1/golden_death_star.glb",
+    "bytes": 331360,
+    "sha256": "5e079617fdc709a2d1c306ba9b5aaa8b9c53c5c4f8fdf0986d6062135324f45d"
+  }
+]

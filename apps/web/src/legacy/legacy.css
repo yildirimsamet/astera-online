@@ -1,0 +1,212 @@
+/*
+ * KOMUTAN MİRASI — the few things utilities cannot say: the brass name plate on a shelf lip,
+ * the rarity glow of a collection tile and the stage's vignette. Colours come from the v2
+ * tokens; rarity hues are the metals the 3D pieces are drawn in (legacy/finish.ts).
+ */
+.legacy-plate {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-v2-void) 82%, transparent), color-mix(in srgb, var(--color-v2-deep) 92%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-v2-premium) 28%, transparent), 0 2px 6px color-mix(in srgb, var(--color-v2-void) 70%, transparent);
+  letter-spacing: 0.01em;
+}
+
+:root {
+  /*
+   * Rarity repeats the physical award metals: iron, bronze, silver, gold.
+   */
+  --legacy-common: #909baa;
+  --legacy-rare: #c58b60;
+  --legacy-epic: #cbd5e2;
+  --legacy-legendary: #e5bd66;
+}
+
+[data-rarity] { --legacy-rarity: var(--legacy-common); }
+[data-rarity='RARE'] { --legacy-rarity: var(--legacy-rare); }
+[data-rarity='EPIC'] { --legacy-rarity: var(--legacy-epic); }
+[data-rarity='LEGENDARY'] { --legacy-rarity: var(--legacy-legendary); }
+
+.legacy-plate[data-rarity] { border-bottom: 2px solid var(--legacy-rarity); }
+
+.legacy-tile {
+  background:
+    radial-gradient(120% 85% at 50% 15%, color-mix(in srgb, var(--legacy-rarity) 30%, transparent), transparent 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--legacy-rarity) 7%, var(--color-v2-raise)), var(--color-v2-deep));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--legacy-rarity) 55%, transparent),
+    inset 0 2px 0 color-mix(in srgb, var(--legacy-rarity) 70%, transparent);
+}
+.legacy-tile[data-locked] { --legacy-rarity: var(--color-v2-line); }
+.legacy-tile[data-locked] img { filter: grayscale(1) brightness(0.28) contrast(1.2); }
+.legacy-rarity-text { color: color-mix(in srgb, var(--legacy-rarity) 80%, white); }
+
+.legacy-rarity-dot { background: var(--legacy-rarity); box-shadow: 0 0 6px var(--legacy-rarity); }
+.legacy-snapshot-pending { color: var(--legacy-rarity, var(--legacy-common)); }
+
+/* A nested award gets the foreground; another commander's header stays quietly behind it. */
+[data-scrim]:has(+ [data-sheet-panel] [data-legacy-award]),
+[data-scrim]:has(+ [data-sheet-panel] [data-legacy-editor]),
+[data-scrim]:has(+ [data-sheet-panel] [data-legacy-peek]),
+[data-scrim]:has(+ [data-sheet-panel] [data-legacy-profile]) {
+  background: rgb(2 5 12 / 76%);
+}
+
+.legacy-hero {
+  background:
+    linear-gradient(180deg, transparent 30%, var(--color-v2-deep) 100%),
+    var(--legacy-hero-art) center 35% / cover no-repeat;
+}
+
+.legacy-season-card {
+  background:
+    linear-gradient(100deg, var(--color-v2-deep) 38%, color-mix(in srgb, var(--color-v2-deep) 55%, transparent) 75%, transparent),
+    var(--legacy-season-art) right 30% / cover no-repeat;
+}
+
+.legacy-monogram {
+  background: radial-gradient(circle at 35% 30%, var(--color-v2-raise), var(--color-v2-void));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-v2-premium) 70%, transparent), 0 0 0 5px color-mix(in srgb, var(--color-v2-void) 70%, transparent), 0 0 18px color-mix(in srgb, var(--color-v2-premium) 30%, transparent);
+}
+
+/* The commander's name on a planet label: a quiet brass cup says it opens their showcase. */
+.galaxy-commander-link { transition: background-color 160ms ease, box-shadow 160ms ease; }
+.galaxy-commander-link .galaxy-commander-cup { color: var(--color-v2-premium); opacity: 0.7; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-v2-premium) 55%, transparent)); }
+.galaxy-commander-link:hover, .galaxy-commander-link:focus-visible {
+  background: color-mix(in srgb, var(--color-v2-void) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-v2-premium) 40%, transparent);
+  outline: none;
+}
+.galaxy-commander-link:active { background: color-mix(in srgb, var(--color-v2-premium) 18%, transparent); }
+
+/*
+ * The small showcase's shelf: a lit recess, a brass lip, a pool of the piece's rarity under each
+ * piece. Drawn, not painted — it has to read at 50 px a piece.
+ */
+.legacy-peek-shelf {
+  position: relative;
+  background:
+    radial-gradient(70% 90% at 50% -10%, color-mix(in srgb, var(--color-v2-premium) 16%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-v2-void) 92%, #2a1a0e), color-mix(in srgb, var(--color-v2-deep) 88%, #3a2414));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-v2-ink) 6%, transparent), inset 0 10px 18px color-mix(in srgb, var(--color-v2-void) 80%, transparent), 0 0 0 1px var(--color-v2-line);
+}
+.legacy-peek-shelf::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0; height: 7px;
+  border-radius: 0 0 var(--radius-control, 10px) var(--radius-control, 10px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-v2-premium) 75%, #6b4a1c), #4a3212 60%, color-mix(in srgb, var(--color-v2-void) 90%, transparent));
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--color-v2-premium) 60%, white 10%);
+}
+.legacy-peek-piece { position: relative; }
+.legacy-peek-piece::before {
+  content: '';
+  position: absolute; left: 12%; right: 12%; bottom: 0; height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--legacy-rarity) 75%, transparent), transparent);
+}
+.legacy-peek-socket { background: color-mix(in srgb, var(--color-v2-ink) 10%, transparent); }
+.legacy-peek-grid > li:nth-child(-n+3) {
+  padding-bottom: 8px;
+  border-bottom: 2px solid color-mix(in srgb, var(--color-v2-premium) 45%, var(--color-v2-line));
+}
+
+/*
+ * THE REVEAL. A dark room, a core of the piece's own light that charges, a flash, a ring of
+ * sparks and slow god-rays; then the piece rises (3D, AwardReveal.tsx) and its name settles
+ * in. Game motion runs whatever the OS motion setting says (CLAUDE.md). A tap sets
+ * [data-shown] and every entrance jumps to its end.
+ */
+.legacy-reveal {
+  --reveal: var(--legacy-common);
+  --reveal-2: #e6ecf5;
+  background:
+    radial-gradient(60% 45% at 50% 38%, color-mix(in srgb, var(--reveal) 22%, transparent), transparent 70%),
+    color-mix(in srgb, var(--color-v2-void) 94%, transparent);
+  backdrop-filter: blur(8px) saturate(0.8);
+  animation: legacy-reveal-in 320ms ease-out both;
+}
+.legacy-reveal[data-rarity='RARE'] { --reveal: var(--legacy-rare); --reveal-2: #ead3bd; }
+.legacy-reveal[data-rarity='EPIC'] { --reveal: var(--legacy-epic); --reveal-2: #f0f5ff; }
+.legacy-reveal[data-rarity='LEGENDARY'] { --reveal: var(--legacy-legendary); --reveal-2: #ffe2a8; }
+
+.legacy-reveal-rays {
+  position: absolute; left: 50%; top: 38%; width: 170vmax; height: 170vmax; translate: -50% -50%;
+  background: repeating-conic-gradient(from 0deg, transparent 0deg, color-mix(in srgb, var(--reveal-2) 10%, transparent) 3deg, transparent 6deg, transparent 15deg);
+  mask: radial-gradient(closest-side, black 8%, transparent 62%);
+  opacity: 0; scale: 0.4;
+  animation: legacy-reveal-rays-in 1.1s cubic-bezier(.2,.8,.2,1) 0.42s forwards, legacy-reveal-turn 40s linear infinite;
+}
+.legacy-reveal-core {
+  position: absolute; left: 50%; top: 38%; width: 46vmin; height: 46vmin; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--reveal-2) 70%, transparent), color-mix(in srgb, var(--reveal) 35%, transparent) 45%, transparent);
+  filter: blur(6px); scale: 0.05; opacity: 0.9;
+  animation: legacy-reveal-charge 0.45s cubic-bezier(.5,0,.9,.4) forwards, legacy-reveal-breathe 3.2s ease-in-out 1.2s infinite;
+}
+.legacy-reveal-flash {
+  position: absolute; left: 50%; top: 38%; width: 30vmin; height: 30vmin; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, white, color-mix(in srgb, var(--reveal-2) 80%, transparent) 40%, transparent);
+  opacity: 0; mix-blend-mode: screen;
+  animation: legacy-reveal-flash 0.7s ease-out 0.4s forwards;
+}
+.legacy-reveal-sparks { position: absolute; left: 50%; top: 38%; }
+.legacy-reveal-sparks span {
+  position: absolute; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%;
+  background: var(--reveal-2); box-shadow: 0 0 8px var(--reveal), 0 0 2px white;
+  opacity: 0;
+  animation: legacy-reveal-spark 1s cubic-bezier(.1,.7,.3,1) 0.45s forwards;
+}
+
+.legacy-reveal-stage { filter: drop-shadow(0 18px 30px color-mix(in srgb, var(--color-v2-void) 90%, transparent)); }
+.legacy-reveal-picture { animation: legacy-reveal-rise 0.9s cubic-bezier(.3,1.5,.5,1) 0.4s both; }
+.legacy-reveal-eyebrow { color: var(--reveal-2); letter-spacing: 0.22em; animation: legacy-reveal-copy 0.5s ease-out 0.75s both; }
+.legacy-reveal-name {
+  background: linear-gradient(180deg, white 20%, var(--reveal-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 24px color-mix(in srgb, var(--reveal) 35%, transparent);
+  animation: legacy-reveal-name 0.7s cubic-bezier(.2,.8,.2,1) 0.9s both;
+}
+.legacy-reveal-chips { animation: legacy-reveal-copy 0.5s ease-out 1.1s both; }
+.legacy-reveal-goal { animation: legacy-reveal-copy 0.5s ease-out 1.25s both; }
+.legacy-reveal-actions { animation: legacy-reveal-copy 0.35s ease-out both; }
+.legacy-reveal-pop { animation: legacy-reveal-pop 0.45s cubic-bezier(.3,1.6,.5,1) both; }
+
+.legacy-reveal[data-shown] :is(.legacy-reveal-eyebrow, .legacy-reveal-name, .legacy-reveal-chips, .legacy-reveal-goal, .legacy-reveal-picture, .legacy-reveal-pop) {
+  animation-delay: 0s !important; animation-duration: 0.18s !important;
+}
+
+/* A landscape phone has room beside the piece, rather than below it. */
+@media (max-height: 500px) and (min-width: 600px) {
+  .legacy-reveal-layout[data-single] {
+    display: grid;
+    width: auto;
+    max-width: 100%;
+    grid-template-columns: min(36vw, 240px) minmax(0, 340px);
+    column-gap: 24px;
+    align-items: center;
+  }
+  .legacy-reveal-layout[data-single] > .legacy-reveal-piece { display: contents; }
+  .legacy-reveal-layout[data-single] .legacy-reveal-stage { width: 100%; grid-column: 1; grid-row: 1 / span 2; }
+  .legacy-reveal-layout[data-single] .legacy-reveal-copy { grid-column: 2; grid-row: 1; }
+  .legacy-reveal-layout[data-single] .legacy-reveal-actions { grid-column: 2; grid-row: 2; margin-top: 16px; }
+  .legacy-reveal-layout[data-single] .legacy-reveal-counter { position: absolute; top: -20px; right: 0; }
+}
+
+@keyframes legacy-reveal-in { from { opacity: 0; } }
+@keyframes legacy-reveal-charge { to { scale: 1; } }
+@keyframes legacy-reveal-breathe { 50% { scale: 1.08; opacity: 0.75; } }
+@keyframes legacy-reveal-flash { 0% { opacity: 0; scale: 0.3; } 25% { opacity: 1; } 100% { opacity: 0; scale: 5; } }
+@keyframes legacy-reveal-rays-in { to { opacity: 1; scale: 1; } }
+@keyframes legacy-reveal-turn { to { rotate: 360deg; } }
+@keyframes legacy-reveal-spark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(0); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(0.4); }
+}
+@keyframes legacy-reveal-rise { from { opacity: 0; scale: 0.2; translate: 0 18%; } }
+@keyframes legacy-reveal-copy { from { opacity: 0; translate: 0 10px; } }
+@keyframes legacy-reveal-name { from { opacity: 0; letter-spacing: 0.3em; filter: blur(6px); } }
+@keyframes legacy-reveal-pop { from { opacity: 0; scale: 0.5; } }
+
+.legacy-entry {
+  background:
+    linear-gradient(100deg, var(--color-v2-deep) 35%, color-mix(in srgb, var(--color-v2-deep) 70%, transparent) 70%, transparent),
+    var(--legacy-entry-art) 70% 40% / cover no-repeat;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--color-v2-premium) 10%, transparent);
+}
+.legacy-entry:hover { border-color: color-mix(in srgb, var(--color-v2-premium) 60%, transparent); }

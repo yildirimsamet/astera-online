@@ -5,6 +5,7 @@ import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
+import { legacy } from './legacy.js';
 import { notificationCenter } from './notificationCenter.js';
 import { arena } from './arena.js';
 import { silentSpace } from './silentSpace.js';
@@ -46,7 +47,7 @@ export const de: Resources = {
   brand,
   monument,
   silentSpace,
-  vacation, notificationCenter, academy, landing, servers, app, crash, loading, document, settings, consent,
+  vacation, legacy, notificationCenter, academy, landing, servers, app, crash, loading, document, settings, consent,
   statusBar, menu, leaderboard, chat, pendingStrip, signals, sheet, toast, surface, galaxy,
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,

@@ -23,6 +23,8 @@ import {
   missions,
   neutralPlanetState,
   notifications,
+  legacyFacts,
+  legacyActivityDays,
   playerResearch,
   planets,
   players,
@@ -320,6 +322,7 @@ describe('current multi-world ruleset', () => {
       .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })
       .where(eq(neutralPlanetState.planetId, target.world.id));
 
+    await f.db.delete(legacyActivityDays);
     const launched = await launchSettlement(
       f.db,
       f.joined.playerId,
@@ -327,6 +330,7 @@ describe('current multi-world ruleset', () => {
       target.world.id,
       f.clock,
     );
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ seasonId: f.season.id, day: 0 }]);
     f.clock.set(launched.arriveAt);
     await workerFor(f.db, f.clock).tick();
 
@@ -513,6 +517,7 @@ describe('current multi-world ruleset', () => {
     await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     const before = target.world.alloy;
+    await f.db.delete(legacyActivityDays);
     const launched = await launchTransfer(
       f.db,
       f.joined.playerId,
@@ -522,6 +527,7 @@ describe('current multi-world ruleset', () => {
       { alloy: 500, crystal: 100, deuterium: 0 },
       f.clock,
     );
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ day: 0 }]);
     f.clock.set(launched.arriveAt);
     await workerFor(f.db, f.clock).tick();
     const [delivered] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
@@ -671,6 +677,8 @@ describe('current multi-world ruleset', () => {
     await workerFor(f.db, f.clock).tick();
     const [captured] = await f.db.select().from(planets).where(eq(planets.id, first!.world.id));
     expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'NEUTRAL_COLONIES')))
+      .toEqual([expect.objectContaining({ sourceKey: `colony:${first!.world.id}`, amount: 1 })]);
     await expect(launchSettlement(
       f.db,
       f.joined.playerId,

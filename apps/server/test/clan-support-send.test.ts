@@ -11,6 +11,7 @@ import {
 } from '@astera/rules';
 import {
   clanSupportWaves,
+  legacyActivityDays,
   missions,
   notifications,
   planets,
@@ -82,7 +83,9 @@ describe('a clean send', () => {
     expect(q.fuel).toBe(supportFuel(fleet, distance(origin!, host!)));
     expect(q.hostRoom).toEqual({ used: 0, reserved: 0, total: hangarCapacity(6), after: hangarLoad(fleet) });
 
+    await f.db.delete(legacyActivityDays);
     const sent = await send(f, 0, 1, fleet);
+    expect(await f.db.select().from(legacyActivityDays)).toMatchObject([{ accountId: f.accountIds[0] }]);
     const [wave] = await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, sent.wave.id));
     expect(wave).toMatchObject({
       status: 'OUTBOUND',

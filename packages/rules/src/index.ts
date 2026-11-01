@@ -68,6 +68,7 @@ export * from './trade.js';
 export * from './rewards.js';
 export * from './brandRecall.js';
 export * from './seasonRankRewards.js';
+export * from './legacy.js';
 export * from './research.js';
 export * from './strategic.js';
 export * from './view.js';

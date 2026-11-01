@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "mode": "generate",
+  "date": "2026-11-01",
+  "source": "assets/source/legacy/header-gallery-v1.png",
+  "runtime": "apps/web/public/assets/legacy/header-gallery-v1.webp",
+  "runtimeDimensions": [
+    1200,
+    720
+  ],
+  "runtimeBytes": 93162,
+  "processing": "Resize to width1200, WebPquality88; original preserved. CSS crop72%40%.",
+  "prompt": "Use case: stylized-concept. Asset type: finished decorative landscape background for a compact mobile game modal header in Astera Online, a premium realistic 3D space strategy game. Create a panoramic 3:2 cinematic scene designed to be cropped to a very wide shallow horizontal banner: a pristine commander legacy trophy gallery aboard a luxurious orbital space station. Right half: a tightly curated display of one elegant polished gold winged star trophy, a silver medallion, and a bronze orbital planet sculpture, standing within dark brushed-metal architectural niches. Fine warm gold strip lighting and a subtle cool cyan rim glow. Far right a narrow view of deep blue stars through a station window. Left half: quiet very dark navy architectural negative space, subtle wall panels and soft atmospheric gradients, so white UI titles remain easy to read over it. All trophy focal details must lie within the central horizontal 35% of the canvas height, not near top or bottom; composition must survive a 5:1 crop. Rich dimensional metal highlights, clean surfaces, refined realistic lighting, restrained luxury, cohesive black/navy/gold/cyan palette. No people. No lettering, numerals, text, logos, interface, frame, watermark or floating UI. Opaque background."
+}

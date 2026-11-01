@@ -1,3 +1,4 @@
+import { recordLegacyActivity } from './legacy.js';
 import { randomUUID } from 'node:crypto';
 import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
@@ -487,6 +488,7 @@ export async function sendClanSupport(
   await publishPrivate(tx, input.senderPlayerId, 'support');
   await publishPrivate(tx, context.hostPlayerId, 'support');
   await publishShard(tx, origin.seasonId, 'launch');
+  await recordLegacyActivity(tx, input.senderPlayerId, origin.now);
   if (fleetChangesWatch(input.fleet)) await publishWatchChanges(tx, [origin.planetId]);
 
   const [view] = await viewWaves(tx, [wave]);

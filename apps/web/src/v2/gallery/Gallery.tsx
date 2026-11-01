@@ -33,6 +33,7 @@ import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
 import { PlanetModelsGallery } from './PlanetModelsGallery.js';
 import { MonumentModelsGallery } from './MonumentModelsGallery.js';
+import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
@@ -781,6 +782,11 @@ function Views({ view }: { view: string }) {
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>
     <div className="p-3"><TeamPanel credential={() => Promise.resolve('dev')} onEnter={noop} /></div>
   </Sheet>;
+  if (view === 'legacy-award') return <LegacyAwardGallery />;
+  if (view === 'legacy-shelf-new') return <LegacyShelfGallery set="new" />;
+  if (view === 'legacy-shelf' || view === 'legacy-shelf-b' || view === 'legacy-shelf-c') return <LegacyShelfGallery set={view === 'legacy-shelf' ? 'a' : view === 'legacy-shelf-b' ? 'b' : 'c'} />;
+  if (view === 'legacy-reveal') return <LegacyRevealGallery />;
+  if (view === 'legacy-peek' || view === 'legacy-profile') return <LegacyPeekGallery page={view === 'legacy-peek' ? 'peek' : 'profile'} />;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;

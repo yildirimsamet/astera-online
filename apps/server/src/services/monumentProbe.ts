@@ -1,4 +1,6 @@
 import { monumentFlight, monumentPosition } from './monumentMotion.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
+import { recordLegacyActivity } from './legacy.js';
 import { and, desc, eq, gt, inArray, isNotNull } from 'drizzle-orm';
 import { MONUMENT_PROBE_LOSS_CHANCE, PROBE, distance, fleetEntries, hpRadiationApplies, monumentProbeSurvives, seededFrom, travelExact, type Fleet } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
@@ -43,6 +45,8 @@ export async function launchMonumentProbe(tx: Tx, input: {
   const [probe] = await tx.insert(monumentProbes).values({ seasonId: season.id, monumentId: target.id, playerId: input.playerId,
     originPlanetId: input.originPlanetId, departAt: origin.now, arriveAt, outboundRoute: [flightSegment(origin, meeting.at, origin.now, arriveAt)] }).returning();
   if (!probe) throw new Error('monument probe insert returned no row');
+  await recordLegacyActivity(tx, origin.playerId, origin.now);
+  await recordPlayerLegacyFact(tx, origin.playerId, origin.seasonId, 'PROBES', `monument-probe:${probe.id}`, origin.now);
   await saveResources(tx, origin.planetId, { alloy: origin.alloy - PROBE.alloy, crystal: origin.crystal - PROBE.crystal, deuterium: origin.deuterium });
   await recomputePlayerWealth(tx, input.playerId, input.clock.now());
   await schedule(tx, { seasonId: season.id, kind: 'monument_probe', refId: probe.id, payload: { leg: 'OUT' },
@@ -82,6 +86,7 @@ async function deliverProbe(tx: Tx, probe: Probe, at: Date): Promise<void> {
     eq(monumentProbes.id, probe.id), eq(monumentProbes.status, 'RETURNING'),
   )).returning();
   if (!delivered) return;
+  await recordPlayerLegacyFact(tx, probe.playerId, probe.seasonId, 'PROBES', `monument-probe:${probe.id}`, probe.departAt);
   const [target] = await tx.select({ ordinal: monuments.ordinal }).from(monuments).where(eq(monuments.id, probe.monumentId));
   await notify(tx, { playerId: probe.playerId, kind: 'probe_report', refId: probe.id, at,
     payload: { targetKind: 'MONUMENT', monumentId: probe.monumentId, monumentOrdinal: target?.ordinal, probeId: probe.id,

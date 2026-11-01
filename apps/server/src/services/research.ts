@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
   RESEARCH_PROJECTS,
+  legacyResearchMastered,
   researchMinutes,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -18,6 +19,7 @@ import {
 import { schedule } from '../worker/queue.js';
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { markProgress } from './waitingRoom.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import {
   GameError,
   assertWorldOperational,
@@ -301,6 +303,14 @@ export async function applyResearchCompletion(
       .where(and(eq(researchOrders.id, order.id), eq(researchOrders.status, 'BUILDING')));
   }
   await recomputePlayerWealth(tx, applied.playerId, _clock.now());
+  const completed = await tx.select().from(playerResearch).where(eq(playerResearch.playerId, applied.playerId));
+  const levels: Partial<Record<ResearchProjectId, number>> = {};
+  for (const row of completed) levels[row.projectId] = row.level;
+  if (legacyResearchMastered(levels)) {
+    const [owner] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, applied.playerId));
+    if (owner) await recordPlayerLegacyFact(tx, applied.playerId, owner.seasonId, 'RESEARCH_MASTERED',
+      `research:${owner.seasonId}`, applied.readyAt);
+  }
   return { playerId: applied.playerId };
 }
 

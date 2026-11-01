@@ -1,4 +1,6 @@
 import { refreshPlanetAegis } from './planetAegis.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
+import { recordLegacyActivity } from './legacy.js';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
@@ -342,6 +344,7 @@ export async function placeBuildOrder(
   await refreshWealth(tx, planet);
   // D212: building, ship, defence, instrument and satellite orders keep a commander home; a repair does not.
   if (input.kind !== 'REPAIR') await markProgress(tx, planet.playerId, planet.now);
+  else await recordLegacyActivity(tx, planet.playerId, planet.now);
   return order;
 }
 
@@ -717,6 +720,8 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
           seasonTelemetry: planet.seasonTelemetry,
         })
         .where(eq(planets.id, planet.planetId));
+      if (!HULLS[order.subject].ground) await recordPlayerLegacyFact(tx, planet.playerId, planet.seasonId,
+        `SHIPS_BUILT:${order.subject}`, `build:${order.id}`, order.readyAt, order.count);
       return;
     case 'INSTRUMENT':
       if (!isInstrument(order.subject)) throw new Error(`unknown instrument ${order.subject}`);

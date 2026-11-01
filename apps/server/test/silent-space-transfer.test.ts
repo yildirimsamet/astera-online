@@ -2,7 +2,9 @@ import { joinSeason } from '../src/services/player.js';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
 import { seedWorld, testDb, giveUnits, makeAccount } from './helpers.js';
-import { players, planets, playerRivals, units, commanderTransfers, mainVacancies, scheduledEvents, seasons, shards } from '../src/db/schema.js';
+import { players, planets, playerRivals, units, commanderTransfers, mainVacancies, scheduledEvents, seasons, shards, playerResearch, legacyFacts, legacyAwards, legacyActivityDays } from '../src/db/schema.js';
+import { RESEARCH_MAX_LEVEL, RESEARCH_PROJECT_IDS } from '@astera/rules';
+import { recordLegacyActivity, legacyProgress } from '../src/services/legacy.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import { enqueueReturn } from '../src/services/returnQueue.js';
@@ -31,6 +33,21 @@ it('moves an existing inactive commander without replacing worlds, fleet, stock 
   expect(await f.db.select().from(commanderTransfers)).toHaveLength(1);
   expect(await f.db.select().from(mainVacancies)).toHaveLength(1);
   expect((await transferCommander(f.db, player!.id, target!.id, f.clock)).status).not.toBe('MOVED');
+});
+
+it('preserves proven main-galaxy research before moving and excludes waiting-room actions from legacy', async () => {
+  const f = await idleFixture();
+  await f.db.insert(playerResearch).values(RESEARCH_PROJECT_IDS.map(projectId => ({
+    playerId: f.playerIds[0]!, projectId, level: RESEARCH_MAX_LEVEL[projectId], completedAt: f.clock.now(),
+  })));
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('MOVED');
+  expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'RESEARCH_MASTERED')))
+    .toMatchObject([{ accountId: f.accountIds[0], seasonId: f.seasonId }]);
+  await f.db.transaction(tx => recordLegacyActivity(tx, f.playerIds[0]!, f.clock.now()));
+  expect(await f.db.select().from(legacyActivityDays).where(eq(legacyActivityDays.seasonId, target!.id))).toEqual([]);
+  expect((await legacyProgress(f.db, f.accountIds[0]!, f.clock.now())).find(row => row.id === 'science-horizon')?.progress).toBe(1);
+  expect((await f.db.select().from(legacyAwards)).filter(row => row.definitionId === 'science-horizon')).toHaveLength(1);
 });
 /**
  * A RIVAL MARK DOES NOT SURVIVE A CHANGE OF GALAXY. D183.

@@ -1,4 +1,5 @@
 import { refreshPlanetAegis } from './planetAegis.js';
+import { attributeLegacyColonyLoss, recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   ANTI_STRATEGIC,
@@ -381,6 +382,7 @@ export async function launchDeathStar(
       .where(and(eq(strategicAssets.id, asset.id), eq(strategicAssets.status, 'READY')))
       .returning({ id: strategicAssets.id });
     if (claimed.length === 0) throw new GameError('DEATH_STAR_NOT_READY', 'It already launched', 409);
+    await recordPlayerLegacyFact(tx, origin.playerId, origin.seasonId, 'DEATH_STAR_LAUNCHES', `death-star:${mission.id}`, origin.now);
     await observeHonorOwner(tx, origin.playerId, origin.now);
     await commitStrategicHonor(tx, { seasonId: origin.seasonId, id: mission.id, owner: origin.playerId,
       defenders: target.controllerPlayerId ? [target.controllerPlayerId] : [], at: origin.now, adminUsernames });
@@ -541,6 +543,9 @@ export async function applyDeathStarStrike(
   await refreshPlanetAegis(tx, target.id, now);
   if (loyaltyAfter !== null) {
     await rescheduleLoyaltyWatch(tx, { seasonId: target.seasonId, planetId: target.id, now });
+    if (loyaltyBefore !== null && loyaltyBefore > 0 && loyaltyAfter === 0) {
+      await attributeLegacyColonyLoss(tx, target.id, [mission.ownerPlayerId]);
+    }
   }
   /*
     AND A COLONY THAT SURVIVES THE HIT BREAKS. Owner, 2026-10-15 (`DEATH_STAR.colonyFaults`).

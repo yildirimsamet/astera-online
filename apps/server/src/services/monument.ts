@@ -1,4 +1,6 @@
 import { commitHonor } from './honorCommitment.js';
+import { commitLegacyAttack } from './legacyEvents.js';
+import { recordLegacyMonumentInterval } from './legacy.js';
 import { recordRadiationHonor } from './honorRadiation.js';
 import { fleetPace } from '@astera/rules';
 import { monumentFlight, monumentRadiationTarget, monumentHoldPath, monumentMotionStart } from './monumentMotion.js';
@@ -38,7 +40,7 @@ import {
 } from '@astera/rules';
 import { type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, radiationBombFlights, units, type seasons } from '../db/schema.js';
+import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, players, radiationBombFlights, units, type seasons } from '../db/schema.js';
 import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
@@ -324,6 +326,10 @@ async function settleMonumentInterval(tx: Tx, locked: LockedMonument, at: Date, 
     productionPerMinute: monument.productionPerMinute, sources,
   });
   if (toMs > fromMs) {
+    const holdOwners = [...new Set(locked.waves.filter(wave => holdIds.has(wave.id)).map(wave => wave.playerId))];
+    const identities = holdOwners.length === 0 ? [] : await tx.select({ id: players.id, accountId: players.accountId })
+      .from(players).where(inArray(players.id, holdOwners));
+    const accountOf = new Map(identities.map(owner => [owner.id, owner.accountId]));
     for (const lot of holdLots) await recordRadiationHonor(tx, { seasonId: season.id, victim: lot.playerId,
       slice: `monument:${lot.id}`, until: new Date(toMs), fleet: { [lot.hull]: lot.count }, damage: [lot], tech: lot.tech,
       segments: monumentHoldPath(monument, season, fromMs, toMs), sources });
@@ -355,6 +361,12 @@ async function settleMonumentInterval(tx: Tx, locked: LockedMonument, at: Date, 
         wave.resolvedAt = new Date(death);
         wave.reservedBulk = 0;
         wave.generation += 1;
+      }
+      const accountId = accountOf.get(wave.playerId);
+      const until = wave.status === 'LOST' ? wave.resolvedAt : new Date(toMs);
+      if (accountId && wave.heldAt && until && until > wave.heldAt) {
+        await recordLegacyMonumentInterval(tx, { accountId, seasonId: season.id, sourceKey: `wave:${wave.id}`,
+          from: wave.heldAt, to: until });
       }
       await tx.update(monumentWaves).set({
         radiationSettledAt: wave.radiationSettledAt, status: wave.status,
@@ -675,5 +687,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   await commitHonor(tx, { seasonId: origin.seasonId, source: 'MONUMENT', id: wave.id, attack: [input.senderPlayerId],
     defence: context.pvp ? [...new Set(locked.waves.filter(row => row.status === 'HOLD').map(row => row.playerId))] : [],
     at: origin.now, adminUsernames: input.adminUsernames ?? new Set() });
+  await commitLegacyAttack(tx, { seasonId: origin.seasonId, sourceKey: `monument:${wave.id}`, attackers: [input.senderPlayerId],
+    defenders: context.pvp ? [...new Set(locked.waves.filter(row => row.status === 'HOLD').map(row => row.playerId))] : [], at: origin.now });
   return { wave, quote: context.quote };
 }

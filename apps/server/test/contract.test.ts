@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { COMBAT, COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import { legacyAwardDetailSchema, legacyCatalogueSchema, legacyProfileSchema, legacyCollectionSchema, legacyProgressSchema, legacySeasonsSchema } from '../../web/src/api/legacySchemas.js';
+import { recordLegacyFact } from '../src/services/legacy.js';
+import { forceSeasonEnd } from '../src/worker/handlers.js';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -228,6 +231,22 @@ describe('every payload the client parses', () => {
   let app: FastifyInstance;
   let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
+
+  it('parses the permanent commander legacy endpoints with the actual client contracts', async () => {
+    f.clock.advance(12 * 24 * 60);
+    await f.db.transaction(tx => recordLegacyFact(tx, { accountId: f.accountIds[0]!, seasonId: f.seasonId,
+      metric: 'PROBES', sourceKey: 'contract:probes', amount: 10, at: f.clock.now() }));
+    const profile = legacyProfileSchema.parse(await get('/api/legacy/me'));
+    expect(profile.self).toBe(true);
+    expect(legacyCatalogueSchema.parse(await get('/api/legacy/catalogue')).definitions.length).toBeGreaterThan(20);
+    legacyProgressSchema.parse(await get('/api/legacy/me/progress'));
+    const collection = legacyCollectionSchema.parse(await get(`/api/legacy/profiles/${profile.publicId}/collection`));
+    legacyAwardDetailSchema.parse(await get(`/api/legacy/profiles/${profile.publicId}/awards/${collection.awards[0]!.id}`));
+    expect(legacyProfileSchema.parse(await get(`/api/legacy/players/${f.playerIds[0]!}`)).publicId).toBe(profile.publicId);
+    await forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId);
+    const history = legacySeasonsSchema.parse(await get(`/api/legacy/profiles/${profile.publicId}/seasons`));
+    expect(legacyProfileSchema.parse(await get(`/api/legacy/results/${history.seasons[0]!.resultId}`)).publicId).toBe(profile.publicId);
+  });
 
   it('parses radiation bomb production, launch, occupied stock, own flight and impact sources with client contracts', async () => {
     const origin = f.planetIds[0]!;

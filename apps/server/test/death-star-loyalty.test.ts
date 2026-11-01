@@ -9,6 +9,7 @@ import {
   scheduledEvents,
   strategicAssets,
   strategicImpacts,
+  legacyFacts,
 } from '../src/db/schema.js';
 import { launchDeathStar } from '../src/services/strategic.js';
 import { readBattleReports, type StrategicReportView } from '../src/services/reports.js';
@@ -151,6 +152,11 @@ describe('a Death Star hit on a colony', () => {
       .where(and(eq(notifications.playerId, f.playerIds[1]!), eq(notifications.kind, 'colony_lost'))));
     expect(lost).toHaveLength(1);
     expect(lost[0]!.payload).toMatchObject({ planetId: colony, cause: 'SECESSION' });
+    const receipts = await f.db.select().from(legacyFacts).where(eq(legacyFacts.accountId, f.accountIds[0]!));
+    expect(receipts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ metric: 'DEATH_STAR_LAUNCHES', amount: 1, sourceKey: `death-star:${launched.missionId}` }),
+      expect.objectContaining({ metric: 'COLONIES_NEUTRALISED', amount: 1, sourceKey: `colony:${colony}` }),
+    ]));
   });
 
   it('turns a colony below twenty NEUTRAL and never below zero', async () => {

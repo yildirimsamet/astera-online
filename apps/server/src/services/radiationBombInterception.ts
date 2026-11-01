@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { ANTI_STRATEGIC, pointAlong } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { radiationBombFlights, strategicAssets } from '../db/schema.js';
@@ -56,6 +57,8 @@ export async function interceptRadiationBomb(tx: Tx, flight: Flight, now: Date, 
         weaponPosition: positionAt(shot.at), collisionPosition: positionAt(impactAt) } })
       .where(and(eq(radiationBombFlights.id, flight.id), eq(radiationBombFlights.status, 'OUTBOUND'))).returning({ id: radiationBombFlights.id });
     if (!claimed[0]) throw new Error('bomb interception lost its locked flight after claiming ammunition');
+    await recordPlayerLegacyFact(tx, leg.target.controllerPlayerId, flight.seasonId, 'STRATEGIC_INTERCEPTIONS',
+      `interception:bomb:${flight.id}`, shot.at);
     await tx.update(strategicAssets).set({ status: 'CONSUMED' }).where(eq(strategicAssets.id, flight.assetId));
     for (const playerId of [flight.ownerPlayerId, leg.target.controllerPlayerId]) {
       noteRadiationInventoryChange(tx, playerId, observedAt);

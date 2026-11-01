@@ -6,6 +6,7 @@ import { accounts, buildings, planets, players, seasons, shards, satellites, uni
 import { lockAdmission } from './returnQueue.js';
 import { galaxyOf } from './season.js';
 import { GameError, loadLocked, recomputeWealth } from './planet.js';
+import { registerLegacyParticipation } from './legacy.js';
 import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
@@ -259,6 +260,7 @@ export async function joinSeason(
           .returning();
 
         if (!player) throw new PlayerExists();
+        await registerLegacyParticipation(tx, accountId, seasonId, now);
 
         const planetName = planetNameFor(slot.index);
         const [planet] = await tx

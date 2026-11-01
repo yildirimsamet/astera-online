@@ -7,6 +7,7 @@ import { settleMonument } from '../src/services/monument.js';
 import { recomputePlayerWealth, setUnits } from '../src/services/planet.js';
 import * as stream from '../src/stream/bus.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
+import { legacyProgress } from '../src/services/legacy.js';
 
 let f: Fixture;
 let target: typeof monuments.$inferSelect;
@@ -53,6 +54,16 @@ beforeEach(async () => {
 afterAll(async () => { const { close } = await testDb(); await close(); });
 
 describe('transactional monument HOLD settlement', () => {
+  it('records the union of genuine HOLD waves and excludes time after their last ship dies', async () => {
+    f.clock.advance(12 * 24 * 60);
+    await f.db.update(monuments).set({ settledAt: f.clock.now() }).where(eq(monuments.id, target.id));
+    await hold(0, [{ hull: 'DART', count: 1 }]);
+    await hold(0, [{ hull: 'DART', count: 1 }]);
+    await cloud(HULLS.DART.hp);
+    await settle(afterMinutes(2));
+    const progress = await legacyProgress(f.db, f.accountIds[0]!, f.clock.now());
+    expect(progress.find(row => row.id === 'monument-warden')?.progress).toBe(60);
+  });
   it('counts physically carried production in Wealth and removes lost ships and their cargo exactly once', async () => {
     await hold(0, [{ hull: 'DART', count: 1 }, { hull: 'COURIER', count: 1, deuterium: 10.125 }]);
     const initial = await f.db.transaction((tx) => recomputePlayerWealth(tx, f.playerIds[0]!));

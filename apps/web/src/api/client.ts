@@ -11,6 +11,7 @@ import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
 import { notificationCenterSchema } from './notificationCenterSchemas.js';
 import { honorTargetSchema } from './schemas.js';
+import { legacyAwardDetailSchema, legacyCollectionSchema, legacyProfileSchema, legacyProgressSchema, legacyRevealedSchema, legacyRevealsSchema, legacySeasonsSchema } from './legacySchemas.js';
 import { returnStatusSchema } from './schemas.js';
 import { z } from 'zod';
 import type {
@@ -829,6 +830,36 @@ export class Api {
     `/api/season-archive/results/${encodeURIComponent(resultId)}`,
     seasonCommanderProfileSchema,
   );
+
+  /* ── Komutan Mirası: the permanent profile ───────────────── */
+
+  legacyMe = () => this.send('/api/legacy/me', legacyProfileSchema);
+  legacyProfile = (publicId: string) => this.send(`/api/legacy/profiles/${encodeURIComponent(publicId)}`, legacyProfileSchema);
+  /** A commander met in this season's galaxy, by the seat they hold now. */
+  legacyPlayer = (playerId: string) => this.send(`/api/legacy/players/${encodeURIComponent(playerId)}`, legacyProfileSchema);
+  /** A commander met in a closed season's archive, whose seat may be gone. */
+  legacyResult = (resultId: string) => this.send(`/api/legacy/results/${encodeURIComponent(resultId)}`, legacyProfileSchema);
+  legacyCollection = (publicId: string, cursor?: string) => this.send(
+    `/api/legacy/profiles/${encodeURIComponent(publicId)}/collection?limit=48${cursor === undefined ? '' : `&cursor=${encodeURIComponent(cursor)}`}`,
+    legacyCollectionSchema,
+  );
+  legacyAward = (publicId: string, awardId: string) => this.send(
+    `/api/legacy/profiles/${encodeURIComponent(publicId)}/awards/${encodeURIComponent(awardId)}`,
+    legacyAwardDetailSchema,
+  );
+  legacySeasons = (publicId: string, cursor?: number) => this.send(
+    `/api/legacy/profiles/${encodeURIComponent(publicId)}/seasons?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,
+    legacySeasonsSchema,
+  );
+  legacyProgress = () => this.send('/api/legacy/me/progress', legacyProgressSchema);
+  setLegacyShowcase = (awardIds: readonly string[]) => this.send('/api/legacy/me/showcase', okSchema,
+    { method: 'PUT', body: { awardIds: [...awardIds] } });
+  setLegacyTitle = (awardId: string | null) => this.send('/api/legacy/me/title', okSchema,
+    { method: 'PUT', body: { awardId } });
+  /** Pieces won and not watched yet; `refresh` evaluates the whole ledger first (once a session). */
+  legacyReveals = (refresh: boolean) => this.send(`/api/legacy/me/reveals${refresh ? '?refresh=1' : ''}`, legacyRevealsSchema);
+  revealLegacyAwards = (awardIds: readonly string[]) => this.send('/api/legacy/me/reveals', legacyRevealedSchema,
+    { method: 'POST', body: { awardIds: [...awardIds] } });
 
   /* ── clans ───────────────────────────────────────────────── */
 

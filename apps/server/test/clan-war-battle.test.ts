@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { CLAN, MULTI_WORLD, SERVERS, UNAIDED, distance, pvpBalanceForTier, escapeFuel, fleetTravelExact, fleetValue } from '@astera/rules';
 import {
   battleReports,
+  legacyFacts,
   clanRaidRoster,
   clanScoreEvents,
   clanWarContributions,
@@ -268,6 +269,9 @@ describe('a combined strike settling', () => {
     expect(new Set(results.map((row) => row.playerId)))
       .toEqual(new Set([f.playerIds[0]!, f.playerIds[1]!]));
     expect(results.every((row) => row.reportId === reports[0]!.id)).toBe(true);
+    const receipts = await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'CLAN_WAR_ATTACKS'));
+    expect(receipts.map(row => row.accountId).sort()).toEqual([f.accountIds[0], f.accountIds[1]].sort());
+    expect(receipts.every(row => row.amount === 1)).toBe(true);
   });
 
   it('keeps every casualty and every survivor with the commander who sent them', async () => {

@@ -1,4 +1,6 @@
 import { commanderPvpBalance } from './pvpBalance.js';
+import { recordLegacyActivity } from './legacy.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { spatialHistory } from './spatialHistory.js';
 import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, notLike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -735,6 +737,8 @@ export async function launchProbe(
     await publishShard(tx, origin.seasonId, 'launch');
     await publishReward(tx, origin.playerId);
 
+    await recordLegacyActivity(tx, origin.playerId, origin.now);
+    await recordPlayerLegacyFact(tx, origin.playerId, origin.seasonId, 'PROBES', `probe:${mission!.id}`, origin.now);
     return { missionId: mission!.id, arriveAt, flightMinutes };
   });
 }

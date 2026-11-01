@@ -260,6 +260,8 @@ export interface GalaxyCanvasProps {
   /** Your commander ship flying home alone after its fleet (Y9). */
   homewardShip?: HomewardShip | null;
   onOpenShip?: () => void;
+  /** A tap on the commander's name over a world opens their Legacy showcase. */
+  onOpenCommander?: (node: PlanetNode) => void;
   seasonStart: Date | undefined;
   /** The one commander whose history is pinned for this season. */
   /** Up to `RIVAL.max` marks, each carrying the slot its colour comes from. D183. */
@@ -371,6 +373,7 @@ export function GalaxyCanvas({
   parkedShip = null,
   homewardShip = null,
   onOpenShip,
+  onOpenCommander,
   seasonStart,
   rivals = EMPTY_RIVALS,
   focus,
@@ -899,6 +902,7 @@ export function GalaxyCanvas({
           hpRadiation={hpRadiation}
           selectedId={selectedId}
           rivals={rivals}
+          {...(onOpenCommander ? { onOpenCommander } : {})}
         />
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
         <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady && gpu.live} onDrawn={() => {
@@ -1059,11 +1063,14 @@ export function Labels({
   hpRadiation,
   selectedId,
   rivals,
+  onOpenCommander,
 }: {
   nodes: readonly PlanetNode[];
   hpRadiation: readonly HpRadiationSourceView[];
   selectedId: string | null;
   rivals: readonly RivalMark[];
+  /** A tap on a commander's name: their Legacy showcase. */
+  onOpenCommander?: (node: PlanetNode) => void;
 }) {
   const { t } = useTranslation();
   const radiationByWorld = useMemo(() => {
@@ -1278,7 +1285,7 @@ export function Labels({
               */}
               {claimTag(claimLabelOf(node, serverNow()), t)}
             </span>}
-            <GalaxyCommanderName node={node} />
+            <GalaxyCommanderName node={node} {...(onOpenCommander ? { onOpen: onOpenCommander } : {})} />
             <GalaxyPlanetName node={node} compact={!detail} />
             {/*
               A RECORD SAYS WHEN IT WAS TAKEN, AND WHAT IT IS. D127 · D151.
@@ -1335,16 +1342,35 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
   );
 }
 
-/** The flag is the same earned/frozen identity as the commander printed beside it. */
-export function GalaxyCommanderName({ node }: { node: PlanetNode }) {
-  const { i18n } = useTranslation();
+/**
+ * The flag is the same earned/frozen identity as the commander printed beside it.
+ *
+ * A NAME WITH A PLAYER BEHIND IT OPENS THEIR SHOWCASE. The label is otherwise inert so a drag
+ * over it still turns the disc; only the name takes a press, and it keeps that press to itself
+ * so the tap does not also land on the world under it. The player id is the one the galaxy
+ * already sent for a seat the caller can name — the fog decides who is clickable, not this.
+ */
+export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen?: (node: PlanetNode) => void }) {
+  const { t, i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
   const rank = node.honorRanking ? node.honorRank : node.dominionRank;
-  return <span className="name text-caption text-bone flex max-w-full items-center gap-1.5">
+  const label = commanderLabel(node.owner, node.clan?.tag);
+  const body = <>
     {rank ? <RankBadge rank={rank} honor={node.honorRanking} /> : null}
-    <span className="min-w-0 truncate">{commanderLabel(node.owner, node.clan?.tag)}</span>
+    <span className="min-w-0 truncate">{label}</span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
-  </span>;
+  </>;
+  if (!onOpen || node.controllerPlayerId === undefined) {
+    return <span className="name text-caption text-bone flex max-w-full items-center gap-1.5">{body}</span>;
+  }
+  return <button type="button" data-world-commander
+    aria-label={t('legacy.profile.openNamed', { name: node.owner })}
+    onPointerDown={event => { event.stopPropagation(); }}
+    onClick={event => { event.stopPropagation(); onOpen(node); }}
+    className="galaxy-commander-link name text-caption text-bone pointer-events-auto -mx-1 flex max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
+    {body}
+    <svg aria-hidden="true" viewBox="0 0 12 12" className="galaxy-commander-cup size-2.5 shrink-0"><path fill="currentColor" d="M3 1h6v1h2v1.5A2.5 2.5 0 0 1 8.7 6 3 3 0 0 1 6.6 7.9V9H8v2H4V9h1.4V7.9A3 3 0 0 1 3.3 6 2.5 2.5 0 0 1 1 3.5V2h2zm0 2H2v.5c0 .6.4 1.2 1 1.4zm6 0v1.9c.6-.2 1-.8 1-1.4V3z" /></svg>
+  </button>;
 }
 
 /**

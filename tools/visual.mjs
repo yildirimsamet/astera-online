@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--legacy-frontend-review')) {
+  const { verifyLegacyFrontend } = await import('./legacy-frontend-review-visual.mjs');
+  await verifyLegacyFrontend(process.argv[2] ?? 'out/legacy-frontend-review');
+  process.exit(0);
+}
+
+if (process.argv.includes('--legacy-review')) {
+  const { verifyLegacyReview } = await import('./legacy-review-visual.mjs');
+  await verifyLegacyReview(process.argv[2] ?? 'out/legacy-review');
+  process.exit(0);
+}
+
+if (process.argv.includes('--legacy-models')) {
+  const { verifyLegacyModels } = await import('./legacy-models-visual.mjs');
+  await verifyLegacyModels(process.argv[2] ?? 'out/legacy-models');
+  process.exit(0);
+}
+
 if (process.argv.includes('--commander-menu')) {
   const { verifyCommanderMenu } = await import('./commander-menu-visual.mjs');
   await verifyCommanderMenu(process.argv[2] ?? 'out/commander-menu');

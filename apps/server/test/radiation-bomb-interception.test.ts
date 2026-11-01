@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { hpRadiationSources, notifications, planets, players, radiationBombFlights,
+import { hpRadiationSources, legacyFacts, notifications, planets, players, radiationBombFlights,
   scheduledEvents, seasons, strategicAssets } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { EventWorker } from '../src/worker/loop.js';
@@ -58,6 +58,12 @@ it('lets the target battery intercept a bomb even when the arrival worker wakes 
   expect(spent!.status).toBe('CONSUMED');
   expect(await f.db.select().from(hpRadiationSources)).toHaveLength(0);
   expect(await f.db.select().from(notifications).where(and(eq(notifications.refId, result.flightId), eq(notifications.kind, 'radiation_bomb_result')))).toHaveLength(0);
+  const receipts = await f.db.select().from(legacyFacts);
+  expect(receipts).toEqual(expect.arrayContaining([
+    expect.objectContaining({ accountId: f.accountIds[0], metric: 'RADIATION_BOMB_LAUNCHES', amount: 1 }),
+    expect.objectContaining({ accountId: f.accountIds[1], metric: 'STRATEGIC_INTERCEPTIONS', amount: 1 }),
+  ]));
+  expect(receipts.filter(row => row.metric === 'STRATEGIC_INTERCEPTIONS')).toHaveLength(1);
 });
 
 it('refreshes both spent weapon and battery inventory values when interception is claimed', async () => {

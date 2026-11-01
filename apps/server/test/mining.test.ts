@@ -23,6 +23,8 @@ import {
 } from '@astera/rules';
 import {
   asteroidClaims,
+  legacyFacts,
+  legacyActivityDays,
   debrisFields,
   galaxyEvents,
   miningRuns,
@@ -316,7 +318,9 @@ describe('mining', () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 2 });
       const rock = waitForRock();
 
+      await f.db.delete(legacyActivityDays);
       const run = await launchMining(f.db, mine, rock.index, 2, f.clock);
+      expect(await f.db.select().from(legacyActivityDays)).toEqual([expect.objectContaining({ accountId: f.accountIds[0] })]);
       const seasonStart = new Date('2026-01-01T00:00:00.000Z');
       const meetMinutes = (run.arriveAt.getTime() - seasonStart.getTime()) / 60_000;
 
@@ -424,6 +428,8 @@ describe('mining', () => {
       expect(home.find((u) => u.hull === 'PROSPECTOR' && u.location === 'home')!.count).toBe(2);
       // The in-flight row is gone, not merely zeroed.
       expect(home.some((u) => u.location.startsWith('mine:'))).toBe(false);
+      const receipts = await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'ASTEROIDS_MINED'));
+      expect(receipts).toEqual([expect.objectContaining({ sourceKey: `asteroid:${String(rock.index)}`, amount: 1 })]);
     });
 
     it('never takes more than the squadron can carry', async () => {

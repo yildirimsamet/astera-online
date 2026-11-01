@@ -66,6 +66,8 @@ import { publish, publishShard } from '../stream/bus.js';
 import { hasResearch, techOf } from './researchState.js';
 import type { TechLevels } from '@astera/rules';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
+import { recordLegacyActivity } from './legacy.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { assertOutsideSilentSpace } from './waitingRoom.js';
@@ -581,6 +583,7 @@ export async function launchMining(
     // state. The initiating client already has the POST response; this narrow
     // private event closes the same-account multi-device gap.
     await publish(tx, origin.playerId, 'private:mining');
+    await recordLegacyActivity(tx, origin.playerId, origin.now);
 
     return {
       runId: run!.id,
@@ -1068,6 +1071,12 @@ export async function resolveMiningReturn(
     .returning();
   const run = claimed[0];
   if (!run) return null;
+
+  if (run.ownerPlayerId !== null && run.targetKind === 'asteroid' && run.asteroidIndex !== null
+    && run.minedAlloy + run.minedCrystal + run.minedDeuterium > 0) {
+    await recordPlayerLegacyFact(tx, run.ownerPlayerId, run.seasonId, 'ASTEROIDS_MINED',
+      `asteroid:${String(run.asteroidIndex)}`, run.homeAt ?? clock.now());
+  }
 
   /** And again when it lands, for the same reason and on the same claim. D53. */
   await publishShard(tx, run.seasonId, 'mining');

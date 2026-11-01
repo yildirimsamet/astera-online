@@ -1,3 +1,4 @@
+import { deferLegacyRefresh } from './legacy.js';
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, like, lte, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { COSMETIC_IDS, cosmeticById, type CosmeticCategory, type CosmeticId } from '@astera/rules';
@@ -137,6 +138,7 @@ interface Outcome { status: 'MATCHED' | 'UNMATCHED'; reason: string | null; item
 
 /** The buyer pays in another tab: their open game re-reads its looks instead of waiting for a reload. */
 async function tellOwner(tx: Tx, accountId: string): Promise<void> {
+  deferLegacyRefresh(tx, accountId, new Date());
   const commanders = await tx.select({ id: players.id }).from(players).where(eq(players.accountId, accountId));
   for (const { id } of commanders) await publish(tx, id, 'private:cosmetics');
 }

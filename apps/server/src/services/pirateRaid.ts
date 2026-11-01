@@ -1,4 +1,5 @@
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
   activeBattleFleet,
@@ -762,6 +763,10 @@ async function settleArrival(
     createdAt: now,
   }).returning({ id: battleReports.id });
   if (!replayReport) throw new Error('pirate battle report insert returned no row');
+  if (result.grade === 'DECISIVE' && fleetCount(result.attackerSurvivors) > 0) {
+    await recordPlayerLegacyFact(tx, raid.ownerPlayerId, raid.seasonId, 'PIRATE_VICTORIES',
+      `pirate:${String(spec.index)}`, now);
+  }
   await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: replayReport.id }, seasonId: raid.seasonId, capture: replayCapture, result,
     context: { environment: 'MONUMENT', aegisCapacity: 0, defenceOffline: false, escape: null, control: null,
       ...(result !== fought ? { aftermath: 'PIRATE_OVERRUN' } : {}) }, at: now });

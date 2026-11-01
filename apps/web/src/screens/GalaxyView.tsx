@@ -140,6 +140,8 @@ import { useOpeningCover } from '../lib/openingCover.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
+import { CommanderLegacy } from '../legacy/LegacyPeek.js';
+import { LegacyRevealHost } from '../legacy/AwardReveal.js';
 import {
   SeasonRecap,
   seasonRecapShowsPrimaryAction,
@@ -563,6 +565,8 @@ export function GalaxyView({
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** Klan Savunma Desteği: the clanmate world the send sheet is open for. */
   const [supportHost, setSupportHost] = useState<SupportHost | null>(null);
+  /** The commander whose Legacy showcase a tap on their name over a world opened. */
+  const [legacyOf, setLegacyOf] = useState<{ playerId: string; name: string } | null>(null);
   /** The active source, kept separate from the focused transfer destination. */
   const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
   const [worldsOpen, setWorldsOpen] = useState(false);
@@ -1271,6 +1275,9 @@ export function GalaxyView({
         parkedShip={park}
         homewardShip={homeward}
         onOpenShip={() => { onPanel('ship'); }}
+        onOpenCommander={(node) => {
+          if (node.controllerPlayerId !== undefined) setLegacyOf({ playerId: node.controllerPlayerId, name: node.owner });
+        }}
         {...(season.data ? { seasonStart: season.data.startsAt } : { seasonStart: undefined })}
         rivals={season.data?.rivals ?? []}
         focus={focus}
@@ -2336,6 +2343,16 @@ export function GalaxyView({
             say(t('clanSupport.sent', { world }), 'info');
           }}
         />
+      )}
+
+      {/*
+        A WON PIECE IS SHOWN ONCE, WITH CEREMONY — but never over a sheet, a selection, the
+        opening cover or a lesson: it waits until the galaxy is the player's again.
+      */}
+      <LegacyRevealHost ready={showGuidance && !covered && panel === null && focus === null && legacyOf === null} />
+      {legacyOf && (
+        <CommanderLegacy key={legacyOf.playerId} source={{ kind: 'player', playerId: legacyOf.playerId }} name={legacyOf.name}
+          onClose={() => { setLegacyOf(null); }} />
       )}
 
       <LoadingScreen visible={covered} immediateExit

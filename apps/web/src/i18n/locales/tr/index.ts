@@ -5,6 +5,7 @@ import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
+import { legacy } from './legacy.js';
 import { notificationCenter } from './notificationCenter.js';
 import { arena } from './arena.js';
 import { silentSpace } from './silentSpace.js';
@@ -52,7 +53,7 @@ export const tr: Resources = {
   brand,
   monument,
   silentSpace,
-  vacation, notificationCenter,
+  vacation, legacy, notificationCenter,
   academy,
   landing,
   servers,

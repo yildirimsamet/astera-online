@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SERVERS, rewardId } from '@astera/rules';
+import { SERVERS, rewardId, RESEARCH_MAX_LEVEL, RESEARCH_PROJECT_IDS } from '@astera/rules';
 import {
   accountRewards,
   accounts,
@@ -16,6 +16,8 @@ import {
   planets,
   playerRivals,
   players,
+  playerResearch,
+  legacyFacts,
   probeReports,
   rewardGrants,
   satellites,
@@ -135,6 +137,13 @@ describe('reclaiming idle seats', () => {
    * it is invisible AND it holds one of five slots for the rest of the season.
    */
   it('frees a seat whose commander was keeping a Rival mark', async () => {
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, idle));
+    await f.db.update(planets).set({ statsOwnerPlayerId: f.playerIds[0]!,
+      seasonTelemetry: { ...world!.seasonTelemetry, shipsBuilt: { DART: 100 } } }).where(eq(planets.id, idle));
+    await f.db.insert(playerResearch).values(RESEARCH_PROJECT_IDS.map(projectId => ({
+      playerId: f.playerIds[0]!, projectId, level: RESEARCH_MAX_LEVEL[projectId], completedAt: f.clock.now(),
+    }))).onConflictDoUpdate({ target: [playerResearch.playerId, playerResearch.projectId],
+      set: { level: sql`excluded.level` } });
     await f.db.insert(playerRivals).values({
       playerId: f.playerIds[0]!,
       planetId: f.planetIds[1]!,
@@ -148,6 +157,10 @@ describe('reclaiming idle seats', () => {
     expect(result.reclaimed).toHaveLength(1);
     expect(await gone(idle)).toBe(true);
     expect(await f.db.select().from(playerRivals)).toHaveLength(0);
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'RESEARCH_MASTERED')))
+      .toMatchObject([{ accountId: f.accountIds[0], seasonId: f.seasonId }]);
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'SHIPS_BUILT:DART')))
+      .toMatchObject([{ accountId: f.accountIds[0], seasonId: f.seasonId, amount: 100, dateKnown: false }]);
   });
 
   it('frees a seat whose commander built a Bildirim Merkezi and armed an alert', async () => {

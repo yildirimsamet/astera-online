@@ -29,6 +29,7 @@ import type { Clock } from '../clock.js';
 import { addMinutes, atMinute } from '../clock.js';
 import { planets, tradeRuns, units } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
+import { recordLegacyActivity } from './legacy.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
 import { assertProspectorsRested } from './mining.js';
@@ -399,6 +400,7 @@ export async function launchTrade(
     */
     await publishShard(tx, origin.seasonId, 'launch');
     await publish(tx, origin.playerId, 'private:trade');
+    await recordLegacyActivity(tx, origin.playerId, origin.now);
     await recomputePlayerWealth(tx, origin.playerId, origin.now);
 
     return {

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { TRAFFIC, distance } from '@astera/rules';
-import { missions, planets } from '../src/db/schema.js';
+import { legacyActivityDays, legacyFacts, missions, planets } from '../src/db/schema.js';
 import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { galaxyTraffic } from '../src/services/traffic.js';
@@ -110,7 +110,11 @@ describe('a probe on the disc', () => {
    * left to allow for.
    */
   it('publishes every window inside the flight it describes', async () => {
+    await f.db.delete(legacyActivityDays);
     const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    expect(await f.db.select().from(legacyFacts).where(eq(legacyFacts.metric, 'PROBES')))
+      .toMatchObject([{ accountId: f.accountIds[0], sourceKey: `probe:${launch.missionId}`, amount: 1, occurredAt: f.clock.now() }]);
+    expect(await f.db.select().from(legacyActivityDays)).toEqual([expect.objectContaining({ accountId: f.accountIds[0] })]);
     expect(launch.flightMinutes).toBeLessThan(1);
 
     let published = false;

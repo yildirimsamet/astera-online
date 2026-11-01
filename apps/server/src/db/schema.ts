@@ -58,6 +58,8 @@ import type {
   RadiationBombLevel,
   CountryCode,
   UnknownSignalOutcome,
+  LegacyMetric,
+  LegacyRarity,
 } from '@astera/rules';
 import type { ChatLanguage, ReactionEmoji, ChatMedia } from '@astera/rules';
 import type { HonorCatalogue, HonorStrategicCatalogue } from '@astera/rules';
@@ -5276,4 +5278,121 @@ export const maintenanceWindows = pgTable('maintenance_windows', {
 }, (t) => [
   index('maintenance_windows_ends_idx').on(t.endsAt),
   check('maintenance_windows_span_check', sql`${t.endsAt} > ${t.startsAt}`),
+]);
+
+/** Account-scoped evidence intentionally has no reference to a disposable player or world. */
+export const legacyFacts = pgTable('legacy_facts', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  metric: text('metric').$type<LegacyMetric>().notNull(),
+  sourceKey: text('source_key').notNull(),
+  origin: text('origin').$type<'EVENT' | 'RESTORED' | 'ARCHIVE'>().notNull().default('EVENT'),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  /** An archive can prove an amount without proving the exact day it happened. */
+  dateKnown: boolean('date_known').notNull().default(true),
+}, t => [
+  primaryKey({ columns: [t.accountId, t.seasonId, t.metric, t.sourceKey] }),
+  index('legacy_facts_season_idx').on(t.seasonId, t.accountId),
+  /** The hot path's goal-crossing sum reads one account's one metric. */
+  index('legacy_facts_metric_idx').on(t.accountId, t.metric),
+  check('legacy_facts_amount_check', sql`${t.amount} BETWEEN 1 AND 9007199254740991`),
+  check('legacy_facts_origin_check', sql`${t.origin} IN ('EVENT', 'RESTORED', 'ARCHIVE')`),
+]);
+
+/** One growing interval per physical HOLD wave; concurrent waves are unioned at evaluation. */
+export const legacyMonumentIntervals = pgTable('legacy_monument_intervals', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  sourceKey: text('source_key').notNull(),
+  from: timestamp('from_at', { withTimezone: true }).notNull(),
+  to: timestamp('to_at', { withTimezone: true }).notNull(),
+}, t => [
+  primaryKey({ columns: [t.accountId, t.seasonId, t.sourceKey] }),
+  index('legacy_monument_intervals_season_idx').on(t.seasonId),
+  check('legacy_monument_interval_check', sql`${t.to} > ${t.from}`),
+]);
+
+export const legacyParticipation = pgTable('legacy_participation', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
+}, t => [primaryKey({ columns: [t.accountId, t.seasonId] })]);
+
+/** Orders count a day; opening a browser, polling an API and chatting never do. */
+export const legacyActivityDays = pgTable('legacy_activity_days', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  day: integer('day').notNull(),
+  firstActionAt: timestamp('first_action_at', { withTimezone: true }).notNull(),
+}, t => [
+  primaryKey({ columns: [t.accountId, t.seasonId, t.day] }),
+  check('legacy_activity_day_check', sql`${t.day} >= 0`),
+]);
+
+/** A durable cosmetic receipt. Reversal is retained as an audit, never silently deleted. */
+export const legacyAwards = pgTable('legacy_awards', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  definitionId: text('definition_id').notNull(),
+  tier: integer('tier').notNull(),
+  edition: text('edition').notNull(),
+  sourceSeasonId: uuid('source_season_id').references(() => seasons.id),
+  rarity: text('rarity').$type<LegacyRarity>().notNull(),
+  ruleVersion: integer('rule_version').notNull(),
+  earnedAt: timestamp('earned_at', { withTimezone: true }),
+  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
+  evidence: jsonb('evidence').$type<Record<string, unknown>>().notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revocationReason: text('revocation_reason').$type<'INELIGIBLE' | 'ADMIN'>(),
+  /** When its owner watched the piece being revealed. Null keeps it in their reveal queue. */
+  revealedAt: timestamp('revealed_at', { withTimezone: true }),
+}, t => [
+  index('legacy_awards_reveal_idx').on(t.accountId).where(sql`${t.revealedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  uniqueIndex('legacy_awards_edition_idx').on(t.accountId, t.definitionId, t.tier, t.edition),
+  uniqueIndex('legacy_awards_owner_id_idx').on(t.accountId, t.id),
+  index('legacy_awards_collection_idx').on(t.accountId, t.grantedAt, t.id),
+  index('legacy_awards_owners_idx').on(t.definitionId, t.tier, t.edition).where(sql`${t.revokedAt} IS NULL`),
+  check('legacy_awards_tier_check', sql`${t.tier} > 0 AND ${t.ruleVersion} > 0`),
+  check('legacy_awards_rarity_check', sql`${t.rarity} IN ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')`),
+  check('legacy_awards_reversal_check', sql`(${t.revokedAt} IS NULL) = (${t.revocationReason} IS NULL)`),
+]);
+
+export const legacyProfiles = pgTable('legacy_profiles', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  publicId: uuid('public_id').notNull().defaultRandom(),
+  activeTitleAwardId: uuid('active_title_award_id'),
+  portrait: text('portrait').notNull().default('commander'),
+  backdrop: text('backdrop').notNull().default('nebula'),
+}, t => [
+  uniqueIndex('legacy_profiles_public_idx').on(t.publicId),
+  foreignKey({ columns: [t.accountId, t.activeTitleAwardId], foreignColumns: [legacyAwards.accountId, legacyAwards.id] }),
+]);
+
+export const legacyShowcaseSlots = pgTable('legacy_showcase_slots', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  slot: integer('slot').notNull(),
+  awardId: uuid('award_id').notNull(),
+}, t => [
+  primaryKey({ columns: [t.accountId, t.slot] }),
+  uniqueIndex('legacy_showcase_award_idx').on(t.accountId, t.awardId),
+  foreignKey({ columns: [t.accountId, t.awardId], foreignColumns: [legacyAwards.accountId, legacyAwards.id] }),
+  check('legacy_showcase_slot_check', sql`${t.slot} BETWEEN 0 AND 5`),
+]);
+
+/** Launch-time tiers survive later upgrades, recalls and disappearance of a seasonal player. */
+export const legacyAttackIntents = pgTable('legacy_attack_intents', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  sourceKey: text('source_key').notNull(),
+  opponentAccountId: uuid('opponent_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  attackerTier: integer('attacker_tier').notNull(),
+  defenderTier: integer('defender_tier').notNull(),
+  committedAt: timestamp('committed_at', { withTimezone: true }).notNull(),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
+}, t => [
+  primaryKey({ columns: [t.accountId, t.seasonId, t.sourceKey, t.opponentAccountId] }),
+  index('legacy_attack_intents_source_idx').on(t.seasonId, t.sourceKey),
+  check('legacy_attack_intents_tiers_check', sql`${t.attackerTier} > 0 AND ${t.defenderTier} > ${t.attackerTier}`),
+  check('legacy_attack_intents_time_check', sql`${t.settledAt} IS NULL OR ${t.settledAt} >= ${t.committedAt}`),
 ]);

@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { recordPlayerLegacyFact } from './legacyEvents.js';
 import {
   ANTI_STRATEGIC,
   distance,
@@ -317,6 +318,8 @@ export async function fireInterception(
     collisionY: collision.y,
     collisionZ: collision.z,
   });
+  await recordPlayerLegacyFact(tx, target.controllerPlayerId, mission.seasonId, 'STRATEGIC_INTERCEPTIONS',
+    `interception:death-star:${mission.id}`, at);
   await schedule(tx, {
     seasonId: mission.seasonId,
     kind: 'strategic_intercept_impact',

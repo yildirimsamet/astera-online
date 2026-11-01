@@ -1,3 +1,4 @@
+import { deferLegacyRefresh } from './legacy.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { COSMETIC_IDS, type CosmeticId } from '@astera/rules';
@@ -122,6 +123,7 @@ export async function processPolarEvent(db: Db, webhookId: string, payload: unkn
       }
       await tx.update(polarSkinOrders).set({ checkoutId: data.checkout_id, orderId: data.id, status: 'COMPLETED' })
         .where(eq(polarSkinOrders.id, intent.id));
+      deferLegacyRefresh(tx, intent.accountId, new Date());
       return;
     }
     if (parsedEvent.type !== 'order.refunded') return;
@@ -141,6 +143,7 @@ export async function processPolarEvent(db: Db, webhookId: string, payload: unkn
     await tx.update(polarSkinOrders).set({ checkoutId: data.checkout_id, orderId: data.id, status: 'REVOKED' })
       .where(eq(polarSkinOrders.id, intent.id));
     if (!intent.accountId) return;
+    deferLegacyRefresh(tx, intent.accountId, new Date());
     for (const skinId of skinsFor(item.data)) {
       await tx.update(cosmeticEntitlements).set({ revokedAt: new Date() }).where(and(
         eq(cosmeticEntitlements.source, 'POLAR'), eq(cosmeticEntitlements.orderRef, `${data.id}:${skinId}`),

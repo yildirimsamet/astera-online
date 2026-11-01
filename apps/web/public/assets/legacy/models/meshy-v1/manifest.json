@@ -1,0 +1,254 @@
+[
+  {
+    "id": "bronz_anit_tutma",
+    "path": "polished/bronz_anit_tutma.glb",
+    "runtime": "meshy-v1/bronz_anit_tutma.glb",
+    "bytes": 426212,
+    "sha256": "8f63d467b1b2d5c1a7f8557ff9a7f58d33ca498bd531f0ac6e3a2a4af8947153"
+  },
+  {
+    "id": "bronz_gezegen",
+    "path": "polished/bronz_gezegen.glb",
+    "runtime": "meshy-v1/bronz_gezegen.glb",
+    "bytes": 785720,
+    "sha256": "5605de471108d8baa9b6f1e5e72f038842615bedb4c7b20c5a43cb5a1b8530da"
+  },
+  {
+    "id": "bronz_honor",
+    "path": "polished/bronz_honor.glb",
+    "runtime": "meshy-v1/bronz_honor.glb",
+    "bytes": 582256,
+    "sha256": "b58a5134b3750534a5d74080e4403c0d7578850a8533349f6f4e022d8aa757d0"
+  },
+  {
+    "id": "bronz_kazici",
+    "path": "polished/bronz_kazici.glb",
+    "runtime": "meshy-v1/bronz_kazici.glb",
+    "bytes": 703604,
+    "sha256": "31c81a8286c07fffb24fa502fdf77e82c1e7a391f723e89909012a19a4081f76"
+  },
+  {
+    "id": "bronz_korsan",
+    "path": "polished/bronz_korsan.glb",
+    "runtime": "meshy-v1/bronz_korsan.glb",
+    "bytes": 581508,
+    "sha256": "93071ce529446513784ff7c8f119ced3775924bc7aa654de4b0f0c21e667d0d9"
+  },
+  {
+    "id": "bronz_kupa",
+    "path": "polished/bronz_kupa.glb",
+    "runtime": "meshy-v1/bronz_kupa.glb",
+    "bytes": 526064,
+    "sha256": "ddb1b28bfed425887892026845a28b46a0287e5890249553b84e04f96617c30b"
+  },
+  {
+    "id": "bronz_radyasyon",
+    "path": "polished/bronz_radyasyon.glb",
+    "runtime": "meshy-v1/bronz_radyasyon.glb",
+    "bytes": 446816,
+    "sha256": "69e1f7250d13a1e7c875fc4f0854264ebfb8e3805871ad1cc63b840f9d2d19e0"
+  },
+  {
+    "id": "bronz_roket",
+    "path": "polished/bronz_roket.glb",
+    "runtime": "meshy-v1/bronz_roket.glb",
+    "bytes": 365964,
+    "sha256": "4ccd38785a72a10623562055f5ec35e84edabea9fca4694d29fb876f176d6e74"
+  },
+  {
+    "id": "bronz_silah_arkadasi",
+    "path": "polished/bronz_silah_arkadasi.glb",
+    "runtime": "meshy-v1/bronz_silah_arkadasi.glb",
+    "bytes": 443456,
+    "sha256": "1f37dbfda67e1b00605d5f3c6b0cb3dda42d4b837ea75e02cda081c193e55dae"
+  },
+  {
+    "id": "golden_anit_tutma",
+    "path": "polished/golden_anit_tutma.glb",
+    "runtime": "meshy-v1/golden_anit_tutma.glb",
+    "bytes": 440524,
+    "sha256": "f33b80972ea26d62c6195869174f917b34b773cf5f3a3db4b933d8e30bb9980b"
+  },
+  {
+    "id": "golden_gezegen",
+    "path": "polished/golden_gezegen.glb",
+    "runtime": "meshy-v1/golden_gezegen.glb",
+    "bytes": 516336,
+    "sha256": "f5b90b9c2c0319d905df7c26db17e4a7efb31dfd4bd17f98b55e3005b9e0ffbf"
+  },
+  {
+    "id": "golden_honor",
+    "path": "polished/golden_honor.glb",
+    "runtime": "meshy-v1/golden_honor.glb",
+    "bytes": 623192,
+    "sha256": "0247199c47b5ec1e5dfd34168babc42f78155f67fdbcbce2869e621fa7e42e04"
+  },
+  {
+    "id": "golden_kazici",
+    "path": "polished/golden_kazici.glb",
+    "runtime": "meshy-v1/golden_kazici.glb",
+    "bytes": 714052,
+    "sha256": "a80c5d083268415b6a44d923d512802367a4164475ae15d177659b9342edc711"
+  },
+  {
+    "id": "golden_korsan",
+    "path": "polished/golden_korsan.glb",
+    "runtime": "meshy-v1/golden_korsan.glb",
+    "bytes": 651340,
+    "sha256": "383f470ec4e70743523c2dfb6008f8ed5b6e1b662ec67e1b92a29bc222a8c99c"
+  },
+  {
+    "id": "golden_kupa",
+    "path": "polished/golden_kupa.glb",
+    "runtime": "meshy-v1/golden_kupa.glb",
+    "bytes": 515380,
+    "sha256": "052e9fdbc3953da177f35b25093ba58be4fea584885e465ed305a9e6bf5ba636"
+  },
+  {
+    "id": "golden_radyasyon",
+    "path": "polished/golden_radyasyon.glb",
+    "runtime": "meshy-v1/golden_radyasyon.glb",
+    "bytes": 487860,
+    "sha256": "5b1fbae436932d068769c1bf582d8e99f24b2ef42c22d8182d90640faf41b13e"
+  },
+  {
+    "id": "golden_roket",
+    "path": "polished/golden_roket.glb",
+    "runtime": "meshy-v1/golden_roket.glb",
+    "bytes": 378280,
+    "sha256": "254a2d6e6fe2523a88b9e3de35854e17063c74cde112f92045d968a2eae804a9"
+  },
+  {
+    "id": "golden_silah_arkadasi",
+    "path": "polished/golden_silah_arkadasi.glb",
+    "runtime": "meshy-v1/golden_silah_arkadasi.glb",
+    "bytes": 460308,
+    "sha256": "62dadab59a8f720d9742d1c4572a9cdb1d4f02418e96f45375a256ebc861c8a7"
+  },
+  {
+    "id": "iron_anit_tutma",
+    "path": "polished/iron_anit_tutma.glb",
+    "runtime": "meshy-v1/iron_anit_tutma.glb",
+    "bytes": 419436,
+    "sha256": "642fa84d96b3c36ec6302dddeed901e17957d97f51ded4992e20114a430cc7b7"
+  },
+  {
+    "id": "iron_gezegen",
+    "path": "polished/iron_gezegen.glb",
+    "runtime": "meshy-v1/iron_gezegen.glb",
+    "bytes": 785672,
+    "sha256": "439be7bb73cfbf911854e3f3be9c2ae13910a053ba19b76a223754a82f03a413"
+  },
+  {
+    "id": "iron_honor",
+    "path": "polished/iron_honor.glb",
+    "runtime": "meshy-v1/iron_honor.glb",
+    "bytes": 520820,
+    "sha256": "9204ee790596bb888492272c67badb4b73c851e74c0a737e90772c2b17a3b113"
+  },
+  {
+    "id": "iron_kazici",
+    "path": "polished/iron_kazici.glb",
+    "runtime": "meshy-v1/iron_kazici.glb",
+    "bytes": 617188,
+    "sha256": "b500a31ee7023d8fcb65237b114c2a6f1b62b18b3e9b2eaa9a71a5a7fb403acd"
+  },
+  {
+    "id": "iron_korsan",
+    "path": "polished/iron_korsan.glb",
+    "runtime": "meshy-v1/iron_korsan.glb",
+    "bytes": 505368,
+    "sha256": "9f020d3ca60000c54ff0a4d0b619e786e7d8d7b413578e098f972c1181d89941"
+  },
+  {
+    "id": "iron_kupa",
+    "path": "polished/iron_kupa.glb",
+    "runtime": "meshy-v1/iron_kupa.glb",
+    "bytes": 526016,
+    "sha256": "2f6c5c8ae4009280b713ecff8dee057eb6b61f96d8a04c1f9156875a0e66ed51"
+  },
+  {
+    "id": "iron_radyasyon",
+    "path": "polished/iron_radyasyon.glb",
+    "runtime": "meshy-v1/iron_radyasyon.glb",
+    "bytes": 446768,
+    "sha256": "4071844d7bc966d43445f7f540a5370cfa103a96b939d435be9d30e58100dd2f"
+  },
+  {
+    "id": "iron_roket",
+    "path": "polished/iron_roket.glb",
+    "runtime": "meshy-v1/iron_roket.glb",
+    "bytes": 365916,
+    "sha256": "77d78e6c52b0bc7ce68b1612b0ec3d0ac9dc6de7ea8e2dbcd834ea4567610c14"
+  },
+  {
+    "id": "iron_silah_arkadasi",
+    "path": "polished/iron_silah_arkadasi.glb",
+    "runtime": "meshy-v1/iron_silah_arkadasi.glb",
+    "bytes": 443408,
+    "sha256": "83cd8bf3ddb7068b4de42d63c48f1eda70a6ca3a37560f4ffce3232257b8e866"
+  },
+  {
+    "id": "silver_anit_tutma",
+    "path": "polished/silver_anit_tutma.glb",
+    "runtime": "meshy-v1/silver_anit_tutma.glb",
+    "bytes": 431172,
+    "sha256": "f2a60f6a3c2b59a6cbead86f3b0b8b9941d55fc0f0ad4447a03a1159c9cb9b92"
+  },
+  {
+    "id": "silver_gezegen",
+    "path": "polished/silver_gezegen.glb",
+    "runtime": "meshy-v1/silver_gezegen.glb",
+    "bytes": 479144,
+    "sha256": "09bbcdba52ca70a8366b7e4639f34d5a86d69bf4254b13a5ba310299001e83aa"
+  },
+  {
+    "id": "silver_honor",
+    "path": "polished/silver_honor.glb",
+    "runtime": "meshy-v1/silver_honor.glb",
+    "bytes": 601388,
+    "sha256": "e520c4777626db3559683e7f5155ed72e3603933b8870b0370c8fac9ead8e89c"
+  },
+  {
+    "id": "silver_kazici",
+    "path": "polished/silver_kazici.glb",
+    "runtime": "meshy-v1/silver_kazici.glb",
+    "bytes": 711820,
+    "sha256": "c050c1551bb4ce4198f142c785ce084b82ab414a81b517f56d774c3b0005d624"
+  },
+  {
+    "id": "silver_korsan",
+    "path": "polished/silver_korsan.glb",
+    "runtime": "meshy-v1/silver_korsan.glb",
+    "bytes": 588948,
+    "sha256": "ca8c402b1444da2718f37c4a70f337481d8543cd63fb78309455b74da3a3f2d2"
+  },
+  {
+    "id": "silver_kupa",
+    "path": "polished/silver_kupa.glb",
+    "runtime": "meshy-v1/silver_kupa.glb",
+    "bytes": 521060,
+    "sha256": "34bc3acecb1317b875b16763ac934dc0b75f515f64bad5448fab22c62ddc1e5b"
+  },
+  {
+    "id": "silver_radyasyon",
+    "path": "polished/silver_radyasyon.glb",
+    "runtime": "meshy-v1/silver_radyasyon.glb",
+    "bytes": 487748,
+    "sha256": "68f7a4a2528fa17b0f63b292fbe6ac2522a3346d2d73119a09b33396e5812872"
+  },
+  {
+    "id": "silver_roket",
+    "path": "polished/silver_roket.glb",
+    "runtime": "meshy-v1/silver_roket.glb",
+    "bytes": 378932,
+    "sha256": "4b5f52c5c7ef273540364cf65b1909de55febe59f5a233844ceecd807a271716"
+  },
+  {
+    "id": "silver_silah_arkadasi",
+    "path": "polished/silver_silah_arkadasi.glb",
+    "runtime": "meshy-v1/silver_silah_arkadasi.glb",
+    "bytes": 449280,
+    "sha256": "4e07be72836db45822651c7ca2161c3bf4811b76f9b6754cb1678f905414e23c"
+  }
+]

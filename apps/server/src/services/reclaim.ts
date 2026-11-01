@@ -1,3 +1,4 @@
+import { preserveLegacySeasonEvents } from './legacyArchive.js';
 import { and, eq, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import { SERVERS } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -916,6 +917,7 @@ export async function reclaimIdleSeats(
           monumentTargets,
           adminUsernames: options.adminUsernames,
         });
+        await preserveLegacySeasonEvents(tx, row.seasonId, now, row.playerId);
         await foldRecord(tx, row.accountId, row);
         await demolish(tx, planetIds, row.playerId, rows);
         // Reclaim removes a public world, its ladder row, its authored chat and

@@ -19,6 +19,7 @@ import { publish, publishShard, publishSight } from '../stream/bus.js';
 import { notifyDmPeers } from './dm.js';
 import { hasMonumentActivity } from './monumentLifecycle.js';
 import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
+import { preserveLegacySeasonEvents } from './legacyArchive.js';
 
 export type TransferStatus = 'MOVED' | 'ACTIVE' | 'PLACEMENT' | 'SEASON' | 'CAPACITY' | 'FLIGHT' | 'EVENT' | 'EFFECT' | 'UNITS' | 'CONTENTION' | 'APPLICATION';
 class Deferred extends Error { constructor(readonly status: TransferStatus) { super(status); } }
@@ -244,6 +245,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const transferId = randomUUID();
       // Settle source production exactly once. This never collects the works or gives a starter grant.
       for (const w of worlds) await loadLocked(tx, w.id, { now: () => now });
+      await preserveLegacySeasonEvents(tx, source.id, now, playerId);
       if (membership) {
         const [account] = await tx.select().from(accounts).where(eq(accounts.id, player.accountId));
         await reconcileClanPlayerReclaim(tx, { playerId, seasonId: source.id, displayName: account?.displayName ?? player.name, now, preserveCommander: true, activeCutoff: new Date(now.getTime() - INACTIVITY_MS), adminUsernames: options.adminUsernames });

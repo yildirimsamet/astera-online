@@ -16,6 +16,7 @@ import { countryName } from '../v2/identity/country.js';
 import { Icon } from '../v2/icons.js';
 import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { LegacyEntryCard, LegacyProfileSheet } from '../legacy/LegacyPeek.js';
 
 /** The /profile route opens the shared sheet over the live galaxy, below the TopBar. */
 export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, onBack }: {
@@ -34,6 +35,7 @@ export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, 
   const hoursLeft = season?.endsAt ? (season.endsAt.getTime() - now) / 3_600_000 : null;
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [vacationOpen, setVacationOpen] = useState(false);
+  const [legacyOpen, setLegacyOpen] = useState(false);
   const content = useRef<HTMLElement>(null);
   useEffect(() => { content.current?.focus(); }, []);
   return (
@@ -41,6 +43,7 @@ export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, 
       <section ref={content} data-profile-page tabIndex={-1} aria-label={t('menu.navigation.account')}
         className="profile-page flex flex-col gap-4 pb-4 text-v2-ink outline-none">
         <CommanderHost name={name} country={country} />
+        <LegacyEntryCard onOpen={() => { setLegacyOpen(true); }} />
         <button type="button" onClick={() => { setVacationOpen(true); }} className="flex min-h-14 items-center gap-3 rounded-control border border-v2-line bg-v2-panel px-3 py-2 text-left hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self" aria-label={`${t('vacation.title')}. ${t('vacation.hint')}`}>
           <Icon id="i-lock" className="size-5 shrink-0 text-v2-ink-2" /><span><span className="block text-caption font-semibold">{t('vacation.title')}</span><span className="mt-1 block text-label text-v2-ink-2">{t('vacation.hint')}</span></span><Icon id="i-chev" className="ml-auto size-4 shrink-0 text-v2-ink-3" />
         </button>
@@ -112,6 +115,7 @@ export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, 
       </Section>
         {countryPickerOpen && onCountryChange && <CountryPicker value={country} onSelect={(next) => { setCountryPickerOpen(false); void onCountryChange(next); }} onClose={() => { setCountryPickerOpen(false); }} />}
         {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
+        {legacyOpen && <LegacyProfileSheet source={{ kind: 'me' }} name={name} onClose={() => { setLegacyOpen(false); }} />}
       </section>
     </Sheet>
   );

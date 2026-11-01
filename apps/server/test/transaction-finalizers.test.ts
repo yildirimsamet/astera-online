@@ -10,6 +10,17 @@ describe('transaction work deferred until game locks are complete', () => {
   beforeEach(async () => { f = await seedWorld(2, 7719); });
   afterAll(async () => { await (await testDb()).close(); });
 
+  it('finishes cosmetics after every gameplay and scoring finalizer, regardless of registration order', async () => {
+    const trace: string[] = [];
+    await f.db.transaction(async tx => {
+      beforeCommit(tx, 'cosmetics', () => { trace.push('cosmetics'); return Promise.resolve(); }, 'cosmetic');
+      beforeCommit(tx, 'score', () => { trace.push('score'); return Promise.resolve(); }, 'accounting');
+      beforeCommit(tx, 'game', () => { trace.push('game'); return Promise.resolve(); });
+      await Promise.resolve();
+    });
+    expect(trace).toEqual(['game', 'score', 'cosmetics']);
+  });
+
   it('runs final work after the action callback and before the transaction is visible', async () => {
     const trace: string[] = [];
     const returned = await f.db.transaction(async tx => {
