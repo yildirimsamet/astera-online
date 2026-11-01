@@ -171,7 +171,7 @@ export function LegacyPeekGallery({ page }: { page: 'peek' | 'profile' }) {
         <img src={ATMOSPHERE.season.src} alt="" className="absolute inset-0 size-full object-cover opacity-60" />
         {page === 'profile' && !open && <div className="absolute inset-x-4 top-24"><LegacyEntryCard onOpen={() => { setOpen(true); }} /></div>}
         <span className="galaxy-world-label absolute left-1/2 top-[38%] flex -translate-x-1/2 flex-col items-center gap-0.5 text-center"
-          style={{ textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}>
+          style={{ textShadow: '0 1px 4px var(--color-v2-void), 0 0 12px var(--color-v2-void)' }}>
           <span className="legend text-micro text-crystal">CAPITAL{self ? ' · YOURS' : ''}</span>
           <GalaxyCommanderName node={node} onOpen={() => { setOpen(true); }} />
           <span className="legend text-micro text-v2-ink-2">KESTREL-144</span>

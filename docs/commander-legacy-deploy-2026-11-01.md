@@ -68,3 +68,11 @@ Eski ve yeni image ile `/api/auth/me`, `/api/planet`, ülke yazımı ve kaynak t
 Gerçek tarayıcı kabulünde ödül sahip sayacının bütün ödül sahiplerini saydığı bulundu. Farklı tanım/kademe/edisyon ve geri alınan hakları ayıran regresyon testi önce kırıldı; dış sorgu sütunları açıkça nitelenerek düzeltildi, ilgili 8 API testi geçti. Son yayın SHA’sı bu düzeltmeyi de içerir; staging son image ile yeniden doğrulanmadan canlıya geçilmez.
 
 İlk prova kanıtları VPS’te `/home/yildirim/releases/legacy-113fc7c5beb7/` altında tutulur. Kişi bazındaki liste `stage-allocation.private.csv`; yerel kopyası release worktree’sindeki `out/legacy-release/stage-allocation.private.csv` dosyasıdır. Bu özel dosyalar Git’e eklenmez.
+
+## Yayın öncesi son kontroller
+
+Sunucu taraması: 416 dosya, 5.172 geçen test ve mevcut 3 atlama; yeni sahiplik regresyonunu içeren 8 API testi ayrıca geçti. Frontend taraması 719 dosya ve 8.264 test içerdi. Bu taramada Miras’a ait iki görsel sözleşme ihlali bulundu: reveal CSS’indeki blur ve yalnız geliştirme galerisindeki sabit renk. Blur kaldırıldı, galeri ortak renk token’ına geçirildi; ilgili 33 test tekrar çalıştırılıp geçti. Tip kontrolü bütün proje dosyalarını kapsadı; lint 2.962 dosyada gruplar halinde tamamlandı.
+
+Release öncesinde bulunan iki ilgisiz mevcut hata, temiz ana dalın aynı kaynaklarıyla ayrıca yeniden üretildi: `rules/test/power-range.test.ts` belirli bir fast-check seed/counterexample ile güç aralığı özelliğinde kırılıyor; `web/test/arena/hangar-panel.test.tsx` sabit `2026-11-01T00:00:00Z` giriş tarihinin gerçek saate göre dolması yüzünden farklı CTA bekliyor. Bunlar Miras release’inin değiştirdiği davranışlar değildir. Ayrıntılı tekrar kanıtları özel release çıktısında saklanır; üretim savaş/arena kuralları bu görevde değiştirilmez.
+
+Staging’de gerçek gemi üretim komutu ve worker tamamlanması da denendi: kalıcı üretim kanıtı bir kez yazıldı, aynı iş tekrar teslim edildiğinde çoğalmadı. Koleksiyon sayfalama, edisyona özel sahiplik sayıları, ziyaretçi yetkisi, yabancı ödülü vitrine koyamama, yinelenen slot reddi, vitrin/unvan kaydı ve SSE kontrol edildi. Sonuçlar ve son canlı dağıtım sayıları Git dışındaki `out/legacy-release/deploy-report.md` dosyasında tamamlanır.
