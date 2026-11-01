@@ -57,7 +57,7 @@ describe('revealing a won piece', () => {
     document.body.append(opener); opener.focus();
     const { calls } = show([honor]);
     const dialog = await screen.findByTestId('legacy-reveal');
-    expect(dialog).toHaveFocus();
+    await waitFor(() => { expect(dialog).toHaveFocus(); });
     expect(galaxyCover()).toBe('whole');
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await waitFor(() => { expect(screen.queryByTestId('legacy-reveal')).toBeNull(); });
