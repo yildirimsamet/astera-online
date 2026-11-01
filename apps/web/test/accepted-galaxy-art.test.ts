@@ -9,10 +9,10 @@ describe('owner-approved galaxy art selection', () => {
     for (const asset of Object.values(FLEET_V2_ASSET_MANIFEST)) {
       for (const url of [asset.model, asset.lodModel, asset.card, asset.icon]) {
         expect(url).not.toContain('premium-v2');
-        expect(existsSync(`public${url}`)).toBe(true);
+        expect(existsSync(`public${url.split('?')[0]}`)).toBe(true);
       }
     }
-    expect(HULL_MODEL.DART).toBe('/assets/models/ships/dart.glb');
+    expect(HULL_MODEL.DART).toMatch(/^\/assets\/models\/ships\/dart\.glb\?v=[a-f0-9]{10}$/);
     expect(MODEL_FACING[MODEL.probe]).toBe('-x');
     expect(MODEL_FACING[MODEL.drill]).toEqual([0.8652, -0.5010, 0.0208]);
     expect(MODEL.probe).toBe('/assets/models/ships/explorer_ship.glb');

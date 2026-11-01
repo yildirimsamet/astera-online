@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { FLEET_V2_HULLS } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
@@ -85,8 +86,8 @@ describe('Fleet V2 canonical assets', () => {
     for (const asset of entries) {
       expect(asset.card).toMatch(/^\/assets\/images\/ships\/[a-z0-9-]+\.webp$/);
       expect(asset.icon).toMatch(/^\/assets\/images\/ships\/icons\/[a-z0-9-]+\.webp$/);
-      expect(asset.model).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+\.glb$/);
-      expect(asset.lodModel).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+_lod\.glb$/);
+      expect(asset.model).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+\.glb(?:\?v=[a-f0-9]{10})?$/);
+      expect(asset.lodModel).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+_lod\.glb(?:\?v=[a-f0-9]{10})?$/);
       expect(`${asset.card} ${asset.icon} ${asset.model} ${asset.lodModel}`)
         .not.toMatch(/new_test|shiled|lvl_/i);
     }
@@ -96,6 +97,18 @@ describe('Fleet V2 canonical assets', () => {
     expect(new Set(entries.map(({ icon }) => icon)).size).toBe(entries.length);
     expect(new Set(entries.map(({ model }) => model)).size).toBe(entries.length);
     expect(new Set(entries.map(({ lodModel }) => lodModel)).size).toBe(entries.length);
+  });
+
+  it('replaces cached Dart geometry in flight and awards while retaining its card, icon and tier', () => {
+    const dart = manifest?.DART;
+    if (!dart) throw new Error('No Dart asset');
+    expect(dart.card).toBe('/assets/images/ships/dart.webp');
+    expect(dart.icon).toBe('/assets/images/ships/icons/dart.webp');
+    expect(dart.scale).toBe(0.7);
+    for (const url of [dart.model, dart.lodModel]) {
+      const hash = createHash('sha256').update(readFileSync(served(url))).digest('hex').slice(0, 10);
+      expect(new URL(url, 'https://astera.test').searchParams.get('v')).toBe(hash);
+    }
   });
 
   it('resolves every canonical render, icon and model inside mobile transfer budgets', () => {
@@ -117,7 +130,7 @@ describe('Fleet V2 canonical assets', () => {
           So the floor moves to where it still catches a stripped file and no
           longer catches a deliberately simplified one. The thing it was standing
           in for is asserted directly by the next test, which opens each GLB and
-          requires meshopt geometry and three WebP maps.
+          requires meshopt geometry and each hull's authored WebP maps.
         */
         ['model', asset.model, 120, 300],
       ] as const) {
@@ -132,13 +145,14 @@ describe('Fleet V2 canonical assets', () => {
     }
   });
 
-  it('ships meshopt geometry and three WebP material maps per model', () => {
+  it('ships meshopt geometry and each model’s authored WebP material maps', () => {
     for (const [id, asset] of Object.entries(manifest ?? {})) {
       const json = glbJson(served(asset.model));
       expect(json.extensionsRequired, `${id} mesh transport`).toContain('EXT_meshopt_compression');
       expect(json.extensionsRequired, `${id} texture transport`).toContain('EXT_texture_webp');
       expect(json.materials?.length, `${id} material`).toBeGreaterThan(0);
-      expect(json.images, `${id} texture count`).toHaveLength(3);
+      // The replacement Dart is authored with one colour atlas, rather than three PBR maps.
+      expect(json.images, `${id} texture count`).toHaveLength(id === 'DART' ? 1 : 3);
       expect(json.images?.every((image) => image.mimeType === 'image/webp'))
         .toBe(true);
     }
@@ -161,7 +175,7 @@ describe('Fleet V2 canonical assets', () => {
       expect(low.extensionsRequired, `${id} LOD mesh transport`)
         .toContain('EXT_meshopt_compression');
       expect(low.extensionsRequired, `${id} LOD texture transport`).toContain('EXT_texture_webp');
-      expect(low.images, `${id} LOD texture count`).toHaveLength(3);
+      expect(low.images, `${id} LOD texture count`).toHaveLength(id === 'DART' ? 1 : 3);
       expect(low.images?.every((image) => image.mimeType === 'image/webp')).toBe(true);
       expect(statSync(lowPath).size / 1024, `${id} LOD transfer`).toBeLessThan(160);
     }
@@ -187,7 +201,7 @@ describe('Fleet V2 canonical assets', () => {
       id,
       { ...asset.pose, rotation: [...asset.pose.rotation] },
     ]))).toEqual({
-      DART: { rotation: [0, -1, 16], height: 0.17 },
+      DART: { rotation: [0, 0, 0], height: 0.12 },
       PIKE: { rotation: [0, 0, 0], height: 0.14 },
       RAMPART: { rotation: [0, 0, 0], height: 0.12 },
       WARDEN: { rotation: [1, 0, 0], height: 0.06 },

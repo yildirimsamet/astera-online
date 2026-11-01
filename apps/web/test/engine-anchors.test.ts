@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { HULL_MODEL, MODEL } from '../src/ui/assets.js';
+import { HULL_MODEL, MODEL, hullPoseLift } from '../src/ui/assets.js';
 import { nativeEngineAnchors } from '../src/galaxy/engineAnchors.js';
 import { cosmeticById, SHIP_SKIN_IDS } from '@astera/rules';
 import { SHIP_SKIN_DRIVES } from '../src/galaxy/shipSkinDrive.js';
 
 /** Counts reviewed on original meshes from rear, top and side, not inferred from tier. */
 const APERTURES = {
-  DART: 2, PIKE: 2, RAMPART: 1, WARDEN: 2, COURIER: 2,
+  DART: 4, PIKE: 2, RAMPART: 1, WARDEN: 2, COURIER: 2,
   VIPER: 4, TALON: 4, STRONGHOLD: 2, SENTINEL: 2, WAYFARER: 2,
   TEMPEST: 2, BALLISTA: 2, LEVIATHAN: 2, PRAETORIAN: 2, ATLAS: 2,
   NULLIFIER: 2, GARBAGE_COLLECTOR: 1, CATACLYSM: 1, CORSAIR: 2,
@@ -29,11 +29,19 @@ describe('model-specific engine attachments', () => {
     }
   });
 
-  it('places Dart’s restored engines across the hull at its existing posed height', () => {
+  it('attaches Dart’s four engines in two level rows at the new hull’s stern', () => {
     const anchors = nativeEngineAnchors(HULL_MODEL.DART);
-    expect(anchors?.[0]?.[0]).toBeGreaterThan(0.1);
-    expect(anchors?.[1]?.[0]).toBeLessThan(-0.1);
-    expect(anchors?.[0]?.[1]).toBeGreaterThan(0.2);
+    expect(anchors).toHaveLength(4);
+    const lift = hullPoseLift('DART');
+    for (const [right, left] of [[anchors?.[0], anchors?.[1]], [anchors?.[2], anchors?.[3]]]) {
+      expect(right?.[0]).toBeCloseTo(0.118, 2);
+      expect(left?.[0]).toBeCloseTo(-0.12, 2);
+      expect(right?.[1]).toBe(left?.[1]);
+      expect(right?.[2]).toBeCloseTo(-0.5, 2);
+      expect(left?.[2]).toBeCloseTo(-0.5, 2);
+    }
+    expect((anchors?.[0]?.[1] ?? 0) - lift).toBeCloseTo(0.0433, 3);
+    expect((anchors?.[2]?.[1] ?? 0) - lift).toBeCloseTo(-0.0542, 3);
   });
 
   it('puts Cataclysm’s jet on its raised stern rather than inside the hull', () => {

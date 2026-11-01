@@ -1,5 +1,6 @@
 import type { MobileHullId } from '@astera/rules';
 import type { CraftPose, Facing } from '../galaxy/model.js';
+import dartVersions from './dart-model-versions.json';
 
 export interface FleetV2Asset {
   readonly card: string;
@@ -66,7 +67,12 @@ const cargo = (facing: Facing, scale: number, width: number): Presentation => ({
  * a later scene cannot silently give every silhouette the same visual weight.
  */
 export const FLEET_V2_ASSET_MANIFEST = {
-  DART: asset('dart', offensive('-x', 0.7, '#35d9e5', 0.72), calibrated(0, -1, 16, 0.17)),
+  DART: {
+    ...asset('dart', offensive('-x', 0.7, '#35d9e5', 0.72), calibrated(0, 0, 0, 0.12)),
+    // Content versions replace the old hull even behind the immutable /assets cache.
+    model: `/assets/models/ships/dart.glb?v=${dartVersions['dart.glb']}`,
+    lodModel: `/assets/models/ships/dart_lod.glb?v=${dartVersions['dart_lod.glb']}`,
+  },
   PIKE: asset('pike', offensive('+x', 0.7, '#ff3f52', 0.78), calibrated(0, 0, 0, 0.14)),
   RAMPART: asset('rampart', defensive('+x', 0.7, '#35d9e5', 0.82), calibrated(0, 0, 0, 0.12)),
   WARDEN: asset('warden', defensive('+x', 0.7, '#AD78ED', 0.76), calibrated(1, 0, 0, 0.06)),

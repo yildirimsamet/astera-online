@@ -18,7 +18,8 @@
  * Everything here is offline. Nothing in this pipeline ships to the browser.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writePlanetVersions } from './planet-versions.mjs';
@@ -546,6 +547,14 @@ for (const source of sources) {
     const made = describe(variantTarget);
     console.log(`  ${relative(OUT, variantTarget)}: ${kb(made.bytes)} · ${made.triangles} tris`);
   }
+}
+
+// Dart replaces an already-cached hull. Rebuilds must publish the bytes' new URLs too.
+if (!inspectOnly && sources.some((source) => relative(SOURCE, source).replaceAll('\\', '/') === 'ships/dart.glb')) {
+  const versions = Object.fromEntries(['dart.glb', 'dart_lod.glb'].map(name => [name,
+    createHash('sha256').update(readFileSync(join(OUT, 'ships', name))).digest('hex').slice(0, 10),
+  ]));
+  writeFileSync('apps/web/src/ui/dart-model-versions.json', `${JSON.stringify(versions, null, 2)}\n`);
 }
 
 // The planet files are asked for by content hash: a new file must be a new URL.

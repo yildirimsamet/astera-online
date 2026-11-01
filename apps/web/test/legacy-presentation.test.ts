@@ -31,7 +31,10 @@ describe('every award the server can grant has a face and a name', () => {
   });
 
   it('draws ships with their own hull model and the strategic weapons with the game models', () => {
-    expect(legacyArt(award({ definitionId: 'shipwright-dart' }))).toMatchObject({ kind: 'craft', url: '/assets/models/ships/dart_lod.glb' });
+    const dart = legacyArt(award({ definitionId: 'shipwright-dart' }));
+    if (dart?.kind !== 'craft') throw new Error('No Dart miniature');
+    expect(dart.url).toMatch(/^\/assets\/models\/ships\/dart_lod\.glb\?v=[a-f0-9]{10}$/);
+    expect(dart.engines).toMatch(/^\/assets\/models\/ships\/dart\.glb\?v=[a-f0-9]{10}$/);
     expect(legacyArt(award({ definitionId: 'final-verdict' }))).toMatchObject({ kind: 'craft', url: '/assets/legacy/models/strategic-v1/iron_death_star.glb', engines: '/assets/models/ships/death_star.glb' });
     expect(legacyArt(award({ definitionId: 'deep-sight' }))).toMatchObject({ kind: 'glb', url: '/assets/legacy/models/sputnik.glb' });
   });

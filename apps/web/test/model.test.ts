@@ -381,8 +381,8 @@ describe('the facing table', () => {
     // The authored figures, divided back out of the preview scale they were
     // calibrated at. Both hulls were re-scaled when size became a hull's tier.
     expect(MODEL_POSE[HULL_MODEL.DART]).toEqual({
-      rotation: [0, -1, 16],
-      height: 0.17 / 0.7,
+      rotation: [0, 0, 0],
+      height: 0.12 / 0.7,
     });
     expect(MODEL_POSE[HULL_MODEL.CITADEL]).toEqual({
       rotation: [-13, 180, 0],
@@ -402,7 +402,7 @@ describe('the facing table', () => {
     const known = new Set<string>([...Object.values(MODEL), ...cosmeticModels]);
     for (const url of Object.keys(MODEL_FACING)) {
       expect(known.has(url), `${url} has a facing but is not registered`).toBe(true);
-      expect(existsSync(resolve('public', url.slice(1))), `${url} has a facing but its file is missing`).toBe(true);
+      expect(existsSync(resolve('public', url.slice(1).replace(/\?.*$/, ''))), `${url} has a facing but its file is missing`).toBe(true);
     }
   });
 });
@@ -422,7 +422,7 @@ describe('the facing table', () => {
 describe('the model files', () => {
   it('exist for every entry in MODEL', () => {
     for (const [name, url] of Object.entries(MODEL)) {
-      const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+      const path = resolve(process.cwd(), 'public', url.replace(/^\//, '').replace(/\?.*$/, ''));
       expect(existsSync(path), `MODEL.${name} points at ${url}, which is not in public/`).toBe(
         true,
       );
@@ -432,7 +432,7 @@ describe('the model files', () => {
   /** A GLB whose header is wrong is a corrupt export, not a missing file. */
   it('are real glTF binaries', () => {
     for (const [name, url] of Object.entries(MODEL)) {
-      const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+      const path = resolve(process.cwd(), 'public', url.replace(/^\//, '').replace(/\?.*$/, ''));
       const head = readFileSync(path).toString('ascii', 0, 4);
       expect(head, `MODEL.${name} is not a .glb`).toBe('glTF');
     }
@@ -448,7 +448,7 @@ describe('the model files', () => {
    */
   it('stay inside the size budget', () => {
     for (const [name, url] of Object.entries(MODEL)) {
-      const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+      const path = resolve(process.cwd(), 'public', url.replace(/^\//, '').replace(/\?.*$/, ''));
       const kb = statSync(path).size / 1024;
       expect(kb, `MODEL.${name} is ${kb.toFixed(0)} KB — did it skip \`pnpm models\`?`).toBeLessThan(
         // Owner-approved detail budget for the premium probe's moderate flight LOD.
