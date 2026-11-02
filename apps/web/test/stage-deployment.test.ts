@@ -112,6 +112,18 @@ describe('stage uses production topology with its own resources', () => {
   });
 });
 
+it('puts the whole stage game behind the password gate, and never the production vhost', () => {
+  const result = spawnSync(process.execPath, ['tools/stage-nginx.mjs'], { cwd: root, encoding: 'utf8' });
+  expect(result.status).toBe(0);
+  const [http, game] = result.stdout.split('# ── the game');
+  // The map lives at the top level of the file; the gate opens the HTTPS server, before any location.
+  expect(http).toContain('include /etc/nginx/astera-stage-gate/map.conf;');
+  expect(http).not.toContain('astera-stage-gate/server.conf');
+  expect(game).toMatch(/server_name stage\.asteraonline\.space;\n\s+include \/etc\/nginx\/astera-stage-gate\/server\.conf;/);
+  expect(game!.match(/astera-stage-gate\/server\.conf/g)).toHaveLength(1);
+  expect(readFileSync(resolve(root, 'deploy/nginx/astera.conf'), 'utf8')).not.toContain('astera-stage-gate');
+});
+
 it('renders an isolated stage nginx vhost while preserving the production browser policies', () => {
   const result = spawnSync(process.execPath, ['tools/stage-nginx.mjs'], { cwd: root, encoding: 'utf8' });
   expect(result.status, result.stderr).toBe(0);

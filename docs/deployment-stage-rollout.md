@@ -136,6 +136,10 @@ Nginx renderer yalnız aday dosya üretir. Stage için önce HTTP ACME vhost'u v
 sertifika hazırlanır; ardından `/var/www/astera-stage` client'ı ve üretilen HTTPS vhost'u
 kurulup `nginx -t` geçtikten sonra reload yapılır. Üretim sertifikası değiştirilmez.
 
+Stage şifre kapısının arkasındadır (`/__stage_gate/open`, kullanıcı `astera`). Üretilen vhost
+`/etc/nginx/astera-stage-gate/{map.conf,server.conf,htpasswd,open.html}` dosyalarını ister;
+parola özeti ve çerez değeri yalnız sunucuda durur, bu dosyalar silinirse `nginx -t` kalır.
+
 Stage client `VITE_GA_ID` boşken build edilir. Production client aynı kabul edilen SHA'dan,
 production'ın mevcut `VITE_GA_ID` değeriyle bakım öncesinde build edilir; stage'in boş
 analytics ayarlı web dosyaları production'a kopyalanmaz. Server image iki ortamda aynıdır.

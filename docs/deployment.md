@@ -1000,6 +1000,11 @@ Production `.env` has none of the four required mail secrets; the three feature 
 false/unset. Locally the sending API key, HMAC and outbox keys are configured; the webhook
 secret is missing. No secret values were printed. This is preparation evidence, not a deploy.
 
+**Origin firewall (owner, 2026-11-03):** ports 80 and 443 accept only Cloudflare's ranges
+(`ufw`, rules commented `cloudflare`); 22 stays open, key-only. Nothing may publish a DNS-only
+record to this host, and every public record stays proxied. If Cloudflare adds a range
+(`https://www.cloudflare.com/ips-v4`, `ips-v6`), add it to `ufw` and to `set_real_ip_from`.
+
 Public authoritative DNS is **Cloudflare** (`kirk.ns.cloudflare.com`,
 `heidi.ns.cloudflare.com`), even though the mailbox is Hostinger. Root MX points to
 `mx1.hostinger.com` / `mx2.hostinger.com`; root SPF authorizes Hostinger and root DMARC is
