@@ -98,6 +98,22 @@ describe('asteroids', () => {
     expect(skips.length).toBe(28);
   });
 
+  it('leaves the season row alone until there is a birth to decide, and still decides every one', async () => {
+    const { db, clock, season, online } = await galaxy(2);
+    await activateSpawnGate(db, { seasonId: season.id, clock, apply: true });
+    clock.set(new Date(START.getTime() + 1_000));
+    expect(await advanceSpawnGate(db, { seasonId: season.id, clock })).toMatchObject({ status: 'UP_TO_DATE' });
+    const [row] = await db.select().from(seasons).where(eq(seasons.id, season.id));
+    expect(row!.spawnGateThrough?.getTime()).toBe(START.getTime());
+
+    await online(58);
+    clock.set(at(60));
+    expect(await advanceSpawnGate(db, { seasonId: season.id, clock })).toMatchObject({ status: 'ADVANCED', online: 2 });
+    expect((await drifting(season.id, 60)).length).toBe(2);
+    const skips = await db.select().from(spawnGateSkips).where(and(eq(spawnGateSkips.seasonId, season.id), eq(spawnGateSkips.kind, 'ASTEROID')));
+    expect(skips.length).toBe(28);
+  });
+
   it('hides births the worker has not decided yet', async () => {
     const { db, clock, season, online } = await galaxy(40);
     await activateSpawnGate(db, { seasonId: season.id, clock, apply: true });

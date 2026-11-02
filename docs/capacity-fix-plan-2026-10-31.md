@@ -297,3 +297,15 @@ launch ~360 → ~110 ms; artık CPU baskın (SQL başına drizzle kurulumu + sat
 **Kalan:** bir mutasyon içinde aynı satırların tekrar okunması (collect: gezegen 6×, sezon 3×, buildings/satellites/
 units 3×; kilitli yükleme, radyasyon, wealth ve görünüm ayrı ayrı okuyor). Rota rota, satırları elden ele geçiren
 bir refactor; orta risk, SQL başına ~2 ms prod kazancı. Kapasiteyi daha çok etkileyen 2, 3 ve R7'den sonraya.
+
+## Madde 2 ve 1 sonucu (2 Kasım)
+
+**Madde 2 (presence):** Yazım tek koşullu UPDATE oldu.
+- Üç süreç bir dakikada bir kez yazıyor; 3 sorgu yerine 1 sorgu.
+- Kilitli satır `SKIP LOCKED` ile atlanıyor, oyun yazmasını beklemiyor. Damga en geç bir dakika sonraki istekte yazılıyor.
+- Dönüş başvurusu olan komutan mevcut kilitli yoldan yenileniyor. Geç gelen giriş önceliği geri getirmiyor.
+- `await` istek yolunda kaldı: artık kilit beklemiyor, dakikada bir tek gidiş-dönüş maliyeti var. Sıraya almak gereksiz karmaşıklık olurdu.
+
+**Madde 1 (spawn kapısı):** R2 üç oturumla doğrulandı.
+- Bekleyen UPDATE varken yeni `FOR SHARE` beklemeden geçiyor. Yani oyun yazmaları kuyruğa girmiyor; 329 ms worker'ın kendi beklemesi. Ayrı tablo gereksiz.
+- Worker artık yalnız karar verilecek doğum varsa yazıyor. Doğumsuz geçişte sezon satırına dokunmuyor, 15 sn'lik yazım doğum sayısına iniyor.
