@@ -339,3 +339,13 @@ Hata yığını paketin satırlarını gösterir; `dist/server/index.mjs.map` im
 ## Madde 7 sonucu (2 Kasım)
 
 Kod değişikliği yok. Yerleşim havuzu prod'da zaten 2. Normal havuz ve worker sayıları kabul koşusu ölçüm isterse değişir.
+
+## Madde 9 sonucu (2026-11-02)
+
+- **Yapıldı:** Açılış okuması başarısız olunca koşu düşmüyor; yalnız başarısız okumalar, büyüyen bekleme ile en çok 5 deneme yapılıyor (`coldStartReads`). Her deneme yine `request` üzerinden geçtiği için hatalar koşunun rakamlarında görünür. Bozuk gövde koşuyu hemen durdurur.
+- **Gerek kalmadı:** Kademeler arası boşalma: kabul koşusu tek kademe, 1.000 oyuncu. İmaj kimliği `CAPACITY_IMAGE_ID` ile zaten veriliyor.
+- **Koşu sırasında yapılacak (kod değil):** R5 için yük konteyneri sabit adla başlatılır (`docker run --name`), böylece üretecin CPU'su ayrı ölçülür. VPS'teki `Dockerfile.load` yamaları ve bundle için güncellenir.
+
+## Tam testin bulduğu (2026-11-02)
+
+**R13. Madde 2 gizli bir açığı ortaya çıkardı.** Klan tepkisi, üyeliği kilitsiz okuyordu. "Ayrılan komutan tepki veremez" testi yalnız eski presence dakikanın ilk isteğinde oyuncu satırını `FOR UPDATE` ile beklediği için geçiyordu. Canlıda da yalnız o ilk istek korunuyordu. Tepki artık klan sohbeti yazısıyla aynı oyuncu kilidini kendisi alıyor (`14a41efa`).
