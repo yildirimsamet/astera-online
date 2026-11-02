@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { eventReads, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { coldStartReads, eventReads, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -122,5 +122,48 @@ describe('a cold-start read that failed', () => {
       { valid: false, response: { status: 200 }, body: { planets: 'no' } },
       { valid: false, response: null, body: null },
     ])).toBe('/api/galaxy 503 RETRYABLE; /api/planets 200 invalid payload; /api/mining/field no response');
+  });
+});
+
+/**
+ * ONE REFUSED READ WAS THE END OF A WHOLE RUN. Capacity fix plan, item 9.
+ * A real client asks again after a pause, so the runner does: only what failed, a few times.
+ */
+describe('the opening reads', () => {
+  const answering = (failures: Record<string, number>) => {
+    const asked: string[] = [];
+    const read = async (path: string) => {
+      await Promise.resolve();
+      asked.push(path);
+      const left = failures[path] ?? 0;
+      failures[path] = left - 1;
+      return { path, valid: left <= 0 };
+    };
+    return { asked, read };
+  };
+  const pauses: number[] = [];
+  const pause = async (ms: number) => { await Promise.resolve(); pauses.push(ms); };
+
+  it('asks once when everything answers', async () => {
+    const { asked, read } = answering({});
+    const out = await coldStartReads(['/a', '/b'], read, pause);
+    expect(asked).toEqual(['/a', '/b']);
+    expect(out.map((each) => each.path)).toEqual(['/a', '/b']);
+  });
+
+  it('asks again only for what failed, and keeps the order', async () => {
+    pauses.length = 0;
+    const { asked, read } = answering({ '/b': 2 });
+    const out = await coldStartReads(['/a', '/b', '/c'], read, pause, () => 1);
+    expect(asked).toEqual(['/a', '/b', '/c', '/b', '/b']);
+    expect(out.map((each) => [each.path, each.valid])).toEqual([['/a', true], ['/b', true], ['/c', true]]);
+    expect(pauses).toEqual([1_000, 2_000]);
+  });
+
+  it('hands back the failure once its attempts are spent', async () => {
+    const { asked, read } = answering({ '/b': 99 });
+    const out = await coldStartReads(['/b'], read, pause);
+    expect(asked).toHaveLength(5);
+    expect(out[0]?.valid).toBe(false);
   });
 });
