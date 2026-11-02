@@ -254,8 +254,8 @@ function Shell({
     >
       <div
         className={open
-          ? 'mx-auto max-w-xl overflow-hidden border border-b-0 border-v2-line bg-v2-panel/60 shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
-          : 'mx-auto max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/60 shadow-[0_8px_24px_rgb(0_0_0/40%)]'}
+          ? 'mx-auto max-w-xl overflow-hidden border border-b-0 border-v2-line bg-v2-panel shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
+          : 'mx-auto max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/95 shadow-[0_8px_24px_rgb(0_0_0/40%)]'}
       >
         {/* The header. Always present, and the whole control when closed. */}
         <div className="flex items-center gap-2 py-2 pl-3 pr-1.5">
