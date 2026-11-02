@@ -158,7 +158,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 ### Yerel PC: test paralelliği — owner, 2026-10-30
 
 - Kısa, hedefli testlerde **bir worker** kullan.
-- Orta/uzun test gruplarını **2–3 worker** ile paralel çalıştır. Worker başına **1–1,5 GiB** bellek bütçesi uygula: normalde `--max-old-space-size=1024`; test worker'ı başına asla **1536 MiB** üstüne çıkma. Heap yanında RSS'i de izle.
+- Orta/uzun test gruplarını **4 worker** ile paralel çalıştır (owner, 2026-11-02); başka oturum test koşuyor veya boş bellek 3 GiB'in altındaysa 3 worker. Worker başına `--max-old-space-size=1024`; test worker'ı başına asla **1536 MiB** üstüne çıkma. Heap yanında RSS'i de izle.
 - Veritabanı kullanan her worker'ın, çalıştırma/worker'a özgü ad taşıyan ve `_test` ile biten **kendine ait geçici veritabanı** olmalıdır. Ortak veritabanında paralel truncation yapma.
 - Her veritabanına kullanımdan önce migration uygula. Başarı, hata veya iptal durumunda bağlantıları kapat ve o çalıştırmanın oluşturduğu tüm veritabanlarını sil.
 - Saf rules/UI testleri veritabanı gerektirmez.

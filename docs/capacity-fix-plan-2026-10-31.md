@@ -357,6 +357,6 @@ Kod değişikliği yok. Yerleşim havuzu prod'da zaten 2. Normal havuz ve worker
 - Kalkan olayları (`occupation_end`): 5,5 günde 8. `recovery_end`: yok. Doğrusal ölçekte saatte ~2.
 - Tek kalkan olayı 1.000 oyuncuda ~30 VPS çekirdek-saniyesi ve sıkıştırmasız 192 MB eder (bench dizüstünde 7,29 ms, VPS çekirdeği ~4 kat yavaş). Bu sıklıkta dokunulmaz. Oyuncu ve savaş sayısı büyür de dakikada birkaça çıkarsa bu olaylar yavaş şeride alınır ve ilgili komutana özel olay gider.
 
-**Kabul edilen:** Enkaz yarışında en çok ~6 sn gecikme (bkz. `decisions.md`).
+**Kabul edilen (owner, 2 Kasım):** Enkaz yarışında en çok ~6 sn gecikme.
 
 **Bilerek yapılmayanlar:** Spawn kapısı doğumsuz turda yalnız yazmayı kaldırıyor, okumalar duruyor (15 sn'de bir, kazanç az). Vault satırları yenilemede dünya başına en çok bir satır ekliyor (nadir, karmaşıklığa değmez). Kapının ilk çerçevesi bütün bağlantılara aynı anda gidiyor: ortalama sınırlı, tepe değil; trafik okuması SQL'siz olduğu için kabul koşusunda ölçülecek.

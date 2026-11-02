@@ -10,7 +10,7 @@ import type { StreamEvent } from './bus.js';
  * commander is on their own topic and never comes here.
  *
  * A KNOWN COST, ACCEPTED BY THE OWNER (2026-11-02): in a busy galaxy a commander can
- * hear of somebody else's wreck up to six seconds after another did. See `decisions.md`.
+ * hear of somebody else's wreck up to six seconds after another did. See `docs/capacity-fix-plan-2026-10-31.md`.
  */
 const ACTIVITY: ReadonlySet<string> = new Set(['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate']);
 
