@@ -177,7 +177,7 @@ Plan bunları yeniden yazmaz:
 | # | Maliyet | Kanıt | 5.000 koltukta | Faz |
 |---|---|---|---|---|
 | R1 | Honor launch commitment'ı, **her saldırı fırlatmasında** sezondaki bütün oyuncu id'lerini okuyup JSON snapshot'a yazıyor (`presentAtLaunch`) | `services/honorCommitment.ts:65–70` | Fırlatma başına ~5.000 uuid (≈190 KB JSON + WAL); 35 fırlatma/s ≈ 6–7 MB/s | F1.7 |
-| R2 | Honor settlement **bütün** oyuncu toplamlarını upsert ediyor. Late dalı bütün toplam sahiplerine ayrı ayrı `publish` yapıyor ve geçmiş olayların tamamını yeniden oynatıyor | `services/honorLedger.ts:159–161, 171–174, 133` | Savaş başına binlerce satır yazımı; tek transaction'da binlerce bildirim. Honor 3 Kasım'da görünür oluyor | F1.7 |
+| R2 | Honor settlement **bütün** oyuncu toplamlarını upsert ediyor. Late dalı bütün toplam sahiplerine ayrı ayrı `publish` yapıyor ve geçmiş olayların tamamını yeniden oynatıyor | `services/honorLedger.ts:159–161, 171–174, 133` | Savaş başına binlerce satır yazımı; tek transaction'da binlerce bildirim. Honor canlıda | F1.7 |
 | R3 | Sezon kapanışı exclusive sezon kilidi altında sahip olunan her dünyayı sırayla `loadLocked` ediyor | `worker/handlers.ts:2107–2115, 2215` | 5.000+ dünyalık tek transaction. Galaksi dakikalarca kilitli kalabilir | F4.3 |
 | R4 | `/api/galaxy` DTO'su bütün dünyalar üzerinden üretiliyor ve her viewer için bütün dünyalarda fog uygulanıyor. İstemcide LOD ve 10 Hz label taraması bütün düğümleri dolaşıyor | `routes/galaxy.ts:138, 211`, `web/src/galaxy/PlanetField.tsx:233`, `GalaxyCanvas.tsx:1143` | Yanıt, viewer CPU'su ve telefonda parse/kare maliyeti dünya sayısıyla büyür | F3.3, FR.4 |
 | R5 | Korsanlar aktif komutan başına saatte 0,25 doğuyor; dinamik asteroit alanı oyuncu sayısıyla büyüyor | `constants.ts:3464–3466, 2575` | 1.000 aktifte galaksi başına ~250 korsan/saat. Asteroit keşif taraması `O(A×E)` | F1.5, F0 ölçüm |
@@ -1005,7 +1005,7 @@ p95 >25 ms kararı F0.1 koşusunda bu metrikle verilir. İstemcinin otomatik tek
 **F1.7 Honor normalizasyonu ve R'den bağımsızlık (N1, N2, R1, R2). Muhasebe semantiği aynen korunur.**
 
 **3. review kararı: Stage A için zorunlu değil, ilk sprintten çıkarıldı.** Ölçüm: settlement bugün 1,4 ms,
-1.000 oyunculu ölçekte ~5–8 ms (§15.1). Honor 3 Kasım'da açılırken muhasebeyi yeniden yazmak gereksiz risk
+1.000 oyunculu ölçekte ~5–8 ms (§15.1). Honor canlıda ve kapatılmayacak (owner, 2 Kasım); açık sistemin muhasebesini yeniden yazmak gereksiz risk
 taşır. **Zamanı:** FR fazı (FR.1), Honor lansmanı oturduktan sonra. Erken tetik: Honor kilidi tutma p95 >20 ms
 (F0.2 ölçer).
 
@@ -1638,7 +1638,7 @@ flowchart LR
 | O4 | Worker'da kısa `statement_timeout`/`lock_timeout` → 5 denemede olay `failed` → çözülmeyen filo. "Filo asla kaybolmaz" ilkesine aykırı | `worker/queue.ts:101–108` | Q12: worker'da `lock_timeout` yok, `statement_timeout` 120 sn |
 | O5 | "En eskisini kapat" stream sınırı ile istemcinin sonsuz yeniden bağlanması birleşince 4 sekmede kapatma döngüsü ve tekrar eden tam resync | `web/src/session/useEventStream.ts:320–352` | F1.1 `superseded` kuralı |
 | O6 | REPEATABLE READ yazıcısı head'i güncellerken `40001` alır; anıt okuması F2'de sürekli yeniden denemeye düşer | `routes/monuments.ts:41` | §5.1 izolasyon şartı, F2.0 |
-| O7 | Honor muhasebesini lansman haftasında yeniden yazmak | Honor 3 Kasım'da açılıyor | Lansman oturduktan sonra FR.1'de |
+| O7 | Honor muhasebesini lansman haftasında yeniden yazmak | Honor canlıda, kapatılmayacak (owner, 2 Kasım) | Lansman oturduktan sonra FR.1'de |
 | O8 | Galaksi olayı bildirimlerini okuma anında birleştirmek "görüldü" davranışını değiştirebilir | N10 | Ön koşul: istemci davranışı aynı kalır; değilse ürün sorusu |
 | O9 | Worker'ın tam zamanında uyanması sonuçları ortalama ~0,5 sn öne çeker; savunucu biraz daha az üretim biriktirir | handler'lar `clock.now()` kullanıyor | Kural değişikliği değil: sonuç `resolve_at`'e daha yakın, yani daha doğru. `docs/architecture.md`'de belgelenir |
 | O10 | `planets` üzerindeki akış trigger'ı her komuttaki lazy tick'te staging satırı üretirse komut başına gereksiz yazma olur | lazy tick her kilitte kaynak sütunlarını yazar | §5.1: trigger yalnız kamusal sütunlarla sınırlı |
