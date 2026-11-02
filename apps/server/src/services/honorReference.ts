@@ -7,8 +7,10 @@ import { ownedHonorNavy } from './honorNavy.js';
 /**
  * Call after ownership/production/loss mutations, in their transaction, with
  * the injected observation time. World locks precede sorted player locks.
- * Wealth refresh already holds the same player lock; no Honor journal lock is
- * taken, so recording inventory never acquires the ledger before gameplay.
+ * Wealth refresh already holds the same player lock, so this must not strengthen it:
+ * FOR UPDATE would wait for a new row's key-share lock on the commander while that
+ * transaction waits to write Wealth (production deadlocks, November 2026). No Honor
+ * journal lock is taken, so recording inventory never acquires the ledger before gameplay.
  */
 export async function observeHonorOwner(tx: Tx, playerId: string, at?: Date): Promise<void> {
   const [identity] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId));
@@ -16,7 +18,7 @@ export async function observeHonorOwner(tx: Tx, playerId: string, at?: Date): Pr
   const [config] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, identity.seasonId));
   if (config?.closedAt !== null) return;
   if (!at) throw new Error('Honor inventory requires an injected observation time');
-  const [locked] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId)).for('update');
+  const [locked] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId)).for('no key update');
   if (locked?.seasonId !== identity.seasonId) throw new Error('Honor owner moved during observation');
   const [previous] = await tx.select().from(honorObservations).where(and(
     eq(honorObservations.seasonId, identity.seasonId), eq(honorObservations.playerId, playerId),
