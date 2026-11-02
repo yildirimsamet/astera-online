@@ -22,7 +22,7 @@ import { pino } from 'pino';
 import { buildApp } from '../app.js';
 import { createDb } from '../db/client.js';
 import { loadEnv } from '../env.js';
-import { summarize, type BenchSample, type BenchSummary } from './capacityBenchSummary.js';
+import { summarize, targetsFor, type BenchSample, type BenchSummary } from './capacityBenchSummary.js';
 
 const { values } = parseArgs({ options: {
   accounts: { type: 'string', default: '50' },
@@ -110,7 +110,7 @@ const inParallel = async <T>(items: readonly T[], run: (item: T) => Promise<void
 for (const [index, user] of users.entries()) {
   const galaxy = await built.app.inject({ url: '/api/galaxy', headers: { authorization: user.authorization } });
   const others = galaxy.json<{ planets: { id: string; isSelf?: boolean }[] }>().planets.filter((planet) => !planet.isSelf);
-  user.targets = others.slice(index * (rounds + 1), (index + 1) * (rounds + 1)).map((planet) => planet.id);
+  if (probes.some((probe) => probe.name === 'launch')) user.targets = targetsFor(others.map((planet) => planet.id), index, rounds + 1);
 }
 
 const session = values.profile ? new Session() : null;

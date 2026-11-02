@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarize } from '../src/cli/capacityBenchSummary.js';
+import { summarize, targetsFor } from '../src/cli/capacityBenchSummary.js';
 
 describe('a route measured on the capacity dump', () => {
   it('reports latency percentiles, CPU, statements and size per request, and the status mix', () => {
@@ -16,5 +16,18 @@ describe('a route measured on the capacity dump', () => {
     expect(summarize([], 0)).toEqual({
       requests: 0, p50Ms: 0, p95Ms: 0, maxMs: 0, cpuMsPerRequest: 0, statementsPerRequest: 0, kbPerRequest: 0, statuses: {},
     });
+  });
+});
+
+describe('the worlds a commander aims at', () => {
+  const worlds = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  it('gives each commander their own', () => {
+    expect(targetsFor(worlds, 0, 3)).toEqual(['a', 'b', 'c']);
+    expect(targetsFor(worlds, 1, 3)).toEqual(['d', 'e', 'f']);
+  });
+
+  it('refuses to start rather than measure the refusals of launches with no target', () => {
+    expect(() => targetsFor(worlds, 1, 4)).toThrow('commander 1 needs 4 worlds to aim at');
   });
 });
