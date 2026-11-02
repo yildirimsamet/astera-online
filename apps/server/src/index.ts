@@ -11,11 +11,12 @@ import { sweepShopierCheckouts } from './services/shopierSales.js';
 import { systemClock } from './clock.js';
 import { fcmTransport } from './services/fcm.js';
 import { setPushTransport } from './services/notificationCenter.js';
+import { queueProviderAnalytics } from './services/analyticsServerFacts.js';
 
 loadDotEnv();
 const env = loadEnv();
-const log = pino({ level: env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
-const { app, db, worker, bus, rateLimitBackend, mail, close } = buildApp({ env, logger: log });
+const log = pino({ level: env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers["x-analytics-visitor"]', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
+const { app, db, worker, bus, rateLimitBackend, mail, close, metrics } = buildApp({ env, logger: log });
 
 /**
  * One image, two roles. The api and worker process groups run the same build;
@@ -61,7 +62,15 @@ async function main(): Promise<void> {
       log.info({ neutralCensusesScheduled }, 'scheduled missing neutral censuses');
     }
     if (env.FCM_SERVICE_ACCOUNT) {
-      setPushTransport(fcmTransport(env.FCM_SERVICE_ACCOUNT, { onError: (err: unknown) => { log.error({ err }, 'Bildirim Merkezi push failed'); } }));
+      setPushTransport(fcmTransport(env.FCM_SERVICE_ACCOUNT, {
+        onError: (err: unknown) => { log.error({ err }, 'Bildirim Merkezi push failed'); },
+        ...(env.ANALYTICS_ENABLED ? { onOutcome: (outcome: { alertId: string | undefined; accepted: number; rejected: number }) => {
+          const { accepted, rejected } = outcome;
+          metrics.observeOperation('push.provider', 'accepted', accepted);
+          metrics.observeOperation('push.provider', 'rejected', rejected);
+          queueProviderAnalytics(app, outcome);
+        } } : {}),
+      }));
       log.info({ project: env.FCM_SERVICE_ACCOUNT.projectId }, 'Bildirim Merkezi push on');
     } else {
       log.warn('FCM_SERVICE_ACCOUNT unset: paid alerts are recorded, not sent');

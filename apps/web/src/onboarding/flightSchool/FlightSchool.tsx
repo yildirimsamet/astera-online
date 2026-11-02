@@ -30,6 +30,9 @@ import { SchoolLookHint } from './SchoolLookHint.js';
 import { schoolFocusRequest } from './scenes.js';
 import { useNow } from '../../lib/time.js';
 import { SCHOOL_REVEAL_MS, schoolTelescopeFrame, type SchoolFrame } from './visualStory.js';
+import { useSchoolTelemetry } from './useSchoolTelemetry.js';
+import type { SchoolTelemetry } from './telemetry.js';
+import { isAppActive } from '../../platform/activity.js';
 
 interface Props {
   onClaim: (username: string, password: string, progress: readonly ClaimIntent[], country?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
@@ -39,6 +42,8 @@ interface Props {
 export function FlightSchool({ replay = false, ...props }: Props) {
   const [initial] = useState(() => replay ? { world: createSchool(serverNow()), record: { version: 1 as const, startedAt: serverNow(), events: [] } satisfies SchoolRecord } : restoreSchool(serverNow()));
   const [world, setWorld] = useState(initial.world);
+  const [prepared, setPrepared] = useState(false);
+  const observer = useSchoolTelemetry(world, replay, initial.record.events.length > 0, prepared);
   const live = useRef(world), history = useRef(initial.record);
   const [cache] = useState(() => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } });
@@ -56,14 +61,16 @@ export function FlightSchool({ replay = false, ...props }: Props) {
   }, [cache]);
   const dispatch = useCallback((action: SchoolAction, at: number) => {
     const next = schoolAction(tickSchool(live.current, at), action, at);
+    observer.accepted(live.current.scene, action.kind);
     history.current = { ...history.current, events: [...history.current.events, { action, at }] };
     if (!replay) saveSchool(history.current);
     write(next);
-  }, [replay, write]);
+  }, [replay, write, observer]);
   const ready = useRef(false);
   const onSceneReady = useCallback(() => {
     if (ready.current) return;
     ready.current = true;
+    setPrepared(true);
     const current = live.current;
     if (!['sight', 'warning', 'traffic'].includes(current.scene)) return;
     const at = serverNow(), reveal = initial.world.reach;
@@ -86,11 +93,11 @@ export function FlightSchool({ replay = false, ...props }: Props) {
     return () => { window.clearInterval(timer); };
   }, [cache]);
   return <QueryClientProvider client={cache}><ApiProvider api={api}>
-    <WorldProvider><SchoolScreen {...props} replay={replay} world={world} dispatch={dispatch} onSceneReady={onSceneReady} /></WorldProvider>
+    <WorldProvider><SchoolScreen {...props} replay={replay} world={world} dispatch={dispatch} onSceneReady={onSceneReady} observer={observer} /></WorldProvider>
   </ApiProvider></QueryClientProvider>;
 }
 
-function SchoolScreen({ world, dispatch, replay, onSceneReady, ...props }: Props & { world: SchoolWorld; dispatch: (a: SchoolAction, at: number) => void; onSceneReady: () => void }) {
+function SchoolScreen({ world, dispatch, replay, onSceneReady, observer, ...props }: Props & { world: SchoolWorld; dispatch: (a: SchoolAction, at: number) => void; onSceneReady: () => void; observer: SchoolTelemetry }) {
   useSilenceToasts(true);
   const { i18n, t } = useTranslation();
   const copy = schoolCopy(i18n.resolvedLanguage ?? 'en');
@@ -199,6 +206,18 @@ function SchoolScreen({ world, dispatch, replay, onSceneReady, ...props }: Props
     return hand();
   }, [hand]);
   useGate(allowed, !claiming, refuse);
+  useEffect(() => {
+    if (!narrated || busy || claiming || !isAppActive()) return;
+    observer.revealed(scene.id, 'text');
+    const frame = requestAnimationFrame(() => {
+      const next = document.querySelector('[data-school-next]:not(:disabled)');
+      if ([...hand(), ...(next ? [next] : [])].some(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0;
+      })) observer.ready(scene.id);
+    });
+    return () => { cancelAnimationFrame(frame); };
+  }, [scene.id, narrated, busy, claiming, selected, hand, observer, now]);
 
   const focus: Focus | null = flight ? flight.kind === 'mine' ? { kind: 'run', id: 'school-mine' }
     : phase === 'battle' ? { kind: 'planet', id: flight.kind === 'defend' ? SCHOOL_HOME : SCHOOL_TARGET }
@@ -215,7 +234,7 @@ function SchoolScreen({ world, dispatch, replay, onSceneReady, ...props }: Props
   const coachTap = useMemo(() => !busy && coachFocus && ['mine', 'probe', 'raid', 'watch'].includes(scene.kind)
     ? { label: copy.target, onTap: () => { setSelected(true); } } : null, [coachFocus, copy.target]);
   const finishRead = () => {
-    if (scene.id === 'departure') { if (replay) props.onLeave(); else setClaiming(true); }
+    if (scene.id === 'departure') { observer.exit(scene.id); if (replay) props.onLeave(); else setClaiming(true); }
     else send({ kind: 'continue' });
   };
   const isRange = scene.kind === 'range';
@@ -254,9 +273,9 @@ function SchoolScreen({ world, dispatch, replay, onSceneReady, ...props }: Props
       <SchoolPointer targets={highlight} showHand={!busy && (!['read', 'range', 'report'].includes(scene.kind) || scene.id === 'traffic')} />
       {flight && (flight.kind === 'mine' || flight.kind === 'probe') && <SchoolLookHint key={flight.kind} label={copy.rotate} />}
       <SchoolCoach title={`${copy.chapters[scene.chapter - 1] ?? ''}${isRange ? ` · ${copy.level} ${String(world.previewLevel ?? 1)}` : ''}`} progress={scene.chapter}
-        text={message} revealLabel={copy.reveal} onRevealed={() => { setReadMessage(message); }}
+        text={message} revealLabel={copy.reveal} onRevealed={() => { observer.revealed(scene.id, busy ? phase : 'text'); setReadMessage(message); }}
         dock={scene.kind === 'home' || scene.kind === 'collect' || scene.id === 'resources' || !!world.flight ? 'bottom' : 'top'} busy={busy}
-        exitLabel={replay ? t('academy.leave') : copy.exit} onExit={replay ? props.onLeave : () => { setClaiming(true); }}
+        exitLabel={replay ? t('academy.leave') : copy.exit} onExit={() => { observer.exit(scene.id); if (replay) props.onLeave(); else setClaiming(true); }}
         actionLabel={!busy && !world.reach && !(scene.id === 'traffic' && !trafficDone) ? isRange ? world.previewLevel === 5 ? copy.next : copy.range : scene.kind === 'read' ? copy.next
           : scene.kind === 'report' ? panel === 'report' ? undefined : copy.report : scene.kind === 'defend' ? copy.defend : undefined : undefined}
         onAction={isRange ? nextRange : scene.kind === 'report' ? openReport : scene.kind === 'defend' ? () => { send({ kind: 'defend' }); } : finishRead} />

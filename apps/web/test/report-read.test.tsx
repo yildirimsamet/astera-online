@@ -6,6 +6,8 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/queries.js';
 import { useReadReportSignals } from '../src/session/useReadReportSignals.js';
+const observations = vi.hoisted(() => ({ observe: vi.fn(), analyticsRecording: vi.fn(() => true), ANALYTICS_READY_EVENT: 'astera:analytics-ready' }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => observations);
 
 const battle = '57ca7390-373f-44bc-bedd-02260e82660a';
 const id = '15758617-863b-4ea7-9c7d-753662d747e2';
@@ -86,4 +88,23 @@ it('retries a failed acknowledgement on reopening rather than looping while the 
   f.marked.mockResolvedValue({ marked: 1 });
   view.rerender({ visible: true });
   await waitFor(() => { expect(f.marked).toHaveBeenCalledTimes(3); });
+});
+
+it('observes the actually visible outcome without recording notification message contents', async () => {
+  const f = setup();
+  renderHook(() => { useReadReportSignals(true, [battle]); }, { wrapper: f.wrapper });
+  await waitFor(() => { expect(observations.observe).toHaveBeenCalledWith('outcome_visible', { refId: battle, surface: 'report' }, 'live'); });
+});
+
+it('captures an already open report when permission or the observation scope becomes ready', () => {
+  observations.observe.mockClear(); observations.analyticsRecording.mockReturnValue(false);
+  const f = setup();
+  const view = renderHook(() => { useReadReportSignals(true, [battle]); }, { wrapper: f.wrapper });
+  expect(observations.observe).not.toHaveBeenCalled();
+  observations.analyticsRecording.mockReturnValue(true);
+  act(() => { window.dispatchEvent(new Event(observations.ANALYTICS_READY_EVENT)); });
+  expect(observations.observe).toHaveBeenCalledTimes(1);
+  view.rerender(); expect(observations.observe).toHaveBeenCalledTimes(1);
+  act(() => { window.dispatchEvent(new Event(observations.ANALYTICS_READY_EVENT)); });
+  expect(observations.observe).toHaveBeenCalledTimes(2);
 });

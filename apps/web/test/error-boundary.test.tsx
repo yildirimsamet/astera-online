@@ -9,6 +9,9 @@ import { readCrashes } from '../src/shell/crashReport.js';
 import { copyText } from '../src/lib/clipboard.js';
 import i18n from '../src/i18n/index.js';
 
+const observations = vi.hoisted(() => ({ observe: vi.fn() }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => observations);
+
 vi.mock('../src/lib/clipboard.js', () => ({ copyText: vi.fn() }));
 
 /**
@@ -156,4 +159,10 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
+});
+
+it('observes a render failure with a fixed code without copying its message into telemetry', () => {
+  show(<Boom message="private diagnostic text" />);
+  expect(observations.observe).toHaveBeenCalledWith('client_error', { code: 'react_render' });
+  expect(JSON.stringify(observations.observe.mock.calls)).not.toContain('private diagnostic text');
 });

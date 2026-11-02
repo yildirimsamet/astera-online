@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { refreshPlanetAegis } from './planetAegis.js';
 import { attributeLegacyColonyLoss, recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -352,6 +353,7 @@ export async function launchDeathStar(
     const [mission] = await tx
       .insert(missions)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         // The weapon is the cost. A strike burns no deuterium.
         fuelPaid: 0,
         seasonId: origin.seasonId,

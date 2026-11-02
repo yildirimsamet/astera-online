@@ -172,6 +172,8 @@ Oyuncuya açık sistem kurallarını, ön koşulları, birimleri, riskleri ve a�
 
 Rakibe ait görünmeyen durum, özel hesap bilgileri, gizli istihbarat, keşfedilmemiş konumlar, güvenlik/istismar önleme eşikleri, sunucu sırları ve gizli seçim veya rastgelelik girdileri UI açıklamasına veya herkese açık Wiki'ye taşınmaz. Kullanıcının bilmemesi gereken mantığı yalnız açıklamayı kolaylaştırdığı için paylaşma.
 
+**Botlar asla anılmaz (kilitli, owner 2026-10-28).** Oyuncuya görünen hiçbir metinde, Wiki'de, yardımda veya bildirimde bot, sunucu komutanı, yapay oyuncu gibi bir kavram yer almaz; hiçbir dilde. Bir kuralın botlara farklı işlediğini de anlatma. Ayrıntı: [kararlar](decisions.md), 2026-10-28.
+
 Kuralın oyuncuya açık olması ile bu kurala giren rakip verisinin gizli olması farklıdır. Genel kuralı anlatırken gizli veriyi veya kesin sonucu açığa çıkarma. Açıklama sınırı belirsizse ilgili ayrıntıyı yayımlamadan doğrula; geri kalan doğrulanmış açıklama üzerinde ilerle.
 
 ## 11. Örnekler

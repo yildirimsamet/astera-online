@@ -22,6 +22,38 @@ public class SessionHttpTest {
     private static final String SECRET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
     private static String session() { return "{\"accountId\":\"account\",\"username\":\"pilot\",\"displayName\":\"Pilot\",\"country\":\"TR\",\"accessToken\":\"short\",\"nativeSessionId\":\"" + ID + "\",\"refreshToken\":\"" + SECRET + "\",\"debugSecret\":\"hidden\"}"; }
 
+    @Test public void forwardsOnlyAValidVisitHeaderAndRemovesItsPrivateTransportField() throws Exception {
+        ServerSocket server = new ServerSocket(0);
+        server.setSoTimeout(3000);
+        AtomicReference<String> visit = new AtomicReference<>(), body = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread handler = new Thread(() -> {
+            try (Socket socket = server.accept()) {
+                socket.setSoTimeout(3000);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                reader.readLine(); String line; int length = 0;
+                while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                    if (line.toLowerCase().startsWith("x-analytics-visitor:")) visit.set(line.substring(line.indexOf(':') + 1).trim());
+                    if (line.toLowerCase().startsWith("content-length:")) length = Integer.parseInt(line.substring(line.indexOf(':') + 1).trim());
+                }
+                char[] input = new char[length]; int offset = 0;
+                while (offset < length) { int read = reader.read(input, offset, length - offset); if (read < 0) throw new IOException("short body"); offset += read; }
+                body.set(new String(input));
+                byte[] response = session().getBytes(StandardCharsets.UTF_8);
+                socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " + response.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write(response);
+            } catch (Throwable error) { failure.set(error); }
+        });
+        handler.setDaemon(true); handler.start();
+        try {
+            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true);
+            assertEquals(200, http.send("login", new JSONObject().put("username", "pilot").put("password", "private").put("__analyticsVisitor", SECRET).toString(), null).status());
+            handler.join(3000); assertNull(failure.get()); assertEquals(SECRET, visit.get());
+            assertFalse(new JSONObject(body.get()).has("__analyticsVisitor"));
+            assertEquals("private", new JSONObject(body.get()).getString("password"));
+        } finally { server.close(); }
+    }
+
     @Test public void stripsPrivateResponseFieldsBeforeCrossingBridge() throws Exception {
         SessionEngine.Reply reply = SessionHttp.decode("login", 200, session(), "1234", null);
         assertEquals(ID, reply.credential().id());

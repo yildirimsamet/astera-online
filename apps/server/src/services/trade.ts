@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq } from 'drizzle-orm';
 import {
   TRADE,
@@ -340,6 +341,7 @@ export async function launchTrade(
     const [run] = await tx
       .insert(tradeRuns)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         seasonId: origin.seasonId,
         occurrenceId: order.occurrenceId,
         planetId,

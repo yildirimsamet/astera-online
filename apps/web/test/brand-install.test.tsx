@@ -5,6 +5,8 @@ import { INSTALLED_PWA_KEY } from '../src/brand/installedPwa.js';
 import { copyText } from '../src/lib/clipboard.js';
 
 vi.mock('../src/lib/clipboard.js', () => ({ copyText: vi.fn() }));
+const observations = vi.hoisted(() => ({ observe: vi.fn() }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => observations);
 
 const UA = {
   android: 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
@@ -81,6 +83,7 @@ describe('the native install offer', () => {
     expect(dialog).toHaveTextContent('You can add it later from your browser’s menu.');
     expect(dialog).toHaveTextContent('Open the browser menu and choose Install app or Add to Home screen.');
     expect(within(dialog).queryByRole('button', { name: 'Install app' })).toBeNull();
+    expect(observations.observe).toHaveBeenCalledWith('install_result', { code: 'dismissed', phase: 'browser_choice' });
   });
 
   it('falls back to manual steps when the prompt cannot open', async () => {

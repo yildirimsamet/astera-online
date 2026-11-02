@@ -12,6 +12,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
 import { startAnalytics } from './lib/analytics.js';
+import { startPlayerAnalytics } from './lib/playerAnalytics/runtime.js';
 import { configureH5Ads } from './lib/h5.js';
 import { Api } from './api/client.js';
 import { createQueryClient } from './api/queryClient.js';
@@ -47,7 +48,9 @@ startAnalytics();
  */
 configureH5Ads();
 
-const api = new Api();
+const api = new Api({ observations: true });
+const stopPlayerAnalytics = startPlayerAnalytics();
+if (import.meta.hot) import.meta.hot.dispose(stopPlayerAnalytics);
 
 /**
  * A handle on the API, in development only.

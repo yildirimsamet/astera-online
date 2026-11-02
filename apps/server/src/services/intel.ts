@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { recordLegacyActivity } from './legacy.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
@@ -704,6 +705,7 @@ export async function launchProbe(
     const [mission] = await tx
       .insert(missions)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         // A probe is bought with alloy and crystal; it burns no deuterium.
         fuelPaid: 0,
         seasonId: origin.seasonId,

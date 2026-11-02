@@ -1,4 +1,5 @@
 import type { AdmiralFlightKind, AdmiralSnapshot } from '@astera/rules/arena';
+import type { AnalyticsEvent, AnalyticsVisitor } from '../../../web/src/api/analyticsSchemas.js';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -1804,8 +1805,19 @@ export const units = pgTable('units', {
  * departAt and arriveAt, which is what lets the galaxy show dozens of moving
  * objects with zero realtime traffic.
  */
+/** Immutable dispatch provenance. Keep each table's non-null id before these nullable fields:
+ * Drizzle uses the first selected column to detect a missing object in LEFT JOINs. */
+const dispatchProvenanceColumns = () => ({
+  analyticsAttemptId: uuid('analytics_attempt_id'),
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  commandSource: text('command_source').$type<'legacy_unknown' | 'manual_http' | 'internal'>().notNull().default('legacy_unknown'),
+  actorAccountId: uuid('actor_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  actorPlayerId: uuid('actor_player_id'), actorSeasonId: uuid('actor_season_id'), analyticsVisitHash: text('analytics_visit_hash'),
+});
+
 export const missions = pgTable('missions', {
   id: uuid('id').primaryKey().defaultRandom(),
+  ...dispatchProvenanceColumns(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   kind: missionKind('kind').notNull(),
   status: missionStatus('status').notNull().default('in_flight'),
@@ -1924,6 +1936,8 @@ export const missions = pgTable('missions', {
   /** Last HP interval paid on this physical leg; null on legacy rows. */
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
 }, (t) => [
+  index('missions_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('missions_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
@@ -2161,6 +2175,13 @@ export type BuildOrderStatus = 'BUILDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED'
  */
 export const buildOrders = pgTable('build_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
+  analyticsAttemptId: uuid('analytics_attempt_id'),
+  /** Acceptance is immutable; startedAt belongs to the mutable queue schedule. Historical rows stay unknown. */
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  origin: text('origin').$type<'legacy_unknown' | 'manual_http' | 'internal'>().notNull().default('legacy_unknown'),
+  actorAccountId: uuid('actor_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  actorPlayerId: uuid('actor_player_id'), actorSeasonId: uuid('actor_season_id'),
+  analyticsVisitHash: text('analytics_visit_hash'),
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   queue: text('queue').$type<BuildQueueId>().notNull(),
   slot: integer('slot').notNull(),
@@ -2175,6 +2196,8 @@ export const buildOrders = pgTable('build_orders', {
   /** Still Wealth while committed; returned in full only when the system abandons it. */
   cost: jsonb('cost').$type<Resources>().notNull(),
 }, (t) => [
+  index('build_orders_analytics_order_idx').on(t.orderedAt).where(sql`${t.origin} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('build_orders_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   uniqueIndex('build_orders_planet_queue_slot_active_idx')
     .on(t.planetId, t.queue, t.slot)
     .where(sql`${t.status} = 'BUILDING'`),
@@ -2446,6 +2469,7 @@ export type MonumentReturnReason = 'RECALLED' | 'CAPACITY' | 'MEMBERSHIP' | 'CON
  */
 export const monumentWaves = pgTable('monument_waves', {
   id: uuid('id').primaryKey().defaultRandom(),
+  ...dispatchProvenanceColumns(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
   monumentId: uuid('monument_id').notNull(),
   playerId: uuid('player_id').notNull().references(() => players.id),
@@ -2471,6 +2495,8 @@ export const monumentWaves = pgTable('monument_waves', {
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }).notNull(),
   generation: integer('generation').notNull().default(0),
 }, (t) => [
+  index('monument_waves_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('monument_waves_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   foreignKey({
     name: 'monument_waves_target_season_fk',
     columns: [t.monumentId, t.seasonId],
@@ -2607,6 +2633,12 @@ export const monumentBattleParticipants = pgTable('monument_battle_participants'
  */
 export const researchOrders = pgTable('research_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
+  analyticsAttemptId: uuid('analytics_attempt_id'),
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  origin: text('origin').$type<'legacy_unknown' | 'manual_http' | 'internal'>().notNull().default('legacy_unknown'),
+  actorAccountId: uuid('actor_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  actorPlayerId: uuid('actor_player_id'), actorSeasonId: uuid('actor_season_id'),
+  analyticsVisitHash: text('analytics_visit_hash'),
   playerId: uuid('player_id').notNull().references(() => players.id),
   fundingPlanetId: uuid('funding_planet_id').notNull().references(() => planets.id),
   slot: integer('slot').notNull(),
@@ -2619,6 +2651,8 @@ export const researchOrders = pgTable('research_orders', {
   remainingSeconds: integer('remaining_seconds').notNull(),
   cost: jsonb('cost').$type<Resources>().notNull(),
 }, (t) => [
+  index('research_orders_analytics_order_idx').on(t.orderedAt).where(sql`${t.origin} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('research_orders_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   uniqueIndex('research_orders_player_slot_active_idx')
     .on(t.playerId, t.slot)
     .where(sql`${t.status} = 'BUILDING'`),
@@ -4141,6 +4175,7 @@ export const pirateRaidStatus = pgEnum('pirate_raid_status', ['outbound', 'retur
  */
 export const pirateRaids = pgTable('pirate_raids', {
   id: uuid('id').primaryKey().defaultRandom(),
+  ...dispatchProvenanceColumns(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   /** Where it left from, and where its squadron is parked for the trip. */
   planetId: uuid('planet_id').notNull().references(() => planets.id),
@@ -4191,6 +4226,8 @@ export const pirateRaids = pgTable('pirate_raids', {
    */
   recalledAt: timestamp('recalled_at', { withTimezone: true }),
 }, (t) => [
+  index('pirate_raids_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('pirate_raids_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('pirate_raids_planet_idx').on(t.planetId, t.status),
   index('pirate_raids_season_idx').on(t.seasonId, t.status),
   index('pirate_raids_owner_depart_idx').on(t.ownerPlayerId, t.departAt),
@@ -4284,6 +4321,7 @@ export const tradeRunStatus = pgEnum('trade_run_status', ['outbound', 'returning
  */
 export const tradeRuns = pgTable('trade_runs', {
   id: uuid('id').primaryKey().defaultRandom(),
+  ...dispatchProvenanceColumns(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   /** Which appearance of the merchant this convoy was sent to. */
   occurrenceId: uuid('occurrence_id').notNull().references(() => galaxyEventOccurrences.id),
@@ -4329,6 +4367,8 @@ export const tradeRuns = pgTable('trade_runs', {
   recalledAt: timestamp('recalled_at', { withTimezone: true }),
   recallFrom: jsonb('recall_from').$type<Vec3 & { home: Vec3 }>(),
 }, (t) => [
+  index('trade_runs_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('trade_runs_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
   index('trade_runs_owner_idx').on(t.ownerPlayerId),
   index('trade_runs_planet_idx').on(t.planetId, t.status),
@@ -4509,6 +4549,7 @@ export const miningStatus = pgEnum('mining_status', ['outbound', 'returning', 'd
  */
 export const miningRuns = pgTable('mining_runs', {
   id: uuid('id').primaryKey().defaultRandom(),
+  ...dispatchProvenanceColumns(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   /** Launch actor; later control or placement changes cannot rewrite attribution. */
@@ -4543,6 +4584,8 @@ export const miningRuns = pgTable('mining_runs', {
   minedCrystal: real('mined_crystal').notNull().default(0),
   minedDeuterium: real('mined_deuterium').notNull().default(0),
 }, (t) => [
+  index('mining_runs_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
+  index('mining_runs_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('mining_planet_idx').on(t.planetId, t.status),
   index('mining_season_idx').on(t.seasonId, t.status),
   index('mining_owner_depart_idx').on(t.ownerPlayerId, t.departAt),
@@ -4579,6 +4622,7 @@ export const notifications = pgTable('notifications', {
    */
   refId: uuid('ref_id'),
 }, (t) => [
+  index('notifications_analytics_time_idx').on(t.createdAt),
   index('notifications_player_idx').on(t.playerId, t.seen, t.createdAt),
   // The mailbox page in its exact order (listNotifications), read without a sort. Q1.
   // NULLS FIRST is what a plain DESC means; drizzle's default NULLS LAST would not match it.
@@ -4644,6 +4688,7 @@ export const paidAlerts = pgTable('paid_alerts', {
 }, (t) => [
   uniqueIndex('paid_alerts_ref_idx').on(t.playerId, t.kind, t.refId),
   index('paid_alerts_player_time_idx').on(t.playerId, t.createdAt),
+  index('paid_alerts_analytics_settled_idx').on(t.settledAt).where(sql`${t.settledAt} IS NOT NULL`),
 ]);
 
 /** Dedupes retried actions — a flaky mobile connection must not double-launch. */
@@ -5039,6 +5084,7 @@ export const commanderTransfers = pgTable('commander_transfers', {
   committedAt: timestamp('committed_at', { withTimezone: true }).notNull(),
   emittedAt: timestamp('emitted_at', { withTimezone: true }),
 }, (t) => [uniqueIndex('commander_transfers_version_idx').on(t.playerId, t.fromVersion),
+  index('commander_transfers_analytics_time_idx').on(t.committedAt),
   index('commander_transfers_outbox_idx').on(t.emittedAt),
   check('commander_transfers_version_check', sql`${t.toVersion} = ${t.fromVersion} + 1`)]);
 
@@ -5396,3 +5442,50 @@ export const legacyAttackIntents = pgTable('legacy_attack_intents', {
   check('legacy_attack_intents_tiers_check', sql`${t.attackerTier} > 0 AND ${t.defenderTier} > ${t.attackerTier}`),
   check('legacy_attack_intents_time_check', sql`${t.settledAt} IS NULL OR ${t.settledAt} >= ${t.committedAt}`),
 ]);
+
+
+/** Optional first-party observations. No player/season FK: rollover cannot erase a visit. */
+export const analyticsDailyAggregates = pgTable('analytics_daily_aggregates', {
+  id: text('id').primaryKey(), day: timestamp('day', { withTimezone: true }).notNull(),
+  name: text('name').notNull(), mode: text('mode').$type<AnalyticsEvent['mode']>().notNull(),
+  events: integer('events').notNull(), visitors: integer('visitors').notNull(),
+}, t => [index('analytics_daily_day_idx').on(t.day)]);
+
+export const analyticsVisitors = pgTable('analytics_visitors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  credentialHash: text('credential_hash').notNull().unique(),
+  contextId: uuid('context_id').notNull(),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+  metadata: jsonb('metadata').$type<AnalyticsVisitor>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+}, t => [index('analytics_visitors_account_idx').on(t.accountId), index('analytics_visitors_expiry_idx').on(t.expiresAt),
+  index('analytics_visitors_created_idx').on(t.createdAt)]);
+
+export const analyticsSessions = pgTable('analytics_sessions', {
+  id: uuid('id').primaryKey(),
+  visitorId: uuid('visitor_id').notNull().references(() => analyticsVisitors.id, { onDelete: 'cascade' }),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+  contextId: uuid('context_id').notNull(),
+  firstAt: timestamp('first_at', { withTimezone: true }).notNull(),
+  lastAt: timestamp('last_at', { withTimezone: true }).notNull(),
+}, t => [index('analytics_sessions_account_time_idx').on(t.accountId, t.lastAt), index('analytics_sessions_visitor_idx').on(t.visitorId)]);
+
+export const analyticsEvents = pgTable('analytics_events', {
+  id: uuid('id').primaryKey(),
+  visitorId: uuid('visitor_id').notNull().references(() => analyticsVisitors.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').notNull().references(() => analyticsSessions.id, { onDelete: 'cascade' }),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id'), seasonId: uuid('season_id'), shardId: uuid('shard_id'),
+  name: text('name').notNull(), mode: text('mode').$type<AnalyticsEvent['mode']>().notNull(),
+  source: text('source').$type<'client_observation' | 'server_fact'>().notNull(),
+  sequence: integer('sequence').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+  timeTrusted: boolean('time_trusted').notNull(),
+  clientAt: doublePrecision('client_at'),
+  payloadHash: text('payload_hash').notNull(),
+  properties: jsonb('properties').$type<AnalyticsEvent['properties']>().notNull(),
+}, t => [index('analytics_events_account_time_idx').on(t.accountId, t.occurredAt),
+  index('analytics_events_session_sequence_idx').on(t.sessionId, t.sequence),
+  index('analytics_events_visitor_idx').on(t.visitorId), index('analytics_events_received_idx').on(t.receivedAt)]);

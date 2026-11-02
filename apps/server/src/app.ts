@@ -66,6 +66,15 @@ import { registerGalaxyEventRoutes } from './routes/galaxyEvents.js';
 import { registerClanRoutes } from './routes/clan.js';
 import { registerCommunityRoutes } from './routes/community.js';
 import { registerAdminRoutes } from './routes/admin.js';
+import { registerPlayerAnalyticsRoutes } from './routes/playerAnalytics.js';
+import { registerAnalyticsAdmin } from './routes/analyticsAdmin.js';
+import { recoverAnalyticsCommands } from './services/analyticsFacts.js';
+import { AnalyticsRecorder } from './services/analyticsRecorder.js';
+import { installServerAnalytics, queueResponseCommand } from './services/analyticsServerFacts.js';
+import { refreshDailyAnalytics } from './services/analyticsDaily.js';
+import { installCommandOrigin } from './services/commandOrigin.js';
+import { startAnalyticsMaintenance } from './services/analyticsMaintenance.js';
+import { purgeAnalytics } from './services/playerAnalytics.js';
 import { registerCosmeticRoutes } from './routes/cosmetics.js';
 import { registerPaddleRoutes } from './routes/paddle.js';
 import { registerPolarRoutes } from './routes/polar.js';
@@ -195,6 +204,26 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   });
   const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX,
     { ...idleBound, requireCurrentRules: opts.env.REQUIRE_CURRENT_RULES });
+  installCommandOrigin(app, opts.env.ANALYTICS_ENABLED);
+  const closeServerAnalytics = opts.env.ANALYTICS_ENABLED ? installServerAnalytics(app) : null;
+  const analyticsRecorder = opts.env.ANALYTICS_ENABLED && (opts.env.ROLE === 'api' || opts.env.ROLE === 'both')
+    ? new AnalyticsRecorder(() => recoverAnalyticsCommands(db, clock), error => { log.warn({ err: error }, 'Analytics command recovery failed'); }) : null;
+  app.addHook('onResponse', (req, reply, done) => {
+    queueResponseCommand(app, req, reply.statusCode);
+    if (req.method === 'POST' && reply.statusCode < 400 && !req.url.startsWith('/api/analytics/')) analyticsRecorder?.wake();
+    done();
+  });
+  let stopAnalyticsMaintenance: (() => Promise<void>) | undefined;
+  app.addHook('onListen', done => {
+    stopAnalyticsMaintenance = startAnalyticsMaintenance(async () => {
+      try {
+        if (opts.env.ANALYTICS_ENABLED) await refreshDailyAnalytics(db, clock, new Set(opts.env.ADMIN_USERNAMES));
+      } finally { await purgeAnalytics(db, clock); }
+    },
+      error => { log.warn({ err: error }, 'Analytics retention sweep failed'); });
+    done();
+  });
+  app.addHook('onClose', async () => { await stopAnalyticsMaintenance?.(); await analyticsRecorder?.close(); await closeServerAnalytics?.(); });
   const tokens: TokenService = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
@@ -298,7 +327,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       origin: opts.env.NATIVE_APP_ORIGINS,
       credentials: false,
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build', 'x-astera-rules'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build', 'x-astera-rules', 'x-analytics-visitor', 'x-analytics-attempt'],
       exposedHeaders: ['x-server-time', 'x-placement', 'Date'],
       maxAge: 600,
     });
@@ -444,6 +473,10 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     const err: unknown = error;
     const route = req.routeOptions.url ?? 'unmatched';
 
+    if (route.startsWith('/api/analytics/') && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+      return reply.code(413).send({ error: 'ANALYTICS_PAYLOAD_TOO_LARGE', message: 'Observation batch is too large' });
+    }
+
     if (err instanceof GameError) {
       /**
        * The code, the English sentence, and the figures that sentence was built
@@ -517,6 +550,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     if (opts.env.ROLE === 'arena') { registerArena(app, opts.env); return; }
     if (opts.env.ROLE === 'worker') return;
     registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
+    registerPlayerAnalyticsRoutes(app, opts.env.ANALYTICS_ENABLED);
+    if (opts.env.ANALYTICS_ADMIN_ENABLED) registerAnalyticsAdmin(app);
     if (opts.env.NATIVE_AUTH_ENABLED) registerNativeAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerAccountSecurityRoutes(app, opts.env);
     registerAccountDeletionRoutes(app, opts.env.CHAT_MEDIA_DIR, opts.env.JWT_SECRET);

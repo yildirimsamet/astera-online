@@ -92,3 +92,11 @@ describe('route and operation telemetry', () => {
     metrics.close();
   });
 });
+
+it('counts provider results by device quantity without using an identity label', () => {
+  const metrics = new RuntimeMetrics();
+  metrics.observeOperation('push.provider', 'accepted', 3);
+  metrics.observeOperation('push.provider', 'rejected', 1);
+  expect(metrics.status().operations['push.provider']).toEqual({ accepted: 3, rejected: 1 });
+  metrics.close();
+});

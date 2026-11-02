@@ -28,6 +28,14 @@ const recallBody = z.object({ selections: z.array(z.object({ lotId: z.string().u
 const recallCommand = z.union([recallBody, z.object({ all: z.literal(true) }).strict()]);
 const probeBody = z.object({ originPlanetId: z.string().uuid() }).strict();
 const keyOf = (req: FastifyRequest): string => z.string().min(8).max(128).parse(req.headers['idempotency-key']);
+type Wave = typeof monumentWaves.$inferSelect;
+type PublicWave = Omit<Wave, 'orderedAt' | 'commandSource' | 'actorAccountId' | 'actorPlayerId' | 'actorSeasonId' | 'analyticsVisitHash' | 'analyticsAttemptId'>;
+/** Preserve the established gameplay response while removing only optional provenance. Also covers older cached responses. */
+function publicWave(wave: PublicWave & Partial<Wave>): PublicWave {
+  const { orderedAt: _orderedAt, commandSource: _commandSource, actorAccountId: _actorAccountId,
+    actorPlayerId: _actorPlayerId, actorSeasonId: _actorSeasonId, analyticsVisitHash: _visit, analyticsAttemptId: _attempt, ...result } = wave;
+  return result;
+}
 
 function serializationFailure(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
@@ -76,9 +84,10 @@ export function registerMonumentRoutes(app: FastifyInstance): void {
     return idempotentMutation(app.db, { playerId: self.playerId, operation: 'monument.send', key: keyOf(req), body: { monumentId, ...body }, now: self.at }, async (tx) => {
       await assertMonumentAvailable(tx, self.seasonId, monumentId, true, self.at);
       await reconcileMonumentViews(tx, self, monumentId);
-      return sendMonument(tx, { ...body, monumentId, senderPlayerId: self.playerId, clock: { now: () => self.at },
+      const result = await sendMonument(tx, { ...body, monumentId, senderPlayerId: self.playerId, clock: { now: () => self.at },
         adminUsernames: app.adminUsernames });
-    });
+      return { wave: publicWave(result.wave), quote: result.quote };
+    }).then(result => ({ wave: publicWave(result.wave), quote: result.quote }));
   });
   app.post('/api/monuments/:monumentId/probe', { preHandler: requireAuth }, async (req) => {
     const { monumentId } = targetParam.parse(req.params);
@@ -110,7 +119,8 @@ export function registerMonumentRoutes(app: FastifyInstance): void {
       if (!wave) throw new GameError('MONUMENT_WAVE_NOT_FOUND', 'No such wave', 404);
       await assertMonumentAvailable(tx, self.seasonId, wave.monumentId, true, self.at);
       await reconcileMonumentViews(tx, self, wave.monumentId);
-      return recallMonument(tx, { ...body, waveId, playerId: self.playerId, clock: { now: () => self.at } });
-    });
+      const result = await recallMonument(tx, { ...body, waveId, playerId: self.playerId, clock: { now: () => self.at } });
+      return { wave: publicWave(result.wave), lots: result.lots };
+    }).then(result => ({ ...result, wave: publicWave(result.wave) }));
   });
 }

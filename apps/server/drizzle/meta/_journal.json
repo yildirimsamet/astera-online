@@ -1527,6 +1527,69 @@
       "when": 1793449362221,
       "tag": "0217_commander_legacy",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1793619489433,
+      "tag": "0218_player_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1793621021976,
+      "tag": "0219_command_acceptance_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1793622486165,
+      "tag": "0220_observation_clock_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1793622783505,
+      "tag": "0221_dispatch_actor_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1793622844798,
+      "tag": "0222_analytics_recovery_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1793623415064,
+      "tag": "0223_analytics_daily_totals",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1793627477875,
+      "tag": "0224_analytics_command_attempt",
+      "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1793628394811,
+      "tag": "0225_analytics_cleanup_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1793629480093,
+      "tag": "0226_analytics_result_recovery_indexes",
+      "breakpoints": true
     }
   ]
 }

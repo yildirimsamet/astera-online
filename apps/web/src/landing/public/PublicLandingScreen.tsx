@@ -13,10 +13,13 @@ import { publisherUrl, publisherWikiUrl } from '../../lib/publisherPages.js';
 import { LANDING_COPY, LANDING_ACTIONS } from './content.js';
 import { syncDocumentLanguage } from '../../i18n/document.js';
 import { useLandingConsentHost } from './ConsentPlacement.js';
+import { useLandingTelemetry } from '../../lib/playerAnalytics/useLandingTelemetry.js';
+import { AnalyticsSetting } from '../../lib/playerAnalytics/Notice.js';
 
 /** Same account/rehearsal callbacks as native, without a WebGL/preload gate. */
 export function PublicLandingScreen({ onAuthenticate, onBegin, open, knownCommander, error, securityNotice, loginEmail, onRequestLogin, onRetry }: LandingProps) {
   const { t, i18n } = useTranslation();
+  const telemetry = useLandingTelemetry('public_landing');
   const consentHostRef = useLandingConsentHost();
   const language = matchLanguage(i18n.resolvedLanguage) ?? 'tr';
   const [mode, setMode] = useState<Mode | null>(open ?? null);
@@ -39,10 +42,10 @@ export function PublicLandingScreen({ onAuthenticate, onBegin, open, knownComman
     starting.current = true;
     setMode(null);
     setOpening(true);
-    void onBegin().catch(() => { starting.current = false; setOpening(false); });
+    void telemetry.play(onBegin).catch(() => { starting.current = false; setOpening(false); });
   };
   const close = (): void => { setMode(null); primary.current?.querySelector<HTMLElement>('button')?.focus(); };
-  const login = (): void => { if (onRequestLogin?.() !== false) setMode('login'); };
+  const login = (): void => { telemetry.login(); if (onRequestLogin?.() !== false) setMode('login'); };
   return <>
     <PublicLanding consentHostRef={consentHostRef} language={language} languageSwitch={<LanguageSwitch compact />} entry={<div ref={primary}>
       {returning ? <>
@@ -59,7 +62,7 @@ export function PublicLandingScreen({ onAuthenticate, onBegin, open, knownComman
       {commanders > 0 ? <p className="landing-population">{t('landing.populationHeld', { amount: commanders }).replace(/<\/?0>/g, '')}{online > 0 ? ` · ${t('landing.populationOnline', { amount: online }).replace(/<\/?0>/g, '')}` : ''}</p> : null}
     </div>} footer={<nav aria-label={t('landing.publicLinksLabel')}><a href={publisherWikiUrl(language)}>Wiki</a>{([
       ['about', 'landing.aboutLink'], ['guide', 'landing.guideLink'], ['privacy', 'landing.privacyLink'], ['terms', 'landing.termsLink'], ['refunds', 'landing.refundsLink'], ['pricing', 'landing.pricingLink'], ['contact', 'landing.contactLink'],
-    ] as const).map(([page, label]) => <a key={page} href={publisherUrl(page, language)}>{t(label)}</a>)}</nav>} privacyControl={<button type="button" onClick={openConsentNotice}>{LANDING_COPY[language].privacy}</button>} />
+    ] as const).map(([page, label]) => <a key={page} href={publisherUrl(page, language)}>{t(label)}</a>)}</nav>} privacyControl={<div className="flex flex-wrap items-center gap-3"><button type="button" onClick={openConsentNotice}>{LANDING_COPY[language].privacy}</button><AnalyticsSetting /></div>} />
     {mode !== null ? <AuthDialog onBegin={begin} onClose={close} onSubmit={onAuthenticate} securityNotice={securityNotice} loginEmail={loginEmail} /> : null}
   </>;
 }

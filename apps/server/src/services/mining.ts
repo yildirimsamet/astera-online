@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { and, asc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
@@ -539,6 +540,7 @@ export async function launchMining(
     const [run] = await tx
       .insert(miningRuns)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         seasonId: origin.seasonId,
         planetId,
         ownerPlayerId: origin.playerId,
@@ -1518,6 +1520,7 @@ export async function launchHarvest(
     const [run] = await tx
       .insert(miningRuns)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         seasonId: origin.seasonId,
         planetId,
         ownerPlayerId: origin.playerId,

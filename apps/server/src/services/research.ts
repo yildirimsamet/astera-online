@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { commandProvenance } from './commandOrigin.js';
 import {
   BUILD,
   RESEARCH_PROJECTS,
@@ -163,6 +164,7 @@ export async function completeResearch(
     const [order] = await tx
       .insert(researchOrders)
       .values({
+        ...commandProvenance(planet.now, planet.playerId, planet.seasonId),
         playerId: planet.playerId,
         fundingPlanetId: planet.planetId,
         slot: queue.length,

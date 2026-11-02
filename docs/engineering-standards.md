@@ -55,9 +55,10 @@ unnecessary conditions that reveal a wrong mental model.
 Always run lint through `pnpm lint`. The root script caps ESLint at
 `--max-old-space-size=4096`. **Owner rule, 13 October 2026: never exceed a 4 GiB
 Node heap on the local PC; 6 GiB is prohibited.** Total RSS also includes native
-memory, so a 4 GiB heap is not a 4 GiB process limit. Monitor RSS, keep checks
-sequential and use a smaller heap when necessary. `pnpm verify` and `pnpm build`
-inherit the same ceiling. Never raise it to pass a check.
+memory, so a 4 GiB heap is not a 4 GiB process limit. Monitor RSS, keep typecheck,
+lint and test runs separate, and use a smaller heap when necessary. `pnpm verify`
+and `pnpm build` inherit the same ceiling. Test workers have the stricter
+1–1.5 GiB budget below. Never raise a limit to pass a check.
 
 When one full lint process puts pressure on the PC, these three sequential root
 invocations cover the same files while releasing each group's type programs:
@@ -93,6 +94,29 @@ route signature. Suppression is the last option, and it carries a comment saying
 is wrong here*.
 
 ## Testing
+
+**Local execution policy (owner, 30 October 2026):** Short, targeted checks use one
+worker. Medium/long test batches use **2–3 parallel workers**, with a **1–1.5 GiB
+memory budget per worker**. Use a 1024 MiB Node heap normally; 1536 MiB is the
+maximum for a test worker. Heap is not total RSS: monitor worker RSS and lower
+the heap or choose two workers when necessary to stay within the memory budget.
+Use `nice -n 10`, run one workspace at a time (`--workspace-concurrency=1`), and
+do not overlap testing with typecheck or lint. This policy replaces the former
+blanket single-worker rule; it does not make a small focused regression parallel.
+
+Every database-using worker gets a separate disposable database, for example
+`astera_<run-id>_w<worker-id>_test`. Create/migrate it before that worker's tests;
+never let different workers truncate or mutate the same database. Close connections
+and drop all databases created by the run after success, failure or cancellation,
+including partially initialized runs. Never drop an existing development, production
+or unrelated test database. Pure rules/UI tests do not need databases.
+
+The existing server harness (`apps/server/test/helpers.ts`) reads one `DATABASE_URL`
+and the server Vitest config disables file parallelism for that shared database.
+Before running a medium/long server batch in parallel, provide worker-specific URLs
+and lifecycle cleanup; simply raising `maxWorkers` against the shared URL is unsafe.
+The requirement for explicit authorization of long economy/season simulations and
+snowball audits remains unchanged.
 
 **Risk coverage, not line coverage.** Concentrate on what is deterministic and
 server-authoritative: combat resolution, loot, resource transactions, travel, timing, fleet

@@ -134,8 +134,8 @@ export class RuntimeMetrics {
     this.incrementNested(this.refusals, `${method.toUpperCase()} ${route}`, code);
   }
 
-  observeOperation(operation: string, outcome: string): void {
-    this.incrementNested(this.operations, operation, outcome);
+  observeOperation(operation: string, outcome: string, amount = 1): void {
+    if (amount > 0) this.incrementNested(this.operations, operation, outcome, amount);
   }
 
   observeDatabaseAcquire(latencyMs: number): void {
@@ -215,9 +215,10 @@ export class RuntimeMetrics {
     target: Map<string, Map<string, number>>,
     scope: string,
     value: string,
+    amount = 1,
   ): void {
     const counts = target.get(scope) ?? new Map<string, number>();
-    counts.set(value, (counts.get(value) ?? 0) + 1);
+    counts.set(value, (counts.get(value) ?? 0) + amount);
     target.set(scope, counts);
   }
 

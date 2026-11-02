@@ -6,6 +6,8 @@ import { BOTS } from './services/bots/personas.js';
 import { parseServiceAccount, type ServiceAccount } from './services/fcm.js';
 
 const schema = z.object({
+  ANALYTICS_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  ANALYTICS_ADMIN_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   CHAT_MEDIA_DIR: z.string().min(1).default('.data/chat-media'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   /** 'api' serves HTTP, 'worker' drains scheduled events, 'both' does both. */

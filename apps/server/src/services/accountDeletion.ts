@@ -74,6 +74,7 @@ import {
   seasonResults,
   seasonRewardEntitlements,
   seasons,
+  buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves,
 } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { busy, commanderRows, demolish } from './reclaim.js';
@@ -140,6 +141,11 @@ async function forgetAccount(tx: Tx, accountId: string, requestId: string = rand
   await tx.update(polarSkinOrders).set({ checkoutUrl: null }).where(eq(polarSkinOrders.accountId, accountId));
   await tx.update(shopierOrders).set({ note: null }).where(eq(shopierOrders.accountId, accountId));
   await tx.update(shopierCheckouts).set({ url: null }).where(eq(shopierCheckouts.accountId, accountId));
+  // Surviving business rows may now belong to somebody else; erase only the deleted actor's optional metadata.
+  for (const table of [buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves]) {
+    await tx.update(table).set({ actorAccountId: null, actorPlayerId: null, actorSeasonId: null, analyticsVisitHash: null, analyticsAttemptId: null })
+      .where(eq(table.actorAccountId, accountId));
+  }
   await tx.delete(accounts).where(eq(accounts.id, accountId));
 }
 

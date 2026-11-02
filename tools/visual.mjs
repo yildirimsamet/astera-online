@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--player-analytics')) {
+  const { verifyPlayerAnalytics } = await import('./player-analytics-visual.mjs');
+  await verifyPlayerAnalytics(process.argv[2] ?? 'out/player-analytics');
+  process.exit(0);
+}
+
 if (process.argv.includes('--flight-school')) {
   const { verifyFlightSchool } = await import('./flight-school-visual.mjs');
   await verifyFlightSchool(process.argv[2] ?? 'out/flight-school');

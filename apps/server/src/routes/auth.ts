@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { countryCodeSchema, loginBody, registerBody } from '../auth/credentials.js';
 import { authenticate, findAccount, registerAccount } from '../services/account.js';
+import { queueServerAnalytics } from '../services/analyticsServerFacts.js';
 import { currentPlacement } from '../services/servers.js';
 import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
@@ -83,6 +84,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
     const body = registerBody.parse(req.body ?? {});
     requireCurrentCommunityPolicy(body.communityPolicyVersion);
     const account = await registerAccount(app.db, body, firstGameShieldEnabled, app.clock.now());
+    queueServerAnalytics(app, req, { accountId: account.id, name: 'account_created' });
     return openSession(app, reply, account);
   });
 
@@ -93,6 +95,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
   app.post('/api/auth/login', { config: { rateLimit: app.limits.auth } }, async (req, reply) => {
     const body = loginBody.parse(req.body ?? {});
     const account = await authenticate(app.db, body);
+    queueServerAnalytics(app, req, { accountId: account.id, name: 'authenticated_existing' });
     return openSession(app, reply, account);
   });
 

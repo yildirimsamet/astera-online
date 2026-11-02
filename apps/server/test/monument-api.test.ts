@@ -173,7 +173,13 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
     const payload = { ...launchBody(), acknowledgeShieldLoss: true };
     const responses = await Promise.all([post(url, payload, headers), post(url, payload, headers)]);
     for (const response of responses) expect(response.statusCode, response.body).toBe(200);
+    for (const response of responses) {
+      expect(response.body).not.toContain('analyticsVisitHash');
+      expect(response.body).not.toContain('actorAccountId');
+    }
     expect(responses[0].json()).toEqual(responses[1].json());
+    const { requestLog } = await import('../src/db/schema.js');
+    expect(JSON.stringify(await f.db.select().from(requestLog))).not.toContain('analyticsVisitHash');
     expect(monumentSendSchema.parse(responses[0].json()).wave.status).toBe('OUTBOUND');
     expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
     const second = await post(url, payload);

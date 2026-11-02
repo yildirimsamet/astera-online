@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { recordLegacyMonumentInterval } from './legacy.js';
@@ -651,6 +652,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   }
   await assertOwnShieldLoss(tx, { attackerPlayerId: input.senderPlayerId, now: origin.now, acknowledgeShieldLoss: input.acknowledgeShieldLoss ?? false });
   const [wave] = await tx.insert(monumentWaves).values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
     seasonId: origin.seasonId, monumentId: locked.monument.id, playerId: input.senderPlayerId, originPlanetId: origin.planetId,
     // The UUID is allocated before the insert so the physical location is explicit.
     ...newWaveIdentity(), purpose: input.purpose, sentFleet: fleet, tech: context.tech,

@@ -174,7 +174,10 @@ rm -rf "$STAGE"
 # degraded one.
 GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
 ARENA=$(grep -E '^VITE_ARENA=' .env | cut -d= -f2- || true)
+PLAYER_ANALYTICS=$(grep -E '^VITE_ASTERA_PLAYER_ANALYTICS=' .env | cut -d= -f2- || true)
+PLAYER_ANALYTICS_REVISION=$(git rev-parse HEAD)
 docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
+  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
   --output "type=local,dest=$STAGE" .
 [[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }

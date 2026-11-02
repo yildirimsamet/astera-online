@@ -4,6 +4,7 @@ import type { LocalAlert } from '../src/lib/localAlerts.js';
 /** The device side of the free queue alerts: reconcile the phone against the plan. */
 const pending: { id: number; schedule?: { at?: Date }; extra?: unknown }[] = [];
 const plugin = vi.hoisted(() => ({
+  addListener: vi.fn(),
   getPending: vi.fn(),
   schedule: vi.fn(),
   cancel: vi.fn(),
@@ -14,6 +15,9 @@ const plugin = vi.hoisted(() => ({
   changeExactNotificationSetting: vi.fn(),
 }));
 vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: plugin }));
+const observations = vi.hoisted(() => ({ observe: vi.fn() }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => observations);
+const localHandlers = vi.hoisted(() => new Map<string, (value: unknown) => void>());
 const caps = vi.hoisted(() => ({ localNotifications: true }));
 vi.mock('../src/platform/runtime.js', () => ({ capabilities: () => caps }));
 const activity = vi.hoisted(() => ({ active: true, listeners: new Set<() => void>() }));
@@ -31,6 +35,9 @@ const alert = (key: string, at: number): LocalAlert => ({ id: key.length * 1000 
 const text = (a: LocalAlert) => ({ title: `T ${a.key}`, body: 'B' });
 
 beforeEach(() => {
+  plugin.addListener.mockImplementation((event: string, handler: (value: unknown) => void) => {
+    localHandlers.set(event, handler); return Promise.resolve({ remove: vi.fn() });
+  });
   pending.length = 0;
   plugin.getPending.mockImplementation(() => Promise.resolve({ notifications: pending }));
   plugin.schedule.mockResolvedValue({ notifications: [] });
@@ -212,4 +219,10 @@ describe('local alert settings', () => {
     expect(await enableLocalAlerts()).toBe(false);
     expect(readLocalAlertSettings().enabled).toBe(false);
   });
+});
+
+it('observes queue alert opens using the stable command reference, without its displayed text', async () => {
+  await refreshPhonePermission();
+  localHandlers.get('localNotificationActionPerformed')?.({ notification: { title: 'Private title', extra: { astera: 'queue', key: 'build:0bb258b3-c801-4675-a7a4-a30793c1a8ab' } } });
+  expect(observations.observe).toHaveBeenCalledWith('alert_opened', { refId: '0bb258b3-c801-4675-a7a4-a30793c1a8ab', code: 'local', subject: 'build' }, 'live');
 });

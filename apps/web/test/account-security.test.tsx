@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
@@ -7,8 +7,11 @@ import { ApiProvider } from '../src/api/context.js';
 import { AccountSecurityEntry } from '../src/screens/AccountSecuritySheet.js';
 import { PasswordResetSheet } from '../src/screens/PasswordResetSheet.js';
 import i18n from '../src/i18n/index.js';
+const observations = vi.hoisted(() => ({ observe: vi.fn<(name: string, properties: Record<string, unknown>, mode?: string) => void>(), analyticsRecording: () => true, analyticsHeaders: () => ({ 'x-analytics-visitor': 'visit' }), ANALYTICS_READY_EVENT: 'astera:analytics-ready' }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => observations);
 
-beforeEach(async () => { await i18n.changeLanguage('en'); });
+beforeEach(async () => { observations.observe.mockClear(); await i18n.changeLanguage('en'); });
+afterEach(() => { vi.unstubAllEnvs(); });
 function setup(path: 'account' | 'reset' | 'pending' | 'change') {
   const requested: { path: string; body: unknown }[] = [];
   const challenge = { challengeId: '11111111-1111-4111-8111-111111111111', purpose: path === 'reset' ? 'reset' : path === 'change' ? 'change_new' : 'bind', expiresAt: new Date(Date.now() + 600000).toISOString(), resendAvailableAt: new Date(Date.now() + (path === 'reset' ? 60000 : -1)).toISOString() };
@@ -28,6 +31,13 @@ function setup(path: 'account' | 'reset' | 'pending' | 'change') {
   return { requested, ended };
 }
 describe('account email surfaces', () => {
+  it('observes visible recovery help separately from sending a recovery request', () => {
+    vi.stubEnv('VITE_ASTERA_PLAYER_ANALYTICS', '1');
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 300, 100));
+    setup('reset');
+    expect(observations.observe).toHaveBeenCalledWith('surface_visible', { surface: 'password_recovery', subject: 'password_reset' });
+    expect(observations.observe.mock.calls.some(([name]) => name === 'recovery_result')).toBe(false);
+  });
   it('uses the pending new address after resuming an email change, rather than the old verified one', async () => {
     const { ended } = setup('change');
     fireEvent.click(await screen.findByRole('button', { name: /change email/i }));
@@ -75,6 +85,9 @@ describe('account email surfaces', () => {
     fireEvent.change(screen.getByLabelText('Repeat new password'), { target: { value: 'new-correct-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset password' }));
     await waitFor(() => { expect(ended).toHaveBeenCalledWith('password'); });
+    expect(observations.observe.mock.calls.map(([, properties]) => properties.phase)).toEqual(['request_attempted', 'challenge_issued', 'complete_attempted', 'completed']);
+    expect(JSON.stringify(observations.observe.mock.calls)).not.toContain('pilot@example.com');
+    expect(JSON.stringify(observations.observe.mock.calls)).not.toContain('new-correct-password');
   });
   it('lets a player correct a mistyped reset email without waiting for the resend cooldown', async () => {
     setup('reset');

@@ -1,4 +1,5 @@
 import { refreshPlanetAegis } from './planetAegis.js';
+import { commandProvenance } from './commandOrigin.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { recordLegacyActivity } from './legacy.js';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -319,6 +320,7 @@ export async function placeBuildOrder(
   const [order] = await tx
     .insert(buildOrders)
     .values({
+      ...commandProvenance(planet.now, planet.playerId, planet.seasonId),
       planetId: planet.planetId,
       queue: context.queue,
       slot: context.orders.length,

@@ -15,6 +15,7 @@ import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
 import { publisherUrl, publisherWikiUrl } from '../lib/publisherPages.js';
 import { capabilities } from '../platform/runtime.js';
+import { useLandingTelemetry } from '../lib/playerAnalytics/useLandingTelemetry.js';
 
 /**
  * THE FRONT DOOR. D21.
@@ -91,11 +92,12 @@ function CompactLandingScreen({
   const [returning] = useState(() => (knownCommander ?? commanderKnownHere)());
   /** True while the frontier galaxy is being read. The page stays; the door waits. */
   const [opening, setOpening] = useState(false);
+  const telemetry = useLandingTelemetry('native_landing');
   const begin = (): void => {
     if (opening) return;
     setMode(null);
     setOpening(true);
-    void onBegin().catch(() => { setOpening(false); });
+    void telemetry.play(onBegin).catch(() => { setOpening(false); });
   };
   const servers = useServers();
   /**
@@ -243,6 +245,7 @@ function CompactLandingScreen({
                 full
                 className="min-h-12"
                 onClick={() => {
+                  telemetry.login();
                   setMode('login');
                 }}
               >
@@ -263,7 +266,7 @@ function CompactLandingScreen({
                   onClick={() => {
                     if (opening) return;
                     setOpening(true);
-                    void onBegin().catch(() => {
+                    void telemetry.play(onBegin).catch(() => {
                       setOpening(false);
                     });
                   }}
@@ -284,7 +287,7 @@ function CompactLandingScreen({
                 onClick={() => {
                   if (opening) return;
                   setOpening(true);
-                  void onBegin().catch(() => {
+                  void telemetry.play(onBegin).catch(() => {
                     // The session hook has already put the reason on this page.
                     setOpening(false);
                   });
@@ -302,6 +305,7 @@ function CompactLandingScreen({
                   type="button"
                   className="min-h-10 rounded-control px-2 text-caption text-v2-ink-2 underline decoration-v2-ink-3/50 underline-offset-4 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                   onClick={() => {
+                    telemetry.login();
                     setMode('login');
                   }}
                 >

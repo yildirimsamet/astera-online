@@ -44,20 +44,25 @@ public final class SessionHttp implements SessionEngine.Network {
         };
         try {
             JSONObject body;
+            String analyticsVisitor = null;
             if (operation.equals("refresh") || operation.equals("logout")) {
                 if (credential == null) throw new IOException("Missing native session");
                 body = new JSONObject().put("sessionId", credential.id()).put("refreshToken", credential.current());
                 if (operation.equals("refresh")) body.put("nextRefreshToken", credential.next());
             } else {
                 body = new JSONObject(input == null ? "{}" : input);
+                Object visit = body.remove("__analyticsVisitor");
+                if (visit instanceof String value && value.matches("[A-Za-z0-9_-]{43}")) analyticsVisitor = value;
                 if (body.has("sessionId") || body.has("nativeSessionId") || body.has("refreshToken") || body.has("nextRefreshToken")) {
                     throw new IOException("Invalid session input");
                 }
             }
             byte[] encoded = body.toString().getBytes(StandardCharsets.UTF_8);
             if (encoded.length > 16_384) throw new IOException("Session request too large");
-            Request request = new Request.Builder().url(origin + path).header("Accept", "application/json")
-                .header("Cache-Control", "no-store").post(RequestBody.create(encoded, MediaType.get("application/json"))).build();
+            Request.Builder builder = new Request.Builder().url(origin + path).header("Accept", "application/json")
+                .header("Cache-Control", "no-store").post(RequestBody.create(encoded, MediaType.get("application/json")));
+            if (analyticsVisitor != null) builder.header("x-analytics-visitor", analyticsVisitor);
+            Request request = builder.build();
             try (Response result = client.newCall(request).execute()) {
                 int status = result.code();
                 if (status >= 300 && status < 400) throw new IOException("Session redirect refused");
