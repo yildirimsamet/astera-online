@@ -253,7 +253,7 @@ export async function publicWorlds(
     db
       .select({ planetId: buildings.planetId, type: buildings.type, level: buildings.level })
       .from(buildings)
-      .where(and(inArray(buildings.type, ['CORE', 'REFINERY', 'EXTRACTOR']), inArray(buildings.planetId, ids))),
+      .where(and(inArray(buildings.type, ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT']), inArray(buildings.planetId, ids))),
     db
       .select({ planetId: satellites.planetId, type: satellites.type })
       .from(satellites)

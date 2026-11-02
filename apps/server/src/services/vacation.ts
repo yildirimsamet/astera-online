@@ -252,7 +252,7 @@ export async function endVacation(db: Db, playerId: string, vacationId: string, 
   });
 }
 
-export async function assertCommanderNotVacationing(tx: Tx, playerId: string, now: Date) {
-  const [player] = await tx.select({ until: players.vacationUntil }).from(players).where(eq(players.id, playerId));
-  if (player?.until && player.until > now) failure('VACATION_ACTIVE');
+/** The placement gate reads `vacation_until` with its placement check; a write is refused here. */
+export function assertNotVacationing(until: Date | null, now: Date): void {
+  if (until && until > now) failure('VACATION_ACTIVE');
 }

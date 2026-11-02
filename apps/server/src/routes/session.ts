@@ -15,6 +15,7 @@ import {
 import { readBattleReplay } from '../services/battleReplay.js';
 import { readBattleReports } from '../services/reports.js';
 import type { StreamCloseReason } from '../services/streamRegistry.js';
+import { activityGate, isGalaxyActivity } from '../stream/activityGate.js';
 import { SHARD_PREFIX, STREAM_REVOKED } from '../stream/bus.js';
 import type { FencedStream } from '../stream/fence.js';
 import { requireAuth } from './auth.js';
@@ -275,7 +276,11 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     // publish between that instant and these subscriptions would otherwise be an
     // unreplayable lost event.
     const unsubscribe = app.bus.subscribe(playerId, send);
-    const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
+    const activity = activityGate(send, app.sseActivityGapMs);
+    const unsubscribeShard = app.bus.subscribeShard(seasonId, (event) => {
+      if (isGalaxyActivity(event.kind)) activity.note(event);
+      else send(event);
+    });
     const unsubscribeGlobal = app.bus.subscribeGlobal(send);
     // Read after subscribing: a revocation committed before this read is seen by it,
     // and one committed after arrives on the topic. Frames queue behind it.
@@ -297,6 +302,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       clearInterval(heartbeat);
       unsubscribe();
       unsubscribeShard();
+      activity.cancel();
       unsubscribeGlobal();
       app.streamFence.remove(fenced);
       lease.release(reason);

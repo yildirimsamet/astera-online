@@ -11,6 +11,15 @@ export interface BenchSummary {
   statuses: Record<number, number>;
 }
 
+/** A commander's own share of the worlds; launches with no target left would measure refusals. */
+export function targetsFor(worlds: readonly string[], commander: number, needed: number): string[] {
+  const own = worlds.slice(commander * needed, (commander + 1) * needed);
+  if (own.length < needed) {
+    throw new Error(`commander ${String(commander)} needs ${String(needed)} worlds to aim at; ask for fewer accounts or rounds`);
+  }
+  return own;
+}
+
 /** Nearest-rank percentile of an ascending list. */
 const rank = (sorted: readonly number[], share: number): number =>
   sorted.length === 0 ? 0 : sorted[Math.min(sorted.length - 1, Math.ceil(share * sorted.length) - 1)]!;

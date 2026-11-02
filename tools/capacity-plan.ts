@@ -130,3 +130,25 @@ export function failedReads(paths: readonly string[], outcomes: readonly ReadOut
     return [`${path} ${String(outcome.response.status)} ${code}`];
   }).join('; ');
 }
+
+const COLD_START_ATTEMPTS = 5;
+
+/**
+ * The opening reads of a commander, each asked again after a growing pause until it
+ * answers or its attempts are spent. Only the failed ones go again, as a real client's.
+ */
+export async function coldStartReads<Outcome extends { valid: boolean }>(
+  paths: readonly string[],
+  read: (path: string) => Promise<Outcome>,
+  pause: (ms: number) => Promise<void>,
+  random: () => number = Math.random,
+): Promise<Outcome[]> {
+  const outcomes: Outcome[] = [];
+  const ask = (path: string, index: number): Promise<void> => read(path).then((outcome) => { outcomes[index] = outcome; });
+  await Promise.all(paths.map(ask));
+  for (let attempt = 0; attempt < COLD_START_ATTEMPTS - 1 && outcomes.some((each) => !each.valid); attempt += 1) {
+    await pause(random() * Math.min(30_000, 1000 * 2 ** attempt));
+    await Promise.all(paths.map(async (path, index) => { if (!outcomes[index]?.valid) await ask(path, index); }));
+  }
+  return outcomes;
+}

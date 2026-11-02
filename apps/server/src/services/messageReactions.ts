@@ -7,7 +7,7 @@ import {
   players, seasons, shards,
 } from '../db/schema.js';
 import { publish, publishPrivate, publishShard } from '../stream/bus.js';
-import { activeClanMembership, activeClanPlayerIds } from './clanCombat.js';
+import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { lockDmPair } from './dm.js';
 import { reactionViews, type MessageChannel } from './messageDecorations.js';
 import { assertMessageReadable } from './messageAccess.js';
@@ -36,6 +36,8 @@ export async function setMessageReaction(
       target = { chatMessageId: messageId };
       notify = () => publishShard(tx, me.seasonId, 'chat');
     } else if (channel === 'clan') {
+      // A departure holds this row until it commits; the membership below must not predate it.
+      await lockClanPlayers(tx, [me.id]);
       const membership = await activeClanMembership(tx, me.id);
       if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
       const [row] = await tx.select({ clanId: clanMessages.clanId, createdAt: clanMessages.createdAt })

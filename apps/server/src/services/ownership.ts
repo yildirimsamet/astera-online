@@ -94,6 +94,19 @@ export async function capitalPlanet(
   return capital;
 }
 
+/** `commanderForAccount` then `capitalPlanet`, in one read and with their refusals (capacity item M). */
+export async function capitalIdForAccount(db: Queryable, accountId: string): Promise<string> {
+  const [row] = await db
+    .select({ playerId: players.id, capitalId: planets.id })
+    .from(players)
+    .leftJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+    .where(eq(players.accountId, accountId))
+    .limit(1);
+  if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+  if (!row.capitalId) throw new GameError('NO_CAPITAL', 'Commander has no capital', 409);
+  return row.capitalId;
+}
+
 /** Lock every world touched by a mutation in the global season → sorted planet order. */
 export async function lockWorlds(
   tx: Tx,

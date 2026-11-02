@@ -344,7 +344,7 @@ Oyun kuralı değişmez.
    yazma kısmı ayrı bir işleme alınır.
 6. **Sezon kapanışı.** Parçalara bölünürken sezon hâlâ açıksa sıralama karışır. **Çözüm:** önce sezon
    dondurulur, sonra parça parça işlenir.
-7. **Honor lansmanı.** 3 Kasım'da açılırken Honor'u yeniden yazmak risk. **Çözüm:** lansman oturduktan sonra
+7. **Honor lansmanı.** Honor canlıda ve kapatılmayacak; açıkken muhasebesini yeniden yazmak risk. **Çözüm:** lansman oturduktan sonra
    FR fazında yapılır.
 8. **Worker'ın tam zamanında uyanması.** Savaşlar yarım saniye daha erken, yani gerçek anına daha yakın
    hesaplanır. Kural değişikliği değildir.

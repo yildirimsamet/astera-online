@@ -60,6 +60,17 @@ describe('the event stream', () => {
     await close();
   });
 
+  it('tells one connection about a burst of launches at a bounded rate', async () => {
+    app.sseActivityGapMs = 300;
+    const stream = listen(2);
+    await connected(f.playerIds[0]!);
+    const started = Date.now();
+    for (let i = 0; i < 5; i++) await publishShard(f.db, f.seasonId, 'launch');
+    await expect(stream.done).resolves.toEqual(['shard:launch', 'shard:launch']);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(300);
+    stream.abort();
+  });
+
   it('closes an idle revoked stream without waiting for a gameplay event', async () => {
     app.sseHeartbeatMs = 100;
     const controller = new AbortController();

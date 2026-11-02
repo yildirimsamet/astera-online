@@ -23,7 +23,8 @@ import { galaxyHpRadiationRows, galaxyHpRadiationView, monumentDoseSources } fro
 export interface GalaxyFacts {
   season: typeof seasons.$inferSelect;
   adminPlayerIds: ReadonlySet<string>;
-  dominionPodium: Map<string, 1 | 2 | 3> | null;
+  /** Always read: the cached worlds' own badges go stale on a score, which no longer empties them. */
+  dominionPodium: Map<string, 1 | 2 | 3>;
   honorPodium: HonorPodium;
   radiationRows: Awaited<ReturnType<typeof galaxyRadiationRows>>;
   hpRows: Awaited<ReturnType<typeof galaxyHpRadiationRows>>;
@@ -48,7 +49,7 @@ export async function loadGalaxyFacts(db: Db, seasonId: string, adminUsernames: 
       galaxyRadiationRows(tx, seasonId, season.rulesetVersion, since),
       hp ? galaxyHpRadiationRows(tx, seasonId, since) : [],
       hp ? tx.select().from(monuments).where(eq(monuments.seasonId, seasonId)) : [],
-      adminPlayerIds.size === 0 ? null : dominionPodium(tx, seasonId, adminPlayerIds),
+      dominionPodium(tx, seasonId, adminPlayerIds),
       honorPodium(tx, seasonId, adminPlayerIds),
     ]);
     const ids = monumentRows.map((row) => row.id);

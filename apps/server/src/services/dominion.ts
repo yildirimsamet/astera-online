@@ -93,11 +93,12 @@ export function applyDominionPodium<World extends {
   dominionRank?: 1 | 2 | 3;
 }>(worlds: readonly World[], podium: ReadonlyMap<string, 1 | 2 | 3>): World[] {
   return worlds.map((world) => {
+    const rank = world.controller.kind === 'PLAYER' && world.controller.playerId !== undefined
+      ? podium.get(world.controller.playerId)
+      : undefined;
+    // Most of a thousand worlds keep their badge, or have none: copying them was a tenth of a read.
+    if (world.dominionRank === rank) return world;
     const { dominionRank: _discarded, ...withoutRank } = world;
-    if (world.controller.kind !== 'PLAYER' || world.controller.playerId === undefined) {
-      return withoutRank as World;
-    }
-    const rank = podium.get(world.controller.playerId);
     return (rank === undefined ? withoutRank : { ...withoutRank, dominionRank: rank }) as World;
   });
 }
