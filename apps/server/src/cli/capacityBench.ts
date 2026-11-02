@@ -22,7 +22,7 @@ import { pino } from 'pino';
 import { buildApp } from '../app.js';
 import { createDb } from '../db/client.js';
 import { loadEnv } from '../env.js';
-import { summarize, type BenchSample, type BenchSummary } from './capacityBenchSummary.js';
+import { summarize, targetsFor, type BenchSample, type BenchSummary } from './capacityBenchSummary.js';
 
 const { values } = parseArgs({ options: {
   accounts: { type: 'string', default: '50' },
@@ -31,6 +31,8 @@ const { values } = parseArgs({ options: {
   routes: { type: 'string' },
   profile: { type: 'string' },
   json: { type: 'string' },
+  // Keeps the pool open after the last route, for reading the database's side of it.
+  hold: { type: 'string', default: '0' },
 } });
 const url = process.env.DATABASE_URL ?? '';
 if (!/_test(\?|$)/.test(url.split('/').pop() ?? '')) throw new Error('DATABASE_URL must name a *_test database');
@@ -39,7 +41,7 @@ const rounds = Number(values.rounds);
 const concurrency = Number(values.concurrency ?? values.accounts);
 
 interface Probe { name: string; method: 'GET' | 'POST'; url: string; body?: (user: User) => unknown }
-interface User { accountId: string; authorization: string; targetPlanetId: string | null }
+interface User { accountId: string; authorization: string; targets: string[] }
 
 const READS: Probe[] = [
   { name: 'galaxy', method: 'GET', url: '/api/galaxy' },
@@ -55,7 +57,8 @@ const WRITES: Probe[] = [
   { name: 'collect', method: 'POST', url: '/api/planet/collect' },
   { name: 'build', method: 'POST', url: '/api/planet/build', body: () => ({ hull: 'DART', count: 1 }) },
   { name: 'launch', method: 'POST', url: '/api/fleet/launch',
-    body: (user) => ({ targetPlanetId: user.targetPlanetId, fleet: { DART: 1 } }) },
+    // One fleet per target: every launch aims at a world this commander has not sent to yet.
+    body: (user) => ({ targetPlanetId: user.targets.shift() ?? null, fleet: { DART: 1 } }) },
 ];
 const wanted = values.routes?.split(',');
 const probes = [...READS, ...WRITES].filter((probe) => !wanted || wanted.includes(probe.name));
@@ -79,14 +82,20 @@ const rows = await db.execute<{ account_id: string }>(sql`select p.account_id fr
 const users: User[] = await Promise.all(rows.map(async (row) => ({
   accountId: row.account_id,
   authorization: `Bearer ${await built.app.tokens.issueAccess(row.account_id)}`,
-  targetPlanetId: null,
+  targets: [],
 })));
 
+// The first refusal of each route is printed: a measured 409 is a different request.
+const refused = new Set<string>();
 const call = async (user: User, probe: Probe): Promise<BenchSample> => {
   const started = performance.now();
   const response = await built.app.inject({ method: probe.method, url: probe.url,
     headers: { authorization: user.authorization, 'idempotency-key': crypto.randomUUID() },
     ...(probe.body ? { payload: probe.body(user) as Record<string, unknown> } : {}) });
+  if (response.statusCode >= 300 && !refused.has(probe.name)) {
+    refused.add(probe.name);
+    console.error(`${probe.name} ${response.statusCode}: ${response.body.slice(0, 300)}`);
+  }
   return { ms: performance.now() - started, statements: Number(response.headers['x-db-statements'] ?? 0),
     bytes: response.rawPayload.length, status: response.statusCode };
 };
@@ -97,11 +106,11 @@ const inParallel = async <T>(items: readonly T[], run: (item: T) => Promise<void
   }));
 };
 
-// Each commander aims at some world that is not their own, as the load tool does.
-for (const user of users) {
+// Each commander aims at worlds that are not their own, as the load tool does.
+for (const [index, user] of users.entries()) {
   const galaxy = await built.app.inject({ url: '/api/galaxy', headers: { authorization: user.authorization } });
-  const planets = galaxy.json<{ planets: { id: string; isSelf?: boolean }[] }>().planets;
-  user.targetPlanetId = planets.find((planet) => !planet.isSelf)?.id ?? null;
+  const others = galaxy.json<{ planets: { id: string; isSelf?: boolean }[] }>().planets.filter((planet) => !planet.isSelf);
+  if (probes.some((probe) => probe.name === 'launch')) user.targets = targetsFor(others.map((planet) => planet.id), index, rounds + 1);
 }
 
 const session = values.profile ? new Session() : null;
@@ -128,5 +137,6 @@ for (const probe of probes) {
 }
 if (values.json) await writeFile(values.json, `${JSON.stringify({ accounts: users.length, rounds, concurrency, results }, null, 2)}\n`);
 session?.disconnect();
+await new Promise((resolve) => setTimeout(resolve, Number(values.hold) * 1000));
 await built.close();
 await close();

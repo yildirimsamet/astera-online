@@ -79,7 +79,31 @@ it('wipe and presence serialize without a player/application deadlock', async ()
   expect(closed?.playerId).toBeNull();
 });
 
-it.each(['presence', 'enqueue'])('%s expires priority when its player lock wait crosses expiry', async (kind) => {
+it('presence never waits for the commander, and a late login cannot revive priority', async () => {
+  const f = await seedWorld(1);
+  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(),
+    days: TEST_SEASON_DAYS, rulesetVersion: 1, role: 'WAITING' });
+  await f.db.update(players).set({ seasonId: waiting.season.id });
+  const application = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
+  f.clock.set(new Date(application.expiresAt.getTime() - 1_000));
+  const presence = new Presence(f.db, f.clock);
+  await f.db.transaction(async (tx) => {
+    await tx.select().from(players).where(eq(players.id, f.playerIds[0]!)).for('update');
+    expect(await Promise.race([presence.touch(f.accountIds[0]!), delay(2_000, 'waited')])).toBe(false);
+    f.clock.set(application.expiresAt);
+  });
+  const [held] = await f.db.select().from(returnApplications).where(eq(returnApplications.id, application.id));
+  expect(held?.status).toBe('QUEUED');
+  expect(held?.expiresAt).toEqual(application.expiresAt);
+
+  expect(await new Presence(f.db, f.clock).touch(f.accountIds[0]!)).toBe(true);
+  const [old] = await f.db.select().from(returnApplications).where(eq(returnApplications.id, application.id));
+  expect(old?.status).toBe('EXPIRED');
+  const [player] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+  expect(player?.lastActiveAt).toEqual(f.clock.now());
+});
+
+it('enqueue expires priority when its player lock wait crosses expiry', async () => {
   const f = await seedWorld(1);
   const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(),
     // Same PERIOD as the world the commander is returning to, or the two land in
@@ -92,7 +116,7 @@ it.each(['presence', 'enqueue'])('%s expires priority when its player lock wait 
   await f.db.transaction(async (tx) => {
     await tx.select().from(players).where(eq(players.id, f.playerIds[0]!)).for('update');
     const [holder] = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
-    action = kind === 'presence' ? new Presence(f.db, f.clock).touch(f.accountIds[0]!) : enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
+    action = enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
     let blocked = false;
     for (let attempt = 0; attempt < 200; attempt++) {
       const [row] = await tx.execute<{ waiting: boolean }>(sql`select exists (select 1 from pg_stat_activity where ${holder!.pid} = any(pg_blocking_pids(pid))) as waiting`);

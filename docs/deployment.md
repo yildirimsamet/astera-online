@@ -373,6 +373,8 @@ find "$web_stage" -type f \
 
 ## 4. Rehearse backup, migration and compatibility
 
+**Prepared statements and column types.** Drizzle's short statements are prepared once per connection (`patches/drizzle-orm@*`). A migration that changes a column's type makes a statement already prepared on a live connection fail inside a transaction with `cached plan must not change result type`, once per statement per connection; outside a transaction the driver re-prepares by itself. `deploy.sh` stops the APIs and the worker but not the arena, so stop the arena too before a migration that changes a type. Adding a column is safe.
+
 Confirm PostgreSQL/Valkey healthy. Use a fresh consistent private release dump; avoid retention pruning during preparation. The ordinary helper is below; preserve release backups outside its count-based rotating set, but include them in the owner-approved maximum 30-day age policy (19 October).
 
 ```bash

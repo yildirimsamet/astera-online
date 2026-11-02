@@ -146,3 +146,16 @@ it('refuses a request that waited two seconds for a lease as retryable, and leak
   expect((await built.app.inject({ url: '/api/placement-queue-test', headers: { authorization } })).statusCode).toBe(200);
   expect(built.metrics.status().placementPool.transactionStartErrors).toBe(1);
 });
+it('admits a leased write with two statements: placement under its lock, then the fresh check with the vacation', async () => {
+  const f = await seedWorld(1);
+  built = buildApp({ env: testEnv(), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
+  const { requireAuth } = await import('../src/routes/auth.js');
+  built.app.post('/api/gate-cost-test', { preHandler: requireAuth }, () => Promise.resolve({ ok: true }));
+  const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+  const post = () => built!.app.inject({ method: 'POST', url: '/api/gate-cost-test', headers: { authorization } });
+  expect((await post()).statusCode).toBe(200);
+  // The second write inside a minute stamps no presence: the session check plus the gate.
+  const second = await post();
+  expect(second.statusCode).toBe(200);
+  expect(Number(second.headers['x-db-statements'])).toBe(3);
+});

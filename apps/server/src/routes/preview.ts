@@ -7,9 +7,8 @@ import { planetNameFor } from '../services/player.js';
 import { galaxyOf, occupiedSlots } from '../services/season.js';
 import { listServers, resolveJoinTarget } from '../services/servers.js';
 import { projectGalaxyTraffic } from '../services/traffic.js';
-import { adminPlayerIdsInSeason } from '../services/admin.js';
-import { applyDominionPodium, dominionPodium } from '../services/dominion.js';
-import { applyHonorPodium, honorPodium } from '../services/honorPodium.js';
+import { applyDominionPodium } from '../services/dominion.js';
+import { applyHonorPodium } from '../services/honorPodium.js';
 
 /**
  * THE GALAXY, BEFORE YOU HAVE AN ACCOUNT. D56.
@@ -71,19 +70,17 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
     const slot = pickSpawnSlot(spec.slots, taken);
     if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
 
-    const [allWorlds, traffic, adminPlayerIds, pirates] = await Promise.all([
+    const [allWorlds, traffic, facts, pirates] = await Promise.all([
       app.projections.worlds(target.seasonId, app.clock.now()),
       app.projections.trafficSnapshot(target.seasonId, app.clock.now()),
-      adminPlayerIdsInSeason(app.db, target.seasonId, app.adminUsernames),
+      app.projections.galaxyFactsFor(target.seasonId, app.adminUsernames, app.clock.now()),
       app.projections.pirateSnapshot(target.seasonId, app.clock.now()),
     ]);
-    const publicPodium = adminPlayerIds.size === 0
-      ? null
-      : await dominionPodium(app.db, target.seasonId, adminPlayerIds);
-    const rankedWorlds = publicPodium === null
-      ? allWorlds
-      : applyDominionPodium(allWorlds, publicPodium);
-    const primaryWorlds = applyHonorPodium(rankedWorlds, await honorPodium(app.db, target.seasonId, adminPlayerIds));
+    if (!facts) throw new GameError('NO_SEASON', 'That galaxy is not open right now', 409);
+    const { adminPlayerIds } = facts;
+    // The cached worlds' badges are not kept current by score events; the facts are (capacity R7).
+    const rankedWorlds = applyDominionPodium(allWorlds, facts.dominionPodium);
+    const primaryWorlds = applyHonorPodium(rankedWorlds, facts.honorPodium);
     const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !adminPlayerIds.has(world.controller.playerId));

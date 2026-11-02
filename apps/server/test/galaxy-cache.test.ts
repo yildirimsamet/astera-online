@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { CLAN, MONUMENT_CAPACITY } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import {
-  accounts, honorTotals, hpRadiationSources, monumentShipLots, monumentWaves, monuments, planets, seasons,
+  accounts, honorTotals, hpRadiationSources, monumentShipLots, monumentWaves, monuments, planets, players, seasons,
 } from '../src/db/schema.js';
 import { acceptClanRequest, applyToClan, clanActor, createClan } from '../src/services/clan.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
@@ -166,6 +166,51 @@ describe('what moves it', () => {
     await f.db.update(honorTotals).set({ score: 1_000 }).where(eq(honorTotals.playerId, f.playerIds[1]!));
     await f.db.transaction(tx => publishShard(tx, f.seasonId, 'score'));
     await converges();
+  });
+
+  /**
+   * THE PODIUM MOVES, THE WORLDS STAY. Capacity fix plan, R7 (2026-11-01).
+   *
+   * A score event emptied the thousand-world projection for the three podium badges
+   * alone, and the next reader refilled it. The badges are applied from the galaxy's
+   * small facts on every read, with or without operators in the season.
+   */
+  it('a dominion score that reorders the podium, without reloading the worlds', async () => {
+    const before = cached.app.projections.status();
+    await f.db.update(players).set({ dominionTaken: 5_000 }).where(eq(players.id, f.playerIds[1]!));
+    await f.db.transaction(tx => publishShard(tx, f.seasonId, 'score'));
+    await vi.waitFor(() => {
+      expect(cached.app.projections.status().galaxyFacts.invalidations).toBeGreaterThan(before.galaxyFacts.invalidations);
+    }, { timeout: 3_000, interval: 20 });
+    expect(cached.app.projections.status().publicGalaxy.invalidations).toBe(before.publicGalaxy.invalidations);
+    await converges();
+  });
+
+  it('a dominion score in a galaxy without operators', async () => {
+    const plain = buildApp({ env: testEnv(), clock: f.clock, logger: silent, db: f.db });
+    const plainFresh = buildApp({ env: testEnv({ PROJECTION_CACHE_ENABLED: 'false' }), clock: f.clock, logger: silent, db: f.db });
+    try {
+      await plain.app.ready();
+      await plainFresh.app.ready();
+      await plain.app.bus.start();
+      const token = await plain.app.tokens.issueAccess(f.accountIds[0]!);
+      const plainRead = (built: ReturnType<typeof buildApp>) =>
+        built.app.inject({ url: '/api/galaxy', headers: { authorization: `Bearer ${token}` } });
+      const ranks = async (built: ReturnType<typeof buildApp>) => (await plainRead(built))
+        .json<{ planets: { id: string; dominionRank?: number }[] }>().planets.filter(world => world.dominionRank !== undefined)
+        .map(world => [world.id, world.dominionRank]);
+      await plainRead(plain);
+      await f.db.update(players).set({ dominionTaken: 5_000 }).where(eq(players.id, f.playerIds[2]!));
+      await f.db.transaction(tx => publishShard(tx, f.seasonId, 'score'));
+      await vi.waitFor(async () => {
+        const expected = await ranks(plainFresh);
+        expect(expected).toContainEqual([f.planetIds[2]!, 1]);
+        expect(await ranks(plain)).toEqual(expected);
+      }, { timeout: 3_000, interval: 50 });
+    } finally {
+      await plain.close();
+      await plainFresh.close();
+    }
   });
 
   it('a clanmate opening their door to support', async () => {

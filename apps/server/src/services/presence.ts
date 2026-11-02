@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { SERVERS } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
@@ -19,10 +19,16 @@ import { refreshReturnActivity } from './returnQueue.js';
  * which a sixty-second resolution cannot meaningfully blur.
  *
  * WHY THE THROTTLE MAY BE IN MEMORY. It is a cache, not state. A second process
- * with a cold map simply writes one extra row per account per minute, and a
- * process that dies loses nothing at all — the truth is the column. That is what
- * makes this safe to run behind more than one instance, which an in-memory *set*
- * of online players would not be.
+ * with a cold map asks once and finds the row already fresh, and a process that
+ * dies loses nothing at all — the truth is the column. That is what makes this safe
+ * to run behind more than one instance, which an in-memory *set* of online players
+ * would not be.
+ *
+ * THE STAMP WAITS FOR NOBODY. It is one guarded write, and a row a game write holds
+ * is skipped: a commander who is playing asks again within seconds, and the slot
+ * comes round within a minute, which the five-minute window cannot see. Only a
+ * commander with a queued return goes on to the locked path, which has to read the
+ * application's deadline under the player lock.
  */
 export class Presence {
   private readonly lastWrite = new Map<string, number>();
@@ -51,15 +57,29 @@ export class Presence {
     this.sweep(now);
 
     try {
-      await this.db.transaction(async (tx) => {
-        // Presence never acquires season/admission locks after this player lock.
-        const [player] = await tx.select({ id: players.id }).from(players)
-          .where(eq(players.accountId, accountId)).for('update');
-        if (player) await refreshReturnActivity(tx, player.id, this.clock);
-      });
+      const [stamped] = await this.db.update(players)
+        .set({ lastActiveAt: new Date(now) })
+        .where(inArray(players.id, this.db.select({ id: players.id }).from(players)
+          .where(and(eq(players.accountId, accountId), lte(players.lastActiveAt, new Date(now - this.throttleMs))))
+          // Not `update`: that also skips a row a new mission or report only refers to.
+          .for('no key update', { skipLocked: true })))
+        // Plain text: `returning` strips table names from columns, and `id` would then mean the application's.
+        .returning({
+          id: players.id,
+          queued: sql<boolean>`exists (select 1 from return_applications where player_id = players.id and status = 'QUEUED')`,
+        });
+      if (!stamped) return false;
+      if (stamped.queued) {
+        await this.db.transaction(async (tx) => {
+          // Presence never acquires season/admission locks after this player lock.
+          await tx.select({ id: players.id }).from(players).where(eq(players.id, stamped.id)).for('update');
+          await refreshReturnActivity(tx, stamped.id, this.clock);
+        });
+      }
       return true;
     } catch (error) {
-      // Let the next request try again rather than staying quiet for a minute.
+      // Let the next request try again rather than staying quiet for a minute. A failed
+      // queue renewal is the exception: its stamp committed, so the row's guard holds it to the next one.
       this.lastWrite.delete(accountId);
       this.reportError(error);
       return false;

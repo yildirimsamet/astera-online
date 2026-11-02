@@ -82,7 +82,32 @@ it.each([47, 48, 49])('presence at hour %s extends only a still-valid applicatio
   if (hours < 48) expect(row?.expiresAt.getTime()).toBe(f.clock.now().getTime() + 48 * 60 * 60_000);
 });
 
-it('reports a failed presence transaction and lets the next request retry', async () => {
+it('a commander with no application takes no transaction, and another\'s queue is left alone', async () => {
+  const other = await enqueueReturn(f.db, f.accountIds[1]!, f.clock, 0);
+  f.clock.advance(120);
+  const transaction = vi.spyOn(f.db, 'transaction');
+  try {
+    expect(await new Presence(f.db, f.clock).touch(f.accountIds[0]!)).toBe(true);
+    expect(transaction).not.toHaveBeenCalled();
+  } finally { transaction.mockRestore(); }
+  const [row] = await f.db.select().from(returnApplications).where(eq(returnApplications.id, other.id));
+  expect(row?.expiresAt).toEqual(other.expiresAt);
+});
+
+it('a second process in the same minute does not renew the application again', async () => {
+  const a = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
+  f.clock.advance(2);
+  expect(await new Presence(f.db, f.clock).touch(f.accountIds[0]!)).toBe(true);
+  const renewed = f.clock.now().getTime() + 48 * 60 * 60_000;
+  f.clock.set(new Date(f.clock.now().getTime() + 30_000));
+  expect(await new Presence(f.db, f.clock).touch(f.accountIds[0]!)).toBe(false);
+  const [row] = await f.db.select().from(returnApplications).where(eq(returnApplications.id, a.id));
+  expect(row?.expiresAt.getTime()).toBe(renewed);
+});
+
+it('reports a failed renewal and renews on the next stamp', async () => {
+  const a = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
+  f.clock.advance(2);
   const error = new Error('presence database failure');
   const report = vi.fn();
   const presence = new Presence(f.db, f.clock, 60_000, report);
@@ -90,6 +115,9 @@ it('reports a failed presence transaction and lets the next request retry', asyn
   try {
     expect(await presence.touch(f.accountIds[0]!)).toBe(false);
     expect(report).toHaveBeenCalledWith(error);
-    expect(await presence.touch(f.accountIds[0]!)).toBe(true);
   } finally { transaction.mockRestore(); }
+  f.clock.advance(1);
+  expect(await presence.touch(f.accountIds[0]!)).toBe(true);
+  const [row] = await f.db.select().from(returnApplications).where(eq(returnApplications.id, a.id));
+  expect(row?.expiresAt.getTime()).toBe(f.clock.now().getTime() + 48 * 60 * 60_000);
 });

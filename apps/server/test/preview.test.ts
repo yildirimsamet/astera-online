@@ -12,6 +12,8 @@ import { placeAt, testDb, testEnv, truncateAll, type Fixture } from './helpers.j
 
 const silent = pino({ level: 'silent' });
 const START = new Date('2026-03-01T00:00:00.000Z');
+/** It was eleven when each read asked for both podiums itself. */
+const WARM_PREVIEW_STATEMENTS = 9;
 
 interface PreviewWorld {
   id: string;
@@ -161,6 +163,16 @@ describe('preview', () => {
    * only mitigation the empty-shard risk has. If looking cost a seat, a hundred
    * visitors who never came back would close Vantage.
    */
+  it('takes its podiums from the facts /api/galaxy keeps, not from the database each time', async () => {
+    await openWorld();
+    await app.bus.start(); // Projections are bypassed while nothing listens for what empties them.
+    const read = () => app.inject({ method: 'GET', url: '/api/preview' });
+    await read();
+    const warm = await read();
+    expect(warm.statusCode).toBe(200);
+    expect(Number(warm.headers['x-db-statements'])).toBeLessThanOrEqual(WARM_PREVIEW_STATEMENTS);
+  });
+
   it('takes no seat, no account and no planet', async () => {
     await openWorld();
 

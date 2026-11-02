@@ -452,9 +452,10 @@ export class Projections {
     }
 
     // Invalidate only the shared payload the event can actually move. Chat and
-    // chat traffic is deliberately absent. Score is present because the public
-    // galaxy now carries the three podium badges; a rank-changing battle moves
-    // that projection even though it moves no planet hardware.
+    // chat traffic is deliberately absent. Score is absent from the public worlds
+    // since capacity item R7: their podium badges are replaced on every read from
+    // the galaxy facts below, which a score does empty, so a rank-changing battle no
+    // longer refills a thousand worlds for three badges.
     const kind = event.kind;
     if (
       kind === 'shard:world'
@@ -481,7 +482,6 @@ export class Projections {
       || kind === 'shard:recovery'
       || kind === 'shard:protection'
       || kind === 'shard:clan'
-      || kind === 'shard:score'
       || kind === 'shard:season'
       || kind === 'shard:rollover'
     ) {

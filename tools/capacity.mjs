@@ -46,7 +46,7 @@ import {
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { eventReads, failedReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { coldStartReads, eventReads, failedReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -603,7 +603,7 @@ const COLD_START_READS = ['/api/season', '/api/planets', '/api/galaxy', '/api/ga
   '/api/mining/status', '/api/session/pending', '/api/notifications?limit=30'];
 
 const initialReads = async (vu) => {
-  const responses = await Promise.all(COLD_START_READS.map((path) => request(vu, path)));
+  const responses = await coldStartReads(COLD_START_READS, (path) => request(vu, path), (ms) => pause(ms), random);
   if (responses.some((result) => !result.valid)) {
     throw new Error(`cold-start read failed for ${usernameFor(vu.accountIndex)}: ${failedReads(COLD_START_READS, responses)}`);
   }

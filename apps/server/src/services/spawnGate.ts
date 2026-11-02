@@ -80,6 +80,9 @@ export async function advanceSpawnGate(db: Db, input: { seasonId: string; clock:
       && snapshot.destroyedAt(spec.index) === null);
     const piratesSkipped = decideSpawnGate({ births: pirateBirths, alive: pirateAlive, cap: online });
 
+    // Reads only compare a birth with this mark, so with no birth behind it the mark need not move.
+    if (rockBirths.length === 0 && pirateBirths.length === 0) return { status: 'UP_TO_DATE' as const };
+
     const appearsAt = (minute: number) => new Date(season.startsAt.getTime() + minute * 60_000);
     const rows = [
       ...rockBirths.filter((rock) => rocksSkipped.includes(rock.index))

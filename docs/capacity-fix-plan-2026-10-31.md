@@ -273,3 +273,90 @@ Madde 0'da istemci tarafı okuma nedenleri sayılır.
 | 9 | 7. Bağlantı bütçesi (R4). |
 | 10 | 6. Trafik canlı akış (R9 ile). |
 | 11 | 9. Yük aracı: üretecin CPU'su ayrı (R5). Ardından kabul koşusu. |
+
+## M sonucu (1 Kasım, ölçüldü)
+
+**Kök sebep:** drizzle her sorguyu postgres.js `unsafe()` ile gönderiyor; `unsafe()` hiç prepare etmiyor ve
+parametreli her sorgu önce tip öğrenmek için ayrı bir gidiş-dönüş yapıyor. Her SQL 2 gidiş-dönüş. Prod VPS'te bir
+gidiş-dönüş 0,6–0,9 ms (Docker ağı ya da fsync değil, sanal makinenin kendisi); tek çekirdek dizüstü
+geliştirme makinesinden ~4 kat yavaş.
+
+**Yapılanlar (`capacity-fixes`):**
+- `195851b8` — pnpm patch: 32 parametreye kadar sorgular bağlantı başına bir kez hazırlanır; `plan_cache_mode =
+  force_custom_plan` (planlar eskisi gibi). Postgres belleği bağlantı başına ~+3,4 MB (bench rotaları).
+- `51e03f24` — yerleşim kapısı yazma isteğinde 4 → 2 sorgu (kilit, ilk okumayla; tatil, kontrol okumasıyla).
+- `71a7681c` — `/api/planet/*` başkenti 2 → 1 sorguda bulur.
+
+**Ölçüm (capacity dump, tek istek, ısınmış):** her gidiş-dönüşe 2 ms ekleyen proxy ile (Nagle kapalı) sıralı
+gidiş-dönüş: collect ~33 (71 SQL), launch ~29, planets ~11, galaxy ~4. Prod tahmini: collect ~210 → ~105 ms,
+launch ~360 → ~110 ms; artık CPU baskın (SQL başına drizzle kurulumu + satır eşleme).
+
+**Denenip bırakılanlar:** önbellekli drizzle `is()` (profil %20 gösterdi, ölçülen kazanç 0); unix socket
+(gidiş-dönüş başına ~0,07 ms).
+
+**Kalan:** bir mutasyon içinde aynı satırların tekrar okunması (collect: gezegen 6×, sezon 3×, buildings/satellites/
+units 3×; kilitli yükleme, radyasyon, wealth ve görünüm ayrı ayrı okuyor). Rota rota, satırları elden ele geçiren
+bir refactor; orta risk, SQL başına ~2 ms prod kazancı. Kapasiteyi daha çok etkileyen 2, 3 ve R7'den sonraya.
+
+## Madde 2 ve 1 sonucu (2 Kasım)
+
+**Madde 2 (presence):** Yazım tek koşullu UPDATE oldu.
+- Üç süreç bir dakikada bir kez yazıyor; 3 sorgu yerine 1 sorgu.
+- Kilitli satır `SKIP LOCKED` ile atlanıyor, oyun yazmasını beklemiyor. Damga en geç bir dakika sonraki istekte yazılıyor.
+- Dönüş başvurusu olan komutan mevcut kilitli yoldan yenileniyor. Geç gelen giriş önceliği geri getirmiyor.
+- `await` istek yolunda kaldı: artık kilit beklemiyor, dakikada bir tek gidiş-dönüş maliyeti var. Sıraya almak gereksiz karmaşıklık olurdu.
+
+**Madde 1 (spawn kapısı):** R2 üç oturumla doğrulandı.
+- Bekleyen UPDATE varken yeni `FOR SHARE` beklemeden geçiyor. Yani oyun yazmaları kuyruğa girmiyor; 329 ms worker'ın kendi beklemesi. Ayrı tablo gereksiz.
+- Worker artık yalnız karar verilecek doğum varsa yazıyor. Doğumsuz geçişte sezon satırına dokunmuyor, 15 sn'lik yazım doğum sayısına iniyor.
+
+## Madde 8 sonucu (2 Kasım)
+
+Uzun süre çalışan süreçler artık `node apps/server/dist/server/index.mjs` ile koşuyor (esbuild paketi, `node_modules` dışarıda).
+`src/cli/*.ts` komutları `tsx` ile kaldı; kaynaklar imajda duruyor. Aynı imajda, aynı veritabanında ölçüldü (boşta, ROLE=api):
+
+| | tsx | paket |
+|---|---|---|
+| Açılış | 4,06 sn | 1,63 sn |
+| Açılış CPU | 6,2 sn | 2,2 sn |
+| Konteyner belleği | 157 MiB | 73 MiB |
+
+Yük altındaki CPU ölçülmedi; planın beklentisi küçük olmasıydı. Prod imajı ve kapasite koşusunun `Dockerfile.load`'u: VPS'teki load dosyası bu değişiklikle güncellenmeli.
+Hata yığını paketin satırlarını gösterir; `dist/server/index.mjs.map` imajda duruyor, gerekirse `NODE_OPTIONS=--enable-source-maps`.
+
+## R12. Madde 6'nın varsayımı eksikti (2 Kasım, kodla doğrulandı)
+
+**Trafik okumasının büyüğü yoklama değil, olay.** Her `shard:launch`, `arrival`, `mining` ve `pirate` olayı galaksideki bütün istemcileri 250 ms içinde `/api/galaxy/traffic` okumaya gönderiyordu.
+- 200 oyuncuda ölçülen okuma: oyuncu başına saniyede 0,70. Yoklama bunun yalnız 0,20'si. Kalan 0,50 olaylardan geliyor (hareket hızı gerçek davranışın ~5 katı senaryoda).
+- Oyuncu sayısı artınca hem okuyan hem olay artıyor; yük oyuncu sayısının karesiyle büyür. Üst sınır istemci başına saniyede 4 okuma. Plandaki "1.000 oyuncuda ~200 istek/sn" bu yüzden eksikti.
+
+**Yapılan:** Sunucuda bağlantı başına kapı (`stream/activityGate.ts`). Sessizlikten sonraki ilk olay hemen gider, sonrakiler `TRAFFIC.refreshMs` (5 sn) + %20'ye kadar rastgele bekler, tür başına tek çerçeve olarak gider. Sunucuda olduğu için eski APK'lar da uyar. Komutanın kendi olayları, ele geçirme, darbe ve sezon olayları kapıya girmez.
+
+**Yoklama neden kalkamıyor:** Yoklamanın olayla yapılamayan bir işi var. Menzil dışından gelen filo yükte hiç yoktur; girişini istemci çözemez, sunucu da önceden haber veremez (`TRAFFIC` açıklaması). Ayrıca `CONTACT_WINDOW.bearingMs` doğrudan yoklama aralığına bağlı; aralık sise dokunmadan değişemez.
+
+**Madde 6 için sonraki adım:** Sıra numaralı delta protokolü büyük ve sis riski yüksek. Daha basit yol: `/api/galaxy/traffic` tek sis denetimli okuma kalır; sunucu, komutana ancak o an menziline bir şey girdiğinde "oku" der. Kabul koşusu kapıyla bile yoklamanın CPU'yu doldurduğunu gösterirse yapılır; göstermezse madde kapanır.
+
+## Madde 7 sonucu (2 Kasım)
+
+Kod değişikliği yok. Yerleşim havuzu prod'da zaten 2. Normal havuz ve worker sayıları kabul koşusu ölçüm isterse değişir.
+
+## Madde 9 sonucu (2026-11-02)
+
+- **Yapıldı:** Açılış okuması başarısız olunca koşu düşmüyor; yalnız başarısız okumalar, büyüyen bekleme ile en çok 5 deneme yapılıyor (`coldStartReads`). Her deneme yine `request` üzerinden geçtiği için hatalar koşunun rakamlarında görünür. Bozuk gövde koşuyu hemen durdurur.
+- **Gerek kalmadı:** Kademeler arası boşalma: kabul koşusu tek kademe, 1.000 oyuncu. İmaj kimliği `CAPACITY_IMAGE_ID` ile zaten veriliyor.
+- **Koşu sırasında yapılacak (kod değil):** R5 için yük konteyneri sabit adla başlatılır (`docker run --name`), böylece üretecin CPU'su ayrı ölçülür. VPS'teki `Dockerfile.load` yamaları ve bundle için güncellenir.
+
+## Tam testin bulduğu (2026-11-02)
+
+**R13. Madde 2 gizli bir açığı ortaya çıkardı.** Klan tepkisi, üyeliği kilitsiz okuyordu. "Ayrılan komutan tepki veremez" testi yalnız eski presence dakikanın ilk isteğinde oyuncu satırını `FOR UPDATE` ile beklediği için geçiyordu. Canlıda da yalnız o ilk istek korunuyordu. Tepki artık klan sohbeti yazısıyla aynı oyuncu kilidini kendisi alıyor (`14a41efa`).
+
+## Review sonrası (2026-11-02)
+
+**Canlı sıklık (EU-1, 28 Ekim–2 Kasım, son 24 saatte 48 aktif komutan, salt okunur sorgu):**
+- Uçuş olayları (görev, madencilik, ticaret, korsan, konvoy): günde ~900. 1.000 aktif komutana doğrusal ölçekte galaksi genelinde ortalama 4–5 sn'de bir; yoğun saatte daha sık. Kapı en çok yoğun saatte devreye girer.
+- Kalkan olayları (`occupation_end`): 5,5 günde 8. `recovery_end`: yok. Doğrusal ölçekte saatte ~2.
+- Tek kalkan olayı 1.000 oyuncuda ~30 VPS çekirdek-saniyesi ve sıkıştırmasız 192 MB eder (bench dizüstünde 7,29 ms, VPS çekirdeği ~4 kat yavaş). Bu sıklıkta dokunulmaz. Oyuncu ve savaş sayısı büyür de dakikada birkaça çıkarsa bu olaylar yavaş şeride alınır ve ilgili komutana özel olay gider.
+
+**Kabul edilen:** Enkaz yarışında en çok ~6 sn gecikme (bkz. `decisions.md`).
+
+**Bilerek yapılmayanlar:** Spawn kapısı doğumsuz turda yalnız yazmayı kaldırıyor, okumalar duruyor (15 sn'de bir, kazanç az). Vault satırları yenilemede dünya başına en çok bir satır ekliyor (nadir, karmaşıklığa değmez). Kapının ilk çerçevesi bütün bağlantılara aynı anda gidiyor: ortalama sınırlı, tepe değil; trafik okuması SQL'siz olduğu için kabul koşusunda ölçülecek.
