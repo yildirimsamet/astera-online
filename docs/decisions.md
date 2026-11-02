@@ -3,6 +3,12 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-11-02 — K12: Savaş başlayınca filo o dünyadan çıkamaz.** Owner onayı (kapsam: filo veya
+  kargo çıkaran komutlar). Saldırı, klan vuruşu veya Death Star dünyaya vardığı andan çözülene kadar
+  o dünyadan her fırlatma `409 ARRIVAL_PENDING` alır; oradaki destek dalgası geri çağrılamaz, geri
+  gönderilemez. Pencere 10 sn çatışma + worker gecikmesidir. İnşa, üretim ve kaynak harcayan diğer
+  işler serbest; casus filo taşımadığı için serbest. Kontrol `takeHomeHealth`'te, `now` zorunlu.
+
 - **2026-11-02 — Enkaz yarışında en çok ~6 sn gecikme kabul edildi.**
   Owner onayı (kapasite planı, R12 review'u). Bağlantı başına akış kapısı (`stream/activityGate.ts`)
   `shard:launch|arrival|mining|pirate` olaylarını en çok ~6 sn'de bir iletir; sessizlikten sonraki

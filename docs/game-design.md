@@ -810,6 +810,11 @@ reset continues. Activation status and measured acceptance are recorded in deplo
   begins, exactly where it is — the same early turn a raid makes when somebody else destroys the
   pirate: the outbound dose is settled to the turn and the craft fly home at their own speed. No
   fight, no loot, no capture, no fuel back; the homecoming says "called back". `pirate_raids.recalled_at`.
+- **A battle holds the fleet (K12, owner 2026-10-28 and 2026-11-02).** From the moment an attack,
+  a clan strike or a Death Star reaches a world until it is settled, nothing flies out of that world:
+  every launch answers `409 ARRIVAL_PENDING`, and a support wave standing there can be neither
+  recalled nor sent back. That is the 10-second engagement plus however long the worker takes.
+  Probes carry no fleet; building and producing are no departure and stay free.
 - **The landing pause.** A world that has just received a transfer cannot send a transfer out for
   five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
 - **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate

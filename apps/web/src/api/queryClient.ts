@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { ApiError } from './client.js';
 import { shareStructure } from './structural.js';
 
 /** The application's one query client and its defaults. */
@@ -7,8 +8,9 @@ export function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         // The server is the only authority; a failed read is worth one more try and
-        // then a visible failure, never a silent stale render.
-        retry: 1,
+        // then a visible failure, never a silent stale render. The API client has
+        // already repeated a busy answer (F1.9): a second layer only adds load to it.
+        retry: (count, error) => count < 1 && !(error instanceof ApiError && error.code === 'RETRYABLE'),
         refetchOnReconnect: true,
         /**
          * RETURNING TO THE TAB IS ONE PASS, OWNED BY THE EVENT STREAM. Resource analysis 2026-10-13.

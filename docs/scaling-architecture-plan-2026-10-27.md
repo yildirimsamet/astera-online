@@ -985,6 +985,9 @@ Testler:
 
 **F1.5 Trafik projeksiyonundaki tekrarlar (R5).**
 
+> **2 Kas: yapılmadı, kazancı küçük.** Korsan satırları artık tek sorgu; asteroit keşfi çifti istek başına CPU
+> ve yalnız 5.000 asteroitte ölçülmeye değer. Satır numaraları eskidi.
+
 Dosyalar: `services/traffic.ts:676–717` (pirate konumu iki kez sorgulanıyor), `traffic.ts:1241` (uçuşun HP
 projeksiyonu istek içinde memoize edilir), `services/asteroidField.ts:298–329` (`orbitDiscoveredAt` +
 `nextAsteroidDiscoveryAt` aynı taramayı paylaşır).
@@ -1051,6 +1054,14 @@ test edilir.
 | Q16 | Sohbet okundu işareti makbuzsuz ve birleştirilmiş. **Kod hazır (31 Eki), deploy edilmedi:** klan işareti makbuz, transaction ve oyuncu kilidi olmadan tek koşullu `update … where last_chat_read_at is null or < mesaj` yapar; imleci ilerletmeyen işaret satır yazmaz. İstemci (genel + klan) ilk işareti hemen, 2,5 sn içindekileri en yeni id ile tek yazmada gönderir; rozet her işarette anında sıfırlanır, bekleyen işaret varken rozet geri okunmaz | Eski mesaj id'siyle gelen işaret imleci geri almaz; aynı işaret iki kez gelince tek yazma; `request_log` satırı oluşmaz; okunmamış rozeti aynı kalır |
 
 **F1.9 Yük altındaki yarışlar.**
+
+> **2 Kas: kod hazır, deploy edilmedi (`review/f0-f1`).** (1) K12: `assertNoArrivalPending`, `takeHomeHealth`
+> içinde (`arrival-pending.test.ts`). (2) `40P01/55P03/40001` → `503 RETRYABLE`; istemci okumaları ve
+> idempotency key'li komutları jitter'la 2 kez tekrarlar, key'siz komut tekrarlanmaz çünkü iki kez işleyebilir
+> (`retryable-errors.test.ts`, `api-client.test.ts`). (3) Q12: yalnız API havuzlarında 30 sn sorgu, 10 sn kilit;
+> canlıda en uzun sıradan sorgu <2 sn (`db-timeouts.test.ts`). Test 1 ve 2: `launch-races.test.ts`.
+> **Aşağıdaki "deadlock beklenmez" canlıda yanlış çıktı:** Honor gözlemi, Wealth güncellemesinin aldığı
+> kilidi `FOR UPDATE`'e yükseltiyordu (1 ve 2 Kas'ta `/collect` 500'ü); düzeltildi (`honor-observation-lock.test.ts`).
 
 Bugünkü davranış (kodla doğrulandı):
 
