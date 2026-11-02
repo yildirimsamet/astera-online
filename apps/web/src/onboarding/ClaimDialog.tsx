@@ -27,8 +27,7 @@ import { browserTimeZone, countryName, detectCountry } from '../v2/identity/coun
  * save a credential when the username and the password are submitted together, so
  * two separate forms would silently cost every player the thing that makes an
  * account survive a reinstall. The name field therefore stays mounted for step
- * two, still editable beside the password so a taken name can be fixed without
- * retracing a step.
+ * two, hidden from the player; Back reopens it if the name needs changing.
  *
  * IT NEVER TRAPS ANYBODY. "I already have a commander" is on both steps: a
  * returning player who pressed the wrong door must be able to leave from here, not
@@ -46,7 +45,7 @@ export function ClaimDialog({
   onSignIn: () => void;
   /** A refusal from the claim, already translated. */
   error?: string;
-  /** The caller describes what will actually be transferred; legacy intents differ. */
+  /** Shown before the final commitment; describes this opening's actual contents. */
   introduction?: string;
 }) {
   const { t, i18n } = useTranslation();
@@ -73,7 +72,7 @@ export function ClaimDialog({
     else passwordRef.current?.focus();
   }, [step]);
   useEffect(() => {
-    if (error && step === 'password') nameRef.current?.focus();
+    if (error && step === 'password') passwordRef.current?.focus();
   }, [error, step]);
 
   const naming = step === 'name';
@@ -133,7 +132,7 @@ export function ClaimDialog({
       aria-modal="true"
       aria-label={naming
         ? t('onboarding.claim.headingName')
-        : t('onboarding.claim.headingPassword', { name: planetName })}
+        : t('onboarding.claim.headingPassword', { name: username.trim() })}
     >
       <div className="absolute inset-0 bg-v2-void/70" />
 
@@ -151,15 +150,16 @@ export function ClaimDialog({
         <h2 className="mt-1 text-figure font-semibold leading-tight text-v2-ink">
           {naming
             ? t('onboarding.claim.headingName')
-            : t('onboarding.claim.headingPassword', { name: planetName })}
+            : t('onboarding.claim.headingPassword', { name: username.trim() })}
         </h2>
         <p className="mt-2 text-caption leading-snug text-v2-ink-2">
           {naming
-            ? introduction ?? t('onboarding.claim.lineName', { name: planetName })
+            ? t('onboarding.claim.lineName', { name: planetName })
             : t('onboarding.claim.linePassword')}
         </p>
 
-        {/* Keep the name editable beside the password so a taken name can be fixed here. */}
+        {/* Keep the username mounted for password managers; Back makes it editable. */}
+        <div hidden={!naming}>
         <label className="mt-5 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={nameId}>
           {t('onboarding.claim.nameLabel')}
         </label>
@@ -182,6 +182,7 @@ export function ClaimDialog({
           maxLength={64}
           placeholder={t('landing.form.namePlaceholder')}
         />
+        </div>
 
         {!naming && (
           <>
@@ -226,6 +227,7 @@ export function ClaimDialog({
           </p>
         )}
 
+        {!naming && introduction && <p className="mt-4 rounded-control border border-v2-line bg-v2-deep px-3 py-2 text-caption leading-snug text-v2-ink-2" role="note">{introduction}</p>}
         {!naming ? <div className="mt-3"><CommunityPolicyAgreement checked={policyAccepted} onChange={setPolicyAccepted} disabled={busy} /></div> : null}
         <Button type="submit" variant="primary" size="lg" full disabled={busy || !naming && !policyAccepted} className="mt-5">
           {busy

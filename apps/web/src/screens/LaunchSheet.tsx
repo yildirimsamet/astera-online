@@ -30,6 +30,7 @@ import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 import { HonorTargetCard } from '../ui/HonorTargetCard.js';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -94,13 +95,15 @@ export function LaunchSheet({
   onAim?: (at: { x: number; y: number; z: number } | null) => void;
 }) {
   const { t } = useTranslation();
+  const school = useSchoolPresentation();
   const {
-    sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
+    sending, set, roomFor, allowance, selectionComplete, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
     escort, escorted, setEscortWanted,
     holding, away, atHome, recordAge, opposing, power, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
+  const choosing = school !== null && !selectionComplete;
 
   /**
    * ONE HULL'S ROW, AS THE MOCK DRAWS IT: the ship, its class, how many stand ready,
@@ -249,7 +252,7 @@ export function LaunchSheet({
             since K8 — whether it can be turned: a raid at a world once, a pirate raid
             never. Nothing is said while nothing is picked: a price for no fleet is noise.
           */}
-          {total > 0 && (
+          {total > 0 && !choosing && (
             <div className="grid gap-1">
               {/* The mock's "Başkent 2 sa 52 dk zayıf kalır": the world and how long; the count is a figure above. */}
               <p data-launch-warning className="text-caption leading-snug text-v2-warn">
@@ -294,7 +297,7 @@ export function LaunchSheet({
           figures a wing is adjusted against move on the same "+", so they travel
           together while the ships scroll under them.
         */}
-        <div className="sticky top-0 z-10 -mx-3 border-b border-v2-line bg-v2-panel px-3 pb-2.5">
+        {!choosing && <div className={`${school ? '' : 'sticky top-0 z-10'} -mx-3 border-b border-v2-line bg-v2-panel px-3 pb-2.5`}>
           <ForceRuler
             power={power}
             theirs={opposing}
@@ -308,14 +311,14 @@ export function LaunchSheet({
               </div>
             )}
           </ForceRuler>
-        </div>
+        </div>}
 
         {/*
           THE COUNTER CYCLE AGAINST WHAT THE PROBE READ (B6), under the ruler as the mock
           has it — and out of the sticky header, which keeps only what a "+" moves: the
           two strips and the tank. The ships scroll under those, not under a paragraph.
         */}
-        {classReading && <div className="px-1"><MatchupLine wing={sending} reading={classReading} /></div>}
+        {!choosing && classReading && <div className="px-1"><MatchupLine wing={sending} reading={classReading} /></div>}
 
         <section data-launch-fleet className="grid gap-1.5">
           {/*
@@ -397,7 +400,7 @@ export function LaunchSheet({
           stands against the haul the probe read; the bay is counted as it will stand; and
           what stays home is counted and weighed.
         */}
-        <Figures data-launch-figures="">
+        {!choosing && <Figures data-launch-figures="">
           <Figure
             label={t('launch.arrive')}
             value={route !== null && route.oneWayMinutes > 0 ? durationPrecise(route.oneWayMinutes) : t('launch.oneWayUnknown')}
@@ -431,7 +434,7 @@ export function LaunchSheet({
             value={t('launch.staysUnits', { count: holding })}
             sub={t('launch.staysPower', { value: compact(homePowerAfter(planet.fleet, planet.ground, sending)) })}
           />
-        </Figures>
+        </Figures>}
       </div>
     </Sheet>
   );

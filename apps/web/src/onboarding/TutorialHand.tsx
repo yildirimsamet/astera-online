@@ -3,8 +3,9 @@ import { useEffect, useRef, type RefObject } from 'react';
 /** D172. The supplied hand follows the final (action) target. No scrim, hitbox
  * or frame-rate React state: scrolling remains available to the player.
  */
-export function TutorialHand({ targets, bubble, kind = 'action' }: {
+export function TutorialHand({ targets, bubble, kind = 'action', bounds }: {
   targets: () => readonly Element[];
+  bounds?: () => DOMRect | null;
   bubble?: RefObject<HTMLElement | null>;
   kind?: 'action' | 'intro';
 }) {
@@ -16,7 +17,7 @@ export function TutorialHand({ targets, bubble, kind = 'action' }: {
     const paint = () => {
       const hand = ref.current;
       const found = document.querySelector('[data-loading-screen]') ? [] : targets();
-      const box = found[found.length - 1]?.getBoundingClientRect();
+      const box = bounds ? bounds() : found[found.length - 1]?.getBoundingClientRect();
 
       /**
        * BRING THE TARGET INTO THE SHEET'S VIEW. Owner instruction.
@@ -88,7 +89,7 @@ export function TutorialHand({ targets, bubble, kind = 'action' }: {
     };
     frame = requestAnimationFrame(paint);
     return () => { cancelAnimationFrame(frame); };
-  }, [targets, bubble, kind]);
+  }, [targets, bubble, kind, bounds]);
   if (kind === 'intro') return <div ref={ref} data-tutorial-intro aria-hidden="true"
     className="pointer-events-none fixed left-0 top-0 z-[60] rounded-control border border-crystal"
     style={{ visibility: 'hidden' }} />;

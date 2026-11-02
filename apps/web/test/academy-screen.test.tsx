@@ -296,6 +296,9 @@ describe('Academy ownership and progression', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skip training' }));
     expect(screen.getByLabelText('Commander name')).toBeInTheDocument();
     expect(screen.queryByText(/four orders are staged/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/completed training progress/i)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Commander name'), { target: { value: 'Northstar' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with this name' }));
     expect(screen.getByText(/completed training progress/i)).toBeInTheDocument();
     expect(onClaim).not.toHaveBeenCalled();
     expect(track).toHaveBeenCalledWith('tutorial_skip', { step: 0, lesson: 'welcome' });

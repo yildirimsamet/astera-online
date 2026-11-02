@@ -119,8 +119,8 @@ describe('Japanese language support', () => {
   });
 
   it('uses clear actions while the new commander claims a planet', () => {
-    expect(ja.onboarding.claim.submit).toBe('惑星を確保する');
-    expect(ja.onboarding.claim.lineName).toContain('{{name}}');
+    expect(ja.onboarding.claim.submit).toBe('銀河に参加する');
+    expect(ja.onboarding.claim.lineName).toContain('ほかのプレイヤー');
     expect(ja.onboarding.beats.briefing.mapOutcome).toContain('決める');
     expect(ja.onboarding.beats.fleet.title).toContain('2隻');
   });

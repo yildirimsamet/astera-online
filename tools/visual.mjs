@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--flight-school')) {
+  const { verifyFlightSchool } = await import('./flight-school-visual.mjs');
+  await verifyFlightSchool(process.argv[2] ?? 'out/flight-school');
+  process.exit(0);
+}
+
 if (process.argv.includes('--legacy-frontend-review')) {
   const { verifyLegacyFrontend } = await import('./legacy-frontend-review-visual.mjs');
   await verifyLegacyFrontend(process.argv[2] ?? 'out/legacy-frontend-review');

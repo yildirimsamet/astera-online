@@ -74,18 +74,18 @@ export const onboarding = {
 
   /** The wall, at the one moment the player wants something. */
   claim: {
-    eyebrowName: 'Último paso',
-    headingName: "Elige el nombre de tu comandante",
-    lineName: 'Tus cuatro pedidos están preparados. Reclama {{name}} y sus relojes reales comenzarán juntos.',
+    eyebrowName: "Tu identidad en la galaxia",
+    headingName: "Elijamos tu nombre de comandante",
+    lineName: "Los demás jugadores te conocerán por este nombre. Elige el que quieras mostrar en los mensajes y las clasificaciones.",
     nameLabel: 'Nombre del comandante',
-    next: 'Continuar',
+    next: "Continuar con este nombre",
 
-    eyebrowPassword: 'Uno más',
-    headingPassword: "Crea una contraseña para {{name}}",
-    linePassword: "Usa esta contraseña para acceder con el mismo comandante desde otro dispositivo.",
+    eyebrowPassword: "Vuelve a tu comandante",
+    headingPassword: "Elige una contraseña para {{name}}",
+    linePassword: "Usa esta contraseña para volver a tu comandante más tarde o desde otro dispositivo y continuar donde lo dejaste.",
     passwordLabel: 'Contraseña',
-    submit: 'Reclama el planeta',
-    working: "Creando tu comandante…",
+    submit: "Unirse a la galaxia",
+    working: "Preparando tu galaxia…",
     back: 'Atrás',
   },
 

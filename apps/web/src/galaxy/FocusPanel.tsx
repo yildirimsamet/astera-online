@@ -4,6 +4,7 @@ import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
+import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import type { TFunction } from 'i18next';
 import {
   DEATH_STAR,
@@ -600,6 +601,7 @@ export function PlanetFocus({
   const { t } = useTranslation();
   const setRival = useSetRival();
   const say = useToast();
+  const school = useSchoolPresentation();
   /*
     The PROBE band leads: it is the section a commander opens this panel to read,
     and the one they paid alloy and a round trip for. Remembered per device.
@@ -1123,7 +1125,7 @@ export function PlanetFocus({
         the guide long before that line, and the guide's own comment says as much.
         A commitment surface may state a rule or say nothing; it may not guess.
       */}
-      {!target.clanmate && (!unsurveyed
+      {!school && !target.clanmate && (!unsurveyed
         || colonyPhase === 'NEUTRAL_RACE'
         || colonyPhase === 'SETTLEMENT_IN_FLIGHT') && (
       <StrategicWorldGuide
@@ -1168,7 +1170,7 @@ export function PlanetFocus({
         power against the wing at home with the counter cycle; the haul against the hold; on
         a colony, the loyalty rule. The facts and gaps below are what it was built from.
       */}
-      <div className="mb-3">
+      {!school && <div className="mb-3">
         <TargetDossier
           target={target}
           planet={planet}
@@ -1179,7 +1181,7 @@ export function PlanetFocus({
           ownPeakCore={ownPeakCore}
           {...(rivalControl ? { rival: rivalControl } : {})}
         />
-      </div>
+      </div>}
 
       {(rivalSlot !== null || rival) && (
         <RivalHistory

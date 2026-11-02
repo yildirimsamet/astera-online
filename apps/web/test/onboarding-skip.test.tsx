@@ -74,7 +74,7 @@ describe('skipping the onboarding rehearsal', () => {
     await user.click(screen.getByRole('button', { name: 'Skip' }));
     expect(track).toHaveBeenCalledWith('tutorial_skip', { orders: 0 });
     await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with this name' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
     // Pick the asserted country explicitly: the default follows the browser's
     // timezone and must not depend on which machine runs this rehearsal test.
@@ -82,7 +82,7 @@ describe('skipping the onboarding rehearsal', () => {
     await user.click(screen.getByRole('button', { name: 'United States' }));
     await user.click(screen.getByRole('button', { name: 'Confirm country' }));
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: /claim/i }));
+    await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', [
       { kind: 'upgrade', building: 'CORE' },
       { kind: 'upgrade', building: 'REFINERY' },
@@ -105,7 +105,7 @@ describe('skipping the onboarding rehearsal', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Skip' }));
 
     expect(onLeave).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: 'Choose your commander name' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Let’s name your commander' })).toBeInTheDocument();
     expect(screen.getByLabelText('Commander name')).toHaveFocus();
   });
 });

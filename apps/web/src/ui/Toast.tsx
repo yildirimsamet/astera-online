@@ -12,13 +12,13 @@ interface Message {
 }
 
 const ToastContext = createContext<((text: string, tone?: Tone) => void) | null>(null);
-const ToastSilenceContext = createContext<(() => () => void) | null>(null);
+const ToastSilenceContext = createContext<((keepErrors?: boolean) => () => void) | null>(null);
 
 /** The Academy speaks in its coach, never over it. Drop messages, don't defer
  * them until exit; a returning commander must not receive practice toasts. */
-export function useSilenceToasts(): void {
+export function useSilenceToasts(keepErrors = false): void {
   const silence = useContext(ToastSilenceContext);
-  useLayoutEffect(() => silence?.(), [silence]);
+  useLayoutEffect(() => silence?.(keepErrors), [silence, keepErrors]);
 }
 
 /**
@@ -58,15 +58,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [queue, setQueue] = useState<Message[]>([]);
   const quiet = useRef(0);
-  const silence = useCallback(() => {
-    quiet.current += 1;
-    setQueue([]);
-    return () => { quiet.current -= 1; };
+  const quietInfo = useRef(0);
+  const silence = useCallback((keepErrors = false) => {
+    const counter = keepErrors ? quietInfo : quiet;
+    counter.current += 1;
+    setQueue(current => keepErrors ? current.filter(message => message.tone === 'error') : []);
+    return () => { counter.current -= 1; };
   }, []);
   const message = queue[0] ?? null;
 
   const say = useCallback((text: string, tone: Tone = 'info') => {
-    if (quiet.current > 0) return;
+    if (quiet.current > 0 || (tone === 'info' && quietInfo.current > 0)) return;
     sequence += 1;
     setQueue((current) => [...current, { id: sequence, text, tone }]);
   }, []);

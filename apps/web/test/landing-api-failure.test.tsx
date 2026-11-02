@@ -9,7 +9,7 @@ vi.mock('../src/lib/music.js', () => ({ useAmbientMusic: () => undefined }));
 vi.mock('../src/lib/sound.js', () => ({ useSoundEffects: () => undefined }));
 vi.mock('../src/session/useEventStream.js', () => ({ useEventStream: () => undefined }));
 vi.mock('../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: () => undefined }));
-vi.mock('../src/onboarding/Academy.jsx', () => ({ Academy: () => <main>Private Academy</main> }));
+vi.mock('../src/onboarding/flightSchool/FlightSchool.js', () => ({ FlightSchool: () => <main>Private Academy</main> }));
 
 beforeEach(() => { window.sessionStorage.clear(); window.localStorage.clear(); vi.stubEnv('VITE_ASTERA_PLATFORM', 'web'); });
 afterEach(() => { vi.unstubAllEnvs(); });

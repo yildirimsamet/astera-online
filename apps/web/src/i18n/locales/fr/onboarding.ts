@@ -73,19 +73,17 @@ export const onboarding = {
   skip: "Passer",
   haveAccount: "J’ai déjà un commandant",
   claim: {
-    eyebrowName: "Dernière étape",
-    headingName: "Choisis le nom de ton commandant",
-    lineName:
-      "Tes quatre commandes sont prêtes. Dès que {{name}} sera à toi, leurs véritables compteurs démarreront ensemble.",
+    eyebrowName: "Ton identité dans la galaxie",
+    headingName: "Choisissons ton nom de commandant",
+    lineName: "Les autres joueurs te connaîtront sous ce nom. Choisis celui que tu souhaites afficher dans les messages et les classements.",
     nameLabel: "Nom du commandant",
-    next: "Continuer",
-    eyebrowPassword: "Encore une étape",
+    next: "Continuer avec ce nom",
+    eyebrowPassword: "Retrouver ton commandant",
     headingPassword: "Choisis un mot de passe pour {{name}}",
-    linePassword:
-      "Utilise ce mot de passe pour retrouver ton commandant sur un autre appareil.",
+    linePassword: "Ce mot de passe te permettra de retrouver ton commandant plus tard ou sur un autre appareil et de reprendre ta partie.",
     passwordLabel: "Mot de passe",
-    submit: "Revendiquer la planète",
-    working: "Création du commandant…",
+    submit: "Rejoindre la galaxie",
+    working: "Préparation de ta galaxie…",
     back: "Retour",
   },
   trouble: {

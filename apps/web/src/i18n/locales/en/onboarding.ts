@@ -74,18 +74,18 @@ export const onboarding = {
 
   /** The wall, at the one moment the player wants something. */
   claim: {
-    eyebrowName: 'Last step',
-    headingName: "Choose your commander name",
-    lineName: 'Your four orders are staged. Claim {{name}} and their real clocks start together.',
+    eyebrowName: "Your identity in the galaxy",
+    headingName: "Let’s name your commander",
+    lineName: "Other players will know you by this name. Choose the commander name you want to appear in messages and rankings.",
     nameLabel: 'Commander name',
-    next: 'Continue',
+    next: "Continue with this name",
 
-    eyebrowPassword: 'One more',
-    headingPassword: "Set a password for {{name}}",
-    linePassword: "Use this password to sign in with the same commander on another device.",
+    eyebrowPassword: "Return to your commander",
+    headingPassword: "Choose a password for {{name}}",
+    linePassword: "Use this password to return to this commander later or from another device. You will continue where you left off.",
     passwordLabel: 'Password',
-    submit: 'Claim the planet',
-    working: "Creating your commander…",
+    submit: "Join the galaxy",
+    working: "Preparing your galaxy…",
     back: 'Back',
   },
 
