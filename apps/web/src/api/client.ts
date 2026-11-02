@@ -1,4 +1,7 @@
 import { battleReplayResponseSchema } from './battleReplaySchemas.js';
+import { observe, analyticsHeaders, analyticsRecording, syncAnalyticsIdentity } from '../lib/playerAnalytics/runtime.js';
+import { analyticsAuth, analyticsCommand } from './analyticsCommands.js';
+import { analyticsAdminSchema, analyticsTimelineSchema, anonymousVisitsSchema, type AnalyticsFilters } from './analyticsAdminSchemas.js';
 import { commanderShipSchema } from './commanderShipSchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
@@ -218,9 +221,11 @@ export interface ApiDeps {
   fetch?: typeof globalThis.fetch;
   baseUrl?: string;
   authTransport?: AuthTransport | null;
+  observations?: boolean;
 }
 
 interface RequestOptions {
+  analyticsAttempt?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   signal?: AbortSignal;
   headers?: Readonly<Record<string, string>>;
@@ -306,6 +311,19 @@ export interface IntergalacticConvoyLaunchInput {
  * a durable refresh credential to JavaScript. Short access still requires XSS defences.
  */
 export class Api {
+  analyticsAdmin = (options: AnalyticsFilters & { inactiveHours: 0 | 24 | 48 | 72; after?: string; username?: string }) => {
+    const query = new URLSearchParams({ inactiveHours: String(options.inactiveHours) });
+    for (const key of ['build', 'source', 'platform', 'locale', 'trainingVersion', 'after', 'username'] as const) {
+      const value = options[key]; if (value !== undefined) query.set(key, value);
+    }
+    return this.send(`/api/admin/analytics?${query}`, analyticsAdminSchema);
+  };
+  analyticsTimeline = (accountId: string, before?: { at: string; id: string }, filters: AnalyticsFilters = {}) => this.send(
+    `/api/admin/analytics/accounts/${encodeURIComponent(accountId)}/events?${new URLSearchParams(Object.entries({ ...filters, beforeAt: before?.at, beforeId: before?.id }).flatMap(([key, value]) => value === undefined ? [] : [[key, value]]))}`, analyticsTimelineSchema);
+  analyticsAnonymousVisits = (after?: string) => this.send(`/api/admin/analytics/visits${after ? `?after=${encodeURIComponent(after)}` : ''}`, anonymousVisitsSchema);
+  analyticsAnonymousTimeline = (visitorId: string, before?: { at: string; id: string }) => this.send(
+    `/api/admin/analytics/visits/${encodeURIComponent(visitorId)}/events${before ? `?beforeAt=${encodeURIComponent(before.at)}&beforeId=${encodeURIComponent(before.id)}` : ''}`, analyticsTimelineSchema);
+  private readonly observations: boolean;
   private readonly http: typeof globalThis.fetch;
   private readonly baseUrl: string;
   private readonly auth: AuthTransport | null;
@@ -340,6 +358,7 @@ export class Api {
   private refreshing: Promise<boolean> | null = null;
 
   constructor(deps: ApiDeps = {}) {
+    this.observations = deps.observations ?? false;
     this.http = deps.fetch ?? globalThis.fetch.bind(globalThis);
     this.auth = deps.authTransport === undefined ? createNativeAuthTransport() : deps.authTransport;
     this.baseUrl = deps.baseUrl ?? (this.auth ? import.meta.env.VITE_ASTERA_API_URL ?? '' : '');
@@ -382,6 +401,34 @@ export class Api {
     schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     opts: RequestOptions = {},
   ): Promise<T> {
+    const command = opts.method === 'POST' ? analyticsCommand(path) : null;
+    const auth = opts.method === 'POST' ? analyticsAuth(path) : null;
+    if (!this.observations || !analyticsRecording() || (!command && !auth)) return this.sendRaw(path, schema, opts);
+    let attemptId: string;
+    try { attemptId = crypto.randomUUID(); } catch { return this.sendRaw(path, schema, opts); }
+    const scope = analyticsHeaders()['x-analytics-visitor'];
+    const startedAt = performance.now();
+    const duration = () => Math.min(86400000, Math.max(0, performance.now() - startedAt));
+    const sameScope = () => analyticsRecording() && scope === analyticsHeaders()['x-analytics-visitor'];
+    observe(auth ? 'auth_attempted' : 'command_attempted', { attemptId, code: auth ?? command ?? undefined }, 'live');
+    try {
+      const result = await this.sendRaw(path, schema, { ...opts, analyticsAttempt: attemptId });
+      if (sameScope()) observe(auth ? 'auth_result' : 'command_result', { attemptId, subject: auth ?? command ?? undefined, code: 'success', phase: 'response', durationMs: duration() }, 'live');
+      return result;
+    } catch (error) {
+      const code = error instanceof ApiError && /^[A-Z0-9_]{1,128}$/.test(error.code) ? error.code : 'network';
+      const refused = error instanceof ApiError && error.status >= 400 && error.status < 500 && error.code !== 'SESSION_CHANGED';
+      if (sameScope()) observe(auth ? 'auth_result' : refused ? 'command_blocked' : 'command_result',
+        { attemptId, subject: auth ?? command ?? undefined, code, phase: refused ? 'refused' : 'unknown', durationMs: duration() }, 'live');
+      throw error;
+    }
+  }
+
+  private async sendRaw<T>(
+    path: string,
+    schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+    opts: RequestOptions = {},
+  ): Promise<T> {
     opts.signal?.throwIfAborted();
     // Defence against an old mounted screen or accidental direct hook/API use.
     // This is a client distribution rule, never proof of platform to the server.
@@ -400,10 +447,16 @@ export class Api {
     const sentPlacement = this.placement;
     const generation = this.sessionGeneration;
     const sentAt = Date.now();
-    const res = this.auth && isSessionPath(path) ? await this.auth.request(path, opts.body) : await this.http(`${this.baseUrl}${path}`, {
+    const measurement = this.observations ? analyticsHeaders() : {};
+    const visit = measurement['x-analytics-visitor'];
+    const res = this.auth && isSessionPath(path)
+      ? await (visit && analyticsAuth(path) ? this.auth.request(path, opts.body, visit) : this.auth.request(path, opts.body))
+      : await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
         ...opts.headers,
+        ...measurement,
+        ...(visit && opts.analyticsAttempt ? { 'x-analytics-attempt': opts.analyticsAttempt } : {}),
         ...(opts.body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
         ...(sentPlacement ? { 'x-placement': sentPlacement } : {}),
@@ -437,7 +490,7 @@ export class Api {
     if (res.status === 401 && (opts.retryOnExpiry ?? true) && errorShape(body).error !== 'BAD_CREDENTIALS') {
       const restored = await this.restore();
       if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
-      if (restored) return this.send(path, schema, { ...opts, retryOnExpiry: false });
+      if (restored) return this.sendRaw(path, schema, { ...opts, retryOnExpiry: false });
     }
     const receivedPlacement = res.headers.get('x-placement');
     if (path === '/api/auth/me' && res.ok) {
@@ -491,6 +544,7 @@ export class Api {
     this.sessionAccountId = session.accountId;
     this.emailForLogin = session.loginEmail;
     this.token = session.accessToken;
+    if (this.observations) syncAnalyticsIdentity(session.accountId, () => this.token);
   }
 
   /** Exchange the refresh cookie for a live token. Only a rejected session returns false. */

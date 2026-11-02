@@ -1,6 +1,8 @@
 import { PushNotifications } from '@capacitor/push-notifications';
 import { refreshPhonePermission } from './localNotifications.js';
 import { capabilities } from './runtime.js';
+import { z } from 'zod';
+import { observe } from '../lib/playerAnalytics/runtime.js';
 
 /**
  * THE PHONE'S ADDRESS FOR PAID ALERTS (Bildirim Merkezi, FCM). Owner 2026-10-31.
@@ -38,6 +40,8 @@ export interface PushApi {
 let target: { api: PushApi; locale: string } | null = null;
 let token: string | null = null;
 let listening: Promise<unknown> | null = null;
+let opening: Promise<unknown> | null = null;
+const openedSchema = z.object({ notification: z.object({ data: z.object({ refId: z.string().uuid() }) }) });
 
 /** Every `register()` answers with the token again, so a language change or a refreshed token is sent the same way. */
 function post(): void {
@@ -51,11 +55,17 @@ export async function connectPush(api: PushApi, options: { locale: string; chann
     let receive = (await PushNotifications.checkPermissions()).receive;
     if (receive !== 'granted' && options.ask) {
       receive = (await PushNotifications.requestPermissions()).receive;
+      observe('alert_permission', { code: receive === 'granted' ? 'granted' : 'denied', variant: 'push' }, 'live');
       void refreshPhonePermission();
     }
     if (receive !== 'granted') return options.ask ? 'denied' : 'off';
     listening ??= PushNotifications.addListener('registration', ({ value }) => { token = value; remember(value); post(); });
+    opening ??= PushNotifications.addListener('pushNotificationActionPerformed', value => {
+      const opened = openedSchema.safeParse(value);
+      if (opened.success) observe('alert_opened', { refId: opened.data.notification.data.refId, code: 'push' }, 'live');
+    });
     await listening;
+    await opening;
     await PushNotifications.createChannel({ id: CHANNEL, name: options.channelName, importance: 5, visibility: 1, vibration: true });
     await PushNotifications.register();
     return 'on';

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
+import { useAnalyticsScreen } from './lib/playerAnalytics/useAnalyticsScreen.js';
 import { useTranslation } from 'react-i18next';
 import { useSession } from './session/useSession.js';
 import { useEventStream } from './session/useEventStream.js';
@@ -118,6 +119,8 @@ function SessionApp() {
   useLiveAlerts(ready && !academyReplay);
 
   const [panel, setPanel] = useState<Panel>(door === 'leave' ? 'ship' : null);
+  const analyticsToken = useCallback(() => api.accessToken, [api]);
+  const analyticsSceneReady = useAnalyticsScreen(arenaOpen ? 'arena' : session.phase, 'me' in session ? session.me.accountId : null, analyticsToken, panel, academyReplay);
   /**
    * WHICH SHELF THE PANEL OPENS ON, WHEN THE CALLER KNOWS. D121.
    *
@@ -261,6 +264,7 @@ function SessionApp() {
         galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat }) => (
           <>
           <GalaxyView
+            onSceneReady={analyticsSceneReady}
             panel={profileOpen ? 'profile' : panel}
             onPanel={onPanel}
             panelStop={panelStop}

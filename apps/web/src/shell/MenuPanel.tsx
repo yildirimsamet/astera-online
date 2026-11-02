@@ -43,6 +43,7 @@ import {
   BroadcastIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
+import { AnalyticsSetting } from '../lib/playerAnalytics/Notice.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
@@ -339,6 +340,7 @@ export function MenuPanel({
                 <NowPlaying />
                 <QualitySetting />
                 <FpsSetting />
+                <AnalyticsSetting />
                 {/*
                   THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
 

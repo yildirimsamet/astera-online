@@ -42,6 +42,7 @@ export function fcmTransport(account: ServiceAccount, options: {
   fetch?: typeof fetch;
   now?: () => number;
   onError?: (error: unknown) => void;
+  onOutcome?: (outcome: { refId: string | undefined; alertId: string | undefined; accepted: number; rejected: number }) => void;
 } = {}): PushTransport {
   const send = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
@@ -97,13 +98,20 @@ export function fcmTransport(account: ServiceAccount, options: {
   return {
     async send(tokens, message) {
       const invalid: string[] = [];
+      let accepted = 0, rejected = 0;
       for (const token of tokens) {
         try {
-          if (await deliver(token, message) === 'invalid') invalid.push(token);
+          const result = await deliver(token, message);
+          if (result === 'invalid') invalid.push(token);
+          if (result === 'sent') accepted++;
+          else rejected++;
         } catch (error) {
+          rejected++;
           report(error);
         }
       }
+      try { options.onOutcome?.({ refId: message.data.refId, alertId: message.data.alertId, accepted, rejected }); }
+      catch (error) { report(error); }
       return { invalid };
     },
   };

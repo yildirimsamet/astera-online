@@ -38,6 +38,7 @@ import { BUILDING_TOP, SATELLITE_ART, buildingArt, instrumentArt } from './asset
 import type { Blocked } from './UpgradeRow.js';
 import { CoreTierInfo } from './CoreTierInfo.js';
 import { PlanetRadiationProtection } from './PlanetRadiationProtection.js';
+import { useVisibleTelemetry } from '../lib/playerAnalytics/useVisibleTelemetry.js';
 
 /**
  * WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1 (docs/ui-v2/design-mocks).
@@ -134,6 +135,8 @@ export function ItemSheet({
     crystal: Math.max(0, cost.crystal - held.crystal),
   };
   const affordable = short.alloy === 0 && short.crystal === 0;
+  const observation = useVisibleTelemetry('development_item', item.id,
+    terminal ? null : blocked ? 'requirements' : !affordable ? 'insufficient_resources' : null);
   const top = topOf(item);
   const rungs = item.kind === 'satellite' || terminal
     ? []
@@ -165,8 +168,8 @@ export function ItemSheet({
         }
         title={name}
         onClose={onClose}
-        footer={
-          terminal ? (
+        footer={<div ref={observation}>
+          {terminal ? (
             <span data-act className="block">
               <p
                 role="status"
@@ -191,8 +194,8 @@ export function ItemSheet({
               }}
               onClose={onClose}
             />
-          )
-        }
+          )}
+        </div>}
       >
         <div className="flex flex-col gap-3 pt-1">
           {item.kind === 'satellite' ? (

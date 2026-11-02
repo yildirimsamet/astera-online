@@ -1,0 +1,2 @@
+CREATE INDEX "commander_transfers_analytics_time_idx" ON "commander_transfers" USING btree ("committed_at");--> statement-breakpoint
+CREATE INDEX "notifications_analytics_time_idx" ON "notifications" USING btree ("created_at");

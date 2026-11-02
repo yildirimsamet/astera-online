@@ -52,6 +52,10 @@ COPY assets/source/engine-flames/recipes.json ./assets/source/engine-flames/reci
 # and every local build) the client installs no tag and fetches nothing from
 # Google; see `apps/web/src/lib/analytics.ts`.
 ARG VITE_GA_ID=""
+ARG VITE_ASTERA_PLAYER_ANALYTICS="0"
+ARG ASTERA_GIT_COMMIT=""
+ENV VITE_ASTERA_PLAYER_ANALYTICS=$VITE_ASTERA_PLAYER_ANALYTICS
+ENV ASTERA_GIT_COMMIT=$ASTERA_GIT_COMMIT
 ENV VITE_GA_ID=$VITE_GA_ID
 # Komutan Gemisi playtest door; the arena process still decides who may enter.
 ARG VITE_ARENA=""
@@ -77,6 +81,7 @@ FROM manifests AS server-build
 RUN pnpm install --frozen-lockfile --filter @astera/server...
 COPY packages/rules/src   ./packages/rules/src
 COPY apps/server/src      ./apps/server/src
+COPY apps/web/src/api     ./apps/web/src/api
 RUN pnpm --filter @astera/server build
 
 FROM base AS server
@@ -92,6 +97,7 @@ COPY --from=server-deps /app ./
 
 COPY packages/rules/src   ./packages/rules/src
 COPY apps/server/src      ./apps/server/src
+COPY apps/web/src/api     ./apps/web/src/api
 COPY --from=server-build /app/apps/server/dist ./apps/server/dist
 # MIGRATIONS ARE PART OF THE IMAGE. `assertSchemaCurrent` counts the entries in
 # `meta/_journal.json` against what the database has run and refuses to start if

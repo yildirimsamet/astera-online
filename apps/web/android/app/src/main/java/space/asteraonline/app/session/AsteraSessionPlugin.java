@@ -47,13 +47,19 @@ public final class AsteraSessionPlugin extends Plugin {
                 reply(call, new SessionEngine.Reply(200, "{\"ok\":true}", null, null));
                 retry(engine); return;
             }
-            JSObject body = call.getObject("body");
+            JSObject input = call.getObject("body");
+            JSObject body = input == null ? new JSObject() : new JSObject(input.toString());
+            // Reserved transport metadata never comes from credential/form fields.
+            body.remove("__analyticsVisitor");
+            String visit = call.getString("analyticsVisitor", "");
+            if ((operation.equals("login") || operation.equals("register") || operation.equals("claim"))
+                && visit.matches("[A-Za-z0-9_-]{43}")) body.put("__analyticsVisitor", visit);
             NETWORK.execute(() -> {
-                try { reply(call, engine.execute(ticket, body == null ? null : body.toString())); }
+                try { reply(call, engine.execute(ticket, body.toString())); }
                 catch (IOException failure) { unavailable(call); }
                 retry(engine);
             });
-        } catch (IOException | IllegalArgumentException failure) { unavailable(call); }
+        } catch (IOException | IllegalArgumentException | JSONException failure) { unavailable(call); }
     }
 
     @PluginMethod public void clear(PluginCall call) {

@@ -11,11 +11,11 @@ const OPERATIONS = {
 } as const;
 type SessionPath = keyof typeof OPERATIONS;
 export interface AuthTransport {
-  request(path: SessionPath, body?: Record<string, unknown>): Promise<Response>;
+  request(path: SessionPath, body?: Record<string, unknown>, analyticsVisitor?: string): Promise<Response>;
   clear(): Promise<void>;
 }
 export interface NativeSessionPlugin {
-  request: (input: { operation: typeof OPERATIONS[SessionPath]; body?: Record<string, unknown> }) => Promise<unknown>;
+  request: (input: { operation: typeof OPERATIONS[SessionPath]; body?: Record<string, unknown>; analyticsVisitor?: string }) => Promise<unknown>;
   clear: () => Promise<unknown>;
 }
 
@@ -42,10 +42,12 @@ export function createNativeAuthTransport(native: NativeSessionPlugin = plugin):
   const ready = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AsteraSession')
     && (Capacitor.getPlatform() !== 'android' || typeof window !== 'undefined' && 'androidBridge' in window);
   return {
-    async request(path, body) {
+    async request(path, body, analyticsVisitor) {
       if (!ready()) return unavailable();
       try {
-        const response = envelope.parse(await bounded(() => native.request({ operation: OPERATIONS[path], ...(body ? { body } : {}) })));
+        const visit = path !== '/api/auth/refresh' && path !== '/api/auth/logout' && typeof analyticsVisitor === 'string'
+          && /^[A-Za-z0-9_-]{43}$/.test(analyticsVisitor) ? analyticsVisitor : undefined;
+        const response = envelope.parse(await bounded(() => native.request({ operation: OPERATIONS[path], ...(body ? { body } : {}), ...(visit ? { analyticsVisitor: visit } : {}) })));
         // The native implementation must remove secrets before crossing the bridge.
         if (typeof response.body === 'object' && response.body !== null && ('refreshToken' in response.body || 'nextRefreshToken' in response.body)) return unavailable();
         const schema = response.status >= 400 ? errorBody : path === '/api/onboarding/claim' ? claimSchema

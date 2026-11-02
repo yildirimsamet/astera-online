@@ -217,7 +217,7 @@ const COPY: Record<Locale, Record<PaidAlertKind, { title: string; body: string }
   },
 };
 
-function messageFor(kind: PaidAlertKind, locale: Locale, payload: Record<string, unknown>, now: Date, refId: string): PushMessage {
+function messageFor(kind: PaidAlertKind, locale: Locale, payload: Record<string, unknown>, now: Date, refId: string, alertId: string): PushMessage {
   const world = typeof payload.targetPlanetName === 'string' ? payload.targetPlanetName : '';
   const arriveAt = typeof payload.arriveAt === 'string' ? Date.parse(payload.arriveAt) : Number.NaN;
   const minutes = Number.isFinite(arriveAt) ? Math.max(1, Math.ceil((arriveAt - now.getTime()) / 60_000)) : 0;
@@ -225,7 +225,7 @@ function messageFor(kind: PaidAlertKind, locale: Locale, payload: Record<string,
   return {
     kind, title: copy.title,
     body: copy.body.replace('{world}', world).replace('{minutes}', String(minutes)),
-    data: { kind, refId, ...(typeof payload.targetPlanetId === 'string' ? { planetId: payload.targetPlanetId } : {}) },
+    data: { kind, refId, alertId, ...(typeof payload.targetPlanetId === 'string' ? { planetId: payload.targetPlanetId } : {}) },
   };
 }
 
@@ -270,7 +270,7 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
   const byLocale = new Map<Locale, string[]>();
   for (const device of delivery.devices) byLocale.set(device.locale, [...(byLocale.get(device.locale) ?? []), device.token]);
   for (const [locale, tokens] of byLocale) {
-    const { invalid } = await transport.send(tokens, messageFor(delivery.alert.kind, locale, delivery.alert.payload, delivery.now, delivery.alert.refId));
+    const { invalid } = await transport.send(tokens, messageFor(delivery.alert.kind, locale, delivery.alert.payload, delivery.now, delivery.alert.refId, delivery.alert.id));
     if (invalid.length > 0) await db.delete(pushDevices).where(inArray(pushDevices.token, invalid));
   }
 }

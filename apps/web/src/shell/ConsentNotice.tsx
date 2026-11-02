@@ -44,13 +44,13 @@ import {
  * here. What does it cost — two taps at most, ever, on a surface that never
  * covers the galaxy.
  */
-export function ConsentNotice({ inlineHost }: { inlineHost?: HTMLElement | null } = {}) {
+export function ConsentNotice({ inlineHost, onVisibilityChange }: { inlineHost?: HTMLElement | null; onVisibilityChange?: (visible: boolean) => void } = {}) {
   const platform = capabilities();
   if (!platform.webAds && !platform.webAnalytics) return null;
-  return inlineHost ? createPortal(<WebConsentNotice inlineHost={inlineHost} />, inlineHost) : <WebConsentNotice />;
+  return inlineHost ? createPortal(<WebConsentNotice inlineHost={inlineHost} onVisibilityChange={onVisibilityChange} />, inlineHost) : <WebConsentNotice onVisibilityChange={onVisibilityChange} />;
 }
 
-function WebConsentNotice({ inlineHost }: { inlineHost?: HTMLElement } = {}) {
+function WebConsentNotice({ inlineHost, onVisibilityChange }: { inlineHost?: HTMLElement; onVisibilityChange?: (visible: boolean) => void } = {}) {
   const { t, i18n } = useTranslation();
   /**
    * `null` until the first effect has run.
@@ -95,6 +95,7 @@ function WebConsentNotice({ inlineHost }: { inlineHost?: HTMLElement } = {}) {
   */
   const bar = useRef<HTMLDivElement>(null);
   const open = state?.open === true;
+  useEffect(() => { onVisibilityChange?.(open); }, [open, onVisibilityChange]);
   useLayoutEffect(() => {
     const root = document.documentElement;
     const element = bar.current;

@@ -3,6 +3,8 @@ import { mobileBuild } from './mobileBuild.js';
 import { nativeBundlePlugin } from './nativeBundlePlugin.js';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { analyticsRevision } from './analyticsBuild.js';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
@@ -48,6 +50,9 @@ export default defineConfig(({ command, mode }) => {
     mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)), refsDirectory ?? referenceDirectory)],
   publicDir: target === 'web' ? 'public' : false,
   define: {
+    'import.meta.env.VITE_ASTERA_REVISION': JSON.stringify(env.VITE_ASTERA_PLAYER_ANALYTICS === '1' ? analyticsRevision(
+      () => execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }),
+      () => execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }), process.env.ASTERA_GIT_COMMIT) : 'unmeasured'),
     'import.meta.env.VITE_ASTERA_PLATFORM': JSON.stringify(target),
     'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false'),
     ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_API_URL': JSON.stringify(mobile.apiUrl) }),

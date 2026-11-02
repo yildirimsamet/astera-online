@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import {
   ABUSE,
@@ -447,6 +448,7 @@ export async function launchAttack(
     const [mission] = await tx
       .insert(missions)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         fuelPaid: fuel,
         seasonId: origin.seasonId,
         kind: 'attack',

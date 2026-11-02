@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { useMarkSeen, useNotifications } from '../api/queries.js';
 import { isReportSignal } from '../lib/dock.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
+import { observe, analyticsRecording, ANALYTICS_READY_EVENT } from '../lib/playerAnalytics/runtime.js';
 
 const supportRef = z.object({ reportId: z.string() });
 
@@ -13,7 +14,23 @@ export function useReadReportSignals(visible: boolean, refs: readonly string[]):
   const { data } = useNotifications(false);
   const { mutate } = useMarkSeen();
   const requested = useRef(new Set<string>());
+  const observed = useRef(new Set<string>());
   const [foreground, setForeground] = useState(isAppActive);
+  const [scope, setScope] = useState(0);
+  useEffect(() => {
+    const ready = () => { observed.current.clear(); setScope(previous => previous + 1); };
+    window.addEventListener(ANALYTICS_READY_EVENT, ready);
+    return () => { window.removeEventListener(ANALYTICS_READY_EVENT, ready); };
+  }, []);
+  useEffect(() => {
+    if (!visible || !foreground) { observed.current.clear(); return; }
+    if (!analyticsRecording()) return;
+    for (const refId of refs) {
+      if (!observed.current.has(refId) && z.string().uuid().safeParse(refId).success) {
+        observed.current.add(refId); observe('outcome_visible', { refId, surface: 'report' }, 'live');
+      }
+    }
+  }, [visible, foreground, refs, scope]);
   useEffect(() => {
     const update = () => { setForeground(isAppActive()); };
     return watchAppActivity(update);

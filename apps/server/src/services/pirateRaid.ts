@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, eq, gt, inArray } from 'drizzle-orm';
@@ -356,6 +357,7 @@ export async function launchPirateRaid(
     const [raid] = await tx
       .insert(pirateRaids)
       .values({
+        ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
         seasonId: origin.seasonId,
         planetId,
         // The fleet follows its COMMANDER home, not the pad. See the column.

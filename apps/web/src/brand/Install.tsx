@@ -7,6 +7,7 @@ import { BrandLockup, useBrandPanelFocus } from './Panel.js';
 import { installProfile, isBraveBrowser, type InstallBrowser } from './installProfile.js';
 import { copyText } from '../lib/clipboard.js';
 import { capabilities } from '../platform/runtime.js';
+import { observe } from '../lib/playerAnalytics/runtime.js';
 import { findsInstalledPwa, forgetInstalledPwa, INSTALLED_PWA_KEY, rememberInstalledPwa, remembersInstalledPwa, runningAsPwa } from './installedPwa.js';
 
 interface InstallEvent extends Event {
@@ -128,6 +129,7 @@ function WebInstallProvider({ children }: { children: ReactNode }) {
       // Called inside the click, before any await: retain the browser's user gesture.
       await prompt.prompt();
       const choice = await prompt.userChoice;
+      observe('install_result', { code: choice.outcome, phase: 'browser_choice' });
       if (choice.outcome === 'accepted') setInstructions(false);
       else setPromptMessage('dismissed');
     }

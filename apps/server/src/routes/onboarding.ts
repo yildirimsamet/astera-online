@@ -6,6 +6,7 @@ import { registerBody } from '../auth/credentials.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, missions, planets, units } from '../db/schema.js';
 import { authenticate, registerAccount } from '../services/account.js';
+import { queueServerAnalytics } from '../services/analyticsServerFacts.js';
 import { placeBuildingUpgrade, placeUnitBuild } from '../services/build.js';
 import { GameError, withPlanetLock, type LockedPlanet } from '../services/planet.js';
 import { loadPlanetViewData, buildPlanetView } from '../services/planetView.js';
@@ -78,8 +79,9 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
     const body = claimBody.parse(req.body ?? {});
     const policyVersion = requireCurrentCommunityPolicy(body.communityPolicyVersion);
 
-    const account = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled,
+    const { account, created } = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled,
       { version: policyVersion, locale: body.communityPolicyLocale ?? 'en' });
+    queueServerAnalytics(app, req, { accountId: account.id, name: created ? 'account_created' : 'authenticated_existing' });
 
     /**
      * The frontier, resolved at CLAIM TIME rather than taken from the client.
@@ -90,10 +92,15 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
      * correct answer — instead of a refusal.
      */
     const placement = await currentPlacement(app.db, account.id);
-    const seated = placement
-      ? await seatIn(app, account.id, placement.shardCode)
-      : await seatOnFrontier(app, account.id, body.step);
+    const seated = await (placement
+      ? seatIn(app, account.id, placement.shardCode)
+      : seatOnFrontier(app, account.id, body.step)).catch((error: unknown) => {
+        queueServerAnalytics(app, req, { accountId: account.id, name: 'placement_failed',
+          properties: { code: error instanceof GameError ? error.code : 'unavailable' } });
+        throw error;
+      });
     const { target, joined } = seated;
+    queueServerAnalytics(app, req, { accountId: account.id, name: 'placement_completed', refId: joined.playerId });
 
     const applied = body.step !== undefined ? [] : await withPlanetLock(
       app.db,
@@ -164,9 +171,9 @@ async function claimAccount(
   countryCode: z.infer<typeof registerBody>['countryCode'],
   firstGameShieldEnabled: boolean,
   policy: { version: string; locale: ChatLanguage },
-): Promise<Awaited<ReturnType<typeof registerAccount>>> {
+): Promise<{ account: Awaited<ReturnType<typeof registerAccount>>; created: boolean }> {
   try {
-    return await registerAccount(app.db, { username, password, countryCode, communityPolicyVersion: policy.version, communityPolicyLocale: policy.locale }, firstGameShieldEnabled, app.clock.now());
+    return { account: await registerAccount(app.db, { username, password, countryCode, communityPolicyVersion: policy.version, communityPolicyLocale: policy.locale }, firstGameShieldEnabled, app.clock.now()), created: true };
   } catch (err) {
     if (err instanceof GameError && err.code === 'USERNAME_TAKEN') {
       let account;
@@ -177,7 +184,7 @@ async function claimAccount(
       }
       // The fallback authenticates the existing owner before recording explicit acceptance.
       await acceptCommunityPolicy(app.db, app.clock, account.id, policy.version, policy.locale);
-      return account;
+      return { account, created: false };
     }
     throw err;
   }

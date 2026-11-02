@@ -85,7 +85,8 @@ describe('connecting the phone', () => {
     await connect(false, 'en');
     fcmToken = 'token-2';
     await connect(false, 'en');
-    expect(plugin.addListener).toHaveBeenCalledTimes(1);
+    expect(plugin.addListener.mock.calls.filter(([name]) => name === 'registration')).toHaveLength(1);
+    expect(plugin.addListener.mock.calls.filter(([name]) => name === 'pushNotificationActionPerformed')).toHaveLength(1);
     expect(api.registerPushDevice.mock.calls).toEqual([['token-1', 'tr'], ['token-1', 'en'], ['token-2', 'en']]);
   });
 

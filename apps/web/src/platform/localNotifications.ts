@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { LocalAlert, LocalAlertPrefs } from '../lib/localAlerts.js';
 import { isAppActive, watchAppActivity } from './activity.js';
 import { capabilities } from './runtime.js';
+import { observe } from '../lib/playerAnalytics/runtime.js';
 
 /**
  * THE PHONE SIDE OF THE FREE QUEUE ALERTS (Bildirim Merkezi, decision 3).
@@ -20,6 +21,8 @@ const STORE = 'astera:local-alerts:v1';
 const CHANNEL = 'queue';
 /** Marks the notifications this module owns, so a sync never touches anything else. */
 const TAG = 'queue';
+let openingListener: Promise<unknown> | null = null;
+const openedAlert = z.object({ notification: z.object({ extra: z.object({ astera: z.literal(TAG), key: z.string().max(96) }) }) });
 
 const settingsSchema = z.object({
   enabled: z.boolean(),
@@ -96,6 +99,14 @@ export const phonePermission = (): PhonePermission => permission;
 
 /** Asks the phone what it allows now. Never throws. */
 export async function refreshPhonePermission(): Promise<PhonePermission> {
+  openingListener ??= LocalNotifications.addListener('localNotificationActionPerformed', value => {
+    const parsed = openedAlert.safeParse(value);
+    if (!parsed.success) return;
+    const [subject, refId] = parsed.data.notification.extra.key.split(':');
+    if (subject && ['build', 'research', 'ships', 'fleet'].includes(subject) && z.string().uuid().safeParse(refId).success) {
+      observe('alert_opened', { refId, code: 'local', subject }, 'live');
+    }
+  }).catch(() => { openingListener = null; });
   if (!watchingActivity) {
     watchingActivity = true;
     // Coming back from the phone settings is exactly when the answer changes.
@@ -128,6 +139,7 @@ export async function enableLocalAlerts(): Promise<boolean> {
     : await LocalNotifications.requestPermissions().then(status => displayOf(status.display), () => 'denied' as const);
   publishPermission({ ...permission, display });
   const granted = display === 'granted';
+  observe('alert_permission', { code: granted ? 'granted' : 'denied', variant: 'local' }, 'live');
   if (granted) writeLocalAlertSettings({ ...readLocalAlertSettings(), enabled: true });
   return granted;
 }
@@ -179,6 +191,10 @@ async function reconcile({ plan, text, lang }: SyncJob): Promise<void> {
       extra: { astera: TAG, key: alert.key, lang, exact: onTime },
     })),
   });
+  for (const alert of fresh) {
+    const refId = alert.key.split(':')[1];
+    if (z.string().uuid().safeParse(refId).success) observe('alert_scheduled', { refId, code: 'local', subject: alert.category }, 'live');
+  }
 }
 
 /**

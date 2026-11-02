@@ -25,10 +25,12 @@ import { HeartIcon } from '../ui/icons/index.js';
 import { AdminPlayersPanel } from './AdminPlayersPanel.js';
 import { AdminShopierQueue } from './AdminShopierQueue.js';
 import { AdminDeletionQueue } from './AdminDeletionQueue.js';
+import { AnalyticsAdminPanel } from './AnalyticsAdminPanel.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ANALYTICS';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
+  ANALYTICS: 'admin-analytics-tab',
   REPORTS: 'admin-reports-tab',
   DELETION: 'admin-deletion-tab',
   PLAYERS: 'admin-players-tab',
@@ -62,6 +64,7 @@ export default function AdminPanel() {
           onChange={setTab}
           tabId={(id) => ADMIN_TAB_ID[id]}
           options={[
+            { id: 'ANALYTICS', label: 'Oyuncu davranışı' },
             { id: 'PLAYERS', label: t('community.admin.ops.playersTab') },
             { id: 'DELETION', label: t('accountDeletion.admin.tab') },
             { id: 'REPORTS', label: t('moderation.admin.tab') },
@@ -79,7 +82,7 @@ export default function AdminPanel() {
         aria-labelledby={ADMIN_TAB_ID[tab]}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-6"
       >
-        {tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
+        {tab === 'ANALYTICS' ? <AnalyticsAdminPanel /> : tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
               : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : <SupporterForm />}

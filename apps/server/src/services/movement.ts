@@ -1,3 +1,4 @@
+import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { recordLegacyActivity } from './legacy.js';
@@ -376,6 +377,7 @@ export async function launchTransfer(
     });
     assertSeasonOpenThrough(origin, homeAt);
     const [mission] = await tx.insert(missions).values({
+      ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
       fuelPaid: fuel,
       seasonId: origin.seasonId,
       kind: 'transfer',
@@ -509,6 +511,7 @@ export async function launchSettlement(
     }
     assertSeasonOpenThrough(origin, arriveAt);
     const [mission] = await tx.insert(missions).values({
+      ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
       fuelPaid: fuel,
       seasonId: origin.seasonId,
       kind: 'settlement',

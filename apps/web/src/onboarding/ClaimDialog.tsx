@@ -10,6 +10,8 @@ import type { CountryCode } from '@astera/rules';
 import { CountryPicker } from '../v2/identity/CountryPicker.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { Flag } from '../v2/identity/Flag.js';
+import { observe, ANALYTICS_READY_EVENT } from '../lib/playerAnalytics/runtime.js';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { browserTimeZone, countryName, detectCountry } from '../v2/identity/country.js';
 
 /**
@@ -50,6 +52,12 @@ export function ClaimDialog({
 }) {
   const { t, i18n } = useTranslation();
   const [step, setStep] = useState<'name' | 'password'>('name');
+  useEffect(() => {
+    const capture = () => { if (isAppActive()) observe('claim_step_visible', { phase: step }, 'live'); };
+    capture(); const stop = watchAppActivity(capture);
+    window.addEventListener(ANALYTICS_READY_EVENT, capture);
+    return () => { stop(); window.removeEventListener(ANALYTICS_READY_EVENT, capture); };
+  }, [step]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);

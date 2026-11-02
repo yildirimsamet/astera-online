@@ -124,3 +124,10 @@ describe('the FCM transport', () => {
     expect(errors).toHaveBeenCalled();
   });
 });
+
+it('reports provider acceptance counts without claiming device delivery', async () => {
+  const google = fakeGoogle(), onOutcome = vi.fn();
+  const identified = { ...message, data: { ...message.data, alertId: 'alert-reference' } };
+  await fcmTransport(account, { fetch: google.fetch, onOutcome }).send(['phone-a', 'phone-b'], identified);
+  expect(onOutcome).toHaveBeenCalledWith({ refId: message.data.refId, alertId: 'alert-reference', accepted: 2, rejected: 0 });
+});

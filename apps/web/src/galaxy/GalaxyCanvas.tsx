@@ -124,6 +124,7 @@ import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
 import { FLIGHT_FPS, HoldRate } from './frames.js';
 import { galaxyFrames, useFpsMeterEnabled } from '../lib/fpsMeter.js';
+import { recordAnalyticsFrame } from '../lib/playerAnalytics/runtime.js';
 import { perfGalaxyFrame, perfPreparationCode, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
 import { anythingInFlight } from './flightRate.js';
 
@@ -2043,6 +2044,7 @@ function CoachTap({ subject, label, onTap }: {
 function FpsProbe() {
   const on = useFpsMeterEnabled();
   useFrame(() => {
+    recordAnalyticsFrame(performance.now());
     if (on) galaxyFrames.frame(performance.now());
   });
   return null;
