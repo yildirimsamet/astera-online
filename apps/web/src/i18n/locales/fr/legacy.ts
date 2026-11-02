@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'Tu n’as encore aucune pièce. Termine une saison ou atteins un objectif.',
   },
   seasons: {
+    short: '(S. {{ordinal}})',
     loading: 'Chargement de l’historique des saisons…',
     failed: 'Impossible de charger l’historique des saisons.',
     heading: 'Historique des saisons',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'Commune', RARE: 'Rare', EPIC: 'Épique', LEGENDARY: 'Légendaire' },
   award: {
+    remainingTime: 'Encore {{duration}}',
+    locked: 'Pas encore obtenu',
+    unlock: 'Cette pièce rejoint automatiquement ta collection quand tu atteins l’objectif.',
+    remaining_one: 'Encore {{count}}',
+    remaining_other: 'Encore {{count}}',
     earned: 'Obtenue',
     earnedUnknown: 'Date non enregistrée',
     season: 'Saison',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: 'Regard profond', goal: 'Envoie {{count}} sondes.' },
     'astera-supporter': { name: 'Soutien', goal: 'Fais un don à Astera Online et reçois le badge Soutien.' },
     'troublemaker': { name: 'Fauteur de troubles', goal_one: 'Combats {{count}} fois un commandant d’un rang supérieur au tien. Les rangs au lancement comptent.', goal_other: 'Combats {{count}} fois des commandants d’un rang supérieur au tien. Les rangs au lancement comptent.' },
-    'show-off': { name: 'Frimeur', goal_one: 'Achète {{count}} apparence.', goal_other: 'Achète {{count}} apparences différentes.' },
+    'show-off': { name: 'Esthète', goal_one: 'Achète {{count}} apparence.', goal_other: 'Achète {{count}} apparences différentes.' },
   },
 };

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { LEGACY_CATALOGUE } from '@astera/rules';
 import i18n from '../src/i18n/index.js';
 import {
-  legacyArt, legacyVisualKey, legacyAwardTitle, legacyEditionLabel, legacyFinish, legacyGoalText, legacyNextGoal, sortLegacyAwards,
+  legacyArt, legacyVisualKey, legacyAwardTitle, legacyEditionLabel, legacyEditionMark, legacyFinish, legacyGoalText, legacyNextGoal, sortLegacyAwards,
 } from '../src/legacy/presentation.js';
 import type { LegacyAward } from '../src/api/legacySchemas.js';
 
@@ -55,6 +55,7 @@ describe('every award the server can grant has a face and a name', () => {
 
 describe('a tier reads as a metal and a numeral', () => {
   it('names a ladder tier with a Roman numeral and a single award without one', () => {
+    expect(legacyAwardTitle(award({ definitionId: 'show-off', tier: 2 }))).toBe('Stil Sahibi II');
     expect(legacyAwardTitle(award({ tier: 3 }))).toBe('Korsan Avcısı III');
     expect(legacyAwardTitle(award({ definitionId: 'loyal-commander' }))).toBe('Sadık Komutan');
     expect(legacyAwardTitle(award({ definitionId: 'year-of-service', edition: 'year:2026' }))).toBe('2026 Yılı');
@@ -76,9 +77,10 @@ describe('a tier reads as a metal and a numeral', () => {
   });
 
   it('labels the season or the year an award belongs to', () => {
-    expect(legacyEditionLabel(award({ definitionId: 'honor-podium', seasonOrdinal: 12 }))).toBe('S12');
+    expect(legacyEditionLabel(award({ definitionId: 'honor-podium', seasonOrdinal: 12 }))).toBe('(Sz. 12)');
     expect(legacyEditionLabel(award({ definitionId: 'year-of-service', edition: 'year:2027' }))).toBe('2027');
     expect(legacyEditionLabel(award({}))).toBeNull();
+    expect(legacyEditionLabel(award({ seasonOrdinal: 17 }))).toBe('(Sz. 17)');
   });
 });
 
@@ -149,4 +151,14 @@ it('does not reuse a thumbnail for a different same-metal tier or year edition',
   expect(legacyVisualKey(third)).not.toBe(legacyVisualKey({ ...third, tier: 4 }));
   const pin = award({ definitionId: 'year-of-service', edition: 'year:2026' });
   expect(legacyVisualKey(pin)).not.toBe(legacyVisualKey({ ...pin, edition: 'year:2027' }));
+});
+
+
+it('keeps the engraved season mark and thumbnail identity stable across languages', async () => {
+  const coin = award({ definitionId: 'season-memento', seasonOrdinal: 17 });
+  await i18n.changeLanguage('en');
+  const key = legacyVisualKey(coin);
+  expect(legacyEditionMark(coin)).toBe('S17');
+  await i18n.changeLanguage('tr');
+  expect(legacyVisualKey(coin)).toBe(key);
 });

@@ -1369,7 +1369,6 @@ export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen
     onClick={event => { event.stopPropagation(); onOpen(node); }}
     className="galaxy-commander-link name text-caption text-bone pointer-events-auto -mx-1 flex max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
     {body}
-    <svg aria-hidden="true" viewBox="0 0 12 12" className="galaxy-commander-cup size-2.5 shrink-0"><path fill="currentColor" d="M3 1h6v1h2v1.5A2.5 2.5 0 0 1 8.7 6 3 3 0 0 1 6.6 7.9V9H8v2H4V9h1.4V7.9A3 3 0 0 1 3.3 6 2.5 2.5 0 0 1 1 3.5V2h2zm0 2H2v.5c0 .6.4 1.2 1 1.4zm6 0v1.9c.6-.2 1-.8 1-1.4V3z" /></svg>
   </button>;
 }
 

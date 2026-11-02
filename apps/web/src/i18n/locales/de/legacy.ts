@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'Du hast noch keine Stücke. Beende eine Saison oder erreiche ein Ziel.',
   },
   seasons: {
+    short: '(S. {{ordinal}})',
     loading: 'Saisonverlauf wird geladen…',
     failed: 'Der Saisonverlauf konnte nicht geladen werden.',
     heading: 'Saisonverlauf',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'Gewöhnlich', RARE: 'Selten', EPIC: 'Episch', LEGENDARY: 'Legendär' },
   award: {
+    remainingTime: 'Noch {{duration}}',
+    locked: 'Noch nicht verdient',
+    unlock: 'Dieses Stück wird deiner Sammlung automatisch hinzugefügt, sobald du das Ziel erreichst.',
+    remaining_one: 'Noch {{count}}',
+    remaining_other: 'Noch {{count}}',
     earned: 'Erhalten',
     earnedUnknown: 'Datum nicht erfasst',
     season: 'Saison',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: 'Tiefblick', goal: 'Sende {{count}} Sonden.' },
     'astera-supporter': { name: 'Unterstützer', goal: 'Spende an Astera Online und erhalte das Unterstützer-Abzeichen.' },
     'troublemaker': { name: 'Unruhestifter', goal_one: 'Kämpfe {{count}}-mal gegen einen Kommandanten höherer Stufe. Es zählen die Stufen beim Start.', goal_other: 'Kämpfe {{count}}-mal gegen Kommandanten höherer Stufe. Es zählen die Stufen beim Start.' },
-    'show-off': { name: 'Angeber', goal_one: 'Kaufe {{count}} Erscheinungsbild.', goal_other: 'Kaufe {{count}} verschiedene Erscheinungsbilder.' },
+    'show-off': { name: 'Stilkenner', goal_one: 'Kaufe {{count}} Erscheinungsbild.', goal_other: 'Kaufe {{count}} verschiedene Erscheinungsbilder.' },
   },
 };

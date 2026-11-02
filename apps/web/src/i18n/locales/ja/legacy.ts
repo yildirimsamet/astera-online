@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'まだ品がありません。シーズンを終えるか目標を達成してください。',
   },
   seasons: {
+    short: '(シーズン {{ordinal}})',
     loading: 'シーズン履歴を読み込み中…',
     failed: 'シーズン履歴を読み込めませんでした。',
     heading: 'シーズン履歴',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'コモン', RARE: 'レア', EPIC: 'エピック', LEGENDARY: 'レジェンダリー' },
   award: {
+    remainingTime: 'あと{{duration}}',
+    locked: '未獲得',
+    unlock: '目標を達成すると、このアイテムは自動的にコレクションに追加されます。',
+    remaining_one: 'あと{{count}}',
+    remaining_other: 'あと{{count}}',
     earned: '獲得日',
     earnedUnknown: '日付の記録なし',
     season: 'シーズン',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: '深淵の眼', goal: '探査機を{{count}}機送る。' },
     'astera-supporter': { name: 'サポーター', goal: 'Astera Onlineに寄付してサポーターバッジを受け取る。' },
     'troublemaker': { name: '厄介者', goal_one: '自分より上の段階の司令官と{{count}}回戦う。発射時の段階で判定する。', goal_other: '自分より上の段階の司令官と{{count}}回戦う。発射時の段階で判定する。' },
-    'show-off': { name: '見栄っ張り', goal_one: '外観を{{count}}点購入する。', goal_other: '異なる外観を{{count}}点購入する。' },
+    'show-off': { name: 'おしゃれな司令官', goal_one: '外観を{{count}}点購入する。', goal_other: '異なる外観を{{count}}点購入する。' },
   },
 };

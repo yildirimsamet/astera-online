@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ESCAPE, combatOutcomeTable, type EscapeVerdict, type PowerRange, type PowerSpan } from '@astera/rules';
+import { ESCAPE, type EscapeVerdict, type PowerRange, type PowerSpan } from '@astera/rules';
 import { compact, decimal } from '../../lib/format.js';
 import { ratioAt, type ForceReading } from '../../lib/ruler.js';
 import { staleness } from '../../lib/time.js';
@@ -49,8 +49,8 @@ const tenths = (r: number): number => Math.round(r * 10) / 10;
  * Each side's matchup power against the other — firepower and durability, counters, research,
  * wounds and the Aegis in — as the range the probe allows, and their ratio as one band on a
  * strip from a quarter to four times, with even and the fleet escape marked. One sentence says
- * who is stronger and by how much. The rule, and the owner's table of what each side keeps at
- * a ratio, sit one tap deep: the inputs and the rule are given, the answer is withheld.
+ * who is stronger and by how much. The rule sits one tap deep; the internal outcome table
+ * stays private. The inputs and the rule are given, the answer is withheld.
  *
  * WHAT IT REFUSES: a winner, a chance, an expected loss (owner K4). The reading is stale and
  * read in ranges and every battle rolls its shots; a screen that answered "will I win" would
@@ -74,12 +74,6 @@ export function ForceRuler({
     compact(s.low) === compact(s.high) ? compact(s.high) : `${compact(s.low)}${join}${compact(s.high)}`;
   const band = (low: number, high: number): string =>
     times(low) === times(high) ? times(high) : `${times(low)}${join}${times(high)}`;
-  const share = (s: { low: number; high: number }): string => t('units.percent', {
-    value: Math.round(s.low * 100) === Math.round(s.high * 100)
-      ? String(Math.round(s.high * 100))
-      : `${String(Math.round(s.low * 100))}${join}${String(Math.round(s.high * 100))}`,
-  });
-  const ratio = (r: number): string => `1:${r.toLocaleString(t('units.numberLocale'), { maximumFractionDigits: 1 })}`;
 
   const weighed = power !== null && theirs !== null;
   const sentence = (() => {
@@ -123,22 +117,6 @@ export function ForceRuler({
           <div data-testid="ruler-rule" className="mt-1 flex flex-col gap-1.5 text-caption leading-relaxed text-v2-ink-2">
             {heading !== undefined && <p>{t('counter.compareMeaning')}</p>}
             <p>{t('counter.compareRule')}</p>
-            <div className="rounded-control border border-v2-line px-2 py-1.5">
-              <p className="pb-1 text-micro font-semibold text-v2-ink">{t('counter.outcomeHeading')}</p>
-              <div className="grid grid-cols-[3.25rem_1fr_1fr] gap-x-2 font-v2-mono text-micro">
-                <span className="text-v2-ink-3">{t('counter.outcomeRatio')}</span>
-                <span className="text-right text-v2-ink-3">{t('counter.outcomeWeak')}</span>
-                <span className="text-right text-v2-ink-3">{t('counter.outcomeStrong')}</span>
-                {combatOutcomeTable().map((row) => (
-                  <div key={row.ratio} data-outcome-row="" className="contents">
-                    <span className="text-v2-ink">{ratio(row.ratio)}</span>
-                    <span className="text-right text-v2-ink-2">{share(row.weakKeeps)}</span>
-                    <span className="text-right text-v2-ink-2">{share(row.strongLoses)}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="pt-1 text-micro leading-snug text-v2-ink-3">{t('counter.outcomeNote')}</p>
-            </div>
             {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance, ratio: decimal(ESCAPE.ratio) })}
               {escape.minimumCombatShips ? ` ${t('counter.escapeMinimumRule', { count: escape.minimumCombatShips })}` : ''}</p>}
           </div>

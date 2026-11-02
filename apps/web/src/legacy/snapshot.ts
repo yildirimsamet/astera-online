@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { awardStudioRoom } from './studio.js';
 import { buildAward } from './awardObject.js';
-import { legacyArt, legacyEditionLabel, legacyFinish, legacyVisualKey } from './presentation.js';
+import { legacyArt, legacyEditionMark, legacyFinish, legacyVisualKey } from './presentation.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
 
 type Face = Pick<LegacyAward, 'definitionId' | 'tier' | 'rarity' | 'edition' | 'seasonOrdinal'>;
@@ -65,7 +65,7 @@ const faceKey = legacyVisualKey;
 async function draw(award: Face): Promise<string | null> {
   const art = legacyArt(award);
   if (!art) return null;
-  const built = await buildAward(art, legacyFinish(award), legacyEditionLabel({ ...award }));
+  const built = await buildAward(art, legacyFinish(award), legacyEditionMark({ ...award }));
   try {
     const { renderer, scene, camera } = open();
     // A slight three-quarter turn, the piece framed from a little above, filling the tile.
