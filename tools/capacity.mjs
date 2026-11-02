@@ -73,6 +73,7 @@ const { values } = parseArgs({
     'base-urls': { type: 'string', default: 'http://127.0.0.1:3200' },
     'login-base-urls': { type: 'string' },
     users: { type: 'string', default: '100' },
+    'first-account': { type: 'string', default: '0' },
     connections: { type: 'string' },
     scenario: { type: 'string', default: 'quiet' },
     'duration-seconds': { type: 'string', default: '600' },
@@ -125,6 +126,10 @@ const waveLaunches = intArg('wave-launches', values['wave-launches'], 0, 600);
 const waveSeconds = intArg('wave-seconds', values['wave-seconds'], 1, 300);
 const maxRssMb = intArg('max-rss-mb', values['max-rss-mb'], 64, 65_536);
 const minWorkerEvents = intArg('min-worker-events', values['min-worker-events'], 0, 1_000_000);
+const firstAccount = intArg('first-account', values['first-account'], 0, RUNNER_LIMITS.maxUsers - 1);
+if (firstAccount + userCount > seededAccounts) {
+  throw new Error('--first-account plus --users cannot pass --seeded-accounts');
+}
 if (waveLaunches > Math.min(userCount, connectionCount)) {
   throw new Error('--wave-launches cannot exceed the number of distinct connected accounts');
 }
@@ -1300,10 +1305,10 @@ const reconcileCapacityDatabase = async () => {
 
 const vus = Array.from({ length: connectionCount }, (_, index) => ({
   index,
-  accountIndex: index % userCount,
+  accountIndex: firstAccount + (index % userCount),
   baseUrl: baseUrls[index % baseUrls.length],
   loginBaseUrl: loginBaseUrls[index % loginBaseUrls.length],
-  syntheticIp: syntheticIpFor(index % userCount),
+  syntheticIp: syntheticIpFor(firstAccount + (index % userCount)),
   token: null,
   cookie: '',
   planets: [],

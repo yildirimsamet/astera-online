@@ -34,3 +34,11 @@ it('refuses a seed smaller than the online set', () => {
   expect(runner(['--users', '1000', '--seeded-accounts', '999']).stderr)
     .toContain('--seeded-accounts must be an integer from 1000 to 2000');
 });
+
+/** One Node process tops out at one core; two runners share the load only on different commanders. */
+it('lets a second runner start further along the seats, and not past them', () => {
+  const fits = runner(['--users', '150', '--first-account', '150', '--seeded-accounts', '2000']);
+  expect(fits.stderr).toContain('CAPACITY_PASSWORD must contain 8–200 characters.');
+  const past = runner(['--users', '2', '--first-account', '1999', '--seeded-accounts', '2000']);
+  expect(past.stderr).toContain('--first-account plus --users cannot pass --seeded-accounts');
+});
