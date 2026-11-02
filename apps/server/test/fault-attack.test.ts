@@ -313,8 +313,10 @@ describe('ağır bir saldırı', () => {
     await fuelUp(f.db, colony);
     await levelWorld(f.db, f.planetIds);
     const launch = await launchAttack(f.db, mine, colony, HEAVY, f.clock);
-    f.clock.set(settledAt(launch.arriveAt));
+    // Sent a moment before the attack lands: from its arrival nothing leaves (K12).
+    f.clock.set(new Date(launch.arriveAt.getTime() - 1_000));
     const outbound = await launchAttack(f.db, colony, mine, { DART: 2 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
     expect(outbound.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
     await worker().tick();
 

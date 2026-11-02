@@ -93,30 +93,24 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
   return { db: shared.db, close: shared.close };
 }
 
-/** Wipe everything between tests. CASCADE handles the foreign-key order. */
+/**
+ * Wipe everything between tests. DELETE, not TRUNCATE: a test's rows are few, and
+ * truncating 136 tables replaces every file behind them, ~430 ms each time against
+ * ~10 ms here. Replica role skips the triggers and foreign keys, so order is free and
+ * nothing is announced. A table added later is covered without being listed.
+ */
 export async function truncateAll(db: Db): Promise<void> {
-  await db.execute(sql`
-    TRUNCATE maintenance_windows, media_deletion_queue, native_sessions, security_audit, mail_webhook_events, mail_suppressions, security_counters, mail_outbox, security_operations, shopier_webhook_events, shopier_orders, shopier_checkouts,
-             polar_reversals, polar_webhook_events, polar_skin_orders,
-             paddle_reversals, paddle_webhook_events, paddle_skin_orders,
-             main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries, perf_sessions,
-             account_rewards, reward_grants, request_log, paid_alerts, notification_centers, push_devices, notifications, scan_events,
-             probe_world_memories, probe_reports, watches,
-             clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
-             clan_aid_commitments, clan_messages, clan_events, clan_requests,
-             clan_support_dominion_events, clan_support_battle_results, clan_support_waves,
-             clan_war_dominion_events, clan_war_participant_results, clan_war_missions,
-             clan_war_contributions, clan_war_operations, clan_treasury_events,
-             clan_ceasefires, clan_memberships, clans,
-             strategic_interceptions, strategic_impacts, dominion_events, battle_reports,
-             radiation_sources, scheduled_events, research_orders, ship_damage_lots, build_orders, strategic_assets, missions, mining_runs,
-             asteroid_claims, asteroid_spawn_hours, pirate_raids, pirate_state, trade_runs, intergalactic_convoy_runs, units,
-             galaxy_event_occurrences, galaxy_events,
-             sensor_epochs, satellites, buildings, planet_faults, planet_research, player_research,
-             neutral_planet_state, planets, players, season_reward_entitlements,
-             seasons, season_cycles, shards, bot_profiles, accounts
-    RESTART IDENTITY CASCADE
-  `);
+  await db.execute(sql.raw(`DO $$
+    DECLARE each_table text; each_sequence text;
+    BEGIN
+      SET LOCAL session_replication_role = replica;
+      FOR each_table IN SELECT quote_ident(tablename) FROM pg_tables WHERE schemaname = 'public' LOOP
+        EXECUTE 'DELETE FROM ' || each_table;
+      END LOOP;
+      FOR each_sequence IN SELECT quote_ident(sequencename) FROM pg_sequences WHERE schemaname = 'public' LOOP
+        PERFORM setval(each_sequence, 1, false);
+      END LOOP;
+    END $$`));
 }
 
 export interface Fixture {

@@ -301,10 +301,11 @@ describe('the recovery shield', () => {
     await levelWorld(f.db, f.planetIds);
 
     const launch = await launchAttack(f.db, mine, theirs, { DART: 240, COURIER: 12 }, f.clock);
-    // Committed at the instant the incoming raid settles, so it is genuinely in
-    // the air when the battle resolves rather than racing it.
-    f.clock.set(settledAt(launch.arriveAt));
+    // Committed a moment before the incoming raid lands, the last moment a fleet may
+    // leave (K12), so it is genuinely in the air when the battle resolves.
+    f.clock.set(new Date(launch.arriveAt.getTime() - 1_000));
     const outbound = await launchAttack(f.db, theirs, mine, { DART: 2 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
     expect(outbound.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
     await worker().tick();
 

@@ -414,7 +414,9 @@ describe('monument public facts and private manifests over HTTP', () => {
     try {
       const response = await app.inject({ method: 'GET', url: conflicts === 4 ? `/api/monuments/${m.id}` : '/api/monuments', headers: auth });
       if (conflicts === 5) {
-        expect(response.statusCode, response.body).toBe(500);
+        // The route's own retries ran out: a race it lost, for the client to repeat (F1.9).
+        expect(response.statusCode, response.body).toBe(503);
+        expect(response.json()).toMatchObject({ error: 'RETRYABLE' });
         expect(updates).toBe(5);
         expect(await f.db.select().from(monumentShipLots)).toEqual(originalLots);
         expect(await f.db.select().from(notifications)).toEqual([]);
