@@ -1,3 +1,4 @@
+import { TRAFFIC } from '@astera/rules';
 import { AccountSecurity } from './services/accountSecurity.js';
 import { registerAccountDeletionRoutes } from './routes/accountDeletion.js';
 import { registerContentReportRoutes } from './routes/contentReports.js';
@@ -118,6 +119,7 @@ declare module 'fastify' {
     streamFence: StreamFence;
     sseMaxBufferBytes: number;
     sseHeartbeatMs: number;
+    sseActivityGapMs: number;
     dbPoolMax: number;
     placementPoolMax: number;
     limits: RouteLimits;
@@ -264,6 +266,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('streams', streams);
   app.decorate('sseMaxBufferBytes', opts.env.SSE_MAX_BUFFER_BYTES);
   app.decorate('sseHeartbeatMs', opts.env.SSE_HEARTBEAT_MS);
+  app.decorate('sseActivityGapMs', TRAFFIC.refreshMs);
   app.decorate('dbPoolMax', opts.env.DB_POOL_MAX);
   app.decorate('placementPoolMax', opts.env.PLACEMENT_POOL_MAX);
   app.decorate('limits', {

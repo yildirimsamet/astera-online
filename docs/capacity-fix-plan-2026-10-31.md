@@ -323,3 +323,19 @@ Uzun süre çalışan süreçler artık `node apps/server/dist/server/index.mjs`
 
 Yük altındaki CPU ölçülmedi; planın beklentisi küçük olmasıydı. Prod imajı ve kapasite koşusunun `Dockerfile.load`'u: VPS'teki load dosyası bu değişiklikle güncellenmeli.
 Hata yığını paketin satırlarını gösterir; `dist/server/index.mjs.map` imajda duruyor, gerekirse `NODE_OPTIONS=--enable-source-maps`.
+
+## R12. Madde 6'nın varsayımı eksikti (2 Kasım, kodla doğrulandı)
+
+**Trafik okumasının büyüğü yoklama değil, olay.** Her `shard:launch`, `arrival`, `mining` ve `pirate` olayı galaksideki bütün istemcileri 250 ms içinde `/api/galaxy/traffic` okumaya gönderiyordu.
+- 200 oyuncuda ölçülen okuma: oyuncu başına saniyede 0,70. Yoklama bunun yalnız 0,20'si. Kalan 0,50 olaylardan geliyor (hareket hızı gerçek davranışın ~5 katı senaryoda).
+- Oyuncu sayısı artınca hem okuyan hem olay artıyor; yük oyuncu sayısının karesiyle büyür. Üst sınır istemci başına saniyede 4 okuma. Plandaki "1.000 oyuncuda ~200 istek/sn" bu yüzden eksikti.
+
+**Yapılan:** Sunucuda bağlantı başına kapı (`stream/activityGate.ts`). Sessizlikten sonraki ilk olay hemen gider, sonrakiler `TRAFFIC.refreshMs` (5 sn) + %20'ye kadar rastgele bekler, tür başına tek çerçeve olarak gider. Sunucuda olduğu için eski APK'lar da uyar. Komutanın kendi olayları, ele geçirme, darbe ve sezon olayları kapıya girmez.
+
+**Yoklama neden kalkamıyor:** Yoklamanın olayla yapılamayan bir işi var. Menzil dışından gelen filo yükte hiç yoktur; girişini istemci çözemez, sunucu da önceden haber veremez (`TRAFFIC` açıklaması). Ayrıca `CONTACT_WINDOW.bearingMs` doğrudan yoklama aralığına bağlı; aralık sise dokunmadan değişemez.
+
+**Madde 6 için sonraki adım:** Sıra numaralı delta protokolü büyük ve sis riski yüksek. Daha basit yol: `/api/galaxy/traffic` tek sis denetimli okuma kalır; sunucu, komutana ancak o an menziline bir şey girdiğinde "oku" der. Kabul koşusu kapıyla bile yoklamanın CPU'yu doldurduğunu gösterirse yapılır; göstermezse madde kapanır.
+
+## Madde 7 sonucu (2 Kasım)
+
+Kod değişikliği yok. Yerleşim havuzu prod'da zaten 2. Normal havuz ve worker sayıları kabul koşusu ölçüm isterse değişir.
