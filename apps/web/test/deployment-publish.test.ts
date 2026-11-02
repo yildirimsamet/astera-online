@@ -270,3 +270,10 @@ describe('the rollback boundary', () => {
     expect(deploy).not.toMatch(/rm -f "\$nginx_previous"/u);
   });
 });
+
+it('serves only the public names that resolve, so the certificate can always renew', async () => {
+  // A name with no DNS record fails its ACME challenge and takes the whole certificate's renewal with it.
+  const vhost = await readFile(resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf'), 'utf8');
+  expect(vhost).not.toContain('socket.asteraonline.space');
+  expect(vhost).toContain('www.asteraonline.space api.asteraonline.space');
+});
