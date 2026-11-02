@@ -72,6 +72,18 @@ it('leaves a row a game write holds, and stamps it on a later request', async ()
   expect(await stampOf(f)).toEqual(f.clock.now());
 });
 
+it('stamps a commander whose row only a new row refers to', async () => {
+  const f = await seedWorld(1);
+  f.clock.advance(2);
+  await f.db.transaction(async (tx) => {
+    // The lock every insert with a foreign key to the commander takes: a mission, a report, a message.
+    await tx.select({ id: players.id }).from(players).where(eq(players.id, f.playerIds[0]!)).for('key share');
+    const answer = await Promise.race([new Presence(f.db, f.clock).touch(f.accountIds[0]!), delay(2_000, 'waited')]);
+    expect(answer).toBe(true);
+  });
+  expect(await stampOf(f)).toEqual(f.clock.now());
+});
+
 it('reports a failed write and lets the next request try again', async () => {
   const f = await seedWorld(1);
   f.clock.advance(2);

@@ -61,7 +61,8 @@ export class Presence {
         .set({ lastActiveAt: new Date(now) })
         .where(inArray(players.id, this.db.select({ id: players.id }).from(players)
           .where(and(eq(players.accountId, accountId), lte(players.lastActiveAt, new Date(now - this.throttleMs))))
-          .for('update', { skipLocked: true })))
+          // Not `update`: that also skips a row a new mission or report only refers to.
+          .for('no key update', { skipLocked: true })))
         // Plain text: `returning` strips table names from columns, and `id` would then mean the application's.
         .returning({
           id: players.id,
@@ -77,7 +78,8 @@ export class Presence {
       }
       return true;
     } catch (error) {
-      // Let the next request try again rather than staying quiet for a minute.
+      // Let the next request try again rather than staying quiet for a minute. A failed
+      // queue renewal is the exception: its stamp committed, so the row's guard holds it to the next one.
       this.lastWrite.delete(accountId);
       this.reportError(error);
       return false;
