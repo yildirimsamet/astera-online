@@ -423,7 +423,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.addHook('onResponse', (req, reply, done) => {
     metrics.observeRoute(
       req.method,
-      req.routeOptions.url ?? req.url,
+      // A path no route matched is the caller's own text: each would stay in the report for good.
+      req.routeOptions.url ?? 'unmatched',
       reply.statusCode,
       performance.now() - (req.capacityStartedAt ?? performance.now()),
       req.capacityResponseBytes ?? 0,
@@ -441,7 +442,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // `instanceof` narrowing against an interface leaves the residual type as
     // unknown, so keep the original around for the structural checks below.
     const err: unknown = error;
-    const route = req.routeOptions.url ?? req.url;
+    const route = req.routeOptions.url ?? 'unmatched';
 
     if (err instanceof GameError) {
       /**

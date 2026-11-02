@@ -86,3 +86,14 @@ it('counts the statements each worker event ran, by kind', async () => {
   // The handler's own work only: one UPDATE that finds no open signal. Queue bookkeeping is the tick's.
   expect(worker.status().eventStatements.unknown_signal_expire).toMatchObject({ events: 1, statements: { samples: 1, max: 1 } });
 });
+
+it('files every unmatched path under one route, so a scan cannot grow the report', async () => {
+  const f = await seedWorld(1);
+  built = buildApp({ env: testEnv(), clock: f.clock, logger: silent });
+  const seen = vi.spyOn(built.app.metrics, 'observeRoute');
+  for (const path of ['/api/no-such-a', '/api/no-such-b?x=1', '/wp-login.php']) {
+    expect((await built.app.inject({ url: path })).statusCode).toBe(404);
+  }
+  const routes = new Set(seen.mock.calls.map(call => call[1]));
+  expect([...routes]).toEqual(['unmatched']);
+});
