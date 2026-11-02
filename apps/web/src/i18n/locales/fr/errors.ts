@@ -259,6 +259,7 @@
   QUEUE_FULL: 'La file de production {{queue}} est pleine',
   QUEUE_SETTLING: 'La commande terminée est en cours d’installation',
   RETRYABLE: "Le serveur est occupé. Réessaie dans un instant.",
+  ARRIVAL_PENDING: "Une bataille a commencé sur ce monde. Sa flotte pourra partir une fois qu'elle sera terminée.",
   RATE_LIMITED: 'Tu as essayé trop souvent ; réessaie dans {{seconds}} secondes.',
   RESEARCH_CEILING: "Synthèse du Deutérium niveau {{rung}} permet une Raffinerie de Deutérium jusqu’au niveau {{ceiling}}. Augmente d’abord le niveau de recherche.",
   RESEARCH_ALREADY_COMPLETE: 'Tu as déjà terminé cette recherche',

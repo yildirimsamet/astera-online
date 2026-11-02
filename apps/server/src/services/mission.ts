@@ -485,7 +485,7 @@ export async function launchAttack(
     }
 
     // Move the ships off the home stack, in the same transaction.
-    const carriedDamage = await takeHomeHealth(tx, originPlanetId, requested, true);
+    const carriedDamage = await takeHomeHealth(tx, originPlanetId, requested, origin.now, true);
     await tx.update(missions).set({ damage: carriedDamage.length ? carriedDamage : null }).where(eq(missions.id, mission!.id));
     const remaining: Fleet = { ...origin.homeFleet };
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {

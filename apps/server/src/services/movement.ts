@@ -107,8 +107,9 @@ async function reserveFleet(
   home: Fleet,
   fleet: Fleet,
   missionId: string,
+  now: Date,
 ): Promise<void> {
-  const damage = await takeHomeHealth(tx, originPlanetId, fleet);
+  const damage = await takeHomeHealth(tx, originPlanetId, fleet, now);
   await tx.update(missions).set({ damage: damage.length ? damage : null }).where(eq(missions.id, missionId));
   const remaining: Fleet = { ...home };
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
@@ -392,7 +393,7 @@ export async function launchTransfer(
       arriveAt,
     }).returning();
     if (!mission) throw new Error('transfer mission insert returned no row');
-    await reserveFleet(tx, originPlanetId, ownerPlayerId, origin.homeFleet, fleet, mission.id);
+    await reserveFleet(tx, originPlanetId, ownerPlayerId, origin.homeFleet, fleet, mission.id, origin.now);
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - cargo.alloy,
       crystal: origin.crystal - cargo.crystal,
@@ -524,7 +525,7 @@ export async function launchSettlement(
       arriveAt,
     }).returning();
     if (!mission) throw new Error('settlement mission insert returned no row');
-    await reserveFleet(tx, originPlanetId, ownerPlayerId, origin.homeFleet, fleet, mission.id);
+    await reserveFleet(tx, originPlanetId, ownerPlayerId, origin.homeFleet, fleet, mission.id, origin.now);
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - cost.alloy,
       crystal: origin.crystal - cost.crystal,

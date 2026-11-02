@@ -448,9 +448,10 @@ async function reserveAidFleet(
     home: Fleet;
     fleet: Fleet;
     missionId: string;
+    now: Date;
   },
 ): Promise<void> {
-  const damage = await takeHomeHealth(tx, input.originPlanetId, input.fleet);
+  const damage = await takeHomeHealth(tx, input.originPlanetId, input.fleet, input.now);
   await tx.update(missions).set({ damage: damage.length ? damage : null }).where(eq(missions.id, input.missionId));
   const remaining: Fleet = { ...input.home };
   for (const [hull, quantity] of Object.entries(input.fleet) as [HullId, number][]) {
@@ -554,6 +555,7 @@ export async function launchClanAid(
     home: origin.homeFleet,
     fleet: input.fleet,
     missionId: mission.id,
+    now: origin.now,
   });
   await saveResources(tx, origin.planetId, {
     alloy: origin.alloy - input.cargo.alloy,

@@ -321,7 +321,7 @@ export async function launchIntergalacticConvoy(
   const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
   assertHonorBenefitsQuote(benefits, input.order.expectedHonorTier);
   const adjustedReward = benefits ? honorConvoyResources(quote.resourceReward, quote.cargo, benefits) : quote.resourceReward;
-  const damage = await takeHomeHealth(tx, input.planetId, requested, true);
+  const damage = await takeHomeHealth(tx, input.planetId, requested, origin.now, true);
   const [run] = await insertRun(tx, {
     seasonId: origin.seasonId,
     occurrenceId: input.order.occurrenceId,

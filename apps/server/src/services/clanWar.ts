@@ -1760,7 +1760,7 @@ export async function sendClanWarContribution(
     two waves were committed at once.
   */
   const unitLocation = `clan-war:${randomUUID()}`;
-  const damage = await takeHomeHealth(tx, context.origin.planetId, input.fleet, true);
+  const damage = await takeHomeHealth(tx, context.origin.planetId, input.fleet, context.origin.now, true);
   const [contribution] = await tx.insert(clanWarContributions).values({
     seasonId: context.operation.seasonId,
     operationId: context.operation.id,

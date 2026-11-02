@@ -1,7 +1,7 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, lte, ne, or, sql } from 'drizzle-orm';
 import { normalizeHpDamage, splitHealthFleet, type Fleet, type HpDamageLot, type HpDamageLots } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { units } from '../db/schema.js';
+import { clanWarMissions, missions, planets, units } from '../db/schema.js';
 import { GameError } from './planet.js';
 
 /** units remains the population authority; damage annotates a subset of each home row. */
@@ -23,8 +23,34 @@ export async function writeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, da
     sql`${units.damage} is distinct from ${next}`));
 }
 
-/** Reserve injury metadata alongside an existing dispatch's physical count mutation. */
-export async function takeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, combatOnly = false): Promise<HpDamageLot[]> {
+/**
+ * ONCE AN ATTACK HAS REACHED A WORLD, ITS SHIPS AND CARGO STAY. Owner decision K12, 2026-10-28.
+ *
+ * The battle is computed when the worker reaches it, so an owner could fly everything
+ * out after the attack arrived and leave nothing to fight; the attacker's recall closes
+ * at arrival for the same reason. Own and clanmates' flights are not hostile.
+ */
+export async function assertNoArrivalPending(tx: Queryable, planetId: string, now: Date): Promise<void> {
+  const [due] = await tx.select({ id: missions.id }).from(missions)
+    .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
+    .leftJoin(clanWarMissions, eq(clanWarMissions.missionId, missions.id))
+    .where(and(
+      eq(missions.targetPlanetId, planetId),
+      eq(missions.status, 'in_flight'),
+      lte(missions.arriveAt, now),
+      ne(missions.ownerPlayerId, planets.controllerPlayerId),
+      or(inArray(missions.kind, ['attack', 'death_star']), eq(clanWarMissions.leg, 'COMBINED_ATTACK')),
+    )).limit(1);
+  if (due) throw new GameError('ARRIVAL_PENDING', 'A battle has begun at this world; its fleet can leave once it ends', 409);
+}
+
+/**
+ * Reserve injury metadata alongside an existing dispatch's physical count mutation. Every
+ * fleet leaving a world passes here, which is why K12 is enforced here: a new kind of
+ * launch cannot forget it, as `now` is required.
+ */
+export async function takeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, now: Date, combatOnly = false): Promise<HpDamageLot[]> {
+  await assertNoArrivalPending(tx, planetId, now);
   const home = await readHomeHealth(tx, planetId);
   const selected = selectHomeDispatch(home.fleet, home.damage, fleet, combatOnly);
   await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage);

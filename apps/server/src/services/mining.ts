@@ -556,7 +556,7 @@ export async function launchMining(
     // The craft leave the home stack, exactly like an attack fleet — they are
     // demonstrably not on the planet — but under a `mine:` location so nothing
     // that reads mission ids can mistake them for one.
-    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft });
+    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft }, origin.now);
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
     await setUnits(tx, planetId, remaining, 'home');
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);
@@ -1533,7 +1533,7 @@ export async function launchHarvest(
       })
       .returning();
 
-    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft });
+    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft }, origin.now);
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
     await setUnits(tx, planetId, remaining, 'home');
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);

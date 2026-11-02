@@ -291,6 +291,7 @@ export const errors = {
    * reaching this means one slipped through. Better a sentence than the code.
    */
   RETRYABLE: "El servidor está ocupado. Inténtalo de nuevo en un momento.",
+  ARRIVAL_PENDING: "Ha comenzado una batalla en este mundo. Su flota podrá partir cuando termine.",
   RATE_LIMITED: 'Demasiadas solicitudes. Inténtalo de nuevo en {{seconds}} segundos.',
   RESEARCH_CEILING: "Síntesis de deuterio nivel {{rung}} permite una Refinería de Deuterio hasta nivel {{ceiling}}. Primero aumenta el nivel de investigación.",
   RESEARCH_ALREADY_COMPLETE: 'Esa investigación ya está completa',

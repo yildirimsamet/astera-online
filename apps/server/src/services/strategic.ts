@@ -40,6 +40,7 @@ import {
   saveResources,
 } from './planet.js';
 import { assertFliesOutsideMaintenance } from './maintenanceWindow.js';
+import { assertNoArrivalPending } from './homeHealth.js';
 import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
@@ -347,6 +348,7 @@ export async function launchDeathStar(
     assertSeasonOpenThrough(origin, arriveAt);
     // Clear of a planned maintenance window from launch to impact (F0.9, K7).
     await assertFliesOutsideMaintenance(tx, origin.now, arriveAt);
+    await assertNoArrivalPending(tx, originPlanetId, origin.now);
     const [mission] = await tx
       .insert(missions)
       .values({

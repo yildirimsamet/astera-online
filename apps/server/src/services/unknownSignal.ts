@@ -194,7 +194,7 @@ export async function dispatchUnknownSignal(db: Db, playerId: string, id: string
     const travelMinutes = fleetTravelExact(distance(origin, signal), fleet, { boost: fleetSpeedMult(origin.orbit), tech });
     const arriveAt = addMinutes(origin.now, travelMinutes);
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, travelMinutes));
-    const damage = await takeHomeHealth(tx, originId, fleet);
+    const damage = await takeHomeHealth(tx, originId, fleet, origin.now);
     const remaining = { ...origin.homeFleet };
     for (const [ship, count] of fleetEntries(fleet)) remaining[ship] = (remaining[ship] ?? 0) - count;
     await setUnits(tx, originId, remaining, 'home', playerId);

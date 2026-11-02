@@ -352,7 +352,7 @@ export async function launchPirateRaid(
     assertSeasonOpenThrough(origin, addMinutes(resolveAt, homeMinutes));
 
     selectHomeDispatch(origin.homeFleet, origin.homeDamage, requested, true);
-    const damage = await takeHomeHealth(tx, planetId, requested, true);
+    const damage = await takeHomeHealth(tx, planetId, requested, origin.now, true);
     const [raid] = await tx
       .insert(pirateRaids)
       .values({

@@ -336,7 +336,7 @@ export async function launchTrade(
     if (netWant.alloy + netWant.crystal + netWant.deuterium === 0) {
       throw new GameError('HONOR_TRADE_TOO_SMALL', 'This trade leaves no resources after commission; increase the offer', 409);
     }
-    const damage = await takeHomeHealth(tx, planetId, requested);
+    const damage = await takeHomeHealth(tx, planetId, requested, origin.now);
     const [run] = await tx
       .insert(tradeRuns)
       .values({

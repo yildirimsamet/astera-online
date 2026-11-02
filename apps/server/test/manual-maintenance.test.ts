@@ -72,12 +72,12 @@ describe('manual maintenance inventory', () => {
     await f.db.transaction((tx) => landHpShips(tx, { planetId: world, ownerPlayerId: owner,
       fleet: { DART: 3 }, damage: [{ hull: 'DART', count: 3, damageBp: 1000, remainderBp: 0.75 }], at: f.clock.now() }));
     await expect(f.db.transaction(async (tx) => {
-      await takeHomeHealth(tx, world, { DART: 4 });
+      await takeHomeHealth(tx, world, { DART: 4 }, f.clock.now());
       throw new Error('abort dispatch');
     })).rejects.toThrow('abort dispatch');
     expect((await readHomeHealth(f.db, world)).damage[0]?.count).toBe(3);
     const selected = await f.db.transaction(async (tx) => {
-      const result = await takeHomeHealth(tx, world, { DART: 4 });
+      const result = await takeHomeHealth(tx, world, { DART: 4 }, f.clock.now());
       await setUnits(tx, world, { DART: 1 }, 'home', owner);
       return result;
     });

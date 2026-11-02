@@ -291,6 +291,7 @@ export const errors = {
    * reaching this means one slipped through. Better a sentence than the code.
    */
   RETRYABLE: "The server is busy right now. Try again in a moment.",
+  ARRIVAL_PENDING: "A battle has begun at this world. Its fleet can leave once it ends.",
   RATE_LIMITED: 'Too many requests. Try again in {{seconds}} seconds.',
   RESEARCH_CEILING: "Deuterium Synthesis level {{rung}} allows Deuterium Refinery up to L{{ceiling}}. Raise the research level first.",
   RESEARCH_ALREADY_COMPLETE: 'That research is already complete',

@@ -260,6 +260,7 @@ export const errors = {
   QUEUE_FULL: '{{queue}} üretim sırası dolu',
   QUEUE_SETTLING: 'Tamamlanan sipariş şu anda yerleştiriliyor',
   RETRYABLE: "Sunucu şu an yoğun. Birazdan tekrar dene.",
+  ARRIVAL_PENDING: "Bu dünyada savaş başladı. Filosu, savaş bitince kalkabilir.",
   RATE_LIMITED: 'Çok sık denedin; {{seconds}} saniye sonra tekrar dene.',
   RESEARCH_CEILING: "Döteryum Sentezinin {{rung}}. seviyesi, Döteryum Rafinerisini en fazla {{ceiling}}. seviyeye açıyor. Önce araştırmayı ilerlet.",
   RESEARCH_ALREADY_COMPLETE: 'Bu araştırmayı zaten tamamladın',

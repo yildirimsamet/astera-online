@@ -74,7 +74,7 @@ import { planetView, type PlanetView } from './planetView.js';
 import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
-import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { assertNoArrivalPending, selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { admiralHomeward, admiralTime, attachAdmiral, finishAdmiralLeg, prepareAdmiral, previewAdmiral } from './admiral.js';
 
 /**
@@ -413,7 +413,7 @@ export async function sendClanSupport(
   if (first) throw new GameError(first.code, first.message, 409, first.params);
 
   const { origin } = context;
-  const damage = await takeHomeHealth(tx, origin.planetId, input.fleet, true);
+  const damage = await takeHomeHealth(tx, origin.planetId, input.fleet, origin.now, true);
   const [mission] = await tx.insert(missions).values({
     seasonId: origin.seasonId,
     kind: 'clan_support',
@@ -748,6 +748,7 @@ export async function recallClanSupport(
   if (wave.status === 'OUTBOUND' && now.getTime() >= wave.arriveAt.getTime()) {
     throw new GameError('CLAN_SUPPORT_LANDING', 'That wave is landing; recall it once it stands', 409);
   }
+  await assertNoArrivalPending(tx, wave.hostPlanetId, now);
   await returnWave(tx, wave, 'RECALLED', now);
   return answer(tx, wave.id);
 }
@@ -765,6 +766,7 @@ export async function sendBackClanSupport(
   if (wave.status === 'OUTBOUND' && now.getTime() >= wave.arriveAt.getTime()) {
     throw new GameError('CLAN_SUPPORT_LANDING', 'That wave is landing; send it back once it stands', 409);
   }
+  await assertNoArrivalPending(tx, wave.hostPlanetId, now);
   await returnWave(tx, wave, 'SENT_BACK', now);
   return answer(tx, wave.id);
 }

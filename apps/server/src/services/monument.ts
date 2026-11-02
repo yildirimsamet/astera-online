@@ -645,7 +645,7 @@ export async function quoteMonument(tx: Tx, input: MonumentSendInput): Promise<M
 export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ wave: WaveRow; quote: MonumentQuote }> {
   const context = await gatherMonumentSend(tx, input);
   const { origin, fleet, locked } = context;
-  const carriedDamage = await takeHomeHealth(tx, origin.planetId, fleet, true);
+  const carriedDamage = await takeHomeHealth(tx, origin.planetId, fleet, origin.now, true);
   if (context.quote.outboundForecast.destroyed > 0 && !input.acknowledgeRadiationLoss) {
     throw new GameError('RADIATION_LETHAL', 'Radiation on this route would destroy ships', 409, { count: context.quote.outboundForecast.destroyed });
   }

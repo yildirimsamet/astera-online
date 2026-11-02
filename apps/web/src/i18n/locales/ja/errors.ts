@@ -291,6 +291,7 @@ export const errors = {
    * reaching this means one slipped through. Better a sentence than the code.
    */
   RETRYABLE: "サーバーが混み合っています。しばらくしてからもう一度お試しください。",
+  ARRIVAL_PENDING: "この惑星で戦闘が始まりました。艦隊は戦闘の終了後に出発できます。",
   RATE_LIMITED: "リクエストが多すぎます。 {{seconds}} 秒後にもう一度お試しください。",
   RESEARCH_CEILING: "重水素合成L{{rung}}では、重水素精製所をL{{ceiling}}まで建設できます。先に研究レベルを上げてください。",
   RESEARCH_ALREADY_COMPLETE: "その研究はすでに完了しています",
