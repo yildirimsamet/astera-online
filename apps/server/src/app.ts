@@ -171,7 +171,11 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const log: FastifyBaseLogger = opts.logger ?? pino({ level: opts.env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
 
   const idleBound = opts.env.ROLE === 'api'
-    ? { idleInTransactionTimeoutMs: opts.env.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS }
+    ? {
+      idleInTransactionTimeoutMs: opts.env.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS,
+      statementTimeoutMs: opts.env.DB_STATEMENT_TIMEOUT_MS,
+      lockTimeoutMs: opts.env.DB_LOCK_TIMEOUT_MS,
+    }
     : {};
   const owned = opts.db ? null : createDb(opts.env.DATABASE_URL, {
     max: opts.env.DB_POOL_MAX,

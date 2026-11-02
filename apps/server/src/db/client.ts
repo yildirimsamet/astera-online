@@ -29,7 +29,13 @@ export const noteCachedRead = (at: number): void => {
 
 export function createDb(
   url: string,
-  opts: { max?: number; applicationName?: string; idleInTransactionTimeoutMs?: number } = {},
+  opts: {
+    max?: number;
+    applicationName?: string;
+    idleInTransactionTimeoutMs?: number;
+    statementTimeoutMs?: number;
+    lockTimeoutMs?: number;
+  } = {},
 ) {
   const sql = postgres(url, {
     max: opts.max ?? 10,
@@ -42,6 +48,8 @@ export function createDb(
       ...(opts.idleInTransactionTimeoutMs === undefined
         ? {}
         : { idle_in_transaction_session_timeout: opts.idleInTransactionTimeoutMs }),
+      ...(opts.statementTimeoutMs === undefined ? {} : { statement_timeout: opts.statementTimeoutMs }),
+      ...(opts.lockTimeoutMs === undefined ? {} : { lock_timeout: opts.lockTimeoutMs }),
     },
     // Timestamps come back as Date objects; the clock helpers do the rest.
     transform: undefined,

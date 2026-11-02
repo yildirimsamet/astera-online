@@ -41,6 +41,13 @@ const schema = z.object({
    */
   DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(30_000),
   /**
+   * API roles only, scaling plan F0.8 (Q12): what is stuck ends instead of holding a
+   * connection. Generous, as the longest ordinary statement on production is under two
+   * seconds; a lock wait past its bound answers `503 RETRYABLE` (F1.9).
+   */
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(30_000),
+  DB_LOCK_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(10_000),
+  /**
    * Rotating this invalidates every session. Must be set in production.
    *
    * `SHARD_CODE` used to sit here and is gone (D21). One process now serves all ten
