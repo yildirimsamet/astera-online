@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Db } from './client.js';
 
+// Both this file and the bundle (`dist/server/index.mjs`) lie two levels below the server's root.
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FOLDER = join(HERE, '../../drizzle');
 

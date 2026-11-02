@@ -309,3 +309,17 @@ bir refactor; orta risk, SQL başına ~2 ms prod kazancı. Kapasiteyi daha çok 
 **Madde 1 (spawn kapısı):** R2 üç oturumla doğrulandı.
 - Bekleyen UPDATE varken yeni `FOR SHARE` beklemeden geçiyor. Yani oyun yazmaları kuyruğa girmiyor; 329 ms worker'ın kendi beklemesi. Ayrı tablo gereksiz.
 - Worker artık yalnız karar verilecek doğum varsa yazıyor. Doğumsuz geçişte sezon satırına dokunmuyor, 15 sn'lik yazım doğum sayısına iniyor.
+
+## Madde 8 sonucu (2 Kasım)
+
+Uzun süre çalışan süreçler artık `node apps/server/dist/server/index.mjs` ile koşuyor (esbuild paketi, `node_modules` dışarıda).
+`src/cli/*.ts` komutları `tsx` ile kaldı; kaynaklar imajda duruyor. Aynı imajda, aynı veritabanında ölçüldü (boşta, ROLE=api):
+
+| | tsx | paket |
+|---|---|---|
+| Açılış | 4,06 sn | 1,63 sn |
+| Açılış CPU | 6,2 sn | 2,2 sn |
+| Konteyner belleği | 157 MiB | 73 MiB |
+
+Yük altındaki CPU ölçülmedi; planın beklentisi küçük olmasıydı. Prod imajı ve kapasite koşusunun `Dockerfile.load`'u: VPS'teki load dosyası bu değişiklikle güncellenmeli.
+Hata yığını paketin satırlarını gösterir; `dist/server/index.mjs.map` imajda duruyor, gerekirse `NODE_OPTIONS=--enable-source-maps`.
