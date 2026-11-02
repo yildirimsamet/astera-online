@@ -290,6 +290,7 @@ export const errors = {
    * A belt-and-braces line: the beats gate every control they cannot pay for, so
    * reaching this means one slipped through. Better a sentence than the code.
    */
+  RETRYABLE: "The server is busy right now. Try again in a moment.",
   RATE_LIMITED: 'Too many requests. Try again in {{seconds}} seconds.',
   RESEARCH_CEILING: "Deuterium Synthesis level {{rung}} allows Deuterium Refinery up to L{{ceiling}}. Raise the research level first.",
   RESEARCH_ALREADY_COMPLETE: 'That research is already complete',

@@ -238,7 +238,22 @@ interface RequestOptions {
   idempotencyKey?: string;
   /** Refresh tokens are only ever exchanged by `restore()`; never recurse into it. */
   retryOnExpiry?: boolean;
+  /** How many more times a `503 RETRYABLE` may be repeated (scaling plan F1.9). */
+  repeatsLeft?: number;
 }
+
+/**
+ * `503 RETRYABLE`: the server is busy or lost a database race, and the same request can
+ * succeed in a moment. Repeated only where it cannot act twice: a read, or a command
+ * whose idempotency key makes the server answer a repeat with the first result. The
+ * jitter keeps a refused wave from coming back as one.
+ */
+const RETRYABLE_REPEATS = 2;
+const retryablePause = (signal?: AbortSignal): Promise<void> => new Promise((resolve) => {
+  // An abort ends the wait; `send` then refuses to start the repeat.
+  const timer = setTimeout(resolve, 200 + Math.random() * 600);
+  signal?.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+});
 
 /**
  * Browser-native when possible; the fallback is still unique enough for one tab.
@@ -438,6 +453,12 @@ export class Api {
       const restored = await this.restore();
       if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
       if (restored) return this.send(path, schema, { ...opts, retryOnExpiry: false });
+    }
+    if (res.status === 503 && errorShape(body).error === 'RETRYABLE'
+      && (opts.repeatsLeft ?? RETRYABLE_REPEATS) > 0 && ((opts.method ?? 'GET') === 'GET' || opts.idempotencyKey)) {
+      await retryablePause(opts.signal);
+      if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+      return this.send(path, schema, { ...opts, repeatsLeft: (opts.repeatsLeft ?? RETRYABLE_REPEATS) - 1 });
     }
     const receivedPlacement = res.headers.get('x-placement');
     if (path === '/api/auth/me' && res.ok) {

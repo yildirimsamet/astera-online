@@ -32,6 +32,7 @@ import { countStatements, createDb, type Db, type StatementCount } from './db/cl
 import { InvalidSessionError, TokenService } from './auth/tokens.js';
 import { IdentityCache, type IdentityGrant } from './auth/identityCache.js';
 import { GameError } from './services/planet.js';
+import { databaseCode } from './services/commanderTransfer.js';
 import { isRead, registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
 import { registerVacationRoutes } from './routes/vacation.js';
@@ -99,6 +100,8 @@ export interface RouteLimits {
   signup: { max: number; timeWindow: string; skipOnError: false; keyGenerator: typeof ipLimitKey };
 }
 
+/** Deadlock, lock timeout, serialization failure: the transaction rolled back. Scaling plan F1.9. */
+const RETRYABLE_DATABASE_CODES: ReadonlySet<string> = new Set(['40P01', '55P03', '40001']);
 const ipLimitKey = (req: FastifyRequest): string => `ip:${normalizeIP(req.ip)}`;
 
 declare module 'fastify' {
@@ -464,6 +467,12 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     if (error.validation) {
       metrics.observeRefusal(req.method, route, 'BAD_REQUEST');
       return reply.status(400).send({ error: 'BAD_REQUEST', message: error.message });
+    }
+    // A race the database lost rolled its transaction back; the same request can succeed now (F1.9).
+    if (RETRYABLE_DATABASE_CODES.has(databaseCode(err) ?? '')) {
+      req.log.warn({ errorName: error.name, code: databaseCode(err) }, 'database race answered as retryable');
+      metrics.observeRefusal(req.method, route, 'RETRYABLE');
+      return reply.status(503).send({ error: 'RETRYABLE', message: 'The command centre is busy; try again in a moment' });
     }
     if (route.startsWith('/api/auth/') || route === '/api/mail/resend/webhook') {
       req.log.error({ errorName: error.name }, 'account security request failed');

@@ -3,6 +3,13 @@ import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
 import { planetView } from './fixtures.js';
+import { describeError } from '../src/i18n/errors.js';
+import { de } from '../src/i18n/locales/de/index.js';
+import { en } from '../src/i18n/locales/en/index.js';
+import { es } from '../src/i18n/locales/es/index.js';
+import { fr } from '../src/i18n/locales/fr/index.js';
+import { ja } from '../src/i18n/locales/ja/index.js';
+import { tr } from '../src/i18n/locales/tr/index.js';
 
 /**
  * The credential path.
@@ -845,3 +852,71 @@ it('keeps the email transition notice when a stale refresh is rejected after ver
 });
 
 const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };
+
+/**
+ * A REQUEST THE SERVER COULD NOT TAKE RIGHT NOW. Scaling plan F1.9.
+ *
+ * `503 RETRYABLE` says the same request can succeed in a moment. The client tries again
+ * by itself, twice, where a repeat cannot act twice: a read, or a command whose
+ * idempotency key makes the server answer a repeat with the first result.
+ */
+describe('a retryable refusal', () => {
+  const busy = () => json({ error: 'RETRYABLE', message: 'busy' }, 503);
+  const blocks = () => json({ blocks: [] });
+  const launched = () => json({ flightId: '00000000-0000-4000-8000-000000000001',
+    departAt: '2026-10-15T00:00:00Z', arriveAt: '2026-10-15T00:10:00Z' });
+  const replying = (...answers: (() => Promise<Response>)[]) => {
+    const seen: { method: string; key: string | null }[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>((_url, init) => {
+      seen.push({ method: init?.method ?? 'GET', key: new Headers(init?.headers).get('idempotency-key') });
+      return (answers.shift() ?? busy)();
+    });
+    return { api: new Api({ fetch }), seen };
+  };
+
+  it('reads again until the server takes it', async () => {
+    const { api, seen } = replying(busy, busy, blocks);
+    await expect(api.communityBlocks()).resolves.toEqual({ blocks: [] });
+    expect(seen).toHaveLength(3);
+  });
+
+  it('repeats a command under the same key', async () => {
+    const { api, seen } = replying(busy, launched);
+    await api.launchRadiationBomb('origin', 3, { kind: 'MONUMENT', id: 'target' }, 'bomb-1', true);
+    expect(seen).toEqual([{ method: 'POST', key: 'bomb-1' }, { method: 'POST', key: 'bomb-1' }]);
+  });
+
+  it('gives up after two repeats and says so', async () => {
+    const { api, seen } = replying();
+    await expect(api.communityBlocks()).rejects.toMatchObject({ code: 'RETRYABLE', status: 503 });
+    expect(seen).toHaveLength(3);
+  });
+
+  it('does not repeat a command without a key, which could act twice', async () => {
+    const { api, seen } = replying();
+    await expect(api.collect()).rejects.toMatchObject({ code: 'RETRYABLE' });
+    expect(seen).toHaveLength(1);
+  });
+
+  it('does not repeat any other 503', async () => {
+    const { api, seen } = replying(() => json({ error: 'INTERNAL', message: 'no' }, 503));
+    await expect(api.communityBlocks()).rejects.toMatchObject({ code: 'INTERNAL' });
+    expect(seen).toHaveLength(1);
+  });
+
+  it('stops when the caller has gone', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn<typeof globalThis.fetch>(() => {
+      setTimeout(() => { controller.abort(); }, 0);
+      return busy();
+    });
+    const pending = new Api({ fetch }).planets({ signal: controller.signal });
+    await expect(pending).rejects.toBeDefined();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the player to try again in their own language', () => {
+    for (const locale of [en, tr, de, es, fr, ja]) expect(locale.errors.RETRYABLE).toBeTruthy();
+    expect(describeError(new ApiError('RETRYABLE', 'busy', 503))).toBe(en.errors.RETRYABLE);
+  });
+});

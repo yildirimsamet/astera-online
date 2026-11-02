@@ -290,6 +290,7 @@ export const errors = {
    * A belt-and-braces line: the beats gate every control they cannot pay for, so
    * reaching this means one slipped through. Better a sentence than the code.
    */
+  RETRYABLE: "Der Server ist gerade ausgelastet. Versuche es gleich noch einmal.",
   RATE_LIMITED: 'Zu viele Anfragen. Versuchen Sie es in {{seconds}} Sekunden erneut.',
   RESEARCH_CEILING: "Deuteriumsynthese Stufe {{rung}} erlaubt eine Deuterium-Raffinerie bis Stufe {{ceiling}}. Erhöhe zuerst die Forschungsstufe.",
   RESEARCH_ALREADY_COMPLETE: 'Diese Forschung ist bereits abgeschlossen',
