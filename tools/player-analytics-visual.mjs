@@ -33,6 +33,8 @@ export function showRecovery() { mounted.render(<ApiProvider api={new Api()}><Pa
 `);
     for (const [name, width, height] of [['mobile', 350, 740], ['phone', 390, 844], ['desktop', 1440, 960]]) {
       const context = await browser.newContext({ viewport: { width, height }, locale: 'tr-TR', reducedMotion: 'reduce' });
+      // Exercise public-page events; first-time entry now opens training directly.
+      await context.addInitScript(() => { localStorage.setItem('astera.training-entry.dismissed', '1'); });
       const received = [], errors = [];
       await context.route(url => url.origin !== origin, route => route.abort());
       await context.route(url => url.pathname.startsWith('/api/'), async route => {

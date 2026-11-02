@@ -4,6 +4,7 @@ import { classTuning } from './classes.js';
 import { ARENA_PROGRESSION, statsOf } from './progression.js';
 import { sweptHull } from './hull.js';
 import { ARENA_TUNING as T } from './tuning.js';
+export { RING_DISTANCE } from './tuning.js';
 import { alive, sameSide, type Impact, type Pilot, type Projectile, type SmokePuff, type CargoDrop } from './pilot.js';
 import { RING12 } from './vec.js';
 import { pilotInSight } from './visibility.js';
@@ -29,8 +30,6 @@ const RADII = Array.from({ length: SPREAD.length / 2 }, (_, i) => {
 /** The widest shot of the pattern, in units of spreadBase: every shot lands inside this cone (the reticle's ring). */
 export const SPREAD_REACH = Math.max(...RADII);
 
-/** Where the reticle's ring is true (owner 2026-10-24): the spread a pilot sees drawn is the spread at 500 m. */
-export const RING_DISTANCE = 500;
 /** How far off the line the widest shot lands at `distance` metres: the ring's radius out there. */
 export function spreadAt(spreadBase: number, distance: number): number {
   if (!Number.isFinite(spreadBase) || !Number.isFinite(distance) || spreadBase < 0 || distance < 0) return 0;

@@ -980,7 +980,8 @@ describe('every key the tree holds actually resolves', () => {
   it.each([
     ['en', 'Easy', 'Hard'], ['tr', 'Kolay', 'Zor'], ['de', 'Leicht', 'Schwer'],
     ['es', 'Fácil', 'Difícil'], ['fr', 'Facile', 'Difficile'], ['ja', 'イージー', 'ハード'],
-  ] as const)('uses the same localized monument class names in %s headings and access rules', (language, easy, hard) => {
+  ] as const)('uses the same localized monument class names in %s headings and access rules', async (language, easy, hard) => {
+    await i18n.loadLanguages(language);
     const t = i18n.getFixedT(language);
     expect(t('monument.easy')).toBe(easy);
     expect(t('monument.hard')).toBe(hard);
@@ -1000,7 +1001,8 @@ describe('every key the tree holds actually resolves', () => {
    * lookup would pass by falling through to Turkish, which is precisely the hole
    * this is here to close.
    */
-  it.each(LANGUAGES)('registers every leaf in %s', (language) => {
+  it.each(LANGUAGES)('registers every leaf in %s', async (language) => {
+    await i18n.loadLanguages(language);
     const unresolved = [...ENGLISH.keys()].filter(
       (key) => !i18n.exists(key, { lng: language, fallbackLng: false }),
     );

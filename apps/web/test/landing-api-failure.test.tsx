@@ -24,6 +24,7 @@ function show() {
 }
 
 it('keeps the web game explanation visible through a failed restore and a successful retry', async () => {
+  localStorage.setItem('astera.training-entry.dismissed', '1');
   const fixture = show();
   await screen.findByRole('button', { name: 'Try again' });
   expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
@@ -39,9 +40,8 @@ it('keeps the web game explanation visible through a failed restore and a succes
 
 it('offers the existing account-free Academy after a cold API outage', async () => {
   show();
-  await screen.findByRole('button', { name: 'Try again' });
-  fireEvent.click(screen.getByTestId('landing-primary'));
   expect(await screen.findByText('Private Academy')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
   expect(document.documentElement).not.toHaveAttribute('data-public-surface');
 });
 

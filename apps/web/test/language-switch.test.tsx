@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import i18n from '../src/i18n/index.js';
 import { LanguageSwitch } from '../src/ui/LanguageSwitch.js';
@@ -19,11 +19,11 @@ describe('language switch', () => {
     expect(screen.getAllByRole('option')).toHaveLength(6);
 
     await user.selectOptions(select, 'de');
-    expect(select).toHaveValue('de');
+    await waitFor(() => { expect(select).toHaveValue('de'); });
     expect(i18n.resolvedLanguage).toBe('de');
 
     await user.selectOptions(select, 'ja');
-    expect(select).toHaveValue('ja');
+    await waitFor(() => { expect(select).toHaveValue('ja'); });
     expect(i18n.resolvedLanguage).toBe('ja');
   });
 });

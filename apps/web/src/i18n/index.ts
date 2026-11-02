@@ -1,10 +1,6 @@
-import i18n from 'i18next';
+import i18n, { type BackendModule } from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { de } from './locales/de/index.js';
 import { en } from './locales/en/index.js';
-import { es } from './locales/es/index.js';
-import { fr } from './locales/fr/index.js';
-import { ja } from './locales/ja/index.js';
 import { tr } from './locales/tr/index.js';
 import { FALLBACK_LANGUAGE, detectLanguage, isLanguage, type Language } from './languages.js';
 
@@ -14,12 +10,9 @@ export const NS = 'game';
 /**
  * ONE LANGUAGE FOR THE WHOLE GAME, DECIDED BEFORE THE FIRST FRAME.
  *
- * RESOURCES ARE STATIC AND SYNCHRONOUS, deliberately. i18next can fetch a locale
- * over HTTP, and every version of that has the same shape: the first render has
- * no strings, so either the app suspends or it paints the keys and then corrects
- * itself. Principle 10 rules out both — "never a spinner where a decision should
- * be", and a flash of `landing.premise` is worse than a spinner. All locale
- * trees load with the game so the first screen is already in the chosen language.
+ * Turkish and English are synchronous, including the Turkish fallback. Other
+ * dictionaries load only when selected. The browser waits for i18nReady before
+ * its first render, so a deferred locale never paints translation keys.
  *
  * DETECTION IS OURS RATHER THAN THE PLUGIN'S. `i18next-browser-languagedetector`
  * would do the same job, but its default order puts a `?lng=` query parameter and
@@ -38,8 +31,8 @@ export const NS = 'game';
  * ONE i18next NAMESPACE, HOLDING EVERY SECTION.
  *
  * i18next's own namespaces are a code-splitting mechanism — they exist so a route
- * can load its strings and not the rest. Nothing here is split (see above), so
- * using them would buy nothing and cost the thing that matters: `t()` would take
+ * can load its strings and not the rest. Each locale loads as one tree, so
+ * dividing namespaces would cost the thing that matters: `t()` would take
  * `'loading:contact'`, a colon nobody remembers, and every call site would have
  * to know which FILE its string lives in.
  *
@@ -50,14 +43,30 @@ export const NS = 'game';
 const resources = {
   en: { [NS]: en },
   tr: { [NS]: tr },
-  fr: { [NS]: fr },
-  de: { [NS]: de },
-  es: { [NS]: es },
-  ja: { [NS]: ja },
 } as const;
 
-void i18n.use(initReactI18next).init({
+const deferred = {
+  fr: () => import('./locales/fr/index.js').then(module => module.fr),
+  de: () => import('./locales/de/index.js').then(module => module.de),
+  es: () => import('./locales/es/index.js').then(module => module.es),
+  ja: () => import('./locales/ja/index.js').then(module => module.ja),
+};
+const backend: BackendModule = {
+  type: 'backend',
+  init: () => undefined,
+  read(language, _namespace, callback) {
+    if (language !== 'fr' && language !== 'de' && language !== 'es' && language !== 'ja') {
+      callback(new Error('Unsupported deferred language'), false); return;
+    }
+    void deferred[language]().then(resource => { callback(null, resource); }, (error: unknown) => {
+      callback(error instanceof Error ? error : new Error('Language failed to load'), false);
+    });
+  },
+};
+
+export const i18nReady = i18n.use(backend).use(initReactI18next).init({
   resources,
+  partialBundledLanguages: true,
   lng: detectLanguage(),
   fallbackLng: FALLBACK_LANGUAGE,
   ns: [NS],

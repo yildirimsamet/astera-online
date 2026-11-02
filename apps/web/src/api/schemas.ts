@@ -1,6 +1,6 @@
 import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
-import { SHIP_CLASSES } from '@astera/rules/arena';
+import { SHIP_CLASSES } from '@astera/rules/arena/ui';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
   BuildQueueId,

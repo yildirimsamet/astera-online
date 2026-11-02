@@ -23,7 +23,7 @@ import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
-import { ADMIRAL_WAIT } from '@astera/rules/arena';
+import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
 /**

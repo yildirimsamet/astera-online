@@ -52,6 +52,8 @@ export async function verifyPublicLanding(output) {
     await retina.close();
     for (const [name, width, height] of [['desktop', 1440, 960], ['mobile', 390, 844], ['narrow', 350, 640], ['short', 350, 480]]) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', locale: 'tr-TR', ignoreHTTPSErrors: origin.startsWith('https://127.0.0.1:') });
+      // The public page is reached after explicitly leaving first-visit training.
+      await context.addInitScript(() => { localStorage.setItem('astera.training-entry.dismissed', '1'); });
       await context.route(url => url.origin !== origin, route => route.abort());
       await context.route(url => url.pathname.startsWith('/api/'), route => {
         const isServers = new URL(route.request().url()).pathname === '/api/servers';
@@ -102,6 +104,7 @@ export async function verifyPublicLanding(output) {
     }
     for (const [name, width, height] of [['desktop', 1440, 960], ['mobile', 390, 844], ['short', 350, 480]]) {
       const context = await browser.newContext({ viewport: { width, height }, locale: 'tr-TR', ignoreHTTPSErrors: origin.startsWith('https://127.0.0.1:') });
+      await context.addInitScript(() => { localStorage.setItem('astera.training-entry.dismissed', '1'); });
       await context.route(url => url.origin !== origin, route => route.abort());
       await context.route(url => url.pathname.startsWith('/api/'), route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'UNREACHABLE', message: 'Offline fixture' }) }));
       const page = await context.newPage();

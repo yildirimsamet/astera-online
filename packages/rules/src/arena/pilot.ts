@@ -2,7 +2,8 @@ import type { ShipClass } from './classes.js';
 import { levelOf, shipStats } from './progression.js';
 import { emptyHold } from './farms.js';
 import { createFlightState } from './flight.js';
-import { ARENA_TUNING as T } from './tuning.js';
+import { ARENA_TUNING as T, type TACTICS } from './tuning.js';
+export { TACTICS } from './tuning.js';
 import { flightRanks, type FlightRanks } from './ranks.js';
 import type { FlightInput, FlightState, Vec3 } from './types.js';
 
@@ -16,7 +17,6 @@ export interface ArenaIntent extends FlightInput {
   illusion?: boolean; radar?: boolean;
 }
 /** The B slot (plan 14 §4): one tactic chosen before the sortie. */
-export const TACTICS = ['smoke', 'cloak', 'illusion', 'radar'] as const;
 export type Tactic = typeof TACTICS[number];
 export type PilotPhase = 'flying' | 'fuelOut' | 'dead' | 'extracted' | 'towed';
 export interface Pilot extends FlightState {

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ADMIRAL_WAIT, ADMIRAL_XP, type ShipClass } from '@astera/rules/arena';
+import { ADMIRAL_WAIT, ADMIRAL_XP, type ShipClass } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 import { clockText } from '../arena/hangarDesk.js';
 import { SHIP_TONE } from '../arena/shipTone.js';

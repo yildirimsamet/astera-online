@@ -1,4 +1,4 @@
-import { admiralApplies, admiralBonuses, type AdmiralBonuses, type ShipClass } from '@astera/rules/arena';
+import { admiralApplies, admiralBonuses, type AdmiralBonuses, type ShipClass } from '@astera/rules/arena/ui';
 import type { CommanderShipView } from '../api/commanderShipSchemas.js';
 
 /**

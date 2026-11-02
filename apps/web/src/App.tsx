@@ -95,7 +95,7 @@ function SessionApp() {
     claim,
     updateCountry,
     rollover,
-  } = useSession();
+  } = useSession({ autoTraining: (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web' && location.pathname !== '/profile' });
   const ready = session.phase === 'ready';
   const [academyReplay, setAcademyReplay] = useState(false);
   // A page loaded afresh to go into the Yarık, or back out of it (`freshEntry`, S22 32-bit Chrome).

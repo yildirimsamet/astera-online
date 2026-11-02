@@ -220,3 +220,7 @@ export const ARENA_TUNING = Object.freeze({
 });
 
 export type FlightTuning = { [K in keyof typeof NUMBERS]: number } & { readonly capsules: readonly Readonly<Capsule>[] };
+/** Reference distance used by both the displayed reticle and the combat spread. */
+export const RING_DISTANCE = 500;
+/** The B slot's wire order, also used by the hangar response contract. */
+export const TACTICS = ['smoke', 'cloak', 'illusion', 'radar'] as const;

@@ -12,7 +12,7 @@ import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
 import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey } from '../lib/battleOutcome.js';
 import { MonumentBattleRules } from './MonumentBattleRules.js';
-import { ADMIRAL_WAIT } from '@astera/rules/arena';
+import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
 export function MonumentReportSheet({ report, onClose, onFocusMonument }: {

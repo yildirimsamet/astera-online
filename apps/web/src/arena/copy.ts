@@ -1,4 +1,4 @@
-import { ARENA_ECONOMY as E, ARENA_TUNING as T, RING_DISTANCE, type ShipClass } from '@astera/rules/arena';
+import { ARENA_ECONOMY as E, ARENA_TUNING as T, RING_DISTANCE, type ShipClass } from '@astera/rules/arena/ui';
 import i18n from '../i18n/index.js';
 
 // Prototype copy stays local until the owner accepts the gameplay; localisation follows (KG-K14).

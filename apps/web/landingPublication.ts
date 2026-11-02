@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { LANGUAGES, type Language } from './src/i18n/languages.js';
 import { LANDING_COPY } from './src/landing/public/content.js';
-import { PublicLanding, LANDING_HERO } from './src/landing/public/PublicLanding.js';
+import { PublicLanding } from './src/landing/public/PublicLanding.js';
 import { PUBLISHER_ORIGIN } from './src/lib/publisherPages.js';
 import { startupBody, startupStyles } from './landingStartup.js';
 
@@ -21,18 +21,19 @@ ${LANGUAGES.map(lang => `<link rel="alternate" hreflang="${lang}" href="${PUBLIS
 <meta property="og:image" content="${PUBLISHER_ORIGIN}/assets/images/general/og-image.png"><meta property="og:image:width" content="1733"><meta property="og:image:height" content="907"><meta property="og:image:alt" content="Astera Online">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(copy.title)}"><meta name="twitter:description" content="${escape(copy.description)}"><meta name="twitter:image" content="${PUBLISHER_ORIGIN}/assets/images/general/og-image.png">
 <link rel="stylesheet" href="/landing/style.css">
-<style nonce="__CSP_NONCE__" data-session-boot>html,body{margin:0;background:#04060b}[data-session-restoring] #root > [data-public-landing]{visibility:hidden}${startupStyles()}</style>
+<style nonce="__CSP_NONCE__" data-session-boot>html,body{margin:0;background:#04060b}[data-session-restoring] #root > [data-public-landing]{visibility:hidden}[data-auto-training] #root > [data-public-landing]{display:none}${startupStyles()}</style>
 <script nonce="__CSP_NONCE__" data-session-boot>
 (() => {
   // Refresh cookies are HttpOnly. Existing device hints only choose the opening frame.
-  try {
-    if (localStorage.getItem('astera.commander') !== '1' && !sessionStorage.getItem('astera:ready-session')) return;
-    document.documentElement.setAttribute('data-session-restoring', '');
-    document.documentElement.removeAttribute('data-public-surface');
-  } catch { /* Unavailable storage keeps the public introduction visible. */ }
+  let returning = false, dismissed = false;
+  try { returning = localStorage.getItem('astera.commander') === '1' || !!sessionStorage.getItem('astera:ready-session'); dismissed = localStorage.getItem('astera.training-entry.dismissed') === '1'; }
+  catch { /* Without storage a new visitor can still enter the local lesson. */ }
+  if (!returning && dismissed) return;
+  document.documentElement.setAttribute('data-session-restoring', '');
+  if (!returning) document.documentElement.setAttribute('data-auto-training', '');
+  document.documentElement.removeAttribute('data-public-surface');
 })();
 </script>
-<link rel="preload" as="image" href="${LANDING_HERO}" media="(min-width: 641px)"><link rel="preload" as="image" href="/assets/images/landing/orbit-hero-mobile-v1.webp" media="(max-width: 640px)">
 <script type="application/ld+json" nonce="__CSP_NONCE__">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Astera Online', url: canonical, description: copy.description, inLanguage: language, genre: ['Strategy', 'Space'], gamePlatform: 'Web browser', playMode: 'MultiPlayer', image: `${PUBLISHER_ORIGIN}/assets/images/general/og-image.png` }).replace(/</g, '\\u003c')}</script>`;
   const content = renderToStaticMarkup(createElement(PublicLanding, { language }));
   return template

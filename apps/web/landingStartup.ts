@@ -64,6 +64,7 @@ const recoveryScript = `(() => {
     document.getElementById('web-startup')?.remove();
     template.remove();
     document.documentElement.removeAttribute('data-session-restoring');
+    document.documentElement.removeAttribute('data-auto-training');
   });
   observer.observe(root, { childList: true });
   window.addEventListener('error', onError, true);

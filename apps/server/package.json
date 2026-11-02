@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --keep-names --sourcemap --packages=external --alias:@astera/rules/arena=../../packages/rules/src/arena/index.ts --alias:@astera/rules=../../packages/rules/src/index.ts --outfile=dist/server/index.mjs --log-level=warning",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --keep-names --sourcemap --packages=external --alias:@astera/rules/arena/ui=../../packages/rules/src/arena/ui.ts --alias:@astera/rules/arena=../../packages/rules/src/arena/index.ts --alias:@astera/rules=../../packages/rules/src/index.ts --outfile=dist/server/index.mjs --log-level=warning",
     "dev:arena": "ROLE=arena PORT=3101 ARENA_ENABLED=true ARENA_DEV=true tsx watch src/index.ts",
     "worker": "ROLE=worker tsx src/index.ts",
     "migrate": "tsx src/cli/migrate.ts",

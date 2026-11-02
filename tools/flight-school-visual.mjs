@@ -8,6 +8,8 @@ export async function verifyFlightSchool(out) {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const viewport = process.argv.includes('--short-phone') ? { width: 350, height: 600 } : { width: 390, height: 844 };
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, storageState: process.env.ASTERA_VISUAL_STATE });
+  // This walkthrough exercises manual entry; --first-visit covers automatic entry.
+  await context.addInitScript(() => { localStorage.setItem('astera.training-entry.dismissed', '1'); });
   const page = await context.newPage(); page.setDefaultTimeout(25_000);
   browser.on('disconnected', () => { console.log('BROWSER DISCONNECTED'); });
   page.on('crash', () => { console.log('PAGE CRASHED'); });

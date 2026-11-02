@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { repairQuote, type Ability, type ArenaResources, type LoadoutPlan, type ShipClass } from '@astera/rules/arena';
+import { repairQuote, type Ability, type ArenaResources, type LoadoutPlan, type ShipClass } from '@astera/rules/arena/ui';
 import { arenaUrl } from './origin.js';
 import { hangarSchema, resources } from './deskSchemas.js';
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CLAN } from '@astera/rules';
-import { SHIP_CLASSES, TACTICS } from '@astera/rules/arena';
+import { SHIP_CLASSES, TACTICS } from '@astera/rules/arena/ui';
 
 /** The desks' answers, parsed by the client and by the server's contract test: no browser globals here. */
 export const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });

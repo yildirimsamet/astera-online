@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--first-visit')) {
+  const { verifyFirstVisit } = await import('./first-visit-visual.mjs');
+  await verifyFirstVisit(process.argv[2] ?? 'out/first-visit');
+  process.exit(0);
+}
+
 if (process.argv.includes('--player-analytics')) {
   const { verifyPlayerAnalytics } = await import('./player-analytics-visual.mjs');
   await verifyPlayerAnalytics(process.argv[2] ?? 'out/player-analytics');

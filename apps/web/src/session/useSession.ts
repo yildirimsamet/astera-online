@@ -10,6 +10,7 @@ import { meSchema, type ClaimIntent, type ClaimResult, type Me, type Preview } f
 import type { CountryCode } from '@astera/rules';
 import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
+import { consumeTrainingIntent, dismissFirstVisitTraining, wantsFirstVisitTraining } from '../lib/firstVisit.js';
 import { academyPreview } from '../onboarding/academyWorld.js';
 import { serverNow } from '../lib/clock.js';
 import { clearLocalAlerts } from '../platform/localNotifications.js';
@@ -106,10 +107,14 @@ const messageOf = (err: unknown): string => describeError(err);
  * is impatient about. The news it carried is in Signals, which is read when the
  * player asks rather than before they are let in.
  */
-export function useSession() {
+export function useSession({ autoTraining = false }: { autoTraining?: boolean } = {}) {
   const api = useApi();
   const queries = useQueryClient();
-  const [session, setSession] = useState<Session>(readReady);
+  const [session, setSession] = useState<Session>(() => {
+    const restored = readReady();
+    return restored.phase === 'starting' && autoTraining && wantsFirstVisitTraining()
+      ? { phase: 'rehearsing', preview: academyPreview(serverNow()) } : restored;
+  });
   const [resumed, setResumed] = useState(() => session.phase === 'ready');
   // Async transitions from the previous identity must never replace its exit screen.
   const revision = useRef(0);
@@ -190,7 +195,7 @@ export function useSession() {
           queries.clear();
           forgetReady();
           setResumed(false);
-          setSession({ phase: 'landing' });
+          setSession(current => current.phase === 'rehearsing' ? current : { phase: 'landing' });
           return;
         }
         const me = await api.me();
@@ -198,6 +203,8 @@ export function useSession() {
         await settle(me);
       } catch (err) {
         if (!stillCurrent()) return;
+        // The private local lesson remains playable through an optional restore failure.
+        if (currentSession.current.phase === 'rehearsing') return;
         if (err instanceof ApiError && err.status === 401) {
           forgetReady();
           setResumed(false);
@@ -233,8 +240,9 @@ export function useSession() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    if (autoTraining) consumeTrainingIntent();
     void coldStart(true);
-  }, [coldStart]);
+  }, [autoTraining, coldStart]);
 
   useEffect(() => {
     let wasActive = isAppActive();
@@ -331,17 +339,22 @@ export function useSession() {
    * D172: enter a private Academy without a frontier request or an account.
    */
   const rehearse = useCallback((): Promise<void> => {
+    revision.current++;
     setSession({ phase: 'rehearsing', preview: academyPreview(serverNow()) });
     return Promise.resolve();
   }, []);
 
   /** Out of the rehearsal without an account. Nothing to undo. */
   const leaveRehearsal = useCallback((): void => {
+    revision.current++;
+    dismissFirstVisitTraining();
     setSession({ phase: 'landing' });
   }, []);
 
   /** Out of the rehearsal, to sign in as somebody who already exists. */
   const signInInstead = useCallback((): void => {
+    revision.current++;
+    dismissFirstVisitTraining();
     setSession({ phase: 'landing', open: 'login' });
   }, []);
 

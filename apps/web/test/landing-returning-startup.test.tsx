@@ -15,6 +15,7 @@ vi.mock('../src/lib/sound.js', () => ({ useSoundEffects: () => undefined }));
 vi.mock('../src/session/useEventStream.js', () => ({ useEventStream: () => undefined }));
 vi.mock('../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: () => undefined }));
 vi.mock('../src/screens/ServersScreen.jsx', () => ({ ServersScreen: () => <main>Choose your galaxy</main> }));
+vi.mock('../src/onboarding/flightSchool/FlightSchool.js', () => ({ FlightSchool: () => <main data-testid="first-training">Training</main> }));
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -61,9 +62,10 @@ it('reveals the landing when a remembered commander has an expired or missing co
   expect(await screen.findByTestId('landing-primary')).toBeInTheDocument();
 });
 
-it('keeps the immediate public introduction for a new visitor during restoration', () => {
+it('opens training for a new visitor without waiting for restoration', async () => {
   show();
-  expect(document.querySelector('[data-public-landing]')).not.toBeNull();
+  expect(await screen.findByTestId('first-training')).toBeInTheDocument();
+  expect(document.querySelector('[data-public-landing]')).toBeNull();
 });
 
 const template = readFileSync(resolve(import.meta.dirname, '../index.html'), 'utf8');
@@ -85,12 +87,20 @@ it.each(['commander', 'cached game'])('hides the static landing before the bundl
   expect(doc.querySelector('style[data-session-boot]')?.textContent).toContain('[data-session-restoring] #root > [data-public-landing]{visibility:hidden}');
 });
 
-it('leaves the static introduction visible without a returning hint or with blocked storage', () => {
+it('uses the inline training preparation frame for a new visitor, even with blocked storage', () => {
   const { doc, script } = published();
   runInNewContext(script, { document: doc, localStorage: window.localStorage, sessionStorage: window.sessionStorage });
-  expect(doc.documentElement.hasAttribute('data-session-restoring')).toBe(false);
+  expect(doc.documentElement.hasAttribute('data-auto-training')).toBe(true);
   const blocked = { getItem: () => { throw new Error('Storage blocked'); } };
   expect(() => { runInNewContext(script, { document: doc, localStorage: blocked, sessionStorage: blocked }); }).not.toThrow();
+  expect(doc.documentElement.hasAttribute('data-auto-training')).toBe(true);
+});
+
+it('keeps the public introduction when the visitor explicitly left training earlier', () => {
+  localStorage.setItem('astera.training-entry.dismissed', '1');
+  const { doc, script } = published();
+  runInNewContext(script, { document: doc, localStorage: window.localStorage, sessionStorage: window.sessionStorage });
+  expect(doc.documentElement.hasAttribute('data-auto-training')).toBe(false);
   expect(doc.documentElement.hasAttribute('data-session-restoring')).toBe(false);
 });
 

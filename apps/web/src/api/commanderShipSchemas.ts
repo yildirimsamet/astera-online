@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SHIP_CLASSES } from '@astera/rules/arena';
+import { SHIP_CLASSES } from '@astera/rules/arena/ui';
 
 const point = z.object({ x: z.number(), y: z.number(), z: z.number() });
 

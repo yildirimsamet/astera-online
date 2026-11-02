@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { FAULT_KINDS } from '@astera/rules';
-import { SHIP_CLASSES } from '@astera/rules/arena';
+import { SHIP_CLASSES } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 import type { NotificationView } from '../api/schemas.js';
 import { unknownSignalOutcomeSchema } from '../api/schemas.js';

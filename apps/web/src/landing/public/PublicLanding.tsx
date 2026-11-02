@@ -24,18 +24,18 @@ export function PublicLanding({ language, entry, languageSwitch, consentHostRef,
   return <main className="public-landing" data-public-landing lang={language}>
     <a className="landing-skip" href="#start">{c.skip}</a>
     <header className="landing-header landing-container">
-      <a href={`/${language}/`} aria-label="Astera Online" className="landing-brand"><img src="/assets/images/logos/logo-lockup.png" width="768" height="433" alt="Astera Online" /></a>
+      <a href={`/${language}/`} aria-label="Astera Online" className="landing-brand"><img src="/assets/images/logos/logo-lockup.png" width="768" height="433" loading="lazy" alt="Astera Online" /></a>
       <nav aria-label={c.explore}><a href="#worlds">{c.explore}</a><a href={publisherWikiUrl(language)}>Wiki <span aria-hidden="true">↗</span></a></nav>
       {languageSwitch ?? <details className="landing-locale-menu"><summary>{LANGUAGE_SHORT[language]} <span aria-hidden="true">⌄</span></summary><nav aria-label="Language">{LANGUAGES.map(lang => <a key={lang} href={`/${lang}/`} hrefLang={lang} lang={lang} aria-current={lang === language ? 'page' : undefined}>{LANGUAGE_LABEL[lang]}</a>)}</nav></details>}
     </header>
     <section className="landing-hero" aria-labelledby="landing-title">
-      <picture className="landing-hero-art"><source media="(max-width: 640px)" srcSet="/assets/images/landing/orbit-hero-mobile-v1.webp" /><img src={LANDING_HERO} width="1920" height="1080" alt="" fetchPriority="high" /></picture>
+      <picture className="landing-hero-art"><source media="(max-width: 640px)" srcSet="/assets/images/landing/orbit-hero-mobile-v1.webp" /><img src={LANDING_HERO} width="1920" height="1080" loading="lazy" alt="" fetchPriority="high" /></picture>
       <div className="landing-container landing-hero-content">
         <p className="landing-kicker"><span aria-hidden="true" />{c.eyebrow}</p>
         <h1 id="landing-title"><span>{c.headline[0]}</span><em>{c.headline[1]}</em></h1>
         <p className="landing-intro">{c.intro}</p>
         <div id="start" className="landing-entry">
-          {entry ?? <><a className="landing-button" href="#how-to-play">{actions.play} <span aria-hidden="true">↗</span></a><p>{actions.account}</p></>}
+          {entry ?? <><a className="landing-button" href="#play">{actions.play} <span aria-hidden="true">↗</span></a><p>{actions.account}</p></>}
           <noscript><p className="landing-noscript">{actions.javascript}</p></noscript>
         </div>
         <div ref={consentHostRef} className="landing-consent-host" />
