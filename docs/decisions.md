@@ -3,6 +3,14 @@
 Bu dizin, henüz uygulanmamış kararları da içerir. Her kaydın durumunu kontrol et;
 bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
 
+- **2026-11-02 — Enkaz yarışında en çok ~6 sn gecikme kabul edildi.**
+  Owner onayı (kapasite planı, R12 review'u). Bağlantı başına akış kapısı (`stream/activityGate.ts`)
+  `shard:launch|arrival|mining|pirate` olaylarını en çok ~6 sn'de bir iletir; sessizlikten sonraki
+  ilk olay hemen gider, olay kaybolmaz. Enkaz bu olayların ardından yapılan okumayla göründüğü için
+  yoğun galakside bir komutan enkazı başkasından ~6 sn sonra görebilir (D32). Reddedilen seçenekler:
+  bütün `arrival`/`pirate` olaylarını muaf tutmak (kazancın çoğu gider) ve yalnız enkaz bırakan
+  varışları muaf tutmak (şimdilik gereksiz görüldü; şikâyet gelirse geri dönüş yolu bu).
+
 - **2026-10-30 — Honor: alt kademe ancak %75 donanma bandının altında zayıf hedeftir.**
   Owner onayı (Honor incelemesi, vantasia → Kaptan Jack Sparrow vakası). Eski kural alt
   kademedeki hedefi donanması saldırandan *az da olsa* küçükse zayıf sayıyordu: %95'lik,

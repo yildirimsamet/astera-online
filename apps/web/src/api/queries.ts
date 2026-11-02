@@ -453,8 +453,9 @@ export function usePending() {
  * payload at all — that is the point of `NONE`. So when it crosses in, the client
  * holds no record to solve a crossing instant from: `useContactWindows` can only
  * arm boundaries for craft it already has. A launch inside the circles is covered
- * (`shard:launch` fires and the craft is visible from its first instant, now that
- * the departure shroud is gone); a craft arriving from outside is not.
+ * (`shard:launch` fires, up to about six seconds late in a busy galaxy, and the craft
+ * is in the payload from its first instant, now that the departure shroud is gone);
+ * a craft arriving from outside is not.
  *
  * The server cannot announce it either, and deliberately: "something will enter
  * your radar in twelve seconds" is advance warning no radar operator has, and

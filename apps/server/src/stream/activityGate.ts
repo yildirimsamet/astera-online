@@ -2,9 +2,15 @@ import type { StreamEvent } from './bus.js';
 
 /**
  * THE KINDS THAT FIRE ALL DAY. Each one sends a client to read `/api/galaxy/traffic`
- * and the field, and they are the only shard events whose number grows with the
- * number of commanders. Everything rarer keeps its instant: a rollover, a capture,
- * a strike. What happens TO a commander is on their own topic and never comes here.
+ * and the field, the cheap reads, and they are most of a galaxy's events. Everything
+ * rarer keeps its instant: a rollover, a capture, a strike, a shield. Those send every
+ * client to `/api/galaxy` and cost far more each, and a gate would not help them: its
+ * first frame goes out at once. A shield was a handful a day for 48 active commanders
+ * on 2026-11-02; if that grows, it wants the heavy lane instead. What happens TO a
+ * commander is on their own topic and never comes here.
+ *
+ * A KNOWN COST, ACCEPTED BY THE OWNER (2026-11-02): in a busy galaxy a commander can
+ * hear of somebody else's wreck up to six seconds after another did. See `decisions.md`.
  */
 const ACTIVITY: ReadonlySet<string> = new Set(['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate']);
 
