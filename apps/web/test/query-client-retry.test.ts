@@ -11,7 +11,7 @@ describe('a failed read', () => {
   const retry = createQueryClient().getDefaultOptions().queries?.retry;
   const again = (count: number, error: Error): boolean => {
     if (typeof retry !== 'function') throw new Error('the query retry must look at the error');
-    return Boolean(retry(count, error));
+    return retry(count, error);
   };
 
   it('gets one more try', () => {
