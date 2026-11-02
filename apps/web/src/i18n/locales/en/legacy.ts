@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'You have no pieces yet. Finish a season or reach a goal to earn one.',
   },
   seasons: {
+    short: '(S. {{ordinal}})',
     loading: 'Loading season history…',
     failed: 'Season history could not be loaded.',
     heading: 'Season history',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'Common', RARE: 'Rare', EPIC: 'Epic', LEGENDARY: 'Legendary' },
   award: {
+    remainingTime: '{{duration}} remaining',
+    locked: 'Not yet earned',
+    unlock: 'This piece is added to your collection automatically when you reach the goal.',
+    remaining_one: '{{count}} remaining',
+    remaining_other: '{{count}} remaining',
     earned: 'Earned',
     earnedUnknown: 'Date not recorded',
     season: 'Season',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: 'Deep Sight', goal: 'Send {{count}} probes.' },
     'astera-supporter': { name: 'Supporter', goal: 'Hold the Supporter badge by donating to Astera Online.' },
     'troublemaker': { name: 'Troublemaker', goal_one: 'Fight a commander of a higher tier than yours {{count}} time. The tiers at launch count.', goal_other: 'Fight commanders of a higher tier than yours {{count}} times. The tiers at launch count.' },
-    'show-off': { name: 'Show-off', goal_one: 'Buy {{count}} appearance.', goal_other: 'Buy {{count}} different appearances.' },
+    'show-off': { name: 'Style Enthusiast', goal_one: 'Buy {{count}} appearance.', goal_other: 'Buy {{count}} different appearances.' },
   },
 };

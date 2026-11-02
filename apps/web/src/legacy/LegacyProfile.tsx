@@ -16,10 +16,10 @@ import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { full } from '../lib/format.js';
 import { ShowcaseShelf } from './ShowcaseShelf.js';
 import { AwardPicture, AwardTile, legacyDate } from './AwardTile.js';
-import { AwardSheet } from './AwardSheet.js';
+import { AwardSheet, LockedAwardSheet } from './AwardSheet.js';
 import { ShowcaseEditor } from './ShowcaseEditor.js';
 import {
-  legacyAwardTitle, legacyDefinitionName, legacyGoalText, legacyNextGoal, legacyProgressValue, sortLegacyAwards,
+  legacyAwardTitle, legacyDefinitionName, legacyNextGoal, legacyProgressValue, sortLegacyAwards,
 } from './presentation.js';
 import { useLegacyCollection, useLegacyProgress, useLegacySeasons } from './queries.js';
 
@@ -63,7 +63,7 @@ export function LegacyProfileView({ profile, account, live = true }: {
           <SeasonHistory publicId={profile.publicId} awards={awards} onOpen={setOpen} />
           {profile.self && <p className="text-label leading-snug text-v2-ink-3">{t('legacy.permanence')}</p>}
         </>}
-        {tab === 'collection' && <CollectionPanel profile={profile} awards={awards} loading={collection.isPending} failed={collection.isError} onOpen={setOpen} />}
+        {tab === 'collection' && <CollectionPanel profile={profile} awards={awards} loading={collection.isPending} failed={collection.isError} onOpen={setOpen} live={live} />}
         {tab === 'account' && account}
       </div>
       {open && <AwardSheet profile={profile} award={open} live={live} onClose={() => { setOpen(null); }} />}
@@ -202,8 +202,8 @@ function SeasonCard({ season, awards, onOpen }: { season: LegacySeason; awards: 
 type Filter = 'ALL' | LegacyAward['category'];
 
 /** Everything a commander holds, rarest first; on your own profile, the goals still ahead. */
-function CollectionPanel({ profile, awards, loading, failed, onOpen }: {
-  profile: Profile; awards: readonly LegacyCollectedAward[]; loading: boolean; failed: boolean; onOpen: (award: LegacyAward) => void;
+function CollectionPanel({ profile, awards, loading, failed, onOpen, live }: {
+  profile: Profile; awards: readonly LegacyCollectedAward[]; loading: boolean; failed: boolean; onOpen: (award: LegacyAward) => void; live: boolean;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -226,7 +226,7 @@ function CollectionPanel({ profile, awards, loading, failed, onOpen }: {
           {shown.map(award => <AwardTile key={award.id} award={award} onOpen={() => { onOpen(award); }} />)}
         </div>
       )}
-      {profile.self && <NextGoals />}
+      {profile.self && <NextGoals live={live} />}
     </section>
   );
 }
@@ -234,11 +234,11 @@ function CollectionPanel({ profile, awards, loading, failed, onOpen }: {
 const PREVIEW_GOALS = 6;
 
 /** The open ladders, closest first: the next piece on each and how far along it is. */
-function NextGoals() {
+function NextGoals({ live }: { live: boolean }) {
   const { t } = useTranslation();
   const progress = useLegacyProgress(true).data;
   const [all, setAll] = useState(false);
-  const [opened, setOpened] = useState<{ definition: LegacyDefinition; goal: number } | null>(null);
+  const [opened, setOpened] = useState<{ award: LegacyAward; definition: LegacyDefinition; goal: number; value: number } | null>(null);
   if (!progress) return null;
   const open = progress.achievements.flatMap(row => {
     const definition = LEGACY_CATALOGUE.find(entry => entry.id === row.id);
@@ -258,19 +258,14 @@ function NextGoals() {
             form: definition.form, rarity: legacyAwardRarity(definition.id, next.tier),
             sourceSeasonId: null, earnedAt: null, grantedAt: new Date(0), seasonOrdinal: null, rank: null,
           };
-          return <AwardTile key={definition.id} award={placeholder} onOpen={() => { setOpened({ definition, goal: next.goal }); }}
+          return <AwardTile key={definition.id} award={placeholder} onOpen={() => { setOpened({ award: placeholder, definition, goal: next.goal, value }); }}
             locked={{ value: legacyProgressValue(definition, value), goal: legacyProgressValue(definition, next.goal), label: legacyDefinitionName(definition.id) }} />;
         })}
       </div>
       {open.length > PREVIEW_GOALS && (
         <Button variant="ghost" onClick={() => { setAll(!all); }}>{all ? t('legacy.collection.next') : `${t('legacy.collection.all')} · ${String(open.length)}`}</Button>
       )}
-      {opened && (
-        <p role="status" className="rounded-control border border-v2-line bg-v2-panel p-3 text-caption leading-snug">
-          <span className="block font-semibold">{legacyDefinitionName(opened.definition.id)}</span>
-          {legacyGoalText(opened.definition, opened.goal)}
-        </p>
-      )}
+      {opened && <LockedAwardSheet {...opened} live={live} onClose={() => { setOpened(null); }} />}
     </section>
   );
 }

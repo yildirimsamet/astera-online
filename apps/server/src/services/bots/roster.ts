@@ -6,6 +6,7 @@ import { accounts, botProfiles } from '../../db/schema.js';
 import { hashPassword } from '../../auth/password.js';
 import { normaliseUsername, USERNAME_PATTERN } from '../../auth/credentials.js';
 import { GameError } from '../planet.js';
+import { refreshLegacyAwards } from '../legacy.js';
 import { personaFor, type BotPersonaId } from './personas.js';
 import type { CountryCode } from '@astera/rules';
 
@@ -165,6 +166,7 @@ export async function addBot(db: Db, displayName: string, clock: Clock, country:
       nextActionAt: clock.now(),
       createdAt: clock.now(),
     });
+    await refreshLegacyAwards(tx, account.id, clock.now());
 
     return {
       accountId: account.id,

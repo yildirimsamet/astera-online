@@ -27,11 +27,13 @@ export async function verifyLegacyFrontend(out) {
     }
 
     await open('legacy-peek', '&closed=1');
+    assert.equal(await page.locator('.galaxy-commander-cup').count(), 0);
     await page.getByRole('button', { name: 'Kestrel Sable profilini aç' }).click();
     await page.locator('[data-legacy-peek]').waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('[data-legacy-peek-piece]')].every(tile => tile.querySelector('img')?.complete));
+    assert.ok(await page.locator('[data-legacy-peek-piece]').first().getByText('(Sz. 12)', { exact: true }).isVisible());
     await shot('commander-peek-350');
-    await page.getByRole('button', { name: 'Honor Şampiyonu · S12', exact: true }).click();
+    await page.getByRole('button', { name: 'Honor Şampiyonu · (Sz. 12)', exact: true }).click();
     await page.locator('[data-legacy-award]').waitFor();
     await page.waitForTimeout(1200);
     await shot('visitor-award-350');
@@ -62,6 +64,15 @@ export async function verifyLegacyFrontend(out) {
     assert.ok(await tiles.count() > 0 && await tiles.count() < all);
     await shot('combat-filter-350');
     await page.getByRole('radio', { name: 'Tümü', exact: true }).click();
+    await page.locator('[data-legacy-tile][data-locked]').first().click();
+    const locked = page.locator('[data-legacy-locked]');
+    await locked.waitFor();
+    await page.waitForTimeout(1600);
+    assert.ok(await locked.getByText('Hedefe ulaştığında bu parça otomatik olarak koleksiyonuna eklenir.').isVisible());
+    assert.equal(await page.getByRole('button', { name: 'Vitrine koy', exact: true }).count(), 0);
+    await shot('locked-goal-350');
+    await page.keyboard.press('Escape');
+    assert.equal(await locked.count(), 0);
     await page.getByRole('button', { name: 'Radyasyon Ustası IV', exact: true }).click();
     await page.getByRole('button', { name: 'Unvan yap', exact: true }).click();
     await page.getByText('Unvanın', { exact: true }).waitFor();

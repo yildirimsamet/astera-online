@@ -5,10 +5,11 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LEGACY_CATALOGUE } from '@astera/rules';
+import { LEGACY_CATALOGUE, type LegacyDefinition } from '@astera/rules';
 import type { LegacyAward, LegacyProfile } from '../api/legacySchemas.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { durationPrecise } from '../lib/time.js';
 import { Button, Note } from '../v2/kit/Surface.js';
 import { AwardStage } from './AwardStage.js';
 import { legacyDate } from './AwardTile.js';
@@ -119,6 +120,43 @@ export function AwardSheet({ profile, award, live = true, onClose }: {
         )}
         {profile.self && !onShelf && shelfIds.length >= 6 && <p className="text-label text-v2-ink-3">{t('legacy.award.shelfFull')}</p>}
         {failed && <p role="alert" className="text-label text-v2-hostile">{t('legacy.award.failed')}</p>}
+        <Note>{t('legacy.award.cosmetic')}</Note>
+      </div>
+    </Sheet>
+  );
+}
+
+/** Unowned pieces have a catalogue rule, never an owned-award API request or equip action. */
+export function LockedAwardSheet({ award, definition, goal, value, live = true, onClose }: {
+  award: LegacyAward; definition: LegacyDefinition; goal: number; value: number; live?: boolean; onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const focus = useLegacyDialogFocus();
+  const current = legacyProgressValue(definition, value);
+  const target = legacyProgressValue(definition, goal);
+  const remaining = Math.max(0, goal - value);
+  const remainingLabel = definition.metric === 'MONUMENT_SECONDS'
+    ? t('legacy.award.remainingTime', { duration: durationPrecise(remaining / 60) })
+    : t('legacy.award.remaining', { count: remaining });
+  return (
+    <Sheet placement="dialog" detents={['full']} headerArt={ATMOSPHERE.legacy}
+      eyebrow={t('legacy.award.locked')} title={legacyAwardTitle(award)} onClose={onClose}>
+      <div ref={focus} tabIndex={-1} data-legacy-locked className="flex flex-col gap-3 pb-4 font-v2-ui text-v2-ink outline-none">
+        <AwardStage award={award} live={live} />
+        <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3">
+          <h3 className="v2-legend">{t('legacy.award.howTo')}</h3>
+          <p className="text-caption leading-snug">{legacyGoalText(definition, goal)}</p>
+          <div className="flex items-baseline justify-between gap-2 text-label">
+            <span className="text-v2-ink-2">{t('legacy.award.progress')}</span>
+            <span className="font-v2-mono font-semibold text-v2-premium">{current}/{target}</span>
+          </div>
+          <div role="progressbar" aria-label={t('legacy.award.progress')} aria-valuenow={value} aria-valuemin={0} aria-valuemax={goal}
+            className="h-1.5 overflow-hidden rounded-full bg-v2-line">
+            <span className="block h-full rounded-full bg-v2-premium" style={{ width: `${String(Math.min(100, value / goal * 100))}%` }} />
+          </div>
+          <p className="text-label text-v2-ink-2">{remainingLabel}</p>
+          <p className="text-caption leading-snug text-v2-ink-2">{t('legacy.award.unlock')}</p>
+        </section>
         <Note>{t('legacy.award.cosmetic')}</Note>
       </div>
     </Sheet>

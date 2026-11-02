@@ -231,6 +231,7 @@ const schema = z.object({
    * Operator ceiling. Real-player demand, staged seating and the authored bot
    * address pool may all leave a galaxy below this limit.
    */
+  BOT_LEGACY_ENABLED: z.enum(['true', 'false']).default('true').transform(value => value === 'true'),
   BOTS_PER_GALAXY: z.coerce.number().int().min(1).max(MULTI_WORLD.botSlots).default(BOTS.maxPerGalaxy),
   // Explicit rollout switch. Disabling never re-enables destructive reclaim.
   SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),

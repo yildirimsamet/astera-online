@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ESCAPE, combatOutcomeTable } from '@astera/rules';
+import { ESCAPE } from '@astera/rules';
 import i18n from '../../src/i18n/index.js';
 import { compact } from '../../src/lib/format.js';
 import { ratioAt } from '../../src/lib/ruler.js';
@@ -12,7 +12,7 @@ import { ForceRuler } from '../../src/v2/kit/ForceRuler.js';
  *
  * Each side's matchup power against the other as the probe allows it — a range, never one
  * guessed figure — and their ratio on one strip, with even and the 3× fleet escape marked.
- * It gives the inputs and the rule (the owner's outcome table, one tap deep) and never the
+ * It gives the inputs and the rule, one tap deep, and never the
  * answer: no winner, no chance, no expected loss.
  */
 
@@ -157,7 +157,7 @@ describe('what it says about the reading', () => {
 });
 
 describe('the rule, one tap deep', () => {
-  it('says what power counts and lays out the owner’s outcome table', () => {
+  it('explains power without exposing the internal outcome table', () => {
     render(<ForceRuler power={ahead} theirs={stamp} escape={{ verdict: null, minimumCombatShips: 5 }} />);
     expect(screen.queryByTestId('ruler-rule')).toBeNull();
     const toggle = screen.getByRole('button', { name: /what is this/i });
@@ -167,13 +167,9 @@ describe('the rule, one tap deep', () => {
     expect(rule).toHaveTextContent(/counter/i);
     expect(rule).toHaveTextContent(/research/i);
     expect(rule).toHaveTextContent(/worst case/i);
-    const rows = rule.querySelectorAll('[data-outcome-row]');
-    expect(rows).toHaveLength(combatOutcomeTable().length);
-    expect(rows[0]).toHaveTextContent('1:1');
-    expect(rows[0]).toHaveTextContent('10–25%');
-    expect(rows[5]).toHaveTextContent('1:2');
-    expect(rows[5]).toHaveTextContent('50%');
-    expect(rows[5]).toHaveTextContent('13%');
+    expect(rule.querySelectorAll('[data-outcome-row]')).toHaveLength(0);
+    expect(rule).not.toHaveTextContent('10–25%');
+    expect(rule).not.toHaveTextContent(i18n.t('counter.outcomeHeading'));
     expect(rule).toHaveTextContent(/5 fighting ships/i);
     expect(rule).not.toHaveTextContent('{{');
   });

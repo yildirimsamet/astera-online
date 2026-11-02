@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'Henüz parçan yok. Bir sezonu bitir veya bir hedefe ulaş.',
   },
   seasons: {
+    short: '(Sz. {{ordinal}})',
     loading: 'Sezon geçmişi yükleniyor…',
     failed: 'Sezon geçmişi yüklenemedi.',
     heading: 'Sezon geçmişi',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'Yaygın', RARE: 'Nadir', EPIC: 'Destansı', LEGENDARY: 'Efsanevi' },
   award: {
+    remainingTime: '{{duration}} kaldı',
+    locked: 'Henüz kazanılmadı',
+    unlock: 'Hedefe ulaştığında bu parça otomatik olarak koleksiyonuna eklenir.',
+    remaining_one: '{{count}} kaldı',
+    remaining_other: '{{count}} kaldı',
     earned: 'Kazanıldı',
     earnedUnknown: 'Tarih kaydı yok',
     season: 'Sezon',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: 'Derin Bakış', goal: '{{count}} sonda gönder.' },
     'astera-supporter': { name: 'Destekçi', goal: 'Astera Online’a bağış yap ve Destekçi rozetini al.' },
     'troublemaker': { name: 'Başa Bela', goal_one: 'Senden yüksek kademedeki bir komutanla {{count}} kez çarpış. Kademeler fırlatma anına göre sayılır.', goal_other: 'Senden yüksek kademedeki komutanlarla {{count}} kez çarpış. Kademeler fırlatma anına göre sayılır.' },
-    'show-off': { name: 'Gösterişçi', goal_one: '{{count}} görünüm satın al.', goal_other: '{{count}} farklı görünüm satın al.' },
+    'show-off': { name: 'Stil Sahibi', goal_one: '{{count}} görünüm satın al.', goal_other: '{{count}} farklı görünüm satın al.' },
   },
 };

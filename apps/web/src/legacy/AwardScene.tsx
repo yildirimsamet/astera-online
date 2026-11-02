@@ -14,7 +14,7 @@ import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { Exhaust } from '../galaxy/Fleets.js';
 import { StrategicExhaust } from '../galaxy/StrategicExhaust.js';
 import { buildAward, type BuiltAward } from './awardObject.js';
-import { legacyArt, legacyFinish, legacyEditionLabel } from './presentation.js';
+import { legacyArt, legacyFinish, legacyEditionMark } from './presentation.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
 
 /** A frame rate a turntable needs and no more; paused while unseen. */
@@ -97,7 +97,7 @@ function ContactShadow({ width }: { width: number }) {
 export function useBuiltAward(award: LegacyAward | null): BuiltAward | null {
   const [built, setBuilt] = useState<BuiltAward | null>(null);
   const definitionId = award?.definitionId, tier = award?.tier, rarity = award?.rarity;
-  const edition = award ? legacyEditionLabel(award) : null;
+  const edition = award ? legacyEditionMark(award) : null;
   useEffect(() => {
     if (definitionId === undefined || tier === undefined || rarity === undefined) { setBuilt(null); return; }
     const art = legacyArt({ definitionId, tier, rarity });

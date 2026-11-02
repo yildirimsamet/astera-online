@@ -77,7 +77,7 @@ export function legacyArt(award: AwardDegree): LegacyArt | undefined {
 /** Same builder identity for a shelf piece and its cached image; same-metal tiers stay distinct. */
 export function legacyVisualKey(award: AwardFace & Pick<LegacyAward, 'seasonOrdinal'>): string {
   const art = legacyArt(award);
-  return [award.definitionId, award.tier, legacyFinish(award), legacyEditionLabel(award) ?? '',
+  return [award.definitionId, award.tier, legacyFinish(award), legacyEditionMark(award) ?? '',
     art && 'url' in art ? art.url : art?.kind ?? ''].join('|');
 }
 
@@ -109,12 +109,18 @@ export function legacyDefinitionName(definitionId: string): string {
   return hasCopy(definitionId) ? i18n.t(`legacy.def.${definitionId}.name`) : definitionId;
 }
 
-/** "S12" for a season's piece, "2027" for a year's; a career piece has no edition to show. */
+/** Localized season label, a year, or no edition for a career piece. */
 export function legacyEditionLabel(award: Pick<LegacyAward, 'edition' | 'seasonOrdinal' | 'definitionId'>): string | null {
   const year = yearOf(award.edition);
   if (year) return year;
+  return award.seasonOrdinal !== null ? i18n.t('legacy.seasons.short', { ordinal: award.seasonOrdinal }) : null;
+}
+
+/** Short engraving on the physical coin; display copy must not alter the artwork or its cache. */
+export function legacyEditionMark(award: Pick<LegacyAward, 'edition' | 'seasonOrdinal' | 'definitionId'>): string | null {
   const definition = definitionOf(award.definitionId);
-  return definition?.scope === 'SEASON' && award.seasonOrdinal !== null ? `S${String(award.seasonOrdinal)}` : null;
+  return definition?.scope === 'SEASON' && award.seasonOrdinal !== null
+    ? `S${String(award.seasonOrdinal)}` : yearOf(award.edition);
 }
 
 function duration(seconds: number): string {

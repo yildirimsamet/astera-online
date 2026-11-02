@@ -69,6 +69,7 @@ describe('the commander name on a planet label', () => {
     render(<GalaxyCommanderName node={known} onOpen={onOpen} />);
     fireEvent.click(screen.getByRole('button', { name: 'Open the profile of Mira' }));
     expect(onOpen).toHaveBeenCalledWith(known);
+    expect(screen.getByRole('button').querySelector('.galaxy-commander-cup')).toBeNull();
   });
 
   it('stays plain text without a player behind the name or without a place to open it', () => {
@@ -83,7 +84,8 @@ describe('the commander name on a planet label', () => {
 describe('the small showcase over the galaxy', () => {
   it('shows the title, the shelf, the career and the last season, and hands over to the whole profile', async () => {
     const { paths, onOpenProfile } = show(path => path.endsWith('/seasons') ? json(seasons) : json(profile));
-    expect(await screen.findByRole('button', { name: 'Honor Champion · S12' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Honor Champion · (S. 12)' })).toBeInTheDocument();
+    expect(screen.getByText('(S. 12)')).toBeVisible();
     expect(paths[0]).toBe(`/api/legacy/players/${PLAYER}`);
     const shelf = screen.getByRole('list', { name: i18n.t('legacy.shelf.heading') });
     expect(shelf.querySelectorAll('[data-legacy-peek-piece]')).toHaveLength(2);

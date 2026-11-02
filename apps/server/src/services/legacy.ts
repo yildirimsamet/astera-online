@@ -7,10 +7,11 @@ import {
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { beforeCommit } from '../db/finalizers.js';
 import {
-  adminActions, cosmeticEntitlements, legacyActivityDays, legacyAwards, legacyFacts, legacyMonumentIntervals,
+  adminActions, botProfiles, cosmeticEntitlements, legacyActivityDays, legacyAwards, legacyFacts, legacyMonumentIntervals,
   legacyParticipation, legacyProfiles, legacyShowcaseSlots, players, seasonResults, seasons, shards,
 } from '../db/schema.js';
 import { GameError } from './planet.js';
+import { botLegacyPieces } from './bots/legacy.js';
 
 const DAY = 86_400_000;
 const deferred = new WeakMap<Tx, Map<string, Date>>();
@@ -288,7 +289,24 @@ async function legacyState(db: Queryable, accountId: string, at: Date) {
     const date = purchaseDates[goal - 1];
     if (date) earnedDates.set(`PAID_COSMETICS:${String(goal)}`, date);
   }
-  return { eligible, totals, perSeason, years, earnedDates, earnedSources, loyal, activity };
+  const [roster] = await db.select({ createdAt: botProfiles.createdAt,
+    initialized: sql<boolean>`exists(select 1 from ${legacyAwards} where ${legacyAwards.accountId} = ${accountId}
+      and ${legacyAwards.evidence}->>'showcaseInitialized' = 'true')`,
+  }).from(botProfiles)
+    .where(and(eq(botProfiles.accountId, accountId), lte(botProfiles.createdAt, at)));
+  const initialPieces = roster && (process.env.BOT_LEGACY_ENABLED !== 'false' || roster.initialized) ? botLegacyPieces(accountId) : [];
+  if (roster) for (const definition of initialPieces) {
+    if (definition.scope === 'YEAR') {
+      const year = roster.createdAt.getUTCFullYear();
+      if (!years.has(year)) years.set(year, roster.createdAt);
+    } else {
+      const goal = definition.goals[0]!;
+      totals.set(definition.metric, Math.max(totals.get(definition.metric) ?? 0, goal));
+      const key = `${definition.metric}:${String(goal)}`;
+      if (!earnedDates.has(key)) earnedDates.set(key, roster.createdAt);
+    }
+  }
+  return { eligible, totals, perSeason, years, earnedDates, earnedSources, loyal, activity, initialPieces };
 }
 
 export async function legacyProgress(db: Queryable, accountId: string, at: Date) {
@@ -393,6 +411,21 @@ export async function refreshLegacyAwards(tx: Tx, accountId: string, at: Date): 
     return previous?.revocationReason === 'INELIGIBLE' ? [previous.id] : [];
   });
   if (restored.length > 0) await tx.update(legacyAwards).set({ revokedAt: null, revocationReason: null }).where(inArray(legacyAwards.id, restored));
+  // Record initialization even when the pieces were already earned, so an intentional empty shelf stays empty.
+  const starterIds = state.initialPieces.map(row => row.id);
+  if (starterIds.length > 0 && !existing.some(row => row.evidence.showcaseInitialized === true)) {
+    const pieces = await tx.select({ id: legacyAwards.id, definitionId: legacyAwards.definitionId }).from(legacyAwards)
+      .where(and(eq(legacyAwards.accountId, accountId), inArray(legacyAwards.definitionId, starterIds),
+        eq(legacyAwards.tier, 1), isNull(legacyAwards.revokedAt)));
+    const chosen = starterIds.flatMap(id => pieces.find(row => row.definitionId === id) ?? []);
+    if (chosen[0]) {
+      await tx.update(legacyAwards).set({ evidence: sql`${legacyAwards.evidence} || '{"showcaseInitialized":true}'::jsonb` })
+        .where(eq(legacyAwards.id, chosen[0].id));
+      const slots = await tx.select({ slot: legacyShowcaseSlots.slot }).from(legacyShowcaseSlots)
+        .where(eq(legacyShowcaseSlots.accountId, accountId)).limit(1);
+      if (slots.length === 0) await tx.insert(legacyShowcaseSlots).values(chosen.map((row, slot) => ({ accountId, slot, awardId: row.id })));
+    }
+  }
 }
 
 async function assertOwnedAwards(tx: Tx, accountId: string, ids: readonly string[]): Promise<void> {

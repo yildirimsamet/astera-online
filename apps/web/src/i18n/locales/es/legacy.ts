@@ -30,6 +30,7 @@ export const legacy = {
     empty: 'Aún no tienes piezas. Termina una temporada o alcanza una meta.',
   },
   seasons: {
+    short: '(T. {{ordinal}})',
     loading: 'Cargando el historial de temporadas…',
     failed: 'No se pudo cargar el historial de temporadas.',
     heading: 'Historial de temporadas',
@@ -70,6 +71,11 @@ export const legacy = {
   },
   rarity: { COMMON: 'Común', RARE: 'Rara', EPIC: 'Épica', LEGENDARY: 'Legendaria' },
   award: {
+    remainingTime: 'Faltan {{duration}}',
+    locked: 'Aún sin conseguir',
+    unlock: 'Esta pieza se añade automáticamente a tu colección cuando alcanzas el objetivo.',
+    remaining_one: 'Faltan {{count}}',
+    remaining_other: 'Faltan {{count}}',
     earned: 'Obtenida',
     earnedUnknown: 'Fecha no registrada',
     season: 'Temporada',
@@ -162,6 +168,6 @@ export const legacy = {
     'deep-sight': { name: 'Mirada profunda', goal: 'Envía {{count}} sondas.' },
     'astera-supporter': { name: 'Colaborador', goal: 'Dona a Astera Online y recibe la insignia de Colaborador.' },
     'troublemaker': { name: 'Alborotador', goal_one: 'Combate {{count}} vez contra un comandante de nivel superior al tuyo. Cuentan los niveles al lanzar.', goal_other: 'Combate {{count}} veces contra comandantes de nivel superior al tuyo. Cuentan los niveles al lanzar.' },
-    'show-off': { name: 'Presumido', goal_one: 'Compra {{count}} apariencia.', goal_other: 'Compra {{count}} apariencias distintas.' },
+    'show-off': { name: 'Con estilo', goal_one: 'Compra {{count}} apariencia.', goal_other: 'Compra {{count}} apariencias distintas.' },
   },
 };

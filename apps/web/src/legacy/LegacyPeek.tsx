@@ -74,6 +74,7 @@ export function LegacyPeek({ source, name, onClose, onOpenProfile }: {
                         <span aria-hidden="true" className="legacy-rarity-text line-clamp-2 min-h-[2.3em] px-0.5 text-center text-micro font-semibold leading-tight">
                           {legacyAwardTitle(award)}
                         </span>
+                        <span aria-hidden="true" className="min-h-[1.15em] font-v2-mono text-micro leading-tight text-v2-ink-2">{legacyEditionLabel(award)}</span>
                       </button>
                     ) : <span aria-hidden="true" className="grid aspect-square w-full place-items-center"><span className="legacy-peek-socket h-1 w-3/5 rounded-full" /></span>}
                   </li>
