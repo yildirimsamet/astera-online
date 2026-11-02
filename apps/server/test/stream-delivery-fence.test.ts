@@ -3,7 +3,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { pino } from 'pino';
 import { z } from 'zod';
-import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
+import { connect, type Socket } from 'node:net';
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { buildApp, type BuiltApp } from '../src/app.js';
 import * as schema from '../src/db/schema.js';
 import { accounts, nativeSessions, planets, players } from '../src/db/schema.js';
@@ -203,4 +204,23 @@ it('closes every stream of a galaxy that rolls over, after telling it', async ()
   await publishShard(f.db, f.seasonId, 'rollover');
   await stream.until('the stream to close', stream.ended);
   expect(stream.events()).toEqual(['shard:rollover']);
+});
+
+it('keeps nothing for a caller who left before the stream opened', async () => {
+  const accessToken = await token(0);
+  const { port } = new URL(base);
+  let socket: Socket | undefined;
+  // Leaves while the request is being authenticated, as a reconnect under load does.
+  const identity = built.app.tokens.identity.bind(built.app.tokens);
+  vi.spyOn(built.app.tokens, 'identity').mockImplementation(async (...args) => {
+    socket?.destroy();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return identity(...args);
+  });
+  const opened = built.app.streams.status().opened;
+  socket = connect(Number(port), '127.0.0.1', () => {
+    socket?.write(`GET /api/stream HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer ${accessToken}\r\n\r\n`);
+  });
+  await waitFor('the stream to reach its route', () => built.app.streams.status().opened > opened, 5_000);
+  await waitFor('its lease to end', () => built.app.streams.status().active === 0);
 });

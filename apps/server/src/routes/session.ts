@@ -315,6 +315,8 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     req.raw.on('error', () => {
       cleanup('error');
     });
+    // Left while this request waited for its auth or its read: 'close' has already fired.
+    if (req.raw.destroyed) cleanup('client');
 
     // This first write flushes the response headers only after both topics are
     // attached, making the client's `onOpen` boundary truthful.
