@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { coldStartReads, eventReads, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -165,5 +165,30 @@ describe('the opening reads', () => {
     const out = await coldStartReads(['/b'], read, pause);
     expect(asked).toHaveLength(5);
     expect(out[0]?.valid).toBe(false);
+  });
+});
+
+describe('the commanders of a ramp joining', () => {
+  it('keeps the ones who joined when one fails, and says who failed and why', async () => {
+    const out = await joinAll(['a', 'b', 'c'], async (name) => {
+      await Promise.resolve();
+      if (name === 'b') throw new Error('login failed: 429 RATE_LIMITED');
+    }, (name) => `join:${name}`);
+    expect(out.joined).toEqual(['a', 'c']);
+    expect(out.failures).toEqual([{ label: 'join:b', error: 'login failed: 429 RATE_LIMITED' }]);
+  });
+
+  it('keeps the original order whatever order they finish in', async () => {
+    const out = await joinAll([30, 1, 10], async (ms) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+    }, String);
+    expect(out.joined).toEqual([30, 1, 10]);
+    expect(out.failures).toEqual([]);
+  });
+
+  it('hands the index to the join, for the ramp delay', async () => {
+    const seen: number[] = [];
+    await joinAll(['a', 'b'], async (_, index) => { await Promise.resolve(); seen.push(index); }, String);
+    expect(seen).toEqual([0, 1]);
   });
 });

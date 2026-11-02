@@ -152,3 +152,26 @@ export async function coldStartReads<Outcome extends { valid: boolean }>(
   }
   return outcomes;
 }
+
+export interface JoinFailure { label: string; error: string }
+
+/**
+ * THE RAMP SURVIVES ONE COMMANDER. A failed login is a measurement, not the end of the
+ * run: one rejected join used to kill the process at connection 1,042 of 1,250 before any
+ * report was written (2026-11-02), so nobody could say what the server had answered.
+ */
+export async function joinAll<Item>(
+  items: readonly Item[],
+  join: (item: Item, index: number) => Promise<void>,
+  label: (item: Item) => string,
+): Promise<{ joined: Item[]; failures: JoinFailure[] }> {
+  const settled = await Promise.allSettled(items.map((item, index) => join(item, index)));
+  const joined: Item[] = [];
+  const failures: JoinFailure[] = [];
+  settled.forEach((result, index) => {
+    const item = items[index] as Item;
+    if (result.status === 'fulfilled') joined.push(item);
+    else failures.push({ label: label(item), error: result.reason instanceof Error ? result.reason.message : String(result.reason) });
+  });
+  return { joined, failures };
+}

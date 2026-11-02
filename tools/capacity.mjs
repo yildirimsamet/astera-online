@@ -46,7 +46,7 @@ import {
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { coldStartReads, eventReads, failedReads, FULL_READS, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -821,13 +821,15 @@ const miningPulse = async (vusToUse, signal) => {
 };
 
 const login = async (vu) => {
-  const { response, body } = await request(vu, '/api/auth/login', {
+  const path = '/api/auth/login';
+  const [outcome] = await coldStartReads([path], () => request(vu, path, {
     method: 'POST',
     baseUrl: vu.loginBaseUrl,
     body: { username: usernameFor(vu.accountIndex), password },
-  });
-  if (!response?.ok || !body || typeof body.accessToken !== 'string') {
-    throw new Error(`login failed for ${usernameFor(vu.accountIndex)} on ${vu.loginBaseUrl}`);
+  }), (ms) => pause(ms), random);
+  const { response, body } = outcome;
+  if (!outcome.valid || !response?.ok || !body || typeof body.accessToken !== 'string') {
+    throw new Error(`login failed for ${usernameFor(vu.accountIndex)} on ${vu.loginBaseUrl}: ${failedReads([path], [outcome])}`);
   }
   vu.token = body.accessToken;
   vu.cookie = response.headers.getSetCookie?.().map((value) => value.split(';')[0]).join('; ') ?? '';
@@ -1333,7 +1335,7 @@ const activityController = new AbortController();
 const streamController = new AbortController();
 const activityTasks = [{ label: 'metrics', promise: metricLoop(activityController.signal) }];
 const streamTasks = [];
-await Promise.all(vus.map(async (vu, index) => {
+const { joined, failures: joinFailures } = await joinAll(vus, async (vu, index) => {
   const delay = connectionCount <= 1 ? 0 : (index / (connectionCount - 1)) * rampSeconds * 1000;
   await pause(delay);
   await login(vu);
@@ -1347,12 +1349,12 @@ await Promise.all(vus.map(async (vu, index) => {
     { label: `traffic:${String(vu.index)}`, promise: trafficLoop(vu, activityController.signal) },
     { label: `actions:${String(vu.index)}`, promise: actionLoop(vu, activityController.signal) },
   );
-}));
+}, (vu) => `join:${String(vu.index)}`);
 const steadyStartedAt = new Date();
 activityTasks.push(
-  { label: 'launch-wave', promise: launchWave(vus, activityController.signal) },
-  { label: 'reconnect-storm', promise: reconnectStorm(vus, streamController.signal) },
-  { label: 'mining-pulse', promise: miningPulse(vus, activityController.signal) },
+  { label: 'launch-wave', promise: launchWave(joined, activityController.signal) },
+  { label: 'reconnect-storm', promise: reconnectStorm(joined, streamController.signal) },
+  { label: 'mining-pulse', promise: miningPulse(joined, activityController.signal) },
 );
 
 const progress = setInterval(() => {
@@ -1381,6 +1383,7 @@ for (const vu of vus) {
 const streamResults = await Promise.allSettled(streamTasks.map((task) => task.promise));
 await Promise.allSettled(vus.flatMap((vu) => vu.reconnectResync ? [vu.reconnectResync] : []));
 const taskFailures = [
+  ...joinFailures.map(({ label, error }) => ({ result: { status: 'rejected', reason: new Error(error) }, label })),
   ...activityResults.map((result, index) => ({ result, label: activityTasks[index]?.label ?? 'activity' })),
   ...streamResults.map((result, index) => ({ result, label: streamTasks[index]?.label ?? 'stream' })),
 ].filter(({ result }) => result.status === 'rejected').map(({ result, label }) => ({
