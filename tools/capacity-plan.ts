@@ -32,6 +32,17 @@ export const checksAnswer = (requests: number, every: number): boolean => reques
 export const miningLaunchBody = (rock: { id?: unknown } | undefined): { asteroidId: string; craft: number } | null =>
   typeof rock?.id === 'string' ? { asteroidId: rock.id, craft: 1 } : null;
 
+interface WithId { id?: unknown }
+
+/** A player's mining action: a rock if the disc holds one, otherwise a wreck, otherwise nothing to do. */
+export function miningWrite(asteroids: readonly WithId[], debris: readonly WithId[], roll: number) {
+  const pick = <Item>(items: readonly Item[]): Item | undefined => items[Math.floor(roll * items.length)];
+  const body = miningLaunchBody(pick(asteroids));
+  if (body !== null) return { path: '/api/mining/launch', body };
+  const field = pick(debris)?.id;
+  return typeof field === 'string' ? { path: '/api/mining/harvest', body: { fieldId: field, craft: 1 } } : null;
+}
+
 /** The soonest instant still ahead: the one timer the web's `useArrivals` arms. */
 export const soonestArrival = (threads: readonly { arriveAt: string | Date }[], now: number): number | null => {
   const ahead = threads.map(thread => new Date(thread.arriveAt).getTime()).filter(at => Number.isFinite(at) && at > now);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, miningWrite, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -44,6 +44,18 @@ describe('a Prospector launch', () => {
   it('is no launch without a rock', () => {
     expect(miningLaunchBody(undefined)).toBeNull();
     expect(miningLaunchBody({})).toBeNull();
+  });
+});
+
+describe('a mining write', () => {
+  it('mines a rock when one is in the disc', () => {
+    expect(miningWrite([{ id: 'rock' }], [{ id: 'wreck' }], 0)).toEqual({ path: '/api/mining/launch', body: { asteroidId: 'rock', craft: 1 } });
+  });
+  it('salvages a wreck when the disc is empty', () => {
+    expect(miningWrite([], [{ id: 'a' }, { id: 'b' }], 0.5)).toEqual({ path: '/api/mining/harvest', body: { fieldId: 'b', craft: 1 } });
+  });
+  it('is nothing when there is neither', () => {
+    expect(miningWrite([], [], 0)).toBeNull();
   });
 });
 
