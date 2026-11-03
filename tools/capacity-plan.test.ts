@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { capacityUsername, coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { capacityUsername, checksAnswer, coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -22,6 +22,18 @@ describe('the commander a seat logs in as', () => {
     expect(capacityUsername(0)).toBe('cap0001');
     expect(capacityUsername(150)).toBe('cap0151');
     expect(capacityUsername(1999)).toBe('cap2000');
+  });
+});
+
+describe('which answers a run checks against their schema', () => {
+  it('always checks a route\'s first answer, so a rare route cannot go unchecked', () => {
+    expect(checksAnswer(1, 20)).toBe(true);
+    expect(checksAnswer(2, 20)).toBe(false);
+    expect(checksAnswer(19, 20)).toBe(false);
+    expect(checksAnswer(20, 20)).toBe(true);
+  });
+  it('checks every answer unless told otherwise', () => {
+    expect(checksAnswer(7, 1)).toBe(true);
   });
 });
 

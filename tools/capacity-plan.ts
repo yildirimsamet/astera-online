@@ -25,6 +25,9 @@ export const RUNNER_LIMITS = { maxUsers: SERVERS.capacity * SERVERS.count, strea
 /** The commander the seed placed in seat `index`: the seat itself, whichever seat a runner starts from. */
 export const capacityUsername = (index: number): string => `cap${String(index + 1).padStart(4, '0')}`;
 
+/** A route's first answer is always checked, then every `every`th: a rare route must not go unchecked. */
+export const checksAnswer = (requests: number, every: number): boolean => requests === 1 || requests % every === 0;
+
 /** The soonest instant still ahead: the one timer the web's `useArrivals` arms. */
 export const soonestArrival = (threads: readonly { arriveAt: string | Date }[], now: number): number | null => {
   const ahead = threads.map(thread => new Date(thread.arriveAt).getTime()).filter(at => Number.isFinite(at) && at > now);

@@ -24,7 +24,7 @@ import { performance } from 'node:perf_hooks';
 import { ROUTE_SCHEMAS } from './capacity-schemas.ts';
 import { BURST_READS, burstSize, pickWeighted, resolveRead, SINGLE_READS, TIMER_READS, workloadRates, WRITES } from './capacity-workload.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { capacityUsername, coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { capacityUsername, checksAnswer, coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -395,7 +395,7 @@ const request = async (vu, path, options = {}) => {
       const schema = ROUTE_SCHEMAS.get(routeKey);
       const valid = parsed
         && schema !== undefined
-        && (record.requests % validateEvery !== 0 || schema.safeParse(body).success)
+        && (!checksAnswer(record.requests, validateEvery) || schema.safeParse(body).success)
         && (options.validate === undefined || options.validate(body) === true);
       if (!valid) {
         requestIntegrity.invalidPayloads += 1;
@@ -745,8 +745,11 @@ const otherWorld = (vu) => {
   const others = vu.planets.filter((planet) => planet?.id && planet.id !== vu.selfPlanetId);
   return others[Math.floor(random() * others.length)];
 };
-const UPGRADES = ['REFINERY', 'EXTRACTOR', 'VAULT'];
-const REFUSED_FOR_WANT_OF = ['INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
+const UPGRADES = ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT'];
+/** A write a run could not attempt is named in the report, never silently missing from the load. */
+const writeSkips = {};
+const skipWrite = (kind) => { writeSkips[kind] = (writeSkips[kind] ?? 0) + 1; };
+const REFUSED_FOR_WANT_OF = ['CORE_CEILING', 'INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
   'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'ASTEROID_GONE', 'ASTEROID_EMPTY', 'ALREADY_MINING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT'];
 const write = {
   async collect(vu) {
@@ -768,7 +771,7 @@ const write = {
   },
   async mining(vu) {
     const rock = vu.asteroids[Math.floor(random() * vu.asteroids.length)];
-    if (!Number.isInteger(rock?.index)) return;
+    if (!Number.isInteger(rock?.index)) { skipWrite('mining'); return; }
     await request(vu, '/api/mining/launch', { method: 'POST', body: { asteroidIndex: rock.index, craft: 1 }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
   },
   async upgrade(vu) {
@@ -777,7 +780,8 @@ const write = {
   },
   async probe(vu) {
     const target = otherWorld(vu);
-    if (target) await request(vu, '/api/intel/probe', { method: 'POST', body: { targetPlanetId: target.id }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+    if (!target) { skipWrite('probe'); return; }
+    await request(vu, '/api/intel/probe', { method: 'POST', body: { targetPlanetId: target.id }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
   },
   async build(vu) {
     const { path, route } = ownWorld(vu, 'build');
@@ -1725,6 +1729,7 @@ const report = {
     pending: pendingPublicContacts.size,
   },
   taskFailures,
+  writeSkips,
   streams: streamStats,
   arrivals: arrivalStats,
   capacityMetrics,
