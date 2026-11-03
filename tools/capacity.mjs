@@ -24,7 +24,7 @@ import { performance } from 'node:perf_hooks';
 import { ROUTE_SCHEMAS } from './capacity-schemas.ts';
 import { BURST_READS, burstSize, pickWeighted, resolveRead, SINGLE_READS, TIMER_READS, workloadRates, WRITES } from './capacity-workload.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { capacityUsername, checksAnswer, coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -750,7 +750,7 @@ const UPGRADES = ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT'];
 const writeSkips = {};
 const skipWrite = (kind) => { writeSkips[kind] = (writeSkips[kind] ?? 0) + 1; };
 const REFUSED_FOR_WANT_OF = ['CORE_CEILING', 'INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
-  'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'ASTEROID_GONE', 'ASTEROID_EMPTY', 'ALREADY_MINING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT'];
+  'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'NO_SUCH_ASTEROID', 'ASTEROID_GONE', 'ASTEROID_EMPTY', 'ALREADY_MINING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT'];
 const write = {
   async collect(vu) {
     const { path, route } = ownWorld(vu, 'collect');
@@ -770,9 +770,9 @@ const write = {
     await request(vu, '/api/notifications/seen', { method: 'POST', body: {} });
   },
   async mining(vu) {
-    const rock = vu.asteroids[Math.floor(random() * vu.asteroids.length)];
-    if (!Number.isInteger(rock?.index)) { skipWrite('mining'); return; }
-    await request(vu, '/api/mining/launch', { method: 'POST', body: { asteroidIndex: rock.index, craft: 1 }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+    const body = miningLaunchBody(vu.asteroids[Math.floor(random() * vu.asteroids.length)]);
+    if (body === null) { skipWrite('mining'); return; }
+    await request(vu, '/api/mining/launch', { method: 'POST', body, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
   },
   async upgrade(vu) {
     const { path, route } = ownWorld(vu, 'upgrade');
@@ -858,13 +858,14 @@ const miningPulse = async (vusToUse, signal) => {
       }
     }
     for (const asteroid of vu.asteroids) {
-      if (!Number.isInteger(asteroid?.index)) continue;
+      const launchBody = miningLaunchBody(asteroid);
+      if (launchBody === null) continue;
       const intentAt = performance.now();
       const { response, body } = await request(vu, '/api/mining/launch', {
         method: 'POST',
-        body: { asteroidIndex: asteroid.index, craft: 1 },
+        body: launchBody,
         acceptedErrorCodes: [
-          'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'ASTEROID_GONE', 'ASTEROID_EMPTY',
+          'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'NO_SUCH_ASTEROID', 'ASTEROID_GONE', 'ASTEROID_EMPTY',
           'ALREADY_MINING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT',
         ],
       });

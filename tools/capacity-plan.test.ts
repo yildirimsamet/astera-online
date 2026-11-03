@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { capacityUsername, checksAnswer, coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -34,6 +34,16 @@ describe('which answers a run checks against their schema', () => {
   });
   it('checks every answer unless told otherwise', () => {
     expect(checksAnswer(7, 1)).toBe(true);
+  });
+});
+
+describe('a Prospector launch', () => {
+  it('names the rock as the client does', () => {
+    expect(miningLaunchBody({ id: 'abc' })).toEqual({ asteroidId: 'abc', craft: 1 });
+  });
+  it('is no launch without a rock', () => {
+    expect(miningLaunchBody(undefined)).toBeNull();
+    expect(miningLaunchBody({})).toBeNull();
   });
 });
 

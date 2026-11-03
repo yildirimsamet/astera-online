@@ -28,6 +28,10 @@ export const capacityUsername = (index: number): string => `cap${String(index + 
 /** A route's first answer is always checked, then every `every`th: a rare route must not go unchecked. */
 export const checksAnswer = (requests: number, every: number): boolean => requests === 1 || requests % every === 0;
 
+/** What the client sends to mine a rock; a rock with no id is no launch. */
+export const miningLaunchBody = (rock: { id?: unknown } | undefined): { asteroidId: string; craft: number } | null =>
+  typeof rock?.id === 'string' ? { asteroidId: rock.id, craft: 1 } : null;
+
 /** The soonest instant still ahead: the one timer the web's `useArrivals` arms. */
 export const soonestArrival = (threads: readonly { arriveAt: string | Date }[], now: number): number | null => {
   const ahead = threads.map(thread => new Date(thread.arriveAt).getTime()).filter(at => Number.isFinite(at) && at > now);
