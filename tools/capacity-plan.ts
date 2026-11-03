@@ -22,6 +22,9 @@ export const galaxyOf = (index: number, servers: Servers = SERVERS): number => M
 /** Every seat may be online; the server closes an account's oldest stream beyond three (F1.1). */
 export const RUNNER_LIMITS = { maxUsers: SERVERS.capacity * SERVERS.count, streamsPerAccount: 3 } as const;
 
+/** The commander the seed placed in seat `index`: the seat itself, whichever seat a runner starts from. */
+export const capacityUsername = (index: number): string => `cap${String(index + 1).padStart(4, '0')}`;
+
 /** The soonest instant still ahead: the one timer the web's `useArrivals` arms. */
 export const soonestArrival = (threads: readonly { arriveAt: string | Date }[], now: number): number | null => {
   const ahead = threads.map(thread => new Date(thread.arriveAt).getTime()).filter(at => Number.isFinite(at) && at > now);
@@ -85,17 +88,23 @@ export function workerVerdict(input: {
   };
 }
 
-/** The screens a run keeps open, by the web's query key: what a resync re-reads. */
+/**
+ * The screens a client keeps open, by the web's query key: what a resync re-reads, as
+ * `refreshQueries` skips a closed screen's query. Live logs show Chronicle, Leaderboard
+ * and chat messages near zero (0.02 %, 0.1 %, 0.1 %): their screens are opened by hand,
+ * and the workload's own table sends them at that rate.
+ */
 const OPEN_READS: readonly (readonly [readonly string[], string])[] = [
   [['planet'], '/api/planet'], [['planets'], '/api/planets'], [['galaxy'], '/api/galaxy'], [['intel'], '/api/intel'],
   [['notifications'], '/api/notifications?limit=30'], [['pending'], '/api/session/pending'], [['reports'], '/api/reports'],
   [['traffic'], '/api/galaxy/traffic'], [['mining', 'field'], '/api/mining/field'], [['mining', 'status'], '/api/mining/status'],
-  [['rewards'], '/api/rewards'], [['chat', 'messages'], '/api/chat/messages'], [['chat', 'unread'], '/api/chat/unread'],
-  [['chronicle'], '/api/chronicle'],
+  [['rewards'], '/api/rewards'], [['chat', 'unread'], '/api/chat/unread'], [['dm', 'unread'], '/api/dm/unread'],
+  [['pirates'], '/api/pirates'], [['galaxy-events'], '/api/galaxy/events'], [['unknown-signals'], '/api/unknown-signals'],
+  [['monuments'], '/api/monuments'],
 ];
 /** Open too, though a resync does not name them: shard events do. */
 const SHARD_ONLY_READS: readonly (readonly [readonly string[], string])[] = [
-  [['leaderboard'], '/api/leaderboard'], [['season'], '/api/season'],
+  [['season'], '/api/season'],
 ];
 export const FULL_READS: readonly string[] = OPEN_READS.map(([, path]) => path);
 

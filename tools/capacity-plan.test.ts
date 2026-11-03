@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { capacityUsername, coldStartReads, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -14,6 +14,14 @@ describe('the seat plan follows SERVERS', () => {
 
   it('lets a run hold every seat online, three streams per account at most', () => {
     expect(RUNNER_LIMITS).toEqual({ maxUsers: 2000, streamsPerAccount: 3 });
+  });
+});
+
+describe('the commander a seat logs in as', () => {
+  it('is the seat itself, so a second runner further along has its own commanders', () => {
+    expect(capacityUsername(0)).toBe('cap0001');
+    expect(capacityUsername(150)).toBe('cap0151');
+    expect(capacityUsername(1999)).toBe('cap2000');
   });
 });
 
@@ -102,7 +110,19 @@ describe('the reads a stream event provokes', () => {
     expect(eventReads('shard:launch')).toEqual({ paths: ['/api/galaxy/traffic'], heavy: false });
   });
   it('puts growth on the heavy lane', () => {
-    expect(eventReads('shard:world')).toEqual({ paths: ['/api/galaxy', '/api/leaderboard'], heavy: true });
+    expect(eventReads('shard:world')).toEqual({ paths: ['/api/galaxy'], heavy: true });
+  });
+  it('reads no screen the real client keeps closed: live logs show them near zero', () => {
+    expect(eventReads('shard:chronicle').paths).toEqual([]);
+    expect(eventReads('shard:score').paths).toEqual(['/api/galaxy']);
+    expect(FULL_READS).not.toContain('/api/chronicle');
+    expect(FULL_READS).not.toContain('/api/leaderboard');
+    expect(FULL_READS).not.toContain('/api/chat/messages');
+  });
+  it('resyncs every screen the real client keeps open', () => {
+    for (const path of ['/api/pirates', '/api/galaxy/events', '/api/unknown-signals', '/api/monuments', '/api/dm/unread']) {
+      expect(FULL_READS).toContain(path);
+    }
   });
   it('resyncs for what happened to you, and for a private kind the web does not know', () => {
     expect(eventReads('raided')).toEqual({ paths: FULL_READS, heavy: false });

@@ -21,32 +21,10 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { performance } from 'node:perf_hooks';
-import {
-  buildSchema,
-  chatPageSchema,
-  chatPostSchema,
-  chatUnreadSchema,
-  chroniclePageSchema,
-  collectSchema,
-  galaxySchema,
-  intelSchema,
-  launchSchema,
-  leaderboardSchema,
-  miningFieldSchema,
-  miningLaunchSchema,
-  miningStatusSchema,
-  notificationsSchema,
-  pendingSchema,
-  planetSchema,
-  planetsSchema,
-  reportsSchema,
-  rewardsSchema,
-  seasonSchema,
-  sessionSchema,
-  trafficSchema,
-} from '../apps/web/src/api/schemas.ts';
+import { ROUTE_SCHEMAS } from './capacity-schemas.ts';
+import { BURST_READS, burstSize, pickWeighted, resolveRead, SINGLE_READS, TIMER_READS, workloadRates, WRITES } from './capacity-workload.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { capacityUsername, coldStartReads, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
 import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
 import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
@@ -90,6 +68,8 @@ const { values } = parseArgs({
     'min-worker-events': { type: 'string', default: '1' },
     'database-url': { type: 'string' },
     'seeded-accounts': { type: 'string' },
+    'activity-multiplier': { type: 'string', default: '3' },
+    'validate-every': { type: 'string', default: '1' },
   },
 });
 
@@ -133,6 +113,10 @@ if (firstAccount + userCount > seededAccounts) {
 if (waveLaunches > Math.min(userCount, connectionCount)) {
   throw new Error('--wave-launches cannot exceed the number of distinct connected accounts');
 }
+// A real player times this; a client clock is not multiplied (owner, 2026-11-03).
+const activityMultiplier = intArg('activity-multiplier', values['activity-multiplier'], 1, 20);
+// Checking each answer against its schema is the runner's largest cost; it must not become the load.
+const validateEvery = intArg('validate-every', values['validate-every'], 1, 1000);
 const password = process.env.CAPACITY_PASSWORD;
 if (!password || password.length < 8 || password.length > 200) {
   throw new Error('CAPACITY_PASSWORD must contain 8–200 characters.');
@@ -142,9 +126,11 @@ const scenarios = {
   quiet: { actionMeanSeconds: 0 },
   normal: { actionMeanSeconds: 600 },
   busy: { actionMeanSeconds: 240 },
+  real: { actionMeanSeconds: 0 },
 };
 const scenario = scenarios[values.scenario];
-if (!scenario) throw new Error('--scenario must be quiet, normal or busy');
+const realWorkload = values.scenario === 'real';
+if (!scenario) throw new Error('--scenario must be quiet, normal, busy or real');
 
 const safeBaseUrls = (name, input) => {
   const urls = input.split(',').map((raw) => raw.trim().replace(/\/$/, ''));
@@ -248,7 +234,7 @@ const histogramSummary = (histogram) => ({
   mean: histogram.total === 0 ? 0 : histogram.sum / histogram.total,
   overflow: histogram.overflow,
 });
-const usernameFor = (index) => `cap${String((index % userCount) + 1).padStart(4, '0')}`;
+const usernameFor = capacityUsername;
 const syntheticIpFor = (index) => `198.18.${String(Math.floor(index / 254))}.${String((index % 254) + 1)}`;
 const isLoopback = (raw) => ['127.0.0.1', 'localhost', '::1'].includes(new URL(raw).hostname);
 
@@ -286,35 +272,6 @@ const streamStats = {
   connectedAtEnd: 0,
 };
 
-// The capacity runner exercises the same wire contracts as the browser. Keeping
-// a second set of hand-written shape checks here would drift; importing the
-// production client schemas makes a 200 with the wrong payload a failed run.
-const responseSchemas = new Map([
-  ['POST /api/auth/login', sessionSchema],
-  ['GET /api/season', seasonSchema],
-  ['GET /api/planet', planetSchema],
-  ['GET /api/planets', planetsSchema],
-  ['GET /api/galaxy', galaxySchema],
-  ['GET /api/galaxy/traffic', trafficSchema],
-  ['GET /api/leaderboard', leaderboardSchema],
-  ['GET /api/intel', intelSchema],
-  ['GET /api/notifications', notificationsSchema],
-  ['GET /api/session/pending', pendingSchema],
-  ['GET /api/reports', reportsSchema],
-  ['GET /api/mining/field', miningFieldSchema],
-  ['GET /api/mining/status', miningStatusSchema],
-  ['GET /api/rewards', rewardsSchema],
-  ['GET /api/chat/messages', chatPageSchema],
-  ['POST /api/chat/messages', chatPostSchema],
-  ['GET /api/chat/unread', chatUnreadSchema],
-  ['GET /api/chronicle', chroniclePageSchema],
-  ['POST /api/fleet/launch', launchSchema],
-  ['POST /api/planet/collect', collectSchema],
-  ['POST /api/planet/build', buildSchema],
-  ['POST /api/mining/launch', miningLaunchSchema],
-  ['POST /api/mining/harvest', miningLaunchSchema],
-]);
-
 const validErrorPayload = (body) => Boolean(
   body
   && typeof body === 'object'
@@ -336,8 +293,7 @@ const validErrorPayload = (body) => Boolean(
   )
 );
 
-const routeRecord = (method, path) => {
-  const key = `${method} ${path.split('?')[0]}`;
+const routeRecord = (key) => {
   const record = routeStats.get(key) ?? {
     requests: 0,
     status2xx: 0,
@@ -389,7 +345,9 @@ const expectPublicContact = (id, accountIndex, intentAt) => {
 
 const request = async (vu, path, options = {}) => {
   const method = options.method ?? 'GET';
-  const record = routeRecord(method, path);
+  // A template names a route whose path carries an id, so a thousand worlds stay one row.
+  const routeKey = options.route ?? `${method} ${path.split('?')[0]}`;
+  const record = routeRecord(routeKey);
   const targetBaseUrl = options.baseUrl ?? vu?.baseUrl ?? baseUrls[0];
   const started = performance.now();
   let succeeded = false;
@@ -434,18 +392,17 @@ const request = async (vu, path, options = {}) => {
         requestIntegrity.unexpectedStatuses += 1;
       }
     } else {
-      const routeKey = `${method} ${path.split('?')[0]}`;
-      const schema = responseSchemas.get(routeKey);
+      const schema = ROUTE_SCHEMAS.get(routeKey);
       const valid = parsed
         && schema !== undefined
-        && schema.safeParse(body).success
+        && (record.requests % validateEvery !== 0 || schema.safeParse(body).success)
         && (options.validate === undefined || options.validate(body) === true);
       if (!valid) {
         requestIntegrity.invalidPayloads += 1;
         record.invalidPayloads += 1;
       } else {
         succeeded = true;
-        if (method !== 'GET' && `${method} ${path.split('?')[0]}` !== 'POST /api/auth/login') {
+        if (method !== 'GET' && routeKey !== 'POST /api/auth/login') {
           requestIntegrity.successfulMutations += 1;
         }
         if (vu && path.split('?')[0] === '/api/galaxy/traffic') {
@@ -464,7 +421,7 @@ const request = async (vu, path, options = {}) => {
     const elapsed = performance.now() - started;
     addSample(record.latencyMs, elapsed);
     if (method === 'GET' && succeeded) addSample(readLatencyMs, elapsed);
-    else if (succeeded && `${method} ${path.split('?')[0]}` !== 'POST /api/auth/login') {
+    else if (succeeded && routeKey !== 'POST /api/auth/login') {
       addSample(mutationLatencyMs, elapsed);
     }
   }
@@ -688,10 +645,18 @@ const followArrival = async (vu, at) => {
   }
 };
 
-const launch = async (vu) => {
+/** The nearest worlds, so a wave's fleets land while the run still measures. */
+const NEAR_TARGETS = 10;
+const nearestWorlds = (vu, candidates) => {
+  const self = vu.planets.find((planet) => planet?.id === vu.selfPlanetId);
+  const away = (planet) => Math.hypot(planet.x - self.x, planet.y - self.y, planet.z - self.z);
+  return [...candidates].sort((left, right) => away(left) - away(right)).slice(0, NEAR_TARGETS);
+};
+const launch = async (vu, near = false) => {
   if (vu.planets.length > 1) {
     const candidates = vu.planets.filter((planet) => planet?.id && planet.id !== vu.selfPlanetId);
-    const target = candidates[Math.floor(random() * candidates.length)];
+    const targets = near ? nearestWorlds(vu, candidates) : candidates;
+    const target = targets[Math.floor(random() * targets.length)];
     if (target) {
       const intentAt = performance.now();
       const result = await request(vu, '/api/fleet/launch', {
@@ -741,6 +706,94 @@ const actionLoop = async (vu, signal) => {
   }
 };
 
+const expWait = (perSecond) => (-Math.log(Math.max(Number.EPSILON, 1 - random())) / perSecond) * 1000;
+const rates = workloadRates(activityMultiplier);
+const BURST_SPREAD_MS = 1500;
+const ownRead = (vu, entry) => {
+  const { path, route } = resolveRead(entry, vu.selfPlanetId);
+  return request(vu, path, { route });
+};
+
+/** What a return to the game or a new screen sends: measured sizes, measured routes, inside a second or two. */
+const burstLoop = async (vu, signal) => {
+  while (!signal.aborted) {
+    await pause(expWait(rates.burstsPerSecond), signal);
+    if (signal.aborted) return;
+    const size = burstSize(random());
+    await Promise.all(Array.from({ length: size }, async () => {
+      await pause(random() * BURST_SPREAD_MS, signal);
+      if (!signal.aborted) await ownRead(vu, pickWeighted(BURST_READS, random()).read);
+    }));
+  }
+};
+const singleReadLoop = async (vu, signal) => {
+  while (!signal.aborted) {
+    await pause(expWait(rates.singles), signal);
+    if (!signal.aborted) await ownRead(vu, pickWeighted(SINGLE_READS, random()).read);
+  }
+};
+const timerLoop = async (vu, timer, signal) => {
+  await pause(random() * timer.periodMs, signal);
+  while (!signal.aborted) {
+    await ownRead(vu, timer.read);
+    await pause(timer.periodMs, signal);
+  }
+};
+
+const ownWorld = (vu, suffix) => ({ path: `/api/planets/${encodeURIComponent(vu.selfPlanetId)}/${suffix}`, route: `POST /api/planets/:id/${suffix}` });
+const otherWorld = (vu) => {
+  const others = vu.planets.filter((planet) => planet?.id && planet.id !== vu.selfPlanetId);
+  return others[Math.floor(random() * others.length)];
+};
+const UPGRADES = ['REFINERY', 'EXTRACTOR', 'VAULT'];
+const REFUSED_FOR_WANT_OF = ['INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
+  'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'ASTEROID_GONE', 'ASTEROID_EMPTY', 'ALREADY_MINING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT'];
+const write = {
+  async collect(vu) {
+    const { path, route } = ownWorld(vu, 'collect');
+    await request(vu, path, { method: 'POST', route, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+  },
+  async refresh(vu) {
+    const { response, valid, body } = await request(vu, '/api/auth/refresh', { method: 'POST', baseUrl: vu.loginBaseUrl });
+    if (!valid || typeof body?.accessToken !== 'string') return;
+    vu.token = body.accessToken;
+    const cookie = response.headers.getSetCookie?.().map((value) => value.split(';')[0]).join('; ');
+    if (cookie) vu.cookie = cookie;
+  },
+  async returnSeen(vu) {
+    await request(vu, '/api/session/return/seen', { method: 'POST', body: { asOf: new Date().toISOString() } });
+  },
+  async notificationsSeen(vu) {
+    await request(vu, '/api/notifications/seen', { method: 'POST', body: {} });
+  },
+  async mining(vu) {
+    const rock = vu.asteroids[Math.floor(random() * vu.asteroids.length)];
+    if (!Number.isInteger(rock?.index)) return;
+    await request(vu, '/api/mining/launch', { method: 'POST', body: { asteroidIndex: rock.index, craft: 1 }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+  },
+  async upgrade(vu) {
+    const { path, route } = ownWorld(vu, 'upgrade');
+    await request(vu, path, { method: 'POST', route, body: { type: UPGRADES[Math.floor(random() * UPGRADES.length)] }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+  },
+  async probe(vu) {
+    const target = otherWorld(vu);
+    if (target) await request(vu, '/api/intel/probe', { method: 'POST', body: { targetPlanetId: target.id }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+  },
+  async build(vu) {
+    const { path, route } = ownWorld(vu, 'build');
+    await request(vu, path, { method: 'POST', route, body: { hull: 'DART', count: 1 }, acceptedErrorCodes: REFUSED_FOR_WANT_OF });
+  },
+  async fleet(vu) {
+    await launch(vu);
+  },
+};
+const writeLoop = async (vu, signal) => {
+  while (!signal.aborted) {
+    await pause(expWait(rates.writes), signal);
+    if (!signal.aborted) await write[pickWeighted(WRITES, random()).kind](vu);
+  }
+};
+
 const launchWave = async (vusToUse, signal) => {
   if (waveLaunches === 0) return;
   // One socket per account, interleaved by its position inside each galaxy's
@@ -757,7 +810,7 @@ const launchWave = async (vusToUse, signal) => {
     await pause(delay, signal);
     if (!signal.aborted) {
       publicState.waveAttempts += 1;
-      if (await launch(vu)) publicState.waveSucceeded += 1;
+      if (await launch(vu, true)) publicState.waveSucceeded += 1;
     }
   }));
 };
@@ -1256,6 +1309,7 @@ const reconcileCapacityDatabase = async () => {
         (select count(*)::int from (
           select player_id, kind, ref_id
             from notifications
+           where ref_id is not null
            group by player_id, kind, ref_id
           having count(*) > 1
         ) duplicate_notifications) as "duplicateNotifications"
@@ -1349,10 +1403,20 @@ const { joined, failures: joinFailures } = await joinAll(vus, async (vu, index) 
   // ramp a real browser ramp instead of opening every SSE socket in one herd at
   // the end of it.
   streamTasks.push({ label: `stream:${String(vu.index)}`, promise: streamLoop(vu, streamController.signal) });
+  // A commander's second stream listens and follows its events; the commander acts once.
+  if (realWorkload && vu.index >= userCount) return;
+  const signal = activityController.signal;
   activityTasks.push(
-    { label: `safety-net:${String(vu.index)}`, promise: safetyNetLoop(vu, activityController.signal) },
-    { label: `traffic:${String(vu.index)}`, promise: trafficLoop(vu, activityController.signal) },
-    { label: `actions:${String(vu.index)}`, promise: actionLoop(vu, activityController.signal) },
+    { label: `safety-net:${String(vu.index)}`, promise: safetyNetLoop(vu, signal) },
+    { label: `traffic:${String(vu.index)}`, promise: trafficLoop(vu, signal) },
+    { label: `actions:${String(vu.index)}`, promise: actionLoop(vu, signal) },
+  );
+  if (!realWorkload) return;
+  activityTasks.push(
+    { label: `bursts:${String(vu.index)}`, promise: burstLoop(vu, signal) },
+    { label: `singles:${String(vu.index)}`, promise: singleReadLoop(vu, signal) },
+    { label: `writes:${String(vu.index)}`, promise: writeLoop(vu, signal) },
+    ...TIMER_READS.map((timer) => ({ label: `timer:${timer.read.route}:${String(vu.index)}`, promise: timerLoop(vu, timer, signal) })),
   );
 }, (vu) => `join:${String(vu.index)}`);
 const steadyStartedAt = new Date();
@@ -1399,6 +1463,9 @@ const taskFailures = [
 }));
 
 const endedAt = new Date();
+/** Every sample by millisecond, so several runners' reports merge into one true percentile. */
+const sparseBins = (histogram) => Object.fromEntries(
+  [...histogram.bins.entries()].filter(([, count]) => count > 0).map(([bin, count]) => [String(bin), count]));
 const routes = {};
 for (const [key, record] of [...routeStats].sort(([a], [b]) => a.localeCompare(b))) {
   routes[key] = {
@@ -1508,10 +1575,10 @@ const gates = {
   readSamples: reads.samples > 0,
   readLatency: reads.samples > 0 && reads.p95 <= 250 && reads.p99 <= 500,
   mutationSamples:
-    (scenario.actionMeanSeconds === 0 && waveLaunches === 0 && miningPulseAtSeconds === null)
+    (scenario.actionMeanSeconds === 0 && !realWorkload && waveLaunches === 0 && miningPulseAtSeconds === null)
     || mutations.samples > 0,
   mutationLatency:
-    (scenario.actionMeanSeconds === 0 && waveLaunches === 0 && miningPulseAtSeconds === null)
+    (scenario.actionMeanSeconds === 0 && !realWorkload && waveLaunches === 0 && miningPulseAtSeconds === null)
     || (mutations.samples > 0 && mutations.p95 <= 400 && mutations.p99 <= 800),
   eventRefreshSamples:
     (publicState.expected === 0 && streamStats.events === 0)
@@ -1633,6 +1700,8 @@ const report = {
   metricsUrls,
   reconnectAtSeconds,
   miningPulseAtSeconds,
+  activityMultiplier,
+  validateEvery,
   waveLaunches,
   waveSeconds,
   maxRssMb,
@@ -1643,6 +1712,7 @@ const report = {
     mutations,
     eventRefresh,
     committedStateFreshness,
+    bins: { reads: sparseBins(readLatencyMs), mutations: sparseBins(mutationLatencyMs), eventRefresh: sparseBins(eventRefreshMs) },
     status3xx,
     status4xx,
     status5xx,

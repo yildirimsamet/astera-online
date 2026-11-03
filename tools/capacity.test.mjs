@@ -42,3 +42,10 @@ it('lets a second runner start further along the seats, and not past them', () =
   const past = runner(['--users', '2', '--first-account', '1999', '--seeded-accounts', '2000']);
   expect(past.stderr).toContain('--first-account plus --users cannot pass --seeded-accounts');
 });
+
+it('takes the measured workload and refuses a multiplier it cannot mean', () => {
+  const fits = runner(['--users', '100', '--scenario', 'real', '--activity-multiplier', '3', '--validate-every', '20']);
+  expect(fits.stderr).toContain('CAPACITY_PASSWORD must contain 8–200 characters.');
+  const zero = runner(['--users', '100', '--scenario', 'real', '--activity-multiplier', '0']);
+  expect(zero.stderr).toContain('--activity-multiplier must be an integer');
+});
