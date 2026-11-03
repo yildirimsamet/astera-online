@@ -16,6 +16,10 @@ import {
   readsForPrivateEvent,
   readsForShardEvent,
   shardCoalescer,
+  STRATEGIC_SIGHT_CONSISTENCY_MS,
+  TRAFFIC_WAKE,
+  TRAFFIC_WAKE_OFF,
+  TRAFFIC_WAKE_ON,
 } from './shardEvents.js';
 
 /** How long a connection must last before it counts as one that worked. */
@@ -35,7 +39,7 @@ export const RECONNECT_RESYNC_MAX_MS = 5000;
  * the SSE-serving replica has observed the commit but a load-balanced read replica
  * has not invalidated its projection cache yet.
  */
-export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
+export { STRATEGIC_SIGHT_CONSISTENCY_MS };
 
 /** A hide shorter than this cannot have outlived what the stream and the polls cover. */
 export const RESUME_RESYNC_MS = 15_000;
@@ -47,9 +51,6 @@ export const RESUME_RESYNC_MS = 15_000;
  */
 export const SUPERSEDED_RETRY_MS = 60_000;
 
-const TRAFFIC_WAKE_ON = 'shard:traffic-wake-on';
-const TRAFFIC_WAKE_OFF = 'shard:traffic-wake-off';
-const TRAFFIC_WAKE = 'shard:traffic';
 
 /**
  * Every read a player event can move — and the same set a RECONNECTION moves.

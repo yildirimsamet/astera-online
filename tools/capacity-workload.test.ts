@@ -11,12 +11,14 @@ import {
  * requests and wrote about 40× too little at this multiplier's scale.
  */
 describe('the measured workload', () => {
-  it('sends a player three times the measured rate at the agreed multiplier', () => {
+  it('sends a player three times what a player does, on the clocks of the new client', () => {
     const real = MEASURED.requests / MEASURED.onlineSeconds;
     expect(real).toBeCloseTo(0.327, 2);
     const rates = workloadRates(3);
-    expect(rates.total / real).toBeGreaterThan(2.7);
-    expect(rates.total / real).toBeLessThan(3.3);
+    // The measured clocks were 0.38 requests a second; live-stream clocks are 0.08.
+    expect(rates.timers).toBeCloseTo(1 / 180 + 4 / 180 + 2 / 60 + 4 / 180, 6);
+    expect(rates.total / real).toBeGreaterThan(1.9);
+    expect(rates.total / real).toBeLessThan(2.3);
   });
 
   it('multiplies what a player does and leaves the client clocks as they are', () => {
@@ -37,7 +39,7 @@ describe('the measured workload', () => {
   });
 
   it('polls traffic on the client clock and never faster', () => {
-    expect(TIMER_READS.find(timer => timer.read.path === '/api/skins')?.periodMs).toBe(30_000);
+    expect(TIMER_READS.find(timer => timer.read.path === '/api/skins')?.net).toBe(true);
     expect(SINGLE_READS.some(single => single.read.path === '/api/galaxy/traffic')).toBe(false);
     expect(TIMER_READS.some(timer => timer.read.path === '/api/galaxy/traffic')).toBe(false);
   });
@@ -93,3 +95,15 @@ describe('drawing from the workload', () => {
     expect(resolveRead(pirates, 'world-1').path).toBe('/api/pirates?originPlanetId=world-1');
   });
 });
+
+/** Time-driven reads keep their minute however healthy the stream: no event moves them. */
+describe('which clocks slow under a live stream', () => {
+  const net = (path: string) => TIMER_READS.find(timer => timer.read.path.startsWith(path))?.net;
+  it('the ones an event keeps fresh do', () => {
+    for (const path of ['/api/skins', '/api/galaxy/events', '/api/monuments', '/api/pirates']) expect(net(path)).toBe(true);
+  });
+  it('the ones that drift with no event do not', () => {
+    for (const path of ['/api/season', '/api/intel']) expect(net(path)).toBe(false);
+  });
+});
+

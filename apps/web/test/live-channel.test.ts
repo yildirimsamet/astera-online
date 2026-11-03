@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { CALM_NET_MS, NET_MS, safetyNetMs, setChannelLive } from '../src/api/liveChannel.js';
+import { CALM_NET_MS, calmNetMs, NET_MS, safetyNetMs, setChannelLive } from '../src/api/liveChannel.js';
 
 /**
  * THE SAFETY NET IS FOR A DEAD CHANNEL. Query plan, 2026-11-03.
@@ -9,6 +9,14 @@ import { CALM_NET_MS, NET_MS, safetyNetMs, setChannelLive } from '../src/api/liv
  * live channel keeps a slower net for a missed edge; a dead one keeps the old minute.
  */
 afterEach(() => { setChannelLive(false); });
+
+describe('calmNetMs', () => {
+  it('spreads three minutes by a tenth either way, so clients fall out of step', () => {
+    expect(calmNetMs(0)).toBe(162_000);
+    expect(calmNetMs(0.5)).toBe(180_000);
+    expect(calmNetMs(1)).toBe(198_000);
+  });
+});
 
 describe('safetyNetMs', () => {
   it('reads every minute while nothing says the channel is up', () => {

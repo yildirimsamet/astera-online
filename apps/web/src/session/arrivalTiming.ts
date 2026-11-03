@@ -18,3 +18,6 @@ export const CHASE_MS = 900;
 
 /** And how many times. `WORKER_POLL_MS` is a second; this is generous cover for it. */
 export const MAX_CHASES = 12;
+
+/** After a contact's window ends: the read that moves on, and those that wait out a replica. */
+export const CONTACT_WINDOW_SETTLE_OFFSETS = [50, 750, 2500, 6000] as const;

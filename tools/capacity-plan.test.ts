@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SERVERS } from '../packages/rules/src/index.js';
-import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, miningWrite, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
+import { afterEach, beforeEach, vi } from 'vitest';
+import { contactWake, eventGate, openArrivals, isGatedEvent, followsWithTraffic, netPeriodMs, trafficPeriodMs, capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, miningWrite, eventReads, joinAll, failedReads, FULL_READS, galaxyOf, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.js';
 
 describe('the seat plan follows SERVERS', () => {
   it('fills the galaxies in order, one capacity each', () => {
@@ -246,3 +247,172 @@ describe('the commanders of a ramp joining', () => {
     expect(seen).toEqual([0, 1]);
   });
 });
+
+/**
+ * A RUN SENDS WHAT THE NEW CLIENT SENDS. Query plan, 2026-11-03: the stream wakes a client
+ * for traffic, nets slow under a live stream, and a burst of events shares its reads.
+ */
+describe('the client clocks', () => {
+  it('polls traffic on the slow net once the server has said it will wake the client', () => {
+    expect(trafficPeriodMs(true, 180_000)).toBe(180_000);
+    expect(trafficPeriodMs(false, 180_000)).toBe(5_000);
+  });
+  it('slows the net only while the stream is open', () => {
+    expect(netPeriodMs(true, 180_000)).toBe(180_000);
+    expect(netPeriodMs(false, 180_000)).toBe(60_000);
+  });
+});
+
+describe('world reads an event asks for together', () => {
+  it('are one list read, as `planetReads` makes them', () => {
+    const { paths } = eventReads('fleet_returned');
+    expect(paths).toContain('/api/planets');
+    expect(paths).not.toContain('/api/planet');
+    expect(FULL_READS).toContain('/api/planets');
+    expect(FULL_READS).not.toContain('/api/planet');
+  });
+  it('stay a lone world read when the list is not asked for', () => {
+    expect(eventReads('shard:recovery').paths).toContain('/api/planet');
+  });
+  it('a landing reads the narrow set, not every open screen', () => {
+    const { paths } = eventReads('fleet_returned');
+    expect(paths.length).toBeLessThan(FULL_READS.length);
+    expect(paths).not.toContain('/api/galaxy');
+    expect(paths).not.toContain('/api/dm/unread');
+  });
+});
+
+describe('which events go through the burst gate', () => {
+  it('what happened to this commander does', () => {
+    expect(isGatedEvent('raided')).toBe(true);
+    expect(isGatedEvent('fleet_returned')).toBe(true);
+    expect(isGatedEvent('private:memory')).toBe(true);
+  });
+  it('galaxy-wide events have their own coalescing, and a weapon in the air is urgent', () => {
+    expect(isGatedEvent('shard:launch')).toBe(false);
+    expect(isGatedEvent('global:announcement')).toBe(false);
+    expect(isGatedEvent('private:strategic-sight')).toBe(false);
+  });
+});
+
+describe('the read that follows a traffic event', () => {
+  it('follows anything that moved traffic, a wake included', () => {
+    expect(followsWithTraffic('shard:launch')).toBe(true);
+    expect(followsWithTraffic('shard:traffic')).toBe(true);
+    expect(followsWithTraffic('private:strategic-sight')).toBe(true);
+  });
+  it('does not follow the rest', () => {
+    expect(followsWithTraffic('shard:world')).toBe(false);
+    expect(followsWithTraffic('shard:traffic-wake-on')).toBe(false);
+    expect(followsWithTraffic('raided')).toBe(false);
+  });
+});
+
+describe('the burst gate', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('reads at once, and the rest of a burst shares one read after the gap', () => {
+    const reads: string[] = [];
+    const gate = eventGate((path) => reads.push(path));
+    gate('/a'); gate('/a'); gate('/a');
+    expect(reads).toEqual(['/a']);
+    vi.advanceTimersByTime(1_500);
+    expect(reads).toEqual(['/a', '/a']);
+  });
+  it('keeps each read to its own gate', () => {
+    const reads: string[] = [];
+    const gate = eventGate((path) => reads.push(path));
+    gate('/a'); gate('/b');
+    expect(reads).toEqual(['/a', '/b']);
+  });
+  it('reads at once again once the gap has passed', () => {
+    const reads: string[] = [];
+    const gate = eventGate((path) => reads.push(path));
+    gate('/a');
+    vi.advanceTimersByTime(1_500);
+    gate('/a');
+    expect(reads).toEqual(['/a', '/a']);
+  });
+});
+
+describe('the wake at the end of a contact', () => {
+  const contact = (endAt: string) => ({ endAt });
+  const NOW = Date.parse('2026-11-03T12:00:00Z');
+
+  it('arms for the soonest contact still ahead', () => {
+    const wake = contactWake([contact('2026-11-03T12:00:20Z'), contact('2026-11-03T12:00:05Z'), contact('2026-11-03T11:59:00Z')], NOW);
+    expect(wake.at).toBe(NOW + 5_000);
+  });
+  it('arms for nothing with nothing ahead', () => {
+    expect(contactWake([contact('2026-11-03T11:59:00Z')], NOW).at).toBeNull();
+    expect(contactWake(undefined, NOW).at).toBeNull();
+  });
+  it('tells an answer that moved from one that did not, so the settling reads go on', () => {
+    const first = contactWake([contact('2026-11-03T12:00:05Z')], NOW);
+    expect(contactWake([contact('2026-11-03T12:00:05Z')], NOW + 6_000).signature).toBe(first.signature);
+    expect(contactWake([], NOW + 6_000).signature).not.toBe(first.signature);
+  });
+});
+
+/**
+ * A SLOW SERVER MUST NOT SLOW THE ARRIVALS. A player does not wait for one screen to answer
+ * before tapping the next, and a loop that does hides the worst latencies (coordinated omission).
+ */
+describe('arrivals on their own schedule', () => {
+  const instant = () => Promise.resolve();
+
+  it('starts the next before the last has answered', async () => {
+    const controller = new AbortController();
+    let started = 0;
+    const running = openArrivals(() => 0, () => {
+      started += 1;
+      if (started === 3) controller.abort();
+      return new Promise<void>((done) => {
+        if (controller.signal.aborted) done();
+        else controller.signal.addEventListener('abort', () => { done(); });
+      });
+    }, instant, controller.signal);
+    await running;
+    expect(started).toBe(3);
+  });
+
+  it('asks the schedule for each wait', async () => {
+    const controller = new AbortController();
+    const waits: number[] = [];
+    let turn = 0;
+    await openArrivals(() => { turn += 1; return turn * 100; }, () => Promise.resolve(), (ms) => {
+      waits.push(ms);
+      if (waits.length === 3) controller.abort();
+      return Promise.resolve();
+    }, controller.signal);
+    expect(waits).toEqual([100, 200, 300]);
+  });
+
+  it('starts nothing once stopped', async () => {
+    const controller = new AbortController();
+    let started = 0;
+    await openArrivals(() => 0, () => { started += 1; return Promise.resolve(); }, () => { controller.abort(); return Promise.resolve(); }, controller.signal);
+    expect(started).toBe(0);
+  });
+
+  it('waits for what is still running before it finishes', async () => {
+    const controller = new AbortController();
+    let finished = false;
+    await openArrivals(() => 0, async () => {
+      controller.abort();
+      await new Promise<void>((done) => { setImmediate(done); });
+      finished = true;
+    }, instant, controller.signal);
+    expect(finished).toBe(true);
+  });
+
+  it('reports a failure at the end rather than losing it', async () => {
+    const controller = new AbortController();
+    await expect(openArrivals(() => 0, () => {
+      controller.abort();
+      return Promise.reject(new Error('broken'));
+    }, instant, controller.signal)).rejects.toThrow('broken');
+  });
+});
+

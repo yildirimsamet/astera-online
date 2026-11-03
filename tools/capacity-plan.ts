@@ -1,4 +1,6 @@
-import { SERVERS } from '../packages/rules/src/index.js';
+import { SERVERS, TRAFFIC } from '../packages/rules/src/index.js';
+import { EVENT_REFRESH_GAP_MS } from '../apps/web/src/api/eventRefresh.js';
+import { NET_MS } from '../apps/web/src/api/liveChannel.js';
 import {
   HEAVY_KINDS, isGlobalEvent, isPrivateEvent, isShardEvent,
   readsForGlobalEvent, readsForPlayerEvent, readsForPrivateEvent, readsForShardEvent,
@@ -124,7 +126,11 @@ const OPEN_READS: readonly (readonly [readonly string[], string])[] = [
 const SHARD_ONLY_READS: readonly (readonly [readonly string[], string])[] = [
   [['season'], '/api/season'],
 ];
-export const FULL_READS: readonly string[] = OPEN_READS.map(([, path]) => path);
+/** `planetReads` answers a world from the list when both are asked for together. */
+const oneWorldRead = (paths: readonly string[]): readonly string[] =>
+  paths.includes('/api/planets') ? paths.filter(path => path !== '/api/planet') : paths;
+
+export const FULL_READS: readonly string[] = oneWorldRead(OPEN_READS.map(([, path]) => path));
 
 /**
  * WHAT A STREAM EVENT MAKES A SESSION READ: the web's own tables (`shardEvents.ts`),
@@ -140,7 +146,59 @@ export function eventReads(kind: string): { paths: readonly string[]; heavy: boo
   const open = [...OPEN_READS, ...SHARD_ONLY_READS];
   const paths = keys.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
     .map(([, path]) => path));
-  return { paths: [...new Set(paths)], heavy: HEAVY_KINDS.has(kind) };
+  return { paths: oneWorldRead([...new Set(paths)]), heavy: HEAVY_KINDS.has(kind) };
+}
+
+const URGENT = 'private:strategic-sight';
+
+/** What goes through the web's burst gate (`refreshForEvent`): what happened to this commander. */
+export const isGatedEvent = (kind: string): boolean =>
+  !isShardEvent(kind) && !isGlobalEvent(kind) && kind !== URGENT;
+
+/** The second traffic read `useEventStream` schedules once a replica can have seen the commit. */
+export const followsWithTraffic = (kind: string): boolean =>
+  kind === URGENT || (isShardEvent(kind) && readsForShardEvent(kind).some(key => key[0] === 'traffic'));
+
+/** `trafficPollMs`, per client: a run holds many in one process. */
+export const trafficPeriodMs = (woken: boolean, calmMs: number): number => (woken ? calmMs : TRAFFIC.refreshMs);
+
+/** `safetyNetMs`, per client. */
+export const netPeriodMs = (live: boolean, calmMs: number): number => (live ? calmMs : NET_MS);
+
+/** `refreshForEvent`, per client: first read at once, the rest of a burst share one after the gap. */
+export function eventGate(read: (path: string) => void): (path: string) => void {
+  const gates = new Map<string, { openAt: number; timer: ReturnType<typeof setTimeout> | null }>();
+  return (path) => {
+    const now = Date.now();
+    const gate = gates.get(path);
+    if (!gate || now >= gate.openAt) {
+      gates.set(path, { openAt: now + EVENT_REFRESH_GAP_MS, timer: null });
+      read(path);
+      return;
+    }
+    if (gate.timer !== null) return;
+    gate.timer = setTimeout(() => {
+      gate.timer = null;
+      gate.openAt = Date.now() + EVENT_REFRESH_GAP_MS;
+      read(path);
+    }, gate.openAt - now);
+    // A read still waiting must not keep a finished run alive.
+    gate.timer.unref();
+  };
+}
+
+/**
+ * What `useContactWindows` arms from a traffic answer: one timer chain, for the soonest
+ * contact to end. The signature says whether the answer moved, as React's memo does: an
+ * unmoved one lets the settling reads run on, a moved one replaces them. A run does not
+ * solve sensor crossings, which the server's wake reaches within its own clock.
+ */
+export function contactWake(contacts: unknown, now: number): { at: number | null; signature: string } {
+  const ends = (Array.isArray(contacts) ? contacts as readonly { endAt?: unknown }[] : [])
+    .map(contact => (typeof contact.endAt === 'string' ? Date.parse(contact.endAt) : Number.NaN))
+    .filter(Number.isFinite);
+  const ahead = ends.filter(at => at > now);
+  return { at: ahead.length === 0 ? null : Math.min(...ahead), signature: ends.sort((a, b) => a - b).join(',') };
 }
 
 interface ReadOutcome { valid: boolean; response: { status: number } | null; body: unknown }
@@ -178,6 +236,31 @@ export async function coldStartReads<Outcome extends { valid: boolean }>(
     await Promise.all(paths.map(async (path, index) => { if (!outcomes[index]?.valid) await ask(path, index); }));
   }
   return outcomes;
+}
+
+/**
+ * WHAT A PLAYER DOES ARRIVES ON ITS OWN SCHEDULE, however slow the last answer was. A loop
+ * that waits for one read before the next sends less as the server slows and so hides the
+ * worst latencies (coordinated omission). A client's clock is different: a query does not
+ * ask again while it is still asking, so those loops wait.
+ */
+export async function openArrivals(
+  wait: () => number,
+  act: () => Promise<unknown>,
+  pause: (ms: number) => Promise<void>,
+  signal: AbortSignal,
+): Promise<void> {
+  const running = new Set<Promise<void>>();
+  const failures: unknown[] = [];
+  for (;;) {
+    await pause(wait());
+    if (signal.aborted) break;
+    const task: Promise<void> = act().then(() => undefined, (error: unknown) => { failures.push(error); })
+      .finally(() => { running.delete(task); });
+    running.add(task);
+  }
+  await Promise.all(running);
+  if (failures.length > 0) throw failures[0];
 }
 
 export interface JoinFailure { label: string; error: string }

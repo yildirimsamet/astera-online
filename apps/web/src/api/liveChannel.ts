@@ -8,7 +8,8 @@ export const NET_MS = 60_000;
  * spread per session, so a fleet of clients does not fall into step; never per call, since
  * a changing interval restarts the query's timer on every render.
  */
-export const CALM_NET_MS = Math.round(180_000 * (0.9 + Math.random() * 0.2));
+export const calmNetMs = (roll: number): number => Math.round(180_000 * (0.9 + roll * 0.2));
+export const CALM_NET_MS = calmNetMs(Math.random());
 
 let live = false;
 

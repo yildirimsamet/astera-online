@@ -72,3 +72,15 @@ Güncel sıra: `docs/scaling-architecture-plan-2026-10-27.md` §16.
 ## Tekrarlamak için
 
 `tools/capacity.mjs --scenario real --activity-multiplier 3`; tablo `tools/capacity-workload.ts`. Sunucuda: `~/cap-prep4.sh`, `~/cap-ladder.sh`, `~/cap-level.sh`, `~/cap-verdict.py`, `~/cap-restore.sh`. Ham raporlar: `~/capacity-run-20261102/out/real/`. Bu klasörde: `capacity-run-2026-11-03/`.
+
+## Sonraki koşularla karşılaştırırken (2026-11-04)
+
+Araç bu raporun koşularından sonra değişti; yeni sayılar bu tablolarla bire bir kıyaslanamaz.
+
+- **Isınma artık ölçüme girmiyor.** Bu rapordaki gecikmeler rampayı ve ilk okumaları da içeriyordu. Bu, eski sayıları kötü gösterir.
+- **Oyuncu işleri artık sunucuyu beklemiyor.** Toplu okuma, tek okuma ve yazmalar kendi takvimiyle başlıyor; eskiden sunucu yavaşlayınca araç da yavaşlıyor ve en kötü gecikmeler gizleniyordu (coordinated omission). Bu, eski doygunluk sayılarını iyi gösterir: 200 seviyesindeki gerçek kuyruk bu rapordakinden kötü olabilir.
+- **Araç yeni istemciyi taklit ediyor:** trafik uyandırması, sakin yoklama, olay kapısı, tek dünya okuması ve temas sonu okumaları. Eskiden temas sonu okumaları hiç yoktu.
+- **Hâlâ eski olan:** toplu ve tek okuma tabloları eski istemcinin kaydı. İniş patlamaları orada hâlâ bütün ekranları okuyor, yani yük olduğundan fazla olabilir. Yeni sürüm canlıya çıkınca karışım yeniden ölçülmeli.
+
+Yerel küçük deneme (20 oyuncu, 3 dakika, ×3): oyuncu başına ~0,97 istek/sn, trafik payı ~%24, sıfır beklenmeyen durum. Bu rapordaki 1,56 ile kıyas yalnız kaba bir işarettir: galaksi ve oyuncu sayısı farklı, olay okumaları oyuncu sayısıyla büyür.
+

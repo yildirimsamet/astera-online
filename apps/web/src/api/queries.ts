@@ -55,6 +55,7 @@ import { keys } from './keys.js';
 import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
 import { planetReads } from './planetReads.js';
 import { NET_MS, safetyNetMs, trafficPollMs } from './liveChannel.js';
+import { CONTACT_WINDOW_SETTLE_OFFSETS } from '../session/arrivalTiming.js';
 import { readIntelSnapshot } from './sightCache.js';
 import { CHAT_READ_COALESCE_MS, coalesceLatest } from './coalesceLatest.js';
 import { serverNow } from '../lib/clock.js';
@@ -1485,7 +1486,6 @@ export function useMarkSeen() {
  * new state rather than the old one and needing a second round trip to find out.
  */
 const ARRIVAL_SETTLE_OFFSETS = [1000] as const;
-const CONTACT_WINDOW_SETTLE_OFFSETS = [50, 750, 2500, 6000] as const;
 
 function useRefetchOnArrival(
   moments: readonly number[],

@@ -25,6 +25,13 @@ import { keys } from '../api/keys.js';
 export const SHARD_PREFIX = 'shard:';
 export const GLOBAL_PREFIX = 'global:';
 
+/** The stream's frames about waking this client for traffic (`stream/trafficWake.ts`). */
+export const TRAFFIC_WAKE_ON = `${SHARD_PREFIX}traffic-wake-on`;
+export const TRAFFIC_WAKE_OFF = `${SHARD_PREFIX}traffic-wake-off`;
+export const TRAFFIC_WAKE = `${SHARD_PREFIX}traffic`;
+/** How long a read that follows a commit waits, so a replica's cache can observe it. */
+export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
+
 export const isShardEvent = (kind: string): boolean => kind.startsWith(SHARD_PREFIX);
 export const isGlobalEvent = (kind: string): boolean => kind.startsWith(GLOBAL_PREFIX);
 

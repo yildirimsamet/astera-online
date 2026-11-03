@@ -1,3 +1,5 @@
+import { calmNetMs, NET_MS } from '../apps/web/src/api/liveChannel.js';
+
 /**
  * WHAT PLAYERS REALLY SEND. Owner, 2026-11-03: a run keeps the live proportions and
  * multiplies what a player does; a client clock cannot be multiplied, so it stays.
@@ -8,6 +10,11 @@
  * within a point or two across days, peak and quiet hours, and without the busiest
  * address. Only about thirty players stand behind it, so the rate of public events is
  * left to the real stream: event-driven reads come from the web's tables, not from here.
+ *
+ * THE CLIENT HAS CHANGED SINCE. Clocks and event reads below follow the new client (query
+ * plan, 2026-11-03). The tables of bursts and singles are still what the old client sent:
+ * a landing there still reads every screen, so a run is heavier than the new client until
+ * production is measured again. It may overstate the load; it cannot flatter it.
  */
 export const MEASURED = { requests: 180_103, onlineSeconds: 144_000 * 3.824, writes: 7_300 } as const;
 
@@ -51,17 +58,22 @@ export const SINGLE_READS: readonly Counted<Read>[] = [
   counted('/api/chronicle', 30),
 ];
 
-/** Client clocks beside the runner's traffic (5 s) and safety-net (60 s) loops, on a screen that stays open. */
-export const TIMER_READS: readonly { read: Read; periodMs: number }[] = [
-  { read: read('/api/skins'), periodMs: 30_000 },
-  { read: read('/api/season'), periodMs: 60_000 },
-  { read: read('/api/intel'), periodMs: 60_000 },
-  { read: read('/api/galaxy/events'), periodMs: 60_000 },
-  { read: read('/api/monuments'), periodMs: 60_000 },
-  { read: read(`/api/pirates?originPlanetId=${SELF}`), periodMs: 60_000 },
+/**
+ * Client clocks beside the runner's traffic and safety-net loops, on a screen that stays
+ * open. `net` slows under a live stream; the others drift with no event, so keep the minute.
+ */
+export const TIMER_READS: readonly { read: Read; net: boolean }[] = [
+  { read: read('/api/skins'), net: true },
+  { read: read('/api/season'), net: false },
+  { read: read('/api/intel'), net: false },
+  { read: read('/api/galaxy/events'), net: true },
+  { read: read('/api/monuments'), net: true },
+  { read: read(`/api/pirates?originPlanetId=${SELF}`), net: true },
 ];
-const TRAFFIC_PER_SECOND = 1 / 5;
-const SAFETY_NET_PER_SECOND = 4 / 60;
+/** Middle of `calmNetMs`, with the stream open and the server waking the client for traffic. */
+const CALM_MS = calmNetMs(0.5);
+const TRAFFIC_PER_SECOND = 1000 / CALM_MS;
+const SAFETY_NET_PER_SECOND = 4 * (1000 / CALM_MS);
 
 export type WriteKind = 'collect' | 'refresh' | 'returnSeen' | 'notificationsSeen' | 'mining' | 'upgrade' | 'probe' | 'build' | 'fleet';
 
@@ -107,7 +119,7 @@ export function workloadRates(multiplier: number) {
   const burstReads = per(sum(BURST_READS));
   const singles = per(sum(SINGLE_READS));
   const writes = per(MEASURED.writes);
-  const timers = TRAFFIC_PER_SECOND + SAFETY_NET_PER_SECOND + TIMER_READS.reduce((total, timer) => total + 1000 / timer.periodMs, 0);
+  const timers = TRAFFIC_PER_SECOND + SAFETY_NET_PER_SECOND + TIMER_READS.reduce((total, timer) => total + 1000 / (timer.net ? CALM_MS : NET_MS), 0);
   return {
     burstReads, singles, writes, timers,
     burstsPerSecond: burstReads / meanBurstSize(),

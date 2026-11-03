@@ -24,9 +24,10 @@ import { performance } from 'node:perf_hooks';
 import { ROUTE_SCHEMAS } from './capacity-schemas.ts';
 import { BURST_READS, burstSize, pickWeighted, resolveRead, SINGLE_READS, TIMER_READS, workloadRates, WRITES } from './capacity-workload.ts';
 import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
-import { capacityUsername, checksAnswer, coldStartReads, miningLaunchBody, miningWrite, eventReads, failedReads, FULL_READS, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
-import { CONSISTENCY_MS, HEAVY_COALESCE_MS } from '../apps/web/src/session/shardEvents.ts';
-import { CHASE_MS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
+import { capacityUsername, checksAnswer, coldStartReads, contactWake, eventGate, followsWithTraffic, isGatedEvent, openArrivals, miningLaunchBody, miningWrite, eventReads, failedReads, FULL_READS, netPeriodMs, trafficPeriodMs, joinAll, RUNNER_LIMITS, seatPlan, soonestArrival, workerVerdict } from './capacity-plan.ts';
+import { calmNetMs, NET_MS } from '../apps/web/src/api/liveChannel.ts';
+import { CONSISTENCY_MS, HEAVY_COALESCE_MS, STRATEGIC_SIGHT_CONSISTENCY_MS, TRAFFIC_WAKE, TRAFFIC_WAKE_OFF, TRAFFIC_WAKE_ON } from '../apps/web/src/session/shardEvents.ts';
+import { CHASE_MS, CONTACT_WINDOW_SETTLE_OFFSETS, MAX_CHASES, SETTLE_MARGIN_MS } from '../apps/web/src/session/arrivalTiming.ts';
 import { SERVERS, TRAFFIC } from '../packages/rules/src/index.ts';
 
 const PRODUCTION_HOSTS = new Set([
@@ -38,7 +39,6 @@ const PRODUCTION_HOSTS = new Set([
 const COALESCE_MS = 250;
 const EVENT_DRAIN_MS = 2500;
 const RECONNECT_RESYNC_MAX_MS = 5000;
-const READ_NET_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const HISTOGRAM_MAX_MS = 60_000;
 const METRIC_SNAPSHOT_CAPACITY = 2_048;
@@ -206,8 +206,10 @@ const fullRunHistogram = () => ({
   max: 0,
   overflow: 0,
 });
+/** Latency counts from the end of the ramp: logins and first reads are the warm-up, not the load. */
+const measuring = { on: false };
 const addSample = (histogram, value) => {
-  if (!Number.isFinite(value) || value < 0) return;
+  if (!measuring.on || !Number.isFinite(value) || value < 0) return;
   histogram.total += 1;
   histogram.sum += value;
   histogram.max = Math.max(histogram.max, value);
@@ -267,6 +269,9 @@ const streamStats = {
   forcedReconnectCompleted: 0,
   failures: 0,
   events: 0,
+  trafficWakeOn: 0,
+  trafficWakeOff: 0,
+  trafficWakes: 0,
   maxConnected: 0,
   connected: 0,
   connectedAtEnd: 0,
@@ -407,6 +412,8 @@ const request = async (vu, path, options = {}) => {
         }
         if (vu && path.split('?')[0] === '/api/galaxy/traffic') {
           observePublicContacts(vu, body);
+          vu.lastTrafficAt = Date.now();
+          armContactWake(vu, body?.contacts);
         }
         if (vu && path.split('?')[0] === '/api/session/pending') armArrival(vu, body?.pending);
         // The disc changes hourly and wrecks get stripped: act on what the map shows now.
@@ -458,10 +465,59 @@ const armHeavy = (vu) => {
   }, Math.max(0, due - Date.now()));
 };
 
+/** `useContactWindows`: one chain of reads for the soonest contact to end. */
+const contactStats = { armed: 0, reads: 0 };
+const armContactWake = (vu, contacts) => {
+  const { at, signature } = contactWake(contacts, Date.now());
+  if (signature === vu.contactSignature) return;
+  vu.contactSignature = signature;
+  for (const timer of vu.contactTimers) clearTimeout(timer);
+  vu.contactTimers = [];
+  if (at === null || activityController.signal.aborted) return;
+  contactStats.armed += 1;
+  vu.contactTimers = CONTACT_WINDOW_SETTLE_OFFSETS.map((offset) => setTimeout(() => {
+    if (activityController.signal.aborted) return;
+    contactStats.reads += 1;
+    void request(vu, '/api/galaxy/traffic');
+  }, Math.max(0, at - Date.now()) + offset));
+};
+
+/** The second read `useEventStream` schedules, once a replica can have seen the commit. */
+const armTrafficFollowUp = (vu) => {
+  if (vu.trafficFollowUp !== null) return;
+  vu.trafficFollowUp = setTimeout(() => {
+    vu.trafficFollowUp = null;
+    if (!activityController.signal.aborted) void request(vu, '/api/galaxy/traffic');
+  }, STRATEGIC_SIGHT_CONSISTENCY_MS + random() * 250);
+};
+
+/** The server says whether it will wake this client for traffic; not an event that happened. */
+const noteTrafficWake = (vu, kind) => {
+  if (kind === TRAFFIC_WAKE_ON) {
+    streamStats.trafficWakeOn += 1;
+    vu.trafficWoken = true;
+    return true;
+  }
+  if (kind === TRAFFIC_WAKE_OFF) {
+    streamStats.trafficWakeOff += 1;
+    vu.trafficWoken = false;
+    void request(vu, '/api/galaxy/traffic');
+    return true;
+  }
+  if (kind === TRAFFIC_WAKE) streamStats.trafficWakes += 1;
+  return false;
+};
+
 const noteEvent = (vu, kind) => {
+  if (noteTrafficWake(vu, kind)) return;
   streamStats.events += 1;
+  if (followsWithTraffic(kind)) armTrafficFollowUp(vu);
   const { paths, heavy } = eventReads(kind);
   if (paths.length === 0) return;
+  if (isGatedEvent(kind)) {
+    for (const path of paths) vu.gate(path);
+    return;
+  }
   if (heavy) {
     for (const path of paths) vu.heavyReads.add(path);
     vu.heavyLast = Date.now();
@@ -509,7 +565,7 @@ const streamLoop = async (vu, signal) => {
     signal.addEventListener('abort', abort, { once: true });
     const openedAt = performance.now();
     try {
-      const response = await fetch(`${vu.baseUrl}/api/stream`, {
+      const response = await fetch(`${vu.baseUrl}/api/stream?trafficWake=1`, {
         headers: {
           authorization: `Bearer ${vu.token}`,
           ...(values['synthetic-xff'] && isLoopback(vu.baseUrl)
@@ -531,6 +587,7 @@ const streamLoop = async (vu, signal) => {
       }
       streamStats.connected += 1;
       isConnected = true;
+      vu.live = true;
       streamStats.maxConnected = Math.max(streamStats.maxConnected, streamStats.connected);
       if (vu.streamOpens > 1 && vu.reconnectResync === null) {
         const resync = (async () => {
@@ -558,6 +615,10 @@ const streamLoop = async (vu, signal) => {
       attempt += 1;
     } finally {
       if (isConnected) streamStats.connected -= 1;
+      vu.live = false;
+      // Its timer was armed for minutes: this read re-arms it for the five-second poll.
+      if (vu.trafficWoken && !signal.aborted) void request(vu, '/api/galaxy/traffic');
+      vu.trafficWoken = false;
       vu.forceReconnect = null;
       signal.removeEventListener('abort', abort);
       controller.abort();
@@ -591,7 +652,7 @@ const initialReads = async (vu) => {
 };
 
 const safetyNetLoop = async (vu, signal) => {
-  await pause(random() * READ_NET_MS, signal);
+  await pause(random() * netPeriodMs(vu.live, vu.calmNetMs), signal);
   while (!signal.aborted) {
     await Promise.all([
       request(vu, '/api/galaxy'),
@@ -599,16 +660,19 @@ const safetyNetLoop = async (vu, signal) => {
       request(vu, '/api/mining/status'),
       request(vu, '/api/session/pending'),
     ]);
-    await pause(READ_NET_MS, signal);
+    await pause(netPeriodMs(vu.live, vu.calmNetMs), signal);
   }
 };
 
-/** The web polls traffic on its own clock (`useTraffic`, `TRAFFIC.refreshMs`). */
+/**
+ * `useTraffic`: a read of any kind restarts the query's clock, whose length follows the
+ * server's word on waking this client. Checked each second, so that word takes effect.
+ */
 const trafficLoop = async (vu, signal) => {
   await pause(random() * TRAFFIC.refreshMs, signal);
   while (!signal.aborted) {
-    await request(vu, '/api/galaxy/traffic');
-    await pause(TRAFFIC.refreshMs, signal);
+    if (Date.now() - vu.lastTrafficAt >= trafficPeriodMs(vu.trafficWoken, vu.calmNetMs)) await request(vu, '/api/galaxy/traffic');
+    await pause(1000, signal);
   }
 };
 
@@ -617,7 +681,7 @@ const trafficLoop = async (vu, signal) => {
  * world until it has moved on: one timer per client, for the soonest arrival.
  */
 const arrivalReads = [
-  '/api/session/pending', '/api/mining/field', '/api/galaxy/traffic', '/api/planet', '/api/planets',
+  '/api/session/pending', '/api/mining/field', '/api/galaxy/traffic', '/api/planets',
   '/api/galaxy', '/api/reports', '/api/notifications?limit=30',
 ];
 const arrivalStats = { armed: 0, followed: 0, chases: 0 };
@@ -720,28 +784,21 @@ const ownRead = (vu, entry) => {
 };
 
 /** What a return to the game or a new screen sends: measured sizes, measured routes, inside a second or two. */
-const burstLoop = async (vu, signal) => {
-  while (!signal.aborted) {
-    await pause(expWait(rates.burstsPerSecond), signal);
-    if (signal.aborted) return;
-    const size = burstSize(random());
-    await Promise.all(Array.from({ length: size }, async () => {
-      await pause(random() * BURST_SPREAD_MS, signal);
-      if (!signal.aborted) await ownRead(vu, pickWeighted(BURST_READS, random()).read);
-    }));
-  }
-};
-const singleReadLoop = async (vu, signal) => {
-  while (!signal.aborted) {
-    await pause(expWait(rates.singles), signal);
-    if (!signal.aborted) await ownRead(vu, pickWeighted(SINGLE_READS, random()).read);
-  }
-};
+const burstLoop = (vu, signal) => openArrivals(() => expWait(rates.burstsPerSecond), () => {
+  const size = burstSize(random());
+  return Promise.all(Array.from({ length: size }, async () => {
+    await pause(random() * BURST_SPREAD_MS, signal);
+    if (!signal.aborted) await ownRead(vu, pickWeighted(BURST_READS, random()).read);
+  }));
+}, (ms) => pause(ms, signal), signal);
+const singleReadLoop = (vu, signal) => openArrivals(() => expWait(rates.singles),
+  () => ownRead(vu, pickWeighted(SINGLE_READS, random()).read), (ms) => pause(ms, signal), signal);
 const timerLoop = async (vu, timer, signal) => {
-  await pause(random() * timer.periodMs, signal);
+  const period = () => (timer.net ? netPeriodMs(vu.live, vu.calmNetMs) : NET_MS);
+  await pause(random() * period(), signal);
   while (!signal.aborted) {
     await ownRead(vu, timer.read);
-    await pause(timer.periodMs, signal);
+    await pause(period(), signal);
   }
 };
 
@@ -754,7 +811,7 @@ const UPGRADES = ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT'];
 /** A write a run could not attempt is named in the report, never silently missing from the load. */
 const writeSkips = {};
 const skipWrite = (kind) => { writeSkips[kind] = (writeSkips[kind] ?? 0) + 1; };
-const REFUSED_FOR_WANT_OF = ['CORE_CEILING', 'INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
+const REFUSED_FOR_WANT_OF = ['CORE_CEILING', 'CORE_TIER_CONFIRMATION_REQUIRED', 'INSUFFICIENT_RESOURCES', 'NOT_ENOUGH_RESOURCES', 'BUILD_QUEUE_FULL', 'QUEUE_FULL', 'ALREADY_UPGRADING',
   'NO_FREE_BAY', 'NOT_ENOUGH_CRAFT', 'NO_SUCH_ASTEROID', 'ASTEROID_GONE', 'ASTEROID_EMPTY', 'NO_SUCH_FIELD', 'FIELD_GONE', 'ALREADY_MINING', 'ALREADY_HARVESTING', 'NEEDS_ISOTOPE_SPECTROMETRY', 'CANNOT_INTERCEPT'];
 const write = {
   async collect(vu) {
@@ -796,12 +853,8 @@ const write = {
     await launch(vu);
   },
 };
-const writeLoop = async (vu, signal) => {
-  while (!signal.aborted) {
-    await pause(expWait(rates.writes), signal);
-    if (!signal.aborted) await write[pickWeighted(WRITES, random()).kind](vu);
-  }
-};
+const writeLoop = (vu, signal) => openArrivals(() => expWait(rates.writes),
+  () => write[pickWeighted(WRITES, random()).kind](vu), (ms) => pause(ms, signal), signal);
 
 const launchWave = async (vusToUse, signal) => {
   if (waveLaunches === 0) return;
@@ -1392,7 +1445,15 @@ const vus = Array.from({ length: connectionCount }, (_, index) => ({
   forceReconnect: null,
   forcedReconnectTarget: null,
   reconnectResync: null,
+  live: false,
+  trafficWoken: false,
+  calmNetMs: calmNetMs(random()),
+  lastTrafficAt: 0,
+  trafficFollowUp: null,
+  contactSignature: null,
+  contactTimers: [],
 }));
+for (const vu of vus) vu.gate = eventGate((path) => { flushReads(vu, [path], performance.now()); });
 
 const startedAt = new Date();
 process.stdout.write(
@@ -1430,6 +1491,7 @@ const { joined, failures: joinFailures } = await joinAll(vus, async (vu, index) 
   );
 }, (vu) => `join:${String(vu.index)}`);
 const steadyStartedAt = new Date();
+measuring.on = true;
 activityTasks.push(
   { label: 'launch-wave', promise: launchWave(joined, activityController.signal) },
   { label: 'reconnect-storm', promise: reconnectStorm(joined, streamController.signal) },
@@ -1458,6 +1520,9 @@ for (const vu of vus) {
   if (vu.coalesceTimer !== null) clearTimeout(vu.coalesceTimer);
   if (vu.heavyTimer !== null) clearTimeout(vu.heavyTimer);
   if (vu.arrivalTimer !== null) clearTimeout(vu.arrivalTimer);
+  if (vu.trafficFollowUp !== null) clearTimeout(vu.trafficFollowUp);
+  // A contact can end hours away: its timer must not keep the finished run alive.
+  for (const timer of vu.contactTimers) clearTimeout(timer);
 }
 const streamResults = await Promise.allSettled(streamTasks.map((task) => task.promise));
 await Promise.allSettled(vus.flatMap((vu) => vu.reconnectResync ? [vu.reconnectResync] : []));
@@ -1623,6 +1688,8 @@ const gates = {
     && streamStats.connectedAtEnd === connectionCount
     && streamStats.opened >= connectionCount,
   noUnexpectedSseFailures: streamStats.failures === 0,
+  // Otherwise the server is older than this runner, and every client polled for itself.
+  serverWakesForTraffic: streamStats.trafficWakeOn >= connectionCount,
   reconnectCompleted:
     reconnectAtSeconds === null
     || (
@@ -1737,6 +1804,7 @@ const report = {
   taskFailures,
   writeSkips,
   streams: streamStats,
+  contactWakes: contactStats,
   arrivals: arrivalStats,
   capacityMetrics,
   databaseReconciliation,

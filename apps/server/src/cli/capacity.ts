@@ -152,7 +152,8 @@ async function main(): Promise<void> {
       .insert(accounts)
       .values(Array.from({ length: userCount }, (_, index) => {
         const username = usernameFor(index);
-        return { username, displayName: `Capacity ${String(index + 1)}`, passwordHash };
+        // Mid-season veterans, as the fleet below says: no first-season gift under it.
+        return { username, displayName: `Capacity ${String(index + 1)}`, passwordHash, firstSeasonStartedAt: systemClock.now() };
       }))
       .onConflictDoUpdate({
         target: accounts.username,
