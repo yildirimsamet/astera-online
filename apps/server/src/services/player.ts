@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { BUILDING_IDS, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, FIRST_SEASON_START, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
@@ -170,11 +170,11 @@ export type JoinSeat = 'COMMANDER' | 'SERVER';
  * the failure is a value to test and not an exception to classify. Nothing in this
  * file inspects a driver error code.
  *
- * `seat: 'SERVER'` IS THE BOT'S DOOR, and differs only in WHERE. A server commander
+ * `seat: 'SERVER'` is the server commander's door. A server commander
  * stands on its own band of addresses (`GALAXY.strata.bot`, the `botSlots` after the
  * capitals), one layer inside the people, and takes the free one furthest from the
- * other bots so the roster scatters all the way round the galaxy. It still costs a
- * seat against `playerCap` and gets exactly the opening a person gets.
+ * other bots so the roster scatters all the way round the galaxy. Server seats
+ * retain their legacy Academy checkpoint; human first-season gifts are separate.
  */
 export async function joinSeason(
   db: Db,
@@ -186,7 +186,9 @@ export async function joinSeason(
   adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<JoinResult> {
   // Validate before even looking for a placement. Only creation consumes it.
-  const academy = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
+  const checkpoint = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
+  // Human training never transfers a checkpoint, including requests from old clients.
+  const academy = seat === 'SERVER' ? checkpoint : null;
   const existing = await readPlacement(db, accountId);
   if (existing) return settle(existing, seasonId);
 
@@ -210,7 +212,7 @@ export async function joinSeason(
         await lockGalaxyEventAudience(tx, seasonId, 'membership');
         // Read after the audience lock. If a lifecycle transition won the race,
         // backfill is evaluated on its side of the exact boundary, never before it.
-        const now = clock.now();
+        let now = clock.now();
         const [current] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
         if (current?.status !== 'live' || now >= current.endsAt) {
           throw new GameError('SEASON_ENDED', 'This season has ended', 409);
@@ -233,7 +235,29 @@ export async function joinSeason(
         await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'NEW_JOIN' })
           .where(and(eq(mainVacancies.seasonId, seasonId), eq(mainVacancies.slotIndex, slot.index), isNull(mainVacancies.consumedAt)));
 
-        // The conditional UPDATE locks the account across concurrent galaxy joins.
+        // The durable receipt is also the account lock across concurrent galaxy joins.
+        // A rollback restores eligibility; season wipes and seat reclaim cannot.
+        const [joiningAccount] = await tx.select({ startedAt: accounts.firstSeasonStartedAt })
+          .from(accounts).where(eq(accounts.id, accountId)).for('update');
+        // The account lock can wait beyond the season boundary. Start every
+        // entitlement from admission time and leave it available if time ran out.
+        now = clock.now();
+        if (now >= current.endsAt) throw new GameError('SEASON_ENDED', 'This season has ended', 409);
+        // During a rolling release an old replica can still join/reclaim a seat
+        // without stamping the new column. Its retained receipt must also count.
+        const [history] = joiningAccount?.startedAt === null ? await tx.execute<{ played: boolean }>(sql`
+          select exists(select 1 from legacy_participation where account_id = ${accountId})
+            or exists(select 1 from season_results where account_id = ${accountId})
+            or exists(select 1 from players where account_id = ${accountId})
+            or exists(select 1 from accounts where id = ${accountId} and (lifetime -> 'seasons') > '0'::jsonb)
+            as played
+        `) : [];
+        const firstSeason = joiningAccount?.startedAt === null && history?.played === false;
+        if (joiningAccount?.startedAt === null) await tx.update(accounts).set({ firstSeasonStartedAt: now })
+          .where(eq(accounts.id, accountId));
+        const opening = seat === 'COMMANDER' && firstSeason ? FIRST_SEASON_START : academy;
+
+        // The conditional UPDATE consumes the independent shield entitlement.
         // A failed placement rolls it back; wipes leave the account entitlement consumed.
         const firstGame = seat === 'COMMANDER'
           ? await tx.update(accounts).set({ firstGameShieldAvailable: false })
@@ -272,22 +296,14 @@ export async function joinSeason(
             name: planetName,
             slotIndex: slot.index,
             x: slot.x, y: slot.y, z: slot.z,
-            /**
-             * The opening grant, from the rules package rather than the column
-             * default. D22 makes `START` derived arithmetic — exactly the cost of
-             * the first four things a commander does — so it has to come from the
-             * one place that can be tested against those prices.
-             *
-             * `PLANET_START` is that arithmetic PLUS the cushion the owner added at
-             * D58, because the arithmetic alone is spent to the last crystal by the
-             * time onboarding ends and leaves nothing to press.
-             */
-            alloy: academy ? academy.resources.alloy + (academy.queue?.cost.alloy ?? 0) : PLANET_START.alloy,
-            crystal: academy ? academy.resources.crystal + (academy.queue?.cost.crystal ?? 0) : PLANET_START.crystal,
+            // Gift resources are net. Only legacy server seats reimburse a queue
+            // here before placing that ordinary paid order below.
+            alloy: opening ? opening.resources.alloy + (academy?.queue?.cost.alloy ?? 0) : PLANET_START.alloy,
+            crystal: opening ? opening.resources.crystal + (academy?.queue?.cost.crystal ?? 0) : PLANET_START.crystal,
             // The starting tank. T6: a world opens able to fly and unable to make
             // more fuel, which is the chain the opening has to teach.
-            deuterium: academy ? academy.resources.deuterium + (academy.queue?.cost.deuterium ?? 0) : PLANET_START.deuterium,
-            academyStep: academyStep ?? null,
+            deuterium: opening ? opening.resources.deuterium + (academy?.queue?.cost.deuterium ?? 0) : PLANET_START.deuterium,
+            academyStep: academy ? academyStep ?? null : null,
             builtEver: academy?.builtEver ?? {},
             statsOwnerPlayerId: player.id,
             seasonTelemetry: {
@@ -295,9 +311,9 @@ export async function joinSeason(
               productiveSeconds: 0,
               shipsBuilt: academy?.builtEver ?? {},
             },
-            bufferAlloy: academy?.buffer.alloy ?? 0,
-            bufferCrystal: academy?.buffer.crystal ?? 0,
-            bufferDeuterium: academy?.buffer.deuterium ?? 0,
+            bufferAlloy: opening?.buffer.alloy ?? 0,
+            bufferCrystal: opening?.buffer.crystal ?? 0,
+            bufferDeuterium: opening?.buffer.deuterium ?? 0,
             lastTickAt: now,
           })
           .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
@@ -308,28 +324,28 @@ export async function joinSeason(
         await tx
           .insert(buildings)
           .values(STARTING_BUILDINGS.map((b) => ({ planetId: planet.id, ...b,
-            level: academy?.buildings[b.type] ?? b.level })));
+            level: opening?.buildings[b.type] ?? b.level })));
 
-        if (academy) {
+        if (opening) {
           const hardware = [
-            ...academy.satellites.map((type) => ({ type, level: 1 })),
-            ...Object.entries(academy.instruments).filter(([, level]) => level > 0)
+            ...opening.satellites.map((type) => ({ type, level: 1 })),
+            ...Object.entries(opening.instruments).filter(([, level]) => level > 0)
               .map(([type, level]) => ({ type, level })),
           ];
           if (hardware.length) await tx.insert(satellites).values(hardware.map((item, slot) => ({
             planetId: planet.id, slot, ...item,
           })));
-          const fleet = fleetEntries(academy.fleet);
+          const fleet = fleetEntries(opening.fleet);
           if (fleet.length) await tx.insert(units).values(fleet.map(([hull, count]) => ({
             planetId: planet.id, ownerPlayerId: player.id, hull, count, location: 'home',
           })));
-          for (const id of academy.claimedRewards) {
+          for (const id of academy?.claimedRewards ?? []) {
             const reward = findRewardTier(id);
             if (!reward) throw new Error(`Missing Academy reward ${id}`);
             await tx.insert(rewardGrants).values({ playerId: player.id, rewardId: id,
               ...reward.tier.reward, claimedAt: now });
           }
-          if (academy.queue) {
+          if (academy?.queue) {
             // Ordinary paid queue, in this same creation transaction. No instant build.
             await placeBuildingUpgrade(tx, await loadLocked(tx, planet.id, clock), academy.queue.building);
           }
@@ -344,19 +360,6 @@ export async function joinSeason(
           planetId: planet.id,
           deliveredAt: now,
         });
-
-        /**
-         * NO STARTING FLEET. D22.
-         *
-         * A commander used to be handed twelve Wasps, which answered the only
-         * question the opening asks — what do you spend on — before they had a
-         * chance to. They are given the alloy for two instead, and whether that
-         * alloy becomes ships, production or an instrument is the first real
-         * decision in the game.
-         *
-         * No `units` rows are written at all: a fleet of zero is the absence of
-         * rows, and `loadLocked` already reads a missing row as none.
-         */
 
         // Without this a fresh commander's Wealth stays at the column default of
         // zero, and the rank floor then protects them from every attacker forever.

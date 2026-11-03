@@ -1320,6 +1320,12 @@ simulator does not model that lane.
 
 ## 2026-09-09 — three bots-turn failures, traced and closed
 
+**Onboarding scope, updated 2026-11-03:** This section records a historical server-seat
+fixture using the legacy Academy checkpoint. Its fleet and queue are not today's
+FlightSchool player opening. The current training sends `intents: []` and transfers
+no exercise state; see [the onboarding reference](review-onboarding.md). The recorded
+figures below are historical, not a current opening grant.
+
 `bots-turn.test.ts` failed three cases on this branch before D183 and after it —
 "never lifts its Core past the ceiling", "does not offer a raid to a world that owns
 no warship" and "always leaves scouting open, even with nothing on the pad".

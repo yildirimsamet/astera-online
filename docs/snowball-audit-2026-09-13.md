@@ -1,5 +1,12 @@
 # D208 + D209 — tek hesaplı snowball incelemesi
 
+**Onboarding kapsamı — 3 Kasım 2026:** Aşağıdaki Academy çıkışı, ödüller ve `step`
+incelemesi eski checkpoint sözleşmesine aittir. Güncel FlightSchool `intents: []`
+gönderir ve eğitim ilerlemesini gerçek hesaba taşımaz. Sunucunun eski `step` desteği
+hâlâ ayrı bir çağrı yoludur. Güncel başlangıç ve tek seferlik paket
+[review-onboarding.md](review-onboarding.md) içindedir; bu raporun rakamları yeni
+oyuncunun bugünkü paketi olarak okunmamalıdır.
+
 2026-09-13. Çalışma ağacı `0a28f55` üzerindeki D208/D209 değişiklikleri ve devralma düzeltmeleri.
 Multi-account hariçtir. Üretimde yazma, deploy, wipe veya oyuncu üzerinde deneme yapılmadı.
 Sunucu kanıtları yalnızca yerel, adı `_test` ile biten veritabanlarında çalıştırıldı.

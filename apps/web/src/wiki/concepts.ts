@@ -14,18 +14,20 @@ export const conceptArticles: readonly WikiArticle[] = [
     l([
       "Astera Online keeps running while you are offline. Your planets produce resources, queued orders finish and fleets continue their missions. You do not need to keep the game open for these actions to progress.",
       "The Academy teaches the controls in a fast practice session. After joining a galaxy, select your planet and collect resources from the Works into the Store. Resources in the Works cannot pay for construction or flights.",
+      "In your first season, your account receives the starting package below once, whether you finish or skip training. Your Uplink, Telescope and Radar are already installed. Training ships, resources and progress stay in the exercise. Replaying training and joining later seasons do not grant the package again.",
     ], [
       "Astera Online, oyundan çıktığında da devam eder. Gezegenlerin kaynak üretir, sıradaki işler tamamlanır ve filoların görevlerini sürdürür. Bu işlemlerin ilerlemesi için oyunu açık tutman gerekmez.",
       "Akademi, hızlandırılmış eğitimde kontrolleri öğretir. Galaksiye katılınca kendi gezegenini seç ve kaynakları Havuzdan Depoya topla. Havuzda bekleyen kaynaklarla inşaat bedeli veya uçuş yakıtı ödenmez.",
+      "İlk sezonunda, eğitimi atlasan da tamamlasan da hesabına aşağıdaki başlangıç paketi bir kez verilir. Anten, Teleskop ve Radar kurulu gelir. Eğitimdeki gemiler, kaynaklar ve ilerleme eğitimde kalır. Eğitimi tekrar oynamak veya sonraki sezonlara katılmak paketi yenilemez.",
     ]),
     l([
       "Open Production to see your buildings and queues. Improve the producer for the resource you need. Raise the [[building.CORE|Command Core]] if its level blocks the upgrade you want.",
       "Open Fleet to build ships. For a raid, combine armed ships with enough cargo capacity to carry loot. A raid attacks another planet to obtain resources; sending only transports does not provide combat firepower.",
-      "Install [[satellite.UPLINK|Uplink]] before building Telescope or Radar. Before a raid, check protection, a recent [[intel.probes|probe report]], fuel and cargo. Review the ships left defending home and the expected return time. After the mission, read its report before repeating it.",
+      "Your first-season package provides [[satellite.UPLINK|Uplink]] and working sensors. On a world without an Uplink, install one before building Telescope or Radar. Before a raid, check protection, a recent [[intel.probes|probe report]], fuel and cargo. Review the ships left defending home and the expected return time. After the mission, read its report before repeating it.",
     ], [
       "Binalarını ve sipariş sıralarını görmek için Üretim bölümünü aç. Eksik kaynağın üretim binasını geliştir. İstediğin yükseltmeyi seviye sınırı engelliyorsa [[building.CORE|Komuta Çekirdeğini]] yükselt.",
       "Gemi üretmek için Filo bölümünü aç. Akın için savaş gemileriyle ganimeti taşıyacak kargo kapasitesini birlikte hazırla. Akın, kaynak almak için başka gezegene yapılan saldırıdır. Yalnız nakliye gemisi göndermek savaş gücü sağlamaz.",
-      "Teleskop veya Radar kurmadan önce [[satellite.UPLINK|Anten]] kur. Akından önce korumayı, güncel [[intel.probes|sonda raporunu]], yakıtı ve kargoyu kontrol et. Gezegeninde savunmaya kalan gemileri ve dönüş zamanını incele. Görevden sonra aynı akını tekrarlamadan önce raporunu oku.",
+      "İlk sezon paketinde [[satellite.UPLINK|Anten]] ve çalışan görüş cihazların hazırdır. Anteni olmayan bir dünyada Teleskop veya Radar kurmadan önce Anten kur. Akından önce korumayı, güncel [[intel.probes|sonda raporunu]], yakıtı ve kargoyu kontrol et. Gezegeninde savunmaya kalan gemileri ve dönüş zamanını incele. Görevden sonra aynı akını tekrarlamadan önce raporunu oku.",
     ]), ['basics.loop', 'economy.collectors', 'fleet.flights']),
   topic('basics', 'loop', l('Information, risk & opportunity', 'Bilgi, risk ve fırsat'),
     l("Use production to build your fleet, gather current intelligence and compare a mission’s possible reward with its cost and risks.", "Üretimle filonu geliştir, güncel istihbarat topla ve görevin olası getirisini bedeliyle ve riskleriyle karşılaştır."),

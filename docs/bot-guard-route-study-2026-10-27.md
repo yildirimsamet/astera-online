@@ -1,5 +1,11 @@
 # Guard bot gelişim rotası — 27 Ekim 2026
 
+**Başlangıç kapsamı — 3 Kasım 2026:** Bu ölçüm eski `academyExitCheckpoint` ile
+oluşturulan sunucu koltuğundan başlar. Aşağıdaki filo, kaynaklar ve Core kuyruğu
+güncel FlightSchool'u bitiren oyuncunun başlangıcı değildir. Yeni eğitim sonuçları
+aktarmaz; [güncel onboarding referansına](review-onboarding.md) bakın. Ölçüm rakamları
+bu nedenle yeni oyuncu açılışının veya yeni ilk sezon paketinin kanıtı sayılmaz.
+
 ## Sonuç ve kapsam
 
 Öneri: ekonomik açılış → küçük karma savunma → T3 karma filo → ekonomik genişleme ile T4 → filo ve onarım kapasitesi. Gün sayıları botun talimatı değildir; ücretli rotanın ölçülen çıktısıdır.

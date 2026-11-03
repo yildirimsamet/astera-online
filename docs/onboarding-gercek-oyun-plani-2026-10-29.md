@@ -1,7 +1,13 @@
 # Astera Online: gerçek oyunda rehberli onboarding planı
 
 Tarih: 29 Ekim 2026  
-Durum: Araştırma, konuşmada netleşen kararlar ve uygulama planı. Oyun koduna uygulanmış özellik değildir.
+Durum: **Yerine FlightSchool uygulanmış eski öneri; güncel uygulama talimatı değildir.**
+
+3 Kasım 2026 notu: 1–2 Kasım'da gerçek hesapta rehberli başlangıç yerine ayrı,
+yerel eğitim galaksisi uygulanmıştır. Bu belgenin aşağıdaki gelecek zamanlı kararları
+ve adımları tarihsel öneriyi anlatır; tekrar uygulanacak işler değildir.
+Güncel davranış ve ilk sezon paketi için [ana onboarding referansını](review-onboarding.md),
+geliştirme/kabul geçmişi için [FlightSchool kaydını](onboarding-academy-redesign-2026-11-01.md) okuyun.
 
 ## 1. Amacımız ve onboarding'e bakışımız
 
@@ -276,4 +282,4 @@ Başarı değerlendirmesi:
 4. Gerçek ekranda gezegeni açma ve Çekirdek adımlarını çalıştır; mobilde oynayıp değerlendir.
 5. Bu parça doğrulanınca kalan akışı, eski hesap geçişini ve ölçümü sırayla tamamla.
 
-Başvuru: [araştırma raporu](../reports/Oyunlarda%20oyuncuyu%20tutan%20onboarding%20tasarımı.md), [mevcut onboarding incelemesi ve tarihçesi](review-onboarding.md), [çalışma kuralları](../CLAUDE.md). Tarihsel dokümanlarla çelişen ürün yönünde bu konuşmada netleşen gerçek oyun rehberi ve zorunlu PvP içermeyen başlangıç esas alınır; mekaniklerin doğruluğu çalışan kod ve testlerden kontrol edilir.
+Başvuru: [araştırma raporu](../reports/Oyunlarda%20oyuncuyu%20tutan%20onboarding%20tasarımı.md), [güncel onboarding referansı](review-onboarding.md), [çalışma kuralları](../CLAUDE.md). Bu önerinin gerçek oyunda rehberli başlangıç yönü daha sonra FlightSchool ile değiştirildi; aşağıdaki eski kabul listesi güncel uygulama talimatı değildir. Mevcut davranış çalışan kod ve testlerden kontrol edilir.

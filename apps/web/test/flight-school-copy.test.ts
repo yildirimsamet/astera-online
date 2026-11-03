@@ -1,5 +1,18 @@
 import { expect, it } from 'vitest';
 import { schoolCopy } from '../src/onboarding/flightSchool/copy.js';
+it('explains the one-time first-season package without promising training transfers', () => {
+  const tr = schoolCopy('tr'), en = schoolCopy('en');
+  expect(tr.claim.toLocaleLowerCase('tr')).toContain('ilk sezon');
+  expect(tr.claim).toContain('1.000 kristal');
+  expect(tr.claim).toContain('bir kez');
+  expect(tr.claim).toContain('atlasan');
+  expect(en.claim).toContain('first season');
+  expect(en.claim).toContain('1,000 crystal');
+  expect(en.claim).toContain('once');
+  expect(en.claim).toContain('skip');
+  expect(tr.scenes.departure).toContain('ilk sezon');
+  expect(en.scenes.departure).toContain('first season');
+});
 it('offers growing the Telescope rather than an abstract next-level demonstration', () => {
  expect(schoolCopy('tr').range).toBe('Teleskopu büyüt');
  expect(schoolCopy('en').range).toBe('Expand the Telescope');

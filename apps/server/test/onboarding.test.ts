@@ -3,13 +3,14 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ACADEMY_STEPS, TUTORIAL_EXIT, OPENING_BONUS, PLANET_START, START, buildingCost, HULLS } from '@astera/rules';
+import { ACADEMY_STEPS, FIRST_SEASON_START, OPENING_BONUS, PLANET_START, START, buildingCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, buildOrders, missions, planets, players, satellites, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import { bootstrapServers } from '../src/services/servers.js';
 import { rewardsView, claimReward } from '../src/services/rewards.js';
 import { instrumentLevels } from '../src/services/intel.js';
+import { registerAccount } from '../src/services/account.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -116,66 +117,35 @@ describe('onboarding claim', () => {
     expect(account?.countryCode).toBe('FR');
   });
 
-  it('seeds the Academy once and never upgrades a returning commander on retry', async () => {
+  it.each([0, 13, ACADEMY_STEPS.length])('gives the fixed opening once for Academy step %s', async step => {
     await openWorld();
-    const payload = { username: 'AcademyPilot', password: 'correct-horse-battery', step: ACADEMY_STEPS.length };
+    const payload = { username: 'AcademyPilot', password: 'correct-horse-battery', step };
     const first = await claim(payload);
     expect(first.statusCode).toBe(200);
     const body = first.json<Claim>();
-    expect(body.planet.buildings).toMatchObject(TUTORIAL_EXIT.buildings);
-    expect(body.planet.orbitSlots).toBe(1);
+    expect(body.planet.buildings).toEqual(FIRST_SEASON_START.buildings);
     expect(body.planet.effectiveOrbit).toEqual(['UPLINK']);
-    const activeSensors = await instrumentLevels(db, [body.placement.planetId]);
-    expect(activeSensors.get(body.placement.planetId)).toMatchObject({ TELESCOPE: 1, RADAR: 1 });
-    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
+    expect((await instrumentLevels(db, [body.placement.planetId])).get(body.placement.planetId))
+      .toMatchObject({ TELESCOPE: 3, RADAR: 2, AEGIS: 1 });
+    expect(body.planet.queues.CONSTRUCTION).toEqual([]);
     const [row] = await db.select().from(planets).where(eq(planets.id, body.placement.planetId));
-    expect(row?.builtEver).toEqual(TUTORIAL_EXIT.builtEver);
-    expect(row?.bufferAlloy).toBe(TUTORIAL_EXIT.buffer.alloy);
-    expect(row?.bufferCrystal).toBe(TUTORIAL_EXIT.buffer.crystal);
+    expect(row?.builtEver).toEqual({});
+    expect(row?.academyStep).toBeNull();
+    expect(row?.bufferAlloy).toBe(84);
+    expect(row?.bufferCrystal).toBe(36);
     const ships = await db.select().from(units).where(eq(units.planetId, body.placement.planetId));
-    expect(Object.fromEntries(ships.map((s) => [s.hull, s.count]))).toEqual(TUTORIAL_EXIT.fleet);
-    const sensorKit = await db.select().from(satellites).where(eq(satellites.planetId, body.placement.planetId));
-    expect(sensorKit.map((item) => item.type).sort()).toEqual(['AEGIS', 'RADAR', 'TELESCOPE', 'UPLINK']);
+    expect(Object.fromEntries(ships.map(ship => [ship.hull, ship.count]))).toEqual(FIRST_SEASON_START.fleet);
     const rewards = await rewardsView(db, body.placement.planetId, clock);
-    expect(rewards.chains.find((c) => c.id === 'PIRATE')?.progress).toBe(1);
-    expect(rewards.chains.find((c) => c.id === 'MINE')?.progress).toBe(1);
-    expect(rewards.chains.find((c) => c.id === 'RAID')?.progress).toBe(1);
-    await expect(claimReward(db, body.placement.planetId, 'PIRATE:1', clock))
-      .rejects.toMatchObject({ code: 'REWARD_TAKEN' });
-    const again = await claim(payload);
+    expect(rewards.chains.find(chain => chain.id === 'PIRATE')?.progress).toBe(0);
+    expect(rewards.chains.find(chain => chain.id === 'MINE')?.progress).toBe(0);
+    expect(rewards.chains.find(chain => chain.id === 'RAID')?.progress).toBe(0);
+    expect(rewards.chains.flatMap(chain => chain.tiers).some(tier => tier.state === 'claimed')).toBe(false);
+    await expect(claimReward(db, body.placement.planetId, 'PIRATE:1', clock)).rejects.toMatchObject({ code: 'REWARD_LOCKED' });
+    const again = await claim({ ...payload, step: ACADEMY_STEPS.length });
     expect(again.statusCode).toBe(200);
     expect(again.json<Claim>().placement.planetId).toBe(body.placement.planetId);
     expect(again.json<Claim>().planet.queues).toEqual(body.planet.queues);
     expect(await db.select().from(satellites).where(eq(satellites.planetId, body.placement.planetId))).toHaveLength(4);
-  });
-
-  it('leaves a paid Core upgrade after skipping at the welcome without awarding a lesson', async () => {
-    await openWorld();
-    const response = await claim({ username: 'EarlyAcademy', password: 'correct-horse-battery', step: 0 });
-    expect(response.statusCode).toBe(200);
-    const body = response.json<Claim>();
-    expect(body.planet.buildings.CORE).toBe(1);
-    expect(body.planet.orbitSlots).toBe(1);
-    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
-    expect(body.planet.queues.CONSTRUCTION[0]?.subject).toBe('CORE');
-    const rewards = await rewardsView(db, body.placement.planetId, clock);
-    expect(rewards.chains.flatMap((c) => c.tiers).some((tier) => tier.state === 'claimed')).toBe(false);
-  });
-
-  it('serializes concurrent Academy claims and preserves a partial checkpoint on a later full claim', async () => {
-    await openWorld();
-    const step = ACADEMY_STEPS.findIndex((s) => s.id === 'vaultReward');
-    const payload = { username: 'PartialAcademy', password: 'correct-horse-battery', step };
-    const results = await Promise.all([claim(payload), claim(payload)]);
-    expect(results.map((r) => r.statusCode)).toEqual([200, 200]);
-    const worlds = results.map((r) => r.json<Claim>());
-    expect(worlds[0]!.placement.planetId).toBe(worlds[1]!.placement.planetId);
-    const id = worlds[0]!.placement.planetId;
-    expect(worlds[0]!.planet.buildings.VAULT).toBe(1);
-    const later = await claim({ ...payload, step: ACADEMY_STEPS.length });
-    expect(later.json<Claim>().planet.buildings.SHIPYARD).toBe(0);
-    const rewards = await rewardsView(db, id, clock);
-    expect(rewards.chains.find((c) => c.id === 'VAULT')?.tiers[0]?.state).toBe('claimable');
   });
 
   it.each([-1, 0.5, 41, '40'])('rejects an invalid Academy step %s before account creation', async (step) => {
@@ -196,6 +166,15 @@ describe('onboarding claim', () => {
    * only order the rules permit. Nothing may exceed the Command Core, so the Core
    * is first and the other two follow; what is left over is exactly two Wasps.
    */
+  const establishedClaim = async (payload: { username: string; password: string; intents: unknown[] }) => {
+    const [existing] = await db.select().from(accounts).where(eq(accounts.username, payload.username.toLowerCase()));
+    if (!existing) {
+      const account = await registerAccount(db, payload);
+      await db.update(accounts).set({ firstSeasonStartedAt: clock.now() }).where(eq(accounts.id, account.id));
+    }
+    return claim(payload);
+  };
+
   const OPENING = () => [
     { kind: 'upgrade', building: 'CORE' },
     { kind: 'upgrade', building: 'REFINERY' },
@@ -240,7 +219,7 @@ describe('onboarding claim', () => {
   it('replays the whole opening, and the planet ends where the rehearsal said it would', async () => {
     await openWorld();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       intents: OPENING(),
@@ -293,7 +272,7 @@ describe('onboarding claim', () => {
   it('leaves the first session with paid work pending and no hull granted early', async () => {
     await openWorld();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       intents: OPENING(),
@@ -315,7 +294,7 @@ describe('onboarding claim', () => {
   it('keeps the account and the planet when a replayed step is refused', async () => {
     await openWorld();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       // No Core first, so the Refinery cannot pass it.
@@ -337,7 +316,7 @@ describe('onboarding claim', () => {
     await openWorld();
     const target = await neighbour();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       intents: [
@@ -357,7 +336,7 @@ describe('onboarding claim', () => {
   it('skips the rest of a chain once one link is refused', async () => {
     await openWorld();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       intents: [
@@ -387,9 +366,9 @@ describe('onboarding claim', () => {
       intents: OPENING(),
     };
 
-    const first = await claim(payload);
+    const first = await establishedClaim(payload);
     expect(first.statusCode).toBe(200);
-    const second = await claim(payload);
+    const second = await establishedClaim(payload);
     expect(second.statusCode).toBe(200);
 
     const body = second.json<Claim>();
@@ -411,7 +390,9 @@ describe('onboarding claim', () => {
       intents: OPENING(),
     };
 
-    const [first, second] = await Promise.all([claim(payload), claim(payload)]);
+    const account = await registerAccount(db, payload);
+    await db.update(accounts).set({ firstSeasonStartedAt: clock.now() }).where(eq(accounts.id, account.id));
+    const [first, second] = await Promise.all([establishedClaim(payload), establishedClaim(payload)]);
 
     expect(first.statusCode).toBe(200);
     expect(second.statusCode).toBe(200);
@@ -517,7 +498,7 @@ describe('onboarding claim', () => {
   it('reports a launch at a world that no longer exists, and keeps the planet', async () => {
     await openWorld();
 
-    const body = (await claim({
+    const body = (await establishedClaim({
       username: 'kaptan',
       password: 'correct-horse-battery',
       intents: [

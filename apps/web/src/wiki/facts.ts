@@ -1,13 +1,13 @@
 import {
   combatOutcomeTable,
   LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
-  ABUSE, ANTI_STRATEGIC, BUILD, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM,
+  ABUSE, ANTI_STRATEGIC, BUILD, BUILDING_IDS, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM, FIRST_SEASON_START,
   ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
   PROBE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SALVAGE, CLAN, RADIATION_LEVEL_HP_PER_MINUTE,
   CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
-  shipShieldHp,
+  shipShieldHp, fleetEntries, instrumentEntries,
   flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
   researchEffectAt, interceptorCapacity, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
   telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
@@ -124,6 +124,14 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   const n = (v: number): string => number(v, language);
   const t = (en: string, tr: string): string => label(language, en, tr);
   let blocks: WikiBlock[] = [];
+  if (id === 'basics.quick-start') blocks = [
+    table(t('First-season Store resources', 'İlk sezon Depo kaynakları'), resourceColumns(language), [costCells(FIRST_SEASON_START.resources, language)]),
+    table(t('First-season Works resources — collect before spending', 'İlk sezon Havuz kaynakları — harcamadan önce topla'), resourceColumns(language), [costCells(FIRST_SEASON_START.buffer, language)]),
+    pairs(language, t('First-season building levels', 'İlk sezon bina seviyeleri'), BUILDING_IDS.map(id => [t(en.building[id].name, tr.building[id].name), n(FIRST_SEASON_START.buildings[id])])),
+    pairs(language, t('First-season instrument levels', 'İlk sezon cihaz seviyeleri'), instrumentEntries(FIRST_SEASON_START.instruments).map(([id, level]) => [t(en.instrument[id].name, tr.instrument[id].name), n(level)])),
+    pairs(language, t('First-season satellites — quantity', 'İlk sezon uyduları — adet'), FIRST_SEASON_START.satellites.map(id => [t(en.satellite[id].name, tr.satellite[id].name), n(1)])),
+    pairs(language, t('First-season ships — quantity', 'İlk sezon gemileri — adet'), fleetEntries(FIRST_SEASON_START.fleet).map(([id, count]) => [t(en.hull[id].name, tr.hull[id].name), n(count)])),
+  ];
   if (id === 'fleet.flights') blocks = [pairs(language, t('Choosing a slower flight', 'Daha yavaş uçuş seçmek'), [
     [t('Maximum duration of each slowed leg', 'Yavaşlatılan her uçuş bölümünün süre sınırı'), hours(TRAVEL.pacedFlightCapMinutes / 60, language)],
   ])];
@@ -171,7 +179,8 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Either commander tier 1–3: wait after battle', 'Taraflardan biri 1–3. kademe: savaştan sonra bekleme'), hours(ABUSE.personalRaidCooldownMinutes / 60, language)],
     [t('Personal raids when both commanders are tier 4+', 'İki komutan da 4+ kademedeyken kişisel akın'), `${n(ABUSE.bashLimit)} / ${hours(ABUSE.bashWindowMinutes / 60, language)}`],
     [t('Clan raids on one commander', 'Aynı komutana klan akını sınırı'), `${n(CLAN.attackLimit)} / ${hours(CLAN.attackWindowMinutes / 60, language)}`],
-    [t('Newcomer shield', 'Yeni oyuncu kalkanı'), hours(ABUSE.newcomerShieldHours, language)],
+    [t('First game shield — once per eligible account', 'İlk oyun kalkanı — hak sahibi hesap başına bir kez'), hours(ABUSE.firstGameShieldHours, language)],
+    [t('Ordinary joining shield', 'Normal sezon katılım kalkanı'), hours(ABUSE.newcomerShieldHours, language)],
   ]), table(t('Recovery protection by defending commander', 'Savunan komutana göre toparlanma koruması'),
     [t('Tier', 'Kademe'), t('Net production hours lost', 'Net üretim kaybı'), t('Loss history', 'Kayıp penceresi'), t('Shield duration', 'Kalkan süresi')],
     [

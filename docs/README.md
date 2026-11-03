@@ -48,6 +48,7 @@ what the game is trying to be.
 | [architecture.md](architecture.md) | How is it built, and which platform traps are already paid for? |
 | [engineering-standards.md](engineering-standards.md) | **Typing, lint, testing. Project law.** |
 | [interface.md](interface.md) | How the screens are built and why |
+| [review-onboarding.md](review-onboarding.md) | Current FlightSchool, actual season opening, legacy Academy boundaries and the one-time first-season package |
 | [visual-design.md](visual-design.md) | Art direction, the asset inventory, and what is missing |
 | [playtest-log.md](playtest-log.md) | How to run a real play session, and what to record |
 | [deployment.md](deployment.md) | How it ships, and what must never happen in the wrong order |
@@ -59,6 +60,11 @@ what the game is trying to be.
 **In a hurry:** `CLAUDE.md` → `decisions.md` → `balance.md`.
 **Lost context mid-task:** add the code and `git log` to the end of that list. Never re-invent
 lost context by guessing.
+
+For onboarding, start with [review-onboarding.md](review-onboarding.md) and follow the
+current `App.tsx` import into `onboarding/flightSchool/`. The old 40-step
+`TUTORIAL_EXIT` is still used by legacy server callers; it is not the opening given by
+FlightSchool. Dated plans and acceptance logs do not replace the current source path.
 
 ## The two rules that matter most
 

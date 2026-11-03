@@ -114,6 +114,7 @@ function SchoolScreen({ world, dispatch, replay, onSceneReady, observer, ...prop
   const busy = !!world.pending || !!world.flight;
   const trafficDone = scene.id === 'traffic' && now >= world.sceneAt + 8000;
   const message = flight ? copy.flight[flight.kind][phase] ?? copy.busy : busy ? copy.busy
+    : scene.id === 'departure' && replay ? t('academy.replayComplete')
     : scene.id === 'traffic' && trafficDone ? copy.trafficArrived
     : scene.id === 'sight' && world.reach ? copy.sightOpening
     : scene.id === 'warning' && schoolPending(world, now).length === 0 ? copy.radarOpening : copy.scenes[scene.id];

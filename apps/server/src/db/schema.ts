@@ -319,6 +319,8 @@ export const accounts = pgTable('accounts', {
   lifetime: jsonb('lifetime').$type<Record<string, number>>().notNull().default({}),
   /** Only new human registrations opt in; consumed atomically on their first join. */
   firstGameShieldAvailable: boolean('first_game_shield_available').notNull().default(false),
+  /** Survives season wipes and seat reclaim; null until the first successful join. */
+  firstSeasonStartedAt: timestamp('first_season_started_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),

@@ -4,6 +4,11 @@ Tarih: 2 Kasım 2026
 
 Durum: Uygulama planı; bu belge özelliğin uygulanmış veya yayımlanmış olduğunu bildirmez.
 
+**Onboarding kaynak güncellemesi — 3 Kasım 2026:** FlightSchool artık çalışma ağacında
+`App.tsx` tarafından açılan eğitimdir. Aşağıdaki release/master/worktree ayrımları
+2 Kasım kaynak envanterini anlatır; güncel giriş yolunu belirlemek için
+[review-onboarding.md](review-onboarding.md) ve mevcut import zinciri kullanılır.
+
 Amaç: Oyuncunun ne zaman geldiğini, hangi aşamaları gördüğünü, ne yapabildiğini, hangi engellerle karşılaştığını ve daha sonra geri dönüp dönmediğini inceleyebilmek.
 
 ## 1. Belgenin dayanağı ve sınırları

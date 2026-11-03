@@ -4,6 +4,36 @@ import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  it('explains the first-season gift, its ready hardware and later-season limits in both editions', () => {
+    const article = getWikiArticle('basics.quick-start');
+    for (const language of ['en', 'tr'] as const) {
+      const text = JSON.stringify(article?.sections[language]).toLocaleLowerCase(language);
+      expect(text).toMatch(language === 'en' ? /first season/i : /ilk sezon/i);
+      expect(text).toMatch(language === 'en' ? /skip/i : /atlasan/i);
+      expect(text).toMatch(language === 'en' ? /already installed/i : /kurulu/i);
+      expect(text).toMatch(language === 'en' ? /later seasons/i : /sonraki sezon/i);
+      const reference = conceptReference('basics.quick-start', language);
+      expect(reference).toBeDefined();
+      const tables = reference?.blocks.filter(block => block.kind === 'table');
+      expect(tables?.flatMap(block => block.rows)).toContainEqual([
+        number(1500, language), number(1000, language), number(50, language),
+      ]);
+      const rows = tables?.flatMap(block => block.rows);
+      expect(rows).toContainEqual([language === 'en' ? 'Telescope' : 'Teleskop', '3']);
+      expect(rows).toContainEqual(['Radar', '2']);
+      expect(rows).toContainEqual([language === 'en' ? 'Prospector' : 'Kazıcı', '1']);
+    }
+  });
+
+  it('distinguishes the one-time first-game shield from ordinary joining protection', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const reference = conceptReference('combat.eligibility', language);
+      const text = JSON.stringify(reference).toLocaleLowerCase(language);
+      expect(text).toMatch(language === 'en' ? /first game/i : /ilk oyun/i);
+      expect(text).toContain(language === 'en' ? '72 h' : '72 sa');
+      expect(text).toContain(language === 'en' ? '24 h' : '24 sa');
+    }
+  });
   it('explains personal signals, all odds, losses, radar, delivery and the production collector in both editions', () => {
     const article = getWikiArticle('galaxy.unknown-signals');
     expect(article).toBeDefined();

@@ -211,7 +211,8 @@ export async function makeAccount(
   const username = `${name.toLowerCase()}_${randomUUID().slice(0, 8)}`;
   const [account] = await db
     .insert(accounts)
-    .values({ username, passwordHash: 'not-a-real-hash', displayName: name })
+    .values({ username, passwordHash: 'not-a-real-hash', displayName: name,
+      firstSeasonStartedAt: new Date('2025-12-01T00:00:00Z') })
     .returning();
   // Ordinary fixtures model an established, consenting player. Policy tests explicitly remove this evidence.
   await db.insert(communityPolicyAcceptances).values({ accountId: account!.id, version: COMMUNITY_POLICY_VERSION, locale: 'en', acceptedAt: new Date('2026-01-01T00:00:00Z') });

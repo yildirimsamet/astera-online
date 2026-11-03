@@ -729,8 +729,14 @@ the **Beacon** (fleet speed).
 not a checklist, because the fourth slot is a Core 18 planet: for the part of a season anybody
 plays, a world runs one, two or three, and **which ones is who it is**.
 
-The Academy grants one Uplink, Telescope L1 and Radar L1 once when a new commander joins. The
-gifted Uplink uses the ordinary first slot and powers both instruments immediately.
+The current FlightSchool keeps its training hardware, fleet and resources inside the
+exercise. Its claim sends no checkpoint. The first successful season join receives the
+account's one-time `FIRST_SEASON_START` package: Core 3, Telescope 3, Radar 2, Aegis 1
+and one Uplink, alongside the starting fleet and resources. This is independent of
+finishing or skipping training. Later joins use `PLANET_START` and `START_BUILDINGS`
+without starting hardware or fleet. The legacy Academy checkpoint remains only for
+server-managed seats; a human client's `step` cannot grant it. See
+[the current onboarding reference](review-onboarding.md) for the package and its durable account boundary.
 
 **The Uplink is the one gate in the whole system.** It multiplies nothing and defends nothing;
 it is the only route to the two instruments that SEE. On later worlds the first slot is a real
@@ -1031,11 +1037,14 @@ and counts, and the formation shows the same information through real hull asset
 pips. Owner, origin and destination remain hidden. Mining runs expose their route only after
 their target has been discovered, so a route cannot reveal a hidden rock.
 
-### The first day in a galaxy (D183)
+### Joining protection (D183; first-game extension, 2026-10-07)
 
-Every commander who joins a galaxy — a new account, a veteran on their second season, a graduate
-of the Academy — cannot be raided or struck for twenty-four hours. This reverses D14, which
-removed a four-hour version with an argument that is still true: *a world where a new arrival is
+Ordinary season joins receive twenty-four hours of raid/strike protection. New human accounts,
+when `FIRST_GAME_SHIELD_ENABLED` is enabled at registration, receive a single
+seventy-two-hour entitlement consumed atomically on the first successful join.
+Retries and season wipes do not restore it; finishing or skipping FlightSchool does not
+determine its duration. This extends D183, which reversed D14's removal of a four-hour
+version with an argument that is still true: *a world where a new arrival is
 untouchable is a world where the first hours are safe, and this game's first hours are supposed to
 teach you that they are not.*
 

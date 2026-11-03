@@ -1,5 +1,12 @@
 # Karakterli eğitim galaksisi — 1 Kasım 2026
 
+**Durum:** FlightSchool uygulanmıştır. Bu belge 1–2 Kasım geliştirme, yerel ortam ve
+kabul kayıtlarını korur; aşağıdaki worktree, port, test sayıları ve yayın hazırlıkları
+o çalışmanın kayıtlarıdır. Güncel davranış ve yerel kodda uygulanan ilk sezon paketi
+[review-onboarding.md](review-onboarding.md) içindedir. Güncel giriş `App.tsx` içinden
+`flightSchool/FlightSchool.tsx` dosyasına gider; eski `Academy.tsx` ve `TUTORIAL_EXIT`
+oyuncunun bu eğitimden çıkış paketi değildir. Eğitimde gerçek hesaba aktarılan ödül yoktur.
+
 ## Owner kararları
 
 - Eski `blindspace-onboarding` çalışması kullanılmaz. Başlangıç güncel `master` 9fac8df1; yeni worktree `blindspace-academy-redesign`, dal `codex/academy-redesign-20261101`.
@@ -26,7 +33,7 @@ Her sahne: ihtiyaç, kısa açıklama, oyuncunun gerçek kontrolle eylemi, gözl
 - Eğitim sensör katmanları gerçek cihaz tercihlerini değiştirmez.
 - Sonuç sahnesi kullanıcı onayı ister. Aynı dokunuş hem metni tamamlayıp hem sahneyi atlatamaz.
 
-## Doğrulama kaydı — sürüyor
+## 1–2 Kasım doğrulama kaydı
 
 - İlk model/konuşma testlerinde eksik modül FAIL; implementation sonrası PASS.
 - Okunmamış sonuçta bekleme, yanlış sipariş/adet, kapasite, hareketli asteroit/yakalama, sonlu eğitim bütçesi, tekrar işlememe ve eylem geçmişinden kurtarma testleri eklendi.
@@ -37,7 +44,7 @@ Her sahne: ihtiyaç, kısa açıklama, oyuncunun gerçek kontrolle eylemi, gözl
 - 390×844 tarayıcıda bütün akış gerçek kontroller ve normal saatlerle oynandı; yazılar atlanmadı. İki savaş raporu açıldı ve komutan oluşturularak gerçek galaksiye geçildi. Claim yanıtında CORE 1, 1.500 alaşım, 400 kristal, 50 döteryum, boş filo ve boş yer savunması doğrulandı. Tarayıcı çalışma hatası yoktu. Son kısa telefon turu ve genel kontroller sürüyor.
 - Genel web tsc 2048 MiB sınırında OOM verdi. Yeni modülleri, değişen bağımlılıklarını ve testlerini kapsayan daraltılmış tsc (global declaration dosyaları dahil) geçti; bu genel workspace typecheck yerine geçen bir iddia değildir.
 
-## Yerel ortam
+## O çalışmada kullanılan yerel ortam
 
 - Web: `http://127.0.0.1:5193/tr/`.
 - Telefona açık adres, derlenmiş sürümü Vite preview ile sunar. Geçici kullanıcı servisleri: `astera-academy-web` ve `astera-academy-api`; terminal oturumunun kapanması oyunu durdurmaz. Kaynak düzenlemeleri telefonda otomatik sayfa yenilemesi yapmaz.

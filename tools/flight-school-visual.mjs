@@ -55,8 +55,10 @@ export async function verifyFlightSchool(out) {
     await page.locator('[data-school-scene]').waitFor({ timeout: 60_000 });
     await page.locator('canvas').first().waitFor({ timeout: 60_000 });
     await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 60_000 });
+    const openingOnly = process.argv.includes('--opening-only');
+    if (openingOnly) await page.locator('[data-school-coach] .school-exit').click();
     for (let index = 0; index < 60; index++) {
-      const scene = await page.locator('[data-school-scene]').getAttribute('data-school-scene');
+      const scene = openingOnly ? 'departure' : await page.locator('[data-school-scene]').getAttribute('data-school-scene');
       if (scene === 'sight') {
         await page.waitForTimeout(450);
         await snap('telescope-before');
@@ -66,9 +68,11 @@ export async function verifyFlightSchool(out) {
         if (!['Lyra', 'Vega', 'Altair'].every(name => names.includes(name))) throw new Error('Telescope failed to reveal neighbouring worlds');
       }
       // Let the instructor speak. Reading and every result need an explicit action.
-      await page.locator('.school-reveal').waitFor({ state: 'hidden', timeout: 30_000 });
-      await page.waitForTimeout(['sight', 'sightWorlds', 'sightCompare', 'traffic', 'range', 'shield', 'warning'].includes(scene) ? 2200 : 400);
-      journal.push({ scene, at: new Date().toISOString(), text: await page.locator('[data-school-coach] .school-line').innerText() });
+      if (!openingOnly) {
+        await page.locator('.school-reveal').waitFor({ state: 'hidden', timeout: 30_000 });
+        await page.waitForTimeout(['sight', 'sightWorlds', 'sightCompare', 'traffic', 'range', 'shield', 'warning'].includes(scene) ? 2200 : 400);
+        journal.push({ scene, at: new Date().toISOString(), text: await page.locator('[data-school-coach] .school-line').innerText() });
+      }
       console.log(`PLAY ${scene}`);
       if (['welcome', 'resources', 'sight', 'sightWorlds', 'sightCompare', 'traffic', 'probeReport', 'warning', 'shield', 'departure'].includes(scene)) {
         await snap(scene);
@@ -123,7 +127,8 @@ export async function verifyFlightSchool(out) {
         await page.locator('[data-school-next]').click(); await page.waitForTimeout(500); await snap(scene);
         await page.locator('[data-sheet-panel]').getByRole('button', { name: 'Kapat', exact: true }).click();
       } else if (scene === 'departure') {
-        await page.locator('[data-school-next]').click(); await snap('commander-name');
+        if (!openingOnly) await page.locator('[data-school-next]').click();
+        await snap('commander-name');
         await page.getByLabel('Komutan adı', { exact: true }).fill(`Review${Date.now().toString().slice(-8)}`);
         await page.getByRole('button', { name: 'Bu adla devam et', exact: true }).click(); await snap('commander-password');
         await page.getByLabel('Parola', { exact: true }).fill(randomBytes(24).toString('base64url'));
@@ -133,7 +138,11 @@ export async function verifyFlightSchool(out) {
         const response = await claimResponse, claimed = await response.json();
         if (!response.ok()) throw new Error(`Claim refused: ${response.status()}`);
         const opening = claimed.planet;
-        if (opening.planet.alloy !== 1500 || opening.planet.crystal !== 400 || opening.planet.deuterium !== 50 || opening.buildings.CORE !== 1 || Object.values(opening.fleet).some(n => n > 0) || Object.values(opening.ground).some(n => n > 0)) throw new Error('Training leaked into the normal opening');
+        if (opening.planet.alloy !== 1500 || opening.planet.crystal !== 1000 || opening.planet.deuterium !== 50
+          || opening.buildings.CORE !== 3 || opening.effectiveInstruments.TELESCOPE !== 3 || opening.effectiveInstruments.RADAR !== 2
+          || opening.fleet.DART !== 3 || opening.fleet.WARDEN !== 1 || opening.fleet.COURIER !== 1 || opening.fleet.PROSPECTOR !== 1
+          || Object.values(opening.fleet).reduce((sum, n) => sum + n, 0) !== 6 || Object.values(opening.ground).some(n => n > 0)
+          || opening.queues.CONSTRUCTION.length !== 0 || opening.academyStep !== null) throw new Error('First-season package differs from the fixed opening');
         journal.push({ scene: 'verified-opening', core: opening.buildings.CORE, alloy: opening.planet.alloy, crystal: opening.planet.crystal, deuterium: opening.planet.deuterium, fleet: opening.fleet, ground: opening.ground });
         await page.locator('[data-school-scene]').waitFor({ state: 'hidden', timeout: 60_000 });
         const join = page.getByRole('button', { name: 'Katıl', exact: true });

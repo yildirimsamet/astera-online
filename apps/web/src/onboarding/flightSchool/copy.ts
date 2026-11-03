@@ -15,7 +15,7 @@ const tr: SchoolCopy = {
   next: 'Devam', exit: 'Akademiyi Bitir', skip: 'Eğitimi atla', reveal: 'Metnin tamamını göster',
   busy: 'İşlem sürüyor. Sonucunu birlikte izleyeceğiz.', target: 'Hedefi göster', range: 'Teleskopu büyüt',
   report: 'Savaş raporunu aç', defend: 'Savunmayı izle',
-  claim: 'Eğitimdeki gemiler, kaynaklar ve yükseltmeler burada kalır. Gerçek galakside 1.500 alaşım, 400 kristal ve 50 döteryumla yeni bir gezegene başlayacaksın.',
+  claim: 'İlk sezonunda, eğitimi atlasan da tamamlasan da başlangıç paketini bir kez alırsın: 1.500 alaşım, 1.000 kristal, 50 döteryum; hazır yapılar, donanım ve filo. Eğitimdeki ilerlemen burada kalır.',
   sightOpening: 'Aurora senin gezegenin. Küçük küre mevcut görüşünü gösteriyor. Hemen dışındaki puslu gezegenlere bak: ayrıntıları henüz bilinmiyor. Birazdan Teleskobun alanı büyütecek.',
   radarOpening: 'Yeşil alan Radarının erişimini gösteriyor. Yaklaşan filo bu alana girdiğinde uyarı açılacak.',
   trafficArrived: 'Filo Altair’e ulaştı ve yolculuğu bitti. Şimdi bir gezegeni gözleme almayı deneyelim.',
@@ -65,7 +65,7 @@ const tr: SchoolCopy = {
     guns: 'Kirpi, hafif bir yer topudur. Bu gezegende kalır ve saldıran filoya ateş eder; başka bir dünyaya gönderilemez. Dört Kirpi üret. Savunmada evdeki savaş gemilerin de onlarla birlikte savaşır.',
     defend: 'Hazırlığın tamamlandı. Şimdi saldırıyı devam ettirelim. Filo yaklaşırken kalkanın ilk darbeleri karşılamasını ve savunmalarının karşı ateşini izle.',
     defenseReport: 'Saldırı püskürtüldü. Raporda Aegisin karşıladığı hasarı ve iki tarafın kayıplarını incele. Radar hazırlanman için zaman kazandırdı; kalkan ve savaşan birimlerin birlikte savundu.',
-    departure: 'Artık temel döngüyü denedin: üret, keşfet, bilgi topla ve filonu hazırla. Kazıcını gönderdin, akın yaptın ve gezegenini savundun. Gerçek galaksiye geçmeye hazırsın. Eğitimdeki gemiler ve yükseltmeler burada kalacak; yeni gezegenin normal başlangıçla açılacak.',
+    departure: 'Artık temel döngüyü denedin: üret, keşfet, bilgi topla ve filonu hazırla. Kazıcını gönderdin, akın yaptın ve gezegenini savundun. Gerçek galaksiye geçmeye hazırsın. Eğitimdeki ilerlemen burada kalacak; ilk sezon başlangıç paketini gerçek gezegeninde alacaksın.',
   },
 };
 
@@ -73,7 +73,7 @@ const en: SchoolCopy = {
   chapters: ['Your planet', 'Resources', 'Production', 'Telescope', 'Mining', 'Probe', 'Your fleet', 'First raid', 'Radar', 'Defence', 'The real galaxy'],
   next: 'Continue', exit: 'Finish academy', skip: 'Skip training', reveal: 'Show full message', busy: 'Work is under way. We will watch the result together.',
   target: 'Show target', range: 'Expand the Telescope', report: 'Open battle report', defend: 'Watch the defence',
-  claim: 'The ships, resources and upgrades in this exercise stay here. In the real galaxy, your new planet starts with 1,500 alloy, 400 crystal and 50 deuterium.',
+  claim: 'In your first season, you receive the starting package once whether you finish or skip training: 1,500 alloy, 1,000 crystal, 50 deuterium, plus structures, instruments and ships. Training progress stays here.',
   sightOpening: 'Aurora is your planet. The small sphere shows your current sight. Look at the hazy worlds just outside it: their details are unknown. Your Telescope will expand this area in a moment.',
   radarOpening: 'The green sphere shows Radar coverage. The warning appears when the approaching fleet is inside it.',
   trafficArrived: 'The fleet has reached Altair and its journey is over. Now let us try watching a world.',
@@ -123,7 +123,7 @@ const en: SchoolCopy = {
     guns: 'A Thorn is a light ground gun. It stays on this planet and fires at attacking fleets; you cannot send it elsewhere. Build four Thorns. Warships at home will fight alongside them.',
     defend: 'Your preparations are complete. Resume the attack and watch the shield absorb the first hits while your defending units return fire.',
     defenseReport: 'The attack was repelled. Inspect shield absorption and both sides’ losses in the report. Radar gave you time to prepare; your shield and fighting units defended together.',
-    departure: 'You have tried the core loop: produce, explore, gather information and prepare your fleet. You mined an asteroid, raided a target and defended your world. You are ready for the real galaxy. Training ships and upgrades stay here; your new world starts with the standard opening.',
+    departure: 'You have tried the core loop: produce, explore, gather information and prepare your fleet. You mined an asteroid, raided a target and defended your world. You are ready for the real galaxy. Training progress stays here; you will receive your first season starting package on your real planet.',
   },
 };
 

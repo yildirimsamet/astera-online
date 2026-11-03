@@ -977,10 +977,13 @@ describe('every payload the client parses', () => {
     expect(res.statusCode, res.body.slice(0, 300)).toBe(200);
 
     const parsed = claimSchema.parse(res.json());
-    expect(parsed.applied.map((a) => a.ok)).toEqual([true, true]);
-    expect(parsed.planet.buildings.CORE).toBe(1);
+    expect(parsed.applied).toEqual([
+      { kind: 'upgrade', ok: false, error: 'ALREADY_OPENED' },
+      { kind: 'upgrade', ok: false, error: 'ALREADY_OPENED' },
+    ]);
+    expect(parsed.planet.buildings.CORE).toBe(3);
     expect(parsed.planet.queues?.CONSTRUCTION.map((order) => order.subject))
-      .toEqual(['CORE', 'REFINERY']);
+      .toEqual([]);
     expect(parsed.placement.planetName).not.toBe('');
     // The session half is the same shape `/api/auth/register` answers with.
     sessionSchema.parse({

@@ -1,5 +1,10 @@
 # Gözlemevi arayüzü — ilerleme defteri
 
+**Onboarding güncellemesi — 3 Kasım 2026:** Bu defterdeki 39/40 ders, eski HUD ve
+Academy mezuniyet kayıtları o tarihteki uygulamayı anlatır. Güncel eğitim GameShell
+kullanan FlightSchool'dur; eğitim sonuçları gerçek hesaba aktarılmaz.
+Güncel başlangıç ve doğrulama yolu [ana onboarding referansındadır](../review-onboarding.md).
+
 **Bağlam sıkıştırıldıysa ya da yeni oturumsan önce bunu oku.** Okuma sırası:
 1. Bu dosya (özellikle "Sıradaki iş").
 2. `docs/ui-v2/gozlemevi.md` (şartname, ~1.000 satır) içinde sıradaki işin kimliğiyle geçen bölüm;
@@ -33,7 +38,8 @@
   `COMMANDER=shell83807481 node tools/v2-shell.mjs <çıktı> [en|tr]` kayıt açmadan girer (şifre `correct-horse-battery`);
   diğer diller için girişten sonra `localStorage['astera.language']` değiştirilip sayfa yenilenir. Saatlerce
   sürecek durumlar bu veritabanında sahnelenir (ör. `players.newcomer_shield_until`, `planets.buffer_*`).
-  Akademi: `WEB=http://127.0.0.1:5199 node tools/visual.mjs <çıktı> --academy` (39 ders baştan sona).
+  Güncel FlightSchool: `WEB=http://127.0.0.1:5199 node tools/visual.mjs <çıktı> --flight-school`.
+  Eski `--academy` turu eski 40 adımlı sözleşmeyi kontrol eder; güncel eğitim kabulü değildir.
 - Boyutlar sıkı: gövde 12 px (sahibin "büyük yazı yok" talimatı).
 
 ## Durum

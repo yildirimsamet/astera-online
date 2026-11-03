@@ -194,7 +194,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/visual-design.md` | Sanat ve 3D çalışmalarında |
 | `docs/playtest-log.md` | Playtest yaparken |
 | `docs/review-sight.md` | Telescope/Radar/probe görüşüne dokunurken |
-| `docs/review-onboarding.md` | Onboarding ve yeni oyuncu deneyiminde |
+| `docs/review-onboarding.md` | Güncel FlightSchool, gerçek başlangıç ve eski Academy ayrımında; onboarding için ilk referans |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
 

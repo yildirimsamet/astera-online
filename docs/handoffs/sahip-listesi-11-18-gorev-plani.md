@@ -1,5 +1,10 @@
 # Sahip listesi 11–18 · Görev planı (uygulayan ajan için)
 
+**Onboarding kapsam notu — 3 Kasım 2026:** Aşağıdaki `Academy.tsx`, `TUTORIAL_EXIT`,
+mezuniyet kaynakları ve `--academy` talimatları Eylül uygulamasına aittir. Güncel
+FlightSchool ve gerçek başlangıç için [review-onboarding.md](../review-onboarding.md)
+esas alınır; bu eski görev listesi onboarding'i yeniden uygulama talimatı değildir.
+
 Bu dosya, uygulamayı yapacak ajanın **tek başlangıç noktasıdır**. Sahip kararları bağlayıcıdır, yeniden açılmaz.
 İş bitince kod incelemesini başka bir ajan (planı yazan) yapar; en alttaki "Teslim" bölümünü eksiksiz doldur.
 

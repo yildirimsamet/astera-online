@@ -1,7 +1,7 @@
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import {
-  PLANET_START as GRANT,
+  FIRST_SEASON_START,
   SERVERS,
   generateGalaxy,
   pickSpawnSlot,
@@ -596,17 +596,10 @@ describe('servers', () => {
       }>();
       expect(body.planet.id).toBe(placement.planetId);
 
-      /**
-       * WHAT A COMMANDER IS HANDED, AND WHAT THEY ARE NOT. D22.
-       *
-       * No warships. The opening grant is alloy and crystal, and turning it into
-       * ships, production or an instrument is the first decision in the game — so
-       * this asserts the absence as firmly as the presence. A fleet quietly
-       * reappearing here would delete that decision without failing anything else.
-       */
-      expect(body.fleet.DART).toBeUndefined();
-      expect(body.planet.alloy).toBe(GRANT.alloy);
-      expect(body.planet.crystal).toBe(GRANT.crystal);
+      // Direct registration and server choice receive the same first-season gift.
+      expect(body.fleet).toEqual(FIRST_SEASON_START.fleet);
+      expect(body.planet.alloy).toBe(FIRST_SEASON_START.resources.alloy);
+      expect(body.planet.crystal).toBe(FIRST_SEASON_START.resources.crystal);
     });
 
     /**

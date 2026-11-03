@@ -11,6 +11,7 @@ import type { GameShellProps } from '../src/v2/shell/GameShell.js';
 import { FlightSchool } from '../src/onboarding/flightSchool/FlightSchool.js';
 import { useSchoolPresentation } from '../src/onboarding/flightSchool/presentation.js';
 import { useSensorReach } from '../src/lib/useSensorReach.js';
+import * as schoolWorld from '../src/onboarding/flightSchool/world.js';
 const consent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };
 vi.mock('../src/v2/shell/GameShell.js', () => ({ GameShell: ({ galaxy, onPanel }: GameShellProps) => <div data-real-game-shell>{galaxy({ homeRequest: 0, centerRequest: 0, worldsRequest: 0, clearRequest: 0, onPanel, onOpenChat: vi.fn() })}</div> }));
 vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ onFocused, coachFocus, coachTap, onSceneReady }: { onFocused: (f: { kind: string; id: string } | null) => void; coachFocus?: { focus: Focus } | null; coachTap?: { onTap: () => void } | null; onSceneReady?: () => void }) =>
@@ -20,6 +21,20 @@ vi.mock('../src/shell/PendingStrip.js', () => ({ PendingStrip: () => null }));
 vi.mock('../src/onboarding/ClaimDialog.jsx', () => ({ ClaimDialog: ({ onClaim, introduction }: { introduction: string; onClaim: (a: string, b: string, c: string, d: typeof consent) => void }) =>
   <div>{introduction}<button onClick={() => { onClaim('pilot', 'test-password', 'TR', consent); }}>Create commander</button></div> }));
 beforeEach(() => { localStorage.clear(); });
+it('finishes a replay without promising another first-season package or opening a claim', () => {
+  const world = { ...createSchool(serverNow()), scene: 'departure' as const };
+  vi.spyOn(schoolWorld, 'createSchool').mockReturnValue(world);
+  const onClaim = vi.fn(), onLeave = vi.fn();
+  render(<FlightSchool replay onClaim={onClaim} onSignIn={vi.fn()} onLeave={onLeave} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Show full message' }));
+  const message = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
+  expect(message).toMatch(/No rewards/i);
+  expect(message).not.toContain('will receive your first season');
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(onLeave).toHaveBeenCalledOnce();
+  expect(onClaim).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Create commander' })).not.toBeInTheDocument();
+});
 describe('new training entry', () => {
   it('has its active world on the first frame so restoring a target cannot lose camera focus', () => {
     render(<FlightSchool onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} />);
