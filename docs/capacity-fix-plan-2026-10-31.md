@@ -360,3 +360,8 @@ Kod değişikliği yok. Yerleşim havuzu prod'da zaten 2. Normal havuz ve worker
 **Kabul edilen (owner, 2 Kasım):** Enkaz yarışında en çok ~6 sn gecikme.
 
 **Bilerek yapılmayanlar:** Spawn kapısı doğumsuz turda yalnız yazmayı kaldırıyor, okumalar duruyor (15 sn'de bir, kazanç az). Vault satırları yenilemede dünya başına en çok bir satır ekliyor (nadir, karmaşıklığa değmez). Kapının ilk çerçevesi bütün bağlantılara aynı anda gidiyor: ortalama sınırlı, tepe değil; trafik okuması SQL'siz olduğu için kabul koşusunda ölçülecek.
+
+## Gerçek karışımla ölçüm (2026-11-03)
+
+Canlı trafik karışımıyla 100 oyuncu ayakta kaldı (okuma p95 749 ms, 5xx yok), 200'de patladı (5xx %4, CPU %98). 5xx'lerin biri dışında tamamı özel havuzda `RETRYABLE`. Ayrıntı ve sıradaki adımlar: `reports/capacity-run-2026-11-03.md`. Bu sonuç, 2 Kasım'daki iki üreteçli koşuların ve eski karışımla alınan sayıların yerine geçer.
+

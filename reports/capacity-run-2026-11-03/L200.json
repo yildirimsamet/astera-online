@@ -1,0 +1,910 @@
+{
+ "level": "L200",
+ "users": 200,
+ "streams": 250,
+ "runners": 2,
+ "broke": true,
+ "reasons": [
+  "5xx 4.05% > 1%",
+  "network errors 1.02% > 0.5%",
+  "read p95 3298 ms > 2000"
+ ],
+ "slo": false,
+ "requests": 103952,
+ "reqPerUserSecond": 1.575,
+ "reads": {
+  "samples": 96626,
+  "p50": 296,
+  "p95": 3298,
+  "p99": 11040,
+  "max": 15955
+ },
+ "writes": {
+  "samples": 1736,
+  "p50": 1638,
+  "p95": 3457,
+  "p99": 5233,
+  "max": 14586
+ },
+ "eventRefresh": {
+  "samples": 15664,
+  "p50": 586,
+  "p95": 5213,
+  "p99": 13337,
+  "max": 17282
+ },
+ "status5xx": 4205,
+ "status4xx": 79,
+ "networkErrors": 1056,
+ "rateLimited": 7,
+ "invalidPayloads": 0,
+ "unexpectedStatuses": 4214,
+ "refusals": 70,
+ "successfulWrites": 1736,
+ "streamsAtEnd": 250,
+ "streamFailures": 0,
+ "restarts": 0,
+ "events": 38812,
+ "arrivals": [
+  {
+   "armed": 150,
+   "followed": 44,
+   "chases": 0
+  }
+ ],
+ "taskFailures": 0,
+ "writeSkips": [
+  {},
+  {}
+ ],
+ "hostBusy": {
+  "p50": 95,
+  "p95": 98,
+  "max": 99
+ },
+ "cpuMeanMax": {
+  "postgres": [
+   125,
+   150
+  ],
+  "api2": [
+   86,
+   106
+  ],
+  "api3": [
+   85,
+   105
+  ],
+  "api1": [
+   82,
+   109
+  ],
+  "load-p0": [
+   57,
+   155
+  ],
+  "load-p1": [
+   54,
+   155
+  ],
+  "nginx": [
+   10,
+   15
+  ],
+  "valkey": [
+   6,
+   12
+  ],
+  "worker": [
+   5,
+   21
+  ]
+ },
+ "eventLoop": {
+  "maxP95Ms": 54.951935,
+  "maxP99Ms": 122.355711
+ },
+ "database": {
+  "maxConnectionRatio": 0.4,
+  "maxWaiting": 6,
+  "maxPoolAcquireP95Ms": 339.1761970000225,
+  "maxPoolAcquireErrors": 0
+ },
+ "workerLast": {
+  "p50": 16,
+  "p95": 267,
+  "max": 2992
+ },
+ "memoryMaxRssMb": 211,
+ "hostMemoryMax": 0.46,
+ "worker": {
+  "verdict": "POLL",
+  "peak": 0.31,
+  "processed": 230,
+  "failures": 0,
+  "kinds": [
+   [
+    "build_complete",
+    48
+   ],
+   [
+    "mission_arrival",
+    57
+   ],
+   [
+    "mining_arrival",
+    60
+   ],
+   [
+    "mining_return",
+    9
+   ],
+   [
+    "radar_warning",
+    54
+   ],
+   [
+    "asteroid_hour",
+    2
+   ]
+  ]
+ },
+ "routes": {
+  "GET /api/galaxy/traffic": {
+   "n": 31570,
+   "share": 30.37,
+   "ok": 30671,
+   "e4": 1,
+   "e5": 0,
+   "net": 841,
+   "inv": 0,
+   "p50": 238,
+   "p95": 5827,
+   "p99": 15050,
+   "kb": 0.6,
+   "errs": {
+    "TimeoutError": 841,
+    "RATE_LIMITED": 1
+   }
+  },
+  "GET /api/mining/field": {
+   "n": 19129,
+   "share": 18.4,
+   "ok": 18960,
+   "e4": 2,
+   "e5": 0,
+   "net": 162,
+   "inv": 0,
+   "p50": 142,
+   "p95": 6656,
+   "p99": 15021,
+   "kb": 6.4,
+   "errs": {
+    "TimeoutError": 162,
+    "RATE_LIMITED": 2
+   }
+  },
+  "GET /api/pirates": {
+   "n": 7581,
+   "share": 7.29,
+   "ok": 7560,
+   "e4": 1,
+   "e5": 0,
+   "net": 18,
+   "inv": 0,
+   "p50": 389,
+   "p95": 9330,
+   "p99": 13745,
+   "kb": 0.2,
+   "errs": {
+    "TimeoutError": 18,
+    "RATE_LIMITED": 1
+   }
+  },
+  "GET /api/mining/status": {
+   "n": 3412,
+   "share": 3.28,
+   "ok": 3411,
+   "e4": 1,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 303,
+   "p95": 3062,
+   "p99": 9995,
+   "kb": 0.3,
+   "errs": {
+    "RATE_LIMITED": 1
+   }
+  },
+  "GET /api/session/pending": {
+   "n": 3391,
+   "share": 3.26,
+   "ok": 3356,
+   "e4": 1,
+   "e5": 0,
+   "net": 32,
+   "inv": 0,
+   "p50": 655,
+   "p95": 5200,
+   "p99": 15008,
+   "kb": 0.2,
+   "errs": {
+    "TimeoutError": 32,
+    "RATE_LIMITED": 1
+   }
+  },
+  "GET /api/skins": {
+   "n": 3204,
+   "share": 3.08,
+   "ok": 3204,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 308,
+   "p95": 2727,
+   "p99": 11042,
+   "kb": 0.2,
+   "errs": {}
+  },
+  "GET /api/galaxy": {
+   "n": 3003,
+   "share": 2.89,
+   "ok": 3002,
+   "e4": 1,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 233,
+   "p95": 2971,
+   "p99": 9929,
+   "kb": 193.3,
+   "errs": {
+    "RATE_LIMITED": 1
+   }
+  },
+  "GET /api/galaxy/events": {
+   "n": 2735,
+   "share": 2.63,
+   "ok": 2735,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 236,
+   "p95": 2483,
+   "p99": 10336,
+   "kb": 0.1,
+   "errs": {}
+  },
+  "GET /api/intel": {
+   "n": 2624,
+   "share": 2.52,
+   "ok": 1795,
+   "e4": 0,
+   "e5": 828,
+   "net": 0,
+   "inv": 0,
+   "p50": 2006,
+   "p95": 6197,
+   "p99": 10259,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 828
+   }
+  },
+  "GET /api/monuments": {
+   "n": 2386,
+   "share": 2.3,
+   "ok": 1646,
+   "e4": 0,
+   "e5": 737,
+   "net": 0,
+   "inv": 0,
+   "p50": 2048,
+   "p95": 4964,
+   "p99": 10025,
+   "kb": 5.2,
+   "errs": {
+    "RETRYABLE": 737
+   }
+  },
+  "GET /api/planets": {
+   "n": 2286,
+   "share": 2.2,
+   "ok": 2284,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 595,
+   "p95": 3085,
+   "p99": 12157,
+   "kb": 9.9,
+   "errs": {}
+  },
+  "GET /api/season": {
+   "n": 2164,
+   "share": 2.08,
+   "ok": 2164,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 332,
+   "p95": 3064,
+   "p99": 12830,
+   "kb": 1.0,
+   "errs": {}
+  },
+  "GET /api/notifications": {
+   "n": 2086,
+   "share": 2.01,
+   "ok": 2086,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 218,
+   "p95": 2782,
+   "p99": 10264,
+   "kb": 0.0,
+   "errs": {}
+  },
+  "GET /api/unknown-signals": {
+   "n": 1791,
+   "share": 1.72,
+   "ok": 1163,
+   "e4": 0,
+   "e5": 627,
+   "net": 0,
+   "inv": 0,
+   "p50": 2028,
+   "p95": 4909,
+   "p99": 10100,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 627
+   }
+  },
+  "GET /api/rewards": {
+   "n": 1708,
+   "share": 1.64,
+   "ok": 1706,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 552,
+   "p95": 3106,
+   "p99": 11801,
+   "kb": 4.3,
+   "errs": {}
+  },
+  "GET /api/planets/:id": {
+   "n": 1658,
+   "share": 1.59,
+   "ok": 1657,
+   "e4": 0,
+   "e5": 1,
+   "net": 0,
+   "inv": 0,
+   "p50": 596,
+   "p95": 2780,
+   "p99": 12366,
+   "kb": 9.7,
+   "errs": {
+    "INTERNAL": 1
+   }
+  },
+  "GET /api/reports": {
+   "n": 1493,
+   "share": 1.44,
+   "ok": 1492,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 557,
+   "p95": 4050,
+   "p99": 11593,
+   "kb": 0.0,
+   "errs": {}
+  },
+  "GET /api/chat/unread": {
+   "n": 1360,
+   "share": 1.31,
+   "ok": 1360,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 286,
+   "p95": 2906,
+   "p99": 10369,
+   "kb": 0.0,
+   "errs": {}
+  },
+  "GET /api/dm/unread": {
+   "n": 1291,
+   "share": 1.24,
+   "ok": 1291,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 283,
+   "p95": 4660,
+   "p99": 10423,
+   "kb": 0.0,
+   "errs": {}
+  },
+  "GET /api/clan/badge": {
+   "n": 1208,
+   "share": 1.16,
+   "ok": 1208,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 361,
+   "p95": 2905,
+   "p99": 11890,
+   "kb": 0.1,
+   "errs": {}
+  },
+  "GET /api/return-applications": {
+   "n": 1122,
+   "share": 1.08,
+   "ok": 791,
+   "e4": 0,
+   "e5": 331,
+   "net": 0,
+   "inv": 0,
+   "p50": 1967,
+   "p95": 3368,
+   "p99": 10171,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 331
+   }
+  },
+  "GET /api/commander-ship": {
+   "n": 871,
+   "share": 0.84,
+   "ok": 588,
+   "e4": 0,
+   "e5": 283,
+   "net": 0,
+   "inv": 0,
+   "p50": 1996,
+   "p95": 3692,
+   "p99": 10344,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 283
+   }
+  },
+  "GET /api/planet": {
+   "n": 745,
+   "share": 0.72,
+   "ok": 744,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 612,
+   "p95": 4055,
+   "p99": 11780,
+   "kb": 9.7,
+   "errs": {}
+  },
+  "POST /api/planets/:id/collect": {
+   "n": 724,
+   "share": 0.7,
+   "ok": 533,
+   "e4": 0,
+   "e5": 190,
+   "net": 1,
+   "inv": 0,
+   "p50": 2139,
+   "p95": 5054,
+   "p99": 10871,
+   "kb": 7.3,
+   "errs": {
+    "RETRYABLE": 190,
+    "TimeoutError": 1
+   }
+  },
+  "GET /api/legacy/me/reveals": {
+   "n": 568,
+   "share": 0.55,
+   "ok": 397,
+   "e4": 0,
+   "e5": 171,
+   "net": 0,
+   "inv": 0,
+   "p50": 1924,
+   "p95": 6066,
+   "p99": 10248,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 171
+   }
+  },
+  "POST /api/auth/refresh": {
+   "n": 550,
+   "share": 0.53,
+   "ok": 424,
+   "e4": 0,
+   "e5": 126,
+   "net": 0,
+   "inv": 0,
+   "p50": 1804,
+   "p95": 3774,
+   "p99": 8139,
+   "kb": 0.3,
+   "errs": {
+    "RETRYABLE": 126
+   }
+  },
+  "POST /api/session/return/seen": {
+   "n": 421,
+   "share": 0.4,
+   "ok": 306,
+   "e4": 0,
+   "e5": 115,
+   "net": 0,
+   "inv": 0,
+   "p50": 1942,
+   "p95": 4002,
+   "p99": 11633,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 115
+   }
+  },
+  "GET /api/servers": {
+   "n": 347,
+   "share": 0.33,
+   "ok": 254,
+   "e4": 0,
+   "e5": 93,
+   "net": 0,
+   "inv": 0,
+   "p50": 2017,
+   "p95": 3277,
+   "p99": 9675,
+   "kb": 0.3,
+   "errs": {
+    "RETRYABLE": 93
+   }
+  },
+  "POST /api/notifications/seen": {
+   "n": 293,
+   "share": 0.28,
+   "ok": 194,
+   "e4": 0,
+   "e5": 99,
+   "net": 0,
+   "inv": 0,
+   "p50": 2037,
+   "p95": 3052,
+   "p99": 10770,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 99
+   }
+  },
+  "GET /api/maintenance": {
+   "n": 287,
+   "share": 0.28,
+   "ok": 221,
+   "e4": 0,
+   "e5": 66,
+   "net": 0,
+   "inv": 0,
+   "p50": 1843,
+   "p95": 4283,
+   "p99": 10242,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 66
+   }
+  },
+  "GET /api/session/brand-recall": {
+   "n": 280,
+   "share": 0.27,
+   "ok": 189,
+   "e4": 0,
+   "e5": 91,
+   "net": 0,
+   "inv": 0,
+   "p50": 2045,
+   "p95": 5243,
+   "p99": 9994,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 91
+   }
+  },
+  "POST /api/auth/login": {
+   "n": 250,
+   "share": 0.24,
+   "ok": 250,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 164,
+   "p95": 673,
+   "p99": 1140,
+   "kb": 0.3,
+   "errs": {}
+  },
+  "GET /api/session/return": {
+   "n": 248,
+   "share": 0.24,
+   "ok": 145,
+   "e4": 0,
+   "e5": 102,
+   "net": 1,
+   "inv": 0,
+   "p50": 2116,
+   "p95": 7142,
+   "p99": 10238,
+   "kb": 0.2,
+   "errs": {
+    "RETRYABLE": 102,
+    "TimeoutError": 1
+   }
+  },
+  "GET /api/auth/me": {
+   "n": 217,
+   "share": 0.21,
+   "ok": 139,
+   "e4": 0,
+   "e5": 78,
+   "net": 0,
+   "inv": 0,
+   "p50": 2058,
+   "p95": 6137,
+   "p99": 10245,
+   "kb": 0.2,
+   "errs": {
+    "RETRYABLE": 78
+   }
+  },
+  "POST /api/planets/:id/upgrade": {
+   "n": 142,
+   "share": 0.14,
+   "ok": 33,
+   "e4": 68,
+   "e5": 41,
+   "net": 0,
+   "inv": 0,
+   "p50": 2203,
+   "p95": 4258,
+   "p99": 10130,
+   "kb": 2.4,
+   "errs": {
+    "CORE_CEILING": 66,
+    "RETRYABLE": 41,
+    "CORE_TIER_CONFIRMATION_REQUIRED": 2
+   }
+  },
+  "GET /api/clan/support": {
+   "n": 127,
+   "share": 0.12,
+   "ok": 98,
+   "e4": 0,
+   "e5": 29,
+   "net": 0,
+   "inv": 0,
+   "p50": 2021,
+   "p95": 3538,
+   "p99": 10402,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 29
+   }
+  },
+  "POST /api/intel/probe": {
+   "n": 102,
+   "share": 0.1,
+   "ok": 70,
+   "e4": 0,
+   "e5": 32,
+   "net": 0,
+   "inv": 0,
+   "p50": 2174,
+   "p95": 4565,
+   "p99": 9843,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 32
+   }
+  },
+  "POST /api/mining/launch": {
+   "n": 86,
+   "share": 0.08,
+   "ok": 55,
+   "e4": 1,
+   "e5": 29,
+   "net": 1,
+   "inv": 0,
+   "p50": 2481,
+   "p95": 9764,
+   "p99": 15014,
+   "kb": 7.0,
+   "errs": {
+    "RETRYABLE": 29,
+    "TimeoutError": 1,
+    "NOT_ENOUGH_CRAFT": 1
+   }
+  },
+  "POST /api/mining/harvest": {
+   "n": 85,
+   "share": 0.08,
+   "ok": 64,
+   "e4": 3,
+   "e5": 18,
+   "net": 0,
+   "inv": 0,
+   "p50": 2153,
+   "p95": 6177,
+   "p99": 10865,
+   "kb": 8.1,
+   "errs": {
+    "RETRYABLE": 18,
+    "NOT_ENOUGH_CRAFT": 3
+   }
+  },
+  "GET /api/chat/messages": {
+   "n": 75,
+   "share": 0.07,
+   "ok": 45,
+   "e4": 0,
+   "e5": 30,
+   "net": 0,
+   "inv": 0,
+   "p50": 2034,
+   "p95": 3488,
+   "p99": 6188,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 30
+   }
+  },
+  "POST /api/planets/:id/build": {
+   "n": 70,
+   "share": 0.07,
+   "ok": 53,
+   "e4": 0,
+   "e5": 17,
+   "net": 0,
+   "inv": 0,
+   "p50": 2353,
+   "p95": 10191,
+   "p99": 11190,
+   "kb": 7.6,
+   "errs": {
+    "RETRYABLE": 17
+   }
+  },
+  "GET /api/announcements": {
+   "n": 69,
+   "share": 0.07,
+   "ok": 49,
+   "e4": 0,
+   "e5": 20,
+   "net": 0,
+   "inv": 0,
+   "p50": 2051,
+   "p95": 9825,
+   "p99": 9855,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 20
+   }
+  },
+  "GET /api/community/policy": {
+   "n": 65,
+   "share": 0.06,
+   "ok": 45,
+   "e4": 0,
+   "e5": 20,
+   "net": 0,
+   "inv": 0,
+   "p50": 1894,
+   "p95": 6362,
+   "p99": 6374,
+   "kb": 0.1,
+   "errs": {
+    "RETRYABLE": 20
+   }
+  },
+  "GET /api/leaderboard": {
+   "n": 58,
+   "share": 0.06,
+   "ok": 43,
+   "e4": 0,
+   "e5": 15,
+   "net": 0,
+   "inv": 0,
+   "p50": 2046,
+   "p95": 3510,
+   "p99": 10427,
+   "kb": 119.1,
+   "errs": {
+    "RETRYABLE": 15
+   }
+  },
+  "GET /api/dm/conversations": {
+   "n": 54,
+   "share": 0.05,
+   "ok": 39,
+   "e4": 0,
+   "e5": 15,
+   "net": 0,
+   "inv": 0,
+   "p50": 2053,
+   "p95": 3284,
+   "p99": 8903,
+   "kb": 0.0,
+   "errs": {
+    "RETRYABLE": 15
+   }
+  },
+  "GET /api/chronicle": {
+   "n": 11,
+   "share": 0.01,
+   "ok": 11,
+   "e4": 0,
+   "e5": 0,
+   "net": 0,
+   "inv": 0,
+   "p50": 1798,
+   "p95": 2710,
+   "p99": 2710,
+   "kb": 0.0,
+   "errs": {}
+  },
+  "POST /api/fleet/launch": {
+   "n": 5,
+   "share": 0.0,
+   "ok": 4,
+   "e4": 0,
+   "e5": 1,
+   "net": 0,
+   "inv": 0,
+   "p50": 4175,
+   "p95": 5225,
+   "p99": 5225,
+   "kb": 8.4,
+   "errs": {
+    "RETRYABLE": 1
+   }
+  }
+ },
+ "gatesFalse": [
+  "committedStateFreshness",
+  "committedStateObserved",
+  "cpuHeadroom",
+  "databaseHeadroom",
+  "eventLoopHeadroom",
+  "eventRefreshLatency",
+  "memoryStable",
+  "mutationLatency",
+  "no5xx",
+  "noNetworkErrors",
+  "noRateLimitStorm",
+  "noUnexpectedHttpStatuses",
+  "readLatency",
+  "releaseIdentity",
+  "workerHealthy"
+ ],
+ "deadlocks": "0",
+ "logErrors": 1
+}

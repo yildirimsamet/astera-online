@@ -1,0 +1,24 @@
+01:06:32 quantiles ['0.5', '0.95', '0.99', '1']
+route                                      n     p50     p95  stmts  time%
+GET /api/galaxy/traffic                12935    15.8   254.1    1.0   12.5
+GET /api/session/pending                1426   107.3   514.3   19.0    9.4
+GET /api/monuments                      1010   105.3   769.4   17.0    6.5
+GET /api/planets                        1019   102.6   430.3   33.7    6.4
+GET /api/mining/status                  1490    51.9   230.8    4.0    4.7
+GET /api/mining/field                   7217    10.7   109.3    1.0    4.7
+GET /api/pirates                        2239    30.1   226.1    8.0    4.1
+GET /api/planets/:planetId               739    86.6   449.2   33.0    3.9
+GET /api/rewards                         752    80.2   417.3   20.0    3.7
+POST /api/planets/:planetId/collect      302   190.6   897.3   77.0    3.5
+GET /api/galaxy                         1244    44.7   262.5    5.0    3.4
+GET /api/reports                         615    87.6   389.7   10.0    3.3
+GET /api/intel                          1089    48.8   620.1   10.0    3.3
+GET /api/season                          893    47.1   271.6   10.0    2.6
+GET /api/planet                          331   120.5   425.5   32.0    2.4
+GET /api/skins                          1337    27.3   203.7    6.0    2.2
+GET /api/return-applications             461    72.6   664.4    7.0    2.0
+GET /api/unknown-signals                 722    45.9   628.4    5.0    2.0
+GET /api/galaxy/events                  1125    26.1   186.2    5.0    1.8
+GET /api/notifications                   903    26.9   157.2    3.0    1.5
+GET /api/clan/badge                      538    42.7   354.9    7.0    1.4
+GET /api/chat/unread                     556    38.3   232.5    4.0    1.3
