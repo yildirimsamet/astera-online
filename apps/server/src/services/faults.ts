@@ -3,6 +3,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   DEBRIS,
   FAULT,
+  FAULT_LOCATION,
   drawAttackFaults,
   drawFaults,
   faultsPossible,
@@ -217,29 +218,6 @@ export async function dropPendingFaultEvents(
     inArray(scheduledEvents.kind, [...kinds]),
   ));
 }
-
-/**
- * WHERE THE INTERFACE SHOULD LAND WHEN SOMEBODY TAPS THE NOTIFICATION.
- *
- * Carried in the payload rather than worked out on the client, for the reason every
- * other figure on a payload is: the client's copy would be a second table to keep in
- * step, and the failure — a notification that opens the wrong tab — is silent.
- *
- * THE ITEM IS THE THING THE PLAYER ALREADY KNOWS. A `CORE_OUTAGE` puts the Aegis out,
- * but the broken hardware is the Command Core and the Core is what the sheet marks;
- * pointing at the Aegis would name a working instrument. `PROSPECTOR_FAULT` points at
- * the craft rather than at the Derrick, because a world may have no Derrick at all.
- */
-export const FAULT_LOCATION: Record<FaultKind, { group: string; itemId: string }> = {
-  REFINERY_OUTAGE: { group: 'grow', itemId: 'REFINERY' },
-  EXTRACTOR_OUTAGE: { group: 'grow', itemId: 'EXTRACTOR' },
-  PLANT_OUTAGE: { group: 'grow', itemId: 'DEUTERIUM_PLANT' },
-  VAULT_LEAK: { group: 'grow', itemId: 'VAULT' },
-  CORE_OUTAGE: { group: 'grow', itemId: 'CORE' },
-  TELESCOPE_FAULT: { group: 'orbit', itemId: 'TELESCOPE' },
-  SHIPYARD_REVOLT: { group: 'reach', itemId: 'SHIPYARD' },
-  PROSPECTOR_FAULT: { group: 'reach', itemId: 'PROSPECTOR' },
-};
 
 /**
  * THE NEXT THING GOES WRONG. `fault_spawn`.

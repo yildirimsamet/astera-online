@@ -15,8 +15,8 @@
     "radiation": "tsx src/cli/radiation.ts",
     "maintenance": "tsx src/cli/maintenance.ts",
     "capacity:seed": "tsx src/cli/capacity.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "node ../../tools/heavy.mjs --heap 3072 tsc --noEmit",
+    "test": "node ../../tools/heavy.mjs --heap 1024 vitest run --minWorkers=1 --maxWorkers=4",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

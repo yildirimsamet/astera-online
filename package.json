@@ -35,8 +35,8 @@
     "android:install": "pnpm --filter @astera/web run android:install",
     "fleet-assets": "node tools/fleet-v2-assets.mjs",
     "models": "node tools/models.mjs",
-    "lint": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js .",
-    "lint:fix": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js . --fix",
+    "lint": "node tools/lint.mjs",
+    "lint:fix": "node tools/lint.mjs --fix",
     "verify": "node tools/verify.mjs",
     "dm": "node tools/x-dm.mjs"
   },

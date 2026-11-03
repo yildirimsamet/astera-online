@@ -121,11 +121,9 @@ if (args.includes(process.env.VERIFY_TEST_FAIL_AT)) process.exit(23);
     } });
   });
 
-  it('caps both lint commands at the owner PC heap budget of 4 GiB', () => {
-    const manifest: unknown = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-    expect(manifest).toMatchObject({ scripts: {
-      lint: 'node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js .',
-      'lint:fix': 'node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js . --fix',
-    } });
+  it('queues each lint group and caps it at the owner PC heap budget of 3 GiB', () => {
+    const lint = readFileSync(join(root, 'tools/lint.mjs'), 'utf8');
+    expect(lint).toContain("'--heap', '3072'");
+    expect(lint).toContain('heavy.mjs');
   });
 });

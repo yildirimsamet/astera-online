@@ -162,14 +162,14 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 - Veritabanı kullanan her worker'ın, çalıştırma/worker'a özgü ad taşıyan ve `_test` ile biten **kendine ait geçici veritabanı** olmalıdır. Ortak veritabanında paralel truncation yapma.
 - Her veritabanına kullanımdan önce migration uygula. Başarı, hata veya iptal durumunda bağlantıları kapat ve o çalıştırmanın oluşturduğu tüm veritabanlarını sil.
 - Saf rules/UI testleri veritabanı gerektirmez.
-- Workspace'leri sırayla çalıştır: `--workspace-concurrency=1`. `nice -n 10` kullan. Test, typecheck ve lint'i eşzamanlı çalıştırma.
+- `pnpm test`, `pnpm typecheck` ve `pnpm lint` `tools/heavy.mjs` üzerinden ortak kilitle sıraya girer ve 9 GiB bellek tavanı altında çalışır. Bunları doğrudan (`pnpm exec vitest`, `tsc`, kendi betiğin) orta veya uzun çalıştırırsan başına `node tools/heavy.mjs` ekle; test, typecheck ve lint eşzamanlı çalışmamalıdır.
 - Paralellik kuralı uzun ekonomi/sezon simülasyonları veya snowball audit'leri için izin oluşturmaz.
 
-### Yerel PC: genel bellek sınırı — owner, 2026-10-13
+### Yerel PC: genel bellek sınırı — owner, 2026-11-03
 
-- Node heap **2 GiB'ı aşamaz**: en fazla `--max-old-space-size=2048`. Bir kontrolü geçirmek için sınırı yükseltme veya 6 GiB kullanma. Test worker'larında yukarıdaki daha düşük sınır geçerlidir.
+- Node heap **3 GiB'ı aşamaz**: en fazla `--max-old-space-size=3072`. Bir kontrolü geçirmek için sınırı yükseltme veya 6 GiB kullanma. Test worker'larında yukarıdaki daha düşük sınır geçerlidir.
 - Heap toplam süreç belleği değildir; RSS'i izle ve PC'nin kullanılabilir kalmasını sağla.
-- Gerekirse bellek tüketen lint taramasını `pnpm lint` üzerinden sıralı gruplara böl; yine de bütün dosyalar kontrol edilmelidir. Komutlar: `docs/engineering-standards.md`.
+- `pnpm lint` bütün dosyaları 400'lük parçalarla sırayla kontrol eder (tek süreç 3 GiB'a sığmaz). Bkz. `tools/lint.mjs`.
 - Bu kural yerel dokümanlarda kalmış eski 6 GiB yönlendirmelerinden üstündür.
 
 ## 6. Bağlam ve dosya okuma stratejisi

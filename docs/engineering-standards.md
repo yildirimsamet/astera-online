@@ -52,24 +52,19 @@ ESLint 9 flat config, `typescript-eslint` **strictTypeChecked + stylisticTypeChe
 type-aware — which catches unsafe `any` flow, floating promises, misused promises and
 unnecessary conditions that reveal a wrong mental model.
 
-Always run lint through `pnpm lint`. The root script caps ESLint at
-`--max-old-space-size=4096`. **Owner rule, 13 October 2026: never exceed a 4 GiB
+Always run lint through `pnpm lint`. It runs in parts, each capped at
+`--max-old-space-size=3072`. **Owner rule, 3 November 2026: never exceed a 3 GiB
 Node heap on the local PC; 6 GiB is prohibited.** Total RSS also includes native
-memory, so a 4 GiB heap is not a 4 GiB process limit. Monitor RSS, keep typecheck,
-lint and test runs separate, and use a smaller heap when necessary. `pnpm verify`
+memory, so a 3 GiB heap is not a 3 GiB process limit. `pnpm test`, `pnpm typecheck`
+and `pnpm lint` go through `tools/heavy.mjs`: one lock per machine, a 9 GiB ceiling
+and no swap. Put it in front of any direct run of those tools that is not short. `pnpm verify`
 and `pnpm build` inherit the same ceiling. Test workers have the stricter
 1–1.5 GiB budget below. Never raise a limit to pass a check.
 
-When one full lint process puts pressure on the PC, these three sequential root
-invocations cover the same files while releasing each group's type programs:
-
-```bash
-nice -n 10 pnpm lint --ignore-pattern 'apps/web/**' --ignore-pattern 'packages/sim/**' --ignore-pattern 'tools/**'
-nice -n 10 pnpm lint --ignore-pattern 'apps/server/**' --ignore-pattern 'packages/**' --ignore-pattern 'tools/**'
-nice -n 10 pnpm lint --ignore-pattern 'apps/**' --ignore-pattern 'packages/rules/**'
-```
-
-Require all three to pass; a failed or skipped group is not a green lint result.
+One process over everything does not fit in 3 GiB: a type-aware ESLint grows with
+every file it lints. `tools/lint.mjs` splits by workspace into parts of at most 400 files
+(about 2.6 GiB each), and every part must pass. Given a path or an option other than
+`--fix`, `pnpm lint` runs once as told, and that run does not cover the whole repository.
 
 **The architectural boundary is a lint rule.** `packages/rules` may not import a Node builtin,
 another workspace package, `Math.random`, `Date.now` or `new Date`. **If the rules ever acquire

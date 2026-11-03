@@ -6,8 +6,8 @@
   "main": "./src/index.ts",
   "scripts": {
     "start": "tsx src/cli.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "node ../../tools/heavy.mjs --heap 3072 tsc --noEmit",
+    "test": "node ../../tools/heavy.mjs vitest run --minWorkers=1 --maxWorkers=4"
   },
   "dependencies": {
     "@astera/rules": "workspace:*"
