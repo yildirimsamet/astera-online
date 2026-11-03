@@ -5,7 +5,7 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById, RESEARCH_PROJECTS } from '@astera/rules';
+import { cosmeticById, RESEARCH_PROJECTS, GALAXY, INTERGALACTIC_CONVOY } from '@astera/rules';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -18,6 +18,7 @@ import TeamPanel from '../../arena/TeamPanel.js';
 import { BaseSwitch } from '../hud/BaseSwitch.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
+import { convoyOpportunity, type IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
 import { PlanetScreen } from '../../screens/PlanetScreen.js';
@@ -26,7 +27,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { IntergalacticConvoyFocus, MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -961,23 +962,26 @@ function Views({ view }: { view: string }) {
       />
     );
   }
-  if (view === 'convoy') {
-    return (
-      <IntergalacticConvoySheet
-        event={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-          startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-          appearsAtMinute: 1140, expiresAtMinute: 1260,
-          route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
-          visual: { formationVersion: 1 },
-          rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
-        }}
-        seasonStart={new Date(NOW - 1150 * MIN)}
-        planet={launchWorld}
-        onClose={noop}
-        onLaunched={noop}
-      />
-    );
+  if (view === 'convoy' || view === 'convoy-focus') {
+    const seasonStart = new Date(NOW - 1150 * MIN);
+    const event: IntergalacticConvoyEvent = {
+      id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
+      startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + (INTERGALACTIC_CONVOY.durationMinutes - 10) * MIN),
+      appearsAtMinute: 1140, expiresAtMinute: 1140 + INTERGALACTIC_CONVOY.durationMinutes,
+      route: { from: { x: -GALAXY.radius, y: 0, z: 0 }, to: { x: GALAXY.radius, y: 0, z: 0 },
+        velocity: { x: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes, y: 0, z: 0 },
+        speed: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes },
+      visual: { formationVersion: 1 },
+      rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
+    };
+    if (view === 'convoy-focus') {
+      const access = convoyOpportunity(event, launchWorld, seasonStart, NOW);
+      return <IntergalacticConvoyFocus convoy={event} minutesLeft={INTERGALACTIC_CONVOY.durationMinutes - 10}
+        reachMinutes={access.reachMinutes} hasCombatCraft={access.hasCombatCraft}
+        launchLocked={false} occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
+    }
+    return <IntergalacticConvoySheet event={event} seasonStart={seasonStart}
+      planet={launchWorld} onClose={noop} onLaunched={noop} />;
   }
   if (view === 'planet-models') return <PlanetModelsGallery />;
   if (view === 'away') {

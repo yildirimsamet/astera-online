@@ -2751,6 +2751,8 @@ export const INTERGALACTIC_CONVOY = {
    * units per minute and passes the centre halfway through the window.
    */
   durationMinutes: 180,
+  /** Applies only inside the convoy intercept solver; return travel uses normal speed. */
+  outboundSpeedMultiplier: 2,
   engagementSeconds: 5,
   quoteToleranceSeconds: 5,
   /**

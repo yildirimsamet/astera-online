@@ -526,6 +526,21 @@ of the full hull. Ground guns and NPC crews carry nothing (D1).
 
 ### Radyasyon — sabit HP hasarı (kesin kullanıcı kararı, 2026-10-12)
 
+**Güncel etki alanı — koddan doğrulandı, 2026-11-04:** Radyasyon bir `PLANET` veya
+`MONUMENT` kimliğine bağlıdır; yalnız o hedefte bulunan/bekleyen gemilere işler.
+Gidiş, dönüş, savaş uçuşu, gezegenler arası aktarım ve konvoyla temas sırasında bir
+geminin görünen radyasyon alanından geçmesi hasar vermez. Haritadaki küre/pus hasar
+menzili değildir. Konvoya gidiş hızını artırmak radyasyon hasarını azaltan bir mekanik
+oluşturmaz; mevcut yaralar uçuş boyunca korunur, iyileşme de verilmez.
+
+Bu ayrımı `radiation.ts` içindeki `liveInterval` yapar: kaynak ile segmentin hedef
+kimliği eşleşmelidir. `radiationSources.ts` güncel kaynakları hedef kimliğiyle sağlar;
+uçuş segmentleri hedef etiketi taşımaz. `entity-radiation.test.ts` dosyaları (rules ve
+server), alanın içinden geçişte sıfır hasarı ve hedefte beklerken hasarı doğrular.
+Ruleset 17+ veya `monumentMotionStartsAt` ile bu modele geçirilmiş sezonlarda bu kural
+geçerlidir. Önceki uzamsal/yüzde modelleri ve geçiş öncesi kaynak pencereleri yalnız
+eski sezonların geçmişini doğru çözmek için korunur; güncel uçuş davranışı değildir.
+
 **Radyasyon hasarı gemi başına sabit HP/dakika olarak hesaplanır.** Aynı kaynak, koruma ve
 maruz kalma koşullarındaki gemiler aynı miktarda HP kaybeder. Gemi canı yüksekse daha uzun
 dayanır; canı düşükse daha erken kaybedilir. Radyasyon seviyesi ve koruma araştırması etkin HP/dk
@@ -569,7 +584,9 @@ değerini belirleyebilir; geminin temel, azami veya kalan HP'si hasar oranını 
 #### Tarihsel model — clouds on the map (K3–K4; ruleset 14, eski yüzde modeli)
 
 Aşağıdaki bölüm eski ruleset davranışının kaydıdır; yeni radyasyon geliştirmeleri için
-üstteki sabit HP kararı geçerlidir. Eski sezonların kaydı geriye dönük değiştirilmez.
+üstteki hedef kimliğine bağlı etki alanı ve sabit HP kararı geçerlidir. Eski sezonların
+kaydı geriye dönük değiştirilmez. Uçuş yolunun küreyle kesişmesi aşağıdaki eski modele
+aittir; güncel gezegen/anıt radyasyonuna genellenmez.
 
 **A cloud takes a fixed share of every ship's full hull per minute spent inside it.** There is no
 tick: a flight is straight segments at constant speed, the time in each sphere is solved exactly,
@@ -1240,9 +1257,14 @@ when the radius-3000 galaxy made the rim-to-route reach longer), a
 twenty-two-craft double formation crosses an
 isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
 90. The active route is public; future routes remain server-secret. A commander sends an armed
-mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
-fire and loses no craft, then follows a separately frozen return leg. Both legs' fuel is paid at
-launch and the flight cannot be recalled.
+mobile wing to the moving intercept at twice its normal fleet speed (including launch propulsion
+and Beacon), fires alongside it for exactly five seconds, receives no return
+fire, then follows a separately frozen return leg at normal speed. Only convoy outbound travel
+gets the multiplier; other mission types do not. The full strike must fit the crossing; return
+may finish after the convoy leaves, provided it is before season end. In the current entity-based radiation model,
+the outbound leg, five-second pass and return leg take no environmental radiation damage:
+crossing a planet's or monument's visible aura does not mean occupying that target. Existing
+ship damage is preserved. Both legs' fuel is paid at launch and the flight cannot be recalled.
 
 The resource prize is bounded by four frozen hours (two before 2026-09-16) of the origin world's
 nominal production,

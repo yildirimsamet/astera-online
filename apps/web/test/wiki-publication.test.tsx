@@ -222,3 +222,12 @@ it('publishes tier-specific storage, Works and recovery values in both languages
     }
   }
 });
+
+
+it.each(['en', 'tr'] as const)('publishes the convoy-only speed and correct radiation scope in %s', language => {
+  const page = wikiPages.find(p => p.articleId === 'galaxy.convoys' && p.language === language);
+  if (!page) throw new Error('Missing convoy article');
+  const doc = documentFor(renderWikiPage(page));
+  expect(doc.body.textContent).toContain('2×');
+  expect(doc.body.textContent).not.toMatch(/route radiation can|rota radyasyonu|review radiation losses|radyasyon kayıplarını/i);
+});

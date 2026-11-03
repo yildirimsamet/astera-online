@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  INTERGALACTIC_CONVOY,
   MOBILE_HULLS,
   combatValue,
   convoyProductionCap,
@@ -155,7 +156,7 @@ export function IntergalacticConvoySheet({
             : planet.flight.used >= planet.flight.total
               ? t('convoy.noBay')
               : route === null
-                ? t('convoy.cannotReach')
+                ? t('convoy.selectedCannotReach')
                 : planet.planet.deuterium < route.fuel
                   ? t('convoy.noFuel')
                   : null;
@@ -193,7 +194,7 @@ export function IntergalacticConvoySheet({
       mods,
     );
     if (!fresh) {
-      say(t('convoy.cannotReach'), 'error');
+      say(t('convoy.selectedCannotReach'), 'error');
       return;
     }
     launch.mutate({
@@ -238,7 +239,7 @@ export function IntergalacticConvoySheet({
       }
     >
       <div className="mt-1 grid gap-1 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
-        <p className="text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
+        <p className="text-caption leading-snug text-v2-ink">{t('convoy.boundary', { multiplier: INTERGALACTIC_CONVOY.outboundSpeedMultiplier })}</p>
         <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.engagement')}</p>
         <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
       </div>

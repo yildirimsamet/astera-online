@@ -9,6 +9,7 @@ import type { TFunction } from 'i18next';
 import {
   DEATH_STAR,
   FEATURE_FLAGS,
+  INTERGALACTIC_CONVOY,
   HULLS,
   MONUMENT_BALANCE,
   MULTI_WORLD,
@@ -3061,7 +3062,7 @@ export function IntergalacticConvoyFocus({
           value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`}
         />
       </div>
-      <p className="mt-3 text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink">{t('convoy.boundary', { multiplier: INTERGALACTIC_CONVOY.outboundSpeedMultiplier })}</p>
       <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
     </Shell>
   );

@@ -649,10 +649,15 @@ otherwise the interface erases the asymmetric rule the player must make decision
 
 ### I6c · A cost the press will charge is quoted beside the press (ship damage, radiation)
 
-What a commitment will take is stated where it is committed, not in the report after. The launch
-and transfer sheets quote a route's radiation — the share of hull each ship loses and whether it
-lands needing the Repair Station — above the hold, with the lethal case in threat red and the
-hold as the acknowledgement. A world's focus sheet states the cloud it stands in and the 20% line.
+What a commitment will take is stated where it is committed, not in the report after. In the
+current entity-based radiation model, explain damage while stationed at the affected planet or
+monument, in HP per ship per minute after protection. Passing through its visible aura causes
+no flight damage, so launch, transfer and convoy sheets must not describe that crossing as a
+radiation risk or imply that flying faster reduces a dose. Existing wounds remain. Route-dose
+quotes and lethal-route acknowledgements apply only to historical spatial-radiation rulesets;
+their continued code support is not a current gameplay requirement. See the radiation section
+in `game-design.md`. The Repair Station details below describe the original 2026-09-30 design;
+current manual maintenance rules are in `ship-maintenance-plan-2026-10-13.md`.
 Each world's **Repair Station** sits in its Base, on the Fleet tab, as a card across both columns
 under the Shipyard and the Hangar (owner, 2026-09-30). The card states how many ships wait, how
 many are under repair and how full the queue is; it has no ladder, so pressing it opens the

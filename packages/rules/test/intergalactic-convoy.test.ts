@@ -17,6 +17,8 @@ import {
   fleetCargo,
   fleetPace,
   fleetSpeedMult,
+  fleetTravelExact,
+  distance,
   generateGalaxy,
   intergalacticConvoyPosition,
   intergalacticConvoyQuoteIsFresh,
@@ -592,5 +594,78 @@ describe('convoy quote freshness', () => {
     expect(intergalacticConvoyQuoteIsFresh({
       ...base, actualArriveAtMs: base.actualArriveAtMs + surplus * 1_000,
     })).toBe(false);
+  });
+});
+
+
+describe('the convoy-only outbound speed', () => {
+  const spec = {
+    appearsAt: 0, expiresAt: 180,
+    from: { x: -4500, y: 0, z: 0 }, to: { x: 4500, y: 0, z: 0 },
+    velocity: { x: 50, y: 0, z: 0 },
+  };
+  const origin = { x: -3000, y: 0, z: 0 };
+
+  it.each([
+    ['WARDEN', 29.585253456221192, 59.225548064705755],
+    ['PIKE', 34.82926829268292, 69.71975057713539],
+  ] as const)('lets %s meet in time, with an ordinary-speed return', (hull, outbound, home) => {
+    const fleet = { [hull]: 1 };
+    const mods = { boost: 1, tech: {} };
+    const normalSpeed = fleetPace(fleet, mods) / TRAVEL.distanceFactor;
+    const hit = interceptIntergalacticConvoy({ origin, spec, departAtMinute: 90,
+      fleetUnitsPerMinute: normalSpeed });
+    expect(hit).not.toBeNull();
+    expect(hit!.arrivesAtMinute - 90).toBeCloseTo(outbound, 9);
+    expect(distance(origin, hit!.intercept) / outbound).toBeCloseTo(2 * normalSpeed, 9);
+    expect(fleetTravelExact(distance(hit!.engagementEnd, origin), fleet, mods)).toBeCloseTo(home, 9);
+    expect(hit!.engagementEndsAtMinute).toBeLessThan(180);
+    if (hull === 'PIKE') expect(hit!.engagementEndsAtMinute + home).toBeGreaterThan(180);
+  });
+
+  it('applies exactly twice the effective slowest speed without changing ordinary travel', () => {
+    const fleet = { DART: 5, PIKE: 2, COURIER: 1 };
+    const mods = { boost: 1.2, tech: { SHIP_PROPULSION: 2 } };
+    const before = structuredClone(mods);
+    const normalSpeed = fleetPace(fleet, mods) / TRAVEL.distanceFactor;
+    const hit = interceptIntergalacticConvoy({ origin, spec, departAtMinute: 90,
+      fleetUnitsPerMinute: normalSpeed });
+    expect(hit).not.toBeNull();
+    expect(hit!.arrivesAtMinute - 90).toBeCloseTo(3000 / (2 * normalSpeed - 50), 9);
+    expect(mods).toEqual(before);
+    expect(fleetTravelExact(3000, fleet, mods)).toBeCloseTo(3000 / normalSpeed, 9);
+    expect(interceptLinearTransit({ origin, targetAtQuoteTime: { x: 0, y: 0, z: 0 },
+      targetVelocity: spec.velocity, fleetUnitsPerMinute: normalSpeed,
+      minMeetMinute: 0, maxMeetMinute: 180 })?.meetsAtMinute)
+      .toBeCloseTo(3000 / (normalSpeed - 50), 9);
+  });
+
+  it('reserves the full five seconds including an exact boundary finish', () => {
+    const stationary = { ...spec, from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 } };
+    const latest = 180 - 5 / 60;
+    const solve = (x: number) => interceptIntergalacticConvoy({ origin: { x, y: 0, z: 0 },
+      spec: stationary, departAtMinute: 0, fleetUnitsPerMinute: 1 });
+    expect(solve(2 * latest)?.engagementEndsAtMinute).toBeCloseTo(180, 10);
+    expect(solve(2 * latest + 0.001)).toBeNull();
+  });
+
+  it('satisfies an independent doubled-speed equation over moving routes', () => {
+    fc.assert(fc.property(
+      fc.integer({ min: -4000, max: 4000 }), fc.integer({ min: -4000, max: 4000 }),
+      fc.integer({ min: 1, max: 179 }), fc.integer({ min: 55, max: 300 }),
+      (x, y, departAtMinute, speed) => {
+        const start = { x, y, z: 0 };
+        const hit = interceptIntergalacticConvoy({ origin: start, spec, departAtMinute,
+          fleetUnitsPerMinute: speed });
+        const latest = 180 - 5 / 60;
+        const deadlinePoint = { x: -4500 + 50 * latest, y: 0, z: 0 };
+        // Faster than the target: distance at the deadline independently decides reach.
+        const reachable = distance(start, deadlinePoint) <= 2 * speed * (latest - departAtMinute);
+        expect(hit !== null).toBe(reachable);
+        if (hit) expect(distance(start, hit.intercept))
+          .toBeCloseTo(2 * speed * (hit.arrivesAtMinute - departAtMinute), 7);
+      },
+    ), { numRuns: 500 });
   });
 });

@@ -1,6 +1,13 @@
 # Plan — Kalıcı Gemi Hasarı · Repair Station · Industrial · Radyasyon
 
-> Durum: **ONAYLANDI, uygulanmadı.** Rev. 2 (2026-09-29, koda karşı gözden geçirildi; değişiklikler §8'de).
+> **Tarihsel plan — güncel radyasyon davranışı değildir (kod kontrolü: 2026-11-04).**
+> Aşağıdaki K3/K4, D9–D15 ve F8–F11 uzamsal/yüzde uçuş radyasyonunun eski tasarım ve
+> uygulama kaydıdır. Güncel modelde radyasyon gezegen/anıt kimliğine bağlıdır; yalnız
+> o hedefte bulunan gemilere hasar verir. Görünen alandan uçuşla geçmek hasar vermez;
+> konvoya gidiş, temas ve dönüş de bu kurala dahildir. Eski kaynak pencereleri yalnız
+> geçmiş uyumluluğu için korunur. Güncel kapsam: [game-design.md](docs/game-design.md#radyasyon--sabit-hp-hasarı-kesin-kullanıcı-kararı-2026-10-12).
+>
+> İlk durum kaydı: **ONAYLANDI, uygulanmadı.** Rev. 2 (2026-09-29, koda karşı gözden geçirildi; değişiklikler §8'de).
 > Kaynak: sahibin "Ship Damage, Repair Station & Radiation" spesifikasyonu.
 > Her faz **TDD** ile yapılır (CLAUDE.md): test yaz → FAIL → implementasyon → PASS → review.
 > Kod ve testler kesin bilgidir. Satır referansları HEAD `ee177b9` içindir.

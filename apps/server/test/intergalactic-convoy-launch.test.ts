@@ -6,9 +6,14 @@ import {
   GALAXY_EVENTS,
   INTERGALACTIC_CONVOY,
   TRAVEL,
+  distance,
+  fleetTravelExact,
+  missionFuelForDistances,
   fleetPace,
   fleetSpeedMult,
   interceptIntergalacticConvoy,
+  interceptLinearTransit,
+  intergalacticConvoyPosition,
   sensorSphere,
   honorConvoyResources,
   honorBenefits,
@@ -29,6 +34,8 @@ import {
   honorTotals,
 } from '../src/db/schema.js';
 import { minutesSince } from '../src/clock.js';
+import { launchTransfer, recallFlight } from '../src/services/movement.js';
+import { launchAttack } from '../src/services/mission.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -133,6 +140,20 @@ async function armed(fleet: Fleet, planetId = mine): Promise<void> {
   await grant(f.db, planetId, 500_000, 200_000);
   await fuelUp(f.db, planetId);
   await giveUnits(f.db, planetId, fleet);
+}
+
+/** A numeric reference independent of the production intercept and quote helper. */
+async function doubledPikeOrder(): Promise<IntergalacticConvoyOrder> {
+  const live = await convoyUp(90);
+  await f.db.update(seasons).set({ rulesetVersion: 18 }).where(eq(seasons.id, f.seasonId));
+  const spec = intergalacticConvoyOf(season.asteroidKey, { sequence: 0, kind: 'INTERGALACTIC_CONVOY',
+    startsAtMinute: 0, endsAtMinute: 180, definitionVersion: DEFINITION.version, effect });
+  await f.db.update(planets).set({ x: -3000 * spec.direction.x, y: -3000 * spec.direction.y,
+    z: -3000 * spec.direction.z }).where(eq(planets.id, mine));
+  await armed({ PIKE: 3 });
+  const seconds = 34.82926829268292 * 60;
+  return { occurrenceId: live.occurrenceId, fleet: { PIKE: 3 }, quotedAt: f.clock.now(),
+    quotedFlightSeconds: seconds, quotedArriveAt: new Date(f.clock.now().getTime() + seconds * 1000) };
 }
 
 describe('an intergalactic convoy strike launch', () => {
@@ -856,6 +877,47 @@ describe('the intergalactic convoy launch route', () => {
 
   afterEach(async () => { await app.close(); });
 
+  it.each(['speed', 'speedMultiplier', 'outboundSpeedMultiplier', 'pace', 'intercept', 'returnPoint', 'targetPlanetId'])(
+    'rejects client supplied %s without spending ships, fuel or quota', async field => {
+      const order = await doubledPikeOrder();
+      const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const response = await app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch',
+        headers: { ...auth, 'idempotency-key': 'convoy-forged-speed' }, payload: {
+          originPlanetId: mine, occurrenceId: order.occurrenceId, fleet: order.fleet,
+          quotedAt: order.quotedAt.toISOString(), quotedArriveAt: order.quotedArriveAt.toISOString(),
+          quotedFlightSeconds: order.quotedFlightSeconds, [field]: 4,
+        } });
+      expect(response.statusCode).toBe(400);
+      expect(await f.db.select().from(intergalacticConvoyRuns)).toHaveLength(0);
+      expect(await baysInUse(f.db, mine)).toBe(0);
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      expect(after!.deuterium).toBe(before!.deuterium);
+    },
+  );
+
+  it.each(['duration', 'arrival', 'future', 'expired', 'foreign-origin', 'missing-occurrence'] as const)(
+    'refuses a forged %s quote atomically', async variant => {
+      const order = await doubledPikeOrder();
+      const payload = { originPlanetId: mine, occurrenceId: order.occurrenceId, fleet: order.fleet,
+        quotedAt: order.quotedAt.toISOString(), quotedArriveAt: order.quotedArriveAt.toISOString(),
+        quotedFlightSeconds: order.quotedFlightSeconds };
+      if (variant === 'duration') payload.quotedFlightSeconds /= 100;
+      if (variant === 'arrival') payload.quotedArriveAt = f.clock.now().toISOString();
+      if (variant === 'future') payload.quotedAt = new Date(f.clock.now().getTime() + 1000).toISOString();
+      if (variant === 'expired') payload.quotedAt = new Date(f.clock.now().getTime() - 46000).toISOString();
+      if (variant === 'foreign-origin') payload.originPlanetId = f.planetIds[1]!;
+      if (variant === 'missing-occurrence') payload.occurrenceId = '00000000-0000-4000-8000-000000000000';
+      const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const response = await app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch',
+        headers: { ...auth, 'idempotency-key': 'convoy-forged-quote' }, payload });
+      expect(response.statusCode).toBe(variant === 'foreign-origin' ? 403 : 409);
+      expect(await f.db.select().from(intergalacticConvoyRuns)).toHaveLength(0);
+      expect(await baysInUse(f.db, mine)).toBe(0);
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      expect(after!.deuterium).toBe(before!.deuterium);
+    },
+  );
+
   it('requires an idempotency key and replays only immutable command data with a fresh planet view', async () => {
     const live = await convoyUp();
     const fleet = { VIPER: 8 } satisfies Fleet;
@@ -936,4 +998,142 @@ describe('the intergalactic convoy launch route', () => {
       IDEMPOTENCY_CONFLICT: 1,
     });
   });
+});
+
+
+describe('the doubled convoy outbound remains isolated', () => {
+  it('commits the numeric Pike reference and returns at normal speed after the crossing', async () => {
+    const order = await doubledPikeOrder();
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx,
+      { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    // Database coordinates and Date timestamps have finite precision; allow at most 1 ms.
+    expect(Math.abs(launch.flightSeconds - 34.82926829268292 * 60)).toBeLessThan(0.001);
+    expect(Math.abs((launch.homeAt.getTime() - launch.engagementEndsAt.getTime()) / 60000
+      - 69.71975057713539)).toBeLessThan(2 / 60000);
+    expect(launch.homeAt.getTime()).toBeGreaterThan(season.startsAt.getTime() + 180 * 60000);
+    expect(launch.fuel).toBe(missionFuelForDistances(order.fleet,
+      [distance(launch.returnPoint, launch.intercept), distance(launch.engagementEnd, launch.returnPoint)]));
+    expect(await baysInUse(f.db, mine)).toBe(1);
+    const [saved] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    expect(saved).toMatchObject({ arriveAt: launch.arriveAt, homeAt: launch.homeAt, engagementEndsAt: launch.engagementEndsAt });
+  });
+
+  it('still refuses a normal-speed return beyond the season boundary atomically', async () => {
+    const order = await doubledPikeOrder();
+    await f.db.update(seasons).set({ endsAt: new Date(season.startsAt.getTime() + 180 * 60000) }).where(eq(seasons.id, f.seasonId));
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    await expect(f.db.transaction(tx => launchIntergalacticConvoy(tx,
+      { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock })))
+      .rejects.toMatchObject({ code: 'SEASON_ENDS_BEFORE_RETURN' });
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(after!.deuterium).toBe(before!.deuterium);
+    expect(await f.db.select().from(intergalacticConvoyRuns)).toHaveLength(0);
+    expect(await baysInUse(f.db, mine)).toBe(0);
+    expect((await f.db.select().from(units)).find(row => row.planetId === mine && row.location === 'home' && row.hull === 'PIKE')?.count).toBe(3);
+  });
+
+  it('cannot recall or reuse convoy ships in a transfer and leaves no speed bonus after return', async () => {
+    const order = await doubledPikeOrder();
+    const target = f.planetIds[1]!;
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[0], kind: 'COLONY' }).where(eq(planets.id, target));
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx,
+      { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    await expect(recallFlight(f.db, launch.runId, f.clock, f.playerIds[0]!)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    const empty = { alloy: 0, crystal: 0, deuterium: 0 };
+    await expect(launchTransfer(f.db, f.playerIds[0]!, mine, target, order.fleet, empty, f.clock))
+      .rejects.toMatchObject({ code: 'NOT_ENOUGH_SHIPS' });
+    f.clock.set(launch.engagementEndsAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+    f.clock.set(launch.homeAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyReturn(tx, launch.runId, f.clock));
+    const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const [destination] = await f.db.select().from(planets).where(eq(planets.id, target));
+    const transferred = await launchTransfer(f.db, f.playerIds[0]!, mine, target, order.fleet, empty, f.clock);
+    expect(Math.abs((transferred.arriveAt.getTime() - f.clock.now().getTime()) / 60000
+      - fleetTravelExact(distance(home!, destination!), order.fleet, { boost: 1, tech: {} }))).toBeLessThan(1 / 60000);
+  });
+
+  it('serialises a convoy versus transfer race over the same physical ships', async () => {
+    const order = await doubledPikeOrder();
+    const target = f.planetIds[1]!;
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[0], kind: 'COLONY' }).where(eq(planets.id, target));
+    const race = await Promise.allSettled([
+      f.db.transaction(tx => launchIntergalacticConvoy(tx,
+        { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock })),
+      launchTransfer(f.db, f.playerIds[0]!, mine, target, order.fleet,
+        { alloy: 0, crystal: 0, deuterium: 0 }, f.clock),
+    ]);
+    expect(race.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+    const refused = race.find(result => result.status === 'rejected');
+    expect(refused).toMatchObject({ status: 'rejected', reason: { code: 'NOT_ENOUGH_SHIPS' } });
+    expect(await baysInUse(f.db, mine)).toBe(1);
+    const physical = await f.db.select().from(units).where(and(eq(units.planetId, mine), eq(units.hull, 'PIKE')));
+    expect(physical.reduce((total, row) => total + row.count, 0)).toBe(3);
+    expect(physical.find(row => row.location === 'home')?.count ?? 0).toBe(0);
+  });
+
+  it('does not let a standard attack take ships already committed to the convoy', async () => {
+    const order = await doubledPikeOrder();
+    await f.db.transaction(tx => launchIntergalacticConvoy(tx,
+      { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    await expect(launchAttack(f.db, mine, f.planetIds[1]!, order.fleet, f.clock, f.playerIds[0]))
+      .rejects.toMatchObject({ code: 'NOT_ENOUGH_SHIPS' });
+    expect(await f.db.select().from(intergalacticConvoyRuns)).toHaveLength(1);
+  });
+
+  it('ignores an entity aura while retaining launch wounds on both flight legs', async () => {
+    const order = await doubledPikeOrder();
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'PLANET',
+      anchorId: f.planetIds[1]!, x: 0, y: 0, z: 0, radius: 100000, mode: 'EMIT',
+      intensityHpPerMinute: 1000000, activeFrom: f.clock.now() });
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx,
+      { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    const damage = [{ hull: 'PIKE' as const, count: 3, damageBp: 2000 }];
+    await f.db.update(intergalacticConvoyRuns).set({ damage }).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    f.clock.set(launch.engagementEndsAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+    const [returning] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    expect(returning?.damage).toEqual(damage);
+    f.clock.set(launch.homeAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyReturn(tx, launch.runId, f.clock));
+    const [landed] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    expect(landed?.damage).toEqual(returning?.damage);
+  });
+});
+
+
+it('finishes a stored ordinary-speed convoy without reapplying the new outbound multiplier', async () => {
+  const order = await doubledPikeOrder();
+  const [initial] = await f.db.select().from(planets).where(eq(planets.id, mine));
+  const origin = { x: initial!.x / 6, y: initial!.y / 6, z: initial!.z / 6 };
+  await f.db.update(planets).set(origin).where(eq(planets.id, mine));
+  const normalSpeed = fleetPace(order.fleet, { boost: 1, tech: {} }) / TRAVEL.distanceFactor;
+  const newMinutes = distance(origin, { x: 0, y: 0, z: 0 }) / (2 * normalSpeed - 50);
+  order.quotedFlightSeconds = newMinutes * 60;
+  order.quotedArriveAt = new Date(f.clock.now().getTime() + newMinutes * 60000);
+  const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx,
+    { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+  const spec = intergalacticConvoyOf(season.asteroidKey, { sequence: 0, kind: 'INTERGALACTIC_CONVOY',
+    startsAtMinute: 0, endsAtMinute: 180, definitionVersion: DEFINITION.version, effect });
+  const old = interceptLinearTransit({ origin, targetAtQuoteTime: intergalacticConvoyPosition(spec, 90),
+    targetVelocity: spec.velocity, fleetUnitsPerMinute: normalSpeed, minMeetMinute: 0, maxMeetMinute: 90 - 5 / 60 });
+  if (!old) throw new Error('Old-speed fixture cannot meet');
+  const arriveAt = new Date(launch.departAt.getTime() + old.meetsAtMinute * 60000);
+  const engagementEndsAt = new Date(arriveAt.getTime() + 5000);
+  const end = intergalacticConvoyPosition(spec, minutesSince(season.startsAt, engagementEndsAt));
+  const homeAt = new Date(engagementEndsAt.getTime() + distance(end, origin) / normalSpeed * 60000);
+  await f.db.update(intergalacticConvoyRuns).set({ arriveAt, engagementEndsAt, homeAt,
+    interceptX: old.at.x, interceptY: old.at.y, interceptZ: old.at.z,
+    engagementEndX: end.x, engagementEndY: end.y, engagementEndZ: end.z,
+  }).where(eq(intergalacticConvoyRuns.id, launch.runId));
+  await f.db.update(scheduledEvents).set({ resolveAt: engagementEndsAt }).where(and(
+    eq(scheduledEvents.refId, launch.runId), eq(scheduledEvents.kind, 'convoy_arrival')));
+  const preview = (await pendingThreads(f.db, mine, launch.departAt)).find(thread => thread.id === launch.runId);
+  expect(preview?.arriveAt).toEqual(arriveAt);
+  f.clock.set(engagementEndsAt);
+  await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+  f.clock.set(homeAt);
+  await f.db.transaction(tx => resolveIntergalacticConvoyReturn(tx, launch.runId, f.clock));
+  const [completed] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+  expect(completed).toMatchObject({ status: 'done', arriveAt, engagementEndsAt, homeAt });
 });

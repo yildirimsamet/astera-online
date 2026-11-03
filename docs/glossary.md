@@ -103,9 +103,12 @@ together. Lots from different landings never merge.
 by nothing; a repair costs the damaged share of the ship's price and build time. Its own serial
 queue, three deep. **Industrial** research cuts both to 75% / 50%.
 
-**Radyasyon (radiation)** — A sphere that takes a share of every ship's full hull per minute
-spent inside it; exact to the segment, no tick. **SHELTER** is the inverse: a sphere where no cloud
-doses. v1: operator test clouds only.
+**Radyasyon (radiation)** — Fixed HP damage per ship per minute while occupying the affected
+planet or monument. Damage follows the target's identity, not its visible aura's position or
+radius. Flying through that aura, including convoy outbound and return legs, causes no damage;
+previous wounds remain. **SHELTER** cancels radiation on its own target during its active window.
+Untagged spatial sources and percentage-based flight damage belong to historical rulesets and
+pre-cutover windows, not the current entity model. See [the current radiation rule](game-design.md#radyasyon--sabit-hp-hasarı-kesin-kullanıcı-kararı-2026-10-12).
 
 **Salvage** — The 60% of destroyed ground defence that rebuilds free. It exists so that
 blind raiding can actually fail.
