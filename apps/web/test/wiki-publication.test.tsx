@@ -93,7 +93,7 @@ describe('the published Wiki contract', () => {
       expect(wikiPages.some(p => `${PUBLISHER_ORIGIN}${p.path}` === translated && p.articleId === page.articleId && p.categoryId === page.categoryId)).toBe(true);
       const icon = doc.querySelector('link[rel="icon"]')?.getAttribute('href');
       expect(icon).toBeTruthy();
-      expect(existsSync(resolve(process.cwd(), `public${icon ?? ''}`))).toBe(true);
+      expect(existsSync(resolve(process.cwd(), `public${new URL(icon ?? '', 'https://asteraonline.space').pathname}`))).toBe(true);
       for (const image of doc.querySelectorAll('img[src]')) expect(existsSync(resolve(process.cwd(), `public${image.getAttribute('src')?.split('?')[0] ?? ''}`))).toBe(true);
       expect(doc.querySelectorAll('script:not([type="application/ld+json"])')).toHaveLength(0);
       for (const link of doc.querySelectorAll('a[href]')) {

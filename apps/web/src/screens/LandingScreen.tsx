@@ -181,7 +181,7 @@ function CompactLandingScreen({
                 sees of this game, and with the middle cleared it sits high and
                 lets the sky underneath do the talking. */}
             <h1>
-              <Wordmark width={288} className="mx-auto mt-2" />
+              <Wordmark width={160} className="mx-auto mt-2" />
             </h1>
           </header>
         </div>

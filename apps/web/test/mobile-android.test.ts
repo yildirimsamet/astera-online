@@ -45,11 +45,19 @@ describe('the local Android host', () => {
     }
   });
 
-  it('keeps the whole emblem inside launcher and splash masks', () => {
+  it('fills launcher and splash masks with the artwork instead of shrinking an inset tile', () => {
     for (const icon of ['ic_launcher', 'ic_launcher_round']) {
       expect(readAndroid(`app/src/main/res/mipmap-anydpi-v26/${icon}.xml`)).toContain('android:drawable="@drawable/astera_icon_adaptive"');
     }
-    expect(readAndroid('app/src/main/res/drawable/astera_icon_adaptive.xml')).toMatch(/<inset[^>]+android:drawable="@drawable\/astera_icon"[^>]+android:inset="15%"/);
+    const artwork = new DOMParser().parseFromString(readAndroid('app/src/main/res/drawable/astera_icon_adaptive.xml'), 'text/xml').documentElement;
+    expect(artwork.getAttribute('android:drawable')).toBe('@drawable/astera_icon');
+    const inset = artwork.getAttribute('android:inset');
+    expect(inset).toMatch(/^\d+%$/);
+    // The OS masks the central 72dp of a 108dp layer. The opaque, edge-filled
+    // artwork must cover that viewport; its lettering is composed inside the safe area.
+    const side = 108 * (1 - 2 * Number(inset?.replace('%', '')) / 100);
+    expect(side).toBeGreaterThanOrEqual(72);
+    expect(side).toBeLessThanOrEqual(76);
     expect(readAndroid('app/src/main/res/values/styles.xml')).toContain('<item name="windowSplashScreenAnimatedIcon">@drawable/astera_icon_adaptive</item>');
   });
 

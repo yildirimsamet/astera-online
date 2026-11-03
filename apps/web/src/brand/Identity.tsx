@@ -1,19 +1,18 @@
 import wordmark from './wordmark.svg?raw';
-import sigil from './sigil.svg?raw';
+import { LOGO } from '../ui/assets.js';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
 import { FullscreenButton } from './FullscreenButton.js';
 import { capabilities } from '../platform/runtime.js';
 const wordmarkMarkup = { __html: wordmark };
-const sigilMarkup = { __html: sigil };
 
-/** The first HTML and every branded surface share these trusted local SVG sources. */
+/** Shared brand artwork and the compact typographic wordmark. */
 export function AsteraWordmark({ className = '' }: { className?: string }) {
   return <span className={className} aria-hidden="true" dangerouslySetInnerHTML={wordmarkMarkup} />;
 }
 
 export function AsteraSigil({ className = '' }: { className?: string }) {
-  return <span className={className} aria-hidden="true" dangerouslySetInnerHTML={sigilMarkup} />;
+  return <img className={className} src={LOGO.mark} alt="" width={64} height={64} draggable={false} />;
 }
 
 export function BrandMasthead({ onShop }: { onShop?: () => void }) {

@@ -12,8 +12,8 @@ html[data-public-surface] body { margin: 0; background: #060b12; }
 .landing-skip { position: fixed; z-index: 60; left: 1rem; top: 1rem; transform: translateY(-180%); background: #a6e6dc; color: #07161a !important; padding: .7rem 1rem; }
 .landing-skip:focus { transform: none; }
 .landing-header { position: relative; z-index: 2; display: flex; align-items: center; gap: 2rem; min-height: 104px; border-bottom: 1px solid #b9d8e21f; }
-.landing-brand { display: block; width: 154px; flex-shrink: 0; }
-.landing-brand img { display: block; width: 100%; height: auto; margin-block: -18px; }
+.landing-brand { display: block; width: 64px; flex-shrink: 0; }
+.landing-brand img { display: block; width: 100%; height: auto; border-radius: 12px; }
 .landing-header > nav { display: flex; gap: 2rem; margin-left: auto; font-size: 13px; color: #c0cdd3; }
 .landing-header > nav a { display: flex; align-items: center; min-height: 44px; }
 .landing-header select { border-color: #c2dce130; background: #0a1521; font-size: 12px; }
@@ -103,7 +103,7 @@ html[data-public-surface] body { margin: 0; background: #060b12; }
 .landing-button:hover { background: #d1fff4; }
 .landing-closing .landing-button { margin-top: 2rem; }
 .landing-footer { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: space-between; align-items: center; padding-block: 3rem; }
-.landing-footer img { width: 144px; height: auto; margin-left: -10px; }
+.landing-footer img { width: 88px; height: auto; border-radius: 16px; margin-bottom: 12px; }
 .landing-footer p { color: #8297a5; font-size: 10px; margin-top: -.5rem; }
 .landing-footer > nav:not(.landing-languages) { display: flex; flex-wrap: wrap; gap: .8rem 1.5rem; max-width: 600px; color: #b0c2cb; font-size: 11px; }
 .landing-footer nav a, .landing-footer button { min-height: 44px; display: inline-flex; align-items: center; }
@@ -125,7 +125,7 @@ html[data-public-surface] body { margin: 0; background: #060b12; }
 @media (max-width: 640px) {
   .landing-container { width: calc(100% - 2.5rem); }
   .landing-header { min-height: 80px; gap: .7rem; }
-  .landing-brand { width: 120px; }
+  .landing-brand { width: 56px; }
   .landing-header > nav { gap: .7rem; font-size: 11px; }
   .landing-header > nav a:first-child { display: none; }
   .landing-header select { padding-inline: .5rem; max-width: 108px; font-size: 11px; }

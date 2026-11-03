@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -329,6 +330,9 @@ describe('the identity', () => {
   it('resolves both forms of the mark', () => {
     for (const [form, url] of Object.entries(LOGO)) {
       expect(existsSync(served(url)), `LOGO.${form} → ${url}`).toBe(true);
+      // Production serves /assets/ as immutable for a year. New pixels need a new URL.
+      const digest = createHash('sha256').update(readFileSync(served(url))).digest('hex').slice(0, 12);
+      expect(url).toContain(`/logos/${digest}/`);
     }
   });
 

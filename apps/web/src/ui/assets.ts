@@ -65,22 +65,10 @@ export const STRATEGIC_ART = {
 /** The Repair Station (Kalıcı gemi hasarı): owner-supplied, one render, no ladder. */
 export const REPAIR_STATION_ART = `${BASE}/general/repair_station_1.png`;
 
-/**
- * The identity, in the two forms it is ever used in.
- *
- * `lockup` is the full ASTERA ONLINE mark and `mark` is the same artwork with the
- * words taken off, for anywhere too small to read them.
- *
- * BOTH ARE DERIVED FILES, and the derivation matters. The supplied art is a glow
- * painted on a solid black plate; dropped straight onto the app it draws a black
- * rectangle over the void, which is a shade lighter than the plate and lit by two
- * radial gradients — so the box shows. These carry an alpha channel instead, lifted
- * so that compositing over black reproduces the original pixel for pixel. The
- * originals stay beside them untouched as the source of any future crop.
- */
+/** The shared square artwork; derived from assets/branding/app-icon-master.png. */
 export const LOGO = {
-  lockup: `${BASE}/logos/logo-lockup.png`,
-  mark: `${BASE}/logos/logo-mark.png`,
+  lockup: `${BASE}/logos/99a78ad6f43f/logo-lockup.png`,
+  mark: `${BASE}/logos/99a78ad6f43f/logo-mark.png`,
 } as const;
 
 /* ── planets ────────────────────────────────────────────────── */
