@@ -60,7 +60,9 @@ Sunucudaki rota süreleri (`capacity-run-2026-11-03/prom-war100-steady.txt`) tek
 
 `GET /api/planets/:id` 200 seviyesinde bir kez 500 verdi: `UNSAFE_TRANSACTION: Only use sql.begin, sql.reserved or max: 1`. Son üç günün canlı kayıtlarında yok. Bağlantı başına `BEGIN` sızıntısı olabilir; kök neden aranmadı.
 
-## Önerilen sıra (uygulanmadı)
+## Önerilen sıra (eski)
+
+Güncel sıra: `docs/scaling-architecture-plan-2026-10-27.md` §16.
 
 1. **Özel havuz:** yazmayan rotaları okuma listesine almak ve kalanlar için havuz bütçesini ölçmek. 5xx'in kaynağı bu.
 2. **`plan_cache_mode=force_custom_plan` denemesi:** 100 seviyesinde en pahalı 25 sorgu 40 sn sürerken PostgreSQL ~300 sn CPU harcadı. Fark planlamadan geliyor olabilir (`track_planning` ile doğrulanmalı).

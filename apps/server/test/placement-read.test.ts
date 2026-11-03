@@ -70,6 +70,40 @@ it('answers a hot read while every placement connection is held by a write', asy
   }
 });
 
+/**
+ * THE READS THAT 503'D AT 200 COMMANDERS. Load run 2026-11-03.
+ *
+ * These only read, yet held one of two lease connections for their whole handler, so
+ * at 200 commanders they queued two seconds behind one another and were refused. Each
+ * was checked by reading its handler: `/api/intel`'s one write is the guarded telescope
+ * confirmation `/api/galaxy` makes, and the rest write nothing. `/api/monuments` is not
+ * here: it applies due transitions on read.
+ */
+it.each(['/api/intel', '/api/unknown-signals', '/api/return-applications', '/api/commander-ship'])(
+  'answers %s while every placement connection is held by a write', async (url) => {
+    const f = await seedWorld(1);
+    const authorization = await appFor(f, { PLACEMENT_POOL_MAX: '1' });
+    const { requireAuth } = await import('../src/routes/auth.js');
+    let release = () => { /* assigned synchronously by the promise constructor */ };
+    const held = new Promise<void>(resolve => { release = resolve; });
+    let entered = false;
+    built!.app.post('/api/placement-hold-test', { preHandler: requireAuth }, async () => {
+      entered = true;
+      await held;
+      return { ok: true };
+    });
+    const hold = built!.app.inject({ method: 'POST', url: '/api/placement-hold-test', headers: { authorization } });
+    try {
+      await vi.waitFor(() => { expect(entered).toBe(true); }, { timeout: 2000 });
+      const read = built!.app.inject({ url, headers: { authorization } });
+      const outcome = await Promise.race([read, delay(1_000).then(() => 'blocked' as const)]);
+      expect(outcome === 'blocked' ? 'blocked' : outcome.statusCode).toBe(200);
+    } finally {
+      release();
+      await hold;
+    }
+  });
+
 it('refuses a read whose galaxy moved while it was being answered', async () => {
   const f = await seedWorld(1);
   const authorization = await appFor(f);
@@ -82,6 +116,14 @@ it('refuses a read whose galaxy moved while it was being answered', async () => 
   const response = await built!.app.inject({ url: '/api/galaxy/traffic', headers: { authorization } });
   expect(response.statusCode).toBe(409);
   expect(response.json()).toMatchObject({ error: 'PLACEMENT_CHANGED' });
+});
+
+it('still answers a stale client on the return status, which is how it finds its way back', async () => {
+  const f = await seedWorld(1);
+  const authorization = await appFor(f);
+  const response = await built!.app.inject({ url: '/api/return-applications', headers: { authorization, 'x-placement': 'stale:999' } });
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toMatchObject({ placement: { playerId: f.playerIds[0] } });
 });
 
 it('keeps the stale-header rule and publishes the placement on hot reads', async () => {

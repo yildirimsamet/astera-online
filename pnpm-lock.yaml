@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   drizzle-orm@0.45.2:
-    hash: uah2dey6glkxalzthfzucvqeye
+    hash: soak5sos3r6t6aqhypaslnzncq
     path: patches/drizzle-orm@0.45.2.patch
 
 importers:
@@ -75,7 +75,7 @@ importers:
         version: 1.0.0-alpha.22
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(patch_hash=uah2dey6glkxalzthfzucvqeye)(gel@2.2.0)(postgres@3.4.9)
+        version: 0.45.2(patch_hash=soak5sos3r6t6aqhypaslnzncq)(gel@2.2.0)(postgres@3.4.9)
       fastify:
         specifier: ^5.2.0
         version: 5.12.0
@@ -6951,7 +6951,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.2(patch_hash=uah2dey6glkxalzthfzucvqeye)(gel@2.2.0)(postgres@3.4.9):
+  drizzle-orm@0.45.2(patch_hash=soak5sos3r6t6aqhypaslnzncq)(gel@2.2.0)(postgres@3.4.9):
     optionalDependencies:
       gel: 2.2.0
       postgres: 3.4.9

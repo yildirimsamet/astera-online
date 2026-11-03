@@ -107,8 +107,9 @@ it('defers the initial grant while old writers are being replaced, then initiali
   await refresh(bot.accountId);
   expect((await awards(bot.accountId)).length).toBeGreaterThanOrEqual(2);
   expect((await f.db.select().from(legacyShowcaseSlots).where(eq(legacyShowcaseSlots.accountId, bot.accountId))).length).toBeGreaterThanOrEqual(2);
-  const granted = (await awards(bot.accountId)).map(row => row.id);
+  const held = async () => (await awards(bot.accountId)).map(row => row.id).toSorted();
+  const granted = await held();
   vi.stubEnv('BOT_LEGACY_ENABLED', 'false');
   await refresh(bot.accountId);
-  expect((await awards(bot.accountId)).map(row => row.id)).toEqual(granted);
+  expect(await held()).toEqual(granted);
 });

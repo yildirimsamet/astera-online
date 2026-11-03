@@ -18,6 +18,7 @@ import type { StreamCloseReason } from '../services/streamRegistry.js';
 import { activityGate, isGalaxyActivity } from '../stream/activityGate.js';
 import { SHARD_PREFIX, STREAM_REVOKED } from '../stream/bus.js';
 import type { FencedStream } from '../stream/fence.js';
+import { readTrafficView, trafficSignature, watchTraffic } from '../stream/trafficWake.js';
 import { requireAuth } from './auth.js';
 
 const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() });
@@ -27,6 +28,8 @@ const returnSeenBody = z.object({ asOf: z.coerce.date() });
 const PLACEMENT_CHANGED_FRAME = 'event: placement_changed\ndata: {"kind":"placement_changed"}\n\n';
 /** Closed for a newer stream on the same account; the client waits before it returns. */
 const SUPERSEDED_FRAME = 'event: superseded\ndata: {"kind":"superseded"}\n\n';
+
+const TRAFFIC_WATCH_TIMEOUT_MS = 30_000;
 
 export function registerSessionRoutes(app: FastifyInstance): void {
   app.get('/api/commander-ship', { preHandler: requireAuth }, req => readCommanderShip(app.db, req.accountId!, app.clock));
@@ -191,6 +194,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * costs one line per real event in a galaxy of three hundred commanders.
    */
   app.get('/api/stream', { preHandler: requireAuth }, async (req, reply) => {
+    const { trafficWake } = z.object({ trafficWake: z.literal('1').optional() }).parse(req.query ?? {});
     const { playerId, seasonId, placementVersion } = await whoAndWhere(req.accountId!);
 
     reply.hijack();
@@ -295,11 +299,13 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       shutdown: () => { end('shutdown'); },
       superseded: () => { end('superseded', SUPERSEDED_FRAME); },
     });
+    let stopTrafficWatch: (() => void) | null = null;
     let cleaned = false;
     cleanup = (reason = 'client'): void => {
       if (cleaned) return;
       cleaned = true;
       clearInterval(heartbeat);
+      stopTrafficWatch?.();
       unsubscribe();
       unsubscribeShard();
       activity.cancel();
@@ -321,5 +327,22 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     // This first write flushes the response headers only after both topics are
     // attached, making the client's `onOpen` boundary truthful.
     write(`: connected\n\n`);
+
+    // Asked for by the client, so an older build goes on polling for itself.
+    if (trafficWake && !req.raw.destroyed) {
+      send({ kind: `${SHARD_PREFIX}traffic-wake-on` });
+      const accountId = req.accountId!;
+      stopTrafficWatch = watchTraffic({
+        everyMs: app.trafficWakeMs,
+        timeoutMs: TRAFFIC_WATCH_TIMEOUT_MS,
+        read: async () => trafficSignature(await readTrafficView(app.projections, await app.projections.commander(accountId), app.clock.now())),
+        wake: () => { send({ kind: `${SHARD_PREFIX}traffic` }); },
+        failed: (err) => {
+          app.log.warn({ err, playerId }, 'traffic watch failed');
+          send({ kind: `${SHARD_PREFIX}traffic-wake-off` });
+        },
+        recovered: () => { send({ kind: `${SHARD_PREFIX}traffic-wake-on` }); },
+      });
+    }
   });
 }

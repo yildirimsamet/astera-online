@@ -3,10 +3,10 @@ import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { players, returnApplications, seasons, shards } from '../db/schema.js';
 
-/** One placement snapshot, protected against a concurrent commander move. */
+/** One placement snapshot: a concurrent commander move is either all of it or none. */
 export async function readReturnStatus(db: Db, accountId: string, clock: Clock) {
   return db.transaction(async (tx) => {
-    const [player] = await tx.select().from(players).where(eq(players.accountId, accountId)).for('share');
+    const [player] = await tx.select().from(players).where(eq(players.accountId, accountId));
     if (!player) return { placement: null, homeShard: null, canApply: false, application: null };
     const [source] = await tx.select({ season: seasons, role: shards.role }).from(seasons)
       .innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.id, player.seasonId));
@@ -33,5 +33,5 @@ export async function readReturnStatus(db: Db, accountId: string, clock: Clock) 
         && target.rulesetVersion === source.season.rulesetVersion,
       application: queued ? { id: queued.id, position: (ahead?.n ?? 0) + 1 } : null,
     };
-  });
+  }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }

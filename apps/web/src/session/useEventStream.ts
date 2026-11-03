@@ -1,3 +1,5 @@
+import { cancelEventRefreshes, refreshForEvent } from '../api/eventRefresh.js';
+import { setChannelLive, setTrafficWake } from '../api/liveChannel.js';
 import { refreshQueries } from '../api/refreshQueries.js';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -44,6 +46,10 @@ export const RESUME_RESYNC_MS = 15_000;
  * so reconnecting at once would supersede the next tab, which would do the same.
  */
 export const SUPERSEDED_RETRY_MS = 60_000;
+
+const TRAFFIC_WAKE_ON = 'shard:traffic-wake-on';
+const TRAFFIC_WAKE_OFF = 'shard:traffic-wake-off';
+const TRAFFIC_WAKE = 'shard:traffic';
 
 /**
  * Every read a player event can move — and the same set a RECONNECTION moves.
@@ -139,6 +145,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     const onPlacementChanged = (): void => {
       if (controller.signal.aborted) return;
       controller.abort();
+      cancelEventRefreshes(client);
       onRollover?.();
     };
     window.addEventListener('astera:placement-changed', onPlacementChanged);
@@ -176,6 +183,9 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     let lifecycleResyncTimer: ReturnType<typeof setTimeout> | null = null;
     let lastLifecycleResync = 0;
     let networkReturnPending = false;
+    const trafficWoken = { now: false };
+    const stopping = (): boolean => controller.signal.aborted;
+    let trafficWakeMissed = false;
     let hiddenAt: number | null = !isAppActive() ? Date.now() : null;
     const scheduleLifecycleResync = (): void => {
       if (!isAppActive() || !isNetworkOnline() || lifecycleResyncTimer !== null) return;
@@ -196,6 +206,10 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }
       const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
       hiddenAt = null;
+      if (trafficWakeMissed) {
+        trafficWakeMissed = false;
+        scheduleTrafficConsistencyRead();
+      }
       if (away >= RESUME_RESYNC_MS || networkReturnPending) scheduleLifecycleResync();
     };
     const onPageShow = (event: Event): void => {
@@ -239,6 +253,23 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     // Set by the server's `superseded` frame; the loop below then waits to be wanted.
     const lastClose = { superseded: false };
     const refresh = (kind: string): void => {
+      if (kind === TRAFFIC_WAKE_ON) {
+        trafficWoken.now = true;
+        setTrafficWake(true);
+        return;
+      }
+      // The server cannot watch for now, so this client asks for itself.
+      if (kind === TRAFFIC_WAKE_OFF) {
+        trafficWoken.now = false;
+        setTrafficWake(false);
+        void refreshQueries(client, { queryKey: keys.traffic });
+        return;
+      }
+      // The poll this replaces stopped with the screen too.
+      if (kind === TRAFFIC_WAKE && !isAppActive()) {
+        trafficWakeMissed = true;
+        return;
+      }
       if (kind === 'superseded') {
         lastClose.superseded = true;
         return;
@@ -288,17 +319,20 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (isPrivateEvent(kind)) {
         const reads = readsForPrivateEvent(kind);
         if (reads) {
-          for (const key of reads) void refreshQueries(client, { queryKey: key });
+          // A weapon in the air is urgent, and `refreshQueries` already folds a burst into a slow read.
           if (kind === 'private:strategic-sight') {
+            for (const key of reads) void refreshQueries(client, { queryKey: key });
             scheduleTrafficConsistencyRead();
+            return;
           }
+          for (const key of reads) refreshForEvent(client, key);
           return;
         }
       }
 
       const worldReads = readsForPlayerEvent(kind);
       if (worldReads) {
-        for (const key of worldReads) void refreshQueries(client, { queryKey: key });
+        for (const key of worldReads) refreshForEvent(client, key);
         return;
       }
 
@@ -315,7 +349,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
        *
        * An omission here does not fail loudly. It renders a stopped world.
        */
-      resync();
+      for (const key of LIVE_READS) refreshForEvent(client, key);
     };
 
     /** Resolves early on abort, so a 30-second backoff cannot outlive the tab. */
@@ -354,6 +388,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         const openedAt = Date.now();
         try {
           await api.stream(refresh, controller.signal, () => {
+            setChannelLive(true);
             // Cold-start queries and this subscription mount concurrently. An
             // event can commit after a query's snapshot but before the stream is
             // attached, so the first open needs a catch-up pass just as surely as
@@ -364,11 +399,17 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
               hasOpened = true;
               resync();
             }
-          });
+          }, { trafficWake: true });
         } catch {
           // Fall through: a connection that threw and one that closed instantly
           // are the same problem, and both are counted below.
         }
+        setChannelLive(false);
+        setTrafficWake(false);
+        // Its timer was armed for minutes: this read re-arms it for the five-second poll.
+        // Taken down, there is nothing left to poll: `api.stream` returned because of it.
+        if (trafficWoken.now && !stopping()) void refreshQueries(client, { queryKey: keys.traffic });
+        trafficWoken.now = false;
         /**
          * A CLEAN CLOSE IS NOT PROOF THE CONNECTION WORKED.
          *
@@ -391,6 +432,9 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
 
     return () => {
       controller.abort();
+      cancelEventRefreshes(client);
+      setChannelLive(false);
+      setTrafficWake(false);
       window.removeEventListener('astera:placement-changed', onPlacementChanged);
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);

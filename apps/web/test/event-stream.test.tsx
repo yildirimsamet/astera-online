@@ -11,6 +11,9 @@ import {
   SUPERSEDED_RETRY_MS,
   useEventStream,
 } from '../src/session/useEventStream.js';
+import { EVENT_REFRESH_GAP_MS } from '../src/api/eventRefresh.js';
+import { TRAFFIC } from '@astera/rules';
+import { CALM_NET_MS, NET_MS, safetyNetMs, trafficPollMs } from '../src/api/liveChannel.js';
 import { COALESCE_MS, HEAVY_COALESCE_MS } from '../src/session/shardEvents.js';
 
 /**
@@ -36,14 +39,18 @@ let onEvent: ((kind: string) => void) | null = null;
 let closeSocket: (() => void) | null = null;
 /** How many times the loop has opened the socket. */
 let opens = 0;
+/** The next connections hang without ever opening, as they do with no route to the server. */
+let unreachable = false;
+let requested: unknown[] = [];
 
 const fakeApi = (): Api =>
   ({
-    stream: (handler: (kind: string) => void, _signal: AbortSignal, onOpen?: () => void) => {
+    stream: (handler: (kind: string) => void, _signal: AbortSignal, onOpen?: () => void, options?: { trafficWake: boolean }) => {
       opens += 1;
+      requested.push(options);
       onEvent = handler;
       // Opens immediately, as a working connection does.
-      onOpen?.();
+      if (!unreachable) onOpen?.();
       return new Promise<void>((resolve) => {
         closeSocket = resolve;
       });
@@ -70,6 +77,8 @@ describe('the event stream', () => {
     onEvent = null;
     closeSocket = null;
     opens = 0;
+    unreachable = false;
+    requested = [];
     asked = [];
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.invalidateQueries = (filters?: { queryKey?: readonly unknown[] }) => {
@@ -95,11 +104,166 @@ describe('the event stream', () => {
     return view;
   };
 
+  const setVisibility = (value: 'hidden' | 'visible'): void => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+  };
+  const hide = (): void => { setVisibility('hidden'); };
+  const show = (): void => { setVisibility('visible'); };
+
   const fire = (kind: string): void => {
     act(() => {
       onEvent?.(kind);
     });
   };
+
+
+  /**
+   * ONE READ FOR A BURST, AND THE NET ONLY UNDER A DEAD CHANNEL. Query plan, 2026-11-03.
+   */
+  it('answers the first event of a burst at once and the rest with one read after the gap', () => {
+    mountCaughtUp();
+    fire('raided');
+    expect(asked.filter(key => key === 'planets')).toHaveLength(1);
+    fire('raided');
+    fire('fleet_returned');
+    expect(asked.filter(key => key === 'planets')).toHaveLength(1);
+    act(() => { vi.advanceTimersByTime(EVENT_REFRESH_GAP_MS); });
+    expect(asked.filter(key => key === 'planets')).toHaveLength(2);
+  });
+
+  /**
+   * THE COMMON EVENTS NAME THEIR READS. Query plan, 2026-11-03.
+   *
+   * About one production request in five was a read answering a single notification: a
+   * fleet landing re-read the DM count, the clan badge and the 193 KB galaxy, 23 reads in
+   * all. Those have events of their own, so a landing asks only for what a landing moves.
+   */
+  const OWN_LANDING = ['notifications', 'pending', 'planet', 'planets', 'reports', 'rewards', 'traffic', 'mining'];
+  const WALLED_OFF = ['dm', 'chat', 'galaxy', 'monuments', 'pirates', 'intel', 'galaxy-events', 'unknown-signals'];
+
+  it.each(['fleet_returned', 'target_gone', 'mining_arrival'])('%s reads what a landing moves, and no more', (kind) => {
+    mountCaughtUp();
+    fire(kind);
+    for (const key of OWN_LANDING) expect(asked.some(each => each.startsWith(key))).toBe(true);
+    for (const key of WALLED_OFF) expect(asked).not.toContain(key);
+  });
+
+  it('a probe report also reads the intel and the galaxy that remembers the world', () => {
+    mountCaughtUp();
+    fire('probe_report');
+    for (const key of [...OWN_LANDING, 'intel', 'galaxy']) expect(asked.some(each => each.startsWith(key))).toBe(true);
+    expect(asked).not.toContain('dm');
+  });
+
+  it.each(['raided', 'colony_lost', 'a_kind_from_a_newer_server'])('%s still refreshes everything', (kind) => {
+    mountCaughtUp();
+    fire(kind);
+    for (const key of ['galaxy', 'monuments', 'intel']) expect(asked).toContain(key);
+  });
+
+  /**
+   * THE CHANNEL TAKES OVER FROM THE FIVE-SECOND POLL, ONCE THE SERVER SAYS IT WILL. Query plan, 2026-11-03.
+   */
+  it('asks the server to wake it for traffic', () => {
+    const view = mountCaughtUp();
+    expect(requested).toEqual([{ trafficWake: true }]);
+    view.unmount();
+  });
+
+  it('keeps polling traffic until the server says it will wake this client', () => {
+    const view = mountCaughtUp();
+    expect(trafficPollMs()).toBe(TRAFFIC.refreshMs);
+    fire('shard:traffic-wake-on');
+    expect(trafficPollMs()).toBe(CALM_NET_MS);
+    view.unmount();
+    expect(trafficPollMs()).toBe(TRAFFIC.refreshMs);
+  });
+
+  it('goes back to polling, and arms it now, when the channel drops', async () => {
+    const view = mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    asked = [];
+    unreachable = true;
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(trafficPollMs()).toBe(TRAFFIC.refreshMs);
+    expect(asked).toContain('traffic');
+    view.unmount();
+  });
+
+  it('polls for itself while the server cannot watch', () => {
+    const view = mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    asked = [];
+    fire('shard:traffic-wake-off');
+    expect(trafficPollMs()).toBe(TRAFFIC.refreshMs);
+    expect(asked).toEqual(['traffic']);
+    fire('shard:traffic-wake-on');
+    expect(trafficPollMs()).toBe(CALM_NET_MS);
+    view.unmount();
+  });
+
+  it('calls off a burst\'s waiting read when it is taken down', () => {
+    const view = mountCaughtUp();
+    fire('raided');
+    fire('raided');
+    asked = [];
+    view.unmount();
+    act(() => { vi.advanceTimersByTime(EVENT_REFRESH_GAP_MS * 2); });
+    expect(asked).toEqual([]);
+  });
+
+  it('reads traffic when woken, and nothing else', () => {
+    mountCaughtUp();
+    fire('shard:traffic');
+    act(() => { vi.advanceTimersByTime(HEAVY_COALESCE_MS + 1_000); });
+    expect(asked).toEqual(['traffic']);
+  });
+
+  it('does not count the promise of a wake as anything to read', () => {
+    mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    act(() => { vi.advanceTimersByTime(HEAVY_COALESCE_MS + 1_000); });
+    expect(asked).toEqual([]);
+  });
+
+  it('leaves a wake for when the player is back, as the poll it replaces stopped too', () => {
+    mountCaughtUp();
+    hide();
+    fire('shard:traffic');
+    act(() => { vi.advanceTimersByTime(100); });
+    expect(asked).toEqual([]);
+    show();
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(asked).toEqual(['traffic']);
+  });
+
+  it('does not hold the first event back behind the catch-up read of an opening', () => {
+    mountCaughtUp();
+    fire('private:clan-aid');
+    expect(asked.length).toBeGreaterThan(0);
+  });
+
+  it('slows the safety net while the stream is open and restores it when it closes', async () => {
+    const view = mountCaughtUp();
+    expect(safetyNetMs()).toBe(CALM_NET_MS);
+    unreachable = true;
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(safetyNetMs()).toBe(NET_MS);
+    view.unmount();
+  });
+
+  it('restores the safety net when the stream is taken down', () => {
+    const view = mountCaughtUp();
+    view.unmount();
+    expect(safetyNetMs()).toBe(NET_MS);
+  });
 
   it('refreshes only chat recognition reads after a manual supporter change', () => {
     mountCaughtUp();

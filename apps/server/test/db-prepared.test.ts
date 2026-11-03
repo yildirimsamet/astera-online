@@ -13,7 +13,8 @@ import { TEST_DATABASE_URL } from './helpers.js';
  * round trips for every statement, which on production's box is most of a move's
  * latency. Short statements are now prepared once per connection. A long parameter
  * list is not: each length would be a separate statement held for the connection's
- * life. Plans stay custom, as they were for unprepared statements.
+ * life. Plans follow the server's default: five executions planned for their own
+ * parameters, then a reused plan unless it looks costlier (query plan, 2026-11-03).
  */
 const { db, close } = createDb(TEST_DATABASE_URL, { max: 1 });
 afterAll(close);
@@ -36,7 +37,12 @@ it('does not prepare a statement with a long parameter list', async () => {
   expect(await preparedLike('$33')).toBe(0);
 });
 
-it('keeps planning every execution for its own parameters', async () => {
+it('lets the server reuse a plan once it is as good as a fresh one', async () => {
   const [row] = await db.execute<{ plan_cache_mode: string }>(sql`show plan_cache_mode`);
-  expect(row!.plan_cache_mode).toBe('force_custom_plan');
+  expect(row!.plan_cache_mode).toBe('auto');
+  const reused = () => db.select({ id: players.id }).from(players).where(eq(players.accountId, randomUUID()));
+  for (let run = 0; run < 7; run += 1) await reused();
+  const [plans] = await db.execute<{ generic_plans: number }>(sql`select generic_plans::int from pg_prepared_statements
+    where statement like '%from "players" where "players"."account_id" = $1'`);
+  expect(plans!.generic_plans).toBeGreaterThan(0);
 });

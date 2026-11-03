@@ -1,5 +1,6 @@
 import type { ShipClass } from '@astera/rules/arena';
 import type { CommanderShipView } from '../api/commanderShipSchemas.js';
+import { safetyNetMs } from '../api/liveChannel.js';
 
 /**
  * THE COMMANDER SHIP BESIDE ITS CAPITAL (KG-A20, plan 14 §13, doc 22).
@@ -43,7 +44,7 @@ export function homewardShip(view: CommanderShipView | undefined, now: number): 
 /** When to ask again: at the end of the repair or the lone flight home, bounded so a wrong clock costs little. */
 export function refreshAfter(view: CommanderShipView | undefined, now: number): number {
   const ends = [view?.ship?.readyAt, view?.homeward?.arriveAt].flatMap(at => at ? [Date.parse(at) - now] : []);
-  return Math.min(60_000, Math.max(5_000, Math.min(Number.POSITIVE_INFINITY, ...ends)));
+  return Math.min(safetyNetMs(), Math.max(5_000, Math.min(Number.POSITIVE_INFINITY, ...ends)));
 }
 
 /**

@@ -44,6 +44,7 @@ import {
 } from '@astera/rules';
 import { minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
+import { batchReads } from '../db/readBatch.js';
 import {
   buildings,
   buildOrders,
@@ -520,7 +521,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const [row] = options.mutate ? await query.for('update') : await query;
   assertPlanetRow(row, season, options.expectedPlayerId);
 
-  const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await Promise.all([
+  const readHardware = () => Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId),
@@ -528,6 +529,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
+  const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await batchReads(readHardware);
   const inputs: PlanetInputs = { row, season, buildingRows, satelliteRows, unitRows, faultRows, silentSpace: shard?.role === 'WAITING' };
   const { levels, instruments, faults } = hardwareInputs(inputs);
 
@@ -994,20 +996,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string, observedAt
   }
   const worldIds = worlds.map((world) => world.id);
 
-  const [
-    buildingRows,
-    satelliteRows,
-    unitRows,
-    inventoryAssets,
-    launchedAssets,
-    cargoMissions,
-    committedBuilds,
-    committedResearch,
-    [unclaimedClanLoot],
-    [monumentCargo],
-    contributionFuel,
-    launchedBombs,
-  ] = await Promise.all([
+  const readHoldings = () => Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
     tx.select().from(satellites).where(inArray(satellites.planetId, worldIds)),
     tx.select().from(units).where(or(
@@ -1063,6 +1052,20 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string, observedAt
       .where(and(eq(radiationBombFlights.ownerPlayerId, playerId), eq(radiationBombFlights.status, 'OUTBOUND'),
         eq(strategicAssets.status, 'LAUNCHED'))),
   ]);
+  const [
+    buildingRows,
+    satelliteRows,
+    unitRows,
+    inventoryAssets,
+    launchedAssets,
+    cargoMissions,
+    committedBuilds,
+    committedResearch,
+    [unclaimedClanLoot],
+    [monumentCargo],
+    contributionFuel,
+    launchedBombs,
+  ] = await batchReads(readHoldings);
 
   let value = 0;
   for (const world of worlds) {

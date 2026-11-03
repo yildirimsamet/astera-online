@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '../src/api/queries.js';
 import {
+  readsForPlayerEvent,
   COALESCE_MS,
   CONSISTENCY_MS,
   HEAVY_COALESCE_MS,
@@ -407,4 +408,15 @@ describe('what a private clan event asks the client to read', () => {
 
 it('refreshes Honor receipts and personal economic quotes without a blanket gameplay resync',()=>{
   expect(readsForPrivateEvent('private:honor')).toEqual([keys.reports, keys.planet, keys.planets, keys.leaderboard]);
+});
+
+/** Reads every open screen keeps mounted: a landing must not pay for them. Query plan, 2026-11-03. */
+describe('a landing leaves the always-mounted reads alone', () => {
+  it.each(['fleet_returned', 'target_gone', 'mining_arrival', 'probe_report'])('%s', (kind) => {
+    const reads = readsForPlayerEvent(kind) ?? [];
+    expect(reads.length).toBeGreaterThan(0);
+    for (const key of [keys.clanBadge, keys.dmUnread, keys.chatUnread, keys.monuments, keys.pirates, keys.miningField, keys.galaxyEvents, keys.unknownSignals]) {
+      expect(reads).not.toContainEqual(key);
+    }
+  });
 });

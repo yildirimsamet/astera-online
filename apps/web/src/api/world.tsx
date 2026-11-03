@@ -11,6 +11,8 @@ import type { PlanetView } from './schemas.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { readPlanetSnapshot, readWorldSnapshots } from './planetCache.js';
+import { planetReads } from './planetReads.js';
+import { safetyNetMs } from './liveChannel.js';
 
 interface WorldContextValue {
   activePlanetId: string | null;
@@ -52,10 +54,10 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const worldsQuery = useQuery({
     queryKey: keys.planets,
-    queryFn: ({ signal }) => readWorldSnapshots(queryClient, () => api.planets({ signal }), signal),
+    queryFn: ({ signal }) => readWorldSnapshots(queryClient, () => planetReads(api).list(signal), signal),
     staleTime: 15_000,
     // SSE is primary; this also heals a missed credit while the stream is down.
-    refetchInterval: 60_000,
+    refetchInterval: safetyNetMs,
   });
   const data = worldsQuery.data;
   const storageKey = data ? `astera:world:v1:${data.seasonId}:${data.playerId}` : null;
@@ -64,7 +66,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const worlds = useQueries({
     queries: (data?.planets ?? []).map((world) => ({
       queryKey: keys.planetById(world.planet.id),
-      queryFn: ({ signal }: { signal: AbortSignal }) => readPlanetSnapshot(queryClient, keys.planetById(world.planet.id), () => api.planet(world.planet.id, { signal })),
+      queryFn: ({ signal }: { signal: AbortSignal }) => readPlanetSnapshot(queryClient, keys.planetById(world.planet.id), () => planetReads(api).world(world.planet.id, signal)),
       enabled: false,
       initialData: world,
       initialDataUpdatedAt: worldsQuery.dataUpdatedAt,

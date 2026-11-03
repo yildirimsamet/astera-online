@@ -146,6 +146,26 @@ describe('a spend, before the server has answered', () => {
   });
 
   /** And the works go back into the works, not just the storage figure. */
+  /** The 193 KB galaxy is one read in five after a collect or an upgrade. Query plan, 2026-11-03. */
+  const galaxyReadsAfter = async (run: () => void): Promise<number> => {
+    const asked = vi.spyOn(client, 'invalidateQueries');
+    run();
+    await waitFor(() => { expect(asked.mock.calls.some(([filters]) => filters?.queryKey?.[0] === keys.leaderboard[0])).toBe(true); });
+    return asked.mock.calls.filter(([filters]) => filters?.queryKey?.[0] === keys.galaxy[0]).length;
+  };
+
+  it('does not re-read the galaxy after a collect, since nothing public moved', async () => {
+    collect.mockResolvedValue({ planet: start() });
+    const { result } = renderHook(() => useCollect(), { wrapper });
+    expect(await galaxyReadsAfter(() => { result.current.mutate(); })).toBe(0);
+  });
+
+  it.each(['CORE', 'REFINERY', 'VAULT', 'SHIPYARD'] as const)('does not re-read the galaxy on queueing a %s upgrade', async (type) => {
+    upgrade.mockResolvedValue({ planet: start() });
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+    expect(await galaxyReadsAfter(() => { result.current.mutate({ type, confirmedLevel: 1 }); })).toBe(0);
+  });
+
   it('rolls a refused collect back on both piles', async () => {
     client.setQueryData(
       keys.planet,

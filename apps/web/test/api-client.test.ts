@@ -1,7 +1,7 @@
 import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
-import { describe, expect, it, vi } from 'vitest';
-import { Api, ApiError } from '../src/api/client.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Api, ApiError, STREAM_SILENCE_MS } from '../src/api/client.js';
 import { planetView } from './fixtures.js';
 import { describeError } from '../src/i18n/errors.js';
 import { de } from '../src/i18n/locales/de/index.js';
@@ -629,6 +629,49 @@ describe('the API client', () => {
     await api.stream((kind) => seen.push(kind), new AbortController().signal);
 
     expect(seen).toEqual(['raided', 'fleet_returned']);
+  });
+});
+
+/**
+ * A DROPPED SOCKET ON A PHONE NEVER SAYS SO. Review, 2026-11-03.
+ *
+ * The client polls slowly because the channel is open, so it has to notice when it is not:
+ * a carrier NAT drops the socket with no FIN, and the read would wait for ever.
+ */
+describe('a stream that has gone silent', () => {
+  const opened = (start: (controller: ReadableStreamDefaultController<Uint8Array>) => void) => {
+    const body = new ReadableStream<Uint8Array>({ start });
+    const fetch = vi.fn(() => Promise.resolve(new Response(body, { status: 200 })));
+    return new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+  };
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('ends once no byte has come for longer than two heartbeats', async () => {
+    let ended = false;
+    void opened(() => undefined).stream(vi.fn(), new AbortController().signal).then(() => { ended = true; });
+    await vi.advanceTimersByTimeAsync(STREAM_SILENCE_MS - 1);
+    expect(ended).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(ended).toBe(true);
+  });
+
+  it('stays open on heartbeats, which carry no event', async () => {
+    let writer!: ReadableStreamDefaultController<Uint8Array>;
+    let ended = false;
+    const stream = opened((controller) => { writer = controller; }).stream(vi.fn(), new AbortController().signal);
+    void stream.then(() => { ended = true; });
+    for (let beat = 0; beat < 6; beat += 1) {
+      await vi.advanceTimersByTimeAsync(25_000);
+      writer.enqueue(new TextEncoder().encode(': ping\n\n'));
+    }
+    expect(ended).toBe(false);
+    writer.close();
+  });
+
+  it('leaves no timer behind a stream that closed normally', async () => {
+    await opened((controller) => { controller.close(); }).stream(vi.fn(), new AbortController().signal);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

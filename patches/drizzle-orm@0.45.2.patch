@@ -1,3 +1,102 @@
+diff --git a/entity.cjs b/entity.cjs
+index f29518acaca7b22011184d0efe7c0e8961c4f8d8..55f16bdf5dda109ebbb263de20938423dc3c4e06 100644
+--- a/entity.cjs
++++ b/entity.cjs
+@@ -25,6 +25,26 @@ __export(entity_exports, {
+ module.exports = __toCommonJS(entity_exports);
+ const entityKind = Symbol.for("drizzle:entityKind");
+ const hasOwnEntityKind = Symbol.for("drizzle:hasOwnEntityKind");
++const kindsByClass = new WeakMap();
++function isKind(cls, kind) {
++  let kinds = kindsByClass.get(cls);
++  if (!kinds) {
++    kinds = new Map();
++    kindsByClass.set(cls, kinds);
++  }
++  let answer = kinds.get(kind);
++  if (answer === undefined) {
++    answer = false;
++    for (let at = cls; at; at = Object.getPrototypeOf(at)) {
++      if (entityKind in at && at[entityKind] === kind) {
++        answer = true;
++        break;
++      }
++    }
++    kinds.set(kind, answer);
++  }
++  return answer;
++}
+ function is(value, type) {
+   if (!value || typeof value !== "object") {
+     return false;
+@@ -37,16 +57,8 @@ function is(value, type) {
+       `Class "${type.name ?? "<unknown>"}" doesn't look like a Drizzle entity. If this is incorrect and the class is provided by Drizzle, please report this as a bug.`
+     );
+   }
+-  let cls = Object.getPrototypeOf(value).constructor;
+-  if (cls) {
+-    while (cls) {
+-      if (entityKind in cls && cls[entityKind] === type[entityKind]) {
+-        return true;
+-      }
+-      cls = Object.getPrototypeOf(cls);
+-    }
+-  }
+-  return false;
++  const cls = Object.getPrototypeOf(value).constructor;
++  return cls ? isKind(cls, type[entityKind]) : false;
+ }
+ // Annotate the CommonJS export names for ESM import in node:
+ 0 && (module.exports = {
+diff --git a/entity.js b/entity.js
+index d940b54e243fc7cc9046c5411e47781d37a2b451..473dce3c5c681e3836c61999f171eeddd27440cb 100644
+--- a/entity.js
++++ b/entity.js
+@@ -1,5 +1,25 @@
+ const entityKind = Symbol.for("drizzle:entityKind");
+ const hasOwnEntityKind = Symbol.for("drizzle:hasOwnEntityKind");
++const kindsByClass = new WeakMap();
++function isKind(cls, kind) {
++  let kinds = kindsByClass.get(cls);
++  if (!kinds) {
++    kinds = new Map();
++    kindsByClass.set(cls, kinds);
++  }
++  let answer = kinds.get(kind);
++  if (answer === undefined) {
++    answer = false;
++    for (let at = cls; at; at = Object.getPrototypeOf(at)) {
++      if (entityKind in at && at[entityKind] === kind) {
++        answer = true;
++        break;
++      }
++    }
++    kinds.set(kind, answer);
++  }
++  return answer;
++}
+ function is(value, type) {
+   if (!value || typeof value !== "object") {
+     return false;
+@@ -12,16 +32,8 @@ function is(value, type) {
+       `Class "${type.name ?? "<unknown>"}" doesn't look like a Drizzle entity. If this is incorrect and the class is provided by Drizzle, please report this as a bug.`
+     );
+   }
+-  let cls = Object.getPrototypeOf(value).constructor;
+-  if (cls) {
+-    while (cls) {
+-      if (entityKind in cls && cls[entityKind] === type[entityKind]) {
+-        return true;
+-      }
+-      cls = Object.getPrototypeOf(cls);
+-    }
+-  }
+-  return false;
++  const cls = Object.getPrototypeOf(value).constructor;
++  return cls ? isKind(cls, type[entityKind]) : false;
+ }
+ export {
+   entityKind,
 diff --git a/postgres-js/session.cjs b/postgres-js/session.cjs
 index dac222ae57e908c3ad8242b9495fd0d0e0d02617..2a43731652d86a6a43dc7f60dd5c4d7bb7474d25 100644
 --- a/postgres-js/session.cjs

@@ -61,6 +61,9 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** Somebody's craft left a world. It is in the air, so it is in `traffic`. */
     case 'launch':
       return [keys.traffic];
+    /** What this commander can see moved. Sent only to a client that asked for it. */
+    case 'traffic':
+      return [keys.traffic];
     /**
      * A flight ended. `traffic` loses the contact — and `mining` gains whatever a
      * battle left behind, because a debris field is published on that payload.
@@ -146,6 +149,12 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
   }
 }
 
+const OWN_LANDING = [
+  keys.planet, keys.planets, keys.pending, keys.notifications, keys.reports, keys.rewards, keys.traffic, keys.miningStatus,
+  // Read only while the clan screen is open, so they cost nothing the rest of the time.
+  keys.clanHome, keys.clanStrength, keys.clanEvents, keys.clanDepot, keys.clanAid, keys.clanWar,
+] as const;
+
 /**
  * A FINISHED BUILD OR RESEARCH IS ABOUT ONE WORLD. Resource analysis 2026-10-13.
  *
@@ -161,6 +170,21 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
  */
 export function readsForPlayerEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind) {
+    /**
+     * ONE OF YOUR FLIGHTS ENDED. Query plan, 2026-11-03.
+     *
+     * These reached the blanket resync, and were about one production request in five:
+     * a fleet landing re-read the DM count, the clan badge and the 193 KB galaxy. What
+     * the flight changed for everybody arrives as `shard:arrival` or `shard:mining`, and
+     * chat, DMs and the badge have events of their own. Rarer kinds keep the resync.
+     */
+    case 'fleet_returned':
+    case 'target_gone':
+    case 'mining_arrival':
+      return OWN_LANDING;
+    /** Its report is on the Intel screen, and the galaxy remembers the world. */
+    case 'probe_report':
+      return [...OWN_LANDING, keys.intel, keys.galaxy];
     case 'build_complete':
       return [keys.planets, keys.pending, keys.rewards, keys.galaxy];
     case 'research_complete':

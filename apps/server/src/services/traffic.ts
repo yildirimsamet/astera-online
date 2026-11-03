@@ -64,7 +64,7 @@ import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { loadMonumentTraffic, monumentTrafficFleet, type NativeMonumentTraffic } from './monumentTraffic.js';
 import { fleetCount } from '@astera/rules';
 import { liveRadiationFor, type FlightRadiation } from './radiation.js';
-import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight, type FlightCohort } from './flightProjection.js';
+import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight, survivingFleet, type FlightCohort } from './flightProjection.js';
 import { flightSegment } from './specialFlightRadiation.js';
 
 /**
@@ -1085,6 +1085,7 @@ export function projectGalaxyTraffic(
     landedDeathStarMissionIds,
   } = snapshot;
   const ownedPlanets = new Set(ownPlanetIds);
+  const hpRadiation = snapshot.radiation?.model === 'HP' ? snapshot.radiation : null;
 
   /**
    * WHAT DOES THIS COMMANDER SEE OF THIS POINT? The whole rule, in one call.
@@ -1245,11 +1246,13 @@ export function projectGalaxyTraffic(
       target: positions.get(mission.targetPlanetId),
     };
     if (!centres.origin || !centres.target) continue;
-    if (snapshot.radiation?.model === 'HP' && mission.kind !== 'probe' && mission.kind !== 'death_star') {
-      const projection = projectHpFlight(snapshot.missionCohorts?.get(mission.id) ?? [],
-        missionFlightPath(mission, { origin: centres.origin, target: centres.target }), now, snapshot.radiation);
-      if (fleetCount(projection.fleet) === 0) continue;
-      mission = { ...mission, fleet: projection.fleet };
+    if (hpRadiation && mission.kind !== 'probe' && mission.kind !== 'death_star') {
+      const flying = mission;
+      const path = { origin: centres.origin, target: centres.target };
+      const fleet = survivingFleet(snapshot, mission.id, now, at =>
+        projectHpFlight(snapshot.missionCohorts?.get(flying.id) ?? [], missionFlightPath(flying, path), at, hpRadiation).fleet);
+      if (fleetCount(fleet) === 0) continue;
+      mission = { ...mission, fleet };
     }
     // Where the craft is DRAWN flying between. The true centres are still what an
     // effect is anchored to — an explosion happens at the world, not in orbit.
@@ -1823,14 +1826,14 @@ export function projectGalaxyTraffic(
     // nothing in the air to draw.
     const legArriveAt = returning ? raid.homeAt : raid.arriveAt;
     if (!legArriveAt) continue;
-    const physicalWing = snapshot.radiation?.model === 'HP' ? projectHpFlight([{
+    const physicalWing = hpRadiation ? survivingFleet(snapshot, `pirate:${raid.id}`, now, at => projectHpFlight([{
       fleet: snapshot.physicalFleets?.get(`pirate:${raid.id}`) ?? {}, damage: raid.damage,
       tech: raid.tech ?? {}, paidAt: raid.radiationSettledAt,
     }], returning ? [flightSegment(meet, home, raid.returnDepartAt ?? raid.arriveAt, legArriveAt)]
       : [flightSegment(home, meet, raid.departAt, raid.arriveAt),
-        flightSegment(meet, meet, raid.arriveAt, new Date(engagementEndsAt(raid.arriveAt.getTime())))], now, snapshot.radiation).fleet
+        flightSegment(meet, meet, raid.arriveAt, new Date(engagementEndsAt(raid.arriveAt.getTime())))], at, hpRadiation).fleet)
       : raidFleets.get(raid.id) ?? raid.fleet;
-    if (snapshot.radiation?.model === 'HP' && fleetCount(physicalWing) === 0) continue;
+    if (hpRadiation && fleetCount(physicalWing) === 0) continue;
 
     const homeCore = coreLevels.get(raid.planetId);
     const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
@@ -2004,14 +2007,15 @@ export function projectGalaxyTraffic(
     const meet = returning ? tradeReturnPoint(run) : { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const legArriveAt = returning ? run.homeAt : run.arriveAt;
     if (!legArriveAt) continue;
-    if (snapshot.radiation?.model === 'HP') {
-      const projection = projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`trade:${run.id}`) ?? {},
-        damage: run.damage, tech: run.tech ?? {}, paidAt: run.radiationSettledAt }],
-        returning ? [flightSegment(meet, home, tradeReturnDepartAt(run), legArriveAt)]
-          : [flightSegment(home, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))],
-        now, snapshot.radiation);
-      if (fleetCount(projection.fleet) === 0) continue;
-      run = { ...run, fleet: projection.fleet };
+    if (hpRadiation) {
+      const flying = run;
+      const fleet = survivingFleet(snapshot, `trade:${run.id}`, now, at => projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`trade:${flying.id}`) ?? {},
+        damage: flying.damage, tech: flying.tech ?? {}, paidAt: flying.radiationSettledAt }],
+        returning ? [flightSegment(meet, home, tradeReturnDepartAt(flying), legArriveAt)]
+          : [flightSegment(home, meet, flying.departAt, flying.arriveAt), flightSegment(meet, meet, flying.arriveAt, dockEndsAt(flying.arriveAt))],
+        at, hpRadiation).fleet);
+      if (fleetCount(fleet) === 0) continue;
+      run = { ...run, fleet };
     }
 
     const homeCore = coreLevels.get(run.planetId);
@@ -2127,15 +2131,16 @@ export function projectGalaxyTraffic(
       y: run.engagementEndY,
       z: run.engagementEndZ,
     };
-    if (snapshot.radiation?.model === 'HP') {
-      const projection = projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`intergalactic-convoy:${run.id}`) ?? {},
-        damage: run.damage, tech: run.tech, paidAt: run.radiationSettledAt }], [
-          flightSegment(home, intercept, run.departAt, run.arriveAt),
-          flightSegment(intercept, engagementEnd, run.arriveAt, run.engagementEndsAt),
-          flightSegment(engagementEnd, home, run.engagementEndsAt, run.homeAt),
-        ], now, snapshot.radiation);
-      if (fleetCount(projection.fleet) === 0) continue;
-      run = { ...run, fleet: projection.fleet };
+    if (hpRadiation) {
+      const flying = run;
+      const fleet = survivingFleet(snapshot, `intergalactic-convoy:${run.id}`, now, at => projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`intergalactic-convoy:${flying.id}`) ?? {},
+        damage: flying.damage, tech: flying.tech, paidAt: flying.radiationSettledAt }], [
+          flightSegment(home, intercept, flying.departAt, flying.arriveAt),
+          flightSegment(intercept, engagementEnd, flying.arriveAt, flying.engagementEndsAt),
+          flightSegment(engagementEnd, home, flying.engagementEndsAt, flying.homeAt),
+        ], at, hpRadiation).fleet);
+      if (fleetCount(fleet) === 0) continue;
+      run = { ...run, fleet };
     }
     // The route is already frozen at launch, so rendering follows its timestamps
     // even if the arrival worker is late changing the persistence state.
@@ -2290,11 +2295,10 @@ export function projectGalaxyTraffic(
     const leg = visualLeg(rawFrom, rawTo, returning ? 0 : surface, returning ? surface : 0);
     const slice = windowOf(leg.from, leg.to, departAt, arriveAt, now);
     if (!slice) continue;
-    const projection = snapshot.radiation?.model === 'HP' ? projectHpFlight([{
+    const fleet = hpRadiation ? survivingFleet(snapshot, `unknown-signal:${signal.id}`, now, at => projectHpFlight([{
       fleet: snapshot.physicalFleets?.get(`unknown-signal:${signal.id}`) ?? {},
       damage: signal.damage, tech: signal.tech ?? {}, paidAt: signal.radiationSettledAt,
-    }], [flightSegment(rawFrom, rawTo, departAt, arriveAt)], now, snapshot.radiation) : null;
-    const fleet = projection?.fleet ?? signal.fleet;
+    }], [flightSegment(rawFrom, rawTo, departAt, arriveAt)], at, hpRadiation).fleet) : signal.fleet;
     if (fleetCount(fleet) === 0) continue;
     const zone = zoneAt(slice.from);
     if (zone === 'NONE') continue;

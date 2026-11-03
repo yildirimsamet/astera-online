@@ -17,19 +17,13 @@ import {
   players,
 } from '../db/schema.js';
 import { readTelescopes } from '../services/intel.js';
-import {
-  projectGalaxyTraffic,
-  projectStrategicInterceptionImpacts,
-  projectStrategicInterceptions,
-} from '../services/traffic.js';
-import { discoveredAsteroidIndexes } from '../services/asteroidField.js';
-import { discoveredPirateIndexes } from '../services/pirateField.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { locationIsKnown } from '../services/locationSight.js';
 import {
   applyDominionPodium,
   playerDominionSql,
 } from '../services/dominion.js';
+import { readTrafficView } from '../stream/trafficWake.js';
 import { requireAuth } from './auth.js';
 import { galaxyFactsAt } from '../services/galaxyFacts.js';
 import { activeClanMembership } from '../services/clanCombat.js';
@@ -370,41 +364,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
    * `services/traffic.ts` for why each of those three rules is load-bearing.
    */
   app.get('/api/galaxy/traffic', { preHandler: requireAuth }, async (req) => {
-    const self = await app.projections.commander(req.accountId!);
-    const now = app.clock.now();
-    // Both from the same generation of the caller's world list: the horizon and
-    // the ownership filter must never disagree about which worlds are theirs.
-    const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
-      app.projections.trafficSnapshot(self.seasonId, now),
-      app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
-      app.projections.miningSnapshot(self.seasonId, now),
-      app.projections.historyFor(self.playerId, self.seasonId),
-      app.projections.pirateSnapshot(self.seasonId, now),
-    ]);
-
-    return {
-      contacts: projectGalaxyTraffic(
-        snapshot,
-        self.capitalPlanetId,
-        now,
-        self.playerId,
-        self.planetIds,
-        sensors,
-        // Traffic needs discovery only for rocks with actual flights. Solving
-        // every retained orbit for every caller repeats the field endpoint's work.
-        discoveredAsteroidIndexes(mining, epochs, now, new Set(snapshot.miningRows.flatMap(({ run }) =>
-          run.asteroidIndex === null ? [] : [run.asteroidIndex]))),
-        pirates,
-        discoveredPirateIndexes(pirates, epochs, now),
-      ),
-      interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
-      interceptionImpacts: projectStrategicInterceptionImpacts(
-        snapshot,
-        self.playerId,
-        sensors,
-        now,
-      ),
-    };
+    return readTrafficView(app.projections, await app.projections.commander(req.accountId!), app.clock.now());
   });
 
   /** The Dominion ladder. Public by design — competition needs a visible target. */

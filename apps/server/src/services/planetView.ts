@@ -40,6 +40,7 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
+import { batchReads } from '../db/readBatch.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
 import { baysFor } from './flight.js';
 import { loadPlanetViewStates, type LockedPlanet } from './planet.js';
@@ -218,7 +219,7 @@ export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewsData>>[num
  * it between its reads.
  */
 export async function loadPlanetViewData(tx: Tx, planetId: string, clock: Clock): Promise<PlanetViewData> {
-  return (await loadPlanetViewsData(tx, [planetId], clock, { lock: true }))[0]!;
+  return (await batchReads(() => loadPlanetViewsData(tx, [planetId], clock, { lock: true })))[0]!;
 }
 
 /** Apply to the transaction promise, so rendering never prolongs its world locks. */

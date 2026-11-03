@@ -549,17 +549,15 @@ describe('one resource snapshot per owned world', () => {
     const spent: PlanetView = { ...initial, planet: { ...initial.planet,
       alloy: initial.planet.alloy - PROBE.alloy, crystal: initial.planet.crystal - PROBE.crystal,
       snapshotAt: new Date(Date.now() + 1_000) } };
-    const planetRead = deferred<PlanetView>();
     const worldsRead = deferred<PlanetsView>();
     const purchase = deferred<unknown>();
     client.setQueryData(keys.planetById('capital'), initial);
     api.probe = vi.fn().mockResolvedValue({ missionId: 'probe-1' });
-    api.planet = vi.fn().mockReturnValue(planetRead.promise);
     api.planets = vi.fn().mockReturnValue(worldsRead.promise);
     api.upgrade = vi.fn().mockReturnValue(purchase.promise);
     const { result } = renderHook(() => ({ planet: usePlanet(), probe: useProbe(), upgrade: useUpgrade() }), { wrapper });
     act(() => { result.current.probe.mutate('target'); });
-    await waitFor(() => { expect(api.planets).toHaveBeenCalledOnce(); expect(api.planet).toHaveBeenCalledOnce(); });
+    await waitFor(() => { expect(api.planets).toHaveBeenCalledOnce(); });
     await act(async () => {
       result.current.upgrade.mutate('REFINERY');
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -569,8 +567,8 @@ describe('one resource snapshot per owned world', () => {
       expect(result.current.planet.data?.planet.alloy).toBe(1_505);
     } finally {
       await act(async () => {
-        planetRead.resolve(spent); worldsRead.resolve(list([spent, colony]));
-        await Promise.all([planetRead.promise, worldsRead.promise]);
+        worldsRead.resolve(list([spent, colony]));
+        await worldsRead.promise;
       });
     }
     await waitFor(() => { expect(api.upgrade).toHaveBeenCalledOnce(); });

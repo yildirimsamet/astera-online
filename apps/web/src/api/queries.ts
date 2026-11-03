@@ -53,6 +53,8 @@ import type { ClanAidInput, FlightRecallInput, IntergalacticConvoyLaunchInput, M
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
+import { planetReads } from './planetReads.js';
+import { NET_MS, safetyNetMs, trafficPollMs } from './liveChannel.js';
 import { readIntelSnapshot } from './sightCache.js';
 import { CHAT_READ_COALESCE_MS, coalesceLatest } from './coalesceLatest.js';
 import { serverNow } from '../lib/clock.js';
@@ -114,14 +116,12 @@ type NotificationList = z.infer<typeof notificationsSchema>;
  * where an event or a mutation is genuinely the whole story.
  */
 
-/**
- * The safety net, for every read that a broadcast keeps live.
- *
- * One number rather than four, because there is no longer a per-payload judgement
- * to make: the reason a read polls at all is that the channel might be down, and
- * that reason is the same for all of them.
+/*
+ * `safetyNetMs` (`liveChannel.ts`) is for a read that a broadcast keeps live: it polls
+ * only because the channel might have missed something. A read whose figure drifts
+ * with no moment the server could announce polls at `NET_MS` however healthy the
+ * channel is, because for it the timer is the mechanism.
  */
-const NET_MS = 60_000;
 /** SSE is primary; this only heals a missed global event after a broken connection. */
 const ANNOUNCEMENT_FALLBACK_MS = 5 * 60_000;
 /**
@@ -193,7 +193,7 @@ export function useGalaxyEvents() {
     queryKey: keys.galaxyEvents,
     queryFn: api.galaxyEvents,
     staleTime: NET_MS,
-    refetchInterval: NET_MS,
+    refetchInterval: safetyNetMs,
   });
 }
 
@@ -250,7 +250,7 @@ export function usePlanet() {
   const key = activePlanetId ? keys.planetById(activePlanetId) : keys.planet;
   return useQuery({
     queryKey: key,
-    queryFn: ({ signal }) => readPlanetSnapshot(client, key, () => api.planet(activePlanetId ?? undefined, { signal })),
+    queryFn: ({ signal }) => readPlanetSnapshot(client, key, () => planetReads(api).world(activePlanetId ?? undefined, signal)),
     ...READ,
   });
 }
@@ -284,7 +284,7 @@ export function useGalaxy() {
     queryKey: keys.galaxy,
     queryFn: api.galaxy,
     staleTime: 15_000,
-    refetchInterval: NET_MS,
+    refetchInterval: safetyNetMs,
   });
 }
 
@@ -294,7 +294,7 @@ export function useSkins() {
     queryKey: keys.skins,
     queryFn: api.skins,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: safetyNetMs,
     refetchOnWindowFocus: true,
   });
 }
@@ -421,7 +421,7 @@ export function usePending() {
     queryKey: keys.pending,
     queryFn: api.pending,
     staleTime: 30_000,
-    refetchInterval: NET_MS,
+    refetchInterval: safetyNetMs,
   });
 }
 
@@ -446,8 +446,8 @@ export function usePending() {
 /**
  * AND IT IS THE ONE READ WHOSE INTERVAL IS NOT A SAFETY NET.
  *
- * Every other payload here polls at `NET_MS` because the live channel might be
- * down. Traffic has a second job that no event can do for it.
+ * Every other payload here polls at `safetyNetMs` because the live channel might
+ * have missed something. Traffic has a second job that no event can do for it.
  *
  * Under the three-zone model a craft OUTSIDE the caller's circles is not in this
  * payload at all — that is the point of `NONE`. So when it crosses in, the client
@@ -480,7 +480,8 @@ export function useTraffic() {
     queryKey: keys.traffic,
     queryFn: api.traffic,
     staleTime: TRAFFIC_MS,
-    refetchInterval: TRAFFIC_MS,
+    // While the stream is open the server asks this on the same clock, and says when it moved.
+    refetchInterval: trafficPollMs,
   });
 }
 
@@ -564,13 +565,13 @@ export function useMining() {
     queryKey: keys.miningField,
     queryFn: api.miningField,
     staleTime: 15_000,
-    refetchInterval: NET_MS,
+    refetchInterval: safetyNetMs,
   });
   const status = useQuery({
     queryKey: activePlanetId ? keys.miningStatusById(activePlanetId) : keys.miningStatus,
     queryFn: ({ signal }) => api.miningStatus(activePlanetId ?? undefined, { signal }),
     staleTime: 15_000,
-    refetchInterval: NET_MS,
+    refetchInterval: safetyNetMs,
   });
   useAsteroidFieldWake(field.data?.nextFieldChangeAt);
   const data = useMemo(
@@ -776,7 +777,7 @@ export function useClanWar(enabled = true) {
 /** Native waves have indefinite HOLD, and distinct arrival, cargo and HP boundaries. */
 export function useMonuments(enabled = true) {
   const api = useApi();
-  const result = useQuery({ queryKey: keys.monuments, queryFn: api.monuments, enabled, ...READ, refetchInterval: NET_MS });
+  const result = useQuery({ queryKey: keys.monuments, queryFn: api.monuments, enabled, ...READ, refetchInterval: safetyNetMs });
   const moments = useMemo(() => [
     ...(result.data?.waves.flatMap((wave) => [wave.arriveAt, wave.fillsAt, wave.nextLossAt, wave.fadeAt ?? null]) ?? []),
     ...(result.data?.probes.flatMap((probe) => [probe.arriveAt, probe.homeAt]) ?? []),
@@ -787,7 +788,7 @@ export function useMonuments(enabled = true) {
 
 export function useUnknownSignals() {
   const api = useApi();
-  const result = useQuery({ queryKey: keys.unknownSignals, queryFn: ({ signal }) => api.unknownSignals({ signal }), ...READ, refetchInterval: NET_MS });
+  const result = useQuery({ queryKey: keys.unknownSignals, queryFn: ({ signal }) => api.unknownSignals({ signal }), ...READ, refetchInterval: safetyNetMs });
   const moments = useMemo(() => (result.data?.signals ?? []).flatMap(signal =>
     signal.status === 'open' ? [signal.expiresAt.getTime()]
       : signal.status === 'outbound' && signal.arriveAt ? [signal.arriveAt.getTime()]
@@ -1930,9 +1931,9 @@ export function useUpgrade() {
     },
     onSuccess: async (result) => {
       await apply(result.planet);
-      // The galaxy because a Core crossing a tier changes this world's silhouette
-      // for everybody, and the ladder because Wealth moved.
-      invalidate(keys.galaxy, keys.leaderboard);
+      // The ladder because Wealth moved. The order only joined a queue: the galaxy
+      // moves when it completes, and `build_complete` reads it then.
+      invalidate(keys.leaderboard);
     },
     onSettled: (_data, _error, _type, context) => settle(context),
   });
@@ -2170,12 +2171,7 @@ export function useProbe() {
   });
 }
 
-/**
- * Empty the works. D16.
- *
- * Invalidates the galaxy too: collecting moves Wealth between columns, and Wealth
- * is what the rank floor reads, so it can change who may attack whom.
- */
+/** Empty the works. D16. Nothing on the shared galaxy reads a commander's stores. */
 export function useCollect() {
   const api = useApi();
   const invalidate = useInvalidator();
@@ -2190,7 +2186,7 @@ export function useCollect() {
     },
     onSuccess: async (result) => {
       await apply(result.planet);
-      invalidate(keys.galaxy, keys.leaderboard);
+      invalidate(keys.leaderboard);
     },
     onSettled: (_data, _error, _vars, context) => settle(context),
   } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.collect>>, Error, void, Rollback>);
@@ -2268,7 +2264,7 @@ export function usePirates(options: { live?: boolean } = {}) {
       2026-10-13). Observers share the query; each keeps its own interval.
     */
     staleTime: 5_000,
-    refetchInterval: options.live === true ? TRAFFIC_MS : NET_MS,
+    refetchInterval: options.live === true ? TRAFFIC_MS : safetyNetMs,
   });
 }
 

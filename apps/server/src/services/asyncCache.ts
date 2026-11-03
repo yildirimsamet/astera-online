@@ -1,5 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import { noteCachedRead } from '../db/client.js';
+import { outsideBatch } from '../db/readBatch.js';
 
 export interface AsyncCacheStats {
   entries: number;
@@ -52,7 +53,7 @@ export class AsyncCache<T> {
   async get(key: string, load: () => Promise<T>): Promise<T> {
     if (!this.enabled()) {
       this.bypasses += 1;
-      return load();
+      return outsideBatch(load);
     }
 
     const instant = this.now();
@@ -72,7 +73,8 @@ export class AsyncCache<T> {
 
     this.misses += 1;
     const token = Symbol(key);
-    const promise = load()
+    // A fill serves every request waiting on it, so one request's reads must not sink it.
+    const promise = outsideBatch(load)
       .then((value): T | Promise<T> => {
         const selectors = this.pendingSelectors.get(token) ?? [];
         this.pendingSelectors.delete(token);

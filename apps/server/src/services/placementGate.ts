@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { performance } from 'node:perf_hooks';
 import { createDb } from '../db/client.js';
+import { batchReads } from '../db/readBatch.js';
 import { players } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { assertNotVacationing } from './vacation.js';
@@ -26,15 +27,14 @@ import { ECONOMY_PROFILE } from '@astera/rules';
  * the before check is remembered per account (`Projections.callerPlacement`), and a
  * handler that issued no statement, served only values read before the placement was
  * last found current, skips the after check: it read nothing a move could change.
- * Anything not listed here — every write
- * and every GET that writes — keeps the lease: `/api/monuments` applies due
- * transitions, and `/api/intel` confirms telescope readings.
+ * Anything not listed here — every write and every GET that writes — keeps the lease:
+ * `/api/monuments` applies due transitions when it reads them.
  *
- * ONE LISTED ROUTE WRITES, ON PURPOSE. `/api/galaxy` confirms telescope readings
- * (`readTelescopes`) in one statement that re-reads each watch under its row lock and
- * skips any a relocation detached, so it cannot write across a move; a lease held for
- * it queued opening waves into 503s (capacity fix plan, item 3).
- * `placement-read.test.ts` pins that it is the only write and the race with a move.
+ * TWO LISTED ROUTES WRITE, ON PURPOSE. `/api/galaxy` and `/api/intel` confirm telescope
+ * readings (`readTelescopes`) in one statement that re-reads each watch under its row
+ * lock and skips any a relocation detached, so it cannot write across a move; a lease
+ * held for it queued opening waves into 503s (capacity fix plan, item 3).
+ * `placement-read.test.ts` pins the race with a move.
  */
 export const PLACEMENT_READ_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/galaxy',
@@ -55,6 +55,11 @@ export const PLACEMENT_READ_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/chat/unread',
   'GET /api/dm/unread',
   'GET /api/clan/badge',
+  // These queued two seconds behind each other at 200 commanders (load run 2026-11-03).
+  'GET /api/intel',
+  'GET /api/unknown-signals',
+  'GET /api/return-applications',
+  'GET /api/commander-ship',
 ]);
 
 const PLACEMENT = { id: players.id, seasonId: players.seasonId, placementVersion: players.placementVersion };
@@ -157,7 +162,9 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
         const before = scope?.statements;
         const outer = scope?.newestRead;
         if (scope) scope.newestRead = -Infinity;
-        const result: unknown = await handler.call(this, req, reply);
+        // These routes only read, so what they ask for together goes out as one statement.
+        const answer = (): unknown => handler.call(this, req, reply);
+        const result = await batchReads(answer);
         const newest = scope?.newestRead ?? Infinity;
         if (scope) scope.newestRead = Math.max(outer ?? -Infinity, newest);
         // Served wholly from memory read before the placement was last found current, the

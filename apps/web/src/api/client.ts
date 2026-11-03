@@ -196,6 +196,9 @@ const BIG_READ_GAP_MS = 5_000;
 /** The figures a refusal was built from, as the server sent them. */
 export type ErrorParams = Record<string, string | number>;
 
+/** The server pings at least once a minute (`SSE_HEARTBEAT_MS`): past this, nobody is there. */
+export const STREAM_SILENCE_MS = 65_000;
+
 /**
  * The API's single error shape, preserved so the UI can act on the code.
  *
@@ -1570,11 +1573,12 @@ export class Api {
     onEvent: (kind: string) => void,
     signal: AbortSignal,
     onOpen?: () => void,
+    options: { trafficWake?: boolean } = {},
   ): Promise<void> {
     const generation = this.sessionGeneration;
     const open = async (): Promise<Response> => {
       if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
-      const response = await this.http(`${this.baseUrl}/api/stream`, {
+      const response = await this.http(`${this.baseUrl}/api/stream${options.trafficWake ? '?trafficWake=1' : ''}`, {
         headers: { ...(this.token ? { authorization: `Bearer ${this.token}` } : {}), ...buildHeader() },
         credentials: this.auth ? 'omit' : 'same-origin',
         signal,
@@ -1617,30 +1621,38 @@ export class Api {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let silence: ReturnType<typeof setTimeout> | undefined;
 
-    while (!signal.aborted) {
-      const { done, value } = await reader.read();
-      if (done) return;
-      signal.throwIfAborted();
-      if (generation !== this.sessionGeneration) {
-        await reader.cancel();
-        return;
-      }
-      buffer += decoder.decode(value, { stream: true });
+    try {
+      while (!signal.aborted) {
+        // A socket dropped on the way never says so, and reads slow down while this is open.
+        clearTimeout(silence);
+        silence = setTimeout(() => { void reader.cancel().catch(() => undefined); }, STREAM_SILENCE_MS);
+        const { done, value } = await reader.read();
+        if (done) return;
+        signal.throwIfAborted();
+        if (generation !== this.sessionGeneration) {
+          await reader.cancel();
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
 
-      // SSE frames are separated by a blank line; a partial frame stays buffered.
-      let split = buffer.indexOf('\n\n');
-      while (split !== -1) {
-        const frame = buffer.slice(0, split);
-        buffer = buffer.slice(split + 2);
-        const kind = frame
-          .split('\n')
-          .find((line) => line.startsWith('event:'))
-          ?.slice(6)
-          .trim();
-        if (kind) onEvent(kind);
-        split = buffer.indexOf('\n\n');
+        // SSE frames are separated by a blank line; a partial frame stays buffered.
+        let split = buffer.indexOf('\n\n');
+        while (split !== -1) {
+          const frame = buffer.slice(0, split);
+          buffer = buffer.slice(split + 2);
+          const kind = frame
+            .split('\n')
+            .find((line) => line.startsWith('event:'))
+            ?.slice(6)
+            .trim();
+          if (kind) onEvent(kind);
+          split = buffer.indexOf('\n\n');
+        }
       }
+    } finally {
+      clearTimeout(silence);
     }
   }
 }

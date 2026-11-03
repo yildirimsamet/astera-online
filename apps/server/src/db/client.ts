@@ -4,6 +4,7 @@ import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
 import * as schema from './schema.js';
 import { flushBeforeCommit } from './finalizers.js';
+import { batching } from './readBatch.js';
 
 export type Db = PostgresJsDatabase<typeof schema>;
 /** A transaction handle. Every mutating service takes one of these, never the pool. */
@@ -42,9 +43,10 @@ export function createDb(
     connection: {
       application_name: opts.applicationName ?? 'astera',
       // Drizzle's statements are prepared once per connection (patches/drizzle-orm, capacity item M):
-      // one round trip instead of a type lookup and then the query. Every execution is still
-      // planned for its own parameters, as an unprepared statement was.
-      plan_cache_mode: 'force_custom_plan',
+      // one round trip instead of a type lookup and then the query. The server's default
+      // plan mode reuses their plans: planning each one again cost about a third of the
+      // database's CPU on the hot reads, and of 164 hot statements checked none ran
+      // over a millisecond slower on a reused plan (query plan, 2026-11-03).
       ...(opts.idleInTransactionTimeoutMs === undefined
         ? {}
         : { idle_in_transaction_session_timeout: opts.idleInTransactionTimeoutMs }),
@@ -57,7 +59,11 @@ export function createDb(
     // migrations and they are not actionable at runtime.
     onnotice: () => undefined,
   });
-  const db = drizzle(sql, { schema, logger: { logQuery: () => {
+  const onMerged = (statements: number): void => {
+    const scope = statementScope.getStore();
+    if (scope) scope.statements -= statements;
+  };
+  const db = drizzle(batching(sql, onMerged), { schema, logger: { logQuery: () => {
     const scope = statementScope.getStore();
     if (scope) scope.statements += 1;
   } } });

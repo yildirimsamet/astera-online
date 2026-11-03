@@ -25,6 +25,7 @@ import {
   SILENT_SPACE,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
+import { batchReads } from '../db/readBatch.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
   arenaAdmiralLegs,
@@ -623,17 +624,23 @@ export async function pendingThreads(
   const originCore = alias(buildings, 'pending_origin_core');
   const targetCore = alias(buildings, 'pending_target_core');
 
-  const [observer] = await db
-    .select({ playerId: planets.controllerPlayerId })
+  // The commander comes with the worlds: nobody controls an unclaimed world, so it has no rows.
+  const ownedWorlds = await db
+    .select({ id: planets.id, kind: planets.kind, x: planets.x, y: planets.y, z: planets.z, playerId: planets.controllerPlayerId })
     .from(planets)
-    .where(eq(planets.id, planetId));
-  const playerId = observer?.playerId;
-  const ownedWorlds = playerId
-    ? await db.select({id: planets.id, kind: planets.kind, x: planets.x, y: planets.y, z: planets.z})
-      .from(planets).where(eq(planets.controllerPlayerId, playerId)) : [];
+    .where(eq(planets.controllerPlayerId, sql`(select ${planets.controllerPlayerId} from ${planets} where ${planets.id} = ${planetId})`));
+  const playerId = ownedWorlds[0]?.playerId;
   const ownedIds = playerId ? ownedWorlds.map(world => world.id) : [planetId];
 
-  const [inFlight, levels] = await Promise.all([
+  // All of it asked for together, so a commander with nothing in flight is one statement.
+  /*
+    `playerId` IS NULLABLE AS WELL AS OPTIONAL — `planets.controller_player_id` is
+    null on an unclaimed world, and this projection is asked about one. A raid
+    always has an owner, so no commander means no raids rather than every raid:
+    this id owns nothing.
+  */
+  const commander = playerId ?? '00000000-0000-0000-0000-000000000000';
+  const readThreads = () => Promise.all([
     db
       .select({
         mission: missions,
@@ -673,7 +680,53 @@ export async function pendingThreads(
         ),
       ),
     instrumentLevels(db, ownedIds),
+    db
+      .select({
+          raid: pirateRaids,
+          asteroidKey: seasons.asteroidKey,
+          originName: planets.name,
+          originX: planets.x,
+          originY: planets.y,
+          originZ: planets.z,
+        })
+        .from(pirateRaids)
+        .innerJoin(planets, eq(pirateRaids.planetId, planets.id))
+        .innerJoin(seasons, eq(pirateRaids.seasonId, seasons.id))
+        .where(and(
+          eq(pirateRaids.ownerPlayerId, commander),
+          inArray(pirateRaids.status, ['outbound', 'returning']),
+        )),
+    db
+      .select({
+          run: tradeRuns,
+          originX: planets.x,
+          originY: planets.y,
+          originZ: planets.z,
+        })
+        .from(tradeRuns)
+        .innerJoin(planets, eq(tradeRuns.planetId, planets.id))
+        .where(and(
+          eq(tradeRuns.ownerPlayerId, commander),
+          inArray(tradeRuns.status, ['outbound', 'returning']),
+        )),
+    db
+      .select({ run: intergalacticConvoyRuns })
+        .from(intergalacticConvoyRuns)
+        .where(and(
+          eq(intergalacticConvoyRuns.ownerPlayerId, commander),
+          inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
+        )),
+    db.select({ flight: radiationBombFlights, planetName: planets.name, originName: originPlanet.name,
+      targetX: planets.x, targetY: planets.y, targetZ: planets.z, ordinal: monuments.ordinal })
+      .from(radiationBombFlights).leftJoin(planets, eq(planets.id, radiationBombFlights.targetPlanetId))
+      .leftJoin(originPlanet, eq(originPlanet.id, radiationBombFlights.originPlanetId))
+      .leftJoin(monuments, eq(monuments.id, radiationBombFlights.targetMonumentId))
+      .where(and(or(eq(radiationBombFlights.ownerPlayerId, commander), inArray(radiationBombFlights.targetPlanetId, ownedIds)), eq(radiationBombFlights.status, 'OUTBOUND'))),
+    db.select().from(unknownSignals).where(and(
+      eq(unknownSignals.playerId, commander), inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
+    )),
   ]);
+  const [inFlight, levels, raids, convoys, intergalacticRuns, bombs, signals] = await batchReads(readThreads);
 
   const radarByPlanet = new Map(ownedIds.map((id) => [id, levelOf(levels, id, 'RADAR')]));
   const pending: PendingThread[] = [];
@@ -922,29 +975,6 @@ export async function pendingThreads(
     `planetId`: the squadron is parked at the pad and flies its leg from there,
     whoever owns it now. Only the OWNERSHIP question moved.
   */
-  /*
-    `playerId` IS NULLABLE AS WELL AS OPTIONAL — `planets.controller_player_id` is
-    null on an unclaimed world, and this projection is asked about one. A raid
-    always has an owner, so no commander means no raids rather than every raid.
-  */
-  const raids = !playerId
-    ? []
-    : await db
-        .select({
-          raid: pirateRaids,
-          asteroidKey: seasons.asteroidKey,
-          originName: planets.name,
-          originX: planets.x,
-          originY: planets.y,
-          originZ: planets.z,
-        })
-        .from(pirateRaids)
-        .innerJoin(planets, eq(pirateRaids.planetId, planets.id))
-        .innerJoin(seasons, eq(pirateRaids.seasonId, seasons.id))
-        .where(and(
-          eq(pirateRaids.ownerPlayerId, playerId),
-          inArray(pirateRaids.status, ['outbound', 'returning']),
-        ));
 
   if (raids.length > 0) {
     /*
@@ -1032,21 +1062,6 @@ export async function pendingThreads(
    * the trader's. `resolveTradeReturn` delivers through `ownerPlayerId`; the
    * picture asks the same question the delivery does.
    */
-  const convoys = !playerId
-    ? []
-    : await db
-        .select({
-          run: tradeRuns,
-          originX: planets.x,
-          originY: planets.y,
-          originZ: planets.z,
-        })
-        .from(tradeRuns)
-        .innerJoin(planets, eq(tradeRuns.planetId, planets.id))
-        .where(and(
-          eq(tradeRuns.ownerPlayerId, playerId),
-          inArray(tradeRuns.status, ['outbound', 'returning']),
-        ));
 
   const merchantFleets = await physicalFleets(db, convoys.map(({ run }) => `trade:${run.id}`));
   for (const { run, originX, originY, originZ } of convoys) {
@@ -1114,15 +1129,6 @@ export async function pendingThreads(
     });
   }
 
-  const intergalacticRuns = !playerId
-    ? []
-    : await db
-        .select({ run: intergalacticConvoyRuns })
-        .from(intergalacticConvoyRuns)
-        .where(and(
-          eq(intergalacticConvoyRuns.ownerPlayerId, playerId),
-          inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
-        ));
 
   const convoyFleets = await physicalFleets(db, intergalacticRuns.map(({ run }) => `intergalactic-convoy:${run.id}`));
   for (const { run } of intergalacticRuns) {
@@ -1182,12 +1188,6 @@ export async function pendingThreads(
   }
 
   if (playerId) {
-    const bombs = await db.select({ flight: radiationBombFlights, planetName: planets.name, originName: originPlanet.name,
-      targetX: planets.x, targetY: planets.y, targetZ: planets.z, ordinal: monuments.ordinal })
-      .from(radiationBombFlights).leftJoin(planets, eq(planets.id, radiationBombFlights.targetPlanetId))
-      .leftJoin(originPlanet, eq(originPlanet.id, radiationBombFlights.originPlanetId))
-      .leftJoin(monuments, eq(monuments.id, radiationBombFlights.targetMonumentId))
-      .where(and(or(eq(radiationBombFlights.ownerPlayerId, playerId), inArray(radiationBombFlights.targetPlanetId, ownedIds)), eq(radiationBombFlights.status, 'OUTBOUND')));
     for (const { flight, planetName, originName, ordinal, targetX, targetY, targetZ } of bombs) {
       if (flight.ownerPlayerId !== playerId) {
         if (!flight.targetPlanetId) continue;
@@ -1214,9 +1214,6 @@ export async function pendingThreads(
     });
     }
   }
-  const signals = playerId ? await db.select().from(unknownSignals).where(and(
-    eq(unknownSignals.playerId, playerId), inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
-  )) : [];
   const signalFleets = await physicalFleets(db, signals.map(signal => `unknown-signal:${signal.id}`));
   for (const signal of signals) {
     if (!signal.origin || !signal.departAt || !signal.arriveAt) continue;

@@ -61,6 +61,29 @@ export const missionFlightPath = (mission: typeof missions.$inferSelect, ends: {
   recalledAtMs: mission.recalledAt?.getTime() ?? null, recallFrom: mission.recallFrom ?? null,
 });
 
+const survivors = new WeakMap<object, Map<string, { second: number; fleet: Fleet }>>();
+
+/**
+ * What is left of a craft, once per snapshot per second, for every commander alike.
+ *
+ * A dose is a fact about the craft, not about who is looking: projected per commander it
+ * was four fifths of a traffic read, at a cost of craft × commanders. Taken on the whole
+ * second, so the answer does not depend on who asked first. Treat the fleet as read-only.
+ */
+export function survivingFleet(snapshot: object, craft: string, now: Date, project: (at: Date) => Fleet): Fleet {
+  let crafts = survivors.get(snapshot);
+  if (!crafts) {
+    crafts = new Map();
+    survivors.set(snapshot, crafts);
+  }
+  const second = Math.floor(now.getTime() / 1000);
+  const known = crafts.get(craft);
+  if (known?.second === second) return known.fleet;
+  const fleet = project(new Date(second * 1000));
+  crafts.set(craft, { second, fleet });
+  return fleet;
+}
+
 /** Read-only temporal projection. Keep original geometry and pay only after each cohort's cursor. */
 export function projectHpFlight(cohorts: readonly FlightCohort[], path: readonly Segment[], at: Date,
   radiation: Extract<FlightRadiation, { model: 'HP' }>): { fleet: Fleet; fadeAt: Date | null } {

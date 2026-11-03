@@ -132,6 +132,7 @@ declare module 'fastify' {
     streamFence: StreamFence;
     sseMaxBufferBytes: number;
     sseHeartbeatMs: number;
+    trafficWakeMs: number;
     sseActivityGapMs: number;
     dbPoolMax: number;
     placementPoolMax: number;
@@ -303,6 +304,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('streams', streams);
   app.decorate('sseMaxBufferBytes', opts.env.SSE_MAX_BUFFER_BYTES);
   app.decorate('sseHeartbeatMs', opts.env.SSE_HEARTBEAT_MS);
+  app.decorate('trafficWakeMs', TRAFFIC.refreshMs);
   app.decorate('sseActivityGapMs', TRAFFIC.refreshMs);
   app.decorate('dbPoolMax', opts.env.DB_POOL_MAX);
   app.decorate('placementPoolMax', opts.env.PLACEMENT_POOL_MAX);

@@ -1700,3 +1700,35 @@ flowchart LR
 - **K7:** bakım penceresine inecek saldırılar (F0.9'dan önce).
 - **K11:** bütçe (F0.4'ten önce obje depolama).
 - **K4, K6, K8:** sonra.
+
+---
+
+## 16. Okuma planı: gerçek karışım testi sonrası sıra (owner, 3 Kasım 2026)
+
+**Neden:** 3 Kasım testinde (`reports/capacity-run-2026-11-03.md`) 100 oyuncu hedef üstü gecikmeyle ayakta
+kaldı, 200 patladı. 200'de PostgreSQL ~%125, üç API süreci toplam ~%255 CPU kullandı. Sorgu işi veritabanını
+rahatlatıyor; API'yi asıl rahatlatan iş, isteğin hiç gelmemesidir. Bu yüzden F3'ün F2'ye bağlı olmayan parçaları
+öne alındı (owner, 3 Kasım). F2–F7'nin içeriği ve kabul kapıları değişmedi.
+
+| Sıra | İş | Faz | Durum / ölçüt |
+|---|---|---|---|
+| 16.1 | `plan_cache_mode` varsayılana döndü | Q (yeni) | 164 sık sorgunun planı denetlendi; PostgreSQL CPU'su sıcak rotalarda %35–40 düştü |
+| 16.2 | Aynı turdaki okumalar tek SQL (`db/readBatch.ts`) | F1, Q2 | `planets` 33 → 11, `collect` 67 → ~27 sorgu. Bütçe testi: `query-budget.test.ts` |
+| 16.3 | İstemcide tek dünya okuması (`api/planetReads.ts`) | F1, Q15 | Canlıda görünüm okumalarının ~%35'i 200 ms içinde tekrar |
+| 16.4 | Yazmayan okumalar özel havuzdan çıktı: `intel`, `unknown-signals`, `return-applications`, `commander-ship` | F2.2'den öne | 200'deki 503'lerin çoğu. `monuments` okurken yazdığı için F2.2'ye kaldı |
+| 16.5 | Boşa giden iş kaldırıldı: trafikte doz izleyici başına değil saniyede bir (`survivingFleet`), Drizzle `is()` önbelleği, `collect`/bina emri sonrası galaksi okuması yok, inişler 23 yerine 14 okuma (`OWN_LANDING`), akış açıkken 60 sn yoklama ~3 dk, olay patlaması tek okuma | F1, Q8, Q15 | Trafik projeksiyonu 1.661 → 412 µs, çıktı 125.940 kayıtta birebir aynı. Sorgu kurma −%39,5. Zamanla değişen `season`, `intel`, klan gücü, bekleme odası 60 sn kalır: varlık (`lastActiveAt`) buna bağlı |
+| 16.6 | Akış başına sunucu aynı projeksiyonu 5 sn'de bir sorar, görünen küme değişince içeriksiz `shard:traffic` gönderir (`stream/trafficWake.ts`). İstemci `?trafficWake=1` ister, `traffic-wake-on` görünce 5 sn yoklamayı bırakır | F3.2'den öne | Değişim anı **tele asla gitmez**: önceden gönderilirse radar operatörünün sahip olmadığı erken uyarı olur. Akış düşünce 5 sn yoklama hemen döner; eski istemciler yoklamaya devam eder |
+| 16.7 | Galaksi blob + oyuncuya özel katman: **bekliyor** | F3.3 / C8'den öne | Yanıt dünya dünya sise ve zamana bağlı, gizlilik riski var; okuma azalınca kazanç ~%4'e indi. 16.8'den sonra veriyle karar |
+| 16.8 | Yük testi 100 / 150 / 200 (owner onayıyla) | §8 | Önce `tools/capacity-workload.ts` yeni istemci davranışına uyarlanır: `?trafficWake=1`, 3 dk yoklama, dar iniş okumaları. Sonraki sıra buradan okunur. Testte bakılacaklar: birleşik sorgularda genel plan (`pg_stat_statements`, `plan_cache_mode` geri alınabilir) ve gizli sekmelerin izleyici maliyeti (sunucu, sekmenin gizli olduğunu bilmiyor) |
+| 16.9 | F2, ardından F3'ün kalanı | F2, F3 | Kapılar aynı: oyuncu başına ≤0,2 istek/sn |
+
+**Sonraki fazlara etkisi:**
+
+- **F2/F3:** 16.6 ve 16.7, F3.2 ve F3.3'ün yazılacak parçalarıdır; F3 onları kullanır. `seq`, birleşik sorguyla
+  aynı anlık görüntüden okunabilir.
+- **F4:** Bağımsız. Worker, `loadPlanetState` üzerinden birleştirmeden yararlanır.
+- **F5.1:** Daha az sorgu, ayrı DB hostunda daha az gidiş-dönüş demektir.
+- **F5.4:** PgBouncer gelirse 1.21+ ve `max_prepared_statements` gerekir; birleşik sorgu çeşitliliği ölçülür.
+- **FR/F6:** 16.7, FR.4'e zemin hazırlar. Diğerleri değişmez.
+- **§6A.3:** Özel gezegen önbelleği hâlâ yapılmaz. Ölçüm isterse F2'nin akış günlüğü üstüne kurulur; ayrı
+  tetikleyici yazılmaz.
