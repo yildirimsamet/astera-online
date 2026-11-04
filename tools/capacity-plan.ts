@@ -144,7 +144,10 @@ export function eventReads(kind: string): { paths: readonly string[]; heavy: boo
       : (isPrivateEvent(kind) ? readsForPrivateEvent(kind) : null) ?? readsForPlayerEvent(kind);
   if (keys === null) return { paths: FULL_READS, heavy: false };
   const open = [...OPEN_READS, ...SHARD_ONLY_READS];
-  const paths = keys.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
+  // `useEventStream` reads traffic once for a shard event, after the consistency delay
+  // (`followsWithTraffic`); its coalescer skips the key. Sending both doubled that read.
+  const coalesced = isShardEvent(kind) ? keys.filter(key => key[0] !== 'traffic') : keys;
+  const paths = coalesced.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
     .map(([, path]) => path));
   return { paths: oneWorldRead([...new Set(paths)]), heavy: HEAVY_KINDS.has(kind) };
 }
