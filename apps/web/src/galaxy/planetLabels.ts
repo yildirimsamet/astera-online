@@ -1,9 +1,12 @@
-import { Vector3, type Camera } from 'three';
+import { PerspectiveCamera, Vector3, type Camera } from 'three';
 import type { RivalMark } from '../api/schemas.js';
 import { rivalSlotOf, type PlanetNode } from './scene.js';
 import { commanderLabel } from '../lib/identity.js';
+import { planetMarkerLayout } from './planetMarkerLayout.js';
 
 export const PLANET_LABEL_RANGE = 80;
+export const PLANET_LABEL_MAX_WIDTH = 300;
+export const PLANET_LABEL_DETAIL_MAX_WIDTH = 360;
 const PAD = 8;
 const GAP = 2;
 const MAX_LABELS = 32;
@@ -69,12 +72,13 @@ const textCells = (value: string): number => {
   return cells;
 };
 export function planetLabelWidth(node: PlanetNode, detail: boolean): number {
-  if (detail) return 180;
-  if (node.intel === 'REMEMBERED') return 150;
   const ownerWidth = node.kind === 'NEUTRAL' ? 0
     : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5.5 + (node.country ? 16 : 0)
       + (node.honorRanking ? node.honorRank ? 30 : 0 : node.dominionRank ? 16 : 0);
-  return Math.min(150, Math.max(64, textCells(node.name) * 6 + 12, ownerWidth + 12));
+  const textWidth = Math.max(textCells(node.name) * 6 + 12, ownerWidth + 12);
+  if (detail) return Math.min(PLANET_LABEL_DETAIL_MAX_WIDTH, Math.max(180, textWidth));
+  if (node.intel === 'REMEMBERED') return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(150, textWidth));
+  return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(64, textWidth));
 }
 
 /** Priority also decides who keeps a name when two worlds share screen space. */
@@ -107,7 +111,7 @@ export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, r
   const candidates: (PlanetLabelPlacement & { rank: number; range: number; depth: number })[] = [];
   for (const node of nodes) {
     if (node.intel === 'UNKNOWN' && node.id !== selectedId) continue;
-    anchor.set(node.position[0], node.position[1] + node.radius * 1.85, node.position[2]);
+    anchor.set(node.position[0], node.position[1], node.position[2]);
     const range = camera.position.distanceTo(anchor);
     if (range > PLANET_LABEL_RANGE) continue;
     anchor.project(camera);
@@ -124,9 +128,21 @@ export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, r
     const boxWidth = Math.min(currentSize?.width ?? planetLabelWidth(node, detail), width - PAD * 2);
     const boxHeight = currentSize?.height
       ?? (node.intel === 'UNKNOWN' ? 12 : (detail ? 37 : 25) + (node.intel === 'REMEMBERED' ? 12 : 0));
-    candidates.push({ id: node.id, x, y, width: boxWidth, height: boxHeight, detail, rank, range, depth: viewDepth(node, camera),
+    // Html stays on the planet centre. Only the screen-space column moves up,
+    // using the same camera-up axis and zoom scale as the pin and closed eye.
+    const depth = viewDepth(node, camera);
+    const layout = planetMarkerLayout(node, depth, height, camera instanceof PerspectiveCamera ? camera.fov : 45);
+    centre.set(0, layout.labelOffset, 0).applyQuaternion(camera.quaternion);
+    centre.x += node.position[0]; centre.y += node.position[1]; centre.z += node.position[2];
+    centre.project(camera);
+    const labelBottom = (1 - centre.y) * height / 2;
+    const top = labelBottom - boxHeight;
+    // Clamping downward would place text over its own planet. Let the annotation
+    // leave the viewport with its icon until there is room above it again.
+    if (top < PAD || labelBottom > height - PAD) continue;
+    candidates.push({ id: node.id, x, y, width: boxWidth, height: boxHeight, detail, rank, range, depth,
       left: Math.max(PAD, Math.min(x - boxWidth / 2, width - PAD - boxWidth)),
-      top: Math.max(PAD, Math.min(y - boxHeight, height - PAD - boxHeight)),
+      top,
     });
   }
   candidates.sort((a, b) => a.rank - b.rank || a.range - b.range || a.id.localeCompare(b.id));

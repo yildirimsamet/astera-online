@@ -1,7 +1,6 @@
 import { Hull } from './Fleets.jsx';
 import type * as THREE from 'three';
 import { orientedCraft } from './model.js';
-import { TRADE_SHIP_SCALE } from './TradeShip.js';
 import { monumentVisualScale } from '@astera/rules';
 import type { MonumentDifficulty } from '@astera/rules';
 
@@ -18,7 +17,7 @@ export const MONUMENT_MODELS = [
 ] as const;
 
 /** Legacy landmarks keep their size until the guarded layout adoption. */
-export const MONUMENT_SCALE = 3 * TRADE_SHIP_SCALE;
+export const MONUMENT_SCALE = monumentVisualScale('LEGACY');
 
 /** Shared by the lightweight Hull silhouette rim and the map label accent. */
 export const MONUMENT_GLOW = '#8be7ff';

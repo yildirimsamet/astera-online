@@ -1006,6 +1006,9 @@ void main() {
 }
 `;
 
+/** Recede behind gameplay objects while retaining the sky's colour and depth. */
+export const SKY_VISIBILITY = 0.8;
+
 export const STAR_FRAGMENT = /* glsl */ `
 varying vec3 vColour;
 varying float vAlpha;
@@ -1013,6 +1016,6 @@ void main() {
   vec2 p = gl_PointCoord - vec2(0.5);
   float r2 = dot(p, p) * 4.0;
   float profile = exp(-r2 * 3.2);
-  gl_FragColor = vec4(vColour * profile * vAlpha, 1.0);
+  gl_FragColor = vec4(vColour * profile * vAlpha * ${SKY_VISIBILITY.toFixed(2)}, 1.0);
 }
 `;

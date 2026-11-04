@@ -1037,6 +1037,7 @@ export function GalaxyView({
         return;
       }
       setTransferOriginId(planetFocusSelection(activePlanetId, ownedId).transferOriginId);
+      if (decision.detail) setCenterSignal(signal => signal + 1);
       setFocus(decision.focus);
       setDetail(decision.detail);
       setAttacking(false);

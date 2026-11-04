@@ -38,15 +38,13 @@ describe('the rock ladder', () => {
   });
 
   /**
-   * Only planets take the additional 20% season shrink. Rocks retain their
-   * existing sizes, so their size relative to a planet rises by 1/0.8.
+   * The visibility pass triples rocks while preserving their value ladder.
    */
-  it('keeps its size while developed worlds remain larger after the planet shrink', () => {
+  it('triples every rock without changing the planet-size curve', () => {
     const richest = asteroidRadius(5);
-    expect(richest).toBeCloseTo(0.3825, 9);
-    expect(worldRadius(1)).toBeCloseTo((0.54 * 1.25 * 1.3 / 1.8636) * 0.8 * 0.8, 9);
-    expect(richest).toBeLessThan(worldRadius(11) * 0.6 / 0.8);
-    expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 0.35 / 0.8);
+    expect(richest).toBeCloseTo(0.3825 * 3, 9);
+    expect(worldRadius(1)).toBeCloseTo((0.54 * 1.25 * 1.3 / 1.8636) * 0.8, 9);
+    expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL));
   });
 });
 
@@ -61,7 +59,7 @@ describe('the craft dial', () => {
   it('is a single factor the whole galaxy reads', () => {
     const source = String(CRAFT_SCALE);
     expect(Number(source)).toBeGreaterThan(1);
-    expect(CRAFT_SCALE).toBe(1.6);
+    expect(CRAFT_SCALE).toBe(1.6 * 2);
   });
 
   /** The authored per-hull table is untouched: it states shape, not absolute size. */
@@ -97,11 +95,10 @@ describe('the merchant', () => {
     expect(TRADE_SHIP_SCALE).toBeCloseTo(TRADE_SHIP_BASE_SCALE * 4, 9);
   });
 
-  /** Its fixed silhouette can exceed a middle world after only planets shrink. */
-  it('retains its own size as planets become smaller around it', () => {
-    expect(TRADE_SHIP_SCALE).toBeCloseTo(1.28, 9);
+  /** Every travelling craft, including the merchant, shares the visibility lift. */
+  it('doubles the merchant along with the other travelling ships', () => {
+    expect(TRADE_SHIP_SCALE).toBeCloseTo(1.28 * 2, 9);
     expect(TRADE_SHIP_SCALE).toBeGreaterThan(hullVisualScale('CATACLYSM', 0.195 * CRAFT_SCALE));
-    expect(TRADE_SHIP_SCALE).toBeGreaterThan(worldRadius(11) * 2);
-    expect(TRADE_SHIP_SCALE).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 2);
+    expect(TRADE_SHIP_SCALE / CRAFT_SCALE).toBeCloseTo(0.8, 9);
   });
 });

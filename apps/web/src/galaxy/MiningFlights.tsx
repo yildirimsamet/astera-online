@@ -41,6 +41,12 @@ import { nativeEngineAnchors } from './engineAnchors.js';
 
 const STYLE = { colour: '#d9a441', scale: 0.26 * CRAFT_SCALE, flame: '#ffc073' } as const;
 
+export function miningFocusRadius(craft: number): number {
+  const hullRadius = STYLE.scale * Math.sqrt(3) / 2;
+  return markersFor({ PROSPECTOR: craft }).reduce((radius, _, index) =>
+    Math.max(radius, Math.hypot(...slotOffset(index, STYLE.scale * 1.5)) + hullRadius), hullRadius);
+}
+
 /**
  * A MINING ROUTE IS FAINTER THAN A WAR ROUTE. Owner call.
  *

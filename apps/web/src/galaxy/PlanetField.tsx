@@ -364,12 +364,19 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
       UP.quaternion.copy(camera.quaternion);
       // Phase off the world's own x so the field never settles into one rhythm.
       const breath = 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
+      if (node.intel !== 'RESOLVED') {
+        // A slow, restrained shine helps worlds outside live Telescope sight get noticed.
+        // It follows their authored colour and adds no geometry or draw calls.
+        const shine = 1 + 0.24 * ((1 + Math.sin(t * 0.4 + node.position[0])) / 2) ** 6;
+        mesh.setColorAt(i, tint.set(planetGlowColor(node.id, node.skin?.id)).multiplyScalar(limbLight(node.stance, node.intel) * shine));
+      }
       const edge = MIN_LIMB_PX * pixelScale * camera.position.distanceTo(UP.position);
       UP.scale.setScalar(Math.max(node.radius * LIMB_SCALE, node.radius + edge) * 2 * breath);
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor && nodes.some(node => node.intel !== 'RESOLVED')) mesh.instanceColor.needsUpdate = true;
   });
 
   if (count === 0) return null;
@@ -422,7 +429,7 @@ const UP = new THREE.Object3D();
  */
 export const UNRESOLVED_BODY_LIGHT = 0.7;
 /** A world must remain a readable, solid silhouette even at the darkest stance. */
-export const MIN_PLANET_BODY_LIGHT = 0.55;
+export const MIN_PLANET_BODY_LIGHT = 0.85;
 
 /**
  * What losing resolution costs a world. D126.
@@ -463,20 +470,14 @@ export function bodyLight(stance: Stance, intel: PlanetNode['intel']): number {
 }
 
 
-/** How much of a pin's height the eye clears it by, and how big it is drawn. */
-const EYE_LIFT = -0.22;
-const EYE_SIZE = 0.3;
+export { eyeMarkerScale } from './planetMarkerLayout.js';
+import { planetMarkerLayout } from './planetMarkerLayout.js';
 /**
- * ONE COLOUR FOR BOTH STATES, AND THE SHAPE CARRIES THE DIFFERENCE.
- *
- * An orange "seen" against a grey "unseen" made the mark look like it was about
- * OWNERSHIP — orange is what this game reserves for the player's own intent, and
- * it already means that on the pin directly below. An open lid against a closed
- * one says the one thing this mark is for, in a language nobody has to be taught.
+ * Neutral ink describes missing sight without competing with ownership colours.
  */
 const EYE_INK = '#e8eef8';
 
-function paintEye(open: boolean): THREE.Texture {
+function paintEye(): THREE.Texture {
   const size = 96;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -492,37 +493,26 @@ function paintEye(open: boolean): THREE.Texture {
     ctx.lineCap = 'round';
     const halfW = 34;
 
-    if (open) {
-      // An almond of two mirrored curves and a pupil. Symmetric by construction,
-      // so nothing about it reads as sketched — see D126 for the shapes before it.
-      ctx.beginPath();
-      ctx.moveTo(mid - halfW, mid);
-      ctx.quadraticCurveTo(mid, mid - 31, mid + halfW, mid);
-      ctx.quadraticCurveTo(mid, mid + 31, mid - halfW, mid);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(mid, mid, 10, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      /**
-       * The SAME almond, lower half only, with three short lashes. Keeping the
-       * bottom curve identical is what makes the pair read as one icon in two
-       * states rather than as two unrelated marks: the lid has closed onto the
-       * line it always sat on.
-       */
-      ctx.beginPath();
-      ctx.moveTo(mid - halfW, mid);
-      ctx.quadraticCurveTo(mid, mid + 31, mid + halfW, mid);
-      ctx.stroke();
-      for (const dx of [-20, 0, 20]) {
-        const dy = 22 - Math.abs(dx) * 0.35;
-        ctx.beginPath();
-        ctx.moveTo(mid + dx * 0.9, mid + dy * 0.62);
-        ctx.lineTo(mid + dx, mid + dy + 8);
-        ctx.stroke();
-      }
-    }
+    // A familiar eye-off outline: the diagonal makes missing sight unambiguous.
+    ctx.beginPath();
+    ctx.moveTo(mid - halfW, mid);
+    ctx.quadraticCurveTo(mid, mid - 34, mid + halfW, mid);
+    ctx.quadraticCurveTo(mid, mid + 34, mid - halfW, mid);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(mid, mid, 10, 0, Math.PI * 2);
+    ctx.stroke();
+    // Cut a transparent breathing gap around the slash rather than painting a background.
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = 15;
+    ctx.beginPath();
+    ctx.moveTo(mid - 26, mid + 30);
+    ctx.lineTo(mid + 26, mid - 30);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth = 7;
+    ctx.stroke();
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -530,10 +520,9 @@ function paintEye(open: boolean): THREE.Texture {
   return texture;
 }
 
-let eyeCanvases: { open: THREE.Texture; shut: THREE.Texture } | null = null;
-function eyeTexture(open: boolean): THREE.Texture {
-  eyeCanvases ??= { open: paintEye(true), shut: paintEye(false) };
-  return open ? eyeCanvases.open : eyeCanvases.shut;
+let eyeCanvas: THREE.Texture | null = null;
+function eyeTexture(): THREE.Texture {
+  return eyeCanvas ??= paintEye();
 }
 
 const FORWARD = new THREE.Vector3(0, 0, 1);
@@ -805,7 +794,7 @@ function Highlights({
    * the fact you have not earned about a world outside your sensor reach — the
    * owner's instruction is blunt about it, "marker gözükmeyecek çünkü user mı
    * neutral mı bilmiyoruz." The EYE is the opposite kind of statement, about your
-   * own instruments rather than about the world, so it stays on every world.
+   * own instruments rather than about the world, so it stays outside live sight.
    */
   const pinned = useMemo(
     () => nodes.filter(
@@ -818,8 +807,7 @@ function Highlights({
     <>
       <Pins nodes={pinned} />
       {/* One step above the pin, at the pin's size and on the pin's scale law. */}
-      <EyeMarks nodes={nodes} open />
-      <EyeMarks nodes={nodes} open={false} />
+      <EyeMarks nodes={nodes} />
       {marked.map((node) => (
         <Ring
           key={node.id}
@@ -905,15 +893,6 @@ export function markerScale(
   return Math.min(4, Math.max(1, wanted / (radius * SELECTION_RING * 2)));
 }
 
-/** Eyes retain 50% more size under zoom-out than the marker law they used before. */
-export function eyeMarkerScale(
-  distance: number,
-  radius: number,
-  viewportHeight: number,
-  verticalFov: number,
-): number {
-  return markerScale(distance, radius, viewportHeight, verticalFov) * 1.5;
-}
 
 /** Grey for a world nobody holds, orange for a world somebody else does. */
 export const PIN_COLOUR = { neutral: '#9aa6b2', rival: '#ff8a3d' } as const;
@@ -985,18 +964,21 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
 
     nodes.forEach((node, i) => {
       centre.set(node.position[0], node.position[1], node.position[2]);
-      const scale = markerScale(camera.position.distanceTo(centre), node.radius, viewportHeight, camera.fov);
+      const depth = -offset.copy(centre).applyMatrix4(camera.matrixWorldInverse).z;
+      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov);
       // The pin stands off along the camera's own up axis, so it sits above the
       // world from wherever it is being looked at — the billboard `Ring` gets from
       // copying the camera quaternion onto a group.
-      offset.set(0, node.radius * SELECTION_RING * scale, 0).applyQuaternion(camera.quaternion);
+      offset.set(0, layout.pinOffset, 0).applyQuaternion(camera.quaternion);
       UP.position.copy(centre).add(offset);
       UP.quaternion.copy(facing);
-      UP.scale.setScalar(node.radius * scale);
+      UP.scale.setScalar(layout.pinScale);
+      mesh.setColorAt(i, tint.set(pinColour(node.kind)).multiplyScalar(layout.ink));
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
   if (nodes.length === 0) return null;
@@ -1024,36 +1006,34 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
  * computed its own size drifted out of step with the pin under it at every zoom,
  * which is the version that was rejected.
  *
- * IT IS ON EVERY WORLD EXCEPT YOUR OWN, WHICH THE PIN IS NOT. The pin says something about the
- * WORLD — neutral, or somebody's — and that is a reading an unresolved world owes
- * you nothing of. This says something about YOUR OWN INSTRUMENTS, and that is
- * true and worth stating everywhere: open where they reach, shut where they do
- * not, in the same place on every other world so the two can be compared at a
- * glance. Your own worlds need no eye because their visibility is unconditional.
+ * ONLY OUTSIDE LIVE SIGHT. Resolved worlds and owned worlds need no eye; the
+ * closed lid is reserved for an unread world rather than repeated on every body.
  *
- * ONE INK FOR BOTH, and the LID carries the difference — the owner's call. Colour
+ * ONE NEUTRAL INK. Colour
  * was tried first and taught the wrong thing: orange is what this game reserves
  * for the player's own intent, and it already means that on the pin directly
  * below, so a coloured eye read as a claim about ownership.
  *
  * INSTANCED for the same reason the pins are: there are three hundred of them.
  */
-export function eyeNodes(nodes: readonly PlanetNode[], open: boolean): PlanetNode[] {
+export function eyeNodes(nodes: readonly PlanetNode[]): PlanetNode[] {
   return nodes.filter(
-    (node) => !node.isOwned && (node.intel === 'RESOLVED') === open,
+    (node) => !node.isOwned && node.intel !== 'RESOLVED',
   );
 }
 
-function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: boolean }) {
+function EyeMarks({ nodes: all }: { nodes: readonly PlanetNode[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const viewportHeight = useThree((state) => state.size.height);
-  const texture = useMemo(() => eyeTexture(open), [open]);
+  const texture = useMemo(eyeTexture, []);
+  const tint = useMemo(() => new THREE.Color(), []);
+  const nearInk = useMemo(() => new THREE.Color(EYE_INK), []);
+  const farInk = useMemo(() => new THREE.Color('#c2c4c8'), []);
   const offset = useMemo(() => new THREE.Vector3(), []);
   const centre = useMemo(() => new THREE.Vector3(), []);
-  // Two meshes rather than one, because the two states are two TEXTURES and an
-  // instanced draw has one material. Still two draw calls for the whole galaxy.
-  const nodes = useMemo(() => eyeNodes(all, open), [all, open]);
+  // One instanced draw for all worlds outside live sight.
+  const nodes = useMemo(() => eyeNodes(all), [all]);
 
   const view = useRef(createViewMemo());
   const faced = useRef<unknown>(null);
@@ -1065,25 +1045,25 @@ function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: bo
       view.current.primed = false;
     }
     if (!viewChanged(view.current, camera, nodes, viewportHeight)) return;
+    const firstColour = mesh.instanceColor === null;
     nodes.forEach((node, i) => {
       centre.set(node.position[0], node.position[1], node.position[2]);
-      const scale = eyeMarkerScale(
-        camera.position.distanceTo(centre),
-        node.radius,
-        viewportHeight,
-        camera.fov,
-      );
+      const depth = -offset.copy(centre).applyMatrix4(camera.matrixWorldInverse).z;
+      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov);
       // The pin stands off at SELECTION_RING; this clears it by its own height.
       offset
-        .set(0, node.radius * (SELECTION_RING + EYE_LIFT) * scale, 0)
+        .set(0, layout.eyeOffset, 0)
         .applyQuaternion(camera.quaternion);
       UP.position.copy(centre).add(offset);
       UP.quaternion.copy(camera.quaternion);
-      UP.scale.setScalar(node.radius * scale * EYE_SIZE);
+      UP.scale.setScalar(layout.eyeSize);
+      mesh.setColorAt(i, tint.copy(nearInk).lerp(farInk, layout.grey).multiplyScalar(layout.ink));
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (firstColour && !Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
   });
 
   if (nodes.length === 0) return null;
@@ -1091,7 +1071,7 @@ function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: bo
     <instancedMesh
       key={nodes.length}
       ref={ref}
-      name={open ? 'eye-open' : 'eye-shut'}
+      name="eye-shut"
       args={[undefined, undefined, nodes.length]}
       // Same reasoning as `Pins`: the instances move with the camera every frame,
       // so a bounding sphere computed from them is stale the moment it is written.
@@ -1100,9 +1080,9 @@ function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: bo
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
-        color={EYE_INK}
+        color="#ffffff"
         transparent
-        opacity={open ? 0.9 : 0.6}
+        opacity={0.6}
         depthWrite={false}
         toneMapped={false}
       />
@@ -1141,6 +1121,7 @@ function Ring({
 }) {
   const ref = useRef<THREE.Group>(null);
   const markerRef = useRef<THREE.Group>(null);
+  const ownPinRef = useRef<THREE.Group>(null);
   const markerWorld = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
     ref.current?.quaternion.copy(camera.quaternion);
@@ -1152,6 +1133,12 @@ function Ring({
       camera.fov,
     );
     markerRef.current.scale.setScalar(scale);
+    if (ownPinRef.current && node.isOwned) {
+      const depth = -markerWorld.fromArray(node.position).applyMatrix4(camera.matrixWorldInverse).z;
+      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov);
+      ownPinRef.current.position.y = layout.pinOffset;
+      ownPinRef.current.scale.setScalar(layout.pinScale / node.radius);
+    }
   });
 
   const colour =
@@ -1219,11 +1206,11 @@ function Ring({
         </group>
       )}
 
-      <group ref={markerRef}>
+      <group ref={ownPinRef}>
       {/* The chevron: a map pin, pointing at the thing it names. */}
       {node.isOwned && (
         node.isCapital ? (
-          <group position={[0, node.radius * SELECTION_RING, 0]}>
+          <group>
             <mesh rotation={[0, 0, Math.PI / 4]}>
               <planeGeometry args={[node.radius * 0.22, node.radius * 0.22]} />
               <meshBasicMaterial color={colour} transparent opacity={0.98} depthWrite={false} />
@@ -1234,13 +1221,15 @@ function Ring({
             </mesh>
           </group>
         ) : (
-          <mesh position={[0, node.radius * SELECTION_RING, 0]} rotation={[0, 0, Math.PI]}>
+          <mesh rotation={[0, 0, Math.PI]}>
             <coneGeometry args={[node.radius * 0.13, node.radius * 0.2, 3]} />
             <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
           </mesh>
         )
       )}
+      </group>
 
+      <group ref={markerRef}>
       {rivalSlot !== null && (
         <group>
           <mesh>

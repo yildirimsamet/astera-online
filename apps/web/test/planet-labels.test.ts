@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 import { planetNodes, type PlanetNode } from '../src/galaxy/scene.js';
-import { layoutPlanetLabels } from '../src/galaxy/planetLabels.js';
+import { layoutPlanetLabels, planetLabelWidth } from '../src/galaxy/planetLabels.js';
 
 const node = (id: string, over: Partial<PlanetNode> = {}): PlanetNode => ({
   ...planetNodes([{ id, name: `World ${id}`, owner: `Commander ${id}`, country: 'JP',
@@ -20,6 +20,26 @@ const layout = (nodes: PlanetNode[], range = 20, selectedId: string | null = nul
   layoutPlanetLabels({ nodes, camera: camera(range), width: 350, height: 640, selectedId, rivals: [], now: 0 });
 
 describe('nearby planet names without a tap', () => {
+  it.each([[0, 0, 10], [0, 10, 0.1], [0, -10, 0.1], [10, 0, 0]])('keeps text above and centred on a planet from camera %j', (x, y, z) => {
+    const orbit = camera();
+    orbit.position.set(x, y, z);
+    orbit.lookAt(0, 0, 0);
+    orbit.rotateZ(Math.PI / 5);
+    orbit.updateMatrixWorld();
+    const world = node('orbit', { radius: 1 });
+    const placement = layoutPlanetLabels({ nodes: [world], camera: orbit, width: 350, height: 640, selectedId: world.id, rivals: [], now: 0 })[0];
+    expect(placement).toBeDefined();
+    const centre = new Vector3(...world.position).project(orbit);
+    const screenY = (1 - centre.y) * 640 / 2;
+    expect(placement!.top + placement!.height).toBeLessThan(screenY - 640 / (20 * Math.tan(Math.PI / 8)));
+    expect(placement!.left + placement!.width / 2).toBeCloseTo((centre.x + 1) * 350 / 2, 6);
+  });
+  it('allows twice the former name width before truncating a long commander', () => {
+    const long = node('long', { owner: 'Commander'.repeat(12) });
+    expect(planetLabelWidth(long, false)).toBe(300);
+    expect(planetLabelWidth(long, true)).toBe(360);
+    expect(planetLabelWidth({ ...long, intel: 'REMEMBERED' }, false)).toBe(300);
+  });
   it('labels an ordinary known planet automatically at a readable nearby zoom', () => {
     expect(layout([node('near')]).map((label) => label.id)).toEqual(['near']);
   });
@@ -84,6 +104,10 @@ describe('nearby planet names without a tap', () => {
       expect(label.top + label.height).toBeLessThanOrEqual(632);
     }
     expect(layout([node('edge', { position: [-3.5, 0, 0] })])).toHaveLength(1);
+  });
+  it.each(['RESOLVED', 'UNKNOWN'] as const)('does not push a %s label down over its planet at the top edge', intel => {
+    const edge = node('top-edge', { intel, radius: 1, position: [0, 7, 0] });
+    expect(layout([edge], 20, edge.id)).toEqual([]);
   });
   it('ignores worlds behind the camera and beyond the viewport', () => {
     expect(layout([node('behind', { position: [0, 0, 30] }), node('off', { position: [100, 0, 0] })])).toEqual([]);

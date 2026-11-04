@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { INTERGALACTIC_CONVOY, convoyFormationSlots, type MobileHullId } from '@astera/rules';
+import { INTERGALACTIC_CONVOY, VIEW, convoyFormationSlots, type MobileHullId } from '@astera/rules';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { FLEET_V2_ASSET_MANIFEST } from '../ui/fleet-v2-assets.js';
 import { serverNow } from '../lib/clock.js';
@@ -17,8 +17,10 @@ import { markHit, wasTap } from './tap.js';
 export const CONVOY_BASE_HULL_SCALE = 0.14 * CRAFT_SCALE;
 export const CONVOY_HULL_SCALE_MULT = 2;
 export const CONVOY_HULL_SCALE = CONVOY_BASE_HULL_SCALE * CONVOY_HULL_SCALE_MULT;
+/** Keep the lanes and rank gaps in proportion when travelling hulls grow. */
+export const CONVOY_FORMATION_SCALE = CRAFT_SCALE / VIEW.craftScale;
 export const CONVOY_DRIFT_AMPLITUDE =
-  (Math.min(...INTERGALACTIC_CONVOY.formation.rankGaps) / SCALE) * 0.12;
+  (Math.min(...INTERGALACTIC_CONVOY.formation.rankGaps) / SCALE) * 0.12 * CONVOY_FORMATION_SCALE;
 /** Speed lines streaming past the convoy (owner, 2026-09-24: the silk veil was ugly). */
 export const CONVOY_WIND_STREAKS = 12;
 export const CONVOY_WIND_OPACITY = 0.17;
@@ -43,7 +45,7 @@ export const CONVOY_FORMATION_LENGTH = (() => {
   let back = Infinity;
   for (const slot of convoyFormationSlots(FORMATION_VERSION)) {
     const halfHull = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale / 2;
-    const z = slot.localPosition.z / SCALE;
+    const z = slot.localPosition.z / SCALE * CONVOY_FORMATION_SCALE;
     front = Math.max(front, z + halfHull);
     back = Math.min(back, z - halfHull);
   }
@@ -255,9 +257,9 @@ export function IntergalacticConvoy({
   const visualSlots = useMemo<readonly VisualSlot[]>(() => slots.map((slot) => ({
     hull: slot.hull,
     position: [
-      slot.localPosition.x / SCALE,
-      slot.localPosition.y / SCALE,
-      slot.localPosition.z / SCALE,
+      slot.localPosition.x / SCALE * CONVOY_FORMATION_SCALE,
+      slot.localPosition.y / SCALE * CONVOY_FORMATION_SCALE,
+      slot.localPosition.z / SCALE * CONVOY_FORMATION_SCALE,
     ],
   })), [slots]);
   const markers = useMemo(() => visualSlots.map((slot, ordinal) => ({

@@ -25,16 +25,17 @@ describe('monument presentation', () => {
     expect(() => monumentModelUrl(ordinal)).toThrow();
   });
 
-  it('draws at three times the public trade ship and exceeds every ordinary hull', () => {
+  it('keeps landmark sizes stable when travelling ships double', () => {
     const largestStrategicShip = 0.34 * CRAFT_SCALE * 3.4;
-    expect(MONUMENT_SCALE / TRADE_SHIP_SCALE).toBeCloseTo(3, 9);
+    expect(MONUMENT_SCALE).toBeCloseTo(3.84, 9);
+    expect(MONUMENT_SCALE / TRADE_SHIP_SCALE).toBeCloseTo(1.5, 9);
     const largestOwnedHull = Math.max(...Object.values(FLEET_V2_ASSET_MANIFEST).map(({ scale }) => scale)) * 0.225 * CRAFT_SCALE;
     expect(MONUMENT_SCALE / largestStrategicShip).toBeGreaterThan(1);
-    expect(MONUMENT_SCALE / largestOwnedHull).toBeGreaterThanOrEqual(3);
+    expect(MONUMENT_SCALE / largestOwnedHull).toBeGreaterThanOrEqual(1.5);
   });
 
   it.each([
-    ['EASY', 3, '#58f4b3'], ['HARD', 5, '#ff4b4b'], ['LEGACY', 3, '#8be7ff'],
+    ['EASY', 1.5, '#58f4b3'], ['HARD', 2.5, '#ff4b4b'], ['LEGACY', 1.5, '#8be7ff'],
   ] as const)('draws %s at %s trade ships with its own rim colour', (difficulty, multiple, colour) => {
     expect(monumentScale(difficulty) / TRADE_SHIP_SCALE).toBeCloseTo(multiple, 9);
     expect(monumentGlow(difficulty)).toBe(colour);

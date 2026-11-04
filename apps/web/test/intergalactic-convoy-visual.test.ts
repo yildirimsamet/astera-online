@@ -8,6 +8,7 @@ import {
   CONVOY_DRIFT_AMPLITUDE,
   CONVOY_FOCUS_DISTANCE,
   CONVOY_FORMATION_LENGTH,
+  CONVOY_FORMATION_SCALE,
   CONVOY_HULL_SCALE,
   CONVOY_HULL_SCALE_MULT,
   CONVOY_WIND_OPACITY,
@@ -43,7 +44,7 @@ describe('the Intergalactic Convoy presentation', () => {
       const backSize = Math.max(...backRank.map(({ hull }) => (
         CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[hull].scale
       )));
-      const gap = (leftLane[index - 1]!.localPosition.z - leftLane[index]!.localPosition.z) / SCALE;
+      const gap = (leftLane[index - 1]!.localPosition.z - leftLane[index]!.localPosition.z) / SCALE * CONVOY_FORMATION_SCALE;
       expect(gap).toBeGreaterThan((frontSize + backSize) / 2);
     }
     expect((rightLane[0]!.localPosition.x - leftLane[0]!.localPosition.x) / SCALE)
@@ -179,7 +180,7 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
     expect(canvas).toContain("focus.kind === 'intergalacticConvoy'");
     expect(canvas).toContain('CONVOY_FOCUS_DISTANCE');
-    expect(canvas).toContain("exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}");
+    expect(canvas).toContain('exactApproach={focus !== null || coachTap !== null}');
   });
 
   it('picks each drifting hull without intercepting the empty train lanes', () => {

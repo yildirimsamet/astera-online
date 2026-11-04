@@ -1,5 +1,5 @@
 import { CraftHitTargets, type CraftPicking } from './CraftHitTargets.js';
-import { towingFormation } from './towing.js';
+import { towingFormation, type TowedHull } from './towing.js';
 import { TowedShips } from './TowedShips.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
@@ -99,6 +99,7 @@ import {
   formationAimDistance,
   formationLayout,
   hullVisualScale,
+  type FormationLayout,
 } from './flightVisual.js';
 import { threadKey } from './threadKey.js';
 import { useModelWarmup } from './SceneWarmup.js';
@@ -234,6 +235,32 @@ const ROUTE = {
     neon: '#3ff08a',
   },
 } as const;
+
+/** A normalized hull's longest box dimension is one; cover every corner in any heading. */
+const MODEL_FOCUS_RADIUS = Math.sqrt(3) / 2;
+
+function formationFocusRadius(formation: FormationLayout & { tows?: readonly TowedHull[] }, markers: readonly Marker[] | null, base: number): number {
+  let radius = base * MODEL_FOCUS_RADIUS;
+  for (const [index, slot] of formation.slots.entries()) {
+    const marker = markers?.[index];
+    const size = marker ? hullVisualScale(marker.hull, base) : base;
+    radius = Math.max(radius, Math.hypot(...slot) + size * MODEL_FOCUS_RADIUS);
+  }
+  for (const tow of formation.tows ?? []) radius = Math.max(radius,
+    Math.hypot(...tow.position) + hullVisualScale(tow.hull, base) * MODEL_FOCUS_RADIUS);
+  return radius;
+}
+
+/** The camera reads the same hull scale, formation and captured tail as the actual flight. */
+export function ownFlightFocusRadius(thread: PendingThread): number {
+  if (thread.kind === 'probe') return ROUTE.probe.scale * MODEL_FOCUS_RADIUS;
+  if (thread.kind === 'death_star') return ROUTE.fleet.scale * STRATEGIC_HULL_SCALE_MULT * MODEL_FOCUS_RADIUS;
+  if (thread.kind === 'radiation_bomb') return RADIATION_BOMB_VISUAL[thread.radiationBombLevel ?? 1].length * MODEL_FOCUS_RADIUS;
+  const base = ROUTE.fleet.scale;
+  const formation = towingFormation(thread.fleet ?? {}, thread.leg === 'return' ? thread.towing : undefined, base);
+  const radius = formationFocusRadius(formation, formation.markers, base);
+  return thread.admiral ? Math.max(radius, Math.hypot(...escortSlot(formation, base)) + ESCORT_LENGTH * base * MODEL_FOCUS_RADIUS) : radius;
+}
 
 /**
  * Drive and silhouette colours belong to the hull, not to the mission carrying it.
@@ -2081,6 +2108,20 @@ const contactMarkers = (contact: Contact): Marker[] | null => {
   if (contact.fleet) return markersFor(contact.fleet);
   return markersFor({ DART: SILHOUETTE[contact.mass ?? 'LIGHT'] * PER_MODEL });
 };
+
+/** Earned public silhouette only: never infer a hidden fleet to frame a contact. */
+export function contactFocusRadius(contact: Contact): number {
+  const base = contact.kind === 'radiation_bomb'
+    ? RADIATION_BOMB_VISUAL[contact.radiationBombLevel ?? 1].length : CONTACT_STYLE[contact.kind].scale;
+  if (contact.kind === 'death_star') return base * STRATEGIC_HULL_SCALE_MULT * MODEL_FOCUS_RADIUS;
+  if (contact.kind === 'fleet' && contact.fleet) {
+    const formation = towingFormation(contact.fleet, contact.towing, base);
+    return formationFocusRadius(formation, formation.markers, base);
+  }
+  const markers = contactMarkers(contact);
+  const formation = formationLayout(markers, base);
+  return formationFocusRadius(formation, markers, base);
+}
 
 /**
  * A BLIND PUBLIC VOLLEY HAS A DRAWN SOURCE, NOT AN INTEL SOURCE. D52/D123.
