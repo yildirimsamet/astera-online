@@ -56,8 +56,8 @@ describe('watchTraffic', () => {
     const wake = vi.fn();
     const failed = vi.fn();
     const recovered = vi.fn();
-    const stop = watchTraffic({ read, everyMs: 5_000, timeoutMs: 30_000, wake, failed, recovered });
-    return { wake, failed, recovered, stop };
+    const { stop, soon } = watchTraffic({ read, everyMs: 5_000, timeoutMs: 30_000, wake, failed, recovered });
+    return { wake, failed, recovered, stop, soon };
   };
 
   it('spreads its first read across the interval, so a redeploy does not ask all at once', async () => {
@@ -158,6 +158,127 @@ describe('watchTraffic', () => {
     stop();
   });
 
+  /**
+   * THE CLIENT NO LONGER READS FOR EVERY LAUNCH IN THE GALAXY (owner, 2026-11-04: a second or
+   * two is fine for this). Most of them are outside its sight, which only this read can tell.
+   * So activity brings the next read forward, and a craft in sight still shows within a moment.
+   */
+  describe('when the galaxy moves', () => {
+    afterEach(() => { vi.restoreAllMocks(); });
+    const started = async (read: () => Promise<string>) => {
+      // The first read at once, so the clock's next one is a full interval after this returns.
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const watching = watch(read);
+      await vi.advanceTimersByTimeAsync(5_000);
+      watching.wake.mockClear();
+      return watching;
+    };
+
+    it('asks within a second instead of at the next tick', async () => {
+      const read = vi.fn(() => Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      read.mockClear();
+      await vi.advanceTimersByTimeAsync(100);
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(read).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('waits long enough for the commit to be readable', async () => {
+      const read = vi.fn(() => Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      read.mockClear();
+      soon();
+      await vi.advanceTimersByTimeAsync(499);
+      expect(read).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it('wakes the client when that moved the picture, and stays silent when it did not', async () => {
+      let answer = 'a';
+      const { soon, wake, stop } = await started(() => Promise.resolve(answer));
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(wake).not.toHaveBeenCalled();
+      answer = 'b';
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(wake).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('gathers a burst into one read', async () => {
+      const read = vi.fn(() => Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      read.mockClear();
+      soon();
+      soon();
+      await vi.advanceTimersByTimeAsync(300);
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(read).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('adds no read to the clock: the next is a full interval later', async () => {
+      const read = vi.fn(() => Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      read.mockClear();
+      await vi.advanceTimersByTimeAsync(4_000);
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(read).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(3_900);
+      expect(read).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('never puts off a read due sooner', async () => {
+      const read = vi.fn(() => Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      read.mockClear();
+      await vi.advanceTimersByTimeAsync(4_900);
+      soon();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(read).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('reads again for activity that came during a read, which may have missed it', async () => {
+      let finish = (_: string): void => undefined;
+      const read = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
+      const { soon, stop } = watch(read);
+      await vi.advanceTimersByTimeAsync(5_000);
+      read.mockClear();
+      soon();
+      finish('a');
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(read).toHaveBeenCalledOnce();
+      stop();
+    });
+
+    it('keeps to the clock while it cannot read, rather than adding to what is failing', async () => {
+      let fail = false;
+      const read = vi.fn(() => fail ? Promise.reject(new Error('down')) : Promise.resolve('a'));
+      const { soon, stop } = await started(read);
+      fail = true;
+      await vi.advanceTimersByTimeAsync(5_000);
+      read.mockClear();
+      soon();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(read).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it('does nothing once stopped', async () => {
+      const { soon, stop } = await started(() => Promise.resolve('a'));
+      stop();
+      soon();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   it('stops for good, even with a read in flight', async () => {
     let finish = (_: string): void => undefined;
     const { wake, stop } = watch(() => new Promise<string>((resolve) => { finish = resolve; }));
@@ -243,6 +364,19 @@ describe('the stream, with a commander who asked for it', () => {
     for (const frame of stream.frames.filter(each => each.startsWith('event: shard:traffic\n'))) {
       expect(frame).toBe('event: shard:traffic\ndata: {"kind":"shard:traffic"}');
     }
+    await stream.stop();
+  });
+
+  it('hears of a launch in their sight within a moment, whatever the clock', async () => {
+    app.trafficWakeMs = 3_600_000;
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.planetIds[0]!));
+    await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, f.planetIds[1]!));
+    await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, f.planetIds[2]!));
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 5 });
+    const stream = await open('?trafficWake=1');
+    await vi.waitFor(() => { expect(stream.frames.some(frame => frame.startsWith('event: shard:traffic-wake-on\n'))).toBe(true); });
+    await launchAttack(f.db, f.planetIds[1]!, f.planetIds[2]!, { DART: 5 }, f.clock);
+    await vi.waitFor(() => { expect(wakes(stream.frames)).toBeGreaterThanOrEqual(1); }, { timeout: 2_000 });
     await stream.stop();
   });
 

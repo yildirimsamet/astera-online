@@ -511,7 +511,7 @@ const noteTrafficWake = (vu, kind) => {
 const noteEvent = (vu, kind) => {
   if (noteTrafficWake(vu, kind)) return;
   streamStats.events += 1;
-  if (followsWithTraffic(kind)) armTrafficFollowUp(vu);
+  if (followsWithTraffic(kind, vu.trafficWoken)) armTrafficFollowUp(vu);
   const { paths, heavy } = eventReads(kind);
   if (paths.length === 0) return;
   if (isGatedEvent(kind)) {

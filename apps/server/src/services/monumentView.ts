@@ -16,12 +16,19 @@ import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monum
 import { resolveMonumentReturn, settleMonumentFlight } from './monumentMovement.js';
 import { readMonumentProbeReports, resolveMonumentProbe } from './monumentProbe.js';
 import { hpSourcesForSeason } from './radiationSources.js';
-import { GameError, lockSeason, orbitOf } from './planet.js';
+import { GameError, LeaseRequired, lockSeason, orbitOf, readSeason } from './planet.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { monumentRouteSchema } from './monumentBoundaries.js';
 import { peakCoreLevels } from './player.js';
 
-interface Reader { playerId: string; seasonId: string; at: Date; adminUsernames: readonly string[] }
+interface Reader {
+  playerId: string;
+  seasonId: string;
+  at: Date;
+  adminUsernames: readonly string[];
+  /** Holding no placement lease: a due transition cannot be applied here, and asks for one (`LeaseRequired`). */
+  readOnly?: boolean;
+}
 const activeStatuses = ['OUTBOUND', 'HOLD', 'RETURNING'] as const;
 const fleetOf = (lots: readonly MonumentShipLot[]): Fleet => {
   const fleet: Fleet = {};
@@ -31,7 +38,11 @@ const fleetOf = (lots: readonly MonumentShipLot[]): Fleet => {
 
 /** Scope by the authenticated galaxy before any target/manifest can be read or changed. */
 export async function assertMonumentAvailable(tx: Tx, seasonId: string, monumentId?: string, mutation = false, at?: Date) {
-  const season = await lockSeason(tx, seasonId, false);
+  return monumentSeason(tx, await lockSeason(tx, seasonId, false), monumentId, mutation, at);
+}
+
+async function monumentSeason(tx: Tx, season: Awaited<ReturnType<typeof lockSeason>>, monumentId?: string, mutation = false, at?: Date) {
+  const seasonId = season.id;
   if (!hpRadiationApplies(season.rulesetVersion)) {
     if (mutation) throw new GameError('MONUMENT_UNAVAILABLE', 'Monuments begin in a new galaxy', 409);
     if (monumentId) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
@@ -126,7 +137,9 @@ export async function projectMonumentTargets(tx: Tx, input: Reader, ids: readonl
       wave.radiationSettledAt = new Date(toMs);
     }
   }
-  return due ? reconcileMonumentTargets(tx, input, ids) : targets;
+  if (!due) return targets;
+  if (input.readOnly) throw new LeaseRequired();
+  return reconcileMonumentTargets(tx, input, ids);
 }
 
 export type PublicMonumentTarget = Pick<LockedMonument, 'monument' | 'season' | 'waves' | 'memberships'> & {
@@ -195,7 +208,9 @@ export function projectMonumentFacts(targets: readonly PublicMonumentTarget[], s
  * `reconcileMonumentViews`; this helper deliberately only reads the public rows.
  */
 export async function readPublicMonumentFacts(tx: Tx, seasonId: string, at: Date, monumentId?: string) {
-  const season = await assertMonumentAvailable(tx, seasonId, monumentId);
+  // The snapshot's season, no share lock: a lock here queued every reader behind the
+  // worker's `spawn_gate_through` update of this row (load run 2026-11-04).
+  const season = await monumentSeason(tx, await readSeason(tx, seasonId, false), monumentId);
   if (!season) return [];
   const rows = await tx.select().from(monuments).where(and(eq(monuments.seasonId, season.id),
     monumentId === undefined ? undefined : eq(monuments.id, monumentId)));

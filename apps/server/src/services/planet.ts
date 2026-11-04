@@ -382,6 +382,12 @@ export class GameError extends Error {
 }
 
 /**
+ * This read found a write it must make, and holds no placement lease. The gate drops the
+ * attempt and answers the request again under one (`placementGate.ts`). Never reaches a client.
+ */
+export class LeaseRequired extends Error {}
+
+/**
  * A WORLD'S LOYALTY AT `now`, as the tick would write it. The one reading of it:
  * `loadLocked` advances with this, and a probe reads a colony through it (2026-10-01),
  * so what a scout brings home is what the world would hold if it were touched.
@@ -445,6 +451,11 @@ export async function lockSeason(
   requireLive = true,
 ): Promise<typeof seasons.$inferSelect> {
   return seasonRow(tx, seasonId, requireLive, true);
+}
+
+/** The season as this transaction's snapshot has it, for a read that decides nothing under a lock. */
+export function readSeason(tx: Tx, seasonId: string, requireLive = true): Promise<typeof seasons.$inferSelect> {
+  return seasonRow(tx, seasonId, requireLive, false);
 }
 
 async function seasonRow(

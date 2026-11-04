@@ -14,7 +14,7 @@ import {
   readsForGlobalEvent,
   readsForPlayerEvent,
   readsForPrivateEvent,
-  readsForShardEvent,
+  readsTrafficFor,
   shardCoalescer,
   STRATEGIC_SIGHT_CONSISTENCY_MS,
   TRAFFIC_WAKE,
@@ -302,9 +302,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         shard.note(kind);
         // Read once after replica caches can observe the commit, instead of an
         // early read followed by another from every client in the galaxy.
-        if (readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0])) {
-          scheduleTrafficConsistencyRead(true);
-        }
+        if (readsTrafficFor(kind, trafficWoken.now)) scheduleTrafficConsistencyRead(true);
         return;
       }
 

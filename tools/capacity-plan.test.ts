@@ -151,6 +151,14 @@ describe('the reads a stream event provokes', () => {
     }
     expect(eventReads('shard:mining').paths).toEqual(['/api/mining/field']);
   });
+  it('leaves galaxy activity to the server while it is watching, as `useEventStream` does', () => {
+    for (const kind of ['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate']) {
+      expect(followsWithTraffic(kind, true)).toBe(false);
+    }
+    for (const kind of ['shard:traffic', 'shard:control', 'private:strategic-sight']) {
+      expect(followsWithTraffic(kind, true)).toBe(true);
+    }
+  });
   it('keeps the immediate traffic read of urgent private sight', () => {
     expect(followsWithTraffic('private:strategic-sight')).toBe(true);
     expect(eventReads('private:strategic-sight').paths).toContain('/api/galaxy/traffic');

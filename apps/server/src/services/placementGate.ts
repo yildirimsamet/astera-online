@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { createDb } from '../db/client.js';
 import { batchReads } from '../db/readBatch.js';
 import { players } from '../db/schema.js';
-import { GameError } from './planet.js';
+import { GameError, LeaseRequired } from './planet.js';
 import { assertNotVacationing } from './vacation.js';
 import { ECONOMY_PROFILE } from '@astera/rules';
 
@@ -27,8 +27,13 @@ import { ECONOMY_PROFILE } from '@astera/rules';
  * the before check is remembered per account (`Projections.callerPlacement`), and a
  * handler that issued no statement, served only values read before the placement was
  * last found current, skips the after check: it read nothing a move could change.
- * Anything not listed here — every write and every GET that writes — keeps the lease:
- * `/api/monuments` applies due transitions when it reads them.
+ * Anything not listed here — every write and every GET that always writes — keeps the lease.
+ *
+ * TWO LISTED ROUTES ONLY SOMETIMES WRITE, AND ASK FIRST. `/api/monuments` applies a
+ * transition that fell due and `/api/legacy/me/reveals?refresh=1` evaluates the ledger.
+ * Neither happens on the ordinary read, so each throws `LeaseRequired` before its first
+ * write when `req.placementLeased` is not set; the attempt is dropped and the request is
+ * answered again under the lease, so no write straddles a relocation.
  *
  * TWO LISTED ROUTES WRITE, ON PURPOSE. `/api/galaxy` and `/api/intel` confirm telescope
  * readings (`readTelescopes`) in one statement that re-reads each watch under its row
@@ -60,6 +65,19 @@ export const PLACEMENT_READ_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/unknown-signals',
   'GET /api/return-applications',
   'GET /api/commander-ship',
+  // Most of the 5xx of the load run of 2026-11-04, each read for writes.
+  'GET /api/servers',
+  'GET /api/session/brand-recall',
+  'GET /api/session/return',
+  'GET /api/clan/support',
+  'GET /api/chat/messages',
+  'GET /api/dm/conversations',
+  'GET /api/community/policy',
+  'GET /api/leaderboard',
+  'GET /api/announcements',
+  'GET /api/chronicle',
+  'GET /api/monuments',
+  'GET /api/legacy/me/reveals',
 ]);
 
 const PLACEMENT = { id: players.id, seasonId: players.seasonId, placementVersion: players.placementVersion };
@@ -126,6 +144,9 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     if (!route.url.startsWith('/api/') || route.url === '/api/stream'
       || route.url === '/api/auth/security' || route.url === '/api/auth/capabilities'
       || route.url === '/api/auth/account-deletion' || route.url.startsWith('/api/admin/account-deletion')
+      // Neither has anything to do with a placement. A refresh carrying a live token, and
+      // the public notice read by a signed-in client, queued here behind planet commands.
+      || route.url === '/api/auth/refresh' || route.url === '/api/maintenance'
       || route.url.startsWith('/api/auth/email/') || route.url.startsWith('/api/auth/password/reset/')
       || route.url === '/api/mail/resend/webhook') return;
     const handler = route.handler;
@@ -142,8 +163,50 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     // their own versioned intent and expose status needed by older clients.
     const reconcile = route.url === '/api/chat/media/:id' || route.url === '/api/auth/me' || route.url === '/api/return-applications';
 
+    const underLease: typeof handler = async function (req, reply) {
+      if (!req.accountId) return handler.call(this, req, reply);
+      assertRules(req);
+      const startedAt = performance.now();
+      let transactionStarted = false;
+      return lease().then(() => pool.db.transaction(async tx => {
+        transactionStarted = true;
+        // Includes the lease queue, connection establishment and BEGIN, not the galaxy lock or handler.
+        // Observe real requests instead of adding a competing probe to this small pool.
+        app.metrics.observePlacementTransactionStart(performance.now() - startedAt);
+        // A vacation changes all holdings. Its exclusive admission waits for every
+        // authenticated writer; their shared lease stays held through the handler.
+        const vacationMutation = req.method === 'POST' && (route.url === '/api/vacation' || route.url === '/api/vacation/end');
+        // The lease is taken by the statement that finds the commander's season (capacity item M).
+        const galaxyLock = vacationMutation
+          ? sql`pg_advisory_xact_lock(hashtextextended('placement:' || ${players.seasonId}, 0))`
+          : sql`pg_advisory_xact_lock_shared(hashtextextended('placement:' || ${players.seasonId}, 0))`;
+        const [initial] = await tx.select({ ...PLACEMENT, galaxyLock }).from(players).where(eq(players.accountId, req.accountId!));
+        req.placementLeased = true;
+        if (!initial) return handler.call(this, req, reply);
+        // That row was read before the lock was granted; a relocation it waited for shows here.
+        const [checked] = await tx.select({ ...PLACEMENT, vacationUntil: players.vacationUntil })
+          .from(players).where(eq(players.id, initial.id));
+        if (checked?.seasonId !== initial.seasonId || checked.placementVersion !== initial.placementVersion) {
+          throw placementChanged();
+        }
+        const { vacationUntil, ...current } = checked;
+        void reply.header('x-placement', admit(req, current, reconcile));
+        const social = /^\/api\/(chat|dm)(\/|$)/.test(route.url)
+          || route.url.startsWith('/api/auth/')
+          || route.url.startsWith('/api/notifications')
+          || route.url === '/api/session/return';
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !social && !vacationMutation) {
+          assertNotVacationing(vacationUntil, app.clock.now());
+        }
+        return handler.call(this, req, reply);
+      }).finally(release)).catch((error: unknown) => {
+        if (!transactionStarted) app.metrics.observePlacementTransactionStartError();
+        throw error;
+      });
+    };
+
     if (typeof route.method === 'string' && PLACEMENT_READ_ROUTES.has(`${route.method} ${route.url}`)) {
-      route.handler = async function (req, reply) {
+      const withoutLease: typeof handler = async function (req, reply) {
         if (!req.accountId) return handler.call(this, req, reply);
         assertRules(req);
         const accountId = req.accountId;
@@ -182,49 +245,18 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
         remembered.confirmedAt = Math.max(remembered.confirmedAt, checkedAt);
         return result;
       };
+      route.handler = async function (req, reply) {
+        try {
+          return await withoutLease.call(this, req, reply);
+        } catch (error) {
+          if (!(error instanceof LeaseRequired)) throw error;
+          return underLease.call(this, req, reply);
+        }
+      };
       return;
     }
 
-    route.handler = async function (req, reply) {
-      if (!req.accountId) return handler.call(this, req, reply);
-      assertRules(req);
-      const startedAt = performance.now();
-      let transactionStarted = false;
-      return lease().then(() => pool.db.transaction(async tx => {
-        transactionStarted = true;
-        // Includes the lease queue, connection establishment and BEGIN, not the galaxy lock or handler.
-        // Observe real requests instead of adding a competing probe to this small pool.
-        app.metrics.observePlacementTransactionStart(performance.now() - startedAt);
-        // A vacation changes all holdings. Its exclusive admission waits for every
-        // authenticated writer; their shared lease stays held through the handler.
-        const vacationMutation = req.method === 'POST' && (route.url === '/api/vacation' || route.url === '/api/vacation/end');
-        // The lease is taken by the statement that finds the commander's season (capacity item M).
-        const galaxyLock = vacationMutation
-          ? sql`pg_advisory_xact_lock(hashtextextended('placement:' || ${players.seasonId}, 0))`
-          : sql`pg_advisory_xact_lock_shared(hashtextextended('placement:' || ${players.seasonId}, 0))`;
-        const [initial] = await tx.select({ ...PLACEMENT, galaxyLock }).from(players).where(eq(players.accountId, req.accountId!));
-        if (!initial) return handler.call(this, req, reply);
-        // That row was read before the lock was granted; a relocation it waited for shows here.
-        const [checked] = await tx.select({ ...PLACEMENT, vacationUntil: players.vacationUntil })
-          .from(players).where(eq(players.id, initial.id));
-        if (checked?.seasonId !== initial.seasonId || checked.placementVersion !== initial.placementVersion) {
-          throw placementChanged();
-        }
-        const { vacationUntil, ...current } = checked;
-        void reply.header('x-placement', admit(req, current, reconcile));
-        const social = /^\/api\/(chat|dm)(\/|$)/.test(route.url)
-          || route.url.startsWith('/api/auth/')
-          || route.url.startsWith('/api/notifications')
-          || route.url === '/api/session/return';
-        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !social && !vacationMutation) {
-          assertNotVacationing(vacationUntil, app.clock.now());
-        }
-        return handler.call(this, req, reply);
-      }).finally(release)).catch((error: unknown) => {
-        if (!transactionStarted) app.metrics.observePlacementTransactionStartError();
-        throw error;
-      });
-    };
+    route.handler = underLease;
   });
   return pool.close;
 }
