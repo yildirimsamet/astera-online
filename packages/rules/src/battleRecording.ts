@@ -1,6 +1,7 @@
 import { COMBAT } from './constants.js';
 import type { Fleet, Grade, HullClass, HullId } from './types.js';
 import type { TechLevels } from './tech.js';
+import type { VesselHull } from './starter/look.js';
 
 export type BattleSide = 'ATTACK' | 'DEFENCE';
 export type BattleShipStatus = 'ACTIVE' | 'DESTROYED' | 'RETREATED';
@@ -102,12 +103,15 @@ export interface BattleReplayOwner {
   wing: number;
   research: Pick<TechLevels, typeof BATTLE_REPLAY_RESEARCH[number]>;
 }
+export type BattleEnvironment = 'PLANET' | 'MONUMENT' | 'VESSEL';
 /** A viewer consumes the frozen fight, never recalculates it from today's fleet or balance. */
 export interface BattleReplayData {
   recording: BattleRecording;
   owners: BattleReplayOwner[];
   result: { grade: Grade; defenceSalvage: Fleet };
-  environment: 'PLANET' | 'MONUMENT';
+  environment: BattleEnvironment;
+  /** A fight over a colony ship: its hull, which anyone can see. Its repairs are a probe's to read. */
+  vessel?: { hull: VesselHull };
   aegisCapacity: number;
   defenceOffline: boolean;
   escape: { kind: 'ESCAPED' | 'STRANDED'; ships: Fleet } | null;

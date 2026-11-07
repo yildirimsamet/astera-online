@@ -1047,6 +1047,8 @@ export function resolveBattle(
   context: 'PLANET' | 'MONUMENT' | 'HP_PLANET' = 'PLANET',
   maintenance = false,
   recording?: BattleRecording,
+  /** The starter galaxy fights slower (K10). Absent, the main game's `COMBAT.tempo`. */
+  tempo?: number,
 ): BattleResult {
   const monument = context === 'MONUMENT';
   const precise = context !== 'PLANET' || maintenance;
@@ -1058,7 +1060,7 @@ export function resolveBattle(
   if (monument && shield !== 0) throw new RangeError('a monument fleet has no planet shield');
   assertDefendingLine(defenders, monument, precise, maintenance);
   if (defenders.some(stack => stack.tech.shipShields !== false) || stacks.some(stack => stack.tech.shipShields !== false)) {
-    return resolveRandomBattle(stacks, defenders, shield, rng, precise, maintenance, recording);
+    return resolveRandomBattle(stacks, defenders, shield, rng, precise, maintenance, recording, tempo);
   }
   if (recording) throw new RangeError('historical cohort battles have no per-ship recording');
   const passiveAttackers = maintenance && stacks.some((stack) => fleetCount(partitionCombatFleet(stack.fleet, stack.damage).excluded) > 0);

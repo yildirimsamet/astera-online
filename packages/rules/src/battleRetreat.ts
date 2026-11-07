@@ -22,10 +22,10 @@ export function handicapFactor(ratio: number): number {
  * SAVAŞ TEMPOSU: the one damage scale both sides fire with, so the geometric-mean share of a
  * line lost per round is `COMBAT.tempo`. A fight one side cannot answer keeps raw damage.
  */
-export function tempoScale(m: Matchup): number {
+export function tempoScale(m: Matchup, tempo: number = COMBAT.tempo): number {
   const onDefender = m.attacker.dps / m.defender.ehp, onAttacker = m.defender.dps / m.attacker.ehp;
   const lethality = Math.sqrt(onDefender * onAttacker);
-  return Number.isFinite(lethality) && lethality > 0 ? COMBAT.tempo / lethality : 1;
+  return Number.isFinite(lethality) && lethality > 0 ? tempo / lethality : 1;
 }
 
 const tierOf = (weakerPower: number): number => COMBAT.retreatTiers.filter(edge => weakerPower >= edge).length;
@@ -90,14 +90,14 @@ export interface BattleBalance {
   defender: RetreatWindow | null;
 }
 
-export function battleBalance(m: Matchup): BattleBalance {
+export function battleBalance(m: Matchup, tempo?: number): BattleBalance {
   const attackerPower = m.attacker.power, defenderPower = m.defender.power;
   const ratio = matchupRatio(m);
   const stronger = attackerPower > defenderPower ? 'ATTACK' : defenderPower > attackerPower ? 'DEFENCE' : null;
   const { weak, strong } = retreatWindows(ratio, Math.min(attackerPower, defenderPower));
   // A side without a gun is not in the fight the windows are fitted to: unescorted holds are taken (owner 2026-10-06).
   const windowOf = (power: number, own: RetreatWindow | null) => power > 0 ? own : null;
-  return { attackerPower, defenderPower, ratio, stronger, tempo: tempoScale(m),
+  return { attackerPower, defenderPower, ratio, stronger, tempo: tempoScale(m, tempo),
     handicap: stronger === null ? 1 : handicapFactor(ratio),
     attacker: windowOf(attackerPower, stronger === 'ATTACK' ? strong : weak),
     defender: windowOf(defenderPower, stronger === 'DEFENCE' ? strong : weak) };

@@ -93,6 +93,7 @@ export * from './pirateLoot.js';
 export * from './pirateProfit.js';
 export * from './unknownSignal.js';
 export * from './spawnGate.js';
+export * from './starter/index.js';
 
 export type { ChatMedia } from './chatMedia.js';
 export { CHAT_MEDIA } from './chatMedia.js';

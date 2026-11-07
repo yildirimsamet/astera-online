@@ -249,6 +249,7 @@ export function resolveRandomBattle(
   stacks: readonly JointAttackerStack[], defenders: readonly DefenderStack[], shield: number,
   rng: Rng, precise: boolean, maintenance: boolean,
   recording?: BattleRecording,
+  tempo?: number,
 ): BattleResult {
   if (stacks.length === 0 || defenders.length === 0) throw new RangeError('a battle needs both owned sides');
   if (!Number.isFinite(shield) || shield < 0) throw new RangeError('bad planet shield');
@@ -271,7 +272,7 @@ export function resolveRandomBattle(
   const starts = stacks.map(stack => ({ ...stack.fleet })), dStarts = defenders.map(stack => ({ ...stack.fleet }));
   const startA = fleetOf(a, () => true), startD = fleetOf(d, () => true);
   // Combat v3: matchup powers at entry fix the tempo, the stronger side's handicap and both retreat windows.
-  const balance = battleBalance(matchup({ units: unitsOf(a) }, { units: unitsOf(d), aegis: shield }));
+  const balance = battleBalance(matchup({ units: unitsOf(a) }, { units: unitsOf(d), aegis: shield }), tempo);
   const attackerScale = balance.tempo * (balance.stronger === 'ATTACK' ? balance.handicap : 1);
   const defenderScale = balance.tempo * (balance.stronger === 'DEFENCE' ? balance.handicap : 1);
   if (recording) recording.damageScale = { attacker: attackerScale, defender: defenderScale };

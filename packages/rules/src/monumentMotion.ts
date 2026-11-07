@@ -7,9 +7,11 @@ export interface MonumentMotion {
   periodYMs: number;
   periodXMs: number;
   stopAtMs?: number;
+  /** Where the turn's centre is drawn, when seen from another galaxy. Rules never read one. */
+  pivot?: Vec3;
 }
 export const MONUMENT_MOTION_RULESET = 17;
-export const monumentMotion = (origin: Vec3, epochMs: number): MonumentMotion => ({ origin: { ...origin }, epochMs, periodYMs: 8 * 3600000, periodXMs: 16 * 3600000 });
+export const monumentMotion = (origin: Vec3, epochMs: number): MonumentMotion => ({ origin: { x: origin.x, y: origin.y, z: origin.z }, epochMs, periodYMs: 8 * 3600000, periodXMs: 16 * 3600000 });
 export function assertMotion(motion: MonumentMotion): void {
   if (![motion.origin.x, motion.origin.y, motion.origin.z, motion.epochMs, motion.periodYMs, motion.periodXMs].every(Number.isFinite)
     || motion.periodYMs <= 0 || motion.periodXMs <= 0
@@ -22,12 +24,13 @@ export function motionPositionAt(m: MonumentMotion, atMs: number): Vec3 {
   const x = ((atMs - m.epochMs) % m.periodXMs) * 2 * Math.PI / m.periodXMs;
   const cy = Math.cos(y), sy = Math.sin(y), cx = Math.cos(x), sx = Math.sin(x);
   const a = m.origin.y * cx - m.origin.z * sx, b = m.origin.y * sx + m.origin.z * cx;
-  return { x: m.origin.x * cy + b * sy, y: a, z: -m.origin.x * sy + b * cy };
+  const { x: px, y: py, z: pz } = m.pivot ?? { x: 0, y: 0, z: 0 };
+  return { x: m.origin.x * cy + b * sy + px, y: a + py, z: -m.origin.x * sy + b * cy + pz };
 }
 export function motionVelocityAt(m: MonumentMotion, atMs: number): Vec3 {
   if (m.stopAtMs !== undefined && atMs >= m.stopAtMs)
     return { x: 0, y: 0, z: 0 };
-  const p = motionPositionAt(m, atMs), y = (atMs - m.epochMs) * 2 * Math.PI / m.periodYMs;
+  const p = motionPositionAt({ ...m, pivot: { x: 0, y: 0, z: 0 } }, atMs), y = (atMs - m.epochMs) * 2 * Math.PI / m.periodYMs;
   const x = (atMs - m.epochMs) * 2 * Math.PI / m.periodXMs;
   const wy = 2 * Math.PI / m.periodYMs, wx = 2 * Math.PI / m.periodXMs;
   const b = m.origin.y * Math.sin(x) + m.origin.z * Math.cos(x);

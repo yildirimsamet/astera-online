@@ -76,3 +76,25 @@ describe('shared monument tumble', () => {
     expect(tangentAt - narrow!.arriveAt).toBeLessThan(1000);
   });
 });
+
+describe('what a motion holds', () => {
+  it('keeps the point it turns and nothing else of what it was made from', () => {
+    const row = { id: 'row', x: 6000, y: 1, z: 2, garrison: { DART: 9 }, controllerPlayerId: 'someone' };
+    expect(monumentMotion(row, 0).origin).toEqual({ x: 6000, y: 1, z: 2 });
+  });
+});
+
+describe('a monument drawn from another galaxy', () => {
+  const motion = monumentMotion({ x: 6000, y: 100, z: -300 }, 0);
+  const pivot = { x: -6746, y: -8043, z: 12 };
+  const at = 7_200_000;
+
+  it('turns about the same centre, moved by the pivot', () => {
+    const plain = motionPositionAt(motion, at);
+    expect(motionPositionAt({ ...motion, pivot }, at)).toEqual({ x: plain.x + pivot.x, y: plain.y + pivot.y, z: plain.z + pivot.z });
+  });
+
+  it('moves at the same speed', () => {
+    expect(motionVelocityAt({ ...motion, pivot }, at)).toEqual(motionVelocityAt(motion, at));
+  });
+});

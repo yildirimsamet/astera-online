@@ -105,10 +105,10 @@ describe('60-day season transition', () => {
     expect(GALAXY.asteroidSpeedMax).toBe(562.5);
   });
 
-  it('shrinks the whole Core-level size curve by 20% without changing its spread', () => {
-    const old = [0.3766902768834514, 0.702, 1.1985246];
-    for (const [i, level] of [1, 11, 22].entries()) expect(worldRadius(level)).toBeCloseTo(old[i]! * 0.8, 12);
-    expect(worldRadius(22) / worldRadius(1)).toBeCloseTo(old[2]! / old[0]!, 12);
+  it('removes the final season size reduction without changing the Core-level spread', () => {
+    const radii = [0.3766902768834514, 0.702, 1.1985246];
+    for (const [i, level] of [1, 11, 22].entries()) expect(worldRadius(level)).toBeCloseTo(radii[i]!, 12);
+    expect(worldRadius(22) / worldRadius(1)).toBeCloseTo(radii[2]! / radii[0]!, 12);
   });
 
   it('keeps hours-based benefits and fees tied to the reduced income', () => {
