@@ -20,6 +20,7 @@
     "dev:server": "pnpm --filter @astera/server dev",
     "dev:web": "pnpm --filter @astera/web dev",
     "season": "pnpm --filter @astera/server season",
+    "starter": "pnpm --filter @astera/server starter",
     "bots": "pnpm --filter @astera/server bots",
     "capacity:seed": "pnpm --filter @astera/server capacity:seed",
     "capacity:test": "tsx tools/capacity.mjs",

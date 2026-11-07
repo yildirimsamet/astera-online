@@ -122,6 +122,16 @@ if (!password || password.length < 8 || password.length > 200) {
   throw new Error('CAPACITY_PASSWORD must contain 8–200 characters.');
 }
 
+if (values.scenario === 'starter') {
+  const { runStarterCapacity } = await import('./capacity-starter.mjs');
+  await runStarterCapacity({
+    baseUrl: values['base-urls']?.split(',')[0] ?? 'http://127.0.0.1:3000', password,
+    users: Number(values.users ?? 50), durationSeconds: Number(values['duration-seconds'] ?? 300),
+    rampSeconds: Number(values['ramp-seconds'] ?? 60), ...(values.report ? { report: values.report } : {}),
+  });
+  process.exit(0);
+}
+
 const scenarios = {
   quiet: { actionMeanSeconds: 0 },
   normal: { actionMeanSeconds: 600 },
@@ -130,7 +140,7 @@ const scenarios = {
 };
 const scenario = scenarios[values.scenario];
 const realWorkload = values.scenario === 'real';
-if (!scenario) throw new Error('--scenario must be quiet, normal, busy or real');
+if (!scenario) throw new Error('--scenario must be quiet, normal, busy, real or starter');
 
 const safeBaseUrls = (name, input) => {
   const urls = input.split(',').map((raw) => raw.trim().replace(/\/$/, ''));

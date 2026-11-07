@@ -531,6 +531,12 @@ if (process.argv.includes('--silent-space')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--starter')) {
+  const { verifyStarter } = await import('./starter-visual.mjs');
+  await verifyStarter(process.argv[2] ?? 'out/starter');
+  process.exit(0);
+}
+
 if (process.argv.includes('--academy')) {
   const { verifyAcademy } = await import('./academy-visual.mjs');
   await verifyAcademy(process.argv[2] ?? 'out/academy');

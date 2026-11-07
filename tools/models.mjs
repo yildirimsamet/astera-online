@@ -55,6 +55,8 @@ const POLICY = {
   sattelites: { texture: 256, simplify: true, ratio: 0.5, error: 0.01 },
   /** The one thing a player watches long enough to notice a bad silhouette. */
   ships: { texture: 512, simplify: false },
+  /** The colony ship: the player's own, looked at from close by for days. */
+  vessels: { texture: 1024, simplify: false },
   /** Public structures, drawn much larger than a hull. Keep their authored material maps. */
   monuments: { texture: 1280, simplify: false },
   /**
