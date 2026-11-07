@@ -30,6 +30,7 @@ import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
 import { BrandMasthead } from '../../brand/Identity.js';
 import { SignalBoostNote } from '../../ui/SignalBoostNote.js';
 import { useSchoolPresentation } from '../../onboarding/flightSchool/presentation.js';
+import { gateOf } from '../../starter/gate.js';
 
 export interface HudTopProps {
   commander: string;
@@ -168,7 +169,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
 
   return (
     <div className="relative shrink-0">
-      <BrandMasthead onShop={onShop} />
+      <BrandMasthead onShop={data?.vessel ? undefined : onShop} />
       {data?.vacationUntil && <div role="status" className="border-b border-v2-self/20 bg-v2-self/10 px-3 py-1 text-center text-caption text-v2-self">
         {t('vacation.title')} · {t('vacation.until', { time: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(data.vacationUntil) })}
       </div>}
@@ -177,6 +178,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
         shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
         now={now}
         world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
+        {...(gateOf(data?.vessel).open('deuterium') ? {} : { hidden: ['deuterium'] as const })}
         stock={{
           alloy: { value: held.alloy, cap: data?.planet.alloyCap ?? 0, safe: data?.planet.vaultProtected.alloy ?? 0 },
           crystal: { value: held.crystal, cap: data?.planet.crystalCap ?? 0, safe: data?.planet.vaultProtected.crystal ?? 0 },

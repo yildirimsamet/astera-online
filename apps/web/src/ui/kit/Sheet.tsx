@@ -32,6 +32,7 @@ import { ArrowIcon, CloseIcon } from '../icons/index.js';
  *     inside the scroller, and so was the planet screen's category bar one layer
  *     up — two things pinned to the same edge, and the categories slid over the
  *     title. Structure settles that argument; z-index never does.
+ *   · `data-sheet-close` marks the close control for the guided route.
  *   · `data-sheet-panel`, which is how the onboarding card (D56) measures the
  *     sheet's own box rather than the full-screen scrim it floats on.
  *
@@ -163,7 +164,7 @@ export function Sheet({
             beside the title competing with it. Its accessible name is still the
             word, so a screen reader and the screenshot harness both still find it.
           */}
-          <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size={reading ? 'md' : 'sm'}>
+          <IconButton data-sheet-close ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size={reading ? 'md' : 'sm'}>
             <CloseIcon className="size-4" />
           </IconButton>
         </header>

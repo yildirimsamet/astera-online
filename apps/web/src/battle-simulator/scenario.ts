@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   ALL_HULLS, BATTLE_REPLAY_RESEARCH, ESCAPE, HULLS, PIRATE, RESEARCH_PROJECTS, activeBattleFleet, createBattleRecording,
-  fleetCount, fleetEntries, mulberry32, partitionCombatFleet, pirateOverrun, resolveBattle, resolveMonumentCombat, resolveRaid, shieldHp,
+  fleetCount, fleetEntries, mulberry32, partitionCombatFleet, pirateOverrun, resolveBattle, resolveMonumentCombat, resolveRaid, shieldHp, starterBattle, vesselAegisHp,
   type BattleRecording, type BattleReplayOwner, type DefenderStack, type EscapeOutcome, type Fleet, type HullId, type HpDamageLot, type JointAttackerStack,
 } from '@astera/rules';
 
@@ -23,6 +23,8 @@ const participant = z.object({
 });
 export const scenarioSchema = z.object({
   seed: z.number().int().min(0).max(0xffffffff),
+  /** Which galaxy's battle this is. A ship fights at half tempo behind a lower wall (plan §3.5). */
+  galaxy: z.enum(['MAIN', 'STARTER']).default('MAIN'),
   environment: z.enum(['PLANET', 'MONUMENT']).default('PLANET'),
   aegisLevel: z.number().int().min(0).max(20).default(0),
   aegisCharge: z.number().min(0).max(100).default(100),
@@ -54,7 +56,7 @@ export const scenarioSchema = z.object({
   if (input.pirateLevel > 0 && (input.environment !== 'MONUMENT' || input.defenders.length > 1)) {
     ctx.addIssue({ code: 'custom', path: ['pirateLevel'], message: 'a pirate is one crew in open space' });
   }
-  if (input.automaticEscape && (input.environment !== 'PLANET' || input.defenders.length > 1)) {
+  if (input.automaticEscape && (input.galaxy === 'STARTER' || input.environment !== 'PLANET' || input.defenders.length > 1)) {
     ctx.addIssue({ code: 'custom', path: ['automaticEscape'], message: 'automatic fleet escape requires an unsupported planet host' });
   }
 });
@@ -64,6 +66,13 @@ export const DEFAULT_SCENARIO: BattleScenario = scenarioSchema.parse({
   seed: 20261024, environment: 'PLANET', aegisLevel: 6, aegisCharge: 75,
   attackers: [{ id: '1', fleet: { CORSAIR: 4, VIPER: 4, NULLIFIER: 2, COURIER: 1 } }],
   defenders: [{ id: '1', fleet: { CITADEL: 2, DART: 6, BASTION: 2, THORN: 1 } }],
+});
+
+/** What a ship's simulator opens on: the hulls this galaxy builds, against a wall it can raise. */
+export const STARTER_SCENARIO: BattleScenario = scenarioSchema.parse({
+  seed: 20261105, galaxy: 'STARTER', environment: 'PLANET', aegisLevel: 1, aegisCharge: 100,
+  attackers: [{ id: '1', fleet: { DART: 6, PIKE: 2 } }],
+  defenders: [{ id: '1', fleet: { DART: 3, WARDEN: 2 } }],
 });
 
 /**
@@ -103,7 +112,9 @@ export function simulateScenario(input: BattleScenario) {
     ...(pirate ? { maintenanceExempt: true } : {}),
   }));
   const recording = createBattleRecording();
-  const shield = input.environment === 'PLANET' && !input.defenceOffline ? shieldHp(input.aegisLevel) * input.aegisCharge / 100 : 0;
+  const starter = input.galaxy === 'STARTER';
+  const wall = starter ? vesselAegisHp(input.aegisLevel) : shieldHp(input.aegisLevel);
+  const shield = input.environment === 'PLANET' && !input.defenceOffline ? wall * input.aegisCharge / 100 : 0;
   let escape: EscapeOutcome | null = null;
   if (input.automaticEscape) {
     const host = defenders[0]!;
@@ -128,6 +139,8 @@ export function simulateScenario(input: BattleScenario) {
     const fought = resolveMonumentCombat(attackers, defenders, mulberry32(input.seed), true, recording);
     result = fought; control = fought.control;
     if (control === 'ATTACKER' && fleetCount(activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)) > 0) aftermath = 'CARGO_WITHDRAWAL';
+  } else if (starter) {
+    result = starterBattle(attackers, defenders, shield, mulberry32(input.seed), recording);
   } else {
     result = resolveBattle(attackers, defenders, shield, mulberry32(input.seed), 'HP_PLANET', true, recording);
   }
@@ -137,6 +150,6 @@ export function simulateScenario(input: BattleScenario) {
     ...defenders.map((owner, index) => ({ side: 'DEFENCE' as const, playerId: owner.playerId, stackId: owner.stackId, wing: index + 1, research: { ...owner.tech.tech } })),
   ];
   return { recording, owners, result, control, attackers, defenders, escape, environment: input.environment, seed: input.seed,
-    aegisCapacity: input.environment === 'PLANET' ? shieldHp(input.aegisLevel) : 0, defenceOffline: input.defenceOffline };
+    aegisCapacity: input.environment === 'PLANET' ? wall : 0, defenceOffline: input.defenceOffline };
 }
 export type BattleSimulation = ReturnType<typeof simulateScenario>;

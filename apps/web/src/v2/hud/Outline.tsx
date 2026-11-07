@@ -26,6 +26,7 @@ const LANE = {
   research: 'outline.research',
   construction: 'planet.queue.construction',
   yard: 'planet.queue.yard',
+  repair: 'starter.queue.title',
 } as const satisfies Record<OutlineLaneId, string>;
 
 function Part({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
@@ -128,7 +129,7 @@ function LaneRow({ queue, now, onQueue }: { queue: OutlineQueue; now: number; on
 export function Outline({ now, worlds, flights, queues, onWorld, onFlight, onQueue }: OutlineProps) {
   const { t } = useTranslation();
   const several = worlds.length > 1;
-  const research = queues.filter((queue) => queue.worldId === null);
+  const ownLanes = queues.filter((queue) => queue.worldId === null || queue.lane === 'repair');
   const byWorld = worlds
     .map((world) => ({ world, lanes: queues.filter((queue) => queue.worldId === world.id) }))
     .filter(({ lanes }) => lanes.length > 0);
@@ -139,13 +140,13 @@ export function Outline({ now, worlds, flights, queues, onWorld, onFlight, onQue
       aria-label={t('outline.label')}
       className="flex h-full w-[260px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-v2-line bg-v2-deep/95 px-3 py-3 font-v2-ui"
     >
-      <Part title={t('outline.worlds')} count={worlds.length}>
+      {worlds.length > 0 && <Part title={t('outline.worlds')} count={worlds.length}>
         <ul className="flex flex-col gap-1.5">
           {worlds.map((world) => <li key={world.id}><WorldRow world={world} onWorld={onWorld} /></li>)}
         </ul>
-      </Part>
+      </Part>}
 
-      <Part title={t('outline.air')} {...(flights.length > 0 ? { count: flights.length } : {})}>
+      {(worlds.length > 0 || flights.length > 0) && <Part title={t('outline.air')} {...(flights.length > 0 ? { count: flights.length } : {})}>
         {flights.length === 0 ? (
           <p className="text-micro leading-snug text-v2-ink-3">{t('outline.airEmpty')}</p>
         ) : (
@@ -155,11 +156,11 @@ export function Outline({ now, worlds, flights, queues, onWorld, onFlight, onQue
             ))}
           </ul>
         )}
-      </Part>
+      </Part>}
 
       <Part title={t('outline.queues')}>
         <div className="flex flex-col gap-1.5">
-          {research.map((queue) => <LaneRow key="research" queue={queue} now={now} onQueue={onQueue} />)}
+          {ownLanes.map((queue) => <LaneRow key={queue.lane} queue={queue} now={now} onQueue={onQueue} />)}
           {byWorld.map(({ world, lanes }) => (
             <div key={world.id} className="flex flex-col gap-1.5">
               {several && <h3 className="mt-1 truncate text-micro font-semibold text-v2-ink-2">{world.name}</h3>}

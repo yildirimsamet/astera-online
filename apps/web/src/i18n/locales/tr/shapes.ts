@@ -47,7 +47,7 @@ export const counter = {
   compareLabel: "Senin gücün {{yours}}; onların gücü {{theirs}}",
   comparePick: "Bu hedefe karşı tartmak için gemi seç.",
   compareMeaning: "Birbirine karşı ateş gücü ve dayanıklılık; sınıf üstünlükleri dahil. Güçlü taraf filosunun daha büyük kısmını korur.",
-  compareRule: "Güç, silahlı gemileri ve aktif yer savunmasını sayar: araştırmaları, hasarları ve karşı tarafa göre sınıf üstünlükleri ile Aegis yükü dahildir. Silahsız gemiler güce katkı vermez. Sonda aralık okur; bu yüzden her taraf bir aralıktır ve oranın alt ucu senin için en kötü durumdur. Okumalar eskir ve her savaşta atışlar rastgele sonuç verir.",
+  compareRule: "Güç, silahlı gemileri ve aktif yer savunmasını sayar: araştırmaları, hasarları ve karşı tarafa göre sınıf üstünlükleri ile Aegis yükü dahildir. Silahsız gemiler güce katkı vermez. Sonda aralık okur; bu yüzden her taraf bir aralıktır ve oranın alt ucu senin için en kötü durumdur. Okumalar eskir ve her savaşta atışlar rastgele sonuç verir. Kartta ve gönderimde görünen değer, yalnız silahlı gemilerin maliyetidir; güç geri kalanını ekler.",
   ratioYou: "Sen {{band}} kat güçlüsün",
   ratioThem: "Onlar {{band}} kat güçlü",
   ratioOpen: "Okuma kimin güçlü olduğunu netleştirmiyor: onlar en çok {{them}}, sen en çok {{you}} kat güçlü olabilirsin",
@@ -94,6 +94,6 @@ export const counter = {
   matchupSplit: 'Okunan dağılım',
   matchupBring: '{{class}} getir',
   matchupSingle: 'Filon tek sınıf — counteri okunmayan kısımda olabilir',
-  matchupExposure: 'güçlü %{{strong}} · zayıf %{{weak}}',
+  matchupExposure: "Senin {{class}} gemilerin: savunmalarının %{{strong}} kadarına güçlü · %{{weak}} kadarına zayıf",
   matchupProbe: '2 tersane seviyesi üstü sonda dağılımı açar',
 } as const;

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HULLS, fleetCount, fleetEntries, type BattleReplayData, type BattleSide, type HullId } from '@astera/rules';
+import { HULLS, fleetCount, fleetEntries, type BattleEnvironment, type BattleReplayData, type BattleSide, type HullId } from '@astera/rules';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { monumentControlKey } from '../lib/battleOutcome.js';
 import { combatClassLabel, hullLabel } from '../i18n/names.js';
@@ -24,7 +24,7 @@ const SPEEDS = [1, 2, 4, 8, .5] as const;
  * and two tabs that open the summary and the shot log. On a wide screen the tabs head a side panel.
  * `footer` rides in the summary; `hint` is the one line the tabs carry (the balance verdict).
  */
-export function BattleReplay({ simulation, environment, suspended = false, initialViewer = 'ATTACK', ownPlayerIds, footer, hint }: { simulation: BattleReplayData; environment: 'PLANET' | 'MONUMENT'; suspended?: boolean; initialViewer?: BattleSide; ownPlayerIds?: readonly string[]; footer?: ReactNode; hint?: string }) {
+export function BattleReplay({ simulation, environment, suspended = false, initialViewer = 'ATTACK', ownPlayerIds, footer, hint }: { simulation: BattleReplayData; environment: BattleEnvironment; suspended?: boolean; initialViewer?: BattleSide; ownPlayerIds?: readonly string[]; footer?: ReactNode; hint?: string }) {
   const { t, i18n } = useTranslation();
   const number = (value: number) => combatNumber(value, i18n.language);
   useSoundEffects();
@@ -137,7 +137,9 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
   const personalShips = ownPlayerIds?.length ? simulation.recording.ships.filter(ship => ownPlayerIds.includes(ship.playerId)) : [];
   const personalFleetDestroyed = personalShips.length > 0 && personalShips.every(ship => frame.ships.get(ship.id)?.status === 'DESTROYED')
     && !(readerSide === 'DEFENCE' && preEscaped > 0);
-  const roundLabel = t('simulator.round', { number: frame.round, total: simulation.recording.roundLimit });
+  // The rounds this battle lasted: the limit is the most any battle may run, and reads as a wrong count.
+  const roundsFought = simulation.recording.rounds.length;
+  const roundLabel = t('simulator.round', { number: frame.round, total: roundsFought });
   // Combat v3 scales every shot by the battle balance (tempo × handicap); older replays carry none.
   const balanceFactor = (side: BattleSide) => {
     const scale = simulation.recording.damageScale;
@@ -177,7 +179,7 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
       {simulation.escape && <p className="sim-offline sim-result">{simulation.escape.kind === 'ESCAPED' ? t('simulator.escapedBefore', { number: fleetCount(simulation.escape.ships) }) : t('simulator.stranded')}</p>}
     </div>
     <div className="sim-stage-panel">
-      <BattleStage timeline={timeline} clock={clock} viewer={viewer} selected={selected} onSelect={inspect} environment={environment}
+      <BattleStage timeline={timeline} clock={clock} viewer={viewer} selected={selected} onSelect={inspect} environment={environment} vessel={simulation.vessel}
         onReady={onReady} onUnavailable={onUnavailable} time={time} playing={playing} onSuspend={suspend} cameraRequest={cameraRequest} />
       {stageState === 'loading' && <div className="sim-model-loading" role="status">{t('simulator.stageLoading')}</div>}
       <button type="button" className="sim-overview" aria-label={t('simulator.overview')} title={t('simulator.overview')} onClick={() => { camera('FIT'); }}>
@@ -213,7 +215,7 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
         <div className="sim-round-marks">
           {timeline.rounds[0] && timeline.rounds[0].start > 0 && <span style={{ flexGrow: timeline.rounds[0].start }} />}
           {marks.map(({ round, span }) => <button type="button" key={round.round} style={{ flexGrow: span }} aria-pressed={frame.round === round.round}
-            aria-label={t('simulator.round', { number: round.round, total: simulation.recording.roundLimit })} onClick={() => { seek(round.start); }}>{round.round}</button>)}
+            aria-label={t('simulator.round', { number: round.round, total: roundsFought })} onClick={() => { seek(round.start); }}>{round.round}</button>)}
         </div>
       </div>
       <button type="button" className="sim-speed" aria-label={`${t('simulator.speed')} ${speedLabel(speed)}`} onClick={() => {

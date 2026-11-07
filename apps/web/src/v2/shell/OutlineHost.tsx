@@ -26,7 +26,7 @@ export function OutlineHost({ onFocusPlanet, onFocusCraft, onRoute }: {
   return (
     <Outline
       now={now}
-      worlds={outlineWorlds(worlds, { activePlanetId, capitalPlanetId }, threads)}
+      worlds={active?.vessel ? [] : outlineWorlds(worlds, { activePlanetId, capitalPlanetId }, threads)}
       flights={items}
       queues={outlineQueues(worlds, active, activePlanetId)}
       onWorld={onFocusPlanet}

@@ -38,6 +38,8 @@ export const community = {
     perfTab: 'Performance',
     skinsTab: 'Skins',
     supportersTab: "Soutiens",
+    starterTab: "Galaxies de vaisseaux",
+    starter: {"ships": "Vaisseaux", "active": "Actifs", "dormant": "Silencieux", "departed": "Posés", "people": "Joueurs", "crew": "Joué par le serveur", "spread": "Progrès des réparations", "galaxies": "Galaxies", "galaxy": "Galaxie {{n}}", "open": "Ouverte", "full": "Fermée", "lag": "Événement dû le plus ancien", "failed": "Événements en échec", "seconds": "{{n}} s", "none": "Rien en attente", "unavailable": "Impossible de lire les galaxies de vaisseaux.", "refresh": "Actualiser"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'Les commandes Shopier payées qu’aucune page de paiement du jeu ne relie attendent ici : cartes de soutien, anciens produits, montants erronés. Attribue chacune au bon commandant, ou ferme-la si elle a été réglée hors du jeu.',

@@ -69,7 +69,7 @@ export const counter = {
   compareLabel: "Deine Stärke {{yours}}; ihre Stärke {{theirs}}",
   comparePick: "Wähle Schiffe, um sie gegen dieses Ziel abzuwägen.",
   compareMeaning: "Feuerkraft und Haltbarkeit gegeneinander, Klassenvorteile eingerechnet. Die stärkere Seite behält mehr von ihrer Flotte.",
-  compareRule: "Stärke zählt bewaffnete Schiffe und aktive Bodengeschütze: ihre Forschung, Schäden und den Klassenkreislauf gegen die andere Seite, dazu die Aegis-Ladung. Unbewaffnete Schiffe zählen nicht. Eine Sonde misst in Bereichen, daher ist jede Seite ein Bereich; das untere Ende des Verhältnisses ist dein schlechtester Fall. Messungen veralten, und in jedem Kampf fallen die Schüsse zufällig.",
+  compareRule: "Stärke zählt bewaffnete Schiffe und aktive Bodengeschütze: ihre Forschung, Schäden und den Klassenkreislauf gegen die andere Seite, dazu die Aegis-Ladung. Unbewaffnete Schiffe zählen nicht. Eine Sonde misst in Bereichen, daher ist jede Seite ein Bereich; das untere Ende des Verhältnisses ist dein schlechtester Fall. Messungen veralten, und in jedem Kampf fallen die Schüsse zufällig. Der Wert auf der Karte und beim Start ist nur, was die bewaffneten Schiffe kosten; die Stärke rechnet den Rest dazu.",
   ratioYou: "Du bist {{band}}× so stark",
   ratioThem: "Sie sind {{band}}× so stark",
   ratioOpen: "Die Messung klärt nicht, wer stärker ist: sie bis {{them}}×, du bis {{you}}×",
@@ -117,6 +117,6 @@ export const counter = {
   matchupSplit: 'Gelesene Aufteilung',
   matchupBring: '{{class}} mitnehmen',
   matchupSingle: 'Deine Flotte ist einklassig — ihr Konter kann im ungelesenen Teil sein',
-  matchupExposure: 'stark {{strong}}% · schwach {{weak}}%',
+  matchupExposure: "Deine {{class}}: stark gegen {{strong}} % ihrer Wand · schwach gegen {{weak}} %",
   matchupProbe: 'eine Sonde zwei Werftstufen höher zeigt die Aufteilung',
 } as const;

@@ -69,7 +69,7 @@ export const counter = {
   compareLabel: "Tu poder {{yours}}; su poder {{theirs}}",
   comparePick: "Elige naves para compararlas con este objetivo.",
   compareMeaning: "Potencia de fuego y resistencia una contra otra, ventajas de clase incluidas. El bando más fuerte conserva más de su flota.",
-  compareRule: "El poder cuenta naves armadas y cañones terrestres activos: su investigación, sus daños y el ciclo de clases frente al otro bando, más la carga del Aegis. Las naves desarmadas no suman nada. Una sonda lee en rangos, así que cada bando es un rango; el extremo bajo de la proporción es tu peor caso. Las lecturas envejecen, y en cada batalla los disparos caen al azar.",
+  compareRule: "El poder cuenta naves armadas y cañones terrestres activos: su investigación, sus daños y el ciclo de clases frente al otro bando, más la carga del Aegis. Las naves desarmadas no suman nada. Una sonda lee en rangos, así que cada bando es un rango; el extremo bajo de la proporción es tu peor caso. Las lecturas envejecen, y en cada batalla los disparos caen al azar. El valor de la tarjeta y del envío es solo lo que cuestan las naves armadas; el poder suma el resto.",
   ratioYou: "Eres {{band}}× más fuerte",
   ratioThem: "Son {{band}}× más fuertes",
   ratioOpen: "La lectura no aclara quién es más fuerte: ellos hasta {{them}}×, tú hasta {{you}}×",
@@ -117,6 +117,6 @@ export const counter = {
   matchupSplit: 'División leída',
   matchupBring: 'Lleva {{class}}',
   matchupSingle: 'Tu flota es de una sola clase — su contador puede estar en la parte no leída',
-  matchupExposure: 'fuerte {{strong}}% · débil {{weak}}%',
+  matchupExposure: "Tus {{class}}: fuertes contra el {{strong}}% de su pared · débiles contra el {{weak}}%",
   matchupProbe: 'una sonda dos niveles de astillero por encima revela la división',
 } as const;

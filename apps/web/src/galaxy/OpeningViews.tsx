@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useRef, type RefObject } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Vector3, Camera } from 'three';
 
@@ -113,4 +113,12 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
   // Effect replay also runs cleanup; only the live camera owner may finish the barrier.
   useLayoutEffect(() => () => { restore(); active.current = false; }, []);
   return active;
+}
+
+/** Late home data and the lifting cover must not lose an instrument overview request. */
+export function useSightRequest(radius:number | undefined, home:readonly [number,number,number], covered:boolean, invalidate:()=>void, homeSignal=0) {
+  const pending = useRef(radius);
+  const [x,y,z] = home;
+  useEffect(()=>{ pending.current=radius; invalidate(); },[radius,x,y,z,covered,invalidate,homeSignal]);
+  return pending;
 }

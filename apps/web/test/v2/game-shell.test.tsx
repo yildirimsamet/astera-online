@@ -17,10 +17,21 @@ import { GameShell } from '../../src/v2/shell/GameShell.js';
 const openSignals = vi.fn(() => new Set(['n1']));
 
 vi.mock('../../src/shell/Signals.js', () => ({ useOpenSignals: () => openSignals }));
+vi.mock('../../src/ui/Toast.js', async () => ({
+  ...await vi.importActual<Record<string, unknown>>('../../src/ui/Toast.js'),
+  useToast: () => vi.fn(),
+}));
 vi.mock('../../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../src/api/queries.js');
-  return { ...actual, usePlanet: () => ({ data: undefined }) };
+  return { ...actual, usePlanet: () => ({ data: undefined }), usePending: () => ({ data: undefined }) };
 });
+
+const starterTutorial = vi.hoisted(() => ({ current: null as null | { answer: { kind: string; id?: string }; ack: () => void; backIn: null } }));
+vi.mock('../../src/starter/tutorial/useStarterTutorial.js', async () => ({
+  ...await vi.importActual<Record<string, unknown>>('../../src/starter/tutorial/useStarterTutorial.js'),
+  useStarterTutorial: () => starterTutorial.current,
+}));
+vi.mock('../../src/starter/tutorial/StarterTutorialCoach.js', () => ({ StarterTutorialCoach: () => null }));
 
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
   HudTop: (p: {
@@ -233,6 +244,18 @@ describe('the desk keyboard in the shell', () => {
     fireEvent.keyDown(field, { key: '2' });
     expect(onPanel).not.toHaveBeenCalled();
     field.remove();
+  });
+});
+
+/** Review 2026-11-06: the NPC says "read the report", so Intel opens on the probe reports, not on the watch shelf. */
+describe('the starter tutorial in the shell', () => {
+  afterEach(() => { starterTutorial.current = null; });
+
+  it('opens Intel on the probe reports when the NPC sends the player there', async () => {
+    starterTutorial.current = { answer: { kind: 'step', id: 'openIntel' }, ack: vi.fn(), backIn: null };
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'tab intel' }));
+    expect(onPanel).toHaveBeenLastCalledWith('intel', 'probes', undefined, undefined);
   });
 });
 

@@ -385,14 +385,14 @@ export function StatStrip({
       <Stat
         icon={<Mark of="deuterium" className={big ? 'size-4' : 'size-3'} />}
         tone="fuel"
-        label={i18n.t('action.statFuel')}
+        label={i18n.t(fuel > 0 ? 'action.statFuelPer' : 'action.statFuel')}
         value={fuel}
         // A gun never leaves the ground, so it has no rate — the same reason the
         // speed beside it says "fixed" rather than nought.
         text={
           fuel <= 0
             ? i18n.t('action.statFuelNone')
-            : i18n.t('action.statFuelRate', { value: decimal(fuel) })
+            : decimal(fuel)
         }
         big={big}
       />

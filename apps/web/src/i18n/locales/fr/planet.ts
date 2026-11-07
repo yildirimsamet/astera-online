@@ -543,7 +543,7 @@ export const action = {
   statSalvage: "Ferraille",
   statRoom: "Volume",
   statFuel: "Carburant",
-  statFuelRate: "{{value}} /1k",
+  statFuelPer: "Carburant pour 1 000 de distance",
   statFuelNone: "—",
 } as const;
 export const planetHero = {

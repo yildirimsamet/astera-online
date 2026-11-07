@@ -32,6 +32,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
+import { starter } from './starter.js';
 import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
@@ -105,6 +106,7 @@ export const ja: Resources = {
   community,
   trade,
   convoy,
+  starter, universe: {"open": "宇宙を見る", "back": "戻る", "main": "メイン銀河", "you": "あなた", "starter": "スタート {{number}}", "ships_one": "{{count}}隻", "ships_other": "{{count}}隻"},
   hold,
   lane,
   meter,

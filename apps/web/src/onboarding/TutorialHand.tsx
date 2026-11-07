@@ -18,6 +18,10 @@ export function TutorialHand({ targets, bubble, kind = 'action', bounds }: {
       const hand = ref.current;
       const found = document.querySelector('[data-loading-screen]') ? [] : targets();
       const box = bounds ? bounds() : found[found.length - 1]?.getBoundingClientRect();
+      // The bottom bar covers the foot of the screen: a control under it is as hidden as one below it.
+      // Only a bar at the foot counts: on a wide screen the tabs may sit elsewhere.
+      const dockTop = document.querySelector('[data-dock]')?.getBoundingClientRect().top ?? window.innerHeight;
+      const floor = dockTop > window.innerHeight / 2 ? Math.min(window.innerHeight, dockTop) : window.innerHeight;
 
       /**
        * BRING THE TARGET INTO THE SHEET'S VIEW. Owner instruction.
@@ -35,7 +39,7 @@ export function TutorialHand({ targets, bubble, kind = 'action', bounds }: {
       const subject = found[found.length - 1] ?? null;
       if (subject !== reached.current) {
         reached.current = subject;
-        if (box && (box.bottom > window.innerHeight || box.top < 0)) {
+        if (box && (box.bottom > floor || box.top < 0)) {
           subject?.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
       }
@@ -50,12 +54,12 @@ export function TutorialHand({ targets, bubble, kind = 'action', bounds }: {
       const gap = found[found.length - 1]?.hasAttribute('data-academy-home') ? 48 : 16;
       if (hand) {
         const visible = box && box.width > 0 && box.height > 0 &&
-          box.right > 0 && box.bottom > 0 && box.left < window.innerWidth && box.top < window.innerHeight;
+          box.right > 0 && box.bottom > 0 && box.left < window.innerWidth && box.top < floor;
         const openingReady = found[found.length - 1]?.getAttribute('data-academy-home-ready') !== 'false';
         hand.style.visibility = visible && openingReady ? 'visible' : 'hidden';
         if (visible) {
           const x = kind === 'intro' ? box.left : Math.max(0, Math.min(window.innerWidth - 48, box.right - 12));
-          const y = kind === 'intro' ? box.top : Math.max(0, Math.min(window.innerHeight - 48, box.top + box.height / 2));
+          const y = kind === 'intro' ? box.top : Math.max(0, Math.min(floor - 48, box.top + box.height / 2));
           hand.style.transform = `translate3d(${String(x)}px, ${String(y)}px, 0)`;
           hand.style.width = kind === 'intro' ? `${String(box.width)}px` : '48px';
           hand.style.height = kind === 'intro' ? `${String(box.height)}px` : '48px';

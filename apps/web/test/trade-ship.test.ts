@@ -91,11 +91,9 @@ describe('TRADE_SHIP_SCALE', () => {
     expect(TRADE_SHIP_BASE_SCALE).toBeLessThan(CRAFT_SCALE);
   });
 
-  it('draws bigger than an ordinary ship and smaller than the largest world', () => {
-    // 1.40 is the largest authored world size (D153); a public landmark ship
-    // should read as prominent without out-scaling every planet in the galaxy.
+  it('doubles with the travelling craft while retaining its own proportions', () => {
     expect(TRADE_SHIP_SCALE).toBeGreaterThan(TRADE_SHIP_BASE_SCALE);
-    expect(TRADE_SHIP_SCALE).toBeLessThan(1.40);
+    expect(TRADE_SHIP_SCALE).toBeCloseTo(2.56, 9);
   });
 });
 

@@ -181,6 +181,16 @@ export interface RigAction {
   cancelEase: boolean;
 }
 
+/**
+ * WHETHER A HAND ON THE CAMERA ENDS ITS GLIDE. Owner playtest 2026-11-07: past the zoom limit the
+ * universe opened, and letting go sent the view back. Lifting one finger of a pinch restarts the
+ * gesture for the other, and that start ended the flight half way. A held flight (to or from the
+ * universe) finishes whatever the hand does; any other glide is the player's to take over.
+ */
+export function gestureTakesCamera(ease: { held?: boolean } | null): boolean {
+  return ease?.held !== true;
+}
+
 export interface RigGestureState {
   mode: 'follow' | 'manual';
   acquired: boolean;
@@ -355,4 +365,9 @@ export function rigAction(frame: RigFrame): RigAction {
       !frame.acquired,
     cancelEase: ended && frame.easing,
   };
+}
+
+/** A sensor overview belongs after the opening flight, so Home cannot overwrite it. */
+export function starterSightDistance({radius,fov,aspect,sceneReady,openingReady,covered}: {radius:number;fov:number;aspect:number;sceneReady:boolean;openingReady:boolean;covered:boolean}): number | null {
+  return sceneReady && openingReady && !covered ? sightCameraDistance(radius*1.25,fov,aspect) : null;
 }

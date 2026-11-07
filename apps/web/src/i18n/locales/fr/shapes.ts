@@ -48,7 +48,7 @@ export const counter = {
   compareLabel: "Ta puissance {{yours}} ; leur puissance {{theirs}}",
   comparePick: "Choisis des vaisseaux pour les comparer à cette cible.",
   compareMeaning: "Puissance de feu et résistance l’une contre l’autre, avantages de classe compris. Le camp le plus fort garde une plus grande part de sa flotte.",
-  compareRule: "La puissance compte les vaisseaux armés et les canons au sol actifs : leurs recherches, leurs dégâts et le cycle des classes face à l’autre camp, plus la charge de l’Aegis. Les vaisseaux sans armes n’ajoutent rien. Une sonde lit des fourchettes : chaque camp est donc une fourchette, et le bas du rapport est ton pire cas. Les lectures vieillissent, et chaque combat tire ses coups au hasard.",
+  compareRule: "La puissance compte les vaisseaux armés et les canons au sol actifs : leurs recherches, leurs dégâts et le cycle des classes face à l’autre camp, plus la charge de l’Aegis. Les vaisseaux sans armes n’ajoutent rien. Une sonde lit des fourchettes : chaque camp est donc une fourchette, et le bas du rapport est ton pire cas. Les lectures vieillissent, et chaque combat tire ses coups au hasard. La valeur affichée sur la carte et au lancement n’est que le coût des vaisseaux armés ; la puissance ajoute le reste.",
   ratioYou: "Tu es {{band}}× plus fort",
   ratioThem: "Ils sont {{band}}× plus forts",
   ratioOpen: "La lecture ne dit pas qui est le plus fort : eux jusqu’à {{them}}×, toi jusqu’à {{you}}×",
@@ -97,6 +97,6 @@ export const counter = {
   matchupSplit: 'Répartition lue',
   matchupBring: 'Prenez {{class}}',
   matchupSingle: 'Votre flotte est mono-classe — son contre peut être dans la partie non lue',
-  matchupExposure: 'fort {{strong}} % · faible {{weak}} %',
+  matchupExposure: "Vos {{class}} : forts contre {{strong}} % de leur défense · faibles contre {{weak}} %",
   matchupProbe: 'une sonde deux niveaux de chantier au-dessus révèle la répartition',
 } as const;

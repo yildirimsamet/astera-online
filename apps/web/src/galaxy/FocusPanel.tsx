@@ -1,3 +1,4 @@
+import { PartHere } from '../starter/PartHere.js';
 import { GameActions } from '../session/seasonLock.js';
 import { RadiationBombControl } from '../screens/RadiationBombControls.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
@@ -23,6 +24,7 @@ import {
   fleetCount,
   fleetEntries,
   fleetTravelExact,
+  STARTER,
   missionFuel,
   nextColonyCore,
   telescopeSlots,
@@ -31,6 +33,8 @@ import {
   UNAIDED,
   type Fleet,
   type HullId,
+  siteCode,
+  vesselHull,
 } from '@astera/rules';
 import type {
   AsteroidView,
@@ -46,6 +50,8 @@ import type {
   PublicMonument,
 } from '../api/schemas.js';
 import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { gateOf } from '../starter/gate.js';
+import { heroArt } from '../starter/shipScreen.js';
 import { radiationAt, toRadiationSources } from '../lib/radiation.js';
 import { rivalColour } from './PlanetField.jsx';
 import type { TargetMiningRun } from './scene.js';
@@ -282,6 +288,7 @@ function Shell({
           <button
             type="button"
             aria-label={t('focus.clear')}
+            data-focus-close=""
             {...clear}
             className="grid size-9 shrink-0 place-items-center rounded-control text-v2-ink-3 hover:bg-v2-raise hover:text-v2-ink"
           >
@@ -531,7 +538,7 @@ export function PlanetFocus({
   rival,
   rivalSlot = null,
   now,
-  outOfBand = false,
+  outOfBand: outOfBandProp = false,
   ownPeakCore = null,
   onClose,
   onAttack,
@@ -602,6 +609,10 @@ export function PlanetFocus({
   const setRival = useSetRival();
   const say = useToast();
   const school = useSchoolPresentation();
+  // A ship opens these one by one, and it holds no marks: those belong to the main galaxy.
+  const gate = gateOf(planet.vessel);
+  // No tier in the starter galaxy, so no band to fall out of.
+  const outOfBand = !gate.aboard && outOfBandProp;
   /*
     The PROBE band leads: it is the section a commander opens this panel to read,
     and the one they paid alloy and a round trip for. Remembered per device.
@@ -692,7 +703,8 @@ export function PlanetFocus({
   */
   const originSilentSpace = planet.silentSpace === true;
   const clanTargetRefusal = originSilentSpace ? t('faults.launchBlock.SILENT_SPACE') : clanTargetReason;
-  const colonyPhase = colonizationPhase(target, now, settlementInFlight);
+  // A ship settles nothing: an outpost is a place to raid, and the jump is the only way to a world.
+  const colonyPhase = gate.aboard ? 'FOREIGN_COLONY' : colonizationPhase(target, now, settlementInFlight);
   /**
    * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
    *
@@ -709,7 +721,7 @@ export function PlanetFocus({
   const claimUntil = target.kind === 'CAPITAL' || target.kind === 'COLONY'
     ? null
     : target.neutral?.claimUntil ?? null;
-  const claimActive = Boolean(claimUntil && claimUntil.getTime() > now);
+  const claimActive = !gate.aboard && Boolean(claimUntil && claimUntil.getTime() > now);
   /*
     THE FIGURE THAT DECIDES WHETHER THE SHEET OFFERS THE RACE AT ALL. D180.
 
@@ -882,7 +894,7 @@ export function PlanetFocus({
     WORLD BOTH WAYS (D183): the press is a toggle on the server — `null` empties the whole
     set and is never sent from here. The chip wears the mark's own colour, as the reticle does.
   */
-  const rivalControl = rivalSlot !== null || (!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL')
+  const rivalControl = !gate.aboard && (rivalSlot !== null || (!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL'))
     ? {
       pending: setRival.isPending,
       onToggle: () => {
@@ -899,7 +911,10 @@ export function PlanetFocus({
     : null;
 
   /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
-  const attackControl = !target.clanmate && (
+  const attackControl = !target.clanmate && (!gate.open('attack')
+    // A closed attack says why and how it opens (player test A-05, owner K1 2026-11-05).
+    ? <p data-testid="attack-locked" className="basis-full text-micro leading-snug text-v2-ink-3">{t('starter.attackLocked')}</p>
+    : (
           <button
             type="button"
             // Marked so a surface outside this panel can point at the commitment.
@@ -965,7 +980,7 @@ export function PlanetFocus({
             {/* It opens the plan, not the attack: the mock's pointer says there is a step after. */}
             <Icon id="i-chev" className="size-3.5 shrink-0" />
           </button>
-  );
+  ));
 
   /*
     THE CARD'S ONE LINE OF POWER (the mock's context card): the wing at home against the
@@ -984,28 +999,47 @@ export function PlanetFocus({
       : t('dossier.page.peekDefenceUnknown'),
   ].join(' · ');
 
+  const outpostLines = target.body === 'OUTPOST' ? (
+    <>
+      {target.hasPart && <PartHere />}
+      <p data-testid="outpost-rule" className="text-micro leading-snug text-v2-ink-2">
+        {t('starter.outpost.rule', { amount: full(STARTER.sites.outposts.stock[Math.min(STARTER.sites.outposts.stock.length, Math.max(1, target.coreLevel)) - 1] ?? 0) })}
+      </p>
+    </>
+  ) : null;
   return (
     <Shell
-      art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} dark={known.kind === 'none'} />}
-      eyebrow={anonymous
-        ? t('focus.planet.unsurveyedEyebrow')
-        : t('focus.planet.location', { planet: target.name })}
-      title={anonymous
-        ? t('focus.planet.unsurveyedTitle')
+      art={target.body === 'VESSEL'
+        ? <img src={heroArt(vesselHull(target.id), target.look ?? 'WRECKED')} alt="" draggable={false} className="size-10 rounded-control object-cover" />
+        : <PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} dark={known.kind === 'none'} />}
+      eyebrow={target.body === 'VESSEL'
+        ? t('starter.eyebrow')
+        // The kind and the code that tells two alike apart; the name leads (player test).
+        : target.body === 'OUTPOST' ? `${t('starter.outpost.title')} · ${siteCode({ id: target.id, kind: 'OUTPOST' })}`
+        : anonymous
+          ? t('focus.planet.unsurveyedEyebrow')
+          : t('focus.planet.location', { planet: target.name })}
+      title={target.body === 'OUTPOST' ? target.name : anonymous
+        ? t(target.body === 'VESSEL' ? 'starter.reading.unknownShip' : 'focus.planet.unsurveyedTitle')
         : commanderLabel(target.owner, target.clan?.tag)}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
       summary={(
         <span className="flex flex-col items-end gap-1">
-          {!unsurveyed && <WorldKind target={target} rivalSlot={rivalSlot} />}
+          {target.body === 'OUTPOST'
+            ? <span className="v2-legend text-v2-warn">{t('starter.readout.level', { level: Math.max(1, target.coreLevel) })}</span>
+            // A ship travels with the CAPITAL kind, and is not a world's capital (player test).
+            : !unsurveyed && target.body !== 'VESSEL' && <WorldKind target={target} rivalSlot={rivalSlot} />}
           <Headline of={known} />
         </span>
       )}
       peek={target.clanmate ? undefined : (
         <>
-          <p className="flex items-baseline justify-between gap-2 text-micro">
-            <span className="v2-legend">{t('dossier.page.power')}</span>
+          {outpostLines}
+          {/* The ships' price, not the dossier's power range: one name, one measure (player test B-04). */}
+          <p data-testid="peek-value" className="flex items-baseline justify-between gap-2 text-micro">
+            <span className="v2-legend">{t('dossier.page.value')}</span>
             <span className="truncate font-v2-mono text-v2-ink-2">{peekPower}</span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -1027,6 +1061,7 @@ export function PlanetFocus({
       */
       actions={(
           <>
+          {open && outpostLines && <div className="flex basis-full flex-col gap-1">{outpostLines}</div>}
           {/*
             AND YOU CANNOT MARK WHAT YOU CANNOT SEE. Owner's instruction. This
             tested `kind !== 'NEUTRAL'`, a field an unsurveyed world does not
@@ -1125,7 +1160,7 @@ export function PlanetFocus({
         the guide long before that line, and the guide's own comment says as much.
         A commitment surface may state a rule or say nothing; it may not guess.
       */}
-      {!school && !target.clanmate && (!unsurveyed
+      {!school && !gate.aboard && !target.clanmate && (!unsurveyed
         || colonyPhase === 'NEUTRAL_RACE'
         || colonyPhase === 'SETTLEMENT_IN_FLIGHT') && (
       <StrategicWorldGuide
@@ -2393,7 +2428,7 @@ function ProbeControl({
   intel,
   onLaunched,
 }: {
-  target: GalaxyPlanet;
+  target: Pick<GalaxyPlanet, 'id' | 'name'>;
   intel: IntelView | undefined;
   /** Called with the target's name once a probe is away, so the disc can follow it. */
   onLaunched: (targetName: string) => void;
@@ -2443,6 +2478,7 @@ function ProbeControl({
   return (
     <button
       type="button"
+      data-guide="probe"
       className={`${BTN_GHOST} ${shape}`}
       // The verb is the label; the sentence — cost and all — is the accessible name.
       aria-label={t('focus.planet.sendProbe', {
@@ -2605,6 +2641,7 @@ export function AsteroidFocus({
           <button
             type="button"
             data-primary
+            data-guide="mine"
             className={`${BTN_PRIMARY} basis-full whitespace-normal`}
             disabled={
               busy || launchBlock !== undefined || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
@@ -3904,6 +3941,7 @@ export function DebrisFocus({
   busy,
   open,
   onToggle,
+  probe,
 }: {
   field: {
     id: string;
@@ -3911,7 +3949,10 @@ export function DebrisFocus({
     crystal: number;
     deuterium: number;
     minutesLeft: number;
+    hasPart?: boolean | undefined;
   };
+  /** A ship hunting a thrust part: the probe that says whether this wreck holds one. */
+  probe?: { intel: IntelView | undefined; onLaunched: (targetName: string) => void };
   planetName: string | undefined;
   craftAvailable: number;
   craftHold: number;
@@ -3973,6 +4014,8 @@ export function DebrisFocus({
       }
       actions={
         <>
+        {field.hasPart && <div className="basis-full"><PartHere /></div>}
+        {probe && !field.hasPart && <ProbeControl target={{ id: field.id, name: planetName ?? '' }} intel={probe.intel} onLaunched={probe.onLaunched} />}
         {run && <MiningCommitments run={run} lane="debris" />}
           <button
             type="button"

@@ -31,6 +31,8 @@ export const community = {
     perfTab: 'Performans',
     skinsTab: 'Skin',
     supportersTab: "Destekçiler",
+    starterTab: "Gemi galaksileri",
+    starter: {"ships": "Gemiler", "active": "Aktif", "dormant": "Sessiz", "departed": "İnen", "people": "Oyuncu", "crew": "Sunucu oynuyor", "spread": "Onarım ilerlemesi", "galaxies": "Galaksiler", "galaxy": "Galaksi {{n}}", "open": "Açık", "full": "Kapalı", "lag": "En eski bekleyen olay", "failed": "Başarısız olay", "seconds": "{{n}} sn", "none": "Bekleyen yok", "unavailable": "Gemi galaksileri okunamadı.", "refresh": "Yenile"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'Oyunun açtığı ödeme sayfasına bağlanamayan ödenmiş Shopier siparişleri burada bekler: destek kartları, eski ürünler, tutarı uymayanlar. Her birini ait olduğu komutana ver ya da oyun dışında halledildiyse kapat.',

@@ -1,3 +1,4 @@
+import { useModelScale } from './modelScale.js';
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -27,6 +28,7 @@ import type { Vec3Tuple } from './scene.js';
 
 /** Where a craft of yours is going, right now. One ring per outbound leg. */
 export function RendezvousMarks({ points }: { points: readonly Vec3Tuple[] }) {
+  const scale = useModelScale();
   const ring = useRef<THREE.Group>(null);
 
   useFrame(({ clock }) => {
@@ -43,7 +45,7 @@ export function RendezvousMarks({ points }: { points: readonly Vec3Tuple[] }) {
      * two jobs at once, and once the swing is gone what is left only has to be
      * enough to say the marker is live.
      */
-    const s = 1 + Math.sin(clock.elapsedTime * 1.6) * 0.05;
+    const s = scale * (1 + Math.sin(clock.elapsedTime * 1.6) * 0.05);
     for (const mark of ring.current?.children ?? []) mark.scale.setScalar(s);
   });
 
@@ -85,12 +87,13 @@ export function RendezvousMarks({ points }: { points: readonly Vec3Tuple[] }) {
  * component telling the player they had already launched.
  */
 export function AimMark({ from, to }: { from: Vec3Tuple; to: Vec3Tuple }) {
+  const scale = useModelScale();
   const ring = useRef<THREE.Mesh>(null);
   /** One buffer for the life of the sheet, written in the frame loop. See `useLine`. */
   const line = useLine();
 
   useFrame(({ clock }) => {
-    ring.current?.scale.setScalar(1 + Math.sin(clock.elapsedTime * 2.4) * 0.08);
+    ring.current?.scale.setScalar(scale * (1 + Math.sin(clock.elapsedTime * 2.4) * 0.08));
     // Written in the frame loop rather than an effect: the scene renders on
     // demand, so a buffer filled outside a frame is a line nothing has drawn yet.
     const points = line.getAttribute('position') as THREE.BufferAttribute;

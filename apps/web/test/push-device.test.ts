@@ -77,7 +77,7 @@ describe('connecting the phone', () => {
     await expect(connect()).resolves.toBe('on');
     expect(plugin.createChannel).toHaveBeenCalledWith(expect.objectContaining({ id: 'alerts', name: 'Saldırı uyarıları', importance: 5 }));
     expect(plugin.createChannel.mock.invocationCallOrder[0]).toBeLessThan(plugin.register.mock.invocationCallOrder[0]!);
-    expect(api.registerPushDevice).toHaveBeenCalledWith('token-1', 'tr');
+    expect(api.registerPushDevice).toHaveBeenCalledWith('token-1', 'tr', -new Date().getTimezoneOffset());
   });
 
   it('listens once, however often it connects, and sends the new language and a refreshed token', async () => {
@@ -87,7 +87,7 @@ describe('connecting the phone', () => {
     await connect(false, 'en');
     expect(plugin.addListener.mock.calls.filter(([name]) => name === 'registration')).toHaveLength(1);
     expect(plugin.addListener.mock.calls.filter(([name]) => name === 'pushNotificationActionPerformed')).toHaveLength(1);
-    expect(api.registerPushDevice.mock.calls).toEqual([['token-1', 'tr'], ['token-1', 'en'], ['token-2', 'en']]);
+    expect(api.registerPushDevice.mock.calls).toEqual([['token-1', 'tr', -new Date().getTimezoneOffset()], ['token-1', 'en', -new Date().getTimezoneOffset()], ['token-2', 'en', -new Date().getTimezoneOffset()]]);
   });
 
   it('never throws: a broken bridge or a server refusal leaves the game running', async () => {

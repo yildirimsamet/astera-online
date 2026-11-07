@@ -17,8 +17,10 @@ import { markHit, wasTap } from './tap.js';
 import { createMonumentVisibility } from './monumentVisibility.js';
 import type { PlanetNode } from './scene.js';
 
-export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onSelect }: {
+export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onSelect, quiet = false }: {
   monuments: readonly PublicMonument[]; planets: readonly PlanetNode[];
+  /** Seen from another galaxy: the same models on the same paths, with nothing to read or press. */
+  quiet?: boolean;
   hpRadiation?: readonly HpRadiationSourceView[];
   focusedId: string | null; onSelect: (id: string) => void;
 }) {
@@ -41,6 +43,7 @@ export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onS
       const caption=captions.find(c=>c.id===monument.id);
       if(caption)caption.position=[x,y+monumentScale(monument.difficulty)/2+0.35,z];
     }
+    if (quiet) return;
     const next = trace.update(camera, captions, planets, monuments.some(m=>m.motion)?Math.floor(now/250):undefined);
     if (next !== lastHidden.current) {
       lastHidden.current = next;
@@ -52,12 +55,12 @@ export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onS
       motion={monument.motion} scale={monumentScale(monument.difficulty)} focused={focusedId === monument.id} hasFocus={focusedId !== null} /> : null)}
     {monuments.map((monument) => <group key={monument.id} ref={group=>{if(group)groups.current.set(monument.id,group);else groups.current.delete(monument.id);}} position={toWorld(monument.position)}
     name={`monument-${monument.id}`} onClick={(event) => {
-      if (!wasTap()) return;
+      if (quiet || !wasTap()) return;
       event.stopPropagation(); markHit(); onSelect(monument.id);
     }}>
     <MonumentModel ordinal={monument.ordinal} difficulty={monument.difficulty} focused={focusedId === monument.id} />
-    <mesh><sphereGeometry args={[monumentScale(monument.difficulty) / 2, 12, 8]} /><HitboxMaterial kind="monument" /></mesh>
-    <Html position={[0, monumentScale(monument.difficulty) / 2 + 0.35, 0]} center distanceFactor={20} zIndexRange={[8, 0]} style={{ pointerEvents: 'none', visibility: hidden.has(monument.id) ? 'hidden' : 'visible' }}>
+    {!quiet && <mesh><sphereGeometry args={[monumentScale(monument.difficulty) / 2, 12, 8]} /><HitboxMaterial kind="monument" /></mesh>}
+    {!quiet && <Html position={[0, monumentScale(monument.difficulty) / 2 + 0.35, 0]} center distanceFactor={20} zIndexRange={[8, 0]} style={{ pointerEvents: 'none', visibility: hidden.has(monument.id) ? 'hidden' : 'visible' }}>
       <div className={`whitespace-nowrap rounded-control border px-2 py-1 text-center font-v2-ui shadow-sm ${focusedId === monument.id ? `${monument.difficulty === 'HARD' ? 'border-v2-hostile text-v2-hostile' : 'border-v2-self text-v2-self'} bg-v2-panel/90` : 'border-v2-line bg-v2-panel/70 text-v2-ink-2'}`}>
         <p className="text-caption font-semibold">{monumentName(monument.ordinal)}</p>
         {(() => {
@@ -69,6 +72,6 @@ export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onS
         <p className="text-micro">{monument.controller.kind === 'PLAYER' ? monument.controller.name
           : monument.controller.kind === 'CLAN' ? `[${monument.controller.tag}] ${monument.controller.name}` : t(monument.emptySince ? 'monument.empty' : 'monument.neutral')}</p>
       </div>
-    </Html>
+    </Html>}
   </group>)}</>;
 }

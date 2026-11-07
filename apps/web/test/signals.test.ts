@@ -87,6 +87,11 @@ describe('what the game volunteers', () => {
     expect(status.map((s) => s.line)).toContain('The works have stopped');
   });
 
+  /** A ship whose Extractor is still broken has works of size zero: empty is not full. */
+  it('does not call works of size zero stopped', () => {
+    expect(statusOf(view({ bufferCrystalCap: 0, crystalPerHour: 0 }), holding({ bufferAlloy: 100 }))).toEqual([]);
+  });
+
   /**
    * A FULL STORE IS NOT A LOSS BY ITSELF ANY MORE — nothing flows into it on its
    * own. It matters only when it is blocking ore that is waiting in the works, so

@@ -24,10 +24,11 @@ import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../ui/skinCatalog.js';
 import { HeartIcon } from '../ui/icons/index.js';
 import { AdminPlayersPanel } from './AdminPlayersPanel.js';
 import { AdminShopierQueue } from './AdminShopierQueue.js';
+import { AdminStarterPanel } from './AdminStarterPanel.js';
 import { AdminDeletionQueue } from './AdminDeletionQueue.js';
 import { AnalyticsAdminPanel } from './AnalyticsAdminPanel.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ANALYTICS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ANALYTICS' | 'STARTER';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
   ANALYTICS: 'admin-analytics-tab',
@@ -39,6 +40,7 @@ const ADMIN_TAB_ID: Record<AdminTab, string> = {
   PERF: 'admin-perf-tab',
   SKINS: 'admin-skins-tab',
   SHOPIER: 'admin-shopier-tab',
+  STARTER: 'admin-starter-tab',
   SUPPORTERS: 'admin-supporters-tab',
 };
 
@@ -73,6 +75,7 @@ export default function AdminPanel() {
             { id: 'PERF', label: t('community.admin.perfTab') },
             { id: 'SKINS', label: t('community.admin.skinsTab') },
             { id: 'SHOPIER', label: t('community.admin.shopierTab') },
+            { id: 'STARTER', label: t('community.admin.starterTab') },
             { id: 'SUPPORTERS', label: t('community.admin.supportersTab') },
           ]}
         />
@@ -85,7 +88,7 @@ export default function AdminPanel() {
         {tab === 'ANALYTICS' ? <AnalyticsAdminPanel /> : tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
-              : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : <SupporterForm />}
+              : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : tab === 'STARTER' ? <AdminStarterPanel /> : <SupporterForm />}
       </div>
     </div>
   );

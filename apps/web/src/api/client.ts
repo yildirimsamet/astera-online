@@ -1,4 +1,5 @@
 import { battleReplayResponseSchema } from './battleReplaySchemas.js';
+import { arrivalSchema, departuresSchema, landingSchema, mainSkySchema, migrationViewSchema, universeSchema, vesselAnswerSchema, vesselCratesSchema } from './starterSchemas.js';
 import { observe, analyticsHeaders, analyticsRecording, syncAnalyticsIdentity } from '../lib/playerAnalytics/runtime.js';
 import { analyticsAuth, analyticsCommand } from './analyticsCommands.js';
 import { analyticsAdminSchema, analyticsTimelineSchema, anonymousVisitsSchema, type AnalyticsFilters } from './analyticsAdminSchemas.js';
@@ -9,7 +10,7 @@ import { reportIfInsideWindow, reportMaintenance } from '../platform/maintenance
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
-import { COSMETIC_IDS, type AlertTiming, type CosmeticCategory, type CosmeticId, type MobileHullId, type PaidAlertKind } from '@astera/rules';
+import { COSMETIC_IDS, type AlertTiming, type CosmeticCategory, type CosmeticId, type MobileHullId, type PaidAlertKind, type VesselHull } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
 import { notificationCenterSchema } from './notificationCenterSchemas.js';
@@ -34,13 +35,16 @@ import type {
   CountryCode,
   MissionPace,
   TransferReturnPlan,
+  StarterFeature,
+  VesselModule,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import { capabilities } from '../platform/runtime.js';
 import { createNativeAuthTransport, isSessionPath, type AuthTransport } from '../platform/authTransport.js';
 import { CHAT_MEDIA } from '@astera/rules';
 import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
-import { adminDeletionQueueSchema, adminDeletionCompletedSchema, adminDeletionMediaSchema } from './adminSchemas.js';
+import { authCapabilitiesSchema } from './starterSchemas.js';
+import { adminDeletionQueueSchema, adminDeletionCompletedSchema, adminDeletionMediaSchema, adminStarterSchema } from './adminSchemas.js';
 import {
   tradeRecallSchema,
   adminFeedbackPageSchema,
@@ -448,6 +452,12 @@ export class Api {
     opts: RequestOptions = {},
   ): Promise<T> {
     opts.signal?.throwIfAborted();
+    // A reload resumes the shell before the token is back; its reads wait for the restore rather
+    // than going out bare and coming back 401 (player test, 2026-11-05: ~16 per reload). Sign-in
+    // calls carry their own credentials, and a new visitor's front door must not wait on a refresh.
+    if (this.token === null && this.refreshing && (opts.retryOnExpiry ?? true) && !path.startsWith('/api/auth/')) {
+      await this.refreshing.catch(() => false);
+    }
     // Defence against an old mounted screen or accidental direct hook/API use.
     // This is a client distribution rule, never proof of platform to the server.
     if (!capabilities().webCheckout && /^\/api\/skins\/(?:shop|pricing|purchase|polar-shop|polar-pricing|polar-purchase|shopier-shop|shopier-checkout)$/.test(path)) {
@@ -695,6 +705,24 @@ export class Api {
     { method: 'POST', body: { challengeId, code, newPassword }, retryOnExpiry: false });
 
   me = () => this.send('/api/auth/me', meSchema);
+  /** Takes this account's colony ship. Answered with the same ship if it already has one. */
+  enlistVessel = () => this.send('/api/starter/enlist', vesselAnswerSchema, { method: 'POST' });
+  orderVesselRepair = (module: VesselModule, stage: number) =>
+    this.send('/api/starter/repair', vesselAnswerSchema, { method: 'POST', body: { module, stage } });
+  /** No id opens every ready crate: the one held lid opens them all. */
+  openVesselCrates = (id?: string) =>
+    this.send('/api/starter/crates/open', vesselCratesSchema, { method: 'POST', body: id === undefined ? {} : { id } });
+  markVesselUnlockSeen = (feature: StarterFeature) =>
+    this.send('/api/starter/unlocks/seen', vesselAnswerSchema, { method: 'POST', body: { feature } });
+  vesselMigration = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/migration', migrationViewSchema, options);
+  loadVesselFuel = (amount: number) => this.send('/api/starter/fuel', vesselAnswerSchema, { method: 'POST', body: { amount } });
+  migrateVessel = (slot: number | null) =>
+    this.send('/api/starter/migrate', landingSchema, { method: 'POST', body: slot === null ? {} : { slot } });
+  starterDepartures = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/departures', departuresSchema, options);
+  starterArrival = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/arrival', arrivalSchema, options);
+  markArrivalSeen = () => this.send('/api/starter/arrival/seen', z.object({ ok: z.boolean() }), { method: 'POST', body: {} });
+  mainSky = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/main-sky', mainSkySchema, options);
+  universe = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/universe', universeSchema, options);
 
   updateCountry = (country: CountryCode) => this.send(
     '/api/auth/me/country',
@@ -710,6 +738,9 @@ export class Api {
   sendFeedback = (kind: FeedbackKind, message: string) =>
     this.send('/api/feedback', feedbackSubmittedSchema, { method: 'POST', body: { kind, message } });
   adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
+  /** Public: which doors this server has open, asked before anyone has signed in. */
+  authCapabilities = () => this.send('/api/auth/capabilities', authCapabilitiesSchema);
+  adminStarter = () => this.send('/api/admin/starter', adminStarterSchema);
   adminDeletionQueue = () => this.send('/api/admin/account-deletion', adminDeletionQueueSchema);
   adminRecordSupportDeletion = (username: string, locale: string) => this.send('/api/admin/account-deletion', accountDeletionSubmittedSchema,
     { method: 'POST', body: { username, locale, confirm: true } });
@@ -769,6 +800,7 @@ export class Api {
     progress: readonly ClaimIntent[] | number,
     countryCode?: CountryCode,
     policy?: CommunityPolicyConsent,
+    vesselHull?: VesselHull,
   ) {
     const proof = communityPolicyConsentSchema.safeParse(policy);
     if (!proof.success) throw new ApiError('COMMUNITY_POLICY_REQUIRED', 'Explicit agreement is required', 403);
@@ -785,6 +817,8 @@ export class Api {
         communityPolicyVersion: proof.data.version,
         communityPolicyLocale: proof.data.locale,
         ...(countryCode === undefined ? {} : { countryCode }),
+        // The hull the prologue showed is the hull the server hands over.
+        ...(vesselHull === undefined ? {} : { vesselHull }),
         ...(typeof progress === 'number' ? { step: progress } : { intents: progress }),
       },
       retryOnExpiry: false,
@@ -1222,8 +1256,8 @@ export class Api {
   setNotificationCenter = (settings: { timing?: AlertTiming; muted?: PaidAlertKind[] }) =>
     this.send('/api/notification-center/settings', notificationCenterSchema, { method: 'PUT', body: settings });
   /** This phone's FCM token for the paid raid alerts; the server answers 204. */
-  registerPushDevice = (token: string, locale: string) =>
-    this.send('/api/push/devices', z.null(), { method: 'POST', body: { token, platform: 'android', locale } });
+  registerPushDevice = (token: string, locale: string, utcOffsetMinutes = -new Date().getTimezoneOffset()) =>
+    this.send('/api/push/devices', z.null(), { method: 'POST', body: { token, platform: 'android', locale, utcOffsetMinutes } });
   forgetPushDevice = (token: string) =>
     this.send('/api/push/devices', z.null(), { method: 'DELETE', body: { token } });
 

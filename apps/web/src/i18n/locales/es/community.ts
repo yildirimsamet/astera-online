@@ -31,6 +31,8 @@ export const community = {
     perfTab: 'Rendimiento',
     skinsTab: 'Skins',
     supportersTab: "Apoyos",
+    starterTab: "Galaxias de naves",
+    starter: {"ships": "Naves", "active": "Activas", "dormant": "En silencio", "departed": "Aterrizadas", "people": "Jugadores", "crew": "Juega el servidor", "spread": "Progreso de reparación", "galaxies": "Galaxias", "galaxy": "Galaxia {{n}}", "open": "Abierta", "full": "Cerrada", "lag": "Evento pendiente más antiguo", "failed": "Eventos fallidos", "seconds": "{{n}} s", "none": "Nada pendiente", "unavailable": "No se pudieron leer las galaxias de naves.", "refresh": "Actualizar"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'Aquí esperan los pedidos de Shopier pagados que ninguna página de pago del juego vincula: tarjetas de apoyo, productos antiguos, importes que no cuadran. Asigna cada uno a su comandante o ciérralo si se resolvió fuera del juego.',

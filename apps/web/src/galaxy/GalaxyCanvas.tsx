@@ -1,4 +1,19 @@
-import { motionPositionAt } from '@astera/rules';
+import { StarterSightMarks } from './StarterSightMarks.js';
+import { ModelScale } from './modelScale.js';
+import { modelScale } from './scene.js';
+import { DepartureBeams } from './DepartureBeams.js';
+import { PartMarks } from './PartMarks.js';
+import { StarterGlow } from './StarterGlow.js';
+import type { DepartureBeam } from './mainSky.js';
+import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
+import type { MainSky } from '../api/starterSchemas.js';
+import { MainGalaxySky } from './MainGalaxySky.js';
+import { UniverseBalls } from './UniverseBalls.js';
+import { UNIVERSE_CLOSE_SHARE, OVERSCROLL_PER_PINCH_PIXEL, OVERSCROLL_PER_WHEEL_PIXEL, nextOverscroll, universeBalls, universeFrame, type UniverseBall } from './universe.js';
+import type { UniverseView } from '../api/starterSchemas.js';
+import { STARTER_NAVIGATION_RADIUS, isMainWorld, mainSkyNodes, neighbourShips, starterCameraFar, starterOpeningPose } from './mainSky.js';
+import { OwnVessel } from './OwnVessel.js';
+import { VesselField } from './VesselField.js';
 import { useNow } from '../lib/time.js';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
@@ -9,6 +24,7 @@ import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGu
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
+import { sensorToggleFrame } from './sensorFraming.js';
 import { SchoolCamera } from '../onboarding/flightSchool/SchoolCamera.js';
 import { schoolWorldRadius } from '../onboarding/flightSchool/visualStory.js';
 import * as THREE from 'three';
@@ -43,15 +59,16 @@ import {
   initialHomeCameraPosition,
   rigAction,
   rigGestureState,
+  gestureTakesCamera,
   sphericalLeashCorrection,
   sightCameraDistance,
+  starterSightDistance,
   planetInspectionDistance,
   cameraEaseStep,
 } from './follow.js';
 import {
   BrightStars,
   Core,
-  Disc,
   Dust,
   Meteors,
   Sky,
@@ -61,7 +78,7 @@ import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.j
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
-import { TradeShip } from './TradeShip.jsx';
+import { TradeShip, TRADE_SHIP_SCALE } from './TradeShip.jsx';
 import type { TradeShipEvent } from '../lib/trade.js';
 import {
   CONVOY_FOCUS_DISTANCE,
@@ -69,25 +86,25 @@ import {
 } from './IntergalacticConvoy.jsx';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { AimMark, RendezvousMarks } from './Rendezvous.jsx';
-import { OwnFleets, Traffic } from './Fleets.jsx';
+import { OwnFleets, Traffic, ownFlightFocusRadius, contactFocusRadius } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
 import {
   StrategicInterceptions,
   strategicInterceptionMissilePosition,
 } from './StrategicInterception.jsx';
-import { PlanetField, rivalColour } from './PlanetField.jsx';
+import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
 import { createOpeningPreparation, type OpeningPreparation } from './openingPreparation.js';
-import { OpeningWork, useOpeningViews } from './OpeningViews.js';
+import { OpeningWork, useOpeningViews, useSightRequest } from './OpeningViews.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
 const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
-import { MiningFlights } from './MiningFlights.jsx';
+import { MiningFlights, miningFocusRadius } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
 import { monumentFocusDistance } from './MonumentModel.js';
@@ -96,6 +113,7 @@ import {
   DISC_RADIUS,
   activeWorldPosition,
   asteroidWorldPosition,
+  asteroidRadius,
   contactPosition,
   rivalSlotOf,
   claimLabelOf,
@@ -117,7 +135,7 @@ import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
-import { layoutPlanetLabels, planetLabelRank, planetLabelWidth, type PlanetLabelSize } from './planetLabels.js';
+import { layoutPlanetLabels, planetLabelRank, planetLabelWidth, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
 import { Flag } from '../v2/identity/Flag.js';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -162,6 +180,9 @@ import { anythingInFlight } from './flightRate.js';
 const MIN_POLAR = Math.PI * 0.04;
 const MAX_POLAR = Math.PI * 0.96;
 
+const NO_OFFSET: Vec3 = { x: 0, y: 0, z: 0 };
+const UNIVERSE_FLIGHT = 1.6;
+
 /** How far past the rim you may drift before the camera is quietly walked back. */
 
 /** Seconds spent easing onto a new subject. Long enough to follow, short enough not to wait. */
@@ -187,7 +208,7 @@ const HOME_DISTANCE = 7;
  *
  * Close enough that a 0.3-unit hull fills a readable part of the frame, far enough
  * that a squadron's whole formation and the world it is heading for both stay in
- * shot. Planets are exempt: they are already the size the map is drawn at.
+ * shot. Every ordinary focus uses this same close range in both directions.
  */
 const CRAFT_DISTANCE = 7;
 
@@ -196,6 +217,10 @@ const WIDE_TILT = Math.hypot(1.15, 1.75);
 const WHOLE_DISC_DISTANCE = DISC_RADIUS * WIDE_TILT;
 
 export interface GalaxyCanvasProps {
+  /** Aboard a colony ship: its own small galaxy, with the main one hung in the sky (plan §5.7). */
+  /** The view past the zoom limit. Absent where a script holds the camera. */
+  universe?: { view: UniverseView | undefined; open: boolean; onLimit: (at: boolean) => void; onOpen: () => void; onClose: () => void };
+  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; parts: readonly Vec3[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
   unknownSignals?: readonly UnknownSignalView[];
   unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
   cosmeticAppearance?: Contact['appearance'];
@@ -290,7 +315,7 @@ export interface GalaxyCanvasProps {
   openWide?: boolean;
   /** Exact camera range for an animated wide re-frame. Defaults to the whole disc. */
   wideDistance?: number;
-  /** Explicit Academy toggle only; ordinary sensor toggles never move the camera. */
+  /** Explicit Academy framing, independent of ordinary sensor-toggle framing. */
   /**
    * ACADEMY ONLY: A THING TO TAP, DRAWN WHERE THE SUBJECT ACTUALLY IS.
    *
@@ -351,6 +376,8 @@ const ParkedShipModel = lazy(() => import('./ParkedShip.js'));
 const HomewardShipModel = lazy(() => import('./HomewardShip.js'));
 
 export function GalaxyCanvas({
+  universe,
+  starter,
   cosmeticAppearance,
   planets,
   pending,
@@ -404,10 +431,35 @@ export function GalaxyCanvas({
   const openingMark = useRef<HTMLSpanElement>(null);
   const overview = school?.overview !== undefined;
   const magnify = school?.overview?.magnify === true;
-  const nodes = useMemo(() => planetNodes(planets).map(node => magnify
-    ? { ...node, radius: schoolWorldRadius(node.coreLevel, node.intel !== 'UNKNOWN') } : node), [planets, magnify]);
-  const visibleBodies = useMemo(() => magnify ? nodes.filter(node => node.intel !== 'UNKNOWN') : nodes, [nodes, magnify]);
-  const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
+  const aboard = starter !== undefined;
+  const scale = modelScale(aboard);
+  const nodes = useMemo(() => planetNodes(planets, aboard).map(node => magnify
+    ? { ...node, radius: schoolWorldRadius(node.coreLevel, node.intel !== 'UNKNOWN') } : node), [planets, magnify, aboard]);
+  const selfId = useMemo(() => planets.find((p) => p.isSelf)?.id, [planets]);
+  const visibleBodies = useMemo(() => {
+    if (aboard) return nodes.filter(node => node.id !== selfId);
+    return magnify ? nodes.filter(node => node.intel !== 'UNKNOWN') : nodes;
+  }, [aboard, nodes, magnify, selfId]);
+  const galaxyOrdinal = starter?.galaxyOrdinal;
+  const mainOffset = useMemo(() => (galaxyOrdinal === undefined ? undefined : mainOffsetOf(galaxyOrdinal)), [galaxyOrdinal]);
+  const mainSky = starter?.mainSky;
+  const universeView = universe?.view;
+  const balls = useMemo(
+    () => (universeView ? universeBalls(universeView.galaxies, universeView.mine, mainOffset ?? NO_OFFSET) : []),
+    [universeView, mainOffset],
+  );
+  const shipsAround = useMemo(() => neighbourShips(planets), [planets]);
+  const shipIds = useMemo(() => new Set(shipsAround.map(ship => ship.id)), [shipsAround]);
+  const fieldBodies = useMemo(
+    () => (mainSky && mainOffset
+      ? [...visibleBodies.filter(node => !shipIds.has(node.id)), ...mainSkyNodes(mainSky, mainOffset)]
+      : visibleBodies),
+    [mainSky, mainOffset, visibleBodies, shipIds],
+  );
+  const navigationRadius = useMemo(
+    () => aboard ? STARTER_NAVIGATION_RADIUS : monumentNavigationRadius(monuments, hpRadiation),
+    [aboard, monuments, hpRadiation],
+  );
   const home = useMemo<[number, number, number]>(
     () => activeWorldPosition(planets, activePlanetId, homePosition),
     [activePlanetId, homePosition, planets],
@@ -427,7 +479,6 @@ export function GalaxyCanvas({
     [aim?.x, aim?.y, aim?.z],
   );
 
-  const selfId = useMemo(() => planets.find((p) => p.isSelf)?.id, [planets]);
   const selectedId = focus?.kind === 'planet' ? focus.id : null;
 
   /**
@@ -592,14 +643,31 @@ export function GalaxyCanvas({
    * zoom, and a camera that only re-centres on something invisible has technically
    * obeyed and practically done nothing.
    *
-   * Only ever pulls IN, and only when the camera is further out than this. A
-   * player who has deliberately gone close keeps their framing.
+   * Each explicit focus takes this range in either direction. Large landmarks
+   * and convoys retain the larger range required to fit their complete models.
    */
-  const approach = focus === null || focus.kind === 'planet'
+  const approach = focus === null
     ? null
     : focus.kind === 'monument' ? monumentFocusDistance(monuments.find(row => row.id === focus.id)?.difficulty ?? 'LEGACY') : focus.kind === 'intergalacticConvoy'
       ? CONVOY_FOCUS_DISTANCE
       : CRAFT_DISTANCE;
+
+  const focusRadius = useMemo(() => {
+    if (!focus) return 0;
+    if (focus.kind === 'planet') return (nodes.find(node => node.id === focus.id)?.radius ?? 0) * LIMB_SCALE;
+    if (focus.kind === 'asteroid') return asteroidRadius(asteroids.find(rock => rock.id === focus.id)?.level ?? 1, scale) * 1.1;
+    if (focus.kind === 'tradeShip') return TRADE_SHIP_SCALE * Math.sqrt(3) / 2;
+    if (focus.kind === 'run') return miningFocusRadius(runs.find(run => run.id === focus.id)?.craft ?? 1) * scale;
+    if (focus.kind === 'thread') {
+      const thread = pending.find((row, index) => threadKey(row, index) === focus.key);
+      return thread ? ownFlightFocusRadius(thread) * scale : 0;
+    }
+    if (focus.kind === 'contact') {
+      const contact = contacts.find(row => row.id === focus.id);
+      return contact ? contactFocusRadius(contact) * scale : 0;
+    }
+    return 0;
+  }, [focus, nodes, asteroids, runs, pending, contacts, scale]);
 
   /**
    * WHAT IS FOCUSED, AS A STABLE STRING — and it is the fix for a camera that
@@ -755,13 +823,12 @@ export function GalaxyCanvas({
       <SpaceLighting />
 
       <Sky />
-      {!school && <Core />}
+      {!school && !aboard && <Core />}
       <BrightStars />
       <Dust />
       <Meteors shower={meteorShower} />
-      <Disc />
 
-      <OpeningWork.Provider value={openingWork}>
+      <ModelScale.Provider value={scale}><OpeningWork.Provider value={openingWork}>
       <GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
@@ -836,12 +903,14 @@ export function GalaxyCanvas({
             showRadar={showRadarReach}
           />
         )}
+        {sensors && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes}/>}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
-          nodes={visibleBodies}
+          nodes={fieldBodies}
           selectedId={selectedId}
           rivals={rivals}
           onSelect={(id) => {
+            if (isMainWorld(id)) return;
             // D56. Absent means every world, which is the game; the rehearsal
             // narrows it per beat so a step cannot be finished on the wrong world.
             if (allowFocus && !allowFocus(id)) return;
@@ -855,6 +924,14 @@ export function GalaxyCanvas({
         */}
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
+        {!starter && <StarterGlow />}
+        {starter && mainOffset && <Suspense fallback={null}>
+          <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
+          <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} />
+          <VesselField ships={shipsAround} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
+          <DepartureBeams beams={starter.beams} offset={mainOffset} />
+          <PartMarks marks={starter.parts} />
+        </Suspense>}
         {parkedShip && onOpenShip && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
@@ -906,8 +983,8 @@ export function GalaxyCanvas({
           impacts={interceptionImpacts ?? []}
           nodes={nodes}
         />
-        {!overview && <Labels
-          nodes={nodes}
+        {!overview && !universe?.open && <Labels
+          nodes={aboard ? visibleBodies : nodes}
           hpRadiation={hpRadiation}
           selectedId={selectedId}
           rivals={rivals}
@@ -923,7 +1000,7 @@ export function GalaxyCanvas({
         }} />
       </Suspense>
       </GalaxyVisualPhase>
-      </OpeningWork.Provider>
+      </OpeningWork.Provider></ModelScale.Provider>
 
       {/*
         Bloom is the difference between "lights" and "light". It is the one
@@ -976,21 +1053,29 @@ export function GalaxyCanvas({
         <CoachTap subject={subject} label={coachTap.label} onTap={coachTap.onTap} />
       )}
 
+      {universe?.open && <UniverseBalls balls={balls} main={toWorld(mainOffset ?? NO_OFFSET)} mineIsMain={universeView?.mine === null} />}
       <DevBridge />
       {openingHome && <Html position={home} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
       </Html>}
       <Rig
+        {...(mainOffset ? { mainOffset } : {})}
+        {...(universe && !school ? { universe: { ...universe, balls } } : {})}
         navigationRadius={navigationRadius}
         home={home}
         homeSignal={homeSignal}
         centerSignal={centerSignal}
+        sensors={sensors}
+        showTelescopeReach={showTelescopeReach}
+        showRadarReach={showRadarReach}
+        activePlanetId={activePlanetId ?? selfId ?? null}
         subject={subject}
         focusKey={focusKey}
         approach={reviewFocusDistance !== undefined && Number.isFinite(reviewFocusDistance)
           ? Math.max(1.2, reviewFocusDistance) : approach}
+        focusRadius={reviewFocusDistance === undefined ? focusRadius : 0}
         inspectionRadius={focus?.kind === 'planet' && focus.id === inspectionPlanetId ? nodes.find(node => node.id === inspectionPlanetId)?.radius : undefined}
-        exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}
+        exactApproach={focus !== null || coachTap !== null}
         openWide={openWide}
         wideDistance={wideDistance}
         {...(sightRadius !== undefined ? { sightRadius } : {})}
@@ -1199,7 +1284,7 @@ export function Labels({
         // CSS `translate` property; adding -50% here would apply it twice.
         const transform = `translate(${String(shiftX)}px, ${String(shiftY)}px)`;
         if (element.style.transform !== transform) element.style.transform = transform;
-        const maxWidth = `${String(Math.min(placement.detail ? 180 : 150, size.width - 16))}px`;
+        const maxWidth = `${String(Math.min(placement.detail ? PLANET_LABEL_DETAIL_MAX_WIDTH : PLANET_LABEL_MAX_WIDTH, size.width - 16))}px`;
         if (element.style.maxWidth !== maxWidth) element.style.maxWidth = maxWidth;
       }
       // `visibility` rather than `display`: drei keeps measuring the wrapper, and
@@ -1222,17 +1307,15 @@ export function Labels({
       return (
         <Html
           key={node.id}
-          position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
+          position={node.position}
           center
           zIndexRange={[10, 0]}
           style={{ pointerEvents: 'none' }}
         >
           {/*
-            THE WHOLE BLOCK SITS ABOVE THE ANCHOR. drei centres an `Html` on its
-            point, so half of a three-line label hung BELOW it — across the world's
-            own selection marker and over the top of the sphere. Translating by
-            half its own height puts its baseline on the standoff instead, which
-            is what the standoff was measured for.
+            The anchor is the planet centre. The layout places the complete
+            text column above its camera-facing icons in screen space, so orbiting
+            cannot carry the text across the planet or behind it.
           */}
           <span
             ref={labelRef(node.id)}
@@ -1269,7 +1352,7 @@ export function Labels({
             <>
             {detail && <span className="legend text-micro flex max-w-full items-center gap-2 overflow-hidden">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
-                {t(node.kind === 'CAPITAL'
+                {node.outpost ? t('starter.outpost.label', { level: node.neutralTier ?? 1 }) : t(node.kind === 'CAPITAL'
                   ? 'galaxy.kindCapital'
                   : node.kind === 'COLONY'
                     ? 'galaxy.kindColony'
@@ -1404,13 +1487,20 @@ export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen
  * mid-gesture.
  */
 function Rig({
+  mainOffset,
+  universe,
   navigationRadius,
   home,
   homeSignal,
   centerSignal,
+  sensors,
+  showTelescopeReach,
+  showRadarReach,
+  activePlanetId,
   subject,
   focusKey,
   approach: focusApproach,
+  focusRadius,
   inspectionRadius,
   exactApproach = false,
   openWide = false,
@@ -1424,11 +1514,18 @@ function Rig({
   openingWork,
   openingMark,
 }: {
+  /** Where the main galaxy stands from this ship's galaxy. Set means this is a ship. */
+  mainOffset?: Vec3;
+  universe?: { balls: readonly UniverseBall[]; open: boolean; onLimit: (at: boolean) => void; onOpen: () => void; onClose: () => void };
   navigationRadius: number;
   home: [number, number, number];
   homeSignal: number;
   /** Re-take the current subject, as a fresh selection would (E11: Space). 0 is never a request. */
   centerSignal: number;
+  sensors: readonly ReachRing[] | undefined;
+  showTelescopeReach: boolean;
+  showRadarReach: boolean;
+  activePlanetId: string | null;
   /**
    * Where the camera should be looking, read fresh each frame.
    *
@@ -1446,17 +1543,13 @@ function Rig({
    * player picks something else, and at no other time.
    */
   focusKey: string | null;
-  /** Pull the camera in to at most this distance while easing. Null leaves it. */
+  /** Requested camera distance for the selected subject. Null preserves the range. */
   approach: number | null;
+  focusRadius: number;
   inspectionRadius?: number;
   /**
-   * TAKE THE RANGE EXACTLY, RATHER THAN ONLY PULLING IN. Academy instruction.
-   *
-   * An ordinary focus is one-way on purpose: it may close on a small craft but
-   * must never shove a player back out of a view they chose. A LESSON is the other
-   * case — the owner asked for the target to be framed the same way every time,
-   * however the commander left the camera — so the coach focus is a scripted
-   * composition like the opening wide shot, and takes its distance exactly.
+   * Explicit focus and scripted overviews take their range in either direction.
+   * Other camera actions can preserve a closer view by leaving this false.
    */
   exactApproach?: boolean;
   /**
@@ -1486,7 +1579,10 @@ function Rig({
     homeDistance: openingHome && !openWide && !sightRadius ? HOME_DISTANCE : null, work: openingWork });
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
-  const approach = inspectionRadius === undefined ? focusApproach : planetInspectionDistance(inspectionRadius, size.width, size.height);
+  const aspect = size.width / Math.max(1, size.height);
+  const fittedApproach = focusApproach === null ? null
+    : Math.max(focusApproach, sightCameraDistance(focusRadius, fovForAspect(45, aspect), aspect));
+  const approach = inspectionRadius === undefined ? fittedApproach : planetInspectionDistance(inspectionRadius, size.width, size.height);
   /** Where the pivot is heading, how much ease is left, and how to frame it. */
   const ease = useRef<{
     to: THREE.Vector3;
@@ -1495,6 +1591,10 @@ function Rig({
     rangeTo: number | null;
     exactRange: boolean;
     waitForScene: boolean;
+    /** Swing the camera round to this side of the target on the way. */
+    towards?: THREE.Vector3;
+    /** Finished whatever the hand does: see `gestureTakesCamera`. */
+    held?: boolean;
   } | null>(null);
 
   /**
@@ -1531,6 +1631,56 @@ function Rig({
   /** Distinguishes initial `null` from a selection disappearing or being cleared. */
   const previousFocusKey = useRef<string | null>(null);
   const [homeX, homeY, homeZ] = home;
+  const previousSensors = useRef({ telescope: showTelescopeReach, radar: showRadarReach });
+  const [requestedRangeLimit, setRequestedRangeLimit] = useState(0);
+  const universeOpen = universe?.open === true;
+  /** Room for the universe view, kept until the flight back has landed. It must not raise the ordinary limit. */
+  const [universeRoom, setUniverseRoom] = useState(0);
+  const universeBack = useRef<{ target: THREE.Vector3; range: number; side: THREE.Vector3 } | null>(null);
+  const universeRange = useRef(0);
+  const universeLeaving = useRef(false);
+  const farBeforeUniverse = useRef(0);
+  const reportedLimit = useRef(false);
+  const onUniverseLimit = universe?.onLimit;
+  const onUniverseOpen = universe?.onOpen;
+  const onUniverseClose = universe?.onClose;
+
+  /** Pushing against the limit, a wheel or a pinch at a time. Held still for a moment, it starts over. */
+  // Where the controls themselves listen: the canvas may sit under a layer that takes the events first.
+  const gestureSource = useThree((state): HTMLElement => {
+    const connected: unknown = state.events.connected;
+    return connected instanceof HTMLElement ? connected : state.gl.domElement;
+  });
+  useEffect(() => {
+    if (!onUniverseOpen || universeOpen) return;
+    let held = 0, last = 0, spread = 0;
+    const push = (amount: number): void => {
+      const controls = ref.current;
+      if (!controls) return;
+      const now = performance.now();
+      const next = nextOverscroll(now - last > 1200 ? 0 : held, amount, controls.getDistance() >= controls.maxDistance * 0.98);
+      held = next.held;
+      last = now;
+      if (next.open) onUniverseOpen();
+    };
+    const wheel = (event: WheelEvent): void => { push(event.deltaY * OVERSCROLL_PER_WHEEL_PIXEL); };
+    const touch = (event: TouchEvent): void => {
+      const [a, b] = [event.touches[0], event.touches[1]];
+      if (!a || !b) { spread = 0; return; }
+      const now = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (spread > 0) push((spread - now) * OVERSCROLL_PER_PINCH_PIXEL);
+      spread = now;
+    };
+    const lift = (): void => { spread = 0; };
+    gestureSource.addEventListener('wheel', wheel, { passive: true });
+    gestureSource.addEventListener('touchmove', touch, { passive: true });
+    gestureSource.addEventListener('touchend', lift, { passive: true });
+    return () => {
+      gestureSource.removeEventListener('wheel', wheel);
+      gestureSource.removeEventListener('touchmove', touch);
+      gestureSource.removeEventListener('touchend', lift);
+    };
+  }, [gestureSource, universeOpen, onUniverseOpen]);
 
   const goTo = (
     x: number,
@@ -1541,6 +1691,18 @@ function Rig({
     duration = EASE,
     waitForScene = false,
   ): void => {
+    if (rangeTo !== null) {
+      // Keep explicit overviews available after clearing focus or hiding a sensor.
+      setRequestedRangeLimit(limit => Math.max(limit, rangeTo));
+      const controls = ref.current;
+      if (controls) {
+        controls.maxDistance = Math.max(controls.maxDistance, rangeTo);
+        if (controls.object instanceof THREE.PerspectiveCamera && controls.object.far < rangeTo * 2) {
+          controls.object.far = rangeTo * 2;
+          controls.object.updateProjectionMatrix();
+        }
+      }
+    }
     ease.current = {
       to: new THREE.Vector3(x, y, z),
       left: duration,
@@ -1550,6 +1712,53 @@ function Rig({
       waitForScene,
     };
     invalidate();
+  };
+
+  /** Out to the universe and back to exactly where the player was, on the camera's ordinary curve. */
+  useEffect(() => {
+    const controls = ref.current;
+    if (!controls || !universe) return;
+    const fly = (to: readonly number[], range: number, towards: THREE.Vector3): void => {
+      // The hand that opened this is usually still moving: a gesture mid-flight would strand the camera.
+      controls.enabled = false;
+      ease.current = { to: new THREE.Vector3(to[0], to[1], to[2]), left: UNIVERSE_FLIGHT, duration: UNIVERSE_FLIGHT, rangeTo: range, exactRange: true, waitForScene: false, towards, held: true };
+      invalidate();
+    };
+    if (universeOpen) {
+      const frame = universeFrame(universe.balls, mainOffset ?? NO_OFFSET, aspect);
+      universeBack.current ??= {
+        target: controls.target.clone(),
+        range: controls.getDistance(),
+        side: controls.object.position.clone().sub(controls.target).normalize(),
+      };
+      universeRange.current = frame.distance;
+      universeLeaving.current = false;
+      mode.current = 'released';
+      acquired.current = false;
+      setUniverseRoom(frame.distance * 1.05);
+      controls.maxDistance = frame.distance * 1.05;
+      if (controls.object instanceof THREE.PerspectiveCamera) {
+        farBeforeUniverse.current = Math.max(farBeforeUniverse.current, controls.object.far);
+        controls.object.far = Math.max(controls.object.far, frame.distance * 2.2);
+        controls.object.updateProjectionMatrix();
+      }
+      fly(frame.centre, frame.distance, new THREE.Vector3(...frame.direction));
+    } else if (universeBack.current) {
+      const { target, range, side } = universeBack.current;
+      universeBack.current = null;
+      universeLeaving.current = true;
+      mode.current = 'manual';
+      fly(target.toArray(), range, side);
+    }
+    // The opening frame is taken once. Refetched counts move a ball's size, never the camera.
+  }, [universeOpen]);
+
+  /** A selection or Home takes the camera while the view is open: it flies there, not back. */
+  const leaveUniverseForward = (): void => {
+    if (!universeOpen) return;
+    universeBack.current = null;
+    universeLeaving.current = true;
+    onUniverseClose?.();
   };
 
   /**
@@ -1571,6 +1780,7 @@ function Rig({
       return;
     }
 
+    leaveUniverseForward();
     mode.current = 'follow';
     acquired.current = false;
     ease.current = null;
@@ -1634,30 +1844,61 @@ function Rig({
       return;
     }
     if (homeSignal === 0) {
-      controls.target.set(homeX, homeY, homeZ);
-      controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
+      if (mainOffset) {
+        const pose = starterOpeningPose([homeX, homeY, homeZ], mainOffset);
+        controls.target.set(...pose.target);
+        controls.object.position.set(...pose.camera);
+      } else {
+        controls.target.set(homeX, homeY, homeZ);
+        controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
+      }
+      // The canvas mounts before the first read says this is a ship, so its far plane comes here.
+      if (mainOffset && controls.object instanceof THREE.PerspectiveCamera) {
+        controls.object.far = starterCameraFar(mainOffset);
+        controls.object.updateProjectionMatrix();
+      }
       controls.update();
       if (openingHome && openingSettled.current) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
       invalidate();
       return;
     }
+    leaveUniverseForward();
     goTo(homeX, homeY, homeZ, HOME_DISTANCE);
     // Primitive coordinates are deliberate. `home` is rebuilt from every live
     // galaxy refetch; depending on the tuple identity made broadcasts press Home.
-  }, [homeX, homeY, homeZ, homeSignal, openWide, wideDistance]);
+  }, [mainOffset, homeX, homeY, homeZ, homeSignal, openWide, wideDistance]);
+
+  const pendingSight = useSightRequest(sightRadius,home,openingCovered,invalidate,homeSignal);
 
   useEffect(() => {
-    if (!sightRadius) return;
-    const camera = ref.current?.object;
-    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const previous = previousSensors.current;
+    const current = { telescope: showTelescopeReach, radar: showRadarReach };
+    previousSensors.current = current;
+    const controls = ref.current;
+    if (!controls || !(controls.object instanceof THREE.PerspectiveCamera)) return;
+    const camera = controls.object;
+    const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
+    if (!frame) return;
+    // High-level Radar can exceed the ordinary whole-galaxy camera limit on a phone.
+    // Keep the expanded limit on close so hiding a sensor cannot pull the camera in.
     mode.current = 'manual';
     acquired.current = false;
-    goTo(homeX, homeY, homeZ, sightCameraDistance(sightRadius, camera.fov, camera.aspect), true);
-  }, [sightRadius]);
+    goTo(frame.centre.x, frame.centre.y, frame.centre.z, frame.distance, true);
+  }, [showTelescopeReach, showRadarReach, sensors, activePlanetId]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
     if (!controls || preparing.current) return;
+
+    if (pendingSight.current && controls.object instanceof THREE.PerspectiveCamera) {
+      const distance = starterSightDistance({radius:pendingSight.current,fov:controls.object.fov,aspect:controls.object.aspect,sceneReady:sceneReady.current,openingReady:openingSettled.current,covered:openingCovered});
+      if (distance !== null) {
+        mode.current = 'manual';
+        acquired.current = false;
+        goTo(homeX,homeY,homeZ,distance,true);
+        pendingSight.current = undefined;
+      }
+    }
 
     /**
      * KEEP UP WITH A MOVING SUBJECT.
@@ -1710,14 +1951,35 @@ function Rig({
      * The leash. Off while the rig is released, and off on the frame a subject
      * ends — see `rigAction`, which is where that rule lives and is tested.
      */
-    if (act.leash) {
+    if (act.leash && !universeOpen && universeRoom === 0) {
       const t = controls.target;
       const correction = sphericalLeashCorrection(t.x, t.y, t.z, navigationRadius);
       if (correction) goTo(correction[0], correction[1], correction[2]);
     }
 
     const move = ease.current;
-    if (!move) return;
+    if (!move) {
+      // Also when a selection took over the flight.
+      controls.enabled = true;
+      const range = controls.getDistance();
+      // Zooming well back in has left the view: nobody should have to find a button for that.
+      if (universeOpen && range < universeRange.current * UNIVERSE_CLOSE_SHARE) onUniverseClose?.();
+      if (universeLeaving.current) {
+        universeLeaving.current = false;
+        setUniverseRoom(0);
+        if (controls.object instanceof THREE.PerspectiveCamera && farBeforeUniverse.current > 0) {
+          controls.object.far = farBeforeUniverse.current;
+          controls.object.updateProjectionMatrix();
+          farBeforeUniverse.current = 0;
+        }
+      }
+      const atLimit = !universeOpen && range >= controls.maxDistance * 0.98;
+      if (atLimit !== reportedLimit.current) {
+        reportedLimit.current = atLimit;
+        onUniverseLimit?.(atLimit);
+      }
+      return;
+    }
 
     // The Rig lives outside Suspense: starting on mount spends the opening on
     // model decoding / shader compilation. Wait for the compiled scene's paint,
@@ -1741,13 +2003,13 @@ function Rig({
      * And adjust the distance, on the same curve.
      *
      * Applied along the camera's own view vector, so the angle the player chose is
-     * untouched and only the range changes. Focus is one-way: if they are already
-     * closer than the approach distance, nothing happens. A scripted overview is
-     * exact and may pull back, because the wider composition is the instruction.
+     * untouched and only the range changes. Exact focus and overview requests
+     * may pull back as well as in; Home can preserve a deliberately closer view.
      */
     if (move.rangeTo !== null) {
       const out = controls.object.position.clone().sub(controls.target);
       const range = out.length();
+      if (move.towards) out.lerp(move.towards.clone().multiplyScalar(range), Math.min(1, step));
       if (move.exactRange || range > move.rangeTo) {
         const wanted = easedCameraRange(
           range,
@@ -1766,7 +2028,7 @@ function Rig({
 
     move.left = progress.remaining;
     if (progress.done) {
-      const out = controls.object.position.clone().sub(controls.target);
+      const out = move.towards ? move.towards.clone() : controls.object.position.clone().sub(controls.target);
       controls.target.copy(move.to);
       if (move.rangeTo !== null && out.lengthSq() > 1e-10) {
         const finishedRange = finishedCameraRange(
@@ -1795,9 +2057,8 @@ function Rig({
       minPolarAngle={MIN_POLAR}
       maxPolarAngle={MAX_POLAR}
       minDistance={1.2}
-      // Far enough to see the whole disc at once, and no further — past this the
-      // galaxy is a smudge and the player has lost their bearings.
-      maxDistance={navigationRadius / 1.15 * 3}
+      // The whole galaxy, or a larger sensor sphere explicitly opened by the player.
+      maxDistance={Math.max(navigationRadius / 1.15 * 3, requestedRangeLimit, universeRoom)}
       screenSpacePanning
       mouseButtons={{
         LEFT: THREE.MOUSE.ROTATE,
@@ -1814,6 +2075,7 @@ function Rig({
        * asking; the moment they ask, the ordinary rules apply again.
        */
       onStart={() => {
+        if (!gestureTakesCamera(ease.current)) return;
         // A gesture changes the framing, not the selection. Keep translating the
         // camera with a moving focused subject after the player orbits or zooms;
         // only a missing/unfocused subject becomes genuine free-look.

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../api/context.js';
 import { keys } from '../../api/keys.js';
 import { useIntel } from '../../api/queries.js';
+import { useStarterGate } from '../../starter/gate.js';
 import { useWorld } from '../../api/world.js';
 import { serverNow } from '../../lib/clock.js';
 import { AWAY_THRESHOLD_MINUTES, shouldShowAway, sightingsOf, worldCare, type AwayDoor } from '../../lib/awayStory.js';
@@ -36,6 +37,7 @@ export function AwayHost({
   onAll,
   delayMs = 1_500,
   keepAliveMs = 5 * 60_000,
+  held = false,
 }: {
   /** A line's door; the two that name a world (a sighting's dossier, a world's repairs) carry its id. */
   onDoor: (door: AwayDoor, planetId?: string) => void;
@@ -44,8 +46,11 @@ export function AwayHost({
   delayMs?: number;
   /** How often, while the player is here, the window is moved to the present. */
   keepAliveMs?: number;
+  /** The starter tutorial is speaking: the story waits, untouched, until it is done. */
+  held?: boolean;
 }) {
   const api = useApi();
+  const gate = useStarterGate();
   const client = useQueryClient();
   /* What the Telescope sees out now, and the world with faults standing: read live, not stored (M4). */
   const watching = useIntel().data?.watching;
@@ -108,7 +113,7 @@ export function AwayHost({
     return watchAppActivity(onVisibility);
   }, [client]);
 
-  if (!telling) return null;
+  if (!telling || held) return null;
 
   const dismiss = (): void => {
     setClosed(true);
@@ -117,6 +122,7 @@ export function AwayHost({
 
   return (
     <AwaySheet
+      aboard={gate.aboard}
       story={data}
       sightings={watching ? sightingsOf(watching) : []}
       care={worldCare(worlds)}

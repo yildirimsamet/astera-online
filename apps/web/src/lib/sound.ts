@@ -1,11 +1,15 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { z } from 'zod';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
+import { SYNTH_CUES, synthesize, type SynthCue } from './synth.js';
 
-export type SoundCue = 'tap' | 'confirm' | 'alert' | 'launch' | 'cargo' | 'weapon' | 'shield' | 'impact' | 'strategic' | 'mining';
-const CUES: readonly SoundCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining'];
-const COOLDOWN: Record<SoundCue, number> = { tap: 55, confirm: 450, alert: 1400, launch: 900, cargo: 650, weapon: 240, shield: 500, impact: 500, strategic: 3000, mining: 1100 };
-const MIX: Record<SoundCue, number> = { tap: 0.55, confirm: 0.7, alert: 0.7, launch: 0.8, cargo: 0.75, weapon: 0.42, shield: 0.65, impact: 0.75, strategic: 0.9, mining: 0.55 };
+type FileCue = 'tap' | 'confirm' | 'alert' | 'launch' | 'cargo' | 'weapon' | 'shield' | 'impact' | 'strategic' | 'mining';
+export type SoundCue = FileCue | SynthCue;
+const CUES: readonly FileCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining'];
+const COOLDOWN: Record<SoundCue, number> = { tap: 55, confirm: 450, alert: 1400, launch: 900, cargo: 650, weapon: 240, shield: 500, impact: 500, strategic: 3000, mining: 1100,
+  switch: 400, ignite: 1500, weld: 300, warp: 1500, claim: 1200, crate: 600, arc: 300 };
+const MIX: Record<SoundCue, number> = { tap: 0.55, confirm: 0.7, alert: 0.7, launch: 0.8, cargo: 0.75, weapon: 0.42, shield: 0.65, impact: 0.75, strategic: 0.9, mining: 0.55,
+  switch: 0.85, ignite: 0.8, weld: 0.5, warp: 0.85, claim: 0.75, crate: 0.8, arc: 0.5 };
 const DEFAULT_VOLUME = 0.5;
 const MAX_VOICES = 6;
 const KEY = 'astera.effects.v1';
@@ -70,6 +74,13 @@ class SoundMixer {
         this.context = context;
         this.master = master;
         for (const cue of CUES) void this.load(cue, context);
+        // Drawn on the device: no fetch, ready on the very gesture that unlocked audio.
+        for (const cue of SYNTH_CUES) {
+          const samples = synthesize(cue, context.sampleRate);
+          const buffer = context.createBuffer(1, samples.length, context.sampleRate);
+          buffer.copyToChannel(samples, 0);
+          this.buffers.set(cue, buffer);
+        }
       } catch {
         if (context) void context.close().catch(() => { /* Partially constructed audio graph. */ });
         return;
@@ -78,7 +89,7 @@ class SoundMixer {
     if (this.context.state === 'suspended') void this.context.resume().catch(() => { /* Autoplay/OS policy. */ });
   };
 
-  private async load(cue: SoundCue, context: AudioContext): Promise<void> {
+  private async load(cue: FileCue, context: AudioContext): Promise<void> {
     try {
       const response = await fetch(`/assets/audio/premium/${cue}-v1.mp3`, { signal: this.abort.signal });
       if (!response.ok) return;

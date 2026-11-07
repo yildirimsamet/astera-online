@@ -56,6 +56,10 @@ export const dock = {
   clan: "クラン",
   /** The dot on Base, read aloud. */
   baseWaiting: "修理待ちの艦船があります",
+  /** A tab that has just opened, until it is first pressed. */
+  fresh: '新規',
+  /** A tab the ship has not opened yet, read aloud. */
+  locked: 'ロック中',
   /** Beside the Fleet ring: your own craft in the air. */
   airborne: "航行中：{{count}}",
   /** The count on Intel: reports you have not seen. */
@@ -173,6 +177,9 @@ export const reportScene = {
   destroyed: "{{count}}を破壊",
   hidden: "敵に残る戦力と戦場の全体像は不明です。報告書には、あなたが撃破したものだけが載ります。",
   whyDecisive: "損失の理由",
+  verdictDecisive: "防衛ユニットもシールドも残らなかった：略奪品はすべて開いていた。",
+  verdictPartial: "防衛価値の{{share}}%以上が戦闘から離れたが、防衛は残った：略奪品の一部が開いた。",
+  verdictRepelled: "戦闘から離れた防衛価値は{{share}}%未満：略奪品なし。",
   whyPartial: "なぜ部分的な勝利？",
   whyRepelled: "なぜ撃退された？",
   why: "損失の大半は{{lost}}でした。{{by}}はそれに強く、{{bring}}は{{by}}に強い艦種です。",

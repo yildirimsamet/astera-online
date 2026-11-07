@@ -14,6 +14,8 @@ export interface WorksLineProps {
   onCollect: () => void;
   /** Where a full store is raised: the Base's production. */
   onOpenBase: () => void;
+  /** Left out, aboard a colony ship that cannot use it yet. */
+  hidden?: readonly WorksResource[];
 }
 
 /**
@@ -35,7 +37,7 @@ const TONE: Record<WorksResource, { ink: string; track: string; fill: string }> 
   deuterium: { ink: 'text-v2-deut', track: 'border-v2-deut/35 bg-v2-deut/[0.06]', fill: 'bg-v2-deut/15' },
 };
 
-export function WorksLine({ state, fill, fullInMinutes, pending, onCollect, onOpenBase }: WorksLineProps) {
+export function WorksLine({ state, fill, fullInMinutes, pending, onCollect, onOpenBase, hidden = [] }: WorksLineProps) {
   const { t } = useTranslation();
   const [tip, setTip] = useState(() => {
     try { return window.localStorage.getItem('astera:works-tip-v1') !== 'seen'; }
@@ -71,12 +73,13 @@ export function WorksLine({ state, fill, fullInMinutes, pending, onCollect, onOp
       type="button"
       aria-label={name}
       data-works-line=""
+      data-guide="works"
       disabled={pending || waiting.length === 0}
       onClick={() => { dismissTip(); (state.blocked ? onOpenBase : onCollect)(); }}
       data-ripe={state.ripe ? '' : undefined}
       className={`grid h-4 w-full grid-cols-3 gap-1.5 text-left font-v2-mono text-micro tabular-nums disabled:cursor-default ${state.full && !pending ? 'animate-pulse' : ''}`}
     >
-      {WORKS_RESOURCES.map((resource) => {
+      {WORKS_RESOURCES.filter(resource => !hidden.includes(resource)).map((resource) => {
         const empty = state.each[resource] < 1;
         const warn = state.stopped.includes(resource) || state.noRoom.includes(resource);
         return (
@@ -89,7 +92,7 @@ export function WorksLine({ state, fill, fullInMinutes, pending, onCollect, onOp
         );
       })}
     </button>
-    {tip && waiting.length > 0 && <span role="note" className="pointer-events-none absolute left-0 top-full z-30 mt-0 rounded-control border border-v2-line-hi bg-v2-deep/95 px-2 py-1 text-micro text-v2-ink shadow-md"><span aria-hidden="true" className="mr-1">☝</span>{t('statusBar.works.firstTip')}</span>}
+    {tip && hidden.length === 0 && waiting.length > 0 && <span role="note" className="pointer-events-none absolute left-0 top-full z-30 mt-0 rounded-control border border-v2-line-hi bg-v2-deep/95 px-2 py-1 text-micro text-v2-ink shadow-md"><span aria-hidden="true" className="mr-1">☝</span>{t('statusBar.works.firstTip')}</span>}
     </div>
   );
 }

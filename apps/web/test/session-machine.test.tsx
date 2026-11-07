@@ -1,7 +1,7 @@
 import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
-import { StrictMode, type ReactNode } from 'react';
-import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
+import { StrictMode, useEffect, type ReactNode } from 'react';
+import { render, renderHook, waitFor, act, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
@@ -332,6 +332,27 @@ describe('the session machine', () => {
     expect(result.current.session.phase).toBe('ready');
     await waitFor(() => { expect(calls).toContain('GET /api/auth/me'); });
     expect(result.current.session.phase).toBe('ready');
+  });
+
+  /**
+   * A resumed galaxy mounts its screens before the cookie is exchanged, and their first reads went
+   * out with no token: ~16 401s per reload (player test, 2026-11-05). The exchange starts first.
+   */
+  it('starts the cookie exchange before the resumed screens read anything', async () => {
+    window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
+    const { wrapper, calls, api } = harness({ ...placed, '/api/planet': planetView() });
+    function Screen() {
+      useEffect(() => { void api.planet().catch(() => undefined); }, []);
+      return null;
+    }
+    function Shell() {
+      const { session } = useSession();
+      return session.phase === 'ready' ? <Screen /> : null;
+    }
+    render(<Shell />, { wrapper });
+    await waitFor(() => { expect(calls).toContain('GET /api/planet'); });
+    expect(calls[0]).toBe('POST /api/auth/refresh');
+    expect(calls.filter((call) => call === 'GET /api/planet')).toHaveLength(1);
   });
 
   it('removes a stale resumed galaxy if the cookie has expired', async () => {

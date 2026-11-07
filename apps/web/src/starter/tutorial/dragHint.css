@@ -1,0 +1,17 @@
+/* The first look: a hand sweeping over the ship, between two arrows. Game motion, not the OS setting. */
+.drag-hint { filter: drop-shadow(0 0 6px rgb(0 0 0 / 0.6)); }
+.drag-hint-arrow { fill: none; stroke: var(--color-v2-self); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.35; }
+.drag-hint-left { animation: drag-hint-pulse-left 2.4s ease-in-out infinite; }
+.drag-hint-right { animation: drag-hint-pulse-right 2.4s ease-in-out infinite; }
+.drag-hint-hand { animation: drag-hint-sweep 2.4s ease-in-out infinite; }
+.drag-hint-finger { fill: #f3efe6; stroke: #1b2230; stroke-width: 2.5; stroke-linejoin: round; }
+.drag-hint-touch { fill: var(--color-v2-self); opacity: 0; animation: drag-hint-touch 2.4s ease-in-out infinite; }
+
+@keyframes drag-hint-sweep {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-26px); }
+  75% { transform: translateX(26px); }
+}
+@keyframes drag-hint-pulse-left { 0%, 50%, 100% { opacity: 0.3; } 25% { opacity: 1; } }
+@keyframes drag-hint-pulse-right { 0%, 50%, 100% { opacity: 0.3; } 75% { opacity: 1; } }
+@keyframes drag-hint-touch { 0%, 100% { opacity: 0.15; } 25%, 75% { opacity: 0.45; } }

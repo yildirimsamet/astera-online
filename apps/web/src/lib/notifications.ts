@@ -1,13 +1,14 @@
 import { z } from 'zod';
-import { FAULT_KINDS } from '@astera/rules';
+import { FAULT_KINDS, STARTER, VESSEL_MODULES } from '@astera/rules';
 import { SHIP_CLASSES } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
+import { moduleName } from '../starter/moduleName.js';
 import type { NotificationView } from '../api/schemas.js';
 import { unknownSignalOutcomeSchema } from '../api/schemas.js';
 import { HULLS } from '@astera/rules';
 import { cosmeticCopy } from '../ui/cosmeticCopy.js';
 import i18n from '../i18n/index.js';
-import { hullName, monumentName, unlockCopy } from '../i18n/names.js';
+import { hullName, monumentName, researchName, unlockCopy } from '../i18n/names.js';
 import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from './battleOutcome.js';
 import { compact, decimal, full, signed } from './format.js';
 import { commanderLabel } from './identity.js';
@@ -740,7 +741,60 @@ export function notificationIdentity(notification: NotificationView): Notificati
  * Passing it rather than reading `Date.now()` in here keeps this pure and lets a
  * test place a notification either side of its own arrival.
  */
+/** What a colony ship is told. Undefined is not one of its kinds; null is one this build cannot read. */
+function describeAboard({ kind, payload }: NotificationView, now: number): string | null | undefined {
+  if (kind === 'REPAIR_DONE') {
+    const done = z.object({ module: z.enum(VESSEL_MODULES) }).safeParse(payload);
+    return done.success ? i18n.t('starter.news.repairDone', { name: moduleName(done.data.module) }) : null;
+  }
+  if (kind === 'PROBE_REPORT') {
+    const report = z.object({ targetName: z.string() }).safeParse(payload);
+    return report.success ? i18n.t('starter.news.probeReport', { name: report.data.targetName }) : null;
+  }
+  if (kind === 'PROBE_DETECTED') return i18n.t('starter.news.probeDetected');
+  if (kind === 'RADAR_WARNING') {
+    const when = z.object({ arriveAt: z.coerce.date() }).safeParse(payload);
+    if (!when.success) return null;
+    // A warning read after its moment is history: "in 0m" would read as a fleet still coming.
+    const left = (when.data.arriveAt.getTime() - now) / 60_000;
+    return left > 0 ? i18n.t('starter.news.radar', { time: duration(left) }) : i18n.t('starter.news.radarPast');
+  }
+  if (kind === 'SHIELD_WARNING') {
+    const when = z.object({ until: z.coerce.date() }).safeParse(payload);
+    if (!when.success) return null;
+    const left = (when.data.until.getTime() - now) / 60_000;
+    return left > 0 ? i18n.t('starter.news.shieldWarning', { time: duration(left) }) : i18n.t('starter.news.shieldPast');
+  }
+  if (kind === 'BATTLE_REPORT') {
+    const battle = z.object({ attacking: z.boolean(), opponent: z.string(), opponentKind: z.string().optional() }).safeParse(payload);
+    if (!battle.success) return null;
+    const name = battle.data.opponentKind === 'PIRATES' ? i18n.t('starter.reports.piratesName') : battle.data.opponent;
+    return i18n.t(battle.data.attacking ? 'starter.news.raidOver' : 'starter.news.attacked', { name });
+  }
+  if (kind === 'FLEET_HOME') {
+    const home = z.object({ part: z.boolean().default(false) }).safeParse(payload);
+    return home.success ? i18n.t(home.data.part ? 'starter.news.fleetHomePart' : 'starter.news.fleetHome') : null;
+  }
+  if (kind === 'FLEET_TURNED_BACK') return i18n.t('starter.news.turnedBack');
+  if (kind === 'YARD_DONE') {
+    const yard = z.object({ subject: z.enum(STARTER.hulls), count: z.number().int().positive() }).safeParse(payload);
+    return yard.success ? i18n.t('starter.news.yardDone', { count: yard.data.count, name: hullName(yard.data.subject) }) : null;
+  }
+  if (kind === 'RESEARCH_DONE') {
+    const lab = z.object({ subject: z.enum(STARTER.research.projects), stage: z.number().int().positive() }).safeParse(payload);
+    return lab.success ? i18n.t('starter.news.researchDone', { name: researchName(lab.data.subject), level: lab.data.stage }) : null;
+  }
+  if (kind === 'DOCK_DONE') return i18n.t('starter.news.dockDone');
+  if (kind === 'SEASON_OPEN') {
+    const season = z.object({ shardName: z.string() }).safeParse(payload);
+    return season.success ? i18n.t('starter.news.seasonOpen', { name: season.data.shardName }) : null;
+  }
+  return undefined;
+}
+
 export function describeNotification(notification: NotificationView, now: number): string | null {
+  const aboard = describeAboard(notification, now);
+  if (aboard !== undefined) return aboard;
   if (notification.kind === 'arena_ship_ready') {
     const ready = z.object({ reason: z.enum(['repair', 'service']) }).safeParse(notification.payload);
     return i18n.t(ready.success ? ready.data.reason === 'repair' ? 'notifications.arenaRepairReady' : 'notifications.arenaServiceReady' : 'notifications.arenaShipReady');

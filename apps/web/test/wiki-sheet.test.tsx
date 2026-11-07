@@ -21,6 +21,14 @@ describe('the Wiki room shares public articles', () => {
     fireEvent.click(screen.getByRole('button', { name: /English/ }));
     expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', 'Search the Wiki');
   });
+  it('leads with the articles a word names, not the ones that mention it once (player test)', () => {
+    // "savaş" matched 55 articles and Quick start stayed on top: the search looked like it did nothing.
+    render(<WikiScreen language="tr" />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'savaş' } });
+    const titles = screen.getAllByRole('link').map(link => link.textContent).filter(text => text.trim() !== '');
+    expect(titles[0]).toMatch(/savaş/iu);
+    expect(screen.getByRole('status')).toHaveTextContent('savaş');
+  });
   it('finds a ship by its permanent catalogue name in the Turkish edition', () => {
     render(<WikiScreen language="tr" />);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Dart' } });

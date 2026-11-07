@@ -6,11 +6,11 @@ export const moderation = {
     "update": "Actualiza o vuelve a abrir la aplicación para consultar las normas actuales.",
     "summary": "Antes de publicar, revisa las normas. Se prohíben el acoso, el odio, las amenazas, el contenido sexual, la información privada y el spam.",
     "agreement": "Acepto las normas de la comunidad y las condiciones de uso.",
+    "byJoining": "Al unirte, aceptas las <community>normas de la comunidad</community> y las <terms>condiciones de uso</terms>.",
     "communityLink": "Normas de la comunidad",
     "termsLink": "Condiciones de uso",
     "failed": "No se pudo confirmar tu aceptación. Inténtalo de nuevo.",
-    "accept": "Aceptar y continuar",
-    "required": "Revisa y acepta las normas de la comunidad y las condiciones de uso antes de crear tu comandante."
+    "accept": "Aceptar y continuar"
 },
   "report": "Denunciar",
   "title": "Denunciar contenido o jugador",

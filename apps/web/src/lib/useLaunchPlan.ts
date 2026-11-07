@@ -147,8 +147,10 @@ export function useLaunchPlan({
     the fuel the same way the server does, so every figure below already reads with it. A pirate
     meeting is the server's solve, so a Kılavuz reads the table solved at its speed (`escortReach`).
   */
-  const commanderShip = useCommanderShip(!lesson && !school);
-  const escort = lesson || school ? null : escortOf(commanderShip.data, serverNow());
+  // Not from a ship: the commander ship flies in the main galaxy, and this galaxy's launch names no escort.
+  const aboard = planet.vessel !== undefined;
+  const commanderShip = useCommanderShip(!lesson && !school && !aboard);
+  const escort = lesson || school || aboard ? null : escortOf(commanderShip.data, serverNow());
   const [escortWanted, setEscortWanted] = useState(false);
   const escortBonus = escortWanted && escort?.kind === 'ready' ? escort.bonuses : null;
   const pirateReach = target.kind === 'pirate' && escortBonus && escortBonus.time !== 1
@@ -169,8 +171,10 @@ export function useLaunchPlan({
    *
    * AND NOT DURING A LESSON, for the same reason: the Academy pins its leg to six seconds, so a
    * rung would offer to slow down a flight whose length the tutorial has already decided.
+   *
+   * AND NOT FROM A SHIP: this galaxy has one speed, and its launch takes no pace.
    */
-  const paces = target.kind === 'world' && !lesson && !school
+  const paces = target.kind === 'world' && !lesson && !school && !aboard
     ? allowedPaces(unpaced?.distance ?? 0, sending, mods)
     : [1 as MissionPace];
   const pace = paces.includes(wantedPace) ? wantedPace : 1;
@@ -181,8 +185,10 @@ export function useLaunchPlan({
         planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
   const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate');
-  const route = school && planned ? { ...planned, oneWayMinutes: school.legSeconds / 60, exposureMinutes: (school.legSeconds * 2 + 10) / 60 } : lesson && planned ? { ...planned,
+  const flown = school && planned ? { ...planned, oneWayMinutes: school.legSeconds / 60, exposureMinutes: (school.legSeconds * 2 + 10) / 60 } : lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
+  // A ship flies free until its fuel plant works: nothing can be asked of a resource it cannot make yet.
+  const route = flown && planet.vessel && !planet.vessel.features.includes('deuterium') ? { ...flown, fuel: 0 } : flown;
   const aim = route?.rendezvous ?? null;
   /**
    * HAND THE AIM POINT TO THE DISC, AND TAKE IT BACK ON THE WAY OUT.
@@ -412,6 +418,7 @@ export function useLaunchPlan({
     damage: selectedHealth?.selectedDamage,
     rulesetVersion: planet.rulesetVersion ?? season.data?.rulesetVersion ?? 0,
     escort: escortBonus,
+    aboard,
   });
 
   /**

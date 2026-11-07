@@ -32,8 +32,11 @@ describe('the battle simulator in the menu', () => {
     expect(tile.querySelector(`img[src="${ATMOSPHERE.simulator.src}"]`)).not.toBeNull();
     tile.focus(); fireEvent.click(tile);
     expect(await screen.findByRole('dialog', { name: 'Battle simulator' })).toHaveTextContent('Free simulator · default');
+    const dialogsOnFocus: number[] = [];
+    tile.addEventListener('focus', () => { dialogsOnFocus.push(document.querySelectorAll('[role="dialog"]').length); });
     fireEvent.click(screen.getByRole('button', { name: 'Back to menu' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(dialogsOnFocus).toEqual([0]);
     expect(tile).toHaveFocus();
     expect(onOpen).not.toHaveBeenCalled();
   });

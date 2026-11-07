@@ -94,8 +94,8 @@ export const RADAR_COLOUR = '#69e59a';
  */
 const CLOCK_WRAP = 1000;
 
-/** Owner-tuned visibility: less glass, and substantially quieter construction lines. */
-export const TELESCOPE_GLASS_OPACITY = 0.375;
+/** A more readable glass boundary, with the quiet construction lines preserved. */
+export const TELESCOPE_GLASS_OPACITY = 0.55;
 export const TELESCOPE_GRID_OPACITY = 0.15;
 
 /**

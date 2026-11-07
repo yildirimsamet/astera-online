@@ -6,11 +6,11 @@ export const moderation = {
     "update": "Update or reopen the app to review the current rules.",
     "summary": "Before posting, review our rules. Harassment, hate, threats, sexual content, private information and spam are prohibited.",
     "agreement": "I agree to the community guidelines and terms of use.",
+    "byJoining": "By joining, you accept the <community>Community guidelines</community> and <terms>Terms of use</terms>.",
     "communityLink": "Community guidelines",
     "termsLink": "Terms of use",
     "failed": "Your agreement could not be confirmed. Try again.",
-    "accept": "Accept and continue",
-    "required": "Review and accept the community guidelines and terms before creating your commander."
+    "accept": "Accept and continue"
 },
   "report": "Report",
   "title": "Report content or player",

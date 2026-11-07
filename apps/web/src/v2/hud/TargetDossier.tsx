@@ -90,6 +90,7 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
     wing,
     damage: available.damage,
     rulesetVersion: 0,
+    aboard: planet.vessel !== undefined,
   });
   const read = dossier({ target, planet, intel, reports, ownPeakCore, now });
   /*
@@ -145,7 +146,8 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
           </span>
         )}
         <span className={CHIP}>{t('dossier.page.range', { d: range })}</span>
-        <span className={CHIP}>{reach === null ? t('dossier.page.unreachable') : t('dossier.page.flight', { time: duration(reach) })}</span>
+        {/* No wing at home is all a null says here, and a ship can build one: not "out of reach". */}
+        {(reach !== null || planet.vessel === undefined) && <span className={CHIP}>{reach === null ? t('dossier.page.unreachable') : t('dossier.page.flight', { time: duration(reach) })}</span>}
         <span className={CHIP}>{t('dossier.page.known', { have: read.facts.length, total: read.facts.length + read.gaps.length })}</span>
         {tierBand && (
           <button

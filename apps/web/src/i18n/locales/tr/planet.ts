@@ -546,7 +546,7 @@ export const action = {
   statSalvage: "Hurda",
   statRoom: "Hacim",
   statFuel: "Yakıt",
-  statFuelRate: "{{value}} /1b",
+  statFuelPer: "Yakıt / 1.000 mesafe",
   statFuelNone: "—",
 } as const;
 
@@ -624,8 +624,8 @@ export const launch = {
   holdWorld_other: "{{count}} gemi gönder",
   holdPirate_one: "{{count}} gemi gönder",
   holdPirate_other: "{{count}} gemi gönder",
-  warningWorld: "Bu filo dönene kadar {{world}} gezegenindeki savunmada yer almaz. Tahmini süre: {{duration}}.",
-  warningPirate: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} gezegenindeki savunmada yer almaz. Tahmini süre: {{duration}}.",
+  warningWorld: "Bu filo dönene kadar {{world}} savunmasında yer almaz. Tahmini süre: {{duration}}.",
+  warningPirate: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} savunmasında yer almaz. Tahmini süre: {{duration}}.",
   recallNote:
     "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",
@@ -721,8 +721,8 @@ export const launch = {
   escortService: "Bakımda · {{clock}}",
   escortYarik: "Yarık'ta uçuyor",
   escortAway: "Başka bir filoya eşlik ediyor",
-  warningWorldOpen: "Bu filo dönene kadar {{world}} gezegenindeki savunmada yer almaz.",
-  warningPirateOpen: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} gezegenindeki savunmada yer almaz.",
+  warningWorldOpen: "Bu filo dönene kadar {{world}} savunmasında yer almaz.",
+  warningPirateOpen: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} savunmasında yer almaz.",
 } as const;
 
 export const transfer = {

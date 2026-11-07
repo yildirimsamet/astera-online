@@ -65,6 +65,8 @@ export function BattleSimulator({ onLeave, initialScenario, note, backLabel }: {
     const fields = document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-sim-field]');
     [...fields].find(field => invalidFields.has(field.dataset.simField ?? ''))?.focus();
   }, [error, invalidFields]);
+  // This galaxy has one battlefield, no presets and no pirates to rehearse: only its own ships and wall.
+  const here = scenario.galaxy === 'STARTER';
   const units = (key: 'attackers' | 'defenders') => scenario[key].reduce((sum, owner) => sum + fleetCount(owner.fleet), 0);
   const toSpace = (d: BattleScenario) => {
     d.environment = 'MONUMENT'; d.aegisLevel = 0; d.defenceOffline = false; d.automaticEscape = false;
@@ -98,28 +100,28 @@ export function BattleSimulator({ onLeave, initialScenario, note, backLabel }: {
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.6" /><circle cx="11" cy="8" r="1.6" /><circle cx="7" cy="12" r="1.6" /></svg>
         <span className="sim-configure-word">{t('simulator.configure')}</span>
         <span className="sim-configure-count" aria-hidden="true"><b className="is-self">{units('attackers')}</b>⚔<b className="is-enemy">{units('defenders')}</b></span></button>
-      <label>{t('simulator.battlefield')}<select aria-label={t('simulator.battlefield')} value={scenario.environment} onChange={event => { environment(event.currentTarget.value); }}>
-        <option value="PLANET">{t('simulator.planet')}</option><option value="MONUMENT">{t('simulator.space')}</option></select></label>
+      {!here && <label>{t('simulator.battlefield')}<select aria-label={t('simulator.battlefield')} value={scenario.environment} onChange={event => { environment(event.currentTarget.value); }}>
+        <option value="PLANET">{t('simulator.planet')}</option><option value="MONUMENT">{t('simulator.space')}</option></select></label>}
       <button type="button" className={`sim-primary ${dirty ? 'is-dirty' : ''}`} disabled={busy} onClick={() => { void start(scenario); }}>
         {t(busy ? 'simulator.busy' : dirty ? 'simulator.runAgain' : 'simulator.run')}<span aria-hidden>↗</span></button>
     </div>
     {error && <p className="sim-alert" role="alert">{t(`simulator.${error}`, { limit: SIMULATION_UNIT_LIMIT })}</p>}
     <div className="sim-workbench">
       <aside className={`sim-editor ${settings ? 'is-open' : ''}`} aria-label={t('simulator.settings')}>
-        <div className="sim-editor-top"><label className="sim-preset">{t('simulator.preset')}<select value={presetName} onChange={event => { preset(event.currentTarget.value); }}>
+        <div className="sim-editor-top">{!here && <label className="sim-preset">{t('simulator.preset')}<select value={presetName} onChange={event => { preset(event.currentTarget.value); }}>
           <option value="custom" disabled>{t('simulator.custom')}</option>
-          {(['balanced', 'shieldDuel', 'cargo', 'artillery'] as const).map(key => <option key={key} value={key}>{t(`simulator.${key}`)}</option>)}</select></label>
+          {(['balanced', 'shieldDuel', 'cargo', 'artillery'] as const).map(key => <option key={key} value={key}>{t(`simulator.${key}`)}</option>)}</select></label>}
           <div role="tablist">{(['attackers', 'defenders'] as const).map(id => <button key={id} type="button" role="tab" aria-selected={side === id}
           id={`sim-tab-${id}`} aria-controls={`sim-panel-${id}`} onClick={() => { setSide(id); }}>{t(id === 'attackers' ? 'simulator.attacker' : 'simulator.defender')}</button>)}</div>
           <button className="sim-close-settings" type="button" aria-label={t('simulator.close')} onClick={() => { setSettings(false); }}>×</button></div>
         <div className="sim-editor-scroll" role="tabpanel" aria-labelledby={`sim-tab-${side}`} id={`sim-panel-${side}`}>
           <SideEditor side={side} scenario={scenario} update={update} invalidFields={invalidFields} />
-          {side === 'defenders' && <label className="sim-setting">{t('simulator.pirate')}<select value={scenario.pirateLevel} onChange={event => {
+          {side === 'defenders' && !here && <label className="sim-setting">{t('simulator.pirate')}<select value={scenario.pirateLevel} onChange={event => {
             pirate(Number(event.currentTarget.value));
           }}><option value={0}>{t('simulator.noPirate')}</option>{[1, 2, 3, 4].map(level => <option key={level} value={level}>{t('simulator.pirateLevel', { level })}</option>)}</select></label>}
           <div className="sim-seed"><label>{t('simulator.seed')}<SimulationNumberInput min={0} max={0xffffffff} value={scenario.seed} onValueChange={n => { update(d => { d.seed = n; }); }} /></label>
             <button type="button" onClick={() => { const seed = crypto.getRandomValues(new Uint32Array(1))[0]!; update(d => { d.seed = seed; }); }}>{t('simulator.newSeed')}</button></div>
-          <p className="sim-caption">{t('simulator.mechanics')}</p>
+          <p className="sim-caption">{t(here ? 'starter.tempoNote' : 'simulator.mechanics')}</p>
         </div>
       </aside>
       <section className="sim-viewer">

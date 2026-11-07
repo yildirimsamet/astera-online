@@ -63,7 +63,8 @@ export function roomOf(capacity: {
       };
   return {
     hangar,
-    ground: { used: capacity.groundUsed, total: capacity.ground, full: capacity.groundUsed >= capacity.ground },
+    // A world with no ground room (a ship) has nothing to report here, not a full room.
+    ground: capacity.ground > 0 ? { used: capacity.groundUsed, total: capacity.ground, full: capacity.groundUsed >= capacity.ground } : null,
   };
 }
 

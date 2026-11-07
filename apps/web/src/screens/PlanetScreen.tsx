@@ -2724,7 +2724,7 @@ function GroundRoom({ planet }: { planet: PlanetView }) {
 
 /* ── building units ─────────────────────────────────────────── */
 
-function BuildSheet({
+export function BuildSheet({
   hull,
   planet,
   held,
@@ -3098,8 +3098,8 @@ export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
     { id: 'room', label: i18n.t('action.statRoom'), value: compact(hullBulk(hull)) },
     {
       id: 'fuel',
-      label: i18n.t('action.statFuel'),
-      value: fuel <= 0 ? i18n.t('action.statFuelNone') : i18n.t('action.statFuelRate', { value: decimal(fuel) }),
+      label: i18n.t(fuel > 0 ? 'action.statFuelPer' : 'action.statFuel'),
+      value: fuel <= 0 ? i18n.t('action.statFuelNone') : decimal(fuel),
     },
   ];
   return (

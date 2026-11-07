@@ -41,6 +41,13 @@ describe('the way home', () => {
   });
 });
 
+describe('home, aboard', () => {
+  it('flies to your ship, not to a world', () => {
+    render(<HomeChip onHome={vi.fn()} aboard />);
+    expect(screen.getByRole('button', { name: /fly to your ship/i })).toBeInTheDocument();
+  });
+});
+
 describe('the chat, in reach', () => {
   it('opens the chat and says how much is unread', async () => {
     const onOpen = vi.fn();

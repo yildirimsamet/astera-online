@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useClanBadge, useMining, useNotifications, usePending, usePlanet } from '../../api/queries.js';
-import { dockBadges, isReportSignal, type DockTab } from '../../lib/dock.js';
+import { DOCK_TABS, dockBadges, isReportSignal, type DockTab } from '../../lib/dock.js';
 import { useNow } from '../../lib/time.js';
+import { forgetFresh, gateOf, rememberFresh } from '../../starter/gate.js';
 import { Dock } from '../hud/Dock.js';
 
 /**
@@ -36,15 +38,27 @@ export function HudDock({ active, onSelect, over = false, bar = false }: {
     // for requests and unclaimed resources that its page actually shows.
     clanAttention: Math.max(0, (clan?.attentionCount ?? 0) - (clan?.clanChatUnread ?? 0)),
   });
+  const gate = gateOf(planet.data?.vessel);
+  const lockedKey = gate.lockedTabs.join(',');
+  const [fresh, setFresh] = useState<readonly DockTab[]>([]);
+  useEffect(() => {
+    if (!gate.aboard) return;
+    setFresh(rememberFresh(DOCK_TABS.filter(tab => lockedKey.split(',').includes(tab))).fresh);
+  }, [gate.aboard, lockedKey]);
 
   return (
     <Dock
       active={active}
       badges={badges}
-      onSelect={onSelect}
+      onSelect={(tab) => {
+        if (fresh.includes(tab)) { forgetFresh(tab); setFresh(current => current.filter(each => each !== tab)); }
+        onSelect(tab);
+      }}
+      fresh={fresh}
       over={over}
       bar={bar}
-      {...(clan?.available === false ? { disabled: ['clan'] } : {})}
+      locked={gate.lockedTabs}
+      {...(clan?.available === false && !planet.data?.vessel ? { disabled: ['clan'] } : {})}
     />
   );
 }

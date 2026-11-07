@@ -1,4 +1,6 @@
 import { BattleReplayAction } from '../battle-simulator/BattleReplayAction.js';
+import { useStarterGate } from '../starter/gate.js';
+import { TempoNote } from '../starter/TempoNote.js';
 import { DistributedFireRules } from '../ui/DistributedFireRules.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { useEffect, useRef, useState } from 'react';
@@ -141,6 +143,9 @@ const opponentOf = (report: OrdinaryReport): string => {
       callsign: report.pirate.callsign,
     });
   }
+  // A ship's report says what it fought; only another ship goes by its name.
+  if (report.opponentKind === 'OUTPOST') return i18n.t('starter.reports.outpost');
+  if (report.opponentKind === 'PIRATES') return i18n.t('starter.reports.pirates');
   return report.neutral ? i18n.t('reports.neutralHolder') : report.opponentName;
 };
 
@@ -633,6 +638,7 @@ function ReportSheet({
   onClose: () => void;
 } & ReportDoors) {
   const { t } = useTranslation();
+  const { aboard } = useStarterGate();
   /** "Watch" (the mock's İzle): the round by round, further down this sheet. */
   const rounds = useRef<HTMLHeadingElement>(null);
   const target = report.attacking ? report.opponentPlanetId ?? null : null;
@@ -668,11 +674,12 @@ function ReportSheet({
           opponent: opponentOf(report),
           planet: report.opponentPlanet,
         })
-        : `${t('reports.sheetTheyRaided', { opponent: opponentOf(report) })} · ${t('reports.attackedPlanet', { planet: report.yourPlanet })}`}
+        : `${t('reports.sheetTheyRaided', { opponent: opponentOf(report) })} · ${t(report.opponentKind ? 'starter.reports.attackedShip' : 'reports.attackedPlanet', { planet: report.yourPlanet })}`}
       title={verdictTitle(report)}
       onClose={onClose}
     >
       <div data-battle-report className="battle-report">
+      <div className="mb-3"><TempoNote aboard={aboard} /></div>
       <div className="mb-3"><BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} {...(report.pirate ? { pirateLevel: report.pirate.level } : {})} /></div>
       {/*
         THE SCENE FIRST (B15, the mock's "KISMİ ZAFER"): the world, the haul, both sides, one
@@ -796,7 +803,9 @@ function ReportSheet({
         {perspective === 'attacking' && whyGrade === 'REPELLED'
           ? t('reports.why.attacking.REPELLED',
               { threshold: full(COMBAT.partialThreshold * 100) })
-          : t(`reports.why.${perspective}.${whyGrade}`)}
+          : report.opponentKind && perspective === 'defending' && whyGrade === 'WALKOVER'
+            ? t('starter.reports.walkover')
+            : t(`reports.why.${perspective}.${whyGrade}`)}
       </p>
       <CombatTurningPoint report={report} />
       </section>
@@ -884,7 +893,7 @@ function ReportSheet({
         <section data-walkover className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 px-3 py-2">
           <p className="text-caption font-semibold text-v2-ink">{t('reports.walkoverHeading')}</p>
           <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
-            {t(report.attacking ? 'reports.walkoverBody' : 'reports.walkoverDefendingBody')}
+            {t(report.attacking ? 'reports.walkoverBody' : report.opponentKind ? 'starter.reports.walkoverBody' : 'reports.walkoverDefendingBody')}
           </p>
         </section>
       ) : (
@@ -1228,6 +1237,7 @@ function DefenseLineForces({ report }: { report: OrdinaryReport }) {
  */
 function Consequences({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
+  const now = useNow(60_000);
   const salvaged = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
   const lines: { key: string; tone: string; text: string }[] = [];
 
@@ -1293,7 +1303,15 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     lines.push({
       key: 'cargo',
       tone: 'text-v2-alloy',
-      text: t('reports.effects.cargoLimited'),
+      text: t(report.opponentKind ? 'starter.reports.cargoLimited' : 'reports.effects.cargoLimited'),
+    });
+  }
+  // The raid may have cost everything and still opened the door: what is left there waits for a second fleet.
+  if (report.guardDownUntil && report.guardDownUntil.getTime() > now) {
+    lines.push({
+      key: 'guard',
+      tone: 'text-v2-self',
+      text: t('starter.reports.guardDown', { time: duration((report.guardDownUntil.getTime() - now) / 60_000) }),
     });
   }
   if (salvaged > 0) {
@@ -1646,7 +1664,7 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
             </span>
           </div>
           <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
-            {t('reports.aegis.note')}
+            {t(report.opponentKind ? 'starter.reports.aegisNote' : 'reports.aegis.note')}
           </p>
           {after <= 0 ? (
             <p

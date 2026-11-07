@@ -31,6 +31,8 @@ export const community = {
     perfTab: "パフォーマンス",
     skinsTab: "スキン",
     supportersTab: "支援者",
+    starterTab: "船の銀河",
+    starter: {"ships": "船", "active": "稼働中", "dormant": "休止中", "departed": "着陸済み", "people": "プレイヤー", "crew": "サーバー操作", "spread": "修理の進捗", "galaxies": "銀河", "galaxy": "銀河 {{n}}", "open": "開放", "full": "閉鎖", "lag": "最も古い未処理イベント", "failed": "失敗イベント", "seconds": "{{n}} 秒", "none": "未処理なし", "unavailable": "船の銀河を読み込めませんでした。", "refresh": "更新"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'ゲーム内の支払いページに結び付かない支払い済みのShopier注文がここで待機します（応援カード、旧商品、金額の不一致など）。正しい司令官に付与するか、ゲーム外で処理済みなら閉じてください。',

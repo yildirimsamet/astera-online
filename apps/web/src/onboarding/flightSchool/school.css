@@ -44,7 +44,7 @@
 .school-world-label { display:block; min-width:max-content; padding:3px 7px; border:1px solid #a3aabb60; border-radius:7px; background:#0a1424db; color:#c1c9d2; font-size:11px; line-height:1.3; text-align:center; white-space:nowrap; }
 .school-world-label[data-known=true] { color:#f2dc9c; border-color:#ddc68c90; animation:school-discover .8s ease-out; }
 .school-fog-world { position:relative; display:grid; place-items:center; width:44px; height:44px; cursor:pointer; touch-action:none; }
-.school-fog-body { width:12px; height:12px; border-radius:50%; border:1px solid #98a3ad75; background:radial-gradient(circle at 32% 28%,#7a848f,#364452 40%,#141e2b 75%); box-shadow:0 0 7px 5px #8192a623,inset -4px -3px 6px #0009; filter:saturate(0) blur(.6px); }
+.school-fog-body { width:12px; height:12px; border-radius:50%; border:1px solid #98a3ad75; background:radial-gradient(circle at 32% 28%,#7a848f,#364452 40%,#141e2b 75%); box-shadow:0 0 7px 5px #8192a623,inset -4px -3px 6px #0009; filter:saturate(0); }
 .school-fog-world .school-world-label { position:absolute; bottom:38px; font-size:10px; padding:2px 5px; }
 @keyframes school-discover { from {box-shadow:0 0 0 5px #87deef70;filter:brightness(1.8)} to {box-shadow:0 0 0 0 #87deef00;filter:brightness(1)} }
 .school-look-hint { position:fixed; z-index:35; top:35%; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:12px; width:max-content; max-width:92vw; padding:5px 12px; border-radius:30px; background:#07121ed9; color:white; pointer-events:none; }

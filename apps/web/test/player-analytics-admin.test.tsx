@@ -49,3 +49,13 @@ it('includes version/source filters in report and timeline requests and resets a
   await userEvent.click(screen.getByRole('button', { name: '48 saattir görülmeyenler' }));
   expect(api.analyticsAdmin).toHaveBeenLastCalledWith(expect.objectContaining({ inactiveHours: 48 }));
 });
+
+it('shows the separate starter funnel and its step dropoff', async () => {
+  api.analyticsAdmin.mockResolvedValueOnce({ ...report, starter: { accounts: 2, sessions: 3, returnedAccounts: 1, steps: [{ scene: 'mine', accounts: 1, dropoff: 1 }], push: { asked: 1, granted: 1, denied: 0 }, crates: { accounts: 1, opened: 2 } } });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AnalyticsAdminPanel /></QueryClientProvider>);
+  expect(await screen.findByText('Starter journey')).toBeVisible();
+  expect(screen.getByText(/2 accounts · 3 sessions · 1 returned/)).toBeVisible();
+  expect(screen.getByText(/Crates: 2 opened by 1 accounts/)).toBeVisible();
+  await userEvent.click(screen.getByText('Steps and dropoff'));
+  expect(screen.getByText('mine')).toBeVisible();
+});

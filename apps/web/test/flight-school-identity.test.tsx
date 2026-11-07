@@ -13,6 +13,6 @@ describe('commander identity conversation', () => {
     expect(screen.queryByRole('textbox', { name: 'Commander name' })).not.toBeInTheDocument();
     expect(document.querySelector('input[autocomplete="username"]')).toHaveValue('Northstar');
     expect(screen.getByText('Training progress stays in the Academy.')).toBeVisible();
-    expect(screen.getByRole('checkbox')).toBeInTheDocument();
+    expect(screen.getByText(/By joining/)).toBeVisible();
   });
 });

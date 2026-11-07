@@ -85,7 +85,8 @@ describe('the matchup line', () => {
 
   it('says what each class the wing carries meets there', () => {
     const { container } = render(<MatchupLine wing={{ RAMPART: 10 }} reading={lanceMajority} />);
-    expect(container.querySelector('[data-matchup-wing]')?.textContent).toBe('Bulwark strong 50% · weak 0%');
+    // Whose ships are strong is said, not left to the order of words (player test B-02).
+    expect(container.querySelector('[data-matchup-wing]')?.textContent).toBe('Your Bulwark: strong vs 50% of their wall · weak vs 0%');
     expect(wall(container)).toContain('Your wing is single-class — its counter may be in the unread part');
   });
 });

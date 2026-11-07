@@ -14,6 +14,7 @@ import {
   repeatedFocusTap,
   rigAction,
   rigGestureState,
+  gestureTakesCamera,
   sphericalLeashCorrection,
   transferOriginForFocus,
   planetFocusSelection,
@@ -458,6 +459,22 @@ describe('what the rig does on its own', () => {
   it('only restores the boundary leash after a real user gesture', () => {
     expect(rigAction(frame({ mode: 'released' })).leash).toBe(false);
     expect(rigAction(frame({ mode: 'manual' })).leash).toBe(true);
+  });
+});
+
+/**
+ * Owner playtest 2026-11-07: past the zoom limit the universe opened, and lifting the fingers sent it
+ * back. One finger lifting first restarts the gesture for the other, and that start ended the flight.
+ */
+describe('a hand on the camera during the flight to or from the universe', () => {
+  it('leaves a held flight to finish', () => {
+    expect(gestureTakesCamera({ held: true })).toBe(false);
+  });
+
+  it('still takes an ordinary glide, or a camera at rest', () => {
+    expect(gestureTakesCamera({ held: false })).toBe(true);
+    expect(gestureTakesCamera({})).toBe(true);
+    expect(gestureTakesCamera(null)).toBe(true);
   });
 });
 

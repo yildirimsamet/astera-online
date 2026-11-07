@@ -85,7 +85,22 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
   of it — so the merchant doubles with everything else and its own multiplier is
   untouched.
 */
-export const CRAFT_SCALE = VIEW.craftScale;
+/** Owner visibility pass: double travelling craft without resizing stationary landmarks. */
+export const CRAFT_SCALE = VIEW.craftScale * 2;
+
+/**
+ * A COLONY SHIP DWARFS WHAT IT SENDS (owner playtest 2026-11-07: "orantı biraz garip"). Its length on
+ * the starter disc; the craft keep the main galaxy's size. Its node radius grows with it, so the camera
+ * frames it and an arriving craft stops short of it as they did when it was half this long.
+ */
+export const STARTER_MODEL_SCALE = 0.5;
+export const modelScale = (starter: boolean): number => starter ? STARTER_MODEL_SCALE : 1;
+export const VESSEL_LENGTH = 2.6 * STARTER_MODEL_SCALE;
+const VESSEL_RADIUS = worldRadius(1) * (VESSEL_LENGTH / 1.3);
+
+/** How big a node is drawn: a world by its Core level, a colony ship by its hull. */
+export const nodeRadius = (planet: { body?: string | undefined; coreLevel: number }, starter = false): number =>
+  planet.body === 'VESSEL' ? VESSEL_RADIUS : worldRadius(planet.coreLevel) * modelScale(starter);
 
 /**
  * EVERY MISSILE TWICE ITS FORMER SIZE. Owner, 2026-10-16: *"Tüm füzelerin modellerinin
@@ -170,6 +185,8 @@ export interface SensorReach {
 
 export interface PlanetNode {
   id: string;
+  /** A shared place in a colony ship's galaxy, not a world anyone can hold. */
+  outpost?: true;
   skin?: GalaxyPlanet['skin'];
   ringId?: string;
   name: string;
@@ -274,7 +291,7 @@ export const weightOf = worldWeight;
  */
 export const isWrecked = (node: PlanetNode): boolean => node.state.kind === 'RECOVERY';
 
-export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
+export function planetNodes(planets: readonly GalaxyPlanet[], starter = false): PlanetNode[] {
   const selfClanId = planets.find(
     (planet) => (planet.isOwned ?? planet.isSelf) && planet.clan,
   )?.clan?.id;
@@ -308,7 +325,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
     // across would be invisible, so these are sized to be READ. One step per Core
     // level since D153 — the exact level, not the tier the WORD below reads.
-    radius: worldRadius(planet.coreLevel),
+    radius: nodeRadius(planet, starter),
     weight: weightOf(planet.coreTier),
     coreTier: planet.coreTier,
     coreLevel: planet.coreLevel,
@@ -336,6 +353,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     // that arrived carrying only its claim clock has no tier to copy.
     ...(planet.neutral?.tier ? { neutralTier: planet.neutral.tier } : {}),
     ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
+    ...(planet.body === 'OUTPOST' ? { outpost: true } : {}),
     ...(planet.neutral?.claimPriorityUntil ? { claimPriorityUntil: planet.neutral.claimPriorityUntil } : {}),
     ...(planet.claimPriorityMine === true ? { claimPriorityMine: true } : {}),
   }));
@@ -1177,45 +1195,13 @@ export function intergalacticConvoyWorldPosition(
 }
 
 /**
- * How big a rock is drawn, by level.
- *
- * THE ONE PIECE OF FREE INFORMATION IN THE FIELD. Ore comes from level and nothing
- * else, so size IS value — a player sweeping the disc can tell a rock worth
- * diverting a squadron for from one that is not, without opening anything. Sized
- * generously apart because five steps nobody can distinguish encode nothing — the
- * rocks keep a three-step ladder even though worlds took a per-level ramp at D153,
- * for the same reason: a rock's grade is a category, not a gradient.
- *
- * KEPT WELL UNDER THE PLANETS, and taken down another quarter (owner call). No world
- * is drawn under 0.44, so the richest rock in the galaxy is well under two thirds of
- * the smallest world and the two can never be confused at a glance. The
- * first version topped out at 0.68 against an unnormalised model — see `model.ts`
- * — and produced rocks bigger than worlds.
- *
- * Scaled UNIFORMLY by 0.75 rather than compressed. The ladder is the information:
- * shaving more off the top than the bottom would flatten the very ratios that let
- * a player rank rocks by eye, which is the only thing this scale is for.
+ * Rock size communicates its ore grade. One uniform factor preserves the authored
+ * ladder; the 2026-11-04 visibility pass triples every grade without changing worlds.
+ * The richest rocks now rival developed planets in size, by the owner's request.
  */
-/**
- * GROWN ON THE OWNER'S REPORT, and through one factor for the same reason the
- * shrink above used one: the LADDER is the information, so every rung moves by the
- * same amount or the ranking a player does by eye stops meaning what it meant.
- *
- * DOUBLED FIRST AND THEN TAKEN BACK A QUARTER, on the owner's eye — 2 read as too
- * big beside the worlds. 1.5 is that second reading, and it is one number rather
- * than a re-typed table so the second look cost the ladder nothing.
- *
- * IT STILL CROSSES THE LINE THE DOCBLOCK ABOVE DRAWS, and that is stated rather
- * than quietly absorbed. Worlds are 0.362 / 0.675 / 1.152 and the rungs here top
- * out at 0.383, so the richest rock in the galaxy is drawn about 6% LARGER than a
- * Core-1 world — the "well under two thirds of the smallest world" clearance is
- * gone. A Core-1 world is a newcomer's and it is the one case where it matters
- * least; every world from Core 4 up still clears the largest rock comfortably.
- *
- * The dial to close it is this factor alone: below 1.42 the top rock returns under
- * the smallest world.
- */
-const ASTEROID_SCALE = 1.5;
+/** Owner visibility pass: 200% larger than the previous rock ladder. */
+const ASTEROID_VISIBILITY_SCALE = 3;
+const ASTEROID_SCALE = 1.5 * ASTEROID_VISIBILITY_SCALE;
 
 export const ASTEROID_RADIUS: Record<number, number> = {
   1: 0.075 * ASTEROID_SCALE,
@@ -1225,7 +1211,10 @@ export const ASTEROID_RADIUS: Record<number, number> = {
   5: 0.255 * ASTEROID_SCALE,
 };
 
-export const asteroidRadius = (level: number): number => ASTEROID_RADIUS[level] ?? 0.2;
+export const asteroidRadius = (level: number, scale = 1): number => (ASTEROID_RADIUS[level] ?? 0.2 * ASTEROID_VISIBILITY_SCALE) * scale;
+
+/** Visual models may shrink; the original fingertip target stays the same. */
+export const asteroidHitRadius = (level: number): number => Math.max(asteroidRadius(level) * 2.4, 0.42);
 
 /* ── colour, by what you know ───────────────────────────────── */
 

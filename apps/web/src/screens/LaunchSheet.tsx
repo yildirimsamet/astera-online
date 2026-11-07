@@ -1,3 +1,4 @@
+import { TempoNote } from '../starter/TempoNote.js';
 import { useTranslation } from 'react-i18next';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
@@ -270,7 +271,7 @@ export function LaunchSheet({
               <p className="text-micro leading-snug text-v2-ink-3">
                 {!pirate && !lesson && <span data-launch-recall>{t('launch.recallNote')} </span>}
                 {/* Fleetsave (D28): a launch is a risk to the world AND the only way to make the fleet safe. */}
-                {t('launch.fleetsave')}
+                {planet.vessel ? t('starter.launchFleetsave') : t('launch.fleetsave')}
               </p>
             </div>
           )}
@@ -319,6 +320,7 @@ export function LaunchSheet({
           two strips and the tank. The ships scroll under those, not under a paragraph.
         */}
         {!choosing && classReading && <div className="px-1"><MatchupLine wing={sending} reading={classReading} /></div>}
+        {!choosing && <div className="px-1"><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
 
         <section data-launch-fleet className="grid gap-1.5">
           {/*

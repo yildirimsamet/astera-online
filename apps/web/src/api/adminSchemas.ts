@@ -1,3 +1,4 @@
+export { starterFunnelSchema } from './analyticsAdminSchemas.js';
 import { z } from 'zod';
 import { accountDeletionRequestSchema } from './schemas.js';
 import type { CHAT_LANGUAGES } from '@astera/rules';
@@ -33,6 +34,16 @@ export const adminMuteSchema = z.object({
   duration: z.enum(['5m', '15m', '1h', '4h', '1d', 'permanent', 'remove']), expiresAt: z.coerce.date().nullable(),
 });
 export const adminMaskSchema = z.object({ masked: z.number().int().nonnegative() });
+
+/** Repair progress in quarters, so `spread[3]` is the ships close to their jump. */
+export const adminStarterSchema = z.object({
+  ships: z.object({ active: z.number(), dormant: z.number(), departed: z.number() }),
+  people: z.number(),
+  crew: z.number(),
+  spread: z.array(z.number()).length(4),
+  galaxies: z.array(z.object({ ordinal: z.number(), capacity: z.number(), seated: z.number(), open: z.boolean() })),
+  queue: z.object({ lagSeconds: z.number().nullable(), failed: z.number() }),
+});
 
 export const adminDeletionQueueSchema = z.object({
   requests: z.array(accountDeletionRequestSchema.extend({ accountId: z.string().uuid(), username: z.string(), displayName: z.string() })),

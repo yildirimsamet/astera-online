@@ -87,7 +87,6 @@ it('consumes Back while a claim is pending without replaying the submission', as
   await user.type(view.getByLabelText('Commander name'), 'NewPilot');
   await user.click(view.getByRole('button', { name: 'Continue with this name' }));
   await user.type(view.getByLabelText('Password'), 'test-password-only');
-  await user.click(view.getByRole('checkbox', { name: /I agree/ }));
   fireEvent.submit(view.getByLabelText('Password').closest('form')!);
   expect(onClaim).toHaveBeenCalledOnce();
   expect(nativeBack(view.getByRole('dialog'))).toBe(false);

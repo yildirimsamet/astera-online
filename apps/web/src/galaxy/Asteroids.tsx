@@ -1,10 +1,11 @@
+import { useModelScale } from './modelScale.js';
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { AsteroidView } from '../api/schemas.js';
 import { ASTEROID_MODELS, ISOTOPE_MODEL } from '../ui/assets.js';
-import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition } from './scene.js';
+import { asteroidHitRadius, asteroidRadius, asteroidVisualSeed, asteroidWorldPosition } from './scene.js';
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
@@ -17,9 +18,6 @@ import {
   asteroidRimColour,
   asteroidTrailColour,
 } from './asteroidSignal.js';
-
-/** No hit target smaller than this, whatever the rock. A fingertip is ~44 CSS px. */
-const MIN_TOUCH = 0.42;
 
 /** A narrow expansion of the real rock silhouette, matching the craft rim language. */
 export const ASTEROID_RIM_EXPANSION = 0.004;
@@ -125,6 +123,7 @@ function RockBucket({
   focusedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const scale = useModelScale();
   const { scene } = useGLTF(bucket.url, false);
   const mesh = useRef<THREE.InstancedMesh>(null);
   const rim = useRef<THREE.InstancedMesh>(null);
@@ -228,7 +227,7 @@ function RockBucket({
     bucket.rocks.forEach((rock, i) => {
       const seed = asteroidVisualSeed(rock.id);
       const at = asteroidWorldPosition(rock, seasonStart, now);
-      const r = asteroidRadius(rock.level);
+      const r = asteroidRadius(rock.level, scale);
 
       dummy.position.set(at[0], at[1], at[2]);
       /**
@@ -259,7 +258,7 @@ function RockBucket({
         // The hit target does not tumble — a rotating sphere is the same sphere,
         // and skipping the rotation keeps this to a translate and a scale.
         dummy.rotation.set(0, 0, 0);
-        dummy.scale.setScalar(Math.max(r * 2.4, MIN_TOUCH));
+        dummy.scale.setScalar(asteroidHitRadius(rock.level));
         dummy.updateMatrix();
         hit.setMatrixAt(i, dummy.matrix);
       }
@@ -401,6 +400,7 @@ function Tails({
   asteroids: readonly AsteroidView[];
   seasonStart: Date;
 }) {
+  const scale = useModelScale();
   const mesh = useRef<THREE.Mesh>(null);
   const grains = useRef<THREE.Points>(null);
 
@@ -486,7 +486,7 @@ function Tails({
     const sizes = new Float32Array(count);
     const alphas = new Float32Array(count);
     asteroids.forEach((rock, rockIndex) => {
-      const radius = asteroidRadius(rock.level);
+      const radius = asteroidRadius(rock.level, scale);
       for (let p = 0; p < DUST_PER_ROCK; p += 1) {
         const i = rockIndex * DUST_PER_ROCK + p;
         const back = (p + 0.6) / DUST_PER_ROCK;
@@ -567,7 +567,7 @@ function Tails({
       | undefined;
 
     asteroids.forEach((rock, i) => {
-      const half = asteroidRadius(rock.level) * TAIL_WIDTH;
+      const half = asteroidRadius(rock.level, scale) * TAIL_WIDTH;
       const span = rock.period * TAIL_FRACTION * 60_000;
 
       for (let k = 0; k < SEGMENTS; k += 1) {
@@ -604,7 +604,7 @@ function Tails({
       }
 
       if (grainPosition) {
-        const radius = asteroidRadius(rock.level);
+        const radius = asteroidRadius(rock.level, scale);
         for (let p = 0; p < DUST_PER_ROCK; p += 1) {
           const back = 0.04 + ((p + 0.6) / DUST_PER_ROCK) * 0.72;
           const at = asteroidWorldPosition(rock, seasonStart, now - span * back);

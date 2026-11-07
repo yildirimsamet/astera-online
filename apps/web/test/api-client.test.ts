@@ -253,6 +253,41 @@ describe('the API client', () => {
     expect(refreshes).toBe(1);
   });
 
+  /**
+   * A reload resumes the shell before the token is back, and every read it starts went out bare:
+   * about sixteen 401s on each reload (player test, 2026-11-05). A read with no token while the
+   * session is being restored waits for it instead.
+   */
+  it('holds a read until the session being restored is back', async () => {
+    const calls: { path: string; bearer: boolean }[] = [];
+    const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const path = pathOf(url);
+      const bearer = new Headers(init?.headers).has('authorization');
+      calls.push({ path, bearer });
+      if (path.endsWith('/api/auth/refresh')) return json(SESSION);
+      if (!bearer) return json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401);
+      return json(PLANET);
+    });
+
+    const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+    const restoring = api.restore();
+    await api.planet();
+    await restoring;
+
+    expect(calls).toEqual([{ path: '/api/auth/refresh', bearer: false }, { path: '/api/planet', bearer: true }]);
+  });
+
+  it('never holds a sign-in call behind a slow restore', async () => {
+    // A new visitor's front door asks what sign-in offers; a refresh that hangs must not hold it.
+    const fetch = vi.fn((url: string | URL | Request) => pathOf(url).endsWith('/api/auth/refresh')
+      ? new Promise<Response>(() => undefined)
+      : json({ emailSignup: true }));
+    const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+    void api.restore();
+    await api.authCapabilities().catch(() => undefined);
+    expect(fetch.mock.calls.map(([url]) => pathOf(url))).toEqual(['/api/auth/refresh', '/api/auth/capabilities']);
+  });
+
   it('gives up rather than looping when the session is genuinely gone', async () => {
     const fetch = vi.fn(() =>
       json({ error: 'BAD_SESSION', message: 'Session is invalid or expired' }, 401),

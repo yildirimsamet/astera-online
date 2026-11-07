@@ -19,9 +19,15 @@ export function WikiScreen({ language: initialLanguage = 'en' }: { language?: st
   const page = getWikiPage(path);
   if (!page) throw new Error(`Unknown Wiki screen path ${path}`);
   const words = wikiLabels[language];
-  const searchIndex = useMemo(() => wikiArticles.map(article => ({ article, text: `${article.id.replaceAll('_', ' ')} ${article.title.en} ${articleSearchText(article, language)}`.toLocaleLowerCase(language) })), [language]);
+  const searchIndex = useMemo(() => wikiArticles.map(article => ({ article,
+    title: `${article.title[language]} ${article.title.en}`.toLocaleLowerCase(language),
+    description: article.description[language].toLocaleLowerCase(language),
+    text: `${article.id.replaceAll('_', ' ')} ${article.title.en} ${articleSearchText(article, language)}`.toLocaleLowerCase(language) })), [language]);
   const terms = query.trim().toLocaleLowerCase(language).split(/\s+/).filter(Boolean);
-  const results = terms.length ? searchIndex.filter(entry => terms.every(term => entry.text.includes(term))).map(entry => entry.article) : undefined;
+  // A word in the title outranks one in the summary, which outranks a mention in the text (player test).
+  const results = terms.length ? searchIndex.filter(entry => terms.every(term => entry.text.includes(term)))
+    .map(entry => ({ entry, score: terms.reduce((sum, term) => sum + (entry.title.includes(term) ? 4 : 0) + (entry.description.includes(term) ? 2 : 0), 0) }))
+    .sort((a, b) => b.score - a.score).map(({ entry }) => entry.article) : undefined;
   const navigate = (next: string): void => { if (!getWikiPage(next)) return; if (menu.current) menu.current.open = false; setQuery(''); setTrail(current => current[current.length - 1] === next ? current : [...current, next]); };
   useLayoutEffect(() => {
     if (previousPath.current === path) return;
@@ -43,6 +49,6 @@ export function WikiScreen({ language: initialLanguage = 'en' }: { language?: st
   return <div className="wiki wiki-room" ref={container} lang={language}>
     <div className="wiki-room-tools" ref={tools}>{previous ? <button className="wiki-back" onClick={() => { setQuery(''); setTrail(current => current.slice(0, -1)); }}>← {words.back} {previousName}</button> : <span className="wiki-eyebrow">ASTERA / WIKI</span>}<div className="wiki-editions" aria-label={words.edition}>{(['en', 'tr'] as const).map(next => <button key={next} aria-pressed={language === next} onClick={() => { setLanguage(next); setTrail(current => current.map(item => { const old = getWikiPage(item); return old ? translatedWikiPath(old, next) : wikiRoot(next); })); }}>{next === 'en' ? 'English' : 'Türkçe'}</button>)}</div></div>
     <label className="wiki-search"><span>{words.search}</span><input type="search" value={query} placeholder={words.search} onChange={event => { setQuery(event.target.value); }} /></label>
-    {results ? <section className="wiki-search-results"><h1>{words.search}</h1><p role="status">{results.length ? `${results.length} ${words.articles}` : words.noResults}</p><WikiArticleList articles={results} language={language} onNavigate={navigate} /></section> : <><WikiMenu page={page} onNavigate={navigate} className="wiki-room-menu" menuRef={menu} /><div className="wiki-room-content" ref={content}><WikiBreadcrumbs page={page} onNavigate={navigate} /><WikiPublicLink page={page} /><WikiPageContent page={page} onNavigate={navigate} /></div></>}
+    {results ? <section className="wiki-search-results"><h1>{words.search}</h1><p role="status">{results.length ? `“${query.trim()}” · ${results.length} ${words.articles}` : words.noResults}</p><WikiArticleList articles={results} language={language} onNavigate={navigate} /></section> : <><WikiMenu page={page} onNavigate={navigate} className="wiki-room-menu" menuRef={menu} /><div className="wiki-room-content" ref={content}><WikiBreadcrumbs page={page} onNavigate={navigate} /><WikiPublicLink page={page} /><WikiPageContent page={page} onNavigate={navigate} /></div></>}
   </div>;
 }

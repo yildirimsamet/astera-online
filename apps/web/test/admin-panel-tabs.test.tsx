@@ -25,7 +25,8 @@ describe('the admin desk tabs', () => {
     );
     render(<Wrapper><AdminPanel /></Wrapper>);
     const tabs = screen.getAllByRole('tab').map(tab => tab.textContent);
-    expect(tabs).toHaveLength(9);
+    // Analytics (aa35d221) and the starter galaxy desk came after the seat tab went.
+    expect(tabs).toHaveLength(11);
     expect(tabs).not.toContain('Commander ship');
     expect(tabs).not.toContain('Komutan gemisi');
     expect(document.getElementById('admin-arena-tab')).toBeNull();

@@ -274,4 +274,10 @@ describe('the Repair Station from the Fleet page', () => {
     expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
     expect(onFocusWorld).not.toHaveBeenCalled();
   });
+
+  it('tells a ship with nothing in the air what a ship can fly to', () => {
+    render(<FleetPage {...props({ flights: [], aboard: true })} />);
+    expect(screen.getByText(/tap a ship, a rock or an outpost/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a world/i)).toBeNull();
+  });
 });

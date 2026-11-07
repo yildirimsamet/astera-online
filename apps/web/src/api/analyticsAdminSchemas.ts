@@ -25,7 +25,15 @@ export const playerObservationSummarySchema = z.object({
   manualRetention: z.object({ d1: retention, d3: retention, d7: retention }).default({
     d1: { mature: false, returned: null }, d3: { mature: false, returned: null }, d7: { mature: false, returned: null } }),
 });
+const nonnegativeCount = z.number().int().nonnegative();
+export const starterFunnelSchema = z.object({
+  accounts: nonnegativeCount, sessions: nonnegativeCount, returnedAccounts: nonnegativeCount,
+  steps: z.array(z.object({ scene: z.string(), accounts: nonnegativeCount, dropoff: nonnegativeCount })),
+  push: z.object({ asked: nonnegativeCount, granted: nonnegativeCount, denied: nonnegativeCount }),
+  crates: z.object({ accounts: nonnegativeCount, opened: nonnegativeCount }),
+});
 export const analyticsAdminSchema = z.object({
+  starter: starterFunnelSchema.optional(),
   measuredAt: z.coerce.date(), windowStart: z.coerce.date(), nextAfter: z.string().uuid().nullable(),
   quality: z.object({ totalAccounts: z.number(), measuredAccounts: z.number(), visits: z.number(), untrusted: z.number() }),
   landing: z.object({ visibleVisits: z.number(), playVisits: z.number(), loginVisits: z.number(), loadFailedVisits: z.number(), trainingVisits: z.number() }),

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GROUND_HULLS, HULLS, MOBILE_HULLS, PIRATE, RESEARCH_PROJECTS, fleetCount, hullTech, shipCanFight, type HullId } from '@astera/rules';
+import { GROUND_HULLS, HULLS, MOBILE_HULLS, PIRATE, RESEARCH_PROJECTS, STARTER, fleetCount, hullTech, shipCanFight, type HullId } from '@astera/rules';
 import { hullLabel, researchName } from '../i18n/names.js';
 import { HULL_ART } from '../ui/assets.js';
 import { COMBAT_RESEARCH, SIMULATION_UNIT_LIMIT, type BattleScenario, type SimulationParticipant } from './scenario.js';
@@ -13,6 +13,10 @@ export const SideEditor = memo(function SideEditor({ side, scenario, update, inv
 }) {
   const { t } = useTranslation();
   const owners = scenario[side], pirate = side === 'defenders' && scenario.pirateLevel > 0;
+  // Aboard a ship the editor offers what this galaxy has: its hulls, its two research lines, one side each.
+  const here = scenario.galaxy === 'STARTER';
+  const hullsHere = here ? STARTER.hulls : MOBILE_HULLS;
+  const researchHere = here ? COMBAT_RESEARCH.filter(id => (STARTER.research.projects as readonly string[]).includes(id)) : COMBAT_RESEARCH;
   const editOwner = (index: number, change: (owner: SimulationParticipant) => void) => { update(draft => { change(draft[side][index]!); }); };
   const rows = (owner: SimulationParticipant, index: number, hulls: readonly HullId[]) => hulls.map(hull => {
     const name = hullLabel(hull), quantity = owner.fleet[hull] ?? 0;
@@ -53,35 +57,35 @@ export const SideEditor = memo(function SideEditor({ side, scenario, update, inv
     {side === 'defenders' && scenario.environment === 'PLANET' && <fieldset className="sim-planet-settings">
       <legend>{t('simulator.ground')}</legend>
       <div className="sim-fields">
-        <label>{t('simulator.aegisLevel')}<SimulationNumberInput aria-label={t('simulator.aegisLevel')} min={0} max={20} value={scenario.aegisLevel}
+        <label>{t('simulator.aegisLevel')}<SimulationNumberInput aria-label={t('simulator.aegisLevel')} min={0} max={here ? STARTER.combat.aegisMax : 20} value={scenario.aegisLevel}
           onValueChange={n => { update(d => { d.aegisLevel = n; }); }} /></label>
         <label>{t('simulator.aegisCharge')}<SimulationNumberInput aria-label={t('simulator.aegisCharge')} min={0} max={100} integer={false} value={scenario.aegisCharge}
           onValueChange={n => { update(d => { d.aegisCharge = n; }); }} /></label>
       </div>
-      <label className="sim-check"><input type="checkbox" checked={scenario.defenceOffline} onChange={event => { const value = event.currentTarget.checked; update(d => { d.defenceOffline = value; }); }} />{t('simulator.offline')}</label>
+      {!here && <><label className="sim-check"><input type="checkbox" checked={scenario.defenceOffline} onChange={event => { const value = event.currentTarget.checked; update(d => { d.defenceOffline = value; }); }} />{t('simulator.offline')}</label>
       <label className="sim-check"><input type="checkbox" checked={scenario.automaticEscape} disabled={owners.length > 1} onChange={event => {
         const value = event.currentTarget.checked; update(d => { d.automaticEscape = value; });
       }} />{t('simulator.automaticEscape')}</label>
       {scenario.automaticEscape && <label className="sim-setting">{t('simulator.escapeFuel')}<SimulationNumberInput min={0} max={1_000_000_000} value={scenario.deuterium}
-        onValueChange={n => { update(d => { d.deuterium = n; }); }} /></label>}
+        onValueChange={n => { update(d => { d.deuterium = n; }); }} /></label>}</>}
     </fieldset>}
     {owners.map((owner, index) => <section className="sim-wing" key={owner.id}>
       <div className="sim-section-title"><h3>{t('simulator.wing', { number: index + 1 })}</h3><span>{t('simulator.total', { number: fleetCount(owner.fleet) })}</span>
         {index > 0 && <button type="button" aria-label={t('simulator.removeWing')} onClick={() => { update(d => { d[side].splice(index, 1); }); }}>×</button>}
       </div>
       {pirate ? <p className="sim-caption">{t('simulator.pirateNoResearch')}</p> : <details className="sim-research">
-        <summary><span>{t('simulator.research')}</span><small>{COMBAT_RESEARCH.map(id => owner.tech[id]).join(' · ')}</small></summary>
-        <div className="sim-fields">{COMBAT_RESEARCH.map(id => <label key={id}>{researchName(id)}
+        <summary><span>{t('simulator.research')}</span><small>{researchHere.map(id => owner.tech[id]).join(' · ')}</small></summary>
+        <div className="sim-fields">{researchHere.map(id => <label key={id}>{researchName(id)}
           <select aria-label={`${researchName(id)}${index === 0 ? '' : ` · ${t('simulator.wing', { number: index + 1 })}`}`}
             value={owner.tech[id]} onChange={event => { const value = Number(event.currentTarget.value); editOwner(index, row => { row.tech[id] = value; }); }}>
-            {Array.from({ length: RESEARCH_PROJECTS[id].maxLevel + 1 }, (_, level) => <option key={level} value={level}>{level}</option>)}
+            {Array.from({ length: (here ? STARTER.research.maxLevel : RESEARCH_PROJECTS[id].maxLevel) + 1 }, (_, level) => <option key={level} value={level}>{level}</option>)}
           </select></label>)}</div>
       </details>}
       <div className="sim-section-title"><h3>{t('simulator.ships')}</h3><button type="button" onClick={() => { editOwner(index, row => { row.fleet = {}; row.health = {}; }); }}>{t('simulator.clear')}</button></div>
-      {rows(owner, index, MOBILE_HULLS)}
-      {side === 'defenders' && index === 0 && scenario.environment === 'PLANET' && <><h3 className="sim-ground-heading">{t('simulator.ground')}</h3>{rows(owner, index, GROUND_HULLS)}</>}
+      {rows(owner, index, hullsHere)}
+      {!here && side === 'defenders' && index === 0 && scenario.environment === 'PLANET' && <><h3 className="sim-ground-heading">{t('simulator.ground')}</h3>{rows(owner, index, GROUND_HULLS)}</>}
     </section>)}
-    {owners.length < 5 && !pirate && <button type="button" className="sim-add-wing" onClick={() => { update(d => {
+    {!here && owners.length < 5 && !pirate && <button type="button" className="sim-add-wing" onClick={() => { update(d => {
       let id = 1; while (d[side].some(row => row.id === String(id))) id++;
       d[side].push({ id: String(id), fleet: {}, health: {}, tech: { SHIP_POWER: 0, SHIP_ARMOR: 0, SHIP_SHIELDS: 0, EMPLACEMENT_DOCTRINE: 0 } });
       if (side === 'defenders') d.automaticEscape = false;

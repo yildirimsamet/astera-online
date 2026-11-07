@@ -9,11 +9,20 @@ import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
 import type { AwayDoor } from '../../lib/awayStory.js';
 import type { ChatChannel } from '../../screens/ChatScreen.js';
+import { StarterGoal, StarterGoalPulse, StarterLesson } from '../../starter/tutorial/visualGoal.js';
+import { StarterAftercare } from '../../starter/tutorial/StarterAftercare.js';
+import { StarterTutorialCoach } from '../../starter/tutorial/StarterTutorialCoach.js';
+import { useGuidePreference } from '../../starter/tutorial/guidePreference.js';
+import { useStarterTutorial } from '../../starter/tutorial/useStarterTutorial.js';
 import { AwayHost } from './AwayHost.js';
 import { BellHost } from './BellHost.js';
 import { ChatHost } from './ChatHost.js';
 import { FleetHost } from './FleetHost.js';
 import { REPAIR_STATION_ITEM } from '../../lib/repairStation.js';
+import { useStarterGate } from '../../starter/gate.js';
+import { useVesselMilestones } from '../../starter/useVesselMilestones.js';
+import { tabLockLine } from '../../starter/shipCopy.js';
+import { useToast } from '../../ui/Toast.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 import { OutlineHost } from './OutlineHost.js';
@@ -89,6 +98,9 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   const [centerRequest, setCenterRequest] = useState(0);
   const [clearRequest, setClearRequest] = useState(0);
   const openSignals = useOpenSignals();
+  const gate = useStarterGate();
+  useVesselMilestones();
+  const say = useToast();
   const desk = useMedia(DESK_QUERY);
   const top = useRef<HTMLDivElement>(null);
   const [topHeight, setTopHeight] = useState<number | null>(null);
@@ -158,6 +170,13 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
 
   const active: DockTab | null = bell || chatOpen ? null : tabOfPanel(panel, fleetOpen);
 
+  /** The starter tutorial reads where the player stands: out on the galaxy, aboard, or on a page. */
+  const tutorial = useStarterTutorial(
+    bell || chatOpen || fleetOpen || nowOpen ? 'other' : panel === null ? 'galaxy' : panel === 'planet' ? 'ship' : 'other',
+  );
+  const { skipped: guideSkipped } = useGuidePreference(accountId);
+  const tutoring = !guideSkipped && tutorial?.answer.kind === 'step';
+
   /** Where each line of the return story (E10) takes the player; a world's door carries its id. */
   const openAway = (door: AwayDoor, planetId?: string): void => {
     switch (door) {
@@ -189,6 +208,12 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   };
 
   const onSelectTab = (tab: DockTab): void => {
+    // Here and not on the dock, so a keyboard shortcut meets the same lock.
+    const lock = gate.tabLock(tab);
+    if (lock) {
+      say(tabLockLine(lock));
+      return;
+    }
     setNowOpen(false);
     const action = dockAction(tab, active);
     switch (action.kind) {
@@ -205,7 +230,9 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
         setFleetOpen(true);
         return;
       case 'panel':
-        route(action.panel);
+        // The NPC sent the player to read the first probe report: Intel opens on it.
+        if (action.panel === 'intel' && tutorial?.answer.kind === 'step' && tutorial.answer.id === 'openIntel') route('intel', 'probes');
+        else route(action.panel);
         return;
     }
   };
@@ -232,6 +259,8 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   );
 
   return (
+    <StarterGoal.Provider value={tutorial?.action ?? null}>
+    <StarterLesson.Provider value={guideSkipped ? null : tutorial?.answer ?? null}>
     <div
       className="v2-shell relative z-10 flex h-dvh flex-col overflow-hidden bg-v2-void"
       {...(topHeight === null ? {} : { style: { '--v2-top-h': `${String(topHeight)}px` } as CSSProperties })}
@@ -281,8 +310,12 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
       </div>
 
       {/* E10: asked for after the galaxy is up, never before it (K5). */}
-      <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} />
-      {accountId && <RecallHost key={accountId} accountId={accountId} paused={panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen} />}
+      {/* While the tutorial speaks, nothing else may open over it: its gate would lock that sheet. */}
+      <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} held={tutoring} />
+      {accountId && <RecallHost key={accountId} accountId={accountId} paused={tutoring || panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen} />}
+      {tutorial && <StarterGoalPulse tutorial={tutorial} />}
+      {tutorial && tutoring && <StarterTutorialCoach accountId={accountId} tutorial={tutorial} />}
+      {!guideSkipped && tutorial?.vessel && <StarterAftercare key={tutorial.vessel.id} vessel={tutorial.vessel} farewelled={tutorial.farewelled === true} />}
 
       {fleetOpen && (
         <FleetHost
@@ -327,5 +360,7 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
         />
       )}
     </div>
+    </StarterLesson.Provider>
+    </StarterGoal.Provider>
   );
 }

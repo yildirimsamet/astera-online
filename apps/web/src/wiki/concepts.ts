@@ -10,22 +10,22 @@ export function topic(category: string, slug: string, title: Localized<string>, 
 
 export const conceptArticles: readonly WikiArticle[] = [
   topic('basics', 'quick-start', l('Quick start', 'Hızlı başlangıç'),
-    l("Learn how to collect resources, develop your first planet, scout a target and prepare a fleet for its first mission.", "Kaynak toplamayı, ilk gezegenini geliştirmeyi, hedefi keşfetmeyi ve filonu ilk görevine hazırlamayı öğren."),
+    l("Learn how the game starts aboard a colony ship, what your first world receives and how to prepare a fleet for its first mission.", "Oyunun koloni gemisinde nasıl başladığını, ilk dünyanın ne aldığını ve filonu ilk görevine nasıl hazırlayacağını öğren."),
     l([
       "Astera Online keeps running while you are offline. Your planets produce resources, queued orders finish and fleets continue their missions. You do not need to keep the game open for these actions to progress.",
-      "The Academy teaches the controls in a fast practice session. After joining a galaxy, select your planet and collect resources from the Works into the Store. Resources in the Works cannot pay for construction or flights.",
-      "In your first season, your account receives the starting package below once, whether you finish or skip training. Your Uplink, Telescope and Radar are already installed. Training ships, resources and progress stay in the exercise. Replaying training and joining later seasons do not grant the package again.",
+      "Every new commander starts aboard a broken [[basics.colony-ship|colony ship]] in a small starter galaxy. Repairs, mining, probes and the first battles there use the main game's rules. When the ship is ready, it jumps to a main galaxy and lands as your first world.",
+      "In your first season in a main galaxy, your world receives the starting package below once. Your Uplink, Telescope and Radar are already installed. Collect resources from the Works into the Store: resources in the Works cannot pay for construction or flights. Joining later seasons does not grant the package again.",
     ], [
       "Astera Online, oyundan çıktığında da devam eder. Gezegenlerin kaynak üretir, sıradaki işler tamamlanır ve filoların görevlerini sürdürür. Bu işlemlerin ilerlemesi için oyunu açık tutman gerekmez.",
-      "Akademi, hızlandırılmış eğitimde kontrolleri öğretir. Galaksiye katılınca kendi gezegenini seç ve kaynakları Havuzdan Depoya topla. Havuzda bekleyen kaynaklarla inşaat bedeli veya uçuş yakıtı ödenmez.",
-      "İlk sezonunda, eğitimi atlasan da tamamlasan da hesabına aşağıdaki başlangıç paketi bir kez verilir. Anten, Teleskop ve Radar kurulu gelir. Eğitimdeki gemiler, kaynaklar ve ilerleme eğitimde kalır. Eğitimi tekrar oynamak veya sonraki sezonlara katılmak paketi yenilemez.",
+      "Her yeni komutan, küçük bir başlangıç galaksisinde arızalı bir [[basics.colony-ship|koloni gemisinde]] başlar. Oradaki onarım, madencilik, sonda ve ilk savaşlar ana oyunun kurallarıyla işler. Gemi hazır olunca ana galaksiye atlar ve ilk dünyan olarak iner.",
+      "Ana galaksideki ilk sezonunda dünyana aşağıdaki başlangıç paketi bir kez verilir. Anten, Teleskop ve Radar kurulu gelir. Kaynakları Havuzdan Depoya topla: Havuzda bekleyen kaynaklarla inşaat bedeli veya uçuş yakıtı ödenmez. Sonraki sezonlara katılmak paketi yenilemez.",
     ]),
     l([
-      "Open Production to see your buildings and queues. Improve the producer for the resource you need. Raise the [[building.CORE|Command Core]] if its level blocks the upgrade you want.",
+      "In the main galaxy, open Production to see your buildings and queues. Improve the producer for the resource you need. Raise the [[building.CORE|Command Core]] if its level blocks the upgrade you want.",
       "Open Fleet to build ships. For a raid, combine armed ships with enough cargo capacity to carry loot. A raid attacks another planet to obtain resources; sending only transports does not provide combat firepower.",
       "Your first-season package provides [[satellite.UPLINK|Uplink]] and working sensors. On a world without an Uplink, install one before building Telescope or Radar. Before a raid, check protection, a recent [[intel.probes|probe report]], fuel and cargo. Review the ships left defending home and the expected return time. After the mission, read its report before repeating it.",
     ], [
-      "Binalarını ve sipariş sıralarını görmek için Üretim bölümünü aç. Eksik kaynağın üretim binasını geliştir. İstediğin yükseltmeyi seviye sınırı engelliyorsa [[building.CORE|Komuta Çekirdeğini]] yükselt.",
+      "Ana galakside binalarını ve sipariş sıralarını görmek için Üretim bölümünü aç. Eksik kaynağın üretim binasını geliştir. İstediğin yükseltmeyi seviye sınırı engelliyorsa [[building.CORE|Komuta Çekirdeğini]] yükselt.",
       "Gemi üretmek için Filo bölümünü aç. Akın için savaş gemileriyle ganimeti taşıyacak kargo kapasitesini birlikte hazırla. Akın, kaynak almak için başka gezegene yapılan saldırıdır. Yalnız nakliye gemisi göndermek savaş gücü sağlamaz.",
       "İlk sezon paketinde [[satellite.UPLINK|Anten]] ve çalışan görüş cihazların hazırdır. Anteni olmayan bir dünyada Teleskop veya Radar kurmadan önce Anten kur. Akından önce korumayı, güncel [[intel.probes|sonda raporunu]], yakıtı ve kargoyu kontrol et. Gezegeninde savunmaya kalan gemileri ve dönüş zamanını incele. Görevden sonra aynı akını tekrarlamadan önce raporunu oku.",
     ]), ['basics.loop', 'economy.collectors', 'fleet.flights']),

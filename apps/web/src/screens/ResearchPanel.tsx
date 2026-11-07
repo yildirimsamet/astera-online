@@ -4,6 +4,7 @@ import {
   BUILD,
   DEUTERIUM,
   RESEARCH_PROJECTS,
+  STARTER,
   type HullId,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -80,6 +81,7 @@ export function ResearchPanel({ onNeed, focus }: {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
+  const aboard = data?.vessel !== undefined;
   const research = useCompleteResearch();
   const say = useToast();
   const now = useNow(1000);
@@ -218,8 +220,8 @@ export function ResearchPanel({ onNeed, focus }: {
         return {
           name: t('research.holdsName'),
           tag: t('research.holdsTag'),
-          role: t('research.holdsRole'),
-          detail: t('research.holdsDetail'),
+          role: aboard ? t('starter.lab.holdsRole') : t('research.holdsRole'),
+          detail: aboard ? t('starter.lab.holdsRole') : t('research.holdsDetail'),
         };
       case 'CARGO_HOLDS':
         return {
@@ -336,8 +338,9 @@ export function ResearchPanel({ onNeed, focus }: {
       "what is happening to it right now". `queuedState` answers the second one.
     */
     if (queuedState(id) !== null) return undefined;
-    if (researchQueue.length >= BUILD.queueDepth) {
-      return { reason: t('research.queueFull') };
+    // The ship works one project at a time, and the server refuses a second one.
+    if (researchQueue.length >= (aboard ? STARTER.queues.research : BUILD.queueDepth)) {
+      return { reason: aboard ? t('starter.lab.queueFull') : t('research.queueFull') };
     }
     const queueAvailable = state.queueAvailable ?? state.available;
     if (!queueAvailable) {
@@ -423,7 +426,8 @@ export function ResearchPanel({ onNeed, focus }: {
      * Buildings, instruments and satellites all reach `UpgradeRow` with a gain;
      * research reached it with prose. See `researchGain` for what that cost.
      */
-    const gain = researchGain(id, level);
+    // A ship's ladder stops earlier than the main game's, and the ceiling it promises stops with it.
+    const gain = researchGain(id, level, planet.vessel ? maxLevel : undefined);
 
     const spec: SheetSpec = {
       id,
@@ -486,12 +490,13 @@ export function ResearchPanel({ onNeed, focus }: {
 
   return (
     <div className="flex flex-col gap-3 font-v2-ui">
-      <p className="text-caption leading-snug text-v2-ink-2">{t('research.premise')}</p>
+      <p className="text-caption leading-snug text-v2-ink-2">{aboard ? t('starter.lab.premise') : t('research.premise')}</p>
 
       <ResearchConstellation
         stars={stars}
         selected={chosen}
         onSelect={setPicked}
+        compact={aboard}
       />
       {chosenSpec && (
         <ConstellationCard
@@ -521,7 +526,7 @@ export function ResearchPanel({ onNeed, focus }: {
         cancelled, so a cell selects its project on the map instead of opening a sheet.
       */}
       <section aria-label={t('research.queueTitle')} className="flex flex-col gap-1.5">
-        <QueueLane label={t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} />
+        <QueueLane label={aboard ? t('starter.lab.queue') : t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} slots={aboard ? STARTER.queues.research : BUILD.queueDepth} />
         {running?.finishesAt ? (
           <p data-research-running className="text-micro leading-snug text-v2-ink-2">
             <span className="text-v2-self">{t('research.runningLabel')}</span>
@@ -536,10 +541,10 @@ export function ResearchPanel({ onNeed, focus }: {
           <p data-research-idle className="text-micro leading-snug text-v2-ink-2">
             <span className="text-v2-ink">{t('research.idleLabel')}</span>
             {' · '}
-            {t('research.idleHint')}
+            {aboard ? t('starter.lab.idleHint') : t('research.idleHint')}
           </p>
         )}
-        <p className="text-micro leading-snug text-v2-ink-3">{t('research.queueGlobalHint')}</p>
+        <p className="text-micro leading-snug text-v2-ink-3">{aboard ? t('starter.lab.queueHint') : t('research.queueGlobalHint')}</p>
       </section>
 
       {sheet && (

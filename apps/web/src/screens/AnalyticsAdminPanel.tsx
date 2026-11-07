@@ -9,7 +9,7 @@ import { analyticsAdminQuerySchema, type AnalyticsFilters } from '../api/analyti
 
 /** Internal operator surface. Missing permission/coverage is never represented as zero play. */
 export function AnalyticsAdminPanel() {
-  const api = useApi(), { i18n } = useTranslation();
+  const api = useApi(), { i18n, t } = useTranslation();
   const [inactiveHours, setInactiveHours] = useState<0 | 24 | 48 | 72>(24);
   const [filters, setFilters] = useState<AnalyticsFilters & { username?: string }>({});
   const [draft, setDraft] = useState({ build: '', source: '', platform: '', locale: '', trainingVersion: '', username: '' });
@@ -56,9 +56,9 @@ export function AnalyticsAdminPanel() {
       }}>
         {([['build', 'İstemci sürümü'], ['trainingVersion', 'Eğitim sürümü'], ['source', 'Kampanya kaynağı'],
           ['locale', 'Dil kodu'], ['username', 'Hesap adı']] as const).map(([key, label]) => <label key={key} className="min-w-0 text-micro text-v2-ink-2">{label}
-          <input className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-bg px-2 text-label" maxLength={128} value={draft[key]}
+          <input className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" maxLength={128} value={draft[key]}
             onChange={event => { setDraft(previous => ({ ...previous, [key]: event.target.value })); }} /></label>)}
-        <label className="min-w-0 text-micro text-v2-ink-2">Platform<select className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-bg px-2 text-label" value={draft.platform}
+        <label className="min-w-0 text-micro text-v2-ink-2">Platform<select className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" value={draft.platform}
           onChange={event => { setDraft(previous => ({ ...previous, platform: event.target.value })); }}><option value="">Tümü</option><option value="web">Web</option><option value="android">Android</option><option value="ios">iOS</option></select></label>
         <Button type="submit">Filtrele</Button><Button onClick={() => { setDraft({ build: '', source: '', platform: '', locale: '', trainingVersion: '', username: '' }); setFilters({}); setAfter(undefined); setSelected(null); setFilterError(false); }}>Temizle</Button>
         {filterError && <p role="alert" className="col-span-2 text-label text-v2-warn">Sürüm ve dil için yalnız harf, sayı, nokta, tire veya alt çizgi kullan.</p>}
@@ -81,6 +81,14 @@ export function AnalyticsAdminPanel() {
           {cohort.retention && <p className="text-micro text-v2-ink-3">İlk gözlenen hazır ziyaret: {cohort.anchorAccounts} hesap. D1 / D3 / D7: {[cohort.retention.d1, cohort.retention.d3, cohort.retention.d7].map(window => `${window.returned}/${window.mature} değerlendirilebilir, ${window.pending} bekliyor`).join(' · ')}</p>}
         </div>)}{report.data.cohortsTruncated && <p className="text-micro text-v2-warn">En çok ziyaret alan 50 kesit gösteriliyor.</p>}
       </details>
+      {report.data.starter && <Section label={t('starter.funnel.title')}><div data-starter-funnel className="space-y-2 text-caption text-v2-ink-2">
+        <p>{t('starter.funnel.sessions', { accounts: report.data.starter.accounts, sessions: report.data.starter.sessions, returned: report.data.starter.returnedAccounts })}</p>
+        <p>{t('starter.funnel.push', report.data.starter.push)}</p>
+        <p>{t('starter.funnel.crates', report.data.starter.crates)}</p>
+        <details><summary className="min-h-9 cursor-pointer">{t('starter.funnel.steps')}</summary>
+          {report.data.starter.steps.map(step => <p key={step.scene} className="flex justify-between gap-2 border-t border-v2-line py-1"><code>{step.scene}</code><span>{t('starter.funnel.dropoff', step)}</span></p>)}
+        </details>
+      </div></Section>}
       <Section label="Oyuncular"><div className="space-y-2">{report.data.players.map(player => <article key={player.accountId} className="rounded-control border border-v2-line bg-v2-panel p-3">
         <button type="button" className="min-h-11 w-full text-left text-caption font-semibold text-v2-self" aria-expanded={selected === player.accountId}
           onClick={() => { setSelected(selected === player.accountId ? null : player.accountId); }}>{player.username}</button>

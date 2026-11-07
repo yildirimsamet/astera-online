@@ -6,7 +6,8 @@ import { ALL_HULLS, HULLS, counteredBy, type CombatClass, type Fleet, type HullI
  * The class the reader lost the most of, what is strong against it, and what is strong
  * against that. A statement of the counter cycle, never a claim about the other side's
  * fleet — the report does not carry it (rule 15), so the sentence cannot say "their
- * Lances" and stays true either way. Null when nothing that fights was lost.
+ * Lances" and stays true either way. Null when nothing that fights was lost, or no class was
+ * lost more than every other.
  */
 export function lossReason(losses: Fleet): { lost: CombatClass; by: CombatClass; bring: CombatClass } | null {
   const byClass = new Map<CombatClass, number>();
@@ -16,11 +17,12 @@ export function lossReason(losses: Fleet): { lost: CombatClass; by: CombatClass;
     if (count <= 0 || cls === 'SUPPORT') continue;
     byClass.set(cls, (byClass.get(cls) ?? 0) + count);
   }
-  let lost: CombatClass | null = null;
-  for (const [cls, count] of byClass) {
-    if (lost === null || count > (byClass.get(lost) ?? 0)) lost = cls;
-  }
-  if (lost === null) return null;
+  const most = Math.max(0, ...byClass.values());
+  const leaders = [...byClass].filter(([, count]) => count === most);
+  // A tie has no "most": one Dart and one Pike lost read as "mostly Skirmishers" (player test).
+  const [leader, ...tied] = leaders;
+  if (!leader || tied.length > 0) return null;
+  const lost = leader[0];
   const by = counteredBy(lost);
   return { lost, by, bring: counteredBy(by) };
 }

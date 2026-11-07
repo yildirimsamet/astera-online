@@ -11,6 +11,7 @@ vi.mock('../../src/session/useSession.js', () => ({ useSession: vi.fn(() => ({
   session: { phase: 'ready', me: { displayName: 'Pilot', isAdmin: false, latestResult: null } },
   rollover: vi.fn(), signOut: vi.fn(),
 })) }));
+vi.mock('../../src/starter/ArrivalHost.js', () => ({ ArrivalHost: () => null }));
 vi.mock('../../src/session/useEventStream.js', () => ({ useEventStream: vi.fn() }));
 vi.mock('../../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: vi.fn() }));
 vi.mock('../../src/api/context.js', () => ({ useApi: () => ({ accessToken: null, restore: () => Promise.resolve(false) }) }));

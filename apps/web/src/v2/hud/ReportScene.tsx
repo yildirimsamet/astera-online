@@ -1,7 +1,7 @@
 import { BattleRetreatNote } from '../../ui/BattleRetreatNote.js';
 import { ordinaryBattleOutcome } from '../../lib/battleOutcome.js';
 import { useTranslation } from 'react-i18next';
-import { FAULT, HULLS } from '@astera/rules';
+import { COMBAT, FAULT, HULLS, vesselHull } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
 import { serverNow } from '../../lib/clock.js';
@@ -11,6 +11,7 @@ import { damagePct } from '../../lib/repairStation.js';
 import { dayClock } from '../../lib/time.js';
 import { rivalColour } from '../../galaxy/PlanetField.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
+import { heroArt } from '../../starter/shipScreen.js';
 import { Icon } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { HonorBattleSummary } from '../../ui/HonorBattleSummary.js';
@@ -36,6 +37,13 @@ export interface ReportSceneProps {
   /** Tell the clan: a line for the clan chat, which the reader sends themselves (the mock's "Klana"). */
   onShare?: (line: string) => void;
 }
+
+/** Why the raid was graded so, from the rule that grades it (player test C-03). */
+const VERDICT = {
+  DECISIVE: 'reportScene.verdictDecisive',
+  PARTIAL: 'reportScene.verdictPartial',
+  REPELLED: 'reportScene.verdictRepelled',
+} as const;
 
 /** The question the word raises (the mock's "Neden kısmi?"); a clean win's losses have their own. */
 const WHY_HEADING = {
@@ -100,6 +108,16 @@ function Side({
       {note && <p className="text-micro leading-snug text-v2-ink-3">{note}</p>}
     </div>
   );
+}
+
+/**
+ * Where it happened. Aboard (player test I-04), a fight at a ship shows that ship, drawn unread as the
+ * galaxy draws one; an outpost and the main game keep the world's picture.
+ */
+function heroSrc(report: BattleReport): string {
+  const ship = report.opponentKind === undefined ? null
+    : report.attacking ? (report.opponentKind === 'SHIP' ? report.opponentPlanetId : null) : report.yourPlanetId;
+  return ship ? heroArt(vesselHull(ship), 'WRECKED') : planetArt(report.opponentPlanetId ?? report.opponentPlanet);
 }
 
 /**
@@ -176,7 +194,7 @@ export function ReportScene({
       */}
       <div data-report-hero className="relative -mx-3 -mt-1 overflow-hidden px-3 pb-1 pt-14">
         <img
-          src={planetArt(report.opponentPlanetId ?? report.opponentPlanet)}
+          src={heroSrc(report)}
           alt=""
           aria-hidden
           className="pointer-events-none absolute -right-14 -top-12 size-52 rounded-full object-cover opacity-90 [mask-image:radial-gradient(circle_at_40%_60%,black_55%,transparent_75%)]"
@@ -194,6 +212,15 @@ export function ReportScene({
               {word}
             </h2>
           )}
+          {/* The word's reason and its price, at its side rather than far below (player test C-03, I-03). */}
+          {report.attacking && (
+            <p data-report-verdict className="text-caption leading-snug text-v2-ink">
+              {t(VERDICT[report.grade], { share: Math.round(COMBAT.partialThreshold * 100) })}
+              {lost.length > 0 && (
+                <>{' '}<span data-report-verdict-lost className="font-semibold text-v2-hostile">{t('reportScene.balanceLost', { list: lost.join(', ') })}</span></>
+              )}
+            </p>
+          )}
           <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-v2-ink-2">
             <span className="shrink-0">
               {[
@@ -209,7 +236,7 @@ export function ReportScene({
               className="max-w-[7rem] shrink-0 truncate rounded-chip border border-v2-line px-1 text-micro font-semibold text-v2-ink-2"
               {...(rivalSlot === null ? {} : { style: { color: rivalColour(rivalSlot), borderColor: rivalColour(rivalSlot) } })}
             >
-              {report.opponentName}
+              {report.opponentKind === 'PIRATES' ? t('starter.reports.piratesName') : report.opponentName}
             </span>
             {report.opponentPlanet !== '' && (report.opponentPlanetId && onFocusPlanet ? (
               <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="min-w-0 truncate font-semibold text-v2-self underline decoration-v2-self/50 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
@@ -241,7 +268,7 @@ export function ReportScene({
         />
         <Side
           side="theirs"
-          title={report.opponentName}
+          title={report.opponentKind === 'PIRATES' ? t('starter.reports.piratesName') : report.opponentName}
           {...(rivalSlot === null ? {} : { colour: rivalColour(rivalSlot) })}
           figure={report.attacking
             ? t('reportScene.destroyed', { count: sum(theirs, 'lost') })
@@ -272,7 +299,7 @@ export function ReportScene({
               </li>
             ))}
           </ul>
-          {report.attacking && <p className="mt-0.5 text-micro leading-snug text-v2-ink-3">{t('reportScene.landing')}</p>}
+          {report.attacking && <p className="mt-0.5 text-micro leading-snug text-v2-ink-3">{t(report.opponentKind ? 'starter.reports.landing' : 'reportScene.landing')}</p>}
         </div>
       )}
 

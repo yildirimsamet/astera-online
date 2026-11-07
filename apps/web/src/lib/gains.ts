@@ -478,8 +478,8 @@ export function satelliteGain(id: SatelliteId): Gain {
  * so a change to `RESEARCH_TECH` moves this display with it and cannot leave a
  * stale number on a decision surface.
  */
-export function researchGain(id: ResearchProjectId, level: number): Gain {
-  const max = RESEARCH_MAX_LEVEL[id];
+export function researchGain(id: ResearchProjectId, level: number, top: number = RESEARCH_MAX_LEVEL[id]): Gain {
+  const max = top;
   const next = level + 1;
   const maxed = level >= max;
   /** The rung whose value is worth showing: the one on offer, or the last held. */

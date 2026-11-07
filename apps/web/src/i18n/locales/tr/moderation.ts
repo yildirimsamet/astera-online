@@ -6,11 +6,11 @@ export const moderation = {
     "update": "Güncel kuralları incelemek için uygulamayı güncelle veya yeniden aç.",
     "summary": "Paylaşım yapmadan önce kuralları incele. Taciz, nefret, tehdit, cinsel içerik, özel bilgilerin paylaşımı ve spam yasaktır.",
     "agreement": "Topluluk kurallarını ve kullanım koşullarını kabul ediyorum.",
+    "byJoining": "Katılarak <community>Topluluk kurallarını</community> ve <terms>Kullanım koşullarını</terms> kabul etmiş olursun.",
     "communityLink": "Topluluk kuralları",
     "termsLink": "Kullanım koşulları",
     "failed": "Kabulün doğrulanamadı. Tekrar dene.",
-    "accept": "Kabul et ve devam et",
-    "required": "Komutanını oluşturmadan önce topluluk kurallarını ve kullanım koşullarını inceleyip kabul et."
+    "accept": "Kabul et ve devam et"
 },
   "report": "Bildir",
   "title": "İçerik veya oyuncu bildir",

@@ -118,4 +118,14 @@ describe('the works line', () => {
     expect(all.onOpenBase).toHaveBeenCalledTimes(1);
     expect(all.onCollect).not.toHaveBeenCalled();
   });
+
+  it('leaves the lesson to the ship while the ship is still opening resources: it says this itself', () => {
+    window.localStorage.removeItem('astera:works-tip-v1');
+    const { unmount } = render(<WorksLine {...props({ alloy: 400, crystal: 0, deuterium: 0 })} hidden={['deuterium']} />);
+    expect(screen.queryByRole('note')).toBeNull();
+    unmount();
+    window.localStorage.removeItem('astera:works-tip-v1');
+    render(<WorksLine {...props({ alloy: 400, crystal: 0, deuterium: 0 })} />);
+    expect(screen.getByRole('note')).toBeTruthy();
+  });
 });

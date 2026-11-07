@@ -8,6 +8,7 @@ import {
   type SatelliteId,
 } from '@astera/rules';
 import type { BuildOrderView, ResearchQueueOrderView } from '../api/schemas.js';
+import { shipOnlyModule } from '../starter/shipCopy.js';
 import i18n from '../i18n/index.js';
 import {
   buildingName,
@@ -39,8 +40,10 @@ import {
  */
 export function buildOrderLabel(order: BuildOrderView): string {
   switch (order.kind) {
-    case 'BUILDING':
-      return buildingName(order.subject as BuildingId);
+    case 'BUILDING': {
+      const shipOnly = shipOnlyModule(order.subject);
+      return shipOnly ? i18n.t(`starter.module.${shipOnly}`) : buildingName(order.subject as BuildingId);
+    }
     case 'HULL':
       return hullLabel(order.subject as HullId);
     case 'INSTRUMENT':

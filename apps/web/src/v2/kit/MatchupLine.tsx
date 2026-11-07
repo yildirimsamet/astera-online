@@ -109,8 +109,8 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
             join={join}
             parts={matchups.rows.map((row) => (
               <Named cls={row.cls} tone="text-v2-ink-2">
-                {combatClassLabel(row.cls)}{' '}
                 {t('counter.matchupExposure', {
+                  class: combatClassLabel(row.cls),
                   strong: share(row.strongShare, row.strongHigh),
                   weak: share(row.weakShare, row.weakHigh),
                 })}

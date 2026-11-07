@@ -1,13 +1,13 @@
 import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
 import { refreshQueries } from '../api/refreshQueries.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
-import { ApiError } from '../api/client.js';
+import { ApiError, type Api } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
 import { keys } from '../api/keys.js';
 import { meSchema, type ClaimIntent, type ClaimResult, type Me, type Preview } from '../api/schemas.js';
-import type { CountryCode } from '@astera/rules';
+import type { CountryCode, VesselHull } from '@astera/rules';
 import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
 import { consumeTrainingIntent, dismissFirstVisitTraining, wantsFirstVisitTraining } from '../lib/firstVisit.js';
@@ -17,6 +17,8 @@ import { clearLocalAlerts } from '../platform/localNotifications.js';
 import { disconnectPush } from '../platform/push.js';
 import { isAppActive, isAppActivityKnown, watchAppActivity } from '../platform/activity.js';
 import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
+import { setStarterMode } from '../starter/transport.js';
+import { vesselToPlanetView } from '../starter/adapter.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -49,6 +51,18 @@ export type Session =
 
 const READY_SESSION_KEY = 'astera:ready-session';
 
+/**
+ * WHERE A SIGNED-IN COMMANDER STANDS, which a planet decides first and a ship otherwise. Turns the
+ * transport to match, so that it is right before the first read of the session goes out. The ship's
+ * name stands where a planet's would, and the shard is the ship's galaxy (plan §5.7).
+ */
+function standingOf(me: Me): Standing | null {
+  setStarterMode(me.placement === null && Boolean(me.vessel));
+  if (me.placement) return { shard: me.placement.shard, shardName: me.placement.shardName, planetName: me.placement.planetName };
+  if (me.vessel) return { shard: me.vessel.starterGalaxyId, shardName: '', planetName: me.vessel.name };
+  return null;
+}
+
 function rememberReady(me: Me): void {
   try { window.sessionStorage.setItem(READY_SESSION_KEY, JSON.stringify(me)); } catch { /* Storage may be disabled. */ }
 }
@@ -62,21 +76,26 @@ function readReady(): Session {
     const stored = window.sessionStorage.getItem(READY_SESSION_KEY);
     if (stored) {
       const parsed = meSchema.safeParse(JSON.parse(stored));
-      if (parsed.success && parsed.data.placement) {
-        const me = parsed.data;
-        const placement = parsed.data.placement;
-        return {
-          phase: 'ready', me,
-          standing: {
-            shard: placement.shard,
-            shardName: placement.shardName,
-            planetName: placement.planetName,
-          },
-        };
-      }
+      const standing = parsed.success ? standingOf(parsed.data) : null;
+      if (parsed.success && standing) return { phase: 'ready', me: parsed.data, standing };
     }
   } catch { /* A corrupt or unavailable store is simply a cold start. */ }
   return { phase: 'starting' };
+}
+
+/**
+ * A NEW ACCOUNT BOARDS WITHOUT BEING ASKED: a ship is where the game starts for them. A refusal means
+ * the door closed since `/me` was read, so they carry on to the galaxy list, which is what `/me`
+ * would now say. A failure of the server is not an answer, and goes to the caller to report.
+ */
+async function takeShip(api: Api, me: Me): Promise<Me> {
+  try {
+    await api.enlistVessel();
+    return await api.me();
+  } catch (err) {
+    if (err instanceof ApiError && err.status < 500) return { ...me, starterEligible: false };
+    throw err;
+  }
 }
 
 /**
@@ -124,10 +143,11 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
   const coldPromise = useRef<Promise<void> | null>(null);
   const coldFlight = useRef<{ revision: number; canQueue: boolean; requested: boolean } | null>(null);
   useEffect(() => { currentSession.current = session; }, [session]);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useLayoutEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => api.onSessionEnded((reason, loginEmail) => {
     revision.current++;
     forgetReady();
+    setStarterMode(false);
     queries.clear();
     setResumed(false);
     setSession({ phase: 'landing', open: 'login', securityNotice: reason, ...(loginEmail ? { loginEmail } : {}) });
@@ -145,9 +165,9 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
    * the single worst bug this screen could have.
    */
   const settle = useCallback(
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async (me: Me): Promise<void> => {
+    async (arrived: Me): Promise<void> => {
       queries.clear();
+      const me = arrived.starterEligible ? await takeShip(api, arrived) : arrived;
       /**
        * THE DEVICE NOW KNOWS SOMEBODY HAS A COMMANDER HERE. Owner-reported bug.
        *
@@ -159,22 +179,15 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
        * planet in a different galaxy. See `lib/returning.ts`.
        */
       rememberCommander();
-      if (!me.placement) {
+      const standing = standingOf(me);
+      if (!standing) {
         forgetReady();
         setResumed(false);
         setSession({ phase: 'servers', me });
         return;
       }
       rememberReady(me);
-      setSession({
-        phase: 'ready',
-        me,
-        standing: {
-          shard: me.placement.shard,
-          shardName: me.placement.shardName,
-          planetName: me.placement.planetName,
-        },
-      });
+      setSession({ phase: 'ready', me, standing });
     },
     [api, queries],
   );
@@ -194,6 +207,7 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
         if (!restored) {
           queries.clear();
           forgetReady();
+          setStarterMode(false);
           setResumed(false);
           setSession(current => current.phase === 'rehearsing' ? current : { phase: 'landing' });
           return;
@@ -207,6 +221,7 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
         if (currentSession.current.phase === 'rehearsing') return;
         if (err instanceof ApiError && err.status === 401) {
           forgetReady();
+          setStarterMode(false);
           setResumed(false);
           setSession({ phase: 'landing', error: messageOf(err) });
           return;
@@ -237,7 +252,9 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
     return task;
   }, [api, queries, settle]);
 
-  useEffect(() => {
+  // A layout effect, so the cookie exchange is under way before a resumed galaxy's screens read
+  // (their effects run first otherwise); the reads then wait for it instead of drawing 401s.
+  useLayoutEffect(() => {
     if (started.current) return;
     started.current = true;
     if (autoTraining) consumeTrainingIntent();
@@ -369,13 +386,25 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
   const settleClaim = useCallback(
     (result: ClaimResult): void => {
       queries.clear();
-      queries.setQueryData(keys.planet, result.planet);
-      const me: Me = {
+      const account = {
         accountId: result.accountId,
         username: result.username,
         displayName: result.displayName,
         isAdmin: false,
         country: result.country,
+      };
+      if (result.vessel) {
+        const { id, name, status, galaxy } = result.vessel;
+        queries.setQueryData(keys.planet, vesselToPlanetView(result.vessel));
+        const aboard: Me = { ...account, placement: null, vessel: { id, name, status, starterGalaxyId: galaxy.id }, starterEligible: false };
+        setStarterMode(true);
+        rememberReady(aboard);
+        setSession({ phase: 'ready', me: aboard, standing: { shard: galaxy.id, shardName: '', planetName: name } });
+        return;
+      }
+      queries.setQueryData(keys.planet, result.planet);
+      const me: Me = {
+        ...account,
         placement: {
           shard: result.placement.shard,
           shardName: result.placement.shardName,
@@ -413,9 +442,10 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
       intents: readonly ClaimIntent[] | number,
       countryCode?: CountryCode,
       policy?: CommunityPolicyConsent,
+      vesselHull?: VesselHull,
     ): Promise<void> => {
       const startedAt = ++revision.current;
-      const result = await api.claim(username, password, intents, countryCode, policy);
+      const result = await api.claim(username, password, intents, countryCode, policy, vesselHull);
       if (startedAt !== revision.current) return;
       rememberCommander();
       // The other door. A commander who played the rehearsal first and is only now
@@ -460,6 +490,7 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
     // so a dead network never holds the sign-out; the next sign-in moves the token anyway.
     await Promise.race([disconnectPush(api), new Promise(resolve => setTimeout(resolve, 1_500))]);
     forgetReady();
+    setStarterMode(false);
     setResumed(false);
     setSession({ phase: 'starting' });
     try {
@@ -489,7 +520,8 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
     setResumed(false);
     // The world already committed its successor. Move immediately; `/me` then
     // reconciles the permanent result without putting a loading door in the way.
-    setSession({ phase: 'servers', me: { ...current.me, placement: null } });
+    // A ship that landed has a planet to go to, and no galaxy list belongs in between.
+    if (!current.me.vessel) setSession({ phase: 'servers', me: { ...current.me, placement: null } });
     void api.me().then(me => {
       if (startedAt === revision.current) return settle(me);
     }).catch((err: unknown) => {

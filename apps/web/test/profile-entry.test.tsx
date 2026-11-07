@@ -11,6 +11,7 @@ vi.mock('../src/session/useSession.js', () => ({ useSession: () => ({
     : { phase: 'landing' },
   signOut: vi.fn(),
 }) }));
+vi.mock('../src/starter/ArrivalHost.js', () => ({ ArrivalHost: () => null }));
 vi.mock('../src/session/useEventStream.js', () => ({ useEventStream: vi.fn() }));
 vi.mock('../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: vi.fn() }));
 vi.mock('../src/lib/music.js', () => ({ useAmbientMusic: vi.fn() }));

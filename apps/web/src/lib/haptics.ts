@@ -7,12 +7,18 @@
  * desktop and on iOS Safari, which is fine — it is reinforcement, never the signal
  * itself.
  */
-type Weight = 'tap' | 'commit' | 'warn';
+type Weight = 'tap' | 'commit' | 'warn' | 'thunk' | 'rumble' | 'warp';
 
 const PATTERN: Record<Weight, number | number[]> = {
   tap: 10,
   commit: [14, 30, 22],
   warn: [30, 40, 30],
+  /** A breaker landing home: one hard knock and the latch behind it. */
+  thunk: [38, 28, 14],
+  /** A furnace catching. */
+  rumble: [18, 24, 26, 20, 34, 18, 48],
+  /** Spooling up, then the drop out of the jump. */
+  warp: [8, 30, 10, 26, 12, 20, 16, 14, 90],
 };
 
 export function haptic(weight: Weight = 'tap'): void {

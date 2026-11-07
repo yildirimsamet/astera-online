@@ -1,3 +1,4 @@
+import { incomingCopy } from '../../starter/shipCopy.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent, Contact, PendingThread } from '../../api/schemas.js';
@@ -310,15 +311,16 @@ export function ContextSlot({
   let card: ReactNode = null;
   if (slot.card === 'threat' && nearest) {
     const contact = contactFor(nearest, contacts);
+    const read = incomingCopy(nearest);
     card = (
       <Card
         tone="hostile"
-        eyebrow={t('slot.incoming')}
+        eyebrow={read?.eyebrow ?? t('slot.incoming')}
         title={flightTitle(nearest)}
-        detail={incomingDetail(nearest, contact)}
+        detail={read?.detail ?? incomingDetail(nearest, contact)}
         timer={t('slot.lands', { time: countdown(nearest.arriveAt.getTime() - now) })}
         actions={[
-          { label: t('slot.prepare'), onPress: () => { onPrepare(nearest); } },
+          ...(read?.prepare === false ? [] : [{ label: t('slot.prepare'), onPress: () => { onPrepare(nearest); } }]),
           ...(contact ? [{ label: t('slot.look'), onPress: () => { onLook(contact.id); } }] : []),
         ]}
         onDismiss={() => {

@@ -71,6 +71,11 @@ describe('an order waiting its turn', () => {
     expect(orderWaiting(optimistic, NOW)).toBe(false);
   });
 
+  it('draws as many slots as the queue has, not always three (player test: a ship researches one at a time)', () => {
+    render(<QueueLane label="Ship research" orders={[]} now={NOW} onOpen={vi.fn()} slots={1} />);
+    expect(document.querySelectorAll('[data-free-slot]')).toHaveLength(1);
+  });
+
   it('shows the running order’s time and an hourglass on the one behind it', () => {
     render(<QueueLane label="Yard" orders={[hull('a', -15, 45), hull('b', 45, 60)]} now={NOW} onOpen={vi.fn()} />);
     const [running, waiting] = screen.getAllByRole('button');

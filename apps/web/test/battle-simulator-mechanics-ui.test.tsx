@@ -106,7 +106,8 @@ describe('players can identify roles, fleets and the state being shown', () => {
     render(<BattleReplay simulation={simulation} environment="PLANET" />);
     const banner = () => document.querySelector('[data-combat-phase]')!;
     fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(timeline.rounds[0]!.openingEnd + .1) } });
-    expect(banner().textContent.match(/Round 1 \/ 8/g)).toHaveLength(1);
+    // Out of the rounds this battle lasted, not the most any battle may run.
+    expect(banner().textContent.split(`Round 1 / ${String(simulation.recording.rounds.length)}`)).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(timeline.duration) } });
     expect(banner().textContent.match(/Battle complete/g)).toHaveLength(1);
   });

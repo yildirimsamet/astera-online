@@ -1,9 +1,12 @@
+import { DepartureBoard } from '../starter/DepartureBoard.js';
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
 import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
 import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
-import { useAnnouncements, useLeaderboard, useRewards } from '../api/queries.js';
+import { useAnnouncements, useLeaderboard, usePlanet, useRewards } from '../api/queries.js';
+import { gateOf } from '../starter/gate.js';
+import { ShipLog } from '../starter/ShipLog.js';
 import {
   formatTrackTime,
   MUSIC_TRACKS,
@@ -130,6 +133,9 @@ export function MenuPanel({
   const now = useNow(60_000);
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - now) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
+  // A colony ship has no ranking, rewards or store yet; they arrive with the landing (plan §3.7).
+  const vessel = usePlanet().data?.vessel;
+  const gate = gateOf(vessel);
   const board = useLeaderboard().data;
   const name = commander ?? board?.you?.username ?? t('menu.eyebrow');
   const clan = board?.you?.clan;
@@ -143,6 +149,12 @@ export function MenuPanel({
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   // Focus returns to the tile that opened the simulator.
   const simulatorOpener = useRef<HTMLElement | null>(null);
+  const simulatorWasOpen = useRef(false);
+  useLayoutEffect(() => {
+    // Restore after the dialog is removed: its pending mount focus cannot steal it back.
+    if (!simulatorOpen && simulatorWasOpen.current) simulatorOpener.current?.focus();
+    simulatorWasOpen.current = simulatorOpen;
+  }, [simulatorOpen]);
 
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
@@ -187,30 +199,33 @@ export function MenuPanel({
               {/* rounded-8 owner decision */}
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5"><Flag code={country} language={i18n.resolvedLanguage ?? 'en'} /><span className="min-w-0 break-words text-body font-semibold">{clan ? `[${clan.tag}] ` : ''}{name}</span></span>
-                <span className="mt-1 block break-words text-label text-v2-ink-2">{clan?.name ?? t('menu.profile.noClan')}</span>
+                <span className="mt-1 block break-words text-label text-v2-ink-2">{clan?.name ?? (gate.aboard ? t('starter.eyebrow') : t('menu.profile.noClan'))}</span>
               </span>
               <ChevronIcon className="size-4 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
             </a>
             <div data-menu-context className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-micro text-v2-ink-2">
               <span className="flex min-w-0 items-center gap-1.5"><GalaxyIcon className="size-3.5 shrink-0" /><span className="break-words">{galaxy ?? t('galaxy.commander.galaxyUnknown')}{shard && shard !== galaxy ? ` · ${shard}` : ''}</span></span>
-              <span>{t(ended ? 'seasonRecap.seasonLabel' : 'galaxy.commander.endsLabel')} <strong className="font-v2-mono font-medium text-v2-ink">{seasonTime}</strong></span>
+              {!gate.aboard && <span>{t(ended ? 'seasonRecap.seasonLabel' : 'galaxy.commander.endsLabel')} <strong className="font-v2-mono font-medium text-v2-ink">{seasonTime}</strong></span>}
             </div>
           </div>
+          {/* Owner 2026-11-06: aboard, the menu tells the story and where the ship stands in it. */}
+          {vessel && <ShipLog vessel={vessel} onOpenShip={() => { onOpen('planet'); }} />}
           {(inSilentSpace || hasSeasonResult || waiting > 0) && <div className="flex flex-col gap-2">
             {inSilentSpace && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} onClick={() => { onOpen('return'); }} />}
             {hasSeasonResult && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('seasonRecap.menuLabel')} hint={t('seasonRecap.menuHint')} onClick={() => { onOpen('recap'); }} />}
             {waiting > 0 && <MenuRow icon={<RewardIcon className="size-5" />} label={t('menu.navigation.rewardsReady', { count: waiting })} hint={t('menu.rewardsHint')} onClick={() => { onOpen('rewards'); }} />}
           </div>}
-          <ShopShowcase compact onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />
+          {!gate.aboard && <ShopShowcase compact onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />}
           {platform.notificationCenter && <CenterCard
             status={centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
             {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
             onClick={() => { haptic('tap'); setCenterOpen(true); }} />}
           <nav aria-label={t('menu.navigation.title')} className="divide-y divide-v2-line">
-            <div data-menu-leaderboard className="grid pb-3">
+            {gate.aboard && <div className="pb-3"><DepartureBoard now={Date.now()} /></div>}
+            {!gate.aboard && <div data-menu-leaderboard className="grid pb-3">
               <MenuTile art={ATMOSPHERE.commander} icon={<LeaderboardIcon className="size-5" />} label={t('menu.leaderboardLabel')} hint={t('menu.leaderboardHint')} onClick={() => { onOpen('leaderboard'); }} />
-            </div>
-            <MenuCategory id="rewards" icon={<RewardIcon className="size-5" />} label={t('menu.rewardsLabel')} hint={t('menu.rewardsHint')} onClick={() => { haptic('tap'); onOpen('rewards'); }} />
+            </div>}
+            {!gate.aboard && <MenuCategory id="rewards" icon={<RewardIcon className="size-5" />} label={t('menu.rewardsLabel')} hint={t('menu.rewardsHint')} onClick={() => { haptic('tap'); onOpen('rewards'); }} />}
             <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
             <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
             {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
@@ -306,7 +321,7 @@ export function MenuPanel({
                 onClick={() => { onOpen('wiki'); }}
               />
               {/* Over the menu, not instead of it: closing the simulator lands back here. */}
-              <MenuTile
+              {gate.open('attack') && <MenuTile
                 icon={<AttackIcon className="size-5" />}
                 label={t('simulator.title')}
                 art={ATMOSPHERE.simulator}
@@ -315,8 +330,8 @@ export function MenuPanel({
                   simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                   setSimulatorOpen(true);
                 }}
-              />
-              {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); simulatorOpener.current?.focus(); }} />}
+              />}
+              {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); }} />}
               {onReplayAcademy && (
                 <MenuTile
                   icon={<GuideIcon className="size-5" />}

@@ -1,7 +1,8 @@
 import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
+import { vesselSchema, vesselStandingSchema } from './starterSchemas.js';
 import { SHIP_CLASSES } from '@astera/rules/arena/ui';
-import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
+import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS, VESSEL_LOOKS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -96,8 +97,8 @@ export const pvpBalanceSchema = z.object({
   lootDecisive: z.number().finite().min(0).max(1),
   lootPartial: z.number().finite().min(0).max(1),
   lootBufferShare: z.number().finite().min(0).max(1),
-  recoveryLossHours: z.number().finite().positive(),
-  recoveryLookbackHours: z.number().finite().positive(),
+  recoveryLossHours: z.number().finite().nonnegative(),
+  recoveryLookbackHours: z.number().finite().nonnegative(),
   recoveryShieldHours: z.number().finite().positive(),
 });
 export const researchProjectId = z.enum([
@@ -536,6 +537,10 @@ export const meSchema = z.object({
     .nullable(),
   /** Added after D85; an older server still opens a session without it. */
   latestResult: historicalSeasonResultSchema.nullable().optional(),
+  /** A colony ship still in the starter galaxy. Absent on a server that predates ships. */
+  vessel: vesselStandingSchema.nullable().optional(),
+  /** This account may take a ship: nothing played yet, and the door is open. */
+  starterEligible: z.boolean().optional(),
 });
 
 export const countryUpdatedSchema = z.object({ country: countryCode });
@@ -888,6 +893,11 @@ export type ClanSupportQuote = z.infer<typeof clanSupportQuoteSchema>;
 export const clanSupportWaveAnswerSchema = z.object({ wave: clanSupportWaveSchema });
 
 export const planetSchema = z.object({
+  /**
+   * THE COLONY SHIP THIS VIEW WAS MADE FROM, present only aboard one. One object carries both, so
+   * whatever refreshes the world (a command's answer, a stream event) refreshes the ship screen too.
+   */
+  vessel: vesselSchema.optional(),
   workshopRadiation: z.boolean().optional(),
   planet: z.object({
     id: z.string(),
@@ -1597,6 +1607,11 @@ export const galaxySchema = z.object({
       honorRanking: z.literal(true).optional(),
       honorRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       position: vec3,
+      /** A colony ship or an abandoned outpost in place of a world (`starter`), and how a hull looked when last seen. */
+      body: z.enum(['VESSEL', 'OUTPOST']).optional(),
+      /** A thrust part this ship can see here. Absent for anyone not hunting one. */
+      hasPart: z.boolean().optional(),
+      look: z.enum(VESSEL_LOOKS).optional(),
       coreTier: z.number().default(1),
       /**
        * The exact Command Core level, public since the dyson rings — the ring
@@ -2503,6 +2518,10 @@ export const intelSchema = z.object({
       defence: band,
       fleetSize: band,
       fleetHome: z.boolean(),
+      /** How much of a colony ship is mended, in percent. Ships only; no planet has this. */
+      repair: band.optional(),
+      /** A shared place holds an engine part. Places only. */
+      hasPart: z.boolean().optional(),
       deathStar: z.enum(['READY', 'BUILDING', 'NONE', 'UNKNOWN']).optional(),
       /**
        * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D137.
@@ -2667,6 +2686,8 @@ const pendingThread = z.object({
   towing: fleet.optional(),
   /** How big the inbound force looks. RADAR L4. D123. */
   mass: massClass.optional(),
+  /** A colony ship's Telescope can tell a pirate raid from a pirate scout that only looks. */
+  raider: z.enum(['SCOUT', 'PIRATE']).optional(),
   /** Which world it left. RADAR L5, the top of the ladder. D123. */
   originName: z.string().optional(),
   /**
@@ -2814,8 +2835,8 @@ const returnEntry = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('raided'), params: z.object({ grade, loot: z.number(), lost: z.number() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('scan_detected'), params: z.object({ count: z.number() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('convoy_result'), params: z.object({ resources: z.number(), ships: z.number() }), at: z.coerce.date() }),
-  z.object({ kind: z.literal('fleet_returned'), params: z.object({ resources: z.number(), ships: z.number() }), at: z.coerce.date() }),
-  z.object({ kind: z.literal('accrued'), params: z.object({ alloy: z.number(), crystal: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('fleet_returned'), params: z.object({ resources: z.number(), ships: z.number(), alloy: z.number().optional(), crystal: z.number().optional(), deuterium: z.number().optional() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('accrued'), params: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number().optional() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('unlock'), params: z.object({ unlock: unlockable }), at: z.coerce.date() }),
 ]);
 
@@ -2878,6 +2899,10 @@ const ordinaryBattleReport = z.object({
        * the screen, which is the most expensive kind of bug this project ships.
        * Optional so a cached report from before them still opens.
        */
+      /** Aboard a colony ship only: what stood on the other side, so a report never prints a raw name for it. */
+      opponentKind: z.enum(['SHIP', 'OUTPOST', 'PIRATES']).optional(),
+      /** Aboard, an outpost whose guard this raid killed: until then nothing stands there. */
+      guardDownUntil: z.coerce.date().nullable().optional(),
       pirate: z
         .object({
           level: z.number().int().min(1).max(4),
@@ -3257,6 +3282,8 @@ export const miningSchema = z.object({
       crystal: z.number(),
       deuterium: z.number(),
       minutesLeft: z.number(),
+      /** A thrust part this ship can see here. Colony ships only. */
+      hasPart: z.boolean().optional(),
     }),
   ),
   runs: z.array(
@@ -3799,7 +3826,7 @@ export const appliedSchema = z.object({
  * interface must never have to ask a second time for the consequence of a tap, and
  * the one call that CREATES a planet is the last place to make an exception.
  */
-export const claimSchema = sessionSchema.extend({
+export const planetClaimSchema = sessionSchema.extend({
   placement: z.object({
     shard: z.string(),
     shardName: z.string(),
@@ -3808,7 +3835,18 @@ export const claimSchema = sessionSchema.extend({
   }),
   applied: z.array(appliedSchema),
   planet: planetSchema,
+  vessel: z.undefined().optional(),
 });
+
+/** A new account claims a ship and has no planet yet (starter galaxy plan §6). */
+const shipClaimSchema = sessionSchema.extend({
+  placement: z.null(),
+  applied: z.array(appliedSchema),
+  planet: z.null(),
+  vessel: vesselSchema,
+});
+
+export const claimSchema = z.union([planetClaimSchema, shipClaimSchema]);
 
 /* ── operator announcements and player feedback ───────────── */
 

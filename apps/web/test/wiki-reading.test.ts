@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STARTER } from '@astera/rules';
 import { flightSlots, satelliteSlots, groundSlots, telescopeRange, telescopeWatchRange, researchEffectAt, hullWorkMinutes, HULLS, TRAVEL, DEUTERIUM } from '@astera/rules';
 import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
@@ -9,7 +10,9 @@ describe('Wiki values a new player can interpret', () => {
     for (const language of ['en', 'tr'] as const) {
       const text = JSON.stringify(article?.sections[language]).toLocaleLowerCase(language);
       expect(text).toMatch(language === 'en' ? /first season/i : /ilk sezon/i);
-      expect(text).toMatch(language === 'en' ? /skip/i : /atlasan/i);
+      // Every new commander starts aboard a colony ship; the Academy start is gone (player test B-06).
+      expect(text).toMatch(language === 'en' ? /colony ship/i : /koloni gemi/i);
+      expect(text).not.toMatch(language === 'en' ? /academy|training/i : /akademi|eğitim/i);
       expect(text).toMatch(language === 'en' ? /already installed/i : /kurulu/i);
       expect(text).toMatch(language === 'en' ? /later seasons/i : /sonraki sezon/i);
       const reference = conceptReference('basics.quick-start', language);
@@ -189,5 +192,38 @@ describe('Wiki values a new player can interpret', () => {
     expect(article.description.tr).not.toMatch(/\d\.$/);
     expect(article.description.tr).toMatch(/(?:seviye|gözlem|hareket|tanıml)/i);
     expect(article.description.tr).toMatch(/[.!?]$/);
+  });
+});
+
+describe('Wiki on the colony ship', () => {
+  const text = (id: string, language: 'en' | 'tr') => JSON.stringify(getWikiArticle(id)?.sections[language]);
+
+  it.each(['basics.colony-ship', 'basics.starter-galaxy', 'basics.the-jump'])('has %s in both editions', (id) => {
+    expect(getWikiArticle(id)?.title.en.length).toBeGreaterThan(0);
+    expect(getWikiArticle(id)?.title.tr.length).toBeGreaterThan(0);
+    expect(text(id, 'en').length).toBeGreaterThan(200);
+    expect(text(id, 'tr').length).toBeGreaterThan(200);
+  });
+
+  it('states the rules this galaxy actually runs on', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const galaxy = text('basics.starter-galaxy', language);
+      expect(galaxy).toContain(String(STARTER.capacity));
+      expect(galaxy).toContain(String(STARTER.pvp.shieldHours));
+      expect(galaxy).toContain(String(STARTER.pvp.bashLimit));
+      expect(galaxy).toContain(String(STARTER.pvp.dailyRaidCap));
+      expect(galaxy).toContain(String(STARTER.idleMs / 3_600_000));
+      const jump = text('basics.the-jump', language);
+      expect(jump).toContain(String(STARTER.fuelForJump));
+      expect(jump).toContain(String(STARTER.parts.needed));
+      expect(jump).toContain(number(STARTER.carry.alloy, language));
+      expect(jump).toContain(String(STARTER.carry.ships));
+    }
+  });
+
+  it('never tells a reader that some commanders are played by the server', () => {
+    for (const id of ['basics.colony-ship', 'basics.starter-galaxy', 'basics.the-jump']) {
+      for (const language of ['en', 'tr'] as const) expect(text(id, language)).not.toMatch(/\bbots?\b|botlar|npc/i);
+    }
   });
 });

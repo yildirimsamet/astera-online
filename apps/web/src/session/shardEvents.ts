@@ -68,6 +68,9 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** Somebody's craft left a world. It is in the air, so it is in `traffic`. */
     case 'launch':
       return [keys.traffic];
+    /** A ship left this starter galaxy: a place on the map and a line on the board. */
+    case 'departure':
+      return [keys.departures, keys.galaxy, keys.migration, keys.universe];
     /** What this commander can see moved. Sent only to a client that asked for it. */
     case 'traffic':
       return [keys.traffic];
@@ -240,6 +243,12 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    /** Ordinary ship changes do not change the galaxy's visibility. */
+    case 'vessel':
+      return [keys.planet, keys.planets, keys.migration];
+    /** Something landed here or for this ship: a report, a battle, what the map remembers. */
+    case 'vessel-sight':
+      return [keys.planet, keys.planets, keys.intel, keys.pending, keys.notifications, keys.galaxy, keys.reports, keys.mining, keys.migration];
     case 'community-block':
       return [keys.communityBlocks, keys.chatMessages, keys.chatUnread, keys.clanChat, keys.clanBadge, keys.dmConversations, keys.dmUnread, keys.dmMessages, ['dm', 'contacts']];
     case 'unknown-signal-spawn':

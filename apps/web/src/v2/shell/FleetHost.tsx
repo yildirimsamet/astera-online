@@ -62,6 +62,7 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
 
   return (
     <FleetPage
+      aboard={planet?.vessel !== undefined}
       {...(monuments ? { monuments: { view: monuments, onFocus: (monumentId: string) => { onClose(); onFocus({ kind: 'monument', id: monumentId }); } } } : {})}
       tab={tab}
       onTab={setTab}

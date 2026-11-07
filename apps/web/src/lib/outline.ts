@@ -15,7 +15,7 @@ export interface OutlineWorld {
   threats: number;
 }
 
-export type OutlineLaneId = 'research' | 'construction' | 'yard';
+export type OutlineLaneId = 'research' | 'construction' | 'yard' | 'repair';
 
 /** One lane of work. Research is the commander's, so it has no world. */
 export interface OutlineQueue {
@@ -52,6 +52,9 @@ export function outlineQueues(
   active: PlanetView | undefined,
   activePlanetId: string | null,
 ): OutlineQueue[] {
+  if (active?.vessel) {
+    return [{ worldId: active.planet.id, world: active.planet.name, lane: 'repair', orders: active.queues?.CONSTRUCTION ?? [] }];
+  }
   const research: OutlineQueue = {
     worldId: null,
     world: null,

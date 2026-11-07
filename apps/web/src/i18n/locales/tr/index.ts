@@ -32,6 +32,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
+import { starter } from './starter.js';
 import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
@@ -112,6 +113,8 @@ export const tr: Resources = {
   community,
   trade,
   convoy,
+  starter,
+  universe: {"open": "Evreni gör", "back": "Geri dön", "main": "Ana galaksi", "you": "Sen", "starter": "Başlangıç {{number}}", "ships_one": "{{count}} gemi", "ships_other": "{{count}} gemi"},
   hold,
   lane,
   meter,

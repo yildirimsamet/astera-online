@@ -1,3 +1,4 @@
+import { useStarterGate } from '../starter/gate.js';
 import { CommunityPolicyGate } from './CommunityPolicy.js';
 import { useCommunityPolicy, policyIsAccepted } from '../api/communityPolicy.js';
 import { BlockPlayerSheet, BlockedPlayersSheet, type BlockSubject } from './CommunityBlocks.js';
@@ -115,7 +116,11 @@ export function ChatScreen({
   onMute?: (author: ChatMuteAuthor) => void;
 }) {
   const { t } = useTranslation();
-  const [channel, setChannel] = useState<ChatChannel>(initialChannel);
+  // A ship galaxy has the one room: no clan, no private messages, no pictures, no reactions, no replies.
+  const { aboard } = useStarterGate();
+  const [chosen, setChannel] = useState<ChatChannel>(initialChannel);
+  const channel: ChatChannel = aboard ? 'general' : chosen;
+  const operator = isAdmin && !aboard;
   const [chatLanguage, setChatLanguage] = useState<Language>(initialChatLanguage);
   const [generalDrafts, setGeneralDrafts] = useState<Partial<Record<Language, string>>>({});
   const [generalReplies, setGeneralReplies] = useState<Partial<Record<Language, MessageRow | null>>>({});
@@ -177,13 +182,17 @@ export function ChatScreen({
       */}
       <div className="flex shrink-0 items-center gap-2 border-b border-v2-line px-3 pb-2">
         <div className="min-w-0 flex-1">
-          <Segmented
-            options={tabs}
-            value={channel}
-            onChange={setChannel}
-            label={t('chat.channelsLabel')}
-            tabId={(id) => `chat-tab-${id}`}
-          />
+          {aboard ? (
+            <p className="truncate text-caption font-semibold text-v2-ink">{t('starter.chatRoom')}</p>
+          ) : (
+            <Segmented
+              options={tabs}
+              value={channel}
+              onChange={setChannel}
+              label={t('chat.channelsLabel')}
+              tabId={(id) => `chat-tab-${id}`}
+            />
+          )}
         </div>
         {channel === 'general' ? (
           <label className="shrink-0">
@@ -249,7 +258,9 @@ export function ChatScreen({
                 postGeneral.mutate(media ? { content, replyToMessageId, media } : replyToMessageId ? { content, replyToMessageId } : content, { onSuccess: done });
               }}
               maxChars={CHAT.maxChars}
-              isAdmin={isAdmin}
+              isAdmin={operator}
+              canReact={!aboard}
+              canReply={!aboard}
               tone="general"
             />
           )
@@ -546,6 +557,7 @@ function ChannelPanel({
   tone,
   disabledReason = null,
   canReact = true,
+  canReply = true,
   isAdmin = false,
   mutedPlayers = NO_PERSONAL_MUTES,
   onMute,
@@ -572,6 +584,7 @@ function ChannelPanel({
   tone: 'general' | 'clan' | 'dm';
   disabledReason?: string | null;
   canReact?: boolean;
+  canReply?: boolean;
   isAdmin?: boolean;
   mutedPlayers?: readonly MutedChatPlayer[];
   onMute?: (author: ChatMuteAuthor) => void;
@@ -927,7 +940,7 @@ function ChannelPanel({
                           }}
                         ><MuteIcon className="size-4" /></button>
                       ) : null}
-                      {!disabledReason ? <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
+                      {canReply && !disabledReason ? <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
                         onClick={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }}
                       >↩</button> : null}
                       {!message.self ? <button type="button" aria-label={t('moderation.report')} className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"

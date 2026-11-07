@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/keys.js';
@@ -19,6 +19,17 @@ export function CommunityPolicyAgreement({ checked, disabled = false, onChange }
     </div>
     <label className="flex min-h-11 items-start gap-3 text-caption leading-relaxed text-v2-ink-2"><input className="mt-1 size-5 shrink-0 accent-v2-self" type="checkbox" checked={checked} disabled={disabled} onChange={event => { onChange(event.target.checked); }} />{t('moderation.policy.agreement')}</label>
   </div>;
+}
+/** Joining is the agreement (owner playtest 2026-11-06): the rules sit a tap away above the button. */
+export function CommunityPolicyNotice() {
+  const { i18n } = useTranslation();
+  const link = 'text-v2-self underline underline-offset-2';
+  return <p className="text-micro leading-snug text-v2-ink-2">
+    <Trans i18nKey="moderation.policy.byJoining" components={{
+      community: <a className={link} href={publisherUrl('community', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer" />,
+      terms: <a className={link} href={publisherUrl('terms', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer" />,
+    }} />
+  </p>;
 }
 export function CommunityPolicyGate({ policy, children }: { policy: ReturnType<typeof useCommunityPolicy>; children: ReactNode }) {
   const api = useApi(); const queries = useQueryClient(); const { t, i18n } = useTranslation();

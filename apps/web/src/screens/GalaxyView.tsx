@@ -1,3 +1,7 @@
+import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
+import { sightLesson } from '../starter/tutorial/sightLesson.js';
+import { heroArt } from '../starter/shipScreen.js';
+import { bottomSurface } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
 import { cosmeticById, planetSkinStatus, type CosmeticId } from '@astera/rules';
@@ -10,6 +14,21 @@ import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import type { MainSky } from '../api/starterSchemas.js';
+import { mainSkyPoints } from '../galaxy/mainSky.js';
+import { gateOf } from '../starter/gate.js';
+import { UniverseChip } from '../starter/UniverseChip.js';
+import { useDepartures, useMainSky, useUniverse } from '../starter/queries.js';
+import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
+import { beamsNow } from '../galaxy/mainSky.js';
+import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
+import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
+import { salvageReachMinutes } from '../lib/salvageReach.js';
+import { nearestRock, nearestShip } from '../starter/neighbour.js';
+import { ObjectiveLine } from '../starter/ObjectiveLine.js';
+import { followLaunch, ownCraft } from '../starter/followLaunch.js';
+import { UnlockMoment } from '../starter/UnlockMoment.js';
+import { VesselScreen } from '../starter/VesselScreen.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { arenaCredential } from '../arena/access.js';
 import { useApi } from '../api/context.js';
@@ -17,7 +36,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW, hpRadiationApplies } from '@astera/rules';
+import { VIEW, hpRadiationApplies, vesselHull, vesselLook, type VesselSystem } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +81,7 @@ import type {
   AsteroidView,
   GalaxyPlanet,
   HistoricalSeasonResult,
+  IntelView,
   MiningRun,
   MiningView,
   RivalMark,
@@ -107,12 +127,9 @@ import {
   HULLS,
   MOBILE_HULLS,
   combatValue,
-  distance,
   engagementEndsAt,
-  interceptAsteroid,
   UNAIDED,
   transferCargoCapacity,
-  travelMinutes,
   type MobileHullId,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -150,7 +167,6 @@ import {
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
 import {
-  asteroidVisualSeed,
   controlledWorldId,
   runForPlanetTarget,
 } from '../galaxy/scene.js';
@@ -238,6 +254,9 @@ export const PERF_PANEL_CODES = [
   'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
   'recap', 'menu', 'return', 'wiki', 'ship', 'profile',
 ] as const;
+const NO_LANDMARKS: MainSky['monuments'] = [];
+const NO_CLOUDS: MainSky['clouds'] = [];
+
 export const perfPanelCode = (panel: Panel): number =>
   panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
@@ -405,7 +424,6 @@ export function GalaxyView({
   const { t, i18n } = useTranslation();
   const api = useApi();
   const queryClient = useQueryClient();
-  const returnStatus = useReturnStatus(showChat);
   const applyToReturn = useApplyToReturn();
   const galaxy = useGalaxy();
   const cosmetics = useSkins();
@@ -416,6 +434,28 @@ export function GalaxyView({
   }, [panel]);
   const [shopSelection, setShopSelection] = useState<CosmeticId | undefined>();
   const planet = usePlanet();
+  const ship = planet.data?.vessel;
+  const gate = gateOf(ship);
+  // A ship has no main-galaxy seat to come back to, so this is the main game's question only.
+  const returnStatus = useReturnStatus(showChat && planet.data !== undefined && !gate.aboard);
+  const mainSkyAnswer = useMainSky(ship !== undefined).data;
+  const departures = useDepartures(ship !== undefined && gate.open('intel')).data?.departures;
+  const beamClock = useNow(30_000);
+  const beams = useMemo(() => beamsNow(departures ?? [], beamClock), [departures, beamClock]);
+  const [mainRowOpen, setMainRowOpen] = useState(false);
+  const [atUniverseLimit, setAtUniverseLimit] = useState(false);
+  const [universeAsked, setUniverseAsked] = useState(false);
+  const [universeOpen, setUniverseOpen] = useState(false);
+  const universe = useUniverse(universeAsked).data;
+  const universeAvailable = universe !== undefined && (universe.galaxies.length > 0 || universe.mine !== null);
+  const reachUniverseLimit = useCallback((at: boolean): void => {
+    setAtUniverseLimit(at);
+    if (at) setUniverseAsked(true);
+  }, []);
+  const openUniverse = useCallback((): void => { if (universeAvailable) setUniverseOpen(true); }, [universeAvailable]);
+  const closeUniverse = useCallback((): void => { setUniverseOpen(false); }, []);
+  const mainSkyRead = mainSkyAnswer?.points;
+  const mainSky = useMemo(() => mainSkyPoints(mainSkyRead ?? []), [mainSkyRead]);
   const intel = useIntel();
   const season = useSeason();
   const monumentCatalog = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0));
@@ -600,6 +640,7 @@ export function GalaxyView({
    * Remember each device's choice across reloads. Both start off only when there
    * is no saved preference; unavailable storage falls back to this visit's state.
    */
+  const sight = sightLesson(useStarterLesson());
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
   const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
   const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
@@ -621,6 +662,17 @@ export function GalaxyView({
    */
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
+  // STARTER ONLY (owner playtest 2026-11-06): a probe, fleet or Prospector leaving the ship takes the
+  // camera with it. Both reads must have answered first, or what was already out would look new.
+  const followed = useRef<Set<string> | null>(null);
+  const pendingThreads = pending.data?.pending;
+  const miningRuns = mining.statusData?.runs;
+  useEffect(() => {
+    if (!ship || pendingThreads === undefined || miningRuns === undefined) return;
+    const next = followLaunch(followed.current, ownCraft(pendingThreads, miningRuns));
+    followed.current = next.seen;
+    if (next.focus) { setFocus(next.focus); setDetail(false); }
+  }, [ship, pendingThreads, miningRuns]);
   /**
    * Which pirate the commitment sheet is open against. D150.
    *
@@ -656,6 +708,12 @@ export function GalaxyView({
   const [strikingConvoy, setStrikingConvoy] = useState(false);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
+  /** A system that just came back: the camera goes home and its bay beats (onboarding design §5.3). */
+  const [awaken, setAwaken] = useState<{ system: VesselSystem; key: number } | undefined>(undefined);
+  const onAwaken = useCallback((system: VesselSystem) => {
+    setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 }));
+    setHomeSignal((n) => n + 1);
+  }, []);
   const [centerSignal, setCenterSignal] = useState(0);
   const reportedLostPlacement = useRef(false);
   useEffect(() => {
@@ -881,13 +939,22 @@ export function GalaxyView({
   /* The corner lists pirates the Telescope has identified, including remembered ones.
      Radar-only returns stay anonymous on the disc and outside this named tally. */
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
+  // The target list's flight times move by the minute, not by the HUD's five-second clock.
+  const minuteNow = season.data ? Math.floor((now - season.data.startsAt.getTime()) / 60_000) : 0;
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
       ...monumentFinderTargets(galaxy.data?.monuments ?? [], t),
+      ...planets.filter(world => world.body === 'OUTPOST').sort((a, b) => Number(b.hasPart ?? false) - Number(a.hasPart ?? false)).map(world => ({
+        kind: 'planet' as const,
+        id: world.id,
+        label: world.name,
+        detail: world.hasPart ? t('starter.jump.partHere') : t('starter.readout.level', { level: Math.max(1, world.coreLevel) }),
+      })),
       ...asteroids.map((rock, index) => ({
         kind: 'asteroid' as const,
         id: rock.id,
         label: `${t('focus.run.targetRock', { level: rock.level })} #${String(index + 1)}`,
-        detail: t('galaxy.targetOre', { amount: compact(rock.oreRemaining) }),
+        // Ore, crystal share and the Prospector's real flight: the comparison takes no taps (player test D-05).
+        detail: rockLine(rock, rockReachMinutes(activeWorldPosition, mining.statusData?.craftSpeed ?? 0, rock, minuteNow)),
       })),
       ...knownPirates.map((contact) => {
         const pirate = pirateList.data?.pirates.find((candidate) => candidate.id === contact.id);
@@ -911,7 +978,9 @@ export function GalaxyView({
           : t('focus.debris.titleOver', { planet: planets.find((world) => world.id === field.planetId)?.name ?? '' }),
         detail: t('galaxy.targetResources', { amount: compact(field.alloy + field.crystal + field.deuterium) }),
       })),
-    ], [galaxy.data?.monuments, season.data?.monumentHonorees, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
+    ], [galaxy.data?.monuments, season.data?.monumentHonorees, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks,
+      activeWorldPosition, mining.statusData?.craftSpeed, minuteNow]);
+  const shipParts = useMemo(() => partMarks(planets, wrecks), [planets, wrecks]);
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],
@@ -1037,6 +1106,7 @@ export function GalaxyView({
         return;
       }
       setTransferOriginId(planetFocusSelection(activePlanetId, ownedId).transferOriginId);
+      if (decision.detail) setCenterSignal(signal => signal + 1);
       setFocus(decision.focus);
       setDetail(decision.detail);
       setAttacking(false);
@@ -1191,6 +1261,11 @@ export function GalaxyView({
     setCosmeticTrial({ planetId: target.id, cosmeticId, enabled: true });
   };
 
+  /** The first probe's target: the closest ship that is not yours (onboarding design §5.2). */
+  const focusNeighbour = (): void => {
+    const id = nearestShip(planets, activePlanetId ?? '', activeWorldPosition);
+    if (id) focusPlanet(id);
+  };
   /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
   const flyHome = (): void => {
     if (activePlanetId === null) return;
@@ -1211,7 +1286,7 @@ export function GalaxyView({
    * where a thumb reaches it — people chat live, and it keeps them coming back. It rides the
    * context slot's corner so it stands above a card and never under one.
    */
-  const chatButton = showGuidance && showChat
+  const chatButton = showGuidance && showChat && gate.open('chat')
     ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
   /** Daily activity and the galaxy's objects (top right). */
@@ -1224,10 +1299,12 @@ export function GalaxyView({
       pirates: knownPirates.length,
       wrecks: wrecks.length,
       monuments: galaxy.data?.monuments?.length ?? 0,
+      ...(ship ? { ships: planets.filter(world => world.body === 'VESSEL').length, outposts: planets.filter(world => world.body === 'OUTPOST').length } : {}),
     },
   };
   /** The context slot draws at the foot while the season is live and no page is open. */
-  const slotShown = showGuidance && Boolean(planet.data) && panel === null && !cosmeticTrial && season.data?.status === 'live';
+  const slotShown = showGuidance && Boolean(planet.data) && panel === null && !cosmeticTrial && season.data?.status === 'live' && !ship;
+  const bottom = bottomSurface({ page: panel !== null, selected: slotSelected, destination: mainRowOpen || universeOpen, starter: ship !== undefined, context: slotShown });
 
   const toggle = (): void => {
     setDetail((open) => !open);
@@ -1252,6 +1329,8 @@ export function GalaxyView({
     <SeasonLockProvider locked={season.data?.status === 'frozen'} vacation={Boolean(planet.data?.vacationUntil && planet.data.vacationUntil.getTime() > now)}>
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
+        universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onPanel('planet'); }, awaken } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
@@ -1274,8 +1353,8 @@ export function GalaxyView({
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
         {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}
-        showTelescopeReach={showTelescopeReach}
-        showRadarReach={showRadarReach}
+        showTelescopeReach={showTelescopeReach || sight === 'telescope'}
+        showRadarReach={showRadarReach || sight === 'radar'}
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
         activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
@@ -1299,7 +1378,7 @@ export function GalaxyView({
         coachTap={coachTap}
         openWide={openWide ?? false}
         {...(wideDistance !== undefined ? { wideDistance } : {})}
-        {...(frameTelescope ? { sightRadius: Math.max(0, ...sensors.map((post) => post.identify)) / VIEW.scale } : {})}
+        {...(frameTelescope || sight !== null ? { sightRadius: Math.max(0, ...sensors.map((post) => sight === 'radar' ? post.detect : post.identify)) / VIEW.scale } : {})}
         {...(allowFocus ? { allowFocus } : {})}
       />
 
@@ -1360,12 +1439,13 @@ export function GalaxyView({
         */}
         <div className="pointer-events-none flex flex-col items-end gap-1.5">
           {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
-          {showGuidance && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
+          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
           {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
-          {showGuidance && <HomeChip onHome={flyHome} />}
-          <div data-sensor-toggles className="pointer-events-none">
+          {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
+          {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
+          {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
             <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -1406,6 +1486,13 @@ export function GalaxyView({
               clanWarActions.monumentTarget.mutate(monumentId, { onSuccess: () => { setFocus(null); setDetail(false); setClanInitialTab('war'); onPanel('clan'); },
                 onError: (error: Error) => { say(describe(error), 'error'); } });
             } } : {})} />
+      )}
+      {bottom === 'destination' && mainRowOpen && mainSkyAnswer && (
+        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-20">
+          <MainGalaxyRow sky={mainSkyAnswer} now={beamClock} jumpReady={ship?.features.includes('migration') ?? false}
+            road={{ repair: ship?.progress.share ?? 0, fuel: ship?.fuel ?? 0 }}
+            onOpenShip={() => { setMainRowOpen(false); onPanel('planet'); }} onClose={() => { setMainRowOpen(false); }} />
+        </div>
       )}
       {!cosmeticTrial && !coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
@@ -1498,6 +1585,7 @@ export function GalaxyView({
 
       {!coachFocus && focus?.kind === 'debris' && (
         <DebrisFocusHost
+          intel={intel.data}
           field={wrecks.find((d) => d.id === focus.id)}
           planets={planets}
           runs={runs}
@@ -1553,6 +1641,8 @@ export function GalaxyView({
                     }),
                   );
                   close();
+                  // Every launch from the ship is followed, not only the first (owner playtest 2026-11-06).
+                  if (ship) setFocus({ kind: 'run', id: r.runId });
                 },
                 onError: (err) => {
                   say(describe(err), 'error');
@@ -1733,7 +1823,7 @@ export function GalaxyView({
       )}
 
       {/* Chat still in reach on a galaxy with no slot and no next-season card. */}
-      {chatButton && panel === null && !slotShown && season.data?.status !== 'frozen' && (
+      {chatButton && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
         <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{chatButton}</div>
       )}
 
@@ -1800,7 +1890,43 @@ export function GalaxyView({
         THE BASE AND ITS RESEARCH (M5): the page stands under the top bar so the purse stays in
         sight while it is spent. Owner 2026-10-27: it is headed by its own art, as research is.
       */}
-      {panel === 'planet' && planet.data && (
+      {ship && bottom === 'starter' && (
+        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null ? 'hidden' : ''}`}>
+          {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
+          {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
+          {ship.unlockToAnnounce
+            ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
+            : <ObjectiveLine
+                vessel={ship}
+                fetchedAt={planet.dataUpdatedAt}
+                onOpenShip={() => { onPanel('planet'); }}
+                onFocusNeighbour={focusNeighbour}
+                onFocusRock={() => {
+                  const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
+                  const id = nearestRock(asteroids, activeWorldPosition, minutes);
+                  if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
+                }}
+                probing={(pending.data?.pending ?? []).some((thread) => thread.kind === 'probe')}
+                mining={(mining.statusData?.runs ?? []).some((run) => run.status !== 'done')}
+              />}
+        </div>
+      )}
+      {panel === 'planet' && planet.data?.vessel && (
+        <V2Sheet
+          bleed
+          detents={['full']}
+          headerArt={{ src: heroArt(vesselHull(planet.data.vessel.id), vesselLook(planet.data.vessel)), position: '50% 45%' }}
+          lead={<img data-ship-badge src="/assets/images/starter/galaxy-badge.webp" alt="" className="size-7 rounded-full object-cover" />}
+          eyebrow={t('starter.eyebrow')}
+          title={planet.data.vessel.name}
+          onClose={() => { onPanel(null); }}
+        >
+          <VesselScreen vessel={planet.data.vessel} fetchedAt={planet.dataUpdatedAt}
+            {...(requestedPlanetGroup ? { focusGroup: requestedPlanetGroup } : {})}
+            {...(requestedItem ? { focusItem: requestedItem } : {})} />
+        </V2Sheet>
+      )}
+      {panel === 'planet' && planet.data && !planet.data.vessel && (
         <V2Sheet
           bleed
           detents={['full']}
@@ -2517,20 +2643,7 @@ function AsteroidFocusHost({
     : 0;
 
   const minutesNow = (now - seasonStart.getTime()) / 60_000;
-  const hit =
-    homePosition && speed > 0
-      ? interceptAsteroid(
-          homePosition,
-          speed,
-          {
-            ...rock,
-            index: asteroidVisualSeed(rock.id),
-            deuteriumShare: rock.deuteriumShare ?? 0,
-          },
-          minutesNow,
-        )
-      : null;
-  const reach = hit ? hit.flightMinutes : null;
+  const reach = rockReachMinutes(homePosition, speed, rock, minutesNow);
 
   return (
     <AsteroidFocus
@@ -2577,7 +2690,9 @@ function DebrisFocusHost({
   onToggle,
   onClose,
   onSend,
+  intel,
 }: {
+  intel: IntelView | undefined;
   field: {
     id: string;
     /** Null for a pirate battle: the fight had no world under it. D150. */
@@ -2613,11 +2728,7 @@ function DebrisFocusHost({
   const named = field.planetId === null
     ? undefined
     : planets.find((p) => p.id === field.planetId);
-  const speed = mining?.craftSpeed ?? 0;
-  const reach =
-    homePosition && speed > 0
-      ? travelMinutes(distance(homePosition, field.at), speed)
-      : null;
+  const reach = salvageReachMinutes(homePosition, field.at, mining?.craftSpeed ?? 0, Boolean(planetQuery.data?.vessel));
 
   const p = planetQuery.data?.planet;
   const worksRoom = p
@@ -2646,6 +2757,7 @@ function DebrisFocusHost({
       onSend={(craft) => {
         onSend(field.id, craft);
       }}
+      {...(wreckWorthProbing(planetQuery.data?.vessel, field.minutesLeft) ? { probe: { intel, onLaunched: onClose } } : {})}
     />
   );
 }

@@ -26,6 +26,13 @@ describe('why the reader lost what they lost', () => {
     expect(lossReason({})).toBeNull();
     expect(lossReason({ COURIER: 3 })).toBeNull();
   });
+
+  it('names no class when no class was lost most', () => {
+    // A player test lost one Dart and one Pike and read "most of your losses were Skirmishers".
+    expect(lossReason({ DART: 1, PIKE: 1 })).toBeNull();
+    expect(lossReason({ DART: 2, PIKE: 2, RAMPART: 1 })).toBeNull();
+    expect(lossReason({ DART: 1, PIKE: 2 })?.lost).toBe('LANCE');
+  });
 });
 
 describe('a side, sent and left', () => {

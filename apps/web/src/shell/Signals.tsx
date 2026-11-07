@@ -335,6 +335,20 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   */
   raided: { panel: 'report', stop: 'battles' },
   raid_result: { panel: 'report', stop: 'battles' },
+  // The same doors aboard a colony ship, whose notifications use the ship's own kinds. A
+  // reading opens where the main game's readings do; the ship's own news opens the ship.
+  BATTLE_REPORT: { panel: 'report', stop: 'battles' },
+  PROBE_REPORT: { panel: 'intel', stop: 'probes' },
+  PROBE_DETECTED: { panel: 'intel', stop: 'probes' },
+  FLEET_HOME: { panel: 'planet' },
+  FLEET_TURNED_BACK: { panel: 'planet' },
+  RADAR_WARNING: { panel: 'planet' },
+  SHIELD_WARNING: { panel: 'planet' },
+  REPAIR_DONE: { panel: 'planet' },
+  YARD_DONE: { panel: 'planet' },
+  RESEARCH_DONE: { panel: 'planet' },
+  DOCK_DONE: { panel: 'planet' },
+  SEASON_OPEN: { panel: 'planet' },
   // Klan Savunma Desteği: the fight a supporter's ships stood in is a report like any
   // other; who is coming, who left and the posture reset are all on the world's sheet.
   clan_support_result: { panel: 'report', stop: 'battles' },
@@ -757,8 +771,9 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
    * Up to thirty seconds of production thrown away with the interface insisting
    * nothing was wrong.
    */
-  const worksFull =
-    held.bufferAlloy >= p.bufferAlloyCap - 0.5 || held.bufferCrystal >= p.bufferCrystalCap - 0.5;
+  // Works of size zero (a ship whose Extractor is still broken) make nothing, so they cannot stop.
+  const full = (pile: number, cap: number) => cap > 0 && pile >= cap - 0.5;
+  const worksFull = full(held.bufferAlloy, p.bufferAlloyCap) || full(held.bufferCrystal, p.bufferCrystalCap);
   if (worksFull) {
     out.push({
       kind: 'works-full',

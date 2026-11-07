@@ -19,6 +19,8 @@ export interface TopBarProps {
   /** The active world's stock against its stores (projected). */
   /** Each store, and the part of it the Vault keeps from a raid (`safe`). */
   stock: Record<Resource, { value: number; cap: number; safe?: number }>;
+  /** Left out, aboard a colony ship that cannot use it yet. Its place stays, so the others do not move. */
+  hidden?: readonly Resource[];
   /** The works under the stores (owner, 2026-09-25); absent until the world is read. */
   works?: WorksLineProps;
   transfer?: CollectionTransfer | null;
@@ -58,6 +60,7 @@ export function TopBar({
   now,
   world,
   stock,
+  hidden = [],
   bell,
   rewards,
   boosted,
@@ -111,7 +114,7 @@ export function TopBar({
         the one press that collects.
       */}
       <div className={`grid min-w-0 flex-1 grid-cols-3 gap-x-2 gap-y-1.5 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
-        {RESOURCES.map((resource) => (
+        {RESOURCES.filter(resource => !hidden.includes(resource)).map((resource) => (
           <ResourceMeter
             key={resource}
             resource={resource}
@@ -124,7 +127,7 @@ export function TopBar({
             onOpen={() => { onResource(resource); }}
           />
         ))}
-        {works && <WorksLine {...works} />}
+        {works && <WorksLine {...works} hidden={hidden} />}
       </div>
 
       {tabs !== undefined && <div className="ml-auto flex h-full shrink-0">{tabs}</div>}

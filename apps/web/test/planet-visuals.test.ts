@@ -94,14 +94,14 @@ describe('the atmosphere limb', () => {
    * An unwatched world and its limb stay dimmer, while the floor keeps the narrow
    * coloured edge visible against the sky.
    */
-  it('is dimmed by the same stance light as the world it belongs to', () => {
+  it('keeps unread worlds visible while live sight retains the brighter limb', () => {
     const brightest = Math.max(...Object.values(STANCE_LIGHT));
     const darkest = Math.min(...Object.values(STANCE_LIGHT));
     expect(darkest).toBeLessThan(brightest);
     // The value the component multiplies by, asserted as the relationship it has
     // to hold rather than as a repeat of the arithmetic.
-    expect(limbLight('dark', 'UNKNOWN')).toBeLessThan(limbLight('self', 'UNKNOWN'));
-    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.5);
+    expect(limbLight('dark', 'UNKNOWN')).toBeLessThan(limbLight('self', 'RESOLVED'));
+    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.9);
   });
 });
 
@@ -303,12 +303,14 @@ describe('world identity on the disc', () => {
     expect(markerScale(100_000, 0.01, 844, 50)).toBeLessThanOrEqual(4);
   });
 
-  it('keeps eye marks fifty percent larger than the existing zoom scale', () => {
-    const current = markerScale(1200, 0.5, 844, 50);
-    expect(eyeMarkerScale(1200, 0.5, 844, 50)).toBeCloseTo(current * 1.5);
+  it('keeps distant eye marks readable while letting their size communicate depth', () => {
+    const pixel = 2 * 1200 * Math.tan(50 * Math.PI / 360) / 844;
+    const pixels = eyeMarkerScale(1200, 0.5, 844, 50) * 0.5 * 0.5 / pixel;
+    expect(pixels).toBeGreaterThan(9);
+    expect(pixels).toBeLessThan(10);
   });
 
-  it('never puts an open or closed eye over a world the commander owns', () => {
+  it('shows a closed eye only outside live sight, never on owned or resolved worlds', () => {
     const nodes = planetNodes([
       {
         id: 'mine', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
@@ -330,8 +332,8 @@ describe('world identity on the disc', () => {
       },
     ]);
 
-    expect(eyeNodes(nodes, true).map((node) => node.id)).toEqual(['seen']);
-    expect(eyeNodes(nodes, false).map((node) => node.id)).toEqual(['hidden']);
+    expect(eyeNodes(nodes).map((node) => node.id)).toEqual(['hidden']);
+    expect(eyeNodes([{ ...nodes[2]!, id: 'remembered', intel: 'REMEMBERED' }]).map((node) => node.id)).toEqual(['remembered']);
   });
 
   it('draws a claim highlight only while the world is inside current sight', () => {
@@ -396,9 +398,9 @@ describe('world identity on the disc', () => {
     expect(VISIBLE_PLANET_BRIGHTNESS).toBe(1.25);
     expect(HIDDEN_PLANET_BRIGHTNESS).toBe(0.85);
     expect(bodyLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
-    expect(bodyLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.45);
+    expect(bodyLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.85);
     expect(limbLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
-    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.5);
+    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.9);
   });
 
   /**
@@ -419,18 +421,18 @@ describe('world identity on the disc', () => {
     const seen = bodyLight('self', 'RESOLVED');
 
     // The body needs enough colour to read as a solid world at the far LOD.
-    expect(unread).toBeGreaterThanOrEqual(0.45);
+    expect(unread).toBeGreaterThanOrEqual(0.85);
     // And still a fraction of a world you can actually see.
-    expect(unread).toBeLessThan(seen * 0.5);
+    expect(unread).toBeLessThan(seen * 0.8);
     // The limb stays the brighter of the two, so the silhouette still reads as a rim.
     expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThan(unread);
   });
 
   it.each(['UNKNOWN', 'REMEMBERED'] as const)('keeps a faint edge above the lifted %s body', (intel) => {
     const unread = bodyLight('dark', intel);
-    expect(unread).toBeGreaterThanOrEqual(0.55);
+    expect(unread).toBeGreaterThanOrEqual(0.85);
     expect(limbLight('dark', intel)).toBeGreaterThan(unread);
-    expect(limbLight('dark', intel)).toBeLessThan(limbLight('dark', 'RESOLVED'));
+    expect(limbLight('dark', intel)).toBeLessThan(limbLight('watched', 'RESOLVED'));
   });
 
   it('marks every owned colony as self and preserves capital/colony identity', () => {

@@ -9,11 +9,12 @@ vi.mock('../src/session/useSession.js', () => ({ useSession: () => ({
   session: { phase: 'ready', me: { displayName: 'Commander', isAdmin: false, latestResult: null } },
   rollover: vi.fn(), signOut: vi.fn(),
 }) }));
+vi.mock('../src/starter/ArrivalHost.js', () => ({ ArrivalHost: () => null }));
 vi.mock('../src/session/useEventStream.js', () => ({ useEventStream: vi.fn() }));
 vi.mock('../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: vi.fn() }));
 vi.mock('../src/lib/music.js', () => ({ useAmbientMusic: vi.fn() }));
 // The arena door asks the API for a token only when the playtest build flag is on.
-vi.mock('../src/api/context.js', () => ({ useApi: () => ({}) }));
+vi.mock('../src/api/context.js', () => ({ useApi: () => ({ authCapabilities: () => Promise.resolve({ starterGalaxy: false }) }) }));
 vi.mock('../src/shell/LocalAlertSync.js', () => ({ LocalAlertSync: () => null }));
 vi.mock('../src/api/world.js', () => ({ WorldProvider: ({ children }: { children: ReactNode }) => children }));
 // The v2 shell draws the galaxy through its render prop; its HUD reads the API, which

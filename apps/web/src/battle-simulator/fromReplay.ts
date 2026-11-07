@@ -1,4 +1,4 @@
-import { HULLS, fleetEntries, shieldHp, type BattleReplayData, type BattleShipSnapshot, type Fleet, type HullId } from '@astera/rules';
+import { HULLS, STARTER, fleetEntries, shieldHp, vesselAegisHp, type BattleReplayData, type BattleShipSnapshot, type Fleet, type HullId } from '@astera/rules';
 import { DEFAULT_SCENARIO, type BattleScenario, type SimulationParticipant } from './scenario.js';
 
 const SEATS = 5;
@@ -9,8 +9,10 @@ const SEATS = 5;
  * simulator learns nothing the viewer could not already watch. The pirate level is not in a replay;
  * the report passes it.
  */
-export function scenarioFromReplay(replay: Omit<BattleReplayData, 'result' | 'control'>, options: { seed?: number; pirateLevel?: number } = {}): BattleScenario {
-  const { recording, environment } = replay;
+export function scenarioFromReplay(replay: Omit<BattleReplayData, 'result' | 'control'>, options: { seed?: number; pirateLevel?: number; galaxy?: BattleScenario['galaxy'] } = {}): BattleScenario {
+  const { recording } = replay;
+  // A colony ship is fought as a defended field: its own Aegis, and its guard at home (player test I-04).
+  const environment = replay.environment === 'MONUMENT' ? 'MONUMENT' : 'PLANET';
   const side = (key: 'ATTACK' | 'DEFENCE') => {
     const owners = replay.owners.filter(owner => owner.side === key);
     const ships = recording.ships.filter(ship => ship.side === key);
@@ -27,10 +29,13 @@ export function scenarioFromReplay(replay: Omit<BattleReplayData, 'result' | 'co
   const escaped = replay.escape?.kind === 'ESCAPED' && environment === 'PLANET' && defenders.length === 1;
   if (escaped) for (const [hull, count] of fleetEntries(replay.escape!.ships)) defenders[0]!.fleet[hull] = (defenders[0]!.fleet[hull] ?? 0) + count;
   const capacity = environment === 'PLANET' ? replay.aegisCapacity : 0;
+  const galaxy = options.galaxy ?? 'MAIN';
+  const wall = galaxy === 'STARTER' ? vesselAegisHp : shieldHp;
+  const top = galaxy === 'STARTER' ? STARTER.combat.aegisMax : 20;
   let aegisLevel = 0;
-  while (aegisLevel < 20 && shieldHp(aegisLevel + 1) <= capacity) aegisLevel++;
+  while (aegisLevel < top && wall(aegisLevel + 1) <= capacity) aegisLevel++;
   return {
-    ...DEFAULT_SCENARIO, seed: options.seed ?? DEFAULT_SCENARIO.seed, environment, aegisLevel,
+    ...DEFAULT_SCENARIO, galaxy, seed: options.seed ?? DEFAULT_SCENARIO.seed, environment, aegisLevel,
     aegisCharge: capacity > 0 ? Math.min(100, Math.round(recording.initialAegis / capacity * 100)) : 100,
     defenceOffline: replay.defenceOffline, automaticEscape: escaped,
     pirateLevel: environment === 'MONUMENT' && defenders.length === 1 ? pirateLevel(options.pirateLevel) : 0,

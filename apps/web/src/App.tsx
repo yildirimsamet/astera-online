@@ -1,4 +1,6 @@
-import { lazy, Suspense, useState, useCallback } from 'react';
+import { TrainingDoor } from './onboarding/TrainingDoor.js';
+import { useJump } from './starter/jump.js';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAnalyticsScreen } from './lib/playerAnalytics/useAnalyticsScreen.js';
 import { useTranslation } from 'react-i18next';
 import { useSession } from './session/useSession.js';
@@ -6,12 +8,13 @@ import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { ArenaGate } from './arena/ArenaGate.js';
 import { canEnterArena, canOpenArenaSandbox } from './arena/flags.js';
+import { canOpenStarterPreview } from './starter/preview.js';
 import { arenaCredential, useArenaAccess } from './arena/access.js';
 import { arenaDoor, pageStorage, takeArenaDoor } from './arena/freshEntry.js';
 import { roomyRenderer } from './arena/room.js';
 import { useApi } from './api/context.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
-const Academy = lazy(() => import('./onboarding/flightSchool/FlightSchool.js').then(module => ({ default: module.FlightSchool })));
+const StarterPreview = lazy(() => import('./starter/StarterPreview.js'));
 const BattleSimulator = lazy(() => import('./battle-simulator/BattleSimulator.js').then(module => ({ default: module.BattleSimulator })));
 const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(module => ({ default: module.ServersScreen })));
 import type { Panel, PanelStop } from './screens/GalaxyView.jsx';
@@ -23,6 +26,7 @@ import { WorldProvider } from './api/world.js';
 import { LocalAlertSync } from './shell/LocalAlertSync.js';
 import { PushDeviceSync } from './shell/PushDeviceSync.js';
 import { Button } from './ui/kit/index.js';
+const ArrivalHost = lazy(() => import('./starter/ArrivalHost.js').then(module => ({ default: module.ArrivalHost })));
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
 import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
@@ -115,7 +119,15 @@ function SessionApp() {
   useAmbientMusic();
   useSoundEffects();
 
-  useEventStream(ready && !academyReplay, rollover);
+  const jump = useJump();
+  useEventStream(ready && !academyReplay && jump?.stage !== 'flight', rollover);
+  // The session moves to the planet under the last beat of the jump, so the fade lands on the real thing.
+  const flying = jump?.stage === 'flight';
+  useEffect(() => {
+    if (jump?.stage !== 'reveal' || jump.replay || session.phase !== 'ready' || !session.me.vessel) return;
+    setPanel(null);
+    rollover();
+  }, [jump?.stage, jump?.replay, rollover, session]);
   useLiveAlerts(ready && !academyReplay);
 
   const [panel, setPanel] = useState<Panel>(door === 'leave' ? 'ship' : null);
@@ -171,6 +183,7 @@ function SessionApp() {
    * refuses.
    */
   const publicWeb = (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web';
+  if (flying) return null;
   if (session.phase === 'starting' && publicWeb && !commanderKnownHere()) return <WebLandingGate restoring onAuthenticate={authenticate} onBegin={rehearse} />;
   if (session.phase === 'starting') {
     return <LoadingScreen caption={t('loading.contact')} />;
@@ -199,7 +212,7 @@ function SessionApp() {
    */
   if (session.phase === 'rehearsing') {
     return (
-      <Academy
+      <TrainingDoor
         onClaim={claim}
         onSignIn={signInInstead}
         onLeave={leaveRehearsal}
@@ -234,7 +247,7 @@ function SessionApp() {
     );
   }
 
-  if (academyReplay) return <Academy replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
+  if (academyReplay) return <TrainingDoor replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
     onSignIn={() => { setAcademyReplay(false); }} onLeave={() => { setAcademyReplay(false); }} />;
 
   const through = (way: 'enter' | 'leave'): 'page' | 'reload' => arenaDoor(way, { roomy: roomyRenderer(), storage: pageStorage(), reload: () => { location.reload(); } });
@@ -281,7 +294,7 @@ function SessionApp() {
             onCountryChange={updateCountry}
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
-            onEnterArena={canEnterArena(import.meta.env, arenaAllowed)
+            onEnterArena={!session.me.vessel && canEnterArena(import.meta.env, arenaAllowed)
               ? () => { if (through('enter') === 'page') { setPanel(null); setArenaOpen(true); } } : undefined}
             homeRequest={homeRequest}
             worldsRequest={worldsRequest}
@@ -289,6 +302,7 @@ function SessionApp() {
             clearRequest={clearRequest}
             onOpenChat={onOpenChat}
           />
+          {!session.me.vessel && <ArrivalHost />}
           {profileOpen && <ProfilePage name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
             onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
           </>
@@ -298,6 +312,14 @@ function SessionApp() {
   );
 }
 
+const MigrationSequence = lazy(() => import('./galaxy/MigrationSequence.js').then(module => ({ default: module.MigrationSequence })));
+
+/** Above the session and not inside it: the game unmounts under it and comes back as a planet. */
+function JumpScene() {
+  const jump = useJump();
+  return jump && <MigrationSequence jump={jump} />;
+}
+
 /** Heavy game branches load after the public page has become useful. */
 export function App() {
   const { t } = useTranslation();
@@ -305,6 +327,7 @@ export function App() {
   const [simulator, setSimulator] = useState(() => new URLSearchParams(location.search).get('simulator') === '1');
   const updateRequired = useUpdateRequired();
   const maintenance = useMaintenance();
+  if (canOpenStarterPreview(import.meta.env, location.search)) return <Suspense fallback={null}><StarterPreview /></Suspense>;
   if (simulator) return <Suspense fallback={<LoadingScreen caption={t('simulator.stageLoading')} />}><BattleSimulator onLeave={() => {
     const url = new URL(location.href); url.searchParams.delete('simulator'); history.replaceState(null, '', url);
     setSimulator(false);
@@ -317,5 +340,5 @@ export function App() {
   }} />;
   if (updateRequired) return <UpdateRequired />;
   if (maintenance) return <MaintenanceScreen endsAt={maintenance.endsAt} />;
-  return <Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>;
+  return <><Suspense fallback={null}><JumpScene /></Suspense><Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense></>;
 }

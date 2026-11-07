@@ -71,6 +71,8 @@ export interface SheetProps {
    * the dialog's words for a reader, nothing is drawn twice, and the close floats over the top.
    */
   quietTitle?: boolean;
+  /** The page starts with a picture: the handle and the close lie over it instead of above it. */
+  floatingHead?: boolean;
   onClose: () => void;
   /** Where it was opened from, when that is a surface rather than the galaxy. */
   onBack?: () => void;
@@ -127,6 +129,7 @@ export function Sheet({
   children,
   footer,
   bleed = false,
+  floatingHead = false,
   contained = false,
   fixedHeight = false,
   placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
@@ -209,11 +212,11 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
-        <div className={`shrink-0 touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
+        <div className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
-          {placement !== 'card' && <button
+          {placement !== 'card' && !floatingHead && <button
             type="button"
             aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
             onClick={(event) => {
@@ -260,6 +263,7 @@ export function Sheet({
             <button
               type="button"
               aria-label={t('sheet.close')}
+              data-sheet-close=""
               onClick={onClose}
               className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel' : ''}`}
             >
@@ -270,7 +274,7 @@ export function Sheet({
 
         <div
           data-sheet-body=""
-          className={`relative min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
+          className={`relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
           {typeof children === 'function' ? children(detent) : children}
         </div>

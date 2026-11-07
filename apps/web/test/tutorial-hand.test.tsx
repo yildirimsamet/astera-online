@@ -221,6 +221,26 @@ describe('reaching a control the sheet is hiding', () => {
     expect(scroll).not.toHaveBeenCalled();
   });
 
+  /** Owner 2026-11-06: on a short phone the Repair button sat under the bottom bar, and the hand with it. */
+  it('scrolls a target the bottom bar is covering', () => {
+    const frames = frameLoop();
+    const dock = document.createElement('nav');
+    dock.setAttribute('data-dock', '');
+    document.body.append(dock);
+    vi.spyOn(dock, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 560, 350, 60));
+    const target = document.createElement('button');
+    const scroll = vi.fn();
+    target.scrollIntoView = scroll;
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(new DOMRect(16, 540, 300, 36));
+
+    const view = render(<TutorialHand targets={() => [target]} />);
+    frames.shift()!(0);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    const hand = view.container.querySelector('img')!.parentElement!;
+    expect(Number.parseFloat(/,\s*([\d.]+)px/.exec(hand.style.transform)?.[1] ?? '0')).toBeLessThanOrEqual(560 - 48);
+    dock.remove();
+  });
+
   it('scrolls again when the hand moves on to the next control', () => {
     const frames = frameLoop();
     const first = document.createElement('button');

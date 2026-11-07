@@ -33,6 +33,13 @@ export interface DockProps {
    */
   disabled?: readonly DockTab[];
   /**
+   * Tabs a colony ship has not opened yet. Unlike `disabled` they still answer a press, because the
+   * press is how a player learns what opens them.
+   */
+  locked?: readonly DockTab[];
+  /** Tabs that have just opened: they shine and say "New" until first pressed (owner 2026-11-06). */
+  fresh?: readonly DockTab[];
+  /**
    * A page is open over the galaxy (a tab's, the fleet, the bell, the timers). Owner,
    * 2026-09-24: the dock is fully see-through over the galaxy and backs itself only
    * then, so the tabs still read over a page's own content.
@@ -54,11 +61,12 @@ export interface DockProps {
  * ring on Fleet filling toward your next own landing beside how many are up, the
  * unseen reports on Intel, what the clan needs on Clan.
  */
-export function Dock({ active, badges, onSelect, disabled = [], over = false, bar = false }: DockProps) {
+export function Dock({ active, badges, onSelect, disabled = [], locked = [], fresh = [], over = false, bar = false }: DockProps) {
   const { t } = useTranslation();
 
   return (
     <nav
+      data-dock=""
       aria-label={t('dock.label')}
       {...(bar ? { 'data-bar': '' } : {})}
       className={`flex font-v2-ui ${
@@ -83,21 +91,27 @@ export function Dock({ active, badges, onSelect, disabled = [], over = false, ba
                 : null;
         const count = tab === 'fleet' ? badges.fleet.airborne : tab === 'intel' ? badges.intel : tab === 'clan' ? badges.clan : 0;
         const progress = tab === 'fleet' ? badges.fleet.progress : null;
+        const shut = locked.includes(tab);
+        const lit = fresh.includes(tab);
+        const named = shut ? `${label} · ${t('dock.locked')}` : label;
 
         return (
           <button
             key={tab}
             type="button"
-            aria-label={said === null ? label : `${label} · ${said}`}
+            aria-label={said === null ? named : `${named} · ${said}`}
             aria-keyshortcuts={String(index + 1)}
+            data-guide={`dock-${tab}`}
             {...(on ? { 'aria-current': 'page' as const } : {})}
             disabled={disabled.includes(tab)}
+            {...(shut ? { 'data-locked': '' } : {})}
+            {...(lit ? { 'data-fresh': '' } : {})}
             onClick={() => { onSelect(tab); }}
             className={`relative flex min-w-0 disabled:opacity-35 ${
               bar
                 ? 'items-center gap-1.5 px-2.5 hover:text-v2-ink'
                 : 'h-16 flex-1 flex-col items-center justify-center gap-1'
-            } ${on ? 'text-v2-ink' : 'text-v2-ink-3'}`}
+            } ${on || lit ? 'text-v2-ink' : 'text-v2-ink-3'} ${shut ? 'opacity-65' : ''}`}
           >
             {on && (
               <span
@@ -117,7 +131,18 @@ export function Dock({ active, badges, onSelect, disabled = [], over = false, ba
                   <span className="absolute inset-0.5 rounded-full bg-v2-deep" />
                 </span>
               )}
-              <Icon id={ICON[tab]} className="relative size-5.25" />
+              {lit && <span aria-hidden="true" className="absolute -inset-1.5 animate-[ember_1.6s_ease-in-out_infinite] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-v2-self)_45%,transparent),transparent)]" />}
+              <Icon id={ICON[tab]} className={`relative size-5.25 ${lit ? 'text-v2-self' : ''}`} />
+              {shut && (
+                <span data-padlock="" aria-hidden="true" className="absolute -bottom-0.5 -right-1 grid size-3.5 place-items-center rounded-full bg-v2-deep ring-1 ring-v2-line-hi">
+                  <Icon id="i-lock" className="size-2.5 text-v2-ink-2" />
+                </span>
+              )}
+              {lit && (
+                <span aria-hidden="true" className="absolute -right-3 -top-1.5 rounded-chip bg-v2-self px-1 font-v2-mono text-micro uppercase leading-3.5 text-v2-self-ink shadow-[0_0_8px_var(--color-v2-self)]">
+                  {t('dock.fresh')}
+                </span>
+              )}
               {tab === 'base' && badges.base && (
                 <span data-badge="" aria-hidden="true" className="absolute right-0.5 top-0.5 size-2 rounded-full bg-v2-warn ring-2 ring-v2-deep" />
               )}

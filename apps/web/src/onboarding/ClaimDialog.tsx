@@ -1,6 +1,6 @@
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
-import { CommunityPolicyAgreement } from '../screens/CommunityPolicy.js';
+import { CommunityPolicyNotice } from '../screens/CommunityPolicy.js';
 import { matchLanguage } from '../i18n/languages.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +60,6 @@ export function ClaimDialog({
   }, [step]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -115,7 +114,6 @@ export function ClaimDialog({
       setProblemField('password');
       return;
     }
-    if (!policyAccepted) { setProblem(t('moderation.policy.required')); setProblemField(null); return; }
     setProblem(null);
     setProblemField(null);
     setSubmittedUsername(username.trim());
@@ -151,7 +149,7 @@ export function ClaimDialog({
           submit();
         }}
       >
-        <span aria-hidden="true" className="mx-auto mb-4 block h-1 w-9 rounded-full bg-v2-line-hi sm:hidden" />
+        <span aria-hidden="true" className={`mx-auto block h-1 w-9 rounded-full bg-v2-line-hi sm:hidden ${naming ? 'mb-4' : 'mb-3'}`} />
         <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
           {naming ? t('onboarding.claim.eyebrowName') : t('onboarding.claim.eyebrowPassword')}
         </p>
@@ -160,7 +158,7 @@ export function ClaimDialog({
             ? t('onboarding.claim.headingName')
             : t('onboarding.claim.headingPassword', { name: username.trim() })}
         </h2>
-        <p className="mt-2 text-caption leading-snug text-v2-ink-2">
+        <p className={`${naming ? 'mt-2' : 'mt-1'} text-caption leading-snug text-v2-ink-2`}>
           {naming
             ? t('onboarding.claim.lineName', { name: planetName })
             : t('onboarding.claim.linePassword')}
@@ -194,14 +192,14 @@ export function ClaimDialog({
 
         {!naming && (
           <>
-            <label className="mt-4 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>
+            <label className="mt-3 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>
               {t('onboarding.claim.passwordLabel')}
             </label>
             <input
               id={passwordId}
               ref={passwordRef}
               name="password"
-              className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+              className={`mt-1 min-h-11 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
               aria-invalid={problemField === 'password'}
               type="password"
               value={password}
@@ -214,13 +212,13 @@ export function ClaimDialog({
               maxLength={200}
               placeholder={t('landing.form.passwordPlaceholder', { count: MIN_PASSWORD })}
             />
-            <div className="mt-4">
-              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{t('country.label')}</p>
+            <div className="mt-2">
               <button
                 type="button"
-                className="mt-1.5 flex min-h-12 w-full items-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-left text-caption text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
+                className="flex min-h-11 w-full items-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-left text-caption text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                 onClick={() => { setCountryPickerOpen(true); }}
               >
+                <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{t('country.label')}</span>
                 <Flag code={countryCode} language={i18n.resolvedLanguage ?? 'en'} />
                 <span className="flex-1">{countryName(countryCode, i18n.resolvedLanguage ?? 'en')}</span>
                 <span className="text-v2-ink-3">{t('country.change')}</span>
@@ -235,9 +233,9 @@ export function ClaimDialog({
           </p>
         )}
 
-        {!naming && introduction && <p className="mt-4 rounded-control border border-v2-line bg-v2-deep px-3 py-2 text-caption leading-snug text-v2-ink-2" role="note">{introduction}</p>}
-        {!naming ? <div className="mt-3"><CommunityPolicyAgreement checked={policyAccepted} onChange={setPolicyAccepted} disabled={busy} /></div> : null}
-        <Button type="submit" variant="primary" size="lg" full disabled={busy || !naming && !policyAccepted} className="mt-5">
+        {!naming && introduction && <p className="mt-3 rounded-control border border-v2-line bg-v2-deep px-3 py-1.5 text-caption leading-snug text-v2-ink-2" role="note">{introduction}</p>}
+        {!naming ? <div className="mt-3"><CommunityPolicyNotice /></div> : null}
+        <Button type="submit" variant="primary" size="lg" full disabled={busy} className={naming ? 'mt-5' : 'mt-2'}>
           {busy
             ? t('onboarding.claim.working')
             : naming
@@ -245,7 +243,7 @@ export function ClaimDialog({
               : t('onboarding.claim.submit')}
         </Button>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className={`${naming ? 'mt-3' : 'mt-1'} flex items-center justify-between gap-2`}>
           <button
             type="button"
             className="min-h-10 text-left text-caption text-v2-ink-2 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"

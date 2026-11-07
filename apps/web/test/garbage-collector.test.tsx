@@ -77,9 +77,10 @@ describe('the Garbage Collector in the catalogue', () => {
 
   it('prints the requested 20 deuterium fuel rate on the ship card', () => {
     render(<StatStrip atk={0} hp={540} speed={151} cargo={0} fuel={hullFuelRate('GARBAGE_COLLECTOR')} salvage={SALVAGE.perCollector} size="card" />);
-    expect(screen.getByText('Fuel')).toBeVisible();
-    expect(screen.getByText('20.0 /1k')).toBeVisible();
-    expect(screen.queryByText('90.0 /1k')).not.toBeInTheDocument();
+    // The unit is said in words: "/1k" was read as a thousand of something unknown (player test B-01).
+    expect(screen.getByText('Fuel per 1,000 distance')).toBeVisible();
+    expect(screen.getByText('20.0')).toBeVisible();
+    expect(screen.queryByText('90.0')).not.toBeInTheDocument();
   });
 
   it('leaves every other hull’s hold exactly where it was', () => {

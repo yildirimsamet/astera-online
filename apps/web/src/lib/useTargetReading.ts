@@ -11,6 +11,8 @@ import {
   matchupsAgainst,
   readPowerRange,
   shieldHp,
+  STARTER,
+  vesselAegisHp,
   type Fleet,
   type HpDamageLots,
   type LineReading,
@@ -45,6 +47,7 @@ export function useTargetReading({
   damage,
   rulesetVersion,
   escort,
+  aboard = false,
 }: {
   target: LaunchTarget;
   intel?: IntelView | undefined;
@@ -57,6 +60,8 @@ export function useTargetReading({
   rulesetVersion: number;
   /** The commander ship flying with the wing (Y9): its bonus fights in the power range as on the server. */
   escort?: AdmiralBonuses | null | undefined;
+  /** Reading from a ship: this galaxy's wall, and nobody here runs. */
+  aboard?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -91,7 +96,9 @@ export function useTargetReading({
     public and so is the Core that caps its Aegis (a caretaker's Aegis stops at 3,
     under every tier's Core), so a charge nobody read runs from empty to that.
   */
-  const domeCeiling = target.kind === 'world' && target.world.shielded ? shieldHp(target.world.coreLevel) : 0;
+  const domeCeiling = target.kind === 'world' && target.world.shielded
+    ? aboard ? vesselAegisHp(STARTER.combat.aegisMax) : shieldHp(target.world.coreLevel)
+    : 0;
   /*
     A CARETAKER HOLDS NO RESEARCH, and the server reads none for it. Any other world whose
     report predates the windows was read as exact doctrine levels, or not at all — and an
@@ -180,7 +187,8 @@ export function useTargetReading({
   const held = clanDefenseApplies(rulesetVersion) && report?.posture != null && report.posture !== 'ESCAPE'
     ? report.posture
     : null;
-  const escapeRuled = target.kind === 'world'
+  const escapeRuled = !aboard
+    && target.kind === 'world'
     && target.world.kind !== 'NEUTRAL'
     && fleetEscapeApplies(rulesetVersion)
     && held === null;
@@ -239,7 +247,7 @@ export function useTargetReading({
   }
 
   return {
-    report, opposing, power, matchups, hint, escape, notes,
+    report, opposing, power, matchups, hint, escape, notes, domeCeiling,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
     classReading: report?.classReading ?? null,
   };

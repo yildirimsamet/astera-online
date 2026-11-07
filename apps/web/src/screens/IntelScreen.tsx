@@ -7,7 +7,10 @@ import {
   radarDetectsFleets,
   radarRange,
   sensorSphere,
+  STARTER,
+  vesselSphere,
   telescopeSlots,
+  vesselHull,
 } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +20,7 @@ import type { IntelView } from '../api/schemas.js';
 import { rivalColour } from '../galaxy/PlanetField.js';
 import { compact, full, percent } from '../lib/format.js';
 import { duration, staleness, useNow } from '../lib/time.js';
+import { heroArt } from '../starter/shipScreen.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Icon } from '../v2/icons.js';
@@ -63,6 +67,9 @@ type Scan = IntelView['radarLog'][number];
 const HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
 const CARD = 'rounded-control border border-v2-line bg-v2-panel';
 const HOUR = 60 * 60_000;
+
+/** A neighbour aboard is a ship. Its id gives its hull; its state is a matter for the report's bands. */
+const targetArt = (id: string, aboard: boolean): string => aboard ? heroArt(vesselHull(id), 'WRECKED') : planetArt(id);
 
 /** The reading as a word, one translated string per state (Turkish reads FİLO EVDE). */
 const FLEET_WORD = {
@@ -126,6 +133,7 @@ export function IntelScreen({
   }
   if (!intel.data) return <Waiting>{t('surface.waitingIntel')}</Waiting>;
 
+  const aboard = planet.data?.vessel !== undefined;
   const telescope = planet.data?.instruments.TELESCOPE ?? 0;
   const radar = planet.data?.instruments.RADAR ?? 0;
   const { watching, probeReports, radarLog } = intel.data;
@@ -169,10 +177,11 @@ export function IntelScreen({
               mine={mine}
               neighbours={neighbours}
               radar={radar}
+              aboard={aboard}
               {...(onOpenOrbit ? { onOpenOrbit } : {})}
             />
-            <Rivals rivals={rivals} {...(onFocusRival ? { onFocusRival } : {})} />
-            <Known watching={watching} probes={probeReports} now={now} onFocusPlanet={onOpenDossier} />
+            {!aboard && <Rivals rivals={rivals} {...(onFocusRival ? { onFocusRival } : {})} />}
+            <Known watching={watching} probes={probeReports} now={now} aboard={aboard} onFocusPlanet={onOpenDossier} />
             {anyRadar && (
               <RadarGlance
                 scans={radarLog}
@@ -202,6 +211,7 @@ export function IntelScreen({
                 probes={probeReports}
                 now={now}
                 yours={planet.data ? yardstickOf(planet.data) : null}
+                aboard={aboard}
                 {...(onOpenDossier ? { onOpenDossier } : {})}
               />
             </div>
@@ -221,7 +231,7 @@ export function IntelScreen({
 
         {shelf === 'radar' && (
           <div role="tabpanel" aria-labelledby="intel-shelf-radar" className="flex flex-col gap-3">
-            <RadarShelf radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})} />
+            <RadarShelf aboard={aboard} radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})} />
           </div>
         )}
       </div>
@@ -250,6 +260,7 @@ function Band({ label, aside }: { label: string; aside?: ReactNode }) {
  * adds one (D18 slots at L1, L3, L5; D36: no unchanged before-and-after).
  */
 function TelescopeShelf({
+  aboard,
   telescope,
   slots,
   mine,
@@ -257,6 +268,7 @@ function TelescopeShelf({
   radar,
   onOpenOrbit,
 }: {
+  aboard: boolean;
   telescope: number;
   slots: number;
   mine: readonly Watch[];
@@ -280,9 +292,9 @@ function TelescopeShelf({
           kind="telescope"
           art={instrumentArt('TELESCOPE', 1)}
           missing={t('intel.watching.missingNoTelescope')}
-          gives={t('intel.watching.gives')}
-          cost={t('intel.watching.costInstall')}
-          {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
+          gives={t(aboard ? 'starter.intel.telescopeGives' : 'intel.watching.gives')}
+          cost={t(aboard ? 'starter.intel.telescopeCost' : 'intel.watching.costInstall')}
+          {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t(aboard ? 'starter.intel.openShip' : 'intel.openOrbit') } : {})}
         />
       ) : (
         <div data-telescope-rack className="grid grid-cols-4 gap-1.5">
@@ -314,11 +326,11 @@ function TelescopeShelf({
           {next !== null && (
             <div
               data-slot-next
-              title={t('intel.coverage.oneMore', { level: next })}
+              title={t(aboard ? 'starter.intel.oneMore' : 'intel.coverage.oneMore', { level: next })}
               className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-v2-line px-1 py-1.5 text-v2-ink-3 opacity-70"
             >
               <span className="grid size-8 place-items-center"><Icon id="i-lock" className="size-4" /></span>
-              <span className="w-full truncate text-center text-micro">{t('intel.watching.nextSlot', { level: next })}</span>
+              <span className="w-full truncate text-center text-micro">{t(aboard ? 'starter.intel.nextSlot' : 'intel.watching.nextSlot', { level: next })}</span>
             </div>
           )}
         </div>
@@ -326,7 +338,7 @@ function TelescopeShelf({
       <div className="flex flex-col gap-0.5">
         <p className="text-caption text-v2-ink">
           {slots === 0
-            ? t('intel.coverage.blind')
+            ? t(aboard ? 'starter.intel.blind' : 'intel.coverage.blind')
             : idle > 0
               ? t('intel.coverage.partial', { seen, count: slots })
               : t('intel.coverage.full')}
@@ -335,8 +347,8 @@ function TelescopeShelf({
           {slots === 0
             ? t('intel.coverage.blindHint')
             : idle > 0
-              ? t('intel.coverage.idleHint', { count: idle })
-              : t('intel.coverage.scarcity', { neighbours, count: slots })}
+              ? t(aboard ? 'starter.intel.idleHint' : 'intel.coverage.idleHint', { count: idle })
+              : t(aboard ? 'starter.intel.scarcity' : 'intel.coverage.scarcity', { neighbours, count: slots })}
         </p>
         {radar === 0 && <p className="text-micro leading-snug text-v2-warn">{t('intel.coverage.noRadar')}</p>}
         {mine.some((w) => w.reading.state === 'INTERMITTENT') && (
@@ -394,8 +406,8 @@ function Rivals({ rivals, onFocusRival }: { rivals: readonly RivalRow[]; onFocus
  * brought back and no Telescope is watching (age as grain and "Xh ago") — K11: the two
  * reliabilities never share a mark. The rule is one tap deeper.
  */
-function Known({ watching, probes, now, onFocusPlanet }: {
-  watching: readonly Watch[]; probes: readonly Probe[]; now: number;
+function Known({ watching, probes, now, aboard, onFocusPlanet }: {
+  watching: readonly Watch[]; probes: readonly Probe[]; now: number; aboard: boolean;
   onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -428,9 +440,9 @@ function Known({ watching, probes, now, onFocusPlanet }: {
         <p className="text-micro leading-snug text-v2-ink-3">{t('intel.known.empty')}</p>
       ) : (
         <ul data-known-list className="divide-y divide-v2-line">
-          {watching.map((watch) => <KnownWatch key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} onFocusPlanet={onFocusPlanet} />)}
+          {watching.map((watch) => <KnownWatch aboard={aboard} key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} onFocusPlanet={onFocusPlanet} />)}
           {probed.map((report) => (
-            <KnownProbe key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} onFocusPlanet={onFocusPlanet} />
+            <KnownProbe aboard={aboard} key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} onFocusPlanet={onFocusPlanet} />
           ))}
         </ul>
       )}
@@ -438,14 +450,14 @@ function Known({ watching, probes, now, onFocusPlanet }: {
   );
 }
 
-function KnownWatch({ watch, onFocusPlanet }: { watch: Watch; onFocusPlanet?: (planetId: string) => void }) {
+function KnownWatch({ watch, aboard, onFocusPlanet }: { watch: Watch; aboard: boolean; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   const { status, state, staleMinutes, etaMinutes } = watch.reading;
   // E7: an away fleet is the opportunity, and its window is timed only when the reading says so.
   const window = status === 'AWAY' && etaMinutes !== null;
   return (
     <li data-known="watch"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(watch.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
-      <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={state} />
+      <AgedThumb src={targetArt(watch.targetPlanetId, aboard)} alt="" clarity={state} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5">
           <span className="truncate text-caption font-semibold text-v2-ink">{watch.ownerName}</span>
@@ -468,15 +480,15 @@ function KnownWatch({ watch, onFocusPlanet }: { watch: Watch; onFocusPlanet?: (p
   );
 }
 
-function KnownProbe({ report, minutes, onFocusPlanet }: { report: Probe; minutes: number; onFocusPlanet?: (planetId: string) => void }) {
+function KnownProbe({ report, minutes, aboard, onFocusPlanet }: { report: Probe; minutes: number; aboard: boolean; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   return (
     <li data-known="probe"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(report.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
-      <AgedThumb src={planetArt(report.targetPlanetId)} alt="" ageMinutes={minutes} />
+      <AgedThumb src={targetArt(report.targetPlanetId, aboard)} alt="" ageMinutes={minutes} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</p>
         <p className="truncate text-micro text-v2-ink-3">
-          {report.targetName} · {t('intel.known.probe')} · {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
+          {report.targetName !== report.targetUsername && `${report.targetName} · `}{t('intel.known.probe')} · {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
         </p>
       </div>
       <AgeStamp minutes={minutes} />
@@ -540,11 +552,12 @@ const fresh = (scan: Scan, now: number): boolean => now - scan.at.getTime() < 6 
  * reading taken with the fleet at home is sharp and wears the full colour; one taken
  * with the fleet out is lighter, because a fleet away is a fleet not counted.
  */
-function ProbeShelf({ probes, now, yours, onOpenDossier }: {
+function ProbeShelf({ probes, now, yours, aboard, onOpenDossier }: {
   probes: readonly Probe[];
   now: number;
   /** Your active world, measured as a probe measures; null until it has loaded. */
   yours: Yardstick | null;
+  aboard: boolean;
   onOpenDossier?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -563,7 +576,7 @@ function ProbeShelf({ probes, now, yours, onOpenDossier }: {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-micro leading-snug text-v2-ink-3">
-        {t('intel.probes.estimateNote')} {yours !== null && t('intel.probes.scaleNote')}
+        {t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}
       </p>
       {probes.map((report) => {
         const minutes = (now - report.at.getTime()) / 60_000;
@@ -573,7 +586,7 @@ function ProbeShelf({ probes, now, yours, onOpenDossier }: {
         return (
           <article key={`${report.targetPlanetId}-${String(report.at.getTime())}`} className={`flex flex-col gap-2 p-3 ${CARD}`}>
             <div className="flex items-center gap-2.5">
-              <AgedThumb src={planetArt(report.targetPlanetId)} alt="" ageMinutes={minutes} />
+              <AgedThumb src={targetArt(report.targetPlanetId, aboard)} alt="" ageMinutes={minutes} />
               <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-baseline gap-1.5">
                   <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
@@ -590,6 +603,7 @@ function ProbeShelf({ probes, now, yours, onOpenDossier }: {
               <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} mine={yours?.stock ?? null} />
               <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} mine={yours?.defence ?? null} />
               <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
+              {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
             </div>
             {(report.detected || onOpenDossier) && (
               <div className="flex items-center justify-between gap-2">
@@ -661,6 +675,7 @@ function RangeRow({ label, low, high, sharp, mine }: { label: string; low: numbe
 /* ── radar ───────────────────────────────────────────────────── */
 
 function RadarShelf({
+  aboard,
   radar,
   anyRadar,
   scans,
@@ -668,6 +683,7 @@ function RadarShelf({
   onOpenOrbit,
   onFocusPlanet,
 }: {
+  aboard: boolean;
   radar: number;
   anyRadar: boolean;
   scans: readonly Scan[];
@@ -682,9 +698,9 @@ function RadarShelf({
         kind="radar"
         art={instrumentArt('RADAR', 1)}
         missing={t('intel.radar.missing')}
-        gives={t('intel.radar.gives')}
-        cost={t('intel.radar.cost')}
-        {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
+        gives={t(aboard ? 'starter.intel.radarGives' : 'intel.radar.gives')}
+        cost={t(aboard ? 'starter.intel.radarCost' : 'intel.radar.cost')}
+        {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t(aboard ? 'starter.intel.openShip' : 'intel.openOrbit') } : {})}
       />
     );
   }
@@ -698,16 +714,18 @@ function RadarShelf({
       */}
       {radarDetectsFleets(radar) && (
         <RadarReach
-          sense={sensorSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect}
-          warn={radarRange(radar)}
+          // A ship warns at the edge of what it detects, and its galaxy is its own size.
+          sense={aboard ? vesselSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect : sensorSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect}
+          warn={aboard ? vesselSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect : radarRange(radar)}
           level={radar}
+          aboard={aboard}
         />
       )}
       {radar > 0 && (
         <p className="text-micro leading-snug text-v2-ink-2">
           {radarDetectsFleets(radar) && t('intel.radar.noteSlow')}
-          {radar < 2 && t('intel.radar.noteBearing')}
-          {radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
+          {radar < 2 && t(aboard ? 'starter.intel.radarBearing' : 'intel.radar.noteBearing')}
+          {!aboard && radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
         </p>
       )}
       <section className={`flex flex-col gap-1.5 px-3 py-2.5 ${CARD}`}>
@@ -718,7 +736,7 @@ function RadarShelf({
         <DayLine scans={scans} now={now} />
       </section>
       {scans.length === 0 ? (
-        <p className="text-caption text-v2-ink-2">{t('intel.radar.quiet', { level: radar })}</p>
+        <p className="text-caption text-v2-ink-2">{aboard ? t('starter.intel.radarQuiet') : t('intel.radar.quiet', { level: radar })}</p>
       ) : (
         <ul className="divide-y divide-v2-line">
           {scans.map((scan) => (
@@ -767,9 +785,9 @@ function RadarShelf({
  * galaxy's radius, which is what makes it worth drawing at all; one ring while
  * detection and timed warning are one number, two the day the tables split.
  */
-function RadarReach({ sense, warn, level }: { sense: number; warn: number; level: number }) {
+function RadarReach({ sense, warn, level, aboard }: { sense: number; warn: number; level: number; aboard: boolean }) {
   const { t } = useTranslation();
-  const reach = (value: number): number => Math.max(4, Math.min(100, (value / GALAXY.radius) * 100));
+  const reach = (value: number): number => Math.max(4, Math.min(100, (value / (aboard ? STARTER.radius : GALAXY.radius)) * 100));
   const senseSize = reach(sense);
   const warnSize = reach(warn);
   const merged = sense === warn;
@@ -780,7 +798,9 @@ function RadarReach({ sense, warn, level }: { sense: number; warn: number; level
         data-radar-reach
         className="relative grid size-[104px] shrink-0 place-items-center rounded-full bg-v2-deep"
         role="img"
-        aria-label={t(merged ? 'intel.radar.noteFleetsOne' : 'intel.radar.noteFleets', { level, sense, warn })}
+        aria-label={aboard
+          ? t(merged ? 'starter.intel.radarFleetsOne' : 'starter.intel.radarFleets', { level, sense, warn })
+          : t(merged ? 'intel.radar.noteFleetsOne' : 'intel.radar.noteFleets', { level, sense, warn })}
       >
         {/* THE RIM OF THE GALAXY. Everything else is measured against it. */}
         <span className="absolute inset-0 rounded-full border border-dashed border-v2-line-hi" />
@@ -800,7 +820,7 @@ function RadarReach({ sense, warn, level }: { sense: number; warn: number; level
         <span className="absolute size-1.5 rounded-full bg-v2-self" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-      <p className={HEADING}>{t('intel.radar.level', { level })}</p>
+      <p className={HEADING}>{t(aboard ? 'starter.intel.radarLevel' : 'intel.radar.level', { level })}</p>
       <dl className="flex flex-col gap-1.5">
         {!merged && (
           <div className="flex items-center gap-2">

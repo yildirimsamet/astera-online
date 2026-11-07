@@ -563,7 +563,7 @@ export const action = {
   statRoom: "Bulk",
   statFuel: "Fuel",
   /** The rate carries its own span: the row form of the strip prints no labels. */
-  statFuelRate: "{{value}} /1k",
+  statFuelPer: "Fuel per 1,000 distance",
   statFuelNone: "—",
 } as const;
 

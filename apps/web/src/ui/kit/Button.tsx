@@ -114,6 +114,7 @@ export function IconButton({
   disabled = false,
   className = '',
   badge = false,
+  'data-sheet-close': sheetClose,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -122,12 +123,14 @@ export function IconButton({
   size?: 'sm' | 'md';
   disabled?: boolean;
   className?: string;
+  'data-sheet-close'?: boolean;
   /** An unread mark, positioned so it never overlaps the glyph's optical centre. */
   badge?: boolean | 'threat';
 }) {
   return (
     <button
       type="button"
+      data-sheet-close={sheetClose ? '' : undefined}
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => {

@@ -573,6 +573,7 @@ export const dossier = {
     lootRow: "{{label}}: {{band}} · your hold {{cargo}}",
     others: "Other readings",
     wing: "Your wing at home",
+    value: "Value",
     power: "Power",
     loot: "Loot",
     lootTag: "estimate",

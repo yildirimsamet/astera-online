@@ -28,6 +28,7 @@ import {
   SKY_DEEP_STAR_COUNT,
   SKY_STAR_COUNT,
   SKY_VERTEX,
+  SKY_VISIBILITY,
   STAR_FRAGMENT,
   STAR_BACKDROP_CLIP,
   STAR_TWINKLE_DEPTH,
@@ -394,8 +395,8 @@ export function Sky() {
 
     if (work.kind === 'done' && fade.current < 1) {
       fade.current = Math.min(1, fade.current + delta / SKY_FADE_SECONDS);
-      gas.uniforms.uOpacity!.value = fade.current;
-      for (const card of cards) card.material.opacity = fade.current;
+      gas.uniforms.uOpacity!.value = fade.current * SKY_VISIBILITY;
+      for (const card of cards) card.material.opacity = fade.current * SKY_VISIBILITY;
       invalidate();
     }
   });
@@ -738,7 +739,7 @@ export function BrightStars() {
           float horizontal = exp(-abs(p.y) * 92.0) * (1.0 - smoothstep(0.08, 0.5, abs(p.x)));
           float vertical = exp(-abs(p.x) * 92.0) * (1.0 - smoothstep(0.08, 0.5, abs(p.y)));
           float alpha = clamp(halo + core + (horizontal + vertical) * 0.34, 0.0, 1.0);
-          gl_FragColor = vec4(vColour * (0.72 + core * 1.1), alpha * 0.66);
+          gl_FragColor = vec4(vColour * (0.72 + core * 1.1) * ${SKY_VISIBILITY.toFixed(2)}, alpha * 0.66);
         }
       `,
     });

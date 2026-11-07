@@ -222,6 +222,8 @@ describe('the hangar panel', () => {
   });
 
   it('reads the hangar with the session and stands the owned ship in it, with its name, role, level and state', async () => {
+    // On the fixture's clock: on the wall clock its entry closed on 1 November and the way in said so.
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
     const calls = desk({ '/arena/hangar': [hangar()] });
     const enter = vi.fn();
     open(enter);

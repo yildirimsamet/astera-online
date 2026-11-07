@@ -26,14 +26,14 @@ function chat(options: { fail?: boolean; accepted?: boolean; unavailable?: boole
   render(<QueryClientProvider client={q}><ApiProvider api={api}><ChatScreen onFocusPlanet={vi.fn()} /></ApiProvider></QueryClientProvider>);
   return posts;
 }
-it('requires a new commander to explicitly agree before claim and forwards version and display language', async () => {
+it('takes joining as the agreement and forwards version and display language', async () => {
   const onClaim = vi.fn(() => Promise.resolve()); render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
   fireEvent.change(screen.getByLabelText('Commander name'), { target: { value: 'PolicyCommander' } }); fireEvent.click(screen.getByRole('button', { name: 'Continue with this name' }));
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'fixture-password' } });
-  const submit = screen.getByRole('button', { name: 'Join the galaxy' }); expect(submit).toBeDisabled();
+  const submit = screen.getByRole('button', { name: 'Join the galaxy' });
   expect(screen.getByRole('link', { name: 'Community guidelines' })).toHaveAttribute('href', '/community-guidelines.html');
   expect(screen.getByRole('link', { name: 'Terms of use' })).toHaveAttribute('href', '/terms.html');
-  expect(screen.getByRole('checkbox')).not.toBeChecked(); fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(submit);
+  fireEvent.click(submit);
   await waitFor(() => { expect(onClaim).toHaveBeenCalledWith('PolicyCommander', 'fixture-password', expect.any(String), { version, locale: 'en' }); });
 });
 it('keeps history readable and enables posting only after the server confirms explicit agreement', async () => {

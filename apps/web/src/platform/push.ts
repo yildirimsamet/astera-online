@@ -33,7 +33,7 @@ function remember(value: string | null): void {
 }
 
 export interface PushApi {
-  registerPushDevice(token: string, locale: string): Promise<unknown>;
+  registerPushDevice(token: string, locale: string, utcOffsetMinutes?: number): Promise<unknown>;
   forgetPushDevice(token: string): Promise<unknown>;
 }
 
@@ -45,7 +45,7 @@ const openedSchema = z.object({ notification: z.object({ data: z.object({ refId:
 
 /** Every `register()` answers with the token again, so a language change or a refreshed token is sent the same way. */
 function post(): void {
-  if (target && token) void target.api.registerPushDevice(token, target.locale).catch(() => undefined);
+  if (target && token) void target.api.registerPushDevice(token, target.locale, -new Date().getTimezoneOffset()).catch(() => undefined);
 }
 
 export async function connectPush(api: PushApi, options: { locale: string; channelName: string; ask: boolean }): Promise<'on' | 'denied' | 'off'> {

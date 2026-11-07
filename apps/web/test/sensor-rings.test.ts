@@ -69,8 +69,8 @@ describe('sensor surface treatment', () => {
     expect(sensorShellColour(true)).not.toBe(sensorShellColour(false));
   });
 
-  it('locks the owner-approved quieter glass and construction lines', () => {
-    expect(TELESCOPE_GLASS_OPACITY).toBe(0.375);
+  it('raises the glass visibility while preserving quiet construction lines', () => {
+    expect(TELESCOPE_GLASS_OPACITY).toBe(0.55);
     expect(TELESCOPE_GRID_OPACITY).toBe(0.15);
   });
 

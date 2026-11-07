@@ -8,6 +8,7 @@ import {
   garrisonOf,
   telescopeSlots,
   telescopeWatchRange,
+  vesselSphere,
   withinTelescopeRange,
   type Fleet,
   type ResearchProjectId,
@@ -261,6 +262,8 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
   const facts: Fact[] = [];
   const gaps: Gap[] = [];
   const range = distance(planet.planet.position, target.position);
+  // Another colony ship, or an outpost read from one: nothing here is a world.
+  const aShip = target.body === 'VESSEL' || planet.vessel !== undefined;
 
   /* ── the surface ────────────────────────────────────────── */
 
@@ -292,9 +295,9 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
   if (target.intel === 'UNKNOWN') {
     gaps.push({
       key: 'surface',
-      label: i18n.t('dossier.surfaceGapLabel'),
-      missing: i18n.t('dossier.surfaceGapMissing'),
-      why: i18n.t('dossier.surfaceGapWhy'),
+      label: i18n.t(aShip ? 'starter.dossier.surfaceGapLabel' : 'dossier.surfaceGapLabel'),
+      missing: i18n.t(aShip ? 'starter.dossier.surfaceGapMissing' : 'dossier.surfaceGapMissing'),
+      why: i18n.t(aShip ? 'starter.dossier.surfaceGapWhy' : 'dossier.surfaceGapWhy'),
       closes: 'probe',
     });
   } else {
@@ -324,7 +327,7 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
    * the same sentence whether this world reads above or below — the player forms
    * the expectation and the launch confirms it.
    */
-  if (target.intel !== 'UNKNOWN') {
+  if (target.intel !== 'UNKNOWN' && planet.vessel === undefined) {
     const banded = ownPeakCore !== null && target.controller?.kind === 'PLAYER'
       && !target.isSelf && target.isOwned !== true;
     const reach = banded ? tierBandReach(ownPeakCore) : null;
@@ -383,7 +386,9 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
           : i18n.t('dossier.fleetHomeNote'),
     });
   } else {
-    const outOfRange = telescope > 0 && !withinTelescopeRange(telescope, range);
+    // Aboard, the ship's own ladder: the main game's first Telescope would cover nearly this whole galaxy.
+    const shipReach = planet.vessel ? vesselSphere(planet.planet.position, telescope, 0).identify : null;
+    const outOfRange = telescope > 0 && (shipReach === null ? !withinTelescopeRange(telescope, range) : range > shipReach);
     const slots = telescopeSlots(telescope);
     /**
      * THE SOCKETS ON *THIS* WORLD, AND IT USED TO COUNT EVERY WORLD'S.
@@ -407,12 +412,12 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
           : outOfRange
             ? i18n.t('dossier.fleetGapOutOfRange')
             : i18n.t('dossier.fleetGapNoSlot'),
-      why: i18n.t('dossier.fleetGapWhy'),
+      why: i18n.t(aShip ? 'starter.dossier.fleetGapWhy' : 'dossier.fleetGapWhy'),
       closes: 'telescope',
       ...(outOfRange
         ? {
-            blocked: i18n.t('dossier.fleetGapRange', {
-              reach: Math.round(telescopeWatchRange(telescope)),
+            blocked: i18n.t(aShip ? 'starter.dossier.fleetGapRange' : 'dossier.fleetGapRange', {
+              reach: Math.round(shipReach ?? telescopeWatchRange(telescope)),
               distance: Math.round(range),
             }),
           }
@@ -520,6 +525,18 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
       accuracy: report.accuracy,
       note: report.fleetHome ? i18n.t('dossier.shipsAllHome') : i18n.t('dossier.shipsSomeOut'),
     });
+
+    if (report.repair) {
+      facts.push({
+        key: 'repair',
+        label: i18n.t('starter.reading.repairLabel'),
+        value: `${band(report.repair.low, report.repair.high)} %`,
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t('starter.reading.repairNote'),
+      });
+    }
 
     /*
       KLAN SAVUNMA DESTEĞİ (owner K9). The posture is exact — it decides whether the
@@ -702,9 +719,9 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
       key: 'stock',
       label: i18n.t('dossier.probeGapLabel'),
       missing: i18n.t(target.intel === 'REMEMBERED'
-        ? 'dossier.probeGapAged'
+        ? aShip ? 'starter.dossier.probeGapAged' : 'dossier.probeGapAged'
         : 'dossier.probeGapMissing'),
-      why: i18n.t('dossier.probeGapWhy'),
+      why: i18n.t(aShip ? 'starter.dossier.probeGapWhy' : 'dossier.probeGapWhy'),
       closes: 'probe',
     });
   }

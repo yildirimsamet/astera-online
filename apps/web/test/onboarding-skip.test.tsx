@@ -81,7 +81,6 @@ describe('skipping the onboarding rehearsal', () => {
     await user.click(screen.getByRole('button', { name: /Change$/ }));
     await user.click(screen.getByRole('button', { name: 'United States' }));
     await user.click(screen.getByRole('button', { name: 'Confirm country' }));
-    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: 'Join the galaxy' }));
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', [
       { kind: 'upgrade', building: 'CORE' },

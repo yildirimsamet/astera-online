@@ -69,6 +69,15 @@ const EVERY_KIND = [
   'defence_posture_reset',
 ] as const;
 
+/**
+ * A colony ship's notifications have their own table and their own kinds: every `kind` the
+ * starter services insert into `vessel_notifications`. A new one has to be added here.
+ */
+const SHIP_KINDS = [
+  'BATTLE_REPORT', 'FLEET_HOME', 'FLEET_TURNED_BACK', 'PROBE_DETECTED', 'PROBE_REPORT',
+  'RADAR_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'SHIELD_WARNING', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE',
+] as const;
+
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   arena_ship_ready: { reason: 'service' },
@@ -195,15 +204,24 @@ describe('where a notification takes you', () => {
    * list is inert.
    */
   it('gives every kind of news a way in', () => {
-    for (const kind of EVERY_KIND) {
+    for (const kind of [...EVERY_KIND, ...SHIP_KINDS]) {
       expect(DESTINATION[kind], `${kind} has nowhere to go`).toBeDefined();
+    }
+  });
+
+  /** Aboard, a probe report opens where the main game's does: the probe shelf. */
+  it('sends a ship\'s readings to the probe shelf and its own news to the ship', () => {
+    expect(DESTINATION.PROBE_REPORT).toEqual({ panel: 'intel', stop: 'probes' });
+    expect(DESTINATION.PROBE_DETECTED).toEqual({ panel: 'intel', stop: 'probes' });
+    for (const kind of ['FLEET_HOME', 'FLEET_TURNED_BACK', 'RADAR_WARNING', 'SHIELD_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE']) {
+      expect(DESTINATION[kind], kind).toEqual({ panel: 'planet' });
     }
   });
 
   /** And nothing routes a kind that cannot even be rendered. */
   it('routes nothing it cannot describe', () => {
     for (const kind of Object.keys(DESTINATION)) {
-      expect(EVERY_KIND as readonly string[]).toContain(kind);
+      expect([...EVERY_KIND, ...SHIP_KINDS] as readonly string[]).toContain(kind);
     }
   });
 
@@ -265,7 +283,7 @@ describe('where a notification takes you', () => {
     for (const [kind, where] of Object.entries(DESTINATION)) {
       if (where.panel !== 'report') continue;
       expect(
-        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted', 'clan_support_result', 'radiation_bomb_result'],
+        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted', 'clan_support_result', 'radiation_bomb_result', 'BATTLE_REPORT'],
         `${kind} is not a fight`,
       ).toContain(kind);
       expect(where.stop, `${kind} has no list to fall back to`).toBe('battles');

@@ -76,6 +76,15 @@ describe('a recorded battle opened in the simulator', () => {
     expect(shieldHp(opened.aegisLevel)).toBe(replayOf(fought).aegisCapacity);
   });
 
+  it('opens a fight over a colony ship as a defended field with its Aegis (player test I-04)', () => {
+    const fought = scenario({ galaxy: 'STARTER', seed: 5, aegisLevel: 2, aegisCharge: 100,
+      attackers: [{ id: '1', fleet: { DART: 6 } }], defenders: [{ id: '1', fleet: { DART: 3 } }] });
+    const replay = { ...replayOf(fought), environment: 'VESSEL' as const, vessel: { hull: 'SPINE' as const } };
+    const opened = scenarioSchema.parse(scenarioFromReplay(replay, { seed: 5, galaxy: 'STARTER' }));
+    expect(opened.environment).toBe('PLANET');
+    expect(opened.aegisLevel).toBe(2);
+  });
+
   it('folds a sixth wing into the fifth, since the simulator seats five a side', () => {
     const fought = scenario({ seed: 5, aegisLevel: 0,
       attackers: ['1', '2', '3', '4', '5'].map(id => ({ id, fleet: { DART: 2 } })), defenders: [{ id: '1', fleet: { RAMPART: 3 } }] });

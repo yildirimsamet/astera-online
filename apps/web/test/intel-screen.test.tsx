@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { RIVAL, radarContactRange, radarRange, telescopeSlots } from '@astera/rules';
+import { RIVAL, STARTER, radarContactRange, radarRange, telescopeSlots } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { duration, staleness } from '../src/lib/time.js';
@@ -125,6 +125,7 @@ const planet = (telescope: number, radar: number) => ({
 interface Rival { planetId: string; slot: number; owner: string; name: string; lost: boolean }
 
 const show = (opts: {
+  aboard?: boolean;
   telescope: number;
   radar?: number;
   watching: number;
@@ -147,7 +148,7 @@ const show = (opts: {
     ['intel'],
     intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? [], opts.radarLog ?? [], opts.first ?? {}),
   );
-  queries.setQueryData(['planet'], planet(opts.telescope, opts.radar ?? 0));
+  queries.setQueryData(['planet'], { ...planet(opts.telescope, opts.radar ?? 0), ...(opts.aboard ? { vessel: {} } : {}) });
   queries.setQueryData(['reports'], { reports: [] });
   render(
     <Wrapper>
@@ -690,5 +691,61 @@ describe('what a probe brought back', () => {
     await shelf('Reports');
     await userEvent.click(screen.getByRole('button', { name: /open dossier/i }));
     expect(onOpenDossier).toHaveBeenCalledWith('q0');
+  });
+
+  describe('aboard a ship', () => {
+    it('counts one idle slot without a plural that lies, and points at ships', async () => {
+      show({ aboard: true, telescope: 1, watching: 0, worlds: 8 });
+      await shelf('Watch');
+      expect(screen.queryByText(/1 slots/)).toBeNull();
+      expect(screen.getByText(/pick a ship/i)).toBeInTheDocument();
+    });
+
+    it('says one slot is spent the same way when every slot is watching', async () => {
+      show({ aboard: true, telescope: 1, watching: 1, worlds: 8 });
+      await shelf('Watch');
+      expect(screen.queryByText(/1 slots/)).toBeNull();
+    });
+
+    it('names the next slot by its repair: a ship has no levels', async () => {
+      show({ aboard: true, telescope: 2, watching: 0, worlds: 8 });
+      await shelf('Watch');
+      const next = document.querySelector('[data-slot-next]')!;
+      expect(next).toHaveTextContent(/repair 3/i);
+      expect(next).not.toHaveTextContent(/L3/);
+      expect(next).toHaveAttribute('title', expect.stringMatching(/repair 3/i));
+    });
+
+    it('measures a reading against your ship, not your world', async () => {
+      show({ aboard: true, telescope: 1, watching: 0, worlds: 8, probes: [report(100, 400)] });
+      await shelf('Reports');
+      expect(document.body.textContent).not.toMatch(/your world/i);
+    });
+
+    it('reads the Radar by its repair and promises only what a ship can reach', async () => {
+      show({ aboard: true, telescope: 1, radar: 3, watching: 0, worlds: 8 });
+      await shelf('Radar');
+      const said = document.body.textContent;
+      expect(said).toMatch(/radar · repair 3/i);
+      expect(said).not.toMatch(/\bL\d\b/);
+      expect(said).not.toMatch(/planet|your world/i);
+      expect(screen.getByRole('img', { name: /radar/i }).getAttribute('aria-label')).not.toMatch(/\bL\d\b|world/i);
+    });
+
+    it('draws the Radar at a ship\'s reach, against this galaxy\'s rim', async () => {
+      show({ aboard: true, telescope: 1, radar: 1, watching: 0, worlds: 8 });
+      await shelf('Radar');
+      const reach = document.querySelector('[data-radar-reach]');
+      expect(reach?.querySelector('[data-ring="sense"]')).toBeNull();
+      expect(reach?.closest('div')?.parentElement?.textContent).toContain(String(STARTER.radar[1]));
+      const ring = reach?.querySelector<HTMLElement>('[data-ring="warn"]');
+      expect(Number.parseFloat(ring?.style.width ?? '')).toBeCloseTo((STARTER.radar[1] / STARTER.radius) * 100, 3);
+    });
+
+    it('says what the next Radar repair adds, in repairs', async () => {
+      show({ aboard: true, telescope: 1, radar: 1, watching: 0, worlds: 8 });
+      await shelf('Radar');
+      expect(document.body.textContent).toMatch(/repair 2 adds the direction/i);
+    });
   });
 });

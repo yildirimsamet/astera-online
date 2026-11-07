@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FAULT } from '@astera/rules';
+import { FAULT, vesselHull } from '@astera/rules';
+import { heroArt } from '../../src/starter/shipScreen.js';
 import type { BattleReport } from '../../src/api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../src/i18n/names.js';
 import { compact } from '../../src/lib/format.js';
@@ -65,6 +66,14 @@ describe('the report scene', () => {
    * THE MOCK'S HERO (M4): the report is headed by the reader's own world, then the word,
    * large, then when, how long, and against whom — their name as a chip, their world.
    */
+  it('pictures the ship a colony-ship fight was over, never a planet (player test I-04)', () => {
+    const art = () => document.querySelector('[data-report-hero] img')?.getAttribute('src') ?? '';
+    const view = render(<ReportScene report={report({ opponentKind: 'SHIP', opponentPlanetId: 'their-ship', yourPlanetId: 'my-ship' })} />);
+    expect(art()).toBe(heroArt(vesselHull('their-ship'), 'WRECKED'));
+    view.rerender(<ReportScene report={report({ attacking: false, opponentKind: 'PIRATES', opponentPlanetId: null, yourPlanetId: 'my-ship' })} />);
+    expect(art()).toBe(heroArt(vesselHull('my-ship'), 'WRECKED'));
+  });
+
   it('leads with your world, the word, the time, the rounds and whom', () => {
     render(<ReportScene report={report()} word="Partial victory" />);
     const hero = document.querySelector<HTMLElement>('[data-report-hero]')!;
@@ -73,6 +82,27 @@ describe('the report scene', () => {
     expect(hero).toHaveTextContent('3 rounds');
     expect(hero.querySelector('[data-report-opponent]')).toHaveTextContent('VEX');
     expect(hero).toHaveTextContent('Kestrel');
+  });
+
+  /**
+   * THE WORD CARRIES ITS REASON AND ITS PRICE (player test C-03, I-03). "Partial" read large over a
+   * raid that destroyed nothing and cost two ships; why it counted, and what it cost, sat far below.
+   */
+  it('says under the word why it was graded so, and what it cost', () => {
+    render(<ReportScene report={report()} word="Partial victory" />);
+    const verdict = document.querySelector<HTMLElement>('[data-report-verdict]')!;
+    expect(verdict).toHaveTextContent('At least 42% of the defence’s value left the fight, but the defence still stood: part of the loot opened.');
+    expect(verdict.querySelector('[data-report-verdict-lost]')).toHaveTextContent('lost 9 Dart, 1 Courier');
+  });
+
+  it('gives each grade its own reason, and the defender none', () => {
+    const { rerender } = render(<ReportScene report={report({ grade: 'DECISIVE' })} word="Victory" />);
+    expect(document.querySelector('[data-report-verdict]')).toHaveTextContent('No defender or shield was left: all the loot was open.');
+    rerender(<ReportScene report={report({ grade: 'REPELLED', yourLosses: {} })} word="Repelled" />);
+    expect(document.querySelector('[data-report-verdict]')).toHaveTextContent('Less than 42% of the defence’s value left the fight: no loot.');
+    expect(document.querySelector('[data-report-verdict-lost]')).toBeNull();
+    rerender(<ReportScene report={report({ attacking: false })} word="Held" />);
+    expect(document.querySelector('[data-report-verdict]')).toBeNull();
   });
 
   /** A win that cost the whole fleet is a loss to the reader (the sheet's verdict says so too). */

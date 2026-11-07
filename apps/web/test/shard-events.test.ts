@@ -322,6 +322,11 @@ describe('the heavy lane', () => {
  * twenty-two live reads, for five people at once.
  */
 describe('what a private clan event asks the client to read', () => {
+  it('reserves sky refresh for sight changes, not ordinary ship commands', () => {
+    expect(readsForPrivateEvent('private:vessel')).not.toContainEqual(keys.galaxy);
+    expect(readsForPrivateEvent('private:vessel-sight')).toContainEqual(keys.galaxy);
+  });
+
   it('recognises its own namespace and never the shard one', () => {
     expect(isPrivateEvent('private:clan-chat')).toBe(true);
     expect(isPrivateEvent('shard:clan')).toBe(false);
@@ -331,6 +336,9 @@ describe('what a private clan event asks the client to read', () => {
   });
 
   it('sends a message to the conversation and the beacon, and nowhere else', () => {
+    // A flight landing can lift the block on the jump panel, and a repair can change what it carries.
+    expect(readsForPrivateEvent('private:vessel')).toContainEqual(keys.migration);
+    expect(readsForPrivateEvent('private:vessel-sight')).toContainEqual(keys.migration);
     expect(readsForPrivateEvent('private:clan-chat')).toEqual([keys.clanBadge, keys.clanChat]);
   });
 

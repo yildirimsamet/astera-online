@@ -609,7 +609,7 @@ describe('reaching the way out', () => {
 
     const user = userEvent.setup();
     expect(screen.queryByRole('button', { name: /galaxy chat/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.season')}\\.`) }));
+    // Leaderboard and rewards stand on the menu's first page; the Season page went (11ac79c2).
     await user.click(screen.getByRole('button', { name: /^rewards\./i }));
     expect(onOpen).toHaveBeenCalledWith('rewards');
     await user.click(screen.getByRole('button', { name: /leaderboard/i }));

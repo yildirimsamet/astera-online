@@ -31,6 +31,8 @@ export const community = {
     perfTab: 'Leistung',
     skinsTab: 'Skins',
     supportersTab: "Unterstützer",
+    starterTab: "Schiffsgalaxien",
+    starter: {"ships": "Schiffe", "active": "Aktiv", "dormant": "Still", "departed": "Gelandet", "people": "Spieler", "crew": "Vom Server gespielt", "spread": "Reparaturfortschritt", "galaxies": "Galaxien", "galaxy": "Galaxie {{n}}", "open": "Offen", "full": "Geschlossen", "lag": "Ältestes fälliges Ereignis", "failed": "Fehlgeschlagene Ereignisse", "seconds": "{{n}} s", "none": "Nichts fällig", "unavailable": "Schiffsgalaxien konnten nicht gelesen werden.", "refresh": "Aktualisieren"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'Bezahlte Shopier-Bestellungen, die keiner Zahlungsseite aus dem Spiel zugeordnet sind, warten hier: Unterstützerkarten, alte Produkte, falsche Beträge. Teile jede dem richtigen Kommandanten zu oder schließe sie, wenn sie außerhalb des Spiels erledigt wurde.',

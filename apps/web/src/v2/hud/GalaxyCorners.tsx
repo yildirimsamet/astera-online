@@ -29,7 +29,7 @@ const ROUND = 'pointer-events-auto relative grid size-9 place-items-center round
  * a figure an older server does not send is left out, never printed as zero.
  */
 export interface GalaxyTarget {
-  kind: 'asteroid' | 'contact' | 'debris' | 'monument';
+  kind: 'asteroid' | 'contact' | 'debris' | 'monument' | 'planet';
   id: string;
   label: string;
   detail: string;
@@ -39,7 +39,7 @@ export interface GalaxyTarget {
 
 export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget }: {
   onlineToday?: number;
-  counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number; monuments?: number };
+  counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number; monuments?: number; ships?: number; outposts?: number };
   targets?: readonly GalaxyTarget[];
   onFocusTarget?: (focus: Focus) => void;
 }) {
@@ -72,7 +72,7 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
     const order = (target: GalaxyTarget) => target.difficulty === 'HARD' ? 0 : target.difficulty === 'EASY' ? 1 : 2;
     listed.sort((a, b) => order(a) - order(b) || (a.ordinal ?? 0) - (b.ordinal ?? 0));
   }
-  const countLabel = openKind === 'monument' ? t('monument.finder', { count: counts.monuments ?? 0 }) : openKind === 'asteroid'
+  const countLabel = openKind === 'planet' ? t('starter.readout.outposts', { count: counts.outposts ?? 0 }) : openKind === 'monument' ? t('monument.finder', { count: counts.monuments ?? 0 }) : openKind === 'asteroid'
     ? t('galaxy.rocks', { count: counts.rocks })
     : openKind === 'contact'
       ? t('galaxy.pirates', { count: counts.pirates })
@@ -110,11 +110,12 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
         </p>
       )}
       <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">
-        <span className="text-v2-self flex items-center" >{t('galaxy.worlds', { count: counts.worlds })}</span>
+        <span className="text-v2-self flex items-center" >{counts.ships === undefined ? t('galaxy.worlds', { count: counts.worlds }) : t('starter.readout.ships', { count: counts.ships })}</span>
         {counts.fleetsAway > 0 && <span className="text-v2-self flex items-center">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
         {count('asteroid', counts.rocks, t('galaxy.rocks', { count: counts.rocks }), 'text-v2-crystal flex items-center')}
         {count('contact', counts.pirates, t('galaxy.pirates', { count: counts.pirates }), 'col-start-2 text-v2-hostile flex items-center')}
         {count('debris', counts.wrecks, t('galaxy.wrecks', { count: counts.wrecks }), 'text-v2-alloy flex items-center')}
+        {count('planet', counts.outposts ?? 0, t('starter.readout.outposts', { count: counts.outposts ?? 0 }), 'text-v2-warn flex items-center')}
         {count('monument', counts.monuments ?? 0, t('monument.finder', { count: counts.monuments ?? 0 }), 'text-v2-deut flex items-center')}
       </p>
       {openKind !== null && listed.length > 0 && (
@@ -152,10 +153,10 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
 }
 
 /** Fly the camera to the active world — the disc's old Home mark. */
-export function HomeChip({ onHome }: { onHome: () => void }) {
+export function HomeChip({ onHome, aboard = false }: { onHome: () => void; aboard?: boolean }) {
   const { t } = useTranslation();
   return (
-    <button type="button" aria-label={t('view.home')} onClick={onHome} className={ROUND}>
+    <button type="button" aria-label={t(aboard ? 'starter.intel.home' : 'view.home')} onClick={onHome} className={ROUND}>
       <Icon id="m-capital" className="size-4" />
     </button>
   );

@@ -31,6 +31,8 @@ export const community = {
     perfTab: 'Performance',
     skinsTab: 'Skins',
     supportersTab: "Supporters",
+    starterTab: "Ship galaxies",
+    starter: {"ships": "Ships", "active": "Active", "dormant": "Quiet", "departed": "Landed", "people": "People", "crew": "Server-played", "spread": "Repair progress", "galaxies": "Galaxies", "galaxy": "Galaxy {{n}}", "open": "Open", "full": "Closed", "lag": "Oldest due event", "failed": "Failed events", "seconds": "{{n}} s", "none": "None due", "unavailable": "Could not read the ship galaxies.", "refresh": "Refresh"},
     shopierTab: 'Shopier',
     shopier: {
       intro: 'Paid Shopier orders that no in-game payment page binds wait here: support cards, old products, wrong amounts. Grant each to the commander it belongs to, or close it if it was handled outside the game.',

@@ -1,3 +1,4 @@
+import { useModelScale } from './modelScale.js';
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
@@ -106,6 +107,9 @@ export interface WreckView {
  */
 const VOID_RADIUS = 0.5;
 
+/** A void field's rubble shells, as fractions of its size: the smaller ones fill the larger's hole. */
+const VOID_SHELLS = [1, 0.68, 0.4] as const;
+
 /**
  * WHERE A FIELD IS, AND THE ONLY PLACE THAT IS DECIDED.
  *
@@ -132,6 +136,7 @@ export function Wrecks({
   focusedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const scale = useModelScale();
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   /**
@@ -150,10 +155,10 @@ export function Wrecks({
         return {
           w,
           at: wreckPosition(w),
-          radius: node?.radius ?? VOID_RADIUS,
+          radius: node?.radius ?? VOID_RADIUS * scale,
         };
       }),
-    [wrecks, byId],
+    [wrecks, byId, scale],
   );
 
   if (placed.length === 0) return null;
@@ -181,6 +186,15 @@ export function Wrecks({
   );
 }
 
+/** Scale the whole rubble silhouette, including fixed clearances and void-heap dimensions. */
+export function wreckShape(planetRadius: number, isVoid: boolean, scale = 1): { ringRadius: number; tube: number } {
+  const ring = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
+  return {
+    ringRadius: (isVoid ? 0.35 : ring) * scale,
+    tube: (isVoid ? 0.4 : Math.max(ring * TUBE_RATIO, MIN_TUBE)) * scale,
+  };
+}
+
 function Wreck({
   wreck,
   at,
@@ -199,9 +213,8 @@ function Wreck({
    * compact, dense cluster (outer radius ~0.42, flatten = 1.6) with the inner hole closed up.
    */
   const isVoid = wreck.planetId === null;
-  const baseRingRadius = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
-  const ringRadius = isVoid ? 0.35 : baseRingRadius;
-  const tube = isVoid ? 0.4 : Math.max(ringRadius * TUBE_RATIO, MIN_TUBE);
+  const scale = useModelScale();
+  const { ringRadius, tube } = wreckShape(planetRadius / scale, isVoid, scale);
   const flatten = isVoid ? 1 : FLATTEN;
 
   /**
@@ -280,6 +293,8 @@ function Wreck({
       tiltX: (rand() * 2 - 1) * 0.35,
       tiltZ: (rand() * 2 - 1) * 0.35,
       spin: rand() * Math.PI * 2,
+      // A void field's shells, each at its own attitude and size (see `VOID_SHELLS`).
+      shells: VOID_SHELLS.map((size) => ({ size, turn: [rand() * Math.PI, rand() * Math.PI, rand() * Math.PI] as const })),
     };
   }, [wreck.id]);
 
@@ -300,7 +315,7 @@ function Wreck({
 
   return (
     <group ref={group} position={at} rotation={[attitude.tiltX, attitude.spin, attitude.tiltZ]}>
-      {source && material && (
+      {source && material && !isVoid && (
         <mesh
           geometry={source.geometry}
           material={material}
@@ -310,6 +325,22 @@ function Wreck({
           scale={[(ringRadius + tube) * flatten, ringRadius + tube, ringRadius + tube]}
         />
       )}
+      {/*
+        A FIELD WITH NO WORLD IS A HEAP, NOT A RING. One ring scaled evenly keeps its hole, and
+        alone in space it read as a doughnut (player test). The same rubble crossed at three sizes
+        and attitudes fills the hole and tumbles as one cluster, for the same model and material.
+      */}
+      {source && material && isVoid && attitude.shells.map(({ size, turn }, index) => (
+        <mesh
+          key={index}
+          geometry={source.geometry}
+          material={material}
+          raycast={() => null}
+          dispose={null}
+          rotation={[turn[0], turn[1], turn[2]]}
+          scale={(ringRadius + tube) * size}
+        />
+      ))}
 
       {/*
         THE TAP TARGET IS A TORUS, WHICH IS THE WHOLE POINT.

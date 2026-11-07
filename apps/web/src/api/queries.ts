@@ -1,3 +1,6 @@
+import { haptic } from '../lib/haptics.js';
+import { isStarterMode } from '../starter/transport.js';
+import { firstTimeOnly } from '../starter/vesselAnalytics.js';
 import type { ChatMedia } from '@astera/rules';
 import { noteMaintenanceWindow } from '../platform/maintenanceGate.js';
 import { refreshQueries } from './refreshQueries.js';
@@ -47,8 +50,7 @@ import type {
   SeasonInfo,
   notificationsSchema,
   FeedbackKind,
-  ClanWar,
-} from './schemas.js';
+  ClanWar, GalaxyView } from './schemas.js';
 import type { ClanAidInput, FlightRecallInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
@@ -2163,6 +2165,7 @@ export function useProbe() {
     onMutate: lane.enter,
     onSuccess: async () => {
       playSound('launch');
+      if (isStarterMode()) firstTimeOnly('ship', 'vessel_first_probe_sent');
       await Promise.all([keys.planet, keys.planets]
         .map((queryKey) => refreshQueries(client, { queryKey })));
       invalidate(keys.intel, keys.pending, keys.rewards);
@@ -2414,7 +2417,7 @@ export function useMine() {
     mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }, context) =>
       api.mine(asteroidId, craft, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
-    onSuccess: (result) => { playSound('launch'); return apply(result); },
+    onSuccess: (result) => { playSound('launch'); haptic('commit'); return apply(result); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -2519,8 +2522,11 @@ export function useLaunch() {
         : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral);
     },
     onMutate: lane.enter,
-    onSuccess: async (result) => {
+    onSuccess: async (result, { targetPlanetId }) => {
       playSound('launch');
+      if (isStarterMode() && client.getQueryData<GalaxyView>(keys.galaxy)?.planets.find(world => world.id === targetPlanetId)?.body === 'VESSEL') {
+        firstTimeOnly('ship', 'vessel_first_pvp');
+      }
       /**
        * THE SQUADRON IS ON THE DISC BEFORE THE SHEET HAS FINISHED CLOSING. D53.
        *

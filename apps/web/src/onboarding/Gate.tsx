@@ -30,7 +30,7 @@ import { useEffect, useState } from 'react';
 /** Activation events. A press begins at one of these and ends at `click`. */
 const ACTIVATIONS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'] as const;
 /** Surfaces no lesson may lock: the way out, and the privacy choice. */
-const UNGATED = '[data-beat-card], [data-consent-notice]';
+const UNGATED = '[data-beat-card], [data-consent-notice], [data-guide-exit]';
 
 export function useGate(
   targets: () => readonly Element[],

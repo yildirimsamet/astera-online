@@ -34,7 +34,7 @@ describe('the replay screen', () => {
   it('marks every round on the timeline in proportion to its length, and a mark jumps to that round', () => {
     const simulation = simulateScenario(DEFAULT_SCENARIO), timeline = buildReplayTimeline(simulation.recording);
     render(<BattleReplay simulation={simulation} environment="PLANET" />);
-    const total = simulation.recording.roundLimit;
+    const total = simulation.recording.rounds.length;
     const marks = timeline.rounds.map(round => screen.getByRole('button', { name: `Round ${round.round} / ${total}` }));
     expect(marks).toHaveLength(timeline.rounds.length);
     const second = timeline.rounds[1]!;
@@ -44,6 +44,15 @@ describe('the replay screen', () => {
     expect(timelineInput()).toHaveValue(String(second.start));
     expect(marks[1]).toHaveAttribute('aria-pressed', 'true');
     expect(marks[0]).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('counts the rounds that were fought, not the most a battle may last', () => {
+    const simulation = simulateScenario(DEFAULT_SCENARIO);
+    const fought = simulation.recording.rounds.length;
+    const shorter = { ...simulation, recording: { ...simulation.recording, roundLimit: fought + 2 } };
+    render(<BattleReplay simulation={shorter} environment="PLANET" />);
+    expect(screen.getByRole('button', { name: `Round 1 / ${String(fought)}` })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Round 1 / ${String(fought + 2)}` })).toBeNull();
   });
 
   it('cycles the playback speed with one chip', () => {

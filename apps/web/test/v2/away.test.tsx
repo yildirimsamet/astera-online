@@ -117,7 +117,7 @@ describe('the away sheet', () => {
 });
 
 describe('the away host', () => {
-  const host = (payload: ReturnPayload) => {
+  const host = (payload: ReturnPayload, held = false) => {
     const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
     const read = vi.spyOn(api, 'returnPayload').mockResolvedValue(payload);
     const acknowledge = vi.spyOn(api, 'acknowledgeReturn').mockResolvedValue({ ok: true });
@@ -127,9 +127,21 @@ describe('the away host', () => {
     );
     const onDoor = vi.fn();
     const onAll = vi.fn();
-    render(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} /></Wrapper>);
-    return { read, acknowledge, onDoor, onAll };
+    const view = render(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} held={held} /></Wrapper>);
+    const release = () => { view.rerender(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} /></Wrapper>); };
+    return { read, acknowledge, onDoor, onAll, release };
   };
+
+  /** The starter tutorial speaks first; a sheet over it could not be closed through its gate. */
+  it('keeps the story while the tutorial is speaking, and tells it afterwards', async () => {
+    const { read, acknowledge, release } = host(story(), true);
+    await waitFor(() => { expect(read).toHaveBeenCalled(); });
+    await new Promise((resolve) => { setTimeout(resolve, 120); });
+    expect(screen.queryByRole('dialog', { name: 'While you were away' })).toBeNull();
+    expect(acknowledge).not.toHaveBeenCalled();
+    release();
+    expect(await screen.findByRole('dialog', { name: 'While you were away' })).toBeTruthy();
+  });
 
   it('tells the story after a real absence and closes it at what was read', async () => {
     const { acknowledge } = host(story());

@@ -26,9 +26,15 @@ describe('the galaxy host', () => {
     expect(source).toMatch(/dismissed=\{slotDismissed\}/);
   });
 
+  it('leaves the starter bottom edge to its own objective and unlock cards', () => {
+    expect(source).toMatch(/const slotShown = [^\n]*&& !ship;/);
+  });
+
   it('keeps the slot out of the Academy and the rehearsal', () => {
     expect(source).toMatch(/const slotShown = showGuidance && Boolean\(planet\.data\) && panel === null/);
+    expect(source).toMatch(/bottomSurface\(\{[^\n]*context: slotShown/);
     expect(source).toMatch(/\{slotShown && planet\.data && season\.data && \(\s*<ContextSlot/);
+    expect(source).toMatch(/selected=\{slotSelected\}/);
   });
 });
 
@@ -63,7 +69,7 @@ describe('Galaxy pressed again', () => {
 describe('the galaxy corners (owner, 2026-09-24)', () => {
   it('flies home from the round button exactly as the dock does', () => {
     expect(source).toMatch(/useRequest\(homeRequest, flyHome\)/);
-    expect(source).toMatch(/<HomeChip onHome=\{flyHome\} \/>/);
+    expect(source).toMatch(/<HomeChip onHome=\{flyHome\} aboard=\{gate\.aboard\} \/>/);
   });
 
   it('keeps the event chips out of the way while a selection has the screen', () => {
@@ -73,7 +79,7 @@ describe('the galaxy corners (owner, 2026-09-24)', () => {
 
   /** Owner, 2026-09-24: low on the right, riding the slot's corner, opening chat's own page. */
   it('opens chat from low on the right, above the slot, and never in the rehearsal', () => {
-    expect(source).toMatch(/const chatButton = showGuidance && showChat\s*\?\s*<ChatChip[\s\S]*?onPanel\('chat'\)/);
+    expect(source).toMatch(/const chatButton = showGuidance && showChat && gate\.open\('chat'\)\s*\?\s*<ChatChip[\s\S]*?onPanel\('chat'\)/);
     expect(source).toMatch(/corner: chatButton/);
   });
 });

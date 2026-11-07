@@ -1,0 +1,164 @@
+/** The colony ship's screens. `docs/ux-writing.md` applies. */
+export const starter = {
+  "visual": {"probe": "Sonda", "mine": "Maden", "crate": "Kasa", "collect": "Topla", "waiting": "Uçuşta", "galaxy": "Ana galaksi"},
+  "dossier": {"surfaceGapLabel": "Bu gemi hakkındaki her şey", "surfaceGapMissing": "Bu gemiyi hiç görmedin", "surfaceGapWhy": "Kimin uçurduğunu, onarımlarının nereye geldiğini ve ne taşıdığını göremezsin. Bir sonda hepsini tek seferde getirir.", "probeGapAged": "Bu gemiye dair okuman eskidi", "probeGapWhy": "Gemide ne olduğuna filo bahse giriyorsun. Sonda bu tahmini bir aralığa çevirir.", "fleetGapWhy": "Oyundaki en değerli bilgi: uzaktaki filo kendi gemisini savunamaz.", "fleetGapRange": "Erişim {{reach}}; bu gemi {{distance}} uzakta"},
+  "reports": {"guardDown": "Muhafız düştü. Karakol {{time}} daha korumasız: başka bir filo kalan kaynağı alabilir.", "outpost": "terk edilmiş bir karakol", "pirates": "korsanlar", "attackedShip": "Saldırılan gemi: {{planet}}", "walkover": "Geminde savunan birim yoktu, bu yüzden alınabilecek yağma saldırganlara açıktı.", "cargoLimited": "Ambarların doldu. Orada taşıyabileceğinden fazlası vardı. Kurye gemileri getir.", "landing": "Sağ kalanlar yaralarıyla hangara döner. Onları Tamirhaneye sen gönder.", "walkoverBody": "Geminde savunan birim yoktu. Saldıran filo alınabilecek yağmayı savaşmadan alabildi.", "noGroundNote": "Vardığında bu geminin ayakta duran bir savunması yoktu.", "piratesName": "Korsanlar", "aegisNote": "Aegis, savunan birimlerden önce hasar alır."},
+  "fleetPage": {"roomRule": "Bu geminin taşıdığı her gemi için yer: evde, dışarıda ve tersanede. Dolu Hangar tersaneyi durdurur; geri çağrılan filo her zaman sığar.", "bays": "Saldırı yuvaları", "openStation": "Tamirhaneyi aç", "emptyAir": "Havada bir şey yok. Gemi göndermek için galakside bir gemiye, kayaya ya da karakola dokun."},
+  "handbook": {"title": "El kitabı", "replay": "İlk dakikaları yeniden izle", "repairs": {"title": "Her şeyi onarım açar", "body": "Her onarım sıradaki sistemi açar. Aynı anda biri sürer, sen yokken de devam eder."}, "holds": {"title": "Makineler ürettiğini tutar", "body": "Üretim, depoya toplayana kadar havuzda bekler. Ambardaki kaynaklar yağmalanabilir."}, "sight": {"title": "Uçmadan önce bak", "body": "Sonda raporu tek bir anı gösterir. Eskidikçe bugünü daha az anlatır."}, "fleets": {"title": "Uçan filo güvende, gemi değil", "body": "Uçuştaki gemiler yağmalanamaz. Koloni gemin ve evde kalanlar yağmalanabilir."}, "jump": {"title": "Hedef göç", "body": "Motoru bitir, yakıtı yükle, parçaları taşı. Ambarınla ana galaksiye inersin. Geri dönüş yoktur."}, "crates": {"title": "Kurtarma kasaları", "body": "Belirli onarımlar kurtarma kasalarını açığa çıkarır. Gemi ekranında bir kasa kapağını basılı tutarak hazır kasaların hepsini aç. Her kasa depoya bir kez alaşım ve kristal verir. Bu kaynaklar yağmalanabilir; göçteki 2.000 alaşım / 1.000 kristal ambar tavanını aşmaz."}},
+  "prologue": {"progress": "Adım {{step}} / {{total}}", "skip": "Atla", "signIn": "Giriş yap", "close": "Kapat", "alloy": "Alaşım {{value}}", "crystal": "Kristal {{value}}", "refinery": "Rafineri", "feed": "Sensör hattı", "action": {"power": "Yedek gücü bağla", "burn": "Rafineriyi çalıştır", "collect": "Topla", "patch": "Sensör hattını yamala"}, "dark": {"title": "Gemin karanlık.", "body": "Resif filoyu dağıttı, seni buraya savurdu. İlerideki ışık, yola çıktığın galaksi."}, "powered": {"title": "Yedek güç tutuyor.", "body": "Beş sistemin hepsi arızalı. Soğuk depoda {{crystal}} kristal kalmış. Her onarım alaşım ister, önce rafineri."}, "burning": {"title": "Ocak tutuşuyor.", "body": "İlk parti, son yakıt hatlarıyla çalışıyor."}, "batch": {"title": "İlk parti: {{alloy}} alaşım.", "body": "Rafineri ürettiğini sen boşaltana kadar tutar."}, "collected": {"title": "Sensörler kör.", "body": "Başka kimlerin geldiğini göremiyorsun. Hatta bir yama, sensörlere bir kulak verir."}, "patching": {"title": "Hat yamalanıyor…", "body": "İlk onarımın. Gerçekleri sen uyurken de sürer."}, "signal": {"mark": "Bilinmeyen sinyal", "title": "Bir şey cevap verdi.", "body": "Çok uzakta ve anten okuyamayacak kadar arızalı. Motorun kısa bir sıçrayışlık gücü kaldı.", "replayBody": "Çok uzaktaydı ve anten okuyamayacak kadar arızalıydı. Gerisini biliyorsun.", "replayAction": "Oyuna dön", "go": "Sinyale git"}, "hint": {"hold": "Tutuşana kadar basılı tut", "weld": "Kaynak için basılı tut", "claim": "Başlamak için basılı tut"}, "warping": {"title": "Sıçranıyor…"}, "found": {"title": "Bu gemi artık senin olabilir.", "body": "Sığlıkların ötesinde sürükleniyor; ocağı yanıyor, bir kulağı yamalı. Sahiplen, macera başlasın.", "action": "Dümene geç"}, "claim": {"title": "Bu gemi senin olabilir.", "ship": "bu gemi", "intro": "Gemin {{alloy}} alaşım, {{crystal}} kristal ve çalışan bir rafineriyle başlar. Sen yokken onarımlar sürer."}},
+  "chatRoom": "Galaksi kanalı",
+  "away": {"fleetHome": "Filo döndü", "fleetHomeDetail_one": "+{{resources}} kaynak · {{count}} gemi", "fleetHomeDetail_other": "+{{resources}} kaynak · {{count}} gemi", "haulAlloy": "+{{value}} alaşım", "haulCrystal": "+{{value}} kristal", "haulDeuterium": "+{{value}} Döteryum", "ships_one": "{{count}} gemi", "ships_other": "{{count}} gemi", "toShip": "Gemiye git"},
+  "launchFleetsave": "Uçuştaki gemiler yağmalanamaz. Koloni gemin yağmalanabilir.",
+  "contact": {"scout": "Korsan gözcüsü", "scoutDetail": "Savaşmaya değil bakmaya geliyor. Bir dahaki sefere yalnız gelmeyebilir.", "raid": "Korsan akını"},
+  "outpost": {"title": "Terk edilmiş karakol", "rule": "Muhafızı yenersen {{amount}} kaynağa kadar alırsın. 6 saatte yeniden dolar.", "label": "Karakol · seviye {{level}}"},
+  "readout": {"ships": "{{count}} gemi", "outposts": "{{count}} karakol", "level": "Muhafız seviyesi {{level}}"},
+  "lab": {"premise": "Bu araştırma gemiyle kalır. Ana galaksiye seninle gelmez.", "holdsRole": "Kazıcı kargo kapasitesini artırır.", "queue": "Gemi araştırması", "queueHint": "Gemi aynı anda tek proje yürütür. Onarımlar ve Tersane ayrı çalışmaya devam eder.", "idleHint": "Haritadan bir yıldız seç.", "queueFull": "Gemi aynı anda tek proje yürütür. Bunun bitmesini bekle."},
+  "deck": {"label": "Gemi bölümleri", "repairs": "Onarım", "yard": "Tersane", "research": "Araştırma"},
+  "yard": {"queue": "Tersane sırası", "dockRule": "İstasyon ana fiyatın %{{percent}} kadarını alır.", "dockHurt": "{{count}} gemi İstasyon bekliyor", "dockGo": "{{count}} gemiyi onar"},
+  "board": {"title": "Kalkış panosu", "empty": "Henüz kimse göç etmedi. İlk sen olabilirsin.", "ago": "{{time}} önce"},
+  "mainRow": {"facts": "{{worlds}} dünya. Sezon {{days}} gün sonra bitiyor.", "waiting": "Yeni sezon yolda.", "repair": "Göç için motoru onar. Boşluğu başka hiçbir şey geçemez.", "ready": "Gemin hazır. Göç için Motor'u aç.", "eyebrow": "Hedefin", "story": "Resif filoyu dağıtmadan önce gittiğiniz yer. Asıl yolculuk burada başlıyor: tutulacak dünyalar, rakipler, klanlar, kazanılacak bir sezon.", "legRepair": "Gemi onarımı", "legFuel": "Atlayış yakıtı", "go": "Gemiye git"},
+  "jump": {"panel": "Göç", "parts": "İtki parçaları", "partsHint": "Enkazlarda ve korumalı karakollarda bulunur. Önce varan alır.", "tank": "Yakıt deposu", "tankLocked": "Depo, itki montajı ve Döteryum tesisi 2 ile bağlanır.", "tankHint": "Göç {{needed}} Döteryum yakar. Uçuşlar da aynı stoktan yakar.", "load": "{{amount}} yükle", "loadAll": "Hepsini yükle", "go": "Göçe hazırlan", "title": "{{name}} galaksisine göç", "addresses": "Nereye ineceksin", "neighbours": "Yakındaki dünya: {{count}}", "tone": {"quiet": "Sakin", "mixed": "Arada", "busy": "Kalabalık"}, "toneNote": {"quiet": "Daha güvenli. Hedefler uzak.", "mixed": "İkisinden de biraz.", "busy": "Hedefler yakın, sen de hedefsin."}, "cargo": "Ambarla inecekler", "package": "Ayrıca ilk sezon paketi ve 72 saatlik kalkan alırsın.", "carryMost": "Göç en çok {{alloy}} alaşım, {{crystal}} kristal, {{deuterium}} Döteryum ve {{ships}} gemi taşır.", "left": "Geride kalıp kaybolacaklar: {{alloy}} alaşım, {{crystal}} kristal, {{deuterium}} Döteryum, {{ships}} gemi.", "warn": "Gemi bu seferde tüketilir. Ambarın dışında kalan kaynak ve gemiler kaybolur.", "hold": "Göç et", "leaving": "Kalkıyor…", "replay": "Yeniden izle", "skip": "Atla", "scene": {"lit": "Motor yandı", "leaving": "Sığlıktan çıkış", "gap": "Boşluğu geçiş", "fall": "{{name}}", "world": "Senin dünyan"}, "partsSeen": "Tarayıcıların {{count}} yer gösteriyor. Haritada işaretli.", "partsLater": "Motor gövdesi onarılabilir olunca haritada görünürler.", "partsNone": "Görünürde yok: bir enkaza veya karakola sonda gönder.", "partHere": "Burada bir itki parçası var. İlk gelen alır."},
+  "landing": {"dismiss": "Kapat", "title": "{{name}} galaksisine indin", "go": "Dünyama geç", "cargo": "Seninle inenler: {{alloy}} alaşım, {{crystal}} kristal, {{deuterium}} Döteryum", "line": {"battle": "Savaşlar artık iki kat sert, Aegis tam gücünde.", "shield": "Kalkanın 72 saat sürer.", "absence": "3 gün girmezsen gezegenin silinir.", "core": "Çekirdek dünyanın kademesini belirler.", "opened": "Klan ve sıralama açıldı.", "alerts": "Telefon bildirimleri artık Bildirim Merkezi'nden gelir."}, "tip": {"core": "Çekirdek kademeni belirler. Yalnız yakın kademelere akın edersin, sana da öyle akın edilir.", "colony": "En fazla üç koloni tutabilirsin. Tarafsız dünyalar kısa bir süre sahiplenmeye açılır.", "clan": "Klan istihbaratı paylaşır, birlikte savunur. Klan sekmesine bak.", "dominion": "Dominion en çok elinde tutanı sıralar, sezon sonunda ödül verir.", "honor": "Honor adil savaşanı sıralar. Zayıf filoya akın az kazandırır."}},
+  "shieldNote": "Gemi kalkanları her savaşa dolu başlar. Gövde yaraları Tamirhane onarana kadar kalır.",
+  "tempoNote": "Burada hasar ve Aegis yarıdır. Ana galakside aynı savaş iki kat hızlı geçer.",
+  "intel": {"blind": "Tek bir geminin içini göremiyorsun", "openShip": "Gemiyi aç", "telescopeGives": "İzlediğin geminin filosu ayrıldı mı gösterir. Saldırıdan önce okumanın yaşını ve geride kalanı tart.", "telescopeCost": "Gemindeki Teleskobu onar.", "idleHint": "Boş yuva: {{count}}. Haritadan bir gemi seç ve birini ona çevir.", "scarcity": "Çevredeki gemi: {{neighbours}}. Yuvan: {{count}}. Yuvayı başka gemiye çevirmek bekleme süresi başlatır, seçerek izle.", "radarGives": "Menzildeki hareketi ve gemine yönelen tehdidin varış zamanını gösterir. Sondaları yakalayabilir, yakalama garanti değildir.", "radarCost": "Gemindeki Radarı onar.", "nextSlot": "Onarım {{level}}", "oneMore": "Teleskop onarımı {{level}} bir gemi daha izletir.", "radarLevel": "Radar · onarım {{level}}", "radarFleets": "Radar onarımı {{level}}, sana yönelen tehdidi {{sense}} birimde süresiz ayırt eder. {{warn}} birimde varış süresini de ekler.", "radarFleetsOne": "Radar onarımı {{level}}, {{sense}} birime kadar hareket eden araçları gösterir ve gemine yönelen tehdidi varış süresiyle işaretler.", "radarBearing": " Onarım 2, geldikleri yönü de ekler.", "radarQuiet": "Tarama algılanmadı. Radarın açık.", "scaleNote": "Her çubuk sıfırdan başlar: bant onların tahminidir, turkuaz çizgi senin gemindir.", "home": "Gemine uç"},
+  "news": {"repairDone": "{{name}} onarıldı.", "probeReport": "{{name}} için sonda raporu geldi.", "probeDetected": "Bir sonda gemini taradı.", "radarPast": "Radar: bir filo geldi.", "shieldPast": "Kalkanın düştü.", "radar": "Radar: {{time}} içinde bir filo geliyor.", "raidOver": "{{name}} akınının sonucu geldi. Raporu oku.", "attacked": "{{name}} gemine saldırdı. Raporu oku.", "fleetHome": "Filon döndü.", "fleetHomePart": "Filon bir itki parçasıyla döndü.", "turnedBack": "Hedefe ulaşılamadı. Filon geri dönüyor.", "yardDone": "Tersane: {{count}} {{name}} hazır.", "researchDone": "{{name}} seviye {{level}} oldu.", "dockDone": "Onarım İstasyonu işini bitirdi. Gemilerin sağlam.", "shieldWarning": "Kalkanın {{time}} sonra düşüyor.", "seasonOpen": "{{name}} galaksisinde yeni sezon açıldı. Gemin kalkabilir."},
+  "reading": {"repairLabel": "Onarım", "repairNote": "Bu geminin ne kadarı onarıldı. İlerledikçe birikimi artar ve ayrılmaya yaklaşır.", "unknownShip": "Bilinmeyen gemi"},
+  "systemShort": {"REFINERY": "Rafineri", "SURVEY": "Keşif", "DEFENCE": "Savunma", "CARGO": "Kargo", "DRIVE": "Motor"},
+  "systemsLabel": "Gemi sistemleri",
+  "locked": "kilitli",
+  "perHour": "/sa",
+  "moreRepairs": "Diğer onarımlar", "nextRepairs": "Onarımlar",
+  "slots": "Çalışma yuvaları",
+  "stepState": {"done": "onarıldı", "queued": "sırada", "closed": "kilitli", "open": "hazır"},
+  "repairedLabel": "Onarıldı",
+  "quiet": {"warn": "{{time}} içinde onarım yapmazsan gemin bu galaksideki yerini bırakır.", "asleep": "{{hours}} saat onarım yapılmadığı için gemin yerini bıraktı. Bir onarım başlatınca yeniden yer alır."},
+  "queue": {"title": "Onarım sırası"},
+  "eyebrow": "Koloni gemisi",
+  "goal": "Bütün sistemleri onar, yakıt deposunu doldur ve ana galaksiye atla.",
+  "next": "Sıradaki",
+  "tutorial": {"skip": {"link": "Rehber istemiyorum", "title": "Rehberi kapat?", "body": "Rehberi kapatmak istediğine emin misin? Subay sana bir daha yol göstermeyecek. Oyun kaldığın yerden devam eder.", "keep": "Rehberle devam et", "close": "Rehberi kapat"}, "chapter": {"1": "Uyanış", "2": "İlk onarımlar", "3": "Anten", "4": "İlk sonda", "5": "İlk filo", "6": "İlk ganimet", "7": "Teleskop", "8": "Radar uyarısı"}, "next": "Devam", "reveal": "Metnin tamamını göster", "away": "Bitince seni çağıracağım, {{clock}} civarı. O zamana kadar gemini ve galaksiyi gez.", "ok": "Tamam", "back": "{{time}} sonra dönüyorum", "reopen": "Rehberi göster", "nav": {"openShip": "Gemiyi açmak için {{base}} sekmesine dokun.", "closePage": "Bu sayfayı kapat. Sıradaki iş galakside.", "dismissUnlock": "Bir sistem daha açıldı. Kartını oku, ardından devam etmek için kapat."}, "line": {"lookAround": "Hoş geldin, Komutan! Bu gemi artık senin. Ekranı sürükleyerek gemini ve çevresini her yönden incele.", "welcome": "Komutan, telsiz çalışıyor! Ben filonun keşif subayıyım. Resif filoyu dağıttı ama bu gemi artık senin. Gemi yeniden uçana kadar hattayım. Önce elimizde ne var, bakalım.", "online": "Rafineri yeniden çalışıyor. Bu, onarımlar için alaşım demek. Karttaki {{try}} düğmesine dokun.", "collect": "Rafinerinin ürettiği alaşım havuzda bekliyor. Harcayabilmek için depoya almalısın: üst çubuktaki havuz satırına dokun.", "orderRefinery": "Her onarım alaşım ve kristalle ödenir. İlk iş {{name}}: ne kadar güçlüyse her şey o kadar hızlı ilerler. {{repair}} düğmesine dokun.", "orderExtractor": "Kristal de lazım. {{name}} onarımını da sıraya koy; onarım kuyruğu aynı anda üç işi taşır.", "waitFirst": "Onarımlar kendi kendine yürür. Bu ikisi on saniye sürer; büyükleri saatler sürer ve sen yokken de devam eder.", "firstCrate": "Onarım mühürlü bir bölmeyi açtı: içinde bir kurtarma kasası var, alaşım ve kristal dolu. Hepsi senin. Kasayı basılı tutarak aç.", "orderAntenna": "Şimdi kulaklarımızı açalım. {{tab}} sekmesine geç ve {{name}} onarımını başlat: çevremizdeki gemileri ancak onunla görebiliriz.", "orderExtractor2": "Anten onarılırken boş durmayalım. {{tab}} sekmesine dön: {{name}} bir kademe daha yükselsin.", "waitAntenna": "Anten otuz saniyede hazır. Sonra bu galakside başka kimler var, göreceğiz.", "intelOnline": "Anten çalışıyor! Yakındaki gemiler artık haritada. {{try}} düğmesine dokun, seni en yakınına götüreyim.", "probe": "Bu bir komşu gemi. İçinde ne olduğunu bilmiyoruz. Bir sonda gönder: oraya uçar, ölçer ve rapor getirir.", "probeFlying": "Sonda yolda. Hedefi ölçüp geri dönecek; rapor sondayla birlikte gelir.", "openIntel": "Rapor geldi. Alttaki {{intel}} sekmesine dokun.", "openReport": "Bildiğimiz her şey burada. Raporunu açmak için sondaladığımız gemiye dokun.", "report": "İşte sondanın raporu. Işıklı kısım bir zaferin taşıyabileceği ganimet; altında gemi sayısı var. Bunu okumadan hiçbir yere filo göndermeyiz.", "farewell": "İlk ganimetin gemide. {{underway}} Sıradaki onarımın parası yaklaşık {{time}} sonra hazır. Kontrolleri sana bırakıyorum. Sıradaki adım satırı yol gösterecek.", "welcomeBack": "Tekrar hoş geldin, Komutan! Sen yokken havuz doldu. Hadi topla, kaldığımız yerden devam edelim.", "collectAgain": "Havuz satırına dokun, biriken alaşımı depoya al.", "orderRefinery3": "{{name}} için bir onarım daha başlat. Artan alaşımla Tersaneyi onaracağız. Bu iş {{time}} sürer.", "finale": "Artık yolu biliyorsun. Alttaki satır her zaman sıradaki adımı söyler. Büyük onarımlar saatler sürer: arada geri gel, topla ve devam et. Ana galaksi seni bekliyor.", "openCrates": "Onarımlar kurtarma kasalarını açığa çıkardı. Kapaklarını basılı tutarak aç. İçlerindeki alaşım ve kristalle sıradaki onarımları yapacağız.", "orderVault": "{{name}} onarımını da kuyruğa ekle. Gemide kaynaklar için daha fazla yer açar.", "waitRefinery": "Rafineri hazırlanıyor. Sıradaki kasası Tersanenin parasını karşılayacak.", "openRefineryCrate": "Rafineri hazır. Kasayı basılı tutarak aç; Tersaneyi onarmak için içindeki kaynaklara ihtiyacımız var.", "orderShipyard": "{{tab}} sekmesine geç ve {{name}} onarımını başlat. İlk Kazıcımız ve iki Dart bu onarımla gelir.", "orderExtractor3": "Tersane çalışıyor. İlk uçuştan önce {{name}} onarımını kuyruğa ekle. Artan kristalle anteni ve araştırmayı açacağız.", "waitShipyard": "Ekip Tersaneyi onarıyor. Onarım bitince ilk Kazıcı hazır olacak.", "mine": "İlk Kazıcımız hazır. Sıradaki adım satırına dokunarak en yakın asteroidi bul, sonra Kazıcıyı madenciliğe gönder.", "mineFlying": "Kazıcının galaksiden geçişini izle. Asteroidi kazıp gemiye dönecek. Beklenen dönüş: {{clock}}.", "collectMine": "Kazıcı döndü! Ganimeti havuzda bekliyor. Harcamak için üst çubuktan topla.", "openShipyardCrate": "Tersane hazır. Kasasını basılı tutarak aç; sonra ilk Kazıcımızı göndereceğiz.", "collectForExtractor": "Onarımlar sırasında üretilen kaynakları topla. Kasadan çıkanlarla birlikte sıradaki kristal ocağı onarımını ödeyeceğiz.", "telescopeRing": "Teleskop senin gözün. Bu daire, görebildiğin alan.", "telescopeTraffic": "Bu alandaki gemilerin ve filoların hareketlerini görürsün.", "telescopeTrack": "Bir aracın rotasını gördükten sonra, daireden çıksa da o uçuşu izlemeyi sürdürürsün.", "radarRing": "Radar, teleskobun göremediği hareketi bu yeşil alanda algılar.", "radarContact": "? işareti, türünü bilmediğin bir hareket. Sana gelen filo, gemine ulaşmadan burada belirir.", "sightTrio": "Sonda hedefin içini okur. Teleskop hareketi görür. Radar uyarır."}, "push": "Onarım bitince ve biri gemine yaklaşınca haber vereyim mi?", "allow": "Haber ver", "later": "Sonra", "hint": "Bir yön mü arıyorsun? {{task}} Nasıl ilerleyeceğini görmek için sıradaki adım satırına dokun.", "dismiss": "Anladım", "noneFlying": "Şu anda uçuşta olan bir filo yok.", "flight": "Bir uçuşun hâlâ yolda. Beklenen dönüş: {{clock}}."},
+  "objective": {"probe": "En yakın gemiye sonda gönder. Bulmak için dokun.", "mine": "En yakın asteroide Kazıcı gönder. Bulmak için dokun.", "underwayProbe": "Sondan yolda. Raporu İstihbarat'a düşecek.", "underwayMine": "Prospector madende. Kendiliğinden geri dönecek.", "restSave": "Şimdilik bu kadar. {{name}} için {{clock}} civarı gel.", "restWait": "Şimdilik bu kadar. Onarım {{clock}} civarı biter.", "repair": "{{name}} onarımı. Gemiyi aç.", "collect": "Üretileni üst çubuktan topla.", "save": "{{name}}: yaklaşık {{time}} içinde ödeyebilirsin.", "saveNever": "{{name}}: eksik kaynağı üreten sistemi onar.", "wait": "Onarım sürüyor. {{time}} içinde hazır.", "parts": "{{count}} itki parçası bul. Enkazlarda ve korunan karakollarda.", "fuel": "Motor bölümünde yakıt tankını doldur."},
+  "log": {"title": "Seyir defteri", "now": "Şimdi", "go": "Git", "chapter": {"POWER": {"title": "Güç", "line": "Yedek güç tutuyor. Gemi uyandı."}, "REFINERY": {"title": "Rafineri", "line": "Alaşım ve kristal üretir. Her onarım bunlarla ödenir."}, "SURVEY": {"title": "Keşif", "line": "Anten: sondalar, raporlar ve İstihbarat sekmesi."}, "DEFENCE": {"title": "Savunma", "line": "Aegis, teleskop ve radar: baskını önceden gör, ayakta kal."}, "CARGO": {"title": "Kargo", "line": "Tersane ve hangar: ilk gemilerin ve Filo sekmesi."}, "DRIVE": {"title": "Motor", "line": "İtki parçaları, motor gövdesi ve yakıt: ana galaksiye atlayış."}}},
+  "repair": "Onar",
+  "stepCount": "Aşama {{stage}} / {{total}}",
+  "optional": "İsteğe bağlı · onarım yüzdesine sayılmaz",
+  "inQueue": "Sırada",
+  "systemAria": "{{name}}: {{total}} onarımdan {{done}} tanesi tamam, {{state}}",
+  "needs": "Gerekli: {{what}}",
+  "queueFull": "Onarım sırası en fazla {{count}} iş alır. Birinin bitmesini bekle.",
+  "affordIn": "Yaklaşık {{time}} sonra ödeyebilirsin.",
+  "collectFirst": "Bunu ödemek için üst çubuktan topla.",
+  "noIncome": "Bu kaynağı henüz hiçbir şey üretmiyor. Üreten sistemi onar.",
+  "allQueued": "Bütün zorunlu onarımlar bitti veya sırada.",
+  "allRepaired": "Bütün zorunlu onarımlar bitti.",
+  "ordered": "{{name}}: onarım sıraya girdi",
+  "state": {
+    "broken": "Arızalı",
+    "damaged": "Hasarlı",
+    "done": "Onarıldı"
+  },
+  "system": {
+    "REFINERY": "Rafineri modülü",
+    "SURVEY": "Keşif anteni",
+    "DEFENCE": "Savunma sistemleri",
+    "CARGO": "Kargo ve hangar",
+    "DRIVE": "Yıldızlararası motor"
+  },
+  "module": {
+    "SURVEY": "Keşif anteni",
+    "DRIVE_HULL": "Motor gövdesi",
+    "DRIVE_THRUST": "İtki montajı"
+  },
+  "fact": {
+    "FIRST_PROBE_REPORT": "ilk sonda raporun",
+    "FIRST_MINING_RETURN": "ilk madencilik dönüşün",
+    "FIRST_BATTLE_REPORT": "ilk savaş raporun"
+  },
+  "factHow": {"FIRST_PROBE_REPORT": "Komşu bir gemiye sonda gönder.", "FIRST_MINING_RETURN": "Bir Kazıcıyı asteroide gönder ve dönmesini bekle.", "FIRST_BATTLE_REPORT": "Aegis onarılınca korsanlar gemine akın eder. O savaşın raporu sayılır."},
+  "attackLocked": "Saldırı ilk savaşından sonra açılır. Aegis onarılınca korsanlar gemine akın eder; o savaşın raporu saldırıyı açar.",
+  "partsNeeded": "{{count}} itki parçası",
+  "effect": {
+    "rate": {
+      "alloy": "Saatte +{{amount}} alaşım",
+      "crystal": "Saatte +{{amount}} kristal",
+      "deuterium": "Saatte +{{amount}} Döteryum"
+    },
+    "ships": "Yanında gelir: {{ships}}",
+    "deuterium": "Yanında {{amount}} Döteryum gelir",
+    "room": "Hangar odası {{room}}",
+    "storeCeiling": "Alaşım depo tavanı {{from}} → {{to}}",
+    "telescope": "Teleskop menzili {{distance}}",
+    "radar": "Radar menzili {{distance}}",
+    "aegis": "Aegis {{hp}}",
+    "surveyBand": "Sonda daha dar aralık okur",
+    "driveHull": "İtki montajını taşır",
+    "driveThrust": "Yakıt deposunu ekler"
+  },
+  "feature": {
+    "production": {
+      "gain": "Üretimi açar",
+      "line": "Rafineri alaşım üretir. Üretileni üst çubuktan topla."
+    },
+    "intel": {
+      "gain": "Sondayı açar",
+      "line": "Komşu gemiler karanlık nokta olarak görünür. Sonda, birinin elinde ne olduğunu gösterir."
+    },
+    "fleet": {
+      "gain": "Filoyu açar",
+      "line": "Gemi üretebilir, asteroit kazmak için Kazıcı gönderebilirsin."
+    },
+    "chat": {
+      "gain": "Sohbeti açar",
+      "line": "Bu galaksideki diğer gemilerle konuşabilirsin."
+    },
+    "salvage": {
+      "gain": "Enkaz alanlarını açar",
+      "line": "Enkaz alanları artık haritada görünür. Kazıcı bunları toplayabilir."
+    },
+    "research": {
+      "gain": "Araştırmayı açar",
+      "line": "Araştırma gemilerini ve Kazıcı ambarını geliştirir. Bu gemiyle birlikte biter."
+    },
+    "telescope": {
+      "gain": "Teleskopu açar",
+      "line": "Halkasının içinde diğer gemileri ve uçuşlarını görürsün."
+    },
+    "radar": {
+      "gain": "Radarı açar",
+      "line": "Halkasının içindeki uçuş, bilinmeyen kontak olarak görünür ve seni uyarır."
+    },
+    "defence": {
+      "risk": "Onarıldıktan sonra korsanlar bu gemiye akın edebilir.",
+      "gain": "Savunmayı açar",
+      "line": "Hasarı önce Aegis karşılar. Korsanlar artık bu gemiye akın edebilir."
+    },
+    "attack": {
+      "gain": "Saldırıyı açar",
+      "line": "Gemilere ve karakollara saldırabilir, hasarlı gemileri Onarım İstasyonu’nda onarabilirsin."
+    },
+    "deuterium": {
+      "gain": "Döteryumu açar",
+      "line": "Uçuşlar Döteryum yakar. Bu rafineri Döteryum üretir."
+    },
+    "drive": {
+      "gain": "Motor panelini açar",
+      "line": "İtki parçaları artık haritada görünür. Motor {{count}} parça ister."
+    },
+    "migration": {
+      "gain": "Göçü açar",
+      "line": "Depo dolu. Bu gemi ana galaksiye atlayabilir."
+    }
+  },
+  "funnel": {"title": "Başlangıç yolculuğu", "sessions": "{{accounts}} hesap · {{sessions}} oturum · {{returned}} hesap ikinci oturuma döndü", "push": "Push: {{asked}} sorulan · {{granted}} izin veren · {{denied}} reddeden", "crates": "Kasalar: {{accounts}} hesapta {{opened}} açılış", "steps": "Adımlar ve düşüş", "dropoff": "{{accounts}} ulaştı · öncekinden {{dropoff}} az"},
+  "crate": {"title_one": "Kurtarma kasası", "title_other": "{{count}} kurtarma kasası", "hold": "Basılı tut, aç ve al", "open": "Aç: {{purse}}"},
+  "unlock": {
+    "online": "{{system}} çevrimiçi",
+    "try": "Dene",
+    "later": "Sonra"
+  },
+  "tab": {
+    "repair": "Bunu açmak için {{module}} sistemini onar.",
+    "mainGalaxy": "Bu, ana galakside açılır."
+  }
+};

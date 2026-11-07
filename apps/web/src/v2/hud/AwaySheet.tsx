@@ -34,8 +34,14 @@ function iconOf(row: AwayRow): IconId {
   }
 }
 
+/** A ship names each resource it got, and leaves out the ones it got none of (E-03). */
+function haulLine(t: TFunction, held: { alloy?: number; crystal?: number; deuterium?: number }): string[] {
+  return ([['alloy', 'haulAlloy'], ['crystal', 'haulCrystal'], ['deuterium', 'haulDeuterium']] as const)
+    .flatMap(([kind, key]) => (held[kind] ?? 0) > 0 ? [t(`starter.away.${key}`, { value: full(held[kind] ?? 0) })] : []);
+}
+
 /** A line's words, from its kind and parameters, in the reader's language (S3). */
-function words(entry: ReturnEntry, t: TFunction): { title: string; detail: string } {
+function words(entry: ReturnEntry, t: TFunction, aboard: boolean): { title: string; detail: string } {
   switch (entry.kind) {
     case 'raided':
       return {
@@ -53,11 +59,23 @@ function words(entry: ReturnEntry, t: TFunction): { title: string; detail: strin
       return { title: t('away.scan', { count: entry.params.count }), detail: t('away.scanDetail') };
     case 'convoy_result':
     case 'fleet_returned':
+      // A colony ship has no convoy; only a returning fleet carries the per-resource haul.
+      if (aboard && entry.kind === 'fleet_returned') {
+        const haul = haulLine(t, entry.params);
+        return {
+          title: t('starter.away.fleetHome'),
+          detail: entry.params.alloy === undefined
+            ? t('starter.away.fleetHomeDetail', { count: entry.params.ships, resources: full(entry.params.resources) })
+            : [...haul, t('starter.away.ships', { count: entry.params.ships })].join(' · '),
+        };
+      }
       return {
         title: t(entry.kind === 'fleet_returned' ? 'away.convoyDelivered' : 'away.convoySecured'),
         detail: t('away.convoyDetail', { count: entry.params.ships, resources: full(entry.params.resources) }),
       };
     case 'accrued':
+      // Aboard a ship the Extractor may not run yet, and "+0 crystal" reads as a fault.
+      if (aboard) return { title: haulLine(t, entry.params).join(' · '), detail: t('away.accruedDetail') };
       return {
         title: t('away.accrued', { alloy: full(entry.params.alloy), crystal: full(entry.params.crystal) }),
         detail: t('away.accruedDetail'),
@@ -89,9 +107,9 @@ function Door({ label, onOpen }: { label: string; onOpen: () => void }) {
   );
 }
 
-function Line({ row, onDoor }: { row: AwayRow; onDoor: (door: AwayDoor, planetId?: string) => void }) {
+function Line({ row, aboard, onDoor }: { row: AwayRow; aboard: boolean; onDoor: (door: AwayDoor, planetId?: string) => void }) {
   const { t } = useTranslation();
-  const { title, detail } = row.kind === 'entry' ? words(row.entry, t) : seen(row.sighting, t);
+  const { title, detail } = row.kind === 'entry' ? words(row.entry, t, aboard) : seen(row.sighting, t);
   const planetId = row.kind === 'sighting' ? row.sighting.planetId : undefined;
   return (
     <li data-away-row="" data-tone={row.tone} className="flex gap-3 py-3 first:pt-1 last:pb-1">
@@ -106,7 +124,7 @@ function Line({ row, onDoor }: { row: AwayRow; onDoor: (door: AwayDoor, planetId
           <span className="min-w-0">{title}</span>
         </span>
         <span className="text-micro leading-snug text-v2-ink-2">{detail}</span>
-        <Door label={t(`away.door.${row.door}`)} onOpen={() => { onDoor(row.door, planetId); }} />
+        <Door label={aboard && row.door === 'base' ? t('starter.away.toShip') : t(`away.door.${row.door}`)} onOpen={() => { onDoor(row.door, planetId); }} />
       </span>
     </li>
   );
@@ -126,11 +144,14 @@ export function AwaySheet({
   story,
   sightings = [],
   care = null,
+  aboard = false,
   onDoor,
   onAll,
   onDismiss,
 }: {
   story: ReturnPayload;
+  /** The reader is on a colony ship, so the story is told in the ship's words. */
+  aboard?: boolean;
   /** What the Telescope sees out right now (`sightingsOf`). */
   sightings?: readonly Sighting[];
   /** The world with faults standing (`worldCare`), or null. */
@@ -171,6 +192,7 @@ export function AwaySheet({
       <ul className="flex flex-col divide-y divide-v2-line">
         {rows.map((row) => (
           <Line
+            aboard={aboard}
             key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`}
             row={row}
             onDoor={onDoor}

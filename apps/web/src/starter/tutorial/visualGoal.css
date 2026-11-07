@@ -1,0 +1,2 @@
+@keyframes starter-goal { 0%,100% { box-shadow: 0 0 0 2px var(--color-v2-self), 0 0 10px var(--color-v2-self); } 50% { box-shadow: 0 0 0 3px var(--color-v2-self), 0 0 23px var(--color-v2-self); } }
+[data-starter-next] { animation: starter-goal 1.7s ease-in-out infinite; outline: 1px solid var(--color-v2-self); outline-offset: 2px; }

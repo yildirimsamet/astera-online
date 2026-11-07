@@ -20,6 +20,9 @@ import type {
 } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 
+const feedback = vi.hoisted(() => ({ haptic: vi.fn() }));
+vi.mock('../src/lib/haptics.js', () => feedback);
+
 /**
  * ONE TAP, ONE HTTP ROUND TRIP — and the POST must beat an older GET. D120.
  *
@@ -120,6 +123,7 @@ describe('Prospector recall cache hand-off', () => {
   });
 
   it('orders mining and recall responses across different origins before replacing the commander-wide roster', async () => {
+    feedback.haptic.mockClear();
     const { client, recallMining, mine, wrapper } = setup();
     client.setQueryData(keys.planet, planetView({}, { id: capitalId }));
     const launched = miningLaunchSchema.parse({
@@ -139,6 +143,7 @@ describe('Prospector recall cache hand-off', () => {
     act(() => { finishMining(launched); });
     await waitFor(() => { expect(view.result.current.recall.isSuccess).toBe(true); });
     expect(client.getQueryData<MiningStatusView>(keys.miningStatus)?.runs[0]?.status).toBe('returning');
+    expect(feedback.haptic).toHaveBeenCalledWith('commit');
   });
 });
 

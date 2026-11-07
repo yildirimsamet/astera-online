@@ -519,6 +519,7 @@ export const dossier = {
     lootRow: "{{label}}: {{band}} · kargon {{cargo}}",
     others: "Diğer okumalar",
     wing: "Evdeki kanadın",
+    value: "Değer",
     power: "Güç",
     loot: "Ganimet",
     lootTag: "tahmin",

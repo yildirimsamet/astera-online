@@ -32,6 +32,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
+import { starter } from './starter.js';
 import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
@@ -105,6 +106,7 @@ export const fr: Resources = {
   community,
   trade,
   convoy,
+  starter, universe: {"open": "Voir l'univers", "back": "Retour", "main": "Galaxie principale", "you": "Toi", "starter": "Départ {{number}}", "ships_one": "{{count}} vaisseau", "ships_other": "{{count}} vaisseaux"},
   hold,
   lane,
   meter,

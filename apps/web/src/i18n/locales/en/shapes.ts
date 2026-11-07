@@ -69,7 +69,7 @@ export const counter = {
   compareLabel: "Your power {{yours}}; their power {{theirs}}",
   comparePick: "Pick ships to weigh them against this target.",
   compareMeaning: "Firepower and durability against each other, counters included. The stronger side keeps more of its fleet.",
-  compareRule: "Power counts armed ships and active ground guns: their research, wounds and the counter cycle against the other side, plus the Aegis charge. Unarmed ships add nothing. A probe reads in ranges, so each side is a range; the low end of the ratio is your worst case. Readings age, and every battle rolls its shots.",
+  compareRule: "Power counts armed ships and active ground guns: their research, wounds and the counter cycle against the other side, plus the Aegis charge. Unarmed ships add nothing. A probe reads in ranges, so each side is a range; the low end of the ratio is your worst case. Readings age, and every battle rolls its shots. The value on the card and the launch is only what the armed ships cost; power adds the rest.",
   ratioYou: "You are {{band}}× as strong",
   ratioThem: "They are {{band}}× as strong",
   ratioOpen: "The reading does not settle who is stronger: they up to {{them}}×, you up to {{you}}×",
@@ -117,6 +117,6 @@ export const counter = {
   matchupSplit: 'Read split',
   matchupBring: 'Bring {{class}}',
   matchupSingle: 'Your wing is single-class — its counter may be in the unread part',
-  matchupExposure: 'strong {{strong}}% · weak {{weak}}%',
+  matchupExposure: "Your {{class}}: strong vs {{strong}}% of their wall · weak vs {{weak}}%",
   matchupProbe: 'a probe two Shipyard levels up reveals the split',
 } as const;

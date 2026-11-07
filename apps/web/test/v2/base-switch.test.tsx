@@ -44,7 +44,7 @@ describe('the galaxy hosts it on both Base pages', () => {
   const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
 
   it('heads the world page and the research page with the same switch', () => {
-    const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && ("), source.indexOf('<PlanetScreen'));
+    const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && ("), source.indexOf('<PlanetScreen'));
     const research = source.slice(source.indexOf("{panel === 'research' && ("), source.indexOf('<ResearchPanel'));
     expect(world).toMatch(/<BaseSwitch value="world" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
     expect(research).toMatch(/<BaseSwitch value="research" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
@@ -53,7 +53,7 @@ describe('the galaxy hosts it on both Base pages', () => {
   // Owner 2026-10-27: this world and the commander ship had no header art; research did.
   it('heads all three pages with their own art', () => {
     const page = (start: string, end: string): string => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
-    const world = page("{panel === 'planet' && planet.data && (", '<BaseSwitch');
+    const world = page("{panel === 'planet' && planet.data && !planet.data.vessel && (", '<BaseSwitch');
     const ship = page("{panel === 'ship' && onEnterArena && (", '<BaseSwitch');
     expect(world).toMatch(/headerArt=\{ATMOSPHERE\.baseWorld\}/);
     expect(ship).toMatch(/headerArt=\{ATMOSPHERE\.commanderShip\}/);

@@ -573,6 +573,7 @@ export const dossier = {
     lootRow: "{{label}}: {{band}} · dein Laderaum {{cargo}}",
     others: "Weitere Messwerte",
     wing: "Dein Geschwader daheim",
+    value: "Wert",
     power: "Stärke",
     loot: "Beute",
     lootTag: "Schätzung",

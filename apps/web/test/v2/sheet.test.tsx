@@ -49,6 +49,15 @@ describe('where a sheet settles', () => {
 });
 
 describe('the sheet', () => {
+  it('exposes the legacy close control to the guided route', () => {
+    const close = vi.fn();
+    const view = render(<OldSheet title="Ship" onClose={close}>ship</OldSheet>);
+    const mark = view.container.querySelector('[data-sheet-close]');
+    expect(mark).not.toBeNull();
+    if (mark) fireEvent.click(mark);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it('keeps the name, back, close and detent controls functional over decorative header art', async () => {
     const close = vi.fn();
     const back = vi.fn();

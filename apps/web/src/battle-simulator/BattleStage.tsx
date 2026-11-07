@@ -4,10 +4,11 @@ import { Html, OrbitControls, Stars, useGLTF, useTexture } from '@react-three/dr
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { useTranslation } from 'react-i18next';
-import { HULLS, type BattleShipSnapshot, type BattleShipState, type BattleSide, type HullId } from '@astera/rules';
+import { HULLS, type BattleEnvironment, type BattleShipSnapshot, type BattleShipState, type BattleSide, type HullId, type VesselHull } from '@astera/rules';
 import { HULL_MODEL, HULL_LOD_MODEL, MODEL_FACING, MODEL_POSE, BATTLEFIELD_PLANET_MODEL } from '../ui/assets.js';
 import { EXPLOSION_ATLAS } from '../galaxy/vfx.js';
 import { unitPlanetGeometry } from '../galaxy/PlanetSkinModel.js';
+import { VESSEL_NOSE_TURN, vesselModelFile } from '../galaxy/mainSky.js';
 import { SpaceLighting } from '../galaxy/SpaceLighting.js';
 import { useGpuContext } from '../galaxy/gpuContext.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
@@ -22,7 +23,9 @@ import { damageLabel } from './presentation.js';
 
 interface StageProps {
   timeline: ReplayTimeline; clock: RefObject<PlaybackClock>; viewer: BattleSide;
-  selected: string | null; onSelect: (id: string | null) => void; environment: 'PLANET' | 'MONUMENT';
+  selected: string | null; onSelect: (id: string | null) => void; environment: BattleEnvironment;
+  /** The colony ship a VESSEL fight was over. */
+  vessel?: { hull: VesselHull } | undefined;
   onReady: () => void; onSuspend: () => void; time: number; playing: boolean;
   onUnavailable?: () => void;
   cameraRequest?: CameraRequest | null;
@@ -94,7 +97,7 @@ declare global {
     };
   }
 }
-function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment, onReady, cameraRequest }: StageProps) {
+function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment, vessel, onReady, cameraRequest }: StageProps) {
   const { gl, scene } = useThree();
   const positions = useMemo(() => layoutBattle(timeline.recording), [timeline]);
   const destinations = useMemo(() => retreatDestinations(timeline, positions), [timeline, positions]);
@@ -148,6 +151,7 @@ function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment,
     <BattleCamera positions={positions} destinations={destinations} timeline={timeline} clock={clock} viewer={viewer} request={cameraRequest} />
     <group rotation={[0, viewer === 'ATTACK' ? 0 : Math.PI, 0]}>
       {environment === 'PLANET' && <PlanetBackdrop positions={positions} ships={timeline.recording.ships} />}
+      {environment === 'VESSEL' && vessel && <VesselBackdrop hull={vessel.hull} positions={positions} ships={timeline.recording.ships} />}
       {buckets.map(([hull, members]) => <ShipBucket planet={planet} key={hull} hull={hull} members={members} positions={positions} runtime={runtime}
         selected={selected} viewer={viewer} onSelect={onSelect} clock={clock} deaths={deaths} retreats={retreats} destinations={destinations} />)}
       {Array.from({ length: pooled ? READOUT_SLOTS : timeline.recording.ships.length }, (_, slot) => <UnitReadout key={slot} slot={slot} ships={shipById}
@@ -213,6 +217,19 @@ function BattleCamera({ positions, destinations, timeline, clock, viewer, reques
   });
   return <OrbitControls ref={controls} makeDefault enablePan enableDamping dampingFactor={.08}
     minPolarAngle={.15} maxPolarAngle={1.35} minDistance={3} maxDistance={range.maxDistance} onStart={() => { desired.current = null; }} />;
+}
+
+/**
+ * A FIGHT OVER A COLONY SHIP (player test I-04). The hull lies where a planet would, under the ships
+ * that guard it. Drawn unread, as the galaxy draws another commander's ship: its repairs are a probe's.
+ */
+function VesselBackdrop({ hull, positions, ships }: { hull: VesselHull; positions: ReadonlyMap<string, BattlePose>; ships: readonly BattleShipSnapshot[] }) {
+  const loaded = useGLTF(vesselModelFile(hull, 'WRECKED'));
+  const model = useMemo(() => loaded.scene.clone(), [loaded.scene]);
+  const pose = useMemo(() => battlePlanet(ships, positions), [ships, positions]);
+  return <group position={[0, pose.y + pose.radius * .55, pose.z]} rotation={[0, VESSEL_NOSE_TURN + Math.PI / 2, 0]} scale={pose.radius * 1.4}>
+    <primitive object={model} />
+  </group>;
 }
 
 function PlanetBackdrop({ positions, ships }: { positions: ReadonlyMap<string, BattlePose>; ships: readonly BattleShipSnapshot[] }) {

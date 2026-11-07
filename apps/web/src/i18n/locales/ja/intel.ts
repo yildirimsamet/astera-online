@@ -573,6 +573,7 @@ export const dossier = {
     lootRow: "{{label}}：{{band}} · あなたの船倉{{cargo}}",
     others: "その他の読み取り値",
     wing: "あなたの翼を自宅に",
+    value: "価値",
     power: "パワー",
     loot: "戦利品",
     lootTag: "見積もり",

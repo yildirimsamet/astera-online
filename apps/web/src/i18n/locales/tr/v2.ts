@@ -52,6 +52,10 @@ export const dock = {
   clan: 'Klan',
   /** The dot on Base, read aloud. */
   baseWaiting: 'Onarılacak bir şey var',
+  /** A tab that has just opened, until it is first pressed. */
+  fresh: 'Yeni',
+  /** A tab the ship has not opened yet, read aloud. */
+  locked: 'Kilitli',
   /** Beside the Fleet ring: your own craft in the air. */
   airborne: 'Havada: {{count}}',
   /** The count on Intel: reports you have not seen. */
@@ -169,6 +173,9 @@ export const reportScene = {
   destroyed: "{{count}} yok edildi",
   hidden: "Kalanları ve sahaya çıkardığı filo gizli; rapor yalnızca yok ettiğini söyler.",
   whyDecisive: "Kayıplar nereden geldi",
+  verdictDecisive: "Savunmada ne birlik ne kalkan kaldı: ganimetin tamamı açıktı.",
+  verdictPartial: "Savunma değerinin en az %{{share}} kadarı savaştan çıktı ama savunma ayakta kaldı: ganimetin bir kısmı açıldı.",
+  verdictRepelled: "Savunma değerinin %{{share}} kadarından azı savaştan çıktı: ganimet yok.",
   whyPartial: "Neden kısmi?",
   whyRepelled: "Neden püskürtüldü?",
   why: "Kayıplarının çoğu {{lost}}: {{by}} onlara karşı güçlü, {{bring}} de {{by}} karşısında güçlü.",

@@ -35,6 +35,8 @@ export interface FleetWorld {
 }
 
 export interface FleetPageProps {
+  /** On a colony ship the galaxy holds ships and outposts, and the empty line says so. */
+  aboard?: boolean;
   monuments?: { view: Monuments; onFocus: (monumentId: string) => void };
   tab: FleetTab;
   onTab: (tab: FleetTab) => void;
@@ -290,8 +292,9 @@ function WorldName({ world, onFocus }: { world: FleetWorld; onFocus: () => void 
 }
 
 /** A world's ships at home, by hull, with its class shape. */
-function Garrison({ world, onOpenRepairStation, onFocusWorld, onDock, docking }: {
+function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, docking }: {
   world: FleetWorld;
+  aboard: boolean;
   onOpenRepairStation: () => void;
   onFocusWorld: () => void;
   onDock?: (worldId: string, groups: HpDamageLots, onSuccess: () => void) => void;
@@ -306,7 +309,8 @@ function Garrison({ world, onOpenRepairStation, onFocusWorld, onDock, docking }:
   return (
     <li className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
       <div className="flex flex-col gap-1.5">
-        <WorldName world={world} onFocus={onFocusWorld} />
+        {/* Aboard with ships hurt, the ship's own row leads to the station it was pressed to find (player test F-01). */}
+        <WorldName world={world} onFocus={aboard && damaged.length > 0 ? onOpenRepairStation : onFocusWorld} />
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
           {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
@@ -339,7 +343,14 @@ function Garrison({ world, onOpenRepairStation, onFocusWorld, onDock, docking }:
           ))}
         </div>
       )}
-      {damaged.length > 0 && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
+      {/* A ship's station takes everything hurt at home, so there is nothing to choose and nothing to transfer. */}
+      {damaged.length > 0 && aboard && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
+        <p className="text-micro font-semibold text-v2-warn">{t('repairStation.damagedHeading')}</p>
+        <button type="button" onClick={onOpenRepairStation} className="min-h-9 rounded-control border border-v2-self/40 bg-v2-self/10 px-2 text-caption font-semibold text-v2-self">
+          {t('starter.fleetPage.openStation')}
+        </button>
+      </section>}
+      {damaged.length > 0 && !aboard && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
         <p className="text-micro font-semibold text-v2-warn">{t('repairStation.damagedHeading')}</p>
         {world.workshopRadiation && <p className="text-micro text-v2-warn">{t('repairStation.maintenance.radiation')}</p>}
         <ShipHealthInventory rows={damaged} quantities={quantities} disabled={docking === true || world.workshopRadiation === true}
@@ -420,6 +431,7 @@ export function FleetPage({
   support,
   monuments,
   onClose,
+  aboard = false,
 }: FleetPageProps) {
   const { t } = useTranslation();
   return (
@@ -438,12 +450,13 @@ export function FleetPage({
         />
         {(bays !== null || hangar !== null) && (
           <div className="grid grid-cols-2 gap-2">
-            {bays && <Room label={t('fleetPage.bays')} used={bays.used} total={bays.total} />}
+            {/* Aboard only attacks and outpost raids take a bay; a probe or a Prospector does not (player test B-01). */}
+            {bays && <Room label={t(aboard ? 'starter.fleetPage.bays' : 'fleetPage.bays')} used={bays.used} total={bays.total} />}
             {hangar && <Room label={t('fleetPage.hangar')} used={hangar.used} total={hangar.total} />}
           </div>
         )}
         {tab === 'air' && (flights.length === 0 ? (
-          <p className="px-1 py-2 text-caption text-v2-ink-3">{t('fleetPage.emptyAir')}</p>
+          <p className="px-1 py-2 text-caption text-v2-ink-3">{t(aboard ? 'starter.fleetPage.emptyAir' : 'fleetPage.emptyAir')}</p>
         ) : (
           <ul className="flex flex-col">
             {flights.map((item) => (
@@ -477,6 +490,7 @@ export function FleetPage({
               <Garrison
                 key={world.id}
                 world={world}
+                aboard={aboard}
                 onDock={onDock}
                 docking={docking}
                 onOpenRepairStation={() => { onOpenRepairStation(world.id); }}
@@ -487,7 +501,7 @@ export function FleetPage({
         )}
         {tab === 'room' && (
           <>
-            <p className="px-1 text-micro leading-snug text-v2-ink-3">{t('fleetPage.roomRule')}</p>
+            <p className="px-1 text-micro leading-snug text-v2-ink-3">{t(aboard ? 'starter.fleetPage.roomRule' : 'fleetPage.roomRule')}</p>
             <ul className="flex flex-col gap-1.5">
               {worlds.map((world) => (
                 <WorldRoom key={world.id} world={world} onFocusWorld={() => { onFocusWorld(world.id); }} />

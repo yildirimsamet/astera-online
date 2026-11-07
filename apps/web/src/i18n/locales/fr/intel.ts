@@ -586,6 +586,7 @@ export const dossier = {
     lootRow: "{{label}} : {{band}} · ta soute {{cargo}}",
     others: "Autres relevés",
     wing: "Ton escadre au monde",
+    value: "Valeur",
     power: "Puissance",
     loot: "Butin",
     lootTag: "estimation",

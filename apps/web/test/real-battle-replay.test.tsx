@@ -10,9 +10,10 @@ import { battleReplayResponseSchema } from '../src/api/battleReplaySchemas.js';
 
 vi.mock('../src/api/context.js', () => ({ useApi: () => ({ battleReplay: () => Promise.resolve({ viewer: 'DEFENCE', replay: frozen() }) }) }));
 
-vi.mock('../src/battle-simulator/BattleStage.js', () => ({ BattleStage: ({ timeline, onSelect, viewer }: {
+vi.mock('../src/battle-simulator/BattleStage.js', () => ({ BattleStage: ({ timeline, onSelect, viewer, environment, vessel }: {
   timeline: { recording: BattleReplayData['recording'] }; onSelect: (id: string) => void; viewer: BattleSide;
-}) => <div data-testid="viewer" data-side={viewer}>{timeline.recording.ships.map(ship => <button key={ship.id} onClick={() => { onSelect(ship.id); }}>Pick {ship.id}</button>)}</div> }));
+  environment: string; vessel?: { hull: string };
+}) => <div data-testid="viewer" data-side={viewer} data-environment={environment} data-vessel={vessel?.hull ?? ''}>{timeline.recording.ships.map(ship => <button key={ship.id} onClick={() => { onSelect(ship.id); }}>Pick {ship.id}</button>)}</div> }));
 const frozen = (): BattleReplayData => {
   const simulation = simulateScenario(DEFAULT_SCENARIO);
   return { recording: simulation.recording, result: simulation.result, environment: simulation.environment,
@@ -44,6 +45,14 @@ describe('frozen real battle presentation', () => {
     const duplicate = structuredClone(response);
     duplicate.replay.recording.rounds[0]!.after[1] = duplicate.replay.recording.rounds[0]!.after[0]!;
     expect(battleReplayResponseSchema.safeParse(duplicate).success).toBe(false);
+  });
+
+  it('stages a fight over a colony ship around that ship (player test I-04)', () => {
+    // Only the hull, which anyone can see; how far its repairs have come is a probe's to read.
+    const data = { ...frozen(), environment: 'VESSEL' as const, vessel: { hull: 'SEED' as const } };
+    expect(battleReplayResponseSchema.parse({ viewer: 'ATTACK', replay: data }).replay).toMatchObject({ environment: 'VESSEL', vessel: { hull: 'SEED' } });
+    render(<BattleReplay simulation={data} environment={data.environment} />);
+    expect(screen.getByTestId('viewer').dataset).toMatchObject({ environment: 'VESSEL', vessel: 'SEED' });
   });
 
   it('starts with the real viewer below and reads the frozen research by stack rather than current scenario owners', () => {

@@ -303,6 +303,8 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  'starter.jump.scene.fall', // Only the galaxy's name, which is a name in every language.
+  'starter.effect.aegis', // Aegis is the wall's proper name, and the rest is a figure.
   'honorBenefits.atLeast', 'honorBenefits.atMost', 'honorBenefits.range',
   'honorBenefits.negativeRange', 'honorBenefits.neutralRange', 'honorBenefits.difference', // Honor proper name and mathematical inequalities.
   'leaderboard.honorTitle', // Honor is the ranking's proper name in every language.
@@ -353,7 +355,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'counter.compareRecord',
   'units.plus',
   'units.minus',
-  'units.millions',
   // Nothing but placeholders and separators — no words of their own.
   'planet.queue.segment',
   'notifications.composition',
@@ -919,8 +920,11 @@ describe('numbers and clocks follow the language', () => {
     expect(compact(1240)).toBe('1.2k');
     expect(compact(12400)).toBe('12k');
     await i18n.changeLanguage('tr');
-    expect(compact(1240)).toBe('1,2b');
-    expect(compact(12400)).toBe('12b');
+    // Turkish writes a thousand "B" and a million "Mn", as its own number formats do; a bare "b"
+    // was read as an unknown unit (player test B-01). The space never breaks a figure in two.
+    expect(compact(1240)).toBe('1,2\u00a0B');
+    expect(compact(12400)).toBe('12\u00a0B');
+    expect(compact(1_240_000)).toBe('1,2\u00a0Mn');
     await i18n.changeLanguage('en');
   });
 

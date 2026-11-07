@@ -52,6 +52,10 @@ export const dock = {
   clan: 'Clan',
   /** The dot on Base, read aloud. */
   baseWaiting: 'Quelque chose à réparer',
+  /** A tab that has just opened, until it is first pressed. */
+  fresh: 'Nouveau',
+  /** A tab the ship has not opened yet, read aloud. */
+  locked: 'Verrouillé',
   /** Beside the Fleet ring: your own craft in the air. */
   airborne: 'En vol : {{count}}',
   /** The count on Intel: reports you have not seen. */
@@ -169,6 +173,9 @@ export const reportScene = {
   destroyed: "{{count}} détruits",
   hidden: "Ce qui leur reste et le reste du terrain restent cachés ; un rapport ne dit que ce que tu as détruit.",
   whyDecisive: "D’où viennent les pertes",
+  verdictDecisive: "Il ne restait ni défenseur ni bouclier : tout le butin était ouvert.",
+  verdictPartial: "Au moins {{share}} % de la valeur de la défense a quitté le combat, mais la défense tenait encore : une partie du butin s’est ouverte.",
+  verdictRepelled: "Moins de {{share}} % de la valeur de la défense a quitté le combat : pas de butin.",
   whyPartial: "Pourquoi partielle ?",
   whyRepelled: "Pourquoi repoussé ?",
   why: "La plupart de tes pertes étaient des {{lost}} : {{by}} est fort contre eux, et {{bring}} est fort contre {{by}}.",

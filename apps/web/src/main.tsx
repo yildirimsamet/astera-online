@@ -14,6 +14,7 @@ import { syncDocumentLanguage } from './i18n/document.js';
 import { startAnalytics } from './lib/analytics.js';
 import { startPlayerAnalytics } from './lib/playerAnalytics/runtime.js';
 import { configureH5Ads } from './lib/h5.js';
+import { starterFetch } from './starter/transport.js';
 import { Api } from './api/client.js';
 import { createQueryClient } from './api/queryClient.js';
 import { ApiProvider } from './api/context.js';
@@ -49,7 +50,7 @@ function start(): void {
    */
   configureH5Ads();
 
-  const api = new Api({ observations: true });
+  const api = new Api({ observations: true, fetch: starterFetch(globalThis.fetch.bind(globalThis)) });
   const stopPlayerAnalytics = startPlayerAnalytics();
   if (import.meta.hot) import.meta.hot.dispose(stopPlayerAnalytics);
 

@@ -72,6 +72,8 @@ export interface QueueLaneProps {
   now: number;
   /** Opens the queue sheet, where an order is cancelled behind `Confirm` — or, on research, the order's project. */
   onOpen: (order: BuildOrderView) => void;
+  /** How deep this queue is; a colony ship researches one project at a time. */
+  slots?: number;
 }
 
 /**
@@ -86,15 +88,15 @@ export interface QueueLaneProps {
  * is no cancel mark here to hit by accident: a tap opens the queue sheet
  * (`QueueSheet`), which states the loss before it happens.
  */
-export function QueueLane({ label, orders, now, onOpen }: QueueLaneProps) {
+export function QueueLane({ label, orders, now, onOpen, slots = BUILD.queueDepth }: QueueLaneProps) {
   const { t } = useTranslation();
   const labelId = useId();
-  const free = Math.max(0, BUILD.queueDepth - orders.length);
+  const free = Math.max(0, slots - orders.length);
 
   return (
     <div data-queue-lane role="group" aria-labelledby={labelId} className="flex flex-col gap-1">
       <p id={labelId} className="font-v2-ui text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className={`grid gap-1.5 ${slots === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}>
         {orders.map((order) => {
           const left = orderLeft(order, now);
           return (

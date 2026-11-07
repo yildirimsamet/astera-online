@@ -6,11 +6,11 @@ export const moderation = {
     "update": "Mets à jour ou rouvre l’application pour consulter les règles actuelles.",
     "summary": "Avant de publier, consulte nos règles. Harcèlement, haine, menaces, contenu sexuel, informations privées et spam sont interdits.",
     "agreement": "J’accepte les règles de la communauté et les conditions d’utilisation.",
+    "byJoining": "En rejoignant, tu acceptes les <community>règles de la communauté</community> et les <terms>conditions d’utilisation</terms>.",
     "communityLink": "Règles de la communauté",
     "termsLink": "Conditions d’utilisation",
     "failed": "Ton accord n’a pas pu être confirmé. Réessaie.",
-    "accept": "Accepter et continuer",
-    "required": "Consulte et accepte les règles de la communauté et les conditions d’utilisation avant de créer ton commandant."
+    "accept": "Accepter et continuer"
 },
   "report": "Signaler",
   "title": "Signaler un contenu ou un joueur",

@@ -19,6 +19,8 @@ export interface ResearchConstellationProps {
   stars: readonly StarState[];
   selected: ResearchProjectId | null;
   onSelect: (id: ResearchProjectId) => void;
+  /** Aboard, four projects: a lower map keeps the decision card in sight at 350 px (player test F-05). */
+  compact?: boolean;
 }
 
 /**
@@ -46,7 +48,7 @@ const LABEL_SIDE: Record<ResearchGroupId, 'left' | 'right'> = {
  * are: the card under the map carries the whole one. The star in the research lane pulses; the selected
  * one is ringed, and the card under the map is the decision.
  */
-export function ResearchConstellation({ stars, selected, onSelect }: ResearchConstellationProps) {
+export function ResearchConstellation({ stars, selected, onSelect, compact = false }: ResearchConstellationProps) {
   const { t } = useTranslation();
   const layout = useMemo(() => constellationLayout(RESEARCH_GROUPS, (id) => RESEARCH_PROJECTS[id].prerequisite), []);
   const byId = new Map(stars.map((star) => [star.id, star]));
@@ -57,7 +59,7 @@ export function ResearchConstellation({ stars, selected, onSelect }: ResearchCon
       data-constellation
       role="group"
       aria-label={t('researchMap.label')}
-      className="relative isolate aspect-[1/1.05] w-full overflow-hidden rounded-control font-v2-ui"
+      className={`relative isolate ${compact ? 'aspect-[4/3]' : 'aspect-[1/1.05]'} w-full overflow-hidden rounded-control font-v2-ui`}
     >
       {/* The map on the galaxy, as the mock draws it (owner, 2026-09-24). */}
       <StarField className="absolute inset-0 -z-10" />

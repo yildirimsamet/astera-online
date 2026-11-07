@@ -32,6 +32,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
+import { starter } from './starter.js';
 import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 
 /**
@@ -118,6 +119,8 @@ export const en = {
   community,
   trade,
   convoy,
+  starter,
+  universe: {"open": "See the universe", "back": "Back", "main": "Main galaxy", "you": "You", "starter": "Starter {{number}}", "ships_one": "{{count}} ship", "ships_other": "{{count}} ships"},
   hold,
   lane,
   meter,
