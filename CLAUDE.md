@@ -2,11 +2,11 @@
 
 Her oturumun başında oku. İş uzadığında veya bağlam daraldığında da bu kurallardan sapma. Özellikle geliştirme disiplini, tasarım disiplini, çalışma yaklaşımı ve bağlam okuma stratejisi her görev boyunca geçerlidir.
 
-Bu dosyayı küçük tut: yalnızca yanlış uygulamayı önleyen, proje genelinde geçerli kurallar burada yer alır. Gerekçeler, geçmiş ve ölçümler `docs/` altında; dosyaya özgü tuzaklar ilgili dosyanın açıklama bloklarında tutulur.
+Bu dosyayı küçük tut: yalnızca yanlış uygulamayı önleyen, proje genelinde geçerli kurallar burada yer alır.
 
 ## 1. Ürün ve temel döngü
 
-Astera Online, galaksi başına 300–1000 gerçek oyuncuya kadar ölçeklenen, **mobile-first, kalıcı, çok oyunculu bir uzay oyunudur**. Her komutanın korunan bir başkenti vardır ve en fazla üç koloni ele geçirebilir. Sahip olunan gezegenler keşfedilene kadar gizlidir.
+Astera Online, galaksi başına 1000 gerçek oyuncuya kadar ölçeklenen, **mobile-first ve android uygulaması olan, kalıcı, çok oyunculu bir uzay oyunudur**. Her komutanın korunan bir başkenti vardır ve en fazla üç koloni ele geçirebilir. Sahip olunan gezegenler keşfedilene kadar gizlidir.
 
 > The fleet is the bet. The information is the game. The planet is the stake.
 
@@ -127,7 +127,60 @@ Scroll, dokunma ve ekran değiştirme maliyettir. Karşılaştırılacak on öğ
 - Geliştirdiğin, güncellediğin veya düzelttiğin işin tasarım gereksinimlerini asla atlama.
 - Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır. Bkz. `docs/landing-premium-redesign-2026-10-18.md`.
 
+### 6. Game feel — Biz bir OYUNUZ (owner, 2026-11-06) | Oyuncu deneyimi standardı (çok önemli)!
+
+Astera Online, mobil öncelikli, web tabanlı ve android uygulaması olan bir 3D uzay strateji oyunudur. Oyuncuya canlı bir dünyada bir gemiyi, gezegeni veya filoyu yönettiğini hissettir. Oyuncuya dokunan her görevde, sistemin nasıl çalışacağıyla birlikte oyuncunun onu nasıl keşfedeceğini, kullanacağını ve sonucunu nasıl hissedeceğini tasarla. Bu, görevin parçasıdır. Kullanıcının her animasyonu, sesi ve etkileşimi ayrı ayrı tarif etmesini bekleme.
+
+Her geliştirmede uygula:
+- Önce oyuncunun yaşayacağı anı belirle. Mevcut akışı incele. Oyuncu bu ekrana niye geliyor, ilk neyi fark etmeli, hangi eylemi yapmalı ve sonrasında dünyada ne değişmeli? Görseli, kontrolü ve geri bildirimi bu akışa göre seç.
+- Eyleme uygun bir kontrol tasarla. Bir sistemi devreye almak şalteri çevirmek, bir sinyali araştırmak sahnedeki kaynağa dokunmak, kritik bir işlemi başlatmak kısa süre basılı tutmak gibi hissettirebilir. Sık kullanılan işlemleri hızlı ve anlaşılır tut. İlk çalıştırma, keşif, onarım ve sıçrama gibi önemli anlara daha fazla özen göster. Her kontrolün ne yaptığı ve nasıl kullanılacağı anlaşılır olsun.
+- Sonucu oyun dünyasında göster. Oyuncunun eylemine sahne, nesne ve arayüz birlikte karşılık versin. Bir rafineri devreye girdiğinde ocağı tutuşabilir. Bir gemi onarıldıkça arızalı bölümleri sönebilir ve sistemleri yeniden ışık verebilir. Animasyon, ses, kamera ve desteklenen cihazlarda titreşimi eylemin ağırlığına göre kullan. Temel durum ve sonuç, ses kapalıyken de anlaşılabilsin.
+- Oyuncuya bir sonraki hamlesi için neden ver. Özellikle ilk deneyimde oyuncu mevcut durumunu, sıradaki adımı, bu adımın ne işe yaradığını ve uzun vadede nereye varacağını anlayabilsin. Merak veya sahiplenme yaratmak istediğin yerde bunu akışın içine koy. Örneğin oyuncu bir sinyali izleyip gemiyi gerçekten görürse, gemiyi sahiplenme çağrısı anlam kazanır.
+- Görsel kaliteyi sahneye göre değerlendir. Ana nesne ilk bakışta seçilsin. Işık, siluet, renk ve hareket dikkati doğru yere taşısın. Hasar ve ilerleme, mümkün olduğunda modelin ve çevrenin değişiminden okunsun. Oyunun görsel dilini koru ve etkileşimi bağlamına göre şekillendir.
+- Mobil tasarımda baş parmakların ulaşabilecegi alan ve mesafeleri değerlendir. Kullanıcı deneyimini atlama.
+
+İnisiyatif ve teslim:
+- Oyuncu açısından hedefi anlayınca, kapsam içindeki yaratıcı kararları kendin ver ve uygula. Yukarıdaki örnekleri yaklaşımı anlamak için kullan. İlerleme kuralları veya oyun dengesi gibi ürün kararlarını değiştirmek gerekiyorsa netleştir. Rutin görsel ve etkileşim kararları için onay bekleme.
+- Mevcut bileşenleri ve varlıkları uygun yerlerde kullan. Mobilde okunabilirliği, dokunma rahatlığını ve performansı koru. Geri bildirimi gerçek oyun durumuyla eşleştir. Bekleyen işlem, başarı ve hata oyuncu açısından ayırt edilebilsin.
+- Teslimden önce özelliği mümkünse mobil boyutta, oyunun normal akışından bir oyuncu gibi dene. Ne yapacağım belli mi? Yaptığım şeyin karşılığını görüyor muyum? Sonraki adımı anlıyor muyum? Bu an, oyundaki önemine uygun hissettiriyor mu? Kapsam içindeki eksikleri teslimden önce düzelt. Teslimde hangi oyuncu deneyimini tasarladığını ve neyi doğruladığını kısaca belirt.
+
+Oyuncuya dokunan bir işi tamamlandı saymadan önce, değişikliği oyunun normal akışından çalıştır. Ne yaptığını gör incele!
+Oyuncunun eylemi nereden keşfettiğini, eylemden sonra ne gördüğünü ve sıradaki adımı nasıl anladığını kontrol et. Akışta fark ettiğin eksikleri kapsam içinde düzelt. Akışı çalıştıramadıysan, teslimde hangi kısmı doğrulayamadığını açıkça belirt.
+
+Hedef, Unity/Godot/Unreal ile yapılmış bir oyun hissidir; web formu değil. Her yeni veya güncellenen etkileşim için, owner söylemeden:
+
+- **Eylemin fiziği olsun:** önemli an düz bir buton değildir. Şalter, kol, basılı tutma, sürükleme, çekme veya itme kullan; jest, eylemin anlamını taşısın (güç bağla → şalter indir).
+- **Her eylemin cevabı olsun:** ses (`lib/sound`), titreşim (`haptic`) ve görsel tepki birlikte gelsin. Örneğin rafineri başlayınca ocak alevlensin. Sessiz ve hareketsiz bir sonuç, eksik bir sonuçtur.
+- **Sahne canlı olsun:** durağan görsel yoktur. Hafif dönüş, titreşim, parıltı, duman, kıvılcım ve ışık olsun. Hasar ve onarım durumu görselde okunsun.
+- **Tekdüzelik yasaktır:** her yere aynı buton ve kart konmaz. Önemli anın kendine özgü bir sunumu olsun.
+- **Oyuncunun elinden tut ve hikâye anlat:** her ekranda sıradaki adım ve nedeni görünür olsun. Açılan sistem vurgulanarak tanıtılsın; kilit işaretiyle ne açılacağı belli olsun. Açıklama yerine hikâye kullan ("bu gemi senin olabilir"), sezon/teknik dil yerine anlam.
+
+Kendine sor: **"Oyuncu burada büyülenir mi, bir şeye dokunduğunu hisseder mi?"**
+
 Her yüzey için sor: **“Bu arayüz yalnızca GÖSTERİYOR mu, yoksa YARDIM EDİYOR mu?”** Bütün bilgileri sunmak, oyuncunun karar verebildiği anlamına gelmez; daha fazla göstermek her zaman daha fazla yardımcı olmak değildir.
+
+Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kullanmalısın:
+
+| Skill adı | İçeriği |
+| --- | --- |
+| `threejs-scene-setup` |	Three.js scene/camera/renderer/animation-loop, resizing, controls |
+| `threejs-gltf-loading` |	Loading glTF/GLB + skinned animation (GLTFLoader/AnimationMixer) |
+| `threejs-materials-lighting` |	Materials (PBR), lights, shadows, environment maps |
+| `create-game-assets` |	Art direction and production pipeline for cohesive sprites, tiles, textures, icons, UI art, and 3D assets |
+| `game-ai` |	NPC decision-making: FSMs, behavior trees, steering, pathfinding |
+| `ai-behavior-trees-utility-ai` |	Production behavior-tree runtime (Blackboard, composites, decorators, leaves) + Utility AI (curves, considerations, evaluator) + hybrid AI |
+| `procedural-gen` |	Noise, RNG, seeds, grid/dungeon/terrain generation |
+| `dialogue-systems` |	Branching dialogue/narrative: nodes, conditions, variables (Yarn/Ink) |
+| `save-systems` |	Serialize/restore game state: formats, slots, versioning, autosave |
+| `audio-design` |	Buses/mixing, adaptive music, SFX, ducking |
+| `shader-programming` |	Cross-engine shader concepts: vertex/fragment, UVs, common effects |
+| `physics-tuning` |	Tuning feel: fixed timestep, mass/drag, CCD, stability, layers |
+| `level-design` |	Whitebox/blockout structure, tile/grid layout, pacing |
+| `input-systems` |	Input architecture: action mapping, rebinding, multi-device, buffering |
+| `game-feel` |	Juice: screen shake, hit-stop, tweening/easing, squash & stretch, feedback tiers |
+| `game-ui-ux` |	Cross-engine HUD/menus: anchors, resolution scaling, safe areas, focus navigation |
+| `camera-systems` |	2D follow/deadzone/look-ahead + bounds, 3D orbit/first-person, screen-shake hook |
+| `performance-optimization` |	Profile-first: frame budget, CPU/GPU triage, draw calls, pooling, GC, asset budgets |
 
 > Oyuncu API'yi anlamaz. Oyuncu gördüğünü anlar, gösterileni bilir!
 
@@ -185,7 +238,6 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | --- | --- |
 | `docs/product-vision.md` | Ürünün amacını değerlendirirken |
 | `docs/game-design.md` | Sistem davranışını değiştirirken |
-| `docs/balance.md` | Sayıları veya simülatör ayarlarını değiştirirken; **dosyanın tamamını okuma**, gerekli kelime/konu üzerinden ilgili bölümleri oku |
 | `docs/architecture.md` | Sunucu mimarisinde |
 | `docs/deployment.md` | Yayınlama ve operasyonlarda |
 | `docs/engineering-standards.md` | Kod yazarken |
@@ -197,6 +249,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/review-onboarding.md` | Güncel FlightSchool, gerçek başlangıç ve eski Academy ayrımında; onboarding için ilk referans |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
+| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken |
 
 Diğer konular için `docs/` klasörüne bak.
 
