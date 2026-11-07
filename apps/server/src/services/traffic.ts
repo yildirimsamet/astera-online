@@ -431,7 +431,7 @@ const progress = (depart: number, arrive: number, at: number): number => {
  * it publishes a heading, and a craft inside its last minute publishes its arrival
  * — the same concession D52 already makes for a raid that has landed.
  */
-function windowOf(
+export function windowOf(
   from: Vec3,
   to: Vec3,
   departAt: Date,

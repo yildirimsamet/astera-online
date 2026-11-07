@@ -273,6 +273,8 @@ export function buildingLevelsFrom(rows: readonly { type: string; level: number 
 }
 
 export interface LockedPlanet {
+  /** Eligibility read with the existing identity query, never an extra command query. */
+  returnEligible?: boolean;
   planetId: string;
   playerId: string;
   kind: 'CAPITAL' | 'COLONY';
@@ -522,7 +524,12 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
   const [identity] = await tx
-    .select({ seasonId: planets.seasonId })
+    .select({ seasonId: planets.seasonId, returnEligible: sql<boolean>`exists (
+      select 1 from push_devices d join players p on p.account_id = d.account_id
+      join vessel_migrations m on m.player_id = p.id
+      where p.id = ${planets.controllerPlayerId} and m.status = 'DONE'
+        and m.completed_at > ${clock.now().toISOString()}::timestamptz - interval '7 days'
+    )` })
     .from(planets)
     .where(eq(planets.id, planetId));
   if (!identity) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
@@ -629,7 +636,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
       .where(eq(planets.id, planetId));
   }
 
-  return { planet: lockedPlanetFrom(inputs, economy, clock), unitRows, faultRows };
+  return { planet: { ...lockedPlanetFrom(inputs, economy, clock), returnEligible: identity.returnEligible }, unitRows, faultRows };
 }
 
 /**

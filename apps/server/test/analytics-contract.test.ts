@@ -41,3 +41,9 @@ describe('player analytics wire boundary', () => {
     expect(analyticsVisitorSchema.safeParse({ ...visit, campaign: { token: 'private' } }).success).toBe(false);
   });
 });
+
+it('accepts the live starter tutorial scene contract without a FlightSchool step', () => {
+  const input = { ...event(), mode: 'live', properties: { trainingVersion: 'starter-tutorial.v1', scene: 'collectMine' } };
+  expect(analyticsBatchSchema.parse({ events: [input] }).events[0]?.properties).toEqual(input.properties);
+  expect(analyticsEventSchema.safeParse({ ...input, properties: { ...input.properties, step: 12 } }).success).toBe(false);
+});

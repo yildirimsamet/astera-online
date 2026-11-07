@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { accounts, adminActions, chatMediaAssets, chatMessages, clanMessages, contentReports, dmConversations, dmMessages, players } from '../db/schema.js';
+import { accounts, adminActions, chatMediaAssets, chatMessages, clanMessages, contentReports, dmConversations, dmMessages, players, starterChatMessages } from '../db/schema.js';
 import { assertMessageReadable } from './messageAccess.js';
 import { takeSecurityCounter } from './mail.js';
 import { GameError } from './planet.js';
@@ -77,7 +77,11 @@ export async function resolveContentReport(db: Db, clock: Clock, id: string, act
       const messageId = report.messageId;
       if (report.kind !== 'message' || !messageId || !report.channel) throw new GameError('REPORT_NOT_MASKABLE', 'This report does not identify a message', 400);
       const masked = { content: '**', media: null };
-      if (report.channel === 'general') {
+      if (report.targetKey.startsWith('starter:')) {
+        const changed = await tx.update(starterChatMessages).set({ content: masked.content, maskedAt: clock.now() }).where(eq(starterChatMessages.id, messageId))
+          .returning({ galaxyId: starterChatMessages.starterGalaxyId });
+        for (const message of changed) await publishShard(tx, message.galaxyId, 'chat');
+      } else if (report.channel === 'general') {
         const changed = await tx.update(chatMessages).set(masked).where(and(eq(chatMessages.id, messageId), eq(chatMessages.authorPlayerId, report.evidence.playerId))).returning({ seasonId: chatMessages.seasonId });
         for (const message of changed) await publishShard(tx, message.seasonId, 'chat');
       } else if (report.channel === 'clan') {

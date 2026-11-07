@@ -7,6 +7,9 @@
  * its historical guards; the app request path requires exact request identity
  * and operator approval before calling the same destructive implementation.
  *
+ * A colony ship goes with the account by cascade: nothing else refers to one, and
+ * its berth is free for the next arrival the moment the row is gone.
+ *
  * ── IT DOES NOT HOLD A SECOND OPINION ABOUT WHAT A WORLD IS ─────────────────
  *
  * The whole destructive half is `commanderRows` / `busy` / `demolish`, imported

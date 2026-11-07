@@ -1,3 +1,4 @@
+import { deferQuietPushes } from './pushDelivery.js';
 import {
   ALERT_TIMINGS, NOTIFICATION_CENTER, PAID_ALERTS, alertPrice, alertSendAt, deuteriumRate, productionMult,
   type AlertTiming, type PaidAlertKind,
@@ -134,11 +135,11 @@ export async function setNotificationCenter(
 
 /** An app install; a token seen again moves to whoever signed in on it. */
 export async function registerPushDevice(
-  db: Db, accountId: string, token: string, platform: 'android', locale: Locale, clock: Clock,
+  db: Db, accountId: string, token: string, platform: 'android', locale: Locale, clock: Clock, utcOffsetMinutes = 0,
 ): Promise<void> {
   const now = clock.now();
-  await db.insert(pushDevices).values({ token, accountId, platform, locale, createdAt: now, lastSeenAt: now })
-    .onConflictDoUpdate({ target: pushDevices.token, set: { accountId, platform, locale, lastSeenAt: now } });
+  await db.insert(pushDevices).values({ token, accountId, platform, locale, utcOffsetMinutes, createdAt: now, lastSeenAt: now })
+    .onConflictDoUpdate({ target: pushDevices.token, set: { accountId, platform, locale, utcOffsetMinutes, lastSeenAt: now } });
 }
 
 export async function forgetPushDevice(db: Db, accountId: string, token: string): Promise<void> {
@@ -176,7 +177,7 @@ export async function armPaidAlert(tx: Tx, input: {
 
 /* ── sending ───────────────────────────────────────────────────────── */
 
-export interface PushMessage { kind: PaidAlertKind; title: string; body: string; data: Record<string, string> }
+export interface PushMessage { kind: PaidAlertKind | 'raid_over' | 'raided' | 'system_open' | 'shield_falling' | 'repair_done' | 'miner_home' | 'repair_funded' | 'while_away'; title: string; body: string; data: Record<string, string> }
 export interface PushTransport {
   send(tokens: string[], message: PushMessage): Promise<{ invalid: string[] }>;
 }
@@ -265,12 +266,19 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
     await settle('SENT', price);
     return { alert, devices, now };
   });
-  if (!delivery || !transport) return;
+  if (!delivery) return;
   // After COMMIT: a transport outage can no longer roll back the charge it already shows.
+  await sendPush(db, delivery.devices, locale => messageFor(delivery.alert.kind, locale, delivery.alert.payload, delivery.now, delivery.alert.refId, delivery.alert.id), delivery.now, { paid: true });
+}
+
+/** One message per language on these phones, and a token the provider has given up on is forgotten. */
+export async function sendPush(db: Db, devices: readonly { token: string; locale: Locale }[], write: (locale: Locale) => PushMessage, now = new Date(), options: { paid?: boolean } = {}): Promise<void> {
+  if (!transport) return;
   const byLocale = new Map<Locale, string[]>();
-  for (const device of delivery.devices) byLocale.set(device.locale, [...(byLocale.get(device.locale) ?? []), device.token]);
+  const ready = options.paid ? devices : await deferQuietPushes(db, devices, write, now);
+  for (const device of ready) byLocale.set(device.locale, [...(byLocale.get(device.locale) ?? []), device.token]);
   for (const [locale, tokens] of byLocale) {
-    const { invalid } = await transport.send(tokens, messageFor(delivery.alert.kind, locale, delivery.alert.payload, delivery.now, delivery.alert.refId, delivery.alert.id));
+    const { invalid } = await transport.send(tokens, write(locale));
     if (invalid.length > 0) await db.delete(pushDevices).where(inArray(pushDevices.token, invalid));
   }
 }

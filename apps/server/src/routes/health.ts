@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { cpus, freemem, totalmem } from 'node:os';
 import type { FastifyInstance } from 'fastify';
 import { failedEventCount, oldestPendingAge } from '../worker/queue.js';
+import { failedStarterEventCount, oldestPendingStarterAge } from '../worker/starterQueue.js';
 import { strandedBuildCount, strandedFlightCount } from '../worker/abandon.js';
 import { idleSeatCount } from '../services/reclaim.js';
 import { botStatus } from '../services/bots/sweep.js';
@@ -75,6 +76,8 @@ export function registerHealthRoutes(
       database?: string;
       queue?: string;
       queueLagSeconds?: number | null;
+      starterQueueLagSeconds?: number | null;
+      starterFailedEvents?: number;
       failedEvents?: number;
       strandedFlights?: number;
       strandedBuilds?: number;
@@ -127,6 +130,8 @@ export function registerHealthRoutes(
        */
       const dead = await failedEventCount(app.db);
       checks.failedEvents = dead;
+      checks.starterQueueLagSeconds = await oldestPendingStarterAge(app.db, app.clock.now());
+      checks.starterFailedEvents = await failedStarterEventCount(app.db);
       /**
        * A flight whose event row is GONE is invisible to everything above. D46.
        *

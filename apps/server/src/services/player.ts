@@ -1,6 +1,6 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { BUILDING_IDS, FIRST_SEASON_START, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
-import type { Db, Tx } from '../db/client.js';
+import type { Db, Queryable, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
 import { lockAdmission } from './returnQueue.js';
@@ -112,7 +112,7 @@ const MAX_ATTEMPTS = 6;
  * written in the same transaction — and this is what keeps that true if one ever
  * appears.
  */
-async function readPlacement(db: Db, accountId: string): Promise<JoinResult | null> {
+export async function readPlacement(db: Queryable, accountId: string): Promise<JoinResult | null> {
   const [found] = await db
     .select({ player: players, planet: planets })
     .from(players)
@@ -151,6 +151,38 @@ function settle(placement: JoinResult, seasonId: string): JoinResult {
 /** Who is taking the seat: a person, or one of the server's own commanders. */
 export type JoinSeat = 'COMMANDER' | 'SERVER';
 
+/** Has this account left any receipt of a season? Wipes and seat reclaims keep these. */
+async function hasPlayReceipt(q: Queryable, accountId: string): Promise<boolean> {
+  const [history] = await q.execute<{ played: boolean }>(sql`
+    select exists(select 1 from legacy_participation where account_id = ${accountId})
+      or exists(select 1 from season_results where account_id = ${accountId})
+      or exists(select 1 from players where account_id = ${accountId})
+      or exists(select 1 from accounts where id = ${accountId} and (lifetime -> 'seasons') > '0'::jsonb)
+      as played
+  `);
+  return history?.played !== false;
+}
+
+/**
+ * HAS THIS ACCOUNT EVER PLAYED? The one question both `joinSeason`'s first-season package and the
+ * colony ship's door depend on, so they can never disagree about who is new.
+ */
+export async function accountHasPlayHistory(q: Queryable, accountId: string): Promise<boolean> {
+  const [account] = await q.select({ startedAt: accounts.firstSeasonStartedAt }).from(accounts).where(eq(accounts.id, accountId));
+  return account?.startedAt !== null || await hasPlayReceipt(q, accountId);
+}
+
+/** Addresses kept for a commander on their way back: held only while someone is queued to come. */
+export async function slotsHeldForReturn(q: Queryable, where: { seasonId: string; cycleId: string; shardId: string }, now: Date): Promise<number[]> {
+  const [queued] = await q.select({ id: returnApplications.id }).from(returnApplications)
+    .where(and(eq(returnApplications.cycleId, where.cycleId), eq(returnApplications.targetShardId, where.shardId),
+      eq(returnApplications.status, 'QUEUED'), gt(returnApplications.expiresAt, now))).limit(1);
+  if (!queued) return [];
+  const reserved = await q.select({ slot: mainVacancies.slotIndex }).from(mainVacancies)
+    .where(and(eq(mainVacancies.seasonId, where.seasonId), isNull(mainVacancies.consumedAt)));
+  return reserved.map(row => row.slot);
+}
+
 /**
  * Place a player on a galaxy.
  *
@@ -184,6 +216,8 @@ export async function joinSeason(
   academyStep?: number,
   seat: JoinSeat = 'COMMANDER',
   adminUsernames: ReadonlySet<string> = new Set(),
+  /** An address the commander chose (plan §3.8). Gone by now, and they are asked again: it is never swapped for another. */
+  preferredSlot?: number,
 ): Promise<JoinResult> {
   // Validate before even looking for a placement. Only creation consumes it.
   const checkpoint = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
@@ -220,15 +254,10 @@ export async function joinSeason(
         const occupied = await tx.select({ slot: planets.slotIndex }).from(planets).where(eq(planets.seasonId, seasonId));
         const capitalIndices = new Set(spec.slots.map(row => row.index));
         const taken = new Set(occupied.map(row => row.slot).filter(index => capitalIndices.has(index)));
-        const [queued] = await tx.select({ id: returnApplications.id }).from(returnApplications)
-          .where(and(eq(returnApplications.cycleId, season.cycleId), eq(returnApplications.targetShardId, shard.id),
-            eq(returnApplications.status, 'QUEUED'), gt(returnApplications.expiresAt, now))).limit(1);
-        if (queued) {
-          const reserved = await tx.select({ slot: mainVacancies.slotIndex }).from(mainVacancies)
-            .where(and(eq(mainVacancies.seasonId, seasonId), isNull(mainVacancies.consumedAt)));
-          for (const row of reserved) taken.add(row.slot);
-        }
-        const slot = pickSpawnSlot(spec.slots, taken);
+        for (const held of await slotsHeldForReturn(tx, { seasonId, cycleId: season.cycleId, shardId: shard.id }, now)) taken.add(held);
+        const wanted = spec.slots.find(row => row.index === preferredSlot && !taken.has(row.index));
+        if (preferredSlot !== undefined && !wanted) throw new GameError('LANDING_GONE', 'That address is no longer open', 409);
+        const slot = wanted ?? pickSpawnSlot(spec.slots, taken);
         // The cap is PEOPLE (`people.ts`); a bot's seat is bounded by its own band.
         const full = seat === 'COMMANDER' && await peopleIn(tx, seasonId) >= shard.playerCap;
         if (!slot || full) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
@@ -245,14 +274,7 @@ export async function joinSeason(
         if (now >= current.endsAt) throw new GameError('SEASON_ENDED', 'This season has ended', 409);
         // During a rolling release an old replica can still join/reclaim a seat
         // without stamping the new column. Its retained receipt must also count.
-        const [history] = joiningAccount?.startedAt === null ? await tx.execute<{ played: boolean }>(sql`
-          select exists(select 1 from legacy_participation where account_id = ${accountId})
-            or exists(select 1 from season_results where account_id = ${accountId})
-            or exists(select 1 from players where account_id = ${accountId})
-            or exists(select 1 from accounts where id = ${accountId} and (lifetime -> 'seasons') > '0'::jsonb)
-            as played
-        `) : [];
-        const firstSeason = joiningAccount?.startedAt === null && history?.played === false;
+        const firstSeason = joiningAccount?.startedAt === null && !(await hasPlayReceipt(tx, accountId));
         if (joiningAccount?.startedAt === null) await tx.update(accounts).set({ firstSeasonStartedAt: now })
           .where(eq(accounts.id, accountId));
         const opening = seat === 'COMMANDER' && firstSeason ? FIRST_SEASON_START : academy;

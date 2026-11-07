@@ -1,7 +1,7 @@
 import {
   BATTLE_REPLAY_RESEARCH, HULLS, combatValue, createBattleRecording, fleetCount, partitionCombatFleet,
-  type BattleRecording, type BattleReplayData, type BattleReplayOwner, type BattleSide,
-  type BattleReplayStatus, type CombatResult, type DefenderStack, type EscapeOutcome, type JointAttackerStack,
+  type BattleEnvironment, type BattleRecording, type BattleReplayData, type BattleReplayOwner, type BattleSide,
+  type BattleReplayStatus, type CombatResult, type DefenderStack, type EscapeOutcome, type JointAttackerStack, type VesselHull,
 } from '@astera/rules';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -54,7 +54,8 @@ export function prepareBattleReplay(attackers: readonly JointAttackerStack[], de
 }
 
 export interface BattleReplayContext {
-  environment: 'PLANET' | 'MONUMENT';
+  environment: BattleEnvironment;
+  vessel?: { hull: VesselHull };
   aegisCapacity: number;
   defenceOffline: boolean;
   escape: EscapeOutcome | null;
@@ -85,7 +86,7 @@ export function buildBattleReplay(capture: BattleReplayCapture, result: Pick<Com
       ...(source.damageScale ? { damageScale: source.damageScale } : {}),
       ...(context.aftermath && targets.size > 0 ? { aftermath: [{ kind: context.aftermath, shipIds: [...targets] }] } : {}) },
     owners: capture.owners.filter(owner => used.has(owner.stackId)), result: { grade: result.grade, defenceSalvage: result.defenceSalvage },
-    environment: context.environment, aegisCapacity: context.aegisCapacity, defenceOffline: context.defenceOffline,
+    environment: context.environment, ...(context.vessel ? { vessel: context.vessel } : {}), aegisCapacity: context.aegisCapacity, defenceOffline: context.defenceOffline,
     escape: context.escape ? { kind: context.escape.kind, ships: context.escape.ships } : null, control: context.control,
   };
 }

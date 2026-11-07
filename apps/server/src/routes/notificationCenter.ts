@@ -42,8 +42,8 @@ export function registerNotificationCenterRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/push/devices', { preHandler: requireAuth }, async (req, reply) => {
-    const input = z.object({ token: z.string().min(1).max(4096), platform: z.literal('android'), locale }).strict().parse(req.body);
-    await registerPushDevice(app.db, req.accountId!, input.token, input.platform, input.locale, app.clock);
+    const input = z.object({ token: z.string().min(1).max(4096), platform: z.literal('android'), locale, utcOffsetMinutes: z.number().int().min(-840).max(840).default(0) }).strict().parse(req.body);
+    await registerPushDevice(app.db, req.accountId!, input.token, input.platform, input.locale, app.clock, input.utcOffsetMinutes);
     return reply.code(204).send();
   });
   app.delete('/api/push/devices', { preHandler: requireAuth }, async (req, reply) => {

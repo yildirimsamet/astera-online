@@ -8,6 +8,7 @@ import { currentPlacement } from '../services/servers.js';
 import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
 import { isAdminAccount } from '../services/admin.js';
+import { starterStanding } from '../services/starter/enlist.js';
 import { accounts } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { CountryCode } from '@astera/rules';
@@ -150,10 +151,11 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
     const account = await findAccount(app.db, req.accountId!);
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
 
-    const [placement, latestResult, isAdmin] = await Promise.all([
+    const [placement, latestResult, isAdmin, starter] = await Promise.all([
       currentPlacement(app.db, account.id),
       latestSeasonResult(app.db, account.id),
       isAdminAccount(app.db, account.id, app.adminUsernames),
+      starterStanding(app.db, account.id, app.starterGalaxyEnabled, app.adminUsernames),
     ]);
     return {
       accountId: account.id,
@@ -169,6 +171,8 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
           }
         : null,
       latestResult,
+      vessel: starter.vessel,
+      starterEligible: starter.eligible,
     };
   });
 

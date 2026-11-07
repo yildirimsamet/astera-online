@@ -113,7 +113,7 @@ import {
   chatUnreadSchema,
   supporterStatusSchema,
   chroniclePageSchema,
-  claimSchema,
+  planetClaimSchema,
   collectSchema,
   colonyAbandonmentSchema,
   colonyAbandonedSchema,
@@ -976,7 +976,7 @@ describe('every payload the client parses', () => {
     });
     expect(res.statusCode, res.body.slice(0, 300)).toBe(200);
 
-    const parsed = claimSchema.parse(res.json());
+    const parsed = planetClaimSchema.parse(res.json());
     expect(parsed.applied).toEqual([
       { kind: 'upgrade', ok: false, error: 'ALREADY_OPENED' },
       { kind: 'upgrade', ok: false, error: 'ALREADY_OPENED' },

@@ -1,3 +1,5 @@
+import { sweepReturnSignals } from '../services/returnSignals.js';
+import { deliverDeferredPushes } from '../services/pushDelivery.js';
 import { runSilentSpaceSweep, SILENT_SPACE_INTERVAL_MS } from '../services/silentSpace.js';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Clock } from '../clock.js';
@@ -5,8 +7,16 @@ import { countStatements, type Db } from '../db/client.js';
 import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
 import { runBotSweep } from '../services/bots/sweep.js';
+import { sweepQuietShips } from '../services/starter/quiet.js';
+import { sweepStrandedFlights } from '../services/starter/arrival.js';
+import { sweepDepartures } from '../services/starter/migration.js';
+import { sweepStarterRetention } from '../services/starter/retention.js';
+import { sweepShipBots } from '../services/starter/shipBots.js';
+import { sweepStarterWorld } from '../services/starter/sites.js';
 import { BOTS } from '../services/bots/personas.js';
 import { claimDue, complete, fail, nextDueAt, reap } from './queue.js';
+import { STARTER_HANDLERS } from './starterHandlers.js';
+import { claimDueStarter, completeStarter, failStarter, nextDueStarterAt, reapStarter } from './starterQueue.js';
 import { performance } from 'node:perf_hooks';
 import { eq, sql } from 'drizzle-orm';
 import { scheduledEvents } from '../db/schema.js';
@@ -117,6 +127,7 @@ export interface WorkerStatus {
  * be something to find.
  */
 const SWEEP_EVERY_MS = 30_000;
+const STARTER_RETENTION_EVERY_MS = 60 * 60 * 1000;
 /** Spawn gate decisions (owner rule 2026-10-17): a planned birth waits at most this long to be shown. */
 const SPAWN_GATE_EVERY_MS = 15_000;
 /**
@@ -147,6 +158,7 @@ export class EventWorker {
   private stopped = false;
   /** When the stranded sweep last ran. `-Infinity` so the first tick always does. */
   private sweptAt = -Infinity;
+  private starterRetentionAt = -Infinity;
   /**
    * When the bot roster was last looked at.
    *
@@ -227,7 +239,7 @@ export class EventWorker {
    * them before its claim, so a test can step through both in order.
    */
   private async maintain(now: Date): Promise<Maintained> {
-    const reaped = await reap(this.db, this.opts.staleMinutes, now);
+    const reaped = await reap(this.db, this.opts.staleMinutes, now) + await this.reapStarterQueue(now);
     if (reaped > 0) {
       this.log.warn({ reaped }, 'returned abandoned events to the queue');
     }
@@ -278,6 +290,26 @@ export class EventWorker {
         }
       } catch (err) {
         this.log.error({ err }, 'stranded-flight sweep failed; the queue carries on regardless');
+      }
+      // Each on its own catch: one sweep's bug must not stop ships leaving or crews playing.
+      const retentionDue = now.getTime() - this.starterRetentionAt >= STARTER_RETENTION_EVERY_MS;
+      if (retentionDue) this.starterRetentionAt = now.getTime();
+      const starterSweeps: readonly (readonly [string, () => Promise<unknown>])[] = [
+        ['return signals', () => sweepReturnSignals(this.db, this.clock)],
+        ['morning messages', () => deliverDeferredPushes(this.db, this.clock.now())],
+        ['quiet ships', () => sweepQuietShips(this.db, this.clock)],
+        ['starter world', () => sweepStarterWorld(this.db, this.clock)],
+        ['stranded ship flights', () => sweepStrandedFlights(this.db, this.clock)],
+        ['departures', () => sweepDepartures(this.db, this.clock)],
+        ['ship crews', () => sweepShipBots(this.db, this.clock, this.log)],
+        ...(retentionDue ? [['starter retention', () => sweepStarterRetention(this.db, this.clock)] as const] : []),
+      ];
+      for (const [sweep, run] of starterSweeps) {
+        try {
+          await run();
+        } catch (err) {
+          this.log.error({ err, sweep }, 'starter sweep failed; the queue carries on regardless');
+        }
       }
     }
 
@@ -420,7 +452,58 @@ export class EventWorker {
       }
     }
 
-    return { claimed: due.length, processed, failed, abandoned, cutoff };
+    // `failed` stays the main queue's alone: it is what sets the main queue's retry pace.
+    const starter = await this.drainStarter(cutoff);
+    return { claimed: due.length + starter.claimed, processed: processed + starter.processed, failed, abandoned, cutoff };
+  }
+
+  private async reapStarterQueue(now: Date): Promise<number> {
+    try {
+      return await reapStarter(this.db, this.opts.staleMinutes, now);
+    } catch (err) {
+      this.log.error({ err }, 'starter reaper failed; the main queue carries on regardless');
+      return 0;
+    }
+  }
+
+  /** The next starter event due before `before`, or none if the lookup cannot say. */
+  private async nextStarterDue(after: Date, before: Date): Promise<Date | null> {
+    try {
+      return await nextDueStarterAt(this.db, after, before);
+    } catch (err) {
+      this.log.error({ err }, 'starter next-due lookup failed; the poll carries on');
+      return null;
+    }
+  }
+
+  /**
+   * THE STARTER GALAXY'S QUEUE, IN THE SAME LOOP AND BEHIND ITS OWN CATCH. Main-galaxy fleets have
+   * already resolved by the time this runs, and nothing that goes wrong here can reach them. A
+   * failed event paces its own retry through its row (`failStarter`).
+   */
+  private async drainStarter(cutoff: Date): Promise<{ claimed: number; processed: number }> {
+    let claimed = 0, processed = 0;
+    try {
+      const due = await claimDueStarter(this.db, this.opts.batch, cutoff);
+      claimed = due.length;
+      for (const event of due) {
+        const handler = STARTER_HANDLERS[event.kind];
+        try {
+          if (handler) await handler({ db: this.db, clock: this.clock }, event);
+          else this.log.error({ kind: event.kind, id: event.id }, 'no handler for starter event kind');
+          await completeStarter(this.db, event.id);
+          processed++;
+        } catch (err) {
+          this.log.error({ err, id: event.id, kind: event.kind }, 'starter event handler threw');
+          const { exhausted } = await failStarter(this.db, event.id, err, this.clock.now());
+          // A flight it was going to resolve comes home on the stranded sweep, which reads this status.
+          if (exhausted) this.log.error({ id: event.id, kind: event.kind, refId: event.refId }, 'starter event abandoned after exhausting retries');
+        }
+      }
+    } catch (err) {
+      this.log.error({ err }, 'starter queue failed; the main queue carries on regardless');
+    }
+    return { claimed, processed };
   }
 
   private startBackgroundMaintenance(now: Date): void {
@@ -586,7 +669,10 @@ export class EventWorker {
   private async armWake(cutoff: Date, run: () => Promise<void>): Promise<void> {
     let next: Date | null;
     try {
-      next = await nextDueAt(this.db, cutoff, new Date(cutoff.getTime() + this.opts.pollMs));
+      const before = new Date(cutoff.getTime() + this.opts.pollMs);
+      const main = await nextDueAt(this.db, cutoff, before);
+      const starter = await this.nextStarterDue(cutoff, before);
+      next = main && starter ? (main < starter ? main : starter) : main ?? starter;
     } catch (err) {
       this.log.error({ err }, 'next-due lookup failed; the poll carries on');
       return;

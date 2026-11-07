@@ -88,6 +88,8 @@ describe('population driven bot worker', () => {
   it('keeps an awake bot working after humans disappear for five minutes', async () => {
     await addBot(f.db, 'SessionOne', f.clock);
     await addBot(f.db, 'SessionTwo', f.clock);
+    // Ordinary demand sessions: the final 21:01 check can start a jittered guard shift.
+    await f.db.update(botProfiles).set({ persona: 'BALANCED' });
     const evening = new Date('2026-01-01T17:00:00.000Z'); // 20:00 Türkiye
     f.clock.set(evening);
     await f.db.update(players).set({ lastActiveAt: evening })

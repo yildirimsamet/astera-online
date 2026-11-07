@@ -168,7 +168,13 @@ describe('a probe on the disc', () => {
     // Long enough that a five-second final window is a small share of it.
     expect(span).toBeGreaterThan(TRAFFIC.refreshMs * 2);
 
-    for (let at = departAt; at < launch.arriveAt.getTime(); at += 250) {
+    // Sample the leg and both sides of the disclosure boundary without thousands of DB reads.
+    const finalWindowAt = launch.arriveAt.getTime() - TRAFFIC.refreshMs;
+    const checkpoints = new Set(Array.from({ length: 20 }, (_, step) => departAt + Math.floor(span * step / 20)));
+    for (const at of [finalWindowAt - 1, finalWindowAt, finalWindowAt + 1, launch.arriveAt.getTime() - 1]) {
+      checkpoints.add(at);
+    }
+    for (const at of [...checkpoints].sort((a, b) => a - b)) {
       const remaining = launch.arriveAt.getTime() - at;
       const contacts = await galaxyTraffic(f.db, f.seasonId, third, new Date(at));
       const probe = contacts.find((c) => c.kind === 'probe');
@@ -183,6 +189,9 @@ describe('a probe on the disc', () => {
           probe.endAt.getTime(),
           'the window reached the landing early',
         ).toBeLessThan(launch.arriveAt.getTime());
+      } else {
+        expect(probe.landing).toBe(true);
+        expect(probe.endAt.getTime()).toBe(launch.arriveAt.getTime());
       }
     }
   });

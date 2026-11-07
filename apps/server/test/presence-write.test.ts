@@ -90,7 +90,7 @@ it('reports a failed write and lets the next request try again', async () => {
   const error = new Error('presence database failure');
   const report = vi.fn();
   const presence = new Presence(f.db, f.clock, 60_000, report);
-  const update = vi.spyOn(f.db, 'update').mockImplementationOnce(() => { throw error; });
+  const update = vi.spyOn(f.db, 'execute').mockImplementationOnce(() => { throw error; });
   try {
     expect(await presence.touch(f.accountIds[0]!)).toBe(false);
     expect(report).toHaveBeenCalledWith(error);

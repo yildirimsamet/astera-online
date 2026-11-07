@@ -1,3 +1,4 @@
+import { planPlanetReturn } from './returnPlanning.js';
 import {
   FAULT,
   HULLS,
@@ -166,6 +167,7 @@ export async function collectWorks(
     // in — but Wealth is denormalised and the rank floor reads it, so it is
     // refreshed here rather than left to drift.
     await refreshWealth(tx, planet);
+    await planPlanetReturn(tx, planet);
 
     return {
       moved: result.moved,

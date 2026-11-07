@@ -378,6 +378,8 @@ describe('preview', () => {
     await openWorld(1, 4);
     const first = await join('EU-1');
     await putBesideTheSeat(first.planetId);
+    // A first-season join installs its own package (557e5f19); this world holds only the two below.
+    await db.delete(satellites).where(eq(satellites.planetId, first.planetId));
     await db
       .insert(satellites)
       .values([

@@ -1,8 +1,8 @@
-import { and, eq, inArray, lte, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { SERVERS } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { players } from '../db/schema.js';
+import { players, returnReminders, vessels } from '../db/schema.js';
 import { refreshReturnActivity } from './returnQueue.js';
 
 /**
@@ -57,17 +57,32 @@ export class Presence {
     this.sweep(now);
 
     try {
-      const [stamped] = await this.db.update(players)
-        .set({ lastActiveAt: new Date(now) })
-        .where(inArray(players.id, this.db.select({ id: players.id }).from(players)
-          .where(and(eq(players.accountId, accountId), lte(players.lastActiveAt, new Date(now - this.throttleMs))))
-          // Not `update`: that also skips a row a new mission or report only refers to.
-          .for('no key update', { skipLocked: true })))
-        // Plain text: `returning` strips table names from columns, and `id` would then mean the application's.
-        .returning({
-          id: players.id,
-          queued: sql<boolean>`exists (select 1 from return_applications where player_id = players.id and status = 'QUEUED')`,
-        });
+      const at = new Date(now).toISOString(), stale = new Date(now - this.throttleMs).toISOString();
+      // Ship, settled world and reminder share one round trip and the same guarded stamp.
+      const [stamped] = await this.db.execute<{ id: string; queued: boolean }>(sql`
+        WITH ship AS (
+          UPDATE ${vessels} SET last_seen_at = ${at}
+          WHERE id IN (
+            SELECT id FROM ${vessels}
+            WHERE account_id = ${accountId} AND status IN ('ACTIVE', 'DORMANT') AND last_seen_at <= ${stale}
+            FOR NO KEY UPDATE SKIP LOCKED
+          ) RETURNING id
+        ), world AS (
+          UPDATE ${players} SET last_active_at = ${at}
+          WHERE id IN (
+            SELECT id FROM ${players}
+            WHERE account_id = ${accountId} AND last_active_at <= ${stale}
+              AND NOT EXISTS (SELECT 1 FROM ship)
+            FOR NO KEY UPDATE SKIP LOCKED
+          ) RETURNING id, EXISTS (
+            SELECT 1 FROM return_applications WHERE player_id = players.id AND status = 'QUEUED'
+          ) AS queued
+        ), reminder AS (
+          UPDATE ${returnReminders} SET absence_at = ${at}, summary_stage = 0, next_check_at = least(next_repair_at, ${at}::timestamptz + interval '24 hours')
+          WHERE account_id = ${accountId} AND (EXISTS (SELECT 1 FROM ship) OR EXISTS (SELECT 1 FROM world))
+        )
+        SELECT id, false AS queued FROM ship UNION ALL SELECT id, queued FROM world
+      `);
       if (!stamped) return false;
       if (stamped.queued) {
         await this.db.transaction(async (tx) => {

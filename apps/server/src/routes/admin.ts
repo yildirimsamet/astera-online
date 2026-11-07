@@ -1,3 +1,4 @@
+import { starterAdminView } from '../services/starter/admin.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { and, asc, eq, isNull } from 'drizzle-orm';
@@ -29,6 +30,7 @@ const arenaPilotBody = z.object({ username, pilot: z.boolean() }).strict();
 export function registerAdminRoutes(app: FastifyInstance): void {
   app.get('/api/admin/players', { preHandler: requireAdmin }, req =>
     listAdminPlayers(app.db, pageQuery.parse(req.query), app.clock.now()));
+  app.get('/api/admin/starter', { preHandler: requireAdmin }, () => starterAdminView(app.db, app.clock));
   app.get('/api/admin/clans', { preHandler: requireAdmin }, async () => ({
     galaxies: await app.db.select({ seasonId: seasons.id, name: shards.name, code: shards.code }).from(seasons)
       .innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.status, 'live')).orderBy(asc(shards.ordinal)),

@@ -923,10 +923,12 @@ describe('what a pirate raid comes home with', () => {
       surfaceStandoff(worldRadius(core!.level)),
     ).from;
     // Route coordinates are persisted as PostgreSQL REAL (float32), so compare
-    // below that storage precision rather than pretending the wire kept doubles.
-    expect(afterTurn.x).toBeCloseTo(beforeTurn.x, 4);
-    expect(afterTurn.y).toBeCloseTo(beforeTurn.y, 4);
-    expect(afterTurn.z).toBeCloseTo(beforeTurn.z, 4);
+    // at that storage precision rather than pretending the wire kept doubles.
+    // One float32 step is 6.1e-5 between 512 and 1024, so four places failed on a
+    // galaxy that put the raid there; three places is still far below a pixel.
+    expect(afterTurn.x).toBeCloseTo(beforeTurn.x, 3);
+    expect(afterTurn.y).toBeCloseTo(beforeTurn.y, 3);
+    expect(afterTurn.z).toBeCloseTo(beforeTurn.z, 3);
 
     const told = await f.db
       .select()

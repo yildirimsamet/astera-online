@@ -58,6 +58,7 @@ import { registerLegacyRoutes } from './routes/legacy.js';
 import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
+import { registerStarterRoutes } from './routes/starter.js';
 import { registerChatMediaRoutes } from './routes/chatMedia.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerDmRoutes } from './routes/dm.js';
@@ -139,6 +140,8 @@ declare module 'fastify' {
     limits: RouteLimits;
     /** Canonical usernames configured out of band; never writable through the API. */
     adminUsernames: ReadonlySet<string>;
+    /** Whether new colony ships open. Those already flying do not ask. */
+    starterGalaxyEnabled: boolean;
   }
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
@@ -325,6 +328,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     },
   });
   app.decorate('adminUsernames', new Set(opts.env.ADMIN_USERNAMES));
+  app.decorate('starterGalaxyEnabled', opts.env.STARTER_GALAXY_ENABLED);
 
   if (opts.env.ROLE !== 'worker' && opts.env.NATIVE_APP_ORIGINS.length > 0) {
     void app.register(cors, {
@@ -566,6 +570,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerMaintenanceRoutes(app);
     registerPreviewRoutes(app);
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
+    registerStarterRoutes(app);
     registerSeasonRoutes(app);
     registerLegacyRoutes(app);
     registerPlanetRoutes(app);

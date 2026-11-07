@@ -4,8 +4,18 @@ import { FixedClock, systemClock, type Clock } from '../src/clock.js';
 import { createDb } from '../src/db/client.js';
 import { EventWorker, type WorkerOptions } from '../src/worker/loop.js';
 import { HANDLERS, type Handler } from '../src/worker/handlers.js';
+import { STARTER_HANDLERS } from '../src/worker/starterHandlers.js';
 import * as queue from '../src/worker/queue.js';
+import * as starterQueue from '../src/worker/starterQueue.js';
 import * as repairs from '../src/worker/abandon.js';
+import * as returnSignals from '../src/services/returnSignals.js';
+import * as pushDelivery from '../src/services/pushDelivery.js';
+import * as shipArrivals from '../src/services/starter/arrival.js';
+import * as quietShips from '../src/services/starter/quiet.js';
+import * as departures from '../src/services/starter/migration.js';
+import * as retention from '../src/services/starter/retention.js';
+import * as shipBots from '../src/services/starter/shipBots.js';
+import * as sites from '../src/services/starter/sites.js';
 import * as spawnGates from '../src/services/spawnGate.js';
 import * as signals from '../src/services/unknownSignal.js';
 import * as bots from '../src/services/bots/sweep.js';
@@ -71,7 +81,18 @@ beforeEach(() => {
   vi.spyOn(queue, 'nextDueAt').mockResolvedValue(null);
   vi.spyOn(queue, 'complete').mockResolvedValue(undefined);
   vi.spyOn(queue, 'fail').mockResolvedValue({ exhausted: false });
+  vi.spyOn(starterQueue, 'reapStarter').mockResolvedValue(0);
+  vi.spyOn(starterQueue, 'claimDueStarter').mockResolvedValue([]);
+  vi.spyOn(starterQueue, 'nextDueStarterAt').mockResolvedValue(null);
   vi.spyOn(repairs, 'sweepStranded').mockResolvedValue(0);
+  vi.spyOn(returnSignals, 'sweepReturnSignals').mockResolvedValue(undefined);
+  vi.spyOn(pushDelivery, 'deliverDeferredPushes').mockResolvedValue(undefined);
+  vi.spyOn(shipArrivals, 'sweepStrandedFlights').mockResolvedValue(0);
+  vi.spyOn(quietShips, 'sweepQuietShips').mockResolvedValue(0);
+  vi.spyOn(sites, 'sweepStarterWorld').mockResolvedValue(undefined);
+  vi.spyOn(departures, 'sweepDepartures').mockResolvedValue(undefined);
+  vi.spyOn(shipBots, 'sweepShipBots').mockResolvedValue(undefined);
+  vi.spyOn(retention, 'sweepStarterRetention').mockResolvedValue(undefined);
   vi.spyOn(spawnGates, 'advanceSpawnGates').mockResolvedValue(0);
   vi.spyOn(signals, 'repairUnknownSignals').mockResolvedValue(undefined);
   handledAt = [];
@@ -226,6 +247,9 @@ it('retries a failed claim at the retry pace, not four times a second', async ()
 it.each<[string, () => void]>([
   ['the reaper', () => { vi.mocked(queue.reap).mockReturnValue(stall.promise.then(() => 0)); }],
   ['the stranded sweep', () => { vi.mocked(repairs.sweepStranded).mockReturnValue(stall.promise.then(() => 0)); }],
+  ['the return reminder sweep', () => { vi.mocked(returnSignals.sweepReturnSignals).mockReturnValue(stall.promise); }],
+  ['the deferred push sweep', () => { vi.mocked(pushDelivery.deliverDeferredPushes).mockReturnValue(stall.promise); }],
+  ['the quiet ship sweep', () => { vi.mocked(quietShips.sweepQuietShips).mockReturnValue(stall.promise.then(() => 0)); }],
   ['the spawn gate', () => { vi.mocked(spawnGates.advanceSpawnGates).mockReturnValue(stall.promise.then(() => 0)); }],
   ['the signal repair', () => { vi.mocked(signals.repairUnknownSignals).mockReturnValue(stall.promise); }],
   ['the bot sweep', () => {
@@ -326,4 +350,86 @@ it('a stepped tick still runs maintenance before it claims', async () => {
 
   expect(await worker.tick()).toMatchObject({ reaped: 3, claimed: 0 });
   expect(order).toEqual(['reap', 'claim']);
+});
+
+/**
+ * THE STARTER GALAXY NEVER COSTS THE MAIN GALAXY ANYTHING. Plan §5.5, §5.10. Its queue runs in this
+ * loop, so each of its doors into the loop is broken here in turn, and a main-galaxy event due at
+ * that moment must still land on time, with the failure reported nowhere the main queue reads.
+ */
+const starterEvent = (id: string, resolveAt: Date): starterQueue.StarterEventRow => ({
+  id, starterGalaxyId: 'galaxy', kind: 'vessel_order_complete', refId: 'order', payload: null,
+  dedupeKey: null, resolveAt, status: 'processing', attempts: 1, claimedAt: resolveAt, lastError: null,
+});
+
+it('lands a main event when the starter claim throws', async () => {
+  const start = Date.now();
+  queueOf([event('soon', new Date(start + 200))]);
+  vi.mocked(starterQueue.claimDueStarter).mockRejectedValue(new Error('starter down'));
+  worker = make(systemClock, { pollMs: 5_000 });
+  worker.start();
+  await vi.waitFor(() => { expect(handler).toHaveBeenCalledTimes(1); }, { timeout: 1_000 });
+  expect(worker.status().tickErrors).toBe(0);
+});
+
+it('wakes for a main event when the starter next-due lookup throws', async () => {
+  const start = Date.now();
+  queueOf([event('soon', new Date(start + 300))]);
+  vi.mocked(starterQueue.nextDueStarterAt).mockRejectedValue(new Error('starter down'));
+  worker = make(systemClock, { pollMs: 5_000 });
+  worker.start();
+  await vi.waitFor(() => { expect(handler).toHaveBeenCalledTimes(1); }, { timeout: 1_500 });
+  expect(handledAt[0]! - start).toBeLessThan(700);
+});
+
+it('runs every starter sweep even when one before it throws', async () => {
+  vi.mocked(quietShips.sweepQuietShips).mockRejectedValue(new Error('quiet down'));
+  vi.mocked(sites.sweepStarterWorld).mockRejectedValue(new Error('world down'));
+  worker = make(systemClock);
+  await worker.tick();
+  expect(departures.sweepDepartures).toHaveBeenCalledTimes(1);
+  expect(shipBots.sweepShipBots).toHaveBeenCalledTimes(1);
+  expect(retention.sweepStarterRetention).toHaveBeenCalledTimes(1);
+  expect(worker.status().maintenance.errors).toBe(0);
+});
+
+it('finishes maintenance when the starter reaper throws, and keeps the main count', async () => {
+  vi.mocked(queue.reap).mockResolvedValue(3);
+  vi.mocked(starterQueue.reapStarter).mockRejectedValue(new Error('starter down'));
+  worker = make(systemClock);
+  expect(await worker.tick()).toMatchObject({ reaped: 3 });
+  expect(worker.status().maintenance.errors).toBe(0);
+});
+
+it('does not slow the main queue to the retry pace when a starter event fails', async () => {
+  const failing = vi.spyOn(STARTER_HANDLERS, 'vessel_order_complete').mockRejectedValue(new Error('boom'));
+  vi.spyOn(starterQueue, 'failStarter').mockResolvedValue({ exhausted: false });
+  vi.mocked(starterQueue.claimDueStarter).mockResolvedValueOnce([starterEvent('broken', later(0))]);
+  const start = Date.now();
+  queueOf([event('soon', new Date(start + 150))]);
+  worker = make(systemClock, { pollMs: 5_000 });
+  worker.start();
+  await vi.waitFor(() => { expect(handler).toHaveBeenCalledTimes(1); }, { timeout: 1_500 });
+  expect(failing).toHaveBeenCalledTimes(1);
+  expect(handledAt[0]! - start).toBeLessThan(500);
+});
+
+it('wakes for a starter event at its moment too', async () => {
+  const start = Date.now();
+  const due = new Date(start + 300);
+  let handed = false;
+  const landed: number[] = [];
+  vi.spyOn(STARTER_HANDLERS, 'vessel_order_complete').mockImplementation(() => { landed.push(Date.now()); return Promise.resolve(); });
+  vi.spyOn(starterQueue, 'completeStarter').mockResolvedValue(undefined);
+  vi.mocked(starterQueue.claimDueStarter).mockImplementation((_db, _batch, now) => {
+    if (handed || now < due) return Promise.resolve([]);
+    handed = true;
+    return Promise.resolve([starterEvent('order', due)]);
+  });
+  vi.mocked(starterQueue.nextDueStarterAt).mockImplementation((_db, after, before) =>
+    Promise.resolve(!handed && due > after && due <= before ? due : null));
+  worker = make(systemClock, { pollMs: 5_000 });
+  worker.start();
+  await vi.waitFor(() => { expect(landed).toHaveLength(1); }, { timeout: 1_500 });
+  expect(landed[0]! - start).toBeLessThan(700);
 });

@@ -14,6 +14,7 @@
     "bots": "tsx src/cli/bots.ts",
     "radiation": "tsx src/cli/radiation.ts",
     "maintenance": "tsx src/cli/maintenance.ts",
+    "starter": "tsx src/cli/starter.ts",
     "capacity:seed": "tsx src/cli/capacity.ts",
     "typecheck": "node ../../tools/heavy.mjs --heap 3072 tsc --noEmit",
     "test": "node ../../tools/heavy.mjs --heap 1024 vitest run --minWorkers=1 --maxWorkers=4",

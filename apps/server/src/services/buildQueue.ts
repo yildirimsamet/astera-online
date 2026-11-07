@@ -1,3 +1,4 @@
+import { planPlanetReturn } from './returnPlanning.js';
 import { refreshPlanetAegis } from './planetAegis.js';
 import { commandProvenance } from './commandOrigin.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
@@ -347,6 +348,7 @@ export async function placeBuildOrder(
   // D212: building, ship, defence, instrument and satellite orders keep a commander home; a repair does not.
   if (input.kind !== 'REPAIR') await markProgress(tx, planet.playerId, planet.now);
   else await recordLegacyActivity(tx, planet.playerId, planet.now);
+  await planPlanetReturn(tx, planet);
   return order;
 }
 

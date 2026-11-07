@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ACADEMY_STEPS, PLANET_START, type ChatLanguage } from '@astera/rules';
+import { ACADEMY_STEPS, PLANET_START, VESSEL_HULLS, type ChatLanguage } from '@astera/rules';
 import { registerBody } from '../auth/credentials.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, missions, planets, units } from '../db/schema.js';
@@ -13,6 +13,8 @@ import { loadPlanetViewData, buildPlanetView } from '../services/planetView.js';
 import { joinSeason } from '../services/player.js';
 import { currentPlacement, listServers, resolveJoinTarget } from '../services/servers.js';
 import { onboardingIntentSchema } from '../schemas/fleet.js';
+import { enlistVessel, starterStanding } from '../services/starter/enlist.js';
+import { readVessel } from '../services/starter/vessel.js';
 import { openSession } from './auth.js';
 
 /**
@@ -52,6 +54,8 @@ const intent = onboardingIntentSchema;
  */
 const claimBody = registerBody.extend({
   intents: z.array(intent).max(12).default([]),
+  /** The hull the prologue flew to and offered (owner 2026-11-06): the ship shown is the ship given. */
+  vesselHull: z.enum(VESSEL_HULLS).optional(),
   step: z.number().int().min(0).max(ACADEMY_STEPS.length).optional(),
 }).strict().refine((body) => body.step === undefined || body.intents.length === 0, {
   message: 'Choose Academy or legacy intents, never both',
@@ -82,6 +86,18 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
     const { account, created } = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled,
       { version: policyVersion, locale: body.communityPolicyLocale ?? 'en' });
     queueServerAnalytics(app, req, { accountId: account.id, name: created ? 'account_created' : 'authenticated_existing' });
+
+    /**
+     * A NEW ACCOUNT CLAIMS A SHIP, built from the constant. Nothing the browser says about its own
+     * prologue is read: `intents` is the old rehearsal's, and a ship cannot be argued into being
+     * further along than it is (§6).
+     */
+    const starter = await starterStanding(app.db, account.id, app.starterGalaxyEnabled, app.adminUsernames);
+    if (starter.vessel || starter.eligible) {
+      await enlistVessel(app.db, account.id, app.clock, app.adminUsernames, undefined, body.vesselHull);
+      const vessel = await readVessel(app.db, account.id, app.clock);
+      return { ...await sessionOpener(app, reply, account), placement: null, applied: [], planet: null, vessel };
+    }
 
     /**
      * The frontier, resolved at CLAIM TIME rather than taken from the client.

@@ -82,3 +82,11 @@ it('sorts a three-row mailbox rather than walking the index for it', async () =>
   expect(text).toMatch(/Sort/);
   expect(text).not.toMatch(/Index Scan using notifications_player_time_idx\b/);
 });
+
+/** Retention plan Y1: every locked main-game read asks whether this commander landed in the last week. */
+it('finds a commander’s landing without scanning every ship migration', async () => {
+  const text = await plan(sql`select 1 from vessel_migrations
+    where player_id = '00000000-0000-4000-8000-000000000001' and status = 'DONE'
+      and completed_at > now() - interval '7 days'`);
+  expect(text).toMatch(/\bvessel_migrations_player_idx\b/);
+});

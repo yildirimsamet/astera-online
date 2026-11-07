@@ -2,7 +2,7 @@ import { and, eq, gt, inArray, isNull, not } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, nativeSessions, players } from '../db/schema.js';
+import { accounts, nativeSessions, players, vessels } from '../db/schema.js';
 import { accountIsBanned } from '../services/accountBan.js';
 import type { EventBus } from './bus.js';
 
@@ -10,7 +10,10 @@ import type { EventBus } from './bus.js';
 export type Revocation = 'auth' | 'placement';
 
 export interface FencedStream {
+  /** The topic this stream listens on: a commander's id, or a ship's. */
   playerId: string;
+  /** A ship's stream has no commander to check; its row is read instead. */
+  vessel?: boolean;
   accountId: string;
   /** The token's version; `requireAuth` matched it against the account at connect. */
   authVersion: number;
@@ -87,16 +90,25 @@ export class StreamFence {
     try {
       const now = this.clock.now();
       const nativeIds = [...new Set(streams.flatMap(stream => stream.nativeSessionId ? [stream.nativeSessionId] : []))];
-      const rows = await this.db.select({ id: players.id, seasonId: players.seasonId,
+      const commanderIds = [...new Set(streams.flatMap(stream => stream.vessel ? [] : [stream.playerId]))];
+      const shipIds = [...new Set(streams.flatMap(stream => stream.vessel ? [stream.playerId] : []))];
+      const rows = commanderIds.length === 0 ? [] : await this.db.select({ id: players.id, seasonId: players.seasonId,
         placementVersion: players.placementVersion, authVersion: accounts.authVersion }).from(players)
         .innerJoin(accounts, eq(accounts.id, players.accountId))
-        .where(inArray(players.id, [...new Set(streams.map(stream => stream.playerId))]));
+        .where(inArray(players.id, commanderIds));
+      // A ship is "placed" for as long as it has not left, and it has no version of its own.
+      const ships = shipIds.length === 0 ? [] : await this.db.select({ id: vessels.id, seasonId: vessels.starterGalaxyId,
+        status: vessels.status, authVersion: accounts.authVersion }).from(vessels)
+        .innerJoin(accounts, eq(accounts.id, vessels.accountId))
+        .where(inArray(vessels.id, shipIds));
       const sessions = nativeIds.length === 0 ? [] : await this.db.select({ id: nativeSessions.id,
         accountId: nativeSessions.accountId, version: nativeSessions.version, expiresAt: nativeSessions.expiresAt })
         .from(nativeSessions).innerJoin(accounts, eq(accounts.id, nativeSessions.accountId))
         .where(and(inArray(nativeSessions.id, nativeIds), isNull(nativeSessions.revokedAt), gt(nativeSessions.expiresAt, now),
           isNull(accounts.deletionApprovedAt), not(accountIsBanned)));
-      const byPlayer = new Map(rows.map(row => [row.id, row]));
+      const byPlayer = new Map([...rows, ...ships.map(({ status, ...ship }) => ({
+        ...ship, placementVersion: status === 'DEPARTED' ? -1 : 0,
+      }))].map(row => [row.id, row]));
       const bySession = new Map(sessions.map(session => [session.id, session]));
       for (const stream of streams) {
         if (!this.streams.has(stream)) continue;

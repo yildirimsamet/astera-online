@@ -1,8 +1,8 @@
 import { readCommanderShip } from '../services/arenaShipState.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { planets, players } from '../db/schema.js';
+import { planets, players, vessels } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import {
   acknowledgeReturn,
@@ -53,7 +53,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * than taken from anywhere the client can influence, so a connection can only
    * ever be subscribed to the galaxy it is actually in.
    */
-  const whoAndWhere = async (accountId: string): Promise<{ playerId: string; seasonId: string; placementVersion: number }> => {
+  const whoAndWhere = async (accountId: string): Promise<{ playerId: string; seasonId: string; placementVersion: number; vessel?: true }> => {
     const rows = await app.db
       .select({ playerId: players.id, seasonId: players.seasonId, placementVersion: players.placementVersion })
       .from(players)
@@ -61,8 +61,16 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       .where(eq(players.accountId, accountId))
       .limit(1);
     const row = rows[0];
-    if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
-    return row;
+    if (row) return row;
+    /**
+     * A SHIP LISTENS THE SAME WAY, ON ITS OWN TWO TOPICS. The ship's id is its private topic and its
+     * galaxy's id the shared one, so no main-season event can ever reach it: nothing here
+     * subscribes to a season at all, which is what K1 costs on the server.
+     */
+    const [ship] = await app.db.select({ playerId: vessels.id, seasonId: vessels.starterGalaxyId }).from(vessels)
+      .where(and(eq(vessels.accountId, accountId), ne(vessels.status, 'DEPARTED')));
+    if (!ship) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+    return { ...ship, placementVersion: 0, vessel: true };
   };
 
   /**
@@ -195,7 +203,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    */
   app.get('/api/stream', { preHandler: requireAuth }, async (req, reply) => {
     const { trafficWake } = z.object({ trafficWake: z.literal('1').optional() }).parse(req.query ?? {});
-    const { playerId, seasonId, placementVersion } = await whoAndWhere(req.accountId!);
+    const { playerId, seasonId, placementVersion, vessel } = await whoAndWhere(req.accountId!);
 
     reply.hijack();
     // Hijacking bypasses Fastify's normal header flush, including the CORS hook.
@@ -242,6 +250,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
      */
     const fenced: FencedStream = {
       playerId, accountId: req.accountId!, authVersion: req.authVersion!, seasonId, placementVersion,
+      ...(vessel ? { vessel } : {}),
       ...(req.nativeSessionId ? { nativeSessionId: req.nativeSessionId } : {}),
       revoke: (reason) => { end('client', reason === 'placement' ? PLACEMENT_CHANGED_FRAME : undefined); },
     };
@@ -332,7 +341,8 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     write(`: connected\n\n`);
 
     // Asked for by the client, so an older build goes on polling for itself.
-    if (trafficWake && !req.raw.destroyed) {
+    // A ship's traffic read arrives with its sensors (Faz 4); until then its client polls.
+    if (trafficWake && !vessel && !req.raw.destroyed) {
       send({ kind: `${SHARD_PREFIX}traffic-wake-on` });
       const accountId = req.accountId!;
       trafficWatch = watchTraffic({

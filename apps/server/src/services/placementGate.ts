@@ -163,6 +163,16 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     // their own versioned intent and expose status needed by older clients.
     const reconcile = route.url === '/api/chat/media/:id' || route.url === '/api/auth/me' || route.url === '/api/return-applications';
 
+    // A ship has no galaxy lease to hold: it never moves between seasons, and the wipe does not touch
+    // it. It still has to speak the current rules, which is the one thing it asks of this gate.
+    if (route.url.startsWith('/api/starter/')) {
+      route.handler = function (req, reply) {
+        if (req.accountId) assertRules(req);
+        return handler.call(this, req, reply);
+      };
+      return;
+    }
+
     const underLease: typeof handler = async function (req, reply) {
       if (!req.accountId) return handler.call(this, req, reply);
       assertRules(req);

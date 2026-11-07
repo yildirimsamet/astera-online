@@ -1,3 +1,4 @@
+import { analyticsAdminSchema } from '../../web/src/api/analyticsAdminSchemas.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
 import { pino } from 'pino';
@@ -84,4 +85,28 @@ it('filters measured history by build and supports the 48/72 hour absence lists 
   expect(old.statusCode).toBe(200);
   expect(old.json()).toMatchObject({ players: [expect.objectContaining({ accountId: f.accountIds[1] })],
     cohorts: [expect.objectContaining({ build: 'old-build', source: 'twitter', visits: 1 })], quality: { measuredAccounts: 1, visits: 1 } });
+});
+
+it('keeps starter scenes separate and counts sessions, return, permission and crates', async () => {
+  const now = f.clock.now(), accountId = f.accountIds[1]!, contextId = randomUUID(), visitorId = randomUUID(), first = randomUUID(), second = randomUUID();
+  await f.db.insert(analyticsVisitors).values({ id: visitorId, credentialHash: randomUUID(), contextId, accountId,
+    metadata: { contextId, scope: 'player', policyVersion: 1, platform: 'android', locale: 'tr', build: 'test', campaign: {} }, createdAt: now, expiresAt: now });
+  await f.db.insert(analyticsSessions).values([first, second].map(id => ({ id, visitorId, contextId, accountId, firstAt: now, lastAt: now })));
+  const rows = [
+    { name: 'foreground_started', properties: {}, sessionId: first },
+    { name: 'foreground_started', properties: {}, sessionId: second },
+    { name: 'training_scene_visible', properties: { scene: 'welcome', trainingVersion: 'starter-tutorial.v1' }, sessionId: first },
+    { name: 'training_scene_visible', properties: { scene: 'openCrates', trainingVersion: 'starter-tutorial.v1' }, sessionId: first },
+    { name: 'training_scene_visible', properties: { scene: 'welcome', step: 1, trainingVersion: 'flight-school.v1' }, sessionId: second },
+    { name: 'alert_permission', properties: { variant: 'push', code: 'granted' }, sessionId: first },
+    { name: 'outcome_visible', properties: { surface: 'starter_crate', count: 2 }, sessionId: first },
+  ];
+  await f.db.insert(analyticsEvents).values(rows.map((row, sequence) => ({ ...row, id: randomUUID(), visitorId, accountId, source: 'client_observation' as const, mode: 'live' as const, sequence, occurredAt: now, receivedAt: now, timeTrusted: true, payloadHash: String(sequence) })));
+  const headers = { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` };
+  const response = await app.inject({ url: '/api/admin/analytics?inactiveHours=0', headers });
+  expect(response.statusCode).toBe(200);
+  const body = analyticsAdminSchema.parse(response.json<unknown>());
+  expect(body).toMatchObject({ starter: { accounts: 1, sessions: 2, returnedAccounts: 1, push: { asked: 1, granted: 1, denied: 0 }, crates: { accounts: 1, opened: 2 } } });
+  expect(body.starter?.steps).toContainEqual({ scene: 'welcome', accounts: 1, dropoff: 0 });
+  expect(body.starter?.steps).toContainEqual({ scene: 'openCrates', accounts: 1, dropoff: 0 });
 });

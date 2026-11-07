@@ -2,7 +2,9 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { planets } from '../db/schema.js';
+import { GameError } from '../services/planet.js';
 import { joinSeason } from '../services/player.js';
+import { starterStanding } from '../services/starter/enlist.js';
 import { currentPlacement, listServers, resolveJoinTarget } from '../services/servers.js';
 import { optionalAuth, requireAuth } from './auth.js';
 
@@ -87,6 +89,11 @@ export function registerServerRoutes(app: FastifyInstance): void {
         slotIndex: seated.slotIndex,
         seasonReward: seated.seasonReward,
       };
+    }
+
+    const starter = await starterStanding(app.db, req.accountId!, app.starterGalaxyEnabled, app.adminUsernames);
+    if (starter.vessel || starter.eligible) {
+      throw new GameError('STARTER_REQUIRED', 'A new commander starts on a colony ship', 403);
     }
 
     const target = await resolveJoinTarget(app.db, code, app.clock);

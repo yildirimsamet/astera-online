@@ -1,3 +1,4 @@
+import { starterFunnel } from '../services/starterFunnel.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, notInArray, notExists, or, sql } from 'drizzle-orm';
@@ -97,6 +98,7 @@ export function registerAnalyticsAdmin(app: FastifyInstance): void {
         eq(analyticsEvents.name, 'training_scene_visible'), sql`${analyticsEvents.properties}->>'step' ~ '^(1[01]|[1-9])$'`))
       .groupBy(sql`(${analyticsEvents.properties}->>'step')::int`);
     return { measuredAt: now, windowStart: start, nextAfter: more ? rows.at(-1)!.accountId : null,
+      starter: await starterFunnel(app.db, eligibleVisits),
       landing, cohorts, cohortsTruncated, daily: hasFilters ? [] : daily,
       quality: { totalAccounts: total?.value ?? 0, measuredAccounts: measured?.value ?? 0, visits: visits?.value ?? 0, untrusted: untrusted?.value ?? 0 },
       steps: Array.from({ length: 11 }, (_, index) => ({ step: index + 1, attempts: stepRows.find(row => row.step === index + 1)?.attempts ?? 0 })), players: result };

@@ -13,7 +13,7 @@ import { reclaimIdleSeats } from '../src/services/reclaim.js';
 import { rewardsView } from '../src/services/rewards.js';
 import { createSeason } from '../src/services/season.js';
 import { wipeAllServers } from '../src/services/servers.js';
-import { claimSchema } from '../../web/src/api/schemas.js';
+import { planetClaimSchema } from '../../web/src/api/schemas.js';
 import { makeAccount, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
 const password = 'first-season-correct-password';
@@ -217,7 +217,7 @@ describe('one first-season opening per account', () => {
       username: 'SchoolPilot', password, intents: [], communityPolicyVersion: COMMUNITY_POLICY_VERSION,
     } });
     expect(response.statusCode, response.body).toBe(200);
-    const body = claimSchema.parse(response.json<unknown>());
+    const body = planetClaimSchema.parse(response.json<unknown>());
     await expectPackage(body.placement.planetId);
     expect(body.applied).toEqual([]);
   });
@@ -229,7 +229,7 @@ describe('one first-season opening per account', () => {
       intents: [{ kind: 'upgrade', building: 'CORE' }, { kind: 'build', hull: 'DART', count: 2 }],
     } });
     expect(response.statusCode, response.body).toBe(200);
-    const body = claimSchema.parse(response.json<unknown>());
+    const body = planetClaimSchema.parse(response.json<unknown>());
     await expectPackage(body.placement.planetId);
     expect(body.applied.every(row => !row.ok && row.error === 'ALREADY_OPENED')).toBe(true);
   });

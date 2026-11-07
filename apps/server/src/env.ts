@@ -65,6 +65,8 @@ const schema = z.object({
   MIN_NATIVE_BUILD: z.coerce.number().int().min(0).default(0),
   /** Enable at the coordinated season cutover; older gameplay clients receive 426. */
   REQUIRE_CURRENT_RULES: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  /** Opens new colony ships. Off, a new account takes the main-galaxy path; ships already flying keep flying. */
+  STARTER_GALAXY_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   /** Enable new registrations only after every replica supports consuming this grant. */
   FIRST_GAME_SHIELD_ENABLED: z.enum(['true', 'false']).default('true').transform(value => value === 'true'),
   /** Live checkout stays closed until all three secrets are supplied and enabled. */

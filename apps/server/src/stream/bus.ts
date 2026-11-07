@@ -71,7 +71,9 @@ export type ShardEventKind =
   | 'transfer'
   | 'recovery'
   | 'protection'
-  | 'clan';
+  | 'clan'
+  /** A ship left the starter galaxy for the main one. */
+  | 'departure';
 
 /** Events that affect every signed-in commander, regardless of their season. */
 export type GlobalEventKind = 'announcement' | 'chat-badges';

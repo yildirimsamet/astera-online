@@ -22,6 +22,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import type { HpDamageLots, MigrationCargo, StarterBattleRecord } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -48,6 +49,9 @@ import type {
   TradeShipEffect,
   TradeRate,
   ResearchProjectId,
+  StarterFeature,
+  VesselFact,
+  VesselModules,
   Resources,
   TechLevels,
   PlanetSkinId,
@@ -4658,10 +4662,12 @@ export const pushDevices = pgTable('push_devices', {
   platform: text('platform').notNull(),
   /** The app's language when it last registered: the push is written in it. */
   locale: text('locale').$type<'en' | 'tr' | 'de' | 'fr' | 'es' | 'ja'>().notNull(),
+  utcOffsetMinutes: integer('utc_offset_minutes').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('push_devices_account_idx').on(t.accountId),
+  check('push_devices_offset_check', sql`${t.utcOffsetMinutes} BETWEEN -840 AND 840`),
   check('push_devices_locale_check', sql`${t.locale} in ('en','tr','de','fr','es','ja')`),
 ]);
 
@@ -5491,3 +5497,366 @@ export const analyticsEvents = pgTable('analytics_events', {
 }, t => [index('analytics_events_account_time_idx').on(t.accountId, t.occurredAt),
   index('analytics_events_session_sequence_idx').on(t.sessionId, t.sequence),
   index('analytics_events_visitor_idx').on(t.visitorId), index('analytics_events_received_idx').on(t.receivedAt)]);
+
+/* ── the starter galaxy ─────────────────────────────────────── */
+
+/**
+ * A SHIP IS NOT A PLANET AND ITS COMMANDER IS NOT A PLAYER. docs/baslangic-galaksisi-plani-2026-11-04.md §5.3.
+ *
+ * No table here references `players`, `planets` or `seasons`: a ship outlives the season wipe, and
+ * a `players` row would spend the account's first-season package before the landing. Identity is
+ * the account. `wipeAllServers` does not touch these tables and needs no line about them.
+ */
+export const vesselStatus = pgEnum('vessel_status', ['ACTIVE', 'DORMANT', 'DEPARTING', 'DEPARTED']);
+
+export const starterEventKind = pgEnum('starter_event_kind', [
+  'vessel_order_complete',
+  'vessel_repair_notice',
+  'vessel_push',
+  'vessel_mission_arrival',
+  'vessel_mission_return',
+  'vessel_radar_warning',
+  'site_respawn',
+  'npc_raid_launch',
+  'pvp_shield_warning',
+]);
+
+export const starterGalaxies = pgTable('starter_galaxies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** Restricted, not cascading: a shard row outlives every season, and the wipe keeps it. */
+  shardId: uuid('shard_id').notNull().references(() => shards.id),
+  ordinal: integer('ordinal').notNull(),
+  seed: integer('seed').notNull(),
+  /** Where this galaxy's clock starts; a ship's lazy tick counts minutes from here. */
+  epoch: timestamp('epoch', { withTimezone: true }).notNull(),
+  capacity: integer('capacity').notNull(),
+  status: text('status').$type<'OPEN' | 'CLOSED'>().notNull().default('OPEN'),
+}, (t) => [uniqueIndex('starter_galaxies_shard_ordinal_idx').on(t.shardId, t.ordinal)]);
+
+export const vessels = pgTable('vessels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** Unique and kept after the jump: one ship per account, ever. */
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  /** Up to when the return story has been told. */
+  returnSeenAt: timestamp('return_seen_at', { withTimezone: true }),
+  /** How far its owner has read this galaxy's channel. */
+  chatReadAt: timestamp('chat_read_at', { withTimezone: true }),
+  /** Null once the berth is given up, by leaving or by a long sleep. */
+  slotIndex: integer('slot_index'),
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
+  name: text('name').notNull(),
+  alloy: real('alloy').notNull(),
+  crystal: real('crystal').notNull(),
+  deuterium: real('deuterium').notNull().default(0),
+  bufferAlloy: real('buffer_alloy').notNull().default(0),
+  bufferCrystal: real('buffer_crystal').notNull().default(0),
+  bufferDeuterium: real('buffer_deuterium').notNull().default(0),
+  /** In this galaxy's units: `vesselAegisHp`, never `shieldHp`. */
+  shield: real('shield').notNull().default(0),
+  lastTickMinutes: doublePrecision('last_tick_minutes').notNull(),
+  modules: jsonb('modules').$type<VesselModules>().notNull(),
+  research: jsonb('research').$type<Partial<Record<ResearchProjectId, number>>>().notNull().default({}),
+  facts: jsonb('facts').$type<VesselFact[]>().notNull().default([]),
+  parts: integer('parts').notNull().default(0),
+  fuel: real('fuel').notNull().default(0),
+  status: vesselStatus('status').notNull().default('ACTIVE'),
+  /** Null until the Aegis is repaired, and nobody may attack before it is. */
+  pvpOpenAt: timestamp('pvp_open_at', { withTimezone: true }),
+  recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
+  /** Openings already announced. What IS open is derived from the ship and never stored. */
+  unlocksSeen: jsonb('unlocks_seen').$type<StarterFeature[]>().notNull().default([]),
+  /** Salvage crates already opened (`STARTER_CRATES` ids). Which are ready is derived from the ship. */
+  cratesOpened: jsonb('crates_opened').$type<string[]>().notNull().default([]),
+  /** Earliest observation from this berth; reset when a dormant ship moves. Server only. */
+  sightSince: timestamp('sight_since', { withTimezone: true }).notNull().defaultNow(),
+  enlistedAt: timestamp('enlisted_at', { withTimezone: true }).notNull(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+  /** Only what moves the ship on counts, as in the main game: a login or a collect does not. */
+  lastProgressAt: timestamp('last_progress_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('vessels_account_idx').on(t.accountId),
+  uniqueIndex('vessels_berth_idx').on(t.starterGalaxyId, t.slotIndex).where(sql`${t.status} <> 'DEPARTED'`),
+  index('vessels_galaxy_status_idx').on(t.starterGalaxyId, t.status),
+  index('vessels_quiet_idx').on(t.lastProgressAt).where(sql`${t.status} = 'ACTIVE'`),
+]);
+
+/** The one record of how many ships a vessel holds, and where they are. */
+export const vesselUnits = pgTable('vessel_units', {
+  vesselId: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  hull: text('hull').$type<HullId>().notNull(),
+  location: text('location').$type<'HOME' | 'DOCK'>().notNull(),
+  count: integer('count').notNull(),
+  /** The wounded among them, in the main game's lots. A ship listed nowhere is at full hull. */
+  damage: jsonb('damage').$type<HpDamageLots>().notNull().default([]),
+}, (t) => [primaryKey({ columns: [t.vesselId, t.hull, t.location] })]);
+
+export const vesselOrders = pgTable('vessel_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vesselId: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  queue: text('queue').$type<'CONSTRUCTION' | 'YARD' | 'DOCK' | 'RESEARCH'>().notNull(),
+  slot: integer('slot').notNull(),
+  /** The module being repaired, the hull being built, or the project being researched. */
+  subject: text('subject').notNull(),
+  stage: integer('stage').notNull(),
+  count: integer('count').notNull().default(1),
+  status: text('status').$type<'BUILDING' | 'DONE' | 'CANCELLED'>().notNull().default('BUILDING'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
+  /** Full duration, so that later orders can be re-timed after a cancellation. */
+  remainingSeconds: integer('remaining_seconds').notNull(),
+  cost: jsonb('cost').$type<Resources>().notNull(),
+}, (t) => [index('vessel_orders_active_idx').on(t.vesselId, t.status, t.queue, t.slot)]);
+
+export const vesselNotifications = pgTable('vessel_notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vesselId: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  /** What it is about. Unique with the kind, so a redelivered event tells nobody twice. */
+  refId: uuid('ref_id').notNull(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+  seen: boolean('seen').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('vessel_notifications_once_idx').on(t.vesselId, t.kind, t.refId),
+  index('vessel_notifications_recent_idx').on(t.vesselId, t.createdAt),
+]);
+
+/**
+ * THE JUMP, STEP BY STEP. Plan §5.8. `player_id` and `planet_id` are not foreign keys on purpose: a
+ * season wipe must not be held up by a ship, and a planet that a wipe took is how a half-finished
+ * jump finds out it has to hand the ship back.
+ */
+export const vesselMigrations = pgTable('vessel_migrations', {
+  vesselId: uuid('vessel_id').primaryKey().references(() => vessels.id, { onDelete: 'cascade' }),
+  status: text('status').$type<'DEPARTING' | 'DONE' | 'FAILED'>().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  slotChoice: integer('slot_choice'),
+  cargo: jsonb('cargo').$type<MigrationCargo>().notNull(),
+  cargoLanded: boolean('cargo_landed').notNull().default(false),
+  playerId: uuid('player_id'),
+  planetId: uuid('planet_id'),
+  shardCode: text('shard_code'),
+  shardName: text('shard_name'),
+  seasonId: uuid('season_id'),
+  arrivalSeenAt: timestamp('arrival_seen_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('vessel_migrations_departing_idx').on(t.startedAt).where(sql`${t.status} = 'DEPARTING'`),
+  // Retention plan Y1: each locked main-game read asks whether its commander landed this week.
+  index('vessel_migrations_player_idx').on(t.playerId).where(sql`${t.status} = 'DONE'`),
+]);
+
+/** The departure board. Keeps a copy of the name, so it goes with the account. */
+export const starterDepartures = pgTable('starter_departures', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  displayName: text('display_name').notNull(),
+  countryCode: char('country_code', { length: 2 }).$type<CountryCode>().notNull(),
+  /** Where the ship stood, so the neighbours can watch the streak leave from there. */
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
+  at: timestamp('at', { withTimezone: true }).notNull(),
+}, (t) => [index('starter_departures_recent_idx').on(t.starterGalaxyId, t.at)]);
+
+/** What flies here. A pirate has no owner; a probe has no fleet. */
+export type VesselMissionKind = 'PROBE' | 'ATTACK' | 'RAID_SITE' | 'MINE' | 'SCOUT' | 'PIRATE';
+
+/**
+ * EVERYTHING IN THE AIR IN THIS GALAXY. The ships aboard are taken out of `vessel_units` at launch
+ * and go back on the return, so a fleet is counted in exactly one place.
+ */
+export const vesselMissions = pgTable('vessel_missions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  /** Null on a pirate, which belongs to nobody. */
+  ownerVesselId: uuid('owner_vessel_id').references(() => vessels.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<VesselMissionKind>().notNull(),
+  targetVesselId: uuid('target_vessel_id').references(() => vessels.id, { onDelete: 'set null' }),
+  targetSiteId: uuid('target_site_id'),
+  fromX: real('from_x').notNull(),
+  fromY: real('from_y').notNull(),
+  fromZ: real('from_z').notNull(),
+  toX: real('to_x').notNull(),
+  toY: real('to_y').notNull(),
+  toZ: real('to_z').notNull(),
+  fleet: jsonb('fleet').$type<Fleet>().notNull().default({}),
+  /** Wounds the fleet flies with, in the main game's lot shape. */
+  damage: jsonb('damage').$type<HpDamageLots>().notNull().default([]),
+  /** What it carries home. */
+  cargo: jsonb('cargo').$type<Resources>().notNull().default({ alloy: 0, crystal: 0, deuterium: 0 }),
+  /** A thrust part taken on this run. */
+  carriesPart: boolean('carries_part').notNull().default(false),
+  fuelPaid: integer('fuel_paid').notNull().default(0),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  returnAt: timestamp('return_at', { withTimezone: true }),
+  status: text('status').$type<'OUTBOUND' | 'RETURNING' | 'DONE' | 'CANCELLED'>().notNull().default('OUTBOUND'),
+  idempotencyKey: text('idempotency_key'),
+}, (t) => [
+  uniqueIndex('vessel_missions_once_idx').on(t.ownerVesselId, t.idempotencyKey),
+  index('vessel_missions_target_idx').on(t.targetVesselId, t.status),
+  index('vessel_missions_owner_idx').on(t.ownerVesselId, t.status),
+  index('vessel_missions_galaxy_idx').on(t.starterGalaxyId, t.status),
+]);
+
+/** Shared places. Plan §3.5. Asteroids come and go; wrecks and outposts stand for the galaxy's life. */
+export const starterSites = pgTable('starter_sites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  kind: text('kind').$type<'ASTEROID' | 'WRECK' | 'OUTPOST' | 'BATTLE_WRECK'>().notNull(),
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
+  level: integer('level').notNull().default(1),
+  /** What is left to take. An outpost refills to `stockFull` when it respawns. */
+  alloy: real('alloy').notNull().default(0),
+  crystal: real('crystal').notNull().default(0),
+  deuterium: real('deuterium').notNull().default(0),
+  stockFull: real('stock_full').notNull().default(0),
+  /** Who holds an outpost, and what is left of them. */
+  guard: jsonb('guard').$type<Fleet>(),
+  guardFull: jsonb('guard_full').$type<Fleet>(),
+  hasPart: boolean('has_part').notNull().default(false),
+  /** Empty and out of play until then. */
+  respawnAt: timestamp('respawn_at', { withTimezone: true }),
+  /** A battle's wreck and a rock do not come back. */
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [index('starter_sites_galaxy_idx').on(t.starterGalaxyId, t.kind)]);
+
+/** What a probe saw, at the moment it saw it. Never updated. */
+export const vesselProbeReports = pgTable('vessel_probe_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  observerVesselId: uuid('observer_vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  /** Set null when that ship's account goes: the report is still what was seen. */
+  targetVesselId: uuid('target_vessel_id').references(() => vessels.id, { onDelete: 'set null' }),
+  targetSiteId: uuid('target_site_id'),
+  missionId: uuid('mission_id').notNull(),
+  targetName: text('target_name').notNull(),
+  at: timestamp('at', { withTimezone: true }).notNull(),
+  accuracy: real('accuracy').notNull(),
+  snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+  detected: boolean('detected').notNull(),
+  /**
+   * When the probe brought it home (owner 2026-11-07, as the main galaxy's `probe_reports.delivered_at`):
+   * read at the target on arrival, readable once the probe is back. Null while it flies home.
+   */
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+}, (t) => [
+  index('vessel_probe_reports_observer_idx').on(t.observerVesselId, t.at),
+  index('vessel_probe_reports_target_idx').on(t.targetVesselId, t.at),
+]);
+
+export const vesselWatches = pgTable('vessel_watches', {
+  observerVesselId: uuid('observer_vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  slot: integer('slot').notNull(),
+  targetVesselId: uuid('target_vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  cooldownUntil: timestamp('cooldown_until', { withTimezone: true }),
+}, (t) => [primaryKey({ columns: [t.observerVesselId, t.slot] })]);
+
+/** The radar log: who looked at this ship, as far as its radar could say. */
+export const vesselScanEvents = pgTable('vessel_scan_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  targetVesselId: uuid('target_vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  at: timestamp('at', { withTimezone: true }).notNull(),
+  detected: boolean('detected').notNull(),
+  bearing: text('bearing'),
+}, (t) => [index('vessel_scan_events_target_idx').on(t.targetVesselId, t.at)]);
+
+/** Both sides read one row. Written once, in the battle's own transaction. */
+export const vesselBattleReports = pgTable('vessel_battle_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  missionId: uuid('mission_id').notNull(),
+  attackerVesselId: uuid('attacker_vessel_id').references(() => vessels.id, { onDelete: 'set null' }),
+  defenderVesselId: uuid('defender_vessel_id').references(() => vessels.id, { onDelete: 'set null' }),
+  siteId: uuid('site_id'),
+  attackerName: text('attacker_name').notNull(),
+  defenderName: text('defender_name').notNull(),
+  at: timestamp('at', { withTimezone: true }).notNull(),
+  grade: text('grade').$type<Grade>().notNull(),
+  result: jsonb('result').$type<StarterBattleRecord>().notNull(),
+  replay: jsonb('replay').$type<BattleReplayData>(),
+  rulesetVersion: integer('ruleset_version').notNull(),
+}, (t) => [
+  uniqueIndex('vessel_battle_reports_mission_idx').on(t.missionId),
+  index('vessel_battle_reports_attacker_idx').on(t.attackerVesselId, t.at),
+  index('vessel_battle_reports_defender_idx').on(t.defenderVesselId, t.at),
+]);
+
+/**
+ * THIS GALAXY'S OWN QUEUE. `scheduled_events.season_id` is required, `wipeAllServers` empties that
+ * table wholesale, and its handlers read `event.seasonId`. A separate table keeps a fault here from
+ * ever delaying a main-galaxy fleet (`worker/starterQueue.ts`).
+ */
+export const starterEvents = pgTable('starter_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  kind: starterEventKind('kind').notNull(),
+  refId: uuid('ref_id'),
+  payload: jsonb('payload').$type<Record<string, unknown>>(),
+  dedupeKey: text('dedupe_key'),
+  resolveAt: timestamp('resolve_at', { withTimezone: true }).notNull(),
+  status: eventStatus('status').notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  lastError: text('last_error'),
+}, (t) => [
+  index('starter_events_due_idx').on(t.status, t.resolveAt),
+  index('starter_events_claimed_idx').on(t.status, t.claimedAt),
+  uniqueIndex('starter_events_dedupe_key_idx').on(t.dedupeKey),
+]);
+
+/**
+ * A SHIP THE SERVER PLAYS. Plan §3.12. Read here and nowhere else: no view joins this table, so there
+ * is nothing about it to reach a client. Sits apart from `vessels` for exactly that reason.
+ */
+export const vesselBotState = pgTable('vessel_bot_state', {
+  vesselId: uuid('vessel_id').primaryKey().references(() => vessels.id, { onDelete: 'cascade' }),
+  persona: text('persona').notNull(),
+  nextActionAt: timestamp('next_action_at', { withTimezone: true }).notNull(),
+  sessionUntilAt: timestamp('session_until_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [index('vessel_bot_state_due_idx').on(t.nextActionAt)]);
+
+/** A ship galaxy's own channel. Nothing here reaches the main game's chat, and nothing there reaches it (K1). */
+export const starterChatMessages = pgTable('starter_chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  starterGalaxyId: uuid('starter_galaxy_id').notNull().references(() => starterGalaxies.id),
+  authorAccountId: uuid('author_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  authorVesselId: uuid('author_vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  username: text('username').notNull(),
+  language: text('language').$type<ChatLanguage>().notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /** A moderator's decision: the row stays for the audit, the words do not. */
+  maskedAt: timestamp('masked_at', { withTimezone: true }),
+}, (t) => [index('starter_chat_room_idx').on(t.starterGalaxyId, t.language, t.createdAt)]);
+
+/** Phone messages held until the device's morning; deleting a token also forgets its messages. */
+export const deferredPushes = pgTable('deferred_pushes', {
+  id: text('id').primaryKey(),
+  token: text('token').notNull().references(() => pushDevices.token, { onDelete: 'cascade' }),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  message: jsonb('message').$type<Record<string, unknown>>().notNull(),
+  deliverAt: timestamp('deliver_at', { withTimezone: true }).notNull(),
+}, t => [index('deferred_pushes_due_idx').on(t.deliverAt)]);
+
+/** Next affordability appointment and the two factual summaries for the current absence. */
+export const returnReminders = pgTable('return_reminders', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  vesselId: uuid('vessel_id'),
+  planetId: uuid('planet_id'),
+  subject: text('subject'),
+  nextRepairAt: timestamp('next_repair_at', { withTimezone: true }),
+  lastFundedAt: timestamp('last_funded_at', { withTimezone: true }),
+  absenceAt: timestamp('absence_at', { withTimezone: true }).notNull(),
+  summaryStage: integer('summary_stage').notNull().default(0),
+  nextCheckAt: timestamp('next_check_at', { withTimezone: true }),
+}, t => [index('return_reminders_due_idx').on(t.nextRepairAt), index('return_reminders_check_idx').on(t.nextCheckAt)]);

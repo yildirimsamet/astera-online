@@ -32,7 +32,7 @@ function message(to: string, locale: string, purpose: Purpose | 'changed', code?
 const invalidCode = () => new GameError('EMAIL_CODE_INVALID', 'Invalid or expired code', 400);
 export class AccountSecurity {
   constructor(private readonly db: Db, private readonly env: Env, private readonly clock: Clock, private readonly mail: MailQueue) {}
-  capabilities() { return { email: this.env.ACCOUNT_EMAIL_ENABLED, recovery: this.env.PASSWORD_RECOVERY_ENABLED }; }
+  capabilities() { return { email: this.env.ACCOUNT_EMAIL_ENABLED, recovery: this.env.PASSWORD_RECOVERY_ENABLED, starterGalaxy: this.env.STARTER_GALAXY_ENABLED }; }
   enabled(reset = false): void {
     if (!(reset ? this.env.PASSWORD_RECOVERY_ENABLED : this.env.ACCOUNT_EMAIL_ENABLED)) throw new GameError('EMAIL_UNAVAILABLE', 'Account email is unavailable', 503);
   }

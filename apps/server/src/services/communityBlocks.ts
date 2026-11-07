@@ -45,19 +45,23 @@ export async function blockCommunityPlayer(db: Db, clock: Clock, accountId: stri
       )).limit(1);
       if (!known) throw new GameError('PLAYER_NOT_FOUND', 'Player not available', 404);
     }
-    await lockAccounts(tx, [accountId, target.accountId]);
-    // Account-level budget/count must serialize even when different targets are blocked concurrently.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`community-blocks:${accountId}`}, 0))`);
-    await lockCommunityPair(tx, accountId, target.accountId);
-    const where = and(eq(communityBlocks.blockerAccountId, accountId), eq(communityBlocks.targetAccountId, target.accountId));
-    const [existing] = await tx.select().from(communityBlocks).where(where);
-    if (existing) return { blocked: true as const };
-    const [total] = await tx.select({ value: count() }).from(communityBlocks).where(eq(communityBlocks.blockerAccountId, accountId));
-    if ((total?.value ?? 0) >= 500) throw new GameError('BLOCK_LIMIT', 'Remove an existing block first', 409);
-    if (!await takeSecurityCounter(tx, `community-blocks:${accountId}`, 20, 15 * 60_000, clock.now())) throw new GameError('RATE_LIMITED', 'Try later', 429);
-    await tx.insert(communityBlocks).values({ blockerAccountId: accountId, targetAccountId: target.accountId, createdAt: clock.now() });
-    await notify(tx, [accountId, target.accountId]); return { blocked: true as const };
+    return blockAccount(tx, clock, accountId, target.accountId);
   });
+}
+/** What a block is, whoever asked for it and from whichever galaxy. */
+export async function blockAccount(tx: Tx, clock: Clock, accountId: string, targetAccountId: string) {
+  await lockAccounts(tx, [accountId, targetAccountId]);
+  // Account-level budget/count must serialize even when different targets are blocked concurrently.
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`community-blocks:${accountId}`}, 0))`);
+  await lockCommunityPair(tx, accountId, targetAccountId);
+  const where = and(eq(communityBlocks.blockerAccountId, accountId), eq(communityBlocks.targetAccountId, targetAccountId));
+  const [existing] = await tx.select().from(communityBlocks).where(where);
+  if (existing) return { blocked: true as const };
+  const [total] = await tx.select({ value: count() }).from(communityBlocks).where(eq(communityBlocks.blockerAccountId, accountId));
+  if ((total?.value ?? 0) >= 500) throw new GameError('BLOCK_LIMIT', 'Remove an existing block first', 409);
+  if (!await takeSecurityCounter(tx, `community-blocks:${accountId}`, 20, 15 * 60_000, clock.now())) throw new GameError('RATE_LIMITED', 'Try later', 429);
+  await tx.insert(communityBlocks).values({ blockerAccountId: accountId, targetAccountId, createdAt: clock.now() });
+  await notify(tx, [accountId, targetAccountId]); return { blocked: true as const };
 }
 export async function listCommunityBlocks(db: Db, accountId: string) {
   const blocks = await db.select({ accountId: communityBlocks.targetAccountId, username: accounts.displayName, createdAt: communityBlocks.createdAt })

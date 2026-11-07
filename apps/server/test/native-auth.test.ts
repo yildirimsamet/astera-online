@@ -8,7 +8,7 @@ import { buildApp, type BuiltApp } from '../src/app.js';
 import { FixedClock } from '../src/clock.js';
 import { deleteAccount } from '../src/services/accountDeletion.js';
 import { bootstrapServers } from '../src/services/servers.js';
-import { claimSchema, sessionSchema } from '../../web/src/api/schemas.js';
+import { planetClaimSchema, sessionSchema } from '../../web/src/api/schemas.js';
 import { testDb, testEnv, truncateAll } from './helpers.js';
 
 const secret = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
@@ -168,7 +168,7 @@ describe('native sessions on the shared Astera account', () => {
       payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'Native Academy', password, step: 0, countryCode: 'TR' } });
     expect(response.statusCode).toBe(200);
     const native = nativeSession.parse(response.json<unknown>());
-    const claimed = claimSchema.parse(response.json<unknown>());
+    const claimed = planetClaimSchema.parse(response.json<unknown>());
     expect(claimed.accountId).toBe(native.accountId);
     expect(claimed.placement.planetId).toBe(claimed.planet.planet.id);
     expect(response.headers['set-cookie']).toBeUndefined();
