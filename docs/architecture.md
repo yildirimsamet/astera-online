@@ -463,6 +463,23 @@ handler, or every malformed request returns 500 instead of 400.
 rewrite it as add-nullable → backfill → constrain. `0007_accounts_and_servers.sql` is the
 worked example. **The server refuses to boot against a database it is ahead of** (D47).
 
+## Ship galaxies — same sky, separate data
+
+The starter galaxies (`docs/baslangic-galaksisi-plani-2026-11-04.md`) share nothing with a season. Ships live in `vessels`
+and `vessel_*`, places in `starter_sites`, the queue in `starter_events`, the channel in `starter_chat_messages`. No season
+wipe reaches them, and `sweepStarterRetention` (hourly, `retentionDays`) is what bounds them instead; a landed ship keeps its
+`vessels` and `vessel_migrations` rows, because the one-ship rule stands on them.
+
+- **Client.** `starter/transport.ts` is the one place the two galaxies meet. On a ship a path is an account path, a ship path
+  or it never leaves the device: a route added to the client cannot reach the main game from a ship by being forgotten there.
+- **Server.** `routes/starter.ts` never reads a planet or a commander. A write locks and settles the ship (`withVesselLock`).
+  Handlers in `worker/starterHandlers.ts` run at least once and are idempotent.
+- **The jump.** `runDeparture` is several transactions on purpose (`joinSeason` keeps its own locks and retries): the row says
+  how far it got, and `sweepDepartures` finishes one whose process died.
+- **Ships the server plays.** `vessel_bot_state` is read by `shipBots.ts`, `admin.ts` and the seat sweep and joined by no view.
+  `starter-bots-indistinguishable` holds the line that a client cannot tell them apart.
+- **Phones.** `starter/push.ts` rings free of charge (A12) and only after commit, through the transport the paid alerts use.
+
 ## Security posture
 
 - The client sends **intent** and receives outcomes. It never computes one.

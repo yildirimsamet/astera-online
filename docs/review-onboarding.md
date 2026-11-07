@@ -3,11 +3,19 @@
 Son kod karşılaştırması: 3 Kasım 2026. Bu belge onboarding için ana referanstır.
 Mevcut davranışı kod ve testler belirler. İlk sezon paketi yerel kodda uygulanmıştır; bu kayıt canlıya yayın yapıldığı anlamına gelmez.
 
+## Bayrak açıkken: Prolog
+
+`STARTER_GALAXY_ENABLED=true` olan sunucuda yeni gelen FlightSchool'a değil prologa girer. `onboarding/TrainingDoor.tsx`
+`GET /api/auth/capabilities` yanıtındaki `starterGalaxy` alanını 2,5 saniye bekler; alan yoksa, `false` ise veya
+sunucu cevap vermezse eski eğitim açılır (Faz 11'e kadar). Prolog (`onboarding/prologue/`) ağa oyun isteği göndermez,
+beş adımdır, sonunda `ClaimDialog` açılır. Sunucu gemiyi `STARTER.opening` sabitinden kurar, tarayıcıdan ilerleme
+kabul etmez (`prologue-claim`). Görsel yürüyüş: `node tools/visual.mjs out/starter --starter`. Menüdeki Akademi
+girişi bu durumda el kitabını açar (`prologue/Handbook.tsx`), prolog oradan yeniden oynanır.
+
 ## Güncel uygulama hangisi?
 
-`apps/web/src/App.tsx`, `Academy` adıyla lazy import ettiği
-`onboarding/flightSchool/FlightSchool.tsx` bileşenini açar. Bu yerel değişken adı,
-eski `onboarding/Academy.tsx` ekranının kullanıldığı anlamına gelmez.
+Bayrak kapalıyken `onboarding/TrainingDoor.tsx`, `onboarding/flightSchool/FlightSchool.tsx` bileşenini lazy açar.
+Eski `onboarding/Academy.tsx` ekranı kullanılmaz.
 
 FlightSchool 11 bölümden oluşur; ayrıntılı sahneler `flightSchool/scenes.ts` içindeki
 `SCHOOL_SCENES` listesidir. Kendi gezegenini yönetme, kaynak toplama, inşa, Uplink ve

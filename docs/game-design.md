@@ -13,6 +13,28 @@ terms: `glossary.md`.
 > galaxy; Fleet V2 preserves those systems while replacing the ordinary space hulls. Public galaxy
 > events and the first Asteroid Shower are implemented for newly created ruleset-v4 seasons.
 
+## Telescope, Radar and Probe — owner definition, 2026-11-07
+
+Telescope is the commander’s eye: movement inside its field is visible, including
+neighbouring ships, passing craft, asteroids and pirate fleets. Once a craft’s course has
+been seen, that flight leg remains visible beyond the field. This is continuity of an
+observed course, not advance discovery of a future crossing or disclosure of a hidden
+origin, owner or destination.
+
+Radar detects movement inside radar range even outside telescope sight. An unidentified
+return is a moving `?`; an incoming attacking fleet appears there while it approaches.
+Radar does not read the target’s interior. A Probe reads the target’s resources, fleet
+and defence and brings back a dated report.
+
+Starter implementation: `vesselSphere` supplies unchanged ranges. Traffic retains an
+already observed leg using the completed Telescope repair timestamps; a newly acquired
+Telescope does not reveal earlier unseen encounters. The server still publishes only
+short bearing windows. Observation starts at enlistment and restarts on a dormant ship’s
+relocation (`vessels.sight_since`); it cannot look back from a newly occupied berth. First Telescope and Radar completion each introduce their actual
+ring and live contacts in optional chapters 7 and 8. The guide preference also disables
+these chapters. Main-galaxy sensor history and its separate disclosure rules are unchanged
+by this starter playtest batch.
+
 ## Next season geometry and tempo — 60-day transition
 
 The next and subsequent seasons last exactly **60 days**. The price/progression reference stays
@@ -1438,13 +1460,23 @@ silent by construction: the row renders and the tap does nothing, which is how f
 D97 kinds shipped. The list above is asserted against the server's own enum, and the client's
 routing table is asserted against the same list.
 
-Explicitly excluded, permanently: "your storage is full", "we miss you", daily login bonuses,
-streak warnings. Every one is a dark pattern. A full works is a STATUS — true until you act on
-it — so it lives in the "Right now" section of Signals and never enters the unread count,
-because a badge that cannot be cleared teaches people to ignore badges.
+Release A permits factual return signals (2026-11-06 plan §6.6): starter repairs lasting at least
+15 minutes notify at completion, coalescing only with another long repair due within 30 minutes; a system opening uses `system_open`. The first three mining
+returns notify, later returns only when carrying a part. The next required repair becoming affordable
+may notify once in 24 hours after three hours without activity, in starter and for seven days after
+landing. Orders and collection refresh that appointment. Main-galaxy appointments follow the existing
+building reward goals (Core, Refinery, Extractor, Store, Shipyard), without changing their prices.
 
-**There is no return overlay** (D23). What happened is in Signals, read when the player
-chooses; what is still in flight is on the strip, permanently.
+An absence summary checks actual log events at 24 and 72 hours, at most twice for that absence;
+an empty window sends nothing. An absence that began more than 72 hours before the phone was
+registered is owed nothing, so enabling alerts never wakes a long-gone commander. The summary's text names the most important one or two actual events, then counts any remainder. On a device's local clock, 23:00–08:00 is quiet: only
+`incoming_attack` and `shield_falling` pass; other free phone messages wait for 08:00. Purchased alerts always arrive immediately. Native permission is offered at the
+starter farewell, with one retry on a later repair lasting at least 15 minutes. Web has no phone push.
+Empty “we miss you”, generic storage-full messages and streak warnings remain excluded.
+
+**The return summary precedes normal play.** Its factual entries lead to the relevant surface;
+Signals remains available and flights remain visible on the strip. This supersedes D23's old
+“no return overlay” sentence.
 
 The **Galaxy Chronicle** is separate from private notifications. It remembers only public
 state transitions from the last 24 hours: bombardments, Core tier crossings, isotope races

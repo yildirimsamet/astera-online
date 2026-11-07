@@ -622,3 +622,11 @@ uygulama savunmayı kaybettirmemek için görevi giriş anında çözüp dört s
 animasyonu tamamlıyor; çok uç bir geometride animasyonun sonu eski ETA'yı aşabilir.
 Bu, menzil veya yetki sızıntısı değil; fiziksel minimum lead mi yoksa mutlak
 Telescope savunması mı üstün gelecek şeklinde ürün kararı gerektirir.
+
+## 11 · Gemi galaksilerinde görüş
+
+Koloni gemisi `planet_sight` zincirinden geçmez. Görüş `services/starter/world.ts` içindeki `partSight` ve kuralların `vesselSphere` değeriyle
+hesaplanır; menziller `STARTER.telescope`, `STARTER.radar` ve `STARTER.nakedEye`'dan gelir (`starter-sensors`, `starter-fog`).
+İki kural buraya özgüdür: enkaz ve karakoldaki parça yalnız `partsVisible` açıksa ve teleskop menzilinde veya bir sonda
+raporunda görünür (`partSight`), bot da gerçek oyuncunun avladığı açık parçadan önce alamaz (`mayTakePart`). Prolog görüş
+kurallarına dokunmaz: yerel çalışır, sunucudan görüş okumaz.

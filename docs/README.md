@@ -5,7 +5,7 @@ invariants, current state and how to work here. Everything in this folder is the
 it.
 
 **These documents are living reference, not an archive.** Keep them short and current. When
-you add something, remove what it replaced.
+you add something, remove what it replaced. Önemli konular dışı dökümanlar oluşturma. Ivır zıvır ile doldurma.
 
 ## First thirty minutes
 
@@ -43,8 +43,6 @@ what the game is trying to be.
 |---|---|
 | [product-vision.md](product-vision.md) | What are we making, for whom, and why this and not something else? |
 | [game-design.md](game-design.md) | How does the game work, system by system? |
-| [decisions.md](decisions.md) | What is locked, why, and what breaks if you change it? |
-| [balance.md](balance.md) | Where did every number come from, and what did the simulator prove? |
 | [architecture.md](architecture.md) | How is it built, and which platform traps are already paid for? |
 | [engineering-standards.md](engineering-standards.md) | **Typing, lint, testing. Project law.** |
 | [interface.md](interface.md) | How the screens are built and why |
@@ -55,9 +53,7 @@ what the game is trying to be.
 | [visual-quality.md](visual-quality.md) | What a frame has to look like before it counts as done |
 | [glossary.md](glossary.md) | Dominion? Clarity? Veil? Salvage? |
 | [komutan-gemisi/](komutan-gemisi/README.md) | Komutan Gemisi + Savaş Alanı: the owner-approved real-time pilot mode — spec, decisions, plan (Turkish) |
-| [economy-v2.json](economy-v2.json) | Generated: every level of every building, hull and project. `node tools/economy-v2-model.mjs --json` |
 
-**In a hurry:** `CLAUDE.md` → `decisions.md` → `balance.md`.
 **Lost context mid-task:** add the code and `git log` to the end of that list. Never re-invent
 lost context by guessing.
 

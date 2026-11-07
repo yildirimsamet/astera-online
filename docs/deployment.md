@@ -730,6 +730,22 @@ Verify both runtime SHA/image and flag values at each phase; ordinary future rel
 
 Historical five-monument acceptance is valid only for the LEGACY deal; adopted/new eight-target galaxies follow the Easy/Hard section. Do not replay old batches or rely on historical journal totals.
 
+### Ship galaxies (plan `docs/baslangic-galaksisi-plani-2026-11-04.md` §7)
+
+Migrations 0228–0235 are additive. Release with `STARTER_GALAXY_ENABLED=false`: with the flag off a new account takes the old
+path and nothing else changes. Then, in order, each on its own instruction:
+
+1. `pnpm starter bootstrap`: creates the first galaxy and its places. Safe to repeat.
+2. New Android bundle, then raise `MIN_NATIVE_BUILD` to it **before** the flag: a build that does not know `me.vessel` must get
+   `UPDATE_REQUIRED` rather than a server list it cannot leave.
+3. `STARTER_GALAXY_ENABLED=true` on stage, play it, step `tools/capacity.mjs --scenario starter` up from what held
+   (`pnpm starter seed-capacity`, disposable database only), then on production.
+
+The flag closes the door to new ships only: existing ships keep working. To close the ship side entirely, `pnpm starter land-all`
+(dry-run until `--yes`) lands every ship on the standard package and leaves anything in flight behind. `pnpm starter reset` is
+for a beta and needs `--yes` and `STARTER_RESET_CONFIRM=RESET`. `/health` carries `starterQueueLagSeconds`, `starterFailedEvents`;
+the admin panel's Ship galaxies tab has the rest.
+
 ## 12. Separate owner operations
 
 Use fresh backups, a restored-copy rehearsal, dry run and explicit target where supplied. Never use these commands to repair a failing deployment gate.

@@ -68,7 +68,8 @@ growth expands production capacity; it does not justify systems that weaken the 
 ## Who it is for
 
 An adult who plays on a phone in gaps — commute, lunch, before bed. Three to five
-sessions a day, four to six minutes each. They will not read a tutorial. They like feeling
+sessions a day, four to six minutes each. The first starter session is the exception: a guided
+20–25 minutes through the first mining haul, then optional guidance. They like feeling
 clever more than they like feeling powerful. They will check the app during a meeting if
 they think someone might be moving on them.
 
@@ -103,7 +104,12 @@ The two laws that fall out of it:
 > every other rule.
 
 > **Design Law #2** — Every system unlocks at the exact moment the player feels its
-> absence. No tutorial, no feature tour. The player's own confusion is the trigger.
+> absence. The starter first session explicitly guides repairs, crates and the first mining haul.
+> After its farewell, system openings and one optional visit hint replace the strict guide.
+
+Return alerts point to real events or an affordable next step. Native reminders are bounded
+and respect local quiet hours; purchased alerts, incoming attacks and expiring shields remain
+immediate. The delivery limits live in `game-design.md` (return signals, plan §6.6).
 
 ## Why the core tension is information, not combat
 
@@ -131,7 +137,7 @@ Everything is measured against this. It is testable, and it is the gate.
 
 | Checkpoint | Requirement |
 |---|---|
-| T+0:00 | Understood in **under 60 seconds**, no tutorial |
+| T+0:00 | Understood through play in **under 60 seconds** |
 | T+0 → 6:00 | At least **one irreversible commitment** |
 | T+6:00 | Exits with **at least one unresolved thread** |
 | Away | The player can name a specific question: *"I wonder if ___"* |
