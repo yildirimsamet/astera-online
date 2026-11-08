@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { softGlow } from './Environment.js';
 import { HitboxMaterial } from './hitboxDebug.js';
-import { VESSEL_BAYS, VESSEL_NOSE_TURN, starterShipYaw, vesselLights, vesselModelFile } from './mainSky.js';
+import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, vesselLights, vesselModelFile } from './mainSky.js';
 import { STARTER_MODEL_SCALE, VESSEL_LENGTH } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { VesselBody } from './VesselBody.js';
@@ -68,6 +68,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
   awaken?: { system: VesselSystem; key: number } | undefined;
 }) {
   const lights = useMemo(() => vesselLights(progress), [progress]);
+  const damage = useMemo(() => damageSpots(lights), [lights]);
   const look = vesselLook(progress);
   return (
     <group position={[at[0], at[1], at[2]]} rotation={[0, starterShipYaw([at[0], at[1], at[2]], offset), 0]} scale={LENGTH}>
@@ -78,7 +79,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
       <group rotation={[0, VESSEL_NOSE_TURN, 0]}>
         {/* Its own boundary: a new state loading must not take the main galaxy's sky with it. */}
         {/* Owner 2026-11-06: lit from its own texture, a light rim, and its damage burning on it. */}
-        <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} look={look} /></Suspense>
+        <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} damage={damage} /></Suspense>
         {VESSEL_SYSTEMS.map(system => lights[system] > 0 && (
           <sprite key={system} position={VESSEL_BAYS[hull][system]} scale={0.03 + 0.04 * lights[system]} raycast={() => null}>
             <spriteMaterial map={softGlow()} color={BAY_COLOUR[system]} opacity={0.35 + 0.6 * lights[system]} transparent depthWrite={false} toneMapped={false} />

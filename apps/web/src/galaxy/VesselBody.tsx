@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { VesselHull, VesselLook, VesselSystem } from '@astera/rules';
+import type { VesselHull } from '@astera/rules';
 import { softGlow } from './Environment.js';
-import { VESSEL_BAYS } from './mainSky.js';
+import { VESSEL_BAYS, type DamageSpot } from './mainSky.js';
 
 type Hulled = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 const isMesh = (node: THREE.Object3D): node is Hulled => node instanceof THREE.Mesh;
@@ -17,29 +17,6 @@ export const preloadVessel = (file: string): void => { useLoader.preload(GLTFLoa
 
 /** How much of its own texture a hull gives back as light: never a dark smudge, no real light paid for. */
 const SELF_LIGHT = 0.24;
-
-interface Spot { at: VesselSystem; kind: 'fire' | 'ember' | 'sparks'; strength: number }
-
-/**
- * WHAT THE DAMAGE LOOKS LIKE (owner 2026-11-06: "hasar durumuna göre alevler, duman, parlayan
- * parçalar"). Wrecked burns in several places and throws sparks; patched only smoulders; renewed is
- * clean. Drawn with sprites over the bays, so it costs a few quads and no light.
- */
-export const DAMAGE: Record<VesselLook, readonly Spot[]> = {
-  WRECKED: [
-    { at: 'DRIVE', kind: 'fire', strength: 1 },
-    { at: 'REFINERY', kind: 'fire', strength: 0.7 },
-    { at: 'DEFENCE', kind: 'fire', strength: 0.55 },
-    { at: 'CARGO', kind: 'sparks', strength: 1 },
-    { at: 'SURVEY', kind: 'sparks', strength: 0.7 },
-  ],
-  PATCHED: [
-    { at: 'DRIVE', kind: 'ember', strength: 0.8 },
-    { at: 'DEFENCE', kind: 'ember', strength: 0.5 },
-    { at: 'CARGO', kind: 'sparks', strength: 0.4 },
-  ],
-  RENEWED: [],
-};
 
 function glowMaterial(color: string, opacity: number, additive = true): THREE.SpriteMaterial {
   const material = new THREE.SpriteMaterial({
@@ -126,10 +103,11 @@ function Sparks({ at, strength, seed }: { at: readonly [number, number, number];
  * its own texture so it never reads dim, a thin light rim like the ships flying in the galaxy, and
  * its damage burning on it. Model space: nose along +X, about one unit long.
  */
-export function VesselBody({ file, hull, look, rim = '#8fe8ff', rimOpacity = 0.34, rimWidth = 0.006 }: {
+export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0.34, rimWidth = 0.006 }: {
   file: string;
   hull: VesselHull;
-  look: VesselLook;
+  /** Drawn with sprites over the bays, so it costs a few quads and no light. */
+  damage: readonly DamageSpot[];
   rim?: string;
   rimOpacity?: number;
   rimWidth?: number;
@@ -174,7 +152,7 @@ export function VesselBody({ file, hull, look, rim = '#8fe8ff', rimOpacity = 0.3
     <group>
       <primitive object={outline} />
       <primitive object={body} />
-      {DAMAGE[look].map((spot, index) => {
+      {damage.map((spot, index) => {
         const at = VESSEL_BAYS[hull][spot.at];
         return spot.kind === 'sparks'
           ? <Sparks key={`${spot.at}:${spot.kind}`} at={at} strength={spot.strength} seed={index} />

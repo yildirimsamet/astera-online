@@ -1,0 +1,61 @@
+/* The painting answers bay by bay: what is wrecked burns, what is mending glows dull, what is whole holds a calm light. */
+.ship-bay {
+  position: absolute;
+  width: 20%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ship-bay[data-condition='dead'] {
+  background: radial-gradient(closest-side, rgb(255 150 60 / 0.75), rgb(255 70 20 / 0.32) 45%, transparent);
+  animation: ship-bay-burn 0.9s steps(7, jump-none) infinite alternate;
+}
+.ship-bay[data-condition='dead']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffe7a8;
+  box-shadow: 8px -6px 0 #ffd27a, -7px -3px 0 #ffb45a, 3px -11px 0 #ffe7a8;
+  animation: ship-bay-spark 1.7s ease-out infinite;
+}
+.ship-bay[data-condition='mending'] {
+  background: radial-gradient(closest-side, rgb(255 180 90 / 0.66), rgb(255 120 40 / 0.26) 52%, transparent);
+  animation: ship-bay-smoulder 2.6s ease-in-out infinite;
+}
+.ship-bay[data-condition='whole'] {
+  background: radial-gradient(closest-side, rgb(120 225 240 / 0.62), rgb(98 215 232 / 0.2) 52%, transparent);
+  animation: ship-bay-calm 4s ease-in-out infinite;
+}
+
+/* One ring at the bay for a routine repair, a wider one when something new opens. */
+.ship-bay[data-just]::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 2px solid var(--color-v2-self);
+  box-shadow: 0 0 14px var(--color-v2-self);
+  animation: ship-bay-ring 0.9s ease-out forwards;
+}
+.ship-bay[data-just='capability']::before { border-width: 3px; animation: ship-bay-ring-wide 1.5s cubic-bezier(.15, .8, .3, 1) forwards; }
+.ship-bay[data-just='big'] { width: 42%; background: radial-gradient(closest-side, #fff, rgb(127 182 255 / 0.85) 30%, rgb(70 120 255 / 0.3) 62%, transparent); animation: ship-bay-ignite 2.3s ease-out forwards; }
+.ship-bay[data-just='big']::before { border-color: #bcd8ff; animation: ship-bay-ring-wide 1.3s ease-out forwards; }
+
+/* The engines take the whole ship: a surge of light and one short shudder, then rest. */
+[data-moment='big'] .ship-hero-art { animation: ship-hero-surge 2.3s ease-out; }
+[data-moment='big'] .ship-hero-frame { animation: ship-hero-shudder 0.55s linear; }
+
+@keyframes ship-bay-burn { from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } }
+@keyframes ship-bay-spark { 0% { opacity: 0; transform: translate(0, 0); } 8% { opacity: 1; } 45% { opacity: 0; transform: translate(4px, -12px); } 100% { opacity: 0; } }
+@keyframes ship-bay-smoulder { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.95; } }
+@keyframes ship-bay-calm { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes ship-bay-ring { from { opacity: 1; transform: scale(0.4); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes ship-bay-ring-wide { from { opacity: 1; transform: scale(0.3); } to { opacity: 0; transform: scale(2.6); } }
+@keyframes ship-bay-ignite { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); } }
+@keyframes ship-hero-surge { 0% { filter: brightness(1.25) saturate(1.1); } 14% { filter: brightness(2.2) saturate(1.3); } 100% { filter: brightness(1.25) saturate(1.1); } }
+@keyframes ship-hero-shudder { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-3px, 1px); } 35% { transform: translate(3px, -2px); } 55% { transform: translate(-2px, 2px); } 75% { transform: translate(2px, -1px); } }

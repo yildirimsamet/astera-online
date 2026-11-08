@@ -1,4 +1,4 @@
-import { STARTER, VIEW, starterGalaxyCentre, systemProgress, toWorld, vesselHull, type Vec3, type Vec3Tuple, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { STARTER, VESSEL_SYSTEMS, VIEW, starterGalaxyCentre, systemProgress, toWorld, vesselHull, type Vec3, type Vec3Tuple, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
 import type { MainSky } from '../api/starterSchemas.js';
 import { galaxySchema, type GalaxyPlanet, type HpRadiationSourceView, type PublicMonument } from '../api/schemas.js';
 import { planetNodes, type PlanetNode } from './scene.js';
@@ -89,6 +89,34 @@ export function vesselLights(progress: VesselProgress): VesselLights {
     return done / total;
   };
   return { REFINERY: lit('REFINERY'), SURVEY: lit('SURVEY'), DEFENCE: lit('DEFENCE'), CARGO: lit('CARGO'), DRIVE: lit('DRIVE') };
+}
+
+export interface DamageSpot { at: VesselSystem; kind: 'fire' | 'ember' | 'sparks'; strength: number }
+
+/** What each system does while it is wrecked: engines, works and shield burn; wiring throws sparks. */
+const WRECK: Record<VesselSystem, { kind: 'fire' | 'sparks'; strength: number }> = {
+  DRIVE: { kind: 'fire', strength: 1 },
+  REFINERY: { kind: 'fire', strength: 0.7 },
+  DEFENCE: { kind: 'fire', strength: 0.55 },
+  CARGO: { kind: 'sparks', strength: 1 },
+  SURVEY: { kind: 'sparks', strength: 0.7 },
+};
+
+/** The ship before anything aboard is mended. */
+export const NO_LIGHTS: VesselLights = { REFINERY: 0, SURVEY: 0, DEFENCE: 0, CARGO: 0, DRIVE: 0 };
+
+/**
+ * WHERE THE SHIP STILL BURNS (plan F8): each system by its own repairs. A wrecked one burns, one under
+ * repair smoulders less as it mends, and a mended one goes out.
+ */
+export function damageSpots(lights: VesselLights): DamageSpot[] {
+  return VESSEL_SYSTEMS.flatMap((at): DamageSpot[] => {
+    const share = lights[at];
+    if (share >= 1) return [];
+    const { kind, strength } = WRECK[at];
+    if (share <= 0) return [{ at, kind, strength }];
+    return [{ at, kind: kind === 'fire' ? 'ember' : 'sparks', strength: strength * (1 - share) }];
+  });
 }
 
 /** One file per hull and state, sharing an outline and base, so a swap never moves the ship. */

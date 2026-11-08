@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, VESSEL_MODULES, alloyRate, crystalRate, deuteriumRate, missingForStep, moduleStage, systemProgress,
+  REPAIR_LADDER, VESSEL_MODULES, alloyRate, openFeatures, crystalRate, deuteriumRate, missingForStep, moduleStage, systemProgress,
   type RepairStep, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { buildingArt, instrumentArt } from '../ui/assets.js';
@@ -44,6 +44,32 @@ export const systemPercent = (progress: VesselProgress, system: VesselSystem): n
   const { done, total } = systemProgress(progress, system);
   return Math.round((done / total) * 100);
 };
+
+export type BayCondition = 'dead' | 'mending' | 'whole';
+
+/** How one bay of the painting reads, from that system's repairs alone (plan F8). */
+export const bayCondition = (percent: number): BayCondition => percent <= 0 ? 'dead' : percent >= 100 ? 'whole' : 'mending';
+
+export type RepairTier = 'routine' | 'capability' | 'big';
+export interface RepairMoment { system: VesselSystem; tier: RepairTier }
+const TIER_WEIGHT: Record<RepairTier, number> = { routine: 0, capability: 1, big: 2 };
+
+function tierOf(step: RepairStep, before: VesselProgress): RepairTier {
+  if (step.module === 'DRIVE_THRUST') return 'big';
+  const after = { ...before, modules: { ...before.modules, [step.module]: step.stage } };
+  return openFeatures(after).size > openFeatures(before).size ? 'capability' : 'routine';
+}
+
+/** The answer a repair that has just come in deserves; the heaviest if several landed together. */
+export function repairMoment(before: VesselProgress, after: VesselProgress): RepairMoment | null {
+  let found: RepairMoment | null = null;
+  for (const step of REPAIR_LADDER) {
+    if (moduleStage(before, step.module) >= step.stage || moduleStage(after, step.module) < step.stage) continue;
+    const tier = tierOf(step, before);
+    if (!found || TIER_WEIGHT[tier] > TIER_WEIGHT[found.tier]) found = { system: step.system, tier };
+  }
+  return found;
+}
 
 /** Required steps before a player's choices, each group in ladder order. */
 export const systemSteps = (system: VesselSystem): RepairStep[] =>

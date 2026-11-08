@@ -1,11 +1,61 @@
-import { VESSEL_SYSTEMS, vesselHull, vesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { VESSEL_SYSTEMS, moduleStage, vesselHull, vesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { haptic } from '../lib/haptics.js';
+import { playSound } from '../lib/sound.js';
 import { goalRepair, useStarterGoal } from './tutorial/visualGoal.js';
 import { Icon } from '../v2/icons.js';
-import { HERO_BAYS, SYSTEM_ICON, heroArt, systemPercent, type HeroBay } from './shipScreen.js';
+import { HERO_BAYS, SYSTEM_ICON, bayCondition, heroArt, repairMoment, systemPercent, type HeroBay, type RepairMoment, type RepairTier } from './shipScreen.js';
+import './shipHero.css';
 
 const LIVE = 'var(--color-v2-self)';
 const DEAD = 'var(--color-v2-hostile)';
+
+const MOMENT_MS: Record<RepairTier, number> = { routine: 1000, capability: 1600, big: 2400 };
+
+const ignitionKey = (id: string) => `astera.starter.ignition.${id}`;
+
+function rememberIgnition(id: string): void {
+  try { window.localStorage.setItem(ignitionKey(id), '1'); } catch { /* the moment may play again */ }
+}
+
+/**
+ * Hours of work usually end with the player away, and the engines coming in is worth coming back to:
+ * an ignition nobody watched waits for the first look at the ship. Everything else starts from now.
+ */
+function beforeThisVisit(id: string, progress: VesselProgress): VesselProgress {
+  if (moduleStage(progress, 'DRIVE_THRUST') < 1) return progress;
+  try {
+    if (window.localStorage.getItem(ignitionKey(id)) !== null) return progress;
+  } catch {
+    return progress;
+  }
+  return { ...progress, modules: { ...progress.modules, DRIVE_THRUST: 0 } };
+}
+
+/**
+ * THE ANSWER TO A REPAIR THAT JUST CAME IN (plan F8), one per event. A new capability's sound belongs
+ * to the card that names it, so only the routine and the engines speak here.
+ */
+function useRepairMoment(id: string, progress: VesselProgress): RepairMoment | null {
+  const [opening] = useState(() => beforeThisVisit(id, progress));
+  const last = useRef(opening);
+  const [moment, setMoment] = useState<RepairMoment | null>(null);
+  useEffect(() => {
+    const found = repairMoment(last.current, progress);
+    last.current = progress;
+    if (!found) return;
+    setMoment(found);
+    if (found.tier === 'routine') { playSound('weld'); haptic('tap'); }
+    if (found.tier === 'big') { playSound('ignite'); haptic('rumble'); rememberIgnition(id); }
+  }, [id, progress]);
+  useEffect(() => {
+    if (!moment) return undefined;
+    const timer = window.setTimeout(() => { setMoment(null); }, MOMENT_MS[moment.tier]);
+    return () => { window.clearTimeout(timer); };
+  }, [moment]);
+  return moment;
+}
 
 function Mark({ system, percent, selected, onSelect, bay, next }: {
   system: VesselSystem; percent: number; selected: boolean; onSelect: () => void; bay: HeroBay; next: boolean;
@@ -52,11 +102,17 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false }: 
   const hull = vesselHull(id);
   const bays = HERO_BAYS[hull];
   const next = goalRepair(useStarterGoal())?.system;
+  const moment = useRepairMoment(id, progress);
   return (
-    <div data-testid="ship-hero" className="shrink-0 overflow-hidden">
+    <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} className="shrink-0 overflow-hidden">
       {/* Everything here is percent of the painting, so the frame keeps its shape on any screen. */}
-      <div className={`relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
-        <img src={heroArt(hull, vesselLook(progress))} alt="" draggable={false} className={`absolute inset-0 size-full object-cover brightness-125 saturate-110 ${compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]'}`} />
+      <div className={`ship-hero-frame relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
+        <img src={heroArt(hull, vesselLook(progress))} alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]'}`} />
+        {VESSEL_SYSTEMS.map(system => (
+          <span key={system} aria-hidden="true" data-bay={system} data-condition={bayCondition(systemPercent(progress, system))}
+            {...(moment?.system === system ? { 'data-just': moment.tier } : {})}
+            className="ship-bay" style={{ left: `${String(bays[system].x)}%`, top: `${String(bays[system].y)}%` }} />
+        ))}
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-v2-void to-transparent" />
         <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full">
           {VESSEL_SYSTEMS.map(system => {

@@ -4,8 +4,10 @@ import { Suspense, useMemo, useRef, type ComponentRef } from 'react';
 import * as THREE from 'three';
 import type { VesselHull } from '@astera/rules';
 import { Sky } from '../../galaxy/Environment.js';
-import { vesselModelFile } from '../../galaxy/mainSky.js';
+import { NO_LIGHTS, damageSpots, vesselModelFile } from '../../galaxy/mainSky.js';
 import { VesselBody, preloadVessel } from '../../galaxy/VesselBody.js';
+
+const WRECK_DAMAGE = damageSpots(NO_LIGHTS);
 
 /** How long the drop out of the jump takes, camera far to near. */
 export const ARRIVE_MS = 2800;
@@ -80,7 +82,7 @@ export default function ShipScene({ hull, arrived }: { hull: VesselHull; arrived
       <directionalLight position={[-5, 1.5, -4]} intensity={1.8} color="#6fb6ff" />
       <Suspense fallback={null}>
         <group rotation={[0.06, -0.5, 0.05]}>
-          <VesselBody file={vesselModelFile(hull, 'WRECKED')} hull={hull} look="WRECKED" rimOpacity={0.28} rimWidth={0.005} />
+          <VesselBody file={vesselModelFile(hull, 'WRECKED')} hull={hull} damage={WRECK_DAMAGE} rimOpacity={0.28} rimWidth={0.005} />
         </group>
       </Suspense>
       <Arrival arrived={arrived} />
