@@ -135,7 +135,7 @@ const FIRST_ROAD: Part = {
     { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
     orderStep('orderShipyard', 'SHIPYARD', 1, 'CARGO', 5),
     waitFor('waitYard', 'SHIPYARD', 5),
-    { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || !i.canBuildShip },
+    { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },
     { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: ['[data-testid="ship-repair"]'], satisfied: seasoned },
   ],
 };
@@ -233,8 +233,9 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
     if (moment) return moment;
   }
   const road = nextIn(FIRST_ROAD, input);
-  // Only when a repair is what comes next: rocks and probes are not held up for a crate (walk 2026-11-08).
-  if (road?.kind === 'step' && road.id.startsWith('order') && !input.canPayNext && hasReady(input)) return locate(OPEN_CRATE, input, false);
+  // Only when what comes next costs: rocks and probes are not held up for a crate (walk 2026-11-08).
+  const shortOfIt = road?.kind === 'step' && ((road.id.startsWith('order') && !input.canPayNext) || (road.id === 'buildShip' && !input.canBuildShip));
+  if (shortOfIt && hasReady(input)) return locate(OPEN_CRATE, input, false);
   return road ?? { kind: 'advise' };
 }
 

@@ -119,6 +119,10 @@ describe('the road through the first session (N12)', () => {
     expect(at(onRoad(yard, { facts, ...read }))).toMatchObject({ id: 'buildShip', step: 'press', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'] });
     expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip'] }))).toMatchObject({ id: 'farewell', step: 'read', marks: ['[data-testid="ship-repair"]'] });
     expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip', 'farewell'] }))).toEqual({ kind: 'advise' });
+    // Walk 2026-11-08: the yard's own crate pays for the first hull, and nothing was sending the player to it.
+    const yardCrate = [{ id: 'REFINERY:2', state: 'opened' as const }, { id: 'SHIPYARD:1', state: 'ready' as const }];
+    expect(at(onRoad(yard, { facts, ...read, canBuildShip: false, crates: yardCrate }))).toMatchObject({ id: 'openCrate', step: 'press' });
+    expect(at(onRoad(yard, { facts, ...read, canBuildShip: true, crates: yardCrate }))).toMatchObject({ id: 'buildShip' });
     // Walk 2026-11-08: the road spends everything, and a hull 1 h 45 away is not a next step.
     expect(at(onRoad(yard, { facts, ...read, canBuildShip: false }))).toMatchObject({ id: 'farewell', step: 'read' });
   });
