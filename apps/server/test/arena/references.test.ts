@@ -29,6 +29,7 @@ beforeEach(async () => {
   await writeFile(join(directory, 'dist/ship.glb'), 'model');
   await writeFile(join(directory, 'audio/fire.ogg'), 'audio');
   await writeFile(join(directory, 'raw/private.apk'), 'private');
+  await writeFile(join(directory, 'dist/v2/manifest-lite.json'), JSON.stringify({ ships: { classes: Object.fromEntries(['akinci', 'muhafiz', 'kilavuz'].map(ship => [ship, { model: '/__ref/dist/ship.glb', engines: [[0, 0, -0.4]], nozzle: .03 }])) } }));
 });
 afterEach(async () => {
   while (closers.length) await closers.pop()?.();
@@ -105,4 +106,66 @@ describe('the private reference pack', () => {
     expect((await open('token-pilot')).statusCode).toBe(404);
     expect((await get('/__ref/dist/ship.glb')).statusCode).toBe(404);
   });
+});
+
+describe('galaxy ship assets for a commander who never entered the hangar', () => {
+  it('gives an ordinary signed-in observer only the three ship models, without opening the arena pack', async () => {
+    const { app, get } = await arena();
+    const granted = await app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: 'Bearer token-guest' } });
+    expect(granted.statusCode).toBe(200);
+    const view = granted.json<{ models: Record<string, { url: string }> }>();
+    expect(Object.keys(view.models)).toEqual(['akinci', 'muhafiz', 'kilavuz']);
+    const ticket = granted.cookies.find(c => c.name === 'astera_galaxy_ships');
+    expect(ticket).toBeDefined();
+    const cookie = `astera_galaxy_ships=${ticket!.value}`;
+    expect((await get(view.models.akinci!.url, cookie)).body).toBe('model');
+    expect((await get('/__ref/audio/fire.ogg', cookie)).statusCode).toBe(404);
+    expect((await get('/__ref/dist/ship.glb', `astera_arena_ref=${ticket!.value}`)).statusCode).toBe(404);
+  });
+  it('answers missing packs without sending the client to absent model URLs', async () => {
+    const { app } = await arena(null);
+    const response = await app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: 'Bearer token-guest' } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ models: null });
+  });
+  it('requires a live account even though arena admission is unnecessary', async () => {
+    const { app } = await arena();
+    for (const token of ['', 'forged']) {
+      const response = await app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: `Bearer ${token}` } });
+      expect(response.statusCode).toBe(401);
+    }
+  });
+});
+
+it('renews the galaxy-only asset ticket after a long browser session', async () => {
+  const { app, clock, get } = await arena();
+  const open = () => app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: 'Bearer token-guest' } });
+  const first = await open();
+  const cookie = first.cookies.find(c => c.name === 'astera_galaxy_ships')!;
+  clock.advance(6 * 60 + 1);
+  expect((await get('/arena/galaxy-ships/akinci.glb', `astera_galaxy_ships=${cookie.value}`)).statusCode).toBe(404);
+  const renewed = (await open()).cookies.find(c => c.name === 'astera_galaxy_ships')!;
+  expect((await get('/arena/galaxy-ships/akinci.glb', `astera_galaxy_ships=${renewed.value}`)).statusCode).toBe(200);
+});
+
+it('recovers when prepared ship files arrive after the first catalogue read', async () => {
+  await rm(join(directory, 'dist/ship.glb'));
+  const { app } = await arena();
+  const read = () => app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: 'Bearer token-guest' } });
+  expect((await read()).json()).toEqual({ models: null });
+  await writeFile(join(directory, 'dist/ship.glb'), 'model');
+  expect((await read()).json<{ models: unknown }>().models).not.toBeNull();
+});
+
+it('keeps valid HTTP framing when a prepared ship file is replaced', async () => {
+  const { app, get } = await arena();
+  const granted = await app.inject({ method: 'GET', url: '/arena/galaxy-ships', headers: { authorization: 'Bearer token-guest' } });
+  const ticket = granted.cookies.find(c => c.name === 'astera_galaxy_ships')!;
+  const nextModel = 'new model with a different byte length';
+  await writeFile(join(directory, 'dist/ship.glb'), nextModel);
+  const response = await get('/arena/galaxy-ships/akinci.glb', `astera_galaxy_ships=${ticket.value}`);
+  expect(response.statusCode).toBe(200);
+  const declared = response.headers['content-length'];
+  if (declared !== undefined) expect(declared).toBe(String(Buffer.byteLength(nextModel)));
+  expect(response.body).toBe(nextModel);
 });

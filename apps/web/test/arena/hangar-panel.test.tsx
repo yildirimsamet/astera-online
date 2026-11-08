@@ -222,6 +222,7 @@ describe('the hangar panel', () => {
   });
 
   it('reads the hangar with the session and stands the owned ship in it, with its name, role, level and state', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
     const calls = desk({ '/arena/hangar': [hangar()] });
     const enter = vi.fn();
     open(enter);

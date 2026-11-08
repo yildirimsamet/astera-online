@@ -107,3 +107,11 @@ tamir logic'i bir nevi ceza gibi."
 - Geri alma snapshot'ı `.dev/arena/2026-10-24-logic/skins-backup` ve uygulanan geri alma
   betiği `defer-skins.py`. Yeni ortak giriş kaynağı `arena/entrances.ts`, testler
   `test/arena/entrances.test.ts` + `sortie.test.ts` (18 geçti). Genel tip/lint henüz koşulmadı.
+
+## Galakside görünürlük — KARAR (sahip, 2026-11-08)
+
+- Çalışan teleskobun güncel görüşündeki başka bir başkentte komutan gemisi görünür: hazırsa yörüngede dolaşır, tamir/bakım sırasında sabit durur. Yarıkta, filoyla seferde veya tek başına dönüşte olan gemi başkentte gösterilmez. Eski sonda hafızası canlı gemi konumu vermez.
+- Tanımlanmış yabancı filonun eşlikçisi de 3D olarak görünür. Radarın yalnız soru işareti verdiği temas ve yalnız savaş efekti alan gözlemci eşlikçi bilgisi alamaz.
+- Kendi ve yabancı filonun ilk odak kartında ve açılmış detayında eşlikçinin sınıfı, sefere çıkış seviyesi ve sınıf bonusu gösterilir. Gemi sahibinin güncel hangar seviyesiyle uçuş bonusu yeniden hesaplanmaz.
+- Görseli yüklemek arena pilot izni gerektirmez; galaksi yalnız üç hafif sınıf modeline ayrı erişim verir. Bu erişim tam arena paketini açmaz. Hangar mevcut cihaz/kalite seçimini korur.
+- Uygulama, model erişimi ve doğrulama kaydı: [görünürlük görevi](../tasks/commander-visibility-2026-11-08.md).

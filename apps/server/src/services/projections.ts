@@ -518,7 +518,8 @@ export class Projections {
       this.clanPresence.invalidateWhere((_, value) => value.seasonId === event.shard);
     }
     if (
-      kind === 'shard:launch'
+      kind === 'shard:commander-ship'
+      || kind === 'shard:launch'
       || kind === 'shard:arrival'
       || kind === 'shard:mining'
       || kind === 'shard:pirate'

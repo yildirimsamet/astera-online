@@ -1597,6 +1597,13 @@
       "when": 1793656723869,
       "tag": "0227_first_season_start",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1794096466389,
+      "tag": "0228_commander_ship_sight",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, type Ref } from 'react';
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useLoader } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { arenaCopy } from '../arena/copy.js';
 import { clockText } from '../arena/hangarDesk.js';
 import { useNow } from '../lib/time.js';
-import { radial, shipDecoders, useShipModels, type ShipModel } from '../arena/hangar/shipModels.js';
+import { radial, shipDecoders, useGalaxyShipModels, type ShipModel } from '../arena/hangar/shipModels.js';
 import { HitboxMaterial } from './hitboxDebug.js';
 import { PARK, parkPose, type ParkedShip } from './parkedShip.js';
 import type { PlanetNode } from './scene.js';
@@ -21,19 +21,71 @@ const VISIBLE_WITHIN = 40;
  * coarsest level of detail. A ready ship circles the world with its engines lit; under repair or
  * service it holds still, dark at the nozzles. A tap opens the hangar.
  */
-export default function ParkedShipModel({ park, nodes, onSelect }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void }) {
-  const models = useShipModels(true, true);
+export default function ParkedShipModel({ park, nodes, onSelect, own = true }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void; own?: boolean }) {
   const planet = nodes.find(node => node.id === park.planetId);
+  const [near, setNear] = useState(own);
+  const nearRef = useRef(own);
+  useVisualFrame(({ camera }) => {
+    if (own || !planet) return;
+    const [x, y, z] = planet.position;
+    const visible = (camera.position.x - x) ** 2 + (camera.position.y - y) ** 2 + (camera.position.z - z) ** 2 < VISIBLE_WITHIN ** 2;
+    if (visible !== nearRef.current) { nearRef.current = visible; setNear(visible); }
+  });
+  const models = useGalaxyShipModels(near);
   const model = models?.[park.ship];
-  if (!planet || !model) return null;
-  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} /></Suspense>;
+  if (!near || !planet) return null;
+  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} own={own} /></Suspense>;
 }
 
 /**
  * The class model at its coarsest level of detail, engines lit or dark. Shared by the parked ship
  * and the escort at the rear of a flying fleet (Y9).
  */
-export function ShipBody({ model, lit }: { model: ShipModel; lit: boolean }) {
+/** A failed ship asset must never unmount the galaxy and all of its controls. */
+export class ShipAssetBoundary extends Component<{ children: ReactNode; fallback: ReactNode; onError?: () => void }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private automaticRetryUsed = false;
+  private retry = () => {
+    if (this.retryTimer !== null) { clearTimeout(this.retryTimer); this.retryTimer = null; }
+    if (this.state.failed) this.setState({ failed: false });
+  };
+  override componentDidMount() {
+    window.addEventListener('online', this.retry);
+    window.addEventListener('focus', this.retry);
+  }
+  override componentWillUnmount() {
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    window.removeEventListener('online', this.retry);
+    window.removeEventListener('focus', this.retry);
+  }
+  override componentDidCatch() {
+    this.props.onError?.();
+    // The online event can precede delivery of the failed fetch. One delayed retry covers that race.
+    if (!this.automaticRetryUsed) {
+      this.automaticRetryUsed = true;
+      this.retryTimer = setTimeout(this.retry, 1_000);
+    }
+  }
+  override render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+function ShipSilhouette({ lit }: { lit: boolean }) {
+  return <group name="ship-silhouette">
+    <mesh rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[.22, 1, 4]} /><meshStandardMaterial color="#8299ad" roughness={.6} metalness={.5} /></mesh>
+    {lit && <mesh position={[0, 0, -.45]}><sphereGeometry args={[.08, 8, 6]} /><meshBasicMaterial color="#8fd8ff" /></mesh>}
+  </group>;
+}
+
+export function ShipBody({ model, lit }: { model: ShipModel | undefined; lit: boolean }) {
+  if (!model) return <ShipSilhouette lit={lit} />;
+  return <ShipAssetBoundary key={model.url} onError={() => { useLoader.clear(GLTFLoader, model.url); }} fallback={<ShipSilhouette lit={lit} />}>
+    <Suspense fallback={<ShipSilhouette lit={lit} />}><LoadedShipBody model={model} lit={lit} /></Suspense>
+  </ShipAssetBoundary>;
+}
+
+function LoadedShipBody({ model, lit }: { model: ShipModel; lit: boolean }) {
   const gltf = useLoader(GLTFLoader, model.url, loader => { shipDecoders(loader, model); });
   // A copy: the loader caches one scene per file, and the hangar may hold that one in its own canvas.
   const body = useMemo(() => {
@@ -53,7 +105,7 @@ export function ShipBody({ model, lit }: { model: ShipModel; lit: boolean }) {
   </>;
 }
 
-function Ship({ model, planet, park, onSelect }: { model: ShipModel; planet: PlanetNode; park: ParkedShip; onSelect: () => void }) {
+function Ship({ model, planet, park, onSelect, own }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean }) {
   const { docked } = park;
   const root = useRef<THREE.Group>(null); const tag = useRef<HTMLButtonElement>(null);
   useVisualFrame(({ camera, clock }) => {
@@ -69,7 +121,7 @@ function Ship({ model, planet, park, onSelect }: { model: ShipModel; planet: Pla
   });
   return <group ref={root} name="commander-ship" userData={{ docked }}>
     <ShipBody model={model} lit={!docked} />
-    <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><ShipTag ref={tag} park={park} onSelect={onSelect} /></Html>
+    <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><ShipTag ref={tag} park={park} onSelect={onSelect} own={own} /></Html>
     <mesh onPointerUp={event => { if (!wasTap()) return; markHit(); event.stopPropagation(); onSelect(); }}>
       <sphereGeometry args={[0.6, 8, 6]} />
       <HitboxMaterial kind="fleet" />
@@ -81,12 +133,12 @@ function Ship({ model, planet, park, onSelect }: { model: ShipModel; planet: Pla
  * What the speck is, and when it flies: the class and level, or the repair clock. A button: at the
  * galaxy's usual distance the ship is a few pixels and the tag is what a thumb finds (F16).
  */
-export function ShipTag({ ref, park, onSelect }: { ref?: Ref<HTMLButtonElement>; park: ParkedShip; onSelect: () => void }) {
+export function ShipTag({ ref, park, onSelect, own = true }: { ref?: Ref<HTMLButtonElement>; park: ParkedShip; onSelect: () => void; own?: boolean }) {
   const c = arenaCopy();
   return <button ref={ref} type="button" onClick={event => { event.stopPropagation(); onSelect(); }}
     className="pointer-events-auto -translate-x-1/2 translate-y-2 whitespace-nowrap px-2 py-1.5 galaxy-ship-tag font-v2-mono text-micro uppercase tracking-label" data-part="commander-ship-tag">
     {park.docked && park.until !== null ? <DockClock reason={park.reason === 'service' ? c.servicing : c.repairing} until={park.until} />
-      : <span className="text-v2-self">{c.classes[park.ship].name} · {c.level(park.level)}</span>}
+      : <span className={own ? "text-v2-self" : "text-v2-ink-2"}>{c.classes[park.ship].name} · {c.level(park.level)}</span>}
   </button>;
 }
 

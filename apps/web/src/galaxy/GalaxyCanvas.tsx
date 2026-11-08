@@ -4,7 +4,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { GalaxyVisualPhase } from './visualFrame.js';
-import type { HomewardShip, ParkedShip } from './parkedShip.js';
+import { observedParkedShips, type HomewardShip, type ParkedShip } from './parkedShip.js';
 import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
@@ -872,6 +872,9 @@ export function GalaxyCanvas({
         */}
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
+        {observedParkedShips(planets).map(park => <Suspense key={park.planetId} fallback={null}>
+          <ParkedShipModel park={park} nodes={nodes} own={false} onSelect={() => { onFocus({ kind: 'planet', id: park.planetId }); }} />
+        </Suspense>)}
         {parkedShip && onOpenShip && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />

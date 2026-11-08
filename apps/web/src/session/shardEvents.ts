@@ -65,6 +65,8 @@ export function readsForGlobalEvent(kind: string): readonly (readonly string[])[
  */
 export function readsForShardEvent(kind: string): readonly (readonly string[])[] {
   switch (kind.slice(SHARD_PREFIX.length)) {
+    case 'commander-ship':
+      return [keys.galaxy, keys.traffic];
     /** Somebody's craft left a world. It is in the air, so it is in `traffic`. */
     case 'launch':
       return [keys.traffic];

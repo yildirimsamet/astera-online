@@ -74,6 +74,14 @@ they felt. Then fix the top three. Everything else waits for real players.
 
 # Sessions
 
+## 2026-11-08 · Komutan gemisi görünürlüğü — yerel gerçek API akışı
+
+- Ayrı worktree ve geçici veritabanında dört oyuncu; 390/350 px telefon görünümü. Hangara girmeden galaksi açıldı.
+- Teleskoptaki yabancı park gemisine dokunmak gezegenini açtı. Kendi ve yabancı filoya eşlik eden komutan gemisinin gövdesine gerçek pointer dokunuşu ilgili filoyu seçti; focus sheet'te Akıncı Lv 20 ve `damage +5%` göründü.
+- İlk dokunuşta kapalı sheet'te de bonus okunuyor. Yatay taşma, normal açılışta sayfa hatası veya model 404'ü görülmedi; ortak katalog ve görünen sınıfların modelleri 200 döndü.
+- Model indirmesinin kesilmesi ve bağlantının geri dönmesi ayrıca denendi: galaksi kullanılabilir kaldı, modeller geri geldi. Fiziksel Android cihaz testi yapılmadı.
+- Yeniden çalıştırma ve ekran kanıtları: `docs/tasks/commander-visibility-2026-11-08.md`; yerel çıktılar `out/commander-sight/visual/`. Deploy yapılmadı.
+
 <!-- Add a block per session. Keep them short and honest. -->
 
 ## Fleet Catalog V2 — two-player release session

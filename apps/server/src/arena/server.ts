@@ -1,3 +1,4 @@
+import { registerGalaxyShips } from './galaxyShips.js';
 import { groupEntrances } from './entrances.js';
 import { performance } from 'node:perf_hooks';
 import type { FastifyInstance } from 'fastify';
@@ -379,6 +380,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     return !account ? 'auth' : admits(account) ? account : 'denied';
   };
   registerArenaReferences(app, env, seatedBy);
+  registerGalaxyShips(app, env, identify);
   /** The hangar desk (Y6a): the ship, its timers and the day's cap; the one class choice. */
   const bearer = (header: string | undefined): Promise<{ accountId: string } | 'auth' | 'denied'> =>
     header?.startsWith('Bearer ') ? seatedBy(header.slice(7)) : Promise.resolve('auth');

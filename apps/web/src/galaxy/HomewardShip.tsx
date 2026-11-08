@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useRef } from 'react';
 import type * as THREE from 'three';
-import { useShipModels } from '../arena/hangar/shipModels.js';
+import { useGalaxyShipModels } from '../arena/hangar/shipModels.js';
 import { serverNow } from '../lib/clock.js';
 import { ESCORT_LENGTH, FLEET_CRAFT } from './flightVisual.js';
 import { HitboxMaterial } from './hitboxDebug.js';
@@ -17,7 +17,7 @@ import { useVisualFrame } from './visualFrame.js';
  * the hangar, as the parked ship's does.
  */
 export default function HomewardShipModel({ home, nodes, onSelect }: { home: HomewardShip; nodes: readonly PlanetNode[]; onSelect: () => void }) {
-  const model = useShipModels(true, true)?.[home.ship];
+  const model = useGalaxyShipModels(true)?.[home.ship];
   const standoff = useMemo(() => homewardStandoff(home.path, nodes), [home.path, nodes]);
   const end = useMemo(() => toWorld(home.path.to), [home.path]);
   const root = useRef<THREE.Group>(null);

@@ -54,6 +54,7 @@ export type StreamEvent = z.infer<typeof eventPayload>;
  * client concern and lives there. This says what HAPPENED, never what to fetch.
  */
 export type ShardEventKind =
+  | 'commander-ship'
   | 'launch'
   | 'arrival'
   | 'mining'

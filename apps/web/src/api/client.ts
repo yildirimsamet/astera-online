@@ -2,7 +2,7 @@ import { battleReplayResponseSchema } from './battleReplaySchemas.js';
 import { observe, analyticsHeaders, analyticsRecording, syncAnalyticsIdentity } from '../lib/playerAnalytics/runtime.js';
 import { analyticsAuth, analyticsCommand } from './analyticsCommands.js';
 import { analyticsAdminSchema, analyticsTimelineSchema, anonymousVisitsSchema, type AnalyticsFilters } from './analyticsAdminSchemas.js';
-import { commanderShipSchema } from './commanderShipSchemas.js';
+import { commanderShipSchema, galaxyShipModelsSchema } from './commanderShipSchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { reportIfInsideWindow, reportMaintenance } from '../platform/maintenanceGate.js';
@@ -669,6 +669,8 @@ export class Api {
   security = () => this.send('/api/auth/security', accountSecuritySchema);
   accountDeletion = () => this.send('/api/auth/account-deletion', accountDeletionStatusSchema);
   communityPolicy = () => this.send('/api/community/policy', communityPolicyStatusSchema);
+  galaxyShipModels = () => this.send('/arena/galaxy-ships', galaxyShipModelsSchema);
+
   commanderShip = () => this.send('/api/commander-ship', commanderShipSchema);
   acceptCommunityPolicy = (consent: CommunityPolicyConsent) => this.send('/api/community/policy', communityPolicyStatusSchema, { method: 'POST', body: consent });
   communityBlocks = () => this.send('/api/community/blocks', communityBlocksSchema);

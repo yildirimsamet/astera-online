@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--commander-sight')) {
+  const { verifyCommanderSight } = await import('./commander-sight-visual.mjs');
+  await verifyCommanderSight(process.argv[2] ?? 'out/commander-sight/visual');
+  process.exit(0);
+}
+
 if (process.argv.includes('--first-visit')) {
   const { verifyFirstVisit } = await import('./first-visit-visual.mjs');
   await verifyFirstVisit(process.argv[2] ?? 'out/first-visit');
