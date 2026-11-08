@@ -6,8 +6,8 @@ import { canTakePart } from './sites.js';
  * WHAT A COMMANDER CAN USE ABOARD. Plan §3.7.
  *
  * A closed menu is closed because that system is broken, not because of an arbitrary level, and
- * two doors open on events: mine first and then see the wrecks, live through a battle and then be
- * able to start one. Derived from the ship on every read. The only thing stored is which openings
+ * two doors open on events: mine first and then see the wrecks, fight a first battle (an outpost
+ * will do) and, with a shield of your own, strike other ships. Derived from the ship on every read. The only thing stored is which openings
  * have been announced, which is the same split as the main game's `currentUnlocks` / `unlocksSeen`,
  * except that here the server really does refuse a closed system.
  *
@@ -41,7 +41,8 @@ const OPENS: Record<StarterFeature, (progress: VesselProgress) => boolean> = {
   telescope: stage('TELESCOPE', 1),
   radar: stage('RADAR', 1),
   defence: stage('AEGIS', 1),
-  attack: happened('FIRST_BATTLE_REPORT'),
+  // A ship that strikes ships can be struck back: the battle report and its own shield (owner 2026-11-08, N2).
+  attack: p => happened('FIRST_BATTLE_REPORT')(p) && stage('AEGIS', 1)(p),
   deuterium: stage('DEUTERIUM_PLANT', 1),
   // The panel opens when the hull can be ordered, so the two can never disagree.
   drive: p => missingForStep(p, DRIVE_HULL_STEP).length === 0,

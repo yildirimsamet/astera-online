@@ -33,8 +33,9 @@ function launch(tx: Tx, galaxy: Galaxy, ship: VesselRow, kind: 'SCOUT' | 'PIRATE
 
 /**
  * THE FIRST THREATS, IN ORDER, AND ONLY TO SOMEONE WHO IS THERE. Plan §3.5. Radar first: a scout comes
- * and looks, and the player asks what would have happened. Aegis next: the first real raid, as large
- * as the fleet it meets, and its report opens Attack and the Repair Station. Then rarely.
+ * and looks, and the player asks what would have happened. It follows the player out (owner
+ * 2026-11-08, N2): a ship that has flown nothing of its own is left alone. Aegis next: the first real
+ * raid, as large as the fleet it meets. Then rarely.
  */
 export async function launchPirates(tx: Tx, galaxy: Galaxy, ships: readonly VesselRow[], now: Date): Promise<void> {
   const here = ships.filter(ship => now.getTime() - ship.lastSeenAt.getTime() <= HERE_WITHIN_MS);
@@ -45,6 +46,9 @@ export async function launchPirates(tx: Tx, galaxy: Galaxy, ships: readonly Vess
       eq(vesselMissions.targetVesselId, ship.id), inArray(vesselMissions.kind, ['SCOUT', 'PIRATE']),
     )).orderBy(desc(vesselMissions.departAt));
     if (flights.some(flight => flight.status === 'OUTBOUND' || flight.status === 'RETURNING')) continue;
+    // Every row a ship owns is its own launch; pirates and scouts belong to nobody.
+    const [ventured] = await tx.select({ id: vesselMissions.id }).from(vesselMissions).where(eq(vesselMissions.ownerVesselId, ship.id)).limit(1);
+    if (!ventured) continue;
 
     let mission: Awaited<ReturnType<typeof launch>>[number] | undefined;
     if (!flights.some(flight => flight.kind === 'SCOUT')) {

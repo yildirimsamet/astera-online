@@ -170,14 +170,23 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 
     Doğru karşı gemi oranı belirgin biçimde yükseltir; yanlış seçim kaybettirmez ama riski artırır. Hiçbir sonuç kesin değildir.
 - **Botlar:** Aynı kurallar ve aynı servisler geçerlidir; bot için ayrı yol veya işaret yoktur.
-  - Bugünkü warmstart (`startPartWay`) yalnız zorunlu adımları verir ve Aegis'i `pvpOpenAt` yazmadan verir. Aegis seçimli olunca hiçbir bot Aegis almaz; PvP'de ve korsan akınında yalnız insanlar kalır, bu da botu ayırt ettirir.
-  - Bu yüzden `shipBots` içinde Aegis için insanlarınkine benzer bir seçim politikası tanımlanır. Warmstart Aegis verdiğinde `pvpOpenAt` de yazılır.
+  - Botlar `takeShipBotTurn` içinde `nextRequiredStep`'i izler; Aegis seçimli olunca hiçbir bot Aegis almazdı ve PvP'de, korsan akınında yalnız insanlar kalırdı, bu da botu ayırt ettirir. (Warmstart `startPartWay` en fazla 8 adım verir, Aegis'e ulaşmaz.)
+  - Bu yüzden `shipBots` içinde Aegis için insanlarınkine benzer bir seçim politikası tanımlanır.
 - **Kabul:**
   - Aegis'siz bir karakol galibi, başka bir gemiye doğrudan API isteğiyle saldıramaz; gerçek ve bot hedef aynı cevabı alır.
   - PvE hasarı PvP'ye girmeden onarılabilir.
   - Gönderim ile varış arasında değişen uygunluk yeniden kontrol edilir.
   - Pacing testleri yeni kapı kümesiyle geçer; ilk gün çıkışı yalnız en hızlı yolda mümkündür.
   - Yeni ret metinleri 6 dilde vardır.
+- **Teslim (2026-11-08):**
+  - Ladder: gövde Radar 1 ister, gövde ve itki 240 dk; Aegis 1 isteğe bağlı adımların başında. Göç kapısı 16 adım, ilerleme çubuğu 19 üzerinden sayar. Gemi saldırısı `attack` (Aegis 1 + `FIRST_BATTLE_REPORT`); `canAttackVessel` saldırganda `pvpOpenAt` yoksa `FEATURE_LOCKED` döner. Saldırganın şartları geri gitmez (Aegis ve olgu düşmez), varışta hedefin şartları zaten yeniden sorulur.
+  - Karakol baskını, Onarım İstasyonu (dock) ve savaş simülatörü `fleet` ile açılır; sunucu ve web aynı kapıyı okur. Karakol kartı kapalıyken Tersane şartını, gemi kartı kapalıyken Aegis + savaş şartını ve Aegis'in gemiyi de hedef yaptığını söyler. `fleet`, `attack` ve `defence` kartları 6 dilde güncellendi.
+  - Gözcü, gemi sahibinin `vessel_missions` içinde kendi gönderdiği bir satırı yoksa gelmez (korsan ve gözcü satırlarının sahibi yoktur).
+  - İlk iki karakol `ensureFirstOutposts` ile Tersane 1 bitince eklenir (`firstOutposts: near 300, far 450, extraMax 8`); yerleşim kuralları `packages/rules/src/starter/sites.ts`'te. Tersane 1'in bitişi `private:vessel-sight` yayınlar, harita yeni karakolları hemen çizer. `layOutOnce` yalnız enkaza bakar; ilk karakollar galaksinin kendi yerleşiminden önce gelirse o yerleşim yine yapılır.
+  - Botlar: her gemi `seededFrom(id, 'aegis')` ile bir kez seçer, yaklaşık %60'ı Aegis 1 alır; onarım ve karakol baskını `fleet` ile açılır, gemi saldırısı `attack` altında kalır. Warmstart (`startPartWay`) en fazla Kristal Ocağı 3'e ulaştığı için Aegis vermez; ayrı bir `pvpOpenAt` düzeltmesi gerekmedi, değişmez testle bağlandı.
+  - 350×812 yürüyüşü (Tersane 1 yeni bitmiş, savaşsız ve Aegis'siz gemi): galakside 8 + 2 karakol, karakol kartında "Saldırı planla" açık, Tersane güvertesinde Onarım İstasyonu var, yatay taşma ve sayfa hatası yok. Gemi kartının kilit metni yalnız birim testle doğrulandı; haritada bir gemiyi açacak DOM yolu yok. Harita listesi karakolları adla sıralıyor, ilk ikisini öne almıyor: bu F4'ün işaretleme işidir.
+  - Yürüyüşte bulunan ve düzeltilen hata: koç alta yerleşmişken "Rehber istemiyorum" onayı kartın altında açılıyor, onay düğmelerine basılamıyordu. Onay açıkken kart çekiliyor, "Rehberle devam et" ile geri geliyor.
+  - **Tempo, plandan farklı çıktı.** Aynı model (`starter-pacing`): günde 1 oturum 6,8 gün, 2 oturum 3,4 gün, 3–4 oturum 2,5 gün, 15 oturum 1,7 gün. "İlk gün çıkışı yalnız en hızlı yolda" kabulü tutmaz: hiçbir düzen ilk gün göç etmez. Darboğaz motor veya yakıt değil, onarımlar ve kaynak; Döteryum Rafinerisini öne çekmek süreyi uzatır. Testler ölçülene sabitlendi; daha hızlı bir tempo isteniyorsa owner kararıdır.
 
 ### F3. Rehber: kısa temel + danışman
 - **Sıkı bölüm:** Yalnız birleşik geçiş anı, ilk toplama ve ilk onarım (bedel, süre, kuyruk). Kapı, el ve harcama kilidi yalnız burada.

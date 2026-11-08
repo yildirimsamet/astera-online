@@ -108,8 +108,8 @@ Galaksinin yeri doluysa yeni hesap gemide bekletilmez, doğrudan ana galaksiye g
 | Zaman | Oyuncu ne yaşar | Bir sonraki dönüşün sebebi |
 |---|---|---|
 | İlk oturum (~20–25 dk) | Prolog, sahiplenme, ilk sonda; kasalar, Rafineri 3, Depo 1, Tersane 1 ve Ocak 3 siparişleri. İlk Kazıcı en yakın asteroide gider, döner ve ganimet toplanır. Ardından veda. | Süren onarım ve sıradaki adımın saati |
-| 1. gün | Keşif anteni 2 Sohbeti açar. Tersane açılır. Kazıcı asteroide gider. Oyuncu bir asteroidin başkası tarafından boşaltıldığını görür ve "Bunu kim yaptı?" diye sorar. | Onarım, madencilik dönüşü |
-| 2. gün | Teleskop çevredeki hareketi görünür kılar. Radar, gemiye yaklaşıp dönen bir korsan gözcüsünü gösterir. Aegis onarılır, ilk korsan akını ve ilk savaş gelir. Rapordan sonra Saldır ve Onarım İstasyonu açılır. 12 saatlik oyuncu kalkanı başlar. | "Kalkanım bitiyor", savaş raporu |
+| 1. gün | Keşif anteni 2 Sohbeti açar. Tersane açılır: iki karakol gösterilir, oyuncu sondalar, karşı sınıfı kurar ve ilk baskınını kendisi seçer. Kazıcı asteroide gider. Oyuncu bir asteroidin başkası tarafından boşaltıldığını görür ve "Bunu kim yaptı?" diye sorar. | Onarım, madencilik ve baskın dönüşü |
+| 2. gün | Teleskop çevredeki hareketi görünür kılar. Kendi seferinden sonra Radar, gemiye yaklaşıp dönen bir korsan gözcüsünü gösterir. Aegis isteğe bağlıdır: onaran oyuncuya korsanlar ve diğer gemiler saldırabilir, o da bir savaştan sonra gemilere saldırabilir. 12 saatlik oyuncu kalkanı başlar. | "Kalkanım bitiyor", savaş raporu |
 | 3. gün | Küçük akınlar, karşılıklı sondalar, ilk rakip. Rapordan "Neden yenildim?" sorusu doğar. Araştırma ve filo kararları anlam kazanır. | Akın sonucu, açılan enkaz |
 | 4–5. gün | Motor gövdesi, itki parçası avı, yakıt. Komşular kalkmaya başlar. | Son parça, son yakıt |
 | Göç | Oyuncu kalkar, ana galaksiye geçer, gezegeni oluşur. | Ana oyun başlar |
@@ -142,14 +142,15 @@ Her onarım normal bir üretim emridir: kaynak öder, kuyruğa girer, süre dolu
 | | Hangar 2 | 1000/350 · 30 dk | İlk madencilik dönüşü | Hangar odası 20'den 32'ye, ikinci saldırı yuvası, Araştırma |
 | Savunma sistemleri | Teleskop 1 | 700/500 · 40 dk | Tersane 1 | Trafik, gözlem |
 | | Radar 1 | 500/380 · 1 sa | Teleskop 1 | Uyarı halkası, korsan gözcüsü |
-| | Aegis 1 | 315/237 · 45 dk | Radar 1 | Savunma, savaş raporu, ilk korsan akını |
-| Yıldızlararası motor | Motor gövdesi | 2200/1100 · 8 sa | Rafineri 4, Kristal Ocağı 3, Keşif anteni 2, Hangar 2, ilk savaş raporu | |
-| | İtki montajı | 1800/1200 · 8 sa | 3 itki parçası | Yakıt deposu |
+| Yıldızlararası motor | Motor gövdesi | 2200/1100 · 4 sa | Rafineri 4, Kristal Ocağı 3, Keşif anteni 2, Hangar 2, Radar 1 | |
+| | İtki montajı | 1800/1200 · 4 sa | 3 itki parçası | Yakıt deposu |
 | | Yakıt | 90 Döteryum | İtki montajı, Döteryum 2 | Göç |
 
-**Olayla açılanlar.** İlk madencilik dönüşü enkaz alanlarını, ilk savaş raporu Saldır düğmesini ve Onarım İstasyonu'nu açar (§3.7).
+**Olayla açılanlar.** İlk madencilik dönüşü enkaz alanlarını açar. Karakol baskını, Onarım İstasyonu ve savaş simülatörü Tersane 1 ile açılır; gemilere saldırı Aegis 1 ve ilk savaş raporunu birlikte ister (§3.6, §3.7; owner, 2026-11-08, N2–N3).
 
-**Parça avı, Motor gövdesi şartları karşılanınca başlar** (§3.5, §3.7 `drive`), gövde onarımını beklemez. Böylece 8 saatlik gövde onarımı sırasında oyuncunun yapacak işi olur. Süre hesabı da buna göre yapıldı.
+**Teleskop 1 ve Radar 1 göç için zorunludur, Aegis 1 değildir** (owner, 2026-11-08, N3). Aegis PvP'nin ve korsan akınının kapısıdır: onaran oyuncu korunur ama hedef olur.
+
+**Parça avı, Motor gövdesi şartları karşılanınca başlar** (§3.5, §3.7 `drive`), gövde onarımını beklemez. Böylece 4 saatlik gövde onarımı sırasında oyuncunun yapacak işi olur. Süre hesabı da buna göre yapıldı.
 
 **Kristal Ocağı şartları neden var.** Depo tavanı üretime bağlıdır. Motor gövdesinin 1100 kristali Ocak 1 tavanına (551), Döteryum 2'nin 600 kristali Ocak 0 tavanına sığmaz. Şart olmasaydı oyuncu sebebini anlamadığı bir fiyatla karşılaşırdı (`starter-ladder`). İsteğe bağlı adımlarda da aynı kural geçerlidir.
 
@@ -161,11 +162,15 @@ hedeflenir. Göçün 2.000/1.000/50 ambar tavanı değişmez. Tersane 1 bittiği
 çevrede asteroit yoksa 150–300 birim uzağa ortak kaya kurallarıyla bir kaya konur ve saatlik arzdan sayılır.
 Yörünge eğimleri kürenin kutuplarını da kapsar; dar bir ekvator kuşağı kutuptaki gemiye bu garantiyi veremiyordu.
 
-**İsteğe bağlı onarımlar** göç için şart değildir, karar yaratır: Rafineri 5 (1433/180 · 3 sa), Ocak 4 (444/334 · 2 sa), Depo 2 (600/300 · 1,5 sa), Keşif anteni 3 (1200/700 · 2,5 sa), Hangar 3 (2000/700 · 3 sa), Teleskop 2 (1500/1100 · 2 sa), Teleskop 3 (2600/1900 · 4 sa, ikinci gözlem yuvası, `telescopeSlots`), Radar 2 (1000/760 · 2 sa), Radar 3 (1800/1300 · 3 sa), Aegis 2 (504/379 · 1,5 sa), Araştırma. Aegis 3 ve üstü burada yoktur (§3.5).
+**İsteğe bağlı onarımlar** göç için şart değildir, karar yaratır: Aegis 1 (315/237 · 45 dk, Radar 1 ister; savunma, korsan akını, PvP), Rafineri 5 (1433/180 · 3 sa), Ocak 4 (444/334 · 2 sa), Depo 2 (600/300 · 1,5 sa), Keşif anteni 3 (1200/700 · 2,5 sa), Hangar 3 (2000/700 · 3 sa), Teleskop 2 (1500/1100 · 2 sa), Teleskop 3 (2600/1900 · 4 sa, ikinci gözlem yuvası, `telescopeSlots`), Radar 2 (1000/760 · 2 sa), Radar 3 (1800/1300 · 3 sa), Aegis 2 (504/379 · 1,5 sa), Araştırma. Aegis 3 ve üstü burada yoktur (§3.5).
 
 **Araştırma.** Ana oyunun gerçek projelerinden bir alt küme kullanılır: `SHIP_POWER`, `SHIP_ARMOR`, `SHIP_PROPULSION`, `PROSPECTOR_HOLDS`. Her biri en fazla 2 seviyedir. Bedeli ve süresi Faz 1'de ana oyunun ilk seviyelerinden alınır. Gemi tüketilince araştırma da biter, gezegene geçmez. Araştırma satırı bunu baştan söyler: "Bu araştırma gemiyle kalır."
 
 **Süre hesabı.** `starter-pacing` testi gerçek merdiveni ve gerçek üretim kurallarını oynar. Varsayımlar: 930/300 açılış (+60 havuz), inşaat ve tersane kuyruğu ayrı, kuyruk derinliği 3 (ana oyundaki `queueDepth`), gerçek toplama ve depo tavanı, 20 dakikalık oturum, Tersane'den sonra oturum başına 2 Kazıcı seferi (+300/+100), Motor paneli açılınca oturum başına en fazla 1 parça, bir kez 1800/700 filo alımı, yağma ve savaş kaybı yok.
+
+**2026-11-08 temposu (N3–N4: savaş yolda yok, motor parçaları 4 sa, Radar kapıda).** Aynı model: günde 1 oturum 6,8 gün, 2 oturum 3,4 gün, 3–4 oturum 2,5 gün, 15 oturum 1,7 gün. Hiçbir oturum düzeni ilk gün içinde göç ettirmez. Gemi motoru ya da yakıtı değil, onarımları ve kaynağı bekler; Döteryum Rafinerisini erken almak süreyi uzatır, çünkü bedeli depodan çıkar. Planın "en hızlı ~20 saat" hedefi bu modelde tutmaz (`starter-pacing`).
+
+Önceki ölçüm (2026-11-04 merdiveni, 8 saatlik motor, savaş raporu kapıda):
 
 | Oyuncu | Bitiş | 1./2./3./4./5. gün sonunda biten adım (19 üzerinden, yakıt hariç) |
 |---|---|---|
@@ -176,7 +181,7 @@ Yörünge eğimleri kürenin kutuplarını da kapsar; dar bir ekvator kuşağı 
 | Aşırı aktif (günde 15 oturum) | 2,7 gün | 11 / 17 / 19 / 19 / 19 |
 
 - Keşif anteni 3 ve Teleskop 2 isteğe bağlı oldu. Zorunlu kalsalar günde 2 oturum 4,8 gün sürüyor, oyuncunun seçimi de kalmıyordu.
-- Motor adımları 5 saatten 8 saate çıktı, çünkü sınırı en hızlı oyuncu belirliyor. Günde 15 oturum ve oturum başına 10 Kazıcı seferiyle bile bitiş 2,3 gündür.
+- Motor adımları 5 saatten 8 saate çıktı, çünkü sınırı en hızlı oyuncu belirliyor; owner 2026-11-08'de 4 saate indirdi (N4). Günde 15 oturum ve oturum başına 10 Kazıcı seferiyle bile bitiş 2,3 gündür.
 - Günde tek oturumda toplama tavanını 24 saate çıkarmak tek başına süreyi değiştirmiyor. Buna kuyruk derinliği 4 veya iki kat madencilik eklenirse süre ancak 7,8 güne iniyor. Bkz. A17.
 - Savaş kaybı modele girmez. Filosu yok olan oyuncu yeniden üretmek zorunda değildir, hiçbir onarım adımı savaş gemisi istemez (§3.6).
 - Bu sayılar modeldir. Gerçek değer oyun testinden sonra ayarlanır.
@@ -255,6 +260,8 @@ Aegis'siz eşit savaş (6 Ok ↔ 6 Ok) %24–28 gemi bırakır, ana oyunda %17�
 | Enkaz alanı | Mevcut enkaz görseli | Kazıcı | Kaynak, bazen itki parçası | 6 alan, 300–600 kaynak, boşalınca 2 saatte yenilenir |
 | Terk edilmiş karakol | Issız gezegen veya istasyon | Muhafızı yenen filo | Kaynak (250/450/900), bazen itki parçası | 8 karakol, 3 seviye, 6 saatte yenilenir |
 
+**İlk av'ın iki karakolu (owner, 2026-11-08, N6–N7).** Tersane 1 bittiğinde gemiden 300–450 birim uzakta (2 Ok için 3–5 dk) iki karakol garanti edilir: Muhafız tutan 1. seviye (2 Ok'un alabileceği) ve Ok ya da Kargı tutan 2. seviye (karşı sınıf ister). Yalnız eksik olan eklenir, düşmüş karakol sayılmaz; galaksiye kendi 8 karakolunun üstüne en fazla 8 eklenir (`firstOutposts`, `ensureFirstOutposts`). Kimsenin değildir, herkes baskın yapabilir.
+
 Kazıcı arzı bilinçli olarak sınırlıdır. Sefer başına 200 cevher, sınırsız olsa üretimi ezer ve 3–5 gün hedefini bozar. Kaya sayısı aktif gemiye göre `asteroidTargetPerHour` ile belirlenir, çünkü `planAsteroidHour` ana oyunun oyuncu başına 0,75 oranına bağlıdır. Karakol muhafızı ana oyundaki nötr dünya gibi çözülür (`services/neutral.ts`, `maintenanceExempt`), ama ele geçirme veya yerleşme yoktur. Karakolda Aegis yoktur. Üç seviyede 2, 3 ve 6 gemi bekler, her karakolun sınıfı farklıdır ve sonda raporu bunu söyler. Bu tempoda doğru sınıf rahat kazanır, yanlış sınıf zorlanır: 6 Ok, 6 Muhafız'a karşı %85 kesin zafer alır, 6 Kargı, 3 Muhafız'a karşı %61.
 
 **İtki parçası yarışı.** Oyunun ana döngüsü burada küçük hâliyle yaşanır:
@@ -266,7 +273,7 @@ Kazıcı arzı bilinçli olarak sınırlıdır. Sefer başına 200 cevher, sın�
 
 Az nüfusta oyuncu takılmasın diye, açık parça sayısı her zaman `max(2, motor aşamasındaki oyuncu sayısının yarısı)` olur.
 
-**Korsan gözcüsü ve ilk akın.** Radar 1 bittikten sonra, oyuncu oyundayken küçük bir NPC gözcüsü gemiye yaklaşıp döner, savaş olmaz. Radar uyarır, teleskop içeriğini söyler. Oyuncu radarın değerini ilk kez burada hisseder ve "Bu saldırsaydı ne olurdu?" diye sorar. Aegis 1 bitince ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Oyuncu ilk savaş raporunu görür, ardından Saldır ve Onarım İstasyonu açılır. Sonraki akınlar seyrektir, bakım penceresine düşmez. Bu sıra şart, çünkü savaş raporu ve Savunma Aegis 1'den önce kapalıdır.
+**Korsan gözcüsü ve ilk akın.** Radar 1 bittikten sonra, oyuncu oyundayken küçük bir NPC gözcüsü gemiye yaklaşıp döner, savaş olmaz. Radar uyarır, teleskop içeriğini söyler. Gözcü, oyuncu kendi ilk seferini (madencilik, sonda veya baskın) göndermeden gelmez (owner, 2026-11-08, N2). Oyuncu radarın değerini ilk kez burada hisseder ve "Bu saldırsaydı ne olurdu?" diye sorar. Aegis 1'i seçen oyuncuya ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
 
 **Görünür kalkış.** Bir komşu göç ettiğinde, galaksideki herkes gökyüzünde parlak bir iz görür. Kalkış panosuna adı düşer.
 
@@ -297,7 +304,7 @@ starter düzeltmesinin kapsamında değiştirilmedi.
 
 Tier olmadığı için herkes herkese saldırabilir, ama şu kurallar içinde:
 
-1. **Aegis 1 onarılmadan** oyunculardan saldırı yemezsin. Saldır düğmesi ilk savaş raporuyla açılır. Sonda hep serbesttir.
+1. **Aegis 1 onarılmadan** oyunculardan saldırı yemezsin, oyunculara da saldıramazsın: gemi saldırısı kendi Aegis 1'ini ve ilk savaş raporunu ister (owner, 2026-11-08, N3). Karakol baskını Tersane 1 ile açılır. Sonda hep serbesttir.
 2. Aegis 1 sonrası **12 saat kalkan** başlar. Oyuncu hazırlanır ve "Kalkanım bitiyor" diye geri döner. İlk saldırıyı kendisi yaparsa, onay istenir ve kalkan erken düşer (ana oyundaki D183 mantığı).
 3. **Aynı saldırgan aynı hedefe** 12 saatte en fazla 2 kez saldırabilir.
 4. Kesin yenilgiden sonra **3 saat toparlanma kalkanı** gelir.
@@ -313,20 +320,20 @@ Tier olmadığı için herkes herkese saldırabilir, ama şu kurallar içinde:
 
 Oyunun öğrenme eğrisi yüksektir, bu yüzden oyuncu yavaş yavaş ısıtılır (K8). **Bir açılmada tek sistem açılır.** İlk oturumda oyuncu yalnız üretimi ve sondayı öğrenir, böylece ilk gün başka bir oyuncuya dokunur.
 
-Kapalı bir menünün sebebi keyfi bir seviye şartı değil, o sistemin arızalı olmasıdır. İki kapı olaya bağlıdır: oyuncu önce kazar, sonra enkazı görür. Önce savaşı yaşar, sonra saldırabilir.
+Kapalı bir menünün sebebi keyfi bir seviye şartı değil, o sistemin arızalı olmasıdır. İki kapı olaya bağlıdır: oyuncu önce kazar, sonra enkazı görür. Önce savaşı yaşar, sonra gemilere saldırabilir.
 
 | Özellik anahtarı | Açılan yüzey | Şart |
 |---|---|---|
 | `production` | Üs sekmesi (Gemi ekranı), Toplama, alaşım ve kristal sayacı | Rafineri 1 |
 | `intel` | İstihbarat sekmesi, Sonda düğmesi, karanlık noktalar | Keşif anteni 1 |
 | `chat` | Sohbet | Keşif anteni 2 |
-| `fleet` | Filo sekmesi, gemi üretimi, asteroitler | Tersane 1 |
+| `fleet` | Filo sekmesi, gemi üretimi, asteroitler, karakol baskını, Onarım İstasyonu, savaş simülatörü | Tersane 1 |
 | `salvage` | Enkaz alanları | İlk madencilik dönüşü |
 | `research` | Araştırma | Hangar 2 |
 | `telescope` | Teleskop halkası, trafik, gözlem | Teleskop 1 |
 | `radar` | Radar halkası, uyarılar | Radar 1 |
 | `defence` | Savunma, savaş raporu, ilk korsan akını | Aegis 1 |
-| `attack` | Saldır düğmesi, Onarım İstasyonu, savaş simülatörü | İlk savaş raporu |
+| `attack` | Gemilere saldırı | Aegis 1 ve ilk savaş raporu |
 | `deuterium` | Döteryum sayacı, uçuş yakıtı | Döteryum 1 |
 | `drive` | Motor paneli, parça işaretleri | Motor gövdesi şartları |
 | `migration` | Göç düğmesi | Yakıt tamam |
@@ -1053,7 +1060,7 @@ Her ölçüt bir testtir. Dosyalar: `packages/rules/test/`, `apps/server/test/`,
 | Korumalı hedefe saldırı reddedilir, onaylı ilk saldırı kalkanı düşürür, göçe hazır ve 14 günlük gemi saldıramaz | `starter-protection-api` | 6 |
 | %95 ve üstü hasarlı gemi saldıramaz, %20'ye kadar hasar ücretsizdir, dock faturası ve süresi doğrudur, savaş enkazı yok olan gemi değerinin %10'udur, 100 kaynağın altında alan oluşmaz | `starter-damage-dock` | 6 |
 | Bütün filosu yok olan oyuncu üretim, Kazıcı ve enkaz yoluyla göçe ulaşır | `starter-no-softlock` | 6 |
-| Gözcü Radar 1 sonrası savaşsız döner, ilk akın Aegis 1 sonrası oyuncu aktifken gelir, ilk rapor Saldır'ı ve Onarım İstasyonu'nu açar | `starter-npc-raid` | 6 |
+| Gözcü Radar 1 ve oyuncunun kendi ilk seferi sonrası savaşsız döner, ilk akın Aegis 1 sonrası oyuncu aktifken gelir, rapor Saldır'ı açar | `starter-npc-raid` | 7 |
 | Rapor ve gönderme ekranı yarı hızı söyler, tekrar izleme açılır | `starter-report` | 6 |
 | Gemi kipinde simülatör ve hedef okuması bu galaksinin tempo ve Aegis değerini kullanır | `starter-simulator` | 6 |
 | Gemi kipinde `outOfBand` yok, kademe ve yerleşme kontrolleri görünmez | `starter-band-ui` | 6 |

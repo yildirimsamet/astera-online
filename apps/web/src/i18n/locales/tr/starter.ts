@@ -75,8 +75,9 @@ export const starter = {
     "FIRST_MINING_RETURN": "ilk madencilik dönüşün",
     "FIRST_BATTLE_REPORT": "ilk savaş raporun"
   },
-  "factHow": {"FIRST_PROBE_REPORT": "Komşu bir gemiye sonda gönder.", "FIRST_MINING_RETURN": "Bir Kazıcıyı asteroide gönder ve dönmesini bekle.", "FIRST_BATTLE_REPORT": "Aegis onarılınca korsanlar gemine akın eder. O savaşın raporu sayılır."},
-  "attackLocked": "Saldırı ilk savaşından sonra açılır. Aegis onarılınca korsanlar gemine akın eder; o savaşın raporu saldırıyı açar.",
+  "factHow": {"FIRST_PROBE_REPORT": "Komşu bir gemiye sonda gönder.", "FIRST_MINING_RETURN": "Bir Kazıcıyı asteroide gönder ve dönmesini bekle.", "FIRST_BATTLE_REPORT": "Bir karakola baskın yap ya da Aegis açıkken korsanları karşıla. O savaşın raporu sayılır."},
+  "attackLocked": "Gemilere saldırmak için kendi Aegis’in onarılmış ve arkanda bir savaş olmalı. Aegis açıkken senin gemine de saldırılabilir.",
+  "outpostLocked": "Karakol baskını Tersane ile açılır. Tersaneyi onar; ürettiği gemiler buraya baskına çıkabilir.",
   "partsNeeded": "{{count}} itki parçası",
   "effect": {
     "rate": {
@@ -106,7 +107,7 @@ export const starter = {
     },
     "fleet": {
       "gain": "Filoyu açar",
-      "line": "Gemi üretebilir, asteroit kazmak için Kazıcı gönderebilirsin."
+      "line": "Gemi üretir, Kazıcıyla asteroit kazar, karakollara baskın yapar, hasarlı gemileri Onarım İstasyonu’nda onarırsın."
     },
     "chat": {
       "gain": "Sohbeti açar",
@@ -129,13 +130,13 @@ export const starter = {
       "line": "Halkasının içindeki uçuş, bilinmeyen kontak olarak görünür ve seni uyarır."
     },
     "defence": {
-      "risk": "Onarıldıktan sonra korsanlar bu gemiye akın edebilir.",
+      "risk": "Onarıldıktan sonra korsanlar ve diğer gemiler bu gemiye saldırabilir.",
       "gain": "Savunmayı açar",
-      "line": "Hasarı önce Aegis karşılar. Korsanlar artık bu gemiye akın edebilir."
+      "line": "Hasarı önce Aegis karşılar. Korsanlar ve diğer gemiler artık bu gemiye saldırabilir; bir savaştan sonra sen de gemilere saldırabilirsin."
     },
     "attack": {
       "gain": "Saldırıyı açar",
-      "line": "Gemilere ve karakollara saldırabilir, hasarlı gemileri Onarım İstasyonu’nda onarabilirsin."
+      "line": "Aegis’i açık gemilere saldırabilirsin. Onlar da sana saldırabilir."
     },
     "deuterium": {
       "gain": "Döteryumu açar",

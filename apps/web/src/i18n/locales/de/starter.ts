@@ -75,8 +75,9 @@ export const starter = {
     "FIRST_MINING_RETURN": "deine erste Bergbau-Rückkehr",
     "FIRST_BATTLE_REPORT": "dein erster Kampfbericht"
   },
-  "factHow": {"FIRST_PROBE_REPORT": "Schicke eine Sonde zu einem Nachbarschiff.", "FIRST_MINING_RETURN": "Schicke einen Prospektor zu einem Asteroiden und warte, bis er zurückkommt.", "FIRST_BATTLE_REPORT": "Sobald die Aegis repariert ist, überfallen Piraten dein Schiff. Der Bericht dieses Kampfes zählt."},
-  "attackLocked": "Angriffe öffnen sich nach deinem ersten Kampf. Sobald die Aegis repariert ist, überfallen Piraten dein Schiff, und der Bericht dieses Kampfes öffnet sie.",
+  "factHow": {"FIRST_PROBE_REPORT": "Schicke eine Sonde zu einem Nachbarschiff.", "FIRST_MINING_RETURN": "Schicke einen Prospektor zu einem Asteroiden und warte, bis er zurückkommt.", "FIRST_BATTLE_REPORT": "Überfalle einen Außenposten oder stell dich den Piraten, sobald die Aegis steht. Der Bericht dieses Kampfes zählt."},
+  "attackLocked": "Um Schiffe anzugreifen, brauchst du deine reparierte Aegis und einen Kampf hinter dir. Mit der Aegis kann auch dein Schiff angegriffen werden.",
+  "outpostLocked": "Überfälle auf Außenposten öffnen sich mit der Werft. Repariere sie, und die Schiffe, die sie baut, können hier angreifen.",
   "partsNeeded": "{{count}} Schubteile",
   "effect": {
     "rate": {
@@ -106,7 +107,7 @@ export const starter = {
     },
     "fleet": {
       "gain": "Öffnet die Flotte",
-      "line": "Du kannst Schiffe bauen und einen Prospektor zum Asteroidenabbau schicken."
+      "line": "Du kannst Schiffe bauen, einen Prospektor Asteroiden abbauen lassen, Außenposten überfallen und beschädigte Schiffe in der Reparaturstation instand setzen."
     },
     "chat": {
       "gain": "Öffnet den Chat",
@@ -129,13 +130,13 @@ export const starter = {
       "line": "In seinem Ring erscheint ein Flug als unbekannter Kontakt und warnt dich."
     },
     "defence": {
-      "risk": "Sobald sie repariert ist, können Piraten dieses Schiff überfallen.",
+      "risk": "Sobald sie repariert ist, können Piraten und andere Schiffe dieses Schiff angreifen.",
       "gain": "Öffnet die Verteidigung",
-      "line": "Die Aegis fängt Schaden zuerst ab. Piraten können dieses Schiff jetzt überfallen."
+      "line": "Die Aegis fängt Schaden zuerst ab. Piraten und andere Schiffe können dieses Schiff jetzt angreifen; nach einem Kampf kannst auch du Schiffe angreifen."
     },
     "attack": {
       "gain": "Öffnet Angriffe",
-      "line": "Du kannst Schiffe und Außenposten angreifen und beschädigte Schiffe in der Reparaturstation reparieren."
+      "line": "Du kannst Schiffe angreifen, deren Aegis steht. Sie können auch dich angreifen."
     },
     "deuterium": {
       "gain": "Öffnet Deuterium",

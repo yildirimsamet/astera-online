@@ -88,33 +88,37 @@ function daysToJump(sessionHours: readonly number[]): number {
   return Infinity;
 }
 
+/**
+ * THE PROMISE AFTER THE OWNER'S 2026-11-08 TEMPO (N3, N4): no battle on the way, four hours a part
+ * for the engine, the radar in the gate. Measured on this model: 6.8 days at one session a day, 3.4
+ * at two, 2.5 at three or four, 1.7 at fifteen. Two to three days is the normal pace, and no schedule
+ * of sessions reaches the main galaxy inside its first day: the works, not the engine or the fuel,
+ * are what a ship waits on (a deuterium plant ordered early slows it, since the store pays for it).
+ */
 describe('how long the ship takes', () => {
   it('has a required ladder a player can finish', () => {
     expect(REPAIR_LADDER.some(s => s.required)).toBe(true);
     expect(Number.isFinite(daysToJump([9, 20]))).toBe(true);
   });
 
-  it('takes at most five days at two sessions a day', () => {
-    expect(daysToJump([9, 20])).toBeLessThanOrEqual(5);
+  it('takes under four days at two sessions a day', () => {
+    expect(daysToJump([9, 20])).toBeLessThan(4);
   });
 
-  it('takes three to four days at three sessions a day', () => {
+  it('takes two to three days at three sessions a day', () => {
     const days = daysToJump([9, 13, 20]);
-    expect(days).toBeGreaterThanOrEqual(3);
-    expect(days).toBeLessThanOrEqual(4);
+    expect(days).toBeGreaterThanOrEqual(2);
+    expect(days).toBeLessThanOrEqual(3);
   });
 
-  /**
-   * The retention plan (§6.1, §9.1 Q10) moves the first day forward and keeps the engine at eight
-   * hours; the 3–5 day promise is for two or three sessions a day (A17). Four sessions land in under
-   * three days, and that is the reward for coming back often, not a hole in the promise.
-   */
-  it('takes at least two and a half days at four sessions a day', () => {
-    expect(daysToJump([9, 13, 18, 22])).toBeGreaterThanOrEqual(2.5);
+  it('takes at least two days at four sessions a day', () => {
+    expect(daysToJump([9, 13, 18, 22])).toBeGreaterThanOrEqual(2);
   });
 
-  it('takes at least two days for the most active player', () => {
-    expect(daysToJump([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22])).toBeGreaterThanOrEqual(2);
+  it('never lands the most active player inside the first day', () => {
+    const days = daysToJump([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
+    expect(days).toBeGreaterThan(1);
+    expect(days).toBeLessThan(2);
   });
 
   it('still lands a player who comes once a day', () => {

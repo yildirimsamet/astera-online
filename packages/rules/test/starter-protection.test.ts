@@ -40,6 +40,20 @@ describe('who may attack whom', () => {
     expect(ask({ attacker: { progress: { ...openingProgress(), modules: { AEGIS: 1 } } } })).toEqual({ ok: false, code: 'FEATURE_LOCKED' });
   });
 
+  /**
+   * OWNER 2026-11-08 (N2): a ship that can strike others can be struck back. An outpost victory opens
+   * the report, not the right to hunt ships; that needs the attacker's own Aegis and its protection
+   * record, exactly what the target is asked for.
+   */
+  it('refuses an attacker with no Aegis of its own, even after a battle', () => {
+    expect(ask({ attacker: { progress: { ...openingProgress(), modules: { REFINERY: 1, SHIPYARD: 1 }, facts: ['FIRST_BATTLE_REPORT'] }, pvpOpenAtMs: null } }))
+      .toEqual({ ok: false, code: 'FEATURE_LOCKED' });
+  });
+
+  it('refuses an attacker whose Aegis has no protection record', () => {
+    expect(ask({ attacker: { pvpOpenAtMs: null } })).toEqual({ ok: false, code: 'FEATURE_LOCKED' });
+  });
+
   it('refuses a ship with no Aegis', () => {
     expect(ask({ target: { progress: openingProgress(), pvpOpenAtMs: null } })).toEqual({ ok: false, code: 'PVP_PROTECTED' });
   });

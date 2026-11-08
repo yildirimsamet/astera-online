@@ -221,6 +221,16 @@ describe('Wiki on the colony ship', () => {
     }
   });
 
+  // Owner 2026-11-08 (N2–N3): outposts open with the Shipyard; a ship attack asks for the attacker's own Aegis.
+  it('says what opens an outpost raid and a ship attack, and that the jump does not need the Aegis', () => {
+    expect(text('basics.starter-galaxy', 'en')).toMatch(/Outposts open with the Shipyard/);
+    expect(text('basics.starter-galaxy', 'en')).toMatch(/Attacking a ship needs your own Aegis and one battle behind you/);
+    expect(text('basics.the-jump', 'en')).toMatch(/does not need the Aegis/);
+    expect(text('basics.starter-galaxy', 'tr')).toMatch(/Karakollar Tersane ile açılır/);
+    expect(text('basics.starter-galaxy', 'tr')).toMatch(/Gemiye saldırmak kendi Aegis’ini ve arkanda bir savaşı ister/);
+    expect(text('basics.the-jump', 'tr')).toMatch(/Aegis istemez/);
+  });
+
   it('never tells a reader that some commanders are played by the server', () => {
     for (const id of ['basics.colony-ship', 'basics.starter-galaxy', 'basics.the-jump']) {
       for (const language of ['en', 'tr'] as const) expect(text(id, language)).not.toMatch(/\bbots?\b|botlar|npc/i);

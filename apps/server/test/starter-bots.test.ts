@@ -1,11 +1,11 @@
-import { STARTER, STARTER_CRATES, shipBotTarget, type VesselModules } from '@astera/rules';
+import { STARTER, STARTER_CRATES, dockBill, shipBotTarget, type VesselModules } from '@astera/rules';
 import { and, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { players, starterDepartures, starterGalaxies, starterSites, vesselBotState, vesselMissions, vesselProbeReports, vessels } from '../src/db/schema.js';
+import { players, starterDepartures, starterGalaxies, starterSites, vesselBotState, vesselMissions, vesselOrders, vesselProbeReports, vesselUnits, vessels } from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
-import { crewGalaxies, sweepShipBots, takeShipBotTurn } from '../src/services/starter/shipBots.js';
+import { crewGalaxies, crewTakesShield, sweepShipBots, takeShipBotTurn } from '../src/services/starter/shipBots.js';
 import { resolveMiningLanding } from '../src/services/starter/mining.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
@@ -137,6 +137,79 @@ describe('the ships the server plays', () => {
     await arm(world, bot!.ship.id, { DART: 6 });
     await takeShipBotTurn(world.f.db, bot!.ship.accountId, world.f.clock, log, { attackRoll: 0 });
     expect(await attacks()).toHaveLength(1);
+  });
+
+  /**
+   * OWNER 2026-11-08 (N3): the shield is a choice, so it is one for the server's crews too. Were none
+   * of them to take it, only people would ever meet pirates or other ships, and that would tell them
+   * apart (the locked decision of 2026-10-28). Each crew's choice is its own and does not change.
+   */
+  it('takes the shield on some crews and not on others, each for good', () => {
+    const ids = Array.from({ length: 200 }, () => crypto.randomUUID());
+    const share = ids.filter(id => crewTakesShield(id)).length / ids.length;
+    expect(share).toBeGreaterThan(0.4);
+    expect(share).toBeLessThan(0.8);
+    for (const id of ids.slice(0, 20)) expect(crewTakesShield(id)).toBe(crewTakesShield(id));
+  });
+
+  it('repairs the shield through a person\'s door once the radar is up, when its crew chose it, and never otherwise', async () => {
+    await names(2);
+    await aboard(world, 'Me');
+    await crew();
+    world.f.clock.advance(11);
+    await crew();
+    const ships = (await bots()).map(({ ship }) => ship);
+    const radarUp = { REFINERY: 2, EXTRACTOR: 1, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 };
+    const shields = async (id: string) => world.f.db.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, id), eq(vesselOrders.subject, 'AEGIS')));
+    for (const ship of ships) {
+      await world.f.db.update(vessels).set({ modules: radarUp, facts: [...FACTS], cratesOpened: OPENED, alloy: 2000, crystal: 2000 }).where(eq(vessels.id, ship.id));
+      await turn(ship.accountId);
+      expect((await shields(ship.id)).length, ship.id).toBe(crewTakesShield(ship.id) ? 1 : 0);
+    }
+  });
+
+  it('never stands a new ship up with a shield and no record of it', async () => {
+    await names(12);
+    await aboard(world, 'Me');
+    for (let i = 0; i < 4; i++) { await crew(); world.f.clock.advance(11); }
+    const ships = (await bots()).map(({ ship }) => ship);
+    expect(ships.length).toBeGreaterThan(0);
+    for (const ship of ships) if ((ship.modules.AEGIS ?? 0) >= 1) expect(ship.pvpOpenAt).not.toBeNull();
+  });
+
+  // Owner 2026-11-08 (N2): the outpost is the shipyard's first fight, for a server ship as for a person.
+  it('raids an outpost with its first Darts, with no battle behind it and no shield', async () => {
+    await names(1);
+    const me = await aboard(world, 'Me');
+    await crew();
+    const [bot] = await bots();
+    await sweepStarterWorld(world.f.db, world.f.clock);
+    // An old neighbour it has read already, and fuel for any outpost in the galaxy: only the raid is left.
+    await world.f.db.update(vessels).set({ enlistedAt: new Date(world.f.clock.now().getTime() - 2 * 24 * 3_600_000) }).where(eq(vessels.id, me.vesselId));
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 2, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'], cratesOpened: OPENED, alloy: 0, crystal: 0, deuterium: 500 }).where(eq(vessels.id, bot!.ship.id));
+    // Four Darts and nothing else: a miner it may have started with would rather mine.
+    await world.f.db.delete(vesselUnits).where(eq(vesselUnits.vesselId, bot!.ship.id));
+    await arm(world, bot!.ship.id, { DART: 4 });
+    expect(await turn(bot!.ship.accountId)).toBe('raid');
+    const raids = await world.f.db.select().from(vesselMissions).where(and(eq(vesselMissions.ownerVesselId, bot!.ship.id), eq(vesselMissions.kind, 'RAID_SITE')));
+    expect(raids).toHaveLength(1);
+  });
+
+  it('mends its ships at the station with no shield', async () => {
+    await names(1);
+    await aboard(world, 'Me');
+    await crew();
+    const [bot] = await bots();
+    const hurt = [{ hull: 'DART' as const, count: 2, damageBp: 4000 }];
+    // Exactly the station's bill: nothing left over for a repair to go first.
+    const { cost } = dockBill(hurt);
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 2, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'], cratesOpened: OPENED, ...cost }).where(eq(vessels.id, bot!.ship.id));
+    await world.f.db.delete(vesselUnits).where(eq(vesselUnits.vesselId, bot!.ship.id));
+    await arm(world, bot!.ship.id, { DART: 2 });
+    await world.f.db.update(vesselUnits).set({ damage: hurt }).where(and(eq(vesselUnits.vesselId, bot!.ship.id), eq(vesselUnits.hull, 'DART')));
+    await turn(bot!.ship.accountId);
+    const docks = await world.f.db.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, bot!.ship.id), eq(vesselOrders.queue, 'DOCK')));
+    expect(docks).toHaveLength(1);
   });
 
   it('leaves a scarce part for a person hunting one', async () => {

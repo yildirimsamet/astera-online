@@ -1,9 +1,10 @@
 import type { PlanetSlot } from '../galaxy.js';
+import { fleetEntries } from '../hulls.js';
 import { mulberry32 } from '../rng.js';
 import { distance } from '../travel.js';
 import type { Fleet, HullId, Rng, Vec3 } from '../types.js';
 import { STARTER } from './constants.js';
-import { starterPoint } from './placement.js';
+import { FLATTENING, starterPoint } from './placement.js';
 
 export interface StarterSiteSeed extends Vec3 {
   kind: 'WRECK' | 'OUTPOST';
@@ -57,6 +58,59 @@ export function starterSitePlan(seed: number, slots: readonly PlanetSlot[]): Sta
     });
   }
   return plan;
+}
+
+/**
+ * THE FIRST HUNT'S TWO OUTPOSTS (owner 2026-11-08, N6–N7). `wall`: Sur-held, first level, which the
+ * shipyard's two Darts beat. `counter`: Akıncı- or Mızrak-held, second level, which asks for the right
+ * ship first. The roles read the layout every outpost already has; nothing new is invented for them.
+ */
+export type FirstOutpostRole = 'wall' | 'counter';
+
+const LEVEL_OF: Readonly<Record<FirstOutpostRole, number>> = { wall: 1, counter: 2 };
+const HELD_BY: Readonly<Record<FirstOutpostRole, readonly HullId[]>> = { wall: ['WARDEN'], counter: ['DART', 'PIKE'] };
+
+function roleOf(site: { level: number; guard: Fleet | null }): FirstOutpostRole | null {
+  const held = fleetEntries(site.guard ?? {}).filter(([, count]) => count > 0);
+  if (held.length !== 1) return null;
+  const hull = held[0]![0];
+  return (['wall', 'counter'] as const).find(role => LEVEL_OF[role] === site.level && HELD_BY[role].includes(hull)) ?? null;
+}
+
+const inBand = (ship: Vec3, point: Vec3): boolean => {
+  const span = distance(ship, point);
+  return span >= STARTER.firstOutposts.near && span <= STARTER.firstOutposts.far;
+};
+
+/** The roles no standing outpost in the band plays for this ship yet, wall first. */
+export function firstOutpostsMissing(ship: Vec3, outposts: readonly (Vec3 & { level: number; guard: Fleet | null })[]): FirstOutpostRole[] {
+  const played = new Set(outposts.filter(site => inBand(ship, site)).map(roleOf));
+  return (['wall', 'counter'] as const).filter(role => !played.has(role));
+}
+
+/** A free point in the band, on the map and clear of every berth and fixed site; null when there is none. */
+export function firstOutpostPoint(ship: Vec3, berths: readonly Vec3[], sites: readonly Vec3[], random: Rng): Vec3 | null {
+  const { near, far } = STARTER.firstOutposts;
+  for (let attempt = 0; attempt < MOST_ATTEMPTS; attempt++) {
+    // A direction uniform on the sphere, flattened as the galaxy is, at a span inside the band.
+    const height = random() * 2 - 1;
+    const angle = random() * 2 * Math.PI;
+    const flat = Math.sqrt(1 - height * height);
+    const span = near + random() * (far - near);
+    const point = { x: ship.x + span * flat * Math.cos(angle), y: ship.y + span * height * FLATTENING, z: ship.z + span * flat * Math.sin(angle) };
+    if (!inBand(ship, point) || Math.hypot(point.x, point.y, point.z) > STARTER.radius) continue;
+    if (berths.every(berth => distance(berth, point) >= CLEAR_OF_BERTHS) && sites.every(site => distance(site, point) >= CLEAR_OF_SITES)) return point;
+  }
+  return null;
+}
+
+/** The outpost a role is, laid out as `starterSitePlan` lays out the galaxy's own. */
+export function firstOutpostSeed(role: FirstOutpostRole, at: Vec3, random: Rng): StarterSiteSeed {
+  const level = LEVEL_OF[role];
+  const classes = HELD_BY[role];
+  const hull = classes[Math.floor(random() * classes.length)]!;
+  const { guards, stock } = STARTER.sites.outposts;
+  return { kind: 'OUTPOST', x: at.x, y: at.y, z: at.z, level, stock: stock[level - 1]!, guard: { [hull]: guards[level - 1]! } };
 }
 
 /** Half of those hunting, and never fewer than two, so that a thin galaxy cannot strand anyone. */

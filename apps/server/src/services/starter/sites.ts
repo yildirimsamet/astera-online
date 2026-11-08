@@ -15,9 +15,13 @@ const HOUR_MS = 3_600_000;
 
 type Galaxy = typeof starterGalaxies.$inferSelect;
 
-/** The fixed places, once per galaxy, split from the stock as the main game splits a wreck. */
+/**
+ * The fixed places, once per galaxy, split from the stock as the main game splits a wreck. Read off the
+ * wrecks alone: only this lays them out, while a shipyard's first outposts (`ensureFirstOutposts`) may
+ * come first on a galaxy the sweep has not reached yet.
+ */
 async function layOutOnce(tx: Tx, galaxy: Galaxy, now: Date): Promise<void> {
-  const [any] = await tx.select({ id: starterSites.id }).from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxy.id), inArray(starterSites.kind, ['WRECK', 'OUTPOST']))).limit(1);
+  const [any] = await tx.select({ id: starterSites.id }).from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxy.id), eq(starterSites.kind, 'WRECK'))).limit(1);
   if (any) return;
   const plan = starterSitePlan(galaxy.seed, starterSlots(galaxy.seed));
   await tx.insert(starterSites).values(plan.map(site => ({

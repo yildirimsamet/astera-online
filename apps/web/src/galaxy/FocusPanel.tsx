@@ -910,10 +910,15 @@ export function PlanetFocus({
     }
     : null;
 
+  /*
+    An outpost is the shipyard's first fight; a ship asks for the attacker's own Aegis and a battle
+    behind it (owner 2026-11-08, N2–N3).
+  */
+  const outpostTarget = target.body === 'OUTPOST';
   /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
-  const attackControl = !target.clanmate && (!gate.open('attack')
+  const attackControl = !target.clanmate && (!gate.open(outpostTarget ? 'fleet' : 'attack')
     // A closed attack says why and how it opens (player test A-05, owner K1 2026-11-05).
-    ? <p data-testid="attack-locked" className="basis-full text-micro leading-snug text-v2-ink-3">{t('starter.attackLocked')}</p>
+    ? <p data-testid="attack-locked" className="basis-full text-micro leading-snug text-v2-ink-3">{t(outpostTarget ? 'starter.outpostLocked' : 'starter.attackLocked')}</p>
     : (
           <button
             type="button"

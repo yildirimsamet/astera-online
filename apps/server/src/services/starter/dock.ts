@@ -11,10 +11,13 @@ import { markProgress } from './quiet.js';
 import { activeOrders, vesselView, withVesselLock } from './vessel.js';
 import { assertFeatureOpen } from './world.js';
 
-/** The Repair Station takes everything hurt at home. It opens with the first battle report, with Attack. */
+/**
+ * The Repair Station takes everything hurt at home. It opens with the shipyard and has work only when
+ * a ship is hurt, so an outpost's damage mends without the shield and its PvP (owner 2026-11-08, N2).
+ */
 export const dockFleet = (db: Db, accountId: string, clock: Clock) =>
   withVesselLock(db, accountId, clock, async (tx, vessel) => {
-    assertFeatureOpen(vessel.row, 'attack');
+    assertFeatureOpen(vessel.row, 'fleet');
     if ((await activeOrders(tx, vessel.row.id, 'DOCK')).length >= STARTER.queues.dock) throw new GameError('QUEUE_FULL', 'The station is busy', 409, { context: 'dock' });
     const units = await tx.select().from(vesselUnits).where(and(eq(vesselUnits.vesselId, vessel.row.id), eq(vesselUnits.location, 'HOME')));
     const { cost, minutes } = dockBill(units.flatMap(unit => unit.damage));

@@ -125,8 +125,7 @@ export const launchVesselFleet = (db: Db, accountId: string, body: LaunchBody, k
     const [ship] = await tx.select().from(vessels).where(and(eq(vessels.id, body.targetPlanetId), eq(vessels.starterGalaxyId, row.starterGalaxyId)));
     const [site] = ship ? [] : await tx.select().from(starterSites).where(and(eq(starterSites.id, body.targetPlanetId), eq(starterSites.starterGalaxyId, row.starterGalaxyId), eq(starterSites.kind, 'OUTPOST')));
     if (!ship && !site) throw new GameError('PLANET_NOT_FOUND', 'Nothing like that in this galaxy', 404, { context: 'ship' });
-    // A ship's own answer asks this too. The menu is not the lock (§3.7).
-    if (site) assertFeatureOpen(row, 'attack');
+    // An outpost is the shipyard's first fight (owner 2026-11-08, N2): `fleet`, asked above, is its whole door.
 
     if (ship) {
       const answer = await attackAnswer(tx, row, ship, vessel.now);

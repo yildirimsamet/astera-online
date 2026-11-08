@@ -75,8 +75,9 @@ export const starter = {
     "FIRST_MINING_RETURN": "tu primer regreso de minería",
     "FIRST_BATTLE_REPORT": "tu primer informe de batalla"
   },
-  "factHow": {"FIRST_PROBE_REPORT": "Envía una sonda a una nave vecina.", "FIRST_MINING_RETURN": "Envía un Prospector a un asteroide y espera a que vuelva.", "FIRST_BATTLE_REPORT": "Cuando la Aegis esté reparada, los piratas asaltarán tu nave. El informe de esa batalla cuenta."},
-  "attackLocked": "Los ataques se abren tras tu primera batalla. Cuando la Aegis esté reparada, los piratas asaltarán tu nave, y el informe de esa batalla los abre.",
+  "factHow": {"FIRST_PROBE_REPORT": "Envía una sonda a una nave vecina.", "FIRST_MINING_RETURN": "Envía un Prospector a un asteroide y espera a que vuelva.", "FIRST_BATTLE_REPORT": "Asalta un puesto avanzado o enfréntate a los piratas cuando la Aegis esté activa. El informe de esa batalla cuenta."},
+  "attackLocked": "Para atacar naves necesitas tu Aegis reparada y una batalla a tus espaldas. Con la Aegis activa, tu nave también puede ser atacada.",
+  "outpostLocked": "Los asaltos a puestos avanzados se abren con el Astillero. Repáralo y las naves que construya podrán atacar aquí.",
   "partsNeeded": "{{count}} piezas de empuje",
   "effect": {
     "rate": {
@@ -106,7 +107,7 @@ export const starter = {
     },
     "fleet": {
       "gain": "Abre la flota",
-      "line": "Puedes construir naves y enviar un Prospector a minar asteroides."
+      "line": "Puedes construir naves, enviar un Prospector a minar asteroides, asaltar puestos avanzados y reparar naves dañadas en la Estación de reparación."
     },
     "chat": {
       "gain": "Abre el chat",
@@ -129,13 +130,13 @@ export const starter = {
       "line": "Dentro de su anillo, un vuelo aparece como contacto desconocido y te avisa."
     },
     "defence": {
-      "risk": "Una vez reparada, los piratas podrán asaltar esta nave.",
+      "risk": "Una vez reparada, los piratas y otras naves pueden atacar esta nave.",
       "gain": "Abre la defensa",
-      "line": "La Aegis absorbe el daño primero. Los piratas ya pueden asaltar esta nave."
+      "line": "La Aegis absorbe el daño primero. Los piratas y otras naves ya pueden atacar esta nave; tras una batalla, tú también puedes atacar naves."
     },
     "attack": {
       "gain": "Abre los ataques",
-      "line": "Puedes atacar naves y puestos, y reparar naves dañadas en la Estación de Reparación."
+      "line": "Puedes atacar naves con la Aegis activa. Ellas también pueden atacarte."
     },
     "deuterium": {
       "gain": "Abre el deuterio",

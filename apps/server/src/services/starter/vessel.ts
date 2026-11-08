@@ -9,6 +9,7 @@ import { pushDevices, starterGalaxies, vesselMissions, vesselNotifications, vess
 import { publish } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { queueRepairNotice } from './noticeQueue.js';
+import { ensureFirstOutposts } from './outposts.js';
 import { ensureFirstRock } from './rocks.js';
 import { GameError } from '../planet.js';
 
@@ -125,12 +126,17 @@ async function finishOrder(tx: Tx, vessel: LockedVessel, order: VesselOrderRow):
   const opens = openFeatures(progressOf(row)).size > openFeatures(progressOf(vessel.row)).size;
   vessel.row = row;
   if (!opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000) await queueRepairNotice(tx, vessel.row, order.readyAt);
-  if (module === 'SHIPYARD' && order.stage === 1) await ensureFirstRock(tx, vessel);
+  const yard = module === 'SHIPYARD' && order.stage === 1;
+  if (yard) {
+    await ensureFirstRock(tx, vessel);
+    await ensureFirstOutposts(tx, vessel.row, vessel.now);
+  }
 
   await tx.insert(vesselNotifications).values({
     vesselId: row.id, kind: 'REPAIR_DONE', refId: order.id, payload: { module, stage: order.stage, long: !opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000 }, createdAt: order.readyAt,
   }).onConflictDoNothing();
-  await publish(tx, row.id, module === 'SURVEY' || module === 'TELESCOPE' ? 'private:vessel-sight' : 'private:vessel');
+  // What the ship sees changed: a new reach, or the shipyard's first outposts on the map.
+  await publish(tx, row.id, module === 'SURVEY' || module === 'TELESCOPE' || yard ? 'private:vessel-sight' : 'private:vessel');
 }
 
 /** Everything due, in the order it fell due, and then the works up to now. */

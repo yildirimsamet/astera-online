@@ -38,11 +38,20 @@ describe('the Repair Station', () => {
     expect((await unitsOf(me.vesselId)).damage).toEqual([]);
   });
 
-  it('is shut before the first battle report', async () => {
-    const me = await ready();
-    await world.f.db.update(vessels).set({ facts: [] }).where(eq(vessels.id, me.vesselId));
+  // Owner 2026-11-08 (N2): ships hurt at an outpost mend without the shield and its PvP.
+  it('mends ships for a shipyard with no shield and no battle behind it', async () => {
+    const me = await aboard(world, 'Me', { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 });
+    await arm(world, me.vesselId, { DART: 6 });
+    await enrich(world, me.vesselId, 1000, 1000, 0);
     await wound(me.vesselId, 6, 4000);
-    expect((await post(world, '/api/starter/dock', me.headers)).statusCode).toBe(403);
+    expect((await post(world, '/api/starter/dock', me.headers)).statusCode).toBe(200);
+  });
+
+  it('is shut before the shipyard', async () => {
+    const me = await aboard(world, 'Me', { SURVEY: 1, REFINERY: 3 });
+    const answer = await post(world, '/api/starter/dock', me.headers);
+    expect(answer.statusCode).toBe(403);
+    expect(answer.json<{ error: string }>().error).toBe('FEATURE_LOCKED');
   });
 
   it('has nothing to do when nothing is hurt', async () => {

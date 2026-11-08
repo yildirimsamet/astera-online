@@ -90,7 +90,8 @@ const shielded = (ship: VesselStanding, nowMs: number): boolean =>
  */
 export function canAttackVessel(question: AttackQuestion): AttackAnswer {
   const { attacker, target, nowMs } = question;
-  if (!isFeatureOpen(attacker.progress, 'attack')) return { ok: false, code: 'FEATURE_LOCKED' };
+  // The attacker is asked what the target is asked: a shield, and the record that it went up.
+  if (!isFeatureOpen(attacker.progress, 'attack') || attacker.pvpOpenAtMs === null) return { ok: false, code: 'FEATURE_LOCKED' };
   // Without this a ship could hold off its jump and spend its days on newcomers (A9).
   if (isJumpReady(attacker.progress) || nowMs - attacker.enlistedAtMs >= STARTER.pvp.lockAfterDays * DAY_MS) {
     return { ok: false, code: 'PVP_LOCKED' };

@@ -32,7 +32,8 @@ describe('where a part is marked', () => {
 
 describe('the Drive panel while hunting', () => {
   // The drive hull can be ordered, so the parts are on the map (`partsVisible`).
-  const HUNTING = { modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2 }, facts: ['FIRST_BATTLE_REPORT' as const], parts: 1, fuel: 0 };
+  // The drive opens once the radar is up (owner 2026-11-08): no battle is asked of it.
+  const HUNTING = { modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, TELESCOPE: 1, RADAR: 1 }, facts: [], parts: 1, fuel: 0 };
   function panel(seen: { galaxy?: object; mining?: object }) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     if (seen.galaxy) client.setQueryData(keys.galaxy, seen.galaxy);

@@ -83,10 +83,11 @@ describe('the yard aboard', () => {
 describe('the Repair Station aboard', () => {
   const hurt = [{ hull: 'DART', count: 2, damageBp: 5000 }] as const;
 
-  it('stays out of the yard until the first battle report opens it', () => {
+  // Owner 2026-11-08 (N2): the outpost is the shipyard's first fight, so the station opens with the yard.
+  it('stands in the yard before any battle report', () => {
     show({ progress: labOpen, fleet: { DART: 2 }, damage: hurt });
     open(/Shipyard/);
-    expect(screen.queryByTestId('ship-dock')).toBeNull();
+    expect(screen.getByTestId('ship-dock')).toBeInTheDocument();
   });
 
   it('says which ships are hurt and what mending them costs before the press', () => {

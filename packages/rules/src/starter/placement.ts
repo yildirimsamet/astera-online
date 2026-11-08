@@ -5,7 +5,7 @@ import type { Rng, Vec3 } from '../types.js';
 import { STARTER } from './constants.js';
 
 /** A thick disc rather than a ball, so that the galaxy reads as a place and not as a cloud. */
-const FLATTENING = 0.7;
+export const FLATTENING = 0.7;
 const MOST_ATTEMPTS = 200_000;
 
 /** A uniform point in the flattened galaxy. */

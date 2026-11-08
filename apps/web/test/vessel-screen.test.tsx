@@ -398,17 +398,21 @@ describe('the ship screen', () => {
 
   /**
    * THE AEGIS BRINGS PIRATES, AND THAT IS SAID BEFORE IT IS BOUGHT (player test D-01). The card read
-   * "Opens defence · Aegis 75"; the raid it invites was told only once the repair was done.
+   * "Opens defence · Aegis 75"; the raid it invites was told only once the repair was done. Since the
+   * owner made it a choice (2026-11-08, N3) the way to the jump passes it by, and the player opens it
+   * from the Defence tab.
    */
-  it('says the Aegis invites raids before it is repaired', () => {
+  it('says the Aegis invites attacks before it is repaired', () => {
     const progress: VesselProgress = {
       ...openingProgress(),
       modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1, DEUTERIUM_PLANT: 2 },
     };
     show(vessel({ progress, alloy: 5000, crystal: 5000 }));
+    expect(screen.getByTestId('next-repair').getAttribute('aria-label')).not.toBe('Aegis');
+    fireEvent.click(within(screen.getByRole('tablist', { name: 'Ship systems' })).getByRole('tab', { name: /Defence/ }));
     const card = within(screen.getByTestId('next-repair'));
     expect(screen.getByTestId('next-repair').getAttribute('aria-label')).toBe('Aegis');
-    expect(card.getByTestId('repair-risk').textContent).toBe('Once it is repaired, pirates can raid this ship.');
+    expect(card.getByTestId('repair-risk').textContent).toBe('Once it is repaired, pirates and other ships can attack this ship.');
   });
 
   /**

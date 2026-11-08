@@ -74,8 +74,8 @@ const step = (
 /**
  * Seconds as the ladder's minutes: the guided first session (owner 2026-11-06) runs in seconds. After it
  * the timers ramp (90 s, 2, 3, 5 minutes in the guided session, owner 2026-11-07; then 20, 30, 40, 60)
- * instead of jumping from one minute to forty-five;
- * the engine keeps its eight hours, so the ship still takes days (docs/ilk-deneyim-elde-tutma-plani §6.1).
+ * instead of jumping from one minute to forty-five. The engine takes four hours a part (owner
+ * 2026-11-08, N4): the fuel, not the engine, is what a ship waits on before the jump.
  */
 const seconds = (count: number): number => count / 60;
 
@@ -94,13 +94,15 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('REFINERY', 'REFINERY', 4, 886, 111, 60, true),
   step('DEFENCE', 'RADAR', 1, 500, 380, 60, true, [needs('TELESCOPE', 1)]),
   step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [], { deuterium: STARTER.deuteriumGrant }),
-  step('DEFENCE', 'AEGIS', 1, 315, 237, 45, true, [needs('RADAR', 1)]),
   step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, true, [needs('EXTRACTOR', 2)]),
-  step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 480, true, [
-    needs('REFINERY', 4), needs('EXTRACTOR', 3), needs('SURVEY', 2), needs('HANGAR', 2), fact('FIRST_BATTLE_REPORT'),
+  // The ship leaves seeing what is around it (owner 2026-11-08, N3); no battle is asked of anyone.
+  step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, true, [
+    needs('REFINERY', 4), needs('EXTRACTOR', 3), needs('SURVEY', 2), needs('HANGAR', 2), needs('RADAR', 1),
   ]),
-  step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 480, true, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
+  step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 240, true, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
 
+  // The shield is a choice (owner 2026-11-08, N3): it brings the pirates and opens other ships, both ways.
+  step('DEFENCE', 'AEGIS', 1, 315, 237, 45, false, [needs('RADAR', 1)]),
   step('REFINERY', 'REFINERY', 5, 1433, 180, 180, false),
   step('REFINERY', 'EXTRACTOR', 4, 444, 334, 120, false),
   step('REFINERY', 'VAULT', 2, 600, 300, 90, false),

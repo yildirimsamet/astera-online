@@ -34,12 +34,12 @@ export const colonyShipArticles: readonly WikiArticle[] = [
     l('Small galaxies around the main one, where ships meet, fight and prepare for the jump.', 'Ana galaksinin çevresindeki küçük galaksiler. Gemiler burada karşılaşır, savaşır ve göçe hazırlanır.'),
     l([
       `A starter galaxy holds ${String(STARTER.capacity)} ships. Everyone in it is a rival: they raid, they get raided, they leave. When one fills up, a new one opens. A galaxy that has room again takes new ships.`,
-      `Battles run at half the main game's tempo, and a ship can still die in them. The first Aegis repair gives a ${String(pvp.shieldHours)}-hour shield. Attacking ends your own shield early.`,
+      `Battles run at half the main game's tempo, and a ship can still die in them. Outposts open with the Shipyard. Attacking a ship needs your own Aegis and one battle behind you, and with the Aegis up your ship can be attacked too. The first Aegis repair gives a ${String(pvp.shieldHours)}-hour shield. Attacking ends your own shield early.`,
       `One commander can attack the same ship ${String(pvp.bashLimit)} times in ${String(pvp.bashWindowMinutes / 60)} hours, and a ship can be raided successfully ${String(pvp.dailyRaidCap)} times a day.`,
       `A ship with no progress for ${String(idleHours)} hours goes quiet: it leaves the map and gives up its place, and it comes back when its commander does.`,
     ], [
       `Bir başlangıç galaksisi ${String(STARTER.capacity)} gemi alır. İçindeki herkes rakibindir: akın eder, akın yer, gider. Galaksi dolunca yenisi açılır. Yeri boşalan galaksi yeniden gemi alır.`,
-      `Savaşlar ana oyunun yarı temposunda geçer, gemi yine de yok olabilir. İlk Aegis onarımı ${String(pvp.shieldHours)} saatlik kalkan verir. Saldırmak kendi kalkanını erken bitirir.`,
+      `Savaşlar ana oyunun yarı temposunda geçer, gemi yine de yok olabilir. Karakollar Tersane ile açılır. Gemiye saldırmak kendi Aegis’ini ve arkanda bir savaşı ister; Aegis açıkken senin gemine de saldırılabilir. İlk Aegis onarımı ${String(pvp.shieldHours)} saatlik kalkan verir. Saldırmak kendi kalkanını erken bitirir.`,
       `Bir komutan aynı gemiye ${String(pvp.bashWindowMinutes / 60)} saatte ${String(pvp.bashLimit)} kez saldırabilir. Bir gemi günde ${String(pvp.dailyRaidCap)} kez başarıyla yağmalanabilir.`,
       `${String(idleHours)} saat ilerleme kaydetmeyen gemi sessize alınır: haritadan çekilir, yerini bırakır, komutanı dönünce geri gelir.`,
     ]),
@@ -55,10 +55,12 @@ export const colonyShipArticles: readonly WikiArticle[] = [
     l([
       `The jump needs a finished Drive, ${String(parts.needed)} thrust parts and ${String(STARTER.fuelForJump)} deuterium in the tank. Parts lie in wrecks and guarded outposts, and whoever arrives first takes them.`,
       `You can carry up to ${number(carry.alloy, 'en')} alloy, ${number(carry.crystal, 'en')} crystal, ${String(carry.deuterium)} deuterium and ${String(carry.ships)} ships. Everything else stays behind and is lost. The ship becomes your first planet, with the first-season package and a 72-hour shield.`,
+      'The jump does not need the Aegis: it is a choice that opens your ship to attacks and pirates.',
       'The jump is one way, and repairs and research done on the ship stay with the ship.',
     ], [
       `Göç için bitmiş bir Motor, ${String(parts.needed)} itki parçası ve depoda ${String(STARTER.fuelForJump)} Döteryum gerekir. Parçalar enkazlarda ve korumalı karakollarda bulunur, önce varan alır.`,
       `En çok ${number(carry.alloy, 'tr')} alaşım, ${number(carry.crystal, 'tr')} kristal, ${String(carry.deuterium)} Döteryum ve ${String(carry.ships)} gemi taşırsın. Gerisi geride kalır ve kaybolur. Gemin ilk gezegenin olur, ilk sezon paketi ve 72 saatlik kalkan alırsın.`,
+      'Göç Aegis istemez: Aegis, gemini saldırılara ve korsanlara açan bir seçimdir.',
       'Göç tek yönlüdür. Gemideki onarım ve araştırma gemide kalır.',
     ]),
     l([

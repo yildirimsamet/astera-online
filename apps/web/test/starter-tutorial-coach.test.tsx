@@ -478,3 +478,20 @@ it('does not scroll the galaxy away when a read target rides a projected scene m
  await act(async()=>{await vi.advanceTimersByTimeAsync(300);});
  expect(scroll).not.toHaveBeenCalled();
 });
+
+/**
+ * THE WAY OUT IS NOT UNDER THE CARD (F2 walk, 2026-11-08). The "close the guide?" sheet opened beneath
+ * a coach docked at the bottom, and the card covered its buttons: a player who asked to leave the guide
+ * could not confirm it. While the question is open the card steps aside, and comes back if kept.
+ */
+describe('closing the guide', () => {
+  it('takes the card away while it asks, and brings it back when the guide is kept', () => {
+    coach({ kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 6 });
+    expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /I don't need the guide/ }));
+    expect(screen.getByRole('button', { name: 'Close guide' })).toBeTruthy();
+    expect(document.querySelector('[data-school-coach]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with guide' }));
+    expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+  });
+});

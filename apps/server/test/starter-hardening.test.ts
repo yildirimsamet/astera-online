@@ -303,19 +303,20 @@ describe('what the review of the ship galaxies found', () => {
   });
 
   describe('the attack door', () => {
-    it('keeps an outpost shut until the first battle report, for a request the menu never made', async () => {
-      const me = await aboard(world, 'Me', FIGHTER);
-      await arm(world, me.vesselId, { DART: 6 });
+    // Owner 2026-11-08 (N2): an outpost is fought with the shipyard's first ships, before any battle.
+    const SHIPYARD_ONLY = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 };
+
+    it('keeps an outpost shut before the shipyard, for a request the menu never made', async () => {
+      const me = await aboard(world, 'Me', { SURVEY: 1, REFINERY: 3 });
       const site = await siteOf(world, 'OUTPOST');
       const answer = await post(world, '/api/starter/fleet/launch', me.headers, { targetPlanetId: site.id, fleet: { DART: 6 } });
       expect(answer.statusCode).toBe(403);
       expect(answer.json<{ error: string; feature?: string }>().error).toBe('FEATURE_LOCKED');
     });
 
-    it('opens it with the report', async () => {
-      const me = await aboard(world, 'Me', FIGHTER);
+    it('opens it with the shipyard, with no battle report and no shield', async () => {
+      const me = await aboard(world, 'Me', SHIPYARD_ONLY);
       await arm(world, me.vesselId, { DART: 6 });
-      await world.f.db.update(vessels).set({ facts: ['FIRST_BATTLE_REPORT'] }).where(eq(vessels.id, me.vesselId));
       const site = await siteOf(world, 'OUTPOST');
       await placeShip(world, me.vesselId, { x: site.x - 200, y: site.y, z: site.z });
       const answer = await post(world, '/api/starter/fleet/launch', me.headers, { targetPlanetId: site.id, fleet: { DART: 6 } });

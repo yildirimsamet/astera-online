@@ -1,5 +1,5 @@
 import {
-  HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, openingProgress, partsVisible,
+  HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, openingProgress, partsVisible,
   RESEARCH_PROJECTS, seededFrom, shipBotTarget, starterOutcomeTable, combatValue,
   fleetEntries, hullBulk,
   type Fleet, type HullId, type RepairStep, type VesselProgress,
@@ -37,6 +37,8 @@ const READING_LIFE_MS = 6 * 3_600_000;
 /** It has to be clearly stronger: the table says what an even fight costs, and that is not worth a day. */
 const ATTACK_RATIO = starterOutcomeTable().find(row => row.ratio >= 2)?.ratio ?? 2;
 const OPENING_STAGES = 9;
+/** Owner 2026-11-08 (N3): the shield is a choice. Some crews take it and some do not, as people do. */
+const SHIELD_SHARE = 0.6;
 const WANT_DARTS = 6;
 const FLEET_GIFT: Fleet = { PROSPECTOR: 1, DART: 2 };
 const band = z.object({ defence: z.object({ high: z.number() }) });
@@ -49,6 +51,9 @@ const PACE: Record<(typeof PERSONAS)[number], { sessionMinutes: [number, number]
 };
 const between = (range: readonly [number, number], roll: number): number => range[0] + (range[1] - range[0]) * roll;
 const personaOf = (name: string | undefined) => PERSONAS.find(persona => persona === name) ?? 'steady';
+
+/** A crew's own choice of the shield, drawn once from its ship and never changed. */
+export const crewTakesShield = (vesselId: string): boolean => seededFrom(vesselId, 'aegis')() < SHIELD_SHARE;
 
 const progressOfView = (view: VesselView): VesselProgress => ({ modules: view.modules, facts: view.facts, parts: view.parts, fuel: view.fuel });
 const repairsOf = (view: VesselView): RepairStep[] => view.queue.filter(order => order.queue === 'CONSTRUCTION')
@@ -212,6 +217,13 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
     view = await readVessel(db, accountId, clock);
   }
 
+  const shield = REPAIR_LADDER.find(step => step.module === 'AEGIS' && step.stage === 1);
+  if (shield && crewTakesShield(view.id) && queueIn(view, 'CONSTRUCTION') < STARTER.queues.construction
+    && canOrderStep(afterQueue(progress, repairsOf(view)), 'AEGIS', 1).ok && view.alloy >= shield.alloy && view.crystal >= shield.crystal) {
+    const done = await attempt('shield', () => orderRepair(db, accountId, 'AEGIS', 1, clock));
+    if (done) return done;
+  }
+
   const next = nextRequiredStep(progress, repairsOf(view));
   if (next?.missing.length === 0 && queueIn(view, 'CONSTRUCTION') < STARTER.queues.construction
     && view.alloy >= next.step.alloy && view.crystal >= next.step.crystal) {
@@ -219,7 +231,8 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
     if (done) return done;
   }
 
-  if (isFeatureOpen(progress, 'attack') && queueIn(view, 'DOCK') === 0) {
+  // The station mends for the shipyard alone (N2), so it does for this ship too.
+  if (isFeatureOpen(progress, 'fleet') && queueIn(view, 'DOCK') === 0) {
     const bill = dockBill(view.damage);
     if (bill.minutes > 0 && view.alloy >= bill.cost.alloy && view.crystal >= bill.cost.crystal && view.deuterium >= bill.cost.deuterium) {
       const done = await attempt('dock', () => dockFleet(db, accountId, clock));
@@ -285,14 +298,16 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
         if (done) return done;
       }
     }
-    if (home('DART') >= 4) {
-      const [post] = await db.select({ id: starterSites.id }).from(starterSites).where(and(
-        eq(starterSites.starterGalaxyId, view.galaxy.id), eq(starterSites.kind, 'OUTPOST'), lte(starterSites.level, 1), gt(sql`${starterSites.alloy} + ${starterSites.crystal}`, 0),
-      )).limit(1);
-      if (post) {
-        const done = await attempt('raid', () => launchVesselFleet(db, accountId, { targetPlanetId: post.id, fleet: { DART: home('DART') } }, undefined, clock));
-        if (done) return done;
-      }
+  }
+
+  // An outpost is the shipyard's first fight (N2): it needs no battle behind it and no shield.
+  if (home('DART') >= 4 && view.flying === 0) {
+    const [post] = await db.select({ id: starterSites.id }).from(starterSites).where(and(
+      eq(starterSites.starterGalaxyId, view.galaxy.id), eq(starterSites.kind, 'OUTPOST'), lte(starterSites.level, 1), gt(sql`${starterSites.alloy} + ${starterSites.crystal}`, 0),
+    )).limit(1);
+    if (post) {
+      const done = await attempt('raid', () => launchVesselFleet(db, accountId, { targetPlanetId: post.id, fleet: { DART: home('DART') } }, undefined, clock));
+      if (done) return done;
     }
   }
 

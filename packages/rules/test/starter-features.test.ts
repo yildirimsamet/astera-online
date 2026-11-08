@@ -35,7 +35,7 @@ describe('what a commander can use', () => {
     ['telescope', at({ TELESCOPE: 1 })],
     ['radar', at({ RADAR: 1 })],
     ['defence', at({ AEGIS: 1 })],
-    ['attack', facts('FIRST_BATTLE_REPORT')],
+    ['attack', at({ AEGIS: 1 }, { facts: ['FIRST_BATTLE_REPORT'] })],
     ['deuterium', at({ DEUTERIUM_PLANT: 1 })],
     ['migration', at({}, { fuel: STARTER.fuelForJump })],
   ])('opens %s on its own trigger', (feature, progress) => {
@@ -44,19 +44,19 @@ describe('what a commander can use', () => {
   });
 
   it('opens the drive panel only when the hull can be ordered', () => {
-    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2 });
+    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
     expect(isFeatureOpen(ready, 'drive')).toBe(false);
-    expect(isFeatureOpen({ ...ready, facts: ['FIRST_BATTLE_REPORT'] }, 'drive')).toBe(true);
+    expect(isFeatureOpen({ ...ready, modules: { ...ready.modules, RADAR: 1 } }, 'drive')).toBe(true);
   });
 
   it('shows parts only to those with the drive panel open', () => {
-    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2 });
+    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
     expect(partsVisible(ready)).toBe(false);
-    expect(partsVisible({ ...ready, facts: ['FIRST_BATTLE_REPORT'] })).toBe(true);
+    expect(partsVisible({ ...ready, modules: { ...ready.modules, RADAR: 1 } })).toBe(true);
   });
 
   it('stops showing parts to a ship that holds all it can carry', () => {
-    const hunting = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2 }, { facts: ['FIRST_BATTLE_REPORT'] });
+    const hunting = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1, RADAR: 1 });
     expect(partsVisible({ ...hunting, parts: STARTER.parts.needed - 1 })).toBe(true);
     expect(partsVisible({ ...hunting, parts: STARTER.parts.needed })).toBe(false);
   });
@@ -74,6 +74,18 @@ describe('what a commander can use', () => {
     const shielded = at({ AEGIS: 1 });
     expect(isFeatureOpen(shielded, 'defence')).toBe(true);
     expect(isFeatureOpen(shielded, 'attack')).toBe(false);
+  });
+
+  /**
+   * OWNER 2026-11-08 (N2): an outpost is fought with the shipyard's first ships, and its report is a
+   * battle report like any other. Striking another ship still asks for the attacker's own shield, since
+   * the shield is what lets a ship be struck back.
+   */
+  it('keeps attacking ships shut to a ship that won its battle without a shield', () => {
+    const victor = at({ SHIPYARD: 1 }, { facts: ['FIRST_BATTLE_REPORT'] });
+    expect(isFeatureOpen(victor, 'fleet')).toBe(true);
+    expect(isFeatureOpen(victor, 'attack')).toBe(false);
+    expect(isFeatureOpen({ ...victor, modules: { ...victor.modules, AEGIS: 1 } }, 'attack')).toBe(true);
   });
 
   it('keeps the main galaxy\'s systems out, whatever is repaired', () => {

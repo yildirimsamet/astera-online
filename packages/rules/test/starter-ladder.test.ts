@@ -82,17 +82,22 @@ describe('the repair ladder', () => {
     expect(bill('HANGAR', 2)).toEqual([1000, 350, 30]);
     expect(bill('TELESCOPE', 1)).toEqual([700, 500, 40]);
     expect(bill('RADAR', 1)).toEqual([500, 380, 60]);
-    expect(bill('AEGIS', 1)).toEqual([315, 237, 45]);
-    expect(bill('DRIVE_HULL', 1)).toEqual([2200, 1100, 480]);
-    expect(bill('DRIVE_THRUST', 1)).toEqual([1800, 1200, 480]);
+    // Owner 2026-11-08 (N4): four hours each, so the fuel and not the engine is what a ship waits on.
+    expect(bill('DRIVE_HULL', 1)).toEqual([2200, 1100, 240]);
+    expect(bill('DRIVE_THRUST', 1)).toEqual([1800, 1200, 240]);
   });
 
-  it('counts 19 steps to the drive, with the opening refinery among them', () => {
-    expect(REPAIR_LADDER.filter(s => s.required).length + 1).toBe(19);
+  it('keeps the price of the shield a player may choose', () => {
+    expect([find('AEGIS', 1).alloy, find('AEGIS', 1).crystal, find('AEGIS', 1).minutes]).toEqual([315, 237, 45]);
+  });
+
+  it('counts 18 steps to the drive, with the opening refinery among them', () => {
+    expect(REPAIR_LADDER.filter(s => s.required).length + 1).toBe(18);
   });
 
   it('marks the extras as optional, so a player can choose', () => {
-    for (const [module, stage] of [['REFINERY', 5], ['EXTRACTOR', 4], ['VAULT', 2], ['SURVEY', 3], ['HANGAR', 3], ['TELESCOPE', 2], ['TELESCOPE', 3], ['RADAR', 2], ['RADAR', 3], ['AEGIS', 2]] as const) {
+    // Owner 2026-11-08 (N3): Aegis is the door to pirates and to other ships, not to the jump.
+    for (const [module, stage] of [['AEGIS', 1], ['REFINERY', 5], ['EXTRACTOR', 4], ['VAULT', 2], ['SURVEY', 3], ['HANGAR', 3], ['TELESCOPE', 2], ['TELESCOPE', 3], ['RADAR', 2], ['RADAR', 3], ['AEGIS', 2]] as const) {
       expect(find(module, stage).required, `${module} ${String(stage)}`).toBe(false);
     }
   });
@@ -189,10 +194,30 @@ describe('ordering a repair', () => {
     expect(canOrderStep(withModules({ DRIVE_HULL: 1 }, { parts: 3 }), 'DRIVE_THRUST', 1).ok).toBe(true);
   });
 
-  it('opens the drive only after the first battle report', () => {
-    const ready = withModules({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2 });
-    expect(canOrderStep(ready, 'DRIVE_HULL', 1).ok).toBe(false);
-    expect(canOrderStep({ ...ready, facts: ['FIRST_BATTLE_REPORT'] }, 'DRIVE_HULL', 1).ok).toBe(true);
+  it('opens the drive once the radar is up, with no battle asked of anyone', () => {
+    const ready = withModules({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
+    expect(canOrderStep(ready, 'DRIVE_HULL', 1)).toEqual({ ok: false, code: 'REPAIR_REQUIREMENT', missing: [{ kind: 'MODULE', module: 'RADAR', stage: 1 }] });
+    expect(canOrderStep({ ...ready, modules: { ...ready.modules, RADAR: 1 } }, 'DRIVE_HULL', 1).ok).toBe(true);
+    expect(find('DRIVE_HULL', 1).requires).not.toContainEqual({ kind: 'FACT', fact: 'FIRST_BATTLE_REPORT' });
+  });
+
+  it('never needs the shield on the way to the jump', () => {
+    const needed = new Set<string>();
+    const visit = (module: VesselModule, stage: number) => {
+      const key = `${module}:${String(stage)}`;
+      if (needed.has(key)) return;
+      needed.add(key);
+      const step = REPAIR_LADDER.find(s => s.module === module && s.stage === stage);
+      if (!step) return;
+      if (stage > 1) visit(module, stage - 1);
+      for (const need of step.requires) if (need.kind === 'MODULE') visit(need.module, need.stage);
+    };
+    visit('DRIVE_THRUST', 1);
+    visit('DEUTERIUM_PLANT', 2);
+    expect([...needed].filter(key => !key.startsWith('HANGAR:1')).sort()).toEqual([
+      'DEUTERIUM_PLANT:1', 'DEUTERIUM_PLANT:2', 'DRIVE_HULL:1', 'DRIVE_THRUST:1', 'EXTRACTOR:1', 'EXTRACTOR:2', 'EXTRACTOR:3',
+      'HANGAR:2', 'RADAR:1', 'REFINERY:1', 'REFINERY:2', 'REFINERY:3', 'REFINERY:4', 'SHIPYARD:1', 'SURVEY:1', 'SURVEY:2', 'TELESCOPE:1',
+    ]);
   });
 
   it('treats the shipyard as the first stage of the hangar', () => {
@@ -251,18 +276,19 @@ describe('the progress line', () => {
   const everything = Object.fromEntries(REPAIR_LADDER.filter(s => s.required).map(s => [s.module, s.stage]));
 
   it('counts the opening refinery and the fuel', () => {
-    expect(repairProgress(openingProgress())).toEqual({ done: 1, total: 20, share: 0.05 });
+    expect(repairProgress(openingProgress())).toEqual({ done: 1, total: 19, share: 1 / 19 });
   });
 
   it('does not count optional steps', () => {
-    expect(repairProgress(withModules({ AEGIS: 2, REFINERY: 2 })).done).toBe(3);
+    // The shield is a player's choice (owner 2026-11-08, N3): neither of its stages moves the bar.
+    expect(repairProgress(withModules({ AEGIS: 2, REFINERY: 2 })).done).toBe(2);
     expect(repairProgress(withModules({ TELESCOPE: 3 })).done).toBe(2);
   });
 
   it('reaches the whole only with the fuel in the tank', () => {
-    expect(repairProgress(withModules(everything)).done).toBe(19);
-    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump - 1 })).done).toBe(19);
-    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump }))).toEqual({ done: 20, total: 20, share: 1 });
+    expect(repairProgress(withModules(everything)).done).toBe(18);
+    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump - 1 })).done).toBe(18);
+    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump }))).toEqual({ done: 19, total: 19, share: 1 });
   });
 });
 
@@ -312,6 +338,12 @@ describe('the five systems, as the ship screen counts them', () => {
   it('does not count an optional repair', () => {
     const progress: VesselProgress = { ...openingProgress(), modules: { SURVEY: 3 } };
     expect(systemProgress(progress, 'SURVEY')).toEqual({ done: 2, total: 2 });
+  });
+
+  it('counts the telescope and the radar on the defence, and leaves the shield to the player', () => {
+    expect(systemProgress(openingProgress(), 'DEFENCE')).toEqual({ done: 0, total: 2 });
+    expect(systemProgress({ ...openingProgress(), modules: { AEGIS: 1 } }, 'DEFENCE')).toEqual({ done: 0, total: 2 });
+    expect(systemProgress({ ...openingProgress(), modules: { TELESCOPE: 1, RADAR: 1 } }, 'DEFENCE')).toEqual({ done: 2, total: 2 });
   });
 
   it('finishes every system on a finished ship', () => {

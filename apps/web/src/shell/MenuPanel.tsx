@@ -320,8 +320,8 @@ export function MenuPanel({
                 hint={t('menu.guideHint')}
                 onClick={() => { onOpen('wiki'); }}
               />
-              {/* Over the menu, not instead of it: closing the simulator lands back here. */}
-              {gate.open('attack') && <MenuTile
+              {/* Over the menu, not instead of it: closing the simulator lands back here. It opens with the yard's first fight. */}
+              {gate.open('fleet') && <MenuTile
                 icon={<AttackIcon className="size-5" />}
                 label={t('simulator.title')}
                 art={ATMOSPHERE.simulator}

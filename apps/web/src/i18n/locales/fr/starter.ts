@@ -75,8 +75,9 @@ export const starter = {
     "FIRST_MINING_RETURN": "ton premier retour de minage",
     "FIRST_BATTLE_REPORT": "ton premier rapport de bataille"
   },
-  "factHow": {"FIRST_PROBE_REPORT": "Envoie une sonde vers un vaisseau voisin.", "FIRST_MINING_RETURN": "Envoie un Prospecteur vers un astéroïde et attends son retour.", "FIRST_BATTLE_REPORT": "Une fois l’Aegis réparée, des pirates attaquent ton vaisseau. Le rapport de ce combat compte."},
-  "attackLocked": "Les attaques s’ouvrent après ton premier combat. Une fois l’Aegis réparée, des pirates attaquent ton vaisseau, et le rapport de ce combat les ouvre.",
+  "factHow": {"FIRST_PROBE_REPORT": "Envoie une sonde vers un vaisseau voisin.", "FIRST_MINING_RETURN": "Envoie un Prospecteur vers un astéroïde et attends son retour.", "FIRST_BATTLE_REPORT": "Attaque un avant-poste, ou affronte les pirates une fois l’Aegis active. Le rapport de ce combat compte."},
+  "attackLocked": "Pour attaquer des vaisseaux, il te faut ton Aegis réparée et un combat derrière toi. Avec l’Aegis, ton vaisseau peut aussi être attaqué.",
+  "outpostLocked": "Les raids sur les avant-postes s’ouvrent avec le Chantier. Répare-le, et les vaisseaux qu’il construit pourront attaquer ici.",
   "partsNeeded": "{{count}} pièces de poussée",
   "effect": {
     "rate": {
@@ -106,7 +107,7 @@ export const starter = {
     },
     "fleet": {
       "gain": "Ouvre la flotte",
-      "line": "Tu peux construire des vaisseaux et envoyer un Prospecteur miner des astéroïdes."
+      "line": "Tu peux construire des vaisseaux, envoyer un Prospecteur miner des astéroïdes, attaquer des avant-postes et réparer les vaisseaux endommagés à la Station de réparation."
     },
     "chat": {
       "gain": "Ouvre le chat",
@@ -129,13 +130,13 @@ export const starter = {
       "line": "Dans son anneau, un vol apparaît comme un contact inconnu et t’avertit."
     },
     "defence": {
-      "risk": "Une fois réparée, des pirates pourront attaquer ce vaisseau.",
+      "risk": "Une fois réparée, les pirates et les autres vaisseaux peuvent attaquer ce vaisseau.",
       "gain": "Ouvre la défense",
-      "line": "L’Aegis absorbe les dégâts en premier. Les pirates peuvent maintenant attaquer ce vaisseau."
+      "line": "L’Aegis encaisse les dégâts en premier. Les pirates et les autres vaisseaux peuvent maintenant attaquer ce vaisseau ; après un combat, tu peux aussi attaquer des vaisseaux."
     },
     "attack": {
       "gain": "Ouvre les attaques",
-      "line": "Tu peux attaquer vaisseaux et avant-postes, et réparer les vaisseaux endommagés à la station de réparation."
+      "line": "Tu peux attaquer les vaisseaux dont l’Aegis est active. Eux aussi peuvent t’attaquer."
     },
     "deuterium": {
       "gain": "Ouvre le deutérium",

@@ -287,7 +287,8 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
     <>
       <Hush />
       {looking && !looked && <DragHint />}
-      <SchoolCoach
+      {/* The question takes the card's place: docked at the bottom, the card covered its buttons. */}
+      {!confirmSkip && <SchoolCoach
         title={t(CHAPTER[step.chapter])}
         text={line}
         progress={step.chapter}
@@ -298,7 +299,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
         onExit={() => { playSound('confirm'); haptic('tap'); setConfirmSkip(true); }}
         exitLabel={t('starter.tutorial.skip.link')}
         {...action}
-      />
+      />}
       {confirmSkip && <div data-guide-exit>
         <Sheet title={t('starter.tutorial.skip.title')} onClose={() => { setConfirmSkip(false); }} footer={
           <div className="flex flex-col gap-2">

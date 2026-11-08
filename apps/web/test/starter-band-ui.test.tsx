@@ -118,24 +118,45 @@ describe('an outpost says what it is', () => {
  * A CLOSED ATTACK SAYS WHY, AND HOW IT OPENS (player test A-05, owner K1 2026-11-05). The card showed
  * what an outpost pays and no way to take it, and a first-time player looked for the button for an hour.
  */
-describe('an outpost before the first battle', () => {
-  it('says attack is closed and how the first battle comes', () => {
+describe('what opens an attack', () => {
+  type Progress = ReturnType<typeof openingProgress>;
+  const openAs = (target: GalaxyPlanet, progress: Partial<Progress>) => {
+    const planet = aboard();
+    const opened = vesselToPlanetView(vesselSchema.parse(wireVessel({ fleet: { DART: 6 }, progress: { ...openingProgress(), ...progress } })));
+    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+    render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
+      <PlanetFocus target={target} planet={{ ...planet, ...opened }} intel={intel} reports={[]} now={NOW} onClose={vi.fn()} onAttack={vi.fn()}
+        onInstallTelescope={vi.fn()} onLaunched={vi.fn()} onSettle={vi.fn()} open onToggle={vi.fn()} />
+    </ToastProvider></ApiProvider></QueryClientProvider>);
+    return document.body.textContent;
+  };
+  const yard = { ...openingProgress().modules, REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, SHIPYARD: 1 };
+
+  it('says an outpost opens with the Shipyard', () => {
     const body = open(outpost());
     expect(document.querySelector('[data-attack]')).toBeNull();
     expect(screen.getByTestId('attack-locked').textContent).toBe(
-      'Attacks open after your first battle. Once the Aegis is repaired, pirates raid your ship, and that battle\'s report opens them.');
+      'Outpost raids open with the Shipyard. Repair it, and the ships it builds can raid here.');
     expect(body).toContain('Abandoned outpost');
   });
 
-  it('offers the attack once a battle report is in', () => {
-    const planet = aboard();
-    const facts = ['FIRST_BATTLE_REPORT'] as const;
-    const opened = vesselToPlanetView(vesselSchema.parse(wireVessel({ fleet: { DART: 6 }, progress: { ...openingProgress(), facts: [...facts] } })));
-    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
-    render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
-      <PlanetFocus target={outpost()} planet={{ ...planet, ...opened }} intel={intel} reports={[]} now={NOW} onClose={vi.fn()} onAttack={vi.fn()}
-        onInstallTelescope={vi.fn()} onLaunched={vi.fn()} onSettle={vi.fn()} open onToggle={vi.fn()} />
-    </ToastProvider></ApiProvider></QueryClientProvider>);
+  // Owner 2026-11-08 (N2): the outpost is the shipyard's first fight, with no battle and no shield behind it.
+  it('offers the outpost to a shipyard with no battle and no shield', () => {
+    openAs(outpost(), { modules: yard });
+    expect(document.querySelector('[data-attack]')).not.toBeNull();
+    expect(screen.queryByTestId('attack-locked')).toBeNull();
+  });
+
+  // N3: attacking a ship asks for the attacker's own Aegis, which opens its ship to attack too.
+  it('keeps a ship shut to a fleet whose own Aegis is down, and says what opens it', () => {
+    openAs(ship(), { modules: yard, facts: ['FIRST_BATTLE_REPORT'] });
+    expect(document.querySelector('[data-attack]')).toBeNull();
+    expect(screen.getByTestId('attack-locked').textContent).toBe(
+      'Attacking ships needs your own Aegis repaired and one battle behind you. With the Aegis up, your ship can be attacked too.');
+  });
+
+  it('offers a ship once the Aegis is up and a battle is behind it', () => {
+    openAs(ship(), { modules: { ...yard, RADAR: 1, AEGIS: 1 }, facts: ['FIRST_BATTLE_REPORT'] });
     expect(document.querySelector('[data-attack]')).not.toBeNull();
     expect(screen.queryByTestId('attack-locked')).toBeNull();
   });

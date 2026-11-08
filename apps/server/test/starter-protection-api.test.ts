@@ -1,7 +1,7 @@
 import { STARTER } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { vessels } from '../src/db/schema.js';
+import { vesselBotState, vessels } from '../src/db/schema.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
 import { aboard, arm, pass, placeShip, post } from './starterShips.js';
@@ -33,6 +33,25 @@ describe('who may be attacked', () => {
     const { me, them } = await pair();
     await world.f.db.update(vessels).set({ facts: [] }).where(eq(vessels.id, me.vesselId));
     expect(code(await attack(me.headers, them.vesselId))).toBe('FEATURE_LOCKED');
+  });
+
+  /**
+   * OWNER 2026-11-08 (N2): an outpost victory opens the report, not ship hunting. Asked straight at the
+   * API, a victor with no shield of its own is refused, and a person and a server-run ship answer the
+   * same: nothing in the refusal tells them apart.
+   */
+  it('refuses an outpost victor with no shield, the same for a person and for a server-run ship', async () => {
+    const { me, them } = await pair();
+    const crew = await aboard(world, 'Crewed', READY);
+    await world.f.db.update(vessels).set({ facts: ['FIRST_BATTLE_REPORT'], pvpOpenAt: new Date(world.f.clock.now().getTime() - 3_600_000) }).where(eq(vessels.id, crew.vesselId));
+    await placeShip(world, crew.vesselId, { x: -300 });
+    const now = world.f.clock.now();
+    await world.f.db.insert(vesselBotState).values({ vesselId: crew.vesselId, persona: 'steady', nextActionAt: now, sessionUntilAt: now, createdAt: now });
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1, HANGAR: 3 }, pvpOpenAt: null }).where(eq(vessels.id, me.vesselId));
+    const person = await attack(me.headers, them.vesselId);
+    const crewed = await attack(me.headers, crew.vesselId);
+    expect([person.statusCode, code(person)]).toEqual([403, 'FEATURE_LOCKED']);
+    expect([crewed.statusCode, crewed.json()]).toEqual([person.statusCode, person.json()]);
   });
 
   it('refuses a ship with no Aegis yet', async () => {

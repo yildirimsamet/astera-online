@@ -130,7 +130,7 @@ export function YardDeck({ vessel, view, fetchedAt, focusDock = false }: { vesse
           );
         })}
       </div>
-      {vessel.features.includes('attack') && <ShipDock vessel={vessel} orders={view.queues?.REPAIR ?? []} held={held} focus={focusDock} />}
+      {vessel.features.includes('fleet') && <ShipDock vessel={vessel} orders={view.queues?.REPAIR ?? []} held={held} focus={focusDock} />}
       {building && <BuildSheet hull={building} planet={view} held={held} onNeed={() => { setBuilding(null); }} onClose={() => { setBuilding(null); }} />}
       {queueOpen && (
         <QueueSheet

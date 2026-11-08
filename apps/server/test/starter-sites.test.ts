@@ -9,7 +9,8 @@ import { starterWorld } from './starterFixture.js';
 import { aboard, get, pass, post } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
-const HUNTER = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, SHIPYARD: 1 };
+// The drive panel open: the gate's modules, the radar among them (owner 2026-11-08, N3).
+const HUNTER = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 };
 
 describe('the shared places of a galaxy', () => {
   let world: Awaited<ReturnType<typeof starterWorld>>;

@@ -8,7 +8,8 @@ import { aboard, arm, pass, placeShip, post, siteOf } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 void vesselAegisHp;
-const HUNTER = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, SHIPYARD: 1 };
+// The drive panel open: the gate's modules, the radar among them (owner 2026-11-08, N3).
+const HUNTER = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 };
 const FACTS = ['FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_PROBE_REPORT'] as const;
 
 describe('the race for a part', () => {

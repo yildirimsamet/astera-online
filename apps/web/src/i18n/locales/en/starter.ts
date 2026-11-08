@@ -75,8 +75,9 @@ export const starter = {
     "FIRST_MINING_RETURN": "your first mining return",
     "FIRST_BATTLE_REPORT": "your first battle report"
   },
-  "factHow": {"FIRST_PROBE_REPORT": "Send a probe to a neighbouring ship.", "FIRST_MINING_RETURN": "Send a Prospector to an asteroid and wait for it to come back.", "FIRST_BATTLE_REPORT": "Once the Aegis is repaired, pirates raid your ship. That battle's report counts."},
-  "attackLocked": "Attacks open after your first battle. Once the Aegis is repaired, pirates raid your ship, and that battle's report opens them.",
+  "factHow": {"FIRST_PROBE_REPORT": "Send a probe to a neighbouring ship.", "FIRST_MINING_RETURN": "Send a Prospector to an asteroid and wait for it to come back.", "FIRST_BATTLE_REPORT": "Raid an outpost, or meet the pirates once the Aegis is up. That battle's report counts."},
+  "attackLocked": "Attacking ships needs your own Aegis repaired and one battle behind you. With the Aegis up, your ship can be attacked too.",
+  "outpostLocked": "Outpost raids open with the Shipyard. Repair it, and the ships it builds can raid here.",
   "partsNeeded": "{{count}} thrust parts",
   "effect": {
     "rate": {
@@ -106,7 +107,7 @@ export const starter = {
     },
     "fleet": {
       "gain": "Opens the fleet",
-      "line": "You can build ships and send a Prospector to mine asteroids."
+      "line": "You can build ships, send a Prospector to mine asteroids, raid outposts and mend damaged ships at the Repair Station."
     },
     "chat": {
       "gain": "Opens chat",
@@ -129,13 +130,13 @@ export const starter = {
       "line": "Inside its ring a flight shows as an unknown contact and warns you."
     },
     "defence": {
-      "risk": "Once it is repaired, pirates can raid this ship.",
+      "risk": "Once it is repaired, pirates and other ships can attack this ship.",
       "gain": "Opens defence",
-      "line": "The Aegis absorbs damage first. Pirates can now raid this ship."
+      "line": "The Aegis absorbs damage first. Pirates and other ships can now attack this ship; after a battle, you can attack ships too."
     },
     "attack": {
       "gain": "Opens attacks",
-      "line": "You can attack ships and outposts, and repair damaged ships at the Repair Station."
+      "line": "You can attack ships whose Aegis is up. They can attack yours too."
     },
     "deuterium": {
       "gain": "Opens Deuterium",
