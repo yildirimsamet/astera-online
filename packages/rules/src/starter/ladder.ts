@@ -231,3 +231,12 @@ export function repairProgress(progress: VesselProgress): RepairProgress {
   const done = repaired + (moduleStage(progress, 'REFINERY') >= 1 ? 1 : 0) + (isJumpReady(progress) ? 1 : 0);
   return { done, total, share: done / total };
 }
+
+/**
+ * EVERY MACHINE ABOARD, the jump's or not (plan 2026-11-08 F7). "Ready to leave" and "the whole ship"
+ * are two answers: a ship ready with its shield still dead has left a choice, not a repair, undone.
+ */
+export function wholeShipProgress(progress: VesselProgress): SystemProgress {
+  const repaired = REPAIR_LADDER.filter(s => moduleStage(progress, s.module) >= s.stage).length;
+  return { done: repaired + (moduleStage(progress, 'REFINERY') >= 1 ? 1 : 0), total: REPAIR_LADDER.length + 1 };
+}

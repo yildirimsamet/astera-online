@@ -222,6 +222,13 @@ describe('the ship screen', () => {
       expect(screen.getByTestId('ship-repair').textContent).toContain('5%');
     });
 
+    // What the bar counts is the jump's, not the whole ship's (plan F7): a choice left undone is no repair missing.
+    it('names the bar for leaving, not for the whole ship', () => {
+      show(vessel());
+      expect(screen.getByTestId('ship-repair').textContent).toMatch(/^Ready to leave/u);
+      expect(screen.getByTestId('ship-repair').textContent).not.toMatch(/Repaired/u);
+    });
+
     it('says why the repairs matter: the jump', () => {
       show(vessel());
       expect(screen.getByTestId('ship-goal').textContent).toMatch(/main galaxy/i);

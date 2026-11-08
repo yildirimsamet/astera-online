@@ -1,4 +1,4 @@
-import { REPAIR_LADDER, VESSEL_SYSTEMS, nextRequiredStep, systemProgress, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { REPAIR_LADDER, VESSEL_SYSTEMS, nextRequiredStep, systemProgress, wholeShipProgress, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { VesselView } from '../api/starterSchemas.js';
 import { haptic } from '../lib/haptics.js';
@@ -41,7 +41,11 @@ export function ShipLog({ vessel, onOpenShip }: { vessel: VesselView; onOpenShip
   ];
   return (
     <section data-testid="ship-log" className="flex flex-col gap-2">
-      <h3 className="v2-legend text-v2-ink-2">{t('starter.log.title')}</h3>
+      <h3 className="flex items-baseline justify-between gap-2">
+        <span className="v2-legend text-v2-ink-2">{t('starter.log.title')}</span>
+        {/* The chapters count the jump's repairs; this, every machine aboard (plan F7). */}
+        <span data-testid="log-whole" className="font-v2-mono text-micro tabular-nums text-v2-ink-3">{t('starter.wholeShip', { ...wholeShipProgress(progress) })}</span>
+      </h3>
       <ol className="relative flex flex-col">
         <span aria-hidden="true" className="absolute bottom-4 left-[15px] top-4 w-px bg-gradient-to-b from-v2-self/60 via-v2-line-hi to-v2-line" />
         {chapters.map(chapter => (

@@ -109,6 +109,78 @@ describe('the drive panel', () => {
   });
 });
 
+/**
+ * THE LAST STRETCH AS ONE PLAN (plan 2026-11-08 F7, moment 15): both engines, the fuel and what holds
+ * the jump, in the panel where it is prepared; and the season or a full frontier said before the
+ * tank is full (moment 16), with what the player can do meanwhile.
+ */
+describe('the departure plan', () => {
+  const GATE = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1, RADAR: 1 };
+  const facts: VesselProgress['facts'] = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'];
+  const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
+  const order = (subject: string, hours: number) => ({
+    id: subject, queue: 'CONSTRUCTION', subject, stage: 1, count: 1, startedAt: new Date().toISOString(), readyAt: inHours(hours), cost: { alloy: 0, crystal: 0, deuterium: 0 },
+  });
+  const planShip = (progress: VesselProgress, over: Record<string, unknown> = {}) =>
+    vesselSchema.parse(wireVessel({ progress, deuterium: 0, ...over }));
+
+  it('calls an engine on the queue queued, never ready', async () => {
+    const { wrap } = harness(view());
+    const vessel = planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2 }, facts, parts: 3, fuel: 0 },
+      { queue: [order('DRIVE_HULL', 3), order('DRIVE_THRUST', 7)] });
+    render(wrap(<MigrationPanel vessel={vessel} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('plan-DRIVE_HULL')).toHaveTextContent(/Queued · done in \d/u);
+    expect(screen.getByTestId('plan-DRIVE_THRUST')).toHaveTextContent(/Queued · done in \d/u);
+    expect(screen.getByTestId('plan-DRIVE_THRUST')).not.toHaveTextContent(/Repaired/u);
+  });
+
+  it('says what an engine still waits for', async () => {
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1 }, facts, parts: 1, fuel: 0 })} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('plan-DRIVE_HULL')).toHaveTextContent(/Repaired/u);
+    expect(screen.getByTestId('plan-DRIVE_THRUST')).toHaveTextContent(/Waits for/u);
+  });
+
+  it('says when the fuel is aboard, that flights slow it, and what holds the jump', async () => {
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 }, facts, parts: 3, fuel: 20 })} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('plan-fuel')).toHaveTextContent(/20\/90 aboard · full in 1\dh/u);
+    expect(screen.getByTestId('plan-flights')).toHaveTextContent(/no Deuterium is flown/u);
+    expect(screen.getByTestId('plan-waits')).toHaveTextContent(/fuel is what holds the jump/u);
+  });
+
+  it('shows what the second plant would gain while the first runs alone', async () => {
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 1 }, facts, parts: 0, fuel: 20 })} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('plan-lever')).toHaveTextContent(/With Deuterium Refinery 2: full in/u);
+  });
+
+  it('says the optional repairs stay aboard', async () => {
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2 }, facts, parts: 0, fuel: 0 })} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('plan-optional')).toHaveTextContent(/optional repairs left/u);
+  });
+
+  it('says at once, tank or no tank, that no galaxy has room', async () => {
+    const { wrap } = harness(view({ target: null }));
+    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/No galaxy has room/u);
+  });
+
+  it('says before the tank is full that the season has stopped taking ships', async () => {
+    const { wrap } = harness(view({ target: { shard: 'EU-1', name: 'Vantage', seasonEndsAt: inHours(72) } }));
+    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/next season/u);
+  });
+
+  it('says nothing early when the season has room for the plan', async () => {
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+    await screen.findByTestId('tank-level');
+    expect(screen.queryByTestId('jump-outlook')).toBeNull();
+  });
+});
+
 describe('choosing where to land', () => {
   const choices = [
     { index: 1, x: 100, y: 0, z: 0, neighbours: 0 },

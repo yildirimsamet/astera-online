@@ -37,7 +37,7 @@ describe('a jump cut short', () => {
       afterStep: (reached) => { if (reached === step) throw new Error('power cut'); },
     })).rejects.toThrow('power cut');
 
-  for (const step of ['committed', 'joined', 'landed'] as const) {
+  for (const step of ['committed', 'seated', 'joined', 'landed'] as const) {
     it(`finishes from "${step}" on the sweep, with one world and one hold`, async () => {
       const person = await ready();
       await cutAt(person.id, step);

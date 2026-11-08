@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STARTER, distance, firstOutpostPoint, firstOutpostSeed, firstOutpostsMissing, fleetSpeed, playsFirstHunt, seededFrom, starterSlots, travelExact,
+  STARTER, distance, firstOutpostPoint, firstOutpostSeed, firstOutpostsMissing, fleetSpeed, playsFirstHunt, seededFrom, starterSitePlan, starterSlots, travelExact,
   type Vec3,
 } from '../src/index.js';
 
@@ -79,5 +79,29 @@ describe('the outposts a new shipyard is shown', () => {
 
   it('gives up rather than place one off the map', () => {
     expect(firstOutpostPoint(at(STARTER.radius * 3), [], [], seededFrom('far'))).toBeNull();
+  });
+});
+
+/**
+ * A FULL GALAXY STILL GIVES EVERYONE THEIR FIRST HUNT. Measured 2026-11-08: with room for only eight
+ * more outposts, a 30-ship galaxy left about a third of its shipyards with no mark at all. Each yard
+ * is given two at most, once, so the galaxy's room is sized by that and not by a smaller guess.
+ */
+describe('a galaxy filling up', () => {
+  it('shows every shipyard both of its first outposts, in order of finishing', () => {
+    for (const seed of [3, 11, 29]) {
+      const berths = starterSlots(seed);
+      const places: { kind: string; x: number; y: number; z: number; level: number; guard: Record<string, number> | null }[] = starterSitePlan(seed, berths);
+      berths.forEach((ship, n) => {
+        const outposts = places.filter(place => place.kind === 'OUTPOST');
+        const room = STARTER.sites.outposts.count + STARTER.firstOutposts.extraMax - outposts.length;
+        const random = seededFrom(`ship-${String(seed)}-${String(n)}`, 'first-outposts');
+        for (const role of firstOutpostsMissing(ship, outposts).slice(0, Math.max(0, room))) {
+          const point = firstOutpostPoint(ship, berths, places, random);
+          if (point) places.push(firstOutpostSeed(role, point, random));
+        }
+        expect(firstOutpostsMissing(ship, places.filter(place => place.kind === 'OUTPOST'))).toEqual([]);
+      });
+    }
   });
 });

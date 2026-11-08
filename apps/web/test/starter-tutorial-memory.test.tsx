@@ -7,18 +7,20 @@ import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.j
 const empty = { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 };
 const state = vi.hoisted(() => ({
   ship: 'memory-1',
-  runs: [] as { departAt: Date; arriveAt: Date; homeAt: Date | null }[],
+  runs: [] as { departAt: Date; arriveAt: Date; homeAt: Date | null; status?: string }[],
+  planets: undefined as { id: string; firstHunt?: boolean }[] | undefined,
   held: { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 },
 }));
 vi.mock('../src/api/queries.js', () => ({
   usePlanet: () => ({ data: { vessel: vesselSchema.parse(wireVessel({ id: state.ship })) }, dataUpdatedAt: Date.now() }),
   usePending: () => ({ data: { pending: [] } }),
   useMining: () => ({ data: { runs: state.runs } }),
-  useGalaxy: () => ({ data: undefined }),
+  useGalaxy: () => ({ data: state.planets ? { planets: state.planets } : undefined }),
+  useIntel: () => ({ data: { probeReports: [] } }),
   useTraffic: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
-afterEach(() => { localStorage.clear(); state.held = empty; state.ship = 'memory-1'; });
+afterEach(() => { localStorage.clear(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; });
 
 describe('tutorial acknowledgement memory', () => {
   it('reads once per ship, updates on acknowledgement and keeps ships separate', () => {
@@ -56,6 +58,28 @@ describe('the advisor in the tutorial', () => {
     state.held = { ...state.held, bufferAlloy: 0 };
     rerender();
     expect(result.current?.pick).toBeUndefined();
+  });
+});
+
+/**
+ * THE LINE AND THE LIT CONTROL READ THE SAME OFFERS (review 2026-11-08). The hook once left the first
+ * hunt out: the line said "probe the outpost" while the pulse lit a repair, and a hunt the player
+ * picked was dropped as no longer on offer.
+ */
+describe('the first hunt in the hook', () => {
+  it('offers the hunt the map marks, and keeps it when the player picks it', () => {
+    state.planets = [{ id: 'post-1', firstHunt: true }];
+    localStorage.setItem('astera.starter.advice.memory-1', JSON.stringify({ pick: 'hunt:probe', shown: true }));
+    const { result } = renderHook(() => useStarterTutorial('galaxy'));
+    expect(result.current?.offers.some(offer => offer.kind === 'hunt')).toBe(true);
+    expect(result.current?.pick).toMatchObject({ kind: 'hunt', hunt: { stage: 'probe', target: 'post-1' } });
+  });
+
+  it('does not count a finished mining run as one in the air', () => {
+    state.planets = [{ id: 'post-1', firstHunt: true }];
+    state.runs = [{ departAt: new Date('2026-11-06T12:00:00Z'), arriveAt: new Date('2026-11-06T12:01:00Z'), homeAt: new Date('2026-11-06T12:02:00Z'), status: 'done' }];
+    const { result } = renderHook(() => useStarterTutorial('galaxy'));
+    expect(result.current?.offers.find(offer => offer.kind === 'hunt')).toMatchObject({ mining: false });
   });
 });
 

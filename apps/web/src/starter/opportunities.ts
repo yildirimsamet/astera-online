@@ -68,7 +68,6 @@ function deedsLeft(input: OpportunityInput): ('probe' | 'mine')[] {
 
 const flyingFor = (input: OpportunityInput) => ({ probe: input.probing === true, mine: input.mining === true });
 
-/** Fuel moves from the store; Deuterium still in the works is one collect away. */
 /** The hunt's step, split into one the player can take now and one that only waits on a flight. */
 function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportunity } {
   const hunt = input.hunt;
@@ -77,6 +76,7 @@ function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportuni
   return hunt.stage === 'probe' || hunt.stage === 'decide' ? { act: offer } : { state: offer };
 }
 
+/** Fuel moves from the store; Deuterium still in the works is one collect away. */
 function tank(input: OpportunityInput): Opportunity {
   return input.held.deuterium < 1 && input.held.bufferDeuterium >= 1 ? { kind: 'collect' } : { kind: 'fuel' };
 }

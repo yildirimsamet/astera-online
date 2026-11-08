@@ -142,7 +142,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
         <div className="min-w-0 flex-1">
           <p className="flex items-baseline justify-between gap-2 leading-tight">
             <span data-testid="ship-name" className="min-w-0 truncate text-caption font-semibold text-v2-ink">{vessel.name}</span>
-            <span data-testid="ship-repair" className="shrink-0 text-micro text-v2-ink-2">{t('starter.repairedLabel')} <span className="font-v2-mono font-semibold text-v2-self">{percent}%</span></span>
+            <span data-testid="ship-repair" className="shrink-0 text-micro text-v2-ink-2">{t('starter.readyLabel')} <span className="font-v2-mono font-semibold text-v2-self">{percent}%</span></span>
           </p>
           <span className="mt-1 block h-1.5 overflow-hidden rounded-full border border-v2-line-hi bg-v2-void">
             <span className="block h-full rounded-full bg-v2-self shadow-[0_0_8px_var(--color-v2-self)]" style={{ width: `${String(percent)}%` }} />

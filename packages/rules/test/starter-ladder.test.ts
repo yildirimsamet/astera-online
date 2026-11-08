@@ -21,6 +21,7 @@ import {
   systemProgress,
   vesselHull,
   vesselLook,
+  wholeShipProgress,
   type RepairStep,
   type VesselFact,
   type VesselModule,
@@ -316,6 +317,40 @@ describe('the progress line', () => {
     expect(repairProgress(withModules(everything)).done).toBe(18);
     expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump - 1 })).done).toBe(18);
     expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump }))).toEqual({ done: 19, total: 19, share: 1 });
+  });
+});
+
+/**
+ * READY TO LEAVE IS NOT THE WHOLE SHIP (plan 2026-11-08 F7). The bar above counts what the jump needs;
+ * this counts every machine aboard, so a ship that is ready with its shield still dead is never "whole".
+ */
+describe('the whole ship, apart from the jump', () => {
+  const ready = Object.fromEntries(REPAIR_LADDER.filter(s => s.required).map(s => [s.module, s.stage]));
+
+  it('counts every repair aboard and the refinery the prologue leaves running', () => {
+    expect(wholeShipProgress(openingProgress())).toEqual({ done: 1, total: REPAIR_LADDER.length + 1 });
+  });
+
+  it('counts an optional repair, which the jump bar does not', () => {
+    expect(wholeShipProgress(withModules({ AEGIS: 1 })).done).toBe(2);
+  });
+
+  it('is not whole on a ship that is ready to leave with its choices still open', () => {
+    const progress = withModules(ready, { fuel: STARTER.fuelForJump, parts: STARTER.parts.needed });
+    expect(repairProgress(progress).share).toBe(1);
+    const whole = wholeShipProgress(progress);
+    expect(whole.done).toBeLessThan(whole.total);
+  });
+
+  it('is whole only once every machine is repaired', () => {
+    const modules: VesselModules = {};
+    for (const { module, stage } of REPAIR_LADDER) modules[module] = Math.max(modules[module] ?? 0, stage);
+    const whole = wholeShipProgress({ ...openingProgress(), modules });
+    expect(whole.done).toBe(whole.total);
+  });
+
+  it('gives every system a step the jump needs, so none reads 0/0', () => {
+    for (const system of VESSEL_SYSTEMS) expect(systemProgress(openingProgress(), system).total).toBeGreaterThan(0);
   });
 });
 

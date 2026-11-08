@@ -353,8 +353,9 @@ async function announceNewSeason(db: Db, clock: Clock): Promise<void> {
       gt(seasons.endsAt, new Date(now.getTime() + STARTER.migrationCutoffDays * 86_400_000))));
   const [season] = fresh;
   if (!season) return;
+  // A ship that waited out a season with nothing left to repair has fallen asleep by now: it is the one waiting most.
   const waiting = await db.select({ id: vessels.id }).from(vessels)
-    .where(and(eq(vessels.status, 'ACTIVE'), sql`${vessels.fuel} >= ${STARTER.fuelForJump}`));
+    .where(and(inArray(vessels.status, ['ACTIVE', 'DORMANT']), sql`${vessels.fuel} >= ${STARTER.fuelForJump}`));
   if (waiting.length === 0) return;
   await db.insert(vesselNotifications).values(waiting.map(ship => ({
     vesselId: ship.id, kind: 'SEASON_OPEN', refId: season.id, payload: { shardName: season.shardName === '' ? season.code : season.shardName }, createdAt: now,

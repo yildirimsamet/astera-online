@@ -20,6 +20,10 @@
 | N7 | Kurgu zamanı | **Tersane 1'den hemen sonra**, Kazıcı ilk madene giderken başlar. Teleskop, Teleskop 1'de gerçek temasla öğretilir. | Yok |
 | N8 | Eski plandan | Sohbette galaksi olayları + kohort yerleşimi, Kuruluş haftası ve Yeni Komutan 7 Günü kalır; 7 Gün en sonda. Onarım dronu çıkarıldı. | — |
 | N9 | İlk zaferin karşılığı | Kargo kuralı kalır ve raporda "taşıyabileceğin: X" olarak görünür. İlk kesin karakol zaferine **tek seferlik bir kasa** verilir. | Kurtarma Kasalarına yeni bir kasa eklenir (eylem kasası, modül kasası değil). |
+| N10 | İlk oturum yolu (owner, aynı gün; N1'in "temelden sonra harcama kilidi kalkar" kısmını değiştirir) | Onarımlar **herkes için, sunucu kuralıyla** sırayla açılır: Rafineri 2 → Çıkarıcı 1 → Teleskop 1 → Radar 1 → Keşif anteni 1 → Tersane 1. Yoldaki her adım öncekini, yol dışındaki her adım Tersane 1'i ister. Rehberi kapatmak yalnız anlatımı kapatır. | `REPAIR_LADDER` sırası ve `requires` |
+| N11 | Sensörler ilk oturumda | Teleskop 1: 250/150, 90 sn. Radar 1: 200/120, 90 sn. Tersane'nin Rafineri 3 şartı kalkar. Rafineri 3 kasası (800/300) Teleskop 1'e taşınır; toplam ekonomi aynı kalır. | Fiyat, süre, kasa yeri |
+| N12 | Akış ve yönlendirmenin sonu (owner örneği, kelimesi kelimesine değil) | Kaynaklar tanıtılır, birer kademe üretim → teleskop ve radar → "artık kayaları görüyorsun" → kazıcı yollanır → diğer gemiler bulunur → sonda → gemi üretilir → "gemin bu durumda, ana galaksiye uçmak için onarman lazım". Ekran kilitlenmez. Sonrasında **NPC'siz** öneri listesi sürer; ilk av o listenin ilk önerisidir. | Rehber betiği |
+| N13 | Kazıcı (planlayıcı kararı, N12'den) | Teleskop 1 onarımı Kazıcı'yı verir ve madenciliği açar; Tersane artık 2 Dart verir. Kazıcı Tersane'yi beklerse akış 4–5 dk durur. | `grants`, madencilik kapısı, ilk kaya |
 
 **Planlayıcının kararları (owner itiraz etmedikçe):**
 - **A/B deneyi yok.** Starter canlı değil ve oyuncu sayısı güç hesabına yetmez. Değişiklik herkese gider; ölçüm huni ve nitel playtest ile yapılır (owner + Codex fare testçisi).
@@ -217,6 +221,30 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
   - **Senaryo testleri:** `starter-guide-scenarios` (rehber açık/kapalı, öneri dışı seçim, her şeyi harcama, 2. dakikada çıkış, uçuş sürerken çıkış).
   - **350×812 yürüyüşleri:** İşaretleri izleyen oyuncu çekirdeği, ilk kasayı ve kendiliğinden açılan danışmanı geçti; öneri dışı seçim sıradaki satıra ve işarete yansıdı. Rehbersiz oyuncuda onay geri dönüş yolunu söyledi, yeniden yüklemede subay gelmedi, seçimde el çıkmadı, Akademi'den rehber geri geldi ve kaldığı adımdan sürdü. Yatay taşma ve sayfa hatası yok.
 
+### F3b. İlk oturum yolu (N10–N12, owner 2026-11-08)
+**Sorun (ölçüm):** Oyuncu Rafineri sekmesindeki onarımları art arda alınca anten, kasaları açarsa ~2 saat, açmazsa ~6,4 saat sonra alınabiliyor. Doğru sırada 50 saniye. Bugünkü fiyatla teleskop ~8, radar ~24 saat sonra alınabiliyor.
+**Hedef:** Oyuncu ilk 10 dakikada üretimi, teleskop ve radarı, kazıcıyı, başka gemileri ve sondayı kullanır, Tersane'yi kurar ve ilk gemisini üretir. Hesap: 6 onarım toplam ~8,3 dk, bekleme araya girmez; uçuşlar bu süreye paralel gider.
+
+**Sunum standardı (owner, 2026-11-08: "Oyuncu oyunumuzla ilk defa karşılaşıyor. Bir aptalın bile anlaması lazım."):** Bu bölümün kabul ölçütüdür; her an için ayrı ayrı doğrulanır.
+- **Tek odak:** Ekranda aynı anda tek bir şey ister. Işık ve el o kontrolü gösterir, gerisi geri plana çekilir.
+- **Az söz:** En fazla iki kısa cümle. Önce oyuncunun gördüğü şey, sonra ne yapacağı. Teknik terim yok; sayı yalnız karar için gerekiyorsa.
+- **Önce göster:** Yeni bir şey anlatılmadan önce sahnede görünür: kamera gider, nesne parlar, hareket başlar.
+- **Her eylemin cevabı:** Ses, titreşim ve sahne tepkisi birlikte gelir. Rafineri tutuşur, alaşım çubuğa uçar, teleskop açılır ve halka yayılır, kayalar tek tek belirir, kazıcı kalkıp yüküyle döner, sonda gidip raporu getirir, tersaneden gemi çıkar. Ses kapalıyken de sonuç okunur.
+- **Her an kendine özgü:** Aynı kart ve düğme tekrarlanmaz; önemli işlerde şalter, basılı tutma veya sahnedeki nesneye dokunma kullanılır.
+- **Hikâye:** "Bu gemi senin", "dışarıda başkaları var", "eve dönmek için onar". Oyuncu sıradaki adımı ve nedenini her an bilir.
+- **Bekleme boş kalmaz:** Geri sayım görünür; oyuncu o sırada başka bir şey yapar veya sahnede işi izler.
+- **Doğrulama:** 350×812'de yeni hesapla baştan oynanır, her an için ekran görüntüsü alınır ve şu sorulur: Ne yapacağım belli mi, yaptığımın karşılığını görüyor muyum, sıradakini anlıyor muyum?
+
+| Adım | Doğrulama |
+|---|---|
+| Sıra, fiyat, süre, kasanın Teleskop 1'e taşınması, Kazıcı'nın Teleskop 1 ile gelmesi ve madencilik kapısı | `starter-ladder`, `starter-first-session`, `starter-pacing` yeni sırayla; yol dışı adım Tersane'siz reddedilir |
+| Bot ve hazır başlangıç yeni sırada (`takeShipBotTurn`, `startPartWay`) | `starter-bots` |
+| Sensör dersinin konusu: teleskop ve radar için gerçek temas (bugün tek keşif uçuşu ve yalnız Radar 1 sonrası) | `starter-traffic` / korsan testleri; "ders için sahte temas yok" kuralı korunur |
+| Rehber yolu: kaynak tanıtımı → üretim → teleskop, radar → kaya, kazıcı → gemiler, sonda → gemi üretimi → gemi durumu ve çıkış; ekran kilidi yok; sonra NPC'siz liste | `starter-tutorial-script`, `starter-guide-scenarios`; 6 dil |
+| Kilitli onarım "ne zaman açılır"ı adıyla söyler | RepairCard testi |
+| Çıkış temposunu yeniden ölç (rapor kalemi (a)) | Scratch tempo modeli; uzun simülasyon yok |
+| 350×812 baştan oynama | Yeni hesapla gerçek akış |
+
 ### F4. İlk av (karakol kurgusu, N6–N7)
 §5'teki akış uygulanır.
 - **Mevcut parçalar kullanılır:**
@@ -311,6 +339,17 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 - **Erken engeller:** Sezonun son 5 günü ve `NO_FRONTIER`/slot engelleri önceden gösterilir.
 - **İnişten sonra:** İlk bağımsız ana oyun kararı. Taşınan kargo, ilk sezon paketi ve kullanılabilir toplam ayrı gösterilir.
 - **Kabul:** Saga her aşamada çökme ve yeniden başlama testinden geçer; tek başkent ve tek kargo oluşur. 24/48/72 saat sonra dönüş ve uyku senaryoları test edilir.
+- **Teslim (2026-11-08):**
+  - **Ölçüm, plandan farklı karar:** DT1/DT2 öneri sırasında öne alınmadı. Kuralların kısa tempo modeliyle (`starter-pacing`'in modeli) ölçüldü: DT'yi açıldığı anda önermek çıkışı her tempoda yaklaşık 1 gün geciktiriyor (günde 2 oturum 3,4 → 4,4 gün; 15 oturum 1,7 → 2,5 gün), çünkü erken kristali yiyor. Mevcut sırada DT2 motorlardan önce bitiyor ve yakıt motorları bekletmiyor. "Erken öneri" bunun yerine plan görünümüyle yapıldı: DT2'nin kazandıracağı süre görünür.
+  - **Çıkış planı (Motor sekmesi):** Motor gövdesi ve İtki satırı gerçek durumu söyler: onarıldı ✓, kuyrukta (bitişe kalan süre, asla ✓ değil), onarılabilir (süre) veya bekliyor (eksik olan). Yakıt satırı tank + depo + havuzu sayar ve "uçuşa harcanmazsa" ne zaman tamamlanacağını söyler; DT1 tek başına çalışırken "DT2 ile …" kaldıracı gösterilir. İkisi de biliniyorsa göçü neyin beklettiği yazar (yakıt / motorlar). Kalan isteğe bağlı onarım sayısı ve "yalnız bu gemide işe yarar" notu panelde.
+  - **Adlandırma:** Gemi şeridindeki yüzde artık "Çıkışa hazırlık" (eski adı "Onarıldı"); Gemi Günlüğü başlığında "Tüm sistemler a/b" (isteğe bağlılar dahil, `wholeShipProgress`). Ana galaksi kartındaki ayak da "Çıkışa hazırlık". Her sistemin en az bir zorunlu adımı olduğu testle bağlı, 0/0 oluşamaz.
+  - **Erken engeller:** Sezonun son 5 günü, hazır olma tahmini bu sezonun kabul sınırını geçecekse ve galaksilerde yer yoksa, depo dolmadan panelde gerçek neden ve yapılabilecek şeyle söylenir (`jumpOutlook`). Depo doluyken sunucunun engeli eskisi gibi gösterilir.
+  - **İnişten sonra:** Kart taşınan kargo, ilk sezon paketi ve kullanılabilir toplamı (gemi sayısı dahil) ayrı satırlarda gösterir. İlk hamle iki seçenek: "İlk seferi planla" (İstihbarat) veya "Döteryum üretimini aç" (Üs'te Döteryum Rafinerisi satırı).
+    - **Yürüyüşte bulunan:** Ana galakside rafineri önce Döteryum Sentezi araştırması ister. Seçeneğin metni bu yolu söyler; kural değişmedi.
+  - **Bulunan ve düzeltilen hata:** Sezon beklerken 48 saat ilerleme olmadığı için uyuyan (DORMANT) hazır gemiye yeni sezon haberi gitmiyordu. Haber artık uyuyan hazır gemilere de gider.
+  - **Kabul testleri:** Saga dört adımın her birinde (`committed`, `seated`, `joined`, `landed`) kesilip tamamlanır, tek dünya ve tek kargo. Hazır gemi 24/48/72 saat sonra (48. saatten itibaren uyurken) göç eder; uyurken kuyruktaki İtki biter, dönüşte depo dolar ve göç olur.
+  - **350×812 yürüyüşü:** Motor sekmesi iki durumda (gövde kuyrukta / yakıt bekletiyor), taşma ve sayfa hatası yok. Yeni bir hesapla gerçek göç: kart 2.000+1.500=3.500 alaşım, 700+1.000=1.700 kristal, 40+50=90 D, 4+6=10 gemi gösterdi; üst çubuk aynı toplamı gösterdi. "Döteryum üretimini aç" Üs'te rafineri satırını açtı.
+  - **Kapsam dışı (F8'e):** Motorun tamamlanma anı için ses/ışık sunumu yok; kuyruktaki motor için de sunum gelmediği doğrulandı.
 
 ### F8. Gemi görseli
 - `ShipHero` ve `VesselBody` hasarı ve ışığı, genel %35/%80 eşikleri yerine o modülün gerçek durumundan okur; onarılan bölümün hasar efekti söner.

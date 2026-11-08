@@ -2,9 +2,10 @@ import type { VesselView } from '../../api/starterSchemas.js';
 import { z } from 'zod';
 import { REPAIR_LADDER, nextRequiredStep } from '@astera/rules';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useGalaxy, useMining, usePending, usePlanet, useTraffic } from '../../api/queries.js';
+import { useGalaxy, useIntel, useMining, usePending, usePlanet, useTraffic } from '../../api/queries.js';
 import { useProjected } from '../../lib/projection.js';
 import { vesselToPlanetView } from '../adapter.js';
+import { huntStage } from '../hunt.js';
 import { hasOtherShip } from '../neighbour.js';
 import { opportunities, opportunityKey, type Opportunity } from '../opportunities.js';
 import { timeToAfford } from '../steps.js';
@@ -60,6 +61,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const mining = useMining();
   const galaxy = useGalaxy();
   const traffic = useTraffic();
+  const intel = useIntel();
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -86,7 +88,9 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const income = { alloyPerHour: plan.planet.alloyPerHour, crystalPerHour: plan.planet.crystalPerHour };
   const backIn = next ? timeToAfford(next, purse, income) : 0;
   const probing = (pending.data?.pending ?? []).some(thread => thread.kind === 'probe');
-  const out = (mining.data?.runs.length ?? 0) > 0;
+  // A run that is done is home: the line counts the same way (GalaxyView).
+  const active = (mining.data?.runs ?? []).filter(run => run.status !== 'done');
+  const out = active.length > 0;
   // Only once the map has loaded: an unread map is not an empty galaxy.
   const alone = galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, vessel.id);
   const input: TutorialInput = {
@@ -114,9 +118,11 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     probing,
     mining: out,
     alone,
+    // The same hunt the line is given, so the lit control and a pick follow it too.
+    hunt: huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? []),
   });
   const pick = advice.pick === null ? undefined : offers.find(offer => opportunityKey(offer) === advice.pick);
-  const run = mining.data?.runs[0];
+  const run = active[0];
   const flight = (pending.data?.pending ?? []).find(thread => thread.kind === 'fleet');
   const homeAt = run ? run.homeAt ?? new Date(2 * run.arriveAt.getTime() - run.departAt.getTime()) : flight?.homeAt ?? (flight?.leg === 'outbound' && flight.path ? new Date(flight.arriveAt.getTime() + flight.path.arriveAt.getTime() - flight.path.departAt.getTime()) : flight?.arriveAt);
   const waiting = answer.kind === 'step' && answer.step === 'wait' ? answer.id : null;

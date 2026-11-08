@@ -31,4 +31,13 @@ describe('the ship\'s log in the menu', () => {
     fireEvent.click(screen.getByTestId('log-go'));
     expect(open).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * READY TO LEAVE IS NOT THE WHOLE SHIP (plan F7). The chapters count what the jump needs; the log
+   * also says how much of the ship is repaired, the player's own choices with it.
+   */
+  it('counts every system aboard, the optional ones too', () => {
+    render(<ShipLog vessel={vesselSchema.parse(wireVessel({ progress: { ...openingProgress(), modules: { REFINERY: 1, AEGIS: 1 } } }))} onOpenShip={vi.fn()} />);
+    expect(screen.getByTestId('log-whole')).toHaveTextContent(`All systems 2/${String(REPAIR_LADDER.length + 1)}`);
+  });
 });

@@ -64,9 +64,10 @@ export const STARTER = {
   /**
    * The first hunt (owner 2026-11-08, N6–N7): a finished Shipyard is shown a Sur-held first-level
    * outpost and an Akıncı- or Mızrak-held second-level one, between `near` and `far` (a Dart pair's
-   * three to five minutes). A galaxy adds at most `extraMax` to its own; they are shared, kept by nobody.
+   * three to five minutes). They are shared, kept by nobody. Each yard is given two at most, once, so
+   * `extraMax` is two a seat: a smaller cap left a third of a full galaxy with no first hunt (2026-11-08).
    */
-  firstOutposts: { near: 300, far: 450, extraMax: 8 },
+  firstOutposts: { near: 300, far: 450, extraMax: 60 },
   /** The main game's own projects at its own prices, two levels at most. They end with the ship. */
   research: { projects: ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'PROSPECTOR_HOLDS'], maxLevel: 2 },
   fuelForJump: 90,

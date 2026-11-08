@@ -306,7 +306,7 @@ function SessionApp() {
             clearRequest={clearRequest}
             onOpenChat={onOpenChat}
           />
-          {!session.me.vessel && <ArrivalHost />}
+          {!session.me.vessel && <ArrivalHost onPanel={onPanel} />}
           {profileOpen && <ProfilePage name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
             onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
           </>
