@@ -60,7 +60,7 @@ describe('what a repair gives', () => {
 
   it('names what is handed over with the repair', () => {
     expect(stepEffects(step('SHIPYARD', 1), { ...openingProgress(), modules: { REFINERY: 3, SURVEY: 1 } }))
-      .toContainEqual({ kind: 'ships', fleet: { PROSPECTOR: 1, DART: 2 } });
+      .toContainEqual({ kind: 'ships', fleet: { DART: 2 } });
     expect(stepEffects(step('DEUTERIUM_PLANT', 1), openingProgress())).toContainEqual({ kind: 'deuterium', amount: 20 });
   });
 
@@ -134,8 +134,8 @@ describe('the ship screen', () => {
    * card under it offered "Repair": the tab read the ship as it is, the card as the queue leaves it.
    */
   it('locks no system whose repair the queue has already opened', () => {
-    const extractor = { ...queued, id: 'order-2', subject: 'EXTRACTOR', stage: 1 };
-    show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2 } }, queue: [extractor] }));
+    const radar = { ...queued, id: 'order-2', subject: 'RADAR', stage: 1 };
+    show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } }, queue: [radar] }));
     const survey = within(screen.getByRole('tablist')).getByRole('tab', { name: /Survey/ });
     expect(survey.getAttribute('aria-label')).not.toMatch(/locked/);
     expect(within(screen.getByRole('tablist')).getByRole('tab', { name: /drive/i }).getAttribute('aria-label')).toMatch(/locked/);
@@ -169,11 +169,12 @@ describe('the ship screen', () => {
 
   /** The tutorial reaches a repair the card is not showing through its thumbnail (review 2026-11-06). */
   it('marks every thumbnail on the strip with its repair, and pressing it brings that card up', () => {
-    show(vessel());
-    const thumb = screen.getByTestId('repair-strip').querySelector('[data-guide="repair-show"][data-step="EXTRACTOR:1"]');
+    const yardIn = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+    show(vessel({ progress: { ...openingProgress(), modules: yardIn }, alloy: 5000, crystal: 5000 }));
+    const thumb = screen.getByTestId('repair-strip').querySelector('[data-guide="repair-show"][data-step="REFINERY:3"]');
     expect(thumb).not.toBeNull();
     fireEvent.click(thumb!);
-    expect(screen.getByTestId('next-repair').querySelector('[data-guide="repair-order"][data-step="EXTRACTOR:1"]')).not.toBeNull();
+    expect(screen.getByTestId('next-repair').querySelector('[data-guide="repair-order"][data-step="REFINERY:3"]')).not.toBeNull();
   });
 
   describe('its first look', () => {
@@ -264,7 +265,7 @@ describe('the ship screen', () => {
       show(vessel());
       fireEvent.click(tab(/survey antenna/i));
       const card = within(screen.getByTestId('next-repair'));
-      expect(card.getByTestId('repair-missing').textContent).toMatch(/Crystal Extractor/);
+      expect(card.getByTestId('repair-missing').textContent).toMatch(/Radar/);
       expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     });
 
@@ -442,10 +443,10 @@ describe('the ship screen', () => {
     await waitFor(() => { expect(requests).toEqual([{ path: '/api/starter/repair', body: { module: 'AEGIS', stage: 1 } }]); });
   });
 
-  it('keeps the choice shut until the radar is in', () => {
+  it('keeps the choice shut until the yard is in', () => {
     const progress: VesselProgress = {
       ...openingProgress(),
-      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, DEUTERIUM_PLANT: 2 },
+      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, TELESCOPE: 1, RADAR: 1, DEUTERIUM_PLANT: 2 },
     };
     show(vessel({ progress, alloy: 5000, crystal: 5000 }));
     fireEvent.click(within(screen.getByRole('tablist', { name: 'Ship systems' })).getByRole('tab', { name: /Defence/ }));

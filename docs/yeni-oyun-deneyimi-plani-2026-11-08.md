@@ -357,6 +357,8 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 - `ShipHero` ve `VesselBody` hasarı ve ışığı, genel %35/%80 eşikleri yerine o modülün gerçek durumundan okur; onarılan bölümün hasar efekti söner.
 - Üç yoğunluk kademesi uygulanır: rutin seçimde küçük yerel cevap, ilk yetenekte nesne + sahne + tek bilgi, büyük sonuçta kısa güçlü sunum. Aynı olay üç kez kutlanmaz.
 - Antenin pivotu ve rig'i sonraya kalır.
+  - **Teslim (2026-11-08):** Hasar artık sistem sistem okunur: `damageSpots` 3D gemide, `bayCondition` `ShipHero` üstünde. Tablo ve modeller yine görünüm başına üçtür; %35/%80 eşikleri yalnız hangi resmin seçildiğini belirler.
+  - Motor ateşlemesi, oyuncu o sırada yoksa da gemi ekranına ilk bakışında bir kez oynar (`astera.starter.ignition.<gemi>`, cihaz başına). Rutin onarım ve yeni yetenek yalnız ekran açıkken cevap verir; yetenek dönüşte kartıyla söylenir.
 
 ### F9. Eski plandan korunanlar
 - Sohbette galaksi olayları + kohort yerleşimi (eski F5, dron hariç).
