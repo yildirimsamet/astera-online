@@ -82,6 +82,11 @@ const inBand = (ship: Vec3, point: Vec3): boolean => {
   return span >= STARTER.firstOutposts.near && span <= STARTER.firstOutposts.far;
 };
 
+/** Whether this outpost is one of the ship's first hunt: in its band, playing either role. */
+export function playsFirstHunt(ship: Vec3, site: Vec3 & { level: number; guard: Fleet | null }): boolean {
+  return inBand(ship, site) && roleOf(site) !== null;
+}
+
 /** The roles no standing outpost in the band plays for this ship yet, wall first. */
 export function firstOutpostsMissing(ship: Vec3, outposts: readonly (Vec3 & { level: number; guard: Fleet | null })[]): FirstOutpostRole[] {
   const played = new Set(outposts.filter(site => inBand(ship, site)).map(roleOf));

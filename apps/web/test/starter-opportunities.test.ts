@@ -187,3 +187,45 @@ describe('the other choices of this moment', () => {
     expect(kinds(input())).not.toContainEqual({ kind: 'collect' });
   });
 });
+
+/**
+ * THE FIRST HUNT (plan §5.1, F4e). The shipyard is up and the Prospector is sent: while it flies, the
+ * two outposts are the thing to do, ahead of a repair the store could pay; the repair stays a choice.
+ */
+describe('the first hunt', () => {
+  const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
+  const features = ['production', 'intel', 'fleet'] as const;
+  const probeTevis = { stage: 'probe', target: 'tevis' } as const;
+  const hunting = (over: Partial<OpportunityInput> = {}) => input({ progress, features, hunt: probeTevis, ...over });
+
+  it('sends the Prospector first, and keeps the hunt among the choices', () => {
+    const [head, ...rest] = opportunities(hunting());
+    expect(head).toEqual({ kind: 'mine' });
+    expect(rest).toContainEqual({ kind: 'hunt', hunt: probeTevis, mining: false });
+  });
+
+  it('comes next while the Prospector flies, ahead of a repair the store pays', () => {
+    const [head, ...rest] = opportunities(hunting({ mining: true }));
+    expect(head).toEqual({ kind: 'hunt', hunt: probeTevis, mining: true });
+    expect(rest.some(answer => answer.kind === 'repair')).toBe(true);
+  });
+
+  it('names the choice once both guards are read', () => {
+    expect(next(hunting({ mining: true, hunt: { stage: 'decide' } }))).toEqual({ kind: 'hunt', hunt: { stage: 'decide' }, mining: true });
+  });
+
+  it('says the probes or the fleet are on their way when there is nothing else to do, before the Prospector', () => {
+    expect(next(hunting({ held: empty, mining: true, hunt: { stage: 'probing' } }))).toEqual({ kind: 'hunt', hunt: { stage: 'probing' }, mining: true });
+    expect(next(hunting({ held: empty, mining: true, hunt: { stage: 'raid' } }))).toEqual({ kind: 'hunt', hunt: { stage: 'raid' }, mining: true });
+  });
+
+  it('lets a repair the store pays go first while the probes fly, and offers no waiting state as a choice', () => {
+    const [head, ...rest] = opportunities(hunting({ mining: true, hunt: { stage: 'probing' } }));
+    expect(head.kind).toBe('repair');
+    expect(rest.some(answer => answer.kind === 'hunt')).toBe(false);
+  });
+
+  it('is not there once the hunt is over', () => {
+    expect(opportunities(hunting({ mining: true, hunt: null })).some(answer => answer.kind === 'hunt')).toBe(false);
+  });
+});

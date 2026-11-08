@@ -1,4 +1,4 @@
-import type { CombatClass, WingMatchup } from '@astera/rules';
+import { matchupsAgainst, type ClassReading, type CombatClass, type WingMatchup } from '@astera/rules';
 
 export type MatchupHint = { kind: 'BRING'; cls: CombatClass } | { kind: 'SINGLE' } | { kind: 'PROBE' };
 
@@ -15,4 +15,12 @@ export function matchupHint(m: WingMatchup): MatchupHint | null {
   if (m.wingSingleClass && m.unknownShare > 0) return { kind: 'SINGLE' };
   if (m.kind === 'MIXED') return { kind: 'PROBE' };
   return null;
+}
+
+/**
+ * THE CLASS A READING NAMES, or null where it names none (an even or unread wall): what each hull's
+ * mark is read against where ships are built and picked (plan §5.5, F4c).
+ */
+export function namedWall(reading: ClassReading | null | undefined): CombatClass | null {
+  return matchupsAgainst({}, reading ?? undefined)?.wall ?? null;
 }

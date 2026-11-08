@@ -5,7 +5,7 @@ import { starterSites, vessels } from '../src/db/schema.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
 import { bearer, freshAccount, starterWorld } from './starterFixture.js';
-import { aboard, arm, placeShip, post } from './starterShips.js';
+import { aboard, arm, get, placeShip, post } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
@@ -101,6 +101,52 @@ describe('the first outposts', () => {
     const wrecks = await world.f.db.select().from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxyId), eq(starterSites.kind, 'WRECK')));
     expect(wrecks).toHaveLength(STARTER.sites.wrecks.count);
     expect(await outposts()).toHaveLength(2 + STARTER.sites.outposts.count);
+  });
+
+  /**
+   * THE MAP POINTS THEM OUT (plan §5.2, F4d): the two are marked on their ship's own map until its first
+   * outpost victory, both alike, so the mark says where to look and nothing about which guard is which.
+   */
+  describe('on the map', () => {
+    interface Point { id: string; body: string; firstHunt?: boolean }
+    const map = async (headers: Record<string, string>) => (await get<{ planets: Point[] }>(world, '/api/starter/galaxy', headers)).planets;
+    const marked = async (headers: Record<string, string>) => (await map(headers)).filter(point => point.firstHunt === true).map(point => point.id).toSorted();
+
+    it('marks this ship\'s two and no other outpost', async () => {
+      await standing({ x: -880, y: 0, z: 0 }, 3, { PIKE: 6 });
+      await buildYard();
+      const two = (await outposts()).filter(site => site.level < 3).map(site => site.id).toSorted();
+      expect(two).toHaveLength(2);
+      expect(await marked(bearer(token))).toEqual(two);
+      expect((await map(bearer(token))).filter(point => point.body === 'OUTPOST')).toHaveLength(3);
+    });
+
+    it('marks them on no other ship\'s map', async () => {
+      await buildYard();
+      const other = await aboard(world, 'Other', { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 });
+      // Out of both outposts' band, wherever this ship was born: a mirror of a ship born near the
+      // centre lands in its band and sees the same two, as it should.
+      const ours = await outposts();
+      const rim = Array.from({ length: 24 }, (_, i) => ({ x: Math.cos(i * Math.PI / 12) * 850, y: 0, z: Math.sin(i * Math.PI / 12) * 850 }));
+      const clear = (at: typeof rim[number]) => Math.min(...ours.map(site => distance(at, site)));
+      const away = rim.reduce((best, at) => (clear(at) > clear(best) ? at : best));
+      expect(clear(away)).toBeGreaterThan(STARTER.firstOutposts.far);
+      await placeShip(world, other.vesselId, away);
+      expect(await marked(other.headers)).toEqual([]);
+    });
+
+    it('stops marking them once the ship has won at an outpost', async () => {
+      await buildYard();
+      await world.f.db.update(vessels).set({ facts: ['FIRST_OUTPOST_VICTORY'] }).where(eq(vessels.id, vesselId));
+      expect(await marked(bearer(token))).toEqual([]);
+    });
+
+    it('stops marking one that is down', async () => {
+      await buildYard();
+      const [wall] = (await outposts()).filter(site => site.level === 1);
+      await world.f.db.update(starterSites).set({ guard: {}, respawnAt: new Date(world.f.clock.now().getTime() + 3_600_000) }).where(eq(starterSites.id, wall!.id));
+      expect(await marked(bearer(token))).not.toContain(wall!.id);
+    });
   });
 
   it('keeps them for nobody: another shipyard may raid them', async () => {

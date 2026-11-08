@@ -30,9 +30,11 @@ describe('the salvage crates', () => {
     for (const crate of late) expect(crate.reward.crystal).toBeGreaterThan(crate.reward.alloy);
   });
 
+  // The first victory's crate pays back ships instead, and has its own bound (`starter-victory-crate`).
   it('stay a shortfall, not a fortune: less than what the ship may carry across', () => {
-    const alloy = STARTER_CRATES.reduce((sum, crate) => sum + crate.reward.alloy, 0);
-    const crystal = STARTER_CRATES.reduce((sum, crate) => sum + crate.reward.crystal, 0);
+    const repairs = STARTER_CRATES.filter(crate => crate.fact === null);
+    const alloy = repairs.reduce((sum, crate) => sum + crate.reward.alloy, 0);
+    const crystal = repairs.reduce((sum, crate) => sum + crate.reward.crystal, 0);
     expect(alloy).toBeLessThanOrEqual(STARTER.carry.alloy);
     expect(crystal).toBeLessThanOrEqual(1200);
   });

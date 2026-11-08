@@ -60,8 +60,7 @@ export const counter = {
   even: "互角",
   /** No shot at all: a support hull firing is not a weak match, it is no match. */
   none: "攻撃なし",
-  multiplier: "×{{mult}}",
-  matchupLabel: "{{attacker}}対{{defender}}：{{outcome}}、ダメージ×{{mult}}",
+  matchupLabel: "{{attacker}}対{{defender}}：{{outcome}}、ダメージ{{mult}}",
   cycleLabel: "機動型は防壁型に、防壁型は突撃型に、突撃型は機動型に強い",
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
   /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */

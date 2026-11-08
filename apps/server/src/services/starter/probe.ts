@@ -115,6 +115,8 @@ function readSite(site: typeof starterSites.$inferSelect, accuracy: number, miss
     fleetHome: true,
     classReading: classReading(guard, accuracy, stream(5)),
     ...(hunting ? { hasPart: site.hasPart } : {}),
+    // The first hunt's report (plan F4) reads as an outpost's: who holds it and what it pays.
+    ...(site.kind === 'OUTPOST' ? { outpost: true } : {}),
   };
 }
 

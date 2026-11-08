@@ -1614,6 +1614,8 @@ export const galaxySchema = z.object({
       body: z.enum(['VESSEL', 'OUTPOST']).optional(),
       /** A thrust part this ship can see here. Absent for anyone not hunting one. */
       hasPart: z.boolean().optional(),
+      /** One of this ship's two first outposts, until its first outpost win (plan §5.2). */
+      firstHunt: z.boolean().optional(),
       look: z.enum(VESSEL_LOOKS).optional(),
       coreTier: z.number().default(1),
       /**
@@ -2525,6 +2527,8 @@ export const intelSchema = z.object({
       repair: band.optional(),
       /** A shared place holds an engine part. Places only. */
       hasPart: z.boolean().optional(),
+      /** An outpost of the starter galaxy (plan F4): its report reads as the first hunt's. */
+      outpost: z.boolean().optional(),
       deathStar: z.enum(['READY', 'BUILDING', 'NONE', 'UNKNOWN']).optional(),
       /**
        * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D137.
@@ -2906,6 +2910,10 @@ const ordinaryBattleReport = z.object({
       opponentKind: z.enum(['SHIP', 'OUTPOST', 'PIRATES']).optional(),
       /** Aboard, an outpost whose guard this raid killed: until then nothing stands there. */
       guardDownUntil: z.coerce.date().nullable().optional(),
+      /** Aboard: the first decisive win over an outpost guard, the one that unseals the victory crate. */
+      firstVictory: z.boolean().optional(),
+      /** Aboard: the outpost's guard was down before this fleet landed; the ship whose raid took it. */
+      beatenBy: z.string().nullable().optional(),
       pirate: z
         .object({
           level: z.number().int().min(1).max(4),

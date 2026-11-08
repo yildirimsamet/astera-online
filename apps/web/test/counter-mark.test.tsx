@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { COMBAT, HULLS } from '@astera/rules';
 import { ClassChip, CounterCycle, CounterLine, MatchupMark } from '../src/ui/CounterMark.js';
 import i18n from '../src/i18n/index.js';
+import { factor } from '../src/lib/format.js';
 
 /**
  * THE RULE THAT DECIDES EVERY FIGHT, ON THE SCREEN WHERE IT IS BET ON. D124.
@@ -70,6 +71,16 @@ describe('one hull against one known enemy class', () => {
   it('marks an even match without pretending it is an advantage', () => {
     render(<MatchupMark attacker="LANCE" defender="LANCE" />);
     expect(screen.getByTestId('matchup')).toHaveAttribute('data-matchup', 'even');
+  });
+
+  /**
+   * Every digit the rule has and none it does not: "×1.000" on an even match read as a thousand. And a
+   * check or a cross, never a triangle or a dot: those are the Skirmisher's and the support hull's own
+   * emblems, and "Dart ▲ ▲ ×1.6" beside the class glyph read as one mark said twice.
+   */
+  it('writes the verdict apart from every class emblem, and the multiplier as the rule states it', () => {
+    render(<><MatchupMark attacker="LANCE" defender="LANCE" /><MatchupMark attacker="SKIRMISHER" defender="BULWARK" /><MatchupMark attacker="LANCE" defender="BULWARK" /></>);
+    expect(screen.getAllByTestId('matchup').map(mark => mark.textContent)).toEqual(['=×1', `✓${factor(COMBAT.strongMult)}`, `✗${factor(COMBAT.weakMult)}`]);
   });
 
   /**

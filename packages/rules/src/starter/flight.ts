@@ -1,7 +1,6 @@
 import type { CombatRound } from '../combat.js';
 import { fleetEntries, HULLS } from '../hulls.js';
-import { hullWorkMinutes } from '../economy.js';
-import { shipRepairCost, shipRepairWorkMinutes } from '../damage.js';
+import { shipRepairCost, shipRepairMinutes } from '../damage.js';
 import { orbitPosition, type OrbitElements } from '../galaxy.js';
 import { mulberry32 } from '../rng.js';
 import type { HpDamageLot } from '../radiationHp.js';
@@ -72,9 +71,8 @@ export interface DockBill { cost: Resources; minutes: number }
  */
 export function dockBill(lots: readonly HpDamageLot[]): DockBill {
   const { pct, dockTimeMult } = STARTER.repair;
-  const work = lots.reduce((sum, lot) =>
-    sum + shipRepairWorkMinutes(hullWorkMinutes(lot.hull, lot.count, DOCK_YARD, {}), lot.damageBp, pct), 0);
-  return { cost: shipRepairCost(lots, pct), minutes: work * dockTimeMult };
+  // The main station's own sums, which leave out a wound below a basis point: a battle can leave one.
+  return { cost: shipRepairCost(lots, pct), minutes: shipRepairMinutes(lots, DOCK_YARD, {}, pct) * dockTimeMult };
 }
 
 /** A tenth of what died, and only if it is worth flying to (A15). */
@@ -107,4 +105,8 @@ export interface StarterBattleRecord {
   /** The raid left an outpost with no guard: until this time it stands open to a second fleet. */
   guardDownUntil?: string | null;
   wreckValue: number;
+  /** The first decisive win over a standing outpost guard: the one that unseals the victory crate (N9). */
+  firstVictory?: boolean;
+  /** The guard was already down when this fleet landed: the ship whose raid took it. */
+  beatenBy?: string | null;
 }

@@ -211,9 +211,13 @@ describe('a report whose raid killed the guard', () => {
     defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0,
   } as unknown as BattleReport;
 
-  const sheet = async (one: BattleReport) => {
+  const sheet = async (one: BattleReport, aboard = false) => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [one] });
+    if (aboard) {
+      const vessel = vesselSchema.parse(wireVessel({ modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 } }));
+      client.setQueryData(['planet'], { ...vesselToPlanetView(vessel), vessel });
+    }
     const api = { reports: () => Promise.resolve({ reports: [one] }) } as unknown as Api;
     render(<QueryClientProvider client={client}><ApiProvider api={api}><BattleReports /></ApiProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: /abandoned outpost/i }));
@@ -233,5 +237,18 @@ describe('a report whose raid killed the guard', () => {
 
   it('says nothing about a guard that still stands', async () => {
     expect(await sheet(base)).not.toMatch(/guard is down/i);
+  });
+
+  // F4f: the raid's lesson is read where its numbers are, aboard.
+  it('says why the raid went as it did and what the lost ships cost', async () => {
+    const said = await sheet(base, true);
+    expect(said).toMatch(/outclassed by the Lance guard \(×0\.625\)\. Against it, send Warden/);
+    expect(said).toMatch(/Lost 3 Dart: building them again costs/);
+  });
+
+  it('tells the first win where its crate is, and who got there first when someone did', async () => {
+    expect(await sheet({ ...base, firstVictory: true }, true)).toMatch(/victory crate is waiting at the Shipyard/);
+    cleanup();
+    expect(await sheet({ ...base, theirFleet: {}, beatenBy: 'Early' }, true)).toMatch(/Early got there first/);
   });
 });

@@ -8,7 +8,7 @@ import {
   type HullClass,
 } from '@astera/rules';
 import { combatClassLabel } from '../i18n/names.js';
-import { decimal } from '../lib/format.js';
+import { factor } from '../lib/format.js';
 import {
   BulwarkIcon,
   LanceIcon,
@@ -99,11 +99,14 @@ const VERDICT_TONE: Record<Verdict, string> = {
   none: 'text-faint',
 };
 
-/** ▲ · ● · ▼ — the judgement as a shape, so the colour is never doing it alone. */
+/**
+ * ✓ · = · ✗ — the judgement as a shape, so the colour is never doing it alone. Never a triangle or a
+ * dot: those are the Skirmisher's and the support hull's emblems, drawn right beside this mark.
+ */
 const VERDICT_ARROW: Record<Verdict, string> = {
-  strong: '▲',
-  weak: '▼',
-  even: '●',
+  strong: '✓',
+  weak: '✗',
+  even: '=',
   none: '–',
 };
 
@@ -148,11 +151,11 @@ export function MatchupMark({
         attacker: combatClassLabel(attacker),
         defender: combatClassLabel(defender),
         outcome,
-        mult: decimal(mult, 3),
+        mult: factor(mult),
       })}
     >
       <span aria-hidden>{VERDICT_ARROW[verdict]}</span>
-      {verdict === 'none' ? outcome : t('counter.multiplier', { mult: decimal(mult, 3) })}
+      {verdict === 'none' ? outcome : factor(mult)}
     </span>
   );
 }

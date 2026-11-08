@@ -60,8 +60,7 @@ export const counter = {
   even: 'Even',
   /** No shot at all: a support hull firing is not a weak match, it is no match. */
   none: 'No attack',
-  multiplier: '×{{mult}}',
-  matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, ×{{mult}} damage',
+  matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, {{mult}} damage',
   cycleLabel: 'Skirmisher beats Bulwark, Bulwark beats Lance, Lance beats Skirmisher',
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
   /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */

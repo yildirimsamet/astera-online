@@ -59,6 +59,8 @@ export async function starterReportsView(db: Db, accountId: string, clock: Clock
         shieldAfter: result.shieldAfter,
         cargoLimited: result.cargoLimited,
         guardDownUntil: attacking ? result.guardDownUntil ?? null : null,
+        firstVictory: attacking && result.firstVictory === true,
+        beatenBy: attacking ? result.beatenBy ?? null : null,
         defenceSalvage: {},
         yourDamage: attacking ? result.attackerDamage : result.defenderDamage,
         pvpBalance: STARTER_PVP_BALANCE,

@@ -14,6 +14,7 @@ import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import { outpostFinderTargets } from '../starter/outpostTargets.js';
 import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
 import { gateOf } from '../starter/gate.js';
@@ -25,7 +26,9 @@ import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
 import { salvageReachMinutes } from '../lib/salvageReach.js';
 import { hasOtherShip, nearestRock, nearestShip } from '../starter/neighbour.js';
+import { huntStage } from '../starter/hunt.js';
 import { ObjectiveLine } from '../starter/ObjectiveLine.js';
+import { OutpostOutcome, useOutpostOutcome } from '../starter/OutpostOutcome.js';
 import { followLaunch, ownCraft } from '../starter/followLaunch.js';
 import { UnlockMoment } from '../starter/UnlockMoment.js';
 import { VesselScreen } from '../starter/VesselScreen.js';
@@ -946,12 +949,7 @@ export function GalaxyView({
   const minuteNow = season.data ? Math.floor((now - season.data.startsAt.getTime()) / 60_000) : 0;
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
       ...monumentFinderTargets(galaxy.data?.monuments ?? [], t),
-      ...planets.filter(world => world.body === 'OUTPOST').sort((a, b) => Number(b.hasPart ?? false) - Number(a.hasPart ?? false)).map(world => ({
-        kind: 'planet' as const,
-        id: world.id,
-        label: world.name,
-        detail: world.hasPart ? t('starter.jump.partHere') : t('starter.readout.level', { level: Math.max(1, world.coreLevel) }),
-      })),
+      ...outpostFinderTargets(planets, t),
       ...asteroids.map((rock, index) => ({
         kind: 'asteroid' as const,
         id: rock.id,
@@ -1307,6 +1305,16 @@ export function GalaxyView({
   };
   /** The context slot draws at the foot while the season is live and no page is open. */
   const slotShown = showGuidance && Boolean(planet.data) && panel === null && !cosmeticTrial && season.data?.status === 'live' && !ship;
+  // A raid's result ends the watch of a flight, so the result is seen where the flight was (F4f).
+  const outcome = useOutpostOutcome();
+  const landed = outcome.current?.id;
+  const following = focus?.kind === 'thread';
+  const ended = useRef<string | null>(null);
+  useEffect(() => {
+    if (!landed || ended.current === landed) return;
+    ended.current = landed;
+    if (following) close();
+  }, [landed, following, close]);
   const bottom = bottomSurface({ page: panel !== null, selected: slotSelected, destination: mainRowOpen || universeOpen, starter: ship !== undefined, context: slotShown });
 
   const toggle = (): void => {
@@ -1896,6 +1904,8 @@ export function GalaxyView({
       {ship && bottom === 'starter' && (
         <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null ? 'hidden' : ''}`}>
           {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
+          {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
+          {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
           {ship.unlockToAnnounce
             ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
@@ -1904,6 +1914,9 @@ export function GalaxyView({
                 fetchedAt={planet.dataUpdatedAt}
                 onOpenShip={() => { onPanel('planet'); }}
                 onFocusNeighbour={focusNeighbour}
+                onFocusOutpost={id => { focusPlanet(id); }}
+                onOpenReports={() => { onPanel('intel', 'probes'); }}
+                hunt={huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? [])}
                 onFocusRock={() => {
                   const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
                   const id = nearestRock(asteroids, activeWorldPosition, minutes);

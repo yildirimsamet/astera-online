@@ -15,4 +15,11 @@ describe('the Repair Station aboard', () => {
   it('bills nothing for no wound', () => {
     expect(dockBill([])).toEqual({ cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 0 });
   });
+
+  // A battle can leave a wound below one basis point, which the station has nothing to mend (F4 measurement).
+  it('bills nothing for a wound below a basis point, as the main station does', () => {
+    expect(dockBill([{ hull: 'DART', count: 1, damageBp: 0, remainderBp: 0.4 }])).toEqual({ cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 0 });
+    const real = { hull: 'DART' as const, count: 1, damageBp: 1500 };
+    expect(dockBill([{ hull: 'DART', count: 1, damageBp: 0, remainderBp: 0.4 }, real])).toEqual(dockBill([real]));
+  });
 });

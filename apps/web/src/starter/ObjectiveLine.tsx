@@ -1,5 +1,6 @@
 import type { VesselProgress } from '@astera/rules';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import type { VesselView } from '../api/starterSchemas.js';
 import { compact } from '../lib/format.js';
@@ -12,6 +13,7 @@ import { clockTime, duration, durationPrecise, useNow } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Icon, type IconId } from '../v2/icons.js';
 import { vesselToPlanetView } from './adapter.js';
+import type { HuntStage } from './hunt.js';
 import { opportunities, opportunityKey, type Opportunity } from './opportunities.js';
 import { moduleName } from './shipCopy.js';
 import { useAdviceMemory } from './tutorial/adviceMemory.js';
@@ -24,7 +26,7 @@ const progressOf = (vessel: VesselView) => ({ modules: vessel.modules, facts: ve
 /** Longer than this and the line says "that is all for now" with a clock time, so leaving is fine. */
 const REST_MINUTES = 15;
 
-type Tap = 'ship' | 'neighbour' | 'rock' | 'up' | null;
+type Tap = 'ship' | 'neighbour' | 'rock' | 'up' | 'outpost' | 'reports' | null;
 
 /** What the step is, in the player's words, and where a tap takes them. */
 function useLine(objective: Opportunity, now: number): { text: string; tap: Tap; rest: boolean } {
@@ -52,6 +54,17 @@ function useLine(objective: Opportunity, now: number): { text: string; tap: Tap;
     case 'parts': return { text: t('starter.objective.parts', { count: objective.count }), tap: null, rest: false };
     case 'fuel': return { text: t('starter.objective.fuel'), tap: 'ship', rest: false };
     case 'jump': return { text: t('starter.mainRow.ready'), tap: 'ship', rest: false };
+    case 'hunt': return huntLine(objective, t);
+  }
+}
+
+/** The first hunt's story, one beat per step (plan §5.1): the outposts, the probes, the choice, the flight. */
+function huntLine(objective: Extract<Opportunity, { kind: 'hunt' }>, t: TFunction): { text: string; tap: Tap; rest: boolean } {
+  switch (objective.hunt.stage) {
+    case 'probe': return { text: t(objective.mining ? 'starter.objective.huntProbeMining' : 'starter.objective.huntProbe'), tap: 'outpost', rest: false };
+    case 'probing': return { text: t('starter.objective.huntProbing'), tap: null, rest: false };
+    case 'decide': return { text: t('starter.objective.huntDecide'), tap: 'reports', rest: false };
+    case 'raid': return { text: t('starter.objective.huntRaid'), tap: null, rest: false };
   }
 }
 
@@ -76,6 +89,7 @@ function offerIcon(offer: Opportunity): IconId {
     case 'save': case 'wait': return 'i-hourglass';
     case 'fact': return 'i-info';
     case 'parts': return 'i-spark';
+    case 'hunt': return offer.hunt.stage === 'probe' || offer.hunt.stage === 'probing' ? 'i-probe' : 'i-attack';
   }
 }
 
@@ -129,6 +143,7 @@ function useOfferName(offer: Opportunity, now: number): string {
     case 'mine': return t('starter.visual.mine');
     case 'fuel': return t('starter.advice.fuel');
     case 'jump': return t('starter.visual.galaxy');
+    case 'hunt': return offer.hunt.stage === 'probe' ? t('starter.advice.huntProbe') : offer.hunt.stage === 'decide' ? t('starter.advice.huntDecide') : line.text;
     default: return line.text;
   }
 }
@@ -170,17 +185,22 @@ function OfferRow({ offer, index, recommended, chosen, held, progress, now, onPi
  * player where it is done. A new step arrives with a sweep of light and a chime, so finishing one is
  * felt. A long wait says so plainly, with the time to come back (onboarding design §5.1).
  */
-export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour, onFocusRock, probing = false, mining = false, alone = false }: {
+export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour, onFocusRock, onFocusOutpost, onOpenReports, probing = false, mining = false, alone = false, hunt = null }: {
   vessel: VesselView;
   fetchedAt: number;
   onOpenShip: () => void;
   /** Turns the camera to the nearest ship; without it the probe step is only a line. */
   onFocusNeighbour?: () => void;
   onFocusRock?: () => void;
+  /** Turns the camera to an outpost of the first hunt, and opens the probe reports on it. */
+  onFocusOutpost?: (id: string) => void;
+  onOpenReports?: () => void;
   probing?: boolean;
   mining?: boolean;
   /** No other ship in this galaxy: there is nobody to probe yet. */
   alone?: boolean;
+  /** Where the first hunt stands, while the map marks its outposts. */
+  hunt?: HuntStage | null;
 }) {
   const { t } = useTranslation();
   const now = useNow(15_000);
@@ -197,6 +217,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
     probing,
     mining,
     alone,
+    hunt,
   });
   // THE ADVISOR (plan F3, N1). The line names what the player picked, else the first offer.
   const [memory, remember] = useAdviceMemory(vessel.id);
@@ -250,10 +271,13 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   const nextTap: Tap = repair || id?.toLowerCase().includes('crate') ? 'ship'
     : id === 'mine' ? 'rock' : id?.startsWith('collect') ? 'up' : null;
   const line = short ? { text: short, tap: nextTap, rest: waiting } : original;
-  const tap = line.tap === 'neighbour' && !onFocusNeighbour || line.tap === 'rock' && !onFocusRock ? null : line.tap;
+  const outpost = objective.kind === 'hunt' && objective.hunt.stage === 'probe' ? objective.hunt.target : null;
+  const unheld = line.tap === 'neighbour' && !onFocusNeighbour || line.tap === 'rock' && !onFocusRock
+    || line.tap === 'outpost' && !(onFocusOutpost && outpost) || line.tap === 'reports' && !onOpenReports;
+  const tap = unheld ? null : line.tap;
   const step = repair ?? (objective.kind === 'repair' || objective.kind === 'save' ? objective.step : null);
   const opens = step ? stepEffects(step, progress).find(effect => effect.kind === 'feature') : undefined;
-  const key = step ? `${objective.kind}:${step.module}:${String(step.stage)}` : objective.kind === 'underway' ? `underway:${objective.what}` : objective.kind;
+  const key = step ? `${objective.kind}:${step.module}:${String(step.stage)}` : objective.kind === 'underway' ? `underway:${objective.what}` : opportunityKey(objective);
   const last = useRef<string | null>(null);
   useEffect(() => {
     if (last.current !== null && last.current !== key) { playSound('confirm'); haptic('tap'); }
@@ -273,14 +297,15 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
         {!short && opens?.kind === 'feature' && <span className="ml-1.5 whitespace-nowrap font-semibold text-v2-self">· {t(`starter.feature.${opens.feature}.gain`)}</span>}
       </span>
       {tap === 'up' && <Icon id="i-chev" className="size-4 shrink-0 -rotate-90 animate-[nudge_1.6s_ease-in-out_infinite] text-v2-alloy" />}
-      {(tap === 'ship' || tap === 'neighbour' || tap === 'rock') && <Icon id="i-chev" className="size-4 shrink-0 text-v2-self" />}
+      {tap !== null && tap !== 'up' && <Icon id="i-chev" className="size-4 shrink-0 text-v2-self" />}
     </>
   );
   const frame = `relative flex w-full items-stretch overflow-hidden rounded-control border bg-v2-deep/90 font-v2-ui shadow-lg animate-[line-in_0.45s_ease-out_both] ${line.rest ? 'border-v2-line-hi' : 'border-v2-self/40'}`;
   const inner = 'flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5';
   const sweep = <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 animate-[sweep_1.1s_ease-out_1_both] bg-gradient-to-r from-transparent via-v2-self/25 to-transparent" />;
   const marks = { 'data-testid': 'ship-objective', 'data-kind': objective.kind, 'data-guide': 'objective', ...(line.rest ? { 'data-rest': '' } : {}) };
-  const press = tap === 'ship' ? onOpenShip : tap === 'neighbour' ? onFocusNeighbour : tap === 'rock' ? onFocusRock : undefined;
+  const press = tap === 'ship' ? onOpenShip : tap === 'neighbour' ? onFocusNeighbour : tap === 'rock' ? onFocusRock
+    : tap === 'outpost' && onFocusOutpost && outpost ? () => { onFocusOutpost(outpost); } : tap === 'reports' ? onOpenReports : undefined;
   return (
     <>
       {showing && (

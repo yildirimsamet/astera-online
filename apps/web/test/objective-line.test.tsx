@@ -1,4 +1,4 @@
-import { REPAIR_LADDER } from '@astera/rules';
+import { REPAIR_LADDER, type VesselProgress } from '@astera/rules';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -152,5 +152,58 @@ describe('the advisor behind the next-step line', () => {
   it('has nothing to open when there is only one thing to do', () => {
     render(line({ alloy: 0, crystal: 0, bufferAlloy: 0 }));
     expect(screen.queryByRole('button', { name: /other choices/i })).toBeNull();
+  });
+});
+
+/**
+ * THE FIRST HUNT ON THE LINE (plan §5.1, F4e). While the Prospector flies, the line tells the story of
+ * the two outposts, and a tap goes where the next move is made: the outpost to probe, the reports to
+ * weigh. A flight under way only names itself.
+ */
+describe('the first hunt on the next-step line', () => {
+  const modules = { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 };
+  const progress: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT'], parts: 0, fuel: 0 };
+  const shipyard = { alloy: 0, crystal: 0, bufferAlloy: 0, modules, features: ['production', 'intel', 'fleet'], progress };
+  const hunt = (props: Partial<Parameters<typeof ObjectiveLine>[0]>) =>
+    render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel(shipyard))} fetchedAt={Date.now()} onOpenShip={vi.fn()} mining {...props} />);
+
+  it('says the Prospector is out and the guards are unknown, and a tap goes to the outpost to probe', () => {
+    const outpost = vi.fn();
+    hunt({ hunt: { stage: 'probe', target: 'tevis' }, onFocusOutpost: outpost });
+    const line = screen.getByTestId('ship-objective');
+    expect(line.getAttribute('data-kind')).toBe('hunt');
+    expect(line.textContent).toMatch(/Prospector is on its way/);
+    expect(line.textContent).toMatch(/two pirate outposts/);
+    fireEvent.click(line);
+    expect(outpost).toHaveBeenCalledWith('tevis');
+  });
+
+  it('leaves the Prospector out of it once it is home', () => {
+    hunt({ hunt: { stage: 'probe', target: 'tevis' }, mining: false, vessel: vesselSchema.parse(wireVessel({ ...shipyard, progress: { ...progress, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'] } })) });
+    const line = screen.getByTestId('ship-objective');
+    expect(line.getAttribute('data-kind')).toBe('hunt');
+    expect(line.textContent).not.toMatch(/Prospector/);
+  });
+
+  it('opens the reports once both guards are read', () => {
+    const reports = vi.fn();
+    hunt({ hunt: { stage: 'decide' }, onOpenReports: reports });
+    fireEvent.click(screen.getByTestId('ship-objective'));
+    expect(reports).toHaveBeenCalledOnce();
+  });
+
+  it('only names the probes and the fleet while they fly', () => {
+    hunt({ hunt: { stage: 'probing' } });
+    expect(screen.getByTestId('ship-objective').tagName).not.toBe('BUTTON');
+    expect(screen.getByTestId('ship-objective').textContent).toMatch(/probes are on their way/i);
+    cleanup();
+    hunt({ hunt: { stage: 'raid' } });
+    expect(screen.getByTestId('ship-objective').textContent).toMatch(/battle comes on arrival/i);
+  });
+
+  it('is a short choice in the advisor', () => {
+    hunt({ hunt: { stage: 'probe', target: 'tevis' }, mining: false, vessel: vesselSchema.parse(wireVessel({ ...shipyard, alloy: 10_000, crystal: 10_000 })) });
+    fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
+    expect(screen.getByTestId('starter-advice').querySelector('[data-advice="hunt:probe"]')?.textContent).toMatch(/Probe the outposts/);
   });
 });

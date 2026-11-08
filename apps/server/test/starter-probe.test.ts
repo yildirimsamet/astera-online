@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vesselMissions, vesselNotifications, vesselProbeReports, vessels } from '../src/db/schema.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, enrich, get, pass, placeShip, post, type StarterWorld } from './starterShips.js';
+import { aboard, enrich, get, pass, placeShip, post, siteOf, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
@@ -53,6 +53,27 @@ describe('sending a probe', () => {
     expect(after.probeReports).toHaveLength(1);
     expect(after.probeReports[0]).toMatchObject({ targetPlanetId: other.vesselId, targetName: 'Other' });
     expect(await notes(me.vesselId)).toContain('PROBE_REPORT');
+  });
+
+  /** Plan F4 (the first hunt): an outpost's report says it is one, and reads its guard's classes. */
+  it('marks a report of an outpost as one, with the guard\'s classes, and a ship\'s as neither', async () => {
+    const me = await scout();
+    const other = await aboard(world, 'Other');
+    const site = await siteOf(world, 'OUTPOST', 1);
+    await placeShip(world, me.vesselId, { x: site.x - 200, y: site.y, z: site.z });
+    await placeShip(world, other.vesselId, { x: site.x - 300, y: site.y, z: site.z });
+    await enrich(world, me.vesselId, 5000, 5000, 0);
+    expect((await fly(me.headers, site.id)).statusCode).toBe(200);
+    world.f.clock.advance(PROBE.retargetCooldownMinutes + 0.1);
+    expect((await fly(me.headers, other.vesselId)).statusCode).toBe(200);
+    await pass(world, 10);
+    const { probeReports } = await get<{ probeReports: (Report & { outpost?: boolean; classReading?: { kind: string } })[] }>(world, '/api/starter/intel', me.headers);
+    const outpost = probeReports.find(report => report.targetPlanetId === site.id);
+    const ship = probeReports.find(report => report.targetPlanetId === other.vesselId);
+    expect(outpost).toMatchObject({ outpost: true });
+    expect(outpost?.classReading?.kind).toBeDefined();
+    expect(ship).toBeDefined();
+    expect(ship).not.toHaveProperty('outpost');
   });
 
   /**

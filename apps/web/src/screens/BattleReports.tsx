@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next';
 import { STANDARD_PVP_BALANCE, type PvpBalance, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
 import { useReadReportSignals } from '../session/useReadReportSignals.js';
 import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome } from '../lib/battleOutcome.js';
-import { useReports } from '../api/queries.js';
+import { usePlanet, useReports } from '../api/queries.js';
+import { outpostReportLines } from '../starter/outpostReport.js';
+import { vesselToPlanetView } from '../starter/adapter.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullLabel, monumentName } from '../i18n/names.js';
@@ -165,7 +167,9 @@ export const reportFor = (
   id: string,
 ): Report | undefined => reports.find((candidate) =>
   candidate.kind === 'MONUMENT' ? candidate.id === id : candidate.missionId === id
-  || (candidate.kind !== 'STRATEGIC' && candidate.pirateRaidId === id));
+  || (candidate.kind !== 'STRATEGIC' && candidate.pirateRaidId === id)
+  // Aboard a colony ship (`opponentKind` is only ever set there) the signal carries the report's own id.
+  || (candidate.kind !== 'STRATEGIC' && candidate.opponentKind !== undefined && candidate.id === id));
 
 /**
  * A BATTLE NOTIFICATION OPENS THE BATTLE, NOT THE FILING CABINET. Owner
@@ -639,6 +643,8 @@ function ReportSheet({
 } & ReportDoors) {
   const { t } = useTranslation();
   const { aboard } = useStarterGate();
+  const vessel = usePlanet().data?.vessel;
+  const told = vessel ? outpostReportLines(report, t, vesselToPlanetView(vessel)) : [];
   /** "Watch" (the mock's İzle): the round by round, further down this sheet. */
   const rounds = useRef<HTMLHeadingElement>(null);
   const target = report.attacking ? report.opponentPlanetId ?? null : null;
@@ -695,6 +701,7 @@ function ReportSheet({
           rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
           onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
           {...(onShare ? { onShare } : {})}
+          told={told}
           {...(onFocusPlanet ? { onFocusPlanet } : {})}
           {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
         />

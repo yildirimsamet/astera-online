@@ -7,7 +7,9 @@ import { RIVAL, STARTER, radarContactRange, radarRange, telescopeSlots } from '@
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { duration, staleness } from '../src/lib/time.js';
+import { vesselSchema } from '../src/api/starterSchemas.js';
 import { IntelScreen } from '../src/screens/IntelScreen.js';
+import { wireVessel } from './starterVesselFixture.js';
 
 /**
  * THE INTEL SHEET — A BOOK OF WHAT YOU WATCH. D4 (owner, 2026-09-24) and E7/K11.
@@ -120,6 +122,7 @@ const planet = (telescope: number, radar: number) => ({
   ground: {},
   flight: { used: 0, total: 3 },
   fleetAway: {},
+  research: [],
 });
 
 interface Rival { planetId: string; slot: number; owner: string; name: string; lost: boolean }
@@ -148,7 +151,7 @@ const show = (opts: {
     ['intel'],
     intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? [], opts.radarLog ?? [], opts.first ?? {}),
   );
-  queries.setQueryData(['planet'], { ...planet(opts.telescope, opts.radar ?? 0), ...(opts.aboard ? { vessel: {} } : {}) });
+  queries.setQueryData(['planet'], { ...planet(opts.telescope, opts.radar ?? 0), ...(opts.aboard ? { vessel: vesselSchema.parse(wireVessel()) } : {}) });
   queries.setQueryData(['reports'], { reports: [] });
   render(
     <Wrapper>

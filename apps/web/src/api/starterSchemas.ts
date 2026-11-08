@@ -1,4 +1,4 @@
-import { HULLS, STARTER_FEATURES, VESSEL_HULLS, VESSEL_MODULES, type HullId } from '@astera/rules';
+import { HULLS, STARTER_FEATURES, VESSEL_FACTS, VESSEL_HULLS, VESSEL_MODULES, type HullId } from '@astera/rules';
 import { z } from 'zod';
 
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
@@ -7,6 +7,7 @@ const motion = z.object({
 });
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 const vesselModule = z.enum(VESSEL_MODULES);
+const vesselFact = z.enum(VESSEL_FACTS);
 const hullId = z.string().refine((id): id is HullId => id in HULLS);
 const feature = z.enum(STARTER_FEATURES);
 
@@ -49,7 +50,7 @@ export const vesselSchema = z.object({
   lastTickMinutes: z.number(),
   modules: z.record(vesselModule, z.number()),
   research: z.record(z.string(), z.number()),
-  facts: z.array(z.enum(['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'])),
+  facts: z.array(vesselFact),
   parts: z.number().int().nonnegative(),
   fuel: z.number().nonnegative(),
   pvpOpenAt: z.coerce.date().nullable(),
@@ -60,6 +61,8 @@ export const vesselSchema = z.object({
   /** The salvage crates (retention plan §6.2): sealed until their repair is done, then ready, then opened. */
   crates: z.array(z.object({
     id: z.string(), module: vesselModule, stage: z.number().int().positive(),
+    /** The act it also waits for (N9); an older server sends only repairs' crates. */
+    fact: vesselFact.nullable().default(null),
     alloy: z.number().nonnegative(), crystal: z.number().nonnegative(), state: z.enum(['sealed', 'ready', 'opened']),
   })).default([]),
   queue: z.array(vesselOrderSchema),

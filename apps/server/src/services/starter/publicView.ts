@@ -1,4 +1,4 @@
-import { MULTI_WORLD, isFeatureOpen, lookOfShare, moduleStage, sensorZone, vesselSphere, type VesselLook } from '@astera/rules';
+import { MULTI_WORLD, isFeatureOpen, lookOfShare, moduleStage, playsFirstHunt, sensorZone, vesselSphere, type VesselLook } from '@astera/rules';
 import { and, desc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Clock } from '../../clock.js';
@@ -85,6 +85,10 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
     : [];
   const seesPart = outposts.length > 0 ? await partSight(q, row) : () => false;
   const position = { x: row.x, y: row.y, z: row.z };
+  // The first hunt's two, marked alike until the first outpost win (§5.2): where to look, not which guard is which.
+  const hunting = !progress.facts.includes('FIRST_OUTPOST_VICTORY');
+  const firstHunt = (site: (typeof outposts)[number]): boolean =>
+    hunting && site.respawnAt === null && playsFirstHunt(position, { x: site.x, y: site.y, z: site.z, level: site.level, guard: site.guardFull });
   const telescope = moduleStage(progress, 'TELESCOPE');
   const sphere = vesselSphere(position, telescope, moduleStage(progress, 'RADAR'), row.id);
   return {
@@ -151,6 +155,7 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
         state: { kind: 'NORMAL' as const },
         neutral: { tier: tierOf(site.level), threat: threatOf(site.level), reserve: reserveOf(site.level), claimUntil: null },
         ...(seesPart(site) ? { hasPart: true } : {}),
+        ...(firstHunt(site) ? { firstHunt: true } : {}),
       })),
     ],
     rivals: [],

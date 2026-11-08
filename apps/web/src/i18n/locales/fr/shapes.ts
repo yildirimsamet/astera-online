@@ -38,9 +38,8 @@ export const counter = {
   weak: "Faible",
   even: "Équilibré",
   none: "Aucune attaque",
-  multiplier: "×{{mult}}",
   matchupLabel:
-    "{{attacker}} contre {{defender}} : {{outcome}}, dégâts ×{{mult}}",
+    "{{attacker}} contre {{defender}} : {{outcome}}, dégâts {{mult}}",
   cycleLabel:
     "L’Escarmoucheur bat le Rempart, le Rempart bat la Lance, la Lance bat l’Escarmoucheur",
   /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */

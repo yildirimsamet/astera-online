@@ -187,6 +187,8 @@ export interface PlanetNode {
   id: string;
   /** A shared place in a colony ship's galaxy, not a world anyone can hold. */
   outpost?: true;
+  /** One of this ship's two first outposts, which fly a flag on the map (plan §5.2). */
+  firstHunt?: true;
   skin?: GalaxyPlanet['skin'];
   ringId?: string;
   name: string;
@@ -354,6 +356,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[], starter = false): 
     ...(planet.neutral?.tier ? { neutralTier: planet.neutral.tier } : {}),
     ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
     ...(planet.body === 'OUTPOST' ? { outpost: true } : {}),
+    ...(planet.firstHunt === true ? { firstHunt: true } : {}),
     ...(planet.neutral?.claimPriorityUntil ? { claimPriorityUntil: planet.neutral.claimPriorityUntil } : {}),
     ...(planet.claimPriorityMine === true ? { claimPriorityMine: true } : {}),
   }));

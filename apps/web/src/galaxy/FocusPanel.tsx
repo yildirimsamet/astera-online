@@ -1,4 +1,5 @@
 import { PartHere } from '../starter/PartHere.js';
+import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { GameActions } from '../session/seasonLock.js';
 import { RadiationBombControl } from '../screens/RadiationBombControls.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
@@ -21,6 +22,7 @@ import {
   combatValue,
   prospectorAvailability,
   distance,
+  fleetCargo,
   fleetCount,
   fleetEntries,
   fleetTravelExact,
@@ -1004,12 +1006,24 @@ export function PlanetFocus({
       : t('dossier.page.peekDefenceUnknown'),
   ].join(' · ');
 
+  // The first hunt (plan F4): the loot is what the holds carry, and a probe reads who holds the place.
+  const outpostReport = target.body === 'OUTPOST'
+    ? intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.id && r.outpost === true)
+    : undefined;
+  const carry = fleetCargo(planet.fleet, flightModifiers(planet).tech);
   const outpostLines = target.body === 'OUTPOST' ? (
     <>
       {target.hasPart && <PartHere />}
       <p data-testid="outpost-rule" className="text-micro leading-snug text-v2-ink-2">
-        {t('starter.outpost.rule', { amount: full(STARTER.sites.outposts.stock[Math.min(STARTER.sites.outposts.stock.length, Math.max(1, target.coreLevel)) - 1] ?? 0) })}
+        {t('starter.outpost.rule', {
+          amount: full(STARTER.sites.outposts.stock[Math.min(STARTER.sites.outposts.stock.length, Math.max(1, target.coreLevel)) - 1] ?? 0),
+          carry: full(carry),
+        })}
       </p>
+      {outpostReport && (
+        <OutpostReading reading={outpostReport.classReading} carry={null} stock={null}
+          crate={planet.vessel ? sealedVictoryCrate(planet.vessel) : null} />
+      )}
     </>
   ) : null;
   return (

@@ -766,9 +766,15 @@ function describeAboard({ kind, payload }: NotificationView, now: number): strin
     return left > 0 ? i18n.t('starter.news.shieldWarning', { time: duration(left) }) : i18n.t('starter.news.shieldPast');
   }
   if (kind === 'BATTLE_REPORT') {
-    const battle = z.object({ attacking: z.boolean(), opponent: z.string(), opponentKind: z.string().optional() }).safeParse(payload);
+    const battle = z.object({
+      attacking: z.boolean(), opponent: z.string(), opponentKind: z.string().optional(),
+      firstVictory: z.boolean().optional(), beatenBy: z.string().optional(),
+    }).safeParse(payload);
     if (!battle.success) return null;
     const name = battle.data.opponentKind === 'PIRATES' ? i18n.t('starter.reports.piratesName') : battle.data.opponent;
+    // The outpost's two outcomes the report alone would hide until opened (F4f).
+    if (battle.data.firstVictory === true) return i18n.t('starter.news.firstVictory', { name });
+    if (battle.data.beatenBy) return i18n.t('starter.news.beatenBy', { name, by: battle.data.beatenBy });
     return i18n.t(battle.data.attacking ? 'starter.news.raidOver' : 'starter.news.attacked', { name });
   }
   if (kind === 'FLEET_HOME') {

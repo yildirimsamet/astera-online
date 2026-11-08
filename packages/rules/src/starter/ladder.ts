@@ -21,7 +21,8 @@ export const VESSEL_MODULES = [
 export type VesselModule = (typeof VESSEL_MODULES)[number];
 
 /** Things that happened, never things bought: the steps a player cannot simply wait for. */
-export type VesselFact = 'FIRST_PROBE_REPORT' | 'FIRST_MINING_RETURN' | 'FIRST_BATTLE_REPORT';
+export const VESSEL_FACTS = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY'] as const;
+export type VesselFact = (typeof VESSEL_FACTS)[number];
 
 export type VesselModules = Partial<Record<VesselModule, number>>;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STARTER, distance, firstOutpostPoint, firstOutpostSeed, firstOutpostsMissing, fleetSpeed, seededFrom, starterSlots, travelExact,
+  STARTER, distance, firstOutpostPoint, firstOutpostSeed, firstOutpostsMissing, fleetSpeed, playsFirstHunt, seededFrom, starterSlots, travelExact,
   type Vec3,
 } from '../src/index.js';
 
@@ -27,6 +27,16 @@ describe('the outposts a new shipyard is shown', () => {
     expect(firstOutpostsMissing(SHIP, [outpost(200, 1, { WARDEN: 2 }), outpost(600, 2, { DART: 3 })])).toEqual(['wall', 'counter']);
     expect(firstOutpostsMissing(SHIP, [outpost(350, 1, { DART: 2 }), outpost(400, 2, { WARDEN: 3 })])).toEqual(['wall', 'counter']);
     expect(firstOutpostsMissing(SHIP, [outpost(350, 2, { WARDEN: 3 }), outpost(400, 3, { PIKE: 6 })])).toEqual(['wall', 'counter']);
+  });
+
+  it('tells a ship which standing outposts are its first hunt, by the same band and roles', () => {
+    expect(playsFirstHunt(SHIP, outpost(350, 1, { WARDEN: 2 }))).toBe(true);
+    expect(playsFirstHunt(SHIP, outpost(-400, 2, { DART: 3 }))).toBe(true);
+    expect(playsFirstHunt(SHIP, outpost(-400, 2, { PIKE: 3 }))).toBe(true);
+    expect(playsFirstHunt(SHIP, outpost(200, 1, { WARDEN: 2 }))).toBe(false);
+    expect(playsFirstHunt(SHIP, outpost(600, 2, { DART: 3 }))).toBe(false);
+    expect(playsFirstHunt(SHIP, outpost(350, 1, { DART: 2 }))).toBe(false);
+    expect(playsFirstHunt(SHIP, outpost(400, 3, { PIKE: 6 }))).toBe(false);
   });
 
   it('lays out each one as the galaxy lays out its own', () => {

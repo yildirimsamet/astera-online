@@ -1,11 +1,13 @@
-import { HULLS, STARTER, dockBill, hangarLoad, hullBulk, type HullId } from '@astera/rules';
+import { HULLS, STARTER, dockBill, hangarLoad, hullBulk, type CombatClass, type HullId } from '@astera/rules';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCancelBuildOrder, useStartRepair } from '../api/queries.js';
-import type { BuildOrderView, PlanetView } from '../api/schemas.js';
+import { useCancelBuildOrder, useIntel, useStartRepair } from '../api/queries.js';
+import type { BuildOrderView, IntelView, PlanetView } from '../api/schemas.js';
 import type { VesselView } from '../api/starterSchemas.js';
 import { combatClassLabel, hullLabel, hullPitch, hullTag } from '../i18n/names.js';
 import { full } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { namedWall } from '../lib/matchup.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { useProjected, type Projected } from '../lib/projection.js';
@@ -13,6 +15,7 @@ import { roomParts } from '../lib/room.js';
 import { durationPrecise, useNow } from '../lib/time.js';
 import { BuildSheet } from '../screens/PlanetScreen.js';
 import { HULL_ART } from '../ui/assets.js';
+import { MatchupMark } from '../ui/CounterMark.js';
 import { describe as describeError, useToast } from '../ui/Toast.js';
 import { UpgradeRow } from '../ui/UpgradeRow.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
@@ -75,6 +78,46 @@ function ShipDock({ vessel, orders, held, focus }: { vessel: VesselView; orders:
   );
 }
 
+interface Target { id: string; name: string; wall: CombatClass }
+
+/** What the probes have read a class for, still where they read it: the latest first. */
+function targetsOf(intel: IntelView | undefined): Target[] {
+  return (intel?.probeReports ?? [])
+    .filter(report => report.spatiallyCurrent !== false)
+    .toSorted((a, b) => b.at.getTime() - a.at.getTime())
+    .flatMap(report => {
+      const wall = namedWall(report.classReading);
+      return wall ? [{ id: report.targetPlanetId, name: report.targetName, wall }] : [];
+    });
+}
+
+/**
+ * THE TARGET THE YARD BUILDS FOR (plan §5.5, F4c): each probed target with the class its guard is
+ * mostly, one tap apart, so the two roads of the first hunt can be weighed on the same cards.
+ */
+function TargetPicker({ targets, picked, onPick }: { targets: readonly Target[]; picked: Target; onPick: (id: string) => void }) {
+  const { t } = useTranslation();
+  return (
+    <div data-testid="yard-target" className="flex items-center gap-2">
+      <span className="v2-legend shrink-0">{t('starter.yard.against')}</span>
+      <div className="flex min-w-0 gap-1.5 overflow-x-auto">
+        {targets.map(target => (
+          <button
+            key={target.id}
+            type="button"
+            aria-pressed={target.id === picked.id}
+            onClick={() => { haptic('tap'); onPick(target.id); }}
+            className={`flex min-h-8 shrink-0 items-center gap-1.5 rounded-control border px-2.5 text-caption ${target.id === picked.id ? 'border-v2-hostile/60 bg-v2-hostile/10 font-semibold text-v2-ink' : 'border-v2-line bg-v2-void/50 text-v2-ink-2'}`}
+          >
+            <ClassEmblem cls={target.wall} decorative className="size-3 shrink-0" />
+            {target.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * THE YARD, ON THE SHIP. Plan §3.7. The main game's rows and its build sheet, narrowed to the five
  * hulls this galaxy builds: same prices, same class chips, same order form, so nothing has to be
@@ -92,11 +135,15 @@ export function YardDeck({ vessel, view, fetchedAt, focusDock = false }: { vesse
   const room = roomParts(view, false);
   const committed = hangarLoad(projectedQueueState(view, 'YARD').units);
   const income = { alloyPerHour: view.planet.alloyPerHour, crystalPerHour: view.planet.crystalPerHour };
+  const targets = targetsOf(useIntel().data);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const target = targets.find(each => each.id === pickedId) ?? targets[0];
   return (
     <div className="flex flex-col gap-2.5 px-3 pb-3">
       <div data-testid="yard-room">
         <RoomBar label={t('roomBar.hangar')} total={room.total} home={room.home} away={room.away} queued={room.queued} />
       </div>
+      {target && <TargetPicker targets={targets} picked={target} onPick={setPickedId} />}
       {yard.length > 0 && <QueueLane label={t('starter.yard.queue')} orders={yard} now={now} onOpen={() => { setQueueOpen(true); }} />}
       <div className="grid grid-cols-2 gap-2 v2-split:grid-cols-3">
         {STARTER.hulls.map(id => {
@@ -105,7 +152,7 @@ export function YardDeck({ vessel, view, fetchedAt, focusDock = false }: { vesse
           const full_ = committed + hullBulk(id) > room.total;
           const queueFull = yard.length >= STARTER.queues.yard;
           return (
-            <div key={id} data-testid="yard-hull" data-hull={id}>
+            <div key={id} data-testid="yard-hull" data-hull={id} className="relative">
               <UpgradeRow
                 layout="card"
                 summary="hull"
@@ -126,6 +173,12 @@ export function YardDeck({ vessel, view, fetchedAt, focusDock = false }: { vesse
                 onOpen={() => { setBuilding(id); }}
                 onAct={() => { setBuilding(id); }}
               />
+              {/* How this hull meets the picked target's guard, on its picture; it turns over with the target. */}
+              {target && spec.cls !== 'SUPPORT' && (
+                <span key={target.id} className="pop pointer-events-none absolute right-1.5 top-1.5 z-20 rounded-chip border border-v2-line-hi bg-v2-deep/85 px-1 py-px">
+                  <MatchupMark attacker={spec.cls} defender={target.wall} />
+                </span>
+              )}
             </div>
           );
         })}

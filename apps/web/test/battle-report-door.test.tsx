@@ -165,6 +165,13 @@ describe('which fight a notification names', () => {
     expect(reportFor(all, 'b1')).toBeUndefined();
     expect(reportFor([], 'mission-b1')).toBeUndefined();
   });
+
+  // Aboard, a battle's signal is written with the report's own id: it opens that report, not the list.
+  it('finds a colony ship\'s report by its own id', () => {
+    const aboard = report({ id: 'vb1', missionId: 'mission-vb1', opponentKind: 'OUTPOST' });
+    expect(reportFor([report(), aboard], 'vb1')?.id).toBe('vb1');
+    expect(reportFor([report(), aboard], 'mission-vb1')?.id).toBe('vb1');
+  });
 });
 
 describe('where a report opens', () => {

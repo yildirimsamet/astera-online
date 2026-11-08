@@ -103,6 +103,18 @@ describe('the ships the server plays', () => {
     expect(after!.cratesOpened).toContain('REFINERY:2');
   });
 
+  it('opens the first victory crate once it has won at an outpost, as a person does', async () => {
+    await names(1);
+    await aboard(world, 'Me');
+    await crew();
+    const [bot] = await bots();
+    const others = OPENED.filter(id => id !== 'FIRST_OUTPOST_VICTORY');
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 3, EXTRACTOR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_OUTPOST_VICTORY'], cratesOpened: others }).where(eq(vessels.id, bot!.ship.id));
+    await turn(bot!.ship.accountId);
+    const [after] = await world.f.db.select().from(vessels).where(eq(vessels.id, bot!.ship.id));
+    expect(after!.cratesOpened).toContain('FIRST_OUTPOST_VICTORY');
+  });
+
   it('sends a probe at a new neighbour on its first day', async () => {
     await names(1);
     const me = await aboard(world, 'Me');

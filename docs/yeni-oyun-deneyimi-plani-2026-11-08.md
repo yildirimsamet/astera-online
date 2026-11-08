@@ -235,6 +235,26 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
   - Kazanma, kısmi sonuç, kaybetme ve "başkası önce aldı" sonuçlarının her biri anlaşılır bir sonraki adımla biter.
   - Zafer garantisi veya gizli hasar azaltımı yoktur.
   - Ses, titreşim ve görsel tepki birlikte gelir; sessiz modda da sonuç okunur.
+- **Teslim (2026-11-08):**
+  - **Zafer kasası (N9):** Olgu `FIRST_OUTPOST_VICTORY`; kasa Tersane 1 bölmesinde, 450 alaşım / 200 kristal. Miktarı `starter-victory-crate` sabitler: kesin zaferde en kötü dalın ortalama kaybını (kayıp + dock bedeli − ganimet) karşılar. Çift açma, eşzamanlı açma ve botların açması test edildi.
+  - **Ölçerken bulunan hata:** `dockBill`, alt baz-puan hasarlı bir gemi parçasında (`damageBp` 0, kalan > 0) çöküyordu: tersane ekranı, sunucudaki dock emri (500) ve bot döngüsü. Artık ana oyunun `shipRepairMinutes` yolundan geçer.
+  - **Rapor (F4b):** Karakol okumasında üçgen (bekçinin sınıfı yanar, "› sağdakini yener · ↺ Mızrak › Akıncı"), sınıf payları yüzde olarak ve "taşıyabileceğin: X" kargo satırı. Yüzde birimi hatası (5500–10000%) görsel yürüyüşte bulundu, önce test sonra kod düzeltildi.
+  - **✓/✗ (F4c):** Tersanede "Karşı" seçicisi (en yeni okunmuş karakol varsayılan) ve her gövdede `MatchupMark`; saldırı planında da aynı işaret. İşaret ✓/=/✗ ve gerçek çarpan (×1,6, ×1, ×0,625); üçgen kullanılmaz, çünkü Akıncı'nın simgesiyle çakışıyordu. Gemiden çıkan saldırı planının başlığı artık kaynağı yazmıyor (gemi adı = komutan adı, hedef gibi okunuyordu).
+  - **Bul (F4d):** Sunucu, avın iki karakoluna haritada `firstHunt` işareti koyar. İşaret ilk zaferde, karakol düşükken ve başka bir geminin haritasında kalkar. Galakside adlı altın flama durur; ekran dışındaysa kenarda bekleyip yönü gösterir, hedef satırının üstünde kalır ve açık karakolda gizlenir. Karakol listesinde ikisi "İlk av · Muhafız seviyesi N" diye başta yer alır.
+  - **Rehber anı (F4e):** `huntStage` haritadan, raporlardan ve geminin kendi uçuşlarından avın adımını okur: sondala → sondalar yolda → karşılaştır → filo yolda. Kazıcı gönderildikten sonra hedef satırı bunu söyler: "Kazıcın yolda. Bu arada iki korsan karakolu var…". Dokunuş sondalanacak karakola ya da sonda raporlarına gider. Danışmanda av ilk sıradadır; el sonda düğmesini, yoksa karakolun flamasını gösterir.
+  - **Sonuç dalları (F4f):**
+    - Oyuncu galaksideyken biten karakol savaşı, filonun izlendiği yerde bir sonuç kartıyla gelir. Kartın rengi, sesi ve titreşimi derecesine uyar: zafer `claim` + `commit`, kısmi `confirm`, püskürtülme `impact` + `thunk` ve sarsıntı. Kart filo izlemesini kapatır.
+    - İlk zaferde "Kasayı aç" gemiyi açar; diğer sonuçlarda "Raporu oku" raporun kendisini açar.
+    - Dışarıdayken biten savaş bu kartta gösterilmez; onu "Sen yokken" kartı anlatır, böylece iki kez anlatılmaz.
+    - Raporun "neden" kutusu sınıf eşleşmesini çarpanla söyler. Kötü ya da denk eşleşmede o bekçiyi yenen gemiyi adlandırır.
+    - Kaybedilen gemilerin yeniden yapım bedeli ve süresi yazılır, ardından "İlerlemen yerinde" denir.
+    - İlk zafer kasanın beklediğini, "başkası önce vardı" ise kimin vardığını söyler. Zil metinleri de aynısını söyler.
+    - Dock yolu raporun hasar kutusunda zaten vardı.
+  - **Kural değişikliği (owner onayına, geri alınabilir):** Bekçisi başka bir geminin akınıyla düşmüş bir karakola inmek zafer sayılmaz. Kasa açılmaz, av sürer ve harita işareti öteki karakola döner. Sebep: savaşsız bir iniş kasayı bedavaya veriyordu ve planın "başkası önce aldı → öteki karakol" dalıyla çelişiyordu.
+  - **Bulunan önceki hata:** Gemide zildeki savaş bildirimi raporu değil listeyi açıyordu. Bildirim rapor kimliğini taşıyor, `reportFor` ise yalnız sefer kimliğiyle eşleşiyordu. Artık yalnız gemi raporlarında kendi kimliğiyle de eşleşir; ana oyunun "yalnız sefer" kuralı korunur.
+  - **Kararsız test düzeltildi:** `starter-first-outposts`'taki "başka geminin haritasında işaret yok" testi öteki gemiyi bizimkinin aynasına koyuyordu. Merkeze yakın doğan bir gemide ayna nokta aynı banda düşüyor ve işaret doğru biçimde görünüyordu. Test artık iki karakolun bandının dışında bir nokta seçiyor. Kod değişmedi.
+  - **Senaryo testleri:** `starter-hunt-scenario` (sondala → karar → kayıp → karar → zafer, başkası önce aldı), sunucuda `starter-combat` (ilk zafer işareti, başkası önce aldı, savaşsız inişte kasa yok).
+  - **350×812 yürüyüşleri:** okuma kartı, tersane seçicisi ve işaretler, saldırı planı, flamalar ve liste, danışman satırı → sonda raporları. Gerçek akışta da iki saldırı yapıldı: Tevis'e 2 Ok (kesin zafer, ilk zafer) ve Eldeth'e 2 Ok (denk, püskürtüldü). Kart savaş yerinde, dönen filoyla birlikte göründü; "Raporu oku" doğrudan raporu açtı, "neden" kutusu denk eşleşmeyi söyledi. Yatay taşma ve sayfa hatası yok. Sonda aşamasının hedef satırı yürüyüşte görülmedi, çünkü kullanıcı zaten sondalamıştı; birim testle doğrulandı.
 
 ### F5. Sonuç ve dönüş
 - **Kaya gönderimi:** "Dönüşte havuzda X yer var" bilgisi ve gerekirse "önce topla" önerisi.

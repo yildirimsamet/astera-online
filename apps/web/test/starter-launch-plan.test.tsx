@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { openingProgress, type VesselProgress } from '@astera/rules';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { vesselSchema } from '../src/api/starterSchemas.js';
+import i18n from '../src/i18n/index.js';
 import { useLaunchPlan } from '../src/lib/useLaunchPlan.js';
+import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { vesselToPlanetView } from '../src/starter/adapter.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { wireVessel } from './starterVesselFixture.js';
@@ -56,5 +58,24 @@ describe('sending a fleet from a ship', () => {
     act(() => { result.current.set('DART', 6); });
     expect(result.current.route?.fuel).toBeGreaterThan(0);
     expect(result.current.refusal).not.toBeNull();
+  });
+});
+
+describe('the attack plan\'s heading, aboard', () => {
+  /**
+   * A ship flies from one place, and it bears its commander's name: "Attack · Samet · range 344" read
+   * as an attack on Samet. The heading keeps the verb and the range, and the target is the title.
+   */
+  it('names no origin: the one ship carries the commander\'s name, which read as the target', async () => {
+    await i18n.changeLanguage('en');
+    const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = new Api({ fetch: vi.fn<typeof fetch>().mockResolvedValue(new Response('{}', { status: 404 })) });
+    const ship = vesselSchema.parse(wireVessel({ name: 'Samet', progress: ATTACKER, deuterium: 500, fleet: { DART: 6 } }));
+    render(<QueryClientProvider client={cache}><ApiProvider api={api}><ToastProvider>
+      <LaunchSheet target={{ kind: 'world', world: target({ name: 'Tevis' }) }} planet={vesselToPlanetView(ship)} onClose={vi.fn()} onLaunched={vi.fn()} />
+    </ToastProvider></ApiProvider></QueryClientProvider>);
+    const heading = await screen.findByText(/^Attack/);
+    expect(heading.textContent).not.toMatch(/Samet/);
+    expect(heading.textContent).toMatch(/range/i);
   });
 });

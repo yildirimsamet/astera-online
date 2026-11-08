@@ -13,6 +13,7 @@ import { compact } from '../lib/format.js';
 import { lootEstimate } from '../lib/lootEstimate.js';
 import { clockTime, duration, durationPrecise, staleness } from '../lib/time.js';
 import { MOBILE, homePowerAfter } from '../lib/navigation.js';
+import { namedWall } from '../lib/matchup.js';
 import { familyGroups } from '../lib/roster.js';
 import { useLaunchPlan } from '../lib/useLaunchPlan.js';
 import { serverNow } from '../lib/clock.js';
@@ -22,6 +23,7 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SalvageIcon } from '../ui/icons/index.js';
+import { MatchupMark } from '../ui/CounterMark.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
@@ -105,6 +107,7 @@ export function LaunchSheet({
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
   const choosing = school !== null && !selectionComplete;
+  const wall = namedWall(classReading);
 
   /**
    * ONE HULL'S ROW, AS THE MOCK DRAWS IT: the ship, its class, how many stand ready,
@@ -143,6 +146,8 @@ export function LaunchSheet({
                 emblem, named for a reader; the matchup line above names it in words.
               */}
               <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 shrink-0 text-v2-ink-2" />
+              {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
+              {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
             </p>
             <span className="truncate font-v2-mono text-micro text-v2-ink-3">
               {t('launch.atHome', { count: available })}
@@ -206,7 +211,8 @@ export function LaunchSheet({
   const rivalSlot = owned ? season.data?.rivals.find((mark) => mark.planetId === owned.id)?.slot ?? null : null;
   const eyebrow = [
     t('launch.eyebrow'),
-    planet.planet.name,
+    // A ship flies from the one place and bears its commander's name, which read as the target.
+    ...(planet.vessel ? [] : [planet.planet.name]),
     ...(route === null ? [] : [t('launch.range', { d: route.distance.toFixed(0) })]),
     ...(pirate
       ? [t('launch.goneIn', { duration: duration(pirate.expiresInMinutes) })]

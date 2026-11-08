@@ -3,6 +3,7 @@ import { GameActions } from '../session/seasonLock.js';
 import {
   GALAXY,
   PROBE,
+  fleetCargo,
   RIVAL,
   radarDetectsFleets,
   radarRange,
@@ -20,6 +21,8 @@ import type { IntelView } from '../api/schemas.js';
 import { rivalColour } from '../galaxy/PlanetField.js';
 import { compact, full, percent } from '../lib/format.js';
 import { duration, staleness, useNow } from '../lib/time.js';
+import { flightModifiers } from '../lib/navigation.js';
+import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { heroArt } from '../starter/shipScreen.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
@@ -212,6 +215,10 @@ export function IntelScreen({
                 now={now}
                 yours={planet.data ? yardstickOf(planet.data) : null}
                 aboard={aboard}
+                hunt={aboard && planet.data ? {
+                  carry: fleetCargo(planet.data.fleet, flightModifiers(planet.data).tech),
+                  crate: planet.data.vessel ? sealedVictoryCrate(planet.data.vessel) : null,
+                } : null}
                 {...(onOpenDossier ? { onOpenDossier } : {})}
               />
             </div>
@@ -552,12 +559,14 @@ const fresh = (scan: Scan, now: number): boolean => now - scan.at.getTime() < 6 
  * reading taken with the fleet at home is sharp and wears the full colour; one taken
  * with the fleet out is lighter, because a fleet away is a fleet not counted.
  */
-function ProbeShelf({ probes, now, yours, aboard, onOpenDossier }: {
+function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
   probes: readonly Probe[];
   now: number;
   /** Your active world, measured as a probe measures; null until it has loaded. */
   yours: Yardstick | null;
   aboard: boolean;
+  /** Aboard, what an outpost's report is read against (plan F4): the holds at home and the sealed victory crate. */
+  hunt: { carry: number; crate: { alloy: number; crystal: number } | null } | null;
   onOpenDossier?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -583,14 +592,16 @@ function ProbeShelf({ probes, now, yours, aboard, onOpenDossier }: {
         const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
           percent: percent(report.accuracy),
         });
+        const outpost = hunt !== null && report.outpost === true;
         return (
           <article key={`${report.targetPlanetId}-${String(report.at.getTime())}`} className={`flex flex-col gap-2 p-3 ${CARD}`}>
             <div className="flex items-center gap-2.5">
-              <AgedThumb src={targetArt(report.targetPlanetId, aboard)} alt="" ageMinutes={minutes} />
+              {/* An outpost is drawn as a world on the map, and here as there. */}
+              <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} />
               <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-baseline gap-1.5">
                   <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
-                  <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>
+                  {report.targetName !== report.targetUsername && <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>}
                 </p>
                 <p className="text-micro text-v2-ink-2">{accuracy}</p>
               </div>
@@ -605,6 +616,7 @@ function ProbeShelf({ probes, now, yours, aboard, onOpenDossier }: {
               <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
               {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
             </div>
+            {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} />}
             {(report.detected || onOpenDossier) && (
               <div className="flex items-center justify-between gap-2">
                 {/* Being caught is the cost of looking: a gap to plan around, said in warn. */}

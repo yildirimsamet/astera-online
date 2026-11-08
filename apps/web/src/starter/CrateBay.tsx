@@ -79,6 +79,16 @@ function Crate() {
   );
 }
 
+/** A pennant on a staff: an outpost's flag, taken. */
+export function VictoryMark() {
+  return (
+    <svg viewBox="0 0 16 16" className="crate-victory-mark size-3.5 shrink-0" aria-hidden="true">
+      <path d="M4 1.5v13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M4.8 2.2h8.4l-2.3 2.9 2.3 2.9H4.8z" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** One resource of the purse: its own picture and the amount, the news of the card. */
 function Haul({ resource, amount }: { resource: 'alloy' | 'crystal'; amount: number }) {
   const { t } = useTranslation();
@@ -93,14 +103,18 @@ function Haul({ resource, amount }: { resource: 'alloy' | 'crystal'; amount: num
 /**
  * KURTARMA KASALARI (retention plan §6.2). A repair frees a sealed crate in its bay. The player lifts
  * the lid by holding it: the crate strains, the latch snaps, the lid flies, and what it held pours
- * out over it while the store fills. Every ready crate opens with the one gesture.
+ * out over it while the store fills. Every ready crate opens with the one gesture. The first outpost
+ * victory's crate (N9) wears its win: a gilded bay, and its own name when it stands alone.
  */
 export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[]; onOpen: () => void }) {
   const { t } = useTranslation();
   const ready = crates.filter(crate => crate.state === 'ready');
-  const purse = { alloy: ready.reduce((sum, c) => sum + c.alloy, 0), crystal: ready.reduce((sum, c) => sum + c.crystal, 0) };
+  const purse = {
+    alloy: ready.reduce((sum, c) => sum + c.alloy, 0), crystal: ready.reduce((sum, c) => sum + c.crystal, 0),
+    victory: ready.some(c => c.fact !== null), alone: ready.length === 1,
+  };
   const [holding, setHolding] = useState(false);
-  const [poured, setPoured] = useState<{ alloy: number; crystal: number } | null>(null);
+  const [poured, setPoured] = useState<typeof purse | null>(null);
   const timer = useRef<number | null>(null);
 
   const stop = (): void => {
@@ -137,6 +151,7 @@ export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[];
 
   if (ready.length === 0 && !poured) return null;
   const shown = poured ?? purse;
+  const title = shown.victory && shown.alone ? t('starter.crate.victory') : t('starter.crate.title', { count: Math.max(1, ready.length) });
   const words = `${compact(shown.alloy)} ${t('vocabulary.resource.alloy')}, ${compact(shown.crystal)} ${t('vocabulary.resource.crystal')}`;
   return (
     <div className="relative">
@@ -145,6 +160,7 @@ export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[];
         data-guide="crate"
         {...(holding ? { 'data-holding': '' } : {})}
         {...(poured ? { 'data-open': '' } : {})}
+        {...(shown.victory ? { 'data-victory': '' } : {})}
         aria-label={t('starter.crate.open', { purse: words })}
         disabled={poured !== null && ready.length === 0}
         onPointerDown={start}
@@ -161,7 +177,8 @@ export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[];
         </span>
         <span className="relative min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className="v2-legend text-v2-alloy">{t('starter.crate.title', { count: Math.max(1, ready.length) })}</span>
+            {shown.victory && <VictoryMark />}
+            <span className="crate-legend v2-legend text-v2-alloy">{title}</span>
             {ready.length > 1 && <span className="rounded-chip bg-v2-alloy/15 px-1 font-v2-mono text-micro text-v2-alloy">×{ready.length}</span>}
           </span>
           <span className="mt-1 flex items-center gap-3">

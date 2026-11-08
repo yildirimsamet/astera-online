@@ -14,7 +14,7 @@ export const ANALYTICS_NAMES = [
   'load_phase', 'client_error', 'network_recovered', 'performance_summary',
   'alert_scheduled', 'alert_opened', 'alert_permission', 'install_offer', 'install_result', 'recovery_result',
   'vessel_enlisted', 'vessel_step_completed', 'vessel_feature_opened', 'vessel_first_probe_sent', 'vessel_first_probe_received',
-  'vessel_first_mine', 'vessel_first_battle', 'vessel_first_pvp', 'vessel_part_found', 'vessel_migration_started', 'vessel_migration_landed',
+  'vessel_first_mine', 'vessel_first_battle', 'vessel_first_victory', 'vessel_first_pvp', 'vessel_part_found', 'vessel_migration_started', 'vessel_migration_landed',
 ] as const;
 const code = z.string().max(128).regex(/^[a-zA-Z0-9_.:-]+$/);
 const duration = z.number().finite().min(0).max(86_400_000);

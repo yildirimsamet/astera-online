@@ -10,6 +10,7 @@ const FACT_EVENT: Readonly<Record<VesselFact, AnalyticsName>> = {
   FIRST_PROBE_REPORT: 'vessel_first_probe_received',
   FIRST_MINING_RETURN: 'vessel_first_mine',
   FIRST_BATTLE_REPORT: 'vessel_first_battle',
+  FIRST_OUTPOST_VICTORY: 'vessel_first_victory',
 };
 
 /**

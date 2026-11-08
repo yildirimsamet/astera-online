@@ -251,6 +251,73 @@ describe('a battle aboard', () => {
       expect(read[0]).toMatchObject({ guardDownUntil: after!.respawnAt });
     });
 
+    /** N9: an outpost pays what the holds carry, so the first decisive win also unseals a crate, once. */
+    it('unseals the first victory crate with a decisive win, and keeps it opened after the next', async () => {
+      const { me, site } = await atOutpost({ DART: 16 });
+      await launch(me.headers, site.id, { DART: 16 });
+      await pass(world, 4);
+      const [report] = await reports();
+      expect(report!.grade).toBe('DECISIVE');
+      const crate = async () => (await get<{ vessel: { crates: { id: string; state: string }[] } }>(world, '/api/starter/vessel', me.headers)).vessel.crates.find(c => c.id === 'FIRST_OUTPOST_VICTORY');
+      const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+      expect(ship!.facts).toContain('FIRST_OUTPOST_VICTORY');
+      expect((await crate())?.state).toBe('ready');
+      expect((await post(world, '/api/starter/crates/open', me.headers, { id: 'FIRST_OUTPOST_VICTORY' })).statusCode).toBe(200);
+      await pass(world, 60);
+      const others = await world.f.db.select().from(starterSites).where(and(eq(starterSites.kind, 'OUTPOST'), eq(starterSites.level, 1)));
+      const second = others.find(row => row.id !== site.id)!;
+      await placeShip(world, me.vesselId, { x: second.x - 200, y: second.y, z: second.z });
+      const home = (await world.f.db.select().from(vesselUnits).where(and(eq(vesselUnits.vesselId, me.vesselId), eq(vesselUnits.hull, 'DART'), eq(vesselUnits.location, 'HOME'))))[0]!;
+      expect((await launch(me.headers, second.id, { DART: home.count })).statusCode).toBe(200);
+      await pass(world, 4);
+      expect((await reports()).filter(r => r.grade === 'DECISIVE').length).toBe(2);
+      expect((await crate())?.state).toBe('opened');
+    });
+
+    it('keeps the crate sealed after a fight that was not won', async () => {
+      const { me, site } = await atOutpost({ DART: 1 }, 3);
+      await launch(me.headers, site.id, { DART: 1 });
+      await pass(world, 4);
+      const [report] = await reports();
+      expect(report!.grade).not.toBe('DECISIVE');
+      const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+      expect(ship!.facts).toContain('FIRST_BATTLE_REPORT');
+      expect(ship!.facts).not.toContain('FIRST_OUTPOST_VICTORY');
+    });
+
+    // F4f: the win that opens the crate says so where the player reads it: the report and the signal.
+    it('marks the first decisive win in the report and the signal', async () => {
+      const { me, site } = await atOutpost({ DART: 16 });
+      await launch(me.headers, site.id, { DART: 16 });
+      await pass(world, 4);
+      const { reports: read } = reportsSchema.parse(await get(world, '/api/starter/reports', me.headers));
+      expect(read[0]).toMatchObject({ grade: 'DECISIVE', firstVictory: true, beatenBy: null });
+      const [signal] = await world.f.db.select().from(vesselNotifications).where(and(eq(vesselNotifications.vesselId, me.vesselId), eq(vesselNotifications.kind, 'BATTLE_REPORT')));
+      expect(signal!.payload).toMatchObject({ firstVictory: true });
+    });
+
+    /**
+     * BEATEN TO IT (plan §5, "başkası önce vurdu"). Another ship cleared the guard before this fleet
+     * landed: the report names who, and an empty outpost is no victory, so the crate stays sealed and
+     * the first hunt goes on.
+     */
+    it('names the ship that took the guard first, and counts the walkover as no victory', async () => {
+      const { me, site } = await atOutpost({ DART: 4 });
+      const early = await aboard(world, 'Early', READY);
+      await arm(world, early.vesselId, { DART: 16 });
+      await placeShip(world, early.vesselId, { x: site.x - 40, y: site.y, z: site.z });
+      expect((await launch(early.headers, site.id, { DART: 16 })).statusCode).toBe(200);
+      expect((await launch(me.headers, site.id, { DART: 4 })).statusCode).toBe(200);
+      await pass(world, 6);
+      const { reports: read } = reportsSchema.parse(await get(world, '/api/starter/reports', me.headers));
+      expect(read[0]).toMatchObject({ beatenBy: 'Early' });
+      expect(read[0]).not.toMatchObject({ firstVictory: true });
+      const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+      expect(ship!.facts).not.toContain('FIRST_OUTPOST_VICTORY');
+      const [mine] = await world.f.db.select().from(vesselNotifications).where(and(eq(vesselNotifications.vesselId, me.vesselId), eq(vesselNotifications.kind, 'BATTLE_REPORT')));
+      expect(mine!.payload).toMatchObject({ beatenBy: 'Early' });
+    });
+
     it('says nothing of the kind while the guard stands', async () => {
       const { me, site } = await atOutpost({ DART: 1 }, 3);
       await launch(me.headers, site.id, { DART: 1 });
@@ -258,6 +325,16 @@ describe('a battle aboard', () => {
       const { reports: read } = reportsSchema.parse(await get(world, '/api/starter/reports', me.headers));
       expect(read[0]).toMatchObject({ guardDownUntil: null });
     });
+  });
+
+  it('counts a win over a ship as no outpost victory', async () => {
+    const { me, them } = await duel({ DART: 16 }, { DART: 1 });
+    await launch(me.headers, them.vesselId, { DART: 16 });
+    await pass(world, 4);
+    const [report] = await reports();
+    expect(report!.grade).toBe('DECISIVE');
+    const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+    expect(ship!.facts).not.toContain('FIRST_OUTPOST_VICTORY');
   });
 
   it('tells a commander they were raided by a commander, even one called PIRATE', async () => {

@@ -8,7 +8,7 @@ vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<object>(
 afterEach(() => { cleanup(); vi.useRealTimers(); heard.length = 0; });
 
 const crate = (id: string, state: CrateBayCrate['state'], alloy = 300, crystal = 150): CrateBayCrate =>
-  ({ id, module: 'SURVEY', stage: 1, alloy, crystal, state });
+  ({ id, module: 'SURVEY', stage: 1, fact: null, alloy, crystal, state });
 
 /** KURTARMA KASALARI (retention plan §6.2): lift the lid of a crate a repair freed, and its purse pours out. */
 describe('the crate bay', () => {
@@ -23,6 +23,18 @@ describe('the crate bay', () => {
     expect(bay).not.toBeNull();
     expect(bay?.textContent).toMatch(/450/);
     expect(bay?.textContent).toMatch(/190/);
+  });
+
+  // N9: the first decisive outpost win's crate says what it is for, alone or beside others.
+  it('names the first victory\'s crate for what it is', () => {
+    const victory: CrateBayCrate = { ...crate('FIRST_OUTPOST_VICTORY', 'ready', 450, 200), module: 'SHIPYARD', fact: 'FIRST_OUTPOST_VICTORY' };
+    const { rerender } = render(<CrateBay crates={[victory]} onOpen={vi.fn()} />);
+    const bay = () => document.querySelector('[data-guide="crate"]');
+    expect(bay()?.textContent).toMatch(/first victory/i);
+    expect(bay()?.hasAttribute('data-victory')).toBe(true);
+    rerender(<CrateBay crates={[victory, crate('A', 'ready')]} onOpen={vi.fn()} />);
+    expect(bay()?.textContent).not.toMatch(/first victory/i);
+    expect(bay()?.hasAttribute('data-victory')).toBe(true);
   });
 
   it('opens on a held press, not on a tap', () => {

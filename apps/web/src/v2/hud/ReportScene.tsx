@@ -11,6 +11,7 @@ import { damagePct } from '../../lib/repairStation.js';
 import { dayClock } from '../../lib/time.js';
 import { rivalColour } from '../../galaxy/PlanetField.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
+import type { OutpostLine } from '../../starter/outpostReport.js';
 import { heroArt } from '../../starter/shipScreen.js';
 import { Icon } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
@@ -36,6 +37,8 @@ export interface ReportSceneProps {
   onWatch?: () => void;
   /** Tell the clan: a line for the clan chat, which the reader sends themselves (the mock's "Klana"). */
   onShare?: (line: string) => void;
+  /** Aboard, what a raid from the ship taught (`outpostReportLines`): read where the why is read. */
+  told?: readonly OutpostLine[];
 }
 
 /** Why the raid was graded so, from the rule that grades it (player test C-03). */
@@ -141,6 +144,7 @@ export function ReportScene({
   onFocusPlanet,
   onWatch,
   onShare,
+  told = [],
 }: ReportSceneProps) {
   const { t } = useTranslation();
   const yours = sentAndLeft(report.yourFleet, report.yourLosses);
@@ -303,16 +307,20 @@ export function ReportScene({
         </div>
       )}
 
-      {reason && (
+      {(reason !== null || told.length > 0) && (
         <div data-report-why className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-          <p className="text-caption font-semibold text-v2-ink">{t(WHY_HEADING[report.grade])}</p>
-          <p className="mt-0.5 text-caption leading-snug text-v2-ink-2">
-            {t('reportScene.why', {
-              lost: combatClassLabel(reason.lost),
-              by: combatClassLabel(reason.by),
-              bring: combatClassLabel(reason.bring),
-            })}
-          </p>
+          <p className="text-caption font-semibold text-v2-ink">{t(told.length > 0 && report.grade === 'DECISIVE' ? 'starter.reports.whyWon' : WHY_HEADING[report.grade])}</p>
+          {told.map(line => <p key={line.key} data-told={line.key} className={`mt-0.5 text-caption leading-snug ${line.tone}`}>{line.text}</p>)}
+          {/* The ship's own why names the matchup itself; the losses' cycle would say it twice. */}
+          {reason && !told.some(line => line.key === 'why') && (
+            <p className="mt-0.5 text-caption leading-snug text-v2-ink-2">
+              {t('reportScene.why', {
+                lost: combatClassLabel(reason.lost),
+                by: combatClassLabel(reason.by),
+                bring: combatClassLabel(reason.bring),
+              })}
+            </p>
+          )}
         </div>
       )}
 

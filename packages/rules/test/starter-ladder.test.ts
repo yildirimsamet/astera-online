@@ -156,7 +156,7 @@ describe('the repair ladder', () => {
       const payable = nextSteps(progress).filter(step => step.crystal <= crystal);
       if (payable.length === 0) stranded.push(`${key} with ${String(crystal)} crystal`);
       for (const step of payable) {
-        const crate = STARTER_CRATES.filter(c => c.module === step.module && c.stage === step.stage).reduce((sum, c) => sum + c.reward.crystal, 0);
+        const crate = STARTER_CRATES.filter(c => c.fact === null && c.module === step.module && c.stage === step.stage).reduce((sum, c) => sum + c.reward.crystal, 0);
         walk({ ...progress, modules: { ...progress.modules, [step.module]: step.stage } }, crystal - step.crystal + crate);
       }
     };

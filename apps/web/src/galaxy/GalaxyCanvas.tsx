@@ -21,6 +21,7 @@ import { Html, OrbitControls } from '@react-three/drei';
 import { GalaxyVisualPhase } from './visualFrame.js';
 import type { HomewardShip, ParkedShip } from './parkedShip.js';
 import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
+import { OutpostFlag, OutpostGuides, OutpostGuideTracker } from './OutpostGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
@@ -714,6 +715,7 @@ export function GalaxyCanvas({
   const prepared = preparedEpoch === gpu.epoch;
   const onCompiled = useCallback(() => { setPreparedEpoch(gpu.epoch); }, [gpu.epoch]);
   const signalGuide = useRef<HTMLButtonElement>(null);
+  const outpostFlags = useRef(new Map<string, HTMLButtonElement>());
 
   return (
     <>
@@ -892,6 +894,7 @@ export function GalaxyCanvas({
         {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
           onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
         <UnknownSignalGuideTracker signals={unknownSignals} element={signalGuide} />
+        <OutpostGuideTracker nodes={nodes} elements={outpostFlags} focusedId={selectedId} />
         {unknownSignalRadar && <SensorRings posts={[{ planetId: unknownSignalRadar.capitalPlanetId, at: unknownSignalRadar.at,
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
@@ -1109,6 +1112,7 @@ export function GalaxyCanvas({
       <HoldRate fps={FLIGHT_FPS} active={anythingInFlight({ pending, runs, contacts })} />
     </Canvas>
     <UnknownSignalGuide signals={unknownSignals} element={signalGuide} onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />
+    <OutpostGuides nodes={nodes} elements={outpostFlags} onSelect={id => { onFocus({ kind: 'planet', id }); }} />
     </>
   );
 }
@@ -1352,6 +1356,7 @@ export function Labels({
             <>
             {detail && <span className="legend text-micro flex max-w-full items-center gap-2 overflow-hidden">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
+                {node.outpost && <OutpostFlag className="mr-1 inline-block size-3 align-[-2px] text-v2-warn" />}
                 {node.outpost ? t('starter.outpost.label', { level: node.neutralTier ?? 1 }) : t(node.kind === 'CAPITAL'
                   ? 'galaxy.kindCapital'
                   : node.kind === 'COLONY'

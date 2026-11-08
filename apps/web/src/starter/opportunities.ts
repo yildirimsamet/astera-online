@@ -2,6 +2,7 @@ import {
   REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, isJumpReady, nextRequiredStep, nextSteps,
   type RepairStep, type StarterFeature, type VesselFact, type VesselProgress,
 } from '@astera/rules';
+import type { HuntStage } from './hunt.js';
 import { timeToAfford } from './steps.js';
 
 export type Opportunity =
@@ -15,7 +16,8 @@ export type Opportunity =
   | { kind: 'fact'; fact: VesselFact }
   | { kind: 'parts'; count: number }
   | { kind: 'fuel' }
-  | { kind: 'jump' };
+  | { kind: 'jump' }
+  | { kind: 'hunt'; hunt: HuntStage; mining: boolean };
 
 export interface OpportunityInput {
   progress: VesselProgress;
@@ -30,12 +32,15 @@ export interface OpportunityInput {
   mining?: boolean;
   /** No other ship is in this galaxy: there is nobody to probe. */
   alone?: boolean;
+  /** The first hunt's step while the map marks its two outposts (`huntStage`). */
+  hunt?: HuntStage | null;
 }
 
 const DEED_FACT = { probe: 'FIRST_PROBE_REPORT', mine: 'FIRST_MINING_RETURN' } as const satisfies Record<'probe' | 'mine', VesselFact>;
 
 /** One name per offer, stable while it is on offer: what a pick is remembered by. */
-export const opportunityKey = (o: Opportunity): string => o.kind === 'repair' || o.kind === 'save' ? `${o.kind}:${o.step.module}:${String(o.step.stage)}` : o.kind;
+export const opportunityKey = (o: Opportunity): string =>
+  o.kind === 'repair' || o.kind === 'save' ? `${o.kind}:${o.step.module}:${String(o.step.stage)}` : o.kind === 'hunt' ? `hunt:${o.hunt.stage}` : o.kind;
 
 /**
  * WHAT THIS SHIP CAN DO, BEST FIRST (plan 2026-11-08 F1). The first entry is the one thing the line
@@ -64,6 +69,14 @@ function deedsLeft(input: OpportunityInput): ('probe' | 'mine')[] {
 const flyingFor = (input: OpportunityInput) => ({ probe: input.probing === true, mine: input.mining === true });
 
 /** Fuel moves from the store; Deuterium still in the works is one collect away. */
+/** The hunt's step, split into one the player can take now and one that only waits on a flight. */
+function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportunity } {
+  const hunt = input.hunt;
+  if (!hunt) return {};
+  const offer: Opportunity = { kind: 'hunt', hunt, mining: input.mining === true };
+  return hunt.stage === 'probe' || hunt.stage === 'decide' ? { act: offer } : { state: offer };
+}
+
 function tank(input: OpportunityInput): Opportunity {
   return input.held.deuterium < 1 && input.held.bufferDeuterium >= 1 ? { kind: 'collect' } : { kind: 'fuel' };
 }
@@ -78,7 +91,10 @@ function choices(input: OpportunityInput): Opportunity[] {
   const deeds = deedsLeft(input).filter(deed => !flying[deed]).map((kind): Opportunity => ({ kind }));
   const works = held.bufferAlloy >= 1 || held.bufferCrystal >= 1 || held.bufferDeuterium >= 1;
   const fuel = canLoadFuel(progress) && !isJumpReady(progress) && held.deuterium >= 1;
+  const { act: hunt } = huntOf(input);
+  // The hunt leads here as it leads the line: it is the moment's story, a repair waits a minute.
   return [
+    ...(hunt ? [hunt] : []),
     ...repairs.filter(s => s.required).map((step): Opportunity => ({ kind: 'repair', step })),
     ...deeds,
     ...repairs.filter(s => !s.required).map((step): Opportunity => ({ kind: 'repair', step })),
@@ -102,6 +118,9 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   const { step } = next;
   const storePays = held.alloy >= step.alloy && held.crystal >= step.crystal;
   if (features.includes('fleet') && !progress.facts.includes('FIRST_MINING_RETURN') && input.mining !== true) return { kind: 'mine' };
+  // The first hunt while the Prospector flies (plan §5.1): the new system's first deed, as the mining run was.
+  const hunt = huntOf(input);
+  if (hunt.act) return hunt.act;
   // A repair that can be paid now goes first: the queue keeps working while the deed is done.
   if (next.missing.length === 0 && !full && storePays) return { kind: 'repair', step };
   // The first probe once the antenna is up, the first mining run once the shipyard is.
@@ -109,6 +128,7 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   const deeds = deedsLeft(input);
   const todo = deeds.find(deed => !flying[deed]);
   if (todo) return { kind: todo };
+  if (hunt.state) return hunt.state;
   const out = deeds[0];
   if (out) return { kind: 'underway', what: out };
   const fact = next.missing.find(need => need.kind === 'FACT');

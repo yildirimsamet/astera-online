@@ -1,6 +1,7 @@
 import { REPAIR_LADDER, type StarterFeature, type VesselFact } from '@astera/rules';
 import type { StarterTutorialStepId } from '../../api/starterTutorialSteps.js';
 import type { Opportunity } from '../opportunities.js';
+import type { HuntStage } from '../hunt.js';
 
 /**
  * THE STARTER GUIDE (owner 2026-11-08, N1). A short core is held: the power card, the first collect
@@ -204,8 +205,16 @@ export function adviceMarks(choice: Opportunity, view: TutorialView): { marks: r
     case 'mine': return outside(view, ['[data-guide="mine"]', '[data-guide="objective"]']);
     case 'fuel': return aboard(view, ['[data-guide="fuel"]', tab('DRIVE')]);
     case 'jump': return aboard(view, [tab('DRIVE')]);
+    case 'hunt': return huntMarks(choice.hunt, view);
     case 'save': case 'wait': case 'underway': case 'fact': case 'parts': return NOWHERE;
   }
+}
+
+/** The first hunt: the probe on an open outpost, else that outpost's flag; the choice is on the line. */
+function huntMarks(hunt: HuntStage, view: TutorialView): { marks: readonly string[]; nav?: TutorialNav } {
+  if (hunt.stage === 'probe') return outside(view, ['[data-guide="probe"]', `[data-outpost-guide="${hunt.target}"]`, '[data-guide="objective"]']);
+  // The reports are where the choice is made: a player reading them is not led out.
+  return hunt.stage === 'decide' && view === 'galaxy' ? { marks: ['[data-guide="objective"]'] } : NOWHERE;
 }
 
 /**

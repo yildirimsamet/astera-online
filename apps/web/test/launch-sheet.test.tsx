@@ -1172,6 +1172,25 @@ describe('how much of a wall the wing takes', () => {
   });
 
   /**
+   * THE CYCLE ON EACH ROW (plan §5.5, F4c). Where a hull is picked, it says how it meets the class
+   * the probe named, so the choice is made with the rule in view rather than learned from the report.
+   */
+  it('marks each hull at home against the class the probe named, and a hull that does not fight not at all', async () => {
+    await open(read(), target, [], planetView({ fleet: { TALON: 20, DART: 3, WARDEN: 3, COURIER: 2 } }));
+    const mark = (hull: string) => document.querySelector(`[data-hull-row="${hull}"] [data-matchup]`)?.getAttribute('data-matchup');
+    expect(mark('DART')).toBe('strong');
+    expect(mark('TALON')).toBe('weak');
+    expect(mark('WARDEN')).toBe('even');
+    expect(document.querySelector('[data-hull-row="COURIER"]')).not.toBeNull();
+    expect(mark('COURIER')).toBeUndefined();
+  });
+
+  it('marks no hull when the reading names no class', async () => {
+    await open(read({ classReading: { kind: 'EVEN' } }));
+    expect(document.querySelector('[data-hull-row] [data-matchup]')).toBeNull();
+  });
+
+  /**
    * THE READING THE PROBE WAS PAID FOR, ALL OF IT. Owner review, 2026-09-21.
    *
    * The strip showed `strong/weak` percentages for the classes the PLAYER had picked and nothing

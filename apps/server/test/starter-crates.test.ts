@@ -66,6 +66,22 @@ describe('the salvage crates', () => {
     expect(answer.vessel.alloy).toBeCloseTo(before.alloy + first.reward.alloy + second.reward.alloy, 3);
   });
 
+  /** N9: the yard's victory crate waits for the first decisive outpost win as well as for the yard. */
+  it('pays the first victory crate only after the win, and once when two presses race', async () => {
+    const victory = STARTER_CRATES.find(crate => crate.fact === 'FIRST_OUTPOST_VICTORY')!;
+    await repaired({ REFINERY: 3, EXTRACTOR: 1, SURVEY: 1, SHIPYARD: 1 });
+    expect((await read()).crates.find(crate => crate.id === victory.id)?.state).toBe('sealed');
+    expect((await open(victory.id)).json()).toMatchObject({ error: 'CRATE_NOT_READY' });
+    await world.f.db.update(vessels).set({ facts: ['FIRST_OUTPOST_VICTORY'] }).where(eq(vessels.id, vesselId));
+    const before = await read();
+    const answers = await Promise.all([open(victory.id), open(victory.id)]);
+    expect(answers.map(a => a.statusCode).sort()).toEqual([200, 409]);
+    const after = await read();
+    expect(after.alloy).toBeCloseTo(before.alloy + victory.reward.alloy, 3);
+    expect(after.crystal).toBeCloseTo(before.crystal + victory.reward.crystal, 3);
+    expect(after.crates.find(crate => crate.id === victory.id)?.state).toBe('opened');
+  });
+
   it('pays once when two presses race', async () => {
     await repaired({ REFINERY: first.stage });
     const before = await read();

@@ -39,8 +39,7 @@ export const counter = {
   weak: 'Zayıf',
   even: 'Eşit',
   none: 'Saldırısı yok',
-  multiplier: '×{{mult}}',
-  matchupLabel: '{{attacker}}, {{defender}} karşısında: {{outcome}}, ×{{mult}} hasar',
+  matchupLabel: '{{attacker}}, {{defender}} karşısında: {{outcome}}, {{mult}} hasar',
   cycleLabel: 'Akıncı Sur\'u, Sur Mızrak\'ı, Mızrak Akıncı\'yı yener',
   /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */
   compareHeading: "Göreli güç",

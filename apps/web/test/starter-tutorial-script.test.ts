@@ -171,6 +171,17 @@ describe('where the hand goes for a chosen opportunity', () => {
     expect(adviceMarks({ kind: 'fuel' }, 'other')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
   });
 
+  // The first hunt (F4e): the probe button on an open outpost, else that outpost's flag, else the line.
+  it('leads a hunt probe to its outpost, and the choice to the line that opens the reports', () => {
+    const probe = { kind: 'hunt', hunt: { stage: 'probe', target: 'tevis' }, mining: true } as const;
+    expect(adviceMarks(probe, 'galaxy')).toEqual({ marks: ['[data-guide="probe"]', '[data-outpost-guide="tevis"]', '[data-guide="objective"]'] });
+    expect(adviceMarks(probe, 'ship')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
+    expect(adviceMarks({ kind: 'hunt', hunt: { stage: 'decide' }, mining: false }, 'galaxy')).toEqual({ marks: ['[data-guide="objective"]'] });
+    // Reading the reports is where the choice is made: no hand drags the player out of them.
+    expect(adviceMarks({ kind: 'hunt', hunt: { stage: 'decide' }, mining: false }, 'other')).toEqual({ marks: [] });
+    expect(adviceMarks({ kind: 'hunt', hunt: { stage: 'raid' }, mining: false }, 'galaxy')).toEqual({ marks: [] });
+  });
+
   it('points at nothing for a state: a wait or a deed under way is said, not pressed', () => {
     expect(adviceMarks({ kind: 'wait', readyAt: new Date() }, 'galaxy')).toEqual({ marks: [] });
     expect(adviceMarks({ kind: 'underway', what: 'mine' }, 'galaxy')).toEqual({ marks: [] });

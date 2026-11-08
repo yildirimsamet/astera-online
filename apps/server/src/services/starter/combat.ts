@@ -3,7 +3,7 @@ import {
   garrisonOf, moduleStage, normalizeHpDamage, outpostHaul, partsVisible, recoveryUntilAfter, seededFrom, starterBattle, vaultProtects, vesselAegisHp, vesselEconomyInput, vesselHull,
   type BattleResult, type Fleet, type Resources, type StarterBattleRecord, type VesselFact,
 } from '@astera/rules';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Tx } from '../../db/client.js';
 import { starterSites, vesselBattleReports, vesselMissions, vesselNotifications } from '../../db/schema.js';
@@ -22,6 +22,8 @@ async function afterBattle(tx: Tx, input: {
   mission: MissionRow; result: BattleResult; attacker: LockedVessel | undefined; defender: LockedVessel | undefined;
   loot: Resources; carriesPart: boolean; written: Omit<StarterBattleRecord, 'grade' | 'rounds' | 'attackerLosses' | 'defenderLosses' | 'attackerRetreated' | 'defenderRetreated' | 'attackerDamage' | 'defenderDamage' | 'wreckValue'>;
   names: { attacker: string; defender: string }; siteId: string | null; replay: ReturnType<typeof buildBattleReplay>; now: Date; at: { x: number; y: number; z: number };
+  /** What only the side that came is told. */
+  toAttacker?: { firstVictory?: boolean; beatenBy?: string };
 }): Promise<void> {
   const { mission, result, attacker, defender, now } = input;
   const debris = battleDebrisOf(result.attackerLosses, result.defenderLosses);
@@ -72,6 +74,7 @@ async function afterBattle(tx: Tx, input: {
         grade: result.grade, attacking, opponent, loot: input.loot, lost: fleetCount(attacking ? result.attackerLosses : result.defenderLosses),
         // The kind, not the name: anyone may call their ship PIRATE.
         opponentKind: attacking ? (input.siteId ? 'OUTPOST' : 'SHIP') : (attacker ? 'SHIP' : 'PIRATES'),
+        ...(attacking ? input.toAttacker : {}),
       },
     }).onConflictDoNothing();
     await publish(tx, side.row.id, 'private:vessel-sight');
@@ -143,6 +146,13 @@ export async function resolveVesselBattle(tx: Tx, mission: MissionRow, clock: Cl
 const standingShield = (defender: LockedVessel, result: BattleResult): number =>
   result.rounds[0]?.shieldBefore ?? defender.row.shield;
 
+/** Whose raid left this outpost without its guard, when it was not this ship's own. */
+async function clearedBy(tx: Tx, siteId: string, vesselId: string): Promise<string | null> {
+  const [last] = await tx.select({ by: vesselBattleReports.attackerVesselId, name: vesselBattleReports.attackerName })
+    .from(vesselBattleReports).where(eq(vesselBattleReports.siteId, siteId)).orderBy(desc(vesselBattleReports.at)).limit(1);
+  return last && last.by !== vesselId ? last.name : null;
+}
+
 async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): Promise<void> {
   await inShips(tx, mission.ownerVesselId ? [mission.ownerVesselId] : [], clock, async (_, ships) => {
     const now = clock.now();
@@ -175,6 +185,12 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
       respawnAt,
     }).where(and(eq(starterSites.id, site.id)));
 
+    // The first decisive one unseals the yard's victory crate (N9): the holds alone would leave it a loss.
+    // Over a guard that was there: landing on one somebody else took is no victory (plan §5, beaten to it).
+    const found = fleetCount(guard) > 0;
+    const firstVictory = decisive && found && !attacker.row.facts.includes('FIRST_OUTPOST_VICTORY');
+    if (firstVictory) attacker.row = addFact(attacker.row, 'FIRST_OUTPOST_VICTORY');
+    const beatenBy = found ? null : await clearedBy(tx, site.id, attacker.row.id);
     const replay = buildBattleReplay(capture, result, { environment: 'PLANET', aegisCapacity: 0, defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
       mission, result, attacker, defender: undefined, loot: haul, carriesPart, siteId: site.id, replay, now,
@@ -185,7 +201,9 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
         cargoLimited: cargoWasLimited(wanted, haul, hold),
         shieldBefore: 0, shieldAfter: 0, recoveryUntil: null, siteKind: 'OUTPOST',
         guardDownUntil: cleared && respawnAt ? respawnAt.toISOString() : null,
+        ...(firstVictory ? { firstVictory } : {}), beatenBy,
       },
+      toAttacker: { ...(firstVictory ? { firstVictory } : {}), ...(beatenBy ? { beatenBy } : {}) },
     });
   });
 }

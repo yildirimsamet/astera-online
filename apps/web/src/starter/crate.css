@@ -23,7 +23,14 @@
 .crate-card:not([data-open]) .crate-press { animation: crate-press 1.4s ease-in-out infinite; }
 .crate-card[data-holding] .crate-press { animation: none; transform: translateY(1px) scale(0.92); }
 .crate-purse { animation: crate-purse 2.4s ease-out forwards; }
+/* The first outpost victory's crate (N9): the bay gilded, its pennant waving. */
+.crate-card[data-victory] { border-color: color-mix(in oklab, var(--color-v2-warn) 60%, transparent);
+  background-image: radial-gradient(120% 140% at 0% 50%, color-mix(in oklab, var(--color-v2-warn) 20%, transparent), transparent 60%); }
+.crate-card[data-victory] .crate-legend, .crate-victory-mark { color: var(--color-v2-warn); }
+.crate-card[data-victory] .crate-bay { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-v2-warn) 45%, transparent), inset 0 -12px 20px -10px rgba(255, 204, 77, 0.5); }
+.crate-victory-mark path:last-child { transform-origin: 4.8px 5px; animation: crate-pennant 1.8s ease-in-out infinite; }
 
+@keyframes crate-pennant { 50% { transform: skewY(-8deg) scaleX(0.92); } }
 @keyframes crate-sheen { 0% { background-position: 130% 0; } 60%, 100% { background-position: -130% 0; } }
 @keyframes crate-press { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px) scale(0.94); } }
 @keyframes crate-strain { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
