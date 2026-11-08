@@ -30,7 +30,7 @@ describe('read-only Honor target guidance', () => {
   });
   it.each([
     [100, 100, 9, 9, 'PEER', 'FULL'], [100, 100, 9, 12, 'UPPER', 'FULL'],
-    [100, 20, 9, 6, 'PEER', 'NONE'], [100, 60, 9, 9, 'PEER', 'HALF'],
+    [100, 20, 9, 6, 'PEER', 'NONE'], [100, 60, 9, 9, 'PEER', 'FULL'], [100, 40, 9, 9, 'PEER', 'HALF'],
     [100, 20, 9, 9, 'PEER', 'NONE'], [20, 100, 9, 6, 'PEER', 'FULL'],
   ] as const)('classifies %s/%s hulls and Core %s/%s as %s with %s military return', async (own, enemy, a, d, kind, militaryReturn) => {
     await setup('ACTIVE', own, enemy, a, d);

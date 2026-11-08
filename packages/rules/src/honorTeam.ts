@@ -1,6 +1,6 @@
 import {
   honorChallenge, honorCombatBase, honorHarmFifths, honorInteger, honorNumber, honorPairCredit, honorSplit,
-  type HonorShare, type HonorWeight,
+  type HonorShare, type HonorWeakNavyBand, type HonorWeight,
 } from './honor.js';
 
 export interface HonorMember {
@@ -33,7 +33,7 @@ export interface HonorTeamInput {
   /** Frozen galaxy leader exception; applies only to offensive comparisons. */
   galaxyTopTier?: number;
   /** Frozen dispatch term; applies only to offensive comparisons. Legacy evidence omits it. */
-  weakNavyBand?: 75;
+  weakNavyBand?: HonorWeakNavyBand;
   /** Frozen dispatch term; legacy evidence omits it and retains 20%. */
   retaliationLootPercent?: 20 | 40;
   /** Frozen v3 policy: shared sides retain attacking debits but have no positive gain. */

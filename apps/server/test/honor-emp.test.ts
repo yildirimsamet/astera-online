@@ -52,7 +52,10 @@ it('does not reward a repeated blackout with no new effect', async () => {
 });
 it.each([true, false])('respects the leader exception for actual EMP pressure: leader=%s', async leader => {
   await setLevel(f.db, f.planetIds[0]!, 'CORE', 15);
-  if (!leader) await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
+  if (!leader) {
+    await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
+    await giveUnits(f.db, f.planetIds[0]!, { PIKE: 5000 }); // target under half of this navy: a weak target
+  }
   await f.db.update(planets).set({ shield: 500 }).where(eq(planets.id, f.planetIds[1]!));
   const sent = await strike();
   const [entry] = await f.db.select().from(honorEvents);
