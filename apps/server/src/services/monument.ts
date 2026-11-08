@@ -43,7 +43,7 @@ import { type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, players, radiationBombFlights, units, type seasons } from '../db/schema.js';
 import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
-import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
+import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, readSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { shipHealthGroups } from '@astera/rules';
 import { capitalPlanet, lockWorlds } from './ownership.js';
@@ -113,7 +113,7 @@ async function lockMonumentRoster(tx: Tx, monumentId: string, requireLive: boole
   if (!identitySchema.safeParse(monumentId).success) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
   const [identity] = await tx.select({ seasonId: monuments.seasonId }).from(monuments).where(eq(monuments.id, monumentId));
   if (!identity) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
-  const season = await lockSeason(tx, identity.seasonId, requireLive);
+  const season = mutate ? await lockSeason(tx, identity.seasonId, requireLive) : await readSeason(tx, identity.seasonId, requireLive);
   const targetQuery = tx.select().from(monuments).where(eq(monuments.id, monumentId));
   const [monument] = mutate ? await targetQuery.for('update') : await targetQuery;
   if (!monument) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);

@@ -156,6 +156,21 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
   }
 }
 
+/**
+ * WHAT THE SERVER WORKS OUT FOR A CLIENT IT IS WATCHING. Owner, 2026-11-04: a second or two
+ * later is fine for this.
+ *
+ * These kinds fire all day and each sent every client in the galaxy to read traffic, a
+ * quarter of all requests, though most of them are outside that client's sight. While the
+ * server is watching, it asks the same question on hearing of the event and wakes the
+ * client only if the answer moved (`stream/trafficWake.ts`). Rarer kinds keep their own read.
+ */
+const WATCHED_KINDS: ReadonlySet<string> = new Set(['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate']);
+
+/** Whether this shard event sends the client to read traffic for itself. */
+export const readsTrafficFor = (kind: string, woken: boolean): boolean =>
+  readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0]) && !(woken && WATCHED_KINDS.has(kind));
+
 const OWN_LANDING = [
   keys.planet, keys.planets, keys.pending, keys.notifications, keys.reports, keys.rewards, keys.traffic, keys.miningStatus,
   // Read only while the clan screen is open, so they cost nothing the rest of the time.

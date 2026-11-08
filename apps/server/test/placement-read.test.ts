@@ -3,12 +3,13 @@ import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { pino } from 'pino';
-import { afterAll, afterEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import * as schema from '../src/db/schema.js';
-import { players, watches } from '../src/db/schema.js';
+import { accounts, monuments, monumentWaves, players, seasons, watches } from '../src/db/schema.js';
+import { sendMonument } from '../src/services/monument.js';
 import { PLACEMENT_READ_ROUTES } from '../src/services/placementGate.js';
-import { giveInstrument, giveSatellite, seedWorld, setLevel, testDb, testEnv, TEST_DATABASE_URL } from './helpers.js';
+import { giveInstrument, giveSatellite, giveUnits, grant, seedWorld, setLevel, testDb, testEnv, TEST_DATABASE_URL } from './helpers.js';
 
 /**
  * HOT READS DO NOT QUEUE FOR A PLACEMENT LEASE. Resource analysis 2026-10-13.
@@ -103,6 +104,149 @@ it.each(['/api/intel', '/api/unknown-signals', '/api/return-applications', '/api
       await hold;
     }
   });
+
+/**
+ * THE REST OF WHAT 503'D AT 150–250 COMMANDERS. Load run 2026-11-04.
+ *
+ * Almost every 5xx of that run was this queue, on routes that were 6.5 % of the requests.
+ * Each handler below was read for writes: none has one, except the two whose write needs a
+ * lease only when it happens (see below). The maintenance notice and a session refresh
+ * have nothing to do with a placement at all.
+ */
+async function whileLeaseHeld<T>(f: Awaited<ReturnType<typeof seedWorld>>, run: (authorization: string) => Promise<T>): Promise<T> {
+  const authorization = await appFor(f, { PLACEMENT_POOL_MAX: '1' });
+  const { requireAuth } = await import('../src/routes/auth.js');
+  let release = () => { /* assigned synchronously by the promise constructor */ };
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let entered = false;
+  built!.app.post('/api/placement-hold-test', { preHandler: requireAuth }, async () => {
+    entered = true;
+    await held;
+    return { ok: true };
+  });
+  const hold = built!.app.inject({ method: 'POST', url: '/api/placement-hold-test', headers: { authorization } });
+  try {
+    await vi.waitFor(() => { expect(entered).toBe(true); }, { timeout: 2000 });
+    return await run(authorization);
+  } finally {
+    release();
+    await hold;
+  }
+}
+
+it.each(['/api/maintenance', '/api/servers', '/api/session/brand-recall', '/api/session/return', '/api/clan/support',
+  '/api/chat/messages', '/api/dm/conversations', '/api/community/policy', '/api/leaderboard', '/api/announcements',
+  '/api/chronicle', '/api/monuments', '/api/legacy/me/reveals'])(
+  'answers %s while every placement connection is held by a write', async (url) => {
+    const f = await seedWorld(1);
+    const outcome = await whileLeaseHeld(f, async authorization => {
+      const read = built!.app.inject({ url, headers: { authorization } });
+      return Promise.race([read, delay(1_000).then(() => 'blocked' as const)]);
+    });
+    expect(outcome === 'blocked' ? 'blocked' : outcome.statusCode).toBe(200);
+  });
+
+it('answers a session refresh while every placement connection is held by a write', async () => {
+  const f = await seedWorld(1);
+  const outcome = await whileLeaseHeld(f, async authorization => {
+    const refresh = built!.app.inject({ method: 'POST', url: '/api/auth/refresh', headers: { authorization } });
+    return Promise.race([refresh, delay(1_000).then(() => 'blocked' as const)]);
+  });
+  // No cookie here: reaching the handler at all is the point.
+  expect(outcome === 'blocked' ? 'blocked' : outcome.json()).toMatchObject({ error: 'NO_SESSION' });
+});
+
+/**
+ * A READ THAT ONLY SOMETIMES WRITES ASKS FOR THE LEASE WHEN IT DOES.
+ *
+ * `/api/monuments` applies a transition that fell due, and the first reveal read of a
+ * session evaluates the ledger. Neither happens on the ordinary read, so the ordinary read
+ * holds nothing. The moment a write is needed the attempt is dropped and answered again
+ * under the lease, so a write never straddles a relocation.
+ */
+it('evaluates the legacy ledger only under the lease', async () => {
+  const f = await seedWorld(1);
+  let pending: Promise<{ statusCode: number }> | undefined;
+  const outcome = await whileLeaseHeld(f, async authorization => {
+    pending = built!.app.inject({ url: '/api/legacy/me/reveals?refresh=1', headers: { authorization } });
+    return Promise.race([pending, delay(500).then(() => 'blocked' as const)]);
+  });
+  expect(outcome).toBe('blocked');
+  expect((await pending!).statusCode).toBe(200);
+});
+
+it('evaluates the legacy ledger for a commander with no galaxy', async () => {
+  const f = await seedWorld(1);
+  await appFor(f);
+  const [account] = await f.db.insert(accounts).values({ username: 'no_galaxy', passwordHash: 'disabled', displayName: 'Nobody' }).returning();
+  const authorization = `Bearer ${await built!.app.tokens.issueAccess(account!.id)}`;
+  const response = await built!.app.inject({ url: '/api/legacy/me/reveals?refresh=1', headers: { authorization } });
+  expect(response.statusCode).toBe(200);
+});
+
+describe('a commander with a wave at a monument', () => {
+  async function waveOut() {
+    const f = await seedWorld(2, 20261010);
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    await setLevel(f.db, f.planetIds[0]!, 'HANGAR', 10);
+    await grant(f.db, f.planetIds[0]!, 100000, 100000);
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 20, COURIER: 10 });
+    const [target] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, difficulty: 'HARD',
+      x: 6000, y: 0, z: 0, capacity: 7270, productionPerMinute: 8, garrison: {}, settledAt: f.clock.now() }).returning();
+    const { wave } = await f.db.transaction(tx => sendMonument(tx, { senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!,
+      monumentId: target!.id, fleet: { DART: 2 }, purpose: 'ATTACK', acknowledgeShieldLoss: true, clock: f.clock }));
+    return { f, wave };
+  }
+
+  it('reads it without a lock or a write while nothing is due', async () => {
+    const { f } = await waveOut();
+    const wire: string[] = [];
+    const client = postgres(TEST_DATABASE_URL, { max: 4, onnotice: () => undefined,
+      debug: (_connection, query) => { wire.push(query.toLowerCase()); } });
+    try {
+      built = buildApp({ db: drizzle(client, { schema }), env: testEnv(), clock: f.clock, logger: pino({ level: 'silent' }) });
+      const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+      expect((await built.app.inject({ url: '/api/season', headers: { authorization } })).statusCode).toBe(200);
+      wire.length = 0;
+      const response = await built.app.inject({ url: '/api/monuments', headers: { authorization } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json<{ waves: unknown[] }>().waves).toHaveLength(1);
+      expect(wire.filter(query =>
+        /\bfor (update|share|no key update|key share)\b|^\s*(update|insert|delete)\b|advisory/.test(query))).toEqual([]);
+    } finally {
+      await built?.close();
+      built = undefined;
+      await client.end();
+    }
+  });
+
+  it('does not queue behind a writer of the season row', async () => {
+    const { f } = await waveOut();
+    const authorization = await appFor(f);
+    let outcome: { statusCode: number } | 'blocked' | undefined;
+    await f.db.transaction(async tx => {
+      await tx.update(seasons).set({ spawnGateThrough: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+      const read = built!.app.inject({ url: '/api/monuments', headers: { authorization } });
+      outcome = await Promise.race([read, delay(1_000).then(() => 'blocked' as const)]);
+    });
+    expect(outcome === 'blocked' ? 'blocked' : outcome?.statusCode).toBe(200);
+  });
+
+  it('takes the lease to apply a transition that fell due, and applies it', async () => {
+    const { f, wave } = await waveOut();
+    f.clock.set(new Date(new Date(wave.arriveAt!).getTime() + 1_000));
+    let pending: Promise<{ statusCode: number }> | undefined;
+    const outcome = await whileLeaseHeld(f, async authorization => {
+      pending = built!.app.inject({ url: '/api/monuments', headers: { authorization } });
+      return Promise.race([pending, delay(500).then(() => 'blocked' as const)]);
+    });
+    expect(outcome).toBe('blocked');
+    expect((await pending!).statusCode).toBe(200);
+    const [after] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, wave.id));
+    expect(after!.status).not.toBe('OUTBOUND');
+  });
+});
 
 it('refuses a read whose galaxy moved while it was being answered', async () => {
   const f = await seedWorld(1);

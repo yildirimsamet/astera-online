@@ -280,7 +280,11 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     // publish between that instant and these subscriptions would otherwise be an
     // unreplayable lost event.
     const unsubscribe = app.bus.subscribe(playerId, send);
-    const activity = activityGate(send, app.sseActivityGapMs);
+    let trafficWatch: ReturnType<typeof watchTraffic> | null = null;
+    const activity = activityGate((event) => {
+      send(event);
+      trafficWatch?.soon();
+    }, app.sseActivityGapMs);
     const unsubscribeShard = app.bus.subscribeShard(seasonId, (event) => {
       if (isGalaxyActivity(event.kind)) activity.note(event);
       else send(event);
@@ -299,13 +303,12 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       shutdown: () => { end('shutdown'); },
       superseded: () => { end('superseded', SUPERSEDED_FRAME); },
     });
-    let stopTrafficWatch: (() => void) | null = null;
     let cleaned = false;
     cleanup = (reason = 'client'): void => {
       if (cleaned) return;
       cleaned = true;
       clearInterval(heartbeat);
-      stopTrafficWatch?.();
+      trafficWatch?.stop();
       unsubscribe();
       unsubscribeShard();
       activity.cancel();
@@ -332,7 +335,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     if (trafficWake && !req.raw.destroyed) {
       send({ kind: `${SHARD_PREFIX}traffic-wake-on` });
       const accountId = req.accountId!;
-      stopTrafficWatch = watchTraffic({
+      trafficWatch = watchTraffic({
         everyMs: app.trafficWakeMs,
         timeoutMs: TRAFFIC_WATCH_TIMEOUT_MS,
         read: async () => trafficSignature(await readTrafficView(app.projections, await app.projections.commander(accountId), app.clock.now())),

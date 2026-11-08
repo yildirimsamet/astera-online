@@ -55,6 +55,9 @@ export function trafficSignature(view: TrafficPicture): string {
   return `${contacts.sort().join('\n')}|${JSON.stringify(view.interceptions)}|${JSON.stringify(view.interceptionImpacts)}`;
 }
 
+/** A commit is readable once the event arrives; this spreads the readers and lets a burst gather. */
+const ACTIVITY_SETTLE_MS = 500;
+
 /**
  * Ask on the clock a client used to poll on, and wake it when the answer moved.
  *
@@ -62,6 +65,10 @@ export function trafficSignature(view: TrafficPicture): string {
  * caught up with the one that noticed, and nothing else would ask again for minutes.
  * The first read falls anywhere in the interval, so a redeploy does not ask all at once.
  * `failed` and `recovered` are for the client, which must poll for itself meanwhile.
+ *
+ * `soon` is for galaxy activity, which no longer sends the client to read for itself. It
+ * brings the next read forward instead of adding one: the clock restarts after it, so a
+ * craft in sight shows within a moment and a busy galaxy costs what the clock costs.
  */
 export function watchTraffic(options: {
   read: () => Promise<string>;
@@ -70,7 +77,7 @@ export function watchTraffic(options: {
   wake: () => void;
   failed: (error: unknown) => void;
   recovered: () => void;
-}): () => void {
+}): { stop: () => void; soon: () => void } {
   const { read, everyMs, timeoutMs, wake, failed, recovered } = options;
   let known: string | null = null;
   let settling = false;
@@ -78,6 +85,11 @@ export function watchTraffic(options: {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let deadline: ReturnType<typeof setTimeout> | null = null;
+  let nextAt = 0;
+  let asking = false;
+  let askAgain = false;
+  // Half of it random: every connection heard the same event at the same instant.
+  const afterActivity = (): number => ACTIVITY_SETTLE_MS * (1 + Math.random());
 
   const bounded = (): Promise<string> => new Promise<string>((resolve, reject) => {
     deadline = setTimeout(() => { reject(new Error('traffic read timed out')); }, timeoutMs);
@@ -87,10 +99,13 @@ export function watchTraffic(options: {
     if (deadline) clearTimeout(deadline);
   });
   const nextAfter = (ms: number): void => {
+    if (timer) clearTimeout(timer);
+    nextAt = Date.now() + ms;
     timer = setTimeout(() => { void tick(); }, ms);
     timer.unref();
   };
   const tick = async (): Promise<void> => {
+    asking = true;
     try {
       const answer = await bounded();
       if (stopped) return;
@@ -106,12 +121,26 @@ export function watchTraffic(options: {
       if (!failing) failed(error);
       failing = true;
     }
-    nextAfter(everyMs);
+    asking = false;
+    nextAfter(askAgain ? afterActivity() : everyMs);
+    askAgain = false;
   };
   nextAfter(everyMs * Math.random());
-  return () => {
-    stopped = true;
-    if (timer) clearTimeout(timer);
-    if (deadline) clearTimeout(deadline);
+  return {
+    stop: () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      if (deadline) clearTimeout(deadline);
+    },
+    soon: () => {
+      if (stopped || failing) return;
+      // That read may have been answered before this commit.
+      if (asking) {
+        askAgain = true;
+        return;
+      }
+      const ms = afterActivity();
+      if (Date.now() + ms < nextAt) nextAfter(ms);
+    },
   };
 }

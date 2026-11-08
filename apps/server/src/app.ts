@@ -145,6 +145,8 @@ declare module 'fastify' {
     accountId?: string;
     authVersion?: number;
     nativeSessionId?: string;
+    /** This request holds a placement lease, so a handler may write across its whole galaxy. */
+    placementLeased?: boolean;
     capacityStartedAt?: number;
     capacityResponseBytes?: number;
     dbStatements?: StatementCount;

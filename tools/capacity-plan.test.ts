@@ -142,7 +142,26 @@ describe('the reads a stream event provokes', () => {
     expect(eventReads('private:sight')).toEqual({ paths: ['/api/intel'], heavy: false });
     expect(eventReads('build_complete')).toEqual({
       paths: ['/api/planets', '/api/session/pending', '/api/rewards', '/api/galaxy'], heavy: false });
-    expect(eventReads('shard:launch')).toEqual({ paths: ['/api/galaxy/traffic'], heavy: false });
+    expect(eventReads('shard:launch')).toEqual({ paths: [], heavy: false });
+  });
+  it('reads traffic once for a shard event, as `useEventStream` does: the follow-up is that read', () => {
+    for (const kind of ['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate', 'shard:traffic']) {
+      expect(followsWithTraffic(kind)).toBe(true);
+      expect(eventReads(kind).paths).not.toContain('/api/galaxy/traffic');
+    }
+    expect(eventReads('shard:mining').paths).toEqual(['/api/mining/field']);
+  });
+  it('leaves galaxy activity to the server while it is watching, as `useEventStream` does', () => {
+    for (const kind of ['shard:launch', 'shard:arrival', 'shard:mining', 'shard:pirate']) {
+      expect(followsWithTraffic(kind, true)).toBe(false);
+    }
+    for (const kind of ['shard:traffic', 'shard:control', 'private:strategic-sight']) {
+      expect(followsWithTraffic(kind, true)).toBe(true);
+    }
+  });
+  it('keeps the immediate traffic read of urgent private sight', () => {
+    expect(followsWithTraffic('private:strategic-sight')).toBe(true);
+    expect(eventReads('private:strategic-sight').paths).toContain('/api/galaxy/traffic');
   });
   it('puts growth on the heavy lane', () => {
     expect(eventReads('shard:world')).toEqual({ paths: ['/api/galaxy'], heavy: true });

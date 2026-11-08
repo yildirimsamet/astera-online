@@ -3,7 +3,7 @@ import { EVENT_REFRESH_GAP_MS } from '../apps/web/src/api/eventRefresh.js';
 import { NET_MS } from '../apps/web/src/api/liveChannel.js';
 import {
   HEAVY_KINDS, isGlobalEvent, isPrivateEvent, isShardEvent,
-  readsForGlobalEvent, readsForPlayerEvent, readsForPrivateEvent, readsForShardEvent,
+  readsForGlobalEvent, readsForPlayerEvent, readsForPrivateEvent, readsForShardEvent, readsTrafficFor,
 } from '../apps/web/src/session/shardEvents.js';
 
 /**
@@ -144,7 +144,10 @@ export function eventReads(kind: string): { paths: readonly string[]; heavy: boo
       : (isPrivateEvent(kind) ? readsForPrivateEvent(kind) : null) ?? readsForPlayerEvent(kind);
   if (keys === null) return { paths: FULL_READS, heavy: false };
   const open = [...OPEN_READS, ...SHARD_ONLY_READS];
-  const paths = keys.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
+  // `useEventStream` reads traffic once for a shard event, after the consistency delay
+  // (`followsWithTraffic`); its coalescer skips the key. Sending both doubled that read.
+  const coalesced = isShardEvent(kind) ? keys.filter(key => key[0] !== 'traffic') : keys;
+  const paths = coalesced.flatMap(key => open.filter(([query]) => key.every((part, index) => query[index] === part))
     .map(([, path]) => path));
   return { paths: oneWorldRead([...new Set(paths)]), heavy: HEAVY_KINDS.has(kind) };
 }
@@ -156,8 +159,8 @@ export const isGatedEvent = (kind: string): boolean =>
   !isShardEvent(kind) && !isGlobalEvent(kind) && kind !== URGENT;
 
 /** The second traffic read `useEventStream` schedules once a replica can have seen the commit. */
-export const followsWithTraffic = (kind: string): boolean =>
-  kind === URGENT || (isShardEvent(kind) && readsForShardEvent(kind).some(key => key[0] === 'traffic'));
+export const followsWithTraffic = (kind: string, woken = false): boolean =>
+  kind === URGENT || (isShardEvent(kind) && readsTrafficFor(kind, woken));
 
 /** `trafficPollMs`, per client: a run holds many in one process. */
 export const trafficPeriodMs = (woken: boolean, calmMs: number): number => (woken ? calmMs : TRAFFIC.refreshMs);

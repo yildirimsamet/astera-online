@@ -398,7 +398,8 @@ describe('monument public facts and private manifests over HTTP', () => {
     expect(await f.db.select().from(monumentShipLots)).toEqual([]);
   });
 
-  it.each([3, 4, 5])('handles %s real concurrent home updates without duplicating radiation losses or retrying forever', async conflicts => {
+  // The list reads once without a lease and finds the write due, then has the same five tries under one.
+  it.each([3, 4, 5, 6])('handles %s real concurrent home updates without duplicating radiation losses or retrying forever', async conflicts => {
     await hold(0);
     const originalLots = await f.db.select().from(monumentShipLots);
     await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
@@ -418,12 +419,12 @@ describe('monument public facts and private manifests over HTTP', () => {
       return result;
     });
     try {
-      const response = await app.inject({ method: 'GET', url: conflicts === 4 ? `/api/monuments/${m.id}` : '/api/monuments', headers: auth });
-      if (conflicts === 5) {
+      const response = await app.inject({ method: 'GET', url: conflicts === 5 ? `/api/monuments/${m.id}` : '/api/monuments', headers: auth });
+      if (conflicts >= 5) {
         // The route's own retries ran out: a race it lost, for the client to repeat (F1.9).
         expect(response.statusCode, response.body).toBe(503);
         expect(response.json()).toMatchObject({ error: 'RETRYABLE' });
-        expect(updates).toBe(5);
+        expect(updates).toBe(conflicts);
         expect(await f.db.select().from(monumentShipLots)).toEqual(originalLots);
         expect(await f.db.select().from(notifications)).toEqual([]);
         return;

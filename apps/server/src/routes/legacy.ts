@@ -5,6 +5,7 @@ import { requireAuth } from './auth.js';
 import { deferLegacyRefresh, ensureLegacyProfile, equipLegacyShowcase, equipLegacyTitle, legacyProgress, restoreLegacyAward, revealLegacyAwards, revokeLegacyAward } from '../services/legacy.js';
 import { legacyAwardAudit, legacyAwardView, legacyCollectionView, legacyIdentity, legacyPlayerAccount, legacyProfileView, legacyResultAccount, legacyRevealsView, legacySeasonsView } from '../services/legacyView.js';
 import { syncLegacyMonumentDuty } from '../services/legacyMonument.js';
+import { LeaseRequired } from '../services/planet.js';
 import { requireAdmin } from './community.js';
 
 const profileParams = z.object({ publicId: z.string().uuid() });
@@ -86,7 +87,10 @@ export function registerLegacyRoutes(app: FastifyInstance): void {
    */
   app.get('/api/legacy/me/reveals', { preHandler: requireAuth }, async req => {
     const { refresh } = z.object({ refresh: z.literal('1').optional() }).strict().parse(req.query);
-    if (refresh) await evaluate(req.accountId!);
+    if (refresh) {
+      if (!req.placementLeased) throw new LeaseRequired();
+      await evaluate(req.accountId!);
+    }
     return legacyRevealsView(app.db, req.accountId!);
   });
   app.post('/api/legacy/me/reveals', { preHandler: requireAuth }, async req => {

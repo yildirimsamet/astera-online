@@ -406,6 +406,55 @@ describe('the event stream', () => {
     expect(asked).toEqual(['traffic']);
   });
 
+  /**
+   * WOKEN, A LAUNCH COSTS NO READ (owner, 2026-11-04). These kinds were a quarter of all
+   * requests and most of them are outside this commander's sight, which the server works
+   * out for them right after hearing of the event and wakes them only if something changed.
+   */
+  it.each([
+    ['shard:launch', []],
+    ['shard:mining', ['mining']],
+    ['shard:arrival', ['mining']],
+    ['shard:pirate', ['mining', 'pirates']],
+  ])('reads no traffic for %s while the server is watching for it', (kind, reads) => {
+    mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    asked = [];
+    fire(kind);
+    act(() => {
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS + 250);
+    });
+    expect(asked.toSorted()).toEqual(reads);
+  });
+
+  it('keeps reading traffic for what the watch does not stand in for', () => {
+    mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    for (const kind of ['shard:traffic', 'shard:control', 'shard:impact', 'shard:transfer']) {
+      asked = [];
+      fire(kind);
+      act(() => {
+        vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS + 250);
+      });
+      expect(asked, kind).toContain('traffic');
+    }
+  });
+
+  it('reads traffic for a launch again once the server has stopped watching', () => {
+    mountCaughtUp();
+    fire('shard:traffic-wake-on');
+    fire('shard:traffic-wake-off');
+    act(() => {
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS + 250);
+    });
+    asked = [];
+    fire('shard:launch');
+    act(() => {
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS + 250);
+    });
+    expect(asked).toEqual(['traffic']);
+  });
+
   it('collapses a burst from a busy galaxy into one pass', () => {
     mountCaughtUp();
     for (let i = 0; i < 6; i += 1) fire('shard:launch');

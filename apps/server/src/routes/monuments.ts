@@ -58,7 +58,7 @@ export function registerMonumentRoutes(app: FastifyInstance): void {
   const reader = async (req: FastifyRequest) => ({ ...await commanderForAccount(app.db, req.accountId!), at: app.clock.now(), adminUsernames: [...app.adminUsernames] });
   app.get('/api/monuments', { preHandler: requireAuth }, async (req) => {
     z.object({}).strict().parse(req.query ?? {});
-    const self = await reader(req);
+    const self = { ...await reader(req), readOnly: !req.placementLeased };
     return consistentMonumentRead(app.db, (tx) => readMonuments(tx, self));
   });
   app.get('/api/monuments/:monumentId', { preHandler: requireAuth }, async (req) => {
