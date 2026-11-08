@@ -10,6 +10,7 @@ import { starterEvents, starterSites, vesselMissions, vesselNotifications, vesse
 import { publish, publishShard } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { ringShip } from './push.js';
 import { markProgress } from './quiet.js';
 import { starterPendingView } from './traffic.js';
@@ -158,7 +159,7 @@ export const launchVesselFleet = (db: Db, accountId: string, body: LaunchBody, k
       starterGalaxyId: row.starterGalaxyId, ownerVesselId: row.id, kind: ship ? 'ATTACK' : 'RAID_SITE',
       ...(ship ? { targetVesselId: ship.id } : { targetSiteId: site!.id }),
       fromX: from.x, fromY: from.y, fromZ: from.z, toX: to.x, toY: to.y, toZ: to.z,
-      fleet: flying.fleet, damage: flying.damage, fuelPaid, departAt: vessel.now, arriveAt, ...(key ? { idempotencyKey: key } : {}),
+      fleet: flying.fleet, damage: flying.damage, fuelPaid, departAt: vessel.now, arriveAt, ...(key ? { idempotencyKey: key } : {}), ...vesselProvenance(vessel.now),
     }).returning();
     await scheduleStarter(tx, { starterGalaxyId: row.starterGalaxyId, kind: 'vessel_mission_arrival', refId: mission!.id, resolveAt: arriveAt });
     if (ship) await warnInReach(tx, mission!, ship, vessel.now);

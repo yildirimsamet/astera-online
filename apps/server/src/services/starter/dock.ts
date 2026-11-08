@@ -5,6 +5,7 @@ import type { Db } from '../../db/client.js';
 import { vesselOrders, vesselUnits } from '../../db/schema.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { planStarterReturn } from '../returnPlanning.js';
 import { markProgress } from './quiet.js';
 import { activeOrders, vesselView, withVesselLock } from './vessel.js';
@@ -27,7 +28,7 @@ export const dockFleet = (db: Db, accountId: string, clock: Clock) =>
     const readyAt = new Date(vessel.now.getTime() + remainingSeconds * 1000);
     const [order] = await tx.insert(vesselOrders).values({
       vesselId: vessel.row.id, queue: 'DOCK', slot: 0, subject: 'DOCK', stage: 1, count: 1,
-      startedAt: vessel.now, readyAt, remainingSeconds, cost,
+      startedAt: vessel.now, readyAt, remainingSeconds, cost, ...vesselProvenance(vessel.now),
     }).returning({ id: vesselOrders.id });
     await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_order_complete', refId: order!.id, resolveAt: readyAt });
     await planStarterReturn(tx, vessel.row, vessel.now, vessel.returnEligible);

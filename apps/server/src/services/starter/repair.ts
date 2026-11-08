@@ -8,6 +8,7 @@ import type { Db, Tx } from '../../db/client.js';
 import { starterEvents, vesselNotifications, vesselOrders, vessels } from '../../db/schema.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { planStarterReturn } from '../returnPlanning.js';
 import { markProgress } from './quiet.js';
 import { activeOrders, economyOf, progressOf, vesselView, withEconomy, withVesselLock, type LockedVessel, type VesselOrderRow, type VesselView } from './vessel.js';
@@ -65,7 +66,7 @@ export const orderRepair = (db: Db, accountId: string, module: VesselModule, sta
     const readyAt = new Date(startedAt.getTime() + remainingSeconds * 1000);
     const [order] = await tx.insert(vesselOrders).values({
       vesselId: vessel.row.id, queue: 'CONSTRUCTION', slot: queue.length, subject: module, stage,
-      startedAt, readyAt, remainingSeconds, cost: { alloy: step.alloy, crystal: step.crystal, deuterium: 0 },
+      startedAt, readyAt, remainingSeconds, cost: { alloy: step.alloy, crystal: step.crystal, deuterium: 0 }, ...vesselProvenance(vessel.now),
     }).returning({ id: vesselOrders.id });
     await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_order_complete', refId: order!.id, resolveAt: readyAt });
     await planStarterReturn(tx, vessel.row, vessel.now, vessel.returnEligible);

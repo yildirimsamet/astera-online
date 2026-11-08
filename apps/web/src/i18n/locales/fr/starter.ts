@@ -150,7 +150,7 @@ export const starter = {
       "line": "Le réservoir est plein. Ce vaisseau peut sauter vers la galaxie principale."
     }
   },
-  "funnel": {"title": "Parcours de départ", "sessions": "{{accounts}} comptes · {{sessions}} sessions · {{returned}} retours en deuxième session", "push": "Push : {{asked}} demandes · {{granted}} accords · {{denied}} refus", "crates": "Caisses : {{opened}} ouvertes par {{accounts}} comptes", "steps": "Étapes et abandons", "dropoff": "{{accounts}} arrivées · {{dropoff}} de moins"},
+  "funnel": {"title": "Parcours de départ", "sessions": "{{accounts}} comptes · {{sessions}} sessions · {{returned}} retours en deuxième session", "push": "Push : {{asked}} demandes · {{granted}} accords · {{denied}} refus", "crates": "Caisses : {{opened}} ouvertes par {{accounts}} comptes", "chain": "Chaîne d'ordres : {{accepted}} comptes ont donné un ordre → {{resolved}} ont reçu le résultat → {{viewed}} l'ont vu → {{decided}} ont redonné un ordre", "haul": "Premier retour de minage : {{returned}} comptes · {{gained}} avec un gain net · {{wasted}} ont perdu une part, installations pleines", "steps": "Étapes et abandons", "dropoff": "{{accounts}} arrivées · {{dropoff}} de moins"},
   "crate": {"title_one": "Caisse de récupération", "title_other": "{{count}} caisses de récupération", "hold": "Maintiens pour ouvrir et prendre", "open": "Ouvrir : {{purse}}"},
   "unlock": {
     "online": "{{system}} en ligne",

@@ -6,7 +6,7 @@ import { accounts, analyticsDailyAggregates, analyticsEvents, analyticsSessions,
 import { requireAdmin } from './community.js';
 import { summarizePlayerObservations } from '../../../web/src/api/analyticsReportModel.js';
 import { analyticsAdminQuerySchema, analyticsFiltersSchema, type AnalyticsFilters } from '../../../web/src/api/analyticsAdminSchemas.js';
-import { analyticsCohorts } from '../services/analyticsCohorts.js';
+import { analyticsCohorts, signupRetention } from '../services/analyticsCohorts.js';
 
 export function registerAnalyticsAdmin(app: FastifyInstance): void {
   const excluded = () => and(notExists(app.db.select({ id: botProfiles.accountId }).from(botProfiles).where(eq(botProfiles.accountId, accounts.id))),
@@ -77,6 +77,8 @@ export function registerAnalyticsAdmin(app: FastifyInstance): void {
       .innerJoin(analyticsVisitors, eq(analyticsVisitors.accountId, accounts.id)).where(and(accountScope(), inArray(analyticsVisitors.id, eligibleVisits)));
     const [visits] = await app.db.select({ value: count() }).from(analyticsVisitors).where(inArray(analyticsVisitors.id, eligibleVisits));
     const cohorts = await analyticsCohorts(app.db, start, now, eligibleVisits);
+    const signups = await signupRetention(app.db, now, app.db.select({ id: accounts.id, created_at: accounts.createdAt }).from(accounts)
+      .where(and(accountScope(), gte(accounts.createdAt, start))));
     const cohortsTruncated = cohorts.length > 50; cohorts.length = Math.min(cohorts.length, 50);
     const daily = await app.db.select({ day: analyticsDailyAggregates.day, name: analyticsDailyAggregates.name,
       mode: analyticsDailyAggregates.mode, events: analyticsDailyAggregates.events, visitors: analyticsDailyAggregates.visitors })
@@ -99,7 +101,7 @@ export function registerAnalyticsAdmin(app: FastifyInstance): void {
       .groupBy(sql`(${analyticsEvents.properties}->>'step')::int`);
     return { measuredAt: now, windowStart: start, nextAfter: more ? rows.at(-1)!.accountId : null,
       starter: await starterFunnel(app.db, eligibleVisits),
-      landing, cohorts, cohortsTruncated, daily: hasFilters ? [] : daily,
+      landing, cohorts, cohortsTruncated, signups, daily: hasFilters ? [] : daily,
       quality: { totalAccounts: total?.value ?? 0, measuredAccounts: measured?.value ?? 0, visits: visits?.value ?? 0, untrusted: untrusted?.value ?? 0 },
       steps: Array.from({ length: 11 }, (_, index) => ({ step: index + 1, attempts: stepRows.find(row => row.step === index + 1)?.attempts ?? 0 })), players: result };
   });

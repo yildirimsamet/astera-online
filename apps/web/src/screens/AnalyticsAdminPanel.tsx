@@ -73,6 +73,8 @@ export function AnalyticsAdminPanel() {
       <Section label="Eğitim — 11 adım"><ol aria-label="Eğitim adımları" className="divide-y divide-v2-line rounded-control border border-v2-line">
         {report.data.steps.map(step => <li key={step.step} className="flex justify-between gap-2 px-3 py-2 text-label"><span>{step.step}. {chapters[step.step - 1]}</span><span>{step.attempts} deneme</span></li>)}
       </ol><p className="mt-1 text-micro text-v2-ink-3">Her satır o adımı gören farklı eğitim denemeleridir. Alt sahneler kayıtsız ziyaret zaman çizelgesinde görünür.</p></Section>
+      <Section label="Yeni hesap dönüşü"><p className="text-label text-v2-ink-2">Pencerede açılan {report.data.signups.accounts} hesabın {report.data.signups.measured} tanesinde ölçüm var. D1 / D3 / D7: {[report.data.signups.d1, report.data.signups.d3, report.data.signups.d7].map(window => `${window.returned}/${window.mature} değerlendirilebilir, ${window.pending} bekliyor`).join(' · ')}</p>
+        <p className="mt-1 text-micro text-v2-ink-3">Hesabın açıldığı andan: D1 24–48, D3 72–96, D7 168–192 saat. Hazır sahneye hiç ulaşmayanlar da sayılır; ölçülmeyen hesap dönmedi sayılmaz.</p></Section>
       <details className="rounded-control border border-v2-line p-3"><summary className="min-h-11 cursor-pointer text-caption">Sürüm, kaynak ve platform kesitleri</summary>
         <p className="text-micro text-v2-ink-3">Kesitler ziyaret tabanlıdır. Aynı hesap farklı kesitlerde bulunabilir. İlk gözlenen açılışa göre D1: 24–48, D3: 72–96, D7: 168–192 saat.</p>
         {report.data.cohorts.map((cohort, index) => <div key={index} className="break-words border-t border-v2-line py-2 text-label">
@@ -85,6 +87,8 @@ export function AnalyticsAdminPanel() {
         <p>{t('starter.funnel.sessions', { accounts: report.data.starter.accounts, sessions: report.data.starter.sessions, returned: report.data.starter.returnedAccounts })}</p>
         <p>{t('starter.funnel.push', report.data.starter.push)}</p>
         <p>{t('starter.funnel.crates', report.data.starter.crates)}</p>
+        <p>{t('starter.funnel.chain', report.data.starter.chain)}</p>
+        <p>{t('starter.funnel.haul', report.data.starter.mining)}</p>
         <details><summary className="min-h-9 cursor-pointer">{t('starter.funnel.steps')}</summary>
           {report.data.starter.steps.map(step => <p key={step.scene} className="flex justify-between gap-2 border-t border-v2-line py-1"><code>{step.scene}</code><span>{t('starter.funnel.dropoff', step)}</span></p>)}
         </details>

@@ -150,7 +150,7 @@ export const starter = {
       "line": "Depo dolu. Bu gemi ana galaksiye atlayabilir."
     }
   },
-  "funnel": {"title": "Başlangıç yolculuğu", "sessions": "{{accounts}} hesap · {{sessions}} oturum · {{returned}} hesap ikinci oturuma döndü", "push": "Push: {{asked}} sorulan · {{granted}} izin veren · {{denied}} reddeden", "crates": "Kasalar: {{accounts}} hesapta {{opened}} açılış", "steps": "Adımlar ve düşüş", "dropoff": "{{accounts}} ulaştı · öncekinden {{dropoff}} az"},
+  "funnel": {"title": "Başlangıç yolculuğu", "sessions": "{{accounts}} hesap · {{sessions}} oturum · {{returned}} hesap ikinci oturuma döndü", "push": "Push: {{asked}} sorulan · {{granted}} izin veren · {{denied}} reddeden", "crates": "Kasalar: {{accounts}} hesapta {{opened}} açılış", "chain": "Emir zinciri: {{accepted}} hesap emir verdi → {{resolved}} sonucunu aldı → {{viewed}} sonucu gördü → {{decided}} yeniden emir verdi", "haul": "İlk kazı dönüşü: {{returned}} hesap · {{gained}} net kazançlı · {{wasted}} dolu tesis yüzünden kayıp verdi", "steps": "Adımlar ve düşüş", "dropoff": "{{accounts}} ulaştı · öncekinden {{dropoff}} az"},
   "crate": {"title_one": "Kurtarma kasası", "title_other": "{{count}} kurtarma kasası", "hold": "Basılı tut, aç ve al", "open": "Aç: {{purse}}"},
   "unlock": {
     "online": "{{system}} çevrimiçi",

@@ -31,7 +31,12 @@ export const starterFunnelSchema = z.object({
   steps: z.array(z.object({ scene: z.string(), accounts: nonnegativeCount, dropoff: nonnegativeCount })),
   push: z.object({ asked: nonnegativeCount, granted: nonnegativeCount, denied: nonnegativeCount }),
   crates: z.object({ accounts: nonnegativeCount, opened: nonnegativeCount }),
+  /** Accounts at each link of order → result → read → next order, by server ids (plan 2026-11-08 F1). */
+  chain: z.object({ accepted: nonnegativeCount, resolved: nonnegativeCount, viewed: nonnegativeCount, decided: nonnegativeCount }),
+  /** The first mining return: came home, brought a net gain, lost some to full works. */
+  mining: z.object({ returned: nonnegativeCount, gained: nonnegativeCount, wasted: nonnegativeCount }),
 });
+const signupWindow = z.object({ mature: nonnegativeCount, returned: nonnegativeCount, pending: nonnegativeCount });
 export const analyticsAdminSchema = z.object({
   starter: starterFunnelSchema.optional(),
   measuredAt: z.coerce.date(), windowStart: z.coerce.date(), nextAfter: z.string().uuid().nullable(),
@@ -40,6 +45,7 @@ export const analyticsAdminSchema = z.object({
   cohorts: z.array(z.object({ platform: z.string(), build: z.string(), locale: z.string(), source: z.string().nullable(), visits: z.number(), accounts: z.number(),
     anchorAccounts: z.number().default(0), retention: z.object({ d1: cohortWindow, d3: cohortWindow, d7: cohortWindow }).optional() })),
   cohortsTruncated: z.boolean(),
+  signups: z.object({ accounts: nonnegativeCount, measured: nonnegativeCount, d1: signupWindow, d3: signupWindow, d7: signupWindow }),
   daily: z.array(z.object({ day: z.coerce.date(), name: z.string(), mode: z.enum(['training', 'live', 'replay', 'arena']), events: z.number(), visitors: z.number() })),
   steps: z.array(z.object({ step: z.number(), attempts: z.number() })),
   players: z.array(z.object({ accountId: z.string().uuid(), username: z.string(), lastActiveAt: z.coerce.date().nullable(),

@@ -9,6 +9,7 @@ import { starterEvents, starterGalaxies, starterSites, vesselMissions, vessels }
 import { publish, publishShard } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { readHome, takeFromHome, writeHome } from './fleet.js';
 import { markProgress } from './quiet.js';
 import { starterPendingView } from './traffic.js';
@@ -119,7 +120,7 @@ async function sendCraft(tx: Tx, vessel: LockedVessel, clock: Clock, target: { s
   const [mission] = await tx.insert(vesselMissions).values({
     starterGalaxyId: vessel.row.starterGalaxyId, ownerVesselId: vessel.row.id, kind: 'MINE', targetSiteId: target.site.id,
     fromX: from.x, fromY: from.y, fromZ: from.z, toX: target.to.x, toY: target.to.y, toZ: target.to.z,
-    fleet: flying.fleet, damage: flying.damage, departAt: vessel.now, arriveAt: target.arriveAt,
+    fleet: flying.fleet, damage: flying.damage, departAt: vessel.now, arriveAt: target.arriveAt, ...vesselProvenance(vessel.now),
   }).returning();
   await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_mission_arrival', refId: mission!.id, resolveAt: target.arriveAt });
   await publishShard(tx, vessel.row.starterGalaxyId, 'mining');

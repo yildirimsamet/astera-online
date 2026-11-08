@@ -50,3 +50,28 @@ it('covers deployed strategic production and launch, per-world cancellation and 
   expect(analyticsCommand('/api/mining/runs/:runId/recall')).toBe('recall');
   expect(analyticsCommand('/api/pirates/raids/:raidId/recall')).toBe('recall');
 });
+
+describe('the colony ship commands', () => {
+  it('names the orders the ship records, so the server can project them once from their rows', () => {
+    const durable = { '/api/starter/repair': 'module_repair', '/api/starter/build': 'build', '/api/starter/research': 'research',
+      '/api/starter/dock': 'dock', '/api/starter/probe': 'probe', '/api/starter/fleet/launch': 'attack',
+      '/api/starter/mining/launch': 'mining', '/api/starter/mining/harvest': 'harvest' };
+    for (const [path, code] of Object.entries(durable)) {
+      expect(analyticsCommand(path)).toBe(code);
+      expect(analyticsDurableCommand(path)).toBe(true);
+    }
+  });
+  it('names the rest, which only the answer can confirm', () => {
+    const answered = { '/api/starter/collect': 'collect', '/api/starter/fuel': 'fuel', '/api/starter/watch': 'watch',
+      '/api/starter/fleet/:id/recall': 'recall', '/api/starter/mining/runs/:id/recall': 'recall',
+      '/api/starter/mining/runs/0bb258b3-c801-4675-a7a4-a30793c1a8ab/recall': 'recall', '/api/starter/orders/:id/cancel': 'cancel_build' };
+    for (const [path, code] of Object.entries(answered)) {
+      expect(analyticsCommand(path)).toBe(code);
+      expect(analyticsDurableCommand(path)).toBe(false);
+    }
+  });
+  it('leaves out what is not a decision', () => {
+    for (const path of ['/api/starter/enlist', '/api/starter/unlocks/seen', '/api/starter/crates/open', '/api/starter/notifications/seen',
+      '/api/starter/return/seen', '/api/starter/chat/read', '/api/starter/migrate']) expect(analyticsCommand(path)).toBeNull();
+  });
+});

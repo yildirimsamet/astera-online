@@ -1,3 +1,10 @@
+const STARTER_ROUTES: Record<string, string> = {
+  '/api/starter/repair': 'module_repair', '/api/starter/build': 'build', '/api/starter/research': 'research',
+  '/api/starter/dock': 'dock', '/api/starter/probe': 'probe', '/api/starter/fleet/launch': 'attack',
+  '/api/starter/mining/launch': 'mining', '/api/starter/mining/harvest': 'harvest',
+  '/api/starter/collect': 'collect', '/api/starter/fuel': 'fuel', '/api/starter/watch': 'watch',
+};
+
 /** Stable categories shared by request observation and server provenance; no raw paths are stored. */
 export function analyticsCommand(path: string): string | null {
   const planet = /^\/api\/(?:planet|planets\/(?:[a-f0-9-]{36}|:planetId))\/(collect|upgrade|build|instrument|satellite|research|launch|settle|transfer|repair)$/.exec(path);
@@ -24,6 +31,10 @@ export function analyticsCommand(path: string): string | null {
   };
   if (Object.hasOwn(routes, path)) return routes[path]!;
   if (/^\/api\/monuments\/(?:[a-f0-9-]{36}|:monumentId)\/(?:send|probe)$/.test(path)) return 'monument';
+  // The colony ship's own routes. The client also names most of them by the main-game path it asks for.
+  if (Object.hasOwn(STARTER_ROUTES, path)) return STARTER_ROUTES[path]!;
+  if (/^\/api\/starter\/(?:fleet|mining\/runs)\/(?:[a-f0-9-]{36}|:id)\/recall$/.test(path)) return 'recall';
+  if (/^\/api\/starter\/orders\/(?:[a-f0-9-]{36}|:id)\/cancel$/.test(path)) return 'cancel_build';
   if (/^\/api\/unknown-signals\/(?:[a-f0-9-]{36}|:signalId)\/dispatch$/.test(path)) return 'unknown_signal';
   return null;
 }
@@ -31,7 +42,7 @@ export function analyticsCommand(path: string): string | null {
 /** These operations project immutable source rows; all other classified actions use a bounded response callback. */
 export function analyticsDurableCommand(path: string): boolean {
   const command = analyticsCommand(path);
-  return command !== null && ['upgrade', 'build', 'instrument', 'satellite', 'research', 'attack', 'death_star', 'settle', 'transfer', 'mining', 'harvest', 'trade', 'pirates', 'probe'].includes(command)
+  return command !== null && ['upgrade', 'build', 'instrument', 'satellite', 'research', 'attack', 'death_star', 'settle', 'transfer', 'mining', 'harvest', 'trade', 'pirates', 'probe', 'module_repair', 'dock'].includes(command)
     || command === 'monument' && path.endsWith('/send');
 }
 export function analyticsAuth(path: string): 'claim' | 'login' | 'register' | null {

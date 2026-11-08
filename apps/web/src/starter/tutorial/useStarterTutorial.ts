@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useGalaxy, useMining, usePending, usePlanet } from '../../api/queries.js';
 import { useProjected } from '../../lib/projection.js';
 import { vesselToPlanetView } from '../adapter.js';
+import { hasOtherShip } from '../neighbour.js';
 import { timeToAfford } from '../steps.js';
 import { repairWait, tutorialAction, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 
@@ -76,7 +77,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     mining: (mining.data?.runs.length ?? 0) > 0,
     crates: vessel.crates,
     // Only once the map has loaded: an unread map is not an empty galaxy.
-    alone: galaxy.data !== undefined && !galaxy.data.planets.some(world => world.body === 'VESSEL' && !world.isSelf && world.id !== vessel.id),
+    alone: galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, vessel.id),
     view,
     acked: list,
   };

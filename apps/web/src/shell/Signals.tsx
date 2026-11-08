@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMarkSeen, useNotifications, usePlanet } from '../api/queries.js';
+import { observeOutcomes } from '../session/outcomeVisible.js';
 import type { NotificationView, PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { compact } from '../lib/format.js';
@@ -113,8 +114,10 @@ export function useOpenSignals(): () => ReadonlySet<string> {
   const { data } = useNotifications();
   const markSeen = useMarkSeen();
   return () => {
-    const fresh = (data?.notifications ?? []).filter((n) => !n.seen).map((n) => n.id);
+    const unseen = (data?.notifications ?? []).filter((n) => !n.seen);
+    const fresh = unseen.map((n) => n.id);
     if (fresh.length > 0) markSeen.mutate(fresh);
+    observeOutcomes(unseen, 'signals');
     return new Set(fresh);
   };
 }

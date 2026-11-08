@@ -150,7 +150,7 @@ export const starter = {
       "line": "Der Tank ist voll. Dieses Schiff kann in die Hauptgalaxie springen."
     }
   },
-  "funnel": {"title": "Startreise", "sessions": "{{accounts}} Konten · {{sessions}} Sitzungen · {{returned}} Rückkehrer zur zweiten Sitzung", "push": "Push: {{asked}} gefragt · {{granted}} erlaubt · {{denied}} abgelehnt", "crates": "Kisten: {{opened}} von {{accounts}} Konten geöffnet", "steps": "Schritte und Abbruch", "dropoff": "{{accounts}} erreicht · {{dropoff}} weniger als zuvor"},
+  "funnel": {"title": "Startreise", "sessions": "{{accounts}} Konten · {{sessions}} Sitzungen · {{returned}} Rückkehrer zur zweiten Sitzung", "push": "Push: {{asked}} gefragt · {{granted}} erlaubt · {{denied}} abgelehnt", "crates": "Kisten: {{opened}} von {{accounts}} Konten geöffnet", "chain": "Befehlskette: {{accepted}} Konten gaben einen Befehl → {{resolved}} erhielten das Ergebnis → {{viewed}} sahen es → {{decided}} befahlen erneut", "haul": "Erste Bergbau-Rückkehr: {{returned}} Konten · {{gained}} mit Nettogewinn · {{wasted}} verloren etwas an volle Werke", "steps": "Schritte und Abbruch", "dropoff": "{{accounts}} erreicht · {{dropoff}} weniger als zuvor"},
   "crate": {"title_one": "Bergungskiste", "title_other": "{{count}} Bergungskisten", "hold": "Halten zum Öffnen und Nehmen", "open": "Öffnen: {{purse}}"},
   "unlock": {
     "online": "{{system}} online",

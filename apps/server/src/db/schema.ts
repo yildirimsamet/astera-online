@@ -5608,7 +5608,16 @@ export const vesselOrders = pgTable('vessel_orders', {
   /** Full duration, so that later orders can be re-timed after a cancellation. */
   remainingSeconds: integer('remaining_seconds').notNull(),
   cost: jsonb('cost').$type<Resources>().notNull(),
-}, (t) => [index('vessel_orders_active_idx').on(t.vesselId, t.status, t.queue, t.slot)]);
+  /** When it was given; `started_at` moves with the queue. Null on rows from before it was kept. */
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  /** The permitted visit that gave the order, for analytics only (`vesselProvenance`). */
+  analyticsVisitHash: text('analytics_visit_hash'),
+  analyticsAttemptId: uuid('analytics_attempt_id'),
+}, (t) => [
+  index('vessel_orders_active_idx').on(t.vesselId, t.status, t.queue, t.slot),
+  index('vessel_orders_analytics_order_idx').on(t.orderedAt).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
+  index('vessel_orders_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
+]);
 
 export const vesselNotifications = pgTable('vessel_notifications', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -5698,8 +5707,14 @@ export const vesselMissions = pgTable('vessel_missions', {
   returnAt: timestamp('return_at', { withTimezone: true }),
   status: text('status').$type<'OUTBOUND' | 'RETURNING' | 'DONE' | 'CANCELLED'>().notNull().default('OUTBOUND'),
   idempotencyKey: text('idempotency_key'),
+  /** The launch; `depart_at` moves when a run is called back. Null on a pirate. */
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  analyticsVisitHash: text('analytics_visit_hash'),
+  analyticsAttemptId: uuid('analytics_attempt_id'),
 }, (t) => [
   uniqueIndex('vessel_missions_once_idx').on(t.ownerVesselId, t.idempotencyKey),
+  index('vessel_missions_analytics_order_idx').on(t.orderedAt).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
+  index('vessel_missions_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('vessel_missions_target_idx').on(t.targetVesselId, t.status),
   index('vessel_missions_owner_idx').on(t.ownerVesselId, t.status),
   index('vessel_missions_galaxy_idx').on(t.starterGalaxyId, t.status),

@@ -150,7 +150,7 @@ export const starter = {
       "line": "The tank is full. This ship can jump to the main galaxy."
     }
   },
-  "funnel": {"title": "Starter journey", "sessions": "{{accounts}} accounts · {{sessions}} sessions · {{returned}} returned for a second session", "push": "Push: {{asked}} asked · {{granted}} allowed · {{denied}} declined", "crates": "Crates: {{opened}} opened by {{accounts}} accounts", "steps": "Steps and dropoff", "dropoff": "{{accounts}} reached · {{dropoff}} fewer than previous"},
+  "funnel": {"title": "Starter journey", "sessions": "{{accounts}} accounts · {{sessions}} sessions · {{returned}} returned for a second session", "push": "Push: {{asked}} asked · {{granted}} allowed · {{denied}} declined", "crates": "Crates: {{opened}} opened by {{accounts}} accounts", "chain": "Order chain: {{accepted}} accounts gave an order → {{resolved}} got its result → {{viewed}} saw it → {{decided}} ordered again", "haul": "First mining return: {{returned}} accounts · {{gained}} with a net gain · {{wasted}} lost some to full works", "steps": "Steps and dropoff", "dropoff": "{{accounts}} reached · {{dropoff}} fewer than previous"},
   "crate": {"title_one": "Salvage crate", "title_other": "{{count}} salvage crates", "hold": "Hold to open and take it", "open": "Open: {{purse}}"},
   "unlock": {
     "online": "{{system}} online",

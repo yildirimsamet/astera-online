@@ -87,8 +87,9 @@ describe('the works line on a ship', () => {
 });
 
 describe('what the stream moves', () => {
-  it('a ship event refreshes the ship and the jump panel, which is read only while it is open', () => {
-    expect(readsForPrivateEvent('private:vessel')).toEqual([keys.planet, keys.planets, keys.migration]);
+  it('a ship event refreshes the ship, the jump panel, which is read only while it is open, and the news it was published with', () => {
+    // Every ship event is an order finishing, and each one writes the line that tells the player: unread, it was never shown.
+    expect(readsForPrivateEvent('private:vessel')).toEqual([keys.planet, keys.planets, keys.notifications, keys.migration]);
   });
 });
 

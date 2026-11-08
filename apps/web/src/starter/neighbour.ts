@@ -1,16 +1,20 @@
 import { orbitPosition, type OrbitElements } from '@astera/rules';
 interface Point { x: number; y: number; z: number }
 
-/** The closest ship that is not yours: where the first probe is pointed. Outposts and wrecks are not ships. */
-export function nearestShip(
-  worlds: readonly { id: string; body?: 'VESSEL' | 'OUTPOST' | undefined; position: Point; isSelf?: boolean }[],
-  ownId: string,
-  from: Point | undefined,
-): string | null {
+interface World { id: string; body?: 'VESSEL' | 'OUTPOST' | undefined; position: Point; isSelf?: boolean }
+
+/** Outposts and wrecks are not ships, and neither is your own. */
+const otherShip = (world: World, ownId: string): boolean => world.body === 'VESSEL' && world.isSelf !== true && world.id !== ownId;
+
+/** Someone to probe, wherever the ship itself is. */
+export const hasOtherShip = (worlds: readonly World[], ownId: string): boolean => worlds.some(world => otherShip(world, ownId));
+
+/** The closest ship that is not yours: where the first probe is pointed. */
+export function nearestShip(worlds: readonly World[], ownId: string, from: Point | undefined): string | null {
   if (!from) return null;
   let best: { id: string; d: number } | null = null;
   for (const world of worlds) {
-    if (world.body !== 'VESSEL' || world.isSelf === true || world.id === ownId) continue;
+    if (!otherShip(world, ownId)) continue;
     const d = (world.position.x - from.x) ** 2 + (world.position.y - from.y) ** 2 + (world.position.z - from.z) ** 2;
     if (!best || d < best.d) best = { id: world.id, d };
   }

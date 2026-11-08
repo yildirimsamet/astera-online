@@ -1702,6 +1702,13 @@
       "when": 1793847912662,
       "tag": "0242_vessel_sight_since",
       "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1794096791760,
+      "tag": "0243_vessel_analytics_provenance",
+      "breakpoints": true
     }
   ]
 }

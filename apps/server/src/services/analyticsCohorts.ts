@@ -49,3 +49,30 @@ export async function analyticsCohorts(db: Db, start: Date, now: Date, eligible:
     FROM grouped g ORDER BY visits DESC LIMIT 51`);
   return z.array(rowSchema).parse(rows);
 }
+
+const signupSchema = z.object({ accounts: z.number(), measured: z.number(), d1: windowSchema, d3: windowSchema, d7: windowSchema });
+
+/**
+ * THE PRIMARY SERIES: D1/D3/D7 from the account's own creation (plan 2026-11-08 F1). Unlike the
+ * first-ready cohort it keeps whoever never reached a ready scene. An account with no client visit
+ * on record is counted apart: nothing says it did not come back, so it is no failure either.
+ */
+export async function signupRetention(db: Db, now: Date, cohort: SQLWrapper) {
+  const [row] = await db.execute(sql`
+    WITH anchors AS (SELECT c.id account_id, c.created_at anchor_at FROM (${cohort}) c),
+    measured AS (SELECT a.* FROM anchors a WHERE EXISTS (SELECT 1 FROM analytics_visitors v
+      WHERE v.account_id=a.account_id AND v.metadata->>'scope' <> 'server_player')),
+    evaluated AS (
+      SELECT d.day, ${now.toISOString()}::timestamptz >= m.anchor_at + (d.day+1)*interval '1 day' mature,
+        EXISTS (SELECT 1 FROM analytics_events e WHERE e.account_id=m.account_id AND e.time_trusted AND e.mode='live'
+          AND ((e.source='client_observation' AND e.name='game_ready') OR (e.source='server_fact' AND e.name='command_accepted'))
+          AND e.occurred_at >= m.anchor_at + d.day*interval '1 day' AND e.occurred_at < m.anchor_at + (d.day+1)*interval '1 day') returned
+      FROM measured m CROSS JOIN (VALUES (1),(3),(7)) d(day)
+    )
+    SELECT (SELECT count(*)::int FROM anchors) accounts, (SELECT count(*)::int FROM measured) measured,
+      ${sql.join([1, 3, 7].map(day => sql`jsonb_build_object('mature', count(*) FILTER (WHERE day=${day} AND mature)::int,
+        'returned', count(*) FILTER (WHERE day=${day} AND mature AND returned)::int,
+        'pending', count(*) FILTER (WHERE day=${day} AND NOT mature)::int) AS ${sql.identifier(`d${day}`)}`), sql`, `)}
+    FROM evaluated`);
+  return signupSchema.parse(row);
+}

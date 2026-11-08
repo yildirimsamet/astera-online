@@ -13,6 +13,11 @@ export function commandProvenance(now: Date, playerId: string, seasonId: string)
     actorSeasonId: actor ? seasonId : null, origin: actor ? 'manual_http' as const : 'internal' as const,
     analyticsVisitHash: actor?.visitHash ?? null, analyticsAttemptId: actor?.attemptId ?? null };
 }
+/** A colony ship's order. The ship names its account, so only the moment and the permitted visit are kept. */
+export function vesselProvenance(now: Date) {
+  const actor = origin.getStore();
+  return { orderedAt: now, analyticsVisitHash: actor?.visitHash ?? null, analyticsAttemptId: actor?.attemptId ?? null };
+}
 export function dispatchProvenance(now: Date, playerId: string, seasonId: string) {
   const { origin: commandSource, ...metadata } = commandProvenance(now, playerId, seasonId);
   return { ...metadata, commandSource };

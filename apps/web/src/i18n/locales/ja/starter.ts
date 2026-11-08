@@ -150,7 +150,7 @@ export const starter = {
       "line": "タンクが満タンです。この船は本銀河へジャンプできます。"
     }
   },
-  "funnel": {"title": "開始時の道のり", "sessions": "{{accounts}}アカウント・{{sessions}}セッション・2回目に戻ったアカウント{{returned}}件", "push": "通知：質問{{asked}}・許可{{granted}}・拒否{{denied}}", "crates": "箱：{{accounts}}アカウントで{{opened}}個開封", "steps": "ステップと離脱", "dropoff": "到達{{accounts}}・前より{{dropoff}}件減少"},
+  "funnel": {"title": "開始時の道のり", "sessions": "{{accounts}}アカウント・{{sessions}}セッション・2回目に戻ったアカウント{{returned}}件", "push": "通知：質問{{asked}}・許可{{granted}}・拒否{{denied}}", "crates": "箱：{{accounts}}アカウントで{{opened}}個開封", "chain": "命令の連鎖：命令{{accepted}}アカウント → 結果受領{{resolved}} → 確認{{viewed}} → 次の命令{{decided}}", "haul": "最初の採掘帰還：{{returned}}アカウント・純益あり{{gained}}・満杯の施設で損失{{wasted}}", "steps": "ステップと離脱", "dropoff": "到達{{accounts}}・前より{{dropoff}}件減少"},
   "crate": {"title_one": "回収コンテナ", "title_other": "回収コンテナ ×{{count}}", "hold": "長押しで開けて受け取る", "open": "開ける：{{purse}}"},
   "unlock": {
     "online": "{{system}} 復旧",

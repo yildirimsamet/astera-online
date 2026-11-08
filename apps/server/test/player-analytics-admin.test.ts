@@ -5,7 +5,7 @@ import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
-import { accounts, analyticsEvents, analyticsSessions, analyticsVisitors, players } from '../src/db/schema.js';
+import { accounts, analyticsEvents, analyticsSessions, analyticsVisitors, botProfiles, players } from '../src/db/schema.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 let f: Fixture, app: FastifyInstance, close: () => Promise<void>;
 beforeEach(async () => {
@@ -109,4 +109,45 @@ it('keeps starter scenes separate and counts sessions, return, permission and cr
   expect(body).toMatchObject({ starter: { accounts: 1, sessions: 2, returnedAccounts: 1, push: { asked: 1, granted: 1, denied: 0 }, crates: { accounts: 1, opened: 2 } } });
   expect(body.starter?.steps).toContainEqual({ scene: 'welcome', accounts: 1, dropoff: 0 });
   expect(body.starter?.steps).toContainEqual({ scene: 'openCrates', accounts: 1, dropoff: 0 });
+});
+
+it('follows a ship order to its result, to the player reading it, to the next order, and measures the first haul net', async () => {
+  const now = f.clock.now(), later = new Date(now.getTime() + 60_000);
+  const headers = { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` };
+  async function pilot(accountId: string, rows: { name: string; source: 'client_observation' | 'server_fact'; properties: Record<string, unknown>; at?: Date }[]) {
+    const contextId = randomUUID(), visitorId = randomUUID();
+    await f.db.insert(analyticsVisitors).values({ id: visitorId, credentialHash: randomUUID(), contextId, accountId,
+      metadata: { contextId, scope: 'player', policyVersion: 1, platform: 'web', locale: 'tr', build: 'test', campaign: {} }, createdAt: now, expiresAt: new Date(now.getTime() + 86400000) });
+    await f.db.insert(analyticsSessions).values({ id: visitorId, visitorId, contextId, accountId, firstAt: now, lastAt: now });
+    await f.db.insert(analyticsEvents).values([{ name: 'vessel_enlisted', source: 'client_observation' as const, properties: {} }, ...rows].map((row, sequence) => ({
+      name: row.name, source: row.source, properties: row.properties, id: randomUUID(), visitorId, sessionId: visitorId, accountId, mode: 'live' as const, sequence,
+      occurredAt: 'at' in row && row.at ? row.at : now, receivedAt: now, timeTrusted: true, payloadHash: String(sequence) })));
+  }
+  const [one, two] = [randomUUID(), randomUUID()];
+  await pilot(f.accountIds[1]!, [
+    { name: 'command_accepted', source: 'server_fact', properties: { subject: 'VESSEL_MINE', code: 'MINE', count: 1, refId: one } },
+    { name: 'outcome_resolved', source: 'server_fact', properties: { subject: 'VESSEL_MINE', code: 'FLEET_HOME', count: 0, value: 40, refId: one } },
+    { name: 'outcome_visible', source: 'client_observation', properties: { refId: one, surface: 'toast', code: 'FLEET_HOME' } },
+    { name: 'command_accepted', source: 'server_fact', properties: { code: 'collect', phase: 'response_confirmed' }, at: later },
+  ]);
+  const [extra] = await f.db.insert(accounts).values({ username: `pilot_${randomUUID().slice(0, 8)}`, passwordHash: 'x', displayName: 'Pilot' }).returning();
+  await pilot(extra!.id, [
+    { name: 'command_accepted', source: 'server_fact', properties: { subject: 'VESSEL_MINE', code: 'MINE', count: 1, refId: two } },
+    { name: 'outcome_resolved', source: 'server_fact', properties: { subject: 'VESSEL_MINE', code: 'FLEET_HOME', count: 12, value: 0, refId: two } },
+    // Another result the player read does not stand for this one.
+    { name: 'outcome_visible', source: 'client_observation', properties: { refId: randomUUID(), surface: 'signals', code: 'REPAIR_DONE' } },
+  ]);
+  const response = await app.inject({ url: '/api/admin/analytics?inactiveHours=0', headers });
+  expect(response.statusCode).toBe(200);
+  const body = analyticsAdminSchema.parse(response.json<unknown>());
+  expect(body.starter).toMatchObject({ chain: { accepted: 2, resolved: 2, viewed: 1, decided: 1 }, mining: { returned: 2, gained: 1, wasted: 1 } });
+});
+
+it('reports the sign-up cohort beside the first-ready one, without the admin or a bot in it', async () => {
+  const headers = { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` };
+  const [bot] = await f.db.insert(accounts).values({ username: `bot_${randomUUID().slice(0, 8)}`, passwordHash: 'x', displayName: 'Bot' }).returning();
+  await f.db.insert(botProfiles).values({ accountId: bot!.id, ordinal: 900_002, persona: 'steady', nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+  await f.db.update(accounts).set({ createdAt: f.clock.now() });
+  const body = analyticsAdminSchema.parse((await app.inject({ url: '/api/admin/analytics?inactiveHours=0', headers })).json<unknown>());
+  expect(body.signups).toMatchObject({ accounts: 1, measured: 0, d1: { mature: 0, returned: 0, pending: 0 } });
 });

@@ -3,8 +3,12 @@ import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { analyticsEvents, analyticsSessions, analyticsVisitors } from '../db/schema.js';
 
-interface RecoveredFact extends Record<string, unknown> { id: string; at: Date | string; account_id: string; player_id: string; season_id: string | null;
-  attempt_id: string | null; visitor_id: string; context_id: string; subject: string; code: string; count: number; ref_id?: string; phase?: string }
+interface RecoveredFact extends Record<string, unknown> { id: string; at: Date | string; account_id: string; player_id: string | null; season_id: string | null;
+  attempt_id: string | null; visitor_id: string; context_id: string; subject: string; code: string; count: number; value?: number | null; ref_id?: string; phase?: string }
+
+/** The resources at `path` in a ship's result payload, summed; a missing or non-numeric amount counts as none. */
+const held = (path: 'cargo' | 'wasted') => sql.raw(['alloy', 'crystal', 'deuterium'].map(key =>
+  `CASE WHEN jsonb_typeof(n.payload #> '{${path},${key}}') = 'number' THEN (n.payload #>> '{${path},${key}}')::float8 ELSE 0 END`).join(' + '));
 
 /** Recover immutable command rows after commit. Optional writes never share gameplay's transaction. */
 export async function recoverAnalyticsCommands(db: Db, clock: Clock): Promise<void> {
@@ -31,6 +35,14 @@ export async function recoverAnalyticsCommands(db: Db, clock: Clock): Promise<vo
       UNION ALL
       SELECT id, ordered_at, actor_account_id, actor_player_id, actor_season_id, analytics_visit_hash, analytics_attempt_id,
         'MONUMENT', purpose, 1 FROM monument_waves WHERE command_source='manual_http' AND ordered_at >= ${cutoff}
+      UNION ALL
+      SELECT o.id, o.ordered_at, s.account_id, NULL::uuid, NULL::uuid, o.analytics_visit_hash, o.analytics_attempt_id,
+        'VESSEL_' || o.queue, o.subject || ':' || o.stage::text, o.count FROM vessel_orders o INNER JOIN vessels s ON s.id=o.vessel_id
+        WHERE o.analytics_visit_hash IS NOT NULL AND o.ordered_at >= ${cutoff}
+      UNION ALL
+      SELECT m.id, m.ordered_at, s.account_id, NULL::uuid, NULL::uuid, m.analytics_visit_hash, m.analytics_attempt_id,
+        'VESSEL_' || m.kind, m.kind, 1 FROM vessel_missions m INNER JOIN vessels s ON s.id=m.owner_vessel_id
+        WHERE m.analytics_visit_hash IS NOT NULL AND m.ordered_at >= ${cutoff}
     )
     SELECT c.id, c.ordered_at AS at, c.actor_account_id AS account_id, c.actor_player_id AS player_id,
       c.actor_season_id AS season_id, c.analytics_attempt_id AS attempt_id, v.id AS visitor_id, v.context_id, c.subject, c.code, c.count
@@ -64,6 +76,31 @@ export async function recoverAnalyticsCommands(db: Db, clock: Clock): Promise<vo
       AND w.ordered_at BETWEEN v.created_at AND v.expires_at AND w.ready_at <= ${clock.now().toISOString()}::timestamptz
     ORDER BY w.ready_at LIMIT 256`);
   for (const row of outcomes) await storeRecoveredFact(db, clock, row, 'outcome_resolved');
+  // A ship's result is the note it was told by, under the order's id. A return carries what reached
+  // the ship (`value`, cargo less what the full works could not take) and what was lost (`count`).
+  const voyages = await db.execute<RecoveredFact>(sql`
+    WITH sources AS (
+      SELECT id, vessel_id, ordered_at, analytics_visit_hash, analytics_attempt_id, 'VESSEL_' || queue AS subject
+        FROM vessel_orders WHERE analytics_visit_hash IS NOT NULL AND status='DONE' AND ordered_at >= ${cutoff}
+      UNION ALL
+      SELECT id, owner_vessel_id, ordered_at, analytics_visit_hash, analytics_attempt_id, 'VESSEL_' || kind
+        FROM vessel_missions WHERE analytics_visit_hash IS NOT NULL AND ordered_at >= ${cutoff}
+    ), results AS (
+      SELECT s.*, n.kind AS code, n.created_at AS at,
+        CASE WHEN n.kind='FLEET_HOME' THEN least(1000000, round(${held('wasted')}))::int ELSE 1 END AS count,
+        CASE WHEN n.kind='FLEET_HOME' THEN least(1000000000, greatest(0, round(${held('cargo')} - (${held('wasted')})))) END AS value,
+        overlay(overlay(md5('astera:vessel-result:' || n.id::text) placing '3' from 13 for 1) placing 'a' from 17 for 1)::uuid AS event_id
+      FROM sources s INNER JOIN vessel_notifications n ON n.vessel_id=s.vessel_id AND n.ref_id=s.id
+        AND n.kind IN ('REPAIR_DONE', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE', 'FLEET_HOME', 'FLEET_TURNED_BACK', 'PROBE_REPORT')
+    )
+    SELECT r.event_id AS id, r.id AS ref_id, r.at, vs.account_id, NULL::uuid AS player_id, NULL::uuid AS season_id,
+      r.analytics_attempt_id AS attempt_id, v.id AS visitor_id, v.context_id, r.subject, r.code, r.count, r.value, 'result_recorded' AS phase
+    FROM results r INNER JOIN vessels vs ON vs.id=r.vessel_id
+    INNER JOIN analytics_visitors v ON v.credential_hash=r.analytics_visit_hash
+    LEFT JOIN analytics_events e ON e.id=r.event_id LEFT JOIN bot_profiles b ON b.account_id=vs.account_id
+    WHERE e.id IS NULL AND b.account_id IS NULL AND v.account_id=vs.account_id AND r.ordered_at BETWEEN v.created_at AND v.expires_at
+    ORDER BY r.at LIMIT 256`);
+  for (const row of voyages) await storeRecoveredFact(db, clock, row, 'outcome_resolved');
   const alerts = await db.execute<RecoveredFact>(sql`
     WITH identified AS (
       SELECT a.*, overlay(overlay(md5('astera:alert-state:' || a.id::text) placing '3' from 13 for 1) placing 'a' from 17 for 1)::uuid AS event_id
@@ -123,7 +160,7 @@ async function storeRecoveredFact(db: Db, clock: Clock, row: RecoveredFact, name
         accountId: row.account_id, playerId: row.player_id, seasonId: row.season_id,
         name, mode: 'live', source: 'server_fact', sequence: 0,
         occurredAt: at, receivedAt: clock.now(), timeTrusted: true, payloadHash: `${name}:${row.id}`,
-        properties: { subject: row.subject, code: row.code, count: row.count, refId: row.ref_id ?? row.id,
+        properties: { subject: row.subject, code: row.code, count: row.count, ...(row.value == null ? {} : { value: row.value }), refId: row.ref_id ?? row.id,
           ...(row.phase ? { phase: row.phase } : name === 'outcome_resolved' ? { phase: 'effective_completion' } : {}), ...(row.attempt_id ? { attemptId: row.attempt_id } : {}) },
       }).onConflictDoNothing();
     });

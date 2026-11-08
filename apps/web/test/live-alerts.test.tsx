@@ -7,13 +7,15 @@ let notifications: NotificationView[] = [];
 const say = vi.fn();
 vi.mock('../src/api/queries.js', () => ({ useNotifications: () => ({ data: { notifications } }) }));
 vi.mock('../src/ui/Toast.js', () => ({ useToast: () => say }));
+const telemetry = vi.hoisted(() => ({ observe: vi.fn(), analyticsRecording: vi.fn(() => true), ANALYTICS_READY_EVENT: 'astera:analytics-ready' }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => telemetry);
 const event = (id: string, valid = true): NotificationView => ({ id, kind: 'raid_result', seen: false,
   at: new Date('2026-10-15T13:02:37.112Z'), payload: valid ? {
     targetKind: 'MONUMENT', monumentId: '68af7958-61b8-4f14-a5c1-34f692be7987', monumentOrdinal: 4,
     attacking: true, grade: 'REPELLED', control: 'DEFENDER', survivors: 3, unitsLost: 0, lootDeuterium: 0, dominion: 7040,
   } : { targetKind: 'MONUMENT', monumentId: '68af7958-61b8-4f14-a5c1-34f692be7987' } });
 
-beforeEach(() => { notifications = []; say.mockClear(); });
+beforeEach(() => { notifications = []; say.mockClear(); telemetry.observe.mockClear(); });
 
 it('keeps the first snapshot silent, then announces a fresh result only once', () => {
   notifications = [event('old')];
@@ -44,4 +46,16 @@ it('still caps valid batches and never marks overflow read', () => {
   notifications = [...notifications];
   view.rerender();
   expect(say).toHaveBeenCalledTimes(3);
+});
+
+it('tells the measurement which results it showed, under the server ids, and none it dropped', () => {
+  const view = renderHook(() => { useLiveAlerts(true); });
+  const ref = (id: string, refId: string | null) => ({ ...event(id), refId });
+  notifications = [ref('a', 'a1f3c3f4-41a7-4d5e-9a40-5a6e43c5b001'), ref('b', null), ref('c', 'not-a-server-id'),
+    ref('d', 'a1f3c3f4-41a7-4d5e-9a40-5a6e43c5b004')];
+  view.rerender();
+  expect(say).toHaveBeenCalledTimes(3);
+  expect(telemetry.observe.mock.calls).toEqual([
+    ['outcome_visible', { refId: 'a1f3c3f4-41a7-4d5e-9a40-5a6e43c5b001', surface: 'toast', code: 'raid_result' }, 'live'],
+  ]);
 });

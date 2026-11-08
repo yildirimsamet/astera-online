@@ -34,6 +34,16 @@ describe('the next-step line over the galaxy', () => {
     expect(line.textContent).toMatch(/that is all for now/i);
   });
 
+  // Nobody to probe: the line must not send the player after a ship that is not there.
+  it('asks for the first probe only when there is another ship to probe', () => {
+    const probeReady = { alloy: 0, crystal: 0, bufferAlloy: 0, modules: { REFINERY: 2, EXTRACTOR: 1, SURVEY: 1 }, features: ['production', 'intel'] };
+    render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel(probeReady))} fetchedAt={Date.now()} onOpenShip={vi.fn()} />);
+    expect(screen.getByTestId('ship-objective').getAttribute('data-kind')).toBe('probe');
+    cleanup();
+    render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel(probeReady))} fetchedAt={Date.now()} onOpenShip={vi.fn()} alone />);
+    expect(screen.getByTestId('ship-objective').getAttribute('data-kind')).not.toBe('probe');
+  });
+
   it('is a mark the tutorial can point at', () => {
     render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel({ alloy: 10_000, crystal: 10_000 }))} fetchedAt={Date.now()} onOpenShip={vi.fn()} />);
     expect(screen.getByTestId('ship-objective').getAttribute('data-guide')).toBe('objective');

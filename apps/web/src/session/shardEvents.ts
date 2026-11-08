@@ -243,9 +243,9 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
-    /** Ordinary ship changes do not change the galaxy's visibility. */
+    /** An order finished and its line was written. Ordinary ship changes do not change the galaxy's visibility. */
     case 'vessel':
-      return [keys.planet, keys.planets, keys.migration];
+      return [keys.planet, keys.planets, keys.notifications, keys.migration];
     /** Something landed here or for this ship: a report, a battle, what the map remembers. */
     case 'vessel-sight':
       return [keys.planet, keys.planets, keys.intel, keys.pending, keys.notifications, keys.galaxy, keys.reports, keys.mining, keys.migration];

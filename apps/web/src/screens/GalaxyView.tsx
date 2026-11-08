@@ -24,7 +24,7 @@ import { beamsNow } from '../galaxy/mainSky.js';
 import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
 import { salvageReachMinutes } from '../lib/salvageReach.js';
-import { nearestRock, nearestShip } from '../starter/neighbour.js';
+import { hasOtherShip, nearestRock, nearestShip } from '../starter/neighbour.js';
 import { ObjectiveLine } from '../starter/ObjectiveLine.js';
 import { followLaunch, ownCraft } from '../starter/followLaunch.js';
 import { UnlockMoment } from '../starter/UnlockMoment.js';
@@ -1908,6 +1908,8 @@ export function GalaxyView({
                 }}
                 probing={(pending.data?.pending ?? []).some((thread) => thread.kind === 'probe')}
                 mining={(mining.statusData?.runs ?? []).some((run) => run.status !== 'done')}
+                // Only once the map has loaded: an unread map is not an empty galaxy.
+                alone={galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, ship.id)}
               />}
         </div>
       )}

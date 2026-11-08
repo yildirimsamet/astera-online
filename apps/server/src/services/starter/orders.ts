@@ -8,6 +8,7 @@ import type { Db, Queryable, Tx } from '../../db/client.js';
 import { vesselMissions, vesselOrders, vesselUnits } from '../../db/schema.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { planStarterReturn } from '../returnPlanning.js';
 import { markProgress } from './quiet.js';
 import { activeOrders, progressOf, vesselView, withVesselLock, type LockedVessel, type VesselQueue } from './vessel.js';
@@ -31,7 +32,7 @@ async function placeOrder(tx: Tx, vessel: LockedVessel, clock: Clock, order: {
   const readyAt = new Date(startedAt.getTime() + remainingSeconds * 1000);
   const [row] = await tx.insert(vesselOrders).values({
     vesselId: vessel.row.id, queue: order.queue, slot: queue.length, subject: order.subject, stage: order.stage, count: order.count,
-    startedAt, readyAt, remainingSeconds, cost: order.cost,
+    startedAt, readyAt, remainingSeconds, cost: order.cost, ...vesselProvenance(vessel.now),
   }).returning({ id: vesselOrders.id });
   await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_order_complete', refId: row!.id, resolveAt: readyAt });
   await planStarterReturn(tx, vessel.row, vessel.now, vessel.returnEligible);

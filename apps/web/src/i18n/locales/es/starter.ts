@@ -150,7 +150,7 @@ export const starter = {
       "line": "El tanque está lleno. Esta nave puede saltar a la galaxia principal."
     }
   },
-  "funnel": {"title": "Recorrido inicial", "sessions": "{{accounts}} cuentas · {{sessions}} sesiones · {{returned}} regresaron para una segunda sesión", "push": "Push: {{asked}} solicitudes · {{granted}} permisos · {{denied}} rechazos", "crates": "Cajas: {{opened}} abiertas por {{accounts}} cuentas", "steps": "Pasos y abandono", "dropoff": "{{accounts}} llegaron · {{dropoff}} menos que antes"},
+  "funnel": {"title": "Recorrido inicial", "sessions": "{{accounts}} cuentas · {{sessions}} sesiones · {{returned}} regresaron para una segunda sesión", "push": "Push: {{asked}} solicitudes · {{granted}} permisos · {{denied}} rechazos", "crates": "Cajas: {{opened}} abiertas por {{accounts}} cuentas", "chain": "Cadena de órdenes: {{accepted}} cuentas dieron una orden → {{resolved}} recibieron el resultado → {{viewed}} lo vieron → {{decided}} volvieron a ordenar", "haul": "Primer regreso minero: {{returned}} cuentas · {{gained}} con ganancia neta · {{wasted}} perdieron parte por instalaciones llenas", "steps": "Pasos y abandono", "dropoff": "{{accounts}} llegaron · {{dropoff}} menos que antes"},
   "crate": {"title_one": "Caja de rescate", "title_other": "{{count}} cajas de rescate", "hold": "Mantén pulsado para abrir y tomar", "open": "Abrir: {{purse}}"},
   "unlock": {
     "online": "{{system}} en línea",

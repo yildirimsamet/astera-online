@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { analyticsDailyAggregates, analyticsEvents, analyticsSessions, analyticsVisitors, botProfiles, buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves } from '../db/schema.js';
+import { analyticsDailyAggregates, analyticsEvents, analyticsSessions, analyticsVisitors, botProfiles, buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves, vesselMissions, vesselOrders } from '../db/schema.js';
 import type { AnalyticsEvent, AnalyticsVisitor } from '../../../web/src/api/analyticsSchemas.js';
 import { requestHash } from './idempotency.js';
 import { GameError } from './planet.js';
@@ -88,7 +88,7 @@ export async function revokeAnalyticsVisitor(db: Db, credential: string): Promis
   const hash = visitorHash(credential);
   await db.transaction(async tx => {
     await tx.delete(analyticsVisitors).where(eq(analyticsVisitors.credentialHash, hash));
-    for (const table of [buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves]) {
+    for (const table of [buildOrders, researchOrders, miningRuns, missions, pirateRaids, tradeRuns, monumentWaves, vesselOrders, vesselMissions]) {
       await tx.update(table).set({ analyticsVisitHash: null, analyticsAttemptId: null }).where(eq(table.analyticsVisitHash, hash));
     }
   });
@@ -128,6 +128,14 @@ export async function purgeAnalytics(db: Db, clock: Clock): Promise<void> {
       if (!ids.length) break;
       await db.update(table).set({ actorAccountId: null, actorPlayerId: null, actorSeasonId: null, analyticsVisitHash: null, analyticsAttemptId: null })
         .where(inArray(table.id, ids.map(row => row.id)));
+    }
+  }
+  // A ship's rows name no actor of their own: the ship is the account's, and goes with it.
+  for (const table of [vesselOrders, vesselMissions]) {
+    for (;;) {
+      const ids = await db.select({ id: table.id }).from(table).where(and(lt(table.orderedAt, cutoff), isNotNull(table.analyticsVisitHash))).limit(256);
+      if (!ids.length) break;
+      await db.update(table).set({ analyticsVisitHash: null, analyticsAttemptId: null }).where(inArray(table.id, ids.map(row => row.id)));
     }
   }
 }

@@ -10,6 +10,7 @@ import { starterSites, vesselMissions, vesselNotifications, vesselProbeReports, 
 import { publish, publishShard } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { GameError } from '../planet.js';
+import { vesselProvenance } from '../commandOrigin.js';
 import { markProgress } from './quiet.js';
 import { progressOf, withVesselLock, type VesselRow } from './vessel.js';
 import { assertFeatureOpen, claimLanding, inShips, missionFrom, placeOf, siteName, type MissionRow } from './world.js';
@@ -61,7 +62,7 @@ export const launchVesselProbe = (db: Db, accountId: string, targetId: string, c
       ...(target.kind === 'ship' ? { targetVesselId: targetId } : { targetSiteId: targetId }),
       fromX: vessel.row.x, fromY: vessel.row.y, fromZ: vessel.row.z,
       toX: target.at.x, toY: target.at.y, toZ: target.at.z,
-      departAt: vessel.now,
+      departAt: vessel.now, ...vesselProvenance(vessel.now),
       arriveAt,
     }).returning();
     await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_mission_arrival', refId: mission!.id, resolveAt: arriveAt });

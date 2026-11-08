@@ -3,6 +3,7 @@ import { useNotifications } from '../api/queries.js';
 import { describeNotification, isAlarming, isUrgent } from '../lib/notifications.js';
 import { useToast } from '../ui/Toast.js';
 import { serverNow } from '../lib/clock.js';
+import { observeOutcomes } from './outcomeVisible.js';
 
 /**
  * Events that arrive while the player is actually looking.
@@ -67,8 +68,10 @@ export function useLiveAlerts(enabled: boolean): void {
     const now = serverNow();
     const readable = ordered.map(n => ({ n, line: describeNotification(n, now) }))
       .filter((entry): entry is { n: typeof entry.n; line: string } => entry.line !== null);
-    for (const { n, line } of readable.slice(0, MAX_TOASTS)) {
+    const shown = readable.slice(0, MAX_TOASTS);
+    for (const { n, line } of shown) {
       say(line, isAlarming(n) ? 'error' : 'info');
     }
+    observeOutcomes(shown.map(({ n }) => n), 'toast');
   }, [data, enabled, say]);
 }

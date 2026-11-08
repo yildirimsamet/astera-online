@@ -116,7 +116,7 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 - **Hata 2, hedef satırı:** Bütün zorunlu adımlar sıradayken itki ya da DT2 bitmemişse satır `fuel` yerine `wait` verir.
 - **Zemin:** Başlangıç galaksisi `starter-galaxy` dalına alındı ve kapı yeşil olduktan sonra commit edildi (§7).
 
-### F1. Tek gerçek durum, fırsat seçicisi ve ölçüm
+### F1. Tek gerçek durum, fırsat seçicisi ve ölçüm — tamamlandı, 2026-11-08
 - **Fırsat seçicisi:** `shipObjective`'in yerini alan saf bir fonksiyondur; `apps/web/src/starter/opportunities.ts`. Bugün yapılabilecek gerçek işleri üretir:
   - Onarım, topla, kaya, karakol, sonda, gemi üretimi ve yakıt.
   - Eksik olan olgular (ilk sonda, ilk maden) de fırsat olarak çıkar.
@@ -131,6 +131,17 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 - **Kabul:**
   - Seçici testleri şu durumları kapsar: sırada/çalışıyor/bitti, havuz/depo/tank, rehber açık/kapalı ve "yanlış erken yakıt çağrısı yok".
   - Analytics Zod şemaları iki tarafta da test edilir.
+- **Teslim (2026-11-08):**
+  - `opportunities()` boş olmayan sıralı bir liste döner. İlk eleman satırın söylediği şeydir; bekleme, yoldaki iş, olgu, parça veya biriktirme gibi bir durum da olabilir. Geri kalanlar o an yapılabilen işlerdir: kasanın ödediği onarımlar (önce zorunlular), ilk işler, toplama ve yakıt. Onarım fırsatı `RepairStep`'i taşır; bedel, süre ve açtığı modül oradadır. `shipObjective` silindi. `ObjectiveLine` seçiciden okur. Galakside başka gemi yoksa sonda önerilmez.
+  - Starter emirleri ana oyunun ölçüm hattına bağlandı. `vessel_orders` ve `vessel_missions` artık `ordered_at`, izinli ziyaret ve deneme kimliğini taşıyor (migration 0243). Kurtarma işlemi `command_accepted` ve `outcome_resolved` kayıtlarını aynı satır kimliğiyle bir kez yazar. Maden dönüşünde `value` net kazancı, `count` dolu tesis yüzünden kaybolanı taşır. Kaydı olmayan komutlar (toplama, yakıt, izleme, geri çağırma, iptal) yanıtla onaylanır.
+  - "Görüldü" kaydı istemcidedir: ekranda gösterilen toast ve açılan bildirim akışı, sonucu sunucu kimliğiyle `outcome_visible` olarak bildirir.
+  - Uçtan uca yürüyüşte bulunan hata düzeltildi. Bir iş bitince sunucu `private:vessel` yayınlar, ama istemci bu olayda bildirim listesini yenilemiyordu. Bu yüzden biten onarım, tersane, araştırma ve dock işlerinin bildirimi (Teleskop ve Keşif onarımları hariç) oyuncu ekrandayken gelmiyordu: ne toast çıkıyordu ne de zil sayısı artıyordu. Olay artık bildirimleri de yeniliyor.
+  - Admin raporunda iki yeni bilgi var. Birincisi `account_created` kohortudur: `accounts.created_at`'tan D1/D3/D7; bot ve admin hariç, ölçülmeyen hesap ayrı sayılır. İkincisi starter zinciridir: kabul → çözüldü → görüldü → yeni emir ve ilk maden dönüşünün net kazancı. Eski game_ready kohortu ikincil seri olarak duruyor.
+- **Bilinçli olarak sonraki pakete kalanlar:**
+  - Koç, `visualGoal`, `StarterGoalPulse`, ShipHero ve `backIn`, ROAD'un yerini alan F3 danışmanıyla seçiciye geçer. Bugün geçirmek aynı işi iki kez yapmak olurdu.
+  - Karakol ve gemi üretimi fırsatları kural değişikliği (F2) ve İlk av (F4) ile gelir.
+  - Uygun → sunuldu → seçildi adımları danışman kartlarıyla (F3) ölçülür.
+  - Savaş zinciri F4'te bağlanır: `BATTLE_REPORT` rapor kimliğini taşır, seferin kimliği `vessel_battle_reports.mission_id`'dedir.
 
 ### F2. Kural değişiklikleri (rules + sunucu)
 - **Ladder:**

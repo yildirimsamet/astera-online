@@ -8,7 +8,7 @@ import { playSound } from '../lib/sound.js';
 import { clockTime, duration, useNow } from '../lib/time.js';
 import { Icon } from '../v2/icons.js';
 import { vesselToPlanetView } from './adapter.js';
-import { shipObjective, type ShipObjective } from './objective.js';
+import { opportunities, type Opportunity } from './opportunities.js';
 import { moduleName } from './shipCopy.js';
 import { goalRepair, useStarterGoal } from './tutorial/visualGoal.js';
 import { repairWait } from './tutorial/script.js';
@@ -22,7 +22,7 @@ const REST_MINUTES = 15;
 type Tap = 'ship' | 'neighbour' | 'rock' | 'up' | null;
 
 /** What the step is, in the player's words, and where a tap takes them. */
-function useLine(objective: ShipObjective, now: number): { text: string; tap: Tap; rest: boolean } {
+function useLine(objective: Opportunity, now: number): { text: string; tap: Tap; rest: boolean } {
   const { t } = useTranslation();
   const at = (minutes: number) => clockTime(new Date(now + minutes * 60_000));
   switch (objective.kind) {
@@ -56,7 +56,7 @@ function useLine(objective: ShipObjective, now: number): { text: string; tap: Ta
  * player where it is done. A new step arrives with a sweep of light and a chime, so finishing one is
  * felt. A long wait says so plainly, with the time to come back (onboarding design §5.1).
  */
-export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour, onFocusRock, probing = false, mining = false }: {
+export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour, onFocusRock, probing = false, mining = false, alone = false }: {
   vessel: VesselView;
   fetchedAt: number;
   onOpenShip: () => void;
@@ -65,20 +65,23 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   onFocusRock?: () => void;
   probing?: boolean;
   mining?: boolean;
+  /** No other ship in this galaxy: there is nobody to probe yet. */
+  alone?: boolean;
 }) {
   const { t } = useTranslation();
   const now = useNow(15_000);
   const view = useMemo(() => vesselToPlanetView(vessel), [vessel]);
   const held = useProjected(view.planet, fetchedAt);
   const progress = progressOf(vessel);
-  const objective = shipObjective({
+  const [objective] = opportunities({
     progress,
     queue: vessel.queue,
-    held: { alloy: held.alloy, crystal: held.crystal, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal },
+    held: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal, bufferDeuterium: held.bufferDeuterium },
     income: { alloyPerHour: view.planet.alloyPerHour, crystalPerHour: view.planet.crystalPerHour },
     features: vessel.features,
     probing,
     mining,
+    alone,
   });
   const original = useLine(objective, now);
   const goal = useStarterGoal();
