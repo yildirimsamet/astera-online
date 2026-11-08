@@ -48,6 +48,8 @@ describe('the drive panel', () => {
     const { wrap, fetcher } = harness(view());
     render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
     expect(await screen.findByTestId('tank-level')).toHaveTextContent(`40/${String(STARTER.fuelForJump)}`);
+    // The advisor's "load fuel" points here (plan F3).
+    expect(screen.getByRole('button', { name: /Load all/u }).getAttribute('data-guide')).toBe('fuel');
     fireEvent.click(screen.getByRole('button', { name: /Load all/u }));
     await waitFor(() => { expect(fetcher.mock.calls.some(([url]) => urlOf(url).includes('/api/starter/fuel'))).toBe(true); });
     const call = fetcher.mock.calls.find(([url]) => urlOf(url).includes('/api/starter/fuel'))!;

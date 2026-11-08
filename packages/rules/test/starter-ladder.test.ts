@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   REPAIR_LADDER,
   STARTER,
+  STARTER_CRATES,
   VESSEL_HULLS,
   VESSEL_MODULES,
   VESSEL_SYSTEMS,
@@ -137,6 +138,32 @@ describe('the repair ladder', () => {
       expect(step.alloy, name).toBeLessThanOrEqual(capA);
       expect(step.crystal, name).toBeLessThanOrEqual(capC);
     }
+  });
+
+  /**
+   * NO SHIP STRANDS ITSELF (plan F3). Past the short core nothing holds a spend, and crystal is the one
+   * thing a ship makes none of until its first Extractor. Whatever a player buys before it, crates
+   * opened, a repair it can pay is left; once the Extractor runs, waiting always pays.
+   */
+  it('leaves every ship a repair it can pay before its first Extractor, whatever it bought', () => {
+    const stranded: string[] = [];
+    const best = new Map<string, number>();
+    const walk = (progress: VesselProgress, crystal: number) => {
+      const key = JSON.stringify(Object.entries(progress.modules).sort());
+      if ((best.get(key) ?? -1) >= crystal) return;
+      best.set(key, crystal);
+      if (moduleStage(progress, 'EXTRACTOR') >= 1) return;
+      const payable = nextSteps(progress).filter(step => step.crystal <= crystal);
+      if (payable.length === 0) stranded.push(`${key} with ${String(crystal)} crystal`);
+      for (const step of payable) {
+        const crate = STARTER_CRATES.filter(c => c.module === step.module && c.stage === step.stage).reduce((sum, c) => sum + c.reward.crystal, 0);
+        walk({ ...progress, modules: { ...progress.modules, [step.module]: step.stage } }, crystal - step.crystal + crate);
+      }
+    };
+    walk(openingProgress(), STARTER.opening.crystal);
+    expect(crystalRate(0)).toBe(0);
+    expect(crystalRate(1)).toBeGreaterThan(0);
+    expect(stranded).toEqual([]);
   });
 
   it('stays inside what the numbers answer for', () => {

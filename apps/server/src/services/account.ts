@@ -25,6 +25,8 @@ export interface AccountRecord {
   authVersion: number;
   /** Owner-only session hint, never part of the public commander identity. */
   loginEmail?: string;
+  /** The starter guide is turned off for this account, on every device (plan F3). */
+  starterGuideOff: boolean;
 }
 
 const publicShape = (row: {
@@ -35,12 +37,14 @@ const publicShape = (row: {
   authVersion: number;
   email: string | null;
   emailVerifiedAt: Date | null;
+  starterGuideOffAt: Date | null;
 }): AccountRecord => ({
   id: row.id,
   username: row.username,
   displayName: row.displayName,
   country: row.countryCode,
   authVersion: row.authVersion,
+  starterGuideOff: row.starterGuideOffAt !== null,
   ...(row.emailVerifiedAt !== null && row.email !== null ? { loginEmail: row.email } : {}),
 });
 

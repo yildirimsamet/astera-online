@@ -134,7 +134,7 @@ Her onarım normal bir üretim emridir: kaynak öder, kuyruğa girer, süre dolu
 | | Depo 1 | 300/150 · 2 dk | | Depo tavanı, korumalı pay |
 | | Kristal Ocağı 3 | 274/206 · 5 dk | | |
 | | Alaşım Rafinerisi 4 | 886/111 · 60 dk | | |
-| | Döteryum Rafinerisi 1 | 400/300 · 1 sa | | Döteryum, uçuş yakıtı. Hediye: 20 Döteryum |
+| | Döteryum Rafinerisi 1 | 400/300 · 1 sa | Kristal Ocağı 1 (önce alınırsa kristalsiz kalan gemi hiçbir onarımı ödeyemez; 2026-11-08) | Döteryum, uçuş yakıtı. Hediye: 20 Döteryum |
 | | Döteryum Rafinerisi 2 | 800/600 · 2 sa | Kristal Ocağı 2 | |
 | Keşif anteni | Keşif anteni 1 | 250/120 · 30 sn | Kristal Ocağı 1 | Sonda, İstihbarat, karanlık noktalar |
 | | Keşif anteni 2 | 600/350 · 20 dk | İlk sonda raporu | Sohbet, daha dar sonda bandı |

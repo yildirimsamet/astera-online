@@ -325,6 +325,8 @@ export const accounts = pgTable('accounts', {
   firstGameShieldAvailable: boolean('first_game_shield_available').notNull().default(false),
   /** Survives season wipes and seat reclaim; null until the first successful join. */
   firstSeasonStartedAt: timestamp('first_season_started_at', { withTimezone: true }),
+  /** When the commander said "I don't need the guide" (plan F3): the starter guide stays quiet on every device. */
+  starterGuideOffAt: timestamp('starter_guide_off_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),

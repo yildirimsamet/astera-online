@@ -74,7 +74,7 @@ export function MigrationPanel({ vessel, onJump }: { vessel: VesselView; onJump:
                   {t('starter.jump.load', { amount: LOAD_STEP })}
                 </button>
               )}
-              <button type="button" disabled={load.isPending || all <= 0} onClick={() => { send(all); }}
+              <button type="button" data-guide="fuel" disabled={load.isPending || all <= 0} onClick={() => { send(all); }}
                 className="min-h-9 flex-1 rounded-control border border-v2-deut/70 bg-v2-deut/15 text-caption font-medium text-v2-ink disabled:opacity-50">
                 {t('starter.jump.loadAll')}
               </button>

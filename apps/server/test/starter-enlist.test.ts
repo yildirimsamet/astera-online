@@ -278,6 +278,13 @@ describe('claiming the prologue', () => {
     expect(second.vessel.id).toBe(first.vessel.id);
   });
 
+  /** Plan F3: "I don't need the guide" is the account's, so a claim by an existing account says so. */
+  it('carries the account\'s guide choice, so a second claim does not bring the guide back', async () => {
+    expect((await claim('guideplayer')).json<{ starterGuideOff: boolean }>().starterGuideOff).toBe(false);
+    await world.f.db.update(accounts).set({ starterGuideOffAt: new Date() }).where(eq(accounts.username, 'guideplayer'));
+    expect((await claim('guideplayer')).json<{ starterGuideOff: boolean }>().starterGuideOff).toBe(true);
+  });
+
   it('names the flag to anyone who asks, signed in or not', async () => {
     const open = await world.app.inject({ url: '/api/auth/capabilities' });
     expect(open.json<{ starterGalaxy: boolean }>().starterGalaxy).toBe(true);

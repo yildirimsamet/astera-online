@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "starter_guide_off_at" timestamp with time zone;

@@ -326,6 +326,36 @@ describe('auth', () => {
       expect(invalid.statusCode).toBe(400);
     });
 
+    /** Plan F3: "I don't need the guide" belongs to the account, so a second phone does not ask again. */
+    it('keeps the starter guide choice on the account, for every device', async () => {
+      const body = (await register()).json<SessionResponse>();
+      const authorization = `Bearer ${body.accessToken}`;
+      const me = async (auth: string) => (await app.inject({ method: 'GET', url: '/api/auth/me', headers: { authorization: auth } })).json<{ starterGuideOff: boolean }>();
+      expect((await me(authorization)).starterGuideOff).toBe(false);
+
+      const off = await app.inject({ method: 'PUT', url: '/api/auth/me/starter-guide', headers: { authorization }, payload: { off: true } });
+      expect(off.statusCode).toBe(200);
+      expect(off.json()).toEqual({ off: true });
+      const again = await app.inject({ method: 'PUT', url: '/api/auth/me/starter-guide', headers: { authorization }, payload: { off: true } });
+      expect(again.json()).toEqual({ off: true });
+
+      const second = (await login('vantage', PASSWORD)).json<SessionResponse>();
+      expect((await me(`Bearer ${second.accessToken}`)).starterGuideOff).toBe(true);
+
+      const on = await app.inject({ method: 'PUT', url: '/api/auth/me/starter-guide', headers: { authorization }, payload: { off: false } });
+      expect(on.json()).toEqual({ off: false });
+      expect((await me(authorization)).starterGuideOff).toBe(false);
+    });
+
+    it('protects and validates the starter guide choice', async () => {
+      expect((await app.inject({ method: 'PUT', url: '/api/auth/me/starter-guide', payload: { off: true } })).statusCode).toBe(401);
+      const body = (await register()).json<SessionResponse>();
+      const authorization = `Bearer ${body.accessToken}`;
+      for (const payload of [{ off: 'yes' }, {}, { off: true, extra: 1 }]) {
+        expect((await app.inject({ method: 'PUT', url: '/api/auth/me/starter-guide', headers: { authorization }, payload })).statusCode).toBe(400);
+      }
+    });
+
     /**
      * THE ONE THAT MATTERS. A refresh token lives in a cookie for thirty days.
      * Without the `typ` check inside verify(), it would double as an API

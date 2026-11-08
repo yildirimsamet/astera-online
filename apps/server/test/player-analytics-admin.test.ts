@@ -1,4 +1,5 @@
 import { analyticsAdminSchema } from '../../web/src/api/analyticsAdminSchemas.js';
+import { STARTER_TUTORIAL_STEPS } from '../../web/src/api/starterTutorialSteps.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
 import { pino } from 'pino';
@@ -95,8 +96,10 @@ it('keeps starter scenes separate and counts sessions, return, permission and cr
   const rows = [
     { name: 'foreground_started', properties: {}, sessionId: first },
     { name: 'foreground_started', properties: {}, sessionId: second },
-    { name: 'training_scene_visible', properties: { scene: 'welcome', trainingVersion: 'starter-tutorial.v1' }, sessionId: first },
-    { name: 'training_scene_visible', properties: { scene: 'openCrates', trainingVersion: 'starter-tutorial.v1' }, sessionId: first },
+    { name: 'training_scene_visible', properties: { scene: 'online', trainingVersion: 'starter-tutorial.v2' }, sessionId: first },
+    { name: 'training_scene_visible', properties: { scene: 'firstCrate', trainingVersion: 'starter-tutorial.v2' }, sessionId: first },
+    // The old guide's steps meant other things: they are not counted under the new ones.
+    { name: 'training_scene_visible', properties: { scene: 'collect', trainingVersion: 'starter-tutorial.v1' }, sessionId: first },
     { name: 'training_scene_visible', properties: { scene: 'welcome', step: 1, trainingVersion: 'flight-school.v1' }, sessionId: second },
     { name: 'alert_permission', properties: { variant: 'push', code: 'granted' }, sessionId: first },
     { name: 'outcome_visible', properties: { surface: 'starter_crate', count: 2 }, sessionId: first },
@@ -107,8 +110,10 @@ it('keeps starter scenes separate and counts sessions, return, permission and cr
   expect(response.statusCode).toBe(200);
   const body = analyticsAdminSchema.parse(response.json<unknown>());
   expect(body).toMatchObject({ starter: { accounts: 1, sessions: 2, returnedAccounts: 1, push: { asked: 1, granted: 1, denied: 0 }, crates: { accounts: 1, opened: 2 } } });
-  expect(body.starter?.steps).toContainEqual({ scene: 'welcome', accounts: 1, dropoff: 0 });
-  expect(body.starter?.steps).toContainEqual({ scene: 'openCrates', accounts: 1, dropoff: 0 });
+  expect(body.starter?.steps).toContainEqual({ scene: 'online', accounts: 1, dropoff: 0 });
+  expect(body.starter?.steps).toContainEqual({ scene: 'collect', accounts: 0, dropoff: 1 });
+  expect(body.starter?.steps).toContainEqual({ scene: 'firstCrate', accounts: 1, dropoff: 0 });
+  expect(body.starter?.steps.map(step => step.scene)).toEqual([...STARTER_TUTORIAL_STEPS]);
 });
 
 it('follows a ship order to its result, to the player reading it, to the next order, and measures the first haul net', async () => {

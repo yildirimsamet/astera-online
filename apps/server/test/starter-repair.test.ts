@@ -119,6 +119,14 @@ describe('repairing the ship', () => {
       expect(await world.f.db.select().from(vesselOrders)).toHaveLength(0);
     });
 
+    /** Plan F3: bought first, the deuterium plant took all the crystal a ship without an Extractor will ever have. */
+    it('refuses the deuterium plant before the first Extractor, which a ship without crystal could never pay', async () => {
+      const response = await repair('DEUTERIUM_PLANT', 1);
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ error: 'REPAIR_REQUIREMENT' });
+      expect(await world.f.db.select().from(vesselOrders)).toHaveLength(0);
+    });
+
     it('refuses a real act that has not happened', async () => {
       await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, EXTRACTOR: 1, SURVEY: 1 } });
       expect((await repair('SURVEY', 2)).json()).toMatchObject({ error: 'REPAIR_REQUIREMENT' });
@@ -230,6 +238,7 @@ describe('repairing the ship', () => {
     });
 
     it('gives the deuterium plant its fuel', async () => {
+      await setShip({ modules: { REFINERY: 1, EXTRACTOR: 1 } });
       await repair('DEUTERIUM_PLANT', 1);
       advance(60);
       await worker.tick();

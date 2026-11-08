@@ -290,6 +290,7 @@ export function GalaxyView({
   onSignOut,
   onCountryChange,
   onReplayAcademy,
+  onGuideOn,
   onEnterArena,
   onPlacementLost,
   onFocused,
@@ -341,6 +342,8 @@ export function GalaxyView({
   onSignOut: () => void;
   onCountryChange?: (country: CountryCode) => Promise<void>;
   onReplayAcademy?: () => void;
+  /** The starter guide is off on this account; the menu offers it back (plan F3). */
+  onGuideOn?: () => void;
   /** F1–F7 prototype entry; absent in the public build and in the Academy. */
   onEnterArena?: () => void;
   /** Safety net when the rollover broadcast was missed while this tab slept. */
@@ -2051,6 +2054,7 @@ export function GalaxyView({
             country={country}
             onCountryChange={onCountryChange}
             {...(onReplayAcademy ? { onReplayAcademy } : {})}
+            {...(onGuideOn ? { onGuideOn } : {})}
             isAdmin={isAdmin}
           />
         </V2Sheet>

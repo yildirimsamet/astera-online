@@ -176,3 +176,48 @@ describe('a session on a ship', () => {
     expect(session.phase === 'ready' && session.standing.planetName).toBe('Home');
   });
 });
+
+/** Plan F3: "I don't need the guide" belongs to the account; the session reads it and saves it. */
+describe('the guide choice', () => {
+  const guided = (session: ReturnType<typeof useSession>['session']) => session.phase === 'ready' ? session.me.starterGuideOff : undefined;
+  const saved = (fetch: ReturnType<typeof server>) => fetch.mock.calls.filter(([input]) => String(input instanceof Request ? input.url : input).includes('/api/auth/me/starter-guide'));
+
+  it('reads the account choice, and takes an older server as the guide on', () => {
+    expect(meSchema.parse(base).starterGuideOff).toBe(false);
+    expect(meSchema.parse({ ...base, starterGuideOff: true }).starterGuideOff).toBe(true);
+  });
+
+  it('turns the guide off at once and saves it to the account', async () => {
+    const fetch = server([{ ...aboard, starterGuideOff: false }], { '/api/auth/me/starter-guide': () => json({ off: true }) });
+    const { result } = open(fetch);
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    expect(guided(result.current.session)).toBe(false);
+    act(() => { void result.current.setStarterGuide(true); });
+    expect(guided(result.current.session)).toBe(true);
+    await waitFor(() => { expect(saved(fetch)).toHaveLength(1); });
+  });
+
+  it('keeps the choice for a page restore, so the officer does not flash back before the account answers', async () => {
+    const { result } = open(server([{ ...aboard, starterGuideOff: false }], { '/api/auth/me/starter-guide': () => json({ off: true }) }));
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    await act(async () => { await result.current.setStarterGuide(true); });
+    expect(meSchema.parse(JSON.parse(window.sessionStorage.getItem('astera:ready-session') ?? '{}')).starterGuideOff).toBe(true);
+  });
+
+  it('takes the choice from a claim by an account that already made it', async () => {
+    const shipClaim = { accountId: 'acc', username: 'new', displayName: 'New', country: 'TR', accessToken: 'token', placement: null, applied: [], planet: null, vessel: wireVessel() };
+    expect(claimSchema.parse(shipClaim).starterGuideOff).toBe(false);
+    const { result } = open(server([{ ...base, vessel: null, starterEligible: false }], { '/api/onboarding/claim': () => json({ ...shipClaim, starterGuideOff: true }) }));
+    await waitFor(() => { expect(['landing', 'servers']).toContain(result.current.session.phase); });
+    await act(async () => { await result.current.claim('new', 'fixture-password-123', [], undefined, { version: COMMUNITY_POLICY_VERSION, locale: 'en' }); });
+    expect(guided(result.current.session)).toBe(true);
+  });
+
+  it('keeps the choice for this visit when the save fails', async () => {
+    const fetch = server([{ ...aboard, starterGuideOff: false }], { '/api/auth/me/starter-guide': () => json({ error: 'X', message: 'x' }, 503) });
+    const { result } = open(fetch);
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    await act(async () => { await result.current.setStarterGuide(true); });
+    expect(guided(result.current.session)).toBe(true);
+  });
+});

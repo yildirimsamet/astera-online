@@ -12,11 +12,14 @@ import { GameError } from './planet.js';
 const digest = (credential: string): string => createHash('sha256').update(credential).digest('hex');
 const badSession = () => new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
 
+/** What a session is opened for: who signs in, not how they play. */
+type SessionAccount = Omit<AccountRecord, 'starterGuideOff'>;
+
 /** Credentials cross native HTTP only. The native bridge persists them before exposing access. */
 export class NativeSessions {
   constructor(private readonly db: Db, private readonly clock: Clock, private readonly tokens: TokenService) {}
 
-  async open(account: AccountRecord) {
+  async open(account: SessionAccount) {
     const id = randomUUID();
     const credential = randomBytes(32).toString('base64url');
     const now = this.clock.now();
@@ -78,7 +81,7 @@ export class NativeSessions {
 
   private expiry(now: Date): Date { return new Date(now.getTime() + this.tokens.refreshDays * 86_400_000); }
 
-  private async describe(account: AccountRecord, nativeSessionId: string) {
+  private async describe(account: SessionAccount, nativeSessionId: string) {
     return { accountId: account.id, username: account.username, displayName: account.displayName,
       country: account.country, accessToken: await this.tokens.issueAccess(account.id, account.authVersion, nativeSessionId),
       nativeSessionId, ...(account.loginEmail === undefined ? {} : { loginEmail: account.loginEmail }) };

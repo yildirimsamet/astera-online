@@ -77,6 +77,7 @@ export function MenuPanel({
   onClearRival,
   onOpen,
   onReplayAcademy,
+  onGuideOn,
   isAdmin = false,
   country = 'TR',
   commander,
@@ -114,6 +115,8 @@ export function MenuPanel({
   onOpen: (panel: Panel) => void;
   onSignOut: () => void;
   onReplayAcademy?: () => void;
+  /** The starter guide is off on this account; this turns it back on (plan F3). */
+  onGuideOn?: () => void;
   isAdmin?: boolean;
   country?: CountryCode;
   onCountryChange?: (country: CountryCode) => Promise<void>;
@@ -332,6 +335,13 @@ export function MenuPanel({
                 }}
               />}
               {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); }} />}
+              {onGuideOn && <MenuTile
+                icon={<GuideIcon className="size-5" />}
+                label={t('starter.tutorial.skip.again')}
+                art={ATMOSPHERE.academy}
+                hint={t('starter.tutorial.skip.againHint')}
+                onClick={onGuideOn}
+              />}
               {onReplayAcademy && (
                 <MenuTile
                   icon={<GuideIcon className="size-5" />}

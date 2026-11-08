@@ -1,24 +1,24 @@
-import { REPAIR_LADDER, type VesselModule, type VesselSystem } from '@astera/rules';
+import { STARTER, type VesselModule, type VesselSystem } from '@astera/rules';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { playSound } from '../../lib/sound.js';
 import { haptic } from '../../lib/haptics.js';
 import { observe } from '../../lib/playerAnalytics/runtime.js';
-import { clockTime, duration, durationPrecise } from '../../lib/time.js';
+import { clockTime, duration } from '../../lib/time.js';
 import { useGate } from '../../onboarding/Gate.js';
 import { SchoolCoach } from '../../onboarding/flightSchool/SchoolCoach.js';
 import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import { moduleName } from '../shipCopy.js';
-import { TUTORIAL_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
+import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
 
 const CHAPTER = {
-  1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3',
-  4: 'starter.tutorial.chapter.4', 5: 'starter.tutorial.chapter.5', 6: 'starter.tutorial.chapter.6',
-  7: 'starter.tutorial.chapter.7', 8: 'starter.tutorial.chapter.8',
+  1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 4: 'starter.tutorial.chapter.4',
+  6: 'starter.tutorial.chapter.6', 7: 'starter.tutorial.chapter.7', 8: 'starter.tutorial.chapter.8',
 } as const;
+/** The funnel counts these steps under this version (the server's `starterFunnel`). */
+const TRAINING = 'starter-tutorial.v2';
 import { Sheet } from '../../ui/kit/Sheet.js';
 import { Button } from '../../ui/kit/Button.js';
-import { useGuidePreference } from './guidePreference.js';
 import { AwayChip } from './AwayChip.js';
 import { DragHint } from './DragHint.js';
 import { useSilenceToasts } from '../../ui/Toast.js';
@@ -34,40 +34,25 @@ function Hush() {
 /** The repair a line names, and the tab it sits under. */
 const SUBJECT: Partial<Record<TutorialStepId, { module: VesselModule; tab: VesselSystem }>> = {
   orderRefinery: { module: 'REFINERY', tab: 'REFINERY' },
-  orderExtractor: { module: 'EXTRACTOR', tab: 'REFINERY' },
-  orderAntenna: { module: 'SURVEY', tab: 'SURVEY' },
-  orderExtractor2: { module: 'EXTRACTOR', tab: 'REFINERY' },
-  orderRefinery3: { module: 'REFINERY', tab: 'REFINERY' },
-  orderVault: { module: 'VAULT', tab: 'REFINERY' },
-  orderShipyard: { module: 'SHIPYARD', tab: 'CARGO' },
-  orderExtractor3: { module: 'EXTRACTOR', tab: 'REFINERY' },
 };
-const REFINERY_3 = REPAIR_LADDER.find(step => step.module === 'REFINERY' && step.stage === 3);
 const NONE: readonly string[] = [];
 /** A marked control missing this long is not coming: the gate opens rather than hold the player forever. */
 const MARK_MISSING_MS = 4_000;
 /** A wait that cannot be timed is stuck past this; a timed one, this far past its end. */
 const WAIT_LONG_MS = 90_000;
 const WAIT_LATE_MS = 30_000;
-/** What spends the store: held while the player roams a wait, so the road's next price is still there. */
+/** What spends the store: held while the player roams a wait of the core, so its next price is still there. */
 const SPEND = '[data-guide="repair-order"], [data-guide="probe"], [data-guide="mine"], [data-guide="unlock-try"]';
 const ACTIVATIONS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'] as const;
 const THUMB = '[data-guide="repair-show"]';
 /** Never held: the scene, a ready crate, and the way out of what a tap on the scene opened. */
 const ALWAYS_FREE = 'canvas, [data-guide="crate"], [data-focus-close], [data-universe-chip]';
-/**
- * THE NPC LETS GO BY DEGREES (owner playtest 2026-11-07: "3-5 dk'dan sonra serbest bırakmaya
- * başlamalıyız"). The first chapters, the first few minutes, hold every other control; from the first
- * probe on it points the way and holds only the store, so the road's next price is still there.
- */
-const LAST_STRICT_CHAPTER = 3;
 /** A control the screen hides is not there to press: a focus panel hides the card under it. */
 const shown = (element: Element): boolean => !('checkVisibility' in element) || element.checkVisibility();
 /** A drag this far over the scene is a look around; a tap is not. */
 const LOOK_PX = 40;
-/** The first look never strands anyone: Next comes anyway after this long. */
+/** The first look never strands anyone: the hand comes anyway after this long. */
 const LOOK_FALLBACK_MS = 12_000;
-const NEXT = (): Element[] => [...document.querySelectorAll('[data-school-next]')];
 
 /** The coach waits for the loading cover to lift: nothing it points at is there yet. */
 function useLoadingCover(): boolean {
@@ -80,15 +65,20 @@ function useLoadingCover(): boolean {
   return covered;
 }
 
-/** The guide is optional; unmounting it releases every effect that owns a control. */
-export function StarterTutorialCoach({ tutorial, accountId }: { tutorial: StarterTutorial; accountId?: string }) {
-  const { skipped, skip } = useGuidePreference(accountId);
+/** What the card needs of the tutorial: the step, its clocks, and the way to record a line read. */
+type CoachTutorial = Pick<StarterTutorial, 'answer' | 'ack' | 'backIn' | 'wait' | 'homeAt'>;
+
+/**
+ * The guide is optional; unmounting it releases every effect that owns a control. Declining it goes
+ * at once here, and `onSkip` keeps it declined on the account (plan F3).
+ */
+export function StarterTutorialCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip?: () => void }) {
   const [closed, setClosed] = useState(false);
-  if (skipped || closed) return null;
-  return <LiveCoach tutorial={tutorial} onSkip={() => { skip(); setClosed(true); }} />;
+  if (closed) return null;
+  return <LiveCoach tutorial={tutorial} onSkip={() => { onSkip?.(); setClosed(true); }} />;
 }
 
-function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: () => void }) {
+function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () => void }) {
   const { t } = useTranslation();
   const { answer, ack, backIn } = tutorial;
   const [confirmSkip, setConfirmSkip] = useState(false);
@@ -115,14 +105,15 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
   // minute the NPC steps aside, says when it will be back, and returns when the work is done.
   const mode = kind === 'wait' ? waitMode(tutorial.wait) : null;
   const roaming = mode === 'roam' || mode === 'away';
-  const strict = step !== null && step.chapter <= LAST_STRICT_CHAPTER;
-  const goalKey = step?.goal?.join('|') ?? '';
+  // THE CORE HOLDS, A MOMENT POINTS (owner 2026-11-08, N1): power, the first collect and the first
+  // repair hold every other control; after them nothing holds a control or a spend.
+  const strict = step?.strict === true;
   const untilMs = tutorial.wait?.until.getTime() ?? null;
   const [steppedAside, setSteppedAside] = useState<string | null>(null);
   const aside = mode === 'away' && stepId !== undefined && steppedAside === stepId;
   useEffect(() => {
     if (!live || !stepId) return;
-    observe('training_scene_visible', { trainingVersion: 'starter-tutorial.v1', scene: stepId }, 'live');
+    observe('training_scene_visible', { trainingVersion: TRAINING, scene: stepId }, 'live');
   }, [live, stepId]);
   useEffect(() => {
     setStuck(false);
@@ -168,22 +159,21 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
   // dragged on its canvas, and a ready crate, which is safe to open at any moment.
   const allowed = useCallback((): Element[] => [...targets(), ...document.querySelectorAll(ALWAYS_FREE)], [targets]);
   useGate(allowed, live && strict && !stuck && !roaming, refuse);
-  // Free to roam, not to spend: a store control answers only when it is the step's own.
-  const free = live && step.chapter < 7 && (!strict || roaming);
+  // Free to roam a wait of the core, not to spend.
+  const free = live && strict && roaming;
   useEffect(() => {
     if (!free) return undefined;
-    const wanted = [...marks, ...(goalKey === '' ? [] : goalKey.split('|'))].join(', ');
     const guard = (event: Event): void => {
       const node = event.target;
       const element = node instanceof Element ? node : node instanceof Node ? node.parentElement : null;
       const spend = element?.closest(SPEND);
-      if (!spend || (!roaming && wanted !== '' && spend.matches(wanted))) return;
+      if (!spend) return;
       event.stopPropagation();
       if (event.type === 'click') { event.preventDefault(); refuse(); }
     };
     for (const type of ACTIVATIONS) document.addEventListener(type, guard, true);
     return () => { for (const type of ACTIVATIONS) document.removeEventListener(type, guard, true); };
-  }, [free, roaming, marks, goalKey, refuse]);
+  }, [free, refuse]);
   // Back from a long wait: the NPC returns with a sound, as something that came to call.
   const wasAside = useRef(false);
   useEffect(() => {
@@ -214,9 +204,9 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
     return () => { document.removeEventListener('click', press, true); };
   }, [pressId, first, ack]);
 
-  // THE FIRST LOOK (owner playtest 2026-11-07): the hand shows the drag until the view is turned; only
-  // then is Next offered, and pointed at.
-  const looking = step?.id === 'lookAround' && !step.nav;
+  // THE FIRST LOOK (owner playtest 2026-11-07), now over the power card (N1): the drag shows until the
+  // view is turned, and only then does the hand go to the card. The card can be pressed all along.
+  const looking = step?.id === 'online' && !step.nav;
   const [looked, setLooked] = useState(false);
   useEffect(() => {
     if (!looking) return undefined;
@@ -272,13 +262,14 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
       try: t('starter.unlock.try'),
       repair: t('starter.repair'),
       intel: t('dock.intel'),
-      time: step.id === 'farewell' ? duration(farewellAt.current ?? 60) : durationPrecise(REFINERY_3?.minutes ?? 1.5),
+      count: STARTER.queues.construction,
+      time: duration(farewellAt.current ?? 60),
     });
   const away = mode === 'away' && tutorial.wait && !step.nav ? tutorial.wait : null;
   const line = away ? `${text} ${t('starter.tutorial.away', { clock: clockTime(away.until) })}` : text;
   // A mark up in the top bar takes the card to the foot of the screen.
   const dock = marks.includes('[data-guide="works"]') ? 'bottom' : 'top';
-  const reading = step.step === 'read' && !(looking && !looked);
+  const reading = step.step === 'read';
   const action = reading
     ? { actionLabel: t('starter.tutorial.next'), onAction: () => { playSound('confirm'); haptic('tap'); ack(step.id); } }
     : away ? { actionLabel: t('starter.tutorial.ok'), onAction: () => { haptic('tap'); setSteppedAside(step.id); } } : {};
@@ -291,8 +282,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
       {!confirmSkip && <SchoolCoach
         title={t(CHAPTER[step.chapter])}
         text={line}
-        progress={step.chapter}
-        total={TUTORIAL_CHAPTERS}
+        {...(step.strict ? { progress: step.chapter, total: CORE_CHAPTERS } : {})}
         dock={dock}
         busy={step.step === 'wait' && !away}
         revealLabel={t('starter.tutorial.reveal')}
@@ -305,16 +295,15 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: StarterTutorial; onSkip: ()
           <div className="flex flex-col gap-2">
             <Button variant="primary" onClick={() => { playSound('confirm'); haptic('tap'); setConfirmSkip(false); }}>{t('starter.tutorial.skip.keep')}</Button>
             <Button variant="ghost" className="text-v2-warn" onClick={() => {
-              observe('training_exit_requested', { trainingVersion: 'starter-tutorial.v1', scene: step.id, code: 'skipped' }, 'live');
+              observe('training_exit_requested', { trainingVersion: TRAINING, scene: step.id, code: 'skipped' }, 'live');
               playSound('confirm'); haptic('commit'); onSkip();
             }}>{t('starter.tutorial.skip.close')}</Button>
           </div>
         }><p className="text-caption text-v2-ink-2">{t('starter.tutorial.skip.body')}</p></Sheet>
       </div>}
-      {step.step === 'press' && <SchoolPointer targets={targets} />}
+      {step.step === 'press' && !(looking && !looked) && <SchoolPointer targets={targets} />}
       {/* A line about something on screen lights it and brings it into view; the hand is for presses. */}
       {step.step === 'read' && marks.length > 0 && <SchoolPointer targets={targets} showHand={false} />}
-      {looking && looked && <SchoolPointer targets={NEXT} />}
     </>
   );
 }

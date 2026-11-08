@@ -151,7 +151,7 @@ it('does not unlock or preload sound effects just because native foreground beco
 it('recovers a failed cold start on native foreground without retrying the initial state snapshot', async () => {
   const api = new Api({ authTransport: null });
   const restore = vi.spyOn(api, 'restore').mockRejectedValueOnce(new ApiError('UNREACHABLE', 'offline', 503)).mockResolvedValue(true);
-  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, placement: null });
+  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, starterGuideOff: false, placement: null });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>
     <ApiProvider api={api}>{children}</ApiProvider>
@@ -169,7 +169,7 @@ it('recognizes the first real foreground after a cold start in native background
   native.getState.mockResolvedValue({ isActive: false });
   const api = new Api({ authTransport: null });
   const restore = vi.spyOn(api, 'restore').mockRejectedValueOnce(new ApiError('UNREACHABLE', 'offline', 503)).mockResolvedValue(true);
-  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, placement: null });
+  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, starterGuideOff: false, placement: null });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>
     <ApiProvider api={api}>{children}</ApiProvider>
@@ -185,7 +185,7 @@ it('recognizes the first real foreground after a cold start in native background
 async function failedNativeColdStart(status = 503) {
   const api = new Api({ authTransport: null });
   const restore = vi.spyOn(api, 'restore').mockRejectedValueOnce(new ApiError('UNREACHABLE', 'offline', status)).mockResolvedValue(true);
-  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, placement: null });
+  vi.spyOn(api, 'me').mockResolvedValue({ accountId: 'pilot', username: 'pilot', displayName: 'Pilot', country: 'TR', isAdmin: false, starterGuideOff: false, placement: null });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>
     <ApiProvider api={api}>{children}</ApiProvider>

@@ -17,8 +17,12 @@ function read(id: string): z.infer<typeof permissionSchema> {
   try { return permissionSchema.parse(JSON.parse(localStorage.getItem(keyOf(id)) ?? JSON.stringify(fresh))); } catch { return fresh; }
 }
 
-/** After the farewell the NPC never owns a gate. Permission has one retry; a visit has one hint. */
-export function StarterAftercare({ vessel, farewelled }: { vessel: VesselView; farewelled: boolean }) {
+/**
+ * After the farewell the NPC never owns a gate. Permission has one retry; a visit has one hint.
+ * The permission does not hang on the guide (plan F3): without it, the ask comes once the first haul
+ * is home, where the guide would have said goodbye, and the officer's hint stays quiet.
+ */
+export function StarterAftercare({ vessel, farewelled, guided }: { vessel: VesselView; farewelled: boolean; guided: boolean }) {
   const api = useApi();
   const { t, i18n } = useTranslation();
   const [permission, setPermission] = useState(() => read(vessel.id));
@@ -30,8 +34,9 @@ export function StarterAftercare({ vessel, farewelled }: { vessel: VesselView; f
   const deniedAt = permission.deniedAt;
   const retry = permission.attempts === 1 && deniedAt !== null && vessel.queue.some(order =>
     order.queue === 'CONSTRUCTION' && order.startedAt.getTime() > deniedAt && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000);
-  const offer = farewelled && capabilities().nativePush && (permission.attempts === 0 || retry);
-  if (!farewelled || (!offer && (hintClosed || !need))) return null;
+  const reached = guided ? farewelled : vessel.facts.includes('FIRST_MINING_RETURN');
+  const offer = reached && capabilities().nativePush && (permission.attempts === 0 || retry);
+  if (!reached || (!offer && (!guided || hintClosed || !need))) return null;
   const finish = async (allow: boolean): Promise<void> => {
     if (busy) return;
     setBusy(true);

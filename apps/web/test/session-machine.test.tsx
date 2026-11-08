@@ -411,6 +411,7 @@ describe('the session machine', () => {
     const { wrapper, api } = harness({});
     vi.spyOn(api, 'claim').mockResolvedValue({
       ...SESSION,
+      starterGuideOff: false,
       placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' },
       applied: [],
       planet: planetView(),

@@ -6,8 +6,10 @@ import { useGalaxy, useMining, usePending, usePlanet } from '../../api/queries.j
 import { useProjected } from '../../lib/projection.js';
 import { vesselToPlanetView } from '../adapter.js';
 import { hasOtherShip } from '../neighbour.js';
+import { opportunities, opportunityKey, type Opportunity } from '../opportunities.js';
 import { timeToAfford } from '../steps.js';
-import { repairWait, tutorialAction, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
+import { useAdviceMemory } from './adviceMemory.js';
+import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 
 /** Remembered only on this device; the ship itself carries everything else. */
 const keyOf = (vesselId: string): string => `astera.starter.tutorial.${vesselId}`;
@@ -20,12 +22,16 @@ function readAcked(vesselId: string): string[] {
 }
 
 /** Marks that leave no trace on the ship: pressing them is the step. */
-export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectForExtractor', 'collectMine', 'openIntel', 'openReport'];
-
+export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport'];
 
 export interface StarterTutorial {
   answer: TutorialAnswer;
-  action?: TutorialAnswer;
+  /** Where the player stands: out on the galaxy, aboard, or on a page. */
+  view: TutorialView;
+  /** What the ship can do this moment, best first (plan F1): the advisor's offers. */
+  offers: readonly Opportunity[];
+  /** What the player picked from them, while it is still on offer. */
+  pick?: Opportunity;
   /** Minutes until the store and works can pay the repair the player comes back for. */
   backIn: number | null;
   farewelled?: boolean;
@@ -47,6 +53,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
   const vesselId = vessel?.id ?? null;
+  const [advice] = useAdviceMemory(vesselId);
   const cache = useRef(new Map<string, string[]>());
   const read = (id: string): string[] => {
     let value = cache.current.get(id);
@@ -65,7 +72,12 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const queued = vessel.queue.flatMap(o => REPAIR_LADDER.find(s => s.module === o.subject && s.stage === o.stage) ?? []);
   const next = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel }, queued)?.step;
   const purse = { alloy: held.alloy, crystal: held.crystal, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal };
-  const backIn = next ? timeToAfford(next, purse, { alloyPerHour: plan.planet.alloyPerHour, crystalPerHour: plan.planet.crystalPerHour }) : 0;
+  const income = { alloyPerHour: plan.planet.alloyPerHour, crystalPerHour: plan.planet.crystalPerHour };
+  const backIn = next ? timeToAfford(next, purse, income) : 0;
+  const probing = (pending.data?.pending ?? []).some(thread => thread.kind === 'probe');
+  const out = (mining.data?.runs.length ?? 0) > 0;
+  // Only once the map has loaded: an unread map is not an empty galaxy.
+  const alone = galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, vessel.id);
   const input: TutorialInput = {
     modules: vessel.modules,
     facts: vessel.facts,
@@ -73,27 +85,34 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     unlockToAnnounce: vessel.unlockToAnnounce,
     works: held.bufferAlloy,
     canPayNext: backIn === 0,
-    probing: (pending.data?.pending ?? []).some(thread => thread.kind === 'probe'),
-    mining: (mining.data?.runs.length ?? 0) > 0,
+    probing,
+    mining: out,
     crates: vessel.crates,
-    // Only once the map has loaded: an unread map is not an empty galaxy.
-    alone: galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, vessel.id),
+    alone,
     view,
     acked: list,
   };
   const answer = tutorialStep(input);
-  const action = tutorialAction(input);
+  const offers = opportunities({
+    progress: { modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel },
+    queue: vessel.queue,
+    held: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal, bufferDeuterium: held.bufferDeuterium },
+    income,
+    features: vessel.features,
+    probing,
+    mining: out,
+    alone,
+  });
+  const pick = advice.pick === null ? undefined : offers.find(offer => opportunityKey(offer) === advice.pick);
   const run = mining.data?.runs[0];
   const flight = (pending.data?.pending ?? []).find(thread => thread.kind === 'fleet');
   const homeAt = run ? run.homeAt ?? new Date(2 * run.arriveAt.getTime() - run.departAt.getTime()) : flight?.homeAt ?? (flight?.leg === 'outbound' && flight.path ? new Date(flight.arriveAt.getTime() + flight.path.arriveAt.getTime() - flight.path.departAt.getTime()) : flight?.arriveAt);
-  // A probe flies there and back: a leg's own length, twice, ends when its report lands.
-  const probe = (pending.data?.pending ?? []).find(thread => thread.kind === 'probe' && thread.id !== undefined && thread.path !== undefined);
-  const leg = probe?.path ? probe.path.arriveAt.getTime() - probe.path.departAt.getTime() : 0;
-  const probeWait = probe ? { until: new Date(probe.arriveAt.getTime() + (probe.leg === 'return' ? 0 : leg)), spanMs: 2 * leg } : null;
   const waiting = answer.kind === 'step' && answer.step === 'wait' ? answer.id : null;
   const wait = waiting === null ? null
     : repairWait(waiting, vessel.queue)
-      ?? (waiting === 'mineFlying' && run && homeAt ? { until: homeAt, spanMs: homeAt.getTime() - run.departAt.getTime() } : null)
-      ?? (waiting === 'probeFlying' ? probeWait : null);
-  return { answer, action, backIn, ack, vessel, farewelled: list.includes('farewell'), ...(homeAt ? { homeAt } : {}), ...(wait ? { wait } : {}) };
+      ?? (waiting === 'mineFlying' && run && homeAt ? { until: homeAt, spanMs: homeAt.getTime() - run.departAt.getTime() } : null);
+  return {
+    answer, view, offers, ...(pick ? { pick } : {}), backIn, ack, vessel, farewelled: list.includes('farewell'),
+    ...(homeAt ? { homeAt } : {}), ...(wait ? { wait } : {}),
+  };
 }

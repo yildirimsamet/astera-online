@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Panel } from '../../src/screens/GalaxyView.js';
+import type { StarterTutorial } from '../../src/starter/tutorial/useStarterTutorial.js';
 import { GameShell } from '../../src/v2/shell/GameShell.js';
 
 /**
@@ -26,7 +27,7 @@ vi.mock('../../src/api/queries.js', async () => {
   return { ...actual, usePlanet: () => ({ data: undefined }), usePending: () => ({ data: undefined }) };
 });
 
-const starterTutorial = vi.hoisted(() => ({ current: null as null | { answer: { kind: string; id?: string }; ack: () => void; backIn: null } }));
+const starterTutorial = vi.hoisted(() => ({ current: null as StarterTutorial | null }));
 vi.mock('../../src/starter/tutorial/useStarterTutorial.js', async () => ({
   ...await vi.importActual<Record<string, unknown>>('../../src/starter/tutorial/useStarterTutorial.js'),
   useStarterTutorial: () => starterTutorial.current,
@@ -252,7 +253,7 @@ describe('the starter tutorial in the shell', () => {
   afterEach(() => { starterTutorial.current = null; });
 
   it('opens Intel on the probe reports when the NPC sends the player there', async () => {
-    starterTutorial.current = { answer: { kind: 'step', id: 'openIntel' }, ack: vi.fn(), backIn: null };
+    starterTutorial.current = { answer: { kind: 'step', id: 'openIntel', step: 'press', chapter: 4, strict: false, marks: ['[data-guide="dock-intel"]'] }, ack: vi.fn(), backIn: 0, view: 'galaxy', offers: [] };
     shell();
     await userEvent.click(screen.getByRole('button', { name: 'tab intel' }));
     expect(onPanel).toHaveBeenLastCalledWith('intel', 'probes', undefined, undefined);

@@ -29,16 +29,24 @@ const coach = (answer: TutorialAnswer, ack = vi.fn(), wait?: { until: Date; span
 /** Owner 2026-11-06: the FlightSchool NPC on the real ship, strict, and no way to skip it. */
 describe('the starter tutorial on screen', () => {
   it('speaks a line and moves on only when Next is pressed', () => {
-    const { ack } = coach({ kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 1 });
+    const { ack } = coach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
     expect(document.querySelector('img[src$="tutorial-npc.png"]')).not.toBeNull();
-    expect(screen.getByText('1/8')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(ack).toHaveBeenCalledWith('welcome');
+    expect(ack).toHaveBeenCalledWith('telescopeRing');
+  });
+
+  /** Plan F3 (N1): the count is the core's own; a first-time moment is not a chapter of a road. */
+  it('counts the core in its two chapters, and gives a moment no count', () => {
+    const { view } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: [], chapter: 2, strict: true });
+    expect(screen.getByText('2/2')).toBeTruthy();
+    view.unmount();
+    coach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
+    expect(document.querySelector('.school-progress')).toBeNull();
   });
 
   it('lets only the marked control answer, and takes that press as the step', () => {
-    const { ack, pressed, elsewhere } = coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1 });
+    const { ack, pressed, elsewhere } = coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
     expect(screen.getByTestId('pointer')).toBeTruthy();
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).not.toHaveBeenCalled();
@@ -48,7 +56,7 @@ describe('the starter tutorial on screen', () => {
   });
 
   it('holds every control while a ten-second repair runs, and says it is working', () => {
-    const { elsewhere, pressed } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2 }, vi.fn(), { until: new Date(Date.now() + 10_000), spanMs: 10_000 });
+    const { elsewhere, pressed } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, vi.fn(), { until: new Date(Date.now() + 10_000), spanMs: 10_000 });
     fireEvent.click(screen.getByText('works'));
     fireEvent.click(screen.getByText('elsewhere'));
     expect(pressed).not.toHaveBeenCalled();
@@ -57,7 +65,7 @@ describe('the starter tutorial on screen', () => {
   });
 
   it('says how long until the player should come back', () => {
-    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 4 });
+    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false });
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/50/);
   });
@@ -65,7 +73,7 @@ describe('the starter tutorial on screen', () => {
   /** Review 2026-11-06: an NPC that waits on a control the screen never drew holds the player forever. */
   it('lets go of the controls when the marked one is nowhere for a few seconds, and records where it stuck', () => {
     vi.useFakeTimers();
-    const { elsewhere } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="nowhere"]'], chapter: 2 });
+    const { elsewhere } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="nowhere"]'], chapter: 2, strict: true });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).not.toHaveBeenCalled();
     act(() => { vi.advanceTimersByTime(4_500); });
@@ -76,7 +84,7 @@ describe('the starter tutorial on screen', () => {
 
   it('lets go of the controls when a wait runs far past its time', () => {
     vi.useFakeTimers();
-    const { elsewhere } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2 }, vi.fn(), { until: new Date(Date.now() + 10_000), spanMs: 10_000 });
+    const { elsewhere } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, vi.fn(), { until: new Date(Date.now() + 10_000), spanMs: 10_000 });
     act(() => { vi.advanceTimersByTime(20_000); });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).not.toHaveBeenCalled();
@@ -96,7 +104,7 @@ describe('the starter tutorial on screen', () => {
     render(<>
       <div className="hidden"><button type="button" data-guide="unlock-dismiss">dismiss</button></div>
       <button type="button" onClick={elsewhere}>elsewhere</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'orderShipyard', step: 'press', marks: ['[data-guide="unlock-dismiss"]'], nav: 'dismissUnlock', chapter: 3 }, ack: vi.fn(), backIn: 50 }} />
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="unlock-dismiss"]'], nav: 'dismissUnlock', chapter: 2, strict: true }, ack: vi.fn(), backIn: 50 }} />
     </>);
     // jsdom lays nothing out: hidden as a browser would report it.
     const hidden = screen.getByText('dismiss');
@@ -112,7 +120,7 @@ describe('the starter tutorial on screen', () => {
     render(<>
       <ul><li data-known="probe"><button type="button">r5ty54ry</button></li></ul>
       <button type="button" data-guide="dock-intel">Intel</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'openReport', step: 'press', marks: ['[data-known="probe"] button', '[data-guide="dock-intel"]'], chapter: 4 }, ack, backIn: 50 }} />
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'openReport', step: 'press', marks: ['[data-known="probe"] button', '[data-guide="dock-intel"]'], chapter: 4, strict: false }, ack, backIn: 50 }} />
     </>);
     fireEvent.click(screen.getByText('Intel'));
     expect(ack).not.toHaveBeenCalled();
@@ -122,7 +130,7 @@ describe('the starter tutorial on screen', () => {
 
   /** Owner playtest 2026-11-07: the report's rows sat below the fold and the line spoke of them unseen. */
   it('lights up what a read line talks about', () => {
-    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'report', step: 'read', marks: ['[data-dossier-loot]'], chapter: 4 }, ack: vi.fn(), backIn: 50 }} />);
+    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'report', step: 'read', marks: ['[data-dossier-loot]'], chapter: 4, strict: false }, ack: vi.fn(), backIn: 50 }} />);
     expect(screen.getByTestId('pointer')).toBeTruthy();
   });
 
@@ -131,8 +139,8 @@ describe('the starter tutorial on screen', () => {
     Element.prototype.scrollIntoView = scrollIntoView;
     vi.useFakeTimers();
     render(<>
-      <button type="button" data-guide="repair-show" data-step="EXTRACTOR:1">thumb</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'orderExtractor', step: 'press', marks: ['[data-guide="repair-order"][data-step="EXTRACTOR:1"]', '[data-guide="repair-show"][data-step="EXTRACTOR:1"]'], chapter: 2 }, ack: vi.fn(), backIn: 0 }} />
+      <button type="button" data-guide="repair-show" data-step="REFINERY:2">thumb</button>
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="repair-order"][data-step="REFINERY:2"]', '[data-guide="repair-show"][data-step="REFINERY:2"]'], chapter: 2, strict: true }, ack: vi.fn(), backIn: 0 }} />
     </>);
     act(() => { vi.advanceTimersByTime(600); });
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: 'center' }));
@@ -140,7 +148,7 @@ describe('the starter tutorial on screen', () => {
 
   /** Review 2026-11-06: the goodbye named a time that slid on while it was being read. */
   it('names the time to come back as it was when the goodbye began', () => {
-    const answer: TutorialAnswer = { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 4 };
+    const answer: TutorialAnswer = { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false };
     const { rerender } = render(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 50 }} />);
     rerender(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 49 }} />);
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
@@ -148,15 +156,15 @@ describe('the starter tutorial on screen', () => {
   });
 
   it('records each visible tutorial step with the starter version and its scene id', () => {
-    const answer: TutorialAnswer = { kind: 'step', id: 'orderRefinery3', step: 'press', marks: [], chapter: 5 };
+    const answer: TutorialAnswer = { kind: 'step', id: 'orderRefinery', step: 'press', marks: [], chapter: 2, strict: true };
     const { rerender } = render(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 0 }} />);
     rerender(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 1 }} />);
-    expect(observe).toHaveBeenCalledWith('training_scene_visible', { trainingVersion: 'starter-tutorial.v1', scene: 'orderRefinery3' }, 'live');
+    expect(observe).toHaveBeenCalledWith('training_scene_visible', { trainingVersion: 'starter-tutorial.v2', scene: 'orderRefinery' }, 'live');
     expect(observe.mock.calls.filter(call => call[0] === 'training_scene_visible')).toHaveLength(1);
   });
 
-  it('is silent when the player is away or done', () => {
-    coach({ kind: 'away' });
+  it('is silent once the advisor has taken over', () => {
+    coach({ kind: 'advise' });
     expect(document.querySelector('[data-school-coach]')).toBeNull();
   });
 });
@@ -170,7 +178,7 @@ describe('what the NPC never holds', () => {
       <canvas data-testid="galaxy" onPointerDown={drag} />
       <button type="button" data-guide="crate" onPointerDown={hold}>crate</button>
       <button type="button" data-guide="works">works</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true }, ack: vi.fn(), backIn: 50 }} />
     </>);
     return { drag, hold };
   };
@@ -188,34 +196,42 @@ describe('what the NPC never holds', () => {
   });
 });
 
-describe('the first look', () => {
+/**
+ * THE WAY IN (owner 2026-11-08, N1): the welcome is spoken over the power card. The drag hint shows
+ * first, as it did on the old first look (owner playtest 2026-11-06); it never takes a touch and never
+ * holds the step. Once the view is turned, or after a while, the hand goes to the power card.
+ */
+describe('the welcome over the power card', () => {
   // jsdom has no PointerEvent, so a pointer's position would be lost on the way; browsers carry it.
   beforeAll(() => {
     if (!('PointerEvent' in window)) Object.defineProperty(window, 'PointerEvent', { value: class extends MouseEvent {}, configurable: true });
   });
-  const look: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'lookAround', step: 'read', marks: [], chapter: 1 };
-  const reveal = () => { const button = screen.queryByRole('button', { name: /show full message/i }); if (button) fireEvent.click(button); };
+  const online: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'online', step: 'press', marks: ['[data-guide="unlock-try"]'], chapter: 1, strict: true };
+  const mount = (answer = online) => render(<><canvas data-testid="scene" /><button type="button" data-guide="unlock-try">try</button><StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 50 }} /></>);
 
-  /** Owner playtest 2026-11-07: the hand goes once the view is turned, and only then is Next offered and pointed at. */
-  it('offers Next only after the view has been dragged, then points at it', () => {
-    render(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack: vi.fn(), backIn: 50 }} /></>);
-    reveal();
-    expect(document.querySelector('[data-school-next]')).toBeNull();
+  it('shows the drag first, then points at the power card once the view has been turned', () => {
+    mount();
+    expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
     expect(screen.queryByTestId('pointer')).toBeNull();
     const scene = screen.getByTestId('scene');
     fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
     fireEvent.pointerMove(scene, { clientX: 190, clientY: 310 });
     fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
-    reveal();
-    expect(document.querySelector('[data-school-next]')).not.toBeNull();
     expect(screen.getByTestId('pointer')).toBeTruthy();
   });
 
-  /** Owner playtest 2026-11-07: the hand pointing at Next was drawn under the card. */
-  it('draws the hand over the card it points into', () => {
+  it('lets the power card be pressed before any look', () => {
+    const tried = vi.fn();
+    render(<><button type="button" data-guide="unlock-try" onClick={tried}>try</button><StarterTutorialCoach tutorial={{ answer: online, ack: vi.fn(), backIn: 50 }} /></>);
+    fireEvent.click(screen.getByText('try'));
+    expect(tried).toHaveBeenCalledOnce();
+  });
+
+  /** Owner playtest 2026-11-07: the hand was drawn under the card it pointed into. */
+  it('draws the hand after the card', () => {
     vi.useFakeTimers();
-    render(<StarterTutorialCoach tutorial={{ answer: look, ack: vi.fn(), backIn: 50 }} />);
+    mount();
     act(() => { vi.advanceTimersByTime(13_000); });
     const card = document.querySelector('[data-school-coach]');
     const pointer = screen.getByTestId('pointer');
@@ -223,34 +239,36 @@ describe('the first look', () => {
   });
 
   it('does not take a tap for a look', () => {
-    render(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack: vi.fn(), backIn: 50 }} /></>);
+    mount();
     const scene = screen.getByTestId('scene');
     fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
     fireEvent.pointerUp(scene, { clientX: 102, clientY: 301 });
     expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
   });
 
-  it('never leaves a commander without a way on: Next comes anyway after a while', () => {
+  it('never leaves a commander without a way on: the hand comes anyway after a while', () => {
     vi.useFakeTimers();
-    render(<StarterTutorialCoach tutorial={{ answer: look, ack: vi.fn(), backIn: 50 }} />);
+    mount();
     act(() => { vi.advanceTimersByTime(13_000); });
-    reveal();
-    expect(document.querySelector('[data-school-next]')).not.toBeNull();
-  });
-
-  it('shows no hand while it sends the commander back to the galaxy', () => {
-    render(<StarterTutorialCoach tutorial={{ answer: { ...look, step: 'press', marks: ['[data-sheet-close]'], nav: 'closePage' }, ack: vi.fn(), backIn: 50 }} />);
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
+    expect(screen.getByTestId('pointer')).toBeTruthy();
   });
 
-  it('shows that the view can be dragged', () => {
-    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'lookAround', step: 'read', marks: [], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />);
-    expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
+  it('shows no drag while it sends the commander back to the galaxy', () => {
+    mount({ ...online, marks: ['[data-sheet-close]'], nav: 'closePage' });
+    expect(document.querySelector('[data-drag-hint]')).toBeNull();
   });
 
   it('shows no drag hint on other lines', () => {
-    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />);
+    mount({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
+  });
+
+  it('greets the commander and names the power card in one line', () => {
+    mount();
+    const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
+    expect(line).toMatch(/this ship is yours/i);
+    expect(line).toContain('Try it');
   });
 });
 
@@ -264,7 +282,7 @@ describe('the NPC speaks alone', () => {
   </ToastProvider>);
 
   it('drops news while the card is up, and lets a refusal through', () => {
-    withCoach({ kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 1 });
+    withCoach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
     act(() => { say?.('Repair started'); });
     expect(screen.queryByText('Repair started')).toBeNull();
     act(() => { say?.('Not enough alloy', 'error'); });
@@ -272,7 +290,7 @@ describe('the NPC speaks alone', () => {
   });
 
   it('lets news through once the tutorial is over', () => {
-    withCoach({ kind: 'done' });
+    withCoach({ kind: 'advise' });
     act(() => { say?.('Repair started'); });
     expect(screen.getByText('Repair started')).toBeTruthy();
   });
@@ -282,32 +300,30 @@ describe('the NPC speaks alone', () => {
 describe('the online card waits its turn', () => {
   it('is held while the line is about something else, and let go when the line points at it', async () => {
     const { unlockHeld } = await import('../src/starter/tutorial/unlockHold.js');
-    const view = render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'lookAround', step: 'read', marks: [], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />);
+    const view = render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true }, ack: vi.fn(), backIn: 50 }} />);
     expect(unlockHeld()).toBe(true);
-    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'online', step: 'press', marks: ['[data-guide="unlock-try"]'], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />);
+    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'online', step: 'press', marks: ['[data-guide="unlock-try"]'], chapter: 1, strict: true }, ack: vi.fn(), backIn: 50 }} />);
     expect(unlockHeld()).toBe(false);
-    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 1 }, ack: vi.fn(), backIn: 50 }} />);
+    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false }, ack: vi.fn(), backIn: 50 }} />);
     expect(unlockHeld()).toBe(true);
     view.unmount();
     expect(unlockHeld()).toBe(false);
   });
 });
 
-/** Owner 2026-11-07: the refinery's repair got shorter; the NPC names the time the ladder holds, not "three minutes". */
-it('names the third refinery repair by the time the ladder gives it', async () => {
-  const { REPAIR_LADDER } = await import('@astera/rules');
-  const { durationPrecise } = await import('../src/lib/time.js');
-  const minutes = REPAIR_LADDER.find(s => s.module === 'REFINERY' && s.stage === 3)!.minutes;
-  render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'orderRefinery3', step: 'press', marks: [], chapter: 5 }, ack: vi.fn(), backIn: 50 }} />);
+/** Plan F3: the first repair teaches its price, its time and the queue, and the queue's size is the rule's. */
+it('names the queue the first repair goes into, by the size the rules give it', async () => {
+  const { STARTER } = await import('@astera/rules');
+  render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, ack: vi.fn(), backIn: 50, wait: { until: new Date(Date.now() + 10_000), spanMs: 10_000 } }} />);
   const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
-  expect(line).toContain(durationPrecise(minutes));
-  expect(line).not.toMatch(/three minutes/);
+  expect(line).toContain(String(STARTER.queues.construction));
+  expect(line).not.toMatch(/these two/i);
 });
 
 /** Owner playtest 2026-11-07: never more than ten seconds with nothing to do; past a minute the NPC leaves and comes back. */
 describe('a long wait lets the player go', () => {
-  it('lets the player roam a half-minute wait, but not spend', () => {
-    const { elsewhere, pressed, ordered } = coach({ kind: 'step', id: 'waitAntenna', step: 'wait', marks: [], chapter: 3 }, vi.fn(), { until: new Date(Date.now() + 30_000), spanMs: 30_000 });
+  it('lets the player roam a half-minute wait in the core, but not spend', () => {
+    const { elsewhere, pressed, ordered } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, vi.fn(), { until: new Date(Date.now() + 30_000), spanMs: 30_000 });
     fireEvent.click(screen.getByText('elsewhere'));
     fireEvent.click(screen.getByText('works'));
     fireEvent.click(screen.getByText('repair'));
@@ -319,7 +335,7 @@ describe('a long wait lets the player go', () => {
 
   it('past a minute, says when it will be back, then steps aside with a countdown', () => {
     const until = new Date(Date.now() + 90_000);
-    const { elsewhere, ordered } = coach({ kind: 'step', id: 'waitRefinery', step: 'wait', marks: [], chapter: 5 }, vi.fn(), { until, spanMs: 90_000 });
+    const { elsewhere, ordered } = coach({ kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, vi.fn(), { until, spanMs: 90_000 });
     const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
     expect(line).toContain(clockTime(until));
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
@@ -334,7 +350,7 @@ describe('a long wait lets the player go', () => {
 
   it('comes back with a sound when the work is done', () => {
     const until = new Date(Date.now() + 90_000);
-    const { view } = coach({ kind: 'step', id: 'waitRefinery', step: 'wait', marks: [], chapter: 5 }, vi.fn(), { until, spanMs: 90_000 });
+    const { view } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until, spanMs: 90_000 });
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     fireEvent.click(screen.getByRole('button', { name: /^ok/i }));
     sound.mockClear();
@@ -342,7 +358,7 @@ describe('a long wait lets the player go', () => {
       <button type="button" data-guide="works">works</button>
       <button type="button">elsewhere</button>
       <button type="button" data-guide="repair-order">repair</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'openRefineryCrate', step: 'press', marks: [], chapter: 5 }, ack: vi.fn(), backIn: 50 }} />
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'collectMine', step: 'press', marks: [], chapter: 6, strict: false }, ack: vi.fn(), backIn: 50 }} />
     </>);
     expect(document.querySelector('[data-school-coach]')).not.toBeNull();
     expect(sound).toHaveBeenCalled();
@@ -350,18 +366,18 @@ describe('a long wait lets the player go', () => {
 });
 
 /**
- * Owner playtest 2026-11-07 (third batch): "Oyuncuyu oyunda geçen 3-5 dk'dan sonra serbest bırakmaya
- * başlamalıyız." From the first probe on the NPC leads and no longer holds; it keeps the store for the road.
+ * AFTER THE CORE THE NPC LEADS, IT DOES NOT HOLD (owner 2026-11-08, N1). Power, the first collect and
+ * the first repair hold every other control; a first-time moment only points, and holds no spend.
  */
-describe('after the first minutes the NPC leads, it does not hold', () => {
-  it('keeps the first chapters strict', () => {
-    const { elsewhere } = coach({ kind: 'step', id: 'orderAntenna', step: 'press', marks: ['[data-guide="works"]'], chapter: 3 });
+describe('after the core the NPC leads, it does not hold', () => {
+  it('keeps the core strict', () => {
+    const { elsewhere } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="works"]'], chapter: 2, strict: true });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).not.toHaveBeenCalled();
   });
 
-  it('from the first probe on, lets any control answer while it points the way', () => {
-    const { elsewhere, pressed } = coach({ kind: 'step', id: 'probe', step: 'press', marks: ['[data-guide="works"]'], chapter: 4 });
+  it('lets any control answer while a moment points the way', () => {
+    const { elsewhere, pressed } = coach({ kind: 'step', id: 'mine', step: 'press', marks: ['[data-guide="works"]'], chapter: 6, strict: false });
     expect(screen.getByTestId('pointer')).toBeTruthy();
     fireEvent.click(screen.getByText('elsewhere'));
     fireEvent.click(screen.getByText('works'));
@@ -373,28 +389,34 @@ describe('after the first minutes the NPC leads, it does not hold', () => {
     const closed = vi.fn();
     render(<>
       <button type="button" data-focus-close onClick={closed}>close</button>
-      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'mine', step: 'press', marks: ['[data-guide="unlock-dismiss"]'], nav: 'dismissUnlock', chapter: 6 }, ack: vi.fn(), backIn: 50 }} />
+      <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'mine', step: 'press', marks: ['[data-guide="unlock-dismiss"]'], nav: 'dismissUnlock', chapter: 6, strict: false }, ack: vi.fn(), backIn: 50 }} />
     </>);
     fireEvent.click(screen.getByText('close'));
     expect(closed).toHaveBeenCalledOnce();
   });
 
-  it('refuses a spend it does not point at, so the next step can still be paid', () => {
-    const { ordered } = coach({ kind: 'step', id: 'mine', step: 'press', marks: ['[data-guide="mine"]'], chapter: 6 });
+  it('never holds a spend once the core is behind the player', () => {
+    const { ordered } = coach({ kind: 'step', id: 'mine', step: 'press', marks: ['[data-guide="mine"]'], chapter: 6, strict: false });
     fireEvent.click(screen.getByText('repair'));
-    expect(ordered).not.toHaveBeenCalled();
+    expect(ordered).toHaveBeenCalledOnce();
   });
 
-  it('lets through the spend it points at', () => {
-    const { ordered } = coach({ kind: 'step', id: 'orderRefinery3', step: 'press', marks: ['[data-guide="repair-order"]'], chapter: 5 });
+  it('lets through the spend the core points at', () => {
+    const { ordered } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: ['[data-guide="repair-order"]'], chapter: 2, strict: true });
     fireEvent.click(screen.getByText('repair'));
     expect(ordered).toHaveBeenCalledOnce();
   });
 
   it('never holds a short wait once it has let go', () => {
-    const { elsewhere } = coach({ kind: 'step', id: 'probeFlying', step: 'wait', marks: [], chapter: 4 }, vi.fn(), { until: new Date(Date.now() + 8_000), spanMs: 8_000 });
+    const { elsewhere } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until: new Date(Date.now() + 8_000), spanMs: 8_000 });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).toHaveBeenCalledOnce();
+  });
+
+  it('holds no spend through a long wait of a moment', () => {
+    const { ordered } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until: new Date(Date.now() + 90_000), spanMs: 90_000 });
+    fireEvent.click(screen.getByText('repair'));
+    expect(ordered).toHaveBeenCalledOnce();
   });
 });
 
@@ -402,7 +424,7 @@ it('brings a read target into view once, including when it arrives after the coa
   vi.useFakeTimers();
   const scroll = vi.fn();
   Element.prototype.scrollIntoView = scroll;
-  const answer: TutorialAnswer = { kind: 'step', id: 'report', step: 'read', marks: ['[data-dossier-loot]'], chapter: 4 };
+  const answer: TutorialAnswer = { kind: 'step', id: 'report', step: 'read', marks: ['[data-dossier-loot]'], chapter: 4, strict: false };
   const view = render(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 0 }} />);
   act(() => { vi.advanceTimersByTime(500); });
   const loot = document.createElement('div');
@@ -419,8 +441,8 @@ it('brings a read target into view once, including when it arrives after the coa
 it('keeps the away chip when the same wait moves between screens', async () => {
   const { tutorialStep } = await import('../src/starter/tutorial/script.js');
   const input = {
-    modules: { REFINERY: 2, EXTRACTOR: 2, SURVEY: 1 }, facts: ['FIRST_PROBE_REPORT'] as const,
-    queue: [{ subject: 'REFINERY', stage: 3 }, { subject: 'VAULT', stage: 1 }],
+    modules: { REFINERY: 1, EXTRACTOR: 1 }, facts: [],
+    queue: [{ subject: 'REFINERY', stage: 2 }],
     unlockToAnnounce: null, works: 0, canPayNext: false, probing: false, mining: false, crates: [], acked: [],
   };
   const wait = { until: new Date(Date.now() + 90_000), spanMs: 90_000 };
@@ -435,46 +457,47 @@ it('keeps the away chip when the same wait moves between screens', async () => {
 });
 
 describe('declining the guide', () => {
-  const mount = (id = 'skip-account') => render(<>
-    <button type="button" data-guide="repair-order" onClick={ordered}>unguided repair</button>
-    <StarterTutorialCoach accountId={id} tutorial={{ answer: { kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 1 }, ack: vi.fn(), backIn: 0 }} />
-  </>);
   const ordered = vi.fn();
-  it('offers a confirmation with a way to continue, then releases all controls on confirmation and remembers the account', async () => {
+  const mount = () => {
+    const onSkip = vi.fn();
+    render(<>
+      <button type="button" data-guide="repair-order" onClick={ordered}>unguided repair</button>
+      <StarterTutorialCoach onSkip={onSkip} tutorial={{ answer: { kind: 'step', id: 'online', step: 'press', marks: ['[data-guide="unlock-try"]'], chapter: 1, strict: true }, ack: vi.fn(), backIn: 0 }} />
+    </>);
+    return onSkip;
+  };
+  /** The choice is the account's (plan F3): the card goes at once, and `onSkip` saves it there. */
+  it('offers a confirmation with a way to continue, then releases all controls and hands the choice to the account', async () => {
     const { unlockHeld } = await import('../src/starter/tutorial/unlockHold.js');
-    const view = mount();
+    const onSkip = mount();
     fireEvent.click(screen.getByRole('button', { name: "I don't need the guide" }));
     expect(screen.getByRole('dialog')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Continue with guide' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+    expect(onSkip).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: "I don't need the guide" }));
     fireEvent.click(screen.getByRole('button', { name: 'Close guide' }));
+    expect(onSkip).toHaveBeenCalledOnce();
     expect(document.querySelector('[data-school-coach], [data-school-away], [data-drag-hint]')).toBeNull();
     expect(screen.queryByTestId('pointer')).toBeNull();
     expect(unlockHeld()).toBe(false);
     fireEvent.click(screen.getByText('unguided repair'));
     expect(ordered).toHaveBeenCalledOnce();
-    expect(observe).toHaveBeenCalledWith('training_exit_requested', expect.objectContaining({ trainingVersion: 'starter-tutorial.v1', code: 'skipped' }), 'live');
-    view.unmount();
-    const remounted = mount();
-    expect(document.querySelector('[data-school-coach]')).toBeNull();
-    remounted.unmount();
-    mount('another-account');
-    expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+    expect(observe).toHaveBeenCalledWith('training_exit_requested', expect.objectContaining({ trainingVersion: 'starter-tutorial.v2', code: 'skipped' }), 'live');
   });
 });
 
 it('the late sight chapters point without locking the other repairs', () => {
  const free = vi.fn();
- render(<><div data-guide="sight-telescope"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><div data-guide="sight-telescope"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
  fireEvent.click(screen.getByText('another repair'));
- expect(free).toHaveBeenCalledOnce();expect(screen.getByText('7/8')).toBeTruthy();
+ expect(free).toHaveBeenCalledOnce();
 });
 
 it('does not scroll the galaxy away when a read target rides a projected scene marker', async()=>{
  vi.useFakeTimers();const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
- render(<><span data-scene-mark data-guide="sight-telescope"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><span data-scene-mark data-guide="sight-telescope"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
  await act(async()=>{await vi.advanceTimersByTimeAsync(300);});
  expect(scroll).not.toHaveBeenCalled();
 });
@@ -486,7 +509,7 @@ it('does not scroll the galaxy away when a read target rides a projected scene m
  */
 describe('closing the guide', () => {
   it('takes the card away while it asks, and brings it back when the guide is kept', () => {
-    coach({ kind: 'step', id: 'welcome', step: 'read', marks: [], chapter: 6 });
+    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false });
     expect(document.querySelector('[data-school-coach]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /I don't need the guide/ }));
     expect(screen.getByRole('button', { name: 'Close guide' })).toBeTruthy();

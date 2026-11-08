@@ -1,12 +1,19 @@
 import { REPAIR_LADDER } from '@astera/rules';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
-import { StarterGoal } from '../src/starter/tutorial/visualGoal.js';
+import type { TutorialAnswer } from '../src/starter/tutorial/script.js';
+import { StarterGoal, StarterLesson, type StarterGoalValue } from '../src/starter/tutorial/visualGoal.js';
 import { ObjectiveLine } from '../src/starter/ObjectiveLine.js';
 import { wireVessel } from './starterVesselFixture.js';
 
-afterEach(cleanup);
+const observe = vi.hoisted(() => vi.fn());
+vi.mock('../src/lib/playerAnalytics/runtime.js', () => ({ observe }));
+const sound = vi.hoisted(() => vi.fn());
+vi.mock('../src/lib/sound.js', () => ({ playSound: sound }));
+
+afterEach(() => { cleanup(); localStorage.clear(); observe.mockClear(); sound.mockClear(); });
 
 const first = REPAIR_LADDER.find(s => s.module === 'REFINERY' && s.stage === 2);
 
@@ -62,10 +69,88 @@ describe('the next-step line over the galaxy', () => {
 
 it('uses the officer road for both its short label and its destination, even when mining is already available', () => {
   const open = vi.fn(), rock = vi.fn();
-  render(<StarterGoal.Provider value={{kind:'step',id:'orderExtractor3',step:'press',chapter:5,nav:'openShip',marks:['[data-guide="dock-base"]']}}>
-    <ObjectiveLine vessel={vesselSchema.parse(wireVessel({modules:{REFINERY:3,EXTRACTOR:2,SURVEY:1,SHIPYARD:1},features:['production','intel','fleet']}))} fetchedAt={Date.now()} onOpenShip={open} onFocusRock={rock}/>
+  const goal: StarterGoalValue = { step: { kind: 'step', id: 'orderRefinery', step: 'press', chapter: 2, strict: true, nav: 'openShip', marks: ['[data-guide="dock-base"]'] }, choice: { kind: 'mine' }, picked: false, guided: true, view: 'galaxy' };
+  render(<StarterGoal.Provider value={goal}>
+    <ObjectiveLine vessel={vesselSchema.parse(wireVessel({modules:{REFINERY:1,EXTRACTOR:1,SHIPYARD:1},features:['production','intel','fleet']}))} fetchedAt={Date.now()} onOpenShip={open} onFocusRock={rock}/>
   </StarterGoal.Provider>);
   const line=screen.getByTestId('ship-objective');
-  expect(line.textContent).toContain('Extractor');expect(line.textContent).not.toContain('Send a Prospector');
+  expect(line.textContent).toContain('Refinery');expect(line.textContent).not.toContain('Send a Prospector');
   fireEvent.click(line);expect(open).toHaveBeenCalledOnce();expect(rock).not.toHaveBeenCalled();
+});
+
+/**
+ * THE ADVISOR (plan F3, N1). After the core the NPC offers at most three real things to do, one of
+ * them recommended, each with its price, its time and what it opens. The player picks; the line then
+ * names the pick. It speaks up by itself when the guide hands over, and again after each pick is done.
+ */
+describe('the advisor behind the next-step line', () => {
+  const rich = { alloy: 10_000, crystal: 10_000, bufferAlloy: 50, progress: { modules: { REFINERY: 2, EXTRACTOR: 1 }, facts: [], parts: 0, fuel: 0 } };
+  const survey = REPAIR_LADDER.find(s => s.module === 'SURVEY' && s.stage === 1)!;
+  const extractor = REPAIR_LADDER.find(s => s.module === 'EXTRACTOR' && s.stage === 2)!;
+  const advise: TutorialAnswer = { kind: 'advise' };
+  const line = (over: Record<string, unknown> = {}, lesson: TutorialAnswer | null = null) => {
+    const wrap = (child: ReactNode) => lesson ? <StarterLesson.Provider value={lesson}>{child}</StarterLesson.Provider> : child;
+    return wrap(<ObjectiveLine vessel={vesselSchema.parse(wireVessel({ ...rich, ...over }))} fetchedAt={Date.now()} onOpenShip={vi.fn()} />);
+  };
+  const ordered = (step: typeof extractor) => [{ id: 'o1', queue: 'CONSTRUCTION', subject: step.module, stage: step.stage, count: 1, startedAt: new Date().toISOString(), readyAt: new Date(Date.now() + 60_000).toISOString(), cost: { alloy: step.alloy, crystal: step.crystal, deuterium: 0 } }];
+
+  it('offers at most three choices, the first one recommended, with price, time and what it opens', () => {
+    render(line());
+    fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
+    const panel = screen.getByTestId('starter-advice');
+    const rows = within(panel).getAllByRole('button', { name: /.+/ }).filter(row => row.hasAttribute('data-advice'));
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.getAttribute('data-advice')).toBe('repair:SURVEY:1');
+    expect(rows[0]?.textContent).toMatch(/recommended/i);
+    expect(rows[1]?.textContent).not.toMatch(/recommended/i);
+    expect(rows[0]?.textContent).toContain(String(survey.alloy));
+    expect(rows[0]?.textContent).toContain(String(survey.crystal));
+    expect(rows[0]?.textContent).toContain('30s');
+    expect(rows[0]?.textContent).toMatch(/opens probes/i);
+    expect(sound).toHaveBeenCalled();
+  });
+
+  it('makes a pick the line, remembers it for the ship, and folds away with a sound', () => {
+    render(line());
+    fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
+    sound.mockClear();
+    fireEvent.click(screen.getByTestId('starter-advice').querySelector('[data-advice="repair:EXTRACTOR:2"]')!);
+    expect(screen.queryByTestId('starter-advice')).toBeNull();
+    expect(screen.getByTestId('ship-objective').textContent).toContain('Extractor');
+    expect(localStorage.getItem('astera.starter.advice.ship-1')).toContain('repair:EXTRACTOR:2');
+    expect(sound).toHaveBeenCalledWith('confirm');
+    expect(observe).toHaveBeenCalledWith('interaction', { surface: 'starter_advisor', subject: 'repair:EXTRACTOR:2', code: 'picked' });
+  });
+
+  it('opens by itself once when the guide hands over, and not again until a pick is done', () => {
+    const view = render(line({}, advise));
+    expect(screen.getByTestId('starter-advice')).toBeTruthy();
+    expect(observe).toHaveBeenCalledWith('surface_visible', { surface: 'starter_advisor' });
+    fireEvent.click(within(screen.getByTestId('starter-advice')).getByRole('button', { name: /close/i }));
+    view.rerender(line({ bufferAlloy: 51 }, advise));
+    expect(screen.queryByTestId('starter-advice')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
+    fireEvent.click(screen.getByTestId('starter-advice').querySelector('[data-advice="repair:EXTRACTOR:2"]')!);
+    view.rerender(line({ queue: ordered(extractor) }, advise));
+    expect(screen.getByTestId('starter-advice')).toBeTruthy();
+    expect(screen.getByTestId('ship-objective').textContent).not.toContain('Extractor');
+  });
+
+  it('never opens by itself with the guide off, yet the choices are a tap away', () => {
+    render(line());
+    expect(screen.queryByTestId('starter-advice')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
+    expect(screen.getByTestId('starter-advice')).toBeTruthy();
+  });
+
+  it('keeps the choices away while the core holds the player', () => {
+    render(line({}, { kind: 'step', id: 'collect', step: 'press', chapter: 1, strict: true, marks: ['[data-guide="works"]'] }));
+    expect(screen.queryByRole('button', { name: /other choices/i })).toBeNull();
+    expect(screen.queryByTestId('starter-advice')).toBeNull();
+  });
+
+  it('has nothing to open when there is only one thing to do', () => {
+    render(line({ alloy: 0, crystal: 0, bufferAlloy: 0 }));
+    expect(screen.queryByRole('button', { name: /other choices/i })).toBeNull();
+  });
 });

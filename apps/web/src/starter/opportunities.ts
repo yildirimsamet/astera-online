@@ -34,7 +34,8 @@ export interface OpportunityInput {
 
 const DEED_FACT = { probe: 'FIRST_PROBE_REPORT', mine: 'FIRST_MINING_RETURN' } as const satisfies Record<'probe' | 'mine', VesselFact>;
 
-const keyOf = (o: Opportunity): string => o.kind === 'repair' || o.kind === 'save' ? `${o.kind}:${o.step.module}:${String(o.step.stage)}` : o.kind;
+/** One name per offer, stable while it is on offer: what a pick is remembered by. */
+export const opportunityKey = (o: Opportunity): string => o.kind === 'repair' || o.kind === 'save' ? `${o.kind}:${o.step.module}:${String(o.step.stage)}` : o.kind;
 
 /**
  * WHAT THIS SHIP CAN DO, BEST FIRST (plan 2026-11-08 F1). The first entry is the one thing the line
@@ -44,7 +45,7 @@ const keyOf = (o: Opportunity): string => o.kind === 'repair' || o.kind === 'sav
  */
 export function opportunities(input: OpportunityInput): [Opportunity, ...Opportunity[]] {
   const head = firstOpportunity(input);
-  return [head, ...choices(input).filter(o => keyOf(o) !== keyOf(head))];
+  return [head, ...choices(input).filter(o => opportunityKey(o) !== opportunityKey(head))];
 }
 
 function repairQueue(input: OpportunityInput) {

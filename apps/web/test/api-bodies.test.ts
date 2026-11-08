@@ -69,6 +69,7 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['login', (a) => a.login('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
   ['claim', (a) => a.claim('vantage', 'a-long-enough-password', [], 'FR', { version: COMMUNITY_POLICY_VERSION, locale: 'fr' }), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'FR', intents: [], communityPolicyVersion: COMMUNITY_POLICY_VERSION, communityPolicyLocale: 'fr' }],
   ['updateCountry', (a) => a.updateCountry('JP'), { country: 'JP' }],
+  ['updateStarterGuide', (a) => a.updateStarterGuide(true), { off: true }],
   // The phone's clock offset rides along: quiet hours are kept on the player's own night (retention plan §6.6).
   ['registerPushDevice', (a) => a.registerPushDevice('fcm-token', 'tr', 180), { token: 'fcm-token', platform: 'android', locale: 'tr', utcOffsetMinutes: 180 }],
   ['forgetPushDevice', (a) => a.forgetPushDevice('fcm-token'), { token: 'fcm-token' }],

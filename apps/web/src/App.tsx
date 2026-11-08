@@ -98,6 +98,7 @@ function SessionApp() {
     signInInstead,
     claim,
     updateCountry,
+    setStarterGuide,
     rollover,
   } = useSession({ autoTraining: (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web' && location.pathname !== '/profile' });
   const ready = session.phase === 'ready';
@@ -266,6 +267,8 @@ function SessionApp() {
         isAdmin={session.me.isAdmin}
         accountId={session.me.accountId}
         commander={session.me.displayName}
+        guideOff={session.me.starterGuideOff}
+        onGuideOff={() => { void setStarterGuide(true); }}
         panel={profileOpen ? 'profile' : panel}
         onPanel={openPanel}
         onFocusPlanet={focusPlanet}
@@ -294,6 +297,7 @@ function SessionApp() {
             onCountryChange={updateCountry}
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
+            {...(session.me.vessel && session.me.starterGuideOff ? { onGuideOn: () => { setPanel(null); void setStarterGuide(false); } } : {})}
             onEnterArena={!session.me.vessel && canEnterArena(import.meta.env, arenaAllowed)
               ? () => { if (through('enter') === 'page') { setPanel(null); setArenaOpen(true); } } : undefined}
             homeRequest={homeRequest}

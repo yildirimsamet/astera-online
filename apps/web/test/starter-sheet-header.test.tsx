@@ -54,6 +54,6 @@ describe('the starter ship uses the Base sheet header', () => {
 });
 
 it('shows the real telescope reach when the lesson asks for it, without a saved toggle',()=>{
- show(['telescope'],{kind:'step',id:'telescopeRing',step:'read',chapter:7,marks:[]});
+ show(['telescope'],{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:[]});
  expect(canvas).toHaveBeenLastCalledWith(expect.objectContaining({showTelescopeReach:true}),undefined);
 });

@@ -98,6 +98,7 @@ import {
   clanStrengthSchema,
   collectSchema,
   countryUpdatedSchema,
+  starterGuideSchema,
   galaxySchema,
   monumentsSchema,
   monumentQuoteSchema,
@@ -729,6 +730,8 @@ export class Api {
     countryUpdatedSchema,
     { method: 'PUT', body: { country } },
   );
+
+  updateStarterGuide = (off: boolean) => this.send('/api/auth/me/starter-guide', starterGuideSchema, { method: 'PUT', body: { off } });
 
   /* ── announcements and feedback ─────────────────────────── */
 

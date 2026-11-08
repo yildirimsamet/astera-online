@@ -532,6 +532,8 @@ export const meSchema = z.object({
   country: countryCode,
   /** Older servers do not know the operations panel and safely default to no access. */
   isAdmin: z.boolean().default(false),
+  /** "I don't need the guide", kept on the account (plan F3); an older server knows nothing of it. */
+  starterGuideOff: z.boolean().default(false),
   placement: z
     .object({ shard: z.string(), shardName: z.string(), planetName: z.string() })
     .nullable(),
@@ -544,6 +546,7 @@ export const meSchema = z.object({
 });
 
 export const countryUpdatedSchema = z.object({ country: countryCode });
+export const starterGuideSchema = z.object({ off: z.boolean() });
 
 /* ── the galaxies you can choose between ────────────────────── */
 
@@ -3826,7 +3829,12 @@ export const appliedSchema = z.object({
  * interface must never have to ask a second time for the consequence of a tap, and
  * the one call that CREATES a planet is the last place to make an exception.
  */
-export const planetClaimSchema = sessionSchema.extend({
+const claimSessionSchema = sessionSchema.extend({
+  /** An existing account may claim, and its guide choice comes with it (plan F3); an older server knows nothing of it. */
+  starterGuideOff: z.boolean().default(false),
+});
+
+export const planetClaimSchema = claimSessionSchema.extend({
   placement: z.object({
     shard: z.string(),
     shardName: z.string(),
@@ -3839,7 +3847,7 @@ export const planetClaimSchema = sessionSchema.extend({
 });
 
 /** A new account claims a ship and has no planet yet (starter galaxy plan §6). */
-const shipClaimSchema = sessionSchema.extend({
+const shipClaimSchema = claimSessionSchema.extend({
   placement: z.null(),
   applied: z.array(appliedSchema),
   planet: z.null(),

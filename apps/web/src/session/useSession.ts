@@ -392,6 +392,7 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
         displayName: result.displayName,
         isAdmin: false,
         country: result.country,
+        starterGuideOff: result.starterGuideOff,
       };
       if (result.vessel) {
         const { id, name, status, galaxy } = result.vessel;
@@ -466,6 +467,19 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
     });
     void refreshQueries(queries, { queryKey: keys.leaderboard });
   }, [api, queries]);
+
+  /**
+   * "I DON'T NEED THE GUIDE" (plan F3). Said at once on this screen and saved to the account, so no
+   * other device asks again. A save that fails still keeps the choice for this visit.
+   */
+  const setStarterGuide = useCallback(async (off: boolean): Promise<void> => {
+    const shown = currentSession.current;
+    // A page restore reads the remembered session before the account answers.
+    if (shown.phase === 'ready') rememberReady({ ...shown.me, starterGuideOff: off });
+    setSession((current) => current.phase === 'ready' || current.phase === 'servers'
+      ? { ...current, me: { ...current.me, starterGuideOff: off } } : current);
+    try { await api.updateStarterGuide(off); } catch { /* This visit keeps the choice; the account learns it on the next try. */ }
+  }, [api]);
 
 
   /**
@@ -542,6 +556,7 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
     signInInstead,
     claim,
     updateCountry,
+    setStarterGuide,
     rollover,
   };
 }

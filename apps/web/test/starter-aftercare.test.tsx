@@ -12,23 +12,23 @@ vi.mock('../src/lib/playerAnalytics/runtime.js', () => ({ observe: state.observe
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); state.native = false; state.ask.mockClear(); });
 const ship = () => vesselSchema.parse(wireVessel({ modules: { REFINERY: 3, SHIPYARD: 1, SURVEY: 1, EXTRACTOR: 3 }, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] }));
 it('never offers phone permission on web', () => {
-  render(<StarterAftercare vessel={ship()} farewelled />);
+  render(<StarterAftercare vessel={ship()} farewelled guided />);
   expect(screen.queryByText(/may i let you know/i)).toBeNull();
   expect(state.ask).not.toHaveBeenCalled();
 });
 it('asks at farewell, retries only on a later long repair, and then stops', async () => {
   state.native = true;
   const vessel = ship();
-  const { rerender, unmount } = render(<StarterAftercare vessel={vessel} farewelled />);
+  const { rerender, unmount } = render(<StarterAftercare vessel={vessel} farewelled guided />);
   fireEvent.click(screen.getByRole('button', { name: /notify me/i }));
   await waitFor(() => { expect(state.ask).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ ask: true })); });
   await waitFor(() => { expect(screen.queryByRole('button', { name: /notify me/i })).toBeNull(); });
   const startedAt = new Date(Date.now() + 1000);
   const queue = [{ id: 'long', queue: 'CONSTRUCTION' as const, subject: 'SURVEY', stage: 2, count: 1, startedAt, readyAt: new Date(startedAt.getTime() + 20 * 60000), cost: { alloy: 600, crystal: 350, deuterium: 0 } }];
-  rerender(<StarterAftercare vessel={{ ...vessel, queue }} farewelled />);
+  rerender(<StarterAftercare vessel={{ ...vessel, queue }} farewelled guided />);
   fireEvent.click(screen.getByRole('button', { name: /later/i }));
   unmount();
-  render(<StarterAftercare vessel={{ ...vessel, queue }} farewelled />);
+  render(<StarterAftercare vessel={{ ...vessel, queue }} farewelled guided />);
   expect(screen.queryByRole('button', { name: /notify me/i })).toBeNull();
 });
 it('offers one optional visit hint with only the missing thrust parts, and dismisses on one tap', async () => {
@@ -37,10 +37,10 @@ it('offers one optional visit hint with only the missing thrust parts, and dismi
   for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
   modules.DRIVE_THRUST = 0;
   const vessel = { ...ship(), modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] as const, parts: 1 };
-  const { rerender } = render(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts] }} farewelled />);
+  const { rerender } = render(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts] }} farewelled guided />);
   expect(screen.getByText(/Find 2 thrust parts/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /understood/i }));
-  rerender(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts], parts: 0 }} farewelled />);
+  rerender(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts], parts: 0 }} farewelled guided />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
 });
 it('remembers dismissal across mounts and calculates a changed need from the current ship', async () => {
@@ -50,10 +50,27 @@ it('remembers dismissal across mounts and calculates a changed need from the cur
   modules.DRIVE_THRUST = 0;
   const vessel = { ...ship(), modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] as const, parts: 1 };
   const view = { ...vessel, facts: [...vessel.facts] };
-  const { rerender, unmount } = render(<StarterAftercare vessel={view} farewelled />);
-  rerender(<StarterAftercare vessel={{ ...view, parts: 2 }} farewelled />);
+  const { rerender, unmount } = render(<StarterAftercare vessel={view} farewelled guided />);
+  rerender(<StarterAftercare vessel={{ ...view, parts: 2 }} farewelled guided />);
   expect(screen.getByText(/Find 1 thrust parts/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /understood/i })); unmount();
-  render(<StarterAftercare vessel={view} farewelled />);
+  render(<StarterAftercare vessel={view} farewelled guided />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
+});
+
+/** Plan F3: the phone permission does not hang on the guide; without it, the ask comes at the same point. */
+it('asks a commander without the guide once the first haul is home, and gives no hint', async () => {
+  const { REPAIR_LADDER } = await import('@astera/rules');
+  const modules: VesselModules = {};
+  for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
+  modules.DRIVE_THRUST = 0;
+  const away = { ...ship(), facts: ['FIRST_PROBE_REPORT' as const] };
+  const { rerender } = render(<StarterAftercare vessel={away} farewelled={false} guided={false} />);
+  expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
+  rerender(<StarterAftercare vessel={{ ...ship(), modules, parts: 1 }} farewelled={false} guided={false} />);
+  expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
+  state.native = true;
+  rerender(<StarterAftercare vessel={{ ...ship(), modules, parts: 1 }} farewelled={false} guided={false} />);
+  expect(screen.getByRole('button', { name: /notify me/i })).toBeTruthy();
+  expect(screen.queryByText(/thrust parts/)).toBeNull();
 });

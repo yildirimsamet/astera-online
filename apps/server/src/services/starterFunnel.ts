@@ -3,11 +3,14 @@ import type { Db } from '../db/client.js';
 import { analyticsEvents } from '../db/schema.js';
 import { STARTER_TUTORIAL_STEPS } from '../../../web/src/api/starterTutorialSteps.js';
 
+/** The guide these steps belong to; the old guide's steps meant other things (plan F3, owner 2026-11-08 N1). */
+const TRAINING = 'starter-tutorial.v2';
+
 /** The same eligible-visit selection as the admin report; no player history or event text leaves SQL. */
 export async function starterFunnel(db: Db, eligibleVisits: SQLWrapper) {
   const scoped = db.selectDistinct({ accountId: analyticsEvents.accountId }).from(analyticsEvents).where(and(
     inArray(analyticsEvents.visitorId, eligibleVisits), eq(analyticsEvents.mode, 'live'),
-    sql`(${analyticsEvents.name}='vessel_enlisted' OR (${analyticsEvents.name}='training_scene_visible' AND ${analyticsEvents.properties}->>'trainingVersion'='starter-tutorial.v1'))`,
+    sql`(${analyticsEvents.name}='vessel_enlisted' OR (${analyticsEvents.name}='training_scene_visible' AND ${analyticsEvents.properties}->>'trainingVersion'=${TRAINING}))`,
   ));
   const rows = await db.select({
     accountId: analyticsEvents.accountId,
@@ -18,10 +21,10 @@ export async function starterFunnel(db: Db, eligibleVisits: SQLWrapper) {
     crates: sql<number>`coalesce(sum(CASE WHEN ${analyticsEvents.name}='outcome_visible' AND ${analyticsEvents.properties}->>'surface'='starter_crate' AND ${analyticsEvents.properties}->>'count' ~ '^[0-9]+$' THEN (${analyticsEvents.properties}->>'count')::int ELSE 0 END),0)::int`,
   }).from(analyticsEvents).where(and(inArray(analyticsEvents.visitorId, eligibleVisits), inArray(analyticsEvents.accountId, scoped), eq(analyticsEvents.mode, 'live'))).groupBy(analyticsEvents.accountId);
   const scenes = await db.select({ scene: sql<string>`${analyticsEvents.properties}->>'scene'`, accounts: sql<number>`count(distinct ${analyticsEvents.accountId})::int` })
-    .from(analyticsEvents).where(and(inArray(analyticsEvents.visitorId, eligibleVisits), inArray(analyticsEvents.accountId, scoped), eq(analyticsEvents.name, 'training_scene_visible'), eq(analyticsEvents.mode, 'live'), sql`${analyticsEvents.properties}->>'trainingVersion'='starter-tutorial.v1'`))
+    .from(analyticsEvents).where(and(inArray(analyticsEvents.visitorId, eligibleVisits), inArray(analyticsEvents.accountId, scoped), eq(analyticsEvents.name, 'training_scene_visible'), eq(analyticsEvents.mode, 'live'), sql`${analyticsEvents.properties}->>'trainingVersion'=${TRAINING}`))
     .groupBy(sql`${analyticsEvents.properties}->>'scene'`);
   let previous = rows.length;
-  const steps = STARTER_TUTORIAL_STEPS.filter(id => id !== 'away').map(id => {
+  const steps = STARTER_TUTORIAL_STEPS.map(id => {
     const accounts = scenes.find(scene => scene.scene === id)?.accounts ?? 0;
     const dropoff = Math.max(0, previous - accounts);
     previous = accounts;

@@ -96,7 +96,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
     if (starter.vessel || starter.eligible) {
       await enlistVessel(app.db, account.id, app.clock, app.adminUsernames, undefined, body.vesselHull);
       const vessel = await readVessel(app.db, account.id, app.clock);
-      return { ...await sessionOpener(app, reply, account), placement: null, applied: [], planet: null, vessel };
+      return { ...await sessionOpener(app, reply, account), starterGuideOff: account.starterGuideOff, placement: null, applied: [], planet: null, vessel };
     }
 
     /**
@@ -144,6 +144,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
 
     return {
       ...session,
+      starterGuideOff: account.starterGuideOff,
       placement: {
         shard: target.shardCode,
         shardName: target.shardName,

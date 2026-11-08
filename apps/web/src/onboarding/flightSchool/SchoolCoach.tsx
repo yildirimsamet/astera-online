@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import './school.css';
 
 interface Props {
-  title: string; text: string; progress: number;
+  title: string; text: string;
+  /** Where the line stands in its chapters; without it the card counts nothing. */
+  progress?: number;
   actionLabel?: string; onAction?: () => void;
   /** Without one there is no way out: the starter tutorial cannot be skipped (owner 2026-11-06). */
   onExit?: () => void; exitLabel?: string;
@@ -42,7 +44,7 @@ function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLa
   }, [complete, text, letters.length]);
   return <aside ref={ref} data-beat-card data-school-coach data-dock={dock} className="school-coach" aria-label={title}>
     <div className="school-speech">
-      <div className="school-heading"><span>{title}</span><span className="school-progress">{progress}/{total}</span></div>
+      <div className="school-heading"><span>{title}</span>{progress !== undefined && <span className="school-progress">{progress}/{total}</span>}</div>
       <div className="school-line" data-school-line={text} aria-live="off">
         <p aria-hidden={!complete}>{letters.slice(0, shown).join('')}<span aria-hidden="true" className={complete ? 'school-cursor school-cursor-done' : 'school-cursor'} /></p>
         {!complete && <><span className="sr-only">{text}</span><button type="button" className="school-reveal" aria-label={revealLabel} onClick={() => { setShown(letters.length); }} /></>}

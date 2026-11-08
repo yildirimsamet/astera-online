@@ -10,7 +10,7 @@ import { GameError } from '../services/planet.js';
 import { isAdminAccount } from '../services/admin.js';
 import { starterStanding } from '../services/starter/enlist.js';
 import { accounts } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { CountryCode } from '@astera/rules';
 
 const REFRESH_COOKIE = 'bs_refresh';
@@ -162,6 +162,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
       username: account.username,
       displayName: account.displayName,
       country: account.country,
+      starterGuideOff: account.starterGuideOff,
       isAdmin,
       placement: placement
         ? {
@@ -183,6 +184,19 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
       .set({ countryCode: country })
       .where(eq(accounts.id, req.accountId!))
       .returning({ country: accounts.countryCode });
+    if (!updated) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
+    return updated;
+  });
+
+  /** "I don't need the guide" (plan F3): kept on the account, so no other device asks again. */
+  app.put('/api/auth/me/starter-guide', { preHandler: requireAuth }, async (req) => {
+    const { off } = z.object({ off: z.boolean() }).strict().parse(req.body ?? {});
+    const [updated] = await app.db
+      .update(accounts)
+      // The first refusal keeps its moment: asking twice does not move it.
+      .set({ starterGuideOffAt: off ? sql`coalesce(${accounts.starterGuideOffAt}, now())` : null })
+      .where(eq(accounts.id, req.accountId!))
+      .returning({ off: sql<boolean>`${accounts.starterGuideOffAt} IS NOT NULL` });
     if (!updated) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
     return updated;
   });

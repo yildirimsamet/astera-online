@@ -9,10 +9,9 @@ import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
 import type { AwayDoor } from '../../lib/awayStory.js';
 import type { ChatChannel } from '../../screens/ChatScreen.js';
-import { StarterGoal, StarterGoalPulse, StarterLesson } from '../../starter/tutorial/visualGoal.js';
+import { StarterGoal, StarterGoalPulse, StarterLesson, starterGoal } from '../../starter/tutorial/visualGoal.js';
 import { StarterAftercare } from '../../starter/tutorial/StarterAftercare.js';
 import { StarterTutorialCoach } from '../../starter/tutorial/StarterTutorialCoach.js';
-import { useGuidePreference } from '../../starter/tutorial/guidePreference.js';
 import { useStarterTutorial } from '../../starter/tutorial/useStarterTutorial.js';
 import { AwayHost } from './AwayHost.js';
 import { BellHost } from './BellHost.js';
@@ -40,6 +39,9 @@ export interface GameShellProps {
   isAdmin?: boolean;
   accountId?: string;
   commander: string;
+  /** The starter guide is turned off on this account (plan F3); `onGuideOff` turns it off. */
+  guideOff?: boolean;
+  onGuideOff?: () => void;
   /** The page open over the galaxy, owned by the app. */
   panel: Panel;
   onPanel: ShellRoute;
@@ -85,7 +87,7 @@ export interface GameShellProps {
  * and pages dock to the right (both sheet kits). The keyboard works at every width:
  * 1–5 the tabs, Space the selection, Esc lets go (`shortcutOf`).
  */
-export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy, isAdmin = false }: GameShellProps) {
+export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy, isAdmin = false, guideOff = false, onGuideOff }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -174,8 +176,9 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   const tutorial = useStarterTutorial(
     bell || chatOpen || fleetOpen || nowOpen ? 'other' : panel === null ? 'galaxy' : panel === 'planet' ? 'ship' : 'other',
   );
-  const { skipped: guideSkipped } = useGuidePreference(accountId);
-  const tutoring = !guideSkipped && tutorial?.answer.kind === 'step';
+  const tutoring = !guideOff && tutorial?.answer.kind === 'step';
+  /** What the marks follow: the guide's step while it speaks, else the player's pick or the first offer. */
+  const goal = tutorial ? starterGoal(tutorial, !guideOff) : null;
 
   /** Where each line of the return story (E10) takes the player; a world's door carries its id. */
   const openAway = (door: AwayDoor, planetId?: string): void => {
@@ -259,8 +262,8 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   );
 
   return (
-    <StarterGoal.Provider value={tutorial?.action ?? null}>
-    <StarterLesson.Provider value={guideSkipped ? null : tutorial?.answer ?? null}>
+    <StarterGoal.Provider value={goal}>
+    <StarterLesson.Provider value={guideOff ? null : tutorial?.answer ?? null}>
     <div
       className="v2-shell relative z-10 flex h-dvh flex-col overflow-hidden bg-v2-void"
       {...(topHeight === null ? {} : { style: { '--v2-top-h': `${String(topHeight)}px` } as CSSProperties })}
@@ -313,9 +316,9 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
       {/* While the tutorial speaks, nothing else may open over it: its gate would lock that sheet. */}
       <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} held={tutoring} />
       {accountId && <RecallHost key={accountId} accountId={accountId} paused={tutoring || panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen} />}
-      {tutorial && <StarterGoalPulse tutorial={tutorial} />}
-      {tutorial && tutoring && <StarterTutorialCoach accountId={accountId} tutorial={tutorial} />}
-      {!guideSkipped && tutorial?.vessel && <StarterAftercare key={tutorial.vessel.id} vessel={tutorial.vessel} farewelled={tutorial.farewelled === true} />}
+      {tutorial && <StarterGoalPulse goal={goal} ack={tutorial.ack} />}
+      {tutorial && tutoring && <StarterTutorialCoach tutorial={tutorial} {...(onGuideOff ? { onSkip: onGuideOff } : {})} />}
+      {tutorial?.vessel && <StarterAftercare key={tutorial.vessel.id} vessel={tutorial.vessel} farewelled={tutorial.farewelled === true} guided={!guideOff} />}
 
       {fleetOpen && (
         <FleetHost

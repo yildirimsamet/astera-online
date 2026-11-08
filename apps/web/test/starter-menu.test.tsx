@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -54,6 +54,30 @@ describe('the commander menu', () => {
     expect(screen.getByText(/season ends/i)).toBeInTheDocument();
     expect(container.querySelector('[data-menu-leaderboard]')).not.toBeNull();
     expect(container.querySelector('[data-menu-category="rewards"]')).not.toBeNull();
+  });
+});
+
+/** Plan F3: the guide turned off on the account comes back from Academy, the help page. */
+describe('the guide, turned back on', () => {
+  beforeEach(async () => { await i18n.changeLanguage('en'); });
+  const academy = (onGuideOn?: () => void) => render(
+    <QueryClientProvider client={new QueryClient()}>
+      <ApiProvider api={new Api({ fetch: vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))) })}>
+        <MenuPanel page="academy" galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={vi.fn()} {...(onGuideOn ? { onGuideOn } : {})} />
+      </ApiProvider>
+    </QueryClientProvider>,
+  );
+
+  it('offers the guide back to a commander who turned it off', () => {
+    const onGuideOn = vi.fn();
+    academy(onGuideOn);
+    fireEvent.click(screen.getByRole('button', { name: /walks with you again/i }));
+    expect(onGuideOn).toHaveBeenCalledOnce();
+  });
+
+  it('says nothing of it while the guide is on', () => {
+    academy();
+    expect(screen.queryByRole('button', { name: /walks with you again/i })).toBeNull();
   });
 });
 

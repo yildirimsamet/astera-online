@@ -93,7 +93,9 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('DEFENCE', 'TELESCOPE', 1, 700, 500, 40, true, [needs('SHIPYARD', 1)]),
   step('REFINERY', 'REFINERY', 4, 886, 111, 60, true),
   step('DEFENCE', 'RADAR', 1, 500, 380, 60, true, [needs('TELESCOPE', 1)]),
-  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [], { deuterium: STARTER.deuteriumGrant }),
+  // Its price is the whole opening crystal, which nothing makes before the first Extractor: bought
+  // first, it would leave a ship that can never pay another repair (plan F3, `starter-ladder`).
+  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [needs('EXTRACTOR', 1)], { deuterium: STARTER.deuteriumGrant }),
   step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, true, [needs('EXTRACTOR', 2)]),
   // The ship leaves seeing what is around it (owner 2026-11-08, N3); no battle is asked of anyone.
   step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, true, [
