@@ -3615,6 +3615,8 @@ export const trafficSchema = z.object({
        * tooltip (D124).
        */
       kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'radiation_bomb', 'mining', 'harvest', 'pirate']),
+      /** A scout that came to look: named for what it is, so nobody waits for it to fight. */
+      scout: z.literal(true).optional(),
       radiationBombLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       /**
        * WHAT KIND OF CRAFT A QUESTION MARK IS, WHEN RADAR L5 HAS EARNED IT.

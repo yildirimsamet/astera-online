@@ -5676,7 +5676,7 @@ export const starterDepartures = pgTable('starter_departures', {
 }, (t) => [index('starter_departures_recent_idx').on(t.starterGalaxyId, t.at)]);
 
 /** What flies here. A pirate has no owner; a probe has no fleet. */
-export type VesselMissionKind = 'PROBE' | 'ATTACK' | 'RAID_SITE' | 'MINE' | 'SCOUT' | 'PIRATE';
+export type VesselMissionKind = 'PROBE' | 'ATTACK' | 'RAID_SITE' | 'MINE' | 'SCOUT' | 'PIRATE' | 'PASSING';
 
 /**
  * EVERYTHING IN THE AIR IN THIS GALAXY. The ships aboard are taken out of `vessel_units` at launch

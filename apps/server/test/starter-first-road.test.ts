@@ -63,7 +63,7 @@ describe('the road on the server', () => {
     await world.f.db.update(vessels).set({ lastSeenAt: now }).where(eq(vessels.id, ship!.id));
     await sweepStarterWorld(world.f.db, world.f.clock);
     const [scout] = await world.f.db.select().from(vesselMissions).where(and(eq(vesselMissions.targetVesselId, ship!.id), eq(vesselMissions.kind, 'SCOUT')));
-    const span = distance({ x: scout!.fromX, y: scout!.fromY, z: scout!.fromZ }, { x: scout!.toX, y: scout!.toY, z: scout!.toZ });
+    const span = distance({ x: scout!.fromX, y: scout!.fromY, z: scout!.fromZ }, ship!);
     expect(span).toBeGreaterThan(STARTER.radar[1]);
     expect(span).toBeLessThanOrEqual(STARTER.radar[1] + 150);
   });

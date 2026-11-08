@@ -49,6 +49,20 @@ describe('an outpost\'s reading', () => {
   const draw = (over: Partial<Parameters<typeof OutpostReading>[0]> = {}) =>
     render(<OutpostReading reading={WALL} carry={70} stock={{ low: 99, high: 263 }} crate={null} {...over} />);
 
+  it('puts the player\'s own fleet on the triangle, and leaves the verdict to them', () => {
+    draw({ own: 'SKIRMISHER' });
+    expect(document.querySelector('[data-rung="SKIRMISHER"]')?.hasAttribute('data-own')).toBe(true);
+    expect(document.querySelector('[data-rung="BULWARK"]')?.hasAttribute('data-own')).toBe(false);
+    expect(document.querySelector('[data-outpost-own]')?.textContent).toContain('Skirmisher');
+    expect(document.querySelector('[data-testid="outpost-reading"]')?.textContent).not.toMatch(/\b(win|lose|advantage)\b/i);
+  });
+
+  it('says nothing of a fleet it does not have', () => {
+    draw();
+    expect(document.querySelector('[data-own]')).toBeNull();
+    expect(document.querySelector('[data-outpost-own]')).toBeNull();
+  });
+
   it('reads the guard as the probe read it, every class with its range', () => {
     draw();
     const guard = document.querySelector('[data-outpost-guard]');
@@ -143,16 +157,16 @@ describe('the outpost card', () => {
 });
 
 describe('an outpost\'s probe report on the intel page', () => {
-  const draw = async (reports: object[]) => {
+  const draw = async (reports: object[], onOpenDossier?: (id: string) => void, won = false) => {
     const answer = (path: string) => {
       if (path.includes('/intel')) return { watching: [], radarLog: [], probeReports: reports, probeCost: { alloy: 1, crystal: 1, deuterium: 0 } };
       if (path.includes('/galaxy')) return { you: { planetId: 'ship-1', playerId: 'ship-1' }, planets: [], rivals: [], result: null };
-      return { vessel: wireVessel({ progress: yard, fleet: { DART: 2 } }) };
+      return { vessel: wireVessel({ progress: won ? { ...yard, facts: [...yard.facts, 'FIRST_OUTPOST_VICTORY'] } : yard, fleet: { DART: 2 } }) };
     };
     const fetch = vi.fn((input: RequestInfo | URL) => Promise.resolve(new Response(JSON.stringify(answer(urlOf(input))), { status: 200, headers: { 'content-type': 'application/json' } })));
     setStarterMode(true);
     const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={queries}><ApiProvider api={new Api({ fetch: starterFetch(fetch, () => true) })}><IntelScreen onOpenOrbit={() => undefined} /></ApiProvider></QueryClientProvider>);
+    render(<QueryClientProvider client={queries}><ApiProvider api={new Api({ fetch: starterFetch(fetch, () => true) })}><IntelScreen onOpenOrbit={() => undefined} {...(onOpenDossier ? { onOpenDossier } : {})} /></ApiProvider></QueryClientProvider>);
     await screen.findAllByText(/Telescope/);
     fireEvent.click(screen.getByRole('tab', { name: /Reports/ }));
   };
@@ -165,5 +179,43 @@ describe('an outpost\'s probe report on the intel page', () => {
     expect(screen.getAllByText('Solen')).toHaveLength(1);
     const card = reports[0]?.closest('article');
     expect(card?.querySelector('img')?.getAttribute('src')).not.toMatch(/hero-/);
+  });
+
+  // Owner playtest 2026-11-08: "ne yapmam bekleniyor saldırmam mı lazım nasıl saldırıcam? Tıklıyom bişey olmuyor".
+  it('says how to compare the two and what to do next, while the first hunt is on', async () => {
+    await draw([report()], vi.fn());
+    const how = await screen.findByTestId('hunt-howto');
+    expect(how.textContent).toMatch(/guard/i);
+    expect(how.textContent).toMatch(/line/i);
+    expect(how.textContent).toMatch(/Attack/);
+  });
+
+  it('gives each outpost a door to its attack', async () => {
+    const onOpenDossier = vi.fn();
+    await draw([report(), report({ targetPlanetId: 'b2', targetName: 'Kora', targetUsername: 'Kora' })], onOpenDossier);
+    const doors = await screen.findAllByRole('button', { name: 'Attack' });
+    expect(doors).toHaveLength(2);
+    fireEvent.click(doors[1]!);
+    expect(onOpenDossier).toHaveBeenCalledWith('b2');
+  });
+
+  it('opens the same door from the outpost\'s name', async () => {
+    const onOpenDossier = vi.fn();
+    await draw([report()], onOpenDossier);
+    fireEvent.click(await screen.findByRole('button', { name: /Solen/ }));
+    expect(onOpenDossier).toHaveBeenCalledWith(report().targetPlanetId);
+  });
+
+  it('stops explaining once the first outpost has fallen', async () => {
+    await draw([report()], vi.fn(), true);
+    await screen.findAllByTestId('outpost-reading');
+    expect(screen.queryByTestId('hunt-howto')).toBeNull();
+  });
+
+  it('leaves a player\'s report as it was: no door to an attack from here', async () => {
+    await draw([report({ targetPlanetId: 'them', targetName: 'Ember', targetUsername: 'Ember', outpost: undefined, classReading: undefined })], vi.fn());
+    await screen.findByText('Ember');
+    expect(screen.queryByRole('button', { name: 'Attack' })).toBeNull();
+    expect(screen.queryByTestId('hunt-howto')).toBeNull();
   });
 });

@@ -16,7 +16,7 @@ async function shipOf(q: Queryable, accountId: string): Promise<VesselRow> {
   return row;
 }
 
-const KIND_ON_THE_MAP = { PROBE: 'probe', ATTACK: 'fleet', RAID_SITE: 'fleet', MINE: 'mining', SCOUT: 'pirate', PIRATE: 'pirate' } as const;
+const KIND_ON_THE_MAP = { PROBE: 'probe', ATTACK: 'fleet', RAID_SITE: 'fleet', MINE: 'mining', SCOUT: 'fleet', PIRATE: 'pirate', PASSING: 'fleet' } as const;
 
 /** Stable for one flight, so that focus survives a refetch, and it maps to nothing else. */
 const contactId = (missionId: string): string => createHash('sha256').update(`contact:${missionId}`).digest('hex').slice(0, 22);
@@ -78,7 +78,9 @@ export async function starterTrafficView(db: Db, accountId: string, clock: Clock
       kind: identified ? KIND_ON_THE_MAP[mission.kind] : 'unknown' as const,
       ...window,
       ...(identified && hasFleet ? { fleet: mission.fleet, mass: massClass(mission.fleet) } : {}),
-      ...(mission.targetVesselId === row.id && mission.status === 'OUTBOUND' ? { inbound: true as const } : {}),
+      ...(identified && mission.kind === 'SCOUT' ? { scout: true as const } : {}),
+      // A scout comes to look from a distance: nothing is coming for this ship.
+      ...(mission.targetVesselId === row.id && mission.status === 'OUTBOUND' && mission.kind !== 'SCOUT' ? { inbound: true as const } : {}),
     }];
   });
   return { contacts };

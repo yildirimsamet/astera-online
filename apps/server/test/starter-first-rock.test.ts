@@ -48,10 +48,10 @@ describe('the first rock', () => {
   it('puts a rock in reach when the Shipyard is done and none is near', async () => {
     expect(await near()).toEqual([]);
     await buildYard();
-    expect((await near()).length).toBe(1);
+    expect((await near()).length).toBe(STARTER.sites.rocksInSight[1]);
   });
 
-  it('adds none when a rock is already near', async () => {
+  it('counts a rock already near against the three the first look opens on', async () => {
     const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, vesselId));
     const [galaxy] = await world.f.db.select().from(starterGalaxies).where(eq(starterGalaxies.id, galaxyId));
     // Near when the commander sees the finished yard (`buildYard` reads ten minutes on), which is
@@ -60,6 +60,6 @@ describe('the first rock', () => {
     const id = rockSeedNear(ship!, minutes, Array.from({ length: 800 }, () => randomUUID()));
     await world.f.db.insert(starterSites).values({ id: id!, starterGalaxyId: galaxyId, kind: 'ASTEROID', x: 0, y: 0, z: 0, alloy: 300, crystal: 100, stockFull: 400, createdAt: world.f.clock.now() });
     await buildYard();
-    expect((await rocks()).length).toBe(1);
+    expect((await rocks()).length).toBe(STARTER.sites.rocksInSight[1]);
   });
 });

@@ -1,4 +1,4 @@
-import { COMBAT_CLASSES, HULLS, STARTER, counters, type ClassReading, type CombatClass, type HullId } from '@astera/rules';
+import { COMBAT_CLASSES, HULLS, STARTER, counters, type ClassReading, type CombatClass, type HullClass, type HullId } from '@astera/rules';
 import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VesselView } from '../api/starterSchemas.js';
@@ -59,13 +59,15 @@ function Guard({ reading }: { reading: ClassReading | undefined }) {
  * fight with each class beside the ship that flies it, and what the holds can carry home. The
  * inputs and the rule, never the answer: which ship to bring is the player's to work out.
  */
-export function OutpostReading({ reading, carry, stock, crate }: {
+export function OutpostReading({ reading, carry, stock, crate, own = null }: {
   reading: ClassReading | undefined;
   /** What the ships at home could carry back; null leaves the line out. */
   carry: number | null;
   stock: Band | null;
   /** The first victory crate's purse while it is sealed; null once it is won. */
   crate: { alloy: number; crystal: number } | null;
+  /** The class most of the player's fleet is, set on the same row as the guard: the rule, never the verdict. */
+  own?: HullClass | null;
 }) {
   const { t } = useTranslation();
   const lit = leading(reading);
@@ -82,8 +84,8 @@ export function OutpostReading({ reading, carry, stock, crate }: {
             const ship = shipOf(cls);
             return (
               <Fragment key={cls}>
-                <span data-rung={cls} {...(cls === lit ? { 'data-lit': '' } : {})}
-                  className={`flex min-w-0 flex-1 items-center gap-1 rounded-control border px-1.5 py-1 ${cls === lit ? 'border-v2-hostile/60 bg-v2-hostile/10' : 'border-v2-line bg-v2-void/50'}`}>
+                <span data-rung={cls} {...(cls === lit ? { 'data-lit': '' } : {})} {...(cls === own ? { 'data-own': '' } : {})}
+                  className={`flex min-w-0 flex-1 items-center gap-1 rounded-control border px-1.5 py-1 ${cls === lit ? 'border-v2-hostile/60 bg-v2-hostile/10' : cls === own ? 'border-v2-self/60 bg-v2-self/10' : 'border-v2-line bg-v2-void/50'}`}>
                   <ClassEmblem cls={cls} decorative className="size-3.5 shrink-0" />
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-micro font-semibold text-v2-ink">{combatClassLabel(cls)}</span>
@@ -95,8 +97,11 @@ export function OutpostReading({ reading, carry, stock, crate }: {
             );
           })}
         </div>
-        <span data-outpost-beats="" className="text-right text-micro text-v2-ink-3">
-          {t('starter.outpostReading.beats', { last: combatClassLabel(RING[2]), first: combatClassLabel(RING[0]) })}
+        <span className="flex items-baseline justify-between gap-2 text-micro">
+          {own && own !== 'SUPPORT' ? <span data-outpost-own="" className="truncate font-semibold text-v2-self">{t('starter.outpostReading.own', { cls: combatClassLabel(own) })}</span> : <span />}
+          <span data-outpost-beats="" className="text-right text-v2-ink-3">
+            {t('starter.outpostReading.beats', { last: combatClassLabel(RING[2]), first: combatClassLabel(RING[0]) })}
+          </span>
         </span>
       </div>
       {carry !== null && (

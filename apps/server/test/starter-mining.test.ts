@@ -1,8 +1,8 @@
-import { PROSPECTOR, STARTER, moduleStage } from '@astera/rules';
+import { PROSPECTOR, STARTER, moduleStage, orbitPosition, orbitSeedOf, starterAsteroidOrbit } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { miningLaunchSchema, miningSchema } from '../../web/src/api/schemas.js';
-import { starterSites, vesselMissions, vessels } from '../src/db/schema.js';
+import { starterGalaxies, starterSites, vesselMissions, vessels } from '../src/db/schema.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
@@ -33,6 +33,11 @@ describe('digging and salvage aboard', () => {
   it('shows the rocks once the telescope works, in the schema the map reads', async () => {
     const me = await ready();
     await sweepStarterWorld(world.f.db, world.f.clock);
+    // The telescope shows what its ring holds, so the ship is put where the sweep's rock is passing.
+    const site = await rock();
+    const [galaxy] = await world.f.db.select().from(starterGalaxies);
+    const at = orbitPosition(starterAsteroidOrbit(orbitSeedOf(site.id)), (world.f.clock.now().getTime() - galaxy!.epoch.getTime()) / 60_000);
+    await world.f.db.update(vessels).set({ x: at.x, y: at.y, z: at.z }).where(eq(vessels.id, me.vesselId));
     const body = miningSchema.parse(await get(world, '/api/starter/mining', me.headers));
     expect(body.asteroids.length).toBeGreaterThan(0);
     expect(body.craftSpeed).toBe(STARTER.prospectorSpeed);

@@ -9,7 +9,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildingArt, instrumentArt } from '../src/ui/assets.js';
 import { RESEARCH_SCENES, cardScene } from '../src/ui/atmosphere.js';
-import { heroArt, moduleArt, pickStep, rateChange, systemOpen } from '../src/starter/shipScreen.js';
+import { cardStep, heroArt, moduleArt, pickStep, rateChange, systemOpen } from '../src/starter/shipScreen.js';
 import { stepEffects, timeToAfford } from '../src/starter/steps.js';
 import { VesselScreen } from '../src/starter/VesselScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -197,7 +197,7 @@ describe('the ship screen', () => {
     it('gives a short repair its time to the second', async () => {
       const { durationPrecise } = await import('../src/lib/time.js');
       show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 2, SURVEY: 1 } } }));
-      expect(within(screen.getByTestId('next-repair')).getByText(durationPrecise(step('REFINERY', 3).minutes))).toBeInTheDocument();
+      expect(within(screen.getByTestId('next-repair')).getByText(durationPrecise(step('TELESCOPE', 1).minutes))).toBeInTheDocument();
     });
 
     // "Repair 2/5" was read as either the stage held or the stage offered (player test B-08).
@@ -308,7 +308,7 @@ describe('the ship screen', () => {
     it('say that one is under way', () => {
       show(vessel({ queue: [queued] }));
       fireEvent.click(strip().getByRole('button', { name: /Alloy Refinery.*Stage 2 of 5/ }));
-      expect(screen.getByTestId('next-repair').textContent).toMatch(/in queue/i);
+      expect(screen.getByTestId('next-repair').textContent).toMatch(/ready in/i);
     });
 
     it('move the card on to the next repair once the shown one is ordered', () => {
@@ -481,6 +481,19 @@ describe('the ship screen', () => {
 
 describe('what a system shows', () => {
   const opening = openingProgress();
+
+  // Owner playtest 2026-11-08: the card showed Antenna 2 while Antenna 1 was the one being built.
+  it('stays on the stage under way rather than jumping to the next one of that machine', () => {
+    const survey = REPAIR_LADDER.find(s => s.module === 'SURVEY' && s.stage === 1)!;
+    const ahead = { ...opening, modules: { ...opening.modules, SURVEY: 1 } };
+    expect(cardStep('SURVEY', ahead, [survey])).toMatchObject({ module: 'SURVEY', stage: 1 });
+  });
+
+  it('goes on to another machine, which can be ordered while this one runs', () => {
+    const telescope = REPAIR_LADDER.find(s => s.module === 'TELESCOPE' && s.stage === 1)!;
+    const ahead = { ...opening, modules: { ...opening.modules, EXTRACTOR: 1, REFINERY: 2, TELESCOPE: 1 } };
+    expect(cardStep('DEFENCE', ahead, [telescope])).toMatchObject({ module: 'RADAR', stage: 1 });
+  });
 
   it('picks the repair that can be ordered now, before those it cannot', () => {
     expect(pickStep('REFINERY', opening)).toMatchObject({ module: 'REFINERY', stage: 2 });

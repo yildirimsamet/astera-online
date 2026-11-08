@@ -32,11 +32,12 @@ function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLa
     const root = coach?.closest<HTMLElement>('[data-school-scene]');
     if (!coach || !root || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
-      root.style.setProperty('--school-coach-space', `${String(Math.ceil(coach.getBoundingClientRect().height) + 30)}px`);
+      const { height, bottom } = coach.getBoundingClientRect();
+      root.style.setProperty('--school-coach-space', `${String(Math.ceil(dock === 'top' ? bottom + 20 : height + 30))}px`);
     });
     observer.observe(coach);
     return () => { observer.disconnect(); };
-  }, []);
+  }, [dock]);
   useEffect(() => {
     if (complete) return;
     const timer = window.setInterval(() => { setShown(n => Math.min(letters.length, n + 2)); }, 45);

@@ -3,6 +3,13 @@
 .school-coach[data-dock=top] { top:calc(10px + env(safe-area-inset-top)); }
 .school-coach[data-dock=bottom] { bottom:calc(72px + env(safe-area-inset-bottom)); }
 .school-speech { position:relative; z-index:2; flex:1; min-width:0; margin-right:68px; padding:13px 14px 7px; border:1px solid #ddc68c70; border-radius:16px 16px 4px 16px; background:linear-gradient(145deg,#102131fa,#07121efc); box-shadow:0 8px 32px #0008,inset 0 1px #ffffff0c; pointer-events:auto; color:#f0f4f6; }
+/* The starter guide lies under the resources (owner 2026-11-08), so a reward is seen landing, and stays small enough to leave a sheet its room. */
+[data-school-scene=starter] .school-coach[data-dock=top] { top:calc(var(--v2-top-h,0px) + 4px); }
+[data-school-scene=starter] .school-speech { margin-right:58px; padding:8px 11px 2px; }
+[data-school-scene=starter] .school-line { min-height:0; margin-top:3px; }
+[data-school-scene=starter] .school-line::before, [data-school-scene=starter] .school-line p { font-size:14px; line-height:1.38; }
+[data-school-scene=starter] .school-actions { min-height:30px; }
+[data-school-scene=starter] .school-portrait { width:88px; height:118px; }
 .school-speech::after { content:""; position:absolute; right:-11px; bottom:25px; width:16px; height:18px; background:#0a1825; border-right:1px solid #ddc68c70; border-bottom:1px solid #ddc68c70; transform:skewX(28deg) rotate(-20deg); }
 .school-heading { display:flex; gap:10px; justify-content:space-between; color:var(--school-gold,#ddc68c); font-size:11px; line-height:1.4; font-weight:650; letter-spacing:.05em; }
 .school-progress { white-space:nowrap; color:#98adba; font-variant-numeric:tabular-nums; }

@@ -1,7 +1,7 @@
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
-import { sightLesson } from '../starter/tutorial/sightLesson.js';
-import { heroArt } from '../starter/shipScreen.js';
-import { bottomSurface } from '../starter/bottomSurface.js';
+import { rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
+import { setRockSheet } from '../starter/tutorial/rockSheet.js';
+import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
 import { cosmeticById, planetSkinStatus, type CosmeticId } from '@astera/rules';
@@ -40,7 +40,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW, hpRadiationApplies, vesselHull, vesselLook, type VesselSystem } from '@astera/rules';
+import { VIEW, hpRadiationApplies, vesselHull, type VesselSystem } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,6 +84,7 @@ import {
 } from '../api/queries.js';
 import type {
   AsteroidView,
+  Contact,
   GalaxyPlanet,
   HistoricalSeasonResult,
   IntelView,
@@ -210,6 +211,8 @@ import type { CountryCode } from '@astera/rules';
  * clock, so a literal `[]` in the render body is a new prop every second.
  */
 const NO_SENSORS: readonly ReachRing[] = [];
+const NO_ROCKS: readonly AsteroidView[] = [];
+const NO_CONTACTS: readonly Contact[] = [];
 
 const ClanScreen = lazy(async () => {
   const module = await import('./ClanScreen.jsx');
@@ -651,7 +654,11 @@ export function GalaxyView({
    * Remember each device's choice across reloads. Both start off only when there
    * is no saved preference; unavailable storage falls back to this visit's state.
    */
-  const sight = sightLesson(useStarterLesson());
+  const lesson = useStarterLesson();
+  const sight = sightLesson(lesson);
+  const reveal = useTelescopeReveal(lesson);
+  const rockOpen = focus?.kind === 'asteroid';
+  useEffect(() => { setRockSheet(rockOpen); return () => { setRockSheet(false); }; }, [rockOpen]);
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
   const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
   const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
@@ -937,7 +944,7 @@ export function GalaxyView({
     () => miningSceneData(mining.fieldData, mining.statusData),
     [mining.fieldData, mining.statusData],
   );
-  const asteroids = miningScene.asteroids;
+  const asteroids = reveal.rocks ? miningScene.asteroids : NO_ROCKS;
   const runs = miningScene.runs;
   const wrecks = miningScene.debris;
   // The monument payload carries the server-time snapshot used for its flight
@@ -946,7 +953,7 @@ export function GalaxyView({
   // is derived from each thread's arrival instant where it is displayed.
   const monumentThreads = useMemo(() => monumentPendingThreads(monumentCatalog.data), [monumentCatalog.data]);
   const threads = useMemo(() => [...pending.data?.pending ?? [], ...monumentThreads], [pending.data, monumentThreads]);
-  const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
+  const contacts = useMemo(() => (reveal.fleets ? traffic.data?.contacts ?? NO_CONTACTS : NO_CONTACTS), [reveal.fleets, traffic.data]);
   /* The corner lists pirates the Telescope has identified, including remembered ones.
      Radar-only returns stay anonymous on the disc and outside this named tally. */
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
@@ -1226,7 +1233,12 @@ export function GalaxyView({
     ? planetFocusRailVisible(selected.isOwned === true, transferOriginId)
     : false;
   /** Something on the disc has the screen (B3): the context slot yields, the event chips step aside. */
-  const slotSelected = showPlanetFocus || (focus !== null && !(focus.kind === 'planet' && focus.id === activePlanetId));
+  const focusGone = selectionGone(focus, {
+    runs: runs.map(run => run.id),
+    threads: threads.map((thread, index) => threadKey(thread, index)),
+    contacts: (traffic.data?.contacts ?? []).filter(contact => contact.effectOnly !== true).map(contact => contact.id),
+  });
+  const slotSelected = showPlanetFocus || (focus !== null && !focusGone && !(focus.kind === 'planet' && focus.id === activePlanetId));
   const settlementInFlight = selected !== undefined && threads.some((thread) =>
     thread.kind === 'settlement'
     && thread.leg === 'outbound'
@@ -1642,7 +1654,7 @@ export function GalaxyView({
           homePosition={activeWorldPosition}
           now={now}
           busy={mine.isPending}
-          open={detail}
+          open={detail || rockSheetStaysOpen(lesson)}
           onToggle={toggle}
           onClose={close}
           onSend={(id, craft) => {
@@ -1907,7 +1919,7 @@ export function GalaxyView({
         sight while it is spent. Owner 2026-10-27: it is headed by its own art, as research is.
       */}
       {ship && bottom === 'starter' && (
-        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null ? 'hidden' : ''}`}>
+        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null && !focusGone ? 'hidden' : ''}`}>
           {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
@@ -1938,7 +1950,7 @@ export function GalaxyView({
         <V2Sheet
           bleed
           detents={['full']}
-          headerArt={{ src: heroArt(vesselHull(planet.data.vessel.id), vesselLook(planet.data.vessel)), position: '50% 45%' }}
+          headerArt={ATMOSPHERE.repair}
           lead={<img data-ship-badge src="/assets/images/starter/galaxy-badge.webp" alt="" className="size-7 rounded-full object-cover" />}
           eyebrow={t('starter.eyebrow')}
           title={planet.data.vessel.name}

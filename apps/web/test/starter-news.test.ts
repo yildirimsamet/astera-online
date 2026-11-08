@@ -52,8 +52,8 @@ describe('what the ship tells its commander', () => {
 describe('what an incoming contact is called aboard', () => {
   it('calls a scout a scout and asks for no defence', () => {
     const copy = incomingCopy({ raider: 'SCOUT' });
-    expect(copy?.eyebrow).toBe('Pirate scout');
-    expect(copy?.detail).toMatch(/looking/);
+    expect(copy?.eyebrow).toBe('Scout ship');
+    expect(copy?.detail).toMatch(/look/);
     expect(copy?.prepare).toBe(false);
   });
 

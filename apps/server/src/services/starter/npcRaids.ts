@@ -1,7 +1,7 @@
-import { STARTER, distance, fleetCount, fleetSpeed, garrisonOf, moduleStage, normalizeHpDamage, seededFrom, travelExact, type Fleet, type Vec3 } from '@astera/rules';
+import { STARTER, distance, fleetCount, fleetSpeed, garrisonOf, moduleStage, normalizeHpDamage, seededFrom, travelExact, vesselSphere, type Fleet, type Vec3 } from '@astera/rules';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { Tx } from '../../db/client.js';
-import { vesselMissions, vesselUnits, type starterGalaxies } from '../../db/schema.js';
+import { vesselBotState, vesselMissions, vesselUnits, type starterGalaxies } from '../../db/schema.js';
 import { publishShard } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { warnInReach } from './fleet.js';
@@ -17,6 +17,12 @@ const SCOUT: Fleet = { DART: 1 };
 /** Just outside the first radar's ring: its return has to reach the player inside the first session (N12). */
 const SCOUT_APPROACH = STARTER.radar[1] + 120;
 const FIRST_RAID_AT_LEAST: Fleet = { DART: 1 };
+/** How close a scout comes before it turns away: near enough to be watched, never at the hull. */
+export const SCOUT_STANDOFF = 200;
+/** Two different fleets, so a first look shows that there is more than one kind of thing out there. */
+const PASSERS: readonly Fleet[] = [{ PIKE: 3, WARDEN: 1 }, { COURIER: 2, DART: 2 }];
+/** Long enough to be watched while the player looks around the ring. */
+const PASSING_MINUTES = 4;
 
 type Galaxy = typeof starterGalaxies.$inferSelect;
 
@@ -26,12 +32,45 @@ function launch(tx: Tx, galaxy: Galaxy, ship: VesselRow, kind: 'SCOUT' | 'PIRATE
   const angle = random() * 2 * Math.PI;
   const span = kind === 'SCOUT' ? SCOUT_APPROACH : APPROACH;
   const from: Vec3 = { x: to.x + Math.cos(angle) * span, y: to.y, z: to.z + Math.sin(angle) * span };
+  if (kind === 'SCOUT') {
+    const short = (span - SCOUT_STANDOFF) / span;
+    to.x = from.x + (to.x - from.x) * short;
+    to.z = from.z + (to.z - from.z) * short;
+  }
   const arriveAt = new Date(now.getTime() + travelExact(distance(from, to), fleetSpeed(fleet, {})) * 60_000);
   return tx.insert(vesselMissions).values({
     starterGalaxyId: galaxy.id, ownerVesselId: null, kind, targetVesselId: ship.id,
     fromX: from.x, fromY: from.y, fromZ: from.z, toX: to.x, toY: to.y, toZ: to.z,
     fleet, damage: normalizeHpDamage(fleet, []), departAt: now, arriveAt,
   }).returning();
+}
+
+/**
+ * THE FIRST LOOK THROUGH THE TELESCOPE (owner playtest 2026-11-08): two fleets crossing the ring, so
+ * the player sees what it is for. They belong to nobody, are bound for nowhere and fight nobody; a
+ * contact never says whose it is, so to anyone watching they are traffic like any other.
+ */
+export async function launchPassersBy(tx: Tx, ship: VesselRow, now: Date): Promise<void> {
+  const [crewless] = await tx.select({ id: vesselBotState.vesselId }).from(vesselBotState).where(eq(vesselBotState.vesselId, ship.id));
+  if (crewless) return;
+  const at = placeOf(ship);
+  const reach = vesselSphere(at, 1, 0, ship.id).identify;
+  const random = seededFrom(ship.id, now.getTime());
+  const first = random() * 2 * Math.PI;
+  const arriveAt = new Date(now.getTime() + PASSING_MINUTES * 60_000);
+  for (const [index, fleet] of PASSERS.entries()) {
+    const angle = first + index * 2.2, side = index === 0 ? 0.35 : -0.3;
+    const across = { x: Math.cos(angle), z: Math.sin(angle) }, beside = { x: -across.z, z: across.x };
+    const leg = (share: number): Vec3 => ({ x: at.x + reach * (across.x * share + beside.x * side), y: at.y, z: at.z + reach * (across.z * share + beside.z * side) });
+    const from = leg(0.8), to = leg(-1.3);
+    const [mission] = await tx.insert(vesselMissions).values({
+      starterGalaxyId: ship.starterGalaxyId, ownerVesselId: null, kind: 'PASSING',
+      fromX: from.x, fromY: from.y, fromZ: from.z, toX: to.x, toY: to.y, toZ: to.z,
+      fleet, damage: normalizeHpDamage(fleet, []), departAt: now, arriveAt,
+    }).returning();
+    await scheduleStarter(tx, { starterGalaxyId: ship.starterGalaxyId, kind: 'vessel_mission_arrival', refId: mission!.id, resolveAt: arriveAt });
+  }
+  await publishShard(tx, ship.starterGalaxyId, 'launch');
 }
 
 /**

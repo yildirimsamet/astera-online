@@ -273,6 +273,8 @@ Kazıcı arzı bilinçli olarak sınırlıdır. Sefer başına 200 cevher, sın�
 
 Az nüfusta oyuncu takılmasın diye, açık parça sayısı her zaman `max(2, motor aşamasındaki oyuncu sayısının yarısı)` olur.
 
+> **Güncelleme, owner 2026-11-08:** Gözcü artık korsan değil, "Keşif gemisi": gemiye dokunmaz, uzaktan tarar ve gider.
+
 **Korsan gözcüsü ve ilk akın.** Radar 1 bittikten sonra, oyuncu oyundayken küçük bir NPC gözcüsü gemiye yaklaşıp döner, savaş olmaz. Radar uyarır, teleskop içeriğini söyler. Gözcü, oyuncu kendi ilk seferini (madencilik, sonda veya baskın) göndermeden gelmez (owner, 2026-11-08, N2). Oyuncu radarın değerini ilk kez burada hisseder ve "Bu saldırsaydı ne olurdu?" diye sorar. Aegis 1'i seçen oyuncuya ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
 
 **Görünür kalkış.** Bir komşu göç ettiğinde, galaksideki herkes gökyüzünde parlak bir iz görür. Kalkış panosuna adı düşer.

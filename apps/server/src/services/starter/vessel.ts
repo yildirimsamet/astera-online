@@ -10,7 +10,8 @@ import { publish } from '../../stream/bus.js';
 import { scheduleStarter } from '../../worker/starterQueue.js';
 import { queueRepairNotice } from './noticeQueue.js';
 import { ensureFirstOutposts } from './outposts.js';
-import { ensureFirstRock } from './rocks.js';
+import { launchPassersBy } from './npcRaids.js';
+import { ensureFirstRocks } from './rocks.js';
 import { GameError } from '../planet.js';
 
 /** §3.10: a shield's end is told while there is still time to do something about it. */
@@ -128,7 +129,10 @@ async function finishOrder(tx: Tx, vessel: LockedVessel, order: VesselOrderRow):
   if (!opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000) await queueRepairNotice(tx, vessel.row, order.readyAt);
   // The telescope shows the rocks and hands over the Prospector (N13); the yard shows the first hunt.
   const firstSight = module === 'TELESCOPE' && order.stage === 1;
-  if (firstSight) await ensureFirstRock(tx, vessel);
+  if (firstSight) {
+    await ensureFirstRocks(tx, vessel);
+    await launchPassersBy(tx, vessel.row, vessel.now);
+  }
   const yard = module === 'SHIPYARD' && order.stage === 1;
   if (yard) await ensureFirstOutposts(tx, vessel.row, vessel.now);
 

@@ -5,10 +5,10 @@
  */
 export const STARTER_TUTORIAL_STEPS = [
   'online', 'collect', 'orderRefinery', 'waitFirst',
-  'orderExtractor', 'orderTelescope', 'orderRadar', 'waitTelescope', 'mine',
+  'orderExtractor', 'orderTelescope', 'orderRadar', 'waitTelescope', 'telescopeLook', 'findRock', 'mine',
   'orderSurvey', 'waitSurvey', 'probe', 'orderShipyard', 'waitYard', 'buildShip', 'farewell',
   'openCrate', 'firstCrate', 'openIntel', 'openReport', 'report', 'collectMine',
-  'telescopeLook', 'telescopeRing', 'telescopeTraffic', 'telescopeTrack', 'radarRing', 'radarContact', 'sightTrio',
+  'radarRing', 'radarContact', 'sightTrio',
 ] as const;
 
 export type StarterTutorialStepId = (typeof STARTER_TUTORIAL_STEPS)[number];

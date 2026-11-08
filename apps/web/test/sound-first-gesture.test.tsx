@@ -7,6 +7,7 @@ import { playSound, useSoundEffects } from '../src/lib/sound.js';
  * when the finger lifts, and the prologue's breaker is thrown while it is still down: the cue waits a
  * moment for the audio to open instead of being lost.
  */
+let resumes = true;
 const started: { buffer: unknown; stop: ReturnType<typeof vi.fn> }[] = [];
 let gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn> };
 
@@ -31,7 +32,11 @@ class FakeContext {
     return voice;
   }
   decodeAudioData() { return Promise.reject(new Error('no files here')); }
-  resume() { this.state = 'running'; return Promise.resolve(); }
+  resume() {
+    if (!resumes) return Promise.reject(new Error('not on pointerdown'));
+    this.state = 'running';
+    return Promise.resolve();
+  }
   suspend() { this.state = 'suspended'; return Promise.resolve(); }
   close() { return Promise.resolve(); }
 }
@@ -40,6 +45,7 @@ const settle = () => act(async () => { await Promise.resolve(); await Promise.re
 
 beforeEach(() => {
   started.length = 0;
+  resumes = true;
   vi.stubGlobal('AudioContext', FakeContext);
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(null, { status: 404 }))));
   window.localStorage.clear();
@@ -48,14 +54,13 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('the first gesture', () => {
   it('plays a cue asked for before the audio opened, as soon as it does', async () => {
-    const original = FakeContext.prototype.resume;
-    FakeContext.prototype.resume = () => Promise.reject(new Error('not on pointerdown'));
+    resumes = false;
     renderHook(() => { useSoundEffects(); });
     fireEvent.pointerDown(document.body);
     playSound('switch');
     await settle();
     expect(started).toHaveLength(0);
-    FakeContext.prototype.resume = original;
+    resumes = true;
     fireEvent.pointerUp(document.body);
     await settle();
     expect(started).toHaveLength(1);
@@ -63,12 +68,11 @@ describe('the first gesture', () => {
 
   it('does not let the tap that follows take its place', async () => {
     renderHook(() => { useSoundEffects(); });
-    const original = FakeContext.prototype.resume;
-    FakeContext.prototype.resume = () => Promise.reject(new Error('later'));
+    resumes = false;
     fireEvent.pointerDown(document.body);
     playSound('switch');
     playSound('tap');
-    FakeContext.prototype.resume = original;
+    resumes = true;
     fireEvent.pointerUp(document.body);
     await settle();
     expect(started).toHaveLength(1);
@@ -78,12 +82,11 @@ describe('the first gesture', () => {
   it('forgets a cue the audio took too long to open for', async () => {
     vi.useFakeTimers({ toFake: ['performance'] });
     renderHook(() => { useSoundEffects(); });
-    const original = FakeContext.prototype.resume;
-    FakeContext.prototype.resume = () => Promise.reject(new Error('later'));
+    resumes = false;
     fireEvent.pointerDown(document.body);
     playSound('switch');
     vi.advanceTimersByTime(3000);
-    FakeContext.prototype.resume = original;
+    resumes = true;
     fireEvent.pointerUp(document.body);
     await settle();
     expect(started).toHaveLength(0);

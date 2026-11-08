@@ -22,7 +22,7 @@ describe('what the marks follow', () => {
   });
 
   it('marks nothing while the guide reads a line or waits', () => {
-    expect(goalMarks(goal({ step: step({ id: 'telescopeRing', step: 'read', marks: ['[data-guide="sight-radar"]'], strict: false }) }))).toEqual({ marks: [], hand: false });
+    expect(goalMarks(goal({ step: step({ id: 'radarRing', step: 'read', marks: ['[data-guide="sight-radar"]'], strict: false }) }))).toEqual({ marks: [], hand: false });
     expect(goalMarks(goal({ step: step({ id: 'waitFirst', step: 'wait', marks: [] }) }))).toEqual({ marks: [], hand: false });
   });
 

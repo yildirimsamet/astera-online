@@ -22,6 +22,7 @@ export async function resolveMissionArrival(db: Db, missionId: string, clock: Cl
       case 'PROBE': return { felt: await resolveVesselProbe(tx, mission, clock), battled: false };
       case 'MINE': await resolveMiningLanding(tx, mission, clock); return quiet;
       case 'SCOUT': await turnBack(tx, mission, clock.now()); return quiet;
+      case 'PASSING': await tx.update(vesselMissions).set({ status: 'DONE' }).where(eq(vesselMissions.id, mission.id)); return quiet;
       case 'ATTACK':
       case 'RAID_SITE':
       case 'PIRATE': await resolveVesselBattle(tx, mission, clock); return { felt: null, battled: true };

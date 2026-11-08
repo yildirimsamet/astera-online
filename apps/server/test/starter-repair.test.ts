@@ -100,10 +100,10 @@ describe('repairing the ship', () => {
       expect(view.modules.REFINERY).toBe(1);
       expect(view.queue).toHaveLength(1);
       expect(view.queue[0]).toMatchObject({ subject: 'REFINERY', stage: 2 });
-      // Owner 2026-11-06: the guided first repairs take seconds; this one ten.
-      expect(new Date(view.queue[0]!.readyAt).getTime()).toBe(world.f.clock.now().getTime() + 10_000);
+      // Owner 2026-11-08: the first repairs take five seconds.
+      expect(new Date(view.queue[0]!.readyAt).getTime()).toBe(world.f.clock.now().getTime() + 5_000);
       const [order] = await world.f.db.select().from(vesselOrders);
-      expect(order!.remainingSeconds).toBe(10);
+      expect(order!.remainingSeconds).toBe(5);
     });
 
     it('refuses what the ladder does not hold', async () => {

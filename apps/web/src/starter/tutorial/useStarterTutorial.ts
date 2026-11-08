@@ -10,6 +10,7 @@ import { hasOtherShip } from '../neighbour.js';
 import { opportunities, opportunityKey, type Opportunity } from '../opportunities.js';
 import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
+import { useRockSheet } from './rockSheet.js';
 import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 
@@ -24,7 +25,7 @@ function readAcked(vesselId: string): string[] {
 }
 
 /** Marks that leave no trace on the ship: pressing them is the step. */
-export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'telescopeTraffic', 'buildShip'];
+export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'buildShip'];
 
 /**
  * Records a pressed mark once the press is over. Recording moves the guide on, and a mark that belongs
@@ -63,6 +64,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const galaxy = useGalaxy();
   const traffic = useTraffic();
   const intel = useIntel();
+  const rockOpen = useRockSheet();
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -106,6 +108,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     crates: vessel.crates,
     alone,
     view,
+    rockOpen,
     sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
     acked: list,
   };

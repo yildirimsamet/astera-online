@@ -35,6 +35,8 @@ export interface TutorialInput {
   /** No other ship is in sight: a probe report has no subject yet (owner playtest 2026-11-06). */
   alone?: boolean;
   view: TutorialView;
+  /** A rock's sheet is open on the galaxy: what the Prospector is sent from. */
+  rockOpen?: boolean;
   /** What the live sky holds: a sensor lesson waits for its subject (plan F6). None means nothing in sight. */
   sight?: SightNow;
   /** Lines read and marks pressed, on this device. */
@@ -91,10 +93,11 @@ const OBJECTIVE = '[data-guide="objective"]';
 const hasReady = (i: TutorialInput): boolean => i.crates.some(c => c.state === 'ready');
 /** Hours past the road, on any phone: nothing about the first session is told to this ship again. */
 const seasoned = (i: TutorialInput): boolean => ordered(i, 'SURVEY', 2) || ordered(i, 'HANGAR', 2);
-const sensor = (module: 'TELESCOPE' | 'RADAR') => (i: TutorialInput) => !has(i, module, 1);
+const noRadar = (i: TutorialInput): boolean => !has(i, 'RADAR', 1);
 /** Only with the sky in front of them: a flight crossing the ring must not pull a player off a page. */
 const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.view === 'galaxy' && i.sight?.[what] === true;
 const CRAFT = '[data-guide="sight-craft"]';
+const hasMined = (i: TutorialInput): boolean => i.mining || i.facts.includes('FIRST_MINING_RETURN');
 const UNKNOWN = '[data-guide="sight-unknown"]';
 
 /** Power, the first collect and the first repair: the one moment the guide holds (N1). */
@@ -129,7 +132,10 @@ const FIRST_ROAD: Part = {
     orderStep('orderTelescope', 'TELESCOPE', 1, 'DEFENCE', 3),
     orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3),
     waitFor('waitTelescope', 'TELESCOPE', 3),
-    { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: i => i.mining || i.facts.includes('FIRST_MINING_RETURN') },
+    // The field is looked through, a rock found by hand, and only then is the Prospector named (owner playtest 2026-11-08).
+    { id: 'telescopeLook', kind: 'read', chapter: 7, place: 'galaxy', marks: [], reached: hasMined },
+    { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
+    { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
     orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
     waitFor('waitSurvey', 'SURVEY', 4),
     { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
@@ -164,25 +170,15 @@ const MOMENTS: readonly Part[] = [
     strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
     steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
   },
-  // THE SENSORS, ON A REAL CONTACT (plan F6): show it, have it touched, watch it go. Nothing is made
-  // up for a lesson; an empty sky only means the lesson waits, and the road goes on meanwhile. The
-  // scout comes to every Radar 1 owner who is there and has flown something of their own.
-  {
-    strict: false, due: i => has(i, 'TELESCOPE', 1),
-    steps: [
-      { id: 'telescopeLook', kind: 'read', chapter: 7, place: 'galaxy', marks: [], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
-      { id: 'telescopeRing', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
-      { id: 'telescopeTraffic', kind: 'press', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
-      { id: 'telescopeTrack', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('tracked') },
-    ],
-  },
+  // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
+  // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
   {
     strict: false, due: i => has(i, 'RADAR', 1),
     steps: [
-      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: sensor('RADAR'), ready: inSight('unknown') },
-      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: sensor('RADAR'), ready: inSight('unknown') },
+      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
+      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
       // Closed once the telescope has named a craft in its ring: what the radar asked, answered.
-      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT], satisfied: sensor('RADAR'), ready: inSight('traffic') },
+      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT], satisfied: noRadar, ready: inSight('traffic') },
     ],
   },
 ];
@@ -193,11 +189,14 @@ export const ROAD: readonly Step[] = [...CORE.steps, ...FIRST_ROAD.steps, OPEN_C
 /** The core's chapters, which the card counts; a first-time moment is no chapter of a road. */
 export const CORE_CHAPTERS = 2;
 
+/** The galaxy steps an "online" note would cover; the rest of the galaxy's lines speak over it. */
+const NOTE_HIDES: readonly TutorialStepId[] = ['telescopeLook', 'findRock', 'mine', 'probe'];
+
 /** Where a step is, with the way there when its mark is somewhere else. */
 function locate(step: Step, input: TutorialInput, strict: boolean): TutorialAnswer {
   const answer = { kind: 'step' as const, id: step.id, step: step.kind, chapter: step.chapter, strict };
   if (step.kind === 'wait') return { ...answer, marks: step.marks };
-  if (input.view === 'galaxy' && input.unlockToAnnounce !== null && (step.place === 'ship' || step.id === 'mine' || step.id === 'probe')) {
+  if (input.view === 'galaxy' && input.unlockToAnnounce !== null && (step.place === 'ship' || NOTE_HIDES.includes(step.id))) {
     // A note hides the card on the galaxy: its close is the way to it (owner playtest 2026-11-07).
     return { ...answer, step: 'press', marks: ['[data-guide="unlock-dismiss"]', '[data-focus-close]'], nav: 'dismissUnlock' };
   }

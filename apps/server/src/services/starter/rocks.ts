@@ -47,8 +47,8 @@ export function firstRockId(ship: { x: number; y: number; z: number }, minutes: 
   return best?.id ?? null;
 }
 
-/** Measure the orbit when the commander sees the finished yard, including a late settlement. */
-export async function ensureFirstRock(tx: Tx, vessel: { row: { starterGalaxyId: string; x: number; y: number; z: number }; epoch: Date; now: Date }): Promise<void> {
+/** The rocks the first telescope opens on (owner 2026-11-08), measured when it comes in. */
+export async function ensureFirstRocks(tx: Tx, vessel: { row: { starterGalaxyId: string; x: number; y: number; z: number }; epoch: Date; now: Date }): Promise<void> {
   const galaxyId = vessel.row.starterGalaxyId;
   // Do not wait on the sweep's galaxy lock. Rare concurrent extra supply is harmless and
   // still counts towards this hour through createdAt.
@@ -57,11 +57,15 @@ export async function ensureFirstRock(tx: Tx, vessel: { row: { starterGalaxyId: 
     or(isNull(starterSites.expiresAt), gt(starterSites.expiresAt, vessel.now)),
   ));
   const minutes = (vessel.now.getTime() - vessel.epoch.getTime()) / 60_000;
-  if (rocks.some(rock => {
+  const close = rocks.filter(rock => {
     const at = orbitPosition(starterAsteroidOrbit(orbitSeedOf(rock.id)), minutes);
     return Math.hypot(at.x - vessel.row.x, at.y - vessel.row.y, at.z - vessel.row.z) <= STARTER.firstRock.far;
-  })) return;
-  const id = firstRockId(vessel.row, minutes, candidates()) ?? randomUUID();
-  await insertRock(tx, { id: galaxyId, epoch: vessel.epoch }, id, vessel.now);
+  }).length;
+  const owed = STARTER.sites.rocksInSight[1] - close;
+  if (owed <= 0) return;
+  for (let i = 0; i < owed; i++) {
+    const id = firstRockId(vessel.row, minutes, candidates()) ?? randomUUID();
+    await insertRock(tx, { id: galaxyId, epoch: vessel.epoch }, id, vessel.now);
+  }
   await publishShard(tx, galaxyId, 'mining');
 }

@@ -360,6 +360,18 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
   - **Teslim (2026-11-08):** Hasar artık sistem sistem okunur: `damageSpots` 3D gemide, `bayCondition` `ShipHero` üstünde. Tablo ve modeller yine görünüm başına üçtür; %35/%80 eşikleri yalnız hangi resmin seçildiğini belirler.
   - Motor ateşlemesi, oyuncu o sırada yoksa da gemi ekranına ilk bakışında bir kez oynar (`astera.starter.ignition.<gemi>`, cihaz başına). Rutin onarım ve yeni yetenek yalnız ekran açıkken cevap verir; yetenek dönüşte kartıyla söylenir.
 
+### Playtest turu, owner 2026-11-08 (F8 sonrası)
+
+Owner'ın 15 maddelik listesi. F6'daki "temasta öğret" teleskop dersinin yerini aldı.
+
+- **Teleskop dersi artık yolun parçası (`waitTelescope` → `telescopeLook` → `findRock` → `mine`).** Halka büyür, 1 sn sonra kayalar, 1 sn sonra iki filo görünür; kart ondan sonra gelir. Oyuncu ekranı kaydırır, kayaya dokunur, açılan kartta Kazıcı gönderir. `telescopeRing`, `telescopeTraffic`, `telescopeTrack` kalktı; radar dersleri aynı.
+- **Kaya sayısı:** teleskop kademesine göre halkadaki en yakın 3 / 4 / 6 (`STARTER.sites.rocksInSight`), kendi Kazıcısının gittiği kaya her zaman listede. Teleskop 1'de 3 kaya garanti edilir. Kaya 800–1200 cevher, Kazıcı bu galakside 2× hızlı.
+- **Geçen filolar:** Teleskop 1 bitince halkadan iki farklı filo geçer. Sahipsiz `PASSING` görevleridir, kimseye dokunmaz, savaşmaz, botlu gemiye gönderilmez.
+- **Keşif gemisi:** gözcü artık korsan değil, "Keşif gemisi". Gemiye `SCOUT_STANDOFF` (200) kadar yaklaşır, uzaktan tarar, döner. Temasında `inbound` yoktur.
+- **İstihbarat kararı:** ilk av sürerken karakol raporlarının üstünde nasıl karşılaştırılacağı yazar; kendi filon sınıf dizisinde işaretlidir; her karakolun Saldır kapısı ve tıklanır adı vardır. Girdileri ve kuralı verir, kazananı söylemez.
+- **Onarım kartı:** bir makinenin kademesi kuyruktayken kart bir sonraki kademeye atlamaz, kalan süreyi gösterir. Başka makineye geçer.
+- **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn. Hat yaması 3,5 sn.
+
 ### F9. Eski plandan korunanlar
 - Sohbette galaksi olayları + kohort yerleşimi (eski F5, dron hariç).
 - Kuruluş haftası (eski F7–F8): ödül paneli, Tümünü al, Git kapıları, eski komşulara yakın iniş, klan önerisi, ilk hafta push ve silinme sınırı.

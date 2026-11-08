@@ -1,5 +1,5 @@
 import {
-  PROSPECTOR, STARTER, canTakePart, distance, interceptOrbit, isFeatureOpen, orbitSeedOf, partsVisible, prospectorHoldMult, starterAsteroidOrbit, travelExact,
+  PROSPECTOR, STARTER, canTakePart, distance, interceptOrbit, isFeatureOpen, moduleStage, orbitPosition, orbitSeedOf, partsVisible, prospectorHoldMult, rocksInSight, starterAsteroidOrbit, travelExact, vesselSphere,
   type Resources, type Vec3,
 } from '@astera/rules';
 import { and, eq, gt, inArray, isNull, or } from 'drizzle-orm';
@@ -70,6 +70,13 @@ async function miningOf(q: Tx | Db, row: VesselRow, epoch: Date, now: Date) {
   const flights = await q.select().from(vesselMissions).where(and(eq(vesselMissions.ownerVesselId, row.id), eq(vesselMissions.kind, 'MINE'), inArray(vesselMissions.status, ['OUTBOUND', 'RETURNING'])));
   const salvage = isFeatureOpen(progress, 'salvage');
   const seesPart = await partSight(q, row);
+  // Only the ring's nearest few (owner 2026-11-08), and always the rock this ship's own craft are flying to.
+  const stage = moduleStage(progress, 'TELESCOPE');
+  const live = sites.filter(site => site.kind === 'ASTEROID' && asteroidView(site, epoch, now).active);
+  const flown = new Set(flights.map(flight => flight.targetSiteId));
+  const minutes = minutesSince(epoch, now);
+  const inSight = rocksInSight(live, site => orbitPosition(starterAsteroidOrbit(orbitSeedOf(site.id)), minutes), placeOf(row), stage, vesselSphere(placeOf(row), stage, 0, row.id).identify);
+  const shownRocks = [...inSight, ...live.filter(site => flown.has(site.id) && !inSight.includes(site))];
   return {
     derrick: false,
     craftSpeed: STARTER.prospectorSpeed,
@@ -77,7 +84,7 @@ async function miningOf(q: Tx | Db, row: VesselRow, epoch: Date, now: Date) {
     derrickHold: 0,
     craftReadyAt: null,
     craftCooldowns: [],
-    asteroids: sites.filter(site => site.kind === 'ASTEROID').map(site => asteroidView(site, epoch, now)).filter(rock => rock.active),
+    asteroids: shownRocks.map(site => asteroidView(site, epoch, now)),
     nextFieldChangeAt: null,
     debris: sites.filter(site => salvage && site.kind !== 'ASTEROID' && (stockOf(site) > 0 || seesPart(site))).map(site => ({
       id: site.id, planetId: null, at: placeOfSite(site), alloy: site.alloy, crystal: site.crystal, deuterium: site.deuterium,

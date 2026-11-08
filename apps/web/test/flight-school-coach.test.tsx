@@ -35,3 +35,19 @@ describe('commander dialogue', () => {
     expect(document.querySelector('.school-exit')).toBeNull();
   });
 });
+
+/** Owner playtest 2026-11-08: the card lay over the resources, so a reward landed unseen. Docked lower, a sheet starts under it. */
+describe('the room a sheet leaves for the card', () => {
+  const measure = (dock: 'top' | 'bottom') => {
+    let fire: () => void = () => undefined;
+    vi.stubGlobal('ResizeObserver', class { constructor(run: () => void) { fire = run; } observe() { return undefined; } disconnect() { return undefined; } });
+    render(<div data-testid="root" data-school-scene="starter"><SchoolCoach title="T" text="line" dock={dock} /></div>);
+    const card = document.querySelector<HTMLElement>('[data-school-coach]')!;
+    card.getBoundingClientRect = () => ({ top: 60, bottom: 200, height: 140 }) as DOMRect;
+    fire();
+    vi.unstubAllGlobals();
+    return screen.getByTestId('root').style.getPropertyValue('--school-coach-space');
+  };
+  it('starts under a card docked at the top, wherever it sits', () => { expect(measure('top')).toBe('220px'); });
+  it('only counts the height of a card at the foot', () => { expect(measure('bottom')).toBe('170px'); });
+});

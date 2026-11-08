@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { compact, full } from '../lib/format.js';
 import { playSound } from '../lib/sound.js';
 import type { Projected } from '../lib/projection.js';
-import { duration, durationPrecise } from '../lib/time.js';
+import { duration, durationPrecise, useNow } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Icon, type IconId } from '../v2/icons.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
@@ -28,6 +28,8 @@ export interface RepairContext {
   income: { alloyPerHour: number; crystalPerHour: number };
   queueFull: boolean;
   busy: boolean;
+  /** The running repairs, each with the moment it comes in. */
+  queue: readonly { subject: string; stage: number; readyAt: Date }[];
   order: (step: RepairStep) => void;
 }
 
@@ -112,11 +114,24 @@ function useSettling(key: string): boolean {
   return settled !== key;
 }
 
+/** A repair on the queue says when it comes in, to the second. */
+function UnderWay({ readyAt }: { readyAt: Date | undefined }) {
+  const { t } = useTranslation();
+  const now = useNow(1_000);
+  const left = readyAt ? readyAt.getTime() - now : 0;
+  return (
+    <p className="flex items-center gap-1 text-caption text-v2-self">
+      <Icon id="i-hourglass" className="size-3.5" />
+      {left > 0 ? t('starter.readyIn', { time: durationPrecise(left / 60_000) }) : t('starter.inQueue')}
+    </p>
+  );
+}
+
 function Action({ step, state, context }: { step: RepairStep; state: StepState; context: RepairContext }) {
   const { t } = useTranslation();
   const settling = useSettling(`${step.module}-${String(step.stage)}`);
   if (state === 'done') return <p className="flex items-center gap-1 text-caption text-v2-self"><Icon id="i-check" className="size-3.5" />{t('starter.state.done')}</p>;
-  if (state === 'queued') return <p className="flex items-center gap-1 text-caption text-v2-self"><Icon id="i-hourglass" className="size-3.5" />{t('starter.inQueue')}</p>;
+  if (state === 'queued') return <UnderWay readyAt={context.queue.find(order => order.subject === step.module && order.stage === step.stage)?.readyAt} />;
   if (state === 'closed') {
     const missing = missingForStep(context.ahead, step);
     // An event is not bought: say how it comes (player test A-05).

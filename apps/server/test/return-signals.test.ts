@@ -13,7 +13,7 @@ beforeEach(async () => { world = await starterWorld(); world.f.clock.advance(12 
 afterEach(async () => { setPushTransport(null); await world.built.close(); });
 afterAll(async () => { await (await testDb()).close(); });
 const setup = async () => {
-  const me = await aboard(world, 'Me', { REFINERY: 2, EXTRACTOR: 2, SURVEY: 1 });
+  const me = await aboard(world, 'Me', { REFINERY: 2, EXTRACTOR: 2, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 });
   await world.f.db.update(vessels).set({ alloy: 150, crystal: 0, bufferAlloy: 0, bufferCrystal: 0 }).where(eq(vessels.id, me.vesselId));
   await world.f.db.insert(pushDevices).values({ token: 'tok', accountId: me.id, platform: 'android', locale: 'en', createdAt: world.f.clock.now(), lastSeenAt: world.f.clock.now() });
   await world.f.db.transaction(async tx => { const [ship] = await tx.select().from(vessels).where(eq(vessels.id, me.vesselId)); await planStarterReturn(tx, ship!, world.f.clock.now(), true); });

@@ -146,6 +146,19 @@ describe('a run of your own', () => {
 
 /** And somebody else's salvage run reads as one too — the server sends `harvest`. */
 describe("somebody else's salvage run", () => {
+  // Owner playtest 2026-11-08: it came to look, and the card says so before anyone waits for a fight.
+  it('names a scout for what it is', () => {
+    render(
+      <ContactFocus
+        contact={{ id: 'c2', kind: 'fleet', scout: true, fleet: { DART: 1 }, from: { x: 0, y: 0, z: 0 }, to: { x: 100, y: 0, z: 0 }, startAt: new Date(), endAt: new Date(Date.now() + 60_000) }}
+        open
+        onToggle={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getAllByText('Scout ship').length).toBeGreaterThan(0);
+  });
+
   it('is described as salvage, with the public clock a field carries', () => {
     render(
       <ContactFocus

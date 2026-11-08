@@ -89,6 +89,10 @@ describe('the first session', () => {
     expect(STARTER.sites.asteroidOre).toEqual([800, 1200]);
   });
 
+  it('shows three rocks at first and never more than six', () => {
+    expect(STARTER.sites.rocksInSight).toEqual([0, 3, 4, 6]);
+  });
+
   it('ramps the repairs after it: 1, 1.5, 2, 5, then 20, 30 and 60 minutes', () => {
     const ramp = [step('EXTRACTOR', 2), step('REFINERY', 3), step('VAULT', 1), step('EXTRACTOR', 3), step('SURVEY', 2), step('HANGAR', 2), step('REFINERY', 4)];
     expect(ramp.map(s => s.minutes)).toEqual([1, 1.5, 2, 5, 20, 30, 60]);

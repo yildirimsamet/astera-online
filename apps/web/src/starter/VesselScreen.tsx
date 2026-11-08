@@ -22,7 +22,7 @@ import { RepairCard, canOrder, type RepairContext } from './RepairCard.js';
 import { RepairSlots } from './RepairSlots.js';
 import { ShipHero } from './ShipHero.js';
 import { moduleName } from './shipCopy.js';
-import { heroArt, pickStep, systemSteps } from './shipScreen.js';
+import { cardStep, heroArt, systemSteps } from './shipScreen.js';
 import { SystemTabs } from './SystemTabs.js';
 import { UnlockMoment } from './UnlockMoment.js';
 import { StarterWaitLine } from './tutorial/StarterWaitLine.js';
@@ -120,6 +120,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
     income: { alloyPerHour: view.planet.alloyPerHour, crystalPerHour: view.planet.crystalPerHour },
     queueFull: repairs(vessel).length >= STARTER.queues.construction,
     busy: repair.isPending,
+    queue: repairs(vessel),
     order: (step) => {
       repair.mutate({ module: step.module, stage: step.stage }, {
         onSuccess: () => { setPicked(null); say(t('starter.ordered', { name: moduleName(step.module) })); },
@@ -128,7 +129,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
     },
   };
   // A finished system still shows its last machine, standing repaired.
-  const shown = picked ?? pickStep(system, ahead) ?? systemSteps(system).at(-1);
+  const shown = picked ?? cardStep(system, ahead, queuedSteps(vessel)) ?? systemSteps(system).at(-1);
   const percent = Math.round(vessel.progress.share * 100);
   if (deck !== 'repairs') {
     return (

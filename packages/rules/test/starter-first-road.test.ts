@@ -51,8 +51,8 @@ describe('the road opens one repair at a time', () => {
 
 describe('the sensors in the first session', () => {
   it('prices the telescope and the radar for it', () => {
-    expect(stepOf(['TELESCOPE', 1])).toMatchObject({ alloy: 250, crystal: 150, minutes: 1.5, required: true });
-    expect(stepOf(['RADAR', 1])).toMatchObject({ alloy: 200, crystal: 120, minutes: 1.5, required: true });
+    expect(stepOf(['TELESCOPE', 1])).toMatchObject({ alloy: 250, crystal: 150, minutes: 15 / 60, required: true });
+    expect(stepOf(['RADAR', 1])).toMatchObject({ alloy: 200, crystal: 120, minutes: 15 / 60, required: true });
   });
 
   it('pays the sensors with the crate that used to wait at the third refinery, the sum unchanged', () => {

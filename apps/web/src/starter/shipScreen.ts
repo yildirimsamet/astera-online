@@ -86,6 +86,16 @@ export function pickStep(system: VesselSystem, ahead: VesselProgress): RepairSte
   return left.find(step => missingForStep(ahead, step).length === 0) ?? left[0] ?? null;
 }
 
+/**
+ * THE CARD A TAB OPENS ON (owner playtest 2026-11-08: it showed Antenna 2 while Antenna 1 was the one
+ * being built). The next stage of a machine still under repair waits behind the stage under way;
+ * another machine can be ordered meanwhile, so the card goes on to it.
+ */
+export function cardStep(system: VesselSystem, ahead: VesselProgress, queued: readonly RepairStep[]): RepairStep | null {
+  const next = pickStep(system, ahead);
+  return (next && queued.find(step => step.module === next.module)) ?? next;
+}
+
 /** Locked means nothing can be done on it yet. A locked tab still opens, to say what it needs. */
 export const systemOpen = (system: VesselSystem, progress: VesselProgress): boolean =>
   systemProgress(progress, system).done > 0

@@ -4,7 +4,8 @@ import { shipRepairCost, shipRepairMinutes } from '../damage.js';
 import { orbitPosition, type OrbitElements } from '../galaxy.js';
 import { mulberry32 } from '../rng.js';
 import type { HpDamageLot } from '../radiationHp.js';
-import type { Fleet, Grade, Resources } from '../types.js';
+import { distance } from '../travel.js';
+import type { Fleet, Grade, Resources, Vec3 } from '../types.js';
 import { STARTER } from './constants.js';
 
 /** What the works aboard count as, for the hull timers the main game already has. */
@@ -27,6 +28,12 @@ export function starterAsteroidOrbit(seed: number): OrbitElements {
     inclination: (random() - 0.5) * Math.PI,
     ascendingNode: random() * 2 * Math.PI,
   };
+}
+
+/** What a telescope shows of the rocks: the nearest few inside its ring. */
+export function rocksInSight<T>(rocks: readonly T[], placeOf: (rock: T) => Vec3, ship: Vec3, stage: number, reach: number): T[] {
+  const near = rocks.map(rock => ({ rock, away: distance(placeOf(rock), ship) })).filter(entry => entry.away <= reach);
+  return near.sort((a, b) => a.away - b.away).slice(0, STARTER.sites.rocksInSight[stage] ?? 0).map(entry => entry.rock);
 }
 
 /** The first four bytes of an id, as the number its orbit grows from. */

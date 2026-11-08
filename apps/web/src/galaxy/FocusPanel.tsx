@@ -3654,7 +3654,7 @@ export function ContactFocus({
                   ? 'focus.contact.eyebrowProbe'
                   : 'focus.contact.eyebrowMoving',
       )}
-      title={contact.kind === 'fleet' && exactFleet && contact.clanFleet
+      title={contact.scout ? t('starter.contact.scout') : contact.kind === 'fleet' && exactFleet && contact.clanFleet
         ? contact.clanFleet.label
         : t(battle ? 'focus.contact.titleBattle' : CONTACT_TITLE[contact.kind])}
       open={open}

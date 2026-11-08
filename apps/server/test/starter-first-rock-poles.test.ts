@@ -1,8 +1,8 @@
-import { orbitPosition, orbitSeedOf, rockSeedNear, starterAsteroidOrbit } from '@astera/rules';
+import { STARTER, orbitPosition, orbitSeedOf, rockSeedNear, starterAsteroidOrbit } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
 import { starterGalaxies, starterSites, vessels } from '../src/db/schema.js';
-import { ensureFirstRock, insertRock } from '../src/services/starter/rocks.js';
+import { ensureFirstRocks, insertRock } from '../src/services/starter/rocks.js';
 import { aboard } from './starterShips.js';
 import { starterWorld } from './starterFixture.js';
 import { testDb } from './helpers.js';
@@ -25,10 +25,10 @@ it('replaces a depleted nearby rock with a usable one at the visible time, inclu
     const emptyId = rockSeedNear(at, minutes, candidates)!;
     await world.f.db.transaction(tx => insertRock(tx, galaxy!, emptyId, now));
     await world.f.db.update(starterSites).set({ alloy: 0, crystal: 0, deuterium: 0 }).where(eq(starterSites.id, emptyId));
-    await world.f.db.transaction(tx => ensureFirstRock(tx, { row: { ...ship!, ...at }, epoch: galaxy!.epoch, now }));
+    await world.f.db.transaction(tx => ensureFirstRocks(tx, { row: { ...ship!, ...at }, epoch: galaxy!.epoch, now }));
     const rocks = await world.f.db.select().from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxy!.id), eq(starterSites.kind, 'ASTEROID')));
     const usable = rocks.filter(rock => rock.alloy + rock.crystal + rock.deuterium > 0);
-    expect(usable).toHaveLength(1);
+    expect(usable).toHaveLength(STARTER.sites.rocksInSight[1]);
     const rock = usable[0]!;
     const position = orbitPosition(starterAsteroidOrbit(orbitSeedOf(rock.id)), minutes);
     expect(Math.hypot(position.x - at.x, position.y - at.y, position.z - at.z)).toBeLessThanOrEqual(300);
@@ -51,7 +51,7 @@ it('does not wait for a sweeping galaxy row', async () => {
     let pending: Promise<void> | undefined;
     await world.f.db.transaction(async tx => {
       await tx.select().from(starterGalaxies).where(eq(starterGalaxies.id, galaxy!.id)).for('no key update');
-      pending = world.f.db.transaction(other => ensureFirstRock(other, { row: ship!, epoch: galaxy!.epoch, now: world.f.clock.now() }));
+      pending = world.f.db.transaction(other => ensureFirstRocks(other, { row: ship!, epoch: galaxy!.epoch, now: world.f.clock.now() }));
       const result = await Promise.race([pending.then(() => 'done'), new Promise<string>(resolve => { setTimeout(() => { resolve('blocked'); }, 1500); })]);
       expect(result).toBe('done');
     });

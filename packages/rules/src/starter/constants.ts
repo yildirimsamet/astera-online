@@ -53,6 +53,8 @@ export const STARTER = {
     asteroidsPerActivePerHour: 0.5,
     /** About a hold each (owner 2026-11-08): few rocks in sight, so each is worth the flight and nobody farms all night. */
     asteroidOre: [800, 1200],
+    /** How many rocks a telescope shows, by stage: the nearest few inside its ring (owner 2026-11-08). */
+    rocksInSight: [0, 3, 4, 6],
     wrecks: { count: 6, stock: [300, 600], respawnMinutes: 120 },
     outposts: { count: 8, guards: [2, 3, 6], stock: [250, 450, 900], respawnMinutes: 360 },
   },

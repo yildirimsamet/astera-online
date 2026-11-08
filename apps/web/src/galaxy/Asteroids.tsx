@@ -13,6 +13,7 @@ import { serverNow } from '../lib/clock.js';
 import { LOCAL_REFERENCE_ART, REFERENCE_ASTEROIDS } from './referenceArt.js';
 import { asteroidModelUrl } from './asteroidAppearance.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
+import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import {
   asteroidBodyColour,
   asteroidRimColour,
@@ -24,6 +25,9 @@ export const ASTEROID_RIM_EXPANSION = 0.004;
 
 /** Bright enough to find at a glance without turning the silhouette into a solid halo. */
 export const ASTEROID_RIM_OPACITY = 0.16;
+
+/** The rocks the guide asks the player to find breathe softly: there to be noticed, never a beacon. */
+const RIM_FOUND_MIN = 0.3, RIM_FOUND_SPAN = 0.28;
 
 /**
  * THE FIELD — rocks crossing the disc. D19.
@@ -151,6 +155,8 @@ function RockBucket({
   // for these quantised models means a rock 65,534 units across.
   const source = useMemo(() => unitModel(scene), [scene]);
   const hits = useRef<THREE.InstancedMesh>(null);
+  const lesson = useStarterLesson();
+  const beckoning = lesson?.kind === 'step' && lesson.id === 'findRock';
   const surface = useMemo(() => {
     const material = source?.material.clone();
     if (material instanceof THREE.MeshStandardMaterial) {
@@ -223,7 +229,7 @@ function RockBucket({
       ? ASTEROID_RIM_OPACITY
       : 0.24;
     rimMaterial.needsUpdate = true;
-  }, [bucket.rocks, bucket.url, focusedId, rimMaterial, tint]);
+  }, [bucket.rocks, bucket.url, focusedId, rimMaterial, tint, beckoning]);
 
   const firstSeen = useRef(new Map<string, number>());
 
@@ -232,6 +238,7 @@ function RockBucket({
     if (!node) return;
     const now = serverNow();
     const t = clock.elapsedTime;
+    if (beckoning) rimMaterial.uniforms.uOpacity!.value = RIM_FOUND_MIN + RIM_FOUND_SPAN * (0.5 + 0.5 * Math.sin(t * 2.6));
 
     const hit = hits.current;
     const edge = rim.current;

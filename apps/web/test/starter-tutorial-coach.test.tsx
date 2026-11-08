@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TutorialAnswer } from '../src/starter/tutorial/script.js';
 import { StarterTutorialCoach } from '../src/starter/tutorial/StarterTutorialCoach.js';
+import { CARD_AFTER_REVEAL_MS } from '../src/starter/tutorial/sightLesson.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
 
@@ -29,11 +30,11 @@ const coach = (answer: TutorialAnswer, ack = vi.fn(), wait?: { until: Date; span
 /** Owner 2026-11-06: the FlightSchool NPC on the real ship, strict, and no way to skip it. */
 describe('the starter tutorial on screen', () => {
   it('speaks a line and moves on only when Next is pressed', () => {
-    const { ack } = coach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
+    const { ack } = coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 7, strict: false });
     expect(document.querySelector('img[src$="tutorial-npc.png"]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(ack).toHaveBeenCalledWith('telescopeRing');
+    expect(ack).toHaveBeenCalledWith('radarRing');
   });
 
   /** Plan F3 (N1): the count is the core's own; a first-time moment is not a chapter of a road. */
@@ -41,7 +42,7 @@ describe('the starter tutorial on screen', () => {
     const { view } = coach({ kind: 'step', id: 'orderRefinery', step: 'press', marks: [], chapter: 2, strict: true });
     expect(screen.getByText('2/2')).toBeTruthy();
     view.unmount();
-    coach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
+    coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 7, strict: false });
     expect(document.querySelector('.school-progress')).toBeNull();
   });
 
@@ -227,10 +228,29 @@ describe('the welcome over the power card', () => {
   describe('the telescope\'s field of view', () => {
     const look: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'telescopeLook', step: 'read', marks: [], chapter: 7, strict: false };
     const lookAt = () => {
+      vi.useFakeTimers();
       const ack = vi.fn();
       render(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack, backIn: 50 }} /></>);
+      act(() => { vi.advanceTimersByTime(CARD_AFTER_REVEAL_MS); });
+      vi.useRealTimers();
       return ack;
     };
+    it('says nothing until the sky has filled, so the first look is at the sky', () => {
+      vi.useFakeTimers();
+      const ack = vi.fn();
+      render(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack, backIn: 50 }} /></>);
+      expect(document.querySelector('[data-school-coach]')).toBeNull();
+      expect(document.querySelector('[data-drag-hint]')).toBeNull();
+      const scene = screen.getByTestId('scene');
+      fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
+      fireEvent.pointerMove(scene, { clientX: 190, clientY: 310 });
+      fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
+      expect(ack).not.toHaveBeenCalled();
+      act(() => { vi.advanceTimersByTime(CARD_AFTER_REVEAL_MS); });
+      expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+      expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
+      vi.useRealTimers();
+    });
     it('shows the drag and moves on when the view has been turned and let go', () => {
       const ack = lookAt();
       expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
@@ -243,8 +263,8 @@ describe('the welcome over the power card', () => {
       expect(ack).toHaveBeenCalledTimes(1);
     });
     it('keeps the drag up until the view has been turned', () => {
-      vi.useFakeTimers();
       lookAt();
+      vi.useFakeTimers();
       act(() => { vi.advanceTimersByTime(30_000); });
       expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
       vi.useRealTimers();
@@ -269,7 +289,10 @@ describe('the welcome over the power card', () => {
       fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
       fireEvent.pointerMove(scene, { clientX: 190, clientY: 310 });
       fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
+      vi.useFakeTimers();
       view.rerender(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack, backIn: 50 }} /></>);
+      act(() => { vi.advanceTimersByTime(CARD_AFTER_REVEAL_MS); });
+      vi.useRealTimers();
       expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
       expect(ack).not.toHaveBeenCalled();
     });
@@ -336,7 +359,7 @@ describe('the NPC speaks alone', () => {
   </ToastProvider>);
 
   it('drops news while the card is up, and lets a refusal through', () => {
-    withCoach({ kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false });
+    withCoach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 7, strict: false });
     act(() => { say?.('Repair started'); });
     expect(screen.queryByText('Repair started')).toBeNull();
     act(() => { say?.('Not enough alloy', 'error'); });
@@ -358,7 +381,7 @@ describe('the online card waits its turn', () => {
     expect(unlockHeld()).toBe(true);
     view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'online', step: 'press', marks: ['[data-guide="unlock-try"]'], chapter: 1, strict: true }, ack: vi.fn(), backIn: 50 }} />);
     expect(unlockHeld()).toBe(false);
-    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'telescopeRing', step: 'read', marks: [], chapter: 7, strict: false }, ack: vi.fn(), backIn: 50 }} />);
+    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 7, strict: false }, ack: vi.fn(), backIn: 50 }} />);
     expect(unlockHeld()).toBe(true);
     view.unmount();
     expect(unlockHeld()).toBe(false);
@@ -535,14 +558,14 @@ describe('declining the guide', () => {
 
 it('the late sight chapters point without locking the other repairs', () => {
  const free = vi.fn();
- render(<><div data-guide="sight-radar"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><div data-guide="sight-radar"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'radarRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
  fireEvent.click(screen.getByText('another repair'));
  expect(free).toHaveBeenCalledOnce();
 });
 
 it('does not scroll the galaxy away when a read target rides a projected scene marker', async()=>{
  vi.useFakeTimers();const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
- render(<><span data-scene-mark data-guide="sight-radar"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><span data-scene-mark data-guide="sight-radar"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'radarRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
  await act(async()=>{await vi.advanceTimersByTimeAsync(300);});
  expect(scroll).not.toHaveBeenCalled();
 });

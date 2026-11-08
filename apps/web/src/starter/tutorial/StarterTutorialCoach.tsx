@@ -24,6 +24,7 @@ import { AwayChip } from './AwayChip.js';
 import { DragHint } from './DragHint.js';
 import { useSilenceToasts } from '../../ui/Toast.js';
 import { holdUnlock } from './unlockHold.js';
+import { CARD_AFTER_REVEAL_MS } from './sightLesson.js';
 import { ACK_ON_PRESS, ackAfterPress, type StarterTutorial } from './useStarterTutorial.js';
 
 /** No news over the NPC's card (owner playtest 2026-11-06); a refusal still shows, as in FlightSchool. */
@@ -208,7 +209,16 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   // THE FIRST LOOK (owner playtest 2026-11-07), now over the power card (N1): the drag shows until the
   // view is turned, and only then does the hand go to the card. The card can be pressed all along.
   // The telescope's field is the same gesture, and turning the view is what passes that step (owner 2026-11-08).
-  const lookId = step && !step.nav && (step.id === 'online' || step.id === 'telescopeLook') ? step.id : null;
+  // The telescope's sky fills first: the officer waits for it, and a drag before that is only a look.
+  const telescope = step?.id === 'telescopeLook' && !step.nav;
+  const [filled, setFilled] = useState(false);
+  useEffect(() => {
+    if (!telescope) return undefined;
+    const timer = window.setTimeout(() => { setFilled(true); }, CARD_AFTER_REVEAL_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [telescope]);
+  const revealing = telescope && !filled;
+  const lookId = step && !step.nav && !revealing && (step.id === 'online' || step.id === 'telescopeLook') ? step.id : null;
   const looking = lookId !== null;
   const [lookedOn, setLookedOn] = useState<TutorialStepId | null>(null);
   const looked = lookedOn === lookId;
@@ -261,7 +271,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     };
   }, [speaking]);
 
-  if (!step || covered) return null;
+  if (!step || covered || revealing) return null;
   if (aside && tutorial.wait) return <AwayChip until={tutorial.wait.until} onOpen={() => { setSteppedAside(null); }} />;
   const subject = SUBJECT[step.id];
   const text = step.nav

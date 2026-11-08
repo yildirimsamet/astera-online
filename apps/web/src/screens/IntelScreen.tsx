@@ -3,6 +3,7 @@ import { GameActions } from '../session/seasonLock.js';
 import {
   GALAXY,
   PROBE,
+  dominantClass,
   fleetCargo,
   RIVAL,
   radarDetectsFleets,
@@ -12,6 +13,7 @@ import {
   vesselSphere,
   telescopeSlots,
   vesselHull,
+  type HullClass,
 } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +24,8 @@ import { rivalColour } from '../galaxy/PlanetField.js';
 import { compact, full, percent } from '../lib/format.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { flightModifiers } from '../lib/navigation.js';
+import { haptic } from '../lib/haptics.js';
+import { playSound } from '../lib/sound.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { heroArt } from '../starter/shipScreen.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
@@ -217,6 +221,7 @@ export function IntelScreen({
                 aboard={aboard}
                 hunt={aboard && planet.data ? {
                   carry: fleetCargo(planet.data.fleet, flightModifiers(planet.data).tech),
+                  own: dominantClass(planet.data.fleet),
                   crate: planet.data.vessel ? sealedVictoryCrate(planet.data.vessel) : null,
                 } : null}
                 {...(onOpenDossier ? { onOpenDossier } : {})}
@@ -566,7 +571,7 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
   yours: Yardstick | null;
   aboard: boolean;
   /** Aboard, what an outpost's report is read against (plan F4): the holds at home and the sealed victory crate. */
-  hunt: { carry: number; crate: { alloy: number; crystal: number } | null } | null;
+  hunt: { carry: number; own: HullClass | null; crate: { alloy: number; crystal: number } | null } | null;
   onOpenDossier?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -587,24 +592,30 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
       <p className="text-micro leading-snug text-v2-ink-3">
         {t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}
       </p>
+      {hunt?.crate && probes.some(report => report.outpost === true) && <HuntHowTo />}
       {probes.map((report) => {
         const minutes = (now - report.at.getTime()) / 60_000;
         const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
           percent: percent(report.accuracy),
         });
         const outpost = hunt !== null && report.outpost === true;
+        const heading = (
+          <>
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
+              {report.targetName !== report.targetUsername && <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>}
+            </span>
+            <span className="block text-micro text-v2-ink-2">{accuracy}</span>
+          </>
+        );
         return (
           <article key={`${report.targetPlanetId}-${String(report.at.getTime())}`} className={`flex flex-col gap-2 p-3 ${CARD}`}>
             <div className="flex items-center gap-2.5">
               {/* An outpost is drawn as a world on the map, and here as there. */}
               <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} />
-              <div className="min-w-0 flex-1">
-                <p className="flex min-w-0 items-baseline gap-1.5">
-                  <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
-                  {report.targetName !== report.targetUsername && <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>}
-                </p>
-                <p className="text-micro text-v2-ink-2">{accuracy}</p>
-              </div>
+              {onOpenDossier
+                ? <button type="button" onClick={() => { onOpenDossier(report.targetPlanetId); }} className="min-w-0 flex-1 text-left">{heading}</button>
+                : <div className="min-w-0 flex-1">{heading}</div>}
               <div className="flex shrink-0 flex-col items-end gap-0.5">
                 <SignalBars accuracy={report.accuracy} label={accuracy} />
                 <AgeStamp minutes={minutes} />
@@ -616,12 +627,23 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
               <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
               {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
             </div>
-            {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} />}
-            {(report.detected || onOpenDossier) && (
+            {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} own={hunt.own} />}
+            {/* An outpost is decided here: the door goes straight to its attack (owner playtest 2026-11-08). */}
+            {outpost && onOpenDossier && (
+              <button
+                type="button"
+                data-report-open=""
+                onClick={() => { playSound('tap'); haptic('tap'); onOpenDossier(report.targetPlanetId); }}
+                className="min-h-11 rounded-control border border-v2-hostile/70 bg-v2-hostile/20 text-caption font-semibold text-v2-ink active:scale-[.98]"
+              >
+                {t('starter.intel.attack')}
+              </button>
+            )}
+            {(report.detected || (onOpenDossier && !outpost)) && (
               <div className="flex items-center justify-between gap-2">
                 {/* Being caught is the cost of looking: a gap to plan around, said in warn. */}
                 <span className="text-micro text-v2-warn">{report.detected ? t('intel.probes.caught') : ''}</span>
-                {onOpenDossier && (
+                {onOpenDossier && !outpost && (
                   <button
                     type="button"
                     data-report-open=""
@@ -637,6 +659,20 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
         );
       })}
     </div>
+  );
+}
+
+/** How two outposts are weighed, said where they are weighed: the inputs and the rule, never the pick. */
+function HuntHowTo() {
+  const { t } = useTranslation();
+  return (
+    <section data-testid="hunt-howto" className="flex flex-col gap-1 rounded-control border border-v2-self/30 bg-v2-self/5 p-2.5">
+      <h3 className="v2-legend text-v2-self">{t('starter.intel.howTo.title')}</h3>
+      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.guard')}</p>
+      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.bars')}</p>
+      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.carry')}</p>
+      <p className="text-micro font-semibold leading-snug text-v2-ink">{t('starter.intel.howTo.go', { attack: t('starter.intel.attack') })}</p>
+    </section>
   );
 }
 
