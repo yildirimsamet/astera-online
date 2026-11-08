@@ -46,8 +46,8 @@ function useRepairMoment(id: string, progress: VesselProgress): RepairMoment | n
     last.current = progress;
     if (!found) return;
     setMoment(found);
-    if (found.tier === 'routine') { playSound('weld'); haptic('tap'); }
-    if (found.tier === 'big') { playSound('ignite'); haptic('rumble'); rememberIgnition(id); }
+    if (found.tier === 'routine') { playSound('weld', { seconds: 1 }); haptic('tap'); }
+    if (found.tier === 'big') { playSound('ignite', { seconds: 2.5 }); haptic('rumble'); rememberIgnition(id); }
   }, [id, progress]);
   useEffect(() => {
     if (!moment) return undefined;

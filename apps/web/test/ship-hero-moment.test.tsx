@@ -60,7 +60,7 @@ describe('the ship on screen', () => {
     render(draw(lit));
     expect(moment()).toBe('big');
     expect(sound.playSound).toHaveBeenCalledTimes(1);
-    expect(sound.playSound).toHaveBeenCalledWith('ignite');
+    expect(sound.playSound).toHaveBeenCalledWith('ignite', { seconds: 2.5 });
     cleanup();
     render(draw(lit));
     expect(moment()).toBeNull();
@@ -100,7 +100,7 @@ describe('the ship on screen', () => {
     const view = render(draw(ship({ DRIVE_HULL: 1 })));
     view.rerender(draw(ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 })));
     expect(moment()).toBe('big');
-    expect(sound.playSound).toHaveBeenCalledWith('ignite');
+    expect(sound.playSound).toHaveBeenCalledWith('ignite', { seconds: 2.5 });
     expect(haptics.haptic).toHaveBeenCalledWith('rumble');
   });
 });

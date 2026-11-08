@@ -38,6 +38,7 @@ export function OutpostGuides({ nodes, elements, onSelect }: { nodes: readonly P
       type="button"
       aria-label={t('starter.outpostGuide', { name: node.name })}
       data-outpost-guide={node.id}
+      data-scene-mark=""
       className="outpost-guide text-v2-warn"
       style={{ transform: 'translate3d(-9999px,-9999px,0)' }}
       onPointerDown={event => { event.stopPropagation(); }}

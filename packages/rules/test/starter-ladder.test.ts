@@ -67,10 +67,10 @@ describe('the repair ladder', () => {
       const s = find(module, stage);
       return [s.alloy, s.crystal, s.minutes];
     };
-    // Owner 2026-11-06: the first session's repairs take seconds (10 s, 10 s, 30 s, 60 s); then the ramp
+    // Owner 2026-11-08: the first session's repairs take seconds (5 s, 5 s, 15 s, 15 s); then the ramp
     // of the retention plan (§6.1) instead of a cliff, softened by the owner 2026-11-07 (90 s, 2, 3, 5 min).
-    expect(bill('REFINERY', 2)).toEqual([154, 20, 10 / 60]);
-    expect(bill('EXTRACTOR', 1)).toEqual([44, 33, 10 / 60]);
+    expect(bill('REFINERY', 2)).toEqual([154, 20, 5 / 60]);
+    expect(bill('EXTRACTOR', 1)).toEqual([44, 33, 5 / 60]);
     expect(bill('EXTRACTOR', 2)).toEqual([77, 58, 1]);
     expect(bill('REFINERY', 3)).toEqual([548, 69, 1.5]);
     expect(bill('VAULT', 1)).toEqual([300, 150, 2]);
@@ -83,8 +83,8 @@ describe('the repair ladder', () => {
     expect(bill('SHIPYARD', 1)).toEqual([800, 300, 3]);
     expect(bill('HANGAR', 2)).toEqual([1000, 350, 30]);
     // Owner 2026-11-08 (N11): both are used in the first session.
-    expect(bill('TELESCOPE', 1)).toEqual([250, 150, 1.5]);
-    expect(bill('RADAR', 1)).toEqual([200, 120, 1.5]);
+    expect(bill('TELESCOPE', 1)).toEqual([250, 150, 15 / 60]);
+    expect(bill('RADAR', 1)).toEqual([200, 120, 15 / 60]);
     // Owner 2026-11-08 (N4): four hours each, so the fuel and not the engine is what a ship waits on.
     expect(bill('DRIVE_HULL', 1)).toEqual([2200, 1100, 240]);
     expect(bill('DRIVE_THRUST', 1)).toEqual([1800, 1200, 240]);

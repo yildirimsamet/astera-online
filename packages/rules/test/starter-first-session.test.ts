@@ -79,11 +79,16 @@ describe('the first session', () => {
    * tutorial's four repairs run in seconds, in whole seconds, so the guided first session is played
    * through, not waited through.
    */
-  it('runs the road in seconds and minutes: 10 s, 10 s, 90 s, 90 s, 30 s, 3 min', () => {
-    expect(FIRST_SIX.map(s => s.minutes * 60)).toEqual([10, 10, 90, 90, 30, 180]);
+  it('runs the road in seconds and minutes: 5 s, 5 s, 15 s, 15 s, 30 s, 3 min', () => {
+    FIRST_SIX.map(s => s.minutes * 60).forEach((seconds, i) => { expect(seconds).toBeCloseTo([5, 5, 15, 15, 30, 180][i]!, 6); });
   });
 
   /** Retention plan §6.1: a ramp, not a cliff. What the Shipyard opens runs up to the first day's hour. */
+  it('flies a Prospector twice as fast as before and fills its hold from one rock', () => {
+    expect(STARTER.prospectorSpeed).toBe(600);
+    expect(STARTER.sites.asteroidOre).toEqual([800, 1200]);
+  });
+
   it('ramps the repairs after it: 1, 1.5, 2, 5, then 20, 30 and 60 minutes', () => {
     const ramp = [step('EXTRACTOR', 2), step('REFINERY', 3), step('VAULT', 1), step('EXTRACTOR', 3), step('SURVEY', 2), step('HANGAR', 2), step('REFINERY', 4)];
     expect(ramp.map(s => s.minutes)).toEqual([1, 1.5, 2, 5, 20, 30, 60]);

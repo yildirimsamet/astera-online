@@ -6,7 +6,7 @@ import type { SightNow } from './sightLesson.js';
 
 /**
  * THE STARTER GUIDE (owner 2026-11-08, N1 and N12). A short core is held: the power card, the first
- * collect and the first repair with its ten seconds. After it one road walks the game's mechanics in
+ * collect and the first repair with its five seconds. After it one road walks the game's mechanics in
  * order, in the first minutes: crystal, telescope and radar, the rocks and a Prospector, the other
  * ships and a probe, the yard and a ship of one's own, then what the ship still needs to leave. It
  * points and never holds. A few first-time moments speak over it when they happen: a crate, a probe
@@ -179,10 +179,10 @@ const MOMENTS: readonly Part[] = [
   {
     strict: false, due: i => has(i, 'RADAR', 1),
     steps: [
-      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('unknown') },
-      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('unknown') },
+      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: sensor('RADAR'), ready: inSight('unknown') },
+      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: sensor('RADAR'), ready: inSight('unknown') },
       // Closed once the telescope has named a craft in its ring: what the radar asked, answered.
-      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('traffic') },
+      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT], satisfied: sensor('RADAR'), ready: inSight('traffic') },
     ],
   },
 ];

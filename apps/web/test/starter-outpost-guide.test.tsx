@@ -44,6 +44,8 @@ describe('the first hunt\'s flags', () => {
     render(<OutpostGuides nodes={nodes} elements={{ current: new Map() }} onSelect={onSelect} />);
     const flags = screen.getAllByRole('button');
     expect(flags.map(flag => flag.textContent)).toEqual(['Tevis', 'Eldeth']);
+    // Out in the scene: the hand points at it, and no frame is drawn round the world under it.
+    expect(flags[0]?.hasAttribute('data-scene-mark')).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /Eldeth/ }));
     expect(onSelect).toHaveBeenCalledWith('eldeth');
   });

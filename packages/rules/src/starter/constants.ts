@@ -28,8 +28,8 @@ export const STARTER = {
   radar: [0, 600, 1000, 1500],
   /** At the main game's 2369 a 300-unit flight lasts 9 seconds and cannot be watched. */
   probeSpeed: 790,
-  /** Slower than the main game's, so that short trips do not outrun production. */
-  prospectorSpeed: 300,
+  /** Doubled by the owner 2026-11-08: the first haul is a thing to watch, not to wait for. */
+  prospectorSpeed: 600,
   hulls: ['DART', 'PIKE', 'WARDEN', 'COURIER', 'PROSPECTOR'],
   hangarRoom: [20, 32, 50],
   attackBays: [1, 2, 3],
@@ -51,7 +51,8 @@ export const STARTER = {
   battleDebris: { share: 0.10, minimum: 100, decayMinutes: 40 },
   sites: {
     asteroidsPerActivePerHour: 0.5,
-    asteroidOre: [400, 800],
+    /** About a hold each (owner 2026-11-08): few rocks in sight, so each is worth the flight and nobody farms all night. */
+    asteroidOre: [800, 1200],
     wrecks: { count: 6, stock: [300, 600], respawnMinutes: 120 },
     outposts: { count: 8, guards: [2, 3, 6], stock: [250, 450, 900], respawnMinutes: 360 },
   },

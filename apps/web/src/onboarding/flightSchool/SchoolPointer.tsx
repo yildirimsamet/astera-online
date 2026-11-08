@@ -9,6 +9,8 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
   const rectangle = useRef<DOMRect | null>(null);
   const read = useCallback(() => settled.current ? [settled.current] : [], []);
   const bounds = useCallback(() => settled.current ? rectangle.current : null, []);
+  /** A frame round something out in the scene would hide the very thing it is about. */
+  const frame = useCallback(() => settled.current && !settled.current.hasAttribute('data-scene-mark') ? rectangle.current : null, []);
   useEffect(() => {
     let frame = 0, candidate: Element | null = null, since = 0, previous = '', scrollAt = 0, attempts = 0;
     const paint = () => {
@@ -28,7 +30,11 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
         candidate = target; settled.current = null; since = performance.now(); previous = ''; attempts = 0; scrollAt = 0;
       }
       const key = box ? [box.x, box.y, box.width, box.height].map(Math.round).join(':') : '';
-      if (key !== previous) { previous = key; since = performance.now(); settled.current = null; }
+      // A control has to come to rest; the sky never does, and a hand that waited for it would blink.
+      if (key !== previous) {
+        previous = key;
+        if (target?.hasAttribute('data-scene-mark') !== true) { since = performance.now(); settled.current = null; }
+      }
       const queue = target?.hasAttribute('data-queue-lane') === true;
       if (box && scroll && !fits && attempts < 3 && (queue || (performance.now() - since >= 180 && performance.now() - scrollAt >= 400))) {
         scroll.scrollBy({ top: box.top - top, behavior: queue ? 'instant' : 'smooth' }); scrollAt = performance.now(); attempts++;
@@ -47,5 +53,5 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
     frame = requestAnimationFrame(paint);
     return () => { cancelAnimationFrame(frame); settled.current = null; };
   }, [targets]);
-  return <>{showHand && <TutorialHand targets={read} bounds={bounds} />}<SchoolHighlight targets={read} bounds={bounds} /></>;
+  return <>{showHand && <TutorialHand targets={read} bounds={bounds} />}<SchoolHighlight targets={read} bounds={frame} /></>;
 }

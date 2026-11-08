@@ -2,7 +2,10 @@
 .outpost-guide { position: absolute; top: 0; left: 0; z-index: 10; display: flex; min-width: 44px; flex-direction: column; align-items: center; gap: 1px; padding: 2px 4px; border: 0; background: none; pointer-events: auto; touch-action: manipulation; }
 .outpost-guide-mark { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; }
 .outpost-guide[data-offscreen="true"] .outpost-guide-mark { background: radial-gradient(circle, #1a1405d9 35%, #1a140500 72%); box-shadow: inset 0 0 0 1px #f5b94259; }
-.outpost-guide-flag { width: 20px; height: 20px; filter: drop-shadow(0 0 4px #f5b94299) drop-shadow(0 0 10px #f5b94240); }
+.outpost-guide-flag { width: 14px; height: 14px; filter: drop-shadow(0 0 2px #0009); opacity: .9; }
+/* In view the world itself is the target (owner 2026-11-08): the flag only says which one, and its name is already there. */
+.outpost-guide[data-offscreen="false"] { pointer-events: none; }
+.outpost-guide[data-offscreen="false"] .outpost-guide-name { display: none; }
 .outpost-flag-cloth { transform-box: fill-box; transform-origin: 0 50%; animation: outpost-flag-wave 2.4s ease-in-out infinite; }
 .outpost-guide-bearing { position: absolute; inset: 0; display: none; transform: rotate(var(--outpost-guide-angle, 0rad)); }
 .outpost-guide[data-offscreen="true"] .outpost-guide-bearing { display: block; }

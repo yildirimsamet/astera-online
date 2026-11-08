@@ -20,6 +20,9 @@ it('opens the craft and keeps the press from the scene underneath', () => {
   render(<div onPointerDown={scene} onPointerUp={scene} onClick={scene}><InspectMark contact={contact} onSelect={onSelect} /></div>);
   const mark = screen.getByRole('button', { name: 'Inspect the flight' });
   expect(mark.getAttribute('data-guide')).toBe('sight-craft');
+  // Owner 2026-11-08: the player has to see what is coming, so the mark draws nothing over it.
+  expect(mark.querySelector('svg')).toBeNull();
+  expect(mark.className).not.toMatch(/border|shadow/);
   fireEvent.pointerDown(mark);
   fireEvent.pointerUp(mark);
   fireEvent.click(mark);

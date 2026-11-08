@@ -83,10 +83,10 @@ const seconds = (count: number): number => count / 60;
 export const REPAIR_LADDER: readonly RepairStep[] = [
   // THE FIRST SESSION'S ROAD (owner 2026-11-08, N10–N13), one repair at a time and for everyone: free
   // spending left the antenna hours away. What makes, then what sees, then what reaches, then what builds.
-  step('REFINERY', 'REFINERY', 2, 154, 20, seconds(10), true),
-  step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(10), true, [needs('REFINERY', 2)]),
-  step('DEFENCE', 'TELESCOPE', 1, 250, 150, 1.5, true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
-  step('DEFENCE', 'RADAR', 1, 200, 120, 1.5, true, [needs('TELESCOPE', 1)]),
+  step('REFINERY', 'REFINERY', 2, 154, 20, seconds(5), true),
+  step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(5), true, [needs('REFINERY', 2)]),
+  step('DEFENCE', 'TELESCOPE', 1, 250, 150, seconds(15), true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
+  step('DEFENCE', 'RADAR', 1, 200, 120, seconds(15), true, [needs('TELESCOPE', 1)]),
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
   step('CARGO', 'SHIPYARD', 1, 800, 300, 3, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
 

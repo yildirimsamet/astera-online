@@ -1,6 +1,6 @@
 import type { VesselSystem } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { damageSpots, type VesselLights } from '../src/galaxy/mainSky.js';
+import { VESSEL_BAYS, damageSpots, vesselHitBox, type VesselLights } from '../src/galaxy/mainSky.js';
 
 /**
  * THE DAMAGE IS WHERE THE DAMAGE IS (plan 2026-11-08 F8). The ship burned by a share of the whole
@@ -29,4 +29,21 @@ describe('where the ship burns', () => {
   it('is clean when all of it is repaired', () => {
     expect(damageSpots(all(1))).toEqual([]);
   });
+});
+
+/** Owner 2026-11-08: the ship's touch area spread far past its hull and took the taps meant for the rocks around it. */
+describe('where the ship can be touched', () => {
+  for (const hull of ['SPINE', 'WEDGE', 'SEED'] as const) {
+    it(`stops at the ${hull} hull and still covers every bay`, () => {
+      const [length, height, width] = vesselHitBox(hull);
+      expect(length).toBe(1);
+      for (const [x, y, z] of Object.values(VESSEL_BAYS[hull])) {
+        expect(Math.abs(x)).toBeLessThanOrEqual(length / 2);
+        expect(Math.abs(y)).toBeLessThanOrEqual(height / 2);
+        expect(Math.abs(z)).toBeLessThanOrEqual(width / 2);
+      }
+      expect(height).toBeLessThan(0.5);
+      expect(width).toBeLessThan(0.7);
+    });
+  }
 });

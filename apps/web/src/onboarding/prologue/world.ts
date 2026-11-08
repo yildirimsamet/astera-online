@@ -16,7 +16,7 @@ export interface PrologueWorld { stage: PrologueStage; since: number }
 
 /** Long enough to see a thing happen, too short to be waiting. */
 export const BURN_MS = 6_000;
-export const PATCH_MS = 7_000;
+export const PATCH_MS = 3_500;
 /** The jump to the signal: long enough to feel the distance, short enough not to wait for it. */
 export const WARP_MS = 1_800;
 

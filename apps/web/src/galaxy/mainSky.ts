@@ -133,6 +133,13 @@ export const VESSEL_BAYS: Record<VesselHull, Record<VesselSystem, Vec3Tuple>> = 
   SEED: { REFINERY: [-0.115, 0.086, 0.125], SURVEY: [-0.07, 0.167, 0], DEFENCE: [0.064, -0.065, 0.185], CARGO: [-0.055, -0.161, 0.138], DRIVE: [-0.485, -0.08, 0] },
 };
 
+/** The ship to the touch (owner 2026-11-08): the hull as the model lies, a hair past its bays and no further. */
+export function vesselHitBox(hull: VesselHull): Vec3Tuple {
+  const bays = Object.values(VESSEL_BAYS[hull]);
+  const across = (axis: 1 | 2): number => 2 * Math.max(...bays.map(bay => Math.abs(bay[axis]))) + 0.08;
+  return [1, across(1), across(2)];
+}
+
 /** The turn about Y that points a model's nose (+Z) at the main galaxy. */
 export function starterShipYaw(ship: Vec3Tuple, offset: Vec3): number {
   const main = toWorld(offset);

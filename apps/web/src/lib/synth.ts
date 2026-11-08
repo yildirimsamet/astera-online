@@ -7,8 +7,8 @@ export const SYNTH_CUES = ['switch', 'ignite', 'weld', 'warp', 'claim', 'crate',
 export type SynthCue = (typeof SYNTH_CUES)[number];
 
 /** The furnace roars as long as the prologue's burn (`BURN_MS`, 6 s) and the torch as long as its patch
- * (`PATCH_MS`, 7 s), each with a breath after. */
-const SECONDS: Record<SynthCue, number> = { switch: 0.9, ignite: 6.4, weld: 7.4, warp: 2.1, claim: 1.8, crate: 1.5, arc: 0.9 };
+ * (`PATCH_MS`, 3.5 s), each with a breath after. */
+const SECONDS: Record<SynthCue, number> = { switch: 0.9, ignite: 6.4, weld: 3.9, warp: 2.1, claim: 1.8, crate: 1.5, arc: 0.9 };
 
 /** Mulberry32: a seeded noise, so a cue is identical on every device and every run. */
 function noiseSource(seed: number): () => number {
@@ -70,7 +70,7 @@ function sample(cue: SynthCue, t: number, rate: number, state: { noise: () => nu
     case 'weld': {
       // A plasma torch: it catches with a pop, then hisses and hums, crackling on the sparks' half-second
       // beat, until the patch holds.
-      const on = ramp(t, 0, 0.05) * (t < 6.95 ? 1 : decay(t, 6.95, 0.08));
+      const on = ramp(t, 0, 0.05) * (t < 3.45 ? 1 : decay(t, 3.45, 0.08));
       const pop = (n - state.lp(n, 3000)) * decay(t, 0, 0.02) * 0.9;
       const hiss = (n - state.lp2(n, 2400)) * 0.5 * (0.85 + 0.15 * Math.sin(2 * Math.PI * 3.1 * t));
       const hum = (Math.sin(2 * Math.PI * 180 * t) * 0.5 + Math.sign(Math.sin(2 * Math.PI * 90 * t)) * 0.08) * 0.35;

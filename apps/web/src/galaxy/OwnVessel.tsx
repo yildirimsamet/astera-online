@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { softGlow } from './Environment.js';
 import { HitboxMaterial } from './hitboxDebug.js';
-import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, vesselLights, vesselModelFile } from './mainSky.js';
-import { STARTER_MODEL_SCALE, VESSEL_LENGTH } from './scene.js';
+import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, vesselHitBox, vesselLights, vesselModelFile } from './mainSky.js';
+import { VESSEL_LENGTH } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { VesselBody } from './VesselBody.js';
 
@@ -72,11 +72,11 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
   const look = vesselLook(progress);
   return (
     <group position={[at[0], at[1], at[2]]} rotation={[0, starterShipYaw([at[0], at[1], at[2]], offset), 0]} scale={LENGTH}>
-      <mesh onPointerUp={(event) => { if (!wasTap()) return; markHit(); event.stopPropagation(); onSelect(); }}>
-        <sphereGeometry args={[0.6 / STARTER_MODEL_SCALE, 8, 6]} />
-        <HitboxMaterial kind="fleet" />
-      </mesh>
       <group rotation={[0, VESSEL_NOSE_TURN, 0]}>
+        <mesh onPointerUp={(event) => { if (!wasTap()) return; markHit(); event.stopPropagation(); onSelect(); }}>
+          <boxGeometry args={vesselHitBox(hull)} />
+          <HitboxMaterial kind="fleet" />
+        </mesh>
         {/* Its own boundary: a new state loading must not take the main galaxy's sky with it. */}
         {/* Owner 2026-11-06: lit from its own texture, a light rim, and its damage burning on it. */}
         <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} damage={damage} /></Suspense>

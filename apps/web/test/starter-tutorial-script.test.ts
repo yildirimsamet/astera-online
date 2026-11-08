@@ -247,13 +247,13 @@ describe('the ship sees, detects and reads', () => {
   const blip = { traffic: false, tracked: false, unknown: true };
   it('introduces Radar 1 on the scout\'s question mark, and only then', () => {
     expect(at(radar)).toEqual({ kind: 'advise' });
-    expect(at({ ...radar, sight: blip })).toMatchObject({ id: 'radarRing', marks: ['[data-guide="sight-unknown"]', '[data-guide="sight-radar"]'] });
+    expect(at({ ...radar, sight: blip })).toMatchObject({ id: 'radarRing', marks: ['[data-guide="sight-unknown"]'] });
     expect(at({ ...radar, sight: blip, acked: [...told, 'radarRing'] })).toMatchObject({ id: 'radarContact' });
   });
   it('closes with the three jobs once the telescope has named what the radar found', () => {
     const asked = [...told, 'radarRing', 'radarContact'];
     expect(at({ ...radar, sight: blip, acked: asked })).toEqual({ kind: 'advise' });
-    expect(at({ ...radar, sight: traffic, acked: asked })).toMatchObject({ id: 'sightTrio', marks: ['[data-guide="sight-craft"]', '[data-guide="sight-radar"]'] });
+    expect(at({ ...radar, sight: traffic, acked: asked })).toMatchObject({ id: 'sightTrio', marks: ['[data-guide="sight-craft"]'] });
     expect(at({ ...radar, sight: traffic, acked: [...asked, 'sightTrio'] })).toEqual({ kind: 'advise' });
   });
   // Radar first, then the telescope picks the scout up: its own lesson goes before the radar's last line.

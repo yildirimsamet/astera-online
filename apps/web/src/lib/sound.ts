@@ -38,7 +38,15 @@ export function setEffectsEnabled(enabled: boolean): void { save({ ...preference
 export function setEffectsVolume(volume: number): void {
   if (Number.isFinite(volume)) save({ ...preference, volume: Math.min(1, Math.max(0, volume)) });
 }
-export interface SoundOptions { gain?: number; pan?: number; key?: string }
+export interface SoundOptions {
+  gain?: number; pan?: number; key?: string;
+  /** Cut the cue to this length, with a short fade so it does not click. */
+  seconds?: number;
+}
+
+/** How long a cue waits for the audio to open: long enough for a finger to lift, not long enough to sound late. */
+const WAITS_MS = 1_200;
+const FADE_SECONDS = 0.06;
 
 /** A cue may fail silently, never delay or reject the action it accompanies. */
 export function playSound(cue: SoundCue, options: SoundOptions = {}): void {
@@ -54,6 +62,8 @@ class SoundMixer {
   private seen = new Map<string, number>();
   private abort = new AbortController();
   private disposed = false;
+  /** The latest cue asked for before the audio opened (a phone opens it only when the finger lifts). */
+  private waiting: { cue: SoundCue; options: SoundOptions; at: number } | null = null;
 
   /** Called synchronously from a real gesture, including the first tap. */
   unlock = (): void => {
@@ -86,7 +96,14 @@ class SoundMixer {
         return;
       }
     }
-    if (this.context.state === 'suspended') void this.context.resume().catch(() => { /* Autoplay/OS policy. */ });
+    if (this.context.state === 'suspended') void this.context.resume().then(this.playWaiting).catch(() => { /* Autoplay/OS policy. */ });
+    else this.playWaiting();
+  };
+
+  private playWaiting = (): void => {
+    const waiting = this.waiting;
+    this.waiting = null;
+    if (waiting && performance.now() - waiting.at <= WAITS_MS) this.play(waiting.cue, waiting.options);
   };
 
   private async load(cue: FileCue, context: AudioContext): Promise<void> {
@@ -104,8 +121,13 @@ class SoundMixer {
     else this.unlock();
   }
 
-  play(cue: SoundCue, { gain = 1, pan = 0, key }: SoundOptions): void {
+  play(cue: SoundCue, options: SoundOptions): void {
+    const { gain = 1, pan = 0, key, seconds } = options;
     const context = this.context, master = this.master, buffer = this.buffers.get(cue);
+    if (context?.state !== 'running' && cue !== 'tap' && !this.disposed && preference.enabled && preference.volume > 0) {
+      this.waiting = { cue, options, at: performance.now() };
+      return;
+    }
     if (this.disposed || !preference.enabled || preference.volume === 0 || !isAppActive()
       || context?.state !== 'running' || !master || !buffer || !Number.isFinite(gain) || gain <= 0 || !Number.isFinite(pan)) return;
     const now = performance.now();
@@ -134,7 +156,15 @@ class SoundMixer {
     this.voices.add(voice);
     const release = () => { this.voices.delete(voice); voice.disconnect(); level.disconnect(); panner.disconnect(); };
     voice.onended = release;
-    try { voice.start(); } catch { release(); }
+    try {
+      voice.start();
+      if (seconds !== undefined) {
+        const end = context.currentTime + seconds;
+        level.gain.setValueAtTime(level.gain.value, end - FADE_SECONDS);
+        level.gain.linearRampToValueAtTime(0, end);
+        voice.stop(end);
+      }
+    } catch { release(); }
   }
 
   private stop(): void {
@@ -173,11 +203,13 @@ export function useSoundEffects(): void {
     const controller = new SoundMixer();
     mixer = controller;
     document.addEventListener('pointerdown', controller.unlock, { passive: true });
+    document.addEventListener('pointerup', controller.unlock, { passive: true });
     document.addEventListener('keydown', controller.keyboard);
     document.addEventListener('click', controller.click);
     const stopActivity = watchAppActivity(controller.visibility);
     return () => {
       document.removeEventListener('pointerdown', controller.unlock);
+      document.removeEventListener('pointerup', controller.unlock);
       document.removeEventListener('keydown', controller.keyboard);
       document.removeEventListener('click', controller.click);
       stopActivity();

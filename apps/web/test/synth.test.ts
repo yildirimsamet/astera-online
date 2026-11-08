@@ -41,7 +41,7 @@ describe('a synthesized cue', () => {
       const part = samples.slice(Math.round(from * rate), Math.round(to * rate));
       return Math.sqrt(part.reduce((sum, value) => sum + value * value, 0) / part.length);
     };
-    expect(loudness(5.8, 6.8)).toBeGreaterThan(loudness(0.5, 1.5) * 0.35);
+    expect(loudness(2.5, 3.4)).toBeGreaterThan(loudness(0.5, 1.5) * 0.35);
     expect(SYNTH_CUES).toContain('arc');
   });
 
@@ -66,5 +66,10 @@ describe('a synthesized cue', () => {
 
   it('sounds the same every time', () => {
     expect(synthesize('switch', 22_050)).toEqual(synthesize('switch', 22_050));
+  });
+
+  it('keeps the torch as short as the patch it belongs to', () => {
+    expect(PATCH_MS).toBe(3_500);
+    expect(synthesize('weld', 8000).length / 8000).toBeLessThanOrEqual(PATCH_MS / 1000 + 0.5);
   });
 });
