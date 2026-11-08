@@ -18,6 +18,8 @@ const glyph = (contact: Contact) => contact.kind==='unknown'
   ? <span className="font-v2-mono text-title">?</span>
   : <Icon id={contact.kind==='probe'?'i-probe':contact.kind==='mining'?'i-mine':'i-fleet'} className="size-4"/>;
 
+/** Over the scene's labels, under the focus panel (`z-20`) that a tap on the mark opens. */
+const MARK_LAYER: [number, number] = [15, 15];
 const FACE = 'grid size-10 place-items-center rounded-full border border-v2-self text-v2-self shadow-[0_0_15px_var(--color-v2-self)] animate-[ember_1.8s_ease-in-out_infinite]';
 const markOf = (contact: Contact) => contact.kind==='unknown'?'sight-unknown':'sight-craft';
 /** The scene listens on the container this mark lives in: a press on the craft must not reach the sky behind it. */
@@ -36,7 +38,7 @@ export function InspectMark({ contact, onSelect }: { contact:Contact;onSelect:(i
 function MovingMark({ contact, nodes, onSelect }: { contact:Contact;nodes:readonly PlanetNode[];onSelect?:(id:string)=>void }) {
   const group = useRef<Group>(null);
   useFrame(()=>{group.current?.position.set(...contactPosition(contact,serverNow(),nodes));});
-  return <group ref={group} position={contactPosition(contact,serverNow(),nodes)}><Html center zIndexRange={[45,45]} style={{pointerEvents:onSelect?'auto':'none'}}>
+  return <group ref={group} position={contactPosition(contact,serverNow(),nodes)}><Html center zIndexRange={MARK_LAYER} style={{pointerEvents:onSelect?'auto':'none'}}>
     {onSelect ? <InspectMark contact={contact} onSelect={onSelect}/> : <span data-scene-mark="" data-guide={markOf(contact)} className={FACE}>{glyph(contact)}</span>}
   </Html></group>;
 }
@@ -59,14 +61,13 @@ export function StarterSightMarks({ sensors, contacts, nodes, onSelect }: { sens
   const contact = post ? lessonContact(id,contacts,post) : undefined;
   useSighted(device ? id : undefined, contact?.id);
   if (!device || !post) return null;
-  const radius=device==='radar'?post.detect:post.identify;
-  const anchor=toWorld({x:post.at.x-radius*.6,y:post.at.y,z:post.at.z-radius*.8});
+  const anchor=toWorld({x:post.at.x-post.detect*.6,y:post.at.y,z:post.at.z-post.detect*.8});
   return <>
-    <group position={anchor}><Html center zIndexRange={[45,45]} style={{pointerEvents:'none'}}>
-      <span data-scene-mark data-guide={`sight-${device}`} className="flex items-center gap-1 whitespace-nowrap rounded-full border border-v2-self/60 bg-v2-void/90 px-2 py-1 text-caption text-v2-self">
-        <Icon id={device==='radar'?'i-radar':'i-telescope'} className="size-4"/>{moduleName(device==='radar'?'RADAR':'TELESCOPE')}
+    {device==='radar' && <group position={anchor}><Html center zIndexRange={MARK_LAYER} style={{pointerEvents:'none'}}>
+      <span data-scene-mark data-guide="sight-radar" className="flex items-center gap-1 whitespace-nowrap rounded-full border border-v2-self/60 bg-v2-void/90 px-2 py-1 text-caption text-v2-self">
+        <Icon id="i-radar" className="size-4"/>{moduleName('RADAR')}
       </span>
-    </Html></group>
+    </Html></group>}
     {contact && <MovingMark contact={contact} nodes={nodes} {...(id==='telescopeTraffic'?{onSelect}:{})}/>}
   </>;
 }

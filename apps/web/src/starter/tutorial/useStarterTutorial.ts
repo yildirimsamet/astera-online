@@ -8,7 +8,7 @@ import { vesselToPlanetView } from '../adapter.js';
 import { huntStage } from '../hunt.js';
 import { hasOtherShip } from '../neighbour.js';
 import { opportunities, opportunityKey, type Opportunity } from '../opportunities.js';
-import { timeToAfford } from '../steps.js';
+import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
@@ -24,7 +24,7 @@ function readAcked(vesselId: string): string[] {
 }
 
 /** Marks that leave no trace on the ship: pressing them is the step. */
-export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'telescopeTraffic'];
+export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'telescopeTraffic', 'buildShip'];
 
 /**
  * Records a pressed mark once the press is over. Recording moves the guide on, and a mark that belongs
@@ -46,7 +46,8 @@ export interface StarterTutorial {
   /** Minutes until the store and works can pay the repair the player comes back for. */
   backIn: number | null;
   farewelled?: boolean;
-  homeAt?: Date;
+  /** How much of the ship is repaired, in percent: what the handover says. */
+  repaired?: number;
   /** When the work a wait step is for is done, and how long it runs in all. */
   wait?: TutorialWait;
   vessel?: VesselView;
@@ -89,8 +90,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const backIn = next ? timeToAfford(next, purse, income) : 0;
   const probing = (pending.data?.pending ?? []).some(thread => thread.kind === 'probe');
   // A run that is done is home: the line counts the same way (GalaxyView).
-  const active = (mining.data?.runs ?? []).filter(run => run.status !== 'done');
-  const out = active.length > 0;
+  const out = (mining.data?.runs ?? []).some(run => run.status !== 'done');
   // Only once the map has loaded: an unread map is not an empty galaxy.
   const alone = galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, vessel.id);
   const input: TutorialInput = {
@@ -100,6 +100,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     unlockToAnnounce: vessel.unlockToAnnounce,
     works: held.bufferAlloy,
     canPayNext: backIn === 0,
+    canBuildShip: canPayDart(held),
     probing,
     mining: out,
     crates: vessel.crates,
@@ -115,6 +116,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     held: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal, bufferDeuterium: held.bufferDeuterium },
     income,
     features: vessel.features,
+    crateReady: vessel.crates.some(crate => crate.state === 'ready'),
     probing,
     mining: out,
     alone,
@@ -122,15 +124,10 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     hunt: huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? []),
   });
   const pick = advice.pick === null ? undefined : offers.find(offer => opportunityKey(offer) === advice.pick);
-  const run = active[0];
-  const flight = (pending.data?.pending ?? []).find(thread => thread.kind === 'fleet');
-  const homeAt = run ? run.homeAt ?? new Date(2 * run.arriveAt.getTime() - run.departAt.getTime()) : flight?.homeAt ?? (flight?.leg === 'outbound' && flight.path ? new Date(flight.arriveAt.getTime() + flight.path.arriveAt.getTime() - flight.path.departAt.getTime()) : flight?.arriveAt);
   const waiting = answer.kind === 'step' && answer.step === 'wait' ? answer.id : null;
-  const wait = waiting === null ? null
-    : repairWait(waiting, vessel.queue)
-      ?? (waiting === 'mineFlying' && run && homeAt ? { until: homeAt, spanMs: homeAt.getTime() - run.departAt.getTime() } : null);
+  const wait = waiting === null ? null : repairWait(waiting, vessel.queue);
   return {
     answer, view, offers, ...(pick ? { pick } : {}), backIn, ack, vessel, farewelled: list.includes('farewell'),
-    ...(homeAt ? { homeAt } : {}), ...(wait ? { wait } : {}),
+    repaired: Math.round(vessel.progress.share * 100), ...(wait ? { wait } : {}),
   };
 }

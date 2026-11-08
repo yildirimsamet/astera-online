@@ -13,6 +13,8 @@ import {
   TELESCOPE_GLASS_OPACITY,
   TELESCOPE_GRID_OPACITY,
   radarWaveState,
+  SHELL_SPREAD_SECONDS,
+  shellSpread,
   radarSweepAngle,
   sensorShellColour,
   sensorVolumeScale,
@@ -200,5 +202,27 @@ describe('how the radar spends its brightness', () => {
   it('leaves both halves of the sweep visible at all', () => {
     expect(RADAR_SWEEP_AREA_ALPHA).toBeGreaterThan(0);
     expect(RADAR_SWEEP_HEAD_ALPHA).toBeGreaterThan(0);
+  });
+});
+
+// Plan F3b: "teleskop açılır ve halka yayılır". It starts small and bright, and comes to rest.
+describe('the telescope shell opening', () => {
+  it('starts as a small bright bead at the ship', () => {
+    const start = shellSpread(0);
+    expect(start.scale).toBeLessThan(0.1);
+    expect(start.glow).toBeGreaterThan(3);
+  });
+  it('grows without ever passing its true radius', () => {
+    let last = 0;
+    for (let at = 0; at <= SHELL_SPREAD_SECONDS; at += 0.1) {
+      const { scale } = shellSpread(at);
+      expect(scale).toBeGreaterThanOrEqual(last);
+      expect(scale).toBeLessThanOrEqual(1);
+      last = scale;
+    }
+  });
+  it('rests at the server-accurate radius and its own faint glass', () => {
+    expect(shellSpread(SHELL_SPREAD_SECONDS)).toEqual({ scale: 1, glow: 1 });
+    expect(shellSpread(99)).toEqual({ scale: 1, glow: 1 });
   });
 });

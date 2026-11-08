@@ -1,10 +1,10 @@
-import { STARTER, type VesselModule, type VesselSystem } from '@astera/rules';
+import type { VesselModule, VesselSystem } from '@astera/rules';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { playSound } from '../../lib/sound.js';
 import { haptic } from '../../lib/haptics.js';
 import { observe } from '../../lib/playerAnalytics/runtime.js';
-import { clockTime, duration } from '../../lib/time.js';
+import { clockTime } from '../../lib/time.js';
 import { useGate } from '../../onboarding/Gate.js';
 import { SchoolCoach } from '../../onboarding/flightSchool/SchoolCoach.js';
 import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
@@ -12,8 +12,9 @@ import { moduleName } from '../shipCopy.js';
 import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
 
 const CHAPTER = {
-  1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 4: 'starter.tutorial.chapter.4',
-  6: 'starter.tutorial.chapter.6', 7: 'starter.tutorial.chapter.7', 8: 'starter.tutorial.chapter.8',
+  1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
+  5: 'starter.tutorial.chapter.5', 6: 'starter.tutorial.chapter.6', 7: 'starter.tutorial.chapter.7', 8: 'starter.tutorial.chapter.8',
+  9: 'starter.tutorial.chapter.9',
 } as const;
 /** The funnel counts these steps under this version (the server's `starterFunnel`). */
 const TRAINING = 'starter-tutorial.v2';
@@ -34,6 +35,11 @@ function Hush() {
 /** The repair a line names, and the tab it sits under. */
 const SUBJECT: Partial<Record<TutorialStepId, { module: VesselModule; tab: VesselSystem }>> = {
   orderRefinery: { module: 'REFINERY', tab: 'REFINERY' },
+  orderExtractor: { module: 'EXTRACTOR', tab: 'REFINERY' },
+  orderTelescope: { module: 'TELESCOPE', tab: 'DEFENCE' },
+  orderRadar: { module: 'RADAR', tab: 'DEFENCE' },
+  orderSurvey: { module: 'SURVEY', tab: 'SURVEY' },
+  orderShipyard: { module: 'SHIPYARD', tab: 'CARGO' },
 };
 const NONE: readonly string[] = [];
 /** A marked control missing this long is not coming: the gate opens rather than hold the player forever. */
@@ -66,7 +72,7 @@ function useLoadingCover(): boolean {
 }
 
 /** What the card needs of the tutorial: the step, its clocks, and the way to record a line read. */
-type CoachTutorial = Pick<StarterTutorial, 'answer' | 'ack' | 'backIn' | 'wait' | 'homeAt'>;
+type CoachTutorial = Pick<StarterTutorial, 'answer' | 'ack' | 'backIn' | 'wait' | 'repaired'>;
 
 /**
  * The guide is optional; unmounting it releases every effect that owns a control. Declining it goes
@@ -80,7 +86,7 @@ export function StarterTutorialCoach({ tutorial, onSkip }: { tutorial: CoachTuto
 
 function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () => void }) {
   const { t } = useTranslation();
-  const { answer, ack, backIn } = tutorial;
+  const { answer, ack } = tutorial;
   const [confirmSkip, setConfirmSkip] = useState(false);
   const step = answer.kind === 'step' ? answer : null;
   const covered = useLoadingCover();
@@ -184,11 +190,6 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     haptic('commit');
   }, [aside, live, kind]);
 
-  // The goodbye names the time as it stood when it began; it does not slide while being read.
-  const farewellAt = useRef<number | null>(null);
-  if (stepId !== 'farewell') farewellAt.current = null;
-  else farewellAt.current ??= backIn;
-
   // A mark the ship keeps no record of: pressing it is the step. Only the first mark is the step; the
   // rest are the way to it.
   const pressId = step && !step.nav && ACK_ON_PRESS.includes(step.id) ? step.id : null;
@@ -206,17 +207,28 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
 
   // THE FIRST LOOK (owner playtest 2026-11-07), now over the power card (N1): the drag shows until the
   // view is turned, and only then does the hand go to the card. The card can be pressed all along.
-  const looking = step?.id === 'online' && !step.nav;
-  const [looked, setLooked] = useState(false);
+  // The telescope's field is the same gesture, and turning the view is what passes that step (owner 2026-11-08).
+  const lookId = step && !step.nav && (step.id === 'online' || step.id === 'telescopeLook') ? step.id : null;
+  const looking = lookId !== null;
+  const [lookedOn, setLookedOn] = useState<TutorialStepId | null>(null);
+  const looked = lookedOn === lookId;
   useEffect(() => {
-    if (!looking) return undefined;
-    let from: { x: number; y: number } | null = null;
+    if (lookId === null) return undefined;
+    let from: { x: number; y: number } | null = null, turned = false;
     const down = (event: PointerEvent): void => { from = event.target instanceof HTMLCanvasElement ? { x: event.clientX, y: event.clientY } : null; };
     const move = (event: PointerEvent): void => {
-      if (from && Math.hypot(event.clientX - from.x, event.clientY - from.y) >= LOOK_PX) setLooked(true);
+      if (from && Math.hypot(event.clientX - from.x, event.clientY - from.y) >= LOOK_PX) { turned = true; setLookedOn(lookId); }
     };
-    const up = (): void => { from = null; };
-    const fallback = window.setTimeout(() => { setLooked(true); }, LOOK_FALLBACK_MS);
+    const up = (): void => {
+      from = null;
+      if (!turned || lookId !== 'telescopeLook') return;
+      turned = false;
+      playSound('confirm');
+      haptic('tap');
+      ack(lookId);
+    };
+    // The power card must not wait on a look; on the telescope's field the drag is the whole lesson.
+    const fallback = lookId === 'online' ? window.setTimeout(() => { setLookedOn(lookId); }, LOOK_FALLBACK_MS) : undefined;
     document.addEventListener('pointerdown', down, true);
     document.addEventListener('pointermove', move, true);
     document.addEventListener('pointerup', up, true);
@@ -228,7 +240,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
       document.removeEventListener('pointerup', up, true);
       document.removeEventListener('pointercancel', up, true);
     };
-  }, [looking]);
+  }, [lookId, ack]);
 
   // A system's "online" card shows only when a line points at it (owner playtest 2026-11-07).
   const aboutUnlock = marks.some(mark => mark.includes('unlock-'));
@@ -255,15 +267,12 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   const text = step.nav
     ? t(`starter.tutorial.nav.${step.nav}`, { base: t('dock.base') })
     : t(`starter.tutorial.line.${step.id}`, {
-      clock: tutorial.homeAt ? clockTime(tutorial.homeAt) : '…',
-      underway: tutorial.homeAt ? t('starter.tutorial.flight', { clock: clockTime(tutorial.homeAt) }) : t('starter.tutorial.noneFlying'),
       name: subject ? moduleName(subject.module) : '',
       tab: subject ? t(`starter.systemShort.${subject.tab}`) : '',
       try: t('starter.unlock.try'),
       repair: t('starter.repair'),
       intel: t('dock.intel'),
-      count: STARTER.queues.construction,
-      time: duration(farewellAt.current ?? 60),
+      percent: tutorial.repaired ?? 0,
     });
   const away = mode === 'away' && tutorial.wait && !step.nav ? tutorial.wait : null;
   const line = away ? `${text} ${t('starter.tutorial.away', { clock: clockTime(away.until) })}` : text;

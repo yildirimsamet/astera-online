@@ -6,7 +6,7 @@ import { starterWorld } from './starterFixture.js';
 import { aboard, arm, enrich, get, post } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
-const READY = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3, AEGIS: 1, HANGAR: 3 };
+const READY = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3, AEGIS: 1, HANGAR: 3, TELESCOPE: 1 };
 
 /** K1: nothing crosses but the jump. */
 describe('between this galaxy and the main one', () => {

@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { opportunityKey } from '../src/starter/opportunities.js';
-import { waitMode } from '../src/starter/tutorial/script.js';
+
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
 import { goalMarks, starterGoal } from '../src/starter/tutorial/visualGoal.js';
 import { wireVessel } from './starterVesselFixture.js';
@@ -41,6 +41,8 @@ const order = (subject: string, stage: number, minutes: number) => ({
   startedAt: new Date(Date.now() - MIN).toISOString(), readyAt: new Date(Date.now() + minutes * MIN).toISOString(), cost: { alloy: 0, crystal: 0, deuterium: 0 },
 });
 const ALL_CRATES = STARTER_CRATES.map(c => c.id);
+/** The road has been walked: what is left is the advisor's. */
+const walked = () => { localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['farewell'])); };
 const tutorial = (view: 'galaxy' | 'ship' = 'galaxy') => {
   const hook = renderHook(() => useStarterTutorial(view));
   const now = () => {
@@ -68,6 +70,7 @@ describe('the guide on and off', () => {
   it('gives the hand to the pick only while the guide is on', () => {
     ship({ REFINERY: 2 }, [], ALL_CRATES);
     state.held = rich;
+    walked();
     const first = tutorial().now();
     expect(first.answer.kind).toBe('advise');
     localStorage.setItem(`astera.starter.advice.ship-1`, JSON.stringify({ pick: opportunityKey(first.offers[0]!), shown: true }));
@@ -78,15 +81,18 @@ describe('the guide on and off', () => {
 });
 
 describe('a move the advisor did not recommend', () => {
+  const PAST_ROAD = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+
   it('counts as progress: nothing is taught about it, it leaves the offers, and the pick stands', () => {
-    ship({ REFINERY: 2 }, [], ALL_CRATES);
+    ship(PAST_ROAD, [], ALL_CRATES);
     state.held = rich;
+    walked();
     const before = tutorial().now();
     const [recommended, other] = before.offers;
     expect(other?.kind).toBe('repair');
     if (other?.kind !== 'repair' || !recommended) throw new Error('two repairs on offer');
     localStorage.setItem(`astera.starter.advice.ship-1`, JSON.stringify({ pick: opportunityKey(recommended), shown: true }));
-    ship({ REFINERY: 2 }, [], ALL_CRATES, { queue: [order(other.step.module, other.step.stage, 30)] });
+    ship(PAST_ROAD, [], ALL_CRATES, { queue: [order(other.step.module, other.step.stage, 30)] });
     const after = tutorial().now();
     expect(after.answer.kind).toBe('advise');
     expect(after.offers.map(opportunityKey)).not.toContain(opportunityKey(other));
@@ -94,12 +100,14 @@ describe('a move the advisor did not recommend', () => {
   });
 
   it('lets the pick go once the player has done it', () => {
-    ship({ REFINERY: 2 }, [], ALL_CRATES);
+    const deeds: VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
+    ship(PAST_ROAD, deeds, ALL_CRATES);
     state.held = rich;
+    walked();
     const [recommended] = tutorial().now().offers;
     if (recommended?.kind !== 'repair') throw new Error('a repair first');
     localStorage.setItem(`astera.starter.advice.ship-1`, JSON.stringify({ pick: opportunityKey(recommended), shown: true }));
-    ship({ REFINERY: 2 }, [], ALL_CRATES, { queue: [order(recommended.step.module, recommended.step.stage, 30)] });
+    ship(PAST_ROAD, deeds, ALL_CRATES, { queue: [order(recommended.step.module, recommended.step.stage, 30)] });
     expect(tutorial().now().pick).toBeUndefined();
   });
 });
@@ -118,11 +126,13 @@ describe('spending everything', () => {
 
   it('says how long until the next repair once the Extractor runs, and points at nothing', () => {
     ship({ REFINERY: 2, EXTRACTOR: 1 }, [], ALL_CRATES);
+    walked();
     saving(none);
   });
 
   it('says the same before it, with the crystal the ladder leaves for the Extractor', () => {
     ship({ REFINERY: 2, VAULT: 1 }, [], ALL_CRATES);
+    walked();
     saving({ ...none, crystal: 61 });
   });
 });
@@ -135,25 +145,24 @@ describe('leaving at minute two', () => {
     expect(stepId(t.answer)).not.toMatch(/^(online|collect|orderRefinery|waitFirst)$/);
   });
 
-  it('teaches nothing again once the crate is open', () => {
+  it('does not teach the crate again once it is open: the road goes on', () => {
     ship({ REFINERY: 2 }, [], [STARTER_CRATES[0]!.id]);
-    expect(tutorial().now().answer.kind).toBe('advise');
+    expect(tutorial().now().answer).toMatchObject({ id: 'orderExtractor', strict: false });
   });
 });
 
 describe('leaving while a flight is out', () => {
-  const yard = { REFINERY: 3, SURVEY: 1, SHIPYARD: 1, EXTRACTOR: 3 };
+  const yard = { REFINERY: 3, EXTRACTOR: 3, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  const out = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 };
   const run = () => [{ departAt: new Date(Date.now() - 2 * MIN), arriveAt: new Date(Date.now() + 2 * MIN), homeAt: null }];
 
-  it('says when it is back and steps aside until then', () => {
-    ship(yard, ['FIRST_PROBE_REPORT'], ALL_CRATES);
-    localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['report']));
+  it('does not stop the road for the flight, and the line says it is under way', () => {
+    ship(out, [], ALL_CRATES);
+    state.held = rich;
     state.runs = run();
-    const t = tutorial().now();
-    expect(t.answer).toMatchObject({ kind: 'step', id: 'mineFlying', step: 'wait' });
-    expect(t.wait?.until.getTime()).toBe(t.homeAt?.getTime());
-    expect(waitMode(t.wait)).toBe('away');
-    expect(t.offers[0]).toEqual({ kind: 'underway', what: 'mine' });
+    const t = tutorial('ship').now();
+    expect(t.answer).toMatchObject({ kind: 'step', id: 'orderSurvey', strict: false });
+    expect(t.offers.map(o => o.kind)).not.toContain('mine');
   });
 
   it('asks for the haul on return, with the guide or without', () => {

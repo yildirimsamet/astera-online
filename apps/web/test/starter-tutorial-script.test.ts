@@ -9,10 +9,10 @@ import { starter as ja } from '../src/i18n/locales/ja/starter.js';
 import { starter as tr } from '../src/i18n/locales/tr/starter.js';
 
 /**
- * THE STARTER GUIDE (owner 2026-11-08, N1). A short held core — power, the first collect, the first
- * repair — then an advisor the player answers by choosing, and a few first-time moments that each
- * speak once. Progress is read from the ship, so a reload or a second phone lands in the same place;
- * only reading a line and pressing a mark are remembered on the device.
+ * THE STARTER GUIDE (owner 2026-11-08, N1 and N12). A short held core — power, the first collect, the
+ * first repair — then one road through the game's mechanics that points and never holds, and a few
+ * first-time moments that speak once. Progress is read from the ship, so a reload or a second phone
+ * lands in the same place; only reading a line and pressing a mark are remembered on the device.
  */
 const order = (subject: string, stage: number) => ({ subject, stage });
 const base = (over: Partial<TutorialInput> = {}): TutorialInput => ({
@@ -22,6 +22,7 @@ const base = (over: Partial<TutorialInput> = {}): TutorialInput => ({
   unlockToAnnounce: 'production',
   works: 60,
   canPayNext: false,
+  canBuildShip: true,
   probing: false,
   mining: false,
   crates: [],
@@ -63,7 +64,7 @@ describe('the core: the one moment that is held', () => {
   });
 
   it('ends when the second refinery is in: nothing after it is held', () => {
-    expect(at(awake())).toEqual({ kind: 'advise' });
+    expect(at(awake())).toMatchObject({ id: 'orderExtractor', strict: false });
   });
 
   it('never takes a ship that has ordered the repair back to the power card or the collect', () => {
@@ -71,14 +72,85 @@ describe('the core: the one moment that is held', () => {
   });
 });
 
-describe('the advisor', () => {
-  // Owner 2026-11-08 (N1): after the core no repair, deed or crate is walked in order; the player chooses.
-  it('takes over once the core is done and no first-time moment is due', () => {
-    expect(at(awake({ modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1 } }))).toEqual({ kind: 'advise' });
+describe('the road through the first session (N12)', () => {
+  const onRoad = (modules: Record<string, number>, over: Partial<TutorialInput> = {}) => awake({ modules: { REFINERY: 2, ...modules }, view: 'ship', canPayNext: true, ...over });
+  const marksOf = (module: string, stage: number, system: string) => [
+    `[data-guide="repair-order"][data-step="${module}:${String(stage)}"]`, `[data-guide="repair-show"][data-step="${module}:${String(stage)}"]`, `[data-guide="system-${system}"]`,
+  ];
+
+  it('goes from the crystal to the telescope and then the radar, each lit on the ship', () => {
+    expect(at(onRoad({}))).toMatchObject({ id: 'orderExtractor', step: 'press', strict: false, marks: marksOf('EXTRACTOR', 1, 'REFINERY') });
+    expect(at(onRoad({}, { queue: [order('EXTRACTOR', 1)] }))).toMatchObject({ id: 'orderTelescope', marks: marksOf('TELESCOPE', 1, 'DEFENCE') });
+    expect(at(onRoad({ EXTRACTOR: 1 }, { queue: [order('TELESCOPE', 1)] }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'DEFENCE') });
   });
 
-  it('names no step of its own: what to repair next is never a held step', () => {
-    for (const s of ROAD) expect(s.id).not.toMatch(/^order(?!Refinery$)/);
+  it('asks for the ship first when the player is out on the galaxy', () => {
+    expect(at(onRoad({}, { view: 'galaxy' }))).toMatchObject({ id: 'orderExtractor', nav: 'openShip', marks: ['[data-guide="dock-base"]'] });
+  });
+
+  it('waits for the telescope, and only then shows the rocks and sends the Prospector', () => {
+    const sensors = { EXTRACTOR: 1 };
+    expect(at(onRoad(sensors, { queue: [order('TELESCOPE', 1), order('RADAR', 1)] }))).toMatchObject({ id: 'waitTelescope', step: 'wait' });
+    expect(at(onRoad({ ...sensors, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy' }))).toMatchObject({ id: 'mine', step: 'press', marks: ['[data-guide="mine"]', '[data-guide="objective"]'] });
+  });
+
+  it('closes the note about the telescope before it points at the rocks', () => {
+    expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy', unlockToAnnounce: 'telescope' }))).toMatchObject({ id: 'mine', nav: 'dismissUnlock' });
+  });
+
+  it('does not wait on the flight: the antenna is next while the Prospector is out', () => {
+    expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { mining: true }))).toMatchObject({ id: 'orderSurvey', marks: marksOf('SURVEY', 1, 'SURVEY') });
+    expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { mining: true, queue: [order('SURVEY', 1)] }))).toMatchObject({ id: 'waitSurvey', step: 'wait' });
+  });
+
+  it('sends a probe at another ship once the antenna is in, and skips it when nobody is there', () => {
+    const antenna = { EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+    const flown = { mining: true, view: 'galaxy' as const };
+    expect(at(onRoad(antenna, flown))).toMatchObject({ id: 'probe', step: 'press', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
+    expect(at(onRoad(antenna, { ...flown, probing: true }))).toMatchObject({ id: 'orderShipyard', nav: 'openShip' });
+    expect(id(onRoad(antenna, { ...flown, alone: true }))).toBe('orderShipyard');
+  });
+
+  it('has the first ship built at the yard once it stands, then shows what is left of the ship', () => {
+    const yard = { EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+    const facts = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] as const;
+    const read = { acked: ['openIntel', 'openReport', 'report', 'collectMine'] };
+    expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, { facts, ...read, queue: [order('SHIPYARD', 1)] }))).toMatchObject({ id: 'waitYard', step: 'wait' });
+    expect(at(onRoad(yard, { facts, ...read }))).toMatchObject({ id: 'buildShip', step: 'press', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'] });
+    expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip'] }))).toMatchObject({ id: 'farewell', step: 'read', marks: ['[data-testid="ship-repair"]'] });
+    expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip', 'farewell'] }))).toEqual({ kind: 'advise' });
+    // Walk 2026-11-08: the road spends everything, and a hull 1 h 45 away is not a next step.
+    expect(at(onRoad(yard, { facts, ...read, canBuildShip: false }))).toMatchObject({ id: 'farewell', step: 'read' });
+  });
+
+  it('asks for a crate when the next repair cannot be paid without it, however many were opened', () => {
+    const crates = [{ id: 'REFINERY:2', state: 'opened' }, { id: 'TELESCOPE:1', state: 'ready' }] as const;
+    const short = onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { mining: true, canPayNext: false, crates });
+    expect(at(short)).toMatchObject({ id: 'openCrate', step: 'press', marks: ['[data-guide="crate"]'] });
+    expect(id({ ...short, canPayNext: true })).toBe('orderSurvey');
+    expect(id({ ...short, crates: [{ id: 'REFINERY:2', state: 'opened' }] })).toBe('orderSurvey');
+  });
+
+  // Walk 2026-11-08: the telescope opened and the player was sent aboard for a crate before seeing a rock.
+  it('asks for a crate only when a repair is the next thing: rocks and probes come first', () => {
+    const crates = [{ id: 'REFINERY:2', state: 'opened' }, { id: 'TELESCOPE:1', state: 'ready' }] as const;
+    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { canPayNext: false, crates, queue: [order('RADAR', 1)] }))).toBe('mine');
+    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, { mining: true, canPayNext: false, crates }))).toBe('probe');
+  });
+
+  it('holds nothing anywhere on the road', () => {
+    for (const input of [onRoad({}), onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { view: 'galaxy' }), onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 })]) {
+      expect(at(input)).toMatchObject({ strict: false });
+    }
+  });
+
+  it('hands over to the advisor once it has been walked', () => {
+    expect(at(awake({ modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1 }, ...ack('farewell') }))).toEqual({ kind: 'advise' });
+  });
+
+  it('does not walk a ship far past it back through the yard', () => {
+    const modules = { REFINERY: 3, EXTRACTOR: 2, TELESCOPE: 1, RADAR: 1, SURVEY: 2, SHIPYARD: 1 };
+    expect(at(awake({ modules, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], acked: ['report', 'collectMine'], view: 'ship' }))).toEqual({ kind: 'advise' });
   });
 });
 
@@ -87,25 +159,23 @@ describe('the first-time moments', () => {
     const freed = awake({ view: 'ship', crates: [{ id: 'REFINERY:2', state: 'ready' }] });
     expect(at(freed)).toMatchObject({ id: 'firstCrate', step: 'press', strict: false, marks: ['[data-guide="crate"]'] });
     expect(at({ ...freed, view: 'galaxy' })).toMatchObject({ id: 'firstCrate', nav: 'openShip' });
-    expect(at({ ...freed, crates: [{ id: 'REFINERY:2', state: 'opened' }, { id: 'SURVEY:1', state: 'ready' }] })).toEqual({ kind: 'advise' });
+    expect(id({ ...freed, canPayNext: true, crates: [{ id: 'REFINERY:2', state: 'opened' }, { id: 'SURVEY:1', state: 'ready' }] })).toBe('orderExtractor');
   });
 
   it('reads the first probe report where it is drawn, once', () => {
     const read = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, SURVEY: 1 }, facts: ['FIRST_PROBE_REPORT'] });
     expect(at(read)).toMatchObject({ id: 'openIntel', strict: false, marks: ['[data-guide="dock-intel"]'] });
     expect(id({ ...read, ...ack('openIntel') })).toBe('openReport');
+    // Walk 2026-11-08: Intel can open on the reports shelf, where the card's own door is what is pressed.
+    expect(at({ ...read, ...ack('openIntel') })).toMatchObject({ marks: ['[data-known="probe"] button, [data-report-open]', '[data-guide="dock-intel"]'] });
     expect(at({ ...read, ...ack('openIntel', 'openReport') })).toMatchObject({ id: 'report', step: 'read', marks: ['[data-dossier-loot]'] });
-    expect(at({ ...read, ...ack('openIntel', 'openReport', 'report') })).toEqual({ kind: 'advise' });
+    expect(id({ ...read, ...ack('openIntel', 'openReport', 'report') })).toBe('orderShipyard');
   });
 
-  it('sends the first Prospector, watches it, collects its haul, then hands over', () => {
-    const yard = awake({ modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 } });
-    expect(at(yard)).toMatchObject({ id: 'mine', step: 'press', strict: false, marks: ['[data-guide="mine"]', '[data-guide="unlock-dismiss"]', '[data-guide="objective"]'] });
-    expect(at({ ...yard, mining: true })).toMatchObject({ id: 'mineFlying', step: 'wait' });
-    const home = { ...yard, facts: ['FIRST_MINING_RETURN'] as const, works: 100 };
+  it('asks for the first haul when the Prospector is home, wherever the road has got to', () => {
+    const home = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN'], works: 100 });
     expect(at(home)).toMatchObject({ id: 'collectMine', marks: ['[data-guide="works"]'] });
-    expect(at({ ...home, ...ack('collectMine') })).toMatchObject({ id: 'farewell', step: 'read' });
-    expect(at({ ...home, ...ack('collectMine', 'farewell') })).toEqual({ kind: 'advise' });
+    expect(id({ ...home, ...ack('collectMine') })).toBe('orderSurvey');
   });
 
   it('never drags a veteran back: past the first haul there is nothing to teach', () => {
@@ -126,8 +196,8 @@ describe('the first-time moments', () => {
  * exist. A report lesson with no report to read is passed over, never waited on.
  */
 describe('a galaxy with nobody else in sight', () => {
-  it('has no report to read, so the advisor speaks', () => {
-    expect(at(awake({ modules: { REFINERY: 2, EXTRACTOR: 2, SURVEY: 1 }, alone: true }))).toEqual({ kind: 'advise' });
+  it('has no report to read, so the road goes on to the yard', () => {
+    expect(id(awake({ modules: { REFINERY: 2, EXTRACTOR: 2, SURVEY: 1 }, alone: true }))).toBe('orderShipyard');
   });
 });
 
@@ -140,28 +210,35 @@ describe('the ship sees, detects and reads', () => {
   const late = awake({ modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1 }, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'farewell'] });
   const traffic = { traffic: true, tracked: false, unknown: false };
   const seen = { ...late, sight: traffic };
+  const looked = { ...seen, acked: [...late.acked, 'telescopeLook'] };
   it('waits for something in the ring before it says anything', () => {
     expect(at(late)).toEqual({ kind: 'advise' });
     expect(at({ ...late, sight: { traffic: false, tracked: false, unknown: true } })).toEqual({ kind: 'advise' });
   });
   it('shows the flight in the ring, and waits for a queued telescope', () => {
-    expect(at(seen)).toMatchObject({ id: 'telescopeRing', step: 'read', strict: false, marks: ['[data-guide="sight-craft"]', '[data-guide="sight-telescope"]'] });
+    expect(at(seen)).toMatchObject({ id: 'telescopeLook', step: 'read', strict: false, marks: [] });
+    expect(at(looked)).toMatchObject({ id: 'telescopeRing', step: 'read', strict: false, marks: ['[data-guide="sight-craft"]'] });
     expect(at({ ...seen, modules: { ...late.modules, TELESCOPE: 0 }, queue: [order('TELESCOPE', 1)] })).toEqual({ kind: 'advise' });
   });
   it('has the player inspect the flight by touching it', () => {
-    expect(at({ ...seen, acked: [...late.acked, 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic', step: 'press', marks: ['[data-guide="sight-craft"]'] });
+    expect(at({ ...seen, acked: [...looked.acked, 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic', step: 'press', marks: ['[data-guide="sight-craft"]'] });
   });
   it('waits for a flight to leave the ring before it shows the track kept', () => {
-    const inspected = [...late.acked, 'telescopeRing', 'telescopeTraffic'];
+    const inspected = [...looked.acked, 'telescopeRing', 'telescopeTraffic'];
     expect(at({ ...seen, acked: inspected })).toEqual({ kind: 'advise' });
     expect(at({ ...late, sight: { ...traffic, tracked: true }, acked: inspected })).toMatchObject({ id: 'telescopeTrack', step: 'read' });
     expect(at({ ...late, sight: { ...traffic, tracked: true }, acked: [...inspected, 'telescopeTrack'] })).toEqual({ kind: 'advise' });
+  });
+  // Walk 2026-11-08: a flight crossing the ring pulled the player out of the yard, again and again.
+  it('never takes the player off a page: it waits for them to be looking at the sky', () => {
+    expect(at({ ...seen, view: 'ship' })).toEqual({ kind: 'advise' });
+    expect(at({ ...seen, view: 'other' })).toEqual({ kind: 'advise' });
   });
   it('does not start halfway: a tracked flight with nothing in the ring is no lesson yet', () => {
     expect(at({ ...late, sight: { traffic: false, tracked: true, unknown: false } })).toEqual({ kind: 'advise' });
   });
 
-  const told = [...late.acked, 'telescopeRing', 'telescopeTraffic', 'telescopeTrack'];
+  const told = [...late.acked, 'telescopeLook', 'telescopeRing', 'telescopeTraffic', 'telescopeTrack'];
   const radar = { ...late, modules: { ...late.modules, RADAR: 1 }, acked: told };
   const blip = { traffic: false, tracked: false, unknown: true };
   it('introduces Radar 1 on the scout\'s question mark, and only then', () => {
@@ -178,8 +255,9 @@ describe('the ship sees, detects and reads', () => {
   // Radar first, then the telescope picks the scout up: its own lesson goes before the radar's last line.
   it('finishes the telescope lesson before the radar closes', () => {
     const both = { ...late, modules: { ...late.modules, RADAR: 1 }, sight: traffic };
-    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact'] })).toMatchObject({ id: 'telescopeRing' });
-    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact', 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic' });
+    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact'] })).toMatchObject({ id: 'telescopeLook' });
+    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact', 'telescopeLook'] })).toMatchObject({ id: 'telescopeRing' });
+    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact', 'telescopeLook', 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic' });
   });
   // The scout reaches the radar before the telescope: the lesson that has its subject speaks first.
   it('lets the radar speak first when the scout is the first thing in sight', () => {
@@ -236,7 +314,8 @@ describe('the road the server counts', () => {
 describe('waits never navigate', () => {
   const waits = {
     waitFirst: base({ ...pending(null), works: 0, queue: [order('REFINERY', 2)] }),
-    mineFlying: awake({ modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1 }, mining: true }),
+    waitTelescope: awake({ modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [order('TELESCOPE', 1), order('RADAR', 1)] }),
+    waitSurvey: awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, mining: true, canPayNext: true, queue: [order('SURVEY', 1)] }),
   };
   for (const [wait, input] of Object.entries(waits)) {
     for (const view of ['galaxy', 'ship', 'other'] as const) {
@@ -261,7 +340,8 @@ describe('how a wait holds the player', () => {
   it('times the first repair\'s wait by that repair alone', () => {
     expect(repairWait('waitFirst', [timed('REFINERY', 2, 10), timed('EXTRACTOR', 1, 10 * 60)])).toEqual({ until: at(10), spanMs: 10_000 });
     expect(repairWait('waitFirst', [])).toBeNull();
-    expect(repairWait('mineFlying', [timed('SURVEY', 1, 30)])).toBeNull();
+    expect(repairWait('waitTelescope', [timed('RADAR', 1, 180), timed('TELESCOPE', 1, 90)])).toEqual({ until: at(90), spanMs: 90_000 });
+    expect(repairWait('mine', [timed('SURVEY', 1, 30)])).toBeNull();
   });
 
   it('holds ten seconds, lets the player roam to a minute, and leaves past it', () => {

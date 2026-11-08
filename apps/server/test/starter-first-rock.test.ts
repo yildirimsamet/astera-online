@@ -27,8 +27,8 @@ describe('the first rock', () => {
     });
   };
   const buildYard = async () => {
-    await world.f.db.update(vessels).set({ modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1 }, alloy: 5000, crystal: 5000 }).where(eq(vessels.id, vesselId));
-    const order = await world.app.inject({ method: 'POST', url: '/api/starter/repair', headers: bearer(token), payload: { module: 'SHIPYARD', stage: 1 } });
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 2, EXTRACTOR: 1 }, alloy: 5000, crystal: 5000 }).where(eq(vessels.id, vesselId));
+    const order = await world.app.inject({ method: 'POST', url: '/api/starter/repair', headers: bearer(token), payload: { module: 'TELESCOPE', stage: 1 } });
     expect(order.statusCode).toBe(200);
     world.f.clock.advance(10);
     expect((await read()).statusCode).toBe(200);

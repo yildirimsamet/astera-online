@@ -58,7 +58,7 @@ describe('the salvage crates', () => {
     interface Note { kind: string; seen: boolean; payload: { crates: string[]; alloy: number; crystal: number } }
     const log = async () => (await world.app.inject({ url: '/api/starter/notifications', headers: bearer(token) })).json<{ notifications: Note[] }>()
       .notifications.filter(note => note.kind === 'CRATE_OPENED');
-    await repaired({ REFINERY: first.stage, SURVEY: second.stage });
+    await repaired({ REFINERY: first.stage, TELESCOPE: second.stage });
     expect((await open()).statusCode).toBe(200);
     expect(await log()).toEqual([expect.objectContaining({
       seen: true,
@@ -76,7 +76,7 @@ describe('the salvage crates', () => {
   });
 
   it('opens every ready crate at once when none is named', async () => {
-    await repaired({ REFINERY: first.stage, EXTRACTOR: 1, SURVEY: second.stage });
+    await repaired({ REFINERY: first.stage, EXTRACTOR: 1, TELESCOPE: second.stage });
     const before = await read();
     const answer = (await open()).json<{ vessel: VesselAnswer; opened: string[] }>();
     expect(answer.opened.sort()).toEqual([first.id, second.id].sort());

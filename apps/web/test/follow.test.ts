@@ -487,6 +487,12 @@ describe('touching the camera while something is focused', () => {
     expect(rigGestureState(true, false)).toEqual({ mode: 'manual', acquired: false });
     expect(rigGestureState(false, false)).toEqual({ mode: 'manual', acquired: false });
   });
+
+  // Owner 2026-11-08: the first touch after the flight out threw the camera onto the old subject.
+  it('leaves the frame alone while the universe view is open, whatever is focused', () => {
+    expect(rigGestureState(true, true, true)).toEqual({ mode: 'released', acquired: false });
+    expect(rigGestureState(false, false, true)).toEqual({ mode: 'released', acquired: false });
+  });
 });
 
 /**

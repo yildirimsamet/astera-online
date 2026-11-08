@@ -21,7 +21,7 @@
 | N8 | Eski plandan | Sohbette galaksi olayları + kohort yerleşimi, Kuruluş haftası ve Yeni Komutan 7 Günü kalır; 7 Gün en sonda. Onarım dronu çıkarıldı. | — |
 | N9 | İlk zaferin karşılığı | Kargo kuralı kalır ve raporda "taşıyabileceğin: X" olarak görünür. İlk kesin karakol zaferine **tek seferlik bir kasa** verilir. | Kurtarma Kasalarına yeni bir kasa eklenir (eylem kasası, modül kasası değil). |
 | N10 | İlk oturum yolu (owner, aynı gün; N1'in "temelden sonra harcama kilidi kalkar" kısmını değiştirir) | Onarımlar **herkes için, sunucu kuralıyla** sırayla açılır: Rafineri 2 → Çıkarıcı 1 → Teleskop 1 → Radar 1 → Keşif anteni 1 → Tersane 1. Yoldaki her adım öncekini, yol dışındaki her adım Tersane 1'i ister. Rehberi kapatmak yalnız anlatımı kapatır. | `REPAIR_LADDER` sırası ve `requires` |
-| N11 | Sensörler ilk oturumda | Teleskop 1: 250/150, 90 sn. Radar 1: 200/120, 90 sn. Tersane'nin Rafineri 3 şartı kalkar. Rafineri 3 kasası (800/300) Teleskop 1'e taşınır; toplam ekonomi aynı kalır. | Fiyat, süre, kasa yeri |
+| N11 | Sensörler ilk oturumda | Teleskop 1: 250/150, 90 sn. Radar 1: 200/120, 90 sn. Tersane'nin Rafineri 3 şartı kalkar. Rafineri 3 kasası (800/300) ikiye bölünür: Teleskop 1 650/200, Radar 1 150/100; toplam aynı kalır. | Fiyat, süre, kasa yeri |
 | N12 | Akış ve yönlendirmenin sonu (owner örneği, kelimesi kelimesine değil) | Kaynaklar tanıtılır, birer kademe üretim → teleskop ve radar → "artık kayaları görüyorsun" → kazıcı yollanır → diğer gemiler bulunur → sonda → gemi üretilir → "gemin bu durumda, ana galaksiye uçmak için onarman lazım". Ekran kilitlenmez. Sonrasında **NPC'siz** öneri listesi sürer; ilk av o listenin ilk önerisidir. | Rehber betiği |
 | N13 | Kazıcı (planlayıcı kararı, N12'den) | Teleskop 1 onarımı Kazıcı'yı verir ve madenciliği açar; Tersane artık 2 Dart verir. Kazıcı Tersane'yi beklerse akış 4–5 dk durur. | `grants`, madencilik kapısı, ilk kaya |
 
@@ -241,6 +241,8 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 | Bot ve hazır başlangıç yeni sırada (`takeShipBotTurn`, `startPartWay`) | `starter-bots` |
 | Sensör dersinin konusu: teleskop ve radar için gerçek temas (bugün tek keşif uçuşu ve yalnız Radar 1 sonrası) | `starter-traffic` / korsan testleri; "ders için sahte temas yok" kuralı korunur |
 | Rehber yolu: kaynak tanıtımı → üretim → teleskop, radar → kaya, kazıcı → gemiler, sonda → gemi üretimi → gemi durumu ve çıkış; ekran kilidi yok; sonra NPC'siz liste | `starter-tutorial-script`, `starter-guide-scenarios`; 6 dil |
+| Hazır kasa, sıradaki fiyatı ödemenin yolu olduğunda her seferinde gösterilir (`openCrate`); rehber kapalıyken öneri satırı da aynısını söyler. Uçuşlar yolu durdurmaz: kazıcı uçarken anten, sonda uçarken tersane sipariş edilir | `starter-tutorial-script`, `starter-opportunities` |
+| Teleskop dersi halkayı önce oyuncuya döndürtür (`telescopeLook`, owner 2026-11-08): sürükleyip bırakmak adımı geçirir, İleri yedektir. Havadaki filonun işareti ancak bundan sonra çıkar; sahnede "Teleskop" etiketi yoktur | `starter-tutorial-script`, `starter-tutorial-coach`, `school-pointer-covered` |
 | Kilitli onarım "ne zaman açılır"ı adıyla söyler | RepairCard testi |
 | Çıkış temposunu yeniden ölç (rapor kalemi (a)) | Scratch tempo modeli; uzun simülasyon yok |
 | 350×812 baştan oynama | Yeni hesapla gerçek akış |

@@ -82,13 +82,3 @@ describe('the first hunt in the hook', () => {
     expect(result.current?.offers.find(offer => offer.kind === 'hunt')).toMatchObject({ mining: false });
   });
 });
-
-it('names the mining round trip before arrival and the confirmed home time on return', () => {
-  state.runs = [{ departAt: new Date('2026-11-06T12:00:00Z'), arriveAt: new Date('2026-11-06T12:01:00Z'), homeAt: null }];
-  const { result, rerender } = renderHook(() => useStarterTutorial('galaxy'));
-  expect(result.current?.homeAt?.toISOString()).toBe('2026-11-06T12:02:00.000Z');
-  state.runs = [{ ...state.runs[0]!, homeAt: new Date('2026-11-06T12:05:00Z') }];
-  rerender();
-  expect(result.current?.homeAt?.toISOString()).toBe('2026-11-06T12:05:00.000Z');
-  state.runs = [];
-});

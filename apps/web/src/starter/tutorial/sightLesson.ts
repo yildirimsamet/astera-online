@@ -4,7 +4,8 @@ import type { TutorialAnswer, TutorialLineId } from './script.js';
 
 export function sightLesson(answer: TutorialAnswer | null): 'telescope' | 'radar' | null {
   if (answer?.kind !== 'step' || answer.nav) return null;
-  if (answer.id.startsWith('telescope')) return 'telescope';
+  // The Prospector goes out inside the ring that showed its rock.
+  if (answer.id.startsWith('telescope') || answer.id === 'mine') return 'telescope';
   return answer.id.startsWith('radar') || answer.id === 'sightTrio' ? 'radar' : null;
 }
 

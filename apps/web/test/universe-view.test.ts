@@ -1,6 +1,6 @@
 import { mainOffsetOf, starterGalaxyCentre, toWorld } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { UNIVERSE_CLOSE_SHARE, declutterLabels, nextOverscroll, universeBalls, universeFrame } from '../src/galaxy/universe.js';
+import { UNIVERSE_CLOSE_SHARE, declutterLabels, nextOverscroll, universeBalls, universeFrame, universeReturn, zoomedBackIn } from '../src/galaxy/universe.js';
 
 const galaxies = [{ ordinal: 1, ships: 12 }, { ordinal: 2, ships: 30 }, { ordinal: 3, ships: 1 }];
 const away = (a: readonly number[], b: readonly number[]) => Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!);
@@ -132,5 +132,22 @@ describe('the names over the balls', () => {
 
   it('measures from what is shown, so that a hidden name does not hide another', () => {
     expect(declutterLabels([at(1, 0, 0), at(2, 50, 0), at(3, 100, 0)], box)).toEqual(new Set([1, 3]));
+  });
+});
+
+describe('leaving the universe view', () => {
+  // Owner 2026-11-08: the second opening shut itself on its first frame, against the last one's range.
+  it('does not count a range until this opening has its own', () => {
+    expect(zoomedBackIn(54, 0)).toBe(false);
+  });
+  it('closes once the player has zoomed well back in, and not before', () => {
+    expect(zoomedBackIn(703 * UNIVERSE_CLOSE_SHARE - 1, 703)).toBe(true);
+    expect(zoomedBackIn(703 * UNIVERSE_CLOSE_SHARE + 1, 703)).toBe(false);
+  });
+  it('flies back to where the player was', () => {
+    expect(universeReturn([1, 2, 3], null)).toEqual({ to: [1, 2, 3], mode: 'manual', acquired: false });
+  });
+  it('flies back to a focused subject where it is now, so the next touch has nothing to jump to', () => {
+    expect(universeReturn([1, 2, 3], [9, 9, 9])).toEqual({ to: [9, 9, 9], mode: 'follow', acquired: true });
   });
 });

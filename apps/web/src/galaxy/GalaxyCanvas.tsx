@@ -9,7 +9,7 @@ import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type Vessel
 import type { MainSky } from '../api/starterSchemas.js';
 import { MainGalaxySky } from './MainGalaxySky.js';
 import { UniverseBalls } from './UniverseBalls.js';
-import { UNIVERSE_CLOSE_SHARE, OVERSCROLL_PER_PINCH_PIXEL, OVERSCROLL_PER_WHEEL_PIXEL, nextOverscroll, universeBalls, universeFrame, type UniverseBall } from './universe.js';
+import { OVERSCROLL_PER_PINCH_PIXEL, OVERSCROLL_PER_WHEEL_PIXEL, nextOverscroll, universeBalls, universeFrame, universeReturn, zoomedBackIn, type UniverseBall } from './universe.js';
 import type { UniverseView } from '../api/starterSchemas.js';
 import { STARTER_NAVIGATION_RADIUS, isMainWorld, mainSkyNodes, neighbourShips, starterCameraFar, starterOpeningPose } from './mainSky.js';
 import { OwnVessel } from './OwnVessel.js';
@@ -906,7 +906,7 @@ export function GalaxyCanvas({
             showRadar={showRadarReach}
           />
         )}
-        {sensors && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes} onSelect={(id) => { onFocus({ kind: 'contact', id }); }}/>}
+        {sensors && !universe?.open && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes} onSelect={(id) => { onFocus({ kind: 'contact', id }); }}/>}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
           nodes={fieldBodies}
@@ -1752,9 +1752,13 @@ function Rig({
       const { target, range, side } = universeBack.current;
       universeBack.current = null;
       universeLeaving.current = true;
-      mode.current = 'manual';
-      fly(target.toArray(), range, side);
+      const back = universeReturn(target.toArray(), live.current?.() ?? null);
+      mode.current = back.mode;
+      acquired.current = back.acquired;
+      fly(back.to, range, side);
     }
+    // Spent with this opening: the next one must not be measured against it.
+    if (!universeOpen) universeRange.current = 0;
     // The opening frame is taken once. Refetched counts move a ball's size, never the camera.
   }, [universeOpen]);
 
@@ -1880,7 +1884,7 @@ function Rig({
     const current = { telescope: showTelescopeReach, radar: showRadarReach };
     previousSensors.current = current;
     const controls = ref.current;
-    if (!controls || !(controls.object instanceof THREE.PerspectiveCamera)) return;
+    if (!controls || universeOpen || !(controls.object instanceof THREE.PerspectiveCamera)) return;
     const camera = controls.object;
     const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
     if (!frame) return;
@@ -1895,7 +1899,7 @@ function Rig({
     const controls = ref.current;
     if (!controls || preparing.current) return;
 
-    if (pendingSight.current && controls.object instanceof THREE.PerspectiveCamera) {
+    if (pendingSight.current && !universeOpen && universeRoom === 0 && controls.object instanceof THREE.PerspectiveCamera) {
       const distance = starterSightDistance({radius:pendingSight.current,fov:controls.object.fov,aspect:controls.object.aspect,sceneReady:sceneReady.current,openingReady:openingSettled.current,covered:openingCovered});
       if (distance !== null) {
         mode.current = 'manual';
@@ -1968,7 +1972,7 @@ function Rig({
       controls.enabled = true;
       const range = controls.getDistance();
       // Zooming well back in has left the view: nobody should have to find a button for that.
-      if (universeOpen && range < universeRange.current * UNIVERSE_CLOSE_SHARE) onUniverseClose?.();
+      if (universeOpen && zoomedBackIn(range, universeRange.current)) onUniverseClose?.();
       if (universeLeaving.current) {
         universeLeaving.current = false;
         setUniverseRoom(0);
@@ -2085,7 +2089,7 @@ function Rig({
         // camera with a moving focused subject after the player orbits or zooms;
         // only a missing/unfocused subject becomes genuine free-look.
         const at = live.current?.() ?? null;
-        const next = rigGestureState(focusKey !== null, at !== null);
+        const next = rigGestureState(focusKey !== null, at !== null, universeOpen);
         mode.current = next.mode;
         acquired.current = next.acquired;
         ease.current = null;

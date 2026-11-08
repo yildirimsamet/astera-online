@@ -60,8 +60,9 @@ async function lockSite(tx: Tx, galaxyId: string, id: string, kinds: SiteRow['ki
 /** What the map and the Mining sheet read, in the main game's shape. */
 async function miningOf(q: Tx | Db, row: VesselRow, epoch: Date, now: Date) {
   const progress = progressOf(row);
-  const fleetOpen = isFeatureOpen(progress, 'fleet');
-  const sites = fleetOpen ? await q.select().from(starterSites).where(and(
+  // The telescope is what shows the rocks (owner 2026-11-08, N12): before it the sky holds none to read.
+  const sees = isFeatureOpen(progress, 'telescope');
+  const sites = sees ? await q.select().from(starterSites).where(and(
     eq(starterSites.starterGalaxyId, row.starterGalaxyId),
     inArray(starterSites.kind, ['ASTEROID', 'WRECK', 'BATTLE_WRECK']),
     or(isNull(starterSites.expiresAt), gt(starterSites.expiresAt, now)),
@@ -141,7 +142,7 @@ async function sendCraft(tx: Tx, vessel: LockedVessel, clock: Clock, target: { s
 
 export const launchVesselMining = (db: Db, accountId: string, asteroidId: string, craft: number, clock: Clock) =>
   withVesselLock(db, accountId, clock, async (tx, vessel) => {
-    assertFeatureOpen(vessel.row, 'fleet');
+    assertFeatureOpen(vessel.row, 'telescope');
     // First, because waking can move the ship: the rock and the route are read from where it stands now.
     await markProgress(tx, vessel, clock);
     const uuid = uuidOfRock(asteroidId);

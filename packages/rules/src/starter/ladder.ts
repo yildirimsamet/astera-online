@@ -81,22 +81,26 @@ const step = (
 const seconds = (count: number): number => count / 60;
 
 export const REPAIR_LADDER: readonly RepairStep[] = [
+  // THE FIRST SESSION'S ROAD (owner 2026-11-08, N10–N13), one repair at a time and for everyone: free
+  // spending left the antenna hours away. What makes, then what sees, then what reaches, then what builds.
   step('REFINERY', 'REFINERY', 2, 154, 20, seconds(10), true),
-  step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(10), true),
-  step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('EXTRACTOR', 1)]),
-  step('REFINERY', 'EXTRACTOR', 2, 77, 58, seconds(60), true),
-  step('REFINERY', 'REFINERY', 3, 548, 69, seconds(90), true),
-  step('REFINERY', 'VAULT', 1, 300, 150, 2, true),
-  step('CARGO', 'SHIPYARD', 1, 800, 300, 3, true, [needs('SURVEY', 1), needs('REFINERY', 3)], { fleet: { PROSPECTOR: 1, DART: 2 } }),
+  step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(10), true, [needs('REFINERY', 2)]),
+  step('DEFENCE', 'TELESCOPE', 1, 250, 150, 1.5, true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
+  step('DEFENCE', 'RADAR', 1, 200, 120, 1.5, true, [needs('TELESCOPE', 1)]),
+  step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
+  step('CARGO', 'SHIPYARD', 1, 800, 300, 3, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
+
+  // The rest of the ship opens with the yard.
+  step('REFINERY', 'EXTRACTOR', 2, 77, 58, seconds(60), true, [needs('SHIPYARD', 1)]),
+  step('REFINERY', 'REFINERY', 3, 548, 69, seconds(90), true, [needs('SHIPYARD', 1)]),
+  step('REFINERY', 'VAULT', 1, 300, 150, 2, true, [needs('SHIPYARD', 1)]),
   step('REFINERY', 'EXTRACTOR', 3, 274, 206, 5, true),
-  step('SURVEY', 'SURVEY', 2, 600, 350, 20, true, [fact('FIRST_PROBE_REPORT')]),
+  step('SURVEY', 'SURVEY', 2, 600, 350, 20, true, [needs('SHIPYARD', 1), fact('FIRST_PROBE_REPORT')]),
   step('CARGO', 'HANGAR', 2, 1000, 350, 30, true, [needs('SHIPYARD', 1), fact('FIRST_MINING_RETURN')]),
-  step('DEFENCE', 'TELESCOPE', 1, 700, 500, 40, true, [needs('SHIPYARD', 1)]),
   step('REFINERY', 'REFINERY', 4, 886, 111, 60, true),
-  step('DEFENCE', 'RADAR', 1, 500, 380, 60, true, [needs('TELESCOPE', 1)]),
   // Its price is the whole opening crystal, which nothing makes before the first Extractor: bought
   // first, it would leave a ship that can never pay another repair (plan F3, `starter-ladder`).
-  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [needs('EXTRACTOR', 1)], { deuterium: STARTER.deuteriumGrant }),
+  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [needs('SHIPYARD', 1)], { deuterium: STARTER.deuteriumGrant }),
   step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, true, [needs('EXTRACTOR', 2)]),
   // The ship leaves seeing what is around it (owner 2026-11-08, N3); no battle is asked of anyone.
   step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, true, [
@@ -105,7 +109,7 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 240, true, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
 
   // The shield is a choice (owner 2026-11-08, N3): it brings the pirates and opens other ships, both ways.
-  step('DEFENCE', 'AEGIS', 1, 315, 237, 45, false, [needs('RADAR', 1)]),
+  step('DEFENCE', 'AEGIS', 1, 315, 237, 45, false, [needs('SHIPYARD', 1)]),
   step('REFINERY', 'REFINERY', 5, 1433, 180, 180, false),
   step('REFINERY', 'EXTRACTOR', 4, 444, 334, 120, false),
   step('REFINERY', 'VAULT', 2, 600, 300, 90, false),

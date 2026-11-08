@@ -8,6 +8,7 @@ import { timeToAfford } from './steps.js';
 export type Opportunity =
   | { kind: 'repair'; step: RepairStep }
   | { kind: 'collect' }
+  | { kind: 'crate' }
   | { kind: 'save'; step: RepairStep; minutes: number | null }
   | { kind: 'wait'; readyAt: Date }
   | { kind: 'probe' }
@@ -27,6 +28,8 @@ export interface OpportunityInput {
   income: { alloyPerHour: number; crystalPerHour: number };
   /** What the ship has opened; the first deeds follow their system at once. */
   features?: readonly StarterFeature[];
+  /** A salvage crate is ready to open. */
+  crateReady?: boolean;
   /** A probe of this ship's in the air, and a Prospector out mining. */
   probing?: boolean;
   mining?: boolean;
@@ -62,7 +65,7 @@ function repairQueue(input: OpportunityInput) {
 /** The first deeds, once their system is open and the fact is still missing. A probe needs a ship to probe. */
 function deedsLeft(input: OpportunityInput): ('probe' | 'mine')[] {
   const features = input.features ?? [];
-  const opened = { probe: features.includes('intel') && input.alone !== true, mine: features.includes('fleet') };
+  const opened = { probe: features.includes('intel') && input.alone !== true, mine: features.includes('telescope') };
   return (['probe', 'mine'] as const).filter(deed => opened[deed] && !input.progress.facts.includes(DEED_FACT[deed]));
 }
 
@@ -117,7 +120,7 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   if (!next) return isJumpReady(progress) ? { kind: 'jump' } : canLoadFuel(progress) ? tank(input) : { kind: 'wait', readyAt: soonest() };
   const { step } = next;
   const storePays = held.alloy >= step.alloy && held.crystal >= step.crystal;
-  if (features.includes('fleet') && !progress.facts.includes('FIRST_MINING_RETURN') && input.mining !== true) return { kind: 'mine' };
+  if (features.includes('telescope') && !progress.facts.includes('FIRST_MINING_RETURN') && input.mining !== true) return { kind: 'mine' };
   // The first hunt while the Prospector flies (plan §5.1): the new system's first deed, as the mining run was.
   const hunt = huntOf(input);
   if (hunt.act) return hunt.act;
@@ -139,5 +142,6 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   if (repairs.length > 0 && (next.missing.length > 0 || full)) return { kind: 'wait', readyAt: soonest() };
   if (storePays && next.missing.length === 0) return { kind: 'repair', step };
   if (held.alloy + held.bufferAlloy >= step.alloy && held.crystal + held.bufferCrystal >= step.crystal) return { kind: 'collect' };
+  if (input.crateReady === true) return { kind: 'crate' };
   return { kind: 'save', step, minutes: timeToAfford(step, held, income) };
 }

@@ -81,8 +81,8 @@ describe('the next step', () => {
   it('asks for the first mining run once the shipyard is up, and waits for the Prospector while it is out', () => {
     const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
     const poor = { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
-    expect(next(input({ progress, held: poor, features: ['production', 'intel', 'fleet'] }))).toEqual({ kind: 'mine' });
-    expect(next(input({ progress, held: poor, features: ['production', 'intel', 'fleet'], mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
+    expect(next(input({ progress, held: poor, features: ['production', 'intel', 'fleet', 'telescope'] }))).toEqual({ kind: 'mine' });
+    expect(next(input({ progress, held: poor, features: ['production', 'intel', 'fleet', 'telescope'], mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
   });
 
   it('asks for fuel once every required repair is done, and for the jump when the tank is full', () => {
@@ -104,9 +104,27 @@ describe('the next step', () => {
   });
 });
 
+// N13: the Prospector comes with the telescope, which is what shows the rocks.
+it('asks for the first mining run with the telescope, not with the yard', () => {
+  const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } };
+  expect(next(input({ progress, features: ['production', 'telescope'] }))).toEqual({ kind: 'mine' });
+  expect(opportunities(input({ progress, features: ['production', 'telescope'] })).map(o => o.kind)).toContain('mine');
+  const none = opportunities(input({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, SHIPYARD: 1 } }, features: ['production', 'fleet'] }));
+  expect(none.map(o => o.kind)).not.toContain('mine');
+});
+
+// The road's prices count on the crates: without this a player off the guide reads "save for six hours" over one.
+it('points at a ready crate before it counts the hours to a price', () => {
+  const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN'] };
+  const poor = { alloy: 100, crystal: 10, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
+  expect(next(input({ progress, held: poor, crateReady: true }))).toEqual({ kind: 'crate' });
+  expect(next(input({ progress, held: poor }))).toMatchObject({ kind: 'save' });
+  expect(next(input({ progress, crateReady: true }))).toMatchObject({ kind: 'repair' });
+});
+
 it('keeps the first mining flight ahead of another affordable repair', () => {
   const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
-  expect(next(input({ progress, features: ['production', 'intel', 'fleet'] }))).toEqual({ kind: 'mine' });
+  expect(next(input({ progress, features: ['production', 'intel', 'fleet', 'telescope'] }))).toEqual({ kind: 'mine' });
 });
 
 /** The line counts what is still to find, as the NPC's hint does: a part in the hold is not asked for again. */
@@ -150,7 +168,8 @@ describe('the other choices of this moment', () => {
   });
 
   it('lists every repair the store pays and the queue can take, the required ones first', () => {
-    const rest = kinds(input());
+    // Past the first road, where more than one repair is open.
+    const rest = kinds(input({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 } } }));
     const repairs = rest.flatMap(answer => answer.kind === 'repair' ? [answer.step] : []);
     expect(repairs.length).toBeGreaterThan(0);
     for (const s of repairs) expect(s.alloy <= 10_000 && s.crystal <= 10_000).toBe(true);
@@ -194,7 +213,7 @@ describe('the other choices of this moment', () => {
  */
 describe('the first hunt', () => {
   const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
-  const features = ['production', 'intel', 'fleet'] as const;
+  const features = ['production', 'intel', 'fleet', 'telescope'] as const;
   const probeTevis = { stage: 'probe', target: 'tevis' } as const;
   const hunting = (over: Partial<OpportunityInput> = {}) => input({ progress, features, hunt: probeTevis, ...over });
 

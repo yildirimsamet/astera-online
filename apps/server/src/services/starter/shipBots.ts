@@ -2,7 +2,7 @@ import {
   HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, openingProgress, partsVisible,
   RESEARCH_PROJECTS, seededFrom, shipBotTarget, starterOutcomeTable, combatValue,
   fleetEntries, hullBulk,
-  type Fleet, type HullId, type RepairStep, type VesselProgress,
+  type HullId, type RepairStep, type VesselProgress,
 } from '@astera/rules';
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, ne, notInArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
@@ -40,7 +40,6 @@ const OPENING_STAGES = 9;
 /** Owner 2026-11-08 (N3): the shield is a choice. Some crews take it and some do not, as people do. */
 const SHIELD_SHARE = 0.6;
 const WANT_DARTS = 6;
-const FLEET_GIFT: Fleet = { PROSPECTOR: 1, DART: 2 };
 const band = z.object({ defence: z.object({ high: z.number() }) });
 
 const PERSONAS = ['steady', 'hoarder', 'restless'] as const;
@@ -74,10 +73,10 @@ async function startPartWay(db: Db, vesselId: string, roll: () => number): Promi
     progress = { ...progress, facts: [...facts], modules: { ...progress.modules, [next.step.module]: next.step.stage } };
   }
   await db.update(vessels).set({ modules: progress.modules, facts: [...progress.facts] }).where(eq(vessels.id, vesselId));
-  if ((progress.modules.SHIPYARD ?? 0) > 0) {
-    for (const [hull, count] of fleetEntries(FLEET_GIFT)) {
-      await db.insert(vesselUnits).values({ vesselId, hull, location: 'HOME', count }).onConflictDoNothing();
-    }
+  // What those repairs would have handed over.
+  const given = REPAIR_LADDER.filter(step => (progress.modules[step.module] ?? 0) >= step.stage).flatMap(step => fleetEntries(step.grants?.fleet ?? {}));
+  for (const [hull, count] of given) {
+    await db.insert(vesselUnits).values({ vesselId, hull, location: 'HOME', count }).onConflictDoNothing();
   }
 }
 

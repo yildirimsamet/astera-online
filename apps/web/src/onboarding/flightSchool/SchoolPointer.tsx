@@ -33,7 +33,10 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
       if (box && scroll && !fits && attempts < 3 && (queue || (performance.now() - since >= 180 && performance.now() - scrollAt >= 400))) {
         scroll.scrollBy({ top: box.top - top, behavior: queue ? 'instant' : 'smooth' }); scrollAt = performance.now(); attempts++;
       }
-      if (!fits || !target?.isConnected) settled.current = null;
+      // A mark out in the scene is drawn under an open panel; the pointer must not float above it.
+      const hidden = fits && target?.hasAttribute('data-scene-mark') === true
+        && document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('[data-focus-rail], [data-sheet-panel]');
+      if (!fits || hidden || !target?.isConnected) settled.current = null;
       else if (performance.now() - since >= 180) {
         settled.current = target;
         const left = Math.max(0, box.left), y = Math.max(top, box.top);

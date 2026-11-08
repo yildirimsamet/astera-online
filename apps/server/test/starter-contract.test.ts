@@ -40,8 +40,9 @@ describe('the answers aboard, read with the client schemas', () => {
     expect(intelSchema.parse(await get(world, '/api/starter/intel', other.headers)).radarLog).toHaveLength(1);
     expect(notificationsSchema.parse(await get(world, '/api/starter/notifications', other.headers)).notifications[0]).toMatchObject({ kind: 'PROBE_DETECTED' });
 
-    const [row] = await world.f.db.select().from(vesselNotifications).where(eq(vesselNotifications.vesselId, me.vesselId));
-    expect(row?.kind).toBe('PROBE_REPORT');
+    // A radar this size also hears the scout that follows a first launch: the report is what is read here.
+    const rows = await world.f.db.select().from(vesselNotifications).where(eq(vesselNotifications.vesselId, me.vesselId));
+    expect(rows.map(row => row.kind)).toContain('PROBE_REPORT');
     const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
     expect(ship?.facts).toContain('FIRST_PROBE_REPORT');
   });

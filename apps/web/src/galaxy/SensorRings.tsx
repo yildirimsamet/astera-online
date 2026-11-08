@@ -97,6 +97,8 @@ const CLOCK_WRAP = 1000;
 /** A more readable glass boundary, with the quiet construction lines preserved. */
 export const TELESCOPE_GLASS_OPACITY = 0.55;
 export const TELESCOPE_GRID_OPACITY = 0.15;
+const BASE_STRENGTH = 0.042 * TELESCOPE_GLASS_OPACITY;
+const BASE_GRID = 0.045 * TELESCOPE_GRID_OPACITY;
 
 /**
  * EVERY GREEN THING THE RADAR DRAWS, AT THE SAME FRACTION. Owner instruction:
@@ -281,6 +283,14 @@ export const RADAR_FRAGMENT = /* glsl */ `
 `;
 
 /** Exact rendered image of a radius measured in authoritative game space. */
+export const SHELL_SPREAD_SECONDS = 1.4;
+
+/** The telescope opening: a bright bead at the ship that spreads to its true, faint radius. */
+export function shellSpread(seconds: number): { scale: number; glow: number } {
+  const t = Math.min(1, Math.max(0, seconds / SHELL_SPREAD_SECONDS));
+  return { scale: 0.05 + 0.95 * (1 - (1 - t) ** 3), glow: 1 + 7 * (1 - t) };
+}
+
 export const sensorVolumeScale = (radius: number): [number, number, number] => [
   radius,
   radius * VIEW.verticalExaggeration,
@@ -401,6 +411,8 @@ function ReachShell({
   telescope: boolean;
 }) {
   const material = useRef<THREE.ShaderMaterial>(null);
+  const shell = useRef<THREE.Mesh>(null);
+  const age = useRef(0);
 
   const uniforms = useMemo(
     () => ({
@@ -416,7 +428,7 @@ function ReachShell({
        * of what it was when the shell was still trying to be the whole answer.
        */
       uFalloff: { value: 3.4 },
-      uStrength: { value: 0.042 * TELESCOPE_GLASS_OPACITY },
+      uStrength: { value: BASE_STRENGTH },
       /** The head-on floor. Near zero: the interior must read as untouched. */
       uBody: { value: 0.002 * TELESCOPE_GLASS_OPACITY },
       /**
@@ -424,14 +436,25 @@ function ReachShell({
        * on as the camera moves — parallax is what makes the shell read as a
        * surface at a distance, and parallax works at any brightness.
        */
-      uGrid: { value: 0.045 * TELESCOPE_GRID_OPACITY },
+      uGrid: { value: BASE_GRID },
     }),
     [telescope],
   );
 
-  useFrame((_, delta) => {
-    const clock = material.current?.uniforms.uTime;
+  useFrame((state, delta) => {
+    const live = material.current?.uniforms;
+    const clock = live?.uTime;
     if (!clock) return;
+    if (age.current < SHELL_SPREAD_SECONDS) {
+      // Capped so the long frame that mounts it cannot swallow the opening.
+      age.current += Math.min(delta, 0.1);
+      const { scale, glow } = shellSpread(age.current);
+      const [x, y, z] = sensorVolumeScale(radius);
+      shell.current?.scale.set(x * scale, y * scale, z * scale);
+      if (live.uStrength) live.uStrength.value = BASE_STRENGTH * glow;
+      if (live.uGrid) live.uGrid.value = BASE_GRID * glow;
+      state.invalidate();
+    }
     const value = clock.value as number;
     // WRAPPED, so the clock never grows large enough to cost `sin()` its precision.
     // The noise fields are periodic in it, so the wrap is invisible.
@@ -448,7 +471,7 @@ function ReachShell({
         The far wall alone is how a transparent bubble is drawn anyway: you look
         through empty space at the inside of the shell behind it.
       */}
-      <mesh renderOrder={-40} scale={sensorVolumeScale(radius)}>
+      <mesh ref={shell} renderOrder={-40} scale={sensorVolumeScale(radius)}>
         <sphereGeometry args={[1, 48, 28]} />
         <shaderMaterial
           ref={material}

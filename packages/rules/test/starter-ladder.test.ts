@@ -82,8 +82,9 @@ describe('the repair ladder', () => {
     expect(bill('SURVEY', 2)).toEqual([600, 350, 20]);
     expect(bill('SHIPYARD', 1)).toEqual([800, 300, 3]);
     expect(bill('HANGAR', 2)).toEqual([1000, 350, 30]);
-    expect(bill('TELESCOPE', 1)).toEqual([700, 500, 40]);
-    expect(bill('RADAR', 1)).toEqual([500, 380, 60]);
+    // Owner 2026-11-08 (N11): both are used in the first session.
+    expect(bill('TELESCOPE', 1)).toEqual([250, 150, 1.5]);
+    expect(bill('RADAR', 1)).toEqual([200, 120, 1.5]);
     // Owner 2026-11-08 (N4): four hours each, so the fuel and not the engine is what a ship waits on.
     expect(bill('DRIVE_HULL', 1)).toEqual([2200, 1100, 240]);
     expect(bill('DRIVE_THRUST', 1)).toEqual([1800, 1200, 240]);
@@ -177,8 +178,9 @@ describe('the repair ladder', () => {
 
   it('gives what the plan promises, once, on the step that names it', () => {
     expect(find('DEUTERIUM_PLANT', 1).grants).toEqual({ deuterium: STARTER.deuteriumGrant });
-    expect(find('SHIPYARD', 1).grants).toEqual({ fleet: { PROSPECTOR: 1, DART: 2 } });
-    expect(REPAIR_LADDER.filter(s => s.grants).length).toBe(2);
+    expect(find('TELESCOPE', 1).grants).toEqual({ fleet: { PROSPECTOR: 1 } });
+    expect(find('SHIPYARD', 1).grants).toEqual({ fleet: { DART: 2 } });
+    expect(REPAIR_LADDER.filter(s => s.grants).length).toBe(3);
   });
 });
 
@@ -198,15 +200,15 @@ describe('ordering a repair', () => {
 
   it('refuses to skip a stage, and names what is missing', () => {
     expect(canOrderStep(openingProgress(), 'REFINERY', 3)).toEqual({
-      ok: false, code: 'REPAIR_REQUIREMENT', missing: [{ kind: 'MODULE', module: 'REFINERY', stage: 2 }],
+      ok: false, code: 'REPAIR_REQUIREMENT', missing: [{ kind: 'MODULE', module: 'REFINERY', stage: 2 }, { kind: 'MODULE', module: 'SHIPYARD', stage: 1 }],
     });
   });
 
   it('names every requirement that is not met', () => {
-    expect(canOrderStep(openingProgress(), 'SHIPYARD', 1)).toEqual({
+    expect(canOrderStep(openingProgress(), 'SURVEY', 2)).toEqual({
       ok: false,
       code: 'REPAIR_REQUIREMENT',
-      missing: [{ kind: 'MODULE', module: 'SURVEY', stage: 1 }, { kind: 'MODULE', module: 'REFINERY', stage: 3 }],
+      missing: [{ kind: 'MODULE', module: 'SURVEY', stage: 1 }, { kind: 'MODULE', module: 'SHIPYARD', stage: 1 }, { kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }],
     });
   });
 
@@ -215,7 +217,7 @@ describe('ordering a repair', () => {
       const answer = canOrderStep(progress, module, stage);
       return answer.ok || answer.code !== 'REPAIR_REQUIREMENT' ? [] : answer.missing;
     };
-    expect(miss('SURVEY', 2, withModules({ SURVEY: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }]);
+    expect(miss('SURVEY', 2, withModules({ SURVEY: 1, SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }]);
     expect(miss('HANGAR', 2, withModules({ SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_MINING_RETURN' }]);
     expect(miss('DRIVE_THRUST', 1, withModules({ DRIVE_HULL: 1 }))).toEqual([{ kind: 'PARTS', count: STARTER.parts.needed }]);
     expect(miss('DRIVE_THRUST', 1, withModules({ DRIVE_HULL: 1 }, { parts: 2 }))).toEqual([{ kind: 'PARTS', count: STARTER.parts.needed }]);
@@ -256,9 +258,7 @@ describe('ordering a repair', () => {
 
   it('lists only what can be ordered now, required first in play order', () => {
     const opening = nextSteps(openingProgress()).map(s => `${s.module}:${String(s.stage)}`);
-    expect(opening.slice(0, 2)).toEqual(['REFINERY:2', 'EXTRACTOR:1']);
-    expect(opening).not.toContain('REFINERY:3');
-    expect(opening).not.toContain('SURVEY:1');
+    expect(opening).toEqual(['REFINERY:2']);
     for (const step of nextSteps(openingProgress())) expect(canOrderStep(openingProgress(), step.module, step.stage).ok).toBe(true);
     const required = nextSteps(withModules({ REFINERY: 4, EXTRACTOR: 3 })).map(s => s.required);
     expect(required.lastIndexOf(true)).toBeLessThan(required.indexOf(false));
@@ -268,7 +268,7 @@ describe('ordering a repair', () => {
     const queued = afterQueue(openingProgress(), [find('REFINERY', 2)]);
     expect(moduleStage(queued, 'REFINERY')).toBe(2);
     expect(canOrderStep(queued, 'REFINERY', 2)).toEqual({ ok: false, code: 'ALREADY_REPAIRED' });
-    expect(canOrderStep(queued, 'REFINERY', 3).ok).toBe(true);
+    expect(canOrderStep(queued, 'EXTRACTOR', 1).ok).toBe(true);
     expect(moduleStage(openingProgress(), 'REFINERY')).toBe(1);
   });
 });
@@ -280,8 +280,8 @@ describe('cancelling out of a queue', () => {
   });
 
   it('holds a step to what it requires', () => {
-    expect(stepDependsOn(find('SURVEY', 1), find('EXTRACTOR', 1))).toBe(true);
-    expect(stepDependsOn(find('SHIPYARD', 1), find('REFINERY', 3))).toBe(true);
+    expect(stepDependsOn(find('SURVEY', 1), find('RADAR', 1))).toBe(true);
+    expect(stepDependsOn(find('SHIPYARD', 1), find('SURVEY', 1))).toBe(true);
   });
 
   it('holds a step to a lower stage of what it requires', () => {
@@ -428,7 +428,7 @@ describe('the next required repair', () => {
 
   it('reads the queue as finished when judging a step that stands on it', () => {
     const queued = REPAIR_LADDER.filter(s => (s.module === 'REFINERY' && s.stage === 2) || (s.module === 'EXTRACTOR' && s.stage === 1));
-    expect(nextRequiredStep(openingProgress(), queued)).toMatchObject({ step: { module: 'SURVEY', stage: 1 }, missing: [] });
+    expect(nextRequiredStep(openingProgress(), queued)).toMatchObject({ step: { module: 'TELESCOPE', stage: 1 }, missing: [] });
   });
 
   it('says what stands in the way when every step left is waiting on something', () => {

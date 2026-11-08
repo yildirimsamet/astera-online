@@ -11,7 +11,7 @@ import { aboard, arm, enrich, pass, post, siteOf } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
-const MINER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 };
+const MINER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3, TELESCOPE: 1 };
 const opaque = (uuid: string) => Buffer.from(uuid.replace(/-/g, ''), 'hex').toString('base64url');
 
 /**

@@ -126,11 +126,11 @@ async function finishOrder(tx: Tx, vessel: LockedVessel, order: VesselOrderRow):
   const opens = openFeatures(progressOf(row)).size > openFeatures(progressOf(vessel.row)).size;
   vessel.row = row;
   if (!opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000) await queueRepairNotice(tx, vessel.row, order.readyAt);
+  // The telescope shows the rocks and hands over the Prospector (N13); the yard shows the first hunt.
+  const firstSight = module === 'TELESCOPE' && order.stage === 1;
+  if (firstSight) await ensureFirstRock(tx, vessel);
   const yard = module === 'SHIPYARD' && order.stage === 1;
-  if (yard) {
-    await ensureFirstRock(tx, vessel);
-    await ensureFirstOutposts(tx, vessel.row, vessel.now);
-  }
+  if (yard) await ensureFirstOutposts(tx, vessel.row, vessel.now);
 
   await tx.insert(vesselNotifications).values({
     vesselId: row.id, kind: 'REPAIR_DONE', refId: order.id, payload: { module, stage: order.stage, long: !opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000 }, createdAt: order.readyAt,

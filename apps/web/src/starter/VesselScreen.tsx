@@ -26,6 +26,7 @@ import { heroArt, pickStep, systemSteps } from './shipScreen.js';
 import { SystemTabs } from './SystemTabs.js';
 import { UnlockMoment } from './UnlockMoment.js';
 import { StarterWaitLine } from './tutorial/StarterWaitLine.js';
+import { useStarterLesson } from './tutorial/visualGoal.js';
 import { YardDeck } from './YardDeck.js';
 
 const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel });
@@ -70,6 +71,7 @@ function DeckSwitch({ vessel, value, onChange }: { vessel: VesselView; value: Sh
         ]}
         value={value}
         onChange={onChange}
+        tabId={deck => `ship-deck-${deck}`}
       />
     </div>
   );
@@ -105,6 +107,10 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   const decks = vessel.features.includes('fleet');
   const wantsYard = focusGroup === 'defend' || focusGroup === 'reach';
   useEffect(() => { if (wantsYard && decks) setDeck('yard'); }, [wantsYard, decks]);
+  // The handover is about the ship: it is shown, whichever deck the first ship was built from.
+  const lesson = useStarterLesson();
+  const handingOver = lesson?.kind === 'step' && lesson.id === 'farewell';
+  useEffect(() => { if (handingOver) setDeck('repairs'); }, [handingOver]);
   const sky = useMainSky(true);
   const select = (next: VesselSystem): void => { setSystem(next); setPicked(null); };
   const context: RepairContext = {

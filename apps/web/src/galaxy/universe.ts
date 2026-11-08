@@ -36,6 +36,16 @@ const VERTICAL_FOV = 45;
 /** Below this share of the view's distance, zooming in has left the universe. */
 export const UNIVERSE_CLOSE_SHARE = 0.5;
 
+/** Zooming well back in leaves the view. `opened` is this opening's own range, 0 until it has one. */
+export function zoomedBackIn(range: number, opened: number): boolean {
+  return opened > 0 && range < opened * UNIVERSE_CLOSE_SHARE;
+}
+
+/** Back to where the player was, or to a focused subject where it is by now. */
+export function universeReturn(saved: readonly number[], subject: readonly number[] | null): { to: readonly number[]; mode: 'follow' | 'manual'; acquired: boolean } {
+  return subject ? { to: subject, mode: 'follow', acquired: true } : { to: saved, mode: 'manual', acquired: false };
+}
+
 export interface UniverseFrame {
   centre: Vec3Tuple;
   distance: number;

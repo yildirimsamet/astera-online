@@ -35,6 +35,7 @@ function useLine(objective: Opportunity, now: number): { text: string; tap: Tap;
   switch (objective.kind) {
     case 'repair': return { text: t('starter.objective.repair', { name: moduleName(objective.step.module) }), tap: 'ship', rest: false };
     case 'collect': return { text: t('starter.objective.collect'), tap: 'up', rest: false };
+    case 'crate': return { text: t('starter.objective.crate'), tap: 'ship', rest: false };
     case 'save': {
       const name = moduleName(objective.step.module);
       if (objective.minutes === null) return { text: t('starter.objective.saveNever', { name }), tap: 'ship', rest: false };
@@ -81,6 +82,7 @@ function offerIcon(offer: Opportunity): IconId {
   switch (offer.kind) {
     case 'repair': return repairGainIcon(offer.step);
     case 'collect': return 'i-collect';
+    case 'crate': return 'i-spark';
     case 'probe': return 'i-probe';
     case 'mine': return 'i-mine';
     case 'fuel': return 'm-recover';
@@ -139,6 +141,7 @@ function useOfferName(offer: Opportunity, now: number): string {
   switch (offer.kind) {
     case 'repair': return moduleName(offer.step.module);
     case 'collect': return t('starter.visual.collect');
+    case 'crate': return t('starter.visual.crate');
     case 'probe': return t('starter.visual.probe');
     case 'mine': return t('starter.visual.mine');
     case 'fuel': return t('starter.advice.fuel');
@@ -214,6 +217,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
     held: purse,
     income: { alloyPerHour: view.planet.alloyPerHour, crystalPerHour: view.planet.crystalPerHour },
     features: vessel.features,
+    crateReady: vessel.crates.some(crate => crate.state === 'ready'),
     probing,
     mining,
     alone,
@@ -265,11 +269,12 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   const wait = id ? repairWait(id, vessel.queue) : null;
   const short = repair ? moduleName(repair.module)
     : id === 'mine' ? t('starter.visual.mine')
+    : id === 'probe' ? t('starter.visual.probe')
     : id?.toLowerCase().includes('crate') ? t('starter.visual.crate')
     : id?.startsWith('collect') ? t('starter.visual.collect')
     : waiting ? (wait ? duration(Math.max(0, wait.until.getTime() - now) / 60_000) : t('starter.visual.waiting')) : null;
   const nextTap: Tap = repair || id?.toLowerCase().includes('crate') ? 'ship'
-    : id === 'mine' ? 'rock' : id?.startsWith('collect') ? 'up' : null;
+    : id === 'mine' ? 'rock' : id === 'probe' ? 'neighbour' : id?.startsWith('collect') ? 'up' : null;
   const line = short ? { text: short, tap: nextTap, rest: waiting } : original;
   const outpost = objective.kind === 'hunt' && objective.hunt.stage === 'probe' ? objective.hunt.target : null;
   const unheld = line.tap === 'neighbour' && !onFocusNeighbour || line.tap === 'rock' && !onFocusRock
@@ -311,7 +316,6 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
       {showing && (
         <section data-testid="starter-advice" aria-label={t('starter.advice.title')} className="mb-2 overflow-hidden rounded-control border border-v2-self/40 bg-v2-deep/95 font-v2-ui shadow-lg animate-[line-in_0.25s_ease-out_both]">
           <header className="flex items-center gap-2 border-b border-v2-line py-1 pl-2.5 pr-1">
-            <img src="/assets/images/general/tutorial-npc.png" alt="" draggable={false} className="size-7 shrink-0 rounded-full border border-v2-self/40 bg-v2-void object-cover object-top" />
             <span className="min-w-0 flex-1 text-caption font-medium text-v2-ink">{t('starter.advice.title')}</span>
             <button type="button" aria-label={t('starter.advice.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }} className="grid size-9 shrink-0 place-items-center text-v2-ink-2">
               <Icon id="i-close" className="size-4" />

@@ -5,15 +5,16 @@ import {
 } from '../src/index.js';
 
 const step = (module: VesselModule, stage: number) => REPAIR_LADDER.find(s => s.module === module && s.stage === stage)!;
-const FIRST_FOUR = [step('REFINERY', 2), step('EXTRACTOR', 1), step('SURVEY', 1), step('EXTRACTOR', 2)];
+/** The road every ship takes, one repair at a time (owner 2026-11-08, N10). */
+const FIRST_SIX = [step('REFINERY', 2), step('EXTRACTOR', 1), step('TELESCOPE', 1), step('RADAR', 1), step('SURVEY', 1), step('SHIPYARD', 1)];
 
-/** The guided first session's road: the four seconds-long repairs, the probe, then the ramp to the Shipyard. */
+/** The guided first session: the road with its probe, then the works the Shipyard opens. */
 const ROAD: readonly (RepairStep | 'PROBE')[] = [
-  ...FIRST_FOUR.slice(0, 3), 'PROBE', FIRST_FOUR[3]!,
-  step('REFINERY', 3), step('VAULT', 1), step('SHIPYARD', 1), step('EXTRACTOR', 3),
+  ...FIRST_SIX.slice(0, 5), 'PROBE', FIRST_SIX[5]!,
+  step('EXTRACTOR', 2), step('REFINERY', 3),
 ];
 /** The rest of the first day, as the retention plan's timeline has it (§5.1). */
-const DAY_ONE: readonly (RepairStep | 'PROBE')[] = [...ROAD, step('SURVEY', 2), step('HANGAR', 2), step('TELESCOPE', 1)];
+const DAY_ONE: readonly (RepairStep | 'PROBE')[] = [...ROAD, step('VAULT', 1), step('EXTRACTOR', 3), step('SURVEY', 2), step('HANGAR', 2)];
 /** What a Prospector brings back from a nearby asteroid: the pacing model's trip. */
 const HAUL = { alloy: 150, crystal: 50 };
 type Session = readonly [start: number, length: number];
@@ -44,15 +45,15 @@ function play(road: readonly (RepairStep | 'PROBE')[], sessions: readonly Sessio
     // Each later session sends the Prospector out twice, as the pacing model does.
     if (session !== lastSession) {
       lastSession = session;
-      if (session > 0 && (progress.modules.SHIPYARD ?? 0) >= 1) economy = { ...economy, alloy: economy.alloy + 2 * HAUL.alloy, crystal: economy.crystal + 2 * HAUL.crystal };
+      if (session > 0 && (progress.modules.TELESCOPE ?? 0) >= 1) economy = { ...economy, alloy: economy.alloy + 2 * HAUL.alloy, crystal: economy.crystal + 2 * HAUL.crystal };
     }
     for (const crate of readyCrates(progress, claimed)) {
       claimed.push(crate.id);
       economy = { ...economy, alloy: economy.alloy + crate.reward.alloy, crystal: economy.crystal + crate.reward.crystal };
     }
-    // The Shipyard hands over a Prospector; its first trip is a minute out and a minute back.
-    const yard = ordered.get(step('SHIPYARD', 1));
-    if (!hauled && session === 0 && (progress.modules.SHIPYARD ?? 0) >= 1 && yard !== undefined) {
+    // The telescope hands over a Prospector; its first trip is a minute out and a minute back.
+    const yard = ordered.get(step('TELESCOPE', 1));
+    if (!hauled && session === 0 && (progress.modules.TELESCOPE ?? 0) >= 1 && yard !== undefined) {
       hauled = true;
       economy = { ...economy, alloy: economy.alloy + HAUL.alloy, crystal: economy.crystal + HAUL.crystal };
     }
@@ -78,21 +79,15 @@ describe('the first session', () => {
    * tutorial's four repairs run in seconds, in whole seconds, so the guided first session is played
    * through, not waited through.
    */
-  it('runs its four guided repairs in seconds: 10, 10, 30 and 60', () => {
-    expect(FIRST_FOUR.map(s => s.minutes * 60)).toEqual([10, 10, 30, 60]);
+  it('runs the road in seconds and minutes: 10 s, 10 s, 90 s, 90 s, 30 s, 3 min', () => {
+    expect(FIRST_SIX.map(s => s.minutes * 60)).toEqual([10, 10, 90, 90, 30, 180]);
   });
 
-  /**
-   * Retention plan §6.1: a ramp, not a cliff from one minute to forty-five. Owner 2026-11-07 ("30 sn'den
-   * 3 dk'ya geçiyoruz?"): the guided session's last four run 90 s, 2, 3 and 5 minutes; the first day's
-   * steps after the farewell keep 20, 30, 40 and 60, so the one step past three times is the second session's.
-   */
-  it('ramps the repairs after them: 90 seconds, 2, 3, 5, then 20, 30, 40 and 60 minutes', () => {
-    const ramp = [step('REFINERY', 3), step('VAULT', 1), step('SHIPYARD', 1), step('EXTRACTOR', 3),
-      step('SURVEY', 2), step('HANGAR', 2), step('TELESCOPE', 1), step('REFINERY', 4)];
-    expect(ramp.map(s => s.minutes)).toEqual([1.5, 2, 3, 5, 20, 30, 40, 60]);
-    const road = [FIRST_FOUR[3]!, ...ramp];
-    road.slice(1).forEach((s, i) => { expect(s.minutes / road[i]!.minutes).toBeLessThanOrEqual(4); });
+  /** Retention plan §6.1: a ramp, not a cliff. What the Shipyard opens runs up to the first day's hour. */
+  it('ramps the repairs after it: 1, 1.5, 2, 5, then 20, 30 and 60 minutes', () => {
+    const ramp = [step('EXTRACTOR', 2), step('REFINERY', 3), step('VAULT', 1), step('EXTRACTOR', 3), step('SURVEY', 2), step('HANGAR', 2), step('REFINERY', 4)];
+    expect(ramp.map(s => s.minutes)).toEqual([1, 1.5, 2, 5, 20, 30, 60]);
+    ramp.slice(1).forEach((s, i) => { expect(s.minutes / ramp[i]!.minutes).toBeLessThanOrEqual(4); });
   });
 
   /**
@@ -115,23 +110,26 @@ describe('the first session', () => {
   });
 
   /**
-   * Retention plan §5.1 and §6.2: the guided session reaches the fleet and the third extractor in
-   * about twenty minutes, and nothing in it waits on the store for more than a minute.
+   * The guided session reaches the yard and the third refinery in well under twenty minutes, and
+   * nothing in it waits on the store for more than a minute (owner 2026-11-08, N10). The Vault is the
+   * first thing past it that makes a player wait, about a quarter of an hour, with flights to fly meanwhile.
    */
-  it('orders everything up to the third extractor in the first twenty minutes', () => {
+  it('orders everything up to the third refinery in the first twenty minutes', () => {
     const ordered = play(ROAD, [[0, 25]]);
     const times = ROAD.map(part => ordered.get(part));
     expect(times.every(time => time !== undefined)).toBe(true);
     expect(Math.max(...times.map(time => time ?? Infinity))).toBeLessThanOrEqual(20);
   });
 
-  /** Retention plan §5.1: chat at the second session, research at the third, the telescope by evening. */
-  it('lets a player who comes back three times reach the telescope on the first day', () => {
+  /**
+   * The sensors are bought in the first minutes now, so the chat moves from the second session to the
+   * third and the hangar to the fourth (measured 2026-11-08): the price of showing the game first.
+   */
+  it('lets a player who comes back reach the chat and the hangar on the first day', () => {
     const ordered = play(DAY_ONE, [[0, 25], [60, 15], [180, 15], [480, 20]]);
     const at = (s: RepairStep) => ordered.get(s) ?? Infinity;
-    expect(at(step('SURVEY', 2))).toBeLessThan(75);
-    expect(at(step('HANGAR', 2))).toBeLessThan(195);
-    expect(at(step('TELESCOPE', 1))).toBeLessThan(500);
+    expect(at(step('SURVEY', 2))).toBeLessThan(195);
+    expect(at(step('HANGAR', 2))).toBeLessThan(500);
   });
 
   it('opens its crates only from the first session and the first day', () => {

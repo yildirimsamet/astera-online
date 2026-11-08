@@ -54,7 +54,7 @@ describe('the shipyard aboard', () => {
   it('keeps its own queue beside the repair queue', async () => {
     const me = await aboard(world, 'Me', YARD);
     await enrich(world, me.vesselId);
-    expect((await post(world, '/api/starter/repair', me.headers, { module: 'TELESCOPE', stage: 1 })).statusCode).toBe(200);
+    expect((await post(world, '/api/starter/repair', me.headers, { module: 'EXTRACTOR', stage: 1 })).statusCode).toBe(200);
     expect((await post(world, '/api/starter/build', me.headers, { hull: 'DART', count: 1 })).statusCode).toBe(200);
     const rows = await world.f.db.select().from(vesselOrders).where(eq(vesselOrders.vesselId, me.vesselId));
     expect(rows.map(row => [row.queue, row.slot]).sort()).toEqual([['CONSTRUCTION', 0], ['YARD', 0]]);

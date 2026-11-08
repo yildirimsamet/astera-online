@@ -5,10 +5,12 @@ import type { HuntStage } from '../hunt.js';
 import type { SightNow } from './sightLesson.js';
 
 /**
- * THE STARTER GUIDE (owner 2026-11-08, N1). A short core is held: the power card, the first collect
- * and the first repair with its ten seconds. After it the player chooses from the advisor's offers, and
- * a few first-time moments speak once each: the first crate, the first probe report, the first haul and
- * the ship's sensors. Nothing after the core holds a control or a spend.
+ * THE STARTER GUIDE (owner 2026-11-08, N1 and N12). A short core is held: the power card, the first
+ * collect and the first repair with its ten seconds. After it one road walks the game's mechanics in
+ * order, in the first minutes: crystal, telescope and radar, the rocks and a Prospector, the other
+ * ships and a probe, the yard and a ship of one's own, then what the ship still needs to leave. It
+ * points and never holds. A few first-time moments speak over it when they happen: a crate, a probe
+ * report, a haul, a contact on the sensors. Once it is walked the advisor's list is all that is left.
  *
  * WHERE THE PLAYER IS COMES FROM THE SHIP. A step whose result the ship records (an order, a module,
  * a fact) is behind them for good, on any phone. Only reading a line and pressing a mark are
@@ -25,6 +27,8 @@ export interface TutorialInput {
   works: number;
   /** The store and the works together can pay the next required repair. */
   canPayNext: boolean;
+  /** The store pays for a Dart, as the yard's own button asks. */
+  canBuildShip: boolean;
   probing: boolean;
   mining: boolean;
   crates: readonly { id: string; state: 'sealed' | 'ready' | 'opened' }[];
@@ -43,7 +47,7 @@ export type TutorialStepId = StarterTutorialStepId;
 export type TutorialKind = 'read' | 'press' | 'wait';
 export type TutorialLineId = TutorialStepId;
 /** The card's heading: which part of the ship's story the line belongs to. */
-export type TutorialChapter = 1 | 2 | 4 | 6 | 7 | 8;
+export type TutorialChapter = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type TutorialNav = 'openShip' | 'closePage' | 'dismissUnlock';
 
 export type TutorialAnswer =
@@ -83,8 +87,13 @@ const show = (module: string, stage: number): string => `[data-guide="repair-sho
 const tab = (system: string): string => `[data-guide="system-${system}"]`;
 const WORKS = '[data-guide="works"]';
 const CRATE = '[data-guide="crate"]';
+const OBJECTIVE = '[data-guide="objective"]';
+const hasReady = (i: TutorialInput): boolean => i.crates.some(c => c.state === 'ready');
+/** Hours past the road, on any phone: nothing about the first session is told to this ship again. */
+const seasoned = (i: TutorialInput): boolean => ordered(i, 'SURVEY', 2) || ordered(i, 'HANGAR', 2);
 const sensor = (module: 'TELESCOPE' | 'RADAR') => (i: TutorialInput) => !has(i, module, 1);
-const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.sight?.[what] === true;
+/** Only with the sky in front of them: a flight crossing the ring must not pull a player off a page. */
+const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.view === 'galaxy' && i.sight?.[what] === true;
 const CRAFT = '[data-guide="sight-craft"]';
 const UNKNOWN = '[data-guide="sight-unknown"]';
 
@@ -101,11 +110,44 @@ const CORE: Part = {
   ],
 };
 
-/** The first-time moments, in the order a ship meets them. Each speaks once and holds nothing. */
+/** A repair of the road: lit on the ship, behind the player as soon as it is on the queue. */
+const orderStep = (id: TutorialStepId, module: string, stage: number, system: string, chapter: TutorialChapter): Step => ({
+  id, kind: 'press', chapter, place: 'ship', marks: [repair(module, stage), show(module, stage), tab(system)], reached: i => ordered(i, module, stage),
+});
+const waitFor = (id: TutorialStepId, module: string, chapter: TutorialChapter): Step => ({ id, kind: 'wait', chapter, place: 'any', marks: [], reached: i => has(i, module, 1) });
+
+/**
+ * THE FIRST SESSION'S ROAD (owner 2026-11-08, N12). The server opens these repairs in this order; a
+ * flight never stops it, so the antenna goes on while the Prospector is out and the yard while the
+ * probe is.
+ */
+const FIRST_ROAD: Part = {
+  strict: false,
+  due: () => true,
+  steps: [
+    orderStep('orderExtractor', 'EXTRACTOR', 1, 'REFINERY', 2),
+    orderStep('orderTelescope', 'TELESCOPE', 1, 'DEFENCE', 3),
+    orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3),
+    waitFor('waitTelescope', 'TELESCOPE', 3),
+    { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: i => i.mining || i.facts.includes('FIRST_MINING_RETURN') },
+    orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
+    waitFor('waitSurvey', 'SURVEY', 4),
+    { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
+    orderStep('orderShipyard', 'SHIPYARD', 1, 'CARGO', 5),
+    waitFor('waitYard', 'SHIPYARD', 5),
+    { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || !i.canBuildShip },
+    { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: ['[data-testid="ship-repair"]'], satisfied: seasoned },
+  ],
+};
+
+/** The road's prices count on the crates: a ready one is the way to the next repair, each time. */
+const OPEN_CRATE: Step = { id: 'openCrate', kind: 'press', chapter: 2, place: 'ship', marks: [CRATE] };
+
+/** The first-time moments, in the order they go before the road. Each speaks once and holds nothing. */
 const MOMENTS: readonly Part[] = [
-  // Only the first crate is taught (plan F3); the rest wait on the strip, opened by the same hold.
+  // Only the first crate is taught (plan F3); the rest are opened by the same hold.
   {
-    strict: false, due: i => i.crates.some(c => c.state === 'ready') && !i.crates.some(c => c.state === 'opened'),
+    strict: false, due: i => hasReady(i) && !i.crates.some(c => c.state === 'opened'),
     steps: [{ id: 'firstCrate', kind: 'press', chapter: 2, place: 'ship', marks: [CRATE] }],
   },
   // The report is read where it is drawn (owner playtest 2026-11-07: a list row taught nothing).
@@ -113,29 +155,25 @@ const MOMENTS: readonly Part[] = [
     strict: false, due: i => i.facts.includes('FIRST_PROBE_REPORT'),
     steps: [
       { id: 'openIntel', kind: 'press', chapter: 4, place: 'any', marks: ['[data-guide="dock-intel"]'] },
-      { id: 'openReport', kind: 'press', chapter: 4, place: 'any', marks: ['[data-known="probe"] button', '[data-guide="dock-intel"]'] },
+      { id: 'openReport', kind: 'press', chapter: 4, place: 'any', marks: ['[data-known="probe"] button, [data-report-open]', '[data-guide="dock-intel"]'] },
       { id: 'report', kind: 'read', chapter: 4, place: 'galaxy', marks: ['[data-dossier-loot]'] },
     ],
   },
-  // The first haul: the Prospector out, its flight, what it brought, and the handover.
+  // The first haul, when it is home.
   {
-    strict: false, due: i => has(i, 'SHIPYARD', 1),
-    steps: [
-      { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', '[data-guide="unlock-dismiss"]', '[data-guide="objective"]'], satisfied: i => i.mining, reached: i => i.facts.includes('FIRST_MINING_RETURN') },
-      { id: 'mineFlying', kind: 'wait', chapter: 6, place: 'any', marks: [], reached: i => i.facts.includes('FIRST_MINING_RETURN') },
-      { id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 },
-      { id: 'farewell', kind: 'read', chapter: 6, place: 'any', marks: [] },
-    ],
+    strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
+    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
   },
   // THE SENSORS, ON A REAL CONTACT (plan F6): show it, have it touched, watch it go. Nothing is made
-  // up for a lesson; an empty sky only means the lesson waits. Radar 1 is on the way out and the scout
-  // comes to every Radar 1 owner who is there, so in practice both are met before the jump.
+  // up for a lesson; an empty sky only means the lesson waits, and the road goes on meanwhile. The
+  // scout comes to every Radar 1 owner who is there and has flown something of their own.
   {
     strict: false, due: i => has(i, 'TELESCOPE', 1),
     steps: [
-      { id: 'telescopeRing', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
+      { id: 'telescopeLook', kind: 'read', chapter: 7, place: 'galaxy', marks: [], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
+      { id: 'telescopeRing', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
       { id: 'telescopeTraffic', kind: 'press', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
-      { id: 'telescopeTrack', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE'), ready: inSight('tracked') },
+      { id: 'telescopeTrack', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('tracked') },
     ],
   },
   {
@@ -150,7 +188,7 @@ const MOMENTS: readonly Part[] = [
 ];
 
 /** Every step the guide can speak, in the order the server's funnel counts them. */
-export const ROAD: readonly Step[] = [...CORE.steps, ...MOMENTS.flatMap(part => part.steps)];
+export const ROAD: readonly Step[] = [...CORE.steps, ...FIRST_ROAD.steps, OPEN_CRATE, ...MOMENTS.flatMap(part => part.steps)];
 
 /** The core's chapters, which the card counts; a first-time moment is no chapter of a road. */
 export const CORE_CHAPTERS = 2;
@@ -159,7 +197,7 @@ export const CORE_CHAPTERS = 2;
 function locate(step: Step, input: TutorialInput, strict: boolean): TutorialAnswer {
   const answer = { kind: 'step' as const, id: step.id, step: step.kind, chapter: step.chapter, strict };
   if (step.kind === 'wait') return { ...answer, marks: step.marks };
-  if (input.view === 'galaxy' && input.unlockToAnnounce !== null && (step.place === 'ship' || step.id === 'mine')) {
+  if (input.view === 'galaxy' && input.unlockToAnnounce !== null && (step.place === 'ship' || step.id === 'mine' || step.id === 'probe')) {
     // A note hides the card on the galaxy: its close is the way to it (owner playtest 2026-11-07).
     return { ...answer, step: 'press', marks: ['[data-guide="unlock-dismiss"]', '[data-focus-close]'], nav: 'dismissUnlock' };
   }
@@ -183,7 +221,7 @@ function nextIn(part: Part, input: TutorialInput): TutorialAnswer | null {
   return step ? locate(step, input, part.strict) : null;
 }
 
-/** The step the player is on: the core while it lasts, then a moment that is due, else the advisor. */
+/** The step the player is on: the core while it lasts, then a moment that is due, then the road, else the advisor. */
 export function tutorialStep(input: TutorialInput): TutorialAnswer {
   if (CORE.due(input)) {
     const core = nextIn(CORE, input);
@@ -194,7 +232,10 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
     const moment = nextIn(part, input);
     if (moment) return moment;
   }
-  return { kind: 'advise' };
+  const road = nextIn(FIRST_ROAD, input);
+  // Only when a repair is what comes next: rocks and probes are not held up for a crate (walk 2026-11-08).
+  if (road?.kind === 'step' && road.id.startsWith('order') && !input.canPayNext && hasReady(input)) return locate(OPEN_CRATE, input, false);
+  return road ?? { kind: 'advise' };
 }
 
 const SYSTEM_OF = new Map(REPAIR_LADDER.map(s => [`${s.module}:${String(s.stage)}`, s.system]));
@@ -215,6 +256,7 @@ export function adviceMarks(choice: Opportunity, view: TutorialView): { marks: r
       return aboard(view, [repair(choice.step.module, choice.step.stage), show(choice.step.module, choice.step.stage), tab(SYSTEM_OF.get(at) ?? choice.step.system)]);
     }
     case 'collect': return { marks: [WORKS] };
+    case 'crate': return aboard(view, [CRATE]);
     case 'probe': return outside(view, ['[data-guide="probe"]', '[data-guide="objective"]']);
     case 'mine': return outside(view, ['[data-guide="mine"]', '[data-guide="objective"]']);
     case 'fuel': return aboard(view, ['[data-guide="fuel"]', tab('DRIVE')]);
@@ -243,6 +285,9 @@ export type WaitMode = 'lock' | 'roam' | 'away';
 /** The repairs each repair wait is for. */
 const WAIT_ON: Partial<Record<TutorialStepId, readonly (readonly [string, number])[]>> = {
   waitFirst: [['REFINERY', 2]],
+  waitTelescope: [['TELESCOPE', 1]],
+  waitSurvey: [['SURVEY', 1]],
+  waitYard: [['SHIPYARD', 1]],
 };
 
 export function repairWait(id: TutorialStepId, queue: readonly { subject: string; stage: number; startedAt: Date; readyAt: Date }[]): TutorialWait | null {

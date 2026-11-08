@@ -74,10 +74,10 @@ describe('the starter tutorial on screen', () => {
     expect(document.querySelector('.school-working')).not.toBeNull();
   });
 
-  it('says how long until the player should come back', () => {
-    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false });
+  it('says how far the ship is repaired when it hands over', () => {
+    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 26 }} />);
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
-    expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/50/);
+    expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/26/);
   });
 
   /** Review 2026-11-06: an NPC that waits on a control the screen never drew holds the player forever. */
@@ -157,15 +157,6 @@ describe('the starter tutorial on screen', () => {
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: 'center' }));
   });
 
-  /** Review 2026-11-06: the goodbye named a time that slid on while it was being read. */
-  it('names the time to come back as it was when the goodbye began', () => {
-    const answer: TutorialAnswer = { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false };
-    const { rerender } = render(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 50 }} />);
-    rerender(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 49 }} />);
-    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
-    expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/50/);
-  });
-
   it('records each visible tutorial step with the starter version and its scene id', () => {
     const answer: TutorialAnswer = { kind: 'step', id: 'orderRefinery', step: 'press', marks: [], chapter: 2, strict: true };
     const { rerender } = render(<StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 0 }} />);
@@ -230,6 +221,58 @@ describe('the welcome over the power card', () => {
     fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
     expect(screen.getByTestId('pointer')).toBeTruthy();
+  });
+
+  // Owner 2026-11-08: the telescope's field is turned by hand before the flight is pointed out.
+  describe('the telescope\'s field of view', () => {
+    const look: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'telescopeLook', step: 'read', marks: [], chapter: 7, strict: false };
+    const lookAt = () => {
+      const ack = vi.fn();
+      render(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack, backIn: 50 }} /></>);
+      return ack;
+    };
+    it('shows the drag and moves on when the view has been turned and let go', () => {
+      const ack = lookAt();
+      expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
+      const scene = screen.getByTestId('scene');
+      fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
+      fireEvent.pointerMove(scene, { clientX: 190, clientY: 310 });
+      expect(ack).not.toHaveBeenCalled();
+      fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
+      expect(ack).toHaveBeenCalledWith('telescopeLook');
+      expect(ack).toHaveBeenCalledTimes(1);
+    });
+    it('keeps the drag up until the view has been turned', () => {
+      vi.useFakeTimers();
+      lookAt();
+      act(() => { vi.advanceTimersByTime(30_000); });
+      expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
+      vi.useRealTimers();
+    });
+    it('does not take a tap for a look', () => {
+      const ack = lookAt();
+      const scene = screen.getByTestId('scene');
+      fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
+      fireEvent.pointerUp(scene, { clientX: 102, clientY: 300 });
+      expect(ack).not.toHaveBeenCalled();
+    });
+    it('keeps Next for whoever does not turn it', () => {
+      const ack = lookAt();
+      fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+      fireEvent.click(screen.getByRole('button', { name: /next/i }));
+      expect(ack).toHaveBeenCalledWith('telescopeLook');
+    });
+    it('has a first look that does not count for the telescope', () => {
+      const ack = vi.fn();
+      const view = mount();
+      const scene = screen.getByTestId('scene');
+      fireEvent.pointerDown(scene, { clientX: 100, clientY: 300 });
+      fireEvent.pointerMove(scene, { clientX: 190, clientY: 310 });
+      fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
+      view.rerender(<><canvas data-testid="scene" /><StarterTutorialCoach tutorial={{ answer: look, ack, backIn: 50 }} /></>);
+      expect(document.querySelector('[data-drag-hint]')).not.toBeNull();
+      expect(ack).not.toHaveBeenCalled();
+    });
   });
 
   it('lets the power card be pressed before any look', () => {
@@ -322,15 +365,6 @@ describe('the online card waits its turn', () => {
   });
 });
 
-/** Plan F3: the first repair teaches its price, its time and the queue, and the queue's size is the rule's. */
-it('names the queue the first repair goes into, by the size the rules give it', async () => {
-  const { STARTER } = await import('@astera/rules');
-  render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'waitFirst', step: 'wait', marks: [], chapter: 2, strict: true }, ack: vi.fn(), backIn: 50, wait: { until: new Date(Date.now() + 10_000), spanMs: 10_000 } }} />);
-  const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
-  expect(line).toContain(String(STARTER.queues.construction));
-  expect(line).not.toMatch(/these two/i);
-});
-
 /** Owner playtest 2026-11-07: never more than ten seconds with nothing to do; past a minute the NPC leaves and comes back. */
 describe('a long wait lets the player go', () => {
   it('lets the player roam a half-minute wait in the core, but not spend', () => {
@@ -361,7 +395,7 @@ describe('a long wait lets the player go', () => {
 
   it('comes back with a sound when the work is done', () => {
     const until = new Date(Date.now() + 90_000);
-    const { view } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until, spanMs: 90_000 });
+    const { view } = coach({ kind: 'step', id: 'waitTelescope', step: 'wait', marks: [], chapter: 3, strict: false }, vi.fn(), { until, spanMs: 90_000 });
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     fireEvent.click(screen.getByRole('button', { name: /^ok/i }));
     sound.mockClear();
@@ -419,13 +453,13 @@ describe('after the core the NPC leads, it does not hold', () => {
   });
 
   it('never holds a short wait once it has let go', () => {
-    const { elsewhere } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until: new Date(Date.now() + 8_000), spanMs: 8_000 });
+    const { elsewhere } = coach({ kind: 'step', id: 'waitTelescope', step: 'wait', marks: [], chapter: 3, strict: false }, vi.fn(), { until: new Date(Date.now() + 8_000), spanMs: 8_000 });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).toHaveBeenCalledOnce();
   });
 
   it('holds no spend through a long wait of a moment', () => {
-    const { ordered } = coach({ kind: 'step', id: 'mineFlying', step: 'wait', marks: [], chapter: 6, strict: false }, vi.fn(), { until: new Date(Date.now() + 90_000), spanMs: 90_000 });
+    const { ordered } = coach({ kind: 'step', id: 'waitTelescope', step: 'wait', marks: [], chapter: 3, strict: false }, vi.fn(), { until: new Date(Date.now() + 90_000), spanMs: 90_000 });
     fireEvent.click(screen.getByText('repair'));
     expect(ordered).toHaveBeenCalledOnce();
   });
@@ -454,7 +488,7 @@ it('keeps the away chip when the same wait moves between screens', async () => {
   const input = {
     modules: { REFINERY: 1, EXTRACTOR: 1 }, facts: [],
     queue: [{ subject: 'REFINERY', stage: 2 }],
-    unlockToAnnounce: null, works: 0, canPayNext: false, probing: false, mining: false, crates: [], acked: [],
+    unlockToAnnounce: null, works: 0, canPayNext: false, canBuildShip: true, probing: false, mining: false, crates: [], acked: [],
   };
   const wait = { until: new Date(Date.now() + 90_000), spanMs: 90_000 };
   const view = render(<StarterTutorialCoach tutorial={{ answer: tutorialStep({ ...input, view: 'ship' }), ack: vi.fn(), backIn: 0, wait }} />);
@@ -501,14 +535,14 @@ describe('declining the guide', () => {
 
 it('the late sight chapters point without locking the other repairs', () => {
  const free = vi.fn();
- render(<><div data-guide="sight-telescope"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><div data-guide="sight-radar"/><button data-guide="repair-order" onClick={free}>another repair</button><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
  fireEvent.click(screen.getByText('another repair'));
  expect(free).toHaveBeenCalledOnce();
 });
 
 it('does not scroll the galaxy away when a read target rides a projected scene marker', async()=>{
  vi.useFakeTimers();const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
- render(<><span data-scene-mark data-guide="sight-telescope"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-telescope"]']},ack:vi.fn(),backIn:0}}/></>);
+ render(<><span data-scene-mark data-guide="sight-radar"/><StarterTutorialCoach tutorial={{answer:{kind:'step',id:'telescopeRing',step:'read',chapter:7,strict:false,marks:['[data-guide="sight-radar"]']},ack:vi.fn(),backIn:0}}/></>);
  await act(async()=>{await vi.advanceTimersByTimeAsync(300);});
  expect(scroll).not.toHaveBeenCalled();
 });
@@ -520,7 +554,7 @@ it('does not scroll the galaxy away when a read target rides a projected scene m
  */
 describe('closing the guide', () => {
   it('takes the card away while it asks, and brings it back when the guide is kept', () => {
-    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 6, strict: false });
+    coach({ kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false });
     expect(document.querySelector('[data-school-coach]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /I don't need the guide/ }));
     expect(screen.getByRole('button', { name: 'Close guide' })).toBeTruthy();

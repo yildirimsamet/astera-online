@@ -113,7 +113,7 @@ describe('traffic in this galaxy', () => {
     await world.f.db.insert(vesselOrders).values({vesselId:watcher.vesselId,queue:'CONSTRUCTION',slot:0,subject:'TELESCOPE',stage:1,status:'DONE',startedAt:start,readyAt:start,remainingSeconds:0,cost:{alloy:0,crystal:0,deuterium:0}});
     await world.f.db.update(vessels).set({status:'DORMANT',slotIndex:null,x:5000,y:0,z:0}).where(eq(vessels.id,watcher.vesselId));
     world.f.clock.advance(9);
-    expect((await post(world,'/api/starter/repair',watcher.headers,{module:'EXTRACTOR',stage:1})).statusCode).toBe(200);
+    expect((await post(world,'/api/starter/repair',watcher.headers,{module:'REFINERY',stage:2})).statusCode).toBe(200);
     const [at]=await world.f.db.select().from(vessels).where(eq(vessels.id,watcher.vesselId));
     await world.f.db.update(vesselMissions).set({departAt:start,arriveAt:new Date(start.getTime()+600_000),fromX:at!.x+300,fromY:at!.y,fromZ:at!.z-1000,toX:at!.x+300,toY:at!.y,toZ:at!.z+1000}).where(eq(vesselMissions.ownerVesselId,sender.vesselId));
     expect(await contacts(watcher.headers)).toEqual([]);

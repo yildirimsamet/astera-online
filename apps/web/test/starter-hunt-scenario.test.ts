@@ -9,7 +9,7 @@ import { opportunities, type OpportunityInput } from '../src/starter/opportuniti
  * sends the player back to the choice with the reports still in hand; the first win ends the hunt,
  * because the map stops marking its outposts.
  */
-const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
+const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, TELESCOPE: 1, SURVEY: 1, VAULT: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
 const poor = { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 };
 const marked = [{ id: 'tevis', firstHunt: true }, { id: 'eldeth', firstHunt: true }, { id: 'ash' }];
 const unmarked = marked.map(({ id }) => ({ id }));
@@ -17,7 +17,7 @@ const read = (...ids: string[]) => ids.map(targetPlanetId => ({ targetPlanetId, 
 const flying = (kind: 'probe' | 'fleet', id: string, leg: 'outbound' | 'return' = 'outbound') => ({ kind, targetPlanetId: id, leg });
 
 const line = (hunt: OpportunityInput['hunt'], mining: boolean) => opportunities({
-  progress, queue: [], held: poor, income: { alloyPerHour: 60, crystalPerHour: 0 }, features: ['production', 'intel', 'fleet'], mining, hunt,
+  progress, queue: [], held: poor, income: { alloyPerHour: 60, crystalPerHour: 0 }, features: ['production', 'telescope', 'intel', 'fleet'], mining, hunt,
 })[0];
 
 describe('a first hunt, step by step', () => {

@@ -1,6 +1,6 @@
 import type { IconId } from '../v2/icons.js';
 import {
-  STARTER, alloyRate, crystalRate, deuteriumRate, moduleStage, openFeatures, storageCap, vesselAegisHp,
+  HULLS, STARTER, alloyRate, crystalRate, deuteriumRate, moduleStage, openFeatures, storageCap, vesselAegisHp,
   type Fleet, type RepairStep, type StarterFeature, type VesselProgress,
 } from '@astera/rules';
 
@@ -70,6 +70,12 @@ export function timeToAfford(cost: { alloy: number; crystal: number }, held: Hel
   const alloy = wait(cost.alloy, held.alloy + (held.bufferAlloy ?? 0), income.alloyPerHour);
   const crystal = wait(cost.crystal, held.crystal + (held.bufferCrystal ?? 0), income.crystalPerHour);
   return alloy === null || crystal === null ? null : Math.max(alloy, crystal);
+}
+
+/** What the yard's button takes: the store alone, the works must be collected first. */
+export function canPayDart(held: { alloy: number; crystal: number; deuterium: number }): boolean {
+  const { alloy, crystal, deuterium } = HULLS.DART;
+  return held.alloy >= alloy && held.crystal >= crystal && held.deuterium >= deuterium;
 }
 
 /** The capability earned by a repair, shown before spending. */

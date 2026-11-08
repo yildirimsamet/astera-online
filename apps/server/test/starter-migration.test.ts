@@ -118,7 +118,7 @@ describe('the jump', () => {
     it('counts what is still in work as paid back, the way the jump does', async () => {
       const person = await ready();
       await enrich(world, person.vesselId, 1000, 500, 0);
-      expect((await post(world, '/api/starter/repair', person.headers, { module: 'EXTRACTOR', stage: 1 })).statusCode).toBe(200);
+      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 })).statusCode).toBe(200);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(view.cargo).toMatchObject({ alloy: 1000, crystal: 500 });
       expect(view.left).toMatchObject({ alloy: 0, crystal: 0 });
@@ -128,7 +128,7 @@ describe('the jump', () => {
     it('leaves behind what the refund pushes over the hold', async () => {
       const person = await ready();
       await enrich(world, person.vesselId, STARTER.carry.alloy + 20, STARTER.carry.crystal + 10, 0);
-      expect((await post(world, '/api/starter/repair', person.headers, { module: 'EXTRACTOR', stage: 1 })).statusCode).toBe(200);
+      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 })).statusCode).toBe(200);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(view.cargo).toMatchObject({ alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal });
       expect(view.left).toMatchObject({ alloy: 20, crystal: 10 });
@@ -242,7 +242,7 @@ describe('the jump', () => {
       await enrich(world, person.vesselId, 1000, 500, 0);
       const before = await get<{ vessel: { alloy: number } }>(world, '/api/starter/vessel', person.headers);
       expect(before.vessel.alloy).toBeCloseTo(1000, 0);
-      const repair = await post(world, '/api/starter/repair', person.headers, { module: 'EXTRACTOR', stage: 1 });
+      const repair = await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 });
       expect(repair.statusCode).toBe(200);
       const body = (await jump(person.headers)).json<Landing>();
       expect(body.cargo.alloy).toBe(1000);

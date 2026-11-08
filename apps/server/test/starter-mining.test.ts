@@ -10,7 +10,7 @@ import { aboard, arm, enrich, get, pass, post, siteOf } from './starterShips.js'
 
 afterAll(async () => { await (await testDb()).close(); });
 void moduleStage; void PROSPECTOR;
-const MINER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 };
+const MINER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3, TELESCOPE: 1 };
 
 /** A site id as the client's schema wants it. */
 const opaque = (uuid: string) => Buffer.from(uuid.replace(/-/g, ''), 'hex').toString('base64url');
@@ -30,7 +30,7 @@ describe('digging and salvage aboard', () => {
   const rock = () => siteOf(world, 'ASTEROID');
   const ship = async (id: string) => (await world.f.db.select().from(vessels).where(eq(vessels.id, id)))[0]!;
 
-  it('shows the rocks once the yard works, in the schema the map reads', async () => {
+  it('shows the rocks once the telescope works, in the schema the map reads', async () => {
     const me = await ready();
     await sweepStarterWorld(world.f.db, world.f.clock);
     const body = miningSchema.parse(await get(world, '/api/starter/mining', me.headers));

@@ -14,6 +14,8 @@ const APPROACH = 1500;
 /** Pirates are an event here, not a tax. */
 const RAID_EVERY_HOURS = 18;
 const SCOUT: Fleet = { DART: 1 };
+/** Just outside the first radar's ring: its return has to reach the player inside the first session (N12). */
+const SCOUT_APPROACH = STARTER.radar[1] + 120;
 const FIRST_RAID_AT_LEAST: Fleet = { DART: 1 };
 
 type Galaxy = typeof starterGalaxies.$inferSelect;
@@ -22,7 +24,8 @@ function launch(tx: Tx, galaxy: Galaxy, ship: VesselRow, kind: 'SCOUT' | 'PIRATE
   const to = placeOf(ship);
   const random = seededFrom(ship.id, now.getTime());
   const angle = random() * 2 * Math.PI;
-  const from: Vec3 = { x: to.x + Math.cos(angle) * APPROACH, y: to.y, z: to.z + Math.sin(angle) * APPROACH };
+  const span = kind === 'SCOUT' ? SCOUT_APPROACH : APPROACH;
+  const from: Vec3 = { x: to.x + Math.cos(angle) * span, y: to.y, z: to.z + Math.sin(angle) * span };
   const arriveAt = new Date(now.getTime() + travelExact(distance(from, to), fleetSpeed(fleet, {})) * 60_000);
   return tx.insert(vesselMissions).values({
     starterGalaxyId: galaxy.id, ownerVesselId: null, kind, targetVesselId: ship.id,

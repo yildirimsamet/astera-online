@@ -624,6 +624,7 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
                 {onOpenDossier && (
                   <button
                     type="button"
+                    data-report-open=""
                     onClick={() => { onOpenDossier(report.targetPlanetId); }}
                     className="text-micro font-semibold text-v2-self"
                   >

@@ -128,7 +128,7 @@ describe('repairing the ship', () => {
     });
 
     it('refuses a real act that has not happened', async () => {
-      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, EXTRACTOR: 1, SURVEY: 1 } });
+      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, EXTRACTOR: 1, SURVEY: 1, SHIPYARD: 1 } });
       expect((await repair('SURVEY', 2)).json()).toMatchObject({ error: 'REPAIR_REQUIREMENT' });
       await setShip({ facts: ['FIRST_PROBE_REPORT'] });
       expect((await repair('SURVEY', 2)).statusCode).toBe(200);
@@ -149,8 +149,8 @@ describe('repairing the ship', () => {
     it('lets a queued stage count for the next one, and chains their times', async () => {
       await setShip({ alloy: 2000 });
       await repair('REFINERY', 2);
-      const view = (await repair('REFINERY', 3)).json<{ vessel: VesselAnswer }>().vessel;
-      expect(view.queue.map(order => order.subject)).toEqual(['REFINERY', 'REFINERY']);
+      const view = (await repair('EXTRACTOR', 1)).json<{ vessel: VesselAnswer }>().vessel;
+      expect(view.queue.map(order => order.subject)).toEqual(['REFINERY', 'EXTRACTOR']);
       expect(view.queue[1]!.startedAt).toBe(view.queue[0]!.readyAt);
     });
 
@@ -158,8 +158,8 @@ describe('repairing the ship', () => {
       await setShip({ alloy: 5000, crystal: 2000 });
       await repair('REFINERY', 2);
       await repair('EXTRACTOR', 1);
-      await repair('EXTRACTOR', 2);
-      const response = await repair('REFINERY', 3);
+      await repair('TELESCOPE', 1);
+      const response = await repair('RADAR', 1);
       expect(response.statusCode).toBe(409);
       expect(response.json()).toMatchObject({ error: 'QUEUE_FULL', params: { context: 'repairs' } });
     });
@@ -210,9 +210,9 @@ describe('repairing the ship', () => {
       await setShip({ alloy: 2000 });
       await repair('REFINERY', 2);
       advance(2);
-      const view = (await repair('REFINERY', 3)).json<{ vessel: VesselAnswer }>().vessel;
+      const view = (await repair('EXTRACTOR', 1)).json<{ vessel: VesselAnswer }>().vessel;
       expect(view.modules.REFINERY).toBe(2);
-      expect(view.queue.map(order => order.stage)).toEqual([3]);
+      expect(view.queue.map(order => order.subject)).toEqual(['EXTRACTOR']);
       expect(await world.f.db.select().from(vesselNotifications)).toHaveLength(1);
     });
 
@@ -228,17 +228,17 @@ describe('repairing the ship', () => {
     });
 
     it('gives the shipyard\'s ships once', async () => {
-      await setShip({ alloy: 2000, modules: { REFINERY: 3, EXTRACTOR: 1, SURVEY: 1 } });
+      await setShip({ alloy: 2000, modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 } });
       await repair('SHIPYARD', 1);
       advance(60);
       await worker.tick();
       const units = await world.f.db.select().from(vesselUnits).where(eq(vesselUnits.vesselId, vesselId));
       expect(units.map(({ hull, count, location }) => ({ hull, count, location })).sort((a, b) => a.hull.localeCompare(b.hull)))
-        .toEqual([{ hull: 'DART', count: 2, location: 'HOME' }, { hull: 'PROSPECTOR', count: 1, location: 'HOME' }]);
+        .toEqual([{ hull: 'DART', count: 2, location: 'HOME' }]);
     });
 
     it('gives the deuterium plant its fuel', async () => {
-      await setShip({ modules: { REFINERY: 1, EXTRACTOR: 1 } });
+      await setShip({ modules: { REFINERY: 1, EXTRACTOR: 1, SHIPYARD: 1 } });
       await repair('DEUTERIUM_PLANT', 1);
       advance(60);
       await worker.tick();
@@ -246,7 +246,7 @@ describe('repairing the ship', () => {
     });
 
     it('starts the twelve-hour shield and the Aegis when the Aegis is repaired', async () => {
-      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, RADAR: 1 } });
+      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, RADAR: 1, SHIPYARD: 1 } });
       await repair('AEGIS', 1);
       advance(45);
       await worker.tick();
@@ -259,7 +259,7 @@ describe('repairing the ship', () => {
     });
 
     it('hands over a charged Aegis, because the first raid is what it is being repaired for', async () => {
-      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, RADAR: 1 } });
+      await setShip({ alloy: 2000, crystal: 2000, modules: { REFINERY: 1, RADAR: 1, SHIPYARD: 1 } });
       await repair('AEGIS', 1);
       advance(45);
       await worker.tick();
@@ -270,8 +270,9 @@ describe('repairing the ship', () => {
 
   describe('cancelling', () => {
     it('hands back half, and pulls the rest forward', async () => {
+      await setShip({ modules: { REFINERY: 2, SHIPYARD: 1 } });
       await repair('EXTRACTOR', 1);
-      const queued = (await repair('REFINERY', 2)).json<{ vessel: VesselAnswer }>().vessel.queue;
+      const queued = (await repair('REFINERY', 3)).json<{ vessel: VesselAnswer }>().vessel.queue;
       const [before] = await world.f.db.select().from(vessels).where(eq(vessels.id, vesselId));
       const answer = (await cancel(queued[0]!.id)).json<{ vessel: VesselAnswer; refund: { alloy: number; crystal: number; deuterium: number } }>();
       expect(answer.refund).toEqual(cancelRefund({ alloy: 44, crystal: 33, deuterium: 0 }));
@@ -279,7 +280,7 @@ describe('repairing the ship', () => {
       expect(view.alloy).toBeCloseTo(before!.alloy + cancelRefund({ alloy: 44, crystal: 33, deuterium: 0 }).alloy, 0);
       expect(view.queue).toHaveLength(1);
       expect(view.queue[0]!.subject).toBe('REFINERY');
-      expect(new Date(view.queue[0]!.readyAt).getTime()).toBe(world.f.clock.now().getTime() + 10_000);
+      expect(new Date(view.queue[0]!.readyAt).getTime()).toBe(world.f.clock.now().getTime() + 90_000);
       const [event] = await world.f.db.select().from(starterEvents).where(and(eq(starterEvents.refId, view.queue[0]!.id), eq(starterEvents.status, 'pending')));
       expect(event!.resolveAt.getTime()).toBe(new Date(view.queue[0]!.readyAt).getTime());
     });
@@ -293,17 +294,17 @@ describe('repairing the ship', () => {
     });
 
     it('refuses to pull a stage out from under the one behind it', async () => {
-      await setShip({ alloy: 2000 });
-      const first = (await repair('REFINERY', 2)).json<{ vessel: VesselAnswer }>().vessel.queue[0]!;
-      await repair('REFINERY', 3);
+      await setShip({ alloy: 2000, modules: { REFINERY: 2, SHIPYARD: 1 } });
+      const first = (await repair('REFINERY', 3)).json<{ vessel: VesselAnswer }>().vessel.queue[0]!;
+      await repair('REFINERY', 4);
       const response = await cancel(first.id);
       expect(response.statusCode).toBe(409);
       expect(response.json()).toMatchObject({ error: 'BUILD_ORDER_HAS_DEPENDENTS' });
     });
 
     it('refuses to pull out a step another requires', async () => {
-      const first = (await repair('EXTRACTOR', 1)).json<{ vessel: VesselAnswer }>().vessel.queue[0]!;
-      await repair('SURVEY', 1);
+      const first = (await repair('REFINERY', 2)).json<{ vessel: VesselAnswer }>().vessel.queue[0]!;
+      await repair('EXTRACTOR', 1);
       expect((await cancel(first.id)).json()).toMatchObject({ error: 'BUILD_ORDER_HAS_DEPENDENTS' });
     });
 

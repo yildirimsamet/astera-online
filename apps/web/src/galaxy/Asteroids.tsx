@@ -110,6 +110,16 @@ export function Asteroids({
   );
 }
 
+const ROCK_GROW_S = 0.7;
+const ROCK_STAGGER_S = 0.16;
+/** 0 to 1 with a small overshoot, so a rock arrives instead of fading up. */
+function rockGrowth(progress: number): number {
+  if (progress <= 0) return 0.001;
+  if (progress >= 1) return 1;
+  const c = 1.70158, p = progress - 1;
+  return 1 + (c + 1) * p * p * p + c * p * p;
+}
+
 const dummy = new THREE.Object3D();
 
 function RockBucket({
@@ -215,6 +225,8 @@ function RockBucket({
     rimMaterial.needsUpdate = true;
   }, [bucket.rocks, bucket.url, focusedId, rimMaterial, tint]);
 
+  const firstSeen = useRef(new Map<string, number>());
+
   useFrame(({ clock }) => {
     const node = mesh.current;
     if (!node) return;
@@ -249,7 +261,10 @@ function RockBucket({
         t * rate * 0.63 + seed * 2.1,
         t * rate * 0.41 + seed * 0.4,
       );
-      dummy.scale.setScalar(r);
+      // A rock is not simply there: it swells into sight, one after another (N12, the telescope opening).
+      let seenAt = firstSeen.current.get(rock.id);
+      if (seenAt === undefined) { seenAt = t + i * ROCK_STAGGER_S; firstSeen.current.set(rock.id, seenAt); }
+      dummy.scale.setScalar(r * rockGrowth((t - seenAt) / ROCK_GROW_S));
       dummy.updateMatrix();
       node.setMatrixAt(i, dummy.matrix);
       edge?.setMatrixAt(i, dummy.matrix);

@@ -192,7 +192,7 @@ export function gestureTakesCamera(ease: { held?: boolean } | null): boolean {
 }
 
 export interface RigGestureState {
-  mode: 'follow' | 'manual';
+  mode: 'follow' | 'manual' | 'released';
   acquired: boolean;
 }
 
@@ -207,8 +207,12 @@ export interface RigGestureState {
  *
  * A missing subject is different: touching the controls after it lands is an
  * explicit request for free-look, so manual mode is correct there.
+ *
+ * The universe view has its own frame, flown to on purpose: a touch there looks
+ * around it and never hands the camera back to a subject in the galaxy.
  */
-export function rigGestureState(focused: boolean, positioned: boolean): RigGestureState {
+export function rigGestureState(focused: boolean, positioned: boolean, universe = false): RigGestureState {
+  if (universe) return { mode: 'released', acquired: false };
   return focused && positioned
     ? { mode: 'follow', acquired: true }
     : { mode: 'manual', acquired: false };

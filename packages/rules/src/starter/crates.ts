@@ -26,8 +26,11 @@ const crate = (module: VesselModule, stage: number, alloy: number, crystal: numb
  */
 export const STARTER_CRATES: readonly StarterCrate[] = [
   crate('REFINERY', 2, 150, 40),
+  // The sensors' road is paid here (owner 2026-11-08, N11): the third refinery's 800/300, split so that
+  // the store does not run dry on the road's far side. The sum is unchanged.
+  crate('TELESCOPE', 1, 650, 200),
+  crate('RADAR', 1, 150, 100),
   crate('SURVEY', 1, 300, 150),
-  crate('REFINERY', 3, 800, 300),
   crate('SHIPYARD', 1, 250, 200),
   /**
    * THE FIRST VICTORY'S (owner 2026-11-08, N9). An outpost gives what the surviving holds carry, so a
