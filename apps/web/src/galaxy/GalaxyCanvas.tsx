@@ -138,6 +138,7 @@ import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { layoutPlanetLabels, planetLabelRank, planetLabelWidth, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
 import { Flag } from '../v2/identity/Flag.js';
+import { worldKindKey } from './worldKind.js';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
@@ -1357,11 +1358,7 @@ export function Labels({
             {detail && <span className="legend text-micro flex max-w-full items-center gap-2 overflow-hidden">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
                 {node.outpost && <OutpostFlag className="mr-1 inline-block size-3 align-[-2px] text-v2-warn" />}
-                {node.outpost ? t('starter.outpost.label', { level: node.neutralTier ?? 1 }) : t(node.kind === 'CAPITAL'
-                  ? 'galaxy.kindCapital'
-                  : node.kind === 'COLONY'
-                    ? 'galaxy.kindColony'
-                    : 'galaxy.kindNeutral', { tier: node.neutralTier ?? 1 })}
+                {node.outpost ? t('starter.outpost.label', { level: node.neutralTier ?? 1 }) : t(`galaxy.${worldKindKey(node)}`, { tier: node.neutralTier ?? 1 })}
               </span>
               {node.isOwned && <span className="text-crystal">· {t('galaxy.owned')}</span>}
               {node.isClanmate && <span className="text-opportunity">· {t('galaxy.clanmate')}</span>}
@@ -1752,10 +1749,10 @@ function Rig({
       const { target, range, side } = universeBack.current;
       universeBack.current = null;
       universeLeaving.current = true;
-      const back = universeReturn(target.toArray(), live.current?.() ?? null);
+      const back = universeReturn(target.toArray(), live.current?.() ?? null, mainOffset ? [homeX, homeY, homeZ] : null);
       mode.current = back.mode;
       acquired.current = back.acquired;
-      fly(back.to, range, side);
+      fly(back.to, back.home ? HOME_DISTANCE : range, side);
     }
     // Spent with this opening: the next one must not be measured against it.
     if (!universeOpen) universeRange.current = 0;

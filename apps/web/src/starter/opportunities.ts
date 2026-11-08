@@ -76,7 +76,7 @@ function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportuni
   const hunt = input.hunt;
   if (!hunt) return {};
   const offer: Opportunity = { kind: 'hunt', hunt, mining: input.mining === true };
-  return hunt.stage === 'probe' || hunt.stage === 'decide' ? { act: offer } : { state: offer };
+  return hunt.stage === 'probe' || hunt.stage === 'decide' || hunt.stage === 'retry' ? { act: offer } : { state: offer };
 }
 
 /** Fuel moves from the store; Deuterium still in the works is one collect away. */

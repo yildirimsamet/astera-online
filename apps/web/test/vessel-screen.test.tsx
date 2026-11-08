@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { REPAIR_LADDER, alloyRate, crystalRate, openingProgress, type VesselProgress } from '@astera/rules';
+import { REPAIR_LADDER, vesselRate, openingProgress, type VesselProgress } from '@astera/rules';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -42,11 +42,11 @@ beforeEach(() => { vi.useRealTimers(); });
 
 describe('what a repair gives', () => {
   it('says how much more alloy a refinery stage makes', () => {
-    expect(stepEffects(step('REFINERY', 2), openingProgress())).toContainEqual({ kind: 'rate', resource: 'alloy', perHour: Math.round(alloyRate(2) - alloyRate(1)) });
+    expect(stepEffects(step('REFINERY', 2), openingProgress())).toContainEqual({ kind: 'rate', resource: 'alloy', perHour: Math.round(vesselRate.alloy(2) - vesselRate.alloy(1)) });
   });
 
   it('says how much crystal the first extractor stage starts', () => {
-    expect(stepEffects(step('EXTRACTOR', 1), openingProgress())).toContainEqual({ kind: 'rate', resource: 'crystal', perHour: Math.round(crystalRate(1)) });
+    expect(stepEffects(step('EXTRACTOR', 1), openingProgress())).toContainEqual({ kind: 'rate', resource: 'crystal', perHour: Math.round(vesselRate.crystal(1)) });
   });
 
   it('names the system a repair opens', () => {
@@ -189,8 +189,8 @@ describe('the ship screen', () => {
     it('shows a production repair as what it makes now and what it will make', () => {
       show(vessel());
       const line = within(screen.getByTestId('next-repair')).getByTestId('repair-rate').textContent;
-      expect(line).toContain(String(Math.round(alloyRate(1))));
-      expect(line).toContain(String(Math.round(alloyRate(2))));
+      expect(line).toContain(String(Math.round(vesselRate.alloy(1))));
+      expect(line).toContain(String(Math.round(vesselRate.alloy(2))));
     });
 
     /** Owner playtest 2026-11-07: the card said "2 min" for a 90-second repair the NPC called 1 min 30 s. */
@@ -518,7 +518,7 @@ describe('what a system shows', () => {
   });
 
   it('gives production its numbers, and nothing else any', () => {
-    expect(rateChange(step('REFINERY', 2))).toEqual({ resource: 'alloy', from: Math.round(alloyRate(1)), to: Math.round(alloyRate(2)) });
+    expect(rateChange(step('REFINERY', 2))).toEqual({ resource: 'alloy', from: Math.round(vesselRate.alloy(1)), to: Math.round(vesselRate.alloy(2)) });
     expect(rateChange(step('SURVEY', 1))).toBeNull();
   });
 

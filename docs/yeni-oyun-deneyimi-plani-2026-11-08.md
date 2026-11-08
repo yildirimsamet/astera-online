@@ -372,6 +372,16 @@ Owner'ın 15 maddelik listesi. F6'daki "temasta öğret" teleskop dersinin yerin
 - **Onarım kartı:** bir makinenin kademesi kuyruktayken kart bir sonraki kademeye atlamaz, kalan süreyi gösterir. Başka makineye geçer.
 - **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn. Hat yaması 3,5 sn.
 
+### Playtest turu 2, owner 2026-11-09
+
+- **Üretim:** gemideki rafineri, kristal ocağı ve döteryum rafinerisi aynı seviyedeki gezegenin 3 katı üretir (`STARTER.outputMult`). Havuz ve depo tavanı da 3 kat olur, yani saat cinsinden aynı kalır. Dört oturumlu oyuncunun çıkışı 1,75 güne indi; `starter-pacing` alt sınırı 1,5 gün.
+- **Tersane 1:** 1 dakika.
+- **İlk karakol yenilgisi:** av, kazanana kadar sürer. İlk kazanılamayan savaş bir kerelik cesaret kasası verir (310 alaşım / 125 kristal, bir Ok eder) ve hedef satırı diğer karakolu adıyla gösterir (`FIRST_OUTPOST_DEFEAT`, `huntLost`, `retry` aşaması).
+- **Evrenden dönüş:** odak yoksa kamera gemiye ve açılış uzaklığına döner.
+- **Gemiye dokunma:** ana galaksideki gibi, ilk dokunuş odaklar, ikincisi gemiyi açar.
+- **Etiket ve bayrak:** gemiler "Ana gemi" diye yazılır, isimlenen gemi komutanının bayrağını taşır.
+- **Profil:** sayfa kendi yükleme sınırının içinde açılır; indirilirken galaksi kaybolmaz.
+
 ### F9. Eski plandan korunanlar
 - Sohbette galaksi olayları + kohort yerleşimi (eski F5, dron hariç).
 - Kuruluş haftası (eski F7–F8): ödül paneli, Tümünü al, Git kapıları, eski komşulara yakın iniş, klan önerisi, ilk hafta push ve silinme sınırı.

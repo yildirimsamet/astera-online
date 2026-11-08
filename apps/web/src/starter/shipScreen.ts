@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, VESSEL_MODULES, alloyRate, openFeatures, crystalRate, deuteriumRate, missingForStep, moduleStage, systemProgress,
+  REPAIR_LADDER, VESSEL_MODULES, openFeatures, missingForStep, moduleStage, systemProgress, vesselRate,
   type RepairStep, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { buildingArt, instrumentArt } from '../ui/assets.js';
@@ -101,7 +101,7 @@ export const systemOpen = (system: VesselSystem, progress: VesselProgress): bool
   systemProgress(progress, system).done > 0
   || systemSteps(system).some(step => !isDone(progress, step) && missingForStep(progress, step).length === 0);
 
-const RATES = { REFINERY: ['alloy', alloyRate], EXTRACTOR: ['crystal', crystalRate], DEUTERIUM_PLANT: ['deuterium', deuteriumRate] } as const;
+const RATES = { REFINERY: ['alloy', vesselRate.alloy], EXTRACTOR: ['crystal', vesselRate.crystal], DEUTERIUM_PLANT: ['deuterium', vesselRate.deuterium] } as const;
 
 export interface RateChange { resource: 'alloy' | 'crystal' | 'deuterium'; from: number; to: number }
 

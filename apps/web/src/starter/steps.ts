@@ -1,6 +1,6 @@
 import type { IconId } from '../v2/icons.js';
 import {
-  HULLS, STARTER, alloyRate, crystalRate, deuteriumRate, moduleStage, openFeatures, storageCap, vesselAegisHp,
+  HULLS, STARTER, moduleStage, openFeatures, storageCap, vesselAegisHp, vesselRate,
   type Fleet, type RepairStep, type StarterFeature, type VesselProgress,
 } from '@astera/rules';
 
@@ -20,11 +20,11 @@ const gain = (rate: (level: number) => number, stage: number): number => Math.ro
 function ownEffect(step: RepairStep, progress: VesselProgress): StepEffect | null {
   const { module, stage } = step;
   switch (module) {
-    case 'REFINERY': return { kind: 'rate', resource: 'alloy', perHour: gain(alloyRate, stage) };
-    case 'EXTRACTOR': return { kind: 'rate', resource: 'crystal', perHour: gain(crystalRate, stage) };
-    case 'DEUTERIUM_PLANT': return { kind: 'rate', resource: 'deuterium', perHour: gain(deuteriumRate, stage) };
+    case 'REFINERY': return { kind: 'rate', resource: 'alloy', perHour: gain(vesselRate.alloy, stage) };
+    case 'EXTRACTOR': return { kind: 'rate', resource: 'crystal', perHour: gain(vesselRate.crystal, stage) };
+    case 'DEUTERIUM_PLANT': return { kind: 'rate', resource: 'deuterium', perHour: gain(vesselRate.deuterium, stage) };
     case 'VAULT': {
-      const rate = alloyRate(moduleStage(progress, 'REFINERY'));
+      const rate = vesselRate.alloy(moduleStage(progress, 'REFINERY'));
       return { kind: 'storeCeiling', from: storageCap(rate, stage - 1), to: storageCap(rate, stage) };
     }
     case 'HANGAR': return { kind: 'room', room: STARTER.hangarRoom[stage - 1] ?? 0 };

@@ -7,12 +7,20 @@ import { STARTER } from './constants.js';
 import { vesselAegisHp } from './aegis.js';
 import type { VesselModules } from './ladder.js';
 
-type VesselEconomyInput = Pick<PlanetEconomyInput, 'refineryLevel' | 'extractorLevel' | 'plantLevel' | 'vaultLevel' | 'aegisLevel'>;
+type VesselEconomyInput = Pick<PlanetEconomyInput, 'refineryLevel' | 'extractorLevel' | 'plantLevel' | 'vaultLevel' | 'aegisLevel' | 'production'>;
+
+/** What the works aboard make per hour, by level: the main game's rates at this galaxy's pace. */
+export const vesselRate = {
+  alloy: (level: number): number => alloyRate(level) * STARTER.outputMult,
+  crystal: (level: number): number => crystalRate(level) * STARTER.outputMult,
+  deuterium: (level: number): number => deuteriumRate(level) * STARTER.outputMult,
+};
 
 /**
  * THE SHIP'S WORKS ARE THE MAIN GAME'S WORKS. Modules are read as levels and the main rules run
  * untouched, so what a player learns about buffers, ceilings and collecting holds after landing.
- * A broken module is level 0, and level 0 makes nothing.
+ * A broken module is level 0, and level 0 makes nothing. `production` lifts the rate and so both
+ * ceilings with it: the works hold as many hours as a world's do.
  */
 export const vesselEconomyInput = (modules: VesselModules): VesselEconomyInput => ({
   refineryLevel: modules.REFINERY ?? 0,
@@ -20,6 +28,7 @@ export const vesselEconomyInput = (modules: VesselModules): VesselEconomyInput =
   plantLevel: modules.DEUTERIUM_PLANT ?? 0,
   vaultLevel: modules.VAULT ?? 0,
   aegisLevel: Math.min(modules.AEGIS ?? 0, STARTER.combat.aegisMax),
+  production: STARTER.outputMult,
 });
 
 export const openingEconomy = (nowMinutes: number): PlanetEconomyState => ({
@@ -59,12 +68,12 @@ type Works = Pick<PlanetEconomyState, 'bufferAlloy' | 'bufferCrystal' | 'bufferD
  */
 export function landHaulInWorks(works: Works, modules: VesselModules, haul: Resources): { buffer: Works; wasted: Resources } {
   const input = vesselEconomyInput(modules);
-  const crystalPerHour = crystalRate(input.extractorLevel);
+  const crystalPerHour = vesselRate.crystal(input.extractorLevel);
   const room = (cap: number, held: number) => Math.max(0, cap - held);
-  const alloy = Math.min(haul.alloy, room(collectorCap(alloyRate(input.refineryLevel)), works.bufferAlloy));
+  const alloy = Math.min(haul.alloy, room(collectorCap(vesselRate.alloy(input.refineryLevel)), works.bufferAlloy));
   const crystal = Math.min(haul.crystal, room(collectorCap(crystalPerHour), works.bufferCrystal));
   const deuterium = Math.min(haul.deuterium,
-    room(deuteriumCollectorCap(deuteriumRate(input.plantLevel), crystalPerHour), works.bufferDeuterium));
+    room(deuteriumCollectorCap(vesselRate.deuterium(input.plantLevel), crystalPerHour), works.bufferDeuterium));
   return {
     buffer: { bufferAlloy: works.bufferAlloy + alloy, bufferCrystal: works.bufferCrystal + crystal, bufferDeuterium: works.bufferDeuterium + deuterium },
     wasted: { alloy: haul.alloy - alloy, crystal: haul.crystal - crystal, deuterium: haul.deuterium - deuterium },

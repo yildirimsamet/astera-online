@@ -186,6 +186,7 @@ export interface SensorReach {
 export interface PlanetNode {
   id: string;
   /** A shared place in a colony ship's galaxy, not a world anyone can hold. */
+  body?: 'VESSEL' | 'OUTPOST';
   outpost?: true;
   /** One of this ship's two first outposts, which fly a flag on the map (plan §5.2). */
   firstHunt?: true;
@@ -355,6 +356,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[], starter = false): 
     // that arrived carrying only its claim clock has no tier to copy.
     ...(planet.neutral?.tier ? { neutralTier: planet.neutral.tier } : {}),
     ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
+    ...(planet.body ? { body: planet.body } : {}),
     ...(planet.body === 'OUTPOST' ? { outpost: true } : {}),
     ...(planet.firstHunt === true ? { firstHunt: true } : {}),
     ...(planet.neutral?.claimPriorityUntil ? { claimPriorityUntil: planet.neutral.claimPriorityUntil } : {}),

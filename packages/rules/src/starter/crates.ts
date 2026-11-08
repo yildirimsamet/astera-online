@@ -38,6 +38,8 @@ export const STARTER_CRATES: readonly StarterCrate[] = [
    * (`starter-victory-crate`). It stands in the yard's bay, the yard that built the fleet.
    */
   { id: 'FIRST_OUTPOST_VICTORY', module: 'SHIPYARD', stage: 1, fact: 'FIRST_OUTPOST_VICTORY', reward: { alloy: 450, crystal: 200 } },
+  /** The first fight not won (owner 2026-11-09): one more Dart to try again with, and the hunt goes on. */
+  { id: 'FIRST_OUTPOST_DEFEAT', module: 'SHIPYARD', stage: 1, fact: 'FIRST_OUTPOST_DEFEAT', reward: { alloy: 310, crystal: 125 } },
   crate('EXTRACTOR', 3, 100, 250),
   crate('SURVEY', 2, 150, 250),
 ];

@@ -79,6 +79,7 @@ export const galaxy = {
   openResearch: "Forschung",
   openClan: "Clan",
   kindCapital: "Hauptwelt",
+  kindVessel: "Heimatschiff",
   kindColony: "Kolonie",
   kindNeutral: "Neutral T{{tier}}",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
@@ -250,6 +251,7 @@ export const focus = {
     deathStarNeedSlot: "Todesstern · Kolonieplatz voll",
     deathStarOriginRecovering: "Todesstern · Ursprung erholt sich",
     kindCapital: "Hauptwelt",
+    kindVessel: "Heimatschiff",
     kindColony: "Kolonie",
     kindNeutral: "Neutral",
     capitalProtected: "Nicht einnehmbares Hauptwelt",

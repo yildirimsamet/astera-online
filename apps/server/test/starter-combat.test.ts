@@ -251,6 +251,32 @@ describe('a battle aboard', () => {
       expect(read[0]).toMatchObject({ guardDownUntil: after!.respawnAt });
     });
 
+    /** Owner 2026-11-09: the first fight that is not a win pays a little, once, and the map says where it was. */
+    it('pays one courage crate for the first outpost fight not won, and marks the outpost lost', async () => {
+      const { me, site } = await atOutpost({ DART: 1 });
+      await launch(me.headers, site.id, { DART: 1 });
+      await pass(world, 4);
+      const [report] = await reports();
+      expect(report!.grade).not.toBe('DECISIVE');
+      const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+      expect(ship!.facts).toContain('FIRST_OUTPOST_DEFEAT');
+      const view = await get<{ vessel: { crates: { id: string; state: string }[] } }>(world, '/api/starter/vessel', me.headers);
+      expect(view.vessel.crates.find(c => c.id === 'FIRST_OUTPOST_DEFEAT')?.state).toBe('ready');
+      const [signal] = await world.f.db.select().from(vesselNotifications).where(and(eq(vesselNotifications.vesselId, me.vesselId), eq(vesselNotifications.kind, 'BATTLE_REPORT')));
+      expect(signal!.payload).toMatchObject({ firstDefeat: true });
+      const map = await get<{ planets: { id: string; huntLost?: boolean }[] }>(world, '/api/starter/galaxy', me.headers);
+      expect(map.planets.find(p => p.id === site.id)?.huntLost).toBe(true);
+    });
+
+    it('pays no courage crate once the first win is in', async () => {
+      const { me, site } = await atOutpost({ DART: 1 });
+      await world.f.db.update(vessels).set({ facts: ['FIRST_OUTPOST_VICTORY'] }).where(eq(vessels.id, me.vesselId));
+      await launch(me.headers, site.id, { DART: 1 });
+      await pass(world, 4);
+      const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+      expect(ship!.facts).not.toContain('FIRST_OUTPOST_DEFEAT');
+    });
+
     /** N9: an outpost pays what the holds carry, so the first decisive win also unseals a crate, once. */
     it('unseals the first victory crate with a decisive win, and keeps it opened after the next', async () => {
       const { me, site } = await atOutpost({ DART: 16 });

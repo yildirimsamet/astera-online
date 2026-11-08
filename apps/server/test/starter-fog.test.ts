@@ -1,11 +1,13 @@
+import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { accounts } from '../src/db/schema.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
 import { aboard, get, pass, placeShip, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
-interface Node { id: string; intel: string; name?: string; owner?: string; body?: string; look?: string; seenAt?: string; modules?: unknown; progress?: unknown; alloy?: unknown; [k: string]: unknown }
+interface Node { id: string; intel: string; country?: string; name?: string; owner?: string; body?: string; look?: string; seenAt?: string; modules?: unknown; progress?: unknown; alloy?: unknown; [k: string]: unknown }
 interface Map { planets: Node[] }
 
 /** The map shows what this ship has earned to see, and nothing that a modified client could read. Plan §6. */
@@ -23,6 +25,16 @@ describe('what the map shows of another ship', () => {
 
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
+
+  // Owner 2026-11-09: a name carries its flag here as it does in the main galaxy.
+  it('flies its commander\'s flag once it is named, and none before', async () => {
+    const { me, other } = await pair(near, { TELESCOPE: 1 });
+    await world.f.db.update(accounts).set({ countryCode: 'DE' }).where(eq(accounts.id, other.id));
+    await world.f.db.update(accounts).set({ countryCode: 'FR' }).where(eq(accounts.id, me.id));
+    const nodes = await map(me.headers);
+    expect(nodes.find(n => n.id === other.vesselId)?.country).toBe('DE');
+    expect(nodes.find(n => n.id === me.vesselId)?.country).toBe('FR');
+  });
 
   it('beyond every sensor it is a point: an id, a place and that it is a ship', async () => {
     const { me, other } = await pair(far, {});

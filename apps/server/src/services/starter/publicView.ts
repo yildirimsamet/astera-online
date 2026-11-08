@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Clock } from '../../clock.js';
 import type { Queryable } from '../../db/client.js';
-import { shards, starterGalaxies, starterSites, vesselProbeReports, vessels } from '../../db/schema.js';
+import { accounts, shards, starterGalaxies, starterSites, vesselBattleReports, vesselProbeReports, vessels } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { progressOf, refuseLeft } from './vessel.js';
 import { partSight, siteName } from './world.js';
@@ -15,9 +15,10 @@ const FAR_AWAY_MS = 365 * 86_400_000;
 const STILL_HERE = inArray(vessels.status, ['ACTIVE', 'DEPARTING']);
 
 async function aboard(q: Queryable, accountId: string) {
-  const [found] = await q.select({ row: vessels, galaxy: starterGalaxies, shard: shards }).from(vessels)
+  const [found] = await q.select({ row: vessels, galaxy: starterGalaxies, shard: shards, country: accounts.countryCode }).from(vessels)
     .innerJoin(starterGalaxies, eq(starterGalaxies.id, vessels.starterGalaxyId))
     .innerJoin(shards, eq(shards.id, starterGalaxies.shardId))
+    .innerJoin(accounts, eq(accounts.id, vessels.accountId))
     .where(eq(vessels.accountId, accountId));
   if (!found) throw new GameError('VESSEL_NOT_FOUND', 'This account has no colony ship', 404);
   refuseLeft(found.row);
@@ -67,12 +68,13 @@ function lookFromReading(snapshot: Record<string, unknown> | undefined): VesselL
  * Core 1 here, which keeps the tier band shut without the band's code knowing about ships.
  */
 export async function starterGalaxyView(q: Queryable, accountId: string, clock: Clock) {
-  const { row, galaxy } = await aboard(q, accountId);
+  const { row, galaxy, country } = await aboard(q, accountId);
   const now = clock.now();
   const progress = progressOf(row);
   // The dark points arrive with the survey antenna (§3.7), and the lock lives here, not in a menu.
   const others = isFeatureOpen(progress, 'intel')
-    ? await q.select({ id: vessels.id, name: vessels.name, x: vessels.x, y: vessels.y, z: vessels.z, pvpOpenAt: vessels.pvpOpenAt, recoveryUntil: vessels.recoveryUntil }).from(vessels)
+    ? await q.select({ id: vessels.id, name: vessels.name, x: vessels.x, y: vessels.y, z: vessels.z, pvpOpenAt: vessels.pvpOpenAt, recoveryUntil: vessels.recoveryUntil, country: accounts.countryCode }).from(vessels)
+      .innerJoin(accounts, eq(accounts.id, vessels.accountId))
       .where(and(eq(vessels.starterGalaxyId, galaxy.id), STILL_HERE, ne(vessels.id, row.id)))
     : [];
   const reports = others.length === 0 ? [] : await q.select({
@@ -89,6 +91,11 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
   const hunting = !progress.facts.includes('FIRST_OUTPOST_VICTORY');
   const firstHunt = (site: (typeof outposts)[number]): boolean =>
     hunting && site.respawnAt === null && playsFirstHunt(position, { x: site.x, y: site.y, z: site.z, level: site.level, guard: site.guardFull });
+  // Where a first fight went badly, read only in the short while that can be true of this ship.
+  const fought = hunting && progress.facts.includes('FIRST_OUTPOST_DEFEAT')
+    ? await q.select({ siteId: vesselBattleReports.siteId, grade: vesselBattleReports.grade }).from(vesselBattleReports).where(eq(vesselBattleReports.attackerVesselId, row.id))
+    : [];
+  const lost = new Set(fought.filter(fight => fight.grade !== 'DECISIVE').map(fight => fight.siteId));
   const telescope = moduleStage(progress, 'TELESCOPE');
   const sphere = vesselSphere(position, telescope, moduleStage(progress, 'RADAR'), row.id);
   return {
@@ -100,6 +107,7 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
         body: 'VESSEL' as const,
         name: row.name,
         owner: row.name,
+        country,
         kind: 'CAPITAL' as const,
         controller: { kind: 'PLAYER' as const, playerId: row.id, displayName: row.name },
         position,
@@ -128,6 +136,7 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
           ...(seen ? {} : { seenAt: look!.at }),
           name: other.name,
           owner: other.name,
+          country: other.country,
           kind: 'CAPITAL' as const,
           controller: { kind: 'PLAYER' as const, playerId: other.id, displayName: other.name },
           coreTier: 1,
@@ -156,6 +165,7 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
         neutral: { tier: tierOf(site.level), threat: threatOf(site.level), reserve: reserveOf(site.level), claimUntil: null },
         ...(seesPart(site) ? { hasPart: true } : {}),
         ...(firstHunt(site) ? { firstHunt: true } : {}),
+        ...(lost.has(site.id) ? { huntLost: true } : {}),
       })),
     ],
     rivals: [],

@@ -1,6 +1,7 @@
 import {
   REWARD_CHAINS, REPAIR_LADDER, alloyRate, buildingCost, collectorCap, crystalRate,
   nextRequiredStep, type BuildingId,
+  vesselRate,
 } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import type { vessels } from '../db/schema.js';
@@ -36,7 +37,7 @@ export async function planStarterReturn(tx: Tx, ship: Ship, now: Date, eligible 
   if (!eligible) return;
   if (ship.status === 'DEPARTED' || ship.status === 'DEPARTING') return;
   const target = await starterTarget(tx, ship);
-  const nextRepairAt = affordableAt(target, ship, { alloy: alloyRate(ship.modules.REFINERY ?? 0), crystal: crystalRate(ship.modules.EXTRACTOR ?? 0) }, now);
+  const nextRepairAt = affordableAt(target, ship, { alloy: vesselRate.alloy(ship.modules.REFINERY ?? 0), crystal: vesselRate.crystal(ship.modules.EXTRACTOR ?? 0) }, now);
   await tx.insert(returnReminders).values({ accountId: ship.accountId, vesselId: ship.id, subject: target?.subject ?? null, nextRepairAt, nextCheckAt: nextReturnCheck(ship.lastSeenAt, 0, nextRepairAt), absenceAt: ship.lastSeenAt })
     .onConflictDoUpdate({ target: returnReminders.accountId, set: { vesselId: ship.id, planetId: null, subject: target?.subject ?? null, nextRepairAt, nextCheckAt: plannedReturnCheck } });
 }

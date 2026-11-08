@@ -20,6 +20,8 @@ export const STARTER = {
    * `alloy` 930 (was 650): after the first session the next required repair can be paid in about an
    * hour, not three (owner, 2026-11-06). Only this stock moved; prices and production are the main game's.
    */
+  /** Every works aboard makes three times what the same level makes on a world (owner 2026-11-09). */
+  outputMult: 3,
   opening: { alloy: 930, crystal: 300, deuterium: 0, modules: { REFINERY: 1 }, works: { alloy: 60 } },
   /** Reach with no telescope at all: short of `minSeparation`, so no neighbour shows. */
   nakedEye: 150,

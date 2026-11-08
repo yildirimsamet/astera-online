@@ -147,6 +147,13 @@ describe('leaving the universe view', () => {
   it('flies back to where the player was', () => {
     expect(universeReturn([1, 2, 3], null)).toEqual({ to: [1, 2, 3], mode: 'manual', acquired: false });
   });
+  // Owner 2026-11-09: aboard, the way back ends on the ship, centred, whatever the zoom-out left behind.
+  it('returns to the ship aboard when nothing is focused', () => {
+    expect(universeReturn([1, 2, 3], null, [7, 8, 9])).toEqual({ to: [7, 8, 9], mode: 'manual', acquired: false, home: true });
+  });
+  it('still follows a focused subject aboard', () => {
+    expect(universeReturn([1, 2, 3], [9, 9, 9], [7, 8, 9])).toEqual({ to: [9, 9, 9], mode: 'follow', acquired: true });
+  });
   it('flies back to a focused subject where it is now, so the next touch has nothing to jump to', () => {
     expect(universeReturn([1, 2, 3], [9, 9, 9])).toEqual({ to: [9, 9, 9], mode: 'follow', acquired: true });
   });

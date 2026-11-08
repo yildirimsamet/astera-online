@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -14,18 +15,20 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import { createCosmeticTrialClient } from '../src/v2/gallery/CosmeticTrialGallery.js';
 import { wireVessel } from './starterVesselFixture.js';
 
-const canvas = vi.hoisted(() => vi.fn(() => null));
+const canvas = vi.hoisted(() => vi.fn((props: { starter?: { onOpen: () => void } }) => { void props; return null; }));
 vi.mock('../src/galaxy/GalaxyCanvas.js', () => ({ GalaxyCanvas: canvas }));
 vi.mock('../src/lib/preload.js', () => ({ GALAXY_ASSETS: [], usePreload: () => ({ ready: true, progress: 1 }) }));
 vi.mock('../src/lib/openingCover.js', () => ({ useOpeningCover: () => false }));
 
 afterEach(cleanup);
 
+type GalaxyProps = ComponentProps<typeof GalaxyView>;
+
 const asked: string[] = [];
-const show = (features: readonly string[], lesson: TutorialAnswer | null = null) => {
+const show = (features: readonly string[], lesson: TutorialAnswer | null = null, onPanel: GalaxyProps['onPanel'] = vi.fn(), panel: GalaxyProps['panel'] = 'planet', id?: string) => {
   asked.length = 0;
   const client = createCosmeticTrialClient();
-  const vessel = vesselSchema.parse(wireVessel({ features }));
+  const vessel = vesselSchema.parse(wireVessel({ features, ...(id ? { id } : {}) }));
   // The active world is the trial's capital, so the ship has to answer under that key as well.
   for (const key of [keys.planet, keys.planetById('trial-home')]) client.setQueryData(key, { ...vesselToPlanetView(vessel), vessel }, { updatedAt: Date.now() + 86_400_000 });
   const fetch: typeof globalThis.fetch = (input) => {
@@ -33,7 +36,7 @@ const show = (features: readonly string[], lesson: TutorialAnswer | null = null)
     return new Promise<Response>(() => undefined);
   };
   render(<QueryClientProvider client={client}><ApiProvider api={new Api({ fetch })}>
-    <WorldProvider><ToastProvider><StarterLesson.Provider value={lesson}><GalaxyView panel="planet" onPanel={vi.fn()} commander="Orion" onSignOut={vi.fn()} /></StarterLesson.Provider></ToastProvider></WorldProvider>
+    <WorldProvider><ToastProvider><StarterLesson.Provider value={lesson}><GalaxyView panel={panel} onPanel={onPanel} commander="Orion" onSignOut={vi.fn()} /></StarterLesson.Provider></ToastProvider></WorldProvider>
   </ApiProvider></QueryClientProvider>);
 };
 
@@ -56,4 +59,15 @@ describe('the starter ship uses the Base sheet header', () => {
 it('shows the real telescope reach when the lesson asks for it, without a saved toggle',()=>{
  show(['telescope'],{kind:'step',id:'telescopeLook',step:'read',chapter:7,strict:false,marks:[]});
  expect(canvas).toHaveBeenLastCalledWith(expect.objectContaining({showTelescopeReach:true}),undefined);
+});
+
+// Owner 2026-11-09: as on a home world, the first tap takes the camera to the ship and the next opens it.
+it('focuses the ship on the first tap and opens it on the next', () => {
+  const onPanel = vi.fn();
+  show(['telescope'], null, onPanel, null, 'trial-home');
+  const tap = () => { act(() => { canvas.mock.lastCall?.[0].starter?.onOpen(); }); };
+  tap();
+  expect(onPanel).not.toHaveBeenCalledWith('planet');
+  tap();
+  expect(onPanel).toHaveBeenCalledWith('planet');
 });

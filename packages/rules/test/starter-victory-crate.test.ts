@@ -63,7 +63,7 @@ describe('the first victory crate', () => {
 
   it('asks a repair crate for its repair alone', () => {
     const repairs = STARTER_CRATES.filter(crate => crate.fact === null);
-    expect(repairs.length).toBe(STARTER_CRATES.length - 1);
+    expect(repairs.length).toBe(STARTER_CRATES.length - 2);
     expect(crateStates(yard, []).filter(crate => crate.fact === null && crate.module === 'SHIPYARD').every(crate => crate.state === 'ready')).toBe(true);
   });
 
@@ -76,5 +76,20 @@ describe('the first victory crate', () => {
   it('is a payback, not a prize: worth less than the two Darts the yard hands over', () => {
     expect(victory?.reward.alloy).toBeLessThan(2 * HULLS.DART.alloy);
     expect(victory?.reward.crystal).toBeLessThan(2 * HULLS.DART.crystal);
+  });
+});
+
+/** Owner 2026-11-09: a first fight lost is not the end of the hunt; it pays for one more ship, once. */
+describe('the courage crate', () => {
+  const courage = STARTER_CRATES.find(crate => crate.fact === 'FIRST_OUTPOST_DEFEAT');
+  it('is smaller than a victory and buys a Dart', () => {
+    expect(courage?.reward.alloy).toBeGreaterThanOrEqual(HULLS.DART.alloy);
+    expect(courage?.reward.crystal).toBeGreaterThanOrEqual(HULLS.DART.crystal);
+    expect(courage?.reward.alloy).toBeLessThan(victory?.reward.alloy ?? 0);
+  });
+  it('stays sealed until the fight has happened', () => {
+    const yard: VesselProgress = { ...openingProgress(), modules: { REFINERY: 1, SHIPYARD: 1 } };
+    expect(readyCrates(yard, []).some(crate => crate.id === courage?.id)).toBe(false);
+    expect(readyCrates({ ...yard, facts: ['FIRST_OUTPOST_DEFEAT'] }, []).some(crate => crate.id === courage?.id)).toBe(true);
   });
 });

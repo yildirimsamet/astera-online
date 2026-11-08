@@ -65,6 +65,7 @@ function huntLine(objective: Extract<Opportunity, { kind: 'hunt' }>, t: TFunctio
     case 'probe': return { text: t(objective.mining ? 'starter.objective.huntProbeMining' : 'starter.objective.huntProbe'), tap: 'outpost', rest: false };
     case 'probing': return { text: t('starter.objective.huntProbing'), tap: null, rest: false };
     case 'decide': return { text: t('starter.objective.huntDecide'), tap: 'reports', rest: false };
+    case 'retry': return { text: t('starter.objective.huntRetry', { name: objective.hunt.name }), tap: 'outpost', rest: false };
     case 'raid': return { text: t('starter.objective.huntRaid'), tap: null, rest: false };
   }
 }
@@ -146,7 +147,7 @@ function useOfferName(offer: Opportunity, now: number): string {
     case 'mine': return t('starter.visual.mine');
     case 'fuel': return t('starter.advice.fuel');
     case 'jump': return t('starter.visual.galaxy');
-    case 'hunt': return offer.hunt.stage === 'probe' ? t('starter.advice.huntProbe') : offer.hunt.stage === 'decide' ? t('starter.advice.huntDecide') : line.text;
+    case 'hunt': return offer.hunt.stage === 'probe' ? t('starter.advice.huntProbe') : offer.hunt.stage === 'decide' ? t('starter.advice.huntDecide') : offer.hunt.stage === 'retry' ? t('starter.advice.huntRetry') : line.text;
     default: return line.text;
   }
 }
@@ -276,7 +277,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   const nextTap: Tap = repair || id?.toLowerCase().includes('crate') ? 'ship'
     : id === 'mine' ? 'rock' : id === 'probe' ? 'neighbour' : id?.startsWith('collect') ? 'up' : null;
   const line = short ? { text: short, tap: nextTap, rest: waiting } : original;
-  const outpost = objective.kind === 'hunt' && objective.hunt.stage === 'probe' ? objective.hunt.target : null;
+  const outpost = objective.kind === 'hunt' && (objective.hunt.stage === 'probe' || objective.hunt.stage === 'retry') ? objective.hunt.target : null;
   const unheld = line.tap === 'neighbour' && !onFocusNeighbour || line.tap === 'rock' && !onFocusRock
     || line.tap === 'outpost' && !(onFocusOutpost && outpost) || line.tap === 'reports' && !onOpenReports;
   const tap = unheld ? null : line.tap;

@@ -1,4 +1,4 @@
-import { REPAIR_LADDER, STARTER, deuteriumRate } from '@astera/rules';
+import { REPAIR_LADDER, STARTER, vesselRate } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import { departurePlan, jumpOutlook, type PlanShip } from '../src/starter/departurePlan.js';
 
@@ -64,8 +64,8 @@ describe('the fuel', () => {
 
   it('says when the second plant fills it if nothing is flown', () => {
     const plan = departurePlan(ship({ fuel: 20 }), NOW);
-    const hours = 70 / deuteriumRate(2);
-    expect(plan.fuel.perHour).toBeCloseTo(deuteriumRate(2), 6);
+    const hours = 70 / vesselRate.deuterium(2);
+    expect(plan.fuel.perHour).toBeCloseTo(vesselRate.deuterium(2), 6);
     expect(plan.fuel.readyAt!.getTime()).toBeCloseTo(NOW + hours * HOUR, -3);
   });
 
@@ -75,17 +75,17 @@ describe('the fuel', () => {
 
   it('runs the first plant until a queued second one finishes, then the faster one', () => {
     const plan = departurePlan(ship({ modules: { ...GATE, DEUTERIUM_PLANT: 1 }, queue: [order('DEUTERIUM_PLANT', 2, 2)] }), NOW);
-    const left = STARTER.fuelForJump - 2 * deuteriumRate(1);
-    expect(plan.fuel.readyAt!.getTime()).toBeCloseTo(NOW + (2 + left / deuteriumRate(2)) * HOUR, -3);
+    const left = STARTER.fuelForJump - 2 * vesselRate.deuterium(1);
+    expect(plan.fuel.readyAt!.getTime()).toBeCloseTo(NOW + (2 + left / vesselRate.deuterium(2)) * HOUR, -3);
     expect(plan.fuel.lever).toBeNull();
   });
 
   it('shows what the second plant would gain, while only the first one runs', () => {
     const plan = departurePlan(ship({ modules: { ...GATE, DEUTERIUM_PLANT: 1 } }), NOW);
-    expect(plan.fuel.readyAt!.getTime()).toBeCloseTo(NOW + (STARTER.fuelForJump / deuteriumRate(1)) * HOUR, -3);
+    expect(plan.fuel.readyAt!.getTime()).toBeCloseTo(NOW + (STARTER.fuelForJump / vesselRate.deuterium(1)) * HOUR, -3);
     const repair = PLANT2.minutes / 60;
-    const after = STARTER.fuelForJump - repair * deuteriumRate(1);
-    expect(plan.fuel.lever!.getTime()).toBeCloseTo(NOW + (repair + after / deuteriumRate(2)) * HOUR, -3);
+    const after = STARTER.fuelForJump - repair * vesselRate.deuterium(1);
+    expect(plan.fuel.lever!.getTime()).toBeCloseTo(NOW + (repair + after / vesselRate.deuterium(2)) * HOUR, -3);
   });
 
   it('has no time to give before any plant runs', () => {

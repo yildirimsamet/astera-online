@@ -1616,6 +1616,7 @@ export const galaxySchema = z.object({
       hasPart: z.boolean().optional(),
       /** One of this ship's two first outposts, until its first outpost win (plan §5.2). */
       firstHunt: z.boolean().optional(),
+      huntLost: z.boolean().optional(),
       look: z.enum(VESSEL_LOOKS).optional(),
       coreTier: z.number().default(1),
       /**

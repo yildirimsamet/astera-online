@@ -20,6 +20,24 @@ const line = (hunt: OpportunityInput['hunt'], mining: boolean) => opportunities(
   progress, queue: [], held: poor, income: { alloyPerHour: 60, crystalPerHour: 0 }, features: ['production', 'telescope', 'intel', 'fleet'], mining, hunt,
 })[0];
 
+describe('after a fight on one outpost that was not won (owner 2026-11-09)', () => {
+  const lostOne = [{ id: 'tevis', firstHunt: true, huntLost: true, name: 'Tevis' }, { id: 'eldeth', firstHunt: true, name: 'Ravara' }];
+  it('turns the player to the other outpost, by name', () => {
+    expect(huntStage(lostOne, read('tevis', 'eldeth'), [])).toEqual({ stage: 'retry', target: 'eldeth', name: 'Ravara' });
+  });
+  it('still reads the other outpost first when it has no report', () => {
+    expect(huntStage(lostOne, read('tevis'), [])).toEqual({ stage: 'probe', target: 'eldeth' });
+  });
+  it('goes back to the same one when both were lost, or the other is gone', () => {
+    const both = [{ id: 'tevis', firstHunt: true, huntLost: true, name: 'Tevis' }, { id: 'eldeth', firstHunt: true, huntLost: true, name: 'Ravara' }];
+    expect(huntStage(both, read('tevis', 'eldeth'), [])).toEqual({ stage: 'retry', target: 'tevis', name: 'Tevis' });
+  });
+  it('knows the loss even when the guard it hurt is regrowing and off the hunt', () => {
+    const regrowing = [{ id: 'tevis', huntLost: true, name: 'Tevis' }, { id: 'eldeth', firstHunt: true, name: 'Ravara' }];
+    expect(huntStage(regrowing, read('eldeth'), [])).toEqual({ stage: 'retry', target: 'eldeth', name: 'Ravara' });
+  });
+});
+
 describe('a first hunt, step by step', () => {
   it('names each step while the Prospector is out, and ends with the first win', () => {
     const steps = [

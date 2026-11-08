@@ -1,4 +1,5 @@
 import { PartHere } from '../starter/PartHere.js';
+import { worldKindKey } from './worldKind.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { GameActions } from '../session/seasonLock.js';
 import { RadiationBombControl } from '../screens/RadiationBombControls.js';
@@ -1642,11 +1643,7 @@ function WorldKind({
       <span className={target.kind === 'CAPITAL'
         ? 'text-v2-self'
         : target.kind === 'COLONY' ? 'text-v2-self' : 'text-v2-ink-2'}>
-        {t(target.kind === 'CAPITAL'
-          ? 'focus.planet.kindCapital'
-          : target.kind === 'COLONY'
-            ? 'focus.planet.kindColony'
-            : 'focus.planet.kindNeutral')}
+        {t(`focus.planet.${worldKindKey(target)}`)}
       </span>
       {rivalSlot !== null && (
         <span style={{ color: rivalColour(rivalSlot) }}>

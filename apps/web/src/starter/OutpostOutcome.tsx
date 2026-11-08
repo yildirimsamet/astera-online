@@ -19,6 +19,7 @@ const raid = z.object({
   loot: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() }),
   lost: z.number().default(0),
   firstVictory: z.boolean().optional(),
+  firstDefeat: z.boolean().optional(),
   beatenBy: z.string().optional(),
 });
 type Raid = z.infer<typeof raid>;
@@ -96,7 +97,8 @@ export function OutpostOutcome({ outcome, onDone, onOpenShip, onOpenReport }: {
     haptic('tap');
     next?.();
   };
-  const crate = told.firstVictory === true;
+  const courage = told.firstDefeat === true;
+  const crate = told.firstVictory === true || courage;
   const loot = ([['alloy', told.loot.alloy], ['crystal', told.loot.crystal], ['deuterium', told.loot.deuterium]] as const).filter(([, value]) => value >= 1);
   return (
     <aside
@@ -116,7 +118,7 @@ export function OutpostOutcome({ outcome, onDone, onOpenShip, onOpenReport }: {
         <span className="min-w-0 truncate text-caption font-semibold text-v2-ink">{told.opponent}</span>
       </p>
       <p className="mt-1 text-caption leading-snug text-v2-ink">
-        {told.beatenBy ? t('starter.outcome.beaten', { by: told.beatenBy }) : crate ? t('starter.outcome.crate') : t(`starter.outcome.line.${told.grade}`)}
+        {told.beatenBy ? t('starter.outcome.beaten', { by: told.beatenBy }) : courage ? t('starter.outcome.courage') : crate ? t('starter.outcome.crate') : t(`starter.outcome.line.${told.grade}`)}
       </p>
       {(loot.length > 0 || told.lost > 0) && (
         <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-micro text-v2-ink-2">

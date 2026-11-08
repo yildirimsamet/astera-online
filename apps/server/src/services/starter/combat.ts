@@ -23,7 +23,7 @@ async function afterBattle(tx: Tx, input: {
   loot: Resources; carriesPart: boolean; written: Omit<StarterBattleRecord, 'grade' | 'rounds' | 'attackerLosses' | 'defenderLosses' | 'attackerRetreated' | 'defenderRetreated' | 'attackerDamage' | 'defenderDamage' | 'wreckValue'>;
   names: { attacker: string; defender: string }; siteId: string | null; replay: ReturnType<typeof buildBattleReplay>; now: Date; at: { x: number; y: number; z: number };
   /** What only the side that came is told. */
-  toAttacker?: { firstVictory?: boolean; beatenBy?: string };
+  toAttacker?: { firstVictory?: boolean; firstDefeat?: boolean; beatenBy?: string };
 }): Promise<void> {
   const { mission, result, attacker, defender, now } = input;
   const debris = battleDebrisOf(result.attackerLosses, result.defenderLosses);
@@ -190,6 +190,9 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
     const found = fleetCount(guard) > 0;
     const firstVictory = decisive && found && !attacker.row.facts.includes('FIRST_OUTPOST_VICTORY');
     if (firstVictory) attacker.row = addFact(attacker.row, 'FIRST_OUTPOST_VICTORY');
+    // The first fight not won pays a little, once, while the hunt is still on (owner 2026-11-09).
+    const firstDefeat = !decisive && found && !attacker.row.facts.includes('FIRST_OUTPOST_VICTORY') && !attacker.row.facts.includes('FIRST_OUTPOST_DEFEAT');
+    if (firstDefeat) attacker.row = addFact(attacker.row, 'FIRST_OUTPOST_DEFEAT');
     const beatenBy = found ? null : await clearedBy(tx, site.id, attacker.row.id);
     const replay = buildBattleReplay(capture, result, { environment: 'PLANET', aegisCapacity: 0, defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
@@ -203,7 +206,7 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
         guardDownUntil: cleared && respawnAt ? respawnAt.toISOString() : null,
         ...(firstVictory ? { firstVictory } : {}), beatenBy,
       },
-      toAttacker: { ...(firstVictory ? { firstVictory } : {}), ...(beatenBy ? { beatenBy } : {}) },
+      toAttacker: { ...(firstVictory ? { firstVictory } : {}), ...(firstDefeat ? { firstDefeat } : {}), ...(beatenBy ? { beatenBy } : {}) },
     });
   });
 }

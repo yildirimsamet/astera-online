@@ -62,6 +62,8 @@ import type {
  */
 
 export interface RehearsalWorld {
+  /** How much more than a world these works make (the colony ship's). */
+  output?: number;
   /** The world the server said it would give this visitor. */
   reserved: Preview['reserved'];
   buildings: Record<BuildingId, number>;
@@ -265,7 +267,7 @@ export function completeOpening(world: RehearsalWorld): RehearsalWorld {
  * which lifts the rate and therefore both caps with it.
  */
 export function planetOf(w: RehearsalWorld): PlanetView {
-  const boost = productionMult([]);
+  const boost = productionMult([]) * (w.output ?? 1);
   const perHourAlloy = alloyRate(w.buildings.REFINERY) * boost;
   // The floor is hours of each resource's OWN production, so it needs the
   // producing levels as well as the Vault's. One call, three readings.

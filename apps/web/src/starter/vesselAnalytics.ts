@@ -6,7 +6,7 @@ import { observe } from '../lib/playerAnalytics/runtime.js';
 type Snapshot = Pick<VesselView, 'modules' | 'facts' | 'parts' | 'features'>;
 type Observed = (name: AnalyticsName, properties?: AnalyticsProperties) => void;
 
-const FACT_EVENT: Readonly<Record<VesselFact, AnalyticsName>> = {
+const FACT_EVENT: Readonly<Partial<Record<VesselFact, AnalyticsName>>> = {
   FIRST_PROBE_REPORT: 'vessel_first_probe_received',
   FIRST_MINING_RETURN: 'vessel_first_mine',
   FIRST_BATTLE_REPORT: 'vessel_first_battle',
@@ -28,7 +28,8 @@ export function vesselMilestones(before: Snapshot | null, ship: Snapshot): { nam
     if (!before.features.includes(feature)) events.push({ name: 'vessel_feature_opened', properties: { subject: feature } });
   }
   for (const fact of ship.facts) {
-    if (!before.facts.includes(fact)) events.push({ name: FACT_EVENT[fact], properties: {} });
+    const name = FACT_EVENT[fact];
+    if (name && !before.facts.includes(fact)) events.push({ name, properties: {} });
   }
   if (ship.parts > before.parts) events.push({ name: 'vessel_part_found', properties: { count: ship.parts } });
   return events;

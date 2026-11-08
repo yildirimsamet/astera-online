@@ -79,6 +79,7 @@ export const galaxy = {
   openResearch: "研究",
   openClan: "クラン",
   kindCapital: "首都",
+  kindVessel: "母艦",
   kindColony: "コロニー",
   kindNeutral: "ニュートラル T{{tier}}",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
@@ -250,6 +251,7 @@ export const focus = {
     deathStarNeedSlot: "デス・スター · コロニー スロットがいっぱいです",
     deathStarOriginRecovering: "デス・スター · 原点復帰中",
     kindCapital: "首都",
+    kindVessel: "母艦",
     kindColony: "コロニー",
     kindNeutral: "ニュートラル",
     capitalProtected: "奪えない資本",

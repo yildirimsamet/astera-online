@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alloyRate, collectorCap, crystalRate, deuteriumCollectorCap, deuteriumRate, landHaulInWorks } from '../src/index.js';
+import { collectorCap, deuteriumCollectorCap, landHaulInWorks, vesselRate } from '../src/index.js';
 
 /**
  * A SHIP'S HAUL LANDS IN THE WORKS, AS A WORLD'S DOES (owner K3, 2026-11-05). The screen already
@@ -17,7 +17,7 @@ describe('a haul landing aboard', () => {
   });
 
   it('loses only the resource whose works are full', () => {
-    const alloyCap = collectorCap(alloyRate(2));
+    const alloyCap = collectorCap(vesselRate.alloy(2));
     const landed = landHaulInWorks({ ...empty, bufferAlloy: alloyCap - 10 }, modules, { alloy: 50, crystal: 30, deuterium: 0 });
     expect(landed.buffer.bufferAlloy).toBe(alloyCap);
     expect(landed.buffer.bufferCrystal).toBe(30);
@@ -26,9 +26,9 @@ describe('a haul landing aboard', () => {
 
   it('sizes each ceiling from its own works', () => {
     const full = {
-      bufferAlloy: collectorCap(alloyRate(2)),
-      bufferCrystal: collectorCap(crystalRate(1)),
-      bufferDeuterium: deuteriumCollectorCap(deuteriumRate(1), crystalRate(1)),
+      bufferAlloy: collectorCap(vesselRate.alloy(2)),
+      bufferCrystal: collectorCap(vesselRate.crystal(1)),
+      bufferDeuterium: deuteriumCollectorCap(vesselRate.deuterium(1), vesselRate.crystal(1)),
     };
     const landed = landHaulInWorks(full, modules, { alloy: 5, crystal: 6, deuterium: 7 });
     expect(landed.buffer).toEqual(full);

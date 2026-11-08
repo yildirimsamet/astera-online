@@ -144,7 +144,7 @@ describe('the departure plan', () => {
   it('says when the fuel is aboard, that flights slow it, and what holds the jump', async () => {
     const { wrap } = harness(view());
     render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 }, facts, parts: 3, fuel: 20 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-fuel')).toHaveTextContent(/20\/90 aboard · full in 1\dh/u);
+    expect(await screen.findByTestId('plan-fuel')).toHaveTextContent(/20\/90 aboard · full in \dh/u);
     expect(screen.getByTestId('plan-flights')).toHaveTextContent(/no Deuterium is flown/u);
     expect(screen.getByTestId('plan-waits')).toHaveTextContent(/fuel is what holds the jump/u);
   });

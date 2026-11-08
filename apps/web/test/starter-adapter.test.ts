@@ -34,10 +34,10 @@ describe('a ship, as the planet screens read it', () => {
   it('reads rates and ceilings from the main rules, at the repair stage', () => {
     const progress = { ...openingProgress(), modules: { REFINERY: 3, EXTRACTOR: 2, VAULT: 1 } };
     const { planet } = parsed({ progress });
-    expect(planet.alloyPerHour).toBe(Math.round(alloyRate(3)));
-    expect(planet.crystalPerHour).toBe(Math.round(crystalRate(2)));
-    expect(planet.bufferAlloyCap).toBe(collectorCap(alloyRate(3)));
-    expect(planet.alloyCap).toBe(storageCap(alloyRate(3), 1));
+    expect(planet.alloyPerHour).toBe(Math.round(alloyRate(3) * STARTER.outputMult));
+    expect(planet.crystalPerHour).toBe(Math.round(crystalRate(2) * STARTER.outputMult));
+    expect(planet.bufferAlloyCap).toBe(collectorCap(alloyRate(3) * STARTER.outputMult));
+    expect(planet.alloyCap).toBe(storageCap(alloyRate(3) * STARTER.outputMult, 1));
     expect(planet.vaultCapacity).toEqual(vaultProtects(1, 3, 2, 0));
   });
 

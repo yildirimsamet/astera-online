@@ -82,6 +82,7 @@ export const galaxy = {
   openResearch: "Araştırma",
   openClan: "Klan",
   kindCapital: "Ana gezegen",
+  kindVessel: "Ana gemi",
   kindColony: "Koloni",
   kindNeutral: "Tarafsız · {{tier}}. kademe",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
@@ -244,6 +245,7 @@ export const focus = {
     deathStarNeedSlot: "Ölüm Yıldızı · koloni yuvası dolu",
     deathStarOriginRecovering: "Ölüm Yıldızı · ana dünya toparlanıyor",
     kindCapital: "Ana gezegen",
+    kindVessel: "Ana gemi",
     kindColony: "Koloni",
     kindNeutral: "Tarafsız",
     capitalProtected: "Ele geçirilemez ana gezegen",

@@ -91,6 +91,7 @@ export const galaxy = {
   openResearch: "Recherche",
   openClan: "Clan",
   kindCapital: "Planète capitale",
+  kindVessel: "Vaisseau-mère",
   kindColony: "Colonie",
   kindNeutral: "Neutre · palier {{tier}}",
   /** Un monde que personne n’a encore sondé. C’est la seule chose honnête à afficher. D127. */
@@ -253,6 +254,7 @@ export const focus = {
     deathStarOriginRecovering:
       "Étoile de la Mort · planète capitale en récupération",
     kindCapital: "Planète capitale",
+    kindVessel: "Vaisseau-mère",
     kindColony: "Colonie",
     kindNeutral: "Neutre",
     capitalProtected: "Planète capitale impossible à capturer",

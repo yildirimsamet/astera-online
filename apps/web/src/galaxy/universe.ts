@@ -41,9 +41,13 @@ export function zoomedBackIn(range: number, opened: number): boolean {
   return opened > 0 && range < opened * UNIVERSE_CLOSE_SHARE;
 }
 
-/** Back to where the player was, or to a focused subject where it is by now. */
-export function universeReturn(saved: readonly number[], subject: readonly number[] | null): { to: readonly number[]; mode: 'follow' | 'manual'; acquired: boolean } {
-  return subject ? { to: subject, mode: 'follow', acquired: true } : { to: saved, mode: 'manual', acquired: false };
+/**
+ * Back to where the player was, or to a focused subject where it is by now. Aboard, with nothing focused,
+ * it ends on the ship: the pinch that opened this view had already pulled the camera off it.
+ */
+export function universeReturn(saved: readonly number[], subject: readonly number[] | null, home: readonly number[] | null = null): { to: readonly number[]; mode: 'follow' | 'manual'; acquired: boolean; home?: true } {
+  if (subject) return { to: subject, mode: 'follow', acquired: true };
+  return home ? { to: home, mode: 'manual', acquired: false, home: true } : { to: saved, mode: 'manual', acquired: false };
 }
 
 export interface UniverseFrame {

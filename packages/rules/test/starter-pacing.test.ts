@@ -111,8 +111,9 @@ describe('how long the ship takes', () => {
     expect(days).toBeLessThanOrEqual(3);
   });
 
-  it('takes at least two days at four sessions a day', () => {
-    expect(daysToJump([9, 13, 18, 22])).toBeGreaterThanOrEqual(2);
+  // Owner 2026-11-09: the works aboard make three times as much, so the ship leaves sooner.
+  it('still takes more than a day and a half at four sessions a day', () => {
+    expect(daysToJump([9, 13, 18, 22])).toBeGreaterThanOrEqual(1.5);
   });
 
   it('never lands the most active player inside the first day', () => {

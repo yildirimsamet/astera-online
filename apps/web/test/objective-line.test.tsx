@@ -203,6 +203,16 @@ describe('the first hunt on the next-step line', () => {
     expect(reports).toHaveBeenCalledOnce();
   });
 
+  it('after a lost fight names the other outpost, and a tap goes there', () => {
+    const focus = vi.fn();
+    hunt({ hunt: { stage: 'retry', target: 'eldeth', name: 'Ravara' }, onFocusOutpost: focus });
+    const line = screen.getByTestId('ship-objective');
+    expect(line.textContent).toMatch(/Ravara/);
+    expect(line.textContent).toMatch(/could not win/i);
+    fireEvent.click(line);
+    expect(focus).toHaveBeenCalledWith('eldeth');
+  });
+
   it('only names the probes and the fleet while they fly', () => {
     hunt({ hunt: { stage: 'probing' } });
     expect(screen.getByTestId('ship-objective').tagName).not.toBe('BUTTON');

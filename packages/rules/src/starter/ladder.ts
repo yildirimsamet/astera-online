@@ -21,7 +21,7 @@ export const VESSEL_MODULES = [
 export type VesselModule = (typeof VESSEL_MODULES)[number];
 
 /** Things that happened, never things bought: the steps a player cannot simply wait for. */
-export const VESSEL_FACTS = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY'] as const;
+export const VESSEL_FACTS = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY', 'FIRST_OUTPOST_DEFEAT'] as const;
 export type VesselFact = (typeof VESSEL_FACTS)[number];
 
 export type VesselModules = Partial<Record<VesselModule, number>>;
@@ -88,7 +88,7 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('DEFENCE', 'TELESCOPE', 1, 250, 150, seconds(15), true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
   step('DEFENCE', 'RADAR', 1, 200, 120, seconds(15), true, [needs('TELESCOPE', 1)]),
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
-  step('CARGO', 'SHIPYARD', 1, 800, 300, 3, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
+  step('CARGO', 'SHIPYARD', 1, 800, 300, 1, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
 
   // The rest of the ship opens with the yard.
   step('REFINERY', 'EXTRACTOR', 2, 77, 58, seconds(60), true, [needs('SHIPYARD', 1)]),

@@ -1358,7 +1358,7 @@ export function GalaxyView({
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
-        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onPanel('planet'); }, awaken } } : {})}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}

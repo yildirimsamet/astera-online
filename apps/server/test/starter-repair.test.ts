@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { COMBAT, ECONOMY_PROFILE, REPAIR_LADDER, STARTER, alloyRate, cancelRefund, shieldHp, vesselAegisHp } from '@astera/rules';
+import { COMBAT, ECONOMY_PROFILE, REPAIR_LADDER, STARTER, cancelRefund, shieldHp, vesselAegisHp, vesselRate } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -70,16 +70,16 @@ describe('repairing the ship', () => {
       world.f.clock.advance(60);
       const answer = (await collect()).json<{ moved: { alloy: number }; blocked: { alloy: number } }>();
       // The prologue's batch was already waiting (owner 2026-11-06), and an hour more joined it.
-      expect(answer.moved.alloy).toBeCloseTo(STARTER.opening.works.alloy + alloyRate(1), 0);
+      expect(answer.moved.alloy).toBeCloseTo(STARTER.opening.works.alloy + vesselRate.alloy(1), 0);
       expect(answer.blocked).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
     });
 
     it('fills while the player is away and moves into storage on collect', async () => {
       advance(60);
-      expect((await read()).bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + alloyRate(1), 0);
+      expect((await read()).bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + vesselRate.alloy(1), 0);
       const collected = (await collect()).json<{ vessel: VesselAnswer }>().vessel;
       expect(collected.bufferAlloy).toBe(0);
-      expect(collected.alloy).toBeCloseTo(STARTER.opening.alloy + STARTER.opening.works.alloy + alloyRate(1), 0);
+      expect(collected.alloy).toBeCloseTo(STARTER.opening.alloy + STARTER.opening.works.alloy + vesselRate.alloy(1), 0);
     });
 
     it('moves nothing the second time', async () => {
@@ -203,7 +203,7 @@ describe('repairing the ship', () => {
       const view = await read();
       // The old rate for the repair's own seconds, the new one for the rest of the 61 minutes.
       const repairHours = (REPAIR_LADDER.find(s => s.module === 'REFINERY' && s.stage === 2)!.minutes) / 60;
-      expect(view.bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + alloyRate(1) * repairHours + alloyRate(2) * (61 / 60 - repairHours), 0);
+      expect(view.bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + vesselRate.alloy(1) * repairHours + vesselRate.alloy(2) * (61 / 60 - repairHours), 0);
     });
 
     it('settles a due order on the next command, even if the worker is behind', async () => {

@@ -46,6 +46,15 @@ beforeEach(async () => { await i18n.changeLanguage('en'); });
 afterEach(() => { cleanup(); sound.mockClear(); buzz.mockClear(); });
 
 describe('the result of a raid on an outpost', () => {
+  it('consoles a first fight not won with its courage crate, and opens the ship on a tap', async () => {
+    const { onOpenShip } = host([note({ grade: 'REPELLED', firstDefeat: true }, later(), 'courage')]);
+    const card = await screen.findByTestId('outpost-outcome');
+    expect(card.getAttribute('data-grade')).toBe('REPELLED');
+    expect(card.textContent).toMatch(/courage crate/i);
+    fireEvent.click(screen.getByRole('button', { name: /open the crate/i }));
+    expect(onOpenShip).toHaveBeenCalledOnce();
+  });
+
   it('tells a first win with its crate, and opens the ship on a tap', async () => {
     const { markSeen, onOpenShip } = host([note({ firstVictory: true })]);
     const card = await screen.findByTestId('outpost-outcome');

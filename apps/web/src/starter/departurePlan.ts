@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, STARTER, afterQueue, deuteriumRate, missingForStep, moduleStage,
+  REPAIR_LADDER, STARTER, afterQueue, missingForStep, moduleStage, vesselRate,
   type RepairStep, type StepRequirement, type VesselProgress,
 } from '@astera/rules';
 import type { VesselView } from '../api/starterSchemas.js';
@@ -52,13 +52,13 @@ function engine(module: 'DRIVE_HULL' | 'DRIVE_THRUST', progress: VesselProgress,
 /** When `left` units have been made, from a plant that changes stage at the given moments. */
 function filledAt(left: number, stage: number, changes: readonly { at: number; stage: number }[], nowMs: number): Date | null {
   if (left <= 0) return new Date(nowMs);
-  let at = nowMs, rate = deuteriumRate(stage), rest = left;
+  let at = nowMs, rate = vesselRate.deuterium(stage), rest = left;
   for (const change of changes) {
     const made = rate * (change.at - at) / HOUR_MS;
     if (rate > 0 && made >= rest) return new Date(at + rest / rate * HOUR_MS);
     rest -= made;
     at = change.at;
-    rate = Math.max(rate, deuteriumRate(change.stage));
+    rate = Math.max(rate, vesselRate.deuterium(change.stage));
   }
   return rate > 0 ? new Date(at + rest / rate * HOUR_MS) : null;
 }
@@ -85,7 +85,7 @@ export function departurePlan(ship: PlanShip, nowMs: number): DeparturePlan {
   const lever = plant === 1 && changes.length === 0 && have < needed
     ? filledAt(needed - have, plant, [{ at: nowMs + plant2.minutes * 60_000, stage: 2 }], nowMs)
     : null;
-  const fuel: FuelOutlook = { have, needed, perHour: deuteriumRate(moduleStage(ahead, 'DEUTERIUM_PLANT')), readyAt, lever };
+  const fuel: FuelOutlook = { have, needed, perHour: vesselRate.deuterium(moduleStage(ahead, 'DEUTERIUM_PLANT')), readyAt, lever };
 
   const enginesAt = thrust.state === 'done' ? new Date(nowMs) : thrust.state === 'queued' ? thrust.readyAt : null;
   const waitsOn = enginesAt && readyAt ? (readyAt > enginesAt ? 'fuel' : 'engines') : null;

@@ -35,7 +35,7 @@ import { UpdateRequired } from './shell/UpdateRequired.js';
 import { useMaintenance } from './platform/maintenanceGate.js';
 import { MaintenanceScreen } from './shell/MaintenanceScreen.js';
 import { dismissProfile, leaveProfile, useProfileRoute } from './shell/profileRoute.js';
-const ProfilePage = lazy(() => import('./shell/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
+import { ProfileHost } from './shell/ProfileHost.js';
 import { commanderKnownHere } from './lib/returning.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
@@ -307,7 +307,7 @@ function SessionApp() {
             onOpenChat={onOpenChat}
           />
           {!session.me.vessel && <ArrivalHost onPanel={onPanel} />}
-          {profileOpen && <ProfilePage name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
+          {profileOpen && <ProfileHost name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
             onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
           </>
         )}

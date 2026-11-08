@@ -79,6 +79,7 @@ export const galaxy = {
   openResearch: "Investigación",
   openClan: "Clan",
   kindCapital: "Capital",
+  kindVessel: "Nave nodriza",
   kindColony: "Colonia",
   kindNeutral: "Neutro T{{tier}}",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
@@ -250,6 +251,7 @@ export const focus = {
     deathStarNeedSlot: "Estrella de la Muerte · espacio de colonia lleno",
     deathStarOriginRecovering: "Estrella de la Muerte · origen recuperando",
     kindCapital: "Capital",
+    kindVessel: "Nave nodriza",
     kindColony: "Colonia",
     kindNeutral: "Neutro",
     capitalProtected: "Capital incapturable",

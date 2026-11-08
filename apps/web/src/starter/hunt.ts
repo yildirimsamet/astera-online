@@ -1,5 +1,5 @@
 /** Where the first hunt stands: an outpost to probe, probes in the air, both guards read, a fleet on its way. */
-export type HuntStage = { stage: 'probe'; target: string } | { stage: 'probing' | 'decide' | 'raid' };
+export type HuntStage = { stage: 'probe'; target: string } | { stage: 'retry'; target: string; name: string } | { stage: 'probing' | 'decide' | 'raid' };
 
 /**
  * THE FIRST HUNT, READ OFF THE MAP (plan §5, F4e). The server marks the ship's two first outposts on the
@@ -7,7 +7,7 @@ export type HuntStage = { stage: 'probe'; target: string } | { stage: 'probing' 
  * a fact the client already holds: a current report per outpost, and this ship's own flights to them.
  */
 export function huntStage(
-  planets: readonly { id: string; firstHunt?: boolean }[],
+  planets: readonly { id: string; firstHunt?: boolean; huntLost?: boolean; name?: string }[],
   reports: readonly { targetPlanetId: string; spatiallyCurrent?: boolean }[],
   threads: readonly { kind: string; targetPlanetId?: string; leg?: 'outbound' | 'return' }[],
 ): HuntStage | null {
@@ -20,5 +20,11 @@ export function huntStage(
   const unread = posts.filter(id => !read.has(id));
   const target = unread.find(id => !probing.has(id));
   if (target) return { stage: 'probe', target };
-  return unread.length > 0 ? { stage: 'probing' } : { stage: 'decide' };
+  if (unread.length > 0) return { stage: 'probing' };
+  // A fight not won (owner 2026-11-09): the other guard next, the same one only if there is no other.
+  const lost = new Set(planets.filter(planet => planet.huntLost === true).map(planet => planet.id));
+  if (lost.size === 0) return { stage: 'decide' };
+  const next = posts.find(id => !lost.has(id)) ?? posts[0];
+  const place = planets.find(planet => planet.id === next);
+  return place ? { stage: 'retry', target: place.id, name: place.name ?? '' } : { stage: 'decide' };
 }

@@ -303,7 +303,7 @@ describe('the label on a world nobody has surveyed', () => {
     expect(source).toContain("t('galaxy.unsurveyed')");
 
     // Every row that would print a default has to sit AFTER the guard.
-    for (const row of ['galaxy.kindNeutral', 'commanderLabel(node.owner', '{node.name}']) {
+    for (const row of ['worldKindKey(node)', 'commanderLabel(node.owner', '{node.name}']) {
       expect(source.indexOf(row), row).toBeGreaterThan(guard);
     }
   });

@@ -29,6 +29,7 @@ export function vesselToPlanetView(vessel: VesselView): PlanetView {
   const lab = vessel.features.includes('research');
 
   const world = planetOf({
+    output: STARTER.outputMult,
     reserved: { id: vessel.id, name: vessel.name, slotIndex: 0, position: vessel.position },
     buildings: {
       CORE: 1,

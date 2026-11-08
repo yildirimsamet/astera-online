@@ -8,7 +8,12 @@ import {
   alloyRate,
   collect,
   collectVessel,
+  collectorCap,
+  crystalRate,
+  deuteriumRate,
+  landHaulInWorks,
   openingEconomy,
+  vesselRate,
   vesselAegisHp,
   vesselEconomyInput,
 } from '../src/index.js';
@@ -34,9 +39,9 @@ describe('the ship\'s works', () => {
 
   it('reads every module stage as the level the main rule expects', () => {
     expect(vesselEconomyInput({ REFINERY: 3, EXTRACTOR: 2, DEUTERIUM_PLANT: 1, VAULT: 1, AEGIS: 2 })).toEqual({
-      refineryLevel: 3, extractorLevel: 2, plantLevel: 1, vaultLevel: 1, aegisLevel: 2,
+      refineryLevel: 3, extractorLevel: 2, plantLevel: 1, vaultLevel: 1, aegisLevel: 2, production: STARTER.outputMult,
     });
-    expect(vesselEconomyInput({})).toEqual({ refineryLevel: 0, extractorLevel: 0, plantLevel: 0, vaultLevel: 0, aegisLevel: 0 });
+    expect(vesselEconomyInput({})).toEqual({ refineryLevel: 0, extractorLevel: 0, plantLevel: 0, vaultLevel: 0, aegisLevel: 0, production: STARTER.outputMult });
   });
 
   it('makes nothing from a broken module', () => {
@@ -53,7 +58,7 @@ describe('the ship\'s works', () => {
     const ship = advanceVesselEconomy(openingEconomy(0), modules, 300);
     const main = advanceEconomy(openingEconomy(0), vesselEconomyInput(modules), 300);
     expect(ship).toEqual(main);
-    expect(ship.bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + alloyRate(3) * 5, 8);
+    expect(ship.bufferAlloy).toBeCloseTo(STARTER.opening.works.alloy + vesselRate.alloy(3) * 5, 8);
   });
 
   it('collects exactly as the main rule collects', () => {
@@ -81,5 +86,38 @@ describe('the ship\'s works', () => {
     const two = advanceVesselEconomy(one, { AEGIS: 2 }, 120);
     const straight = advanceVesselEconomy(openingEconomy(0), { AEGIS: 2 }, 120);
     expect(two.shield).toBeCloseTo(straight.shield, 8);
+  });
+});
+
+/** Owner 2026-11-09: every works on the ship makes three times what the same level makes on a world. */
+describe('the ship makes three times a world', () => {
+  const empty = { ...openingEconomy(0), bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0, alloy: 0, crystal: 0, deuterium: 0 };
+  const works = { REFINERY: 2, EXTRACTOR: 2, DEUTERIUM_PLANT: 2 };
+
+  it('names the rate of every resource, for every level', () => {
+    for (const level of [1, 2, 3, 4]) {
+      expect(vesselRate.alloy(level)).toBe(alloyRate(level) * 3);
+      expect(vesselRate.crystal(level)).toBe(crystalRate(level) * 3);
+      expect(vesselRate.deuterium(level)).toBe(deuteriumRate(level) * 3);
+    }
+  });
+
+  it('fills the works three times as fast', () => {
+    const after = advanceVesselEconomy(empty, works, 60);
+    expect(after.bufferAlloy).toBeCloseTo(alloyRate(2) * 3, 6);
+    expect(after.bufferCrystal).toBeCloseTo(crystalRate(2) * 3, 6);
+    expect(after.bufferDeuterium).toBeCloseTo(deuteriumRate(2) * 3, 6);
+  });
+
+  it('holds as many hours as before, so leaving the ship costs no more', () => {
+    const week = advanceVesselEconomy(empty, works, 7 * 24 * 60);
+    expect(week.bufferAlloy).toBe(collectorCap(alloyRate(2) * 3));
+  });
+
+  it('lands a haul against the larger works', () => {
+    const haul = { alloy: 100_000, crystal: 0, deuterium: 0 };
+    const { buffer } = landHaulInWorks({ bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 }, works, haul);
+    const week = advanceVesselEconomy(empty, works, 7 * 24 * 60);
+    expect(buffer.bufferAlloy).toBeCloseTo(week.bufferAlloy, 6);
   });
 });
