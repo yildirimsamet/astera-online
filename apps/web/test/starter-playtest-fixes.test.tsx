@@ -175,7 +175,7 @@ describe('finding a part on a wreck', () => {
 
   const field = (hasPart?: boolean) => ({ id: 'wreck-1', planetId: null, at: { x: 1, y: 0, z: 0 }, alloy: 100, crystal: 50, deuterium: 0, minutesLeft: 900, ...(hasPart ? { hasPart } : {}) });
   const card = (over: ReturnType<typeof field>, probe: boolean, fetch?: typeof globalThis.fetch, onLaunched = vi.fn()) => {
-    providers(<DebrisFocus field={over} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} worksRoom={9999}
+    providers(<DebrisFocus field={over} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} atHome={() => ({ room: 9999, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
       run={undefined} craftReadyAt={null} onSend={vi.fn()} onClose={vi.fn()} busy={false} open onToggle={vi.fn()}
       {...(probe ? { probe: { intel, onLaunched } } : {})} />, fetch);
     return onLaunched;

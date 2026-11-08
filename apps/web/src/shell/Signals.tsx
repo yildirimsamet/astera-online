@@ -348,6 +348,7 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   RADAR_WARNING: { panel: 'planet' },
   SHIELD_WARNING: { panel: 'planet' },
   REPAIR_DONE: { panel: 'planet' },
+  CRATE_OPENED: { panel: 'planet' },
   YARD_DONE: { panel: 'planet' },
   RESEARCH_DONE: { panel: 'planet' },
   DOCK_DONE: { panel: 'planet' },

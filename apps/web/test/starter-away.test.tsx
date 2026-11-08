@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -41,6 +41,8 @@ describe('the away card, on a ship', () => {
 
   it('sends the player to the ship, not to a base', () => {
     show(true);
+    // The fleet is the moment; the works wait under it, one tap away (F5).
+    fireEvent.click(screen.getByRole('button', { name: /details/i }));
     expect(screen.queryByText(/Go to the base/)).toBeNull();
     expect(screen.getAllByText(/Go to the ship/).length).toBeGreaterThan(0);
   });

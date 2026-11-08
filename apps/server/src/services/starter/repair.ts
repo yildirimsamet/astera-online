@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   REPAIR_LADDER, STARTER, STARTER_CRATES, afterQueue, canOrderStep, cancelRefund, collectVessel, isFeatureOpen, readyCrates, stepDependsOn,
   type RepairStep, type StarterFeature, type StepRequirement, type VesselModule,
@@ -141,6 +142,13 @@ export const openCrates = (db: Db, accountId: string, id: string | undefined, cl
       crystal: vessel.row.crystal + ready.reduce((sum, crate) => sum + crate.reward.crystal, 0),
       cratesOpened: [...vessel.row.cratesOpened, ...ready.map(crate => crate.id)],
     };
+    // Into the ship's log (F5), already read: the player opened it with their own hand.
+    if (ready.length > 0) {
+      await tx.insert(vesselNotifications).values({
+        vesselId: vessel.row.id, kind: 'CRATE_OPENED', refId: randomUUID(), seen: true, createdAt: vessel.now,
+        payload: { crates: ready.map(crate => crate.id), alloy: ready.reduce((sum, crate) => sum + crate.reward.alloy, 0), crystal: ready.reduce((sum, crate) => sum + crate.reward.crystal, 0) },
+      });
+    }
     await planStarterReturn(tx, vessel.row, vessel.now, vessel.returnEligible);
     return { vessel: await vesselView(tx, vessel.row, vessel.epoch, vessel.galaxyOrdinal), opened: ready.map(crate => crate.id) };
   });

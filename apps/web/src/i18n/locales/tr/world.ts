@@ -442,8 +442,6 @@ export const focus = {
       "Döteryum kazanmak için Kazıcı gönder. Dönüş yükü üretim havuzuna iner; depoya geçirmek için Topla düğmesine bas.",
     speed: "Hız",
     speedValue: "dakikada {{rate}}",
-    spill:
-      "Havuzun ancak {{room}} daha alabilir. Bu yükün {{lost}} kadarı varışta kaybedilir; önce havuzu boşalt.",
     taken: "İçinden {{amount}} kadarını birileri çoktan almış.",
     untouched: "Hiç dokunulmamış. İlk varan, taşıyabildiği kadarını alır.",
     fleetLine_one: "Evde {{count}} Kazıcı var; {{hold}} taşıyor.",
@@ -453,6 +451,15 @@ export const focus = {
       "Yörüngedeki bir <0>{{name}}</0> bunu her biri için <1>{{hold}}</1> yapar, üstelik daha erken vardırır.",
     intercept:
       "Araçların {{reach}} sonra kayayı yakalar; {{spare}} de payın kalır.",
+  },
+
+  haul: {
+    fits: "Döndüklerinde havuzda {{room}} yer olacak: yükün tamamı sığar.",
+    spill_one: "Döndüklerinde havuzda yalnız {{room}} yer olacak: {{what}} sığmaz ve kaybolur.",
+    spill_other: "Döndüklerinde havuzda yalnız {{room}} yer olacak: {{what}} sığmaz ve kaybolur.",
+    amount: { alloy: "{{value}} alaşım", crystal: "{{value}} kristal", deuterium: "{{value}} Döteryum" },
+    storeFull: "Depon da dolu: önce bir şey harca.",
+    collectFirst: "Önce topla",
   },
 
   craftPicker: {
@@ -478,8 +485,6 @@ export const focus = {
     deuteriumLeft: "Kalan Döteryum",
     goneIn: "Dağılmasına",
     yourHold: "Taşıma kapasiten",
-    spill:
-      "Havuzun ancak {{room}} daha alabilir. Bunun {{lost}} kadarı varışta kaybedilir; önce havuzu boşalt.",
     body: "Bir çatışmadan kalan bu enkaz sahası zamanla dağılıyor ve galaksideki herkese açık. İlk varan taşıyabildiği kaynağı alır.",
   },
 

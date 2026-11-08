@@ -75,7 +75,7 @@ const EVERY_KIND = [
  */
 const SHIP_KINDS = [
   'BATTLE_REPORT', 'FLEET_HOME', 'FLEET_TURNED_BACK', 'PROBE_DETECTED', 'PROBE_REPORT',
-  'RADAR_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'SHIELD_WARNING', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE',
+  'RADAR_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'SHIELD_WARNING', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE', 'CRATE_OPENED',
 ] as const;
 
 /** A payload each kind's parser will actually accept, so a row really renders. */
@@ -213,7 +213,7 @@ describe('where a notification takes you', () => {
   it('sends a ship\'s readings to the probe shelf and its own news to the ship', () => {
     expect(DESTINATION.PROBE_REPORT).toEqual({ panel: 'intel', stop: 'probes' });
     expect(DESTINATION.PROBE_DETECTED).toEqual({ panel: 'intel', stop: 'probes' });
-    for (const kind of ['FLEET_HOME', 'FLEET_TURNED_BACK', 'RADAR_WARNING', 'SHIELD_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE']) {
+    for (const kind of ['FLEET_HOME', 'FLEET_TURNED_BACK', 'RADAR_WARNING', 'SHIELD_WARNING', 'REPAIR_DONE', 'SEASON_OPEN', 'YARD_DONE', 'RESEARCH_DONE', 'DOCK_DONE', 'CRATE_OPENED']) {
       expect(DESTINATION[kind], kind).toEqual({ panel: 'planet' });
     }
   });

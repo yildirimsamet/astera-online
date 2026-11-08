@@ -56,7 +56,7 @@ describe('the Drive panel while hunting', () => {
 
 describe('a wreck field holding a part', () => {
   const field = (hasPart?: boolean) => ({ id: 'f', planetId: null, at: at(1), alloy: 100, crystal: 50, deuterium: 0, minutesLeft: 900, ...(hasPart ? { hasPart } : {}) });
-  const show = (over: ReturnType<typeof field>) => render(<DebrisFocus field={over} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} worksRoom={9999}
+  const show = (over: ReturnType<typeof field>) => render(<DebrisFocus field={over} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} atHome={() => ({ room: 9999, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
     run={undefined} craftReadyAt={null} onSend={vi.fn()} onClose={vi.fn()} busy={false} open onToggle={vi.fn()} />);
 
   it('says so on the card', () => {

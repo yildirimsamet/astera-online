@@ -12,6 +12,7 @@ import { StatusBar } from '../shell/StatusBar.js';
 import { Signals } from '../shell/Signals.js';
 import { PendingStrip } from '../shell/PendingStrip.js';
 import { serverNow } from '../lib/clock.js';
+import { haulAtHome } from '../lib/collect.js';
 import { track } from '../lib/analytics.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { describeError } from '../i18n/errors.js';
@@ -469,10 +470,10 @@ function AcademyMining({ onClose, onSend }: { onClose: () => void; onSend: (craf
   const rock = data?.asteroids[0];
   if (!rock || !planet.data) return null;
   const p = planet.data.planet;
-  const room = Math.max(0, p.bufferAlloyCap - p.bufferAlloy) + Math.max(0, p.bufferCrystalCap - p.bufferCrystal);
+  const fetchedAt = planet.dataUpdatedAt;
   return <div data-academy-mining data-testid="academy-mining-target"><AsteroidFocus rock={rock}
     isotopeAccess={false} craftAvailable={planet.data.fleet.PROSPECTOR ?? 0} craftHold={data.craftHold}
     derrick={data.derrick} derrickHold={data.derrickHold} minutesLeft={60} reachMinutes={0.1}
-    worksRoom={room} run={undefined} craftReadyAt={data.craftReadyAt} onClose={onClose} onSend={onSend}
+    atHome={(haul) => haulAtHome(p, fetchedAt, serverNow(), haul, 0.1)} run={undefined} craftReadyAt={data.craftReadyAt} onClose={onClose} onSend={onSend}
     busy={false} open onToggle={onClose} /></div>;
 }

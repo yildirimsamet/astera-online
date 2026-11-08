@@ -53,6 +53,23 @@ describe('the salvage crates', () => {
     expect(again.json()).toMatchObject({ error: 'CRATE_NOT_READY' });
   });
 
+  // F5: an opening goes into the ship's log, already read — the player opened it with their own hand.
+  it('writes what the crates paid into the ship log, already read, once per opening', async () => {
+    interface Note { kind: string; seen: boolean; payload: { crates: string[]; alloy: number; crystal: number } }
+    const log = async () => (await world.app.inject({ url: '/api/starter/notifications', headers: bearer(token) })).json<{ notifications: Note[] }>()
+      .notifications.filter(note => note.kind === 'CRATE_OPENED');
+    await repaired({ REFINERY: first.stage, SURVEY: second.stage });
+    expect((await open()).statusCode).toBe(200);
+    expect(await log()).toEqual([expect.objectContaining({
+      seen: true,
+      payload: { crates: [first.id, second.id], alloy: first.reward.alloy + second.reward.alloy, crystal: first.reward.crystal + second.reward.crystal },
+    })]);
+    // Nothing left to open writes nothing; a refusal writes nothing.
+    expect((await open()).statusCode).toBe(200);
+    expect((await open(first.id)).statusCode).toBe(409);
+    expect(await log()).toHaveLength(1);
+  });
+
   it('refuses a sealed crate and one that does not exist', async () => {
     expect((await open(first.id)).json()).toMatchObject({ error: 'CRATE_NOT_READY' });
     expect((await open('NOPE:1')).statusCode).toBe(400);

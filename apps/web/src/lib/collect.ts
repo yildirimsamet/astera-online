@@ -1,3 +1,7 @@
+import { PROSPECTOR } from '@astera/rules';
+import type { PlanetView } from '../api/schemas.js';
+import { worksAt } from './projection.js';
+
 interface Triple { alloy: number; crystal: number; deuterium: number }
 
 /** The bubble rises once the works hold this share of what they can. Spec B13. */
@@ -87,4 +91,29 @@ export function worksOutlook({ caps, works, rates }: { caps: Triple; works: Trip
     soonest = soonest === null ? minutes : Math.min(soonest, minutes);
   }
   return { fill, fullInMinutes: soonest };
+}
+
+/** What a haul finds at home: the room its resources can use then, and what of each will not fit. */
+export interface HaulHome { room: number; lost: Triple }
+
+/**
+ * THE ROOM A HAUL COMES HOME TO (plan F5, N5). The works fill while the craft are out, and the way
+ * home is flown laden at `returnSpeedFactor`, so the room that decides a haul is the room at the
+ * landing, not now. Each resource lands against its own ceiling; only the room a resource the haul
+ * carries can use is counted, since spare alloy room saves no crystal.
+ */
+export function haulAtHome(planet: PlanetView['planet'], fetchedAt: number, now: number, haul: Triple, reachMinutes: number): HaulHome {
+  const tripMinutes = reachMinutes * (1 + 1 / PROSPECTOR.returnSpeedFactor);
+  const later = worksAt(planet, fetchedAt, now + tripMinutes * 60_000);
+  const caps = { alloy: planet.bufferAlloyCap, crystal: planet.bufferCrystalCap, deuterium: planet.bufferDeuteriumCap };
+  const held = { alloy: later.bufferAlloy, crystal: later.bufferCrystal, deuterium: later.bufferDeuterium };
+  let room = 0;
+  const lost = { alloy: 0, crystal: 0, deuterium: 0 };
+  for (const key of KEYS) {
+    if (haul[key] <= 0) continue;
+    const free = Math.max(0, caps[key] - held[key]);
+    room += free;
+    lost[key] = Math.round(Math.max(0, haul[key] - free));
+  }
+  return { room: Math.round(room), lost };
 }

@@ -40,6 +40,53 @@ describe('what the ship tells a returning commander', () => {
     expect(entries.find(entry => entry.kind === 'scan_detected')).toMatchObject({ params: { count: 2 } });
   });
 
+  // F5: a haul lands in the works and loses what finds no room; the story counts what landed.
+  it('counts only what a haul landed, and says what found no room', async () => {
+    const me = await aboard(world, 'Me');
+    world.f.clock.advance(60);
+    const at = world.f.clock.now();
+    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 200, crystal: 100, deuterium: 0 }, part: false, ships: 1, wasted: { alloy: 50, crystal: 0, deuterium: 0 } }, at);
+    const { entries } = await story(me.headers);
+    expect(entries.find(entry => entry.kind === 'fleet_returned')).toMatchObject({ params: { resources: 250, alloy: 150, crystal: 100, deuterium: 0, lost: 50, ships: 1 } });
+  });
+
+  // F5: an outpost raid's two outcomes the card leads with, as the signal says them.
+  it('carries the outpost, the first victory and who got there first on a raid result', async () => {
+    const me = await aboard(world, 'Me');
+    world.f.clock.advance(60);
+    const at = world.f.clock.now();
+    await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'DECISIVE', attacking: true, opponent: 'Tevis', opponentKind: 'OUTPOST', loot: { alloy: 60, crystal: 0, deuterium: 0 }, lost: 0, firstVictory: true }, at);
+    await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'DECISIVE', attacking: true, opponent: 'Eldeth', opponentKind: 'OUTPOST', loot: { alloy: 0, crystal: 0, deuterium: 0 }, lost: 0, beatenBy: 'Early' }, new Date(at.getTime() - 1000));
+    const raids = (await story(me.headers)).entries.filter(entry => entry.kind === 'raid_result');
+    expect(raids.map(entry => entry.params)).toEqual([
+      { grade: 'DECISIVE', loot: 60, lost: 0, opponent: 'Tevis', firstVictory: true },
+      { grade: 'DECISIVE', loot: 0, lost: 0, opponent: 'Eldeth', beatenBy: 'Early' },
+    ]);
+  });
+
+  // F5: what came back online while the player was away and has not been announced yet, in ladder order.
+  it('names what opened and is still to be announced', async () => {
+    const me = await aboard(world, 'Me', { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 });
+    await world.f.db.update(vessels).set({ unlocksSeen: ['production', 'intel'] }).where(eq(vessels.id, me.vesselId));
+    world.f.clock.advance(60);
+    const told = await story(me.headers);
+    expect(told.newUnlocks).toContain('fleet');
+    expect(told.newUnlocks).not.toContain('production');
+    expect(told.newUnlocks).not.toContain('intel');
+  });
+
+  // F5: the card leads with the player's own orders, so the cap never drops one for other news.
+  it('keeps the player\'s own orders when there is more to tell than the card holds', async () => {
+    const me = await aboard(world, 'Me');
+    world.f.clock.advance(60);
+    const at = world.f.clock.now();
+    for (let i = 0; i < 6; i++) await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'REPELLED', attacking: false, opponent: `Raider ${String(i)}`, loot: { alloy: 0, crystal: 0, deuterium: 0 }, lost: 0 }, new Date(at.getTime() - i * 1000));
+    await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'DECISIVE', attacking: true, opponent: 'Tevis', opponentKind: 'OUTPOST', loot: { alloy: 60, crystal: 0, deuterium: 0 }, lost: 0 }, new Date(at.getTime() - 30_000));
+    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 70, crystal: 30, deuterium: 0 }, part: false, ships: 1 }, at);
+    const kinds = (await story(me.headers)).entries.map(entry => entry.kind);
+    expect(kinds.slice(0, 2)).toEqual(['raid_result', 'fleet_returned']);
+  });
+
   it('says what piled up in the buffers', async () => {
     const me = await aboard(world, 'Me', { REFINERY: 3, EXTRACTOR: 1 });
     await world.f.db.update(vessels).set({ bufferAlloy: 120, bufferCrystal: 40 }).where(eq(vessels.id, me.vesselId));

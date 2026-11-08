@@ -477,8 +477,6 @@ export const focus = {
       "Envía buscadores para recuperar el deuterio. El transporte de regreso aterriza en la Obra; Recógelo y guárdalo.",
     speed: "Velocidad",
     speedValue: "{{rate}}/min",
-    spill:
-      "Tus obras solo pueden tomar {{room}} más. Aproximadamente {{lost}} de este botín se perderían al llegar; vacíelos primero.",
     taken: "Alguien ya le ha quitado {{amount}}.",
     untouched: "Sin tocar. La primera nave que llega hasta él lleva lo que puede transportar.",
     // "{{total}} between them" is nonsense about a single craft, in either language.
@@ -489,6 +487,15 @@ export const focus = {
       "Un <0>{{name}}</0> en órbita haría que <1>{{hold}}</1> cada uno, y los llevaría allí antes.",
     intercept:
       "Tu nave lo encontraría en {{reach}}, con {{spare}} de sobra.",
+  },
+
+  haul: {
+    fits: "{{room}} de espacio en el depósito de producción cuando vuelvan: cabe toda la carga.",
+    spill_one: "Solo {{room}} de espacio en el depósito de producción cuando vuelvan: {{what}} no cabe y se pierde.",
+    spill_other: "Solo {{room}} de espacio en el depósito de producción cuando vuelvan: {{what}} no caben y se pierden.",
+    amount: { alloy: "{{value}} de aleación", crystal: "{{value}} de cristal", deuterium: "{{value}} de Deuterio" },
+    storeFull: "Tu almacén también está lleno: gasta algo primero.",
+    collectFirst: "Recoger primero",
   },
 
   craftPicker: {
@@ -514,8 +521,6 @@ export const focus = {
     deuteriumLeft: "Deuterio restante",
     goneIn: "Entró",
     yourHold: "Tu espera",
-    spill:
-      "Tus obras solo pueden tomar {{room}} más. Aproximadamente {{lost}} de esto se perdería al llegar; vacíelos primero.",
     body: "Alguien perdió una flota aquí. Se está desvaneciendo y todos pueden verlo: quien llegue primero se lleva lo que queda.",
   },
 

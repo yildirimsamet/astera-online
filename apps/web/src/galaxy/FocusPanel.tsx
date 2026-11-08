@@ -68,6 +68,7 @@ import {
 } from '../lib/colonization.js';
 import { useAccordion } from '../lib/accordion.js';
 import { launchFault, type LaunchFault } from '../lib/faults.js';
+import type { HaulHome } from '../lib/collect.js';
 import { deathStarsOf, hitsToTakeLoyalColony, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
@@ -2559,7 +2560,9 @@ export function AsteroidFocus({
   derrickHold,
   minutesLeft,
   reachMinutes: reach,
-  worksRoom,
+  atHome,
+  onCollect,
+  storeFull = false,
   run,
   craftReadyAt,
   craftCooldowns,
@@ -2583,14 +2586,18 @@ export function AsteroidFocus({
   /** Flight time for the interception, or null when it cannot be caught. */
   reachMinutes: number | null;
   /**
-   * What the WORKS can still absorb, not what storage can. D31.
+   * What the WORKS will hold for this haul when the craft land, not what storage can. D31.
    *
-   * Mined ore comes home into the buffer now, and the buffer is smaller than
-   * storage AND has been filling with ordinary production the whole time the craft
-   * was away. A player who commits a squadron and gets half a haul has to be able
-   * to see that coming — otherwise the honest rule reads as a bug.
+   * Mined ore comes home into the buffer, and the buffer is smaller than storage AND
+   * fills with ordinary production the whole time the craft are away. A player who
+   * commits a squadron and gets half a haul has to be able to see that coming —
+   * otherwise the honest rule reads as a bug. Null while the flight is unknown.
    */
-  worksRoom: number;
+  atHome: (haul: { alloy: number; crystal: number; deuterium: number }) => HaulHome | null;
+  /** Collects the works now, offered when a haul would not fit and something is waiting. */
+  onCollect?: (() => void) | undefined;
+  /** Something is waiting in the works and the store can take none of it. */
+  storeFull?: boolean;
   /** Your own craft already working this rock, if any. */
   run: TargetMiningRun | undefined;
   /** Legacy aggregate fallback only when an older server omits independent batches. */
@@ -2622,10 +2629,12 @@ export function AsteroidFocus({
   useEffect(() => {
     setCraft(worthSending);
   }, [worthSending]);
-  // What this trip would actually bring home, once the works are taken into
-  // account. Anything above the room available is lost on arrival. D31.
+  // What this trip would bring, split as the rock is made; the works decide how much of it lands. D31.
   const bringing = Math.min(craftHold * sending, rock.oreRemaining);
-  const spill = Math.max(0, Math.round(bringing - worksRoom));
+  const deuteriumShare = rock.deuteriumShare ?? 0;
+  const home = bringing > 0 ? atHome({
+    alloy: bringing * (1 - rock.crystalShare - deuteriumShare), crystal: bringing * rock.crystalShare, deuterium: bringing * deuteriumShare,
+  }) : null;
 
   return (
     <Shell
@@ -2729,17 +2738,12 @@ export function AsteroidFocus({
         </p>
       )}
 
-      {spill > 0 && !run && (
-        /**
-         * Said BEFORE the commitment, not after it. A squadron is a real decision
-         * and the works filling up while it was away is the one thing that can
-         * make that decision worse without the player doing anything wrong —
-         * so it is stated here, with the fix, rather than reported on arrival.
-         */
-        <p className="mt-3 text-caption leading-snug text-v2-warn">
-          {t('focus.asteroid.spill', { room: compact(worksRoom), lost: compact(spill) })}
-        </p>
-      )}
+      {/*
+        Said BEFORE the commitment, not after it. A squadron is a real decision and the
+        works filling up while it is away is the one thing that can make it worse without
+        the player doing anything wrong — so it is stated here, with the fix.
+      */}
+      {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
 
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">
         {rock.oreRemaining < rock.ore
@@ -3944,13 +3948,43 @@ function CraftPicker({
   );
 }
 
+/**
+ * THE ROOM A HAUL COMES HOME TO (plan F5, N5): always said, quietly when it all fits; in warning
+ * when some of it will be lost, with the one fix that helps on the spot — collect first.
+ */
+function HaulHomeLine({ home, onCollect, storeFull }: { home: HaulHome; onCollect: (() => void) | undefined; storeFull: boolean }) {
+  const { t, i18n } = useTranslation();
+  // Named by resource: a full crystal store loses crystal however much alloy room there is.
+  const short = (['alloy', 'crystal', 'deuterium'] as const).filter((resource) => home.lost[resource] >= 1);
+  const lost = short.length > 0;
+  const what = new Intl.ListFormat(i18n.language, { type: 'conjunction' })
+    .format(short.map((resource) => t(`focus.haul.amount.${resource}`, { value: compact(home.lost[resource]) })));
+  return (
+    <div data-testid="haul-home" data-lost={lost} className={`mt-3 flex items-start gap-2 text-caption leading-snug ${lost ? 'text-v2-warn' : 'text-v2-ink-3'}`}>
+      <img src={RESOURCE_ART.alloy} alt="" aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 object-contain opacity-80" />
+      <p className="min-w-0 flex-1">
+        {lost ? t('focus.haul.spill', { room: compact(home.room), what, count: short.length }) : t('focus.haul.fits', { room: compact(home.room) })}
+        {/* Collecting into a full store moves nothing: the way out is to spend first. */}
+        {lost && !onCollect && storeFull && ` ${t('focus.haul.storeFull')}`}
+      </p>
+      {lost && onCollect && (
+        <button type="button" onClick={onCollect} className="min-h-8 shrink-0 rounded-control border border-v2-warn/60 bg-v2-warn/10 px-2.5 text-micro font-semibold text-v2-warn">
+          {t('focus.haul.collectFirst')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function DebrisFocus({
   field,
   planetName,
   craftAvailable: craftAtHome,
   craftHold,
   reachMinutes: reach,
-  worksRoom,
+  atHome,
+  onCollect,
+  storeFull = false,
   run,
   craftReadyAt,
   craftCooldowns,
@@ -3976,7 +4010,10 @@ export function DebrisFocus({
   craftAvailable: number;
   craftHold: number;
   reachMinutes: number | null;
-  worksRoom: number;
+  /** What the works will hold for this haul when the craft land (see `AsteroidFocus`). */
+  atHome: (haul: { alloy: number; crystal: number; deuterium: number }) => HaulHome | null;
+  onCollect?: (() => void) | undefined;
+  storeFull?: boolean;
   run: TargetMiningRun | undefined;
   /** Legacy fallback only; new servers publish the independent landed batches. */
   craftReadyAt: Date | null;
@@ -4005,7 +4042,11 @@ export function DebrisFocus({
   useEffect(() => {
     setCraft(worthSending);
   }, [worthSending]);
-  const spill = Math.max(0, Math.round(Math.min(craftHold * sending, left) - worksRoom));
+  // Split as the field holds it, since each resource lands against its own ceiling.
+  const bringing = Math.min(craftHold * sending, left);
+  const home = bringing > 0 && left > 0 ? atHome({
+    alloy: bringing * (field.alloy / left), crystal: bringing * (field.crystal / left), deuterium: bringing * (field.deuterium / left),
+  }) : null;
 
   return (
     <Shell
@@ -4085,11 +4126,7 @@ export function DebrisFocus({
         <Figure label={t('focus.debris.yourHold')} value={compact(canCarry)} />
       </div>
 
-      {spill > 0 && !run && (
-        <p className="mt-3 text-caption leading-snug text-v2-warn">
-          {t('focus.debris.spill', { room: compact(worksRoom), lost: compact(spill) })}
-        </p>
-      )}
+      {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
 
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('focus.debris.body')}</p>
     </Shell>

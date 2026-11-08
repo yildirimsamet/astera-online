@@ -478,8 +478,6 @@ export const focus = {
       "プロスペクターを派遣すると重水素を回収できます。帰還後は生産施設に届くので、貯蔵庫へ回収してください。",
     speed: "採掘速度",
     speedValue: "{{rate}}/分",
-    spill:
-      "生産施設の空きは残り{{room}}です。この採掘分の約{{lost}}は帰還時に失われます。先に資源を回収してください。",
     taken: "すでに誰かが{{amount}}を採掘しました。",
     untouched: "まだ手つかずです。最初に到着した艦船が、積める分を採掘できます。",
     // "{{total}} between them" is nonsense about a single craft, in either language.
@@ -490,6 +488,15 @@ export const focus = {
       "軌道に<0>{{name}}</0>を建設すると、1隻あたりの積載量が<1>{{hold}}</1>になり、到着も早まります。",
     intercept:
       "艦船は{{reach}}後に到着します。小惑星の通過まで残り{{spare}}です。",
+  },
+
+  haul: {
+    fits: "帰還時の生産施設の空きは{{room}}です。採掘分はすべて収まります。",
+    spill_one: "帰還時の生産施設の空きは{{room}}のみです。{{what}}は収まらず失われます。",
+    spill_other: "帰還時の生産施設の空きは{{room}}のみです。{{what}}は収まらず失われます。",
+    amount: { alloy: "合金{{value}}", crystal: "クリスタル{{value}}", deuterium: "重水素{{value}}" },
+    storeFull: "貯蔵庫も満杯です。先に何かに使ってください。",
+    collectFirst: "先に回収",
   },
 
   craftPicker: {
@@ -515,8 +522,6 @@ export const focus = {
     deuteriumLeft: "残りの重水素",
     goneIn: "消滅まで",
     yourHold: "船倉容量",
-    spill:
-      "生産施設の空きは残り{{room}}です。回収分の約{{lost}}は帰還時に失われます。先に資源を回収してください。",
     body: "ここで誰かが艦隊を失いました。残骸は消えつつあり、誰でも見えます。最初に到着した艦船が、積める分を回収できます。",
   },
 

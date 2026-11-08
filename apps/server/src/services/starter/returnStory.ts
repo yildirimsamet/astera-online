@@ -1,3 +1,4 @@
+import { STARTER_FEATURES, isFeatureOpen } from '@astera/rules';
 import { and, eq, gt, inArray, lt, or, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Clock } from '../../clock.js';
@@ -11,8 +12,11 @@ const MAX_ENTRIES = 5;
 
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 const total = (held: z.infer<typeof resources>): number => held.alloy + held.crystal + held.deuterium;
-const battleNote = z.object({ grade: z.enum(['REPELLED', 'PARTIAL', 'DECISIVE']), attacking: z.boolean(), loot: resources, lost: z.number().default(0) });
-const homeNote = z.object({ cargo: resources, ships: z.number().default(0) });
+const battleNote = z.object({
+  grade: z.enum(['REPELLED', 'PARTIAL', 'DECISIVE']), attacking: z.boolean(), loot: resources, lost: z.number().default(0),
+  opponent: z.string().optional(), opponentKind: z.string().optional(), firstVictory: z.boolean().optional(), beatenBy: z.string().optional(),
+});
+const homeNote = z.object({ cargo: resources, ships: z.number().default(0), wasted: resources.optional() });
 
 const TOLD = ['BATTLE_REPORT', 'PROBE_DETECTED', 'FLEET_HOME'];
 
@@ -23,7 +27,7 @@ const TOLD = ['BATTLE_REPORT', 'PROBE_DETECTED', 'FLEET_HOME'];
  */
 export async function readStarterReturn(db: Db, accountId: string, clock: Clock) {
   const vessel = await readVessel(db, accountId, clock);
-  const [row] = await db.select({ returnSeenAt: vessels.returnSeenAt, enlistedAt: vessels.enlistedAt }).from(vessels).where(eq(vessels.id, vessel.id));
+  const [row] = await db.select({ returnSeenAt: vessels.returnSeenAt, enlistedAt: vessels.enlistedAt, unlocksSeen: vessels.unlocksSeen }).from(vessels).where(eq(vessels.id, vessel.id));
   const now = clock.now();
   const since = row?.returnSeenAt ?? row?.enlistedAt ?? now;
   const notes = await db.select().from(vesselNotifications)
@@ -31,25 +35,34 @@ export async function readStarterReturn(db: Db, accountId: string, clock: Clock)
 
   const raids = [];
   let scans = 0;
+  // What landed, not what was carried: a haul loses what finds no room in the works (F5).
   const carried = { alloy: 0, crystal: 0, deuterium: 0 };
+  let lost = 0;
   let shipsHome = 0;
   for (const note of notes) {
     if (note.kind === 'PROBE_DETECTED') { scans += 1; continue; }
     if (note.kind === 'FLEET_HOME') {
       const home = homeNote.safeParse(note.payload);
       if (home.success) {
-        carried.alloy += home.data.cargo.alloy;
-        carried.crystal += home.data.cargo.crystal;
-        carried.deuterium += home.data.cargo.deuterium;
+        const wasted = home.data.wasted ?? { alloy: 0, crystal: 0, deuterium: 0 };
+        carried.alloy += home.data.cargo.alloy - wasted.alloy;
+        carried.crystal += home.data.cargo.crystal - wasted.crystal;
+        carried.deuterium += home.data.cargo.deuterium - wasted.deuterium;
+        lost += total(wasted);
         shipsHome += home.data.ships;
       }
       continue;
     }
     const battle = battleNote.safeParse(note.payload);
     if (battle.success) {
+      const { attacking, grade, loot, lost: shipsLost, opponent, opponentKind, firstVictory, beatenBy } = battle.data;
+      // An outpost raid's own two outcomes (F4f), which the card leads with as the signal does.
+      const outpost = attacking && opponentKind === 'OUTPOST' && opponent !== undefined
+        ? { opponent, ...(firstVictory === true ? { firstVictory } : {}), ...(beatenBy ? { beatenBy } : {}) }
+        : {};
       raids.push({
-        kind: battle.data.attacking ? 'raid_result' as const : 'raided' as const,
-        params: { grade: battle.data.grade, loot: Math.round(total(battle.data.loot)), lost: battle.data.lost },
+        kind: attacking ? 'raid_result' as const : 'raided' as const,
+        params: { grade, loot: Math.round(total(loot)), lost: shipsLost, ...outpost },
         at: note.createdAt,
       });
     }
@@ -59,11 +72,13 @@ export async function readStarterReturn(db: Db, accountId: string, clock: Clock)
   const crystal = Math.round(vessel.bufferCrystal);
   const deuterium = Math.round(vessel.bufferDeuterium);
   const haul = { alloy: Math.round(carried.alloy), crystal: Math.round(carried.crystal), deuterium: Math.round(carried.deuterium) };
+  // The player's own orders lead, so the card's cap never drops one of them for other news (F5).
   const entries = [
-    ...raids,
-    ...(scans > 0 ? [{ kind: 'scan_detected' as const, params: { count: scans }, at: now }] : []),
+    ...raids.filter(raid => raid.kind === 'raid_result'),
     // Each resource by name: a lump of "resources" could not be checked against the bar (E-03).
-    ...(total(carried) + shipsHome > 0 ? [{ kind: 'fleet_returned' as const, params: { resources: Math.round(total(carried)), ships: shipsHome, ...haul }, at: now }] : []),
+    ...(total(carried) + shipsHome > 0 ? [{ kind: 'fleet_returned' as const, params: { resources: Math.round(total(carried)), ships: shipsHome, ...haul, lost: Math.round(lost) }, at: now }] : []),
+    ...raids.filter(raid => raid.kind === 'raided'),
+    ...(scans > 0 ? [{ kind: 'scan_detected' as const, params: { count: scans }, at: now }] : []),
     ...(alloy + crystal + deuterium > 0 ? [{ kind: 'accrued' as const, params: { alloy, crystal, deuterium }, at: now }] : []),
   ];
   const { pending } = await readStarterPending(db, accountId, clock);
@@ -72,7 +87,8 @@ export async function readStarterReturn(db: Db, accountId: string, clock: Clock)
     asOf: now,
     entries: entries.slice(0, MAX_ENTRIES),
     pending,
-    newUnlocks: [],
+    // What came back online and is still to be announced; the galaxy announces it, the card names it (F5).
+    newUnlocks: STARTER_FEATURES.filter(feature => isFeatureOpen(vessel, feature) && !(row?.unlocksSeen ?? []).includes(feature)),
   };
 }
 

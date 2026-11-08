@@ -79,6 +79,7 @@ import {
   useUnknownSignals,
   useUnknownSignalActions,
   useUnknownSignalDetail,
+  useCollect,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -110,6 +111,9 @@ import { monumentPendingThreads } from '../lib/monumentFlights.js';
 import { flightRecallInput } from '../lib/flights.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
+import { collectState, haulAtHome, type HaulHome } from '../lib/collect.js';
+import { worksAt } from '../lib/projection.js';
+import { playSound } from '../lib/sound.js';
 import { serverNow } from '../lib/clock.js';
 import { readDismissed, rememberDismissed } from '../lib/slotMemory.js';
 import type { ChatChannel } from './ChatScreen.js';
@@ -2600,6 +2604,41 @@ function rivalSlotFor(
   return mark ? mark.slot : null;
 }
 
+/**
+ * THE WORKS A HAUL COMES HOME TO (plan F5, N5), for both mining sheets: the room each resource will
+ * have when the craft land, and the collect that makes more, offered only when the store can take some.
+ */
+function useHaulHome(): { homeFor: (reach: number | null) => (haul: { alloy: number; crystal: number; deuterium: number }) => HaulHome | null; onCollect: (() => void) | undefined; storeFull: boolean } {
+  const { t } = useTranslation();
+  const planet = usePlanet();
+  const collect = useCollect();
+  const say = useToast();
+  const now = useNow(1_000);
+  const p = planet.data?.planet;
+  const fetchedAt = planet.dataUpdatedAt;
+  const homeFor = (reach: number | null) => (haul: { alloy: number; crystal: number; deuterium: number }) =>
+    p && reach !== null ? haulAtHome(p, fetchedAt, now, haul, reach) : null;
+  if (!p) return { homeFor, onCollect: undefined, storeFull: false };
+  const waiting = worksAt(p, fetchedAt, now);
+  const state = collectState({
+    caps: { alloy: p.bufferAlloyCap, crystal: p.bufferCrystalCap, deuterium: p.bufferDeuteriumCap },
+    works: { alloy: waiting.bufferAlloy, crystal: waiting.bufferCrystal, deuterium: waiting.bufferDeuterium },
+    store: { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium },
+    storeCaps: { alloy: p.alloyCap, crystal: p.crystalCap, deuterium: p.deuteriumCap },
+  });
+  const onCollect = state.movable >= 1 && !collect.isPending ? () => {
+    haptic('commit');
+    collect.mutate(undefined, {
+      onSuccess: (result) => {
+        playSound('cargo');
+        say(t('statusBar.works.collected', { amount: compact(result.moved.alloy + result.moved.crystal + result.moved.deuterium) }));
+      },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  } : undefined;
+  return { homeFor, onCollect, storeFull: state.blocked };
+}
+
 function AsteroidFocusHost({
   rock,
   runs,
@@ -2626,6 +2665,7 @@ function AsteroidFocusHost({
   onSend: (id: string, craft: number) => void;
 }) {
   const planet = usePlanet();
+  const { homeFor, onCollect, storeFull } = useHaulHome();
   if (!rock) return null;
 
   const isotopeProject = planet.data?.research.find(
@@ -2650,16 +2690,7 @@ function AsteroidFocusHost({
    * actual solver means the flight time shown is the flight time you get, and the
    * button is never offered for a trip the server would refuse.
    */
-  /**
-   * How much the works can still absorb. D31 — mined ore lands in the buffer, so
-   * this is the ceiling that decides how much of a haul survives the trip home.
-   */
   const p = planet.data?.planet;
-  const worksRoom = p
-    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy)
-      + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
-      + Math.max(0, p.bufferDeuteriumCap - p.bufferDeuterium)
-    : 0;
 
   const minutesNow = (now - seasonStart.getTime()) / 60_000;
   const reach = rockReachMinutes(homePosition, speed, rock, minutesNow);
@@ -2674,7 +2705,9 @@ function AsteroidFocusHost({
       derrickHold={mining?.derrickHold ?? 0}
       minutesLeft={minutesLeft}
       reachMinutes={reach}
-      worksRoom={worksRoom}
+      atHome={homeFor(reach)}
+      onCollect={onCollect}
+      storeFull={storeFull}
       run={runForPlanetTarget(runs, p?.id, { kind: 'asteroid', id: rock.id })}
       /** D183: the selected world's rest, published on the private mining view. */
       craftReadyAt={mining?.craftReadyAt ?? null}
@@ -2733,6 +2766,7 @@ function DebrisFocusHost({
   onSend: (fieldId: string, craft: number) => void;
 }) {
   const planetQuery = usePlanet();
+  const { homeFor, onCollect, storeFull } = useHaulHome();
   if (!field) return null;
 
   /*
@@ -2750,11 +2784,6 @@ function DebrisFocusHost({
   const reach = salvageReachMinutes(homePosition, field.at, mining?.craftSpeed ?? 0, Boolean(planetQuery.data?.vessel));
 
   const p = planetQuery.data?.planet;
-  const worksRoom = p
-    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy)
-      + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
-      + Math.max(0, p.bufferDeuteriumCap - p.bufferDeuterium)
-    : 0;
 
   return (
     <DebrisFocus
@@ -2763,7 +2792,9 @@ function DebrisFocusHost({
       craftAvailable={planetQuery.data?.fleet.PROSPECTOR ?? 0}
       craftHold={mining?.craftHold ?? 0}
       reachMinutes={reach}
-      worksRoom={worksRoom}
+      atHome={homeFor(reach)}
+      onCollect={onCollect}
+      storeFull={storeFull}
       run={runForPlanetTarget(runs, p?.id, { kind: 'debris', id: field.id })}
       /** The lane the rule exists for: a field over your own world. D183. */
       craftReadyAt={mining?.craftReadyAt ?? null}

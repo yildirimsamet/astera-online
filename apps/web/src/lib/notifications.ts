@@ -778,10 +778,30 @@ function describeAboard({ kind, payload }: NotificationView, now: number): strin
     return i18n.t(battle.data.attacking ? 'starter.news.raidOver' : 'starter.news.attacked', { name });
   }
   if (kind === 'FLEET_HOME') {
-    const home = z.object({ part: z.boolean().default(false) }).safeParse(payload);
-    return home.success ? i18n.t(home.data.part ? 'starter.news.fleetHomePart' : 'starter.news.fleetHome') : null;
+    const held = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
+    const home = z.object({ kind: z.string().optional(), part: z.boolean().default(false), ships: z.number().int().positive().default(1), cargo: held.optional(), wasted: held.optional() }).safeParse(payload);
+    if (!home.success) return null;
+    const { part, ships: count, cargo, wasted } = home.data;
+    if (home.data.kind !== 'MINE' || !cargo) return i18n.t(part ? 'starter.news.fleetHomePart' : 'starter.news.fleetHome');
+    // A haul lands in the works and loses what finds no room (F5): brought, landed and lost, apart.
+    const brought = Math.round(cargo.alloy + cargo.crystal + cargo.deuterium);
+    const lost = wasted ? Math.round(wasted.alloy + wasted.crystal + wasted.deuterium) : 0;
+    const line = brought < 1
+      ? i18n.t('starter.news.mineEmpty', { count })
+      : lost >= 1
+        ? i18n.t('starter.news.mineLost', { count, brought: compact(brought), landed: compact(brought - lost), lost: compact(lost) })
+        : i18n.t('starter.news.mineHome', { count, brought: compact(brought) });
+    return part ? `${line} ${i18n.t('starter.news.minePart')}` : line;
   }
   if (kind === 'FLEET_TURNED_BACK') return i18n.t('starter.news.turnedBack');
+  if (kind === 'CRATE_OPENED') {
+    const opened = z.object({ crates: z.array(z.string()).min(1), alloy: z.number(), crystal: z.number() }).safeParse(payload);
+    if (!opened.success) return null;
+    const paid = { alloy: compact(opened.data.alloy), crystal: compact(opened.data.crystal) };
+    return opened.data.crates.includes('FIRST_OUTPOST_VICTORY')
+      ? i18n.t('starter.news.victoryCrateOpened', paid)
+      : i18n.t('starter.news.crateOpened', { ...paid, count: opened.data.crates.length });
+  }
   if (kind === 'YARD_DONE') {
     const yard = z.object({ subject: z.enum(STARTER.hulls), count: z.number().int().positive() }).safeParse(payload);
     return yard.success ? i18n.t('starter.news.yardDone', { count: yard.data.count, name: hullName(yard.data.subject) }) : null;

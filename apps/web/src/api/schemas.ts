@@ -1,4 +1,4 @@
-import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
+import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, STARTER_FEATURES, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
 import { vesselSchema, vesselStandingSchema } from './starterSchemas.js';
 import { SHIP_CLASSES } from '@astera/rules/arena/ui';
@@ -2838,11 +2838,11 @@ export const deathStarLaunchSchema = z.object({
  * what a dismissal closes the window up to.
  */
 const returnEntry = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('raid_result'), params: z.object({ grade, loot: z.number(), lost: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('raid_result'), params: z.object({ grade, loot: z.number(), lost: z.number(), opponent: z.string().optional(), firstVictory: z.boolean().optional(), beatenBy: z.string().optional() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('raided'), params: z.object({ grade, loot: z.number(), lost: z.number() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('scan_detected'), params: z.object({ count: z.number() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('convoy_result'), params: z.object({ resources: z.number(), ships: z.number() }), at: z.coerce.date() }),
-  z.object({ kind: z.literal('fleet_returned'), params: z.object({ resources: z.number(), ships: z.number(), alloy: z.number().optional(), crystal: z.number().optional(), deuterium: z.number().optional() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('fleet_returned'), params: z.object({ resources: z.number(), ships: z.number(), alloy: z.number().optional(), crystal: z.number().optional(), deuterium: z.number().optional(), lost: z.number().optional() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('accrued'), params: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number().optional() }), at: z.coerce.date() }),
   z.object({ kind: z.literal('unlock'), params: z.object({ unlock: unlockable }), at: z.coerce.date() }),
 ]);
@@ -2852,7 +2852,8 @@ export const returnSchema = z.object({
   asOf: z.coerce.date(),
   entries: z.array(returnEntry),
   pending: z.array(pendingThread),
-  newUnlocks: z.array(unlockable),
+  /** A world's instruments; aboard a colony ship, the systems that came back online and wait to be announced (F5). */
+  newUnlocks: z.array(z.union([unlockable, z.enum(STARTER_FEATURES)])),
 });
 
 /** The dismissal's answer: the window is closed up to what was read. */

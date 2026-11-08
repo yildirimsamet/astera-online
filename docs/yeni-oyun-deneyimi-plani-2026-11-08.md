@@ -261,6 +261,27 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
 - **Maden dönüşü:** Getirilen, eklenen ve kaybolan miktar ayrı görünür; `returnStory` kaybolanı (`wasted`) düşer.
 - **Dönüş özeti:** Önce oyuncunun kendi emri ve sonucu, beklenen ile gerçekleşenin farkıyla. Sonra yeni seçenek. `newUnlocks` doldurulur. Tek ana an gösterilir, ayrıntılar isteğe bağlıdır. Çoklu cihazda aynı büyük karşılama tekrar etmez.
 - **Kasa açılışı:** Ship log'a kayıt düşer; batch4'te açık kalan boşluk budur.
+- **Teslim (2026-11-08):**
+  - **Kaya gönderimi (F5a):**
+    - Kaya ve enkaz kartı artık her zaman bir satır söyler: "Döndüklerinde havuzda X yer olacak".
+    - Eski hesap iki yerde yanlıştı. Bugünkü boş yeri tek toplam olarak gösteriyordu. Oysa uçuş sürerken havuz üretimle dolar (dönüş yükle yarım hızdadır, toplam yol ≈ 3 × gidiş) ve her kaynak kendi tavanında durur.
+    - Yeni hesap `haulAtHome`, `worksAt` ile havuzu dönüş anına ilerletir; takviye ve kesinti de buna dahildir.
+    - Kayıp varsa kaybolan kaynak adıyla söylenir ("117 alaşım ve 63 kristal sığmaz"). Toplanacak bir şey varsa kartta "Önce topla" düğmesi çıkar (titreşim, kargo sesi, toast). Depo da doluysa "önce bir şey harca" denir.
+    - Kart ana oyunla ortak; düzeltme iki tarafa da gider. Kural değişmedi, yalnız anlatım düzeldi.
+  - **Maden dönüşü (F5b):**
+    - Zil ve canlı toast getirilen, havuza giren ve sığmayan miktarı ayrı söyler. Boş dönüş ve itki parçası ayrıca söylenir.
+    - "Sen yokken" kartı ve `returnStory`, havuza girmeyeni (`wasted`) düşer ve ayrıca yazar.
+  - **Dönüş özeti (F5c):**
+    - Gemide kart tek bir büyük anla açılır: oyuncunun kendi emrinin sonucu. Öncelik sırası ilk zafer, sonra diğer savaşlar, sonra maden dönüşü.
+    - Kendi emri yoksa ana anı tehdit alır. Geri kalanı "Ayrıntılar (n)" altında bir dokunuş uzaktadır.
+    - Püskürtülen saldırı amber "kayıp" tonuyla gösterilir; kırmızı yalnız tehdide aittir (K2). Ana an tonuna göre ses çalar.
+    - Sunucu 5 satır sınırından önce oyuncunun kendi emirlerini öne alır; çok sayıda saldırı varken filo dönüşü artık listeden düşmez.
+    - `newUnlocks` doldurulur: açılmış ama henüz anlatılmamış özellikler. Kart bunları sistem adıyla tek satırda söyler ("Sen yokken yeniden çalışmaya başladı: Kargo ve hangar · Sörvey anteni"). Asıl anlatımı yine galaksideki açılış anı yapar, böylece iki kez anlatılmaz.
+    - Ana oyunun kartı değişmedi.
+    - Çoklu cihaz: pencere gemi kaydında kapanır. Bir cihazda kapatılan hikâye ötekinde yeniden açılmaz; oyuncu bir cihazda oynarken pencere sürekli ileri alındığından ikinci cihazda karşılama çıkmaz.
+  - **Kasa (F5d):** Açılış `CRATE_OPENED` olarak seyir kaydına okunmuş biçimde düşer (oyuncunun kendi eliyle yaptığı iş zili çaldırmaz). Zafer kasası adıyla, diğerleri sayısıyla yazılır ve gemiye götürür. El kitabının "havuz" maddesine maden yükü kuralı eklendi (6 dil).
+  - **350×812 yürüyüşü:** Uzak kartında ana an "Tevis düştü" (zafer kasası), sonra amber "Saldırın püskürtüldü" ve ayrıntılar göründü. Kaya kartında kayıp satırı göründü, "Önce topla" sonrası yalnız deposu dolu kristalin kaldığı görüldü. Kasa kaydı düştü. Taşma ve sayfa hatası yok.
+  - **Yürüyüşte bulunup düzeltilenler:** İlk zafer, maden dönüşünün altında kalıyordu; repelled saldırı yeşildi; "bol yer var ama kayboluyor" satırı kaynağı söylemiyordu.
 
 ### F6. Sensörler ve Aegis kararı
 - `sightLesson`'daki "İleri" ile geçilen üç okuma, gerçek olayla tetiklenen kısa anlara döner: göster, incele, izle.

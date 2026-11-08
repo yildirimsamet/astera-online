@@ -478,8 +478,6 @@ export const focus = {
       "Send Prospectors to recover Deuterium. The return haul lands in the Works; Collect it into storage.",
     speed: "Speed",
     speedValue: "{{rate}}/min",
-    spill:
-      "Your works can only take {{room}} more. About {{lost}} of this haul would be lost on arrival — empty them first.",
     taken: "Somebody has already taken {{amount}} out of it.",
     untouched: "Untouched. First craft to reach it takes what it can carry.",
     // "{{total}} between them" is nonsense about a single craft, in either language.
@@ -490,6 +488,15 @@ export const focus = {
       "A <0>{{name}}</0> in orbit would make that <1>{{hold}}</1> each, and get them there sooner.",
     intercept:
       "Your craft would meet it in {{reach}}, with {{spare}} to spare.",
+  },
+
+  haul: {
+    fits: "{{room}} room in the works when they are home: the whole haul fits.",
+    spill_one: "Only {{room}} room in the works when they are home: {{what}} will not fit and is lost.",
+    spill_other: "Only {{room}} room in the works when they are home: {{what}} will not fit and are lost.",
+    amount: { alloy: "{{value}} alloy", crystal: "{{value}} crystal", deuterium: "{{value}} Deuterium" },
+    storeFull: "Your store is full too: spend some first.",
+    collectFirst: "Collect first",
   },
 
   craftPicker: {
@@ -515,8 +522,6 @@ export const focus = {
     deuteriumLeft: "Deuterium left",
     goneIn: "Gone in",
     yourHold: "Your hold",
-    spill:
-      "Your works can only take {{room}} more. About {{lost}} of this would be lost on arrival — empty them first.",
     body: "Somebody lost a fleet here. It is fading, and everyone can see it — whoever gets there first takes what is left.",
   },
 

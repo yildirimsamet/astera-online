@@ -65,7 +65,7 @@ const rockPanel = (
       derrickHold={780}
       minutesLeft={400}
       reachMinutes={12}
-      worksRoom={100_000}
+      atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
       run={undefined}
       onSend={onSend}
       {...shell}
@@ -89,7 +89,7 @@ const wreckPanel = (
       craftAvailable={craftAvailable}
       craftHold={300}
       reachMinutes={9}
-      worksRoom={100_000}
+      atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
       run={undefined}
       onSend={onSend}
       {...shell}
@@ -266,7 +266,7 @@ describe('a public isotope anomaly without Spectrometry', () => {
         derrickHold={780}
         minutesLeft={400}
         reachMinutes={12}
-        worksRoom={100_000}
+        atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
         run={undefined}
         onSend={vi.fn()}
         {...shell}
@@ -291,7 +291,7 @@ describe('a public isotope anomaly without Spectrometry', () => {
         derrickHold={780}
         minutesLeft={400}
         reachMinutes={12}
-        worksRoom={100_000}
+        atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
         run={undefined}
         onSend={onSend}
         {...shell}
@@ -336,7 +336,7 @@ describe('a target already being worked', () => {
         derrickHold={780}
         minutesLeft={400}
         reachMinutes={12}
-        worksRoom={100_000}
+        atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
         run={run}
         onSend={onSend}
         {...shell}
@@ -359,7 +359,7 @@ describe('a target already being worked', () => {
         derrickHold={780}
         minutesLeft={400}
         reachMinutes={12}
-        worksRoom={100_000}
+        atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
         run={{ ...run, craft: 3, outboundCraft: 2, returningCraft: 1 }}
         onSend={vi.fn()}
         {...shell}
@@ -384,7 +384,7 @@ describe('a wreck field whose reach is not known yet', () => {
       craftAvailable={2}
       craftHold={300}
       reachMinutes={reachMinutes}
-      worksRoom={100_000}
+      atHome={() => ({ room: 100_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
       run={undefined}
       onSend={vi.fn()}
       {...shell}

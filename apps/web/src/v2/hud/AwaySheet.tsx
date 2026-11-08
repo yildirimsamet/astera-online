@@ -1,9 +1,14 @@
+import { STARTER_FEATURES, type StarterFeature } from '@astera/rules';
 import type { TFunction } from 'i18next';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReturnEntry, ReturnPayload } from '../../api/schemas.js';
 import { serverNow } from '../../lib/clock.js';
-import { awayRows, type AwayDoor, type AwayRow, type AwayTone, type Sighting, type WorldCare } from '../../lib/awayStory.js';
+import { FEATURE_SYSTEM } from '../../starter/UnlockMoment.js';
+import { aboardRows, awayRows, type AwayDoor, type AwayRow, type AwayTone, type Sighting, type WorldCare } from '../../lib/awayStory.js';
 import { full } from '../../lib/format.js';
+import { haptic } from '../../lib/haptics.js';
+import { playSound } from '../../lib/sound.js';
 import { clockTime, duration } from '../../lib/time.js';
 import { Icon, type IconId } from '../icons.js';
 import { Sheet } from '../kit/Sheet.js';
@@ -50,11 +55,16 @@ function words(entry: ReturnEntry, t: TFunction, aboard: boolean): { title: stri
           ? t('away.held', { lost: entry.params.lost })
           : t('away.taken', { loot: full(entry.params.loot), lost: entry.params.lost }),
       };
-    case 'raid_result':
-      return {
-        title: t(`reports.verdict.title.attacking.${entry.params.grade}`),
-        detail: t('away.looted', { loot: full(entry.params.loot), lost: entry.params.lost }),
-      };
+    case 'raid_result': {
+      const looted = t('away.looted', { loot: full(entry.params.loot), lost: entry.params.lost });
+      const { opponent, firstVictory, beatenBy } = entry.params;
+      // An outpost's own two outcomes, as its signal says them (F4f).
+      if (aboard && opponent !== undefined && firstVictory === true) {
+        return { title: t('starter.away.fell', { name: opponent }), detail: `${t('starter.away.crateReady')} ${looted}` };
+      }
+      if (aboard && opponent !== undefined && beatenBy) return { title: t('starter.away.beaten', { name: opponent, by: beatenBy }), detail: looted };
+      return { title: t(`reports.verdict.title.attacking.${entry.params.grade}`), detail: looted };
+    }
     case 'scan_detected':
       return { title: t('away.scan', { count: entry.params.count }), detail: t('away.scanDetail') };
     case 'convoy_result':
@@ -66,7 +76,11 @@ function words(entry: ReturnEntry, t: TFunction, aboard: boolean): { title: stri
           title: t('starter.away.fleetHome'),
           detail: entry.params.alloy === undefined
             ? t('starter.away.fleetHomeDetail', { count: entry.params.ships, resources: full(entry.params.resources) })
-            : [...haul, t('starter.away.ships', { count: entry.params.ships })].join(' · '),
+            : [
+              ...haul,
+              ...((entry.params.lost ?? 0) >= 1 ? [t('starter.away.lost', { value: full(entry.params.lost ?? 0) })] : []),
+              t('starter.away.ships', { count: entry.params.ships }),
+            ].join(' · '),
         };
       }
       return {
@@ -131,6 +145,82 @@ function Line({ row, aboard, onDoor }: { row: AwayRow; aboard: boolean; onDoor: 
 }
 
 /**
+ * The moment's colour: a gain in the player's own, a threat in red, an opening as an outline, and a
+ * raid thrown back in amber — the player's loss, not a threat (red stays K2's).
+ */
+type HeroLook = AwayTone | 'loss';
+const HERO: Record<HeroLook, { panel: string; bar: string; mark: string }> = {
+  alarm: { panel: 'border-v2-hostile/60 bg-v2-hostile/10 shadow-[0_0_24px_-8px_var(--color-v2-hostile)]', bar: 'bg-v2-hostile', mark: TONE.alarm },
+  gain: { panel: 'border-v2-self/60 bg-v2-self/10 shadow-[0_0_24px_-8px_var(--color-v2-self)]', bar: 'bg-v2-self', mark: TONE.gain },
+  opportunity: { panel: 'border-dashed border-v2-line-hi bg-v2-void/40', bar: 'bg-v2-line-hi', mark: TONE.opportunity },
+  loss: { panel: 'border-v2-warn/60 bg-v2-warn/10 shadow-[0_0_24px_-8px_var(--color-v2-warn)]', bar: 'bg-v2-warn', mark: 'border-v2-warn/50 bg-v2-warn/10 text-v2-warn' },
+};
+
+/** THE ONE MOMENT (plan F5): what the player sent out and what came of it, larger than the rest. */
+function Hero({ row, onDoor }: { row: AwayRow & { kind: 'entry' }; onDoor: (door: AwayDoor, planetId?: string) => void }) {
+  const { t } = useTranslation();
+  const { title, detail } = words(row.entry, t, true);
+  const look: HeroLook = row.entry.kind === 'raid_result' && row.entry.params.grade === 'REPELLED' ? 'loss' : row.tone;
+  // It lands with the weight of what it says: a threat as an alert, a loss as a blow, a gain as a confirmation.
+  useEffect(() => { playSound(look === 'alarm' ? 'alert' : look === 'loss' ? 'impact' : 'confirm'); }, [look]);
+  return (
+    <div data-testid="away-hero" data-tone={look}
+      className={`relative overflow-hidden rounded-control border px-3 pb-2 pt-3 animate-[away-hero_0.6s_cubic-bezier(.2,1.4,.4,1)_both] ${HERO[look].panel}`}>
+      <style>{`
+        @keyframes away-hero {0%{opacity:0;transform:translateY(8px) scale(.96)} 100%{opacity:1;transform:none}}
+        @keyframes away-bar {0%{transform:scaleX(0)} 100%{transform:scaleX(1)}}
+      `}</style>
+      <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-0.5 origin-left animate-[away-bar_0.8s_ease-out_0.15s_both] ${HERO[look].bar}`} />
+      <div className="flex items-start gap-3">
+        <span aria-hidden="true" className={`grid size-11 shrink-0 place-items-center rounded-control border ${HERO[look].mark}`}>
+          <Icon id={iconOf(row)} className="size-5" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col items-start">
+          <span className="text-body font-semibold leading-snug text-v2-ink">{title}</span>
+          <span className="mt-0.5 text-caption leading-snug text-v2-ink-2">{detail}</span>
+          <Door label={row.door === 'base' ? t('starter.away.toShip') : t(`away.door.${row.door}`)} onOpen={() => { onDoor(row.door); }} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const isStarterFeature = (unlock: string): unlock is StarterFeature => (STARTER_FEATURES as readonly string[]).includes(unlock);
+
+/** The ship's story: the one moment, the rest folded under it, and what came back online last. */
+function AboardStory({ story, onDoor }: { story: ReturnPayload; onDoor: (door: AwayDoor, planetId?: string) => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [hero, ...rest] = aboardRows(story.entries);
+  const systems = [...new Set(story.newUnlocks.filter(isStarterFeature).map((feature) => FEATURE_SYSTEM[feature]))];
+  return (
+    <div className="flex flex-col gap-2">
+      {hero?.kind === 'entry' && <Hero row={hero} onDoor={onDoor} />}
+      {rest.length > 0 && (
+        <button type="button" aria-expanded={open} onClick={() => { haptic('tap'); setOpen(!open); }}
+          className="flex min-h-8 items-center gap-1 self-start text-micro font-semibold text-v2-ink-2">
+          <Icon id="i-chev" className={`size-3.5 transition-transform ${open ? 'rotate-90' : ''}`} />
+          {t('starter.away.details', { count: rest.length })}
+        </button>
+      )}
+      {open && (
+        <ul className="flex flex-col divide-y divide-v2-line">
+          {rest.map((row) => (
+            <Line aboard key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`} row={row} onDoor={onDoor} />
+          ))}
+        </ul>
+      )}
+      {systems.length > 0 && (
+        <p data-testid="away-online" className="flex items-center gap-1.5 text-micro leading-snug text-v2-self">
+          <Icon id="i-spark" className="size-3.5 shrink-0" />
+          <span>{t('starter.away.online', { systems: systems.map((system) => t(`starter.system.${system}`)).join(' · ') })}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * WHILE YOU WERE AWAY. E10 · K5 · rule 6 ("Dönüşte önce hikâye"), the mock's card.
  *
  * The question that brings a player back — what happened? — answered on the first
@@ -161,7 +251,7 @@ export function AwaySheet({
   onDismiss: () => void;
 }) {
   const { t } = useTranslation();
-  const rows = awayRows(story.entries, sightings);
+  const rows = aboard ? [] : awayRows(story.entries, sightings);
   return (
     <Sheet
       title={t('away.title')}
@@ -189,6 +279,7 @@ export function AwaySheet({
         </div>
       )}
     >
+      {aboard && <AboardStory story={story} onDoor={onDoor} />}
       <ul className="flex flex-col divide-y divide-v2-line">
         {rows.map((row) => (
           <Line

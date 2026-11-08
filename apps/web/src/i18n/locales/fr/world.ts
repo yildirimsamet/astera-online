@@ -454,8 +454,6 @@ export const focus = {
       "Envoie un Prospecteur pour récupérer du Deutérium. La cargaison de retour rejoint le stock de production ; appuie sur Collecter pour la transférer au Dépôt.",
     speed: "Vitesse",
     speedValue: "{{rate}} par minute",
-    spill:
-      "Ton stock de production ne peut encore accueillir que {{room}}. {{lost}} de cette cargaison seront perdus à l’arrivée ; vide d’abord le stock.",
     taken: "Quelqu’un a déjà pris {{amount}} de son contenu.",
     untouched: "Intact. Le premier arrivé prend autant qu’il peut transporter.",
     fleetLine_one: "{{count}} Prospecteur chez toi ; capacité {{hold}}.",
@@ -466,6 +464,15 @@ export const focus = {
     intercept:
       "Tes appareils rattraperont l’astéroïde dans {{reach}} ; il te restera {{spare}} de marge.",
   },
+  haul: {
+    fits: "{{room}} de place dans le stock de production à leur retour : toute la cargaison tient.",
+    spill_one: "Seulement {{room}} de place dans le stock de production à leur retour : {{what}} ne tiendra pas et sera perdu.",
+    spill_other: "Seulement {{room}} de place dans le stock de production à leur retour : {{what}} ne tiendront pas et seront perdus.",
+    amount: { alloy: "{{value}} d’alliage", crystal: "{{value}} de cristal", deuterium: "{{value}} de Deutérium" },
+    storeFull: "Ton Magasin est plein aussi : dépense d’abord quelque chose.",
+    collectFirst: "Collecter d’abord",
+  },
+
   craftPicker: {
     label: "Combien d’appareils envoyer",
   },
@@ -488,8 +495,6 @@ export const focus = {
     deuteriumLeft: "Deutérium restant",
     goneIn: "Dispersion dans",
     yourHold: "Ta capacité de transport",
-    spill:
-      "Ton stock de production ne peut encore accueillir que {{room}}. {{lost}} seront perdus à l’arrivée ; vide d’abord le stock.",
     body: "Ce champ d’épaves issu d’un combat se disperse avec le temps et reste accessible à toute la galaxie. Le premier arrivé prend autant de ressources qu’il peut transporter.",
   },
   run: {

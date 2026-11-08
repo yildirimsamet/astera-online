@@ -133,3 +133,24 @@ export function awayRows(entries: readonly ReturnEntry[], sightings: readonly Si
     .slice(0, MAX_ROWS)
     .sort((a, b) => ORDER.indexOf(a.tone) - ORDER.indexOf(b.tone));
 }
+
+/**
+ * An order the player sent out themselves, the thing they come back to find out about, by weight:
+ * the first victory, then any battle, then a haul. Everything else ranks after them.
+ */
+function ownRank(entry: ReturnEntry): number | null {
+  if (entry.kind === 'raid_result') return entry.params.firstVictory === true ? -3 : -2;
+  return entry.kind === 'fleet_returned' ? -1 : null;
+}
+
+/**
+ * THE RETURN, ABOARD (plan F5, C An 7): the player's own orders first, newest first, and then
+ * the rest in the main story's order. All of it, not three: only the first is the moment, and the
+ * rest waits one tap away.
+ */
+export function aboardRows(entries: readonly ReturnEntry[]): AwayRow[] {
+  const rank = (row: AwayRow & { kind: 'entry' }) => ownRank(row.entry) ?? ORDER.indexOf(row.tone);
+  return entries
+    .map((entry) => ({ kind: 'entry' as const, entry, ...classify(entry) }))
+    .sort((a, b) => rank(a) - rank(b) || b.entry.at.getTime() - a.entry.at.getTime());
+}

@@ -477,8 +477,6 @@ export const focus = {
       "Schicken Sie Prospektoren, um Deuterium zu bergen. Der Rücktransport landet im Werk; Sammeln Sie es im Lager.",
     speed: "Geschwindigkeit",
     speedValue: "{{rate}}/min",
-    spill:
-      "Deine Werke können nur noch {{room}} vertragen. Ungefähr {{lost}} dieser Ladung würden bei der Ankunft verloren gehen – leeren Sie sie zuerst.",
     taken: "Jemand hat bereits {{amount}} daraus entnommen.",
     untouched: "Unberührt. Das erste Schiff, das es erreicht, braucht, was es tragen kann.",
     // "{{total}} between them" is nonsense about a single craft, in either language.
@@ -489,6 +487,15 @@ export const focus = {
       "Ein <0>{{name}}</0> im Orbit würde dafür sorgen, dass jeder <1>{{hold}}</1> schneller dort ankommt.",
     intercept:
       "Ihr Schiff würde es in {{reach}} erreichen, mit {{spare}} übrig.",
+  },
+
+  haul: {
+    fits: "{{room}} Platz im Produktionslager, wenn sie zurück sind: Die ganze Ladung passt.",
+    spill_one: "Nur {{room}} Platz im Produktionslager, wenn sie zurück sind: {{what}} passt nicht und geht verloren.",
+    spill_other: "Nur {{room}} Platz im Produktionslager, wenn sie zurück sind: {{what}} passen nicht und gehen verloren.",
+    amount: { alloy: "{{value}} Legierung", crystal: "{{value}} Kristall", deuterium: "{{value}} Deuterium" },
+    storeFull: "Dein Speicher ist auch voll: Gib zuerst etwas aus.",
+    collectFirst: "Erst einsammeln",
   },
 
   craftPicker: {
@@ -514,8 +521,6 @@ export const focus = {
     deuteriumLeft: "Deuterium übrig",
     goneIn: "Eingegangen",
     yourHold: "Ihr Laderaum",
-    spill:
-      "Deine Werke können nur noch {{room}} vertragen. Ungefähr {{lost}} davon würden bei der Ankunft verloren gehen – leeren Sie sie zuerst.",
     body: "Jemand hat hier eine Flotte verloren. Es verblasst, und jeder kann es sehen – wer zuerst dort ankommt, nimmt, was übrig bleibt.",
   },
 
