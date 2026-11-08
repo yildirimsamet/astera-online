@@ -4,7 +4,7 @@ import { haptic } from '../../lib/haptics.js';
 import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import type { Opportunity } from '../opportunities.js';
 import { ROAD, adviceMarks, type TutorialAnswer, type TutorialStep, type TutorialStepId, type TutorialView } from './script.js';
-import { ACK_ON_PRESS, type StarterTutorial } from './useStarterTutorial.js';
+import { ACK_ON_PRESS, ackAfterPress, type StarterTutorial } from './useStarterTutorial.js';
 import './visualGoal.css';
 
 export const StarterLesson = createContext<TutorialAnswer | null>(null);
@@ -75,7 +75,7 @@ export function StarterGoalPulse({ goal, ack }: { goal: StarterGoalValue | null;
   useEffect(() => {
     if (key === '') return undefined;
     const selectors = key.split('|');
-    const clicked = () => { if (pressId) ack(pressId); haptic('tap'); };
+    const clicked = () => { if (pressId) ackAfterPress(ack, pressId); haptic('tap'); };
     const clear = () => {
       marked.current?.removeAttribute('data-starter-next');
       marked.current?.removeEventListener('click', clicked);

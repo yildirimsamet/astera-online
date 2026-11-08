@@ -45,14 +45,24 @@ describe('the starter tutorial on screen', () => {
     expect(document.querySelector('.school-progress')).toBeNull();
   });
 
-  it('lets only the marked control answer, and takes that press as the step', () => {
+  it('lets only the marked control answer, and takes that press as the step', async () => {
     const { ack, pressed, elsewhere } = coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
     expect(screen.getByTestId('pointer')).toBeTruthy();
     fireEvent.click(screen.getByText('elsewhere'));
     expect(elsewhere).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('works'));
     expect(pressed).toHaveBeenCalledOnce();
-    expect(ack).toHaveBeenCalledWith('collect');
+    await vi.waitFor(() => { expect(ack).toHaveBeenCalledWith('collect'); });
+  });
+
+  // F6 walk: recording the step moves the guide on, and a mark that belongs to the step (the craft in
+  // the sky) leaves with it. Recorded mid-press, it left before its own handler ran and opened nothing.
+  it('records a pressed mark only once the press has done its own work', async () => {
+    const { ack, pressed } = coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
+    fireEvent.click(screen.getByText('works'));
+    expect(ack).not.toHaveBeenCalled();
+    await vi.waitFor(() => { expect(ack).toHaveBeenCalledWith('collect'); });
+    expect(pressed.mock.invocationCallOrder[0]).toBeLessThan(ack.mock.invocationCallOrder[0]!);
   });
 
   it('holds every control while a ten-second repair runs, and says it is working', () => {
@@ -115,7 +125,7 @@ describe('the starter tutorial on screen', () => {
   });
 
   /** Owner playtest 2026-11-07: the report is opened from its row; the Intel tab is only the way back to it. */
-  it('takes the press on the row as opening the report, not the press on the way to it', () => {
+  it('takes the press on the row as opening the report, not the press on the way to it', async () => {
     const ack = vi.fn();
     render(<>
       <ul><li data-known="probe"><button type="button">r5ty54ry</button></li></ul>
@@ -123,9 +133,10 @@ describe('the starter tutorial on screen', () => {
       <StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'openReport', step: 'press', marks: ['[data-known="probe"] button', '[data-guide="dock-intel"]'], chapter: 4, strict: false }, ack, backIn: 50 }} />
     </>);
     fireEvent.click(screen.getByText('Intel'));
+    await new Promise(resolve => setTimeout(resolve, 10));
     expect(ack).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('r5ty54ry'));
-    expect(ack).toHaveBeenCalledWith('openReport');
+    await vi.waitFor(() => { expect(ack).toHaveBeenCalledWith('openReport'); });
   });
 
   /** Owner playtest 2026-11-07: the report's rows sat below the fold and the line spoke of them unseen. */

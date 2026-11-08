@@ -131,23 +131,59 @@ describe('a galaxy with nobody else in sight', () => {
   });
 });
 
+/**
+ * THE SENSORS ARE TAUGHT ON A REAL CONTACT (plan F6). Each lesson waits for the live world to give it
+ * a subject: the telescope for traffic inside its ring (a neighbour's flight, else the scout), the radar
+ * for the scout's `?`. Nothing is made up for a lesson; an empty sky only means the lesson waits.
+ */
 describe('the ship sees, detects and reads', () => {
   const late = awake({ modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1 }, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'farewell'] });
-  it('introduces a completed telescope, and waits for a queued one', () => {
-    expect(at(late)).toMatchObject({ id: 'telescopeRing', step: 'read', strict: false, marks: ['[data-guide="sight-telescope"]'] });
-    expect(at({ ...late, modules: { ...late.modules, TELESCOPE: 0 }, queue: [order('TELESCOPE', 1)] })).toEqual({ kind: 'advise' });
+  const traffic = { traffic: true, tracked: false, unknown: false };
+  const seen = { ...late, sight: traffic };
+  it('waits for something in the ring before it says anything', () => {
+    expect(at(late)).toEqual({ kind: 'advise' });
+    expect(at({ ...late, sight: { traffic: false, tracked: false, unknown: true } })).toEqual({ kind: 'advise' });
   });
-  it('shows traffic and continuity once each, then goes quiet', () => {
-    expect(at({ ...late, acked: [...late.acked, 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic' });
-    expect(at({ ...late, acked: [...late.acked, 'telescopeRing', 'telescopeTraffic'] })).toMatchObject({ id: 'telescopeTrack' });
-    expect(at({ ...late, acked: [...late.acked, 'telescopeRing', 'telescopeTraffic', 'telescopeTrack'] })).toEqual({ kind: 'advise' });
+  it('shows the flight in the ring, and waits for a queued telescope', () => {
+    expect(at(seen)).toMatchObject({ id: 'telescopeRing', step: 'read', strict: false, marks: ['[data-guide="sight-craft"]', '[data-guide="sight-telescope"]'] });
+    expect(at({ ...seen, modules: { ...late.modules, TELESCOPE: 0 }, queue: [order('TELESCOPE', 1)] })).toEqual({ kind: 'advise' });
   });
-  it('introduces Radar 1 and closes with the three different jobs', () => {
-    const radar = { ...late, modules: { ...late.modules, RADAR: 1 }, acked: [...late.acked, 'telescopeRing', 'telescopeTraffic', 'telescopeTrack'] };
-    expect(at(radar)).toMatchObject({ id: 'radarRing' });
-    expect(at({ ...radar, acked: [...radar.acked, 'radarRing'] })).toMatchObject({ id: 'radarContact' });
-    expect(at({ ...radar, acked: [...radar.acked, 'radarRing', 'radarContact'] })).toMatchObject({ id: 'sightTrio' });
-    expect(at({ ...radar, acked: [...radar.acked, 'radarRing', 'radarContact', 'sightTrio'] })).toEqual({ kind: 'advise' });
+  it('has the player inspect the flight by touching it', () => {
+    expect(at({ ...seen, acked: [...late.acked, 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic', step: 'press', marks: ['[data-guide="sight-craft"]'] });
+  });
+  it('waits for a flight to leave the ring before it shows the track kept', () => {
+    const inspected = [...late.acked, 'telescopeRing', 'telescopeTraffic'];
+    expect(at({ ...seen, acked: inspected })).toEqual({ kind: 'advise' });
+    expect(at({ ...late, sight: { ...traffic, tracked: true }, acked: inspected })).toMatchObject({ id: 'telescopeTrack', step: 'read' });
+    expect(at({ ...late, sight: { ...traffic, tracked: true }, acked: [...inspected, 'telescopeTrack'] })).toEqual({ kind: 'advise' });
+  });
+  it('does not start halfway: a tracked flight with nothing in the ring is no lesson yet', () => {
+    expect(at({ ...late, sight: { traffic: false, tracked: true, unknown: false } })).toEqual({ kind: 'advise' });
+  });
+
+  const told = [...late.acked, 'telescopeRing', 'telescopeTraffic', 'telescopeTrack'];
+  const radar = { ...late, modules: { ...late.modules, RADAR: 1 }, acked: told };
+  const blip = { traffic: false, tracked: false, unknown: true };
+  it('introduces Radar 1 on the scout\'s question mark, and only then', () => {
+    expect(at(radar)).toEqual({ kind: 'advise' });
+    expect(at({ ...radar, sight: blip })).toMatchObject({ id: 'radarRing', marks: ['[data-guide="sight-unknown"]', '[data-guide="sight-radar"]'] });
+    expect(at({ ...radar, sight: blip, acked: [...told, 'radarRing'] })).toMatchObject({ id: 'radarContact' });
+  });
+  it('closes with the three jobs once the telescope has named what the radar found', () => {
+    const asked = [...told, 'radarRing', 'radarContact'];
+    expect(at({ ...radar, sight: blip, acked: asked })).toEqual({ kind: 'advise' });
+    expect(at({ ...radar, sight: traffic, acked: asked })).toMatchObject({ id: 'sightTrio', marks: ['[data-guide="sight-craft"]', '[data-guide="sight-radar"]'] });
+    expect(at({ ...radar, sight: traffic, acked: [...asked, 'sightTrio'] })).toEqual({ kind: 'advise' });
+  });
+  // Radar first, then the telescope picks the scout up: its own lesson goes before the radar's last line.
+  it('finishes the telescope lesson before the radar closes', () => {
+    const both = { ...late, modules: { ...late.modules, RADAR: 1 }, sight: traffic };
+    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact'] })).toMatchObject({ id: 'telescopeRing' });
+    expect(at({ ...both, acked: [...late.acked, 'radarRing', 'radarContact', 'telescopeRing'] })).toMatchObject({ id: 'telescopeTraffic' });
+  });
+  // The scout reaches the radar before the telescope: the lesson that has its subject speaks first.
+  it('lets the radar speak first when the scout is the first thing in sight', () => {
+    expect(at({ ...late, modules: { ...late.modules, RADAR: 1 }, sight: blip })).toMatchObject({ id: 'radarRing' });
   });
 });
 

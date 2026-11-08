@@ -11,12 +11,14 @@ const collect = { kind: 'step', id: 'collect', step: 'press', chapter: 1, strict
 const goal = (over: Partial<StarterGoalValue> = {}): StarterGoalValue =>
   ({ step: null, choice: { kind: 'collect' }, picked: false, guided: true, view: 'galaxy', ...over });
 
-it('pulses only the first visible enabled goal and remembers an unrecorded press without gating anything', () => {
+it('pulses only the first visible enabled goal and remembers an unrecorded press without gating anything', async () => {
   const ack = vi.fn(), other = vi.fn();
   const view = render(<><button data-guide="works" disabled>hidden</button><button data-guide="works">works</button><button onClick={other}>free</button><StarterGoalPulse goal={goal({ step: collect })} ack={ack} /></>);
   expect(document.querySelectorAll('[data-starter-next]')).toHaveLength(1);
   fireEvent.click(document.querySelector('[data-starter-next]')!);
-  expect(ack).toHaveBeenCalledWith('collect');
+  // Recorded after the press, so a mark the next step takes away still does its own work first.
+  expect(ack).not.toHaveBeenCalled();
+  await vi.waitFor(() => { expect(ack).toHaveBeenCalledWith('collect'); });
   fireEvent.click(view.getByText('free')); expect(other).toHaveBeenCalledOnce();
   view.unmount(); expect(document.querySelector('[data-starter-next]')).toBeNull();
 });

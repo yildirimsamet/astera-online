@@ -2,13 +2,14 @@ import type { VesselView } from '../../api/starterSchemas.js';
 import { z } from 'zod';
 import { REPAIR_LADDER, nextRequiredStep } from '@astera/rules';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useGalaxy, useMining, usePending, usePlanet } from '../../api/queries.js';
+import { useGalaxy, useMining, usePending, usePlanet, useTraffic } from '../../api/queries.js';
 import { useProjected } from '../../lib/projection.js';
 import { vesselToPlanetView } from '../adapter.js';
 import { hasOtherShip } from '../neighbour.js';
 import { opportunities, opportunityKey, type Opportunity } from '../opportunities.js';
 import { timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
+import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 
 /** Remembered only on this device; the ship itself carries everything else. */
@@ -22,7 +23,16 @@ function readAcked(vesselId: string): string[] {
 }
 
 /** Marks that leave no trace on the ship: pressing them is the step. */
-export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport'];
+export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'telescopeTraffic'];
+
+/**
+ * Records a pressed mark once the press is over. Recording moves the guide on, and a mark that belongs
+ * to the step (the craft in the sky) leaves with it: recorded mid-press, it was gone before its own
+ * handler ran (F6 walk 2026-11-08).
+ */
+export const ackAfterPress = (ack: (id: TutorialStepId) => void, id: TutorialStepId): void => {
+  window.setTimeout(() => { ack(id); }, 0);
+};
 
 export interface StarterTutorial {
   answer: TutorialAnswer;
@@ -49,6 +59,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const pending = usePending();
   const mining = useMining();
   const galaxy = useGalaxy();
+  const traffic = useTraffic();
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -90,6 +101,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     crates: vessel.crates,
     alone,
     view,
+    sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
     acked: list,
   };
   const answer = tutorialStep(input);

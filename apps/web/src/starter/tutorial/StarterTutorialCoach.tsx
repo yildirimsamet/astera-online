@@ -23,7 +23,7 @@ import { AwayChip } from './AwayChip.js';
 import { DragHint } from './DragHint.js';
 import { useSilenceToasts } from '../../ui/Toast.js';
 import { holdUnlock } from './unlockHold.js';
-import { ACK_ON_PRESS, type StarterTutorial } from './useStarterTutorial.js';
+import { ACK_ON_PRESS, ackAfterPress, type StarterTutorial } from './useStarterTutorial.js';
 
 /** No news over the NPC's card (owner playtest 2026-11-06); a refusal still shows, as in FlightSchool. */
 function Hush() {
@@ -198,7 +198,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     const press = (event: MouseEvent): void => {
       const node = event.target;
       const element = node instanceof Element ? node : node instanceof Node ? node.parentElement : null;
-      if (element?.closest(first)) ack(pressId);
+      if (element?.closest(first)) ackAfterPress(ack, pressId);
     };
     document.addEventListener('click', press, true);
     return () => { document.removeEventListener('click', press, true); };

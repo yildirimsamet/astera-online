@@ -906,7 +906,7 @@ export function GalaxyCanvas({
             showRadar={showRadarReach}
           />
         )}
-        {sensors && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes}/>}
+        {sensors && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes} onSelect={(id) => { onFocus({ kind: 'contact', id }); }}/>}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
           nodes={fieldBodies}

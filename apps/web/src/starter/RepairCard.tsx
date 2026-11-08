@@ -4,10 +4,12 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compact, full } from '../lib/format.js';
+import { playSound } from '../lib/sound.js';
 import type { Projected } from '../lib/projection.js';
 import { duration, durationPrecise } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { Icon } from '../v2/icons.js';
+import { Icon, type IconId } from '../v2/icons.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
 import { moduleArt, rateChange, systemSteps } from './shipScreen.js';
 import { effectLine, moduleName, requirementLine } from './shipCopy.js';
 import { repairGainIcon, stepEffects, timeToAfford } from './steps.js';
@@ -92,10 +94,6 @@ function Gain({ step, context }: { step: RepairStep; context: RepairContext }) {
         </p>
       )}
       {others.length > 0 && <p data-testid="repair-effects" className="text-micro leading-snug text-v2-ink-2"><span className="inline-flex items-center gap-1"><Icon id="i-chev" className="size-3"/><Icon id={repairGainIcon(step)} className="size-4 text-v2-self"/>{others.map(effectLine).join(' · ')}</span></p>}
-      {/* What the Aegis invites is a cost of the decision, so it stands before it (player test D-01). */}
-      {others.some(effect => effect.kind === 'feature' && effect.feature === 'defence') && (
-        <p data-testid="repair-risk" className="text-micro leading-snug text-v2-warn">{t('starter.feature.defence.risk')}</p>
-      )}
     </>
   );
 }
@@ -137,7 +135,7 @@ function Action({ step, state, context }: { step: RepairStep; state: StepState; 
         {step.crystal > 0 && <Price resource="crystal" amount={step.crystal} held={context.held.crystal} />}
         <Pill><span className="flex items-center gap-1 font-v2-mono text-caption text-v2-ink"><Icon id="i-clock" className="size-3 shrink-0" />{repairTime(step.minutes)}</span></Pill>
       </div>
-      <button
+      {!isAegisChoice(step) && <button
         type="button"
         data-guide="repair-order"
         data-step={`${step.module}:${String(step.stage)}`}
@@ -146,9 +144,47 @@ function Action({ step, state, context }: { step: RepairStep; state: StepState; 
         className="min-h-8 w-full rounded-control border border-v2-self/80 bg-gradient-to-b from-v2-self/90 to-v2-self/50 text-caption font-bold uppercase tracking-wider text-v2-void shadow-[0_0_14px_-3px_var(--color-v2-self),inset_0_1px_0_rgba(255,255,255,.35)] disabled:border-v2-line disabled:bg-none disabled:bg-v2-raise disabled:text-v2-ink-3 disabled:shadow-none"
       >
         {t('starter.repair')}
-      </button>
+      </button>}
       <PaymentLine step={step} context={context} />
     </>
+  );
+}
+
+/** The first Aegis is the one repair that is a choice both ways (owner 2026-11-08, N3). */
+const isAegisChoice = (step: RepairStep): boolean => step.module === 'AEGIS' && step.stage === 1;
+
+function Side({ testId, icon, title, lines, tone }: { testId: string; icon: IconId; title: string; lines: readonly string[]; tone: 'warn' | 'self' }) {
+  return (
+    <div data-testid={testId} className={`flex min-w-0 flex-col gap-1 rounded-cell border px-2 py-1.5 ${tone === 'warn' ? 'border-v2-warn/40 bg-v2-warn/5' : 'border-v2-self/35 bg-v2-self/5'}`}>
+      <p className={`flex items-center gap-1 text-caption font-semibold ${tone === 'warn' ? 'text-v2-warn' : 'text-v2-self'}`}><Icon id={icon} className="size-3.5 shrink-0" />{title}</p>
+      <ul className="flex flex-col gap-0.5">
+        {lines.map(line => <li key={line} className="text-micro leading-snug text-v2-ink-2">{line}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * THE AEGIS, LAID OUT BOTH WAYS (plan F6, §2). What the shield brings and what going without keeps,
+ * side by side before anything is spent; the repair is held, because it cannot be taken back.
+ */
+function AegisChoice({ step, state, context }: { step: RepairStep; state: StepState; context: RepairContext }) {
+  const { t } = useTranslation();
+  const label = t('starter.aegisChoice.hold');
+  return (
+    <div data-testid="aegis-choice" className="flex flex-col gap-1.5 border-t border-v2-line/70 px-2.5 py-2">
+      <p className="text-label font-semibold uppercase tracking-label text-v2-ink-2">{t('starter.aegisChoice.title')}</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        <Side testId="aegis-with" icon="i-shield" tone="warn" title={t('starter.aegisChoice.with')}
+          lines={[t('starter.aegisChoice.withShield'), t('starter.aegisChoice.withPirates'), t('starter.aegisChoice.withNeighbours', { hours: STARTER.pvp.shieldHours }), t('starter.aegisChoice.withAttack')]} />
+        <Side testId="aegis-without" icon="i-telescope" tone="self" title={t('starter.aegisChoice.without')}
+          lines={[t('starter.aegisChoice.withoutSafe'), t('starter.aegisChoice.withoutOutposts'), t('starter.aegisChoice.withoutJump')]} />
+      </div>
+      <span data-guide="repair-order" data-step={`${step.module}:${String(step.stage)}`} className="block">
+        <HoldButton label={label} disabledReason={state === 'open' && canOrder(step, context) ? null : label}
+          onCommit={() => { playSound('shield'); context.order(step); }} />
+      </span>
+    </div>
   );
 }
 
@@ -222,6 +258,7 @@ export function RepairCard({ shown, system, context, onShow }: {
           <Action step={shown} state={state} context={context} />
         </div>
       </div>
+      {isAegisChoice(shown) && (state === 'open' || state === 'closed') && <AegisChoice step={shown} state={state} context={context} />}
       <Strip steps={systemSteps(system)} shown={shown} context={context} onShow={onShow} />
     </section>
   );

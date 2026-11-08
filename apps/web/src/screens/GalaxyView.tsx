@@ -21,6 +21,7 @@ import { gateOf } from '../starter/gate.js';
 import { UniverseChip } from '../starter/UniverseChip.js';
 import { useDepartures, useMainSky, useUniverse } from '../starter/queries.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
+import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
 import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
@@ -1814,7 +1815,7 @@ export function GalaxyView({
             rather than on a separate id list, so a contact that is only a Radar
             question mark still reads as one.
           */
-          if (contact.kind === 'pirate') {
+          if (contactRail(contact, ship !== undefined) === 'pirate') {
             return (
               <PirateFocusHost
                 id={contact.id}

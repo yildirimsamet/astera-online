@@ -289,6 +289,21 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
   - Radar: gözcünün `?` görüntüsü.
   - Temas yoksa ders bekler. Radar 1 çıkış kapısında ve gözcü oyundaki her Radar 1 sahibine geldiği için iki ders de pratikte çıkıştan önce yaşanır; ana galaksiye bayrak taşımak gerekmez.
 - Aegis seçim kartı §2'deki metinle yapılır.
+- **Teslim (2026-11-08):**
+  - **Sensör dersleri gerçek temasla açılır.** Her adım kendi öznesini bekler (`ready`); temas yoksa ders susar, uydurma temas yoktur. Canlı gökyüzü `sightNow` ile okunur (halkada tanınan uçuş, halkadan çıkıp izlenen uçuş, radar `?`'i).
+    - Teleskop: halkada bir uçuş belirince "göster" satırı; ardından "Uçuşa dokun" (basma adımı): sahnedeki işaret dokunulabilir olur ve temas paneli açılır; uçuş halkadan çıkınca "izle" satırı.
+    - Radar: gözcünün `?`'i radar halkasına girince iki satır; teleskop o uçuşu tanıyınca kapanış satırı ("Sonda içini okur, teleskop tanır, radar uyarır").
+    - Gözcü önce radara girdiği için radar dersi önce başlayabilir; teleskop dersi kapanış satırından önce araya girer.
+    - İlk görüşte ses ve titreşim: radarda uyarı, teleskopta onay sesi.
+  - **Aegis seçim kartı:** Savunma sekmesinde Aegis 1 kartı "Aegis ile / Aegis olmadan"ı yan yana gösterir; onarım basılı tutularak yapılır (geri alınamaz).
+    - **Koddan doğrulanan metin, §2'den farklı:** Korsanlar Aegis 1'den hemen sonra gelir (`launchPirates`), 12 saat beklemez. 12 saat yalnız komşuların saldırısı için geçerlidir (`shieldHours`). Kart bunu söyler; kural değişmedi.
+    - Eski tek satırlık risk uyarısı (`feature.defence.risk`) kartın yerini aldığı için silindi (6 dil).
+  - **Yürüyüşte bulunan ve düzeltilen hatalar:**
+    - Rehberin "basınca sayılan" adımları basma sırasında kaydediliyordu. Kayıt rehberi ilerletiyor ve adımın kendi işaretini kaldırıyordu; düğmenin kendi işi (temas panelini açmak) hiç çalışmıyordu. Kayıt artık basma bittikten sonra yapılır (`ackAfterPress`); tüm basma adımlarını kapsar.
+    - Sahne işaretine dokunuş arkadaki gökyüzüne de gidiyor ve "Hedefin: Vantage" kartını açıyordu. İşaret artık dokunuşu sahneye geçirmez.
+    - Starter'da korsan veya gözcü temasına dokunmak hiçbir şey açmıyordu: ana galaksinin korsan paneli starter'da olmayan korsan listesini okur. Gemideyken korsan teması sıradan temas paneliyle açılır (`contactRail`). Bu daha önceden var olan bir hataydı.
+  - **350×812 yürüyüşü (gerçek gözcü ve bot sondası):** Radar `?` → iki radar satırı → teleskop satırı → "Uçuşa dokun" → dokunuş "Korsan filosu · Küçük filo" panelini açtı → kapanış satırı. Aegis kartı tam genişlikte, taşma ve sayfa hatası yok. "İzle" satırı yürüyüşte görülmedi (gözcü halkadan çıkmadan vardı); birim testle bağlı.
+  - **Not, kapsam dışı:** Bana gelen korsanın temas panelinde "Varışı bilinmiyor" yazıyor; radar varışı biliyor. Mevcut ana oyun metni, raporlandı.
 
 ### F7. Motor, yakıt ve geçiş
 - **Plan görünümü:** DT1 ve DT2 erken önerilir, yakıt darboğazı süresiyle birlikte gösterilir; parça avı ve iki motor da aynı görünümde.

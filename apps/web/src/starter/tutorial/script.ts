@@ -2,6 +2,7 @@ import { REPAIR_LADDER, type StarterFeature, type VesselFact } from '@astera/rul
 import type { StarterTutorialStepId } from '../../api/starterTutorialSteps.js';
 import type { Opportunity } from '../opportunities.js';
 import type { HuntStage } from '../hunt.js';
+import type { SightNow } from './sightLesson.js';
 
 /**
  * THE STARTER GUIDE (owner 2026-11-08, N1). A short core is held: the power card, the first collect
@@ -30,6 +31,8 @@ export interface TutorialInput {
   /** No other ship is in sight: a probe report has no subject yet (owner playtest 2026-11-06). */
   alone?: boolean;
   view: TutorialView;
+  /** What the live sky holds: a sensor lesson waits for its subject (plan F6). None means nothing in sight. */
+  sight?: SightNow;
   /** Lines read and marks pressed, on this device. */
   acked: readonly string[];
 }
@@ -65,6 +68,8 @@ interface Step {
   reached?: (input: TutorialInput) => boolean;
   /** True right now (the works are empty, the card was read): this step is passed over. */
   satisfied?: (input: TutorialInput) => boolean;
+  /** The moment for it has come: until then its part waits here and says nothing. */
+  ready?: (input: TutorialInput) => boolean;
 }
 /** A run of steps that speaks once, when its moment comes, and in order. */
 interface Part { strict: boolean; due: (input: TutorialInput) => boolean; steps: readonly Step[] }
@@ -79,6 +84,9 @@ const tab = (system: string): string => `[data-guide="system-${system}"]`;
 const WORKS = '[data-guide="works"]';
 const CRATE = '[data-guide="crate"]';
 const sensor = (module: 'TELESCOPE' | 'RADAR') => (i: TutorialInput) => !has(i, module, 1);
+const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.sight?.[what] === true;
+const CRAFT = '[data-guide="sight-craft"]';
+const UNKNOWN = '[data-guide="sight-unknown"]';
 
 /** Power, the first collect and the first repair: the one moment the guide holds (N1). */
 const CORE: Part = {
@@ -119,20 +127,24 @@ const MOMENTS: readonly Part[] = [
       { id: 'farewell', kind: 'read', chapter: 6, place: 'any', marks: [] },
     ],
   },
+  // THE SENSORS, ON A REAL CONTACT (plan F6): show it, have it touched, watch it go. Nothing is made
+  // up for a lesson; an empty sky only means the lesson waits. Radar 1 is on the way out and the scout
+  // comes to every Radar 1 owner who is there, so in practice both are met before the jump.
   {
     strict: false, due: i => has(i, 'TELESCOPE', 1),
     steps: [
-      { id: 'telescopeRing', kind: 'read', chapter: 7, place: 'galaxy', marks: ['[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE') },
-      { id: 'telescopeTraffic', kind: 'read', chapter: 7, place: 'galaxy', marks: ['[data-guide="sight-craft"]', '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE') },
-      { id: 'telescopeTrack', kind: 'read', chapter: 7, place: 'galaxy', marks: ['[data-guide="sight-craft"]', '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE') },
+      { id: 'telescopeRing', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
+      { id: 'telescopeTraffic', kind: 'press', chapter: 7, place: 'galaxy', marks: [CRAFT], satisfied: sensor('TELESCOPE'), ready: inSight('traffic') },
+      { id: 'telescopeTrack', kind: 'read', chapter: 7, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-telescope"]'], satisfied: sensor('TELESCOPE'), ready: inSight('tracked') },
     ],
   },
   {
     strict: false, due: i => has(i, 'RADAR', 1),
     steps: [
-      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: ['[data-guide="sight-radar"]'], satisfied: sensor('RADAR') },
-      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: ['[data-guide="sight-unknown"]', '[data-guide="sight-radar"]'], satisfied: sensor('RADAR') },
-      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: ['[data-guide="sight-radar"]'], satisfied: sensor('RADAR') },
+      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('unknown') },
+      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('unknown') },
+      // Closed once the telescope has named a craft in its ring: what the radar asked, answered.
+      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT, '[data-guide="sight-radar"]'], satisfied: sensor('RADAR'), ready: inSight('traffic') },
     ],
   },
 ];
@@ -166,6 +178,8 @@ function nextIn(part: Part, input: TutorialInput): TutorialAnswer | null {
   // A step the ship records, or one read further on, puts everything before it behind the player.
   part.steps.forEach((step, index) => { if (step.reached?.(input) || input.acked.includes(step.id)) from = index + 1; });
   const step = part.steps.slice(from).find(s => !input.acked.includes(s.id) && !s.satisfied?.(input));
+  // Its moment has not come: the part waits here, it does not skip ahead.
+  if (step?.ready && !step.ready(input)) return null;
   return step ? locate(step, input, part.strict) : null;
 }
 

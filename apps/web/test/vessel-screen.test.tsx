@@ -412,7 +412,39 @@ describe('the ship screen', () => {
     fireEvent.click(within(screen.getByRole('tablist', { name: 'Ship systems' })).getByRole('tab', { name: /Defence/ }));
     const card = within(screen.getByTestId('next-repair'));
     expect(screen.getByTestId('next-repair').getAttribute('aria-label')).toBe('Aegis');
-    expect(card.getByTestId('repair-risk').textContent).toBe('Once it is repaired, pirates and other ships can attack this ship.');
+    // The choice is laid out both ways (plan F6, §2): what the shield brings, and what going without keeps.
+    const choice = within(card.getByTestId('aegis-choice'));
+    expect(choice.getByTestId('aegis-with').textContent).toMatch(/With the Aegis.*takes the damage first.*Pirates start coming.*After 12 h neighbours can attack you.*After a battle you can attack ships too/);
+    expect(choice.getByTestId('aegis-without').textContent).toMatch(/Without it.*Neither pirates nor neighbours can attack you.*only outposts.*not needed to leave/);
+    // A plain button does not take this one: it is held.
+    expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
+  });
+
+  it('repairs the Aegis on a hold, never on a tap', async () => {
+    const progress: VesselProgress = {
+      ...openingProgress(),
+      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1, DEUTERIUM_PLANT: 2 },
+    };
+    const { requests } = show(vessel({ progress, alloy: 5000, crystal: 5000 }));
+    fireEvent.click(within(screen.getByRole('tablist', { name: 'Ship systems' })).getByRole('tab', { name: /Defence/ }));
+    const hold = within(screen.getByTestId('aegis-choice')).getByRole('button', { name: /Take the Aegis/ });
+    expect(hold.closest('[data-guide="repair-order"]')?.getAttribute('data-step')).toBe('AEGIS:1');
+    fireEvent.click(hold);
+    expect(requests).toEqual([]);
+    fireEvent.pointerDown(hold);
+    await waitFor(() => { expect(requests).toEqual([{ path: '/api/starter/repair', body: { module: 'AEGIS', stage: 1 } }]); });
+  });
+
+  it('keeps the choice shut until the radar is in', () => {
+    const progress: VesselProgress = {
+      ...openingProgress(),
+      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, DEUTERIUM_PLANT: 2 },
+    };
+    show(vessel({ progress, alloy: 5000, crystal: 5000 }));
+    fireEvent.click(within(screen.getByRole('tablist', { name: 'Ship systems' })).getByRole('tab', { name: /Defence/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Aegis, Stage 1 of/ }));
+    const hold = within(screen.getByTestId('aegis-choice')).getByRole('button', { name: /Take the Aegis/ });
+    expect(hold).toBeDisabled();
   });
 
   /**

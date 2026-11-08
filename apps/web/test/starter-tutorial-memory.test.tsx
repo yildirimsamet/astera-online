@@ -15,6 +15,7 @@ vi.mock('../src/api/queries.js', () => ({
   usePending: () => ({ data: { pending: [] } }),
   useMining: () => ({ data: { runs: state.runs } }),
   useGalaxy: () => ({ data: undefined }),
+  useTraffic: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
 afterEach(() => { localStorage.clear(); state.held = empty; state.ship = 'memory-1'; });
