@@ -8,6 +8,11 @@ export interface JumpPath { from: Point; planet: Point; radius: number; ship: nu
 
 export interface JumpPose { position: Point; target: Point; up: Point; fov: number }
 
+/** Where the game's camera stood and looked at the press. */
+export interface OpeningPose { position: Point; target: Point }
+/** How long the game's camera takes to settle onto the ship. */
+const TAKE_OVER = 2.4;
+
 /** The main game's own field, so the last frame is the main game's first. */
 export const JUMP_FOV = 45;
 /** How much wider the field opens at the top speed of the crossing. */
@@ -50,7 +55,7 @@ const speedShare = (s: number): number => {
  * opening with the speed; behind it as it stops with its world filling the sky; and at last the main
  * game's opening pose on that world.
  */
-export function jumpCamera(path: JumpPath, s: number): JumpPose {
+export function jumpCamera(path: JumpPath, s: number, opening?: OpeningPose): JumpPose {
   const { from, planet, radius, ship } = path;
   const stop = jumpStop(path);
   const { ahead, across, up } = axes(from, stop);
@@ -72,10 +77,19 @@ export function jumpCamera(path: JumpPath, s: number): JumpPose {
   position = lerp(position, add(add(at, ahead, -(ship * 3 + radius * 1.2)), up, ship + radius * 0.55), arrive);
   target = lerp(target, add(at, ahead, radius * 0.9), arrive);
 
+  // No cut: the game's own view eases onto the ship while the drive catches.
+  let roll = up;
+  if (opening) {
+    const take = smooth(0, TAKE_OVER, s);
+    position = lerp(opening.position, position, take);
+    target = lerp(opening.target, target, take);
+    roll = unit(lerp(LEVEL, up, take));
+  }
+
   const home = smooth(JUMP_FLIGHT.gone, 23.4, s);
   position = lerp(position, initialHomeCameraPosition(...planet), home);
   target = lerp(target, planet, home);
 
   // The frame rolls with the way, so a steep one still stands the ship up the screen; level again at home.
-  return { position, target, up: home >= 1 ? LEVEL : unit(lerp(up, LEVEL, home)), fov: JUMP_FOV + SPEED_FOV * speed * (1 - arrive) };
+  return { position, target, up: home >= 1 ? LEVEL : unit(lerp(roll, LEVEL, home)), fov: JUMP_FOV + SPEED_FOV * speed * (1 - arrive) };
 }

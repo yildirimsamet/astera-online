@@ -402,13 +402,18 @@ export async function inboundShips(db: Db, accountId: string, clock: Clock) {
 
 /** Read from the main game's side, by an account that no longer has a ship to lock. */
 export async function arrivalOwed(db: Db, accountId: string) {
-  const [row] = await db.select({ migration: vesselMigrations }).from(vesselMigrations)
+  const [row] = await db.select({ migration: vesselMigrations, ordinal: starterGalaxies.ordinal }).from(vesselMigrations)
     .innerJoin(vessels, eq(vessels.id, vesselMigrations.vesselId))
+    .innerJoin(starterGalaxies, eq(starterGalaxies.id, vessels.starterGalaxyId))
     .where(and(eq(vessels.accountId, accountId), eq(vesselMigrations.status, 'DONE'), isNull(vesselMigrations.arrivalSeenAt)));
-  const landed = await db.select({ at: starterDepartures.at }).from(starterDepartures).where(eq(starterDepartures.accountId, accountId)).limit(1);
+  const landed = await db.select({ at: starterDepartures.at, x: starterDepartures.x, y: starterDepartures.y, z: starterDepartures.z })
+    .from(starterDepartures).where(eq(starterDepartures.accountId, accountId)).limit(1);
+  const left = landed[0];
   return {
-    arrival: row ? { shardName: row.migration.shardName ?? '', cargo: row.migration.cargo, planetId: row.migration.planetId, hull: vesselHull(row.migration.vesselId) } : null,
-    landedAt: landed[0]?.at.toISOString() ?? null,
+    // Its own galaxy and berth, so the flight watched again leaves from where the ship stood.
+    arrival: row ? { shardName: row.migration.shardName ?? '', cargo: row.migration.cargo, planetId: row.migration.planetId, hull: vesselHull(row.migration.vesselId),
+      ordinal: row.ordinal, berth: left ? { x: left.x, y: left.y, z: left.z } : null } : null,
+    landedAt: left?.at.toISOString() ?? null,
   };
 }
 

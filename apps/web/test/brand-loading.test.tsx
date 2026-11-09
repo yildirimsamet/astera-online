@@ -4,6 +4,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useOpeningCover } from '../src/lib/openingCover.js';
 import { LoadingScreen } from '../src/shell/LoadingScreen.js';
+import { JUMP_LAYER } from '../src/starter/jump.js';
 
 describe('branded loading with truthful progress', () => {
   afterEach(() => { vi.useRealTimers(); });
@@ -111,5 +112,7 @@ describe('the loading cover is the top layer', () => {
     });
     expect(others.length).toBeGreaterThan(0);
     expect(cover).toBeGreaterThan(Math.max(...others));
+    // The one layer over it, by decision: the jump, whose last beats play while the planet loads.
+    expect(JUMP_LAYER).toBeGreaterThan(cover);
   });
 });

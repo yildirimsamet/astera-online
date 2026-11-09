@@ -16,6 +16,8 @@ export interface JumpWorld {
   ship: number;
   worlds: readonly PlanetNode[];
   ships: readonly NeighbourShip[];
+  /** The new world alone: the galaxy view draws its own worlds and adds only this one. */
+  destination: PlanetNode;
 }
 
 const moved = (p: Vec3, by: Vec3): Vec3 => ({ x: p.x + by.x, y: p.y + by.y, z: p.z + by.z });
@@ -45,20 +47,22 @@ export function pressedWorld({ ordinal, berth, landing, planetId, starter, main 
     ship: VESSEL_LENGTH,
     worlds: [...planetNodes(here.filter(planet => planet.body !== 'VESSEL'), true), ...mainSkyNodes(others, { x: 0, y: 0, z: 0 }), destination!],
     ships: neighbourShips(here),
+    destination: destination!,
   };
 }
 
-/** Watched again from the new world: it flies in from its first galaxy's centre. */
-export function landedWorld(planets: readonly GalaxyPlanet[], ordinal: number): JumpWorld | null {
+/** Watched again from the new world: it flies in from its berth in its first galaxy, or that galaxy's centre. */
+export function landedWorld(planets: readonly GalaxyPlanet[], ordinal: number, berth: Vec3 | null = null): JumpWorld | null {
   const home = planets.find(planet => planet.isSelf);
   if (!home) return null;
   const worlds = planetNodes(planets);
   return {
-    from: toWorld(starterGalaxyCentre(ordinal)),
+    from: toWorld(moved(berth ?? { x: 0, y: 0, z: 0 }, starterGalaxyCentre(ordinal))),
     planet: toWorld(home.position),
     radius: worlds.find(node => node.id === home.id)!.radius,
     ship: VESSEL_LENGTH,
     worlds,
     ships: [],
+    destination: worlds.find(node => node.id === home.id)!,
   };
 }

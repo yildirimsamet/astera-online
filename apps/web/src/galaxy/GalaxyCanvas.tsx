@@ -3,6 +3,8 @@ import { ModelScale } from './modelScale.js';
 import { modelScale } from './scene.js';
 import { DepartureBeams } from './DepartureBeams.js';
 import type { WatchedFlight } from './watchedFlights.js';
+import { JUMP_LAYER, type Jump } from '../starter/jump.js';
+import type { JumpWorld } from '../starter/jumpWorld.js';
 import { PartMarks } from './PartMarks.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
@@ -225,6 +227,8 @@ export interface GalaxyCanvasProps {
   universe?: { view: UniverseView | undefined; open: boolean; onLimit: (at: boolean) => void; onOpen: () => void; onClose: () => void };
   /** Other commanders' jumps in the sky, in this galaxy's frame (owner, 2026-11-09). */
   watched?: readonly WatchedFlight[];
+  /** This ship's own jump, flown here from where it stands (owner, 2026-11-09). The view hands it the camera. */
+  flight?: { jump: Jump; world: JumpWorld };
   starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; parts: readonly Vec3[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
   unknownSignals?: readonly UnknownSignalView[];
   unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
@@ -380,11 +384,13 @@ export interface GalaxyCanvasProps {
 const ParkedShipModel = lazy(() => import('./ParkedShip.js'));
 const HomewardShipModel = lazy(() => import('./HomewardShip.js'));
 /** Somebody else's jump: its hull and the studio's flames load only when one is in the sky. */
+const LiveJumpScene = lazy(() => import('./LiveJump.js').then(module => ({ default: module.LiveJump })));
 const JumpWatch = lazy(() => import('./JumpWatch.js').then(module => ({ default: module.JumpWatch })));
 
 export function GalaxyCanvas({
   universe,
   watched,
+  flight,
   starter,
   cosmeticAppearance,
   planets,
@@ -811,7 +817,8 @@ export function GalaxyCanvas({
         // nothing selected behind it.
         if (wasTap() && wasMiss() && !allowFocus) onFocus(null);
       }}
-      style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
+      // In flight the view lifts over the game's panels and rails, under the scene's words.
+      style={{ position: 'absolute', inset: 0, touchAction: 'none', ...(flight ? { position: 'fixed', zIndex: JUMP_LAYER, pointerEvents: 'none' } : {}) }}
     >
       <color attach="background" args={['#04060c']} />
       {/*
@@ -944,7 +951,8 @@ export function GalaxyCanvas({
           <PartMarks marks={starter.parts} />
         </Suspense>}
         {watched && watched.length > 0 && <Suspense fallback={null}><JumpWatch flights={watched} /></Suspense>}
-        {parkedShip && onOpenShip && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
+        {flight && <Suspense fallback={null}><LiveJumpScene jump={flight.jump} world={flight.world} offset={toWorld(mainOffset ?? NO_OFFSET)} /></Suspense>}
+        {parkedShip && onOpenShip && !flight && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <OwnFleets
@@ -995,7 +1003,7 @@ export function GalaxyCanvas({
           impacts={interceptionImpacts ?? []}
           nodes={nodes}
         />
-        {!overview && !universe?.open && <Labels
+        {!overview && !universe?.open && !flight && <Labels
           nodes={aboard ? visibleBodies : nodes}
           hpRadiation={hpRadiation}
           selectedId={selectedId}
@@ -1070,7 +1078,7 @@ export function GalaxyCanvas({
       {openingHome && <Html position={home} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
       </Html>}
-      <Rig
+      {!flight && <Rig
         {...(mainOffset ? { mainOffset } : {})}
         {...(universe && !school ? { universe: { ...universe, balls } } : {})}
         navigationRadius={navigationRadius}
@@ -1098,7 +1106,7 @@ export function GalaxyCanvas({
         openingPrepared={prepared && openingDataReady && gpu.live}
         openingWork={openingWork}
         openingMark={openingMark}
-      />
+      />}
       {/* E11: a page docked on the right does not hide the camera's subject. */}
       <ViewOffset />
       {school && (school.overview !== undefined || school.transit !== undefined) && <SchoolCamera frame={school.overview} transit={school.transit} nodes={nodes} onSelect={id => { onFocus({ kind: 'planet', id }); }} />}

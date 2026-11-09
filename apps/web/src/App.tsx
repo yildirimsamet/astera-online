@@ -1,5 +1,6 @@
 import { TrainingDoor } from './onboarding/TrainingDoor.js';
-import { sceneOwnsSession, useJump, useJumpPressed } from './starter/jump.js';
+import { onlineManager } from '@tanstack/react-query';
+import { gameCovered, sceneOwnsSession, useJump, useJumpPressed } from './starter/jump.js';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAnalyticsScreen } from './lib/playerAnalytics/useAnalyticsScreen.js';
 import { useTranslation } from 'react-i18next';
@@ -127,7 +128,17 @@ function SessionApp() {
   useEventStream(ready && !academyReplay && !sceneOwnsSession(jump, pressed, onShip), rollover);
   // The session moves to the planet under the last beat of the jump, so the fade lands on the real thing.
   // Until it stands there the ship is not drawn: its screens would only ask a server that has moved on.
-  const covered = sceneOwnsSession(jump, false, onShip);
+  const covered = gameCovered(jump, onShip);
+  // While the ship flies in the galaxy view, that view stays as it was pressed: nothing is read under it.
+  // The server has moved the commander on, and a read now would answer for a ship that has left.
+  const flyingHere = jump?.inGame === true && jump.stage === 'flight';
+  useEffect(() => {
+    if (!flyingHere) return;
+    // The sheet the press was made in steps aside: the flight is the galaxy view itself.
+    setPanel(null);
+    onlineManager.setOnline(false);
+    return () => { onlineManager.setOnline(true); };
+  }, [flyingHere]);
   useEffect(() => {
     if (jump?.stage !== 'reveal' || jump.replay || session.phase !== 'ready' || !session.me.vessel) return;
     setPanel(null);

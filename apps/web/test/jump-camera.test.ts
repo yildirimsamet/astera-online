@@ -66,6 +66,22 @@ describe('the camera of the jump', () => {
     }
   });
 
+  // Owner 2026-11-09: no cut to a film. The camera leaves from where the player was looking.
+  it('opens on the game camera and blends onto the ship without a jump', () => {
+    // The game's view of its ship: a few lengths off, looking at it.
+    const opening = { position: [path.from[0] + 6, path.from[1] + 8, path.from[2] - 10] as const, target: path.from };
+    const first = jumpCamera(path, 0, opening);
+    expect(first.position).toEqual(opening.position);
+    expect(first.target).toEqual(opening.target);
+    expect(jumpCamera(path, 3, opening)).toEqual(jumpCamera(path, 3));
+    let last = first.position;
+    for (let s = 0.02; s <= 3; s += 0.02) {
+      const now = jumpCamera(path, s, opening).position;
+      expect(Math.hypot(now[0] - last[0], now[1] - last[1], now[2] - last[2])).toBeLessThan(0.5);
+      last = now;
+    }
+  });
+
   it('sees the ship stop at its world with the world behind it', () => {
     const s = JUMP_FLIGHT.arrive + 0.3;
     expect(seen(s, stop).inFrame).toBe(true);

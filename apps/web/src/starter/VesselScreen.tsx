@@ -189,7 +189,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
               ordinal: vessel.galaxy.ordinal, berth: vessel.position, landing: landing.placement.position, planetId: landing.placement.planetId,
               starter: queries.getQueryData<GalaxyView>(keys.galaxy)?.planets ?? [], main: mainSkyPoints(sky.data?.points ?? []),
             });
-            startJump({ shardName: landing.placement.shardName, hull: vesselHull(vessel.id), look: vesselLook(progress), world, landing, start: 0 });
+            startJump({ shardName: landing.placement.shardName, hull: vesselHull(vessel.id), look: vesselLook(progress), world, landing, start: 0, inGame: true });
           }}
         />
       )}

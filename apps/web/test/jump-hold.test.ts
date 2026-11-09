@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { endJump, fromTheLanding, jumpHoldsSession, pressJump, releaseJump, revealJump, sceneOwnsSession, startJump, takeCues, type Jump } from '../src/starter/jump.js';
+import { REVEAL_SECOND, SCENE_SECONDS, currentJump, mayReveal, endJump, markGameDrawn, stillFade, fromTheLanding, gameCovered, jumpHoldsSession, pressJump, releaseJump, revealJump, revealSecond, sceneOwnsSession, sceneSeconds, startJump, takeCues, type Jump } from '../src/starter/jump.js';
 
 /**
  * THE JUMP OWNS THE SESSION FROM THE PRESS (playtest 2026-11-09). The server seats the new commander
@@ -35,6 +35,82 @@ describe('who may move the session while the ship leaves', () => {
     expect(sceneOwnsSession(revealed, false, false)).toBe(false);
     expect(sceneOwnsSession({ ...revealed, replay: true }, false, true)).toBe(false);
     expect(sceneOwnsSession(null, false, true)).toBe(false);
+  });
+});
+
+/**
+ * THE JUMP IN THE GAME ITSELF (owner, 2026-11-09): "farklı bir animasyon filmi oynuyor gibi". The press
+ * flies the ship out of the player's own galaxy view, so that view stays drawn through the flight; it is
+ * covered only once the ship has reached its world and the session moves under a still of that frame.
+ */
+describe('the jump flown in the game', () => {
+  const flying = { ...scene({ inGame: true }), stage: 'flight' as const, origin: 0 };
+  const revealed = { ...flying, stage: 'reveal' as const };
+
+  it('keeps the galaxy view drawn while the ship flies, and covers it once the session moves', () => {
+    expect(gameCovered(flying, true)).toBe(false);
+    expect(gameCovered(revealed, true)).toBe(true);
+    expect(gameCovered(revealed, false)).toBe(false);
+  });
+
+  it('still covers the game for the scene played over it', () => {
+    expect(gameCovered({ ...flying, inGame: false }, true)).toBe(true);
+    expect(gameCovered(null, true)).toBe(false);
+  });
+
+  it('moves the session only after the camera stands where the main game opens, and ends after', () => {
+    expect(revealSecond(flying)).toBeGreaterThan(23.4);
+    expect(sceneSeconds(flying)).toBeGreaterThan(revealSecond(flying) + 2);
+    expect(revealSecond({ ...flying, inGame: false })).toBe(REVEAL_SECOND);
+    expect(sceneSeconds({ ...flying, inGame: false })).toBe(SCENE_SECONDS);
+  });
+});
+
+/**
+ * THE LAST FRAME HOLDS UNTIL THE GAME IS THERE (walk 2026-11-09): faded on a timer, it showed the main
+ * game's loading cover. It waits for the main view's first full frame, then gives way.
+ */
+describe('the still over the moving session', () => {
+  const reveal = 23.6;
+
+  it('holds while the main view is still preparing', () => {
+    expect(stillFade(reveal + 3, reveal, null)).toEqual({ opacity: 1, done: false });
+  });
+
+  it('gives way over a second once the main view has drawn', () => {
+    expect(stillFade(reveal + 2, reveal, reveal + 2).opacity).toBe(1);
+    expect(stillFade(reveal + 2.5, reveal, reveal + 2).opacity).toBeCloseTo(0.5, 1);
+    expect(stillFade(reveal + 3, reveal, reveal + 2)).toEqual({ opacity: 0, done: true });
+  });
+
+  it('holds a beat even when the main view was quick', () => {
+    expect(stillFade(reveal + 0.5, reveal, reveal + 0.1).opacity).toBe(1);
+  });
+
+  // A slow phone takes the still a frame late: moving the session first left nothing on the screen.
+  it('moves the session in the game only once the still is taken, or a second late without it', () => {
+    const inGame = { ...scene({ inGame: true }), stage: 'flight' as const, origin: 0 };
+    expect(mayReveal(inGame, reveal - 0.1, true)).toBe(false);
+    expect(mayReveal(inGame, reveal, false)).toBe(false);
+    expect(mayReveal(inGame, reveal, true)).toBe(true);
+    expect(mayReveal(inGame, reveal + 1, false)).toBe(true);
+    expect(mayReveal({ ...inGame, inGame: false }, REVEAL_SECOND, false)).toBe(true);
+  });
+
+  it('does not hold for ever', () => {
+    expect(stillFade(reveal + 9.5, reveal, null).done).toBe(true);
+  });
+
+  it('notes the main view drawn only once the session has moved', () => {
+    startJump(scene({ inGame: true }));
+    markGameDrawn();
+    expect(currentJump()?.drawnAt).toBeUndefined();
+    revealJump();
+    markGameDrawn();
+    const drawn = currentJump()?.drawnAt;
+    expect(drawn).toBeTypeOf('number');
+    markGameDrawn();
+    expect(currentJump()?.drawnAt).toBe(drawn);
   });
 });
 

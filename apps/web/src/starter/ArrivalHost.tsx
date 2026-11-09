@@ -84,7 +84,9 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
 
   // The way in, seen from here: the ship comes from its first galaxy to this world. It waits for the map.
   const planets = useGalaxy().data?.planets;
-  const world = useMemo(() => (planets ? landedWorld(planets, 1) : null), [planets]);
+  const ordinal = arrival?.ordinal;
+  const berth = arrival?.berth ?? null;
+  const world = useMemo(() => (planets && ordinal !== undefined ? landedWorld(planets, ordinal, berth) : null), [planets, ordinal, berth]);
   useEffect(() => {
     if (!hull || shardName === undefined || !world || jump || scenePlayed()) return;
     startJump({ shardName, hull, look: 'RENEWED', world, landing: null, start: fromTheLanding });

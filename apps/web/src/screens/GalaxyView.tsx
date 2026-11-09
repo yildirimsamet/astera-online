@@ -22,6 +22,7 @@ import { UniverseChip } from '../starter/UniverseChip.js';
 import { JumpCall } from '../starter/JumpCall.js';
 import { useDepartures, useInbound, useMainSky, useUniverse } from '../starter/queries.js';
 import { departuresWatched, inboundWatched } from '../galaxy/watchedFlights.js';
+import { markGameDrawn, useJump } from '../starter/jump.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
 import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
@@ -466,6 +467,8 @@ export function GalaxyView({
   const watched = useMemo(() => (ship
     ? departuresWatched(departures ?? [], mainOffsetOf(ship.galaxy.ordinal), beamClock)
     : inboundWatched(inbound ?? [], beamClock)), [ship, departures, inbound, beamClock]);
+  // This ship's own jump flies in this view (owner, 2026-11-09).
+  const jump = useJump();
   const [mainRowOpen, setMainRowOpen] = useState(false);
   const [atUniverseLimit, setAtUniverseLimit] = useState(false);
   const [universeAsked, setUniverseAsked] = useState(false);
@@ -834,6 +837,8 @@ export function GalaxyView({
   const dataSettled =
     !galaxy.isPending && !planet.isPending && !season.isPending && !mining.isPending;
   const covered = useOpeningCover(assets.ready && dataSettled && drawn);
+  // A jump's last frame waits over this view until it has drawn whole.
+  useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);
 
 
@@ -1370,6 +1375,7 @@ export function GalaxyView({
       <GalaxyCanvas
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
         watched={watched}
+        {...(ship && jump?.inGame && jump.stage === 'flight' && jump.world ? { flight: { jump, world: jump.world } } : {})}
         {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,

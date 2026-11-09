@@ -39,6 +39,12 @@ describe('the galaxies the jump crosses', () => {
     expect(world.ship).toBe(VESSEL_LENGTH);
   });
 
+  // The galaxy view draws its own worlds; the flight adds only the new one, so it must be at hand.
+  it('hands out the new world on its own, as the last of the worlds', () => {
+    expect(world.destination.id).toBe(world.worlds.at(-1)!.id);
+    expect(world.destination.position).toEqual(world.planet);
+  });
+
   it('keeps the other main worlds where they are', () => {
     expect(world.worlds.some(node => node.position[0] === toWorld(at(-500, 0, 300))[0])).toBe(true);
   });
@@ -60,6 +66,11 @@ describe('the jump seen again from the new world', () => {
     expect(world?.planet).toEqual(toWorld(at(800, 0, 100)));
     expect(world?.from).toEqual(toWorld(starterGalaxyCentre(3)));
     expect(world?.worlds.map(node => node.id).sort()).toEqual(['home', 'other']);
+  });
+
+  it('leaves from where the ship stood in its own galaxy, when that is known', () => {
+    const world = landedWorld(main, 2, at(120, -10, 60));
+    expect(world?.from).toEqual(toWorld(shift(at(120, -10, 60), starterGalaxyCentre(2))));
   });
 
   it('has nothing to show before the commander\'s world is known', () => {

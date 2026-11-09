@@ -131,7 +131,8 @@ export const landingSchema = z.object({
 export type Landing = z.infer<typeof landingSchema>;
 
 export const arrivalSchema = z.object({
-  arrival: z.object({ shardName: z.string(), cargo: moved, planetId: z.string().nullable(), hull: z.enum(VESSEL_HULLS) }).nullable(),
+  arrival: z.object({ shardName: z.string(), cargo: moved, planetId: z.string().nullable(), hull: z.enum(VESSEL_HULLS),
+    ordinal: z.number().int().positive(), berth: vec3.nullable() }).nullable(),
   landedAt: z.coerce.date().nullable(),
 });
 

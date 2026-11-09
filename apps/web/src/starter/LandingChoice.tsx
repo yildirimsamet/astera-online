@@ -81,7 +81,7 @@ export function LandingChoice({ view: opened, onCancel, onLanded }: {
   const [wanted, setWanted] = useState<number | null>(view.choices[0]?.index ?? null);
   const picked = view.choices.some(choice => choice.index === wanted) ? wanted : view.choices[0]?.index ?? null;
   // The scene is on its way before the press, so the moment of leaving never waits on the network.
-  useEffect(() => { void import('../galaxy/MigrationSequence.js'); }, []);
+  useEffect(() => { void import('../galaxy/MigrationSequence.js'); void import('../galaxy/LiveJump.js'); }, []);
   const name = view.target?.name ?? '';
   return (
     <Sheet

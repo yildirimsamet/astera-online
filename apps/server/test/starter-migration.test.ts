@@ -327,6 +327,11 @@ describe('the jump', () => {
       await jump(person.headers);
       const owed = await get<{ arrival: { shardName: string; cargo: MigrationView['cargo'] } | null }>(world, '/api/starter/arrival', person.headers);
       expect(owed.arrival?.cargo.fleet).toEqual({ DART: 1 });
+      // Watched again, the flight leaves from the ship's own galaxy and berth (review 2026-11-09).
+      const [ship] = await world.f.db.select({ galaxy: starterGalaxies.ordinal }).from(vessels)
+        .innerJoin(starterGalaxies, eq(starterGalaxies.id, vessels.starterGalaxyId)).where(eq(vessels.id, person.vesselId));
+      const [left] = await world.f.db.select().from(starterDepartures);
+      expect(owed.arrival).toMatchObject({ ordinal: ship!.galaxy, berth: { x: left!.x, y: left!.y, z: left!.z } });
       expect((await post(world, '/api/starter/arrival/seen', person.headers)).statusCode).toBe(200);
       const after = await get<{ arrival: unknown }>(world, '/api/starter/arrival', person.headers);
       expect(after.arrival).toBeNull();

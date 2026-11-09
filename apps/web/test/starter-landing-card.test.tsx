@@ -13,7 +13,7 @@ import { urlOf } from './starterVesselFixture.js';
  * keeps what came down, the first-season start and the total apart, and ends on a real choice:
  * fly out with what is ready, or build the Deuterium the new world does not make yet.
  */
-const arrival = { shardName: 'Vantage', cargo: { alloy: 2000, crystal: 300, deuterium: 50, fleet: { DART: 6 } }, planetId: 'p1', hull: 'SPINE' };
+const arrival = { shardName: 'Vantage', cargo: { alloy: 2000, crystal: 300, deuterium: 50, fleet: { DART: 6 } }, planetId: 'p1', hull: 'SPINE', ordinal: 2, berth: { x: 10, y: 0, z: -20 } };
 
 const harness = () => {
   const fetcher = vi.fn((input: RequestInfo | URL) => {

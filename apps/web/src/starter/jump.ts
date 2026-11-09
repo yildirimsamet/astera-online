@@ -17,6 +17,11 @@ export const BEATS: readonly { id: BeatId; from: number; to: number }[] = [
 ];
 
 export const SCENE_SECONDS = 25;
+/**
+ * THE JUMP'S LAYER, the one thing over the loading cover (playtest 2026-11-09): the planet loads under
+ * the scene's last beats. The galaxy view flying the ship sits here, the scene's words one above.
+ */
+export const JUMP_LAYER = 1001;
 /** When the session moves to the planet underneath: the game loads behind the last beat. */
 export const REVEAL_SECOND = 20;
 export const fromTheLanding = BEATS.find(beat => beat.id === 'fall')!.from;
@@ -40,7 +45,40 @@ export interface Jump {
   origin: number;
   /** Watched again from the card: this one can be skipped. */
   replay?: boolean;
+  /**
+   * Flown in the player's own galaxy view, from where the ship stands (owner, 2026-11-09: "farklı bir
+   * animasyon filmi oynuyor gibi"). Only the press: a replay or a cut ending plays over the planet.
+   */
+  inGame?: boolean;
+  /** When, on the scene's clock, the main view drew its first full frame under the still. */
+  drawnAt?: number;
 }
+
+/** In the game, the session moves once the camera stands where the main game opens (jumpCamera's 23.4). */
+const IN_GAME_REVEAL = 23.6;
+/** The still of that frame holds at least this long, and gives way over a second. */
+const STILL_BEAT = 0.6;
+const STILL_FADE = 1;
+/** A main view that never says it drew does not keep the still up: its own cover gives up at 7 s. */
+const STILL_LONGEST = 8;
+const IN_GAME_END = IN_GAME_REVEAL + STILL_LONGEST + STILL_FADE;
+
+/** How long the move waits for a still a slow phone has not taken yet. */
+const STILL_WAIT = 1;
+/** Whether the session may move now: in the game, only over the still, or a second late without it. */
+export const mayReveal = (current: Jump, s: number, hasStill: boolean): boolean => {
+  const reveal = revealSecond(current);
+  return s >= reveal && (!current.inGame || hasStill || s >= reveal + STILL_WAIT);
+};
+
+/** The still over the moving session: held until the main view has drawn, then faded off. */
+export function stillFade(s: number, reveal: number, drawnAt: number | null): { opacity: number; done: boolean } {
+  const from = Math.max(drawnAt ?? reveal + STILL_LONGEST, reveal + STILL_BEAT);
+  const opacity = Math.min(1, Math.max(0, 1 - (s - from) / STILL_FADE));
+  return { opacity, done: opacity <= 0 };
+}
+export const revealSecond = (current: Jump): number => (current.inGame ? IN_GAME_REVEAL : REVEAL_SECOND);
+export const sceneSeconds = (current: Jump): number => (current.inGame ? IN_GAME_END : SCENE_SECONDS);
 
 /** What the scene sounds and feels like, on its own clock. Silent, it would be a picture of leaving. */
 export interface SceneCue { at: number; sound: SoundCue; seconds?: number; haptic: Weight }
@@ -59,6 +97,8 @@ let jump: Jump | null = null;
 let pressed = false;
 /** How far into the scene its cues have sounded: once each, whatever remounts. */
 let heard = 0;
+/** The flight's last frame, held over the planet while the session moves under it. */
+let still: string | null = null;
 const listeners = new Set<() => void>();
 const tell = () => { for (const listen of listeners) listen(); };
 
@@ -77,11 +117,20 @@ export const startJump = (next: Omit<Jump, 'stage' | 'origin'>): void => {
   markScenePlayed();
   pressed = false;
   heard = next.start - 0.001;
+  still = null;
   jump = { ...next, stage: next.start === 0 && !next.replay ? 'flight' : 'reveal', origin: performance.now() - next.start * 1000 };
   tell();
 };
 export const revealJump = (): void => { if (jump) { jump = { ...jump, stage: 'reveal' }; tell(); } };
-export const endJump = (): void => { jump = null; tell(); };
+export const endJump = (): void => { jump = null; still = null; tell(); };
+export const holdJumpStill = (frame: string): void => { still = frame; tell(); };
+/** The main view under the still has drawn a full frame. Only after the session moved, and once. */
+export const markGameDrawn = (): void => {
+  if (jump?.stage !== 'reveal' || jump.drawnAt !== undefined) return;
+  jump = { ...jump, drawnAt: (performance.now() - jump.origin) / 1000 };
+  tell();
+};
+export const currentJump = (): Jump | null => jump;
 
 /** The press: from here until the scene reveals, only the scene moves the session (playtest 2026-11-09). */
 export const pressJump = (): void => { pressed = true; tell(); };
@@ -96,6 +145,9 @@ export const releaseJump = (): void => { if (pressed) { pressed = false; tell();
  */
 export const sceneOwnsSession = (current: Jump | null, isPressed: boolean, onShip: boolean): boolean =>
   isPressed || (current !== null && !current.replay && (current.stage === 'flight' || onShip));
+/** Whether the game is hidden under the scene: not while a ship flies in the game itself. */
+export const gameCovered = (current: Jump | null, onShip: boolean): boolean =>
+  sceneOwnsSession(current, false, onShip) && !(current?.inGame && current.stage === 'flight');
 /** For whatever would move the session: not now. The reveal's own move is not held. */
 export const jumpHoldsSession = (): boolean => sceneOwnsSession(jump, pressed, false);
 
@@ -109,3 +161,4 @@ export const takeCues = (seconds: number): readonly SceneCue[] => {
 const subscribe = (listen: () => void) => { listeners.add(listen); return () => { listeners.delete(listen); }; };
 export const useJump = (): Jump | null => useSyncExternalStore(subscribe, () => jump);
 export const useJumpPressed = (): boolean => useSyncExternalStore(subscribe, () => pressed);
+export const useJumpStill = (): string | null => useSyncExternalStore(subscribe, () => still);
