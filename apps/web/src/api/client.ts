@@ -876,7 +876,10 @@ export class Api {
    * The whole galaxy and the whole ladder, each read at most once every five
    * seconds whoever asks (`gatedRead.ts`, the owner's phone recording 2026-09-19).
    */
-  galaxy = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
+  private readonly galaxyGate = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
+  galaxy = () => this.galaxyGate();
+  /** The galaxy's last read left the cache: the next one goes at once. */
+  forgetGalaxyRead = () => { this.galaxyGate.forget(); };
   equipCosmetic = (category: CosmeticCategory, cosmeticId: CosmeticId | null, hull?: MobileHullId) =>
     this.send('/api/cosmetics/equip', cosmeticEquipSchema, { method: 'POST', body: { category, cosmeticId, ...(hull ? { hull } : {}) } });
   skins = () => this.send('/api/skins', skinCollectionSchema, {
@@ -931,8 +934,8 @@ export class Api {
   recallMonumentFlight = (waveId: string) =>
     this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall`, monumentRecallSchema,
       { method: 'POST', body: { all: true }, idempotencyKey: `monument-flight-recall:${waveId}` });
-  leaderboard = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
-  honorLeaderboard = gatedRead(() => this.send('/api/leaderboard?ranking=HONOR', leaderboardSchema), BIG_READ_GAP_MS);
+  leaderboard: () => Promise<z.infer<typeof leaderboardSchema>> = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
+  honorLeaderboard: () => Promise<z.infer<typeof leaderboardSchema>> = gatedRead(() => this.send('/api/leaderboard?ranking=HONOR', leaderboardSchema), BIG_READ_GAP_MS);
   honorTarget = (planetId: string) => this.send(`/api/honor/targets/${encodeURIComponent(planetId)}`, honorTargetSchema);
   seasonArchive = (cursor?: number) => this.send(
     `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,

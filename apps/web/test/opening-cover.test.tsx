@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useOpeningCover } from '../src/lib/openingCover.js';
+import { JUMP_OPEN_GRACE_MS, useOpeningCover } from '../src/lib/openingCover.js';
 
 describe('the galaxy opening cover', () => {
   afterEach(() => { vi.useRealTimers(); });
@@ -34,5 +34,23 @@ describe('the galaxy opening cover', () => {
     expect(result.current).toBe(true);
     act(() => { vi.advanceTimersByTime(1); });
     expect(result.current).toBe(false);
+  });
+
+  // Owner 2026-11-09: after a jump the player waited out the whole deadline on the flight's last frame
+  // while every texture of the galaxy went up again. The view they land on opens soon after its data.
+  it('opens a short grace after its data when it was reached by a jump', () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ settled }) => useOpeningCover(false, 7_000, settled ? JUMP_OPEN_GRACE_MS : null),
+      { initialProps: { settled: false } },
+    );
+    act(() => { vi.advanceTimersByTime(2_000); });
+    expect(result.current).toBe(true);
+    rerender({ settled: true });
+    act(() => { vi.advanceTimersByTime(JUMP_OPEN_GRACE_MS - 1); });
+    expect(result.current).toBe(true);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(result.current).toBe(false);
+    expect(JUMP_OPEN_GRACE_MS).toBeLessThanOrEqual(2_000);
   });
 });

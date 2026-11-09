@@ -24,6 +24,10 @@ const moved = (p: Vec3, by: Vec3): Vec3 => ({ x: p.x + by.x, y: p.y + by.y, z: p
 /** Two addresses closer than this are one world. */
 const SAME_PLACE = 1;
 
+/** A world moved into another frame, whole, so it is drawn and sized where it stands. */
+export const movedNode = (node: PlanetNode, by: Point): PlanetNode =>
+  ({ ...node, position: [node.position[0] + by[0], node.position[1] + by[1], node.position[2] + by[2]] });
+
 /** At the press: everything is on this client already. Coordinates as the server sends them. */
 export function pressedWorld({ ordinal, berth, landing, planetId, starter, main }: {
   ordinal: number;

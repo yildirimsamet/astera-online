@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { REVEAL_SECOND, SCENE_SECONDS, currentJump, mayReveal, endJump, markGameDrawn, stillFade, fromTheLanding, gameCovered, jumpHoldsSession, pressJump, releaseJump, revealJump, revealSecond, sceneOwnsSession, sceneSeconds, startJump, takeCues, type Jump } from '../src/starter/jump.js';
+import { CAMERA_SETTLED, REVEAL_SECOND, SCENE_SECONDS, currentJump, mayReveal, endJump, markGameDrawn, stillFade, stillScale, fromTheLanding, gameCovered, jumpHoldsSession, pressJump, releaseJump, revealJump, revealSecond, sceneOwnsSession, sceneSeconds, startJump, takeCues, type Jump } from '../src/starter/jump.js';
 
 /**
  * THE JUMP OWNS THE SESSION FROM THE PRESS (playtest 2026-11-09). The server seats the new commander
@@ -59,7 +59,8 @@ describe('the jump flown in the game', () => {
   });
 
   it('moves the session only after the camera stands where the main game opens, and ends after', () => {
-    expect(revealSecond(flying)).toBeGreaterThan(23.4);
+    expect(revealSecond(flying)).toBeGreaterThan(CAMERA_SETTLED);
+    expect(revealSecond(flying)).toBeLessThan(CAMERA_SETTLED + 0.5);
     expect(sceneSeconds(flying)).toBeGreaterThan(revealSecond(flying) + 2);
     expect(revealSecond({ ...flying, inGame: false })).toBe(REVEAL_SECOND);
     expect(sceneSeconds({ ...flying, inGame: false })).toBe(SCENE_SECONDS);
@@ -71,7 +72,7 @@ describe('the jump flown in the game', () => {
  * game's loading cover. It waits for the main view's first full frame, then gives way.
  */
 describe('the still over the moving session', () => {
-  const reveal = 23.6;
+  const reveal = revealSecond({ ...scene({ inGame: true }), stage: 'flight', origin: 0 });
 
   it('holds while the main view is still preparing', () => {
     expect(stillFade(reveal + 3, reveal, null)).toEqual({ opacity: 1, done: false });
@@ -81,6 +82,16 @@ describe('the still over the moving session', () => {
     expect(stillFade(reveal + 2, reveal, reveal + 2).opacity).toBe(1);
     expect(stillFade(reveal + 2.5, reveal, reveal + 2).opacity).toBeCloseTo(0.5, 1);
     expect(stillFade(reveal + 3, reveal, reveal + 2)).toEqual({ opacity: 0, done: true });
+  });
+
+  // Owner 2026-11-09: while the game prepares, the camera seems to keep closing on the world; it is
+  // back at the main game's own framing by the time the still has faded, so nothing jumps.
+  it('closes slowly on the world while it waits, and is back to the game\'s framing as it fades', () => {
+    expect(stillScale(reveal, reveal, 1)).toBe(1);
+    expect(stillScale(reveal + 3, reveal, 1)).toBeGreaterThan(1.02);
+    expect(stillScale(reveal + 60, reveal, 1)).toBeLessThanOrEqual(1.08);
+    expect(stillScale(reveal + 3, reveal, 0.5)).toBeLessThan(stillScale(reveal + 3, reveal, 1));
+    expect(stillScale(reveal + 3, reveal, 0)).toBe(1);
   });
 
   it('holds a beat even when the main view was quick', () => {

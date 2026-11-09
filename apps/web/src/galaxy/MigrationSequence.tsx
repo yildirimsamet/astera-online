@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { JUMP_FLIGHT } from '@astera/rules';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
-import { JUMP_LAYER, beatAt, endJump, mayReveal, stillFade, revealJump, revealSecond, sceneSeconds, takeCues, useJumpStill, type BeatId, type Jump } from '../starter/jump.js';
+import { JUMP_LAYER, beatAt, endJump, mayReveal, stillFade, stillScale, revealJump, revealSecond, sceneSeconds, takeCues, useJumpStill, type BeatId, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { BrightStars, Core, Dust, Sky } from './Environment.js';
 import { JumpingShip } from './JumpingShip.js';
@@ -85,6 +85,7 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
   const clock = useRef(jump.start);
   const root = useRef<HTMLDivElement>(null);
   const veil = useRef<HTMLDivElement>(null);
+  const picture = useRef<HTMLImageElement>(null);
   const [beat, setBeat] = useState<BeatId>(beatAt(jump.start).id);
   const still = useJumpStill();
   const inGame = jump.inGame === true;
@@ -107,6 +108,7 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
         // The still holds until the main view under it has drawn, then gives way.
         const fade = s >= reveal ? stillFade(s, reveal, jump.drawnAt ?? null) : { opacity: 1, done: false };
         if (root.current) root.current.style.opacity = String(fade.opacity);
+        if (picture.current) picture.current.style.transform = `scale(${stillScale(s, reveal, fade.opacity)})`;
         if (fade.done || s >= end) { endJump(); return; }
       } else {
         if (root.current) root.current.style.opacity = String(1 - smooth(end - 1.4, end, s));
@@ -123,7 +125,8 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
   return (
     <div ref={root} data-testid="migration-sequence" data-in-game={inGame || undefined} style={{ zIndex: JUMP_LAYER + 1 }}
       className={`fixed inset-0 overflow-hidden font-v2-ui ${inGame && !(jump.stage === 'reveal' && !still) ? '' : 'bg-[#02040a]'}`}>
-      {inGame && jump.stage === 'reveal' && still && <img src={still} alt="" className="absolute inset-0 size-full object-cover" />}
+      {/* While the main game prepares, the camera seems to keep closing on the world, as the game then does. */}
+      {inGame && jump.stage === 'reveal' && still && <img ref={picture} src={still} alt="" className="absolute inset-0 size-full object-cover" />}
       {!inGame && jump.world && (
         <Canvas dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }} camera={{ fov: 45, near: 0.05, far: 4000, position: [0, 0, 1] }}>
           <Stage jump={jump} world={jump.world} clock={clock} />

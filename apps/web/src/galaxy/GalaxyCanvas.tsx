@@ -2,7 +2,7 @@ import { StarterSightMarks } from './StarterSightMarks.js';
 import { ModelScale } from './modelScale.js';
 import { modelScale } from './scene.js';
 import { DepartureBeams } from './DepartureBeams.js';
-import type { WatchedFlight } from './watchedFlights.js';
+import { withoutLeaving, type WatchedFlight } from './watchedFlights.js';
 import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { PartMarks } from './PartMarks.js';
@@ -463,6 +463,8 @@ export function GalaxyCanvas({
     [universeView, mainOffset],
   );
   const shipsAround = useMemo(() => neighbourShips(planets), [planets]);
+  // A neighbour flying off is drawn by its flight alone, not also at its berth (owner, 2026-11-09).
+  const leftBehind = useMemo(() => withoutLeaving(shipsAround, watched ?? []), [shipsAround, watched]);
   const shipIds = useMemo(() => new Set(shipsAround.map(ship => ship.id)), [shipsAround]);
   const fieldBodies = useMemo(
     () => (mainSky && mainOffset
@@ -945,8 +947,8 @@ export function GalaxyCanvas({
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>
           <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
-          <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} />
-          <VesselField ships={shipsAround} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
+          {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} />}
+          <VesselField ships={leftBehind} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
           <DepartureBeams beams={starter.beams} offset={mainOffset} />
           <PartMarks marks={starter.parts} />
         </Suspense>}

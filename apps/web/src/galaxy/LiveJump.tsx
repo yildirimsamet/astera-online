@@ -2,7 +2,9 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { holdJumpStill, revealSecond, type Jump } from '../starter/jump.js';
-import type { JumpWorld } from '../starter/jumpWorld.js';
+import { movedNode, type JumpWorld } from '../starter/jumpWorld.js';
+import { planetModel } from '../ui/assets.js';
+import { useGLTF } from '@react-three/drei';
 import { JumpingShip } from './JumpingShip.js';
 import { jumpCamera, jumpStop, type JumpPath, type OpeningPose, type Point } from './jumpCamera.js';
 import { shipStateAt } from './jumpShipState.js';
@@ -42,6 +44,10 @@ export function LiveJump({ jump, world, offset }: { jump: Jump; world: JumpWorld
   const invalidate = useThree(state => state.invalidate);
   const path = useMemo<JumpPath>(() => ({ from: world.from, planet: world.planet, radius: world.radius, ship: world.ship }), [world]);
   const stop = useMemo(() => jumpStop(path), [path]);
+  // Where it is drawn is where it is sized: the galaxy view picks a world's model by its distance.
+  const destination = useMemo(() => [movedNode(world.destination, offset)], [world, offset]);
+  // The best model of the new world is on its way from the press: it fills the screen at the end.
+  useEffect(() => { useGLTF.preload(planetModel(world.destination.id, 'full')); }, [world]);
   const clock = useRef(0);
   const reveal = revealSecond(jump);
   const [taking, setTaking] = useState(false);
@@ -61,6 +67,8 @@ export function LiveJump({ jump, world, offset }: { jump: Jump; world: JumpWorld
     camera.far = Math.max(camera.far, JUMP_FAR);
     camera.updateProjectionMatrix();
   }, [camera]);
+  // First in the frame (priority -1): the ship and the streaks read this clock after it is set, so the
+  // camera and the hull are on the same instant. Read a frame late, the hull shook against the lens.
   useFrame(() => {
     const s = (performance.now() - jump.origin) / 1000;
     clock.current = s;
@@ -76,15 +84,17 @@ export function LiveJump({ jump, world, offset }: { jump: Jump; world: JumpWorld
     if (!taking && s >= reveal - 0.15) setTaking(true);
     // The view draws on demand: the flight asks for every frame.
     invalidate();
-  });
+  }, -1);
   return (
+    <>
+    <Suspense fallback={null}>
+      <PlanetField nodes={destination} selectedId={null} rivals={NO_RIVALS} onSelect={ignore} marks={false} />
+    </Suspense>
     <group position={offset}>
-      <Suspense fallback={null}>
-        <PlanetField nodes={[world.destination]} selectedId={null} rivals={NO_RIVALS} onSelect={ignore} marks={false} />
-      </Suspense>
       <Streaks path={path} clock={clock} />
       <JumpingShip hull={jump.hull} look={jump.look} poseAt={(into) => { shipStateAt(path.from, stop, clock.current, into); }} />
       {taking && <StillTaker />}
     </group>
+    </>
   );
 }

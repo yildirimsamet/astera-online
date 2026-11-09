@@ -54,8 +54,13 @@ export interface Jump {
   drawnAt?: number;
 }
 
-/** In the game, the session moves once the camera stands where the main game opens (jumpCamera's 23.4). */
-const IN_GAME_REVEAL = 23.6;
+/**
+ * When the camera stands where the main game opens: two seconds after the ship is gone (owner,
+ * 2026-11-09: the wait after the flight was too long). Its clock is `JUMP_FLIGHT.gone`, 19.4.
+ */
+export const CAMERA_SETTLED = 21.6;
+/** In the game, the session moves once the camera has settled there. */
+const IN_GAME_REVEAL = CAMERA_SETTLED + 0.2;
 /** The still of that frame holds at least this long, and gives way over a second. */
 const STILL_BEAT = 0.6;
 const STILL_FADE = 1;
@@ -76,6 +81,13 @@ export function stillFade(s: number, reveal: number, drawnAt: number | null): { 
   const from = Math.max(drawnAt ?? reveal + STILL_LONGEST, reveal + STILL_BEAT);
   const opacity = Math.min(1, Math.max(0, 1 - (s - from) / STILL_FADE));
   return { opacity, done: opacity <= 0 };
+}
+/** How far the still closes on the world while it waits. */
+const STILL_PUSH = 0.07;
+/** The still's scale: closing slowly while it waits, back to the game's framing as it fades. */
+export function stillScale(s: number, reveal: number, opacity: number): number {
+  const k = Math.min(1, Math.max(0, (s - reveal) / 6));
+  return 1 + STILL_PUSH * (1 - (1 - k) * (1 - k)) * opacity;
 }
 export const revealSecond = (current: Jump): number => (current.inGame ? IN_GAME_REVEAL : REVEAL_SECOND);
 export const sceneSeconds = (current: Jump): number => (current.inGame ? IN_GAME_END : SCENE_SECONDS);

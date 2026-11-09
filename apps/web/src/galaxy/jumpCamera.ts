@@ -1,4 +1,5 @@
 import { JUMP_FLIGHT, jumpTravel } from '@astera/rules';
+import { CAMERA_SETTLED } from '../starter/jump.js';
 import { initialHomeCameraPosition } from './follow.js';
 
 export type Point = readonly [number, number, number];
@@ -69,8 +70,9 @@ export function jumpCamera(path: JumpPath, s: number, opening?: OpeningPose): Ju
 
   const speed = speedShare(s);
   const chase = smooth(JUMP_FLIGHT.depart + 0.4, JUMP_FLIGHT.depart + 3, s);
-  position = lerp(position, add(add(add(at, ahead, -ship * (3.2 + 1.8 * speed)), up, ship * 0.85), across, ship * 0.15), chase);
-  target = lerp(target, add(add(at, ahead, ship * 6), up, ship * 0.2), chase);
+  // Back far enough that the galaxies read around the hull (owner, 2026-11-09), farther at speed.
+  position = lerp(position, add(add(add(at, ahead, -ship * (6.5 + 2.5 * speed)), up, ship * 1.6), across, ship * 0.3), chase);
+  target = lerp(target, add(add(at, ahead, ship * 8), up, ship * 0.4), chase);
 
   const arrive = smooth(JUMP_FLIGHT.arrive - 3.8, JUMP_FLIGHT.arrive - 1.2, s);
   // Held on the ship, not on its stop: a camera waiting at the stop was overtaken by the hull (preview 2026-11-09).
@@ -86,7 +88,7 @@ export function jumpCamera(path: JumpPath, s: number, opening?: OpeningPose): Ju
     roll = unit(lerp(LEVEL, up, take));
   }
 
-  const home = smooth(JUMP_FLIGHT.gone, 23.4, s);
+  const home = smooth(JUMP_FLIGHT.gone, CAMERA_SETTLED, s);
   position = lerp(position, initialHomeCameraPosition(...planet), home);
   target = lerp(target, planet, home);
 

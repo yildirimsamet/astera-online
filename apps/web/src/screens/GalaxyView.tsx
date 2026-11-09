@@ -22,7 +22,7 @@ import { UniverseChip } from '../starter/UniverseChip.js';
 import { JumpCall } from '../starter/JumpCall.js';
 import { useDepartures, useInbound, useMainSky, useUniverse } from '../starter/queries.js';
 import { departuresWatched, inboundWatched } from '../galaxy/watchedFlights.js';
-import { markGameDrawn, useJump } from '../starter/jump.js';
+import { currentJump, markGameDrawn, useJump } from '../starter/jump.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
 import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
@@ -165,7 +165,7 @@ import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
 import { Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
-import { useOpeningCover } from '../lib/openingCover.js';
+import { JUMP_OPEN_GRACE_MS, useOpeningCover } from '../lib/openingCover.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
@@ -836,7 +836,9 @@ export function GalaxyView({
   const [drawn, setDrawn] = useState(false);
   const dataSettled =
     !galaxy.isPending && !planet.isPending && !season.isPending && !mining.isPending;
-  const covered = useOpeningCover(assets.ready && dataSettled && drawn);
+  // Reached by a jump, the player is on their own world under the flight's last frame: open soon.
+  const [byJump] = useState(() => { const landing = currentJump(); return landing?.inGame === true && landing.stage === 'reveal'; });
+  const covered = useOpeningCover(assets.ready && dataSettled && drawn, undefined, byJump && assets.ready && dataSettled ? JUMP_OPEN_GRACE_MS : null);
   // A jump's last frame waits over this view until it has drawn whole.
   useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);

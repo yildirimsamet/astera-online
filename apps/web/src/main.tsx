@@ -18,6 +18,8 @@ import { starterFetch } from './starter/transport.js';
 import { Api } from './api/client.js';
 import { createQueryClient } from './api/queryClient.js';
 import { ApiProvider } from './api/context.js';
+import { forgetWithQuery } from './api/gatedRead.js';
+import { keys } from './api/keys.js';
 import { ToastProvider } from './ui/Toast.js';
 import { ErrorBoundary } from './shell/ErrorBoundary.js';
 import { ConsentPlacement } from './landing/public/ConsentPlacement.js';
@@ -73,6 +75,8 @@ function start(): void {
     return stopActivity;
   });
   const client = createQueryClient();
+  // A session move clears the cache under a galaxy read just made: the next view's read must not wait on it.
+  forgetWithQuery(client.getQueryCache(), keys.galaxy, { forget: api.forgetGalaxyRead });
 
   /**
    * Scenario harnesses sometimes commit a mutation outside the page, then need the

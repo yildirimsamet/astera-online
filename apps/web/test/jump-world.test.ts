@@ -2,7 +2,7 @@ import { starterGalaxyCentre, toWorld, type Vec3 } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import { galaxySchema } from '../src/api/schemas.js';
 import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
-import { landedWorld, pressedWorld } from '../src/starter/jumpWorld.js';
+import { landedWorld, movedNode, pressedWorld } from '../src/starter/jumpWorld.js';
 
 /**
  * THE JUMP FLIES THROUGH THE REAL GALAXIES (owner, 2026-11-09: "sahte bir sahneden değil"). The scene is
@@ -43,6 +43,15 @@ describe('the galaxies the jump crosses', () => {
   it('hands out the new world on its own, as the last of the worlds', () => {
     expect(world.destination.id).toBe(world.worlds.at(-1)!.id);
     expect(world.destination.position).toEqual(world.planet);
+  });
+
+  // The galaxy view sizes a world's model by its distance to the camera: the world must stand where it
+  // is drawn. Drawn inside a moved group, it was always far off and always the crudest model.
+  it('moves a world into another frame as a whole node', () => {
+    const moved = movedNode(world.destination, [10, -2, 4]);
+    expect(moved.position).toEqual([world.planet[0] + 10, world.planet[1] - 2, world.planet[2] + 4]);
+    expect(moved.id).toBe(world.destination.id);
+    expect(moved.radius).toBe(world.destination.radius);
   });
 
   it('keeps the other main worlds where they are', () => {

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gatedRead } from '../src/api/gatedRead.js';
+import { QueryClient } from '@tanstack/react-query';
+import { forgetWithQuery, gatedRead } from '../src/api/gatedRead.js';
 
 /**
  * THE WHOLE GALAXY IS READ AT MOST ONCE EVERY FEW SECONDS, WHOEVER ASKS. Owner's
@@ -57,5 +58,42 @@ describe('a gated read', () => {
     const read = gatedRead(fetch as () => Promise<string>, 5000);
     await expect(read()).rejects.toThrow('offline');
     await expect(read()).resolves.toBe('world');
+  });
+
+  // Walk 2026-11-09: a session move cleared the cache under a read just made, and the new view's own
+  // read waited the whole gap on a result nobody held. A read that left the cache holds nothing back.
+  it('reads at once once its last read is forgotten', async () => {
+    const fetch = vi.fn(() => Promise.resolve('world'));
+    const read = gatedRead(fetch, 5000);
+    await read();
+    read.forget();
+    await read();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not share a forgotten read still in the air', async () => {
+    let n = 0;
+    const fetch = vi.fn(() => new Promise<string>((resolve) => { const i = ++n; setTimeout(() => { resolve(`read ${i}`); }, 200); }));
+    const read = gatedRead(fetch, 5000);
+    const old = read();
+    read.forget();
+    const fresh = read();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(await old).toBe('read 1');
+    expect(await fresh).toBe('read 2');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('is forgotten when its query leaves the cache, and only then', () => {
+    const client = new QueryClient();
+    const forget = vi.fn();
+    const stop = forgetWithQuery(client.getQueryCache(), ['galaxy'], { forget });
+    client.setQueryData(['planet'], 1);
+    client.removeQueries({ queryKey: ['planet'] });
+    expect(forget).not.toHaveBeenCalled();
+    client.setQueryData(['galaxy'], 1);
+    client.clear();
+    expect(forget).toHaveBeenCalledTimes(1);
+    stop();
   });
 });

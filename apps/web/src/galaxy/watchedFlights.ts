@@ -28,6 +28,16 @@ export function inboundWatched(rows: readonly { hull: VesselHull; ordinal: numbe
   });
 }
 
+/** Two berths closer than this, in world units, are one: the board keeps the ship's own coordinates. */
+const SAME_BERTH = 0.01;
+
+/** The parked ships, without those flying off in the sky: one ship is never drawn twice. */
+export function withoutLeaving<T extends { position: readonly number[] }>(ships: readonly T[], flights: readonly WatchedFlight[]): readonly T[] {
+  if (flights.length === 0) return ships;
+  return ships.filter(ship => !flights.some(flight =>
+    Math.hypot(ship.position[0]! - flight.from[0], ship.position[1]! - flight.from[1], ship.position[2]! - flight.from[2]) < SAME_BERTH));
+}
+
 /** Seconds into the flight, or null while it is not in the sky. */
 export function watchSeconds(flight: WatchedFlight, now: number): number | null {
   const s = (now - flight.at) / 1000;

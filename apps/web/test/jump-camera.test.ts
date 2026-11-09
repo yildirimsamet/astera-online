@@ -2,6 +2,7 @@ import { JUMP_FLIGHT, jumpTravel } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import { initialHomeCameraPosition } from '../src/galaxy/follow.js';
 import { JUMP_FOV, jumpCamera, jumpStop, type JumpPath } from '../src/galaxy/jumpCamera.js';
+import { CAMERA_SETTLED } from '../src/starter/jump.js';
 
 /**
  * WHERE THE CAMERA STANDS ON THE WAY (owner, 2026-11-09): beside the ship while the drive lights, on its
@@ -55,7 +56,9 @@ describe('the camera of the jump', () => {
       const ship = shipAt(s);
       expect(dot(sub(ship, pose.position), forward)).toBeGreaterThan(0);
       expect(seen(s, ship).inFrame).toBe(true);
-      expect(seen(s, ship).distance).toBeLessThan(path.ship * 9);
+      // Owner 2026-11-09: back far enough that the galaxies read, not only the hull.
+      expect(seen(s, ship).distance).toBeGreaterThan(path.ship * 6);
+      expect(seen(s, ship).distance).toBeLessThan(path.ship * 12);
     }
   });
 
@@ -102,8 +105,10 @@ describe('the camera of the jump', () => {
     expect(jumpCamera(steep, 24).up).toEqual([0, 1, 0]);
   });
 
-  it('ends where the main game opens on the world', () => {
-    const pose = jumpCamera(path, 24);
+  // Owner 2026-11-09: the wait after the flight was too long; the pull-back is two seconds, not four.
+  it('ends where the main game opens on the world, soon after the ship is gone', () => {
+    expect(CAMERA_SETTLED).toBeLessThanOrEqual(JUMP_FLIGHT.gone + 2.5);
+    const pose = jumpCamera(path, CAMERA_SETTLED);
     expect(pose.target).toEqual(path.planet);
     const home = initialHomeCameraPosition(...path.planet);
     pose.position.forEach((value, i) => { expect(value).toBeCloseTo(home[i]!, 5); });
