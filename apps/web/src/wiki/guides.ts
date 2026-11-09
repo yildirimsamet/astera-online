@@ -10,7 +10,7 @@ import { localized as l, type Localized, type WikiArticle, type WikiBlock, type 
  * other article and the guide tests hold their length, sections and date.
  */
 type Paragraph = string | WikiBlock;
-const section = (id: string, title: string, ...body: readonly Paragraph[]): WikiSection =>
+export const section = (id: string, title: string, ...body: readonly Paragraph[]): WikiSection =>
   ({ id, title, blocks: body.map(item => typeof item === 'string' ? { kind: 'text', text: item } : item) });
 
 function guide(slug: string, updated: string, title: Localized<string>, description: Localized<string>, en: readonly WikiSection[], tr: readonly WikiSection[], related: readonly string[]): WikiArticle {

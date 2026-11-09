@@ -254,3 +254,28 @@ describe('strategy guides', () => {
     }
   });
 });
+
+describe('development updates', () => {
+  const posts = wikiArticles.filter(article => article.category === 'updates');
+  const words = (text: string): number => text.split(/\s+/).filter(Boolean).length;
+
+  it('follow the guides as the second category, newest first', () => {
+    expect(wikiCategories[1]?.id).toBe('updates');
+    expect(posts.length).toBeGreaterThanOrEqual(3);
+    const dates = posts.map(post => post.updated ?? '');
+    expect(dates).toEqual([...dates].sort().reverse());
+    for (const post of posts) expect(post.slug.startsWith(post.updated ?? '-')).toBe(true);
+  });
+
+  it.each(posts.map(post => [post.id, post] as const))('%s is a dated, readable post in both languages', (_id, post) => {
+    for (const [language, minimum] of [['en', 350], ['tr', 300]] as const) {
+      const page = wikiPages.find(p => p.articleId === post.id && p.language === language);
+      if (!page) throw new Error(`${post.id} ${language}`);
+      const doc = documentFor(renderWikiPage(page));
+      expect(words(doc.querySelector('article')?.textContent ?? ''), `${post.id} ${language}`).toBeGreaterThanOrEqual(minimum);
+      expect(doc.querySelectorAll('article h2').length).toBeGreaterThanOrEqual(3);
+      expect(doc.querySelector('article time')?.getAttribute('datetime')).toBe(post.updated);
+      expect(doc.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
+    }
+  });
+});
