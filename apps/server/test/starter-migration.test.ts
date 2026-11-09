@@ -17,7 +17,7 @@ interface MigrationView {
   left: { alloy: number; crystal: number; deuterium: number; ships: number };
   choices: { index: number; x: number; y: number; z: number; neighbours: number }[];
 }
-interface Landing { placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string }; cargo: MigrationView['cargo'] }
+interface Landing { placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string; position: { x: number; y: number; z: number } }; cargo: MigrationView['cargo'] }
 
 const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
@@ -210,6 +210,8 @@ describe('the jump', () => {
       const [commander] = await world.f.db.select().from(players).where(eq(players.accountId, person.id));
       expect(commander!.newcomerShieldUntil!.getTime() - world.f.clock.now().getTime()).toBe(72 * 3_600_000);
       expect(commander!.id).toBe(body.placement.playerId);
+      // The scene flies to this address (owner, 2026-11-09): the world's own, not the one it was asked for.
+      expect(body.placement.position).toEqual({ x: planet.x, y: planet.y, z: planet.z });
     });
 
     it('brings the hold down exactly once, on top of the package, and restates the wealth', async () => {

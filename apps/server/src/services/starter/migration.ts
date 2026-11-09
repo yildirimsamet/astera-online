@@ -32,7 +32,7 @@ export interface DepartureOptions {
 }
 
 export interface Landing {
-  placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string };
+  placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string; position: { x: number; y: number; z: number } };
   cargo: MigrationCargo;
 }
 
@@ -301,11 +301,14 @@ async function carryOut(db: Db, vesselId: string, accountId: string, clock: Cloc
   await afterStep?.('landed');
 
   await finishDeparture(db, vesselId, clock);
-  await db.transaction(async tx => {
-    await planPlanetReturn(tx, await loadLocked(tx, placed.planetId, clock));
+  const home = await db.transaction(async tx => {
+    const planet = await loadLocked(tx, placed.planetId, clock);
+    await planPlanetReturn(tx, planet);
+    return planet;
   });
   return {
-    placement: { shard: shard.code, shardName: shard.name, seasonId: placed.seasonId, planetId: placed.planetId, playerId: placed.playerId },
+    // Where the world stands: the jump's scene flies there (owner, 2026-11-09). Its position is public already.
+    placement: { shard: shard.code, shardName: shard.name, seasonId: placed.seasonId, planetId: placed.planetId, playerId: placed.playerId, position: { x: home.x, y: home.y, z: home.z } },
     cargo,
   };
 }

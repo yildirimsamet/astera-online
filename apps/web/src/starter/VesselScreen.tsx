@@ -18,6 +18,11 @@ import { LandingChoice } from './LandingChoice.js';
 import { MigrationPanel } from './MigrationPanel.js';
 import { CrateBay } from './CrateBay.js';
 import { useMainSky, useOpenCrates, useRepairVessel } from './queries.js';
+import { pressedWorld } from './jumpWorld.js';
+import { mainSkyPoints } from '../galaxy/mainSky.js';
+import { keys } from '../api/keys.js';
+import type { GalaxyView } from '../api/schemas.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { RepairCard, canOrder, type RepairContext } from './RepairCard.js';
 import { RepairSlots } from './RepairSlots.js';
 import { ShipHero } from './ShipHero.js';
@@ -113,6 +118,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   const handingOver = lesson?.kind === 'step' && lesson.id === 'farewell';
   useEffect(() => { if (handingOver) setDeck('repairs'); }, [handingOver]);
   const sky = useMainSky(true);
+  const queries = useQueryClient();
   const select = (next: VesselSystem): void => { setSystem(next); setPicked(null); };
   const context: RepairContext = {
     now: progress,
@@ -178,8 +184,12 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
           onCancel={() => { setJumping(null); }}
           onLanded={(landing) => {
             setJumping(null);
-            // The scene plays from what this client already holds; the ship's picture needs no more reads.
-            startJump({ shardName: landing.placement.shardName, hull: vesselHull(vessel.id), look: vesselLook(progress), sky: sky.data?.points ?? [], landing, start: 0 });
+            // The scene flies through what this client already holds; it needs no more reads.
+            const world = pressedWorld({
+              ordinal: vessel.galaxy.ordinal, berth: vessel.position, landing: landing.placement.position, planetId: landing.placement.planetId,
+              starter: queries.getQueryData<GalaxyView>(keys.galaxy)?.planets ?? [], main: mainSkyPoints(sky.data?.points ?? []),
+            });
+            startJump({ shardName: landing.placement.shardName, hull: vesselHull(vessel.id), look: vesselLook(progress), world, landing, start: 0 });
           }}
         />
       )}

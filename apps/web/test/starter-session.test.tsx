@@ -184,7 +184,7 @@ describe('a session on a ship', () => {
     act(() => { result.current.rollover(); });
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(isStarterMode()).toBe(true);
-    startJump({ shardName: 'Vantage', hull: 'SPINE', look: 'RENEWED', sky: [], landing: null, start: 0 });
+    startJump({ shardName: 'Vantage', hull: 'SPINE', look: 'RENEWED', world: null, landing: null, start: 0 });
     act(() => { result.current.rollover(); });
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(isStarterMode()).toBe(true);

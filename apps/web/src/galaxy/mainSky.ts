@@ -133,6 +133,16 @@ export const VESSEL_BAYS: Record<VesselHull, Record<VesselSystem, Vec3Tuple>> = 
   SEED: { REFINERY: [-0.115, 0.086, 0.125], SURVEY: [-0.07, 0.167, 0], DEFENCE: [0.064, -0.065, 0.185], CARGO: [-0.055, -0.161, 0.138], DRIVE: [-0.485, -0.08, 0] },
 };
 
+/**
+ * WHERE EACH HULL BURNS FROM: measured off the models' rear faces (2026-11-09), the Spine's ring of six,
+ * the Wedge's two pods and the Seed's one bell. Model units, nose along +X; `radius` is the flame's.
+ */
+export const VESSEL_NOZZLES: Record<VesselHull, { at: readonly Vec3Tuple[]; radius: number }> = {
+  SPINE: { at: [[-0.5, -0.005, 0.0205], [-0.5, -0.005, -0.0205], [-0.5, -0.039, 0.038], [-0.5, -0.039, -0.038], [-0.5, -0.073, 0.0205], [-0.5, -0.073, -0.0205]], radius: 0.017 },
+  WEDGE: { at: [[-0.5, -0.07, 0.267], [-0.5, -0.07, -0.267]], radius: 0.042 },
+  SEED: { at: [[-0.5, -0.08, 0]], radius: 0.066 },
+};
+
 /** The ship to the touch (owner 2026-11-08): the hull as the model lies, a hair past its bays and no further. */
 export function vesselHitBox(hull: VesselHull): Vec3Tuple {
   const bays = Object.values(VESSEL_BAYS[hull]);

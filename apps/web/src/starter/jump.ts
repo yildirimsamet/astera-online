@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { VesselHull, VesselLook } from '@astera/rules';
 import type { Landing } from '../api/starterSchemas.js';
+import type { JumpWorld } from './jumpWorld.js';
 import type { Weight } from '../lib/haptics.js';
 import type { SoundCue } from '../lib/sound.js';
 
@@ -29,8 +30,8 @@ export interface Jump {
   shardName: string;
   hull: VesselHull;
   look: VesselLook;
-  /** The main galaxy's whole-number positions, already held by this client. */
-  sky: readonly number[];
+  /** The galaxies it crosses, from what this client holds; nothing to fly through before they are read. */
+  world: JumpWorld | null;
   landing: Landing | null;
   /** Past `REVEAL_SECOND` the session is on the planet and the scene is only fading out. */
   stage: 'flight' | 'reveal';

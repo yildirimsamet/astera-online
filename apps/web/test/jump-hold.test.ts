@@ -6,7 +6,7 @@ import { endJump, fromTheLanding, jumpHoldsSession, pressJump, releaseJump, reve
  * before it answers the press, and says so on the stream: a client that moved on that word unmounted
  * the screen that starts the scene, and the player saw only its last seven seconds.
  */
-const scene = (over: Partial<Jump> = {}) => ({ shardName: 'Vantage', hull: 'SPINE' as const, look: 'RENEWED' as const, sky: [], landing: null, start: 0, ...over });
+const scene = (over: Partial<Jump> = {}) => ({ shardName: 'Vantage', hull: 'SPINE' as const, look: 'RENEWED' as const, world: null, landing: null, start: 0, ...over });
 
 afterEach(() => { releaseJump(); endJump(); });
 

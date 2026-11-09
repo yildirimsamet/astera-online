@@ -248,7 +248,7 @@ describe('choosing where to land', () => {
 
   it('sends the chosen address and hands the landing back', async () => {
     const onLanded = vi.fn();
-    const landing = { placement: { shard: 'EU-1', shardName: 'Vantage', seasonId: 's', planetId: 'p', playerId: 'c' }, cargo: { alloy: 1, crystal: 1, deuterium: 1, fleet: {} } };
+    const landing = { placement: { shard: 'EU-1', shardName: 'Vantage', seasonId: 's', planetId: 'p', playerId: 'c', position: { x: 1, y: 2, z: 3 } }, cargo: { alloy: 1, crystal: 1, deuterium: 1, fleet: {} } };
     const { wrap, fetcher } = harness({}, () => landing);
     render(wrap(<LandingChoice view={parsed()} onCancel={vi.fn()} onLanded={onLanded} />));
     fireEvent.click(screen.getAllByRole('radio')[2]!);
@@ -265,7 +265,7 @@ describe('choosing where to land', () => {
 
   it('holds the session from the press, and still hands the landing back once the sheet has gone', async () => {
     const onLanded = vi.fn();
-    const landing = { placement: { shard: 'EU-1', shardName: 'Vantage', seasonId: 's', planetId: 'p', playerId: 'c' }, cargo: { alloy: 1, crystal: 1, deuterium: 1, fleet: {} } };
+    const landing = { placement: { shard: 'EU-1', shardName: 'Vantage', seasonId: 's', planetId: 'p', playerId: 'c', position: { x: 1, y: 2, z: 3 } }, cargo: { alloy: 1, crystal: 1, deuterium: 1, fleet: {} } };
     let answer: ((value: unknown) => void) | undefined;
     const { wrap } = harness({}, () => new Promise(resolve => { answer = resolve; }));
     const { unmount } = render(wrap(<LandingChoice view={parsed()} onCancel={vi.fn()} onLanded={onLanded} />));

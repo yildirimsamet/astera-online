@@ -1,6 +1,8 @@
 import { FIRST_SEASON_START, fleetEntries, type Fleet } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useGalaxy } from '../api/queries.js';
+import { landedWorld } from './jumpWorld.js';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../api/context.js';
 import { buildingName, hullLabel } from '../i18n/names.js';
@@ -80,10 +82,13 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   const hull = arrival?.hull;
   const shardName = arrival?.shardName;
 
+  // The way in, seen from here: the ship comes from its first galaxy to this world. It waits for the map.
+  const planets = useGalaxy().data?.planets;
+  const world = useMemo(() => (planets ? landedWorld(planets, 1) : null), [planets]);
   useEffect(() => {
-    if (!hull || shardName === undefined || jump || scenePlayed()) return;
-    startJump({ shardName, hull, look: 'RENEWED', sky: [], landing: null, start: fromTheLanding });
-  }, [hull, shardName, jump]);
+    if (!hull || shardName === undefined || !world || jump || scenePlayed()) return;
+    startJump({ shardName, hull, look: 'RENEWED', world, landing: null, start: fromTheLanding });
+  }, [hull, shardName, world, jump]);
 
   const landedAt = data?.landedAt?.getTime();
   useEffect(() => {
@@ -103,7 +108,7 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
         footer={
           <div className="flex items-center gap-2">
             <button type="button" className="min-h-11 shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2"
-              onClick={() => { startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', sky: [], landing: null, start: 0, replay: true }); }}>
+              onClick={() => { startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
             <button type="button" onClick={() => { seen.mutate(); }}

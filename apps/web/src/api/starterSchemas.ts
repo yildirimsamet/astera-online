@@ -125,7 +125,7 @@ export const migrationViewSchema = z.object({
 export type MigrationView = z.infer<typeof migrationViewSchema>;
 
 export const landingSchema = z.object({
-  placement: z.object({ shard: z.string(), shardName: z.string(), seasonId: z.string(), planetId: z.string(), playerId: z.string() }),
+  placement: z.object({ shard: z.string(), shardName: z.string(), seasonId: z.string(), planetId: z.string(), playerId: z.string(), position: vec3 }),
   cargo: moved,
 });
 export type Landing = z.infer<typeof landingSchema>;
