@@ -1,9 +1,10 @@
 import { useFrame, useLoader } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { VesselHull, VesselLook } from '@astera/rules';
 import { ShipFlames } from '../arena/render/flames.js';
 import { useRenderQuality } from '../lib/quality.js';
+import { useDisposable } from '../lib/useDisposable.js';
 import { ENGINE_FLAME_NOISE_URL } from '../vfx/engineFlames.js';
 import { softGlow } from './Environment.js';
 import { VESSEL_NOSE_TURN, VESSEL_NOZZLES, vesselModelFile } from './mainSky.js';
@@ -38,15 +39,15 @@ function Flames({ hull, state, seed }: { hull: VesselHull; state: React.RefObjec
   const nozzles = useMemo(() => nozzlesOf(hull), [hull]);
   // Six nozzles side by side saturate to a white column where one bell does not: the same light per hull.
   const gain = 0.9 / Math.sqrt(VESSEL_NOZZLES[hull].at.length);
-  const flames = useMemo(() => {
+  const flames = useDisposable(() => {
     noise.wrapS = noise.wrapT = THREE.RepeatWrapping;
     return new ShipFlames(noise, nozzles, VESSEL_NOZZLES[hull].radius * FLAME_WIDTH, FLAME_REACH,
       quality === 'high' ? 'standard' : 'mobile', seed);
   }, [noise, nozzles, hull, quality, seed]);
-  useEffect(() => () => { flames.dispose(); }, [flames]);
   const glows = useRef<(THREE.Sprite | null)[]>([]);
   useFrame(({ clock }) => {
     const { lever, turbo } = state.current;
+    if (!flames) return;
     flames.update(lever * gain, turbo * gain, clock.elapsedTime);
     flames.mesh.visible = lever > 0.001 || turbo > 0.001;
     // A white-hot throat in each nozzle, brightest at a catch, so the light reads before the flame grows.
@@ -59,7 +60,7 @@ function Flames({ hull, state, seed }: { hull: VesselHull; state: React.RefObjec
   });
   return (
     <>
-      <primitive object={flames.mesh} />
+      {flames && <primitive object={flames.mesh} />}
       {nozzles.map((nozzle, i) => (
         <sprite key={i} ref={(sprite) => { glows.current[i] = sprite; }} position={nozzle} raycast={() => null}>
           <spriteMaterial map={softGlow()} color="#cfe6ff" transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />

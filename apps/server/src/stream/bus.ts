@@ -73,7 +73,9 @@ export type ShardEventKind =
   | 'protection'
   | 'clan'
   /** A ship left the starter galaxy for the main one. */
-  | 'departure';
+  | 'departure'
+  /** A colony ship landed in this main season: its watchers fetch the inbound flight (owner, 2026-11-09). */
+  | 'inbound';
 
 /** Events that affect every signed-in commander, regardless of their season. */
 export type GlobalEventKind = 'announcement' | 'chat-badges';

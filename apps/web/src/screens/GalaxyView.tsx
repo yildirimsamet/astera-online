@@ -20,7 +20,8 @@ import { mainSkyPoints } from '../galaxy/mainSky.js';
 import { gateOf } from '../starter/gate.js';
 import { UniverseChip } from '../starter/UniverseChip.js';
 import { JumpCall } from '../starter/JumpCall.js';
-import { useDepartures, useMainSky, useUniverse } from '../starter/queries.js';
+import { useDepartures, useInbound, useMainSky, useUniverse } from '../starter/queries.js';
+import { departuresWatched, inboundWatched } from '../galaxy/watchedFlights.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
 import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
@@ -41,7 +42,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW, hpRadiationApplies, vesselHull, type VesselSystem } from '@astera/rules';
+import { VIEW, hpRadiationApplies, mainOffsetOf, vesselHull, type VesselSystem } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -454,9 +455,17 @@ export function GalaxyView({
   // A ship has no main-galaxy seat to come back to, so this is the main game's question only.
   const returnStatus = useReturnStatus(showChat && planet.data !== undefined && !gate.aboard);
   const mainSkyAnswer = useMainSky(ship !== undefined).data;
-  const departures = useDepartures(ship !== undefined && gate.open('intel')).data?.departures;
+  // Read by every ship: a neighbour's jump is in everyone's sky (owner, 2026-11-09). The board and its
+  // beams stay behind the survey, as before.
+  const departures = useDepartures(ship !== undefined).data?.departures;
+  const intelOpen = gate.open('intel');
   const beamClock = useNow(30_000);
-  const beams = useMemo(() => beamsNow(departures ?? [], beamClock), [departures, beamClock]);
+  const beams = useMemo(() => (intelOpen ? beamsNow(departures ?? [], beamClock) : []), [intelOpen, departures, beamClock]);
+  // Everyone sees a jump (owner, 2026-11-09): the neighbours watch a ship leave, the main galaxy one come in.
+  const inbound = useInbound(ship === undefined && planet.data !== undefined).data?.inbound;
+  const watched = useMemo(() => (ship
+    ? departuresWatched(departures ?? [], mainOffsetOf(ship.galaxy.ordinal), beamClock)
+    : inboundWatched(inbound ?? [], beamClock)), [ship, departures, inbound, beamClock]);
   const [mainRowOpen, setMainRowOpen] = useState(false);
   const [atUniverseLimit, setAtUniverseLimit] = useState(false);
   const [universeAsked, setUniverseAsked] = useState(false);
@@ -1360,6 +1369,7 @@ export function GalaxyView({
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
+        watched={watched}
         {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,

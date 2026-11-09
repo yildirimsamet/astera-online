@@ -2,6 +2,7 @@ import { StarterSightMarks } from './StarterSightMarks.js';
 import { ModelScale } from './modelScale.js';
 import { modelScale } from './scene.js';
 import { DepartureBeams } from './DepartureBeams.js';
+import type { WatchedFlight } from './watchedFlights.js';
 import { PartMarks } from './PartMarks.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
@@ -222,6 +223,8 @@ export interface GalaxyCanvasProps {
   /** Aboard a colony ship: its own small galaxy, with the main one hung in the sky (plan §5.7). */
   /** The view past the zoom limit. Absent where a script holds the camera. */
   universe?: { view: UniverseView | undefined; open: boolean; onLimit: (at: boolean) => void; onOpen: () => void; onClose: () => void };
+  /** Other commanders' jumps in the sky, in this galaxy's frame (owner, 2026-11-09). */
+  watched?: readonly WatchedFlight[];
   starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; parts: readonly Vec3[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
   unknownSignals?: readonly UnknownSignalView[];
   unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
@@ -376,9 +379,12 @@ export interface GalaxyCanvasProps {
 /** The Yarık's ship loader stays out of the galaxy's first chunk; most commanders have no ship. */
 const ParkedShipModel = lazy(() => import('./ParkedShip.js'));
 const HomewardShipModel = lazy(() => import('./HomewardShip.js'));
+/** Somebody else's jump: its hull and the studio's flames load only when one is in the sky. */
+const JumpWatch = lazy(() => import('./JumpWatch.js').then(module => ({ default: module.JumpWatch })));
 
 export function GalaxyCanvas({
   universe,
+  watched,
   starter,
   cosmeticAppearance,
   planets,
@@ -937,6 +943,7 @@ export function GalaxyCanvas({
           <DepartureBeams beams={starter.beams} offset={mainOffset} />
           <PartMarks marks={starter.parts} />
         </Suspense>}
+        {watched && watched.length > 0 && <Suspense fallback={null}><JumpWatch flights={watched} /></Suspense>}
         {parkedShip && onOpenShip && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />

@@ -71,6 +71,9 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** A ship left this starter galaxy: a place on the map and a line on the board. */
     case 'departure':
       return [keys.departures, keys.galaxy, keys.migration, keys.universe];
+    /** A ship landed in this main season: watch it come in. */
+    case 'inbound':
+      return [keys.inbound];
     /** What this commander can see moved. Sent only to a client that asked for it. */
     case 'traffic':
       return [keys.traffic];

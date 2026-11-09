@@ -136,7 +136,12 @@ export const arrivalSchema = z.object({
 });
 
 export const departuresSchema = z.object({
-  departures: z.array(z.object({ name: z.string(), country: z.string(), at: z.coerce.date(), x: z.number(), y: z.number(), z: z.number() })),
+  departures: z.array(z.object({ name: z.string(), country: z.string(), at: z.coerce.date(), x: z.number(), y: z.number(), z: z.number(), hull: z.enum(VESSEL_HULLS) })),
+});
+
+/** Ships that came into the main galaxy in the last minute: the hull, the galaxy it left, where it stood. */
+export const inboundSchema = z.object({
+  inbound: z.array(z.object({ hull: z.enum(VESSEL_HULLS), ordinal: z.number().int().positive(), at: z.coerce.date(), x: z.number(), y: z.number(), z: z.number() })),
 });
 export type Departure = z.infer<typeof departuresSchema>['departures'][number];
 

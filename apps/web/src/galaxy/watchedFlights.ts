@@ -1,0 +1,35 @@
+import { JUMP_FLIGHT, starterGalaxyCentre, toWorld, watchedStop, type Vec3, type VesselHull } from '@astera/rules';
+import type { Point } from './jumpCamera.js';
+
+/** A jump somebody else is making, as a watcher draws it: from the berth to the main galaxy's rim. */
+export interface WatchedFlight { key: string; hull: VesselHull; from: Point; stop: Point; at: number }
+
+/** Rows older than this are not drawn at all; the flight itself is over well before. */
+const KEEP_MS = 60_000;
+const moved = (p: Vec3, by: Vec3): Vec3 => ({ x: p.x + by.x, y: p.y + by.y, z: p.z + by.z });
+const back = (p: Vec3, by: Vec3): Vec3 => ({ x: p.x - by.x, y: p.y - by.y, z: p.z - by.z });
+
+/** The neighbours who left, in their galaxy's frame; `offset` is the main galaxy's centre there. */
+export function departuresWatched(rows: readonly { name: string; at: Date; x: number; y: number; z: number; hull: VesselHull }[], offset: Vec3, now: number): WatchedFlight[] {
+  return rows.flatMap(row => {
+    if (now - row.at.getTime() > KEEP_MS) return [];
+    const berth = { x: row.x, y: row.y, z: row.z };
+    const stop = moved(watchedStop(back(berth, offset)), offset);
+    return [{ key: `${row.name}:${String(row.at.getTime())}`, hull: row.hull, from: toWorld(berth), stop: toWorld(stop), at: row.at.getTime() }];
+  });
+}
+
+/** The newcomers coming in, in the main galaxy's frame. */
+export function inboundWatched(rows: readonly { hull: VesselHull; ordinal: number; at: Date; x: number; y: number; z: number }[], now: number): WatchedFlight[] {
+  return rows.flatMap((row, index) => {
+    if (now - row.at.getTime() > KEEP_MS) return [];
+    const berth = moved({ x: row.x, y: row.y, z: row.z }, starterGalaxyCentre(row.ordinal));
+    return [{ key: `${String(row.ordinal)}:${String(row.at.getTime())}:${String(index)}`, hull: row.hull, from: toWorld(berth), stop: toWorld(watchedStop(berth)), at: row.at.getTime() }];
+  });
+}
+
+/** Seconds into the flight, or null while it is not in the sky. */
+export function watchSeconds(flight: WatchedFlight, now: number): number | null {
+  const s = (now - flight.at) / 1000;
+  return s >= 0 && s < JUMP_FLIGHT.gone ? s : null;
+}

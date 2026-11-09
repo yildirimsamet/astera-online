@@ -3,7 +3,7 @@ import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, fuelToLoad, landi
 import { and, desc, eq, gt, inArray, isNull, lte, ne, sql, asc, notInArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
-import { accounts, planets, seasons, shards, starterDepartures, starterEvents, units, vesselMigrations, vesselMissions, vesselNotifications, vesselOrders, vessels, vesselBotState } from '../../db/schema.js';
+import { accounts, planets, players, seasons, shards, starterDepartures, starterEvents, starterGalaxies, units, vesselMigrations, vesselMissions, vesselNotifications, vesselOrders, vessels, vesselBotState } from '../../db/schema.js';
 import { publishShard } from '../../stream/bus.js';
 import { BOTS } from '../bots/personas.js';
 import { GameError, loadLocked, recomputeWealth, withPlanetLock } from '../planet.js';
@@ -301,6 +301,8 @@ async function carryOut(db: Db, vesselId: string, accountId: string, clock: Cloc
   await afterStep?.('landed');
 
   await finishDeparture(db, vesselId, clock);
+  // The main galaxy watches it come in, as the first one watched it leave.
+  await publishShard(db, placed.seasonId, 'inbound');
   const home = await db.transaction(async tx => {
     const planet = await loadLocked(tx, placed.planetId, clock);
     await planPlanetReturn(tx, planet);
@@ -369,10 +371,33 @@ async function announceNewSeason(db: Db, clock: Clock): Promise<void> {
 export async function departureBoard(db: Db, accountId: string) {
   const [ship] = await db.select({ galaxy: vessels.starterGalaxyId }).from(vessels).where(and(eq(vessels.accountId, accountId), ne(vessels.status, 'DEPARTED')));
   if (!ship) throw new GameError('PLACEMENT_CHANGED', 'Your ship has landed; refresh', 409);
-  const rows = await db.select().from(starterDepartures).where(eq(starterDepartures.starterGalaxyId, ship.galaxy))
+  const rows = await db.select({ row: starterDepartures, vesselId: vessels.id }).from(starterDepartures)
+    .innerJoin(vessels, eq(vessels.accountId, starterDepartures.accountId))
+    .where(eq(starterDepartures.starterGalaxyId, ship.galaxy))
     .orderBy(desc(starterDepartures.at)).limit(BOARD_LENGTH);
-  // Where it stood is public while it stood there, and it is what the neighbours watch the streak leave from.
-  return { departures: rows.map(row => ({ name: row.displayName, country: row.countryCode, at: row.at.toISOString(), x: row.x, y: row.y, z: row.z })) };
+  // Where it stood is public while it stood there, and the neighbours watch that hull leave from there.
+  return { departures: rows.map(({ row, vesselId }) => ({ name: row.displayName, country: row.countryCode, at: row.at.toISOString(), x: row.x, y: row.y, z: row.z, hull: vesselHull(vesselId) })) };
+}
+
+/** How long a landing stays on the main galaxy's sky: the flight its watchers see is shorter. */
+const INBOUND_MS = 60_000;
+
+/**
+ * WHAT CAME IN, for the main galaxy (owner, 2026-11-09). The hull, the galaxy it left, where it stood and
+ * when: enough to watch it cross to the rim. Nothing of the world it landed on, which stays hidden until
+ * someone finds it (CLAUDE.md §1).
+ */
+export async function inboundShips(db: Db, accountId: string, clock: Clock) {
+  const since = new Date(clock.now().getTime() - INBOUND_MS);
+  const rows = await db.select({ vesselId: vessels.id, ordinal: starterGalaxies.ordinal, x: starterDepartures.x, y: starterDepartures.y, z: starterDepartures.z, at: starterDepartures.at })
+    .from(players)
+    .innerJoin(vesselMigrations, and(eq(vesselMigrations.seasonId, players.seasonId), eq(vesselMigrations.status, 'DONE')))
+    .innerJoin(vessels, eq(vessels.id, vesselMigrations.vesselId))
+    .innerJoin(starterDepartures, and(eq(starterDepartures.accountId, vessels.accountId), gt(starterDepartures.at, since)))
+    .innerJoin(starterGalaxies, eq(starterGalaxies.id, vessels.starterGalaxyId))
+    .where(eq(players.accountId, accountId))
+    .orderBy(asc(starterDepartures.at));
+  return { inbound: rows.map(row => ({ hull: vesselHull(row.vesselId), ordinal: row.ordinal, x: row.x, y: row.y, z: row.z, at: row.at.toISOString() })) };
 }
 
 /** Read from the main game's side, by an account that no longer has a ship to lock. */

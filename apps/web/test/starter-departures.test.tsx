@@ -30,6 +30,10 @@ describe('somebody leaves', () => {
     expect(reads).toContainEqual(keys.migration);
   });
 
+  it('lets the main galaxy watch a newcomer come in, and nothing else', () => {
+    expect(readsForShardEvent('shard:inbound')).toEqual([keys.inbound]);
+  });
+
   it('draws the streak for ten minutes and then lets it go', () => {
     expect(beamsNow([row('A', 2), row('B', 9), row('C', 11)], NOW).map(beam => beam.name)).toEqual(['A', 'B']);
   });
@@ -43,7 +47,7 @@ describe('somebody leaves', () => {
 
 describe('the board', () => {
   it('lists who left, with flag and how long ago', async () => {
-    render(wrap(<DepartureBoard now={NOW} />, { departures: [{ name: 'Vex', country: 'DE', at: new Date(NOW - 3_600_000).toISOString(), x: 0, y: 0, z: 0 }] }));
+    render(wrap(<DepartureBoard now={NOW} />, { departures: [{ name: 'Vex', country: 'DE', at: new Date(NOW - 3_600_000).toISOString(), x: 0, y: 0, z: 0, hull: 'SPINE' }] }));
     expect(await screen.findByText('Vex')).toBeInTheDocument();
     expect(screen.getByTestId('departure-board')).toHaveTextContent(/1h/u);
   });

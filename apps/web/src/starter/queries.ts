@@ -90,6 +90,12 @@ export function useDepartures(enabled: boolean) {
   return useQuery({ queryKey: keys.departures, queryFn: ({ signal }) => api.starterDepartures({ signal }), enabled });
 }
 
+/** The main galaxy's newcomers in flight. Read when one lands (the `inbound` event) and on opening. */
+export function useInbound(enabled: boolean) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.inbound, queryFn: ({ signal }) => api.starterInbound({ signal }), enabled });
+}
+
 const HALF_AN_HOUR = 30 * 60_000;
 
 /** The main galaxy's picture. Nothing wakes it: it is read when the ship opens and every half hour. */

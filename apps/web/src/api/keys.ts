@@ -23,6 +23,7 @@ export const keys = {
   mainSky: ['main-sky'],
   migration: ['starter-migration'],
   departures: ['starter-departures'],
+  inbound: ['starter-inbound'],
   arrival: ['starter-arrival'],
   universe: ['universe'],
   planet: ['planet'],

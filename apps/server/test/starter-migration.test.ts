@@ -1,7 +1,7 @@
-import { FIRST_SEASON_START, STARTER, type Fleet } from '@astera/rules';
+import { FIRST_SEASON_START, STARTER, vesselHull, type Fleet } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { accounts, planets, players, seasons, starterDepartures, units, vesselMigrations, vesselMissions, vesselOrders, vesselUnits, vessels } from '../src/db/schema.js';
+import { accounts, planets, players, seasons, starterDepartures, starterGalaxies, units, vesselMigrations, vesselMissions, vesselOrders, vesselUnits, vessels } from '../src/db/schema.js';
 import { recomputeWealth } from '../src/services/planet.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
@@ -273,9 +273,32 @@ describe('the jump', () => {
       const gone = await ready('Gone');
       const stays = await aboard(world, 'Stays');
       await jump(gone.headers);
-      const body = await get<{ departures: { name: string; country: string; at: string }[] }>(world, '/api/starter/departures', stays.headers);
+      const body = await get<{ departures: { name: string; country: string; at: string; hull: string }[] }>(world, '/api/starter/departures', stays.headers);
       expect(body.departures.map(row => row.name)).toEqual(['Gone']);
-      expect(Object.keys(body.departures[0]!).sort()).toEqual(['at', 'country', 'name', 'x', 'y', 'z']);
+      expect(Object.keys(body.departures[0]!).sort()).toEqual(['at', 'country', 'hull', 'name', 'x', 'y', 'z']);
+      // The neighbours watch this hull leave (owner, 2026-11-09).
+      expect(body.departures[0]!.hull).toBe(vesselHull(gone.vesselId));
+    });
+
+    // Owner 2026-11-09: the main galaxy sees a newcomer come in. Not where it lands: a world stays hidden
+    // until it is found, so the watchers get the ship, the galaxy it left and when, and nothing of the world.
+    it('tells the main galaxy what came in during the last minute, and nothing of where it landed', async () => {
+      const gone = await ready('Gone');
+      await jump(gone.headers);
+      const [ship] = await world.f.db.select({ galaxy: starterGalaxies.ordinal, x: vessels.x, y: vessels.y, z: vessels.z }).from(vessels)
+        .innerJoin(starterGalaxies, eq(starterGalaxies.id, vessels.starterGalaxyId)).where(eq(vessels.id, gone.vesselId));
+      const [departed] = await world.f.db.select().from(starterDepartures);
+      const body = await get<{ inbound: Record<string, unknown>[] }>(world, '/api/starter/inbound', gone.headers);
+      expect(body.inbound).toEqual([{ hull: vesselHull(gone.vesselId), ordinal: ship!.galaxy, x: departed!.x, y: departed!.y, z: departed!.z, at: departed!.at.toISOString() }]);
+      world.f.clock.advance(2);
+      expect((await get<{ inbound: unknown[] }>(world, '/api/starter/inbound', gone.headers)).inbound).toEqual([]);
+    });
+
+    it('tells nothing to an account with no world in the main galaxy', async () => {
+      const gone = await ready('Gone');
+      const stays = await aboard(world, 'Stays');
+      await jump(gone.headers);
+      expect((await get<{ inbound: unknown[] }>(world, '/api/starter/inbound', stays.headers)).inbound).toEqual([]);
     });
   });
 

@@ -1,5 +1,5 @@
 import { battleReplayResponseSchema } from './battleReplaySchemas.js';
-import { arrivalSchema, departuresSchema, landingSchema, mainSkySchema, migrationViewSchema, universeSchema, vesselAnswerSchema, vesselCratesSchema } from './starterSchemas.js';
+import { arrivalSchema, departuresSchema, inboundSchema, landingSchema, mainSkySchema, migrationViewSchema, universeSchema, vesselAnswerSchema, vesselCratesSchema } from './starterSchemas.js';
 import { observe, analyticsHeaders, analyticsRecording, syncAnalyticsIdentity } from '../lib/playerAnalytics/runtime.js';
 import { analyticsAuth, analyticsCommand } from './analyticsCommands.js';
 import { analyticsAdminSchema, analyticsTimelineSchema, anonymousVisitsSchema, type AnalyticsFilters } from './analyticsAdminSchemas.js';
@@ -720,6 +720,7 @@ export class Api {
   migrateVessel = (slot: number | null) =>
     this.send('/api/starter/migrate', landingSchema, { method: 'POST', body: slot === null ? {} : { slot } });
   starterDepartures = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/departures', departuresSchema, options);
+  starterInbound = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/inbound', inboundSchema, options);
   starterArrival = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/arrival', arrivalSchema, options);
   markArrivalSeen = () => this.send('/api/starter/arrival/seen', z.object({ ok: z.boolean() }), { method: 'POST', body: {} });
   mainSky = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/main-sky', mainSkySchema, options);
