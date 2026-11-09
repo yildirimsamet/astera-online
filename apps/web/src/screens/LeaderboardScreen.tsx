@@ -11,7 +11,7 @@ import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Medal, isPlace } from '../ui/Medal.js';
 import { EmptyState, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
-import { HonorIcon, RewardIcon } from '../ui/icons/index.js';
+import { DominionIcon, HonorIcon, RewardIcon } from '../ui/icons/index.js';
 import { SeasonRewardReceipt } from '../ui/SeasonRewardReceipt.js';
 import { RankingScores } from '../ui/RankingScores.js';
 import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
@@ -88,7 +88,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
       {board.data.honorEnabled ? <section className="border-b border-v2-line bg-linear-to-br from-v2-self/8 via-v2-panel to-v2-deep px-3 py-3">
         <Segmented<'HONOR' | 'DOMINION'> segments={[
           { id: 'HONOR', label: <span className="inline-flex items-center justify-center gap-1.5 text-body font-bold text-v2-ink"><HonorIcon className="size-4 text-v2-self" />{t('leaderboard.honorTitle')}</span> },
-          { id: 'DOMINION', label: <span className="text-caption font-normal text-v2-ink-2">{t('leaderboard.score')}</span> },
+          { id: 'DOMINION', label: <span className="inline-flex items-center justify-center gap-1.5 text-caption font-normal text-v2-ink-2"><DominionIcon className="size-4" />{t('leaderboard.score')}</span> },
         ]}
           value={board.data.ranking} onSelect={setRanking} label={t('leaderboard.rankingChoice')} />
         {honor ? <>

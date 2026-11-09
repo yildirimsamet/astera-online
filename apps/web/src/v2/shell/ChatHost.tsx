@@ -1,5 +1,5 @@
 import { BlockedPlayersSheet } from '../../screens/CommunityBlocks.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { addChatMute, readChatMutes, writeChatMutes, type ChatMuteAuthor } from '../../lib/chatMutes.js';
 import { MuteIcon } from '../../ui/icons/index.js';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +36,24 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   const [mutedPlayers, setMutedPlayers] = useState(() => readChatMutes(accountId));
   const [showMuted, setShowMuted] = useState(false);
   const [showBlocked, setShowBlocked] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    // iOS pans the visual viewport; Android may resize the layout viewport instead.
+    const sync = (): void => {
+      host.current?.style.setProperty('--chat-viewport-height', `${String(viewport?.height ?? window.innerHeight)}px`);
+      host.current?.style.setProperty('--chat-viewport-top', `${String(viewport?.offsetTop ?? 0)}px`);
+    };
+    sync();
+    viewport?.addEventListener('resize', sync);
+    viewport?.addEventListener('scroll', sync);
+    window.addEventListener('resize', sync);
+    return () => {
+      viewport?.removeEventListener('resize', sync);
+      viewport?.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, []);
   useEffect(() => { writeChatMutes(accountId, mutedPlayers); }, [accountId, mutedPlayers]);
   const mute = (author: ChatMuteAuthor): void => { setMutedPlayers(current => addChatMute(current, author)); };
   const generalUnread = useChatUnread().data?.count ?? 0;
@@ -44,6 +62,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
 
   return (
     <>
+      <div ref={host} data-chat-host>
       <Sheet title={t('bell.chat')} titleAction={(<>
         <button type="button" aria-label={t('chat.personalMutes.title')} aria-haspopup="dialog"
           className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
@@ -69,6 +88,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
           />
         </div>
       </Sheet>
+      </div>
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
       {showMuted && <Sheet title={t('chat.personalMutes.title')} detents={['fit']} onClose={() => { setShowMuted(false); }}>
         <p className="mb-3 text-caption leading-relaxed text-v2-ink-2">{t('chat.personalMutes.hint')}</p>

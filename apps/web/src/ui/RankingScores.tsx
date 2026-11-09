@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { full, signed } from '../lib/format.js';
 import { honorScore } from '../lib/honor.js';
-import { HonorIcon } from './icons/index.js';
+import { DominionIcon, HonorIcon } from './icons/index.js';
 
 /** Primary merit and secondary dominance, with identical hierarchy on every surface. */
 export function RankingScores({ honor, dominion, change = false }: {
@@ -16,7 +16,7 @@ export function RankingScores({ honor, dominion, change = false }: {
       <span className="num break-all">{change && honor > 0 ? '+' : ''}{honorScore(honor)}</span>
     </span> : null}
     {dominion != null ? <span data-dominion-score className="flex max-w-full flex-wrap justify-end gap-x-1.5 text-caption font-normal text-v2-ink-2">
-      <span>{t('leaderboard.score')}</span><span className="num break-all">{dominion === 0 ? full(0) : signed(dominion)}</span>
+      <span className="inline-flex items-center gap-1"><DominionIcon className="size-3 shrink-0" />{t('leaderboard.score')}</span><span className="num break-all">{dominion === 0 ? full(0) : signed(dominion)}</span>
     </span> : null}
   </span>;
 }

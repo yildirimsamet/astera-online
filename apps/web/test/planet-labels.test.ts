@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { planetNodes, type PlanetNode } from '../src/galaxy/scene.js';
-import { layoutPlanetLabels, planetLabelWidth } from '../src/galaxy/planetLabels.js';
+import { layoutPlanetLabels, planetLabelRank, planetLabelWidth } from '../src/galaxy/planetLabels.js';
 
 const node = (id: string, over: Partial<PlanetNode> = {}): PlanetNode => ({
   ...planetNodes([{ id, name: `World ${id}`, owner: `Commander ${id}`, country: 'JP',
@@ -20,6 +20,14 @@ const layout = (nodes: PlanetNode[], range = 20, selectedId: string | null = nul
   layoutPlanetLabels({ nodes, camera: camera(range), width: 350, height: 640, selectedId, rivals: [], now: 0 });
 
 describe('nearby planet names without a tap', () => {
+  it('reserves room for both podiums and prioritises a Dominion winner during Honor', () => {
+    const plain = node('podium', { owner: 'Commander of the frontier', name: 'Io' });
+    const honor = { ...plain, honorRanking: true as const, honorRank: 2 as const };
+    const both = { ...honor, dominionRank: 1 as const };
+    expect(planetLabelWidth(both, false)).toBeGreaterThan(planetLabelWidth(honor, false));
+    expect(planetLabelWidth(honor, false)).toBeGreaterThan(planetLabelWidth(plain, false));
+    expect(planetLabelRank({ ...plain, honorRanking: true, dominionRank: 3 }, null, [], 0)).toBe(3);
+  });
   it.each([[0, 0, 10], [0, 10, 0.1], [0, -10, 0.1], [10, 0, 0]])('keeps text above and centred on a planet from camera %j', (x, y, z) => {
     const orbit = camera();
     orbit.position.set(x, y, z);

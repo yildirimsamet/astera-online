@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--dominance-chat')) {
+  const { verifyDominanceChat } = await import('./dominance-chat-visual.mjs');
+  await verifyDominanceChat(process.argv[2] ?? 'out/dominance-chat');
+  process.exit(0);
+}
+
 if (process.argv.includes('--model-load-recovery')) {
   const { verifyModelLoadRecovery } = await import('./model-load-recovery-visual.mjs');
   await verifyModelLoadRecovery(process.argv[2] ?? 'out/model-load-recovery');

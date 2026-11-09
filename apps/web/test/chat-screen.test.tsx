@@ -666,6 +666,37 @@ describe('galaxy chat surface', () => {
     await waitFor(() => { expect(composer).toHaveValue(''); });
   });
 
+  it('keeps the latest messages visible as the keyboard resizes the log, without moving a reader in older history', () => {
+    let resize: (() => void) | undefined;
+    const disconnect = vi.fn();
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resize = callback; }
+      observe = vi.fn();
+      disconnect = disconnect;
+    });
+    const { unmount } = show();
+    const history = screen.getByRole('log');
+    let height = 300;
+    Object.defineProperties(history, {
+      scrollHeight: { configurable: true, value: 900 },
+      clientHeight: { configurable: true, get: () => height },
+    });
+    history.scrollTop = 600;
+    fireEvent.scroll(history);
+    height = 150;
+    // Browsers can deliver the previous scroll event after layout, before ResizeObserver.
+    fireEvent.scroll(history);
+    act(() => { resize?.(); });
+    expect(history.scrollTop).toBe(900);
+    history.scrollTop = 200;
+    fireEvent.scroll(history);
+    height = 100;
+    act(() => { resize?.(); });
+    expect(history.scrollTop).toBe(200);
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
+
   it('scrolls only the message history after posting, never the page viewport', async () => {
     const { post } = show();
     const history = screen.getByRole('log', { name: 'Galaxy messages' });

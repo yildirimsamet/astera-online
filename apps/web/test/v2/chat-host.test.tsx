@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatHost } from '../../src/v2/shell/ChatHost.js';
 
 /**
@@ -33,8 +33,35 @@ beforeEach(() => {
   clanChatUnread = 0;
   dmUnread = 0;
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('the chat page', () => {
+  it('tracks the visible viewport through keyboard resize and Safari pan, and releases listeners', () => {
+    const viewport = Object.assign(new EventTarget(), { height: 740, offsetTop: 0 });
+    vi.stubGlobal('visualViewport', viewport);
+    const remove = vi.spyOn(viewport, 'removeEventListener');
+    const view = render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const host = view.container.querySelector('[data-chat-host]');
+    expect(host).toHaveStyle('--chat-viewport-height: 740px; --chat-viewport-top: 0px');
+    act(() => { viewport.height = 360; viewport.dispatchEvent(new Event('resize')); });
+    expect(host).toHaveStyle('--chat-viewport-height: 360px');
+    act(() => { viewport.offsetTop = 90; viewport.dispatchEvent(new Event('scroll')); });
+    expect(host).toHaveStyle('--chat-viewport-top: 90px');
+    act(() => { viewport.height = 740; viewport.offsetTop = 0; viewport.dispatchEvent(new Event('resize')); });
+    expect(host).toHaveStyle('--chat-viewport-height: 740px; --chat-viewport-top: 0px');
+    view.unmount();
+    expect(remove.mock.calls.map(call => call[0])).toEqual(expect.arrayContaining(['resize', 'scroll']));
+  });
+
+  it('uses window height when VisualViewport is unavailable, including Android window resize', () => {
+    vi.stubGlobal('visualViewport', undefined);
+    vi.stubGlobal('innerHeight', 740);
+    const view = render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const host = view.container.querySelector('[data-chat-host]');
+    expect(host).toHaveStyle('--chat-viewport-height: 740px');
+    act(() => { vi.stubGlobal('innerHeight', 360); window.dispatchEvent(new Event('resize')); });
+    expect(host).toHaveStyle('--chat-viewport-height: 360px');
+  });
   it('keeps a fixed-height panel while the message history owns scrolling', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     const panel = screen.getByRole('dialog', { name: 'Chat' });

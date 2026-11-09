@@ -1386,10 +1386,10 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
 export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen?: (node: PlanetNode) => void }) {
   const { t, i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
-  const rank = node.honorRanking ? node.honorRank : node.dominionRank;
   const label = commanderLabel(node.owner, node.clan?.tag);
   const body = <>
-    {rank ? <RankBadge rank={rank} honor={node.honorRanking} /> : null}
+    {node.honorRanking && node.honorRank ? <RankBadge rank={node.honorRank} honor /> : null}
+    {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
     <span className="min-w-0 truncate">{label}</span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
   </>;

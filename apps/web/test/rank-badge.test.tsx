@@ -13,8 +13,17 @@ describe('Dominion podium badges', () => {
     [3, 'copper'],
   ] as const)('makes rank %s a distinct, proudly visible metal badge', (rank, metal) => {
     render(<RankBadge rank={rank} />);
-    const badge = screen.getByLabelText(`Rank ${String(rank)}`);
+    const badge = screen.getByLabelText(`Dominion · Rank ${String(rank)}`);
     expect(badge).toHaveTextContent(String(rank));
-    expect(badge).toHaveClass('rank-badge', `rank-badge-${metal}`);
+    expect(badge.querySelector('.rank-badge')).toHaveClass(`rank-badge-${metal}`, 'rank-badge-dominion');
+    expect(badge.querySelector('svg')).toBeInTheDocument();
+  });
+  it('uses different insignia and badge shapes for the two ladders', () => {
+    const view = render(<><RankBadge rank={1} honor /><RankBadge rank={1} /></>);
+    const honor = screen.getByLabelText('Honor · Rank 1');
+    const dominion = screen.getByLabelText('Dominion · Rank 1');
+    expect(honor.querySelector('.rank-badge')).not.toHaveClass('rank-badge-dominion');
+    expect(honor.querySelector('svg')?.innerHTML).not.toBe(dominion.querySelector('svg')?.innerHTML);
+    expect(view.container.querySelectorAll('.rank-badge')).toHaveLength(2);
   });
 });

@@ -58,6 +58,14 @@ export function HonorIcon(props: IconProps) {
   </Glyph>;
 }
 
+/** Dominion's shared insignia: a closed gauntlet over a squared wrist cuff. */
+export function DominionIcon(props: IconProps) {
+  return <Glyph {...props}>
+    <path d="M7 13V5a1.5 1.5 0 0 1 3 0m0 4V4a1.5 1.5 0 0 1 3 0v5m0-4a1.5 1.5 0 0 1 3 0v4m0-3a1.5 1.5 0 0 1 3 0v6c0 3-2 4-3 6H9l-5-6a1.8 1.8 0 0 1 2.5-2.5L10 13h3" />
+    <path d="M9 18h7v4H9z" />
+  </Glyph>;
+}
+
 function Glyph({
   children,
   className = 'size-5',
