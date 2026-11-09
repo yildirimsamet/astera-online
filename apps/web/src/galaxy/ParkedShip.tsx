@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { useLoader } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,6 +12,8 @@ import { PARK, parkPose, type ParkedShip } from './parkedShip.js';
 import type { PlanetNode } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { useVisualFrame } from './visualFrame.js';
+import { ShipAssetBoundary } from './ShipAssetBoundary.js';
+export { ShipAssetBoundary } from './ShipAssetBoundary.js';
 
 /** Past this the ship is a speck beside a dot; the satellites stop at 34 for the same reason. */
 const VISIBLE_WITHIN = 40;
@@ -41,47 +43,10 @@ export default function ParkedShipModel({ park, nodes, onSelect, own = true }: {
  * The class model at its coarsest level of detail, engines lit or dark. Shared by the parked ship
  * and the escort at the rear of a flying fleet (Y9).
  */
-/** A failed ship asset must never unmount the galaxy and all of its controls. */
-export class ShipAssetBoundary extends Component<{ children: ReactNode; fallback: ReactNode; onError?: () => void }, { failed: boolean }> {
-  override state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  private retryTimer: ReturnType<typeof setTimeout> | null = null;
-  private automaticRetryUsed = false;
-  private retry = () => {
-    if (this.retryTimer !== null) { clearTimeout(this.retryTimer); this.retryTimer = null; }
-    if (this.state.failed) this.setState({ failed: false });
-  };
-  override componentDidMount() {
-    window.addEventListener('online', this.retry);
-    window.addEventListener('focus', this.retry);
-  }
-  override componentWillUnmount() {
-    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
-    window.removeEventListener('online', this.retry);
-    window.removeEventListener('focus', this.retry);
-  }
-  override componentDidCatch() {
-    this.props.onError?.();
-    // The online event can precede delivery of the failed fetch. One delayed retry covers that race.
-    if (!this.automaticRetryUsed) {
-      this.automaticRetryUsed = true;
-      this.retryTimer = setTimeout(this.retry, 1_000);
-    }
-  }
-  override render() { return this.state.failed ? this.props.fallback : this.props.children; }
-}
-
-function ShipSilhouette({ lit }: { lit: boolean }) {
-  return <group name="ship-silhouette">
-    <mesh rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[.22, 1, 4]} /><meshStandardMaterial color="#8299ad" roughness={.6} metalness={.5} /></mesh>
-    {lit && <mesh position={[0, 0, -.45]}><sphereGeometry args={[.08, 8, 6]} /><meshBasicMaterial color="#8fd8ff" /></mesh>}
-  </group>;
-}
-
 export function ShipBody({ model, lit }: { model: ShipModel | undefined; lit: boolean }) {
-  if (!model) return <ShipSilhouette lit={lit} />;
-  return <ShipAssetBoundary key={model.url} onError={() => { useLoader.clear(GLTFLoader, model.url); }} fallback={<ShipSilhouette lit={lit} />}>
-    <Suspense fallback={<ShipSilhouette lit={lit} />}><LoadedShipBody model={model} lit={lit} /></Suspense>
+  if (!model) return null;
+  return <ShipAssetBoundary key={model.url} onError={() => { useLoader.clear(GLTFLoader, model.url); }} fallback={null}>
+    <Suspense fallback={null}><LoadedShipBody model={model} lit={lit} /></Suspense>
   </ShipAssetBoundary>;
 }
 

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { useGltfPair } from '../src/galaxy/useGltfPair.js';
 import { SkinAssetBoundary } from '../src/galaxy/SkinAssetBoundary.js';
+import { ShipAssetBoundary } from '../src/galaxy/ShipAssetBoundary.js';
 
 interface Model { scene: THREE.Group }
 const jobs = vi.hoisted(() => ({
@@ -25,6 +26,7 @@ vi.mock('@react-three/drei', async () => {
   }
   return { useGLTF: Object.assign((input: string | string[]) => useLoader(ModelLoader, input), {
     preload: (input: string | string[]) => { useLoader.preload(ModelLoader, input); },
+    clear: (input: string | string[]) => { useLoader.clear(ModelLoader, input); },
   }) };
 });
 
@@ -103,4 +105,25 @@ it.each(['full', 'low'] as const)('preserves the existing asset fallback if the 
     expect(screen.queryByTestId('models')).not.toBeInTheDocument();
     if (failedTier === 'full') await finish(low);
   } finally { error.mockRestore(); }
+});
+
+it.each(['full', 'low'] as const)('retries the real cached %s failure on reconnect and restores both model tiers', async failedTier => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const full = `recover-${failedTier}-full.glb`, low = `recover-${failedTier}-low.glb`;
+  render(<><button>Galaxy</button><ShipAssetBoundary fallback={null}
+    onError={() => { useGLTF.clear(full); useGLTF.clear(low); }}>
+    {pair(full, low)}
+  </ShipAssetBoundary></>);
+  if (failedTier === 'low') await finish(full);
+  const reject = jobs.failed.get(failedTier === 'full' ? full : low);
+  if (!reject) throw new Error('Missing rejection callback');
+  await act(async () => { reject(new Error('Failed to fetch')); await Promise.resolve(); });
+  expect(screen.queryByTestId('models')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Galaxy' })).toBeInTheDocument();
+  const requests = jobs.urls.length;
+  act(() => { window.dispatchEvent(new Event('online')); });
+  expect(jobs.urls.slice(requests)).toEqual([full, low]);
+  const model = await finish(full), lod = await finish(low);
+  expect(screen.getByTestId('models')).toHaveAttribute('data-full', model.scene.uuid);
+  expect(screen.getByTestId('models')).toHaveAttribute('data-low', lod.scene.uuid);
 });

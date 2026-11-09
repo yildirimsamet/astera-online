@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--model-load-recovery')) {
+  const { verifyModelLoadRecovery } = await import('./model-load-recovery-visual.mjs');
+  await verifyModelLoadRecovery(process.argv[2] ?? 'out/model-load-recovery');
+  process.exit(0);
+}
+
 if (process.argv.includes('--commander-sight')) {
   const { verifyCommanderSight } = await import('./commander-sight-visual.mjs');
   await verifyCommanderSight(process.argv[2] ?? 'out/commander-sight/visual');

@@ -3,6 +3,21 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 
+/** Serialized into the browser. Labels and invisible hit volumes do not prove that a model loaded. */
+export function commanderEscortsReady(minimum = 2) {
+  const scene = window.__galaxy?.scene;
+  if (!scene) return false;
+  let escorts = 0; let loaded = 0;
+  scene.traverse(object => {
+    if (object.name !== 'flight-escort') return;
+    escorts++;
+    let meshes = 0;
+    object.traverse(child => { if (child.isMesh && child.name !== 'escort-hit-target') meshes++; });
+    if (meshes > 0) loaded++;
+  });
+  return escorts >= minimum && loaded === escorts;
+}
+
 /** Real signed-in galaxy, with a local disposable fixture supplied by the operator. */
 export async function verifyCommanderSight(output) {
   await mkdir(output, { recursive: true });
@@ -32,11 +47,7 @@ export async function verifyCommanderSight(output) {
     await page.waitForFunction(() => Boolean(window.__galaxy?.scene), { timeout: 60_000 });
     await page.getByRole('button', { name: /back to the galaxy/i }).click({ timeout: 20_000 }).catch(() => undefined);
     await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 60_000 });
-    await page.waitForFunction(() => {
-      let loaded = 0;
-      window.__galaxy.scene.traverse(object => { if (object.name === 'flight-escort' && object.children.some(child => child.type === 'Object3D' || child.type === 'Group')) loaded++; });
-      return loaded >= 2;
-    });
+    await page.waitForFunction(commanderEscortsReady);
     await page.evaluate(() => {
       const g = window.__galaxy; const park = g.scene.getObjectByName('commander-ship');
       const at = park.getWorldPosition(park.position.clone());
@@ -139,12 +150,7 @@ async function verifyDownloadRecovery(browser, fixture, web, evidence) {
     assert(interrupted > 0);
     interrupt = false;
     await recoveryPage.evaluate(() => { window.dispatchEvent(new Event('online')); });
-    try { await recoveryPage.waitForFunction(() => {
-      const g = window.__galaxy; if (!g) return false;
-      let silhouettes = 0; let escorts = 0;
-      g.scene.traverse(object => { if (object.name === 'ship-silhouette') silhouettes++; if (object.name === 'flight-escort') escorts++; });
-      return escorts >= 2 && silhouettes === 0;
-    }, undefined, { timeout: 45_000 }); } catch (error) {
+    try { await recoveryPage.waitForFunction(commanderEscortsReady, undefined, { timeout: 45_000 }); } catch (error) {
       console.log('Recovery diagnostic', { interrupted, network, recoveryErrors, body: (await recoveryPage.locator('body').innerText()).slice(-1000) });
       throw error;
     }
