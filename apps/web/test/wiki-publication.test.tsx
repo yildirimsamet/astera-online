@@ -267,6 +267,15 @@ describe('development updates', () => {
     for (const post of posts) expect(post.slug.startsWith(post.updated ?? '-')).toBe(true);
   });
 
+  it('dates every row of the updates list', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const page = wikiPages.find(p => p.categoryId === 'updates' && p.articleId === undefined && p.language === language);
+      if (!page) throw new Error(`updates ${language}`);
+      const doc = documentFor(renderWikiPage(page));
+      expect([...doc.querySelectorAll('.wiki-article-row time')].map(time => time.getAttribute('datetime'))).toEqual(posts.map(post => post.updated));
+    }
+  });
+
   it.each(posts.map(post => [post.id, post] as const))('%s is a dated, readable post in both languages', (_id, post) => {
     for (const [language, minimum] of [['en', 350], ['tr', 300]] as const) {
       const page = wikiPages.find(p => p.articleId === post.id && p.language === language);

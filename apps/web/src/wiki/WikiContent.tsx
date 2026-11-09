@@ -43,12 +43,15 @@ function Block({ block, language, onNavigate }: { block: WikiBlock; language: Wi
   }
 }
 
+function WikiDate({ date, language, className }: { date: string; language: WikiLanguage; className?: string }) {
+  return <time className={className} dateTime={date}>{new Intl.DateTimeFormat(language, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))}</time>;
+}
 export function WikiArticleContent({ article, language, onNavigate }: { article: WikiArticle; language: WikiLanguage; onNavigate?: WikiNavigate }) {
   const words = wikiLabels[language]; const category = wikiCategories.find(c => c.id === article.category);
   return <>
     <article className="wiki-article">
       <header className={`wiki-article-head${article.image ? ' wiki-with-art' : ''}`}>
-        <div><p className="wiki-eyebrow">{category?.title[language]}</p><h1 tabIndex={-1}>{article.title[language]}</h1><p className="wiki-lede">{article.description[language]}</p>{article.updated ? <p className="wiki-updated">{words.updated} <time dateTime={article.updated}>{new Intl.DateTimeFormat(language, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${article.updated}T00:00:00Z`))}</time></p> : null}</div>
+        <div><p className="wiki-eyebrow">{category?.title[language]}</p><h1 tabIndex={-1}>{article.title[language]}</h1><p className="wiki-lede">{article.description[language]}</p>{article.updated ? <p className="wiki-updated">{words.updated} <WikiDate date={article.updated} language={language} /></p> : null}</div>
         {article.image ? <img src={article.image} width={180} height={180} alt="" className="wiki-art" /> : null}
       </header>
       <nav className="wiki-toc" aria-label={words.toc}><span className="wiki-eyebrow">{words.toc}</span>{article.sections[language].map(section => <a href={`#${section.id}`} key={section.id}>{section.title}</a>)}</nav>
@@ -79,7 +82,7 @@ export function WikiBreadcrumbs({ page, onNavigate }: ContentProps) {
 }
 
 export function WikiArticleList({ articles, language, onNavigate }: { articles: readonly WikiArticle[]; language: WikiLanguage; onNavigate?: WikiNavigate }) {
-  return <div className="wiki-article-list">{articles.map(article => <WikiLink href={wikiPath(article.id, language)} key={article.id} onNavigate={onNavigate} aria-label={article.title[language]} className="wiki-article-row">{article.image ? <img src={article.image} width={72} height={72} alt="" loading="lazy" /> : <span className="wiki-row-glyph"><GuideIcon className="wiki-icon" /></span>}<span><span className="wiki-row-title">{article.title[language]}</span><span className="wiki-row-description">{article.description[language]}</span></span><ChevronIcon className="wiki-icon" /></WikiLink>)}</div>;
+  return <div className="wiki-article-list">{articles.map(article => <WikiLink href={wikiPath(article.id, language)} key={article.id} onNavigate={onNavigate} aria-label={article.title[language]} className="wiki-article-row">{article.image ? <img src={article.image} width={72} height={72} alt="" loading="lazy" /> : <span className="wiki-row-glyph"><GuideIcon className="wiki-icon" /></span>}<span>{article.updated ? <WikiDate date={article.updated} language={language} className="wiki-row-date" /> : null}<span className="wiki-row-title">{article.title[language]}</span><span className="wiki-row-description">{article.description[language]}</span></span><ChevronIcon className="wiki-icon" /></WikiLink>)}</div>;
 }
 
 export function WikiPageContent({ page, onNavigate }: ContentProps) {
