@@ -57,6 +57,7 @@ function daysToJump(sessionHours: readonly number[]): number {
     const key = Math.floor(now / DAY) * 100 + session;
     if (key !== lastSession) {
       lastSession = key;
+      if (isFeatureOpen(progress, 'telescope') && !progress.facts.includes('FIRST_MINING_SENT')) progress = { ...progress, facts: [...progress.facts, 'FIRST_MINING_SENT'] };
       if (isFeatureOpen(progress, 'intel') && !progress.facts.includes('FIRST_PROBE_REPORT')) progress = { ...progress, facts: [...progress.facts, 'FIRST_PROBE_REPORT'] };
       if (isFeatureOpen(progress, 'fleet')) {
         economy = { ...economy, alloy: economy.alloy + TRIPS_PER_SESSION * TRIP.alloy, crystal: economy.crystal + TRIPS_PER_SESSION * TRIP.crystal };

@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "ilk sonda raporun",
-    "FIRST_MINING_RETURN": "ilk madencilik dönüşün",
+    "FIRST_MINING_SENT": "ilk Kazıcı uçuşun", "FIRST_MINING_RETURN": "ilk madencilik dönüşün",
     "FIRST_BATTLE_REPORT": "ilk savaş raporun",
     "FIRST_OUTPOST_VICTORY": "ilk karakol zaferin",
     "FIRST_OUTPOST_DEFEAT": "ilk karakol denemen"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "Bir karakola saldır.", "FIRST_PROBE_REPORT": "Komşu bir gemiye sonda gönder.", "FIRST_MINING_RETURN": "Bir Kazıcıyı asteroide gönder ve dönmesini bekle.", "FIRST_BATTLE_REPORT": "Bir karakola baskın yap ya da Aegis açıkken korsanları karşıla. O savaşın raporu sayılır.", "FIRST_OUTPOST_VICTORY": "Bir karakolun bekçilerini kesin bir zaferle yen."},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "Bir karakola saldır.", "FIRST_PROBE_REPORT": "Komşu bir gemiye sonda gönder.", "FIRST_MINING_SENT": "Bir asteroide Kazıcı gönder.", "FIRST_MINING_RETURN": "Bir Kazıcıyı asteroide gönder ve dönmesini bekle.", "FIRST_BATTLE_REPORT": "Bir karakola baskın yap ya da Aegis açıkken korsanları karşıla. O savaşın raporu sayılır.", "FIRST_OUTPOST_VICTORY": "Bir karakolun bekçilerini kesin bir zaferle yen."},
   "attackLocked": "Gemilere saldırmak için kendi Aegis’in onarılmış ve arkanda bir savaş olmalı. Aegis açıkken senin gemine de saldırılabilir.",
   "aegisChoice": {"title": "Seçim senin", "hold": "Aegis’i onar", "with": "Aegis ile", "withShield": "Hasarı önce kalkan karşılar.", "withPirates": "Korsanlar gelmeye başlar.", "withNeighbours": "{{hours}} saat sonra komşular da sana saldırabilir.", "withAttack": "Bir savaştan sonra sen de gemilere saldırabilirsin.", "without": "Aegis olmadan", "withoutSafe": "Ne korsan ne komşu sana saldırabilir.", "withoutOutposts": "Yalnız karakollara akın edersin.", "withoutJump": "Çıkış için gerekmez."},
   "outpostLocked": "Karakol baskını Tersane ile açılır. Tersaneyi onar; ürettiği gemiler buraya baskına çıkabilir.",

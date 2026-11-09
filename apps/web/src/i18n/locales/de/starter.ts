@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "dein erster Sondenbericht",
-    "FIRST_MINING_RETURN": "deine erste Bergbau-Rückkehr",
+    "FIRST_MINING_SENT": "dein erster Prospektor-Flug", "FIRST_MINING_RETURN": "deine erste Bergbau-Rückkehr",
     "FIRST_BATTLE_REPORT": "dein erster Kampfbericht",
     "FIRST_OUTPOST_VICTORY": "dein erster Sieg über einen Außenposten",
     "FIRST_OUTPOST_DEFEAT": "dein erster Angriff auf einen Außenposten"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "Greife einen Außenposten an.", "FIRST_PROBE_REPORT": "Schicke eine Sonde zu einem Nachbarschiff.", "FIRST_MINING_RETURN": "Schicke einen Prospektor zu einem Asteroiden und warte, bis er zurückkommt.", "FIRST_BATTLE_REPORT": "Überfalle einen Außenposten oder stell dich den Piraten, sobald die Aegis steht. Der Bericht dieses Kampfes zählt.", "FIRST_OUTPOST_VICTORY": "Besiege die Wache eines Außenpostens entscheidend."},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "Greife einen Außenposten an.", "FIRST_PROBE_REPORT": "Schicke eine Sonde zu einem Nachbarschiff.", "FIRST_MINING_SENT": "Schicke einen Prospektor zu einem Asteroiden.", "FIRST_MINING_RETURN": "Schicke einen Prospektor zu einem Asteroiden und warte, bis er zurückkommt.", "FIRST_BATTLE_REPORT": "Überfalle einen Außenposten oder stell dich den Piraten, sobald die Aegis steht. Der Bericht dieses Kampfes zählt.", "FIRST_OUTPOST_VICTORY": "Besiege die Wache eines Außenpostens entscheidend."},
   "attackLocked": "Um Schiffe anzugreifen, brauchst du deine reparierte Aegis und einen Kampf hinter dir. Mit der Aegis kann auch dein Schiff angegriffen werden.",
   "aegisChoice": {"title": "Deine Wahl", "hold": "Aegis reparieren", "with": "Mit Aegis", "withShield": "Der Schild fängt den Schaden zuerst ab.", "withPirates": "Piraten beginnen zu kommen.", "withNeighbours": "Nach {{hours}} Std. können dich Nachbarn angreifen.", "withAttack": "Nach einem Kampf kannst du auch Schiffe angreifen.", "without": "Ohne Aegis", "withoutSafe": "Weder Piraten noch Nachbarn können dich angreifen.", "withoutOutposts": "Du überfällst nur Außenposten.", "withoutJump": "Für den Aufbruch nicht nötig."},
   "outpostLocked": "Überfälle auf Außenposten öffnen sich mit der Werft. Repariere sie, und die Schiffe, die sie baut, können hier angreifen.",

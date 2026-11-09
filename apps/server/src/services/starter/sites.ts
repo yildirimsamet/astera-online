@@ -7,7 +7,7 @@ import type { Db, Tx } from '../../db/client.js';
 import { starterGalaxies, starterSites, vessels } from '../../db/schema.js';
 import { publishShard } from '../../stream/bus.js';
 import { progressOf } from './vessel.js';
-import { insertRock } from './rocks.js';
+import { ensureFirstRocks, insertRock } from './rocks.js';
 import { randomUUID } from 'node:crypto';
 import { launchPirates } from './npcRaids.js';
 
@@ -89,6 +89,10 @@ export async function sweepStarterWorld(db: Db, clock: Clock): Promise<void> {
       await turnOver(tx, galaxy, now);
       const ships = await tx.select().from(vessels).where(and(eq(vessels.starterGalaxyId, galaxy.id), eq(vessels.status, 'ACTIVE')));
       await growRocks(tx, galaxy, ships.length, now);
+      // The radar waits on the first send: a ship that has not made it is never left with no rock in reach.
+      for (const row of ships.filter(ship => (ship.modules.TELESCOPE ?? 0) >= 1 && !ship.facts.includes('FIRST_MINING_SENT'))) {
+        await ensureFirstRocks(tx, { row, epoch: galaxy.epoch, now });
+      }
       await keepPartsOpen(tx, galaxy, ships.filter(ship => partsVisible(progressOf(ship))).length, now);
       await launchPirates(tx, galaxy, ships, now);
     });

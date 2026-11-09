@@ -451,6 +451,6 @@ F8 görsel: F0'dan sonra, bağımsız                           → [M2 owner pl
 
 ## Playtest turu 3, owner 2026-11-09
 
-- Radar artık teleskop dersinden sonra istenir: Teleskop → bak → yaklaş → asteroit → Kazıcı → Radar → Radar'ı bekle → Anten. Radar'ı erken sıraya koyan oyuncu teleskop dersini yine görür; radar dersi ilk Kazıcı uçuşundan sonra konuşur. Sunucu kuralı değişmedi, Radar elle erken sıraya konabilir.
+- Radar artık teleskop dersinden sonra istenir: Teleskop → bak → yaklaş → asteroit → Kazıcı → Radar → Radar'ı bekle → Anten. Radar sunucuda da kilitlidir: `RADAR 1`, ilk asteroide Kazıcı gönderilince yazılan `FIRST_MINING_SENT` olgusunu ister. Olgu olmadan düğme çıkmaz, istek reddedilir. Henüz göndermemiş gemilerin menzilinde dünya taraması hep asteroit tutar.
 - Asteroitler halka yayılmayı bitirdiği anda gelir (1,4 sn), filolar 1 sn sonra, subay 3 sn'de konuşur.
 - `zoomRock` adımı: kamera uzaktaysa oyuncu pinch ile yaklaşır. Geçiş ölçütü: bir asteroidin dokunma alanı 44 px genişliğe gelir ve kart ile alt çubuğun dışında kalır. Bu adımda asteroide dokunmak ve Sıradaki satırı çalışmaz. Görünürde asteroit yoksa adım atlanır.

@@ -25,6 +25,11 @@ describe('the road opens one repair at a time', () => {
   it('offers only the next step at every point of it', () => {
     let ship = openingProgress();
     for (const part of ROAD) {
+      // The radar opens with the first Prospector sent, not with the telescope (owner playtest 2026-11-09).
+      if (part[0] === 'RADAR') {
+        expect(nextSteps(ship)).toEqual([]);
+        ship = { ...ship, facts: ['FIRST_MINING_SENT'] };
+      }
       expect(nextSteps(ship).map(name)).toEqual([name(stepOf(part))]);
       ship = after(ship, part);
     }

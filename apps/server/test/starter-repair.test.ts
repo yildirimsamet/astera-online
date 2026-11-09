@@ -154,8 +154,19 @@ describe('repairing the ship', () => {
       expect(view.queue[1]!.startedAt).toBe(view.queue[0]!.readyAt);
     });
 
+    // Owner playtest 2026-11-09: the radar waits for the first Prospector, whatever is pressed.
+    it('refuses the radar until a Prospector has gone out, however it is asked', async () => {
+      await setShip({ alloy: 5000, crystal: 2000, modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } });
+      const refused = await repair('RADAR', 1);
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json()).toMatchObject({ error: 'REPAIR_REQUIREMENT' });
+      expect(await world.f.db.select().from(vesselOrders)).toHaveLength(0);
+      await setShip({ facts: ['FIRST_MINING_SENT'] });
+      expect((await repair('RADAR', 1)).statusCode).toBe(200);
+    });
+
     it('holds three at a time', async () => {
-      await setShip({ alloy: 5000, crystal: 2000 });
+      await setShip({ alloy: 5000, crystal: 2000, facts: ['FIRST_MINING_SENT'] });
       await repair('REFINERY', 2);
       await repair('EXTRACTOR', 1);
       await repair('TELESCOPE', 1);

@@ -73,6 +73,30 @@ describe('digging and salvage aboard', () => {
     expect(mission!.status).toBe('DONE');
   });
 
+  // The radar waits on the first send, so a ship that has yet to send one is never left with no rock in reach.
+  it('keeps a rock in reach of a ship that has not sent its first Prospector', async () => {
+    const me = await ready();
+    await world.f.db.update(starterSites).set({ alloy: 0, crystal: 0, deuterium: 0 }).where(eq(starterSites.kind, 'ASTEROID'));
+    await sweepStarterWorld(world.f.db, world.f.clock);
+    expect(miningSchema.parse(await get(world, '/api/starter/mining', me.headers)).asteroids.length).toBeGreaterThanOrEqual(STARTER.sites.rocksInSight[1]);
+  });
+
+  it('records the first send at the launch, and only once', async () => {
+    const me = await ready();
+    const site = await rock();
+    expect((await post(world, '/api/starter/mining/launch', me.headers, { asteroidId: opaque(site.id), craft: 1 })).statusCode).toBe(200);
+    expect((await ship(me.vesselId)).facts).toEqual(['FIRST_MINING_SENT']);
+    expect((await post(world, '/api/starter/mining/launch', me.headers, { asteroidId: opaque(site.id), craft: 1 })).statusCode).toBe(200);
+    expect((await ship(me.vesselId)).facts).toEqual(['FIRST_MINING_SENT']);
+  });
+
+  it('does not take a refused launch for a send', async () => {
+    const me = await ready();
+    const site = await rock();
+    expect((await post(world, '/api/starter/mining/launch', me.headers, { asteroidId: opaque(site.id), craft: 9 })).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await ship(me.vesselId)).facts).toEqual([]);
+  });
+
   it('pays once however often the landing is delivered', async () => {
     const me = await ready();
     const site = await rock();

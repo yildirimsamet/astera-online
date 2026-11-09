@@ -391,6 +391,20 @@ describe('the ship screen', () => {
     expect(card.getByTestId('repair-wait').textContent).toMatch(/\d+ ?(s|m|min)/i);
   });
 
+  // Owner playtest 2026-11-09: no button at all until the first Prospector has gone out.
+  it('has no radar button before a Prospector has gone out, and says how to open it', () => {
+    show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } }, alloy: 5000, crystal: 5000 }));
+    const card = within(screen.getByTestId('next-repair'));
+    expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
+    expect(card.getByTestId('repair-missing').textContent).toMatch(/Prospector/);
+    expect(card.getByTestId('repair-how').textContent).toBe('Send a Prospector to an asteroid.');
+  });
+
+  it('has the radar button once a Prospector has gone out', () => {
+    show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: ['FIRST_MINING_SENT'] }, alloy: 5000, crystal: 5000 }));
+    expect(within(screen.getByTestId('next-repair')).getByRole('button', { name: 'Repair' })).toBeTruthy();
+  });
+
   it('tells them to go and do the thing when a repair waits on an event, not on money', () => {
     const progress: VesselProgress = {
       ...openingProgress(),

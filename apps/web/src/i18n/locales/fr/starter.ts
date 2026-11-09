@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "ton premier rapport de sonde",
-    "FIRST_MINING_RETURN": "ton premier retour de minage",
+    "FIRST_MINING_SENT": "ton premier vol de Prospecteur", "FIRST_MINING_RETURN": "ton premier retour de minage",
     "FIRST_BATTLE_REPORT": "ton premier rapport de bataille",
     "FIRST_OUTPOST_VICTORY": "ta première victoire sur un avant-poste",
     "FIRST_OUTPOST_DEFEAT": "ta première attaque d’avant-poste"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "Attaque un avant-poste.", "FIRST_PROBE_REPORT": "Envoie une sonde vers un vaisseau voisin.", "FIRST_MINING_RETURN": "Envoie un Prospecteur vers un astéroïde et attends son retour.", "FIRST_BATTLE_REPORT": "Attaque un avant-poste, ou affronte les pirates une fois l’Aegis active. Le rapport de ce combat compte.", "FIRST_OUTPOST_VICTORY": "Bats la garde d’un avant-poste par une victoire décisive."},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "Attaque un avant-poste.", "FIRST_PROBE_REPORT": "Envoie une sonde vers un vaisseau voisin.", "FIRST_MINING_SENT": "Envoie un Prospecteur vers un astéroïde.", "FIRST_MINING_RETURN": "Envoie un Prospecteur vers un astéroïde et attends son retour.", "FIRST_BATTLE_REPORT": "Attaque un avant-poste, ou affronte les pirates une fois l’Aegis active. Le rapport de ce combat compte.", "FIRST_OUTPOST_VICTORY": "Bats la garde d’un avant-poste par une victoire décisive."},
   "attackLocked": "Pour attaquer des vaisseaux, il te faut ton Aegis réparée et un combat derrière toi. Avec l’Aegis, ton vaisseau peut aussi être attaqué.",
   "aegisChoice": {"title": "À toi de choisir", "hold": "Réparer l’Aegis", "with": "Avec l’Aegis", "withShield": "Le bouclier encaisse les dégâts en premier.", "withPirates": "Les pirates commencent à venir.", "withNeighbours": "Après {{hours}} h, tes voisins peuvent t’attaquer.", "withAttack": "Après un combat, tu peux aussi attaquer des vaisseaux.", "without": "Sans elle", "withoutSafe": "Ni pirates ni voisins ne peuvent t’attaquer.", "withoutOutposts": "Tu ne pilles que des avant-postes.", "withoutJump": "Inutile pour partir."},
   "outpostLocked": "Les raids sur les avant-postes s’ouvrent avec le Chantier. Répare-le, et les vaisseaux qu’il construit pourront attaquer ici.",

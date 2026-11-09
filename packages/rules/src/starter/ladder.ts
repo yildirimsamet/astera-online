@@ -21,7 +21,7 @@ export const VESSEL_MODULES = [
 export type VesselModule = (typeof VESSEL_MODULES)[number];
 
 /** Things that happened, never things bought: the steps a player cannot simply wait for. */
-export const VESSEL_FACTS = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY', 'FIRST_OUTPOST_DEFEAT'] as const;
+export const VESSEL_FACTS = ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY', 'FIRST_OUTPOST_DEFEAT'] as const;
 export type VesselFact = (typeof VESSEL_FACTS)[number];
 
 export type VesselModules = Partial<Record<VesselModule, number>>;
@@ -86,7 +86,8 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('REFINERY', 'REFINERY', 2, 154, 20, seconds(5), true),
   step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(5), true, [needs('REFINERY', 2)]),
   step('DEFENCE', 'TELESCOPE', 1, 250, 150, seconds(15), true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
-  step('DEFENCE', 'RADAR', 1, 200, 120, seconds(15), true, [needs('TELESCOPE', 1)]),
+  // Not before the telescope's lesson is over: a Prospector sent to a rock (owner playtest 2026-11-09).
+  step('DEFENCE', 'RADAR', 1, 200, 120, seconds(15), true, [needs('TELESCOPE', 1), fact('FIRST_MINING_SENT')]),
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
   step('CARGO', 'SHIPYARD', 1, 800, 300, 1, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
 

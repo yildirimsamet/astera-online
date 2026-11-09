@@ -96,16 +96,8 @@ describe('the road through the first session (N12)', () => {
     expect(id(onRoad({ ...sent, RADAR: 1 }, { mining: true }))).toBe('orderSurvey');
   });
 
-  it('still teaches the telescope to a player who ordered the radar early', () => {
-    const early = onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy' });
-    expect(id(early)).toBe('telescopeLook');
-    expect(id({ ...early, mining: true, view: 'ship' })).toBe('waitRadar');
-  });
-
-  it('keeps the radar\'s contact lesson behind the telescope\'s', () => {
-    const early = onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { view: 'galaxy', sight: { traffic: false, unknown: true } });
-    expect(id(early)).toBe('telescopeLook');
-    expect(id({ ...early, mining: true })).toBe('radarRing');
+  it('takes the first send as done even after the Prospector is gone', () => {
+    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { facts: ['FIRST_MINING_SENT'] }))).toBe('orderRadar');
   });
 
   it('asks for the ship first when the player is out on the galaxy', () => {
@@ -191,7 +183,7 @@ describe('the road through the first session (N12)', () => {
   // Walk 2026-11-08: the telescope opened and the player was sent aboard for a crate before seeing a rock.
   it('asks for a crate only when a repair is the next thing: rocks and probes come first', () => {
     const crates = [{ id: 'REFINERY:2', state: 'opened' }, { id: 'TELESCOPE:1', state: 'ready' }] as const;
-    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { canPayNext: false, crates, queue: [order('RADAR', 1)] }))).toBe('telescopeLook');
+    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { canPayNext: false, crates }))).toBe('telescopeLook');
     expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, { mining: true, canPayNext: false, crates }))).toBe('probe');
   });
 

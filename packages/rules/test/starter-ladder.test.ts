@@ -29,7 +29,7 @@ import {
   type VesselProgress,
 } from '../src/index.js';
 
-const ALL_FACTS: readonly VesselFact[] = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'];
+const ALL_FACTS: readonly VesselFact[] = ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'];
 const withModules = (modules: Partial<Record<VesselModule, number>>, more: Partial<VesselProgress> = {}): VesselProgress => ({
   ...openingProgress(), modules: { ...openingProgress().modules, ...modules }, ...more,
 });
@@ -217,6 +217,9 @@ describe('ordering a repair', () => {
       const answer = canOrderStep(progress, module, stage);
       return answer.ok || answer.code !== 'REPAIR_REQUIREMENT' ? [] : answer.missing;
     };
+    // Owner playtest 2026-11-09: no radar before a Prospector has gone out, whatever is pressed.
+    expect(miss('RADAR', 1, withModules({ TELESCOPE: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_MINING_SENT' }]);
+    expect(canOrderStep({ ...withModules({ TELESCOPE: 1 }), facts: ['FIRST_MINING_SENT'] }, 'RADAR', 1).ok).toBe(true);
     expect(miss('SURVEY', 2, withModules({ SURVEY: 1, SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }]);
     expect(miss('HANGAR', 2, withModules({ SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_MINING_RETURN' }]);
     expect(miss('DRIVE_THRUST', 1, withModules({ DRIVE_HULL: 1 }))).toEqual([{ kind: 'PARTS', count: STARTER.parts.needed }]);

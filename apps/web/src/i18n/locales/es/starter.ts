@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "tu primer informe de sonda",
-    "FIRST_MINING_RETURN": "tu primer regreso de minería",
+    "FIRST_MINING_SENT": "tu primer vuelo de Prospector", "FIRST_MINING_RETURN": "tu primer regreso de minería",
     "FIRST_BATTLE_REPORT": "tu primer informe de batalla",
     "FIRST_OUTPOST_VICTORY": "tu primera victoria sobre un puesto avanzado",
     "FIRST_OUTPOST_DEFEAT": "tu primer ataque a un puesto avanzado"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "Ataca un puesto avanzado.", "FIRST_PROBE_REPORT": "Envía una sonda a una nave vecina.", "FIRST_MINING_RETURN": "Envía un Prospector a un asteroide y espera a que vuelva.", "FIRST_BATTLE_REPORT": "Asalta un puesto avanzado o enfréntate a los piratas cuando la Aegis esté activa. El informe de esa batalla cuenta.", "FIRST_OUTPOST_VICTORY": "Vence a la guardia de un puesto avanzado con una victoria decisiva."},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "Ataca un puesto avanzado.", "FIRST_PROBE_REPORT": "Envía una sonda a una nave vecina.", "FIRST_MINING_SENT": "Envía un Prospector a un asteroide.", "FIRST_MINING_RETURN": "Envía un Prospector a un asteroide y espera a que vuelva.", "FIRST_BATTLE_REPORT": "Asalta un puesto avanzado o enfréntate a los piratas cuando la Aegis esté activa. El informe de esa batalla cuenta.", "FIRST_OUTPOST_VICTORY": "Vence a la guardia de un puesto avanzado con una victoria decisiva."},
   "attackLocked": "Para atacar naves necesitas tu Aegis reparada y una batalla a tus espaldas. Con la Aegis activa, tu nave también puede ser atacada.",
   "aegisChoice": {"title": "Tú eliges", "hold": "Reparar la Aegis", "with": "Con la Aegis", "withShield": "El escudo recibe el daño primero.", "withPirates": "Los piratas empiezan a venir.", "withNeighbours": "Tras {{hours}} h, tus vecinos pueden atacarte.", "withAttack": "Tras una batalla, tú también puedes atacar naves.", "without": "Sin ella", "withoutSafe": "Ni piratas ni vecinos pueden atacarte.", "withoutOutposts": "Solo asaltas puestos avanzados.", "withoutJump": "No hace falta para partir."},
   "outpostLocked": "Los asaltos a puestos avanzados se abren con el Astillero. Repáralo y las naves que construya podrán atacar aquí.",

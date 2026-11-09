@@ -99,7 +99,7 @@ const noRadar = (i: TutorialInput): boolean => !has(i, 'RADAR', 1);
 /** Only with the sky in front of them: a flight crossing the ring must not pull a player off a page. */
 const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.view === 'galaxy' && i.sight?.[what] === true;
 const CRAFT = '[data-guide="sight-craft"]';
-const hasMined = (i: TutorialInput): boolean => i.mining || i.facts.includes('FIRST_MINING_RETURN');
+const hasMined = (i: TutorialInput): boolean => i.mining || i.facts.includes('FIRST_MINING_SENT') || i.facts.includes('FIRST_MINING_RETURN');
 const UNKNOWN = '[data-guide="sight-unknown"]';
 
 /** Power, the first collect and the first repair: the one moment the guide holds (N1). */
@@ -139,9 +139,9 @@ const FIRST_ROAD: Part = {
     { id: 'zoomRock', kind: 'gesture', chapter: 6, place: 'galaxy', marks: [], satisfied: i => i.noRocks === true || i.rockOpen === true, reached: hasMined },
     { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
     { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
-    // The radar waits for the telescope's lesson (owner playtest 2026-11-09). Ordered early, it does not pass over that lesson.
-    { ...orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3), reached: i => hasMined(i) && ordered(i, 'RADAR', 1) },
-    { ...waitFor('waitRadar', 'RADAR', 3), reached: i => hasMined(i) && has(i, 'RADAR', 1) },
+    // The server opens the radar with the first send (owner playtest 2026-11-09): the telescope's lesson is behind it.
+    orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3),
+    waitFor('waitRadar', 'RADAR', 3),
     orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
     waitFor('waitSurvey', 'SURVEY', 4),
     { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
@@ -179,7 +179,7 @@ const MOMENTS: readonly Part[] = [
   // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
   // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
   {
-    strict: false, due: i => has(i, 'RADAR', 1) && hasMined(i),
+    strict: false, due: i => has(i, 'RADAR', 1),
     steps: [
       { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
       { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },

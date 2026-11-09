@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "your first probe report",
-    "FIRST_MINING_RETURN": "your first mining return",
+    "FIRST_MINING_SENT": "your first Prospector flight", "FIRST_MINING_RETURN": "your first mining return",
     "FIRST_BATTLE_REPORT": "your first battle report",
     "FIRST_OUTPOST_VICTORY": "your first outpost victory",
     "FIRST_OUTPOST_DEFEAT": "your first outpost attempt"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "Attack an outpost.", "FIRST_PROBE_REPORT": "Send a probe to a neighbouring ship.", "FIRST_MINING_RETURN": "Send a Prospector to an asteroid and wait for it to come back.", "FIRST_BATTLE_REPORT": "Raid an outpost, or meet the pirates once the Aegis is up. That battle's report counts.", "FIRST_OUTPOST_VICTORY": "Beat an outpost’s guard in a decisive win."},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "Attack an outpost.", "FIRST_PROBE_REPORT": "Send a probe to a neighbouring ship.", "FIRST_MINING_SENT": "Send a Prospector to an asteroid.", "FIRST_MINING_RETURN": "Send a Prospector to an asteroid and wait for it to come back.", "FIRST_BATTLE_REPORT": "Raid an outpost, or meet the pirates once the Aegis is up. That battle's report counts.", "FIRST_OUTPOST_VICTORY": "Beat an outpost’s guard in a decisive win."},
   "attackLocked": "Attacking ships needs your own Aegis repaired and one battle behind you. With the Aegis up, your ship can be attacked too.",
   "aegisChoice": {"title": "Your choice", "hold": "Take the Aegis", "with": "With the Aegis", "withShield": "The shield takes the damage first.", "withPirates": "Pirates start coming.", "withNeighbours": "After {{hours}} h neighbours can attack you.", "withAttack": "After a battle you can attack ships too.", "without": "Without it", "withoutSafe": "Neither pirates nor neighbours can attack you.", "withoutOutposts": "You raid only outposts.", "withoutJump": "It is not needed to leave."},
   "outpostLocked": "Outpost raids open with the Shipyard. Repair it, and the ships it builds can raid here.",

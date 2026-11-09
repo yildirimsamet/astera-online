@@ -80,12 +80,12 @@ export const starter = {
   },
   "fact": {
     "FIRST_PROBE_REPORT": "最初のプローブレポート",
-    "FIRST_MINING_RETURN": "最初の採掘帰還",
+    "FIRST_MINING_SENT": "最初のプロスペクター発進", "FIRST_MINING_RETURN": "最初の採掘帰還",
     "FIRST_BATTLE_REPORT": "最初の戦闘レポート",
     "FIRST_OUTPOST_VICTORY": "最初の前哨基地での勝利",
     "FIRST_OUTPOST_DEFEAT": "最初の前哨基地攻撃"
   },
-  "factHow": {"FIRST_OUTPOST_DEFEAT": "前哨基地を攻撃しましょう。", "FIRST_PROBE_REPORT": "近くの船にプローブを送りましょう。", "FIRST_MINING_RETURN": "プロスペクターを小惑星に送り、戻るのを待ちましょう。", "FIRST_BATTLE_REPORT": "前哨基地を襲撃するか、イージス稼働後に海賊を迎え撃ちましょう。その戦闘のレポートが条件になります。", "FIRST_OUTPOST_VICTORY": "前哨基地の守備隊に決定的勝利を収めましょう。"},
+  "factHow": {"FIRST_OUTPOST_DEFEAT": "前哨基地を攻撃しましょう。", "FIRST_PROBE_REPORT": "近くの船にプローブを送りましょう。", "FIRST_MINING_SENT": "プロスペクターを小惑星に送りましょう。", "FIRST_MINING_RETURN": "プロスペクターを小惑星に送り、戻るのを待ちましょう。", "FIRST_BATTLE_REPORT": "前哨基地を襲撃するか、イージス稼働後に海賊を迎え撃ちましょう。その戦闘のレポートが条件になります。", "FIRST_OUTPOST_VICTORY": "前哨基地の守備隊に決定的勝利を収めましょう。"},
   "attackLocked": "船を攻撃するには、自分のイージスの修理と一度の戦闘が必要です。イージスがあると、あなたの船も攻撃されるようになります。",
   "aegisChoice": {"title": "選ぶのは君だ", "hold": "イージスを修理", "with": "イージスあり", "withShield": "ダメージはまずシールドが受ける。", "withPirates": "海賊が来るようになる。", "withNeighbours": "{{hours}}時間後、近隣の船も君を攻撃できる。", "withAttack": "一度戦えば、君も船を攻撃できる。", "without": "イージスなし", "withoutSafe": "海賊も近隣の船も君を攻撃できない。", "withoutOutposts": "襲撃できるのは前哨基地だけ。", "withoutJump": "出発には不要。"},
   "outpostLocked": "前哨基地への襲撃は造船所で開きます。造船所を修理すると、建造した船でここを襲撃できます。",

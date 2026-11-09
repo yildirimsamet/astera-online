@@ -131,6 +131,10 @@ async function sendCraft(tx: Tx, vessel: LockedVessel, clock: Clock, target: { s
     fleet: flying.fleet, damage: flying.damage, departAt: vessel.now, arriveAt: target.arriveAt, ...vesselProvenance(vessel.now),
   }).returning();
   await scheduleStarter(tx, { starterGalaxyId: vessel.row.starterGalaxyId, kind: 'vessel_mission_arrival', refId: mission!.id, resolveAt: target.arriveAt });
+  if (target.rock && !vessel.row.facts.includes('FIRST_MINING_SENT')) {
+    vessel.row = { ...vessel.row, facts: [...vessel.row.facts, 'FIRST_MINING_SENT'] };
+    await tx.update(vessels).set({ facts: vessel.row.facts }).where(eq(vessels.id, vessel.row.id));
+  }
   await publishShard(tx, vessel.row.starterGalaxyId, 'mining');
   const { pending } = await starterPendingView(tx, vessel.row, clock);
   return {
