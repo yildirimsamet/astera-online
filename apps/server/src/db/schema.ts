@@ -4935,6 +4935,7 @@ export const arenaTeamMembers = pgTable('arena_team_members', {
   ready: boolean('ready').notNull().default(false),
   fingerprint: text('fingerprint'),
   tactic: text('tactic').$type<Tactic>().notNull().default('smoke'),
+  tactic2: text('tactic2').$type<Tactic>(),
   joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
   releasedAt: timestamp('released_at', { withTimezone: true }),
   sortieId: uuid('sortie_id'),
@@ -4950,6 +4951,7 @@ export const arenaTeamMembers = pgTable('arena_team_members', {
   uniqueIndex('arena_team_members_active_player_idx').on(t.playerId).where(sql`${t.releasedAt} IS NULL`),
   uniqueIndex('arena_team_members_sortie_idx').on(t.sortieId).where(sql`${t.sortieId} IS NOT NULL`),
   index('arena_team_members_claim_idx').on(t.playerId, t.claimedAt),
+  check('arena_team_members_tactic2_check', sql`${t.tactic2} IS NULL OR (${t.tactic2} IN ('smoke', 'cloak', 'illusion', 'radar') AND ${t.tactic2} <> ${t.tactic})`),
   check('arena_team_members_tactic_check', sql`${t.tactic} IN ('smoke', 'cloak', 'illusion', 'radar')`),
   check('arena_team_members_outcome_check', sql`${t.outcome} IS NULL OR ${t.outcome} IN ('extracted', 'dead', 'towed', 'recalled', 'test')`),
 ]);

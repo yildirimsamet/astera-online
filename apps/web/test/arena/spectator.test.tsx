@@ -35,7 +35,7 @@ describe('the ended team member', () => {
     expect(screen.getByText(arenaCopy().connectionFailed)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ada/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: arenaCopy().reconnect }));
-    expect(connect).toHaveBeenCalledWith(world.pilot.ship, world.pilot.tactic, true);
+    expect(connect).toHaveBeenCalledWith(world.pilot.ship, world.pilot.tactic, true, null);
     network.dispose();
   });
 });

@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { TACTICS, type ArenaResources, type Tactic, type TeamView } from '@astera/rules/arena';
+import { type ArenaResources, type Tactic, type TeamView } from '@astera/rules/arena';
 import i18n from '../i18n/index.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Button, SectionHead } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
+import { TacticPicker } from './ClassPicker.js';
 import { arenaCopy } from './copy.js';
 import { amount } from './hangarDesk.js';
 import { askTeam, type TeamAction } from './teamDesk.js';
@@ -95,6 +96,8 @@ export default function TeamPanel({ credential, onEnter, claimsOnly = false, pre
   const { view, busy } = desk; const team = view?.team; const self = team?.members.find(m => m.playerId === view?.playerId);
   const leader = view?.playerId === team?.leaderId;
   const [choice, setChoice] = useState<Tactic | null>(null); const tactic = choice ?? self?.tactic ?? 'smoke';
+  const [choice2, setChoice2] = useState<Tactic | null>(null);
+  const tactic2 = choice2 ?? self?.tactic2 ?? (tactic === 'cloak' ? 'smoke' : 'cloak');
   const was = useRef<string | null>(null); const enter = useRef(onEnter); enter.current = onEnter;
   useEffect(() => {
     if (view && !claimsOnly && was.current === 'forming' && team?.state === 'flying' && team.joined && !self?.outcome) enter.current?.(view);
@@ -102,12 +105,12 @@ export default function TeamPanel({ credential, onEnter, claimsOnly = false, pre
   }, [team?.state, team?.joined, self?.outcome, claimsOnly, view]);
   // Ready means "at the launch desk": leaving it (closing the panel, locking the phone) takes the
   // mark back, so the leader never launches a ship nobody connects within the 30 s window.
-  const standing = useRef<{ teamId: string; tactic: Tactic } | null>(null); const token = useRef(credential); token.current = credential;
-  standing.current = !claimsOnly && !prepareOnly && team?.state === 'forming' && self?.ready ? { teamId: team.id, tactic: self.tactic } : null;
+  const standing = useRef<{ teamId: string; tactic: Tactic; tactic2: Tactic | null } | null>(null); const token = useRef(credential); token.current = credential;
+  standing.current = !claimsOnly && !prepareOnly && team?.state === 'forming' && self?.ready ? { teamId: team.id, tactic: self.tactic, tactic2: self.tactic2 ?? null } : null;
   useEffect(() => {
     const stand = (): void => {
       const mark = standing.current; if (!mark) return; standing.current = null;
-      void token.current().then(auth => askTeam(auth, { kind: 'ready', teamId: mark.teamId, ready: false, tactic: mark.tactic },
+      void token.current().then(auth => askTeam(auth, { kind: 'ready', teamId: mark.teamId, ready: false, tactic: mark.tactic, tactic2: mark.tactic2 },
         (url, init) => fetch(url, { ...init, keepalive: true })));
     };
     const hide = (): void => { if (document.hidden) stand(); };
@@ -148,12 +151,13 @@ export default function TeamPanel({ credential, onEnter, claimsOnly = false, pre
         </ul>
         {team.state === 'forming' ? team.joined ? <>
           {prepareOnly ? <Button full variant="primary" disabled={disabled} onClick={() => { onEnter?.(view); }}>{t.prepare}</Button> : <>
-          <div role="radiogroup" aria-label={t.tactic} className="grid grid-cols-4 gap-1">
-            {TACTICS.map(value => <button key={value} type="button" role="radio" aria-checked={tactic === value} disabled={disabled}
-              className={`min-w-0 rounded-control border px-1 py-2 text-micro ${tactic === value ? 'border-v2-self/50 text-v2-self' : 'border-v2-line text-v2-ink-3'}`}
-              onClick={() => { setChoice(value); if (self?.ready) run({ kind: 'ready', teamId: team.id, ready: false, tactic: value }); }}>{c[value]}</button>)}
-          </div>
-          <Button full disabled={disabled || (!self?.ready && self?.blocked !== null)} onClick={() => { run({ kind: 'ready', teamId: team.id, ready: !self?.ready, tactic }); }}>{self?.ready ? t.unready : t.ready}</Button>
+          <fieldset disabled={disabled} className="min-w-0">
+            <TacticPicker c={c} value={tactic} value2={tactic2} ship={self?.ship?.class} points={self?.ship?.abilities} onPick={(first, second) => {
+              setChoice(first); setChoice2(second);
+              if (self?.ready) run({ kind: 'ready', teamId: team.id, ready: false, tactic: first, tactic2: second });
+            }} />
+          </fieldset>
+          <Button full disabled={disabled || (!self?.ready && self?.blocked !== null)} onClick={() => { run({ kind: 'ready', teamId: team.id, ready: !self?.ready, tactic, tactic2 }); }}>{self?.ready ? t.unready : t.ready}</Button>
           {self?.ready && <p className="text-center text-micro text-v2-ink-3">{t.stay}</p>}
           {leader && <Button full variant="primary" disabled={disabled || team.members.length === 0 || team.members.some(m => !m.ready)} onClick={() => { run({ kind: 'start', teamId: team.id }); }}>{t.start}</Button>}
           </>}

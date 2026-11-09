@@ -353,7 +353,7 @@ export function buildArenaLayout(seed: number): ArenaLayout {
 
   // Landmark rocks big enough to land a squadron on, each veined with two crystals that
   // grow out of the scanned surface itself, shards outwards.
-  const draft: ArenaLayout = { version: 5, radius: T.arenaRadius, halfHeight: T.arenaHalfHeight, entries, exits, obstacles, meshes,
+  const draft: ArenaLayout = { version: 6, radius: T.arenaRadius, halfHeight: T.arenaHalfHeight, entries, exits, obstacles, meshes,
     structures, fields, dust, farmSpots: [], deposits: [], depositKinds: [] };
   const surface: SurfacePoint = { x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, d: 0, inside: false };
   for (let placed = 0, attempt = 0; placed < 14 && attempt < 1400; attempt++) {
@@ -490,6 +490,35 @@ export function buildArenaLayout(seed: number): ArenaLayout {
   const crystals = obstacles.flatMap(o => o.kind === 'crystal' ? [o.id] : []);
   const alloy = veinable.slice(0, T.alloyDeposits);
   const deuterium = veinable.slice(T.alloyDeposits, T.alloyDeposits + T.deuteriumDeposits);
+
+  // Maneuver cover in the empty flight plane: a larger anchor and up to four smaller rocks.
+  // Added after resources so their positions, collider ids and rewards stay stable. Every
+  // group is all-or-nothing; the existing keep-outs preserve the lanes and exit approaches.
+  let group = 0;
+  for (let x = -11200; x <= 11200; x += 1400) for (let z = -11200; z <= 11200; z += 1400) {
+    const centre = { x: x + (random() * 2 - 1) * 120, y: (random() * 2 - 1) * 280, z: z + (random() * 2 - 1) * 120 };
+    if (centre.x * centre.x + centre.z * centre.z > 11600 * 11600) continue;
+    const count = [1, 2, 3, 5][group++ % 4] ?? 1;
+    const start = obstacles.length;
+    const anchor = shape('rock', pick('rock'), centre, 44 + random() * 28, turn());
+    const fits = (o: ArenaObstacle): boolean => free(o.p, o.radius, 50) && farmSpots.every(p => {
+      const dx = p.x - o.p.x; const dy = p.y - o.p.y; const dz = p.z - o.p.z; const reach = o.radius + 60;
+      return dx * dx + dy * dy + dz * dz > reach * reach;
+    });
+    if (!fits(anchor)) continue;
+    place(anchor);
+    const direction = Math.floor(random() * 4);
+    for (let i = 1; i < count; i++) {
+      const size = 12 + random() * 33;
+      const rock = shape('rock', pick('rock'), { ...centre }, size, turn());
+      const [dx, dz] = DIRECTION[((direction + (count === 3 ? (i - 1) * 2 : i - 1)) % 4) * 90] ?? [1, 0];
+      const distance = anchor.radius + rock.radius + 75 + random() * 35;
+      rock.p.x += dx * distance; rock.p.z += dz * distance; rock.p.y += (random() * 2 - 1) * 35;
+      if (!fits(rock)) break;
+      place(rock);
+    }
+    if (obstacles.length - start !== count) obstacles.splice(start);
+  }
 
   return {
     ...draft, farmSpots,

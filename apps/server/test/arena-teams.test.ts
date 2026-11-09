@@ -49,6 +49,14 @@ beforeEach(async () => {
 afterAll(async () => { const { close } = await testDb(); await close(); });
 
 describe('Y7 team lobby', () => {
+  it('includes purchased abilities for the asking pilot’s tactic picker', async () => {
+    const id = await team(); await joinTeam(f.db, f.clock, account(1), id);
+    await f.db.update(arenaShips).set({ abilities: { smoke: 2 } }).where(eq(arenaShips.playerId, player(0)));
+    const view = await readTeam(f.db, f.clock, account(0));
+    expect(view.team?.members.find(m => m.playerId === player(0))?.ship).toHaveProperty('abilities', { smoke: 2 });
+    expect(view.team?.members.find(m => m.playerId === player(1))?.ship).not.toHaveProperty('abilities');
+  });
+
   it('does not invert the galaxy’s planet-before-clan locks during a joint launch', async () => {
     const id = await team(); await ready(id, 0);
     let proceed: () => void = () => undefined; let locked: () => void = () => undefined;
@@ -269,5 +277,17 @@ describe('Y7 team lobby', () => {
     expect(await shareNews()).toHaveLength(0);
     expect((await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId)))[0]?.status).toBe('frozen');
     expect(await code(createTeam(f.db, f.clock, account(0)))).toBe('SEASON_FROZEN');
+  });
+});
+
+
+describe('two team tactics', () => {
+  it('freezes both choices at launch and returns them on reconnect', async () => {
+    const id = await team();
+    const view = await readyTeam(f.db, f.clock, account(0), { teamId: id, ready: true, tactic: 'illusion', tactic2: 'radar' });
+    expect(view.team?.members[0]).toMatchObject({ tactic: 'illusion', tactic2: 'radar' });
+    await startTeam(f.db, f.clock, account(0), id);
+    expect(await launchSortie(f.db, f.clock, account(0))).toMatchObject({ tactic: 'illusion', tactic2: 'radar' });
+    expect(await code(readyTeam(f.db, f.clock, account(0), { teamId: id, ready: true, tactic: 'smoke', tactic2: 'cloak' }))).toBe('TEAM_STARTED');
   });
 });

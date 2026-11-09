@@ -1604,6 +1604,13 @@
       "when": 1794096466389,
       "tag": "0228_commander_ship_sight",
       "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1794259805511,
+      "tag": "0229_arena_dual_tactics",
+      "breakpoints": true
     }
   ]
 }

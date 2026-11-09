@@ -6,7 +6,7 @@ import { teamSchema } from './deskSchemas.js';
 export { teamSchema };
 
 export type TeamAction = { kind: 'read' | 'create' } | { kind: 'join' | 'leave' | 'start' | 'claim'; teamId: string }
-  | { kind: 'ready'; teamId: string; ready: boolean; tactic: Tactic } | { kind: 'remove'; teamId: string; playerId: string };
+  | { kind: 'ready'; teamId: string; ready: boolean; tactic: Tactic; tactic2?: Tactic | null } | { kind: 'remove'; teamId: string; playerId: string };
 export type TeamAnswer = { ok: true; view: TeamView } | { ok: false; error: string };
 
 /** The server supplies every identity, loadout, charge and share. The browser sends only the named action. */

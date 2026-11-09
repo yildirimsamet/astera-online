@@ -136,7 +136,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
   const copies = new Map<number, number>(); const mirrors = new Map<number, readonly number[]>();
   /** The class this pilot's hello names: its next flight's. */
   let ship: ShipClass = 'kilavuz';
-  let tactic: Tactic = 'smoke';
+  let tactic: Tactic = 'smoke'; let tactic2: Tactic | null = null;
   let spectating = false;
   const guestKey = 'astera-arena-prototype-guest';
   let guest = sessionStorage.getItem(guestKey);
@@ -179,7 +179,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     socket = connection;
     const timeout = setTimeout(() => { if (!connected) connection.close(); }, 5000);
     connection.onopen = () => {
-      const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : spectating ? 'spectate' : 'enter', ship, tactic };
+      const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : spectating ? 'spectate' : 'enter', ship, tactic, tactic2 };
       if (!credential) { send(hello); return; }
       void credential().then(token => { if (socket === connection) send({ ...hello, ...(token ? { token } : {}) }); });
     };
@@ -248,8 +248,8 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     subscribe: (listener: () => void): (() => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     /** Into the room in `next` with the B slot `nextTactic`: what the hello names. */
     // A flight from the hangar always enters afresh: the room reattaches a ship still in the air.
-    connect(next: ShipClass, nextTactic: Tactic, observer = false): void {
-      ship = next; tactic = nextTactic; spectating = observer; stopped = false; attempts = 0; welcomed = false; notify({ sortie: null, teamId: null, watching: null, received: false });
+    connect(next: ShipClass, nextTactic: Tactic, observer = false, second: Tactic | null = null): void {
+      ship = next; tactic = nextTactic; tactic2 = second; spectating = observer; stopped = false; attempts = 0; welcomed = false; notify({ sortie: null, teamId: null, watching: null, received: false });
       if (retry) clearTimeout(retry); if (socket) socket.close(); connected = false; open();
     },
     /** Back to the hangar after a flight: the link closes without asking the room for anything. */

@@ -460,7 +460,7 @@ describe('arena layout v6: kit buildings', () => {
 /** Y2: rocks are the scanned shapes the client draws, turned and scaled; they collide as drawn. */
 describe('arena layout v5: mesh rock', () => {
   it('draws every rock, giant and crystal from its catalog family, turned by a unit quaternion', () => {
-    expect(L.version).toBe(5);
+    expect(L.version).toBe(6);
     expect(L.meshes.slice(0, ARENA_CATALOG.length)).toEqual(catalogMeshes());
     expect(L.meshes).toBe(arenaMeshes());
     for (const o of L.obstacles) {

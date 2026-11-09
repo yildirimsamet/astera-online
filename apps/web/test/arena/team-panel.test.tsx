@@ -28,6 +28,15 @@ beforeEach(async () => { previous = i18n.language; await i18n.changeLanguage('tr
 afterEach(async () => { vi.unstubAllGlobals(); await i18n.changeLanguage(previous); });
 
 describe('Y7 clan team panel', () => {
+  it('shows the pilot’s purchased tactic ranks in the team picker', async () => {
+    const view = lobby(); const ship = view.team?.members[0]?.ship; if (!ship) throw new Error('No ship');
+    Object.assign(ship, { abilities: { smoke: 2 } });
+    desk({ '/arena/team': [view] }); render(<TeamPanel credential={() => Promise.resolve('tok')} onEnter={vi.fn()} />);
+    const smoke = await screen.findByRole('radio', { name: /Duman/ });
+    expect(smoke.textContent).toContain('1,8 sn');
+    expect(smoke.textContent).toContain('16,2 sn');
+  });
+
   it('opens the loaded flight desk before offering readiness on the clan page', async () => {
     desk({ '/arena/team': [lobby()] }); const onEnter = vi.fn();
     render(<TeamPanel credential={() => Promise.resolve('tok')} onEnter={onEnter} prepareOnly />);
@@ -55,7 +64,7 @@ describe('Y7 clan team panel', () => {
     const start = await screen.findByRole('button', { name: 'Birlikte kalk' });
     await waitFor(() => { expect(start).toBeEnabled(); }); fireEvent.click(start);
     await waitFor(() => { expect(onEnter).toHaveBeenCalledTimes(1); });
-    expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: true, tactic: 'smoke' });
+    expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: true, tactic: 'smoke', tactic2: 'cloak' });
     expect(calls.find(c => c.url === '/arena/team/start')?.body).toEqual({ teamId });
   });
 
@@ -64,7 +73,7 @@ describe('Y7 clan team panel', () => {
     const view = render(<TeamPanel credential={() => Promise.resolve('tok')} onEnter={vi.fn()} />);
     await screen.findByText('Kalkışa kadar bu ekranda kal. Ayrılırsan hazır işaretin kalkar.');
     view.unmount();
-    await waitFor(() => { expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: false, tactic: 'smoke' }); });
+    await waitFor(() => { expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: false, tactic: 'smoke', tactic2: null }); });
   });
 
   it('takes the ready mark back when the phone hides the page', async () => {
@@ -73,7 +82,7 @@ describe('Y7 clan team panel', () => {
     await screen.findByRole('button', { name: 'Hazır değilim' });
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     try { document.dispatchEvent(new Event('visibilitychange'));
-      await waitFor(() => { expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: false, tactic: 'smoke' }); });
+      await waitFor(() => { expect(calls.find(c => c.url === '/arena/team/ready')?.body).toEqual({ teamId, ready: false, tactic: 'smoke', tactic2: null }); });
     } finally { Reflect.deleteProperty(document, 'hidden'); }
   });
 

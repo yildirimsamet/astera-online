@@ -9,9 +9,9 @@ const actionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('create'), body: z.object({}).strict() }),
   z.object({ kind: z.literal('join'), body: teamBody }), z.object({ kind: z.literal('leave'), body: teamBody }),
   z.object({ kind: z.literal('start'), body: teamBody }), z.object({ kind: z.literal('claim'), body: teamBody }),
-  z.object({ kind: z.literal('ready'), body: z.object({ teamId: id, ready: z.boolean(), tactic: z.enum(TACTICS) }).strict() }),
+  z.object({ kind: z.literal('ready'), body: z.object({ teamId: id, ready: z.boolean(), tactic: z.enum(TACTICS), tactic2: z.enum(TACTICS).nullable().optional() }).strict() }),
   z.object({ kind: z.literal('remove'), body: z.object({ teamId: id, playerId: id }).strict() }),
-]);
+]).refine(action => action.kind !== 'ready' || action.body.tactic !== action.body.tactic2, 'Choose different tactics');
 const params = z.object({ action: z.string().max(16) });
 
 /** Same seated-pilot admission as the room; no clan, cost, loadout or loot is accepted from a client. */

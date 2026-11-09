@@ -54,7 +54,11 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const c = arenaCopy();
   const [ship, setShip] = useState<ShipClass>(storedShip);
   const [tactic, setTactic] = useState<Tactic>(storedTactic);
-  const [world] = useState(() => createSandboxWorld({ ship, tactic }));
+  const [tactic2, setTactic2] = useState<Tactic>(() => {
+    try { const saved = localStorage.getItem(`${TACTIC_KEY}-2`); return TACTICS.find(t => t === saved && t !== storedTactic()) ?? (storedTactic() === 'cloak' ? 'smoke' : 'cloak'); }
+    catch { return storedTactic() === 'cloak' ? 'smoke' : 'cloak'; }
+  });
+  const [world] = useState(() => createSandboxWorld({ ship, tactic, tactic2 }));
   const [controls] = useState(createControls);
   const [store] = useState(createHudStore);
   const [audio] = useState(createArenaAudio);
@@ -115,9 +119,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   useEffect(() => {
     let armed = '';
     return store.subscribe(() => {
-      const next = `${world.pilot.ship}:${world.pilot.tactic}`;
+      const next = `${world.pilot.ship}:${world.pilot.tactic}:${world.pilot.tactic2}`;
       if (armed === next) return;
-      armed = next; controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic);
+      armed = next; controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic, world.pilot.tactic2);
     });
   }, [store, world, controls]);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -203,7 +207,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       if (!resumingRef.current) { setScreen('preflight'); return; }
       // Back to a ship already in the air: its own throttle, its own keys.
       controls.setThrottle(world.pilot.throttle); controls.setSignature(signatureMode(world));
-      controls.setTactic(world.pilot.tactic); created.reset(); setScreen('flight');
+      controls.setTactic(world.pilot.tactic, world.pilot.tactic2); created.reset(); setScreen('flight');
     })
       .catch((error: unknown) => { diag.push(`warm failed: ${error instanceof Error ? error.message : String(error)}`); setDiagOpen(true); });
     return () => { created.dispose(); client.current = null; Reflect.deleteProperty(window, '__arena'); };
@@ -260,7 +264,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       if (event.code === 'KeyM') { event.preventDefault(); setMap(open => !open); return; }
       if (event.code === 'Tab') { setBoard(true); return; }
       if (aimKey(controls, store.getSnapshot(), event.code, performance.now())) { event.preventDefault(); return; }
-      if (import.meta.env.DEV && event.code === 'KeyC') { client.current?.toggleColliders(); return; }
+      if (import.meta.env.DEV && event.altKey && event.code === 'KeyC') { event.preventDefault(); client.current?.toggleColliders(); return; }
       if (GAME_KEY.test(event.code)) { event.preventDefault(); controls.keyDown(event.code); }
     };
     const up = (event: KeyboardEvent): void => { if (event.code === 'Tab') setBoard(false); controls.keyUp(event.code); };
@@ -323,9 +327,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   /** A real flight launches only from a hangar that answered and holds nothing against it. */
   const inLobby = teamView?.team?.joined && teamView.team.state === 'forming';
   const grounded = real && (!desk?.ok || (block !== null && !stillFlying(desk.hangar)) || inLobby === true);
-  const pickTactic = (next: Tactic): void => {
-    audio.ui(); setTactic(next); world.pilot.tactic = next;
-    try { localStorage.setItem(TACTIC_KEY, next); } catch { /* As the class. */ }
+  const pickTactic = (next: Tactic, second: Tactic): void => {
+    audio.ui(); setTactic(next); setTactic2(second); world.pilot.tactic = next; world.pilot.tactic2 = second;
+    try { localStorage.setItem(TACTIC_KEY, next); localStorage.setItem(`${TACTIC_KEY}-2`, second); } catch { /* As the class. */ }
   };
   /**
    * Owner 2026-10-27: on a desktop the flight takes the mouse with the very click that launched it
@@ -335,16 +339,16 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     if (typeof matchMedia !== 'function' || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     void Promise.resolve(canvas.current?.requestPointerLock()).catch(() => undefined);
   };
-  /** A missile goes on one press; a shield or repair is aimed (input.ts). Q and E press the B slot flown. */
-  const arm = (): void => { controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic); };
+  /** A missile goes on one press; a shield or repair is aimed (input.ts). Q casts the signature; E and C cast the two tactics. */
+  const arm = (): void => { controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic, world.pilot.tactic2); };
   const launch = (reserved?: TeamView): void => {
     const party = reserved?.team?.joined && reserved.team.state === 'flying' ? reserved.team : null;
     if (grounded && !party) return;
     const member = party?.members.find(m => m.playerId === reserved?.playerId);
     audio.unlock(); audio.ui(true); setEnded(false); setDeskNote('');
     if (owned) { setShip(owned.class); world.pilot.ship = owned.class; }
-    if (mode === 'online') network.connect(owned?.class ?? ship, member?.tactic ?? tactic, Boolean(member?.outcome));
-    else Object.assign(world, createSandboxWorld({ ship: owned?.class ?? ship, tactic, bots: T.practiceBots }));
+    if (mode === 'online') network.connect(owned?.class ?? ship, member?.tactic ?? tactic, Boolean(member?.outcome), member ? member.tactic2 ?? null : tactic2);
+    else Object.assign(world, createSandboxWorld({ ship: owned?.class ?? ship, tactic, tactic2, bots: T.practiceBots }));
     controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen(member?.outcome ? 'spectate' : 'flight');
@@ -356,7 +360,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const again = (): void => {
     audio.ui(true); controls.clear(); setEnded(false);
     if (mode === 'online') network.dev('restart');
-    else Object.assign(world, createSandboxWorld({ ship, tactic, bots: T.practiceBots }));
+    else Object.assign(world, createSandboxWorld({ ship, tactic, tactic2, bots: T.practiceBots }));
     controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen('flight'); takeMouse();
@@ -372,12 +376,12 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     resumingRef.current = true; setResuming(true);
     const owned = desk.hangar.ship.class;
     setShip(owned); world.pilot.ship = owned;
-    network.connect(owned, tactic);
+    network.connect(owned, tactic, false, tactic2);
     if (screen === 'preflight') {
-      controls.setThrottle(world.pilot.throttle); controls.setSignature(signatureMode(world, owned)); controls.setTactic(world.pilot.tactic);
+      controls.setThrottle(world.pilot.throttle); controls.setSignature(signatureMode(world, owned)); controls.setTactic(world.pilot.tactic, world.pilot.tactic2);
       client.current?.reset(); setScreen('flight');
     }
-  }, [real, desk, network, world, tactic, screen, controls]);
+  }, [real, desk, network, world, tactic, tactic2, screen, controls]);
   useEffect(() => {
     if (!resuming || screen !== 'loading') return;
     const id = setInterval(() => { network.step(createInput()); }, 250);
@@ -435,7 +439,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
           {connection.phase === 'online' ? <><i role="img" aria-label={c.live} /><span>{standingLine(connection.board, c)}</span><small>{connection.rtt} ms</small></>
             : connection.phase === 'failed' ? <><span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
               {/* Reconnecting cannot help a refusal or an outdated page. */}
-              {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic); }}>{c.reconnect}</button>}</>
+              {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic, false, tactic2); }}>{c.reconnect}</button>}</>
               : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
         </div> : null} />
       <FlightControls controls={controls} store={store} nameOf={id => pilotName(id, c, world, network)}
@@ -472,7 +476,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       <div className="ap-dock">
         <LoopLine c={c} />
         {real ? <ShipLine c={c} desk={desk} note={deskNote} /> : <ClassPicker c={c} value={ship} onPick={pickShip} />}
-        {!(real && inLobby) && <TacticPicker c={c} value={tactic} ship={owned?.class ?? ship} points={owned?.abilities ?? {}} onPick={pickTactic} />}
+        {!(real && inLobby) && <TacticPicker c={c} value={tactic} value2={tactic2} ship={owned?.class ?? ship} points={owned?.abilities ?? {}} onPick={pickTactic} />}
         <ModePicker c={c} mode={mode} lock={coreLock} onPick={value => { audio.ui(); setMode(value); }} />
         {/* Whatever keeps a real flight on the ground names itself here; the hangar is where it is put right. */}
         {real && <div className="ap-team"><TeamPanel credential={hangarToken} onEnter={launch} onView={setTeamView} {...room} /></div>}

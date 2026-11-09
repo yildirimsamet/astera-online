@@ -16,7 +16,7 @@ export interface ArenaIntent extends FlightInput {
   /** The B slot's illusion and radar sweep (Y4d), one press each. */
   illusion?: boolean; radar?: boolean;
 }
-/** The B slot (plan 14 §4): one tactic chosen before the sortie. */
+/** A tactic chosen before the sortie; both slots are frozen at launch. */
 export type Tactic = typeof TACTICS[number];
 export type PilotPhase = 'flying' | 'fuelOut' | 'dead' | 'extracted' | 'towed';
 export interface Pilot extends FlightState {
@@ -34,13 +34,13 @@ export interface Pilot extends FlightState {
   /** Effective ranks frozen at launch, shared with the owning client's prediction. */
   ranks: FlightRanks;
   /**
-   * Y4c. `tactic`: its B slot. `signatureCooldown`: ticks until the A slot works again.
+   * Y4c. `tactic`/`tactic2`: its selected pair. `signatureCooldown`: ticks until the A slot works again.
    * `lockTarget`/`lockTicks`: the ship the Akıncı is locking and for how long (-1, 0: none).
    * `threat`: what aims at this ship (0 nothing, 1 a lock building, 2 locked, 3 a missile on its
    * way) and from where. `ward`, `mend`: ticks left of a shield (its hit points are `shieldHp`)
    * and of a repair.
    */
-  tactic: Tactic; signatureCooldown: number; lockTarget: number; lockTicks: number;
+  tactic: Tactic; tactic2: Tactic | null; tactic2Cooldown: number; signatureCooldown: number; lockTarget: number; lockTicks: number;
   threat: number; threatX: number; threatY: number; threatZ: number; ward: number; mend: number;
   /**
    * Y4d. `tacticCooldown`: ticks until an illusion or a radar sweep works again (smoke and cloak
@@ -86,17 +86,21 @@ export function copyFlight(out: FlightState, state: FlightState): void {
   out.liftoff = state.liftoff; out.bump = state.bump; out.kx = state.kx; out.ky = state.ky; out.kz = state.kz;
 }
 
-export const createPilot = (id: number, ship: ShipClass = 'kilavuz', tactic: Tactic = 'smoke', level = 1): Pilot => ({ ...createFlightState(),
+export const createPilot = (id: number, ship: ShipClass = 'kilavuz', tactic: Tactic = 'smoke', level = 1, tactic2: Tactic | null = null): Pilot => ({ ...createFlightState(),
   clanId: null, mendPower: 0,
-  fuel: shipStats(ship, level).fuelTank, ship, id, hull: shipStats(ship, level).hull, level: levelOf(level), ranks: flightRanks(ship, tactic, {}),
+  fuel: shipStats(ship, level).fuelTank, ship, id, hull: shipStats(ship, level).hull, level: levelOf(level), ranks: flightRanks(ship, tactic, {}, tactic2),
   bot: false, pilotKills: 0, assists: 0, recentHits: [],
-  tactic, signatureCooldown: 0, lockTarget: -1, lockTicks: 0, threat: 0, threatX: 0, threatY: 0, threatZ: 0, ward: 0, mend: 0,
+  tactic, tactic2: tactic2 === tactic ? null : tactic2, tactic2Cooldown: 0, signatureCooldown: 0, lockTarget: -1, lockTicks: 0, threat: 0, threatX: 0, threatY: 0, threatZ: 0, ward: 0, mend: 0,
   tacticCooldown: 0, decoy: -1, scan: 0, decoyOf: -1, decoyLife: 0, decoyHp: 0, decoyFrom: { x: 0, y: 0, z: 0 }, decoyAlong: { x: 0, y: 0, z: 0 },
   shield: id === 0 ? T.spawnShield * T.tickRate : 0, shieldHp: 0, shieldMax: 0, ammo: shipStats(ship, level).ammoCapacity, cloak: 0, cloakCooldown: 0,
   smokeCooldown: 0, smokeEmit: 0, turboCharge: T.turboCharge, turboDelay: 0,
   turboBurst: 0, turboActive: false, nextShot: 0, gun: 0, cargo: 0, hold: emptyHold(), hits: 0, kills: 0,
   lastDamage: -100000, lastAttacker: -1, extraction: 0, rescue: 0, respawn: 0, shots: 0, linkLost: 0,
   mining: false, phase: 'flying' });
+
+export const hasTactic = (pilot: Pick<Pilot, 'tactic' | 'tactic2'>, tactic: Tactic): boolean => pilot.tactic === tactic || pilot.tactic2 === tactic;
+export const tacticRank = (pilot: Pick<Pilot, 'tactic' | 'ranks'>, tactic: Tactic): number => pilot.tactic === tactic ? pilot.ranks.tactic : pilot.ranks.tactic2;
+export const tacticWait = (pilot: Pick<Pilot, 'tactic' | 'tacticCooldown' | 'tactic2Cooldown'>, tactic: Tactic): number => pilot.tactic === tactic ? pilot.tacticCooldown : pilot.tactic2Cooldown;
 
 export const alive = (pilot: Pilot): boolean => pilot.phase === 'flying' || pilot.phase === 'fuelOut';
 

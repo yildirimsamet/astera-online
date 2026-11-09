@@ -1,4 +1,5 @@
 import { FleetTowingGallery } from './FleetTowingGallery.js';
+import { CommanderPresenceGallery } from './CommanderPresenceGallery.js';
 import { CosmeticFleetGallery } from './CosmeticFleetGallery.jsx';
 import { UfoProbeGallery } from './UfoProbeGallery.js';
 import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
@@ -1136,6 +1137,7 @@ function Views({ view }: { view: string }) {
 
 export function Gallery({ view }: { view: string | null }) {
   useSoundEffects();
+  if (view === 'commander-presence') return <CommanderPresenceGallery />;
   if (view === 'fleet-towing') return <FleetTowingGallery />;
   if (view === 'premium-space') return <PremiumSpaceGallery />;
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;

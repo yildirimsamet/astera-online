@@ -133,9 +133,9 @@ export function formationLayout(
 
 /**
  * THE COMMANDER SHIP AT THE REAR OF ITS FLEET (Y9, doc 23). Its length in `base` units: larger
- * than a Dart, so the escort reads as the flagship, smaller than a capital so it never leads.
+ * than a Dart, close to a Citadel. Owner 2026-11-09: twice its previous galaxy size.
  */
-export const ESCORT_LENGTH = 1.15;
+export const ESCORT_LENGTH = 2.3;
 
 /** A warship craft's length on the disc, in `CRAFT_SCALE`s (the fleet route's model). */
 export const FLEET_CRAFT = 0.225;

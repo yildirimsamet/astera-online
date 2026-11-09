@@ -20,7 +20,7 @@ describe('separate ability ranks (owner 2026-10-24)', () => {
     expect(abilityRank('kilavuz', 'radar', {})).toBe(2);
     expect(abilityRank('akinci', 'illusion', { illusion: 4 })).toBe(5);
     expect(pointsLeft(1, {})).toBe(0);
-    expect(flightRanks('kilavuz', 'radar', { signature: 2, smoke: 3, turbo: 1 })).toEqual({ signature: 3, tactic: 2, turbo: 2 });
+    expect(flightRanks('kilavuz', 'radar', { signature: 2, smoke: 3, turbo: 1 })).toEqual({ signature: 3, tactic: 2, tactic2: 1, turbo: 2 });
   });
 
   it('grows the effect or duration by 10% per rank and shortens cooldown 5%, without changing ship speed', () => {
@@ -37,7 +37,7 @@ describe('separate ability ranks (owner 2026-10-24)', () => {
 
   it('carries the effective ranks in the own snapshot for prediction', () => {
     const world = createSandboxWorld({ bots: 0, layout: layoutWith() });
-    world.pilot.ranks = { signature: 4, tactic: 5, turbo: 3 };
+    world.pilot.ranks = { signature: 4, tactic: 5, tactic2: 1, turbo: 3 };
     expect(unpackPilot(packPilot(world.pilot)).ranks).toEqual(world.pilot.ranks);
   });
 
@@ -64,7 +64,7 @@ describe('separate ability ranks (owner 2026-10-24)', () => {
     const server = createSandboxWorld({ bots: 0, layout: layoutWith() });
     const client = createSandboxWorld({ bots: 0, layout: layoutWith() });
     for (const world of [server, client]) {
-      world.pilot.ranks = { signature: 1, tactic: 5, turbo: 5 }; world.pilot.tactic = 'cloak';
+      world.pilot.ranks = { signature: 1, tactic: 5, tactic2: 1, turbo: 5 }; world.pilot.tactic = 'cloak';
     }
     const input = { ...createInput(), cloak: true, turbo: true };
     stepSandboxWorld(server, { ...input });

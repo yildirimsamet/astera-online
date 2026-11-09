@@ -14,6 +14,7 @@ import { markHit, wasTap } from './tap.js';
 import { useVisualFrame } from './visualFrame.js';
 import { ShipAssetBoundary } from './ShipAssetBoundary.js';
 export { ShipAssetBoundary } from './ShipAssetBoundary.js';
+import { commanderExhaustScale, createCommanderExhaust, createCommanderExhaustMaterial, createCommanderHull } from './commanderAppearance.js';
 
 /** Past this the ship is a speck beside a dot; the satellites stop at 34 for the same reason. */
 const VISIBLE_WITHIN = 40;
@@ -52,22 +53,39 @@ export function ShipBody({ model, lit }: { model: ShipModel | undefined; lit: bo
 
 function LoadedShipBody({ model, lit }: { model: ShipModel; lit: boolean }) {
   const gltf = useLoader(GLTFLoader, model.url, loader => { shipDecoders(loader, model); });
-  // A copy: the loader caches one scene per file, and the hangar may hold that one in its own canvas.
-  const body = useMemo(() => {
-    const copy = gltf.scene.clone(true);
-    let coarsest = -1;
-    copy.traverse(node => { const lod = /^lod(\d)$/.exec(node.name); if (lod) coarsest = Math.max(coarsest, Number(lod[1])); });
-    if (coarsest >= 0) copy.traverse(node => { const lod = /^lod(\d)$/.exec(node.name); if (lod) node.visible = Number(lod[1]) === coarsest; });
-    return copy;
-  }, [gltf]);
-  const glow = useMemo(() => radial([[0, 'rgba(210,250,255,1)'], [0.25, 'rgba(110,220,255,.55)'], [1, 'rgba(40,120,255,0)']]), []);
+  const body = useMemo(() => createCommanderHull(gltf.scene), [gltf]);
+  const glow = useMemo(() => {
+    const texture = radial([[0, 'rgba(210,250,255,1)'], [0.25, 'rgba(110,220,255,.55)'], [1, 'rgba(40,120,255,0)']]);
+    texture.wrapS = THREE.RepeatWrapping; return texture;
+  }, []);
+  useEffect(() => () => { body.dispose(); }, [body]);
   useEffect(() => () => { glow.dispose(); }, [glow]);
   return <>
-    <primitive object={body} />
-    {lit && model.engines.map((at, i) => <sprite key={i} position={at} scale={model.nozzle * 7}>
-      <spriteMaterial map={glow} blending={THREE.AdditiveBlending} depthWrite={false} transparent toneMapped={false} />
-    </sprite>)}
+    <primitive object={body.scene} />
+    {lit && <CommanderDrive model={model} glow={glow} />}
   </>;
+}
+
+function CommanderDrive({ model, glow }: { model: ShipModel; glow: THREE.Texture }) {
+  const root = useRef<THREE.Group>(null);
+  const geometry = useMemo(createCommanderExhaust, []);
+  const material = useMemo(createCommanderExhaustMaterial, []);
+  const scale = useMemo(() => commanderExhaustScale(model.nozzle), [model.nozzle]);
+  useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
+  useVisualFrame(({ clock }) => {
+    const time = material.uniforms.uTime;
+    if (time) time.value = clock.elapsedTime;
+    for (const engine of root.current?.children ?? []) {
+      const plume = engine.children[1];
+      if (plume) plume.scale.z = scale[2] * (1 + 0.055 * Math.sin(clock.elapsedTime * 17 + engine.position.x * 21));
+    }
+  });
+  return <group ref={root} name="commander-drive">
+    {model.engines.map((at, i) => <group key={i} position={at}>
+      <sprite scale={model.nozzle * 7 * 0.75}><spriteMaterial map={glow} blending={THREE.AdditiveBlending} depthWrite={false} transparent toneMapped={false} /></sprite>
+      <mesh name="commander-exhaust" scale={scale} geometry={geometry} material={material} dispose={null} />
+    </group>)}
+  </group>;
 }
 
 function Ship({ model, planet, park, onSelect, own }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean }) {

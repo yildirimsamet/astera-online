@@ -53,7 +53,7 @@ export function refreshAfter(view: CommanderShipView | undefined, now: number): 
  * (measured), so a wider orbit spent most of its circuit off screen; this one stays in view and
  * passes behind the world. Slower than the satellites, and the largest thing beside it.
  */
-export const PARK = { radius: 1.7, tilt: 0.22, period: 72, length: 0.7, dockedPhase: 0.7 } as const;
+export const PARK = { radius: 1.7, tilt: 0.22, period: 72, length: 1.4, dockedPhase: 0.7 } as const;
 
 export interface ParkPose { x: number; y: number; z: number; yaw: number }
 

@@ -15,7 +15,7 @@ vi.mock('../../src/arena/client.js', () => ({ createArenaClient: (args: typeof f
   flight.args = args;
   const friendAt = vi.fn((_x: number, _y: number): number | null => null); flight.friendAt = friendAt;
   return { warm: () => Promise.resolve(), start: vi.fn(), setHud: vi.fn(), setPhase: vi.fn(), dispose: vi.fn(),
-    setSpectator: vi.fn(), reset: vi.fn(), friendAt, metrics: { fps: 60 } };
+    setSpectator: vi.fn(), reset: vi.fn(), toggleColliders: vi.fn(), friendAt, metrics: { fps: 60 } };
 } }));
 const { default: Sandbox } = await import('../../src/arena/Sandbox.js');
 
@@ -51,6 +51,13 @@ async function fly() {
 }
 
 describe('a desktop flight', () => {
+  it('passes C to the second tactic in development as well as production', async () => {
+    const { controls } = await fly();
+    controls.setTactic('smoke', 'radar');
+    fireEvent.keyDown(window, { code: 'KeyC' }); fireEvent.keyUp(window, { code: 'KeyC' });
+    expect(controls.sample().radar).toBe(true);
+  });
+
   it('takes the mouse on a click in the sky, steers with it, fires on its button, and gives it back on Esc', async () => {
     const { view, controls } = await fly();
     const main = view.container.querySelector('main')!;

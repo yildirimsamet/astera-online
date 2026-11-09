@@ -71,6 +71,18 @@ if (process.argv.includes('--legacy-models')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--planet-marker-size')) {
+  const { verifyPlanetMarkerSize } = await import('./planet-marker-size-visual.mjs');
+  await verifyPlanetMarkerSize(process.argv[2] ?? 'out/planet-marker-size');
+  process.exit(0);
+}
+
+if (process.argv.includes('--commander-presence')) {
+  const { verifyCommanderPresence } = await import('./commander-presence-visual.mjs');
+  await verifyCommanderPresence(process.argv[2] ?? 'out/commander-presence');
+  process.exit(0);
+}
+
 if (process.argv.includes('--commander-menu')) {
   const { verifyCommanderMenu } = await import('./commander-menu-visual.mjs');
   await verifyCommanderMenu(process.argv[2] ?? 'out/commander-menu');
@@ -426,6 +438,12 @@ if (process.argv.includes('--colony-abandonment')) {
 if (process.argv.includes('--planet-selection')) {
   const { verifyPlanetSelection } = await import('./planet-selection-visual.mjs');
   await verifyPlanetSelection(process.argv[2] ?? 'out/planet-selection');
+  process.exit(0);
+}
+
+if (process.argv.includes('--arena-dual-tactics')) {
+  const { verifyDualTactics } = await import('./arena-dual-tactics-visual.mjs');
+  await verifyDualTactics(process.argv[2] ?? 'out/arena-dual-tactics');
   process.exit(0);
 }
 

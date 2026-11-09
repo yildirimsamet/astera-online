@@ -77,11 +77,11 @@ export type ArenaAction = 'fire' | 'turbo' | Tactic | 'signature';
 export const DOUBLE_TAP_MS = 300;
 /**
  * Keys the flight page hands to the controls; the rest stay the browser's. Owner 2026-10-27: Q is
- * the ability (A) and E the tactic (B); V and the second tactic key are gone.
+ * the signature, E the first tactic and C the second tactic.
  */
-export const GAME_KEY = /^(Key[WASDRFXQET]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/;
+export const GAME_KEY = /^(Key[WASDRFXQECT]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/;
 /** Keys that act once a press: the browser's auto-repeat must not fire them again. */
-export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT', 'KeyX', 'KeyM', 'Tab'];
+export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyC', 'KeyL', 'KeyT', 'KeyX', 'KeyM', 'Tab'];
 /** How long the target tray waits for a choice (the tray says who; owner 2026-10-27). */
 export const AIM_WINDOW_MS = 6000;
 /**
@@ -143,8 +143,8 @@ export function createControls() {
   let turboPressedAt = 0;
   let fire = false; let turbo = false;
   let smoke = false; let cloak = false; let illusion = false; let radar = false; let turboBurst = false;
-  /** The B slot this flight carries: what Q and E press. */
-  let tactic: Tactic = 'smoke';
+  /** The two selected tactics: what E and C press. */
+  let tactic: Tactic = 'smoke'; let tactic2: Tactic | null = null;
   const pressTactic = (which: Tactic): void => {
     if (which === 'smoke') smoke = true; else if (which === 'cloak') cloak = true; else if (which === 'illusion') illusion = true; else radar = true;
   };
@@ -217,8 +217,8 @@ export function createControls() {
       const length = Math.hypot(mouse.x, mouse.y);
       if (length > 1) { mouse.x /= length; mouse.y /= length; }
     },
-    /** The flight's B slot (Y4d): the one tactic Q and E press. */
-    setTactic(next: Tactic): void { tactic = next; },
+    /** The flight's tactic slots: E and C. */
+    setTactic(next: Tactic, second: Tactic | null = null): void { tactic = next; tactic2 = second; },
     /** Waiting for the friend an aimed signature goes to. */
     aiming(time: number): boolean { return time - aimedAt <= AIM_WINDOW_MS && time >= aimedAt; },
     /** The friend tapped while aiming. */
@@ -280,6 +280,7 @@ export function createControls() {
       if (code === 'ShiftLeft' || code === 'ShiftRight') turbo = true;
       if (code === 'KeyQ') { pressSignature(performance.now()); changed(); }
       if (code === 'KeyE') pressTactic(tactic);
+      if (code === 'KeyC' && tactic2) pressTactic(tactic2);
       keyboardStick();
     },
     keyUp(code: string): void {
