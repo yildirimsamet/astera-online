@@ -27,7 +27,8 @@ const shapes = (markup: string): string[] =>
 describe('the v2 icon set', () => {
   it('has every symbol the spec draws', () => {
     // The gift is the claimable reward control in the galaxy's top bar.
-    expect(symbols.length).toBe(44);
+    // The universe view's way in and way back (owner, 2026-11-09).
+    expect(symbols.length).toBe(46);
     for (const { id } of symbols) expect(isIconId(id), id).toBe(true);
   });
 

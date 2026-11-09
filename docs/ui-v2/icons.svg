@@ -31,6 +31,8 @@
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-universe" viewBox="0 0 24 24"><path d="M6.6 14.4c-.5-1.4 1.8-3.4 5-4.5s6.1-.9 6.6.5-1.8 3.4-5 4.5-6.1.9-6.6-.5z"/><circle cx="12" cy="12.5" r="1.2"/><circle cx="4.5" cy="5" r="1.4"/><circle cx="19.5" cy="6" r="1"/><circle cx="18" cy="19" r="1.5"/><circle cx="5.5" cy="19.5" r=".9"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M9.5 6.5 5 11l4.5 4.5"/><path d="M5.5 11h8.5a5 5 0 0 1 0 10H11"/></symbol>
     <symbol id="i-mark" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="1.6"/></symbol>
     <symbol id="i-collect" viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/></symbol>
     <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="18" cy="18" r="2.3"/><path d="M8.1 11l7.8-3.9M8.1 13l7.8 3.9"/></symbol>

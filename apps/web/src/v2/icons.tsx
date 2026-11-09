@@ -49,6 +49,9 @@ const SHAPES = {
   /* The store (owner, 2026-09-25): turn the model, a look already yours, yours for good. */
   'i-rotate': <><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></>,
   'i-check': <><path d="M5 12.5l4.5 4.5L19 7.5" /></>,
+  /* The universe view (owner, 2026-11-09): one galaxy in the middle, others around it; and the way back. */
+  'i-universe': <><path d="M6.6 14.4c-.5-1.4 1.8-3.4 5-4.5s6.1-.9 6.6.5-1.8 3.4-5 4.5-6.1.9-6.6-.5z" /><circle cx="12" cy="12.5" r="1.2" /><circle cx="4.5" cy="5" r="1.4" /><circle cx="19.5" cy="6" r="1" /><circle cx="18" cy="19" r="1.5" /><circle cx="5.5" cy="19.5" r=".9" /></>,
+  'i-back': <><path d="M9.5 6.5 5 11l4.5 4.5" /><path d="M5.5 11h8.5a5 5 0 0 1 0 10H11" /></>,
   'i-infinity': <><path d="M12 12c-1.9-2.6-3.4-3.8-5.2-3.8a3.8 3.8 0 0 0 0 7.6c1.8 0 3.3-1.2 5.2-3.8s3.4-3.8 5.2-3.8a3.8 3.8 0 0 1 0 7.6c-1.8 0-3.3-1.2-5.2-3.8z" /></>,
   'c-sk': <><path d="M12 3l9.5 17.5h-19z" /></>,
   'c-bw': <><path d="M12 2l8.7 5v10L12 22l-8.7-5V7z" /></>,

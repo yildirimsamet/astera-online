@@ -1,0 +1,13 @@
+/* The way out calls: a slow beacon and a light crossing the bar. Game motion, not the OS setting. */
+.jump-call { box-shadow: 0 0 18px -6px var(--color-v2-self); }
+.jump-call::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--color-v2-self) 22%, transparent) 50%, transparent 65%);
+  transform: translateX(-100%); animation: jump-call-sweep 3.2s ease-in-out infinite;
+}
+.jump-call-beacon::before {
+  content: ''; position: absolute; inset: -1px; border-radius: 9999px; border: 1px solid var(--color-v2-self);
+  animation: jump-call-ping 2.4s ease-out infinite;
+}
+@keyframes jump-call-sweep { 0%, 35% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
+@keyframes jump-call-ping { from { transform: scale(1); opacity: .8; } to { transform: scale(1.8); opacity: 0; } }

@@ -64,11 +64,14 @@ export function PlanetField({
   selectedId,
   rivals,
   onSelect,
+  marks = true,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
   rivals: readonly RivalMark[];
   onSelect: (id: string) => void;
+  /** Pins, eyes and rings. The universe view draws worlds without them (owner, 2026-11-09). */
+  marks?: boolean;
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
   const openingWork = useContext(OpeningWork);
@@ -194,11 +197,11 @@ export function PlanetField({
         </SkinAssetBoundary>
       ))}
       <Atmospheres nodes={nodes} />
-      <Highlights
+      {marks && <Highlights
         nodes={nodes}
         selectedId={selectedId}
         rivals={rivals}
-      />
+      />}
     </>
   );
 }

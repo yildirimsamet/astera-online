@@ -913,6 +913,7 @@ export function GalaxyCanvas({
           nodes={fieldBodies}
           selectedId={selectedId}
           rivals={rivals}
+          marks={!universe?.open}
           onSelect={(id) => {
             if (isMainWorld(id)) return;
             // D56. Absent means every world, which is the game; the rehearsal
@@ -1749,7 +1750,8 @@ function Rig({
       const { target, range, side } = universeBack.current;
       universeBack.current = null;
       universeLeaving.current = true;
-      const back = universeReturn(target.toArray(), live.current?.() ?? null, mainOffset ? [homeX, homeY, homeZ] : null);
+      // Home, close, in either galaxy (owner, 2026-11-09): the main galaxy used to come back as far as it left.
+      const back = universeReturn(target.toArray(), live.current?.() ?? null, [homeX, homeY, homeZ]);
       mode.current = back.mode;
       acquired.current = back.acquired;
       fly(back.to, back.home ? HOME_DISTANCE : range, side);

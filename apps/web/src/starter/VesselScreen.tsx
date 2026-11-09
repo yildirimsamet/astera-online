@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, STARTER, afterQueue, nextRequiredStep, vesselHull, vesselLook,
+  REPAIR_LADDER, STARTER, afterQueue, isJumpReady, nextRequiredStep, vesselHull, vesselLook,
   type RepairStep, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { useEffect, useMemo, useState } from 'react';
@@ -100,7 +100,8 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   const held = useProjected(view.planet, fetchedAt);
   const progress = progressOf(vessel);
   const ahead = afterQueue(progress, queuedSteps(vessel));
-  const [system, setSystem] = useState<VesselSystem>(() => nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
+  // A ship that can leave opens where it leaves from (owner playtest 2026-11-09).
+  const [system, setSystem] = useState<VesselSystem>(() => isJumpReady(progress) ? 'DRIVE' : nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
   const [picked, setPicked] = useState<RepairStep | null>(null);
   const [jumping, setJumping] = useState<MigrationView | null>(null);
   const [deck, setDeck] = useState<ShipDeck>('repairs');

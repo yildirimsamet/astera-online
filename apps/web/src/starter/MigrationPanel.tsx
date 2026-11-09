@@ -12,6 +12,7 @@ import { LeftBehind } from './LandingChoice.js';
 import { useLoadFuel, useMigration } from './queries.js';
 import { departurePlan, jumpOutlook, type DeparturePlan, type EngineState, type JumpOutlook } from './departurePlan.js';
 import { moduleName, requirementLine } from './shipCopy.js';
+import './jumpCall.css';
 
 const LOAD_STEP = 30;
 
@@ -164,7 +165,7 @@ export function MigrationPanel({ vessel, onJump }: { vessel: VesselView; onJump:
       {tankBlock && <p data-testid="jump-block" className="text-micro leading-snug text-v2-warn">{tankBlock.code === 'MIGRATION_SEASON_WAIT' ? t('errors.MIGRATION_SEASON_WAIT', { daysLeft: tankBlock.daysLeft }) : t(`errors.${tankBlock.code}`)}</p>}
       {view && !view.block && (
         <button type="button" onClick={() => { onJump(view); }}
-          className="relative min-h-11 overflow-hidden rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void shadow-[0_0_18px_-2px_var(--color-v2-self)]">
+          className="jump-call relative min-h-11 overflow-hidden rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void shadow-[0_0_18px_-2px_var(--color-v2-self)]">
           {t('starter.jump.go')}
         </button>
       )}

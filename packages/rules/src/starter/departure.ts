@@ -61,10 +61,11 @@ export function landingChoices(
   const crowded = free.at(-1)!;
   const chosen: LandingChoice[] = [emptiest];
   if (crowded.index !== emptiest.index) chosen.push(crowded);
-  const middle = free.length >> 1;
-  const byMiddle = free.map((slot, i) => ({ slot, off: Math.abs(i - middle) })).sort((a, b) => a.off - b.off);
-  const between = byMiddle.find(({ slot }) => chosen.every(pick => pick.index !== slot.index && distance(pick, slot) >= LANDING_APART))
-    ?? byMiddle.find(({ slot }) => chosen.every(pick => pick.index !== slot.index));
-  if (between) chosen.push(between.slot);
+  // Between the two by neighbours: in a thinly settled galaxy the middle of the list is as empty as the first.
+  const target = (emptiest.neighbours + crowded.neighbours) / 2;
+  const byMiddle = [...free].sort((a, b) => Math.abs(a.neighbours - target) - Math.abs(b.neighbours - target) || a.index - b.index);
+  const between = byMiddle.find(slot => chosen.every(pick => pick.index !== slot.index && distance(pick, slot) >= LANDING_APART))
+    ?? byMiddle.find(slot => chosen.every(pick => pick.index !== slot.index));
+  if (between) chosen.push(between);
   return chosen.sort((a, b) => a.neighbours - b.neighbours || a.index - b.index);
 }

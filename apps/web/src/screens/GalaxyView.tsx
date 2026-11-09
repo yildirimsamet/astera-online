@@ -19,6 +19,7 @@ import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
 import { gateOf } from '../starter/gate.js';
 import { UniverseChip } from '../starter/UniverseChip.js';
+import { JumpCall } from '../starter/JumpCall.js';
 import { useDepartures, useMainSky, useUniverse } from '../starter/queries.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
 import { contactRail } from '../galaxy/contactRail.js';
@@ -1471,10 +1472,11 @@ export function GalaxyView({
           {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
           {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
           {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
-          {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
           {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
             <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
           </div>}
+          {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
+          {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
         </div>
       </div>
 
@@ -1924,6 +1926,8 @@ export function GalaxyView({
           {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
+          {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
+          <JumpCall progress={{ modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }} onOpen={() => { onPanel('planet'); }} />
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
           {ship.unlockToAnnounce
             ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />

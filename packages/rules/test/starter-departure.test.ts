@@ -94,4 +94,14 @@ describe('three places to land', () => {
   it('gives the same answer for the same galaxy', () => {
     expect(landingChoices(slots, taken)).toEqual(landingChoices(slots, taken));
   });
+
+  // Owner playtest 2026-11-09: a thinly settled galaxy offered "between" with 0 neighbours, as "calm".
+  it('puts the middle one between the two by neighbours, not at the middle of the list', () => {
+    const sparse = [slot(30, 800), ...[3000, 3200, 3400, 3600, 3800, 4000].map((x, i) => slot(40 + i, x)), slot(10, 60, 60)];
+    const [calm, between, crowded] = landingChoices([...crowd.slice(0, 4), ...sparse], new Set([0, 1, 2, 3]));
+    expect(calm!.neighbours).toBe(0);
+    expect(crowded!.neighbours).toBe(4);
+    expect(between!.index).toBe(30);
+    expect(between!.neighbours).toBe(2);
+  });
 });
