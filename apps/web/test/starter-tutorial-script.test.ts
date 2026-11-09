@@ -78,10 +78,34 @@ describe('the road through the first session (N12)', () => {
     `[data-guide="repair-order"][data-step="${module}:${String(stage)}"]`, `[data-guide="repair-show"][data-step="${module}:${String(stage)}"]`, `[data-guide="system-${system}"]`,
   ];
 
-  it('goes from the crystal to the telescope and then the radar, each lit on the ship', () => {
+  it('goes from the crystal to the telescope, each lit on the ship', () => {
     expect(at(onRoad({}))).toMatchObject({ id: 'orderExtractor', step: 'press', strict: false, marks: marksOf('EXTRACTOR', 1, 'REFINERY') });
     expect(at(onRoad({}, { queue: [order('EXTRACTOR', 1)] }))).toMatchObject({ id: 'orderTelescope', marks: marksOf('TELESCOPE', 1, 'DEFENCE') });
-    expect(at(onRoad({ EXTRACTOR: 1 }, { queue: [order('TELESCOPE', 1)] }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'DEFENCE') });
+  });
+
+  // Owner playtest 2026-11-09: with both on the queue the radar came in while the telescope was being taught.
+  it('never asks for the radar before the telescope has been taught', () => {
+    expect(id(onRoad({ EXTRACTOR: 1 }, { queue: [order('TELESCOPE', 1)] }))).toBe('waitTelescope');
+    expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { view: 'galaxy' }))).toBe('telescopeLook');
+  });
+
+  it('asks for the radar once the Prospector has been sent, and waits for it before the antenna', () => {
+    const sent = { EXTRACTOR: 1, TELESCOPE: 1 };
+    expect(at(onRoad(sent, { mining: true }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'DEFENCE') });
+    expect(at(onRoad(sent, { mining: true, queue: [order('RADAR', 1)] }))).toMatchObject({ id: 'waitRadar', step: 'wait' });
+    expect(id(onRoad({ ...sent, RADAR: 1 }, { mining: true }))).toBe('orderSurvey');
+  });
+
+  it('still teaches the telescope to a player who ordered the radar early', () => {
+    const early = onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy' });
+    expect(id(early)).toBe('telescopeLook');
+    expect(id({ ...early, mining: true, view: 'ship' })).toBe('waitRadar');
+  });
+
+  it('keeps the radar\'s contact lesson behind the telescope\'s', () => {
+    const early = onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { view: 'galaxy', sight: { traffic: false, unknown: true } });
+    expect(id(early)).toBe('telescopeLook');
+    expect(id({ ...early, mining: true })).toBe('radarRing');
   });
 
   it('asks for the ship first when the player is out on the galaxy', () => {
@@ -90,14 +114,24 @@ describe('the road through the first session (N12)', () => {
 
   it('waits for the telescope, and only then opens its field', () => {
     const sensors = { EXTRACTOR: 1 };
-    expect(at(onRoad(sensors, { queue: [order('TELESCOPE', 1), order('RADAR', 1)] }))).toMatchObject({ id: 'waitTelescope', step: 'wait' });
-    expect(at(onRoad({ ...sensors, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy' }))).toMatchObject({ id: 'telescopeLook', step: 'read', marks: [] });
+    expect(at(onRoad(sensors, { queue: [order('TELESCOPE', 1)] }))).toMatchObject({ id: 'waitTelescope', step: 'wait' });
+    expect(at(onRoad({ ...sensors, TELESCOPE: 1 }, { view: 'galaxy' }))).toMatchObject({ id: 'telescopeLook', step: 'read', marks: [] });
   });
 
   // Owner playtest 2026-11-08: the telescope is looked through first, then a rock is found by hand.
   describe('the first look through the telescope', () => {
-    const open = (over: Partial<TutorialInput> = {}) => onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { queue: [order('RADAR', 1)], view: 'galaxy', ...over });
-    const looked = { acked: ['telescopeLook'] };
+    const open = (over: Partial<TutorialInput> = {}) => onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { view: 'galaxy', ...over });
+    const looked = { acked: ['telescopeLook', 'zoomRock'] };
+    // Owner playtest 2026-11-09: a white ring was tapped without the rock ever being seen.
+    it('has the player come closer before any rock is asked for', () => {
+      expect(at(open({ acked: ['telescopeLook'] }))).toMatchObject({ id: 'zoomRock', step: 'gesture', marks: [] });
+    });
+    it('does not ask for a zoom with no rock to zoom on', () => {
+      expect(id(open({ acked: ['telescopeLook'], noRocks: true }))).toBe('findRock');
+    });
+    it('does not ask for a zoom over a rock already open', () => {
+      expect(id(open({ acked: ['telescopeLook'], rockOpen: true }))).toBe('mine');
+    });
     it('has a rock found in the sky after the look', () => {
       expect(at(open(looked))).toMatchObject({ id: 'findRock', step: 'press', marks: ['[data-guide="sight-rock"]', '[data-guide="objective"]'] });
     });
@@ -106,12 +140,13 @@ describe('the road through the first session (N12)', () => {
       expect(at(open({ ...looked, rockOpen: false }))).toMatchObject({ id: 'findRock' });
     });
     it('is over with the first flight, on any phone', () => {
-      expect(id(open({ mining: true }))).toBe('orderSurvey');
-      expect(id(open({ facts: ['FIRST_MINING_RETURN'] }))).toBe('orderSurvey');
+      expect(id(open({ mining: true }))).toBe('orderRadar');
+      expect(id(open({ facts: ['FIRST_MINING_RETURN'] }))).toBe('orderRadar');
     });
     it('closes the note and the page before it speaks', () => {
       expect(at(open({ unlockToAnnounce: 'telescope' }))).toMatchObject({ id: 'telescopeLook', nav: 'dismissUnlock' });
       expect(at(open({ ...looked, unlockToAnnounce: 'telescope' }))).toMatchObject({ id: 'findRock', nav: 'dismissUnlock' });
+      expect(at(open({ acked: ['telescopeLook'], unlockToAnnounce: 'telescope' }))).toMatchObject({ id: 'zoomRock', nav: 'dismissUnlock' });
       expect(at(open({ view: 'ship' }))).toMatchObject({ id: 'telescopeLook', nav: 'closePage' });
     });
   });
@@ -297,7 +332,8 @@ describe('the road the server counts', () => {
 describe('waits never navigate', () => {
   const waits = {
     waitFirst: base({ ...pending(null), works: 0, queue: [order('REFINERY', 2)] }),
-    waitTelescope: awake({ modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [order('TELESCOPE', 1), order('RADAR', 1)] }),
+    waitTelescope: awake({ modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [order('TELESCOPE', 1)] }),
+    waitRadar: awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, mining: true, queue: [order('RADAR', 1)] }),
     waitSurvey: awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, mining: true, canPayNext: true, queue: [order('SURVEY', 1)] }),
   };
   for (const [wait, input] of Object.entries(waits)) {
@@ -324,6 +360,7 @@ describe('how a wait holds the player', () => {
     expect(repairWait('waitFirst', [timed('REFINERY', 2, 10), timed('EXTRACTOR', 1, 10 * 60)])).toEqual({ until: at(10), spanMs: 10_000 });
     expect(repairWait('waitFirst', [])).toBeNull();
     expect(repairWait('waitTelescope', [timed('RADAR', 1, 180), timed('TELESCOPE', 1, 90)])).toEqual({ until: at(90), spanMs: 90_000 });
+    expect(repairWait('waitRadar', [timed('RADAR', 1, 15)])).toEqual({ until: at(15), spanMs: 15_000 });
     expect(repairWait('mine', [timed('SURVEY', 1, 30)])).toBeNull();
   });
 

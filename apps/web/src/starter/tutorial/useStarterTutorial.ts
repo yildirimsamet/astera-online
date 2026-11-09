@@ -109,6 +109,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     alone,
     view,
     rockOpen,
+    noRocks: mining.fieldData?.asteroids.length === 0,
     sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
     acked: list,
   };

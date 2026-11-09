@@ -37,6 +37,8 @@ export interface TutorialInput {
   view: TutorialView;
   /** A rock's sheet is open on the galaxy: what the Prospector is sent from. */
   rockOpen?: boolean;
+  /** The field has loaded and holds no rock: nothing to come closer to. */
+  noRocks?: boolean;
   /** What the live sky holds: a sensor lesson waits for its subject (plan F6). None means nothing in sight. */
   sight?: SightNow;
   /** Lines read and marks pressed, on this device. */
@@ -45,8 +47,8 @@ export interface TutorialInput {
 
 export type TutorialStepId = StarterTutorialStepId;
 
-/** read: a line and Next · press: the mark is the next move · wait: nothing to press while it runs. */
-export type TutorialKind = 'read' | 'press' | 'wait';
+/** read: a line and Next · press: the mark is the next move · wait: nothing to press while it runs · gesture: the scene answers it. */
+export type TutorialKind = 'read' | 'press' | 'wait' | 'gesture';
 export type TutorialLineId = TutorialStepId;
 /** The card's heading: which part of the ship's story the line belongs to. */
 export type TutorialChapter = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
@@ -130,12 +132,16 @@ const FIRST_ROAD: Part = {
   steps: [
     orderStep('orderExtractor', 'EXTRACTOR', 1, 'REFINERY', 2),
     orderStep('orderTelescope', 'TELESCOPE', 1, 'DEFENCE', 3),
-    orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3),
     waitFor('waitTelescope', 'TELESCOPE', 3),
     // The field is looked through, a rock found by hand, and only then is the Prospector named (owner playtest 2026-11-08).
     { id: 'telescopeLook', kind: 'read', chapter: 7, place: 'galaxy', marks: [], reached: hasMined },
+    // At the opening distance a rock is a few pixels: it is come closer to by hand first (owner playtest 2026-11-09).
+    { id: 'zoomRock', kind: 'gesture', chapter: 6, place: 'galaxy', marks: [], satisfied: i => i.noRocks === true || i.rockOpen === true, reached: hasMined },
     { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
     { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
+    // The radar waits for the telescope's lesson (owner playtest 2026-11-09). Ordered early, it does not pass over that lesson.
+    { ...orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3), reached: i => hasMined(i) && ordered(i, 'RADAR', 1) },
+    { ...waitFor('waitRadar', 'RADAR', 3), reached: i => hasMined(i) && has(i, 'RADAR', 1) },
     orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
     waitFor('waitSurvey', 'SURVEY', 4),
     { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
@@ -173,7 +179,7 @@ const MOMENTS: readonly Part[] = [
   // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
   // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
   {
-    strict: false, due: i => has(i, 'RADAR', 1),
+    strict: false, due: i => has(i, 'RADAR', 1) && hasMined(i),
     steps: [
       { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
       { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
@@ -190,7 +196,7 @@ export const ROAD: readonly Step[] = [...CORE.steps, ...FIRST_ROAD.steps, OPEN_C
 export const CORE_CHAPTERS = 2;
 
 /** The galaxy steps an "online" note would cover; the rest of the galaxy's lines speak over it. */
-const NOTE_HIDES: readonly TutorialStepId[] = ['telescopeLook', 'findRock', 'mine', 'probe'];
+const NOTE_HIDES: readonly TutorialStepId[] = ['telescopeLook', 'zoomRock', 'findRock', 'mine', 'probe'];
 
 /** Where a step is, with the way there when its mark is somewhere else. */
 function locate(step: Step, input: TutorialInput, strict: boolean): TutorialAnswer {
@@ -286,6 +292,7 @@ export type WaitMode = 'lock' | 'roam' | 'away';
 const WAIT_ON: Partial<Record<TutorialStepId, readonly (readonly [string, number])[]>> = {
   waitFirst: [['REFINERY', 2]],
   waitTelescope: [['TELESCOPE', 1]],
+  waitRadar: [['RADAR', 1]],
   waitSurvey: [['SURVEY', 1]],
   waitYard: [['SHIPYARD', 1]],
 };

@@ -3,6 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TutorialAnswer } from '../src/starter/tutorial/script.js';
 import { StarterTutorialCoach } from '../src/starter/tutorial/StarterTutorialCoach.js';
 import { CARD_AFTER_REVEAL_MS } from '../src/starter/tutorial/sightLesson.js';
+import { setRockReach } from '../src/starter/tutorial/rockReach.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
 
@@ -222,6 +223,43 @@ describe('the welcome over the power card', () => {
     fireEvent.pointerUp(scene, { clientX: 190, clientY: 310 });
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
     expect(screen.getByTestId('pointer')).toBeTruthy();
+  });
+
+  // Owner playtest 2026-11-09: come closer by hand, then the rock can be touched.
+  describe('the zoom before the rock', () => {
+    const zoom: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'zoomRock', step: 'gesture', marks: [], chapter: 6, strict: false };
+    afterEach(() => { act(() => { setRockReach(null); }); sound.mockClear(); });
+    it('shows the pinch, with no hand and no Next to walk past it', () => {
+      coach(zoom);
+      expect(document.querySelector('[data-pinch-hint]')).not.toBeNull();
+      expect(screen.queryByTestId('pointer')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+      expect(screen.queryByRole('button', { name: /^next$/i })).toBeNull();
+    });
+    it('moves on with a chime when a rock has come within reach', () => {
+      const { ack } = coach(zoom);
+      expect(ack).not.toHaveBeenCalled();
+      act(() => { setRockReach('rock-1'); });
+      expect(ack).toHaveBeenCalledWith('zoomRock');
+      expect(sound).toHaveBeenCalledWith('confirm');
+    });
+    it('passes quietly when the view was already close', () => {
+      setRockReach('rock-1');
+      const { ack } = coach(zoom);
+      expect(ack).toHaveBeenCalledWith('zoomRock');
+      expect(sound).not.toHaveBeenCalled();
+    });
+    it('is not reported as a missing mark', () => {
+      vi.useFakeTimers();
+      coach(zoom);
+      act(() => { vi.advanceTimersByTime(30_000); });
+      expect(observe.mock.calls.some(([name]) => name === 'blocker_visible')).toBe(false);
+      vi.useRealTimers();
+    });
+    it('hides the pinch while a note is in the way', () => {
+      coach({ ...zoom, step: 'press', marks: ['[data-guide="unlock-dismiss"]'], nav: 'dismissUnlock' });
+      expect(document.querySelector('[data-pinch-hint]')).toBeNull();
+    });
   });
 
   // Owner 2026-11-08: the telescope's field is turned by hand before the flight is pointed out.

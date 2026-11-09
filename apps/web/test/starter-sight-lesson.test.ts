@@ -1,7 +1,8 @@
 import { describe,expect,it } from 'vitest';
 import type { Contact } from '../src/api/schemas.js';
 import type { TutorialAnswer, TutorialLineId } from '../src/starter/tutorial/script.js';
-import { REVEAL_FLEETS_MS, REVEAL_ROCKS_MS, rockSheetStaysOpen, sightLesson, lessonContact, sightNow, telescopeReveal } from '../src/starter/tutorial/sightLesson.js';
+import { CARD_AFTER_REVEAL_MS, REVEAL_FLEETS_MS, REVEAL_ROCKS_MS, rocksHeld, rockSheetStaysOpen, sightLesson, lessonContact, sightNow, telescopeReveal } from '../src/starter/tutorial/sightLesson.js';
+import { SHELL_SPREAD_SECONDS } from '../src/galaxy/SensorRings.js';
 const answer=(id:TutorialLineId):TutorialAnswer=>({kind:'step',id,step:'read',chapter:7,strict:false,marks:[]});
 const contact=(id:string,kind:Contact['kind'],x=0):Contact=>({id,kind,from:{x,y:0,z:0},to:{x:x+10,y:0,z:0},startAt:new Date(),endAt:new Date(Date.now()+5000)});
 describe('a sight lesson shows only the live world the caller earned',()=>{
@@ -60,8 +61,29 @@ it('keeps a rock\'s sheet unfolded while the guide is about that rock',()=>{
  expect(rockSheetStaysOpen(null)).toBe(false);
 });
 
+describe('the zoom before the rock',()=>{
+ it('keeps the telescope ring up',()=>{ expect(sightLesson(answer('zoomRock'))).toBe('telescope'); });
+ it('shows every rock it is asking the player to come closer to',()=>{
+  expect(telescopeReveal(answer('zoomRock'),0)).toEqual({rocks:true,fleets:true});
+ });
+ it('holds a rock tap only on that step, and only out on the galaxy',()=>{
+  expect(rocksHeld(answer('zoomRock'))).toBe(true);
+  expect(rocksHeld(answer('findRock'))).toBe(false);
+  expect(rocksHeld({kind:'step',id:'zoomRock',step:'press',chapter:6,strict:false,marks:[],nav:'closePage'})).toBe(false);
+  expect(rocksHeld(null)).toBe(false);
+ });
+});
+
 describe('what the opening telescope brings into the sky, and when',()=>{
  const look=answer('telescopeLook');
+ // Owner playtest 2026-11-09: the rocks are there the moment the ring has spread.
+ it('brings the rocks at the very end of the ring',()=>{
+  expect(REVEAL_ROCKS_MS).toBe(SHELL_SPREAD_SECONDS*1000);
+ });
+ it('lets the officer speak only once the rocks have landed',()=>{
+  expect(CARD_AFTER_REVEAL_MS).toBeGreaterThanOrEqual(REVEAL_FLEETS_MS);
+  expect(CARD_AFTER_REVEAL_MS-REVEAL_ROCKS_MS).toBeLessThanOrEqual(1600);
+ });
  it('keeps both back while the ring grows',()=>{
   expect(telescopeReveal(look,REVEAL_ROCKS_MS-1)).toEqual({rocks:false,fleets:false});
  });

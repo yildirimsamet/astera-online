@@ -5,8 +5,8 @@
  */
 export const STARTER_TUTORIAL_STEPS = [
   'online', 'collect', 'orderRefinery', 'waitFirst',
-  'orderExtractor', 'orderTelescope', 'orderRadar', 'waitTelescope', 'telescopeLook', 'findRock', 'mine',
-  'orderSurvey', 'waitSurvey', 'probe', 'orderShipyard', 'waitYard', 'buildShip', 'farewell',
+  'orderExtractor', 'orderTelescope', 'waitTelescope', 'telescopeLook', 'zoomRock', 'findRock', 'mine',
+  'orderRadar', 'waitRadar', 'orderSurvey', 'waitSurvey', 'probe', 'orderShipyard', 'waitYard', 'buildShip', 'farewell',
   'openCrate', 'firstCrate', 'openIntel', 'openReport', 'report', 'collectMine',
   'radarRing', 'radarContact', 'sightTrio',
 ] as const;

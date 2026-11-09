@@ -8,13 +8,17 @@ import type { TutorialAnswer, TutorialLineId } from './script.js';
 export function sightLesson(answer: TutorialAnswer | null): 'telescope' | 'radar' | null {
   if (answer?.kind !== 'step' || answer.nav) return null;
   // The Prospector goes out inside the ring that showed its rock.
-  if (answer.id === 'telescopeLook' || answer.id === 'findRock' || answer.id === 'mine') return 'telescope';
+  if (answer.id === 'telescopeLook' || answer.id === 'zoomRock' || answer.id === 'findRock' || answer.id === 'mine') return 'telescope';
   return answer.id.startsWith('radar') || answer.id === 'sightTrio' ? 'radar' : null;
 }
 
 /** The line names the button in the rock's sheet, so the sheet is not left folded over it. */
 export const rockSheetStaysOpen = (answer: TutorialAnswer | null): boolean =>
   answer?.kind === 'step' && (answer.id === 'findRock' || answer.id === 'mine');
+
+/** While the player is asked to come closer, a rock is not yet to be touched (owner playtest 2026-11-09). */
+export const rocksHeld = (answer: TutorialAnswer | null): boolean =>
+  answer?.kind === 'step' && answer.id === 'zoomRock' && !answer.nav;
 
 /** Published contacts only. An empty sky stays empty; a hidden fleet is never manufactured for a lesson. */
 export function lessonContact(id: TutorialLineId | undefined, contacts: readonly Contact[], sensor?: SensorSphere): Contact | undefined {
@@ -43,11 +47,11 @@ export function sightNow(contacts: readonly Contact[], sensor: SensorSphere | un
   };
 }
 
-/** The ring takes 1.4 s to spread; then a second to the rocks and a second to the fleets (owner playtest 2026-11-08). */
-export const REVEAL_ROCKS_MS = 2_400;
-export const REVEAL_FLEETS_MS = 3_400;
+/** The ring takes 1.4 s to spread; the rocks land as it ends (owner playtest 2026-11-09) and the fleets a second later. */
+export const REVEAL_ROCKS_MS = 1_400;
+export const REVEAL_FLEETS_MS = 2_400;
 /** The officer speaks once the sky has filled, so the first look goes to the sky. */
-export const CARD_AFTER_REVEAL_MS = 4_000;
+export const CARD_AFTER_REVEAL_MS = 3_000;
 
 export interface TelescopeReveal { rocks: boolean; fleets: boolean }
 const ALL: TelescopeReveal = { rocks: true, fleets: true };

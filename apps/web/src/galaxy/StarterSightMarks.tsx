@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Html } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
-import type { Group } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { PerspectiveCamera, type Group } from 'three';
 import type { AsteroidView, Contact } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import { lessonContact, sightLesson } from '../starter/tutorial/sightLesson.js';
+import { rockInReach, setRockReach, useRockReach, type ReachRock } from '../starter/tutorial/rockReach.js';
 import { nearestRock } from '../starter/neighbour.js';
 import { asteroidWorldPosition, contactPosition, type PlanetNode } from './scene.js';
 import type { ReachRing } from './SensorRings.js';
@@ -37,6 +38,19 @@ function RockMark({ rock, seasonStart, pointed }: { rock:AsteroidView;seasonStar
   </Html></group>;
 }
 
+/** Tells the guide, frame by frame, whether a rock of the lesson has come within a finger's reach. */
+function RockReachWatch({ rocks, seasonStart }: { rocks:readonly AsteroidView[];seasonStart:Date }) {
+  const invalidate = useThree(state=>state.invalidate);
+  const list = useMemo<ReachRock[]>(()=>rocks.map(rock=>({id:rock.id,level:rock.level,at:[0,0,0]})),[rocks]);
+  useEffect(()=>{invalidate();return ()=>{setRockReach(null);};},[invalidate]);
+  useFrame(({camera,size})=>{
+    if (!(camera instanceof PerspectiveCamera)) return;
+    list.forEach((item,index)=>{item.at=asteroidWorldPosition(rocks[index]!,seasonStart,serverNow());});
+    setRockReach(rockInReach(list,camera,size.height));
+  });
+  return null;
+}
+
 /** The radar's first warning is an event in the sky. */
 function useWarned(id: string | undefined, contactId: string | undefined) {
   const told = useRef(false);
@@ -54,10 +68,12 @@ export function StarterSightMarks({ sensors, contacts, nodes, asteroids, seasonS
   const id = answer?.kind==='step'?answer.id:undefined;
   const contact = post ? lessonContact(id,contacts,post) : undefined;
   useWarned(device ? id : undefined, contact?.id);
+  const reach = useRockReach();
   if (!device || !post) return null;
-  if (id==='findRock' && seasonStart) {
-    const nearest = nearestRock(asteroids, post.at, minutesInto(seasonStart));
-    return <>{asteroids.map(rock=><RockMark key={rock.id} rock={rock} seasonStart={seasonStart} pointed={rock.id===nearest}/>)}</>;
+  if ((id==='zoomRock' || id==='findRock') && seasonStart) {
+    // The hand goes to the rock the player came close to; the nearest only if none is on screen.
+    const pointed = id==='findRock' ? reach ?? nearestRock(asteroids, post.at, minutesInto(seasonStart)) : null;
+    return <><RockReachWatch rocks={asteroids} seasonStart={seasonStart}/>{asteroids.map(rock=><RockMark key={rock.id} rock={rock} seasonStart={seasonStart} pointed={rock.id===pointed}/>)}</>;
   }
   return contact ? <MovingMark contact={contact} nodes={nodes}/> : null;
 }

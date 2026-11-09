@@ -448,3 +448,9 @@ F8 görsel: F0'dan sonra, bağımsız                           → [M2 owner pl
 | Aegis seçimli olunca starter'da PvP azalır | Bilinçli karar (N3); Aegis alan oranı ölçülür |
 | Danışman çok seçenekle yeni oyuncuyu boğar | En fazla 3 kart, biri önerilen; kartta az yazı |
 | Botlar yeni saldırı şartında ayırt edilebilir hâle gelir (Aegis almayan botlar) | `shipBots` Aegis politikası + bot testleri; kilitli karar (2026-10-28) korunur |
+
+## Playtest turu 3, owner 2026-11-09
+
+- Radar artık teleskop dersinden sonra istenir: Teleskop → bak → yaklaş → asteroit → Kazıcı → Radar → Radar'ı bekle → Anten. Radar'ı erken sıraya koyan oyuncu teleskop dersini yine görür; radar dersi ilk Kazıcı uçuşundan sonra konuşur. Sunucu kuralı değişmedi, Radar elle erken sıraya konabilir.
+- Asteroitler halka yayılmayı bitirdiği anda gelir (1,4 sn), filolar 1 sn sonra, subay 3 sn'de konuşur.
+- `zoomRock` adımı: kamera uzaktaysa oyuncu pinch ile yaklaşır. Geçiş ölçütü: bir asteroidin dokunma alanı 44 px genişliğe gelir ve kart ile alt çubuğun dışında kalır. Bu adımda asteroide dokunmak ve Sıradaki satırı çalışmaz. Görünürde asteroit yoksa adım atlanır.

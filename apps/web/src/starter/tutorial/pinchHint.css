@@ -1,0 +1,10 @@
+/* Two fingers spreading, the zoom asked for over the telescope's rocks. Game motion, not the OS setting. */
+.pinch-hint { filter: drop-shadow(0 0 6px rgb(0 0 0 / 0.6)); }
+.pinch-hint-arrow { fill: none; stroke: var(--color-v2-self); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; animation: pinch-hint-arrow 1.8s ease-in-out infinite; }
+.pinch-hint-tip { fill: #f3efe6; stroke: var(--color-v2-self); stroke-width: 3; }
+.pinch-hint-up { animation: pinch-hint-up 1.8s cubic-bezier(.4, 0, .2, 1) infinite; }
+.pinch-hint-down { animation: pinch-hint-down 1.8s cubic-bezier(.4, 0, .2, 1) infinite; }
+
+@keyframes pinch-hint-up { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(16px, -16px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
+@keyframes pinch-hint-down { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(-16px, 16px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
+@keyframes pinch-hint-arrow { 0%, 25% { opacity: .25; } 70%, 85% { opacity: 1; } 100% { opacity: .25; } }

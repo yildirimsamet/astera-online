@@ -78,6 +78,19 @@ it('uses the officer road for both its short label and its destination, even whe
   fireEvent.click(line);expect(open).toHaveBeenCalledOnce();expect(rock).not.toHaveBeenCalled();
 });
 
+// Owner playtest 2026-11-09: while the player is asked to come closer, the line says so and flies nowhere.
+it('asks for the zoom, and is no shortcut past it', () => {
+  const goal: StarterGoalValue = { step: { kind: 'step', id: 'zoomRock', step: 'gesture', chapter: 6, strict: false, marks: [] }, choice: { kind: 'mine' }, picked: false, guided: true, view: 'galaxy' };
+  const focus = vi.fn();
+  render(<StarterGoal.Provider value={goal}>
+    <ObjectiveLine vessel={vesselSchema.parse(wireVessel({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, features: ['production', 'telescope'] }))} fetchedAt={Date.now()} onOpenShip={vi.fn()} onFocusRock={focus} />
+  </StarterGoal.Provider>);
+  const line = screen.getByTestId('ship-objective');
+  expect(line.textContent).toMatch(/come closer/i);
+  fireEvent.click(line);
+  expect(focus).not.toHaveBeenCalled();
+});
+
 /**
  * THE ADVISOR (plan F3, N1). After the core the NPC offers at most three real things to do, one of
  * them recommended, each with its price, its time and what it opens. The player picks; the line then

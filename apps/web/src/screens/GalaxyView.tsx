@@ -1,5 +1,5 @@
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
-import { rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
+import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
 import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
@@ -657,6 +657,7 @@ export function GalaxyView({
   const lesson = useStarterLesson();
   const sight = sightLesson(lesson);
   const reveal = useTelescopeReveal(lesson);
+  const heldRocks = rocksHeld(lesson);
   const rockOpen = focus?.kind === 'asteroid';
   useEffect(() => { setRockSheet(rockOpen); return () => { setRockSheet(false); }; }, [rockOpen]);
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
@@ -1398,7 +1399,7 @@ export function GalaxyView({
         onReady={onReady}
         openingDataReady={dataSettled}
         openingCovered={covered}
-        onFocus={onFocus}
+        onFocus={heldRocks ? (target) => { if (target?.kind === 'asteroid') haptic('warn'); else onFocus(target); } : onFocus}
         homeSignal={homeSignal}
         centerSignal={centerSignal}
         openingHome={openingHome}

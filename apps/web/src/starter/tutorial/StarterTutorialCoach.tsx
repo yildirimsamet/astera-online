@@ -22,6 +22,8 @@ import { Sheet } from '../../ui/kit/Sheet.js';
 import { Button } from '../../ui/kit/Button.js';
 import { AwayChip } from './AwayChip.js';
 import { DragHint } from './DragHint.js';
+import { PinchHint } from './PinchHint.js';
+import { useRockReach } from './rockReach.js';
 import { useSilenceToasts } from '../../ui/Toast.js';
 import { holdUnlock } from './unlockHold.js';
 import { CARD_AFTER_REVEAL_MS } from './sightLesson.js';
@@ -124,7 +126,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   }, [live, stepId]);
   useEffect(() => {
     setStuck(false);
-    if (!live || !stepId || kind === 'read') return undefined;
+    if (!live || !stepId || kind === 'read' || kind === 'gesture') return undefined;
     const began = Date.now();
     let missingSince: number | null = null;
     let told = false;
@@ -252,6 +254,17 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     };
   }, [lookId, ack]);
 
+  // THE ZOOM (owner playtest 2026-11-09): the camera is the answer. Already close, it passes without a word.
+  const zooming = live && kind === 'gesture' && stepId === 'zoomRock';
+  const reach = useRockReach();
+  const wasFar = useRef(false);
+  useEffect(() => {
+    if (!zooming) { wasFar.current = false; return; }
+    if (reach === null) { wasFar.current = true; return; }
+    if (wasFar.current) { playSound('confirm'); haptic('commit'); }
+    ack('zoomRock');
+  }, [zooming, reach, ack]);
+
   // A system's "online" card shows only when a line points at it (owner playtest 2026-11-07).
   const aboutUnlock = marks.some(mark => mark.includes('unlock-'));
   useEffect(() => {
@@ -297,6 +310,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     <>
       <Hush />
       {looking && !looked && <DragHint />}
+      {zooming && <PinchHint />}
       {/* The question takes the card's place: docked at the bottom, the card covered its buttons. */}
       {!confirmSkip && <SchoolCoach
         title={t(CHAPTER[step.chapter])}

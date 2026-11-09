@@ -276,7 +276,8 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
     : waiting ? (wait ? duration(Math.max(0, wait.until.getTime() - now) / 60_000) : t('starter.visual.waiting')) : null;
   const nextTap: Tap = repair || id?.toLowerCase().includes('crate') ? 'ship'
     : id === 'mine' ? 'rock' : id === 'probe' ? 'neighbour' : id?.startsWith('collect') ? 'up' : null;
-  const line = short ? { text: short, tap: nextTap, rest: waiting } : original;
+  const line = short ? { text: short, tap: nextTap, rest: waiting }
+    : id === 'zoomRock' ? { text: t('starter.objective.zoomRock'), tap: null, rest: false } : original;
   const outpost = objective.kind === 'hunt' && (objective.hunt.stage === 'probe' || objective.hunt.stage === 'retry') ? objective.hunt.target : null;
   const unheld = line.tap === 'neighbour' && !onFocusNeighbour || line.tap === 'rock' && !onFocusRock
     || line.tap === 'outpost' && !(onFocusOutpost && outpost) || line.tap === 'reports' && !onOpenReports;
