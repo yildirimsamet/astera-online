@@ -46,3 +46,9 @@ it('can localize a compiled entry while retaining Vite nonce metadata and elimin
   expect(doc.querySelector('script[src="/assets/index-hash.js"]')).not.toBeNull();
   expect(doc.querySelectorAll('link[href="/landing/style.css"]')).toHaveLength(1);
 });
+it.each(LANGUAGES)('sends %s readers from “Know before you launch” to the long strategy guides', language => {
+  const doc = new DOMParser().parseFromString(renderToStaticMarkup(<PublicLanding language={language} />), 'text/html');
+  const root = language === 'tr' ? '/wiki/tr' : '/wiki';
+  const links = [...doc.querySelectorAll<HTMLAnchorElement>('.landing-reading nav a')].map(link => link.getAttribute('href'));
+  expect(links).toEqual(['how-to-play', 'intelligence', 'fleet-building'].map(slug => `${root}/guides/${slug}`));
+});
