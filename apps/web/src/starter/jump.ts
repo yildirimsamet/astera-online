@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import type { VesselHull, VesselLook } from '@astera/rules';
 import type { Landing } from '../api/starterSchemas.js';
+import type { Weight } from '../lib/haptics.js';
+import type { SoundCue } from '../lib/sound.js';
 
 export type BeatId = 'lit' | 'leaving' | 'gap' | 'fall' | 'world';
 
@@ -39,8 +41,23 @@ export interface Jump {
   replay?: boolean;
 }
 
+/** What the scene sounds and feels like, on its own clock. Silent, it would be a picture of leaving. */
+export interface SceneCue { at: number; sound: SoundCue; seconds?: number; haptic: Weight }
+const SCENE_CUES: readonly SceneCue[] = [
+  // The drive catches and roars until the ship moves.
+  { at: 0, sound: 'ignite', seconds: 5, haptic: 'rumble' },
+  { at: 6, sound: 'launch', haptic: 'commit' },
+  // Spooled so its drop lands on the flash where the ship gives itself up.
+  { at: 18.6, sound: 'warp', haptic: 'warp' },
+  { at: 23, sound: 'claim', haptic: 'commit' },
+];
+
 /** Outside React so a landing outlives the screen that pressed it, which unmounts at once. */
 let jump: Jump | null = null;
+/** Pressed and not yet answered. The server seats the commander before it answers (§5.8). */
+let pressed = false;
+/** How far into the scene its cues have sounded: once each, whatever remounts. */
+let heard = 0;
 const listeners = new Set<() => void>();
 const tell = () => { for (const listen of listeners) listen(); };
 
@@ -57,11 +74,37 @@ const markScenePlayed = (): void => {
 /** The press starts at the top with the game gone; the ending and a replay play over the planet. */
 export const startJump = (next: Omit<Jump, 'stage' | 'origin'>): void => {
   markScenePlayed();
+  pressed = false;
+  heard = next.start - 0.001;
   jump = { ...next, stage: next.start === 0 && !next.replay ? 'flight' : 'reveal', origin: performance.now() - next.start * 1000 };
   tell();
 };
 export const revealJump = (): void => { if (jump) { jump = { ...jump, stage: 'reveal' }; tell(); } };
 export const endJump = (): void => { jump = null; tell(); };
 
+/** The press: from here until the scene reveals, only the scene moves the session (playtest 2026-11-09). */
+export const pressJump = (): void => { pressed = true; tell(); };
+/** A refused or failed press: the ship is as it was. */
+export const releaseJump = (): void => { if (pressed) { pressed = false; tell(); } };
+
+/**
+ * WHETHER THE SCENE OWNS THE SESSION. The seat is taken, and announced on the stream, before the press
+ * is answered: moving on that word unmounted the screen that starts the scene, and the player saw only
+ * its last seven seconds. From the press through the flight nothing moves the session; at the reveal the
+ * scene moves it itself, and until it stands on the planet the ship is not drawn under the fade.
+ */
+export const sceneOwnsSession = (current: Jump | null, isPressed: boolean, onShip: boolean): boolean =>
+  isPressed || (current !== null && !current.replay && (current.stage === 'flight' || onShip));
+/** For whatever would move the session: not now. The reveal's own move is not held. */
+export const jumpHoldsSession = (): boolean => sceneOwnsSession(jump, pressed, false);
+
+/** The cues the scene has reached since it last asked. */
+export const takeCues = (seconds: number): readonly SceneCue[] => {
+  const due = SCENE_CUES.filter(cue => cue.at > heard && cue.at <= seconds);
+  heard = Math.max(heard, seconds);
+  return due;
+};
+
 const subscribe = (listen: () => void) => { listeners.add(listen); return () => { listeners.delete(listen); }; };
 export const useJump = (): Jump | null => useSyncExternalStore(subscribe, () => jump);
+export const useJumpPressed = (): boolean => useSyncExternalStore(subscribe, () => pressed);

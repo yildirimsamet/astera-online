@@ -4,7 +4,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { REVEAL_SECOND, SCENE_SECONDS, beatAt, endJump, revealJump, type BeatId, type Jump } from '../starter/jump.js';
+import { haptic } from '../lib/haptics.js';
+import { playSound } from '../lib/sound.js';
+import { REVEAL_SECOND, SCENE_SECONDS, beatAt, endJump, revealJump, takeCues, type BeatId, type Jump } from '../starter/jump.js';
 import { softGlow } from './Environment.js';
 import { VESSEL_NOSE_TURN, vesselModelFile } from './mainSky.js';
 
@@ -359,6 +361,10 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
       const s = (at - jump.origin) / 1000;
       clock.current = s;
       setBeat(beatAt(s).id);
+      for (const cue of takeCues(s)) {
+        playSound(cue.sound, cue.seconds === undefined ? {} : { seconds: cue.seconds });
+        haptic(cue.haptic);
+      }
       // The ship gives itself up in one burst of light.
       if (flash.current) flash.current.style.opacity = String(smooth(20, 20.9, s) * (1 - smooth(20.9, 22.4, s)));
       if (veil.current) veil.current.style.opacity = String(Math.max(1 - smooth(jump.start, jump.start + 0.8, s), smooth(SCENE_SECONDS - 0.7, SCENE_SECONDS, s)));
@@ -369,8 +375,10 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
     frame = requestAnimationFrame(run);
     return () => { cancelAnimationFrame(frame); };
   }, [jump.origin, jump.start]);
+  // Above the loading cover (z 1000): the planet loads under the scene's last beats, and its cover showed
+  // instead of the flash and the new world (playtest 2026-11-09). Still loading at the end, it shows then.
   return (
-    <div data-testid="migration-sequence" className="fixed inset-0 z-[990] overflow-hidden bg-[#02040a] font-v2-ui">
+    <div data-testid="migration-sequence" className="fixed inset-0 z-[1001] overflow-hidden bg-[#02040a] font-v2-ui">
       <Canvas dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }} camera={{ fov: 42, near: 0.1, far: 12000, position: [3, 1, 4] }}>
         <Stage jump={jump} clock={clock} />
       </Canvas>

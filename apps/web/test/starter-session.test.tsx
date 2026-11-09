@@ -9,6 +9,7 @@ import { keys } from '../src/api/keys.js';
 import { claimSchema, meSchema } from '../src/api/schemas.js';
 import { useSession } from '../src/session/useSession.js';
 import { isStarterMode, setStarterMode } from '../src/starter/transport.js';
+import { endJump, pressJump, revealJump, startJump } from '../src/starter/jump.js';
 import { wireVessel } from './starterVesselFixture.js';
 
 const base = { accountId: 'acc', username: 'new', displayName: 'New', country: 'TR', isAdmin: false, placement: null };
@@ -174,6 +175,23 @@ describe('a session on a ship', () => {
     expect(client.getQueryData(keys.planet)).toBeUndefined();
     const session = result.current.session;
     expect(session.phase === 'ready' && session.standing.planetName).toBe('Home');
+  });
+
+  it('stays on the ship while a pressed jump waits for its answer, and moves when the scene says so', async () => {
+    const { result } = open(server([aboard, onPlanet]));
+    await waitFor(() => { expect(isStarterMode()).toBe(true); });
+    pressJump();
+    act(() => { result.current.rollover(); });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(isStarterMode()).toBe(true);
+    startJump({ shardName: 'Vantage', hull: 'SPINE', look: 'RENEWED', sky: [], landing: null, start: 0 });
+    act(() => { result.current.rollover(); });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(isStarterMode()).toBe(true);
+    revealJump();
+    act(() => { result.current.rollover(); });
+    await waitFor(() => { expect(isStarterMode()).toBe(false); });
+    endJump();
   });
 });
 

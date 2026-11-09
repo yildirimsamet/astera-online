@@ -7,6 +7,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { vesselSchema, type MigrationView } from '../src/api/starterSchemas.js';
 import { LandingChoice } from '../src/starter/LandingChoice.js';
+import { jumpHoldsSession, releaseJump } from '../src/starter/jump.js';
 import { MigrationPanel } from '../src/starter/MigrationPanel.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { urlOf, wireVessel } from './starterVesselFixture.js';
@@ -30,9 +31,12 @@ class Refusal { constructor(readonly error: string) {} }
 const harness = (migration: object | (() => object), ask: (url: string, init?: RequestInit) => unknown = () => ({})) => {
   const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = urlOf(input);
-    const body: unknown = url.includes('/api/starter/migration') ? (typeof migration === 'function' ? migration() : migration) : ask(url, init);
-    const status = body instanceof Refusal ? 409 : 200;
-    return Promise.resolve(new Response(JSON.stringify(body instanceof Refusal ? { error: body.error, message: body.error } : body), { status, headers: { 'content-type': 'application/json' } }));
+    const asked: unknown = url.includes('/api/starter/migration') ? (typeof migration === 'function' ? migration() : migration) : ask(url, init);
+    // An answer may be held back, to see what happens while the press waits on it.
+    return Promise.resolve(asked).then((body: unknown) => new Response(
+      JSON.stringify(body instanceof Refusal ? { error: body.error, message: body.error } : body),
+      { status: body instanceof Refusal ? 409 : 200, headers: { 'content-type': 'application/json' } },
+    ));
   });
   const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -257,5 +261,36 @@ describe('choosing where to land', () => {
     await waitFor(() => { expect(onLanded).toHaveBeenCalledOnce(); });
     const call = fetcher.mock.calls.find(([url]) => urlOf(url).includes('/api/starter/migrate'))!;
     expect(JSON.parse(z.string().parse(call[1]?.body))).toEqual({ slot: 3 });
+  });
+
+  it('holds the session from the press, and still hands the landing back once the sheet has gone', async () => {
+    const onLanded = vi.fn();
+    const landing = { placement: { shard: 'EU-1', shardName: 'Vantage', seasonId: 's', planetId: 'p', playerId: 'c' }, cargo: { alloy: 1, crystal: 1, deuterium: 1, fleet: {} } };
+    let answer: ((value: unknown) => void) | undefined;
+    const { wrap } = harness({}, () => new Promise(resolve => { answer = resolve; }));
+    const { unmount } = render(wrap(<LandingChoice view={parsed()} onCancel={vi.fn()} onLanded={onLanded} />));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const hold = screen.getByRole('button', { name: /Jump/u });
+    fireEvent.pointerDown(hold);
+    await vi.advanceTimersByTimeAsync(1500);
+    fireEvent.pointerUp(hold);
+    vi.useRealTimers();
+    expect(jumpHoldsSession()).toBe(true);
+    unmount();
+    answer?.(landing);
+    await waitFor(() => { expect(onLanded).toHaveBeenCalledOnce(); });
+    releaseJump();
+  });
+
+  it('lets go of the session when the jump is refused', async () => {
+    const { wrap } = harness(view({ block: null, choices }), () => new Refusal('NO_FRONTIER'));
+    render(wrap(<LandingChoice view={parsed()} onCancel={vi.fn()} onLanded={vi.fn()} />));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const hold = screen.getByRole('button', { name: /Jump/u });
+    fireEvent.pointerDown(hold);
+    await vi.advanceTimersByTimeAsync(1500);
+    fireEvent.pointerUp(hold);
+    vi.useRealTimers();
+    await waitFor(() => { expect(jumpHoldsSession()).toBe(false); });
   });
 });

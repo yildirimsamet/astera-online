@@ -7,7 +7,7 @@
  * desktop and on iOS Safari, which is fine — it is reinforcement, never the signal
  * itself.
  */
-type Weight = 'tap' | 'commit' | 'warn' | 'thunk' | 'rumble' | 'warp';
+export type Weight = 'tap' | 'commit' | 'warn' | 'thunk' | 'rumble' | 'warp';
 
 const PATTERN: Record<Weight, number | number[]> = {
   tap: 10,

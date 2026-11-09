@@ -138,7 +138,7 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   }
   if (!tip) return null;
   return (
-    <div data-testid="landing-tip" role="status" className="pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+64px)] z-[60] mx-auto flex max-w-[440px] items-start gap-2 rounded-control border border-v2-self/40 bg-v2-panel/95 px-2.5 py-2 font-v2-ui shadow-lg">
+    <div data-testid="landing-tip" role="status" className="pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto flex max-w-[440px] items-start gap-2 rounded-control border border-v2-self/40 bg-v2-panel/95 px-2.5 py-2 font-v2-ui shadow-lg">
       <p className="min-w-0 flex-1 text-caption leading-snug text-v2-ink">{t(`starter.landing.tip.${tip}`)}</p>
       <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { dismissTip(tip); setTip(null); }}
         className="-m-1 min-h-8 min-w-8 text-v2-ink-2">×</button>

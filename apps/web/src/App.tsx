@@ -1,5 +1,5 @@
 import { TrainingDoor } from './onboarding/TrainingDoor.js';
-import { useJump } from './starter/jump.js';
+import { sceneOwnsSession, useJump, useJumpPressed } from './starter/jump.js';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAnalyticsScreen } from './lib/playerAnalytics/useAnalyticsScreen.js';
 import { useTranslation } from 'react-i18next';
@@ -121,9 +121,13 @@ function SessionApp() {
   useSoundEffects();
 
   const jump = useJump();
-  useEventStream(ready && !academyReplay && jump?.stage !== 'flight', rollover);
+  const pressed = useJumpPressed();
+  const onShip = session.phase === 'ready' && Boolean(session.me.vessel);
+  // From the press the stream says nothing: it would move the session under the scene (playtest 2026-11-09).
+  useEventStream(ready && !academyReplay && !sceneOwnsSession(jump, pressed, onShip), rollover);
   // The session moves to the planet under the last beat of the jump, so the fade lands on the real thing.
-  const flying = jump?.stage === 'flight';
+  // Until it stands there the ship is not drawn: its screens would only ask a server that has moved on.
+  const covered = sceneOwnsSession(jump, false, onShip);
   useEffect(() => {
     if (jump?.stage !== 'reveal' || jump.replay || session.phase !== 'ready' || !session.me.vessel) return;
     setPanel(null);
@@ -184,7 +188,7 @@ function SessionApp() {
    * refuses.
    */
   const publicWeb = (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web';
-  if (flying) return null;
+  if (covered) return null;
   if (session.phase === 'starting' && publicWeb && !commanderKnownHere()) return <WebLandingGate restoring onAuthenticate={authenticate} onBegin={rehearse} />;
   if (session.phase === 'starting') {
     return <LoadingScreen caption={t('loading.contact')} />;

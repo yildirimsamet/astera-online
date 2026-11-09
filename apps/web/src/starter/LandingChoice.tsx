@@ -9,6 +9,7 @@ import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
+import { pressJump, releaseJump } from './jump.js';
 import { useMigrate, useMigration } from './queries.js';
 
 /** The emptiest first, so the card always reads from safe to dangerous. */
@@ -92,13 +93,13 @@ export function LandingChoice({ view: opened, onCancel, onLanded }: {
           label={t('starter.jump.hold')}
           disabledReason={migrate.isPending ? t('starter.jump.leaving') : null}
           onCommit={() => {
-            migrate.mutate(picked, {
-              onSuccess: onLanded,
-              onError: (error) => {
-                say(describe(error), 'error');
-                // The ship is untouched and new addresses are on their way: the choice is still the right screen.
-                if (!(error instanceof ApiError && error.code === 'LANDING_GONE')) onCancel();
-              },
+            pressJump();
+            // The promise and not the press's own callbacks: the landing is answered even if this sheet is gone.
+            void migrate.mutateAsync(picked).then(onLanded, (error: unknown) => {
+              releaseJump();
+              say(describe(error), 'error');
+              // The ship is untouched and new addresses are on their way: the choice is still the right screen.
+              if (!(error instanceof ApiError && error.code === 'LANDING_GONE')) onCancel();
             });
           }}
         />

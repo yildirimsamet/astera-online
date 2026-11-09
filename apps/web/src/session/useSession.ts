@@ -18,6 +18,7 @@ import { disconnectPush } from '../platform/push.js';
 import { isAppActive, isAppActivityKnown, watchAppActivity } from '../platform/activity.js';
 import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
 import { setStarterMode } from '../starter/transport.js';
+import { jumpHoldsSession } from '../starter/jump.js';
 import { vesselToPlanetView } from '../starter/adapter.js';
 
 /** Where the player is standing, as one word. */
@@ -527,7 +528,8 @@ export function useSession({ autoTraining = false }: { autoTraining?: boolean } 
   /** The old planet vanished at the public rollover instant. D88. */
   const rollover = useCallback((): void => {
     const current = session;
-    if (current.phase !== 'ready') return;
+    // A ship that is leaving is moved by its own scene, at the reveal; any earlier move cuts the scene.
+    if (current.phase !== 'ready' || jumpHoldsSession()) return;
     const startedAt = revision.current;
     queries.clear();
     forgetReady();
