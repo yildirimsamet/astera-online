@@ -7,6 +7,8 @@ import { wikiLabels } from './labels.js';
 import type { WikiLanguage, WikiPage } from './model.js';
 
 const absolute = (path: string): string => `${PUBLISHER_ORIGIN}${path}`;
+/** Catalogue cards stay readable but are not offered for indexing; see the sitemap test. */
+const indexable = (page: WikiPage): boolean => page.articleId === undefined || getWikiArticle(page.articleId)?.subject === undefined;
 export function wikiMetadata(page: WikiPage): { title: string; description: string } {
   const article = page.articleId ? getWikiArticle(page.articleId) : undefined;
   const category = wikiCategories.find(c => c.id === page.categoryId);
@@ -17,7 +19,7 @@ function structuredData(page: WikiPage): string {
   const words = wikiLabels[page.language]; const meta = wikiMetadata(page); const category = wikiCategories.find(c => c.id === page.categoryId); const article = page.articleId ? getWikiArticle(page.articleId) : undefined;
   const crumbs = [{ name: words.home, path: wikiRoot(page.language) }, ...(category ? [{ name: category.title[page.language], path: wikiCategoryPath(category.id, page.language) }] : []), ...(article ? [{ name: article.title[page.language], path: page.path }] : [])];
   const data = { '@context': 'https://schema.org', '@graph': [
-    { '@type': page.articleId ? 'Article' : 'CollectionPage', '@id': `${absolute(page.path)}#page`, url: absolute(page.path), name: meta.title, headline: meta.title, description: meta.description, inLanguage: page.language, isPartOf: { '@id': `${absolute(wikiRoot(page.language))}#wiki` }, ...(page.articleId ? { author: { '@type': 'Organization', name: 'Astera Online', url: PUBLISHER_ORIGIN }, mainEntityOfPage: absolute(page.path) } : {}) },
+    { '@type': page.articleId ? 'Article' : 'CollectionPage', '@id': `${absolute(page.path)}#page`, url: absolute(page.path), name: meta.title, headline: meta.title, description: meta.description, inLanguage: page.language, isPartOf: { '@id': `${absolute(wikiRoot(page.language))}#wiki` }, ...(page.articleId ? { author: { '@type': 'Organization', name: 'Astera Online', url: PUBLISHER_ORIGIN }, mainEntityOfPage: absolute(page.path), ...(article?.updated ? { datePublished: article.updated, dateModified: article.updated } : {}) } : {}) },
     { '@type': 'WebSite', '@id': `${absolute(wikiRoot(page.language))}#wiki`, name: 'Astera Online Wiki', url: absolute(wikiRoot(page.language)), inLanguage: page.language },
     { '@type': 'BreadcrumbList', itemListElement: crumbs.map((crumb, index) => ({ '@type': 'ListItem', position: index + 1, name: crumb.name, item: absolute(crumb.path) })) },
   ] };
@@ -28,7 +30,7 @@ export function renderWikiPage(page: WikiPage): string {
   const words = wikiLabels[page.language]; const meta = wikiMetadata(page); const url = absolute(page.path);
   return '<!doctype html>' + renderToStaticMarkup(<html lang={page.language}><head>
     <meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content="#04060b" />
-    <title>{meta.title}</title><meta name="description" content={meta.description} /><meta name="robots" content="index,follow" /><link rel="canonical" href={url} />
+    <title>{meta.title}</title><meta name="description" content={meta.description} /><meta name="robots" content={indexable(page) ? 'index,follow' : 'noindex,follow'} /><link rel="canonical" href={url} />
     {(['en', 'tr'] as const).map(language => <link key={language} rel="alternate" hrefLang={language} href={absolute(translatedWikiPath(page, language))} />)}<link rel="alternate" hrefLang="x-default" href={absolute(translatedWikiPath(page, 'en'))} />
     <meta property="og:type" content={page.articleId ? 'article' : 'website'} /><meta property="og:site_name" content="Astera Online" /><meta property="og:title" content={meta.title} /><meta property="og:description" content={meta.description} /><meta property="og:url" content={url} /><meta property="og:locale" content={page.language === 'en' ? 'en_US' : 'tr_TR'} /><meta property="og:locale:alternate" content={page.language === 'en' ? 'tr_TR' : 'en_US'} /><meta property="og:image" content={absolute('/assets/images/general/og-image.png')} /><meta property="og:image:alt" content="Astera Online" /><meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="/icons/favicon-32.png?v=20261103" /><link rel="stylesheet" href="/wiki/tokens.css" /><link rel="stylesheet" href="/wiki/style.css" />
@@ -45,7 +47,7 @@ export function renderWiki404(language: WikiLanguage): string {
   return '<!doctype html>' + renderToStaticMarkup(<html lang={language}><head><meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex,follow" /><title>404 | Astera Online Wiki</title><link rel="stylesheet" href="/wiki/tokens.css" /><link rel="stylesheet" href="/wiki/style.css" /></head><body className="wiki-public"><main className="wiki wiki-error"><p className="wiki-eyebrow">ASTERA ONLINE / WIKI / 404</p><h1>{words.notFound}</h1><p>{words.notFoundText}</p><a className="wiki-start" href={wikiRoot(language)}>{words.home} →</a></main></body></html>);
 }
 export function wikiSitemap(): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(p => p.path)].map(path => `  <url><loc>${absolute(path)}</loc></url>`).join('\n')}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.filter(indexable).map(p => p.path)].map(path => `  <url><loc>${absolute(path)}</loc></url>`).join('\n')}\n</urlset>\n`;
 }
 export function wikiAssets(): Map<string, string> {
   return new Map([['sitemap.xml', wikiSitemap()], ['wiki/404.html', renderWiki404('en')], ...wikiPages.map(page => [page.fileName, renderWikiPage(page)] as const)]);

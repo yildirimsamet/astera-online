@@ -48,7 +48,7 @@ export function WikiArticleContent({ article, language, onNavigate }: { article:
   return <>
     <article className="wiki-article">
       <header className={`wiki-article-head${article.image ? ' wiki-with-art' : ''}`}>
-        <div><p className="wiki-eyebrow">{category?.title[language]}</p><h1 tabIndex={-1}>{article.title[language]}</h1><p className="wiki-lede">{article.description[language]}</p></div>
+        <div><p className="wiki-eyebrow">{category?.title[language]}</p><h1 tabIndex={-1}>{article.title[language]}</h1><p className="wiki-lede">{article.description[language]}</p>{article.updated ? <p className="wiki-updated">{words.updated} <time dateTime={article.updated}>{new Intl.DateTimeFormat(language, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${article.updated}T00:00:00Z`))}</time></p> : null}</div>
         {article.image ? <img src={article.image} width={180} height={180} alt="" className="wiki-art" /> : null}
       </header>
       <nav className="wiki-toc" aria-label={words.toc}><span className="wiki-eyebrow">{words.toc}</span>{article.sections[language].map(section => <a href={`#${section.id}`} key={section.id}>{section.title}</a>)}</nav>

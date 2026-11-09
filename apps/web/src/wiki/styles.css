@@ -15,6 +15,7 @@ body.wiki-public { margin: 0; background: var(--color-v2-void); color: var(--col
 .wiki-icon { display: inline-block; width: 18px; height: 18px; flex: none; }
 .wiki-eyebrow { color: var(--color-v2-ink-2); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; line-height: 1.5; }
 .wiki-lede { color: var(--color-v2-ink-2); font-size: 17px; line-height: 1.7; max-width: 56ch; }
+.wiki-updated { margin: 8px 0 0; color: var(--color-v2-ink-2); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .wiki-skip { position: fixed; top: 8px; left: 8px; transform: translateY(-160%); background: var(--color-v2-panel); padding: 10px 20px; z-index: 100; }
 .wiki-skip:focus { transform: none; }
 .wiki-topbar { min-height: 82px; border-bottom: 1px solid var(--color-v2-line); padding: 18px max(24px, calc((100vw - 1320px) / 2)); display: flex; align-items: center; gap: 28px; }

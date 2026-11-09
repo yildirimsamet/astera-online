@@ -46,6 +46,8 @@ for (const mode of ['dev', 'preview'] as const) describe(`${mode} Wiki delivery`
   it('serves an automatically merged sitemap', async () => {
     const response = await fetch(url('/sitemap.xml'));
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('https://asteraonline.space/wiki/tr/fleet/dart');
+    const body = await response.text();
+    expect(body).toContain('https://asteraonline.space/wiki/tr/combat/counters');
+    expect(body).not.toContain('https://asteraonline.space/wiki/tr/fleet/dart');
   });
 });
