@@ -109,8 +109,9 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
         onClose={() => { seen.mutate(); }}
         footer={
           <div className="flex items-center gap-2">
-            <button type="button" className="min-h-11 shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2"
-              onClick={() => { startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
+            {/* Watched again only through the map it crosses: without it the scene had nothing to fly in. */}
+            <button type="button" disabled={!world} className="min-h-11 shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2 disabled:opacity-40"
+              onClick={() => { if (world) startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
             <button type="button" onClick={() => { seen.mutate(); }}

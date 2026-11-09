@@ -38,6 +38,12 @@ export function withoutLeaving<T extends { position: readonly number[] }>(ships:
     Math.hypot(ship.position[0]! - flight.from[0], ship.position[1]! - flight.from[1], ship.position[2]! - flight.from[2]) < SAME_BERTH));
 }
 
+/** The ids of the parked ships flying off: their names leave the berth with them. */
+export function leavingIds(ships: readonly { id: string; position: readonly number[] }[], flights: readonly WatchedFlight[]): ReadonlySet<string> {
+  const staying = new Set(withoutLeaving(ships, flights));
+  return new Set(ships.filter(ship => !staying.has(ship)).map(ship => ship.id));
+}
+
 /** Seconds into the flight, or null while it is not in the sky. */
 export function watchSeconds(flight: WatchedFlight, now: number): number | null {
   const s = (now - flight.at) / 1000;

@@ -2,7 +2,7 @@ import { StarterSightMarks } from './StarterSightMarks.js';
 import { ModelScale } from './modelScale.js';
 import { modelScale } from './scene.js';
 import { DepartureBeams } from './DepartureBeams.js';
-import { withoutLeaving, type WatchedFlight } from './watchedFlights.js';
+import { leavingIds, withoutLeaving, type WatchedFlight } from './watchedFlights.js';
 import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { PartMarks } from './PartMarks.js';
@@ -465,6 +465,8 @@ export function GalaxyCanvas({
   const shipsAround = useMemo(() => neighbourShips(planets), [planets]);
   // A neighbour flying off is drawn by its flight alone, not also at its berth (owner, 2026-11-09).
   const leftBehind = useMemo(() => withoutLeaving(shipsAround, watched ?? []), [shipsAround, watched]);
+  const leaving = useMemo(() => leavingIds(shipsAround, watched ?? []), [shipsAround, watched]);
+  const namedBodies = useMemo(() => (leaving.size > 0 ? visibleBodies.filter(node => !leaving.has(node.id)) : visibleBodies), [visibleBodies, leaving]);
   const shipIds = useMemo(() => new Set(shipsAround.map(ship => ship.id)), [shipsAround]);
   const fieldBodies = useMemo(
     () => (mainSky && mainOffset
@@ -1006,7 +1008,7 @@ export function GalaxyCanvas({
           nodes={nodes}
         />
         {!overview && !universe?.open && !flight && <Labels
-          nodes={aboard ? visibleBodies : nodes}
+          nodes={aboard ? namedBodies : nodes}
           hpRadiation={hpRadiation}
           selectedId={selectedId}
           rivals={rivals}

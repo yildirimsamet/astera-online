@@ -38,6 +38,13 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); window.sessionStorage.clear(); });
 
 describe('the card after the landing', () => {
+  // Pressed before the map was in, the flight had no world to fly through: a black screen for the scene.
+  it('lets the flight be watched again only once the map it crosses is in', async () => {
+    harness();
+    await screen.findByTestId('arrival-carried');
+    expect(screen.getByRole('button', { name: 'Watch again' })).toBeDisabled();
+  });
+
   it('keeps what came down, the first-season start and the total apart', async () => {
     harness();
     const carried = await screen.findByTestId('arrival-carried');

@@ -128,21 +128,31 @@ describe('the still over the moving session', () => {
 describe('what the scene sounds like', () => {
   it('lights the drive at the press, leaves, drops into the galaxy, and rings when the world forms', () => {
     startJump(scene());
-    const heard = [0, 3, 7, 12, 19.5, 21, 25].flatMap(second => takeCues(second).map(cue => cue.sound));
+    // Asked every frame, as the scene's loop asks.
+    const heard = Array.from({ length: 25 * 60 }, (_, frame) => frame / 60).flatMap(second => takeCues(second).map(cue => cue.sound));
     expect(heard).toEqual(['ignite', 'launch', 'warp', 'claim']);
   });
 
   it('gives a scene cut short only its own ending, once', () => {
     startJump(scene({ start: fromTheLanding }));
     expect(takeCues(fromTheLanding + 0.01)).toEqual([]);
-    expect(takeCues(25).map(cue => cue.sound)).toEqual(['warp', 'claim']);
+    expect([18.7, 23.1].flatMap(second => takeCues(second).map(cue => cue.sound))).toEqual(['warp', 'claim']);
     expect(takeCues(25)).toEqual([]);
+  });
+
+  // A phone locked mid-flight wakes seconds later: what it missed is past, not played all at once.
+  it('does not sound at once what it missed while the screen was away', () => {
+    startJump(scene());
+    // A slow first frame still lights the drive with its sound.
+    expect(takeCues(1.2).map(cue => cue.sound)).toEqual(['ignite']);
+    expect(takeCues(20.5)).toEqual([]);
+    expect(takeCues(23.2).map(cue => cue.sound)).toEqual(['claim']);
   });
 
   it('starts over for the next scene', () => {
     startJump(scene());
     takeCues(25);
     startJump(scene({ replay: true }));
-    expect(takeCues(1).map(cue => cue.sound)).toEqual(['ignite']);
+    expect(takeCues(0.2).map(cue => cue.sound)).toEqual(['ignite']);
   });
 });

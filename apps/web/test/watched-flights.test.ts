@@ -1,6 +1,6 @@
 import { GALAXY, JUMP_FLIGHT, mainOffsetOf, starterGalaxyCentre, toWorld } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { departuresWatched, inboundWatched, watchSeconds, withoutLeaving } from '../src/galaxy/watchedFlights.js';
+import { departuresWatched, inboundWatched, watchSeconds, withoutLeaving, leavingIds } from '../src/galaxy/watchedFlights.js';
 
 /**
  * EVERYONE SEES THE JUMP (owner, 2026-11-09): the neighbours watch the ship leave, the main galaxy
@@ -36,6 +36,8 @@ describe('a neighbour leaving, seen from its galaxy', () => {
     const staying = { id: 'stays', position: toWorld({ x: 125, y: -30, z: 60 }) };
     expect(withoutLeaving([leaving, staying], [flight!]).map(ship => ship.id)).toEqual(['stays']);
     expect(withoutLeaving([leaving, staying], [])).toHaveLength(2);
+    // Its name goes with it: no label is left on the empty berth.
+    expect([...leavingIds([leaving, staying], [flight!])]).toEqual(['gone']);
   });
 
   it('keeps no old departure on the sky, whatever the board still lists', () => {

@@ -164,8 +164,10 @@ export const gameCovered = (current: Jump | null, onShip: boolean): boolean =>
 export const jumpHoldsSession = (): boolean => sceneOwnsSession(jump, pressed, false);
 
 /** The cues the scene has reached since it last asked. */
+/** A cue missed by more than this (a locked phone, a hidden tab) is past: it is not played late. */
+const CUE_LATE = 1.5;
 export const takeCues = (seconds: number): readonly SceneCue[] => {
-  const due = SCENE_CUES.filter(cue => cue.at > heard && cue.at <= seconds);
+  const due = SCENE_CUES.filter(cue => cue.at > heard && cue.at <= seconds && seconds - cue.at <= CUE_LATE);
   heard = Math.max(heard, seconds);
   return due;
 };
