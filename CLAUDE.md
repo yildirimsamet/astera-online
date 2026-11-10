@@ -1,4 +1,4 @@
-# CLAUDE.md — Astera Online
+# CLAUDE.md — Astera Online (ANAYASADIR. UYULMASI ŞART ve ÖNEMLİ)
 
 Her oturumun başında oku. İş uzadığında veya bağlam daraldığında da bu kurallardan sapma. Özellikle geliştirme disiplini, tasarım disiplini, çalışma yaklaşımı ve bağlam okuma stratejisi her görev boyunca geçerlidir.
 
@@ -159,8 +159,7 @@ Kendine sor: **"Oyuncu burada büyülenir mi, bir şeye dokunduğunu hisseder mi
 
 Her yüzey için sor: **“Bu arayüz yalnızca GÖSTERİYOR mu, yoksa YARDIM EDİYOR mu?”** Bütün bilgileri sunmak, oyuncunun karar verebildiği anlamına gelmez; daha fazla göstermek her zaman daha fazla yardımcı olmak değildir.
 
-Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kullanmalısın:
-
+Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kullanmalısın (Owner talimatı, önemli! Owner çıktılarını inceliyor):
 | Skill adı | İçeriği |
 | --- | --- |
 | `threejs-scene-setup` |	Three.js scene/camera/renderer/animation-loop, resizing, controls |
