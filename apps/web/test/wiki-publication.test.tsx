@@ -76,7 +76,8 @@ describe('the published Wiki contract', () => {
       expect((doc.querySelector('main')?.textContent ?? '').length).toBeGreaterThan(200);
       expect(doc.querySelector('nav[aria-label]')).not.toBeNull();
       expect(doc.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(canonical);
-      expect(doc.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
+      const card = page.articleId !== undefined && getWikiArticle(page.articleId)?.subject !== undefined;
+      expect(doc.querySelector('meta[name="robots"]')?.getAttribute('content'), page.path).toBe(card ? 'noindex,follow' : 'index,follow');
       expect(doc.querySelector('meta[property="og:url"]')?.getAttribute('content')).toBe(canonical);
       expect(doc.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe(doc.title);
       const description = doc.querySelector('meta[name="description"]')?.getAttribute('content') ?? '';
@@ -149,7 +150,11 @@ describe('the published Wiki contract', () => {
     const doc = new DOMParser().parseFromString(wikiSitemap(), 'application/xml');
     expect(doc.querySelector('parsererror')).toBeNull();
     const urls = [...doc.querySelectorAll('loc')].map(n => n.textContent);
-    const expected = ['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(p => p.path)].map(p => `${PUBLISHER_ORIGIN}${p}`);
+    // Catalogue cards (one ship, building, research project…) stay published for
+    // players but are not offered for indexing: hundreds of near-identical reference
+    // cards are the thin, templated profile an AdSense site review rejects.
+    const indexed = wikiPages.filter(p => p.articleId === undefined || getWikiArticle(p.articleId)?.subject === undefined);
+    const expected = ['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...indexed.map(p => p.path)].map(p => `${PUBLISHER_ORIGIN}${p}`);
     expect(urls).toEqual(expected);
     const assets = wikiAssets();
     expect(assets.get('sitemap.xml')).toBe(wikiSitemap());
@@ -221,4 +226,65 @@ it('publishes tier-specific storage, Works and recovery values in both languages
       }
     }
   }
+});
+
+describe('strategy guides', () => {
+  const guides = wikiArticles.filter(article => article.category === 'guides');
+  const words = (text: string): number => text.split(/\s+/).filter(Boolean).length;
+
+  it('lead the Wiki as its own first category', () => {
+    expect(wikiCategories[0]?.id).toBe('guides');
+    expect(guides.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it.each(guides.map(guide => [guide.id, guide] as const))('%s is a long, dated, indexable article in both languages', (_id, guide) => {
+    expect(guide.subject).toBeUndefined();
+    expect(guide.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    for (const [language, minimum] of [['en', 1200], ['tr', 1000]] as const) {
+      const page = wikiPages.find(p => p.articleId === guide.id && p.language === language);
+      if (!page) throw new Error(`${guide.id} ${language}`);
+      const doc = documentFor(renderWikiPage(page));
+      expect(words(doc.querySelector('article')?.textContent ?? ''), `${guide.id} ${language}`).toBeGreaterThanOrEqual(minimum);
+      expect(doc.querySelectorAll('article h2').length).toBeGreaterThanOrEqual(4);
+      expect(doc.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
+      expect(doc.querySelector('article time')?.getAttribute('datetime')).toBe(guide.updated);
+      const raw: unknown = JSON.parse(doc.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null');
+      const data = z.object({ '@graph': z.array(z.object({ '@type': z.string(), dateModified: z.string().optional() })) }).parse(raw);
+      expect(data['@graph'].find(node => node['@type'] === 'Article')?.dateModified).toBe(guide.updated);
+    }
+  });
+});
+
+describe('development updates', () => {
+  const posts = wikiArticles.filter(article => article.category === 'updates');
+  const words = (text: string): number => text.split(/\s+/).filter(Boolean).length;
+
+  it('follow the guides as the second category, newest first', () => {
+    expect(wikiCategories[1]?.id).toBe('updates');
+    expect(posts.length).toBeGreaterThanOrEqual(3);
+    const dates = posts.map(post => post.updated ?? '');
+    expect(dates).toEqual([...dates].sort().reverse());
+    for (const post of posts) expect(post.slug.startsWith(post.updated ?? '-')).toBe(true);
+  });
+
+  it('dates every row of the updates list', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const page = wikiPages.find(p => p.categoryId === 'updates' && p.articleId === undefined && p.language === language);
+      if (!page) throw new Error(`updates ${language}`);
+      const doc = documentFor(renderWikiPage(page));
+      expect([...doc.querySelectorAll('.wiki-article-row time')].map(time => time.getAttribute('datetime'))).toEqual(posts.map(post => post.updated));
+    }
+  });
+
+  it.each(posts.map(post => [post.id, post] as const))('%s is a dated, readable post in both languages', (_id, post) => {
+    for (const [language, minimum] of [['en', 350], ['tr', 300]] as const) {
+      const page = wikiPages.find(p => p.articleId === post.id && p.language === language);
+      if (!page) throw new Error(`${post.id} ${language}`);
+      const doc = documentFor(renderWikiPage(page));
+      expect(words(doc.querySelector('article')?.textContent ?? ''), `${post.id} ${language}`).toBeGreaterThanOrEqual(minimum);
+      expect(doc.querySelectorAll('article h2').length).toBeGreaterThanOrEqual(3);
+      expect(doc.querySelector('article time')?.getAttribute('datetime')).toBe(post.updated);
+      expect(doc.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
+    }
+  });
 });

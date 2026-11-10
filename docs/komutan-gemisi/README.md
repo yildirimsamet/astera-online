@@ -1,5 +1,15 @@
 # Yarık + Komutan Gemisi — Özelliğin beyni
 
+> **2026-11-10:** [26](26-isaret-boyutlari-ve-son-inceleme.md) — üçgenler/kapalı gözler
+> 2 px küçük; bütün çalışmanın incelemesinde doğrulanan ve düzeltilen bulgular.
+
+> **Galaksi görünümü, 2026-11-09:** [25](25-galaksi-gemi-gorunumu.md) — iki kat boyut,
+> cilalı gövde, uzun ve %25 daraltılmış egzoz; etkileşimli inceleme sayfası.
+
+> **2026-11-09:** [İki taktik ve manevra kayaları](24-iki-taktik-ve-manevra-kayalari.md):
+> ana yetenek Q, taktikler E/C; boş uçuş alanında 490 yeni kaya. Güncel kod bu çalışmanın
+> ayrı worktree'sinde; aşağıdaki eski worktree ve faz kayıtları tarihçedir.
+
 > **Durum (2026-10-24):** Güncel kod ve commit edilmemiş devam çalışması
 > `../blindspace-arena-playtest`, `release/arena-playtest-20261020` dalında.
 > Eski `../blindspace-komutan-gemisi` ilk MVP'dir; ana worktree'deki bu klasör de geridedir.

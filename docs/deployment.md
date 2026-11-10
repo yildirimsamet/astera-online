@@ -732,7 +732,7 @@ Historical five-monument acceptance is valid only for the LEGACY deal; adopted/n
 
 ### Ship galaxies (plan `docs/baslangic-galaksisi-plani-2026-11-04.md` §7)
 
-Migrations 0228–0235 are additive. Release with `STARTER_GALAXY_ENABLED=false`: with the flag off a new account takes the old
+Migrations 0230–0246 are additive. Release with `STARTER_GALAXY_ENABLED=false`: with the flag off a new account takes the old
 path and nothing else changes. Then, in order, each on its own instruction:
 
 1. `pnpm starter bootstrap`: creates the first galaxy and its places. Safe to repeat.

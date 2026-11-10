@@ -11,6 +11,19 @@
 
 ## Sahip kararları (KG-K)
 
+#### KG-K33
+**Galakside daha belirgin Komutan Gemisi** (2026-11-09). Sahip iki kat galaksi boyutunu,
+temiz/cilalı metal parlamasını ve daha uzun egzozu onayladı. İlk görselin ardından egzoz
+genişliği %25 azaltıldı; yakınlaştırıp döndürebileceği bir inceleme sayfası istendi.
+Uygulama ve doğrulama: [25](25-galaksi-gemi-gorunumu.md).
+
+#### KG-K32
+**İki taktik ve boş alanda manevra kayaları** (2026-11-09). Her Komutan Gemisi ana
+yeteneğinin yanında iki farklı seçilebilir taktik taşır. Hazırlık, uçuş düğmeleri ve
+masaüstü tuşları buna uyarlanır. Boş çatışma alanlarına farklı büyüklükte tekli, ikili,
+üçlü ve beşli kaya grupları eklenir. Uygulama ve doğrulama:
+[24](24-iki-taktik-ve-manevra-kayalari.md). Eski tek taktik sınırının yerini alır.
+
 #### KG-K1
 **Özellik, ürün vizyonunun bilinçli bir istisnasıdır** (2026-10-07). Gerçek zamanlı, elle
 sürülen PvP modu sahibin açık talebidir; galaksi ana oyun olarak kalır. Sınırlar:
@@ -599,7 +612,7 @@ yarı süre kaldığı için zikzak artık daha az kurtarır; 600 m'de düz %40,
   çarpıştırıcının kendisi çizilir. Manifest'te `colliders` + `unit` (yeniden ölçeklenmez). İnen gemi
   kapsülüyle oturur, çizimde ek kaydırma yoktur. Pusula, iniş hedefi, damarlar, kazı ve sıyırma
   kıvılcımı gerçek yüzeyi kullanır (`surfaceGap`, `closestSurface`).
-- **Dev görünümü:** geliştirmede **C** tuşu çarpıştırıcıları tel kafes çizer. Kaya pembe, yapı
+- **Dev görünümü:** geliştirmede **Alt+C** tuşu çarpıştırıcıları tel kafes çizer. Kaya pembe, yapı
   sarı, gemi kapsülü yeşildir.
 - **Ölçüm:** sunucu tick ortalaması ~0,2 ms, p99 1–2 ms (VPS, 8–31 bot). Masaüstünde kuşak
   görünümü ~600 bin üçgen; LOD Y3'te.

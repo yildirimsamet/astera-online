@@ -86,6 +86,18 @@ describe('a prepared team flight', () => {
     controls.keyDown('KeyE'); controls.keyUp('KeyE'); expect(controls.sample().radar).toBe(true);
   });
 
+  it('enters a team flight with its frozen pair, never a stored second tactic that repeats the first', async () => {
+    // A member readied before the second slot existed: the team row names only its first tactic.
+    localStorage.setItem('astera-arena-tactic-2', 'radar');
+    try {
+      const view = render(<Sandbox credential={() => Promise.resolve('tok')} onLeave={vi.fn()} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Birlikte kalk' }));
+      await waitFor(() => { expect(view.container.querySelector('main')?.dataset.screen).toBe('flight'); });
+      const socket = Socket.last; if (!socket) throw new Error('No team flight');
+      act(() => { socket.open(); });
+      await waitFor(() => { expect(socket.sent[0]).toMatchObject({ kind: 'hello', tactic: 'radar', tactic2: null }); });
+    } finally { localStorage.removeItem('astera-arena-tactic-2'); }
+  });
   it('moves an ended member into the living teammate camera, then lets them see the result', async () => {
     const view = render(<Sandbox credential={() => Promise.resolve('tok')} onLeave={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Birlikte kalk' }));

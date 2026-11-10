@@ -180,7 +180,7 @@ export function ChatScreen({
         D6: the two rooms and, for the galaxy's room, its language — one row, the
         language a small select at the end rather than a page-wide field.
       */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-v2-line px-3 pb-2">
+      <div data-chat-controls className="flex shrink-0 items-center gap-2 border-b border-v2-line px-3 pb-2">
         <div className="min-w-0 flex-1">
           {aboard ? (
             <p className="truncate text-caption font-semibold text-v2-ink">{t('starter.chatRoom')}</p>
@@ -603,6 +603,7 @@ function ChannelPanel({
   const composer = useRef<HTMLTextAreaElement>(null);
   const marked = useRef<string | null>(null);
   const followingLatest = useRef(true);
+  const historyHeight = useRef<number | null>(null);
   const requestingOlder = useRef(false);
   const prependSnapshot = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const previousLatestId = useRef<string | undefined>(undefined);
@@ -718,6 +719,19 @@ function ChannelPanel({
     previousLatestId.current = latestId;
   }, [latestId]);
 
+  useEffect(() => {
+    const log = history.current;
+    if (!log || typeof ResizeObserver === 'undefined') return;
+    historyHeight.current = log.clientHeight;
+    const observer = new ResizeObserver(() => {
+      historyHeight.current = log.clientHeight;
+      // A keyboard changes the log's height without changing the latest message.
+      if (followingLatest.current) log.scrollTop = log.scrollHeight;
+    });
+    observer.observe(log);
+    return () => { observer.disconnect(); };
+  }, []);
+
   useLayoutEffect(() => {
     const snapshot = prependSnapshot.current;
     const log = history.current;
@@ -758,6 +772,8 @@ function ChannelPanel({
 
   const handleHistoryScroll = (event: UIEvent<HTMLDivElement>): void => {
     const log = event.currentTarget;
+    // A resize can deliver a pending scroll before the observer restores the anchor.
+    if (historyHeight.current !== null && log.clientHeight !== historyHeight.current) return;
     followingLatest.current = log.scrollHeight - log.scrollTop - log.clientHeight <= 48;
     if (followingLatest.current) markLatestRead();
     if (log.scrollTop <= 48) loadOlder(log);

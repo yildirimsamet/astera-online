@@ -950,6 +950,11 @@ main seasons at the actual opening time; existing ranked points and boundaries a
 The former hide operation is rejected. Silent Space and closed historical seasons are not
 competitive races.
 
+**Honor attack table (owner, 2026-11-09):** own navy : enemy navy, 24-hour peaks. Full return up to
+1.5:1 against a lower tier, 2:1 at the same tier and 2.5:1 against a higher one; half return up to 3:1; none beyond.
+A lower-tier target under half of own navy is weak and carries the sanction. Each launch freezes its table
+(`weakNavyBand: 50`), so older launches and the scores they produced stay as they were. Defenders keep the 75/50 bands.
+
 **Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
 galaxy/season's highest Honor tier treats an attack on exactly one tier below as
 an equal-tier attack. All commanders tied at the top qualify. The lower-tier

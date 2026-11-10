@@ -13,6 +13,8 @@ import { fleetAndIntelArticles } from './fleet-and-intel.js';
 import { galaxyArticles } from './galaxy-content.js';
 import { clanAndSeasonArticles } from './clan-and-season.js';
 import { colonyShipArticles } from './colony-ship.js';
+import { guideArticles } from './guides.js';
+import { updateArticles } from './updates.js';
 import { conceptReference, number, subjectReference } from './facts.js';
 import { wikiLabels } from './labels.js';
 
@@ -96,6 +98,8 @@ function catalogueArticle(subject: WikiSubject): WikiArticle {
 }
 
 export const wikiArticles: readonly WikiArticle[] = [
+  ...guideArticles,
+  ...updateArticles,
   ...[...conceptArticles, ...colonyShipArticles, ...fleetAndIntelArticles, ...galaxyArticles, ...clanAndSeasonArticles].map(article => {
     const addReference = (language: WikiLanguage): readonly WikiSection[] => { const ref = conceptReference(article.id, language); return ref ? [...article.sections[language], ref] : article.sections[language]; };
     return { ...article, sections: l(addReference('en'), addReference('tr')) };

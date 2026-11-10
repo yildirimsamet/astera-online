@@ -17,6 +17,7 @@ import {
   useReferenceShipFailures,
 } from './referenceArt.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
+import { ShipAssetBoundary } from './ShipAssetBoundary.js';
 import { FleetCosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
 import { ProbeSkinBeam } from './ProbeSkinBeam.js';
 import {
@@ -291,13 +292,15 @@ useGLTF.preload(MODEL.deathStar, false);
 export function Hull(props: HullProps) {
   /*
     ITS OWN BOUNDARY, WHEREVER IT IS MOUNTED (six files mount it). A hull whose model is
-    still loading costs itself; it never climbs to the scene's one boundary, which would
+    still loading or unavailable costs itself; it never climbs to the scene's one boundary, which would
     hide every world, pin and fleet at once while leaving them tappable.
   */
   return (
-    <Suspense fallback={null}>
-      <LoadedHull {...props} />
-    </Suspense>
+    <ShipAssetBoundary key={props.url} onError={() => { useGLTF.clear(props.url); }} fallback={null}>
+      <Suspense fallback={null}>
+        <LoadedHull {...props} />
+      </Suspense>
+    </ShipAssetBoundary>
   );
 }
 
@@ -507,9 +510,12 @@ function FormationHullBucket(props: FormationHullBucketProps) {
   const { model: url, lodModel: lowUrl } = shipHullModels(hull, shipSkins);
   return (
     <SkinAssetBoundary key={`${url}:${lowUrl}`} onError={() => { markReferenceShipFailed(url); }} fallback={
-      <Suspense fallback={null}>
-        <LoadedFormationHullBucket {...props} url={HULL_MODEL[hull]} lowUrl={HULL_LOD_MODEL[hull]} />
-      </Suspense>
+      <ShipAssetBoundary key={`${HULL_MODEL[hull]}:${HULL_LOD_MODEL[hull]}`} fallback={null}
+        onError={() => { useGLTF.clear(HULL_MODEL[hull]); useGLTF.clear(HULL_LOD_MODEL[hull]); }}>
+        <Suspense fallback={null}>
+          <LoadedFormationHullBucket {...props} url={HULL_MODEL[hull]} lowUrl={HULL_LOD_MODEL[hull]} />
+        </Suspense>
+      </ShipAssetBoundary>
     }>
       <Suspense fallback={null}>
         <LoadedFormationHullBucket {...props} url={url} lowUrl={lowUrl} />
@@ -1095,7 +1101,7 @@ function Flight({
         />
 
         {thread.admiral && markers && <Suspense fallback={null}>
-          <EscortShipModel escort={thread.admiral} at={escortSlot(formation, style.scale)} length={ESCORT_LENGTH * style.scale} />
+          <EscortShipModel escort={thread.admiral} at={escortSlot(formation, style.scale)} length={ESCORT_LENGTH * style.scale} onPointerUp={pickFleet} />
         </Suspense>}
 
         <Suspense fallback={null}>
@@ -2120,7 +2126,8 @@ export function contactFocusRadius(contact: Contact): number {
   if (contact.kind === 'death_star') return base * STRATEGIC_HULL_SCALE_MULT * MODEL_FOCUS_RADIUS;
   if (contact.kind === 'fleet' && contact.fleet) {
     const formation = towingFormation(contact.fleet, contact.towing, base);
-    return formationFocusRadius(formation, formation.markers, base);
+    const radius = formationFocusRadius(formation, formation.markers, base);
+    return contact.admiral ? Math.max(radius, Math.hypot(...escortSlot(formation, base)) + ESCORT_LENGTH * base * MODEL_FOCUS_RADIUS) : radius;
   }
   const markers = contactMarkers(contact);
   const formation = formationLayout(markers, base);
@@ -2801,6 +2808,10 @@ function Foreign({
         */}
         {contact.kind === 'unknown' && <CraftHitTargets bounds={UNKNOWN_PICK_BOUNDS}
           onPointerUp={pickContact} hitboxKind="contact" />}
+
+        {contact.kind === 'fleet' && contact.admiral && markers && <Suspense fallback={null}>
+          <EscortShipModel escort={contact.admiral} own={false} at={escortSlot(formation, style.scale)} length={ESCORT_LENGTH * style.scale} onPointerUp={pickContact} />
+        </Suspense>}
 
         <TrackingMark
           kind={contact.kind}

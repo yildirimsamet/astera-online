@@ -22,7 +22,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { GalaxyVisualPhase } from './visualFrame.js';
-import type { HomewardShip, ParkedShip } from './parkedShip.js';
+import { observedParkedShips, type HomewardShip, type ParkedShip } from './parkedShip.js';
 import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
 import { OutpostFlag, OutpostGuides, OutpostGuideTracker } from './OutpostGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
@@ -956,6 +956,9 @@ export function GalaxyCanvas({
         </Suspense>}
         {watched && watched.length > 0 && <Suspense fallback={null}><JumpWatch flights={watched} /></Suspense>}
         {flight && <Suspense fallback={null}><LiveJumpScene jump={flight.jump} world={flight.world} offset={toWorld(mainOffset ?? NO_OFFSET)} /></Suspense>}
+        {observedParkedShips(planets).map(park => <Suspense key={park.planetId} fallback={null}>
+          <ParkedShipModel park={park} nodes={nodes} own={false} onSelect={() => { onFocus({ kind: 'planet', id: park.planetId }); }} />
+        </Suspense>)}
         {parkedShip && onOpenShip && !flight && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
@@ -1468,10 +1471,10 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
 export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen?: (node: PlanetNode) => void }) {
   const { t, i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
-  const rank = node.honorRanking ? node.honorRank : node.dominionRank;
   const label = commanderLabel(node.owner, node.clan?.tag);
   const body = <>
-    {rank ? <RankBadge rank={rank} honor={node.honorRanking} /> : null}
+    {node.honorRanking && node.honorRank ? <RankBadge rank={node.honorRank} honor /> : null}
+    {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
     <span className="min-w-0 truncate">{label}</span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
   </>;
@@ -1903,6 +1906,22 @@ function Rig({
     previousSensors.current = current;
     const controls = ref.current;
     if (!controls || universeOpen || !(controls.object instanceof THREE.PerspectiveCamera)) return;
+    const camera = controls.object;
+    const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
+    if (!frame) return;
+    // High-level Radar can exceed the ordinary whole-galaxy camera limit on a phone.
+    // Keep the expanded limit on close so hiding a sensor cannot pull the camera in.
+    mode.current = 'manual';
+    acquired.current = false;
+    goTo(frame.centre.x, frame.centre.y, frame.centre.z, frame.distance, true);
+  }, [showTelescopeReach, showRadarReach, sensors, activePlanetId]);
+
+  useEffect(() => {
+    const previous = previousSensors.current;
+    const current = { telescope: showTelescopeReach, radar: showRadarReach };
+    previousSensors.current = current;
+    const controls = ref.current;
+    if (!controls || !(controls.object instanceof THREE.PerspectiveCamera)) return;
     const camera = controls.object;
     const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
     if (!frame) return;

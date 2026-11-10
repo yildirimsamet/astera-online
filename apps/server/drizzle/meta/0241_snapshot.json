@@ -1,6 +1,6 @@
 {
-  "id": "4a706b26-b21b-4f51-b05e-b1c30b735033",
-  "prevId": "ef6e19c6-d934-4174-8a13-5b778ba77791",
+  "id": "57e3b67e-b3a0-4d15-ba69-37562703871d",
+  "prevId": "20fe3b87-2961-4a53-a230-46e80b05f45e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -25303,22 +25303,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "vessel_migrations_player_idx": {
-          "name": "vessel_migrations_player_idx",
-          "columns": [
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_migrations\".\"status\" = 'DONE'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -25939,12 +25923,6 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true
-        },
-        "delivered_at": {
-          "name": "delivered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {

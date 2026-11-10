@@ -1,14 +1,34 @@
 import { expect, it } from 'vitest';
-import { planetMarkerLayout } from '../src/galaxy/planetMarkerLayout.js';
+import { eyeMarkerScale, planetMarkerLayout } from '../src/galaxy/planetMarkerLayout.js';
+
+it('preserves the shared sizing law used by colony fault badges', () => {
+  const depth = 7, radius = 0.7;
+  const pixel = 2 * depth * Math.tan(Math.PI / 8) / 812;
+  expect(eyeMarkerScale(depth, radius, 812, 45) * radius * 0.5 / pixel).toBeCloseTo(9 + 22 / (1 + depth / 25));
+});
+
+it.each([7, 40, 80, 400])('reduces foreign/neutral triangles and closed eyes by two CSS pixels at depth %s', depth => {
+  const pixel = 2 * depth * Math.tan(Math.PI / 8) / 812;
+  const body = { radius: 0.7, intel: 'REMEMBERED' as const, isOwned: false, isCapital: false };
+  const layout = planetMarkerLayout(body, depth, 812, 45);
+  const oldPinHeight = 4 + 6 / (1 + depth / 25);
+  const oldEye = 9 + 22 / (1 + depth / 25);
+  const triangleWidth = 0.13 * Math.sqrt(3);
+  expect(layout.pinScale * 0.2 / pixel).toBeCloseTo(oldPinHeight - 2, 8);
+  expect(layout.pinWidthScale * triangleWidth / pixel).toBeCloseTo(oldPinHeight * triangleWidth / 0.2 - 2, 8);
+  expect(layout.eyeSize / pixel).toBeCloseTo(oldEye - 2, 8);
+  const owned = planetMarkerLayout({ ...body, isOwned: true, isCapital: true }, depth, 812, 45);
+  expect(owned.pinScale * 0.2 / pixel).toBeCloseTo(oldPinHeight, 8);
+});
 
 it.each([7, 40, 80, 400])('keeps eyes and pins readable alongside text at depth %s', depth => {
   for (const radius of [0.3, 0.7, 1.2]) {
     const pixel = 2 * depth * Math.tan(Math.PI / 8) / 812;
     const layout = planetMarkerLayout({ radius, intel: 'UNKNOWN', isOwned: false, isCapital: false }, depth, 812, 45);
-    expect(layout.eyeSize / pixel).toBeGreaterThanOrEqual(9);
-    expect(layout.eyeSize / pixel).toBeLessThanOrEqual(31);
-    expect(layout.pinScale * 0.2 / pixel).toBeGreaterThanOrEqual(4);
-    expect(layout.pinScale * 0.2 / pixel).toBeLessThanOrEqual(10);
+    expect(layout.eyeSize / pixel).toBeGreaterThanOrEqual(7);
+    expect(layout.eyeSize / pixel).toBeLessThanOrEqual(29);
+    expect(layout.pinScale * 0.2 / pixel).toBeGreaterThanOrEqual(2);
+    expect(layout.pinScale * 0.2 / pixel).toBeLessThanOrEqual(8);
     expect(layout.eyeOffset - layout.eyeSize / 2).toBeGreaterThan(radius);
     expect(layout.labelOffset).toBeGreaterThan(layout.eyeOffset + layout.eyeSize / 2);
   }
@@ -26,7 +46,7 @@ it('preserves depth with smooth size and ink changes instead of one flat pixel f
     expect(sizes[i]!.ink).toBeLessThan(sizes[i - 1]!.ink);
     expect(sizes[i]!.grey).toBeGreaterThan(sizes[i - 1]!.grey);
   }
-  expect(sizes[0]!.eye).toBeGreaterThan(25);
+  expect(sizes[0]!.eye).toBeGreaterThan(23);
   expect(sizes.at(-1)!.eye).toBeLessThan(10.5);
 });
 

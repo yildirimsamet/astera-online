@@ -1,6 +1,6 @@
 {
-  "id": "57e3b67e-b3a0-4d15-ba69-37562703871d",
-  "prevId": "20fe3b87-2961-4a53-a230-46e80b05f45e",
+  "id": "6424c51e-5128-4be2-a819-35f66c37afcc",
+  "prevId": "4b89925b-1299-4d19-84b8-bddb81776a3c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -19877,119 +19877,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.return_reminders": {
-      "name": "return_reminders",
-      "schema": "",
-      "columns": {
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "vessel_id": {
-          "name": "vessel_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "planet_id": {
-          "name": "planet_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_repair_at": {
-          "name": "next_repair_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_funded_at": {
-          "name": "last_funded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "absence_at": {
-          "name": "absence_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary_stage": {
-          "name": "summary_stage",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "next_check_at": {
-          "name": "next_check_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "return_reminders_due_idx": {
-          "name": "return_reminders_due_idx",
-          "columns": [
-            {
-              "expression": "next_repair_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "return_reminders_check_idx": {
-          "name": "return_reminders_check_idx",
-          "columns": [
-            {
-              "expression": "next_check_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "return_reminders_account_id_accounts_id_fk": {
-          "name": "return_reminders_account_id_accounts_id_fk",
-          "tableFrom": "return_reminders",
-          "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.reward_grants": {
       "name": "reward_grants",
       "schema": "",
@@ -25213,12 +25100,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "slot_choice": {
           "name": "slot_choice",
           "type": "integer",
@@ -26886,8 +26767,6 @@
       "schema": "public",
       "values": [
         "vessel_order_complete",
-        "vessel_repair_notice",
-        "vessel_push",
         "vessel_mission_arrival",
         "vessel_mission_return",
         "vessel_radar_warning",

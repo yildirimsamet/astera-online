@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { SHIP_CLASSES, TACTICS, abilityRank, abilityStats, hitShare, shipStats, type AbilityPoints, type ShipClass, type Tactic } from '@astera/rules/arena';
 import { ACTION_ICONS, SIGNATURE_ICONS } from './Controls.js';
 import i18n from '../i18n/index.js';
@@ -53,19 +54,28 @@ export function ClassPicker({ c, value, onPick }: { c: ArenaCopy; value: ShipCla
 }
 
 /**
- * The B slot for the next flight (Y4c, plan 14 §4): one tactic, the same choice for every class.
+ * Two tactic slots for the next flight, available to every class.
  * Each option says what it does and how long it waits, so the pick is a plan, not a guess.
  */
-export function TacticPicker({ c, value, onPick, ship = 'kilavuz', points = {} }: {
-  c: ArenaCopy; value: Tactic; onPick: (tactic: Tactic) => void; ship?: ShipClass; points?: AbilityPoints;
+export function TacticPicker({ c, value, value2, onPick, ship = 'kilavuz', points = {} }: {
+  c: ArenaCopy; value: Tactic; value2?: Tactic; onPick: (tactic: Tactic, second: Tactic) => void; ship?: ShipClass; points?: AbilityPoints;
 }) {
+  const [slot, setSlot] = useState<1 | 2>(1);
+  const second = value2 ?? (value === 'cloak' ? 'smoke' : 'cloak');
   return <section className="ap-tactic" aria-label={c.tacticTitle}>
     <p className="ap-tactic-head"><span>{c.tacticTitle}</span><small>{c.tacticKey}</small></p>
+    <div className="ap-tactic-slots" role="group" aria-label={c.tacticTitle}>
+      {([1, 2] as const).map(index => <button key={index} type="button" data-slot={index} aria-pressed={slot === index}
+        onClick={() => { setSlot(index); }}><kbd>{index === 1 ? 'E' : 'C'}</kbd><span>{c[index === 1 ? value : second]}</span><i aria-hidden>{ACTION_ICONS[index === 1 ? value : second]}</i></button>)}
+    </div>
     <div className="ap-tactic-options" role="radiogroup" aria-label={c.tacticTitle}>
       {TACTICS.map(tactic => {
         const skill = abilityStats(ship, tactic, abilityRank(ship, tactic, points));
-        return <button key={tactic} type="button" role="radio" aria-checked={tactic === value} data-tactic={tactic}
-        className={tactic === value ? 'is-selected' : ''} onClick={() => { onPick(tactic); }}>
+        return <button key={tactic} type="button" role="radio" aria-checked={tactic === (slot === 1 ? value : second)} data-tactic={tactic}
+        className={tactic === (slot === 1 ? value : second) ? 'is-selected' : ''} onClick={() => {
+          if (slot === 1) onPick(tactic, tactic === second ? value : second);
+          else onPick(tactic === value ? second : value, tactic);
+        }}>
         <i aria-hidden>{ACTION_ICONS[tactic]}</i><b>{c[tactic]}</b><small>{c.tactics[tactic](one(skill.duration), one(skill.cooldown))}</small>
       </button>;
       })}

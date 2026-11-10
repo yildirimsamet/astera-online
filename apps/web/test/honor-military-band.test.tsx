@@ -18,9 +18,9 @@ describe('the military band behind an Honor result', () => {
     expect(() => honorReceiptSchema.parse({ delta: 0, reason: 'NO_GAIN', breakdown: { ...breakdown, militaryReturn: 'SOME' } })).toThrow();
   });
 
-  it('says a destroyed defence paid nothing because the rival navy was under half of yours', () => {
+  it('says a destroyed defence paid nothing because the rival navy was far smaller', () => {
     render(<HonorBattleSummary receipt={{ delta: 0, reason: 'NO_GAIN', breakdown: { ...breakdown, militaryReturn: 'NONE' } }} dominion={4548} />);
-    expect(screen.getByText(/under half of yours/)).toBeVisible();
+    expect(screen.getByText(/far smaller than yours/)).toBeVisible();
     expect(screen.queryByText(/No eligible military gain/)).not.toBeInTheDocument();
   });
 
@@ -33,7 +33,7 @@ describe('the military band behind an Honor result', () => {
     render(<HonorBattleSummary receipt={{ delta: 900_000, reason: 'COMBAT', breakdown: { ...breakdown, teamDelta: 900_000,
       rawTeamDelta: 900_000, militaryReturn: 'HALF' } }} />);
     await userEvent.setup().click(screen.getByText('Honor breakdown'));
-    expect(screen.getByText(/half to three quarters of yours.*halved/)).toBeVisible();
+    expect(screen.getByText(/well below yours.*halved/)).toBeVisible();
   });
 
   it('heads the dispatch card with the missing return instead of a comparable label', () => {

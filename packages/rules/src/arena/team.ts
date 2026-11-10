@@ -8,13 +8,13 @@ export const TEAM_CLAIM_DAYS = 7;
 export const TEAM_CONNECT_SECONDS = 30;
 export interface SortieLoadout {
   sortieId: string; ship: ShipClass; level: number; fuel: number; ammo: number; hold: number[]; refilled: number;
-  abilities: AbilityPoints; clanId?: string | null; teamId?: string; tactic?: Tactic;
+  abilities: AbilityPoints; clanId?: string | null; teamId?: string; tactic?: Tactic; tactic2?: Tactic | null;
   /** A reconnected observer's ended flight, never a new flight. */
   spectating?: 'dead' | 'extracted' | 'towed' | 'recalled' | 'test';
 }
 export interface TeamMemberView {
-  playerId: string; name: string; ready: boolean; tactic: Tactic; outcome: string | null; blocked: string | null;
-  ship: { class: ShipClass; level: number; fuel: number; fuelMax: number; readyAt: string | null } | null;
+  playerId: string; name: string; ready: boolean; tactic: Tactic; tactic2?: Tactic | null; outcome: string | null; blocked: string | null;
+  ship: { class: ShipClass; level: number; fuel: number; fuelMax: number; readyAt: string | null; abilities?: AbilityPoints } | null;
 }
 export interface TeamView {
   playerId: string; clanId: string | null; capacity: number; canCreate: boolean;

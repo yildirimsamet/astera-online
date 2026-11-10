@@ -1,3 +1,4 @@
+import { visibleParkedShips } from '../services/commanderSight.js';
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { applyHonorPodium } from '../services/honorPodium.js';
@@ -119,6 +120,11 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const resolves = (world: (typeof worlds)[number]): boolean =>
       mineSet.has(world.id)
       || sensors.some((post) => distance(post.at, world.position) <= post.identify);
+
+    const parked = await visibleParkedShips(app.db, worlds.filter(world =>
+      !mineSet.has(world.id) && world.kind === 'CAPITAL'
+      && sensors.some(post => post.telescope && distance(post.at, world.position) <= post.identify),
+    ).map(world => world.id), now);
 
     return {
       /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
@@ -332,6 +338,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         return {
           ...world,
           intel: 'RESOLVED' as const,
+          ...(parked.has(world.id) ? { commanderShip: parked.get(world.id) } : {}),
           isSelf: world.id === self.capitalPlanetId,
           isOwned: mineSet.has(world.id),
           isCapital: world.kind === 'CAPITAL',

@@ -1,6 +1,6 @@
 {
-  "id": "93c274ae-960f-4717-aa3a-6eff934eb781",
-  "prevId": "a47ec29f-bf7c-4fc8-a865-74bcd2bcb904",
+  "id": "f1ad0709-e95d-441d-82d7-37af87c42f09",
+  "prevId": "4a706b26-b21b-4f51-b05e-b1c30b735033",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -269,12 +269,6 @@
         },
         "first_season_started_at": {
           "name": "first_season_started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "starter_guide_off_at": {
-          "name": "starter_guide_off_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -25490,24 +25484,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "ordered_at": {
-          "name": "ordered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "analytics_visit_hash": {
-          "name": "analytics_visit_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "analytics_attempt_id": {
-          "name": "analytics_attempt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -25528,38 +25504,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessel_missions_analytics_order_idx": {
-          "name": "vessel_missions_analytics_order_idx",
-          "columns": [
-            {
-              "expression": "ordered_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_missions\".\"analytics_visit_hash\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessel_missions_analytics_visit_idx": {
-          "name": "vessel_missions_analytics_visit_idx",
-          "columns": [
-            {
-              "expression": "analytics_visit_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_missions\".\"analytics_visit_hash\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -25873,24 +25817,6 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
-        },
-        "ordered_at": {
-          "name": "ordered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "analytics_visit_hash": {
-          "name": "analytics_visit_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "analytics_attempt_id": {
-          "name": "analytics_attempt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -25923,38 +25849,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessel_orders_analytics_order_idx": {
-          "name": "vessel_orders_analytics_order_idx",
-          "columns": [
-            {
-              "expression": "ordered_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_orders\".\"analytics_visit_hash\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessel_orders_analytics_visit_idx": {
-          "name": "vessel_orders_analytics_visit_idx",
-          "columns": [
-            {
-              "expression": "analytics_visit_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_orders\".\"analytics_visit_hash\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -26536,13 +26430,6 @@
           "notNull": true,
           "default": "'[]'::jsonb"
         },
-        "sight_since": {
-          "name": "sight_since",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
         "enlisted_at": {
           "name": "enlisted_at",
           "type": "timestamp with time zone",
@@ -26557,6 +26444,13 @@
         },
         "last_progress_at": {
           "name": "last_progress_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "sight_since": {
+          "name": "sight_since",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,

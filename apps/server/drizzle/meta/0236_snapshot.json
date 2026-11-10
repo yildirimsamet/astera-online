@@ -1,6 +1,6 @@
 {
-  "id": "4b89925b-1299-4d19-84b8-bddb81776a3c",
-  "prevId": "5ed8d4d2-1685-4e29-9642-b8ada4e9f9d2",
+  "id": "465f01a0-0241-49b7-abe8-9c44c396dbe4",
+  "prevId": "bb009e8f-f268-42bb-a552-c5dddd6a8469",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -26029,12 +26029,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "return_seen_at": {
-          "name": "return_seen_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "chat_read_at": {
           "name": "chat_read_at",
           "type": "timestamp with time zone",
@@ -26180,13 +26174,6 @@
         },
         "unlocks_seen": {
           "name": "unlocks_seen",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "crates_opened": {
-          "name": "crates_opened",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,

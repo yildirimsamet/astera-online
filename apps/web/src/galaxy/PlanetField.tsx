@@ -976,7 +976,7 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
       offset.set(0, layout.pinOffset, 0).applyQuaternion(camera.quaternion);
       UP.position.copy(centre).add(offset);
       UP.quaternion.copy(facing);
-      UP.scale.setScalar(layout.pinScale);
+      UP.scale.set(layout.pinWidthScale, layout.pinScale, layout.pinWidthScale);
       mesh.setColorAt(i, tint.set(pinColour(node.kind)).multiplyScalar(layout.ink));
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);

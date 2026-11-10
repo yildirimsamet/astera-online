@@ -20,3 +20,9 @@ export const commanderShipSchema = z.object({
     .nullable().optional(),
 });
 export type CommanderShipView = z.infer<typeof commanderShipSchema>;
+
+/** Self-contained light models; no permission to enter the arena is needed to see another ship. */
+export const galaxyShipModelsSchema = z.object({ models: z.record(z.enum(SHIP_CLASSES), z.object({
+  url: z.string().startsWith('/arena/galaxy-ships/'), engines: z.array(z.tuple([z.number(), z.number(), z.number()])),
+  nozzle: z.number().positive(), ktx2: z.literal(false),
+})).nullable() });

@@ -1,6 +1,7 @@
 import { PartHere } from '../starter/PartHere.js';
 import { worldKindKey } from './worldKind.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
+import { FlightEscort } from '../ui/FlightEscort.js';
 import { GameActions } from '../session/seasonLock.js';
 import { RadiationBombControl } from '../screens/RadiationBombControls.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
@@ -3480,6 +3481,7 @@ export function ThreadFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
+      peek={thread.admiral ? <FlightEscort admiral={thread.admiral} /> : undefined}
       summary={<span>{countdown(remainingMs)}</span>}
       actions={recallable && onRecall ? (
         <button type="button" className={`${BTN_PRIMARY} basis-full`} disabled={recalling} onClick={onRecall}>
@@ -3499,6 +3501,8 @@ export function ThreadFocus({
           }
         />
       </div>
+
+      {thread.admiral && <FlightEscort admiral={thread.admiral} />}
 
       {composition && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -3657,6 +3661,7 @@ export function ContactFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
+      peek={contact.kind === 'fleet' && !contact.effectOnly && contact.admiral ? <FlightEscort admiral={contact.admiral} /> : undefined}
       summary={
         mining ? (
           <span className="text-v2-warn">
@@ -3742,6 +3747,8 @@ export function ContactFocus({
               : {})}
         />
       </div>
+
+      {contact.kind === 'fleet' && !contact.effectOnly && contact.admiral && <FlightEscort admiral={contact.admiral} />}
 
       {exactEntries.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

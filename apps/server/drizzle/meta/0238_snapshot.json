@@ -1,6 +1,6 @@
 {
-  "id": "20fe3b87-2961-4a53-a230-46e80b05f45e",
-  "prevId": "6424c51e-5128-4be2-a819-35f66c37afcc",
+  "id": "4b89925b-1299-4d19-84b8-bddb81776a3c",
+  "prevId": "5ed8d4d2-1685-4e29-9642-b8ada4e9f9d2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -9222,92 +9222,6 @@
           "value": "(\"debris_fields\".\"planet_id\" is not null and \"debris_fields\".\"pirate_raid_id\" is null)\n        or (\"debris_fields\".\"planet_id\" is null and \"debris_fields\".\"pirate_raid_id\" is not null)"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.deferred_pushes": {
-      "name": "deferred_pushes",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message": {
-          "name": "message",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "deliver_at": {
-          "name": "deliver_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "deferred_pushes_due_idx": {
-          "name": "deferred_pushes_due_idx",
-          "columns": [
-            {
-              "expression": "deliver_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "deferred_pushes_token_push_devices_token_fk": {
-          "name": "deferred_pushes_token_push_devices_token_fk",
-          "tableFrom": "deferred_pushes",
-          "tableTo": "push_devices",
-          "columnsFrom": [
-            "token"
-          ],
-          "columnsTo": [
-            "token"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "deferred_pushes_account_id_accounts_id_fk": {
-          "name": "deferred_pushes_account_id_accounts_id_fk",
-          "tableFrom": "deferred_pushes",
-          "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.dm_archive": {
@@ -18650,13 +18564,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "utc_offset_minutes": {
-          "name": "utc_offset_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -18706,10 +18613,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "push_devices_offset_check": {
-          "name": "push_devices_offset_check",
-          "value": "\"push_devices\".\"utc_offset_minutes\" BETWEEN -840 AND 840"
-        },
         "push_devices_locale_check": {
           "name": "push_devices_locale_check",
           "value": "\"push_devices\".\"locale\" in ('en','tr','de','fr','es','ja')"
@@ -19872,98 +19775,6 @@
           ]
         }
       },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.return_reminders": {
-      "name": "return_reminders",
-      "schema": "",
-      "columns": {
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "vessel_id": {
-          "name": "vessel_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "planet_id": {
-          "name": "planet_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_repair_at": {
-          "name": "next_repair_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_funded_at": {
-          "name": "last_funded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "absence_at": {
-          "name": "absence_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary_stage": {
-          "name": "summary_stage",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {
-        "return_reminders_due_idx": {
-          "name": "return_reminders_due_idx",
-          "columns": [
-            {
-              "expression": "next_repair_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "return_reminders_account_id_accounts_id_fk": {
-          "name": "return_reminders_account_id_accounts_id_fk",
-          "tableFrom": "return_reminders",
-          "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -26859,8 +26670,6 @@
       "schema": "public",
       "values": [
         "vessel_order_complete",
-        "vessel_repair_notice",
-        "vessel_push",
         "vessel_mission_arrival",
         "vessel_mission_return",
         "vessel_radar_warning",

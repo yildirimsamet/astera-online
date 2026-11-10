@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--dominance-chat')) {
+  const { verifyDominanceChat } = await import('./dominance-chat-visual.mjs');
+  await verifyDominanceChat(process.argv[2] ?? 'out/dominance-chat');
+  process.exit(0);
+}
+
+if (process.argv.includes('--model-load-recovery')) {
+  const { verifyModelLoadRecovery } = await import('./model-load-recovery-visual.mjs');
+  await verifyModelLoadRecovery(process.argv[2] ?? 'out/model-load-recovery');
+  process.exit(0);
+}
+
+if (process.argv.includes('--commander-sight')) {
+  const { verifyCommanderSight } = await import('./commander-sight-visual.mjs');
+  await verifyCommanderSight(process.argv[2] ?? 'out/commander-sight/visual');
+  process.exit(0);
+}
+
 if (process.argv.includes('--first-visit')) {
   const { verifyFirstVisit } = await import('./first-visit-visual.mjs');
   await verifyFirstVisit(process.argv[2] ?? 'out/first-visit');
@@ -50,6 +68,18 @@ if (process.argv.includes('--legacy-review')) {
 if (process.argv.includes('--legacy-models')) {
   const { verifyLegacyModels } = await import('./legacy-models-visual.mjs');
   await verifyLegacyModels(process.argv[2] ?? 'out/legacy-models');
+  process.exit(0);
+}
+
+if (process.argv.includes('--planet-marker-size')) {
+  const { verifyPlanetMarkerSize } = await import('./planet-marker-size-visual.mjs');
+  await verifyPlanetMarkerSize(process.argv[2] ?? 'out/planet-marker-size');
+  process.exit(0);
+}
+
+if (process.argv.includes('--commander-presence')) {
+  const { verifyCommanderPresence } = await import('./commander-presence-visual.mjs');
+  await verifyCommanderPresence(process.argv[2] ?? 'out/commander-presence');
   process.exit(0);
 }
 
@@ -408,6 +438,12 @@ if (process.argv.includes('--colony-abandonment')) {
 if (process.argv.includes('--planet-selection')) {
   const { verifyPlanetSelection } = await import('./planet-selection-visual.mjs');
   await verifyPlanetSelection(process.argv[2] ?? 'out/planet-selection');
+  process.exit(0);
+}
+
+if (process.argv.includes('--arena-dual-tactics')) {
+  const { verifyDualTactics } = await import('./arena-dual-tactics-visual.mjs');
+  await verifyDualTactics(process.argv[2] ?? 'out/arena-dual-tactics');
   process.exit(0);
 }
 

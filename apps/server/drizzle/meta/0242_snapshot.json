@@ -1,6 +1,6 @@
 {
-  "id": "f1ad0709-e95d-441d-82d7-37af87c42f09",
-  "prevId": "4a706b26-b21b-4f51-b05e-b1c30b735033",
+  "id": "ef6e19c6-d934-4174-8a13-5b778ba77791",
+  "prevId": "57e3b67e-b3a0-4d15-ba69-37562703871d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -25939,12 +25939,6 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true
-        },
-        "delivered_at": {
-          "name": "delivered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -26444,13 +26438,6 @@
         },
         "last_progress_at": {
           "name": "last_progress_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "sight_since": {
-          "name": "sight_since",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,

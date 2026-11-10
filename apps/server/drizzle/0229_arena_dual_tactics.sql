@@ -1,0 +1,2 @@
+ALTER TABLE "arena_team_members" ADD COLUMN "tactic2" text;--> statement-breakpoint
+ALTER TABLE "arena_team_members" ADD CONSTRAINT "arena_team_members_tactic2_check" CHECK ("arena_team_members"."tactic2" IS NULL OR ("arena_team_members"."tactic2" IN ('smoke', 'cloak', 'illusion', 'radar') AND "arena_team_members"."tactic2" <> "arena_team_members"."tactic"));

@@ -1,3 +1,5 @@
+import { loadTrafficEscorts, decorateTrafficEscorts } from './commanderSight.js';
+import type { AdmiralSnapshot } from '@astera/rules/arena';
 import { rewardFlightFleet } from './fleetTowing.js';
 import { loadCosmeticTraffic, decorateCosmeticContacts } from './cosmeticTraffic.js';
 import { and, eq, gte, inArray, ne, or, sql } from 'drizzle-orm';
@@ -204,6 +206,7 @@ export type ContactKind =
   | 'pirate';
 
 export interface Contact {
+  admiral?: AdmiralSnapshot;
   radiationBombLevel?: 1 | 2 | 3;
   appearance?: { engineId?: string; probeId?: string; flagId?: string; shipSkins?: ShipCosmeticEquipment };
   /**
@@ -513,6 +516,7 @@ export function windowOf(
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export interface TrafficSnapshot {
+  escorts?: ReadonlyMap<string, AdmiralSnapshot>;
   signalRows?: readonly (typeof unknownSignals.$inferSelect)[];
   bombRows?: readonly (typeof radiationBombFlights.$inferSelect)[];
   cosmeticAppearances?: ReadonlyMap<string, NonNullable<Contact['appearance']>>;
@@ -769,7 +773,10 @@ export async function loadTrafficSnapshot(
     positions,
     coreLevels,
   };
-  return { ...snapshot, cosmeticAppearances: await loadCosmeticTraffic(db, seasonId, snapshot) };
+  const [cosmeticAppearances, escorts] = await Promise.all([
+    loadCosmeticTraffic(db, seasonId, snapshot), loadTrafficEscorts(db, seasonId),
+  ]);
+  return { ...snapshot, cosmeticAppearances, escorts };
 }
 
 export interface StrategicInterceptionView {
@@ -2313,5 +2320,5 @@ export function projectGalaxyTraffic(
         ? {[signal.outcome.hull]: 1} : undefined, true)});
   }
 
-  return decorateCosmeticContacts(out, snapshot.cosmeticAppearances);
+  return decorateTrafficEscorts(decorateCosmeticContacts(out, snapshot.cosmeticAppearances), snapshot.escorts);
 }

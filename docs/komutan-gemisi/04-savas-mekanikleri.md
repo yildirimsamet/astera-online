@@ -84,6 +84,9 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
 
 ## 5. Yetenekler
 
+**Güncel donanım (sahip, 2026-11-09):** sınıfa sabit ana yetenek ve iki farklı seçilebilir
+taktik. Seçim, bağımsız beklemeler ve kontroller: [24](24-iki-taktik-ve-manevra-kayalari.md).
+
 **Turbo (S23, S78)**
 - Şarj `turboCharge` saniye; aktifken saniyede 1 azalır; bırakınca `turboRegenDelay` sonra
   `turboRegen` hızında dolar. En az `turboMinStart` şarjla başlar.

@@ -1,6 +1,6 @@
 {
-  "id": "465f01a0-0241-49b7-abe8-9c44c396dbe4",
-  "prevId": "bb009e8f-f268-42bb-a552-c5dddd6a8469",
+  "id": "8d630e37-08ee-427c-a706-32a477a54298",
+  "prevId": "e4d4a4c0-1734-436d-a65d-fed06e872f70",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -22298,142 +22298,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.starter_chat_messages": {
-      "name": "starter_chat_messages",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "starter_galaxy_id": {
-          "name": "starter_galaxy_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "author_account_id": {
-          "name": "author_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "author_vessel_id": {
-          "name": "author_vessel_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "masked_at": {
-          "name": "masked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "starter_chat_room_idx": {
-          "name": "starter_chat_room_idx",
-          "columns": [
-            {
-              "expression": "starter_galaxy_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "language",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "starter_chat_messages_starter_galaxy_id_starter_galaxies_id_fk": {
-          "name": "starter_chat_messages_starter_galaxy_id_starter_galaxies_id_fk",
-          "tableFrom": "starter_chat_messages",
-          "tableTo": "starter_galaxies",
-          "columnsFrom": [
-            "starter_galaxy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "starter_chat_messages_author_account_id_accounts_id_fk": {
-          "name": "starter_chat_messages_author_account_id_accounts_id_fk",
-          "tableFrom": "starter_chat_messages",
-          "tableTo": "accounts",
-          "columnsFrom": [
-            "author_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "starter_chat_messages_author_vessel_id_vessels_id_fk": {
-          "name": "starter_chat_messages_author_vessel_id_vessels_id_fk",
-          "tableFrom": "starter_chat_messages",
-          "tableTo": "vessels",
-          "columnsFrom": [
-            "author_vessel_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.starter_departures": {
       "name": "starter_departures",
       "schema": "",
@@ -24914,79 +24778,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vessel_bot_state": {
-      "name": "vessel_bot_state",
-      "schema": "",
-      "columns": {
-        "vessel_id": {
-          "name": "vessel_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "persona": {
-          "name": "persona",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "next_action_at": {
-          "name": "next_action_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "session_until_at": {
-          "name": "session_until_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "vessel_bot_state_due_idx": {
-          "name": "vessel_bot_state_due_idx",
-          "columns": [
-            {
-              "expression": "next_action_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "vessel_bot_state_vessel_id_vessels_id_fk": {
-          "name": "vessel_bot_state_vessel_id_vessels_id_fk",
-          "tableFrom": "vessel_bot_state",
-          "tableTo": "vessels",
-          "columnsFrom": [
-            "vessel_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.vessel_migrations": {
       "name": "vessel_migrations",
       "schema": "",
@@ -26028,12 +25819,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
-        },
-        "chat_read_at": {
-          "name": "chat_read_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "slot_index": {
           "name": "slot_index",

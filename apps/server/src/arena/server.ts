@@ -1,3 +1,4 @@
+import { registerGalaxyShips } from './galaxyShips.js';
 import { groupEntrances } from './entrances.js';
 import { performance } from 'node:perf_hooks';
 import type { FastifyInstance } from 'fastify';
@@ -31,7 +32,7 @@ const pointSchema = z.object({ x: z.number().finite().min(-3000).max(3000), y: z
 const NEUTRAL = { ...createInput(), fire: false, smoke: false, cloak: false, turboBurst: false, land: false, signature: false, signatureTarget: -1, illusion: false, radar: false };
 const messageSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hello'), v: z.literal(ARENA_PROTOCOL), guestId: z.string().regex(/^[a-zA-Z0-9-]{8,96}$/).optional(),
-    token: z.string().min(1).max(4096).optional(), mode: z.enum(['enter', 'resume', 'spectate']), ship: z.enum(SHIP_CLASSES), tactic: z.enum(TACTICS) }),
+    token: z.string().min(1).max(4096).optional(), mode: z.enum(['enter', 'resume', 'spectate']), ship: z.enum(SHIP_CLASSES), tactic: z.enum(TACTICS), tactic2: z.enum(TACTICS).nullable().default(null) }),
   inputSchema,
   z.object({ kind: z.literal('ping'), t: z.number().finite().nonnegative() }),
   z.object({ kind: z.literal('settings'), sensitivity: z.number().min(0.5).max(1.5), invertPitch: z.boolean() }),
@@ -39,7 +40,7 @@ const messageSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('watch'), pilotId: z.number().int().nonnegative() }),
   z.object({ kind: z.literal('dev'), action: z.enum(['restart', 'exit', 'fuel', 'cargo', 'position']),
     p: pointSchema.optional(), value: z.number().finite().min(0).max(400).optional() }),
-]);
+]).refine(message => message.kind !== 'hello' || message.tactic !== message.tactic2, 'Choose different tactics');
 interface Participant {
   key: string; pilot: Pilot; socket: WebSocket | null; playout: Playout<ArenaIntent>; input: ArenaIntent;
   settings: SteeringSettings; ack: number; lastSeq: number; lastInput: number; endedAt: number;
@@ -48,7 +49,7 @@ interface Participant {
   accountId: string | null; sortie: string | null; test: boolean; launching: boolean;
   teamId: string | null; watchId: number | null;
   /** The class and B slot its last hello named: its next flight's (Y4). A flight keeps the ones it started with; the level is the hangar's (Y6b). */
-  ship: ShipClass; tactic: Tactic; level: number;
+  ship: ShipClass; tactic: Tactic; tactic2: Tactic | null; level: number;
   /** The first snapshot tick whose snapshot is a key frame: 0 after a join or a dropped send, then every KEY_EVERY. */
   keyAt: number;
   /** The tier each ship was last sent to this pilot in: the REMOTE_BAND hold, and its row at once when it changes. */
@@ -189,9 +190,9 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   };
   const restart = (entry: Participant, launch: Launch | null = null): void => {
     if (launch) { entry.ship = launch.ship; entry.level = launch.level; entry.sortie = launch.spectating ? null : launch.sortieId; entry.test = false;
-      entry.tactic = launch.tactic ?? entry.tactic; entry.teamId = launch.teamId ?? null; }
-    const fresh = createPilot(entry.pilot.id, entry.ship, entry.tactic, entry.level);
-    if (launch) fresh.ranks = flightRanks(entry.ship, entry.tactic, launch.abilities);
+      entry.tactic = launch.tactic ?? entry.tactic; entry.tactic2 = launch.tactic2 === undefined ? entry.tactic2 : launch.tactic2; entry.teamId = launch.teamId ?? null; }
+    const fresh = createPilot(entry.pilot.id, entry.ship, entry.tactic, entry.level, entry.tactic2);
+    if (launch) fresh.ranks = flightRanks(entry.ship, entry.tactic, launch.abilities, entry.tactic2);
     fresh.clanId = launch?.clanId ?? null;
     fresh.turboCharge = abilityStats(fresh.ship, 'turbo', fresh.ranks.turbo).duration;
     spawnFlight(fresh, spawnRandom, world.layout, entrance(launch?.teamId ?? null));
@@ -379,6 +380,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     return !account ? 'auth' : admits(account) ? account : 'denied';
   };
   registerArenaReferences(app, env, seatedBy);
+  registerGalaxyShips(app, env, identify);
   /** The hangar desk (Y6a): the ship, its timers and the day's cap; the one class choice. */
   const bearer = (header: string | undefined): Promise<{ accountId: string } | 'auth' | 'denied'> =>
     header?.startsWith('Bearer ') ? seatedBy(header.slice(7)) : Promise.resolve('auth');
@@ -477,17 +479,17 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
               if (!idle) { if (accountId && flight && !flight.spectating) abandon(accountId, flight); kick(socket, 'full'); return; }
               remove(idle);
             }
-            const pilot = createPilot(world.nextId++, msg.ship, msg.tactic);
+            const pilot = createPilot(world.nextId++, msg.ship, msg.tactic, 1, msg.tactic2);
             entry = { key, pilot, socket: null, playout: createPlayout(), input: createInput(), settings: { sensitivity: 1, invertPitch: false },
               ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, extractionCounted: false, keyAt: 0, tiers: new Map(),
-              accountId, sortie: null, test: false, launching: false, ship: msg.ship, tactic: msg.tactic, level: 1, teamId: null, watchId: null };
+              accountId, sortie: null, test: false, launching: false, ship: msg.ship, tactic: msg.tactic, tactic2: msg.tactic2, level: 1, teamId: null, watchId: null };
             world.drones.push(pilot); const prior = createFlightState(); world.dronePrevious.push(prior);
             participants.set(entry.key, entry); inputs.set(pilot.id, entry.input); settings.set(pilot.id, entry.settings); restart(entry, flight);
             if (!scores.has(key)) scores.set(key, { points: 0, kills: 0, deaths: 0 });
-          } else if (flight) { entry.tactic = msg.tactic; restart(entry, flight); }
+          } else if (flight) { entry.tactic = msg.tactic; entry.tactic2 = msg.tactic2; restart(entry, flight); }
           // A commander's class is the hangar's; a guest's is the hello's.
           if (entry.accountId === null) entry.ship = msg.ship;
-          if (flight?.tactic === undefined && entry.sortie === null) entry.tactic = msg.tactic;
+          if (flight?.tactic === undefined && entry.sortie === null) { entry.tactic = msg.tactic; entry.tactic2 = msg.tactic2; }
           if (entry.socket && entry.socket !== socket) kick(entry.socket, 'replaced');
           participant = entry; entry.socket = socket; entry.pilot.linkLost = 0; entry.lastInput = world.tick; resetPlayout(entry.playout);
           // Its first snapshot is the next snapshot tick's, a key frame: never one in between (`feed.ts`).

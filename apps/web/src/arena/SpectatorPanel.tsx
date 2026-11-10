@@ -22,6 +22,6 @@ export function SpectatorPanel({ world, network, store, teamId, watching, onResu
       onClick={() => { network.watch(p.id); }}><span>{network.names.get(p.id) ?? t.friend}</span>
       <small>{Math.round(p.hull / statsOf(p).hull * 100)}%</small><i style={{ '--hp': String(p.hull / statsOf(p).hull) } as React.CSSProperties} /></button>)}</div>
     <button type="button" className="as-result" onClick={onResults}>{t.results}</button>
-    {connection.phase === 'failed' && <button type="button" className="as-result" onClick={() => { network.connect(world.pilot.ship, world.pilot.tactic, true); }}>{c.reconnect}</button>}
+    {connection.phase === 'failed' && <button type="button" className="as-result" onClick={() => { network.connect(world.pilot.ship, world.pilot.tactic, true, world.pilot.tactic2); }}>{c.reconnect}</button>}
   </section>;
 }

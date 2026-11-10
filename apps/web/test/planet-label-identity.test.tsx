@@ -11,12 +11,22 @@ const node = (over: Record<string, unknown> = {}) =>
   planetNodes([galaxySchema.shape.planets.element.parse({ ...input, ...over })])[0]!;
 
 describe('the known commander beside a planet name', () => {
-  it('shows the Honor podium as primary and never falls back to Dominion in an active Honor season', () => {
+  it('shows both independent podiums, with Honor first, during an active Honor season', () => {
     const { rerender } = render(<GalaxyCommanderName node={node({ honorRanking: true, honorRank: 2, dominionRank: 1 })} />);
     expect(screen.getByLabelText('Honor · Rank 2')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Rank 1')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Dominion · Rank 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Honor · Rank 2').compareDocumentPosition(screen.getByLabelText('Dominion · Rank 1')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     rerender(<GalaxyCommanderName node={node({ honorRanking: true, dominionRank: 1 })} />);
-    expect(screen.queryByLabelText('Rank 1')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Dominion · Rank 1')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Honor · Rank 2')).not.toBeInTheDocument();
+  });
+  it.each([1, 2, 3] as const)('shows Dominion place %s without requiring Honor metadata', rank => {
+    render(<GalaxyCommanderName node={node({ dominionRank: rank })} />);
+    expect(screen.getByLabelText(`Dominion · Rank ${String(rank)}`)).toHaveTextContent(String(rank));
+  });
+  it('does not crown an unranked commander', () => {
+    const view = render(<GalaxyCommanderName node={node({ honorRanking: true })} />);
+    expect(view.container.querySelector('.rank-badge')).toBeNull();
   });
   it('carries the server country through the schema and scene to a flag beside the name', () => {
     const known = node();
@@ -31,7 +41,7 @@ describe('the known commander beside a planet name', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
   it('does not draw a forged unknown identity or flag', () => {
-    const view = render(<GalaxyCommanderName node={node({ intel: 'UNKNOWN' })} />);
+    const view = render(<GalaxyCommanderName node={node({ intel: 'UNKNOWN', honorRanking: true, honorRank: 1, dominionRank: 1 })} />);
     expect(view.container).toBeEmptyDOMElement();
   });
   it('does not attach a country to a neutral world', () => {

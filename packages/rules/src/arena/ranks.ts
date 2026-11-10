@@ -9,7 +9,7 @@ export const ABILITIES = ['signature', 'turbo', 'smoke', 'cloak', 'illusion', 'r
 export const MAX_POINT_RANK = 3;
 export type Ability = typeof ABILITIES[number];
 export type AbilityPoints = Partial<Record<Ability, number>>;
-export interface FlightRanks { signature: number; tactic: number; turbo: number }
+export interface FlightRanks { signature: number; tactic: number; tactic2: number; turbo: number }
 export const AFFINITY: Readonly<Record<ShipClass, Tactic>> = { akinci: 'illusion', muhafiz: 'smoke', kilavuz: 'radar' };
 export const SIGNATURE_COOLDOWN: Readonly<Record<ShipClass, number>> = Object.freeze({ akinci: 14, muhafiz: 22, kilavuz: 20 });
 const rankOf = (rank: number): number => Number.isFinite(rank) ? Math.min(5, Math.max(1, Math.floor(rank))) : 1;
@@ -18,8 +18,8 @@ export const abilityRank = (ship: ShipClass, ability: Ability, points: AbilityPo
   rankOf(1 + (points[ability] ?? 0) + Number(AFFINITY[ship] === ability));
 export const pointsLeft = (level: number, points: AbilityPoints): number =>
   Math.max(0, levelOf(level) - 1 - ABILITIES.reduce((sum, key) => sum + (points[key] ?? 0), 0));
-export const flightRanks = (ship: ShipClass, tactic: Tactic, points: AbilityPoints): FlightRanks => ({
-  signature: abilityRank(ship, 'signature', points), tactic: abilityRank(ship, tactic, points), turbo: abilityRank(ship, 'turbo', points),
+export const flightRanks = (ship: ShipClass, tactic: Tactic, points: AbilityPoints, tactic2: Tactic | null = null): FlightRanks => ({
+  tactic2: tactic2 ? abilityRank(ship, tactic2, points) : 1, signature: abilityRank(ship, 'signature', points), tactic: abilityRank(ship, tactic, points), turbo: abilityRank(ship, 'turbo', points),
 });
 
 export interface AbilityStats { duration: number; cooldown: number; power: number }

@@ -2,7 +2,7 @@ import { statsOf } from './progression.js';
 import { clampToArena, segmentObstacles } from './collision.js';
 import { impact, shoot, type CombatWorld } from './combat.js';
 import { createFlightState } from './flight.js';
-import { alive, copyFlight, createPilot, sameSide, type ArenaIntent, type Pilot } from './pilot.js';
+import { alive, hasTactic, tacticRank, tacticWait, copyFlight, createPilot, sameSide, type ArenaIntent, type Pilot } from './pilot.js';
 import { warn } from './signatures.js';
 import { ARENA_TUNING as T } from './tuning.js';
 import { abilityStats } from './ranks.js';
@@ -26,13 +26,13 @@ const warnScanned = (ship: Pilot): void => { warn(ship, SCANNED, ship.p.x, ship.
 
 /** The copy takes the ship's place, heading, speed and everything another pilot can see of it. */
 function castIllusion(world: TacticWorld, pilot: Pilot): void {
-  const copy = createPilot(world.nextId++, pilot.ship, pilot.tactic, pilot.level);
+  const copy = createPilot(world.nextId++, pilot.ship, pilot.tactic, pilot.level, pilot.tactic2);
   copy.ranks = { ...pilot.ranks }; copy.clanId = pilot.clanId; copy.mendPower = pilot.mendPower;
   copyFlight(copy, pilot);
   copy.hull = pilot.hull; copy.shield = pilot.shield; copy.shieldHp = pilot.shieldHp; copy.shieldMax = pilot.shieldMax;
   copy.ward = pilot.ward; copy.mend = pilot.mend; copy.turboCharge = pilot.turboCharge; copy.turboActive = pilot.turboActive;
   copy.turboDelay = pilot.turboDelay; copy.gun = pilot.gun; copy.nextShot = pilot.nextShot;
-  copy.decoyOf = pilot.id; copy.decoyLife = ticks(abilityStats(pilot.ship, 'illusion', pilot.ranks.tactic).duration); copy.decoyHp = statsOf(pilot).hull * T.decoyHullShare;
+  copy.decoyOf = pilot.id; copy.decoyLife = ticks(abilityStats(pilot.ship, 'illusion', tacticRank(pilot, 'illusion')).duration); copy.decoyHp = statsOf(pilot).hull * T.decoyHullShare;
   copy.shots = pilot.shots; Object.assign(copy.decoyFrom, pilot.p);
   const q = pilot.q; const along = copy.decoyAlong;
   along.x = 2 * (q.x * q.z + q.w * q.y); along.y = 2 * (q.y * q.z - q.w * q.x); along.z = 1 - 2 * (q.x * q.x + q.y * q.y);
@@ -45,7 +45,7 @@ function castIllusion(world: TacticWorld, pilot: Pilot): void {
 
 /** Every enemy now in the arena, wherever it hides; not the cloaked, not a copy. */
 function castRadar(world: TacticWorld, pilot: Pilot): void {
-  const duration = abilityStats(pilot.ship, 'radar', pilot.ranks.tactic).duration;
+  const duration = abilityStats(pilot.ship, 'radar', tacticRank(pilot, 'radar')).duration;
   const targets = ships(world).filter(ship => !sameSide(pilot, ship) && ship.decoyOf < 0 && alive(ship) && ship.cloak === 0);
   world.scans = world.scans.filter(scan => scan.owner !== pilot.id);
   world.scans.push({ owner: pilot.id, ticks: ticks(duration), targets: targets.map(ship => ship.id) });
@@ -55,9 +55,12 @@ function castRadar(world: TacticWorld, pilot: Pilot): void {
 
 /** The B slot pressed for an illusion or a sweep: nothing is spent when it cannot go. */
 export function castTactic(world: TacticWorld, pilot: Pilot, input: ArenaIntent): void {
-  if (pilot.tacticCooldown > 0) return;
-  if (input.illusion && pilot.tactic === 'illusion') { castIllusion(world, pilot); pilot.tacticCooldown = ticks(abilityStats(pilot.ship, 'illusion', pilot.ranks.tactic).cooldown); }
-  else if (input.radar && pilot.tactic === 'radar') { castRadar(world, pilot); pilot.tacticCooldown = ticks(abilityStats(pilot.ship, 'radar', pilot.ranks.tactic).cooldown); }
+  for (const tactic of ['illusion', 'radar'] as const) {
+    if (!input[tactic] || !hasTactic(pilot, tactic) || tacticWait(pilot, tactic) > 0) continue;
+    if (tactic === 'illusion') castIllusion(world, pilot); else castRadar(world, pilot);
+    const wait = ticks(abilityStats(pilot.ship, tactic, tacticRank(pilot, tactic)).cooldown);
+    if (pilot.tactic === tactic) pilot.tacticCooldown = wait; else pilot.tactic2Cooldown = wait;
+  }
 }
 
 /** Sweeps age; those still running warn their marks again (the warning is rebuilt every tick). */

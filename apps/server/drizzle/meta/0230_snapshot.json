@@ -1,6 +1,6 @@
 {
-  "id": "9c2074a1-e5bb-4a6e-afc3-70305b63473f",
-  "prevId": "93b11c4b-3232-47c8-afbb-2e18f833bdc6",
+  "id": "9fefaa84-4db9-4275-ab4f-bfbbc987ad13",
+  "prevId": "b126a06d-a72f-4081-bd64-50e7e0d46411",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -24807,13 +24807,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
-        },
-        "last_progress_at": {
-          "name": "last_progress_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {
@@ -24871,22 +24864,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessels_quiet_idx": {
-          "name": "vessels_quiet_idx",
-          "columns": [
-            {
-              "expression": "last_progress_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessels\".\"status\" = 'ACTIVE'",
           "concurrently": false,
           "method": "btree",
           "with": {}

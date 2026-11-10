@@ -31,14 +31,14 @@ describe('arena protocol v14', () => {
   });
   it('is a new version: signatures and the B slot travel (Y4c, signatures.test.ts); others travel in three tiers', () => {
     // 15 (owner 2026-10-27): hulls 50 % stronger; the decoder's bounds moved with them, so a page on 14 reloads.
-    expect(ARENA_PROTOCOL).toBe(15);
+    expect(ARENA_PROTOCOL).toBe(16);
     // 800 m / 1.6 km / 2.4 km (owner 2026-10-23): every snapshot, every other one, every third one.
     expect(REMOTE_NEAR_RANGE).toBe(800);
     expect(MID_EVERY).toBe(T.tickRate / T.snapshotRate * 2);
     expect(FAR_EVERY).toBe(T.tickRate / T.snapshotRate * 3);
     // The view runs two snapshots behind (interpDelay): a middle ship is drawn between two of its samples.
     expect(MID_EVERY).toBeLessThanOrEqual(Math.round(T.interpDelay * T.tickRate));
-    expect(PILOT_WIDTH).toBe(72);
+    expect(PILOT_WIDTH).toBe(75);
     expect(MAX_REMOTE_PILOTS).toBe(50);
     expect(REMOTE_WIDTH).toBeLessThan(PILOT_WIDTH / 2);
     expect(FAR_WIDTH).toBeLessThan(REMOTE_WIDTH);
@@ -175,14 +175,14 @@ describe('arena protocol v14', () => {
     expect(decodeArenaSnapshot(noScan)).toBeNull();
     expect(decodeArenaSnapshot(broken({ impacts: [[ARENA_POOLS.impacts, 1, 2, 3, 0.1, 0]] }))).toBeNull();
     const negativeHold = packPilot(createPilot(4));
-    negativeHold[PILOT_WIDTH - 6] = -1;
+    negativeHold[PILOT_WIDTH - 9] = -1;
     expect(decodeArenaSnapshot(broken({ self: negativeHold }))).toBeNull();
     // Y4c/Y4d: an unknown tactic or warning, a copy that names no ship, or a missile in no slot.
-    for (const [at, value] of [[PILOT_WIDTH - 21, 4], [PILOT_WIDTH - 21, 0.5], [PILOT_WIDTH - 17, 5], [PILOT_WIDTH - 23, -2], [PILOT_WIDTH - 23, 0.5]] as const) {
+    for (const [at, value] of [[PILOT_WIDTH - 24, 4], [PILOT_WIDTH - 24, 0.5], [PILOT_WIDTH - 20, 5], [PILOT_WIDTH - 26, -2], [PILOT_WIDTH - 26, 0.5]] as const) {
       const row = packPilot(createPilot(4)); row[at] = value;
       expect(decodeArenaSnapshot(broken({ self: row }))).toBeNull();
     }
-    for (const at of [PILOT_WIDTH - 5, PILOT_WIDTH - 4, PILOT_WIDTH - 3]) {
+    for (const at of [PILOT_WIDTH - 8, PILOT_WIDTH - 7, PILOT_WIDTH - 6, PILOT_WIDTH - 3]) {
       for (const value of [0, 6, 1.5]) {
         const row = packPilot(createPilot(4)); row[at] = value;
         expect(decodeArenaSnapshot(broken({ self: row }))).toBeNull();

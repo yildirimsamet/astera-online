@@ -74,6 +74,14 @@ they felt. Then fix the top three. Everything else waits for real players.
 
 # Sessions
 
+## 2026-11-08 · Komutan gemisi görünürlüğü — yerel gerçek API akışı
+
+- Ayrı worktree ve geçici veritabanında dört oyuncu; 390/350 px telefon görünümü. Hangara girmeden galaksi açıldı.
+- Teleskoptaki yabancı park gemisine dokunmak gezegenini açtı. Kendi ve yabancı filoya eşlik eden komutan gemisinin gövdesine gerçek pointer dokunuşu ilgili filoyu seçti; focus sheet'te Akıncı Lv 20 ve `damage +5%` göründü.
+- İlk dokunuşta kapalı sheet'te de bonus okunuyor. Yatay taşma, normal açılışta sayfa hatası veya model 404'ü görülmedi; ortak katalog ve görünen sınıfların modelleri 200 döndü.
+- Model indirmesinin kesilmesi ve bağlantının geri dönmesi ayrıca denendi: galaksi kullanılabilir kaldı, modeller geri geldi. Fiziksel Android cihaz testi yapılmadı.
+- Yeniden çalıştırma ve ekran kanıtları: `docs/tasks/commander-visibility-2026-11-08.md`; yerel çıktılar `out/commander-sight/visual/`. Deploy yapılmadı.
+
 <!-- Add a block per session. Keep them short and honest. -->
 
 ## Fleet Catalog V2 — two-player release session
@@ -163,3 +171,42 @@ generated-position visibility table; none of the following can be read off a sim
 - **Does the ten-second fight read at the rendezvous?** Both craft hold at the meeting point;
   the volley crosses a fixed `PIRATE_STANDOFF` gap because there is no world to size it against.
   This is the one piece of the feature that has only ever been seen in code.
+
+
+## 2026-11-09 — Yarık: iki taktik ve manevra kayaları
+
+- Ayrı worktree: `blindspace-yarik-dual-tactics`, ana çalışma ağacının güncel kod tabanı.
+- Gerçek tarayıcıda 350×780 dokunmatik ve 1280×900 masaüstü: hazırlıkta iki farklı
+  taktik seçme → kalkış → İllüzyon ve Tarama'yı art arda kullanma. Mobilde gerçek dokunma,
+  masaüstünde ikinci taktik için C. Beş uçuş düğmesi çakışmıyor; yatay taşma ve sayfa hatası yok.
+- Yeni kayaların yanına konumlandırılarak sahnede görünüşü incelendi. Giriş/çıkış, kaynak
+  açıklığı, grup boyutları ve çarpışma kuralları otomatik testlerle kontrol edildi.
+- Bulgu: C geliştirmede çarpışma görünümüne ayrılmıştı; Alt+C'ye taşındı. Sonraki antrenman
+  uçuşunda ikinci seçimin korunması yeniden bağlantı testiyle düzeltildi.
+- Kanıt: `out/arena-dual-tactics/{preflight,flight}-{350,1280}.png`, `proof.json`.
+- Bu bir otomatik solo akış kontrolüdür. İki insanla çatışma ve fiziksel Android cihazında
+  rahatlık/performans testi yapılmadı; dairesel takibin azaldığı henüz doğrulanmadı.
+
+
+## 2026-11-09 — Galakside Komutan Gemisi görünümü
+
+- Gerçek galaksi ışığında üç sınıf, park/bakım, filo ve tek başına dönüş incelendi.
+  Sahip ilk egzoz görselini geniş buldu; genişlik %25 azaltıldı, uzunluk korundu.
+- Temiz metal kaplama ve yumuşak plazma kullanıldı; gövdeyi bastıran beyaz parlama azaltıldı.
+- Sahibin isteğiyle `/v2-gallery.html?view=commander-presence&lng=tr` etkileşimli sayfası
+  eklendi ve Chrome'a açtırıldı. Üç sınıf, motor, park/filo/dönüş, fareyle döndürme ve
+  tekerlek/+/− ile yakınlaştırma var. Gerçek tarayıcıda yüklenme, yakınlaştır/uzaklaştır,
+  sınıf ve filo geçişleri geçti. Sayfa yerel örnek veriler kullanır, sunucuya yazmaz.
+- Kanıt: `out/commander-presence-polished/`, `interactive-page.png`; fiziksel Android testi yapılmadı.
+
+## 2026-11-10 — İşaretler ve bütün çalışmanın son incelemesi
+
+- Gerçek galakside turuncu/gri üçgenler ve kapalı gözler önce/sonra, üç uzaklıkta
+  ölçüldü: genişlik ve yükseklik 2 CSS px azalıyor. Kanıt: `out/planet-marker-size/`.
+- Arıza rozetinin ortak ölçekten yanlışlıkla etkilenmesi, takım kartlarının satın alınan
+  puanları almaması, seçili önizleme düğmesinde yükleniyor yazısının kalması, filo
+  kamerasının yanlış kadraja sıfırlanması ve egzoz ucundaki iki sıfır normal doğrulandı.
+  Her biri başarısız regresyon testiyle gösterilip düzeltildi. Ayrıntı:
+  `komutan-gemisi/26-isaret-boyutlari-ve-son-inceleme.md`.
+- Mobilde ikinci taktik ile joystick'in boşta duran halkası arasında küçük çakışma
+  gerçek tarayıcı ölçümüyle yeniden üretildi; taktik 15 px yukarı taşındı.

@@ -12,7 +12,7 @@ import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
 import { LandingScreen } from '../src/screens/LandingScreen.js';
 import { wikiSitemap } from '../src/wiki/publication.js';
-import { wikiPages } from '../src/wiki/catalog.js';
+import { getWikiArticle, wikiPages } from '../src/wiki/catalog.js';
 import { PUBLISHER_ORIGIN, publisherPaths, publisherUrl } from '../src/lib/publisherPages.js';
 
 vi.mock('../src/landing/LandingScene.jsx', () => ({
@@ -234,7 +234,7 @@ describe('crawl instructions', () => {
     expect(sitemap.querySelector('parsererror')).toBeNull();
     expect(urls[0]).toBe(`${PUBLISHER_ORIGIN}/`);
     expect([...urls.slice(1)].sort()).toEqual(
-      [...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(page => page.path)].map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
+      [...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.filter(page => page.articleId === undefined || getWikiArticle(page.articleId)?.subject === undefined).map(page => page.path)].map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
     );
   });
 

@@ -1,3 +1,4 @@
+import type { GalaxyPlanet } from '../api/schemas.js';
 import type { ShipClass } from '@astera/rules/arena';
 import type { CommanderShipView } from '../api/commanderShipSchemas.js';
 import { safetyNetMs } from '../api/liveChannel.js';
@@ -52,7 +53,7 @@ export function refreshAfter(view: CommanderShipView | undefined, now: number): 
  * (measured), so a wider orbit spent most of its circuit off screen; this one stays in view and
  * passes behind the world. Slower than the satellites, and the largest thing beside it.
  */
-export const PARK = { radius: 1.7, tilt: 0.22, period: 72, length: 0.7, dockedPhase: 0.7 } as const;
+export const PARK = { radius: 1.7, tilt: 0.22, period: 72, length: 1.4, dockedPhase: 0.7 } as const;
 
 export interface ParkPose { x: number; y: number; z: number; yaw: number }
 
@@ -63,4 +64,14 @@ export function parkPose(planet: { position: readonly [number, number, number]; 
   const [px, py, pz] = planet.position;
   // Velocity along the angle is (-sin, ·, cos): the heading of +Z turned by yaw is atan2(vx, vz).
   return { x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r * PARK.tilt, z: pz + Math.sin(angle) * r, yaw: Math.atan2(-Math.sin(angle), Math.cos(angle)) };
+}
+
+/** Current foreign appearances only; the owner's separate view keeps its repair clock and hangar action. */
+export function observedParkedShips(planets: readonly GalaxyPlanet[]): ParkedShip[] {
+  return planets.flatMap(planet => {
+    const ship = planet.commanderShip;
+    return ship && planet.intel === 'RESOLVED' && !(planet.isOwned ?? planet.isSelf)
+      ? [{ planetId: planet.id, ship: ship.ship, level: ship.level, docked: ship.docked, reason: null, until: null }]
+      : [];
+  });
 }

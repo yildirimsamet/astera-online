@@ -29,9 +29,9 @@ const shares = z.object({ alloy: z.number().int().nonnegative(), crystal: z.numb
 export const teamSchema = z.object({
   playerId: z.string().uuid(), clanId: z.string().uuid().nullable(), capacity: z.number().int().positive().max(120), canCreate: z.boolean(),
   team: z.object({ id: z.string().uuid(), state: z.enum(['forming', 'flying']), leaderId: z.string().max(64), joined: z.boolean(),
-    members: z.array(z.object({ playerId: z.string().uuid(), name: z.string().max(80), ready: z.boolean(), tactic: z.enum(TACTICS),
+    members: z.array(z.object({ playerId: z.string().uuid(), name: z.string().max(80), ready: z.boolean(), tactic: z.enum(TACTICS), tactic2: z.enum(TACTICS).nullable().optional(),
       outcome: z.string().max(32).nullable(), blocked: z.string().max(64).nullable(),
-      ship: z.object({ class: z.enum(SHIP_CLASSES), level: z.number().int().min(1).max(20), fuel: z.number().nonnegative(), fuelMax: z.number().positive(), readyAt: z.string().datetime().nullable() }).nullable(),
+      ship: z.object({ class: z.enum(SHIP_CLASSES), level: z.number().int().min(1).max(20), fuel: z.number().nonnegative(), fuelMax: z.number().positive(), readyAt: z.string().datetime().nullable(), abilities: abilities.optional() }).nullable(),
     })).max(CLAN.maxMembers),
   }).nullable(),
   claims: z.array(z.object({ teamId: z.string().uuid(), share: shares, finishedAt: z.string().datetime(), autoAt: z.string().datetime() })).max(20),

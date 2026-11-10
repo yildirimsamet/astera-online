@@ -1,5 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import { coreTier, honorSoloCredit, isSupportedHonorVersion, HONOR_HISTORY_HOURS, honorChallenge, honorPairKey, honorReferenceAt } from '@astera/rules';
+import { coreTier, HONOR_ATTACK_NAVY_BAND, honorSoloCredit, isSupportedHonorVersion, HONOR_HISTORY_HOURS, honorChallenge, honorPairKey, honorReferenceAt } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
@@ -40,7 +40,7 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     });
     const [own, enemy] = references;
     if (!own || !enemy) throw new Error('Missing Honor preview reference');
-    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier, weakNavyBand: 75 });
+    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier, weakNavyBand: HONOR_ATTACK_NAVY_BAND });
     const relationships = await readHonorRelations(tx, { seasonId: owner.seasonId, attack: [playerId], defence: [target.owner], at: now, adminUsernames });
     if (!relationships.eligible) return { enabled: true as const, eligible: false as const };
     const state = honorStateSchema.parse(config.state), since = now.getTime() - HONOR_HISTORY_HOURS * 3_600_000;

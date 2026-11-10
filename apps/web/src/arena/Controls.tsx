@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
-import { CLASS_STATS, abilityStats, shipStats, type ShipClass, type Tactic } from '@astera/rules/arena';
+import { CLASS_STATS, abilityStats, tacticRank, tacticWait, shipStats, type ShipClass, type Tactic } from '@astera/rules/arena';
 import { AIM_WINDOW_MS, KNOB_TRAVEL, MOUSE_DEADZONE, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, railLevel, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
 import { arenaCopy, type ArenaCopy } from './copy.js';
@@ -105,7 +105,7 @@ function AimTray({ controls, s, since, nameOf }: { controls: ArenaControls; s: H
 const MOUSE_REACH_PX = 90;
 
 /** The desktop's key on each control (shown by arena.css only where a fine pointer hovers). */
-const keyCap = (action: ArenaAction, c: ArenaCopy): string => action === 'fire' ? c.keyFire : action === 'turbo' ? 'Shift' : action === 'signature' ? 'Q' : 'E';
+const keyCap = (action: ArenaAction, c: ArenaCopy, second: boolean): string => action === 'fire' ? c.keyFire : action === 'turbo' ? 'Shift' : action === 'signature' ? 'Q' : second ? 'C' : 'E';
 
 const circleOf = (element: HTMLElement): Circle => {
   const r = element.getBoundingClientRect();
@@ -214,10 +214,10 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
   const missile = status.ship === 'akinci';
   // FIRE's ring is the magazine (owner 2026-10-21: ammunition is its own, read where it is spent);
   // the missile's ring fills as its lock builds.
-  const skill = (action: 'signature' | 'turbo' | Tactic) => abilityStats(status.ship, action, action === 'signature' ? status.ranks.signature : action === 'turbo' ? status.ranks.turbo : status.ranks.tactic);
+  const skill = (action: 'signature' | 'turbo' | Tactic) => abilityStats(status.ship, action, action === 'signature' ? status.ranks.signature : action === 'turbo' ? status.ranks.turbo : tacticRank(status, action));
   const cooldown = (action: ArenaAction): number => action === 'smoke' ? status.smokeCooldown / skill(action).cooldown
     : action === 'cloak' ? status.cloakCooldown / skill(action).cooldown : action === 'turbo' ? 1 - status.turboCharge / skill(action).duration
-      : action === 'illusion' || action === 'radar' ? status.tacticCooldown / skill(action).cooldown
+      : action === 'illusion' || action === 'radar' ? tacticWait(status, action) / skill(action).cooldown
       : action === 'signature' ? status.signatureCooldown > 0 ? status.signatureCooldown / skill(action).cooldown : missile ? 1 - status.lockProgress : 0
         : 1 - status.ammo / CLASS_STATS[status.ship].ammoCapacity;
   const label = (action: ArenaAction, wait: number): string => wait > 0 ? String(Math.ceil(wait))
@@ -225,7 +225,7 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
       : c.signatures[status.ship].name
       : action !== 'fire' ? c[action] : status.ammo < 1 ? c.empty : `${c.fire} · ${String(status.ammo)}`;
   const seconds = (action: ArenaAction): number => action === 'smoke' ? status.smokeCooldown : action === 'cloak' ? status.cloakCooldown
-    : action === 'illusion' || action === 'radar' ? status.tacticCooldown : action === 'signature' ? status.signatureCooldown : 0;
+    : action === 'illusion' || action === 'radar' ? tacticWait(status, action) : action === 'signature' ? status.signatureCooldown : 0;
   return <div className="ac-root">
     <div ref={pad} className="ac-stick-pad" role="group" aria-label={c.throttle}
       onPointerDown={event => {
@@ -276,13 +276,13 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
     <div ref={pointer} className="ac-mouse" aria-hidden style={{ '--reach': `${String(MOUSE_REACH_PX)}px`, '--still': `${String(Math.max(7, MOUSE_DEADZONE * MOUSE_REACH_PX))}px` } as React.CSSProperties}>
       <b /><em /><i ref={pointerDot} /></div>
     {aiming && <AimTray controls={controls} s={status} since={aimSince} nameOf={nameOf} />}
-    {(['fire', 'turbo', 'signature', status.tactic] as const).map(action => {
+    {(['fire', 'turbo', 'signature', status.tactic, ...(status.tactic2 && status.tactic2 !== status.tactic ? [status.tactic2] : [])] as const).map(action => {
       const wait = seconds(action);
       const charge = cooldown(action);
       const chorded = action === 'fire' || action === 'turbo';
       const ready = action === 'signature' && wait === 0 && (!missile || status.lockReady);
       return <button key={action} ref={element => { if (element) keys.current.set(action, element); else keys.current.delete(action); }}
-        className={`ac-action ac-${action} ${action === 'turbo' && status.turboActive ? 'is-active' : ''} ${action === 'fire' && status.locked ? 'is-locked' : ''} ${chorded ? 'is-chorded' : ''} ${held.has(action) ? 'is-pressed' : ''} ${ready ? 'is-ready' : ''} ${action === 'signature' && aiming ? 'is-aiming' : ''}`}
+        className={`ac-action ac-${action} ${action === status.tactic2 ? 'ac-tactic-second' : ''} ${action === 'turbo' && status.turboActive ? 'is-active' : ''} ${action === 'fire' && status.locked ? 'is-locked' : ''} ${chorded ? 'is-chorded' : ''} ${held.has(action) ? 'is-pressed' : ''} ${ready ? 'is-ready' : ''} ${action === 'signature' && aiming ? 'is-aiming' : ''}`}
         aria-label={action === 'fire' ? `${c.fire} · ${String(status.ammo)} ${c.rounds}` : action === 'signature' ? c.signatures[status.ship].name : c[action]}
         disabled={!alive || wait > 0 || (action === 'fire' && status.ammo < 1) || (action === 'signature' && missile && !status.lockReady)}
         data-ship={action === 'signature' ? status.ship : undefined}
@@ -299,7 +299,7 @@ export function FlightControls({ controls, store, onLand, onCancel, nameOf = Str
         <svg className="ac-ring" viewBox="0 0 100 100" aria-hidden><circle cx="50" cy="50" r="47" /></svg>
         <span className="ac-icon" aria-hidden>{action === 'signature' ? SIGNATURE_ICONS[status.ship] : ACTION_ICONS[action]}</span>
         <small>{label(action, wait)}</small>
-        <kbd className="ac-key">{keyCap(action, c)}</kbd>
+        <kbd className="ac-key">{keyCap(action, c, action === status.tactic2)}</kbd>
       </button>;
     })}
   </div>;

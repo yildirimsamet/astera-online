@@ -11,7 +11,8 @@ vi.mock('../src/onboarding/flightSchool/SchoolHighlight.js', () => ({
 }));
 
 /** Owner 2026-11-08: the sheet a tapped fleet opens slid over its mark, and the pointer stayed on top of the sheet. */
-const box = { x: 100, y: 500, left: 100, top: 500, right: 140, bottom: 540, width: 40, height: 40, toJSON: () => ({}) } as DOMRect;
+const rect = { x: 100, y: 500, left: 100, top: 500, right: 140, bottom: 540, width: 40, height: 40, toJSON: () => ({}) };
+const box = rect as DOMRect;
 let frame: FrameRequestCallback | null = null;
 let now = 0;
 const tick = () => { act(() => { now += 200; const run = frame; frame = null; run?.(now); }); };
@@ -58,7 +59,7 @@ it('keeps pointing at a scene mark while the sky moves it', () => {
   tick();
   const mark = screen.getByTestId('mark');
   for (const x of [103, 108, 112, 119]) {
-    mark.getBoundingClientRect = () => ({ ...box, x, left: x, right: x + 40 });
+    mark.getBoundingClientRect = () => ({ ...rect, x, left: x, right: x + 40 });
     tick();
     expect(hand.read()).toHaveLength(1);
   }

@@ -25,6 +25,8 @@ export interface WikiArticle {
   sections: Localized<readonly WikiSection[]>;
   subject?: WikiSubject;
   image?: string;
+  /** ISO date a long-form guide was last revised; shown on the page and in its structured data. */
+  updated?: string;
   related: readonly string[];
 }
 export interface WikiCategory {

@@ -1,6 +1,6 @@
 {
-  "id": "ef6e19c6-d934-4174-8a13-5b778ba77791",
-  "prevId": "57e3b67e-b3a0-4d15-ba69-37562703871d",
+  "id": "20fe3b87-2961-4a53-a230-46e80b05f45e",
+  "prevId": "6424c51e-5128-4be2-a819-35f66c37afcc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -19929,12 +19929,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "next_check_at": {
-          "name": "next_check_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -19943,21 +19937,6 @@
           "columns": [
             {
               "expression": "next_repair_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "return_reminders_check_idx": {
-          "name": "return_reminders_check_idx",
-          "columns": [
-            {
-              "expression": "next_check_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -25213,12 +25192,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "slot_choice": {
           "name": "slot_choice",
           "type": "integer",
@@ -25300,22 +25273,6 @@
           ],
           "isUnique": false,
           "where": "\"vessel_migrations\".\"status\" = 'DEPARTING'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "vessel_migrations_player_idx": {
-          "name": "vessel_migrations_player_idx",
-          "columns": [
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"vessel_migrations\".\"status\" = 'DONE'",
           "concurrently": false,
           "method": "btree",
           "with": {}

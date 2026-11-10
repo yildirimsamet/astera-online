@@ -34,12 +34,16 @@ export function honorNumber(value: bigint): number {
   return Number(value);
 }
 
+/** Owner 2026-11-09: what new dispatches freeze. Older contracts keep their own table. */
+export const HONOR_ATTACK_NAVY_BAND = 50;
+export type HonorWeakNavyBand = 75 | typeof HONOR_ATTACK_NAVY_BAND;
+
 export interface HonorComparison {
   /** Frozen galaxy/season maximum at dispatch. Absent on historical contracts. */
   galaxyTopTier?: number;
-  /** Frozen at dispatch (owner 2026-10-30): a lower tier is weak only below 75 % of
-   * own navy, the full-return band. Absent on historical contracts: any smaller navy. */
-  weakNavyBand?: 75;
+  /** Frozen at dispatch; each value names a whole attack table. 50 is the current one,
+   * 75 the 2026-10-30 lower-tier rule. Absent on historical contracts: any smaller navy. */
+  weakNavyBand?: HonorWeakNavyBand;
   ownTier: number;
   enemyTier: number;
   ownNavy: number;
@@ -52,6 +56,14 @@ export interface HonorChallenge {
   tierNumerator: 4 | 5;
 }
 
+/** Full return runs to 1.5:1 against a lower tier, 2:1 at the same, 2.5:1 against a higher; half to 3:1. */
+function relaxedGainFactor(q: HonorComparison, a: bigint, d: bigint, topTierPeer: boolean): HonorChallenge['gainFactor'] {
+  if (a === 0n || 3n * d < a) return 0;
+  const full = q.enemyTier > q.ownTier ? 5n * d >= 2n * a
+    : q.enemyTier === q.ownTier || topTierPeer ? 2n * d >= a : 3n * d >= 2n * a;
+  return full ? 1_000_000 : 500_000;
+}
+
 /** Public coarse bands, never the private exact enemy navy ratio. */
 export function honorChallenge(q: HonorComparison): HonorChallenge {
   for (const tier of [q.ownTier, q.enemyTier, ...(q.galaxyTopTier === undefined ? [] : [q.galaxyTopTier])]) {
@@ -59,12 +71,13 @@ export function honorChallenge(q: HonorComparison): HonorChallenge {
   }
   const a = honorInteger(q.ownNavy), d = honorInteger(q.enemyNavy);
   const topTierPeer = q.ownTier === q.galaxyTopTier && q.enemyTier === q.ownTier - 1;
-  const smaller = q.weakNavyBand === undefined ? d < a : 4n * d < 3n * a;
+  const relaxed = q.weakNavyBand === HONOR_ATTACK_NAVY_BAND;
+  const smaller = q.weakNavyBand === undefined ? d < a : relaxed ? 2n * d < a : 4n * d < 3n * a;
   const weak = !topTierPeer && q.enemyTier < q.ownTier && (smaller || d === 0n);
   const upper = q.enemyTier > q.ownTier && d >= a && d > 0n;
   return {
     kind: weak ? 'WEAK' : upper ? 'UPPER' : 'PEER',
-    gainFactor: a === 0n || 2n * d < a ? 0 : 4n * d < 3n * a ? 500_000 : 1_000_000,
+    gainFactor: relaxed ? relaxedGainFactor(q, a, d, topTierPeer) : a === 0n || 2n * d < a ? 0 : 4n * d < 3n * a ? 500_000 : 1_000_000,
     tierNumerator: upper ? 5 : 4,
   };
 }

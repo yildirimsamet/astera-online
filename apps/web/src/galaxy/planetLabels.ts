@@ -74,7 +74,7 @@ const textCells = (value: string): number => {
 export function planetLabelWidth(node: PlanetNode, detail: boolean): number {
   const ownerWidth = node.kind === 'NEUTRAL' ? 0
     : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5.5 + (node.country ? 16 : 0)
-      + (node.honorRanking ? node.honorRank ? 30 : 0 : node.dominionRank ? 16 : 0);
+      + (node.honorRanking && node.honorRank ? 30 : 0) + (node.dominionRank ? 30 : 0);
   const textWidth = Math.max(textCells(node.name) * 6 + 12, ownerWidth + 12);
   if (detail) return Math.min(PLANET_LABEL_DETAIL_MAX_WIDTH, Math.max(180, textWidth));
   if (node.intel === 'REMEMBERED') return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(150, textWidth));
@@ -86,7 +86,7 @@ export function planetLabelRank(node: PlanetNode, selectedId: string | null, riv
   if (node.id === selectedId) return 0;
   if (node.isOwned) return 1;
   if (node.isClanmate) return 2;
-  if (node.honorRanking ? node.honorRank : node.dominionRank) return 3;
+  if ((node.honorRanking && node.honorRank) || node.dominionRank) return 3;
   if (rivalSlotOf(node, rivals) !== null) return 4;
   if (node.state.kind === 'RECOVERY' || node.state.kind === 'EMP' || (node.claimUntil?.getTime() ?? 0) > now) return 5;
   return node.stance === 'window' ? 6 : 7;

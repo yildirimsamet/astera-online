@@ -15,7 +15,7 @@ export { clampToArena, closestSurface, hullCandidates, hullGap, nearestObstacle,
 export { hullCapsule, hullReach, segmentCapsule, sweptHull, type Capsule } from './hull.js';
 export { aimCone, assistSteer, circleAim, gimbalAim, leadPoint, leadTime, type AimCone } from './aim.js';
 export { alignUp, forwardVector, sideVector, toLocal, upVector } from './vec.js';
-export { alive, PHASES, TACTICS, sameSide } from './pilot.js';
+export { alive, hasTactic, tacticRank, tacticWait, PHASES, TACTICS, sameSide } from './pilot.js';
 export { SCANNED, mirrorPose, scanTargets, type Scan } from './tactics.js';
 export { HIT_REFERENCE, RING_DISTANCE, SPREAD_PATTERN, SPREAD_REACH, hitShare, scatter, spreadAt, strike } from './combat.js';
 export { SIGNATURE_COOLDOWN, lockShare, locked } from './signatures.js';

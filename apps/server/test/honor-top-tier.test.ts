@@ -20,8 +20,8 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 22); // tier 8
     await setLevel(f.db, f.planetIds[1]!, 'CORE', 19); // tier 7
     await giveUnits(f.db, f.planetIds[0]!, { DART: 100 });
-    // 74 %: just below the weak-target band (2026-10-30), so lifting the leader exception still makes it weak.
-    await giveUnits(f.db, f.planetIds[1]!, { DART: 74 });
+    // 49 %: just below the weak-target band (2026-11-09), so lifting the leader exception still makes it weak.
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 49 });
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock, 4));
     await f.db.update(honorSeasons).set({ mode: 'ACTIVE', rankedAt: f.clock.now() });
   });

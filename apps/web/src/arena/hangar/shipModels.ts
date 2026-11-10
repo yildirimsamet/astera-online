@@ -1,14 +1,17 @@
 /**
  * The class ships' files and the bits every scene that draws one needs: the hangar, and the galaxy
- * where the ship parks beside its capital (KG-A20). They share the page's one KTX2 transcoder, or
- * take the webp copies where it cannot start.
+ * where ships park beside capitals and escort visible fleets. Galaxy models use the small
+ * self-contained webp files; other arena loaders may still use the page's KTX2 transcoder.
  */
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../../api/context.js';
+import { bundledApp } from '../origin.js';
 import * as THREE from 'three';
 import type { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { SHIP_CLASSES, type ShipClass } from '@astera/rules/arena';
-import { memoryTight, packsFor } from '../assets/load.js';
+import { memoryTight, packsFor, WEBP_PACK } from '../assets/load.js';
 import { parseReferenceManifest } from '../assets/manifest.js';
 import { ktx2Ready, sharedKtx2 } from '../assets/memory.js';
 
@@ -52,6 +55,32 @@ export function useShipModels(enabled: boolean, lite = memoryTight(navigator)): 
     return () => { run.live = false; };
   }, [enabled, lite]);
   return models;
+}
+
+/** One catalogue for every galaxy ship. Web requests refresh the scoped cookie before it expires. */
+export function useGalaxyShipModels(enabled: boolean): Partial<Record<ShipClass, ShipModel>> | null {
+  const api = useApi();
+  const query = useQuery({
+    queryKey: ['galaxy-ship-models'],
+    queryFn: async () => {
+      // Android carries the self-contained webp models; no cross-origin cookie or download is needed.
+      if (!bundledApp()) return (await api.galaxyShipModels()).models;
+      const response = await fetch(WEBP_PACK);
+      if (!response.ok) throw new Error('Bundled ship catalogue unavailable');
+      const classes = parseReferenceManifest(await response.json())?.ships.classes;
+      if (!classes) throw new Error('Bundled ship catalogue invalid');
+      const found: Partial<Record<ShipClass, ShipModel>> = {};
+      for (const ship of SHIP_CLASSES) {
+        const d = classes[ship];
+        found[ship] = { url: d.model, engines: d.engines ?? [], nozzle: d.nozzle ?? .03, ktx2: false };
+      }
+      return found;
+    },
+    enabled, staleTime: query => query.state.data ? 5 * 3600_000 : 30_000,
+    refetchInterval: query => query.state.status === 'error' || !query.state.data ? 30_000 : 5 * 3600_000,
+    gcTime: 5 * 3600_000, retry: 1,
+  });
+  return query.isStale ? null : query.data ?? null;
 }
 
 /** A soft round sprite drawn once: the engine glow, the contact shadow and the pad's light. */

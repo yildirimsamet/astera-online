@@ -1601,120 +1601,134 @@
     {
       "idx": 228,
       "version": "7",
-      "when": 1793814520559,
-      "tag": "0228_starter_galaxy",
+      "when": 1794096466389,
+      "tag": "0228_commander_ship_sight",
       "breakpoints": true
     },
     {
       "idx": 229,
       "version": "7",
-      "when": 1793814523696,
-      "tag": "0229_starter_stream_triggers",
+      "when": 1794259805511,
+      "tag": "0229_arena_dual_tactics",
       "breakpoints": true
     },
     {
       "idx": 230,
       "version": "7",
-      "when": 1793834199617,
-      "tag": "0230_vessel_last_progress",
+      "when": 1794259865511,
+      "tag": "0230_starter_galaxy",
       "breakpoints": true
     },
     {
       "idx": 231,
       "version": "7",
-      "when": 1793835883774,
-      "tag": "0231_starter_world",
+      "when": 1794259925511,
+      "tag": "0231_starter_stream_triggers",
       "breakpoints": true
     },
     {
       "idx": 232,
       "version": "7",
-      "when": 1793843441939,
-      "tag": "0232_starter_migrations",
+      "when": 1794259985511,
+      "tag": "0232_vessel_last_progress",
       "breakpoints": true
     },
     {
       "idx": 233,
       "version": "7",
-      "when": 1793847024985,
-      "tag": "0233_starter_ship_bots",
+      "when": 1794260045511,
+      "tag": "0233_starter_world",
       "breakpoints": true
     },
     {
       "idx": 234,
       "version": "7",
-      "when": 1793847343546,
-      "tag": "0234_starter_chat",
+      "when": 1794260105511,
+      "tag": "0234_starter_migrations",
       "breakpoints": true
     },
     {
       "idx": 235,
       "version": "7",
-      "when": 1793847492662,
-      "tag": "0235_starter_return",
+      "when": 1794260165511,
+      "tag": "0235_starter_ship_bots",
       "breakpoints": true
     },
     {
       "idx": 236,
       "version": "7",
-      "when": 1793847552662,
-      "tag": "0236_starter_crates",
+      "when": 1794260225511,
+      "tag": "0236_starter_chat",
       "breakpoints": true
     },
     {
       "idx": 237,
       "version": "7",
-      "when": 1793847612662,
-      "tag": "0237_return_notifications",
+      "when": 1794260285511,
+      "tag": "0237_starter_return",
       "breakpoints": true
     },
     {
       "idx": 238,
       "version": "7",
-      "when": 1793847672662,
-      "tag": "0238_return_signals",
+      "when": 1794260345511,
+      "tag": "0238_starter_crates",
       "breakpoints": true
     },
     {
       "idx": 239,
       "version": "7",
-      "when": 1793847732662,
-      "tag": "0239_return_check_schedule",
+      "when": 1794260405511,
+      "tag": "0239_return_notifications",
       "breakpoints": true
     },
     {
       "idx": 240,
       "version": "7",
-      "when": 1793847792662,
-      "tag": "0240_vessel_migrations_player_idx",
+      "when": 1794260465511,
+      "tag": "0240_return_signals",
       "breakpoints": true
     },
     {
       "idx": 241,
       "version": "7",
-      "when": 1793847852662,
-      "tag": "0241_probe_report_delivery",
+      "when": 1794260525511,
+      "tag": "0241_return_check_schedule",
       "breakpoints": true
     },
     {
       "idx": 242,
       "version": "7",
-      "when": 1793847912662,
-      "tag": "0242_vessel_sight_since",
+      "when": 1794260585511,
+      "tag": "0242_vessel_migrations_player_idx",
       "breakpoints": true
     },
     {
       "idx": 243,
       "version": "7",
-      "when": 1794096791760,
-      "tag": "0243_vessel_analytics_provenance",
+      "when": 1794260645511,
+      "tag": "0243_probe_report_delivery",
       "breakpoints": true
     },
     {
       "idx": 244,
       "version": "7",
-      "when": 1794106377709,
-      "tag": "0244_starter_guide_off",
+      "when": 1794260705511,
+      "tag": "0244_vessel_sight_since",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1794260765511,
+      "tag": "0245_vessel_analytics_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1794260825511,
+      "tag": "0246_starter_guide_off",
       "breakpoints": true
     }
   ]

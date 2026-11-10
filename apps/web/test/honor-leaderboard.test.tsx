@@ -74,9 +74,14 @@ describe('Honor is the primary player-visible race', () => {
 
   it('keeps Dominion available as a separate ranking', async () => {
     await show();
+    const honorTab = screen.getByRole('button', { name: 'Honor' });
+    const dominionTab = screen.getByRole('button', { name: 'Dominion' });
+    expect(dominionTab.querySelector('svg')).toBeInTheDocument();
+    expect(dominionTab.querySelector('svg')?.innerHTML).not.toBe(honorTab.querySelector('svg')?.innerHTML);
     await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
     expect(screen.getByRole('button', { name: 'Dominion', pressed: true })).toBeInTheDocument();
     expect(screen.getByText('+900')).toBeInTheDocument();
+    expect(screen.getByText('+900').closest('[data-dominion-score]')?.querySelector('svg')).toBeInTheDocument();
   });
   it('keeps last season’s delivered receipt separate from the current prize estimate', async () => {
     await show(true);

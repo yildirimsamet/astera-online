@@ -1,6 +1,6 @@
 import { and, eq, inArray, asc, desc, gt, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import { HONOR_VERSION, HONOR_LEGACY_VERSION, HONOR_CANDIDATE_VERSION, HONOR_LAUNCH_VERSION, isSupportedHonorVersion } from '@astera/rules';
+import { HONOR_ATTACK_NAVY_BAND, HONOR_VERSION, HONOR_LEGACY_VERSION, HONOR_CANDIDATE_VERSION, HONOR_LAUNCH_VERSION, isSupportedHonorVersion } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { commanderTransfers, honorCommitments, honorObservations, honorSeasons, players } from '../db/schema.js';
 import { honorEvidenceSchema } from './honorAccounting.js';
@@ -66,7 +66,7 @@ export async function commitHonor(tx: Tx, input: {
   const roster = config.version === HONOR_LAUNCH_VERSION
     ? await tx.select({ id: players.id }).from(players).where(eq(players.seasonId, input.seasonId)).orderBy(asc(players.id)) : undefined;
   const snapshot = honorCommitmentSchema.parse({ version: config.version, at: input.at.getTime(), referenceOrder,
-    galaxyTopTier: await honorGalaxyTopTier(tx, input.seasonId, input.at, input.adminUsernames), weakNavyBand: 75,
+    galaxyTopTier: await honorGalaxyTopTier(tx, input.seasonId, input.at, input.adminUsernames), weakNavyBand: HONOR_ATTACK_NAVY_BAND,
     // Keep the legacy wire shape until every API/worker understands 40% contracts.
     ...(config.retaliationLootPercent === 40 ? { retaliationLootPercent: 40 } : {}),
     ...(roster ? { presentAtLaunch: roster.map(row => row.id) } : {}),

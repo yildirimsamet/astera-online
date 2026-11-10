@@ -9,7 +9,7 @@ import { createInput } from './controls.js';
 import { FIELD_GROUP_SIZE, pickFieldSpawn } from './farms.js';
 import { createFlightState, stepFlight } from './flight.js';
 import { ARENA_LAYOUT, spawnFlight } from './layout.js';
-import { alive, copyFlight, createPilot, type ArenaIntent, type CargoDrop, type Impact, type Missile, type Pilot,
+import { alive, hasTactic, tacticRank, copyFlight, createPilot, type ArenaIntent, type CargoDrop, type Impact, type Missile, type Pilot,
   type Projectile, type SmokePuff, type Tactic } from './pilot.js';
 import { ageEffects, ARENA_POOLS } from './pools.js';
 import { castSignature, stepLock, stepMissiles, stepSignatureTimers } from './signatures.js';
@@ -50,7 +50,7 @@ export interface ArenaWorld {
 }
 
 /** `ship`, `tactic`: the class and B slot the world's own pilot flies (the sandbox's choice). */
-export interface WorldOptions { bots?: number; layout?: ArenaLayout; seed?: number; ship?: ShipClass; tactic?: Tactic }
+export interface WorldOptions { bots?: number; layout?: ArenaLayout; seed?: number; ship?: ShipClass; tactic?: Tactic; tactic2?: Tactic | null }
 
 const point = (): Vec3 => ({ x: 0, y: 0, z: 0 });
 const projectile = (): Projectile => ({ p: point(), previous: point(), v: point(), life: 0, owner: -1, damage: 0 });
@@ -76,7 +76,7 @@ function place(world: ArenaWorld, pilot: Pilot): void {
 /** Local or shared world. Holds no persistent rewards, repairs or galaxy economy. */
 export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
   const layout = options.layout ?? ARENA_LAYOUT;
-  const pilot = createPilot(0, options.ship, options.tactic);
+  const pilot = createPilot(0, options.ship, options.tactic, 1, options.tactic2);
   const world: ArenaWorld = {
     layout, pilot, previous: createFlightState(), drones: [], dronePrevious: [], brains: new Map(),
     random: mulberry32(options.seed ?? 4100),
@@ -186,16 +186,16 @@ function stepPilot(world: ArenaWorld, pilot: Pilot, input: ArenaIntent, settings
   const dt = 1 / T.tickRate;
   pilot.shield = Math.max(0, pilot.shield - 1); pilot.cloak = Math.max(0, pilot.cloak - 1);
   pilot.cloakCooldown = Math.max(0, pilot.cloakCooldown - 1); pilot.smokeCooldown = Math.max(0, pilot.smokeCooldown - 1);
-  pilot.tacticCooldown = Math.max(0, pilot.tacticCooldown - 1); pilot.scan = Math.max(0, pilot.scan - 1);
+  pilot.tacticCooldown = Math.max(0, pilot.tacticCooldown - 1); pilot.tactic2Cooldown = Math.max(0, pilot.tactic2Cooldown - 1); pilot.scan = Math.max(0, pilot.scan - 1);
   const powered = pilot.fuel > 0 && pilot.phase === 'flying';
   stepSignatureTimers(world, pilot);
   if (!predictOnly) { stepLock(world, pilot); if (powered) { castSignature(world, pilot, input); castTactic(world, pilot, input); } }
-  if (powered && input.smoke && pilot.tactic === 'smoke' && pilot.smokeCooldown === 0) {
-    const skill = abilityStats(pilot.ship, 'smoke', pilot.ranks.tactic);
+  if (powered && input.smoke && hasTactic(pilot, 'smoke') && pilot.smokeCooldown === 0) {
+    const skill = abilityStats(pilot.ship, 'smoke', tacticRank(pilot, 'smoke'));
     pilot.smokeEmit = Math.round(skill.duration * T.tickRate); pilot.smokeCooldown = Math.round(skill.cooldown * T.tickRate);
   }
-  if (powered && input.cloak && pilot.tactic === 'cloak' && pilot.cloakCooldown === 0) {
-    const skill = abilityStats(pilot.ship, 'cloak', pilot.ranks.tactic);
+  if (powered && input.cloak && hasTactic(pilot, 'cloak') && pilot.cloakCooldown === 0) {
+    const skill = abilityStats(pilot.ship, 'cloak', tacticRank(pilot, 'cloak'));
     pilot.cloak = Math.round(skill.duration * T.tickRate); pilot.cloakCooldown = Math.round(skill.cooldown * T.tickRate);
   }
   if (powered && input.turboBurst) pilot.turboBurst = T.turboTapBurst * T.tickRate;

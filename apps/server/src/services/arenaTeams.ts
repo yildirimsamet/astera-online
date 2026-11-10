@@ -60,10 +60,11 @@ async function viewIn(q: Tx, clock: Clock, accountId: string): Promise<TeamView>
       const state = await readiness(q, clock, memberAccount);
       const currentClan = team.state === 'forming' ? await membership(q, m.playerId) : null;
       const blocked = team.state === 'forming' && currentClan?.clanId !== team.clanId ? 'NO_CLAN' : state.blocked;
-      members.push({ playerId: m.playerId, name, tactic: m.tactic, outcome: m.outcome, blocked,
+      members.push({ playerId: m.playerId, name, tactic: m.tactic, tactic2: m.tactic2, outcome: m.outcome, blocked,
         ready: m.ready && blocked === null && m.fingerprint === state.fingerprint,
         ship: state.ship ? { class: state.ship.ship, level: state.ship.level, fuel: state.ship.fuel,
-          fuelMax: shipStats(state.ship.ship, state.ship.level).fuelTank, readyAt: state.ship.readyAt?.toISOString() ?? null } : null });
+          fuelMax: shipStats(state.ship.ship, state.ship.level).fuelTank, readyAt: state.ship.readyAt?.toISOString() ?? null,
+          ...(m.playerId === who.playerId ? { abilities: state.ship.abilities } : {}) } : null });
     }
     detail = { id: team.id, state: team.state, leaderId: leader, joined: members.some(m => m.playerId === who.playerId), members };
   }
@@ -147,8 +148,9 @@ export async function leaveTeam(db: Db, clock: Clock, accountId: string, teamId:
   });
 }
 
-export async function readyTeam(db: Db, clock: Clock, accountId: string, input: { teamId: string; ready: boolean; tactic: Tactic }): Promise<TeamView> {
+export async function readyTeam(db: Db, clock: Clock, accountId: string, input: { teamId: string; ready: boolean; tactic: Tactic; tactic2?: Tactic | null }): Promise<TeamView> {
   return db.transaction(async tx => {
+    if (input.tactic === input.tactic2) throw new GameError('invalid', 'Choose different tactics', 400);
     const { who, team } = await teamAction(tx, clock, accountId, input.teamId);
     if (team.state !== 'forming') throw new GameError('TEAM_STARTED', 'This match already launched', 409);
     const active = await activeTeamFor(tx, who.playerId);
@@ -156,7 +158,7 @@ export async function readyTeam(db: Db, clock: Clock, accountId: string, input: 
     await shipFor(tx, who.playerId).for('update');
     const state = await readiness(tx, clock, accountId);
     if (input.ready && state.blocked) throw new GameError(state.blocked, 'Your ship is not ready for this team', 409);
-    await tx.update(arenaTeamMembers).set({ ready: input.ready, fingerprint: input.ready ? state.fingerprint : null, tactic: input.tactic }).where(eq(arenaTeamMembers.id, active.member.id));
+    await tx.update(arenaTeamMembers).set({ ready: input.ready, fingerprint: input.ready ? state.fingerprint : null, tactic: input.tactic, tactic2: input.tactic2 ?? null }).where(eq(arenaTeamMembers.id, active.member.id));
     return viewIn(tx, clock, accountId);
   });
 }
@@ -187,7 +189,7 @@ export async function startTeam(db: Db, clock: Clock, accountId: string, teamId:
     }
     for (const r of roster) {
       const flight = await launchSortieIn(tx, clock, r.accountId, true);
-      const launch: Launch = { ...flight, tactic: r.m.tactic, ...(roster.length > 1 ? { teamId: team.id } : {}) };
+      const launch: Launch = { ...flight, tactic: r.m.tactic, tactic2: r.m.tactic2, ...(roster.length > 1 ? { teamId: team.id } : {}) };
       await tx.update(arenaTeamMembers).set({ sortieId: launch.sortieId, launch }).where(eq(arenaTeamMembers.id, r.m.id));
     }
     await tx.update(arenaTeams).set({ state: 'flying', solo: roster.length === 1, startedAt: clock.now() }).where(eq(arenaTeams.id, team.id));

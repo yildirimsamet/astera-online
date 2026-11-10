@@ -48,7 +48,10 @@ it('credits real new radiation damage in small capped increments, without requir
 });
 it.each([true, false])('does not award empty impact and classifies actual radiation pressure: leader=%s', async leader => {
   await setLevel(f.db, f.planetIds[0]!, 'CORE', 15);
-  if (!leader) await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
+  if (!leader) {
+    await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
+    await giveUnits(f.db, f.planetIds[0]!, { PIKE: 5000 }); // target under half of this navy: a weak target
+  }
   await hit();
   f.clock.advance(1);
   await f.db.transaction(tx => settlePlanetRadiationAt(tx, f.planetIds[1]!, f.clock.now()));

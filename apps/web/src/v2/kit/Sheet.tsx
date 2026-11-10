@@ -190,6 +190,7 @@ export function Sheet({
 
   return (
     <div
+      data-sheet-holder=""
       className={`pointer-events-none fixed inset-x-0 top-[var(--v2-top-h,0px)] z-40 flex flex-col ${FRAME[placement].holder}`}
       /* From the screen top to above the dock; a short page keeps its own height. */
       style={{ bottom: 'var(--v2-dock-h, 0px)' }}
@@ -214,7 +215,7 @@ export function Sheet({
         data-sheet-panel=""
         className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
-        <div className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
+        <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
           {placement !== 'card' && !floatingHead && <button
             type="button"

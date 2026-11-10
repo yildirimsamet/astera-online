@@ -8,7 +8,7 @@ export const wikiLabels = localized({
   ruleNote: 'Base values before research and orbital bonuses. Your launch preview shows the values for your selected fleet and world.',
   priceNote: 'Each row is the separate cost to reach that level. Local levels and research affect timers and capacities. Research timing uses the capital’s Command Core.',
   edition: 'Language', articles: 'articles', categoryCount: 'categories', notFound: 'Wiki page not found', notFoundText: 'No Wiki page exists at this address. Choose a category from the Wiki home page.',
-  external: 'Public Wiki · no sign-in required', facts: 'Rules & reference',
+  external: 'Public Wiki · no sign-in required', facts: 'Rules & reference', updated: 'Updated',
 }, {
   home: 'Oyun Wiki’si', title: 'Astera Online Wiki', subtitle: 'Üretim, istihbarat, filo ve savaş kurallarını öğren. Bir sonraki eylemini seçmeden gereksinimleri, bedelleri ve riskleri karşılaştır.',
   categories: 'Wiki’yi keşfet', toc: 'Bu sayfada', related: 'İlgili konular', back: 'Geri dön:', publicPage: 'Wiki sayfasını aç',
@@ -18,5 +18,5 @@ export const wikiLabels = localized({
   ruleNote: 'Araştırma ve yörünge bonusları uygulanmadan önceki temel değerler. Seçtiğin filo ve gezegenin güncel değerleri gönderim önizlemesinde gösterilir.',
   priceNote: 'Her satır, o seviyeye ulaşmak için ayrı ödenecek bedeldir. Yerel seviyeler ve araştırmalar süreleri ve kapasiteleri etkiler. Araştırma süresini ana gezegendeki Komuta Çekirdeği belirler.',
   edition: 'Dil', articles: 'makale', categoryCount: 'kategori', notFound: 'Wiki sayfası bulunamadı', notFoundText: 'Bu adreste bir Wiki sayfası yok. Wiki’nin ana sayfasından bir kategori seç.',
-  external: 'Herkese açık Wiki · giriş gerektirmez', facts: 'Kurallar ve referans',
+  external: 'Herkese açık Wiki · giriş gerektirmez', facts: 'Kurallar ve referans', updated: 'Güncellendi',
 });

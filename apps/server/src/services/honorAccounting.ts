@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { HONOR_HISTORY_HOURS, HONOR_VERSION, HONOR_LAUNCH_VERSION, HONOR_CANDIDATE_VERSION, isSupportedHonorVersion, honorAdvancedPolicy, honorSoloCredit,
+import { HONOR_ATTACK_NAVY_BAND, HONOR_HISTORY_HOURS, HONOR_VERSION, HONOR_LAUNCH_VERSION, HONOR_CANDIDATE_VERSION, isSupportedHonorVersion, honorAdvancedPolicy, honorSoloCredit,
   honorNumber, honorPairKey, honorPairCredit, honorSplit, honorTeam, honorTeamCredit,
   type HonorVersion, type HonorTeamPool, type HonorTeamSettlement } from '@astera/rules';
 
@@ -10,8 +10,8 @@ const member = z.object({ id: identity, tier: amount.min(1), navy: amount, defen
   civilianWeight: amount, loss: amount, combatLoss: amount, lootLost: amount }).strict();
 export const honorEvidenceSchema = z.object({
   galaxyTopTier: amount.min(1).optional(),
-  /** Owner 2026-10-30: lower tier is weak only below 75 % navy. Absent on older contracts. */
-  weakNavyBand: z.literal(75).optional(),
+  /** The attack table frozen at dispatch (see `honorChallenge`). Absent on older contracts. */
+  weakNavyBand: z.union([z.literal(75), z.literal(HONOR_ATTACK_NAVY_BAND)]).optional(),
   retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional(),
   source: z.enum(['WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION']),
   id: identity, at: amount, eligible: z.boolean(), attack: z.array(member).min(1), defence: z.array(member),

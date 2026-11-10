@@ -1591,6 +1591,7 @@ export const galaxySchema = z.object({
        * Optional, and absent means `RESOLVED`, so a client ahead of its server
        * renders the galaxy it always did rather than blanking all of it.
        */
+      commanderShip: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1).max(20), docked: z.boolean() }).optional(),
       intel: z.enum(['RESOLVED', 'REMEMBERED', 'UNKNOWN']).default('RESOLVED'),
       /** When the probe observed this world. `REMEMBERED` only. */
       seenAt: z.coerce.date().optional(),
@@ -3654,6 +3655,7 @@ export const trafficSchema = z.object({
        */
       mass: massClass.optional(),
       /** Exact hull tally, only for an identified fleet inside Telescope sight. */
+      admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1).max(20) }).optional(),
       fleet: fleet.optional(),
       /** Physical prize hulls, only after exact identification. */
       towing: fleet.optional(),
