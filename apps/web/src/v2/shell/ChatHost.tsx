@@ -7,6 +7,9 @@ import { useChatUnread, useClanBadge, useDmUnread } from '../../api/queries.js';
 import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
 import { Sheet } from '../kit/Sheet.js';
 
+/** A phone keyboard is far taller than this; browser bars and typing never grow the page by it. */
+const KEYBOARD_CLOSED_PX = 150;
+
 /**
  * CHAT, A PAGE OF ITS OWN. Owner, 2026-09-24: "Signals ve Chronicle kalsın, chat'i
  * kaldır" — chat left the bell for its round button on the galaxy, low on the right
@@ -39,10 +42,16 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const viewport = window.visualViewport;
+    let previous = viewport?.height ?? window.innerHeight;
     // iOS pans the visual viewport; Android may resize the layout viewport instead.
     const sync = (): void => {
-      host.current?.style.setProperty('--chat-viewport-height', `${String(viewport?.height ?? window.innerHeight)}px`);
+      const height = viewport?.height ?? window.innerHeight;
+      host.current?.style.setProperty('--chat-viewport-height', `${String(height)}px`);
       host.current?.style.setProperty('--chat-viewport-top', `${String(viewport?.offsetTop ?? 0)}px`);
+      // Android's keyboard-hide key keeps the composer focused; the compose layout follows focus.
+      const field = document.activeElement;
+      if (height - previous > KEYBOARD_CLOSED_PX && field instanceof HTMLTextAreaElement && host.current?.contains(field)) field.blur();
+      previous = height;
     };
     sync();
     viewport?.addEventListener('resize', sync);

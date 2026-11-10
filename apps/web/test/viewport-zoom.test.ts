@@ -110,6 +110,15 @@ describe('page zoom is refused and the disc keeps its gestures', () => {
     expect(html).toContain('viewport-fit=cover');
   });
 
+  /*
+    Chrome and Brave on Android report a VisualViewport that disagrees with the
+    keyboard by 14 and 49 px (owner's S22, 2026-11-10); resizing the layout
+    viewport fits the keyboard exactly in both, and iOS ignores the key.
+  */
+  it('lets the keyboard resize the page, so a fixed composer ends at its top edge', () => {
+    expect(readFileSync('index.html', 'utf8')).toContain('interactive-widget=resizes-content');
+  });
+
   it('states it again as touch-action, which is the half iOS Safari obeys', () => {
     const css = readFileSync('src/styles.css', 'utf8');
     const html = /\bhtml\s*\{([^}]*)\}/s.exec(css)?.[1] ?? '';

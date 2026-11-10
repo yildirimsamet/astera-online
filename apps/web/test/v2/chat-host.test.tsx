@@ -24,7 +24,7 @@ vi.mock('../../src/api/queries.js', async () => {
 
 vi.mock('../../src/screens/ChatScreen.js', () => ({
   ChatScreen: ({ initialChannel, initialClanDraft }: { initialChannel?: string; initialClanDraft?: string }) => (
-    <p>chat on {initialChannel}{initialClanDraft ? ` · ${initialClanDraft}` : ''}</p>
+    <><p>chat on {initialChannel}{initialClanDraft ? ` · ${initialClanDraft}` : ''}</p><textarea aria-label="Composer" /></>
   ),
 }));
 
@@ -62,6 +62,36 @@ describe('the chat page', () => {
     act(() => { vi.stubGlobal('innerHeight', 360); window.dispatchEvent(new Event('resize')); });
     expect(host).toHaveStyle('--chat-viewport-height: 360px');
   });
+
+  /*
+    Android's keyboard-hide key leaves the composer focused, so the compose layout
+    stayed over the whole screen without a keyboard (measured on the owner's S22,
+    2026-11-10). A viewport that grows back while composing is that key.
+  */
+  it('lets go of the composer when the keyboard closes without a blur, and only then', () => {
+    const viewport = Object.assign(new EventTarget(), { height: 740, offsetTop: 0 });
+    vi.stubGlobal('visualViewport', viewport);
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const composer = screen.getByRole('textbox', { name: 'Composer' });
+    act(() => { composer.focus(); viewport.dispatchEvent(new Event('resize')); });
+    expect(composer).toHaveFocus();
+    act(() => { viewport.height = 360; viewport.dispatchEvent(new Event('resize')); });
+    act(() => { viewport.height = 380; viewport.dispatchEvent(new Event('resize')); });
+    expect(composer).toHaveFocus();
+    act(() => { viewport.height = 740; viewport.dispatchEvent(new Event('resize')); });
+    expect(composer).not.toHaveFocus();
+  });
+
+  it('lets go of the composer on an Android window resize when VisualViewport is unavailable', () => {
+    vi.stubGlobal('visualViewport', undefined);
+    vi.stubGlobal('innerHeight', 360);
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const composer = screen.getByRole('textbox', { name: 'Composer' });
+    act(() => { composer.focus(); });
+    act(() => { vi.stubGlobal('innerHeight', 740); window.dispatchEvent(new Event('resize')); });
+    expect(composer).not.toHaveFocus();
+  });
+
   it('keeps a fixed-height panel while the message history owns scrolling', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     const panel = screen.getByRole('dialog', { name: 'Chat' });

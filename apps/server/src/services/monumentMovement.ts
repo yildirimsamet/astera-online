@@ -1,7 +1,7 @@
 import { monumentPosition } from './monumentMotion.js';
 import { priceMonumentReturn } from '@astera/rules';
 import { randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   MOBILE_HULLS,
@@ -23,7 +23,7 @@ import {
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { monuments, monumentShipLots, monumentWaves, units, type MonumentReturnReason } from '../db/schema.js';
+import { monuments, monumentShipLots, monumentWaves, notifications, units, type MonumentReturnReason } from '../db/schema.js';
 import { completeMonumentJoint } from './monumentJoint.js';
 import { notify } from './notifications.js';
 import { tellMonumentRadiationLoss } from './monumentRadiationLoss.js';
@@ -152,6 +152,23 @@ export interface MonumentReturn {
   lots: MonumentShipLot[];
 }
 
+/**
+ * A holder's warning names one wave, or a joint attack's first wave. Once nothing it
+ * announced is still coming it goes, silently (owner, 2026-11-10): no news that the
+ * attack turned back, and no "landed" line for a fleet that never came.
+ */
+async function withdrawInboundWarning(tx: Tx, locked: LockedMonument, wave: WaveRow): Promise<void> {
+  const joint = wave.jointOperationId;
+  if (locked.waves.some((row) => row.status === 'OUTBOUND' && (joint ? row.jointOperationId === joint : row.id === wave.id))) return;
+  // A joint wave that turned back earlier may be home already, outside the locked active set.
+  const announced = joint
+    ? (await tx.select({ id: monumentWaves.id }).from(monumentWaves).where(eq(monumentWaves.jointOperationId, joint))).map((row) => row.id)
+    : [wave.id];
+  const withdrawn = await tx.delete(notifications).where(and(eq(notifications.kind, 'monument_inbound'),
+    inArray(notifications.refId, announced))).returning({ playerId: notifications.playerId });
+  for (const playerId of new Set(withdrawn.map((row) => row.playerId))) await publish(tx, playerId, 'monument_inbound');
+}
+
 /** Caller holds the wave's origin and destination worlds before its target lock. */
 export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: WaveRow, selections: readonly { lotId: string; count: number }[], home: { id: string; x: number; y: number; z: number }, at: Date, reason: MonumentReturnReason, observedAt = at): Promise<MonumentReturn> {
   if (!Number.isSafeInteger(at.getTime()) || at < wave.radiationSettledAt || (wave.status === 'HOLD' && at < locked.monument.settledAt)) {
@@ -173,6 +190,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
     position = interpolatePosition(segment.from, segment.to, segment.startMs, segment.endMs, at.getTime());
   }
   const leavesHold = wave.status === 'HOLD';
+  const turnsBack = wave.status === 'OUTBOUND';
   await reanchorWave(tx, locked, wave, home.id);
   const fleet = fleetOf(split.recalled);
   const orbit = await orbitOf(tx, home.id);
@@ -250,6 +268,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
   const sources = await hpSourcesForSeason(tx, wave.seasonId, { targets: [], from: at, until: locked.season.endsAt });
   await scheduleFlightBoundary(tx, returning, recalled, sources, locked.season.endsAt);
   if (wave.status === 'OUTBOUND') await scheduleFlightBoundary(tx, wave, split.remaining, sources, locked.season.endsAt);
+  if (turnsBack) await withdrawInboundWarning(tx, locked, wave);
   await completeMonumentJoint(tx, wave.jointOperationId, at);
   await settleLockedMonument(tx, locked, at, observedAt);
   if (pricedReturn.fuel > 0) await recomputePlayerWealth(tx, wave.playerId, observedAt);

@@ -16,7 +16,7 @@ import { activateMonumentMotion } from '../src/services/monumentMotionAdoption.j
 import { baysInUse } from '../src/services/flight.js';
 import { closeSeasonMonuments } from '../src/services/monumentSeasonClose.js';
 import { sendMonument } from '../src/services/monument.js';
-import { recallMonument } from '../src/services/monumentMovement.js';
+import { recallMonument, resolveMonumentReturn } from '../src/services/monumentMovement.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { EventBus, type StreamEvent } from '../src/stream/bus.js';
@@ -689,6 +689,33 @@ describe('the existing clan preparation with a real monument target', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]?.playerId).toBe(f.playerIds[2]);
     expect(JSON.stringify(warnings[0]?.payload)).not.toContain('CITADEL');
+  });
+
+  it('keeps the holder’s one joint warning until the operation’s last wave turns back', async () => {
+    const holder = randomUUID();
+    await f.db.update(monuments).set({ controllerPlayerId: f.playerIds[2]! }).where(eq(monuments.id, m.id));
+    await f.db.insert(monumentWaves).values({ id: holder, seasonId: f.seasonId, monumentId: m.id, playerId: f.playerIds[2]!, originPlanetId: f.planetIds[2]!,
+      unitLocation: `monument:${holder}`, purpose: 'REINFORCE', sentFleet: { DART: 1 }, tech: {}, route: [], fuelPaid: 0,
+      sentAt: f.clock.now(), heldAt: f.clock.now(), radiationSettledAt: f.clock.now(), status: 'HOLD' });
+    await f.db.insert(monumentShipLots).values({ waveId: holder, hull: 'DART', count: 1, damageBp: 0, remainderBp: 0, deuterium: 0 });
+    await giveUnits(f.db, f.planetIds[2]!, { DART: 1 }, `monument:${holder}`);
+    await mark();
+    await stage();
+    await start();
+    const [warning] = await f.db.select().from(notifications).where(eq(notifications.kind, 'monument_inbound'));
+    // The warning names the first wave; that one turns back and is home before the last.
+    const native = (await f.db.select().from(monumentWaves)).filter(wave => wave.id !== holder)
+      .sort((a, b) => Number(b.id === warning?.refId) - Number(a.id === warning?.refId));
+    expect(native).toHaveLength(2);
+    expect(native[0]?.id).toBe(warning?.refId);
+    f.clock.advance(1);
+    const first = await f.db.transaction(tx => recallMonument(tx, { playerId: native[0]!.playerId, waveId: native[0]!.id, all: true, clock: f.clock }));
+    expect(await f.db.select().from(notifications).where(eq(notifications.kind, 'monument_inbound'))).toHaveLength(1);
+    f.clock.set(first.wave.arriveAt!);
+    expect(await f.db.transaction(tx => resolveMonumentReturn(tx, { waveId: first.wave.id, generation: first.wave.generation, at: first.wave.arriveAt! }))).not.toBeNull();
+    f.clock.advance(1);
+    await f.db.transaction(tx => recallMonument(tx, { playerId: native[1]!.playerId, waveId: native[1]!.id, all: true, clock: f.clock }));
+    expect(await f.db.select().from(notifications).where(eq(notifications.kind, 'monument_inbound'))).toEqual([]);
   });
 
   it('fights at full size before native capacity overflow and still releases the operation', async () => {

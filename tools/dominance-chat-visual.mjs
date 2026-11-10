@@ -54,6 +54,8 @@ export async function verifyDominanceChat(output) {
           else if (path === '/api/dm/conversations/dm/messages') body = { messages, nextBefore: null, canSend: true, unavailableReason: null };
           else if (path === '/api/clan/badge') body = badge;
           else if (path.endsWith('/unread')) body = { count: 0 };
+          // The ship-galaxy gate reads the planet; without one the chat keeps every room.
+          else if (path === '/api/planet') return new Response('{}', { status: 404 });
           else { review.unexpected.push(path); throw new Error(`Unexpected fixture request: ${path}`); }
           return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
         } });
@@ -120,6 +122,9 @@ export async function verifyDominanceChat(output) {
           assert(await page.getByRole('log').evaluate(log => log.scrollHeight - log.scrollTop - log.clientHeight < 2), 'Keyboard must keep the latest message visible');
           await page.screenshot({ path: join(output, `${width}-${language}-${channel}-keyboard.png`) });
           await page.setViewportSize({ width, height: 812 });
+          // Android's keyboard-hide key keeps focus; the page growing back must let go of it.
+          await page.waitForFunction(() => document.activeElement?.tagName !== 'TEXTAREA');
+          await composer.focus();
           // iOS resize/pan: only the visual viewport changes; layout viewport stays tall.
           await page.evaluate(() => {
             Object.defineProperty(visualViewport, 'height', { configurable: true, value: 360 });

@@ -16,6 +16,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type SyntheticEvent,
   type UIEvent,
 } from 'react';
@@ -88,6 +89,12 @@ export type ChatChannel = 'general' | 'clan' | 'dm';
 
 const CHAT_LANGUAGE_STORAGE_KEY = 'astera.chat.language.v1';
 const NO_PERSONAL_MUTES: readonly MutedChatPlayer[] = [];
+
+/**
+ * A composer control must not take focus: on a phone the blur closes the keyboard and
+ * the compose layout drops back under the finger, so the release misses the control.
+ */
+const keepComposerFocus = (event: ReactPointerEvent): void => { event.preventDefault(); };
 
 function initialChatLanguage(): Language {
   try {
@@ -414,7 +421,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
-      <div className="flex shrink-0 items-stretch gap-1 border-b border-v2-line px-3 py-1.5">
+      <div data-chat-dm-tabs className="flex shrink-0 items-stretch gap-1 border-b border-v2-line px-3 py-1.5">
         <div role="tablist" aria-label={t('chat.dm.conversations')} className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1.5">
           {tabs.map((peer) => (
             <span key={peer.playerId} className={`flex max-w-40 shrink-0 items-center rounded-t-control border border-b-0 ${
@@ -1003,7 +1010,7 @@ function ChannelPanel({
               <span className="block font-semibold text-v2-self">{t('chat.replyingTo', { name: replyTarget.username })}</span>
               <span className="block truncate text-v2-ink-2">{replyTarget.content || (replyTarget.media ? t(`chat.media.${replyTarget.media.kind === 'image' ? 'photo' : replyTarget.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
             </div>
-            <button type="button" aria-label={t('chat.cancelReply')} onClick={() => { onReplyTarget(null); }}><CloseIcon className="size-4" /></button>
+            <button type="button" aria-label={t('chat.cancelReply')} onPointerDown={keepComposerFocus} onClick={() => { onReplyTarget(null); }}><CloseIcon className="size-4" /></button>
           </div>
         ) : null}
         <div className="flex items-center gap-2">
@@ -1032,6 +1039,7 @@ function ChannelPanel({
             type="submit"
             aria-label={t('chat.send')}
             disabled={(!draft.trim() && !media) || posting || uploading || disabledReason !== null}
+            onPointerDown={keepComposerFocus}
             onClick={() => { haptic('tap'); }}
             className="grid size-10 shrink-0 place-items-center rounded-full bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
           >

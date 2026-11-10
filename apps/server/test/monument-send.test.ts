@@ -5,6 +5,7 @@ import { MOBILE_HULLS, MONUMENT_CAPACITY, distance, hangarLoad, missionFuel, typ
 import { clanMemberships, clans, hpRadiationSources, maintenanceWindows, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { quoteMonument, sendMonument } from '../src/services/monument.js';
 import { advanceMonument } from '../src/services/monumentArrival.js';
+import { recallMonument } from '../src/services/monumentMovement.js';
 import { readMonuments } from '../src/services/monumentView.js';
 import { recomputePlayerWealth, totalUnitsOf } from '../src/services/planet.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -179,6 +180,60 @@ describe('monument quote and dispatch', () => {
     expect(told.map((row) => row.playerId).sort()).toEqual([f.playerIds[1], f.playerIds[2]].sort());
     expect(told.every((row) => row.kind === 'monument_inbound')).toBe(true);
     for (const row of told) expect(Object.keys(row.payload).sort()).toEqual(['arriveAt', 'monumentId', 'monumentOrdinal', 'targetKind', 'waveId']);
+  });
+
+  /*
+    Owner, 2026-11-10: a holder's warning about a wave that turned back goes away
+    silently — no "it turned back" news, and no "landed" line for a fleet that never came.
+  */
+  describe('a withdrawn warning', () => {
+    const warnings = (refId: string) => f.db.select().from(notifications)
+      .where(and(eq(notifications.kind, 'monument_inbound'), eq(notifications.refId, refId)));
+    const recall = (owner: number, waveId: string, selections?: { lotId: string; count: number }[]) => f.db.transaction((tx) => recallMonument(tx,
+      selections ? { playerId: f.playerIds[owner]!, waveId, selections, clock: f.clock } : { playerId: f.playerIds[owner]!, waveId, all: true, clock: f.clock }));
+
+    it('goes from every holder when the whole wave is recalled, with nothing new in its place', async () => {
+      await park(1);
+      await park(2);
+      const sent = await send();
+      expect(await warnings(sent.wave.id)).toHaveLength(2);
+      const before = (await f.db.select().from(notifications)).filter(row => row.kind !== 'monument_inbound').length;
+      f.clock.advance(1);
+      await recall(0, sent.wave.id);
+      expect(await warnings(sent.wave.id)).toEqual([]);
+      expect((await f.db.select().from(notifications)).filter(row => row.kind !== 'monument_inbound')).toHaveLength(before);
+    });
+
+    it('stays while part of the wave is still coming, and goes with its last ship', async () => {
+      await park(1);
+      const sent = await send(0, { DART: 2, COURIER: 1 });
+      const [dart] = await f.db.select().from(monumentShipLots).where(and(eq(monumentShipLots.waveId, sent.wave.id), eq(monumentShipLots.hull, 'DART')));
+      f.clock.advance(1);
+      await recall(0, sent.wave.id, [{ lotId: dart!.id, count: 1 }]);
+      expect(await warnings(sent.wave.id)).toHaveLength(1);
+      f.clock.advance(1);
+      await recall(0, sent.wave.id);
+      expect(await warnings(sent.wave.id)).toEqual([]);
+    });
+
+    it('takes only the recalled wave’s warning, never another attacker’s', async () => {
+      await park(1);
+      const first = await send(0);
+      const second = await send(2);
+      f.clock.advance(1);
+      await recall(0, first.wave.id);
+      expect(await warnings(first.wave.id)).toEqual([]);
+      expect(await warnings(second.wave.id)).toHaveLength(1);
+    });
+
+    it('stays when a holder leaves while the attack is still coming', async () => {
+      await park(1);
+      const leaving = await park(2);
+      const sent = await send();
+      f.clock.advance(1);
+      await recall(2, leaving);
+      expect(await warnings(sent.wave.id)).toHaveLength(2);
+    });
   });
 
   it('warns the new holder about an attack that was already in flight before capture', async () => {

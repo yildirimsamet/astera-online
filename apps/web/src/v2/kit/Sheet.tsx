@@ -265,6 +265,8 @@ export function Sheet({
               type="button"
               aria-label={t('sheet.close')}
               data-sheet-close=""
+              // Taking focus first would close a phone keyboard and move the page under the finger.
+              onPointerDown={(event) => { event.preventDefault(); }}
               onClick={onClose}
               className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel' : ''}`}
             >

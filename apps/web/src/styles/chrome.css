@@ -1594,6 +1594,14 @@
     max-height: 100%;
     transition: none;
   }
+
+  /* Above a phone keyboard the conversation needs the room. The handle and private tabs
+     wait for blur; the close, the room row and a private chat's peer stay, so a clan
+     line is never typed into the galaxy by mistake. */
+  [data-chat-host]:has(textarea:focus) [data-sheet-header] > button,
+  [data-chat-host]:has(textarea:focus) [data-chat-dm-tabs] {
+    display: none;
+  }
 }
 /* Give the Now line room only while a timer exists. An empty timer row leaves the
    galaxy readout at the top edge instead of making a blank 48 px band. */

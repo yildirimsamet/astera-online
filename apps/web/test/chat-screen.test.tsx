@@ -540,6 +540,33 @@ describe('galaxy chat surface', () => {
     expect(composer).toHaveValue('');
   });
 
+  /*
+    A phone keyboard closes the moment the composer loses focus, and the compose
+    layout falls back to its resting place under the finger: the release then lands
+    on empty space and the first tap sends nothing (owner, 2026-11-10).
+  */
+  it('sends with one press of Send while the composer keeps focus and its keyboard', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.type(composer, 'Tek dokunuş');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Tek dokunuş'); });
+    expect(composer).toHaveFocus();
+  });
+
+  it('cancels a quoted reply without taking focus from the composer', async () => {
+    show();
+    const user = userEvent.setup();
+    await user.dblClick(screen.getByText('Merhaba galaksi'));
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.click(composer);
+    await user.click(screen.getByRole('button', { name: 'Cancel reply' }));
+    expect(screen.queryByText('Replying to İzci')).not.toBeInTheDocument();
+    expect(composer).toHaveFocus();
+  });
+
   it.each(['general', 'clan'] as const)('sends %s with Enter and keeps focus in the cleared composer', async (channel) => {
     const { post, postClan } = show(vi.fn(), channel);
     const user = userEvent.setup();

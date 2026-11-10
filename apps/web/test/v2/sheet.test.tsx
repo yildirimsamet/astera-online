@@ -88,6 +88,21 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
+  /*
+    A phone keyboard closes when a field loses focus, and a page laid out around it moves:
+    the first press on Close then only closed the keyboard (owner, chat, 2026-11-10).
+  */
+  it('closes with one press without first taking focus from a field being typed in', async () => {
+    const close = vi.fn();
+    render(<Sheet title="Chat" onClose={close}><textarea aria-label="Message" /></Sheet>);
+    const user = userEvent.setup();
+    const field = screen.getByRole('textbox', { name: 'Message' });
+    await user.click(field);
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(field).toHaveFocus();
+  });
+
   it('keeps the close in its own fixed row above scrolling page content', () => {
     render(<Sheet title="Base" quietTitle onClose={vi.fn()}>body</Sheet>);
     const header = screen.getByRole('dialog', { name: 'Base' }).querySelector('header');
