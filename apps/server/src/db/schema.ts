@@ -290,6 +290,16 @@ export const notificationKind = pgEnum('notification_kind', [
   'arena_team_share',
   /** A Yarık flight was lost (destroyed or towed) while its pilot's page was closed: the result they never saw. */
   'arena_sortie_end',
+  /**
+   * A WAVE YOU STATIONED LIFTED WITH THE HOST'S LINE (F1, 2026-11-10). The raid outmatched the
+   * whole line, so host and support ran together; the wave fought nothing and still stands.
+   */
+  'clan_support_lifted',
+  /**
+   * KLAN ALARMI (F2, owner 2026-11-10). A clanmate's radar heard a raid on a world open to
+   * support: the host's own warning, copied to every mature member of a level-2 clan.
+   */
+  'clan_alarm',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -660,6 +670,8 @@ export interface SeasonRecap {
   defences: number;
   rival: { commanderName: string; battles: number } | null;
   biggestRaid: { value: number; opponentName: string } | null;
+  /** F2 E3: battles stood in a clanmate's line, and how many held; absent when none. */
+  support?: { stood: number; held: number };
   clan?: {
     name: string;
     tag: string;
@@ -1106,12 +1118,20 @@ export const clanMessages = pgTable('clan_messages', {
   content: text('content').notNull(),
   media: jsonb('media').$type<ChatMedia>(),
   replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => clanMessages.id, { onDelete: 'set null' }),
+  /** F2 E2: a line the server posted (alarm, wave, defence, rung); null on a typed message. */
+  event: jsonb('event').$type<ClanChatEvent>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('clan_messages_cursor_idx').on(t.clanId, t.createdAt, t.id),
   index('clan_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
-  check('clan_messages_content_check', sql`char_length(btrim(${t.content})) <= 280 AND (char_length(btrim(${t.content})) >= 1 OR ${t.media} IS NOT NULL)`),
+  check('clan_messages_content_check', sql`char_length(btrim(${t.content})) <= 280 AND (char_length(btrim(${t.content})) >= 1 OR ${t.media} IS NOT NULL OR ${t.event} IS NOT NULL)`),
 ]);
+
+/** F2 E2: what the server posts to a clan's room; the client words it in the reader's language. */
+export interface ClanChatEvent {
+  kind: 'ALARM' | 'SUPPORT_SENT' | 'DEFENCE' | 'LEVEL_UP';
+  params: Record<string, string | number | boolean | null>;
+}
 
 /** Private, immutable management history; player ids are snapshots, not foreign keys. */
 export const clanEvents = pgTable('clan_events', {
@@ -1558,11 +1578,11 @@ export const planets = pgTable('planets', {
    * THIS WORLD'S DEFENCE POSTURE. Klan Savunma Desteği, owner K4, 2026-10-01.
    *
    * Two toggles on the Hangar page — the tactical retreat and accepting clan support —
-   * that can never both be on, stored as the one value they make: ESCAPE (the default,
-   * and the only rule any season before 15 knows), SUPPORT, or HOLD. Never read in a
-   * season dealt before `clanDefenseRulesetVersion`.
+   * stored as the one value they make: ESCAPE, SUPPORT, HOLD or ESCAPE_SUPPORT (both, F1
+   * 2026-11-10, and the default). Support only takes effect while the commander is in a
+   * clan. Never read in a season dealt before `clanDefenseRulesetVersion`.
    */
-  defencePosture: text('defence_posture').$type<DefencePosture>().notNull().default('ESCAPE'),
+  defencePosture: text('defence_posture').$type<DefencePosture>().notNull().default('ESCAPE_SUPPORT'),
 }, (t) => [
   // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
   index('planets_stats_owner_idx').on(t.statsOwnerPlayerId),
@@ -1576,7 +1596,7 @@ export const planets = pgTable('planets', {
   check('planets_academy_step_check', sql`${t.academyStep} IS NULL OR ${t.academyStep} BETWEEN 0 AND 40`),
   check(
     'planets_defence_posture_check',
-    sql`${t.defencePosture} IN ('ESCAPE', 'SUPPORT', 'HOLD')`,
+    sql`${t.defencePosture} IN ('ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT')`,
   ),
   check(
     'planets_controller_kind_check',
@@ -2793,6 +2813,8 @@ export const battleReports = pgTable('battle_reports', {
    * the public field, and nothing a player can no longer fly out and take.
    */
   wreckValue: real('wreck_value').notNull().default(0),
+  /** F2 E4 Zafer Kasası: what the defending line's clan purse took from the wreck; null if nothing. */
+  clanPurse: jsonb('clan_purse').$type<Resources>(),
   /**
    * What the attacker's surviving Garbage Collectors lifted before the field
    * formed. D200. Zeros on every report without one, and on every report written
@@ -3023,6 +3045,28 @@ export type ClanSupportReturnReason =
  * sees them. Where the wave IS lives here: flying out, standing at the host, flying
  * back, home, or lost. Each send is its own row with its own fuel and its own bay.
  */
+/**
+ * KLAN ALARMI — one row per raid the clan was called to (F2, owner 2026-11-10). The notification
+ * is each member's card; this row is the call itself, so a support wave launched in answer can
+ * name it and the Katkı Defteri can count who answered.
+ */
+export const clanAlarms = pgTable('clan_alarms', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  hostPlayerId: uuid('host_player_id').notNull().references(() => players.id),
+  hostPlanetId: uuid('host_planet_id').notNull().references(() => planets.id),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('clan_alarms_mission_uq').on(t.missionId),
+  index('clan_alarms_clan_idx').on(t.clanId, t.createdAt),
+  // Reclaim deletes commanders and worlds; every key into them leads an index.
+  index('clan_alarms_host_player_idx').on(t.hostPlayerId),
+  index('clan_alarms_host_planet_idx').on(t.hostPlanetId),
+]);
+
 export const clanSupportWaves = pgTable('clan_support_waves', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
@@ -3060,6 +3104,11 @@ export const clanSupportWaves = pgTable('clan_support_waves', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   /** Battles this wave has stood in at the host. */
   battles: integer('battles').notNull().default(0),
+  /**
+   * KLAN ALARMI (F2 E1): the call this wave answered, when it was sent from the alarm. Set null
+   * if the call's raid is reclaimed away; the wave itself is the clanmate's and outlives it.
+   */
+  alarmId: uuid('alarm_id').references(() => clanAlarms.id, { onDelete: 'set null' }),
 }, (t) => [
   uniqueIndex('clan_support_waves_unit_location_idx').on(t.unitLocation),
   uniqueIndex('clan_support_waves_outbound_idx').on(t.outboundMissionId),
@@ -3069,6 +3118,7 @@ export const clanSupportWaves = pgTable('clan_support_waves', {
   index('clan_support_waves_origin_idx').on(t.originPlanetId, t.status),
   index('clan_support_waves_host_player_idx').on(t.hostPlayerId, t.status),
   index('clan_support_waves_season_idx').on(t.seasonId),
+  index('clan_support_waves_alarm_idx').on(t.alarmId),
   check(
     'clan_support_waves_status_check',
     sql`${t.status} IN ('OUTBOUND', 'STATIONED', 'RETURNING', 'HOME', 'LOST')`,
@@ -3540,9 +3590,10 @@ export const clanWarDominionEvents = pgTable('clan_war_dominion_events', {
  * balance on `clans` is the only figure a player ever sees and this is the only
  * record of how it got there. The CHECKs below are the shape of each kind: a
  * donation only ever adds, a level-up only ever spends and climbs exactly one
- * rung, and a burn has no actor because nobody chose it wave by wave.
+ * rung, and a burn has no actor because nobody chose it wave by wave. A victory wreck (F2 E4)
+ * only ever adds and has no actor either: the defence earned it, nobody donated it.
  */
-export type ClanTreasuryEventKind = 'DONATION' | 'LEVEL_UP' | 'DISBAND_BURN';
+export type ClanTreasuryEventKind = 'DONATION' | 'LEVEL_UP' | 'DISBAND_BURN' | 'VICTORY_WRECK';
 
 export const clanTreasuryEvents = pgTable('clan_treasury_events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -3567,7 +3618,7 @@ export const clanTreasuryEvents = pgTable('clan_treasury_events', {
   index('clan_treasury_events_actor_idx').on(t.actorPlayerId, t.createdAt),
   check(
     'clan_treasury_events_kind_check',
-    sql`${t.kind} IN ('DONATION', 'LEVEL_UP', 'DISBAND_BURN')`,
+    sql`${t.kind} IN ('DONATION', 'LEVEL_UP', 'DISBAND_BURN', 'VICTORY_WRECK')`,
   ),
   check(
     'clan_treasury_events_shape_check',
@@ -3584,6 +3635,11 @@ export const clanTreasuryEvents = pgTable('clan_treasury_events', {
             AND ${t.levelAfter} = ${t.levelBefore} + 1
           WHEN 'DISBAND_BURN' THEN ${t.sourcePlanetId} IS NULL
             AND ${t.alloy} <= 0 AND ${t.crystal} <= 0 AND ${t.deuterium} <= 0
+            AND ${t.levelBefore} IS NULL AND ${t.levelAfter} IS NULL
+          WHEN 'VICTORY_WRECK' THEN ${t.actorPlayerId} IS NULL
+            AND ${t.sourcePlanetId} IS NULL
+            AND ${t.alloy} >= 0 AND ${t.crystal} >= 0 AND ${t.deuterium} >= 0
+            AND ${t.alloy} + ${t.crystal} + ${t.deuterium} > 0
             AND ${t.levelBefore} IS NULL AND ${t.levelAfter} IS NULL
           ELSE false
         END`,
@@ -3746,6 +3802,12 @@ export const probeReports = pgTable('probe_reports', {
    */
   posture: text('posture').$type<DefencePosture>(),
   support: jsonb('support').$type<ProbeSupportReading>(),
+  /**
+   * KLAN PERKLERİ (F2 E5, owner 2026-11-10). The target clan's level at the look — what its
+   * alarm and corridor make of a raid. Null outside a clan, in a levelless clan, and on every
+   * report written before it.
+   */
+  clanLevel: integer('clan_level'),
   strategicStatus: text('strategic_status').$type<'READY' | 'BUILDING' | 'NONE' | 'UNKNOWN'>(),
   /** Whether the target's radar caught it — the observer learns this too. */
   detected: boolean('detected').notNull(),
@@ -3839,7 +3901,7 @@ export const probeReports = pgTable('probe_reports', {
   uniqueIndex('probe_reports_mission_idx').on(t.missionId),
   check(
     'probe_reports_posture_check',
-    sql`${t.posture} IS NULL OR ${t.posture} IN ('ESCAPE', 'SUPPORT', 'HOLD')`,
+    sql`${t.posture} IS NULL OR ${t.posture} IN ('ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT')`,
   ),
 ]);
 

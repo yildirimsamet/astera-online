@@ -339,7 +339,6 @@ export const errors = {
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: 'Mientras dure tu escudo de novato, tus naves no pueden apostarse en el mundo de otro comandante',
   CLAN_SUPPORT_UNAVAILABLE: 'La defensa de clan llega con una nueva temporada',
-  POSTURE_CONFLICT: 'La retirada táctica y el apoyo de clan no pueden estar activos a la vez',
   CLAN_SUPPORT_NONCOMBATANT: 'Una oleada de apoyo es una línea de combate: {{hull}} no puede ir',
   CLAN_SUPPORT_SELF: 'El apoyo va a un compañero de clan, no a tus propios mundos',
   CLAN_SUPPORT_TARGET: 'Elige un mundo que controle un compañero de clan',

@@ -18,6 +18,7 @@ import {
 } from 'drizzle-orm';
 import {
   CLAN,
+  supportAccepted,
   MULTI_WORLD,
   clanNameIsValid,
   clanNameKey,
@@ -37,6 +38,7 @@ import {
   clanMemberships,
   clanMessages,
   clanRequests,
+  clanSupportBattleResults,
   clans,
   planets,
   playerRivals,
@@ -171,7 +173,7 @@ export async function clanPresenceOf(db: Queryable, clanId: string) {
       planetId: row.planetId,
       name: row.planetName,
       position: { x: row.x, y: row.y, z: row.z },
-      supportOpen: row.defencePosture === 'SUPPORT',
+      supportOpen: supportAccepted(row.defencePosture),
     });
     members.set(row.playerId, member);
   }
@@ -449,15 +451,28 @@ export async function publicClan(
 export async function clanLeaderboard(
   db: Db,
   accountId: string,
-): Promise<{ clans: (PublicClanView & { rank: number; self: boolean })[] }> {
+): Promise<{ clans: (PublicClanView & { rank: number; self: boolean; watches: number })[] }> {
   const actor = await clanActor(db, accountId);
   const mine = await activeClanMembership(db, actor.playerId);
   const directory = await listPublicClans(db, accountId, { offset: 0, limit: 300 });
+  // F2 E3: the battles each clan's current members stood in a clanmate's line this season.
+  const ids = directory.clans.map((clan) => clan.id);
+  const watches = ids.length === 0 ? [] : await db
+    .select({ clanId: clanMemberships.clanId, value: count(sql`distinct ${clanSupportBattleResults.reportId}`) })
+    .from(clanSupportBattleResults)
+    .innerJoin(clanMemberships, and(eq(clanMemberships.playerId, clanSupportBattleResults.playerId), isNull(clanMemberships.leftAt)))
+    .where(and(
+      eq(clanSupportBattleResults.seasonId, actor.seasonId),
+      eq(clanSupportBattleResults.role, 'SUPPORT'),
+      inArray(clanMemberships.clanId, ids),
+    ))
+    .groupBy(clanMemberships.clanId);
   return {
     clans: directory.clans.map((clan, index) => ({
       ...clan,
       rank: index + 1,
       self: clan.id === mine?.clanId,
+      watches: watches.find((row) => row.clanId === clan.id)?.value ?? 0,
     })),
   };
 }

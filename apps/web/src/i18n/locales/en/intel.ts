@@ -483,6 +483,8 @@ export const reports = {
     /** Taktik geri çekilme. Defender: what ran and what the lift burned, or why it could not. */
     escaped_one: "Your ship lifted off before the fight (−{{fuel}} Deuterium): the raid overwhelmed your defending line.",
     escaped_other: "Your {{count}} ships lifted off before the fight (−{{fuel}} Deuterium): the raid overwhelmed your defending line.",
+    escapedSupport_one: '{{count}} clanmate ship lifted with yours, free.',
+    escapedSupport_other: '{{count}} clanmate ships lifted with yours, free.',
     stranded: 'Your ships would have lifted off, but the tank was short: {{fuel}} Deuterium needed, {{available}} held.',
     /** Raider: the line emptied in front of the raid, and nothing about what it held. */
     fled: "Their ships lifted off before the fight: an overwhelmed line that would be wiped out retreats if its tank can pay.",
@@ -499,6 +501,7 @@ export const reports = {
       '{{hours}} h of your production lost, net, over the last {{window}} h — past the {{bar}} h bar, but no shield is granted while your own raid is in the air.',
     wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
     /** The same field, read from the world it is drifting over. */
+    clanPurse: 'Victory spoils: {{amounts}} went to the clan treasury.',
     wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',
     /** No orbit to name: the field sits at the rendezvous, in open space. */
     wreckVoid:

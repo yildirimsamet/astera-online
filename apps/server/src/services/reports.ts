@@ -315,6 +315,8 @@ export interface BattleReportView {
   disruptedMinutes: number;
   /** What the fight left in orbit for whoever gets there first. Zero when no field formed. */
   wreckValue: number;
+  /** F2 E4: what the defending clan's purse took from the wreck. The defending line's alone; null to a raider. */
+  clanPurse: Resources | null;
   /**
    * WHAT THE ATTACKER'S GARBAGE COLLECTORS LIFTED BEFORE THE FIELD FORMED. D200.
    *
@@ -1006,6 +1008,7 @@ async function readBattleReportsIn(
       */
       disruptedMinutes: row.disruptedMinutes,
       wreckValue: row.wreckValue,
+      clanPurse: attacking ? null : row.clanPurse ?? null,
       salvage: operation && attacking
         ? personal?.salvage ?? { alloy: 0, crystal: 0, deuterium: 0 }
         : {

@@ -1,4 +1,6 @@
 import { openUnknownSignal } from '../lib/unknownSignal.js';
+import { clanAlarmOf } from '../lib/clanAlarm.js';
+import { openClanAlarm } from '../lib/clanAlarmDoor.js';
 import { z } from 'zod';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -356,8 +358,11 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   // Klan Savunma Desteği: the fight a supporter's ships stood in is a report like any
   // other; who is coming, who left and the posture reset are all on the world's sheet.
   clan_support_result: { panel: 'report', stop: 'battles' },
+  // F2 Klan Alarmı: the row opens the support sheet aimed at the clanmate's world.
+  clan_alarm: { panel: null },
   clan_support_inbound: { panel: 'planet' },
   clan_support_departed: { panel: 'planet' },
+  clan_support_lifted: { panel: 'planet' },
   defence_posture_reset: { panel: 'planet' },
   death_star_result: { panel: 'report', stop: 'battles' },
   strategic_intercepted: { panel: 'report', stop: 'battles' },
@@ -565,6 +570,12 @@ function Event({
           if (event.kind === 'unknown_signal_result' && event.refId) {
             onGo(null);
             openUnknownSignal(event.refId);
+            return;
+          }
+          const alarm = clanAlarmOf(event);
+          if (alarm) {
+            onGo(null);
+            openClanAlarm(alarm);
             return;
           }
           const monument = notificationMonumentTarget(event);

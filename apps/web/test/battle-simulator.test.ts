@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT, HULLS, PIRATE, activeBattleFleet, fleetCount, mulberry32, pirateOverrun, resolveBattle, resolveMonumentCombat, shieldHp, shipShieldHp } from '@astera/rules';
-import { DEFAULT_SCENARIO, SIMULATION_UNIT_LIMIT, scenarioSchema, simulateScenario } from '../src/battle-simulator/scenario.js';
+import { COMBAT, HULLS, PIRATE, activeBattleFleet, escapeFuel, fleetCount, mulberry32, pirateOverrun, resolveBattle, resolveMonumentCombat, shieldHp, shipShieldHp } from '@astera/rules';
+import { DEFAULT_SCENARIO, SIMULATION_UNIT_LIMIT, escapedShipCount, scenarioSchema, simulateScenario } from '../src/battle-simulator/scenario.js';
 import { VOLLEY_SECONDS, buildReplayTimeline, sampleReplay, type ShotEvent } from '../src/battle-simulator/timeline.js';
 
 describe('isolated battle simulator uses the real shared rules', () => {
@@ -69,6 +69,33 @@ describe('isolated battle simulator uses the real shared rules', () => {
     const stranded = simulateScenario(scenario);
     expect(stranded.escape?.kind).toBe('STRANDED');
     expect(stranded.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'DART')).toHaveLength(5);
+  });
+
+  /** F1 (owner 2026-11-10): a clanmate's wing beside the host is judged with it and lifts with it. */
+  it('lifts a supported line together, judged on the whole line, the host alone paying fuel', () => {
+    const scenario = scenarioSchema.parse({ ...DEFAULT_SCENARIO, automaticEscape: true, deuterium: 100000, aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { CORSAIR: 40 } }],
+      defenders: [{ id: 'd', fleet: { DART: 5, BASTION: 1 } }, { id: 'w', fleet: { PIKE: 3 } }] });
+    const escaped = simulateScenario(scenario);
+    expect(escaped.escape?.kind).toBe('ESCAPED');
+    expect(escaped.escape?.kind === 'ESCAPED' ? escaped.escape.support?.map((row) => row.stackId) : null).toEqual(['d:w']);
+    expect(escaped.escape?.kind === 'ESCAPED' ? escaped.escape.fuel : null).toBe(escapeFuel({ DART: 5 }));
+    expect(escapedShipCount(escaped.escape)).toBe(8);
+    expect(escaped.recording.ships.some(s => s.side === 'DEFENCE' && (s.hull === 'DART' || s.hull === 'PIKE'))).toBe(false);
+    expect(escaped.defenders).toHaveLength(1);
+    scenario.deuterium = 0;
+    const stranded = simulateScenario(scenario);
+    expect(stranded.escape?.kind).toBe('STRANDED');
+    expect(stranded.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'PIKE')).toHaveLength(3);
+  });
+
+  it('fights a supported line the wing cannot crush, wing beside host', () => {
+    const scenario = scenarioSchema.parse({ ...DEFAULT_SCENARIO, automaticEscape: true, deuterium: 100000, aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { CORSAIR: 20 } }],
+      defenders: [{ id: 'd', fleet: { DART: 5, BASTION: 1 } }, { id: 'w', fleet: { DART: 200 } }] });
+    const run = simulateScenario(scenario);
+    expect(run.escape).toBeNull();
+    expect(run.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'DART')).toHaveLength(205);
   });
 
   it.each([

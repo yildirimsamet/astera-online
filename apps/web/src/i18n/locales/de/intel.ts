@@ -483,6 +483,8 @@ export const reports = {
     /** Taktik geri çekilme. Verteidiger: was abhob und was der Start verbrannte, oder warum nicht. */
     escaped_one: "Dein Schiff ist vor dem Kampf abgehoben (−{{fuel}} Deuterium): Der Angriff überwältigte deine Verteidigungslinie.",
     escaped_other: "Deine {{count}} Schiffe sind vor dem Kampf abgehoben (−{{fuel}} Deuterium): Der Angriff überwältigte deine Verteidigungslinie.",
+    escapedSupport_one: '{{count}} Schiff deines Clans hob kostenlos mit deinen ab.',
+    escapedSupport_other: '{{count}} Schiffe deines Clans hoben kostenlos mit deinen ab.',
     stranded: 'Deine Schiffe wären abgehoben, doch der Tank reichte nicht: {{fuel}} Deuterium nötig, {{available}} vorhanden.',
     /** Angreifer: die Linie leerte sich vor dem Angriff; nichts über ihren Inhalt. */
     fled: "Ihre Schiffe sind vor dem Kampf abgehoben: Eine überwältigte Linie, die vernichtet würde, zieht sich zurück, wenn der Tank reicht.",
@@ -499,6 +501,7 @@ export const reports = {
       '{{hours}} h Ihrer Produktion sind in den letzten {{window}} h netto verloren gegangen – über die {{bar}} h-Leiste hinaus, aber es wird kein Schild gewährt, während Ihr eigener Überfall in der Luft ist.',
     wreck: '{{amount}} im Wrack treibt über {{planet}}. Jeder kann hingehen und es mitnehmen.',
     /** The same field, read from the world it is drifting over. */
+    clanPurse: 'Siegesbeute: {{amounts}} gingen in die Clankasse.',
     wreckYours: '{{amount}} in Trümmern treibt in Ihrer eigenen Umlaufbahn. Jeder kann es nehmen – auch Sie.',
     /** No orbit to name: the field sits at the rendezvous, in open space. */
     wreckVoid:

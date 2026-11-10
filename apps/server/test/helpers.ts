@@ -104,7 +104,7 @@ export async function truncateAll(db: Db): Promise<void> {
              probe_world_memories, probe_reports, watches,
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
-             clan_support_dominion_events, clan_support_battle_results, clan_support_waves,
+             clan_alarms, clan_support_dominion_events, clan_support_battle_results, clan_support_waves,
              clan_war_dominion_events, clan_war_participant_results, clan_war_missions,
              clan_war_contributions, clan_war_operations, clan_treasury_events,
              clan_ceasefires, clan_memberships, clans,

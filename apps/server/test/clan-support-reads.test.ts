@@ -102,9 +102,19 @@ describe('the probe', () => {
 
   it('reads an ESCAPE world with no support line at all', async () => {
     const { f } = await supported(15_704);
+    await f.db.transaction((tx) => setDefencePosture(tx, {
+      planetId: f.planetIds[2]!, playerId: f.playerIds[2]!, toggles: { escape: true, support: false }, clock: f.clock,
+    }));
     const report = await probe(f, 3, 2);
     expect(report.posture).toBe('ESCAPE');
     expect(report.support).toBeNull();
+  });
+
+  it('reads a member’s untouched world as ESCAPE_SUPPORT with an empty support line (F1)', async () => {
+    const { f } = await supported(15_706);
+    const report = await probe(f, 3, 2);
+    expect(report.posture).toBe('ESCAPE_SUPPORT');
+    expect(report.support).toMatchObject({ supporters: 0 });
   });
 
   it('reads neither in a season without clan defence', async () => {

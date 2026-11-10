@@ -793,9 +793,13 @@ describe('the kinds of news the server can send', () => {
       'arena_sortie_end',
       // A team's Yarık flight ended: each member's share waits in the hangar.
       'arena_team_share',
+      // F2 Klan Alarmı: a clanmate's radar warning, copied to the clan.
+      'clan_alarm',
       // Klan Savunma Desteği (ruleset 15): who is coming, who left, what the ships did.
       'clan_support_departed',
       'clan_support_inbound',
+      // F1: a supporter's wave lifted with the host's line and still stands there.
+      'clan_support_lifted',
       'clan_support_result',
       'colony_captured',
       'colony_fault',

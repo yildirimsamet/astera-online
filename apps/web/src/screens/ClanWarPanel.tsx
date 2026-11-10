@@ -9,7 +9,7 @@ import { hullName, monumentName } from '../i18n/names.js';
 import { healthDisplay } from '../lib/maintenanceInventory.js';
 import { decimal, full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { planetArt, RESOURCE_ART } from '../ui/assets.js';
+import { planetArt } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { Confirm } from '../ui/kit/Confirm.js';
@@ -19,6 +19,7 @@ import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Button, Plate } from '../v2/kit/Surface.js';
 import { Toggle } from '../v2/kit/Toggle.js';
+import { ClanBanner } from './ClanBanner.js';
 import { ClanDonateSheet } from './ClanDonateSheet.js';
 import { ClanWaveSheet } from './ClanWaveSheet.js';
 
@@ -30,10 +31,6 @@ export interface WarSeatMember {
 
 type Operation = NonNullable<ClanWar['operation']>;
 type Wave = Operation['contributions'][number];
-
-const RESOURCE_KEYS = ['alloy', 'crystal', 'deuterium'] as const;
-const FILL = { alloy: 'bg-v2-alloy', crystal: 'bg-v2-crystal', deuterium: 'bg-v2-deut' } as const;
-const EMPTY = { alloy: 'bg-v2-alloy/15', crystal: 'bg-v2-crystal/15', deuterium: 'bg-v2-deut/15' } as const;
 
 /**
  * THE WAR ROOM. E9, and the mock: "Operasyon, toplanma noktasından hedefe uzanan bir hat
@@ -72,7 +69,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   if (!war.available) return <p className="px-2 py-4 text-body text-v2-ink-2">{t('clanWar.unavailable')}</p>;
 
   const hangar = <ClanHangar war={war} />;
-  const treasury = <Treasury war={war} role={role} canGive={worlds.length > 0} onDonate={() => { setDonateOpen(true); }} />;
+  const treasury = <ClanBanner war={war} role={role} selfPlayerId={selfPlayerId} canGive={worlds.length > 0} onDonate={() => { setDonateOpen(true); }} />;
   const purpose = (
     <Plate className="p-3">
       <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.purpose')}</h3>
@@ -476,60 +473,6 @@ function Seats({ operation, members, selfPlayerId, now }: {
           ))}
         </div>
       )}
-    </Plate>
-  );
-}
-
-/**
- * THE SHARED TREASURY, AS PROGRESS. What the treasury holds against what the next level
- * costs, resource by resource in their own colours — the gap is the reason to give — with
- * the gift on its own page and, for the leader, the upgrade once it is paid for.
- */
-function Treasury({ war, role, canGive, onDonate }: {
-  war: ClanWar;
-  role: 'LEADER' | 'MEMBER';
-  canGive: boolean;
-  onDonate: () => void;
-}) {
-  const { t } = useTranslation();
-  const actions = useClanWarActions();
-  return (
-    <Plate className="flex flex-col gap-2.5 p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.treasury')}</h3>
-        <span className="text-micro text-v2-ink-3">{war.maxLevel ? t('clanWar.maxLevel') : t('clanWar.nextCost')}</span>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {RESOURCE_KEYS.map((key) => {
-          const have = war.treasury[key];
-          const need = war.nextCost?.[key] ?? 0;
-          const share = need > 0 ? Math.min(100, Math.round((have / need) * 100)) : 100;
-          return (
-            <div key={key} data-treasury={key} className="grid grid-cols-[0.875rem_minmax(0,1fr)_auto] items-center gap-2">
-              <img src={RESOURCE_ART[key]} alt="" aria-hidden className="size-3.5 object-contain" />
-              <span aria-hidden="true" className={`h-1.5 overflow-hidden rounded-full ${EMPTY[key]}`}>
-                <span className={`block h-full rounded-full ${FILL[key]}`} style={{ width: `${String(share)}%` }} />
-              </span>
-              <span className="font-v2-mono text-micro text-v2-ink">
-                {full(have)}{need > 0 && <span className="text-v2-ink-3"> / {full(need)}</span>}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      {!war.maxLevel && (
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" disabled={!canGive} onClick={onDonate}>{t('clanWar.donate')}</Button>
-          {role === 'LEADER' && (
-            <Button size="sm" variant="primary"
-              disabled={!war.canUpgrade || war.level === null || actions.upgrade.isPending}
-              onClick={() => { if (war.level !== null) actions.upgrade.mutate(war.level); }}>
-              {t('clanWar.upgrade')}
-            </Button>
-          )}
-        </div>
-      )}
-      {actions.upgrade.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.upgrade.error)}</p>}
     </Plate>
   );
 }

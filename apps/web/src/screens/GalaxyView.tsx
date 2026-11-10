@@ -50,6 +50,8 @@ import { useTranslation } from 'react-i18next';
 import { monumentFinderTargets } from '../galaxy/monuments.js';
 import { UnknownSignalHud } from './UnknownSignalHud.js';
 import { subscribeUnknownSignal } from '../lib/unknownSignal.js';
+import { subscribeClanAlarm } from '../lib/clanAlarmDoor.js';
+import { activeClanAlarms } from '../lib/clanAlarm.js';
 import { createIdempotencyKey } from '../api/client.js';
 import {
   miningSceneData,
@@ -84,6 +86,7 @@ import {
   useUnknownSignalActions,
   useUnknownSignalDetail,
   useCollect,
+  useNotifications,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -507,6 +510,9 @@ export function GalaxyView({
   const dmUnread = useDmUnread().data?.count ?? 0;
   const say = useToast();
   const now = useNow(5_000);
+  // F2: clanmate worlds under a raid, ringed on the map from the reader's own bell.
+  const bell = useNotifications();
+  const clanAlarms = useMemo(() => activeClanAlarms(bell.data?.notifications ?? [], now), [bell.data, now]);
   /**
    * THE SKY ANSWERS THE EVENT. Owner instruction, D149.
    *
@@ -636,6 +642,15 @@ export function GalaxyView({
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** Klan Savunma Desteği: the clanmate world the send sheet is open for. */
   const [supportHost, setSupportHost] = useState<SupportHost | null>(null);
+  // F2 E1: the bell's clan alarm opens the support sheet aimed at the clanmate's world.
+  useEffect(() => subscribeClanAlarm((call) => {
+    onPanel(null);
+    setSupportHost({
+      planetId: call.hostPlanetId, planetName: call.hostPlanetName,
+      ownerName: call.hostName ?? t('clanSupport.alarmClanmate'),
+      alarm: { id: call.alarmId, arriveAt: call.arriveAt },
+    });
+  }), [onPanel, t]);
   /** The commander whose Legacy showcase a tap on their name over a world opened. */
   const [legacyOf, setLegacyOf] = useState<{ playerId: string; name: string } | null>(null);
   /** The active source, kept separate from the focused transfer destination. */
@@ -1384,6 +1399,7 @@ export function GalaxyView({
           shipSkins: cosmetics.data?.equipment?.SHIP }}
         planets={displayPlanets}
         unknownSignals={signalData?.signals}
+        clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
         inspectionPlanetId={cosmeticTrial?.planetId ?? (coachFocus?.inspect && coachFocus.focus.kind === 'planet' ? coachFocus.focus.id : undefined)}
         pending={threads}

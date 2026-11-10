@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: 'Battles',
   attacks: 'Attacks',
   defences: 'Defences',
+  support_one: '{{count}} watch for a clanmate · {{held}} raids repelled',
+  support_other: '{{count}} watches for clanmates · {{held}} raids repelled',
   damageDealt: 'Damage dealt',
   damageTaken: 'Damage taken',
   clan: {

@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: "Combats",
   attacks: "Attaques",
   defences: "Défenses",
+  support_one: '{{count}} garde pour le clan · {{held}} raids repoussés',
+  support_other: '{{count}} gardes pour le clan · {{held}} raids repoussés',
   damageDealt: "Dégâts infligés",
   damageTaken: "Dégâts subis",
   clan: {

@@ -40,9 +40,9 @@ describe('clan defence support — gate and constants', () => {
   });
 });
 
-describe('defence posture — two toggles, never both on', () => {
-  it('names exactly three postures', () => {
-    expect([...DEFENCE_POSTURES]).toEqual(['ESCAPE', 'SUPPORT', 'HOLD']);
+describe('defence posture — two independent toggles (F1, 2026-11-10)', () => {
+  it('names the four postures', () => {
+    expect([...DEFENCE_POSTURES]).toEqual(['ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT']);
   });
 
   it('maps the toggles to a posture', () => {
@@ -51,8 +51,8 @@ describe('defence posture — two toggles, never both on', () => {
     expect(postureFromToggles({ escape: false, support: false })).toBe('HOLD');
   });
 
-  it('refuses both toggles on — the one state the rule forbids', () => {
-    expect(() => postureFromToggles({ escape: true, support: true })).toThrow(RangeError);
+  it('maps both toggles on to ESCAPE_SUPPORT — the line runs together with its support', () => {
+    expect(postureFromToggles({ escape: true, support: true })).toBe('ESCAPE_SUPPORT');
   });
 
   it('round-trips every posture through its toggles', () => {
@@ -62,6 +62,7 @@ describe('defence posture — two toggles, never both on', () => {
     expect(togglesOf('ESCAPE')).toEqual({ escape: true, support: false });
     expect(togglesOf('SUPPORT')).toEqual({ escape: false, support: true });
     expect(togglesOf('HOLD')).toEqual({ escape: false, support: false });
+    expect(togglesOf('ESCAPE_SUPPORT')).toEqual({ escape: true, support: true });
   });
 });
 
@@ -74,8 +75,9 @@ describe('escapeAllowed — the posture decides only in a season dealt the featu
     }
   });
 
-  it('lets only an ESCAPE world run from ruleset 15', () => {
+  it('lets the two escape postures run from ruleset 15', () => {
     expect(escapeAllowed(15, 'ESCAPE')).toBe(true);
+    expect(escapeAllowed(15, 'ESCAPE_SUPPORT')).toBe(true);
     expect(escapeAllowed(15, 'SUPPORT')).toBe(false);
     expect(escapeAllowed(15, 'HOLD')).toBe(false);
   });
@@ -129,9 +131,9 @@ describe('escape verdict and the raid — the posture is part of the rule', () =
     expect(outcome.result.defenders.map((row) => row.stackId)).toEqual(['host', 'w1']);
   });
 
-  it('refuses a raid that asks a supported line to run — the posture already forbids it', () => {
-    expect(() => resolveRaid({
-      stacks: [{ contributionId: '', playerId: '', fleet: { TALON: 200 }, tech: { tech: {} } }],
+  it('asks a supported line to run and keeps it standing when the wing does not outmatch it', () => {
+    const outcome = resolveRaid({
+      stacks: [{ contributionId: '', playerId: '', fleet: { DART: 6 }, tech: { tech: {} } }],
       line: { DART: 6 },
       shield: 0,
       rng: () => () => 0.5,
@@ -140,7 +142,9 @@ describe('escape verdict and the raid — the posture is part of the rule', () =
       escape: true,
       minimumCombatShips: 0,
       support: [{ stackId: 'w1', playerId: 's1', fleet: { PIKE: 4 }, tech: { tech: {} } }],
-    })).toThrow(RangeError);
+    });
+    expect(outcome.escape).toBeNull();
+    expect(outcome.result.defenders.map((row) => row.stackId)).toEqual(['host', 'w1']);
   });
 
   it('still hands the host back as the one defending stack on an ordinary raid', () => {

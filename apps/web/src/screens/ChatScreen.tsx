@@ -5,7 +5,7 @@ import { BlockPlayerSheet, BlockedPlayersSheet, type BlockSubject } from './Comm
 import { ContentReportSheet, type ReportSubject } from './ContentReportSheet.js';
 import { ChatMediaAttachment } from './ChatMediaAttachment.js';
 import { ChatMediaComposer } from './ChatMediaComposer.js';
-import type { ChatMedia } from '@astera/rules';
+import type { ChatMedia, ClanPerkId } from '@astera/rules';
 import { ChatReactionRoster } from './ChatReactionRoster.js';
 import { CHAT, CLAN, REACTION_EMOJIS, type ReactionEmoji } from '@astera/rules';
 import {
@@ -44,9 +44,12 @@ import { currentLanguage } from '../i18n/index.js';
 import { isLanguage, LANGUAGES, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
 import { isChatMessageVisible, type ChatMuteAuthor, type MutedChatPlayer } from '../lib/chatMutes.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
-import { commanderLabel } from '../lib/identity.js';
+import { TaggedName } from '../ui/ClanTag.js';
+import { PerkArt } from '../ui/PerkArt.js';
+import type { ClanTagTier } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
-import { useNow } from '../lib/time.js';
+import { clockTime, useNow } from '../lib/time.js';
+import { describeClanEvent, type ClanChatEvent } from '../lib/clanChatEvent.js';
 import { ClanIcon, CloseIcon, HeartIcon, HonorIcon, MuteIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
@@ -71,6 +74,8 @@ interface MessageRow {
   planetId?: string;
   username: string;
   clanTag?: string | null;
+  /** F2: the tag's metal by clan level; absent from an older server. */
+  clanTier?: ClanTagTier | null;
   content: string;
   media?: ChatMedia | null;
   createdAt: Date;
@@ -82,6 +87,32 @@ interface MessageRow {
   previousSeasonRanking?: 'HONOR' | 'DOMINION';
   replyTo?: { id: string; username: string; content: string; media?: ChatMedia | null } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
+  /** F2 E2: a line the server posted to the clan's room. */
+  event?: ClanChatEvent | null;
+}
+
+/**
+ * A LINE NOBODY TYPED (F2 E2): the clan's fight, posted by the server — an alarm in the colour of
+ * harm, the rest in the allies' — centred between the bubbles like a ship's log entry.
+ */
+/** Which perk's object stands beside each clan event. */
+const EVENT_PERK: Partial<Record<string, ClanPerkId>> = {
+  ALARM: 'ALARM', SUPPORT_SENT: 'CORRIDOR', DEFENCE: 'STATION', LEVEL_UP: 'BANNER',
+};
+
+function ClanEventLine({ event, at }: { event: ClanChatEvent; at: Date }) {
+  const text = describeClanEvent(event);
+  if (text === null) return null;
+  const alarm = event.kind === 'ALARM';
+  const perk = EVENT_PERK[event.kind];
+  return (
+    <p data-chat-event={event.kind}
+      className={`flex max-w-[92%] items-center gap-2 rounded-control border px-2 py-1 text-micro leading-snug ${alarm
+        ? 'border-v2-hostile/45 bg-v2-hostile/10 text-v2-ink' : 'border-v2-ally/35 bg-v2-ally/10 text-v2-ink'}`}>
+      {perk && <PerkArt perk={perk} className={`size-6 ${alarm ? 'animate-pulse' : ''}`} />}
+      <span className="min-w-0">{text}<span className="ml-1.5 font-v2-mono text-v2-ink-3">{clockTime(at)}</span></span>
+    </p>
+  );
 }
 
 /** Which room: the galaxy's general channel or the commander's clan. */
@@ -834,7 +865,11 @@ function ChannelPanel({
           </div>
         ) : (
           <ol className={`flex flex-col gap-2.5 mt-2.5 pt-2.5 ${actionMessageId ? 'pb-3' : 'pb-3'}`}>
-            {visibleMessages.map((message) => (
+            {visibleMessages.map((message) => message.event ? (
+              <li key={message.id} data-chat-row={message.id} className="flex justify-center">
+                <ClanEventLine event={message.event} at={message.createdAt} />
+              </li>
+            ) : (
               <li key={message.id} data-chat-row={message.id} className={`relative flex items-start ${message.self ? 'justify-end' : ''} ${actionMessageId === message.id ? 'z-20' : ''}`}>
                 <div className="relative min-w-0 max-w-[84%]">
                   <div
@@ -877,7 +912,7 @@ function ChannelPanel({
                   >
                     <div className="flex items-baseline gap-2">
                       {message.self ? (
-                        <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
+                        <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></strong>
                       ) : message.planetId ? (
                         <button
                           type="button"
@@ -892,10 +927,10 @@ function ChannelPanel({
                             message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'
                           }`}
                         >
-                          {commanderLabel(message.username, message.clanTag)}
+                          <TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} />
                         </button>
                       ) : (
-                        <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
+                        <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
                       )}
                       {message.supporter === true && (
                         <button type="button" data-chat-supporter-icon aria-label={t('chat.supporterBadge')}

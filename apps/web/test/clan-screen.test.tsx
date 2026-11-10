@@ -96,6 +96,7 @@ function show(home: ClanHome, accepted = true, arena?: { credential: () => Promi
       ...clan,
       rank: index + 1,
       self: clan.id === 'clan-orbit',
+      watches: clan.id === 'clan-orbit' ? 7 : 0,
     })),
   });
   vi.spyOn(api, 'clanStrength').mockResolvedValue({
@@ -137,6 +138,7 @@ function show(home: ClanHome, accepted = true, arena?: { credential: () => Promi
       ...clan,
       rank: index + 1,
       self: clan.id === 'clan-orbit',
+      watches: clan.id === 'clan-orbit' ? 7 : 0,
     })),
   });
   client.setQueryData(keys.clanStrength, {
@@ -331,6 +333,16 @@ describe('clan command surface', () => {
     expect(screen.getByText('73')).toBeInTheDocument();
     expect(screen.getByText('Vantage')).toBeInTheDocument();
     expect(screen.getByText('Ada')).toBeInTheDocument();
+  });
+
+  it('counts the watches each clan stood for its members on the ladder (F2 E3)', async () => {
+    show(member);
+    const row = (await screen.findByText(/Orbit Wardens/, { selector: 'li *' })).closest('li')!;
+    expect(row).toHaveTextContent('2/5 crew · 7 watches');
+    // Level 3: the tag is bronze on the ladder.
+    expect(row.querySelector('[data-tier="BRONZE"]')).toHaveTextContent('[ORB]');
+    const other = screen.getByText(/Night Couriers/, { selector: 'li *' }).closest('li')!;
+    expect(other).not.toHaveTextContent(/watch/);
   });
 
   it('unlocks adaptation at its timestamp while the clan room stays open', async () => {

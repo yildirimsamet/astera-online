@@ -18,6 +18,7 @@ import {
   type LineReading,
   type PowerRange,
   type TechLevels,
+  togglesOf,
 } from '@astera/rules';
 import type { AdmiralBonuses } from '@astera/rules/arena';
 import type { IntelView, Report } from '../api/schemas.js';
@@ -183,9 +184,11 @@ export function useTargetReading({
     A WORLD THAT CANNOT RETREAT DRAWS NO RETREAT LINE (K4). From ruleset 15 the probe
     reads the posture exactly; SUPPORT and HOLD never lift off, so the tick would mark a
     ratio at which nothing happens. A report that never read a posture keeps the mark.
+    ESCAPE_SUPPORT keeps it: the whole line, support included, lifts at that ratio (F1).
   */
-  const held = clanDefenseApplies(rulesetVersion) && report?.posture != null && report.posture !== 'ESCAPE'
-    ? report.posture
+  const stance = report ? report.stance ?? report.posture ?? null : null;
+  const held = clanDefenseApplies(rulesetVersion) && stance !== null && !togglesOf(stance).escape
+    ? stance
     : null;
   const escapeRuled = !aboard
     && target.kind === 'world'
@@ -227,6 +230,9 @@ export function useTargetReading({
         }));
       }
       if (held !== null) notes.push(t(`clanSupport.postureRead.${held}`));
+      else if (stance === 'ESCAPE_SUPPORT' && report.support && report.support.supporters > 0) {
+        notes.push(t('clanSupport.noteLiftTogether'));
+      }
       if (report.support && report.support.supporters > 0) {
         notes.push(t('clanSupport.noteSupport', { count: report.support.supporters }));
         // The most a win here could be multiplied by (owner, 2026-10-02): a ceiling, since the probe sees no guns.

@@ -5,9 +5,11 @@ import { defendedTransfer, supportFactor, type Fleet } from '@astera/rules';
 import {
   battleReports,
   clanSupportBattleResults,
+  clanSupportWaves,
   clans,
   clanWarDominionEvents,
   missions,
+  notifications,
   players,
   units,
 } from '../src/db/schema.js';
@@ -44,7 +46,7 @@ const ledgerSnapshot = async (f: Fixture) => {
   return new Map(rows.map((row) => [row.id, row.taken - row.lost]));
 };
 
-async function battle(seed: number, attackWith: Fleet) {
+async function battle(seed: number, attackWith: Fleet, toggles = { escape: false, support: true }) {
   const f = await supportWorld(4, seed);
   await giveUnits(f.db, f.planetIds[3]!, { PIKE: 120 });
   for (const planet of [0, 1]) await giveUnits(f.db, f.planetIds[planet]!, attackWith);
@@ -55,7 +57,7 @@ async function battle(seed: number, attackWith: Fleet) {
   await f.db.transaction((tx) => setDefencePosture(tx, {
     planetId: f.planetIds[2]!,
     playerId: f.playerIds[2]!,
-    toggles: { escape: false, support: true },
+    toggles,
     clock: f.clock,
   }));
   await f.db.transaction((tx) => sendClanSupport(tx, {
@@ -124,5 +126,21 @@ describe('a joint war meets a supported line', () => {
     const home = await f.db.select().from(units)
       .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'PIKE')));
     expect(home.reduce((sum, row) => sum + row.count, 0)).toBe(0);
+  });
+});
+
+describe('a joint war crushing an ESCAPE_SUPPORT line (F1)', () => {
+  it('lifts host and wave together, books the guns’ battle alone and leaves the wave standing', async () => {
+    const { f, report } = await battle(15_502, { DART: 900 }, { escape: true, support: true });
+    expect(report.fleetEscape?.kind).toBe('ESCAPED');
+    expect(report.fleetEscape?.kind === 'ESCAPED' ? report.fleetEscape.support?.length : 0).toBe(1);
+    expect(report.defenderCount).toBe(1);
+    expect(report.defenderFleet.PIKE ?? 0).toBe(0);
+    expect(await f.db.select().from(clanSupportBattleResults).where(eq(clanSupportBattleResults.reportId, report.id))).toHaveLength(0);
+    const [wave] = await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.senderPlayerId, f.playerIds[3]!));
+    expect(wave).toMatchObject({ status: 'STATIONED', battles: 0 });
+    const lifted = await f.db.select().from(notifications).where(and(
+      eq(notifications.playerId, f.playerIds[3]!), eq(notifications.kind, 'clan_support_lifted')));
+    expect(lifted).toHaveLength(1);
   });
 });

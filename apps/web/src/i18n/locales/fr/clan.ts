@@ -80,12 +80,19 @@ export const clan = {
     chatBody: "Planifiez cibles, soutien et heures d’arrivée dans une discussion réservée à votre équipe.",
     waitingNote: "La discussion et la protection contre les tirs alliés commencent dès l’adhésion. Les membres qui rejoignent un clan attendent {{hours}} heures pour l’aide, le partage du butin, le soutien et les contributions aux attaques communes.",
   },
+  tagTier: {
+    BRONZE: 'clan à bannière de bronze',
+    SILVER: 'clan à bannière d’argent',
+    GOLD: 'clan à bannière d’or',
+  },
   standings: {
     heading: "Classement des clans",
     aside: "les 3 premiers gagnent un sceau",
     waiting: "Chargement du classement des clans",
     empty: "Aucun clan n’apparaît encore au classement.",
     crew: "{{members}}/5 membres",
+    watches_one: '{{count}} garde',
+    watches_other: '{{count}} gardes',
   },
   requests: {
     heading: "Tes demandes",
@@ -290,7 +297,7 @@ export const clan = {
     sendHeading: "Envoyer de l’aide",
     explainer:
       "Un convoi chargé livre ses ressources puis rentre chez lui. Un convoi vide constitue un don de vaisseaux irréversible.",
-    speed: "10 % plus rapide",
+    speed: 'Couloir du clan · première étape plus rapide',
     extraBay: "+1 baie réservée à l’aide",
     noRecall: "Aucun rappel possible",
     returns: "La flotte de transport revient",

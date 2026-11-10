@@ -66,29 +66,19 @@ export function clanHangarCapacity(level: number): number {
 }
 
 /**
- * WHAT THE NEXT RUNG COSTS — TWICE the personal Hangar's price, for twice the room.
- * Owner decision, 2026-09-22, replacing "the room doubles, the invoice does not".
+ * WHAT THE NEXT RUNG COSTS — the personal Hangar's price, for twice the room. Owner decision
+ * 2026-11-10 (F2), halving the 2026-09-22 "twice the invoice": the clan level now also buys the
+ * perk ladder (`clanPerks.ts`), and its cost fell on one to three donors.
  *
- * THE OLD RULE HAD A HIDDEN COUPLING. A clan rung bought double room at the personal invoice, so
- * every cut to the personal ladder halved the clan's price per unit of room — for free, without
- * anybody choosing it. Plan 2B.3 cut the late personal rungs by 35–75%; under the old rule that
- * would have handed clans the same cut twice over.
+ * Still delegated to `buildingCost`, so the coupling the 2026-09-22 decision kept survives: every
+ * cut to the personal ladder moves the clan rung by the same share, never by a hidden multiple.
+ * A unit of clan room now costs half a unit of personal room (`hangar-price.test.ts`).
  *
- * Doubling the invoice keeps the coupling and closes the multiplier: a unit of clan room now costs
- * exactly what a unit of personal room costs, at every rung, whatever the personal ladder does
- * next. `hangar-price.test.ts` holds that equality.
- *
- * Still delegated to `buildingCost` so the clan ladder cannot drift from the building ladder it
- * mirrors. There is NO cost at the top rung, and that absence is the rule that closes donation and
+ * There is NO cost at the top rung, and that absence is the rule that closes donation and
  * upgrade at level 10 rather than a separate flag.
  */
 export function clanLevelUpgradeCost(currentLevel: number): Resources {
-  const personal = buildingCost('HANGAR', assertClanLevel(currentLevel, CLAN_LEVEL_MAX - 1));
-  return {
-    alloy: personal.alloy * 2,
-    crystal: personal.crystal * 2,
-    deuterium: personal.deuterium * 2,
-  };
+  return buildingCost('HANGAR', assertClanLevel(currentLevel, CLAN_LEVEL_MAX - 1));
 }
 
 /* ── fuel ───────────────────────────────────────────────────────── */

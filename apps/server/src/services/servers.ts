@@ -25,6 +25,7 @@ import {
   clanWarContributions,
   clanSupportBattleResults,
   clanSupportDominionEvents,
+  clanAlarms,
   clanSupportWaves,
   clanWarDominionEvents,
   clanWarMissions,
@@ -639,6 +640,8 @@ export async function wipeAllServers(
     await tx.delete(clanSupportBattleResults);
     await tx.delete(clanSupportDominionEvents);
     await tx.delete(clanSupportWaves);
+    // Klan Alarmı (F2): each call points at a raid, a host, a world and a clan.
+    await tx.delete(clanAlarms);
     await tx.delete(battleReports);
     await tx.delete(clanWarOperations);
     // A monument preparation owns a real target FK; delete its history before the target.

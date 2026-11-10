@@ -63,7 +63,7 @@ export const SideEditor = memo(function SideEditor({ side, scenario, update, inv
           onValueChange={n => { update(d => { d.aegisCharge = n; }); }} /></label>
       </div>
       {!here && <><label className="sim-check"><input type="checkbox" checked={scenario.defenceOffline} onChange={event => { const value = event.currentTarget.checked; update(d => { d.defenceOffline = value; }); }} />{t('simulator.offline')}</label>
-      <label className="sim-check"><input type="checkbox" checked={scenario.automaticEscape} disabled={owners.length > 1} onChange={event => {
+      <label className="sim-check"><input type="checkbox" checked={scenario.automaticEscape} onChange={event => {
         const value = event.currentTarget.checked; update(d => { d.automaticEscape = value; });
       }} />{t('simulator.automaticEscape')}</label>
       {scenario.automaticEscape && <label className="sim-setting">{t('simulator.escapeFuel')}<SimulationNumberInput min={0} max={1_000_000_000} value={scenario.deuterium}
@@ -88,7 +88,6 @@ export const SideEditor = memo(function SideEditor({ side, scenario, update, inv
     {!here && owners.length < 5 && !pirate && <button type="button" className="sim-add-wing" onClick={() => { update(d => {
       let id = 1; while (d[side].some(row => row.id === String(id))) id++;
       d[side].push({ id: String(id), fleet: {}, health: {}, tech: { SHIP_POWER: 0, SHIP_ARMOR: 0, SHIP_SHIELDS: 0, EMPLACEMENT_DOCTRINE: 0 } });
-      if (side === 'defenders') d.automaticEscape = false;
     }); }}>+ {t('simulator.addWing')}</button>}
     <p className="sim-caption">{t('simulator.limit', { limit: SIMULATION_UNIT_LIMIT })}</p>
   </div>;

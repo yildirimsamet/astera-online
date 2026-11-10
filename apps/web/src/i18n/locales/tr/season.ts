@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: 'Savaş',
   attacks: 'Saldırı',
   defences: 'Savunma',
+  support_one: 'Klan arkadaşları için {{count}} nöbet · {{held}} püskürtme',
+  support_other: 'Klan arkadaşları için {{count}} nöbet · {{held}} püskürtme',
   damageDealt: 'Verilen hasar',
   damageTaken: 'Alınan hasar',
   clan: {

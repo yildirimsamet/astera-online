@@ -11,6 +11,7 @@ import { buildReplayTimeline, sampleReplay, type ReplayEvent } from './timeline.
 import { UnitInspector } from './UnitInspector.js';
 import { RetreatRoster } from './RetreatRoster.js';
 import { combatNumber } from './presentation.js';
+import { escapedShipCount } from './scenario.js';
 
 export interface PlaybackClock { time: number; playing: boolean; speed: number }
 type ShotEvent = Extract<ReplayEvent, { kind: 'SHOT' }>;
@@ -129,7 +130,7 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
   const phaseShots = allShots.filter(event => event.round === frame.round && event.side === frame.phase);
   const phaseShotNumber = phaseShots.filter(event => event.at <= time).length;
   const currentRound = simulation.recording.rounds.find(round => round.round === frame.round);
-  const preEscaped = simulation.escape?.kind === 'ESCAPED' ? fleetCount(simulation.escape.ships) : 0;
+  const preEscaped = escapedShipCount(simulation.escape);
   const noSurvivors = (side: BattleSide) => stats(side).active + stats(side).fled + (side === 'DEFENCE' ? preEscaped : 0) === 0;
   const mutualDestruction = noSurvivors('ATTACK') && noSurvivors('DEFENCE') && stats('ATTACK').dead > 0 && stats('DEFENCE').dead > 0;
   const readerSide = ownPlayerIds === undefined ? viewer : initialViewer;
@@ -176,7 +177,7 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
           defence: frame.retreats.filter(event => event.round === frame.round && ships.get(event.shipId)?.side === 'DEFENCE').length })}</small>}
       </div>
       {simulation.defenceOffline && <p className="sim-offline">{t('simulator.offlineDetail')}</p>}
-      {simulation.escape && <p className="sim-offline sim-result">{simulation.escape.kind === 'ESCAPED' ? t('simulator.escapedBefore', { number: fleetCount(simulation.escape.ships) }) : t('simulator.stranded')}</p>}
+      {simulation.escape && <p className="sim-offline sim-result">{simulation.escape.kind === 'ESCAPED' ? t('simulator.escapedBefore', { number: preEscaped }) : t('simulator.stranded')}</p>}
     </div>
     <div className="sim-stage-panel">
       <BattleStage timeline={timeline} clock={clock} viewer={viewer} selected={selected} onSelect={inspect} environment={environment} vessel={simulation.vessel}

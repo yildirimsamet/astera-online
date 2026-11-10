@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: 'Batallas',
   attacks: 'Ataques',
   defences: 'Defensas',
+  support_one: '{{count}} guardia por compañeros · {{held}} ataques repelidos',
+  support_other: '{{count}} guardias por compañeros · {{held}} ataques repelidos',
   damageDealt: 'Daño infligido',
   damageTaken: 'Daño recibido',
   clan: {

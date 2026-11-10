@@ -777,6 +777,12 @@ export function useClanWar(enabled = true) {
   return useQuery({ queryKey: keys.clanWar, queryFn: api.clanWar, enabled, ...READ });
 }
 
+/** F2 P6 Katkı Defteri: every current member's season for the clan. */
+export function useClanLedger(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanLedger, queryFn: api.clanLedger, enabled, ...READ });
+}
+
 /** Native waves have indefinite HOLD, and distinct arrival, cargo and HP boundaries. */
 export function useMonuments(enabled = true) {
   const api = useApi();
@@ -892,7 +898,7 @@ export function useClanWarActions() {
     donate: useMutation({
       mutationFn: (input: { planetId: string; resources: Resources }) => api.donateClanTreasury(input),
       onMutate: ({ planetId }) => lane.enter(planetId),
-      onSuccess: () => Promise.all([keys.clanWar, keys.planets, keys.planet]
+      onSuccess: () => Promise.all([keys.clanWar, keys.clanLedger, keys.planets, keys.planet]
         .map((queryKey) => refreshQueries(client, { queryKey }))),
       onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
     }),
@@ -900,6 +906,7 @@ export function useClanWarActions() {
       onSuccess: () => {
         void refreshQueries(client, { queryKey: keys.clanWar });
         void refreshQueries(client, { queryKey: keys.clanLeaderboard });
+        void refreshQueries(client, { queryKey: keys.clanLedger });
       } }),
   };
 }
@@ -933,7 +940,7 @@ export function useClanSupportActions() {
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
       api.quoteClanSupport(input) }),
     send: useMutation({
-      mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) => api.sendClanSupport(input),
+      mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean; alarmId?: string }) => api.sendClanSupport(input),
       onMutate: ({ originPlanetId }) => lane.enter(originPlanetId),
       onSuccess: async (result) => {
         await applyPlanet(result.planet);

@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import {
-  CLAN_SUPPORT,
   HULLS,
   NON_COMBATANT_HULLS,
   UNAIDED,
@@ -18,19 +17,26 @@ import {
   hangarLoad,
   hpRadiationApplies,
   postureFromToggles,
+  supportAccepted,
   supportFuel,
+  togglesOf,
   supportTravelMinutes,
+  clanFirstLegMinutes,
+  clanSupportStationHours,
   withinTierBand,
   type Fleet,
   type HullId,
   type PostureToggles,
   type TechLevels,
 } from '@astera/rules';
+import { clanLevelOf } from './clanPerks.js';
+import { postClanEvent } from './clanChatEvents.js';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   accounts,
   clanMemberships,
+  clanAlarms,
   clanSupportWaves,
   missions,
   planets,
@@ -91,14 +97,12 @@ import { admiralHomeward, admiralTime, attachAdmiral, finishAdmiralLeg, prepareA
  */
 
 /**
- * SAVE ONE WORLD'S TWO TOGGLES. Owner K4.
+ * SAVE ONE WORLD'S TWO TOGGLES. Owner K4; independent since F1 (2026-11-10).
  *
- * The retreat and clan support are exclusive; "both on" is refused rather than
- * resolved, because the client never sends it and a server that guessed which one
- * was meant would decide a fight for the player. Support needs a clan (any member —
- * an adapting newcomer is exactly who needs help). Leaving SUPPORT sends every wave
- * at, or flying to, this world home: the commander chose the retreat over their
- * guests, and a line cannot both lift and hold clanmates.
+ * Both on is ESCAPE_SUPPORT: the line takes clanmates and, outmatched, lifts with them.
+ * Support needs a clan (any member — an adapting newcomer is exactly who needs help).
+ * Closing the door (support off) sends every wave at, or flying to, this world home;
+ * switching only the retreat keeps them.
  */
 export async function setDefencePosture(
   tx: Tx,
@@ -108,17 +112,22 @@ export async function setDefencePosture(
   if (!clanDefenseApplies(planet.rulesetVersion)) {
     throw new GameError('CLAN_SUPPORT_UNAVAILABLE', 'Clan defence arrives with a new season', 404);
   }
-  if (input.toggles.escape && input.toggles.support) {
-    throw new GameError('POSTURE_CONFLICT', 'The retreat and clan support cannot both be on', 400);
-  }
-  const posture = postureFromToggles(input.toggles);
-  if (posture === 'SUPPORT' && await activeClanMembership(tx, input.playerId) === null) {
+  const inClan = await activeClanMembership(tx, input.playerId) !== null;
+  if (input.toggles.support && !inClan) {
     throw new GameError('NOT_IN_CLAN', 'Clan support needs a clan', 403);
   }
+  // Outside a clan the support switch is locked, so its "off" is no choice: the stored bit —
+  // the open default (F1-K8) — survives the save and takes effect on joining a clan.
+  const posture = postureFromToggles({
+    escape: input.toggles.escape,
+    support: inClan ? input.toggles.support : togglesOf(planet.defencePosture).support,
+  });
   let returnedWaves = 0;
   if (posture !== planet.defencePosture) {
+    const wasOpen = supportAccepted(planet.defencePosture);
+    const open = supportAccepted(posture);
     await tx.update(planets).set({ defencePosture: posture }).where(eq(planets.id, input.planetId));
-    if (planet.defencePosture === 'SUPPORT') {
+    if (wasOpen && !open) {
       returnedWaves = await returnSupportAtWorld(tx, {
         planetIds: [input.planetId],
         reason: 'HOST_CLOSED',
@@ -126,7 +135,7 @@ export async function setDefencePosture(
       });
     }
     // The door opened or closed: every clanmate's Focus rail reads it (`clanPresence.supportOpen`).
-    if (posture === 'SUPPORT' || planet.defencePosture === 'SUPPORT') {
+    if (wasOpen !== open) {
       await tellClanOfDoor(tx, input.playerId);
     }
   }
@@ -160,6 +169,8 @@ export interface SupportInput {
   clock: Clock;
   /** The commander ship stands with the wave (Y9); a quote previews it and reserves nothing. */
   admiral?: boolean;
+  /** F2 E1: the clan alarm this wave answers; it must be this clan's call for this world. */
+  alarmId?: string;
 }
 
 interface SupportContext {
@@ -265,7 +276,7 @@ async function gatherSupport(tx: Tx, input: SupportInput, reserve: boolean): Pro
       context: 'ships',
     });
   }
-  if (host.defencePosture !== 'SUPPORT') {
+  if (!supportAccepted(host.defencePosture)) {
     refuse('CLAN_SUPPORT_CLOSED', 'That world is not taking clan support');
   }
 
@@ -315,7 +326,9 @@ async function gatherSupport(tx: Tx, input: SupportInput, reserve: boolean): Pro
     });
   }
   const pace = { boost: fleetSpeedMult(origin.orbit), tech };
-  const travelMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace) * escortTime);
+  // F2 Klan Koridoru: the first leg flies at the clan's corridor; home is the ×1.1 lane.
+  const clanLevel = await clanLevelOf(tx, sender.clanId);
+  const travelMinutes = clanFirstLegMinutes(fleetTravelExact(dist, input.fleet, pace) * escortTime, clanLevel);
   const returnMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace) * escortTime);
   if (!Number.isFinite(travelMinutes)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const arriveAt = addMinutes(now, travelMinutes);
@@ -323,7 +336,7 @@ async function gatherSupport(tx: Tx, input: SupportInput, reserve: boolean): Pro
   const [season] = await tx.select({ endsAt: seasons.endsAt }).from(seasons)
     .where(eq(seasons.id, origin.seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
-  const fullStay = addMinutes(arriveAt, CLAN_SUPPORT.stationHours * 60);
+  const fullStay = addMinutes(arriveAt, clanSupportStationHours(clanLevel) * 60);
   const lastLeave = addMinutes(season.endsAt, -returnMinutes);
   if (lastLeave < arriveAt) {
     refuse('CLAN_SUPPORT_SEASON_TOO_SHORT', 'This galaxy ends before that wave could get home');
@@ -413,6 +426,13 @@ export async function sendClanSupport(
   if (first) throw new GameError(first.code, first.message, 409, first.params);
 
   const { origin } = context;
+  if (input.alarmId !== undefined) {
+    const [alarm] = await tx.select({ clanId: clanAlarms.clanId, hostPlanetId: clanAlarms.hostPlanetId })
+      .from(clanAlarms).where(eq(clanAlarms.id, input.alarmId));
+    if (alarm?.clanId !== context.clanId || alarm.hostPlanetId !== input.hostPlanetId) {
+      throw new GameError('CLAN_ALARM_MISMATCH', 'That alarm was not raised for this world', 400);
+    }
+  }
   const damage = await takeHomeHealth(tx, origin.planetId, input.fleet, origin.now, true);
   const [mission] = await tx.insert(missions).values({
     seasonId: origin.seasonId,
@@ -458,6 +478,7 @@ export async function sendClanSupport(
     outboundMissionId: mission.id,
     sentAt: origin.now,
     arriveAt: context.arriveAt,
+    alarmId: input.alarmId ?? null,
   }).returning();
   if (!wave) throw new Error('clan support wave insert returned no row');
   await attachAdmiral(tx, context.admiralId, 'defence', wave.id);
@@ -483,6 +504,17 @@ export async function sendClanSupport(
     },
     at: origin.now,
     refId: wave.id,
+  });
+  // F2 E2: the clan's room hears who is flying to whom, and whether it answers an alarm.
+  await postClanEvent(tx, {
+    clanId: context.clanId,
+    seasonId: origin.seasonId,
+    authorPlayerId: input.senderPlayerId,
+    event: { kind: 'SUPPORT_SENT', params: {
+      senderName: names.sender, hostName: names.host, hostPlanetName: names.world,
+      ships: fleetCount(input.fleet), arriveAt: context.arriveAt.toISOString(), answering: input.alarmId !== undefined,
+    } },
+    now: origin.now,
   });
   await recomputePlayerWealth(tx, input.senderPlayerId, origin.now);
   await publishPrivate(tx, input.senderPlayerId, 'support');
@@ -797,8 +829,9 @@ export async function returnSupportAtWorld(
  *
  * Called BEFORE the membership path takes its clan and player locks (see the lock order
  * above). Every wave they sent and every wave standing at one of their worlds goes home,
- * and every world of theirs standing at SUPPORT drops back to ESCAPE — the posture a
- * commander who never touched the toggles has — and they are told once.
+ * and every world of theirs standing at SUPPORT gets the retreat back as ESCAPE_SUPPORT —
+ * the posture a commander who never touched the toggles has, whose door stays shut
+ * outside a clan (`effectivePosture`) — and they are told once.
  */
 export async function releaseClanSupport(
   tx: Tx,
@@ -827,7 +860,7 @@ export async function releaseClanSupport(
   }
   if (worlds.length === 0) return;
   const ids = worlds.map((world) => world.id);
-  await tx.update(planets).set({ defencePosture: 'ESCAPE' })
+  await tx.update(planets).set({ defencePosture: 'ESCAPE_SUPPORT' })
     .where(and(inArray(planets.id, ids), eq(planets.defencePosture, 'SUPPORT')));
 
   const byPlayer = new Map<string, (typeof worlds)[number][]>();
@@ -857,7 +890,7 @@ async function standingRefusal(tx: Tx, wave: WaveRow): Promise<ReturnReason | nu
     activeClanMembership(tx, wave.hostPlayerId),
   ]);
   if (sender?.clanId !== wave.clanId || recipient?.clanId !== wave.clanId) return 'MEMBERSHIP';
-  if (host.defencePosture !== 'SUPPORT') return 'HOST_CLOSED';
+  if (!supportAccepted(host.defencePosture)) return 'HOST_CLOSED';
   return null;
 }
 
@@ -930,7 +963,8 @@ export async function resolveClanSupportLeg(
   const stationedAt = mission.arriveAt;
   const destination = await safeHomePlanet(tx, wave.senderPlayerId, wave.originPlanetId);
   const leg = await homewardMinutes(tx, damaged, destination, dose.fleet);
-  const fullStay = addMinutes(stationedAt, CLAN_SUPPORT.stationHours * 60);
+  // F2 Uzun Nöbet: the stay is the clan's rung at landing; a later rung does not stretch it.
+  const fullStay = addMinutes(stationedAt, clanSupportStationHours(await clanLevelOf(tx, wave.clanId)) * 60);
   const lastLeave = seasonRow ? addMinutes(seasonRow.endsAt, -leg.minutes) : fullStay;
   const expiresAt = fullStay <= lastLeave ? fullStay : (lastLeave > stationedAt ? lastLeave : stationedAt);
   const [standing] = await tx.update(clanSupportWaves)
@@ -995,7 +1029,8 @@ export async function abandonClanSupportLeg(
  * with the world locked.
  *
  *   · every wave standing at, or flying to, it goes home — there is nobody it was
- *     defending any more (WORLD_CHANGED) — and its posture returns to ESCAPE;
+ *     defending any more (WORLD_CHANGED) — and its posture returns to the untouched
+ *     ESCAPE_SUPPORT, open only if the new commander is in a clan;
  *   · every wave that LEFT from it is re-anchored on its sender's capital. The ships'
  *     rows sat under this world, and neither the Hangar count nor the bay count filters
  *     by owner: left there, the new owner would inherit a stranger's ships and bay.
@@ -1004,7 +1039,7 @@ export async function releaseSupportForWorldChange(
   tx: Tx,
   input: { planetId: string; now: Date },
 ): Promise<void> {
-  await tx.update(planets).set({ defencePosture: 'ESCAPE' }).where(eq(planets.id, input.planetId));
+  await tx.update(planets).set({ defencePosture: 'ESCAPE_SUPPORT' }).where(eq(planets.id, input.planetId));
   await returnSupportAtWorld(tx, { planetIds: [input.planetId], reason: 'WORLD_CHANGED', now: input.now });
   const leaving = await tx.select({ id: clanSupportWaves.id }).from(clanSupportWaves)
     .where(and(

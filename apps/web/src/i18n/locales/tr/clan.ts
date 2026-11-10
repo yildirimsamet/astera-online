@@ -76,12 +76,19 @@ export const clan = {
     chatBody: "Hedefi, desteği ve varış zamanını yalnız ekibinin okuyabildiği sohbette planlayın.",
     waitingNote: "Sohbet ve dost ateşi koruması katılınca açılır. Bir klana katılan üyeler; yardım, ganimet paylaşımı, destek gönderme ve ortak saldırıya filo gönderme için {{hours}} saat uyum bekler.",
   },
+  tagTier: {
+    BRONZE: 'bronz sancaklı klan',
+    SILVER: 'gümüş sancaklı klan',
+    GOLD: 'altın sancaklı klan',
+  },
   standings: {
     heading: 'Klan sıralaması',
     aside: 'ilk 3 mühür kazanır',
     waiting: 'Klan sıralaması okunuyor',
     empty: 'Henüz sıralamaya giren bir klan yok.',
     crew: '{{members}}/5 ekip',
+    watches_one: '{{count}} nöbet',
+    watches_other: '{{count}} nöbet',
   },
   requests: {
     heading: 'İsteklerin',
@@ -263,7 +270,7 @@ export const clan = {
     resume: 'Yardıma izin ver',
     sendHeading: 'Yardım gönder',
     explainer: 'Yüklü konvoy kaynakları teslim edip eve döner. Yüksüz konvoy geri alınamaz bir gemi hediyesidir.',
-    speed: '%10 daha hızlı',
+    speed: 'Klan koridoru · ilk bacak daha hızlı',
     extraBay: '+1 yalnız yardım rampası',
     noRecall: 'Geri çağırma yok',
     returns: 'Taşıma filosu geri döner',

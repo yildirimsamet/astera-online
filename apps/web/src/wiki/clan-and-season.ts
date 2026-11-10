@@ -43,11 +43,11 @@ export const clanAndSeasonArticles: readonly WikiArticle[] = [
     l("Send your ships to defend a clanmate without giving them away. Learn support capacity, research, recall and the host’s Dominion calculation.", "Gemilerini vermeden klan arkadaşını savunmaya gönder. Destek kapasitesini, araştırmayı, geri çağırmayı ve ev sahibinin Hâkimiyet hesabını öğren."),
     l([
       "The host must enable Accept clan support. Your ships stay yours and use the host’s separate support area, equal to that planet’s Hangar capacity. Until home, they also occupy your own Hangar room and a flight bay.",
-      "Support fights alongside the host using its own research. A supported planet cannot tactically retreat. If a support fleet does not meet the attack’s tier conditions, it may return without entering combat when the raid arrives.",
+      "Support fights alongside the host using its own research. With only support on, the planet never retreats. With retreat on too, a raid that outmatches the whole line (host and support) makes everyone lift together; the host’s deuterium pays only for the host’s ships, and if it is short the whole line fights. If a support fleet does not meet the attack’s tier conditions, it may return without entering combat when the raid arrives.",
       "The sender can recall support in transit or while stationed. The host can send it home; disabling support also returns stationed fleets. Both legs’ fuel is paid at launch and not refunded by recall. The stay has a maximum duration and can end earlier near season close.",
     ], [
       "Ev sahibi, Klan desteğini kabul et seçeneğini açmalıdır. Gemiler senin kalır. Ev sahibinde, o gezegenin Hangar kapasitesine eşit ayrı destek alanını kullanırlar. Eve dönene kadar kendi Hangar alanını ve bir uçuş rampanı da kullanırlar.",
-      "Destek filosu, kendi araştırmalarıyla ev sahibinin yanında savaşır. Destekli gezegen taktik çekilemez. Destek filosu saldırının kademe koşullarına uymuyorsa akın varınca savaşa katılmadan dönebilir.",
+      "Destek filosu, kendi araştırmalarıyla ev sahibinin yanında savaşır. Yalnız destek açıksa gezegen geri çekilmez. Çekilme de açıksa, tüm hattı (ev sahibi ve destek) ezecek bir akında herkes birlikte kalkar; ev sahibinin döteryumu yalnız kendi gemilerini öder, yetmezse destek dahil tüm hat savaşır. Destek filosu saldırının kademe koşullarına uymuyorsa akın varınca savaşa katılmadan dönebilir.",
       "Gönderen, desteği yoldayken veya konuşluyken geri çağırabilir. Ev sahibi de gönderebilir; desteği kapatmak konuşlu filoları döndürür. Gidiş-dönüş yakıtı kalkışta ödenir ve çağırınca iade edilmez. Kalış süresi sınırlıdır; sezon sonuna yakın daha erken bitebilir.",
     ]),
     l([

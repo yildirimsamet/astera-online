@@ -33,17 +33,23 @@ export const clanDefenseApplies = (rulesetVersion: number): boolean =>
   rulesetVersion >= MULTI_WORLD.clanDefenseRulesetVersion;
 
 /**
- * THE DEFENCE POSTURE OF ONE WORLD — two toggles, never both on.
+ * THE DEFENCE POSTURE OF ONE WORLD — two independent toggles, stored as one value.
  *
- *   ESCAPE  — the tactical retreat may lift the ships; no clan support may land.
- *   SUPPORT — clanmates may station waves here; the ships never lift.
- *   HOLD    — neither: the line always fights.
+ *   ESCAPE          — the tactical retreat may lift the ships; no clan support may land.
+ *   SUPPORT         — clanmates may station waves here; the line never lifts.
+ *   HOLD            — neither: the line always fights.
+ *   ESCAPE_SUPPORT  — both (F1, owner 2026-11-10): clanmates may station waves, and the
+ *                     retreat is judged on the whole line and lifts the whole line.
  *
- * One stored value rather than two booleans, so "both on" is unrepresentable rather
- * than merely refused.
+ * Until F1 the two toggles were exclusive, because the first rule ("support means no
+ * retreat") let a tiny wave trap an offline host's fleet. Judging and lifting the whole
+ * line removes that trap, so both may now be on.
  */
-export const DEFENCE_POSTURES = ['ESCAPE', 'SUPPORT', 'HOLD'] as const;
+export const DEFENCE_POSTURES = ['ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT'] as const;
 export type DefencePosture = typeof DEFENCE_POSTURES[number];
+
+/** The three values a client built before F1 can parse (old Android bundles). */
+export type LegacyDefencePosture = Exclude<DefencePosture, 'ESCAPE_SUPPORT'>;
 
 export interface PostureToggles {
   escape: boolean;
@@ -51,27 +57,39 @@ export interface PostureToggles {
 }
 
 export function postureFromToggles(toggles: PostureToggles): DefencePosture {
-  if (toggles.escape && toggles.support) {
-    throw new RangeError('the retreat and clan support cannot both be on');
-  }
+  if (toggles.escape && toggles.support) return 'ESCAPE_SUPPORT';
   if (toggles.escape) return 'ESCAPE';
   if (toggles.support) return 'SUPPORT';
   return 'HOLD';
 }
 
 export function togglesOf(posture: DefencePosture): PostureToggles {
-  return { escape: posture === 'ESCAPE', support: posture === 'SUPPORT' };
+  return {
+    escape: posture === 'ESCAPE' || posture === 'ESCAPE_SUPPORT',
+    support: posture === 'SUPPORT' || posture === 'ESCAPE_SUPPORT',
+  };
 }
+
+/** Whether clanmates may station waves at this world. */
+export const supportAccepted = (posture: DefencePosture): boolean => togglesOf(posture).support;
+
+/**
+ * WHAT AN OLD CLIENT IS SHOWN. Its schema knows three postures and rejects a fourth, so
+ * ESCAPE_SUPPORT goes out as ESCAPE — true about the retreat; the support reading and the
+ * `support` toggle carry the rest. New clients read the exact value from `stance`.
+ */
+export const legacyPosture = (posture: DefencePosture): LegacyDefencePosture =>
+  posture === 'ESCAPE_SUPPORT' ? 'ESCAPE' : posture;
 
 /**
  * WHETHER THIS WORLD'S LINE MAY LIFT OFF. A season dealt before clan defence keeps
  * the automatic retreat it was dealt — the stored posture is never read there. From
- * ruleset 15 only an ESCAPE world runs.
+ * ruleset 15 only a world with the retreat toggle on runs.
  */
 export function escapeAllowed(rulesetVersion: number, posture: DefencePosture): boolean {
   if (!fleetEscapeApplies(rulesetVersion)) return false;
   if (!clanDefenseApplies(rulesetVersion)) return true;
-  return posture === 'ESCAPE';
+  return togglesOf(posture).escape;
 }
 
 /** Out and back, paid once at dispatch — the round trip clan aid already charges. */

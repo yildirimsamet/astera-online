@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   ALL_HULLS, BATTLE_REPLAY_RESEARCH, ESCAPE, HULLS, PIRATE, RESEARCH_PROJECTS, activeBattleFleet, createBattleRecording,
   fleetCount, fleetEntries, mulberry32, partitionCombatFleet, pirateOverrun, resolveBattle, resolveMonumentCombat, resolveRaid, shieldHp, starterBattle, vesselAegisHp,
-  type BattleRecording, type BattleReplayOwner, type DefenderStack, type EscapeOutcome, type Fleet, type HullId, type HpDamageLot, type JointAttackerStack,
+  type BattleRecording, type BattleReplayData, type BattleReplayOwner, type DefenderStack, type EscapeOutcome, type Fleet, type HullId, type HpDamageLot, type JointAttackerStack,
 } from '@astera/rules';
 
 /**
@@ -56,8 +56,9 @@ export const scenarioSchema = z.object({
   if (input.pirateLevel > 0 && (input.environment !== 'MONUMENT' || input.defenders.length > 1)) {
     ctx.addIssue({ code: 'custom', path: ['pirateLevel'], message: 'a pirate is one crew in open space' });
   }
-  if (input.automaticEscape && (input.galaxy === 'STARTER' || input.environment !== 'PLANET' || input.defenders.length > 1)) {
-    ctx.addIssue({ code: 'custom', path: ['automaticEscape'], message: 'automatic fleet escape requires an unsupported planet host' });
+  // An allied wing is a clanmate's wave beside the host (F1): judged with the line and lifted with it.
+  if (input.automaticEscape && (input.galaxy === 'STARTER' || input.environment !== 'PLANET')) {
+    ctx.addIssue({ code: 'custom', path: ['automaticEscape'], message: 'automatic fleet escape requires a planet host' });
   }
 });
 export type BattleScenario = z.infer<typeof scenarioSchema>;
@@ -92,6 +93,11 @@ function settleAftermath(recording: BattleRecording, kind: 'PIRATE_OVERRUN' | 'C
   if (shipIds.length > 0) recording.aftermath = [{ kind, shipIds }];
 }
 
+/** Every ship that withdrew before the battle: the host's and any allied wing's that lifted with it (F1). */
+export const escapedShipCount = (escape: BattleReplayData['escape']): number => escape?.kind === 'ESCAPED'
+  ? fleetCount(escape.ships) + (escape.support ?? []).reduce((sum, row) => sum + fleetCount(row.ships), 0)
+  : 0;
+
 /** Only freely chosen scenario inputs enter here; no live player or intelligence queries. */
 export function simulateScenario(input: BattleScenario) {
   const damage = (owner: SimulationParticipant): HpDamageLot[] => fleetEntries(owner.fleet).flatMap(([hull, count]) => {
@@ -120,11 +126,12 @@ export function simulateScenario(input: BattleScenario) {
     const host = defenders[0]!;
     const raid = resolveRaid({ stacks: attackers, line: host.fleet, shield, rng: () => mulberry32(input.seed),
       defender: host.tech, deuterium: input.deuterium, escape: true, minimumCombatShips: ESCAPE.minimumCombatShips,
-      hostPlayerId: host.playerId, homeDamage: host.damage, maintenance: true, preciseDamage: true });
+      hostPlayerId: host.playerId, homeDamage: host.damage, maintenance: true, preciseDamage: true, support: defenders.slice(1) });
     escape = raid.escape;
-    if (escape?.kind === 'ESCAPED') defenders[0] = { ...host,
+    // The whole line ran: the host's guns stand alone, and every allied wing left with the ships.
+    if (escape?.kind === 'ESCAPED') defenders.splice(0, defenders.length, { ...host,
       fleet: Object.fromEntries(fleetEntries(host.fleet).filter(([hull]) => HULLS[hull].ground)),
-      damage: host.damage?.filter(lot => HULLS[lot.hull].ground) };
+      damage: host.damage?.filter(lot => HULLS[lot.hull].ground) });
   }
   // Each battlefield through the call the server settles it with.
   let result, control: 'ATTACKER' | 'DEFENDER' | 'EMPTY' | null = null, aftermath: 'PIRATE_OVERRUN' | 'CARGO_WITHDRAWAL' | null = null;

@@ -11,6 +11,7 @@ import {
   type Fleet,
 } from '@astera/rules';
 import { decimal } from '../lib/format.js';
+import { sumFleets } from '../lib/fleetPage.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME, FROM THE DEFENDER'S SIDE — BEFORE ANY RAID. Owner decision, 2026-09-23.
@@ -36,6 +37,8 @@ import { decimal } from '../lib/format.js';
  * A POSTURE THAT FORBIDS THE RETREAT REPLACES THE FIGURE (Klan Savunma Desteği, K4). Under
  * SUPPORT or HOLD no firepower makes these ships run, so a threshold would be a promise the
  * battle never keeps; the line says what the posture does and where it is changed.
+ * Under ESCAPE_SUPPORT (F1) the figure stands, and standing support is said to count in the
+ * line and lift with it for free — the tank above pays for this world's ships alone.
  *
  * THE GUNS ARE COUNTED AS IF ONLINE. An outage or an EMP takes them out of the line
  * and weakens it; the readout states the ordinary rule rather than tracking a fault
@@ -47,6 +50,8 @@ export function EscapeReadout({
   deuterium,
   rulesetVersion = 0,
   posture,
+  support = {},
+  arriving = {},
 }: {
   /** The home fleet — `PlanetView.fleet`. Prospectors are dropped by `garrisonOf`. */
   fleet: Fleet;
@@ -56,11 +61,20 @@ export function EscapeReadout({
   rulesetVersion?: number;
   /** The world's defence posture from ruleset 15; absent before it. */
   posture?: DefencePosture | undefined;
+  /** The clanmates' ships standing here now, every STATIONED wave together. */
+  support?: Fleet;
+  /** F2 E6: support in the air that lands before the next raid; it will stand in the line when it lands. */
+  arriving?: Fleet;
 }) {
   const { t } = useTranslation();
   const line = garrisonOf(fleet, ground);
   const ships = escapingShips(line);
-  if (fleetCount(ships) === 0) return null;
+  // The five-ship floor and the ratio are both read on the whole line, support included (F1).
+  const onTheWay = posture === 'ESCAPE_SUPPORT' ? fleetCount(arriving) : 0;
+  const guests = posture === 'ESCAPE_SUPPORT' ? sumFleets(support, arriving) : {};
+  const withSupport = fleetCount(guests) > 0;
+  const arrivingNote = onTheWay > 0 ? ` · ${t('clanSupport.escapeArriving', { count: onTheWay })}` : '';
+  if (fleetCount(ships) + fleetCount(guests) === 0) return null;
   if (posture === 'SUPPORT' || posture === 'HOLD') {
     return (
       <p data-testid="escape-readout" data-held="" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
@@ -69,11 +83,13 @@ export function EscapeReadout({
     );
   }
 
-  const combatShips = escapeCombatShipCount(line);
+  const combatShips = escapeCombatShipCount(line) + escapeCombatShipCount(guests);
   if (fleetEscapeMinimumApplies(rulesetVersion) && combatShips < ESCAPE.minimumCombatShips) {
     return (
       <p data-testid="escape-readout" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
         {t('planet.defend.escapeMinimum', { count: combatShips, minimum: ESCAPE.minimumCombatShips })}
+        {withSupport && ` · ${t('clanSupport.escapeWithSupport')}`}
+        {arrivingNote}
       </p>
     );
   }
@@ -92,6 +108,8 @@ export function EscapeReadout({
       {short
         ? t('planet.defend.escapeShort', { ratio, fuel, stock })
         : t('planet.defend.escapeReady', { ratio, fuel })}
+      {withSupport && ` · ${t(short ? 'clanSupport.escapeShortSupport' : 'clanSupport.escapeWithSupport')}`}
+      {arrivingNote}
     </p>
   );
 }

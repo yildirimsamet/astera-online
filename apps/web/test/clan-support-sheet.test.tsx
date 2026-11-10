@@ -81,7 +81,7 @@ describe('the clan support sheet', () => {
     expect((fetch.mock.calls.at(-1) as [string])[0]).toContain('/api/clan/support/quote');
     expect(await screen.findByText(/out and back · no refund/i)).toBeInTheDocument();
     expect(screen.getByText(/stays at most 12 h/i)).toBeInTheDocument();
-    expect(screen.getByText(/does not retreat while support stands/i)).toBeInTheDocument();
+    expect(screen.getByText(/outmatches the whole line, your ships lift with it/i)).toBeInTheDocument();
     expect(screen.getByText(/your dominion stays unchanged as a supporter/i)).toHaveTextContent(/your losses are not multiplied/i);
     expect(screen.getByText(/tier 3 · host tier 3/i)).toBeInTheDocument();
     expect(commit()).toHaveTextContent(/send 4 ships/i);

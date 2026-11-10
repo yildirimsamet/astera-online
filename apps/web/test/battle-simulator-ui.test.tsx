@@ -233,5 +233,20 @@ describe('battle simulator editor and replay', () => {
     expect(screen.getByLabelText('Aegis charge %')).toHaveAttribute('inputmode', 'decimal');
     expect(within(screen.getByRole('tabpanel', { name: 'Defender' })).getByLabelText('Dart · Quantity')).toHaveAttribute('inputmode', 'numeric');
   });
-});
 
+  // F1 (owner 2026-11-10): a clanmate's fleet beside the host lifts with it, so the retreat stays a choice.
+  it('keeps the automatic retreat on and choosable when an allied fleet joins the defence', async () => {
+    render(<BattleSimulator onLeave={vi.fn()} />);
+    await screen.findByTestId('battle-stage');
+    fireEvent.click(screen.getByRole('tab', { name: 'Defender' }));
+    const defender = screen.getByRole('tabpanel', { name: 'Defender' });
+    fireEvent.click(within(defender).getByLabelText('Automatic retreat before battle'));
+    fireEvent.click(within(defender).getByRole('button', { name: /Add allied fleet/ }));
+    const retreat = within(defender).getByLabelText('Automatic retreat before battle');
+    expect(retreat).toBeChecked();
+    expect(retreat).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /^Simulate (battle|again)$/ }));
+    await waitFor(() => { expect(vi.mocked(runSimulation).mock.calls.at(-1)?.[0].defenders).toHaveLength(2); });
+    expect(vi.mocked(runSimulation).mock.calls.at(-1)?.[0].automaticEscape).toBe(true);
+  });
+});

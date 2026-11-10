@@ -12,6 +12,7 @@ import {
   researchEffectAt, interceptorCapacity, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
   telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
   clanHangarCapacity, clanLevelUpgradeCost, seasonRankRewardProgram, storageHours,
+  CLAN_PERK_LADDER, clanCorridorMultiplier, type ClanPerkRung,
   type Resources,
 } from '@astera/rules';
 import { type WikiBlock, type WikiLanguage, type WikiSection, type WikiSubject } from './model.js';
@@ -23,6 +24,19 @@ export const number = (value: number, language: WikiLanguage): string => new Int
 const hours = (value: number, language: WikiLanguage): string => `${number(value, language)} ${language === 'en' ? 'h' : 'sa'}`;
 const percent = (value: number, language: WikiLanguage): string => language === 'tr' ? `%${number(value * 100, language)}` : `${number(value * 100, language)}%`;
 const label = (language: WikiLanguage, en: string, tr: string): string => language === 'en' ? en : tr;
+/** F2: the perk a clan rung opens, named as the clan screen's banner names it. */
+function perkName(rung: ClanPerkRung | undefined, language: WikiLanguage): string {
+  if (!rung) return '';
+  const value = number(rung.value, language);
+  const pct = number(Math.round(rung.value * 100), language);
+  switch (rung.perk) {
+    case 'CORRIDOR': return label(language, `Clan corridor ×${value}`, `Klan koridoru ×${value}`);
+    case 'ALARM': return label(language, 'Clan alarm', 'Klan alarmı');
+    case 'STATION': return label(language, `Long watch ${hours(rung.value, language)}`, `Uzun nöbet ${hours(rung.value, language)}`);
+    case 'REFINERY': return label(language, `Shared furnace +${pct}% per active member`, `Ortak ocak, aktif üye başına +%${pct}`);
+    case 'BANNER': return label(language, 'Golden banner', 'Altın sancak');
+  }
+}
 const costCells = (cost: Resources, language: WikiLanguage): string[] => [cost.alloy, cost.crystal, cost.deuterium].map(v => number(v, language));
 const resourceColumns = (language: WikiLanguage): string[] => language === 'en' ? ['Alloy', 'Crystal', 'Deuterium'] : ['Alaşım', 'Kristal', 'Döteryum'];
 const table = (caption: string, columns: readonly string[], rows: readonly (readonly string[])[]): WikiBlock => ({ kind: 'table', caption, columns, rows });
@@ -254,13 +268,18 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   if (id === 'clan.aid') blocks = [pairs(language, t('Aid and shared-loot reference', 'Yardım ve ortak yağma referansı'), [
     [t('Period counted in the aid allowance', 'Yardım limitinde hesaba katılan süre'), hours(CLAN.aidWindowMinutes / 60, language)],
     [t('Aid policy cooldown', 'Yardım tercihi beklemesi'), hours(CLAN.aidPolicyCooldownMinutes / 60, language)],
-    [t('Aid speed', 'Yardım hızı'), `${n(CLAN.aidSpeedMultiplier)}×`],
+    // F2 Klan Koridoru: the first leg flies at the rung's speed; the return keeps the lane.
+    [t('Aid speed', 'Yardım hızı'), t(
+      `First leg ${n(clanCorridorMultiplier(1))}×–${n(clanCorridorMultiplier(CLAN_LEVEL_MAX))}× by clan level · return ${n(CLAN.aidSpeedMultiplier)}×`,
+      `İlk bacak klan seviyesine göre ${n(clanCorridorMultiplier(1))}×–${n(clanCorridorMultiplier(CLAN_LEVEL_MAX))}× · dönüş ${n(CLAN.aidSpeedMultiplier)}×`,
+    )],
     [t('Extra aid flight bays', 'Ek yardım uçuş yuvası'), n(CLAN.extraAidBays)],
     [t('Share of returned raid loot sent to the depot', 'Akından dönen ganimetin Yağma Deposuna ayrılan payı'), percent(CLAN.raidLootShare, language)],
     [t('Minimum members past the waiting period for loot sharing', 'Ganimet paylaşımı için beklemeyi tamamlamış asgari üye'), n(CLAN.minimumLootRoster)],
   ])];
-  if (id === 'clan.support') blocks = [pairs(language, t('Support reference', 'Destek referansı'), [[t('Maximum stay', 'Azami kalış'), hours(CLAN_SUPPORT.stationHours, language)], [t('Host power factor cap', 'Ev sahibi güç çarpanı tavanı'), `${n(CLAN_SUPPORT.maxDominionFactor)}×`]])];
-  if (id === 'clan.joint-war') blocks = [table(t('Shared Hangar upgrades', 'Ortak Hangar yükseltmeleri'), [levelLabel(language), ...resourceColumns(language), t('Clan room', 'Klan alanı')], Array.from({ length: CLAN_LEVEL_MAX }, (_, index) => { const rung = index + 1; return [n(rung), ...costCells(rung === 1 ? { alloy: 0, crystal: 0, deuterium: 0 } : clanLevelUpgradeCost(rung - 1), language), n(clanHangarCapacity(rung))]; }))];
+  if (id === 'clan.support') blocks = [pairs(language, t('Support reference', 'Destek referansı'), [[t('Maximum stay', 'Azami kalış'), [hours(CLAN_SUPPORT.stationHours, language), ...CLAN_PERK_LADDER.filter((rung) => rung.perk === 'STATION')
+    .map((rung) => t(`${hours(rung.value, language)} from level ${n(rung.level)}`, `seviye ${n(rung.level)} ile ${hours(rung.value, language)}`))].join(' · ')], [t('Host power factor cap', 'Ev sahibi güç çarpanı tavanı'), `${n(CLAN_SUPPORT.maxDominionFactor)}×`]])];
+  if (id === 'clan.joint-war') blocks = [table(t('Shared Hangar upgrades', 'Ortak Hangar yükseltmeleri'), [levelLabel(language), ...resourceColumns(language), t('Clan room', 'Klan alanı'), t('Perk', 'Ayrıcalık')], Array.from({ length: CLAN_LEVEL_MAX }, (_, index) => { const rung = index + 1; return [n(rung), ...costCells(rung === 1 ? { alloy: 0, crystal: 0, deuterium: 0 } : clanLevelUpgradeCost(rung - 1), language), n(clanHangarCapacity(rung)), perkName(CLAN_PERK_LADDER[index], language)]; }))];
   if (id === 'season.cycle') blocks = [pairs(language, t('Season reference', 'Sezon referansı'), [[t('Season days', 'Sezon günü'), n(SEASON.days)], ...SEASON.actBoundaries.map(act => [t(`Act: ${act.id}`, `Evre: ${act.id}`), t(`Day ${n(SEASON.days * act.share)}`, `Gün ${n(SEASON.days * act.share)}`)]), [t('Afterglow minutes', 'Kapanış aralığı dakikası'), n(SEASON.afterglowMinutes)]])];
   if (id === 'season.silent-space') blocks = [pairs(language, t('Silent Space reference', 'Sessiz Uzay referansı'), [
     [t('Time without an order before the move', 'Taşınmadan önce emirsiz süre'), hours(SILENT_SPACE.idleMs / 3_600_000, language)],

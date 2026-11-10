@@ -1,3 +1,4 @@
+import { clanRefineryColumns, clanRefineryShare } from './clanPerks.js';
 import { rewardFlightFleet } from './fleetTowing.js';
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { AdmiralSnapshot } from '@astera/rules/arena';
@@ -179,6 +180,8 @@ export interface PendingThread {
   id?: string;
   /** Klan Savunma Desteği: this `transfer` is a support wave's leg, named for what it is. */
   clanSupport?: true;
+  /** F2 Klan Koridoru: a clan flight's first leg (aid, support, war rally) — drawn as the clan's fast lane. */
+  corridor?: true;
   /** Y9: the commander ship flying at the rear of this craft. Your own craft only. */
   admiral?: AdmiralSnapshot;
   /**
@@ -523,8 +526,11 @@ export async function buildReturnPayload(
       .from(buildings)
       .where(inArray(buildings.planetId, ownedIds));
     // D212: Silent Space runs the works at half pace, and the estimate must not promise double.
-    const [season] = await db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, player.seasonId));
-    const pace = season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1;
+    // F2 Ortak Ocak: the clan's share lifts the works the recap estimates, as it lifts the world.
+    const [season] = await db.select({ shardId: seasons.shardId, ...clanRefineryColumns(playerId, now) })
+      .from(seasons).where(eq(seasons.id, player.seasonId));
+    const pace = (season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1)
+      * (1 + clanRefineryShare(season));
     const hours = (awayMinutes / 60) * pace;
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.
@@ -877,6 +883,8 @@ export async function pendingThreads(
           // Klan Savunma Desteği: a friendly flight, never a raid — no bombardment where it lands.
           : m.kind === 'clan_support' ? 'transfer' : 'fleet',
       ...(m.kind === 'clan_support' ? { clanSupport: true as const } : {}),
+      ...(!returning && (m.kind === 'clan_support' || m.kind === 'clan_transfer' || row.clanWarLeg === 'SUPPORT_OUT')
+        ? { corridor: true as const } : {}),
       /*
         A TRANSFER IS NAMED AFTER WHERE IT IS GOING — the strip reads it as "Transfer → X". Its
         rows are not swapped like a return leg's: a rerouted leg already targets the safe world, and

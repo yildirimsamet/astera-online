@@ -339,7 +339,6 @@ export const errors = {
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: 'Solange dein Neulingsschild aktiv ist, können deine Schiffe nicht auf der Welt eines anderen Kommandanten stehen',
   CLAN_SUPPORT_UNAVAILABLE: 'Clanverteidigung kommt mit einer neuen Saison',
-  POSTURE_CONFLICT: 'Taktischer Rückzug und Clan-Unterstützung können nicht beide an sein',
   CLAN_SUPPORT_NONCOMBATANT: 'Eine Unterstützungswelle ist eine Kampflinie: {{hull}} kann nicht mit',
   CLAN_SUPPORT_SELF: 'Unterstützung geht an ein Clanmitglied, nicht an deine eigenen Welten',
   CLAN_SUPPORT_TARGET: 'Wähle eine Welt, die ein Clanmitglied hält',

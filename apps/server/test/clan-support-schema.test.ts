@@ -118,14 +118,14 @@ describe('the additive clan defence schema', () => {
 });
 
 describe('the world’s defence posture', () => {
-  it('starts every world at ESCAPE — the retreat a season has always had', async () => {
+  it('starts every world at ESCAPE_SUPPORT — the retreat, and the door open inside a clan (F1)', async () => {
     const [row] = await f.db.select({ posture: planets.defencePosture })
       .from(planets).where(eq(planets.id, f.planetIds[0]!));
-    expect(row!.posture).toBe('ESCAPE');
+    expect(row!.posture).toBe('ESCAPE_SUPPORT');
   });
 
-  it('accepts the three postures and refuses anything else', async () => {
-    for (const posture of ['SUPPORT', 'HOLD', 'ESCAPE'] as const) {
+  it('accepts the four postures and refuses anything else', async () => {
+    for (const posture of ['SUPPORT', 'HOLD', 'ESCAPE', 'ESCAPE_SUPPORT'] as const) {
       await f.db.update(planets).set({ defencePosture: posture }).where(eq(planets.id, f.planetIds[0]!));
     }
     await expect(f.db.update(planets)

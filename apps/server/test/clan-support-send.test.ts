@@ -189,9 +189,22 @@ describe('every refusal, listed together on the quote', () => {
     await expect(send(f, 0, 1, { DART: 5 })).rejects.toMatchObject({ code: 'SHIELDED_SENDER', params: { context: 'ships' } });
   });
 
-  it('refuses a world whose posture is not SUPPORT', async () => {
+  it('refuses a world whose commander closed the door', async () => {
     const f = await ready(15_210);
-    await expect(send(f, 0, 2, { DART: 5 })).rejects.toMatchObject({ code: 'CLAN_SUPPORT_CLOSED' });
+    for (const support of [false]) {
+      for (const escape of [true, false]) {
+        await f.db.transaction((tx) => setDefencePosture(tx, {
+          planetId: f.planetIds[2]!, playerId: f.playerIds[2]!, toggles: { escape, support }, clock: f.clock,
+        }));
+        await expect(send(f, 0, 2, { DART: 5 })).rejects.toMatchObject({ code: 'CLAN_SUPPORT_CLOSED' });
+      }
+    }
+  });
+
+  it('lands at a member’s untouched world — the retreat and the door are both open (F1)', async () => {
+    const f = await ready(15_212);
+    const { wave } = await send(f, 0, 2, { DART: 5 });
+    expect(wave.status).toBe('OUTBOUND');
   });
 
   it('refuses a sender outside the host’s tier band', async () => {

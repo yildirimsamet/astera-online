@@ -8,7 +8,8 @@ import type { PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
-import { countdown, useNow } from '../lib/time.js';
+import { countdown, durationPrecise, useNow } from '../lib/time.js';
+import { supportVerdict } from '../lib/clanAlarm.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -29,6 +30,8 @@ export interface SupportHost {
   planetId: string;
   planetName: string;
   ownerName: string;
+  /** F2 E1: the clan alarm this sheet answers — the raid's landing instant beside the wave's. */
+  alarm?: { id: string; arriveAt: Date };
 }
 
 /**
@@ -107,7 +110,8 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
             onCommit={() => {
               if (!origin) return;
               actions.send.mutate(
-                { originPlanetId: origin.planet.id, hostPlanetId: host.planetId, fleet, ...(escorted ? { admiral: true } : {}) },
+                { originPlanetId: origin.planet.id, hostPlanetId: host.planetId, fleet,
+                  ...(escorted ? { admiral: true } : {}), ...(host.alarm ? { alarmId: host.alarm.id } : {}) },
                 { onSuccess: () => { setFleet({}); setQuotedKey(null); setEscortWanted(false); onSent(host.planetName); } },
               );
             }}
@@ -120,6 +124,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
     >
       <div className="flex flex-col gap-3 pt-1">
         <HonorSoloNotice />
+        {host.alarm && <AlarmStrip raidAt={host.alarm.arriveAt} landsAt={quote?.arriveAt ?? null} now={now} />}
         <p className="text-caption leading-snug text-v2-ink-2">{t('clanSupport.sendActionHint')}</p>
         {worlds.length > 1 && (
           <ChoiceChips
@@ -187,7 +192,10 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
                 sub={t('clanSupport.figBaysSub')} />
             </Figures>
             <ul data-support-rules="" className="flex flex-col gap-1 text-micro leading-snug text-v2-ink-2">
-              <li>{t('clanSupport.stay', { time: countdown(quote.stationUntil.getTime() - now) })}</li>
+              <li>{t('clanSupport.stay', {
+                hours: Math.round((quote.stationUntil.getTime() - quote.arriveAt.getTime()) / 3_600_000),
+                time: countdown(quote.stationUntil.getTime() - now),
+              })}</li>
               {quote.seasonClipped && <li className="text-v2-warn">{t('clanSupport.stayClipped')}</li>}
               <li className={quote.band.ok ? '' : 'text-v2-warn'}>
                 {t('clanSupport.band', { mine: quote.band.mine, theirs: quote.band.theirs })} · {
@@ -205,5 +213,31 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
         )}
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * THE CALL THIS SHEET ANSWERS (F2 E1). The raid's clock first, so the picking happens against
+ * it; once the flight is priced, the verdict for these ships: in time, by how much, or too late.
+ */
+function AlarmStrip({ raidAt, landsAt, now }: { raidAt: Date; landsAt: Date | null; now: number }) {
+  const { t } = useTranslation();
+  const verdict = landsAt ? supportVerdict(landsAt, raidAt) : null;
+  return (
+    <div data-alarm-strip="" className="relative overflow-hidden rounded-control border border-v2-hostile/50 bg-v2-hostile/10 px-3 py-2">
+      <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 animate-pulse bg-v2-hostile" />
+      <p className="flex items-baseline justify-between gap-2">
+        <span className="text-micro font-semibold uppercase tracking-wide text-v2-hostile">{t('clanSupport.alarmAnswering')}</span>
+        <span className="font-v2-mono text-caption tabular-nums text-v2-ink">
+          {t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
+        </span>
+      </p>
+      {verdict && (
+        <p data-alarm-verdict={verdict.inTime ? 'in-time' : 'late'}
+          className={`mt-1 text-caption font-semibold ${verdict.inTime ? 'text-v2-self' : 'text-v2-warn'}`}>
+          {t(verdict.inTime ? 'clanSupport.alarmInTime' : 'clanSupport.alarmLate', { time: durationPrecise(verdict.minutes) })}
+        </p>
+      )}
+    </div>
   );
 }

@@ -207,12 +207,12 @@ describe('persistent damage in a joint war', () => {
  */
 describe('radiation in a joint war', () => {
   /** A cloud over the whole galaxy that finishes any ship in a minute. */
-  const deadly = async (f: Fixture) => {
+  const deadly = async (f: Fixture, intensityPctPerMinute = 100) => {
     const [centre] = await f.db.select({ x: planets.x, y: planets.y, z: planets.z }).from(planets)
       .where(eq(planets.id, f.planetIds[0]!));
     return addRadiationSource(f.db, {
       seasonId: f.seasonId, anchor: { kind: 'ZONE', at: centre! },
-      radius: 1_000_000, intensityPctPerMinute: 100, mode: 'EMIT', label: 'storm',
+      radius: 1_000_000, intensityPctPerMinute, mode: 'EMIT', label: 'storm',
     }, f.clock);
   };
   const told = async (f: Fixture, playerId: string) =>
@@ -224,7 +224,8 @@ describe('radiation in a joint war', () => {
     const f = await setup(MULTI_WORLD.shipDamageRulesetVersion);
     await readyOperation(f);
     await send(f, 0, f.planetIds[0]!, { DART: 2 });
-    await deadly(f);
+    // F2: the corridor halves the way to the staging world, so the storm must kill faster.
+    await deadly(f, 10_000);
     await send(f, 1, f.planetIds[1]!, { DART: 3 });
     await land(f);
 

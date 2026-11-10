@@ -8,14 +8,15 @@ import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { factorLabel, hostFactor } from '../lib/supportFactor.js';
-import { countdown, useNow } from '../lib/time.js';
+import { countdown, durationPrecise, useNow } from '../lib/time.js';
+import { supportVerdict } from '../lib/clanAlarm.js';
 import { Toggle } from '../v2/kit/Toggle.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ ON THE HANGAR PAGE (`docs/clan-defense-support-plan.md`, K1 · K4).
  *
  * Two pieces under the Hangar's own room, because the bay IS the Hangar's: the posture
- * card (the retreat or clan support, never both, saved together) and the bay itself —
+ * card (the retreat and clan support, independent since F1, saved together) and the bay itself —
  * who stands here, who is flying in, and the room it holds, which is this world's own
  * Hangar room. Each answers the four questions where it is read: what the toggle does
  * is the sentence under it, what a wave costs to send back is said before the tap.
@@ -37,7 +38,7 @@ function PostureCard({ planet, posture }: {
   const save = useSetDefencePosture();
   const [draft, setDraft] = useState<Toggles>({ escape: posture.escape, support: posture.support });
   const [confirming, setConfirming] = useState(false);
-  const current = posture.posture;
+  const current = posture.stance ?? posture.posture;
   useEffect(() => {
     setDraft({ escape: posture.escape, support: posture.support });
     setConfirming(false);
@@ -55,18 +56,15 @@ function PostureCard({ planet, posture }: {
   return (
     <section data-defence-posture="" className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
       <HonorSoloNotice />
-      <p className="flex items-center justify-between gap-2">
-        <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.postureTitle')}</span>
-        <span className="text-micro text-v2-ink-3">{t('clanSupport.exclusive')}</span>
-      </p>
+      <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.postureTitle')}</p>
       <div className="flex flex-col gap-1">
         <Toggle tone="self" checked={draft.escape}
-          onChange={(on) => { setDraft((was) => ({ escape: on, support: on ? false : was.support })); setConfirming(false); }}>
+          onChange={(on) => { setDraft((was) => ({ ...was, escape: on })); setConfirming(false); }}>
           <span className="block font-semibold">{t('clanSupport.escapeLabel')}</span>
           <span className="block text-micro text-v2-ink-2">{t('clanSupport.escapeOn')}</span>
         </Toggle>
         <Toggle tone="self" checked={draft.support} disabled={locked}
-          onChange={(on) => { setDraft((was) => ({ support: on, escape: on ? false : was.escape })); setConfirming(false); }}>
+          onChange={(on) => { setDraft((was) => ({ ...was, support: on })); setConfirming(false); }}>
           <span className="block font-semibold">{t('clanSupport.supportLabel')}</span>
           <span className="block text-micro text-v2-ink-2">
             {locked ? t('clanSupport.supportLocked') : t('clanSupport.supportOn')}
@@ -75,6 +73,9 @@ function PostureCard({ planet, posture }: {
       </div>
       {!draft.escape && !draft.support && (
         <p className="px-1 text-micro text-v2-warn">{t('clanSupport.holdBoth')}</p>
+      )}
+      {draft.escape && draft.support && (
+        <p data-posture-both="" className="px-1 text-micro leading-snug text-v2-self">{t('clanSupport.bothOn')}</p>
       )}
       {confirming ? (
         <div className="flex flex-col gap-1.5 rounded-control border border-v2-warn/40 bg-v2-warn/5 px-2.5 py-2">
@@ -113,7 +114,9 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
   const [open, setOpen] = useState(false);
   const now = useNow();
   if (!bay) return null;
-  const supporting = planet.defencePosture?.posture === 'SUPPORT';
+  const supporting = planet.defencePosture?.support === true;
+  // F1: with the retreat on too, an outmatched line lifts together instead of never retreating.
+  const lifts = planet.defencePosture?.escape === true;
   if (!supporting && bay.waves.length === 0) {
     // Outside a clan the switch is locked and the card above says why; "turn it on" would be a dead end.
     if (planet.defencePosture?.supportLocked != null) return null;
@@ -146,6 +149,7 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
         <span className="flex items-center gap-1"><span aria-hidden="true" className="size-2 rounded-full bg-v2-self" />{t('clanSupport.bayLegendStanding')}</span>
         <span className="flex items-center gap-1"><span aria-hidden="true" className="size-2 rounded-full bg-v2-self/40" />{t('clanSupport.bayLegendInbound')}</span>
       </p>
+      {bay.alarms?.map((alarm) => <AlarmAnswer key={alarm.id} alarm={alarm} waves={bay.waves} now={now} />)}
       <p className="text-micro leading-snug text-v2-ink-2">{t('clanSupport.bayHint')}</p>
       {/* The stakes the host accepted: the factor the standing support puts on its Dominion. */}
       <p data-support-factor="" className="text-micro leading-snug">
@@ -168,8 +172,41 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
           {t('clanSupport.more', { count: bay.waves.length - FOLD_AFTER })}
         </button>
       )}
-      <p className="text-micro leading-snug text-v2-ink-3">{t('clanSupport.ruleLine')}</p>
+      <p className="text-micro leading-snug text-v2-ink-3">{t(lifts ? 'clanSupport.ruleLineLift' : 'clanSupport.ruleLine')}</p>
     </section>
+  );
+}
+
+type Alarm = NonNullable<NonNullable<PlanetView['clanSupport']>['alarms']>[number];
+
+/**
+ * THE CLAN'S ANSWER TO YOUR ALARM (F2 E6). Who of the called saw it, how many waves fly to
+ * answer it, and the first of them against the raid's clock — in time, or too late.
+ */
+function AlarmAnswer({ alarm, waves, now }: { alarm: Alarm; waves: readonly ClanSupportWave[]; now: number }) {
+  const { t } = useTranslation();
+  const answering = waves.filter((wave) => wave.alarmId === alarm.id && (wave.status === 'OUTBOUND' || wave.status === 'STATIONED'))
+    .sort((a, b) => a.arriveAt.getTime() - b.arriveAt.getTime());
+  const first = answering[0];
+  const verdict = first ? supportVerdict(first.arriveAt, alarm.arriveAt) : null;
+  return (
+    <p data-clan-alarm={alarm.id} className="flex items-start gap-2 rounded-control border border-v2-hostile/40 bg-v2-hostile/10 px-2 py-1.5 text-micro leading-snug">
+      <span aria-hidden="true" className="mt-1 size-2 shrink-0 animate-pulse rounded-full bg-v2-hostile" />
+      <span className="min-w-0">
+        <span className="font-semibold text-v2-ink">
+          {t('clanSupport.alarmSeen', { seen: alarm.seen, count: alarm.called })}
+        </span>
+        {' · '}
+        {verdict === null
+          ? <span className="text-v2-ink-2">{t('clanSupport.alarmNoAnswer')}</span>
+          : <span className={verdict.inTime ? 'text-v2-self' : 'text-v2-warn'}>
+            {t(verdict.inTime ? 'clanSupport.alarmAnswersInTime' : 'clanSupport.alarmAnswersLate', {
+              count: answering.length, time: durationPrecise(verdict.minutes),
+            })}
+          </span>}
+        <span className="block font-v2-mono text-v2-ink-3">{t('clanSupport.alarmRaidIn', { time: countdown(alarm.arriveAt.getTime() - now) })}</span>
+      </span>
+    </p>
   );
 }
 

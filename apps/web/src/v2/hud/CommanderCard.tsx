@@ -1,3 +1,5 @@
+import { ClanTag } from '../../ui/ClanTag.js';
+import type { ClanTagTier } from '../../api/schemas.js';
 import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
 import type { CountryCode } from '@astera/rules';
@@ -30,7 +32,7 @@ export function seasonDay(startsAt: number, now: number): number {
 export interface CommanderCardProps {
   name: string;
   country?: CountryCode;
-  clan: { tag: string; name: string } | null;
+  clan: { tag: string; name: string; tier?: ClanTagTier | null | undefined } | null;
   /** The galaxy's name (`season.shardName`), when there is one. */
   galaxy: string | null;
   /** Null outside a live season. */
@@ -85,7 +87,8 @@ export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, ran
             <span className="text-caption text-v2-ink-3">{t('menu.profile.noClan')}</span>
           ) : (
             <span className="flex min-w-0 items-center gap-1.5">
-              <span className="shrink-0 rounded-chip border border-v2-ally/60 px-1 font-v2-mono text-micro font-semibold text-v2-ally">{clan.tag}</span>
+              <ClanTag tag={clan.tag} tier={clan.tier} bracket={false}
+                className="shrink-0 rounded-chip border border-current/60 px-1 font-v2-mono text-micro font-semibold text-v2-ally" />
             <span className="truncate text-caption font-medium text-v2-ink">{clan.name}</span>
             </span>
           )}

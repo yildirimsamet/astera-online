@@ -4,6 +4,7 @@ import type { Db } from '../db/client.js';
 import { accounts, buildings, chatMutes, miningRuns, planetFaults, planets, players, satellites, seasons, shards } from '../db/schema.js';
 import { buildingLevelsFrom, economyAt, hardwareOf } from './planet.js';
 import { isPerson } from './people.js';
+import { clanRefineryColumns, clanRefineryShare } from './clanPerks.js';
 
 const zero = (): Resources => ({ alloy: 0, crystal: 0, deuterium: 0 });
 
@@ -30,7 +31,9 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
     const page = rows.slice(0, input.limit);
     if (page.length === 0) return { total, players: [], nextBefore: null, measuredAt: now, onlineWindowMinutes: ADMIN_ONLINE_WINDOW_MINUTES };
     const ids = page.map(row => row.playerId);
-    const holdings = await tx.select({ world: planets, season: seasons, role: shards.role }).from(planets)
+    // F2 Ortak Ocak: the controller's clan share, as the world itself is paid.
+    const holdings = await tx.select({ world: planets, season: seasons, role: shards.role,
+      ...clanRefineryColumns(sql`${planets.controllerPlayerId}`, now) }).from(planets)
       .innerJoin(seasons, eq(seasons.id, planets.seasonId))
       .innerJoin(shards, eq(shards.id, seasons.shardId))
       .where(inArray(planets.controllerPlayerId, ids));
@@ -54,7 +57,7 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
         or(isNull(chatMutes.expiresAt), gt(chatMutes.expiresAt, now)))),
     ]);
     const resources = new Map(ids.map(id => [id, { storage: zero(), buffer: zero() }]));
-    for (const { world, season, role } of holdings) {
+    for (const { world, season, role, clanLevel, clanActive } of holdings) {
       const levels = buildingLevelsFrom(buildingRows.filter(row => row.planetId === world.id));
       const hardware = hardwareOf(hardwareRows.filter(row => row.planetId === world.id), levels);
       const faults = faultRows.filter(row => row.planetId === world.id);
@@ -62,7 +65,7 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
       const leakedSoFar = leak ? { alloy: leak.leakedAlloy + world.pendingLeakAlloy,
         crystal: leak.leakedCrystal + world.pendingLeakCrystal, deuterium: leak.leakedDeuterium + world.pendingLeakDeuterium } : undefined;
       const { state } = economyAt(world, levels, hardware, season, now, faults.map(row => row.kind), leakedSoFar,
-        role === 'WAITING' ? SILENT_SPACE.productionPace : 1);
+        role === 'WAITING' ? SILENT_SPACE.productionPace : 1, clanRefineryShare({ clanLevel, clanActive }));
       const totals = world.controllerPlayerId ? resources.get(world.controllerPlayerId) : undefined;
       if (!totals) continue;
       totals.storage.alloy += state.alloy; totals.storage.crystal += state.crystal; totals.storage.deuterium += state.deuterium;

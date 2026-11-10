@@ -339,7 +339,6 @@ export const errors = {
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: "初心者シールドが有効な間は、あなたの艦はほかの司令官の惑星に駐留できません。",
   CLAN_SUPPORT_UNAVAILABLE: "クラン防衛は新しいシーズンから始まります。",
-  POSTURE_CONFLICT: "戦術撤退とクラン支援は同時にオンにできません。",
   CLAN_SUPPORT_NONCOMBATANT: "支援部隊は戦闘ラインです。{{hull}}は送れません。",
   CLAN_SUPPORT_SELF: "支援はクランメイトへ送るものです。自分の惑星には送れません。",
   CLAN_SUPPORT_TARGET: "クランメイトが保持する惑星を選んでください。",

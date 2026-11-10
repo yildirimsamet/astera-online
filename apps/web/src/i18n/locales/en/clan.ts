@@ -76,12 +76,19 @@ export const clan = {
     chatBody: "Plan targets, support and arrival times in a chat only your crew can read.",
     waitingNote: "Chat and friendly-fire protection start on joining. Members joining a clan wait {{hours}} hours before aid, loot sharing, support dispatches and joint-attack contributions unlock.",
   },
+  tagTier: {
+    BRONZE: 'bronze banner clan',
+    SILVER: 'silver banner clan',
+    GOLD: 'golden banner clan',
+  },
   standings: {
     heading: 'Clan standings',
     aside: 'top 3 earn a seal',
     waiting: 'Reading clan standings',
     empty: 'No clan has entered the standings yet.',
     crew: '{{members}}/5 crew',
+    watches_one: '{{count}} watch',
+    watches_other: '{{count}} watches',
   },
   requests: {
     heading: 'Your requests',
@@ -268,7 +275,7 @@ export const clan = {
     resume: 'Allow aid',
     sendHeading: 'Send aid',
     explainer: 'A loaded convoy delivers its resources and returns home. An empty convoy is an irreversible ship gift.',
-    speed: '10% faster',
+    speed: 'Clan corridor · faster first leg',
     extraBay: '+1 aid-only bay',
     noRecall: 'No recall',
     returns: 'Transport returns',

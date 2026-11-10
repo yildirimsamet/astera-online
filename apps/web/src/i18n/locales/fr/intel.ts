@@ -496,6 +496,8 @@ export const reports = {
     /** Taktik geri çekilme. Défenseur : ce qui a décollé et ce que le décollage a brûlé, ou pourquoi il n’a pas pu. */
     escaped_one: "Ton vaisseau a décollé avant le combat (−{{fuel}} Deutérium) : le raid dépassait ta ligne défensive.",
     escaped_other: "Tes {{count}} vaisseaux ont décollé avant le combat (−{{fuel}} Deutérium) : le raid dépassait ta ligne défensive.",
+    escapedSupport_one: '{{count}} vaisseau de ton clan a décollé gratuitement avec les tiens.',
+    escapedSupport_other: '{{count}} vaisseaux de ton clan ont décollé gratuitement avec les tiens.',
     stranded: 'Tes vaisseaux auraient décollé, mais le réservoir ne suffisait pas : {{fuel}} Deutérium requis, {{available}} disponibles.',
     /** Attaquant : la ligne s’est vidée devant le raid ; rien sur son contenu. */
     fled: "Leurs vaisseaux ont décollé avant le combat : une ligne dépassée qui serait anéantie se replie si son réservoir le permet.",
@@ -514,6 +516,7 @@ export const reports = {
       "Tu as perdu l’équivalent net de {{hours}} heures de production sur les {{window}} dernières heures et dépassé le seuil de {{bar}} heures ; aucun bouclier n’est toutefois accordé tant qu’un de tes propres raids est en vol.",
     wreck:
       "Une épave d’une valeur de {{amount}} dérive au-dessus de {{planet}}. N’importe qui peut aller la récupérer.",
+    clanPurse: 'Butin de victoire : {{amounts}} sont allés au trésor du clan.',
     wreckYours:
       "Une épave d’une valeur de {{amount}} dérive dans ta propre orbite. N’importe qui peut aller la récupérer, toi compris.",
     /** Aucune orbite à nommer : le champ existe dans le vide, au point de rendez-vous. */

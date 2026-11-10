@@ -1,3 +1,4 @@
+import { TaggedName } from '../ui/ClanTag.js';
 import { StarterSightMarks } from './StarterSightMarks.js';
 import { ModelScale } from './modelScale.js';
 import { modelScale } from './scene.js';
@@ -53,6 +54,8 @@ import { RadiationIndicator } from '../ui/RadiationIndicator.js';
 import { RadiationBombEffects } from './RadiationBombEffects.js';
 import { PlanetEmbers } from './PlanetEmbers.js';
 import { FaultMarks } from './FaultMarks.js';
+import { AlarmRings } from './AlarmRings.js';
+import type { ActiveClanAlarm } from '../lib/clanAlarm.js';
 import { radiationAtTarget } from '../lib/targetRadiation.js';
 import { monumentNavigationRadius } from './monuments.js';
 import {
@@ -136,7 +139,6 @@ import {
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
-import { commanderLabel } from '../lib/identity.js';
 import { CommanderShipLabels } from './CommanderShipLabel.js';
 import { DESK_QUERY, useMedia } from '../lib/media.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
@@ -233,6 +235,8 @@ export interface GalaxyCanvasProps {
   flight?: { jump: Jump; world: JumpWorld };
   starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; parts: readonly Vec3[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
   unknownSignals?: readonly UnknownSignalView[];
+  /** F2 Klan Alarmı: clanmate worlds under a raid still in the air, from the reader's bell. */
+  clanAlarms?: readonly ActiveClanAlarm[];
   unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
   cosmeticAppearance?: Contact['appearance'];
   planets: readonly GalaxyPlanet[];
@@ -389,6 +393,8 @@ const HomewardShipModel = lazy(() => import('./HomewardShip.js'));
 const LiveJumpScene = lazy(() => import('./LiveJump.js').then(module => ({ default: module.LiveJump })));
 const JumpWatch = lazy(() => import('./JumpWatch.js').then(module => ({ default: module.JumpWatch })));
 
+const NO_CLAN_ALARMS: readonly ActiveClanAlarm[] = [];
+
 export function GalaxyCanvas({
   universe,
   watched,
@@ -411,6 +417,7 @@ export function GalaxyCanvas({
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
+  clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
   showTelescopeReach = false,
   showRadarReach = false,
@@ -911,6 +918,8 @@ export function GalaxyCanvas({
         <PlanetEmbers nodes={nodes} />
         {/* The commander's own broken colonies, at every zoom (owner, 2026-10-16). */}
         <FaultMarks nodes={nodes} />
+        {/* A clanmate under a raid: a red ring at every zoom, and the raid's trail if radar read it (F2). */}
+        {clanAlarms.length > 0 && <AlarmRings nodes={nodes} alarms={clanAlarms} />}
         {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
           onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
         <UnknownSignalGuideTracker signals={unknownSignals} element={signalGuide} />
@@ -1474,11 +1483,10 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
 export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen?: (node: PlanetNode) => void }) {
   const { t, i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
-  const label = commanderLabel(node.owner, node.clan?.tag);
   const body = <>
     {node.honorRanking && node.honorRank ? <RankBadge rank={node.honorRank} honor /> : null}
     {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
-    <span className="min-w-0 truncate">{label}</span>
+    <span className="min-w-0 truncate"><TaggedName name={node.owner} clanTag={node.clan?.tag} clanTier={node.clan?.tier} /></span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
   </>;
   if (!onOpen || node.controllerPlayerId === undefined) {

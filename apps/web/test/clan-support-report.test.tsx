@@ -17,8 +17,8 @@ const member = (over: Record<string, unknown>) => ({
   playerId: 'p', name: 'P', role: 'SUPPORT', losses: {}, sent: null, survivors: null, dominion: 0, ...over,
 });
 
-const wire = (attacking: boolean) => ({
-  kind: 'BATTLE', id: 'r1', missionId: 'm1', at: '2026-10-01T12:00:00Z', grade: 'PARTIAL',
+const wire = (attacking: boolean, grade = 'PARTIAL') => ({
+  kind: 'BATTLE', id: 'r1', missionId: 'm1', at: '2026-10-01T12:00:00Z', grade,
   rounds: [], attacking, opponentName: attacking ? 'Ali' : 'Raider', opponentPlanet: attacking ? 'Vega' : 'Home',
   opponentPlanetId: attacking ? 'vega' : 'home', yourPlanet: attacking ? 'Home' : 'Vega',
   yourPlanetId: attacking ? 'home' : 'vega', neutral: false,
@@ -37,9 +37,9 @@ const wire = (attacking: boolean) => ({
   },
 });
 
-async function open(attacking: boolean) {
+async function open(attacking: boolean, grade = 'PARTIAL', over: Record<string, unknown> = {}) {
   const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(
-    JSON.stringify({ reports: [wire(attacking)], rivals: [] }),
+    JSON.stringify({ reports: [{ ...wire(attacking, grade), ...over }], rivals: [] }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   )));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -143,5 +143,25 @@ describe('a supporter’s report', () => {
     expect(screen.queryByText(/your defence was partly breached/i)).toBeNull();
     expect(screen.getByText(/you stood in Ali’s line at Vega/i)).toBeInTheDocument();
     expect(screen.getByText(/battle report · Vega/i)).toBeInTheDocument();
+  });
+
+  it('names the supporter who carried a held line (F2 E3)', async () => {
+    const line = await open(false, 'REPELLED');
+    expect(within(line).getByText(/hero of the line: zeynep · stood here with 12 ships/i)).toBeInTheDocument();
+  });
+
+  it('tells the defending line what the clan treasury took from the wreck (F2 E4)', async () => {
+    await open(false, 'REPELLED', { wreckValue: 706, clanPurse: { alloy: 556, crystal: 150, deuterium: 0 } });
+    expect(screen.getByText('Victory spoils: 556 alloy · 150 crystal went to the clan treasury.')).toBeInTheDocument();
+  });
+
+  it('says nothing of the treasury on a defence that paid it nothing', async () => {
+    await open(false, 'REPELLED', { clanPurse: null });
+    expect(screen.queryByText(/clan treasury/i)).toBeNull();
+  });
+
+  it('names no hero when the line broke', async () => {
+    const line = await open(false, 'DECISIVE');
+    expect(within(line).queryByText(/hero of the line/i)).toBeNull();
   });
 });

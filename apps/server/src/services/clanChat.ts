@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
 import { and, count, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
-import { CLAN, SEASON, clanChatMessageIsValid } from '@astera/rules';
+import { CLAN, SEASON, clanChatMessageIsValid, clanTagTier, type ClanTagTier } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { accounts, clanMemberships, clanMessages, clans, planets, players, seasons } from '../db/schema.js';
+import { accounts, clanMemberships, clanMessages, clans, planets, players, seasons, type ClanChatEvent } from '../db/schema.js';
 import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
@@ -20,6 +20,8 @@ export interface ClanMessageView {
   planetId?: string;
   username: string;
   clanTag: string | null;
+  /** F2: the tag's colour by clan level — the tier only, never the level behind it. */
+  clanTier: ClanTagTier | null;
   content: string;
   media?: ChatMedia | null;
   createdAt: string;
@@ -30,6 +32,8 @@ export interface ClanMessageView {
   previousSeasonRanking?: 'HONOR' | 'DOMINION';
   supporter?: boolean;
   admin?: boolean;
+  /** F2 E2: a line the server posted; null on a typed message. */
+  event?: ClanChatEvent | null;
 }
 
 export async function readClanChat(
@@ -67,8 +71,10 @@ export async function readClanChat(
     username: accounts.displayName,
     login: accounts.username,
     clanTag: clans.tag,
+    clanLevel: clans.level,
     content: clanMessages.content, media: clanMessages.media,
     replyToMessageId: clanMessages.replyToMessageId,
+    event: clanMessages.event,
     createdAt: clanMessages.createdAt,
   }).from(clanMessages)
     .innerJoin(players, eq(clanMessages.authorPlayerId, players.id))
@@ -96,8 +102,9 @@ export async function readClanChat(
   const nextBefore = rows.length > input.limit ? page.at(-1)?.id ?? null : null;
   const decorations = await messageDecorations(db, 'clan', page, actor.playerId, membership.joinedAt);
   return {
-    messages: [...page].reverse().map(({ replyToMessageId: _replyToMessageId, login, planetId, ...message }) => ({
+    messages: [...page].reverse().map(({ replyToMessageId: _replyToMessageId, login, planetId, clanLevel, ...message }) => ({
       ...message,
+      clanTier: clanTagTier(clanLevel),
       // Open clients still require a string. An empty ID reveals no admin world.
       planetId: !adminUsernames.has(login) || message.authorPlayerId === actor.playerId ? planetId : '',
       admin: adminUsernames.has(login),
@@ -154,7 +161,7 @@ export async function postClanChat(
       chatVisibleTo(actor.accountId, clanMessages.authorPlayerId),
       gte(clanMessages.createdAt, membership.joinedAt))).limit(1) : [];
   if (input.replyToMessageId && !replyTo) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
-  const [clan] = await tx.select({ tag: clans.tag }).from(clans)
+  const [clan] = await tx.select({ tag: clans.tag, level: clans.level }).from(clans)
     .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)));
   const [latest] = await tx.select({ createdAt: clanMessages.createdAt })
     .from(clanMessages).where(eq(clanMessages.clanId, membership.clanId))
@@ -163,9 +170,11 @@ export async function postClanChat(
     ? new Date(latest.createdAt.getTime() + 1)
     : now;
   const cutoff = new Date(now.getTime() - CLAN.chatWindowSeconds * 1_000);
+  // A line the server posted (F2 E2) never spends its author's allowance.
   const [rate] = await tx.select({ value: count() }).from(clanMessages).where(and(
     eq(clanMessages.authorPlayerId, input.playerId),
     gt(clanMessages.createdAt, cutoff),
+    isNull(clanMessages.event),
   ));
   if ((rate?.value ?? 0) >= CLAN.chatBurst) {
     throw new GameError('CLAN_CHAT_RATE_LIMIT', 'Send at most five messages every ten seconds', 429, {
@@ -199,6 +208,7 @@ export async function postClanChat(
     planetId: actor.planetId,
     username: actor.displayName,
     clanTag: clan?.tag ?? null,
+    clanTier: clanTagTier(clan?.level ?? null),
     createdAt: message.createdAt.toISOString(),
     self: true,
     admin: adminUsernames.has(actor.login),

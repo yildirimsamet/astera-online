@@ -72,8 +72,10 @@ import {
 import { addDominionCounters } from './dominion.js';
 import {
   defenderCountOf,
+  foughtStations,
   lineOf,
   lockStationsAt,
+  notifyLiftedSupporters,
   notifySupporters,
   settleStations,
   standStations,
@@ -347,6 +349,8 @@ export async function resolveClanWarBattle(
   const result = raid.result;
   // The host's own part of the line; the waves' survivors go back to their own rows.
   const hostOutcome = result.defenders[0]!;
+  // F1: a line that lifted together leaves every wave untouched; the guns' battle is the one booked.
+  const fought = foughtStations(stations, raid.escape);
   const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
   const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
   const stood: Fleet = {};
@@ -385,7 +389,7 @@ export async function resolveClanWarBattle(
       NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
     at: defender.now,
   });
-  await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
+  await settleStations(tx, { stations: fought, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
   // The lift burned before anything reached a hold (see the raid lane).
   const pvpBalance = await commanderPvpBalance(tx, defender.playerId);
@@ -531,7 +535,7 @@ export async function resolveClanWarBattle(
   */
   const attackerCount = participantIds.length;
   // One for the host, plus every clanmate who stood a ship in the line (Klan Savunma Desteği).
-  const defenderCount = defenderCountOf(stations);
+  const defenderCount = defenderCountOf(fought);
   const base = scoreEligible
     ? dominionTransfer(
       lootUnits + result.defenderLossValue - result.attackerLossValue,
@@ -546,7 +550,7 @@ export async function resolveClanWarBattle(
   */
   const hostPower = combatValue(defenders);
   const adjusted = scoreEligible
-    ? defendedTransfer(base, supportLossOf(stations, result.defenders), attackerCount, supportFactorOf(hostPower, stations))
+    ? defendedTransfer(base, supportLossOf(fought, result.defenders), attackerCount, supportFactorOf(hostPower, fought))
     : 0;
 
   /*
@@ -649,7 +653,7 @@ export async function resolveClanWarBattle(
     targetPlanetId: defender.planetId,
     clanWarOperationId: operation.id,
     targetKind: 'PLAYER',
-    admirals: stationAdmirals(stations),
+    admirals: stationAdmirals(fought),
     grade: result.grade,
     rounds: result.rounds,
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
@@ -657,7 +661,7 @@ export async function resolveClanWarBattle(
     defenderLosses: result.defenderLosses,
     attackerFleet: aggregateOf(stacks),
     // The whole line that stood — the host's and every clanmate wave's.
-    defenderFleet: lineOf(stood, stations),
+    defenderFleet: lineOf(stood, fought),
     defenderCount,
     defenceSalvage: result.defenceSalvage,
     attackerDamage,
@@ -769,6 +773,14 @@ export async function resolveClanWarBattle(
     ];
     await tx.insert(clanWarDominionEvents).values(audit);
   }
+  await notifyLiftedSupporters(tx, {
+    missionId: mission.id,
+    hostPlanetId: defender.planetId,
+    hostPlanetName: defender.name,
+    stations,
+    escape: raid.escape,
+    now,
+  });
   if (defenderCount > 1) {
     await writeDefenderResults(tx, {
       seasonId: mission.seasonId,
@@ -779,7 +791,7 @@ export async function resolveClanWarBattle(
         power: hostPower,
         lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       },
-      stations,
+      stations: fought,
       outcomes: result.defenders,
       hostDelta: -adjusted,
       now,
@@ -790,8 +802,9 @@ export async function resolveClanWarBattle(
       grade: result.grade,
       hostPlanetId: defender.planetId,
       hostPlanetName: defender.name,
-      stations,
+      stations: fought,
       outcomes: result.defenders,
+      attackerLost: fleetCount(result.attackerLosses),
       now,
     });
   }

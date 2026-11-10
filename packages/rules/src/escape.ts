@@ -5,7 +5,7 @@ import {
   type DefenderStack,
   type JointAttackerStack,
 } from './combat.js';
-import type { DefencePosture } from './clanSupport.js';
+import { togglesOf, type DefencePosture } from './clanSupport.js';
 import { ESCAPE, MULTI_WORLD } from './constants.js';
 import { missionFuel } from './fuel.js';
 import { HULLS, fleetCount, fleetEntries } from './hulls.js';
@@ -93,22 +93,32 @@ export type EscapeVerdict = 'RUN' | 'STAND' | 'UNSURE';
  *
  * `posture` is the world's defence posture as the probe read it (Klan Savunma Desteği,
  * ruleset 15). A SUPPORT or HOLD world has switched the retreat off, so its line
- * always STANDs; absent means a season without postures, where the rule decides.
+ * always STANDs; ESCAPE_SUPPORT runs as ESCAPE does, the ratio already measured on the
+ * line with its support; absent means a season without postures, where the rule decides.
  */
 export function escapeVerdict(
   ratio: { low: number; high: number },
   minimumShipRule = false,
   posture?: DefencePosture,
 ): EscapeVerdict {
-  if (posture !== undefined && posture !== 'ESCAPE') return 'STAND';
+  if (posture !== undefined && !togglesOf(posture).escape) return 'STAND';
   if (!outmatches(ratio.high, 1)) return 'STAND';
   if (outmatches(ratio.low, 1)) return minimumShipRule ? 'UNSURE' : 'RUN';
   return 'UNSURE';
 }
 
+/** One stationed wave that lifted with the host's line (F1). It fought nothing and lost nothing. */
+export interface EscapedSupport {
+  stackId: string;
+  ships: Fleet;
+}
+
 export type EscapeOutcome =
-  /** The ships lifted off; `fuel` came out of the tank before the loot. */
-  | { kind: 'ESCAPED'; ships: Fleet; fuel: number }
+  /**
+   * The ships lifted off; `fuel` came out of the tank before the loot — the host's own
+   * ships only. `support` lists the waves that lifted with them, present only when any did.
+   */
+  | { kind: 'ESCAPED'; ships: Fleet; fuel: number; support?: readonly EscapedSupport[] }
   /** They would have run, and the tank could not pay — the fight stood. */
   | { kind: 'STRANDED'; ships: Fleet; fuel: number; available: number };
 
@@ -140,9 +150,9 @@ export interface RaidInput {
   /** Five in ruleset 13 onward, zero for seasons dealt the earlier escape rule. */
   minimumCombatShips: number;
   /**
-   * CLANMATES' STATIONED WAVES IN THIS LINE (Klan Savunma Desteği). A supported world's
-   * posture is SUPPORT, which never lifts — so `escape` must be false when any wave is
-   * here, and asking otherwise is a caller bug, refused rather than guessed at.
+   * CLANMATES' STATIONED WAVES IN THIS LINE (Klan Savunma Desteği). With `escape` on
+   * (ESCAPE_SUPPORT, F1) the retreat is judged on the host and every wave together and
+   * lifts them together; the host's tank pays for the host's own ships only.
    */
   support?: readonly DefenderStack[];
   /** Who the host is, for the outcome rows. Empty where nobody asks. */
@@ -164,33 +174,42 @@ export function resolveRaid(input: RaidInput): RaidResolution {
     ({ stackId: 'host', playerId: input.hostPlayerId ?? '', fleet, tech: input.defender,
       ...(partition ? { damage: partition.damage.filter((lot) => (fleet[lot.hull] ?? 0) > 0) } : {}) });
   const support = input.support ?? [];
-  if (support.length > 0) {
-    if (input.escape) throw new RangeError('a line holding clan support never lifts');
-    return {
-      result: resolveBattle(input.stacks, [host(line), ...support], input.shield, input.rng(), context, input.maintenance, input.recording),
-      escape: null,
-    };
-  }
   const trial = input.recording && input.escape ? createBattleRecording({ hitLimit: input.recording.hitLimit }) : input.recording;
-  const standing = resolveBattle(input.stacks, [host(line)], input.shield, input.rng(), context, input.maintenance, trial);
+  const standing = resolveBattle(input.stacks, [host(line), ...support], input.shield, input.rng(), context, input.maintenance, trial);
   const keepStanding = (escape: EscapeOutcome | null): RaidResolution => {
     if (input.recording && trial && input.recording !== trial) Object.assign(input.recording, trial);
     return { result: standing, escape };
   };
   if (!input.escape) return keepStanding(null);
 
+  /*
+    F1: THE WHOLE LINE IS JUDGED — the host and every stationed wave, each with its own
+    research and wounds, and only the ships that can fight, exactly as the battle reads them.
+  */
+  const waves = support.map((stack) => {
+    const fighting = input.maintenance && stack.maintenanceExempt !== true
+      ? partitionCombatFleet(stack.fleet, stack.damage) : { eligible: stack.fleet, damage: stack.damage };
+    return { stack, fleet: fighting.eligible, damage: fighting.damage };
+  });
   const ships = escapingShips(line);
-  if (fleetCount(ships) === 0) return keepStanding(null);
-  if (escapeCombatShipCount(line) < input.minimumCombatShips) {
+  const lifted = waves.map((row) => ({ stackId: row.stack.stackId, ships: escapingShips(row.fleet) }));
+  if (fleetCount(ships) + lifted.reduce((n, row) => n + fleetCount(row.ships), 0) === 0) return keepStanding(null);
+  const fighters = escapeCombatShipCount(line) + waves.reduce((n, row) => n + escapeCombatShipCount(row.fleet), 0);
+  if (fighters < input.minimumCombatShips) {
     return keepStanding(null);
   }
 
+  const lineUnits = [
+    ...powerUnits(line, input.defender, partition?.damage, input.maintenance),
+    ...waves.flatMap((row) => powerUnits(row.fleet, row.stack.tech, row.damage, input.maintenance)),
+  ];
   const m = matchup({ units: input.stacks.flatMap(stack => powerUnits(stack.fleet, stack.tech, stack.damage, input.maintenance)) },
-    { units: powerUnits(line, input.defender, partition?.damage, input.maintenance), aegis: input.shield });
+    { units: lineUnits, aegis: input.shield });
   if (!outmatches(m.attacker.power, m.defender.power) || standing.grade !== 'DECISIVE') {
     return keepStanding(null);
   }
 
+  // The host pays for its own ships; a wave lifts free. A tank that cannot pay keeps the whole line in (F1-K4).
   const fuel = escapeFuel(ships);
   const available = tankOf(input.deuterium);
   if (available < fuel) {
@@ -202,5 +221,5 @@ export function resolveRaid(input: RaidInput): RaidResolution {
     if (HULLS[id].ground) guns[id] = count;
   }
   const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context, input.maintenance, input.recording);
-  return { result, escape: { kind: 'ESCAPED', ships, fuel } };
+  return { result, escape: { kind: 'ESCAPED', ships, fuel, ...(lifted.length > 0 ? { support: lifted } : {}) } };
 }

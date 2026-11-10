@@ -34,7 +34,7 @@ describe('clan support in the bell', () => {
   });
 
   it('tells the host whose ships left and why', () => {
-    expect(say('clan_support_departed', departed({}))).toMatch(/Ali’s support left Vega: its twelve hours ran out/);
+    expect(say('clan_support_departed', departed({}))).toMatch(/Ali’s support left Vega: its stay ran out/);
   });
 
   it('tells the sender in their own voice', () => {

@@ -76,12 +76,19 @@ export const clan = {
     chatBody: "Planificad objetivos, apoyo y horas de llegada en un chat que solo puede leer vuestro equipo.",
     waitingNote: "El chat y la protección contra fuego amigo comienzan al unirse. Quien se une a un clan espera {{hours}} horas para la ayuda, el reparto de botín, el envío de apoyo y las aportaciones a ataques conjuntos.",
   },
+  tagTier: {
+    BRONZE: 'clan de estandarte de bronce',
+    SILVER: 'clan de estandarte de plata',
+    GOLD: 'clan de estandarte dorado',
+  },
   standings: {
     heading: 'Clasificación del clan',
     aside: 'los 3 primeros obtienen un sello',
     waiting: 'Leyendo la clasificación del clan',
     empty: 'Ningún clan ha entrado todavía en la clasificación.',
     crew: '{{members}}/5 tripulación',
+    watches_one: '{{count}} guardia',
+    watches_other: '{{count}} guardias',
   },
   requests: {
     heading: 'Tus peticiones',
@@ -268,7 +275,7 @@ export const clan = {
     resume: 'Permitir ayuda',
     sendHeading: 'Enviar ayuda',
     explainer: 'Un convoy cargado entrega sus recursos y regresa a casa. Un convoy vacío es un regalo de nave irreversible.',
-    speed: '10% más rápido',
+    speed: 'Corredor del clan · primer tramo más rápido',
     extraBay: '+1 plaza de solo ayuda',
     noRecall: 'Sin recuperación',
     returns: 'Devoluciones de transporte',

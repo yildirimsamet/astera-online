@@ -76,12 +76,19 @@ export const clan = {
     chatBody: "仲間だけが読めるチャットで、目標、支援、到着時刻を相談できます。",
     waitingNote: "チャットと味方への攻撃防止は加入直後から有効です。クランに加入したメンバーは、援助、戦利品の分配、支援派遣、共同攻撃への艦隊提供が使えるまで{{hours}}時間待ちます。",
   },
+  tagTier: {
+    BRONZE: '銅の旗のクラン',
+    SILVER: '銀の旗のクラン',
+    GOLD: '金の旗のクラン',
+  },
   standings: {
     heading: "クラン順位",
     aside: "上位 3 名がシールを獲得",
     waiting: "クラン順位の読み取り",
     empty: "まだ順位表に入っているクランはありません。",
     crew: "{{members}}/5人",
+    watches_one: '駐留{{count}}回',
+    watches_other: '駐留{{count}}回',
   },
   requests: {
     heading: "申請と招待",
@@ -268,7 +275,7 @@ export const clan = {
     resume: "援助を許可する",
     sendHeading: "援助を送る",
     explainer: "資源を積んだ輸送隊は配達後に帰還します。資源を積まない艦隊は艦船そのものを贈り、取り戻せません。",
-    speed: "10% 高速化",
+    speed: 'クラン回廊 · 最初の区間が高速',
     extraBay: "援助専用の発進枠+1",
     noRecall: "呼び戻し不可",
     returns: "輸送艦は帰還します",

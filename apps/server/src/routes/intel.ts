@@ -14,6 +14,7 @@ import {
 } from '../services/intel.js';
 import { requireAuth } from './auth.js';
 import { ownedPlanet } from '../services/ownership.js';
+import { probePostureFields } from '../services/defencePosture.js';
 
 const watchBody = z.object({
   observerPlanetId: z.string().uuid().optional(),
@@ -133,6 +134,10 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.classReading ? { classReading: r.report.classReading } : {}),
         ...(r.report.shield ? { shield: r.report.shield } : {}),
         ...(r.report.unarmed ? { unarmed: r.report.unarmed } : {}),
+        // KLAN SAVUNMA DESTEĞİ (owner K9): the door and the guests, read at the look.
+        ...probePostureFields(r.report),
+        // F2 E5: what the target's clan has bought; absent outside a clan and on older reports.
+        ...(r.report.clanLevel === null ? {} : { clanLevel: r.report.clanLevel }),
         detected: r.report.detected,
       })),
       probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 },

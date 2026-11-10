@@ -1,3 +1,4 @@
+import { clanAlarmOf } from './clanAlarm.js';
 import { z } from 'zod';
 import { FAULT_KINDS, STARTER, VESSEL_MODULES } from '@astera/rules';
 import { SHIP_CLASSES } from '@astera/rules/arena/ui';
@@ -159,6 +160,8 @@ const supportResult = z.object({
   survived: z.number().int().nonnegative(),
 });
 const postureReset = z.object({ planetNames: z.array(z.string()) });
+/** F1: a supporter's wave ran with the host's line and still stands there. */
+const supportLifted = z.object({ hostPlanetName: z.string(), ships: z.number().int().nonnegative() });
 
 
 const raided = z.object({
@@ -1459,6 +1462,18 @@ export function describeNotification(notification: NotificationView, now: number
           : i18n.t('notifications.asteroidShowerEnded');
     }
 
+    /* KLAN ALARMI (F2): a clanmate's radar heard a raid; the row is the call to answer it. */
+    case 'clan_alarm': {
+      const call = clanAlarmOf(notification);
+      if (!call) return i18n.t('clanSupport.noticeFallback');
+      const name = call.hostName ?? i18n.t('clanSupport.alarmClanmate');
+      return call.arriveAt.getTime() <= now
+        ? i18n.t('clanSupport.alarmLanded', { name, world: call.hostPlanetName })
+        : i18n.t('clanSupport.alarmNotice', {
+          name, world: call.hostPlanetName, time: duration((call.arriveAt.getTime() - now) / 60_000),
+        });
+    }
+
     /* KLAN SAVUNMA DESTEĞİ: who is coming, who left and why, what the ships did. */
     case 'clan_support_inbound': {
       const parsed = supportInbound.safeParse(notification.payload);
@@ -1485,6 +1500,11 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
       const { hostPlanetName, lost, survived } = parsed.data;
       return `${i18n.t(`clanSupport.verdict.${parsed.data.grade}`)} · ${i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived })}`;
+    }
+    case 'clan_support_lifted': {
+      const parsed = supportLifted.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
+      return i18n.t('clanSupport.noticeLifted', { world: parsed.data.hostPlanetName, count: parsed.data.ships });
     }
     case 'defence_posture_reset': {
       const parsed = postureReset.safeParse(notification.payload);
@@ -1515,6 +1535,7 @@ export function describeNotification(notification: NotificationView, now: number
  */
 export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'incoming_fleet' ||
+  notification.kind === 'clan_alarm' ||
   notification.kind === 'strategic_incoming' ||
   (notification.kind === 'colony_lost' && !wasAbandoned(notification)) ||
   notification.kind === 'raided' ||
@@ -1641,9 +1662,12 @@ export function signalFamily(notification: NotificationView): SignalFamily {
       ships stood in reads by what it did to their Dominion.
     */
     case 'clan_support_inbound':
+    case 'clan_support_lifted':
       return 'gain';
+    // A clanmate's raid (`clan_alarm`) is a call to act, not somebody coming for the reader.
     case 'clan_support_departed':
     case 'defence_posture_reset':
+    case 'clan_alarm':
       return 'watch';
     case 'clan_support_result': {
       const parsed = supportResult.safeParse(notification.payload);
@@ -1796,6 +1820,7 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
     case 'monument_returning':
       return 'returned';
     case 'incoming_fleet':
+    case 'clan_alarm':
       return 'incoming';
     case 'strategic_incoming':
     case 'strategic_intercepted':
@@ -1808,6 +1833,7 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
       return 'raided';
     case 'clan_support_inbound':
     case 'clan_support_departed':
+    case 'clan_support_lifted':
     case 'fleet_returned':
     case 'target_gone':
     case 'convoy_result':

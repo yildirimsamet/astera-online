@@ -43,6 +43,7 @@ import {
   seededFrom,
 } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
+import { CLANMATE_COLOUR } from './PlanetField.js';
 import {
   HULL_MODEL,
   HULL_LOD_MODEL,
@@ -220,6 +221,54 @@ export const ROUTE_COLOUR = '#ff8b3d';
  */
 export const ROUTE_OPACITY = 0.16;
 export const ROUTE_OPACITY_FOCUSED = 0.42;
+
+/**
+ * KLAN KORİDORU (F2 plan §5, owner 2026-11-10): a clan flight's first leg runs on the clan's fast
+ * lane, so its route is the clan's green and flows toward where it lands. Everything else keeps
+ * the still amber thread above.
+ */
+export const routeLook = (thread: Pick<PendingThread, 'corridor'>): { colour: string; flow: boolean } =>
+  thread.corridor === true ? { colour: CLANMATE_COLOUR, flow: true } : { colour: ROUTE_COLOUR, flow: false };
+
+/** Dashes ride toward the far end at this many scene units a second: fast, as the lane is. */
+const CORRIDOR_FLOW = 3.2;
+const CORRIDOR_DASH = 0.55;
+
+function corridorMaterial(colour: string): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uEnd: { value: new THREE.Vector3() },
+      uColour: { value: new THREE.Color(colour) },
+      uOpacity: { value: ROUTE_OPACITY },
+    },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    vertexShader: `
+      varying vec3 vWorld;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorld = world.xyz;
+        gl_Position = projectionMatrix * viewMatrix * world;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec3 uEnd;
+      uniform vec3 uColour;
+      uniform float uOpacity;
+      varying vec3 vWorld;
+      void main() {
+        // Measured from the landing end, so the pattern runs into it as time passes.
+        float phase = fract((distance(vWorld, uEnd) + uTime * ${CORRIDOR_FLOW.toFixed(2)}) / ${CORRIDOR_DASH.toFixed(2)});
+        float dash = smoothstep(0.0, 0.18, phase) * (1.0 - smoothstep(0.5, 0.68, phase));
+        gl_FragColor = vec4(uColour, uOpacity * (0.55 + 1.6 * dash));
+      }
+    `,
+  });
+}
 
 const ROUTE = {
   fleet: {
@@ -988,8 +1037,11 @@ function Flight({
    * enough that a glance at the galaxy sees worlds first and traffic second.
    */
   const line = useLine();
+  const look = routeLook(thread);
+  const corridor = useMemo(() => (look.flow ? corridorMaterial(look.colour) : null), [look.flow, look.colour]);
+  useEffect(() => () => { corridor?.dispose(); }, [corridor]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!path || !group.current) return;
     const now = serverNow();
     const convoyPhase = convoyEngagementPath !== undefined
@@ -1057,6 +1109,11 @@ function Flight({
     points.setXYZ(0, at[0] + dx * k, at[1] + dy * k, at[2] + dz * k);
     points.setXYZ(1, lineEnd[0], lineEnd[1], lineEnd[2]);
     points.needsUpdate = true;
+    if (corridor) {
+      corridor.uniforms.uTime!.value = clock.elapsedTime;
+      (corridor.uniforms.uEnd!.value as THREE.Vector3).set(lineEnd[0], lineEnd[1], lineEnd[2]);
+      corridor.uniforms.uOpacity!.value = focused ? ROUTE_OPACITY_FOCUSED : ROUTE_OPACITY;
+    }
   });
 
   const pickFleet = (event: ThreeEvent<PointerEvent>): void => {
@@ -1079,13 +1136,13 @@ function Flight({
         threads the brightest objects on the disc. This is the settled middle.
       */}
       <lineSegments geometry={line} frustumCulled={false}>
-        <lineBasicMaterial
+        {corridor ? <primitive object={corridor} attach="material" /> : <lineBasicMaterial
           color={ROUTE_COLOUR}
           transparent
           opacity={focused ? ROUTE_OPACITY_FOCUSED : ROUTE_OPACITY}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
-        />
+        />}
       </lineSegments>
 
       <group ref={group} name="flight" userData={{ craftId: id }}>

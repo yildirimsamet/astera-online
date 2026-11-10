@@ -1,10 +1,12 @@
 import { useCommunityPolicy } from '../api/communityPolicy.js';
 import { CommunityPolicyGate } from './CommunityPolicy.js';
+import { ClanTag } from '../ui/ClanTag.js';
 import {
   CLAN,
   CLAN_TRANSFERABLE_HULLS,
   clanNameIsValid,
   clanTagIsValid,
+  clanTagTier,
   clanTransferCargoCapacity,
   distance,
   fleetCount,
@@ -516,7 +518,7 @@ function ClanOutside({
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Chip tone="crystal">[{clan.tag}]</Chip>
+                            <Chip tone="crystal"><ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} /></Chip>
                             <strong className="font-semibold truncate text-v2-ink">{clan.name}</strong>
                             {clan.level !== null && (
                               <Chip tone="opportunity">{t('clanWar.level', { level: clan.level })}</Chip>
@@ -1233,10 +1235,11 @@ function ClanStandings({
                 </span>
                 <span className="min-w-0">
                   <span className="font-semibold block truncate text-v2-ink">
-                    <span className="text-v2-self">[{clan.tag}]</span> {clan.name}
+                    <ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} className="text-v2-self" /> {clan.name}
                   </span>
                   <span className="mt-1 block truncate text-micro text-v2-ink-3">
                     {t('clan.standings.crew', { members: clan.memberCount })}
+                    {clan.watches ? ` · ${t('clan.standings.watches', { count: clan.watches })}` : ''}
                     {clan.self ? ` · ${t('clan.you')}` : ''}
                   </span>
                 </span>

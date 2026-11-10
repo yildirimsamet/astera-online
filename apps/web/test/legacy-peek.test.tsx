@@ -72,6 +72,12 @@ describe('the commander name on a planet label', () => {
     expect(screen.getByRole('button').querySelector('.galaxy-commander-cup')).toBeNull();
   });
 
+  it('draws the clan tag in its metal over the world (F2)', () => {
+    render(<GalaxyCommanderName node={node({ clan: { id: 'c', name: 'Orbit', tag: 'ORB', tier: 'GOLD' } })} />);
+    expect(document.querySelector('[data-tier="GOLD"]')).toHaveTextContent('[ORB]');
+    expect(screen.getByText(/Mira/)).toBeInTheDocument();
+  });
+
   it('stays plain text without a player behind the name or without a place to open it', () => {
     const { rerender } = render(<GalaxyCommanderName node={node()} onOpen={vi.fn()} />);
     expect(screen.queryByRole('button')).toBeNull();

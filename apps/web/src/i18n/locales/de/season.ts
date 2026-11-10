@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: 'Schlachten',
   attacks: '-Angriffe',
   defences: 'Verteidigungen',
+  support_one: '{{count}} Wache für Clanmitglieder · {{held}} Angriffe abgewehrt',
+  support_other: '{{count}} Wachen für Clanmitglieder · {{held}} Angriffe abgewehrt',
   damageDealt: 'Verursachter Schaden',
   damageTaken: 'Erlittener Schaden',
   clan: {
