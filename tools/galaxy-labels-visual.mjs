@@ -22,7 +22,15 @@ export async function verifyGalaxyLabels(out = 'out/galaxy-labels') {
       const fixture = `seed(['galaxy-ship-models'], ${JSON.stringify(models)});
         seed(keys.commanderShip, {capitalPlanetId:'trial-home',rulesetVersion:19,ship:{class:'muhafiz',level:3,status:'ready',readyAt:null}});
         seed(keys.universe, {galaxies:[{ordinal:1,ships:13}],mine:null}); ${needle}`;
-      await route.fulfill({ response, body: source.replace(needle, fixture) });
+      const flights = `
+        const path = {from:{x:420,y:120,z:420},to:{x:620,y:120,z:420},departAt:new Date(now-3600000),arriveAt:new Date(now+3600000)};
+        seed(keys.pending, {pending:[{id:'label-own-flight',kind:'fleet',targetName:'Vega',leg:'outbound',minutesRemaining:60,arriveAt:path.arriveAt,
+          fleet:{DART:3},admiral:{ship:'akinci',level:7},path}]});
+        seed(keys.traffic, {contacts:[{id:'label-foreign-flight',kind:'fleet',from:{x:420,y:-120,z:420},to:{x:620,y:-120,z:420},
+          startAt:path.departAt,endAt:path.arriveAt,fleet:{DART:3},admiral:{ship:'muhafiz',level:8}}],interceptions:[]});
+        return client;`;
+      assert(source.includes('return client;'));
+      await route.fulfill({ response, body: source.replace(needle, fixture).replace('return client;', flights) });
     });
     await page.route('**/src/v2/gallery/StoreDiscoveryGallery.tsx*', async route => {
       const response = await route.fetch(); const source = await response.text();
@@ -46,20 +54,33 @@ export async function verifyGalaxyLabels(out = 'out/galaxy-labels') {
       await page.waitForTimeout(500);
     };
     const tag = page.locator('[data-part="commander-ship-tag"]').first();
+    const escorts = page.locator('[data-part="escort-ship-tag"]');
+    await escorts.first().waitFor({ state: 'attached' });
+    assert.equal(await escorts.count(), 2, 'exercise both owner and identified foreign escorts');
     for (const width of [350, 1165]) {
       await page.setViewportSize({ width, height: 812 });
       const sizes = [];
-      for (const distance of [6, 16, 23, 24, 100, 6]) {
+      for (const distance of [6, 20, 30, 50, 100, 6]) {
         await aim(distance);
-        const measured = await tag.evaluate(element => ({ width: element.getBoundingClientRect().width, visible: getComputedStyle(element).display !== 'none' }));
+        const measured = await tag.evaluate(element => ({ width: element.getBoundingClientRect().width, visible: element.checkVisibility({ checkOpacity: true }) }));
         sizes.push({ distance, ...measured });
         console.log(`${width}px distance ${distance}: ${JSON.stringify(measured)}`);
         check(measured.visible === (distance < 24), `${width}px: tag visibility at distance ${distance}`);
-        if ([6, 16, 100].includes(distance)) await page.screenshot({ path: `${out}/${width}-distance-${distance}.png` });
+        if ([6, 20, 100].includes(distance)) await page.screenshot({ path: `${out}/${width}-distance-${distance}.png` });
       }
       check(sizes[1].width < sizes[0].width * 0.8, `${width}px: ship tag must shrink while zooming out`);
       check(Math.abs(sizes[5].width - sizes[0].width) < 2, `${width}px: approaching must restore the tag`);
       evidence.push({ width, sizes });
+
+      for (const distance of [6, 16, 50, 270, 6]) {
+        await aim(distance);
+        const labels = await escorts.evaluateAll(elements => elements.map(element => ({
+          text: element.textContent, visible: element.getBoundingClientRect().width > 0 && element.checkVisibility({ checkOpacity: true }),
+        })));
+        check(labels.every(label => label.visible === (distance < 24)), `${width}px: flying commander labels at ${distance}: ${JSON.stringify(labels)}`);
+        evidence.push({ width, escortDistance: distance, labels });
+        if (distance === 270) await page.screenshot({ path: `${out}/${width}-flying-farthest.png` });
+      }
 
       for (const ranked of [false, true]) for (const owner of ['WWWWWWWWWWWWWWWWWWWW', 'ABCDEFGHIJKLMNOPQRST', 'İstanbulKomutanı12345', '宇宙指揮官星間艦隊銀河守護者探索者英雄王']) {
         await page.evaluate(({ owner, ranked }) => {
@@ -92,6 +113,7 @@ export async function verifyGalaxyLabels(out = 'out/galaxy-labels') {
     });
     await page.locator('[data-universe-chip]').click();
     check(await page.locator('[data-part="commander-ship-tag"]').count() === 0, 'universe mode must unmount ship labels immediately');
+    check(await escorts.count() === 0, 'universe mode must unmount owner and foreign flying ship labels immediately');
     await page.screenshot({ path: `${out}/universe.png` });
     await page.locator('[data-universe-chip]').click();
     await aim(6);

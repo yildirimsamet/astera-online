@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
-import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { AdmiralSnapshot } from '@astera/rules/arena';
 import { arenaCopy } from '../arena/copy.js';
 import { useGalaxyShipModels } from '../arena/hangar/shipModels.js';
 import { ShipBody } from './ParkedShip.js';
 import { HitboxMaterial } from './hitboxDebug.js';
+import { CommanderShipLabel } from './CommanderShipLabel.js';
 
 /**
  * THE COMMANDER SHIP AT THE REAR OF ITS FLEET (Y9, doc 23). Drawn inside the flight's own group,
@@ -21,7 +21,7 @@ export default function EscortShip({ escort, at, length, own = true, onPointerUp
       <HitboxMaterial kind={own ? 'fleet' : 'contact'} />
     </mesh>
     <Suspense fallback={null}><ShipBody model={model} lit /></Suspense>
-    <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><EscortTag escort={escort} own={own} /></Html>
+    <CommanderShipLabel><EscortTag escort={escort} own={own} /></CommanderShipLabel>
   </group>;
 }
 

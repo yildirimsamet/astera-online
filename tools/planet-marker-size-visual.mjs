@@ -6,13 +6,13 @@ import { chromium } from 'playwright';
 
 export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
   await mkdir(out, { recursive: true });
-  const before = ts.transpileModule(execFileSync('git', ['show', 'HEAD:apps/web/src/galaxy/planetMarkerLayout.ts'], { encoding: 'utf8' }).replace('return { pinScale,', 'return { pinWidthScale: pinScale, pinScale,'),
+  const before = ts.transpileModule(execFileSync('git', ['show', 'HEAD:apps/web/src/galaxy/planetMarkerLayout.ts'], { encoding: 'utf8' }),
     { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const evidence = [];
   try {
-    for (const version of ['before', 'after']) {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'tr-TR' }); const errors = [];
+    for (const width of [350, 1280]) for (const version of ['before', 'after']) {
+      const page = await browser.newPage({ viewport: { width, height: 900 }, locale: 'tr-TR' }); const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       if (version === 'before') await page.route('**/src/galaxy/planetMarkerLayout.ts*', route => route.fulfill({ contentType: 'application/javascript', body: before }));
       await page.route('**/src/v2/gallery/CosmeticTrialGallery.tsx*', async route => {
@@ -29,7 +29,6 @@ export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
       await page.goto(`${process.env.WEB ?? 'http://127.0.0.1:5297'}/v2-gallery.html?view=store-discovery&lng=tr`);
       await page.waitForFunction(() => window.__galaxy?.scene.getObjectByName('eye-shut'), null, { timeout: 120000 });
       await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 90000 });
-      await page.locator('[data-academy-home-ready="true"]').waitFor({ state: 'attached', timeout: 90000 });
       for (const distance of [12, 80, 400]) {
         const frame = await page.evaluate(distance => {
           const g = window.__galaxy; g.controls.dispatchEvent({ type: 'start' });
@@ -61,16 +60,16 @@ export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
         for (const row of rows) {
           const oldHeight = row.kind === 'pin' ? 4 + 6 / (1 + row.depth / 25) : 9 + 22 / (1 + row.depth / 25);
           const oldWidth = row.kind === 'pin' ? oldHeight * (.13 * Math.sqrt(3)) / .2 : oldHeight;
-          const reduction = version === 'after' ? 2 : 0;
+          const reduction = version === 'after' && width < 1100 ? 4 : 2;
           assert(Math.abs(row.height - (oldHeight - reduction)) < .03, JSON.stringify(row));
           assert(Math.abs(row.width - (oldWidth - reduction)) < .03, JSON.stringify(row));
         }
-        evidence.push({ version, distance, rows });
-        await page.screenshot({ path: `${out}/${version}-${distance}.png` });
+        evidence.push({ width, version, distance, rows });
+        await page.screenshot({ path: `${out}/${width}-${version}-${distance}.png` });
         await page.evaluate(() => window.__galaxy.controls.dispatchEvent({ type: 'end' }));
       }
       assert.deepEqual(errors, []); await page.close();
     }
-    await writeFile(`${out}/proof.json`, JSON.stringify(evidence, null, 2)); console.log(JSON.stringify(evidence));
+    await writeFile(`${out}/proof.json`, JSON.stringify(evidence, null, 2)); console.log('PASS: mobile markers shrink another 2px on both axes; desktop sizes unchanged');
   } finally { await browser.close(); }
 }

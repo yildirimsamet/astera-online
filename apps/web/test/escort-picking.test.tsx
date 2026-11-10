@@ -4,6 +4,7 @@ import EscortShip from '../src/galaxy/EscortShip.js';
 
 vi.mock('../src/arena/hangar/shipModels.js', () => ({ useGalaxyShipModels: () => null, radial: vi.fn(), shipDecoders: vi.fn() }));
 vi.mock('@react-three/drei', () => ({ Html: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
+vi.mock('../src/galaxy/visualFrame.js', () => ({ useVisualFrame: vi.fn() }));
 
 it('selects the parent fleet when its commander ship is tapped, including during model loading', () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);

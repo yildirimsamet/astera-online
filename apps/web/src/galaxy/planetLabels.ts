@@ -97,7 +97,7 @@ export function planetLabelRank(node: PlanetNode, selectedId: string | null, riv
  * pool of non-overlapping labels. No DOM reads or per-world React/Html frame work
  * for hundreds of worlds outside the current neighbourhood.
  */
-export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, rivals, now, sizes }: {
+export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, rivals, now, sizes, compact = false }: {
   nodes: readonly PlanetNode[];
   camera: Camera;
   width: number;
@@ -106,6 +106,7 @@ export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, r
   rivals: readonly RivalMark[];
   now: number;
   sizes?: ReadonlyMap<string, PlanetLabelSize>;
+  compact?: boolean;
 }): PlanetLabelPlacement[] {
   if (width < 40 || height < 100) return [];
   const candidates: (PlanetLabelPlacement & { rank: number; range: number; depth: number })[] = [];
@@ -131,7 +132,7 @@ export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, r
     // Html stays on the planet centre. Only the screen-space column moves up,
     // using the same camera-up axis and zoom scale as the pin and closed eye.
     const depth = viewDepth(node, camera);
-    const layout = planetMarkerLayout(node, depth, height, camera instanceof PerspectiveCamera ? camera.fov : 45);
+    const layout = planetMarkerLayout(node, depth, height, camera instanceof PerspectiveCamera ? camera.fov : 45, compact);
     centre.set(0, layout.labelOffset, 0).applyQuaternion(camera.quaternion);
     centre.x += node.position[0]; centre.y += node.position[1]; centre.z += node.position[2];
     centre.project(camera);

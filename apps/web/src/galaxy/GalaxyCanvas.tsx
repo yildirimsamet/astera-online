@@ -137,6 +137,8 @@ import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
+import { CommanderShipLabels } from './CommanderShipLabel.js';
+import { DESK_QUERY, useMedia } from '../lib/media.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { layoutPlanetLabels, planetLabelRank, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
@@ -849,7 +851,7 @@ export function GalaxyCanvas({
       <Meteors shower={meteorShower} />
 
       <ModelScale.Provider value={scale}><OpeningWork.Provider value={openingWork}>
-      <GalaxyVisualPhase>
+      <CommanderShipLabels.Provider value={!universe?.open}><GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
             day when nothing is crossing the disc. D32. */}
@@ -957,9 +959,9 @@ export function GalaxyCanvas({
         {watched && watched.length > 0 && <Suspense fallback={null}><JumpWatch flights={watched} /></Suspense>}
         {flight && <Suspense fallback={null}><LiveJumpScene jump={flight.jump} world={flight.world} offset={toWorld(mainOffset ?? NO_OFFSET)} /></Suspense>}
         {observedParkedShips(planets).map(park => <Suspense key={park.planetId} fallback={null}>
-          <ParkedShipModel park={park} nodes={nodes} own={false} showLabel={!universe?.open} onSelect={() => { onFocus({ kind: 'planet', id: park.planetId }); }} />
+          <ParkedShipModel park={park} nodes={nodes} own={false} onSelect={() => { onFocus({ kind: 'planet', id: park.planetId }); }} />
         </Suspense>)}
-        {parkedShip && onOpenShip && !flight && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} showLabel={!universe?.open} onSelect={onOpenShip} /></Suspense>}
+        {parkedShip && onOpenShip && !flight && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <OwnFleets
@@ -1026,7 +1028,7 @@ export function GalaxyCanvas({
           onReady?.();
         }} />
       </Suspense>
-      </GalaxyVisualPhase>
+      </GalaxyVisualPhase></CommanderShipLabels.Provider>
       </OpeningWork.Provider></ModelScale.Provider>
 
       {/*
@@ -1196,6 +1198,7 @@ export function Labels({
   onOpenCommander?: (node: PlanetNode) => void;
 }) {
   const { t } = useTranslation();
+  const compact = !useMedia(DESK_QUERY);
   const radiationByWorld = useMemo(() => {
     const sources = new Map<string, HpRadiationSourceView[]>();
     for (const source of hpRadiation) {
@@ -1292,7 +1295,7 @@ export function Labels({
     if (clock.current < 0.1) return;
     clock.current = 0;
 
-    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current });
+    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current, compact });
     // Camera distance may reorder priorities without changing membership. Keep
     // mounted labels stable so panning does not cause needless React updates.
     const nextIds = placements.map((placement) => placement.id).sort();

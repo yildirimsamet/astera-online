@@ -1,6 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type Ref } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useLoader } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { arenaCopy } from '../arena/copy.js';
@@ -13,20 +12,19 @@ import type { PlanetNode } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { useVisualFrame } from './visualFrame.js';
 import { ShipAssetBoundary } from './ShipAssetBoundary.js';
+import { CommanderShipLabel } from './CommanderShipLabel.js';
 export { ShipAssetBoundary } from './ShipAssetBoundary.js';
 import { commanderExhaustScale, createCommanderExhaust, createCommanderExhaustMaterial, createCommanderHull } from './commanderAppearance.js';
 
 /** Past this the ship is a speck beside a dot; the satellites stop at 34 for the same reason. */
 const VISIBLE_WITHIN = 40;
-/** Names belong to the nearby neighbourhood, even while the hull is still visible. */
-const LABEL_VISIBLE_WITHIN = 24;
 
 /**
  * The commander's own ship beside its capital (KG-A20): the Yarık's class model, lite pack, its
  * coarsest level of detail. A ready ship circles the world with its engines lit; under repair or
  * service it holds still, dark at the nozzles. A tap opens the hangar.
  */
-export default function ParkedShipModel({ park, nodes, onSelect, own = true, showLabel = true }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void; own?: boolean; showLabel?: boolean }) {
+export default function ParkedShipModel({ park, nodes, onSelect, own = true }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void; own?: boolean }) {
   const planet = nodes.find(node => node.id === park.planetId);
   const [near, setNear] = useState(own);
   const nearRef = useRef(own);
@@ -39,7 +37,7 @@ export default function ParkedShipModel({ park, nodes, onSelect, own = true, sho
   const models = useGalaxyShipModels(near);
   const model = models?.[park.ship];
   if (!near || !planet) return null;
-  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} own={own} showLabel={showLabel} /></Suspense>;
+  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} own={own} /></Suspense>;
 }
 
 /**
@@ -90,20 +88,14 @@ function CommanderDrive({ model, glow }: { model: ShipModel; glow: THREE.Texture
   </group>;
 }
 
-function Ship({ model, planet, park, onSelect, own, showLabel }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean; showLabel: boolean }) {
+function Ship({ model, planet, park, onSelect, own }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean }) {
   const { docked } = park;
-  const root = useRef<THREE.Group>(null); const tag = useRef<HTMLButtonElement>(null);
+  const root = useRef<THREE.Group>(null);
   useVisualFrame(({ camera, clock }) => {
     const group = root.current; if (!group) return;
     const [px, py, pz] = planet.position;
     const distance = Math.hypot(camera.position.x - px, camera.position.y - py, camera.position.z - pz);
     group.visible = distance < VISIBLE_WITHIN;
-    if (tag.current) {
-      tag.current.style.display = distance < LABEL_VISIBLE_WITHIN ? '' : 'none';
-      // Html lives outside the canvas: give its annotation the ship's distance cues too.
-      tag.current.style.scale = String(Math.min(1, 12 / distance));
-      tag.current.style.opacity = String(Math.min(1, Math.max(0, (LABEL_VISIBLE_WITHIN - distance) / 12)));
-    }
     if (!group.visible) return;
     const pose = parkPose(planet, clock.elapsedTime, docked);
     group.position.set(pose.x, pose.y, pose.z);
@@ -112,7 +104,7 @@ function Ship({ model, planet, park, onSelect, own, showLabel }: { model: ShipMo
   });
   return <group ref={root} name="commander-ship" userData={{ docked }}>
     <ShipBody model={model} lit={!docked} />
-    {showLabel && <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><ShipTag ref={tag} park={park} onSelect={onSelect} own={own} /></Html>}
+    <CommanderShipLabel><ShipTag park={park} onSelect={onSelect} own={own} /></CommanderShipLabel>
     <mesh onPointerUp={event => { if (!wasTap()) return; markHit(); event.stopPropagation(); onSelect(); }}>
       <sphereGeometry args={[0.6, 8, 6]} />
       <HitboxMaterial kind="fleet" />
@@ -124,9 +116,9 @@ function Ship({ model, planet, park, onSelect, own, showLabel }: { model: ShipMo
  * What the speck is, and when it flies: the class and level, or the repair clock. A button: at the
  * galaxy's usual distance the ship is a few pixels and the tag is what a thumb finds (F16).
  */
-export function ShipTag({ ref, park, onSelect, own = true }: { ref?: Ref<HTMLButtonElement>; park: ParkedShip; onSelect: () => void; own?: boolean }) {
+export function ShipTag({ park, onSelect, own = true }: { park: ParkedShip; onSelect: () => void; own?: boolean }) {
   const c = arenaCopy();
-  return <button ref={ref} type="button" onClick={event => { event.stopPropagation(); onSelect(); }}
+  return <button type="button" onClick={event => { event.stopPropagation(); onSelect(); }}
     className="pointer-events-auto -translate-x-1/2 translate-y-2 whitespace-nowrap px-2 py-1.5 galaxy-ship-tag font-v2-mono text-micro uppercase tracking-label" data-part="commander-ship-tag">
     {park.docked && park.until !== null ? <DockClock reason={park.reason === 'service' ? c.servicing : c.repairing} until={park.until} />
       : <span className={own ? "text-v2-self" : "text-v2-ink-2"}>{c.classes[park.ship].name} · {c.level(park.level)}</span>}

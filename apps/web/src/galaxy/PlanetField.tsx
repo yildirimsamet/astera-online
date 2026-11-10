@@ -12,6 +12,7 @@ import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
+import { DESK_QUERY, useMedia } from '../lib/media.js';
 import { partitionPlanetSkins, planetSkinVisual } from '../ui/planetSkins.js';
 import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
 import {
@@ -935,6 +936,7 @@ export const pinColour = (kind: PlanetNode['kind']): string =>
  * shrinks the pins with the disc instead of filling the screen with them.
  */
 function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const compact = !useMedia(DESK_QUERY);
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const viewportHeight = useThree((state) => state.size.height);
@@ -956,6 +958,7 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
 
   const view = useRef(createViewMemo());
   const faced = useRef<unknown>(null);
+  useLayoutEffect(() => { view.current.primed = false; }, [compact]);
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
@@ -969,7 +972,7 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
     nodes.forEach((node, i) => {
       centre.set(node.position[0], node.position[1], node.position[2]);
       const depth = -offset.copy(centre).applyMatrix4(camera.matrixWorldInverse).z;
-      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov);
+      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov, compact);
       // The pin stands off along the camera's own up axis, so it sits above the
       // world from wherever it is being looked at — the billboard `Ring` gets from
       // copying the camera quaternion onto a group.
@@ -1027,6 +1030,7 @@ export function eyeNodes(nodes: readonly PlanetNode[]): PlanetNode[] {
 }
 
 function EyeMarks({ nodes: all }: { nodes: readonly PlanetNode[] }) {
+  const compact = !useMedia(DESK_QUERY);
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const viewportHeight = useThree((state) => state.size.height);
@@ -1041,6 +1045,7 @@ function EyeMarks({ nodes: all }: { nodes: readonly PlanetNode[] }) {
 
   const view = useRef(createViewMemo());
   const faced = useRef<unknown>(null);
+  useLayoutEffect(() => { view.current.primed = false; }, [compact]);
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
@@ -1053,7 +1058,7 @@ function EyeMarks({ nodes: all }: { nodes: readonly PlanetNode[] }) {
     nodes.forEach((node, i) => {
       centre.set(node.position[0], node.position[1], node.position[2]);
       const depth = -offset.copy(centre).applyMatrix4(camera.matrixWorldInverse).z;
-      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov);
+      const layout = planetMarkerLayout(node, depth, viewportHeight, camera.fov, compact);
       // The pin stands off at SELECTION_RING; this clears it by its own height.
       offset
         .set(0, layout.eyeOffset, 0)
