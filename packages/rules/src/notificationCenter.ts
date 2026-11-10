@@ -38,6 +38,11 @@ export const PAID_ALERTS = {
   probe_detected: { now: { hours: 1, floor: 20 } },
 } as const satisfies Record<string, { timed: Record<AlertTiming, Price> } | { now: Price }>;
 export type PaidAlertKind = keyof typeof PAID_ALERTS;
+/**
+ * One probe push per commander per half hour (owner 2026-11-10): a neighbour's cheap probes
+ * must not drain the wallet or ring the phone all night. The in-game notice is untouched.
+ */
+export const PROBE_ALERT_COOLDOWN_MINUTES = 30;
 
 export const NOTIFICATION_CENTER = {
   /** Built once, from the selected world's store: a Radar 2's price. */

@@ -10,7 +10,7 @@ let world: Awaited<ReturnType<typeof starterWorld>>;
 let sent: PushMessage[];
 beforeEach(async () => {
   world = await starterWorld(); sent = [];
-  setPushTransport({ send: (_tokens, message) => { sent.push(message); return Promise.resolve({ invalid: [] }); } });
+  setPushTransport({ send: (tokens, message) => { sent.push(message); return Promise.resolve({ invalid: [], accepted: tokens.length }); } });
 });
 afterEach(async () => { setPushTransport(null); await world.built.close(); });
 afterAll(async () => { await (await testDb()).close(); });
@@ -87,7 +87,7 @@ it('commits deferred claims before transport and never repeats a delivered messa
     expect(queued).toHaveLength(0);
     delivered.push(message.title);
     if (delivered.length === 2) throw new Error('offline');
-    return { invalid: [] };
+    return { invalid: [], accepted: 1 };
   } });
   await deliverDeferredPushes(world.f.db, new Date('2026-11-07T08:00:00Z')).catch(() => undefined);
   await deliverDeferredPushes(world.f.db, new Date('2026-11-07T08:00:00Z'));

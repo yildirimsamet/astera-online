@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Dünyalarından birine gelen bir filo veya ortak klan filosu.",
-    "incoming_strategic": "Yaklaşan bir Ölüm Yıldızı. Saldırı uyarısının 1,5 katı döteryum harcar.",
-    "probe_detected": "Dünyalarından birinin üstünde yakalanan bir sonda. Hemen gönderilir."
+    "incoming_strategic": "Yaklaşan bir Ölüm Yıldızı veya radyasyon bombası. Saldırı uyarısının 1,5 katı döteryum harcar.",
+    "probe_detected": "Dünyalarından birinin üstünde yakalanan bir sonda. Hemen gönderilir, en fazla 30 dakikada bir."
   },
   "buildCost": "Kurulum bedeli",
   "buildFrom": "Bedel seçili dünyandan ödenir: {{world}}. Bir kez kurulur ve tüm dünyalarını kapsar.",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "Gönderildi",
     "UNFUNDED": "Kasa yetmedi",
     "CANCELLED": "Kasadan düşülmedi",
-    "NO_DEVICE": "Telefon yok"
+    "NO_DEVICE": "Telefona ulaşmadı"
   },
   "rulesTitle": "Uyarılar nasıl çalışır",
   "ruleRadar": "Uyarı yalnız radarının gördüğü bir filo için gönderilir. Radar görmezse uyarı yok.",
   "ruleRecall": "Saldırı, uyarı gönderilmeden geri çağrılırsa kasadan döteryum düşülmez.",
   "ruleShort": "Kasa ödeyemezse uyarı gönderilmez. Burada \"Kasa yetmedi\" olarak listelenir.",
   "ruleInGame": "Oyun içindeki uyarı her zaman görünür ve döteryum harcamaz.",
+  "ruleUndelivered": "Uyarı hiçbir telefona ulaşmazsa kasadan döteryum düşmez.",
   "priceRule": "Bir saldırı uyarısı, tüm dünyalarının toplam döteryum üretiminin birkaç saatlik tutarını harcar. Bu tutar alt sınırın altındaysa alt sınır harcanır. Üretimin: saatte {{rate}}.",
   "reading": {
     "NONE": "Kurulmamış",

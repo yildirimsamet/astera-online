@@ -185,15 +185,30 @@ it('lists recent alerts with what each one cost', () => {
     { kind: 'incoming_attack', status: 'SENT', price: 30, sendAt: new Date('2026-10-30T10:00:00Z'), payload: { targetPlanetName: 'Earth' } },
     { kind: 'probe_detected', status: 'UNFUNDED', price: 20, sendAt: new Date('2026-10-30T09:00:00Z'), payload: { targetPlanetName: 'Mars' } },
     { kind: 'incoming_attack', status: 'CANCELLED', price: null, sendAt: new Date('2026-10-30T08:00:00Z'), payload: {} },
+    { kind: 'incoming_attack', status: 'NO_DEVICE', price: null, sendAt: new Date('2026-10-30T07:00:00Z'), payload: {} },
   ] };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   const ledger = screen.getByRole('list', { name: 'Recent alerts' });
   const rows = within(ledger).getAllByRole('listitem');
-  expect(rows).toHaveLength(3);
+  expect(rows).toHaveLength(4);
   expect(rows[0]).toHaveTextContent('Sent');
   expect(rows[0]).toHaveTextContent('−30');
   expect(rows[1]).toHaveTextContent('Wallet short');
   expect(rows[2]).toHaveTextContent('Nothing taken');
+  // Owner 2026-11-10: an alert no phone received is not paid for, and the row says so.
+  expect(rows[3]).toHaveTextContent('Not delivered');
+  expect(rows[3]).not.toHaveTextContent('−');
+});
+
+it('says an alert no phone received costs nothing', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.getByText('If no phone receives an alert, no deuterium is taken.')).toBeInTheDocument();
+});
+
+it('names the radiation bomb among strategic weapons and the half-hour spacing of probe alerts', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.getByText(/Death Star or radiation bomb/)).toBeInTheDocument();
+  expect(screen.getByText(/at most once every 30 minutes/)).toBeInTheDocument();
 });
 
 it('offers the free phone alerts in the app, asking the phone only when switched on', async () => {

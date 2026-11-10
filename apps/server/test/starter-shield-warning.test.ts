@@ -35,7 +35,7 @@ describe('the hour before a shield falls', () => {
   it('says so once, with the time it falls, and rings the phone', async () => {
     const me = await aboard(world, 'Me');
     const sent: PushMessage[] = [];
-    setPushTransport({ send: (_, message) => { sent.push(message); return Promise.resolve({ invalid: [] }); } });
+    setPushTransport({ send: (tokens, message) => { sent.push(message); return Promise.resolve({ invalid: [], accepted: tokens.length }); } });
     await world.f.db.insert(pushDevices).values({ token: 'tok', accountId: me.id, platform: 'android', locale: 'tr', createdAt: world.f.clock.now(), lastSeenAt: world.f.clock.now() });
     const falls = await raiseShield(me.vesselId);
     await pass(world, (falls.getTime() - world.f.clock.now().getTime()) / 60_000 - 59);

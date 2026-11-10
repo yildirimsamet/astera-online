@@ -206,7 +206,7 @@ function Built({ view }: { view: NotificationCenter }) {
     <details className="rounded-control border border-v2-line p-3 text-caption text-v2-ink-2">
       <summary className="cursor-pointer font-semibold text-v2-ink">{t('notificationCenter.rulesTitle')}</summary>
       <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4 leading-relaxed">
-        {(['ruleRadar', 'ruleRecall', 'ruleShort', 'ruleInGame'] as const).map(key => <li key={key}>{t(`notificationCenter.${key}`)}</li>)}
+        {(['ruleRadar', 'ruleRecall', 'ruleShort', 'ruleUndelivered', 'ruleInGame'] as const).map(key => <li key={key}>{t(`notificationCenter.${key}`)}</li>)}
       </ul>
       <p className="mt-3 leading-relaxed">{t('notificationCenter.priceRule', { rate: full(view.deuteriumPerHour) })}</p>
       <table className="mt-2 w-full font-v2-mono text-micro">
