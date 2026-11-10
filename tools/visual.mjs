@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--galaxy-labels')) {
+  const { verifyGalaxyLabels } = await import('./galaxy-labels-visual.mjs');
+  await verifyGalaxyLabels(process.argv[2] ?? 'out/galaxy-labels');
+  process.exit(0);
+}
+
 if (process.argv.includes('--dominance-chat')) {
   const { verifyDominanceChat } = await import('./dominance-chat-visual.mjs');
   await verifyDominanceChat(process.argv[2] ?? 'out/dominance-chat');

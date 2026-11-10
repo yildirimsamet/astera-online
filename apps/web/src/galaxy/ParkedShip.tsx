@@ -18,13 +18,15 @@ import { commanderExhaustScale, createCommanderExhaust, createCommanderExhaustMa
 
 /** Past this the ship is a speck beside a dot; the satellites stop at 34 for the same reason. */
 const VISIBLE_WITHIN = 40;
+/** Names belong to the nearby neighbourhood, even while the hull is still visible. */
+const LABEL_VISIBLE_WITHIN = 24;
 
 /**
  * The commander's own ship beside its capital (KG-A20): the Yarık's class model, lite pack, its
  * coarsest level of detail. A ready ship circles the world with its engines lit; under repair or
  * service it holds still, dark at the nozzles. A tap opens the hangar.
  */
-export default function ParkedShipModel({ park, nodes, onSelect, own = true }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void; own?: boolean }) {
+export default function ParkedShipModel({ park, nodes, onSelect, own = true, showLabel = true }: { park: ParkedShip; nodes: readonly PlanetNode[]; onSelect: () => void; own?: boolean; showLabel?: boolean }) {
   const planet = nodes.find(node => node.id === park.planetId);
   const [near, setNear] = useState(own);
   const nearRef = useRef(own);
@@ -37,7 +39,7 @@ export default function ParkedShipModel({ park, nodes, onSelect, own = true }: {
   const models = useGalaxyShipModels(near);
   const model = models?.[park.ship];
   if (!near || !planet) return null;
-  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} own={own} /></Suspense>;
+  return <Suspense fallback={null}><Ship model={model} planet={planet} park={park} onSelect={onSelect} own={own} showLabel={showLabel} /></Suspense>;
 }
 
 /**
@@ -88,14 +90,20 @@ function CommanderDrive({ model, glow }: { model: ShipModel; glow: THREE.Texture
   </group>;
 }
 
-function Ship({ model, planet, park, onSelect, own }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean }) {
+function Ship({ model, planet, park, onSelect, own, showLabel }: { model: ShipModel | undefined; planet: PlanetNode; park: ParkedShip; onSelect: () => void; own: boolean; showLabel: boolean }) {
   const { docked } = park;
   const root = useRef<THREE.Group>(null); const tag = useRef<HTMLButtonElement>(null);
   useVisualFrame(({ camera, clock }) => {
     const group = root.current; if (!group) return;
     const [px, py, pz] = planet.position;
-    group.visible = (camera.position.x - px) ** 2 + (camera.position.y - py) ** 2 + (camera.position.z - pz) ** 2 < VISIBLE_WITHIN ** 2;
-    if (tag.current) tag.current.style.display = group.visible ? '' : 'none';
+    const distance = Math.hypot(camera.position.x - px, camera.position.y - py, camera.position.z - pz);
+    group.visible = distance < VISIBLE_WITHIN;
+    if (tag.current) {
+      tag.current.style.display = distance < LABEL_VISIBLE_WITHIN ? '' : 'none';
+      // Html lives outside the canvas: give its annotation the ship's distance cues too.
+      tag.current.style.scale = String(Math.min(1, 12 / distance));
+      tag.current.style.opacity = String(Math.min(1, Math.max(0, (LABEL_VISIBLE_WITHIN - distance) / 12)));
+    }
     if (!group.visible) return;
     const pose = parkPose(planet, clock.elapsedTime, docked);
     group.position.set(pose.x, pose.y, pose.z);
@@ -104,7 +112,7 @@ function Ship({ model, planet, park, onSelect, own }: { model: ShipModel | undef
   });
   return <group ref={root} name="commander-ship" userData={{ docked }}>
     <ShipBody model={model} lit={!docked} />
-    <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><ShipTag ref={tag} park={park} onSelect={onSelect} own={own} /></Html>
+    {showLabel && <Html zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}><ShipTag ref={tag} park={park} onSelect={onSelect} own={own} /></Html>}
     <mesh onPointerUp={event => { if (!wasTap()) return; markHit(); event.stopPropagation(); onSelect(); }}>
       <sphereGeometry args={[0.6, 8, 6]} />
       <HitboxMaterial kind="fleet" />
