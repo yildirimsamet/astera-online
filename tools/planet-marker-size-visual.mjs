@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 
 export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
   await mkdir(out, { recursive: true });
-  const before = ts.transpileModule(execFileSync('git', ['show', 'HEAD:apps/web/src/galaxy/planetMarkerLayout.ts'], { encoding: 'utf8' }),
+  const before = ts.transpileModule(execFileSync('git', ['show', '32a3acf77c1030082344c27e2923a547cbd8b7b7:apps/web/src/galaxy/planetMarkerLayout.ts'], { encoding: 'utf8' }),
     { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const evidence = [];
