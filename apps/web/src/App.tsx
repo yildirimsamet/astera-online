@@ -26,6 +26,7 @@ import { useSoundEffects } from './lib/sound.js';
 import { WorldProvider } from './api/world.js';
 import { LocalAlertSync } from './shell/LocalAlertSync.js';
 import { PushDeviceSync } from './shell/PushDeviceSync.js';
+import { PushOpenRoute } from './shell/PushOpenRoute.js';
 import { Button } from './ui/kit/index.js';
 const ArrivalHost = lazy(() => import('./starter/ArrivalHost.js').then(module => ({ default: module.ArrivalHost })));
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
@@ -273,6 +274,7 @@ function SessionApp() {
     <WorldProvider>
       <LocalAlertSync />
       <PushDeviceSync />
+      <PushOpenRoute onOpen={(to) => { openPanel(to.panel, to.stop, undefined, { planetId: to.planetId }); }} />
       {/*
         THE GÖZLEMEVİ SHELL (docs/ui-v2/gozlemevi.md, F2): top bar and Now line above
         the galaxy, the dock below it, the bell and the Fleet page on top. It replaced

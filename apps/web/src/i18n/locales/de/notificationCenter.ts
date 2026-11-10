@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Eine Flotte oder eine gemeinsame Clanflotte auf dem Weg zu einer deiner Welten.",
-    "incoming_strategic": "Ein Todesstern im Anflug. Verbraucht das 1,5-Fache an Deuterium einer Angriffswarnung.",
-    "probe_detected": "Eine Sonde über einer deiner Welten entdeckt. Wird sofort gesendet."
+    "incoming_strategic": "Ein Todesstern oder eine Strahlungsbombe im Anflug. Verbraucht das 1,5-Fache an Deuterium einer Angriffswarnung.",
+    "probe_detected": "Eine Sonde über einer deiner Welten entdeckt. Wird sofort gesendet, höchstens alle 30 Minuten."
   },
   "buildCost": "Baukosten",
   "buildFrom": "Bezahlt von {{world}}, deiner ausgewählten Welt. Einmal gebaut, deckt sie alle deine Welten ab.",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "Gesendet",
     "UNFUNDED": "Kasse leer",
     "CANCELLED": "Nichts abgebucht",
-    "NO_DEVICE": "Kein Handy"
+    "NO_DEVICE": "Nicht zugestellt"
   },
   "rulesTitle": "So funktionieren Warnungen",
   "ruleRadar": "Eine Warnung gibt es nur für eine Flotte, die dein Radar sieht. Ohne Radarsichtung keine Warnung.",
   "ruleRecall": "Wird der Angriff zurückgerufen, bevor die Warnung rausgeht, verlässt kein Deuterium die Kasse.",
   "ruleShort": "Kann die Kasse nicht zahlen, wird die Warnung nicht gesendet. Sie steht hier als „Kasse leer“.",
   "ruleInGame": "Die Warnung im Spiel erscheint immer und verbraucht kein Deuterium.",
+  "ruleUndelivered": "Erreicht eine Warnung kein Handy, wird kein Deuterium abgezogen.",
   "priceRule": "Eine Angriffswarnung verbraucht einige Stunden deiner Deuterium-Produktion auf allen Welten, mindestens aber ihr Minimum. Deine Produktion: {{rate}} pro Stunde.",
   "reading": {
     "NONE": "Nicht gebaut",

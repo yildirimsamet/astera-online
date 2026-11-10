@@ -8,7 +8,8 @@ import type { PushMessage, PushTransport } from './notificationCenter.js';
  * Signs in as the Firebase service account with the OAuth2 JWT-bearer grant (RS256, at most an
  * hour, scope firebase.messaging), keeps the access token until shortly before it expires and
  * sends one message per phone. It never throws: by the time it runs the alert is already paid
- * for and committed (`settlePaidAlert`), so an outage is reported, not retried into a double send.
+ * for and committed (`settlePaidAlert`), so an outage is reported, not retried into a double send;
+ * the count of phones it reached is what decides whether that charge stands.
  * Phones FCM no longer knows (404 UNREGISTERED, or 400 naming the registration token) are
  * returned so the caller forgets them; any other refusal keeps the phone.
  */
@@ -112,7 +113,7 @@ export function fcmTransport(account: ServiceAccount, options: {
       }
       try { options.onOutcome?.({ refId: message.data.refId, alertId: message.data.alertId, accepted, rejected }); }
       catch (error) { report(error); }
-      return { invalid };
+      return { invalid, accepted };
     },
   };
 }

@@ -7,6 +7,7 @@ import {
   HULLS,
   PROBE,
   INSTRUMENT_IDS,
+  NOTIFICATION_CENTER,
   SATELLITE_IDS,
   SHIP_DAMAGE,
   shipHpRepairCost,
@@ -19,6 +20,7 @@ import {
   type ResearchProjectId,
   type Resources,
   type SatelliteId,
+  alertPrice,
   buildingCost,
   distance,
   fleetValue,
@@ -40,9 +42,10 @@ import {
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
 import {
-  battleReports, buildings, missions, planets, players, probeReports, probeWorldMemories, seasons,
+  battleReports, buildings, missions, notificationCenters, planets, players, probeReports, probeWorldMemories, seasons,
 } from '../../db/schema.js';
 import { GameError } from '../planet.js';
+import { buildNotificationCenter, commanderDeuteriumPerHour, fundNotificationCenter } from '../notificationCenter.js';
 import { buildUnits, collectWorks, installSatellite, raiseInstrument, upgradeBuilding } from '../build.js';
 import { completeResearch } from '../research.js';
 import { startRepair } from '../repair.js';
@@ -167,6 +170,7 @@ export async function runBotTurn(
     view = await orderResearch(db, clock, seat, persona, view, did, log);
     view = await buyShips(db, clock, seat, persona, view, did, log, rng);
   }
+  view = await tendNotificationCenter(db, clock, seat, persona, view, did, log);
   await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
 
   return { did };
@@ -386,6 +390,45 @@ async function buyOneInstrument(
     })) return view;
   }
   return view;
+}
+
+/**
+ * HOW MANY ATTACK ALERTS A BOT KEEPS IN ITS WALLET: a seeded mark per commander, so a probe
+ * reads some of them as a few alerts and some as plenty, the way people's wallets differ.
+ */
+export const BOT_CENTER_ALERTS = { min: 1, max: 6 } as const;
+
+/**
+ * THE BİLDİRİM MERKEZİ, KEPT LIKE A PERSON KEEPS ONE. Owner 2026-10-30, decision 10 (LOCKED):
+ * bots build it and fund it; a probe reads them as it reads people; no push goes to a bot.
+ *
+ * Built once the world has a Radar, since the centre only speaks for what the radar sees, and
+ * from the same alloy reserve instruments respect. The wallet is topped up to the bot's mark in
+ * a whole alert or more, from at most half the deuterium store so fuel is never spent on it.
+ */
+export async function tendNotificationCenter(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
+  view: PlanetView, did: string[], log: FastifyBaseLogger,
+): Promise<PlanetView> {
+  if ((view.instruments.RADAR ?? 0) < 1) return view;
+  const [center] = await db.select({ wallet: notificationCenters.wallet }).from(notificationCenters)
+    .where(eq(notificationCenters.playerId, seat.playerId));
+  if (!center) {
+    const cost = NOTIFICATION_CENTER.buildCost;
+    if (!affordable(view, cost, Math.max(view.planet.alloy * persona.militaryShare, storeReserve(view)))) return view;
+    if (!(await attempt(did, 'notification-center:build', log, () =>
+      buildNotificationCenter(db, seat.playerId, seat.planetId, clock)))) return view;
+    return { ...view, planet: { ...view.planet,
+      alloy: view.planet.alloy - cost.alloy, crystal: view.planet.crystal - cost.crystal, deuterium: view.planet.deuterium - cost.deuterium } };
+  }
+  const price = alertPrice('incoming_attack', 'T5', await commanderDeuteriumPerHour(db, seat.playerId));
+  const span = BOT_CENTER_ALERTS.max - BOT_CENTER_ALERTS.min + 1;
+  const mark = (BOT_CENTER_ALERTS.min + (hashSeed('astera:bots:center', seat.playerId) % span)) * price;
+  const amount = Math.min(mark - center.wallet, Math.floor(view.planet.deuterium / 2));
+  if (amount < price) return view;
+  if (!(await attempt(did, 'notification-center:fund', log, () =>
+    fundNotificationCenter(db, seat.playerId, seat.planetId, amount, true, clock)))) return view;
+  return { ...view, planet: { ...view.planet, deuterium: view.planet.deuterium - amount } };
 }
 
 /**

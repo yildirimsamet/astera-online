@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "あなたのワールドへ向かう艦隊、またはクラン合同艦隊。",
-    "incoming_strategic": "接近中のデス・スター。攻撃通知の1.5倍の重水素を消費します。",
-    "probe_detected": "あなたのワールド上空で探査機を検知。すぐに送信されます。"
+    "incoming_strategic": "接近中のデス・スターまたは放射線爆弾。攻撃通知の1.5倍の重水素を消費します。",
+    "probe_detected": "あなたのワールド上空で探査機を検知。すぐに送信されます（最大30分に1回）。"
   },
   "buildCost": "建設コスト",
   "buildFrom": "選択中のワールド「{{world}}」から支払います。一度建てればすべてのワールドが対象です。",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "送信済み",
     "UNFUNDED": "金庫不足",
     "CANCELLED": "消費なし",
-    "NO_DEVICE": "端末なし"
+    "NO_DEVICE": "未配信"
   },
   "rulesTitle": "通知のしくみ",
   "ruleRadar": "通知はレーダーが捉えた艦隊にだけ送られます。レーダーが捉えなければ通知はありません。",
   "ruleRecall": "通知の送信前に攻撃が呼び戻された場合、金庫の重水素は減りません。",
   "ruleShort": "金庫で支払えない場合、通知は送信されず、ここに「金庫不足」と表示されます。",
   "ruleInGame": "ゲーム内の警告は常に表示され、重水素を消費しません。",
+  "ruleUndelivered": "どの端末にも届かなかった通知では、重水素は消費されません。",
   "priceRule": "攻撃通知は、全ワールドの重水素生産量の数時間分を消費します。最低量の方が多い場合は最低量になります。あなたの生産量：毎時{{rate}}。",
   "reading": {
     "NONE": "未建設",
