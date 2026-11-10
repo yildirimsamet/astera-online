@@ -41,7 +41,31 @@ let target: { api: PushApi; locale: string } | null = null;
 let token: string | null = null;
 let listening: Promise<unknown> | null = null;
 let opening: Promise<unknown> | null = null;
-const openedSchema = z.object({ notification: z.object({ data: z.object({ refId: z.string().uuid() }) }) });
+const openedSchema = z.object({ notification: z.object({ data: z.object({
+  refId: z.string().uuid(), kind: z.string().optional(), planetId: z.string().optional(),
+}) }) });
+
+/**
+ * WHERE A TAPPED ALERT LANDS (owner 2026-11-10). A raid opens the world it is aimed at, where
+ * the stock can be spent and the fleet sent out; a probe opens the readings of that world.
+ * The same doors the in-game notices use (`DESTINATION` in `Signals`).
+ */
+export interface PushDestination { panel: 'planet' | 'intel'; stop?: 'probes'; planetId: string }
+const DOORS: Record<string, Omit<PushDestination, 'planetId'>> = {
+  incoming_attack: { panel: 'planet' },
+  incoming_strategic: { panel: 'planet' },
+  probe_detected: { panel: 'intel', stop: 'probes' },
+};
+let openedListener: ((to: PushDestination) => void) | null = null;
+/** A tap that opened the app before the game could take it. */
+let waiting: PushDestination | null = null;
+
+/** The game takes taps from here; a tap that came first is handed over once. */
+export function onPushOpened(listener: (to: PushDestination) => void): () => void {
+  openedListener = listener;
+  if (waiting) { const to = waiting; waiting = null; listener(to); }
+  return () => { if (openedListener === listener) openedListener = null; };
+}
 
 /** Every `register()` answers with the token again, so a language change or a refreshed token is sent the same way. */
 function post(): void {
@@ -62,7 +86,15 @@ export async function connectPush(api: PushApi, options: { locale: string; chann
     listening ??= PushNotifications.addListener('registration', ({ value }) => { token = value; remember(value); post(); });
     opening ??= PushNotifications.addListener('pushNotificationActionPerformed', value => {
       const opened = openedSchema.safeParse(value);
-      if (opened.success) observe('alert_opened', { refId: opened.data.notification.data.refId, code: 'push' }, 'live');
+      if (!opened.success) return;
+      const { refId, kind, planetId } = opened.data.notification.data;
+      observe('alert_opened', { refId, code: 'push' }, 'live');
+      const door = kind === undefined ? undefined : DOORS[kind];
+      const world = z.string().uuid().safeParse(planetId);
+      if (!door || !world.success) return;
+      const to = { ...door, planetId: world.data };
+      if (openedListener) openedListener(to);
+      else waiting = to;
     });
     await listening;
     await opening;

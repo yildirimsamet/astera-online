@@ -18,6 +18,7 @@ vi.mock('../src/lib/music.js', () => ({ useAmbientMusic: vi.fn() }));
 vi.mock('../src/api/context.js', () => ({ useApi: () => ({}) }));
 vi.mock('../src/api/world.js', () => ({ WorldProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('../src/shell/LocalAlertSync.js', () => ({ LocalAlertSync: () => null }));
+vi.mock('../src/shell/PushOpenRoute.js', () => ({ PushOpenRoute: () => null }));
 vi.mock('../src/platform/updateGate.js', () => ({ useUpdateRequired: () => false }));
 vi.mock('../src/platform/maintenanceGate.js', () => ({ useMaintenance: () => null }));
 vi.mock('../src/landing/public/WebLandingGate.js', () => ({ WebLandingGate: () => <p>Sign in</p> }));

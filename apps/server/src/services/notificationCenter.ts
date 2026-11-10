@@ -1,13 +1,13 @@
 import { deferQuietPushes } from './pushDelivery.js';
 import {
-  ALERT_TIMINGS, NOTIFICATION_CENTER, PAID_ALERTS, alertPrice, alertSendAt, deuteriumRate, productionMult,
-  type AlertTiming, type PaidAlertKind,
+  ALERT_TIMINGS, NOTIFICATION_CENTER, PAID_ALERTS, PROBE_ALERT_COOLDOWN_MINUTES, alertPrice, alertSendAt, deuteriumRate,
+  productionMult, type AlertTiming, type PaidAlertKind,
 } from '@astera/rules';
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, sql } from 'drizzle-orm';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
-  buildings, missions, notificationCenters, paidAlerts, planets, players, pushDevices, satellites,
+  buildings, missions, notificationCenters, paidAlerts, planets, players, pushDevices, radiationBombFlights, satellites,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { GameError, assertWorldOperational, orbitFromRows, refreshWealth, saveResources, withPlanetLock } from './planet.js';
@@ -157,8 +157,12 @@ export async function armPaidAlert(tx: Tx, input: {
   arriveAt?: Date;
   payload: Record<string, unknown>;
 }): Promise<void> {
-  const [center] = await tx.select().from(notificationCenters).where(eq(notificationCenters.playerId, input.playerId));
+  const probe = input.kind === 'probe_detected';
+  // A probe alert locks the centre so two probes landing together cannot both pass the spacing.
+  const read = tx.select().from(notificationCenters).where(eq(notificationCenters.playerId, input.playerId));
+  const [center] = probe ? await read.for('update') : await read;
   if (!center || center.muted.includes(input.kind)) return;
+  if (probe && await probeAlertedSince(tx, input.playerId, new Date(input.now.getTime() - PROBE_ALERT_COOLDOWN_MINUTES * 60_000))) return;
   const timed = 'timed' in PAID_ALERTS[input.kind];
   if (timed && !input.arriveAt) throw new Error(`${input.kind} needs an arrival`);
   const sendAtMs = timed && input.arriveAt
@@ -175,13 +179,33 @@ export async function armPaidAlert(tx: Tx, input: {
   await schedule(tx, { seasonId: input.seasonId, kind: 'paid_alert', refId: row.id, resolveAt: sendAt });
 }
 
+/** A probe push still on its way or delivered after `since`; one that reached nobody keeps no window shut. */
+async function probeAlertedSince(tx: Tx, playerId: string, since: Date): Promise<boolean> {
+  const [row] = await tx.select({ id: paidAlerts.id }).from(paidAlerts).where(and(
+    eq(paidAlerts.playerId, playerId), eq(paidAlerts.kind, 'probe_detected'),
+    inArray(paidAlerts.status, ['PENDING', 'SENT']), gt(paidAlerts.createdAt, since),
+  )).limit(1);
+  return row !== undefined;
+}
+
+/** The arrival of a raid or a radiation bomb still on its way to the commander; null once it is not. */
+async function inboundArrival(tx: Tx, refId: string): Promise<Date | null> {
+  const [mission] = await tx.select({ status: missions.status, recalledAt: missions.recalledAt, arriveAt: missions.arriveAt })
+    .from(missions).where(eq(missions.id, refId));
+  if (mission) return mission.status === 'in_flight' && mission.recalledAt === null ? mission.arriveAt : null;
+  const [bomb] = await tx.select({ status: radiationBombFlights.status, arriveAt: radiationBombFlights.arriveAt })
+    .from(radiationBombFlights).where(eq(radiationBombFlights.id, refId));
+  return bomb?.status === 'OUTBOUND' ? bomb.arriveAt : null;
+}
+
 /* ── sending ───────────────────────────────────────────────────────── */
 
 export interface PushMessage { kind: PaidAlertKind | 'raid_over' | 'raided' | 'system_open' | 'shield_falling' | 'repair_done' | 'miner_home' | 'repair_funded' | 'while_away'; title: string; body: string; data: Record<string, string> }
 export interface PushTransport {
-  send(tokens: string[], message: PushMessage): Promise<{ invalid: string[] }>;
+  /** `accepted` counts the phones the provider took the message for. */
+  send(tokens: string[], message: PushMessage): Promise<{ invalid: string[]; accepted: number }>;
 }
-/** Set at boot (FCM) or by a test; none means a sent alert is recorded and not delivered. */
+/** Set at boot (FCM) or by a test; none means no push leaves and no paid alert is charged. */
 let transport: PushTransport | null = null;
 export function setPushTransport(next: PushTransport | null): void { transport = next; }
 
@@ -232,8 +256,10 @@ function messageFor(kind: PaidAlertKind, locale: Locale, payload: Record<string,
 
 /**
  * THE MOMENT AN ALERT IS DUE. Re-reads the subject (a recalled or landed raid is no raid),
- * then charges the wallet in the same transaction as the status, and only then sends.
- * A wallet short of the price sends nothing and says so on the centre (decision 6).
+ * then holds the price from the wallet in the same transaction as the status, and only then
+ * sends. A wallet short of the price sends nothing and says so on the centre (decision 6).
+ * Only a delivered alert is paid for (owner 2026-11-10): when no phone takes it — push off
+ * on this server, every phone forgotten by the provider, or an outage — the price goes back.
  */
 export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Promise<void> {
   const delivery = await db.transaction(async (tx) => {
@@ -244,11 +270,9 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
       tx.update(paidAlerts).set({ status, price, settledAt: now }).where(eq(paidAlerts.id, alert.id));
 
     if ('timed' in PAID_ALERTS[alert.kind]) {
-      const [mission] = await tx.select({ status: missions.status, recalledAt: missions.recalledAt, arriveAt: missions.arriveAt })
-        .from(missions).where(eq(missions.id, alert.refId));
+      const arriveAt = await inboundArrival(tx, alert.refId);
       const armedFor = typeof alert.payload.arriveAt === 'string' ? Date.parse(alert.payload.arriveAt) : Number.NaN;
-      if (mission?.status !== 'in_flight' || mission.recalledAt !== null
-        || mission.arriveAt.getTime() !== armedFor || mission.arriveAt <= now) {
+      if (arriveAt?.getTime() !== armedFor || arriveAt <= now) {
         await settle('CANCELLED');
         return null;
       }
@@ -256,7 +280,7 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
     const devices = await tx.select({ token: pushDevices.token, locale: pushDevices.locale }).from(pushDevices)
       .innerJoin(players, eq(players.accountId, pushDevices.accountId))
       .where(eq(players.id, alert.playerId));
-    if (devices.length === 0) { await settle('NO_DEVICE'); return null; }
+    if (devices.length === 0 || !transport) { await settle('NO_DEVICE'); return null; }
 
     const price = alertPrice(alert.kind, alert.timing ?? 'NOW', await commanderDeuteriumPerHour(tx, alert.playerId));
     const paid = await tx.update(notificationCenters).set({ wallet: sql`${notificationCenters.wallet} - ${price}` })
@@ -264,21 +288,37 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
       .returning({ wallet: notificationCenters.wallet });
     if (paid.length === 0) { await settle('UNFUNDED'); return null; }
     await settle('SENT', price);
-    return { alert, devices, now };
+    return { alert, devices, now, price };
   });
   if (!delivery) return;
-  // After COMMIT: a transport outage can no longer roll back the charge it already shows.
-  await sendPush(db, delivery.devices, locale => messageFor(delivery.alert.kind, locale, delivery.alert.payload, delivery.now, delivery.alert.refId, delivery.alert.id), delivery.now, { paid: true });
+  // After COMMIT, so a slow or failing provider never holds the ledger open; at most once.
+  const { alert, now, price } = delivery;
+  const accepted = await sendPush(db, delivery.devices, locale => messageFor(alert.kind, locale, alert.payload, now, alert.refId, alert.id), now, { paid: true })
+    .catch(() => 0);
+  if (accepted > 0) return;
+  await db.transaction(async (tx) => {
+    const [given] = await tx.update(paidAlerts).set({ status: 'NO_DEVICE', price: null })
+      .where(and(eq(paidAlerts.id, alert.id), eq(paidAlerts.status, 'SENT'))).returning({ id: paidAlerts.id });
+    if (!given) return;
+    await tx.update(notificationCenters).set({ wallet: sql`${notificationCenters.wallet} + ${price}` })
+      .where(eq(notificationCenters.playerId, alert.playerId));
+  });
 }
 
-/** One message per language on these phones, and a token the provider has given up on is forgotten. */
-export async function sendPush(db: Db, devices: readonly { token: string; locale: Locale }[], write: (locale: Locale) => PushMessage, now = new Date(), options: { paid?: boolean } = {}): Promise<void> {
-  if (!transport) return;
+/**
+ * One message per language on these phones, and a token the provider has given up on is
+ * forgotten. Answers how many phones the provider took it for.
+ */
+export async function sendPush(db: Db, devices: readonly { token: string; locale: Locale }[], write: (locale: Locale) => PushMessage, now = new Date(), options: { paid?: boolean } = {}): Promise<number> {
+  if (!transport) return 0;
   const byLocale = new Map<Locale, string[]>();
   const ready = options.paid ? devices : await deferQuietPushes(db, devices, write, now);
   for (const device of ready) byLocale.set(device.locale, [...(byLocale.get(device.locale) ?? []), device.token]);
+  let accepted = 0;
   for (const [locale, tokens] of byLocale) {
-    const { invalid } = await transport.send(tokens, write(locale));
-    if (invalid.length > 0) await db.delete(pushDevices).where(inArray(pushDevices.token, invalid));
+    const answer = await transport.send(tokens, write(locale));
+    accepted += answer.accepted;
+    if (answer.invalid.length > 0) await db.delete(pushDevices).where(inArray(pushDevices.token, answer.invalid));
   }
+  return accepted;
 }

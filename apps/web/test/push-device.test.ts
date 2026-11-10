@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as PushModule from '../src/platform/push.js';
 
 /** Bildirim Merkezi push (owner 2026-10-31): the phone's FCM address, kept on the server for paid alerts. */
-type Listener = (event: { value: string }) => void;
+type Listener = (event: unknown) => void;
 const listeners = new Map<string, Listener[]>();
 const plugin = vi.hoisted(() => ({
   checkPermissions: vi.fn(),
@@ -20,6 +20,7 @@ vi.mock('../src/platform/localNotifications.js', () => ({ refreshPhonePermission
 /** The module keeps one token and one listener for the app's life: each test starts a fresh app. */
 let connectPush: typeof PushModule.connectPush;
 let disconnectPush: typeof PushModule.disconnectPush;
+let onPushOpened: typeof PushModule.onPushOpened;
 
 /** FCM answers `register()` with the phone's token. */
 let fcmToken = 'token-1';
@@ -29,7 +30,7 @@ const connect = (ask = false, locale = 'tr') => connectPush(api, { locale, chann
 beforeEach(async () => {
   vi.resetModules();
   localStorage.clear();
-  ({ connectPush, disconnectPush } = await import('../src/platform/push.js'));
+  ({ connectPush, disconnectPush, onPushOpened } = await import('../src/platform/push.js'));
   listeners.clear();
   plugin.addListener.mockImplementation((event: string, listener: Listener) => {
     listeners.set(event, [...(listeners.get(event) ?? []), listener]);
@@ -131,5 +132,52 @@ describe('signing out', () => {
     await connect();
     api.forgetPushDevice.mockRejectedValue(new Error('offline'));
     await expect(disconnectPush(api)).resolves.toBeUndefined();
+  });
+});
+
+/*
+  A TAP ON A RAID ALERT OPENS THE WORLD IT IS ABOUT (owner 2026-11-10). The push names the
+  world; the app lands on its sheet, where the stock can be spent and the fleet sent out.
+*/
+describe('tapping an alert', () => {
+  const world = '7b0c8a52-2d7e-4f5e-9c43-3f0a0b8d1e21';
+  const raid = 'f3a1c6d2-9b4e-4c7a-8e15-6d2b0a9c4f37';
+  const tap = (data: Record<string, string>) => {
+    for (const listener of listeners.get('pushNotificationActionPerformed') ?? []) listener({ actionId: 'tap', notification: { data } });
+  };
+
+  it.each([
+    ['incoming_attack', { panel: 'planet', planetId: world }],
+    ['incoming_strategic', { panel: 'planet', planetId: world }],
+    ['probe_detected', { panel: 'intel', stop: 'probes', planetId: world }],
+  ])('sends %s to where it is dealt with', async (kind, expected) => {
+    const opened = vi.fn();
+    onPushOpened(opened);
+    await connect();
+    tap({ kind, refId: raid, alertId: raid, planetId: world });
+    expect(opened).toHaveBeenCalledWith(expected);
+  });
+
+  it('keeps a tap that opened the app until the game is ready to take it, then hands it over once', async () => {
+    await connect();
+    tap({ kind: 'incoming_attack', refId: raid, planetId: world });
+    const opened = vi.fn();
+    onPushOpened(opened);
+    expect(opened).toHaveBeenCalledWith({ panel: 'planet', planetId: world });
+    const later = vi.fn();
+    onPushOpened(later);
+    expect(later).not.toHaveBeenCalled();
+  });
+
+  it('opens nothing for a push it cannot place, and stops listening when asked', async () => {
+    const opened = vi.fn();
+    const stop = onPushOpened(opened);
+    await connect();
+    tap({ kind: 'repair_done', refId: raid });
+    tap({ kind: 'incoming_attack', refId: raid, planetId: 'not-a-world' });
+    expect(opened).not.toHaveBeenCalled();
+    stop();
+    tap({ kind: 'incoming_attack', refId: raid, planetId: world });
+    expect(opened).not.toHaveBeenCalled();
   });
 });

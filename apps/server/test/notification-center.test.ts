@@ -1,14 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CENTER_STATUSES, NOTIFICATION_CENTER, alertPrice, deuteriumRate } from '@astera/rules';
-import { missions, notificationCenters, notifications, paidAlerts, planets, probeReports, scheduledEvents } from '../src/db/schema.js';
+import { CENTER_STATUSES, NOTIFICATION_CENTER, PROBE_ALERT_COOLDOWN_MINUTES, alertPrice, deuteriumRate } from '@astera/rules';
+import { missions, notificationCenters, notifications, paidAlerts, planets, probeReports, pushDevices, scheduledEvents } from '../src/db/schema.js';
 import { launchProbe } from '../src/services/intel.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { recallFlight } from '../src/services/movement.js';
 import {
-  buildNotificationCenter, commanderDeuteriumPerHour, fundNotificationCenter, notificationCenterView,
+  armPaidAlert, buildNotificationCenter, commanderDeuteriumPerHour, fundNotificationCenter, notificationCenterView,
   registerPushDevice, setNotificationCenter, setPushTransport, type PushMessage,
 } from '../src/services/notificationCenter.js';
 import {
@@ -25,7 +26,7 @@ let sent: { tokens: string[]; message: PushMessage }[];
 beforeEach(async () => {
   f = await seedWorld(2);
   sent = [];
-  setPushTransport({ send: (tokens, message) => { sent.push({ tokens, message }); return Promise.resolve({ invalid: [] }); } });
+  setPushTransport({ send: (tokens, message) => { sent.push({ tokens, message }); return Promise.resolve({ invalid: [], accepted: tokens.length }); } });
 });
 afterEach(() => { setPushTransport(null); });
 afterAll(async () => { const { db, close } = await testDb(); await truncateAll(db); await close(); });
@@ -205,12 +206,113 @@ describe('an attack the radar sees', () => {
     expect(sent).toHaveLength(0);
   });
 
+  /*
+    A WARNING NOBODY RECEIVED IS NOT PAID FOR. Owner 2026-11-10: "gönderilen bildirimin
+    parasını düşecek şekilde". The price is held while the push leaves and given back when
+    no phone took it — a phone FCM has forgotten, an outage, or a server with push off.
+  */
+  it('gives the price back when no phone takes the alert, and forgets the dead phone', async () => {
+    setPushTransport({ send: (tokens, message) => { sent.push({ tokens, message }); return Promise.resolve({ invalid: tokens, accepted: 0 }); } });
+    await fund(500);
+    await registerPushDevice(f.db, f.accountIds[1]!, 'token-gone', 'android', 'tr', f.clock);
+    await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
+    await untilWarned();
+    await runTo('paid_alert');
+    expect(sent).toHaveLength(1);
+    expect((await alerts())[0]).toMatchObject({ status: 'NO_DEVICE', price: null });
+    expect(await wallet(f.playerIds[1]!)).toBe(500);
+    expect(await f.db.select().from(pushDevices)).toHaveLength(0);
+  });
+
+  it('gives the price back when the provider fails outright', async () => {
+    setPushTransport({ send: () => Promise.reject(new Error('provider down')) });
+    await fund(500);
+    await registerPushDevice(f.db, f.accountIds[1]!, 'token-a', 'android', 'tr', f.clock);
+    await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
+    await untilWarned();
+    await runTo('paid_alert');
+    expect((await alerts())[0]).toMatchObject({ status: 'NO_DEVICE', price: null });
+    expect(await wallet(f.playerIds[1]!)).toBe(500);
+  });
+
+  it('charges nothing while the server has push switched off', async () => {
+    setPushTransport(null);
+    await fund(500);
+    await registerPushDevice(f.db, f.accountIds[1]!, 'token-a', 'android', 'tr', f.clock);
+    await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
+    await untilWarned();
+    await runTo('paid_alert');
+    expect((await alerts())[0]).toMatchObject({ status: 'NO_DEVICE', price: null });
+    expect(await wallet(f.playerIds[1]!)).toBe(500);
+  });
+
+  it('charges once when one of two phones takes it', async () => {
+    setPushTransport({ send: (tokens, message) => {
+      sent.push({ tokens, message });
+      return Promise.resolve({ invalid: tokens.filter(token => token === 'token-gone'), accepted: tokens.filter(token => token !== 'token-gone').length });
+    } });
+    await fund(500);
+    await registerPushDevice(f.db, f.accountIds[1]!, 'token-a', 'android', 'tr', f.clock);
+    await registerPushDevice(f.db, f.accountIds[1]!, 'token-gone', 'android', 'tr', f.clock);
+    await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
+    await untilWarned();
+    await runTo('paid_alert');
+    expect((await alerts())[0]).toMatchObject({ status: 'SENT', price: 30 });
+    expect(await wallet(f.playerIds[1]!)).toBe(470);
+  });
+
   it('arms nothing for a muted kind', async () => {
     await fund(500);
     await setNotificationCenter(f.db, f.playerIds[1]!, { muted: ['incoming_attack'] });
     await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     await untilWarned();
     expect(await alerts()).toHaveLength(0);
+  });
+});
+
+/*
+  ONE PROBE PUSH PER HALF HOUR. Owner 2026-11-10: a neighbour's cheap probes must not drain
+  the wallet or ring the phone all night; the in-game scan notice is untouched.
+*/
+describe('probe alerts are spaced', () => {
+  const arm = (refId: string) => f.db.transaction(tx => armPaidAlert(tx, {
+    seasonId: f.seasonId, playerId: f.playerIds[1]!, kind: 'probe_detected', refId, now: f.clock.now(),
+    payload: { targetPlanetId: f.planetIds[1]!, targetPlanetName: 'X' },
+  }));
+  const probeAlerts = () => f.db.select().from(paidAlerts).where(eq(paidAlerts.kind, 'probe_detected'));
+  beforeEach(async () => {
+    await grant(f.db, f.planetIds[1]!, 10_000, 10_000);
+    await buildNotificationCenter(f.db, f.playerIds[1]!, f.planetIds[1]!, f.clock);
+  });
+
+  it('waits 30 minutes after one before arming the next', async () => {
+    expect(PROBE_ALERT_COOLDOWN_MINUTES).toBe(30);
+    await arm(randomUUID());
+    f.clock.advance(PROBE_ALERT_COOLDOWN_MINUTES - 1);
+    await arm(randomUUID());
+    expect(await probeAlerts()).toHaveLength(1);
+    f.clock.advance(1);
+    await arm(randomUUID());
+    expect(await probeAlerts()).toHaveLength(2);
+  });
+
+  it('does not let an alert that reached nobody hold the window shut', async () => {
+    await arm(randomUUID());
+    await f.db.update(paidAlerts).set({ status: 'UNFUNDED' });
+    f.clock.advance(5);
+    await arm(randomUUID());
+    expect(await probeAlerts()).toHaveLength(2);
+  });
+
+  it('never spaces attack alerts', async () => {
+    const arrive = (minutes: number) => new Date(f.clock.now().getTime() + minutes * 60_000);
+    for (const _ of [1, 2]) {
+      await f.db.transaction(tx => armPaidAlert(tx, {
+        seasonId: f.seasonId, playerId: f.playerIds[1]!, kind: 'incoming_attack', refId: randomUUID(), now: f.clock.now(),
+        arriveAt: arrive(20), payload: {},
+      }));
+    }
+    expect(await f.db.select().from(paidAlerts).where(eq(paidAlerts.kind, 'incoming_attack'))).toHaveLength(2);
   });
 });
 

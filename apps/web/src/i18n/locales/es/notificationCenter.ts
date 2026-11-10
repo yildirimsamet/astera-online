@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Una flota o una flota conjunta de clan rumbo a uno de tus mundos.",
-    "incoming_strategic": "Una Estrella de la Muerte en camino. Gasta 1,5 veces el deuterio de un aviso de ataque.",
-    "probe_detected": "Una sonda detectada sobre uno de tus mundos. Se envía al momento."
+    "incoming_strategic": "Una Estrella de la Muerte o una bomba de radiación en camino. Gasta 1,5 veces el deuterio de un aviso de ataque.",
+    "probe_detected": "Una sonda detectada sobre uno de tus mundos. Se envía al momento, como mucho una vez cada 30 minutos."
   },
   "buildCost": "Coste de construcción",
   "buildFrom": "Lo paga {{world}}, tu mundo seleccionado. Se construye una vez y cubre todos tus mundos.",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "Enviado",
     "UNFUNDED": "Caja vacía",
     "CANCELLED": "Nada descontado",
-    "NO_DEVICE": "Sin móvil"
+    "NO_DEVICE": "No entregado"
   },
   "rulesTitle": "Cómo funcionan los avisos",
   "ruleRadar": "Solo hay aviso para una flota que tu radar ve. Sin detección de radar, no hay aviso.",
   "ruleRecall": "Si el ataque se retira antes de enviar el aviso, no sale deuterio de la caja.",
   "ruleShort": "Si la caja no puede pagar, el aviso no se envía. Aparece aquí como «Caja vacía».",
   "ruleInGame": "El aviso dentro del juego siempre aparece y no gasta deuterio.",
+  "ruleUndelivered": "Si ningún móvil recibe el aviso, no se gasta deuterio.",
   "priceRule": "Un aviso de ataque gasta unas horas de tu producción de deuterio en todos tus mundos, o su mínimo si es mayor. Tu producción: {{rate}} por hora.",
   "reading": {
     "NONE": "Sin construir",
