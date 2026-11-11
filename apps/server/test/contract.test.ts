@@ -1590,6 +1590,7 @@ describe('every payload the client parses', () => {
     }
     expect(report).not.toHaveProperty('theirDamage');
     expect(report).not.toHaveProperty('theirSurvivors');
+    expect(report).toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: { CITADEL: 20 } });
   });
 
   it('GET /api/reports parses', async () => {

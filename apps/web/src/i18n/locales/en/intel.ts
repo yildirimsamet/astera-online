@@ -139,6 +139,12 @@ export const intel = {
 } as const;
 
 export const reports = {
+  enemyFleetEmpty: "No opposing units were present at battle start.",
+  enemyFleetAtBattle: "Enemy force at battle start",
+  enemyFleetSnapshot: "This records the force in this battle, including support ships. Remaining counts include retreats and exclude later repairs or reinforcements.",
+  enemyFleetInsufficient: "Your attacking force had less than half the defending combat power. The full enemy force could not be identified. Only confirmed enemy losses are shown.",
+  enemyFleetUnknown: "This old report has no reliable record of full enemy-force visibility. Only confirmed enemy losses are shown.",
+
   distributedRulesTitle: "How this battle was fought",
   distributedRetreatRule: "Wounded ships can retreat at the end of rounds 1–{{lastRound}}. Retreated ships keep their wounds and stop fighting.",
   distributedDamageNote: "Ordinary shot totals show damage absorbed by Aegis and ship shields, plus damage delivered to hulls. Redistributed excess is not counted twice. Totals cover each whole side, including allies. Your casualty list covers only your own ships.",

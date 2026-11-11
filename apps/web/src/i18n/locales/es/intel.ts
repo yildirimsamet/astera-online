@@ -139,6 +139,12 @@ export const intel = {
 } as const;
 
 export const reports = {
+  enemyFleetEmpty: "No había unidades enemigas al inicio del combate.",
+  enemyFleetAtBattle: "Fuerzas enemigas al inicio del combate",
+  enemyFleetSnapshot: "Este registro muestra las fuerzas de este combate, incluidas las naves de apoyo. Las restantes incluyen las retiradas, pero no reparaciones ni refuerzos posteriores.",
+  enemyFleetInsufficient: "La potencia de tu flota atacante era inferior a la mitad de la defensora. No se pudo identificar toda la fuerza enemiga. Solo se muestran las pérdidas enemigas confirmadas.",
+  enemyFleetUnknown: "Este informe antiguo no permite confirmar la visibilidad completa de las fuerzas enemigas. Solo se muestran las pérdidas enemigas confirmadas.",
+
   distributedRulesTitle: "Cómo se resolvió esta batalla",
   distributedRetreatRule: "Las naves dañadas pueden retirarse al terminar las rondas 1–{{lastRound}}. Conservan sus daños y dejan de combatir.",
   distributedDamageNote: "Los totales de disparos normales incluyen el daño absorbido por Aegis y los escudos de las naves, más el daño aplicado al casco. El daño sobrante redistribuido no se cuenta dos veces. Los totales cubren todo el bando, incluidos los aliados. Tu lista de bajas solo incluye tus naves.",

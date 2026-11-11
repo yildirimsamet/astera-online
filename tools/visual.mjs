@@ -561,6 +561,12 @@ if (process.argv.includes('--real-battle-replay')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--battle-intel')) {
+  const { verifyBattleIntel } = await import('./battle-intel-visual.mjs');
+  await verifyBattleIntel(process.argv[2] ?? 'out/battle-intel');
+  process.exit(0);
+}
+
 if (process.argv.includes('--battle-reports')) {
   const { verifyBattleReports } = await import('./battle-report-visual.mjs');
   await verifyBattleReports(process.argv[2] ?? 'out/battle-reports');

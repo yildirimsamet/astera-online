@@ -1,3 +1,4 @@
+import { BattleEnemyFleet, BattleIntelNotice } from '../ui/BattleEnemyFleet.js';
 import { BattleReplayAction } from '../battle-simulator/BattleReplayAction.js';
 import { useStarterGate } from '../starter/gate.js';
 import { TempoNote } from '../starter/TempoNote.js';
@@ -823,26 +824,13 @@ function ReportSheet({
       >
         {t(
           report.attacking
-            ? report.grade === 'DECISIVE'
+            ? (report.enemyFleetVisibility === 'FULL' || (report.enemyFleetVisibility === undefined && report.grade === 'DECISIVE'))
               ? 'reports.q.enemyForce'
               : 'reports.q.enemyLosses'
             : 'reports.q.incomingForce',
         )}
       </h2>
-      {/*
-        THE PART THAT FEEDS THE NEXT DECISION — AND IT NOW SAYS HOW FAR IT GOES.
-
-        What they fielded is the most accurate reading anyone in this game ever
-        gets, but HOW MUCH of their force it represents depends entirely on the
-        grade, and the sheet never said which of the two readings the player was
-        holding:
-
-          · DECISIVE — nothing survived, so their losses ARE their whole board.
-          · anything else — a FLOOR. `reports.ts` withholds the opponent's roster
-            because roster minus losses is survivors, which is the one subtraction
-            fog exists to refuse. Rendering that bound as a bare short list is what
-            made a deliberately bounded report read as a broken one.
-      */}
+      {/* The frozen intelligence permission decides the roster; legacy payloads retain their older rendering. */}
       <TheirBoard report={report} />
       {/*
         THE AEGIS IS ALWAYS THE DEFENDER'S, so which section it belongs to depends
@@ -2023,7 +2011,7 @@ function RoundCasualties({
 function RoundStanding({ report, round }: { report: OrdinaryReport; round: Round }) {
   const { t } = useTranslation();
   const standing = forceAfterRound(report, round);
-  const enemy = !report.attacking ? forceAfterRound(report, round, true) : null;
+  const enemy = !report.attacking || report.enemyFleetVisibility === 'FULL' ? forceAfterRound(report, round, true) : null;
   if (!standing && !enemy) return null;
   const noForce = standing?.combat === 0 && standing.support === 0;
   const supportExposed = standing?.combat === 0 && standing.support > 0;
@@ -2229,7 +2217,7 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
             {full(theirs)}
           </p>
         </div>
-        {report.attacking && report.grade !== 'DECISIVE' ? (
+        {report.attacking && report.grade !== 'DECISIVE' && report.enemyFleetVisibility !== 'FULL' ? (
           <p className="mt-2 text-caption font-semibold leading-relaxed text-v2-alloy">
             {t(report.grade === 'REPELLED' ? 'reports.verdict.enemySurvivedNote' : 'reports.verdict.enemyUnknownNote')}
           </p>
@@ -2328,6 +2316,13 @@ function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; t
  */
 function TheirBoard({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
+  if (report.enemyFleetVisibility === 'FULL') return <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />;
+  if (report.enemyFleetVisibility !== undefined) return <section data-their-board="floor" className="mt-3">
+    <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardFloor')}</h3>
+    <BattleIntelNotice visibility={report.enemyFleetVisibility} />
+    <Losses fleet={report.theirLosses} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
+  </section>;
+
   /*
     THE DEFENDER IS NOT READING WRECKAGE. D164.
 

@@ -139,6 +139,12 @@ export const intel = {
 } as const;
 
 export const reports = {
+  enemyFleetEmpty: "Zu Kampfbeginn waren keine gegnerischen Einheiten anwesend.",
+  enemyFleetAtBattle: "Feindliche Streitmacht zu Kampfbeginn",
+  enemyFleetSnapshot: "Diese Aufnahme zeigt die Streitmacht in diesem Kampf, einschließlich Unterstützungsschiffen. Verbleibende Einheiten schließen Rückzüge ein, spätere Reparaturen und Verstärkungen nicht.",
+  enemyFleetInsufficient: "Die Kampfkraft deiner Angriffsflotte lag unter der Hälfte der Verteidigung. Die gesamte feindliche Streitmacht konnte nicht ermittelt werden. Nur bestätigte feindliche Verluste werden angezeigt.",
+  enemyFleetUnknown: "Dieser alte Bericht enthält keinen verlässlichen Nachweis zur vollständigen Sicht auf die feindliche Streitmacht. Nur bestätigte feindliche Verluste werden angezeigt.",
+
   distributedRulesTitle: "So wurde dieser Kampf ausgetragen",
   distributedRetreatRule: "Beschädigte Schiffe können am Ende der Runden 1–{{lastRound}} fliehen. Sie behalten ihre Schäden und kämpfen nicht weiter.",
   distributedDamageNote: "Die Summen normaler Schüsse umfassen von Aegis und Schiffsschilden absorbierten Schaden sowie tatsächlichen Hüllenschaden. Weiterverteilter überschüssiger Schaden zählt nicht doppelt. Die Summen gelten für die ganze Seite einschließlich Verbündeter. Deine Verlustliste enthält nur deine eigenen Schiffe.",

@@ -1,9 +1,10 @@
-import { STARTER_PVP_BALANCE, type Fleet } from '@astera/rules';
+import { STARTER_PVP_BALANCE, battleRetreated, fleetCount, type Fleet } from '@astera/rules';
 import { desc, eq, or } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db } from '../../db/client.js';
 import { vesselBattleReports, vessels } from '../../db/schema.js';
 import { GameError } from '../planet.js';
+import { enemyFleetVisibilityFor, replayStatusFor } from '../battleReplay.js';
 import { refuseLeft } from './vessel.js';
 
 const SHOWN = 50;
@@ -34,7 +35,13 @@ export async function starterReportsView(db: Db, accountId: string, clock: Clock
         missionId: report.missionId,
         at: report.at,
         grade: result.grade,
-        rounds: result.rounds,
+        rounds: result.rounds.map(({ retreats, casualties: _casualties, explosions: _explosions, ...round }) => ({
+          ...round,
+          ...(retreats === undefined ? {} : {
+            yourRetreated: battleRetreated([{ ...round, retreats }], attacking ? 'ATTACK' : 'DEFENCE'),
+            theirRetreatedCount: fleetCount(battleRetreated([{ ...round, retreats }], attacking ? 'DEFENCE' : 'ATTACK')),
+          }),
+        })),
         attacking,
         opponentName: attacking ? report.defenderName : report.attackerName,
         // Pirates fly from no ship, and the screen draws no target row for an empty name.
@@ -49,7 +56,9 @@ export async function starterReportsView(db: Db, accountId: string, clock: Clock
         yourRetreated: attacking ? result.attackerRetreated : result.defenderRetreated,
         theirRetreatedCount: countOf(attacking ? result.defenderRetreated : result.attackerRetreated),
         yourFleet: attacking ? result.attackerSent : result.defenderSent,
-        theirFleet: attacking ? result.defenderSent : result.attackerSent,
+        enemyFleetVisibility: enemyFleetVisibilityFor(result.attackerVisible, attacking),
+        theirFleet: !attacking ? result.attackerSent
+          : enemyFleetVisibilityFor(result.attackerVisible, true) === 'FULL' ? result.defenderSent : {},
         lootAlloy: result.loot.alloy,
         lootCrystal: result.loot.crystal,
         lootDeuterium: result.loot.deuterium,
@@ -67,7 +76,8 @@ export async function starterReportsView(db: Db, accountId: string, clock: Clock
         recovery: !attacking && result.recoveryUntil ? { lossHours: 0, shielded: true, until: result.recoveryUntil } : null,
         disruptedMinutes: 0,
         wreckValue: result.wreckValue,
-        replayStatus: report.replay ? 'AVAILABLE' as const : 'NOT_RECORDED' as const,
+        replayStatus: replayStatusFor(attacking && result.attackerVisible === undefined ? undefined
+          : { attackerVisible: result.attackerVisible ?? false, status: report.replay ? 'AVAILABLE' : 'NOT_RECORDED' }, attacking),
         replayKind: 'BATTLE' as const,
         starterGalaxy: true as const,
       };
@@ -80,6 +90,9 @@ export async function starterReplayView(db: Db, accountId: string, reportId: str
   const [report] = await db.select().from(vesselBattleReports).where(eq(vesselBattleReports.id, reportId));
   const attacking = report?.attackerVesselId === row.id;
   if (!report || (!attacking && report.defenderVesselId !== row.id)) throw new GameError('NOT_FOUND', 'Battle replay not found', 404);
+  const visibility = enemyFleetVisibilityFor(report.result.attackerVisible, attacking);
+  if (visibility === 'INSUFFICIENT_FORCE') throw new GameError('REPLAY_UNAVAILABLE', 'Battle replay unavailable', 403, { reason: visibility });
+  if (visibility === 'UNKNOWN') throw new GameError('REPLAY_UNAVAILABLE', 'Battle replay unavailable', 404, { reason: 'NOT_RECORDED' });
   if (!report.replay) throw new GameError('REPLAY_UNAVAILABLE', 'Battle replay unavailable', 404);
   return { viewer: attacking ? 'ATTACK' as const : 'DEFENCE' as const, ownPlayerIds: [attacking ? 'ATTACK:P1' : 'DEFENCE:P1'], replay: report.replay };
 }

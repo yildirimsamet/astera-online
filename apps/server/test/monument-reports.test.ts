@@ -100,7 +100,7 @@ describe('monument participant reports and result delivery', () => {
         expect(round).not.toHaveProperty('retreats');
         expect(round).not.toHaveProperty('playerId');
       }
-      expect(report).not.toHaveProperty('theirFleet');
+      expect(report).toMatchObject({ theirFleet: owner === 0 ? battle!.defenderFleet : battle!.attackerFleet, enemyFleetVisibility: 'FULL' });
       expect(report).not.toHaveProperty('theirSurvivors');
       expect(report).not.toHaveProperty('theirDamage');
       expect(report.opponents).toEqual(owner === 0
@@ -116,6 +116,21 @@ describe('monument participant reports and result delivery', () => {
         : [{ kind: 'PLAYER', name: 'Tester0', clanName: null, clanTag: null }] });
     }
     expect((await readBattleReports(f.db, f.playerIds[2]!)).reports).toEqual([]);
+  });
+
+  it.each([[1, 4, false], [2, 4, true]] as const)('uses frozen monument permission for both sides (%s vs %s)', async (a, d, visible) => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]! }).where(eq(monuments.id, target.id));
+    await addWave(1, { DART: d, ARGOSY: 1 }, true);
+    const wave = await addWave(0, { DART: a });
+    await resolve(wave);
+    const [attack] = (await readBattleReports(f.db, f.playerIds[0]!)).reports;
+    const [defence] = (await readBattleReports(f.db, f.playerIds[1]!)).reports;
+    expect(attack).toMatchObject({ theirFleet: visible ? { DART: d, ARGOSY: 1 } : {},
+      enemyFleetVisibility: visible ? 'FULL' : 'INSUFFICIENT_FORCE' });
+    expect(defence).toMatchObject({ theirFleet: { DART: a }, enemyFleetVisibility: 'FULL' });
+    // Live reinforcement/control changes cannot rewrite a past observation.
+    await f.db.update(monuments).set({ garrison: { CATACLYSM: 100 } }).where(eq(monuments.id, target.id));
+    expect((await readBattleReports(f.db, f.playerIds[0]!)).reports[0]).toEqual(attack);
   });
 
   it('freezes opponent commander and clan identity into the report and result notice', async () => {

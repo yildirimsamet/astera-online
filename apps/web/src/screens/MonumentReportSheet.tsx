@@ -1,3 +1,4 @@
+import { BattleEnemyFleet, BattleIntelNotice } from '../ui/BattleEnemyFleet.js';
 import { BattleReplayAction } from '../battle-simulator/BattleReplayAction.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
@@ -61,7 +62,10 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
       {report.yourDamage.map((lot, index) => <p key={`${lot.hull}:${String(index)}`} className="text-micro text-v2-ink-2">
         {t('monument.reportHealth', { count: lot.count, hull: hullLabel(lot.hull), health: decimal((10_000 - lot.damageBp - lot.remainderBp) / 100, 4) })}
       </p>)}
-      {fleetCount(report.theirLosses) > 0 && <p>{t('monument.reportEnemyLosses', { fleet: fleetLine(report.theirLosses) })}</p>}
+      {report.enemyFleetVisibility === 'FULL'
+        ? <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />
+        : <><BattleIntelNotice visibility={report.enemyFleetVisibility} />
+          {fleetCount(report.theirLosses) > 0 && <p>{t('monument.reportEnemyLosses', { fleet: fleetLine(report.theirLosses) })}</p>}</>}
       <p>{t('monument.reportLoot', { amount: decimal(report.lootDeuterium, 3) })}</p>
       {!report.honor ? <RankingScores dominion={report.dominion} /> : null}
       {report.rounds && report.rounds.length > 0 && <details className="rounded-control border border-v2-line/60 px-3 py-2">

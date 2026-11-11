@@ -152,6 +152,13 @@ describe('the report scene', () => {
     expect(theirs).not.toHaveTextContent('→');
   });
 
+  it('treats a missing historical roster as unknown instead of zero attackers', () => {
+    render(<ReportScene report={report({ attacking: false, theirFleet: {}, enemyFleetVisibility: 'UNKNOWN' })} />);
+    const theirs = document.querySelector<HTMLElement>('[data-side="theirs"]')!;
+    expect(theirs).toHaveTextContent('18 destroyed');
+    expect(theirs).not.toHaveTextContent('0 → 0');
+  });
+
   it('gives the reader their own side as sent → left', () => {
     render(<ReportScene report={report()} word="Partial victory" />);
     const yours = document.querySelector<HTMLElement>('[data-side="yours"]')!;

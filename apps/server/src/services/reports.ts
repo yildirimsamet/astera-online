@@ -1,4 +1,4 @@
-import { readBattleReplayMetadata, replayStatusFor } from './battleReplay.js';
+import { enemyFleetVisibilityFor, readBattleReplayMetadata, replayStatusFor, type EnemyFleetVisibility } from './battleReplay.js';
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
@@ -80,28 +80,12 @@ function subtractFleet(sent: Fleet, lost: Fleet): Fleet {
  * happened, a one-line summary appeared in the return overlay, and nothing a
  * player learned from it survived into their next decision.
  *
- * WHAT EACH SIDE MAY SEE. Both participants get the same facts, because both were
- * there: the grade, how many rounds it ran, what each side lost, and what moved.
- * That includes the opponent's name — being raided reveals the raider, and that is
- * the counterplay, not a leak. What it deliberately does NOT include is anything
- * about what the loser still HAS: losses are ground truth, survivors are not
- * disclosed. A report tells you what someone brought, not what they kept.
- *
- * D121 ADDED DETAIL WITHOUT MOVING THAT LINE, and the line is what made the pass
- * awkward: everything a player complained about missing — how big the force was
- * that took those losses, what the shield did, what a knocked-out works cost, how
- * many guns walked back out of their own wreckage — is a fact about ONE side.
- * So each of them is served from the CALLER's row and never from the opponent's.
- * `yourFleet` minus `yourLosses` is the caller's own survivors, which they may
- * have; the identical subtraction on the opponent's roster is precisely the
- * disclosure the fog exists to refuse. The fog is enforced HERE, in the query, not
- * in the component.
- *
- * D164 OPENED ONE DIRECTION OF THAT, and only one: the force that ARRIVED, to the
- * commander it arrived at (`theirFleet`). A defender watched that fleet cross their
- * own sky; telling them what was in it is reporting what they saw, not lifting fog.
- * The opposite direction is untouched — what was standing at the target is a
- * probe's product, so an attacker's copy of the field is empty.
+ * Both sides see their own results and confirmed opposing losses. Defenders see
+ * the force that arrived; attackers see the opposing starting force only when
+ * the frozen half-power permission also admits their replay. Recording size or
+ * availability never revokes that intelligence. Missing historical rosters are
+ * unknown, never evidence that no fleet was there. These are battle snapshots,
+ * not the opponent's current inventory or post-battle repairs.
  */
 
 export interface BattleReportView {
@@ -204,25 +188,8 @@ export interface BattleReportView {
    * section rather than drawing a roster of nothing.
    */
   yourFleet: Fleet;
-  /**
-   * THE FORCE THAT FLEW AT THE CALLER. DEFENDER ONLY — empty for an attacker. D164.
-   *
-   * Owner instruction: *"hiç ateş etmemiş olsalar bile saldıranın geldiği tüm
-   * filoyu savunan raporunda görebilmeli."* A defender was already handed the
-   * attacker's WRECKAGE and left to read the force off it, which is a floor, and a
-   * floor that omits precisely the hulls a defender most needs to have seen: a
-   * Courier carries no gun, never joins a firing line and usually flies home whole,
-   * so a commander could be robbed by a convoy and read a report the convoy did not
-   * appear in.
-   *
-   * It crosses no line, because there is no line here to cross. This fleet spent
-   * its engagement in orbit over the reader's own world, in front of their own
-   * instruments — D151 already lets an arriving fleet rewrite the VISITOR's world
-   * record for exactly that reason, and this is the same fact read from the other
-   * end. What stays refused is the other direction: the defender's board is not a
-   * thing an attacker watched, it is a probe's product (D127), so an attacker's
-   * copy of this field is `{}`.
-   */
+  /** Historical opposing roster, available to defenders and attackers admitted by the frozen half-power rule. */
+  enemyFleetVisibility: EnemyFleetVisibility;
   theirFleet: Fleet;
   /** Positive when the caller gained; negative when it was taken from them. */
   lootAlloy: number;
@@ -805,6 +772,13 @@ async function readBattleReportsIn(
       ? operation ? personal?.losses ?? {} : row.attackerLosses
       : share?.losses ?? row.defenderLosses;
     const theirLosses = attacking ? row.defenderLosses : row.attackerLosses;
+    const metadata = replayMetadata.get(row.id);
+    const opposingFleet = attacking ? row.defenderFleet : row.attackerFleet;
+    // Old reports defaulted unrecorded rosters to {}. A fleet that attacked could
+    // not have been empty: missing historical data must not become a known zero.
+    const enemyFleetVisibility = !attacking && !metadata && fleetCount(opposingFleet) === 0
+      ? 'UNKNOWN' : enemyFleetVisibilityFor(metadata?.attackerVisible, attacking);
+
     /**
      * Dominion, read from the report rather than derived.
      *
@@ -846,7 +820,7 @@ async function readBattleReportsIn(
     const commitment = row.missionId === null
       ? undefined
       : commitmentByMission.get(row.missionId);
-    const rounds: BattleReportRoundView[] = row.rounds.map(({ retreats, casualties, ...round }) => ({
+    const rounds: BattleReportRoundView[] = row.rounds.map(({ retreats, casualties, explosions: _explosions, ...round }) => ({
       ...round,
       ...(casualties === undefined ? {} : attacking
         ? { attackerLosses: battleCasualties([{ ...round, casualties }], 'ATTACK', playerId) }
@@ -961,9 +935,8 @@ async function readBattleReportsIn(
       } : {}),
       theirLosses,
       yourFleet: attacking ? operation ? personal?.sent ?? {} : row.attackerFleet : share?.sent ?? row.defenderFleet,
-      // What arrived over the reader's own world — see the field. One direction:
-      // the attacker learns nothing here about what was standing at the target.
-      theirFleet: attacking ? {} : row.attackerFleet,
+      enemyFleetVisibility,
+      theirFleet: enemyFleetVisibility === 'FULL' ? opposingFleet : {},
       // Signed from the caller's side: what you took, or what was taken.
       // A supporter lost ships, never stores: the raid emptied the host's.
       lootAlloy: attacking ? operation ? personal?.loot.alloy ?? 0 : row.loot.alloy : supporting ? 0 : -row.loot.alloy,

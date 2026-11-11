@@ -327,6 +327,23 @@ hulls are prey to everything and deal nothing.
 well as a combat one. Heavy fleets win fights and lose windows — and since D49 they are also
 seen coming from further away, because a radar catches a fleet at a distance.
 
+### Battle intelligence — shared report/replay rule (owner, 2026-11-10)
+
+Defenders and participating defence supporters see the entire attacking force. Attackers
+see the opposing starting roster when their side's eligible armed `combatValue` is at least
+half the defending side's. Use the existing replay eligibility calculation, frozen before
+combat: count the whole joint attack and whole active defence line, omit transport power
+and ships ineligible for combat. Independent arrivals remain separate battles. Victory,
+defeat and a wiped attacking fleet do not change the frozen permission.
+
+Written reports and replay endpoints enforce that same decision server-side, including
+monuments, joint clan attacks, neutral/pirate encounters and starter ship/outpost battles.
+Below the threshold, only confirmed enemy losses are disclosed and the report explains
+why the full roster is unknown. Missing historical permission has a separate explanation;
+never reconstruct it from live forces. Replay size/availability limits do not revoke
+written intelligence. Visible rosters describe this battle, not current inventory or
+post-battle repairs. Strategic weapons without a fleet battle retain their own reports.
+
 ### Cargo is the composition tax that turns intel into value
 
 It is what stops "send everything" from being universally correct. A pure combat fleet wins
@@ -1403,7 +1420,7 @@ joint strike. Full rules: `docs/clan-defense-support-plan.md`.
 - **Information.** The probe shows the posture exactly and a separate *Klan desteği* reading
   (supporters, power band, ship band); the raider's launch sheet adds it to the enemy bar.
   Incoming-attack warnings are never shared with the clan or the supporters (K10). Battle
-  reports show the defending line; the raider reads names and losses only.
+  reports show the defending line; the raider also sees its starting roster when the shared battle-intelligence threshold is met.
 
 ## Competition — Dominion
 

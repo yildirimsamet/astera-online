@@ -1,7 +1,7 @@
 import { BattleRetreatNote } from '../../ui/BattleRetreatNote.js';
 import { ordinaryBattleOutcome } from '../../lib/battleOutcome.js';
 import { useTranslation } from 'react-i18next';
-import { COMBAT, FAULT, HULLS, vesselHull } from '@astera/rules';
+import { COMBAT, FAULT, HULLS, fleetCount, vesselHull } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
 import { serverNow } from '../../lib/clock.js';
@@ -129,8 +129,8 @@ function heroSrc(report: BattleReport): string {
  * The outcome is staged, not written up: the reader's world, the word — large, over the
  * world it happened at — when, how long and against whom; the haul; both sides at a
  * glance — the reader's own as sent → left, the other side as only what the reader
- * destroyed (rule 15: the remaining force is never given; the defender, who was flown
- * at, reads the attacking force whole) — the question the word raises, answered in one
+ * destroyed when full intelligence is unavailable; eligible attackers and defenders
+ * read the opposing starting force whole — the question the word raises, answered in one
  * sentence off the class data; the balance: loot, fuel (S4), loss; what the fight added
  * to the dossier (a report is new intel); and the three doors: watch the rounds, tell the
  * clan, raid again. The detailed sections of the sheet follow.
@@ -148,9 +148,11 @@ export function ReportScene({
 }: ReportSceneProps) {
   const { t } = useTranslation();
   const yours = sentAndLeft(report.yourFleet, report.yourLosses);
-  const theirs = report.attacking
-    ? sentAndLeft(report.theirLosses, report.theirLosses)
-    : sentAndLeft(report.theirFleet, report.theirLosses);
+  const enemyRosterKnown = report.enemyFleetVisibility === 'FULL'
+    || (report.enemyFleetVisibility === undefined && !report.attacking && fleetCount(report.theirFleet) > 0);
+  const theirs = enemyRosterKnown
+    ? sentAndLeft(report.theirFleet, report.theirLosses)
+    : sentAndLeft(report.theirLosses, report.theirLosses);
   const sum = (rows: readonly SideRow[], key: 'sent' | 'left' | 'lost') => rows.reduce((n, row) => n + row[key], 0);
   const reason = lossReason(report.yourLosses);
   const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
@@ -274,12 +276,12 @@ export function ReportScene({
           side="theirs"
           title={report.opponentKind === 'PIRATES' ? t('starter.reports.piratesName') : report.opponentName}
           {...(rivalSlot === null ? {} : { colour: rivalColour(rivalSlot) })}
-          figure={report.attacking
-            ? t('reportScene.destroyed', { count: sum(theirs, 'lost') })
-            : `${String(sum(theirs, 'sent'))} → ${String(sum(theirs, 'left'))}`}
+          figure={enemyRosterKnown
+            ? `${String(sum(theirs, 'sent'))} → ${String(sum(theirs, 'left'))}`
+            : t('reportScene.destroyed', { count: sum(theirs, 'lost') })}
           rows={theirs}
-          onlyLosses={report.attacking}
-          {...(report.attacking ? { note: t('reportScene.hidden') } : {})}
+          onlyLosses={!enemyRosterKnown}
+          {...(!enemyRosterKnown ? { note: t(report.enemyFleetVisibility === 'UNKNOWN' ? 'reports.enemyFleetUnknown' : 'reportScene.hidden') } : {})}
         />
       </div>
 
