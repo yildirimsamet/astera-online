@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "A fleet or a joint clan fleet on the way to one of your worlds.",
-    "incoming_strategic": "A Death Star on the way. Uses 1.5× the deuterium of an attack alert.",
-    "probe_detected": "A probe caught over one of your worlds. Sent at once."
+    "incoming_strategic": "A Death Star or radiation bomb on the way. Uses 1.5× the deuterium of an attack alert.",
+    "probe_detected": "A probe caught over one of your worlds. Sent at once, at most once every 30 minutes."
   },
   "buildCost": "Build cost",
   "buildFrom": "Paid from {{world}}, your selected world. Built once, it covers all your worlds.",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "Sent",
     "UNFUNDED": "Wallet short",
     "CANCELLED": "Nothing taken",
-    "NO_DEVICE": "No phone"
+    "NO_DEVICE": "Not delivered"
   },
   "rulesTitle": "How alerts work",
   "ruleRadar": "An alert goes out only for a fleet your radar sees. No radar sighting, no alert.",
   "ruleRecall": "If the attack is called back before the alert goes out, no deuterium leaves the wallet.",
   "ruleShort": "If the wallet cannot pay, the alert is not sent. It is listed here as wallet short.",
   "ruleInGame": "The warning inside the game always shows and uses no deuterium.",
+  "ruleUndelivered": "If no phone receives an alert, no deuterium is taken.",
   "priceRule": "An attack alert uses a few hours of your deuterium output on all worlds, or its minimum if that is higher. Your output: {{rate}} per hour.",
   "reading": {
     "NONE": "Not built",

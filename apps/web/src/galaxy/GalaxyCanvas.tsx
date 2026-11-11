@@ -139,9 +139,11 @@ import {
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
+import { CommanderShipLabels } from './CommanderShipLabel.js';
+import { DESK_QUERY, useMedia } from '../lib/media.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
-import { layoutPlanetLabels, planetLabelRank, planetLabelWidth, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
+import { layoutPlanetLabels, planetLabelRank, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { worldKindKey } from './worldKind.js';
 import type { TFunction } from 'i18next';
@@ -856,7 +858,7 @@ export function GalaxyCanvas({
       <Meteors shower={meteorShower} />
 
       <ModelScale.Provider value={scale}><OpeningWork.Provider value={openingWork}>
-      <GalaxyVisualPhase>
+      <CommanderShipLabels.Provider value={!universe?.open}><GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
             day when nothing is crossing the disc. D32. */}
@@ -1035,7 +1037,7 @@ export function GalaxyCanvas({
           onReady?.();
         }} />
       </Suspense>
-      </GalaxyVisualPhase>
+      </GalaxyVisualPhase></CommanderShipLabels.Provider>
       </OpeningWork.Provider></ModelScale.Provider>
 
       {/*
@@ -1205,6 +1207,7 @@ export function Labels({
   onOpenCommander?: (node: PlanetNode) => void;
 }) {
   const { t } = useTranslation();
+  const compact = !useMedia(DESK_QUERY);
   const radiationByWorld = useMemo(() => {
     const sources = new Map<string, HpRadiationSourceView[]>();
     for (const source of hpRadiation) {
@@ -1301,7 +1304,7 @@ export function Labels({
     if (clock.current < 0.1) return;
     clock.current = 0;
 
-    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current });
+    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current, compact });
     // Camera distance may reorder priorities without changing membership. Keep
     // mounted labels stable so panning does not cause needless React updates.
     const nextIds = placements.map((placement) => placement.id).sort();
@@ -1360,7 +1363,7 @@ export function Labels({
             data-world-label-detail={detail || undefined}
             data-world-label-intel={node.intel}
             className="galaxy-world-label flex -translate-y-1/2 flex-col items-center gap-0.5 whitespace-nowrap text-center"
-            style={{ width: 'max-content', maxWidth: planetLabelWidth(node, detail), visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
+            style={{ width: 'max-content', maxWidth: detail ? PLANET_LABEL_DETAIL_MAX_WIDTH : PLANET_LABEL_MAX_WIDTH, visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
           >
             {radiation && <RadiationIndicator state={radiation} variant="bar" now={radiationNow} />}
             {/*
@@ -1487,13 +1490,13 @@ export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
   </>;
   if (!onOpen || node.controllerPlayerId === undefined) {
-    return <span className="name text-caption text-bone flex max-w-full items-center gap-1.5">{body}</span>;
+    return <span className="name text-caption text-bone flex w-max max-w-full items-center gap-1.5">{body}</span>;
   }
   return <button type="button" data-world-commander
     aria-label={t('legacy.profile.openNamed', { name: node.owner })}
     onPointerDown={event => { event.stopPropagation(); }}
     onClick={event => { event.stopPropagation(); onOpen(node); }}
-    className="galaxy-commander-link name text-caption text-bone pointer-events-auto -mx-1 flex max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
+    className="galaxy-commander-link name text-caption text-bone pointer-events-auto flex w-max max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
     {body}
   </button>;
 }

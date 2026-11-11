@@ -4,6 +4,7 @@ import type { Tx } from '../db/client.js';
 import { planets, radiationBombFlights } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { instrumentLevels, levelOf } from './intel.js';
+import { armPaidAlert } from './notificationCenter.js';
 import { notify } from './notifications.js';
 import { lockSeason } from './planet.js';
 import { lockWorlds } from './ownership.js';
@@ -39,6 +40,9 @@ export async function warnRadiationBombInTx(tx: Tx, flight: Flight, now: Date): 
   await notify(tx,{playerId:target.controllerPlayerId,kind:'incoming_fleet',refId:flight.id,at:now,
     payload:{arriveAt:flight.arriveAt.toISOString(),etaMinutes:Math.max(0,Math.round((flight.arriveAt.getTime()-now.getTime())/60000)),
       targetPlanetId:target.id,targetPlanetName:target.name,range:reach,contactId:flight.id}});
+  // Bildirim Merkezi: a radiation bomb is a strategic weapon; the paid push leaves at the commander's lead.
+  await armPaidAlert(tx,{seasonId:flight.seasonId,playerId:target.controllerPlayerId,kind:'incoming_strategic',refId:flight.id,now,
+    arriveAt:flight.arriveAt,payload:{targetPlanetId:target.id,targetPlanetName:target.name}});
   await publish(tx,target.controllerPlayerId,'fleet');
 }
 

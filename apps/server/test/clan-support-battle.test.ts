@@ -1,3 +1,4 @@
+import { readBattleReports } from '../src/services/reports.js';
 import { readBattleReplay } from '../src/services/battleReplay.js';
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
@@ -116,6 +117,11 @@ describe('a raid on a supported world', () => {
     expect(replay.viewer).toBe('DEFENCE');
     expect(replay.replay.owners.filter(owner => owner.side === 'DEFENCE')).toHaveLength(2);
     expect(report!.defenderFleet.PIKE).toBe(40);
+    for (const reader of [0, 1]) {
+      const own = (await readBattleReports(f.db, f.playerIds[reader]!)).reports.find(row => row.id === report!.id);
+      expect(own).toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: report!.attackerFleet });
+    }
+
 
     // No Pike ever lands in the host's home, whatever the wave lost.
     expect((await homeOf(f, 1)).PIKE ?? 0).toBe(0);

@@ -21,7 +21,7 @@ describe('a phone, aboard', () => {
     world = await starterWorld();
     world.f.clock.advance(12 * 60);
     sent = [];
-    setPushTransport({ send: async (tokens, message) => { sent.push({ tokens, message }); return Promise.resolve({ invalid: tokens.filter(token => token === 'dead') }); } });
+    setPushTransport({ send: async (tokens, message) => { sent.push({ tokens, message }); return Promise.resolve({ invalid: tokens.filter(token => token === 'dead'), accepted: tokens.filter(token => token !== 'dead').length }); } });
   });
   afterEach(async () => { setPushTransport(null); await world.built.close(); });
 

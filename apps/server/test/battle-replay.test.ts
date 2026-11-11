@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { battleReplayResponseSchema } from '../../web/src/api/battleReplaySchemas.js';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
@@ -8,7 +9,7 @@ import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { battleReplays, battleReports, missions } from '../src/db/schema.js';
 import type { Tx } from '../src/db/client.js';
-import { prepareBattleReplay, persistBattleReplay, readBattleReplay } from '../src/services/battleReplay.js';
+import { BATTLE_REPLAY_LIMITS, buildBattleReplay, prepareBattleReplay, persistBattleReplay, readBattleReplay } from '../src/services/battleReplay.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { giveUnits, grant, setLevel, settledAt, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
@@ -52,6 +53,64 @@ describe('private immutable real battle replays', () => {
     return response.json<{ reports: { id: string; replayStatus?: BattleReplayStatus }[] }>().reports.find(report => report.id === id)?.replayStatus;
   };
 
+  const reportFor = async (reader: number, id: string) => {
+    const response = await app.inject({ method: 'GET', url: '/api/reports', headers: await auth(reader) });
+    expect(response.statusCode).toBe(200);
+    return response.json<{ reports: { id: string; theirFleet: object; enemyFleetVisibility?: string }[] }>().reports.find(report => report.id === id)!;
+  };
+
+  it.each([[2, 4, true], [1, 4, false], [3, 4, true]] as const)('uses the same frozen permission in the report and replay (%s vs %s)', async (a, d, visible) => {
+    const input = await saved(a, d);
+    const attacker = await reportFor(0, input.source.id);
+    const defender = await reportFor(1, input.source.id);
+    expect(attacker).toMatchObject({ theirFleet: visible ? { DART: d } : {},
+      enemyFleetVisibility: visible ? 'FULL' : 'INSUFFICIENT_FORCE' });
+    expect(defender).toMatchObject({ theirFleet: { DART: a }, enemyFleetVisibility: 'FULL' });
+    expect((await replay(input.source.id, 0)).statusCode).toBe(visible ? 200 : 403);
+  });
+
+  it('keeps report intelligence when a recording cannot be stored, independent of victory or defeat', async () => {
+    const input = await saved(2, 4, false);
+    await f.db.transaction(tx => persistBattleReplay(tx, { ...input,
+      capture: { ...input.capture, recording: undefined, reason: 'TOO_LARGE' } }));
+    for (const grade of ['REPELLED', 'PARTIAL', 'DECISIVE'] as const) {
+      await f.db.update(battleReports).set({ grade }).where(eq(battleReports.id, input.source.id));
+      expect(await reportFor(0, input.source.id)).toMatchObject({ theirFleet: { DART: 4 }, enemyFleetVisibility: 'FULL' });
+    }
+    expect(await statusFor(0, input.source.id)).toBe('TOO_LARGE');
+    expect((await replay(input.source.id, 0)).statusCode).toBe(409);
+  });
+
+  it('does not describe missing historical permission as insufficient force', async () => {
+    const input = await saved(2, 4, false);
+    expect(await reportFor(0, input.source.id)).toMatchObject({ theirFleet: {}, enemyFleetVisibility: 'UNKNOWN' });
+    expect(await reportFor(1, input.source.id)).toMatchObject({ theirFleet: { DART: 2 }, enemyFleetVisibility: 'FULL' });
+  });
+
+  it('does not call an unrecorded historical attacking roster an empty force for the defender', async () => {
+    const input = await saved(2, 4, false);
+    await f.db.update(battleReports).set({ attackerFleet: {} }).where(eq(battleReports.id, input.source.id));
+    expect(await reportFor(1, input.source.id)).toMatchObject({ theirFleet: {}, enemyFleetVisibility: 'UNKNOWN' });
+  });
+
+  it('enforces the byte ceiling even when the recording did not hit the shot limit, preserving report intelligence', async () => {
+    const input = await saved(2, 4, false);
+    const recording = input.capture.recording;
+    if (!recording?.ships[0]) throw new Error('missing recording');
+    const template = recording.ships[0];
+    // Schema-valid long battlefield IDs cross the byte limit without running an expensive combat simulation.
+    recording.ships = Array.from({ length: 1000 }, (_,index) => ({ ...template, id: `${String(index)}:${'x'.repeat(5000)}` }));
+    recording.rounds = [];
+    expect(recording.truncated).not.toBe(true);
+    const data = buildBattleReplay(input.capture, input.result, input.context);
+    expect(battleReplayResponseSchema.safeParse({ viewer: 'ATTACK', replay: data }).success).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(data))).toBeGreaterThan(BATTLE_REPLAY_LIMITS.bytes);
+    await f.db.transaction(tx => persistBattleReplay(tx, input));
+    expect(await statusFor(0, input.source.id)).toBe('TOO_LARGE');
+    expect((await replay(input.source.id, 0)).statusCode).toBe(409);
+    expect(await reportFor(0, input.source.id)).toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: { DART: 4 } });
+  });
+
   it('captures an actual mission settlement, with the exact report rounds and damage', async () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 8);
     await setLevel(f.db, f.planetIds[1]!, 'CORE', 8);
@@ -88,6 +147,7 @@ describe('private immutable real battle replays', () => {
     const listing = await app.inject({ method: 'GET', url: '/api/reports', headers: await auth(0) });
     expect(listing.body).not.toContain('"recording"');
     expect(listing.body).not.toContain('"owners"');
+    expect(listing.body).not.toContain('"explosions"');
   });
 
   it('enforces the half-power rule on the server while the defender can still watch', async () => {

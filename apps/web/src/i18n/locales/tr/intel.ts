@@ -126,6 +126,12 @@ export const intel = {
 } as const;
 
 export const reports = {
+  enemyFleetEmpty: "Savaş başında karşı tarafta birlik yoktu.",
+  enemyFleetAtBattle: "Savaş başındaki karşı kuvvet",
+  enemyFleetSnapshot: "Bu kayıt, destek gemileri dahil bu savaştaki kuvveti gösterir. Kalan sayısına geri çekilenler dahildir; sonraki onarımlar ve takviyeler dahil değildir.",
+  enemyFleetInsufficient: "Saldıran filonun savaş gücü, savunan gücün yarısından azdı. Karşı kuvvetin tamamı belirlenemedi. Yalnızca doğrulanan düşman kayıpları gösteriliyor.",
+  enemyFleetUnknown: "Bu eski raporda karşı kuvvetin tamamının belirlenip belirlenmediğine ilişkin güvenilir kayıt yok. Yalnızca doğrulanan düşman kayıpları gösteriliyor.",
+
   distributedRulesTitle: "Bu savaş nasıl işlendi?",
   distributedRetreatRule: "Yaralı gemiler 1–{{lastRound}}. turların sonunda kaçabilir. Kaçanlar yaralarını korur ve savaşmaya devam etmez.",
   distributedDamageNote: "Normal atış hasarı toplamı, Aegis ve gemi kalkanlarının emdiği hasarla gövdeye uygulanan hasarı gösterir. Yeniden dağıtılan artan hasar iki kez sayılmaz. Toplamlar, müttefikler dahil tarafın bütün atışlarını kapsar. Senin kayıp listen yalnız kendi gemilerini gösterir.",

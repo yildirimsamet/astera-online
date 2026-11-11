@@ -9,7 +9,7 @@ import { testDb } from './helpers.js';
 import { countStatements } from '../src/db/client.js';
 import { Presence } from '../src/services/presence.js';
 let world: Awaited<ReturnType<typeof starterWorld>>, sent: PushMessage[];
-beforeEach(async () => { world = await starterWorld(); world.f.clock.advance(12 * 60); sent = []; setPushTransport({ send: (_tokens, message) => { sent.push(message); return Promise.resolve({ invalid: [] }); } }); });
+beforeEach(async () => { world = await starterWorld(); world.f.clock.advance(12 * 60); sent = []; setPushTransport({ send: (tokens, message) => { sent.push(message); return Promise.resolve({ invalid: [], accepted: tokens.length }); } }); });
 afterEach(async () => { setPushTransport(null); await world.built.close(); });
 afterAll(async () => { await (await testDb()).close(); });
 const setup = async () => {

@@ -73,7 +73,7 @@ async function main(): Promise<void> {
       }));
       log.info({ project: env.FCM_SERVICE_ACCOUNT.projectId }, 'Bildirim Merkezi push on');
     } else {
-      log.warn('FCM_SERVICE_ACCOUNT unset: paid alerts are recorded, not sent');
+      log.warn('FCM_SERVICE_ACCOUNT unset: no push leaves and no paid alert is charged');
     }
     mail.start();
     worker.start();

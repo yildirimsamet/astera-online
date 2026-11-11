@@ -20,17 +20,19 @@ export function planetMarkerLayout(
   depth: number,
   height: number,
   fov: number,
+  compact = false,
 ) {
   const pixel = pixelSize(depth, height, fov);
+  const reduction = compact ? 4 : 2;
   const pinPixels = 4 + 6 * depthDetail(depth);
-  const pinScale = pixel > 0 ? (pinPixels - (node.isOwned ? 0 : 2)) * pixel / 0.2 : node.radius;
-  // A three-sided cone is wider than it is tall: remove two CSS pixels on each axis.
+  const pinScale = pixel > 0 ? (pinPixels - (node.isOwned ? 0 : reduction)) * pixel / 0.2 : node.radius;
+  // A three-sided cone is wider than it is tall: subtract CSS pixels on each axis.
   const triangleWidth = 0.13 * Math.sqrt(3);
-  const pinWidthScale = pixel > 0 && !node.isOwned ? (pinPixels * triangleWidth / 0.2 - 2) * pixel / triangleWidth : pinScale;
+  const pinWidthScale = pixel > 0 && !node.isOwned ? (pinPixels * triangleWidth / 0.2 - reduction) * pixel / triangleWidth : pinScale;
   const pinOffset = node.radius * 1.14 + pinScale * 0.1 + pixel * 4;
   const pinTop = pinOffset + pinScale * (node.isOwned && node.isCapital ? 0.2 + 0.1 / Math.SQRT2 : 0.1);
   // Only closed eyes shrink; colony fault badges also use the base scale law above.
-  const eyeSize = node.radius * EYE_SIZE * eyeMarkerScale(depth, node.radius, height, fov) - pixel * 2;
+  const eyeSize = node.radius * EYE_SIZE * eyeMarkerScale(depth, node.radius, height, fov) - pixel * reduction;
   const eyeOffset = (node.intel === 'UNKNOWN' ? node.radius * 1.14 : pinTop) + pixel * 4 + eyeSize / 2;
   const labelOffset = (node.intel !== 'RESOLVED' && !node.isOwned ? eyeOffset + eyeSize / 2 : pinTop) + pixel * 4;
   const colourDetail = 1 / (1 + Math.max(0, depth) / 80);

@@ -96,9 +96,17 @@ interface ReplayMetadata {
   status: 'AVAILABLE' | 'TOO_LARGE' | 'NOT_RECORDED';
   attackerVisible: boolean;
 }
+export type EnemyFleetVisibility = 'FULL' | 'INSUFFICIENT_FORCE' | 'UNKNOWN';
+
+/** One frozen permission for the written report and the recording, independent of file availability. */
+export function enemyFleetVisibilityFor(attackerVisible: boolean | undefined, attacking: boolean): EnemyFleetVisibility {
+  if (!attacking || attackerVisible === true) return 'FULL';
+  return attackerVisible === false ? 'INSUFFICIENT_FORCE' : 'UNKNOWN';
+}
+
 export function replayStatusFor(metadata: ReplayMetadata | undefined, attacking: boolean): BattleReplayStatus {
   if (!metadata) return 'NOT_RECORDED';
-  if (attacking && !metadata.attackerVisible) return 'INSUFFICIENT_FORCE';
+  if (enemyFleetVisibilityFor(metadata.attackerVisible, attacking) === 'INSUFFICIENT_FORCE') return 'INSUFFICIENT_FORCE';
   return metadata.status;
 }
 export async function readBattleReplayMetadata(db: Queryable, kind: BattleReplaySource['kind'], ids: string[]): Promise<Map<string, ReplayMetadata>> {

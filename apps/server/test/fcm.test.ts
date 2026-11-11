@@ -48,7 +48,7 @@ describe('the FCM transport', () => {
   it('signs in as the service account for the messaging scope, then sends one message per phone', async () => {
     const google = fakeGoogle();
     const transport = fcmTransport(account, { fetch: google.fetch });
-    await expect(transport.send(['phone-a', 'phone-b'], message)).resolves.toEqual({ invalid: [] });
+    await expect(transport.send(['phone-a', 'phone-b'], message)).resolves.toEqual({ invalid: [], accepted: 2 });
 
     const grant = new URLSearchParams(google.calls[0]!.body);
     expect(google.calls[0]!.url).toBe(TOKEN_URL);
@@ -86,7 +86,7 @@ describe('the FCM transport', () => {
       ? json(404, { error: { code: 404, status: 'NOT_FOUND', details: [{ '@type': 'type.googleapis.com/google.firebase.fcm.v1.FcmError', errorCode: 'UNREGISTERED' }] } })
       : json(200, {}));
     const transport = fcmTransport(account, { fetch: google.fetch });
-    await expect(transport.send(['live', 'gone'], message)).resolves.toEqual({ invalid: ['gone'] });
+    await expect(transport.send(['live', 'gone'], message)).resolves.toEqual({ invalid: ['gone'], accepted: 1 });
   });
 
   it('forgets a phone whose token FCM calls invalid, but not one refused for any other bad argument', async () => {
@@ -95,7 +95,7 @@ describe('the FCM transport', () => {
       : json(400, { error: { code: 400, message: 'Message is too big', status: 'INVALID_ARGUMENT', details: [{ '@type': 'type.googleapis.com/google.firebase.fcm.v1.FcmError', errorCode: 'INVALID_ARGUMENT' }] } }));
     const errors = vi.fn();
     const transport = fcmTransport(account, { fetch: google.fetch, onError: errors });
-    await expect(transport.send(['malformed', 'fine'], message)).resolves.toEqual({ invalid: ['malformed'] });
+    await expect(transport.send(['malformed', 'fine'], message)).resolves.toEqual({ invalid: ['malformed'], accepted: 0 });
     expect(errors).toHaveBeenCalledTimes(1);
   });
 
@@ -107,7 +107,7 @@ describe('the FCM transport', () => {
       return json(401, { error: { code: 401, status: 'UNAUTHENTICATED' } });
     });
     const transport = fcmTransport(account, { fetch: google.fetch });
-    await expect(transport.send(['phone-a'], message)).resolves.toEqual({ invalid: [] });
+    await expect(transport.send(['phone-a'], message)).resolves.toEqual({ invalid: [], accepted: 1 });
     expect(google.sends()).toHaveLength(2);
     expect(new Headers(google.sends()[1]!.init.headers).get('authorization')).toBe('Bearer access-2');
   });
@@ -115,12 +115,12 @@ describe('the FCM transport', () => {
   it('never throws: an outage is reported and the phone is kept', async () => {
     const onError = vi.fn();
     const failing = vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> => Promise.reject(new Error('network down')));
-    await expect(fcmTransport(account, { fetch: failing, onError }).send(['phone-a'], message)).resolves.toEqual({ invalid: [] });
+    await expect(fcmTransport(account, { fetch: failing, onError }).send(['phone-a'], message)).resolves.toEqual({ invalid: [], accepted: 0 });
     expect(onError).toHaveBeenCalled();
 
     const google = fakeGoogle(() => json(500, { error: { code: 500, status: 'INTERNAL' } }));
     const errors = vi.fn();
-    await expect(fcmTransport(account, { fetch: google.fetch, onError: errors }).send(['phone-a'], message)).resolves.toEqual({ invalid: [] });
+    await expect(fcmTransport(account, { fetch: google.fetch, onError: errors }).send(['phone-a'], message)).resolves.toEqual({ invalid: [], accepted: 0 });
     expect(errors).toHaveBeenCalled();
   });
 });

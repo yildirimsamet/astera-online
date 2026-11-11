@@ -23,8 +23,8 @@ export const notificationCenter = {
   },
   "kindRule": {
     "incoming_attack": "Une flotte ou une flotte de clan commune en route vers l'un de tes mondes.",
-    "incoming_strategic": "Une Étoile de la mort en approche. Prend 1,5 fois le deutérium d'une alerte d'attaque.",
-    "probe_detected": "Une sonde repérée au-dessus de l'un de tes mondes. Envoyée tout de suite."
+    "incoming_strategic": "Une Étoile de la mort ou une bombe à radiation en approche. Prend 1,5 fois le deutérium d'une alerte d'attaque.",
+    "probe_detected": "Une sonde repérée au-dessus de l'un de tes mondes. Envoyée tout de suite, au plus une fois toutes les 30 minutes."
   },
   "buildCost": "Coût de construction",
   "buildFrom": "Payé par {{world}}, ton monde sélectionné. Construit une fois, il couvre tous tes mondes.",
@@ -71,13 +71,14 @@ export const notificationCenter = {
     "SENT": "Envoyée",
     "UNFUNDED": "Caisse vide",
     "CANCELLED": "Rien prélevé",
-    "NO_DEVICE": "Pas de téléphone"
+    "NO_DEVICE": "Non reçue"
   },
   "rulesTitle": "Fonctionnement des alertes",
   "ruleRadar": "Une alerte part seulement pour une flotte que ton radar voit. Sans détection radar, pas d'alerte.",
   "ruleRecall": "Si l'attaque est rappelée avant l'envoi de l'alerte, aucun deutérium ne quitte la caisse.",
   "ruleShort": "Si la caisse ne peut pas payer, l'alerte n'est pas envoyée. Elle apparaît ici comme « Caisse vide ».",
   "ruleInGame": "L'avertissement dans le jeu s'affiche toujours et ne prend aucun deutérium.",
+  "ruleUndelivered": "Si aucun téléphone ne reçoit l'alerte, aucun deutérium n'est pris.",
   "priceRule": "Une alerte d'attaque prend quelques heures de ta production de deutérium sur tous tes mondes, ou son minimum s'il est plus élevé. Ta production : {{rate}} par heure.",
   "reading": {
     "NONE": "Non construit",

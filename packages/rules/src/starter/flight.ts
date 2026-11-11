@@ -98,6 +98,8 @@ export function battleDebrisOf(attackerLosses: Fleet, defenderLosses: Fleet): Re
 
 /** What a battle report keeps. Each side's view of it is drawn from this and never stored apart. */
 export interface StarterBattleRecord {
+  /** Frozen before combat; absent on historical records which cannot prove the threshold. */
+  attackerVisible?: boolean;
   grade: Grade;
   rounds: CombatRound[];
   attackerSent: Fleet; defenderSent: Fleet;
