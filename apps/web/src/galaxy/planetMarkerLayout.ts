@@ -20,10 +20,9 @@ export function planetMarkerLayout(
   depth: number,
   height: number,
   fov: number,
-  compact = false,
 ) {
   const pixel = pixelSize(depth, height, fov);
-  const reduction = compact ? 4 : 2;
+  const reduction = 2;
   const pinPixels = 4 + 6 * depthDetail(depth);
   const pinScale = pixel > 0 ? (pinPixels - (node.isOwned ? 0 : reduction)) * pixel / 0.2 : node.radius;
   // A three-sided cone is wider than it is tall: subtract CSS pixels on each axis.

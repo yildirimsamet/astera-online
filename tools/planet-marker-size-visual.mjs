@@ -60,7 +60,7 @@ export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
         for (const row of rows) {
           const oldHeight = row.kind === 'pin' ? 4 + 6 / (1 + row.depth / 25) : 9 + 22 / (1 + row.depth / 25);
           const oldWidth = row.kind === 'pin' ? oldHeight * (.13 * Math.sqrt(3)) / .2 : oldHeight;
-          const reduction = version === 'after' && width < 1100 ? 4 : 2;
+          const reduction = 2;
           assert(Math.abs(row.height - (oldHeight - reduction)) < .03, JSON.stringify(row));
           assert(Math.abs(row.width - (oldWidth - reduction)) < .03, JSON.stringify(row));
         }
@@ -70,6 +70,6 @@ export async function verifyPlanetMarkerSize(out = 'out/planet-marker-size') {
       }
       assert.deepEqual(errors, []); await page.close();
     }
-    await writeFile(`${out}/proof.json`, JSON.stringify(evidence, null, 2)); console.log('PASS: mobile markers shrink another 2px on both axes; desktop sizes unchanged');
+    await writeFile(`${out}/proof.json`, JSON.stringify(evidence, null, 2)); console.log('PASS: mobile and desktop markers use the same 2px reduction');
   } finally { await browser.close(); }
 }
