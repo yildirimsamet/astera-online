@@ -20,6 +20,7 @@ import {
   JOINT_WAR_STAGING_LEGS,
   UNAIDED,
   canAttack,
+  clanCorridorMultiplier,
   distance,
   capLoadToSurvivors,
   fleetCount,
@@ -1409,9 +1410,12 @@ async function gatherContribution(
 
   const originPace = { boost: fleetSpeedMult(origin.orbit), tech };
   const stagingPace = { boost: fleetSpeedMult(await orbitOfWorld(tx, staging.id)), tech };
-  const stagingMinutes = sourceKind === 'LEADER_CAPITAL'
+  // The way home from the staging world, at the ordinary pace: a return is never on the corridor.
+  const stagingHomeMinutes = sourceKind === 'LEADER_CAPITAL'
     ? 0
     : fleetTravelExact(originToStaging, input.fleet, originPace);
+  // F2 Klan Koridoru (owner 2026-11-10): the way TO the staging world is the first leg.
+  const stagingMinutes = stagingHomeMinutes / clanCorridorMultiplier(clanRow.level);
   const stagingAt = addMinutes(now, stagingMinutes);
   const meeting = operation.targetKind === 'MONUMENT' ? monumentFlight(staging,target,season,fleetPace(input.fleet,stagingPace),stagingAt) : null;
   const flightTarget = meeting?.at ?? target;
@@ -1468,7 +1472,7 @@ async function gatherContribution(
   if (sourceKind === 'PHYSICAL' && stagingAt >= operation.expiresAt) {
     refuse('CLAN_WAR_EXPIRED', 'This wave cannot reach the staging world in time');
   }
-  const cancelHomeAt = addMinutes(operation.expiresAt, stagingMinutes);
+  const cancelHomeAt = addMinutes(operation.expiresAt, stagingHomeMinutes);
   const battleHomeAt = addMinutes(stagingAt, combinedMinutes + engagementMinutes + returnMinutes);
   const canFinish = cancelHomeAt <= season.endsAt && battleHomeAt <= season.endsAt;
   if (!canFinish) {

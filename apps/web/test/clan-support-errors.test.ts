@@ -12,7 +12,6 @@ import { LANGUAGES } from '../src/i18n/languages.js';
 
 const CODES = [
   ['CLAN_SUPPORT_UNAVAILABLE', {}],
-  ['POSTURE_CONFLICT', {}],
   ['CLAN_SUPPORT_NONCOMBATANT', { hull: 'PROSPECTOR' }],
   ['CLAN_SUPPORT_SELF', {}],
   ['CLAN_SUPPORT_TARGET', {}],

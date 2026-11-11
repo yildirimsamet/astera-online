@@ -307,7 +307,6 @@
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: 'Tant que ton bouclier de nouveau venu dure, tes vaisseaux ne peuvent pas stationner sur le monde d’un autre commandant',
   CLAN_SUPPORT_UNAVAILABLE: 'La défense de clan arrive avec une nouvelle saison',
-  POSTURE_CONFLICT: 'Le repli tactique et le soutien de clan ne peuvent pas être activés ensemble',
   CLAN_SUPPORT_NONCOMBATANT: 'Une vague de soutien est une ligne de combat : {{hull}} ne peut pas partir',
   CLAN_SUPPORT_SELF: 'Le soutien va à un membre du clan, pas à tes propres mondes',
   CLAN_SUPPORT_TARGET: 'Choisis un monde tenu par un membre du clan',

@@ -76,12 +76,19 @@ export const clan = {
     chatBody: "Plant Ziele, Unterstützung und Ankunftszeiten in einem Chat, den nur euer Team lesen kann.",
     waitingNote: "Chat und Schutz vor Eigenbeschuss gelten ab Beitritt. Wer einem Clan beitritt, wartet {{hours}} Stunden auf Hilfe, Beuteteilung, Unterstützung und Flottenbeiträge zu gemeinsamen Angriffen.",
   },
+  tagTier: {
+    BRONZE: 'Clan mit Bronzebanner',
+    SILVER: 'Clan mit Silberbanner',
+    GOLD: 'Clan mit Goldbanner',
+  },
   standings: {
     heading: 'Clan-Rangliste',
     aside: 'Top 3 erhalten ein Siegel',
     waiting: 'Clan-Rangliste lesen',
     empty: 'Es hat sich noch kein Clan in der Rangliste eingetragen.',
     crew: '{{members}}/5 Besatzung',
+    watches_one: '{{count}} Wache',
+    watches_other: '{{count}} Wachen',
   },
   requests: {
     heading: 'Ihre Wünsche',
@@ -268,7 +275,7 @@ export const clan = {
     resume: 'Hilfe zulassen',
     sendHeading: 'Hilfe senden',
     explainer: 'Ein beladener Konvoi liefert seine Ressourcen ab und kehrt nach Hause zurück. Ein leerer Konvoi ist ein irreversibles Schiffsgeschenk.',
-    speed: '10 % schneller',
+    speed: 'Clan-Korridor · erste Etappe schneller',
     extraBay: '+1 reine Hilfsbucht',
     noRecall: 'Kein Rückruf',
     returns: 'Transportretouren',

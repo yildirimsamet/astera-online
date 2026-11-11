@@ -435,6 +435,8 @@ export const reports = {
     /** Taktik geri çekilme. Savunan: ne kaçtı, kalkış ne yaktı ya da neden kaçamadı. */
     escaped_one: "Gemin savaştan önce kaçtı (−{{fuel}} Döteryum): saldırı savunma hattına üstün geldi.",
     escaped_other: "{{count}} gemin savaştan önce kaçtı (−{{fuel}} Döteryum): saldırı savunma hattına üstün geldi.",
+    escapedSupport_one: 'Klan arkadaşlarının {{count}} gemisi de seninkilerle ücretsiz kalktı.',
+    escapedSupport_other: 'Klan arkadaşlarının {{count}} gemisi de seninkilerle ücretsiz kalktı.',
     stranded: 'Gemilerin kaçacaktı ama yakıt yetmedi: {{fuel}} Döteryum gerekiyordu, depoda {{available}} vardı.',
     /** Saldıran: hat akının önünde boşaldı; ne tuttuğu söylenmez. */
     fled: "Gemileri savaştan önce kaçtı: üstün bir saldırıyla silinecek hat, yakıtı yetiyorsa geri çekilir.",
@@ -450,6 +452,7 @@ export const reports = {
     recoveryRefused:
       'Son {{window}} saatte net {{hours}} saatlik üretim kaybettin ve {{bar}} saatlik eşiği geçtin; ama kendi akının havadayken kalkan verilmez.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
+    clanPurse: 'Zafer Kasası: {{amounts}} klan hazinesine gitti.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
     /** Anılacak bir yörünge yok: alan, boşlukta, randevu noktasında duruyor. */
     wreckVoid:

@@ -17,6 +17,8 @@ import {
   type SatelliteId,
   type Vec3,
   type CountryCode,
+  clanTagTier,
+  type ClanTagTier,
 } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
@@ -114,7 +116,8 @@ export interface PublicWorld {
     claimPriorityUntil: Date | null;
     nextReinforcementAt: Date | null;
   };
-  clan?: { id: string; name: string; tag: string };
+  /** `tier` (F2): the tag's colour by clan level — public as the tag is; never the level itself. */
+  clan?: { id: string; name: string; tag: string; tier: ClanTagTier | null };
   /** Only the public podium; lower exact ranks stay on the leaderboard surface. */
   dominionRank?: 1 | 2 | 3;
 }
@@ -169,7 +172,7 @@ export const silhouetteOf = (world: PublicWorld): {
   owner: string;
   country?: CountryCode;
   controllerPlayerId: string | null;
-  clan: { id: string; name: string; tag: string } | null;
+  clan: { id: string; name: string; tag: string; tier: ClanTagTier | null } | null;
   kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
   coreLevel: number;
   satellites: string[];
@@ -207,6 +210,7 @@ export async function publicWorlds(
       clanId: clans.id,
       clanName: clans.name,
       clanTag: clans.tag,
+      clanLevel: clans.level,
       // Left-joined, so a neutral world genuinely answers NULL here.
       playerScore: playerDominionSql,
       playerJoinedAt: players.joinedAt,
@@ -356,7 +360,7 @@ export async function publicWorlds(
       vacation: r.planet.vacationUntil !== null && r.planet.vacationUntil > now,
       state,
       ...(r.clanId && r.clanName && r.clanTag
-        ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag } }
+        ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag, tier: clanTagTier(r.clanLevel) } }
         : {}),
       ...(r.planet.controllerPlayerId && dominionRanks.has(r.planet.controllerPlayerId)
         ? { dominionRank: dominionRanks.get(r.planet.controllerPlayerId)! }

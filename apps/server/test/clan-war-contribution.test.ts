@@ -241,6 +241,23 @@ describe('quoting a wave', () => {
     expect(leader.bays.total).toBe(0);
   });
 
+  /** F2 Klan Koridoru (owner 2026-11-10): the way to the staging world is the first leg. */
+  it('flies a member’s wave to the staging world at the clan corridor, and the strike as ever', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    const fleet = { DART: 10 };
+    const [origin, staging] = await Promise.all([f.planetIds[1]!, f.planetIds[0]!].map((id) =>
+      f.db.select().from(planets).where(eq(planets.id, id)).then((rows) => rows[0]!)));
+    const ordinary = fleetTravelExact(distance(origin!, staging!), fleet, { boost: 1, tech: {} });
+    const founded = await quote(f, 1, f.planetIds[1]!, fleet);
+    expect(founded.travel.stagingMinutes).toBeCloseTo(ordinary / 2, 6);
+    await f.db.update(clans).set({ level: 7 });
+    const raised = await quote(f, 1, f.planetIds[1]!, fleet);
+    expect(raised.travel.stagingMinutes).toBeCloseTo(ordinary / 5, 6);
+    expect(raised.travel.combinedMinutes).toBeCloseTo(founded.travel.combinedMinutes, 6);
+    expect(raised.travel.returnMinutes).toBeCloseTo(founded.travel.returnMinutes, 6);
+  });
+
   it('charges each leg on its own distance, through the one fuel formula', async () => {
     const f = await setup();
     await readyOperation(f);

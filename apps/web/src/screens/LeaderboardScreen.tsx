@@ -1,3 +1,4 @@
+import { ClanTag } from '../ui/ClanTag.js';
 import { honorRankRewards, type Resources } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -173,7 +174,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     <ol className="divide-y divide-v2-line" aria-label={t('leaderboard.title')}>
       {rows.map((row) => {
         const self = row.playerId === mine;
-        const identity = <>{row.clan ? <span className="text-crystal" title={row.clan.name}>[{row.clan.tag}]</span> : null}{row.clan ? ' ' : null}{row.username}</>;
+        const identity = <>{row.clan ? <span title={row.clan.name}><ClanTag tag={row.clan.tag} tier={row.clan.tier} className="text-crystal" /></span> : null}{row.clan ? ' ' : null}{row.username}</>;
         return (
           <li
             key={row.playerId}
@@ -274,7 +275,7 @@ function NearbyRival({
     <span className="flex min-w-0 flex-col">
       <span className="block leading-none"><Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} /></span>
       <span className="mt-1 line-clamp-2 break-words">
-        {row.clan ? <span className="text-crystal">[{row.clan.tag}]</span> : null}
+        {row.clan ? <ClanTag tag={row.clan.tag} tier={row.clan.tier} className="text-crystal" /> : null}
         {row.clan ? ' ' : null}{row.username}
         {self ? <span className="ml-1.5 text-crystal">{t('leaderboard.you')}</span> : null}
       </span>

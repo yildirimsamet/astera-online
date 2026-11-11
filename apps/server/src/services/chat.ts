@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
 import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
-import { CHAT, type ChatLanguage } from '@astera/rules';
+import { CHAT, clanTagTier, type ChatLanguage, type ClanTagTier } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planets, players } from '../db/schema.js';
@@ -19,6 +19,8 @@ export interface ChatMessageView {
   planetId?: string;
   username: string;
   clanTag: string | null;
+  /** F2: the tag's colour by clan level — the tier only, never the level behind it. */
+  clanTier: ClanTagTier | null;
   content: string;
   media?: ChatMedia | null;
   language: ChatLanguage;
@@ -50,7 +52,7 @@ async function chatPlayer(db: Db, accountId: string) {
     .select({
       player: players, planetId: planets.id,
       username: accounts.displayName, login: accounts.username,
-      clanTag: clans.tag,
+      clanTag: clans.tag, clanLevel: clans.level,
     })
     .from(players)
     .innerJoin(accounts, eq(players.accountId, accounts.id))
@@ -102,6 +104,7 @@ export async function readChat(
       z: planets.z,
       username: accounts.displayName,
       clanTag: clans.tag,
+      clanLevel: clans.level,
       login: accounts.username,
       content: chatMessages.content, media: chatMessages.media,
       replyToMessageId: chatMessages.replyToMessageId,
@@ -136,10 +139,11 @@ export async function readChat(
   return {
     messages: page.reverse().map((row) => {
       const self = row.authorPlayerId === me.player.id;
-      const { x, y, z, planetId, login, replyToMessageId: _replyToMessageId, ...message } = row;
+      const { x, y, z, planetId, login, replyToMessageId: _replyToMessageId, clanLevel, ...message } = row;
       const canLocate = (self || !adminUsernames.has(login)) && locationIsKnown(planetId, { x, y, z }, self, sight);
       return {
         ...message,
+        clanTier: clanTagTier(clanLevel),
         ...(canLocate ? { planetId } : {}),
         self,
         admin: adminUsernames.has(login),
@@ -231,7 +235,8 @@ export async function postChat(
     await publishShard(tx, me.player.seasonId, 'chat');
     const recognition = (await authorRecognition(tx, [me.player.id])).get(me.player.id);
     return {
-      ...message, planetId: me.planetId, username: me.username, clanTag: me.clanTag, self: true,
+      ...message, planetId: me.planetId, username: me.username, clanTag: me.clanTag,
+      clanTier: clanTagTier(me.clanLevel), self: true,
       admin: adminUsernames.has(me.login),
       replyTo: replyTo ?? null, reactions: [],
       ...recognition,

@@ -42,6 +42,7 @@ import {
   radiationBombLevel,
   SILENT_SPACE,
 } from '@astera/rules';
+import { clanRefineryColumns, clanRefineryShare } from './clanPerks.js';
 import { minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { batchReads } from '../db/readBatch.js';
@@ -186,6 +187,8 @@ export function economyAt(
   leakedSoFar?: Resources,
   /** D212: `SILENT_SPACE.productionPace` for a world in Silent Space, 1 everywhere else. */
   pace = 1,
+  /** F2 Ortak Ocak: the clan's production share (`clanRefineryShare`); 0 outside a clan. */
+  clanBonus = 0,
 ) {
   // The deadline is an economic boundary even when the worker claims the freeze
   // event late. Status remains `live` during afterglow, but production does not.
@@ -213,6 +216,7 @@ export function economyAt(
     faults,
     ...(leakedSoFar ? { leakedSoFar } : {}),
     pace,
+    clanBonus,
   };
   const previous: PlanetEconomyState = {
     alloy: row.alloy,
@@ -288,6 +292,8 @@ export interface LockedPlanet {
   radiationBombStartsAt?: Date | null;
   /** D212: this world is in Silent Space — no fights, no farming, works at half pace. */
   silentSpace: boolean;
+  /** F2 Ortak Ocak: the clan's share on what the works make, 0 outside a clan. */
+  clanBonus: number;
   vacationUntil: Date | null;
   name: string;
   equippedSkinId: string | null;
@@ -545,10 +551,15 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(units).where(and(eq(units.planetId, planetId),
       season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
-    tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
+    // F2 Ortak Ocak: the clan's share is read fresh only by a write, which freezes it on the row.
+    tx.select({ role: shards.role, ...(options.mutate
+      ? clanRefineryColumns(row.controllerPlayerId, clock.now())
+      : { clanLevel: sql<number | null>`null`, clanActive: sql<number>`0` }) })
+      .from(shards).where(eq(shards.id, season.shardId)),
   ]);
   const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await batchReads(readHardware);
-  const inputs: PlanetInputs = { row, season, buildingRows, satelliteRows, unitRows, faultRows, silentSpace: shard?.role === 'WAITING' };
+  const inputs: PlanetInputs = { row, season, buildingRows, satelliteRows, unitRows, faultRows,
+    silentSpace: shard?.role === 'WAITING', clanBonus: row.clanBonus };
   const { levels, instruments, faults } = hardwareInputs(inputs);
 
   if (season.radiationBombStartsAt) {
@@ -563,7 +574,9 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const economy = planetEconomy(inputs, clock);
   const { advanced, now, produced, productiveSeconds, loyalty } = economy;
 
-  if (options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
+  const written = options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt);
+  const freshBonus = written ? clanRefineryShare(shard) : row.clanBonus;
+  if (written) {
     /*
       A HAND-OVER THAT DID NOT COME THROUGH `transferPlanetControl`, REPAIRED
       RATHER THAN REFUSED.
@@ -632,11 +645,14 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
         lastTickAt: now,
         statsOwnerPlayerId: row.controllerPlayerId,
         seasonTelemetry: row.seasonTelemetry,
+        clanBonus: freshBonus,
       })
       .where(eq(planets.id, planetId));
   }
 
-  return { planet: { ...lockedPlanetFrom(inputs, economy, clock), returnEligible: identity.returnEligible }, unitRows, faultRows };
+  // From here on the world earns the share it was just written with.
+  const ahead = written ? { ...inputs, clanBonus: freshBonus } : inputs;
+  return { planet: { ...lockedPlanetFrom(ahead, economy, clock), returnEligible: identity.returnEligible }, unitRows, faultRows };
 }
 
 /**
@@ -682,7 +698,7 @@ export async function loadPlanetViewStates(tx: Tx, planetIds: readonly string[],
   const silentSpace = shard?.role === 'WAITING';
   const of = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
   return Promise.all(worlds.map(async row => {
-    const inputs: PlanetInputs = { row, season, silentSpace,
+    const inputs: PlanetInputs = { row, season, silentSpace, clanBonus: row.clanBonus,
       buildingRows: of(buildingRows, row.id), satelliteRows: of(satelliteRows, row.id),
       unitRows: of(unitRows, row.id), faultRows: of(faultRows, row.id) };
     if (radiation) {
@@ -706,6 +722,8 @@ interface PlanetInputs {
   unitRows: (typeof units.$inferSelect)[];
   faultRows: (typeof planetFaults.$inferSelect)[];
   silentSpace: boolean;
+  /** F2 Ortak Ocak: the clan's share on what this world's works make. */
+  clanBonus: number;
 }
 
 type Planet = typeof planets.$inferSelect;
@@ -732,7 +750,7 @@ function hardwareInputs(inputs: PlanetInputs) {
 
 /** No reads and no writes: the world at `clock`, from the rows it was read from. */
 function planetEconomy(inputs: PlanetInputs, clock: Clock) {
-  const { row, season, faultRows, unitRows, silentSpace } = inputs;
+  const { row, season, faultRows, unitRows, silentSpace, clanBonus } = inputs;
   const { levels, effectiveInstruments, orbit, faults } = hardwareInputs(inputs);
   /*
     THE LEAK'S OWN CEILING, and it is read off the fault rather than the world.
@@ -773,6 +791,7 @@ function planetEconomy(inputs: PlanetInputs, clock: Clock) {
     faults,
     leakedSoFar ?? undefined,
     silentSpace ? SILENT_SPACE.productionPace : 1,
+    clanBonus,
   );
 
   /*
@@ -792,7 +811,7 @@ function planetEconomy(inputs: PlanetInputs, clock: Clock) {
 }
 
 function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof planetEconomy>, clock: Clock): LockedPlanet {
-  const { row, season, unitRows, silentSpace } = inputs;
+  const { row, season, unitRows, silentSpace, clanBonus } = inputs;
   const { levels, instruments, effectiveInstruments, orbit, storedOrbit, faults } = hardwareInputs(inputs);
   const { advanced, loyalty, homeFleet, ground } = economy;
   return {
@@ -806,6 +825,7 @@ function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof plane
     monumentRadiationStartsAt: season.monumentRadiationStartsAt,
     radiationBombStartsAt: season.radiationBombStartsAt,
     silentSpace,
+    clanBonus,
     vacationUntil: row.vacationUntil && row.vacationUntil > clock.now() ? row.vacationUntil : null,
     name: row.name,
     equippedSkinId: row.equippedSkinId,

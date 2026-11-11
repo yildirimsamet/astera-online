@@ -6,6 +6,8 @@ import {
   accounts,
   battleReports,
   buildings,
+  clanAlarms,
+  clans,
   debrisFields,
   dominionEvents,
   miningRuns,
@@ -604,6 +606,28 @@ describe('reclaiming idle seats', () => {
       'season_end',
       'season_rollover',
     ]);
+  });
+
+  /** KLAN ALARMI (F2): the clan's call names the raid, the host and the world. */
+  it('takes a clan alarm raised for the reclaimed world', async () => {
+    await grant(f.db, active, 40_000, 16_000);
+    await levelWorld(f.db, f.planetIds);
+    await giveUnits(f.db, active, { DART: 12 });
+    const launched = await launchAttack(f.db, active, idle, { DART: 8 }, f.clock);
+    const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Night Watch', nameKey: 'night watch', tag: 'NW', createdAt: f.clock.now() })
+      .returning({ id: clans.id });
+    const clanId = clan!.id;
+    await f.db.insert(clanAlarms).values({
+      seasonId: f.seasonId, clanId, missionId: launched.missionId, hostPlayerId: f.playerIds[0]!,
+      hostPlanetId: idle, arriveAt: f.clock.now(), createdAt: f.clock.now(),
+    });
+    await drain();
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+    expect(result.failed).toBe(0);
+    expect(await gone(idle)).toBe(true);
+    expect(await f.db.select().from(clanAlarms)).toHaveLength(0);
   });
 
   /** Somebody else's telescope pointed at the world, and their probe report about it. */

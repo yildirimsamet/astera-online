@@ -37,8 +37,10 @@ const EVERY_KIND = [
   'arena_ship_ready',
   'arena_sortie_end',
   'arena_team_share',
+  'clan_alarm',
   'clan_support_departed',
   'clan_support_inbound',
+  'clan_support_lifted',
   'clan_support_result',
   'colony_captured',
   'colony_fault',
@@ -95,6 +97,11 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   clan_support_departed: {
     waveId: 'w', reason: 'EXPIRED', senderPlayerId: 's', senderName: 'Ali', hostPlayerId: 'h', hostName: 'Zeynep',
     hostPlanetId: 'p9', hostPlanetName: 'Vantage', returnAt: '2026-08-26T12:40:00.000Z', role: 'HOST',
+  },
+  clan_support_lifted: { hostPlanetId: 'p9', hostPlanetName: 'Vantage', ships: 12 },
+  clan_alarm: {
+    arriveAt: '2026-08-26T12:20:00.000Z', etaMinutes: 20, targetPlanetName: 'Vantage',
+    alarmId: '00000000-0000-4000-8000-0000000000a1', hostPlayerId: 'h', hostPlanetId: 'p9', hostName: 'Zeynep',
   },
   clan_support_result: {
     reportId: 'r', grade: 'PARTIAL', hostPlanetId: 'p9', hostPlanetName: 'Vantage', lost: 2, survived: 3,

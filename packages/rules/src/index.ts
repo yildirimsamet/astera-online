@@ -76,6 +76,7 @@ export * from './view.js';
 export * from './clan.js';
 export * from './clanWar.js';
 export * from './clanSupport.js';
+export * from './clanPerks.js';
 export * from './academy.js';
 export * from './returnQueue.js';
 export * from './inactivity.js';

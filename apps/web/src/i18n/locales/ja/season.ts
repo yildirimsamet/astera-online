@@ -14,6 +14,8 @@ export const seasonRecap = {
   battles: "戦闘",
   attacks: "攻撃",
   defences: "防御",
+  support_one: 'クランメンバーのための駐留{{count}}回 · 撃退{{held}}回',
+  support_other: 'クランメンバーのための駐留{{count}}回 · 撃退{{held}}回',
   damageDealt: "与ダメージ",
   damageTaken: "被ダメージ",
   clan: {

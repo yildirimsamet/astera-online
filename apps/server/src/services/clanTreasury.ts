@@ -1,8 +1,10 @@
+import { postClanEvent } from './clanChatEvents.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   MULTI_WORLD,
   clanHangarCapacity,
   clanLevelUpgradeCost,
+  clanVictoryWreck,
   CLAN_LEVEL_MAX,
   type Resources,
 } from '@astera/rules';
@@ -473,6 +475,11 @@ export async function upgradeClanLevel(
     createdAt: now,
   });
   await publishClanTreasury(tx, clan.id);
+  // F2 E2: the rung bought is posted to the clan's room under the leader's name.
+  await postClanEvent(tx, {
+    clanId: clan.id, seasonId: clan.seasonId, authorPlayerId: input.actor.playerId,
+    event: { kind: 'LEVEL_UP', params: { level } }, now,
+  });
   return resultFor(level, after);
 }
 
@@ -531,4 +538,44 @@ async function publishClanTreasury(tx: Tx, clanId: string): Promise<void> {
   for (const playerId of await activeClanPlayerIds(tx, clanId)) {
     await publishPrivate(tx, playerId, 'treasury');
   }
+}
+
+/**
+ * E4 ZAFER KASASI (F2, owner 2026-11-10). A won supported defence hands half its wreck to the
+ * host's clan purse, up to the cap; the purse never takes past the next rung's price, and what it
+ * cannot take stays in orbit for anyone. Returns what is left for the public field, and what the
+ * purse took (null when it took nothing) for the defending line's report.
+ *
+ * The raid's own transaction calls this, which already writes the clan's Dominion row in the
+ * same place, so the purse takes no lock the battle did not already take.
+ */
+export async function creditVictoryWreck(
+  tx: Tx,
+  input: { hostPlayerId: string; seasonId: string; field: Resources; now: Date },
+): Promise<{ field: Resources; purse: Resources | null }> {
+  const untouched = { field: input.field, purse: null };
+  const membership = await activeClanMembership(tx, input.hostPlayerId);
+  if (!membership) return untouched;
+  const [clan] = await tx.select().from(clans)
+    .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt))).for('update');
+  if (clan?.level == null) return untouched;
+  const split = clanVictoryWreck(input.field, roomFor(treasuryOf(clan), nextCostFor(clan.level)));
+  const { purse } = split;
+  if (purse.alloy + purse.crystal + purse.deuterium <= 0) return untouched;
+  await tx.update(clans).set({
+    treasuryAlloy: clan.treasuryAlloy + purse.alloy,
+    treasuryCrystal: clan.treasuryCrystal + purse.crystal,
+    treasuryDeuterium: clan.treasuryDeuterium + purse.deuterium,
+  }).where(eq(clans.id, clan.id));
+  await tx.insert(clanTreasuryEvents).values({
+    seasonId: input.seasonId,
+    clanId: clan.id,
+    kind: 'VICTORY_WRECK',
+    alloy: purse.alloy,
+    crystal: purse.crystal,
+    deuterium: purse.deuterium,
+    createdAt: input.now,
+  });
+  await publishClanTreasury(tx, clan.id);
+  return { field: split.field, purse };
 }

@@ -308,6 +308,28 @@ describe('buying the next rung', () => {
     expect(events[0]!.alloy).toBe(-clanLevelUpgradeCost(1).alloy);
   });
 
+  /**
+   * THE PRICE HALVED MID-SEASON (F2, owner 2026-11-10): no rung is taken back and nothing is
+   * refunded. A purse saved against the old price sits over the new cap: it stays and spends,
+   * and the purse takes no more until it is back under.
+   */
+  it('keeps and spends a purse left over the halved cap, and takes nothing more until under it', async () => {
+    const f = await setup();
+    const clanId = await foundClan(f);
+    const cost = clanLevelUpgradeCost(1);
+    await f.db.update(clans).set({
+      treasuryAlloy: cost.alloy * 2, treasuryCrystal: cost.crystal * 2, treasuryDeuterium: 0,
+    }).where(eq(clans.id, clanId));
+
+    await expect(donate(f, 0, f.planetIds[0]!, { alloy: 0, crystal: 1, deuterium: 0 }))
+      .rejects.toMatchObject({ code: 'CLAN_TREASURY_OVER_CAP', params: { roomAlloy: 0, roomCrystal: 0 } });
+    const bought = await upgrade(f, 0, 1);
+    expect(bought.level).toBe(2);
+    expect(bought.treasury).toEqual({ alloy: cost.alloy, crystal: cost.crystal, deuterium: 0 });
+    // Under the next rung's price again, so the purse opens.
+    await expect(donate(f, 0, f.planetIds[0]!, { alloy: 1, crystal: 0, deuterium: 0 })).resolves.toBeTruthy();
+  });
+
   it('refuses a purse that is one unit short', async () => {
     const f = await setup();
     const clanId = await foundClan(f);

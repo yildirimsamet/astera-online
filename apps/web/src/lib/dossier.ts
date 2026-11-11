@@ -12,6 +12,9 @@ import {
   withinTelescopeRange,
   type Fleet,
   type ResearchProjectId,
+  supportAccepted,
+  clanAlarmUnlocked,
+  clanCorridorMultiplier,
   tierBandReach,
 } from '@astera/rules';
 import type {
@@ -545,17 +548,19 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
       carries neither and prints neither; a world that cannot hold support prints no
       support row, because "none" would claim a look into a bay that does not exist.
     */
-    if (report.posture) {
+    // F1: `stance` is exact; a server before it sent only `posture`, which was exact then.
+    const stance = report.stance ?? report.posture;
+    if (stance) {
       facts.push({
         key: 'posture',
         label: i18n.t('clanSupport.postureLabel'),
-        value: i18n.t(`clanSupport.postureRead.${report.posture}`),
+        value: i18n.t(`clanSupport.postureRead.${stance}`),
         source: 'probe',
         ageMinutes: age,
         note: i18n.t('clanSupport.postureNote'),
       });
     }
-    if (report.posture === 'SUPPORT') {
+    if (stance && supportAccepted(stance)) {
       const support = report.support;
       facts.push({
         key: 'support',
@@ -572,6 +577,23 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
         ageMinutes: age,
         accuracy: report.accuracy,
         note: i18n.t('clanSupport.supportNote'),
+      });
+    }
+
+    /*
+      F2 E5: THE RAIDER SEES THE RISK. The target clan's level at the look, read as what it
+      buys the defender — whether the clan hears the raid, and how fast its help flies.
+    */
+    if (report.clanLevel !== undefined) {
+      facts.push({
+        key: 'clanLevel',
+        label: i18n.t('clanSupport.clanLevelLabel'),
+        value: i18n.t(clanAlarmUnlocked(report.clanLevel) ? 'clanSupport.clanLevelAlarm' : 'clanSupport.clanLevelNoAlarm', {
+          level: report.clanLevel, speed: clanCorridorMultiplier(report.clanLevel),
+        }),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t('clanSupport.clanLevelNote'),
       });
     }
 

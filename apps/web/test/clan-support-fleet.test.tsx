@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { clanSupportWaveSchema, type ClanSupportWave } from '../src/api/schemas.js';
 import { FleetPage, type FleetPageProps } from '../src/v2/hud/FleetPage.js';
+import { clockTime } from '../src/lib/time.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — my waves on the Fleet page (P12): where each one is, how long
@@ -56,6 +57,38 @@ describe('the clan support group on the Fleet page', () => {
       returnAt: new Date(NOW + 20 * MIN).toISOString() })], recalling: null, onRecall: vi.fn() })} />);
     expect(screen.getByText(/coming home from vega/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /recall|turn back/i })).toBeNull();
+  });
+
+  describe('a wave flying to a world under a clan alarm (F2 corridor)', () => {
+    const flying = (raidMinutes: number | null) => wave({ id: 'w3', status: 'OUTBOUND', stationedAt: null, expiresAt: null,
+      sentAt: new Date(NOW - 5 * MIN).toISOString(), arriveAt: new Date(NOW + 10 * MIN).toISOString(),
+      raidAt: raidMinutes === null ? null : new Date(NOW + raidMinutes * MIN).toISOString() });
+
+    it('writes its landing beside the raid’s, and says it lands in time', () => {
+      render(<FleetPage {...props({ waves: [flying(14)], recalling: null, onRecall: vi.fn() })} />);
+      const raid = document.querySelector('[data-raid-race]')!;
+      expect(raid).toHaveAttribute('data-raid-race', 'in-time');
+      expect(raid).toHaveTextContent(clockTime(new Date(NOW + 10 * MIN)));
+      expect(raid).toHaveTextContent(clockTime(new Date(NOW + 14 * MIN)));
+      expect(raid).toHaveTextContent(/4m 00s before the raid/i);
+    });
+
+    it('says plainly when it will be too late', () => {
+      render(<FleetPage {...props({ waves: [flying(4)], recalling: null, onRecall: vi.fn() })} />);
+      const raid = document.querySelector('[data-raid-race]')!;
+      expect(raid).toHaveAttribute('data-raid-race', 'late');
+      expect(raid).toHaveTextContent(/6m 00s too late/i);
+    });
+
+    it('tells a standing wave when the raid lands on it', () => {
+      render(<FleetPage {...props({ waves: [wave({ raidAt: new Date(NOW + 30 * MIN).toISOString() })], recalling: null, onRecall: vi.fn() })} />);
+      expect(document.querySelector('[data-raid-race]')).toHaveTextContent(/raid lands in 30m/i);
+    });
+
+    it('adds nothing where no raid is called', () => {
+      render(<FleetPage {...props({ waves: [flying(null)], recalling: null, onRecall: vi.fn() })} />);
+      expect(document.querySelector('[data-raid-race]')).toBeNull();
+    });
   });
 
   it('draws nothing when no wave is out', () => {

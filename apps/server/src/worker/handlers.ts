@@ -151,6 +151,8 @@ import {
 } from '../services/radar.js';
 import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
 import { announceUnlocks, notify } from '../services/notifications.js';
+import { raiseClanAlarm } from '../services/clanAlarm.js';
+import { creditVictoryWreck } from '../services/clanTreasury.js';
 import { armPaidAlert, settlePaidAlert } from '../services/notificationCenter.js';
 import {
   publicDominionLeader,
@@ -215,8 +217,10 @@ import {
 } from '../services/battleSettlement.js';
 import {
   defenderCountOf,
+  foughtStations,
   lineOf,
   lockStationsAt,
+  notifyLiftedSupporters,
   notifySupporters,
   settleStations,
   standStations,
@@ -973,7 +977,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       the host's home or dock — each wave's survivors go back to its own row below.
     */
     const hostOutcome = result.defenders[0]!;
-    const defenderCount = defenderCountOf(stations);
+    // F1: a line that lifted together leaves every wave untouched; the guns' battle is the one booked.
+    const fought = foughtStations(stations, raid.escape);
+    const defenderCount = defenderCountOf(fought);
     const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
     const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
     // The line that actually stood — the guns alone when the ships ran.
@@ -1026,7 +1032,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
       at: defender.now,
     });
-    await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
+    await settleStations(tx, { stations: fought, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
     /**
      * Two piles, two exposures (D16).
@@ -1215,9 +1221,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       : supportedLine
         ? defendedTransfer(
           dominionBreakdown.transfer,
-          supportLossOf(stations, result.defenders),
+          supportLossOf(fought, result.defenders),
           1,
-          supportFactorOf(hostPower, stations),
+          supportFactorOf(hostPower, fought),
         )
         : dominionBreakdown.transfer;
     const defenderDominionSwing = -dominionSwing;
@@ -1275,7 +1281,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
     const made = totalRaw * DEBRIS.share;
     const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
-    const { salvage, field: wreck } = settleWreck(
+    const { salvage, field: settled } = settleWreck(
       {
         alloy: share(flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses)),
         crystal: share(flyingCrystal(result.attackerLosses) + flyingCrystal(result.defenderLosses)),
@@ -1285,6 +1291,20 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       },
       activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
     );
+    /*
+      E4 ZAFER KASASI (F2). A line that clanmates stood in and held pays half of what it left
+      in orbit into the host's clan purse, to the cap; the rest is the public field as ever.
+    */
+    let wreck = settled;
+    let clanPurse: Resources | null = null;
+    if (wreck && fought.length > 0 && result.grade === 'REPELLED') {
+      const victory = await creditVictoryWreck(tx, {
+        hostPlayerId: defender.playerId, seasonId: mission.seasonId, field: wreck, now: defender.now,
+      });
+      const left = victory.field;
+      clanPurse = victory.purse;
+      wreck = left.alloy + left.crystal + left.deuterium >= DEBRIS.minimum ? left : null;
+    }
     const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
     const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
 
@@ -1295,7 +1315,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
       targetKind: 'PLAYER',
-      admirals: [...reportAdmirals('attack', escort), ...stationAdmirals(stations)],
+      admirals: [...reportAdmirals('attack', escort), ...stationAdmirals(fought)],
       defenderCount,
       grade: result.grade,
       rounds: result.rounds,
@@ -1306,7 +1326,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       // The two rosters that were on the board. Each side is shown only its own.
       attackerFleet: attackingFleet,
       // The whole line that stood — the host's and every clanmate wave's.
-      defenderFleet: lineOf(stood, stations),
+      defenderFleet: lineOf(stood, fought),
       defenceSalvage: result.defenceSalvage,
       attackerDamage,
       defenderDamage,
@@ -1317,6 +1337,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       // Below `DEBRIS.minimum` no field is written at all, so the report says
       // none rather than advertising wreckage nobody can fly out and collect.
       wreckValue,
+      clanPurse,
       salvage,
       cargoLimited,
       shieldAbsorbed,
@@ -1346,6 +1367,14 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     if (!reportRow) throw new Error('battle report insert returned no row');
     await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: reportRow.id }, seasonId: mission.seasonId, capture: replayCapture, result,
       context: { environment: 'PLANET', aegisCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), defenceOffline: defenceDark, escape: raid.escape, control: null }, at: defender.now });
+    await notifyLiftedSupporters(tx, {
+      missionId,
+      hostPlanetId: defender.planetId,
+      hostPlanetName: defender.name,
+      stations,
+      escape: raid.escape,
+      now: defender.now,
+    });
     if (supportedLine) {
       /*
         A SUPPORTED LINE KEEPS ITS OWN JOURNAL. `dominion_events` holds one attacker and
@@ -1362,7 +1391,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           power: hostPower,
           lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
         },
-        stations,
+        stations: fought,
         outcomes: result.defenders,
         hostDelta: scoreEligible ? defenderDominionSwing : 0,
         now: defender.now,
@@ -1405,8 +1434,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         grade: result.grade,
         hostPlanetId: defender.planetId,
         hostPlanetName: defender.name,
-        stations,
+        stations: fought,
         outcomes: result.defenders,
+        attackerLost: fleetCount(result.attackerLosses),
         now: defender.now,
       });
     } else {
@@ -1970,10 +2000,7 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     if (live?.status !== 'in_flight') return;
     // Y9: a commander ship escorting the raid is named on the warning (owner 2026-10-25).
     const escort = await admiralForFlight(tx, 'mission', mission.id);
-    await notify(tx, {
-      playerId: target.controllerPlayerId,
-      kind: mission.kind === 'death_star' ? 'strategic_incoming' : 'incoming_fleet',
-      payload: {
+    const warning: Record<string, unknown> = {
         ...(escort ? { admiral: { ship: escort.ship, level: escort.level } } : {}),
         /**
          * THE INSTANT, not only the countdown. D39, applied to a notification.
@@ -2020,10 +2047,25 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
                   )),
             }
           : {}),
-      },
+    };
+    await notify(tx, {
+      playerId: target.controllerPlayerId,
+      kind: mission.kind === 'death_star' ? 'strategic_incoming' : 'incoming_fleet',
+      payload: warning,
       at: now,
       refId: missionId,
     });
+    // F2 Klan Alarmı: the same warning, to the clanmates who could send support.
+    if (mission.kind !== 'death_star') {
+      await raiseClanAlarm(tx, {
+        seasonId: mission.seasonId,
+        missionId,
+        arriveAt: mission.arriveAt,
+        host: { playerId: target.controllerPlayerId, planetId: target.id, posture: target.defencePosture },
+        warning,
+        now,
+      });
+    }
     // Bildirim Merkezi: the radar has it now; the paid push leaves at the commander's lead.
     await armPaidAlert(tx, {
       seasonId: mission.seasonId,
@@ -2527,6 +2569,11 @@ async function freezeSeason(
             : identity.get(opponentId)?.commanderName ?? 'Unknown commander' };
         }
       }
+      // F2 E3: the watches stood for clanmates, and how many of those raids were repelled.
+      const watches = mine.filter((report) => mySupportShares.get(report.id)?.role === 'SUPPORT');
+      const support = watches.length > 0
+        ? { stood: watches.length, held: watches.filter((report) => report.grade === 'REPELLED').length }
+        : null;
       const rivalEntry = [...rivalCounts.entries()]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
       const rival = rivalEntry
@@ -2640,6 +2687,7 @@ async function freezeSeason(
           defences,
           rival,
           biggestRaid: biggest,
+          ...(support ? { support } : {}),
           clan,
         },
         statsVersion: stats.version,

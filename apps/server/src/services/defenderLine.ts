@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   clanDefenseApplies,
   combatValue,
@@ -17,10 +17,13 @@ import {
   type HullId,
   type Resources,
   type SupportFactor,
+  supportAccepted,
   supportFactor,
+  type EscapeOutcome,
 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
-import { clanSupportBattleResults, clanSupportWaves } from '../db/schema.js';
+import { accounts, clanSupportBattleResults, clanSupportWaves, players } from '../db/schema.js';
+import { postClanEvent } from './clanChatEvents.js';
 import { activeClanMembership } from './clanCombat.js';
 import { loseWave, lockWaves, publishSupport, returnWave, shipsOf, supportFlightTech } from './clanSupport.js';
 import type { WaveRow } from './clanSupportView.js';
@@ -41,10 +44,12 @@ import type { ReportAdmiral } from '../db/schema.js';
  *   1. `lockStationsAt` — the STATIONED waves at the world, locked after the world and
  *      before any clan or player row (season → planets → waves → clans → players);
  *   2. `standStations` — each wave re-checked at the instant of the fight: same clan,
- *      inside the host's tier band, the world still at SUPPORT. One that fails goes home
- *      untouched before a shot (owner K3); the rest become owned stacks;
- *   3. `settleStations` — each wave's survivors and damage written back to its own row;
- *   4. `supportFactorOf` / `writeDefenderResults` / `notifySupporters`.
+ *      inside the host's tier band, the world still taking support. One that fails goes
+ *      home untouched before a shot (owner K3); the rest become owned stacks;
+ *   3. `foughtStations` — the waves that fought: none when the line lifted together (F1);
+ *   4. `settleStations` — each wave's survivors and damage written back to its own row;
+ *   5. `supportFactorOf` / `writeDefenderResults` / `notifySupporters`, or
+ *      `notifyLiftedSupporters` when the line ran.
  */
 
 export interface Station {
@@ -82,7 +87,7 @@ export async function standStations(
   input: { waves: readonly WaveRow[]; host: LockedPlanet; rulesetVersion: number; now: Date },
 ): Promise<Station[]> {
   if (input.waves.length === 0) return [];
-  if (input.host.defencePosture !== 'SUPPORT') {
+  if (!supportAccepted(input.host.defencePosture)) {
     for (const wave of input.waves) await returnWave(tx, wave, 'HOST_CLOSED', input.now);
     return [];
   }
@@ -132,6 +137,14 @@ export async function standStations(
   }
   return stations;
 }
+
+/**
+ * THE WAVES THAT FOUGHT. When the whole line lifted (F1, owner 2026-11-10) the guns fought
+ * alone: no wave took a shot, so none is settled, weighed into D or written as a result —
+ * the battle books as an unsupported one (D = 1) and every wave stands exactly as it was.
+ */
+export const foughtStations = (stations: readonly Station[], escape: EscapeOutcome | null): readonly Station[] =>
+  escape?.kind === 'ESCAPED' ? [] : stations;
 
 /** One for the host, plus one per commander who stood at least one ship in the line. */
 export const defenderCountOf = (stations: readonly Station[]): number =>
@@ -295,10 +308,13 @@ export async function notifySupporters(
     hostPlanetName: string;
     stations: readonly Station[];
     outcomes: readonly DefenderOutcome[];
+    /** Attacking ships destroyed, for the clan room's line. */
+    attackerLost: number;
     now: Date;
   },
 ): Promise<void> {
-  for (const row of bySupporter(input.stations, input.outcomes)) {
+  const supporters = bySupporter(input.stations, input.outcomes);
+  for (const row of supporters) {
     await notify(tx, {
       playerId: row.playerId,
       kind: 'clan_support_result',
@@ -310,6 +326,60 @@ export async function notifySupporters(
         lost: fleetCount(row.losses),
         survived: fleetCount(row.survivors),
       },
+      at: input.now,
+      refId: input.missionId,
+    });
+  }
+  const first = input.stations[0]?.wave;
+  if (!first || supporters.length === 0) return;
+  // F2 E2: the clan's room hears how the line held, under the host's name; a repelled raid names
+  // the supporter who brought the most ships.
+  const hero = input.grade === 'REPELLED'
+    ? [...supporters].sort((a, b) => fleetCount(b.sent) - fleetCount(a.sent) || (a.playerId < b.playerId ? -1 : 1))[0]
+    : undefined;
+  const people = await tx.select({ playerId: players.id, name: accounts.displayName }).from(players)
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .where(inArray(players.id, [first.hostPlayerId, ...(hero ? [hero.playerId] : [])]));
+  const nameOf = (playerId: string) => people.find((row) => row.playerId === playerId)?.name ?? '';
+  await postClanEvent(tx, {
+    clanId: first.clanId,
+    seasonId: first.seasonId,
+    authorPlayerId: first.hostPlayerId,
+    event: { kind: 'DEFENCE', params: {
+      hostName: nameOf(first.hostPlayerId), hostPlanetName: input.hostPlanetName, grade: input.grade,
+      supporters: supporters.length, attackerLost: input.attackerLost, heroName: hero ? nameOf(hero.playerId) : null,
+    } },
+    now: input.now,
+  });
+}
+
+/**
+ * EVERY SUPPORTER WHOSE WAVE LIFTED WITH THE LINE HEARS IT ONCE (F1). Nothing of theirs fought,
+ * so there is no battle report for them to read — only that the wave ran and still stands.
+ */
+export async function notifyLiftedSupporters(
+  tx: Tx,
+  input: {
+    missionId: string;
+    hostPlanetId: string;
+    hostPlanetName: string;
+    stations: readonly Station[];
+    escape: EscapeOutcome | null;
+    now: Date;
+  },
+): Promise<void> {
+  if (input.escape?.kind !== 'ESCAPED') return;
+  const lifted = new Set((input.escape.support ?? []).map((row) => row.stackId));
+  const waves = new Map<string, number>();
+  for (const station of input.stations) {
+    if (!lifted.has(station.wave.id)) continue;
+    waves.set(station.wave.senderPlayerId, (waves.get(station.wave.senderPlayerId) ?? 0) + fleetCount(station.fleet));
+  }
+  for (const [playerId, ships] of [...waves].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    await notify(tx, {
+      playerId,
+      kind: 'clan_support_lifted',
+      payload: { hostPlanetId: input.hostPlanetId, hostPlanetName: input.hostPlanetName, ships },
       at: input.now,
       refId: input.missionId,
     });

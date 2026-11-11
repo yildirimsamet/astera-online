@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { readClanLedger } from '../services/clanLedger.js';
 import {
   acceptClanRequest,
   applyToClan,
@@ -134,6 +135,8 @@ const supportBody = z.object({
   fleet: mobileFleetSchema,
   /** The commander ship stands with the wave (Y9). */
   admiral: z.boolean().optional(),
+  /** F2 E1: sent from a clan alarm card; ties the wave to the call it answers. */
+  alarmId: z.string().uuid().optional(),
 }).strict();
 const waveParam = z.object({ waveId: z.string().uuid() }).strict();
 const warContributionBody = z.object({
@@ -203,6 +206,12 @@ export function registerClanRoutes(app: FastifyInstance): void {
   app.get('/api/clan/support', { preHandler: requireAuth }, async (req) => {
     const actor = await clanActor(app.db, req.accountId!);
     return readMySupport(app.db, actor.playerId, app.clock.now());
+  });
+
+  /** F2 P6 Katkı Defteri: who carries the clan this season. Members only. */
+  app.get('/api/clan/ledger', { preHandler: requireAuth }, async (req) => {
+    const actor = await clanActor(app.db, req.accountId!);
+    return readClanLedger(app.db, actor, app.clock.now());
   });
 
   /** Decides nothing: the send recomputes every figure under its own locks. */

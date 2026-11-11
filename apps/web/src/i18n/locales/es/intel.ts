@@ -483,6 +483,8 @@ export const reports = {
     /** Taktik geri çekilme. Defensor: qué despegó y cuánto quemó, o por qué no pudo. */
     escaped_one: "Tu nave despegó antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea defensiva.",
     escaped_other: "Tus {{count}} naves despegaron antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea defensiva.",
+    escapedSupport_one: '{{count}} nave de tu clan despegó gratis con las tuyas.',
+    escapedSupport_other: '{{count}} naves de tu clan despegaron gratis con las tuyas.',
     stranded: 'Tus naves habrían despegado, pero el depósito no alcanzó: hacían falta {{fuel}} de Deuterio y había {{available}}.',
     /** Atacante: la línea se vació ante el ataque; nada sobre lo que tenía. */
     fled: "Sus naves despegaron antes del combate: una línea superada que sería aniquilada se retira si tiene combustible suficiente.",
@@ -499,6 +501,7 @@ export const reports = {
       '{{hours}} h de tu producción perdida, neta, durante el último {{window}} h, más allá de la barra {{bar}} h, pero no se otorga ningún escudo mientras tu propia incursión está en el aire.',
     wreck: '{{amount}} entre los restos se desplaza sobre {{planet}}. Cualquiera puede ir y tomarlo.',
     /** The same field, read from the world it is drifting over. */
+    clanPurse: 'Botín de victoria: {{amounts}} fueron a la tesorería del clan.',
     wreckYours: '{{amount}} entre los restos está a la deriva en tu propia órbita. Cualquiera puede ir y tomarlo, incluido usted.',
     /** No orbit to name: the field sits at the rendezvous, in open space. */
     wreckVoid:

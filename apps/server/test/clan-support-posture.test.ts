@@ -49,25 +49,28 @@ describe('the two toggles', () => {
     const f = await supportWorld(2, 15_102);
     expect((await viewOf(f, 0)).defencePosture).toEqual({
       posture: 'ESCAPE',
+      stance: 'ESCAPE',
       escape: true,
       support: false,
       supportLocked: 'NOT_IN_CLAN',
     });
   });
 
-  it('refuses both on at once — the one state the rule forbids', async () => {
+  it('takes both on at once since F1 — the retreat and the support together', async () => {
     const f = await supportWorld(2, 15_103);
     await formClan(f, 0, [1]);
-    await expect(post(f, 0, { escape: true, support: true })).rejects.toMatchObject({ code: 'POSTURE_CONFLICT' });
-    expect(await stored(f, 0)).toBe('ESCAPE');
+    await post(f, 0, { escape: false, support: false });
+    await post(f, 0, { escape: true, support: true });
+    expect(await stored(f, 0)).toBe('ESCAPE_SUPPORT');
   });
 
   it('refuses support to a commander with no clan, and lets them hold', async () => {
     const f = await supportWorld(2, 15_104);
     await expect(post(f, 0, { escape: false, support: true })).rejects.toMatchObject({ code: 'NOT_IN_CLAN' });
     const held = await post(f, 0, { escape: false, support: false });
-    expect(held.planet.defencePosture).toMatchObject({ posture: 'HOLD', escape: false, support: false });
-    expect(await stored(f, 0)).toBe('HOLD');
+    expect(held.planet.defencePosture).toMatchObject({ posture: 'HOLD', stance: 'HOLD', escape: false, support: false });
+    // F1: the locked support switch keeps its stored default; it reads as HOLD until a clan.
+    expect(await stored(f, 0)).toBe('SUPPORT');
   });
 
   it('opens support for a member — even one still adapting — and closes the retreat with it', async () => {
@@ -77,6 +80,7 @@ describe('the two toggles', () => {
     expect(result.returnedWaves).toBe(0);
     expect(result.planet.defencePosture).toEqual({
       posture: 'SUPPORT',
+      stance: 'SUPPORT',
       escape: false,
       support: true,
       supportLocked: null,
@@ -90,7 +94,7 @@ describe('the two toggles', () => {
   it('refuses a world the caller does not hold', async () => {
     const f = await supportWorld(2, 15_106);
     await expect(post(f, 0, { escape: false, support: false }, 1)).rejects.toThrow();
-    expect(await stored(f, 1)).toBe('ESCAPE');
+    expect(await stored(f, 1)).toBe('ESCAPE_SUPPORT');
   });
 });
 
@@ -100,12 +104,12 @@ describe('leaving the clan drops a supporting world back to the retreat', () => 
     eq(notifications.kind, 'defence_posture_reset'),
   ));
 
-  it('on leave — a HOLD world stays held, a SUPPORT world returns to ESCAPE', async () => {
+  it('on leave — a HOLD world stays held, a SUPPORT world returns to the untouched ESCAPE_SUPPORT', async () => {
     const f = await supportWorld(3, 15_107);
     await formClan(f, 0, [1]);
     await post(f, 1, { escape: false, support: true });
     await f.db.transaction(async (tx) => leaveClan(tx, { actor: await clanActor(tx, f.accountIds[1]!), now: f.clock.now() }));
-    expect(await stored(f, 1)).toBe('ESCAPE');
+    expect(await stored(f, 1)).toBe('ESCAPE_SUPPORT');
     const told = await resets(f, 1);
     expect(told).toHaveLength(1);
     expect(told[0]!.payload).toMatchObject({ planetIds: [f.planetIds[1]!], planetNames: [(await namesOf(f, 1)).world] });
@@ -130,7 +134,7 @@ describe('leaving the clan drops a supporting world back to the retreat', () => 
       playerId: f.playerIds[2]!,
       now: f.clock.now(),
     }));
-    expect(await stored(f, 2)).toBe('ESCAPE');
+    expect(await stored(f, 2)).toBe('ESCAPE_SUPPORT');
     expect(await stored(f, 1)).toBe('SUPPORT');
   });
 
@@ -143,7 +147,7 @@ describe('leaving the clan drops a supporting world back to the retreat', () => 
       now: f.clock.now(),
       acknowledgeTreasuryBurn: true,
     }));
-    for (const player of [0, 1, 2]) expect(await stored(f, player)).toBe('ESCAPE');
+    for (const player of [0, 1, 2]) expect(await stored(f, player)).toBe('ESCAPE_SUPPORT');
   });
 });
 
@@ -158,6 +162,7 @@ describe('the clan presence', () => {
     const f = await supportWorld(3, 15_108);
     await formClan(f, 0, [1, 2]);
     await post(f, 1, { escape: false, support: true });
+    await post(f, 0, { escape: true, support: false });
     const presence = await readClanPresence(f.db, f.playerIds[2]!);
     const worlds = new Map(presence!.members.flatMap((member) => member.worlds.map((world) => [world.planetId, world])));
     expect(worlds.get(f.planetIds[1]!)!.supportOpen).toBe(true);
@@ -167,6 +172,8 @@ describe('the clan presence', () => {
   it('tells every clanmate when a world opens or closes its door, and nobody else', async () => {
     const f = await supportWorld(4, 15_109);
     await formClan(f, 0, [1, 2]);
+    // A member's world opens by default since F1; close it so the opening below is news.
+    await post(f, 1, { escape: true, support: false });
     const bus = new EventBus(TEST_DATABASE_URL, pino({ level: 'silent' }));
     await bus.start();
     const heard = new Map<number, string[]>([[0, []], [2, []], [3, []]]);

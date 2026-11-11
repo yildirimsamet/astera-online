@@ -80,12 +80,12 @@ describe('the defence posture card', () => {
     expect(screen.getByRole('button', { name: /^save/i })).toBeDisabled();
   });
 
-  it('turns the retreat off the moment support is turned on, and only then offers Save', async () => {
+  it('keeps the retreat on when support is turned on (F1), and only then offers Save', async () => {
     const user = userEvent.setup();
     show(<DefencePostureCard planet={world('ESCAPE')} />);
     await user.click(toggle(/clan support/i));
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'true');
-    expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'false');
+    expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('button', { name: /^save/i })).toBeEnabled();
   });
 
@@ -113,6 +113,7 @@ describe('the defence posture card', () => {
     }));
     show(<DefencePostureCard planet={world('SUPPORT', { waves: [wave()] })} />, fetch);
     await user.click(toggle(/tactical retreat/i));
+    await user.click(toggle(/clan support/i));
     await user.click(screen.getByRole('button', { name: /^save/i }));
     expect(screen.getByText(/1 support wave home/i)).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();

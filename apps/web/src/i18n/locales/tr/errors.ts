@@ -308,7 +308,6 @@ export const errors = {
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: 'Yeni oyuncu kalkanın sürerken gemilerin başka bir komutanın dünyasında nöbet tutamaz',
   CLAN_SUPPORT_UNAVAILABLE: 'Klan savunması yeni sezonla gelir',
-  POSTURE_CONFLICT: 'Taktik geri çekilme ve klan desteği aynı anda açık olamaz',
   CLAN_SUPPORT_NONCOMBATANT: 'Destek dalgası bir savaş hattıdır: {{hull}} gidemez',
   CLAN_SUPPORT_SELF: 'Destek klan arkadaşına gider, kendi dünyalarına değil',
   CLAN_SUPPORT_TARGET: 'Bir klan arkadaşının tuttuğu dünyayı seç',

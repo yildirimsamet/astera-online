@@ -149,20 +149,18 @@ describe('the Core 16 cluster is still paced', () => {
 });
 
 /**
- * THE CLAN HANGAR DOES NOT RIDE THE DISCOUNT FOR FREE. Plan 2B.5, owner decision 2026-09-22.
- *
- * A clan rung buys TWICE the room and used to charge the personal invoice unchanged, so every cut
- * to the personal ladder halved the clan's price per unit of room without anybody choosing that.
- * The clan now pays twice the personal price for twice the room: the coupling is kept, the free
- * multiplier is closed, and a clan rung costs exactly what the same room costs at home.
+ * THE CLAN HANGAR RUNG COSTS THE PERSONAL INVOICE. Owner decision 2026-11-10 (F2), halving the
+ * 2026-09-22 "twice the invoice": the cost fell on one to three donors per clan, and the clan
+ * level now buys the perk ladder too. The coupling to the personal ladder is kept — a clan rung
+ * still moves with every personal cut — so a unit of clan room costs half a unit of personal room.
  */
 describe('what a clan Hangar rung costs', () => {
-  it('charges twice the personal invoice for twice the room', () => {
+  it('charges the personal invoice for twice the room', () => {
     for (let level = 1; level < HANGAR.maxLevel; level++) {
       const personal = buildingCost('HANGAR', level);
       const clan = clanLevelUpgradeCost(level);
-      expect(clan.alloy, `level ${String(level)}`).toBe(personal.alloy * 2);
-      expect(clan.crystal, `level ${String(level)}`).toBe(personal.crystal * 2);
+      expect(clan.alloy, `level ${String(level)}`).toBe(personal.alloy);
+      expect(clan.crystal, `level ${String(level)}`).toBe(personal.crystal);
     }
   });
 
@@ -172,14 +170,14 @@ describe('what a clan Hangar rung costs', () => {
     }
   });
 
-  /** So a unit of clan room costs the same as a unit of personal room, at every rung. */
-  it('prices a unit of clan room the same as a unit of personal room', () => {
+  /** So a unit of clan room costs half a unit of personal room, at every rung. */
+  it('prices a unit of clan room at half a unit of personal room', () => {
     for (let level = 2; level < HANGAR.maxLevel; level++) {
       const personalRoom = (HANGAR.capacity[level] ?? 0) - (HANGAR.capacity[level - 1] ?? 0);
       const clanRoom = clanHangarCapacity(level) - clanHangarCapacity(level - 1);
       const personalPer = resourceValue(buildingCost('HANGAR', level - 1)) / personalRoom;
       const clanPer = resourceValue(clanLevelUpgradeCost(level - 1)) / clanRoom;
-      expect(clanPer, `level ${String(level)}`).toBeCloseTo(personalPer, 6);
+      expect(clanPer, `level ${String(level)}`).toBeCloseTo(personalPer / 2, 6);
     }
   });
 });

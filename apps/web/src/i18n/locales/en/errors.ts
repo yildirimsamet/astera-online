@@ -339,7 +339,6 @@ export const errors = {
   /** Klan Savunma Desteği. */
   SHIELDED_SENDER_ships: 'While your newcomer shield lasts, your ships cannot stand at another commander’s world',
   CLAN_SUPPORT_UNAVAILABLE: 'Clan defence arrives with a new season',
-  POSTURE_CONFLICT: 'Tactical retreat and clan support cannot both be on',
   CLAN_SUPPORT_NONCOMBATANT: 'A support wave is a fighting line: {{hull}} cannot go',
   CLAN_SUPPORT_SELF: 'Support goes to a clanmate, not to your own worlds',
   CLAN_SUPPORT_TARGET: 'Choose a world a clanmate holds',

@@ -1,4 +1,5 @@
 import { GameActions } from '../session/seasonLock.js';
+import { sumFleets } from '../lib/fleetPage.js';
 import { Confirm } from '../ui/kit/Confirm.js';
 import { RadiationBombForgeHost } from './RadiationBombControls.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
@@ -77,6 +78,7 @@ import { FaultProvider, useFaults } from './faultScope.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { compact, decimal, factor, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
+import { supportLandingBefore } from '../lib/clanAlarm.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
 import { buildShare, deathStarsOf, hitsToTakeLoyalColony, interceptorsOf } from '../lib/strategic.js';
@@ -1506,6 +1508,8 @@ function Defend({
   const faults = useFaults();
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
+  // F2 E6: support in the air is weighed against the next raid; a half-minute clock is plenty.
+  const now = useNow(30_000);
   const instrument = useInstrumentAction(planet, onFlash);
   const aegis = instrument('AEGIS', instrumentLabel('AEGIS'), onNeed);
   const shipyard = planet.buildings.SHIPYARD ?? 0;
@@ -1542,7 +1546,10 @@ function Defend({
       {!lesson && <DefenceReadings planet={planet} />}
       {escapeRuled && (
         <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
-          rulesetVersion={planet.rulesetVersion ?? 0} posture={planet.defencePosture?.posture} />
+          rulesetVersion={planet.rulesetVersion ?? 0}
+          posture={planet.defencePosture ? planet.defencePosture.stance ?? planet.defencePosture.posture : undefined}
+          support={sumFleets(...(planet.clanSupport?.waves ?? []).filter((wave) => wave.status === 'STATIONED').map((wave) => wave.fleet))}
+          arriving={supportLandingBefore(planet.clanSupport?.waves ?? [], planet.clanSupport?.alarms, now)} />
       )}
 
       <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />

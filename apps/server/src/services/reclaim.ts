@@ -9,6 +9,7 @@ import {
   attackCommitments,
   battleReports,
   clanSupportBattleResults,
+  clanAlarms,
   clanSupportWaves,
   buildOrders,
   buildings,
@@ -731,6 +732,12 @@ export async function demolish(
   await tx.delete(researchOrders).where(or(
     eq(researchOrders.playerId, playerId),
     inArray(researchOrders.fundingPlanetId, planetIds),
+  ));
+  // Klan Alarmı (F2): a clan's call names the raid, the host and the world; it goes before all three.
+  await tx.delete(clanAlarms).where(or(
+    eq(clanAlarms.hostPlayerId, playerId),
+    inArray(clanAlarms.hostPlanetId, planetIds),
+    ...(missionIds.length > 0 ? [inArray(clanAlarms.missionId, missionIds)] : []),
   ));
   if (missionIds.length > 0) await tx.delete(missions).where(inArray(missions.id, missionIds));
 

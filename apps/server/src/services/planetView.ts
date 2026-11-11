@@ -282,7 +282,8 @@ export function buildPlanetView(data: PlanetViewData) {
     resumes the same vessels; an outage does not shrink them.
   */
   // D212: Silent Space halves what runs; every ceiling below keeps reading the rated figure.
-  const pace = p.vacationUntil ? 0 : p.silentSpace ? SILENT_SPACE.productionPace : 1;
+  // F2 Ortak Ocak: the clan's share runs on top, exactly as the tick applies it.
+  const pace = (p.vacationUntil ? 0 : p.silentSpace ? SILENT_SPACE.productionPace : 1) * (1 + p.clanBonus);
   const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy * pace;
   const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal * pace;
   const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium * pace;

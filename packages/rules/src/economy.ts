@@ -882,6 +882,12 @@ export interface PlanetEconomyInput {
    * figure, so leaving Silent Space never clamps a buffer down to a smaller vessel.
    */
   pace?: number;
+  /**
+   * ORTAK OCAK (Klan Rafinerisi V1, F2 2026-11-10): the clan's share on what the works make,
+   * from `clanRefineryBonus`. Like `pace` it moves only the produced rate; every ceiling keeps
+   * the rated figure, so the vessel fills sooner and is never made bigger. Absent: none.
+   */
+  clanBonus?: number;
   /** Undefined: current tempo. Null: legacy pending adoption. An instant preserves earlier output. */
   productionTempoStartsAtMinutes?: number | null;
   /**
@@ -983,10 +989,14 @@ export function advanceEconomy(
 
   const pace = input.pace ?? 1;
   if (!(pace >= 0 && pace <= 1)) throw new RangeError(`production pace must lie in [0, 1], got ${String(pace)}`);
+  const clanBonus = input.clanBonus ?? 0;
+  if (!(clanBonus >= 0 && clanBonus < 1)) throw new RangeError(`clan production share must lie in [0, 1), got ${String(clanBonus)}`);
+  // The share multiplies last, so a world with none reads bit for bit the figure it always did.
+  const share = 1 + clanBonus;
   const faults = input.faults;
-  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace * outputFactor;
-  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace * outputFactor;
-  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD * pace * outputFactor;
+  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace * outputFactor * share;
+  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace * outputFactor * share;
+  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD * pace * outputFactor * share;
   const maxShield = shieldHp(input.aegisLevel);
 
   /*

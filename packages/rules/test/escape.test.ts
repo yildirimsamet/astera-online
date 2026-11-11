@@ -195,13 +195,15 @@ describe('resolveRaid', () => {
       .toEqual({ kind: 'STRANDED', ships: line, fuel, available: fuel - 1 });
   });
 
-  it('never lifts a supported line, and rejects a caller that enables both rules', () => {
+  it('keeps a supported SUPPORT line standing, and lifts an ESCAPE_SUPPORT line with its waves (F1)', () => {
     const support: DefenderStack[] = [{
       stackId: 'support', playerId: 'ally', fleet: { DART: 5 }, tech: NONE,
     }];
     const wing: Fleet = { VIPER: 600 };
     expect(raid(wing, LINE, { escape: false, support }).escape).toBeNull();
-    expect(() => raid(wing, LINE, { support })).toThrow('a line holding clan support never lifts');
+    const lifted = raid(wing, LINE, { support });
+    expect(lifted.escape?.kind).toBe('ESCAPED');
+    expect(lifted.escape?.kind === 'ESCAPED' ? lifted.escape.support : null).toEqual([{ stackId: 'support', ships: { DART: 5 } }]);
   });
 
   it('preserves sub-bp attacker damage when an escape becomes a walkover', () => {

@@ -1,4 +1,6 @@
 import { openUnknownSignal } from '../lib/unknownSignal.js';
+import { clanAlarmOf } from '../lib/clanAlarm.js';
+import { openClanAlarm } from '../lib/clanAlarmDoor.js';
 import { z } from 'zod';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -228,14 +230,31 @@ export function SignalsFeed({
   onFocusMonument?: (monumentId: string) => void;
 }) {
   const { t } = useTranslation();
-  const { events, groups, status, now } = useSignalFeed();
+  const { events, groups: all, status, now } = useSignalFeed();
+  // A clan alarm is true right now while its raid is in the air (owner 2026-11-11); landed, it is history.
+  const live = all.filter((entry) => (clanAlarmOf(entry.event)?.arriveAt.getTime() ?? 0) > now);
+  const groups = all.filter((entry) => !live.includes(entry));
+  const row = (entry: (typeof all)[number]) => (
+    <Event
+      onFocusMonument={onFocusMonument}
+      key={entry.event.id}
+      event={entry.event}
+      repeats={entry.repeats}
+      unread={!entry.event.seen || justRead.has(entry.event.id)}
+      now={now}
+      onGo={onGo}
+      onFocusPlanet={onFocusPlanet}
+    />
+  );
+  const rightNow = status.length > 0 || live.length > 0;
 
   return (
     <>
-      {status.length > 0 && (
+      {rightNow && (
         <div className="mb-6 mt-2">
           <p className="legend mb-2">{t('signals.statusHeading')}</p>
           <div className="plate plate-inset">
+            {live.map(row)}
             {status.map((item) => (
               <button
                 key={item.line}
@@ -266,26 +285,15 @@ export function SignalsFeed({
       )}
 
       {/* A heading only when "Right now" stands above it to be told apart from. */}
-      {status.length > 0 && <p className="legend mb-2">{t('signals.eventsHeading')}</p>}
-      {events.length === 0 ? (
+      {rightNow && groups.length > 0 && <p className="legend mb-2">{t('signals.eventsHeading')}</p>}
+      {groups.length === 0 && live.length > 0 ? null : events.length === 0 ? (
         <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
           <BellIcon className="size-10 text-faint" />
           <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
         </div>
       ) : (
         <div className="plate plate-inset">
-          {groups.map((entry) => (
-            <Event
-              onFocusMonument={onFocusMonument}
-              key={entry.event.id}
-              event={entry.event}
-              repeats={entry.repeats}
-              unread={!entry.event.seen || justRead.has(entry.event.id)}
-              now={now}
-              onGo={onGo}
-              onFocusPlanet={onFocusPlanet}
-            />
-          ))}
+          {groups.map(row)}
         </div>
       )}
     </>
@@ -356,8 +364,11 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   // Klan Savunma Desteği: the fight a supporter's ships stood in is a report like any
   // other; who is coming, who left and the posture reset are all on the world's sheet.
   clan_support_result: { panel: 'report', stop: 'battles' },
+  // F2 Klan Alarmı: the row opens the support sheet aimed at the clanmate's world.
+  clan_alarm: { panel: null },
   clan_support_inbound: { panel: 'planet' },
   clan_support_departed: { panel: 'planet' },
+  clan_support_lifted: { panel: 'planet' },
   defence_posture_reset: { panel: 'planet' },
   death_star_result: { panel: 'report', stop: 'battles' },
   strategic_intercepted: { panel: 'report', stop: 'battles' },
@@ -565,6 +576,12 @@ function Event({
           if (event.kind === 'unknown_signal_result' && event.refId) {
             onGo(null);
             openUnknownSignal(event.refId);
+            return;
+          }
+          const alarm = clanAlarmOf(event);
+          if (alarm) {
+            onGo(null);
+            openClanAlarm(alarm);
             return;
           }
           const monument = notificationMonumentTarget(event);

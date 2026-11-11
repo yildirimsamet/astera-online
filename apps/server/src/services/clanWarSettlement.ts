@@ -70,10 +70,13 @@ import {
   saveLedger,
 } from './battleSettlement.js';
 import { addDominionCounters } from './dominion.js';
+import { creditVictoryWreck } from './clanTreasury.js';
 import {
   defenderCountOf,
+  foughtStations,
   lineOf,
   lockStationsAt,
+  notifyLiftedSupporters,
   notifySupporters,
   settleStations,
   standStations,
@@ -347,6 +350,8 @@ export async function resolveClanWarBattle(
   const result = raid.result;
   // The host's own part of the line; the waves' survivors go back to their own rows.
   const hostOutcome = result.defenders[0]!;
+  // F1: a line that lifted together leaves every wave untouched; the guns' battle is the one booked.
+  const fought = foughtStations(stations, raid.escape);
   const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
   const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
   const stood: Fleet = {};
@@ -385,7 +390,7 @@ export async function resolveClanWarBattle(
       NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
     at: defender.now,
   });
-  await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
+  await settleStations(tx, { stations: fought, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
   // The lift burned before anything reached a hold (see the raid lane).
   const pvpBalance = await commanderPvpBalance(tx, defender.playerId);
@@ -501,7 +506,7 @@ export async function resolveClanWarBattle(
   const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
   const made = totalRaw * DEBRIS.share;
   const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
-  const { salvage, field: wreck } = settleWreck(
+  const { salvage, field: settled } = settleWreck(
     {
       alloy: share(flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses)),
       crystal: share(flyingCrystal(result.attackerLosses) + flyingCrystal(result.defenderLosses)),
@@ -511,6 +516,17 @@ export async function resolveClanWarBattle(
     },
     activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
   );
+  // E4 ZAFER KASASI (F2): a supported line that held pays half its wreck into the host's clan purse.
+  let wreck = settled;
+  let clanPurse: Resources | null = null;
+  if (wreck && fought.length > 0 && result.grade === 'REPELLED') {
+    const victory = await creditVictoryWreck(tx, {
+      hostPlayerId: defender.playerId, seasonId: mission.seasonId, field: wreck, now: defender.now,
+    });
+    clanPurse = victory.purse;
+    const left = victory.field;
+    wreck = left.alloy + left.crystal + left.deuterium >= DEBRIS.minimum ? left : null;
+  }
   const salvageShares = allocateJointSalvage(salvage, result.contributions.map((outcome) => ({
     playerId: outcome.playerId,
     contributionId: outcome.contributionId,
@@ -531,7 +547,7 @@ export async function resolveClanWarBattle(
   */
   const attackerCount = participantIds.length;
   // One for the host, plus every clanmate who stood a ship in the line (Klan Savunma Desteği).
-  const defenderCount = defenderCountOf(stations);
+  const defenderCount = defenderCountOf(fought);
   const base = scoreEligible
     ? dominionTransfer(
       lootUnits + result.defenderLossValue - result.attackerLossValue,
@@ -546,7 +562,7 @@ export async function resolveClanWarBattle(
   */
   const hostPower = combatValue(defenders);
   const adjusted = scoreEligible
-    ? defendedTransfer(base, supportLossOf(stations, result.defenders), attackerCount, supportFactorOf(hostPower, stations))
+    ? defendedTransfer(base, supportLossOf(fought, result.defenders), attackerCount, supportFactorOf(hostPower, fought))
     : 0;
 
   /*
@@ -649,7 +665,7 @@ export async function resolveClanWarBattle(
     targetPlanetId: defender.planetId,
     clanWarOperationId: operation.id,
     targetKind: 'PLAYER',
-    admirals: stationAdmirals(stations),
+    admirals: stationAdmirals(fought),
     grade: result.grade,
     rounds: result.rounds,
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
@@ -657,7 +673,7 @@ export async function resolveClanWarBattle(
     defenderLosses: result.defenderLosses,
     attackerFleet: aggregateOf(stacks),
     // The whole line that stood — the host's and every clanmate wave's.
-    defenderFleet: lineOf(stood, stations),
+    defenderFleet: lineOf(stood, fought),
     defenderCount,
     defenceSalvage: result.defenceSalvage,
     attackerDamage,
@@ -666,6 +682,7 @@ export async function resolveClanWarBattle(
     fleetEscape: raid.escape,
     disruptedMinutes: 0,
     wreckValue: wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0,
+    clanPurse,
     salvage,
     cargoLimited,
     shieldAbsorbed,
@@ -769,6 +786,14 @@ export async function resolveClanWarBattle(
     ];
     await tx.insert(clanWarDominionEvents).values(audit);
   }
+  await notifyLiftedSupporters(tx, {
+    missionId: mission.id,
+    hostPlanetId: defender.planetId,
+    hostPlanetName: defender.name,
+    stations,
+    escape: raid.escape,
+    now,
+  });
   if (defenderCount > 1) {
     await writeDefenderResults(tx, {
       seasonId: mission.seasonId,
@@ -779,7 +804,7 @@ export async function resolveClanWarBattle(
         power: hostPower,
         lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       },
-      stations,
+      stations: fought,
       outcomes: result.defenders,
       hostDelta: -adjusted,
       now,
@@ -790,8 +815,9 @@ export async function resolveClanWarBattle(
       grade: result.grade,
       hostPlanetId: defender.planetId,
       hostPlanetName: defender.name,
-      stations,
+      stations: fought,
       outcomes: result.defenders,
+      attackerLost: fleetCount(result.attackerLosses),
       now,
     });
   }

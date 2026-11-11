@@ -41,6 +41,14 @@ afterEach(async () => {
 });
 
 describe('the personal season ending', () => {
+  it('remembers the watches stood for clanmates (F2 E3)', () => {
+    render(<SeasonRecap result={result({ recap: { ...result().recap, support: { stood: 7, held: 3 } } })} galaxy="Vantage" onClose={vi.fn()} />);
+    expect(screen.getByText('7 watches for clanmates · 3 raids repelled')).toBeInTheDocument();
+  });
+  it('says nothing about watches a commander never stood', () => {
+    render(<SeasonRecap result={result()} galaxy="Vantage" onClose={vi.fn()} />);
+    expect(screen.queryByText(/watches for clanmates/)).toBeNull();
+  });
   it('celebrates the Honor place first while preserving the independent Dominion score', () => {
     render(<SeasonRecap result={result({ finalRank: 9, honorRank: 2, honorScore: 120_500_000 })} galaxy="Vantage" players={50} onClose={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Vanguard' })).toBeInTheDocument();

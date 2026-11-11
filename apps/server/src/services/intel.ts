@@ -51,7 +51,9 @@ import {
   centerReading,
   centerStatus,
   type CenterReading,
+  supportAccepted,
 } from '@astera/rules';
+import { clanLevelOf } from './clanPerks.js';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -75,6 +77,8 @@ import {
   type ProbeSupportReading,
 } from '../db/schema.js';
 import { standingSupportAt } from './clanSupportView.js';
+import { activeClanMembership } from './clanCombat.js';
+import { effectivePosture } from './defencePosture.js';
 import { announceUnlocks } from './notifications.js';
 import { commanderDeuteriumPerHour } from './notificationCenter.js';
 import {
@@ -938,6 +942,8 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
       : undefined,
     // D212: a Silent Space world's works run at half pace, and the report must say so.
     season.role === 'WAITING' ? SILENT_SPACE.productionPace : 1,
+    // F2 Ortak Ocak: the share frozen on the world at its last write, as the owner's tick applies it.
+    target.clanBonus,
   ).state;
 }
 
@@ -1098,16 +1104,22 @@ export async function resolveProbe(
     KLAN SAVUNMA DESTEĞİ (owner K9). The posture is a setting, read exactly; the clanmates'
     ships standing there are a reading of their own beside the home fleet's, fuzzed by the
     same accuracy on streams of their own, so not one band above moved when this arrived.
-    Only a SUPPORT world can hold any, so every other posture reports none.
+    Only a world taking support can hold any, so every other posture reports none. The posture
+    read is the one in effect: outside a clan the door is shut whatever the setting (F1).
   */
   const [targetSeason] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
     .where(eq(seasons.id, target.seasonId));
-  const postureRead = target.kind !== 'NEUTRAL' && target.controllerPlayerId !== null
+  const targetMembership = target.kind !== 'NEUTRAL' && target.controllerPlayerId !== null
     && clanDefenseApplies(targetSeason?.rulesetVersion ?? 0)
-    ? target.defencePosture
+    ? await activeClanMembership(tx, target.controllerPlayerId)
+    : undefined;
+  const postureRead = targetMembership !== undefined
+    ? effectivePosture(target.defencePosture, targetMembership !== null)
     : null;
+  // F2 E5: the rung the target's clan has bought, read like the posture — a setting, exact.
+  const clanLevelRead = targetMembership ? await clanLevelOf(tx, targetMembership.clanId) : null;
   let supportRead: ProbeSupportReading | null = null;
-  if (postureRead === 'SUPPORT' && target.controllerPlayerId !== null) {
+  if (postureRead !== null && supportAccepted(postureRead) && target.controllerPlayerId !== null) {
     const standingSupport = await standingSupportAt(tx, {
       hostPlanetId: target.id,
       hostPlayerId: target.controllerPlayerId,
@@ -1267,6 +1279,7 @@ export async function resolveProbe(
     fleetHome: !anyAway,
     posture: postureRead,
     support: supportRead,
+    clanLevel: clanLevelRead,
     strategicStatus,
     /**
      * WHAT THE CRAFT COULD SIMPLY SEE. D127.

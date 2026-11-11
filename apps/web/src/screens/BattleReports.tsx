@@ -1193,6 +1193,15 @@ function DefenseLineForces({ report }: { report: OrdinaryReport }) {
     : factor === 1
       ? t('clanSupport.lineFactorFlat')
       : t('clanSupport.lineFactor', { factor: factorLabel(factor) });
+  /*
+    F2 E3 NÖBET ŞANI: a line that held names the supporter who brought the most ships to it —
+    what they sent where the reader was told it, what they lost otherwise.
+  */
+  const hero = report.grade === 'REPELLED'
+    ? line.members.filter((member) => member.role === 'SUPPORT')
+      .map((member) => ({ member, ships: unitCount(member.sent ?? member.losses) }))
+      .sort((a, b) => b.ships - a.ships || a.member.name.localeCompare(b.member.name))[0] ?? null
+    : null;
   return (
     <section data-defense-line aria-label={t('clanSupport.lineTitle')}
       className="mt-3 rounded-control border border-v2-line bg-v2-deep/40 p-3">
@@ -1202,6 +1211,14 @@ function DefenseLineForces({ report }: { report: OrdinaryReport }) {
           {t('clanSupport.lineCount', { count: line.defenderCount })}
         </span>
       </h3>
+      {hero && (
+        <p data-line-hero="" className="mt-1.5 flex items-center gap-1.5 rounded-control border border-v2-premium/40 bg-v2-premium/10 px-2 py-1 text-micro font-semibold text-v2-premium">
+          <span aria-hidden="true">★</span>
+          <span className="min-w-0">{hero.member.sent
+            ? t('clanSupport.lineHero', { name: hero.member.name, count: hero.ships })
+            : t('clanSupport.lineHeroName', { name: hero.member.name })}</span>
+        </p>
+      )}
       <ul className="mt-1 divide-y divide-v2-line/70">
         {line.members.map((member) => (
           <li key={member.playerId} className="flex items-center gap-2 py-1.5">
@@ -1262,10 +1279,13 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (escape?.kind === 'ESCAPED' && report.attacking) {
     lines.push({ key: 'escape', tone: 'text-v2-alloy', text: t('reports.effects.fled') });
   } else if (escape?.kind === 'ESCAPED' && escape.ships !== undefined && escape.fuel !== undefined) {
+    // F1: the clanmates' waves that ran with the line, free — said in the same line.
+    const lifted = (escape.support ?? []).reduce((sum, wave) => sum + fleetCount(wave.ships), 0);
+    const ran = t('reports.effects.escaped', { count: fleetCount(escape.ships), fuel: escape.fuel });
     lines.push({
       key: 'escape',
       tone: 'text-v2-self',
-      text: t('reports.effects.escaped', { count: fleetCount(escape.ships), fuel: escape.fuel }),
+      text: lifted > 0 ? `${ran} · ${t('reports.effects.escapedSupport', { count: lifted })}` : ran,
     });
   } else if (escape?.kind === 'STRANDED' && !report.attacking) {
     lines.push({
@@ -1381,6 +1401,13 @@ function Consequences({ report }: { report: OrdinaryReport }) {
             })
           : t('reports.effects.wreckYours', { amount: compact(report.wreckValue) }),
     });
+  }
+  // F2 E4 Zafer Kasası: half of a held line's wreck went home with the clan, said beside the field.
+  const purse = report.clanPurse;
+  if (!report.attacking && purse && purse.alloy + purse.crystal + purse.deuterium >= 1) {
+    const amounts = (['alloy', 'crystal', 'deuterium'] as const).filter((key) => purse[key] >= 1)
+      .map((key) => `${full(purse[key])} ${t(`vocabulary.resource.${key}`)}`).join(' · ');
+    lines.push({ key: 'clanPurse', tone: 'text-v2-ally', text: t('reports.effects.clanPurse', { amounts }) });
   }
 
   /*

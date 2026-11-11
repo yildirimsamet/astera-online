@@ -30,6 +30,13 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 /** Dominion is persisted and transferred as an exact JavaScript-safe integer. */
 const dominionInteger = z.number().int().safe();
+/** F2: the clan tag's colour by clan level (L3 bronze · L6 silver · L10 gold); the level stays private. */
+export const clanTagTierSchema = z.enum(['BRONZE', 'SILVER', 'GOLD']);
+export type ClanTagTier = z.infer<typeof clanTagTierSchema>;
+const publicClanIdentity = z.object({
+  id: z.string(), name: z.string(), tag: z.string(), tier: clanTagTierSchema.nullable().optional(),
+});
+
 export const honorBenefitsSchema = z.object({ version: z.literal(1), score: dominionInteger,
   thresholds: z.object({ positive: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly(),
     negative: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly() }),
@@ -139,6 +146,8 @@ const fleetEscapeRecord = z.discriminatedUnion('kind', [
     kind: z.literal('ESCAPED'),
     ships: fleet.optional(),
     fuel: z.number().int().nonnegative().optional(),
+    /** F1: the clanmates' waves that lifted with the host's line, for free. The defender's copy only. */
+    support: z.array(z.object({ stackId: z.string(), ships: fleet })).optional(),
   }),
   z.object({
     kind: z.literal('STRANDED'),
@@ -312,6 +321,8 @@ export const seasonResultSchema = z.object({
     defences: z.number(),
     rival: z.object({ commanderName: z.string(), battles: z.number() }).nullable(),
     biggestRaid: z.object({ value: z.number(), opponentName: z.string() }).nullable(),
+    /** F2 E3: battles stood in a clanmate's line, and how many of them held; absent if none. */
+    support: z.object({ stood: z.number().int().nonnegative(), held: z.number().int().nonnegative() }).optional(),
     /** Final seasonal clan identity. Power is wiped; this story survives. D114. */
     clan: z.object({
       name: z.string(),
@@ -833,8 +844,14 @@ const radiationBombAsset = strategicAsset.extend({
 
 /* ── klan savunma desteği ─────────────────────────────────────── */
 
+/** The posture in effect, exactly. ESCAPE_SUPPORT (both toggles, F1) is new; `posture` keeps the three old ones. */
+const defenceStance = z.enum(['ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT']);
+export type DefenceStance = z.infer<typeof defenceStance>;
+
 export const defencePostureSchema = z.object({
   posture: z.enum(['ESCAPE', 'SUPPORT', 'HOLD']),
+  /** Absent from a server before F1, where `posture` is exact. */
+  stance: defenceStance.optional(),
   escape: z.boolean(),
   support: z.boolean(),
   supportLocked: z.enum(['NOT_IN_CLAN']).nullable(),
@@ -868,10 +885,35 @@ export const clanSupportWaveSchema = z.object({
   ]).nullable(),
   outOfBand: z.boolean(),
   battles: z.number().int().nonnegative(),
+  /** F2 E1: the clan alarm this wave answers; absent from a server before F2. */
+  alarmId: z.string().nullable().optional(),
+  /** F2 corridor: the soonest live raid on the host world, written beside the wave's landing. */
+  raidAt: z.coerce.date().nullable().optional(),
 });
 export type ClanSupportWave = z.infer<typeof clanSupportWaveSchema>;
 
 export const mySupportSchema = z.object({ waves: z.array(clanSupportWaveSchema) });
+
+/** F2 P6 KATKI DEFTERİ: every current member's season for the clan; members only. */
+const ledgerResources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
+export const clanLedgerSchema = z.object({
+  members: z.array(z.object({
+    playerId: z.string(),
+    name: z.string(),
+    donated: ledgerResources,
+    /** Given since the last rung was bought: the purse bar's split by donor. */
+    towardNext: ledgerResources,
+    supportWaves: z.number().int().nonnegative(),
+    supportShips: z.number().int().nonnegative(),
+    supportBattles: z.number().int().nonnegative(),
+    alarmAnswers: z.number().int().nonnegative(),
+    aidSent: z.number().int().nonnegative(),
+    jointWar: z.number().int().nonnegative(),
+    /** "Son 24 saat": deeds per hour, oldest first, the hour ending at the read last. */
+    lastDay: z.array(z.number().int().nonnegative()).length(24),
+  })),
+});
+export type ClanLedger = z.infer<typeof clanLedgerSchema>;
 
 export const clanSupportQuoteSchema = z.object({
   refusals: z.array(z.object({
@@ -1199,6 +1241,11 @@ export const planetSchema = z.object({
   clanSupport: z.object({
     room: supportRoomSchema,
     waves: z.array(clanSupportWaveSchema),
+    /** F2 E6: the clan's calls for this world still ahead of their raid; absent before F2. */
+    alarms: z.array(z.object({
+      id: z.string(), missionId: z.string(), arriveAt: z.coerce.date(),
+      called: z.number().int().nonnegative(), seen: z.number().int().nonnegative(), answered: z.number().int().nonnegative(),
+    })).optional(),
   }).nullable().optional(),
 });
 
@@ -1604,8 +1651,8 @@ export const galaxySchema = z.object({
         z.object({ kind: z.literal('PLAYER'), playerId: z.string(), displayName: z.string() }),
         z.object({ kind: z.literal('NEUTRAL'), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
       ]).optional(),
-      /** Public seasonal identity, never membership-private state. D114. */
-      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      /** Public seasonal identity, never membership-private state. D114. `tier` colours the tag (F2). */
+      clan: publicClanIdentity.nullable().optional(),
       /** Exact public Dominion rank only for the three podium commanders. */
       dominionRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       honorRanking: z.literal(true).optional(),
@@ -1798,7 +1845,7 @@ export const leaderboardSchema = z.object({
       score: dominionInteger,
       dominion: dominionInteger.optional(),
       honor: dominionInteger.optional(),
-      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      clan: publicClanIdentity.nullable().optional(),
     }),
   ),
   you: z
@@ -1813,7 +1860,7 @@ export const leaderboardSchema = z.object({
       score: dominionInteger,
       dominion: dominionInteger.optional(),
       honor: dominionInteger.optional(),
-      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      clan: publicClanIdentity.nullable().optional(),
       isBot: z.boolean().default(false),
     })
     .nullable(),
@@ -1872,6 +1919,8 @@ export const clanLeaderboardSchema = z.object({
   clans: z.array(publicClanSchema.extend({
     rank: z.number().int().positive(),
     self: z.boolean(),
+    /** F2 E3: battles its members stood in a clanmate's line this season; absent on an older server. */
+    watches: z.number().int().nonnegative().optional(),
   })),
 });
 
@@ -2212,9 +2261,12 @@ const clanMessageSchema = z.object({
   admin: z.boolean().optional(),
   username: z.string(),
   clanTag: z.string().nullable().optional(),
+  clanTier: clanTagTierSchema.nullable().optional(),
   content: z.string(),
   createdAt: z.coerce.date(),
   self: z.boolean(),
+  /** F2 E2: a line the server posted (alarm, wave, defence, rung); absent on a typed message. */
+  event: z.object({ kind: z.string(), params: z.record(z.string(), z.unknown()) }).nullable().optional(),
 });
 
 export const clanChatPageSchema = z.object({
@@ -2256,6 +2308,7 @@ const chatMessageSchema = z.object({
   planetId: z.string().optional(),
   username: z.string(),
   clanTag: z.string().nullable().optional(),
+  clanTier: clanTagTierSchema.nullable().optional(),
   content: z.string(),
   createdAt: z.coerce.date(),
   self: z.boolean(),
@@ -2578,6 +2631,10 @@ export const intelSchema = z.object({
        * `support` null where the posture cannot hold any.
        */
       posture: z.enum(['ESCAPE', 'SUPPORT', 'HOLD']).nullable().optional(),
+      /** F1: the posture exactly; `posture` reads ESCAPE_SUPPORT as ESCAPE for older clients. */
+      stance: defenceStance.nullable().optional(),
+      /** F2 E5: the target clan's level at the look (its alarm and corridor); absent outside a clan. */
+      clanLevel: z.number().int().min(1).max(10).optional(),
       support: z.object({
         supporters: z.number().int().nonnegative(),
         defence: band,
@@ -2636,6 +2693,8 @@ const pendingThread = z.object({
   monumentOrdinal: z.number().int().min(1).max(8).optional(),
   /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
   clanSupport: z.boolean().optional(),
+  /** F2 Klan Koridoru: a clan flight's first leg, drawn as the clan's fast lane. */
+  corridor: z.boolean().optional(),
   /** Y9: the commander ship flying at the rear of this craft; your own craft only. */
   admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
   /**
@@ -3041,6 +3100,8 @@ const ordinaryBattleReport = z.object({
       disruptedMinutes: z.number().default(0),
       /** What the fight left in orbit for whoever gets there first. */
       wreckValue: z.number().default(0),
+      /** F2 E4: what the defending clan's treasury took from the wreck; null to a raider or when nothing. */
+      clanPurse: resources.nullable().optional(),
       /**
        * What the attacker's Garbage Collectors lifted before the field formed. D200.
        * Both sides get it; absent on a report from a server that predates the hull.

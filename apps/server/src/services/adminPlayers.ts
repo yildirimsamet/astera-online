@@ -62,7 +62,8 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
       const leakedSoFar = leak ? { alloy: leak.leakedAlloy + world.pendingLeakAlloy,
         crystal: leak.leakedCrystal + world.pendingLeakCrystal, deuterium: leak.leakedDeuterium + world.pendingLeakDeuterium } : undefined;
       const { state } = economyAt(world, levels, hardware, season, now, faults.map(row => row.kind), leakedSoFar,
-        role === 'WAITING' ? SILENT_SPACE.productionPace : 1);
+        // F2 Ortak Ocak: the share frozen on the world, as the world itself is paid.
+        role === 'WAITING' ? SILENT_SPACE.productionPace : 1, world.clanBonus);
       const totals = world.controllerPlayerId ? resources.get(world.controllerPlayerId) : undefined;
       if (!totals) continue;
       totals.storage.alloy += state.alloy; totals.storage.crystal += state.crystal; totals.storage.deuterium += state.deuterium;

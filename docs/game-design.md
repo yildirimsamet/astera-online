@@ -502,12 +502,19 @@ guns disabled by a Core outage or EMP do not count until they are operational ag
   ships ran. No public galaxy event.
 - **The defence posture (ruleset 15, owner decision K4, 2026-10-01).** Each world has two
   toggles, *Taktik geri çekilme* and *Klan desteği kabul*, stored as one posture: `ESCAPE`
-  (the default — this rule as above), `SUPPORT` (clanmates may station ships; the line never
-  runs, even before help arrives) or `HOLD` (both off; the line always fights). Turning one on
-  turns the other off; a change is saved with a button and holds from the next battle. Support
-  stays switched off outside a clan. Leaving a clan, or a world changing hands, drops it back
-  to `ESCAPE`. The probe reads the posture exactly, and a world that cannot run draws no
-  retreat line on the raider's launch sheet.
+  (this rule as above), `SUPPORT` (clanmates may station ships; the line never runs, even
+  before help arrives), `HOLD` (both off; the line always fights) or `ESCAPE_SUPPORT` (both on —
+  F1, owner 2026-11-10, `docs/klan-savunma-kacis-f1-2026-11-10.md`). The toggles are
+  independent; a change is saved with a button and holds from the next battle.
+  `ESCAPE_SUPPORT` is the stored default for every world; support only takes effect while the
+  commander is in a clan, so outside one it reads (to everyone, the probe included) as `ESCAPE`.
+  Leaving a clan, or a world changing hands, turns a `SUPPORT` world back to `ESCAPE_SUPPORT`.
+  Under `ESCAPE_SUPPORT` the ratio, DECISIVE grade and five-ship floor are judged on the whole
+  line (host + every standing wave); if it fires, host and waves all lift, the host's tank pays
+  only for the host's ships, and the guns fight alone — booked as an unsupported battle (D = 1),
+  each wave untouched and its sender told (`clan_support_lifted`). A host tank that cannot pay
+  keeps the whole line, support included, in the fight. The probe reads the posture exactly,
+  and a world that cannot run draws no retreat line on the raider's launch sheet.
 
 ### Disruption
 
@@ -1315,7 +1322,8 @@ Replies can only target a message visible in the same room. Direct message histo
 reactions are cleared for players at season reset.
 
 The cooperation has three concrete answers to “why join?” First, members can send physical
-ship gifts or Hauler resource deliveries with a 10% travel bonus and one aid-only flight bay.
+ship gifts or Hauler resource deliveries on the clan corridor (first leg ×2 at founding, up to ×5
+by clan level; the return keeps the ordinary 10% lane) and one aid-only flight bay.
 A commander still behind the newcomer shield may receive aid but not send it (plan §15.6, the
 Sybil guard); the aid quote says so before the button does.
 Loaded transports return to their launch world after delivery; empty convoys transfer ownership.
@@ -1347,11 +1355,12 @@ plain-text messages. Either can block the other. If one enters Silent Space, the
 history stays readable and sending pauses until they return to their home galaxy. A new season
 clears player-facing DM history. Seasons before ruleset 10 have no clan levels or joint war. Ruleset 10 adds a
 ten-rung Clan Hangar and one joint operation per clan; it does not add officers, clan technology,
-shared radar or diplomacy.
+shared radar or diplomacy. Since F2 (2026-11-10) each rung also opens a perk; see Klan Perkleri below.
 
 Members fund the new ladder through a capped treasury. Every resource can accumulate only up to
-the next rung's exact price, every rung costs the matching personal Hangar upgrade, and the Clan
-Hangar holds twice that personal rung. Donations are irreversible, only the leader upgrades, and
+the next rung's exact price, every rung costs the matching personal Hangar upgrade (F2 halved it from
+twice that), and the Clan Hangar holds twice that personal rung. A treasury already above the new
+ceiling keeps its surplus and can still be spent; donations wait until it is back under. Donations are irreversible, only the leader upgrades, and
 disbanding destroys the remaining treasury with an audit entry.
 
 A joint operation begins when the leader marks a discovered hostile player world in Galaxy Focus.
@@ -1371,7 +1380,7 @@ creates five-person stories without creating a second technology or diplomacy ga
 
 ### Klan Savunma Desteği — the defending line (ruleset 15, owner decisions 2026-10-01)
 
-The counter to the joint war. A clanmate whose world stands at `SUPPORT` can receive **support
+The counter to the joint war. A clanmate whose world takes support (`SUPPORT` or `ESCAPE_SUPPORT`) can receive **support
 waves**: a mature member (12 h) outside the newcomer shield sends combat ships from one of their
 worlds, and the ships fight in the host's line against any raid — a single raider or a clan's
 joint strike. Full rules: `docs/clan-defense-support-plan.md`.
@@ -1382,12 +1391,13 @@ joint strike. Full rules: `docs/clan-defense-support-plan.md`.
 - **Who may stand there.** The sender must sit within the host's ±1 tier band, checked at
   dispatch and again at the battle; a wave that drifted out goes home untouched before the
   fight (K3). Membership is checked at dispatch, arrival and battle.
-- **Cost and time.** Round-trip fuel up front with no refund, the clan aid lane's 10% speed
-  bonus, and a normal flight bay held until the wave is home (K8). A wave stays at most 12 h
-  (clipped to the season) and then flies home on its own.
+- **Cost and time.** Round-trip fuel up front with no refund, the clan corridor's speed on the way
+  out (the return flies the ordinary 10% lane), and a normal flight bay held until the wave is home
+  (K8). A wave stays at most 12 h — 18 h from clan level 4, 24 h from level 8 — clipped to the
+  season, and then flies home on its own.
 - **Control.** The sender turns it back in flight (the normal recall rule) or calls it home any
   time after it lands; the host sends any wave back; closing `SUPPORT` sends every wave home after
-  an inline confirmation (K7). Leaving or being removed from the clan sends a commander's waves
+  an inline confirmation (K7); switching only the retreat keeps them. Leaving or being removed from the clan sends a commander's waves
   home, both directions.
 - **The battle.** Every supporter fights with their own live research and damage lots; the
   host's guns and Aegis cover the whole line. The host's home fleet, dock, recovery shield and
@@ -1402,8 +1412,44 @@ joint strike. Full rules: `docs/clan-defense-support-plan.md`.
   it from the probe, and the report states it. Season stats count each defender's own losses.
 - **Information.** The probe shows the posture exactly and a separate *Klan desteği* reading
   (supporters, power band, ship band); the raider's launch sheet adds it to the enemy bar.
-  Incoming-attack warnings are never shared with the clan or the supporters (K10). Battle
+  Before clan level 2 incoming-attack warnings are never shared (K10); from level 2 the Klan
+  Alarmı copies the host's own radar warning to the clan (below). Battle
   reports show the defending line; the raider reads names and losses only.
+
+### Klan Perkleri — the clan level as a perk ladder (F2, owner decisions 2026-11-10)
+
+Full plan: `docs/klan-perkleri-f2-plan-2026-11-10.md`; the table is `@astera/rules` `clanPerks.ts`.
+Each rung opens one perk the moment the leader raises it. None touches attack, armour or shields.
+
+| Level | Perk |
+|---|---|
+| 1 | Klan Koridoru ×2 (from founding) |
+| 2 | Klan Alarmı |
+| 3 / 5 / 7 | Koridor ×3 / ×4 / ×5 |
+| 4 / 8 | Uzun Nöbet: support stands 18 h / 24 h |
+| 6 / 9 | Ortak Ocak: +1% / +2% production per active member |
+| 10 | Altın Sancak (cosmetic) |
+
+- **Corridor.** Only the first leg of a clanmate flight — aid, a support wave, a joint-war wave
+  to the staging world — and it replaces the 10% lane there. Returns, fuel and the joint strike
+  are unchanged. Clans of seasons dealt before the joint war have no level and keep the lane.
+- **Alarm.** When a member's radar warns of a raid on a world whose support door is open, the
+  host's own `incoming_fleet` payload is copied to every mature clanmate, once per raid. No radar,
+  a closed door or a Death Star raises nothing. A wave sent from the alarm is tied to it, so the
+  host reads who saw the call and when the first answer lands against the raid.
+- **Ortak Ocak.** "Active" is an order given in the last 24 hours. The share multiplies the
+  production rate last; storage ceilings stay nominal.
+- **Zafer Kasası (E4).** A raid repelled by a supported line sends half of each resource of the
+  wreck to the host's clan treasury, up to the treasury's room; the rest stays in orbit.
+- **Visibility.** The clan screen shows the banner and the Katkı Defteri (each member's donations,
+  support waves, alarm answers, aid and joint-war waves). A probe reads the target clan's level, so
+  a raider sees the alarm and the corridor speed (E5). A held line's report names its hero (E3);
+  the season recap counts a supporter's watches and repelled raids, and the clan ladder counts
+  each clan's watches this season.
+- **Clan room feed (E2).** The alarm, every wave sent, a supported defence's result and a rung
+  bought are posted to the clan chat by the server, under the commander they are about. They are
+  stored as a kind and its facts and worded in the reader's language; they never spend anyone's
+  chat allowance.
 
 ## Competition — Dominion
 

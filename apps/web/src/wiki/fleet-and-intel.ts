@@ -122,19 +122,19 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
   topic('combat', 'retreat', l('Defence posture & tactical retreat', 'Savunma duruşu ve taktik çekilme'),
     l("Choose Hold, tactical retreat or clan support. Learn the ship, strength and fuel requirements for an automatic retreat.", "Savaş, taktik çekilme veya klan desteğini seç. Otomatik çekilme için gereken gemi, güç ve yakıt koşullarını öğren."),
     l([
-      "Your planet can hold and fight, allow tactical retreat, or accept clan support. Retreat and support cannot be active together. Enabling retreat does not avoid every raid.",
+      "Your planet can hold and fight, allow tactical retreat, or accept clan support. Retreat and support can both be on: then the ratio is measured against the whole line, support included, and everyone lifts together for the host’s fuel alone. Enabling retreat does not avoid every raid.",
       "Retreat needs the minimum armed-ship count, enough deuterium and a raid that would decisively defeat the standing defence. The attacker’s power must also meet the ratio below against the defending line’s power: classes, research, wounds and Aegis count, transports do not. Transports do not satisfy the armed-ship minimum either.",
       "If the requirements fail, the fleet fights. Successful retreat preserves the ships but spends fuel. Ground defences stay and can still fight with Aegis. The planet’s unprotected resources can still be looted.",
     ], [
-      "Gezegenin savaşabilir, taktik çekilmeyi açabilir veya klan desteği kabul edebilir. Çekilme ve destek aynı anda açık olamaz. Taktik çekilmeyi açmak her akından kaçmanı sağlamaz.",
+      "Gezegenin savaşabilir, taktik çekilmeyi açabilir veya klan desteği kabul edebilir. Çekilme ve destek birlikte açık olabilir: o zaman oran destek dahil tüm hatta göre ölçülür ve herkes yalnız ev sahibinin yakıtıyla birlikte kalkar. Taktik çekilmeyi açmak her akından kaçmanı sağlamaz.",
       "Çekilme için asgari savaş gemisi sayısı, yeterli döteryum ve mevcut savunmayı kesin yenilgiye uğratacak saldırı gerekir. Saldıranın gücü de savunan hattın gücüne karşı aşağıdaki oranı karşılamalıdır: sınıflar, araştırmalar, hasar ve Aegis sayılır; nakliye gemileri sayılmaz. Nakliye gemileri asgari savaş gemisi sayısına da dahil değildir.",
       "Koşullar sağlanmazsa filo savaşır. Başarılı çekilme, yakıt harcayarak gemileri korur. Yer savunmaları kalır ve Aegis ile savaşabilir. Gezegenin korumasız kaynakları yine yağmalanabilir.",
     ]),
     l([
-      "Choose retreat to preserve ships, or [[clan.support|clan support]] to reinforce defence. Support puts allied ships at risk and changes the host’s Dominion calculation. Check the posture preview for required fuel.",
+      "Turn on retreat to preserve ships, [[clan.support|clan support]] to reinforce defence, or both. Support puts allied ships at risk and changes the host’s Dominion calculation. Check the posture preview for required fuel.",
       "A probe records posture at observation time. The owner can change it later. A retreat setting does not prove the target will be undefended when your raid arrives.",
     ], [
-      "Gemileri korumak için çekilmeyi, savunmaya takviye için [[clan.support|klan desteğini]] değerlendir. Destek, gelen gemileri riske sokar ve ev sahibinin Hâkimiyet hesabını değiştirir. Gereken yakıtı savunma duruşu önizlemesinden kontrol et.",
+      "Gemileri korumak için çekilmeyi, savunmaya takviye için [[clan.support|klan desteğini]] ya da ikisini birden aç. Destek, gelen gemileri riske sokar ve ev sahibinin Hâkimiyet hesabını değiştirir. Gereken yakıtı savunma duruşu önizlemesinden kontrol et.",
       "Sonda, gözlem anındaki savunma duruşunu kaydeder. Sahibi bunu sonradan değiştirebilir. Çekilme ayarı, akının vardığında hedefin savunmasız olacağını kanıtlamaz.",
     ]), ['clan.support', 'combat.eligibility', 'intel.probes']),
   topic('combat', 'death-star', l('Death Star & EMP', 'Ölüm Yıldızı ve EMP'),

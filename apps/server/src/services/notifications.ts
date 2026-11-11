@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Tx } from '../db/client.js';
 import { notifications, players, type NotificationKind } from '../db/schema.js';
 import { publish } from '../stream/bus.js';
@@ -58,6 +58,20 @@ export async function notify(
   if (rows.length === 0) return false;
   await publish(tx, input.playerId, input.kind);
   return true;
+}
+
+/**
+ * A CALLED-BACK RAID'S WARNING GOES, SILENTLY (owner, 2026-11-11 — the monument rule of
+ * 2026-11-10). The host's radar warning and the clan alarm copied from it leave every bell, so no
+ * ring or "under attack" row outlives the raid; no news that it turned back. The clan's alarm
+ * record stays: the call was made.
+ */
+export async function withdrawRaidWarning(tx: Tx, missionId: string): Promise<void> {
+  const withdrawn = await tx.delete(notifications).where(and(
+    eq(notifications.refId, missionId),
+    inArray(notifications.kind, ['incoming_fleet', 'clan_alarm']),
+  )).returning({ playerId: notifications.playerId, kind: notifications.kind });
+  for (const row of withdrawn) await publish(tx, row.playerId, row.kind);
 }
 
 /**

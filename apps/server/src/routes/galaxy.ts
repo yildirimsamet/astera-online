@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { applyHonorPodium } from '../services/honorPodium.js';
 import { readHonorBenefits } from '../services/honorBenefits.js';
-import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue, clanTagTier } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -411,6 +411,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         clanId: clans.id,
         clanName: clans.name,
         clanTag: clans.tag,
+        clanLevel: clans.level,
       })
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
@@ -474,7 +475,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         dominion: entry.dominion,
         ...(honorEnabled ? { honor: entry.honor } : {}),
         clan: entry.clanId && entry.clanName && entry.clanTag
-          ? { id: entry.clanId, name: entry.clanName, tag: entry.clanTag }
+          ? { id: entry.clanId, name: entry.clanName, tag: entry.clanTag, tier: clanTagTier(entry.clanLevel) }
           : null,
       };
     });

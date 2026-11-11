@@ -483,6 +483,8 @@ export const reports = {
     /** Taktik geri çekilme. Defender: what ran and what the lift burned, or why it could not. */
     escaped_one: "あなたの艦船は戦闘前に退避しました（重水素−{{fuel}}）。襲撃部隊が防衛戦列を圧倒していました。",
     escaped_other: "あなたの艦船{{count}}隻は戦闘前に退避しました（重水素−{{fuel}}）。襲撃部隊が防衛戦列を圧倒していました。",
+    escapedSupport_one: 'クランメイトの艦{{count}}隻も無料で一緒に退避しました。',
+    escapedSupport_other: 'クランメイトの艦{{count}}隻も無料で一緒に退避しました。',
     stranded: "艦船は退避できる状況でしたが、燃料が足りませんでした。重水素が{{fuel}}必要で、保有量は{{available}}でした。",
     /** Raider: the line emptied in front of the raid, and nothing about what it held. */
     fled: "敵艦は戦闘前に退避しました。圧倒的な攻撃で全滅する戦列は、燃料が足りれば退避します。",
@@ -499,6 +501,7 @@ export const reports = {
       "直近{{window}}時間の正味損失は生産量{{hours}}時間分で、{{bar}}時間分の基準を超えました。ただし自分の襲撃艦隊が飛行中はシールドを得られません。",
     wreck: "{{planet}}の上空に資源{{amount}}相当の残骸があります。誰でも回収できます。",
     /** The same field, read from the world it is drifting over. */
+    clanPurse: '勝利の戦利品：{{amounts}}がクランの共有資源に入りました。',
     wreckYours: "残骸中の {{amount}} があなたの軌道を漂っています。あなたも含めて、誰でもそれを受け取ることができます。",
     /** No orbit to name: the field sits at the rendezvous, in open space. */
     wreckVoid:

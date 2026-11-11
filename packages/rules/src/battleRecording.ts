@@ -114,7 +114,11 @@ export interface BattleReplayData {
   vessel?: { hull: VesselHull };
   aegisCapacity: number;
   defenceOffline: boolean;
-  escape: { kind: 'ESCAPED' | 'STRANDED'; ships: Fleet } | null;
+  /**
+   * `support` (F1): allied wings that lifted with the host. Only the simulator fills it; a stored
+   * replay carries the host's ships alone, so a raider's replay says nothing of who stood beside them.
+   */
+  escape: { kind: 'ESCAPED' | 'STRANDED'; ships: Fleet; support?: readonly { ships: Fleet }[] } | null;
   control: 'ATTACKER' | 'DEFENDER' | 'EMPTY' | null;
 }
 export type BattleReplayStatus = 'AVAILABLE' | 'NOT_RECORDED' | 'INSUFFICIENT_FORCE' | 'TOO_LARGE';

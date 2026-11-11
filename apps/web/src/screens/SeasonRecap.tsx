@@ -187,6 +187,12 @@ export function SeasonRecap({
           <Figure label={t('seasonRecap.attacks')} value={full(result.recap.attacks)} />
           <Figure label={t('seasonRecap.defences')} value={full(result.recap.defences)} />
         </section>
+        {result.recap.support && result.recap.support.stood > 0 && (
+          <p data-recap-support="" className="mt-2 flex items-center justify-center gap-1.5 text-caption text-crystal">
+            <ShieldedIcon className="size-4" />
+            {t('seasonRecap.support', { count: result.recap.support.stood, held: result.recap.support.held })}
+          </p>
+        )}
 
         <section className="mt-3 grid grid-cols-2 gap-2">
           <SmallFigure

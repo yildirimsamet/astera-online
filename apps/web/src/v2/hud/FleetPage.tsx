@@ -7,7 +7,8 @@ import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
 import { garrisonOf, legProgress, paceShown, recallPreview, type roomOf } from '../../lib/fleetPage.js';
 import { decimal, full } from '../../lib/format.js';
-import { clockTime, countdown } from '../../lib/time.js';
+import { clockTime, countdown, durationPrecise } from '../../lib/time.js';
+import { supportVerdict } from '../../lib/clanAlarm.js';
 import type { AirborneItem, FlightMark } from '../../shell/PendingStrip.js';
 import { Icon, type IconId } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
@@ -237,6 +238,9 @@ function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['s
               : wave.returnAt ? t('now.at', { time: clockTime(wave.returnAt) }) : '';
           const control = wave.status === 'STATIONED' ? t('clanSupport.recall')
             : flying && !landing ? t('clanSupport.recallFlight') : null;
+          // F2 corridor: a raid the clan was alarmed about, still ahead, on the world this wave guards.
+          const raidAt = wave.raidAt && wave.raidAt.getTime() > now ? wave.raidAt : null;
+          const race = raidAt && flying && !landing ? supportVerdict(wave.arriveAt, raidAt) : null;
           return (
             <li key={wave.id} data-support-wave={wave.id} className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
               <div className="flex items-center gap-2">
@@ -259,6 +263,21 @@ function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['s
                   </button>
                 )}
               </div>
+              {race && raidAt && (
+                <p data-raid-race={race.inTime ? 'in-time' : 'late'} className="mt-1 flex flex-wrap items-baseline gap-x-2 text-micro">
+                  <span className="font-v2-mono tabular-nums text-v2-ink-2">
+                    {t('clanSupport.corridorTimes', { arrive: clockTime(wave.arriveAt), raid: clockTime(raidAt) })}
+                  </span>
+                  <span className={`font-semibold ${race.inTime ? 'text-v2-self' : 'text-v2-warn'}`}>
+                    {t(race.inTime ? 'clanSupport.alarmInTime' : 'clanSupport.alarmLate', { time: durationPrecise(race.minutes) })}
+                  </span>
+                </p>
+              )}
+              {raidAt && wave.status === 'STATIONED' && (
+                <p data-raid-race="standing" className="mt-1 text-micro font-semibold text-v2-hostile">
+                  {t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
+                </p>
+              )}
               {flying && !landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.recallFlightRule')}</p>}
               {landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.landing')}</p>}
               {wave.outOfBand && <p className="mt-1 text-micro text-v2-warn">{t('clanSupport.outOfBand')}</p>}

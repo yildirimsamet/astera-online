@@ -7,6 +7,7 @@ import {
   clanBayAvailable,
   clanAidRemaining,
   clanAidTravelMinutes,
+  clanFirstLegMinutes,
   clanAidValue,
   clanTransferCargoCapacity,
   clanTransferFleetIsValid,
@@ -21,6 +22,7 @@ import {
   type Resources,
   type TechLevels,
 } from '@astera/rules';
+import { clanLevelOf } from './clanPerks.js';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -382,7 +384,8 @@ export async function quoteClanAid(
     input.fleet,
     { boost: fleetSpeedMult(orbit), tech },
   );
-  const travelMinutes = clanAidTravelMinutes(ordinary);
+  // F2 Klan Koridoru: the first leg flies at the clan's corridor; the way home keeps the ×1.1 lane.
+  const travelMinutes = clanFirstLegMinutes(ordinary, await clanLevelOf(db, relationship.sender.clanId));
   const season = await db.select({ endsAt: seasons.endsAt }).from(seasons)
     .where(eq(seasons.id, origin.seasonId)).then((rows) => rows[0]);
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
@@ -522,7 +525,8 @@ export async function launchClanAid(
   // A resource delivery always comes home; a ship gift has only its outbound leg.
   const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);
   assertFuel(fuel, origin.deuterium, input.cargo.deuterium);
-  const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, { boost: boost, tech }));
+  const oneWay = clanFirstLegMinutes(fleetTravelExact(dist, input.fleet, { boost: boost, tech }),
+    await clanLevelOf(tx, relationship.sender.clanId));
   if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const capitalWorld = lockedWorlds.get(capital.id);
   if (!capitalWorld) throw new Error('sender capital lock vanished');

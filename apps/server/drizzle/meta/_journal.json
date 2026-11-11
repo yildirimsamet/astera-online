@@ -1730,6 +1730,20 @@
       "when": 1794260825511,
       "tag": "0246_starter_guide_off",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1794297200142,
+      "tag": "0247_clan_escape_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1794343892741,
+      "tag": "0248_clan_perks_f2",
+      "breakpoints": true
     }
   ]
 }

@@ -64,6 +64,7 @@ import {
   clanAidSchema,
   clanSupportQuoteSchema,
   clanSupportSendSchema,
+  clanLedgerSchema,
   clanSupportWaveAnswerSchema,
   clanWarSchema,
   clanWarQuoteSchema,
@@ -1004,6 +1005,7 @@ export class Api {
   clanDepot = () => this.send('/api/clan/depot', clanDepotSchema);
   clanAid = () => this.send('/api/clan/aid', clanAidSchema);
   clanWar = () => this.send('/api/clan/war', clanWarSchema);
+  clanLedger = () => this.send('/api/clan/ledger', clanLedgerSchema);
   clanChat = (before?: string) => this.send(
     `/api/clan/chat?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     clanChatPageSchema,
@@ -1044,7 +1046,7 @@ export class Api {
   mySupport = () => this.send('/api/clan/support', mySupportSchema);
   quoteClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
     this.send('/api/clan/support/quote', clanSupportQuoteSchema, { method: 'POST', body: { ...input } });
-  sendClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
+  sendClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean; alarmId?: string }) =>
     this.clanMutation('/api/clan/support', clanSupportSendSchema, input);
   recallClanSupport = (waveId: string) =>
     this.clanMutation(`/api/clan/support/${encodeURIComponent(waveId)}/recall`, clanSupportWaveAnswerSchema);

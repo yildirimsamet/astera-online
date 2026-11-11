@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
   clanDefenseApplies,
   partitionCombatFleet,
@@ -11,7 +11,9 @@ import type { Db, Queryable } from '../db/client.js';
 import {
   accounts,
   buildings,
+  clanAlarms,
   clanSupportWaves,
+  missions,
   planets,
   players,
   units,
@@ -59,6 +61,34 @@ export interface ClanSupportWaveView {
    */
   outOfBand: boolean;
   battles: number;
+  /** F2 E1: the clan alarm this wave was sent to answer, if any. */
+  alarmId: string | null;
+  /**
+   * F2 corridor: when the soonest raid the clan was alarmed about lands on this wave's host world,
+   * written beside the wave's own landing. Null when no live raid is called there.
+   */
+  raidAt: string | null;
+}
+
+/** A clan alarm is live until its raid lands, and over the moment the raider calls it back (K8). */
+const liveAlarm = (planetIds: readonly string[], at: Date) => and(
+  inArray(clanAlarms.hostPlanetId, [...planetIds]),
+  gt(clanAlarms.arriveAt, at),
+  isNull(missions.recalledAt),
+);
+
+/**
+ * E6 — A CALL, AS ITS HOST SEES IT (F2, owner 2026-11-10). How many clanmates the alarm reached,
+ * how many have opened it, and how many waves were sent in answer; the waves themselves, with
+ * their landing times, are in the bay beside it.
+ */
+export interface ClanAlarmView {
+  id: string;
+  missionId: string;
+  arriveAt: string;
+  called: number;
+  seen: number;
+  answered: number;
 }
 
 export type WaveRow = typeof clanSupportWaves.$inferSelect;
@@ -67,16 +97,23 @@ export type WaveRow = typeof clanSupportWaves.$inferSelect;
 export async function viewWaves(db: Queryable, rows: readonly WaveRow[], at?: Date): Promise<ClanSupportWaveView[]> {
   if (rows.length === 0) return [];
   const people = [...new Set(rows.flatMap((row) => [row.senderPlayerId, row.hostPlayerId]))];
-  const [names, worldNames, stock, peaks] = await Promise.all([
+  const hosts = [...new Set(rows.map((row) => row.hostPlanetId))];
+  const [names, worldNames, stock, peaks, raids] = await Promise.all([
     db.select({ id: players.id, name: accounts.displayName })
       .from(players).innerJoin(accounts, eq(accounts.id, players.accountId))
       .where(inArray(players.id, people)),
     db.select({ id: planets.id, name: planets.name }).from(planets)
-      .where(inArray(planets.id, [...new Set(rows.map((row) => row.hostPlanetId))])),
+      .where(inArray(planets.id, hosts)),
     db.select({ location: units.location, hull: units.hull, count: units.count }).from(units)
       .where(inArray(units.location, rows.map((row) => row.unitLocation))),
     peakCoreLevels(db as Db, people),
+    db.select({ hostPlanetId: clanAlarms.hostPlanetId, arriveAt: clanAlarms.arriveAt }).from(clanAlarms)
+      .innerJoin(missions, eq(missions.id, clanAlarms.missionId))
+      .where(liveAlarm(hosts, at ?? new Date()))
+      .orderBy(asc(clanAlarms.arriveAt)),
   ]);
+  const raidAt = new Map<string, Date>();
+  for (const raid of raids) if (!raidAt.has(raid.hostPlanetId)) raidAt.set(raid.hostPlanetId, raid.arriveAt);
   const nameOf = new Map(names.map((row) => [row.id, row.name]));
   const worldOf = new Map(worldNames.map((row) => [row.id, row.name]));
   const fleets = new Map<string, Fleet>();
@@ -109,6 +146,8 @@ export async function viewWaves(db: Queryable, rows: readonly WaveRow[], at?: Da
     returnReason: row.returnReason,
     outOfBand: !withinTierBand(peaks.get(row.senderPlayerId) ?? 1, peaks.get(row.hostPlayerId) ?? 1),
     battles: row.battles,
+    alarmId: row.alarmId,
+    raidAt: raidAt.get(row.hostPlanetId)?.toISOString() ?? null,
   }); });
 }
 
@@ -155,10 +194,10 @@ export async function supportRoomOf(db: Queryable, planetId: string): Promise<Su
 export async function clanSupportBayViews(
   db: Queryable,
   input: { hangarLevels: ReadonlyMap<string, number>; rulesetVersion: number; at?: Date },
-): Promise<Map<string, { room: SupportRoom; waves: ClanSupportWaveView[] } | null>> {
+): Promise<Map<string, { room: SupportRoom; waves: ClanSupportWaveView[]; alarms: ClanAlarmView[] } | null>> {
   const planetIds = [...input.hangarLevels.keys()];
   if (!clanDefenseApplies(input.rulesetVersion)) return new Map(planetIds.map(id => [id, null]));
-  const [held, rows] = await Promise.all([
+  const [held, rows, calls] = await Promise.all([
     db.select({
       hostPlanetId: clanSupportWaves.hostPlanetId,
       status: clanSupportWaves.status,
@@ -170,6 +209,25 @@ export async function clanSupportBayViews(
     db.select().from(clanSupportWaves)
       .where(and(inArray(clanSupportWaves.hostPlanetId, planetIds), inArray(clanSupportWaves.status, [...ROOM_HOLDING])))
       .orderBy(asc(clanSupportWaves.arriveAt), asc(clanSupportWaves.id)),
+    // E6: the calls still ahead of their raid, each with its reach, its readers and its answers.
+    db.select({
+      id: clanAlarms.id,
+      hostPlanetId: clanAlarms.hostPlanetId,
+      missionId: clanAlarms.missionId,
+      arriveAt: clanAlarms.arriveAt,
+      // Through the clan's members, so each count probes the (player, kind, ref) unique index. The outer
+      // row is named in full: drizzle prints a lone table's columns bare, and `id` would bind inside.
+      called: sql<number>`(select count(*)::int from clan_memberships m
+        join notifications n on n.player_id = m.player_id and n.kind = 'clan_alarm' and n.ref_id = clan_alarms.mission_id
+        where m.clan_id = clan_alarms.clan_id and m.left_at is null)`,
+      seen: sql<number>`(select count(*)::int from clan_memberships m
+        join notifications n on n.player_id = m.player_id and n.kind = 'clan_alarm' and n.ref_id = clan_alarms.mission_id
+        where m.clan_id = clan_alarms.clan_id and m.left_at is null and n.seen)`,
+      answered: sql<number>`(select count(*)::int from clan_support_waves w where w.alarm_id = clan_alarms.id)`,
+    }).from(clanAlarms)
+      .innerJoin(missions, eq(missions.id, clanAlarms.missionId))
+      .where(liveAlarm(planetIds, input.at ?? new Date()))
+      .orderBy(asc(clanAlarms.arriveAt)),
   ]);
   // `viewWaves` renders row by row, so one call serves every host and keeps each one's order.
   const views = await viewWaves(db, rows, input.at);
@@ -178,7 +236,9 @@ export async function clanSupportBayViews(
       held.find((row) => row.hostPlanetId === planetId && row.status === status)?.bulk ?? 0;
     const room: SupportRoom = { used: of('STATIONED'), reserved: of('OUTBOUND'), total: hangarCapacity(input.hangarLevels.get(planetId) ?? 0) };
     const waves = views.filter((wave, i) => rows[i]!.hostPlanetId === planetId && ROOM_HOLDING.includes(wave.status));
-    return [planetId, { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves }];
+    const alarms = calls.filter((call) => call.hostPlanetId === planetId).map(({ hostPlanetId: _host, arriveAt, ...call }) =>
+      ({ ...call, arriveAt: arriveAt.toISOString() }));
+    return [planetId, { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves, alarms }];
   }));
 }
 

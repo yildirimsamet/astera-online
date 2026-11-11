@@ -32,6 +32,7 @@ function show(
   generalData: unknown = initial,
   initialClanDraft?: string,
   isAdmin = false,
+  clanExtra: readonly Record<string, unknown>[] = [],
 ) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
@@ -69,7 +70,7 @@ function show(
       messages: [{
         id: 'clan-one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci',
         clanTag: 'WAR', content: 'Rim temiz', createdAt: at, self: false,
-      }],
+      }, ...clanExtra],
       nextBefore: null,
     }],
     pageParams: [null],
@@ -108,6 +109,25 @@ describe('galaxy chat surface', () => {
       expect(icon?.previousElementSibling).toHaveAttribute('data-chat-author');
       expect(icon?.querySelector('svg')).not.toBeNull();
     });
+  });
+
+  it('marks each clan event with its perk’s art (F2)', () => {
+    const event = (id: string, kind: string, params: Record<string, unknown>) => ({
+      id, authorPlayerId: 'other', username: 'İzci', content: '', createdAt: at, self: false, event: { kind, params },
+    });
+    show(vi.fn(), 'clan', initial, undefined, false, [
+      event('e1', 'ALARM', { hostName: 'Ayşe', hostPlanetName: 'Kuzgun', arriveAt: new Date(at.getTime() + 600_000).toISOString() }),
+      event('e2', 'LEVEL_UP', { level: 3 }),
+    ]);
+    expect(document.querySelector('[data-chat-event="ALARM"] [data-perk-art="ALARM"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-chat-event="LEVEL_UP"] [data-perk-art="BANNER"]')).toBeInTheDocument();
+  });
+
+  it('draws the author’s clan tag in its metal (F2)', () => {
+    show(vi.fn(), 'general', {
+      pages: [{ messages: [{ ...initial.pages[0]!.messages[0]!, clanTag: 'OG', clanTier: 'GOLD' }], nextBefore: null }], pageParams: [null],
+    });
+    expect(document.querySelector('[data-chat-author] [data-tier="GOLD"]')).toHaveTextContent('[OG]');
   });
 
   it('keeps a legacy message free of a previous-season cup', () => {

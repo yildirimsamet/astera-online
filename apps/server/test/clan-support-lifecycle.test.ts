@@ -85,7 +85,8 @@ describe('a host world changing hands', () => {
     }));
     expect(await waveOf(f, wave.id)).toMatchObject({ status: 'RETURNING', returnReason: 'WORLD_CHANGED' });
     const [world] = await f.db.select({ posture: planets.defencePosture }).from(planets).where(eq(planets.id, host));
-    expect(world!.posture).toBe('ESCAPE');
+    // The untouched default (F1): the new commander's clan decides whether the door is open.
+    expect(world!.posture).toBe('ESCAPE_SUPPORT');
   });
 
   it('does the same when the colony secedes', async () => {
@@ -229,6 +230,20 @@ describe('the season’s close', () => {
     expect(supporter!.stats!.competition.defences).toBe(1);
     expect(supporter!.stats!.competition.shipsLostByHull.PIKE ?? 0).toBe(pikesLost);
   });
+
+  it('remembers the watches a supporter stood in the season recap, and none for the host (F2 E3)', async () => {
+    const { f, report } = await supportedRaid(15_608);
+    await forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId);
+    const recapOf = async (player: number) => {
+      const [account] = await f.db.select({ id: players.accountId }).from(players).where(eq(players.id, f.playerIds[player]!));
+      const [row] = await f.db.select().from(seasonResults).where(and(
+        eq(seasonResults.seasonId, f.seasonId), eq(seasonResults.accountId, account!.id),
+      ));
+      return row!.recap;
+    };
+    expect((await recapOf(0)).support).toEqual({ stood: 1, held: report.grade === 'REPELLED' ? 1 : 0 });
+    expect((await recapOf(1)).support).toBeUndefined();
+  });
 });
 
 /*
@@ -258,7 +273,7 @@ describe('a clan the system dissolves', () => {
     }));
 
     const [world] = await f.db.select({ posture: planets.defencePosture }).from(planets).where(eq(planets.id, f.planetIds[1]!));
-    expect(world!.posture).toBe('ESCAPE');
+    expect(world!.posture).toBe('ESCAPE_SUPPORT');
     const told = await f.db.select().from(notifications).where(and(
       eq(notifications.playerId, f.playerIds[1]!),
       eq(notifications.kind, 'defence_posture_reset'),

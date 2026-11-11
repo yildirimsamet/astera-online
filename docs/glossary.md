@@ -264,15 +264,25 @@ start immediately; aid, loot sharing, clan score and detailed history begin when
 
 **Clan aid** — A physical convoy to a mature clanmate. With cargo it deposits Hauler-borne
 resources and returns every ship to the launch world; with an empty hold it is an irreversible
-ship gift. It receives ×1.10 travel speed and may use one aid-only flight bay, while a
+ship gift. Its first leg flies the clan corridor (×2–×5 by clan level; ×1.10 for a levelless
+clan), its return ×1.10, and it may use one aid-only flight bay, while a
 receiver-wide rolling allowance prevents account pooling.
 
 **Clan depot / loot share** — Personal claimable resources offered from 10% of ordinary PvP
 loot only after surviving attackers return. It is not a clan treasury and has no leader access.
 
-**Clan Treasury** — The shared, audit-backed purse used only for Clan Hangar upgrades. Each
+**Clan Treasury** — The shared, audit-backed purse used only for clan level upgrades (since F2
+it also takes half the wreck of a supported defence it won, the Zafer Kasası). Each
 resource is capped at the next rung's cost. Donations are irreversible, the leader alone spends
 the exact upgrade cost, and disband burns what remains.
+
+**Clan perk / Klan Sancağı** — F2 (2026-11-10). Each clan level opens one perk: Klan Koridoru
+(first-leg speed of clanmate flights), Klan Alarmı (the host's radar warning copied to the clan),
+Uzun Nöbet (support stays 18/24 h), Ortak Ocak (production per active member) and Altın Sancak.
+`@astera/rules` `clanPerks.ts`; alarms are `clan_alarms`, notification kind `clan_alarm`.
+
+**Katkı Defteri** — The clan screen's per-member season ledger: donations, support waves, alarm
+answers, aid and joint-war waves. Members only; `GET /api/clan/ledger`.
 
 **Clan Hangar** — The joint-war pool's shared bulk ceiling. At clan level 1–10 it holds exactly
 twice the matching personal Hangar rung and costs that personal rung's upgrade price. A contributed
@@ -288,7 +298,7 @@ they spend launch quota and protection and may read the report, but do not enter
 Dominion or attacker head count.
 
 **Klan Desteği / clan defence support** — Ruleset 15+. A mature clanmate's combat ships stationed
-at a world whose posture is SUPPORT. They fight in that world's defending line against any raid,
+at a world that takes support (SUPPORT or ESCAPE_SUPPORT). They fight in that world's defending line against any raid,
 keep counting in the sender's own Hangar, stay at most 12 h and fly home when recalled, sent back,
 expired, out of the tier band or when the clan changes. `clan_support_waves`, mission kind
 `clan_support`.
@@ -296,9 +306,10 @@ expired, out of the tier band or when the clan changes. `clan_support_waves`, mi
 **Support bay (Destek bölmesi)** — A world's room for support waves, as large as its own Hangar
 room. Outbound and standing waves use it; it never takes the host's own room.
 
-**Defence posture (Savunma duruşu)** — A world's `ESCAPE | SUPPORT | HOLD`, set by two mutually
-exclusive toggles: tactical retreat on (default), clan support on (never retreats), or both off
-(always fights). The probe reads it exactly.
+**Defence posture (Savunma duruşu)** — A world's `ESCAPE | SUPPORT | HOLD | ESCAPE_SUPPORT`, set
+by two independent toggles: tactical retreat only, clan support only (never retreats), both off
+(always fights) or both on (the default; an outmatched line lifts together, host fuel only).
+Support takes effect only inside a clan. The probe reads the posture in effect exactly.
 
 **Support factor (D)** — What clan support multiplies the host's own Dominion movement by:
 line power ÷ host power (the host's ships and the guns that fire), at most ×5. The host loses
