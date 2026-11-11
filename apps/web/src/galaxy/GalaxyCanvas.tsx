@@ -138,7 +138,6 @@ import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { CommanderShipLabels } from './CommanderShipLabel.js';
-import { DESK_QUERY, useMedia } from '../lib/media.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { layoutPlanetLabels, planetLabelRank, PLANET_LABEL_MAX_WIDTH, PLANET_LABEL_DETAIL_MAX_WIDTH, type PlanetLabelSize } from './planetLabels.js';
@@ -1198,7 +1197,6 @@ export function Labels({
   onOpenCommander?: (node: PlanetNode) => void;
 }) {
   const { t } = useTranslation();
-  const compact = !useMedia(DESK_QUERY);
   const radiationByWorld = useMemo(() => {
     const sources = new Map<string, HpRadiationSourceView[]>();
     for (const source of hpRadiation) {
@@ -1295,7 +1293,7 @@ export function Labels({
     if (clock.current < 0.1) return;
     clock.current = 0;
 
-    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current, compact });
+    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current });
     // Camera distance may reorder priorities without changing membership. Keep
     // mounted labels stable so panning does not cause needless React updates.
     const nextIds = placements.map((placement) => placement.id).sort();
