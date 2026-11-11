@@ -1,4 +1,3 @@
-import { clanRefineryColumns, clanRefineryShare } from './clanPerks.js';
 import { rewardFlightFleet } from './fleetTowing.js';
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { AdmiralSnapshot } from '@astera/rules/arena';
@@ -62,6 +61,7 @@ import { flightFadeAt, liveRadiationFor, type FlightRadiation } from './radiatio
 import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight } from './flightProjection.js';
 import { flightSegment } from './specialFlightRadiation.js';
 import { isSilentSpaceShard } from './waitingRoom.js';
+import { clanLevelColumn } from './clanPerks.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -526,20 +526,19 @@ export async function buildReturnPayload(
       .from(buildings)
       .where(inArray(buildings.planetId, ownedIds));
     // D212: Silent Space runs the works at half pace, and the estimate must not promise double.
-    // F2 Ortak Ocak: the clan's share lifts the works the recap estimates, as it lifts the world.
-    const [season] = await db.select({ shardId: seasons.shardId, ...clanRefineryColumns(playerId, now) })
-      .from(seasons).where(eq(seasons.id, player.seasonId));
-    const pace = (season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1)
-      * (1 + clanRefineryShare(season));
-    const hours = (awayMinutes / 60) * pace;
+    const [season] = await db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, player.seasonId));
+    const pace = season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1;
+    // F2 Ortak Ocak: each world's works run at the clan share frozen on it, as the world is paid.
+    const share = new Map(ownedWorlds.map((world) => [world.id, 1 + world.clanBonus]));
+    const hoursOn = (planetId: string) => (awayMinutes / 60) * pace * (share.get(planetId) ?? 1);
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.
     const alloy = levels
       .filter((building) => building.type === 'REFINERY')
-      .reduce((total, building) => total + alloyRate(building.level) * hours, 0);
+      .reduce((total, building) => total + alloyRate(building.level) * hoursOn(building.planetId), 0);
     const crystal = levels
       .filter((building) => building.type === 'EXTRACTOR')
-      .reduce((total, building) => total + crystalRate(building.level) * hours, 0);
+      .reduce((total, building) => total + crystalRate(building.level) * hoursOn(building.planetId), 0);
     if (alloy >= 1) {
       entries.push({ kind: 'accrued', params: { alloy: Math.round(alloy), crystal: Math.round(crystal) }, at: now });
     }
@@ -662,6 +661,8 @@ export async function pendingThreads(
         targetCoreLevel: targetCore.level,
         clanWarLeg: clanWarMissions.leg,
         clanWarTag: clanWarOperations.clanTag,
+        // F2: a clan dealt before the levels flies its first legs on the ×1.1 lane, not the corridor.
+        clanLevel: clanLevelColumn(commander),
       })
       .from(missions)
       .innerJoin(originPlanet, eq(missions.originPlanetId, originPlanet.id))
@@ -883,7 +884,7 @@ export async function pendingThreads(
           // Klan Savunma Desteği: a friendly flight, never a raid — no bombardment where it lands.
           : m.kind === 'clan_support' ? 'transfer' : 'fleet',
       ...(m.kind === 'clan_support' ? { clanSupport: true as const } : {}),
-      ...(!returning && (m.kind === 'clan_support' || m.kind === 'clan_transfer' || row.clanWarLeg === 'SUPPORT_OUT')
+      ...(!returning && row.clanLevel !== null && (m.kind === 'clan_support' || m.kind === 'clan_transfer' || row.clanWarLeg === 'SUPPORT_OUT')
         ? { corridor: true as const } : {}),
       /*
         A TRANSFER IS NAMED AFTER WHERE IT IS GOING — the strip reads it as "Transfer → X". Its

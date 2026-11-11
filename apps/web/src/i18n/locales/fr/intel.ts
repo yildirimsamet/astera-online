@@ -135,6 +135,12 @@ export const intel = {
   },
 } as const;
 export const reports = {
+  enemyFleetEmpty: "Aucune unité adverse n’était présente au début du combat.",
+  enemyFleetAtBattle: "Forces adverses au début du combat",
+  enemyFleetSnapshot: "Ce relevé montre les forces de ce combat, vaisseaux de soutien inclus. Les survivants incluent les retraites, mais pas les réparations ni les renforts ultérieurs.",
+  enemyFleetInsufficient: "La puissance de votre flotte attaquante était inférieure à la moitié de celle de la défense. Toutes les forces adverses n’ont pas pu être identifiées. Seules les pertes ennemies confirmées sont affichées.",
+  enemyFleetUnknown: "Cet ancien rapport ne permet pas de confirmer la visibilité complète des forces adverses. Seules les pertes ennemies confirmées sont affichées.",
+
   distributedRulesTitle: "Déroulement de ce combat",
   distributedRetreatRule: "Les vaisseaux endommagés peuvent fuir à la fin des tours 1–{{lastRound}}. Ils gardent leurs dégâts et cessent de combattre.",
   distributedDamageNote: "Les totaux des tirs ordinaires comprennent les dégâts absorbés par Aegis et les boucliers des vaisseaux, puis ceux réellement infligés aux coques. Les excédents redistribués ne sont pas comptés deux fois. Les totaux couvrent tout le camp, alliés compris. Votre liste de pertes concerne uniquement vos vaisseaux.",

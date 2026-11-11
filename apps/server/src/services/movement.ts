@@ -73,6 +73,7 @@ import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { withdrawRaidWarning } from './notifications.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -704,7 +705,10 @@ export async function recallFlight(
     }
 
     const arriveAt = await turnMissionHome(tx, mission, now);
-    if (mission.kind === 'attack') await releaseStrike(tx, mission.id);
+    if (mission.kind === 'attack') {
+      await releaseStrike(tx, mission.id);
+      await withdrawRaidWarning(tx, mission.id);
+    }
     return { missionId: mission.id, arriveAt };
   });
 }

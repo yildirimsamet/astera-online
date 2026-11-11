@@ -21,7 +21,7 @@ const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 async function afterBattle(tx: Tx, input: {
   mission: MissionRow; result: BattleResult; attacker: LockedVessel | undefined; defender: LockedVessel | undefined;
   loot: Resources; carriesPart: boolean; written: Omit<StarterBattleRecord, 'grade' | 'rounds' | 'attackerLosses' | 'defenderLosses' | 'attackerRetreated' | 'defenderRetreated' | 'attackerDamage' | 'defenderDamage' | 'wreckValue'>;
-  names: { attacker: string; defender: string }; siteId: string | null; replay: ReturnType<typeof buildBattleReplay>; now: Date; at: { x: number; y: number; z: number };
+  attackerVisible: boolean; names: { attacker: string; defender: string }; siteId: string | null; replay: ReturnType<typeof buildBattleReplay>; now: Date; at: { x: number; y: number; z: number };
   /** What only the side that came is told. */
   toAttacker?: { firstVictory?: boolean; firstDefeat?: boolean; beatenBy?: string };
 }): Promise<void> {
@@ -52,6 +52,7 @@ async function afterBattle(tx: Tx, input: {
 
   const record: StarterBattleRecord = {
     ...input.written,
+    attackerVisible: input.attackerVisible,
     grade: result.grade, rounds: result.rounds,
     attackerLosses: result.attackerLosses, defenderLosses: result.defenderLosses,
     attackerRetreated: result.attackerRetreated ?? {}, defenderRetreated: result.defenderRetreated ?? {},
@@ -129,7 +130,7 @@ export async function resolveVesselBattle(tx: Tx, mission: MissionRow, clock: Cl
 
     const replay = buildBattleReplay(capture, result, { environment: 'VESSEL', vessel: { hull: vesselHull(defender.row.id) }, aegisCapacity: vesselAegisHp(moduleStage(progressOf(defender.row), 'AEGIS')), defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
-      mission, result, attacker, defender, loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium }, carriesPart: false, siteId: null, replay, now,
+      mission, result, attacker, defender, loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium }, carriesPart: false, siteId: null, replay, attackerVisible: capture.attackerVisible, now,
       at: placeOf(defender.row),
       names: { attacker: attacker?.row.name ?? 'PIRATE', defender: defender.row.name },
       written: {
@@ -196,7 +197,7 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
     const beatenBy = found ? null : await clearedBy(tx, site.id, attacker.row.id);
     const replay = buildBattleReplay(capture, result, { environment: 'PLANET', aegisCapacity: 0, defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
-      mission, result, attacker, defender: undefined, loot: haul, carriesPart, siteId: site.id, replay, now,
+      mission, result, attacker, defender: undefined, loot: haul, carriesPart, siteId: site.id, replay, attackerVisible: capture.attackerVisible, now,
       at: { x: site.x, y: site.y, z: site.z },
       names: { attacker: attacker.row.name, defender: siteName(site) },
       written: {

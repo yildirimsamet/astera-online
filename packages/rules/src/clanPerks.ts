@@ -67,6 +67,8 @@ export const clanCorridorMultiplier = (level: number): number => topRung(level, 
 /** The first leg's minutes, from the ordinary flight's. */
 export function clanCorridorMinutes(ordinaryMinutes: number, level: number): number {
   const multiplier = clanCorridorMultiplier(level);
+  // A fleet that cannot fly never lands, here as on the ×1.1 lane; its caller refuses it.
+  if (ordinaryMinutes === Number.POSITIVE_INFINITY) return ordinaryMinutes;
   return Number.isFinite(ordinaryMinutes) ? Math.max(0, ordinaryMinutes) / multiplier : 0;
 }
 

@@ -139,6 +139,12 @@ export const intel = {
 } as const;
 
 export const reports = {
+  enemyFleetEmpty: "戦闘開始時に敵部隊はいませんでした。",
+  enemyFleetAtBattle: "戦闘開始時の敵戦力",
+  enemyFleetSnapshot: "支援艦を含む、この戦闘に参加した戦力の記録です。残存数には撤退した艦を含み、その後の修理や増援は含みません。",
+  enemyFleetInsufficient: "攻撃艦隊の戦闘力は防衛側の半分未満でした。敵戦力の全容を把握できませんでした。確認された敵の損失のみ表示します。",
+  enemyFleetUnknown: "この古い報告には、敵戦力の全容を把握できたかどうかを確認する記録がありません。確認された敵の損失のみ表示します。",
+
   distributedRulesTitle: "この戦闘の処理",
   distributedRetreatRule: "損傷した艦船は第1～{{lastRound}}ラウンド終了時に撤退できます。損傷は残り、以後は戦闘に参加しません。",
   distributedDamageNote: "通常射撃の合計にはAegisと艦船シールドが吸収した分、および船体に実際に与えた分が含まれます。再分配された余剰ダメージは二重に計上されません。合計は味方を含む各陣営全体の値です。自分の損失一覧には自分の艦船だけが表示されます。",

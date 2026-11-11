@@ -1489,6 +1489,13 @@ export const planets = pgTable('planets', {
   shieldRegenAt: timestamp('shield_regen_at', { withTimezone: true }),
   /** Lazy economy anchor. Advanced inside the row lock, never on a timer. */
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * F2 ORTAK OCAK, FROZEN AT THE LAST WRITE (owner, 2026-11-11). The clan's production share
+   * (`clanRefineryShare`) this world earns from `lastTickAt` until it is next written. Read
+   * fresh only when the world is written, so a share that moves never re-prices hours
+   * already shown: what the player saw accrue is what they keep.
+   */
+  clanBonus: doublePrecision('clan_bonus').notNull().default(0),
   /** No new colony faults until this instant; renewed on accepted building orders. */
   faultProtectedUntil: timestamp('fault_protected_until', { withTimezone: true }),
   /** Legacy raid downtime; new battles never write it. Kept until old rows and clients age out. */

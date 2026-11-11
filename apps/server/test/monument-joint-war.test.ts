@@ -1,3 +1,4 @@
+import { readBattleReports } from '../src/services/reports.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
@@ -105,6 +106,12 @@ describe('the existing clan preparation with a real monument target', () => {
     }
     await arrive(launched.arriveAt);
     expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
+    for (const reader of [0, 1]) {
+      expect((await readBattleReports(f.db, f.playerIds[reader]!)).reports[0])
+        .toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: { DART: 1 } });
+    }
+    expect((await readBattleReports(f.db, f.playerIds[2]!)).reports[0])
+      .toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: { CITADEL: 4, ARGOSY: 2 } });
     expect(await openOperation(f.db, clanId)).toBeNull();
     const entries = await f.db.select().from(honorEvents);
     expect(entries).toHaveLength(afterLaunch || rankedOpening ? 0 : 1);

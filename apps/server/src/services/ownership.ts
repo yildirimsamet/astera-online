@@ -356,6 +356,8 @@ export async function transferPlanetControl(
       disruptedUntil: null,
       lastTickAt: input.now,
       statsOwnerPlayerId: input.newPlayerId,
+      // F2 Ortak Ocak: the old clan's share stays with the old clan; the new owner's next write sets theirs.
+      clanBonus: 0,
       /*
         A WORLD THAT CHANGES HANDS STARTS ITS LOYALTY AGAIN. Koloni arızaları.
 

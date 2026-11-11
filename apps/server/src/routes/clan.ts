@@ -211,7 +211,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
   /** F2 P6 Katkı Defteri: who carries the clan this season. Members only. */
   app.get('/api/clan/ledger', { preHandler: requireAuth }, async (req) => {
     const actor = await clanActor(app.db, req.accountId!);
-    return readClanLedger(app.db, actor);
+    return readClanLedger(app.db, actor, app.clock.now());
   });
 
   /** Decides nothing: the send recomputes every figure under its own locks. */

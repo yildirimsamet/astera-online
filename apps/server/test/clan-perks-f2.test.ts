@@ -1,5 +1,5 @@
 import { pino } from 'pino';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { CLAN, alloyRate, clanLevelUpgradeCost, clanVictoryWreck, collectorCap } from '@astera/rules';
 import { battleReports, clanAlarms, clanMemberships, clanTreasuryEvents, debrisFields, clanSupportWaves, clans, missions, notifications, planets, players, probeReports, scheduledEvents } from '../src/db/schema.js';
@@ -14,11 +14,15 @@ import { listAdminPlayers } from '../src/services/adminPlayers.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { donateToClanTreasury, upgradeClanLevel } from '../src/services/clanTreasury.js';
 import { quoteClanSupport, sendClanSupport } from '../src/services/clanSupport.js';
+import { readMySupport } from '../src/services/clanSupportView.js';
+import { recallFlight } from '../src/services/movement.js';
 import { launchProbe, standingAt } from '../src/services/intel.js';
 import { buildApp } from '../src/app.js';
 import { clanLedgerSchema, galaxySchema, intelSchema, leaderboardSchema } from '../../web/src/api/schemas.js';
 import { launchAttack } from '../src/services/mission.js';
 import { planetView } from '../src/services/planetView.js';
+import { loadLocked } from '../src/services/planet.js';
+import { transferPlanetControl } from '../src/services/ownership.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { giveInstrument, giveSatellite, giveUnits, testDb, testEnv, type Fixture } from './helpers.js';
 import { formClan, supportWorld } from './clanSupportFixture.js';
@@ -112,6 +116,18 @@ describe('F2 corridor — the lane is drawn', () => {
     const home = await pendingThreads(f.db, f.planetIds[0]!, f.clock.now());
     expect(home.length).toBeGreaterThan(0);
     expect(home.some((thread) => thread.corridor === true)).toBe(false);
+  });
+
+  it('draws no lane for a clan with no level, which still flies the ×1.1 lane', async () => {
+    const f = await supportWorld(3, 22_017);
+    const clanId = await formClan(f, 0, [1]);
+    await levelUp(f, clanId, null);
+    await f.db.transaction((tx) => sendClanSupport(tx, {
+      senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, hostPlanetId: f.planetIds[1]!, fleet: WAVE, clock: f.clock,
+    }));
+    const pending = await pendingThreads(f.db, f.planetIds[0]!, f.clock.now());
+    expect(pending.find((thread) => thread.clanSupport === true)).toBeDefined();
+    expect(pending.some((thread) => thread.corridor === true)).toBe(false);
   });
 
   it('draws no lane for a commander’s own raid', async () => {
@@ -242,13 +258,22 @@ describe('F2 refinery — every active member lifts every member’s works', () 
         .where(eq(players.id, f.playerIds[index]!));
     }
     const world = f.planetIds[0]!;
+    await written(f, world);
     await f.db.update(planets).set({ bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0, lastTickAt: f.clock.now() })
       .where(eq(planets.id, world));
     f.clock.advance(60);
+    return { f, ...await read(f, world) };
+  }
+  /** The owner acts on the world: it is written, and the share with it. */
+  async function written(f: Fixture, world: string) {
+    await f.db.update(planets).set({ lastTickAt: new Date(f.clock.now().getTime() - 60_000) }).where(eq(planets.id, world));
+    await f.db.transaction((tx) => loadLocked(tx, world, f.clock));
+  }
+  async function read(f: Fixture, world: string) {
     const [row] = await f.db.select().from(planets).where(eq(planets.id, world));
     const seen = await f.db.transaction((tx) => standingAt(tx, row!, f.clock.now()));
     const view = await f.db.transaction((tx) => planetView(tx, world, f.clock));
-    return { f, seen, view, rate: alloyRate(view.buildings.REFINERY) };
+    return { seen, view, rate: alloyRate(view.buildings.REFINERY) };
   }
 
   it('pays nothing below level 6', async () => {
@@ -276,6 +301,34 @@ describe('F2 refinery — every active member lifts every member’s works', () 
     const payload = await buildReturnPayload(f.db, f.playerIds[0]!, f.clock);
     const accrued = payload.entries.find((entry) => entry.kind === 'accrued');
     expect(accrued?.params.alloy).toBe(Math.round(rate * 1.04));
+  });
+
+  it('keeps the share the world was last written with: a member going quiet takes nothing back', async () => {
+    const { f, view: before, rate } = await refinery(22_206, 9, [0, 1]);
+    expect(before.planet.bufferAlloy).toBe(Math.floor(rate * 1.04));
+    // Commander 1 has been quiet for over a day now; the hour already shown stays paid.
+    await f.db.update(players).set({ lastProgressAt: null }).where(eq(players.id, f.playerIds[1]!));
+    const { seen, view: after } = await read(f, f.planetIds[0]!);
+    expect(after.planet.bufferAlloy).toBe(before.planet.bufferAlloy);
+    expect(Math.floor(seen.bufferAlloy)).toBe(before.planet.bufferAlloy);
+    expect(after.planet.alloyPerHour).toBe(Math.round(rate * 1.04));
+    // The next write takes the new share from then on, and still gives nothing back.
+    await f.db.transaction((tx) => loadLocked(tx, f.planetIds[0]!, f.clock));
+    const { view: next } = await read(f, f.planetIds[0]!);
+    expect(next.planet.alloyPerHour).toBe(Math.round(rate * 1.02));
+    expect(next.planet.bufferAlloy).toBe(before.planet.bufferAlloy);
+  });
+
+  it('a world that changes hands drops the old clan’s share', async () => {
+    const { f } = await refinery(22_207, 9, [0, 1]);
+    const [held] = await f.db.select({ clanBonus: planets.clanBonus }).from(planets).where(eq(planets.id, f.planetIds[0]!));
+    expect(held?.clanBonus).toBeCloseTo(0.04);
+    await f.db.transaction((tx) => transferPlanetControl(tx, {
+      targetPlanetId: f.planetIds[0]!, newPlayerId: f.playerIds[3]!, expectedControllerPlayerId: f.playerIds[0]!,
+      now: f.clock.now(), protectedUntil: f.clock.now(),
+    }));
+    const [taken] = await f.db.select({ clanBonus: planets.clanBonus }).from(planets).where(eq(planets.id, f.planetIds[0]!));
+    expect(taken?.clanBonus).toBe(0);
   });
 
   it('counts the share in the admin estimate, to the unit the world shows', async () => {
@@ -429,6 +482,21 @@ describe('F2 answering the alarm', () => {
     expect(wave.alarmId).toBe(alarm.id);
   });
 
+  it('answers the sender with the raid’s landing beside the wave’s, on the server’s clock', async () => {
+    const { f, alarm } = await alarmed(22_507);
+    const { wave } = await answer(f, alarm.id);
+    expect(wave.raidAt).toBe(alarm.arriveAt.toISOString());
+  });
+
+  it('still flies a wave sent after the raid was called back, but not as an answer', async () => {
+    const { f, alarm } = await alarmed(22_505);
+    await recallFlight(f.db, alarm.missionId, f.clock, f.playerIds[3]!);
+    const { wave } = await answer(f, alarm.id);
+    expect(wave.alarmId).toBeNull();
+    const [row] = await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, wave.id));
+    expect(row?.alarmId).toBeNull();
+  });
+
   it('refuses an answer aimed at a world the alarm was not raised for', async () => {
     const { f, alarm } = await alarmed(22_502);
     await expect(answer(f, alarm.id, 2)).rejects.toMatchObject({ code: 'CLAN_ALARM_MISMATCH' });
@@ -444,6 +512,58 @@ describe('F2 answering the alarm', () => {
     const after = await bay();
     expect(after.alarms).toEqual([expect.objectContaining({ called: 2, seen: 1, answered: 1 })]);
     expect(after.waves.find((wave) => wave.alarmId === alarm.id)).toBeDefined();
+  });
+
+  it('writes the raid’s landing beside the wave’s own, and drops it once the raid is called back', async () => {
+    const { f, alarm } = await alarmed(22_504);
+    await answer(f, alarm.id);
+    // A wave flown to a quiet world carries no raid time.
+    await f.db.transaction((tx) => sendClanSupport(tx, {
+      senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, hostPlanetId: f.planetIds[2]!, fleet: { DART: 5 }, clock: f.clock,
+    }));
+    const mine = async () => (await readMySupport(f.db, f.playerIds[0]!, f.clock.now())).waves;
+    const to = (waves: Awaited<ReturnType<typeof mine>>, world: number) => waves.find((wave) => wave.hostPlanetId === f.planetIds[world]);
+    expect(to(await mine(), 1)?.raidAt).toBe(alarm.arriveAt.toISOString());
+    expect(to(await mine(), 2)?.raidAt).toBeNull();
+
+    await recallFlight(f.db, alarm.missionId, f.clock, f.playerIds[3]!);
+    expect(to(await mine(), 1)?.raidAt).toBeNull();
+    // The host's call is over too.
+    const bay = (await f.db.transaction((tx) => planetView(tx, f.planetIds[1]!, f.clock))).clanSupport!;
+    expect(bay.alarms).toEqual([]);
+  });
+
+  it('takes the called-back raid’s warning off every bell, silently, and leaves another raid’s', async () => {
+    const f = await supportWorld(5, 22_506);
+    const clanId = await formClan(f, 0, [1, 2]);
+    await levelUp(f, clanId, 2);
+    await giveSatellite(f.db, f.planetIds[1]!, 'UPLINK');
+    await giveInstrument(f.db, f.planetIds[1]!, 'RADAR', 5);
+    await giveUnits(f.db, f.planetIds[3]!, { DART: 30 });
+    await giveUnits(f.db, f.planetIds[4]!, { DART: 30 });
+    const turned = await launchAttack(f.db, f.planetIds[3]!, f.planetIds[1]!, { DART: 30 }, f.clock, f.playerIds[3], true);
+    const coming = await launchAttack(f.db, f.planetIds[4]!, f.planetIds[1]!, { DART: 30 }, f.clock, f.playerIds[4], true);
+    const flights = await f.db.select().from(missions).where(eq(missions.targetPlanetId, f.planetIds[1]!));
+    const checks = await f.db.select().from(scheduledEvents).where(and(
+      inArray(scheduledEvents.refId, [turned.missionId, coming.missionId]), eq(scheduledEvents.kind, 'radar_warning')));
+    expect(checks).toHaveLength(2);
+    f.clock.set(new Date(Math.max(
+      ...checks.map((check) => check.resolveAt.getTime()),
+      Math.min(...flights.map((flight) => flight.arriveAt.getTime())) - 5 * 60_000,
+    )));
+    await worker(f).tick();
+    const warnings = async (missionId: string) => (await f.db.select({ playerId: notifications.playerId, kind: notifications.kind })
+      .from(notifications).where(eq(notifications.refId, missionId))).filter((row) => row.kind === 'incoming_fleet' || row.kind === 'clan_alarm');
+    expect(await warnings(turned.missionId)).toHaveLength(3);
+    expect(await warnings(coming.missionId)).toHaveLength(3);
+
+    await recallFlight(f.db, turned.missionId, f.clock, f.playerIds[3]!);
+    expect(await warnings(turned.missionId)).toEqual([]);
+    expect(await warnings(coming.missionId)).toHaveLength(3);
+    // The alarm itself stays on the clan's record: the call was made and answered or not.
+    expect(await f.db.select().from(clanAlarms).where(eq(clanAlarms.missionId, turned.missionId))).toHaveLength(1);
+    // No news that it turned back.
+    expect(await f.db.select().from(notifications).where(eq(notifications.refId, turned.missionId))).toHaveLength(0);
   });
 });
 
@@ -486,7 +606,7 @@ describe('F2 contribution ledger — who carries the clan this season', () => {
       targetPlanetId: f.planetIds[1]!, fleet: { COURIER: 2 }, cargo: { alloy: 500, crystal: 0, deuterium: 0 }, clock: f.clock,
     }));
 
-    const ledger = await readClanLedger(f.db, await actor(1));
+    const ledger = await readClanLedger(f.db, await actor(1), f.clock.now());
     const row = (index: number) => ledger.members.find((member) => member.playerId === f.playerIds[index]);
     expect(ledger.members).toHaveLength(3);
     expect(row(0)).toMatchObject({
@@ -502,16 +622,47 @@ describe('F2 contribution ledger — who carries the clan this season', () => {
     f.clock.advance(1);
     await f.db.update(clans).set({ level: 1, treasuryAlloy: clanLevelUpgradeCost(1).alloy, treasuryCrystal: clanLevelUpgradeCost(1).crystal });
     await f.db.transaction(async (tx) => upgradeClanLevel(tx, { actor: await clanActor(tx, f.accountIds[0]!), expectedLevel: 1, clock: f.clock }));
-    const bought = await readClanLedger(f.db, await actor(0));
+    const bought = await readClanLedger(f.db, await actor(0), f.clock.now());
     expect(bought.members.find((member) => member.playerId === f.playerIds[0])).toMatchObject({
       donated: { alloy: 150 }, towardNext: { alloy: 0, crystal: 0, deuterium: 0 },
     });
   });
 
+  it('draws each member’s last 24 hours hour by hour, newest hour last, and drops older deeds', async () => {
+    const f = await supportWorld(4, 22_604);
+    await formClan(f, 0, [1, 2]);
+    const donate = async (alloy: number) => f.db.transaction(async (tx) => donateToClanTreasury(tx, {
+      actor: await clanActor(tx, f.accountIds[0]!), planetId: f.planetIds[0]!, resources: { alloy, crystal: 0, deuterium: 0 }, clock: f.clock,
+    }));
+    await donate(100); // 29 hours before the read: in the season, out of the day.
+    f.clock.advance(26 * 60);
+    await donate(50);
+    await f.db.transaction((tx) => sendClanSupport(tx, {
+      senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, hostPlanetId: f.planetIds[1]!, fleet: WAVE, clock: f.clock,
+    }));
+    await f.db.transaction((tx) => launchClanAid(tx, {
+      senderPlayerId: f.playerIds[2]!, originPlanetId: f.planetIds[2]!, recipientPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!, fleet: { COURIER: 2 }, cargo: { alloy: 500, crystal: 0, deuterium: 0 }, clock: f.clock,
+    }));
+    f.clock.advance(3 * 60);
+    await donate(10);
+
+    const ledger = await readClanLedger(f.db, await clanActor(f.db, f.accountIds[1]!), f.clock.now());
+    const day = (index: number) => ledger.members.find((member) => member.playerId === f.playerIds[index])!.lastDay;
+    expect(day(0)).toHaveLength(24);
+    expect(day(0)[23]).toBe(1);
+    expect(day(0)[20]).toBe(2);
+    expect(day(0).reduce((sum, n) => sum + n, 0)).toBe(3);
+    expect(day(2)[20]).toBe(1);
+    expect(day(1)).toEqual(Array.from({ length: 24 }, () => 0));
+    // The season's totals still hold the old donation.
+    expect(ledger.members.find((member) => member.playerId === f.playerIds[0])!.donated.alloy).toBe(160);
+  });
+
   it('is the clan’s own: a commander outside it is refused', async () => {
     const f = await supportWorld(4, 22_602);
     await formClan(f, 0, [1]);
-    await expect(readClanLedger(f.db, await clanActor(f.db, f.accountIds[3]!))).rejects.toMatchObject({ code: 'NOT_IN_CLAN' });
+    await expect(readClanLedger(f.db, await clanActor(f.db, f.accountIds[3]!), f.clock.now())).rejects.toMatchObject({ code: 'NOT_IN_CLAN' });
   });
 });
 
@@ -524,7 +675,9 @@ describe('F2 ledger route', () => {
       const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[1]!)}`;
       const response = await built.app.inject({ url: '/api/clan/ledger', headers: { authorization } });
       expect(response.statusCode).toBe(200);
-      expect(clanLedgerSchema.parse(response.json()).members).toHaveLength(2);
+      const members = clanLedgerSchema.parse(response.json()).members;
+      expect(members).toHaveLength(2);
+      expect(members[0]!.lastDay).toHaveLength(24);
     } finally {
       await built.close();
     }

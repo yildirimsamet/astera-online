@@ -125,6 +125,12 @@ describe('F1 raid — the whole line judges and the whole line lifts', () => {
     expect(outcome.result.defenders[0]!.sent).toEqual({ THORN: 10 });
   });
 
+  it('lists only the waves that had ships to lift', () => {
+    const outcome = raid(times(LINE, 8), LINE, [wave(LINE), wave({}, 'w2')]);
+    expect(outcome.escape?.kind).toBe('ESCAPED');
+    expect(outcome.escape?.kind === 'ESCAPED' ? outcome.escape.support : null).toEqual([{ stackId: 'w1', ships: LINE }]);
+  });
+
   it('keeps the whole line standing when the host’s tank cannot pay (F1-K4)', () => {
     const outcome = raid(times(LINE, 8), LINE, [wave(LINE)], { deuterium: 0 });
     expect(outcome.escape?.kind).toBe('STRANDED');

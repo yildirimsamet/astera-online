@@ -17598,6 +17598,13 @@
           "notNull": true,
           "default": "now()"
         },
+        "clan_bonus": {
+          "name": "clan_bonus",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "fault_protected_until": {
           "name": "fault_protected_until",
           "type": "timestamp with time zone",

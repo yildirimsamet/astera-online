@@ -1,4 +1,4 @@
-import { readBattleReplayMetadata, replayStatusFor } from './battleReplay.js';
+import { enemyFleetVisibilityFor, readBattleReplayMetadata, replayStatusFor, type EnemyFleetVisibility } from './battleReplay.js';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { activeBattleFleet, battleCasualties, battleRetreated, fleetCount, fleetDiff, type BattleReplayStatus, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
@@ -26,7 +26,10 @@ export interface MonumentReportView {
   theirRetreatedCount: number;
   yourLosses: Fleet;
   yourDamage: HpDamageLot[];
-  /** Confirmed destruction, never the opponent's starting board or remaining force. */
+  enemyFleetVisibility: EnemyFleetVisibility;
+  /** Opposing roster frozen at this battle, never the monument's live inventory. */
+  theirFleet: Fleet;
+  /** Confirmed destruction is visible even below the intelligence threshold. */
   theirLosses: Fleet;
   lootDeuterium: number;
   dominion: number;
@@ -64,6 +67,9 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
     yourFleet: own.fleet, yourSurvivors: own.survivors, yourLosses: own.losses, yourDamage: own.damage,
     yourRetreated: battleRetreated(battle.rounds, own.side, playerId),
     theirRetreatedCount: fleetCount(battleRetreated(battle.rounds, own.side === 'ATTACK' ? 'DEFENCE' : 'ATTACK')),
+    enemyFleetVisibility: enemyFleetVisibilityFor(replayMetadata.get(battle.id)?.attackerVisible, own.side === 'ATTACK'),
+    theirFleet: own.side === 'DEFENCE' ? battle.attackerFleet
+      : enemyFleetVisibilityFor(replayMetadata.get(battle.id)?.attackerVisible, true) === 'FULL' ? battle.defenderFleet : {},
     theirLosses: own.side === 'ATTACK' ? fleetDiff(battle.defenderFleet, battle.defenderSurvivors)
       : fleetDiff(battle.attackerFleet, battle.attackerSurvivors),
     lootDeuterium: own.lootDeuterium, dominion: own.dominionDelta,

@@ -547,25 +547,16 @@ describe('battle reports', () => {
       }
     });
 
-    /**
-     * THE FOG, RESTATED FOR THE FIELDS THAT COULD HAVE BROKEN IT.
-     *
-     * D164 opened exactly one direction: the force that ARRIVED, to the commander
-     * it arrived at. What sat at home defending is not a thing an attacker
-     * watched — it is a probe's product (D127) — so the defender's board is still
-     * not in the attacker's payload at all, and neither side is handed the
-     * other's survivors as a number.
-     */
-    it('still never hands the attacker the defender\u2019s board', async () => {
+    // The frozen half-power permission now applies to the written report too.
+    it('shows the defending board to an attacker admitted by the power threshold', async () => {
       await raid();
       const [attacker] = await reportsFor(0);
       const [defender] = await reportsFor(1);
 
       expect(attacker!.yourFleet).not.toEqual(defender!.yourFleet);
-      // The defender's Bastions are the tell: they must appear in the defender's
-      // own roster and nowhere in the attacker's payload except as losses.
+      // Own and opposing rosters remain distinct, even when both are disclosed.
       expect(attacker!.yourFleet.BASTION).toBeUndefined();
-      expect(attacker!.theirFleet).toEqual({});
+      expect(attacker!.theirFleet).toEqual(defender!.yourFleet);
       expect(defender!.yourFleet.DART ?? 0).not.toBe(40);
     });
 

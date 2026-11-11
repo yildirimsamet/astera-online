@@ -53,7 +53,7 @@ import {
   type CenterReading,
   supportAccepted,
 } from '@astera/rules';
-import { clanLevelOf, clanRefineryColumns, clanRefineryShare } from './clanPerks.js';
+import { clanLevelOf } from './clanPerks.js';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -901,7 +901,7 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
   }
   const [[season], levels, hardwareRows, faultRows] = await Promise.all([
     tx.select({ startsAt: seasons.startsAt, endsAt: seasons.endsAt, status: seasons.status, role: shards.role,
-      tempoStartsAt: seasons.tempoStartsAt, ...clanRefineryColumns(target.controllerPlayerId, now) })
+      tempoStartsAt: seasons.tempoStartsAt })
       .from(seasons).innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.id, target.seasonId)),
     buildingLevelsOf(tx, target.id),
     tx.select().from(satellites).where(eq(satellites.planetId, target.id)),
@@ -942,8 +942,8 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
       : undefined,
     // D212: a Silent Space world's works run at half pace, and the report must say so.
     season.role === 'WAITING' ? SILENT_SPACE.productionPace : 1,
-    // F2 Ortak Ocak: the same clan share the owner's tick applies.
-    clanRefineryShare(season),
+    // F2 Ortak Ocak: the share frozen on the world at its last write, as the owner's tick applies it.
+    target.clanBonus,
   ).state;
 }
 

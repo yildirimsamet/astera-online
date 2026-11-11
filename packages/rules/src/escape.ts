@@ -192,7 +192,8 @@ export function resolveRaid(input: RaidInput): RaidResolution {
     return { stack, fleet: fighting.eligible, damage: fighting.damage };
   });
   const ships = escapingShips(line);
-  const lifted = waves.map((row) => ({ stackId: row.stack.stackId, ships: escapingShips(row.fleet) }));
+  const lifted = waves.map((row) => ({ stackId: row.stack.stackId, ships: escapingShips(row.fleet) }))
+    .filter((row) => fleetCount(row.ships) > 0);
   if (fleetCount(ships) + lifted.reduce((n, row) => n + fleetCount(row.ships), 0) === 0) return keepStanding(null);
   const fighters = escapeCombatShipCount(line) + waves.reduce((n, row) => n + escapeCombatShipCount(row.fleet), 0);
   if (fighters < input.minimumCombatShips) {

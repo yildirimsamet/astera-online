@@ -6,6 +6,7 @@ import {
   battleReports,
   clanSupportBattleResults,
   clanSupportWaves,
+  clanTreasuryEvents,
   clans,
   clanWarDominionEvents,
   missions,
@@ -126,6 +127,20 @@ describe('a joint war meets a supported line', () => {
     const home = await f.db.select().from(units)
       .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'PIKE')));
     expect(home.reduce((sum, row) => sum + row.count, 0)).toBe(0);
+  });
+});
+
+describe('a joint war repelled by a supported line (F2 E4 Zafer Kasası)', () => {
+  it('pays half the wreck into the defending clan’s purse and says so on the report', async () => {
+    const { f, report } = await battle(15_503, { DART: 40 });
+    expect(report.grade).toBe('REPELLED');
+    const [wardens] = await f.db.select().from(clans).where(eq(clans.tag, 'WD'));
+    const events = await f.db.select().from(clanTreasuryEvents).where(eq(clanTreasuryEvents.clanId, wardens!.id));
+    expect(events).toEqual([expect.objectContaining({ kind: 'VICTORY_WRECK' })]);
+    expect(report.clanPurse).toEqual({
+      alloy: wardens!.treasuryAlloy, crystal: wardens!.treasuryCrystal, deuterium: wardens!.treasuryDeuterium,
+    });
+    expect(wardens!.treasuryAlloy + wardens!.treasuryCrystal).toBeGreaterThan(0);
   });
 });
 

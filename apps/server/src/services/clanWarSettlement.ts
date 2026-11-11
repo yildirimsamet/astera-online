@@ -70,6 +70,7 @@ import {
   saveLedger,
 } from './battleSettlement.js';
 import { addDominionCounters } from './dominion.js';
+import { creditVictoryWreck } from './clanTreasury.js';
 import {
   defenderCountOf,
   foughtStations,
@@ -505,7 +506,7 @@ export async function resolveClanWarBattle(
   const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
   const made = totalRaw * DEBRIS.share;
   const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
-  const { salvage, field: wreck } = settleWreck(
+  const { salvage, field: settled } = settleWreck(
     {
       alloy: share(flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses)),
       crystal: share(flyingCrystal(result.attackerLosses) + flyingCrystal(result.defenderLosses)),
@@ -515,6 +516,17 @@ export async function resolveClanWarBattle(
     },
     activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
   );
+  // E4 ZAFER KASASI (F2): a supported line that held pays half its wreck into the host's clan purse.
+  let wreck = settled;
+  let clanPurse: Resources | null = null;
+  if (wreck && fought.length > 0 && result.grade === 'REPELLED') {
+    const victory = await creditVictoryWreck(tx, {
+      hostPlayerId: defender.playerId, seasonId: mission.seasonId, field: wreck, now: defender.now,
+    });
+    clanPurse = victory.purse;
+    const left = victory.field;
+    wreck = left.alloy + left.crystal + left.deuterium >= DEBRIS.minimum ? left : null;
+  }
   const salvageShares = allocateJointSalvage(salvage, result.contributions.map((outcome) => ({
     playerId: outcome.playerId,
     contributionId: outcome.contributionId,
@@ -670,6 +682,7 @@ export async function resolveClanWarBattle(
     fleetEscape: raid.escape,
     disruptedMinutes: 0,
     wreckValue: wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0,
+    clanPurse,
     salvage,
     cargoLimited,
     shieldAbsorbed,

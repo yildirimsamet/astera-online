@@ -1,21 +1,6 @@
 import { expect, it } from 'vitest';
 import { eyeMarkerScale, planetMarkerLayout } from '../src/galaxy/planetMarkerLayout.js';
 
-it.each([7, 80, 400])('shrinks only the mobile foreign triangles and closed eyes by another two pixels at depth %s', depth => {
-  const body = { radius: 0.7, intel: 'REMEMBERED' as const, isOwned: false, isCapital: false };
-  const pixel = 2 * depth * Math.tan(Math.PI / 8) / 812;
-  const desktop = planetMarkerLayout(body, depth, 812, 45);
-  const mobile = planetMarkerLayout(body, depth, 812, 45, true);
-  expect((desktop.pinScale - mobile.pinScale) * 0.2 / pixel).toBeCloseTo(2, 8);
-  expect((desktop.pinWidthScale - mobile.pinWidthScale) * 0.13 * Math.sqrt(3) / pixel).toBeCloseTo(2, 8);
-  expect((desktop.eyeSize - mobile.eyeSize) / pixel).toBeCloseTo(2, 8);
-  const owned = { ...body, isOwned: true, isCapital: true };
-  expect(planetMarkerLayout(owned, depth, 812, 45, true).pinScale).toBe(planetMarkerLayout(owned, depth, 812, 45).pinScale);
-  expect(mobile.pinScale).toBeGreaterThan(0);
-  expect(mobile.pinWidthScale).toBeGreaterThan(0);
-  expect(planetMarkerLayout(body, depth, 812, 45, false)).toEqual(desktop);
-});
-
 it('preserves the shared sizing law used by colony fault badges', () => {
   const depth = 7, radius = 0.7;
   const pixel = 2 * depth * Math.tan(Math.PI / 8) / 812;

@@ -129,9 +129,11 @@ function Fleet() {
         recalling: null,
         onRecall: noop,
         waves: [
-          mine({}),
+          mine({ raidAt: iso(34) }),
           mine({ id: 'w-out', status: 'OUTBOUND', stationedAt: null, expiresAt: null, sentAt: iso(-6), arriveAt: iso(9),
-            hostPlanetName: 'Vega', host: { playerId: 'orin', name: 'Orin' } }),
+            hostPlanetName: 'Vega', host: { playerId: 'orin', name: 'Orin' }, raidAt: iso(13) }),
+          mine({ id: 'w-late', status: 'OUTBOUND', stationedAt: null, expiresAt: null, sentAt: iso(-2), arriveAt: iso(19),
+            hostPlanetName: 'Vega', host: { playerId: 'orin', name: 'Orin' }, fleet: { DART: 18 }, raidAt: iso(13) }),
           mine({ id: 'w-home', status: 'RETURNING', returnReason: 'SENT_BACK', returnAt: iso(22), hostPlanetName: 'Altair' }),
         ],
       }}
@@ -207,14 +209,17 @@ function Seeded({ children }: { children: ReactNode }) {
 
 /** F2 Klan Sancağı + Katkı Defteri, against a stub ledger. */
 function Banner({ gold }: { gold: boolean }) {
+  const day = (hours: Record<number, number>) => Array.from({ length: 24 }, (_, hour) => hours[hour] ?? 0);
   const ledger = {
     members: [
       { playerId: 'mira', name: 'Mira', donated: { alloy: 18_400, crystal: 5_200, deuterium: 0 }, towardNext: { alloy: 9_100, crystal: 2_300, deuterium: 0 },
-        supportWaves: 7, supportShips: 210, supportBattles: 3, alarmAnswers: 4, aidSent: 2, jointWar: 1 },
+        supportWaves: 7, supportShips: 210, supportBattles: 3, alarmAnswers: 4, aidSent: 2, jointWar: 1,
+        lastDay: day({ 3: 1, 9: 2, 10: 4, 11: 1, 17: 1, 21: 2, 22: 1 }) },
       { playerId: 'me', name: 'Vantage', donated: { alloy: 9_800, crystal: 2_600, deuterium: 0 }, towardNext: { alloy: 4_000, crystal: 1_000, deuterium: 0 },
-        supportWaves: 2, supportShips: 40, supportBattles: 1, alarmAnswers: 1, aidSent: 0, jointWar: 0 },
+        supportWaves: 2, supportShips: 40, supportBattles: 1, alarmAnswers: 1, aidSent: 0, jointWar: 0,
+        lastDay: day({ 14: 1, 20: 2, 23: 1 }) },
       { playerId: 'orin', name: 'Orin', donated: { alloy: 0, crystal: 0, deuterium: 0 }, towardNext: { alloy: 0, crystal: 0, deuterium: 0 },
-        supportWaves: 0, supportShips: 0, supportBattles: 0, alarmAnswers: 0, aidSent: 0, jointWar: 0 },
+        supportWaves: 0, supportShips: 0, supportBattles: 0, alarmAnswers: 0, aidSent: 0, jointWar: 0, lastDay: day({}) },
     ],
   };
   const [api] = useState(() => new Api({

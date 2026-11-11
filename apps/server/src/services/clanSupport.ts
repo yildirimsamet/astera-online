@@ -426,12 +426,17 @@ export async function sendClanSupport(
   if (first) throw new GameError(first.code, first.message, 409, first.params);
 
   const { origin } = context;
+  // An answer counts only while its raid is still coming: one sent after it landed or was called
+  // back still flies, as ordinary support, so the ledger's "alarms answered" cannot be padded.
+  let alarmId: string | null = null;
   if (input.alarmId !== undefined) {
-    const [alarm] = await tx.select({ clanId: clanAlarms.clanId, hostPlanetId: clanAlarms.hostPlanetId })
-      .from(clanAlarms).where(eq(clanAlarms.id, input.alarmId));
+    const [alarm] = await tx.select({
+      clanId: clanAlarms.clanId, hostPlanetId: clanAlarms.hostPlanetId, arriveAt: clanAlarms.arriveAt, recalledAt: missions.recalledAt,
+    }).from(clanAlarms).innerJoin(missions, eq(missions.id, clanAlarms.missionId)).where(eq(clanAlarms.id, input.alarmId));
     if (alarm?.clanId !== context.clanId || alarm.hostPlanetId !== input.hostPlanetId) {
       throw new GameError('CLAN_ALARM_MISMATCH', 'That alarm was not raised for this world', 400);
     }
+    if (alarm.arriveAt > origin.now && alarm.recalledAt === null) alarmId = input.alarmId;
   }
   const damage = await takeHomeHealth(tx, origin.planetId, input.fleet, origin.now, true);
   const [mission] = await tx.insert(missions).values({
@@ -478,7 +483,7 @@ export async function sendClanSupport(
     outboundMissionId: mission.id,
     sentAt: origin.now,
     arriveAt: context.arriveAt,
-    alarmId: input.alarmId ?? null,
+    alarmId,
   }).returning();
   if (!wave) throw new Error('clan support wave insert returned no row');
   await attachAdmiral(tx, context.admiralId, 'defence', wave.id);
@@ -512,7 +517,7 @@ export async function sendClanSupport(
     authorPlayerId: input.senderPlayerId,
     event: { kind: 'SUPPORT_SENT', params: {
       senderName: names.sender, hostName: names.host, hostPlanetName: names.world,
-      ships: fleetCount(input.fleet), arriveAt: context.arriveAt.toISOString(), answering: input.alarmId !== undefined,
+      ships: fleetCount(input.fleet), arriveAt: context.arriveAt.toISOString(), answering: alarmId !== null,
     } },
     now: origin.now,
   });
@@ -523,7 +528,7 @@ export async function sendClanSupport(
   await recordLegacyActivity(tx, input.senderPlayerId, origin.now);
   if (fleetChangesWatch(input.fleet)) await publishWatchChanges(tx, [origin.planetId]);
 
-  const [view] = await viewWaves(tx, [wave]);
+  const [view] = await viewWaves(tx, [wave], origin.now);
   if (!view) throw new Error('clan support wave view vanished');
   return { wave: view, planet: await planetView(tx, origin.planetId, input.clock) };
 }

@@ -551,12 +551,15 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(units).where(and(eq(units.planetId, planetId),
       season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
-    tx.select({ role: shards.role, ...clanRefineryColumns(row.controllerPlayerId, clock.now()) })
+    // F2 Ortak Ocak: the clan's share is read fresh only by a write, which freezes it on the row.
+    tx.select({ role: shards.role, ...(options.mutate
+      ? clanRefineryColumns(row.controllerPlayerId, clock.now())
+      : { clanLevel: sql<number | null>`null`, clanActive: sql<number>`0` }) })
       .from(shards).where(eq(shards.id, season.shardId)),
   ]);
   const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await batchReads(readHardware);
   const inputs: PlanetInputs = { row, season, buildingRows, satelliteRows, unitRows, faultRows,
-    silentSpace: shard?.role === 'WAITING', clanBonus: clanRefineryShare(shard) };
+    silentSpace: shard?.role === 'WAITING', clanBonus: row.clanBonus };
   const { levels, instruments, faults } = hardwareInputs(inputs);
 
   if (season.radiationBombStartsAt) {
@@ -571,7 +574,9 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const economy = planetEconomy(inputs, clock);
   const { advanced, now, produced, productiveSeconds, loyalty } = economy;
 
-  if (options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
+  const written = options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt);
+  const freshBonus = written ? clanRefineryShare(shard) : row.clanBonus;
+  if (written) {
     /*
       A HAND-OVER THAT DID NOT COME THROUGH `transferPlanetControl`, REPAIRED
       RATHER THAN REFUSED.
@@ -640,11 +645,14 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
         lastTickAt: now,
         statsOwnerPlayerId: row.controllerPlayerId,
         seasonTelemetry: row.seasonTelemetry,
+        clanBonus: freshBonus,
       })
       .where(eq(planets.id, planetId));
   }
 
-  return { planet: { ...lockedPlanetFrom(inputs, economy, clock), returnEligible: identity.returnEligible }, unitRows, faultRows };
+  // From here on the world earns the share it was just written with.
+  const ahead = written ? { ...inputs, clanBonus: freshBonus } : inputs;
+  return { planet: { ...lockedPlanetFrom(ahead, economy, clock), returnEligible: identity.returnEligible }, unitRows, faultRows };
 }
 
 /**
@@ -683,16 +691,14 @@ export async function loadPlanetViewStates(tx: Tx, planetIds: readonly string[],
     tx.select().from(satellites).where(inArray(satellites.planetId, ids)),
     tx.select().from(units).where(inArray(units.planetId, ids)),
     tx.select().from(planetFaults).where(inArray(planetFaults.planetId, ids)),
-    tx.select({ role: shards.role, ...clanRefineryColumns(first.controllerPlayerId, at) })
-      .from(shards).where(eq(shards.id, season.shardId)),
+    tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
     radiation ? pendingRadiationImpacts(tx, ids, until) : [],
     radiation ? planetAnchoredSources(tx, season, ids, until) : [],
   ]);
   const silentSpace = shard?.role === 'WAITING';
-  const clanBonus = clanRefineryShare(shard);
   const of = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
   return Promise.all(worlds.map(async row => {
-    const inputs: PlanetInputs = { row, season, silentSpace, clanBonus,
+    const inputs: PlanetInputs = { row, season, silentSpace, clanBonus: row.clanBonus,
       buildingRows: of(buildingRows, row.id), satelliteRows: of(satelliteRows, row.id),
       unitRows: of(unitRows, row.id), faultRows: of(faultRows, row.id) };
     if (radiation) {

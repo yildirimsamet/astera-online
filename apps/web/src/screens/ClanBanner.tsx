@@ -213,15 +213,50 @@ function Purse({ war, ledger }: { war: ClanWar; ledger: ClanLedger | null }) {
   );
 }
 
+const DAY_BAR = 10;
+
+/**
+ * "SON 24 SAAT" (F2 P6): one bar per hour, the hour just gone on the right, scaled to the clan's
+ * busiest hour. A quiet hour keeps a faint stub so the line reads as a day, not as a gap.
+ */
+function LastDay({ hours, peak, self }: { hours: readonly number[]; peak: number; self: boolean }) {
+  const { t } = useTranslation();
+  const total = hours.reduce((sum, count) => sum + count, 0);
+  return (
+    <span className="flex w-14 shrink-0 flex-col items-end">
+      <svg data-last-day role="img" viewBox={`0 0 ${String(hours.length * 2)} 12`} preserveAspectRatio="none"
+        aria-label={total > 0 ? t('clanWar.ledgerDayAria', { count: total }) : t('clanWar.ledgerDayNone')}
+        className="mt-0.5 h-5 w-14">
+        {hours.map((count, hour) => {
+          const height = count > 0 ? Math.max(1.5, (count / peak) * DAY_BAR) : 0.75;
+          return (
+            <rect key={hour} data-hour={hour} data-quiet={count === 0 ? 'true' : undefined}
+              x={hour * 2} y={11 - height} width={1.5} height={height} rx={0.4}
+              className={count === 0 ? 'fill-v2-line' : self ? 'fill-v2-self' : 'fill-v2-ally'} />
+          );
+        })}
+      </svg>
+      <span aria-hidden="true" className={`font-v2-mono text-micro leading-none ${total > 0 ? 'text-v2-ink-2' : 'text-v2-ink-3'}`}>
+        {total > 0 ? full(total) : '–'}
+      </span>
+    </span>
+  );
+}
+
 /**
  * KATKI DEFTERİ (F2 P6). Owner: "Kim ne yapıyor görünür olsun." Each member's season in one row —
  * what they gave, their share of the rung being filled, and the defence they flew. Own row lit.
  */
 function Ledger({ ledger, need, selfPlayerId }: { ledger: ClanLedger; need: number; selfPlayerId?: string | undefined }) {
   const { t } = useTranslation();
+  // One scale for the whole clan, so a tall bar means the same in every row.
+  const peak = Math.max(1, ...ledger.members.flatMap((member) => member.lastDay));
   return (
     <section className="flex flex-col">
-      <h4 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanWar.ledger')}</h4>
+      <div className="flex items-baseline justify-between gap-2">
+        <h4 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanWar.ledger')}</h4>
+        <span aria-hidden="true" className="text-micro text-v2-ink-3">{t('clanWar.ledgerDay')}</span>
+      </div>
       <ul>
         {ordered(ledger).map((member) => {
           const self = member.playerId === selfPlayerId;
@@ -249,6 +284,7 @@ function Ledger({ ledger, need, selfPlayerId }: { ledger: ClanLedger; need: numb
                   {toward > 0 && <span className="block text-v2-ink-3">{t('clanWar.ledgerToward', { pct: toward })}</span>}
                 </span>
               )}
+              <LastDay hours={member.lastDay} peak={peak} self={self} />
             </li>
           );
         })}

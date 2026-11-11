@@ -23,13 +23,15 @@ const war = (over: Record<string, unknown> = {}): ClanWar => clanWarSchema.parse
   ...over,
 });
 
+const day = (hours: Record<number, number> = {}) => Array.from({ length: 24 }, (_, hour) => hours[hour] ?? 0);
+
 const ledger = (): ClanLedger => clanLedgerSchema.parse({ members: [
   { playerId: 'me', name: 'Vantage', donated: { alloy: 900, crystal: 200, deuterium: 0 }, towardNext: { alloy: 400, crystal: 100, deuterium: 0 },
-    supportWaves: 2, supportShips: 40, supportBattles: 1, alarmAnswers: 1, aidSent: 0, jointWar: 0 },
+    supportWaves: 2, supportShips: 40, supportBattles: 1, alarmAnswers: 1, aidSent: 0, jointWar: 0, lastDay: day({ 20: 2, 23: 1 }) },
   { playerId: 'ayse', name: 'Ayşe', donated: { alloy: 2000, crystal: 300, deuterium: 0 }, towardNext: { alloy: 730, crystal: 200, deuterium: 0 },
-    supportWaves: 7, supportShips: 210, supportBattles: 3, alarmAnswers: 4, aidSent: 2, jointWar: 1 },
+    supportWaves: 7, supportShips: 210, supportBattles: 3, alarmAnswers: 4, aidSent: 2, jointWar: 1, lastDay: day({ 10: 4, 22: 1 }) },
   { playerId: 'quiet', name: 'Quiet', donated: { alloy: 0, crystal: 0, deuterium: 0 }, towardNext: { alloy: 0, crystal: 0, deuterium: 0 },
-    supportWaves: 0, supportShips: 0, supportBattles: 0, alarmAnswers: 0, aidSent: 0, jointWar: 0 },
+    supportWaves: 0, supportShips: 0, supportBattles: 0, alarmAnswers: 0, aidSent: 0, jointWar: 0, lastDay: day() },
 ] });
 
 function show(given: ClanWar, role: 'LEADER' | 'MEMBER' = 'MEMBER', book: ClanLedger | null = ledger()) {
@@ -125,5 +127,25 @@ describe('the contribution ledger', () => {
     // 930 of 2869 for Ayşe, 500 for me.
     expect(slices[0]!.style.width).toBe('32.4%');
     expect(slices[1]!.style.width).toBe('17.4%');
+  });
+
+  it('draws each row’s last 24 hours on one clan-wide scale, newest hour on the right', async () => {
+    show(war());
+    const rows = await screen.findAllByTestId('ledger-row');
+    expect(screen.getByText(/last 24 h/i)).toBeInTheDocument();
+    const line = (row: HTMLElement) => row.querySelector<SVGElement>('[data-last-day]')!;
+    expect(line(rows[0]!)).toHaveAttribute('aria-label', 'Last 24 hours: 5 deeds');
+    expect(line(rows[1]!)).toHaveAttribute('aria-label', 'Last 24 hours: 3 deeds');
+    expect(line(rows[2]!)).toHaveAttribute('aria-label', 'Last 24 hours: nothing');
+    const hours = (row: HTMLElement) => [...line(row).querySelectorAll('[data-hour]')];
+    expect(hours(rows[0]!)).toHaveLength(24);
+    // Ayşe's busiest hour is the clan's busiest: full height. My two-deed hour is half of it.
+    const height = (row: HTMLElement, hour: number) => Number(hours(row)[hour]!.getAttribute('height'));
+    expect(height(rows[0]!, 10)).toBeCloseTo(10);
+    expect(height(rows[1]!, 20)).toBeCloseTo(5);
+    expect(height(rows[1]!, 23)).toBeCloseTo(2.5);
+    // A quiet hour still marks its place on the line, lower than any deed.
+    expect(height(rows[2]!, 0)).toBeLessThan(height(rows[1]!, 23));
+    expect(hours(rows[2]!)[0]).toHaveAttribute('data-quiet', 'true');
   });
 });

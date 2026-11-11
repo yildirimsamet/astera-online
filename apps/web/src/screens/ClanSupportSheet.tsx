@@ -222,14 +222,15 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
  */
 function AlarmStrip({ raidAt, landsAt, now }: { raidAt: Date; landsAt: Date | null; now: number }) {
   const { t } = useTranslation();
-  const verdict = landsAt ? supportVerdict(landsAt, raidAt) : null;
+  const landed = raidAt.getTime() <= now;
+  const verdict = landsAt && !landed ? supportVerdict(landsAt, raidAt) : null;
   return (
     <div data-alarm-strip="" className="relative overflow-hidden rounded-control border border-v2-hostile/50 bg-v2-hostile/10 px-3 py-2">
       <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 animate-pulse bg-v2-hostile" />
       <p className="flex items-baseline justify-between gap-2">
         <span className="text-micro font-semibold uppercase tracking-wide text-v2-hostile">{t('clanSupport.alarmAnswering')}</span>
         <span className="font-v2-mono text-caption tabular-nums text-v2-ink">
-          {t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
+          {landed ? t('clanSupport.alarmRaidLanded') : t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
         </span>
       </p>
       {verdict && (

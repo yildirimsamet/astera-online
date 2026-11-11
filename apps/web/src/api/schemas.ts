@@ -887,6 +887,8 @@ export const clanSupportWaveSchema = z.object({
   battles: z.number().int().nonnegative(),
   /** F2 E1: the clan alarm this wave answers; absent from a server before F2. */
   alarmId: z.string().nullable().optional(),
+  /** F2 corridor: the soonest live raid on the host world, written beside the wave's landing. */
+  raidAt: z.coerce.date().nullable().optional(),
 });
 export type ClanSupportWave = z.infer<typeof clanSupportWaveSchema>;
 
@@ -907,6 +909,8 @@ export const clanLedgerSchema = z.object({
     alarmAnswers: z.number().int().nonnegative(),
     aidSent: z.number().int().nonnegative(),
     jointWar: z.number().int().nonnegative(),
+    /** "Son 24 saat": deeds per hour, oldest first, the hour ending at the read last. */
+    lastDay: z.array(z.number().int().nonnegative()).length(24),
   })),
 });
 export type ClanLedger = z.infer<typeof clanLedgerSchema>;
@@ -2919,20 +2923,17 @@ export const returnSeenSchema = z.object({ ok: z.literal(true) });
 export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
 
 /**
- * A battle report: ground truth about what was BROUGHT, never about what remains.
+ * A report records this battle's forces and outcomes, not current inventory.
+ * Full opposing rosters require the same frozen permission as the replay;
+ * otherwise the caller receives only confirmed opposing losses.
  *
- * Both participants get the same facts because both were there. The OPPONENT's
- * survivors are not in the payload at all — a report tells you what someone
- * fielded, not what they kept.
- *
- * `yourFleet` is the CALLER's own board when the shooting started, which is what
- * gives their own losses a denominator. `theirFleet` is the exception D164 made and
- * the only one: the force that ARRIVED, to the commander it arrived at — they stood
- * under it, so naming it reports what they saw. The server decides which row each
- * comes from and empties the one that is not owed; nothing on this side chooses.
+ * `yourFleet` is the caller's force. `theirFleet` is the opposing starting force,
+ * disclosed under the same frozen half-power permission as the replay. A missing
+ * visibility field identifies a client/server rolling upgrade, not an empty force.
  */
 const ordinaryBattleReport = z.object({
   replayStatus: z.enum(['AVAILABLE', 'NOT_RECORDED', 'INSUFFICIENT_FORCE', 'TOO_LARGE']).optional(),
+  enemyFleetVisibility: z.enum(['FULL', 'INSUFFICIENT_FORCE', 'UNKNOWN']).optional(),
       /** Absent only on battle reports cached before strategic reports existed. */
       kind: z.literal('BATTLE').optional(),
       id: z.string(),
@@ -3196,6 +3197,7 @@ const strategicBattleReport = z.object({
 
 const monumentBattleReport = z.object({
   replayStatus: z.enum(['AVAILABLE', 'NOT_RECORDED', 'INSUFFICIENT_FORCE', 'TOO_LARGE']).optional(),
+  enemyFleetVisibility: z.enum(['FULL', 'INSUFFICIENT_FORCE', 'UNKNOWN']).optional(),
   kind: z.literal('MONUMENT'), id: z.string(), at: z.coerce.date(),
   monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(8), position: publicMonumentSchema.shape.position }),
   attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
@@ -3206,7 +3208,7 @@ const monumentBattleReport = z.object({
     yourLosses: fleet, theirLosses: fleet, yourRetreated: fleet, theirRetreatedCount: z.number().int().nonnegative() })).optional(),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
-  theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,
+  theirFleet: fleet.default({}), theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,
   honor: honorReceipt.nullish(),
   opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), playerId: z.string().nullable(), name: z.string(),
     clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]),

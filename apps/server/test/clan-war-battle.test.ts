@@ -763,7 +763,9 @@ describe('joint report visibility', () => {
     expect(defender.reports[0]).toMatchObject({ kind: 'BATTLE', attacking: false });
     if (member.reports[0]?.kind !== 'BATTLE' || defender.reports[0]?.kind !== 'BATTLE') return;
     expect(member.reports[0].yourFleet.DART).toBe(20);
-    expect(member.reports[0].theirFleet).toEqual({});
+    expect(member.reports[0]).toMatchObject({ theirFleet: { DART: 4 }, enemyFleetVisibility: 'FULL' });
+    const leader = await readBattleReports(f.db, f.playerIds[0]!);
+    expect(leader.reports[0]).toMatchObject({ theirFleet: member.reports[0].theirFleet, enemyFleetVisibility: 'FULL' });
     // S4: a participant's balance carries what their own waves paid up front; the defender's none.
     const paid = (await f.db.select({ fuelPaid: clanWarContributions.fuelPaid }).from(clanWarContributions)
       .where(eq(clanWarContributions.playerId, f.playerIds[1]!)))
@@ -785,7 +787,27 @@ describe('joint report visibility', () => {
     expect((await readBattleReports(f.db, f.playerIds[1]!)).reports).toHaveLength(1);
   });
 
-  it('gives a coordinator with no ships attacker fog and no personal loot', async () => {
+  it('denies every joint attacker below half power while the defender sees the complete pooled fleet', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await armDefender(f, { DART: 200 });
+    await send(f, 0, f.planetIds[0]!, { DART: 10 });
+    await send(f, 1, f.planetIds[1]!, { DART: 10 });
+    await land(f);
+    await start(f);
+    await land(f);
+    const [stored] = await f.db.select().from(battleReports);
+    for (const reader of [0, 1]) {
+      const [report] = (await readBattleReports(f.db, f.playerIds[reader]!)).reports;
+      expect(report).toMatchObject({ enemyFleetVisibility: 'INSUFFICIENT_FORCE', theirFleet: {}, replayStatus: 'INSUFFICIENT_FORCE' });
+      await expect(readBattleReplay(f.db, { playerId: f.playerIds[reader]!, seasonId: f.seasonId }, { kind: 'BATTLE', id: stored!.id }))
+        .rejects.toMatchObject({ status: 403 });
+    }
+    expect((await readBattleReports(f.db, f.playerIds[2]!)).reports[0])
+      .toMatchObject({ enemyFleetVisibility: 'FULL', theirFleet: { DART: 20 } });
+  });
+
+  it('gives an authorized coordinator the pooled intelligence without personal loot', async () => {
     const f = await setup();
     await readyOperation(f);
     await armDefender(f);
@@ -798,7 +820,7 @@ describe('joint report visibility', () => {
     expect(leader.reports[0]).toMatchObject({ kind: 'BATTLE', attacking: true, lootAlloy: 0 });
     if (leader.reports[0]?.kind !== 'BATTLE') return;
     expect(leader.reports[0].yourFleet).toEqual({});
-    expect(leader.reports[0].theirFleet).toEqual({});
+    expect(leader.reports[0]).toMatchObject({ theirFleet: { DART: 4 }, enemyFleetVisibility: 'FULL' });
     expect(leader.rivals).toHaveLength(0);
   });
 });

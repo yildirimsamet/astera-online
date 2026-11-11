@@ -29,10 +29,10 @@ function ring(): THREE.Texture {
   if (!context) throw new Error('The alarm ring needs a 2D canvas');
   context.beginPath();
   context.arc(64, 64, 58, 0, Math.PI * 2);
-  context.lineWidth = 5;
+  context.lineWidth = 3;
   context.strokeStyle = THREAT;
   context.shadowColor = THREAT;
-  context.shadowBlur = 8;
+  context.shadowBlur = 4;
   context.stroke();
   ringTexture = new THREE.CanvasTexture(canvas);
   ringTexture.colorSpace = THREE.SRGBColorSpace;
@@ -74,11 +74,11 @@ function AlarmRing({ node }: { node: PlanetNode }) {
     group.current.quaternion.copy(camera.quaternion);
     group.current.scale.setScalar(across * scale);
     // A steady band, and two waves leaving it half a beat apart.
-    materials[0]!.opacity = 0.75 + Math.sin(clock.elapsedTime * 5) * 0.2;
+    materials[0]!.opacity = 0.5 + Math.sin(clock.elapsedTime * 5) * 0.12;
     for (const index of [1, 2]) {
       const t = ((clock.elapsedTime / WAVE_SECONDS) + (index - 1) * 0.5) % 1;
       waves.current[index]?.scale.setScalar(1 + t * 0.85);
-      materials[index]!.opacity = 0.6 * (1 - t) ** 2;
+      materials[index]!.opacity = 0.4 * (1 - t) ** 2;
     }
   });
 

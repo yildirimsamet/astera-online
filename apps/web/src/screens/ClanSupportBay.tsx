@@ -188,7 +188,11 @@ function AlarmAnswer({ alarm, waves, now }: { alarm: Alarm; waves: readonly Clan
   const answering = waves.filter((wave) => wave.alarmId === alarm.id && (wave.status === 'OUTBOUND' || wave.status === 'STATIONED'))
     .sort((a, b) => a.arriveAt.getTime() - b.arriveAt.getTime());
   const first = answering[0];
+  // Between the landing and the next read the alarm is still listed: a verdict on it means nothing.
+  const landed = alarm.arriveAt.getTime() <= now;
   const verdict = first ? supportVerdict(first.arriveAt, alarm.arriveAt) : null;
+  // A wave already on station is no longer "landing before the raid": it stands guard.
+  const standing = first !== undefined && first.arriveAt.getTime() <= now;
   return (
     <p data-clan-alarm={alarm.id} className="flex items-start gap-2 rounded-control border border-v2-hostile/40 bg-v2-hostile/10 px-2 py-1.5 text-micro leading-snug">
       <span aria-hidden="true" className="mt-1 size-2 shrink-0 animate-pulse rounded-full bg-v2-hostile" />
@@ -196,15 +200,18 @@ function AlarmAnswer({ alarm, waves, now }: { alarm: Alarm; waves: readonly Clan
         <span className="font-semibold text-v2-ink">
           {t('clanSupport.alarmSeen', { seen: alarm.seen, count: alarm.called })}
         </span>
-        {' · '}
-        {verdict === null
+        {!landed && ' · '}
+        {landed ? null : verdict === null
           ? <span className="text-v2-ink-2">{t('clanSupport.alarmNoAnswer')}</span>
+          : standing ? <span className="text-v2-self">{t('clanSupport.alarmAnswersStanding', { count: answering.length })}</span>
           : <span className={verdict.inTime ? 'text-v2-self' : 'text-v2-warn'}>
             {t(verdict.inTime ? 'clanSupport.alarmAnswersInTime' : 'clanSupport.alarmAnswersLate', {
               count: answering.length, time: durationPrecise(verdict.minutes),
             })}
           </span>}
-        <span className="block font-v2-mono text-v2-ink-3">{t('clanSupport.alarmRaidIn', { time: countdown(alarm.arriveAt.getTime() - now) })}</span>
+        <span className="block font-v2-mono text-v2-ink-3">
+          {landed ? t('clanSupport.alarmRaidLanded') : t('clanSupport.alarmRaidIn', { time: countdown(alarm.arriveAt.getTime() - now) })}
+        </span>
       </span>
     </p>
   );

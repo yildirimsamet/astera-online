@@ -87,6 +87,44 @@ describe('the clan alarm in the bell', () => {
   });
 });
 
+describe('the clan alarm stands under "Right now" while the raid is in the air', () => {
+  beforeEach(async () => { await i18n.changeLanguage('en'); });
+  const live = (id: string, landsInMinutes: number): NotificationView => ({
+    ...news(alarmPayload({ arriveAt: new Date(Date.now() + landsInMinutes * MINUTE).toISOString() })), id,
+  });
+  const section = (heading: string) => screen.getByText(heading).nextElementSibling as HTMLElement;
+  const open = async () => {
+    render(<QueryClientProvider client={new QueryClient()}><Signals onOpen={vi.fn()} onFocusPlanet={vi.fn()} /></QueryClientProvider>);
+    await userEvent.click(await screen.findByRole('button', { name: /^Signals/ }));
+  };
+
+  it('lists a raid still in the air as true right now, not as something that happened', async () => {
+    rows = [live('n-live', 14), { ...news(), id: 'n-old', kind: 'scan_detected', payload: {} }];
+    await open();
+    expect(within(section('Right now')).getByText(/Kuzgun is under attack/)).toBeInTheDocument();
+    expect(screen.queryByText('What happened')).toBeInTheDocument();
+    expect(within(section('What happened')).queryByText(/Kuzgun/)).toBeNull();
+  });
+
+  it('moves it back to what happened once the raid has landed', async () => {
+    rows = [live('n-landed', -5)];
+    await open();
+    expect(screen.queryByText('Right now')).toBeNull();
+    expect(screen.getByText(/the raid on Kuzgun has landed/)).toBeInTheDocument();
+  });
+
+  it('still opens the support sheet from "Right now"', async () => {
+    const heard = vi.fn();
+    const stop = subscribeClanAlarm(heard);
+    try {
+      rows = [live('n-live', 14)];
+      await open();
+      await userEvent.click(within(section('Right now')).getByRole('button', { name: 'Open related report' }));
+      expect(heard).toHaveBeenCalledWith(expect.objectContaining({ alarmId: ALARM }));
+    } finally { stop(); }
+  });
+});
+
 describe('the verdict: in time or too late', () => {
   beforeEach(async () => { await i18n.changeLanguage('en'); });
   const raid = new Date(AT.getTime() + 30 * MINUTE);
@@ -159,6 +197,16 @@ describe('the support sheet answering an alarm', () => {
     expect(late).toHaveClass('text-v2-warn');
   });
 
+  it('says the raid has landed once it has, with no countdown and no verdict', async () => {
+    const raidAt = new Date(Date.now() - MINUTE);
+    sheet(quote(new Date(Date.now() + 10 * MINUTE)), raidAt);
+    const strip = document.querySelector('[data-alarm-strip]')!;
+    expect(strip).toHaveTextContent(/the raid has landed/i);
+    expect(strip).not.toHaveTextContent(/lands in/i);
+    await pick(3);
+    expect(document.querySelector('[data-alarm-verdict]')).toBeNull();
+  });
+
   it('states the stay the clan level buys, not a fixed twelve hours', async () => {
     sheet(quote(new Date(Date.now() + 10 * MINUTE), 18), null);
     await pick(2);
@@ -202,9 +250,28 @@ describe('the host reads the clan’s answer', () => {
     expect(line).toHaveTextContent(/2 waves answering · the first lands 3m 00s before the raid/i);
   });
 
+  it('says the first answer already stands guard once it has landed, not when it lands', () => {
+    const raidAt = new Date(Date.now() + 20 * MINUTE);
+    bay(host([{ id: ALARM, missionId: 'm', arriveAt: raidAt.toISOString(), called: 2, seen: 1, answered: 2 }],
+      [{ ...inbound(new Date(Date.now() - 2 * MINUTE)), status: 'STATIONED' }, inbound(new Date(Date.now() + 5 * MINUTE))]));
+    const line = document.querySelector('[data-clan-alarm]');
+    expect(line).toHaveTextContent(/2 waves answering · the first already stands guard/i);
+    expect(line).not.toHaveTextContent(/before the raid/i);
+  });
+
   it('says no answer is flying yet', () => {
     bay(host([{ id: ALARM, missionId: 'm', arriveAt: new Date(Date.now() + 20 * MINUTE).toISOString(), called: 2, seen: 0, answered: 0 }]));
     expect(document.querySelector('[data-clan-alarm]')).toHaveTextContent(/0 of 2 clanmates saw your alarm · no answer flying yet/i);
+  });
+
+  it('says the raid has landed until the alarm leaves, with no countdown and no verdict', () => {
+    const raidAt = new Date(Date.now() - MINUTE);
+    bay(host([{ id: ALARM, missionId: 'm', arriveAt: raidAt.toISOString(), called: 3, seen: 2, answered: 1 }],
+      [inbound(new Date(raidAt.getTime() + 5 * MINUTE))]));
+    const line = document.querySelector('[data-clan-alarm]');
+    expect(line).toHaveTextContent(/2 of 3 clanmates saw your alarm/i);
+    expect(line).toHaveTextContent(/the raid has landed/i);
+    expect(line).not.toHaveTextContent(/lands in|before the raid|too late|answering|no answer/i);
   });
 
   it('draws nothing without an alarm', () => {

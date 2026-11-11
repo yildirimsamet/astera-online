@@ -71,6 +71,12 @@ describe('F2 corridor — the first leg of every clanmate flight', () => {
     expect(clanCorridorMinutes(-5, 3)).toBe(0);
     expect(clanCorridorMinutes(Number.NaN, 3)).toBe(0);
   });
+
+  it('keeps a fleet that cannot fly at all unable to arrive, as the ×1.1 lane does', () => {
+    // An immobile fleet's ordinary flight never ends; the corridor must not turn that into "instantly".
+    expect(clanCorridorMinutes(Number.POSITIVE_INFINITY, 3)).toBe(Number.POSITIVE_INFINITY);
+    expect(clanFirstLegMinutes(Number.POSITIVE_INFINITY, 3)).toBe(clanAidTravelMinutes(Number.POSITIVE_INFINITY));
+  });
 });
 
 describe('F2 perks only where the clan has a level', () => {

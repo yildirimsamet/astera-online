@@ -50,4 +50,5 @@ ALTER TABLE "clan_treasury_events" ADD CONSTRAINT "clan_treasury_events_shape_ch
             AND "clan_treasury_events"."alloy" + "clan_treasury_events"."crystal" + "clan_treasury_events"."deuterium" > 0
             AND "clan_treasury_events"."level_before" IS NULL AND "clan_treasury_events"."level_after" IS NULL
           ELSE false
-        END);
+        END);--> statement-breakpoint
+ALTER TABLE "planets" ADD COLUMN "clan_bonus" double precision DEFAULT 0 NOT NULL;
