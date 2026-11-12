@@ -833,6 +833,9 @@ function BuildingCards() {
       <UpgradeRow {...CARD} art={art(BUILDING_ART.DEUTERIUM_PLANT)} name="Döteryum Rafinerisi" tag="Döteryum üretir" level={9} completed="en üst seviyede" cost={{ alloy: 0, crystal: 0 }} />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.HANGAR)} name="Hangar" tag="Gemileri korur" level={0} unowned
         gain={{ label: 'Korunan gemi', next: '40' }} cost={{ alloy: 600, crystal: 400, deuterium: 1_200 }} takes={40} />
+      {/* the construction queue is full: the refusal is said on the card, with no fix to press */}
+      <UpgradeRow {...refinery} name="Alaşım Rafinerisi" gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13}
+        blocked={{ reason: 'Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.' }} />
     </div>
   );
 }
