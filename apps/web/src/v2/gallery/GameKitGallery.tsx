@@ -13,7 +13,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
-  ResourceHud, RewardPod, RoundButton, SectionTag, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
+  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
 import { haptic } from '../../lib/haptics.js';
@@ -589,6 +589,18 @@ function Catalog() {
                 <span className="gk-display gk-outlined" style={{ fontSize: 'var(--gk-t-small)' }}>{label}</span>
               </span>
             ))}
+          </div>
+        </Section>
+
+        <Section title="Durum etkileri">
+          <div className="flex flex-wrap gap-1.5">
+            <StatusChip glyph="speed_up" tone="good" label="Hız artışı" value="+20%" until="1 sa" />
+            <StatusChip glyph="attack_up" tone="good" label="Saldırı artışı" value="+10%" />
+            <StatusChip glyph="repair" tone="good" label="Onarım" value="Onarılıyor" until="12 dk" />
+            <StatusChip glyph="defense_down" tone="hostile" label="Savunma düşüşü" value="−15%" until="40 dk" />
+            <StatusChip glyph="damaged" tone="hostile" label="Gövde" value="%62" />
+            <StatusChip glyph="radiation" tone="warn" label="Radyasyon" value="Bölgede" until="2 sa 10 dk" />
+            <StatusChip glyph="timed" tone="info" label="Kalkan" value="Kalkan" until="45 dk" />
           </div>
         </Section>
 

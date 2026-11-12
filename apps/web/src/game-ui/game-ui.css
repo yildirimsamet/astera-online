@@ -1860,6 +1860,45 @@
 .gk-pill--hostile { --tone: var(--gk-hostile); }
 .gk-pill--good { --tone: var(--gk-good); }
 
+/* An effect: a coin of its colour with the mark, the change, the time left. */
+.gk-status {
+  --tone: var(--gk-info);
+  --tone-lo: var(--gk-steel);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px 0 2px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent);
+  white-space: nowrap;
+}
+.gk-status[data-tone='good'] { --tone: var(--gk-good); --tone-lo: var(--gk-good-lo); }
+.gk-status[data-tone='hostile'] { --tone: var(--gk-hostile); --tone-lo: var(--gk-hostile-lo); }
+.gk-status[data-tone='warn'] { --tone: var(--gk-warn); --tone-lo: var(--gk-action-lo); }
+.gk-status__coin {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--gk-ink);
+  background: radial-gradient(circle at 50% 30%, var(--tone), var(--tone-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 45%, transparent);
+}
+.gk-status__value {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-small);
+  color: var(--tone);
+}
+.gk-status__until {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+
 /* ── composed screens ──────────────────────────────────────────────────────── */
 
 /* A phone-width page over the galaxy; on a desktop it stays a phone column. */

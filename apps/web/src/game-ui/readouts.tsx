@@ -209,6 +209,24 @@ export function ResourceHud({ items, end }: { items: readonly HudResource[]; end
 }
 
 /** A countdown ring with the time beside it. */
+export type StatusTone = 'good' | 'hostile' | 'warn' | 'info';
+
+/**
+ * AN EFFECT ON A FLEET OR A WORLD: a coin of its colour holding its mark, the size of the
+ * change, and the time it has left. Green helps you, red hurts you, yellow is a risk you can
+ * still dodge. The name is for a screen reader; on screen the mark carries it.
+ */
+export function StatusChip({ glyph, tone, label, value, until }: { glyph: GlyphId; tone: StatusTone; label: string; value: string; until?: string }) {
+  return (
+    <span className="gk-status" data-tone={tone}>
+      <span className="gk-status__coin"><Glyph id={glyph} /></span>
+      <span className="sr-only">{label}</span>
+      <span className="gk-status__value gk-num">{value}</span>
+      {until !== undefined && <span className="gk-status__until gk-num">{until}</span>}
+    </span>
+  );
+}
+
 export function Timer({ remaining, total, text, glyph = 'clock' }: { remaining: number; total: number; text: string; glyph?: GlyphId }) {
   const left = ringFraction(remaining, total);
   const length = 2 * Math.PI * 14;
