@@ -481,7 +481,7 @@ Kit ölçümü kontrastı temizlerken birkaç parçanın rengi değişti. Görse
 - **Galeri başlıkları:** üç kelimeden uzun büyük harfli başlıklar kısa ad + düz yazılı not olarak bölündü ("BASILI TUT · kritik hamle").
 
 **Dar telefonda (320 px) kesilen yazılar** (her dilde 21 kesik → 0; Japonca için alttaki nota bak):
-- **Gemi bölmesi:** sabit 78 px yerine satırı dörde bölüyor (350'de 77, 320'de 69 px). 340 px altında sınıf bandı ok ikonunu bırakıyor; ×0,6 / ×1,6 yönü zaten söylüyor.
+- **Gemi bölmesi:** sabit 78 px yerine satırı dörde bölüyor (350'de 77, 320'de 69 px). 340 px altında sınıf bandı ok ikonunu bırakıyor; ×0,625 / ×1,6 yönü zaten söylüyor.
 - **Değer plakası notu** ve **kilit açılan ad** üç noktayla kesilmek yerine ikinci satıra iniyor ("1 / 1" gibi asıl kısım kaybolmuyor; ヴァイパー da sığıyor).
 - **Kapsül ipucu:** Ç, Ş çengelleri kırpma kenarına değmesin diye altına 4 px boşluk.
 - **Basılı tut:** fiil ("GERİ ÇAĞIR") tek satırda kalıyor, yanındaki bilgi ("DÖNÜŞ 8 DK") önce iki satıra iniyor. Bilgi tek kelimesi bile sığmazsa kesilmek yerine kelimenin içinden kırılıyor (son çare).
@@ -498,6 +498,20 @@ Kit ölçümü kontrastı temizlerken birkaç parçanın rengi değişti. Görse
 - Etiketle adlandırılmış metin kutusu "adsız alan" sayılıyordu; kutunun yanındaki etiket ayrı (18 px'lik) hedef sayılıyordu (WCAG 2.5.8 "eşdeğer kontrol").
 - Ekranın kenarında ince bir şeridi görünürken basılan hedef, tam göründüğünde yeniden basılıyor.
 - L2 kontrol içi boşluğu saymıyor (2.7).
+
+## S22 öncesi kod incelemesi (2026-11-12)
+
+Dalın tamamı (`feat/ui-ux-standard`, master'dan bu yana) incelendi. Doğrulanan hatalar testle düzeltildi:
+
+- **Gemi kartı:** eksi basılı tutulup 0'a inince düğme parmağın altından kalkıyordu, tekrar sayacı durmuyordu. Sonra karta dokunulan her gemi bir an sonra geri alınıyordu. Artık sınıra gelen tekrar duruyor.
+- **Basılı tut (canlı v2 düğmesi de):** tutarken eylem geçersizleşirse (yakıt bitti, sunucu güncelledi) süre dolunca yine gönderiyordu. Artık iptal.
+- **Çarpan rozeti:** kuralın ×0,625'ini ×0,6 yazıyordu; oyuncuya yanlış kural öğretir. Artık oyunun `factor` biçimi: her basamak. Galeri örnekleri de gerçek değere (0,625) geçti.
+- **Gemi bölmesi:** ×0,625 sınıf işaretinin yanına 350 px'te de sığmıyordu. Bant artık yalnız çarpanın; sınıf işareti geminin sol üst köşesine, resmin üstüne sabitlendi. Bütün bölmeler aynı boyda.
+- **Kısa sayı:** kayıp kazançtan farklı yuvarlanıyordu (4.250 → 4,3K ama −4.250 → −4,2K). Artık simetrik.
+- **Kapsül:** "zaten açıldı" bilgisi kapsül çizildikten sonra gelirse kapalı kalıyor, ikinci kez açılabiliyordu. Artık açık görünüyor ve bir şey vermiyor.
+- **Vites kolu:** ok tuşu seçimi değiştiriyor ama odak eski konumda kalıyordu (klavye). Artık odak seçimle gidiyor.
+
+Hata sayılmayanlar: tek ondalık yüzünden sayılar biraz uzadı. Bu, 2.8 kararının gereği; üst çubukta en geniş değer zaten "99.999" kadar. Basılı tutmanın başladığı andaki veriyle göndermesi de hata sayılmadı: oyuncu gördüğünü onaylıyor, sunucu yine doğruluyor.
 
 ## Sıradaki
 

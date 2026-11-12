@@ -36,12 +36,15 @@ export const full = (value: number): string => Math.round(value).toLocaleString(
  * put `12.4b` on a Turkish screen — an English number wearing a Turkish suffix.
  */
 export function compact(value: number): string {
-  const n = Math.round(value);
-  const thousands = Math.round(n / 100) / 10;
-  if (Math.abs(thousands) >= 1_000) return i18n.t('units.millions', { value: tenth(Math.round(n / 100_000) / 10) });
+  const n = round(value);
+  const thousands = round(n / 100) / 10;
+  if (Math.abs(thousands) >= 1_000) return i18n.t('units.millions', { value: tenth(round(n / 100_000) / 10) });
   if (Math.abs(n) >= 1_000) return i18n.t('units.thousands', { value: tenth(thousands) });
   return n.toLocaleString(locale());
 }
+
+/** Halves away from zero, so a loss prints the size of the gain it mirrors (`Math.round` takes -42.5 to -42). */
+const round = (value: number): number => (value < 0 ? -Math.round(-value) : Math.round(value));
 
 const tenth = (value: number): string => value.toLocaleString(locale(), { maximumFractionDigits: 1 });
 

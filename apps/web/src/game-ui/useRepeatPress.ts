@@ -38,6 +38,8 @@ export function useRepeatPress(onStep: (amount: number) => void, enabled: boolea
   };
 
   useEffect(() => clear, []);
+  // A held ± stops at its bound: the finger may still be down, or the button gone from under it.
+  useEffect(() => { if (!enabled) clear(); }, [enabled]);
 
   return {
     onPointerDown: (event) => {

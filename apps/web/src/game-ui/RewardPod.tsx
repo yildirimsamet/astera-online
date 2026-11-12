@@ -28,7 +28,9 @@ export interface RewardPodProps {
  * flash and a turning burst of light (a release, a firm buzz) and the contents pop out.
  */
 export function RewardPod({ label, onOpen, opened = false, children }: RewardPodProps) {
-  const [state, setState] = useState<PodState>(opened ? 'open' : 'closed');
+  const [local, setState] = useState<PodState>('closed');
+  // word that it was opened can arrive after the pod is drawn; it wins over a closed lid
+  const state: PodState = opened && local === 'closed' ? 'open' : local;
   const lid = useRef<number | null>(null);
   useEffect(() => () => { if (lid.current !== null) window.clearTimeout(lid.current); }, []);
   const own = useOwnPress(() => {

@@ -945,6 +945,10 @@ describe('numbers and clocks follow the language', () => {
   it('writes a loss with its sign, the same way', () => {
     expect(compact(-4_200)).toBe('-4.2K');
     expect(compact(-1_500_000)).toBe('-1.5M');
+    // halves round away from zero both ways, so a loss prints the size of the gain it mirrors
+    expect(compact(4_250)).toBe('4.3K');
+    expect(compact(-4_250)).toBe('-4.3K');
+    expect(compact(-999.5)).toBe('-1K');
   });
 
   it('keeps a store whole up to 99,999 and short above it (B1)', () => {

@@ -75,9 +75,10 @@ const fixed = (value: number, digits: number): string =>
 const upTo = (value: number): string => value.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
 
 /**
- * A big number three ways. `today` is `lib/format` `stock` in Turkish (whole up to
- * 99.999, then "240 B", "1,4 Mn"); `game` keeps the Turkish comma and takes the K and M
- * every game prints, Whiteout in Turkish included ("240,1K"); `full` never shortens.
+ * A big number three ways, as the owner compared them for 2.8. `today` is the Turkish
+ * `lib/format` `stock` before that decision (whole up to 99.999, then "240 B", "1,4 Mn");
+ * `game` keeps the Turkish comma and takes the K and M every game prints, Whiteout in
+ * Turkish included ("240,1K") — what `stock` writes since; `full` never shortens.
  */
 export function shortNumber(value: number, style: NumberStyle): string {
   const n = Math.round(value);

@@ -74,6 +74,13 @@ export function useHoldPress(onCommit: () => void, disabled: boolean, holdMs = H
     if (timer.current !== null) window.clearTimeout(timer.current);
   }, []);
 
+  // An action that becomes impossible mid-hold is never committed: its button is gone from under the finger.
+  useEffect(() => {
+    if (!disabled) return;
+    stop();
+    setConfirming(false);
+  }, [disabled]);
+
   useEffect(() => {
     if (!confirming) return undefined;
     const expiry = window.setTimeout(() => { setConfirming(false); }, CONFIRM_MS);

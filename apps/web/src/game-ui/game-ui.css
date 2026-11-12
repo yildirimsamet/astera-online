@@ -1862,8 +1862,9 @@
 }
 
 /* The bay: narrower, for a row the slider drives. */
-/* THE BAY: a narrow slot for the slider row. Top band: what class, and how it meets the
-   target. Then the ship, the count with its share of the stock, and the name plate. */
+/* THE BAY: a narrow slot for the slider row. Top band: how it meets the target, the exact
+   multiplier (×0,625 has no room beside anything else). Then the ship with its class mark
+   pinned to the corner, the count with its share of the stock, and the name plate. */
 .gk-bay {
   position: relative;
   display: grid;
@@ -1892,17 +1893,27 @@
 .gk-bay__band {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 2px;
+  justify-content: flex-end;
   min-height: 22px;
 }
 .gk-bay__band .gk-mult {
   padding: 1px 4px 1px 3px;
   gap: 1px;
 }
-/* Under 340 px the band holds the class mark and the number; ×0,6 / ×1,6 still says which way. */
+/* Under 340 px the band holds only the number; ×0,625 / ×1,6 and the colour still say which way. */
 @media (max-width: 340px) {
   .gk-bay__band .gk-mult .gk-glyph { display: none; }
+}
+.gk-bay__ship {
+  position: relative;
+  display: grid;
+}
+/* a solid plate drawn over the picture, so the art's shadow never covers it */
+.gk-bay__ship .gk-emblem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 .gk-bay__art {
   justify-self: center;

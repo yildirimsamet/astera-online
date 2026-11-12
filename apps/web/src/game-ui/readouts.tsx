@@ -2,11 +2,12 @@ import type { HullClass } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { combatClassLabel } from '../i18n/names.js';
+import { factor } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Glyph, type GlyphId } from './icons.js';
-import { cargoFit, formatMultiplier, rangeGeometry, ringFraction, type Span } from './logic.js';
+import { cargoFit, rangeGeometry, ringFraction, type Span } from './logic.js';
 import type { CssVars } from './style.js';
 
 const pct = (value: number): string => `${String(value)}%`;
@@ -17,14 +18,14 @@ export function CountBadge({ value }: { value: number }) {
   return <span key={value} className="gk-count gk-num">{value}</span>;
 }
 
-/** How a ship meets the target's main class: ×1,6 green, ×0,6 red, ×1 steel. */
+/** How a ship meets the target's main class: ×1,6 green, ×0,625 red, ×1 steel — every digit the rules have. */
 export function MultiplierBadge({ value }: { value: number }) {
-  const { i18n } = useTranslation();
+  useTranslation(); // draws again in a new language: `factor` writes the locale's decimal mark
   const look = value > 1 ? ' gk-mult--good' : value < 1 ? ' gk-mult--hostile' : '';
   return (
     <span className={`gk-mult${look}`}>
       {value !== 1 && <Glyph id={value > 1 ? 'up' : 'down'} />}
-      <span>{formatMultiplier(value, i18n.language)}</span>
+      <span>{factor(value)}</span>
     </span>
   );
 }

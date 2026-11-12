@@ -77,8 +77,3 @@ export function ringFraction(remaining: number, total: number): number {
   if (total <= 0) return 0;
   return clamp(remaining / total, 0, 1);
 }
-
-/** A counter multiplier as the locale writes decimals: ×1,6 · ×0.6 · ×1. */
-export function formatMultiplier(value: number, locale: string): string {
-  return `×${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value)}`;
-}

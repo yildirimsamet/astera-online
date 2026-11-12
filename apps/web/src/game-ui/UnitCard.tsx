@@ -84,10 +84,12 @@ export function UnitBay({
   return (
     <button type="button" className="gk-bay" aria-pressed={selected} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       <span className="gk-bay__band">
-        <Emblem cls={cls} />
         {multiplier !== null && <MultiplierBadge value={multiplier} />}
       </span>
-      <img className="gk-bay__art" src={art} alt="" />
+      <span className="gk-bay__ship">
+        <img className="gk-bay__art" src={art} alt="" />
+        <Emblem cls={cls} />
+      </span>
       <span className="gk-bay__tally">
         <span className={`gk-bay__count gk-display gk-num gk-outlined${chosen > 0 ? ' gk-tone-self' : ''}`}>{chosen}</span>
         <span className="gk-bay__of gk-display gk-num">/{home}</span>

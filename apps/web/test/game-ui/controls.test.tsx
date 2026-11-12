@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { BottomNav, GameTabs, InfoPeek, Lever, Slider, Toggle } from '../../src/game-ui/index.js';
 
@@ -51,6 +52,20 @@ describe('the lever', () => {
     expect(onChange).toHaveBeenCalledWith('75');
     fireEvent.keyDown(current, { key: 'ArrowLeft' });
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('carries the keyboard focus to the position an arrow key chose, as a radio group does', () => {
+    function Live() {
+      const [value, setValue] = useState('full');
+      return <Lever label="Speed" options={options} value={value} onChange={setValue} />;
+    }
+    render(<Live />);
+    const full = screen.getByRole('radio', { name: 'Full' });
+    full.focus();
+    fireEvent.keyDown(full, { key: 'ArrowRight' });
+    const next = screen.getByRole('radio', { name: '75%' });
+    expect(next).toHaveAttribute('aria-checked', 'true');
+    expect(next).toHaveFocus();
   });
 });
 

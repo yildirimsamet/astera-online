@@ -68,6 +68,17 @@ describe('the supply pod', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it('shows open, and grants nothing, when word that it was opened arrives after it was drawn', () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<RewardPod label="Kapsülü aç" onOpen={onOpen}><span>+500 Alaşım</span></RewardPod>);
+    rerender(<RewardPod label="Kapsülü aç" onOpen={onOpen} opened><span>+500 Alaşım</span></RewardPod>);
+    const body = screen.getByRole('button', { name: 'Kapsülü aç' });
+    expect(body.closest('[data-state]')).toHaveAttribute('data-state', 'open');
+    tap(body);
+    act(() => { vi.advanceTimersByTime(POD_OPEN_MS * 2); });
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it('paints the closed and the open pod in one frame, so the lid opens in place', () => {
     const closed = webpSize(join('public', POD_ART.closed));
     const open = webpSize(join('public', POD_ART.open));

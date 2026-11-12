@@ -40,6 +40,16 @@ describe('the game button', () => {
 });
 
 describe('the hold action', () => {
+  it('does not commit a hold whose action became impossible halfway', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(<GameHold label="Saldır" onCommit={onCommit} weight="final" />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: /Saldır/ }), { button: 0 });
+    act(() => { vi.advanceTimersByTime(700); });
+    rerender(<GameHold label="Saldır" onCommit={onCommit} weight="final" disabledReason="Yakıt yetmiyor" />);
+    act(() => { vi.advanceTimersByTime(3_000); });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it('commits after a held press and shows its detail', () => {
     const onCommit = vi.fn();
     render(<GameHold label="Attack" detail="39 ships" onCommit={onCommit} />);

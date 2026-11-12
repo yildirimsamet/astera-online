@@ -25,6 +25,18 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the repeat press', () => {
+  it('stops repeating once it can no longer step, though the finger stays down', () => {
+    const onStep = vi.fn();
+    const { rerender } = render(<Probe onStep={onStep} />);
+    fireEvent.pointerDown(screen.getByRole('button'), { button: 0 });
+    act(() => { vi.advanceTimersByTime(REPEAT_START_MS + 500); });
+    const steps = onStep.mock.calls.length;
+    expect(steps).toBeGreaterThan(1);
+    rerender(<Probe onStep={onStep} enabled={false} />);
+    act(() => { vi.advanceTimersByTime(2_000); });
+    expect(onStep).toHaveBeenCalledTimes(steps);
+  });
+
   it('adds one on a tap, counted on release', () => {
     const { onStep, button } = setup();
     fireEvent.pointerDown(button, { button: 0 });

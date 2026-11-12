@@ -80,8 +80,14 @@ export function Lever({
     onChange(option.id);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); choose(index + 1); }
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); choose(index - 1); }
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = index + step;
+    if (next < 0 || next >= options.length) return;
+    choose(next);
+    // the focus follows the choice, as in any radio group: the old stop has left the tab order
+    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
   };
   const style: CssVars = { '--n': options.length, '--i': index };
   return (

@@ -77,7 +77,7 @@ interface Ship {
 }
 
 const SHIPS: readonly Ship[] = [
-  { id: 'DART', name: 'Ok', cls: 'SKIRMISHER', home: 52, start: 24, mult: 0.6, power: 0.5, cargo: 0.5, fuel: 2.8 },
+  { id: 'DART', name: 'Ok', cls: 'SKIRMISHER', home: 52, start: 24, mult: 0.625, power: 0.5, cargo: 0.5, fuel: 2.8 },
   { id: 'PIKE', name: 'Kargı', cls: 'LANCE', home: 20, start: 8, mult: 1, power: 1.4, cargo: 0.25, fuel: 3.4 },
   { id: 'RAMPART', name: 'Sur', cls: 'BULWARK', home: 12, start: 4, mult: 1.6, power: 1.2, cargo: 0.15, fuel: 4.2 },
   { id: 'COURIER', name: 'Kurye', cls: 'SUPPORT', home: 17, start: 3, mult: null, power: 0, cargo: 0.7, fuel: 3 },
@@ -160,7 +160,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
           <InfoPeek
             lead={<Emblem cls="LANCE" hostile />}
             fact="Hedef Mızrak ağırlıklı"
-            rule="Sur, Mızrak’ı ×1,6 vurur. Akıncı (Ok) Mızrak’a karşı ×0,6 kalır. Kargı denk vurur."
+            rule="Sur, Mızrak’ı ×1,6 vurur. Akıncı (Ok) Mızrak’a karşı ×0,625 kalır. Kargı denk vurur."
           />
         </Plate>
 
@@ -571,7 +571,7 @@ function Catalog() {
             <span className="relative inline-block size-10"><CountBadge value={0} /></span>
             <MultiplierBadge value={1.6} />
             <MultiplierBadge value={1} />
-            <MultiplierBadge value={0.6} />
+            <MultiplierBadge value={0.625} />
             <LevelBadge level={7} />
             <LockBadge reason="Tersane 2" />
             <span className="relative inline-block size-6"><Dot count={3} /></span>
@@ -729,7 +729,7 @@ function Catalog() {
             <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" multiplier={1.6} home={12} chosen={0} onChange={() => undefined} />
           </div>
           <div className="grid grid-cols-4 gap-1.5">
-            <UnitBay name="Ok" art={art(HULL_ART.DART)} cls="SKIRMISHER" multiplier={0.6} home={52} chosen={24} selected onSelect={() => undefined} />
+            <UnitBay name="Ok" art={art(HULL_ART.DART)} cls="SKIRMISHER" multiplier={0.625} home={52} chosen={24} selected onSelect={() => undefined} />
             <UnitBay name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" multiplier={1} home={20} chosen={chosen} selected={false} onSelect={() => undefined} />
             <UnitBay name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" multiplier={1.6} home={12} chosen={4} selected={false} onSelect={() => undefined} />
             <UnitBay name="Kurye" art={art(HULL_ART.COURIER)} cls="SUPPORT" multiplier={null} home={17} chosen={3} selected={false} onSelect={() => undefined} />

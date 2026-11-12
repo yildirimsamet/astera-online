@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   cargoFit,
-  formatMultiplier,
   nearestDetent,
   rangeGeometry,
   repeatInterval,
@@ -86,12 +85,6 @@ describe('levers and sliders', () => {
 });
 
 describe('the small formats', () => {
-  it('writes a counter multiplier the way the locale writes decimals', () => {
-    expect(formatMultiplier(1.6, 'tr')).toBe('×1,6');
-    expect(formatMultiplier(0.625, 'tr')).toBe('×0,6');
-    expect(formatMultiplier(1, 'en')).toBe('×1');
-  });
-
   it('turns time left into the fraction a ring has left to draw', () => {
     expect(ringFraction(30_000, 60_000)).toBe(0.5);
     expect(ringFraction(-5, 60_000)).toBe(0);

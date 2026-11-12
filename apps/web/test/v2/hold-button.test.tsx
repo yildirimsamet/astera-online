@@ -23,6 +23,16 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the hold-to-commit button', () => {
+  it('does not commit a hold whose action became impossible halfway', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(<HoldButton label="Launch 74 ships" onCommit={onCommit} />);
+    fireEvent.pointerDown(screen.getByRole('button'), { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS / 2); });
+    rerender(<HoldButton label="Launch 74 ships" onCommit={onCommit} disabledReason="Not enough fuel" />);
+    act(() => { vi.advanceTimersByTime(HOLD_MS * 2); });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it('commits only after an unbroken hold', () => {
     const { onCommit, button } = setup();
     fireEvent.pointerDown(button, { button: 0 });
