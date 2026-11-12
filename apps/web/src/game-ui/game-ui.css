@@ -1802,14 +1802,16 @@
 }
 
 /* The bay: narrower, for a row the slider drives. */
+/* THE BAY: a narrow slot for the slider row. Top band: what class, and how it meets the
+   target. Then the ship, the count with its share of the stock, and the name plate. */
 .gk-bay {
   position: relative;
   display: grid;
-  justify-items: center;
   gap: 2px;
   width: 78px;
   flex-shrink: 0;
-  padding: 6px 4px 4px;
+  padding: 4px 4px 0;
+  overflow: hidden;
   border: 1px solid var(--gk-glass-edge);
   border-radius: 2px;
   background: linear-gradient(180deg, var(--gk-glass), var(--gk-glass-2));
@@ -1820,11 +1822,39 @@
 }
 .gk-bay[aria-pressed='true'] {
   border-color: var(--gk-self);
-  box-shadow: inset 0 -24px 24px -24px color-mix(in srgb, var(--gk-self) 60%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent), inset 0 2px 6px var(--gk-outline);
 }
 .gk-bay:active {
   transform: translateY(1px);
   border-color: color-mix(in srgb, var(--gk-self) 60%, var(--gk-glass-edge));
+}
+.gk-bay__band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  min-height: 22px;
+}
+.gk-bay__band .gk-mult {
+  padding: 1px 4px 1px 3px;
+  gap: 1px;
+}
+.gk-bay__art {
+  justify-self: center;
+  width: 70px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px var(--gk-outline));
+}
+.gk-bay[aria-pressed='true'] .gk-bay__art {
+  filter: drop-shadow(0 4px 4px var(--gk-outline)) drop-shadow(0 0 7px color-mix(in srgb, var(--gk-self) 45%, transparent));
+}
+.gk-bay__tally {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
 }
 .gk-bay__count {
   font-size: 22px;
@@ -1833,27 +1863,29 @@
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
 }
-.gk-bay__art {
-  width: 64px;
-  height: 46px;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 4px var(--gk-outline));
+/* How much of the stock at home goes, at a glance. */
+.gk-bay__share {
+  height: 3px;
+  margin: 1px 2px 0;
+  background: linear-gradient(90deg, var(--gk-self) var(--share), color-mix(in srgb, var(--gk-ink) 12%, transparent) var(--share));
 }
 .gk-bay__name {
+  margin: 3px -4px 0;
+  padding: 3px 0 4px;
+  border-top: 1px solid var(--gk-glass-edge);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
   font-size: var(--gk-t-floor);
   font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
+  color: var(--gk-ink-2);
 }
-.gk-bay__corner {
-  position: absolute;
-  right: 2px;
-  bottom: 24px;
-}
-.gk-bay__class {
-  position: absolute;
-  top: 4px;
-  left: 4px;
+.gk-bay[aria-pressed='true'] .gk-bay__name {
+  border-top-color: var(--gk-self);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 30%, var(--gk-metal-2)), var(--gk-metal-3));
+  color: var(--gk-ink);
 }
 
 /* ── pills ─────────────────────────────────────────────────────────────────── */

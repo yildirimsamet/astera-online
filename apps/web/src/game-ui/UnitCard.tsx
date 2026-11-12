@@ -7,6 +7,7 @@ import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
 import { Glyph } from './icons.js';
 import { CountBadge, Emblem, MultiplierBadge, ProgressBar } from './readouts.js';
+import type { CssVars } from './style.js';
 import { useRepeatPress } from './useRepeatPress.js';
 
 export interface UnitCardProps {
@@ -79,17 +80,19 @@ export function UnitBay({
   onSelect: () => void;
 }) {
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onSelect(); });
+  const share: CssVars = { '--share': `${String(home > 0 ? Math.round((chosen / home) * 100) : 0)}%` };
   return (
     <button type="button" className="gk-bay" aria-pressed={selected} onPointerDown={own.onPointerDown} onClick={own.onClick}>
-      <span className="gk-bay__class"><Emblem cls={cls} /></span>
-      {multiplier !== null && multiplier !== 1 && (
-        <span className="gk-bay__corner"><MultiplierBadge value={multiplier} /></span>
-      )}
-      <span className="mt-5 flex items-baseline gap-0.5">
+      <span className="gk-bay__band">
+        <Emblem cls={cls} />
+        {multiplier !== null && <MultiplierBadge value={multiplier} />}
+      </span>
+      <img className="gk-bay__art" src={art} alt="" />
+      <span className="gk-bay__tally">
         <span className={`gk-bay__count gk-display gk-num gk-outlined${chosen > 0 ? ' gk-tone-self' : ''}`}>{chosen}</span>
         <span className="gk-bay__of gk-display gk-num">/{home}</span>
       </span>
-      <img className="gk-bay__art" src={art} alt="" />
+      <span className="gk-bay__share" aria-hidden="true" style={share} />
       <span className="gk-bay__name">{name}</span>
     </button>
   );

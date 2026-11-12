@@ -73,4 +73,19 @@ describe('the ship bay', () => {
     fireEvent.click(bay, { detail: 1 });
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
+
+  it('gives the class and its multiplier their own band above the ship, ×1 too, like the card (owner 2026-11-12: the badge hid under the art)', () => {
+    const { container, unmount } = render(<UnitBay name="Pike" art="/pike.webp" cls="LANCE" multiplier={1} home={20} chosen={8} selected={false} onSelect={() => undefined} />);
+    const band = container.querySelector('.gk-bay__band');
+    expect(band?.querySelector('.gk-emblem')).toBeTruthy();
+    expect(band).toHaveTextContent('×1');
+    unmount();
+    const courier = render(<UnitBay name="Courier" art="/courier.webp" cls="SUPPORT" multiplier={null} home={17} chosen={3} selected={false} onSelect={() => undefined} />);
+    expect(courier.container.querySelector('.gk-bay__band')).not.toHaveTextContent('×');
+  });
+
+  it('shows the share of the stock that goes as a bar under the count', () => {
+    const { container } = render(<UnitBay name="Dart" art="/dart.webp" cls="SKIRMISHER" multiplier={0.6} home={40} chosen={24} selected onSelect={() => undefined} />);
+    expect(container.querySelector<HTMLElement>('.gk-bay__share')?.style.getPropertyValue('--share')).toBe('60%');
+  });
 });
