@@ -92,6 +92,8 @@ describe('the kit glyphs', () => {
     ['ranking', 'ranking'], ['history', 'history'], ['share', 'share'], ['siren', 'alarm'],
     ['settings', 'settings'], ['mail', 'mail'], ['chat', 'chat'], ['unlock', 'unlocked'],
     ['refresh', 'refresh'], ['zoom', 'zoom in'], ['banner', 'a clan with no flag yet'],
+    ['class_skirmisher', 'Akıncı: an arrowhead'], ['class_lance', 'Mızrak: a spear'],
+    ['class_bulwark', 'Sur: a walled shield'], ['class_support', 'Destek: a cross in a ring'],
   ])('has a %s glyph (%s)', (id) => {
     expect(GLYPH_IDS).toContain(id);
   });

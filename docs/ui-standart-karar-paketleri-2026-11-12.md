@@ -446,6 +446,18 @@ Rol renklerine (amber, turkuaz, kırmızı, yeşil, sarı, mavi) dokunulmadı; b
 
 **Ölçülebilir karşılık:** Seçilen dil ve renk, 3. aşamada varsayılan token olur. Deneme katmanı (`tone-command.css`, `data-gk-skin`) varsayılana katlanır, seçilmeyen kaldırılır.
 
+## Sınıf amblemi: şekil ve renk (owner kararı, 2026-11-12)
+
+Owner: Ok, Kargı, Sur ve Kurye ikonları akılda kalmıyor; her sınıfa bir renk verelim.
+
+- **Şekil, "A · Evrim":** eski ▲ ◆ ⬢ ● adı konabilen bir nesneye büyüdü. Akıncı ok ucu, Mızrak mızrak, Sur burçlu kalkan, Destek halkada artı. Resimli piktogramlar (B ailesi) 10–12 px'te çamura döndüğü için seçilmedi.
+- **Renk, "R1b · Rozet rengi":** savaşan sınıf kendi renginde bir plakada, işareti koyu. Akıncı pembe, Mızrak mor, Sur mavi; savaşmayan Destek çelik kalır. Rengi işaretin kendisine vermek (R1) çok soluk kaldı. Kırmızı/yeşil renk vermek (R2) çarpan rozetleriyle çakıştı.
+- **Düşmanın sınıfı:** rengini korur, kırmızı çerçeve alır. Eskiden plaka kırmızıya dönüyor ve sınıf rengi kayboluyordu.
+- **B8 değişti:** v2'de amblem renksizdi ve rengi sahiplik veriyordu. Kitte rengi sınıf verir; sahipliği çerçeve verir.
+- **Kod:** kit glifleri `class_*`, tokenlar `--gk-class-*-hi/-lo`, `Emblem` (`readouts.tsx`), test `test/game-ui/emblem.test.tsx`.
+- **Canlı oyun:** v2 `ClassEmblem` aşama 4'e kadar dokunulmadan kalır.
+- **Aşama 4 notu:** v2'nin rakip pembesi (`#F25CD3`) ve klan mavisi (`#5B8CFF`) kite rol olarak gelirse Akıncı ve Sur renkleri yeniden kıyaslanmalı. Kitte şu an böyle bir rol yok.
+
 ## Sıradaki
 
 - 3. aşama: kararlar token'a ve koruyucu teste çevrilir. "Bugün" ölçeği dar fontla daha küçük göründüğü için başlık ve buton 1–2 px büyütülerek ölçülür.

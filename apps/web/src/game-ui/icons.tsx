@@ -7,8 +7,8 @@ import { useId, type ReactElement } from 'react';
  * Shapes are drawn on a 24 grid; `evenodd` cuts the details out of the fill.
  * Glyphs are for 32 px and under; 40 px and over takes a painted icon (owner 2026-11-12).
  * Traced from Layer Lab Casual / SuperCasual Picto and Synty status icons
- * (docs/ui-kit-varlik-secimi-2026-11-12.md); crate, bay, menu, up, down, radiation and banner
- * are drawn, attack_up is the traced sword under a drawn arrow. Each keeps a fifth of its box
+ * (docs/ui-kit-varlik-secimi-2026-11-12.md); crate, bay, menu, up, down, radiation, banner and
+ * the four class marks are drawn, attack_up is the traced sword under a drawn arrow. Each keeps a fifth of its box
  * in ink so none fades to a hairline (owner 2026-11-12: the thin first set was redrawn).
  */
 const PATHS = {
@@ -68,6 +68,12 @@ const PATHS = {
   refresh: 'M12.1 2l-.3.1l-.1.3l.1 2.3l-1.3.1l-.7.2l-1.1.3l-.8.4l-.9.6l-.8.6l-.6.6l-.5.6l-.7 1.1l-.6 1.3l-.3 1.3l-.2 1.5l.2 1.6l.2.9l.3.8l.4.8l.4.8l.5.6l.6.6l.7.7l.6.4l.7.5l.7.3l.8.3l.8.2l.7.1l1 .1h.8l1.1-.2l1.5-.4l1.4-.8l.7-.5l.6-.5l.5-.5l.6-.8l.5-.8l.3-.6l.4-.9l.2-.9l.1-.6l.1-1l-.2-1.7l-.3-1.3l-2.2 1.6h-.1l.3 1.2v1.2l-.2 1.1l-.3.8l-.6.9l-.8.8l-.9.6l-.9.4l-.8.1l-.8.1l-.9-.1l-.7-.1l-.8-.4l-.7-.4l-.7-.5l-.5-.6l-.5-.9l-.4-.9l-.2-.9v-1.1l.2-1l.4-.8l.4-.8l.6-.7l.7-.5l.6-.4l.8-.4l.6-.1l-.1 2.5l.2.3h.2h.2l1.9-1.1l1.9-1.2l1.7-1.5l.6-.5l.1-.2v-.4l-.1-.2l-.9-.9l-1-.9l-1.2-.9l-1.6-.9l-1.3-.7l-.1-.1z',
   zoom: 'M9.7 2l-.9.1l-1 .3l-1 .4l-.8.4l-.7.5l-.8.7l-.6.6l-.6.9l-.5.8l-.4 1.1l-.3 1l-.1.9v1.1l.1.7l.1.9l.4 1.1l.6 1.2l.9 1.2l1.1 1l1.2.8l.9.4l1 .3l1 .2l1 .1l1-.1l1-.2l.9-.2l1-.5l3.2 4l.3.2l.3.1l.5-.1l.3-.2l2.9-2.9l.2-.3l.1-.4l-.1-.3l-.2-.4l-4-3.2l.5-1l.2-.9l.2-1l.1-.9l-.1-1l-.1-.8l-.3-.9l-.3-.8l-.7-1.2l-.7-1l-1-.9l-1-.7l-1.1-.5l-1.2-.4l-1.4-.2zm-.1 2.7l-1.3.3l-1 .5l-.8.6l-.7.9l-.6.9l-.4 1.1l-.1.8v1.2l.3 1.3l.4.9l.7 1l.7.6l1 .6l1 .4l1.2.2l1.2-.1l1-.2l1.1-.5l.8-.7l.8-.8l.7-1.2l.3-.9l.1-1l-.1-1.2l-.3-1.1l-.5-1l-.7-1l-.8-.6l-1-.6l-.9-.3l-.8-.1zm-.2 1.3l-.3.2l-.1.3l-.2 2.2l-.1.1l-2.2.1l-.3.2l-.1.1l-.1.3v1.7l.2.3l.2.2l2.4.2l.1 2.3l.1.1l.3.3l.2.1h1.7l.3-.1l.2-.3l.2-2.4l2.2-.2l.3-.1l.2-.2l.1-.2v-1.7l-.2-.3l-.3-.2l-2.3-.2l-.2-2.3l-.1-.2l-.2-.2l-.2-.1z',
   banner: 'M3.2 2.4h17.6a1.3 1.3 0 0 1 0 2.6H3.2a1.3 1.3 0 0 1 0-2.6zM5.6 5h12.8v16.2L12 17.4l-6.4 3.8zM12 7.9l1.1 2.5 2.5 1.1-2.5 1.1-1.1 2.5-1.1-2.5-2.5-1.1 2.5-1.1z',
+  // The four combat classes (owner 2026-11-12, "A · Evrim"): the old ▲ ◆ ⬢ ● grown into a
+  // thing you can name — an arrowhead, a spear, a walled shield, a cross in a ring.
+  class_skirmisher: 'M12 1.5 22.5 21.5 12 16.2 1.5 21.5z',
+  class_lance: 'M12 1 18 10.5 13.6 15.8V23h-3.2v-7.2L6 10.5z',
+  class_bulwark: 'M2.8 3h4.4v3h2.6V3h4.4v3h2.6V3h4.4v9.6c0 4.9-3.6 8.4-9.2 10.4-5.6-2-9.2-5.5-9.2-10.4z',
+  class_support: 'M12 2.5a9.5 9.5 0 0 1 9.5 9.5 9.5 9.5 0 0 1-9.5 9.5 9.5 9.5 0 0 1-9.5-9.5A9.5 9.5 0 0 1 12 2.5zm-1.8 4.6v3.1H7.1v3.6h3.1v3.1h3.6v-3.1h3.1v-3.6h-3.1V7.1z',
 } as const;
 
 export type GlyphId = keyof typeof PATHS;

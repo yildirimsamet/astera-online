@@ -58,6 +58,16 @@
   --gk-steel: #41454d;
   --gk-steel-lo: #282b31;
   --gk-steel-lip: #0c0d0f;
+  /* combat classes (owner 2026-11-12, "R1b"): each fighting class on a plate of its own
+     colour with a dark mark; Destek, which does not fight, stays steel. Pink, violet and
+     blue keep off the hostile red and the self teal; the shape names the class, the colour
+     helps the eye find it in a row. */
+  --gk-class-skirmisher-hi: #ff96e3;
+  --gk-class-skirmisher-lo: #b35198;
+  --gk-class-lance-hi: #bba8ff;
+  --gk-class-lance-lo: #7361b3;
+  --gk-class-bulwark-hi: #87c7ff;
+  --gk-class-bulwark-lo: #437eb3;
 
   /* resources and ranks. Alloy is copper, off the action amber (owner 2026-11-12):
      ΔE 42 from action and 38 from deuterium under deuteranopia (was 14 and 11). */

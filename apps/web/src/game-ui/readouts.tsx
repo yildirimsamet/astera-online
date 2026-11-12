@@ -1,10 +1,10 @@
 import type { HullClass } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { combatClassLabel } from '../i18n/names.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
-import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { Glyph, type GlyphId } from './icons.js';
 import { cargoFit, formatMultiplier, rangeGeometry, ringFraction, type Span } from './logic.js';
 import type { CssVars } from './style.js';
@@ -41,9 +41,26 @@ export function Dot({ count }: { count: number }) {
   return <span className="gk-dot gk-num">{count > 99 ? '99+' : count}</span>;
 }
 
-/** A combat class as its emblem on a small plate; red when it is the enemy's. */
+const CLASS_MARK: Record<HullClass, { glyph: GlyphId; plate: string }> = {
+  SKIRMISHER: { glyph: 'class_skirmisher', plate: ' gk-emblem--skirmisher' },
+  LANCE: { glyph: 'class_lance', plate: ' gk-emblem--lance' },
+  BULWARK: { glyph: 'class_bulwark', plate: ' gk-emblem--bulwark' },
+  SUPPORT: { glyph: 'class_support', plate: '' },
+};
+
+/**
+ * A combat class as its mark on a plate of its own colour (owner 2026-11-12, "A · Evrim" on
+ * "R1b"): Akıncı pink, Mızrak violet, Sur blue; Destek, which does not fight, steel. An
+ * enemy's class keeps its colour inside a red frame. The live game still draws v2's
+ * colourless ClassEmblem until its screens move to the kit (stage 4).
+ */
 export function Emblem({ cls, hostile = false }: { cls: HullClass; hostile?: boolean }) {
-  return <span className={`gk-emblem${hostile ? ' gk-emblem--hostile' : ''}`}><ClassEmblem cls={cls} className="" /></span>;
+  const mark = CLASS_MARK[cls];
+  return (
+    <span role="img" aria-label={combatClassLabel(cls)} className={`gk-emblem${mark.plate}${hostile ? ' gk-emblem--hostile' : ''}`}>
+      <Glyph id={mark.glyph} />
+    </span>
+  );
 }
 
 export type BarTone = 'self' | 'good' | 'hostile' | 'warn' | 'deut' | 'alloy' | 'crystal';
