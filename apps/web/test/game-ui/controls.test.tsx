@@ -1,0 +1,133 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { BottomNav, GameTabs, InfoPeek, Lever, Slider, Toggle } from '../../src/game-ui/index.js';
+
+/** A press that began on the control, as a finger makes it (see `useOwnPress`). */
+const press = (element: HTMLElement): void => {
+  fireEvent.pointerDown(element, { button: 0 });
+  fireEvent.pointerUp(element);
+  fireEvent.click(element, { detail: 1 });
+};
+
+describe('the toggle switch', () => {
+  it('is a switch that flips on a press and on a keyboard activation', () => {
+    const onChange = vi.fn();
+    render(<Toggle label="Commander escort" checked={false} onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: /Commander escort/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    press(toggle);
+    expect(onChange).toHaveBeenLastCalledWith(true);
+    fireEvent.click(toggle, { detail: 0 });
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses a click whose press began somewhere else', () => {
+    const onChange = vi.fn();
+    render(<Toggle label="Escort" checked onChange={onChange} />);
+    fireEvent.click(screen.getByRole('switch'), { detail: 1 });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('the lever', () => {
+  const options = [{ id: 'full', label: 'Full' }, { id: '75', label: '75%' }, { id: '50', label: '50%' }];
+
+  it('is a radio group whose positions can be pressed', () => {
+    const onChange = vi.fn();
+    render(<Lever label="Speed" options={options} value="full" onChange={onChange} />);
+    const group = screen.getByRole('radiogroup', { name: 'Speed' });
+    expect(within(group).getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
+    press(within(group).getByRole('radio', { name: '50%' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('50');
+  });
+
+  it('moves one position per arrow key and stops at the ends', () => {
+    const onChange = vi.fn();
+    render(<Lever label="Speed" options={options} value="full" onChange={onChange} />);
+    const current = screen.getByRole('radio', { name: 'Full' });
+    fireEvent.keyDown(current, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('75');
+    fireEvent.keyDown(current, { key: 'ArrowLeft' });
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the slider', () => {
+  it('reports its value and moves by keys inside the stock', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
+    const slider = screen.getByRole('slider', { name: 'Dart' });
+    expect(slider).toHaveAttribute('aria-valuenow', '24');
+    expect(slider).toHaveAttribute('aria-valuemax', '40');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenLastCalledWith(25);
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith(40);
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(onChange).toHaveBeenLastCalledWith(0);
+  });
+
+  it('does not report a move past the end', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={40} max={40} onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('has fine buttons and a max button', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: /more Dart/i }), { button: 0 });
+    fireEvent.pointerUp(screen.getByRole('button', { name: /more Dart/i }));
+    expect(onChange).toHaveBeenLastCalledWith(25);
+    press(screen.getByRole('button', { name: /max/i }));
+    expect(onChange).toHaveBeenLastCalledWith(40);
+  });
+});
+
+describe('tabs and the bottom bar', () => {
+  const tabs = [{ id: 'overview', label: 'Overview' }, { id: 'war', label: 'War', locked: 'Clan level 2' }];
+
+  it('selects an open tab and names what a locked one needs instead of opening it', () => {
+    const onChange = vi.fn();
+    render(<GameTabs label="Clan" tabs={tabs} value="overview" onChange={onChange} />);
+    expect(screen.getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
+    press(screen.getByRole('tab', { name: /War/ }));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('Clan level 2');
+  });
+
+  it('marks the current page and shows a count on an item', () => {
+    const onChange = vi.fn();
+    render(
+      <BottomNav
+        label="Main"
+        items={[{ id: 'galaxy', label: 'Galaxy' }, { id: 'base', label: 'Base', badge: 3 }, { id: 'clan', label: 'Clan', locked: 'Shipyard 2' }]}
+        value="galaxy"
+        onChange={onChange}
+      />,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('button', { name: /Galaxy/ })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('button', { name: /Base/ })).toHaveTextContent('3');
+    press(within(nav).getByRole('button', { name: /Base/ }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('base');
+    press(within(nav).getByRole('button', { name: /Clan/ }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the info peek', () => {
+  it('shows the fact and opens the rule in place', () => {
+    render(<InfoPeek fact="Lance-heavy target" rule="Lance beats Skirmisher." />);
+    expect(screen.getByText('Lance-heavy target')).toBeVisible();
+    expect(screen.queryByText('Lance beats Skirmisher.')).toBeNull();
+    const toggle = screen.getByRole('button', { expanded: false });
+    press(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Lance beats Skirmisher.')).toBeVisible();
+  });
+});

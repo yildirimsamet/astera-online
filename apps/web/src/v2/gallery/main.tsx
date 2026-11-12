@@ -17,7 +17,8 @@ syncDocumentLanguage();
 /** `?lng=tr` draws the gallery in another language; `?view=` draws one sheet open. */
 const params = new URLSearchParams(window.location.search);
 const language = params.get('lng');
-if (language) void i18n.changeLanguage(language);
+// The document's `lang` follows too, so uppercase Turkish keeps its dotted İ.
+if (language) void i18n.changeLanguage(language).then(syncDocumentLanguage);
 
 /*
   THE SHEETS THAT READ QUERIES DRAW HERE TOO. The fetch never answers, so every query stays

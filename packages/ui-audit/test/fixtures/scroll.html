@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui-audit scroll calibration</title>
+<!--
+  A sheet whose list runs far below the screen, under a fixed header and above a fixed
+  footer: every row must be measured once, the header and footer once, every button
+  pressed once. test/scroll.test.ts holds the answers. `?rows=N` makes the list N rows long.
+-->
+<style>
+  body { margin: 0; background: #000; color: #fff; font: 14px/1.4 sans-serif; }
+  button { appearance: none; border: 0; background: #333; color: #fff; font: inherit; width: 90px; height: 40px; }
+  #head { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #111; z-index: 2; }
+  #foot { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: #111; z-index: 2; }
+  #list { position: fixed; top: 60px; bottom: 60px; left: 0; right: 0; overflow-y: auto; scroll-behavior: smooth; }
+  .row { display: flex; justify-content: space-between; align-items: center; height: 100px; padding: 0 12px; border-bottom: 1px solid #222; }
+</style>
+</head>
+<body>
+  <div id="head"><p id="title">Filo listesi</p></div>
+  <div id="list"></div>
+  <div id="foot"><button id="go">Gönder</button></div>
+<script>
+  const list = document.getElementById('list');
+  const rows = Number(new URLSearchParams(location.search).get('rows') ?? 20);
+  for (let i = 1; i <= rows; i += 1) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = `row-${i}`;
+    row.innerHTML = `<span>Gemi ${i}</span><button>Seç ${i}</button>`;
+    list.append(row);
+  }
+</script>
+</body>
+</html>

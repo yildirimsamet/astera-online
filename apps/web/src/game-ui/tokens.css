@@ -1,0 +1,120 @@
+/**
+ * GAME KIT TOKENS — direction B ("oyun dili", owner 2026-11-11).
+ *
+ * The only file in `src/game-ui` that may state a raw colour (test/game-ui/tokens.test.ts).
+ * Each role colour means one thing on every surface:
+ *   action  — the one primary move on a screen (amber, a pressable material)
+ *   self    — you, your selection, your chosen counts (teal)
+ *   hostile — the enemy, harm, "weak against" (red)
+ *   good    — "strong against", progress, done (green)
+ *   warn    — a risk you can still avoid (yellow, always with an icon)
+ *   info    — panel edges and plain information (cool blue)
+ * Resources keep their own hues and never appear without their icon.
+ */
+:root {
+  /* ground and ink */
+  --gk-void: #04060b;
+  --gk-deep: #080d18;
+  --gk-ink: #f2f6ff;
+  --gk-ink-2: #b8c4dd;
+  --gk-ink-3: #8592ae;
+  --gk-outline: #03060d;
+  --gk-scrim: #02040acc;
+
+  /* metal and glass */
+  --gk-metal-hi: #46587a;
+  --gk-metal-1: #243049;
+  --gk-metal-2: #182236;
+  --gk-metal-3: #0f1626;
+  --gk-metal-edge: #33456a;
+  --gk-metal-shadow: #01030a;
+  --gk-glass: #0a1322;
+  --gk-glass-2: #060c17;
+  --gk-glass-edge: #1f2e4c;
+  --gk-bolt: #66789a;
+
+  /* roles */
+  --gk-action-hi: #ffe07a;
+  --gk-action: #ffb43c;
+  --gk-action-lo: #f07a1e;
+  --gk-action-lip: #8f3b08;
+  --gk-action-ink: #4a1c00;
+  --gk-self-hi: #8fffe9;
+  --gk-self: #2ee6c8;
+  --gk-self-lo: #0f9e8a;
+  --gk-self-lip: #075a50;
+  --gk-hostile-hi: #ff8a96;
+  --gk-hostile: #ff4d5e;
+  --gk-hostile-lo: #c21f35;
+  --gk-hostile-lip: #6a0c1a;
+  --gk-good-hi: #b7f59a;
+  --gk-good: #7be05a;
+  --gk-good-lo: #3c9a27;
+  --gk-warn: #ffcc4d;
+  --gk-info: #6fb7ff;
+  --gk-steel-hi: #56698d;
+  --gk-steel: #34445f;
+  --gk-steel-lo: #1f2a40;
+  --gk-steel-lip: #0a101d;
+
+  /* resources and ranks. Alloy is copper, off the action amber (owner 2026-11-12):
+     ΔE 42 from action and 38 from deuterium under deuteranopia (was 14 and 11). */
+  --gk-alloy-hi: #e3a27e;
+  --gk-alloy: #c27a55;
+  --gk-alloy-lo: #8a4b30;
+  --gk-crystal: #7fd0ff;
+  --gk-deut: #a8ea4c;
+  --gk-gold: #ffd36b;
+  --gk-gold-lo: #b9780f;
+  --gk-silver: #d6deea;
+  --gk-silver-lo: #7c8aa3;
+  --gk-bronze: #e09a62;
+  --gk-bronze-lo: #8c4d22;
+
+  /* type: a heavy display face for names, numbers and buttons; one text face for the rest.
+     Russo One is the display face (owner 2026-11-12); game-ui.css loads it. */
+  --gk-font-display: 'Russo One', 'Arial Narrow', system-ui, sans-serif;
+  --gk-display-weight: 400;
+  --gk-display-stretch: 100%;
+  --gk-font-text: 'Saira Variable', system-ui, sans-serif;
+  --gk-text-stretch: 96%;
+
+  /* the type scale at 350 px; 12 px is the floor */
+  --gk-t-floor: 12px;
+  --gk-t-small: 13px;
+  --gk-t-body: 14px;
+  --gk-t-lead: 16px;
+  --gk-t-title: 19px;
+  --gk-t-head: 24px;
+  --gk-t-number: 18px;
+  --gk-t-hero: 30px;
+
+  /* space: a 4 px step */
+  --gk-s1: 4px;
+  --gk-s2: 8px;
+  --gk-s3: 12px;
+  --gk-s4: 16px;
+  --gk-s5: 20px;
+  --gk-s6: 24px;
+
+  /* shape */
+  --gk-r-sm: 7px;
+  --gk-r-md: 11px;
+  --gk-r-lg: 16px;
+  --gk-cut: 10px;
+  --gk-hit: 44px;
+
+  /* motion: press is instant, answers settle, pops overshoot a little */
+  --gk-press: 80ms;
+  --gk-quick: 160ms;
+  --gk-settle: 280ms;
+  --gk-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --gk-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html:lang(ja) {
+  --gk-font-display: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --gk-font-text: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --gk-display-stretch: 100%;
+  --gk-text-stretch: 100%;
+}

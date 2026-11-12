@@ -1,4 +1,5 @@
 import { FleetTowingGallery } from './FleetTowingGallery.js';
+import { GameKitGallery, isKitView } from './GameKitGallery.js';
 import { CommanderPresenceGallery } from './CommanderPresenceGallery.js';
 import { CosmeticFleetGallery } from './CosmeticFleetGallery.jsx';
 import { UfoProbeGallery } from './UfoProbeGallery.js';
@@ -1137,6 +1138,7 @@ function Views({ view }: { view: string }) {
 
 export function Gallery({ view }: { view: string | null }) {
   useSoundEffects();
+  if (view !== null && isKitView(view)) return <GameKitGallery view={view} />;
   if (view === 'commander-presence') return <CommanderPresenceGallery />;
   if (view === 'fleet-towing') return <FleetTowingGallery />;
   if (view === 'premium-space') return <PremiumSpaceGallery />;
