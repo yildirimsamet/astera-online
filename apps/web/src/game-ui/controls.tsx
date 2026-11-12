@@ -214,6 +214,8 @@ export interface TabItem<T extends string = string> {
   badge?: number;
   /** A fact about what is under the tab (something stopped): its glyph, and what it means to a reader. */
   mark?: { glyph: GlyphId; hint: string };
+  /** A picture of the place beside its name, in its own tone (the word stays the name). */
+  glyph?: { id: GlyphId; tone: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
 }
 
 /** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
@@ -227,15 +229,17 @@ const stepTo = (key: string, index: number, count: number): number =>
 /**
  * Tabs as metal plates; the open one is lit. A locked tab names what it needs. Only the
  * open tab sits in the tab order; the arrows walk the rest and the panel follows, since
- * switching costs nothing. `data-tab` is how a lesson points at one.
+ * switching costs nothing. `lessonMarks` puts `data-tab` on each, which is how a lesson
+ * points at one (and lets one be pressed); only the tabs a lesson may use ask for it.
  */
-export function GameTabs<T extends string>({ label, tabs, value, onChange, ids }: {
+export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, lessonMarks = false }: {
   label: string;
   tabs: readonly TabItem<T>[];
   value: T;
   onChange: (id: T) => void;
   /** The tab's own id and the panel it opens, for a reader to follow from one to the other. */
   ids?: { tab: (id: T) => string; panel: (id: T) => string };
+  lessonMarks?: boolean;
 }) {
   const [refused, setRefused] = useState<string | null>(null);
   const buttons = useRef(new Map<T, HTMLButtonElement>());
@@ -255,6 +259,7 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids }
             key={tab.id}
             tab={tab}
             selected={tab.id === value}
+            marked={lessonMarks}
             {...(ids ? { tabId: ids.tab(tab.id), panelId: ids.panel(tab.id) } : {})}
             onMount={(node) => {
               if (node) buttons.current.set(tab.id, node);
@@ -273,9 +278,10 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids }
   );
 }
 
-function GameTab<T extends string>({ tab, selected, tabId, panelId, onMount, onPress }: {
+function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMount, onPress }: {
   tab: TabItem<T>;
   selected: boolean;
+  marked: boolean;
   tabId?: string;
   panelId?: string;
   onMount: (node: HTMLButtonElement | null) => void;
@@ -290,7 +296,7 @@ function GameTab<T extends string>({ tab, selected, tabId, panelId, onMount, onP
       aria-selected={selected}
       tabIndex={selected ? 0 : -1}
       className="gk-tab"
-      data-tab={tab.id}
+      {...(marked ? { 'data-tab': tab.id } : {})}
       {...(tabId === undefined ? {} : { id: tabId })}
       {...(panelId === undefined ? {} : { 'aria-controls': panelId })}
       {...(tab.mark ? { 'aria-label': tab.mark.hint } : {})}
@@ -299,6 +305,9 @@ function GameTab<T extends string>({ tab, selected, tabId, panelId, onMount, onP
       onClick={own.onClick}
     >
       {tab.locked && <Glyph id="lock" />}
+      {tab.glyph && (
+        <span className="gk-tab__glyph" aria-hidden="true" style={{ color: `var(--gk-${tab.glyph.tone})` }}><Glyph id={tab.glyph.id} /></span>
+      )}
       {tab.label}
       {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}
       {tab.badge !== undefined && tab.badge > 0 && <Dot count={tab.badge} />}

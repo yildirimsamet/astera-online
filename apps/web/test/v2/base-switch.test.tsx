@@ -29,12 +29,13 @@ describe('the Base switch', () => {
   // Owner 2026-10-27: "bu tabların içindeki yazıların yanına renkli iconlar koy".
   it('marks each page with its own coloured glyph beside its word', () => {
     render(<BaseSwitch value="world" onChange={vi.fn()} arenaAvailable />);
-    const glyphs = ['This world', 'Research', 'Commander ship'].map(name => {
-      const glyph = screen.getByRole('tab', { name }).querySelector('svg');
+    // Stage 4.1: the kit's tabs carry the glyph, each in its own tone.
+    const tones = ['This world', 'Research', 'Commander ship'].map(name => {
+      const glyph = screen.getByRole('tab', { name }).querySelector<HTMLElement>('.gk-tab__glyph');
       expect(glyph).toHaveAttribute('aria-hidden', 'true');
-      return glyph?.getAttribute('class') ?? '';
+      expect(glyph?.querySelector('svg')).not.toBeNull();
+      return glyph?.style.color;
     });
-    const tones = glyphs.map(name => /text-v2-[a-z]+/.exec(name)?.[0]);
     expect(tones.every(Boolean)).toBe(true);
     expect(new Set(tones).size).toBe(3);
   });

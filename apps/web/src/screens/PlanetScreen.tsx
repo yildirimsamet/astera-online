@@ -139,7 +139,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { GameTabs } from '../game-ui/index.js';
+import { Banner, GameTabs } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -522,14 +522,16 @@ export function PlanetScreen({
         </div>
 
         {recovering && (
-          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
-            {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
+          <div className="gk mx-2">
+            <Banner tone="hostile" variant="strip" glyph="repair"
+              title={t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
         )}
 
         {empActive && (
-          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
-            {t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })}
+          <div className="gk mx-2">
+            <Banner tone="hostile" variant="strip" glyph="critical"
+              title={t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
         )}
 
@@ -1057,6 +1059,7 @@ function Tabs({
         value={active}
         onChange={onSelect}
         ids={{ tab: (id) => `planet-tab-${id}`, panel: (id) => `planet-panel-${id}` }}
+        lessonMarks
       />
     </div>
   );

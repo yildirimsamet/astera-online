@@ -2727,6 +2727,14 @@
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
 }
+/* a picture of the place beside its name, in its own tone */
+.gk-tab__glyph {
+  display: inline-grid;
+}
+.gk-tab__glyph .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
 /* something under the tab has stopped: a fact in the warning colour beside its name */
 .gk-tab__mark {
   display: inline-grid;

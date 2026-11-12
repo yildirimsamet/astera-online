@@ -124,9 +124,15 @@ describe('tabs and the bottom bar', () => {
     expect(tab).toHaveAttribute('aria-controls', 'panel-orbit');
   });
 
-  it('carries its id for a lesson that points at it', () => {
-    render(<GameTabs label="Base" tabs={five} value="grow" onChange={vi.fn()} />);
+  it('carries its id for a lesson that points at it, when asked', () => {
+    render(<GameTabs label="Base" tabs={five} value="grow" onChange={vi.fn()} lessonMarks />);
     expect(screen.getByRole('tab', { name: 'Defend' })).toHaveAttribute('data-tab', 'defend');
+  });
+
+  /** A lesson that lets "a tab" be pressed must not let the Base switch take the player off the page. */
+  it('carries no lesson mark unless asked', () => {
+    render(<GameTabs label="Base" tabs={five} value="grow" onChange={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'Defend' })).not.toHaveAttribute('data-tab');
   });
 
   it('walks the tabs with the arrows, round the ends, and keeps only the open one in the tab order', () => {
@@ -140,6 +146,15 @@ describe('tabs and the bottom bar', () => {
     expect(onChange).toHaveBeenLastCalledWith('defend');
     fireEvent.keyDown(screen.getByRole('tablist'), { key: 'Home' });
     expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  /** Owner 2026-10-27: a coloured glyph beside each word on the Base switch. */
+  it('draws a glyph in its own tone beside a tab\'s name, silent to a reader', () => {
+    render(<GameTabs label="Base" tabs={[{ id: 'world', label: 'This world', glyph: { id: 'home', tone: 'alloy' } }]} value="world" onChange={vi.fn()} />);
+    const tab = screen.getByRole('tab', { name: 'This world' });
+    const glyph = tab.querySelector<HTMLElement>('.gk-tab__glyph');
+    expect(glyph).toHaveAttribute('aria-hidden', 'true');
+    expect(glyph?.style.color).toBe('var(--gk-alloy)');
   });
 
   it('shows a mark on a tab and says what it means to a reader', () => {
