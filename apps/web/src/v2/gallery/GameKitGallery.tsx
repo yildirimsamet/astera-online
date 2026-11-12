@@ -257,7 +257,7 @@ function BaseScreen() {
           <div className="grid grid-cols-[1fr_auto] items-center gap-2">
             <div className="grid gap-1">
               <span className="gk-label">Tersane 2 yapılıyor</span>
-              <ProgressBar value={12} max={160} thick tone="good" text="2 sa 28 dk" label="Tersane 2" />
+              <ProgressBar value={12} max={160} tone="good" text="2 sa 28 dk" label="Tersane 2" />
             </div>
             <GameButton tone="self" size="sm" glyph="speed" onPress={() => undefined}>Hızlandır</GameButton>
           </div>
@@ -677,7 +677,7 @@ function Catalog() {
         </Section>
 
         <Section title="Çubuklar">
-          <ProgressBar value={18} max={24} thick text="18 / 24" label="İnşaat" />
+          <ProgressBar value={18} max={24} text="18 / 24" label="İnşaat" />
           <ProgressBar value={3} max={5} segments={5} tone="good" label="Görev" />
           <ProgressBar value={1} max={1} tone="warn" text="Depo dolu" label="Depo" />
           <RangeBars mine={{ low: 24, high: 28 }} theirs={{ low: 21, high: null }} mineLabel="Sen" theirsLabel="Onlar" mineText="24–28 B" theirsText="21 B+" />

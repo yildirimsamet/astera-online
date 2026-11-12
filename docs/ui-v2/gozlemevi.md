@@ -779,7 +779,7 @@ Her bileşen için amaç, veri, davranış ve kabul testleri. Test adları öner
 - **Yeniden kullan:** Mevcut `SkirmisherIcon`, `BulwarkIcon`, `LanceIcon`, `SupportIcon` ve `CounterMark` bu şekillere çevrilir; yeni bir ikon ailesi açılmaz.
 - **Yerler:** Tersane kartları, fırlatma satırları, raporlar, dosya, radar bileşimi.
 - **Testler:** Her sınıfın aria etiketi sınıf adı · dört sınıf dört farklı şekil.
-- **Kitte değişti (owner, 2026-11-12):** Yeni oyun kiti (`src/game-ui`) sınıfa kendi şeklini ve plaka rengini veriyor; düşmanınkini kırmızı çerçeve gösteriyor. Ekranlar kite geçince (aşama 4) bu madde onunla değişir. Bkz. `docs/ui-standart-karar-paketleri-2026-11-12.md`, "Sınıf amblemi".
+- **Kitte değişti (owner, 2026-11-12):** Yeni oyun kiti (`src/game-ui`) sınıfa kendi şeklini ve plaka rengini veriyor; düşmanınkini sağ üst köşedeki kırmızı etiket gösteriyor. Ekranlar kite geçince (aşama 4) bu madde onunla değişir. Bkz. `docs/ui-standart-karar-paketleri-2026-11-12.md`, "Sınıf amblemi".
 
 #### B9 · Basılı tut butonu
 

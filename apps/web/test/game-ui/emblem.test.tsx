@@ -48,11 +48,10 @@ describe('the class emblem', () => {
     }
   });
 
-  it('frames an enemy class in red and keeps its class colour, so the class still reads', () => {
+  it('tags an enemy class with a red corner and keeps its class colour, so the class still reads (owner 2026-11-12: the red frame was ugly)', () => {
     const plate = render(<Emblem cls="LANCE" hostile />).container.querySelector('.gk-emblem');
     expect(plate).toHaveClass('gk-emblem--hostile', 'gk-emblem--lance');
-    const hostile = rule('.gk-emblem--hostile');
-    expect(hostile).toMatch(/var\(--gk-hostile\)/);
-    expect(hostile).not.toMatch(/background/);
+    expect(rule('.gk-emblem--hostile::after')).toMatch(/background:\s*var\(--gk-hostile\)/);
+    expect(rule('.gk-emblem--hostile')).not.toMatch(/background|box-shadow/);
   });
 });

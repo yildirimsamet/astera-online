@@ -452,11 +452,18 @@ Owner: Ok, Kargı, Sur ve Kurye ikonları akılda kalmıyor; her sınıfa bir re
 
 - **Şekil, "A · Evrim":** eski ▲ ◆ ⬢ ● adı konabilen bir nesneye büyüdü. Akıncı ok ucu, Mızrak mızrak, Sur burçlu kalkan, Destek halkada artı. Resimli piktogramlar (B ailesi) 10–12 px'te çamura döndüğü için seçilmedi.
 - **Renk, "R1b · Rozet rengi":** savaşan sınıf kendi renginde bir plakada, işareti koyu. Akıncı pembe, Mızrak mor, Sur mavi; savaşmayan Destek çelik kalır. Rengi işaretin kendisine vermek (R1) çok soluk kaldı. Kırmızı/yeşil renk vermek (R2) çarpan rozetleriyle çakıştı.
-- **Düşmanın sınıfı:** rengini korur, kırmızı çerçeve alır. Eskiden plaka kırmızıya dönüyor ve sınıf rengi kayboluyordu.
-- **B8 değişti:** v2'de amblem renksizdi ve rengi sahiplik veriyordu. Kitte rengi sınıf verir; sahipliği çerçeve verir.
+- **Düşmanın sınıfı:** rengini korur, sağ üst köşesinde küçük kırmızı bir etiket taşır. Eskiden plaka kırmızıya dönüyor ve sınıf rengi kayboluyordu. İlk denenen kırmızı çerçeveyi owner çirkin buldu; köşe etiketi, alt şerit, kırmızı nokta ve işaretsiz hâl yan yana denendi. Nokta bildirim rozetiyle, alt şerit ilerleme çubuğuyla karışıyordu (`out/ui-kit/fixes/sheet-emblem.png`).
+- **B8 değişti:** v2'de amblem renksizdi ve rengi sahiplik veriyordu. Kitte rengi sınıf verir; düşman olduğunu köşe etiketi söyler.
 - **Kod:** kit glifleri `class_*`, tokenlar `--gk-class-*-hi/-lo`, `Emblem` (`readouts.tsx`), test `test/game-ui/emblem.test.tsx`.
 - **Canlı oyun:** v2 `ClassEmblem` aşama 4'e kadar dokunulmadan kalır.
 - **Aşama 4 notu:** v2'nin rakip pembesi (`#F25CD3`) ve klan mavisi (`#5B8CFF`) kite rol olarak gelirse Akıncı ve Sur renkleri yeniden kıyaslanmalı. Kitte şu an böyle bir rol yok.
+
+## Owner'ın gözüne çarpanlar (2026-11-12)
+
+- **Düşman amblemi:** kırmızı çerçeve kalktı, yerine köşe etiketi geldi (yukarıda).
+- **"Depo dolu" çubuğu:** yazı 10 px'lik ince çubuğa konmuştu, sığmıyordu. Artık yazı taşıyan çubuk her zaman kalın (18 px); ayrı `thick` seçeneği kalktı.
+- **Butondaki maliyet:** amber butonun üstündeki koyu kutu rengi kirletiyordu. Maliyet artık butonun kendi yazı renginde, ince bir ayraçtan sonra duruyor. Açık renkli kutu da denendi (`out/ui-kit/fixes/sheet-cost.png`).
+- **Kapsül açılış sesi:** 8-bit güç sesi (pod-open B) beğenilmedi. Kütüphaneden katmanlı dört yeni aday hazırlandı (kilit + hava + parıltı): `out/ui-kit/sesler/pod-open-2/index.html`. Owner seçince bağlanacak.
 
 ## Sıradaki
 

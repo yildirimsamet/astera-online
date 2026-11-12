@@ -597,5 +597,8 @@ Kural 4 gereği bu taslak owner ile detaylandırılmadan uygulamaya geçilmez.
 **Owner'a sorular:**
 
 1. **Başlık ve buton yazısı:** Saira dar yüz, aynı piksel boyutunda Russo One'dan küçük görünüyor. Bu iki rolü ölçerek 1–2 px büyütelim mi?
+   - Owner 2026-11-12: soruyu anlamadı; açıklama ve yan yana görsel verildi (`out/ui-kit/fixes/yazi-boyu-karsilastirma.png`: şimdi / +1 / +2 px). Cevap bekleniyor.
 2. **%115 yazı boyutu ayarı:** "Bugün" ölçeğinin güvenlik supabı olarak 5. aşamadan bu aşamaya alalım mı?
+   - ✅ Owner 2026-11-12: aciliyeti yok, 5. aşamada kalır.
 3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?
+   - ✅ Owner 2026-11-12: evet, 4. aşamada.

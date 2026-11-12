@@ -65,15 +65,14 @@ export function Emblem({ cls, hostile = false }: { cls: HullClass; hostile?: boo
 
 export type BarTone = 'self' | 'good' | 'hostile' | 'warn' | 'deut' | 'alloy' | 'crystal';
 
-/** A filled bar in a glass groove. `segments` cuts it into steps; `text` sits on a thick one. */
+/** A filled bar in a glass groove. `segments` cuts it into steps; words make it thick enough to hold them. */
 export function ProgressBar({
-  value, max, tone = 'self', segments, thick = false, text, label,
+  value, max, tone = 'self', segments, text, label,
 }: {
   value: number;
   max: number;
   tone?: BarTone;
   segments?: number;
-  thick?: boolean;
   text?: ReactNode;
   label?: string;
 }) {
@@ -81,7 +80,7 @@ export function ProgressBar({
   const style: CssVars | undefined = segments ? { '--seg': `calc(100% / ${String(segments)})` } : undefined;
   return (
     <div
-      className={`gk-bar${tone === 'self' ? '' : ` gk-fill-${tone}`}${segments ? ' gk-bar--segments' : ''}${thick ? ' gk-bar--thick' : ''}`}
+      className={`gk-bar${tone === 'self' ? '' : ` gk-fill-${tone}`}${segments ? ' gk-bar--segments' : ''}${text === undefined ? '' : ' gk-bar--thick'}`}
       style={style}
       {...(label === undefined ? { 'aria-hidden': true } : {
         role: 'progressbar', 'aria-label': label, 'aria-valuenow': value, 'aria-valuemin': 0, 'aria-valuemax': max,
