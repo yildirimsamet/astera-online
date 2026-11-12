@@ -584,7 +584,7 @@ Kural 4 gereği bu taslak owner ile detaylandırılmadan uygulamaya geçilmez.
 
 | # | İş | Çıktı | Bitiş ölçütü |
 |---|---|---|---|
-| 3.1 | Yazı ölçeği "Bugün" | `--gk-text-*` token'ları: 9 / 10 / 12 / 12 / 16 / 18. Dar başlık fontu için başlık ve buton yazısı ölçülerek +1–2 px | Test: kit dosyalarında token dışında font boyutu yok |
+| 3.1 | Yazı ölçeği: kitin ölçeği (B) | Kitin bugünkü `--gk-t-*` token'ları kilitlenir: 12 / 13 / 14 / 16 / 19 / 24, sayı 18. Büyütme yok | Test: kit dosyalarında token dışında font boyutu yok; 12 px altında metin yok |
 | 3.2 | Metin bütçesi "Bütçeli" | Ekran tipine göre kelime sınırı ölçüm aracına girer | Kit ölçümünde sınırı aşan ekran yok |
 | 3.3 | Dokunma 44 px | `gk-hit` yardımcısı: görünen parça küçük kalabilir, dokunma alanı 44 px olur | Kit ölçümünde 44 px altında hedef yok |
 | 3.4 | Renk rolleri A | Token'lar ve kural testleri hazır | Hazır |
@@ -598,7 +598,7 @@ Kural 4 gereği bu taslak owner ile detaylandırılmadan uygulamaya geçilmez.
 
 1. **Başlık ve buton yazısı:** Saira dar yüz, aynı piksel boyutunda Russo One'dan küçük görünüyor. Bu iki rolü ölçerek 1–2 px büyütelim mi?
    - ✅ Owner 2026-11-12, yan yana görselden sonra (`out/ui-kit/fixes/yazi-boyu-karsilastirma.png`): "Şu anki gayet iyi duruyor, gereksiz büyütmeyelim." Büyütme yok.
-   - ⚠️ Açık nokta: görseldeki şu anki boyutlar kitin boyutları (taban 12, cümle 14, buton 16, başlık 19), yani 2.2'deki B. 2.2'de seçilen "Bugün" ise 9 / 10 / 12 / 12 / 16 / 18. 3.1 "Bugün"e göre yapılırsa kitin yazısı küçülür. Owner'a soruldu.
+   - ✅ Netleşti (owner 2026-11-12, aynı görseli gönderip): "Bugün" derken görseldeki "Şimdi" sütununu, yani kitin bugünkü boyutlarını kastetmiş. 2.2 kitin ölçeği (B) olarak düzeltildi; 3.1 onu kilitler.
 2. **%115 yazı boyutu ayarı:** "Bugün" ölçeğinin güvenlik supabı olarak 5. aşamadan bu aşamaya alalım mı?
    - ✅ Owner 2026-11-12: aciliyeti yok, 5. aşamada kalır.
 3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?

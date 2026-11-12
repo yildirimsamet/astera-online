@@ -8,7 +8,7 @@ Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](
 
 | Karar | Seçim | Not |
 |---|---|---|
-| 2.2 Yazı ölçeği | **Bugün** (9 / 10 / 12 / 12 / 16 / 18) | Bedel bir kez not edildi: telefonda metnin %73'ü 11 px'in altında kalır, buton yazısı 12 px (rakipte 15–25). T1 ölçütü düşer. Güvenlik supabı olarak yazı boyutu ayarını (%115) 5. aşamadan öne almayı öneriyorum. |
+| 2.2 Yazı ölçeği | **Kitin ölçeği (B)**: taban 12 · etiket 13 · cümle 14 · buton 16 · bölüm başlığı 19 · ekran başlığı 24 · sayı 18 | Önce "Bugün" (9 / 10 / 12 / 12 / 16 / 18) yazıldı. Owner 2026-11-12, kitin fırlatma ekranının şimdi / +1 / +2 px görselinde "Şimdi" sütununu gösterip "bunu demek istemiştim" dedi (`out/ui-kit/fixes/yazi-boyu-karsilastirma.png`). Yani kitin bugünkü boyutları standarttır; büyütme yok. T1 ölçütü geçerli. Bedel (kesilme artışı) 2.3 metin bütçesiyle karşılanır. %115 ayarı 5. aşamada kalır. |
 | 2.3 Metin bütçesi | **Bütçeli** | |
 | 2.4 Dokunma | **44 px** | |
 | 2.5 Renk rolleri | **A**: kitin 6 rolü ve 3 kural | Owner "Normal" dedi; kitteki hâli (A) olarak okundu. |
@@ -460,10 +460,10 @@ Owner: Ok, Kargı, Sur ve Kurye ikonları akılda kalmıyor; her sınıfa bir re
 
 ## Owner'ın gözüne çarpanlar (2026-11-12)
 
-- **Düşman amblemi:** kırmızı çerçeve kalktı, yerine köşe etiketi geldi (yukarıda).
+- **Düşman amblemi:** kırmızı çerçeve kalktı, yerine köşe etiketi geldi (yukarıda). Owner köşe etiketi ile kırmızı nokta arasında kaldı, seçimi bana bıraktı: köşe etiketi kaldı, çünkü nokta kitin bildirim rozetiyle (`Dot`) aynı görünüyor.
 - **"Depo dolu" çubuğu:** yazı 10 px'lik ince çubuğa konmuştu, sığmıyordu. Artık yazı taşıyan çubuk her zaman kalın (18 px); ayrı `thick` seçeneği kalktı.
 - **Butondaki maliyet:** amber butonun üstündeki koyu kutu rengi kirletiyordu. Maliyet artık butonun kendi yazı renginde, ince bir ayraçtan sonra duruyor. Açık renkli kutu da denendi (`out/ui-kit/fixes/sheet-cost.png`).
-- **Kapsül açılış sesi:** 8-bit güç sesi (pod-open B) beğenilmedi. Kütüphaneden katmanlı dört yeni aday hazırlandı (kilit + hava + parıltı): `out/ui-kit/sesler/pod-open-2/index.html`. Owner seçince bağlanacak.
+- **Kapsül açılış sesi:** 8-bit güç sesi (pod-open B) beğenilmedi. Kütüphaneden katmanlı dört yeni aday hazırlandı (kilit + hava + parıltı): `out/ui-kit/sesler/pod-open-2/index.html`. ✅ Owner B'yi seçti (mandal + hava + yükselen onay tınısı); `unseal-v1.mp3` olarak bağlandı.
 
 ## Sıradaki
 
