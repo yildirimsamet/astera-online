@@ -724,6 +724,19 @@ function Catalog() {
           <Unreachable what="Gezegenin" onRetry={() => undefined} />
         </Section>
 
+        {/* owner 2026-11-12: Core 9 → 10 opens the vacation lock for good, so its consent is the final hold */}
+        <Section title="Kesin onay · Çekirdek 10, 1,5 sn basılı tut">
+          <SheetFrame tone="self" eyebrow="Komuta Çekirdeği · Seviye 10" title="Bir üst mücadeleye hazır mısın?" onClose={() => undefined}
+            footer={(
+              <div className="grid gap-2">
+                <GameHold label="10. seviyeye çıkar" glyph="up" weight="final" onCommit={() => undefined} />
+                <GameButton tone="ghost" wide onPress={() => undefined}>Şimdilik bekle</GameButton>
+              </div>
+            )}>
+            <p className="gk-copy">Bu gezegenin Komuta Çekirdeği 10. seviyeye ulaştığında gelişmişliği Tier 4 olur. Bu seviyedeki komutanlar daha gelişmiş rakiplerle karşılaşabilir. Devam etmeden önce filonu, savunmanı ve geliştirmelerini hazırlayabilirsin.</p>
+          </SheetFrame>
+        </Section>
+
         <Section title="Çubuklar">
           <ProgressBar value={18} max={24} text="18 / 24" label="İnşaat" />
           <ProgressBar value={3} max={5} segments={5} tone="good" label="Görev" />

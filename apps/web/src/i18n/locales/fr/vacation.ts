@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "Noyau de commandement · Niveau 10",
   "coreTitle": "Prêt pour le prochain défi ?",
   "coreBody": "Au niveau 10, le Noyau de commandement de ce monde passe au Tier 4. Les commandants de ce palier peuvent rencontrer des rivaux plus développés. Prépare ta flotte, tes défenses et tes améliorations.",
-  "coreConfirm": "Commander le niveau 10",
+  "coreConfirm": "Passer au niv. 10",
   "coreBack": "Attendre pour le moment",
   "VACATION_ACTIVE": "Termine les vacances avant de donner des ordres.",
   "VACATION_MAIN_ONLY": "Les vacances sont disponibles dans ta galaxie principale.",

@@ -87,7 +87,7 @@ export const planet = {
     "action": "Koloniyi terk et",
     "title": "Koloniyi terk edecek misin?",
     "cancel": "Vazgeç",
-    "confirm": "Evet, koloniyi terk et",
+    "confirm": "Terk et",
     "pending": "Terk ediliyor…",
     "irreversible": "Bu koloni tarafsız olur ve koloni kotanda bir yer açılır. Bu işlemi geri alamazsın.",
     "keeps": "Binalar, uydular, kaynaklar ve yer savunmaları gezegende kalır. Hazır Ölüm Yıldızları ve önleme mühimmatı da gezegende kalır.",

@@ -665,6 +665,12 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 - Yazım: Körük satırlarında "alaşım, kristal ve Döteryum" düzeldi. Türkçe metinde cümle ortasında büyük "Döteryum" 10 yerde daha var (hatalar, kronik, başlangıç); metin geçişinde toplu düzeltilecek.
 - Web testlerinin tamamı: 10.529 geçti, 1 düştü (`arena/desktop-flight`, tek başına geçiyor: paralel yükte zamanlama, 4.1 ile ilgisiz).
 
+**Owner kararları (2026-11-12, 4.1 görsellerinden sonra):**
+
+1. **Basılı tutma:** öneri gibi. Yükselt tek basış; basış ağır ses (`confirm`) ve titreşimle (`commit`) gelir (`GameButton heavy`). Çekirdek 9→10 onayı ve koloniyi terk etme `final` (1,5 sn) basılı tutma; ikisi de kit sayfasında. 350 px'te sığsın diye basılı tutma kendi satırında, tam genişlikte; geri dönüş altında. Yazı yalnız fiil, başlık konuyu söyler: "10. seviyeye çıkar", "Terk et".
+2. **Gezegen adı:** kartta kalktı; sabit sayfa başlığı söylüyor. Eski testteki "kilitli komutan-önce başlık kuralı" bu kararla güncellendi.
+3. **4.1 onaylandı;** 4.2'ye geçilir.
+
 ### 4.2 Tersane ve filo (taslak; owner 4.1'i gördükten sonra başlar)
 
 **Kapsam:** Filo sekmesi (`PlanetScreen.tsx` `Reach`): Tersane ve Hangar kartları (4.1'de kite geçti), gemi aileleri bantları, gemi kartları, `HangarRoom` (`v2/kit/RoomBar`), Onarım İstasyonu kartı ve sayfası (`screens/RepairStation.tsx`), gemi üretim sayfası (`BuildSheet`, `HullStats`, `HullMatchup`, `QuantityStepper`). Klan savunma duruşu ve destek bölmesi (`screens/ClanSupportBay.tsx`) klan ekranıyla gelir; burada yalnız görünüşü bozulmasın diye bakılır.

@@ -130,7 +130,16 @@ it('asks before ordering Core level 10 and spends nothing when dismissed', async
   expect(upgrade).not.toHaveBeenCalled();
   await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about command core/i }));
   await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
-  await userEvent.click(screen.getByRole('button', { name: 'Order level 10' }));
+  // Owner 2026-11-12 (4.1): the vacation lock opens for good, so the consent is the final 1.5 s hold.
+  const hold = within(screen.getByRole('dialog')).getByRole('button', { name: /Raise to L10/ });
+  // the hold has the footer's whole width; the way back is under it
+  expect([...screen.getByRole('dialog').querySelectorAll('[data-consent-foot] > button')].map((face) => face.textContent))
+    .toEqual([expect.stringMatching(/^Raise to L10/), 'Wait for now']);
+  expect(hold.style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+  await userEvent.click(hold);
+  expect(upgrade).not.toHaveBeenCalled();
+  hold.focus();
+  await userEvent.keyboard('{Enter}{Enter}');
   expect(upgrade).toHaveBeenCalledOnce();
   expect(upgrade.mock.calls[0]?.[0]).toEqual({ type: 'CORE', confirmedLevel: 10 });
 });

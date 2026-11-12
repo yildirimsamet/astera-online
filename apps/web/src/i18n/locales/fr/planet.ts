@@ -88,7 +88,7 @@ export const planet = {
     "action": "Abandonner la colonie",
     "title": "Abandonner cette colonie ?",
     "cancel": "Garder la colonie",
-    "confirm": "Oui, abandonner",
+    "confirm": "Abandonner",
     "pending": "Abandon en cours…",
     "irreversible": "Cette colonie devient neutre et libère une place de colonie. Tu ne peux pas annuler cette action.",
     "keeps": "Les bâtiments, satellites, ressources et défenses terrestres restent sur la planète. Les Étoiles de la Mort prêtes et les charges d’interception y restent aussi.",

@@ -80,7 +80,7 @@ export const planet = {
     "action": "Abandon colony",
     "title": "Abandon this colony?",
     "cancel": "Keep colony",
-    "confirm": "Yes, abandon colony",
+    "confirm": "Abandon",
     "pending": "Abandoning…",
     "irreversible": "This colony becomes neutral and frees one colony slot. You cannot undo this action.",
     "keeps": "Buildings, satellites, resources and ground defences stay on the planet. Ready Death Stars and interceptor charges also stay.",

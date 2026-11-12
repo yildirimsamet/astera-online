@@ -28,7 +28,15 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { 'content-type': 'application/json' },
 });
 const posts = () => fetcher.mock.calls.filter(([, init]) => init?.method === 'POST');
-const confirm = () => screen.getByRole('button', { name: 'Yes, abandon colony' });
+/** Owner 2026-11-12 (4.1): abandoning is final, so it is a 1.5 s hold; a dead hold says why on its face. */
+/* The hold is the verb alone, so it fits its face at 350 px: the title above it names the colony. */
+const confirm = () => within(screen.getByRole('dialog')).getByRole('button', { name: /^Abandon/ });
+const refused = () => screen.getByRole('button', { name: 'You cannot abandon this colony yet' });
+/** The keyboard's way through a hold: Enter arms it, Enter again commits. */
+const commit = async () => {
+  confirm().focus();
+  await userEvent.keyboard('{Enter}{Enter}');
+};
 function ActiveWorld() {
   return <output data-testid="active-world">{useWorld().activePlanetId}</output>;
 }
@@ -109,6 +117,18 @@ describe('colony abandonment confirmation', () => {
     expect(posts()).toHaveLength(0);
   });
 
+  it('asks for the final 1.5 s hold, so a tap abandons nothing', async () => {
+    renderDoor();
+    await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
+    await waitFor(() => { expect(confirm()).toBeEnabled(); });
+    expect(confirm().style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+    // the hold has the footer's whole width; the way back is under it
+    const foot = [...screen.getByRole('dialog').querySelectorAll<HTMLElement>('[data-consent-foot] > button')];
+    expect(foot.map((face) => face.textContent)).toEqual([expect.stringMatching(/^Abandon/), 'Keep colony']);
+    await userEvent.click(confirm());
+    expect(posts()).toHaveLength(0);
+  });
+
   it('cancel and Escape close the confirmation without abandoning', async () => {
     renderDoor();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
@@ -125,9 +145,9 @@ describe('colony abandonment confirmation', () => {
     checkGate = new Promise<void>(resolve => { release = resolve; });
     renderDoor();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
-    expect(confirm()).toBeDisabled();
-    expect(screen.getByText('Checking active missions…')).toBeInTheDocument();
-    await userEvent.click(confirm());
+    const checking = screen.getByRole('button', { name: 'Checking active missions…' });
+    expect(checking).toBeDisabled();
+    await userEvent.click(checking);
     expect(posts()).toHaveLength(0);
     await act(async () => { release(); await checkGate; });
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
@@ -140,7 +160,7 @@ describe('colony abandonment confirmation', () => {
     expect(await screen.findByText(/support ships are travelling, stationed or returning/i)).toBeInTheDocument();
     expect(screen.getByText(/mining or salvage mission is still active/i)).toBeInTheDocument();
     expect(screen.getByText(/flight connected to this colony is still active/i)).toBeInTheDocument();
-    expect(confirm()).toBeDisabled();
+    expect(refused()).toBeDisabled();
     reasons = [];
     await userEvent.click(screen.getByRole('button', { name: 'Check again' }));
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
@@ -153,10 +173,10 @@ describe('colony abandonment confirmation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
     reasons = ['MINING'];
-    await userEvent.click(confirm());
+    await commit();
     expect(await screen.findByText(/mining or salvage mission is still active/i)).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(confirm()).toBeDisabled();
+    expect(refused()).toBeDisabled();
     expect(posts()).toHaveLength(1);
   });
 
@@ -166,7 +186,7 @@ describe('colony abandonment confirmation', () => {
     renderDoor();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
-    await userEvent.click(confirm());
+    await commit();
     expect(screen.getByRole('button', { name: 'Abandoning…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Keep colony' })).toBeDisabled();
     expect(cache.getQueryData(keys.planetById(colonyId))).toBeDefined();
@@ -186,7 +206,7 @@ describe('colony abandonment confirmation', () => {
     renderDoor();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
     expect(await screen.findByText(/could not check/i)).toBeInTheDocument();
-    expect(confirm()).toBeDisabled();
+    expect(refused()).toBeDisabled();
   });
 
   it('disables confirmation when a fresh check fails after an earlier successful check', async () => {
@@ -198,7 +218,7 @@ describe('colony abandonment confirmation', () => {
       await cache.refetchQueries({ queryKey: ['colony-abandonment', colonyId] });
     });
     expect(await screen.findByText(/could not check/i)).toBeInTheDocument();
-    expect(confirm()).toBeDisabled();
+    expect(refused()).toBeDisabled();
     expect(posts()).toHaveLength(0);
   });
 
@@ -219,7 +239,7 @@ describe('colony abandonment confirmation', () => {
     } }).catch(() => undefined);
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
-    await userEvent.click(confirm());
+    await commit();
     await waitFor(() => { expect(screen.getByTestId('active-world')).toHaveTextContent(homeId); });
     await act(async () => { release(); await oldRead; });
     expect(localStorage.getItem(storageKey)).toBe(homeId);
@@ -251,7 +271,7 @@ describe('colony abandonment confirmation', () => {
     await waitFor(() => { expect(screen.getByTestId('active-world')).toHaveTextContent(colonyId); });
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
     await waitFor(() => { expect(confirm()).toBeEnabled(); });
-    await userEvent.click(confirm());
+    await commit();
     await waitFor(() => { expect(screen.getByTestId('active-world')).toHaveTextContent(homeId); });
     expect(posts()).toHaveLength(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

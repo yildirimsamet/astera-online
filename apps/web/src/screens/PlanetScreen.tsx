@@ -1,6 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { sumFleets } from '../lib/fleetPage.js';
-import { Confirm } from '../ui/kit/Confirm.js';
+import { createPortal } from 'react-dom';
 import { RadiationBombForgeHost } from './RadiationBombControls.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
 import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
@@ -139,7 +139,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, GameTabs } from '../game-ui/index.js';
+import { Banner, GameButton, GameHold, GameTabs } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -1204,14 +1204,40 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     };
   };
   return Object.assign(action, { confirmation: consent?.planetId === planet.planet.id ? (
-    <Confirm eyebrow={i18n.t('vacation.coreEyebrow')} title={i18n.t('vacation.coreTitle')}
-      confirmVariant="primary"
-      confirmLabel={i18n.t('vacation.coreConfirm')} backLabel={i18n.t('vacation.coreBack')}
-      pending={upgrade.isPending} onClose={() => { setConsent(null); }}
-      onConfirm={() => { if (projected.buildings.CORE !== 9) { setConsent(null); return; } consent.submit(); setConsent(null); }}>
-      <p className="text-body leading-relaxed text-v2-ink-2">{i18n.t('vacation.coreBody')}</p>
-    </Confirm>
+    <CoreConsent
+      pending={upgrade.isPending}
+      onClose={() => { setConsent(null); }}
+      onCommit={() => { if (projected.buildings.CORE !== 9) { setConsent(null); return; } consent.submit(); setConsent(null); }}
+    />
   ) : null });
+}
+
+/**
+ * CORE 9 → 10 OPENS THE VACATION LOCK FOR GOOD. Owner 2026-11-12 (4.1): the consent is the
+ * kit's final hold, 1.5 s, not a tap. Through a portal, for the stacking reason `Confirm` gives:
+ * it is opened from a control inside another sheet.
+ */
+function CoreConsent({ pending, onCommit, onClose }: { pending: boolean; onCommit: () => void; onClose: () => void }) {
+  return createPortal(
+    <V2Sheet
+      kit={{ tone: 'self' }}
+      detents={['fit']}
+      eyebrow={i18n.t('vacation.coreEyebrow')}
+      title={i18n.t('vacation.coreTitle')}
+      onClose={onClose}
+      footer={(
+        // As the kit's dialog stacks its moves: the hold takes the whole width, the way back is under it.
+        <div data-consent-foot className="grid gap-2">
+          <GameHold label={i18n.t('vacation.coreConfirm')} glyph="up" weight="final"
+            disabledReason={pending ? i18n.t('vacation.coreConfirm') : null} onCommit={onCommit} />
+          <GameButton tone="ghost" wide onPress={onClose}>{i18n.t('vacation.coreBack')}</GameButton>
+        </div>
+      )}
+    >
+      <p className="gk-copy">{i18n.t('vacation.coreBody')}</p>
+    </V2Sheet>,
+    document.body,
+  );
 }
 
 /**

@@ -80,7 +80,7 @@ export const planet = {
     "action": "Abandonar colonia",
     "title": "¿Abandonar esta colonia?",
     "cancel": "Conservar colonia",
-    "confirm": "Sí, abandonar colonia",
+    "confirm": "Abandonar",
     "pending": "Abandonando…",
     "irreversible": "Esta colonia se vuelve neutral y libera una plaza de colonia. No puedes deshacer esta acción.",
     "keeps": "Los edificios, satélites, recursos y defensas terrestres permanecen en el planeta. Las Estrellas de la Muerte listas y las cargas interceptoras también se quedan.",

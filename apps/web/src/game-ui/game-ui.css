@@ -54,6 +54,12 @@
   color: var(--gk-ink-3);
   line-height: 1.3;
 }
+/* a sheet's one paragraph of explanation, read at body size */
+.gk-copy {
+  font-size: var(--gk-t-body);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
 
 .gk-num {
   font-variant-numeric: tabular-nums;
@@ -949,14 +955,7 @@
 .gk-stores__rule {
   margin-top: -2px;
 }
-/* the world as the hero: its name, its kind and tier, the orbit in words under it */
-.gk-hero__name {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--gk-t-title);
-}
+/* the world as the hero: its kind and tier, the orbit in words under it (the page head names it) */
 .gk-hero__kind {
   display: flex;
   align-items: baseline;
@@ -2390,6 +2389,17 @@
     linear-gradient(180deg, color-mix(in srgb, var(--gk-tint) 10%, transparent), transparent 90px),
     linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 260px);
   box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-tint) 35%, transparent);
+}
+/* a card, and a dialog on a wide screen, floats: it closes on all four sides */
+.gk-sheet[data-placement='card'] {
+  border-radius: var(--gk-r-lg);
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+}
+@media (min-width: 700px) {
+  .gk-sheet[data-placement='dialog'] {
+    border-radius: var(--gk-r-lg);
+    border-bottom: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+  }
 }
 .gk-sheet__grab {
   width: 36px;

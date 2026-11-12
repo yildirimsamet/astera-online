@@ -80,7 +80,7 @@ export const planet = {
     "action": "Kolonie aufgeben",
     "title": "Diese Kolonie aufgeben?",
     "cancel": "Kolonie behalten",
-    "confirm": "Ja, Kolonie aufgeben",
+    "confirm": "Aufgeben",
     "pending": "Wird aufgegeben…",
     "irreversible": "Diese Kolonie wird neutral und gibt einen Kolonieplatz frei. Du kannst diese Aktion nicht rückgängig machen.",
     "keeps": "Gebäude, Satelliten, Ressourcen und Bodenverteidigung bleiben auf dem Planeten. Bereite Todessterne und Abfangladungen bleiben ebenfalls dort.",

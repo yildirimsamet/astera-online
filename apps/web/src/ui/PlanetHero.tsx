@@ -122,7 +122,6 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
             />
             <OrbitSockets planet={planet} />
           </div>
-          <p className="gk-hero__name gk-display gk-outlined">{planet.planet.name}</p>
           <div className="gk-hero__kind">
             <span className={`gk-label${planet.planet.kind === 'COLONY' ? ' gk-tone-self' : ''}`}>
               {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}

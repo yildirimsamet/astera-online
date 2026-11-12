@@ -571,6 +571,15 @@ describe('a list of the three resources writes them alike', () => {
   });
 });
 
+/** Stage 4.1: a final hold's verb is drawn at head size on a 350 px face; measured, 18 characters is what fits. */
+describe('a final hold says its verb in a few letters', () => {
+  it.each([['tr', tr], ['en', en], ['de', de], ['fr', fr], ['es', es], ['ja', ja]] as const)('keeps the %s hold labels short', (_lang, locale) => {
+    for (const verb of [locale.vacation.coreConfirm, locale.planet.abandon.confirm]) {
+      expect(verb.length).toBeLessThanOrEqual(18);
+    }
+  });
+});
+
 describe('queue refusals name the player’s next move', () => {
   it('explains that the 3 waiting orders must finish or be cancelled', () => {
     expect(en.planet.blocked.queueFull).toMatch(/3 orders.*finish or cancel/i);
