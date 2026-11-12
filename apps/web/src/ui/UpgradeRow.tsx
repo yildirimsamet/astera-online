@@ -849,33 +849,21 @@ export function Band({
   */
   const body = (
     <>
-      <div className="flex min-w-0 items-center gap-2">
-        <h3 className="v2-legend shrink-0 text-v2-ink-2">{label}</h3>
-        <span className="h-px flex-1 bg-v2-line" />
-        {count === undefined ? null : (
-          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{count}</span>
-        )}
+      <div className="gk-tag">
+        <h3 className="gk-tag__name">{label}</h3>
+        <span className="gk-tag__rule" aria-hidden="true" />
+        {count === undefined ? null : <span className="gk-tag__aside gk-num">{count}</span>}
         {aside}
         {onToggle === undefined ? null : (
-          <svg
-            aria-hidden
-            viewBox="0 0 20 20"
-            className={`size-3.5 shrink-0 text-v2-ink-3 transition-transform duration-200 ${
-              open === true ? 'rotate-90' : ''
-            }`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-          >
-            <path d="M7 4.5 12.5 10 7 15.5" />
-          </svg>
+          <span className="gk-band__fold" {...(open === true ? { 'data-open': '' } : {})}><Glyph id="next" /></span>
         )}
       </div>
-      {note && <p className="text-micro leading-snug text-v2-ink-3">{note}</p>}
+      {note && <p className="gk-sub">{note}</p>}
     </>
   );
 
-  const shell = 'flex w-full flex-col gap-0.5 px-1 pb-0.5 pt-2 text-left font-v2-ui';
+  // Stage 4.1: the kit's section tag (a lit bar, tracked capitals, a rule to the edge).
+  const shell = 'gk gk-band';
 
   if (onToggle === undefined) return <div className={shell}>{body}</div>;
 
@@ -887,7 +875,7 @@ export function Band({
         haptic('tap');
         onToggle();
       }}
-      className={`${shell} rounded-control transition-colors hover:bg-v2-ink/[0.03] active:bg-v2-raise/60`}
+      className={`${shell} gk-band--fold`}
     >
       {body}
     </button>
@@ -914,10 +902,10 @@ export function DecisionGroup({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-2 font-v2-ui">
-      <header className="flex items-baseline gap-2 px-1">
+    <section className="gk flex flex-col gap-2">
+      <header className="gk-group__head">
         <h2 className="sr-only">{problem}</h2>
-        <p className="min-w-0 flex-1 text-caption leading-snug text-v2-ink-2">{question}</p>
+        <p className="gk-group__what">{question}</p>
         {aside}
       </header>
       <div className="flex flex-col gap-2">{children}</div>

@@ -208,6 +208,50 @@
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-3);
 }
+/* a band inside a section: the tag, its one-clause rule under it; folded, the tag is the button */
+.gk-band {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--gk-s2) var(--gk-s1) 2px;
+  text-align: left;
+}
+.gk-band--fold {
+  min-height: var(--gk-hit);
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-band--fold:active .gk-tag__name {
+  color: var(--gk-ink-2);
+}
+.gk-band__fold {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  color: var(--gk-ink-3);
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-band__fold[data-open] {
+  transform: rotate(90deg);
+}
+/* what a tab is for, the one line the selected tab does not already say */
+.gk-group__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s1);
+}
+.gk-group__what {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
 
 /* ── buttons ───────────────────────────────────────────────────────────────── */
 
