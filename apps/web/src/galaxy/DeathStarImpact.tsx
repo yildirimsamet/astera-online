@@ -226,11 +226,14 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
     };
   }, [event.at, airborne]);
 
-  return active ? <Impact event={event} /> : null;
+  if (airborne) return active ? <Impact event={event} active /> : null;
+  // A strike that lands is mounted while the weapon is still in flight: it draws itself once, unseen,
+  // so the frame of impact only draws (S22, 2026-11-13). Nothing stands in for it before its moment.
+  return <Impact event={event} active={active} />;
 }
 
-function Impact({ event }: { event: DeathStarImpactEvent }) {
-  const fallback = <GeometricImpact event={event} />;
+function Impact({ event, active }: { event: DeathStarImpactEvent; active: boolean }) {
+  const fallback = active ? <GeometricImpact event={event} /> : null;
   // A weapon that lands is a nuclear strike on the world (owner, 2026-11-12); one shot down bursts in the air.
   const blast = event.kind === 'interception' ? <StrategicBlast event={event} /> : <NukeBlast event={event} />;
   return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}>{blast}</Suspense></SkinAssetBoundary>;

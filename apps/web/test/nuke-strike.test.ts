@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEATH_STAR } from '@astera/rules';
 import { NUKE_SECONDS, nukeLayers, nukeStrikeAxis } from '../src/galaxy/nukeLayers.js';
@@ -100,5 +101,27 @@ describe('the strike point', () => {
       expect(axis.every(Number.isFinite)).toBe(true);
       expect(length(axis)).toBeCloseTo(1, 6);
     }
+  });
+});
+
+/**
+ * NO REAL-TIME LIGHT AT THE MOMENT OF IMPACT (S22, 2026-11-13). A light that appears changes the
+ * light count every lit material in the galaxy was compiled for, so each one compiles again on that
+ * frame: the first strike of a session froze 101 ms on the S22 with one world in view, and a full
+ * galaxy has many more. The strike lights the world from its own surface shell instead (owner: cheap
+ * shader tricks over real-time lights).
+ */
+describe('the nuclear strike lights the world without a light', () => {
+  it('brings no light into the scene', () => {
+    expect(readFileSync('src/galaxy/NukeBlast.tsx', 'utf8')).not.toMatch(/pointLight|PointLight|spotLight|SpotLight|directionalLight|DirectionalLight/);
+  });
+});
+
+/** It is mounted for the whole flight, to rehearse unseen (S22, 2026-11-13). */
+describe('the nuclear strike in flight', () => {
+  it('asks for the full frame rate only while it is on screen', () => {
+    const source = readFileSync('src/galaxy/NukeBlast.tsx', 'utf8');
+    expect(source).toContain('<HoldRate fps={FULL_RATE_FPS} active={live} />');
+    expect(source).not.toContain('<FullRate />');
   });
 });

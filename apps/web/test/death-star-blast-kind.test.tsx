@@ -23,4 +23,11 @@ describe('which blast a Death Star impact draws', () => {
   it('a weapon shot down bursts in the air as before', () => {
     expect(drawn({ ...strike, id: 'shot', kind: 'interception' })).toBe('airborne');
   });
+
+  /** S22, 2026-11-13: it rehearses unseen while the weapon flies, so the frame of impact only draws. */
+  it('a strike that will land is mounted while the weapon is still in flight; one to be shot down is not', () => {
+    vi.setSystemTime(at - 60_000);
+    expect(drawn(strike)).toBe('nuclear');
+    expect(drawn({ ...strike, id: 'shot', kind: 'interception' })).toBeUndefined();
+  });
 });
