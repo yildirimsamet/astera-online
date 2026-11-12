@@ -603,3 +603,37 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
    - ✅ Owner 2026-11-12: aciliyeti yok, 5. aşamada kalır.
 3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?
    - ✅ Owner 2026-11-12: evet, 4. aşamada.
+
+## Aşama 4: Ekran ekran uygulama (owner ile planlandı 2026-11-12, uygulanıyor)
+
+**Owner kararları (2026-11-12):**
+
+1. **Sıra:** yeni oyuncunun ilk oturumdaki yolu. (1) Üs: inşa ve üretim, (2) tersane ve filo, (3) istihbarat: teleskop, radar, sonda raporu, (4) filo gönderme, (5) savaş raporu ve tekrar, (6) ödüller. Sonra kalan ekranlar, en kötü ölçüm puanından başlayarak.
+2. **Yayın:** her ekran hazır olunca çıkar ("her ekran hazır olunca çıkıcaz"). Yayın komutu yine owner'dan gelir; hazır ekran master'a alınır, owner "çıkar" deyince canlıya gider.
+
+**Her ekranda aynı adımlar:**
+
+1. Ekranın durumları çıkarılır: boş, tipik, yoğun, kilitli, bekliyor, hata (1.11 #7). Eksik durum galeriye eklenir ve ölçülür.
+2. Kit parçaları takılır. Eksik parça önce kite eklenir (galeri + test), sonra ekrana.
+3. Basılı tutma ağırlığı seçilir (geri alınabilir 0,6 / harcayan 1 / kesin 1,5 sn) ve owner'a gösterilir.
+4. Kelime bütçesi (≤ 55 kelime/ekran, ≤ 1 uzun blok) ve yalnız renkle anlatılan bilgi denetlenir.
+5. Ölçüm temiz (T1, kontrast, 44 px, aralık, basma tepkisi, kesilme) ve testler yeşil.
+6. Owner görsele bakar; bakmadan sonraki ekrana geçilmez.
+
+**Ekranlara gelince bakılacaklar:** galakside kenardan başlayan kamera sürüklemesi ile telefonun geri hareketi (1.14 #1); v2 rakip pembesi ve klan mavisi kite gelirse sınıf renkleriyle kıyas; K4 ölçütü yalnız sürüklenen kontrolleri sayacak şekilde düzeltilir (en sondaki tam ölçümden önce).
+
+### 4.1 Üs: inşa ve üretim
+
+**Kapsam:** gezegen sayfasının çerçevesi ve Üretim sekmesi (`screens/PlanetScreen.tsx`: başlık, gezegen kartı, depo çubukları, radyasyon satırı, kuyruklar, sekmeler, `Grow`), bina yükseltme sayfası (`BuildSheet`) ve kuyruklar (`v2/shell/BaseQueues.tsx`). Filo, savunma ve taktik sekmeleri sıradaki ekranlarla gelir. Üst HUD ayrı bir adım (bütün ekranlarda görünür).
+
+**Hedef görünüm:** kit galerisindeki `ui-kit-base` (owner gördü).
+
+| Parça | Bugün | Kitte |
+|---|---|---|
+| Sayfa başlığı | v2 başlık | `gk-sheet__head` |
+| Gezegen kartı | yörünge yuvaları, ad, kademe | aynı içerik, kit yazısı ve rozetleri |
+| Depo çubukları | korunan dilimli çubuk | kitte yok: önce kite eklenir |
+| Kuyruk yuvaları | boş / süren / sırada | `TimerRing` + kit yuvası |
+| Sekmeler | v2 sekme | `GameTabs` |
+| Bina kartı | resim, seviye, etki, bedel, süre, bekleme | kit plakası + bedel çipi + kilit |
+| Yükseltme sayfası | v2 sayfa | `ui-kit-base` kompozisyonu |
