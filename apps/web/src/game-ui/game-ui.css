@@ -1752,6 +1752,11 @@
   filter: drop-shadow(0 6px 6px var(--gk-outline));
   animation: gk-hover 5s ease-in-out infinite;
   pointer-events: none;
+  transition: scale var(--gk-press) var(--gk-ease);
+}
+/* The ship gives under the thumb before the count moves (scale rides on the hover). */
+.gk-unit__stage:active .gk-unit__art {
+  scale: 0.92;
 }
 .gk-unit__art[data-nudge] {
   animation: gk-nudge 220ms var(--gk-pop), gk-hover 5s ease-in-out 220ms infinite;
