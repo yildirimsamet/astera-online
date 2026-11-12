@@ -2229,6 +2229,35 @@
   100% { transform: translateY(0); opacity: 1; }
 }
 
+/* a surface still arriving: a lamp warming, and what is coming */
+.gk-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s5) var(--gk-s2);
+}
+.gk-waiting__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gk-info);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--gk-info) 80%, transparent);
+  animation: gk-warm 1.6s ease-in-out infinite;
+}
+@keyframes gk-warm {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+/* a surface that could not be read: what failed, and the one move that can change it */
+.gk-unreachable {
+  display: grid;
+  justify-items: start;
+  gap: var(--gk-s3);
+  padding: var(--gk-s5) var(--gk-s2);
+}
+.gk-unreachable .gk-banner {
+  width: 100%;
+}
 .gk-empty {
   display: grid;
   justify-items: center;

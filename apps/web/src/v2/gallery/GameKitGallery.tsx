@@ -22,6 +22,7 @@ import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
 import { UpgradeRow } from '../../ui/UpgradeRow.js';
 import { StarField } from '../kit/StarField.js';
+import { Unreachable, Waiting } from '../../ui/kit/Surface.js';
 import { StandardGallery } from './StandardGallery.js';
 
 export const KIT_VIEWS = ['ui-kit', 'ui-kit-launch', 'ui-kit-base', 'ui-kit-hud', 'ui-kit-list', 'ui-kit-report', 'ui-kit-standard'] as const;
@@ -716,6 +717,11 @@ function Catalog() {
 
         <Section title="Bina kartı · durumlar">
           <BuildingCards />
+        </Section>
+
+        <Section title="Sayfa durumları · yükleniyor, okunamadı">
+          <Waiting>Gezegen okunuyor</Waiting>
+          <Unreachable what="Gezegenin" onRetry={() => undefined} />
         </Section>
 
         <Section title="Çubuklar">
