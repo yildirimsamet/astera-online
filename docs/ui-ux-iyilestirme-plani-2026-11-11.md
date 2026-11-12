@@ -652,3 +652,34 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 **Basılı tutma önerisi (owner'a gösterilecek):** Yükselt sık yapılan bir eylem ve sayfanın kendisi zaten ikinci adım (kart → sayfa → Yükselt); iptal mümkün (yarısı yanar). Öneri: tek basış (`GameButton`), sesi ve titreşimi ağır. Çekirdek 10 (geri dönüşü olmayan tatil kilidi) bugünkü onay penceresi yerine `final` (1,5 sn) basılı tutma.
 
 **Alt adımlar:** (a) kite eksik parçalar: depo çubuğu, kuyruk yuvası, bina kartı (test + galeri); (b) yükseltme sayfası; (c) Üretim sekmesi kartları; (d) sayfa çerçevesi, gezegen kartı, depo, kuyruk, sekmeler; (e) bütün durumlar galeride, ölçüm temiz, owner'a görsel.
+
+**İlerleme 2026-11-12:**
+
+- (a) Kit parçaları: depo çubuğu `StoreGauge` (fc42c657), kuyruk yuvası (12863eba), bina kartı (f5022f0e).
+- (b) Yükseltme sayfası kitte (f3ba3209). (c) Üretim kartları (b) ile geldi.
+- (d) Çerçeve: kuyruklar (05f87609), depo (5b112cca), radyasyon satırı `InfoPeek` (2e634998), sekmeler `GameTabs` (214503a9; 6 dilde 350 px'e sığar, DE/FR'de iki sekme adı kısaldı), sayfa başlığı kendi resminin üstünde (c24fae46; 2026-10-27 kararı gereği resim kalır), bölüm bantları (906fa817), gezegen kartı (ed258183), Üs anahtarı ve kurtarma/EMP şeritleri (86ee94e8), yükleniyor/okunamadı (9a9493dd), koloniden çekilme satırı.
+- (e) Galeride: kuyruk dolu durumu (4c6a9e77). Kuyruk dolu kilit değil bekleme: kart kilit yerine kum saati taşır.
+- Bulgular (owner'a): gezegen adı hem sayfa başlığında hem kartta yazıyor; Türkçe büyük harf başlıkta "THİSTLE" görünüyor (özel isim Türkçe kurala giriyor); Üs anahtarı ile kategori sekmeleri aynı görsel ağırlıkta; filo bantlarındaki camgöbeği sayaç 2. ekranda düzelecek.
+- Ölçüm (`reports/ui-audit/4.1-2026-11-12.md`, gezegen yüzeyi, tr+en, 78 ölçüm): Üretim sekmesi ve çerçeve temiz. Kontrast hatası yok, kit hedeflerinin hepsi ≥ 44 px ve basınca tepki veriyor, kesilme ve yana taşma yok, metin 36 kelime/ekran ve ekran başına 1 uzun blok. Kalanlar 4.1'in dışında: üst HUD (9 px havuz yazısı, tepkisiz sayaçlar; HUD ayrı adım), filo/onarım/destek/taktik sekmeleri (sıradaki ekranlar). Sayfa perdesi (`data-scrim`, `aria-hidden`) adsız 2×2 hedef sayılıyor: ölçüt hatası, son tam ölçümden önce K4 ile birlikte düzelir.
+- Yazım: Körük satırlarında "alaşım, kristal ve Döteryum" düzeldi. Türkçe metinde cümle ortasında büyük "Döteryum" 10 yerde daha var (hatalar, kronik, başlangıç); metin geçişinde toplu düzeltilecek.
+- Web testlerinin tamamı: 10.529 geçti, 1 düştü (`arena/desktop-flight`, tek başına geçiyor: paralel yükte zamanlama, 4.1 ile ilgisiz).
+
+### 4.2 Tersane ve filo (taslak; owner 4.1'i gördükten sonra başlar)
+
+**Kapsam:** Filo sekmesi (`PlanetScreen.tsx` `Reach`): Tersane ve Hangar kartları (4.1'de kite geçti), gemi aileleri bantları, gemi kartları, `HangarRoom` (`v2/kit/RoomBar`), Onarım İstasyonu kartı ve sayfası (`screens/RepairStation.tsx`), gemi üretim sayfası (`BuildSheet`, `HullStats`, `HullMatchup`, `QuantityStepper`). Klan savunma duruşu ve destek bölmesi (`screens/ClanSupportBay.tsx`) klan ekranıyla gelir; burada yalnız görünüşü bozulmasın diye bakılır.
+
+**Durumlar (koddan çıkarıldı):**
+
+| Yer | Durumlar |
+|---|---|
+| Gemi kartı | yapılabilir · hiç yok (0) · kaynak eksik · tersane/araştırma kilidi (çözüme götürür) · kuyruk dolu (kum saati) · sırada (N) · Prospector sınırı · hangar/zemin dolu · arızalı (Prospector) · eğitimde vurgulu |
+| Aile bandı | açık · kapalı (sayı) · eğitimde zorla açık |
+| Üretim sayfası | adet 1…en çok · sınırı koyan: kaynak / yuva / hangar / zemin · tavanda (alt düğme yok) · kilitli (çözüm) · kuyruk dolu · kaynak eksik ("N dk sonra") · döteryum eksik (süre yok) · gönderiliyor · eğitim adedi sabit · özel rol (Nullifier, Toplayıcı) · destek sınıfı (karşı döngü yok) · zemin topu (yalnız "duran") · Prospector yuva sayısı |
+| Oda çubuğu | evde · dışarıda · sırada · gelen (adet arttıkça) · dolu |
+| Onarım istasyonu | hasarlı gemi yok · hasarlı gemi var · onarım sürüyor · sırada · iptal (onaylı) |
+
+**Kitte eksik parçalar (önce kite):** oda çubuğu (`RoomBar` v2), adet seçici (`QuantityStepper` v2; kitte `Slider` var, ince düğmeli: uygun mu bakılacak), sınıf rozeti kit dilinde, gemi istatistik ızgarası.
+
+**Basılı tutma önerisi:** "İnşa et" kaynak harcar ama iptal edilebilir (yarısı yanar) ve sayfa zaten ikinci adım: Yükselt ile aynı karar (tek basış, ağır ses ve titreşim). Onarım başlatmak da aynı.
+
+**Bilinen sorun:** bant sayacı ve okunun camgöbeği rengi `atmosphere.css` `[data-hull-family-group]` kurallarından geliyor; 4.2'de kalkar.
