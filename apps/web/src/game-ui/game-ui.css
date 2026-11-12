@@ -1061,6 +1061,43 @@
   font-weight: 700;
   color: var(--gk-self);
 }
+/* a way out of something you hold (abandon a colony): quiet until pressed, its mark in the threat's colour */
+.gk-exitrow {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s2) 0 var(--gk-s3);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+  color: var(--gk-ink-2);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-exitrow:active {
+  transform: translateY(1px);
+  border-color: color-mix(in srgb, var(--gk-hostile) 45%, var(--gk-metal-edge));
+}
+.gk-exitrow .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-exitrow__glyph {
+  display: inline-grid;
+  color: var(--gk-hostile);
+}
+.gk-exitrow__glyph .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-exitrow__label {
+  flex: 1;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+}
 /* what a world takes off radiation: a coin of its tone, the reading, the rule one "?" away */
 .gk-shelter {
   --tone: var(--gk-good);

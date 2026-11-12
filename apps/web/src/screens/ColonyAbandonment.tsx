@@ -4,6 +4,7 @@ import { ApiError } from '../api/client.js';
 import { useAbandonColony, useColonyAbandonment } from '../api/colonyAbandonment.js';
 import { colonyAbandonmentReasonSchema, type PlanetView } from '../api/schemas.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { Glyph } from '../game-ui/index.js';
 import { Icon } from '../v2/icons.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import type { z } from 'zod';
@@ -20,11 +21,11 @@ function ColonyControl({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return <>
-    <button type="button" onClick={() => { setOpen(true); }}
-      className="flex min-h-11 w-full items-center justify-between gap-2 rounded-control border border-v2-line bg-v2-deep/40 px-2.5 text-left font-v2-ui text-caption text-v2-ink-2 hover:border-v2-hostile/50 hover:text-v2-hostile"
-    >
-      <span className="flex items-center gap-2"><Icon id="m-colony" className="size-4 text-v2-hostile" />{t('planet.abandon.action')}</span>
-      <Icon id="i-chev" className="size-4" />
+    {/* Stage 4.1: a quiet kit row; the weight of the act lives in the sheet it opens. */}
+    <button type="button" onClick={() => { setOpen(true); }} className="gk gk-exitrow">
+      <span className="gk-exitrow__glyph"><Glyph id="colony" /></span>
+      <span className="gk-exitrow__label">{t('planet.abandon.action')}</span>
+      <Glyph id="next" />
     </button>
     {open && <AbandonColonySheet planet={planet} onClose={() => { setOpen(false); }} />}
   </>;
