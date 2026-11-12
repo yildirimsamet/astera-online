@@ -296,7 +296,7 @@ ${list(p.shouted, (h) => `${at(h)} — "${h.text}" (${String(h.size)} px)`)}
 ${list(p.fastBlinks, (h) => `${at(h)} — ${h.label} \`${h.name}\` ${String(h.seconds)} sn`)}
 ### Boşluk ızgarası (L2)
 
-4'ün katı olmayan padding, gap ve dikey margin değeri: ${String(p.offGrid.values)} / ${String(p.offGrid.total)} (${pct(p.offGrid.values, p.offGrid.total)}).
+Bloklar arasında 4'ün katı olmayan padding, gap ve dikey margin değeri (kontrol ve çip içi sayılmaz, 2.7): ${String(p.offGrid.values)} / ${String(p.offGrid.total)} (${pct(p.offGrid.values, p.offGrid.total)}).
 `;
 }
 

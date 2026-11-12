@@ -70,9 +70,28 @@ describe('text', () => {
     expect(text('half-cut').clipped).toBe(true);
   });
 
-  it('knows text hidden under an opaque lid is not on screen', () => {
+  it('leaves out a name only a screen reader hears, and keeps the label it sits on', () => {
+    expect(audit.texts.find((t) => t.key === 'sr-hidden')).toBeUndefined();
+    expect(text('sr-host').rendered).toBe(true);
+    expect(text('sr-host').clipped).toBe(false);
+  });
+
+  it('knows text hidden under an opaque lid is not on screen, even when the lid carries words of its own', () => {
     expect(text('buried').rendered).toBe(false);
     expect(text('good-text').rendered).toBe(true);
+  });
+
+  it('measures contrast where the letters are drawn, not over the rim their line box touches', () => {
+    expect(text('inked').contrast?.p5).toBeGreaterThan(15);
+  });
+
+  it('judges a word a bar half hides only over the part that shows', () => {
+    expect(text('part-hidden').rendered).toBe(true);
+    expect(text('part-hidden').contrast?.p5).toBeGreaterThan(15);
+  });
+
+  it('judges letters inside a dark halo against the halo (WCAG 1.4.3)', () => {
+    expect(text('halo').contrast?.p5).toBeGreaterThan(15);
   });
 
   it('measures contrast against the real background, gradient and alpha included', () => {
@@ -116,6 +135,16 @@ describe('touch targets', () => {
     expect(target('good-button').visibleText).toBe(true);
   });
 
+  it('names a field by its label and counts its words as text it shows', () => {
+    expect(target('field').name).toBe('Ad');
+    expect(target('field').visibleText).toBe(true);
+  });
+
+  it('takes a label beside its field as the same target, but a label around a hidden box as its own', () => {
+    expect(audit.targets.some((t) => t.key === 'field-label')).toBe(false);
+    expect(target('wrap-toggle').region?.height).toBe(44);
+  });
+
   it('tells an icon button from a bare tap area such as a backdrop', () => {
     expect(target('icon-only').hasIcon).toBe(true);
     expect(target('good-button').hasIcon).toBe(false);
@@ -156,6 +185,12 @@ describe('layout, colour, motion and words', () => {
   it('counts spacing values off the 4 px grid', () => {
     expect(audit.spacing.values['5']).toBe(4);
     expect(audit.spacing.offGrid).toBeGreaterThanOrEqual(4);
+  });
+
+  it('counts spacing between blocks only, not inside a control or an inline chip (standard 2.7)', () => {
+    expect(audit.spacing.values['3']).toBeUndefined();
+    expect(audit.spacing.values['6']).toBeUndefined();
+    expect(audit.spacing.values['7']).toBeUndefined();
   });
 
   it('counts the hue families on the surface', () => {

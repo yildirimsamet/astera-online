@@ -315,7 +315,7 @@ Aynı eylem hep aynı titreşimi verir; titreşim ses ve görüntüyle birlikte 
 
 **Önerim:** A.
 
-**Ölçülebilir karşılık:** L2 bloklar arası boşluğu sayar; 4'ün katı olmayan = 0. Kontrol içi ölçüm dışında kalır (araç düzeltmesi 3. aşamada).
+**Ölçülebilir karşılık:** L2 bloklar arası boşluğu sayar; 4'ün katı olmayan = 0. Kontrol içi ölçüm dışında kalır. ✅ Araç düzeltmesi 3.8'de yapıldı: buton, çip ve rozet gibi kontrollerin kendi iç boşluğu ile kontrolün içindeki her şey sayılmıyor.
 
 ---
 
@@ -464,6 +464,40 @@ Owner: Ok, Kargı, Sur ve Kurye ikonları akılda kalmıyor; her sınıfa bir re
 - **"Depo dolu" çubuğu:** yazı 10 px'lik ince çubuğa konmuştu, sığmıyordu. Artık yazı taşıyan çubuk her zaman kalın (18 px); ayrı `thick` seçeneği kalktı.
 - **Butondaki maliyet:** amber butonun üstündeki koyu kutu rengi kirletiyordu. Maliyet artık butonun kendi yazı renginde, ince bir ayraçtan sonra duruyor. Açık renkli kutu da denendi (`out/ui-kit/fixes/sheet-cost.png`).
 - **Kapsül açılış sesi:** 8-bit güç sesi (pod-open B) beğenilmedi. Kütüphaneden katmanlı dört yeni aday hazırlandı (kilit + hava + parıltı): `out/ui-kit/sesler/pod-open-2/index.html`. ✅ Owner B'yi seçti (mandal + hava + yükselen onay tınısı); `unseal-v1.mp3` olarak bağlandı.
+
+## Kit ölçümüyle değişen görünüm (3.8, 2026-11-12)
+
+Kit ölçümü kontrastı temizlerken birkaç parçanın rengi değişti. Görseller: `out/ui-kit/stage3/audit-fix/`.
+
+- **Kırmızı buton (tehlike):** sinyal kırmızısından koyu kırmızıya indi. Beyaz yazı üstte 2,97:1 veriyordu, artık 4,5:1. Kenar ışığı parlak kaldı. Yuvarlak kırmızı buton da aynı.
+- **Turkuaz yuvarlak buton:** ikon beyazdan koyu mürekkebe döndü (1,7:1 → 11:1). Aynı tondaki büyük buton zaten koyu yazıyla çiziliyordu.
+- **Seviye altıgeni:** açık maviden koyu çelik maviye indi (beyaz rakam 1,95 → 4,8:1). Mavi kimlik korunuyor.
+- **Bildirim noktası ve düşman çarpanı (×0,6):** koyu kırmızı zemin. Parıltı rakamın üstünde kalıyor.
+- **Çubuk yazısı ve ZAFER şeridi:** parlak dolgunun üstündeki beyaz yazı koyu kontur aldı (2 ve 3 px). Oyunların çubuk yazısı böyle çizilir. WCAG 1.4.3'e göre geniş kontur yazının zemini sayılır; araç da artık böyle ölçüyor.
+- **Soluk yazı (`ink-3`):** `#979ca5` → `#a5a9b1`. En açık plakada 4,9 → 5,8:1.
+- **Klan amblemi etiketi:** küçük karede 10,8 px'e düşüyordu. Artık 12 px'in altına inmiyor.
+- **Metin kutusu:** basınca kenarı yanıyor (eskiden yalnız klavye açılınca yanıyordu).
+- **Liste sonu:** sheet gövdesinin alt boşluğu 12 → 24 px. Son satır alt çubuğun 22 px'lik solmasından çıkabiliyor.
+- **Galeri başlıkları:** üç kelimeden uzun büyük harfli başlıklar kısa ad + düz yazılı not olarak bölündü ("BASILI TUT · kritik hamle").
+
+**Dar telefonda (320 px) kesilen yazılar** (her dilde 21 kesik → 0; Japonca için alttaki nota bak):
+- **Gemi bölmesi:** sabit 78 px yerine satırı dörde bölüyor (350'de 77, 320'de 69 px). 340 px altında sınıf bandı ok ikonunu bırakıyor; ×0,6 / ×1,6 yönü zaten söylüyor.
+- **Değer plakası notu** ve **kilit açılan ad** üç noktayla kesilmek yerine ikinci satıra iniyor ("1 / 1" gibi asıl kısım kaybolmuyor; ヴァイパー da sığıyor).
+- **Kapsül ipucu:** Ç, Ş çengelleri kırpma kenarına değmesin diye altına 4 px boşluk.
+- **Basılı tut:** fiil ("GERİ ÇAĞIR") tek satırda kalıyor, yanındaki bilgi ("DÖNÜŞ 8 DK") önce iki satıra iniyor. Bilgi tek kelimesi bile sığmazsa kesilmek yerine kelimenin içinden kırılıyor (son çare).
+- **Bekleme halkası:** uzun buton yazısının yanında elipse eziliyordu; artık hep yuvarlak.
+- **Galeri yuvarlak buton satırı** taşmak yerine alt satıra iniyor (katalogu 311 px'e zorluyordu).
+
+**Kalan tek kesik (Japonca, 320 px):** gri "GÖNDERİLİYOR" bekleme butonu. Galerideki örnek yazılar Türkçe; Japonca profilde bu Türkçe kelime Japonca yazı tipinin geniş Latin harfleriyle çiziliyor ve yarım hücreye sığmıyor. Oyunun gerçek Japonca metni "送信中…" rahat sığıyor. Türkçede kelime tam görünüyor, o yüzden butonun yazısına kırılma eklenmedi (Türkçede de "GÖNDERİLİ/YOR" diye bölüyordu).
+
+**Ölçüm aracında düzeltilenler** (her biri kalibrasyon testiyle):
+- Ekran okuyucuya özel (sr-only) yazı görünür sayılıyordu.
+- Kontrast satır kutusundan ölçülüyordu; rozet kenarı ve gemi resmi harflerin zemini sayılıyordu. Artık harflerin çizildiği bant ölçülüyor.
+- Üstü kapalı ya da yarısı sabit çubuğun altında kalan yazı ölçülüyordu. Artık yalnız görünen kısmı ölçülüyor.
+- Kayan listedeki yazı, alt çubuğun solmasından geçerken ölçülüyordu. Artık en iyi göründüğü yerde ölçülüyor; sabit yazı ise en kötü anında.
+- Etiketle adlandırılmış metin kutusu "adsız alan" sayılıyordu; kutunun yanındaki etiket ayrı (18 px'lik) hedef sayılıyordu (WCAG 2.5.8 "eşdeğer kontrol").
+- Ekranın kenarında ince bir şeridi görünürken basılan hedef, tam göründüğünde yeniden basılıyor.
+- L2 kontrol içi boşluğu saymıyor (2.7).
 
 ## Sıradaki
 

@@ -29,7 +29,6 @@ const NOT_TEXT = new Map([
   ['.gk-unit__home .gk-glyph', 'the hangar glyph by the stock'],
   ['.gk-lang__tick', 'the tick by the chosen language'],
   ['.gk-status__coin', 'the glyph on a status coin'],
-  ['.gk-emblem-tile__tag', "a clan tag drawn as part of its tile, sized in em of the tile"],
   ['.gk-std__flat', "today's flat button on the owner's decision page, not kit UI"],
 ]);
 
@@ -37,7 +36,8 @@ const rawSizes = (): [string, string][] =>
   [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(([, selector = '', body = '']) =>
     [...body.matchAll(/font-size:\s*([^;]+);/g)]
       .map(([, value = '']) => value.trim())
-      .filter((value) => !value.startsWith('var(--gk-t-'))
+      // A size that follows its picture in em still keeps the floor: max(var(--gk-t-floor), …).
+      .filter((value) => !value.startsWith('var(--gk-t-') && !value.startsWith('max(var(--gk-t-floor),'))
       .map((value): [string, string] => [selector.trim().replace(/\s+/g, ' '), value]));
 
 const files = (dir: string): string[] =>

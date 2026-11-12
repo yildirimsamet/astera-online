@@ -46,6 +46,15 @@ export interface RawText {
   opacity: number;
   /** Glyph boxes, clipped to the viewport. */
   rects: Box[];
+  /** The same boxes cut to where the letters are drawn: contrast is judged there. */
+  inkRects: Box[];
+  /** Something unrelated is on top of every one of its boxes: a lid, a fixed bar. */
+  covered: boolean;
+  /**
+   * A stroke of 2 px or more rings the letters at least 1 px wide: WCAG 1.4.3 takes such a
+   * halo as their ground. A hairline stroke is part of the letter.
+   */
+  halo: Rgba | null;
 }
 
 export interface RawTarget {
@@ -229,6 +238,47 @@ const lineCount = (rects: readonly Box[]): number => new Set(rects.map((r) => Ma
 
 const visibleStyle = (el: Element): boolean => getComputedStyle(el).visibility === 'visible';
 
+/**
+ * Each box cut to the rows where a press would land on this text's own element: the part no
+ * lid or fixed bar hides. null where nothing of it shows.
+ */
+const shownParts = (el: Element, rects: readonly Box[]): (Box | null)[] => {
+  if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) return [...rects];
+  // Its own text is hit-tested even when presses pass through it (pointer-events: none).
+  const style = el.style;
+  const before = [style.getPropertyValue('pointer-events'), style.getPropertyPriority('pointer-events')] as const;
+  style.setProperty('pointer-events', 'auto', 'important');
+  try {
+    return rects.map((r) => {
+      const x = (r.left + r.right) / 2;
+      let top: number | null = null;
+      let bottom = 0;
+      for (let y = Math.floor(r.top); y < r.bottom; y += 1) {
+        const hit = document.elementFromPoint(x, y + 0.5);
+        if (hit !== null && (el.contains(hit) || hit.contains(el))) {
+          top ??= y;
+          bottom = y + 1;
+        }
+      }
+      return top === null ? null : { ...r, top: Math.max(r.top, top), bottom: Math.min(r.bottom, bottom) };
+    });
+  } finally {
+    if (before[0]) style.setProperty('pointer-events', before[0], before[1]);
+    else style.removeProperty('pointer-events');
+  }
+};
+
+/** Inside a box of one pixel that hides its overflow: a name only a screen reader hears (sr-only). */
+const screenReaderOnly = (start: Element): boolean => {
+  for (let el: Element | null = start; el && el !== document.body; el = el.parentElement) {
+    const style = getComputedStyle(el);
+    if (style.overflowX === 'visible' || style.overflowY === 'visible') continue;
+    const box = el.getBoundingClientRect();
+    if (box.width <= 1 || box.height <= 1) return true;
+  }
+  return false;
+};
+
 /** Page-lifetime ids kept off the DOM: the page under audit is not changed to name its nodes. */
 const ids = new WeakMap<Node, string>();
 let nextId = 0;
@@ -247,13 +297,17 @@ let countedTexts = new WeakSet<Node>();
 
 function textItem(id: string, el: Element, text: string, rawRects: Box[], placeholder: boolean): RawText | null {
   const rects = rawRects.map(clipToViewport).filter((r): r is Box => r !== null);
-  if (rects.length === 0 || !visibleStyle(el)) return null;
+  if (rects.length === 0 || !visibleStyle(el) || screenReaderOnly(el)) return null;
   const opacity = opacityOf(el);
   if (opacity <= 0.01) return null;
   const style = getComputedStyle(el);
   const color = rgba(placeholder ? getComputedStyle(el, '::placeholder').color : style.color);
   const clip = style.backgroundClip === 'text';
   const fontSize = parseFloat(style.fontSize);
+  const ink = placeholder ? { top: 0, bottom: 0 } : inkInset(el, text);
+  const shown = placeholder ? rects : shownParts(el, rects);
+  const stroke = parseFloat(style.getPropertyValue('-webkit-text-stroke-width')) || 0;
+  const halo = rgba(style.getPropertyValue('-webkit-text-stroke-color'));
   return {
     id,
     key: keyOf(el),
@@ -267,13 +321,22 @@ function textItem(id: string, el: Element, text: string, rawRects: Box[], placeh
     lineHeight: style.lineHeight === 'normal' ? null : parseFloat(style.lineHeight) / fontSize,
     lines: placeholder ? 1 : lineCount(rawRects),
     truncated: !placeholder && isTruncated(el),
-    clipped: !placeholder && isClipped(el, rawRects, inkInset(el, text)),
+    clipped: !placeholder && isClipped(el, rawRects, ink),
     gradient: clip && color[3] === 0,
     placeholder,
     inactive: el.closest(':disabled, [aria-disabled="true"]') !== null,
     color,
     opacity,
     rects,
+    inkRects: rects.flatMap((r, i) => {
+      const part = shown[i];
+      if (!part) return [];
+      const top = Math.max(part.top, r.top + ink.top);
+      const bottom = Math.min(part.bottom, r.bottom - ink.bottom);
+      return bottom - top >= 1 ? [{ ...r, top, bottom }] : [];
+    }),
+    covered: shown.every((part) => part === null),
+    halo: !placeholder && stroke >= 2 && halo[3] >= 0.9 ? halo : null,
   };
 }
 
@@ -309,16 +372,37 @@ function collectTexts(): { texts: RawText[]; uncounted: RawText[] } {
   return { texts: out, uncounted };
 }
 
+/** What a text field shows: its value, else its placeholder. */
+const typed = (el: Element): string | null =>
+  el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value || el.placeholder : null;
+
+/**
+ * A label around its control, or beside one too small to press, is what the player presses.
+ * Beside a control that is pressable on its own it is the same target (WCAG 2.5.8 "equivalent").
+ */
+const labelIsOwnTarget = (label: HTMLLabelElement): boolean => {
+  const control = label.control;
+  if (!control) return false;
+  if (label.contains(control)) return true;
+  const box = control.getBoundingClientRect();
+  return box.width < 24 || box.height < 24;
+};
+
 const isSemantic = (el: Element): boolean => {
   const tag = el.tagName;
   if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'SUMMARY') return true;
   if (tag === 'A' && el.hasAttribute('href')) return true;
   if (el instanceof HTMLInputElement) return el.type !== 'hidden';
-  if (el instanceof HTMLLabelElement) return el.control !== null;
+  if (el instanceof HTMLLabelElement) return labelIsOwnTarget(el);
   const role = el.getAttribute('role');
   if (role && ROLES.has(role)) return true;
   const tabindex = el.getAttribute('tabindex');
   return tabindex !== null && Number(tabindex) >= 0;
+};
+
+const insideControl = (el: Element): boolean => {
+  for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) if (isSemantic(up)) return true;
+  return false;
 };
 
 /** The control a press on `hit` reaches: a semantic one, else the outermost of a pointer-cursor run. */
@@ -341,6 +425,9 @@ const nameOf = (el: Element): string => {
     const named = by.split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? '').join(' ').trim();
     if (named) return named;
   }
+  const labelled = el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement || el instanceof HTMLButtonElement;
+  const labels = labelled ? [...(el.labels ?? [])].map((l) => l.textContent.trim()).join(' ').trim() : '';
+  if (labels) return labels;
   const own = el instanceof HTMLElement ? el.innerText.replace(/\s+/g, ' ').trim() : '';
   if (own) return own;
   return el.getAttribute('title') ?? el.querySelector('img')?.getAttribute('alt') ?? '';
@@ -391,7 +478,7 @@ function collectTargets(step: number): { targets: RawTarget[]; grid: RawCollect[
   }
   const targets = elements.map((el, i): RawTarget => {
     el.setAttribute(TARGET, String(i));
-    const own = el instanceof HTMLElement ? el.innerText : el.textContent;
+    const own = typed(el) ?? (el instanceof HTMLElement ? el.innerText : el.textContent);
     const visibleText = /[\p{L}\p{N}]/u.test(own);
     return {
       id: idOf(el),
@@ -451,10 +538,17 @@ function collectStyles(uncountedTexts: readonly RawText[]) {
         if (c[3] > 0) colors.push({ rgb: [c[0], c[1], c[2]], weight: area * c[3] * 0.5 });
       }
     }
-    for (const side of [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft, style.marginTop, style.marginBottom]) count(side);
-    if (style.display.includes('flex') || style.display.includes('grid')) {
-      if (style.rowGap !== 'normal') count(style.rowGap);
-      if (style.columnGap !== 'normal') count(style.columnGap);
+    // Standard 2.7: the grid holds between blocks. A control's or an inline chip's own
+    // padding and gap are its interior, and everything inside a control is too.
+    if (!insideControl(el)) {
+      for (const side of [style.marginTop, style.marginBottom]) count(side);
+      if (!isSemantic(el) && !style.display.startsWith('inline')) {
+        for (const side of [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]) count(side);
+        if (style.display.includes('flex') || style.display.includes('grid')) {
+          if (style.rowGap !== 'normal') count(style.rowGap);
+          if (style.columnGap !== 'normal') count(style.columnGap);
+        }
+      }
     }
 
     const transition = Math.max(...seconds(style.transitionDuration));

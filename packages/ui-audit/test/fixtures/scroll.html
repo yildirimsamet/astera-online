@@ -27,11 +27,15 @@
   const rows = Number(new URLSearchParams(location.search).get('rows') ?? 20);
   // `?active=1`: every button answers a press with a CSS :active colour.
   if (new URLSearchParams(location.search).has('active')) document.head.insertAdjacentHTML('beforeend', '<style>button:active { background: #c80; }</style>');
+  // `?pad=1`: each button's face sits under 30 px of empty hit area, and the seventh row is cut
+  // by the list's edge so that only that empty strip shows: a press there shows nothing.
+  const pad = new URLSearchParams(location.search).has('pad');
+  if (pad) document.head.insertAdjacentHTML('beforeend', '<style>.row { height: 110px; } button { height: 70px; padding: 30px 0 0; background: transparent; } button span { display: block; height: 40px; line-height: 40px; background: #333; } button:active span { background: #c80; }</style>');
   for (let i = 1; i <= rows; i += 1) {
     const row = document.createElement('div');
     row.className = 'row';
     row.id = `row-${i}`;
-    row.innerHTML = `<span>Gemi ${i}</span><button>Seç ${i}</button>`;
+    row.innerHTML = pad ? `<span>Gemi ${i}</span><button><span>Seç ${i}</span></button>` : `<span>Gemi ${i}</span><button>Seç ${i}</button>`;
     list.append(row);
   }
 </script>

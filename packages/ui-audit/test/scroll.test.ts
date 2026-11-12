@@ -17,6 +17,7 @@ let full: SurfaceAudit;
 let capped: SurfaceAudit;
 let long: SurfaceAudit;
 let lit: SurfaceAudit;
+let padded: SurfaceAudit;
 
 beforeAll(async () => {
   browser = await chromium.launch();
@@ -29,6 +30,7 @@ beforeAll(async () => {
   capped = await auditSurface(await open(), { surface: 'scroll', frames: 1, maxParts: 2 });
   long = await auditSurface(await open(150), { surface: 'scroll', frames: 1, gridStep: 4 });
   lit = await auditSurface(await open(20, '&active=1'), { surface: 'scroll', frames: 1, feedback: true, maxParts: 8 });
+  padded = await auditSurface(await open(20, '&pad=1'), { surface: 'scroll', frames: 1, feedback: true, maxParts: 8 });
 }, 180_000);
 
 afterAll(async () => {
@@ -53,6 +55,11 @@ describe('a scrolled surface', () => {
 
   it('sees the press answer of a button in every part, not only the first (2026-11-12: later parts pressed a stale twin)', () => {
     const silent = lit.targets.filter((t) => t.name.startsWith('Seç') && t.feedback === 'none').map((t) => t.name);
+    expect(silent).toEqual([]);
+  });
+
+  it('presses a button again once it shows whole, when the first press reached only a strip of it', () => {
+    const silent = padded.targets.filter((t) => t.name.startsWith('Seç') && t.feedback !== 'active').map((t) => t.name);
     expect(silent).toEqual([]);
   });
 

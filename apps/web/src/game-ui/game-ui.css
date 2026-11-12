@@ -300,13 +300,15 @@
 }
 .gk-btn--danger {
   --face-hi: var(--gk-hostile-hi);
-  --face: var(--gk-hostile);
+  /* Crimson, not signal red, under white words: 4.5:1 from the top of the face down. */
+  --face: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-hostile-lo));
   --face-lo: var(--gk-hostile-lo);
   --lip: var(--gk-hostile-lip);
   --rim: var(--gk-hostile-lip);
 }
 .gk-btn--action .gk-glyph,
-.gk-btn--self .gk-glyph {
+.gk-btn--self .gk-glyph,
+.gk-round--self .gk-glyph {
   stroke: none;
 }
 .gk-btn--ghost {
@@ -354,7 +356,6 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: none;
-  opacity: 0.95;
 }
 /* The price rides on the face after a hairline, in the button's own lettering: a dark
    chip under it muddied the amber (owner 2026-11-12). */
@@ -375,6 +376,8 @@
   font-size: 20px;
 }
 .gk-spin {
+  /* a long label beside it must not squash the ring into an ellipse */
+  flex-shrink: 0;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -423,7 +426,7 @@
 }
 .gk-round--danger {
   --face-hi: var(--gk-hostile-hi);
-  --face: var(--gk-hostile);
+  --face: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-hostile-lo));
   --face-lo: var(--gk-hostile-lo);
   --lip: var(--gk-hostile-lip);
 }
@@ -432,6 +435,8 @@
   --face: var(--gk-self);
   --face-lo: var(--gk-self-lo);
   --lip: var(--gk-self-lip);
+  /* Dark ink on the lit teal face, as on the teal button: white read at 1.7:1. */
+  color: var(--gk-outline);
 }
 .gk-round--small .gk-round__face {
   width: 28px;
@@ -518,6 +523,7 @@
 .gk-hold__dial {
   position: relative;
   display: grid;
+  flex-shrink: 0;
   place-items: center;
   width: 42px;
   height: 42px;
@@ -554,17 +560,20 @@
   display: grid;
   justify-items: start;
   gap: 2px;
+  /* the verb keeps its line; on a narrow phone the spend beside it wraps first */
   flex: 1;
-  min-width: 0;
 }
 .gk-hold__label {
   font-size: var(--gk-t-head);
   line-height: 1;
+  white-space: nowrap;
 }
 .gk-hold__aside {
   /* the spend is short ("39 gemi"); a longer one wraps in its own column, never over the verb */
   flex: 0 1 auto;
   max-width: 42%;
+  /* last resort when even one word cannot fit beside the verb: break it, never cut it */
+  overflow-wrap: anywhere;
   line-height: 1.1;
   font-family: var(--gk-font-display);
   font-size: var(--gk-t-lead);
@@ -651,7 +660,8 @@
   stroke: none;
 }
 .gk-mult--hostile {
-  background: linear-gradient(180deg, var(--gk-hostile), var(--gk-hostile-lo));
+  /* Deep red under white letters (4.5:1); the bright red stays for fills and frames. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-hostile) 25%, var(--gk-hostile-lo)), var(--gk-hostile-lo));
 }
 
 .gk-level {
@@ -662,7 +672,9 @@
   height: 30px;
   padding: 0 6px;
   clip-path: polygon(50% 0, 100% 24%, 100% 76%, 50% 100%, 0 76%, 0 24%);
-  background: linear-gradient(180deg, var(--gk-info), color-mix(in srgb, var(--gk-info) 30%, var(--gk-metal-3)));
+  /* Deep enough under the numeral for 4.5:1; the light info blue stays on the rim only. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-info) 58%, var(--gk-metal-3)), color-mix(in srgb, var(--gk-info) 26%, var(--gk-metal-3)));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gk-info) 80%, transparent);
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
@@ -695,7 +707,8 @@
   padding: 0 5px;
   border-radius: 999px;
   border: 2px solid var(--gk-outline);
-  background: radial-gradient(circle at 50% 30%, var(--gk-hostile-hi), var(--gk-hostile) 50%, var(--gk-hostile-lo));
+  /* The shine sits above the numeral; the number itself stands on deep red (4.5:1). */
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gk-hostile) 50%, var(--gk-hostile-lo)) 0, var(--gk-hostile-lo) 40%, color-mix(in srgb, var(--gk-hostile-lo) 60%, var(--gk-hostile-lip)));
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-size: var(--gk-t-floor);
@@ -792,6 +805,9 @@
   font-stretch: var(--gk-display-stretch);
   font-size: var(--gk-t-floor);
   line-height: 1;
+  /* Words over a lit fill wear a dark halo, as game bars letter them (WCAG 1.4.3 halo). */
+  -webkit-text-stroke: 2px var(--gk-outline);
+  paint-order: stroke fill;
 }
 .gk-fill-good { --fill-hi: var(--gk-good-hi); --fill: var(--gk-good); --fill-lo: var(--gk-good-lo); }
 .gk-fill-hostile { --fill-hi: var(--gk-hostile-hi); --fill: var(--gk-hostile); --fill-lo: var(--gk-hostile-lo); }
@@ -888,9 +904,8 @@
 .gk-stat__sub {
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* A narrow plaque wraps its note; an ellipsis would hide the part that matters ("1 / 1"). */
+  line-height: 1.3;
 }
 .gk-stat--warn .gk-stat__value { color: var(--gk-warn); }
 .gk-stat--hostile .gk-stat__value { color: var(--gk-hostile); }
@@ -989,7 +1004,8 @@
 .gk-timer__arc {
   stroke: var(--gk-info);
   stroke-linecap: round;
-  transition: stroke-dashoffset 1s linear;
+  /* The ring ticks each second like a clock hand: a quick step, not a crawl (standard 2.6). */
+  transition: stroke-dashoffset var(--gk-quick) var(--gk-ease);
 }
 .gk-timer__time {
   font-size: var(--gk-t-lead);
@@ -1207,7 +1223,8 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--gk-s3) var(--gk-gutter);
+  /* The last row scrolls clear of the foot's 22 px fade. */
+  padding: var(--gk-s3) var(--gk-gutter) var(--gk-s6);
 }
 .gk-sheet__foot {
   position: relative;
@@ -1256,6 +1273,8 @@
   text-align: center;
   font-size: var(--gk-t-title);
   text-transform: uppercase;
+  -webkit-text-stroke: 3px var(--gk-outline);
+  paint-order: stroke fill;
   background: linear-gradient(180deg, var(--tone-hi), var(--tone-lo));
   clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 50%, 100% 100%, 0 100%, var(--cut) 50%);
 }
@@ -1654,6 +1673,8 @@
 .gk-field__input::placeholder {
   color: var(--gk-ink-3);
 }
+/* The rim lights under the thumb, before the keyboard opens. */
+.gk-field__input:active,
 .gk-field__input:focus {
   outline: none;
   border-color: var(--gk-self);
@@ -1833,6 +1854,8 @@
   font-weight: 700;
   color: var(--gk-ink-2);
   margin-top: -6px;
+  /* It tucks under the Max chip's 44 px hit area: a press there still reaches the chip. */
+  pointer-events: none;
 }
 .gk-unit[data-full] .gk-count {
   background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self));
@@ -1845,7 +1868,8 @@
   position: relative;
   display: grid;
   gap: 2px;
-  width: 78px;
+  /* Fills its cell: four bays share the row, 77 px each at 350, 69 at 320. */
+  min-width: 0;
   flex-shrink: 0;
   padding: 4px 4px 0;
   overflow: hidden;
@@ -1876,9 +1900,14 @@
   padding: 1px 4px 1px 3px;
   gap: 1px;
 }
+/* Under 340 px the band holds the class mark and the number; ×0,6 / ×1,6 still says which way. */
+@media (max-width: 340px) {
+  .gk-bay__band .gk-mult .gk-glyph { display: none; }
+}
 .gk-bay__art {
   justify-self: center;
-  width: 70px;
+  width: 100%;
+  max-width: 70px;
   height: 48px;
   object-fit: contain;
   filter: drop-shadow(0 4px 4px var(--gk-outline));
@@ -2178,9 +2207,10 @@
 }
 .gk-unlock__name {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A long name (ヴァイパー at 320 px) takes a second line rather than losing its end. */
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.15;
   font-size: var(--gk-t-floor);
   font-weight: 700;
   color: var(--gk-ink-2);
@@ -2245,7 +2275,8 @@
   margin-top: -6%;
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
-  font-size: 0.3em;
+  /* Grows with its tile, never under the 12 px floor. */
+  font-size: max(var(--gk-t-floor), 0.3em);
   letter-spacing: 0.02em;
   color: var(--gk-ink);
   -webkit-text-stroke: 2px var(--gk-outline);
@@ -2261,7 +2292,8 @@
   gap: var(--gk-s2);
   /* headroom: the open lid stretches up out of the closed pod's frame */
   --pod-top: 30px;
-  padding-top: var(--pod-top);
+  /* the hint's cedillas (Ç, Ş) keep clear of the clipping edge */
+  padding: var(--pod-top) 0 var(--gk-s1);
   overflow: hidden;
 }
 .gk-pod__rays {

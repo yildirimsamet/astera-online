@@ -28,7 +28,7 @@ import { hitRegions, rectGap, spacingFailures, type Box, type HitRegion, type Hi
  */
 export type Feedback = 'immediate' | 'active' | 'none';
 
-export interface AuditedText extends Omit<RawText, 'color' | 'opacity' | 'rects'> {
+export interface AuditedText extends Omit<RawText, 'color' | 'opacity' | 'rects' | 'inkRects' | 'covered' | 'halo'> {
   box: Box;
   /** The glyphs change the pixels: not hidden under something opaque. */
   rendered: boolean;
@@ -80,8 +80,12 @@ export interface AuditOptions {
   screenshot?: string;
   /** A later scroll part: colours, spacing and motion count only elements not seen before. */
   continued?: boolean;
-  /** Targets already pressed in an earlier part. */
-  pressed?: ReadonlySet<string>;
+  /**
+   * Targets already pressed in an earlier part, with the area a press could reach then. One
+   * that now shows more than twice as much is pressed again: the first press may have reached
+   * only a strip of it at the screen's edge.
+   */
+  pressed?: ReadonlyMap<string, number>;
 }
 
 let bundled: string | null = null;
@@ -147,6 +151,13 @@ function worstContrast(color: Rgba, opacity: number, boxes: readonly Box[], fram
     if (!worst || result.p5 < worst.p5) worst = result;
   }
   return worst;
+}
+
+/** Letters inside a solid halo read against the halo, whatever lies beyond it. */
+function haloContrast(color: Rgba, opacity: number, halo: Rgba): TextContrast | null {
+  const alpha = color[3] * opacity;
+  if (alpha <= 0) return null;
+  return textContrast({ rgb: [color[0], color[1], color[2]], alpha }, { data: Uint8Array.from([halo[0], halo[1], halo[2], 255]), channels: 4 });
 }
 
 const union = (boxes: readonly Box[]): Box => ({
@@ -236,14 +247,14 @@ export async function auditPage(page: Page, { surface, frames = 3, gridStep = 2,
   const firstBackground = backgrounds[0];
   if (!firstBackground) throw new Error('at least one background frame is needed');
 
-  const texts = raw.texts.map(({ color, opacity, rects, ...text }): AuditedText => {
-    const rendered = changedShare(normal, firstBackground, rects, viewport.dpr) > 0.02;
+  const texts = raw.texts.map(({ color, opacity, rects, inkRects, covered, halo, ...text }): AuditedText => {
+    const rendered = !covered && changedShare(normal, firstBackground, rects, viewport.dpr) > 0.02;
     return {
       ...text,
       box: union(rects),
       rendered,
       charsPerLine: Math.round(text.text.length / Math.max(1, text.lines)),
-      contrast: text.gradient || !rendered ? null : worstContrast(color, opacity, rects, backgrounds, viewport.dpr),
+      contrast: text.gradient || !rendered ? null : halo ? haloContrast(color, opacity, halo) : worstContrast(color, opacity, inkRects, backgrounds, viewport.dpr),
     };
   });
 
@@ -260,7 +271,7 @@ export async function auditPage(page: Page, { surface, frames = 3, gridStep = 2,
   const presses = feedback
     ? raw.targets.flatMap((t, index) => {
         const region = regions.get(String(index));
-        if (!region || t.disabled || pressed?.has(t.id)) return [];
+        if (!region || t.disabled || region.area <= 2 * (pressed?.get(t.id) ?? -1)) return [];
         return [{ index, at: [(region.box.left + region.box.right) / 2, (region.box.top + region.box.bottom) / 2] as [number, number], box: t.box }];
       })
     : [];
@@ -311,7 +322,7 @@ export async function auditPage(page: Page, { surface, frames = 3, gridStep = 2,
  */
 export async function auditSurface(page: Page, { maxParts = 40, screenshot, ...options }: Omit<AuditOptions, 'continued' | 'pressed'> & { maxParts?: number }): Promise<SurfaceAudit> {
   const parts: SurfaceAudit[] = [];
-  const pressed = new Set<string>();
+  const pressed = new Map<string, number>();
   const scroll = () => page.evaluate(() => window.__uiAudit?.scrollStep() ?? false);
   for (let part = 0; part < maxParts; part += 1) {
     if (part > 0) {
@@ -320,7 +331,7 @@ export async function auditSurface(page: Page, { maxParts = 40, screenshot, ...o
     }
     const shot = screenshot && part > 0 ? screenshot.replace(/\.png$/, `.p${String(part)}.png`) : screenshot;
     const audit = await auditPage(page, { ...options, ...(shot ? { screenshot: shot } : {}), continued: part > 0, pressed });
-    for (const t of audit.targets) if (t.feedback) pressed.add(t.id);
+    for (const t of audit.targets) if (t.feedback && t.region) pressed.set(t.id, t.region.area);
     parts.push(audit);
   }
   return mergeParts(parts, await scroll());

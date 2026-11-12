@@ -591,7 +591,7 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 | 3.5 ✅ | Süreler | `--gk-panel: 160ms`; diyalog 280 ms yerine onunla açılıyor. `GameHold` serbest `holdMs` yerine ağırlık alıyor: `reversible` 0,6 / `spends` 1 / `final` 1,5 sn (hangi eylemin hangisi olacağı 4. aşamada) | `tokens.test.ts`, `buttons.test.tsx` |
 | 3.6 ✅ | Kenar boşluğu 12 px | `--gk-gutter: 12px`; sheet başlığı, gövdesi, alt şeridi, katalog ve HUD 10/8 px'ten 12 px'e geçti | `tokens.test.ts` |
 | 3.7 ✅ | Sayı biçimi K/M | Oyunun tek kısa biçimlendiricisi `lib/format.compact` değişti: altı dilde K/M, her boyutta tek ondalık, ",0" atılır, 999.960 → 1M. Eşikler aynı kaldı (B1: depo 99.999'a kadar tam). Bu dalda oyun ekranlarındaki kısa sayılar da K/M'ye geçti | `i18n.test.ts` + ekran testlerindeki yansımalar |
-| 3.8 | Kit ölçümü | `pnpm ui:audit run --kit` | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
+| 3.8 ✅ | Kit ölçümü | `reports/ui-audit/kit-2026-11-12.md` (84 ölçüm, 6 dil, 3 boyut): 12 px altı yazı 0, kontrast 0, ikon kontrastı 0, 44 px altı hedef 0, 2.5.8 aralık 0, tepkisiz hedef 0. Kesilme 1: Japonca 320 px'te galerinin Türkçe örnek kelimesi "Gönderiliyor" (gerçek Japonca metin sığıyor). Değişen görünüm ve araç düzeltmeleri: `docs/ui-standart-karar-paketleri-2026-11-12.md` "Kit ölçümüyle değişen görünüm". L2 (%46,6 ızgara dışı boşluk) 4. aşamanın ekran düzeni işi | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
 | 3.9 | S22 turu | Kit ekranları telefonda | Owner dokunarak onaylar |
 
 **Owner'a sorular:**

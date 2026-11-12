@@ -48,6 +48,31 @@ describe('merging the parts of a scrolled surface', () => {
     expect(merged.targets.map((t) => `${t.id}:${t.region ? 'reach' : 'none'}`)).toEqual(['close:reach', 'row1-btn:reach', 'row5-btn:reach', 'row9-btn:reach']);
   });
 
+  it('takes a target from the part that shows most of it, not where a fixed bar half covered it', () => {
+    const cut = { target: '0', area: 120, box, width: 40, height: 3, fill: 1 };
+    const covered = part({ targets: [target('max', { region: cut, coverage: 0.15 })] });
+    const clear = part({ targets: [target('max')] });
+    expect(mergeParts([covered, clear], false).targets[0]?.coverage).toBe(1);
+    expect(mergeParts([clear, covered], false).targets[0]?.coverage).toBe(1);
+  });
+
+  it('judges a text that scrolls where it reads best, and a fixed one where it reads worst', () => {
+    const contrast = (p5: number) => ({ min: p5, p5, median: p5, apcaP5: 60 });
+    const low = { left: 0, top: 700, right: 40, bottom: 720 };
+    const high = { left: 0, top: 300, right: 40, bottom: 320 };
+    const scrolled = mergeParts([part({ texts: [text('row', { box: low, contrast: contrast(1.5) })] }), part({ texts: [text('row', { box: high, contrast: contrast(12) })] })], false);
+    expect(scrolled.texts[0]?.contrast?.p5).toBe(12);
+    const fixed = mergeParts([part({ texts: [text('title', { contrast: contrast(12) })] }), part({ texts: [text('title', { contrast: contrast(2) })] })], false);
+    expect(fixed.texts[0]?.contrast?.p5).toBe(2);
+  });
+
+  it('keeps the press answer from the part where the target was pressed', () => {
+    const cut = { target: '0', area: 120, box, width: 40, height: 3, fill: 1 };
+    const pressed = part({ targets: [target('max', { region: cut, coverage: 0.15, feedback: 'active' })] });
+    const later = part({ targets: [target('max', { feedback: null })] });
+    expect(mergeParts([pressed, later], false).targets[0]).toMatchObject({ coverage: 1, feedback: 'active' });
+  });
+
   it('adds up what each part counted only once: spacing, palette, motion', () => {
     expect(merged.spacing).toEqual({ values: { '4': 3, '5': 1, '6': 1 }, offGrid: 2, total: 5 });
     expect(merged.palette).toHaveLength(2);

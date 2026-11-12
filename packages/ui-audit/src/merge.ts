@@ -30,23 +30,45 @@ export function palette(colors: readonly { rgb: [number, number, number]; weight
   return [...sums.values()];
 }
 
-/** First seen wins, unless a later part shows what the earlier one could not. */
-function byId<T extends { id: string }>(parts: readonly (readonly T[])[], visible: (item: T) => boolean): T[] {
+/** First seen wins, unless a later part shows it better. */
+function byId<T extends { id: string }>(parts: readonly (readonly T[])[], better: (item: T, earlier: T) => boolean): T[] {
   const kept = new Map<string, T>();
   for (const items of parts) {
     for (const item of items) {
       const earlier = kept.get(item.id);
-      if (!earlier || (!visible(earlier) && visible(item))) kept.set(item.id, item);
+      if (!earlier || better(item, earlier)) kept.set(item.id, item);
     }
   }
   return [...kept.values()];
 }
 
+/**
+ * A text that scrolls is read where it shows best: on its way under a bar's fade it is only
+ * passing. A fixed one (a title, a footer) stays put while things pass behind it, so the worst
+ * of its parts is what the player may meet.
+ */
+function betterText(item: AuditedText, earlier: AuditedText): boolean {
+  if (item.rendered !== earlier.rendered) return item.rendered;
+  if (!item.contrast || !earlier.contrast) return false;
+  const moved = Math.abs(item.box.top - earlier.box.top) > 1 || Math.abs(item.box.left - earlier.box.left) > 1;
+  return moved ? item.contrast.p5 > earlier.contrast.p5 : item.contrast.p5 < earlier.contrast.p5;
+}
+
 export function mergeParts(parts: readonly SurfaceAudit[], capped: boolean): SurfaceAudit {
   const [first] = parts;
   if (!first) throw new Error('a surface needs at least one part');
-  const texts = byId<AuditedText>(parts.map((p) => p.texts), (t) => t.rendered);
-  const targets = byId<AuditedTarget>(parts.map((p) => p.targets), (t) => t.region !== null);
+  const texts = byId<AuditedText>(parts.map((p) => p.texts), betterText);
+  // The reachable area: a target a fixed bar half covers in one part shows whole in the next.
+  // A target is pressed where it first shows, and again only if it later shows much more;
+  // the press that reached the most of it answers for it.
+  const answers = new Map<string, { area: number; feedback: AuditedTarget['feedback'] }>();
+  for (const p of parts) {
+    for (const t of p.targets) {
+      const area = t.region?.area ?? 0;
+      if (t.feedback !== null && area > (answers.get(t.id)?.area ?? -1)) answers.set(t.id, { area, feedback: t.feedback });
+    }
+  }
+  const targets = byId<AuditedTarget>(parts.map((p) => p.targets), (t, earlier) => (t.region?.area ?? 0) > (earlier.region?.area ?? 0)).map((t) => ({ ...t, feedback: t.feedback ?? answers.get(t.id)?.feedback ?? null }));
   const values: Record<string, number> = {};
   for (const p of parts) for (const [value, n] of Object.entries(p.spacing.values)) values[value] = (values[value] ?? 0) + n;
   const colors = palette(parts.flatMap((p) => p.palette));

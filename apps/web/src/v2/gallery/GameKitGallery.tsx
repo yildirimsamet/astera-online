@@ -538,7 +538,7 @@ function Catalog() {
             <GameButton tone="steel" pending onPress={() => undefined}>Gönderiliyor</GameButton>
           </div>
           <GameButton tone="action" wide disabledReason="Kristal yetmiyor · 2,6K gerek" onPress={() => undefined}>Yükselt</GameButton>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <RoundButton glyph="close" label="Kapat" onPress={() => undefined} />
             <RoundButton glyph="back" label="Geri" onPress={() => undefined} />
             <RoundButton glyph="help" label="Yardım" tone="self" onPress={() => undefined} />
@@ -550,7 +550,7 @@ function Catalog() {
 
         <Section title="Basılı tut · kritik hamle">
           <GameHold label="SALDIR" detail="39 gemi" glyph="attack" commitSound="launch" onCommit={() => undefined} />
-          <GameHold label="GERİ ÇAĞIR" detail="dönüş 8 dk" tone="danger" glyph="back_home" onCommit={() => undefined} />
+          <GameHold label="GERİ ÇAĞIR" detail={'dönüş 8\u00a0dk'} tone="danger" glyph="back_home" onCommit={() => undefined} />
           <GameHold label="SALDIR" onCommit={() => undefined} disabledReason="Uçuş yuvası dolu · 12:40’ta açılır" />
         </Section>
 
@@ -613,7 +613,7 @@ function Catalog() {
           </div>
         </Section>
 
-        <Section title="Şeref · klan seviyesi · klan amblemi">
+        <Section title="Şeref · klan seviyesi, amblem">
           <div role="group" aria-label="Şeref ve klan" className="grid gap-2">
             <div className="gk-well flex items-end justify-around gap-1 px-2 py-2.5">
               {HONOR_TIERS.map((tier) => <HonorBadge key={tier} tier={tier} label={`Şeref ${tierText(tier)}`} height={40} />)}
@@ -682,7 +682,7 @@ function Catalog() {
           <ProgressBar value={1} max={1} tone="warn" text="Depo dolu" label="Depo" />
           <RangeBars mine={{ low: 24, high: 28 }} theirs={{ low: 21, high: null }} mineLabel="Sen" theirsLabel="Onlar" mineText="24–28K" theirsText="21K+" />
           <SpendBar spend={120} stock={860} label="Yakıt" art={RESOURCE_ART.deuterium} text="−120 / 860" />
-          <div className="grid gap-1"><span className="gk-label">Kargo ve ganimet</span><CargoBar capacity={16.7} loot={LOOT} /></div>
+          <div className="grid gap-1"><span className="gk-label">Kargo · ganimet</span><CargoBar capacity={16.7} loot={LOOT} /></div>
         </Section>
 
         <Section title="Okumalar">
@@ -723,7 +723,7 @@ function Catalog() {
           </div>
         </Section>
 
-        <Section title="Gemi kartı ve bölme">
+        <Section title="Gemi kartı · bölme">
           <div className="grid grid-cols-2 gap-2">
             <UnitCard name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" multiplier={1} home={20} chosen={chosen} onChange={setChosen} />
             <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" multiplier={1.6} home={12} chosen={0} onChange={() => undefined} />
@@ -754,10 +754,12 @@ function Catalog() {
   );
 }
 
+/** A tag names the part in one or two words; what follows a "·" is its note, in plain case. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const [name = title, ...note] = title.split(' · ');
   return (
     <section className="grid gap-2">
-      <SectionTag>{title}</SectionTag>
+      <SectionTag aside={note.length > 0 ? <span className="gk-sub">{note.join(' · ')}</span> : undefined}>{name}</SectionTag>
       {children}
     </section>
   );
