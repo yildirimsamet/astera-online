@@ -129,12 +129,7 @@
 [data-base-surface] .repair-scene[data-highlighted] {
   border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
 }
-#planet-tab-grow { --tab-material: var(--color-v2-alloy); }
-#planet-tab-orbit { --tab-material: var(--color-v2-sky-violet); }
-#planet-tab-defend { --tab-material: var(--color-v2-neutral); }
-#planet-tab-tactical { --tab-material: color-mix(in srgb, var(--color-v2-alloy) 40%, var(--color-v2-neutral)); }
-#planet-tab-reach { --tab-material: var(--color-v2-sky-cool); }
-[id^='planet-tab-'] { box-shadow: inset 0 2px color-mix(in srgb, var(--tab-material) 60%, transparent); }
+/* The planet's tabs wear the kit's plates (.gk-tab); no per-tab tint, as the cards. */
 
 /* The v2 lanes only; the kit's lanes (.gk-lane) stand on their own slots. */
 [data-queue-lane]:not(.gk-lane) {

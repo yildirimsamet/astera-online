@@ -2506,9 +2506,12 @@
 .gk-tabs {
   display: grid;
   grid-auto-flow: column;
-  /* equal plates that never push the page wider; a long name wraps inside its plate */
-  grid-auto-columns: minmax(0, 1fr);
+  /* equal plates; a long name wraps inside its plate, and a word too long for any
+     plate (a French "Renseignement") keeps its width and the row scrolls, never the page */
+  grid-auto-columns: minmax(min-content, 1fr);
   gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 .gk-tab {
   position: relative;
@@ -2566,6 +2569,27 @@
   margin-top: 4px;
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
+}
+/* something under the tab has stopped: a fact in the warning colour beside its name */
+.gk-tab__mark {
+  display: inline-grid;
+  color: var(--gk-warn);
+}
+/* a page's tabs held under the top bar while its rows scroll beneath: opaque, so no
+   row ghosts through */
+.gk-tabbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 6px 12px;
+  border-block: 1px solid var(--gk-metal-edge);
+  background: var(--gk-metal-3);
+}
+/* five plates on a phone: the same plate, set tighter so every tab is on screen */
+.gk-tabbar .gk-tab {
+  padding: 0 4px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.02em;
 }
 
 .gk-nav {

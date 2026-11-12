@@ -7,7 +7,8 @@
 * Defend / Orbit / Reach / Grow : deux verbes et deux noms, ce qui choque peu en
 * anglais. En français, mélanger « Défendre / Renseignement / Portée / Développer »
 * rendrait la barre incohérente, car l’impératif s’adresse directement au joueur.
-* Les quatre deviennent donc des noms : Production · Renseignement · Défense · Flotte.
+* Les quatre deviennent donc des noms : Production · Infos · Défense · Flotte (« Infos »,
+* court, pour que les cinq onglets tiennent sur un téléphone de 350 px).
 * L’onglet dit « ce qui se trouve ici » ; la phrase dessous dit « ce que tu décides ici ».
   */
 export const planet = {
@@ -165,7 +166,7 @@ export const planet = {
     defendProblem: "Défense",
     defendQuestion:
       "Améliore ici Aegis, le Magasin et les défenses au sol.",
-    orbitProblem: "Renseignement",
+    orbitProblem: "Infos",
     orbitQuestion:
       "Construis ici les outils qui te permettent d’observer tes rivaux.",
     reachProblem: "Flotte",

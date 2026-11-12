@@ -114,6 +114,40 @@ describe('tabs and the bottom bar', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Clan level 2');
   });
 
+  /** Stage 4.1: the base's five tabs — linked to their panels, walked with arrows, pointed at by the lessons. */
+  const five = [{ id: 'grow', label: 'Production' }, { id: 'orbit', label: 'Intel' }, { id: 'defend', label: 'Defend' }];
+
+  it('links each tab to the panel it opens, when told the ids', () => {
+    render(<GameTabs label="Base" tabs={five} value="grow" onChange={vi.fn()} ids={{ tab: (id) => `tab-${id}`, panel: (id) => `panel-${id}` }} />);
+    const tab = screen.getByRole('tab', { name: 'Intel' });
+    expect(tab).toHaveAttribute('id', 'tab-orbit');
+    expect(tab).toHaveAttribute('aria-controls', 'panel-orbit');
+  });
+
+  it('carries its id for a lesson that points at it', () => {
+    render(<GameTabs label="Base" tabs={five} value="grow" onChange={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'Defend' })).toHaveAttribute('data-tab', 'defend');
+  });
+
+  it('walks the tabs with the arrows, round the ends, and keeps only the open one in the tab order', () => {
+    const onChange = vi.fn();
+    render(<GameTabs label="Base" tabs={five} value="grow" onChange={onChange} />);
+    expect(screen.getAllByRole('tab').map((tab) => tab.tabIndex)).toEqual([0, -1, -1]);
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenLastCalledWith('orbit');
+    expect(screen.getByRole('tab', { name: 'Intel' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft' });
+    expect(onChange).toHaveBeenLastCalledWith('defend');
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'Home' });
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a mark on a tab and says what it means to a reader', () => {
+    render(<GameTabs label="Base" tabs={[{ id: 'grow', label: 'Production', mark: { glyph: 'damaged', hint: 'Production — something has stopped' } }]} value="grow" onChange={vi.fn()} />);
+    const tab = screen.getByRole('tab', { name: 'Production — something has stopped' });
+    expect(tab.querySelector('svg')).not.toBeNull();
+  });
+
   it('marks the current page and shows a count on an item', () => {
     const onChange = vi.fn();
     render(

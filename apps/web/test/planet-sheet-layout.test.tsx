@@ -136,7 +136,8 @@ describe('the category bar pinned to the top', () => {
   it('keeps its full width without a scroll-dependent close-button gap', () => {
     show();
     const bar = document.querySelector<HTMLElement>('[data-category-bar]')!;
-    expect(bar).toHaveClass('sticky', 'top-0');
+    // Stage 4.1: the kit's tab bar (`.gk-tabbar`) is the sticky, opaque strip.
+    expect(bar).toHaveClass('gk-tabbar');
     expect(bar).not.toHaveAttribute('data-stuck');
     expect(bar.className).not.toMatch(/\bpr-8\b/);
   });

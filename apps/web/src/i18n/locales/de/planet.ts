@@ -163,7 +163,7 @@ export const planet = {
   },
   tabs: {
     label: "Planetenkategorien",
-    defendProblem: "Verteidigen",
+    defendProblem: "Abwehr",
     defendQuestion: "Baue hier Aegis, den Speicher und die Bodenabwehr aus.",
     orbitProblem: "Intel",
     orbitQuestion: "Erstellen Sie die Tools, die Ihnen helfen, Konkurrenten zu erkennen.",

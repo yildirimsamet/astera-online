@@ -4,7 +4,7 @@ import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
-import { Glyph } from './icons.js';
+import { Glyph, type GlyphId } from './icons.js';
 import { nearestDetent, sliderValue } from './logic.js';
 import { Dot } from './readouts.js';
 import type { CssVars } from './style.js';
@@ -206,25 +206,60 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
   );
 }
 
-export interface TabItem {
-  id: string;
+export interface TabItem<T extends string = string> {
+  id: T;
   label: string;
   /** What opens it; a locked tab says this instead of opening. */
   locked?: string | null;
   badge?: number;
+  /** A fact about what is under the tab (something stopped): its glyph, and what it means to a reader. */
+  mark?: { glyph: GlyphId; hint: string };
 }
 
-/** Tabs as metal plates; the open one is lit. A locked tab names what it needs. */
-export function GameTabs({ label, tabs, value, onChange }: { label: string; tabs: readonly TabItem[]; value: string; onChange: (id: string) => void }) {
+/** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
+const stepTo = (key: string, index: number, count: number): number =>
+  key === 'ArrowRight' ? (index + 1) % count
+  : key === 'ArrowLeft' ? (index - 1 + count) % count
+  : key === 'Home' ? 0
+  : key === 'End' ? count - 1
+  : -1;
+
+/**
+ * Tabs as metal plates; the open one is lit. A locked tab names what it needs. Only the
+ * open tab sits in the tab order; the arrows walk the rest and the panel follows, since
+ * switching costs nothing. `data-tab` is how a lesson points at one.
+ */
+export function GameTabs<T extends string>({ label, tabs, value, onChange, ids }: {
+  label: string;
+  tabs: readonly TabItem<T>[];
+  value: T;
+  onChange: (id: T) => void;
+  /** The tab's own id and the panel it opens, for a reader to follow from one to the other. */
+  ids?: { tab: (id: T) => string; panel: (id: T) => string };
+}) {
   const [refused, setRefused] = useState<string | null>(null);
+  const buttons = useRef(new Map<T, HTMLButtonElement>());
+  const walk = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const open = tabs.filter((tab) => !tab.locked);
+    const next = open[stepTo(event.key, open.findIndex((tab) => tab.id === value), open.length)];
+    if (!next || next.id === value) return;
+    event.preventDefault();
+    onChange(next.id);
+    buttons.current.get(next.id)?.focus();
+  };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="gk-tabs">
+      <div role="tablist" aria-label={label} className="gk-tabs" onKeyDown={walk}>
         {tabs.map((tab) => (
           <GameTab
             key={tab.id}
             tab={tab}
             selected={tab.id === value}
+            {...(ids ? { tabId: ids.tab(tab.id), panelId: ids.panel(tab.id) } : {})}
+            onMount={(node) => {
+              if (node) buttons.current.set(tab.id, node);
+              else buttons.current.delete(tab.id);
+            }}
             onPress={() => {
               if (tab.locked) { playSound('refuse'); haptic('warn'); setRefused(tab.locked); return; }
               setRefused(null);
@@ -238,20 +273,34 @@ export function GameTabs({ label, tabs, value, onChange }: { label: string; tabs
   );
 }
 
-function GameTab({ tab, selected, onPress }: { tab: TabItem; selected: boolean; onPress: () => void }) {
+function GameTab<T extends string>({ tab, selected, tabId, panelId, onMount, onPress }: {
+  tab: TabItem<T>;
+  selected: boolean;
+  tabId?: string;
+  panelId?: string;
+  onMount: (node: HTMLButtonElement | null) => void;
+  onPress: () => void;
+}) {
   const own = useOwnPress(onPress);
   return (
     <button
       type="button"
       role="tab"
+      ref={onMount}
       aria-selected={selected}
+      tabIndex={selected ? 0 : -1}
       className="gk-tab"
+      data-tab={tab.id}
+      {...(tabId === undefined ? {} : { id: tabId })}
+      {...(panelId === undefined ? {} : { 'aria-controls': panelId })}
+      {...(tab.mark ? { 'aria-label': tab.mark.hint } : {})}
       {...(tab.locked ? { 'data-locked': '' } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
       {tab.locked && <Glyph id="lock" />}
       {tab.label}
+      {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}
       {tab.badge !== undefined && tab.badge > 0 && <Dot count={tab.badge} />}
     </button>
   );

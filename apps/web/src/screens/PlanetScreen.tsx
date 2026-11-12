@@ -139,7 +139,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Segmented } from '../ui/kit/index.js';
+import { GameTabs } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -1028,11 +1028,7 @@ function Tabs({
   // through the wallet figures, which are the one thing on it a player reads
   // against a price.
   return (
-    <>
-    <div
-      data-category-bar=""
-      className="sticky top-0 z-20 border-y border-line-soft bg-deep"
-    >
+    <div data-category-bar="" className="gk gk-tabbar">
       {/*
         NO WALLET HERE ANY MORE (M5). It rode the categories because the purse was in a
         header BEHIND this sheet; the page now stands under the top bar, which shows the
@@ -1042,15 +1038,12 @@ function Tabs({
       {/*
         `data-tab` is how a surface outside this screen points at a category: the
         onboarding lights the one a beat is working in, because a dimmed screen
-        with one live control still has to say WHERE that control is.
+        with one live control still has to say WHERE that control is. The kit's tabs
+        carry it (stage 4.1).
       */}
-      <Segmented
-        flush
-        className="mx-3 my-2"
-        marker="tab"
-        role="tablist"
+      <GameTabs
         label={t('planet.tabs.label')}
-        segments={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
+        tabs={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
           id,
           label: t(GROUPS[id].problem),
           /*
@@ -1059,21 +1052,13 @@ function Tabs({
             is a question the tab's own contents answer, and a number on the bar would
             turn a fact back into the ranking D170 removed.
           */
-          ...(broken.includes(id)
-            ? {
-              mark: <FaultMark className="size-[13px] text-bone" />,
-              // The glyph is `aria-hidden`; without this the mark is silent to a reader.
-              hint: `${t(GROUPS[id].problem)} — ${t('faults.tab')}`,
-            }
-            : {}),
+          ...(broken.includes(id) ? { mark: { glyph: 'damaged' as const, hint: `${t(GROUPS[id].problem)} — ${t('faults.tab')}` } } : {}),
         }))}
         value={active}
-        onSelect={onSelect}
-        tabId={(id) => `planet-tab-${id}`}
-        panelId={(id) => `planet-panel-${id}`}
+        onChange={onSelect}
+        ids={{ tab: (id) => `planet-tab-${id}`, panel: (id) => `planet-panel-${id}` }}
       />
     </div>
-    </>
   );
 }
 
