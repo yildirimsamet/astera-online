@@ -13,8 +13,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CargoBar, Chip, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   GameTabs, Glyph, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
-  ResourceHud, RoundButton, SectionTag, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
-  Well, GLYPH_IDS, type HudResource,
+  ResourceHud, RewardPod, RoundButton, SectionTag, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
+  Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type HudResource,
 } from '../../game-ui/index.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
@@ -335,11 +335,11 @@ function HudScreen() {
           value={tab}
           onChange={setTab}
           items={[
-            { id: 'galaxy', label: 'Galaksi', art: TARGET_ART },
-            { id: 'base', label: 'Üs', art: art(BUILDING_ART.CORE), badge: 1 },
-            { id: 'fleet', label: 'Filo', art: art(HULL_ART.PIKE) },
-            { id: 'intel', label: 'İstihbarat', art: '/assets/images/general/telescope_1.png', badge: 3 },
-            { id: 'clan', label: 'Klan', art: '/assets/images/clan/perk-banner.webp', locked: 'Tersane 2 ile açılır' },
+            { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+            { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), badge: 1 },
+            { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+            { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 3 },
+            { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2 ile açılır' },
           ]}
         />
       </div>
@@ -442,6 +442,28 @@ function Loot({ art: src, value, label }: { art: string; value: string; label: s
   );
 }
 
+/** The pod as a reward screen would hold it; "close again" plays the moment once more. */
+function PodDemo() {
+  const [round, setRound] = useState(0);
+  const [opened, setOpened] = useState(false);
+  return (
+    <div className="gk-well grid gap-2 pb-3">
+      <RewardPod key={round} label="Kapsülü aç" onOpen={() => { setOpened(true); }}>
+        <div className="grid w-full grid-cols-3 gap-1.5 px-2.5">
+          <Loot art={RESOURCE_ART.alloy} value="+500" label="Alaşım" />
+          <Loot art={RESOURCE_ART.crystal} value="+250" label="Kristal" />
+          <Loot art={RESOURCE_ART.deuterium} value="+120" label="Döteryum" />
+        </div>
+      </RewardPod>
+      {opened && (
+        <div className="flex justify-center">
+          <GameButton tone="steel" size="sm" glyph="refresh" onPress={() => { setOpened(false); setRound((n) => n + 1); }}>Yeniden kapat</GameButton>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── the catalogue: every part, side by side ────────────────────────────────── */
 
 const SWATCHES = [
@@ -451,6 +473,9 @@ const SWATCHES = [
 const TYPE = [
   ['hero', 'Kahraman 30'], ['head', 'Başlık 24'], ['title', 'Unvan 19'], ['number', 'Sayı 18'],
   ['lead', 'Öne çıkan 16'], ['body', 'Gövde 14'], ['small', 'Küçük 13'], ['floor', 'Taban 12'],
+] as const;
+const MENU_SAMPLES = [
+  ['menu-reports', 'Raporlar'], ['menu-missions', 'Görevler'], ['menu-ranking', 'Sıralama'], ['menu-shop', 'Mağaza'],
 ] as const;
 const GLYPH_SAMPLES = { eye: 'Keşif', colony: 'Koloni', recall: 'Geri çağır', escape: 'Kaçış', support: 'Destek', repair: 'Onarım' } as const;
 
@@ -546,6 +571,24 @@ function Catalog() {
           </div>
         </Section>
 
+        <Section title="Resimli ikonlar · 40 px ve üstü">
+          <div role="group" aria-label="Resimli ikonlar" className="gk-well grid grid-cols-5 justify-items-center gap-x-1 gap-y-2 p-2.5">
+            {ART_ICONS.map((id) => <span key={id} title={id} className="grid place-items-center"><ArtIcon id={id} size={48} /></span>)}
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {MENU_SAMPLES.map(([id, label]) => (
+              <span key={id} className="gk-well grid justify-items-center gap-1 px-1 py-2">
+                <ArtIcon id={id} size={56} />
+                <span className="gk-display gk-outlined" style={{ fontSize: 'var(--gk-t-small)' }}>{label}</span>
+              </span>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Ödül kapsülü · dokun, aç">
+          <PodDemo />
+        </Section>
+
         <Section title="Glifler · 32 px ve altı">
           <div role="group" aria-label="Glifler" className="gk-well grid grid-cols-10 gap-x-1 gap-y-2 p-2.5" style={{ fontSize: 22 }}>
             {GLYPH_IDS.map((id) => <span key={id} title={id} className="grid place-items-center"><Glyph id={id} /></span>)}
@@ -630,10 +673,10 @@ function Catalog() {
             value={nav}
             onChange={setNav}
             items={[
-              { id: 'galaxy', label: 'Galaksi', art: TARGET_ART },
-              { id: 'base', label: 'Üs', art: art(BUILDING_ART.CORE), badge: 1 },
-              { id: 'fleet', label: 'Filo', art: art(HULL_ART.PIKE) },
-              { id: 'clan', label: 'Klan', art: '/assets/images/clan/perk-banner.webp', locked: 'Tersane 2' },
+              { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+              { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), badge: 1 },
+              { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+              { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2' },
             ]}
           />
         </Section>

@@ -1525,8 +1525,8 @@
   justify-items: center;
   align-content: end;
   gap: 1px;
-  min-height: 56px;
-  padding: 4px 2px 3px;
+  min-height: 60px;
+  padding: 3px 2px 3px;
   border: 0;
   border-radius: 12px;
   background: transparent;
@@ -1535,9 +1535,10 @@
   touch-action: manipulation;
   transition: transform var(--gk-quick) var(--gk-pop);
 }
+/* Painted icons are drawn at 40 px or more (owner 2026-11-12); a painting turns to mud below. */
 .gk-nav__art {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   filter: saturate(0.55) brightness(0.8) drop-shadow(0 2px 2px var(--gk-outline));
   transition: transform var(--gk-quick) var(--gk-pop), filter var(--gk-quick) var(--gk-ease);
@@ -1559,7 +1560,7 @@
   box-shadow: inset 0 -3px 0 var(--gk-self);
 }
 .gk-nav__item[aria-current='page'] .gk-nav__art {
-  transform: translateY(-5px) scale(1.18);
+  transform: translateY(-4px) scale(1.12);
   filter: drop-shadow(0 3px 3px var(--gk-outline));
 }
 .gk-nav__item[data-locked] .gk-nav__art {
@@ -1567,7 +1568,7 @@
 }
 .gk-nav__lock {
   position: absolute;
-  top: 14px;
+  top: 16px;
   font-size: 16px;
   color: var(--gk-ink-2);
 }
@@ -2012,6 +2013,129 @@
   height: 36px;
   object-fit: contain;
   filter: drop-shadow(0 3px 5px var(--gk-outline));
+}
+
+/* ── the supply pod: hovers, winds up on a tap, blows open ────────────────── */
+
+.gk-pod {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s2);
+  /* headroom: the open lid stretches up out of the closed pod's frame */
+  --pod-top: 30px;
+  padding-top: var(--pod-top);
+  overflow: hidden;
+}
+.gk-pod__rays {
+  top: calc(var(--pod-top) + 84px);
+  width: 400px;
+  height: 400px;
+  margin: -200px 0 0 -200px;
+  opacity: 0;
+}
+.gk-pod__glow {
+  position: absolute;
+  top: calc(var(--pod-top) + 140px);
+  left: 50%;
+  width: 150px;
+  height: 30px;
+  margin-left: -75px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gk-action) 55%, transparent), transparent);
+  animation: gk-pod-breathe 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.gk-pod__body {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: gk-float 2.6s ease-in-out infinite;
+}
+.gk-pod__body:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 4px; }
+.gk-pod__body[aria-disabled='true'] { cursor: default; }
+.gk-pod__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 88%;
+  filter: drop-shadow(0 6px 8px var(--gk-outline));
+  pointer-events: none;
+}
+.gk-pod__art--open { opacity: 0; }
+.gk-pod__flash {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--gk-ink), color-mix(in srgb, var(--gk-action-hi) 70%, transparent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.gk-pod__hint {
+  font-size: var(--gk-t-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gk-action-hi);
+  animation: gk-pod-breathe 2.6s ease-in-out infinite;
+}
+.gk-pod__loot {
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  animation: gk-pod-loot 420ms var(--gk-pop) 120ms both;
+}
+
+/* wind-up: it shakes harder and squashes lower until the lid gives */
+.gk-pod[data-state='opening'] .gk-pod__body { animation: none; }
+.gk-pod[data-state='opening'] .gk-pod__art--closed { animation: gk-pod-windup 520ms ease-in both; }
+.gk-pod[data-state='opening'] .gk-pod__glow { animation: none; opacity: 1; scale: 1.25; transition: scale 520ms ease-in; }
+
+/* open: the lid is off, the pod stretches back, a flash and a turning burst of light */
+.gk-pod[data-state='open'] .gk-pod__art--closed { opacity: 0; }
+.gk-pod[data-state='open'] .gk-pod__art--open { opacity: 1; animation: gk-pod-pop 560ms var(--gk-pop) both; }
+.gk-pod[data-state='open'] .gk-pod__flash { animation: gk-pod-flash 520ms ease-out both; }
+.gk-pod[data-state='open'] .gk-pod__rays { opacity: 1; animation: gk-pod-rays 700ms var(--gk-ease) both, gk-turn 24s linear infinite; }
+
+@keyframes gk-pod-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes gk-pod-windup {
+  0% { transform: scale(1, 1) rotate(0); }
+  14% { transform: scale(1.04, 0.95) rotate(-3deg); }
+  28% { transform: scale(0.98, 1.03) rotate(3deg); }
+  44% { transform: scale(1.07, 0.92) rotate(-4deg); }
+  60% { transform: scale(0.97, 1.04) rotate(4deg); }
+  78% { transform: scale(1.1, 0.88) rotate(-2deg); }
+  100% { transform: scale(1.14, 0.84) rotate(0); }
+}
+@keyframes gk-pod-pop {
+  0% { transform: scale(1.14, 0.84); }
+  35% { transform: scale(0.9, 1.16) translateY(-10px); }
+  65% { transform: scale(1.05, 0.96); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes gk-pod-flash {
+  0% { opacity: 1; scale: 0.5; }
+  100% { opacity: 0; scale: 1.5; }
+}
+@keyframes gk-pod-rays {
+  0% { opacity: 0; scale: 0.3; }
+  100% { opacity: 1; scale: 1; }
+}
+@keyframes gk-pod-loot {
+  0% { opacity: 0; transform: translateY(14px) scale(0.6); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* The catalogue page. */

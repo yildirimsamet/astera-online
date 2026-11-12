@@ -252,6 +252,13 @@ Koddan çizilenler: radyasyon trefoil'i, saldırı artışı (kılıç + ok) ve 
 - Doluluk %69–92 arasında değişiyor. Her ikon görünür sınırına kırpılır ve aynı kenar payıyla kareye oturtulur.
 - Kapsül açılışı iki kareyle yapılır: kapalı → açık geçişi, ezilip esneme ve ışık patlaması (kitin ödül ışınlarıyla).
 
+**Kite girdi (2026-11-12):**
+
+- 25 ikon `public/assets/ui/icons/<id>.webp` (160 px, aynı kenar payı, toplam ~300 KB); kapsülün iki karesi aynı kadrajda 320 px. Bileşen `ArtIcon` (`src/game-ui/art.tsx`); 40 px altına çizilemez.
+- Dock'un istihbarat sekmesi eksikti (Codex araştırma çizmişti, araştırma dock'ta yok). Codex iki seçenek çizdi (`out/ui-kit/assets/intel-secenekleri.png`): **B radar tableti seçildi**, çünkü A'nın çanağı galaksi ikonunun yuvarlak taban + camgöbeği silüetine benziyor. A yedekte.
+- Dock resmi 34 → 40 px (boyut kuralı). Görüntü: `out/ui-kit/r5/dock.png`.
+- Kapsül: `RewardPod`. Süzülür; dokununca 520 ms sarsılıp ezilir (`crate` sesi, hafif titreşim), kapak flaşla açılır, esner, ışın döner (`claim` sesi, güçlü titreşim), ödül bir kez verilir. Kareler: `out/ui-kit/r5/pod-acilis-kareler.png`.
+
 ## İkinci parti paketler (2026-11-12) ve seçime etkisi
 
 12 paket daha kütüphanede (değerlendirme kütüphane README'sinde). Kararlar değişmedi; yalnız muadiller ve bir ses kaynağı eklendi:
