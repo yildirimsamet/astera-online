@@ -43,6 +43,44 @@ function endPoints(d: string): [number, number][] {
   return points;
 }
 
+/** The share of the 24 box a path fills (even-odd), sampled on a 48 grid. A curve counts
+ * by its chord, which only ever undercounts. */
+function inkShare(d: string): number {
+  const tokens = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/g) ?? [];
+  const rings: [number, number][][] = [];
+  let ring: [number, number][] = [];
+  let x = 0, y = 0, i = 0;
+  while (i < tokens.length) {
+    const cmd = tokens[i++] ?? '';
+    const C = cmd.toUpperCase();
+    const rel = cmd !== C;
+    const arity = ARITY[C] ?? 0;
+    const nums: number[] = [];
+    while (i < tokens.length && !/[a-zA-Z]/.test(tokens[i] ?? '')) nums.push(Number(tokens[i++]));
+    if (C === 'Z') { rings.push(ring); ring = []; continue; }
+    for (let k = 0; k < nums.length; k += arity) {
+      const n = nums.slice(k, k + arity);
+      if (C === 'H') x = (rel ? x : 0) + (n[0] ?? 0);
+      else if (C === 'V') y = (rel ? y : 0) + (n[0] ?? 0);
+      else { x = (rel ? x : 0) + (n[arity - 2] ?? 0); y = (rel ? y : 0) + (n[arity - 1] ?? 0); }
+      if (C === 'M' && k === 0 && ring.length) { rings.push(ring); ring = []; }
+      ring.push([x, y]);
+    }
+  }
+  if (ring.length) rings.push(ring);
+  let filled = 0;
+  for (let row = 0; row < 48; row++) for (let col = 0; col < 48; col++) {
+    const px = (col + 0.5) / 2, py = (row + 0.5) / 2;
+    let inside = false;
+    for (const r of rings) for (let a = 0, b = r.length - 1; a < r.length; b = a++) {
+      const [xa, ya] = r[a] ?? [0, 0], [xb, yb] = r[b] ?? [0, 0];
+      if ((ya > py) !== (yb > py) && px < (xb - xa) * (py - ya) / (yb - ya) + xa) inside = !inside;
+    }
+    if (inside) filled++;
+  }
+  return filled / (48 * 48);
+}
+
 describe('the kit glyphs', () => {
   it.each([
     ['eye', 'spy probe, scouting'], ['colony', 'found a colony'], ['recall', 'call a fleet back'],
@@ -72,6 +110,18 @@ describe('the kit glyphs', () => {
       }
       unmount();
     }
+  });
+
+  it('keeps every glyph solid enough to read at 16 px: a fifth of its box in ink, not a hairline (owner 2026-11-12)', () => {
+    // A row of bars reads by its gaps: the bay's three doors, speed_up's three chevrons.
+    const rows = new Set(['bay', 'speed_up']);
+    const faint = GLYPH_IDS.filter((id) => !rows.has(id)).map((id) => {
+      const { container, unmount } = render(<Glyph id={id} />);
+      const share = inkShare(container.querySelector('path')?.getAttribute('d') ?? '');
+      unmount();
+      return [id, share.toFixed(2)] as const;
+    }).filter(([, share]) => Number(share) < 0.2);
+    expect(faint).toEqual([]);
   });
 
   it('fills each glyph from its own two-tone paint: a light top over a shaded bottom', () => {

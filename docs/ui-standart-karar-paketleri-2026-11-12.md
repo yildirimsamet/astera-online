@@ -450,5 +450,5 @@ Rol renklerine (amber, turkuaz, kırmızı, yeşil, sarı, mavi) dokunulmadı; b
 
 - 3. aşama: kararlar token'a ve koruyucu teste çevrilir. "Bugün" ölçeği dar fontla daha küçük göründüğü için başlık ve buton 1–2 px büyütülerek ölçülür.
 - Kit, ui-audit taramasına ayrı bir "kit" yüzeyi olarak eklenir (owner onayı, 2026-11-12).
-- Elle çizilmiş ince glifler, dolgulu stile çevrilir (owner onayı, 2026-11-12).
-- Seçilen arayüz sesleri kite bağlanır.
+- ✅ Elle çizilmiş ince glifler dolgulu stile çevrildi (owner onayı, 2026-11-12): 18 glif paketlerden izlendi, `attack_up` yeni kılıçla kuruldu, hız göstergesinin 16 px'te kaybolan çentikleri atıldı. Koruyucu test: her glif kutusunun en az beşte birini doldurur (sıra çubukları `bay`, `speed_up` hariç). Kasa, hangar, menü, yukarı/aşağı anlamı değişmesin diye çizimde kaldı.
+- ✅ Seçilen arayüz sesleri kite bağlandı (41430c6a).
