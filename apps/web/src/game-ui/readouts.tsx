@@ -2,9 +2,10 @@ import type { HullClass } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { combatClassLabel } from '../i18n/names.js';
-import { factor } from '../lib/format.js';
+import { compact, factor } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Glyph, type GlyphId } from './icons.js';
 import { cargoFit, rangeGeometry, ringFraction, type Span } from './logic.js';
@@ -221,6 +222,44 @@ export function ResourceHud({ items, end }: { items: readonly HudResource[]; end
         </div>
       ))}
       {end}
+    </div>
+  );
+}
+
+/**
+ * A STORE ON A WORLD: what it holds against what it can hold, the share a raid cannot
+ * take boxed in at the start (with its shield), and what flows in each hour. A full
+ * store is a gap you can close (H2, K2): the figure turns to the warning colour and the
+ * bar ends in a warning cap — never the red of something done to you. Zero is a reading.
+ */
+export function StoreGauge({ resource, held, cap, safe, rate, label }: {
+  resource: 'alloy' | 'crystal' | 'deuterium';
+  held: number;
+  cap: number;
+  safe: number;
+  rate: number;
+  label: string;
+}) {
+  const { t } = useTranslation();
+  const share = (value: number): string => pct(cap <= 0 ? 0 : Math.round(Math.min(1, Math.max(0, value / cap)) * 100));
+  const full = cap > 0 && held >= cap;
+  const tone = resource === 'deuterium' ? 'deut' : resource;
+  const cells: CssVars = { '--seg': 'calc(100% / 12)' };
+  return (
+    <div role="group" aria-label={label} className="gk-store" style={{ color: `var(--gk-${tone})` }} {...(full ? { 'data-full': '' } : {})}>
+      <img className="gk-store__art" src={RESOURCE_ART[resource]} alt="" />
+      <span className="gk-store__held gk-num">
+        {compact(Math.floor(held))}<span className="gk-store__cap">/{compact(cap)}</span>
+      </span>
+      <span className="gk-store__track" aria-hidden="true">
+        <span className={`gk-bar gk-bar--segments gk-fill-${tone}`} style={cells}>
+          <span className="gk-bar__fill" style={{ width: share(held) }} />
+        </span>
+        {safe > 0 && <span className="gk-store__safe" style={{ width: share(safe) }}><Glyph id="shield" /></span>}
+      </span>
+      <span className="gk-store__rate gk-num">
+        {rate > 0 ? `+${compact(rate)}` : compact(rate)}<span className="gk-store__unit">{t('planetHero.perHourSuffix')}</span>
+      </span>
     </div>
   );
 }

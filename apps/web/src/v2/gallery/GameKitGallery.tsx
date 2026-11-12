@@ -13,7 +13,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
-  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
+  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
 import type { Language } from '../../i18n/languages.js';
@@ -673,6 +673,14 @@ function Catalog() {
             <RoundButton glyph="share" label="Paylaş" tone="self" onPress={() => undefined} />
             <GameButton tone="action" size="sm" glyph="eye" onPress={() => undefined}>Sonda</GameButton>
             <GameButton tone="steel" size="sm" glyph="refresh" onPress={() => undefined}>Yenile</GameButton>
+          </div>
+        </Section>
+
+        <Section title="Depo · korunan dilim">
+          <div className="grid gap-2">
+            <StoreGauge resource="alloy" held={40_000} cap={40_000} safe={6_000} rate={900} label="Alaşım deposu" />
+            <StoreGauge resource="crystal" held={300} cap={600} safe={120} rate={300} label="Kristal deposu" />
+            <StoreGauge resource="deuterium" held={0} cap={300} safe={0} rate={0} label="Döteryum deposu" />
           </div>
         </Section>
 

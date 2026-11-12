@@ -816,6 +816,86 @@
 .gk-fill-alloy { --fill-hi: var(--gk-alloy-hi); --fill: var(--gk-alloy); --fill-lo: var(--gk-alloy-lo); }
 .gk-fill-crystal { --fill-hi: var(--gk-ink); --fill: var(--gk-crystal); --fill-lo: var(--gk-info); }
 
+/* A store on a world: art, held/cap, the bar with its raid-safe box, the hourly flow. */
+.gk-store {
+  display: grid;
+  grid-template-columns: 16px 5.25rem minmax(0, 1fr) 3.75rem;
+  align-items: center;
+  gap: 0 var(--gk-s2);
+}
+.gk-store__art {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-store__held {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-store__cap {
+  font-weight: 400;
+  color: var(--gk-ink-3);
+}
+.gk-store__track {
+  position: relative;
+  display: block;
+}
+.gk-store__track .gk-bar {
+  display: block;
+  height: 12px;
+}
+/* the share a raid cannot take: a box over the start of the bar, its shield at the end */
+.gk-store__safe {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 0;
+  min-width: 6px;
+  border: 1.5px solid var(--gk-ink-2);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--gk-outline);
+  pointer-events: none;
+}
+.gk-store__safe .gk-glyph {
+  position: absolute;
+  top: -11px;
+  right: -6px;
+  font-size: 11px;
+  color: var(--gk-ink);
+  filter: drop-shadow(0 0 1px var(--gk-outline)) drop-shadow(0 0 1px var(--gk-outline));
+}
+.gk-store__rate {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  text-align: right;
+  white-space: nowrap;
+}
+.gk-store__unit {
+  font-family: var(--gk-font-text);
+  font-weight: 400;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+/* full is a gap you can close: the figure in the warning colour, the bar capped in it */
+.gk-store[data-full] .gk-store__held,
+.gk-store[data-full] .gk-store__cap {
+  color: var(--gk-warn);
+}
+.gk-store[data-full] .gk-store__track::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -1px;
+  bottom: -2px;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--gk-warn);
+}
+
 /* The part of a range we are not sure of: the same hue, striped. */
 .gk-bar__reach {
   position: absolute;
