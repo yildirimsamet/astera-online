@@ -1,7 +1,7 @@
 /** Read-only, isolated art review using the live game's components. Gallery only. */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty, cosmeticsInCategory, MOBILE_HULLS, SHIP_SKIN_IDS } from '@astera/rules';
+import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty, cosmeticsInCategory, MOBILE_HULLS, SHIP_SKIN_IDS, DEATH_STAR } from '@astera/rules';
 import type { GalaxyPlanet, AsteroidView, PendingThread, PublicMonument, MiningRun } from '../../api/schemas.js';
 import { GalaxyCanvas } from '../../galaxy/GalaxyCanvas.js';
 import type { Focus } from '../../galaxy/FocusPanel.js';
@@ -27,6 +27,8 @@ const MONUMENT_ORDINALS = Array.from({ length: MONUMENT_SEASON_DEFAULTS.count },
 const WRECKS: WreckView[] = [{ id: 'premium-wreck', planetId: null, at: TARGET, alloy: 5000, crystal: 1800, minutesLeft: 18 }];
 const SOUND_CUES: readonly SoundCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining'];
 const ENGINE_OPTIONS = cosmeticsInCategory('ENGINE');
+/** A bombardment or strike lands this long after it is replayed. */
+const IMPACT_MS = 1800;
 const SCENES = [
   ['ship', 'Gemi inceleme'], ['planet', 'Gezegen'], ['wreck', 'Enkaz'], ['asteroid', 'İzotop asteroidi'],
   ['fleet', 'Filo'], ['monument', 'Anıt'], ['battle', 'Savaş'], ['strategic', 'Stratejik çarpma'],
@@ -64,6 +66,7 @@ export function PremiumSpaceGallery() {
   const [rockChoice, setRockChoice] = useState<typeof ASTEROID_OPTIONS[number]>(initialRock);
   const [sample, setSample] = useState<{ at: number; mode: Mode; serial: number }>(() => ({ at: serverNow(), mode: initialMode(), serial: 0 }));
   const [miningConfirmation, setMiningConfirmation] = useState<number | null>(null);
+  const [struck, setStruck] = useState<{ serial: number; at: number } | null>(null);
   const [seasonStart] = useState(() => new Date(serverNow()));
   const [ready, setReady] = useState(false);
   const quality = useRenderQuality();
@@ -73,6 +76,14 @@ export function PremiumSpaceGallery() {
     const timer = setTimeout(() => { setMiningConfirmation(sample.serial); }, 2500);
     return () => { clearTimeout(timer); };
   }, [sample]);
+  // As the server does, a strike that lands starts its world's EMP hour (owner, 2026-11-12: the storm).
+  useEffect(() => {
+    if (sample.mode !== 'strategic') return;
+    const at = sample.at + IMPACT_MS;
+    const timer = setTimeout(() => { setStruck({ serial: sample.serial, at }); }, Math.max(0, at - serverNow()));
+    return () => { clearTimeout(timer); };
+  }, [sample]);
+  const empAt = struck?.serial === sample.serial ? struck.at : null;
   const monuments = useMemo<PublicMonument[]>(() => {
     if (sample.mode !== 'monument') return [];
     const difficulty = monumentDifficulty(monumentOrdinal);
@@ -90,10 +101,11 @@ export function PremiumSpaceGallery() {
     }];
     if (sample.mode === 'battle' || sample.mode === 'strategic') return [{
       id: 'p-2', name: 'Tharsis', owner: 'Sable', isSelf: false, position: TARGET, coreTier: 2, coreLevel: 4,
-      satellites: [], shielded: false, intel: 'RESOLVED', state: { kind: 'NORMAL' },
+      satellites: [], shielded: false, intel: 'RESOLVED',
+      state: empAt === null ? { kind: 'NORMAL' } : { kind: 'EMP', until: new Date(empAt + DEATH_STAR.empMinutes * 60_000), hits: 1 },
     }];
     return [];
-  }, [cosmetic, coreLevel, sample.mode]);
+  }, [cosmetic, coreLevel, sample.mode, empAt]);
   const rocks = useMemo<AsteroidView[]>(() => sample.mode === 'asteroid' ? [{
     id: rockChoice.rockId, level: 5, ore: 2000, oreRemaining: 2000, crystalShare: 0.2, deuteriumShare: rockChoice.isotopeRich ? 0.1 : null,
     radius: 400, period: 240, phase: 0, inclination: 0.07, ascendingNode: 0,
@@ -102,7 +114,7 @@ export function PremiumSpaceGallery() {
   const pending = useMemo<PendingThread[]>(() => {
     if (!['fleet', 'battle', 'strategic', 'probe-flight', 'strategic-flight'].includes(sample.mode)) return [];
     const impact = sample.mode === 'battle' || sample.mode === 'strategic';
-    const arriveAt = new Date(sample.at + (impact ? 1800 : 90_000));
+    const arriveAt = new Date(sample.at + (impact ? IMPACT_MS : 90_000));
     const thread: PendingThread = {
       id: `premium-${sample.mode}-${String(sample.serial)}`,
       kind: sample.mode === 'probe-flight' ? 'probe' : sample.mode.startsWith('strategic') ? 'death_star' : 'fleet',

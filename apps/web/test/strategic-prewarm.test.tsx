@@ -27,6 +27,9 @@ describe('the first strategic impact', () => {
     expect(requests).toContain('/assets/vfx/library/sck-smoke-8x8.webp');
     expect(requests).toContain('/assets/vfx/library/white-shock-4x4.webp');
     expect(requests).toContain('/assets/vfx/library/flare-star.webp');
+    // The EMP storm takes over from its crater (owner, 2026-11-12).
+    expect(requests).toContain('/assets/vfx/library/electric-line-4x4.webp');
+    expect(requests).toContain('/assets/vfx/library/lightning-5x5.webp');
     expect(requests).not.toContain('/assets/models/debris/wreck-plate-gd-v3.glb');
   });
 

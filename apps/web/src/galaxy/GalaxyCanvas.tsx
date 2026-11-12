@@ -53,6 +53,7 @@ import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
 import { RadiationBombEffects } from './RadiationBombEffects.js';
 import { PlanetEmbers } from './PlanetEmbers.js';
+import { EmpStorms } from './EmpStorms.js';
 import { FaultMarks } from './FaultMarks.js';
 import { AlarmRings } from './AlarmRings.js';
 import type { ActiveClanAlarm } from '../lib/clanAlarm.js';
@@ -915,6 +916,8 @@ export function GalaxyCanvas({
         <RadiationBombEffects sources={hpRadiation} nodes={nodes} monuments={monuments} />
         {/* A Death Star's EMP hour, as a dull ember that survives the zoom (owner, 2026-10-16). */}
         <PlanetEmbers nodes={nodes} />
+        {/* Up close, the storm over that world for its hour (owner, 2026-11-12). */}
+        <EmpStorms nodes={nodes} />
         {/* The commander's own broken colonies, at every zoom (owner, 2026-10-16). */}
         <FaultMarks nodes={nodes} />
         {/* A clanmate under a raid: a red ring at every zoom, and the raid's trail if radar read it (F2). */}

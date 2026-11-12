@@ -8,6 +8,7 @@ import { NukeCloud, type NukeCloudLayer } from './NukeCloud.js';
 import { NUKE_SECONDS, nukeLayers, nukeStrikeAxis } from './nukeLayers.js';
 import { PLANET_SKIN_BODY_SCALE } from './planetSkinAttachments.js';
 import { EXPLOSION_ATLAS, fireTexture } from './vfx.js';
+import { EMP_ARC, EMP_BOLT } from './empSchedule.js';
 import { serverNow } from '../lib/clock.js';
 import { FULL_RATE_FPS, HoldRate } from './frames.jsx';
 import { createRehearsal, type Rehearsal } from './rehearsal.js';
@@ -32,9 +33,9 @@ export const NUKE_SMOKE = '/assets/vfx/library/sck-smoke-8x8.webp';
 export const NUKE_SHOCK = '/assets/vfx/library/white-shock-4x4.webp';
 export const NUKE_FLARE = '/assets/vfx/library/flare-star.webp';
 
-/** A known future strike warms its sources without drawing an early effect. */
+/** A known future strike warms its sources, and the EMP storm's that takes over from its crater. */
 export function prewarmNukeBlast(): void {
-  useTexture.preload([EXPLOSION_ATLAS, NUKE_SMOKE, NUKE_SHOCK, NUKE_FLARE]);
+  useTexture.preload([EXPLOSION_ATLAS, NUKE_SMOKE, NUKE_SHOCK, NUKE_FLARE, EMP_ARC, EMP_BOLT]);
 }
 
 /** The galaxy's key light (`GalaxyCanvas`), so the cloud is lit from the side the worlds are. */

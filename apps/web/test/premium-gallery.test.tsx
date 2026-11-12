@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GalaxyCanvas } from '../src/galaxy/GalaxyCanvas.js';
 import { PremiumSpaceGallery } from '../src/v2/gallery/PremiumSpaceGallery.js';
@@ -6,7 +6,7 @@ import { asteroidModelUrl } from '../src/galaxy/asteroidAppearance.js';
 import { ASTEROID_MODELS } from '../src/ui/assets.js';
 import { PremiumShipInspector } from '../src/galaxy/PremiumShipInspector.js';
 import type * as ShipInspectorModule from '../src/galaxy/PremiumShipInspector.js';
-import { cosmeticsInCategory } from '@astera/rules';
+import { cosmeticsInCategory, DEATH_STAR } from '@astera/rules';
 
 vi.mock('../src/galaxy/GalaxyCanvas.js', () => ({ GalaxyCanvas: vi.fn(() => null) }));
 vi.mock('../src/galaxy/PremiumShipInspector.js', async importOriginal => ({
@@ -171,6 +171,24 @@ describe('premium asset review gallery', () => {
       expect(scene().monuments).toHaveLength(0);
       expect(scene().asteroids).toHaveLength(0);
       expect(scene().wrecks).toHaveLength(0);
+    }
+  });
+
+  it('turns the struck world to its EMP hour as the strike lands, as the server does', () => {
+    vi.useFakeTimers();
+    try {
+      render(<PremiumSpaceGallery />);
+      fireEvent.click(screen.getByRole('button', { name: 'Stratejik çarpma' }));
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+      const landing = Date.now() + 1800;
+      act(() => { vi.advanceTimersByTime(1800); });
+      const state = scene().planets[0]?.state;
+      expect(state?.kind).toBe('EMP');
+      expect(state?.kind === 'EMP' ? state.until.getTime() : 0).toBe(landing + DEATH_STAR.empMinutes * 60_000);
+      fireEvent.click(screen.getByRole('button', { name: 'Tekrar oynat' }));
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+    } finally {
+      vi.useRealTimers();
     }
   });
 

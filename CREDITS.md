@@ -26,3 +26,5 @@ From the owner's asset library, as recorded there (`packs.json`, licence confirm
 | `sck-smoke-8x8.webp` | Death Star strike: the mushroom cloud | `explosionsmokeanimated.png` | Space Combat Kit (v2.8.1) | VSX Games | VSX Games (Unity Asset Store) |
 | `white-shock-4x4.webp` | Death Star strike: the condensation disc | `whiteshockwave01-4x4.png` | Unique AoE Magic Abilities Vol.1 (v1.6.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
 | `flare-star.webp` | Death Star strike: the flash | `flare01.png` | Unique Projectiles Vol.1 (v1.8.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
+| `electric-line-4x4.webp` | EMP storm: arcs crawling over the world | `electricline01-4x4.png` | Unique AoE Magic Abilities Vol.1 (v1.6.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
+| `lightning-5x5.webp` | EMP storm: bolts leaping off the limb | `lightning03-5x5.png` | Unique AoE Magic Abilities Vol.1 (v1.6.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
