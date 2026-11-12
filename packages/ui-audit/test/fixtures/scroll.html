@@ -25,6 +25,8 @@
 <script>
   const list = document.getElementById('list');
   const rows = Number(new URLSearchParams(location.search).get('rows') ?? 20);
+  // `?active=1`: every button answers a press with a CSS :active colour.
+  if (new URLSearchParams(location.search).has('active')) document.head.insertAdjacentHTML('beforeend', '<style>button:active { background: #c80; }</style>');
   for (let i = 1; i <= rows; i += 1) {
     const row = document.createElement('div');
     row.className = 'row';

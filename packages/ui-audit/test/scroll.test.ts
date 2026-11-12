@@ -16,18 +16,20 @@ let browser: Browser;
 let full: SurfaceAudit;
 let capped: SurfaceAudit;
 let long: SurfaceAudit;
+let lit: SurfaceAudit;
 
 beforeAll(async () => {
   browser = await chromium.launch();
-  const open = async (rows = 20) => {
+  const open = async (rows = 20, query = '') => {
     const page = await browser.newPage({ viewport: { width: 350, height: 812 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-    await page.goto(`${SCROLL}?rows=${String(rows)}`);
+    await page.goto(`${SCROLL}?rows=${String(rows)}${query}`);
     return page;
   };
   full = await auditSurface(await open(), { surface: 'scroll', frames: 1, feedback: true, maxParts: 8 });
   capped = await auditSurface(await open(), { surface: 'scroll', frames: 1, maxParts: 2 });
   long = await auditSurface(await open(150), { surface: 'scroll', frames: 1, gridStep: 4 });
-}, 120_000);
+  lit = await auditSurface(await open(20, '&active=1'), { surface: 'scroll', frames: 1, feedback: true, maxParts: 8 });
+}, 180_000);
 
 afterAll(async () => {
   await browser.close();
@@ -47,6 +49,11 @@ describe('a scrolled surface', () => {
     const buttons = full.targets.filter((t) => t.name.startsWith('Seç'));
     expect(buttons).toHaveLength(20);
     expect(buttons.every((t) => t.region !== null && t.feedback === 'none')).toBe(true);
+  });
+
+  it('sees the press answer of a button in every part, not only the first (2026-11-12: later parts pressed a stale twin)', () => {
+    const silent = lit.targets.filter((t) => t.name.startsWith('Seç') && t.feedback === 'none').map((t) => t.name);
+    expect(silent).toEqual([]);
   });
 
   it('says how many parts it took, and that it reached the end', () => {

@@ -362,6 +362,8 @@ function collectTargets(step: number): { targets: RawTarget[]; grid: RawCollect[
   const index = new Map<Element, number>();
   const elements: Element[] = [];
   const cache = new Map<Element, number>();
+  // Numbers restart each part: a number left from an earlier part would answer for a twin.
+  for (const stale of document.querySelectorAll(`[${TARGET}]`)) stale.removeAttribute(TARGET);
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       const hit = document.elementFromPoint(col * step + step / 2, row * step + step / 2);
