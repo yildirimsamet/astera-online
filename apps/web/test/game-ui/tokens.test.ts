@@ -29,23 +29,24 @@ describe('the game kit palette', () => {
     expect(tokens).toMatch(new RegExp(`--gk-${role}:`));
   });
 
-  it('sets Russo One as the one display face, loaded by the kit itself (owner 2026-11-12)', () => {
-    expect(tokens).toMatch(/--gk-font-display:\s*'Russo One'/);
-    expect(tokens).not.toMatch(/data-gk-font/);
-    expect(readFileSync(join(KIT, 'game-ui.css'), 'utf8')).toMatch(/@import '@fontsource\/russo-one\//);
+  it('sets the narrow bold Saira as the one display face (owner 2026-11-12, look 2.9 "Komuta")', () => {
+    expect(tokens).toMatch(/--gk-font-display:\s*'Saira Variable'/);
+    expect(tokens).toMatch(/--gk-display-weight:\s*700/);
+    expect(tokens).toMatch(/--gk-display-stretch:\s*84%/);
+    expect(readFileSync(join(KIT, 'game-ui.css'), 'utf8')).not.toMatch(/russo-one/);
   });
 
-  it('lets a skin repaint the material and the inks, never what a role colour means', () => {
-    const skins = [...tokens.matchAll(/:root\[data-gk-skin='(\w+)'\]\s*\{([^}]*)\}/g)];
-    expect(skins.map((skin) => skin[1])).toEqual(['graphite', 'carbon']);
-    const names = (body: string): string[] => [...body.matchAll(/(--gk-[\w-]+):/g)].map((m) => m[1] ?? '').sort();
-    const material = /^--gk-(void|deep|ink|ink-2|ink-3|metal-[\w]+|glass[\w-]*|bolt|steel[\w-]*|tint)$/;
-    for (const [, , body = ''] of skins) expect(names(body).filter((name) => !material.test(name))).toEqual([]);
-    expect(names(skins[0]?.[2] ?? '')).toEqual(names(skins[1]?.[2] ?? ''));
+  it('paints the panels in graphite, without a blue cast (owner 2026-11-12: "this bluish colour is not for me")', () => {
+    const material = [...tokens.matchAll(/--gk-(metal-[\w]+|glass[\w-]*|steel[\w-]*|void|deep|tint):\s*(#[0-9a-fA-F]{6})\b/g)];
+    expect(material.length).toBeGreaterThan(12);
+    const cast = (hex: string): number => parseInt(hex.slice(5, 7), 16) - parseInt(hex.slice(1, 3), 16);
+    expect(material.filter(([, , hex = '']) => cast(hex) > 20).map(([, name]) => name)).toEqual([]);
+    expect(tokens).not.toMatch(/--gk-tint:\s*var\(--gk-info\)/);
   });
 
-  it("names the panel tint once, so a skin can take today's blue out of every panel", () => {
-    expect(tokens).toMatch(/--gk-tint:\s*var\(--gk-info\)/);
+  it('keeps one look: no trial skins or tones are left in the kit', () => {
+    const marks = files(KIT).filter((f) => /data-gk-(skin|tone|font)/.test(readFileSync(f, 'utf8')));
+    expect(marks).toEqual([]);
   });
 
   it('keeps raw colours out of every other kit file and the kit gallery', () => {

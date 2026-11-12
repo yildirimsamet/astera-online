@@ -1,10 +1,11 @@
 /**
- * GAME KIT MATERIALS — direction B. Every surface is an object: metal plates with
- * bolts, glass wells set into them, buttons with a lip you press down. Colours come
- * only from tokens.css. Motion is transform/opacity only, so the kit stays cheap over
- * a live WebGL scene.
+ * GAME KIT MATERIALS — direction B in the "Komuta" look (owner 2026-11-12, decision 2.9):
+ * a warship's instruments, not candy. Graphite plates with hairline edges and corner
+ * ticks, glass wells set into them, cut-corner buttons that sink when pressed, narrow
+ * bold lettering. Rewards (the pod, the victory ribbon) stay loud on purpose. Colours
+ * come only from tokens.css. Motion is transform/opacity only, so the kit stays cheap
+ * over a live WebGL scene.
  */
-@import '@fontsource/russo-one/index.css';
 @import './tokens.css';
 
 /* ── root and type ─────────────────────────────────────────────────────────── */
@@ -28,27 +29,20 @@
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.03em;
   line-height: 1;
 }
 
-/* Light text on a lit or busy ground keeps a dark rim, the way game type does. */
+/* Light text on a lit or busy ground keeps a soft dark shadow so it holds over any picture. */
 .gk-outlined {
-  text-shadow:
-    0 1px 0 var(--gk-outline),
-    0 -1px 0 var(--gk-outline),
-    1px 0 0 var(--gk-outline),
-    -1px 0 0 var(--gk-outline),
-    1px 1px 0 var(--gk-outline),
-    -1px 1px 0 var(--gk-outline),
-    0 2px 1px var(--gk-outline);
+  text-shadow: 0 1px 2px var(--gk-outline), 0 0 1px var(--gk-outline);
 }
 
 .gk-label {
   font-family: var(--gk-font-text);
   font-size: var(--gk-t-floor);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gk-ink-2);
   line-height: 1.2;
@@ -93,46 +87,53 @@
 
 .gk-plate {
   position: relative;
-  border: 1px solid var(--gk-metal-edge);
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
   border-radius: var(--gk-r-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 7%, transparent) 0, transparent 1.5px),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 2.2%, transparent) 0 1px, transparent 1px 4px),
-    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2) 55%, var(--gk-metal-3));
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 5%, transparent) 0, transparent 1px),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2) 75%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 70%, transparent),
-    inset 0 -2px 0 color-mix(in srgb, var(--gk-metal-shadow) 55%, transparent),
-    0 6px 14px -6px color-mix(in srgb, var(--gk-metal-shadow) 90%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 40%, transparent),
+    0 4px 12px -6px var(--gk-metal-shadow);
 }
 
-/* Four bolts, one per corner, in one paint layer. */
+/* Corner ticks, one bracket per corner over the edge, in one paint layer. */
 .gk-bolts::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -1px;
   pointer-events: none;
-  border-radius: inherit;
-  --b: radial-gradient(circle, var(--gk-bolt) 0 1.4px, var(--gk-metal-shadow) 1.6px 2.3px, transparent 2.5px);
+  --t: color-mix(in srgb, var(--gk-tint) 60%, transparent);
+  --l: 9px;
   background:
-    var(--b) 3px 3px / 8px 8px no-repeat,
-    var(--b) calc(100% - 3px) 3px / 8px 8px no-repeat,
-    var(--b) 3px calc(100% - 3px) / 8px 8px no-repeat,
-    var(--b) calc(100% - 3px) calc(100% - 3px) / 8px 8px no-repeat;
+    linear-gradient(var(--t), var(--t)) 0 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / 1px var(--l) no-repeat;
 }
 
 /* A plate whose edge glows in a role colour: selection, the enemy, a warning. */
 .gk-edge-self {
-  border-color: color-mix(in srgb, var(--gk-self) 75%, var(--gk-metal-edge));
+  border-color: color-mix(in srgb, var(--gk-self) 70%, transparent);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent),
-    inset 0 0 18px -6px color-mix(in srgb, var(--gk-self) 55%, transparent),
-    0 0 14px -4px color-mix(in srgb, var(--gk-self) 55%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 14%, transparent),
+    inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-self) 45%, transparent);
 }
 .gk-edge-hostile {
-  border-color: color-mix(in srgb, var(--gk-hostile) 70%, var(--gk-metal-edge));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--gk-hostile) 30%, transparent),
-    inset 0 0 18px -6px color-mix(in srgb, var(--gk-hostile) 45%, transparent);
+  border-color: color-mix(in srgb, var(--gk-hostile) 65%, transparent);
+  box-shadow: inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-hostile) 40%, transparent);
+}
+.gk-edge-self.gk-bolts::after {
+  --t: var(--gk-self);
+  --l: 12px;
+}
+.gk-edge-hostile.gk-bolts::after {
+  --t: var(--gk-hostile);
+  --l: 12px;
 }
 .gk-edge-warn {
   border-color: color-mix(in srgb, var(--gk-warn) 60%, var(--gk-metal-edge));
@@ -180,7 +181,7 @@
     linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
 }
 
-/* A stencil tag naming a section, with a rule running out to the edge. */
+/* A section name: a lit bar and tracked capitals, with a rule running out to the edge. */
 .gk-tag {
   display: flex;
   align-items: center;
@@ -188,21 +189,20 @@
   min-height: 20px;
 }
 .gk-tag__name {
-  --cut: 5px;
-  padding: 3px 10px 3px 8px;
+  padding: 2px 8px 2px 7px;
+  border-left: 2px solid var(--gk-tint);
   font-family: var(--gk-font-text);
   font-size: var(--gk-t-floor);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--gk-ink);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 38%, var(--gk-metal-1)), var(--gk-metal-2));
-  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% 50%, calc(100% - var(--cut)) 100%, 0 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 18%, transparent), transparent);
 }
 .gk-tag__rule {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 45%, transparent), transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 30%, transparent), transparent);
 }
 .gk-tag__aside {
   font-size: var(--gk-t-floor);
@@ -217,76 +217,66 @@
   --face-lo: var(--gk-steel-lo);
   --lip: var(--gk-steel-lip);
   --rim: var(--gk-outline);
-  --lift: 4px;
+  --cut: 10px;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--gk-s2);
   min-height: var(--gk-hit);
-  margin-bottom: var(--lift);
   padding: 0 var(--gk-s4) 2px;
   overflow: hidden;
-  border: 1px solid var(--gk-outline);
-  border-radius: 12px;
+  border: 0;
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
   font-size: var(--gk-t-lead);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gk-ink);
-  text-shadow:
-    0 1px 0 var(--rim),
-    0 -1px 0 var(--rim),
-    1px 0 0 var(--rim),
-    -1px 0 0 var(--rim),
-    0 2px 0 var(--rim);
-  background: linear-gradient(180deg, var(--face-hi) 0%, var(--face) 46%, var(--face-lo) 100%);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--rim) 80%, transparent);
+  /* two corners cut on the diagonal: the silhouette of a ship's control, not a pill */
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 35%, transparent) 0 1px, transparent 1px),
+    linear-gradient(180deg, var(--face) 0%, var(--face-lo) 100%);
   box-shadow:
-    0 var(--lift) 0 var(--lip),
-    0 calc(var(--lift) + 3px) 8px -2px color-mix(in srgb, var(--gk-metal-shadow) 80%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 50%, transparent),
-    inset 0 -3px 0 color-mix(in srgb, var(--lip) 40%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 45%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--lip) 60%, transparent);
   transform: translateY(0);
   transition: transform var(--gk-press) linear, box-shadow var(--gk-press) linear, filter var(--gk-quick) var(--gk-ease);
   touch-action: manipulation;
   user-select: none;
   cursor: pointer;
 }
-/* The gloss on the upper half: what makes the face read as a curved, lit material. */
-.gk-btn::before {
-  content: '';
-  position: absolute;
-  inset: 2px 3px 48%;
-  border-radius: 9px 9px 16px 16px / 9px 9px 7px 7px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 42%, transparent), color-mix(in srgb, var(--gk-ink) 6%, transparent));
-  pointer-events: none;
-}
 .gk-btn > * {
   position: relative;
 }
 .gk-btn:active:not(:disabled),
 .gk-btn[data-pressed] {
-  transform: translateY(calc(var(--lift) - 1px));
+  transform: translateY(1px);
   box-shadow:
-    0 1px 0 var(--lip),
-    0 2px 4px -1px color-mix(in srgb, var(--gk-metal-shadow) 80%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 35%, transparent),
-    inset 0 -2px 0 color-mix(in srgb, var(--lip) 40%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 35%, transparent),
+    inset 0 3px 6px color-mix(in srgb, var(--lip) 55%, transparent);
 }
 .gk-btn:focus-visible {
   outline: 2px solid var(--gk-self);
   outline-offset: 3px;
 }
 .gk-btn:disabled {
+  --face-hi: var(--gk-steel-hi);
+  --face: var(--gk-steel);
+  --face-lo: var(--gk-steel-lo);
+  --lip: var(--gk-steel-lip);
   cursor: not-allowed;
-  filter: saturate(0.15) brightness(0.72);
-  --lift: 2px;
+  color: var(--gk-ink-3);
 }
 .gk-btn:disabled,
 .gk-btn:disabled * {
   text-shadow: none;
+}
+.gk-btn:disabled .gk-glyph {
+  stroke: var(--gk-outline);
 }
 
 .gk-btn--action {
@@ -295,6 +285,9 @@
   --face-lo: var(--gk-action-lo);
   --lip: var(--gk-action-lip);
   --rim: var(--gk-action-ink);
+  /* dark lettering on the lit amber and teal faces, as warning plates are lettered */
+  color: var(--gk-action-ink);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-action-hi) 55%, transparent);
 }
 .gk-btn--self {
   --face-hi: var(--gk-self-hi);
@@ -302,6 +295,8 @@
   --face-lo: var(--gk-self-lo);
   --lip: var(--gk-self-lip);
   --rim: var(--gk-self-lip);
+  color: var(--gk-outline);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-self-hi) 55%, transparent);
 }
 .gk-btn--danger {
   --face-hi: var(--gk-hostile-hi);
@@ -310,23 +305,22 @@
   --lip: var(--gk-hostile-lip);
   --rim: var(--gk-hostile-lip);
 }
+.gk-btn--action .gk-glyph,
+.gk-btn--self .gk-glyph {
+  stroke: none;
+}
 .gk-btn--ghost {
-  --lift: 0px;
-  margin-bottom: 0;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
+  clip-path: none;
   color: var(--gk-ink-2);
   text-shadow: none;
 }
-.gk-btn--ghost::before {
-  display: none;
-}
 .gk-btn--lg {
+  --cut: 12px;
   min-height: 56px;
   font-size: var(--gk-t-title);
-  border-radius: 14px;
-  --lift: 5px;
 }
 .gk-btn--sm {
   font-size: var(--gk-t-body);
@@ -341,7 +335,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 38%, color-mix(in srgb, var(--gk-ink) 38%, transparent) 50%, transparent 62%);
+  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--gk-ink) 26%, transparent) 50%, transparent 58%);
   transform: translateX(-130%);
   animation: gk-glint 4.6s var(--gk-ease) 1.4s infinite;
   pointer-events: none;
@@ -367,7 +361,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px 2px 4px;
-  border-radius: 999px;
+  border-radius: 2px;
   background: color-mix(in srgb, var(--gk-outline) 45%, transparent);
   font-size: var(--gk-t-body);
 }
@@ -391,7 +385,7 @@
   to { transform: rotate(360deg); }
 }
 
-/* Round buttons: close, back, help. The hit area is always 44 px. */
+/* Small square buttons: close, back, help. The hit area is always 44 px. */
 .gk-round {
   --face-hi: var(--gk-steel-hi);
   --face: var(--gk-steel);
@@ -416,18 +410,15 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--gk-outline);
-  background: radial-gradient(circle at 50% 28%, var(--face-hi), var(--face) 55%, var(--face-lo));
-  box-shadow:
-    0 3px 0 var(--lip),
-    inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 45%, transparent),
-    0 5px 8px -3px color-mix(in srgb, var(--gk-metal-shadow) 90%, transparent);
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--face-hi) 55%, transparent);
+  background: linear-gradient(180deg, var(--face), var(--face-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 16%, transparent);
   transition: transform var(--gk-press) linear, box-shadow var(--gk-press) linear;
 }
 .gk-round:active .gk-round__face {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 var(--lip), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 30%, transparent);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px var(--gk-metal-shadow);
 }
 .gk-round--danger {
   --face-hi: var(--gk-hostile-hi);
@@ -449,7 +440,7 @@
 .gk-round:focus-visible {
   outline: 2px solid var(--gk-self);
   outline-offset: -2px;
-  border-radius: 50%;
+  border-radius: 3px;
 }
 
 /* A chip: small to look at, 44 px to hit. */
@@ -474,14 +465,14 @@
   gap: 4px;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: 2px;
   border: 1px solid var(--gk-metal-edge);
   background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 22%, transparent), 0 2px 0 var(--gk-steel-lip);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 12%, transparent);
   font-family: var(--gk-font-text);
   font-size: var(--gk-t-floor);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gk-ink);
   white-space: nowrap;
@@ -492,8 +483,7 @@
 }
 .gk-chip[data-on] {
   border-color: var(--gk-self-lo);
-  background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self-lo));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 50%, transparent), 0 2px 0 var(--gk-self-lip);
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
   color: var(--gk-outline);
 }
 .gk-hit:disabled .gk-chip {
@@ -512,7 +502,6 @@
   justify-content: flex-start;
   padding: 0 var(--gk-s4) 2px 8px;
   gap: var(--gk-s3);
-  --lift: 5px;
 }
 .gk-hold__fill {
   position: absolute;
@@ -532,8 +521,8 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--gk-ink) 30%, var(--face-lo)), var(--face-lo) 70%);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rim) 60%, transparent), inset 0 2px 4px color-mix(in srgb, var(--rim) 60%, transparent);
+  background: color-mix(in srgb, var(--rim) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rim) 55%, transparent);
   font-size: 20px;
 }
 .gk-hold__ring {
@@ -549,11 +538,10 @@
   stroke-width: 3.5px;
 }
 .gk-hold__track {
-  stroke: color-mix(in srgb, var(--rim) 45%, transparent);
+  stroke: color-mix(in srgb, var(--rim) 30%, transparent);
 }
 .gk-hold__arc {
-  stroke: var(--gk-ink);
-  stroke-linecap: round;
+  stroke: var(--rim);
   stroke-dasharray: 132;
   stroke-dashoffset: 132;
 }
@@ -580,7 +568,7 @@
   font-family: var(--gk-font-display);
   font-size: var(--gk-t-lead);
   padding-left: var(--gk-s3);
-  border-left: 2px solid color-mix(in srgb, var(--rim) 45%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--rim) 45%, transparent);
 }
 .gk-hold[data-holding] {
   filter: brightness(1.08);
@@ -608,26 +596,25 @@
 .gk-count {
   display: inline-grid;
   place-items: center;
-  min-width: 34px;
-  height: 34px;
+  min-width: 30px;
+  height: 28px;
   padding: 0 7px;
-  border-radius: 999px;
-  border: 2px solid var(--gk-outline);
-  background: radial-gradient(circle at 50% 25%, var(--gk-self-hi), var(--gk-self) 45%, var(--gk-self-lo));
-  box-shadow: 0 2px 0 var(--gk-self-lip), 0 0 12px -2px color-mix(in srgb, var(--gk-self) 70%, transparent);
+  border-radius: 2px;
+  border: 1px solid var(--gk-self-hi);
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
+  box-shadow: 0 0 10px -3px color-mix(in srgb, var(--gk-self) 70%, transparent);
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
-  font-size: 19px;
-  color: var(--gk-ink);
+  font-size: 18px;
+  color: var(--gk-outline);
   line-height: 1;
-  text-shadow: 0 1px 0 var(--gk-self-lip), 0 -1px 0 var(--gk-self-lip), 1px 0 0 var(--gk-self-lip), -1px 0 0 var(--gk-self-lip), 0 2px 0 var(--gk-self-lip);
   animation: gk-bump var(--gk-settle) var(--gk-pop);
 }
 .gk-count--idle {
-  background: radial-gradient(circle at 50% 25%, var(--gk-steel-hi), var(--gk-steel) 50%, var(--gk-steel-lo));
-  box-shadow: 0 2px 0 var(--gk-steel-lip);
-  text-shadow: none;
+  border-color: var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  box-shadow: none;
   color: var(--gk-ink-2);
   animation: none;
 }
@@ -642,7 +629,7 @@
   align-items: center;
   gap: 3px;
   padding: 2px 7px 2px 5px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--gk-outline);
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
@@ -687,7 +674,7 @@
   align-items: center;
   gap: 5px;
   padding: 3px 8px 3px 6px;
-  border-radius: 999px;
+  border-radius: 2px;
   border: 1px solid var(--gk-metal-edge);
   background: color-mix(in srgb, var(--gk-metal-shadow) 70%, transparent);
   font-size: var(--gk-t-floor);
@@ -720,7 +707,7 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--gk-outline);
   background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
   color: var(--gk-ink);
@@ -742,18 +729,16 @@
   position: relative;
   height: 10px;
   overflow: hidden;
-  border-radius: 999px;
-  border: 1px solid var(--gk-outline);
+  border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--gk-ink) 10%, var(--gk-outline));
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
-  box-shadow: inset 0 2px 3px color-mix(in srgb, var(--gk-metal-shadow) 90%, transparent);
+  box-shadow: inset 0 1px 2px var(--gk-metal-shadow);
 }
 .gk-bar__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 40%, transparent) 0 30%, transparent 30%),
-    linear-gradient(180deg, var(--fill-hi), var(--fill) 50%, var(--fill-lo));
+  /* a flat fill whose leading edge is lit, like an instrument's needle */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fill) 55%, var(--gk-outline)), var(--fill) calc(100% - 2px), var(--fill-hi) calc(100% - 2px));
   transition: width var(--gk-settle) var(--gk-ease);
 }
 .gk-bar--segments::after {
@@ -808,8 +793,7 @@
   position: absolute;
   top: 1px;
   bottom: 1px;
-  border-radius: 3px;
-  border: 1.5px solid var(--gk-alloy);
+    border: 1.5px solid var(--gk-alloy);
   background: color-mix(in srgb, var(--gk-alloy) 22%, transparent);
 }
 
@@ -897,7 +881,7 @@
   height: 38px;
   padding: 0 4px 5px 24px;
   margin-left: 12px;
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--gk-outline);
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
   box-shadow: inset 0 2px 4px color-mix(in srgb, var(--gk-metal-shadow) 90%, transparent), 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent);
@@ -923,8 +907,7 @@
   right: 10px;
   bottom: 3px;
   height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
+    background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
   overflow: hidden;
 }
 .gk-res__store > span {
@@ -990,7 +973,7 @@
   align-items: center;
   gap: var(--gk-s2);
   padding: var(--gk-s2) var(--gk-s2) var(--gk-s2) var(--gk-s3);
-  border-left: 4px solid var(--tone);
+  border-left: 2px solid var(--tone);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--tone) 20%, transparent), transparent 70%),
     linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
@@ -1141,18 +1124,17 @@
   flex-direction: column;
   min-height: 0;
   border-radius: var(--gk-r-lg) var(--gk-r-lg) 0 0;
-  border: 1px solid var(--gk-metal-edge);
+  border: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
   border-bottom: 0;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--gk-tint) 10%, transparent), transparent 90px),
     linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 260px);
-  box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 80%, transparent);
+  box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-tint) 35%, transparent);
 }
 .gk-sheet__grab {
-  width: 44px;
-  height: 5px;
+  width: 36px;
+  height: 3px;
   margin: 7px auto 2px;
-  border-radius: 3px;
   background: color-mix(in srgb, var(--gk-ink) 22%, transparent);
 }
 .gk-sheet__head {
@@ -1303,7 +1285,7 @@
   width: 58px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--gk-outline);
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
   box-shadow: inset 0 2px 5px var(--gk-outline), 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent);
@@ -1325,7 +1307,7 @@
   left: 2px;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: 1px solid var(--gk-outline);
   background: radial-gradient(circle at 50% 30%, var(--gk-steel-hi), var(--gk-steel) 55%, var(--gk-steel-lo));
   box-shadow: 0 2px 0 var(--gk-steel-lip), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent);
@@ -1432,7 +1414,7 @@
   top: 50%;
   height: 12px;
   margin-top: -6px;
-  border-radius: 999px;
+  border-radius: 1px;
   border: 1px solid var(--gk-outline);
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
   box-shadow: inset 0 2px 3px var(--gk-outline);
@@ -1451,7 +1433,7 @@
   width: 30px;
   height: 30px;
   margin: -15px 0 0 -15px;
-  border-radius: 9px;
+  border-radius: 3px;
   border: 1px solid var(--gk-outline);
   background:
     repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--gk-outline) 60%, transparent) 9px 10px, transparent 10px 13px) 0 8px / 100% 12px no-repeat,
@@ -1480,16 +1462,16 @@
   min-width: 0;
   min-height: var(--gk-hit);
   padding: 0 6px;
-  border-radius: 10px 10px 4px 4px;
+  border-radius: 2px;
   line-height: 1.05;
   text-align: center;
-  border: 1px solid var(--gk-outline);
-  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 18%, transparent);
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
   font-size: var(--gk-t-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gk-ink-2);
   cursor: pointer;
@@ -1497,11 +1479,11 @@
 }
 .gk-tab[aria-selected='true'] {
   color: var(--gk-ink);
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 30%, transparent), transparent 70%),
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent 80%),
     linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
-  border-color: color-mix(in srgb, var(--gk-self) 60%, var(--gk-outline));
-  box-shadow: inset 0 2px 0 var(--gk-self), 0 0 12px -4px color-mix(in srgb, var(--gk-self) 70%, transparent);
+  box-shadow: inset 0 -2px 0 var(--gk-self);
 }
 .gk-tab[data-locked] {
   color: var(--gk-ink-3);
@@ -1528,10 +1510,8 @@
   align-items: end;
   padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--gk-metal-edge);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 6%, transparent) 0, transparent 2px),
-    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
-  box-shadow: 0 -6px 16px -6px var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--gk-tint) 22%, transparent), 0 -6px 16px -6px var(--gk-outline);
 }
 .gk-nav__item {
   position: relative;
@@ -1542,7 +1522,6 @@
   min-height: 60px;
   padding: 3px 2px 3px;
   border: 0;
-  border-radius: 12px;
   background: transparent;
   color: var(--gk-ink-3);
   cursor: pointer;
@@ -1563,18 +1542,16 @@
   font-stretch: var(--gk-display-stretch);
   font-size: var(--gk-t-floor);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
   line-height: 1.1;
 }
 .gk-nav__item[aria-current='page'] {
   color: var(--gk-ink);
-  background:
-    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--gk-self) 34%, transparent), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 8%, transparent), transparent);
-  box-shadow: inset 0 -3px 0 var(--gk-self);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 20%, transparent), transparent 70%);
+  box-shadow: inset 0 2px 0 var(--gk-self);
 }
 .gk-nav__item[aria-current='page'] .gk-nav__art {
-  transform: translateY(-4px) scale(1.12);
+  transform: translateY(-2px);
   filter: drop-shadow(0 3px 3px var(--gk-outline));
 }
 .gk-nav__item[data-locked] .gk-nav__art {
@@ -1634,10 +1611,9 @@
   width: 100%;
   min-height: 56px;
   padding: 6px 10px 6px 6px;
-  border: 1px solid var(--gk-outline);
-  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: 3px;
   background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 8%, transparent);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -1735,7 +1711,7 @@
   margin: 2px 0;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 2px;
   background: radial-gradient(ellipse 60% 45% at 50% 62%, color-mix(in srgb, var(--gk-tint) 22%, transparent), transparent 70%);
   cursor: pointer;
   touch-action: pan-y;
@@ -1795,7 +1771,7 @@
   margin-top: -6px;
 }
 .gk-unit[data-full] .gk-count {
-  background: radial-gradient(circle at 50% 25%, var(--gk-self-hi), var(--gk-self) 40%, var(--gk-self-lo));
+  background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self));
 }
 
 /* The bay: narrower, for a row the slider drives. */
@@ -1808,7 +1784,7 @@
   flex-shrink: 0;
   padding: 6px 4px 4px;
   border: 1px solid var(--gk-glass-edge);
-  border-radius: 10px;
+  border-radius: 2px;
   background: linear-gradient(180deg, var(--gk-glass), var(--gk-glass-2));
   box-shadow: inset 0 2px 6px var(--gk-outline);
   color: inherit;
@@ -1817,7 +1793,7 @@
 }
 .gk-bay[aria-pressed='true'] {
   border-color: var(--gk-self);
-  box-shadow: inset 0 0 14px -4px color-mix(in srgb, var(--gk-self) 70%, transparent), 0 0 10px -3px color-mix(in srgb, var(--gk-self) 80%, transparent);
+  box-shadow: inset 0 -24px 24px -24px color-mix(in srgb, var(--gk-self) 60%, transparent);
 }
 .gk-bay__count {
   font-size: 22px;
@@ -1856,17 +1832,17 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
+  height: 20px;
   padding: 0 8px;
-  border-radius: 11px;
+  border-radius: 2px;
   font-size: var(--gk-t-floor);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
   color: var(--gk-ink);
   border: 1px solid color-mix(in srgb, var(--tone, var(--gk-steel-hi)) 70%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tone, var(--gk-steel)) 42%, var(--gk-deep)), color-mix(in srgb, var(--tone, var(--gk-steel)) 18%, var(--gk-deep)));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 18%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--gk-steel)) 16%, transparent);
 }
 .gk-pill .gk-glyph { color: var(--tone, var(--gk-ink-2)); }
 .gk-pill--warn { --tone: var(--gk-warn); }
@@ -2383,32 +2359,4 @@
 .gk-std__gutter {
   margin-inline: -10px;
   padding-inline: var(--std-gutter);
-}
-
-/* ── the look switcher (gallery only, owner 2026-11-12) ────────────────────── */
-
-.gk-look {
-  position: fixed;
-  z-index: 60;
-  top: calc(env(safe-area-inset-top, 0px) + 52px);
-  right: 2px;
-  display: grid;
-  justify-items: end;
-}
-.gk-look__panel {
-  display: grid;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--gk-metal-edge);
-  border-radius: var(--gk-r-md);
-  background: color-mix(in srgb, var(--gk-deep) 94%, transparent);
-  box-shadow: 0 8px 20px -8px var(--gk-outline);
-}
-.gk-look__row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.gk-look__row > .gk-label {
-  min-width: 36px;
 }

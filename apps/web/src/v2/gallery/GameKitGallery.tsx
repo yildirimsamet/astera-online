@@ -5,7 +5,6 @@
  * player meets, so the kit is judged as a whole UI and not as loose parts:
  * `ui-kit-launch` (`&layout=bay` for the slider row), `ui-kit-base`, `ui-kit-hud`,
  * `ui-kit-list`, `ui-kit-report`. `ui-kit-standard` holds the standard's open decisions.
- * Every view can be tried in another look (`&tone=`, `&skin=`, LookSwitcher.tsx).
  * Colours only through `--gk-*` tokens (test/game-ui/tokens.test.ts).
  */
 import '../../game-ui/game-ui.css';
@@ -22,7 +21,6 @@ import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
 import { StarField } from '../kit/StarField.js';
-import { LookSwitcher } from './LookSwitcher.js';
 import { StandardGallery } from './StandardGallery.js';
 
 export const KIT_VIEWS = ['ui-kit', 'ui-kit-launch', 'ui-kit-base', 'ui-kit-hud', 'ui-kit-list', 'ui-kit-report', 'ui-kit-standard'] as const;
@@ -49,15 +47,6 @@ function Screen({ children, sky = true }: { children: ReactNode; sky?: boolean }
 }
 
 export function GameKitGallery({ view, layout }: { view: KitView; layout?: 'cards' | 'bay' }) {
-  return (
-    <>
-      <KitPage view={view} layout={layout} />
-      <LookSwitcher />
-    </>
-  );
-}
-
-function KitPage({ view, layout }: { view: KitView; layout?: 'cards' | 'bay' | undefined }) {
   const chosenLayout = layout ?? (query('layout') === 'bay' ? 'bay' : 'cards');
   if (view === 'ui-kit') return <Catalog />;
   if (view === 'ui-kit-standard') return <Screen sky={false}><StandardGallery /></Screen>;

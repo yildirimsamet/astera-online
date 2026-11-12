@@ -1,6 +1,6 @@
 # UI standardı: karar paketleri (aşama 2.2–2.9)
 
-Tarih: 2026-11-12. **Durum: 2.2–2.8 kararlandı (owner, 2026-11-12); 2.9 görünüm owner kararı bekliyor.** Hiçbir oyun ekranı değişmedi. Seçilen değerler 3. aşamada token'a ve koruyucu teste, 4. aşamada ekranlara geçer.
+Tarih: 2026-11-12. **Durum: 2.2–2.9 kararlandı (owner, 2026-11-12).** Hiçbir oyun ekranı değişmedi. Seçilen değerler 3. aşamada token'a ve koruyucu teste, 4. aşamada ekranlara geçer.
 
 Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](ui-ux-iyilestirme-plani-2026-11-11.md), başlangıç ölçümü `reports/ui-audit/baseline-2026-11-11.md`.
 
@@ -15,6 +15,7 @@ Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](
 | 2.6 Süreler | **Panel 160 ms** | Basılı tutma için seçim gelmedi. Önerim B (0,6 / 1 / 1,5 sn) varsayıldı; owner aksini söylerse değişir. |
 | 2.7 Kenar boşluğu | **12 px** | |
 | 2.8 Sayı biçimi | **K/M** (240,1K · 1,4M) | |
+| 2.9 Görünüm | **Komuta + Grafit** | Kitin varsayılanı oldu. Başlık, buton ve sayı fontu Russo One yerine Saira dar kalın. Owner yukarıdaki notları onayladı ("tamam"). |
 
 Seçilenler 3. aşamada token'a ve koruyucu teste çevrilir.
 
@@ -81,7 +82,7 @@ Fark boyuttan çok **kalınlıkta**: rakiplerin yazısı kalın ve konturlu.
 
 **Önerim:** B. Buna ek olarak:
 - 12 px'te iki kelimeden uzun BÜYÜK HARFLİ metin olmaz.
-- Font kararı değişmez: başlık, buton ve sayı Russo One; gövde Saira.
+- Font kararı değişmez: başlık, buton ve sayı Russo One; gövde Saira. *(2.9 ile değişti: başlık, buton ve sayı Saira dar kalın.)*
 - Ayar 5. aşamada gelir.
 
 **Ölçülebilir karşılık:**
@@ -369,6 +370,8 @@ Ek olarak `GameHold` ve `useHoldPress` isteğe bağlı bir basılı tutma süres
 
 ## 2.9 Görünüm: dil ve panel rengi
 
+**Karar (owner, 2026-11-12): Komuta + Grafit.** Kitin varsayılanına katlandı: renkler `tokens.css`, şekiller `game-ui.css`. Deneme katmanı (`tone-command.css`, GÖRÜNÜM düğmesi, Lacivert ve Karbon) kaldırıldı. Russo One paketi bağımlılıklardan çıktı. Aşağıdaki metin kararın gerekçesi olarak duruyor.
+
 **Owner (2026-11-12):**
 - "Neredeyse her yerde arka planda kullandığımız mavimsi renk hoşuma gitmiyor."
 - "Biraz fazla casual'a kaçmışız. Uzay oyunuyuz, biraz da ciddi bir oyun. İkisinin arasında bir dil yakalasak?"
@@ -443,6 +446,9 @@ Rol renklerine (amber, turkuaz, kırmızı, yeşil, sarı, mavi) dokunulmadı; b
 
 **Ölçülebilir karşılık:** Seçilen dil ve renk, 3. aşamada varsayılan token olur. Deneme katmanı (`tone-command.css`, `data-gk-skin`) varsayılana katlanır, seçilmeyen kaldırılır.
 
-## Owner'dan beklenen
+## Sıradaki
 
-**2.9:** Dil (Bugün / Komuta) ve renk (Lacivert / Grafit / Karbon). "Önerimle devam" (Komuta + Grafit) demek yeterli.
+- 3. aşama: kararlar token'a ve koruyucu teste çevrilir. "Bugün" ölçeği dar fontla daha küçük göründüğü için başlık ve buton 1–2 px büyütülerek ölçülür.
+- Kit, ui-audit taramasına ayrı bir "kit" yüzeyi olarak eklenir (owner onayı, 2026-11-12).
+- Elle çizilmiş ince glifler, dolgulu stile çevrilir (owner onayı, 2026-11-12).
+- Seçilen arayüz sesleri kite bağlanır.

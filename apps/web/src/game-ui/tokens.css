@@ -8,32 +8,32 @@
  *   hostile — the enemy, harm, "weak against" (red)
  *   good    — "strong against", progress, done (green)
  *   warn    — a risk you can still avoid (yellow, always with an icon)
- *   info    — panel edges and plain information (cool blue)
+ *   info    — plain information (cool blue); panels themselves are graphite
  * Resources keep their own hues and never appear without their icon.
  */
 :root {
   /* ground and ink */
-  --gk-void: #04060b;
-  --gk-deep: #080d18;
-  --gk-ink: #f2f6ff;
-  --gk-ink-2: #b8c4dd;
-  --gk-ink-3: #8592ae;
+  --gk-void: #050607;
+  --gk-deep: #0b0c0e;
+  --gk-ink: #f4f5f7;
+  --gk-ink-2: #c8cbd1;
+  --gk-ink-3: #979ca5;
   --gk-outline: #03060d;
   --gk-scrim: #02040acc;
 
-  /* metal and glass */
-  --gk-metal-hi: #46587a;
-  --gk-metal-1: #243049;
-  --gk-metal-2: #182236;
-  --gk-metal-3: #0f1626;
-  --gk-metal-edge: #33456a;
-  --gk-metal-shadow: #01030a;
-  --gk-glass: #0a1322;
-  --gk-glass-2: #060c17;
-  --gk-glass-edge: #1f2e4c;
-  --gk-bolt: #66789a;
-  /* the faint wash panels carry (section tags, sheet tops, the stage behind a ship) */
-  --gk-tint: var(--gk-info);
+  /* graphite metal and glass (owner 2026-11-12, look 2.9 "Komuta + Grafit"): neutral, so
+     the role colours, the painted icons and the sky carry the colour, not the panels */
+  --gk-metal-hi: #5d626b;
+  --gk-metal-1: #2b2e34;
+  --gk-metal-2: #1f2126;
+  --gk-metal-3: #16181b;
+  --gk-metal-edge: #3f434b;
+  --gk-metal-shadow: #010203;
+  --gk-glass: #111316;
+  --gk-glass-2: #0a0b0d;
+  --gk-glass-edge: #2c3037;
+  /* the faint wash panels carry: section tags, corner ticks, sheet tops, a ship's stage */
+  --gk-tint: #a9b2bc;
 
   /* roles */
   --gk-action-hi: #ffe07a;
@@ -54,10 +54,10 @@
   --gk-good-lo: #3c9a27;
   --gk-warn: #ffcc4d;
   --gk-info: #6fb7ff;
-  --gk-steel-hi: #56698d;
-  --gk-steel: #34445f;
-  --gk-steel-lo: #1f2a40;
-  --gk-steel-lip: #0a101d;
+  --gk-steel-hi: #666b75;
+  --gk-steel: #41454d;
+  --gk-steel-lo: #282b31;
+  --gk-steel-lip: #0c0d0f;
 
   /* resources and ranks. Alloy is copper, off the action amber (owner 2026-11-12):
      ΔE 42 from action and 38 from deuterium under deuteranopia (was 14 and 11). */
@@ -73,11 +73,11 @@
   --gk-bronze: #e09a62;
   --gk-bronze-lo: #8c4d22;
 
-  /* type: a heavy display face for names, numbers and buttons; one text face for the rest.
-     Russo One is the display face (owner 2026-11-12); game-ui.css loads it. */
-  --gk-font-display: 'Russo One', 'Arial Narrow', system-ui, sans-serif;
-  --gk-display-weight: 400;
-  --gk-display-stretch: 100%;
+  /* type: one family. Names, numbers and buttons in Saira narrow and bold, an instrument's
+     lettering (owner 2026-11-12, look 2.9, in place of Russo One); the rest in Saira. */
+  --gk-font-display: 'Saira Variable', 'Arial Narrow', system-ui, sans-serif;
+  --gk-display-weight: 700;
+  --gk-display-stretch: 84%;
   --gk-font-text: 'Saira Variable', system-ui, sans-serif;
   --gk-text-stretch: 96%;
 
@@ -100,64 +100,18 @@
   --gk-s6: 24px;
 
   /* shape */
-  --gk-r-sm: 7px;
-  --gk-r-md: 11px;
-  --gk-r-lg: 16px;
-  --gk-cut: 10px;
+  --gk-r-sm: 3px;
+  --gk-r-md: 4px;
+  --gk-r-lg: 6px;
+  --gk-cut: 8px;
   --gk-hit: 44px;
 
-  /* motion: press is instant, answers settle, pops overshoot a little */
+  /* motion: press is instant, answers settle, pops barely overshoot */
   --gk-press: 80ms;
   --gk-quick: 160ms;
   --gk-settle: 280ms;
   --gk-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --gk-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Panel skins (gallery trial, owner 2026-11-12: "this bluish colour is not for me").
-   A skin repaints only the material and the inks; a role colour keeps its meaning.
-   Navy above is today's skin and needs no mark. */
-:root[data-gk-skin='graphite'] {
-  --gk-void: #050607;
-  --gk-deep: #0b0c0e;
-  --gk-ink: #f4f5f7;
-  --gk-ink-2: #c8cbd1;
-  --gk-ink-3: #979ca5;
-  --gk-metal-hi: #5d626b;
-  --gk-metal-1: #2b2e34;
-  --gk-metal-2: #1f2126;
-  --gk-metal-3: #16181b;
-  --gk-metal-edge: #3f434b;
-  --gk-glass: #111316;
-  --gk-glass-2: #0a0b0d;
-  --gk-glass-edge: #2c3037;
-  --gk-bolt: #737881;
-  --gk-steel-hi: #666b75;
-  --gk-steel: #41454d;
-  --gk-steel-lo: #282b31;
-  --gk-steel-lip: #0c0d0f;
-  --gk-tint: #a9b2bc;
-}
-:root[data-gk-skin='carbon'] {
-  --gk-void: #070605;
-  --gk-deep: #0e0c0a;
-  --gk-ink: #f8f4ef;
-  --gk-ink-2: #d6cdc2;
-  --gk-ink-3: #a3988b;
-  --gk-metal-hi: #645a4f;
-  --gk-metal-1: #312c27;
-  --gk-metal-2: #24201c;
-  --gk-metal-3: #191613;
-  --gk-metal-edge: #4a4138;
-  --gk-glass: #15120f;
-  --gk-glass-2: #0c0a08;
-  --gk-glass-edge: #352e27;
-  --gk-bolt: #7e7264;
-  --gk-steel-hi: #6f6457;
-  --gk-steel: #493f36;
-  --gk-steel-lo: #2e2822;
-  --gk-steel-lip: #0f0c0a;
-  --gk-tint: #c4aa86;
+  --gk-pop: cubic-bezier(0.2, 0.9, 0.3, 1.04);
 }
 
 html:lang(ja) {

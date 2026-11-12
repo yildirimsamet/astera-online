@@ -146,9 +146,6 @@ importers:
       '@fontsource-variable/archivo':
         specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/russo-one':
-        specifier: 5.3.0
-        version: 5.3.0
       '@paddle/paddle-js':
         specifier: ^1.6.5
         version: 1.6.5
@@ -1295,9 +1292,6 @@ packages:
 
   '@fontsource/ibm-plex-mono@5.3.0':
     resolution: {integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q==}
-
-  '@fontsource/russo-one@5.3.0':
-    resolution: {integrity: sha512-loHnqTq6D+H2WQdOB2pnAeCHbbsGqobmxnxU79MNFKjPWV2TPXdc78dbbkOAcWuKWDEY+FNXZFZ1nhaQvCWNAw==}
 
   '@gltf-transform/cli@4.4.2':
     resolution: {integrity: sha512-DBez2yawK9uXjefRBOJfFxkeTl2Jr4BZG8oOtHZd8if5KQaIdGN99ombzjf2ugjC7Lms9QSpY2pTBANE3H+kGQ==}
@@ -5500,8 +5494,6 @@ snapshots:
   '@fontsource/archivo-narrow@5.3.0': {}
 
   '@fontsource/ibm-plex-mono@5.3.0': {}
-
-  '@fontsource/russo-one@5.3.0': {}
 
   '@gltf-transform/cli@4.4.2(@types/node@22.20.1)':
     dependencies:
