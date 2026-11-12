@@ -33,6 +33,7 @@ import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
 import { playSceneSound } from './audio.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
+import { clearAegisHits, domeHits, strikeAegis, type AegisHit } from './aegisHits.js';
 
 /**
  * THE TEN SECONDS A RAID TAKES TO LAND. D44, made public by D52.
@@ -157,7 +158,11 @@ export function Bombardment({
     [volleyKey, slots.length, radius, engagementSeconds],
   );
   const root = useRef<THREE.Group>(null);
-  const sight = useMemo(() => ({ squadron: new THREE.Vector3(), centre: new THREE.Vector3() }), []);
+  const sight = useMemo(() => ({ squadron: new THREE.Vector3(), centre: new THREE.Vector3(), towards: new THREE.Vector3() }), []);
+  // Where each round meets the world, and the same in world space for its Aegis dome (`aegisHits`).
+  const rounds = useMemo(() => domeHits(shots, slots, distance, radius, arriveAt), [shots, slots, distance, radius, arriveAt]);
+  const struck = useMemo<AegisHit[]>(() => rounds.map((round) => ({ centre: [0, 0, 0], direction: [1, 0, 0], at: round.at })), [rounds]);
+  useEffect(() => () => { clearAegisHits(volleyKey); }, [volleyKey]);
   useFrame(({ camera }) => {
     const node = root.current;
     if (!node) return;
@@ -168,6 +173,14 @@ export function Bombardment({
     const eye = camera.position;
     node.visible = !(strikesWorld && behindTarget([eye.x, eye.y, eye.z],
       [sight.squadron.x, sight.squadron.y, sight.squadron.z], [sight.centre.x, sight.centre.y, sight.centre.z], radius));
+    if (!strikesWorld) return;
+    // A shielded world takes each round on its Aegis first (owner, 2026-11-12): its dome ripples where it lands.
+    struck.forEach((hit, i) => {
+      const direction = sight.towards.set(...(rounds[i]?.direction ?? [0, 0, -1])).transformDirection(node.matrixWorld);
+      hit.centre[0] = sight.centre.x; hit.centre[1] = sight.centre.y; hit.centre[2] = sight.centre.z;
+      hit.direction[0] = direction.x; hit.direction[1] = direction.y; hit.direction[2] = direction.z;
+    });
+    strikeAegis(volleyKey, struck);
   });
 
   if (shots.length === 0 || distance <= 0 || radius <= 0) return null;

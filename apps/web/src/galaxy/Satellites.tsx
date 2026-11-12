@@ -9,6 +9,8 @@ import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { configureOpaqueTransparentBody, unitModel } from './model.js';
 import { isWrecked, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { screenRadius } from './planetLod.js';
+import { AEGIS_HIT_SLOTS, aegisHitUniforms } from './aegisHits.js';
+import { serverNow } from '../lib/clock.js';
 
 /**
  * EVERY INSTRUMENT ANYONE HAS BUILT, IN ORBIT, VISIBLE TO EVERYONE.
@@ -435,28 +437,22 @@ export const shieldLook = (tier: 0 | 1 | 2, own: boolean, remembered: boolean) =
 export const shieldTierOf = (level: number): 0 | 1 | 2 => (level >= 5 ? 2 : level >= 3 ? 1 : 0);
 
 /**
- * How many panels run around the equator.
+ * HEX CELLS AROUND THE EQUATOR, AS THE WEAVE LAYS THEM (owner approved the look, 2026-11-12).
  *
- * The pattern is laid out in spherical coordinates, so this also fixes the seam:
- * longitude wraps at ±pi and the grid only meets itself cleanly if a whole number
- * of cells fits the circumference. Panels crowd towards the poles, which is what
- * spherical mapping does and is invisible at this opacity on a shell that is
- * brightest at its limb.
- *
- * TEN, NOT TWENTY. A planet is fifty pixels across at the zoom the disc is usually
- * read at, so twenty panels around the equator resolved to about two pixels each
- * and blurred into a solid band — the pattern was there and unreadable, which is
- * the worst of both. Ten reads as panelling at the size it is actually seen.
+ * The pattern is laid out in spherical coordinates, so a whole number of cells must fit the
+ * circumference or the lattice will not meet itself at the seam. Thirty is the Weave's own
+ * density. It is faint across the face and fades out wherever its cells shrink under a few
+ * pixels: the twenty panels of 2026-09 blurred into a solid band at the size a world is read.
  */
-const PANELS_AROUND = 12;
+const PANELS_AROUND = 30;
 
 /**
  * ONE UNIT SPHERE, PLACED PER DOME BY `instanceMatrix`. 2026-09-19.
  *
- * The breath moved here from a `useFrame` per world: the same `1 + sin(0.7t + x)
- * × 0.012` it always was, now one line of the program the dome was already drawn
- * with. `aBreath` is 0 on a remembered dome, which never moved. The scale is
- * uniform, so the instance matrix carries the normal without an inverse.
+ * The breath is one line of the program the dome is drawn with. `aBreath` is 0 on a remembered
+ * dome, which never moved: the fragment program reads it as the dome being alive. The scale is
+ * uniform, so the instance matrix carries the normal without an inverse, and its first column's
+ * length is the dome's radius.
  */
 const SHIELD_VERT = `
   attribute vec3 aColour;
@@ -468,6 +464,9 @@ const SHIELD_VERT = `
   varying vec3 vViewW;
   varying vec3 vColour;
   varying float vOpacity;
+  varying float vAlive;
+  varying vec3 vCentre;
+  varying float vRadius;
   void main() {
     float breath = 1.0 + sin(uTime * 0.7 + aPhase) * 0.012 * aBreath;
     mat4 placed = modelMatrix * instanceMatrix;
@@ -476,18 +475,23 @@ const SHIELD_VERT = `
     vViewW = normalize(cameraPosition - world.xyz);
     vColour = aColour;
     vOpacity = aOpacity;
+    vAlive = aBreath;
+    vCentre = (placed * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    vRadius = length(placed[0].xyz);
     gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
 
+/** How bright a stranger's dome is drawn, so it reads as the approved Weave; brighter domes rise by the root of their opacity. */
+const WEAVE_GAIN = 1.45;
+const STRANGER_OPACITY = shieldLook(0, false, false).opacity;
+
 /**
- * Panel edges, lit at the limb.
- *
- * Two things carry the read. FRESNEL puts nearly all the brightness where the
- * shell is edge-on, which is what makes a dome obvious in silhouette and almost
- * absent across the planet's face — the property the old version got from stacking
- * two spheres, done properly and in one pass. And the GRID is drawn as edges with
- * a trace of fill, so it reads as panelling rather than as a honeycomb texture.
+ * THE AEGIS WEAVE (owner, 2026-11-12: the library effect without its ground contour and floating
+ * shapes). A bright limb, latitude bands drifting through it, a tilted equator ring, a faint hex
+ * lattice whose cells blink now and then, and a hex ripple wherever a raid's round strikes
+ * (`aegisHits`). No fill: the world stays readable through it. A remembered dome is a snapshot, so
+ * its clock and its ripples are multiplied by `vAlive`.
  */
 const SHIELD_FRAG = `
   precision highp float;
@@ -495,70 +499,104 @@ const SHIELD_FRAG = `
   varying vec3 vViewW;
   varying vec3 vColour;
   varying float vOpacity;
+  varying float vAlive;
+  varying vec3 vCentre;
+  varying float vRadius;
+  uniform float uTime;
   uniform float uDensity;
+  uniform int uHitCount;
+  uniform vec3 uHitCentre[${String(AEGIS_HIT_SLOTS)}];
+  uniform vec3 uHitDir[${String(AEGIS_HIT_SLOTS)}];
+  uniform float uHitAge[${String(AEGIS_HIT_SLOTS)}];
 
   const vec2 S = vec2(1.0, 1.7320508);
-
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   /** Distance from a point to the edge of its hex cell: 0 at the centre, 0.5 at the edge. */
-  float hexDist(vec2 p) {
-    p = abs(p);
-    return max(dot(p, S * 0.5), p.x);
-  }
-
-  /** Nearest hex centre, of the two interleaved lattices. */
-  vec2 hexLocal(vec2 uv) {
-    vec4 centres = floor(vec4(uv, uv - vec2(0.5, 1.0)) / S.xyxy) + 0.5;
-    vec4 offs = vec4(uv - centres.xy * S, uv - (centres.zw + 0.5) * S);
-    return dot(offs.xy, offs.xy) < dot(offs.zw, offs.zw) ? offs.xy : offs.zw;
+  float hexDist(vec2 p) { p = abs(p); return max(dot(p, S * 0.5), p.x); }
+  /** Offset from the nearest hex centre, and that centre. */
+  vec4 hexCell(vec2 uv) {
+    vec2 h = S * 0.5;
+    vec2 a = mod(uv, S) - h;
+    vec2 b = mod(uv - h, S) - h;
+    vec2 gv = dot(a, a) < dot(b, b) ? a : b;
+    return vec4(gv, uv - gv);
   }
 
   void main() {
     vec3 n = normalize(vNormalW);
+    float facing = max(dot(n, normalize(vViewW)), 0.0);
+    float rim = pow(max(1.0 - facing, 0.0), 2.4);
+    float t = uTime * vAlive;
     // atan(0, 0) is undefined at the poles; a NaN pixel there would bloom into a block.
     float lon = abs(n.x) + abs(n.z) < 1e-6 ? 0.0 : atan(n.z, n.x);
     float lat = asin(clamp(n.y, -1.0, 1.0));
-    vec2 uv = vec2(lon, lat) * uDensity;
-
-    float d = hexDist(hexLocal(uv));
-
-    // A FIXED LINE WIDTH, with fwidth used ONLY to soften it.
-    //
-    // The first version wrote smoothstep(0.5 - w - k, 0.5 - w, d) with w taken from
-    // fwidth, which does not thin the line -- it MOVES it inward, so the lit band
-    // ran from 0.5 - w - k all the way to the cell boundary. A planet is a few
-    // dozen pixels on the disc and fwidth is correspondingly large there, so the
-    // panels came out as opaque struts across the world's face. The whole point of
-    // this shield is that a player can still read their own planet through it.
-    //
-    // lineHalf is in cell units, so a line is the same thickness at every zoom; the
-    // max only widens it once a cell has shrunk below a pixel, which is what stops
-    // the grid shimmering as the camera pulls out. It is NOT called half, which
-    // is a reserved word in GLSL ES.
-    // A flat derivative must not collapse smoothstep's two edges into one.
+    vec4 cell = hexCell(vec2(lon, lat) * uDensity);
+    float d = hexDist(cell.xy);
+    // A fixed line width, fwidth only softening it; a flat derivative must not collapse the edges.
     float aa = max(fwidth(d), 1e-5);
-    float lineHalf = max(0.018, aa * 0.8);
-    float edge = smoothstep(0.5 - lineHalf - aa, 0.5 - lineHalf, d);
-
-    float fresnel = pow(max(0.0, 1.0 - abs(dot(n, normalize(vViewW)))), 3.0);
-
-    /**
-     * EDGES EVERYWHERE, BRIGHT AT THE LIMB — and this split is the whole trick.
-     *
-     * A purely fresnel-weighted shell shows only a thin annulus, and a 2D pattern
-     * cannot be read inside a band a few pixels tall: the hexagons were being drawn
-     * and were invisible. Giving the edges a small constant term puts the panel
-     * mesh across the whole dome, where it is legible, while the fresnel term keeps
-     * the silhouette the bright part.
-     *
-     * There is NO fill term. Cell interiors are perfectly clear, which is what lets
-     * the player read their own world through the shield — the thing the owner
-     * asked for and the thing a tinted sphere cannot do at any opacity.
-     */
-    float alpha = edge * (0.13 + fresnel * 0.6) * vOpacity;
-    if (alpha < 0.002) discard;
-    gl_FragColor = vec4(vColour, alpha);
+    float lineHalf = max(0.03, aa * 0.8);
+    // Cells under about four pixels would shimmer into a solid band: the lattice fades out instead.
+    float lattice = smoothstep(0.5 - lineHalf - aa, 0.5 - lineHalf, d) * (1.0 - smoothstep(0.12, 0.3, aa));
+    float bands = smoothstep(0.82, 1.0, 0.5 + 0.5 * sin(n.y * 24.0 - t * 0.7)) * 0.5
+                + smoothstep(0.9, 1.0, 0.5 + 0.5 * sin(n.y * 6.0 + t * 0.25)) * 0.35;
+    float across = dot(n, normalize(vec3(0.12, 1.0, 0.22)));
+    float thin = across / 0.012;
+    float wide = across / 0.05;
+    float ring = exp(-(thin * thin)) + 0.35 * exp(-(wide * wide));
+    float blink = step(0.955, hash(cell.zw + floor(t * 0.6 + hash(cell.zw) * 3.0))) * vAlive;
+    float hit = 0.0;
+    for (int i = 0; i < ${String(AEGIS_HIT_SLOTS)}; i++) {
+      if (i >= uHitCount) break;
+      vec3 off = uHitCentre[i] - vCentre;
+      // Worlds never overlap: a hit within half a radius of this dome's centre is on this dome.
+      if (dot(off, off) > 0.25 * vRadius * vRadius) continue;
+      float age = uHitAge[i];
+      float apart = acos(clamp(dot(n, uHitDir[i]), -1.0, 1.0));
+      float wave = (apart - age * 0.75) / 0.07;
+      float core = apart / 0.1;
+      hit += exp(-(wave * wave)) * (1.0 - age) * (0.5 + 2.6 * lattice) + exp(-(core * core)) * (1.0 - age) * (1.0 - age) * 2.2;
+    }
+    hit *= vAlive;
+    float glow = rim * 0.6 + bands * rim * 0.75 + ring * (0.4 + 0.4 * rim) + lattice * (0.035 + 0.2 * rim) + blink * 0.18 * (0.5 + d);
+    float gain = ${String(WEAVE_GAIN)} * sqrt(max(vOpacity, 0.0) / ${STRANGER_OPACITY.toFixed(4)});
+    vec3 colour = (vColour * glow + mix(vColour, vec3(1.0), 0.45) * hit) * gain;
+    if (max(colour.r, max(colour.g, colour.b)) < 0.002) discard;
+    gl_FragColor = vec4(colour, 1.0);
   }
 `;
+
+/** The raid hits the dome program reads, newest first (`aegisHitUniforms`). */
+export interface DomeHitSlots { centres: THREE.Vector3[]; directions: THREE.Vector3[]; ages: number[] }
+
+export const domeHitSlots = (): DomeHitSlots => ({
+  centres: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3()),
+  directions: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3(1, 0, 0)),
+  ages: Array.from({ length: AEGIS_HIT_SLOTS }, () => -1),
+});
+
+/** The one material every dome is drawn with. */
+export function createShieldMaterial(hits: DomeHitSlots = domeHitSlots()): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: SHIELD_VERT,
+    fragmentShader: SHIELD_FRAG,
+    uniforms: {
+      uTime: { value: 0 },
+      // Whole cells around the equator, so the longitude seam closes.
+      uDensity: { value: PANELS_AROUND / (2 * Math.PI) },
+      uHitCount: { value: 0 },
+      uHitCentre: { value: hits.centres },
+      uHitDir: { value: hits.directions },
+      uHitAge: { value: hits.ages },
+    },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    // The near face alone, as the Weave was approved: its limb carries the silhouette the far
+    // wall once lent the old shell, at half the fragments.
+    side: THREE.FrontSide,
+    toneMapped: false,
+  });
+}
 
 /** One dome, as the instanced draw reads it. */
 export interface ShieldInstance {
@@ -666,24 +704,8 @@ export function Shields({
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
   useEffect(() => () => { farGeometry.dispose(); }, [farGeometry]);
 
-  const material = useMemo(
-    () => new THREE.ShaderMaterial({
-      vertexShader: SHIELD_VERT,
-      fragmentShader: SHIELD_FRAG,
-      uniforms: {
-        uTime: { value: 0 },
-        // Whole cells around the equator, so the longitude seam closes.
-        uDensity: { value: PANELS_AROUND / (2 * Math.PI) },
-      },
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      // Both faces: the far wall is what gives the limb its brightness.
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-    }),
-    [],
-  );
+  const hits = useMemo(domeHitSlots, []);
+  const material = useMemo(() => createShieldMaterial(hits), [hits]);
   useEffect(() => () => { material.dispose(); }, [material]);
 
   const visible = useMemo(() => createInstanceVisibility<ShieldInstance>(), []);
@@ -705,6 +727,8 @@ export function Shields({
   useVisualFrame(({ camera, clock }) => {
     const time = material.uniforms.uTime;
     if (time) time.value = clock.elapsedTime;
+    const count = material.uniforms.uHitCount;
+    if (count) count.value = aegisHitUniforms(serverNow(), hits);
     const near = mesh.current;
     const far = farMesh.current;
     if (!near || !far) return;

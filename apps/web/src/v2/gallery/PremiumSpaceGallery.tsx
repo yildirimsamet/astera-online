@@ -59,6 +59,7 @@ export function PremiumSpaceGallery() {
   const [focus, setFocus] = useState<Focus | null>(() => sceneFocus(initialMode(), 0, initialRock().rockId));
   const [centerSignal, setCenterSignal] = useState(0);
   const [cosmetic, setCosmetic] = useState(false);
+  const [aegis, setAegis] = useState(() => queryValue('aegis') === 'on');
   const [coreLevel, setCoreLevel] = useState<number>(() => DYSON_LEVELS.find(level => String(level) === queryValue('dyson')) ?? 6);
   const [monumentOrdinal, setMonumentOrdinal] = useState(() => MONUMENT_ORDINALS.find(ordinal => String(ordinal) === queryValue('monument')) ?? 2);
   const [craft, setCraft] = useState<InspectionCraft>(() => INSPECTION_CRAFT.find(item => item.id === queryValue('craft'))?.id ?? 'DART');
@@ -104,11 +105,11 @@ export function PremiumSpaceGallery() {
     }];
     if (sample.mode === 'battle' || sample.mode === 'strategic') return [{
       id: 'p-2', name: 'Tharsis', owner: 'Sable', isSelf: false, position: TARGET, coreTier: 2, coreLevel: 4,
-      satellites: [], shielded: false, intel: 'RESOLVED',
+      satellites: [], shielded: sample.mode === 'battle' && aegis, intel: 'RESOLVED',
       state: empAt === null ? { kind: 'NORMAL' } : { kind: 'EMP', until: new Date(empAt + DEATH_STAR.empMinutes * 60_000), hits: 1 },
     }];
     return [];
-  }, [cosmetic, coreLevel, sample.mode, empAt]);
+  }, [cosmetic, coreLevel, sample.mode, empAt, aegis]);
   const rocks = useMemo<AsteroidView[]>(() => sample.mode === 'asteroid' ? [{
     id: rockChoice.rockId, level: 5, ore: 2000, oreRemaining: 2000, crystalShare: 0.2, deuteriumShare: rockChoice.isotopeRich ? 0.1 : null,
     radius: 400, period: 240, phase: 0, inclination: 0.07, ascendingNode: 0,
@@ -164,6 +165,8 @@ export function PremiumSpaceGallery() {
                 setRockChoice(ASTEROID_OPTIONS[0]); saveSelection({ asteroid: 'isotope' }); replay(mode, ROCK_ID);
               } else replay(mode);
             }}>{label}</button>)}
+          {sample.mode === 'battle' && <button className={button} aria-pressed={aegis}
+            onClick={() => { setAegis(!aegis); saveSelection({ aegis: aegis ? 'off' : 'on' }); replay('battle'); }}>Aegis kalkanı</button>}
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <label className="flex min-w-0 flex-1 items-center gap-2 text-caption text-v2-ink-3">

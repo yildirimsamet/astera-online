@@ -174,6 +174,15 @@ describe('premium asset review gallery', () => {
     }
   });
 
+  it('lets the raided world carry an Aegis dome, to review the raid\'s hits on it', () => {
+    render(<PremiumSpaceGallery />);
+    fireEvent.click(screen.getByRole('button', { name: 'Savaş' }));
+    expect(scene().planets[0]?.shielded).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Aegis kalkanı' }));
+    expect(scene().planets[0]?.shielded).toBe(true);
+    expect(scene().planets[0]?.intel).toBe('RESOLVED');
+  });
+
   it('turns the struck world to its EMP hour when the galaxy would hear of it, as in the game', () => {
     vi.useFakeTimers();
     try {
