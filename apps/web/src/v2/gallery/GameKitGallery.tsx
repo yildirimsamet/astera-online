@@ -12,7 +12,7 @@ import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
-  FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
+  FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
@@ -681,6 +681,35 @@ function Catalog() {
             <StoreGauge resource="alloy" held={40_000} cap={40_000} safe={6_000} rate={900} label="Alaşım deposu" />
             <StoreGauge resource="crystal" held={300} cap={600} safe={120} rate={300} label="Kristal deposu" />
             <StoreGauge resource="deuterium" held={0} cap={300} safe={0} rate={0} label="Döteryum deposu" />
+          </div>
+        </Section>
+
+        <Section title="Kuyruk · iş yuvaları">
+          <div className="grid gap-2">
+            <div className="grid gap-1">
+              <span className="gk-label">İnşaat</span>
+              <div className="grid grid-cols-3 gap-1.5">
+                <QueueSlot art={art(BUILDING_ART.REFINERY)} name="Alaşım Rafinerisi" progress={0.62} left="1 sa 12 dk" state="running" label="Alaşım Rafinerisi · 1 sa 12 dk" onPress={() => undefined} />
+                <QueueSlot art={art(BUILDING_ART.SHIPYARD)} name="Tersane" progress={0} left="Sırada" state="waiting" label="Tersane · Sırada" onPress={() => undefined} />
+                <FreeSlot text="boş" />
+              </div>
+            </div>
+            <div className="grid gap-1">
+              <span className="gk-label">Tersane</span>
+              <div className="grid grid-cols-3 gap-1.5">
+                <QueueSlot art={art(HULL_ART.PIKE)} name="Kargı" count={12} progress={0.18} left="42 dk" state="running" label="Kargı ×12 · 42 dk" onPress={() => undefined} />
+                <QueueSlot art={art(HULL_ART.RAMPART)} name="Sur" count={4} progress={0} left="Sırada" state="waiting" label="Sur ×4 · Sırada" onPress={() => undefined} />
+                <QueueSlot art={art(HULL_ART.DART)} name="Ok" count={30} progress={0} left="Sırada" state="waiting" label="Ok ×30 · Sırada" onPress={() => undefined} />
+              </div>
+            </div>
+            <div className="grid gap-1">
+              <span className="gk-label">Tatilde · sahiplenmeden önce</span>
+              <div className="grid grid-cols-3 gap-1.5">
+                <QueueSlot art={art(BUILDING_ART.CORE)} name="Komuta Çekirdeği" progress={0.4} left="Duraklatıldı — tatil modu" state="paused" label="Komuta Çekirdeği · Duraklatıldı" onPress={() => undefined} />
+                <QueueSlot art={art(BUILDING_ART.VAULT)} name="Kasa" progress={0} left="sahiplenince başlar" state="staged" label="Kasa · sahiplenince başlar" onPress={() => undefined} />
+                <FreeSlot text="boş" />
+              </div>
+            </div>
           </div>
         </Section>
 

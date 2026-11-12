@@ -10,8 +10,8 @@ export {
 export { ART_ICONS, ART_SIZES, ArtIcon, DOCK_ART, artIconSrc, type ArtIconId, type ArtSize } from './art.js';
 export { GLYPH_IDS, Glyph, type GlyphId } from './icons.js';
 export {
-  CargoBar, CountBadge, Dot, Emblem, LevelBadge, ListRow, LockBadge, MultiplierBadge, ProgressBar, RangeBars, ResourceHud, SpendBar,
-  StatPlaque, StatusChip, StoreGauge, Timer, type BarTone, type HudResource, type StatTone, type StatusTone,
+  CargoBar, CountBadge, Dot, Emblem, FreeSlot, LevelBadge, ListRow, LockBadge, MultiplierBadge, ProgressBar, QueueSlot, RangeBars, ResourceHud,
+  SpendBar, StatPlaque, StatusChip, StoreGauge, Timer, type BarTone, type HudResource, type SlotState, type StatTone, type StatusTone,
 } from './readouts.js';
 export { Banner, CoachMark, CutPlate, Dialog, EmptyState, Plate, SectionTag, SheetFrame, Well } from './surfaces.js';
 export { CLAN_LEVEL_ART, ClanEmblem, ClanLevelBadge, FLAG_IDS, HONOR_ART, HonorBadge, flagTileSrc, type FlagId } from './ranks.js';

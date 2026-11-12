@@ -1091,6 +1091,175 @@
   font-size: var(--gk-t-lead);
 }
 
+/* ── a slot of work: ring around the picture, name and time beside it ──────── */
+
+.gk-qslot {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 4px 5px 4px 3px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) linear;
+}
+.gk-qslot:active {
+  transform: translateY(1px) scale(0.98);
+}
+.gk-qslot__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gk-outline) 70%, transparent) 55%, transparent 72%);
+}
+.gk-qslot__ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.gk-qslot__ring circle {
+  fill: none;
+  stroke-width: 4px;
+}
+.gk-qslot__track {
+  stroke: color-mix(in srgb, var(--gk-ink) 14%, transparent);
+}
+.gk-qslot__arc {
+  stroke: var(--gk-good);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--gk-quick) var(--gk-ease);
+}
+.gk-qslot__art {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+/* a batch is counted on the ring's corner, so the name keeps the width beside it */
+.gk-qslot__count {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  z-index: 1;
+  padding: 0 3px;
+  border: 1px solid var(--gk-outline);
+  border-radius: 3px;
+  background: var(--gk-metal-1);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  line-height: 1.15;
+  color: var(--gk-ink);
+}
+/* the head is at work: a slow light runs round its ring, so a running slot never sits still */
+.gk-qslot[data-state='running'] .gk-qslot__ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 80%, color-mix(in srgb, var(--gk-good) 55%, transparent) 96%, transparent 100%);
+  mask: radial-gradient(circle, transparent 11px, var(--gk-ink) 12px 17px, transparent 17px);
+  animation: gk-spin 2.8s linear infinite;
+  pointer-events: none;
+}
+.gk-qslot__text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.gk-qslot__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  line-height: 1.2;
+}
+.gk-qslot__left {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  color: var(--gk-ink-2);
+}
+.gk-qslot__left .gk-glyph {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+.gk-qslot__time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-qslot[data-state='running'] .gk-qslot__left {
+  color: var(--gk-ink);
+}
+/* behind the head: no clock runs, so the picture dims and the word takes the warning colour */
+.gk-qslot[data-state='waiting'] .gk-qslot__left {
+  color: var(--gk-warn);
+}
+/* a vacation stops the clock: what was built stays drawn, in grey */
+.gk-qslot[data-state='paused'] .gk-qslot__arc {
+  stroke: var(--gk-ink-3);
+}
+.gk-qslot:is([data-state='waiting'], [data-state='paused'], [data-state='staged']) .gk-qslot__art {
+  opacity: 0.6;
+  filter: saturate(0.4);
+}
+/* a 320 px phone: a smaller ring buys the time its full width */
+@media (max-width: 339px) {
+  .gk-qslot {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px 3px 4px 2px;
+  }
+  .gk-qslot__ring {
+    width: 30px;
+    height: 30px;
+  }
+  .gk-qslot__art {
+    width: 21px;
+    height: 21px;
+  }
+  .gk-qslot[data-state='running'] .gk-qslot__ring::after {
+    mask: radial-gradient(circle, transparent 10px, var(--gk-ink) 11px 15px, transparent 15px);
+  }
+}
+.gk-qslot--free {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--gk-outline) 35%, transparent);
+  color: var(--gk-ink-3);
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  grid-template-columns: 1fr;
+  cursor: default;
+}
+.gk-qslot--free:active {
+  transform: none;
+}
+
 /* ── banners, peeks, empty, coach ──────────────────────────────────────────── */
 
 .gk-banner {

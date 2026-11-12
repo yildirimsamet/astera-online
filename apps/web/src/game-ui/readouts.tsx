@@ -300,6 +300,58 @@ export function Timer({ remaining, total, text, glyph = 'clock' }: { remaining: 
   );
 }
 
+/** Where an order stands: the head builds, the rest wait their turn; a vacation stops all. */
+export type SlotState = 'running' | 'waiting' | 'paused' | 'staged';
+
+const SLOT_MARK: Partial<Record<SlotState, GlyphId>> = { waiting: 'timed', paused: 'lock' };
+
+/**
+ * A SLOT OF WORK: a ring around the order's picture that fills as it builds, its name and
+ * the time left beside it. A slot is a glance, not a control: a press opens the sheet where
+ * an order is cancelled, which states the half that burns before it happens.
+ */
+export function QueueSlot({ art, name, count = 1, progress, left, state, label, onPress }: {
+  art: string | null;
+  name: string;
+  count?: number;
+  /** How far the order has built, 0 to 1. */
+  progress: number;
+  /** The time until it is done, or the word for why no clock runs. */
+  left: string;
+  state: SlotState;
+  label: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  const length = 2 * Math.PI * 16;
+  const built = Math.min(1, Math.max(0, progress));
+  const mark = SLOT_MARK[state];
+  return (
+    <button type="button" className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-qslot__ring" aria-hidden="true">
+        <svg viewBox="0 0 38 38">
+          <circle className="gk-qslot__track" cx="19" cy="19" r="16" />
+          <circle className="gk-qslot__arc" cx="19" cy="19" r="16" strokeDasharray={length} strokeDashoffset={length * (1 - built)} />
+        </svg>
+        {art !== null && <img className="gk-qslot__art" src={art} alt="" draggable={false} />}
+        {count > 1 && <span className="gk-qslot__count gk-num">×{count}</span>}
+      </span>
+      <span className="gk-qslot__text">
+        <span className="gk-qslot__name">{name}</span>
+        <span className="gk-qslot__left gk-num">
+          {mark !== undefined && <Glyph id={mark} />}
+          <span className="gk-qslot__time">{left}</span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** An empty slot, said in words: the room left must be seen without counting. */
+export function FreeSlot({ text }: { text: string }) {
+  return <span className="gk-qslot gk-qslot--free" data-free-slot="">{text}</span>;
+}
+
 /** One line of a ranked list: medal, crest, name, the number it is ranked by. */
 export function ListRow({
   rank, crest, name, sub, value, me = false, onPress,
