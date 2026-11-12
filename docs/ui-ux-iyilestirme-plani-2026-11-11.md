@@ -619,8 +619,24 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 4. Kelime bütçesi (≤ 55 kelime/ekran, ≤ 1 uzun blok) ve yalnız renkle anlatılan bilgi denetlenir.
 5. Ölçüm temiz (T1, kontrast, 44 px, aralık, basma tepkisi, kesilme) ve testler yeşil.
 6. Owner görsele bakar; bakmadan sonraki ekrana geçilmez.
+7. **VFX (2026-11-12 eklendi):** ekrana ait efektler (`docs/ui-kit-varlik-secimi-2026-11-12.md`, pano D) sahnesine girer. Her efekt girer girmez S22'de kare süresiyle ölçülür (owner telefonu istenince bağlar, 2026-11-12). Büyük ve parlak olanlar flaş analizinden geçer.
 
 **Ekranlara gelince bakılacaklar:** galakside kenardan başlayan kamera sürüklemesi ile telefonun geri hareketi (1.14 #1); v2 rakip pembesi ve klan mavisi kite gelirse sınıf renkleriyle kıyas; K4 ölçütü yalnız sürüklenen kontrolleri sayacak şekilde düzeltilir (en sondaki tam ölçümden önce).
+
+**VFX'in ekranlara dağılımı (2026-11-12; owner sordu, seçim belgesindeki "4. aşamada ekranla birlikte" cümlesinin planı):**
+
+| Ekran | Efekt | Yer |
+|---|---|---|
+| 4.2 (4.1'den taşındı) | bina bitti / seviye atladı: `astral-convergence` | galakside gezegenin üstünde; kuyruk yuvası bittiğinde |
+| 4.2 | hasarlı gemi dumanı `smoke-puff`, yanan gemi `flame-style` | tamirhanedeki hasarlı gemi |
+| 4.3 | radar ve teleskop taraması (Sci-Fi Pack flipbook) | tarama başlarken, sonda yoldayken |
+| 4.4 | kalkış/varış sıçraması `astral-gate`; motor alevi (mevcut) | galaksi sahnesi |
+| 4.5 | plazma atışı `plasma-bolt`, gemi patlaması (mevcut + `fire-explosion`), şok halkası | savaş tekrarı, arena |
+| 4.6 | ödül patlaması (Layer Lab ışın, yıldız, parçacık) | sandık açılırken |
+| Savunma sekmesi | Aegis kalkanı `aegis-weave` | galakside gezegenin çevresi |
+| Kalan ekranlar | Ölüm Yıldızı ışını `charged-beam`, madencilik ışını `continuous-beam`, radyasyon bombası alanı (mevcut) | taktik sekmesi, madencilik |
+
+**V0, ilk three.js efektinden önce (4.2 başında):** 00GameDevs motoru (~570 KB, her efektte bir kopya) tek modüle ayrılır; flipbook'lar 1024–2048 px'e küçülür, büyükleri KTX2 olur.
 
 ### 4.1 Üs: inşa ve üretim
 
