@@ -272,7 +272,7 @@ Bilinmeyen kısım 3D'deki patlama ve isabetler.
 | Ses ve haptiğin her eylemde olup olmadığı | 1.4 kaba listeyi verir; ayrıntı ekran ekran | 4 |
 | 3D seçim hedefleri (gezegen, filo işaretçisi) | DOM dışında. 1'de koddan bakıldı: gezegenin dokunma alanı uzakta en az 24 px çap (`galaxy/planetPick.ts`, 12 px yarıçap), 44 px önerisinin altında. Asteroit (`asteroidHitRadius`) ve filo (`UNKNOWN_PICK_BOUNDS`) dünya biriminde sabit; ekrandaki boyutu yakınlaştırmaya bağlı. Ölçmek için kameradan izdüşüm yapan bir geliştirici köprüsü gerekir (`starter/tutorial/rockReach.ts` aynı hesabı asteroitler için zaten yapıyor) | 4 |
 | Kullanılmayan kod: `onboarding/Academy.tsx`, `Rehearsal.tsx`, `BeatCard.tsx` ve yalnız onlardan çağrılan `shell/StatusBar.tsx` (1820 satır; oyunda hiçbir yer içe aktarmıyor, 10 test dosyası bağlı) | Owner 2026-11-11: "Şimdilik dursunlar." Ölçüme girmiyorlar (envanterde yoklar) | Owner yeniden sorarsa |
-| Kırpılma kuralı düzeltmesiyle tam yeniden ölçüm (~8 saat; 1.7) | Owner 2026-11-11: sonraki işler beklemesin, en sonda koşulsun. "Önce" hâli `fb70004a`'dan ölçülür | Son aşamanın sonu |
+| Kırpılma kuralı düzeltmesiyle tam yeniden ölçüm (~8 saat; 1.7) | Owner 2026-11-11: sonraki işler beklemesin, en sonda koşulsun. "Önce" hâli `fb70004a`'dan ölçülür. **Ek (2026-11-12, a79d5ce6):** kaydırılarak ölçülen sayfalarda 2. parçadan sonraki hedeflerin CSS basma tepkisi yanlış öğede deneniyordu. Baseline'daki "tepki yok" sayısı uzun sayfalarda bu yüzden fazla; yeniden ölçüm bunu da düzeltir. Tek parçalı ekranlar etkilenmedi | Son aşamanın sonu |
 | Haritada ~1 px'lik bilgi kartı (göz kontrolünde bulundu, 1.7) | Uzaktaki muhafızın kartı ölçekle küçülüp okunamaz bir lekeye dönüşüyor; gizleme eşiği bir ekran kararı | 4 |
 | Gerçek cihazda (S22) okunabilirlik ve flaş | Owner onayladı | 1. aşamanın sonu (1.12) |
 | Metin bütçesi: hangi metin silinir, kısalır, dokununca açılan sheet'e taşınır | 1. aşama yalnız ölçer (W1, araştırma §7.3). Bütçe bir standart kararı | Karar 2, uygulama 4 (en yoğun ekranlardan başlayarak) |
@@ -573,3 +573,29 @@ Owner isteği: "Komple full bir ui-kit oluştur. Birbirleriyle uyumlu olsun; bun
 - **9-slice dokular alınmadı;** gerekçesi belgede.
 - **Codex işleri bitti:** 25 ikon ev tarzında çizildi ve 160/64/48/32 px'te denetlendi (kapsül, kargo, yuva, kilit, hediye, reklam ödülü, Ölüm Yıldızı, 4 alt menü, 7 menü, 7 kozmetik). Sıralama ikonu ikinci sürümüyle alındı. Toplu görünüm: `out/ui-kit/assets/codex/codex-ikonlar.png`. Henüz kite girmedi.
 - **Ses:** Owner 6 Kenney ses paketi indirdi (CC0): arayüz, UI, dijital, bilim kurgu, çarpma, nesne. Kütüphanede 498 ses var (Space Combat Kit'in 33'ü dahil). Eşleme kitin entegrasyon turunda yapılır.
+
+**Durum güncellemesi (2026-11-12):** Resimli ikonlar (32) ve seçilen 8 arayüz sesi kitte. 18 eski ince glif paketlerden yeniden çizildi. Kit kendi ölçüm yüzeyine kavuştu. Kalanlar: VFX ve S22 turu.
+
+## Aşama 3: Altyapı (taslak, 2026-11-12, owner ile planlanacak)
+
+Kural 4 gereği bu taslak owner ile detaylandırılmadan uygulamaya geçilmez.
+
+**Amaç:** 2.2–2.9 kararlarını kitte tek bir yere, token'a bağlamak ve koruyucu testle kilitlemek. Böylece kit 4. aşamada ekranlara hazır hâle gelir. Oyun ekranları bu aşamada da değişmez.
+
+| # | İş | Çıktı | Bitiş ölçütü |
+|---|---|---|---|
+| 3.1 | Yazı ölçeği "Bugün" | `--gk-text-*` token'ları: 9 / 10 / 12 / 12 / 16 / 18. Dar başlık fontu için başlık ve buton yazısı ölçülerek +1–2 px | Test: kit dosyalarında token dışında font boyutu yok |
+| 3.2 | Metin bütçesi "Bütçeli" | Ekran tipine göre kelime sınırı ölçüm aracına girer | Kit ölçümünde sınırı aşan ekran yok |
+| 3.3 | Dokunma 44 px | `gk-hit` yardımcısı: görünen parça küçük kalabilir, dokunma alanı 44 px olur | Kit ölçümünde 44 px altında hedef yok |
+| 3.4 | Renk rolleri A | Token'lar ve kural testleri hazır | Hazır |
+| 3.5 | Süreler | Panel için `--gk-dur-panel: 160ms`. Basılı tutmada üç ağırlık: 0,6 / 1 / 1,5 sn | Test: panel geçişleri token'dan gelir; `GameHold` ağırlık alır |
+| 3.6 | Kenar boşluğu 12 px | `--gk-gutter: 12px` | Test: kit ekran kenarı token'dan gelir |
+| 3.7 | Sayı biçimi K/M | Tek `formatShort()` (240,1K · 1,4M), altı dilde | Birim testleri: sınırlar, yuvarlama, negatif sayı, dil |
+| 3.8 | Kit ölçümü | `pnpm ui:audit run --kit` | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
+| 3.9 | S22 turu | Kit ekranları telefonda | Owner dokunarak onaylar |
+
+**Owner'a sorular:**
+
+1. **Başlık ve buton yazısı:** Saira dar yüz, aynı piksel boyutunda Russo One'dan küçük görünüyor. Bu iki rolü ölçerek 1–2 px büyütelim mi?
+2. **%115 yazı boyutu ayarı:** "Bugün" ölçeğinin güvenlik supabı olarak 5. aşamadan bu aşamaya alalım mı?
+3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?
