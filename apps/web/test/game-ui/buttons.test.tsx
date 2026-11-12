@@ -50,6 +50,18 @@ describe('the hold action', () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
+  it('holds as long as the weight of its action asks', () => {
+    const onCommit = vi.fn();
+    render(<GameHold label="Leave" detail="cannot be undone" holdMs={1500} onCommit={onCommit} />);
+    const button = screen.getByRole('button', { name: /Leave/ });
+    expect(button.style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+    fireEvent.pointerDown(button, { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS); });
+    expect(onCommit).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1500 - HOLD_MS); });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+
   it('commits nothing on a tap and refuses with a reason', () => {
     const onCommit = vi.fn();
     const { rerender } = render(<GameHold label="Attack" detail="39 ships" onCommit={onCommit} />);

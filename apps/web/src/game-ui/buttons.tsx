@@ -132,6 +132,8 @@ export interface GameHoldProps {
   tone?: 'action' | 'danger';
   glyph?: GlyphId;
   commitSound?: SoundCue;
+  /** How long the press must stay down; heavier actions hold longer. */
+  holdMs?: number;
 }
 
 /**
@@ -140,7 +142,7 @@ export interface GameHoldProps {
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm',
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', holdMs = HOLD_MS,
 }: GameHoldProps) {
   const { t } = useTranslation();
   const hintId = useId();
@@ -150,7 +152,7 @@ export function GameHold({
     setCommitted((n) => n + 1);
     onCommit();
   };
-  const { holding, confirming, nudge, handlers } = useHoldPress(commit, disabledReason !== null);
+  const { holding, confirming, nudge, handlers } = useHoldPress(commit, disabledReason !== null, holdMs);
 
   useEffect(() => {
     if (committed === 0) return undefined;
@@ -168,7 +170,7 @@ export function GameHold({
     );
   }
 
-  const style: CssVars = { '--gk-hold-ms': `${String(HOLD_MS)}ms` };
+  const style: CssVars = { '--gk-hold-ms': `${String(holdMs)}ms` };
   const hint = confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : t('hold.verb');
   return (
     <>

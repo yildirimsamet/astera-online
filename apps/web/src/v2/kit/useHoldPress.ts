@@ -34,9 +34,10 @@ export interface HoldPress {
  * THE HOLD-TO-COMMIT GESTURE, WITHOUT ITS FACE. Spec B9, decision K4. Shared by the
  * v2 `HoldButton` and the game kit's hold action so both keep one set of rules:
  * the press must begin on the button (`useOwnPress`), Space holds, Enter confirms
- * twice, and a release that came too soon says so.
+ * twice, and a release that came too soon says so. `holdMs` lets a heavier action
+ * ask for a longer hold.
  */
-export function useHoldPress(onCommit: () => void, disabled: boolean): HoldPress {
+export function useHoldPress(onCommit: () => void, disabled: boolean, holdMs = HOLD_MS): HoldPress {
   const timer = useRef<number | null>(null);
   const [holding, setHolding] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -66,7 +67,7 @@ export function useHoldPress(onCommit: () => void, disabled: boolean): HoldPress
       setHolding(false);
       haptic('commit');
       onCommit();
-    }, HOLD_MS);
+    }, holdMs);
   };
 
   useEffect(() => () => {

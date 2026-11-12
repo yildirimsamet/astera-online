@@ -21,7 +21,7 @@ Başlangıç: 2026-11-11. Dayanak: [`mobil-ui-ux-arastirmasi-2026-11-11.md`](mob
 |---|---|---|
 | 0 | Araştırma raporu ve review'ı | ✅ Bitti |
 | 1 | Ölçüm aracı, başlangıç ölçümü ve flaş güvenliği | 🔍 Uygulandı ve review edildi (1.14); owner kontrolü ve iki karar bekliyor. Tam yeniden ölçüm en sona kaldı (1.9) |
-| 2 | Standart kararları (owner ile): **oyun arayüzü dili (sanat yönü)**, yazı ölçeği, dokunma alanı, renk, metin bütçesi, süreler | ⏳ |
+| 2 | Standart kararları (owner ile): **oyun arayüzü dili (sanat yönü)**, yazı ölçeği, dokunma alanı, renk, metin bütçesi, süreler | 🔍 2.1 kararlandı (yön B, Russo One). 2.2–2.8 paketleri hazır, owner kararı bekliyor: [karar paketleri](ui-standart-karar-paketleri-2026-11-12.md) |
 | 3 | Altyapı: token'lar, dokunma alanı yardımcısı, koruyucu testler, **oyun arayüzü kiti** (font, buton ve panel malzemeleri, ikon seti, basma animasyonu, ses ve titreşim eşlemesi; galeride hazır parça olarak; owner onayı 2026-11-11) | ⏳ |
 | 4 | Ekran ekran uygulama (ilk deneyim akışından başlayarak) | ⏳ |
 | 5 | Erişilebilirlik ayarları: yazı boyutu, haptik, basılı tutma alternatifi, flaş azaltma | ⏳ |
@@ -446,6 +446,8 @@ Owner seçer; karar standarda yazılır.
 | 2.6 | Süreler ve geri bildirim | Basılan hedeflerin %96'sında tepki yok; 989 geçiş 300 ms'den uzun; basılı tutma 165–850 ms arasında dağınık | Basma tepkisi ≤100 ms; buton animasyonu 80–160 ms; geçişler 150–300 ms; eylemin ağırlığına göre basılı tutma süresi ve dokunma alternatifi; ses ve titreşim katmanları |
 | 2.7 | Boşluk | Değerlerin %38'i 4 px ızgarasının dışında (L2) | Izgara ve iç/dış boşluk ilişkisi |
 | 2.8 | Sayı biçimi (öneri) | Araştırma §9.6: `Intl` "1,2 B" veriyor, oyunlarda yaygın olan "1.2K" | Kısa sayı biçimi ve "mevcut → yeni" gösterimi |
+
+**Karar paketleri (2026-11-12):** 2.2–2.8'in her biri [ui-standart-karar-paketleri-2026-11-12.md](ui-standart-karar-paketleri-2026-11-12.md) içinde. Seçenekler galeride `?view=ui-kit-standard` görünümünde yan yana. Owner kararı bekliyor; hiçbir oyun ekranı değişmedi.
 
 **Sanat üretimi: ne zaman, kim, nasıl (owner onayı 2026-11-11):**
 
