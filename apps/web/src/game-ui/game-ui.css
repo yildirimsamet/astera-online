@@ -1260,6 +1260,36 @@
   transform: none;
 }
 
+/* a lane: its name over its slots, three to a row */
+.gk-lane {
+  display: grid;
+  gap: 4px;
+}
+.gk-lane__slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+/* nothing building: one line, the capacity still said */
+.gk-queues-idle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-queues-idle .gk-tag__rule {
+  flex: 1;
+}
+.gk-queues-idle__what {
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+
 /* ── what a thing costs: resources as pictures, the short one marked, the time at the end ── */
 
 .gk-cost {

@@ -368,7 +368,7 @@ describe('the two build queues', () => {
     const queues = screen.getByRole('region', { name: 'Build queues' });
     expect(within(queues).getByText('Construction')).toBeInTheDocument();
     expect(within(queues).getByText('Yard')).toBeInTheDocument();
-    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(2);
+    expect(queues.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(2);
     const lanes = within(queues).getAllByRole('button');
     expect(lanes[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
     expect(lanes[1]?.getAttribute('aria-label') ?? '').toMatch(/Dart/);
@@ -427,7 +427,7 @@ describe('the two build queues', () => {
       send a guaranteed 404 is worse than no control.
     */
     const queues = screen.getByRole('region', { name: 'Build queues' });
-    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(1);
+    expect(queues.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(1);
     await userEvent.click(within(queues).getAllByRole('button')[0]!);
     const sheet = await screen.findByRole('dialog', { name: 'Build queues' });
     expect(within(sheet).queryByRole('button', { name: /^Cancel / })).toBeNull();
