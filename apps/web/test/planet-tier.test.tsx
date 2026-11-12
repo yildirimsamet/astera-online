@@ -66,7 +66,8 @@ describe('a commander can read their own world’s tier', () => {
    */
   it('sets it in micro type', () => {
     const view = render(<PlanetHero planet={at(9)} />);
-    expect(view.container.querySelector('[data-planet-tier]')).toHaveClass('text-micro');
+    // Stage 4.1: the kit's caption step (`--gk-t-floor`), the sheet's smallest.
+    expect(view.container.querySelector('[data-planet-tier]')).toHaveClass('gk-hero__tier');
   });
 
   it.each(['tr', 'en'])('names the figure in %s', async (lang) => {

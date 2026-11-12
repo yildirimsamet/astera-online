@@ -82,7 +82,7 @@ describe('the planet hero states colony loyalty', () => {
   it('draws loyalty in your colour, never grey', () => {
     render(<PlanetHero planet={planetView({ loyalty: { value: 80, minutesLeft: null } })} />);
     const bar = screen.getByTestId('loyalty-line').querySelector('[data-loyalty-bar]')!;
-    expect(bar).toHaveClass('bg-v2-self');
+    expect(bar).toHaveClass('gk-fill-self');
     expect(bar.className).not.toMatch(/ink|bone|grey|gray/);
   });
 

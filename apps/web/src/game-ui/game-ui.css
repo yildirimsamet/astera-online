@@ -855,6 +855,7 @@
 }
 .gk-fill-good { --fill-hi: var(--gk-good-hi); --fill: var(--gk-good); --fill-lo: var(--gk-good-lo); }
 .gk-fill-hostile { --fill-hi: var(--gk-hostile-hi); --fill: var(--gk-hostile); --fill-lo: var(--gk-hostile-lo); }
+.gk-fill-self { --fill-hi: var(--gk-self-hi); --fill: var(--gk-self); --fill-lo: var(--gk-self-lo); }
 .gk-fill-warn { --fill-hi: var(--gk-warn); --fill: var(--gk-warn); --fill-lo: color-mix(in srgb, var(--gk-warn) 60%, var(--gk-outline)); }
 .gk-fill-deut { --fill-hi: var(--gk-good-hi); --fill: var(--gk-deut); --fill-lo: var(--gk-good-lo); }
 .gk-fill-alloy { --fill-hi: var(--gk-alloy-hi); --fill: var(--gk-alloy); --fill-lo: var(--gk-alloy-lo); }
@@ -947,6 +948,118 @@
 }
 .gk-stores__rule {
   margin-top: -2px;
+}
+/* the world as the hero: its name, its kind and tier, the orbit in words under it */
+.gk-hero__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--gk-t-title);
+}
+.gk-hero__kind {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--gk-ink-3);
+}
+.gk-hero__tier {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gk-ink-2);
+}
+.gk-hero__orbit {
+  font-size: var(--gk-t-floor);
+  text-align: center;
+  color: var(--gk-ink-3);
+}
+/* a socket on the ring: fitted (lit), free (dashed), dark until the Core opens it */
+.gk-socket {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--gk-metal-edge);
+  background: color-mix(in srgb, var(--gk-deep) 80%, transparent);
+  color: var(--gk-ink-3);
+}
+.gk-socket .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-socket[data-orbit-slot='held'] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  background: var(--gk-metal-2);
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-socket[data-orbit-slot='open'] {
+  border-style: dashed;
+  border-color: var(--gk-ink-3);
+  background: color-mix(in srgb, var(--gk-deep) 60%, transparent);
+}
+.gk-socket__art {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.gk-socket[data-orbit-slot='inactive'] .gk-socket__art {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.gk-socket__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+}
+.gk-socket__badge .gk-glyph {
+  width: 10px;
+  height: 10px;
+}
+.gk-socket__level {
+  position: absolute;
+  bottom: -15px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+/* a colony's loyalty: the bar in your colour (the threat's red when low), the time it lasts */
+.gk-loyalty {
+  display: grid;
+  gap: var(--gk-s1);
+  padding-top: var(--gk-s1);
+  border-top: 1px solid var(--gk-metal-edge);
+}
+.gk-loyalty__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-loyalty__bar {
+  flex: 1;
+  height: 6px;
+}
+.gk-loyalty__value {
+  font-weight: 700;
+}
+.gk-loyalty__guard {
+  margin-top: var(--gk-s1);
+  padding: 6px var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 25%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-self) 6%, transparent);
+}
+.gk-loyalty__guarded {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
 }
 /* what a world takes off radiation: a coin of its tone, the reading, the rule one "?" away */
 .gk-shelter {
