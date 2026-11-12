@@ -886,7 +886,7 @@ export const faults = {
     title: "この惑星の忠誠度",
     battleLoss: "部分的敗北 −15 · 決定的敗北 −30 · デス・スター −{{strike}}",
     line: "忠誠度：{{value}}%。{{count}}件の故障により低下しています。この速度では{{time}}後にゼロとなり、植民地を失います。",
-    bar: "忠誠度{{value}}%",
+    bar: "{{value}}%",
     left: "残り{{time}}",
   },
   price: {

@@ -840,7 +840,7 @@ export const faults = {
     title: "Bu dünyanın sadakati",
     battleLoss: "Hafif yenilgi −15 · ağır yenilgi −30 · Ölüm Yıldızı −{{strike}}",
     line: "Sadakat: %{{value}}. {{count}} arıza nedeniyle düşüyor. Bu hızla {{time}} içinde sıfıra ulaşır ve koloniyi kaybedersin.",
-    bar: "Sadakat %{{value}}",
+    bar: "%{{value}}",
     left: "{{time}} kaldı",
   },
   price: {

@@ -882,7 +882,7 @@ export const faults = {
     title: "Die Loyalität dieser Welt",
     battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30 · Todesstern −{{strike}}",
     line: "Loyalität: {{value}} %. Sie sinkt bei {{count}} aktiven Störungen. Bei diesem Tempo erreicht sie in {{time}} null und du verlierst die Kolonie.",
-    bar: "Treue {{value}}%",
+    bar: "{{value}}%",
     left: "{{time}} übrig",
   },
   price: {

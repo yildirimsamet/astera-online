@@ -57,6 +57,15 @@ describe('an upgrade as a card', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  /** A full queue is not a lock: time lifts it, so the card wears the hourglass (stage 4.1). */
+  it('wears the hourglass, not the lock, on a refusal that time lifts', () => {
+    const { unmount } = render(<UpgradeRow {...base} blocked={{ reason: 'Queue full', waits: true }} onOpen={vi.fn()} />);
+    expect(document.querySelector('[data-blocked-reason]')).toHaveAttribute('data-waits');
+    unmount();
+    render(<UpgradeRow {...base} blocked={{ reason: 'Needs Core L7' }} onOpen={vi.fn()} />);
+    expect(document.querySelector('[data-blocked-reason]')).not.toHaveAttribute('data-waits');
+  });
+
   it('says when a card it cannot pay for will be affordable, in the words its sheet uses', () => {
     render(<UpgradeRow {...base} held={{ alloy: 25, crystal: 0 }} income={{ alloyPerHour: 60, crystalPerHour: 60 }} onOpen={vi.fn()} />);
     // short 100 alloy and 34 crystal at 60 an hour: the alloy is the longer wait, 100 minutes

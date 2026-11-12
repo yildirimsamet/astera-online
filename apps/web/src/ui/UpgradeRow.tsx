@@ -46,6 +46,8 @@ export interface Blocked {
   reason: string;
   /** Takes the player to the thing that would unblock it. */
   onFix?: () => void;
+  /** A refusal time lifts (a full queue), not a condition to meet: the hourglass, not the lock. */
+  waits?: boolean;
 }
 
 /**
@@ -372,8 +374,8 @@ export function UpgradeRow({
                 <Glyph id="next" />
               </button>
             ) : (
-              <p data-blocked-reason className="gk-bcard__note" data-tone="warn">
-                <Glyph id="lock" />
+              <p data-blocked-reason className="gk-bcard__note" data-tone="warn" {...(blocked.waits ? { 'data-waits': '' } : {})}>
+                <Glyph id={blocked.waits ? 'timed' : 'lock'} />
                 <span>{blocked.reason}</span>
               </p>
             )

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
-import type { PlanetView } from '../src/api/schemas.js';
+import type { BuildOrderView, PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
@@ -132,6 +132,27 @@ describe('the tab bar', () => {
  * The close has its own stable Sheet header row. The category bar keeps its width
  * while the page scrolls, so it never shifts to make room for the close.
  */
+/** Stage 4.1: a full construction queue refuses a card with the hourglass — time lifts it, not a condition. */
+describe('a full construction queue', () => {
+  it('refuses the next building as a wait, not a lock', () => {
+    const now = Date.now();
+    const order = (id: string, slot: number, subject: string): BuildOrderView => ({
+      id, queue: 'CONSTRUCTION', slot, kind: 'BUILDING', subject, count: 1,
+      startedAt: new Date(now + slot * 60_000), finishesAt: new Date(now + (slot + 1) * 60_000),
+      cost: { alloy: 1, crystal: 1, deuterium: 0 },
+    });
+    current = planetView(
+      { buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 }, queues: { CONSTRUCTION: [order('a', 0, 'CORE'), order('b', 1, 'EXTRACTOR'), order('c', 2, 'VAULT')], YARD: [] } },
+      { alloy: 900_000, crystal: 400_000, alloyCap: 2_000_000, crystalCap: 900_000 },
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><ToastProvider><PlanetScreen focusGroup="grow" /></ToastProvider></QueryClientProvider>);
+    const refinery = document.querySelector('#row-REFINERY [data-blocked-reason]');
+    expect(refinery).toHaveTextContent(/3 orders/i);
+    expect(refinery).toHaveAttribute('data-waits');
+  });
+});
+
 describe('the category bar pinned to the top', () => {
   it('keeps its full width without a scroll-dependent close-button gap', () => {
     show();

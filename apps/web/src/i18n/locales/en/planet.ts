@@ -886,7 +886,7 @@ export const faults = {
     title: "This world's loyalty",
     battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
     line: "Loyalty: {{value}}%. Falling with {{count}} active faults. At this rate, it reaches zero in {{time}} and you lose the colony.",
-    bar: "Loyalty {{value}}%",
+    bar: "{{value}}%",
     left: "{{time}} left",
   },
   price: {

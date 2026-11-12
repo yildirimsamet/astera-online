@@ -882,7 +882,7 @@ export const faults = {
     title: "La lealtad de este mundo",
     battleLoss: "Derrota parcial −15 · derrota decisiva −30 · Estrella de la Muerte −{{strike}}",
     line: "Lealtad: {{value}} %. Disminuye con {{count}} averías activas. A este ritmo llega a cero en {{time}} y pierdes la colonia.",
-    bar: "Lealtad {{value}}%",
+    bar: "{{value}}%",
     left: "Quedan {{time}}",
   },
   price: {

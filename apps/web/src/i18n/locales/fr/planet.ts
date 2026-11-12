@@ -846,7 +846,7 @@ export const faults = {
     title: "Loyauté de ce monde",
     battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
     line: "Loyauté : {{value}} %. Elle baisse avec {{count}} pannes actives. À ce rythme, elle atteint zéro dans {{time}} et tu perds la colonie.",
-    bar: "Loyauté %{{value}}",
+    bar: "{{value}} %",
     left: "{{time}} restantes",
   },
   price: {

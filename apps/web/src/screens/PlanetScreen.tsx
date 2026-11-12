@@ -1065,6 +1065,9 @@ function Tabs({
   );
 }
 
+/** Three orders already waiting: a refusal the queue lifts as one finishes (the hourglass, not the lock). */
+const queueFull = (): Blocked => ({ reason: i18n.t('planet.blocked.queueFull'), waits: true });
+
 /* ── shared plumbing ────────────────────────────────────────── */
 
 interface GroupProps {
@@ -1172,7 +1175,7 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
             onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
           }
           : orders.length >= BUILD.queueDepth
-            ? { reason: i18n.t('planet.blocked.queueFull') }
+            ? queueFull()
             : undefined;
 
     return {
@@ -1272,7 +1275,7 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
           onFix: () => { onNeed(needsUplink ? 'UPLINK' : 'CORE'); },
         }
         : orders.length >= BUILD.queueDepth
-          ? { reason: i18n.t('planet.blocked.queueFull') }
+          ? queueFull()
           : undefined;
 
     return {
@@ -1324,7 +1327,7 @@ function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
       !owned && free <= 0
         ? { reason: i18n.t('planet.blocked.orbitSlot'), onFix: () => { onNeed('CORE'); } }
         : orders.length >= BUILD.queueDepth
-          ? { reason: i18n.t('planet.blocked.queueFull') }
+          ? queueFull()
           : undefined;
 
     return {
@@ -1601,7 +1604,7 @@ function Defend({
           verb="build"
           onAct={() => { onBuild('THORN'); }}
           {...(yardOrders.length >= BUILD.queueDepth
-            ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+            ? { blocked: queueFull() }
             : {})}
           {...(queuedThorns > 0
             ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
@@ -1635,7 +1638,7 @@ function Defend({
               onFix: () => { onNeed('SHIPYARD'); },
             } satisfies Blocked }
             : yardOrders.length >= BUILD.queueDepth
-              ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+              ? { blocked: queueFull() }
               : {})}
           {...(queuedHarpoons > 0 ? { queued: t('planet.queue.unitsQueued', { count: queuedHarpoons }) } : {})}
           queuedActionable
@@ -1677,9 +1680,7 @@ function Defend({
               } satisfies Blocked,
             }
             : yardOrders.length >= BUILD.queueDepth
-              ? {
-                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
-              }
+              ? { blocked: queueFull() }
               : {})}
           {...(queuedBastions > 0
             ? { queued: t('planet.queue.unitsQueued', { count: queuedBastions }) }
@@ -2175,9 +2176,7 @@ function Reach({
           {...(accessBlock
             ? { blocked: accessBlock }
             : yardOrders.length >= BUILD.queueDepth
-              ? {
-                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
-              }
+              ? { blocked: queueFull() }
               : {})}
           {...(queued ? { queued } : {})}
           queuedActionable
@@ -2785,7 +2784,7 @@ export function BuildSheet({
   const yardOrders = planet.queues?.YARD.length ?? 0;
   const blocked: Blocked | undefined = accessBlock
     ?? (yardOrders >= BUILD.queueDepth
-      ? { reason: t('planet.blocked.queueFull') }
+      ? queueFull()
       : undefined);
 
   const affordable = Math.min(
