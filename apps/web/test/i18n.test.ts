@@ -562,6 +562,15 @@ describe('every added language keeps the locale contract', () => {
   });
 });
 
+/** Stage 4.1: the Bellows lines listed "alaşım, kristal ve Döteryum" — one capital in a run of three. */
+describe('a list of the three resources writes them alike', () => {
+  it('keeps deuterium lower-case beside alloy and crystal on the Bellows', () => {
+    for (const line of [tr.planet.grow.multiplierNote, tr.gains.foundry.unlocks]) {
+      expect(line).toMatch(/alaşım, kristal ve döteryum/);
+    }
+  });
+});
+
 describe('queue refusals name the player’s next move', () => {
   it('explains that the 3 waiting orders must finish or be cancelled', () => {
     expect(en.planet.blocked.queueFull).toMatch(/3 orders.*finish or cancel/i);

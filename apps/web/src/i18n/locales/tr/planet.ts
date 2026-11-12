@@ -407,7 +407,7 @@ export const planet = {
   grow: {
     multiplierBand: "Üretim uydusu",
     multiplierNote:
-      "Körük, bu dünyanın alaşım, kristal ve Döteryum üretimini %6 artırır ve ortak yörünge ağında bir yuva kaplar.",
+      "Körük, bu dünyanın alaşım, kristal ve döteryum üretimini %6 artırır ve ortak yörünge ağında bir yuva kaplar.",
   },
 
   projectSheet: {

@@ -457,7 +457,7 @@ export const gains = {
     label: 'Saatlik kaynak üretimi',
     now: 'mevcut üretim',
     next: '+%{{percent}}',
-    unlocks: 'Bu dünyadaki alaşım, kristal ve Döteryum üretimine uygulanır',
+    unlocks: 'Bu dünyadaki alaşım, kristal ve döteryum üretimine uygulanır',
   },
   uplink: {
     label: 'Teleskop ve Radar',
