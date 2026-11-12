@@ -108,6 +108,8 @@
   --gk-s4: 16px;
   --gk-s5: 20px;
   --gk-s6: 24px;
+  /* every screen edge (owner 2026-11-12, standard 2.7): 12 px, a deliberate tightness */
+  --gk-gutter: 12px;
 
   /* shape */
   --gk-r-sm: 3px;
@@ -120,6 +122,8 @@
   --gk-press: 80ms;
   --gk-quick: 160ms;
   --gk-settle: 280ms;
+  /* a panel or dialog opens (owner 2026-11-12, standard 2.6) */
+  --gk-panel: 160ms;
   --gk-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --gk-pop: cubic-bezier(0.2, 0.9, 0.3, 1.04);
 }

@@ -132,9 +132,16 @@ export interface GameHoldProps {
   tone?: 'action' | 'danger';
   glyph?: GlyphId;
   commitSound?: SoundCue;
-  /** How long the press must stay down; heavier actions hold longer. */
-  holdMs?: number;
+  /** How heavy the action is; a heavier one holds longer. */
+  weight?: HoldWeight;
 }
+
+/**
+ * THREE WEIGHTS OF HOLD (owner 2026-11-12, standard 2.6): what can be undone holds 0.6 s,
+ * what spends 1 s, what is final 1.5 s — so leaving a clan never feels like a launch.
+ */
+export type HoldWeight = 'reversible' | 'spends' | 'final';
+const HOLD_WEIGHT_MS: Record<HoldWeight, number> = { reversible: HOLD_MS, spends: 1000, final: 1500 };
 
 /**
  * HOLD TO COMMIT, AS A GAME DRAWS IT. The same gesture and rules as the v2
@@ -142,8 +149,9 @@ export interface GameHoldProps {
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', holdMs = HOLD_MS,
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight = 'reversible',
 }: GameHoldProps) {
+  const holdMs = HOLD_WEIGHT_MS[weight];
   const { t } = useTranslation();
   const hintId = useId();
   const [committed, setCommitted] = useState(0);

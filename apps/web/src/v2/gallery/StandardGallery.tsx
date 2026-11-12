@@ -379,11 +379,11 @@ function TimingDecision() {
     >
       <div className="grid gap-1">
         <span className="gk-label">Geri alınır · filo geri çağrılabilir</span>
-        <GameHold label="Gönder" detail="0,6 sn" holdMs={600} onCommit={() => undefined} />
+        <GameHold label="Gönder" detail="0,6 sn" weight="reversible" onCommit={() => undefined} />
         <span className="gk-label mt-1">Kaynak harcar</span>
-        <GameHold label="Yükselt" detail="1 sn" glyph="up" holdMs={1000} onCommit={() => undefined} />
+        <GameHold label="Yükselt" detail="1 sn" glyph="up" weight="spends" onCommit={() => undefined} />
         <span className="gk-label mt-1">Geri alınamaz</span>
-        <GameHold label="Ayrıl" detail="1,5 sn" tone="danger" glyph="close" holdMs={1500} onCommit={() => undefined} />
+        <GameHold label="Ayrıl" detail="1,5 sn" tone="danger" glyph="close" weight="final" onCommit={() => undefined} />
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         <div className="grid gap-1">

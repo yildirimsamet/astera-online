@@ -21,10 +21,15 @@ const locale = (): string => i18n.t('units.numberLocale');
 export const full = (value: number): string => Math.round(value).toLocaleString(locale());
 
 /**
- * Short form for tight columns: 12.4k, 1.8M — or 12,4b and 1,8M in Turkish.
+ * Short form for tight columns: 12.4K, 1.8M — 12,4K and 1,8M in Turkish.
  *
  * Used where the exact figure is not the decision — a storage bar, a ladder row.
  * Anything a player spends or loses is shown in full.
+ *
+ * K AND M IN EVERY LANGUAGE, ONE DECIMAL AT EVERY SIZE (owner 2026-11-12, standard
+ * 2.8). Turkish once wrote "B" and "Mn": "B" reads as billion to anyone who plays in
+ * English, and players know K and M from other games. A bare ".0" is dropped, and a
+ * figure that rounds to a thousand of its unit moves up one: 999,960 is 1M, never 1000K.
  *
  * The mantissa goes through `toLocaleString` rather than `toFixed` so the decimal
  * separator follows the language. `toFixed` is hard-wired to a full stop, which
@@ -32,15 +37,13 @@ export const full = (value: number): string => Math.round(value).toLocaleString(
  */
 export function compact(value: number): string {
   const n = Math.round(value);
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) {
-    return i18n.t('units.millions', { value: decimals(n / 1_000_000, abs >= 10_000_000 ? 0 : 1) });
-  }
-  if (abs >= 1_000) {
-    return i18n.t('units.thousands', { value: decimals(n / 1_000, abs >= 10_000 ? 0 : 1) });
-  }
+  const thousands = Math.round(n / 100) / 10;
+  if (Math.abs(thousands) >= 1_000) return i18n.t('units.millions', { value: tenth(Math.round(n / 100_000) / 10) });
+  if (Math.abs(n) >= 1_000) return i18n.t('units.thousands', { value: tenth(thousands) });
   return n.toLocaleString(locale());
 }
+
+const tenth = (value: number): string => value.toLocaleString(locale(), { maximumFractionDigits: 1 });
 
 /**
  * A STORE ON THE TOP BAR (spec B1): whole up to 99,999, short above it.

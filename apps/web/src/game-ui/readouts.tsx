@@ -193,7 +193,7 @@ export interface HudResource {
   id: string;
   art: string;
   amount: string;
-  /** Production per hour, already formatted ("+2,2 B"). */
+  /** Production per hour, already formatted ("+2,2K"). */
   rate?: string;
   /** How full the store is, 0…1; full turns the amount yellow. */
   store?: number;

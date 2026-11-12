@@ -49,6 +49,23 @@ describe('the game kit palette', () => {
     expect(marks).toEqual([]);
   });
 
+  it('opens a panel in 160 ms, from one token (owner 2026-11-12, standard 2.6)', () => {
+    expect(tokens).toMatch(/--gk-panel:\s*160ms;/);
+    const css = readFileSync(join(KIT, 'game-ui.css'), 'utf8');
+    expect(/\.gk-dialog\s*\{[^}]*animation:\s*gk-dialog var\(--gk-panel\)/.exec(css)).toBeTruthy();
+  });
+
+  it('keeps every screen edge 12 px in, from one token (owner 2026-11-12, standard 2.7)', () => {
+    expect(tokens).toMatch(/--gk-gutter:\s*12px;/);
+    const css = readFileSync(join(KIT, 'game-ui.css'), 'utf8');
+    const edges = ['.gk-catalog', '.gk-hud', '.gk-sheet__head', '.gk-sheet__body', '.gk-sheet__foot'];
+    const off = edges.filter((selector) => {
+      const body = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+      return !body.includes('var(--gk-gutter)');
+    });
+    expect(off).toEqual([]);
+  });
+
   it('keeps raw colours out of every other kit file and the kit gallery', () => {
     const offenders = [...files(KIT).filter((f) => !f.endsWith('tokens.css')), 'src/v2/gallery/GameKitGallery.tsx']
       .filter((f) => RAW.test(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')));

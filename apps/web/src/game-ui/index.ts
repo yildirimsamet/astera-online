@@ -3,7 +3,7 @@
  * `tokens.css`; every part here is built to sit beside every other one, so a screen
  * is only a composition of them. Gallery: `v2-gallery.html?view=ui-kit`.
  */
-export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps } from './buttons.js';
+export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps, type HoldWeight } from './buttons.js';
 export {
   BottomNav, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
 } from './controls.js';

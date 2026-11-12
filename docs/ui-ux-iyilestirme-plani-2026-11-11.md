@@ -576,21 +576,21 @@ Owner isteği: "Komple full bir ui-kit oluştur. Birbirleriyle uyumlu olsun; bun
 
 **Durum güncellemesi (2026-11-12):** Resimli ikonlar (32) ve seçilen 8 arayüz sesi kitte. 18 eski ince glif paketlerden yeniden çizildi. Kit kendi ölçüm yüzeyine kavuştu. Kalanlar: VFX ve S22 turu.
 
-## Aşama 3: Altyapı (taslak, 2026-11-12, owner ile planlanacak)
+## Aşama 3: Altyapı (owner ile planlandı 2026-11-12, uygulanıyor)
 
-Kural 4 gereği bu taslak owner ile detaylandırılmadan uygulamaya geçilmez.
+Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?" → plan).
 
 **Amaç:** 2.2–2.9 kararlarını kitte tek bir yere, token'a bağlamak ve koruyucu testle kilitlemek. Böylece kit 4. aşamada ekranlara hazır hâle gelir. Oyun ekranları bu aşamada da değişmez.
 
 | # | İş | Çıktı | Bitiş ölçütü |
 |---|---|---|---|
-| 3.1 | Yazı ölçeği: kitin ölçeği (B) | Kitin bugünkü `--gk-t-*` token'ları kilitlenir: 12 / 13 / 14 / 16 / 19 / 24, sayı 18. Büyütme yok | Test: kit dosyalarında token dışında font boyutu yok; 12 px altında metin yok |
-| 3.2 | Metin bütçesi "Bütçeli" | Ekran tipine göre kelime sınırı ölçüm aracına girer | Kit ölçümünde sınırı aşan ekran yok |
-| 3.3 | Dokunma 44 px | `gk-hit` yardımcısı: görünen parça küçük kalabilir, dokunma alanı 44 px olur | Kit ölçümünde 44 px altında hedef yok |
+| 3.1 ✅ | Yazı ölçeği: kitin ölçeği (B) | Kitin bugünkü `--gk-t-*` token'ları kilitlendi: 12 / 13 / 14 / 16 / 19 / 24, sayı 18. Ölçek dışı üç metin ölçeğe oturdu: SALDIR 26 → 24, bölme sayısı 22 → 24, seviye rozeti 15 → 16 | `test/game-ui/type-scale.test.ts`: kitte token dışında yazı boyutu yok (glif kutuları gerekçeyle listede); hiçbir adım 12 px altında değil |
+| 3.2 ✅ | Metin bütçesi "Bütçeli" | W1 raporu bütçeyi tartar: ekran başına kelime ortancası ≤ 55, uzun blok ortancası ≤ 1; aşan ekranları adıyla listeler | `packages/ui-audit/test/report.test.ts` |
+| 3.3 ✅ | Dokunma 44 px | `gk-hit` yardımcısı zaten vardı. Ölçümde gerçek eksik yalnız hız kolu duraklarıydı (34–36 px); 44 px oldu. Kalan küçükler ölçüm parçasının kenarında yarım kalan hedefler | Kit ölçümü (3.8) |
 | 3.4 | Renk rolleri A | Token'lar ve kural testleri hazır | Hazır |
-| 3.5 | Süreler | Panel için `--gk-dur-panel: 160ms`. Basılı tutmada üç ağırlık: 0,6 / 1 / 1,5 sn | Test: panel geçişleri token'dan gelir; `GameHold` ağırlık alır |
-| 3.6 | Kenar boşluğu 12 px | `--gk-gutter: 12px` | Test: kit ekran kenarı token'dan gelir |
-| 3.7 | Sayı biçimi K/M | Tek `formatShort()` (240,1K · 1,4M), altı dilde | Birim testleri: sınırlar, yuvarlama, negatif sayı, dil |
+| 3.5 ✅ | Süreler | `--gk-panel: 160ms`; diyalog 280 ms yerine onunla açılıyor. `GameHold` serbest `holdMs` yerine ağırlık alıyor: `reversible` 0,6 / `spends` 1 / `final` 1,5 sn (hangi eylemin hangisi olacağı 4. aşamada) | `tokens.test.ts`, `buttons.test.tsx` |
+| 3.6 ✅ | Kenar boşluğu 12 px | `--gk-gutter: 12px`; sheet başlığı, gövdesi, alt şeridi, katalog ve HUD 10/8 px'ten 12 px'e geçti | `tokens.test.ts` |
+| 3.7 ✅ | Sayı biçimi K/M | Oyunun tek kısa biçimlendiricisi `lib/format.compact` değişti: altı dilde K/M, her boyutta tek ondalık, ",0" atılır, 999.960 → 1M. Eşikler aynı kaldı (B1: depo 99.999'a kadar tam). Bu dalda oyun ekranlarındaki kısa sayılar da K/M'ye geçti | `i18n.test.ts` + ekran testlerindeki yansımalar |
 | 3.8 | Kit ölçümü | `pnpm ui:audit run --kit` | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
 | 3.9 | S22 turu | Kit ekranları telefonda | Owner dokunarak onaylar |
 

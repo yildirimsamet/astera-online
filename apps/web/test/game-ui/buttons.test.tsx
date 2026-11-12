@@ -50,16 +50,24 @@ describe('the hold action', () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('holds as long as the weight of its action asks', () => {
+  it.each([
+    // owner 2026-11-12, standard 2.6: what can be undone 0.6 s, what spends 1 s, what is final 1.5 s
+    ['reversible', 600], ['spends', 1000], ['final', 1500],
+  ] as const)('holds a %s action for %i ms', (weight, ms) => {
     const onCommit = vi.fn();
-    render(<GameHold label="Leave" detail="cannot be undone" holdMs={1500} onCommit={onCommit} />);
+    render(<GameHold label="Leave" detail="cannot be undone" weight={weight} onCommit={onCommit} />);
     const button = screen.getByRole('button', { name: /Leave/ });
-    expect(button.style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+    expect(button.style.getPropertyValue('--gk-hold-ms')).toBe(`${String(ms)}ms`);
     fireEvent.pointerDown(button, { button: 0 });
-    act(() => { vi.advanceTimersByTime(HOLD_MS); });
+    act(() => { vi.advanceTimersByTime(ms - 1); });
     expect(onCommit).not.toHaveBeenCalled();
-    act(() => { vi.advanceTimersByTime(1500 - HOLD_MS); });
+    act(() => { vi.advanceTimersByTime(1); });
     expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds for the lightest weight when none is named, as the v2 hold button does', () => {
+    render(<GameHold label="Attack" onCommit={() => undefined} />);
+    expect(screen.getByRole('button', { name: /Attack/ }).style.getPropertyValue('--gk-hold-ms')).toBe(`${String(HOLD_MS)}ms`);
   });
 
   it('commits nothing on a tap and refuses with a reason', () => {

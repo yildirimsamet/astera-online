@@ -148,6 +148,13 @@ describe('text load per screenful (W1)', () => {
     expect(section.indexOf('`gallery:x`')).toBeLessThan(section.indexOf('`gallery:y`'));
     expect(section).not.toMatch(/900/);
   });
+
+  it('weighs the medians against the text budget and names the screens over it (owner 2026-11-12, 2.3)', () => {
+    expect(section).toMatch(/Bütçe \(2\.3\)[^\n]*kelime ortancası 35 \/ 55 ✅[^\n]*uzun blok ortancası 0,3 \/ 1 ✅/);
+    const over = (section.split('Bütçeyi aşan')[1] ?? '').split('| Yüzey')[0] ?? '';
+    expect(over).toMatch(/^[^\n]*\n+- a · `gallery:x` · 60 kelime\/ekran · 0,5 uzun blok\/ekran/);
+    expect(over).not.toMatch(/gallery:y/);
+  });
 });
 
 describe('the difference from the previous baseline', () => {

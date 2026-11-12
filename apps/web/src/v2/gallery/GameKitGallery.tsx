@@ -154,8 +154,8 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
             theirs={{ low: 21, high: null }}
             mineLabel="Sen"
             theirsLabel="Onlar"
-            mineText={`${fmt(Math.round(power * 0.92))}–${fmt(Math.round(power * 1.08))} B`}
-            theirsText="21 B+"
+            mineText={`${fmt(Math.round(power * 0.92))}–${fmt(Math.round(power * 1.08))}K`}
+            theirsText="21K+"
           />
           <InfoPeek
             lead={<Emblem cls="LANCE" hostile />}
@@ -179,7 +179,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
                 home={ship.home}
                 chosen={fleet[ship.id]}
                 onChange={(next) => { setShip(ship.id, next); }}
-                {...(ship.id === 'COURIER' ? { extra: `+${fmt(fleet.COURIER * ship.cargo)} B kargo` } : {})}
+                {...(ship.id === 'COURIER' ? { extra: `+${fmt(fleet.COURIER * ship.cargo)}K kargo` } : {})}
               />
             ))}
           </div>
@@ -214,7 +214,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
           <StatPlaque glyph="clock" label="Varış" value={`${String(speed.minutes)} dk`} sub={clock(NOW_MINUTES + speed.minutes)} />
           <StatPlaque glyph="back_home" label="Dönüş" value={clock(NOW_MINUTES + out)} sub={`dışarıda ${String(out)} dk`} />
           <div className="col-span-2">
-            <StatPlaque glyph="crate" label="Kargo" value={`${fmt(cargo)} B`} sub={covers ? `ganimetin tamamı sığar · ~${String(LOOT.low)}–${String(LOOT.high)} B` : `ganimet ~${String(LOOT.low)}–${String(LOOT.high)} B · bir kısmı kalabilir`} tone={covers ? 'good' : 'warn'}>
+            <StatPlaque glyph="crate" label="Kargo" value={`${fmt(cargo)}K`} sub={covers ? `ganimetin tamamı sığar · ~${String(LOOT.low)}–${String(LOOT.high)}K` : `ganimet ~${String(LOOT.low)}–${String(LOOT.high)}K · bir kısmı kalabilir`} tone={covers ? 'good' : 'warn'}>
               <CargoBar capacity={cargo} loot={LOOT} />
             </StatPlaque>
           </div>
@@ -282,8 +282,8 @@ function BaseScreen() {
         </CutPlate>
         <Plate className="mt-3 grid gap-2.5 p-2.5">
           <SectionTag>Bedel</SectionTag>
-          <SpendBar spend={2400} stock={9800} label="Alaşım" art={RESOURCE_ART.alloy} text="2,4 B / 9,8 B" />
-          <SpendBar spend={900} stock={2100} label="Kristal" art={RESOURCE_ART.crystal} text="900 / 2,1 B" />
+          <SpendBar spend={2400} stock={9800} label="Alaşım" art={RESOURCE_ART.alloy} text="2,4K / 9,8K" />
+          <SpendBar spend={900} stock={2100} label="Kristal" art={RESOURCE_ART.crystal} text="900 / 2,1K" />
         </Plate>
         <div className="mt-3 grid grid-cols-2 gap-1.5">
           <StatPlaque glyph="clock" label="Süre" value="2 sa 40 dk" sub="inşaat yuvası 1 / 1" />
@@ -297,8 +297,8 @@ function BaseScreen() {
 /* ── the HUD: the world a player opens the game into ────────────────────────── */
 
 const HUD: readonly HudResource[] = [
-  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8 B', rate: '+2,2 B', store: 0.62, tone: 'alloy', label: 'Alaşım' },
-  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1 B', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal' },
+  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8K', rate: '+2,2K', store: 0.62, tone: 'alloy', label: 'Alaşım' },
+  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1K', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal' },
   { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', rate: '+180', store: 0.3, tone: 'deut', label: 'Döteryum' },
 ];
 
@@ -329,7 +329,7 @@ function HudScreen() {
         <span className="gk-pill gk-pill--self"><Glyph id="shield" />Başkent · korunuyor</span>
       </div>
       <div className="gk-scene__toast gk-scene__toast--low">
-        <Banner variant="toast" tone="good" glyph="crate" title="Filo döndü" body="+15,2 B ganimet ambara indi" />
+        <Banner variant="toast" tone="good" glyph="crate" title="Filo döndü" body="+15,2K ganimet ambara indi" />
       </div>
       <div className="gk-scene__nav">
         <CoachMark x={50} y={10} hand={HAND} step="2/3" text="Filon hazır: hedef seçmek için Filo’ya dokun" />
@@ -406,7 +406,7 @@ function ReportScreen() {
         tone="good"
         rays
         actions={claimed ? (
-          <Banner variant="block" tone="good" title="Ganimet ambara indi" body="Kestrel-12 · +15,2 B" />
+          <Banner variant="block" tone="good" title="Ganimet ambara indi" body="Kestrel-12 · +15,2K" />
         ) : (
           <>
             <GameButton tone="action" size="lg" wide glyph="crate" onPress={() => { playSound('crate'); haptic('commit'); setClaimed(true); }}>GANİMETİ AL</GameButton>
@@ -419,9 +419,9 @@ function ReportScreen() {
           <span className="gk-sub">Sable’ın filosu geri çekildi · 12:40</span>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          <Loot art={RESOURCE_ART.alloy} value="+8,4 B" label="Alaşım" />
-          <Loot art={RESOURCE_ART.crystal} value="+4,1 B" label="Kristal" />
-          <Loot art={RESOURCE_ART.deuterium} value="+2,7 B" label="Döteryum" />
+          <Loot art={RESOURCE_ART.alloy} value="+8,4K" label="Alaşım" />
+          <Loot art={RESOURCE_ART.crystal} value="+4,1K" label="Kristal" />
+          <Loot art={RESOURCE_ART.deuterium} value="+2,7K" label="Döteryum" />
         </div>
         <Well className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-1.5">
           <Emblem cls="SKIRMISHER" />
@@ -534,10 +534,10 @@ function Catalog() {
             <GameButton tone="self" glyph="check" onPress={() => undefined}>Seç</GameButton>
             <GameButton tone="danger" glyph="close" onPress={() => undefined}>Geri çağır</GameButton>
             <GameButton tone="ghost" onPress={() => undefined}>Sonra</GameButton>
-            <GameButton tone="action" size="sm" cost={<><img src={RESOURCE_ART.alloy} alt="" className="size-4" />2,4 B</>} onPress={() => undefined}>Kur</GameButton>
+            <GameButton tone="action" size="sm" cost={<><img src={RESOURCE_ART.alloy} alt="" className="size-4" />2,4K</>} onPress={() => undefined}>Kur</GameButton>
             <GameButton tone="steel" pending onPress={() => undefined}>Gönderiliyor</GameButton>
           </div>
-          <GameButton tone="action" wide disabledReason="Kristal yetmiyor · 2,6 B gerek" onPress={() => undefined}>Yükselt</GameButton>
+          <GameButton tone="action" wide disabledReason="Kristal yetmiyor · 2,6K gerek" onPress={() => undefined}>Yükselt</GameButton>
           <div className="flex items-center gap-1">
             <RoundButton glyph="close" label="Kapat" onPress={() => undefined} />
             <RoundButton glyph="back" label="Geri" onPress={() => undefined} />
@@ -680,7 +680,7 @@ function Catalog() {
           <ProgressBar value={18} max={24} text="18 / 24" label="İnşaat" />
           <ProgressBar value={3} max={5} segments={5} tone="good" label="Görev" />
           <ProgressBar value={1} max={1} tone="warn" text="Depo dolu" label="Depo" />
-          <RangeBars mine={{ low: 24, high: 28 }} theirs={{ low: 21, high: null }} mineLabel="Sen" theirsLabel="Onlar" mineText="24–28 B" theirsText="21 B+" />
+          <RangeBars mine={{ low: 24, high: 28 }} theirs={{ low: 21, high: null }} mineLabel="Sen" theirsLabel="Onlar" mineText="24–28K" theirsText="21K+" />
           <SpendBar spend={120} stock={860} label="Yakıt" art={RESOURCE_ART.deuterium} text="−120 / 860" />
           <div className="grid gap-1"><span className="gk-label">Kargo ve ganimet</span><CargoBar capacity={16.7} loot={LOOT} /></div>
         </Section>
@@ -707,7 +707,7 @@ function Catalog() {
         </Section>
 
         <Section title="Geri bildirim">
-          <Banner tone="good" title="Filo döndü" body="+15,2 B ganimet ambara indi" />
+          <Banner tone="good" title="Filo döndü" body="+15,2K ganimet ambara indi" />
           <Banner tone="warn" variant="strip" title="Kestrel-12 25 dk savunmasız" />
           <Banner tone="hostile" title="Saldırı geliyor" body="Sable · 8 dk sonra" action={<GameButton tone="danger" size="sm" onPress={() => undefined}>Gör</GameButton>} />
           <Banner tone="info" variant="toast" title="İstihbarat güncellendi" />

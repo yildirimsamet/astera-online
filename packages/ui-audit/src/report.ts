@@ -307,15 +307,29 @@ const median = (values: readonly number[]): number => {
 };
 const decimal = (n: number) => (Math.round(n * 10) / 10).toLocaleString('tr-TR');
 
+/** The text budget (owner 2026-11-12, standard 2.3): Whiteout's median words per screen, one long block. */
+const WORD_BUDGET = 55;
+const BLOCK_BUDGET = 1;
+const verdict = (value: number, budget: number) => `${decimal(value)} / ${String(budget)} ${value <= budget ? '✅' : '❌'}`;
+
 /** W1: how much text a Turkish phone player meets per screen; competitors in research §7.3. */
 function textLoad(rows: readonly SurfaceRow[]): string {
   const mine = rows.filter((r) => r.lang === 'tr').map((r) => ({ ...r, perScreen: r.words / r.screens, blocksPerScreen: r.longBlocks / r.screens }));
   const heaviest = [...mine].sort((a, b) => b.perScreen - a.perScreen).slice(0, 20);
+  const wordMedian = median(mine.map((r) => r.perScreen));
+  const blockMedian = median(mine.map((r) => r.blocksPerScreen));
+  const over = heaviest.filter((r) => r.perScreen > WORD_BUDGET || r.blocksPerScreen > BLOCK_BUDGET);
   return `## Metin yükü (W1, telefon, Türkçe)
 
 Ekran başına kelime: yüzeyin kelimesi ÷ kaydırma parçası. Uzun blok: 6 ve daha çok kelimelik metin. Rakip referansı: araştırma §7.3.
 
-${String(mine.length)} ölçüm. Ekran başına kelime ortancası ${decimal(median(mine.map((r) => r.perScreen)))}; ekran başına uzun blok ortancası ${decimal(median(mine.map((r) => r.blocksPerScreen)))}.
+${String(mine.length)} ölçüm. Ekran başına kelime ortancası ${decimal(wordMedian)}; ekran başına uzun blok ortancası ${decimal(blockMedian)}.
+
+**Bütçe (2.3):** kelime ortancası ${verdict(wordMedian, WORD_BUDGET)} · uzun blok ortancası ${verdict(blockMedian, BLOCK_BUDGET)}
+
+Bütçeyi aşan ekranlar (ekran başına ${String(WORD_BUDGET)} kelimeden ya da ${String(BLOCK_BUDGET)} uzun bloktan fazla, en ağır 20 içinden):
+
+${over.length === 0 ? '_Yok._' : over.map((r) => `- ${r.surface} · \`${r.reach}\` · ${decimal(r.perScreen)} kelime/ekran · ${decimal(r.blocksPerScreen)} uzun blok/ekran`).join('\n')}
 
 | Yüzey | Yol | Kelime | Parça | Kelime/ekran | Uzun blok |
 |---|---|---|---|---|---|
