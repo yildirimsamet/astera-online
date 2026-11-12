@@ -4,7 +4,9 @@
  * is only a composition of them. Gallery: `v2-gallery.html?view=ui-kit`.
  */
 export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps } from './buttons.js';
-export { BottomNav, GameTabs, InfoPeek, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem } from './controls.js';
+export {
+  BottomNav, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
+} from './controls.js';
 export { ART_ICONS, ART_SIZES, ArtIcon, DOCK_ART, artIconSrc, type ArtIconId, type ArtSize } from './art.js';
 export { GLYPH_IDS, Glyph, type GlyphId } from './icons.js';
 export {

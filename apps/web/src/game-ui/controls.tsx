@@ -9,6 +9,7 @@ import { nearestDetent, sliderValue } from './logic.js';
 import { Dot } from './readouts.js';
 import type { CssVars } from './style.js';
 import { useRepeatPress } from './useRepeatPress.js';
+import { LANGUAGES, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
 
 /** Where along an element a pointer is, 0…1. */
 const along = (event: PointerEvent<HTMLElement>): number => {
@@ -343,5 +344,52 @@ export function TextField({ label, value, onChange, placeholder }: { label: stri
       <label htmlFor={id} className="gk-label">{label}</label>
       <input id={id} className="gk-field__input" value={value} placeholder={placeholder} onChange={(event) => { onChange(event.target.value); }} />
     </div>
+  );
+}
+
+/** Each language's flag (Layer Lab `languageflag-large-*`), in `public/assets/ui/lang/`. */
+export const LANGUAGE_FLAG: Record<Language, string> = {
+  tr: '/assets/ui/lang/tr.webp',
+  en: '/assets/ui/lang/en.webp',
+  fr: '/assets/ui/lang/fr.webp',
+  de: '/assets/ui/lang/de.webp',
+  es: '/assets/ui/lang/es.webp',
+  ja: '/assets/ui/lang/ja.webp',
+};
+
+/**
+ * THE LANGUAGE CHOICE: every language the game speaks, each named in itself beside its
+ * flag, so a player lost in a language they cannot read still finds their own.
+ */
+export function LanguagePicker({ label, value, onChange }: { label: string; value: Language; onChange: (language: Language) => void }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="gk-langs">
+      {LANGUAGES.map((language) => (
+        <LanguageOption key={language} language={language} chosen={language === value} onChoose={() => { onChange(language); }} />
+      ))}
+    </div>
+  );
+}
+
+function LanguageOption({ language, chosen, onChoose }: { language: Language; chosen: boolean; onChoose: () => void }) {
+  const own = useOwnPress(() => {
+    if (chosen) return;
+    playSound('tap');
+    haptic('tap');
+    onChoose();
+  });
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={chosen}
+      className="gk-lang"
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      <img className="gk-lang__flag" src={LANGUAGE_FLAG[language]} alt="" width={40} height={41} draggable={false} />
+      <span className="gk-lang__name">{LANGUAGE_LABEL[language]}</span>
+      {chosen && <span className="gk-lang__tick"><Glyph id="check" /></span>}
+    </button>
   );
 }

@@ -1860,6 +1860,64 @@
 .gk-pill--hostile { --tone: var(--gk-hostile); }
 .gk-pill--good { --tone: var(--gk-good); }
 
+/* The language choice: a flag tile per language; the chosen one is lit and ticked. */
+.gk-langs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-lang {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  padding: 8px 4px 7px;
+  border: 0;
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 14%, transparent), 0 3px 0 var(--gk-metal-shadow);
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) var(--gk-ease);
+}
+.gk-lang:active { transform: translateY(2px) scale(0.97); }
+.gk-lang__flag {
+  width: 40px;
+  height: 41px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px var(--gk-outline));
+}
+.gk-lang__name {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-small);
+  line-height: 1.1;
+}
+.gk-lang[aria-checked='true'] {
+  color: var(--gk-ink);
+  background:
+    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--gk-self) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 0 0 2px var(--gk-self), 0 0 0 3.5px var(--gk-outline), 0 3px 0 var(--gk-metal-shadow);
+}
+.gk-lang__tick {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--gk-ink);
+  background: radial-gradient(circle at 50% 30%, var(--gk-self), var(--gk-self-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline);
+  animation: gk-pod-loot 260ms var(--gk-pop) both;
+}
+
 /* An effect: a coin of its colour with the mark, the change, the time left. */
 .gk-status {
   --tone: var(--gk-info);

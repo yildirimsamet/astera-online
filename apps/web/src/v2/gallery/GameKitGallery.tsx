@@ -12,10 +12,11 @@ import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
-  FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
+  FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
+import type { Language } from '../../i18n/languages.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
@@ -495,6 +496,7 @@ function Catalog() {
   const [nav, setNav] = useState('base');
   const [name, setName] = useState('Kızıl Kanat');
   const [count, setCount] = useState(3);
+  const [language, setLanguage] = useState<Language>('tr');
   return (
     <Screen sky={false}>
       <div className="gk-catalog">
@@ -590,6 +592,10 @@ function Catalog() {
               </span>
             ))}
           </div>
+        </Section>
+
+        <Section title="Dil">
+          <LanguagePicker label="Dil" value={language} onChange={setLanguage} />
         </Section>
 
         <Section title="Durum etkileri">
