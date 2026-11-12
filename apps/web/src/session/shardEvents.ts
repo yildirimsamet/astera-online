@@ -260,8 +260,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
       return [keys.unknownSignals];
     case 'unknown-signal':
       return [keys.unknownSignals, keys.pending, keys.planet, keys.planets, keys.notifications, keys.skins];
+    /** A booked battle can make the next launch a repeat raid and moves the 24-hour peak. */
     case 'honor':
-      return [keys.reports, keys.planet, keys.planets, keys.leaderboard];
+      return [keys.reports, keys.planet, keys.planets, keys.leaderboard, ['honor-target']];
     case 'sensors':
       return [keys.traffic, keys.miningField, keys.pirates, keys.galaxy];
     case 'monument':

@@ -17,7 +17,8 @@ export function HonorBattleSummary({ receipt, dominion }: {
     <p className="text-caption font-semibold text-v2-ink">{t('leaderboard.honorBattleResult')}</p>
     <RankingScores honor={receipt.delta} dominion={dominion} change />
     <p className="col-span-2 text-caption leading-relaxed text-v2-ink-2">{t(receipt.reason === 'NO_GAIN' && band === 'NONE'
-      ? 'leaderboard.honorBand.NONE' : `leaderboard.honorReason.${receipt.reason}`)}</p>
+      ? 'leaderboard.honorBand.NONE' : receipt.reason === 'WEAK_TARGET' && receipt.breakdown?.repeatRaid
+        ? 'leaderboard.honorBand.REPEAT' : `leaderboard.honorReason.${receipt.reason}`)}</p>
     {receipt.breakdown?.sharedPositiveBlocked && <div className="col-span-2"><HonorSoloPolicy /></div>}
     {receipt.breakdown && <details className="col-span-2 border-t border-v2-line pt-1">
       <summary className="min-h-9 cursor-pointer content-center text-caption font-medium text-v2-ink">{t('leaderboard.honorBreakdown.title')}</summary>
