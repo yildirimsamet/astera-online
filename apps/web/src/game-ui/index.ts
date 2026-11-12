@@ -3,6 +3,7 @@
  * `tokens.css`; every part here is built to sit beside every other one, so a screen
  * is only a composition of them. Gallery: `v2-gallery.html?view=ui-kit`.
  */
+import './game-ui.css';
 export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps, type HoldWeight } from './buttons.js';
 export {
   BottomNav, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
@@ -10,7 +11,7 @@ export {
 export { ART_ICONS, ART_SIZES, ArtIcon, DOCK_ART, artIconSrc, type ArtIconId, type ArtSize } from './art.js';
 export { GLYPH_IDS, Glyph, type GlyphId } from './icons.js';
 export {
-  CargoBar, CountBadge, Dot, Emblem, FreeSlot, LevelBadge, ListRow, LockBadge, MultiplierBadge, ProgressBar, QueueSlot, RangeBars, ResourceHud,
+  CargoBar, CostLine, CountBadge, Dot, Emblem, FreeSlot, LevelBadge, ListRow, LockBadge, MultiplierBadge, ProgressBar, QueueSlot, RangeBars, ResourceHud,
   SpendBar, StatPlaque, StatusChip, StoreGauge, Timer, type BarTone, type HudResource, type SlotState, type StatTone, type StatusTone,
 } from './readouts.js';
 export { Banner, CoachMark, CutPlate, Dialog, EmptyState, Plate, SectionTag, SheetFrame, Well } from './surfaces.js';

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { UpgradeRow } from '../../src/ui/UpgradeRow.js';
@@ -32,7 +32,8 @@ describe('an upgrade as a card', () => {
     render(<UpgradeRow {...base} onOpen={vi.fn()} />);
     const card = document.querySelector<HTMLElement>('[data-layout="card"]')!;
     expect(card.querySelector('[data-art] img')).not.toBeNull();
-    expect(card).toHaveTextContent('L2');
+    // the level is the kit's badge on the render: a number on screen, a word for a screen reader
+    expect(within(card).getByRole('img', { name: 'Level 2' })).toHaveTextContent(/^2$/);
     const name = screen.getByRole('heading', { name: 'Command Core' });
     expect(name.className).not.toMatch(/\btruncate\b/);
     expect(card).toHaveTextContent('L3');
@@ -56,9 +57,23 @@ describe('an upgrade as a card', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it('says when a card it cannot pay for will be affordable', () => {
+  it('says when a card it cannot pay for will be affordable, in the words its sheet uses', () => {
     render(<UpgradeRow {...base} held={{ alloy: 25, crystal: 0 }} income={{ alloyPerHour: 60, crystalPerHour: 60 }} onOpen={vi.fn()} />);
-    expect(document.querySelector('[data-layout="card"]')).toHaveTextContent(/affordable in/i);
+    // short 100 alloy and 34 crystal at 60 an hour: the alloy is the longer wait, 100 minutes
+    expect(document.querySelector('[data-layout="card"] [data-wait]')).toHaveTextContent(/^Enough in ~1h 40m$/);
+  });
+
+  it('marks on the price the resource the store cannot pay yet', () => {
+    render(<UpgradeRow {...base} held={{ alloy: 1_000, crystal: 10 }} onOpen={vi.fn()} />);
+    const short = [...document.querySelectorAll('[data-card-price] [data-short]')].map((part) => part.textContent);
+    expect(short).toEqual(['34']);
+  });
+
+  it('lights up for a moment when an order for it lands in the queue', () => {
+    const { rerender } = render(<UpgradeRow {...base} onOpen={vi.fn()} />);
+    expect(document.querySelector('[data-layout="card"]')).not.toHaveAttribute('data-flash');
+    rerender(<UpgradeRow {...base} queued="Queued" flash onOpen={vi.fn()} />);
+    expect(document.querySelector('[data-layout="card"]')).toHaveAttribute('data-flash');
   });
 
   it('carries its own control where it opens no detail', async () => {

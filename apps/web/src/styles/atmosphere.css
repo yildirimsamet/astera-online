@@ -81,8 +81,8 @@
   background: linear-gradient(0deg, rgb(8 13 24 / 25%), transparent 70%);
 }
 [data-layout='card'] [data-art]:has(.building-scene-art) ~ [data-card-copy] {
-  background: rgb(13 20 35 / 75%);
-  border-top: 1px solid rgb(109 137 181 / 12%);
+  background: color-mix(in srgb, var(--gk-metal-2) 80%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 12%, transparent);
   backdrop-filter: blur(3px);
 }
 [data-layout='card']:has(.building-scene-art) [data-card-copy] [class*='ink-3'] {
@@ -92,7 +92,7 @@
 [data-layout='card'] [data-art] > span { z-index: 1; }
 [data-layout='card'] [data-art]:has(.building-scene-art) [data-art-lock] {
   bottom: auto;
-  height: 96px;
+  height: 84px;
 }
 [data-layout='card'] [data-art] img[data-art-state='locked'] { filter: grayscale(1) brightness(.85); }
 
@@ -121,15 +121,13 @@
 [data-base-surface='defend'] { --section-material: var(--color-v2-neutral); }
 [data-base-surface='tactical'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 28%, var(--color-v2-neutral)); }
 [data-base-surface='reach'] { --section-material: var(--color-v2-sky-cool); }
-[data-base-surface] :is([data-layout='card'], .repair-scene) {
+/* Cards wear the kit's own metal and edge (.gk-bcard); only the repair scene keeps the section tint. */
+[data-base-surface] .repair-scene {
   border-color: color-mix(in srgb, var(--section-material) 30%, var(--color-v2-line));
   background-image: linear-gradient(135deg, color-mix(in srgb, var(--section-material) 5%, transparent), transparent 75%);
 }
-[data-base-surface] :is([data-layout='card'], .repair-scene)[data-highlighted] {
+[data-base-surface] .repair-scene[data-highlighted] {
   border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
-}
-[data-base-surface] [data-row-line='name'] {
-  box-shadow: 0 1px color-mix(in srgb, var(--section-material) 14%, transparent);
 }
 #planet-tab-grow { --tab-material: var(--color-v2-alloy); }
 #planet-tab-orbit { --tab-material: var(--color-v2-sky-violet); }

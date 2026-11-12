@@ -300,6 +300,34 @@ export function Timer({ remaining, total, text, glyph = 'clock' }: { remaining: 
   );
 }
 
+interface Cost { alloy: number; crystal: number; deuterium?: number }
+
+const COST_PARTS = ['alloy', 'crystal', 'deuterium'] as const;
+
+/**
+ * WHAT A THING COSTS, in one line: each resource as its picture and a short figure. What
+ * the store cannot pay yet wears the warning colour and a dotted underline (never colour
+ * alone); the time the order takes rides at the end as the fourth currency.
+ */
+export function CostLine({ cost, held, time }: { cost: Cost; held?: Cost; time?: ReactNode }) {
+  return (
+    <span className="gk-cost">
+      {COST_PARTS.map((resource) => {
+        const amount = cost[resource] ?? 0;
+        if (amount <= 0) return null;
+        const short = held !== undefined && amount > (held[resource] ?? 0);
+        return (
+          <span key={resource} className="gk-cost__part gk-num" {...(short ? { 'data-short': '' } : {})}>
+            <img src={RESOURCE_ART[resource]} alt="" draggable={false} />
+            {compact(amount)}
+          </span>
+        );
+      })}
+      {time}
+    </span>
+  );
+}
+
 /** Where an order stands: the head builds, the rest wait their turn; a vacation stops all. */
 export type SlotState = 'running' | 'waiting' | 'paused' | 'staged';
 

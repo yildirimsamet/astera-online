@@ -458,7 +458,7 @@ describe('the two build queues', () => {
 
     const row = view.container.querySelector('#row-REFINERY [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'queued');
-    expect(row).toHaveTextContent('L3');
+    expect(within(row as HTMLElement).getByRole('img', { name: 'Level 3' })).toHaveTextContent(/^3$/);
     expect(row).toHaveTextContent('1 order queued');
     await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about alloy refinery/i }));
     await userEvent.click(screen.getByRole('button', { name: /raise to l5/i }));

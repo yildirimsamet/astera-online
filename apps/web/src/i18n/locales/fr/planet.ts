@@ -521,6 +521,7 @@ export const upgradeRow = {
   takes: "{{duration}}",
   takesLabel: "Construction : {{duration}}",
   ladder: "Niveau {{level}} / {{max}}",
+  level: "Niveau {{level}}",
 } as const;
 export const action = {
   verbRaise: "Améliorer",

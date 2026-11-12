@@ -1260,6 +1260,303 @@
   transform: none;
 }
 
+/* ── what a thing costs: resources as pictures, the short one marked, the time at the end ── */
+
+.gk-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  line-height: 1.2;
+  color: var(--gk-ink);
+}
+.gk-cost__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.gk-cost__part img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+/* what the store cannot pay yet: the warning colour and a dotted line, never colour alone */
+.gk-cost__part[data-short] {
+  color: var(--gk-warn);
+  text-decoration: underline dotted 1.5px;
+  text-underline-offset: 3px;
+}
+.gk-cost__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  color: var(--gk-ink-2);
+}
+.gk-cost__time .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── a building card: the scene, its level on it, the name whole, what it becomes, the price ── */
+
+.gk-bcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  transition: transform var(--gk-press) linear;
+}
+.gk-bcard:has(> .gk-bcard__open:active) {
+  transform: translateY(1px) scale(0.985);
+}
+/* the whole card opens its sheet */
+.gk-bcard__open {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-bcard__open:active {
+  background: color-mix(in srgb, var(--gk-ink) 7%, transparent);
+}
+.gk-bcard__open:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-bcard__art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  height: 84px;
+  background: radial-gradient(60% 60% at 50% 45%, color-mix(in srgb, var(--gk-info) 16%, transparent), transparent 75%);
+}
+.gk-bcard__level {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 1;
+  display: inline-flex;
+}
+.gk-bcard__level .gk-level {
+  min-width: 26px;
+  height: 26px;
+  font-size: var(--gk-t-small);
+}
+.gk-bcard[data-flash] .gk-bcard__level {
+  animation: gk-bump var(--gk-settle) var(--gk-pop);
+}
+.gk-bcard__lock {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__lock .gk-glyph {
+  width: 30px;
+  height: 30px;
+}
+.gk-bcard__fault {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  color: var(--gk-ink-2);
+  pointer-events: none;
+}
+.gk-bcard__fault .gk-glyph {
+  width: 20px;
+  height: 20px;
+}
+/* a broken building: a grey wash and the mark, never red — red is someone attacking you */
+.gk-bcard[data-faulty] .gk-bcard__copy {
+  background-image: linear-gradient(0deg, color-mix(in srgb, var(--gk-ink) 6%, transparent), transparent);
+}
+.gk-bcard__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 8px;
+  pointer-events: none;
+}
+.gk-bcard__head {
+  display: grid;
+  gap: 1px;
+}
+.gk-bcard__name {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-bcard__aside,
+.gk-bcard__tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.25;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__note,
+.gk-bcard__gain,
+.gk-bcard__wait {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.gk-bcard__note .gk-glyph {
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+}
+.gk-bcard__note[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-bcard__note[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-bcard__gain-label {
+  color: var(--gk-ink-2);
+}
+/* each value is one box: "Sv. 6" never splits, a long one wraps inside itself */
+.gk-bcard__gain .gk-num {
+  display: inline-block;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-bcard__to {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+}
+.gk-bcard__becomes {
+  flex-shrink: 0;
+  margin: 0 3px;
+  color: var(--gk-ink-3);
+}
+.gk-bcard__gain .gk-bcard__next {
+  color: var(--gk-good);
+}
+/* a lock is a door: the reason and an arrow, 44 px to hit, straight to what opens it */
+.gk-bcard__door {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  margin: -6px -8px;
+  padding: 6px 8px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  color: var(--gk-warn);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) linear;
+}
+.gk-bcard__door:active {
+  transform: translateX(2px);
+}
+.gk-bcard__door .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-bcard__price {
+  margin-top: auto;
+  padding-top: 2px;
+}
+/* short of the price: when the store will have it, at today's flow */
+.gk-bcard__wait {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-warn);
+}
+.gk-bcard__wait .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-bcard__act {
+  margin-top: 4px;
+  pointer-events: auto;
+}
+/* pointed at by the tutorial or a link: the own-colour edge, and a slow breath of light */
+.gk-bcard[data-highlighted] {
+  border-color: color-mix(in srgb, var(--gk-self) 75%, transparent);
+  box-shadow: 0 2px 0 var(--gk-outline), 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent), 0 0 18px color-mix(in srgb, var(--gk-self) 30%, transparent);
+}
+/* the card the player is led to breathes in the own colour until it is pressed */
+.gk-bcard[data-highlighted]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--gk-self), inset 0 0 22px color-mix(in srgb, var(--gk-self) 40%, transparent);
+  animation: gk-card-breathe 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes gk-card-breathe {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+/* an order just landed: a light runs across the card once */
+.gk-bcard[data-flash]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--gk-self) 34%, transparent) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: gk-card-sweep 700ms var(--gk-ease) forwards;
+  pointer-events: none;
+}
+@keyframes gk-card-sweep {
+  to { transform: translateX(120%); }
+}
+
 /* ── banners, peeks, empty, coach ──────────────────────────────────────────── */
 
 .gk-banner {

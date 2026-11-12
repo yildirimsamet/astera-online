@@ -523,6 +523,7 @@ export const upgradeRow = {
   takes: "{{duration}}",
   takesLabel: "Yapımı {{duration}} sürer",
   ladder: "Seviye {{level}} / {{max}}",
+  level: "Seviye {{level}}",
 } as const;
 
 export const action = {

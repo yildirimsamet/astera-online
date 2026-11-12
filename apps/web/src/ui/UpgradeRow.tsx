@@ -3,9 +3,11 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
+import { playSound } from '../lib/sound.js';
+import { CostLine, Glyph, LevelBadge } from '../game-ui/index.js';
 import { Rungs } from './Rungs.js';
 import { duration } from '../lib/time.js';
-import { ActionButton, Price, ResourceAmounts, TimeCost, type Verb } from './Action.js';
+import { ActionButton, Price, ResourceAmounts, TimeCost, useOrderDuration, type Verb } from './Action.js';
 import { FaultMark, LockMark } from './marks.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import { CardArtwork } from './AtmosphereArt.js';
@@ -76,6 +78,18 @@ function useCondensedWhenCut(ref: RefObject<HTMLHeadingElement | null>, text: st
     watch.observe(element);
     return () => { watch.disconnect(); };
   }, [ref, text]);
+}
+
+/** The card's time cost, in the kit's line: a clock and the wait as the player will live it. */
+function CardTime({ minutes }: { minutes: number }) {
+  const { t } = useTranslation();
+  const spoken = useOrderDuration(minutes);
+  return (
+    <span data-testid="order-time" className="gk-cost__time" aria-label={t('upgradeRow.takesLabel', { duration: spoken })}>
+      <Glyph id="clock" />
+      {t('upgradeRow.takes', { duration: spoken })}
+    </span>
+  );
 }
 
 export function UpgradeRow({
@@ -269,7 +283,7 @@ export function UpgradeRow({
     const levelMark = maxLevel !== undefined && maxLevel > 1
       ? <Rungs level={level ?? 0} max={maxLevel} next={!completed} />
       : level !== undefined && level > 0
-        ? <span className="font-v2-mono">L{level}</span>
+        ? <span role="img" aria-label={t('upgradeRow.level', { level })}><LevelBadge level={level} /></span>
         : null;
     return (
       <div
@@ -278,58 +292,51 @@ export function UpgradeRow({
         data-progression-state={completed ? 'complete' : queued ? 'queued' : locked ? 'locked' : unowned ? 'available-unowned' : 'owned'}
         data-faulty={faulty ? '' : undefined}
         data-highlighted={highlighted ? '' : undefined}
-        className={`group relative flex h-full flex-col overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
-          highlighted ? 'border-v2-self/60 ring-1 ring-v2-self/40' : 'border-v2-line'
-        } ${faulty ? 'bg-v2-ink/[0.04]' : ''} ${flash ? 'sweep' : ''}`}
+        data-flash={flash ? '' : undefined}
+        className="gk gk-bcard"
       >
         {onOpen && (
           <button
             type="button"
             aria-label={t('upgradeRow.about', { name })}
             data-open-item
-            className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
+            className="gk-bcard__open"
             onClick={() => {
+              playSound('tap');
               haptic('tap');
               onOpen();
             }}
           />
         )}
         {faulty && (
-          <span data-fault-mark aria-hidden className="pointer-events-none absolute right-2 top-2 z-20 text-v2-ink-3">
-            <FaultMark />
+          <span data-fault-mark aria-hidden className="gk-bcard__fault">
+            <Glyph id="damaged" />
           </span>
         )}
         {/* The complete scene fills the card; this well reserves its unobstructed view. */}
-        <div
-          data-art
-          className="pointer-events-none relative z-10 grid h-[96px] place-items-center bg-[radial-gradient(60%_60%_at_50%_45%,rgb(46_60_96/45%),transparent_75%)]"
-        >
+        <div data-art className="gk-bcard__art">
           {art ? (
             <CardArtwork src={art} locked={artLocked} unowned={unowned} />
           ) : (
             <span className={artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''}>{mark}</span>
           )}
           {artLocked && (
-            <span data-art-lock className="absolute inset-0 flex items-center justify-center">
-              <LockMark />
+            <span data-art-lock className="gk-bcard__lock">
+              <Glyph id="lock" />
             </span>
           )}
-          {levelMark !== null && (
-            <span className={`absolute left-1.5 top-1.5 rounded-chip border border-v2-line-hi bg-v2-deep/80 px-1 text-micro text-v2-ink-2 ${flash ? 'pop' : ''}`}>
-              {levelMark}
-            </span>
-          )}
+          {levelMark !== null && <span className="gk-bcard__level">{levelMark}</span>}
         </div>
-        <div data-card-copy className="pointer-events-none relative z-10 flex flex-1 flex-col gap-1 px-2 pb-2 pt-1.5">
+        <div data-card-copy className="gk-bcard__copy">
           {/* THE NAME WHOLE: it wraps, it is never cut. */}
           {/*
             WHAT IT IS AND WHERE IT IS, IN ONE GLANCE (D195c, owner: "Dart (Lv1) - 3 in 4
             out"): a hull's tier and its holding sit right under its name, as on the row.
           */}
-          <div data-row-line="name" className="flex flex-col gap-0.5">
-            <h3 className="v2-name flex items-center gap-1.5 text-caption leading-tight [overflow-wrap:anywhere]">{summary === 'hull' && nameBadge}{name}</h3>
+          <div data-row-line="name" className="gk-bcard__head">
+            <h3 className="gk-bcard__name">{summary === 'hull' && nameBadge}{name}</h3>
             {(tierMark !== undefined || nameAside) && (
-              <p className="font-v2-mono text-micro text-v2-ink-3">
+              <p className="gk-bcard__aside gk-num">
                 {tierMark !== undefined && <span data-testid="hull-tier">{tierMark}</span>}
                 {tierMark !== undefined && nameAside ? ' · ' : null}
                 {nameAside && <span data-testid="hull-where">{nameAside}</span>}
@@ -337,15 +344,15 @@ export function UpgradeRow({
             )}
           </div>
           {summary !== 'hull' && (nameBadge !== undefined || tag) && (
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="gk-bcard__tag">
               {nameBadge}
-              {tag && <p className="text-micro leading-snug text-v2-ink-3">{tag}</p>}
+              {tag && <p>{tag}</p>}
             </div>
           )}
           {summary === 'hull' ? (
             (completed ?? queued ?? blocked) && <span role="status" className="sr-only">{completed ?? queued ?? blocked?.reason}</span>
           ) : inactive ? (
-            <p className="text-micro leading-snug text-v2-warn">{inactive}</p>
+            <p className="gk-bcard__note" data-tone="warn">{inactive}</p>
           ) : blocked && !acknowledging ? (
             blocked.onFix ? (
               <button
@@ -354,54 +361,62 @@ export function UpgradeRow({
                 data-has-fix
                 onClick={(event) => {
                   event.stopPropagation();
+                  playSound('tap');
                   haptic('tap');
                   blocked.onFix?.();
                 }}
-                className="pointer-events-auto relative z-[1] -mx-1 flex items-start gap-1 rounded-chip px-1 text-left text-micro leading-snug text-v2-warn"
+                className="gk-bcard__door"
               >
+                <Glyph id="lock" />
                 <span>{blocked.reason}</span>
-                <span aria-hidden className="shrink-0">→</span>
+                <Glyph id="next" />
               </button>
             ) : (
-              <p data-blocked-reason className="text-micro leading-snug text-v2-warn">{blocked.reason}</p>
+              <p data-blocked-reason className="gk-bcard__note" data-tone="warn">
+                <Glyph id="lock" />
+                <span>{blocked.reason}</span>
+              </p>
             )
           ) : queued ? (
-            <p role="status" className="text-micro leading-snug text-v2-self">{queued}</p>
+            <p role="status" className="gk-bcard__note" data-tone="self">
+              <Glyph id="timed" />
+              <span>{queued}</span>
+            </p>
           ) : completed ? (
-            <p role="status" className="text-micro leading-snug text-v2-ink-3">{completed}</p>
+            <p role="status" className="gk-bcard__note">
+              <Glyph id="check" />
+              <span>{completed}</span>
+            </p>
           ) : gain ? (
-            <p className="font-v2-mono text-micro leading-snug">
-              <span className="text-v2-ink-3">{gain.label} </span>
-              {gain.now !== undefined && <>
+            <p className="gk-bcard__gain">
+              <span className="gk-bcard__gain-label">{gain.label} </span>
+              {gain.now !== undefined && (gain.resourcePair
+                ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+                : <span className="gk-num">{gain.now}</span>)}
+              {/* the arrow rides with what it points at, never alone at a line's end */}
+              <span className="gk-bcard__to">
+                {gain.now !== undefined && <span className="gk-bcard__becomes" aria-label={t('upgradeRow.becomes')}>→</span>}
                 {gain.resourcePair
-                  ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
-                  : <span className="text-v2-ink-2">{gain.now}</span>}
-                <span className="mx-1 text-v2-ink-3" aria-label={t('upgradeRow.becomes')}>→</span>
-              </>}
-              {gain.resourcePair
-                ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
-                : <span className="text-v2-self">{gain.next}</span>}
+                  ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
+                  : <span className="gk-bcard__next gk-num">{gain.next}</span>}
+              </span>
             </p>
           ) : (
-            <p className="text-micro leading-snug text-v2-ink-3">{role}</p>
+            <p className="gk-bcard__note">{role}</p>
           )}
           {(summary === 'hull' || (!completed && (!queued || queuedActionable))) && (
-            <div data-card-price className="mt-auto flex flex-wrap items-center gap-x-1 gap-y-0.5 pt-0.5">
-              <Price cost={cost} held={held} layout="row" />
-              {takes === undefined ? null : <TimeCost minutes={takes} />}
+            <div data-card-price className="gk-bcard__price">
+              <CostLine cost={cost} held={held} {...(takes === undefined ? {} : { time: <CardTime minutes={takes} /> })} />
             </div>
           )}
           {summary !== 'hull' && !affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
-            <p className="text-micro leading-snug text-v2-ink-3">
-              <Trans
-                i18nKey="upgradeRow.affordableIn"
-                values={{ duration: duration(waitMinutes) }}
-                components={[<span key="n" className="font-v2-mono text-v2-warn" />]}
-              />
+            <p data-wait className="gk-bcard__wait">
+              <Glyph id="timed" />
+              <span>{t('itemSheet.affordIn', { duration: duration(waitMinutes) })}</span>
             </p>
           )}
           {!onOpen && (
-            <span data-act className="pointer-events-auto mt-1">
+            <span data-act className="gk-bcard__act">
               <ActionButton
                 verb={verb}
                 cost={cost}

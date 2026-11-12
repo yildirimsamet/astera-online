@@ -533,6 +533,7 @@ export const upgradeRow = {
   takesLabel: "Toma {{duration}} para construir",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
+  level: "Nivel {{level}}",
 } as const;
 
 /** The control at the right-hand edge of every row. */
