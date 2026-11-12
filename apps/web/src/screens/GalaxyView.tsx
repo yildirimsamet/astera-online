@@ -2005,6 +2005,8 @@ export function GalaxyView({
           bleed
           detents={['full']}
           headerArt={ATMOSPHERE.baseWorld}
+          // Stage 4.1: the kit's head, the world's own tone, over the page's own art (owner 2026-10-27).
+          kit={{ tone: 'self' }}
           eyebrow={commander}
           title={planet.data.planet.name}
           onClose={() => {

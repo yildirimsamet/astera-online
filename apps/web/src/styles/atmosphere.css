@@ -27,11 +27,24 @@
     linear-gradient(0deg, var(--color-v2-panel), transparent 45%);
 }
 .sheet-art-head header { position: relative; }
-.sheet-art-head header > button {
+/* v2 heads only: the kit's head (.gk-sheet__head) has its own round plates */
+.sheet-art-head header:not(.gk-sheet__head) > button {
   background-color: rgb(4 6 11 / 65%);
   border-radius: var(--radius-control);
 }
-.sheet-art-head header p { color: var(--color-v2-ink-2); }
+.sheet-art-head header:not(.gk-sheet__head) p { color: var(--color-v2-ink-2); }
+/* The kit's head over a page's own art (owner 2026-10-27: the world has its art): the art is
+   the plate, so the kit's metal plate steps aside and only its type and round close stay;
+   the art fades into the kit sheet's metal, not the v2 panel. */
+.sheet-art-head .gk-sheet__head {
+  background: none;
+  clip-path: none;
+}
+.sheet-art-head .gk-sheet__head::before { content: none; }
+.gk-sheet .sheet-art-head [data-sheet-art]::after {
+  background: linear-gradient(90deg, rgb(4 6 11 / 85%), rgb(4 6 11 / 40%) 65%, rgb(4 6 11 / 25%)),
+    linear-gradient(0deg, var(--gk-metal-2), transparent 45%);
+}
 
 .commander-menu {
   --menu-art-shade: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-deep) 90%, transparent), transparent);
