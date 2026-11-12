@@ -117,6 +117,44 @@ describe('population driven bot worker', () => {
     expect((await runBotSweep(f.db, f.clock, silent, 100)).awake).toBe(0);
   });
 
+  it('seats past real-player demand up to the operator floor, four per half hour', async () => {
+    for (let i = 0; i < 10; i++) await addBot(f.db, `FloorBot${String(i)}`, f.clock);
+    expect(await ensureBotSeats(f.db, f.clock, silent, 100, 8)).toBe(4);
+    f.clock.advance(30);
+    expect(await ensureBotSeats(f.db, f.clock, silent, 100, 8)).toBe(4);
+    f.clock.advance(30);
+    expect(await ensureBotSeats(f.db, f.clock, silent, 100, 8)).toBe(0);
+  });
+
+  it('keeps the awake floor online by day with no real player active, and counts them online', async () => {
+    for (let i = 0; i < 6; i++) await addBot(f.db, `DayBot${String(i)}`, f.clock);
+    const evening = new Date('2026-01-01T17:00:00.000Z');
+    f.clock.set(evening);
+    await f.db.update(players).set({ lastActiveAt: new Date(evening.getTime() - 60 * 60_000) });
+    const floors = { seats: 6, awake: 3 };
+    await runBotSweep(f.db, f.clock, silent, 100, floors);
+    f.clock.advance(30);
+    const result = await runBotSweep(f.db, f.clock, silent, 100, floors);
+    expect(result.awake).toBe(3);
+    const [online] = await f.db.select({ n: sql<number>`count(*)::int` }).from(players)
+      .where(gte(players.lastActiveAt, new Date(f.clock.now().getTime() - 5 * 60_000)));
+    expect(online?.n).toBe(3);
+    const status = await botStatus(f.db, f.clock, 100, floors);
+    expect(status.galaxies[0]).toMatchObject({ activePeople: 0, targetSeats: 6, seated: 6, targetAwake: 3, awake: 3 });
+  });
+
+  it('lets the awake floor sleep through the quiet hours', async () => {
+    for (let i = 0; i < 6; i++) await addBot(f.db, `NightBot${String(i)}`, f.clock);
+    const night = new Date('2026-01-01T01:00:00.000Z');
+    f.clock.set(night);
+    await f.db.update(players).set({ lastActiveAt: new Date(night.getTime() - 60 * 60_000) });
+    const floors = { seats: 6, awake: 3 };
+    await runBotSweep(f.db, f.clock, silent, 100, floors);
+    f.clock.advance(30);
+    expect((await runBotSweep(f.db, f.clock, silent, 100, floors)).awake).toBe(0);
+    expect((await botStatus(f.db, f.clock, 100, floors)).galaxies[0]?.targetAwake).toBe(0);
+  });
+
   it('reports demand and actual activity for each galaxy', async () => {
     for (let i = 0; i < 6; i++) await addBot(f.db, `StatusBot${String(i)}`, f.clock);
     const evening = new Date('2026-01-01T17:00:00.000Z');

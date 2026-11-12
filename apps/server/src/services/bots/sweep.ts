@@ -10,8 +10,8 @@ import { joinSeason } from '../player.js';
 import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
 import {
-  BOT_ACTIVITY_BUCKET_MS, BOT_SEAT_BATCH, BOT_SEAT_INTERVAL_MS, botAwakeTarget, botQuietAt, botSeatTarget,
-  type BotSessionCandidate,
+  BOT_ACTIVITY_BUCKET_MS, BOT_SEAT_BATCH, BOT_SEAT_INTERVAL_MS, NO_BOT_FLOORS, botAwakeTarget, botQuietAt, botSeatTarget,
+  type BotFloors, type BotSessionCandidate,
 } from './population.js';
 import { isPerson, peopleIn } from '../people.js';
 import { runBotTurn, type BotSeat } from './brain.js';
@@ -74,6 +74,8 @@ export async function ensureBotSeats(
   log: FastifyBaseLogger,
   /** `BOTS_PER_GALAXY` is an upper bound, not an immediate seating quota. */
   perGalaxy: number = BOTS.maxPerGalaxy,
+  /** `BOTS_MIN_SEATS`: seated even below demand once the galaxy has people. */
+  minSeats = 0,
 ): Promise<number> {
   const live = await db
     .select({ id: seasons.id, code: shards.code })
@@ -119,7 +121,7 @@ export async function ensureBotSeats(
   for (const season of eligible) {
     const hereRows = placed.filter((row) => row.seasonId === season.id);
     const here = hereRows.filter((row) => row.retiredAt === null).length;
-    const target = botSeatTarget(await peopleIn(db, season.id), perGalaxy);
+    const target = botSeatTarget(await peopleIn(db, season.id), perGalaxy, minSeats);
     const recent = hereRows.filter((row) => row.joinedAt > new Date(clock.now().getTime() - BOT_SEAT_INTERVAL_MS)).length;
     const need = Math.min(
       Math.max(0, target - here),
@@ -261,7 +263,7 @@ function awakeAcross(bots: readonly SeatedBot[], at: Date): SeatedBot[] {
 /** Each worker recomputes demand once per five-minute bucket, including at boot. */
 const lastActivityBucket = new Map<string, number>();
 
-async function reconcileSessions(db: Db, now: Date): Promise<void> {
+async function reconcileSessions(db: Db, now: Date, minAwake: number): Promise<void> {
   const live = await db
     .select({ seasonId: seasons.id, code: shards.code })
     .from(seasons)
@@ -305,7 +307,7 @@ async function reconcileSessions(db: Db, now: Date): Promise<void> {
         untilAt: row.untilAt,
       }));
       const guards = await guardPlayerIds(tx, season.seasonId);
-      const plan = planRosterSessions(candidates, botAwakeTarget(active?.n ?? 0, rows.length), now, guards);
+      const plan = planRosterSessions(candidates, botAwakeTarget(active?.n ?? 0, rows.length, minAwake), now, guards);
       if (plan.stop.length > 0) {
         await tx.update(botProfiles).set({ sessionUntilAt: now })
           .where(and(inArray(botProfiles.accountId, plan.stop), isNull(botProfiles.retiredAt)));
@@ -343,10 +345,11 @@ export async function runBotSweep(
   clock: Clock,
   log: FastifyBaseLogger,
   perGalaxy: number = BOTS.maxPerGalaxy,
+  floors: BotFloors = NO_BOT_FLOORS,
 ): Promise<BotSweepResult> {
-  const seated = await ensureBotSeats(db, clock, log, perGalaxy);
+  const seated = await ensureBotSeats(db, clock, log, perGalaxy, floors.seats);
   const now = clock.now();
-  await reconcileSessions(db, now);
+  await reconcileSessions(db, now, floors.awake);
   const bots = await seatedBots(db);
   if (bots.length === 0) return { seated, awake: 0, turns: 0 };
 
@@ -458,6 +461,7 @@ export async function botStatus(
   db: Db,
   clock: Clock,
   operatorCap: number = BOTS.maxPerGalaxy,
+  floors: BotFloors = NO_BOT_FLOORS,
 ): Promise<{
   seated: number;
   awake: number;
@@ -497,9 +501,9 @@ export async function botStatus(
       seasonId: season.seasonId,
       people,
       activePeople,
-      targetSeats: BOTS.excludedShardCodes.includes(season.code) ? 0 : botSeatTarget(people, operatorCap),
+      targetSeats: BOTS.excludedShardCodes.includes(season.code) ? 0 : botSeatTarget(people, operatorCap, floors.seats),
       seated,
-      targetAwake: botQuietAt(now) ? 0 : Math.max(botAwakeTarget(activePeople, seated),
+      targetAwake: botQuietAt(now) ? 0 : Math.max(botAwakeTarget(activePeople, seated, floors.awake),
         [...await guardPlayerIds(db, season.seasonId)].filter(id => guardWindow(id, now) !== null
           && bots.some(bot => bot.playerId === id)).length),
       awake: awake.filter((bot) => bot.seasonId === season.seasonId).length,

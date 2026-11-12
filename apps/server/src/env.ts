@@ -244,6 +244,9 @@ const schema = z.object({
    */
   BOT_LEGACY_ENABLED: z.enum(['true', 'false']).default('true').transform(value => value === 'true'),
   BOTS_PER_GALAXY: z.coerce.number().int().min(1).max(MULTI_WORLD.botSlots).default(BOTS.maxPerGalaxy),
+  // Owner 2026-11-12: per-galaxy minimums over real-player demand; awake still sleeps 01–08 TR.
+  BOTS_MIN_SEATS: z.coerce.number().int().min(0).max(MULTI_WORLD.botSlots).default(0),
+  BOTS_MIN_AWAKE: z.coerce.number().int().min(0).max(MULTI_WORLD.botSlots).default(0),
   // Explicit rollout switch. Disabling never re-enables destructive reclaim.
   SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   SILENT_SPACE_BATCH: z.coerce.number().int().min(1).max(20).default(5),

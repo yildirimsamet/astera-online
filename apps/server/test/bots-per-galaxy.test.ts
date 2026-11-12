@@ -36,6 +36,21 @@ describe('BOTS_PER_GALAXY', () => {
   });
 });
 
+describe.each(['BOTS_MIN_SEATS', 'BOTS_MIN_AWAKE'] as const)('%s', (key) => {
+  it('defaults to no floor', () => {
+    expect(loadEnv(base)[key]).toBe(0);
+  });
+
+  it('takes a count up to the galaxy bot seats', () => {
+    expect(loadEnv({ ...base, [key]: '5' })[key]).toBe(5);
+    expect(loadEnv({ ...base, [key]: String(MULTI_WORLD.botSlots) })[key]).toBe(MULTI_WORLD.botSlots);
+  });
+
+  it.each(['-1', String(MULTI_WORLD.botSlots + 1), '2.5', 'many'])('refuses %s', (value) => {
+    expect(() => loadEnv({ ...base, [key]: value })).toThrow(new RegExp(key));
+  });
+});
+
 describe('seating to the configured roster', () => {
   let f: Fixture;
   const seatedCount = async (): Promise<number> => {
@@ -64,6 +79,16 @@ describe('seating to the configured roster', () => {
     );
     await worker.tick();
     expect(await seatedCount()).toBe(2);
+  });
+
+  it('passes the operator floors on to the sweep', async () => {
+    const worker = new EventWorker(
+      f.db, f.clock,
+      { pollMs: 1000, batch: 100, staleMinutes: 5, botsEnabled: true, botsPerGalaxy: 100, botMinSeats: 4 },
+      silent,
+    );
+    await worker.tick();
+    expect(await seatedCount()).toBe(4);
   });
 });
 

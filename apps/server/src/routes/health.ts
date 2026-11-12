@@ -7,6 +7,7 @@ import { failedStarterEventCount, oldestPendingStarterAge } from '../worker/star
 import { strandedBuildCount, strandedFlightCount } from '../worker/abandon.js';
 import { idleSeatCount } from '../services/reclaim.js';
 import { botStatus } from '../services/bots/sweep.js';
+import type { BotFloors } from '../services/bots/population.js';
 import { missions, planets, scheduledEvents } from '../db/schema.js';
 import { metricFamilies, prometheusText } from '../services/prometheusMetrics.js';
 import { z } from 'zod';
@@ -62,7 +63,7 @@ function hostCpuCounters(): {
 
 export function registerHealthRoutes(
   app: FastifyInstance,
-  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both' | 'arena'; botCap: number },
+  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both' | 'arena'; botCap: number; botFloors?: BotFloors },
 ): void {
   /**
    * EXEMPT FROM THE RATE LIMIT, because this is the one route whose caller is a
@@ -176,7 +177,7 @@ export function registerHealthRoutes(
         questions somebody will ask when the disc looks quiet, and this is where the
         answer belongs.
       */
-      checks.bots = await botStatus(app.db, app.clock, options.botCap);
+      checks.bots = await botStatus(app.db, app.clock, options.botCap, options.botFloors);
       if (lag !== null && lag > MAX_QUEUE_LAG_SECONDS) {
         ok = false;
         checks.queue = 'stalled';

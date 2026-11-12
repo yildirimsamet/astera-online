@@ -42,6 +42,9 @@ export interface WorkerOptions {
   botsEnabled?: boolean;
   /** `BOTS_PER_GALAXY` is a ceiling over the population-driven seat target. */
   botsPerGalaxy?: number;
+  /** `BOTS_MIN_SEATS` / `BOTS_MIN_AWAKE`: floors under the demand targets. */
+  botMinSeats?: number;
+  botMinAwake?: number;
   silentSpaceEnabled?: boolean;
   silentSpaceBatch?: number;
   silentSpaceMaxShards?: number;
@@ -348,7 +351,9 @@ export class EventWorker {
       if (now.getTime() - this.botsSweptAt >= BOTS.sweepEveryMs) {
         this.botsSweptAt = now.getTime();
         try {
-          const bots = await runBotSweep(this.db, this.clock, this.log, this.opts.botsPerGalaxy);
+          const bots = await runBotSweep(this.db, this.clock, this.log, this.opts.botsPerGalaxy, {
+            seats: this.opts.botMinSeats ?? 0, awake: this.opts.botMinAwake ?? 0,
+          });
           botTurns = bots.turns;
           if (bots.seated > 0) {
             this.log.info({ seated: bots.seated }, 'seated commanders on a live galaxy');

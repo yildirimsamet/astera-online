@@ -64,6 +64,32 @@ describe('bot population targets', () => {
   });
 });
 
+/**
+ * OPERATOR FLOORS. Owner, 2026-11-12: a quiet galaxy should still look lived in, so
+ * the operator may hold a minimum seated roster and a minimum awake count by day.
+ * Both default to zero, and both stay under every ceiling the targets already had.
+ */
+describe('operator floors', () => {
+  it('seats at least the floor once a galaxy has people, never past the ceiling', () => {
+    expect(botSeatTarget(23, 100, 13)).toBe(13);
+    expect(botSeatTarget(23, 100, 0)).toBe(6);
+    expect(botSeatTarget(100, 100, 13)).toBe(25);
+    expect(botSeatTarget(0, 100, 13)).toBe(0);
+    expect(botSeatTarget(23, 10, 13)).toBe(10);
+    expect(botSeatTarget(23, 100, Number.NaN)).toBe(6);
+  });
+
+  it('keeps the awake floor even with nobody online, under the half-roster cap', () => {
+    expect(botAwakeTarget(6, 13, 5)).toBe(5);
+    expect(botAwakeTarget(0, 13, 5)).toBe(5);
+    expect(botAwakeTarget(6, 8, 5)).toBe(4);
+    expect(botAwakeTarget(50, 25, 5)).toBe(13);
+    expect(botAwakeTarget(6, 0, 5)).toBe(0);
+    expect(botAwakeTarget(6, 13, 0)).toBe(2);
+    expect(botAwakeTarget(0, 13, -3)).toBe(0);
+  });
+});
+
 describe('bot session decisions', () => {
   it('starts only up to demand and gives a new session an hour to act', () => {
     const result = planBotSessions([candidate(0), candidate(1), candidate(2)], 2, at(12));
