@@ -3,6 +3,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { prewarmStrategicBlast, StrategicBlast } from './StrategicBlast.jsx';
+import { NukeBlast, prewarmNukeBlast } from './NukeBlast.jsx';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import type { StrategicImpactKind } from './strategicLayers.js';
 import { DEATH_STAR } from '@astera/rules';
@@ -201,8 +202,10 @@ export function DeathStarImpacts({
 export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
   const [active, setActive] = useState(() => isDeathStarImpactVisible(event.at, serverNow()));
 
+  const airborne = event.kind === 'interception';
   useEffect(() => {
-    prewarmStrategicBlast();
+    if (airborne) prewarmStrategicBlast();
+    else prewarmNukeBlast();
     const timers: ReturnType<typeof setTimeout>[] = [];
     const sync = (): void => { setActive(isDeathStarImpactVisible(event.at, serverNow())); };
     const arm = (at: number): void => {
@@ -221,14 +224,16 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
       window.removeEventListener('focus', sync);
       window.removeEventListener('pageshow', sync);
     };
-  }, [event.at]);
+  }, [event.at, airborne]);
 
   return active ? <Impact event={event} /> : null;
 }
 
 function Impact({ event }: { event: DeathStarImpactEvent }) {
   const fallback = <GeometricImpact event={event} />;
-  return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><StrategicBlast event={event} /></Suspense></SkinAssetBoundary>;
+  // A weapon that lands is a nuclear strike on the world (owner, 2026-11-12); one shot down bursts in the air.
+  const blast = event.kind === 'interception' ? <StrategicBlast event={event} /> : <NukeBlast event={event} />;
+  return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}>{blast}</Suspense></SkinAssetBoundary>;
 }
 
 function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {

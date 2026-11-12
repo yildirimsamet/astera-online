@@ -18,13 +18,22 @@ beforeEach(() => { requests.length = 0; vi.useFakeTimers(); vi.setSystemTime(10_
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the first strategic impact', () => {
-  it('begins loading its real art before arrival while drawing no premature destruction', () => {
+  it('a strike on a world begins loading the nuclear strike before arrival, drawing nothing early', () => {
     const view = render(<TimedImpact event={future} />);
     expect(view.container.children).toHaveLength(0);
     expect(requests).toContain('/assets/vfx/premium-v2/explosion.webp');
+    expect(requests).toContain('/assets/vfx/library/sck-smoke-8x8.webp');
+    expect(requests).toContain('/assets/vfx/library/white-shock-4x4.webp');
+    expect(requests).toContain('/assets/vfx/library/flare-star.webp');
+    expect(requests).not.toContain('/assets/models/debris/wreck-plate-gd-v3.glb');
+  });
+
+  it('a weapon about to be shot down warms the airborne burst instead', () => {
+    render(<TimedImpact event={{ ...future, kind: 'interception' }} />);
     expect(requests).toContain('/assets/vfx/premium-v2/dust.webp');
     expect(requests).toContain('/assets/vfx/premium-v2/burst.webp');
     expect(requests).toContain('/assets/models/debris/wreck-plate-gd-v3.glb');
+    expect(requests).not.toContain('/assets/vfx/library/white-shock-4x4.webp');
   });
 
   it('does not start a second preload when only visibility intensity is refreshed', () => {
