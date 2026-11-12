@@ -463,6 +463,7 @@ function Commit({
             tone="action"
             size="lg"
             wide
+            heavy
             glyph={affordable ? 'up' : 'timed'}
             pending={pending}
             disabledReason={affordable

@@ -8,7 +8,11 @@ import { orderMinutes } from '../src/lib/orderTime.js';
 import { duration } from '../src/lib/time.js';
 import { ItemSheet, type ItemRef } from '../src/ui/ItemSheet.js';
 import type { PlanetView } from '../src/api/schemas.js';
+import { playSound } from '../src/lib/sound.js';
+import type * as Sound from '../src/lib/sound.js';
 import { planetView } from './fixtures.js';
+
+vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn() }));
 
 /**
  * THE ITEM SHEET — WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1.
@@ -157,6 +161,16 @@ describe('the sheet', () => {
     const move = screen.getByRole('button', { name: /raise to l4/i });
     expect(move).toHaveClass('gk-btn--action');
     expect(move.closest('[data-act]')).not.toBeNull();
+  });
+
+  /** Owner 2026-11-12 (4.1): one press, felt as a commitment — the commit cue, not the tap. */
+  it('raises with one press that lands like a commitment', async () => {
+    const onAct = vi.fn();
+    show({ item: { kind: 'building', id: 'REFINERY' }, onAct });
+    vi.mocked(playSound).mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /raise to l4/i }));
+    expect(onAct).toHaveBeenCalledOnce();
+    expect(vi.mocked(playSound).mock.calls.map(([cue]) => cue)).toEqual(['confirm']);
   });
 
   it('says on the dead button when a short player will have enough', () => {

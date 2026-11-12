@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BottomNav, Dialog, GameHold, GameTabs, Lever, RewardPod, Slider, Toggle, UnitCard } from '../../src/game-ui/index.js';
+import { BottomNav, Dialog, GameButton, GameHold, GameTabs, Lever, RewardPod, Slider, Toggle, UnitCard } from '../../src/game-ui/index.js';
 import { POD_OPEN_MS } from '../../src/game-ui/RewardPod.js';
 import { playSound } from '../../src/lib/sound.js';
 import type * as Sound from '../../src/lib/sound.js';
@@ -38,6 +38,14 @@ describe('the kit plays them at its moments', () => {
     expect(cues()).toContain('rattle');
     act(() => { vi.advanceTimersByTime(POD_OPEN_MS); });
     expect(cues()).toContain('unseal');
+  });
+
+  /** Owner 2026-11-12 (4.1): Upgrade stays one press, and the press is felt as a commitment. */
+  it('answers a heavy press with the commit cue, not the tap', () => {
+    render(<GameButton heavy onPress={() => undefined}>Raise</GameButton>);
+    press(screen.getByRole('button', { name: /Raise/ }));
+    expect(cues()).toContain('confirm');
+    expect(cues()).not.toContain('tap');
   });
 
   it('charges while a hold is down', () => {

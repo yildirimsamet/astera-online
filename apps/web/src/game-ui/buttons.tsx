@@ -32,6 +32,11 @@ export interface GameButtonProps {
   disabledReason?: string | null;
   pending?: boolean;
   className?: string;
+  /**
+   * A one-press commitment that spends (owner 2026-11-12, 4.1: Upgrade): it answers with
+   * the commit cue and buzz instead of a tap, so the press lands with its weight.
+   */
+  heavy?: boolean;
 }
 
 /**
@@ -41,11 +46,14 @@ export interface GameButtonProps {
  */
 export function GameButton({
   children, onPress, tone: look = 'steel', size = 'md', wide = false, glyph, cost, detail,
-  disabledReason = null, pending = false, className = '',
+  disabledReason = null, pending = false, className = '', heavy = false,
 }: GameButtonProps) {
   const own = useOwnPress(() => {
     if (pending || disabledReason !== null) return;
-    answer();
+    if (heavy) {
+      playSound('confirm');
+      haptic('commit');
+    } else answer();
     onPress();
   });
   const sizing = size === 'md' ? '' : ` gk-btn--${size}`;
