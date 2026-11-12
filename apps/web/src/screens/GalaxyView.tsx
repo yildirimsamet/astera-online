@@ -2009,6 +2009,7 @@ export function GalaxyView({
           kit={{ tone: 'self' }}
           eyebrow={commander}
           title={planet.data.planet.name}
+          titleLang="en"
           onClose={() => {
             onPanel(null);
           }}

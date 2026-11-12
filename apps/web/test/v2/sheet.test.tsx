@@ -88,6 +88,12 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
+  /** Stage 4.1: "Thistle" in Turkish capitals read THİSTLE; a name keeps the capitals of the language it is named in. */
+  it('writes a title in the language it is named in, when told', () => {
+    render(<Sheet title="Thistle" eyebrow="Samet" kit={{ tone: 'self' }} titleLang="en" onClose={vi.fn()}>body</Sheet>);
+    expect(screen.getByRole('heading', { name: 'Thistle' })).toHaveAttribute('lang', 'en');
+  });
+
   /*
     A phone keyboard closes when a field loses focus, and a page laid out around it moves:
     the first press on Close then only closed the keyboard (owner, chat, 2026-11-10).

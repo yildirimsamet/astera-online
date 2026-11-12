@@ -61,4 +61,10 @@ describe('the galaxy hosts it on both Base pages', () => {
     for (const head of [world, ship]) expect(head).not.toMatch(/quietTitle/);
     for (const art of [ATMOSPHERE.baseWorld, ATMOSPHERE.commanderShip]) expect(existsSync(`public${art.src}`)).toBe(true);
   });
+
+  /** World names are English words (server `planetNameFor`): Turkish capitals would write QUİLLON. */
+  it('writes the world\'s name in the language it is named in', () => {
+    const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && ("), source.indexOf('<BaseSwitch', source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && (")));
+    expect(world).toMatch(/titleLang="en"/);
+  });
 });

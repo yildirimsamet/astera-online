@@ -60,6 +60,11 @@ const PAGE: readonly Detent[] = ['half', 'full'];
 
 export interface SheetProps {
   title: string;
+  /**
+   * The language the title is named in, where it is not the page's: a world's name is an
+   * English word, and the kit head's capitals in Turkish would write THİSTLE (stage 4.1).
+   */
+  titleLang?: string;
   /** A compact action beside the heading, such as the chat's personal mute list. */
   titleAction?: ReactNode;
   /** Subject-specific art stays behind the named header; quiet/peek surfaces remain compact. */
@@ -124,6 +129,7 @@ export interface SheetProps {
  */
 export function Sheet({
   title,
+  titleLang,
   titleAction,
   eyebrow,
   lead,
@@ -251,7 +257,7 @@ export function Sheet({
               {kit.art ? <img className="gk-sheet__art" src={kit.art} alt="" draggable={false} /> : <span />}
               <div className="min-w-0">
                 {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
-                <h2 className="gk-sheet__title gk-display gk-outlined">{title}</h2>
+                <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>{title}</h2>
                 {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
               </div>
               <button

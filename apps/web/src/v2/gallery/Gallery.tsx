@@ -261,7 +261,7 @@ function GalleryBase({ empty = false, open = false, production = false }: { empt
     return null;
   });
   return (
-    <Sheet title="Thistle" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
+    <Sheet title="Thistle" titleLang="en" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       {/* As the galaxy hosts the world page: the Base switch above it. */}
       <BaseSwitch value="world" onChange={noop} arenaAvailable />
       <PlanetScreen focusGroup={production ? 'grow' : 'reach'} {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
@@ -291,7 +291,7 @@ function GalleryStrategic({ tab }: { tab: 'tactical' | 'defend' }) {
     return null;
   });
   return (
-    <Sheet title="Thistle" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
+    <Sheet title="Thistle" titleLang="en" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       <PlanetScreen focusGroup={tab} />
     </Sheet>
   );
