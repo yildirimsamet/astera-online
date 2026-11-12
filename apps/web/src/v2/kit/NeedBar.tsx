@@ -10,16 +10,11 @@ const LABEL = {
   deuterium: 'statusBar.deuteriumLabel',
 } as const satisfies Record<Resource, string>;
 
+/** The kit's fill for each resource; the missing part is hatched in warn (`.gk-need__gap`). */
 const FILL: Record<Resource, string> = {
-  alloy: 'bg-v2-alloy',
-  crystal: 'bg-v2-crystal',
-  deuterium: 'bg-v2-deut',
-};
-
-/** The missing part: hatched, so it reads as "not there yet" rather than as a second colour. */
-const GAP = {
-  backgroundImage:
-    'repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-v2-warn) 55%, transparent) 0 3px, transparent 3px 6px)',
+  alloy: 'gk-fill-alloy',
+  crystal: 'gk-fill-crystal',
+  deuterium: 'gk-fill-deut',
 };
 
 /**
@@ -45,18 +40,18 @@ export function NeedBar({ resource, have, need }: { resource: Resource; have: nu
   });
 
   return (
-    <div data-need-bar={resource} role="img" aria-label={name} className="flex flex-col gap-1">
-      <span aria-hidden="true" className="flex items-center justify-between gap-2 font-v2-mono text-micro tabular-nums">
-        <span className="flex items-center gap-1 text-v2-ink">
-          <img src={RESOURCE_ART[resource]} alt="" className="size-3.5 shrink-0 object-contain" />
+    <div data-need-bar={resource} role="img" aria-label={name} className="gk-need">
+      <span aria-hidden="true" className="gk-need__row">
+        <span className="gk-need__have gk-num">
+          <img src={RESOURCE_ART[resource]} alt="" />
           {compact(Math.max(0, have))}
-          <span className="text-v2-ink-3">/ {compact(need)}</span>
+          <span className="gk-need__of">/ {compact(need)}</span>
         </span>
-        {missing > 0 && <span className="text-v2-warn">{t('meter.short', { amount: compact(missing) })}</span>}
+        {missing > 0 && <span className="gk-need__short gk-num">{t('meter.short', { amount: compact(missing) })}</span>}
       </span>
-      <span aria-hidden="true" className="flex h-1.5 w-full overflow-hidden rounded-full">
-        <span data-have="" className={`h-full ${FILL[resource]}`} style={{ width: `${String(held)}%` }} />
-        {held < 100 && <span data-gap="" className="h-full" style={{ ...GAP, width: `${String(100 - held)}%` }} />}
+      <span aria-hidden="true" className={`gk-need__bar ${FILL[resource]}`}>
+        <span data-have="" className="gk-need__fill" style={{ width: `${String(held)}%` }} />
+        {held < 100 && <span data-gap="" className="gk-need__gap" style={{ width: `${String(100 - held)}%` }} />}
       </span>
     </div>
   );

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { BUILD, instrumentCost, upgradeCost } from '@astera/rules';
+import { BUILD, instrumentCost, satelliteCost, upgradeCost } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { instrumentGain } from '../src/lib/gains.js';
 import { orderMinutes } from '../src/lib/orderTime.js';
@@ -147,6 +147,23 @@ describe('the sheet', () => {
     show({ onClose });
     await userEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  /** Stage 4.1: the base's sheet is drawn with the kit — the plate head, the action face. */
+  it('is drawn in the kit: the plate head names what it is, the one move is the action face', () => {
+    show({ item: { kind: 'building', id: 'REFINERY' } });
+    expect(document.querySelector('[data-sheet-panel]')).toHaveClass('gk-sheet');
+    expect(document.querySelector('.gk-sheet__meta')).toHaveTextContent(/\S/);
+    const move = screen.getByRole('button', { name: /raise to l4/i });
+    expect(move).toHaveClass('gk-btn--action');
+    expect(move.closest('[data-act]')).not.toBeNull();
+  });
+
+  it('says on the dead button when a short player will have enough', () => {
+    show({ item: { kind: 'building', id: 'REFINERY' }, held: { alloy: 0, crystal: 0 } });
+    const move = document.querySelector<HTMLButtonElement>('[data-act] button');
+    expect(move).toBeDisabled();
+    expect(move).toHaveTextContent(/^Enough in ~/);
   });
 });
 
@@ -401,8 +418,9 @@ describe('the commit', () => {
     const onClose = vi.fn();
     show({ blocked: { reason: 'Command Core L7', onFix }, onClose });
     const door = screen.getByRole('button', { name: /command core l7/i });
-    expect(door.className).toMatch(/v2-warn/);
-    expect(door.className).not.toMatch(/hostile/);
+    // warn on steel (the kit's door), never the red of an attack
+    expect(door).toHaveClass('gk-btn--door');
+    expect(door.className).not.toMatch(/hostile|danger/);
     expect(document.querySelector('[data-need-bar]')).toBeNull();
     await userEvent.click(door);
     expect(onFix).toHaveBeenCalled();
@@ -444,6 +462,14 @@ describe('a satellite, which has no levels at all', () => {
         onClose={vi.fn()}
       />,
     );
+
+  /** The card on the base prices it from the rules when the server sent no quote; the sheet must agree. */
+  it('quotes the rules\' price when the server sent none, as the card does', () => {
+    showSat({ satelliteCosts: {} });
+    const price = satelliteCost('FOUNDRY');
+    const parts = [...document.querySelectorAll('.gk-sheet__foot .gk-cost__part')].map((part) => part.textContent);
+    expect(parts).toEqual([compact(price.alloy), compact(price.crystal)]);
+  });
 
   it('draws no level ladder', () => {
     showSat();

@@ -12,7 +12,8 @@ describe('the need bar', () => {
     render(<NeedBar resource="alloy" have={477} need={1000} />);
     const bar = screen.getByRole('img', { name: /alloy/i });
     expect(bar).toHaveAccessibleName(/477.*1,000.*523/);
-    expect(screen.getByText(/523/)).toHaveClass('text-v2-warn');
+    // the shortfall in the kit's warning colour
+    expect(screen.getByText(/523/)).toHaveClass('gk-need__short');
   });
 
   it('fills the held share in the resource colour and the gap in warn', () => {
@@ -20,8 +21,11 @@ describe('the need bar', () => {
     const have = document.querySelector<HTMLElement>('[data-have]')!;
     const gap = document.querySelector<HTMLElement>('[data-gap]')!;
     expect(have.style.width).toBe('35%');
-    expect(have).toHaveClass('bg-v2-crystal');
+    // the bar wears the crystal's own fill; the held part paints with it
+    expect(have.parentElement).toHaveClass('gk-fill-crystal');
+    expect(have).toHaveClass('gk-need__fill');
     expect(gap.style.width).toBe('65%');
+    expect(gap).toHaveClass('gk-need__gap');
     expect(gap.className).not.toMatch(/hostile|ink|line/);
   });
 

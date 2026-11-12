@@ -1557,6 +1557,358 @@
   to { transform: translateX(120%); }
 }
 
+/* ── the item sheet: what one more level buys (stage 4.1) ───────────────────── */
+
+/* the hero: what stands, and the gain the next level buys, big */
+.gk-ihero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: 10px 12px 10px 8px;
+}
+.gk-ihero__art {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px var(--gk-outline));
+  animation: gk-float 5s ease-in-out infinite;
+}
+.gk-ihero__value {
+  margin-top: 3px;
+  font-size: var(--gk-t-number);
+  line-height: 1.15;
+  color: var(--gk-ink);
+}
+.gk-ihero__arrow,
+.gk-ihero__dim {
+  color: var(--gk-ink-3);
+}
+.gk-ihero__next {
+  color: var(--gk-good);
+}
+.gk-ihero__line {
+  margin-top: 4px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-ihero__line .gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-ihero__line .gk-ihero__next {
+  color: var(--gk-good);
+}
+/* the satellite's orbit: what is up there, the slot this would take, the shut ones */
+.gk-orbit {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.gk-orbit__ring {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid color-mix(in srgb, var(--gk-info) 40%, transparent);
+  border-radius: 50%;
+}
+.gk-orbit__self {
+  position: absolute;
+  inset: 0;
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  object-fit: contain;
+  animation: gk-float 5s ease-in-out infinite;
+}
+.gk-orbit__socket {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 50%;
+  background: var(--gk-metal-3);
+  color: var(--gk-ink-3);
+  transform: translate(-50%, -50%);
+}
+.gk-orbit__socket img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-orbit__socket .gk-glyph {
+  width: 11px;
+  height: 11px;
+}
+.gk-orbit__socket[data-socket='self'] {
+  border-color: var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 18%, var(--gk-metal-3));
+}
+.gk-orbit__socket[data-socket='taken'] {
+  border-color: color-mix(in srgb, var(--gk-self) 50%, var(--gk-metal-edge));
+}
+.gk-orbit__socket[data-socket='target'] {
+  border: 1px dashed var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 10%, var(--gk-metal-3));
+  animation: gk-card-breathe 2.4s ease-in-out infinite;
+}
+.gk-orbit__socket[data-socket='free'] {
+  border-color: color-mix(in srgb, var(--gk-ink) 30%, var(--gk-metal-edge));
+}
+/* the role in one line; the rule behind it one press deeper */
+.gk-iabout {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-iabout__role {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-iabout__how {
+  flex-shrink: 0;
+}
+.gk-iabout__how .gk-chip {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.gk-iabout__how[aria-expanded='true'] .gk-chip {
+  border-color: var(--gk-self-lo);
+  color: var(--gk-self);
+}
+.gk-iabout__detail {
+  padding: 8px 10px;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+/* a line of state: a mark and a sentence, in the tone that says what kind */
+.gk-inote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-inote .gk-glyph {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.gk-inote[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-inote[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-inote--plate {
+  align-items: center;
+  justify-content: center;
+  min-height: var(--gk-hit);
+  padding: 6px 10px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+  font-weight: 600;
+}
+.gk-inote--plate[data-tone='self'] {
+  border-color: color-mix(in srgb, var(--gk-self) 40%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 10%, transparent);
+}
+/* the ladder: the level being sold lit, the two beyond it quieter */
+.gk-ladder {
+  display: grid;
+}
+.gk-ladder__rung {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 7px 10px;
+  opacity: 0.72;
+}
+.gk-ladder__rung + .gk-ladder__rung {
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+}
+.gk-ladder__rung[data-first] {
+  opacity: 1;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 12%, transparent), transparent 70%);
+}
+.gk-ladder__level {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-ladder__rung[data-first] .gk-ladder__level {
+  color: var(--gk-self);
+}
+.gk-ladder__value {
+  min-width: 0;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink);
+}
+.gk-ladder__value .gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+}
+.gk-ladder__label {
+  color: var(--gk-ink-2);
+}
+.gk-ladder__unlock {
+  grid-column: 2 / -1;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+/* where the look next changes: the anticipation, small and lit */
+.gk-ilook {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-ilook img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--gk-self) 35%, transparent));
+}
+/* the Core's levels against the world's tiers: one line now, the whole table one press deeper */
+.gk-tiers {
+  display: grid;
+  padding: 0 10px 8px;
+}
+.gk-tiers__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  width: 100%;
+  text-align: left;
+  color: var(--gk-info);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-tiers__toggle .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+.gk-tiers__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-tiers__now {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink);
+}
+.gk-tiers__body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.gk-tiers__rule {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-tiers__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--gk-t-small);
+}
+.gk-tiers__table th {
+  padding-bottom: 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  text-align: left;
+  color: var(--gk-ink-3);
+}
+.gk-tiers__table :is(th, td):last-child {
+  text-align: right;
+}
+.gk-tiers__table td {
+  padding: 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+  color: var(--gk-ink-2);
+}
+.gk-tiers__table td.gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+}
+.gk-tiers__table tr[aria-current='true'] td {
+  background: color-mix(in srgb, var(--gk-self) 12%, transparent);
+  color: var(--gk-self);
+}
+/* a requirement as a door on the foot: warn on steel, never an alarm */
+.gk-btn--door {
+  color: var(--gk-warn);
+}
+/* how far a price is: the part held in the resource's colour, the missing part hatched */
+.gk-need {
+  display: grid;
+  gap: 4px;
+}
+.gk-need__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+}
+.gk-need__have {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gk-ink);
+}
+.gk-need__have img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-need__of {
+  color: var(--gk-ink-3);
+}
+.gk-need__short {
+  color: var(--gk-warn);
+}
+.gk-need__bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--gk-outline);
+  border-radius: 2px;
+  background: var(--gk-metal-3);
+}
+.gk-need__fill {
+  height: 100%;
+  background: linear-gradient(180deg, var(--fill-hi), var(--fill) 50%, var(--fill-lo));
+}
+.gk-need__gap {
+  height: 100%;
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-warn) 55%, transparent) 0 3px, transparent 3px 6px);
+}
+
 /* ── banners, peeks, empty, coach ──────────────────────────────────────────── */
 
 .gk-banner {
@@ -1737,6 +2089,9 @@
   gap: var(--gk-s3);
   margin: 4px var(--gk-gutter) 0;
   padding: 8px 4px 8px 10px;
+}
+.gk-sheet__head--back {
+  grid-template-columns: auto auto 1fr auto;
 }
 .gk-sheet__art {
   width: 58px;

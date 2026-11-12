@@ -4,6 +4,7 @@ import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.
 import { useGalaxyCover } from '../../lib/galaxyCover.js';
 import { useNativeBack } from '../../platform/nativeBack.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
+import { Glyph } from '../../game-ui/icons.js';
 import { Icon } from '../icons.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import type { AtmosphereArt } from '../../ui/atmosphere.js';
@@ -93,6 +94,12 @@ export interface SheetProps {
    * Default: a dialog when it only ever fits its content, a page otherwise.
    */
   placement?: Placement;
+  /**
+   * THE KIT'S LOOK (stage 4.1): a screen moves to the kit by asking for it. The head becomes
+   * a plate with the subject's picture, the title in the display face and a line of meta;
+   * the body and the foot take the kit's metal. What the sheet does does not change.
+   */
+  kit?: { art?: string; meta?: ReactNode; tone?: 'self' | 'hostile' };
 }
 
 /**
@@ -133,6 +140,7 @@ export function Sheet({
   contained = false,
   fixedHeight = false,
   placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
+  kit,
 }: SheetProps) {
   const { t } = useTranslation();
   const [detent, setDetent] = useState<Detent>(detents[0] ?? 'half');
@@ -213,7 +221,7 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
@@ -230,10 +238,34 @@ export function Sheet({
             // A column on a wide screen has one height: its handle would promise a pull that does nothing.
             className={`flex h-4 w-full items-center justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
           >
-            <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
+            <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'h-1 w-9 rounded-full bg-v2-line-hi'} />
           </button>}
           {/* The close owns a stable row; scrolling tabs never need to move around it. */}
-          <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-2 pb-1' : 'flex items-start gap-1 px-2 pb-2'}>
+          {kit && !quietTitle ? (
+            <header className={`gk-cut${kit.tone ? ` gk-cut--${kit.tone}` : ''} gk-sheet__head${onBack ? ' gk-sheet__head--back' : ''}`}>
+              {onBack && (
+                <button type="button" aria-label={t('sheet.back')} onClick={onBack} className="gk-round pointer-events-auto">
+                  <span className="gk-round__face"><Glyph id="back" /></span>
+                </button>
+              )}
+              {kit.art ? <img className="gk-sheet__art" src={kit.art} alt="" draggable={false} /> : <span />}
+              <div className="min-w-0">
+                {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
+                <h2 className="gk-sheet__title gk-display gk-outlined">{title}</h2>
+                {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
+              </div>
+              <button
+                type="button"
+                aria-label={t('sheet.close')}
+                data-sheet-close=""
+                onPointerDown={(event) => { event.preventDefault(); }}
+                onClick={onClose}
+                className="gk-round pointer-events-auto"
+              >
+                <span className="gk-round__face"><Glyph id="close" /></span>
+              </button>
+            </header>
+          ) : <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-2 pb-1' : 'flex items-start gap-1 px-2 pb-2'}>
             {onBack && (
               <button
                 type="button"
@@ -272,17 +304,19 @@ export function Sheet({
             >
               <Icon id="i-close" className="size-4" />
             </button>
-          </header>
+          </header>}
         </div>
 
         <div
           data-sheet-body=""
-          className={`relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
+          className={kit
+            ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0!' : ''}`
+            : `relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
           {typeof children === 'function' ? children(detent) : children}
         </div>
 
-        {footer && <div className="shrink-0 border-t border-v2-line px-3 py-2.5">{footer}</div>}
+        {footer && <div className={kit ? 'gk-sheet__foot shrink-0' : 'shrink-0 border-t border-v2-line px-3 py-2.5'}>{footer}</div>}
       </div>
     </div>
   );
