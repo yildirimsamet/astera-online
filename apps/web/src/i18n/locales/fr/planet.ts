@@ -587,8 +587,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · avant les unités",
   vaultSafe: "Protégé dans le Dépôt",
   storeLabel: "Dépôt",
-  storeRule:
-    "Le niveau du Dépôt détermine la longueur de ces barres ; la zone encadrée par un bouclier représente la part protégée contre les raids.",
+  storeRule: "Un Dépôt plus haut allonge les barres ; un raid ne prend pas la zone au bouclier.",
   alloyStore: "{{held}} / {{cap}} alliage, dont {{safe}} protégés",
   crystalStore: "{{held}} / {{cap}} cristal, dont {{safe}} protégés",
   deuteriumStore: "{{held}} / {{cap}} Deutérium, dont {{safe}} protégés",

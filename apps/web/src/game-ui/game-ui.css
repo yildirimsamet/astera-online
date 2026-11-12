@@ -895,6 +895,15 @@
   border-radius: 1px;
   background: var(--gk-warn);
 }
+/* a world's three stores, one under the other, the rule of the box said once beneath */
+.gk-stores {
+  display: grid;
+  gap: 10px;
+  padding-inline: var(--gk-s1);
+}
+.gk-stores__rule {
+  margin-top: -2px;
+}
 
 /* The part of a range we are not sure of: the same hue, striped. */
 .gk-bar__reach {

@@ -16,13 +16,13 @@ import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
+import { SATELLITE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
+import { StoreGauge } from '../game-ui/index.js';
 import { Meter } from './kit/index.js';
 import { LockIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 import { StarField } from '../v2/kit/StarField.js';
-import { StoreBar } from '../v2/kit/StoreBar.js';
 
 /**
  * "This is MY planet."
@@ -295,8 +295,8 @@ function OrbitLine({ planet }: { planet: PlanetView }) {
  * picture). In three narrow columns the bar was a hundred pixels and the Vault's bracket
  * on it read as a square; a full-width row gives the cells room, so the bracket hugs the
  * cells it protects. Each row reads left to right: the resource, what the store holds of
- * what it can, the cells with the safe part bracketed under the shield (`StoreBar`), and
- * the rate at the end. The rule of the bracket is said once, under the rows.
+ * what it can, the bar with the safe part boxed under the shield (the kit's `StoreGauge`,
+ * stage 4.1), and the rate at the end. The rule of the box is said once, under the rows.
  *
  * DEUTERIUM IS ALWAYS HERE. Owner instruction, 2026-09-15: *"bu sectionda döteryum
  * üretimi gözükmüyor"* — it is the resource that decides whether a fleet can leave,
@@ -310,47 +310,25 @@ function ProductionRow({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const p = planet.planet;
   const rows = [
-    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy, tone: 'text-v2-alloy' },
-    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal, tone: 'text-v2-crystal' },
-    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium, tone: 'text-v2-deut' },
+    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy },
+    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal },
+    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium },
   ] as const;
 
   return (
-    <div data-testid="planet-rates" className="flex flex-col gap-1.5 px-1 font-v2-ui">
-      {rows.map(({ id, rate, held, cap, safe, tone }) => {
-        const filled = held >= cap;
-        return (
-          <div
-            key={id}
-            data-resource={id}
-            role="group"
-            aria-label={t(`planetHero.${id}Store`, {
-              held: full(Math.floor(held)),
-              cap: full(cap),
-              safe: full(safe),
-            })}
-            className="grid grid-cols-[0.875rem_4.75rem_minmax(0,1fr)_3.5rem] items-end gap-x-2"
-          >
-            <img src={RESOURCE_ART[id]} alt="" aria-hidden className="mb-[-1px] size-3.5 object-contain" />
-            <span
-              data-testid={`store-${id}`}
-              className={`truncate font-v2-mono text-caption leading-none tabular-nums ${filled ? 'text-v2-warn' : 'text-v2-ink'}`}
-            >
-              {compact(held)}
-              <span className={filled ? '' : 'text-v2-ink-3'}>/{compact(cap)}</span>
-            </span>
-            <StoreBar value={held} cap={cap} safe={safe} tone={id} />
-            <p
-              data-testid={`rate-${id}`}
-              className={`truncate text-right font-v2-mono text-caption font-semibold leading-none ${tone}`}
-            >
-              {rate > 0 ? `+${compact(rate)}` : compact(rate)}
-              <span className="font-normal text-micro text-v2-ink-3">{t('planetHero.perHourSuffix')}</span>
-            </p>
-          </div>
-        );
-      })}
-      <p className="text-micro leading-snug text-v2-ink-3">{t('planetHero.storeRule')}</p>
+    <div data-testid="planet-rates" className="gk gk-stores">
+      {rows.map(({ id, rate, held, cap, safe }) => (
+        <StoreGauge
+          key={id}
+          resource={id}
+          held={held}
+          cap={cap}
+          safe={safe}
+          rate={rate}
+          label={t(`planetHero.${id}Store`, { held: full(Math.floor(held)), cap: full(cap), safe: full(safe) })}
+        />
+      ))}
+      <p className="gk-sub gk-stores__rule">{t('planetHero.storeRule')}</p>
     </div>
   );
 }

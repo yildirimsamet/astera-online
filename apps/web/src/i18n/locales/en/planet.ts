@@ -608,7 +608,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · before units",
   vaultSafe: "Safe in the vault",
   storeLabel: "Store",
-  storeRule: "The Store level sets how long these bars are; the bracket under the shield is safe from a raid.",
+  storeRule: "A higher Store means longer bars; a raid cannot take the shielded box.",
   alloyStore: "{{held}} of {{cap}} alloy, {{safe}} protected",
   crystalStore: "{{held}} of {{cap}} crystal, {{safe}} protected",
   deuteriumStore: "{{held}} of {{cap}} deuterium, {{safe}} protected",

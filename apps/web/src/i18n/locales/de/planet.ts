@@ -604,7 +604,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · vor Einheiten",
   vaultSafe: "Sicher im Tresor",
   storeLabel: "Speicher",
-  storeRule: "Die Speicher-Ebene legt fest, wie lang diese Balken sind; Die Halterung unter dem Schild ist vor einem Überfall sicher.",
+  storeRule: "Höherer Speicher, längere Balken; den Kasten mit Schild nimmt kein Überfall.",
   alloyStore: "{{held}} aus {{cap}}-Legierung, {{safe}} geschützt",
   crystalStore: "{{held}} von {{cap}} Kristall, {{safe}} geschützt",
   deuteriumStore: "{{held}} von {{cap}} Deuterium, {{safe}} geschützt",

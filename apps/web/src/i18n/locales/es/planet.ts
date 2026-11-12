@@ -604,7 +604,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · antes de unidades",
   vaultSafe: "A salvo en la bóveda",
   storeLabel: "Almacén",
-  storeRule: "El nivel de Almacén establece la longitud de estas barras; el soporte debajo del escudo está a salvo de un ataque.",
+  storeRule: "Más Almacén, barras más largas; un asalto no se lleva la caja con escudo.",
   alloyStore: "{{held}} de aleación {{cap}}, {{safe}} protegido",
   crystalStore: "{{held}} de cristal {{cap}}, {{safe}} protegido",
   deuteriumStore: "{{held}} de {{cap}} deuterio, {{safe}} protegido",

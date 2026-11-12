@@ -608,7 +608,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · 船より先に吸収",
   vaultSafe: "貯蔵庫で保護中",
   storeLabel: "貯蔵庫",
-  storeRule: "貯蔵庫 レベルは、これらのバーの長さを設定します。シールドの下のブラケットは襲撃から安全です。",
+  storeRule: "貯蔵庫を上げるとバーが伸びます。盾の枠内は略奪されません。",
   alloyStore: "{{cap}} 合金の {{held}}、{{safe}} 保護",
   crystalStore: "{{held}} の {{cap}} クリスタル、{{safe}} 保護",
   deuteriumStore: "{{held}} の {{cap}} 重水素、{{safe}} 保護",

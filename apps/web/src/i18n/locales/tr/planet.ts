@@ -589,7 +589,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/sa · birliklerden önce",
   vaultSafe: "Kasada güvende",
   storeLabel: "Depo",
-  storeRule: "Depo seviyesi bu çubukların uzunluğunu belirler; kalkanlı kutu akına karşı korumalı dilimdir.",
+  storeRule: "Depo yükseldikçe çubuk uzar; kalkanlı kutuyu akın alamaz.",
   alloyStore: "{{held}} / {{cap}} alaşım, {{safe}} kadarı korumalı",
   crystalStore: "{{held}} / {{cap}} kristal, {{safe}} kadarı korumalı",
   deuteriumStore: "{{held}} / {{cap}} döteryum, {{safe}} kadarı korumalı",

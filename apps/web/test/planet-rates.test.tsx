@@ -34,18 +34,19 @@ const world = (stock: Parameters<typeof planetView>[1] = {}) =>
     { alloyPerHour: 1043, crystalPerHour: 420, deuteriumPerHour: 37, ...stock },
   );
 
-const column = (id: 'alloy' | 'crystal' | 'deuterium'): HTMLElement => {
-  const found = screen.getByTestId('planet-rates').querySelector<HTMLElement>(`[data-resource="${id}"]`);
-  expect(found, `no ${id} column`).not.toBeNull();
-  return found!;
-};
+/** Stage 4.1: each store is the kit's gauge, a group named for the store it reads. */
+const column = (id: 'alloy' | 'crystal' | 'deuterium'): HTMLElement =>
+  within(screen.getByTestId('planet-rates')).getByRole('group', { name: new RegExp(id === 'deuterium' ? 'deuterium' : id, 'i') });
+const rate = (id: 'alloy' | 'crystal' | 'deuterium'): Element | null => column(id).querySelector('.gk-store__rate');
+const held = (id: 'alloy' | 'crystal' | 'deuterium'): Element | null => column(id).querySelector('.gk-store__held');
+const width = (element: Element | null): string => (element instanceof HTMLElement ? element.style.width : '');
 
 describe('the production row states all three hourly rates', () => {
   it('quotes deuterium beside alloy and crystal', () => {
     render(<PlanetHero planet={world()} />);
-    expect(screen.getByTestId('rate-alloy')).toHaveTextContent(compact(1043));
-    expect(screen.getByTestId('rate-crystal')).toHaveTextContent(compact(420));
-    expect(screen.getByTestId('rate-deuterium')).toHaveTextContent(compact(37));
+    expect(rate('alloy')).toHaveTextContent(compact(1043));
+    expect(rate('crystal')).toHaveTextContent(compact(420));
+    expect(rate('deuterium')).toHaveTextContent(compact(37));
   });
 
   /**
@@ -55,7 +56,7 @@ describe('the production row states all three hourly rates', () => {
    */
   it('reads zero, rather than vanishing, on a world with no plant', () => {
     render(<PlanetHero planet={planetView()} />);
-    expect(screen.getByTestId('rate-deuterium')).toHaveTextContent('0');
+    expect(rate('deuterium')).toHaveTextContent('0');
   });
 
   it('drops the heading the suffix already carries', () => {
@@ -66,8 +67,8 @@ describe('the production row states all three hourly rates', () => {
   it('draws one row per resource', () => {
     render(<PlanetHero planet={world()} />);
     const row = screen.getByTestId('planet-rates');
-    expect(row.querySelectorAll('[data-resource]')).toHaveLength(3);
-    expect(row.querySelectorAll('[data-testid^="rate-"]')).toHaveLength(3);
+    expect(row.querySelectorAll('.gk-store')).toHaveLength(3);
+    expect(row.querySelectorAll('.gk-store__rate')).toHaveLength(3);
   });
 });
 
@@ -78,36 +79,34 @@ describe('the production row states all three hourly rates', () => {
  * narrow columns the bracket read as a square.
  */
 describe('the store rows', () => {
-  it('reads each store as held of cap beside its cells', () => {
+  it('reads each store as held of cap beside its bar, the safe share boxed', () => {
     render(<PlanetHero planet={world({
       alloy: 620,
       alloyCap: 1000,
       vaultProtected: { alloy: 350, crystal: 0, deuterium: 0 },
     })} />);
-    const alloy = column('alloy');
-    expect(within(alloy).getByTestId('store-alloy')).toHaveTextContent(`${compact(620)}/${compact(1000)}`);
-    expect(alloy.querySelectorAll('[data-cell]')).toHaveLength(12);
-    expect(alloy.querySelector('[data-safe]')).toHaveAttribute('data-safe-cells', '4');
+    expect(held('alloy')).toHaveTextContent(`${compact(620)}/${compact(1000)}`);
+    expect(width(column('alloy').querySelector('.gk-bar__fill'))).toBe('62%');
+    expect(width(column('alloy').querySelector('.gk-store__safe'))).toBe('35%');
   });
 
   /** H2 and K2: a full store is a gap you can close — yellow, never the red of a threat. */
   it('says a full store is full, in the colour of a gap', () => {
     render(<PlanetHero planet={world({ crystal: 1200, crystalCap: 1000 })} />);
-    const crystal = column('crystal');
-    expect(within(crystal).getByTestId('store-crystal')).toHaveClass('text-v2-warn');
-    expect(crystal.querySelector('[data-full-cap]')).not.toBeNull();
-    expect(crystal.querySelector('.text-v2-hostile')).toBeNull();
+    expect(column('crystal')).toHaveAttribute('data-full');
+    expect(column('alloy')).not.toHaveAttribute('data-full');
+    expect(column('crystal').querySelector('[data-tone="hostile"], .text-v2-hostile')).toBeNull();
   });
 
   it('draws no bracket where the Vault keeps nothing', () => {
     render(<PlanetHero planet={world({ vaultProtected: { alloy: 500, crystal: 100, deuterium: 0 } })} />);
-    expect(column('deuterium').querySelector('[data-safe]')).toBeNull();
-    expect(column('alloy').querySelector('[data-safe]')).not.toBeNull();
+    expect(column('deuterium').querySelector('.gk-store__safe')).toBeNull();
+    expect(column('alloy').querySelector('.gk-store__safe')).not.toBeNull();
   });
 
   it('states the rule of the bracket once, under the rows', () => {
     render(<PlanetHero planet={world()} />);
-    expect(screen.getAllByText(/the bracket under the shield is safe from a raid/)).toHaveLength(1);
+    expect(screen.getAllByText(/a raid cannot take the shielded box/)).toHaveLength(1);
   });
 
   it('names the whole store for a screen reader', () => {
