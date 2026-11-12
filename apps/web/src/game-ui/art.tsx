@@ -17,6 +17,8 @@ export const ART_ICONS = [
   'cos-planet', 'cos-ring', 'cos-ship', 'cos-probe', 'cos-miner', 'cos-engine', 'cos-flag',
   // fleet, rewards and the super weapon
   'cargo', 'slot', 'lock', 'gift', 'ad-reward', 'deathstar',
+  // the trophy shelf: Layer Lab's metal and gold objects sit beside the house style
+  'medal-1', 'medal-2', 'medal-3', 'trophy', 'crown', 'crown-silver', 'star',
 ] as const;
 
 export type ArtIconId = (typeof ART_ICONS)[number];

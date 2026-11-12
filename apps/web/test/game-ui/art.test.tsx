@@ -27,6 +27,10 @@ describe('the painted icons', () => {
     for (const size of ART_SIZES) expect(size).toBeGreaterThanOrEqual(40);
   });
 
+  it('has the trophy shelf: three numbered medals, a trophy, two crowns and a star', () => {
+    for (const id of ['medal-1', 'medal-2', 'medal-3', 'trophy', 'crown', 'crown-silver', 'star']) expect(ART_ICONS).toContain(id);
+  });
+
   it('paints every place in the dock', () => {
     for (const tab of DOCK_TABS) expect(ART_ICONS).toContain(DOCK_ART[tab]);
   });
