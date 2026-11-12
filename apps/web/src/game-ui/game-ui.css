@@ -2015,6 +2015,57 @@
   filter: drop-shadow(0 3px 5px var(--gk-outline));
 }
 
+/* ── who someone is: Honor shield, clan stripe, clan tile ───────────────────── */
+
+.gk-insignia {
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px var(--gk-outline));
+}
+.gk-emblem-tile {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 30%, transparent), 0 2px 3px var(--gk-outline);
+}
+.gk-emblem-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* a gloss over the cloth: the tile reads as a pressed metal badge, not a photo */
+.gk-emblem-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 18%, transparent), transparent 45%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-ink) 22%, transparent);
+  pointer-events: none;
+}
+.gk-emblem-tile__banner {
+  position: absolute;
+  width: 92%;
+  height: 92%;
+  color: var(--gk-steel);
+  stroke-width: 1px;
+}
+.gk-emblem-tile__tag {
+  position: relative;
+  margin-top: -6%;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: 0.3em;
+  letter-spacing: 0.02em;
+  color: var(--gk-ink);
+  -webkit-text-stroke: 2px var(--gk-outline);
+  paint-order: stroke fill;
+}
+
 /* ── the supply pod: hovers, winds up on a tap, blows open ────────────────── */
 
 .gk-pod {

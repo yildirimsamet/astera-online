@@ -8,13 +8,13 @@
  * Colours only through `--gk-*` tokens (test/game-ui/tokens.test.ts).
  */
 import '../../game-ui/game-ui.css';
-import type { HullClass } from '@astera/rules';
+import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CargoBar, Chip, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
-  GameTabs, Glyph, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
+  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  FLAG_IDS, GameTabs, Glyph, HonorBadge, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
-  Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type HudResource,
+  Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
@@ -474,6 +474,13 @@ const TYPE = [
   ['hero', 'Kahraman 30'], ['head', 'Başlık 24'], ['title', 'Unvan 19'], ['number', 'Sayı 18'],
   ['lead', 'Öne çıkan 16'], ['body', 'Gövde 14'], ['small', 'Küçük 13'], ['floor', 'Taban 12'],
 ] as const;
+const HONOR_TIERS: readonly HonorBenefitTier[] = [-2, -1, 0, 1, 2];
+const tierText = (tier: HonorBenefitTier): string => (tier > 0 ? `+${String(tier)}` : tier < 0 ? `−${String(-tier)}` : '0');
+const CLAN_ROWS: readonly { rank: number; flag: FlagId | null; tag: string; name: string; members: number; level: number; honor: HonorBenefitTier }[] = [
+  { rank: 1, flag: 'flag-sovereign', tag: 'ALT', name: 'Altın Taht', members: 28, level: 10, honor: 2 },
+  { rank: 2, flag: 'flag-kraken', tag: 'DRN', name: 'Derin Kraken', members: 21, level: 7, honor: 1 },
+  { rank: 3, flag: null, tag: 'KZL', name: 'Kızıl Kanat', members: 6, level: 2, honor: -1 },
+];
 const MENU_SAMPLES = [
   ['menu-reports', 'Raporlar'], ['menu-missions', 'Görevler'], ['menu-ranking', 'Sıralama'], ['menu-shop', 'Mağaza'],
 ] as const;
@@ -582,6 +589,35 @@ function Catalog() {
                 <span className="gk-display gk-outlined" style={{ fontSize: 'var(--gk-t-small)' }}>{label}</span>
               </span>
             ))}
+          </div>
+        </Section>
+
+        <Section title="Şeref · klan seviyesi · klan amblemi">
+          <div role="group" aria-label="Şeref ve klan" className="grid gap-2">
+            <div className="gk-well flex items-end justify-around gap-1 px-2 py-2.5">
+              {HONOR_TIERS.map((tier) => <HonorBadge key={tier} tier={tier} label={`Şeref ${tierText(tier)}`} height={40} />)}
+            </div>
+            <div className="gk-well flex flex-wrap items-end justify-around gap-x-1.5 gap-y-2 px-2 py-2.5">
+              {CLAN_LEVEL_ART.map((art, i) => <ClanLevelBadge key={art.src} level={i + 1} label={`Klan seviyesi ${String(i + 1)}`} height={34} />)}
+            </div>
+            <div className="gk-well grid grid-cols-6 justify-items-center gap-2 p-2.5">
+              {FLAG_IDS.map((id) => <ClanEmblem key={id} flag={id} tag="" label={id} />)}
+              <ClanEmblem flag={null} tag="KZL" label="Bayraksız klan" />
+            </div>
+            <div className="gk-well grid gap-1 p-1.5">
+              {CLAN_ROWS.map((row) => (
+                <div key={row.name} className="flex items-center gap-2 px-1 py-1">
+                  <span className="gk-display gk-num gk-outlined w-5 text-center" style={{ fontSize: 'var(--gk-t-lead)' }}>{row.rank}</span>
+                  <ClanEmblem flag={row.flag} tag={row.tag} label={row.name} size={36} />
+                  <span className="grid min-w-0 flex-1">
+                    <span className="gk-display truncate" style={{ fontSize: 'var(--gk-t-body)' }}>{row.name}</span>
+                    <span className="gk-sub">{row.tag} · {row.members} üye</span>
+                  </span>
+                  <ClanLevelBadge level={row.level} label={`Klan seviyesi ${String(row.level)}`} height={26} />
+                  <HonorBadge tier={row.honor} label={`Lider Şerefi ${tierText(row.honor)}`} height={26} />
+                </div>
+              ))}
+            </div>
           </div>
         </Section>
 

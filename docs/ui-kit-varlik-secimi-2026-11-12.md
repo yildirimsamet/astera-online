@@ -166,6 +166,12 @@ Harita işaretleri 4. aşamada galaksi katmanına girer. 2026-11-11'de geri geti
     - bayrak = klanın kimliği.
 - **Dil seçici:** Layer Lab `languageflag-large-*` / `-small-*`. Oyunun 6 dilinin hepsi var: tur, eng, deu, esp, fra, jpn.
 
+**Kite girdi (2026-11-12, `src/game-ui/ranks.tsx`, görüntü `out/ui-kit/r5/seref-klan.png`):**
+
+- `HonorBadge` (5 kademe) ve `ClanLevelBadge` (10 seviye): katmanlar bir kez birleştirildi. Aile başına tek yükseklik, her rozet kendi genişliğinde; kalkan ve şerit kademe değişince büyüyüp küçülmez. Toplam ~80 KB.
+- `ClanEmblem`: 22 bayrağın amblem karosu (bayrak başına kırpma merkezi tablosu; varsayılan merkez çoğu bayrakta amblemi kaçırıyordu). Bayrağı olmayan klan: çelik karoda sancak glifi ve etiketin ilk üç harfi.
+- 28 px satırda kalkanın rengi ve biçimi okunuyor, amblem (kafatası, yıldız) seçilmiyor. Satır boyunda anlam renkten gelir; ayrıntı profilde.
+
 ### HUD ve arena (pano D'nin alt kısmı)
 
 | İhtiyaç | Seçilen | Muadil |
