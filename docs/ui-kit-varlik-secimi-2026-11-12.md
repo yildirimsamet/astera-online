@@ -301,6 +301,7 @@ Owner 6 Kenney ses paketi indirdi (CC0: ticari kullanım serbest, isim vermek zo
 
 - **Yol:** Owner ücretsiz Kenney yolunu seçti (paketleri indirdi). Kitin sesleri bu kütüphaneden seçilir; ücretli paket şimdilik gerekmiyor.
 - **Eşleme:** Entegrasyon turunda her an için 2–3 aday dinlenir, biri seçilir. Seçilenler OGG / Opus olarak `public/assets/audio/ui/` altına girer ve `lib/sound.ts`'e bağlanır.
+- **Dinleme sayfası (2026-11-12):** `out/ui-kit/sesler/index.html` (çift tıkla açılır). 8 an × 3 aday: kapsül sarsılması, kapsül açılışı, kademe atlama, sayaç, basılı tut dolması, hata, şalter, sekme. Adaylar parlaklığa göre koyu / orta / parlak seçildi; sayaçta tık ve para şıngırtısı da var. Seçimin altta tek satır birikir. Kazananlar oyunun diğer sesleri gibi MP3'e çevrilip `lib/sound.ts`'e yeni cue olarak bağlanır; kit bugün bu anlarda kodla üretilen `crate` / `claim` seslerini çalıyor. Adaylar depoya girmedi, çünkü `public/` altındaki her dosya APK'ya da girer.
 
 ## Oyuna alma kuralları
 
