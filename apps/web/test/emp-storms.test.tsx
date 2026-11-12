@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { DEATH_STAR } from '@astera/rules';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NUKE_SECONDS } from '../src/galaxy/nukeLayers.js';
+import { empStormStart } from '../src/galaxy/empSchedule.js';
 import { PLANET_SKIN_BODY_SCALE } from '../src/galaxy/planetSkinAttachments.js';
 
 const failing = vi.hoisted(() => ({ on: false }));
 vi.mock('../src/galaxy/EmpStorm.js', () => ({
-  EmpStorm: ({ radius }: { radius: number }) => {
+  EmpStorm: ({ radius, since, until }: { radius: number; since: number; until: number }) => {
     if (failing.on) throw new Error('art did not load');
-    return <i data-storm={String(radius)} />;
+    return <i data-storm={String(radius)} data-since={String(since)} data-until={String(until)} />;
   },
 }));
 import { EmpStorms, type EmpWorld } from '../src/galaxy/EmpStorms.js';
@@ -32,12 +32,13 @@ describe('the EMP storms of the galaxy', () => {
     expect(storms(view.container)).toHaveLength(1);
   });
 
-  it('waits for the strike that caused it to finish playing, then takes over from its crater', () => {
+  it('is there as soon as its world is under EMP, quiet until the strike that caused it has finished playing', () => {
+    // Mounted mid-strike it draws itself once, unseen, on programs and art the strike already warmed.
     vi.setSystemTime(hit + 2_000);
     const view = render(<EmpStorms nodes={[struck]} />);
-    expect(storms(view.container)).toHaveLength(0);
-    act(() => { vi.advanceTimersByTime(NUKE_SECONDS * 1000 - 2_000 + 1); });
-    expect(storms(view.container)).toHaveLength(1);
+    const storm = storms(view.container)[0];
+    expect(Number(storm?.dataset.since)).toBe(empStormStart(until.getTime()));
+    expect(Number(storm?.dataset.until)).toBe(until.getTime());
   });
 
   it('lies on the world as drawn', () => {

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { prewarmStrategicBlast, StrategicBlast } from './StrategicBlast.jsx';
 import { NukeBlast, prewarmNukeBlast } from './NukeBlast.jsx';
+import { EmpStormWarmup } from './EmpStorm.jsx';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import type { StrategicImpactKind } from './strategicLayers.js';
 import { DEATH_STAR } from '@astera/rules';
@@ -235,8 +236,16 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
 function Impact({ event, active }: { event: DeathStarImpactEvent; active: boolean }) {
   const fallback = active ? <GeometricImpact event={event} /> : null;
   // A weapon that lands is a nuclear strike on the world (owner, 2026-11-12); one shot down bursts in the air.
-  const blast = event.kind === 'interception' ? <StrategicBlast event={event} /> : <NukeBlast event={event} />;
-  return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}>{blast}</Suspense></SkinAssetBoundary>;
+  if (event.kind === 'interception') {
+    return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><StrategicBlast event={event} /></Suspense></SkinAssetBoundary>;
+  }
+  return (
+    <>
+      <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><NukeBlast event={event} /></Suspense></SkinAssetBoundary>
+      {/* The EMP storm that takes over from the crater, drawn once unseen; its art failing never touches the strike. */}
+      <SkinAssetBoundary fallback={null}><Suspense fallback={null}><EmpStormWarmup position={event.position} radius={event.radius} /></Suspense></SkinAssetBoundary>
+    </>
+  );
 }
 
 function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {

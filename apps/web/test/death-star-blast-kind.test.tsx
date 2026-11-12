@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@react-three/fiber', () => ({ useFrame: vi.fn() }));
 vi.mock('../src/galaxy/StrategicBlast.js', () => ({ prewarmStrategicBlast: vi.fn(), StrategicBlast: () => <i data-blast="airborne" /> }));
 vi.mock('../src/galaxy/NukeBlast.js', () => ({ prewarmNukeBlast: vi.fn(), NukeBlast: () => <i data-blast="nuclear" /> }));
+vi.mock('../src/galaxy/EmpStorm.js', () => ({ EmpStormWarmup: () => null }));
 import { TimedImpact, type DeathStarImpactEvent } from '../src/galaxy/DeathStarImpact.js';
 
 const at = 20_000;

@@ -90,6 +90,10 @@ describe('when a world shows its EMP storm', () => {
     expect(empStormStrength(until + 1, start, until)).toBe(0);
   });
 
+  it('never shows a storm with no hour, so its warm-up only draws itself unseen', () => {
+    for (const now of [0, 1, 1500, 60_000, 3_600_000, hit]) expect(empStormStrength(now, 0, 0)).toBe(0);
+  });
+
   it('is quiet on a clock it cannot read', () => {
     expect(empStormStrength(Number.NaN, start, until)).toBe(0);
     expect(empStormStrength(start + 5000, Number.NaN, until)).toBe(0);

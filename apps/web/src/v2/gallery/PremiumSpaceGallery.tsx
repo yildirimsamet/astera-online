@@ -29,6 +29,8 @@ const SOUND_CUES: readonly SoundCue[] = ['tap', 'confirm', 'alert', 'launch', 'c
 const ENGINE_OPTIONS = cosmeticsInCategory('ENGINE');
 /** A bombardment or strike lands this long after it is replayed. */
 const IMPACT_MS = 1800;
+/** The game refetches the galaxy this long after an arrival (`ARRIVAL_SETTLE_OFFSETS`). */
+const HEARD_MS = 1000;
 const SCENES = [
   ['ship', 'Gemi inceleme'], ['planet', 'Gezegen'], ['wreck', 'Enkaz'], ['asteroid', 'İzotop asteroidi'],
   ['fleet', 'Filo'], ['monument', 'Anıt'], ['battle', 'Savaş'], ['strategic', 'Stratejik çarpma'],
@@ -76,11 +78,12 @@ export function PremiumSpaceGallery() {
     const timer = setTimeout(() => { setMiningConfirmation(sample.serial); }, 2500);
     return () => { clearTimeout(timer); };
   }, [sample]);
-  // As the server does, a strike that lands starts its world's EMP hour (owner, 2026-11-12: the storm).
+  // A strike that lands starts its world's EMP hour, and the galaxy hears of it a second later, as in
+  // the game (`ARRIVAL_SETTLE_OFFSETS`), so the handover to the storm plays as players see it.
   useEffect(() => {
     if (sample.mode !== 'strategic') return;
     const at = sample.at + IMPACT_MS;
-    const timer = setTimeout(() => { setStruck({ serial: sample.serial, at }); }, Math.max(0, at - serverNow()));
+    const timer = setTimeout(() => { setStruck({ serial: sample.serial, at }); }, Math.max(0, at + HEARD_MS - serverNow()));
     return () => { clearTimeout(timer); };
   }, [sample]);
   const empAt = struck?.serial === sample.serial ? struck.at : null;

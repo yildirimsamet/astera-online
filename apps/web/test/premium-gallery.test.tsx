@@ -174,14 +174,17 @@ describe('premium asset review gallery', () => {
     }
   });
 
-  it('turns the struck world to its EMP hour as the strike lands, as the server does', () => {
+  it('turns the struck world to its EMP hour when the galaxy would hear of it, as in the game', () => {
     vi.useFakeTimers();
     try {
       render(<PremiumSpaceGallery />);
       fireEvent.click(screen.getByRole('button', { name: 'Stratejik çarpma' }));
       expect(scene().planets[0]?.state.kind).toBe('NORMAL');
       const landing = Date.now() + 1800;
-      act(() => { vi.advanceTimersByTime(1800); });
+      // The game refetches the galaxy a second after an arrival (`ARRIVAL_SETTLE_OFFSETS`).
+      act(() => { vi.advanceTimersByTime(1800 + 999); });
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+      act(() => { vi.advanceTimersByTime(1); });
       const state = scene().planets[0]?.state;
       expect(state?.kind).toBe('EMP');
       expect(state?.kind === 'EMP' ? state.until.getTime() : 0).toBe(landing + DEATH_STAR.empMinutes * 60_000);

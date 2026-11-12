@@ -67,6 +67,15 @@ const ION_FRAG = /* glsl */`
   uniform float uOn; varying float vGlow;
   void main() { float d = length(gl_PointCoord - 0.5); float a = (1.0 - smoothstep(0.0, 0.5, d)); gl_FragColor = vec4(vec3(0.62, 0.86, 1.0) * a * vGlow * 1.6 * uOn, 1.0); }`;
 
+/**
+ * A storm that never shows: it draws itself once, unseen, while a strike is in flight, so the GPU has
+ * its art and programs before the storm takes over from the crater. The first storm of a session
+ * froze 84 ms as it took over without it (S22, 2026-11-13).
+ */
+export function EmpStormWarmup({ position, radius }: { position: Vec3Tuple; radius: number }) {
+  return <EmpStorm position={position} radius={radius} since={0} until={0} />;
+}
+
 /** `radius` is the world as drawn; `since`/`until` bound its storm in server milliseconds. */
 export function EmpStorm({ position, radius, since, until }: { position: Vec3Tuple; radius: number; since: number; until: number }) {
   const [arcMap, boltMap] = useTexture([EMP_ARC, EMP_BOLT]);
@@ -116,7 +125,8 @@ export function EmpStorm({ position, radius, since, until }: { position: Vec3Tup
     rehearsal.current ??= createRehearsal(group);
     if (rehearsal.current.next()) return;
     const now = serverNow();
-    const on = empStormStrength(now, since, until) * empStormReach(screenPixels(radius, centre, camera, size.height));
+    const strength = empStormStrength(now, since, until);
+    const on = strength > 0 ? strength * empStormReach(screenPixels(radius, centre, camera, size.height)) : 0;
     group.visible = on > 0.001;
     if (!group.visible) return;
     const t = (now - since) / 1000;
