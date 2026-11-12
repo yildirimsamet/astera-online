@@ -624,7 +624,7 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 
 ### 4.1 Üs: inşa ve üretim
 
-**Kapsam:** gezegen sayfasının çerçevesi ve Üretim sekmesi (`screens/PlanetScreen.tsx`: başlık, gezegen kartı, depo çubukları, radyasyon satırı, kuyruklar, sekmeler, `Grow`), bina yükseltme sayfası (`BuildSheet`) ve kuyruklar (`v2/shell/BaseQueues.tsx`). Filo, savunma ve taktik sekmeleri sıradaki ekranlarla gelir. Üst HUD ayrı bir adım (bütün ekranlarda görünür).
+**Kapsam:** gezegen sayfasının çerçevesi ve Üretim sekmesi (`screens/PlanetScreen.tsx`: başlık, gezegen kartı, depo çubukları, radyasyon satırı, kuyruklar, sekmeler, `Grow`), bina yükseltme sayfası (`ui/ItemSheet.tsx`; araştırma ve uydu da aynı sayfayı kullanır, onlar da kit görünümüne geçer) ve kuyruklar (`v2/shell/BaseQueues.tsx`). Gemi üretim sayfası (`BuildSheet`) 2. ekranla gelir. Filo, savunma ve taktik sekmeleri sıradaki ekranlarla gelir. Üst HUD ayrı bir adım (bütün ekranlarda görünür).
 
 **Hedef görünüm:** kit galerisindeki `ui-kit-base` (owner gördü).
 
@@ -636,4 +636,19 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 | Kuyruk yuvaları | boş / süren / sırada | `TimerRing` + kit yuvası |
 | Sekmeler | v2 sekme | `GameTabs` |
 | Bina kartı | resim, seviye, etki, bedel, süre, bekleme | kit plakası + bedel çipi + kilit |
-| Yükseltme sayfası | v2 sayfa | `ui-kit-base` kompozisyonu |
+| Yükseltme sayfası | v2 sayfa (`ItemSheet`) | `ui-kit-base` kompozisyonu |
+
+**Durumlar (kod ve galeriden çıkarıldı, 2026-11-12):**
+
+| Yer | Durumlar |
+|---|---|
+| Bina kartı ve yükseltme sayfası | alınabilir · kaynak eksik ("bu hızla N dk sonra") · yakıt eksik (süre söylenemez) · şartlı kilit (Çekirdek seviyesi / araştırma basamağı, çözüme götürür) · kuyruk dolu · sırada (N) · gönderiliyor · en üst seviye · hiç yapılmamış (Sv. 0) · arızalı · eğitimde vurgulu · yeni sıraya girdi (parlama) · hata (sunucu reddi, bildirim) |
+| Çekirdek 9 → 10 | ayrı onay (tatil kilidi açıklaması) |
+| Kuyruk | boş yuva · süren (halka + kalan süre) · sırada · dolu · iptal ediliyor (yarısı yanar, onaylı) |
+| Depo çubuğu | normal · korunan dilim · dolu (üretim durur) · boş |
+| Gezegen kartı | ana gezegen · koloni · yörünge yuvası kilitli / boş / dolu |
+| Sayfa | yükleniyor · veri yok / bağlantı hatası |
+
+**Basılı tutma önerisi (owner'a gösterilecek):** Yükselt sık yapılan bir eylem ve sayfanın kendisi zaten ikinci adım (kart → sayfa → Yükselt); iptal mümkün (yarısı yanar). Öneri: tek basış (`GameButton`), sesi ve titreşimi ağır. Çekirdek 10 (geri dönüşü olmayan tatil kilidi) bugünkü onay penceresi yerine `final` (1,5 sn) basılı tutma.
+
+**Alt adımlar:** (a) kite eksik parçalar: depo çubuğu, kuyruk yuvası, bina kartı (test + galeri); (b) yükseltme sayfası; (c) Üretim sekmesi kartları; (d) sayfa çerçevesi, gezegen kartı, depo, kuyruk, sekmeler; (e) bütün durumlar galeride, ölçüm temiz, owner'a görsel.
