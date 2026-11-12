@@ -22,7 +22,7 @@ Başlangıç: 2026-11-11. Dayanak: [`mobil-ui-ux-arastirmasi-2026-11-11.md`](mob
 | 0 | Araştırma raporu ve review'ı | ✅ Bitti |
 | 1 | Ölçüm aracı, başlangıç ölçümü ve flaş güvenliği | 🔍 Uygulandı ve review edildi (1.14); owner kontrolü ve iki karar bekliyor. Tam yeniden ölçüm en sona kaldı (1.9) |
 | 2 | Standart kararları (owner ile): **oyun arayüzü dili (sanat yönü)**, yazı ölçeği, dokunma alanı, renk, metin bütçesi, süreler | ✅ 2.1 yön B. 2.2–2.9 kararlandı (2026-11-12); 2.9 görünüm Komuta + Grafit, başlık fontu Russo One yerine Saira dar kalın: [karar paketleri](ui-standart-karar-paketleri-2026-11-12.md) |
-| 3 | Altyapı: token'lar, dokunma alanı yardımcısı, koruyucu testler, **oyun arayüzü kiti** (font, buton ve panel malzemeleri, ikon seti, basma animasyonu, ses ve titreşim eşlemesi; galeride hazır parça olarak; owner onayı 2026-11-11) | ⏳ |
+| 3 | Altyapı: token'lar, dokunma alanı yardımcısı, koruyucu testler, **oyun arayüzü kiti** (font, buton ve panel malzemeleri, ikon seti, basma animasyonu, ses ve titreşim eşlemesi; galeride hazır parça olarak; owner onayı 2026-11-11) | ✅ 3.1–3.8 bitti, S22 öncesi kod incelemesi düzeltildi (cd4fc12f). 3.9 S22 turu en sona kaldı (owner, 2026-11-12) |
 | 4 | Ekran ekran uygulama (ilk deneyim akışından başlayarak) | ⏳ |
 | 5 | Erişilebilirlik ayarları: yazı boyutu, haptik, basılı tutma alternatifi, flaş azaltma | ⏳ |
 | 6 | Ek araştırmalar: risk iletişimi, ses, Türkiye verisi, rakip ekranları (paralel yürüyebilir) | ⏳ |
@@ -592,7 +592,7 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 | 3.6 ✅ | Kenar boşluğu 12 px | `--gk-gutter: 12px`; sheet başlığı, gövdesi, alt şeridi, katalog ve HUD 10/8 px'ten 12 px'e geçti | `tokens.test.ts` |
 | 3.7 ✅ | Sayı biçimi K/M | Oyunun tek kısa biçimlendiricisi `lib/format.compact` değişti: altı dilde K/M, her boyutta tek ondalık, ",0" atılır, 999.960 → 1M. Eşikler aynı kaldı (B1: depo 99.999'a kadar tam). Bu dalda oyun ekranlarındaki kısa sayılar da K/M'ye geçti | `i18n.test.ts` + ekran testlerindeki yansımalar |
 | 3.8 ✅ | Kit ölçümü | `reports/ui-audit/kit-2026-11-12.md` (84 ölçüm, 6 dil, 3 boyut): 12 px altı yazı 0, kontrast 0, ikon kontrastı 0, 44 px altı hedef 0, 2.5.8 aralık 0, tepkisiz hedef 0. Kesilme 1: Japonca 320 px'te galerinin Türkçe örnek kelimesi "Gönderiliyor" (gerçek Japonca metin sığıyor). Değişen görünüm ve araç düzeltmeleri: `docs/ui-standart-karar-paketleri-2026-11-12.md` "Kit ölçümüyle değişen görünüm". L2 (%46,6 ızgara dışı boşluk) 4. aşamanın ekran düzeni işi | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
-| 3.9 | S22 turu | Kit ekranları telefonda | Owner dokunarak onaylar |
+| 3.9 ⏸ | S22 turu | Kit ekranları telefonda; owner 2026-11-12: "S22 işini sonlara bırakalım" | Owner dokunarak onaylar |
 
 **Owner'a sorular:**
 
