@@ -33,11 +33,11 @@ export function RewardPod({ label, onOpen, opened = false, children }: RewardPod
   useEffect(() => () => { if (lid.current !== null) window.clearTimeout(lid.current); }, []);
   const own = useOwnPress(() => {
     if (state !== 'closed' || lid.current !== null) return;
-    playSound('crate');
+    playSound('rattle');
     haptic('tap');
     setState('opening');
     lid.current = window.setTimeout(() => {
-      playSound('claim');
+      playSound('unseal');
       haptic('commit');
       setState('open');
       onOpen();

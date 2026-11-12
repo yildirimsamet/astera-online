@@ -32,7 +32,7 @@ export function UnitCard({ name, art, cls, multiplier, home, chosen, onChange, e
   const change = (next: number): void => {
     const clamped = Math.min(home, Math.max(0, next));
     if (clamped === chosen) return;
-    playSound('tap', { gain: 0.5 });
+    playSound('tick');
     haptic(clamped === home ? 'thunk' : 'tap');
     onChange(clamped);
   };

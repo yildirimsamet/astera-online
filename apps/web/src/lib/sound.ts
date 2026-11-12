@@ -3,12 +3,17 @@ import { z } from 'zod';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { SYNTH_CUES, synthesize, type SynthCue } from './synth.js';
 
-type FileCue = 'tap' | 'confirm' | 'alert' | 'launch' | 'cargo' | 'weapon' | 'shield' | 'impact' | 'strategic' | 'mining';
+/** The game kit's own moments (owner's picks 2026-11-12, Kenney CC0, levelled to the cues above). */
+type KitCue = 'rattle' | 'unseal' | 'rankup' | 'tick' | 'charge' | 'refuse' | 'lever' | 'tab';
+type FileCue = 'tap' | 'confirm' | 'alert' | 'launch' | 'cargo' | 'weapon' | 'shield' | 'impact' | 'strategic' | 'mining' | KitCue;
 export type SoundCue = FileCue | SynthCue;
-const CUES: readonly FileCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining'];
+const CUES: readonly FileCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining',
+  'rattle', 'unseal', 'rankup', 'tick', 'charge', 'refuse', 'lever', 'tab'];
 const COOLDOWN: Record<SoundCue, number> = { tap: 55, confirm: 450, alert: 1400, launch: 900, cargo: 650, weapon: 240, shield: 500, impact: 500, strategic: 3000, mining: 1100,
+  rattle: 300, unseal: 1200, rankup: 2000, tick: 30, charge: 400, refuse: 350, lever: 250, tab: 80,
   switch: 400, ignite: 1500, weld: 300, warp: 1500, claim: 1200, crate: 600, arc: 300 };
 const MIX: Record<SoundCue, number> = { tap: 0.55, confirm: 0.7, alert: 0.7, launch: 0.8, cargo: 0.75, weapon: 0.42, shield: 0.65, impact: 0.75, strategic: 0.9, mining: 0.55,
+  rattle: 0.7, unseal: 0.8, rankup: 0.85, tick: 0.5, charge: 0.6, refuse: 0.65, lever: 0.8, tab: 0.55,
   switch: 0.85, ignite: 0.8, weld: 0.5, warp: 0.85, claim: 0.75, crate: 0.8, arc: 0.5 };
 const DEFAULT_VOLUME = 0.5;
 const MAX_VOICES = 6;
@@ -134,7 +139,7 @@ class SoundMixer {
     if (key && (this.seen.get(key) ?? -Infinity) > now - 60_000) return;
     if (now - (this.last.get(cue) ?? -Infinity) < COOLDOWN[cue]) return;
     if (this.voices.size >= MAX_VOICES) {
-      if (cue === 'tap' || cue === 'weapon' || cue === 'mining') return;
+      if (cue === 'tap' || cue === 'tick' || cue === 'weapon' || cue === 'mining') return;
       const oldest = this.voices.values().next().value;
       if (oldest) { oldest.stop(); this.voices.delete(oldest); }
     }

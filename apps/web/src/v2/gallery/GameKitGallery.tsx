@@ -499,6 +499,7 @@ function Catalog() {
   const [name, setName] = useState('Kızıl Kanat');
   const [count, setCount] = useState(3);
   const [language, setLanguage] = useState<Language>('tr');
+  const [rankUp, setRankUp] = useState(false);
   return (
     <Screen sky={false}>
       <div className="gk-catalog">
@@ -617,6 +618,18 @@ function Catalog() {
             <div className="gk-well flex items-end justify-around gap-1 px-2 py-2.5">
               {HONOR_TIERS.map((tier) => <HonorBadge key={tier} tier={tier} label={`Şeref ${tierText(tier)}`} height={40} />)}
             </div>
+            <GameButton size="sm" glyph="up" onPress={() => { setRankUp(true); }}>Kademe atla</GameButton>
+            {rankUp && (
+              // the catalogue is a long page: pin the moment to the screen the player is looking at
+              <div className="fixed inset-0 z-50">
+                <Dialog ribbon="KADEME ATLADIN" tone="good" rays sound="rankup" actions={<GameButton tone="action" wide onPress={() => { setRankUp(false); }}>TAMAM</GameButton>}>
+                  <div className="grid justify-items-center gap-1 text-center">
+                    <HonorBadge tier={1} label="Şeref +1" height={64} />
+                    <span className="gk-display gk-outlined" style={{ fontSize: 'var(--gk-t-title)' }}>Şeref +1</span>
+                  </div>
+                </Dialog>
+              </div>
+            )}
             <div className="gk-well flex flex-wrap items-end justify-around gap-x-1.5 gap-y-2 px-2 py-2.5">
               {CLAN_LEVEL_ART.map((art, i) => <ClanLevelBadge key={art.src} level={i + 1} label={`Klan seviyesi ${String(i + 1)}`} height={34} />)}
             </div>

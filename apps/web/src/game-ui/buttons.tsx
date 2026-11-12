@@ -153,6 +153,8 @@ export function GameHold({
     onCommit();
   };
   const { holding, confirming, nudge, handlers } = useHoldPress(commit, disabledReason !== null, holdMs);
+  // the charge rises with the dial; letting go early leaves it to fade on its own
+  useEffect(() => { if (holding) playSound('charge'); }, [holding]);
 
   useEffect(() => {
     if (committed === 0) return undefined;

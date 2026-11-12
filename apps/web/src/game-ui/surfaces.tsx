@@ -1,5 +1,6 @@
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { playSound, type SoundCue } from '../lib/sound.js';
 import { RoundButton } from './buttons.js';
 import { Glyph, type GlyphId } from './icons.js';
 import type { CssVars } from './style.js';
@@ -88,15 +89,23 @@ export function SheetFrame({
 
 /** A centred window over a scrim, with a ribbon title. `rays` turns slow light behind a reward. */
 export function Dialog({
-  ribbon, tone = 'info', children, actions, rays = false,
+  ribbon, tone = 'info', children, actions, rays = false, sound,
 }: {
   ribbon: ReactNode;
   tone?: 'good' | 'hostile' | 'info';
   children: ReactNode;
   actions?: ReactNode;
   rays?: boolean;
+  /** The moment's own sound, once as it opens: `rankup` for a new rank, clan level or medal. */
+  sound?: SoundCue;
 }) {
   const titleId = useId();
+  const rang = useRef(false);
+  useEffect(() => {
+    if (sound === undefined || rang.current) return;
+    rang.current = true;
+    playSound(sound);
+  }, [sound]);
   return (
     <div className="gk gk-scrim">
       {rays && <span className="gk-rays" aria-hidden="true" />}

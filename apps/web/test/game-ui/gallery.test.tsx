@@ -48,4 +48,13 @@ describe('the kit gallery', () => {
     expect(screen.queryByRole('group', { name: 'Başlık yazısı' })).toBeNull();
     expect(container.querySelector('[data-gk-font]')).toBeNull();
   });
+
+  it('lets the rank-up moment be played and closed from the catalogue', () => {
+    render(<GameKitGallery view="ui-kit" />);
+    tap(screen.getByRole('button', { name: /Kademe atla/ }));
+    const dialog = screen.getByRole('dialog', { name: /KADEME ATLADIN/ });
+    expect(dialog).toHaveTextContent('Şeref +1');
+    tap(screen.getByRole('button', { name: /TAMAM/ }));
+    expect(screen.queryByRole('dialog', { name: /KADEME ATLADIN/ })).toBeNull();
+  });
 });

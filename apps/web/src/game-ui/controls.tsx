@@ -31,7 +31,7 @@ export function Toggle({
   art?: string;
 }) {
   const own = useOwnPress(() => {
-    playSound('switch');
+    playSound('lever');
     haptic('thunk');
     onChange(!checked);
   });
@@ -75,7 +75,7 @@ export function Lever({
   const choose = (next: number): void => {
     const option = options[next];
     if (!option || next === index) return;
-    playSound('switch', { gain: 0.6 });
+    playSound('lever', { gain: 0.6 });
     haptic('tap');
     onChange(option.id);
   };
@@ -148,7 +148,7 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
   const set = (next: number): void => {
     const clamped = Math.min(max, Math.max(0, next));
     if (clamped === value) return;
-    playSound('tap', { gain: 0.35 });
+    playSound('tick');
     if (clamped === 0 || clamped === max) haptic('thunk');
     onChange(clamped);
   };
@@ -220,9 +220,9 @@ export function GameTabs({ label, tabs, value, onChange }: { label: string; tabs
             tab={tab}
             selected={tab.id === value}
             onPress={() => {
-              if (tab.locked) { haptic('warn'); setRefused(tab.locked); return; }
+              if (tab.locked) { playSound('refuse'); haptic('warn'); setRefused(tab.locked); return; }
               setRefused(null);
-              if (tab.id !== value) { playSound('tap'); haptic('tap'); onChange(tab.id); }
+              if (tab.id !== value) { playSound('tab'); haptic('tap'); onChange(tab.id); }
             }}
           />
         ))}
@@ -276,9 +276,9 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
           item={item}
           current={item.id === value}
           onPress={() => {
-            if (item.locked) { haptic('warn'); setRefused(item.locked); return; }
+            if (item.locked) { playSound('refuse'); haptic('warn'); setRefused(item.locked); return; }
             setRefused(null);
-            if (item.id !== value) { playSound('tap'); haptic('tap'); onChange(item.id); }
+            if (item.id !== value) { playSound('tab'); haptic('tap'); onChange(item.id); }
           }}
         />
       ))}
