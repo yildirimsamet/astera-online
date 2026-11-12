@@ -8,6 +8,8 @@
  *                                the summary JSON goes to <out>/summary.json, out of git
  * pnpm ui:audit static [--md reports/ui-audit/static-<date>.md]
  * pnpm ui:audit run --whatif A   the raised type scale, overflow only, into <out>-whatif-A
+ * pnpm ui:audit run --kit [--langs tr]   the game kit's views into out/ui-audit/kit-<date>;
+ *                                `report --kit` writes reports/ui-audit/kit-<date>.md, apart from the game
  * pnpm ui:audit vision           colour-blindness sheets of every phone screenshot (R2)
  * pnpm ui:audit flash [--moment prologue-warp]   the bright moments filmed on a held clock (§1.5)
  * pnpm ui:audit competitor --spec reports/ui-audit/competitors-<date>.spec.json
@@ -29,7 +31,7 @@ import { randomBytes } from 'node:crypto';
 import { clientVisits, clientWorld, type ClientWorld } from './drivers/client.js';
 import { galleryVisits } from './drivers/gallery.js';
 import { publicVisits } from './drivers/public.js';
-import { SURFACES, type Surface } from './inventory.js';
+import { KIT_SURFACES, SURFACES, type Surface } from './inventory.js';
 import { compareSummaries, renderComparison, renderReport, summarize, type Entry, type Summary } from './report.js';
 import { scanSource } from './scanSource.js';
 import { visionSheets } from './visionSheets.js';
@@ -40,7 +42,7 @@ import { flashMoments, NOT_FILMED } from './flashMoments.js';
 import { startStack, type Stack } from './stack.js';
 import { renderStatic } from './static.js';
 import { isWhatIf, renderWhatIf, whatIfCss, whatIfSummary, type WhatIfName, type WhatIfSummary } from './whatif.js';
-import { PROFILES, planJobs, previousRun, runJobs, summaryPath, type Profile, type Visit } from './run.js';
+import { PROFILES, planJobs, previousRun, runFolder, runJobs, summaryPath, type Profile, type Visit } from './run.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** The local calendar day: a run after midnight in Türkiye belongs to that day. */
@@ -66,10 +68,15 @@ const { values, positionals } = parseArgs({
     moment: { type: 'string', multiple: true },
     /** competitor: the measurement spec; rows go beside it without `.spec`. */
     spec: { type: 'string' },
-    out: { type: 'string', default: join(ROOT, 'out/ui-audit', today) },
-    md: { type: 'string', default: join(ROOT, 'reports/ui-audit', `baseline-${today}.md`) },
+    /** The game kit as a surface of its own: its own folder and report, never in the game's totals. */
+    kit: { type: 'boolean', default: false },
+    out: { type: 'string' },
+    md: { type: 'string' },
   },
 });
+const kit = values.kit;
+const auditedSurfaces = kit ? KIT_SURFACES : SURFACES;
+const mdPath = values.md ?? join(ROOT, 'reports/ui-audit', `${kit ? 'kit' : 'baseline'}-${today}.md`);
 
 function parseWhatIf(name: string | undefined): WhatIfName | undefined {
   if (name === undefined) return undefined;
@@ -77,7 +84,7 @@ function parseWhatIf(name: string | undefined): WhatIfName | undefined {
   return name;
 }
 const whatIf = parseWhatIf(values.whatif);
-const base = resolve(ROOT, values.out);
+const base = resolve(ROOT, values.out ?? join('out/ui-audit', runFolder(today, { kit })));
 const out = whatIf ? `${base}-whatif-${whatIf}` : base;
 
 function isProfile(name: string): name is Profile['name'] {
@@ -88,7 +95,7 @@ const DRIVERS: Record<string, (base: string, surfaces: readonly Surface[]) => Vi
 
 /** `--driver gallery,public`: the visits of each, in that order. */
 function visitsFor(drivers: readonly string[], world: ClientWorld | undefined): Visit[] {
-  const surfaces = SURFACES.filter((s) => !values.surface || values.surface.includes(s.id));
+  const surfaces = auditedSurfaces.filter((s) => !values.surface || values.surface.includes(s.id));
   return drivers.flatMap((name) => {
     if ((name === 'client' || name === 'starter') && world) return clientVisits(world, surfaces);
     const driver = DRIVERS[name];
@@ -179,19 +186,20 @@ async function competitor(): Promise<void> {
 
 async function report(): Promise<void> {
   const entries = await readEntries(join(base, 'raw'));
-  const summary = summarize(entries, SURFACES);
+  const summary = summarize(entries, auditedSurfaces);
   const whatIfs: Partial<Record<WhatIfName, WhatIfSummary>> = {};
   for (const name of ['A', 'B'] as const) {
     const dir = join(`${base}-whatif-${name}`, 'raw');
     if (existsSync(dir)) whatIfs[name] = whatIfSummary(entries, await readEntries(dir));
   }
-  const md = resolve(ROOT, values.md);
+  const md = resolve(ROOT, mdPath);
   const sections = renderWhatIf(whatIfs);
-  const previous = await previousBaseline();
+  const previous = kit ? null : await previousBaseline();
+  const noPrevious = kit ? '_Kit ölçümü oyun ölçümüyle karşılaştırılmaz._\n' : '_Önceki ölçüm yok: bu ilk baseline._\n';
   await mkdir(dirname(md), { recursive: true });
   await writeFile(md, [
-    renderReport(summary, { title: `UI/UX başlangıç ölçümü — ${today}`, date: today }),
-    previous ? renderComparison(compareSummaries(previous.summary, summary), previous.date) : '_Önceki ölçüm yok: bu ilk baseline._\n',
+    renderReport(summary, { title: `${kit ? 'Oyun arayüzü kiti ölçümü' : 'UI/UX başlangıç ölçümü'} — ${today}`, date: today }),
+    previous ? renderComparison(compareSummaries(previous.summary, summary), previous.date) : noPrevious,
     sections ? `## Ya yazı ölçeği büyüseydi (plan §1.3)\n\n${sections}` : '',
   ].join('\n'));
   await writeFile(summaryPath(base), JSON.stringify({ ...summary, whatIf: whatIfs }));
@@ -199,7 +207,7 @@ async function report(): Promise<void> {
 }
 
 async function staticScan(): Promise<void> {
-  const md = resolve(ROOT, values.md.replace(/baseline-(\d{4}-\d{2}-\d{2})\.md$/, 'static-$1.md'));
+  const md = resolve(ROOT, mdPath.replace(/baseline-(\d{4}-\d{2}-\d{2})\.md$/, 'static-$1.md'));
   const scan = await scanSource(ROOT);
   await mkdir(dirname(md), { recursive: true });
   await writeFile(md, renderStatic(scan, { date: today }));
@@ -210,7 +218,7 @@ async function staticScan(): Promise<void> {
 /** Plan §1.5: each moment on a phone page of its own, filmed at 60 fps of page time. */
 async function flash(): Promise<void> {
   const moments = flashMoments(values.base).filter((m) => !values.moment || values.moment.includes(m.id));
-  const md = resolve(ROOT, values.md.replace(/baseline-(\d{4}-\d{2}-\d{2})\.md$/, 'flash-$1.md'));
+  const md = resolve(ROOT, mdPath.replace(/baseline-(\d{4}-\d{2}-\d{2})\.md$/, 'flash-$1.md'));
   const strips = join(base, 'flash');
   await mkdir(strips, { recursive: true });
   const browser = await launch();

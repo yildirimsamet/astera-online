@@ -74,6 +74,9 @@ export function entryPath(out: string, e: { surface: string; reach: string; lang
 /** A run's summary sits with its raw files in out/, not in git: about 6 MB a baseline (owner, 2026-11-11). */
 export const summaryPath = (out: string): string => join(out, 'summary.json');
 
+/** A run's folder under out/ui-audit: the day, or `kit-<day>` for the game kit, which is never a game baseline. */
+export const runFolder = (date: string, { kit = false } = {}): string => (kit ? `kit-${date}` : date);
+
 /** The latest day before `today` among run folders that hold a summary; what-if and device runs are not baselines. */
 export function previousRun(folders: readonly string[], today: string): string | null {
   return folders.filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f) && f < today).sort().at(-1) ?? null;

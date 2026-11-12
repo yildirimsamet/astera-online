@@ -554,12 +554,10 @@ Owner isteği: "Komple full bir ui-kit oluştur. Birbirleriyle uyumlu olsun; bun
 
 **Kararlar (owner, 2026-11-12):**
 
-1. ✅ Başlık fontu **Russo One** (başlık, buton, sayı); gövde Saira. Kit fontu kendisi yükler (`game-ui.css`); galerideki font değiştirici ve Oxanium paketi kaldırıldı. Uzun Türkçe başlıkta kesilme S22 turunda kontrol edilir.
+1. ~~Başlık fontu **Russo One**~~ → 2.9 kararıyla (Komuta + Grafit, 2026-11-12) başlık fontu **Saira Variable 700, %84 genişlik** oldu; Russo One paketi kaldırıldı. Bkz. `ui-standart-karar-paketleri-2026-11-12.md`.
 2. ✅ Alaşım bakıra kaydı: `--gk-alloy` #f2a14a → #c27a55 (+ `-hi` / `-lo`). Eylem amberinden ΔE 14 → 42; döteryumla döteranopide ΔE 11 → 38; koyu zeminde kontrast 5,7. Oyunun bugünkü ekranları (`--color-v2-alloy`) 4. aşamada kite geçerken değişir.
 
-**Açık karar:**
-
-3. Kit ölçüm aracına (`packages/ui-audit`) ayrı bir "kit" yüzeyi olarak eklensin mi? Eklenirse son yeniden ölçümde (fb70004a ↔ son) hariç tutulmalı; aksi hâlde oyuncu yüzeylerinin toplamı bozulur.
+3. ✅ Kit, ölçüm aracına ayrı bir "kit" yüzeyi olarak eklendi (`KIT_SURFACES`). `pnpm ui:audit run --kit` ve `report --kit` kendi klasörüne (`out/ui-audit/kit-<tarih>`) ve raporuna (`reports/ui-audit/kit-<tarih>.md`) yazar; oyunun baseline'ına ve toplamlarına hiç girmez. Koruyucu test: her kit görünümü ölçülür ya da gerekçeyle dışarıda kalır (`ui-kit-standard`: owner karar sayfası).
 
 **Kalan (Codex ve sonraki tur):** resimli ikon seti, 9-slice malzeme dokuları, VFX ve ödül animasyonları, UI ses seti, S22 turu.
 

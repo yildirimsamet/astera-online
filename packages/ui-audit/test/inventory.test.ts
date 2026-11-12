@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { GALLERY_OUT_OF_SCOPE, LISTED_DIRECTORIES, OUT_OF_SCOPE, SURFACES } from '../src/inventory.js';
+import { GALLERY_OUT_OF_SCOPE, KIT_SURFACES, LISTED_DIRECTORIES, OUT_OF_SCOPE, SURFACES } from '../src/inventory.js';
 
 /**
  * NOTHING THE PLAYER SEES IS LEFT OFF THE LIST.
@@ -34,6 +34,9 @@ const exactViews = new Set(found(/(?:view|get\('view'\)) === '([a-z0-9-]+)'/g));
 const prefixViews = [...new Set(found(/view\??\.startsWith\('([a-z0-9:-]+)'\)/g))];
 const reachedViews = new Set(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:')).map((r) => r.slice('gallery:'.length)));
 const galleryHas = (view: string) => exactViews.has(view) || prefixViews.some((prefix) => view.startsWith(prefix));
+/** The game kit routes its own views (`KIT_VIEWS` in GameKitGallery.tsx). */
+const kitSource = /KIT_VIEWS = \[([^\]]+)\]/.exec(readFileSync(join(WEB, 'v2/gallery/GameKitGallery.tsx'), 'utf8'))?.[1] ?? '';
+const kitViews = [...kitSource.matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1] ?? '');
 
 describe('the surface inventory', () => {
   it('lists every player-facing screen file, or says why it is left out', () => {
@@ -66,6 +69,19 @@ describe('the surface inventory', () => {
 
   it('measures every prefix branch through at least one view, or says why not (keyed "prefix*")', () => {
     expect(prefixViews.filter((prefix) => ![...reachedViews].some((view) => view.startsWith(prefix)) && !(`${prefix}*` in GALLERY_OUT_OF_SCOPE))).toEqual([]);
+  });
+
+  it('measures every kit view as the separate kit surface, or says why not (owner 2026-11-12)', () => {
+    const kitReached = new Set(KIT_SURFACES.flatMap((s) => s.reach).map((r) => r.slice('gallery:'.length)));
+    expect(kitViews.length).toBeGreaterThan(5);
+    expect(kitViews.filter((view) => !kitReached.has(view) && !(view in GALLERY_OUT_OF_SCOPE))).toEqual([]);
+    expect([...kitReached].filter((view) => !kitViews.includes(view))).toEqual([]);
+  });
+
+  it('keeps the kit out of the game surfaces, so its numbers never mix into the game totals', () => {
+    expect(KIT_SURFACES.flatMap((s) => s.reach).filter((r) => !r.startsWith('gallery:ui-kit'))).toEqual([]);
+    expect(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:ui-kit'))).toEqual([]);
+    expect(KIT_SURFACES.filter((k) => SURFACES.some((s) => s.id === k.id))).toEqual([]);
   });
 
   it('gives every exclusion a reason', () => {

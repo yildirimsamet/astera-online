@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entryPath, planJobs, previousRun, slug, summaryPath } from '../src/run.js';
+import { entryPath, planJobs, previousRun, runFolder, slug, summaryPath } from '../src/run.js';
 
 const visit = (surface: string, reach: `gallery:${string}`) => ({ surface, reach, open: () => Promise.resolve() });
 
@@ -65,5 +65,11 @@ describe('where a run summary is kept', () => {
     const folders = ['2026-11-01', '2026-11-05-whatif-A', '2026-11-05', '2026-11-09-s22', '2026-11-11'];
     expect(previousRun(folders, '2026-11-11')).toBe('2026-11-05');
     expect(previousRun(['2026-11-11'], '2026-11-11')).toBeNull();
+  });
+
+  it('puts a kit run in a folder of its own that is never read as the game baseline (owner 2026-11-12)', () => {
+    expect(runFolder('2026-11-12')).toBe('2026-11-12');
+    expect(runFolder('2026-11-12', { kit: true })).toBe('kit-2026-11-12');
+    expect(previousRun([runFolder('2026-11-11', { kit: true })], '2026-11-12')).toBeNull();
   });
 });

@@ -181,6 +181,20 @@ export const SURFACES: Surface[] = [
   },
 ];
 
+/**
+ * The game kit (direction B, `apps/web/src/game-ui`), measured as a surface of its own
+ * (owner 2026-11-12): `run --kit` writes to `out/ui-audit/kit-<date>`, so its numbers
+ * never mix into the game's totals. Its parts enter the game screens in stage 4.
+ */
+export const KIT_SURFACES: Surface[] = [
+  {
+    id: 'kit',
+    what: 'Oyun arayüzü kiti: katalog ve örnek ekranlar (gönderme, üs, HUD, liste, rapor)',
+    files: [],
+    reach: ['gallery:ui-kit', 'gallery:ui-kit-launch', 'gallery:ui-kit-base', 'gallery:ui-kit-hud', 'gallery:ui-kit-list', 'gallery:ui-kit-report'],
+  },
+];
+
 export const OUT_OF_SCOPE: Record<string, string> = {
   'screens/AdminPanel.tsx': 'admin: players never see it (owner, 2026-11-11)',
   'screens/AdminContentReports.tsx': 'admin: players never see it (owner, 2026-11-11)',
@@ -203,6 +217,7 @@ export const OUT_OF_SCOPE: Record<string, string> = {
 /** Gallery views that are not player surfaces. */
 export const GALLERY_OUT_OF_SCOPE: Record<string, string> = {
   admin: 'admin: players never see it (owner, 2026-11-11)',
+  'ui-kit-standard': "the standard's open decisions laid out for the owner, no player UI",
   'planet-models': '3D model review sheet for developers, no player UI',
   'monument-models': '3D model review sheet for developers, no player UI',
   'ufo-probe-flight': '3D flight review for developers, no player UI',
