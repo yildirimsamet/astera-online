@@ -14,7 +14,7 @@ import {
   Banner, BottomNav, CargoBar, Chip, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   GameTabs, Glyph, InfoPeek, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, RangeBars,
   ResourceHud, RoundButton, SectionTag, SheetFrame, Slider, SpendBar, StatPlaque, TextField, Timer, Toggle, UnitBay, UnitCard,
-  Well, type GlyphId, type HudResource,
+  Well, GLYPH_IDS, type HudResource,
 } from '../../game-ui/index.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
@@ -452,10 +452,7 @@ const TYPE = [
   ['hero', 'Kahraman 30'], ['head', 'Başlık 24'], ['title', 'Unvan 19'], ['number', 'Sayı 18'],
   ['lead', 'Öne çıkan 16'], ['body', 'Gövde 14'], ['small', 'Küçük 13'], ['floor', 'Taban 12'],
 ] as const;
-const GLYPHS: readonly GlyphId[] = [
-  'close', 'plus', 'minus', 'back', 'next', 'lock', 'home', 'clock', 'shield', 'rocket', 'crate', 'bay',
-  'bell', 'menu', 'back_home', 'attack', 'check', 'warn', 'star', 'help', 'up', 'down', 'speed',
-];
+const GLYPH_SAMPLES = { eye: 'Keşif', colony: 'Koloni', recall: 'Geri çağır', escape: 'Kaçış', support: 'Destek', repair: 'Onarım' } as const;
 
 function Catalog() {
   const [toggle, setToggle] = useState(true);
@@ -547,8 +544,23 @@ function Catalog() {
             <Emblem cls="SKIRMISHER" /><Emblem cls="LANCE" /><Emblem cls="BULWARK" /><Emblem cls="SUPPORT" />
             <Emblem cls="SKIRMISHER" hostile /><Emblem cls="LANCE" hostile /><Emblem cls="BULWARK" hostile />
           </div>
-          <div className="grid grid-cols-12 gap-1" style={{ fontSize: 20 }}>
-            {GLYPHS.map((id) => <span key={id} title={id} className="grid place-items-center"><Glyph id={id} /></span>)}
+        </Section>
+
+        <Section title="Glifler · 32 px ve altı">
+          <div role="group" aria-label="Glifler" className="gk-well grid grid-cols-10 gap-x-1 gap-y-2 p-2.5" style={{ fontSize: 22 }}>
+            {GLYPH_IDS.map((id) => <span key={id} title={id} className="grid place-items-center"><Glyph id={id} /></span>)}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5" style={{ fontSize: 16 }}>
+            {(['eye', 'colony', 'recall', 'escape', 'support', 'repair'] as const).map((id) => (
+              <span key={id} className="gk-pill gk-pill--self"><Glyph id={id} />{GLYPH_SAMPLES[id]}</span>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <RoundButton glyph="settings" label="Ayarlar" onPress={() => undefined} />
+            <RoundButton glyph="mail" label="Posta" onPress={() => undefined} />
+            <RoundButton glyph="share" label="Paylaş" tone="self" onPress={() => undefined} />
+            <GameButton tone="action" size="sm" glyph="eye" onPress={() => undefined}>Sonda</GameButton>
+            <GameButton tone="steel" size="sm" glyph="refresh" onPress={() => undefined}>Yenile</GameButton>
           </div>
         </Section>
 

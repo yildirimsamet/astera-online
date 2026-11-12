@@ -5,7 +5,7 @@
  */
 export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps } from './buttons.js';
 export { BottomNav, GameTabs, InfoPeek, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem } from './controls.js';
-export { Glyph, type GlyphId } from './icons.js';
+export { GLYPH_IDS, Glyph, type GlyphId } from './icons.js';
 export {
   CargoBar, CountBadge, Dot, Emblem, LevelBadge, ListRow, LockBadge, MultiplierBadge, ProgressBar, RangeBars, ResourceHud, SpendBar,
   StatPlaque, Timer, type BarTone, type HudResource, type StatTone,

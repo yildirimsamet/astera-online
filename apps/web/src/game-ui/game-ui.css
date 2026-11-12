@@ -77,6 +77,10 @@
   overflow: visible;
 }
 
+/* The glyph's lower half is a shade of its own colour: a flat mark reads as a game icon. */
+.gk-glyph__hi { stop-color: currentColor; }
+.gk-glyph__lo { stop-color: color-mix(in oklab, currentColor 76%, var(--gk-metal-hi)); }
+
 /* Tone helpers for text and glyphs. */
 .gk-tone-self { color: var(--gk-self); }
 .gk-tone-hostile { color: var(--gk-hostile); }

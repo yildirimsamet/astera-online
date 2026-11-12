@@ -119,6 +119,10 @@ Kitte olanlar aynen kalır: saldırı, nakliye (kasa), kalkan, hız, süre, kili
 
 Harita işaretleri 4. aşamada galaksi katmanına girer. 2026-11-11'de geri getirilen mobil işaret boyutları korunur.
 
+**Kite girdi (2026-11-12):** Tablodaki 30 glif `PATHS`'e eklendi; kit 53 glif. 27'si kaynak PNG'nin alfa sınırından alt-piksel izlendi (Inkscape izleyicisi dişlinin deliğini kaybettiği için kullanılmadı), 3'ü (radyasyon, saldırı artışı, sancak) elle çizildi. Her glif onaylanan işlemi alır: koyu kontur + üstü kendi rengi, altı bir ton koyu (`.gk-glyph__hi/__lo`). Görüntü: `out/ui-kit/r5/glifler.png`.
+
+*Not:* Kitin ilk elden çizilen glifleri (kılıç, onay, dönüş oku) izlenen Picto gliflerinden biraz ince. Yan yana durduklarında fark seçiliyor; 4. aşamada Picto karşılıklarıyla değiştirilmesi önerilir.
+
 ### Şeref, rütbe, klan, dil (pano C)
 
 - **Şeref kademesi −2…+2: Synty katmanları.**
