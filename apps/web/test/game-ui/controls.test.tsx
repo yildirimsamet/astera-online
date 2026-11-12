@@ -145,4 +145,10 @@ describe('the info peek', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Lance beats Skirmisher.')).toBeVisible();
   });
+
+  /** Several peeks on one screen: a reader must hear which rule each "?" opens. */
+  it('names its toggle for the fact it explains, when told', () => {
+    render(<InfoPeek fact="0 HP/min" rule="Aegis guards ships here." about="About planet radiation protection" />);
+    expect(screen.getByRole('button', { name: 'About planet radiation protection' })).toHaveAttribute('aria-expanded', 'false');
+  });
 });

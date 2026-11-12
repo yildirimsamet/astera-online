@@ -315,7 +315,7 @@ function NavButton({ item, current, onPress }: { item: NavItem; current: boolean
  * THE FACT ON THE ROW, THE RULE ONE TAP AWAY. Progressive disclosure: the line says
  * what is true here; "?" opens why, in place, without leaving the decision.
  */
-export function InfoPeek({ fact, rule, lead }: { fact: ReactNode; rule: ReactNode; lead?: ReactNode }) {
+export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: ReactNode; lead?: ReactNode; about?: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ruleId = useId();
@@ -328,7 +328,7 @@ export function InfoPeek({ fact, rule, lead }: { fact: ReactNode; rule: ReactNod
         <button
           type="button"
           className="gk-round gk-round--small"
-          aria-label={t('counter.compareRuleToggle')}
+          aria-label={about ?? t('counter.compareRuleToggle')}
           aria-expanded={open}
           aria-controls={ruleId}
           onPointerDown={own.onPointerDown}

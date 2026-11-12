@@ -904,6 +904,59 @@
 .gk-stores__rule {
   margin-top: -2px;
 }
+/* what a world takes off radiation: a coin of its tone, the reading, the rule one "?" away */
+.gk-shelter {
+  --tone: var(--gk-good);
+  padding: 0 2px 0 var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+}
+.gk-shelter[data-tone='warn'] {
+  --tone: var(--gk-warn);
+}
+.gk-shelter__coin {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--tone);
+}
+.gk-shelter__coin .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-shelter .gk-peek__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-shelter__name {
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+.gk-shelter__value {
+  flex-shrink: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  color: var(--tone);
+}
+.gk-shelter .gk-peek__rule {
+  display: grid;
+  gap: var(--gk-s1);
+  margin-right: 6px;
+}
+.gk-shelter__line[data-tone='warn'] {
+  color: var(--gk-warn);
+}
 
 /* The part of a range we are not sure of: the same hue, striped. */
 .gk-bar__reach {
