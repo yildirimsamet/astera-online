@@ -1,8 +1,22 @@
-# UI standardı: karar paketleri (aşama 2.2–2.8)
+# UI standardı: karar paketleri (aşama 2.2–2.9)
 
-Tarih: 2026-11-12. **Durum: owner kararı bekliyor.** Hiçbir oyun ekranı değişmedi. Seçilen değerler 3. aşamada token'a ve koruyucu teste, 4. aşamada ekranlara geçer.
+Tarih: 2026-11-12. **Durum: 2.2–2.8 kararlandı (owner, 2026-11-12); 2.9 görünüm owner kararı bekliyor.** Hiçbir oyun ekranı değişmedi. Seçilen değerler 3. aşamada token'a ve koruyucu teste, 4. aşamada ekranlara geçer.
 
 Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](ui-ux-iyilestirme-plani-2026-11-11.md), başlangıç ölçümü `reports/ui-audit/baseline-2026-11-11.md`.
+
+## Owner kararları (2026-11-12)
+
+| Karar | Seçim | Not |
+|---|---|---|
+| 2.2 Yazı ölçeği | **Bugün** (9 / 10 / 12 / 12 / 16 / 18) | Bedel bir kez not edildi: telefonda metnin %73'ü 11 px'in altında kalır, buton yazısı 12 px (rakipte 15–25). T1 ölçütü düşer. Güvenlik supabı olarak yazı boyutu ayarını (%115) 5. aşamadan öne almayı öneriyorum. |
+| 2.3 Metin bütçesi | **Bütçeli** | |
+| 2.4 Dokunma | **44 px** | |
+| 2.5 Renk rolleri | **A**: kitin 6 rolü ve 3 kural | Owner "Normal" dedi; kitteki hâli (A) olarak okundu. |
+| 2.6 Süreler | **Panel 160 ms** | Basılı tutma için seçim gelmedi. Önerim B (0,6 / 1 / 1,5 sn) varsayıldı; owner aksini söylerse değişir. |
+| 2.7 Kenar boşluğu | **12 px** | |
+| 2.8 Sayı biçimi | **K/M** (240,1K · 1,4M) | |
+
+Seçilenler 3. aşamada token'a ve koruyucu teste çevrilir.
 
 ## Nasıl bakılır
 
@@ -353,6 +367,82 @@ Karar sayfası kurulurken kitte üç yerleşim sorunu bulundu ve düzeltildi. He
 
 Ek olarak `GameHold` ve `useHoldPress` isteğe bağlı bir basılı tutma süresi (`holdMs`) aldı. Varsayılan 600 ms ve bugünkü davranış değişmedi.
 
+## 2.9 Görünüm: dil ve panel rengi
+
+**Owner (2026-11-12):**
+- "Neredeyse her yerde arka planda kullandığımız mavimsi renk hoşuma gitmiyor."
+- "Biraz fazla casual'a kaçmışız. Uzay oyunuyuz, biraz da ciddi bir oyun. İkisinin arasında bir dil yakalasak?"
+
+**Neden casual okunuyor:** Altı şey birlikte:
+1. Russo One: yuvarlak, ağır başlık fontu her yerde büyük harfle.
+2. Büyük köşe yuvarlaklığı ve hap rozetler ("Denk hedef").
+3. Butonlarda parlak "şeker" cilası ve kalın alt dudak.
+4. Kalın, parlayan turkuaz kart kenarları; yuvarlak sayı rozeti.
+5. Mavi-lacivert panel rengi (Whiteout ve Clash'in imzası).
+6. Kalın konturlu beyaz yazı.
+
+**Sektör nasıl yapar:** Mobil strateji üç banda ayrılır:
+- **Casual:** Clash of Clans, Whiteout Survival. Yuvarlak, parlak, zıplayan.
+- **Mid-core bilimkurgu:** Star Trek Fleet Command, Homeworld Mobile, Infinite Lagrange. Kesik köşe, ince çizgi, nötr koyu panel, dar teknik font, tek vurgu rengi.
+- **Ciddi:** EVE Echoes.
+
+Mid-core oyunlar ödül anlarını (zafer, kapsül) gösterişli tutar, araçları sakin tutar. Örnek ekranlar için sektörün başvuru arşivleri: [Game UI Database](https://www.gameuidatabase.com), [Interface In Game](https://interfaceingame.com).
+
+**Deneme:** Kit iki eksende yeniden çizildi. Hiçbir oyun ekranı değişmedi.
+
+- **Dil:**
+  - **Bugün:** Bugünkü kit.
+  - **Komuta (orta yol):**
+    - kesik köşeli butonlar, cila yok, basınca içe göçer;
+    - cıvata yerine köşe parantezleri;
+    - ince kenarlar;
+    - kare sayı rozeti;
+    - ucu parlayan düz çubuklar;
+    - Saira dar kalın başlık fontu;
+    - amber butonda koyu yazı (uyarı plakası gibi);
+    - daha az zıplama.
+
+    Oyun hissi kalır: her kontrol hareket eder, ses ve titreşim verir, sahne canlı kalır.
+- **Renk:**
+  - **Lacivert:** Bugünkü panel rengi.
+  - **Grafit:** Nötr koyu metal. Resimli ikonların koyu metal + amber diliyle aynı.
+  - **Karbon:** Sıcak kömür, askerî/endüstriyel his.
+
+Rol renklerine (amber, turkuaz, kırmızı, yeşil, sarı, mavi) dokunulmadı; bunu bir test koruyor.
+
+**Kontrast (en açık plakada soluk yazı, hedef ≥ 4,5):**
+
+| | Lacivert | Grafit | Karbon |
+|---|---|---|---|
+| Soluk yazı (ink-3) | 4,2 | **4,9** | **4,9** |
+| İkincil yazı (ink-2) | 7,5 | 8,4 | 8,8 |
+
+**Nasıl bakılır:**
+- Herhangi bir kit görünümünde sağ üstteki **GÖRÜNÜM** düğmesi Dil ve Renk seçtirir.
+- Adres de taşır: `v2-gallery.html?view=ui-kit-launch&lng=tr&tone=command&skin=graphite`.
+- Görseller (350 px): `out/ui-kit/look/`.
+  - `cmp-launch-command.png`, `cmp-base-command.png`, `cmp-list-command.png`, `cmp-hud-command.png` ve `cmp-report-command.png`: soldan sağa Bugün · Komuta+Lacivert · Komuta+Grafit · Komuta+Karbon.
+  - `cmp-launch-game.png` ve `cmp-base-game.png`: yalnız renk değişimi (Bugün dili).
+  - Tüm kit kataloğu iki görünümde `catalog-part1..6.png` içinde.
+- S22: bu turda telefon bağlı değildi, çekilmedi.
+
+**Seçenekler ve bedeller:**
+- **A · Bugün + yeni renk:** En küçük değişiklik. Bedel: casual his kalır, yalnız mavi gider.
+- **B · Komuta + Grafit (önerim):**
+  - İki şikâyeti birlikte çözer.
+  - Nötr panel renkleri ve NASA fotoğrafı gibi gökyüzünü öne çıkarır.
+  - Dar font uzun Türkçe sözcüklere sığar: "GERİ ÇAĞIR" iki satırdan bire indi.
+  - Bedel: 2026-11-12'deki Russo One kararı yeniden açılır; başlık, buton ve sayı fontu Saira dar kalın olur.
+  - Bedel: 2.2 "Bugün" ölçeğiyle dar font daha da küçük görünür. Başlık ve buton 1–2 px büyütülmeli.
+- **C · Komuta + Karbon:** Daha askerî ve sıcak. Bedel: bakır alaşım ve amber ile birlikte ekran kahveye kayar.
+- **D · Komuta + Lacivert:** Dil değişir, mavi kalır.
+
+**Komuta seçilirse sonraki adım:** Kütüphanede bu dile uyan hazır parçalar var (`game-assets`): Synty "Interface – Military Combat HUD" ve VSX "Space Combat Kit". İçlerinde köşe parantezleri, kesik köşeli çerçeveler, altıgen ve halka göstergeler bulunuyor. Sayaç halkası, hedef çerçevesi ve rozetler bunlarla zenginleştirilir.
+
+**En kaliteli yol:** Bir oyun UI sanatçısı iki ana ekranın "stil karesini" (style frame) çizer, kit ona göre ayarlanır. Bunun yerine bu deneme kendi token sistemimizle yapıldı. Owner seçtikten sonra ince ayar yine S22'de yapılır.
+
+**Ölçülebilir karşılık:** Seçilen dil ve renk, 3. aşamada varsayılan token olur. Deneme katmanı (`tone-command.css`, `data-gk-skin`) varsayılana katlanır, seçilmeyen kaldırılır.
+
 ## Owner'dan beklenen
 
-Her karar için seçim: **2.2** ölçek (Bugün / A / B), **2.3** bütçe (A / B / C), **2.4** taban (44 / 48), **2.5** renk (A / B / C), **2.6** basılı tutma (A / B / C), **2.7** kenar (A / B / C), **2.8** sayı (A / B / C). "Önerimle devam" demek de yeterli. Seçilenler 3. aşamada token'a ve koruyucu teste çevrilir.
+**2.9:** Dil (Bugün / Komuta) ve renk (Lacivert / Grafit / Karbon). "Önerimle devam" (Komuta + Grafit) demek yeterli.

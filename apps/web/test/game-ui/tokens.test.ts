@@ -35,6 +35,19 @@ describe('the game kit palette', () => {
     expect(readFileSync(join(KIT, 'game-ui.css'), 'utf8')).toMatch(/@import '@fontsource\/russo-one\//);
   });
 
+  it('lets a skin repaint the material and the inks, never what a role colour means', () => {
+    const skins = [...tokens.matchAll(/:root\[data-gk-skin='(\w+)'\]\s*\{([^}]*)\}/g)];
+    expect(skins.map((skin) => skin[1])).toEqual(['graphite', 'carbon']);
+    const names = (body: string): string[] => [...body.matchAll(/(--gk-[\w-]+):/g)].map((m) => m[1] ?? '').sort();
+    const material = /^--gk-(void|deep|ink|ink-2|ink-3|metal-[\w]+|glass[\w-]*|bolt|steel[\w-]*|tint)$/;
+    for (const [, , body = ''] of skins) expect(names(body).filter((name) => !material.test(name))).toEqual([]);
+    expect(names(skins[0]?.[2] ?? '')).toEqual(names(skins[1]?.[2] ?? ''));
+  });
+
+  it("names the panel tint once, so a skin can take today's blue out of every panel", () => {
+    expect(tokens).toMatch(/--gk-tint:\s*var\(--gk-info\)/);
+  });
+
   it('keeps raw colours out of every other kit file and the kit gallery', () => {
     const offenders = [...files(KIT).filter((f) => !f.endsWith('tokens.css')), 'src/v2/gallery/GameKitGallery.tsx']
       .filter((f) => RAW.test(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')));

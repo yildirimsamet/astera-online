@@ -1,0 +1,331 @@
+/**
+ * THE COMMAND TONE (gallery trial, owner 2026-11-12: "a little too casual; we are a space
+ * game, and a somewhat serious one"). The same parts, read as a warship's instruments
+ * instead of candy: cut corners and hairlines for round plastic, corner ticks for bolts,
+ * flat lit faces for gloss, a narrow technical face for the round heavy one, less bounce.
+ * The game stays: every control still moves, sounds and answers, the scene stays alive.
+ * Loaded by the gallery's look switcher; active only under <html data-gk-tone="command">.
+ */
+
+:root[data-gk-tone='command'] {
+  --gk-r-sm: 3px;
+  --gk-r-md: 4px;
+  --gk-r-lg: 6px;
+  --gk-cut: 8px;
+  --gk-pop: cubic-bezier(0.2, 0.9, 0.3, 1.04);
+}
+:root[data-gk-tone='command']:not(:lang(ja)) {
+  --gk-font-display: 'Saira Variable', 'Arial Narrow', system-ui, sans-serif;
+  --gk-display-weight: 700;
+  --gk-display-stretch: 84%;
+}
+
+/* ── type: tracked capitals, a soft shadow instead of a cartoon rim ────────── */
+
+:root[data-gk-tone='command'] .gk-display {
+  letter-spacing: 0.03em;
+}
+:root[data-gk-tone='command'] .gk-outlined {
+  text-shadow: 0 1px 2px var(--gk-outline), 0 0 1px var(--gk-outline);
+}
+:root[data-gk-tone='command'] .gk-label {
+  letter-spacing: 0.12em;
+}
+
+/* ── plates: machined, flat-lit, corner ticks for bolts ────────────────────── */
+
+:root[data-gk-tone='command'] .gk-plate {
+  border-color: color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 5%, transparent) 0, transparent 1px),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2) 75%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 40%, transparent),
+    0 4px 12px -6px var(--gk-metal-shadow);
+}
+:root[data-gk-tone='command'] .gk-bolts::after {
+  --t: color-mix(in srgb, var(--gk-tint) 60%, transparent);
+  --l: 9px;
+  inset: -1px;
+  border-radius: 0;
+  background:
+    linear-gradient(var(--t), var(--t)) 0 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / 1px var(--l) no-repeat;
+}
+:root[data-gk-tone='command'] .gk-edge-self {
+  border-color: color-mix(in srgb, var(--gk-self) 70%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 14%, transparent),
+    inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+:root[data-gk-tone='command'] .gk-edge-self.gk-bolts::after {
+  --t: var(--gk-self);
+  --l: 12px;
+}
+:root[data-gk-tone='command'] .gk-edge-hostile {
+  border-color: color-mix(in srgb, var(--gk-hostile) 65%, transparent);
+  box-shadow: inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-hostile) 40%, transparent);
+}
+:root[data-gk-tone='command'] .gk-edge-hostile.gk-bolts::after {
+  --t: var(--gk-hostile);
+  --l: 12px;
+}
+
+/* A section name: a lit bar and tracked capitals, no arrow plate. */
+:root[data-gk-tone='command'] .gk-tag__name {
+  padding: 2px 8px 2px 7px;
+  border-left: 2px solid var(--gk-tint);
+  letter-spacing: 0.16em;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 18%, transparent), transparent);
+  clip-path: none;
+}
+:root[data-gk-tone='command'] .gk-tag__rule {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 30%, transparent), transparent);
+}
+
+/* ── buttons: a cut, flat-lit face that sinks when pressed ─────────────────── */
+
+:root[data-gk-tone='command'] .gk-btn {
+  --lift: 0px;
+  --cut: 10px;
+  margin-bottom: 0;
+  border: 0;
+  border-radius: 0;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--rim) 80%, transparent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 35%, transparent) 0 1px, transparent 1px),
+    linear-gradient(180deg, var(--face) 0%, var(--face-lo) 100%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 45%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--lip) 60%, transparent);
+}
+:root[data-gk-tone='command'] .gk-btn::before {
+  display: none;
+}
+:root[data-gk-tone='command'] .gk-btn:active:not(:disabled),
+:root[data-gk-tone='command'] .gk-btn[data-pressed] {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 35%, transparent),
+    inset 0 3px 6px color-mix(in srgb, var(--lip) 55%, transparent);
+}
+/* Dark type on the lit amber and teal faces, as warning plates are lettered. */
+:root[data-gk-tone='command'] .gk-btn--action {
+  color: var(--gk-action-ink);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-action-hi) 55%, transparent);
+}
+:root[data-gk-tone='command'] .gk-btn--self {
+  color: var(--gk-outline);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-self-hi) 55%, transparent);
+}
+:root[data-gk-tone='command'] .gk-btn--action .gk-glyph,
+:root[data-gk-tone='command'] .gk-btn--self .gk-glyph {
+  stroke: none;
+}
+:root[data-gk-tone='command'] .gk-btn:disabled {
+  --face: var(--gk-steel);
+  --face-lo: var(--gk-steel-lo);
+  --face-hi: var(--gk-steel-hi);
+  --lip: var(--gk-steel-lip);
+  filter: none;
+  color: var(--gk-ink-3);
+}
+:root[data-gk-tone='command'] .gk-btn:disabled .gk-glyph {
+  stroke: var(--gk-outline);
+}
+:root[data-gk-tone='command'] .gk-btn--ghost {
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+}
+:root[data-gk-tone='command'] .gk-btn--lg {
+  --cut: 12px;
+  border-radius: 0;
+}
+:root[data-gk-tone='command'] .gk-btn--action::after {
+  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--gk-ink) 26%, transparent) 50%, transparent 58%);
+}
+:root[data-gk-tone='command'] .gk-btn__cost {
+  border-radius: 2px;
+}
+:root[data-gk-tone='command'] .gk-hold__dial {
+  background: color-mix(in srgb, var(--rim) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rim) 55%, transparent);
+}
+:root[data-gk-tone='command'] .gk-hold__track {
+  stroke: color-mix(in srgb, var(--rim) 30%, transparent);
+}
+:root[data-gk-tone='command'] .gk-hold__arc {
+  stroke: var(--rim);
+  stroke-linecap: butt;
+}
+:root[data-gk-tone='command'] .gk-hold__aside {
+  border-left-width: 1px;
+}
+
+:root[data-gk-tone='command'] .gk-round__face {
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--face-hi) 55%, transparent);
+  background: linear-gradient(180deg, var(--face), var(--face-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 16%, transparent);
+}
+:root[data-gk-tone='command'] .gk-round:active .gk-round__face {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px var(--gk-metal-shadow);
+}
+:root[data-gk-tone='command'] .gk-round:focus-visible {
+  border-radius: 3px;
+}
+
+:root[data-gk-tone='command'] .gk-switch {
+  border-radius: 3px;
+}
+:root[data-gk-tone='command'] .gk-switch__knob {
+  border-radius: 2px;
+}
+:root[data-gk-tone='command'] .gk-slider__rail {
+  border-radius: 1px;
+}
+:root[data-gk-tone='command'] .gk-slider__knob {
+  border-radius: 3px;
+}
+
+:root[data-gk-tone='command'] .gk-chip {
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+:root[data-gk-tone='command'] .gk-chip[data-on] {
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
+  box-shadow: none;
+}
+
+/* ── badges and tags: square-cut, flat, lettered dark on light ─────────────── */
+
+:root[data-gk-tone='command'] .gk-count {
+  min-width: 30px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-self-hi);
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
+  box-shadow: 0 0 10px -3px color-mix(in srgb, var(--gk-self) 70%, transparent);
+  color: var(--gk-outline);
+  text-shadow: none;
+  font-size: 18px;
+}
+:root[data-gk-tone='command'] .gk-count--idle {
+  border-color: var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  box-shadow: none;
+  color: var(--gk-ink-2);
+}
+:root[data-gk-tone='command'] .gk-unit[data-full] .gk-count {
+  background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self));
+}
+:root[data-gk-tone='command'] .gk-mult,
+:root[data-gk-tone='command'] .gk-emblem {
+  border-radius: 2px;
+}
+:root[data-gk-tone='command'] .gk-pill {
+  height: 20px;
+  border-radius: 2px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--tone, var(--gk-steel)) 16%, transparent);
+  box-shadow: none;
+}
+:root[data-gk-tone='command'] .gk-lock {
+  border-radius: 2px;
+}
+
+/* ── bars: flat fill with a lit leading edge, like an instrument ───────────── */
+
+:root[data-gk-tone='command'] .gk-bar {
+  border-radius: 1px;
+  border-color: color-mix(in srgb, var(--gk-ink) 10%, var(--gk-outline));
+  box-shadow: inset 0 1px 2px var(--gk-metal-shadow);
+}
+:root[data-gk-tone='command'] .gk-bar__fill {
+  border-radius: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fill) 55%, var(--gk-outline)), var(--fill) calc(100% - 2px), var(--fill-hi) calc(100% - 2px));
+}
+:root[data-gk-tone='command'] .gk-bar__band {
+  border-radius: 0;
+}
+:root[data-gk-tone='command'] .gk-res {
+  border-radius: 3px;
+}
+:root[data-gk-tone='command'] .gk-res__store {
+  border-radius: 0;
+}
+
+/* ── tabs, nav, rows, sheets, cards ────────────────────────────────────────── */
+
+:root[data-gk-tone='command'] .gk-tab {
+  border-radius: 2px;
+  border-color: var(--gk-metal-edge);
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: none;
+}
+:root[data-gk-tone='command'] .gk-tab[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent 80%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}
+
+:root[data-gk-tone='command'] .gk-nav {
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--gk-tint) 22%, transparent), 0 -6px 16px -6px var(--gk-outline);
+}
+:root[data-gk-tone='command'] .gk-nav__item {
+  border-radius: 0;
+}
+:root[data-gk-tone='command'] .gk-nav__label {
+  letter-spacing: 0.08em;
+}
+:root[data-gk-tone='command'] .gk-nav__item[aria-current='page'] {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 20%, transparent), transparent 70%);
+  box-shadow: inset 0 2px 0 var(--gk-self);
+}
+:root[data-gk-tone='command'] .gk-nav__item[aria-current='page'] .gk-nav__art {
+  transform: translateY(-2px);
+}
+
+:root[data-gk-tone='command'] .gk-row {
+  border-color: color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+:root[data-gk-tone='command'] .gk-sheet {
+  border-color: color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+  box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-tint) 35%, transparent);
+}
+:root[data-gk-tone='command'] .gk-sheet__grab {
+  width: 36px;
+  height: 3px;
+  border-radius: 0;
+}
+
+:root[data-gk-tone='command'] .gk-unit__stage,
+:root[data-gk-tone='command'] .gk-bay {
+  border-radius: 2px;
+}
+:root[data-gk-tone='command'] .gk-bay[aria-pressed='true'] {
+  box-shadow: inset 0 -24px 24px -24px color-mix(in srgb, var(--gk-self) 60%, transparent);
+}
+:root[data-gk-tone='command'] .gk-banner {
+  border-left-width: 2px;
+}

@@ -196,13 +196,13 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gk-ink);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-info) 38%, var(--gk-metal-1)), var(--gk-metal-2));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 38%, var(--gk-metal-1)), var(--gk-metal-2));
   clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% 50%, calc(100% - var(--cut)) 100%, 0 100%);
 }
 .gk-tag__rule {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-info) 45%, transparent), transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 45%, transparent), transparent);
 }
 .gk-tag__aside {
   font-size: var(--gk-t-floor);
@@ -1144,7 +1144,7 @@
   border: 1px solid var(--gk-metal-edge);
   border-bottom: 0;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gk-info) 10%, transparent), transparent 90px),
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-tint) 10%, transparent), transparent 90px),
     linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 260px);
   box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 80%, transparent);
 }
@@ -1736,7 +1736,7 @@
   padding: 0;
   border: 0;
   border-radius: 8px;
-  background: radial-gradient(ellipse 60% 45% at 50% 62%, color-mix(in srgb, var(--gk-info) 22%, transparent), transparent 70%);
+  background: radial-gradient(ellipse 60% 45% at 50% 62%, color-mix(in srgb, var(--gk-tint) 22%, transparent), transparent 70%);
   cursor: pointer;
   touch-action: pan-y;
   user-select: none;
@@ -1994,7 +1994,7 @@
   margin-left: -150px;
   object-fit: contain;
   opacity: 0.9;
-  filter: drop-shadow(0 0 40px color-mix(in srgb, var(--gk-info) 30%, transparent));
+  filter: drop-shadow(0 0 40px color-mix(in srgb, var(--gk-tint) 30%, transparent));
   animation: gk-float 7s ease-in-out infinite;
   pointer-events: none;
 }
@@ -2383,4 +2383,32 @@
 .gk-std__gutter {
   margin-inline: -10px;
   padding-inline: var(--std-gutter);
+}
+
+/* ── the look switcher (gallery only, owner 2026-11-12) ────────────────────── */
+
+.gk-look {
+  position: fixed;
+  z-index: 60;
+  top: calc(env(safe-area-inset-top, 0px) + 52px);
+  right: 2px;
+  display: grid;
+  justify-items: end;
+}
+.gk-look__panel {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  background: color-mix(in srgb, var(--gk-deep) 94%, transparent);
+  box-shadow: 0 8px 20px -8px var(--gk-outline);
+}
+.gk-look__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.gk-look__row > .gk-label {
+  min-width: 36px;
 }
