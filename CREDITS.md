@@ -30,3 +30,4 @@ From the owner's asset library, as recorded there (`packs.json`, licence confirm
 | `lightning-5x5.webp` | EMP storm: bolts leaping off the limb | `lightning03-5x5.png` | Unique AoE Magic Abilities Vol.1 (v1.6.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
 | `sck-exhaust-halo.webp` | Mining dig: the cut's glow on the face and the lit hold; wrecked colony ship: the glow of its fires | `exhaust-halo.png` | Space Combat Kit (v2.8.1) | VSX Games | VSX Games (Unity Asset Store) |
 | `flame-3-6x6.webp` | Wrecked colony ship: the flames over its bays | `flame-style-3.png` | Realistic Fire VFX (v3.5) | Luke Peek | Luke Peek (Unity Asset Store) |
+| `circles-outlines-2x2.webp` | Discovery scan: the reticle that locks on a newly known world | `t-circlesoutlines-2x2.png` | Unique Sci-Fi Pack Vol.1 (v1.3) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |

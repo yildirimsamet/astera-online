@@ -118,7 +118,7 @@ export function NukeBlast({ event }: { event: DeathStarImpactEvent }) {
     discMap!.minFilter = THREE.LinearFilter;
     return new THREE.ShaderMaterial({
       uniforms: { uMap: { value: discMap }, uFrame: { value: 0 }, uAlpha: { value: 0 } },
-      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false,
+      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, forceSinglePass: true, toneMapped: false,
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: /* glsl */`
         uniform sampler2D uMap; uniform float uFrame; uniform float uAlpha; varying vec2 vUv;

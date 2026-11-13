@@ -112,6 +112,8 @@ import { OpeningWork, useOpeningViews, useSightRequest } from './OpeningViews.js
 const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
+import { ScanReveals } from './ScanReveals.jsx';
+import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { MiningFlights, miningFocusRadius, miningReach } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
@@ -959,6 +961,10 @@ export function GalaxyCanvas({
         */}
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
+        {/* The first time a world is known, the telescope's scan finds out who holds it (owner, 2026-11-12). */}
+        <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+          <ScanReveals nodes={nodes} selfId={selfId} sensors={sensors} />
+        </Suspense></SkinAssetBoundary>
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>
           <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
