@@ -289,6 +289,18 @@ importers:
         specifier: workspace:*
         version: link:../rules
 
+  packages/ui-audit:
+    devDependencies:
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@22.20.1)
+
 packages:
 
   '@adobe/css-tools@4.5.0':

@@ -11,13 +11,15 @@ const member = z.object({ id: identity, tier: amount.min(1), navy: amount, defen
 export const honorEvidenceSchema = z.object({
   galaxyTopTier: amount.min(1).optional(),
   /** The attack table frozen at dispatch (see `honorChallenge`). Absent on older contracts. */
-  weakNavyBand: z.union([z.literal(75), z.literal(HONOR_ATTACK_NAVY_BAND)]).optional(),
+  weakNavyBand: z.union([z.literal(75), z.literal(50), z.literal(HONOR_ATTACK_NAVY_BAND)]).optional(),
   retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional(),
   source: z.enum(['WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION']),
   id: identity, at: amount, eligible: z.boolean(), attack: z.array(member).min(1), defence: z.array(member),
   exclusion: z.enum(['TARGET_CHANGED', 'PARTICIPANT_JOINED_LATE']).optional(),
   selectedDefenders: z.array(identity).optional(),
-  relations: z.array(z.object({ a: identity, b: identity, related: z.boolean() }).strict()),
+  /** `repeatRaid` is written only when true: this attacker had already raided this defender
+   * inside the day before the battle (table 33). */
+  relations: z.array(z.object({ a: identity, b: identity, related: z.boolean(), repeatRaid: z.literal(true).optional() }).strict()),
   attackKey: identity.optional(),
   tactical: z.array(z.object({ actor: identity, enemy: identity, base: amount, pressureFifths: amount,
     radiation: z.object({ armedMicros: amount, allMicros: amount }).strict().optional() }).strict()).optional(),

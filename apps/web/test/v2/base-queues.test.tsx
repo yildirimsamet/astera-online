@@ -50,8 +50,18 @@ describe('the Base queues', () => {
   it('draws construction and the yard as lanes of rings, free slots said', () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} />, { wrapper: wrap });
     expect(screen.getAllByRole('group')).toHaveLength(2);
-    expect(document.querySelectorAll('[data-ring]')).toHaveLength(1);
+    expect(document.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-free-slot]').length).toBeGreaterThan(0);
+  });
+
+  /** Stage 4.1: the kit's slots — only the head runs; the one behind it waits, said in words. */
+  it('runs the head and marks the order behind it as waiting', () => {
+    const head = order();
+    const behind = order({ id: 'o2', slot: 1, subject: 'EXTRACTOR', startedAt: new Date(NOW + 12 * 60_000), finishesAt: new Date(NOW + 30 * 60_000) });
+    render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [head, behind], YARD: [] } })} />, { wrapper: wrap });
+    const slots = [...document.querySelectorAll<HTMLElement>('.gk-qslot[data-state]')];
+    expect(slots.map((slot) => slot.dataset.state)).toEqual(['running', 'waiting']);
+    expect(slots[1]).toHaveTextContent(/queued/i);
   });
 
   it('adds the Repair Station\'s lane beside the other two while a repair runs', () => {
@@ -59,6 +69,16 @@ describe('the Base queues', () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [], YARD: [], REPAIR: [repair] } })} />, { wrapper: wrap });
     expect(screen.getAllByRole('group')).toHaveLength(3);
     expect(screen.getByRole('group', { name: /repair/i })).toBeInTheDocument();
+  });
+
+  /** The lane already says Repair: the slot spends its few letters on the ship, the reader still hears the whole order. */
+  it('names the ship on a repair slot, not the word the lane already says', () => {
+    const repair = order({ id: 'r1', queue: 'REPAIR', kind: 'REPAIR', subject: 'BALLISTA' });
+    render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [], YARD: [], REPAIR: [repair] } })} />, { wrapper: wrap });
+    const slot = document.querySelector<HTMLElement>('.gk-qslot[data-state]')!;
+    expect(slot.querySelector('.gk-qslot__name')?.textContent).not.toMatch(/repair/i);
+    expect(slot.querySelector('.gk-qslot__name')?.textContent).toMatch(/ballista/i);
+    expect(slot).toHaveAccessibleName(/^Repair · Ballista/i);
   });
 
   it('keeps two lanes when nothing is being repaired', () => {
@@ -69,7 +89,7 @@ describe('the Base queues', () => {
   it('opens the queue sheet on a tap, and cancels only after Confirm', async () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} />, { wrapper: wrap });
     const user = userEvent.setup();
-    await user.click(document.querySelector<HTMLElement>('[data-ring]')!.closest('button')!);
+    await user.click(document.querySelector<HTMLElement>('.gk-qslot[data-state]')!);
     const sheet = await screen.findByRole('dialog');
     expect(cancel).not.toHaveBeenCalled();
     const ask = within(sheet).getAllByRole('button').find((button) => /cancel/i.test(button.getAttribute('aria-label') ?? button.textContent));

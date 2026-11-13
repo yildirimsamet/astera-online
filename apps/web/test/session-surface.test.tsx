@@ -298,7 +298,7 @@ describe('notification copy', () => {
     it('states what it took and what it cost', () => {
       expect(
         say('raided', { grade: 'DECISIVE', lootAlloy: 4000, lootCrystal: 200, unitsLost: 12 }),
-      ).toBe('Raided · −4.2k taken · 12 units lost');
+      ).toBe('Raided · −4.2K taken · 12 units lost');
     });
 
     /** "You repelled a raid" on its own reads as a free win. It was not free. */
@@ -344,7 +344,7 @@ describe('notification copy', () => {
         unitsLost: 2,
         shipsHome: 38,
       });
-      expect(line).toBe('DECISIVE at Grimhold · +3.2k alloy · 2 ships lost');
+      expect(line).toBe('DECISIVE at Grimhold · +3.2K alloy · 2 ships lost');
     });
 
     it('leads with the canonical username and keeps the planet as location', () => {
@@ -381,13 +381,13 @@ describe('notification copy', () => {
         awardedFleet: { DART: 2 },
       };
       expect(say('convoy_result', { ...reward, inTransit: true })).toBe(
-        'Convoy strike resolved · +1.2k alloy · +300 crystal · +40 Deuterium · prize: 2 Dart · returning now.',
+        'Convoy strike resolved · +1.2K alloy · +300 crystal · +40 Deuterium · prize: 2 Dart · returning now.',
       );
       expect(say('fleet_returned', {
         ...reward,
         destinationPlanetId: '00000000-0000-4000-8000-000000000002',
       })).toBe(
-        'Convoy strike home · +1.2k alloy · +300 crystal · +40 Deuterium · prize: 2 Dart.',
+        'Convoy strike home · +1.2K alloy · +300 crystal · +40 Deuterium · prize: 2 Dart.',
       );
     });
 
@@ -423,7 +423,7 @@ describe('notification copy', () => {
           lootAlloy: 3200,
           lootCrystal: 800,
         }),
-      ).toBe('Fleet home from Grimhold · 38 ships · +4.0k looted');
+      ).toBe('Fleet home from Grimhold · 38 ships · +4K looted');
     });
 
     it('reads the new return identity fields and preserves legacy rows', () => {
@@ -488,7 +488,7 @@ describe('notification copy', () => {
         wastedCrystal: 120,
       });
       expect(line).toContain('+400 alloy');
-      expect(line).toContain('1.0k lost, works full');
+      expect(line).toContain('1K lost, works full');
     });
 
     it('distinguishes salvage from ore, and an empty run from a full one', () => {

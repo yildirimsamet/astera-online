@@ -637,6 +637,10 @@ The 10 October inspection found the provider secret matched VPS `.env` while run
 
 Before any new-item intent, rollback must pair old image/web with old mapping (old parser rejects new IDs). **After even a pending new-item checkout intent exists, never downgrade the webhook receiver below wave-two compatibility.** The old receiver may mark a webhook seen before ignoring the new item, defeating retries. Close new sales using the retained compatible image with old mapping/web, or forward-fix; existing intents contain the product needed for fulfilment/refund. Disabling checkout does not cancel hosted pending checkouts. Never delete intents, entitlements or receipts as rollback.
 
+### Polar cosmetic wave three (2026-11-13)
+
+Three engines — Mach Diamonds, Pulsar Jet, Ion Wake (`engine-mach`, `engine-pulsar`, `engine-ion`), EUR 2.49 or TRY 69 — bring the mapping to 39 paid extras / 49 offers. Products exist in sandbox and live (metadata `astera_catalog: cosmetics-wave3-2026-11-13`); IDs are in `config/polar-cosmetics.*.json` and both env templates. `SHOPIER_PRICES` gains the same three at 6900. Same order and rollback rules as wave two: roll the image with the current 36-extra mapping first, then swap only `POLAR_COSMETIC_PRODUCTS` (and `SHOPIER_PRICES`) and recreate the roles; `/api/skins/polar-pricing` must then expose 49 offers. Once a wave-three intent exists, never roll the receiver back below this release.
+
 ### Asteroid snapshots and calendar adoption
 
 Migration `0146_asteroid_generation_snapshot` adds nullable JSONB `asteroid_spawn_hours.generation`, without backfill/new event kind. Inventory all pending journal entries rather than assuming 0146 is the only one. Rehearse exact geometry/ID/claim/target preservation and measure locks. For the documented 0146 rollout, use a private one-off `DATABASE_URL` with `lock_timeout=1000&statement_timeout=30000`, preserving existing query parameters and normal runtime URL. Never print credentials. A held reader must cause a nonzero migration exit and unchanged journal; inspect/retry after release, without killing player transactions or silently extending timeout.

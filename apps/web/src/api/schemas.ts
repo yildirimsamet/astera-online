@@ -61,6 +61,7 @@ const honorReceipt = z.object({ delta: dominionInteger, reason: z.enum([
   participants: z.number().int().nonnegative(), contributionPpm: z.number().int().min(0).max(1_000_000),
   militaryDamage: dominionInteger.nonnegative(), permanentLoss: dominionInteger.nonnegative(),
   weakTargetDebit: z.boolean().optional(), sharedPositiveBlocked: z.boolean().optional(), tactical: z.boolean().optional(),
+  repeatRaid: z.literal(true).optional(),
   militaryReturn: z.enum(['NONE', 'HALF', 'FULL']).optional() }).optional() });
 export { honorReceipt as honorReceiptSchema };
 export type HonorReceipt = z.infer<typeof honorReceipt>;
@@ -70,6 +71,8 @@ export const honorTargetSchema = z.union([
   z.object({ enabled: z.literal(true), eligible: z.literal(true), kind: z.enum(['PEER', 'UPPER', 'WEAK']),
     topTierPeer: z.boolean().optional(),
     militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
+    /** A raid on this commander inside the last day, or one on its way: going again is bullying. */
+    repeatRaid: z.boolean().optional(),
     soloCredit: z.boolean().optional(), retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional() }),
 ]);
 export type HonorTarget = z.infer<typeof honorTargetSchema>;

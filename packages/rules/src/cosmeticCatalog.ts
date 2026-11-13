@@ -9,6 +9,7 @@ export type ShipCosmeticEquipment = Partial<Record<MobileHullId, ShipSkinId>>;
 export type CosmeticEquipment = Partial<Record<Exclude<CosmeticCategory, 'SHIP'>, CosmeticId>> & { SHIP?: ShipCosmeticEquipment };
 export const EFFECT_SKIN_IDS = ['ring-aurora', 'ring-helios', 'ring-singularity', 'ring-saturn', 'ring-prism', 'ring-inferno', 'ring-nebula',
   'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan', 'engine-tempest', 'engine-prism',
+  'engine-mach', 'engine-pulsar', 'engine-ion',
   'flag-vanguard', 'flag-orbit', 'flag-bastion', 'flag-meridian', 'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper', 'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
   'flag-sovereign', 'flag-kraken', 'flag-oni', 'flag-voideye', 'flag-valkyrie', 'flag-scarab', 'flag-stag', 'flag-horizon', 'flag-tiger', 'flag-scorpion',
   'probe-ufo'] as const;
@@ -18,7 +19,8 @@ export type CosmeticId = typeof COSMETIC_IDS[number];
 export type EffectSkinId = typeof EFFECT_SKIN_IDS[number];
 export type CosmeticStyle = 'aurora' | 'helios' | 'singularity' | 'titan' | 'vanguard' | 'orbit' | 'ufo' | 'reaper' | 'ravager' | 'serpent' | 'phoenix' | 'ironfang'
   | 'saturn' | 'prism' | 'inferno' | 'nebula' | 'tempest' | 'bastion' | 'meridian'
-  | 'sovereign' | 'kraken' | 'oni' | 'voideye' | 'valkyrie' | 'scarab' | 'stag' | 'horizon' | 'tiger' | 'scorpion';
+  | 'sovereign' | 'kraken' | 'oni' | 'voideye' | 'valkyrie' | 'scarab' | 'stag' | 'horizon' | 'tiger' | 'scorpion'
+  | 'mach' | 'pulsar' | 'ion';
 export interface CosmeticDefinition {
   readonly id: CosmeticId;
   readonly category: CosmeticCategory;
@@ -52,6 +54,9 @@ export const COSMETICS: readonly CosmeticDefinition[] = [
   effect('engine-titan', 'ENGINE', 'titan', '#ff8f47'),
   effect('engine-tempest', 'ENGINE', 'tempest', '#8fd8ff'),
   effect('engine-prism', 'ENGINE', 'prism', '#e9c8ff'),
+  effect('engine-mach', 'ENGINE', 'mach', '#ffd2a0'),
+  effect('engine-pulsar', 'ENGINE', 'pulsar', '#c9b4ff'),
+  effect('engine-ion', 'ENGINE', 'ion', '#a8d4ff'),
   effect('flag-vanguard', 'FLAG', 'vanguard', '#b6c7db', true),
   effect('flag-orbit', 'FLAG', 'orbit', '#80bada', true),
   effect('flag-bastion', 'FLAG', 'bastion', '#a3a99f', true),

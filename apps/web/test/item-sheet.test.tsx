@@ -1,14 +1,20 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { BUILD, instrumentCost, upgradeCost } from '@astera/rules';
+import { BUILD, instrumentCost, satelliteCost, upgradeCost } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { instrumentGain } from '../src/lib/gains.js';
 import { orderMinutes } from '../src/lib/orderTime.js';
 import { duration } from '../src/lib/time.js';
 import { ItemSheet, type ItemRef } from '../src/ui/ItemSheet.js';
+import type { Blocked } from '../src/ui/UpgradeRow.js';
+import { Glyph } from '../src/game-ui/index.js';
 import type { PlanetView } from '../src/api/schemas.js';
+import { playSound } from '../src/lib/sound.js';
+import type * as Sound from '../src/lib/sound.js';
 import { planetView } from './fixtures.js';
+
+vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn() }));
 
 /**
  * THE ITEM SHEET — WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1.
@@ -57,6 +63,7 @@ const RICH = { alloy: 100_000, crystal: 50_000 };
 
 const show = ({
   item = { kind: 'instrument', id: 'TELESCOPE' },
+  name = 'Telescope',
   over = {},
   held = RICH,
   queued,
@@ -66,18 +73,19 @@ const show = ({
   onClose = vi.fn(),
 }: {
   item?: ItemRef;
+  name?: string;
   over?: Partial<Omit<PlanetView, 'planet'>>;
   held?: { alloy: number; crystal: number };
   queued?: string;
   completed?: string;
-  blocked?: { reason: string; onFix?: () => void };
+  blocked?: Blocked;
   onAct?: () => void;
   onClose?: () => void;
 } = {}) =>
   render(
     <ItemSheet
       item={item}
-      name="Telescope"
+      name={name}
       role="Watches a world silently."
       planet={planet(over)}
       held={held}
@@ -147,6 +155,64 @@ describe('the sheet', () => {
     show({ onClose });
     await userEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  /** Stage 4.1: the base's sheet is drawn with the kit — the plate head, the action face. */
+  it('is drawn in the kit: the plate head names what it is, the one move is the action face', () => {
+    show({ item: { kind: 'building', id: 'REFINERY' } });
+    expect(document.querySelector('[data-sheet-panel]')).toHaveClass('gk-sheet');
+    expect(document.querySelector('.gk-sheet__meta')).toHaveTextContent(/\S/);
+    const move = screen.getByRole('button', { name: /raise to l4/i });
+    expect(move).toHaveClass('gk-btn--action');
+    expect(move.closest('[data-act]')).not.toBeNull();
+  });
+
+  /** Owner 2026-11-12 (4.1): one press, felt as a commitment — the commit cue, not the tap. */
+  it('raises with one press that lands like a commitment', async () => {
+    const onAct = vi.fn();
+    show({ item: { kind: 'building', id: 'REFINERY' }, onAct });
+    vi.mocked(playSound).mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /raise to l4/i }));
+    expect(onAct).toHaveBeenCalledOnce();
+    expect(vi.mocked(playSound).mock.calls.map(([cue]) => cue)).toEqual(['confirm']);
+  });
+
+  /** Review of 4.1 (2026-11-13): Core 9 → 10 opens the consent; that press commits nothing yet. */
+  it('opens the Core 10 consent with a plain press, leaving the commit cue to the consent', async () => {
+    const onAct = vi.fn();
+    show({ item: { kind: 'building', id: 'CORE' }, over: { buildings: { CORE: 9, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1 } }, onAct });
+    vi.mocked(playSound).mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
+    expect(onAct).toHaveBeenCalledOnce();
+    expect(vi.mocked(playSound).mock.calls.map(([cue]) => cue)).toEqual(['tap']);
+  });
+
+  /** The kit head shouts in capitals; an English name stays English (owner on planet names: no "AEGİS"). */
+  it('marks the head English when the name is the English one, so Turkish capitals leave it alone', () => {
+    // In Turkish the Aegis keeps its English name; the tests speak English, so the Telescope stands in.
+    show({ item: { kind: 'instrument', id: 'TELESCOPE' }, name: 'Telescope' });
+    expect(screen.getByRole('heading', { name: 'Telescope' })).toHaveAttribute('lang', 'en');
+  });
+
+  it('leaves a translated name in the page language', () => {
+    show({ item: { kind: 'instrument', id: 'TELESCOPE' }, name: 'Teleskop' });
+    expect(screen.getByRole('heading', { name: 'Teleskop' })).not.toHaveAttribute('lang');
+  });
+
+  /** A requirement still being built is a wait, not a wall: the hourglass, as on the building card. */
+  it('shows a requirement under way with the hourglass, not the padlock', () => {
+    const { container } = render(<Glyph id="timed" />);
+    const hourglass = container.querySelector('path')?.getAttribute('d');
+    show({ item: { kind: 'building', id: 'REFINERY' }, blocked: { reason: 'Core 4 under way', waits: true } });
+    const note = document.querySelector('[data-act] .gk-inote');
+    expect(note?.querySelector('path')?.getAttribute('d')).toBe(hourglass);
+  });
+
+  it('says on the dead button when a short player will have enough', () => {
+    show({ item: { kind: 'building', id: 'REFINERY' }, held: { alloy: 0, crystal: 0 } });
+    const move = document.querySelector<HTMLButtonElement>('[data-act] button');
+    expect(move).toBeDisabled();
+    expect(move).toHaveTextContent(/^Enough in ~/);
   });
 });
 
@@ -401,8 +467,9 @@ describe('the commit', () => {
     const onClose = vi.fn();
     show({ blocked: { reason: 'Command Core L7', onFix }, onClose });
     const door = screen.getByRole('button', { name: /command core l7/i });
-    expect(door.className).toMatch(/v2-warn/);
-    expect(door.className).not.toMatch(/hostile/);
+    // warn on steel (the kit's door), never the red of an attack
+    expect(door).toHaveClass('gk-btn--door');
+    expect(door.className).not.toMatch(/hostile|danger/);
     expect(document.querySelector('[data-need-bar]')).toBeNull();
     await userEvent.click(door);
     expect(onFix).toHaveBeenCalled();
@@ -444,6 +511,14 @@ describe('a satellite, which has no levels at all', () => {
         onClose={vi.fn()}
       />,
     );
+
+  /** The card on the base prices it from the rules when the server sent no quote; the sheet must agree. */
+  it('quotes the rules\' price when the server sent none, as the card does', () => {
+    showSat({ satelliteCosts: {} });
+    const price = satelliteCost('FOUNDRY');
+    const parts = [...document.querySelectorAll('.gk-sheet__foot .gk-cost__part')].map((part) => part.textContent);
+    expect(parts).toEqual([compact(price.alloy), compact(price.crystal)]);
+  });
 
   it('draws no level ladder', () => {
     showSat();

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import {
   BUILD,
   INSTRUMENT_MAX_LEVEL,
@@ -7,6 +7,7 @@ import {
   productionMult,
   plantCeiling,
   RESEARCH_MAX_LEVEL,
+  satelliteCost,
   satelliteSlots,
   type BuildingId,
   type InstrumentId,
@@ -29,11 +30,11 @@ import { buildingGain, instrumentGain, productionPaceOf, satelliteGain, type Gai
 import { orderMinutes } from '../lib/orderTime.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { duration } from '../lib/time.js';
-import { Icon } from '../v2/icons.js';
-import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { useOrderDuration } from './Action.js';
+import { CostLine, GameButton, Glyph, SectionTag } from '../game-ui/index.js';
+import { playSound } from '../lib/sound.js';
 import { BUILDING_TOP, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
 import type { Blocked } from './UpgradeRow.js';
 import { CoreTierInfo } from './CoreTierInfo.js';
@@ -77,13 +78,15 @@ export type ItemRef =
 /** How many levels ahead the ladder shows. Past three, nobody is planning. */
 const HORIZON = 3;
 
-const HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
 
-/** The still sky behind a render: decoration, never a meaning. */
-const SKY: CSSProperties = {
-  backgroundImage:
-    'radial-gradient(70% 90% at 22% 45%, color-mix(in srgb, var(--color-v2-sky-blue) 30%, transparent), transparent 75%)',
-};
+
+/** The item's English name, whatever the page speaks. */
+const englishName = (item: ItemRef): string =>
+  item.kind === 'building'
+    ? i18n.t(`vocabulary.building.${item.id}.name`, { lng: 'en' })
+    : item.kind === 'instrument'
+      ? i18n.t(`vocabulary.instrument.${item.id}.name`, { lng: 'en' })
+      : i18n.t(`vocabulary.satellite.${item.id}.name`, { lng: 'en' });
 
 export function ItemSheet({
   item,
@@ -157,6 +160,7 @@ export function ItemSheet({
     <div data-item-sheet>
       <Sheet
         detents={['fit']}
+        kit={{ tone: 'self', meta: <span className="gk-sub">{tag}</span> }}
         eyebrow={
           item.kind === 'satellite'
             ? durableLevel === 0
@@ -167,16 +171,15 @@ export function ItemSheet({
               : t('itemSheet.eyebrowLevel', { level: durableLevel })
         }
         title={name}
+        // The head is set in capitals in the page language: an English name ("Aegis" in Turkish) stays English, never "AEGİS".
+        {...(name === englishName(item) ? { titleLang: 'en' } : {})}
         onClose={onClose}
         footer={<div ref={observation}>
           {terminal ? (
             <span data-act className="block">
-              <p
-                role="status"
-                className="flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-ink-2"
-              >
-                {!completed && <Icon id="i-clock" className="size-3.5 shrink-0" />}
-                {terminal}
+              <p role="status" className="gk-inote gk-inote--plate">
+                <Glyph id={completed ? 'check' : 'timed'} />
+                <span>{terminal}</span>
               </p>
             </span>
           ) : (
@@ -197,30 +200,33 @@ export function ItemSheet({
           )}
         </div>}
       >
-        <div className="flex flex-col gap-3 pt-1">
+        <div className="grid gap-3">
           {item.kind === 'satellite' ? (
-            <OrbitHero id={item.id} orbit={projected.orbit} slots={orbitSlots} tag={tag} />
+            <OrbitHero id={item.id} orbit={projected.orbit} slots={orbitSlots} />
           ) : (
             <Hero item={item} level={durableLevel} name={name} gain={gainFor(item, level, levels, production, productionPaceOf(planet))} />
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <p className="text-caption leading-snug text-v2-ink-2">
-              {item.kind !== 'satellite' && <span className="font-semibold text-v2-ink">{tag} · </span>}
-              <span>{role}</span>{' '}
+          <div className="grid gap-1.5">
+            <div className="gk-iabout">
+              <p className="gk-iabout__role">{role}</p>
               <button
                 type="button"
                 aria-expanded={explained}
                 onClick={() => {
+                  playSound('tap');
                   setExplained((open) => !open);
                 }}
-                className="font-semibold text-v2-self"
+                className="gk-hit gk-iabout__how"
               >
-                {t('itemSheet.howItWorks')} ›
+                <span className="gk-chip">
+                  <Glyph id="help" />
+                  {t('itemSheet.howItWorks')}
+                </span>
               </button>
-            </p>
+            </div>
             {explained && (
-              <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{detail}</p>
+              <p data-item-detail className="gk-well gk-iabout__detail">{detail}</p>
             )}
           </div>
 
@@ -228,15 +234,16 @@ export function ItemSheet({
           {item.kind === 'instrument' && item.id === 'AEGIS' && <PlanetRadiationProtection planet={planet} />}
 
           {inactiveOpensAt !== null && (
-            <p role="status" className="text-caption leading-snug text-v2-warn">
-              {t('planet.orbit.inactiveSatellite')} {t('planet.orbit.slotsNext', { level: inactiveOpensAt })}
+            <p role="status" className="gk-inote" data-tone="warn">
+              <Glyph id="warn" />
+              <span>{t('planet.orbit.inactiveSatellite')} {t('planet.orbit.slotsNext', { level: inactiveOpensAt })}</span>
             </p>
           )}
 
           {queued && !terminal && (
-            <p className="flex items-center gap-1.5 rounded-chip border border-v2-self/30 bg-v2-self/10 px-2.5 py-1.5 text-caption text-v2-self">
-              <Icon id="i-clock" className="size-3.5 shrink-0" />
-              {queued}
+            <p className="gk-inote gk-inote--plate" data-tone="self">
+              <Glyph id="timed" />
+              <span>{queued}</span>
             </p>
           )}
 
@@ -250,13 +257,10 @@ export function ItemSheet({
           )}
 
           {rungs.length > 0 && (
-            <section className="flex flex-col gap-1.5">
-              <p className={`flex items-center gap-2 ${HEADING}`}>
-                {t('itemSheet.ladderHeading')}
-                <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
-              </p>
-              {item.kind === 'building' && item.id === 'SHIPYARD' && <p className="text-micro leading-snug text-v2-ink-3">{t('gains.shipyard.rowNote')}</p>}
-              <ol className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-deep/60">
+            <section className="grid gap-1.5">
+              <SectionTag>{t('itemSheet.ladderHeading')}</SectionTag>
+              {item.kind === 'building' && item.id === 'SHIPYARD' && <p className="gk-sub">{t('gains.shipyard.rowNote')}</p>}
+              <ol className="gk-ladder gk-well">
                 {rungs.map((rung) => (
                   <Rung
                     key={rung}
@@ -280,9 +284,9 @@ export function ItemSheet({
           )}
 
           {look && (
-            <p data-next-look className="flex items-center gap-2.5 text-caption text-v2-ink-2">
-              <img src={look.art} alt="" aria-hidden className="size-9 shrink-0 object-contain opacity-80" />
-              {t('itemSheet.nextLook', { level: look.level })}
+            <p data-next-look className="gk-ilook">
+              <img src={look.art} alt="" aria-hidden />
+              <span>{t('itemSheet.nextLook', { level: look.level })}</span>
             </p>
           )}
 
@@ -292,7 +296,7 @@ export function ItemSheet({
             as one answer because they are the same numbers.
           */}
           {!blocked && !terminal && !affordable && (
-            <div className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+            <div className="gk-well grid gap-2 px-2.5 py-2">
               {short.alloy > 0 && <NeedBar resource="alloy" have={held.alloy} need={cost.alloy} />}
               {short.crystal > 0 && <NeedBar resource="crystal" have={held.crystal} need={cost.crystal} />}
             </div>
@@ -307,31 +311,27 @@ export function ItemSheet({
 function Hero({ item, level, name, gain }: { item: ItemRef; level: number; name: string; gain: Gain }) {
   const art = artFor(item, Math.max(1, level));
   return (
-    <section data-item-hero className="flex items-center gap-3 rounded-control border border-v2-line bg-v2-deep p-3" style={SKY}>
+    <section data-item-hero className="gk-cut gk-cut--self gk-ihero">
       {art && (
         // Grey means "you do not have this", the rule every buyable in the game uses.
-        <img
-          src={art}
-          alt={name}
-          className={`size-24 shrink-0 object-contain ${level === 0 ? 'opacity-45 grayscale' : ''}`}
-        />
+        <img src={art} alt={name} className={`gk-ihero__art ${level === 0 ? 'opacity-45 grayscale' : ''}`} />
       )}
-      <div className="min-w-0 flex-1">
-        <p className={HEADING}>{gain.label}</p>
-        <p className="mt-0.5 font-v2-mono text-body font-semibold tabular-nums text-v2-ink">
-          {gain.maxed ? gain.now : gain.now === undefined ? <span className="text-v2-self">{gain.next}</span> : (
+      <div className="min-w-0">
+        <p className="gk-label">{gain.label}</p>
+        <p className="gk-ihero__value gk-display gk-num gk-outlined">
+          {gain.maxed ? gain.now : gain.now === undefined ? <span className="gk-ihero__next">{gain.next}</span> : (
             <>
               <span className="inline-block">{gain.now}</span>{' '}
-              <span className="inline-block"><span className="text-v2-ink-3">→</span>{' '}<span className="text-v2-self">{gain.next}</span></span>
+              <span className="inline-block"><span className="gk-ihero__arrow">→</span>{' '}<span className="gk-ihero__next">{gain.next}</span></span>
             </>
           )}
         </p>
-        {gain.note && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.note}</p>}
+        {gain.note && <p className="gk-ihero__line">{gain.note}</p>}
         {/* A sentence of its own ("Up to 7.3k at the top rung"): the Hangar is the one ladder here with one. */}
         {gain.ceiling !== undefined && gain.maxed !== true && (
-          <p className="mt-0.5 text-micro text-v2-ink-3">{gain.ceiling}</p>
+          <p className="gk-sub">{gain.ceiling}</p>
         )}
-        {gain.unlocks && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</p>}
+        {gain.unlocks && <p className="gk-ihero__line">{gain.unlocks}</p>}
       </div>
     </section>
   );
@@ -376,22 +376,22 @@ function Rung({
   const value = item.kind === 'building' && item.id === 'CORE' ? null : gain.next;
 
   return (
-    <li data-rung={level} className={`flex flex-wrap items-start gap-x-2 px-2.5 py-2 ${first ? '' : 'opacity-70'}`}>
-      <span className={`w-10 shrink-0 font-v2-mono text-caption ${first ? 'text-v2-self' : 'text-v2-ink-3'}`}>
-        {t('itemSheet.rungLevel', { level })}
-      </span>
-      <span className="min-w-0 flex-1">
+    <li data-rung={level} className="gk-ladder__rung" {...(first ? { 'data-first': '' } : {})}>
+      <span className="gk-ladder__level gk-display gk-num">{t('itemSheet.rungLevel', { level })}</span>
+      <span className="gk-ladder__value">
         {value !== null && (
-          <span className="block font-v2-mono text-caption text-v2-ink">
-            {gain.label !== heroLabel && <span className="font-v2-ui text-v2-ink-3">{gain.label} </span>}
-            {value}
-          </span>
+          <>
+            {gain.label !== heroLabel && <span className="gk-ladder__label">{gain.label} </span>}
+            <span className="gk-num">{value}</span>
+          </>
         )}
       </span>
-      <Cost cost={cost} />
-      <span className="w-12 shrink-0 whitespace-nowrap text-right font-v2-mono text-micro text-v2-ink-3">{takes}</span>
+      <CostLine
+        cost={cost}
+        time={<span className="gk-cost__time"><Glyph id="clock" />{takes}</span>}
+      />
       {gain.unlocks && !repeats && (
-        <span className="mt-1 basis-full pl-12 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</span>
+        <span className="gk-ladder__unlock">{gain.unlocks}</span>
       )}
     </li>
   );
@@ -436,16 +436,14 @@ function Commit({
       : t('itemSheet.actRaise', { level: level + 1 });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2.5">
-          <Cost cost={cost} held={{ alloy: cost.alloy - short.alloy, crystal: cost.crystal - short.crystal }} />
-          <span className="flex items-center gap-1 whitespace-nowrap font-v2-mono text-micro text-v2-ink-2">
-            <Icon id="i-clock" className="size-3 shrink-0" />
-            {takes}
-          </span>
-        </span>
-        <span data-queue-fill className="shrink-0 text-micro text-v2-ink-3">
+        <CostLine
+          cost={cost}
+          held={{ alloy: cost.alloy - short.alloy, crystal: cost.crystal - short.crystal }}
+          time={<span className="gk-cost__time"><Glyph id="clock" />{takes}</span>}
+        />
+        <span data-queue-fill className="gk-sub shrink-0">
           {t('itemSheet.queueFill', { used, total: BUILD.queueDepth })}
         </span>
       </div>
@@ -453,36 +451,41 @@ function Commit({
         {blocked ? (
           // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): warn, and it goes where the fix is.
           blocked.onFix ? (
-            <button
-              type="button"
-              onClick={() => {
+            <GameButton
+              wide
+              glyph="lock"
+              className="gk-btn--door"
+              onPress={() => {
                 blocked.onFix?.();
                 onClose();
               }}
-              className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-warn/50 px-3 text-caption font-semibold text-v2-warn"
             >
-              <Icon id="i-lock" className="size-3.5 shrink-0" />
               {sentence(blocked.reason)} →
-            </button>
+            </GameButton>
           ) : (
-            <p className="flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-v2-line px-3 text-caption text-v2-ink-2">
-              <Icon id="i-lock" className="size-3.5 shrink-0" />
-              {sentence(blocked.reason)}
+            <p className="gk-inote gk-inote--plate" {...(blocked.waits ? { 'data-waits': '' } : {})}>
+              <Glyph id={blocked.waits ? 'timed' : 'lock'} />
+              <span>{sentence(blocked.reason)}</span>
             </p>
           )
         ) : (
-          <button
-            type="button"
-            disabled={!affordable || pending}
-            onClick={onAct}
-            className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
-          >
-            {affordable
-              ? label
+          <GameButton
+            tone="action"
+            size="lg"
+            wide
+            // Core 9 → 10 opens the consent first; that hold is the commitment, so this press is a plain one.
+            heavy={!(item.kind === 'building' && item.id === 'CORE' && level === 9)}
+            glyph={affordable ? 'up' : 'timed'}
+            pending={pending}
+            disabledReason={affordable
+              ? null
               : wait === null
                 ? t('itemSheet.short')
                 : t('itemSheet.affordIn', { duration: duration(wait) })}
-          </button>
+            onPress={onAct}
+          >
+            {label}
+          </GameButton>
         )}
       </span>
     </div>
@@ -514,25 +517,17 @@ function orbitSockets(id: SatelliteId, orbit: readonly SatelliteId[], slots: num
   return [...up, ...free, ...shut];
 }
 
-const SOCKET: Record<Socket, string> = {
-  self: 'border-v2-self bg-v2-self/15',
-  taken: 'border-v2-self/50 bg-v2-panel',
-  inactive: 'border-v2-line bg-v2-void text-v2-ink-3',
-  target: 'border-dashed border-v2-self bg-v2-self/10',
-  free: 'border-v2-line-hi bg-v2-deep',
-  shut: 'border-v2-line bg-v2-void text-v2-ink-3',
-};
 
-function OrbitHero({ id, orbit, slots, tag }: { id: SatelliteId; orbit: readonly SatelliteId[]; slots: number; tag: string }) {
+function OrbitHero({ id, orbit, slots }: { id: SatelliteId; orbit: readonly SatelliteId[]; slots: number }) {
   const { t } = useTranslation();
   const gain = satelliteGain(id);
   const sockets = orbitSockets(id, orbit, slots);
 
   return (
-    <section data-item-hero className="flex items-center gap-3 rounded-control border border-v2-line bg-v2-deep p-3" style={SKY}>
-      <div aria-hidden="true" className="relative size-28 shrink-0">
-        <span className="absolute inset-3 rounded-full border border-v2-line-hi" />
-        <img src={SATELLITE_ART[id]} alt="" className="absolute inset-0 m-auto size-14 object-contain" />
+    <section data-item-hero className="gk-cut gk-cut--self gk-ihero">
+      <div aria-hidden="true" className="gk-orbit">
+        <span className="gk-orbit__ring" />
+        <img src={SATELLITE_ART[id]} alt="" className="gk-orbit__self" />
         {sockets.map((socket, index) => {
           const angle = ((-135 + (index * 360) / sockets.length) * Math.PI) / 180;
           // The sockets start with the orbit, in its order.
@@ -541,26 +536,24 @@ function OrbitHero({ id, orbit, slots, tag }: { id: SatelliteId; orbit: readonly
             <span
               key={index}
               data-socket={socket}
-              className={`absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border ${SOCKET[socket]}`}
+              className="gk-orbit__socket"
               style={{ left: `${String(50 + 44 * Math.cos(angle))}%`, top: `${String(50 + 44 * Math.sin(angle))}%` }}
             >
-              {socket === 'shut' && <Icon id="i-lock" className="size-3" />}
-              {other && <img src={SATELLITE_ART[other]} alt="" className={socket === 'inactive' ? 'size-4 object-contain opacity-45 grayscale' : 'size-4 object-contain'} />}
-              {socket === 'inactive' && <Icon id="i-lock" className="absolute -right-1 -top-1 size-2.5" />}
-              {socket === 'self' && <img src={SATELLITE_ART[id]} alt="" className="size-4 object-contain" />}
+              {socket === 'shut' && <Glyph id="lock" />}
+              {other && <img src={SATELLITE_ART[other]} alt="" className={socket === 'inactive' ? 'opacity-45 grayscale' : ''} />}
+              {socket === 'self' && <img src={SATELLITE_ART[id]} alt="" />}
             </span>
           );
         })}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className={HEADING}>{t('itemSheet.orbitalDoesHeading')}</p>
-        <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">{tag}</p>
-        <p className="mt-1 font-v2-mono text-micro text-v2-ink-2">
-          <span className="font-v2-ui text-v2-ink-3">{gain.label}: </span>
-          {gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{gain.next}</span>
+      <div className="min-w-0">
+        <p className="gk-label">{t('itemSheet.orbitalDoesHeading')}</p>
+        <p className="gk-ihero__line">
+          <span className="gk-ihero__dim">{gain.label}: </span>
+          <span className="gk-num">{gain.now}</span> <span className="gk-ihero__arrow">→</span> <span className="gk-ihero__next gk-num">{gain.next}</span>
         </p>
-        {gain.unlocks && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</p>}
-        <p className="mt-1 text-micro text-v2-ink-3">{t('itemSheet.orbitalOnce')}</p>
+        {gain.unlocks && <p className="gk-ihero__line">{gain.unlocks}</p>}
+        <p className="gk-sub">{t('itemSheet.orbitalOnce')}</p>
       </div>
     </section>
   );
@@ -587,21 +580,21 @@ function SlotCard({
   const opener = nextSlotCore(core, slots);
 
   return (
-    <section className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
-      <p className={`flex items-center justify-between gap-2 ${HEADING}`}>
+    <section className="gk-well grid gap-1 px-2.5 py-2">
+      <SectionTag aside={<span className="gk-num">{t('itemSheet.orbitalFree', { free, total: slots })}</span>}>
         {t('itemSheet.slotHeading')}
-        <span className="font-v2-mono normal-case tracking-normal text-v2-ink-2">
-          {t('itemSheet.orbitalFree', { free, total: slots })}
-        </span>
-      </p>
+      </SectionTag>
       {free === 0 ? (
-        <p className="text-caption leading-snug text-v2-warn">
-          {opener === null ? t('itemSheet.orbitalNoSlotMax') : t('itemSheet.orbitalNoSlot', { level: opener })}
+        <p className="gk-inote" data-tone="warn">
+          <Glyph id="warn" />
+          <span>{opener === null ? t('itemSheet.orbitalNoSlotMax') : t('itemSheet.orbitalNoSlot', { level: opener })}</span>
         </p>
       ) : placing ? (
-        <p data-slot-after className="text-caption leading-snug text-v2-ink-2">
-          {t('itemSheet.slotAfter', { count: free - 1 })}
-          {free - 1 === 0 && opener !== null && <> {t('itemSheet.nextSlotCore', { level: opener })}</>}
+        <p data-slot-after className="gk-inote">
+          <span>
+            {t('itemSheet.slotAfter', { count: free - 1 })}
+            {free - 1 === 0 && opener !== null && <> {t('itemSheet.nextSlotCore', { level: opener })}</>}
+          </span>
         </p>
       ) : null}
     </section>
@@ -648,8 +641,10 @@ function costFor(
   from: number,
 ): { alloy: number; crystal: number } {
   if (item.kind === 'satellite') {
-    // Flat, and always the server's own figure. There is no rung beyond this one.
-    return planet.satelliteCosts[item.id] ?? { alloy: 0, crystal: 0 };
+    // Flat: the server's own figure, or the rules' when it sent none (as the base card does).
+    // There is no rung beyond this one.
+    const price = planet.satelliteCosts[item.id] ?? satelliteCost(item.id);
+    return { alloy: price.alloy, crystal: price.crystal };
   }
   const current = levelOf(planet, item);
   if (from === current) {

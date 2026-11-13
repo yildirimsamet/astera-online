@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "Command Core · Level 10",
   "coreTitle": "Ready for the next challenge?",
   "coreBody": "When this world’s Command Core reaches level 10, its development enters Tier 4. Commanders in this tier can face more developed rivals. Prepare your fleet, defences and upgrades before continuing.",
-  "coreConfirm": "Order level 10",
+  "coreConfirm": "Raise to L10",
   "coreBack": "Wait for now",
   "VACATION_ACTIVE": "End vacation mode before giving orders.",
   "VACATION_MAIN_ONLY": "Vacation mode is available in your main galaxy.",

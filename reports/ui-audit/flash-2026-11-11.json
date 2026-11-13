@@ -1,0 +1,122 @@
+[
+ {
+  "id": "simulator-battle",
+  "what": "Savaş tekrarı: atışlar, isabetler, patlamalar (simülatör)",
+  "seconds": 30,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "arena-match",
+  "what": "Arena: pratik botlarla çatışma, isabet ve gemi ölümü",
+  "seconds": 20,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "radiation-bomb",
+  "what": "Radyasyon bombası: art arda isabetler (geliştirici önizlemesi)",
+  "seconds": 9,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "jump",
+  "what": "Sıçrama: geminin galaksiler arası atlayışı, beş bölümün tamamı (geliştirici önizlemesi)",
+  "seconds": 26,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "prologue-warp",
+  "what": "Prologue: sinyale dalış, ışık halkaları, beyaz flaş ve gemiye açılış",
+  "seconds": 6,
+  "report": {
+   "generalPerSecond": 1,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": 1.8
+  },
+  "error": null
+ },
+ {
+  "id": "prologue-torch",
+  "what": "Prologue: kaynak torcunun plazması (0,12 sn döngü)",
+  "seconds": 3,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "legacy-reveal",
+  "what": "Miras: yeni parçanın açılış flaşı",
+  "seconds": 3,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "death-star-impact",
+  "what": "Ölüm Yıldızı isabeti: stratejik patlama, şok halkası (galaksi, vurulan dünyaya yakın)",
+  "seconds": 11,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "planet-battle",
+  "what": "Gezegen savaşı: filonun on saniyelik bombardımanı (galaksi, vurulan dünyaya yakın)",
+  "seconds": 13,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ },
+ {
+  "id": "tempest-engine",
+  "what": "Tempest motoru: filonun motorlarında kısa sarı ve beyaz flaşlar",
+  "seconds": 8,
+  "report": {
+   "generalPerSecond": 0,
+   "redPerSecond": 0,
+   "fails": false,
+   "worstAt": null
+  },
+  "error": null
+ }
+]

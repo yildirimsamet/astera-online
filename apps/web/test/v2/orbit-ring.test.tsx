@@ -58,7 +58,7 @@ describe('the orbit on the world', () => {
   it('says a full orbit is full, in the colour of a gap', () => {
     render(<PlanetHero planet={planetView({ buildings: { CORE: 6 }, orbit: ['DERRICK'] })} />);
     const full = screen.getByText('orbit is full');
-    expect(full).toHaveClass('text-v2-warn');
+    expect(full).toHaveClass('gk-tone-warn');
   });
 
   it('counts a Core level already in the queue, as the rack did', () => {

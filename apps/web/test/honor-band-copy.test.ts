@@ -22,6 +22,14 @@ describe.each(Object.entries({ de, en, es, fr, ja, tr }))('Honor band copy: %s',
     expect(copy.honorRuleDefense).toMatch(/50/);
   });
 
+  // Owner 2026-11-12: a lower tier is weak only below a third, and the repeat rule has a day window.
+  it('names the one-third weak line and the repeat window', () => {
+    expect(copy.honorRuleBands).toMatch(/üçte bir|a third|Drittel|tercio|tiers|3分の1/);
+    expect(copy.honorRuleBands).not.toMatch(/yarısından az|less than half|weniger als der Hälfte|menos de la mitad|moins de la moitié|半分未満/);
+    expect(copy.honorRuleRepeat).toMatch(/24/);
+    expect(copy.honorRuleRepeat).toMatch(/üçte bir|a third|Drittel|tercio|tiers|3分の1/);
+  });
+
   it('gives receipts wording true of every table a battle may be frozen under', () => {
     expect(copy.honorBand.HALF).not.toMatch(/dörtte|quarter|Vierteln|cuartos|quarts|4分の3/);
   });

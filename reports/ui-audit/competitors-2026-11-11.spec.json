@@ -1,0 +1,1201 @@
+[
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022448_Whiteout Survival.png",
+  "screen": "hud",
+  "words": 85,
+  "items": [
+   {
+    "label": "kaynak sayacı",
+    "text": "240",
+    "box": [
+     650,
+     92,
+     720,
+     140
+    ]
+   },
+   {
+    "label": "güç",
+    "text": "672.760",
+    "box": [
+     196,
+     160,
+     345,
+     212
+    ]
+   },
+   {
+    "label": "seviye rozeti",
+    "text": "200",
+    "box": [
+     50,
+     226,
+     96,
+     258
+    ]
+   },
+   {
+    "label": "ikon etiketi",
+    "text": "Etkinlikler",
+    "box": [
+     935,
+     343,
+     1055,
+     377
+    ]
+   },
+   {
+    "label": "ikon etiketi",
+    "text": "Gezici Tiyatro",
+    "box": [
+     756,
+     488,
+     908,
+     520
+    ]
+   },
+   {
+    "label": "sayaç",
+    "text": "00:01:12",
+    "box": [
+     106,
+     380,
+     228,
+     416
+    ]
+   },
+   {
+    "label": "olay başlığı",
+    "text": "Tipi sürüyor",
+    "box": [
+     106,
+     342,
+     292,
+     384
+    ]
+   },
+   {
+    "label": "harita etiketi",
+    "text": "Barınak 5",
+    "box": [
+     798,
+     1082,
+     982,
+     1130
+    ]
+   },
+   {
+    "label": "görev satırı",
+    "text": "1 Sv. 3 Hayvanı yen (0 / 1)",
+    "box": [
+     118,
+     1974,
+     502,
+     2020
+    ]
+   },
+   {
+    "label": "sohbet satırı",
+    "text": "[KOK]ammar: [Zar At]",
+    "box": [
+     108,
+     2126,
+     700,
+     2170
+    ]
+   },
+   {
+    "label": "alt menü",
+    "text": "Keşif",
+    "box": [
+     68,
+     2276,
+     152,
+     2328
+    ]
+   },
+   {
+    "label": "alt menü",
+    "text": "Kahramanlar",
+    "box": [
+     200,
+     2270,
+     370,
+     2326
+    ],
+    "contrast": 40
+   },
+   {
+    "label": "bildirim rozeti",
+    "text": "99+",
+    "box": [
+     998,
+     1928,
+     1066,
+     1960
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "posta butonu",
+    "seed": [
+     952,
+     2040
+    ],
+    "tolerance": 45
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022456_Whiteout Survival.png",
+  "screen": "yükseltme",
+  "words": 38,
+  "items": [
+   {
+    "label": "panel başlığı",
+    "text": "Barınak 1 Sv. 5",
+    "box": [
+     32,
+     1198,
+     358,
+     1252
+    ]
+   },
+   {
+    "label": "öğe adı",
+    "text": "Ranza",
+    "box": [
+     286,
+     1348,
+     422,
+     1396
+    ]
+   },
+   {
+    "label": "açıklama",
+    "text": "Savaşçıların uyudukları yer.",
+    "box": [
+     286,
+     1402,
+     732,
+     1448
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "Yükselt",
+    "box": [
+     854,
+     1374,
+     982,
+     1416
+    ]
+   },
+   {
+    "label": "maliyet",
+    "text": "260",
+    "box": [
+     960,
+     1422,
+     1038,
+     1468
+    ]
+   },
+   {
+    "label": "satır etiketi",
+    "text": "Süre",
+    "box": [
+     40,
+     1566,
+     256,
+     1616
+    ]
+   },
+   {
+    "label": "satır değeri",
+    "text": "60sn",
+    "box": [
+     334,
+     1568,
+     422,
+     1612
+    ]
+   },
+   {
+    "label": "öğe rozeti",
+    "text": "8",
+    "box": [
+     158,
+     1894,
+     202,
+     1934
+    ]
+   },
+   {
+    "label": "ilerleme",
+    "text": "0%",
+    "box": [
+     878,
+     1198,
+     952,
+     1246
+    ]
+   },
+   {
+    "label": "sekme",
+    "text": "Eşya",
+    "box": [
+     248,
+     2214,
+     342,
+     2258
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Yükselt butonu",
+    "seed": [
+     812,
+     1384
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_021818_Whiteout Survival.png",
+  "screen": "onay",
+  "words": 27,
+  "items": [
+   {
+    "label": "pencere başlığı",
+    "text": "Onay",
+    "box": [
+     470,
+     890,
+     610,
+     962
+    ]
+   },
+   {
+    "label": "gövde satırı",
+    "text": "Saygıdeğer Şef, bu Şehri en son",
+    "box": [
+     135,
+     1060,
+     945,
+     1116
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "Onayla",
+    "box": [
+     456,
+     1395,
+     624,
+     1470
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Onayla butonu",
+    "seed": [
+     372,
+     1405
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022152_Whiteout Survival.png",
+  "screen": "ayarlar",
+  "words": 73,
+  "items": [
+   {
+    "label": "ekran başlığı",
+    "text": "Oyun Ayarları",
+    "box": [
+     141,
+     103,
+     456,
+     179
+    ]
+   },
+   {
+    "label": "bölüm başlığı",
+    "text": "Ses",
+    "box": [
+     504,
+     262,
+     576,
+     326
+    ]
+   },
+   {
+    "label": "satır etiketi",
+    "text": "Müzik",
+    "box": [
+     66,
+     400,
+     186,
+     464
+    ]
+   },
+   {
+    "label": "açıklama satırı",
+    "text": "Pil kullanımını ve aşırı ısınmayı",
+    "box": [
+     72,
+     856,
+     1020,
+     912
+    ]
+   },
+   {
+    "label": "seçenek",
+    "text": "30FPS",
+    "box": [
+     159,
+     994,
+     270,
+     1049
+    ]
+   },
+   {
+    "label": "seçenek",
+    "text": "Standart",
+    "box": [
+     159,
+     1480,
+     300,
+     1532
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Ayarlama butonu",
+    "seed": [
+     790,
+     2240
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022619_Whiteout Survival.png",
+  "screen": "posta",
+  "words": 83,
+  "items": [
+   {
+    "label": "sekme",
+    "text": "Sistem",
+    "box": [
+     480,
+     232,
+     600,
+     287
+    ]
+   },
+   {
+    "label": "sekme",
+    "text": "Savaşlar",
+    "box": [
+     54,
+     235,
+     210,
+     293
+    ]
+   },
+   {
+    "label": "liste başlığı",
+    "text": "Fırtına başarıyla atlatıldı!",
+    "box": [
+     264,
+     364,
+     705,
+     420
+    ]
+   },
+   {
+    "label": "liste alt satırı",
+    "text": "Ödülleri al",
+    "box": [
+     264,
+     420,
+     420,
+     468
+    ]
+   },
+   {
+    "label": "tarih",
+    "text": "2026-11-11 02:25:59",
+    "box": [
+     264,
+     469,
+     573,
+     515
+    ]
+   },
+   {
+    "label": "alt buton yazısı",
+    "text": "Okunmuş Postaları Sil",
+    "box": [
+     156,
+     2251,
+     510,
+     2309
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022727_Whiteout Survival.png",
+  "screen": "ittifak",
+  "words": 56,
+  "items": [
+   {
+    "label": "ittifak adı",
+    "text": "[ACM]Academy",
+    "box": [
+     300,
+     502,
+     600,
+     563
+    ]
+   },
+   {
+    "label": "alt satır",
+    "text": "Tüm diller",
+    "box": [
+     300,
+     561,
+     480,
+     611
+    ]
+   },
+   {
+    "label": "sayı",
+    "text": "20/100",
+    "box": [
+     348,
+     667,
+     474,
+     719
+    ]
+   },
+   {
+    "label": "büyük sayı",
+    "text": "4.743.706.532",
+    "box": [
+     348,
+     721,
+     600,
+     773
+    ]
+   },
+   {
+    "label": "seviye",
+    "text": "Sv. 11",
+    "box": [
+     99,
+     682,
+     213,
+     731
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "Başvur",
+    "box": [
+     780,
+     604,
+     945,
+     665
+    ]
+   },
+   {
+    "label": "sekme",
+    "text": "İttifaka Katıl",
+    "box": [
+     426,
+     238,
+     660,
+     302
+    ]
+   },
+   {
+    "label": "arama ipucu",
+    "text": "Girmek için dokun",
+    "box": [
+     78,
+     382,
+     363,
+     437
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Başvur butonu",
+    "seed": [
+     768,
+     640
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_021414_Whiteout Survival.png",
+  "screen": "eğitim",
+  "words": 13,
+  "items": [
+   {
+    "label": "konuşan adı",
+    "text": "Alina",
+    "box": [
+     240,
+     1906,
+     402,
+     1988
+    ]
+   },
+   {
+    "label": "diyalog satırı",
+    "text": "Saygıdeğer Şef, aramıza geri döndün!",
+    "box": [
+     90,
+     2032,
+     900,
+     2108
+    ]
+   },
+   {
+    "label": "atla",
+    "text": "Atla",
+    "box": [
+     882,
+     190,
+     990,
+     260
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022655_Whiteout Survival.png",
+  "screen": "görevler",
+  "words": 54,
+  "items": [
+   {
+    "label": "pencere başlığı",
+    "text": "Günlük Görevler",
+    "box": [
+     354,
+     400,
+     732,
+     476
+    ]
+   },
+   {
+    "label": "sayaç",
+    "text": "00:33:06",
+    "box": [
+     240,
+     510,
+     390,
+     564
+    ]
+   },
+   {
+    "label": "eşik sayısı",
+    "text": "120",
+    "box": [
+     429,
+     688,
+     489,
+     737
+    ]
+   },
+   {
+    "label": "görev satırı",
+    "text": "Günlük giriş yap (1 / 1)",
+    "box": [
+     90,
+     983,
+     480,
+     1047
+    ]
+   },
+   {
+    "label": "ödül adedi",
+    "text": "4.000",
+    "box": [
+     276,
+     1135,
+     354,
+     1175
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "Topla",
+    "box": [
+     840,
+     1088,
+     948,
+     1148
+    ]
+   },
+   {
+    "label": "alt sekme",
+    "text": "Büyüme",
+    "box": [
+     465,
+     1924,
+     615,
+     1979
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Topla butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~77×33 dp)",
+    "seed": [
+     792,
+     1110
+    ]
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022827_Whiteout Survival.png",
+  "screen": "mağaza",
+  "words": 130,
+  "items": [
+   {
+    "label": "kalan",
+    "text": "Kalan: 200",
+    "box": [
+     120,
+     610,
+     330,
+     656
+    ]
+   },
+   {
+    "label": "fiyat",
+    "text": "2",
+    "box": [
+     219,
+     682,
+     264,
+     740
+    ]
+   },
+   {
+    "label": "indirim rozeti",
+    "text": "60%",
+    "box": [
+     66,
+     376,
+     144,
+     425
+    ]
+   },
+   {
+    "label": "paket miktarı",
+    "text": "10 K",
+    "box": [
+     180,
+     445,
+     240,
+     485
+    ]
+   },
+   {
+    "label": "yenilenme",
+    "text": "Yenilenme: 5d 00:31:34",
+    "box": [
+     330,
+     277,
+     744,
+     326
+    ]
+   },
+   {
+    "label": "alt sekme (2 satır)",
+    "text": "Arena Mağazası",
+    "box": [
+     90,
+     2242,
+     210,
+     2338
+    ]
+   },
+   {
+    "label": "kilit notu (satır)",
+    "text": "düzeyine ulaş",
+    "box": [
+     150,
+     1134,
+     280,
+     1170
+    ],
+    "contrast": 45
+   }
+  ]
+ },
+ {
+  "game": "whiteout",
+  "file": "out/competitors/2026-11-11/whiteout/Screenshot_20261111_022031_Whiteout Survival.png",
+  "screen": "sonuç",
+  "words": 17,
+  "items": [
+   {
+    "label": "sonuç başlığı",
+    "text": "Zafer!",
+    "box": [
+     348,
+     840,
+     720,
+     975
+    ],
+    "contrast": 30
+   },
+   {
+    "label": "sıra satırı",
+    "text": "Sıra: 999+ 1160",
+    "box": [
+     351,
+     1042,
+     726,
+     1100
+    ]
+   },
+   {
+    "label": "oyuncu adı",
+    "text": "lord15635145",
+    "box": [
+     144,
+     1327,
+     402,
+     1379
+    ]
+   },
+   {
+    "label": "puan",
+    "text": "1.010 +10",
+    "box": [
+     225,
+     1378,
+     396,
+     1430
+    ]
+   },
+   {
+    "label": "çıkış ipucu",
+    "text": "Çıkmak için dokun",
+    "box": [
+     390,
+     2233,
+     684,
+     2285
+    ]
+   }
+  ]
+ },
+ {
+  "game": "clash-of-clans",
+  "file": "out/competitors/2026-11-11/clash-of-clans/Screenshot_20261111_012846_Clash of Clans.png",
+  "screen": "onay",
+  "items": [
+   {
+    "label": "pencere başlığı",
+    "text": "Köy yüklensin mi?",
+    "box": [
+     900,
+     289,
+     1440,
+     353
+    ]
+   },
+   {
+    "label": "gövde satırı",
+    "text": "Şef JohnnyLesh adlı kişinin Belediye Binası 9.",
+    "box": [
+     786,
+     427,
+     1554,
+     479
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "Yükle",
+    "box": [
+     1296,
+     658,
+     1458,
+     722
+    ]
+   },
+   {
+    "label": "kaynak sayısı",
+    "text": "750",
+    "box": [
+     2118,
+     38,
+     2184,
+     76
+    ]
+   },
+   {
+    "label": "sayaç",
+    "text": "2g 23sa",
+    "box": [
+     2049,
+     260,
+     2181,
+     304
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Yükle butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~122×53 dp)",
+    "seed": [
+     1215,
+     636
+    ]
+   },
+   {
+    "label": "İptal butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~122×53 dp)",
+    "seed": [
+     800,
+     636
+    ]
+   }
+  ]
+ },
+ {
+  "game": "clash-of-clans",
+  "file": "out/competitors/2026-11-11/clash-of-clans/Screenshot_20261111_012922_Clash of Clans.png",
+  "screen": "eğitim",
+  "items": [
+   {
+    "label": "konuşma balonu",
+    "text": "Cimrilik etmenin sırası",
+    "box": [
+     525,
+     559,
+     900,
+     599
+    ]
+   },
+   {
+    "label": "bina etiketi",
+    "text": "1. Seviye",
+    "box": [
+     1539,
+     274,
+     1659,
+     311
+    ]
+   },
+   {
+    "label": "süre",
+    "text": "3sn",
+    "box": [
+     1560,
+     358,
+     1626,
+     389
+    ]
+   }
+  ]
+ },
+ {
+  "game": "star-trek",
+  "file": "out/competitors/2026-11-11/star-trek/Screenshot_20261111_014942_Star Trek Fleet Command.png",
+  "screen": "hedef",
+  "items": [
+   {
+    "label": "üst etiket",
+    "text": "MISSION OBJECTIVE",
+    "box": [
+     1308,
+     193,
+     1560,
+     227
+    ]
+   },
+   {
+    "label": "zorluk",
+    "text": "NORMAL",
+    "box": [
+     1836,
+     172,
+     2004,
+     218
+    ]
+   },
+   {
+    "label": "etiket",
+    "text": "STRENGTH",
+    "box": [
+     1308,
+     562,
+     1506,
+     602
+    ]
+   },
+   {
+    "label": "değer",
+    "text": "143",
+    "box": [
+     1308,
+     601,
+     1380,
+     647
+    ]
+   },
+   {
+    "label": "buton yazısı",
+    "text": "SCAN",
+    "box": [
+     1296,
+     709,
+     1422,
+     758
+    ]
+   },
+   {
+    "label": "ipucu",
+    "text": "Attack the enemy ship!",
+    "box": [
+     1560,
+     964,
+     2004,
+     1016
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "SCAN butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~140×30 dp)",
+    "seed": [
+     1185,
+     705
+    ]
+   }
+  ]
+ },
+ {
+  "game": "star-trek",
+  "file": "out/competitors/2026-11-11/star-trek/Screenshot_20261111_020324_Star Trek Fleet Command.png",
+  "screen": "hud",
+  "items": [
+   {
+    "label": "güç",
+    "text": "1.290",
+    "box": [
+     264,
+     22,
+     375,
+     65
+    ]
+   },
+   {
+    "label": "ikon etiketi",
+    "text": "Officers",
+    "box": [
+     240,
+     274,
+     354,
+     308
+    ]
+   },
+   {
+    "label": "etkinlik etiketi",
+    "text": "BONUS",
+    "box": [
+     1794,
+     238,
+     1890,
+     269
+    ]
+   },
+   {
+    "label": "sayaç",
+    "text": "01d 23h",
+    "box": [
+     1788,
+     199,
+     1884,
+     227
+    ]
+   },
+   {
+    "label": "sohbet",
+    "text": "[MITT] dedavonfoe: je besser du",
+    "box": [
+     924,
+     22,
+     1326,
+     56
+    ]
+   },
+   {
+    "label": "alt etiket",
+    "text": "Alliance",
+    "box": [
+     66,
+     1030,
+     174,
+     1064
+    ]
+   },
+   {
+    "label": "isim",
+    "text": "Huckster-4933",
+    "box": [
+     1815,
+     766,
+     2055,
+     806
+    ]
+   }
+  ]
+ },
+ {
+  "game": "astera",
+  "dpr": 2,
+  "file": "out/ui-audit/2026-11-11/raw/phone/tr/launch__gallery-launch.png",
+  "screen": "filo gönder",
+  "items": [
+   {
+    "label": "üst satır (CSS 9 px)",
+    "text": "SALDIRI · KESTREL-12 · MESAFE 144",
+    "box": [
+     24,
+     300,
+     370,
+     330
+    ]
+   },
+   {
+    "label": "başlık (CSS 18 px)",
+    "text": "Tharsis",
+    "box": [
+     156,
+     322,
+     292,
+     368
+    ]
+   },
+   {
+    "label": "cümle (CSS 10 px)",
+    "text": "Honor karşılaştırması yükleniyor...",
+    "box": [
+     24,
+     384,
+     330,
+     420
+    ]
+   },
+   {
+    "label": "cümle (CSS 10 px)",
+    "text": "Bu hedefe karşı tartmak için gemi seç.",
+    "box": [
+     24,
+     498,
+     364,
+     534
+    ]
+   },
+   {
+    "label": "not (CSS 9 px)",
+    "text": "Yük gemileri sayılmadı",
+    "box": [
+     24,
+     542,
+     210,
+     574
+    ]
+   },
+   {
+    "label": "gemi adı (CSS 10 px)",
+    "text": "Ok",
+    "box": [
+     222,
+     842,
+     258,
+     878
+    ]
+   },
+   {
+    "label": "sayaç değeri",
+    "text": "0",
+    "box": [
+     470,
+     846,
+     504,
+     898
+    ]
+   },
+   {
+    "label": "Maks bağlantısı (CSS 10 px)",
+    "text": "Maks",
+    "box": [
+     606,
+     854,
+     674,
+     890
+    ]
+   },
+   {
+    "label": "özet etiketi (CSS 9 px)",
+    "text": "Varış",
+    "box": [
+     46,
+     1226,
+     102,
+     1260
+    ]
+   },
+   {
+    "label": "özet değeri (CSS 10 px)",
+    "text": "1 / 3",
+    "box": [
+     46,
+     1366,
+     132,
+     1406
+    ]
+   }
+  ],
+  "buttons": [
+   {
+    "label": "Filonu seç butonu",
+    "seed": [
+     60,
+     1556
+    ],
+    "tolerance": 30
+   }
+  ]
+ }
+]

@@ -627,8 +627,8 @@ describe('what a probe brought back', () => {
   it('still carries both ends as digits, under the shape', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1200, 3400)] });
     await shelf('Reports');
-    expect(screen.getAllByText(/1\.2k/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.4k/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1\.2K/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3\.4K/).length).toBeGreaterThan(0);
   });
 
   /**

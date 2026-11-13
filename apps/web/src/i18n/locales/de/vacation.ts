@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "Kommandokern · Stufe 10",
   "coreTitle": "Bereit für die nächste Herausforderung?",
   "coreBody": "Mit Kommandokern-Stufe 10 erreicht diese Welt Tier 4. Kommandanten dieser Stufe können auf weiter entwickelte Gegner treffen. Bereite Flotte, Verteidigung und Ausbau vor.",
-  "coreConfirm": "Stufe 10 beauftragen",
+  "coreConfirm": "Erhöhen auf L10",
   "coreBack": "Vorerst warten",
   "VACATION_ACTIVE": "Beende den Urlaub, bevor du Befehle gibst.",
   "VACATION_MAIN_ONLY": "Urlaub ist in deiner Hauptgalaxie verfügbar.",

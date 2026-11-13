@@ -18,7 +18,7 @@ describe('the figure a meter prints', () => {
     [0, '0'],
     [12_400, '12,400'],
     [99_999, '99,999'],
-    [100_000, '100k'],
+    [100_000, '100K'],
     [1_234_567, '1.2M'],
   ])('prints %i as %s', (value, text) => {
     expect(stock(value)).toBe(text);

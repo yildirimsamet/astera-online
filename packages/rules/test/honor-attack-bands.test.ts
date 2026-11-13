@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { HONOR_ATTACK_NAVY_BAND, honorChallenge, honorSide, type HonorComparison, type HonorSideInput } from '../src/honor.js';
+import { honorChallenge, honorSide, type HonorComparison, type HonorSideInput } from '../src/honor.js';
 import { honorMilitaryReturn, honorTeam, type HonorMember, type HonorTeamInput } from '../src/honorTeam.js';
 
 // Owner 2026-11-09: a table per tier relation, read as own navy : enemy navy.
-// Frozen at dispatch as weakNavyBand 50; older contracts keep their own table.
+// Frozen at dispatch as weakNavyBand 50 until 2026-11-12; those contracts keep this table.
 const compare = (ownNavy: number, enemyNavy: number, enemyTier: number, over: Partial<HonorComparison> = {}) =>
-  honorChallenge({ ownTier: 4, enemyTier, ownNavy, enemyNavy, galaxyTopTier: 6, weakNavyBand: HONOR_ATTACK_NAVY_BAND, ...over });
+  honorChallenge({ ownTier: 4, enemyTier, ownNavy, enemyNavy, galaxyTopTier: 6, weakNavyBand: 50, ...over });
 
 const FULL = 1_000_000, HALF = 500_000, NONE = 0;
 const LOWER = 3, SAME = 4, UPPER = 5;
 
 describe('the 2026-11-09 attack table', () => {
-  it('freezes new contracts at the band that names this table', () => {
-    expect(HONOR_ATTACK_NAVY_BAND).toBe(50);
-  });
-
   // ratio, own navy, enemy navy, lower tier, same tier, upper tier
   it.each([
     ['1:1', 20_000, 20_000, FULL, FULL, FULL],

@@ -1,6 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { sumFleets } from '../lib/fleetPage.js';
-import { Confirm } from '../ui/kit/Confirm.js';
+import { createPortal } from 'react-dom';
 import { RadiationBombForgeHost } from './RadiationBombControls.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
 import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
@@ -139,7 +139,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Segmented } from '../ui/kit/index.js';
+import { Banner, GameButton, GameHold, GameTabs } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -522,14 +522,16 @@ export function PlanetScreen({
         </div>
 
         {recovering && (
-          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
-            {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
+          <div className="gk mx-2">
+            <Banner tone="hostile" variant="strip" glyph="repair"
+              title={t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
         )}
 
         {empActive && (
-          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
-            {t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })}
+          <div className="gk mx-2">
+            <Banner tone="hostile" variant="strip" glyph="critical"
+              title={t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
         )}
 
@@ -1028,11 +1030,7 @@ function Tabs({
   // through the wallet figures, which are the one thing on it a player reads
   // against a price.
   return (
-    <>
-    <div
-      data-category-bar=""
-      className="sticky top-0 z-20 border-y border-line-soft bg-deep"
-    >
+    <div data-category-bar="" className="gk gk-tabbar">
       {/*
         NO WALLET HERE ANY MORE (M5). It rode the categories because the purse was in a
         header BEHIND this sheet; the page now stands under the top bar, which shows the
@@ -1042,15 +1040,12 @@ function Tabs({
       {/*
         `data-tab` is how a surface outside this screen points at a category: the
         onboarding lights the one a beat is working in, because a dimmed screen
-        with one live control still has to say WHERE that control is.
+        with one live control still has to say WHERE that control is. The kit's tabs
+        carry it (stage 4.1).
       */}
-      <Segmented
-        flush
-        className="mx-3 my-2"
-        marker="tab"
-        role="tablist"
+      <GameTabs
         label={t('planet.tabs.label')}
-        segments={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
+        tabs={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
           id,
           label: t(GROUPS[id].problem),
           /*
@@ -1059,23 +1054,19 @@ function Tabs({
             is a question the tab's own contents answer, and a number on the bar would
             turn a fact back into the ranking D170 removed.
           */
-          ...(broken.includes(id)
-            ? {
-              mark: <FaultMark className="size-[13px] text-bone" />,
-              // The glyph is `aria-hidden`; without this the mark is silent to a reader.
-              hint: `${t(GROUPS[id].problem)} — ${t('faults.tab')}`,
-            }
-            : {}),
+          ...(broken.includes(id) ? { mark: { glyph: 'damaged' as const, hint: `${t(GROUPS[id].problem)} — ${t('faults.tab')}` } } : {}),
         }))}
         value={active}
-        onSelect={onSelect}
-        tabId={(id) => `planet-tab-${id}`}
-        panelId={(id) => `planet-panel-${id}`}
+        onChange={onSelect}
+        ids={{ tab: (id) => `planet-tab-${id}`, panel: (id) => `planet-panel-${id}` }}
+        lessonMarks
       />
     </div>
-    </>
   );
 }
+
+/** Three orders already waiting: a refusal the queue lifts as one finishes (the hourglass, not the lock). */
+const queueFull = (): Blocked => ({ reason: i18n.t('planet.blocked.queueFull'), waits: true });
 
 /* ── shared plumbing ────────────────────────────────────────── */
 
@@ -1184,7 +1175,7 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
             onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
           }
           : orders.length >= BUILD.queueDepth
-            ? { reason: i18n.t('planet.blocked.queueFull') }
+            ? queueFull()
             : undefined;
 
     return {
@@ -1213,14 +1204,40 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     };
   };
   return Object.assign(action, { confirmation: consent?.planetId === planet.planet.id ? (
-    <Confirm eyebrow={i18n.t('vacation.coreEyebrow')} title={i18n.t('vacation.coreTitle')}
-      confirmVariant="primary"
-      confirmLabel={i18n.t('vacation.coreConfirm')} backLabel={i18n.t('vacation.coreBack')}
-      pending={upgrade.isPending} onClose={() => { setConsent(null); }}
-      onConfirm={() => { if (projected.buildings.CORE !== 9) { setConsent(null); return; } consent.submit(); setConsent(null); }}>
-      <p className="text-body leading-relaxed text-v2-ink-2">{i18n.t('vacation.coreBody')}</p>
-    </Confirm>
+    <CoreConsent
+      pending={upgrade.isPending}
+      onClose={() => { setConsent(null); }}
+      onCommit={() => { if (projected.buildings.CORE !== 9) { setConsent(null); return; } consent.submit(); setConsent(null); }}
+    />
   ) : null });
+}
+
+/**
+ * CORE 9 → 10 OPENS THE VACATION LOCK FOR GOOD. Owner 2026-11-12 (4.1): the consent is the
+ * kit's final hold, 1.5 s, not a tap. Through a portal, for the stacking reason `Confirm` gives:
+ * it is opened from a control inside another sheet.
+ */
+function CoreConsent({ pending, onCommit, onClose }: { pending: boolean; onCommit: () => void; onClose: () => void }) {
+  return createPortal(
+    <V2Sheet
+      kit={{ tone: 'self' }}
+      detents={['fit']}
+      eyebrow={i18n.t('vacation.coreEyebrow')}
+      title={i18n.t('vacation.coreTitle')}
+      onClose={onClose}
+      footer={(
+        // As the kit's dialog stacks its moves: the hold takes the whole width, the way back is under it.
+        <div data-consent-foot className="grid gap-2">
+          <GameHold label={i18n.t('vacation.coreConfirm')} glyph="up" weight="final"
+            disabledReason={pending ? i18n.t('vacation.coreConfirm') : null} onCommit={onCommit} />
+          <GameButton tone="ghost" wide onPress={onClose}>{i18n.t('vacation.coreBack')}</GameButton>
+        </div>
+      )}
+    >
+      <p className="gk-copy">{i18n.t('vacation.coreBody')}</p>
+    </V2Sheet>,
+    document.body,
+  );
 }
 
 /**
@@ -1284,7 +1301,7 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
           onFix: () => { onNeed(needsUplink ? 'UPLINK' : 'CORE'); },
         }
         : orders.length >= BUILD.queueDepth
-          ? { reason: i18n.t('planet.blocked.queueFull') }
+          ? queueFull()
           : undefined;
 
     return {
@@ -1336,7 +1353,7 @@ function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
       !owned && free <= 0
         ? { reason: i18n.t('planet.blocked.orbitSlot'), onFix: () => { onNeed('CORE'); } }
         : orders.length >= BUILD.queueDepth
-          ? { reason: i18n.t('planet.blocked.queueFull') }
+          ? queueFull()
           : undefined;
 
     return {
@@ -1613,7 +1630,7 @@ function Defend({
           verb="build"
           onAct={() => { onBuild('THORN'); }}
           {...(yardOrders.length >= BUILD.queueDepth
-            ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+            ? { blocked: queueFull() }
             : {})}
           {...(queuedThorns > 0
             ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
@@ -1647,7 +1664,7 @@ function Defend({
               onFix: () => { onNeed('SHIPYARD'); },
             } satisfies Blocked }
             : yardOrders.length >= BUILD.queueDepth
-              ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+              ? { blocked: queueFull() }
               : {})}
           {...(queuedHarpoons > 0 ? { queued: t('planet.queue.unitsQueued', { count: queuedHarpoons }) } : {})}
           queuedActionable
@@ -1689,9 +1706,7 @@ function Defend({
               } satisfies Blocked,
             }
             : yardOrders.length >= BUILD.queueDepth
-              ? {
-                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
-              }
+              ? { blocked: queueFull() }
               : {})}
           {...(queuedBastions > 0
             ? { queued: t('planet.queue.unitsQueued', { count: queuedBastions }) }
@@ -2187,9 +2202,7 @@ function Reach({
           {...(accessBlock
             ? { blocked: accessBlock }
             : yardOrders.length >= BUILD.queueDepth
-              ? {
-                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
-              }
+              ? { blocked: queueFull() }
               : {})}
           {...(queued ? { queued } : {})}
           queuedActionable
@@ -2797,7 +2810,7 @@ export function BuildSheet({
   const yardOrders = planet.queues?.YARD.length ?? 0;
   const blocked: Blocked | undefined = accessBlock
     ?? (yardOrders >= BUILD.queueDepth
-      ? { reason: t('planet.blocked.queueFull') }
+      ? queueFull()
       : undefined);
 
   const affordable = Math.min(

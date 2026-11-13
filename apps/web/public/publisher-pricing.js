@@ -6,7 +6,7 @@ const PRICE_KEYS = new Set([
   'ring-aurora', 'ring-helios', 'ring-singularity',
   'ring-saturn', 'ring-prism', 'ring-inferno', 'ring-nebula',
   'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan',
-  'engine-tempest', 'engine-prism',
+  'engine-tempest', 'engine-prism', 'engine-mach', 'engine-pulsar', 'engine-ion',
   'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper',
   'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
   'flag-sovereign', 'flag-kraken', 'flag-oni', 'flag-voideye', 'flag-valkyrie',

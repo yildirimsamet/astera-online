@@ -56,10 +56,10 @@ describe('mobile access', () => {
 });
 
 describe('the planet remains the visual subject', () => {
-  it('keeps the locked commander-first title rule while restoring planet art in the embedded sheet', () => {
+  /** Owner 2026-11-12 (4.1): the commander and the world's name stand in the page head; the card is the picture. */
+  it('keeps the planet art as the subject of the embedded sheet', () => {
     const view = render(<PlanetHero planet={planetView()} />);
     expect(view.container.querySelector('[data-planet-subject]')).not.toBeNull();
-    expect(screen.getByText('Kestrel-12')).toBeVisible();
     expect(view.container.querySelector('[data-planet-subject] img')).not.toBeNull();
   });
 });

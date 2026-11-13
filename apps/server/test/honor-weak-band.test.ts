@@ -14,8 +14,8 @@ import { giveUnits, fuelUp, seedWorld, setLevel, testDb, type Fixture } from './
 
 afterAll(async () => { await (await testDb()).close(); });
 
-// Owner 2026-10-30, relaxed 2026-11-09: a lower-tier target is weak only below 50 % of
-// the attacker's navy. Frozen at dispatch so historical battles keep their original result.
+// Owner 2026-10-30, relaxed 2026-11-09 and 2026-11-12: a lower-tier target is weak only below
+// a third of the attacker's navy. Frozen at dispatch so historical battles keep their original result.
 describe('weak-target navy band frozen with Honor dispatch', () => {
   let f: Fixture;
   beforeEach(async () => {
@@ -34,7 +34,9 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
 
   it('previews a near-equal lower tier as a peer and a much smaller one as weak', async () => {
     expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'FULL' });
-    await giveUnits(f.db, f.planetIds[0]!, { DART: 200 }); // 80 / 200 < 50 %
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 200 }); // 2.5:1 is no longer weak
+    expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'HALF' });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 300 }); // 80 / 300 < a third
     expect(await preview()).toMatchObject({ kind: 'WEAK' });
   });
 
@@ -42,7 +44,7 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
     await fuelUp(f.db, f.planetIds[0]!);
     const launch = await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 5 }, f.clock);
     const [row] = await f.db.select().from(honorCommitments).where(eq(honorCommitments.sourceId, launch.missionId));
-    expect(row?.snapshot).toMatchObject({ weakNavyBand: 50 });
+    expect(row?.snapshot).toMatchObject({ weakNavyBand: 33 });
     expect(await f.db.transaction(tx => commitHonor(tx, { ...request(), id: launch.missionId }))).toEqual(row!.snapshot);
   });
 
@@ -56,8 +58,8 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
       source: 'WORLD', id: 'military', at: frozen.at + 1,
       attack: [stack(f.playerIds[0]!, 1)], defence: [stack(f.playerIds[1]!, 4)] });
     const strategic = strategicHonorEvidence(frozen, 'strategic', new Date(frozen.at + 2));
-    expect(military).toMatchObject({ weakNavyBand: 50 });
-    expect(strategic).toMatchObject({ weakNavyBand: 50 });
+    expect(military).toMatchObject({ weakNavyBand: 33 });
+    expect(strategic).toMatchObject({ weakNavyBand: 33 });
     const result = replayHonor([military], 4);
     expect(result.events[0]!.pool.attack.exposures[0]!.bullying).toBe(false);
     expect(result.events[0]!.attack.total).toBeGreaterThan(0);
@@ -98,14 +100,16 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
     expect(raw(after, 'new')).toBeGreaterThan(raw(after, 'old'));
   });
 
-  it('accepts both frozen tables and digests them differently', () => {
+  it('accepts every frozen table and digests them differently', () => {
     const base: HonorEvidence = { source: 'WORLD', id: 'band', at: 1, eligible: true,
       attack: [{ id: 'A', tier: 4, navy: 100, weight: 100, civilianWeight: 0, loss: 0, combatLoss: 0, lootLost: 0 }],
       defence: [{ id: 'D', tier: 3, navy: 80, weight: 80, civilianWeight: 0, loss: 10, combatLoss: 10, lootLost: 0 }],
       relations: [{ a: 'A', b: 'D', related: false }] };
+    expect(honorEvidenceSchema.parse({ ...base, weakNavyBand: 33 })).toMatchObject({ weakNavyBand: 33 });
     expect(honorEvidenceSchema.parse({ ...base, weakNavyBand: 50 })).toMatchObject({ weakNavyBand: 50 });
     expect(honorEvidenceSchema.parse({ ...base, weakNavyBand: 75 })).toMatchObject({ weakNavyBand: 75 });
     expect(honorEvidenceHash({ ...base, weakNavyBand: 50 }, 4)).not.toBe(honorEvidenceHash({ ...base, weakNavyBand: 75 }, 4));
+    expect(honorEvidenceHash({ ...base, weakNavyBand: 33 }, 4)).not.toBe(honorEvidenceHash({ ...base, weakNavyBand: 50 }, 4));
   });
 
   it('rejects malformed bands in commitments and evidence', () => {
@@ -113,7 +117,7 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
       attack: [{ id: 'A', tier: 4, navy: 100 }], defence: [{ id: 'D', tier: 3, navy: 80 }],
       relations: [{ a: 'A', b: 'D', related: false }] };
     expect(honorCommitmentSchema.parse(base)).not.toHaveProperty('weakNavyBand');
-    for (const weakNavyBand of [0, 49, 51, 74, 76, 100, '75', '50', null]) {
+    for (const weakNavyBand of [0, 32, 34, 49, 51, 74, 76, 100, '75', '50', '33', null]) {
       expect(() => honorCommitmentSchema.parse({ ...base, weakNavyBand })).toThrow();
     }
   });
@@ -124,7 +128,7 @@ describe('weak-target navy band frozen with Honor dispatch', () => {
     await f.db.update(honorSeasons).set({ state: { ...state, retaliations: [{ holder: f.playerIds[0]!,
       opponent: f.playerIds[1]!, at: f.clock.now().getTime() - 1000, remaining: 5000, sourceKey: '["WORLD","x"]' }] } });
     expect(await preview()).toMatchObject({ kind: 'PEER', retaliation: false });
-    await giveUnits(f.db, f.planetIds[0]!, { DART: 200 }); // 80 / 200 < 50 %
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 300 }); // 80 / 300 < a third
     expect(await preview()).toMatchObject({ kind: 'WEAK', retaliation: true });
   });
 });

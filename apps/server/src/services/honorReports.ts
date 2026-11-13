@@ -11,6 +11,8 @@ export interface HonorReportReceipt {
     | 'TARGET_CHANGED' | 'PARTICIPANT_JOINED_LATE' | 'SHARED_SIDE';
   breakdown?: { teamDelta: number; rawTeamDelta: number; participants: number; contributionPpm: number;
     militaryDamage: number; permanentLoss: number; weakTargetDebit: boolean; sharedPositiveBlocked?: boolean; tactical?: boolean;
+    /** The sanction is for coming back to a commander already raided inside the day. */
+    repeatRaid?: true;
     /** Coarse band behind a genuine kill; explains why destruction paid little or nothing. */
     militaryReturn?: 'NONE' | 'HALF' | 'FULL' };
 }
@@ -64,6 +66,10 @@ async function readReceipts(tx: Tx, playerId: string, filter: ReturnType<typeof 
       permanentLoss: honorNumber(own.reduce((total, row) => total + BigInt(row.loss), 0n)),
       weakTargetDebit: pool.exposures.some(exposure => exposure.bullying
         && exposure.harmFifths > exposure.retaliationSpentFifths),
+      // The side shares a teammate's sanction; "you came back" is only said to whoever did.
+      ...(attacking && pool.exposures.some(exposure => exposure.actor === playerId && exposure.bullying
+        && exposure.harmFifths > exposure.retaliationSpentFifths
+        && relations.some(relation => relation.b === exposure.enemy && relation.repeatRaid)) ? { repeatRaid: true as const } : {}),
       ...(militaryReturn ? { militaryReturn } : {}),
     } : undefined;
     receipts.set(honorEventKey(evidence), { delta, reason, ...(breakdown ? { breakdown } : {}) });

@@ -80,7 +80,7 @@ export const planet = {
     "action": "Abandonar colonia",
     "title": "¿Abandonar esta colonia?",
     "cancel": "Conservar colonia",
-    "confirm": "Sí, abandonar colonia",
+    "confirm": "Abandonar",
     "pending": "Abandonando…",
     "irreversible": "Esta colonia se vuelve neutral y libera una plaza de colonia. No puedes deshacer esta acción.",
     "keeps": "Los edificios, satélites, recursos y defensas terrestres permanecen en el planeta. Las Estrellas de la Muerte listas y las cargas interceptoras también se quedan.",
@@ -533,6 +533,7 @@ export const upgradeRow = {
   takesLabel: "Toma {{duration}} para construir",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
+  level: "Nivel {{level}}",
 } as const;
 
 /** The control at the right-hand edge of every row. */
@@ -603,7 +604,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · antes de unidades",
   vaultSafe: "A salvo en la bóveda",
   storeLabel: "Almacén",
-  storeRule: "El nivel de Almacén establece la longitud de estas barras; el soporte debajo del escudo está a salvo de un ataque.",
+  storeRule: "Más Almacén, barras más largas; un asalto no se lleva la caja con escudo.",
   alloyStore: "{{held}} de aleación {{cap}}, {{safe}} protegido",
   crystalStore: "{{held}} de cristal {{cap}}, {{safe}} protegido",
   deuteriumStore: "{{held}} de {{cap}} deuterio, {{safe}} protegido",
@@ -881,7 +882,7 @@ export const faults = {
     title: "La lealtad de este mundo",
     battleLoss: "Derrota parcial −15 · derrota decisiva −30 · Estrella de la Muerte −{{strike}}",
     line: "Lealtad: {{value}} %. Disminuye con {{count}} averías activas. A este ritmo llega a cero en {{time}} y pierdes la colonia.",
-    bar: "Lealtad {{value}}%",
+    bar: "{{value}}%",
     left: "Quedan {{time}}",
   },
   price: {

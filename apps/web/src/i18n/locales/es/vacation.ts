@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "Núcleo de Mando · Nivel 10",
   "coreTitle": "¿Listo para el siguiente desafío?",
   "coreBody": "Al alcanzar el nivel 10, el Núcleo de Mando de este mundo entra en Tier 4. Los comandantes de este rango pueden enfrentarse a rivales más desarrollados. Prepara tu flota, defensas y mejoras.",
-  "coreConfirm": "Solicitar nivel 10",
+  "coreConfirm": "Subir a L10",
   "coreBack": "Esperar por ahora",
   "VACATION_ACTIVE": "Termina las vacaciones antes de dar órdenes.",
   "VACATION_MAIN_ONLY": "Las vacaciones están disponibles en tu galaxia principal.",

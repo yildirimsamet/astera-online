@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "Komuta Çekirdeği · Seviye 10",
   "coreTitle": "Bir üst mücadeleye hazır mısın?",
   "coreBody": "Bu gezegenin Komuta Çekirdeği 10. seviyeye ulaştığında gelişmişliği Tier 4 olur. Bu seviyedeki komutanlar daha gelişmiş rakiplerle karşılaşabilir. Devam etmeden önce filonu, savunmanı ve geliştirmelerini hazırlayabilirsin.",
-  "coreConfirm": "10. seviye emrini ver",
+  "coreConfirm": "10. seviyeye çıkar",
   "coreBack": "Şimdilik bekle",
   "VACATION_ACTIVE": "Emir vermeden önce tatil modunu bitir.",
   "VACATION_MAIN_ONLY": "Tatil modu ana galaksinde kullanılabilir.",

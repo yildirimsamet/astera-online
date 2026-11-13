@@ -27,6 +27,7 @@
     "study:pirates": "tsx tools/pirate-study.ts",
     "capacity:client": "node tools/capacity-client.mjs",
     "shots": "node tools/screenshots.mjs",
+    "ui:audit": "pnpm --filter @astera/ui-audit run cli",
     "visual:baseline": "node tools/visual-baseline.mjs",
     "phone": "node tools/phone.mjs",
     "android:sync": "pnpm --filter @astera/web run android:sync",

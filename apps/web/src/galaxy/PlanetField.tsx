@@ -23,6 +23,7 @@ import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, selectPlanetW
 import { planetPickRadius, seat, settleMembers } from './planetPick.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
+import { drawnRadius, growthMoving } from './coreLevelUp.js';
 import {
   maskOpaquePlanetBillboard,
   opaquePlanetBillboardProgramKey,
@@ -363,6 +364,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
     const pixelScale = camera instanceof THREE.PerspectiveCamera && height > 0
       ? 2 * Math.tan(camera.fov * Math.PI / 360) / height
       : 0;
+    const now = serverNow();
     nodes.forEach((node, i) => {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
@@ -375,7 +377,9 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
         mesh.setColorAt(i, tint.set(planetGlowColor(node.id, node.skin?.id)).multiplyScalar(limbLight(node.stance, node.intel) * shine));
       }
       const edge = MIN_LIMB_PX * pixelScale * camera.position.distanceTo(UP.position);
-      UP.scale.setScalar(Math.max(node.radius * LIMB_SCALE, node.radius + edge) * 2 * breath);
+      // A world mid-step (its Core levelled up) carries its limb with it.
+      const radius = drawnRadius(node, now);
+      UP.scale.setScalar(Math.max(radius * LIMB_SCALE, radius + edge) * 2 * breath);
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
     });
@@ -597,6 +601,7 @@ function PlanetInstances({
   ): void => {
     camera.updateWorldMatrix(true, false);
     const needsMaterialUpdate = mesh.instanceColor === null;
+    const now = serverNow();
     let drawn = 0;
     let seated = false;
     for (const node of group.nodes) {
@@ -629,7 +634,7 @@ function PlanetInstances({
 
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
-      UP.scale.setScalar(node.radius * 2);
+      UP.scale.setScalar(drawnRadius(node, now) * 2);
       UP.updateMatrix();
       mesh.setMatrixAt(drawn, UP.matrix);
       if (painted) {
@@ -689,7 +694,9 @@ function PlanetInstances({
       faced.current = { mesh, painted };
       view.current.primed = false;
     }
-    if (!viewChanged(view.current, camera, group.nodes, height)) return;
+    // A world mid-step re-faces the field every frame of its spring, and only then.
+    const moved = viewChanged(view.current, camera, group.nodes, height);
+    if (!moved && !growthMoving(serverNow())) return;
     writeInstances(mesh, painted, false);
   });
 

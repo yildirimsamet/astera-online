@@ -5,7 +5,7 @@ describe('multi-category cosmetics', () => {
   it('keeps stable unique identities and separates cosmetic slots', () => {
     expect(new Set(COSMETIC_IDS).size).toBe(COSMETIC_IDS.length);
     expect(cosmeticsInCategory('RING')).toHaveLength(7);
-    expect(cosmeticsInCategory('ENGINE')).toHaveLength(6);
+    expect(cosmeticsInCategory('ENGINE')).toHaveLength(9);
     expect(cosmeticById('engine-titan')).toMatchObject({ category: 'ENGINE', style: 'titan', free: false });
     expect(cosmeticsInCategory('FLAG').filter(item => !item.free)).toHaveLength(18);
     expect(cosmeticsInCategory('FLAG').filter(item => item.free)).toHaveLength(4);
@@ -34,6 +34,13 @@ describe('multi-category cosmetics', () => {
       expect(new Set(styles).size, category).toBe(styles.length);
       const accents = cosmeticsInCategory(category).filter(item => !item.free).map(item => item.accent);
       expect(new Set(accents).size, category).toBe(accents.length);
+    }
+  });
+  it('sells three more drives as their own styles: Mach diamonds, the Pulsar jet and the Ion wake', () => {
+    for (const [id, style] of [['engine-mach', 'mach'], ['engine-pulsar', 'pulsar'], ['engine-ion', 'ion']] as const) {
+      expect(cosmeticById(id), id).toMatchObject({ category: 'ENGINE', style, free: false });
+      expect(canEquipCosmetic(id, 'ENGINE', []), id).toBe(false);
+      expect(canEquipCosmetic(id, 'ENGINE', [id]), id).toBe(true);
     }
   });
   it('includes two plain standards beside the original two, and never sells them', () => {
@@ -86,6 +93,6 @@ describe('multi-category cosmetics', () => {
 it('defers Yarık skins without removing established engine and clan cosmetics', () => {
   expect(cosmeticCategoriesFor()).not.toContain('COMMANDER');
   for (const id of ['arena-standard', 'arena-helios', 'arena-nebula']) expect(cosmeticById(id)).toBeNull();
-  expect(cosmeticsInCategory('ENGINE')).toHaveLength(6);
+  expect(cosmeticsInCategory('ENGINE')).toHaveLength(9);
   expect(cosmeticById('flag-helios')?.category).toBe('FLAG');
 });

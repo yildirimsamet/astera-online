@@ -5,7 +5,7 @@ import type { Tx } from '../db/client.js';
 import { commanderTransfers, honorCommitments, honorObservations, honorSeasons, players } from '../db/schema.js';
 import { honorEvidenceSchema } from './honorAccounting.js';
 import { observeHonorOwner, honorOwnerReference, honorGalaxyTopTier } from './honorReference.js';
-import { readHonorRelations } from './honorRelations.js';
+import { readHonorRelations, readRepeatRaids } from './honorRelations.js';
 
 const reference = z.object({ id: z.string().min(1), tier: z.number().int().positive(),
   navy: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).strict();
@@ -159,10 +159,15 @@ export async function worldHonorCommitment(tx: Tx, input: {
     const joined = await readHonorRelations(tx, { ...input, at: time, attack: frozen.attack.map(row => row.id), defence: [id] });
     facts.relations = facts.relations.filter(row => row.b !== id).concat(joined.relations);
   }
+  // Whether this is a return visit is only known when the fleet lands.
+  const again = frozen.weakNavyBand === HONOR_ATTACK_NAVY_BAND && input.observedAt ? await readRepeatRaids(tx, {
+    seasonId: input.seasonId, attack: frozen.attack.map(row => row.id), defence: ids, at: input.observedAt, except: input.missionId,
+  }) : new Set<string>();
   return { ...frozen, defence, selectedDefenders: frozen.selectedDefenders ?? frozen.defence.map(row => row.id),
     eligible: exclusion === undefined && frozen.eligible && facts.eligible,
     ...(exclusion ? { exclusion } : {}),
-    relations: facts.relations.map(row => frozen.relations.find(old => old.a === row.a && old.b === row.b) ?? row) };
+    relations: facts.relations.map(row => frozen.relations.find(old => old.a === row.a && old.b === row.b) ?? row)
+      .map(row => again.has(JSON.stringify([row.a, row.b])) ? { ...row, repeatRaid: true as const } : row) };
 }
 
 /** Monument holders may arrive/leave; an entirely replaced side is not the committed target. */

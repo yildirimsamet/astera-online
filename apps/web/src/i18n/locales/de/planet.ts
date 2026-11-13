@@ -80,7 +80,7 @@ export const planet = {
     "action": "Kolonie aufgeben",
     "title": "Diese Kolonie aufgeben?",
     "cancel": "Kolonie behalten",
-    "confirm": "Ja, Kolonie aufgeben",
+    "confirm": "Aufgeben",
     "pending": "Wird aufgegeben…",
     "irreversible": "Diese Kolonie wird neutral und gibt einen Kolonieplatz frei. Du kannst diese Aktion nicht rückgängig machen.",
     "keeps": "Gebäude, Satelliten, Ressourcen und Bodenverteidigung bleiben auf dem Planeten. Bereite Todessterne und Abfangladungen bleiben ebenfalls dort.",
@@ -163,7 +163,7 @@ export const planet = {
   },
   tabs: {
     label: "Planetenkategorien",
-    defendProblem: "Verteidigen",
+    defendProblem: "Abwehr",
     defendQuestion: "Baue hier Aegis, den Speicher und die Bodenabwehr aus.",
     orbitProblem: "Intel",
     orbitQuestion: "Erstellen Sie die Tools, die Ihnen helfen, Konkurrenten zu erkennen.",
@@ -533,6 +533,7 @@ export const upgradeRow = {
   takesLabel: "Benötigt {{duration}} zum Erstellen",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
+  level: "Stufe {{level}}",
 } as const;
 
 /** The control at the right-hand edge of every row. */
@@ -603,7 +604,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · vor Einheiten",
   vaultSafe: "Sicher im Tresor",
   storeLabel: "Speicher",
-  storeRule: "Die Speicher-Ebene legt fest, wie lang diese Balken sind; Die Halterung unter dem Schild ist vor einem Überfall sicher.",
+  storeRule: "Höherer Speicher, längere Balken; den Kasten mit Schild nimmt kein Überfall.",
   alloyStore: "{{held}} aus {{cap}}-Legierung, {{safe}} geschützt",
   crystalStore: "{{held}} von {{cap}} Kristall, {{safe}} geschützt",
   deuteriumStore: "{{held}} von {{cap}} Deuterium, {{safe}} geschützt",
@@ -881,7 +882,7 @@ export const faults = {
     title: "Die Loyalität dieser Welt",
     battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30 · Todesstern −{{strike}}",
     line: "Loyalität: {{value}} %. Sie sinkt bei {{count}} aktiven Störungen. Bei diesem Tempo erreicht sie in {{time}} null und du verlierst die Kolonie.",
-    bar: "Treue {{value}}%",
+    bar: "{{value}}%",
     left: "{{time}} übrig",
   },
   price: {

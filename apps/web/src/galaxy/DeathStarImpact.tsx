@@ -3,6 +3,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { prewarmStrategicBlast, StrategicBlast } from './StrategicBlast.jsx';
+import { NukeBlast, prewarmNukeBlast } from './NukeBlast.jsx';
+import { EmpStormWarmup } from './EmpStorm.jsx';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import type { StrategicImpactKind } from './strategicLayers.js';
 import { DEATH_STAR } from '@astera/rules';
@@ -201,8 +203,10 @@ export function DeathStarImpacts({
 export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
   const [active, setActive] = useState(() => isDeathStarImpactVisible(event.at, serverNow()));
 
+  const airborne = event.kind === 'interception';
   useEffect(() => {
-    prewarmStrategicBlast();
+    if (airborne) prewarmStrategicBlast();
+    else prewarmNukeBlast();
     const timers: ReturnType<typeof setTimeout>[] = [];
     const sync = (): void => { setActive(isDeathStarImpactVisible(event.at, serverNow())); };
     const arm = (at: number): void => {
@@ -221,14 +225,27 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
       window.removeEventListener('focus', sync);
       window.removeEventListener('pageshow', sync);
     };
-  }, [event.at]);
+  }, [event.at, airborne]);
 
-  return active ? <Impact event={event} /> : null;
+  if (airborne) return active ? <Impact event={event} active /> : null;
+  // A strike that lands is mounted while the weapon is still in flight: it draws itself once, unseen,
+  // so the frame of impact only draws (S22, 2026-11-13). Nothing stands in for it before its moment.
+  return <Impact event={event} active={active} />;
 }
 
-function Impact({ event }: { event: DeathStarImpactEvent }) {
-  const fallback = <GeometricImpact event={event} />;
-  return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><StrategicBlast event={event} /></Suspense></SkinAssetBoundary>;
+function Impact({ event, active }: { event: DeathStarImpactEvent; active: boolean }) {
+  const fallback = active ? <GeometricImpact event={event} /> : null;
+  // A weapon that lands is a nuclear strike on the world (owner, 2026-11-12); one shot down bursts in the air.
+  if (event.kind === 'interception') {
+    return <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><StrategicBlast event={event} /></Suspense></SkinAssetBoundary>;
+  }
+  return (
+    <>
+      <SkinAssetBoundary fallback={fallback}><Suspense fallback={fallback}><NukeBlast event={event} /></Suspense></SkinAssetBoundary>
+      {/* The EMP storm that takes over from the crater, drawn once unseen; its art failing never touches the strike. */}
+      <SkinAssetBoundary fallback={null}><Suspense fallback={null}><EmpStormWarmup position={event.position} radius={event.radius} /></Suspense></SkinAssetBoundary>
+    </>
+  );
 }
 
 function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {
@@ -237,7 +254,6 @@ function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {
   const rings = useRef<(THREE.Sprite | null)[]>([]);
   const shell = useRef<THREE.Mesh>(null);
   const arcs = useRef<(THREE.Mesh | null)[]>([]);
-  const light = useRef<THREE.PointLight>(null);
   const ring = useMemo(ringTexture, []);
   const heard = useRef(false);
   const soundPosition = useMemo(() => new THREE.Vector3(...event.position), [event.position]);
@@ -283,16 +299,11 @@ function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {
       (arc.material as THREE.MeshBasicMaterial).opacity =
         Math.max(0, fade * (0.8 - i * 0.12)) * event.intensity;
     });
-    if (light.current) {
-      light.current.intensity = Math.max(0, 60 * (1 - elapsed * 3.2) ** 3)
-        * event.intensity;
-    }
   });
 
   return (
     <group ref={root} name="death-star-emp-impact" position={event.position}>
       <FullRate />
-      <pointLight ref={light} color="#63f5ff" distance={event.radius * 24} intensity={60} decay={2} />
       <sprite ref={flash} renderOrder={1310}>
         <spriteMaterial
           map={ring}

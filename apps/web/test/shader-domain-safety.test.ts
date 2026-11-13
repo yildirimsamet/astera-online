@@ -16,6 +16,16 @@ it.each(shaderFiles)('%s keeps constant smoothstep edges in the GLSL-defined ord
   for (const call of calls) expect(Number(call[1]), call[0]).toBeLessThan(Number(call[2]));
 });
 
+/*
+  pow(x, y) is undefined for x < 0 in GLSL, so exp(-pow(d, 2.0)) over a signed distance is a NaN on some
+  phone GPUs: square it instead. Every shader source is held to it, so a new effect cannot bring it back.
+  The two below predate the rule (2026-11-12) and are reported to the owner rather than changed here.
+*/
+const signedGaussianBefore = new Set(['battle-simulator/BattleStage.tsx', 'vfx/engineFlameShaders.ts']);
+it.each(shaderFiles.filter(file => !signedGaussianBefore.has(file)))('%s squares its Gaussian distances instead of feeding them to pow', file => {
+  expect(readFileSync(`src/${file}`, 'utf8')).not.toMatch(/exp\(-pow\(/);
+});
+
 it('Tempest arcs invert a defined smoothstep rather than swapping its edges', () => {
   expect(effectProgram('tempest', 1).fragmentShader).not.toMatch(/smoothstep\(width,\s*0\.0,/);
 });

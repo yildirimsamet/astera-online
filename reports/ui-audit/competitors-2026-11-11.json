@@ -1,0 +1,1142 @@
+[
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "kaynak sayacı",
+  "text": "240",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 14.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "güç",
+  "text": "672.760",
+  "shape": "caps",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 12.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "seviye rozeti",
+  "text": "200",
+  "shape": "caps",
+  "inkDp": 7,
+  "inkMm": 1.26,
+  "emDp": 9.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "ikon etiketi",
+  "text": "Etkinlikler",
+  "shape": "caps",
+  "inkDp": 11.3,
+  "inkMm": 2.03,
+  "emDp": 15.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "ikon etiketi",
+  "text": "Gezici Tiyatro",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "sayaç",
+  "text": "00:01:12",
+  "shape": "caps",
+  "inkDp": 7.3,
+  "inkMm": 1.32,
+  "emDp": 10.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "olay başlığı",
+  "text": "Tipi sürüyor",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "harita etiketi",
+  "text": "Barınak 5",
+  "shape": "caps",
+  "inkDp": 16,
+  "inkMm": 2.87,
+  "emDp": 22.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "görev satırı",
+  "text": "1 Sv. 3 Hayvanı yen (0 / 1)",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "sohbet satırı",
+  "text": "[KOK]ammar: [Zar At]",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "alt menü",
+  "text": "Keşif",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "alt menü",
+  "text": "Kahramanlar",
+  "shape": "caps",
+  "inkDp": 6.3,
+  "inkMm": 1.14,
+  "emDp": 8.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "bildirim rozeti",
+  "text": "99+",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 14.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "hud",
+  "label": "posta butonu",
+  "button": {
+   "x": 941,
+   "y": 1947,
+   "w": 139,
+   "h": 106
+  },
+  "wDp": 46.3,
+  "hDp": 35.3,
+  "wMm": 8.2,
+  "hMm": 6.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "panel başlığı",
+  "text": "Barınak 1 Sv. 5",
+  "shape": "caps",
+  "inkDp": 12.3,
+  "inkMm": 2.21,
+  "emDp": 17.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "öğe adı",
+  "text": "Ranza",
+  "shape": "caps",
+  "inkDp": 12.3,
+  "inkMm": 2.21,
+  "emDp": 17.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "açıklama",
+  "text": "Savaşçıların uyudukları yer.",
+  "shape": "full",
+  "inkDp": 11.3,
+  "inkMm": 2.03,
+  "emDp": 11.9
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "buton yazısı",
+  "text": "Yükselt",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 14.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "maliyet",
+  "text": "260",
+  "shape": "caps",
+  "inkDp": 15.3,
+  "inkMm": 2.75,
+  "emDp": 21.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "satır etiketi",
+  "text": "Süre",
+  "shape": "caps",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 12.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "satır değeri",
+  "text": "60sn",
+  "shape": "caps",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 11.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "öğe rozeti",
+  "text": "8",
+  "shape": "caps",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 11.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "ilerleme",
+  "text": "0%",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 14.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "sekme",
+  "text": "Eşya",
+  "shape": "full",
+  "inkDp": 13,
+  "inkMm": 2.33,
+  "emDp": 13.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "yükseltme",
+  "label": "Yükselt butonu",
+  "button": {
+   "x": 792,
+   "y": 1361,
+   "w": 249,
+   "h": 115
+  },
+  "wDp": 83,
+  "hDp": 38.3,
+  "wMm": 14.8,
+  "hMm": 6.9
+ },
+ {
+  "game": "whiteout",
+  "screen": "onay",
+  "label": "pencere başlığı",
+  "text": "Onay",
+  "shape": "full",
+  "inkDp": 15.7,
+  "inkMm": 2.81,
+  "emDp": 16.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "onay",
+  "label": "gövde satırı",
+  "text": "Saygıdeğer Şef, bu Şehri en son",
+  "shape": "full",
+  "inkDp": 11.7,
+  "inkMm": 2.09,
+  "emDp": 12.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "onay",
+  "label": "buton yazısı",
+  "text": "Onayla",
+  "shape": "full",
+  "inkDp": 18.3,
+  "inkMm": 3.29,
+  "emDp": 19.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "onay",
+  "label": "Onayla butonu",
+  "button": {
+   "x": 346,
+   "y": 1380,
+   "w": 388,
+   "h": 109
+  },
+  "wDp": 129.3,
+  "hDp": 36.3,
+  "wMm": 23,
+  "hMm": 6.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "ekran başlığı",
+  "text": "Oyun Ayarları",
+  "shape": "full",
+  "inkDp": 17.3,
+  "inkMm": 3.11,
+  "emDp": 18.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "bölüm başlığı",
+  "text": "Ses",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 14.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "satır etiketi",
+  "text": "Müzik",
+  "shape": "caps",
+  "inkDp": 9.7,
+  "inkMm": 1.74,
+  "emDp": 13.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "açıklama satırı",
+  "text": "Pil kullanımını ve aşırı ısınmayı",
+  "shape": "full",
+  "inkDp": 12.7,
+  "inkMm": 2.27,
+  "emDp": 13.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "seçenek",
+  "text": "30FPS",
+  "shape": "caps",
+  "inkDp": 7.7,
+  "inkMm": 1.38,
+  "emDp": 10.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "seçenek",
+  "text": "Standart",
+  "shape": "caps",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 11.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "ayarlar",
+  "label": "Ayarlama butonu",
+  "button": {
+   "x": 765,
+   "y": 2226,
+   "w": 232,
+   "h": 86
+  },
+  "wDp": 77.3,
+  "hDp": 28.7,
+  "wMm": 13.7,
+  "hMm": 5.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "sekme",
+  "text": "Sistem",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 14.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "sekme",
+  "text": "Savaşlar",
+  "shape": "full",
+  "inkDp": 12.7,
+  "inkMm": 2.27,
+  "emDp": 13.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "liste başlığı",
+  "text": "Fırtına başarıyla atlatıldı!",
+  "shape": "full",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 14
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "liste alt satırı",
+  "text": "Ödülleri al",
+  "shape": "accented",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 11.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "tarih",
+  "text": "2026-11-11 02:25:59",
+  "shape": "caps",
+  "inkDp": 6.7,
+  "inkMm": 1.2,
+  "emDp": 9.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "posta",
+  "label": "alt buton yazısı",
+  "text": "Okunmuş Postaları Sil",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "ittifak adı",
+  "text": "[ACM]Academy",
+  "shape": "full",
+  "inkDp": 15,
+  "inkMm": 2.69,
+  "emDp": 15.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "alt satır",
+  "text": "Tüm diller",
+  "shape": "caps",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 12.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "sayı",
+  "text": "20/100",
+  "shape": "full",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 9.5
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "büyük sayı",
+  "text": "4.743.706.532",
+  "shape": "caps",
+  "inkDp": 7.7,
+  "inkMm": 1.38,
+  "emDp": 10.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "seviye",
+  "text": "Sv. 11",
+  "shape": "caps",
+  "inkDp": 8.3,
+  "inkMm": 1.5,
+  "emDp": 11.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "buton yazısı",
+  "text": "Başvur",
+  "shape": "full",
+  "inkDp": 14.7,
+  "inkMm": 2.63,
+  "emDp": 15.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "sekme",
+  "text": "İttifaka Katıl",
+  "shape": "accented",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 15.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "arama ipucu",
+  "text": "Girmek için dokun",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "ittifak",
+  "label": "Başvur butonu",
+  "button": {
+   "x": 758,
+   "y": 591,
+   "w": 252,
+   "h": 91
+  },
+  "wDp": 84,
+  "hDp": 30.3,
+  "wMm": 14.9,
+  "hMm": 5.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "eğitim",
+  "label": "konuşan adı",
+  "text": "Alina",
+  "shape": "caps",
+  "inkDp": 15.7,
+  "inkMm": 2.81,
+  "emDp": 21.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "eğitim",
+  "label": "diyalog satırı",
+  "text": "Saygıdeğer Şef, aramıza geri döndün!",
+  "shape": "full",
+  "inkDp": 16.3,
+  "inkMm": 2.93,
+  "emDp": 17.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "eğitim",
+  "label": "atla",
+  "text": "Atla",
+  "shape": "caps",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 15.3
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "pencere başlığı",
+  "text": "Günlük Görevler",
+  "shape": "caps",
+  "inkDp": 13.7,
+  "inkMm": 2.45,
+  "emDp": 19
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "sayaç",
+  "text": "00:33:06",
+  "shape": "caps",
+  "inkDp": 8.3,
+  "inkMm": 1.5,
+  "emDp": 11.6
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "eşik sayısı",
+  "text": "120",
+  "shape": "caps",
+  "inkDp": 8.7,
+  "inkMm": 1.56,
+  "emDp": 12
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "görev satırı",
+  "text": "Günlük giriş yap (1 / 1)",
+  "shape": "full",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 14
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "ödül adedi",
+  "text": "4.000",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 14.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "buton yazısı",
+  "text": "Topla",
+  "shape": "full",
+  "inkDp": 15.3,
+  "inkMm": 2.75,
+  "emDp": 16.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "alt sekme",
+  "text": "Büyüme",
+  "shape": "full",
+  "inkDp": 13.7,
+  "inkMm": 2.45,
+  "emDp": 14.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "görevler",
+  "label": "Topla butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~77×33 dp)",
+  "button": {
+   "x": 783,
+   "y": 1078,
+   "w": 223,
+   "h": 79
+  },
+  "wDp": 74.3,
+  "hDp": 26.3,
+  "wMm": 13.2,
+  "hMm": 4.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "kalan",
+  "text": "Kalan: 200",
+  "shape": "caps",
+  "inkDp": 8.7,
+  "inkMm": 1.56,
+  "emDp": 12
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "fiyat",
+  "text": "2",
+  "shape": "caps",
+  "inkDp": 12.3,
+  "inkMm": 2.21,
+  "emDp": 17.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "indirim rozeti",
+  "text": "60%",
+  "shape": "caps",
+  "inkDp": 16.3,
+  "inkMm": 2.93,
+  "emDp": 22.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "paket miktarı",
+  "text": "10 K",
+  "shape": "caps",
+  "inkDp": 11.7,
+  "inkMm": 2.09,
+  "emDp": 16.2
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "yenilenme",
+  "text": "Yenilenme: 5d 00:31:34",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 14.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "alt sekme (2 satır)",
+  "text": "Arena Mağazası",
+  "shape": "full",
+  "inkDp": 13,
+  "inkMm": 2.33,
+  "emDp": 13.7
+ },
+ {
+  "game": "whiteout",
+  "screen": "mağaza",
+  "label": "kilit notu (satır)",
+  "text": "düzeyine ulaş",
+  "shape": "full",
+  "inkDp": 8.3,
+  "inkMm": 1.5,
+  "emDp": 8.8
+ },
+ {
+  "game": "whiteout",
+  "screen": "sonuç",
+  "label": "sonuç başlığı",
+  "text": "Zafer!",
+  "shape": "caps",
+  "inkDp": 41.3,
+  "inkMm": 7.42,
+  "emDp": 57.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "sonuç",
+  "label": "sıra satırı",
+  "text": "Sıra: 999+ 1160",
+  "shape": "caps",
+  "inkDp": 12.3,
+  "inkMm": 2.21,
+  "emDp": 17.1
+ },
+ {
+  "game": "whiteout",
+  "screen": "sonuç",
+  "label": "oyuncu adı",
+  "text": "lord15635145",
+  "shape": "caps",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 13.9
+ },
+ {
+  "game": "whiteout",
+  "screen": "sonuç",
+  "label": "puan",
+  "text": "1.010 +10",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 14.4
+ },
+ {
+  "game": "whiteout",
+  "screen": "sonuç",
+  "label": "çıkış ipucu",
+  "text": "Çıkmak için dokun",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "pencere başlığı",
+  "text": "Köy yüklensin mi?",
+  "shape": "full",
+  "inkDp": 18.7,
+  "inkMm": 3.32,
+  "emDp": 19.6
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "gövde satırı",
+  "text": "Şef JohnnyLesh adlı kişinin Belediye Binası 9.",
+  "shape": "full",
+  "inkDp": 11.7,
+  "inkMm": 2.07,
+  "emDp": 12.3
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "buton yazısı",
+  "text": "Yükle",
+  "shape": "caps",
+  "inkDp": 18,
+  "inkMm": 3.2,
+  "emDp": 25
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "kaynak sayısı",
+  "text": "750",
+  "shape": "caps",
+  "inkDp": 10,
+  "inkMm": 1.78,
+  "emDp": 13.9
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "sayaç",
+  "text": "2g 23sa",
+  "shape": "full",
+  "inkDp": 12.3,
+  "inkMm": 2.19,
+  "emDp": 13
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "Yükle butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~122×53 dp)",
+  "button": {
+   "x": 1201,
+   "y": 624,
+   "w": 355,
+   "h": 85
+  },
+  "wDp": 118.3,
+  "hDp": 28.3,
+  "wMm": 21.2,
+  "hMm": 5
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "onay",
+  "label": "İptal butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~122×53 dp)",
+  "button": {
+   "x": 782,
+   "y": 624,
+   "w": 353,
+   "h": 71
+  },
+  "wDp": 117.7,
+  "hDp": 23.7,
+  "wMm": 21.1,
+  "hMm": 4.2
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "eğitim",
+  "label": "konuşma balonu",
+  "text": "Cimrilik etmenin sırası",
+  "shape": "caps",
+  "inkDp": 8.3,
+  "inkMm": 1.48,
+  "emDp": 11.6
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "eğitim",
+  "label": "bina etiketi",
+  "text": "1. Seviye",
+  "shape": "full",
+  "inkDp": 12.3,
+  "inkMm": 2.19,
+  "emDp": 13
+ },
+ {
+  "game": "clash-of-clans",
+  "screen": "eğitim",
+  "label": "süre",
+  "text": "3sn",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.84,
+  "emDp": 14.4
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "üst etiket",
+  "text": "MISSION OBJECTIVE",
+  "shape": "caps",
+  "inkDp": 7,
+  "inkMm": 1.24,
+  "emDp": 9.7
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "zorluk",
+  "text": "NORMAL",
+  "shape": "caps",
+  "inkDp": 10.7,
+  "inkMm": 1.9,
+  "emDp": 14.8
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "etiket",
+  "text": "STRENGTH",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.37,
+  "emDp": 18.5
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "değer",
+  "text": "143",
+  "shape": "caps",
+  "inkDp": 14,
+  "inkMm": 2.49,
+  "emDp": 19.4
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "buton yazısı",
+  "text": "SCAN",
+  "shape": "caps",
+  "inkDp": 16.3,
+  "inkMm": 2.9,
+  "emDp": 22.7
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "ipucu",
+  "text": "Attack the enemy ship!",
+  "shape": "full",
+  "inkDp": 14,
+  "inkMm": 2.49,
+  "emDp": 14.7
+ },
+ {
+  "game": "star-trek",
+  "screen": "hedef",
+  "label": "SCAN butonu (renk geçişi: dolgu üst kısmı buldu; görsel ~140×30 dp)",
+  "button": {
+   "x": 1150,
+   "y": 695,
+   "w": 419,
+   "h": 83
+  },
+  "wDp": 139.7,
+  "hDp": 27.7,
+  "wMm": 25.1,
+  "hMm": 4.9
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "güç",
+  "text": "1.290",
+  "shape": "caps",
+  "inkDp": 11.3,
+  "inkMm": 2.01,
+  "emDp": 15.7
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "ikon etiketi",
+  "text": "Officers",
+  "shape": "caps",
+  "inkDp": 7.7,
+  "inkMm": 1.36,
+  "emDp": 10.6
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "etkinlik etiketi",
+  "text": "BONUS",
+  "shape": "caps",
+  "inkDp": 10.3,
+  "inkMm": 1.84,
+  "emDp": 14.4
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "sayaç",
+  "text": "01d 23h",
+  "shape": "caps",
+  "inkDp": 9.3,
+  "inkMm": 1.66,
+  "emDp": 13
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "sohbet",
+  "text": "[MITT] dedavonfoe: je besser du",
+  "shape": "full",
+  "inkDp": 9,
+  "inkMm": 1.6,
+  "emDp": 9.5
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "alt etiket",
+  "text": "Alliance",
+  "shape": "caps",
+  "inkDp": 7.7,
+  "inkMm": 1.36,
+  "emDp": 10.6
+ },
+ {
+  "game": "star-trek",
+  "screen": "hud",
+  "label": "isim",
+  "text": "Huckster-4933",
+  "shape": "caps",
+  "inkDp": 9.3,
+  "inkMm": 1.66,
+  "emDp": 13
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "üst satır (CSS 9 px)",
+  "text": "SALDIRI · KESTREL-12 · MESAFE 144",
+  "shape": "caps",
+  "inkDp": 6.5,
+  "inkMm": 1.17,
+  "emDp": 9
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "başlık (CSS 18 px)",
+  "text": "Tharsis",
+  "shape": "caps",
+  "inkDp": 13.5,
+  "inkMm": 2.42,
+  "emDp": 18.8
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "cümle (CSS 10 px)",
+  "text": "Honor karşılaştırması yükleniyor...",
+  "shape": "full",
+  "inkDp": 9.5,
+  "inkMm": 1.71,
+  "emDp": 10
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "cümle (CSS 10 px)",
+  "text": "Bu hedefe karşı tartmak için gemi seç.",
+  "shape": "full",
+  "inkDp": 9.5,
+  "inkMm": 1.71,
+  "emDp": 10
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "not (CSS 9 px)",
+  "text": "Yük gemileri sayılmadı",
+  "shape": "full",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 8.4
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "gemi adı (CSS 10 px)",
+  "text": "Ok",
+  "shape": "caps",
+  "inkDp": 7,
+  "inkMm": 1.26,
+  "emDp": 9.7
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "sayaç değeri",
+  "text": "0",
+  "shape": "caps",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 16.7
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "Maks bağlantısı (CSS 10 px)",
+  "text": "Maks",
+  "shape": "caps",
+  "inkDp": 7.5,
+  "inkMm": 1.35,
+  "emDp": 10.4
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "özet etiketi (CSS 9 px)",
+  "text": "Varış",
+  "shape": "full",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 8.4
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "özet değeri (CSS 10 px)",
+  "text": "1 / 3",
+  "shape": "full",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 10.5
+ },
+ {
+  "game": "astera",
+  "screen": "filo gönder",
+  "label": "Filonu seç butonu",
+  "button": {
+   "x": 28,
+   "y": 1518,
+   "w": 644,
+   "h": 84
+  },
+  "wDp": 322,
+  "hDp": 42,
+  "wMm": 57.2,
+  "hMm": 7.5
+ }
+]

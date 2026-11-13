@@ -33,7 +33,7 @@ describe('publisher pricing from the live catalog', () => {
     const markup = await readFile(resolve(process.cwd(), 'public', filename), 'utf8');
     const document = new DOMParser().parseFromString(markup, 'text/html');
     const published = COSMETICS.filter(item => item.category !== 'PLANET' && !item.free);
-    expect(published).toHaveLength(36);
+    expect(published).toHaveLength(39);
     for (const item of published) {
       const amount = item.category === 'SHIP' || item.category === 'PROBE' ? '3.99' : item.category === 'ENGINE' ? '2.49' : '1.99';
       const price = document.querySelector(`[data-offer-price="${item.id}"]`);

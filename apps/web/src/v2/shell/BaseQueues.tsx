@@ -1,13 +1,57 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BUILD } from '@astera/rules';
 import { useCancelBuildOrder } from '../../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../../api/schemas.js';
+import { FreeSlot, QueueSlot, type SlotState } from '../../game-ui/index.js';
 import { full } from '../../lib/format.js';
+import { buildOrderArt, buildOrderLabel, orderProgress, orderWaiting, repairSubject } from '../../lib/orders.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
-import { QueueLane } from '../kit/QueueLane.js';
+import { orderLeft } from '../kit/QueueLane.js';
 import { QueueSheet } from '../kit/QueueSheet.js';
+
+/** Where an order stands, for its slot: a vacation stops it, only the head runs. */
+const slotState = (order: BuildOrderView, now: number): SlotState => {
+  if ('pausedAt' in order && order.pausedAt) return 'paused';
+  if (orderWaiting(order, now)) return 'waiting';
+  return order.finishesAt ? 'running' : 'staged';
+};
+
+/**
+ * ONE LANE OF THE KIT'S SLOTS (stage 4.1): an order is a ring round its picture that
+ * fills as it builds, an empty slot says so. A slot is a glance; a press opens the sheet.
+ */
+function Lane({ label, orders, now, onOpen }: { label: string; orders: readonly BuildOrderView[]; now: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  const labelId = useId();
+  const free = Math.max(0, BUILD.queueDepth - orders.length);
+  return (
+    <div data-queue-lane role="group" aria-labelledby={labelId} className="gk-lane">
+      <p id={labelId} className="gk-label">{label}</p>
+      <div className="gk-lane__slots">
+        {orders.map((order) => {
+          const name = buildOrderLabel(order);
+          const left = orderLeft(order, now);
+          return (
+            <QueueSlot
+              key={order.id}
+              art={buildOrderArt(order)}
+              name={order.kind === 'REPAIR' ? repairSubject(order) : name}
+              count={order.count}
+              progress={orderProgress(order, now)}
+              left={left}
+              state={slotState(order, now)}
+              label={t('planet.queue.segment', { name, duration: left })}
+              onPress={onOpen}
+            />
+          );
+        })}
+        {Array.from({ length: free }, (_unused, slot) => <FreeSlot key={`free-${String(slot)}`} text={t('lane.free')} />)}
+      </div>
+    </div>
+  );
+}
 
 /**
  * THE BASE'S QUEUES AS RINGS. Spec B12 · E5 (docs/ui-v2/gozlemevi.md).
@@ -33,15 +77,11 @@ export function BaseQueues({ planet }: { planet: PlanetView }) {
 
   if (working === 0) {
     return (
-      <section
-        data-queues-idle
-        aria-label={t('planet.queue.title')}
-        className="flex items-baseline gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2 font-v2-ui"
-      >
-        <h2 className="v2-legend text-v2-ink-2">{t('planet.queue.title')}</h2>
-        <span className="h-px flex-1 bg-v2-line/70" />
-        <span className="text-caption text-v2-ink-3">{t('planet.queue.idle')}</span>
-        <span className="font-v2-mono text-micro text-v2-ink-3">{t('planet.queue.capacity', { count: BUILD.queueDepth })}</span>
+      <section data-queues-idle aria-label={t('planet.queue.title')} className="gk gk-queues-idle">
+        <h2 className="gk-label">{t('planet.queue.title')}</h2>
+        <span className="gk-tag__rule" aria-hidden="true" />
+        <span className="gk-queues-idle__what">{t('planet.queue.idle')}</span>
+        <span className="gk-sub gk-num">{t('planet.queue.capacity', { count: BUILD.queueDepth })}</span>
       </section>
     );
   }
@@ -60,11 +100,11 @@ export function BaseQueues({ planet }: { planet: PlanetView }) {
   };
 
   return (
-    <section aria-label={t('planet.queue.title')} className="flex flex-col gap-2">
-      <QueueLane label={t('planet.queue.construction')} orders={queues.CONSTRUCTION} now={now} onOpen={() => { setOpen(true); }} />
-      <QueueLane label={t('planet.queue.yard')} orders={queues.YARD} now={now} onOpen={() => { setOpen(true); }} />
+    <section aria-label={t('planet.queue.title')} className="gk grid gap-2">
+      <Lane label={t('planet.queue.construction')} orders={queues.CONSTRUCTION} now={now} onOpen={() => { setOpen(true); }} />
+      <Lane label={t('planet.queue.yard')} orders={queues.YARD} now={now} onOpen={() => { setOpen(true); }} />
       {repairs.length > 0 && (
-        <QueueLane label={t('planet.queue.repair')} orders={repairs} now={now} onOpen={() => { setOpen(true); }} />
+        <Lane label={t('planet.queue.repair')} orders={repairs} now={now} onOpen={() => { setOpen(true); }} />
       )}
       {open && (
         <QueueSheet

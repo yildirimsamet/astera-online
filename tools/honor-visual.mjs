@@ -123,9 +123,9 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
               radiation: { level: 1, monumentOrdinal: 1, activeUntil: new Date(Date.now() + 60000) } } : {}) }, onClose: noop,
           }) : state === 'emp-launch' ? h(StrikeSheet, { target: { id: 'target', intel: 'RESOLVED', kind: 'COLONY', name: 'Bellwether' }, onClose: noop, onConfirm: noop })
           : state.startsWith('target-') ? h('div', { className: 'p-3' }, h(HonorTargetCard, {
-            value: { enabled: true, eligible: true, kind: state === 'target-weak' ? 'WEAK' : state === 'target-upper' ? 'UPPER' : 'PEER',
-              militaryReturn: state === 'target-upper' ? 'HALF' : 'FULL', related: state === 'target-related',
-              topTierPeer: state === 'target-top-tier',
+            value: { enabled: true, eligible: true, kind: state === 'target-weak' || state === 'target-repeat' ? 'WEAK' : state === 'target-upper' ? 'UPPER' : 'PEER',
+              militaryReturn: state === 'target-upper' ? 'HALF' : state === 'target-none' || state === 'target-repeat' ? 'NONE' : 'FULL',
+              related: state === 'target-related', topTierPeer: state === 'target-top-tier', repeatRaid: state === 'target-repeat',
               repeated: true, retaliation: state === 'target-weak', retaliationLootPercent: 40, soloCredit: true },
           })) : state === 'segmented' ? h('div', { className: 'grid gap-5 p-3 font-v2-ui' },
             h('p', { className: 'text-body font-semibold text-v2-ink' }, i18n.t('leaderboard.honorPrimary')),
@@ -155,6 +155,9 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
             : state === 'archive' || state.startsWith('profile-') ? h(SeasonArchiveScreen, { key: state, onFocusPlanet: noop, initialSeasonId: seasonId })
             : h('div', { className: 'p-3' }, h(ReportScene, { report: { ...report,
               ...(state === 'weak-target' ? { honor: { delta: -250_000, reason: 'WEAK_TARGET' } } : {}),
+              ...(state === 'repeat-receipt' ? { honor: { delta: -2_600_000, reason: 'WEAK_TARGET', breakdown: { teamDelta: -2_600_000,
+                rawTeamDelta: -2_600_000, participants: 1, contributionPpm: 1_000_000, militaryDamage: 10_000, permanentLoss: 1_000,
+                weakTargetDebit: true, repeatRaid: true } } } : {}),
               ...(state === 'defence' ? { attacking: false, honor: { delta: 0, reason: 'NO_GAIN' } } : {}),
               ...(state === 'shared' || state === 'shared-loss' ? { honor: {
                 delta: state === 'shared' ? 0 : -100_000, reason: state === 'shared' ? 'SHARED_SIDE' : 'ATTACK_LOSS',

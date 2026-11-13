@@ -105,7 +105,7 @@ export interface WreckView {
  * that it cannot be mistaken for a planet, large enough to be tappable at mobile
  * map scale. It sits between the smallest and largest world rings on purpose.
  */
-const VOID_RADIUS = 0.5;
+export const VOID_RADIUS = 0.5;
 
 /** A void field's rubble shells, as fractions of its size: the smaller ones fill the larger's hole. */
 const VOID_SHELLS = [1, 0.68, 0.4] as const;
@@ -193,6 +193,18 @@ export function wreckShape(planetRadius: number, isVoid: boolean, scale = 1): { 
     ringRadius: (isVoid ? 0.35 : ring) * scale,
     tube: (isVoid ? 0.4 : Math.max(ring * TUBE_RATIO, MIN_TUBE)) * scale,
   };
+}
+
+/**
+ * How far from a field's centre its drawn rubble reaches, for a drill that comes to work it: a ring's
+ * own line about its world, or the inside of a void heap's rubble (its outer pieces are loose).
+ */
+export function wreckRadius(planetRadius: number | null, scale = 1): number {
+  if (planetRadius === null) {
+    const { ringRadius, tube } = wreckShape(VOID_RADIUS, true, scale);
+    return (ringRadius + tube) * 0.6;
+  }
+  return wreckShape(planetRadius / scale, false, scale).ringRadius;
 }
 
 function Wreck({

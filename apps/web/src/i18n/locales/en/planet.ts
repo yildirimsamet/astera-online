@@ -80,7 +80,7 @@ export const planet = {
     "action": "Abandon colony",
     "title": "Abandon this colony?",
     "cancel": "Keep colony",
-    "confirm": "Yes, abandon colony",
+    "confirm": "Abandon",
     "pending": "Abandoning…",
     "irreversible": "This colony becomes neutral and frees one colony slot. You cannot undo this action.",
     "keeps": "Buildings, satellites, resources and ground defences stay on the planet. Ready Death Stars and interceptor charges also stay.",
@@ -537,6 +537,7 @@ export const upgradeRow = {
   takesLabel: "Takes {{duration}} to build",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
+  level: "Level {{level}}",
 } as const;
 
 /** The control at the right-hand edge of every row. */
@@ -607,7 +608,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · before units",
   vaultSafe: "Safe in the vault",
   storeLabel: "Store",
-  storeRule: "The Store level sets how long these bars are; the bracket under the shield is safe from a raid.",
+  storeRule: "A higher Store means longer bars; a raid cannot take the shielded box.",
   alloyStore: "{{held}} of {{cap}} alloy, {{safe}} protected",
   crystalStore: "{{held}} of {{cap}} crystal, {{safe}} protected",
   deuteriumStore: "{{held}} of {{cap}} deuterium, {{safe}} protected",
@@ -885,7 +886,7 @@ export const faults = {
     title: "This world's loyalty",
     battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
     line: "Loyalty: {{value}}%. Falling with {{count}} active faults. At this rate, it reaches zero in {{time}} and you lose the colony.",
-    bar: "Loyalty {{value}}%",
+    bar: "{{value}}%",
     left: "{{time}} left",
   },
   price: {

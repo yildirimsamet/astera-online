@@ -1,0 +1,3705 @@
+/**
+ * GAME KIT MATERIALS — direction B in the "Komuta" look (owner 2026-11-12, decision 2.9):
+ * a warship's instruments, not candy. Graphite plates with hairline edges and corner
+ * ticks, glass wells set into them, cut-corner buttons that sink when pressed, narrow
+ * bold lettering. Rewards (the pod, the victory ribbon) stay loud on purpose. Colours
+ * come only from tokens.css. Motion is transform/opacity only, so the kit stays cheap
+ * over a live WebGL scene.
+ */
+@import './tokens.css';
+
+/* ── root and type ─────────────────────────────────────────────────────────── */
+
+.gk {
+  font-family: var(--gk-font-text);
+  font-stretch: var(--gk-text-stretch);
+  font-size: var(--gk-t-body);
+  line-height: 1.35;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gk *,
+.gk *::before,
+.gk *::after {
+  box-sizing: border-box;
+}
+
+.gk-display {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+/* Light text on a lit or busy ground keeps a soft dark shadow so it holds over any picture. */
+.gk-outlined {
+  text-shadow: 0 1px 2px var(--gk-outline), 0 0 1px var(--gk-outline);
+}
+
+.gk-label {
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gk-ink-2);
+  line-height: 1.2;
+}
+
+.gk-sub {
+  font-size: var(--gk-t-floor);
+  font-weight: 500;
+  color: var(--gk-ink-3);
+  line-height: 1.3;
+}
+/* a sheet's one paragraph of explanation, read at body size */
+.gk-copy {
+  font-size: var(--gk-t-body);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
+
+.gk-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.gk-glyph {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  fill: currentColor;
+  stroke: var(--gk-outline);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  overflow: visible;
+}
+
+/* The glyph's lower half is a shade of its own colour: a flat mark reads as a game icon. */
+.gk-glyph__hi { stop-color: currentColor; }
+.gk-glyph__lo { stop-color: color-mix(in oklab, currentColor 76%, var(--gk-metal-hi)); }
+
+/* Tone helpers for text and glyphs. */
+.gk-tone-self { color: var(--gk-self); }
+.gk-tone-hostile { color: var(--gk-hostile); }
+.gk-tone-good { color: var(--gk-good); }
+.gk-tone-warn { color: var(--gk-warn); }
+.gk-tone-info { color: var(--gk-info); }
+.gk-tone-muted { color: var(--gk-ink-3); }
+
+/* ── plates and wells ──────────────────────────────────────────────────────── */
+
+.gk-plate {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-md);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 5%, transparent) 0, transparent 1px),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2) 75%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--gk-metal-hi) 40%, transparent),
+    0 4px 12px -6px var(--gk-metal-shadow);
+}
+
+/* Corner ticks, one bracket per corner over the edge, in one paint layer. */
+.gk-bolts::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  --t: color-mix(in srgb, var(--gk-tint) 60%, transparent);
+  --l: 9px;
+  background:
+    linear-gradient(var(--t), var(--t)) 0 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 0 100% / 1px var(--l) no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / var(--l) 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) 100% 100% / 1px var(--l) no-repeat;
+}
+
+/* A plate whose edge glows in a role colour: selection, the enemy, a warning. */
+.gk-edge-self {
+  border-color: color-mix(in srgb, var(--gk-self) 70%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 14%, transparent),
+    inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-edge-hostile {
+  border-color: color-mix(in srgb, var(--gk-hostile) 65%, transparent);
+  box-shadow: inset 0 -30px 30px -30px color-mix(in srgb, var(--gk-hostile) 40%, transparent);
+}
+.gk-edge-self.gk-bolts::after {
+  --t: var(--gk-self);
+  --l: 12px;
+}
+.gk-edge-hostile.gk-bolts::after {
+  --t: var(--gk-hostile);
+  --l: 12px;
+}
+.gk-edge-warn {
+  border-color: color-mix(in srgb, var(--gk-warn) 60%, var(--gk-metal-edge));
+}
+
+/* A glass screen set into a plate: numbers and bars live here. */
+.gk-well {
+  position: relative;
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow:
+    inset 0 2px 5px color-mix(in srgb, var(--gk-metal-shadow) 85%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--gk-ink) 6%, transparent);
+}
+
+/* Cut corners: the frame is the element's own background, the face a pseudo-layer. */
+.gk-cut {
+  --cut: var(--gk-cut);
+  --edge: var(--gk-metal-edge);
+  --face: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2) 60%, var(--gk-metal-3));
+  position: relative;
+  isolation: isolate;
+  background: var(--edge);
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+.gk-cut::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: var(--face);
+  clip-path: polygon(calc(var(--cut) - 0.4px) 0, calc(100% - var(--cut) + 0.4px) 0, 100% calc(var(--cut) - 0.4px), 100% calc(100% - var(--cut) + 0.4px), calc(100% - var(--cut) + 0.4px) 100%, calc(var(--cut) - 0.4px) 100%, 0 calc(100% - var(--cut) + 0.4px), 0 calc(var(--cut) - 0.4px));
+}
+.gk-cut--hostile {
+  --edge: linear-gradient(90deg, var(--gk-hostile), color-mix(in srgb, var(--gk-hostile) 35%, var(--gk-metal-edge)));
+  --face:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-hostile) 22%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-cut--self {
+  --edge: linear-gradient(90deg, var(--gk-self), color-mix(in srgb, var(--gk-self) 30%, var(--gk-metal-edge)));
+  --face:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+
+/* A section name: a lit bar and tracked capitals, with a rule running out to the edge. */
+.gk-tag {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-height: 20px;
+}
+.gk-tag__name {
+  padding: 2px 8px 2px 7px;
+  border-left: 2px solid var(--gk-tint);
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gk-ink);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 18%, transparent), transparent);
+}
+.gk-tag__rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-tint) 30%, transparent), transparent);
+}
+.gk-tag__aside {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+/* a band inside a section: the tag, its one-clause rule under it; folded, the tag is the button */
+.gk-band {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--gk-s2) var(--gk-s1) 2px;
+  text-align: left;
+}
+.gk-band--fold {
+  min-height: var(--gk-hit);
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-band--fold:active .gk-tag__name {
+  color: var(--gk-ink-2);
+}
+.gk-band__fold {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  color: var(--gk-ink-3);
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-band__fold[data-open] {
+  transform: rotate(90deg);
+}
+/* what a tab is for, the one line the selected tab does not already say */
+.gk-group__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s1);
+}
+.gk-group__what {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+
+/* ── buttons ───────────────────────────────────────────────────────────────── */
+
+.gk-btn {
+  --face-hi: var(--gk-steel-hi);
+  --face: var(--gk-steel);
+  --face-lo: var(--gk-steel-lo);
+  --lip: var(--gk-steel-lip);
+  --rim: var(--gk-outline);
+  --cut: 10px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gk-s2);
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s4) 2px;
+  overflow: hidden;
+  border: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--rim) 80%, transparent);
+  /* two corners cut on the diagonal: the silhouette of a ship's control, not a pill */
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 35%, transparent) 0 1px, transparent 1px),
+    linear-gradient(180deg, var(--face) 0%, var(--face-lo) 100%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 45%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--lip) 60%, transparent);
+  transform: translateY(0);
+  transition: transform var(--gk-press) linear, box-shadow var(--gk-press) linear, filter var(--gk-quick) var(--gk-ease);
+  touch-action: manipulation;
+  user-select: none;
+  cursor: pointer;
+}
+.gk-btn > * {
+  position: relative;
+}
+.gk-btn:active:not(:disabled),
+.gk-btn[data-pressed] {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 35%, transparent),
+    inset 0 3px 6px color-mix(in srgb, var(--lip) 55%, transparent);
+}
+.gk-btn:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 3px;
+}
+.gk-btn:disabled {
+  --face-hi: var(--gk-steel-hi);
+  --face: var(--gk-steel);
+  --face-lo: var(--gk-steel-lo);
+  --lip: var(--gk-steel-lip);
+  cursor: not-allowed;
+  color: var(--gk-ink-2);
+}
+.gk-btn:disabled,
+.gk-btn:disabled * {
+  text-shadow: none;
+}
+.gk-btn:disabled .gk-glyph {
+  stroke: var(--gk-outline);
+}
+
+.gk-btn--action {
+  --face-hi: var(--gk-action-hi);
+  --face: var(--gk-action);
+  --face-lo: var(--gk-action-lo);
+  --lip: var(--gk-action-lip);
+  --rim: var(--gk-action-ink);
+  /* dark lettering on the lit amber and teal faces, as warning plates are lettered */
+  color: var(--gk-action-ink);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-action-hi) 55%, transparent);
+}
+.gk-btn--self {
+  --face-hi: var(--gk-self-hi);
+  --face: var(--gk-self);
+  --face-lo: var(--gk-self-lo);
+  --lip: var(--gk-self-lip);
+  --rim: var(--gk-self-lip);
+  color: var(--gk-outline);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--gk-self-hi) 55%, transparent);
+}
+.gk-btn--danger {
+  --face-hi: var(--gk-hostile-hi);
+  /* Crimson, not signal red, under white words: 4.5:1 from the top of the face down. */
+  --face: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-hostile-lo));
+  --face-lo: var(--gk-hostile-lo);
+  --lip: var(--gk-hostile-lip);
+  --rim: var(--gk-hostile-lip);
+}
+.gk-btn--action .gk-glyph,
+.gk-btn--self .gk-glyph,
+.gk-round--self .gk-glyph {
+  stroke: none;
+}
+.gk-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--gk-ink-2);
+  text-shadow: none;
+}
+.gk-btn--lg {
+  --cut: 12px;
+  min-height: 56px;
+  font-size: var(--gk-t-title);
+}
+.gk-btn--sm {
+  font-size: var(--gk-t-body);
+  padding: 0 var(--gk-s3) 2px;
+}
+.gk-btn--wide {
+  width: 100%;
+}
+
+/* A slow glint across the primary move, so the one thing to press is alive. */
+.gk-btn--action::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--gk-ink) 26%, transparent) 50%, transparent 58%);
+  transform: translateX(-130%);
+  animation: gk-glint 4.6s var(--gk-ease) 1.4s infinite;
+  pointer-events: none;
+}
+.gk-btn--action:disabled::after {
+  animation: none;
+}
+@keyframes gk-glint {
+  0%, 72% { transform: translateX(-130%); }
+  100% { transform: translateX(130%); }
+}
+
+.gk-btn__detail {
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+/* The price rides on the face after a hairline, in the button's own lettering: a dark
+   chip under it muddied the amber (owner 2026-11-12). */
+.gk-btn__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 9px;
+  border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  font-size: var(--gk-t-body);
+}
+.gk-btn__cost img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.gk-btn__glyph {
+  font-size: 20px;
+}
+.gk-spin {
+  /* a long label beside it must not squash the ring into an ellipse */
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--gk-ink) 30%, transparent);
+  border-top-color: var(--gk-ink);
+  animation: gk-spin 700ms linear infinite;
+}
+@keyframes gk-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Small square buttons: close, back, help. The hit area is always 44 px. */
+.gk-round {
+  --face-hi: var(--gk-steel-hi);
+  --face: var(--gk-steel);
+  --face-lo: var(--gk-steel-lo);
+  --lip: var(--gk-steel-lip);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--gk-hit);
+  height: var(--gk-hit);
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gk-ink);
+  font-size: 18px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-round__face {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--face-hi) 55%, transparent);
+  background: linear-gradient(180deg, var(--face), var(--face-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 16%, transparent);
+  transition: transform var(--gk-press) linear, box-shadow var(--gk-press) linear;
+}
+.gk-round:active .gk-round__face {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px var(--gk-metal-shadow);
+}
+.gk-round--danger {
+  --face-hi: var(--gk-hostile-hi);
+  --face: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-hostile-lo));
+  --face-lo: var(--gk-hostile-lo);
+  --lip: var(--gk-hostile-lip);
+}
+.gk-round--self {
+  --face-hi: var(--gk-self-hi);
+  --face: var(--gk-self);
+  --face-lo: var(--gk-self-lo);
+  --lip: var(--gk-self-lip);
+  /* Dark ink on the lit teal face, as on the teal button: white read at 1.7:1. */
+  color: var(--gk-outline);
+}
+.gk-round--small .gk-round__face {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+.gk-round:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+/* A chip: small to look at, 44 px to hit. */
+.gk-hit {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--gk-hit);
+  min-height: var(--gk-hit);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-hit:disabled {
+  cursor: default;
+}
+.gk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 12%, transparent);
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gk-ink);
+  white-space: nowrap;
+  transition: transform var(--gk-press) linear;
+}
+.gk-hit:active .gk-chip {
+  transform: translateY(1px);
+}
+.gk-chip[data-on] {
+  border-color: var(--gk-self-lo);
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
+  color: var(--gk-outline);
+}
+.gk-hit:disabled .gk-chip {
+  opacity: 0.4;
+}
+.gk-chip--static {
+  box-shadow: none;
+  background: color-mix(in srgb, var(--gk-metal-1) 85%, transparent);
+}
+
+/* ── the hold action ───────────────────────────────────────────────────────── */
+
+.gk-hold {
+  width: 100%;
+  min-height: 60px;
+  justify-content: flex-start;
+  padding: 0 var(--gk-s4) 2px 8px;
+  gap: var(--gk-s3);
+}
+.gk-hold__fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 0%, transparent), color-mix(in srgb, var(--gk-ink) 30%, transparent));
+  pointer-events: none;
+}
+.gk-hold[data-holding] .gk-hold__fill {
+  width: 100%;
+  transition: width var(--gk-hold-ms) linear;
+}
+.gk-hold__dial {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rim) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rim) 55%, transparent);
+  font-size: 20px;
+}
+.gk-hold__ring {
+  position: absolute;
+  inset: -3px;
+  width: 48px;
+  height: 48px;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.gk-hold__ring circle {
+  fill: none;
+  stroke-width: 3.5px;
+}
+.gk-hold__track {
+  stroke: color-mix(in srgb, var(--rim) 30%, transparent);
+}
+.gk-hold__arc {
+  stroke: var(--rim);
+  stroke-dasharray: 132;
+  stroke-dashoffset: 132;
+}
+.gk-hold[data-holding] .gk-hold__arc {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--gk-hold-ms) linear;
+}
+.gk-hold__words {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  /* the verb keeps its line; on a narrow phone the spend beside it wraps first */
+  flex: 1;
+}
+.gk-hold__label {
+  font-size: var(--gk-t-head);
+  line-height: 1;
+  white-space: nowrap;
+}
+.gk-hold__aside {
+  /* the spend is short ("39 gemi"); a longer one wraps in its own column, never over the verb */
+  flex: 0 1 auto;
+  max-width: 42%;
+  /* last resort when even one word cannot fit beside the verb: break it, never cut it */
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  font-family: var(--gk-font-display);
+  font-size: var(--gk-t-lead);
+  padding-left: var(--gk-s3);
+  border-left: 1px solid color-mix(in srgb, var(--rim) 45%, transparent);
+}
+.gk-hold[data-holding] {
+  filter: brightness(1.08);
+}
+.gk-hold[data-holding] .gk-hold__dial {
+  animation: gk-rumble 90ms linear infinite;
+}
+@keyframes gk-rumble {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(0.6px, -0.4px); }
+  50% { transform: translate(-0.5px, 0.5px); }
+  75% { transform: translate(0.4px, 0.5px); }
+  100% { transform: translate(0, 0); }
+}
+.gk-hold[data-committed] {
+  animation: gk-commit 420ms var(--gk-ease);
+}
+@keyframes gk-commit {
+  0% { filter: brightness(1.6); }
+  100% { filter: brightness(1); }
+}
+
+/* ── badges ────────────────────────────────────────────────────────────────── */
+
+.gk-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-self-hi);
+  background: linear-gradient(180deg, var(--gk-self), var(--gk-self-lo));
+  box-shadow: 0 0 10px -3px color-mix(in srgb, var(--gk-self) 70%, transparent);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-number);
+  color: var(--gk-outline);
+  line-height: 1;
+  animation: gk-bump var(--gk-settle) var(--gk-pop);
+}
+.gk-count--idle {
+  border-color: var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  box-shadow: none;
+  color: var(--gk-ink-2);
+  animation: none;
+}
+@keyframes gk-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.gk-mult {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-outline);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
+}
+.gk-mult .gk-glyph {
+  font-size: 11px;
+}
+.gk-mult--good {
+  background: linear-gradient(180deg, var(--gk-good), var(--gk-good-lo));
+  color: var(--gk-outline);
+}
+.gk-mult--good .gk-glyph {
+  stroke: none;
+}
+.gk-mult--hostile {
+  /* Deep red under white letters (4.5:1); the bright red stays for fills and frames. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-hostile) 25%, var(--gk-hostile-lo)), var(--gk-hostile-lo));
+}
+
+.gk-level {
+  --cut: 6px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  clip-path: polygon(50% 0, 100% 24%, 100% 76%, 50% 100%, 0 76%, 0 24%);
+  /* Deep enough under the numeral for 4.5:1; the light info blue stays on the rim only. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-info) 58%, var(--gk-metal-3)), color-mix(in srgb, var(--gk-info) 26%, var(--gk-metal-3)));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gk-info) 80%, transparent);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink);
+}
+
+.gk-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  background: color-mix(in srgb, var(--gk-metal-shadow) 70%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-lock .gk-glyph {
+  color: var(--gk-ink-2);
+  font-size: 13px;
+}
+
+.gk-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 2px solid var(--gk-outline);
+  /* The shine sits above the numeral; the number itself stands on deep red (4.5:1). */
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gk-hostile) 50%, var(--gk-hostile-lo)) 0, var(--gk-hostile-lo) 40%, color-mix(in srgb, var(--gk-hostile-lo) 60%, var(--gk-hostile-lip)));
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink);
+  line-height: 1;
+}
+
+.gk-emblem {
+  --plate-hi: var(--gk-steel-hi);
+  --plate-lo: var(--gk-steel-lo);
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--plate-hi), var(--plate-lo));
+  color: var(--gk-ink);
+}
+.gk-emblem svg {
+  width: 14px;
+  height: 14px;
+}
+/* A fighting class wears its own colour and a dark mark, flat: a shaded foot would only
+   wash the mark into the plate. */
+.gk-emblem--skirmisher { --plate-hi: var(--gk-class-skirmisher-hi); --plate-lo: var(--gk-class-skirmisher-lo); }
+.gk-emblem--lance { --plate-hi: var(--gk-class-lance-hi); --plate-lo: var(--gk-class-lance-lo); }
+.gk-emblem--bulwark { --plate-hi: var(--gk-class-bulwark-hi); --plate-lo: var(--gk-class-bulwark-lo); }
+.gk-emblem--skirmisher,
+.gk-emblem--lance,
+.gk-emblem--bulwark {
+  color: var(--gk-deep);
+}
+.gk-emblem--skirmisher .gk-glyph__lo,
+.gk-emblem--lance .gk-glyph__lo,
+.gk-emblem--bulwark .gk-glyph__lo {
+  stop-color: currentColor;
+}
+/* The enemy's class keeps its colour and wears a red corner tag (owner 2026-11-12: a full
+   red frame was ugly). */
+.gk-emblem--hostile {
+  position: relative;
+}
+.gk-emblem--hostile::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  background: var(--gk-hostile);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+/* ── bars ──────────────────────────────────────────────────────────────────── */
+
+.gk-bar {
+  --fill-hi: var(--gk-self-hi);
+  --fill: var(--gk-self);
+  --fill-lo: var(--gk-self-lo);
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--gk-ink) 10%, var(--gk-outline));
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 1px 2px var(--gk-metal-shadow);
+}
+.gk-bar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  /* a flat fill whose leading edge is lit, like an instrument's needle */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fill) 55%, var(--gk-outline)), var(--fill) calc(100% - 2px), var(--fill-hi) calc(100% - 2px));
+  transition: width var(--gk-settle) var(--gk-ease);
+}
+.gk-bar--segments::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(var(--seg) - 1px), color-mix(in srgb, var(--gk-outline) 80%, transparent) calc(var(--seg) - 1px) var(--seg));
+  pointer-events: none;
+}
+.gk-bar--thick {
+  height: 18px;
+}
+.gk-bar__text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  line-height: 1;
+  /* Words over a lit fill wear a dark halo, as game bars letter them (WCAG 1.4.3 halo). */
+  -webkit-text-stroke: 2px var(--gk-outline);
+  paint-order: stroke fill;
+}
+.gk-fill-good { --fill-hi: var(--gk-good-hi); --fill: var(--gk-good); --fill-lo: var(--gk-good-lo); }
+.gk-fill-hostile { --fill-hi: var(--gk-hostile-hi); --fill: var(--gk-hostile); --fill-lo: var(--gk-hostile-lo); }
+.gk-fill-self { --fill-hi: var(--gk-self-hi); --fill: var(--gk-self); --fill-lo: var(--gk-self-lo); }
+.gk-fill-warn { --fill-hi: var(--gk-warn); --fill: var(--gk-warn); --fill-lo: color-mix(in srgb, var(--gk-warn) 60%, var(--gk-outline)); }
+.gk-fill-deut { --fill-hi: var(--gk-good-hi); --fill: var(--gk-deut); --fill-lo: var(--gk-good-lo); }
+.gk-fill-alloy { --fill-hi: var(--gk-alloy-hi); --fill: var(--gk-alloy); --fill-lo: var(--gk-alloy-lo); }
+.gk-fill-crystal { --fill-hi: var(--gk-ink); --fill: var(--gk-crystal); --fill-lo: var(--gk-info); }
+
+/* A store on a world: art, held/cap, the bar with its raid-safe box, the hourly flow. */
+.gk-store {
+  display: grid;
+  grid-template-columns: 16px 5.25rem minmax(0, 1fr) 3.75rem;
+  align-items: center;
+  gap: 0 var(--gk-s2);
+}
+.gk-store__art {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-store__held {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-store__cap {
+  font-weight: 400;
+  color: var(--gk-ink-3);
+}
+.gk-store__track {
+  position: relative;
+  display: block;
+}
+.gk-store__track .gk-bar {
+  display: block;
+  height: 12px;
+}
+/* the share a raid cannot take: a box over the start of the bar, its shield at the end */
+.gk-store__safe {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 0;
+  min-width: 6px;
+  border: 1.5px solid var(--gk-ink-2);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--gk-outline);
+  pointer-events: none;
+}
+.gk-store__safe .gk-glyph {
+  position: absolute;
+  top: -11px;
+  right: -6px;
+  font-size: 11px;
+  color: var(--gk-ink);
+  filter: drop-shadow(0 0 1px var(--gk-outline)) drop-shadow(0 0 1px var(--gk-outline));
+}
+.gk-store__rate {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  text-align: right;
+  white-space: nowrap;
+}
+.gk-store__unit {
+  font-family: var(--gk-font-text);
+  font-weight: 400;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+/* full is a gap you can close: the figure in the warning colour, the bar capped in it */
+.gk-store[data-full] .gk-store__held,
+.gk-store[data-full] .gk-store__cap {
+  color: var(--gk-warn);
+}
+.gk-store[data-full] .gk-store__track::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -1px;
+  bottom: -2px;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--gk-warn);
+}
+/* a world's three stores, one under the other, the rule of the box said once beneath */
+.gk-stores {
+  display: grid;
+  gap: 10px;
+  padding-inline: var(--gk-s1);
+}
+.gk-stores__rule {
+  margin-top: -2px;
+}
+/* the world as the hero: its kind and tier, the orbit in words under it (the page head names it) */
+.gk-hero__kind {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--gk-ink-3);
+}
+.gk-hero__tier {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gk-ink-2);
+}
+.gk-hero__orbit {
+  font-size: var(--gk-t-floor);
+  text-align: center;
+  color: var(--gk-ink-3);
+}
+/* a socket on the ring: fitted (lit), free (dashed), dark until the Core opens it */
+.gk-socket {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--gk-metal-edge);
+  background: color-mix(in srgb, var(--gk-deep) 80%, transparent);
+  color: var(--gk-ink-3);
+}
+.gk-socket .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-socket[data-orbit-slot='held'] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  background: var(--gk-metal-2);
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-socket[data-orbit-slot='open'] {
+  border-style: dashed;
+  border-color: var(--gk-ink-3);
+  background: color-mix(in srgb, var(--gk-deep) 60%, transparent);
+}
+.gk-socket__art {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.gk-socket[data-orbit-slot='inactive'] .gk-socket__art {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.gk-socket__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+}
+.gk-socket__badge .gk-glyph {
+  width: 10px;
+  height: 10px;
+}
+.gk-socket__level {
+  position: absolute;
+  bottom: -15px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+/* a colony's loyalty: the bar in your colour (the threat's red when low), the time it lasts */
+.gk-loyalty {
+  display: grid;
+  gap: var(--gk-s1);
+  padding-top: var(--gk-s1);
+  border-top: 1px solid var(--gk-metal-edge);
+}
+.gk-loyalty__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-loyalty__bar {
+  flex: 1;
+  height: 6px;
+}
+.gk-loyalty__value {
+  font-weight: 700;
+}
+.gk-loyalty__guard {
+  margin-top: var(--gk-s1);
+  padding: 6px var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 25%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-self) 6%, transparent);
+}
+.gk-loyalty__guarded {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+/* a way out of something you hold (abandon a colony): quiet until pressed, its mark in the threat's colour */
+.gk-exitrow {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s2) 0 var(--gk-s3);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+  color: var(--gk-ink-2);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-exitrow:active {
+  transform: translateY(1px);
+  border-color: color-mix(in srgb, var(--gk-hostile) 45%, var(--gk-metal-edge));
+}
+.gk-exitrow .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-exitrow__glyph {
+  display: inline-grid;
+  color: var(--gk-hostile);
+}
+.gk-exitrow__glyph .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-exitrow__label {
+  flex: 1;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+}
+/* what a world takes off radiation: a coin of its tone, the reading, the rule one "?" away */
+.gk-shelter {
+  --tone: var(--gk-good);
+  padding: 0 2px 0 var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+}
+.gk-shelter[data-tone='warn'] {
+  --tone: var(--gk-warn);
+}
+.gk-shelter__coin {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--tone);
+}
+.gk-shelter__coin .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-shelter .gk-peek__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-shelter__name {
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+.gk-shelter__value {
+  flex-shrink: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  color: var(--tone);
+}
+.gk-shelter .gk-peek__rule {
+  display: grid;
+  gap: var(--gk-s1);
+  margin-right: 6px;
+}
+.gk-shelter__line[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+
+/* The part of a range we are not sure of: the same hue, striped. */
+.gk-bar__reach {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--fill) 55%, transparent) 0 3px, color-mix(in srgb, var(--fill) 20%, transparent) 3px 6px);
+  transition: width var(--gk-settle) var(--gk-ease);
+}
+.gk-bar__unknown {
+  position: absolute;
+  inset: 0 0 0 auto;
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--gk-hostile) 50%, transparent) 0 3px, transparent 3px 7px);
+}
+.gk-bar__mark {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  background: var(--gk-ink);
+  box-shadow: 0 0 0 1px var(--gk-outline);
+}
+.gk-bar__band {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+    border: 1.5px solid var(--gk-alloy);
+  background: color-mix(in srgb, var(--gk-alloy) 22%, transparent);
+}
+
+.gk-range {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: var(--gk-s2);
+  row-gap: 6px;
+}
+.gk-range__side {
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.gk-range__value {
+  font-size: var(--gk-t-lead);
+  text-align: right;
+  min-width: 64px;
+}
+.gk-spend__value {
+  font-size: var(--gk-t-lead);
+}
+.gk-range .gk-bar {
+  height: 14px;
+}
+
+/* ── readouts ──────────────────────────────────────────────────────────────── */
+
+.gk-stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s2) var(--gk-s2) 6px;
+  min-width: 0;
+}
+.gk-stat__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  color: var(--gk-info);
+}
+.gk-stat__icon img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.gk-stat__body {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.gk-stat__value {
+  font-size: var(--gk-t-number);
+  white-space: nowrap;
+}
+.gk-stat__sub {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+  /* A narrow plaque wraps its note; an ellipsis would hide the part that matters ("1 / 1"). */
+  line-height: 1.3;
+}
+.gk-stat--warn .gk-stat__value { color: var(--gk-warn); }
+.gk-stat--hostile .gk-stat__value { color: var(--gk-hostile); }
+.gk-stat--good .gk-stat__value { color: var(--gk-good); }
+
+/* Resource bar across the top: the art overlaps the pill, as games draw it. */
+.gk-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--gk-gutter);
+}
+.gk-res {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  height: 38px;
+  padding: 0 4px 5px 24px;
+  margin-left: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--gk-metal-shadow) 90%, transparent), 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-res__art {
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px var(--gk-outline));
+}
+.gk-res__amount {
+  font-size: var(--gk-t-lead);
+  white-space: nowrap;
+  color: var(--gk-ink);
+}
+.gk-res__store {
+  position: absolute;
+  left: 24px;
+  right: 10px;
+  bottom: 3px;
+  height: 3px;
+    background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
+  overflow: hidden;
+}
+.gk-res__store > span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+.gk-res__rate {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--gk-good);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-res--full .gk-res__amount {
+  color: var(--gk-warn);
+}
+
+/* A timer ring with its time beside it. */
+.gk-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gk-timer__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+  color: var(--gk-info);
+}
+.gk-timer__ring svg:not(.gk-glyph) {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.gk-timer__ring circle {
+  fill: none;
+  stroke-width: 3.5px;
+}
+.gk-timer__track {
+  stroke: color-mix(in srgb, var(--gk-ink) 14%, transparent);
+}
+.gk-timer__arc {
+  stroke: var(--gk-info);
+  stroke-linecap: round;
+  /* The ring ticks each second like a clock hand: a quick step, not a crawl (standard 2.6). */
+  transition: stroke-dashoffset var(--gk-quick) var(--gk-ease);
+}
+.gk-timer__time {
+  font-size: var(--gk-t-lead);
+}
+
+/* ── a slot of work: ring around the picture, name and time beside it ──────── */
+
+.gk-qslot {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 4px 5px 4px 3px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) linear;
+}
+.gk-qslot:active {
+  transform: translateY(1px) scale(0.98);
+}
+.gk-qslot__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gk-outline) 70%, transparent) 55%, transparent 72%);
+}
+.gk-qslot__ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.gk-qslot__ring circle {
+  fill: none;
+  stroke-width: 4px;
+}
+.gk-qslot__track {
+  stroke: color-mix(in srgb, var(--gk-ink) 14%, transparent);
+}
+.gk-qslot__arc {
+  stroke: var(--gk-good);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--gk-quick) var(--gk-ease);
+}
+.gk-qslot__art {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+/* a batch is counted on the ring's corner, so the name keeps the width beside it */
+.gk-qslot__count {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  z-index: 1;
+  padding: 0 3px;
+  border: 1px solid var(--gk-outline);
+  border-radius: 3px;
+  background: var(--gk-metal-1);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  line-height: 1.15;
+  color: var(--gk-ink);
+}
+/* the head is at work: a slow light runs round its ring, so a running slot never sits still */
+.gk-qslot[data-state='running'] .gk-qslot__ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 80%, color-mix(in srgb, var(--gk-good) 55%, transparent) 96%, transparent 100%);
+  mask: radial-gradient(circle, transparent 11px, var(--gk-ink) 12px 17px, transparent 17px);
+  animation: gk-spin 2.8s linear infinite;
+  pointer-events: none;
+}
+.gk-qslot__text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.gk-qslot__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  line-height: 1.2;
+}
+.gk-qslot__left {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  color: var(--gk-ink-2);
+}
+.gk-qslot__left .gk-glyph {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+.gk-qslot__time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-qslot[data-state='running'] .gk-qslot__left {
+  color: var(--gk-ink);
+}
+/* behind the head: no clock runs, so the picture dims and the word takes the warning colour */
+.gk-qslot[data-state='waiting'] .gk-qslot__left {
+  color: var(--gk-warn);
+}
+/* a vacation stops the clock: what was built stays drawn, in grey */
+.gk-qslot[data-state='paused'] .gk-qslot__arc {
+  stroke: var(--gk-ink-3);
+}
+.gk-qslot:is([data-state='waiting'], [data-state='paused'], [data-state='staged']) .gk-qslot__art {
+  opacity: 0.6;
+  filter: saturate(0.4);
+}
+/* a 320 px phone: a smaller ring buys the time its full width */
+@media (max-width: 339px) {
+  .gk-qslot {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px 3px 4px 2px;
+  }
+  .gk-qslot__ring {
+    width: 30px;
+    height: 30px;
+  }
+  .gk-qslot__art {
+    width: 21px;
+    height: 21px;
+  }
+  .gk-qslot[data-state='running'] .gk-qslot__ring::after {
+    mask: radial-gradient(circle, transparent 10px, var(--gk-ink) 11px 15px, transparent 15px);
+  }
+}
+.gk-qslot--free {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--gk-outline) 35%, transparent);
+  color: var(--gk-ink-3);
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  grid-template-columns: 1fr;
+  cursor: default;
+}
+.gk-qslot--free:active {
+  transform: none;
+}
+
+/* a lane: its name over its slots, three to a row */
+.gk-lane {
+  display: grid;
+  gap: 4px;
+}
+.gk-lane__slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+/* nothing building: one line, the capacity still said */
+.gk-queues-idle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-queues-idle .gk-tag__rule {
+  flex: 1;
+}
+.gk-queues-idle__what {
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+
+/* ── what a thing costs: resources as pictures, the short one marked, the time at the end ── */
+
+.gk-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  line-height: 1.2;
+  color: var(--gk-ink);
+}
+.gk-cost__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.gk-cost__part img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+/* what the store cannot pay yet: the warning colour and a dotted line, never colour alone */
+.gk-cost__part[data-short] {
+  color: var(--gk-warn);
+  text-decoration: underline dotted 1.5px;
+  text-underline-offset: 3px;
+}
+.gk-cost__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  color: var(--gk-ink-2);
+}
+.gk-cost__time .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── a building card: the scene, its level on it, the name whole, what it becomes, the price ── */
+
+.gk-bcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  transition: transform var(--gk-press) linear;
+}
+.gk-bcard:has(> .gk-bcard__open:active) {
+  transform: translateY(1px) scale(0.985);
+}
+/* the whole card opens its sheet */
+.gk-bcard__open {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-bcard__open:active {
+  background: color-mix(in srgb, var(--gk-ink) 7%, transparent);
+}
+.gk-bcard__open:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-bcard__art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  height: 84px;
+  background: radial-gradient(60% 60% at 50% 45%, color-mix(in srgb, var(--gk-tint) 16%, transparent), transparent 75%);
+}
+.gk-bcard__level {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 1;
+  display: inline-flex;
+}
+.gk-bcard__level .gk-level {
+  min-width: 26px;
+  height: 26px;
+  font-size: var(--gk-t-small);
+}
+.gk-bcard[data-flash] .gk-bcard__level {
+  animation: gk-bump var(--gk-settle) var(--gk-pop);
+}
+.gk-bcard__lock {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__lock .gk-glyph {
+  width: 30px;
+  height: 30px;
+}
+.gk-bcard__fault {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  color: var(--gk-ink-2);
+  pointer-events: none;
+}
+.gk-bcard__fault .gk-glyph {
+  width: 20px;
+  height: 20px;
+}
+/* a broken building: a grey wash and the mark, never red — red is someone attacking you */
+.gk-bcard[data-faulty] .gk-bcard__copy {
+  background-image: linear-gradient(0deg, color-mix(in srgb, var(--gk-ink) 6%, transparent), transparent);
+}
+.gk-bcard__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 8px;
+  pointer-events: none;
+}
+.gk-bcard__head {
+  display: grid;
+  gap: 1px;
+}
+.gk-bcard__name {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-bcard__aside,
+.gk-bcard__tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.25;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__note,
+.gk-bcard__gain,
+.gk-bcard__wait {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-bcard__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.gk-bcard__note .gk-glyph {
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+}
+.gk-bcard__note[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-bcard__note[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-bcard__gain-label {
+  color: var(--gk-ink-2);
+}
+/* each value is one box: "Sv. 6" never splits, a long one wraps inside itself */
+.gk-bcard__gain .gk-num {
+  display: inline-block;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-bcard__to {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+}
+.gk-bcard__becomes {
+  flex-shrink: 0;
+  margin: 0 3px;
+  color: var(--gk-ink-3);
+}
+.gk-bcard__gain .gk-bcard__next {
+  color: var(--gk-good);
+}
+/* a lock is a door: the reason and an arrow, 44 px to hit, straight to what opens it */
+.gk-bcard__door {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  margin: -6px -8px;
+  padding: 6px 8px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  color: var(--gk-warn);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) linear;
+}
+.gk-bcard__door:active {
+  transform: translateX(2px);
+}
+.gk-bcard__door .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-bcard__price {
+  margin-top: auto;
+  padding-top: 2px;
+}
+/* short of the price: when the store will have it, at today's flow */
+.gk-bcard__wait {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-warn);
+}
+.gk-bcard__wait .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-bcard__act {
+  margin-top: 4px;
+  pointer-events: auto;
+}
+/* pointed at by the tutorial or a link: the own-colour edge, and a slow breath of light */
+.gk-bcard[data-highlighted] {
+  border-color: color-mix(in srgb, var(--gk-self) 75%, transparent);
+  box-shadow: 0 2px 0 var(--gk-outline), 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent), 0 0 18px color-mix(in srgb, var(--gk-self) 30%, transparent);
+}
+/* the card the player is led to breathes in the own colour until it is pressed */
+.gk-bcard[data-highlighted]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--gk-self), inset 0 0 22px color-mix(in srgb, var(--gk-self) 40%, transparent);
+  animation: gk-card-breathe 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes gk-card-breathe {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+/* an order just landed: a light runs across the card once */
+.gk-bcard[data-flash]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--gk-self) 34%, transparent) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: gk-card-sweep 700ms var(--gk-ease) forwards;
+  pointer-events: none;
+}
+@keyframes gk-card-sweep {
+  to { transform: translateX(120%); }
+}
+
+/* ── the item sheet: what one more level buys (stage 4.1) ───────────────────── */
+
+/* the hero: what stands, and the gain the next level buys, big */
+.gk-ihero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: 10px 12px 10px 8px;
+}
+.gk-ihero__art {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px var(--gk-outline));
+  animation: gk-float 5s ease-in-out infinite;
+}
+.gk-ihero__value {
+  margin-top: 3px;
+  font-size: var(--gk-t-number);
+  line-height: 1.15;
+  color: var(--gk-ink);
+}
+.gk-ihero__arrow,
+.gk-ihero__dim {
+  color: var(--gk-ink-3);
+}
+.gk-ihero__next {
+  color: var(--gk-good);
+}
+.gk-ihero__line {
+  margin-top: 4px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-ihero__line .gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-ihero__line .gk-ihero__next {
+  color: var(--gk-good);
+}
+/* the satellite's orbit: what is up there, the slot this would take, the shut ones */
+.gk-orbit {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.gk-orbit__ring {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid color-mix(in srgb, var(--gk-info) 40%, transparent);
+  border-radius: 50%;
+}
+.gk-orbit__self {
+  position: absolute;
+  inset: 0;
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  object-fit: contain;
+  animation: gk-float 5s ease-in-out infinite;
+}
+.gk-orbit__socket {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 50%;
+  background: var(--gk-metal-3);
+  color: var(--gk-ink-3);
+  transform: translate(-50%, -50%);
+}
+.gk-orbit__socket img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-orbit__socket .gk-glyph {
+  width: 11px;
+  height: 11px;
+}
+.gk-orbit__socket[data-socket='self'] {
+  border-color: var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 18%, var(--gk-metal-3));
+}
+.gk-orbit__socket[data-socket='taken'] {
+  border-color: color-mix(in srgb, var(--gk-self) 50%, var(--gk-metal-edge));
+}
+.gk-orbit__socket[data-socket='target'] {
+  border: 1px dashed var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 10%, var(--gk-metal-3));
+  animation: gk-card-breathe 2.4s ease-in-out infinite;
+}
+.gk-orbit__socket[data-socket='free'] {
+  border-color: color-mix(in srgb, var(--gk-ink) 30%, var(--gk-metal-edge));
+}
+/* the role in one line; the rule behind it one press deeper */
+.gk-iabout {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-iabout__role {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-iabout__how {
+  flex-shrink: 0;
+}
+.gk-iabout__how .gk-chip {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.gk-iabout__how[aria-expanded='true'] .gk-chip {
+  border-color: var(--gk-self-lo);
+  color: var(--gk-self);
+}
+.gk-iabout__detail {
+  padding: 8px 10px;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+/* a line of state: a mark and a sentence, in the tone that says what kind */
+.gk-inote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-inote .gk-glyph {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.gk-inote[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-inote[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-inote--plate {
+  align-items: center;
+  justify-content: center;
+  min-height: var(--gk-hit);
+  padding: 6px 10px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 80%, transparent);
+  font-weight: 600;
+}
+.gk-inote--plate[data-tone='self'] {
+  border-color: color-mix(in srgb, var(--gk-self) 40%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 10%, transparent);
+}
+/* the ladder: the level being sold lit, the two beyond it quieter */
+.gk-ladder {
+  display: grid;
+}
+.gk-ladder__rung {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 7px 10px;
+  opacity: 0.72;
+}
+.gk-ladder__rung + .gk-ladder__rung {
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+}
+.gk-ladder__rung[data-first] {
+  opacity: 1;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 12%, transparent), transparent 70%);
+}
+.gk-ladder__level {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-ladder__rung[data-first] .gk-ladder__level {
+  color: var(--gk-self);
+}
+.gk-ladder__value {
+  min-width: 0;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink);
+}
+.gk-ladder__value .gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+}
+.gk-ladder__label {
+  color: var(--gk-ink-2);
+}
+.gk-ladder__unlock {
+  grid-column: 2 / -1;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+/* where the look next changes: the anticipation, small and lit */
+.gk-ilook {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-ilook img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--gk-self) 35%, transparent));
+}
+/* the Core's levels against the world's tiers: one line now, the whole table one press deeper */
+.gk-tiers {
+  display: grid;
+  padding: 0 10px 8px;
+}
+.gk-tiers__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  width: 100%;
+  text-align: left;
+  color: var(--gk-info);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-tiers__toggle .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+.gk-tiers__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-tiers__now {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink);
+}
+.gk-tiers__body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.gk-tiers__rule {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-tiers__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--gk-t-small);
+}
+.gk-tiers__table th {
+  padding-bottom: 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  text-align: left;
+  color: var(--gk-ink-3);
+}
+.gk-tiers__table :is(th, td):last-child {
+  text-align: right;
+}
+.gk-tiers__table td {
+  padding: 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+  color: var(--gk-ink-2);
+}
+.gk-tiers__table td.gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+}
+.gk-tiers__table tr[aria-current='true'] td {
+  background: color-mix(in srgb, var(--gk-self) 12%, transparent);
+  color: var(--gk-self);
+}
+/* a requirement as a door on the foot: warn on steel, never an alarm */
+.gk-btn--door {
+  color: var(--gk-warn);
+}
+/* how far a price is: the part held in the resource's colour, the missing part hatched */
+.gk-need {
+  display: grid;
+  gap: 4px;
+}
+.gk-need__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+}
+.gk-need__have {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gk-ink);
+}
+.gk-need__have img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-need__of {
+  color: var(--gk-ink-3);
+}
+.gk-need__short {
+  color: var(--gk-warn);
+}
+.gk-need__bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--gk-outline);
+  border-radius: 2px;
+  background: var(--gk-metal-3);
+}
+.gk-need__fill {
+  height: 100%;
+  background: linear-gradient(180deg, var(--fill-hi), var(--fill) 50%, var(--fill-lo));
+}
+.gk-need__gap {
+  height: 100%;
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-warn) 55%, transparent) 0 3px, transparent 3px 6px);
+}
+
+/* ── banners, peeks, empty, coach ──────────────────────────────────────────── */
+
+.gk-banner {
+  --tone: var(--gk-info);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s2) var(--gk-s2) var(--gk-s3);
+  border-left: 2px solid var(--tone);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tone) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-banner__icon {
+  font-size: 20px;
+  color: var(--tone);
+}
+.gk-banner__title {
+  font-weight: 800;
+  font-size: var(--gk-t-body);
+  line-height: 1.25;
+}
+.gk-banner__body {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+  line-height: 1.35;
+}
+.gk-banner--good { --tone: var(--gk-good); }
+.gk-banner--warn { --tone: var(--gk-warn); }
+.gk-banner--hostile { --tone: var(--gk-hostile); }
+.gk-banner--strip {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-radius: var(--gk-r-sm);
+}
+.gk-banner--toast {
+  border-radius: var(--gk-r-md);
+  box-shadow: 0 10px 24px -8px var(--gk-outline);
+  animation: gk-drop var(--gk-settle) var(--gk-pop);
+}
+@keyframes gk-drop {
+  0% { transform: translateY(-16px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.gk-peek__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-height: var(--gk-hit);
+}
+.gk-peek__fact {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+}
+.gk-peek__rule {
+  margin: 0 0 var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+  animation: gk-open var(--gk-quick) var(--gk-ease);
+}
+@keyframes gk-open {
+  0% { transform: translateY(-4px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* a surface still arriving: a lamp warming, and what is coming */
+.gk-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s5) var(--gk-s2);
+}
+.gk-waiting__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gk-info);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--gk-info) 80%, transparent);
+  animation: gk-warm 1.6s ease-in-out infinite;
+}
+@keyframes gk-warm {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+/* a surface that could not be read: what failed, and the one move that can change it */
+.gk-unreachable {
+  display: grid;
+  justify-items: start;
+  gap: var(--gk-s3);
+  padding: var(--gk-s5) var(--gk-s2);
+}
+.gk-unreachable .gk-banner {
+  width: 100%;
+}
+.gk-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s5) var(--gk-s4);
+  text-align: center;
+}
+.gk-empty__art {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px var(--gk-outline));
+  animation: gk-float 4s ease-in-out infinite;
+}
+@keyframes gk-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.gk-empty__title {
+  font-size: var(--gk-t-title);
+}
+.gk-empty__body {
+  max-width: 260px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+
+.gk-coach {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+.gk-coach__ring {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 3px solid var(--gk-warn);
+  animation: gk-ping 1.4s var(--gk-ease) infinite;
+}
+@keyframes gk-ping {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.gk-coach__hand {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin: 2px 0 0 -6px;
+  animation: gk-tap 1.4s var(--gk-ease) infinite;
+  filter: drop-shadow(0 4px 4px var(--gk-outline));
+}
+@keyframes gk-tap {
+  0%, 100% { transform: translate(6px, 8px); }
+  45% { transform: translate(0, 0) scale(0.92); }
+}
+.gk-coach__bubble {
+  position: absolute;
+  width: max-content;
+  max-width: 220px;
+  padding: var(--gk-s2) var(--gk-s3);
+  border-radius: var(--gk-r-md);
+  border: 2px solid var(--gk-warn);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 8px 16px -6px var(--gk-outline);
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  line-height: 1.35;
+  animation: gk-drop var(--gk-settle) var(--gk-pop);
+}
+.gk-coach__step {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gk-warn);
+}
+
+/* ── sheet frame and dialog ────────────────────────────────────────────────── */
+
+.gk-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--gk-r-lg) var(--gk-r-lg) 0 0;
+  border: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+  border-bottom: 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-tint) 10%, transparent), transparent 90px),
+    linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 260px);
+  box-shadow: 0 -10px 30px -10px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-tint) 35%, transparent);
+}
+/* a card, and a dialog on a wide screen, floats: it closes on all four sides */
+.gk-sheet[data-placement='card'] {
+  border-radius: var(--gk-r-lg);
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+}
+@media (min-width: 700px) {
+  .gk-sheet[data-placement='dialog'] {
+    border-radius: var(--gk-r-lg);
+    border-bottom: 1px solid color-mix(in srgb, var(--gk-tint) 30%, var(--gk-metal-edge));
+  }
+}
+.gk-sheet__grab {
+  width: 36px;
+  height: 3px;
+  margin: 7px auto 2px;
+  background: color-mix(in srgb, var(--gk-ink) 22%, transparent);
+}
+.gk-sheet__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--gk-s3);
+  margin: 4px var(--gk-gutter) 0;
+  padding: 8px 4px 8px 10px;
+}
+.gk-sheet__head--back {
+  grid-template-columns: auto auto 1fr auto;
+}
+.gk-sheet__art {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px var(--gk-outline));
+}
+.gk-sheet__eyebrow {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gk-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-sheet__title {
+  font-size: var(--gk-t-head);
+  text-transform: uppercase;
+}
+.gk-sheet__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.gk-sheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* The last row scrolls clear of the foot's 22 px fade. */
+  padding: var(--gk-s3) var(--gk-gutter) var(--gk-s6);
+}
+.gk-sheet__foot {
+  position: relative;
+  padding: var(--gk-s2) var(--gk-gutter) calc(var(--gk-s2) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+}
+.gk-sheet__foot::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 22px;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-deep) 92%, transparent), transparent);
+  pointer-events: none;
+}
+
+.gk-scrim {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--gk-s4);
+  background: var(--gk-scrim);
+}
+.gk-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 330px;
+  padding: 34px var(--gk-s3) var(--gk-s3);
+  animation: gk-dialog var(--gk-panel) var(--gk-pop);
+}
+@keyframes gk-dialog {
+  0% { transform: scale(0.86); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.gk-dialog__ribbon {
+  --cut: 14px;
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  transform: translateX(-50%);
+  min-width: 210px;
+  padding: 8px 28px 9px;
+  text-align: center;
+  font-size: var(--gk-t-title);
+  text-transform: uppercase;
+  -webkit-text-stroke: 3px var(--gk-outline);
+  paint-order: stroke fill;
+  background: linear-gradient(180deg, var(--tone-hi), var(--tone-lo));
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 50%, 100% 100%, 0 100%, var(--cut) 50%);
+}
+.gk-dialog--good { --tone-hi: var(--gk-good); --tone-lo: var(--gk-good-lo); }
+.gk-dialog--hostile { --tone-hi: var(--gk-hostile); --tone-lo: var(--gk-hostile-lo); }
+.gk-dialog--info { --tone-hi: var(--gk-info); --tone-lo: var(--gk-steel); }
+.gk-rays {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 520px;
+  height: 520px;
+  margin: -260px 0 0 -260px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--gk-action-hi) 16%, transparent) 0 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle, var(--gk-ink) 0 18%, transparent 62%);
+  animation: gk-turn 24s linear infinite;
+  pointer-events: none;
+}
+@keyframes gk-turn {
+  to { transform: rotate(360deg); }
+}
+
+/* ── controls ──────────────────────────────────────────────────────────────── */
+
+.gk-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 6px 6px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-toggle__art {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.gk-toggle__words {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.gk-toggle__label {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+}
+/* The switch: a housing, a lever that throws, and a lamp. */
+.gk-switch {
+  position: relative;
+  width: 58px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 2px 5px var(--gk-outline), 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-switch__lamp {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gk-ink) 18%, var(--gk-glass));
+  transition: background var(--gk-quick) var(--gk-ease), box-shadow var(--gk-quick) var(--gk-ease);
+}
+.gk-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-outline);
+  background: radial-gradient(circle at 50% 30%, var(--gk-steel-hi), var(--gk-steel) 55%, var(--gk-steel-lo));
+  box-shadow: 0 2px 0 var(--gk-steel-lip), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent);
+  transform: translateX(0);
+  transition: transform var(--gk-quick) var(--gk-pop), width var(--gk-press) var(--gk-ease);
+}
+.gk-toggle:active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 7%, transparent), transparent 85%);
+}
+.gk-toggle:active .gk-switch__knob {
+  width: 32px;
+}
+.gk-switch__knob::after {
+  content: '';
+  position: absolute;
+  inset: 8px 11px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--gk-outline) 0 1px, transparent 1px 3px);
+  opacity: 0.6;
+}
+.gk-toggle[aria-checked='true'] .gk-switch__knob {
+  transform: translateX(26px);
+}
+.gk-toggle[aria-checked='true']:active .gk-switch__knob {
+  transform: translateX(20px);
+}
+.gk-toggle[aria-checked='true'] .gk-switch {
+  border-color: var(--gk-self-lip);
+  background: linear-gradient(180deg, var(--gk-self-lo), var(--gk-self) 70%, var(--gk-self-hi));
+  box-shadow: inset 0 2px 5px color-mix(in srgb, var(--gk-outline) 70%, transparent), 0 0 12px -3px var(--gk-self);
+}
+.gk-toggle[aria-checked='true'] .gk-switch__lamp {
+  background: var(--gk-ink);
+  box-shadow: 0 0 8px var(--gk-ink);
+}
+.gk-toggle[aria-checked='false'] .gk-switch__lamp {
+  left: auto;
+  right: 9px;
+}
+
+.gk-lever {
+  display: grid;
+  gap: 4px;
+}
+.gk-lever__track {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  height: var(--gk-hit);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 2px 5px var(--gk-outline);
+  /* Sideways drags are pointer events; a vertical swipe scrolls the sheet. */
+  touch-action: pan-y;
+}
+.gk-lever__handle {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--n));
+  border-radius: 9px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self) 45%, var(--gk-self-lo));
+  box-shadow: 0 3px 0 var(--gk-self-lip), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 55%, transparent);
+  transform: translateX(calc(100% * var(--i)));
+  transition: transform var(--gk-quick) var(--gk-pop);
+  pointer-events: none;
+}
+.gk-lever__stop {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: var(--gk-hit);
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink-3);
+  cursor: pointer;
+  transition: color var(--gk-quick) var(--gk-ease), scale var(--gk-press) var(--gk-ease);
+}
+.gk-lever__stop:active {
+  color: var(--gk-ink);
+  scale: 0.92;
+}
+.gk-lever__stop[aria-checked='true'] {
+  color: var(--gk-outline);
+}
+.gk-lever__stop:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -3px;
+  border-radius: 8px;
+}
+
+.gk-slider {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 2px;
+}
+.gk-slider__track {
+  position: relative;
+  height: var(--gk-hit);
+  /* Sideways drags are pointer events; a vertical swipe scrolls the sheet. */
+  touch-action: pan-y;
+  cursor: pointer;
+}
+.gk-slider__rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 1px;
+  border: 1px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 2px 3px var(--gk-outline);
+  overflow: hidden;
+}
+.gk-slider__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 40%, transparent) 0 30%, transparent 30%),
+    linear-gradient(180deg, var(--gk-self-hi), var(--gk-self) 50%, var(--gk-self-lo));
+}
+.gk-slider__knob {
+  position: absolute;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 3px;
+  border: 1px solid var(--gk-outline);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--gk-outline) 60%, transparent) 9px 10px, transparent 10px 13px) 0 8px / 100% 12px no-repeat,
+    linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel) 55%, var(--gk-steel-lo));
+  box-shadow: 0 3px 0 var(--gk-steel-lip), 0 0 0 2px color-mix(in srgb, var(--gk-self) 60%, transparent), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 45%, transparent);
+}
+.gk-slider__track:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.gk-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  /* equal plates; a long name wraps inside its plate, and a word too long for any
+     plate (a French "Renseignement") keeps its width and the row scrolls, never the page */
+  grid-auto-columns: minmax(min-content, 1fr);
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gk-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: var(--gk-hit);
+  padding: 0 6px;
+  border-radius: 2px;
+  line-height: 1.05;
+  text-align: center;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-tab[aria-selected='true'] {
+  color: var(--gk-ink);
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent 80%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}
+.gk-tab:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, var(--gk-metal-3), var(--gk-metal-2));
+  box-shadow: inset 0 2px 5px var(--gk-outline);
+}
+.gk-tab[aria-selected='true']:active {
+  box-shadow: inset 0 2px 5px var(--gk-outline), inset 0 -2px 0 var(--gk-self);
+}
+.gk-tab[data-locked] {
+  color: var(--gk-ink-3);
+}
+.gk-tab .gk-glyph {
+  font-size: 13px;
+}
+/* the count sits on the plate's corner, as games pin it, so the name keeps the width */
+.gk-tab .gk-dot {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+}
+.gk-tabs__status {
+  margin-top: 4px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+/* a picture of the place beside its name, in its own tone */
+.gk-tab__glyph {
+  display: inline-grid;
+}
+.gk-tab__glyph .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+/* something under the tab has stopped: a fact in the warning colour beside its name */
+.gk-tab__mark {
+  display: inline-grid;
+  color: var(--gk-warn);
+}
+/* a page's tabs held under the top bar while its rows scroll beneath: opaque, so no
+   row ghosts through */
+.gk-tabbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 6px 12px;
+  border-block: 1px solid var(--gk-metal-edge);
+  background: var(--gk-metal-3);
+}
+/* five plates on a phone: the same plate, set tighter so every tab is on screen */
+.gk-tabbar .gk-tab {
+  padding: 0 4px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.02em;
+}
+
+.gk-nav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: end;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--gk-tint) 22%, transparent), 0 -6px 16px -6px var(--gk-outline);
+}
+.gk-nav__item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: 1px;
+  min-height: 60px;
+  padding: 3px 2px 3px;
+  border: 0;
+  background: transparent;
+  color: var(--gk-ink-3);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-quick) var(--gk-pop);
+}
+/* Painted icons are drawn at 40 px or more (owner 2026-11-12); a painting turns to mud below. */
+.gk-nav__art {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: saturate(0.55) brightness(0.8) drop-shadow(0 2px 2px var(--gk-outline));
+  transition: transform var(--gk-quick) var(--gk-pop), filter var(--gk-quick) var(--gk-ease), scale var(--gk-press) var(--gk-ease);
+}
+.gk-nav__item:active {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 10%, transparent), transparent 75%);
+}
+.gk-nav__item:active .gk-nav__art {
+  scale: 0.88;
+}
+.gk-nav__label {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+.gk-nav__item[aria-current='page'] {
+  color: var(--gk-ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 20%, transparent), transparent 70%);
+  box-shadow: inset 0 2px 0 var(--gk-self);
+}
+.gk-nav__item[aria-current='page'] .gk-nav__art {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 3px 3px var(--gk-outline));
+}
+.gk-nav__item[data-locked] .gk-nav__art {
+  filter: grayscale(1) brightness(0.45);
+}
+.gk-nav__lock {
+  position: absolute;
+  top: 16px;
+  font-size: 16px;
+  color: var(--gk-ink-2);
+}
+.gk-nav__badge {
+  position: absolute;
+  top: 0;
+  right: 10%;
+}
+.gk-nav__status {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+}
+
+.gk-field {
+  display: grid;
+  gap: 4px;
+}
+.gk-field__input {
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s3);
+  border-radius: 10px;
+  border: 1px solid var(--gk-glass-edge);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 2px 4px var(--gk-outline);
+  font-family: var(--gk-font-text);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink);
+  transition: box-shadow var(--gk-quick) var(--gk-ease), border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-field__input::placeholder {
+  color: var(--gk-ink-3);
+}
+/* The rim lights under the thumb, before the keyboard opens. */
+.gk-field__input:active,
+.gk-field__input:focus {
+  outline: none;
+  border-color: var(--gk-self);
+  box-shadow: inset 0 2px 4px var(--gk-outline), 0 0 0 3px color-mix(in srgb, var(--gk-self) 30%, transparent);
+}
+
+/* ── list rows ─────────────────────────────────────────────────────────────── */
+
+.gk-row {
+  display: grid;
+  grid-template-columns: 34px 38px 1fr auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) linear;
+}
+.gk-row:active {
+  transform: translateY(1px) scale(0.995);
+}
+.gk-row[data-me] {
+  border-color: color-mix(in srgb, var(--gk-self) 70%, var(--gk-outline));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-rank {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink-2);
+}
+.gk-rank--medal {
+  clip-path: polygon(50% 0, 100% 24%, 100% 76%, 50% 100%, 0 76%, 0 24%);
+  color: var(--gk-outline);
+  text-shadow: none;
+}
+.gk-rank--1 { background: linear-gradient(180deg, var(--gk-gold), var(--gk-gold-lo)); }
+.gk-rank--2 { background: linear-gradient(180deg, var(--gk-silver), var(--gk-silver-lo)); }
+.gk-rank--3 { background: linear-gradient(180deg, var(--gk-bronze), var(--gk-bronze-lo)); }
+.gk-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
+  font-size: var(--gk-t-lead);
+}
+.gk-row__name {
+  display: block;
+  font-weight: 800;
+  font-size: var(--gk-t-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-row__value {
+  font-size: var(--gk-t-number);
+  text-align: right;
+}
+
+/* ── the ship card ─────────────────────────────────────────────────────────── */
+
+.gk-unit {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+  padding: 6px 6px 4px;
+  transition: box-shadow var(--gk-quick) var(--gk-ease), border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-unit__head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.gk-unit__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-lead);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-unit__home {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink-2);
+}
+.gk-unit__home .gk-glyph {
+  font-size: 12px;
+  color: var(--gk-ink-3);
+}
+.gk-unit__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  margin: 2px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: radial-gradient(ellipse 60% 45% at 50% 62%, color-mix(in srgb, var(--gk-tint) 22%, transparent), transparent 70%);
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+}
+.gk-unit__art {
+  width: 92%;
+  max-width: 132px;
+  height: 84px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 6px var(--gk-outline));
+  animation: gk-hover 5s ease-in-out infinite;
+  pointer-events: none;
+  transition: scale var(--gk-press) var(--gk-ease);
+}
+/* The ship gives under the thumb before the count moves (scale rides on the hover). */
+.gk-unit__stage:active .gk-unit__art {
+  scale: 0.92;
+}
+.gk-unit__art[data-nudge] {
+  animation: gk-nudge 220ms var(--gk-pop), gk-hover 5s ease-in-out 220ms infinite;
+}
+@keyframes gk-hover {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes gk-nudge {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-6px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+.gk-unit__mult {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+}
+.gk-unit__count {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+.gk-unit__minus {
+  position: absolute;
+  z-index: 1;
+  left: -2px;
+  top: 28px;
+}
+.gk-unit__foot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px;
+}
+.gk-unit__foot .gk-bar {
+  height: 8px;
+}
+.gk-unit__extra {
+  grid-column: 1 / -1;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  margin-top: -6px;
+  /* It tucks under the Max chip's 44 px hit area: a press there still reaches the chip. */
+  pointer-events: none;
+}
+.gk-unit[data-full] .gk-count {
+  background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self));
+}
+
+/* The bay: narrower, for a row the slider drives. */
+/* THE BAY: a narrow slot for the slider row. Top band: how it meets the target, the exact
+   multiplier (×0,625 has no room beside anything else). Then the ship with its class mark
+   pinned to the corner, the count with its share of the stock, and the name plate. */
+.gk-bay {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  /* Fills its cell: four bays share the row, 77 px each at 350, 69 at 320. */
+  min-width: 0;
+  flex-shrink: 0;
+  padding: 4px 4px 0;
+  overflow: hidden;
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gk-glass), var(--gk-glass-2));
+  box-shadow: inset 0 2px 6px var(--gk-outline);
+  color: inherit;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.gk-bay[aria-pressed='true'] {
+  border-color: var(--gk-self);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent), inset 0 2px 6px var(--gk-outline);
+}
+.gk-bay:active {
+  transform: translateY(1px);
+  border-color: color-mix(in srgb, var(--gk-self) 60%, var(--gk-glass-edge));
+}
+.gk-bay__band {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 22px;
+}
+.gk-bay__band .gk-mult {
+  padding: 1px 4px 1px 3px;
+  gap: 1px;
+}
+/* Under 340 px the band holds only the number; ×0,625 / ×1,6 and the colour still say which way. */
+@media (max-width: 340px) {
+  .gk-bay__band .gk-mult .gk-glyph { display: none; }
+}
+.gk-bay__ship {
+  position: relative;
+  display: grid;
+}
+/* a solid plate drawn over the picture, so the art's shadow never covers it */
+.gk-bay__ship .gk-emblem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+.gk-bay__art {
+  justify-self: center;
+  width: 100%;
+  max-width: 70px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px var(--gk-outline));
+}
+.gk-bay[aria-pressed='true'] .gk-bay__art {
+  filter: drop-shadow(0 4px 4px var(--gk-outline)) drop-shadow(0 0 7px color-mix(in srgb, var(--gk-self) 45%, transparent));
+}
+.gk-bay__tally {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+}
+.gk-bay__count {
+  font-size: var(--gk-t-head);
+}
+.gk-bay__of {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+/* How much of the stock at home goes, at a glance. */
+.gk-bay__share {
+  height: 3px;
+  margin: 1px 2px 0;
+  background: linear-gradient(90deg, var(--gk-self) var(--share), color-mix(in srgb, var(--gk-ink) 12%, transparent) var(--share));
+}
+.gk-bay__name {
+  margin: 3px -4px 0;
+  padding: 3px 0 4px;
+  border-top: 1px solid var(--gk-glass-edge);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gk-ink-2);
+}
+.gk-bay[aria-pressed='true'] .gk-bay__name {
+  border-top-color: var(--gk-self);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 30%, var(--gk-metal-2)), var(--gk-metal-3));
+  color: var(--gk-ink);
+}
+
+/* ── pills ─────────────────────────────────────────────────────────────────── */
+
+/* A short state beside a title: "Denk hedef", "Başkent · korunuyor". */
+.gk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 2px;
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gk-ink);
+  border: 1px solid color-mix(in srgb, var(--tone, var(--gk-steel-hi)) 70%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--gk-steel)) 16%, transparent);
+}
+.gk-pill .gk-glyph { color: var(--tone, var(--gk-ink-2)); }
+.gk-pill--warn { --tone: var(--gk-warn); }
+.gk-pill--self { --tone: var(--gk-self); }
+.gk-pill--hostile { --tone: var(--gk-hostile); }
+.gk-pill--good { --tone: var(--gk-good); }
+
+/* The language choice: a flag tile per language; the chosen one is lit and ticked. */
+.gk-langs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-lang {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  padding: 8px 4px 7px;
+  border: 0;
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 14%, transparent), 0 3px 0 var(--gk-metal-shadow);
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) var(--gk-ease);
+}
+.gk-lang:active { transform: translateY(2px) scale(0.97); }
+.gk-lang__flag {
+  width: 40px;
+  height: 41px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px var(--gk-outline));
+}
+.gk-lang__name {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-small);
+  line-height: 1.1;
+}
+.gk-lang[aria-checked='true'] {
+  color: var(--gk-ink);
+  background:
+    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--gk-self) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 0 0 2px var(--gk-self), 0 0 0 3.5px var(--gk-outline), 0 3px 0 var(--gk-metal-shadow);
+}
+.gk-lang__tick {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--gk-ink);
+  background: radial-gradient(circle at 50% 30%, var(--gk-self), var(--gk-self-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline);
+  animation: gk-pod-loot 260ms var(--gk-pop) both;
+}
+
+/* An effect: a coin of its colour with the mark, the change, the time left. */
+.gk-status {
+  --tone: var(--gk-info);
+  --tone-lo: var(--gk-steel);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px 0 2px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent);
+  white-space: nowrap;
+}
+.gk-status[data-tone='good'] { --tone: var(--gk-good); --tone-lo: var(--gk-good-lo); }
+.gk-status[data-tone='hostile'] { --tone: var(--gk-hostile); --tone-lo: var(--gk-hostile-lo); }
+.gk-status[data-tone='warn'] { --tone: var(--gk-warn); --tone-lo: var(--gk-action-lo); }
+.gk-status__coin {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--gk-ink);
+  background: radial-gradient(circle at 50% 30%, var(--tone), var(--tone-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 45%, transparent);
+}
+.gk-status__value {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-small);
+  color: var(--tone);
+}
+.gk-status__until {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+
+/* ── composed screens ──────────────────────────────────────────────────────── */
+
+/* A phone-width page over the galaxy; on a desktop it stays a phone column. */
+.gk-screen {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--gk-void);
+}
+
+/* The subject of the screen stands in the world behind the sheet. */
+.gk-scene__target {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  width: 300px;
+  height: 300px;
+  margin-left: -150px;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 40px color-mix(in srgb, var(--gk-tint) 30%, transparent));
+  animation: gk-float 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.gk-scene__target--centre {
+  top: 6%;
+  opacity: 0.55;
+}
+
+.gk-scene__sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100dvh - 120px);
+}
+.gk-scene__sheet--short {
+  height: calc(100dvh - 190px);
+}
+
+.gk-scene__toast {
+  position: absolute;
+  z-index: 6;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  animation: gk-drop var(--gk-settle) var(--gk-pop);
+}
+.gk-scene__toast--low {
+  top: 158px;
+}
+.gk-scene__flight .gk-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-scene__sheet--tall {
+  height: calc(100dvh - 28px);
+}
+
+/* The HUD page: resources on top, flights down the side, the world, the menu. */
+.gk-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.gk-scene__rail {
+  display: grid;
+  gap: 6px;
+  width: 236px;
+  padding: 4px 8px;
+}
+.gk-scene__flight {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+}
+.gk-scene__world {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding-bottom: 120px;
+}
+.gk-scene__planet {
+  width: 230px;
+  height: 230px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 36px color-mix(in srgb, var(--gk-self) 30%, transparent));
+  animation: gk-float 7s ease-in-out infinite;
+}
+.gk-scene__name {
+  font-size: var(--gk-t-title);
+  letter-spacing: 0.06em;
+}
+.gk-scene__nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* A ship a building will unlock: art in a glass well, class in the corner. */
+.gk-unlock {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 14px 2px 4px;
+  min-width: 0;
+}
+.gk-unlock__class {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+}
+.gk-unlock__art {
+  width: 44px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px var(--gk-outline));
+}
+.gk-unlock__name {
+  max-width: 100%;
+  /* A long name (ヴァイパー at 320 px) takes a second line rather than losing its end. */
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.15;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+
+/* One resource won: the art over the amount. */
+.gk-loot {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  font-size: var(--gk-t-lead);
+}
+.gk-loot__art {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 5px var(--gk-outline));
+}
+
+/* ── who someone is: Honor shield, clan stripe, clan tile ───────────────────── */
+
+.gk-insignia {
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px var(--gk-outline));
+}
+.gk-emblem-tile {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
+  box-shadow: 0 0 0 1.5px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 30%, transparent), 0 2px 3px var(--gk-outline);
+}
+.gk-emblem-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* a gloss over the cloth: the tile reads as a pressed metal badge, not a photo */
+.gk-emblem-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 18%, transparent), transparent 45%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-ink) 22%, transparent);
+  pointer-events: none;
+}
+.gk-emblem-tile__banner {
+  position: absolute;
+  width: 92%;
+  height: 92%;
+  color: var(--gk-steel);
+  stroke-width: 1px;
+}
+.gk-emblem-tile__tag {
+  position: relative;
+  margin-top: -6%;
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  /* Grows with its tile, never under the 12 px floor. */
+  font-size: max(var(--gk-t-floor), 0.3em);
+  letter-spacing: 0.02em;
+  color: var(--gk-ink);
+  -webkit-text-stroke: 2px var(--gk-outline);
+  paint-order: stroke fill;
+}
+
+/* ── the supply pod: hovers, winds up on a tap, blows open ────────────────── */
+
+.gk-pod {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s2);
+  /* headroom: the open lid stretches up out of the closed pod's frame */
+  --pod-top: 30px;
+  /* the hint's cedillas (Ç, Ş) keep clear of the clipping edge */
+  padding: var(--pod-top) 0 var(--gk-s1);
+  overflow: hidden;
+}
+.gk-pod__rays {
+  top: calc(var(--pod-top) + 84px);
+  width: 400px;
+  height: 400px;
+  margin: -200px 0 0 -200px;
+  opacity: 0;
+}
+.gk-pod__glow {
+  position: absolute;
+  top: calc(var(--pod-top) + 140px);
+  left: 50%;
+  width: 150px;
+  height: 30px;
+  margin-left: -75px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gk-action) 55%, transparent), transparent);
+  animation: gk-pod-breathe 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.gk-pod__body {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: gk-float 2.6s ease-in-out infinite;
+  transition: scale var(--gk-press) var(--gk-ease);
+}
+.gk-pod__body:active:not([aria-disabled='true']) { scale: 0.94; }
+.gk-pod__body:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 4px; }
+.gk-pod__body[aria-disabled='true'] { cursor: default; }
+.gk-pod__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 88%;
+  filter: drop-shadow(0 6px 8px var(--gk-outline));
+  pointer-events: none;
+}
+.gk-pod__art--open { opacity: 0; }
+.gk-pod__flash {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--gk-ink), color-mix(in srgb, var(--gk-action-hi) 70%, transparent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.gk-pod__hint {
+  font-size: var(--gk-t-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gk-action-hi);
+  animation: gk-pod-breathe 2.6s ease-in-out infinite;
+}
+.gk-pod__loot {
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s2);
+  width: 100%;
+  animation: gk-pod-loot 420ms var(--gk-pop) 120ms both;
+}
+
+/* wind-up: it shakes harder and squashes lower until the lid gives */
+.gk-pod[data-state='opening'] .gk-pod__body { animation: none; }
+.gk-pod[data-state='opening'] .gk-pod__art--closed { animation: gk-pod-windup 520ms ease-in both; }
+.gk-pod[data-state='opening'] .gk-pod__glow { animation: none; opacity: 1; scale: 1.25; transition: scale 520ms ease-in; }
+
+/* open: the lid is off, the pod stretches back, a flash and a turning burst of light */
+.gk-pod[data-state='open'] .gk-pod__art--closed { opacity: 0; }
+.gk-pod[data-state='open'] .gk-pod__art--open { opacity: 1; animation: gk-pod-pop 560ms var(--gk-pop) both; }
+.gk-pod[data-state='open'] .gk-pod__flash { animation: gk-pod-flash 520ms ease-out both; }
+.gk-pod[data-state='open'] .gk-pod__rays { opacity: 1; animation: gk-pod-rays 700ms var(--gk-ease) both, gk-turn 24s linear infinite; }
+
+@keyframes gk-pod-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes gk-pod-windup {
+  0% { transform: scale(1, 1) rotate(0); }
+  14% { transform: scale(1.04, 0.95) rotate(-3deg); }
+  28% { transform: scale(0.98, 1.03) rotate(3deg); }
+  44% { transform: scale(1.07, 0.92) rotate(-4deg); }
+  60% { transform: scale(0.97, 1.04) rotate(4deg); }
+  78% { transform: scale(1.1, 0.88) rotate(-2deg); }
+  100% { transform: scale(1.14, 0.84) rotate(0); }
+}
+@keyframes gk-pod-pop {
+  0% { transform: scale(1.14, 0.84); }
+  35% { transform: scale(0.9, 1.16) translateY(-10px); }
+  65% { transform: scale(1.05, 0.96); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes gk-pod-flash {
+  0% { opacity: 1; scale: 0.5; }
+  100% { opacity: 0; scale: 1.5; }
+}
+@keyframes gk-pod-rays {
+  0% { opacity: 0; scale: 0.3; }
+  100% { opacity: 1; scale: 1; }
+}
+@keyframes gk-pod-loot {
+  0% { opacity: 0; transform: translateY(14px) scale(0.6); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* The catalogue page. */
+.gk-catalog {
+  position: relative;
+  display: grid;
+  gap: var(--gk-s5);
+  padding: var(--gk-s4) var(--gk-gutter) 120px;
+}
+.gk-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+}
+.gk-swatch__chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent), 0 0 0 1px var(--gk-outline);
+}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GalaxyCanvas } from '../src/galaxy/GalaxyCanvas.js';
 import { PremiumSpaceGallery } from '../src/v2/gallery/PremiumSpaceGallery.js';
@@ -6,7 +6,7 @@ import { asteroidModelUrl } from '../src/galaxy/asteroidAppearance.js';
 import { ASTEROID_MODELS } from '../src/ui/assets.js';
 import { PremiumShipInspector } from '../src/galaxy/PremiumShipInspector.js';
 import type * as ShipInspectorModule from '../src/galaxy/PremiumShipInspector.js';
-import { cosmeticsInCategory } from '@astera/rules';
+import { cosmeticsInCategory, DEATH_STAR } from '@astera/rules';
 
 vi.mock('../src/galaxy/GalaxyCanvas.js', () => ({ GalaxyCanvas: vi.fn(() => null) }));
 vi.mock('../src/galaxy/PremiumShipInspector.js', async importOriginal => ({
@@ -171,6 +171,58 @@ describe('premium asset review gallery', () => {
       expect(scene().monuments).toHaveLength(0);
       expect(scene().asteroids).toHaveLength(0);
       expect(scene().wrecks).toHaveLength(0);
+    }
+  });
+
+  it('lets the raided world carry an Aegis dome, to review the raid\'s hits on it', () => {
+    render(<PremiumSpaceGallery />);
+    fireEvent.click(screen.getByRole('button', { name: 'Savaş' }));
+    expect(scene().planets[0]?.shielded).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Aegis kalkanı' }));
+    expect(scene().planets[0]?.shielded).toBe(true);
+    expect(scene().planets[0]?.intel).toBe('RESOLVED');
+  });
+
+  it('lets a prospector arrive in view and hears its full hold a second later, as in the game', () => {
+    vi.useFakeTimers();
+    try {
+      render(<PremiumSpaceGallery />);
+      fireEvent.click(screen.getByRole('button', { name: 'Madencilik' }));
+      const opened = Date.now();
+      const first = scene().runs[0];
+      expect(first?.status).toBe('outbound');
+      // It flies in after the scene opens, so the reviewer sees it reach the field and bite.
+      expect(first!.arriveAt.getTime() - opened).toBe(2500);
+      act(() => { vi.advanceTimersByTime(2500 + 999); });
+      expect(scene().runs[0]?.status).toBe('outbound');
+      act(() => { vi.advanceTimersByTime(1); });
+      const answered = scene().runs[0];
+      expect(answered?.status).toBe('returning');
+      expect((answered?.minedAlloy ?? 0) + (answered?.minedCrystal ?? 0)).toBeGreaterThan(0);
+      expect(answered?.arriveAt.getTime()).toBe(first?.arriveAt.getTime());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('turns the struck world to its EMP hour when the galaxy would hear of it, as in the game', () => {
+    vi.useFakeTimers();
+    try {
+      render(<PremiumSpaceGallery />);
+      fireEvent.click(screen.getByRole('button', { name: 'Stratejik çarpma' }));
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+      const landing = Date.now() + 1800;
+      // The game refetches the galaxy a second after an arrival (`ARRIVAL_SETTLE_OFFSETS`).
+      act(() => { vi.advanceTimersByTime(1800 + 999); });
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+      act(() => { vi.advanceTimersByTime(1); });
+      const state = scene().planets[0]?.state;
+      expect(state?.kind).toBe('EMP');
+      expect(state?.kind === 'EMP' ? state.until.getTime() : 0).toBe(landing + DEATH_STAR.empMinutes * 60_000);
+      fireEvent.click(screen.getByRole('button', { name: 'Tekrar oynat' }));
+      expect(scene().planets[0]?.state.kind).toBe('NORMAL');
+    } finally {
+      vi.useRealTimers();
     }
   });
 

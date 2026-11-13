@@ -11,6 +11,45 @@ function post(date: string, slug: string, title: Localized<string>, description:
   return { id: `updates.${date}-${slug}`, category: 'updates', slug: `${date}-${slug}`, title, description, updated: date, sections: l(en, tr), related };
 }
 
+const honorFairFights = post('2026-11-12', 'honor-fair-fights',
+  l('Honor now weighs the fight you actually took on', 'Honor artık gerçekten göze aldığın savaşı tartıyor'),
+  l('From 12 November your losses count only as far as the fight can pay, and a second raid on a much smaller commander within a day counts as bullying.', '12 Kasım’dan itibaren kayıpların savaşın getirebileceği kadar sayılır; çok daha küçük bir komutana bir gün içinde ikinci kez saldırmak zorbalıktır.'),
+  [
+    section('change', 'What changed',
+      'Honor rewards attacks that carry real risk. Three things change for every attack launched from 12 November:',
+      { kind: 'list', items: [
+        'Your losses count as far as the fight can pay. With the full return, every ship you lose costs Honor as before. With the half return, losses cost half. Where the navies are too far apart to earn anything, losing ships no longer costs Honor either.',
+        'Ships destroyed fighting other commanders leave the 24-hour peak at once. A commander who has just lost a fleet is no longer measured as if it still had it, and neither are you. Ships that leave your navy any other way, including losses to pirates and neutral worlds, still count for the rest of the day.',
+        'A lower-tier commander is a weaker target only when their navy is less than a third of yours, not half. Between 1.5 : 1 and 3 : 1 you now earn half Honor instead of a sanction.',
+      ] },
+      'One new limit comes with it: attacking a commander whose navy is less than a third of yours a second time within 24 hours counts as bullying at any tier. Against an equal or higher tier the first raid earns and costs nothing; the second reduces Honor, and each further return costs more.'),
+    section('example', 'A worked example',
+      'Suppose your navy is four times a same-tier rival’s. Your first raid destroys their defence and you lose a few ships: your Honor does not move. If you come back the same day, the harm you cause reduces your Honor. Wait a day, or pick a rival whose navy is at least a third of yours, and the fight counts normally again.'),
+    section('why', 'Why we changed it',
+      'Raids won at fair odds still showed negative Honor, because every lost ship was charged in full even when the fight could not pay anything. At the same time a strong commander could raid the same small commander again and again at no Honor cost. The new rules charge risk in proportion to what the fight can return and make repeated raids on much smaller commanders cost Honor.'),
+    section('what-it-means', 'What it means for you',
+      'Each launch freezes the rule it was sent under, so attacks already in flight and battles already fought keep their result; nobody’s past Honor moves. Defenders keep their existing bands, and defending never reduces Honor. Before you launch, the Honor card on the launch sheet tells you when the attack would be a second raid.',
+      'The [[guides.how-to-play|how to play guide]] explains how Honor sits next to Dominion, and [[combat.eligibility|attack eligibility]] covers who you may attack at all.'),
+  ],
+  [
+    section('change', 'Ne değişti?',
+      'Honor, gerçek risk taşıyan saldırıları ödüllendirir. 12 Kasım’dan itibaren gönderilen her saldırıda üç şey değişiyor:',
+      { kind: 'list', items: [
+        'Kayıpların, savaşın getirebileceği kadar sayılır. Tam karşılıkta kaybettiğin her gemi eskisi gibi Honor’a mal olur. Yarım karşılıkta kayıpların yarısı sayılır. Donanmalar arasındaki fark hiçbir şey kazandırmayacak kadar büyükse gemi kaybetmek de artık Honor düşürmez.',
+        'Başka komutanlarla savaşta yok edilen gemiler 24 saatlik en yüksek değerden hemen düşer. Az önce filosunu kaybetmiş bir komutan artık hâlâ o filoya sahipmiş gibi ölçülmez; sen de ölçülmezsin. Korsanlara ve tarafsız gezegenlere verilen kayıplar dahil, donanmandan başka bir yolla ayrılan gemiler günün geri kalanında sayılmaya devam eder.',
+        'Alt kademedeki bir komutan, donanması seninkinin yarısından değil üçte birinden azsa zayıf hedef sayılır. 1,5 : 1 ile 3 : 1 arasında artık ceza yerine yarım Honor kazanırsın.',
+      ] },
+      'Bununla birlikte yeni bir sınır geliyor: donanması seninkinin üçte birinden az olan bir komutana 24 saat içinde ikinci kez saldırmak, kademe fark etmeksizin zorbalık sayılır. Eşit veya üst kademeye karşı ilk akın ne kazandırır ne kaybettirir; ikincisi Honor’u azaltır ve her yeni tekrar daha fazla kaybettirir.'),
+    section('example', 'Örnekle',
+      'Donanmanın aynı kademedeki bir rakibinkinin dört katı olduğunu düşün. İlk akınında onun savunmasını yok ediyor, birkaç gemi kaybediyorsun: Honor’un değişmez. Aynı gün geri dönersen verdiğin zarar Honor’unu azaltır. Bir gün beklersen ya da donanması seninkinin en az üçte biri olan bir rakip seçersen savaş yeniden normal sayılır.'),
+    section('why', 'Neden değiştirdik?',
+      'Makul oranla kazanılan akınlar yine de eksi Honor yazıyordu; çünkü savaş hiçbir şey getiremese bile kaybedilen her gemi tam sayılıyordu. Aynı zamanda güçlü bir komutan aynı küçük komutana Honor bedeli ödemeden tekrar tekrar saldırabiliyordu. Yeni kurallar riski savaşın getirebileceği ölçüde sayıyor ve çok daha küçük komutanlara tekrarlanan akınları Honor’a mal ediyor.'),
+    section('what-it-means', 'Senin için anlamı',
+      'Her kalkış, gönderildiği kuralı dondurur; yoldaki saldırılar ve yapılmış savaşlar sonuçlarını korur, kimsenin geçmiş Honor puanı değişmez. Savunanlar mevcut bantlarını korur ve savunmak Honor’u hiçbir zaman azaltmaz. Göndermeden önce, gönderim ekranındaki Honor kartı saldırının ikinci akın olacağını söyler.',
+      '[[guides.how-to-play|Nasıl oynanır rehberi]] Honor’un Hâkimiyet’in yanındaki yerini, [[combat.eligibility|saldırı uygunluğu]] sayfası da kime saldırabileceğini anlatır.'),
+  ],
+  ['guides.how-to-play', 'combat.eligibility', 'season.dominion']);
+
 const honorBands = post('2026-11-09', 'honor-attack-bands',
   l('Fair fights now earn Honor at sensible odds', 'Dengeli savaşlar artık makul oranlarda Honor kazandırıyor'),
   l('Attacks launched since 9 November use wider Honor bands for each tier difference, so a fight you win at reasonable odds no longer costs you Honor.', '9 Kasım’dan itibaren gönderilen saldırılar her kademe farkı için daha geniş Honor bantları kullanıyor; makul oranla kazandığın bir savaş artık Honor kaybettirmiyor.'),
@@ -137,4 +176,4 @@ const combatV3 = post('2026-10-26', 'combat-v3-and-simulator',
   ],
   ['guides.battles-and-reports', 'guides.fleet-building', 'combat.model']);
 
-export const updateArticles: readonly WikiArticle[] = [honorBands, startingPackage, phoneAlerts, combatV3];
+export const updateArticles: readonly WikiArticle[] = [honorFairFights, honorBands,startingPackage, phoneAlerts, combatV3];

@@ -1,0 +1,16 @@
+{
+  "name": "@astera/ui-audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "node ../../tools/heavy.mjs --heap 3072 tsc --noEmit",
+    "test": "node ../../tools/heavy.mjs --heap 1024 vitest run --minWorkers=1 --maxWorkers=1",
+    "cli": "tsx src/cli.ts"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "^1.62.1",
+    "sharp": "0.35.3"
+  }
+}

@@ -1,6 +1,7 @@
-import { and, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
+import { HONOR_HISTORY_HOURS } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
-import { accounts, botProfiles, clanAidCommitments, clanMemberships, players, seasons } from '../db/schema.js';
+import { accounts, botProfiles, clanAidCommitments, clanMemberships, honorEvents, players, seasons } from '../db/schema.js';
 
 const RELATION_WINDOW = 7 * 86_400_000;
 
@@ -53,4 +54,27 @@ export async function readHonorRelations(db: Queryable, input: {
     return { a, b, related: recentClan || directAid };
   }));
   return { eligible, relations };
+}
+
+/** Table 33: the attacker/defender pairs that already met in a raid during the day before
+ * `at`, as `[a, b]` keys. Read from the Honor journal, so a rebuild sees what was frozen.
+ * A commander who only stood in somebody else's line was not the one raided. */
+export async function readRepeatRaids(db: Queryable, input: {
+  seasonId: string; attack: readonly string[]; defence: readonly string[]; at: Date; except?: string;
+}): Promise<Set<string>> {
+  const raids = await db.select({ evidence: honorEvents.evidence }).from(honorEvents).where(and(
+    eq(honorEvents.seasonId, input.seasonId), inArray(honorEvents.source, ['WORLD', 'CLAN_WAR']),
+    gt(honorEvents.at, new Date(input.at.getTime() - HONOR_HISTORY_HOURS * 3_600_000)), lte(honorEvents.at, input.at),
+    ...(input.except === undefined ? [] : [ne(honorEvents.sourceId, input.except)]),
+    or(...input.attack.map(id => sql`${honorEvents.evidence}->'attack' @> ${JSON.stringify([{ id }])}::jsonb`))));
+  const pairs = new Set<string>();
+  for (const { evidence } of raids) {
+    for (const a of input.attack) {
+      if (!evidence.attack.some(row => row.id === a)) continue;
+      for (const b of input.defence) {
+        if (evidence.selectedDefenders?.includes(b) && evidence.defence.some(row => row.id === b)) pairs.add(JSON.stringify([a, b]));
+      }
+    }
+  }
+  return pairs;
 }

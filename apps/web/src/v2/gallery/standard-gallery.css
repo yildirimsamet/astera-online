@@ -1,0 +1,64 @@
+/* ── the standard's decision page (gallery, stage 2.2–2.8). Never shipped to players. ── */
+
+/* A sample redrawn under the option picked: its own type tokens, hit size or gutter. */
+.gk-std__sample {
+  font-size: var(--gk-t-body);
+}
+.gk-std__sample[data-std-hits] button {
+  outline: 1px dashed var(--gk-warn);
+  outline-offset: 0;
+}
+.gk-std__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+/* Text over a bright world: bare, outlined and on a plate. */
+.gk-std__ground {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 16px 12px;
+  border-radius: var(--gk-r-md);
+  background-size: 170% auto;
+  background-position: 40% 45%;
+}
+.gk-std__plate {
+  padding: 2px 8px;
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-scrim);
+}
+/* Today's button: a thin frame that does nothing when pressed. */
+.gk-std__flat {
+  min-height: var(--gk-hit);
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gk-ink-2);
+  font: inherit;
+  font-size: 12px;
+}
+.gk-std__stage {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-height: 112px;
+}
+.gk-std__drawer {
+  width: 100%;
+  transform: translateY(18px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--std-ms) var(--gk-ease), opacity var(--std-ms) var(--gk-ease);
+}
+.gk-std__drawer[data-open] {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Full bleed, so the gutter is measured from the screen's edge. */
+.gk-std__gutter {
+  margin-inline: calc(-1 * var(--gk-gutter));
+  padding-inline: var(--std-gutter);
+}

@@ -180,6 +180,7 @@ import {
 } from './SeasonRecap.jsx';
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
+import { coreClocks } from '../galaxy/coreLevelUp.js';
 import {
   controlledWorldId,
   runForPlanetTarget,
@@ -502,6 +503,8 @@ export function GalaxyView({
   const settlement = useSettlement();
   const deathStar = useLaunchDeathStar();
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
+  // Own worlds' Core levels and queued upgrades: a finished one steps its world up on the map.
+  const cores = useMemo(() => coreClocks(worlds), [worlds]);
   // The clan mark on the disc needs to know whether there is a clan layer at all,
   // and whether anything is waiting inside it. Same read the menu row used.
   const clanBadge = useClanBadge();
@@ -1412,6 +1415,7 @@ export function GalaxyView({
         tradeShip={tradeShip}
         intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
+        cores={cores}
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
         {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}
@@ -2004,8 +2008,11 @@ export function GalaxyView({
           bleed
           detents={['full']}
           headerArt={ATMOSPHERE.baseWorld}
+          // Stage 4.1: the kit's head, the world's own tone, over the page's own art (owner 2026-10-27).
+          kit={{ tone: 'self' }}
           eyebrow={commander}
           title={planet.data.planet.name}
+          titleLang="en"
           onClose={() => {
             onPanel(null);
           }}

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui-audit calibration</title>
+<!--
+  Every element here is either a planted violation or a control the audit must leave alone.
+  The ids are what test/calibration.test.ts looks for; geometry is absolute so the expected
+  numbers can be worked out by hand.
+-->
+<style>
+  body { margin: 0; background: #000; color: #fff; font: 16px/1.4 sans-serif; }
+  .abs { position: absolute; margin: 0; }
+  button { appearance: none; border: 0; padding: 0; background: #222; color: #fff; font: inherit; }
+
+  #tiny { top: 10px; left: 10px; font-size: 9px; }
+  #upper { top: 30px; left: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+  #scaled { top: 50px; left: 10px; font-size: 12px; transform: scale(0.75); transform-origin: 0 0; }
+  #good-text { top: 70px; left: 10px; font-size: 16px; }
+  #low { top: 100px; left: 10px; width: 200px; height: 24px; background: linear-gradient(90deg, #fff, #666 60px); color: #777; font-size: 14px; }
+  #faded { top: 130px; left: 10px; color: rgba(255, 255, 255, 0.5); font-size: 14px; }
+  #trunc { top: 160px; left: 10px; width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  #clip { top: 180px; left: 100px; width: 100px; height: 12px; overflow: hidden; font-size: 12px; line-height: 16px; }
+  /* A rounded sheet clips its scroller; the last row is only scrolled out of view, not clipped. */
+  #sheet { top: 10px; left: 250px; width: 90px; height: 50px; overflow: hidden; border-radius: 8px; background: #111; }
+  #sheet-scroll { height: 50px; overflow-y: auto; }
+  #sheet-scroll p { margin: 0; height: 24px; font-size: 12px; line-height: 24px; }
+  #sheet-scroll #clip-in-scroller { height: 12px; overflow: hidden; line-height: 16px; width: 80px; }
+  /* Tight leading: the font's line box spills past the hiding box, the drawn letters do not. */
+  #tight-leading { top: 130px; left: 200px; width: 120px; height: 10px; overflow: hidden; font-size: 12px; line-height: 10px; }
+  /* A box shorter than the letters: their ink is cut. */
+  #half-cut { top: 150px; left: 200px; width: 120px; height: 5px; overflow: hidden; font-size: 12px; line-height: 5px; }
+  #buried { top: 200px; left: 260px; font-size: 14px; }
+  #lid { top: 195px; left: 250px; width: 100px; height: 30px; background: #333; }
+  /* A name only a screen reader hears (Tailwind's sr-only), laid over a visible label. */
+  #sr-host { top: 70px; left: 150px; font-size: 14px; }
+  .sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+  /* A badge's light rim touches the line box of its word but not the letters themselves. */
+  #inked { top: 266px; left: 10px; height: 12px; line-height: 12px; border-top: 2px solid #fff; border-bottom: 2px solid #fff; font-size: 14px; }
+  /* Light letters ringed by a dark halo on a light fill: WCAG 1.4.3 takes the halo as their ground. */
+  #halo { top: 100px; left: 222px; padding: 0 4px; background: #fff; color: #fff; -webkit-text-stroke: 3px #000; paint-order: stroke fill; font-size: 16px; }
+  /* A fixed bar hides the lower part of a word: only what shows above it is judged. */
+  #part-hidden { top: 165px; left: 222px; font-size: 14px; }
+  #part-lid { top: 175px; left: 215px; width: 80px; height: 12px; background: #fff; }
+  #small { top: 230px; left: 10px; width: 30px; height: 30px; }
+  #good-button { top: 230px; left: 80px; width: 120px; height: 48px; font-size: 16px; }
+  #good-button:active { background: #4af; }
+  /* Spacing inside a control or an inline chip is the control's own (standard 2.7): L2 leaves it out. */
+  #padded-control { top: 240px; left: 220px; width: 120px; height: 48px; padding: 7px; display: flex; gap: 6px; }
+  #padded-inner { display: flex; padding: 3px; gap: 6px; }
+  #chip { display: inline-flex; padding: 3px 7px; gap: 6px; }
+  #tight-a { top: 300px; left: 10px; width: 20px; height: 20px; }
+  #tight-b { top: 300px; left: 32px; width: 20px; height: 20px; }
+  #icon-only { top: 290px; left: 120px; width: 44px; height: 44px; }
+  #clickable-div { top: 350px; left: 10px; width: 100px; height: 40px; cursor: pointer; background: #222; }
+  #covered { top: 350px; left: 150px; width: 80px; height: 40px; }
+  #cover { top: 350px; left: 190px; width: 60px; height: 40px; background: #333; }
+  #disabled { top: 400px; left: 10px; width: 80px; height: 40px; }
+  #scene { top: 400px; left: 150px; width: 100px; height: 60px; background: #013; }
+  #backdrop { top: 400px; left: 260px; width: 80px; height: 50px; cursor: pointer; background: rgba(0, 0, 0, 0.4); }
+
+  #wide { top: 470px; left: 0; width: 400px; height: 10px; background: #123; }
+  #spaced { top: 490px; left: 10px; padding: 5px; background: #111; font-size: 14px; }
+  #hues { top: 520px; left: 10px; font-size: 14px; }
+  #slow { top: 550px; left: 10px; transition: opacity 0.6s; font-size: 14px; }
+  #blink { top: 570px; left: 10px; font-size: 14px; animation: blink 0.2s infinite; }
+  @keyframes blink { 50% { opacity: 0.2; } }
+  #feedback { top: 600px; left: 10px; width: 100px; height: 48px; }
+  #feedback:active { background: #4af; }
+  #nofeedback { top: 600px; left: 130px; width: 100px; height: 48px; }
+  #js-feedback { top: 600px; left: 250px; width: 90px; height: 48px; }
+  #js-feedback.pressed { background: #4af; }
+  #paragraph { top: 660px; left: 10px; width: 330px; font-size: 14px; }
+  #field { top: 740px; left: 10px; width: 200px; height: 32px; font-size: 14px; background: #fff; color: #000; border: 0; }
+  #field::placeholder { color: #bbb; }
+  /* A label beside its field names it; the field is the target (WCAG 2.5.8 "equivalent"). */
+  #field-label { top: 745px; left: 220px; font-size: 12px; }
+  /* A label that wraps a hidden checkbox is the only thing to press. */
+  #wrap-toggle { top: 292px; left: 200px; width: 120px; height: 44px; display: flex; align-items: center; }
+  #wrap-toggle input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+  <p class="abs" id="tiny">Küçük metin</p>
+  <p class="abs" id="upper">Büyük harfli üç kelime</p>
+  <p class="abs" id="scaled">Ölçeklenmiş metin</p>
+  <p class="abs" id="good-text">İyi metin</p>
+  <p class="abs" id="low">Zayıf kontrast</p>
+  <p class="abs" id="faded">Soluk metin</p>
+  <p class="abs" id="trunc">Çok uzun bir etiket kesiliyor</p>
+  <p class="abs" id="clip">İki satıra taşan metin</p>
+  <div class="abs" id="sheet"><div id="sheet-scroll">
+    <p id="clip-in-scroller">İki satıra taşan yazı</p>
+    <p id="scroll-row">Orta satır</p>
+    <p id="scroll-edge">Kenar satırı</p>
+  </div></div>
+  <p class="abs" id="tight-leading">Kısa metin</p>
+  <p class="abs" id="half-cut">Kısa metin</p>
+  <p class="abs" id="buried">Gömülü</p>
+  <div class="abs" id="lid">Kapak</div>
+  <p class="abs" id="inked">ABC</p>
+  <p class="abs" id="halo">Zafer</p>
+  <p class="abs" id="part-hidden">Yarım</p>
+  <div class="abs" id="part-lid"></div>
+  <p class="abs" id="sr-host">Hız artışı<span class="sr" id="sr-hidden">Ekran okuyucunun duyduğu ad</span></p>
+
+  <button class="abs" id="small">+</button>
+  <button class="abs" id="good-button">Tamam</button>
+  <button class="abs" id="padded-control"><span id="padded-inner">İç</span></button>
+  <button class="abs" id="tight-a">a</button>
+  <button class="abs" id="tight-b">b</button>
+  <button class="abs" id="icon-only" aria-label="Kapat"><svg viewBox="0 0 10 10" width="20" height="20"><path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" /></svg></button>
+  <div class="abs" id="clickable-div">Dokun</div>
+  <button class="abs" id="covered">Alt</button>
+  <div class="abs" id="cover"></div>
+  <button class="abs" id="disabled" disabled>Kapalı</button>
+  <canvas class="abs" id="scene" width="100" height="60"></canvas>
+  <div class="abs" id="backdrop"></div>
+
+  <div class="abs" id="wide"></div>
+  <div class="abs" id="spaced">Beş piksel</div>
+  <p class="abs" id="hues">
+    <span style="color:#e2412c">kırmızı</span>
+    <span style="color:#e8b020">sarı</span>
+    <span style="color:#3cb371">yeşil</span>
+    <span style="color:#3c78e6">mavi</span>
+    <span style="color:#b050e0">mor</span>
+    <span id="chip">çip</span>
+  </p>
+  <p class="abs" id="slow">Yavaş geçiş</p>
+  <p class="abs" id="blink">Yanıp sönen</p>
+  <button class="abs" id="feedback">Tepkili</button>
+  <button class="abs" id="nofeedback">Tepkisiz</button>
+  <button class="abs" id="js-feedback">Anında</button>
+  <p class="abs" id="paragraph">Filon yola çıktı. Varış iki saat sonra. Kalkan açık kalacak ve rakip seni göremeyecek.</p>
+  <input class="abs" id="field" placeholder="Komutan adı">
+  <label class="abs" id="field-label" for="field">Ad</label>
+  <label class="abs" id="wrap-toggle"><input type="checkbox">Bildirim</label>
+<script>
+  const js = document.getElementById('js-feedback');
+  js.addEventListener('pointerdown', () => js.classList.add('pressed'));
+  for (const type of ['pointerup', 'pointercancel']) js.addEventListener(type, () => js.classList.remove('pressed'));
+</script>
+</body>
+</html>
