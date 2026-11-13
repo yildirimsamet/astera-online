@@ -3,6 +3,7 @@ import { useClanBadge, useMining, useNotifications, usePending, usePlanet } from
 import { DOCK_TABS, dockBadges, isReportSignal, type DockTab } from '../../lib/dock.js';
 import { useNow } from '../../lib/time.js';
 import { forgetFresh, gateOf, rememberFresh } from '../../starter/gate.js';
+import { tabLockLine } from '../../starter/shipCopy.js';
 import { Dock } from '../hud/Dock.js';
 
 /**
@@ -40,6 +41,12 @@ export function HudDock({ active, onSelect, over = false, bar = false }: {
   });
   const gate = gateOf(planet.data?.vessel);
   const lockedKey = gate.lockedTabs.join(',');
+  // Each shut tab says what opens it, in place, when pressed (the shell's keys meet the same lock).
+  const locked: Partial<Record<DockTab, string>> = {};
+  for (const tab of gate.lockedTabs) {
+    const lock = gate.tabLock(tab);
+    if (lock) locked[tab] = tabLockLine(lock);
+  }
   const [fresh, setFresh] = useState<readonly DockTab[]>([]);
   useEffect(() => {
     if (!gate.aboard) return;
@@ -57,7 +64,7 @@ export function HudDock({ active, onSelect, over = false, bar = false }: {
       fresh={fresh}
       over={over}
       bar={bar}
-      locked={gate.lockedTabs}
+      locked={locked}
       {...(clan?.available === false && !planet.data?.vessel ? { disabled: ['clan'] } : {})}
     />
   );

@@ -147,23 +147,26 @@ describe('which tabs are new', () => {
 });
 
 describe('a locked tab on the dock', () => {
-  it('still answers a press, so that it can say why it is shut', () => {
+  /** G1-a (2026-11-14): the kit's bottom bar says why in place, over the dock, with the refusal's sound. */
+  it('still answers a press, and says why it is shut without opening', () => {
     const onSelect = vi.fn();
-    render(<Dock active="galaxy" badges={badges} onSelect={onSelect} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={onSelect} locked={{ clan: tabLockLine({ kind: 'mainGalaxy' }) }} />);
     const tab = screen.getByRole('button', { name: /clan/i });
     expect(tab).not.toBeDisabled();
     expect(tab).toHaveAttribute('data-locked');
-    fireEvent.click(tab);
-    expect(onSelect).toHaveBeenCalledWith('clan');
+    fireEvent.pointerDown(tab, { button: 0 });
+    fireEvent.click(tab, { detail: 1 });
+    expect(screen.getByRole('status')).toHaveTextContent(tabLockLine({ kind: 'mainGalaxy' }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
-  // Owner 2026-11-06: the padlock comes back. The tab still opens and says why; the lock says "not yet".
+  // Owner 2026-11-06: the padlock comes back. The tab still answers and says why; the lock says "not yet".
   it('wears a padlock, and says so aloud', () => {
-    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={{ clan: 'Shipyard 2' }} />);
     const tab = screen.getByRole('button', { name: /clan/i });
-    expect(tab.querySelector('[data-padlock]')).not.toBeNull();
+    expect(tab.querySelector('.gk-nav__lock')).not.toBeNull();
     expect(tab.getAttribute('aria-label')).toMatch(/locked/i);
-    expect(screen.getByRole('button', { name: /base/i }).querySelector('[data-padlock]')).toBeNull();
+    expect(screen.getByRole('button', { name: /base/i }).querySelector('.gk-nav__lock')).toBeNull();
   });
 
   it('lights a tab that has just opened, with a "New" mark', () => {
@@ -175,7 +178,7 @@ describe('a locked tab on the dock', () => {
   });
 
   it('marks only the locked ones', () => {
-    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={{ clan: 'Shipyard 2' }} />);
     expect(screen.getByRole('button', { name: /base/i })).not.toHaveAttribute('data-locked');
   });
 

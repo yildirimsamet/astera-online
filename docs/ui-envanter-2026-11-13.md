@@ -226,6 +226,35 @@ Faydası: galaksiye bir satır daha yer açılır, Mağaza tek yerden açılır.
 
 Taşımadan sonra dosya ölü kod listesine girer; silme owner onayıyla yapılır.
 
+### 3.6 G1 ilerleme
+
+**G1-a alt menü ✅ (2026-11-14).** Kitin `BottomNav` parçası oyunun alt menüsü oldu.
+
+Önce kite eklenenler (galeri: `ui-kit` "Alt menü" bölümü):
+- sessiz sayı (havadaki gemi, çelik renk);
+- uyarı noktası (onarılacak arıza);
+- iniş halkası;
+- "Yeni" ışıltısı;
+- devre dışı yer;
+- açık yere ikinci basış (`onReselect`);
+- saydam kip;
+- masaüstü sekme çubuğu ve tuşu.
+
+Davranış:
+- Kilitli sekme nedenini yerinde, reddetme sesiyle söyler. Klavye yine kabuğun tostuyla karşılanır.
+- Basışta sekme sesi ve hafif titreşim gelir.
+
+Kabuk artık alt menünün gerçek yüksekliğini yayınlar (69 px; `--v2-dock-h`), böylece sheet'ler menünün üstünde biter.
+
+Ölçüm (`out/ui-audit/g1a-2026-11-14/`, 6 dil × 3 boyut):
+- etiketler 12 px (önce 10 px);
+- kesilme yok (önce fr dar ekranda "Renseignement" kesiliyordu);
+- hedefler 53–99 × 64 px.
+
+Kit ölçümü (`reports/ui-audit/kit-2026-11-14.md`): 12 px altı yazı, 44 px altı hedef ve kontrast hatası 0.
+
+Yerel oyunda yeni bir komutanla beş sekmeye basıldı: sayfa açıkken menü metal zemin alıyor, açık sekme yanıyor. `Dock.tsx` eski dil izi 0.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

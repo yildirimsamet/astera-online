@@ -325,6 +325,22 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
 
 export interface NavItem extends TabItem {
   art?: string;
+  /** What waits behind the place, said to a reader after its name. */
+  said?: string;
+  /** A count that is a state, not news (craft in the air): quiet, never the red of news. */
+  tally?: number;
+  /** A gap to close behind the place (a fault to repair): a warning dot with no number. */
+  warn?: boolean;
+  /** 0…1 toward the next thing there (the next landing): a ring round the art. */
+  progress?: number | null;
+  /** Just opened: the place shines and wears this word until pressed. */
+  fresh?: string;
+  /** Keeps its place but does nothing (a season with no clan layer): the order never moves. */
+  disabled?: boolean;
+  /** The key that opens it; the desk bar shows it. */
+  shortcut?: string;
+  /** A lesson's handle on the place. */
+  guide?: string;
 }
 
 /** How long the bottom bar's "locked" word stays over the game. */
@@ -332,9 +348,24 @@ const REFUSED_MS = 2_500;
 
 /**
  * THE BOTTOM BAR: painted art for each place; the current one rises and glows.
- * A locked place shows its padlock and, pressed, says what opens it.
+ * A locked place shows its padlock and, pressed, says what opens it. Each place says
+ * what waits behind it without being opened: news in red, a state in a quiet count,
+ * a gap to close in a warning dot, the next landing in a ring.
+ *
+ * `clear` lets the galaxy through (owner, 2026-09-24: no ground while the scene is
+ * the page); `bar` sits the same places in a desk's top bar, each with its key.
+ * A press on the open place goes to `onReselect` (the galaxy's: fly home).
  */
-export function BottomNav({ label, items, value, onChange }: { label: string; items: readonly NavItem[]; value: string; onChange: (id: string) => void }) {
+export function BottomNav({ label, items, value, onChange, onReselect, clear = false, bar = false }: {
+  label: string;
+  items: readonly NavItem[];
+  /** The open place; null while a page from elsewhere is (the bell, the commander). */
+  value: string | null;
+  onChange: (id: string) => void;
+  onReselect?: (id: string) => void;
+  clear?: boolean;
+  bar?: boolean;
+}) {
   const [refused, setRefused] = useState<string | null>(null);
   // The word floats over the game: it says its piece and goes.
   useEffect(() => {
@@ -343,7 +374,12 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
     return () => { window.clearTimeout(gone); };
   }, [refused]);
   return (
-    <nav aria-label={label} className="gk gk-nav relative" {...OWN_SOUND}>
+    <nav
+      aria-label={label}
+      className={`gk gk-nav relative${bar ? ' gk-nav--bar' : ''}`}
+      {...(bar ? { 'data-bar': '' } : clear ? { 'data-clear': '' } : {})}
+      {...OWN_SOUND}
+    >
       {refused !== null && (
         <p role="status" className="gk-nav__status gk-banner gk-banner--warn gk-banner--toast">
           <span className="gk-banner__icon"><Glyph id="lock" /></span>
@@ -356,10 +392,14 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
           key={item.id}
           item={item}
           current={item.id === value}
+          bar={bar}
           onPress={() => {
             if (item.locked) { playSound('refuse'); haptic('warn'); setRefused(item.locked); return; }
             setRefused(null);
-            if (item.id !== value) { playSound('tab'); haptic('tap'); onChange(item.id); }
+            playSound('tab');
+            haptic('tap');
+            if (item.id === value) onReselect?.(item.id);
+            else onChange(item.id);
           }}
         />
       ))}
@@ -367,21 +407,43 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
   );
 }
 
-function NavButton({ item, current, onPress }: { item: NavItem; current: boolean; onPress: () => void }) {
+function NavButton({ item, current, bar, onPress }: { item: NavItem; current: boolean; bar: boolean; onPress: () => void }) {
   const own = useOwnPress(onPress);
+  const ring = item.progress ?? null;
+  const turn: CssVars = { '--turn': `${String(ring ?? 0)}turn` };
   return (
     <button
       type="button"
       className="gk-nav__item"
+      aria-label={item.said === undefined ? item.label : `${item.label} · ${item.said}`}
+      disabled={item.disabled}
+      {...(item.shortcut === undefined ? {} : { 'aria-keyshortcuts': item.shortcut })}
+      {...(item.guide === undefined ? {} : { 'data-guide': item.guide })}
       {...(current ? { 'aria-current': 'page' } : {})}
       {...(item.locked ? { 'data-locked': '' } : {})}
+      {...(item.fresh === undefined ? {} : { 'data-fresh': '' })}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
-      {item.art && <img className="gk-nav__art" src={item.art} alt="" />}
-      {item.locked && <span className="gk-nav__lock"><Glyph id="lock" /></span>}
-      {item.badge !== undefined && item.badge > 0 && <span className="gk-nav__badge"><Dot count={item.badge} /></span>}
+      <span className="gk-nav__pic">
+        {ring !== null && (
+          <span
+            data-ring=""
+            data-progress={String(Math.round(ring * 100) / 100)}
+            aria-hidden="true"
+            className="gk-nav__ring"
+            style={turn}
+          />
+        )}
+        {item.art && <img className="gk-nav__art" src={item.art} alt="" />}
+        {item.locked && <span className="gk-nav__lock"><Glyph id="lock" /></span>}
+        {item.badge !== undefined && item.badge > 0 && <span className="gk-nav__badge"><Dot count={item.badge} /></span>}
+        {item.tally !== undefined && item.tally > 0 && <span data-tally="" aria-hidden="true" className="gk-nav__tally gk-num">{item.tally > 99 ? '99+' : item.tally}</span>}
+        {item.warn && <span data-warn="" aria-hidden="true" className="gk-nav__warn" />}
+        {item.fresh !== undefined && <span aria-hidden="true" className="gk-nav__fresh">{item.fresh}</span>}
+      </span>
       <span className="gk-nav__label">{item.label}</span>
+      {bar && item.shortcut !== undefined && <kbd className="gk-nav__key gk-num">{item.shortcut}</kbd>}
     </button>
   );
 }

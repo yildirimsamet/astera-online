@@ -14,14 +14,27 @@ import { Dock } from '../../src/v2/hud/Dock.js';
 const quiet: DockBadges = { base: false, fleet: { airborne: 0, progress: null }, intel: 0, clan: 0 };
 
 describe('the dock', () => {
-  /** Owner, 2026-09-24: fully transparent while closed; the gradient only under an open page. */
+  /** Owner, 2026-09-24: see-through over the galaxy; its own ground only under an open page. */
   it('lets the galaxy through while no page is open, and backs itself when one is', () => {
     const { rerender } = render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} />);
-    const nav = screen.getByRole('navigation');
-    expect(nav).not.toHaveClass('bg-gradient-to-t');
-    expect(nav).not.toHaveClass('border-t');
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-clear');
     rerender(<Dock active="base" badges={quiet} onSelect={vi.fn()} over />);
-    expect(screen.getByRole('navigation')).toHaveClass('bg-gradient-to-t');
+    expect(screen.getByRole('navigation')).not.toHaveAttribute('data-clear');
+  });
+
+  /** G1-a (2026-11-14): the game's dock is the kit's bottom bar, painted art and all. */
+  it('is the kit\u2019s bottom bar, with a painting for each place', () => {
+    render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} />);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(nav).toHaveClass('gk-nav');
+    expect(nav.querySelectorAll('img.gk-nav__art')).toHaveLength(5);
+  });
+
+  /** The tutorial hand measures the dock's top, and a lesson points at a tab by its handle. */
+  it('keeps the handles the lessons find it by', () => {
+    const { container } = render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} />);
+    expect(container.querySelector('[data-dock]')).toContainElement(screen.getByRole('navigation'));
+    expect(screen.getByRole('button', { name: /Intel/ })).toHaveAttribute('data-guide', 'dock-intel');
   });
 
   it('names its five tabs in the one order', () => {
@@ -47,15 +60,14 @@ describe('the dock', () => {
 
   it('says nothing when nothing is waiting', () => {
     const { container } = render(<Dock active={null} badges={quiet} onSelect={vi.fn()} />);
-    expect(container.querySelector('[data-badge]')).toBeNull();
-    expect(container.querySelector('[data-ring]')).toBeNull();
+    expect(container.querySelector('.gk-dot, [data-tally], [data-warn], [data-ring]')).toBeNull();
   });
 
   it('dots the base and counts intel and clan', () => {
     render(<Dock active={null} badges={{ ...quiet, base: true, intel: 3, clan: 12 }} onSelect={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Base · Something to repair' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Base · Something to repair' }).querySelector('[data-warn]')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Intel · New reports: 3' })).toHaveTextContent('3');
-    expect(screen.getByRole('button', { name: 'Clan · Waiting for you: 12' })).toHaveTextContent('9+');
+    expect(screen.getByRole('button', { name: 'Clan · Waiting for you: 12' })).toHaveTextContent('12');
   });
 
   it('rings the fleet toward its next landing and counts what is up', () => {
@@ -96,9 +108,9 @@ describe('the dock as the desk tab bar', () => {
   });
 
   it('is never the see-through phone dock: it sits in the top bar, which has its own ground', () => {
-    render(<Dock active="base" badges={quiet} onSelect={vi.fn()} bar over />);
+    render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} bar />);
     const nav = screen.getByRole('navigation');
-    expect(nav).not.toHaveClass('bg-gradient-to-t');
+    expect(nav).not.toHaveAttribute('data-clear');
     expect(nav).toHaveAttribute('data-bar');
   });
 

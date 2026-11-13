@@ -2826,7 +2826,8 @@
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   align-items: end;
-  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  /* 1 + 2 + 64 + 2 = 69 px: the shell publishes it as --v2-dock-h, so sheets end above the bar */
+  padding: 2px 4px calc(2px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--gk-metal-edge);
   background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-3));
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--gk-tint) 22%, transparent), 0 -6px 16px -6px var(--gk-outline);
@@ -2883,20 +2884,144 @@
 }
 .gk-nav__lock {
   position: absolute;
-  top: 16px;
   font-size: 16px;
   color: var(--gk-ink-2);
 }
 .gk-nav__badge {
   position: absolute;
-  top: 0;
-  right: 10%;
+  top: -4px;
+  right: -10px;
 }
 .gk-nav__status {
   position: absolute;
   left: 8px;
   right: 8px;
   bottom: calc(100% + 6px);
+}
+.gk-nav__item:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* the art and everything that speaks for the place sits on one 44 px plate */
+.gk-nav__pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+}
+/* how far the next landing is: a ring that closes round the art */
+.gk-nav__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--gk-self) var(--turn), color-mix(in srgb, var(--gk-ink) 14%, transparent) 0);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 3px), var(--gk-ink) calc(100% - 2.5px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 3px), var(--gk-ink) calc(100% - 2.5px));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--gk-self) 55%, transparent));
+}
+/* a state, not news: steel, never the red dot */
+.gk-nav__tally {
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 2px solid var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-steel-hi), var(--gk-steel-lo));
+  color: var(--gk-ink);
+  font-size: var(--gk-t-floor);
+  line-height: 16px;
+  text-align: center;
+}
+/* a gap to close behind the place: the warning colour, with no number */
+.gk-nav__warn {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--gk-outline);
+  background: var(--gk-warn);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gk-warn) 70%, transparent);
+}
+/* just opened: a glow breathes under the art and the word sits on its shoulder */
+.gk-nav__item[data-fresh] .gk-nav__pic::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gk-self) 50%, transparent), transparent);
+  animation: gk-warm 1.6s ease-in-out infinite;
+}
+.gk-nav__item[data-fresh] .gk-nav__art {
+  filter: drop-shadow(0 2px 2px var(--gk-outline));
+}
+.gk-nav__fresh {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 1px 5px;
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-self);
+  color: var(--gk-deep);
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  text-transform: uppercase;
+  box-shadow: 0 0 8px var(--gk-self);
+}
+/* over the galaxy the scene shows through; only the words keep a shadow to read by */
+.gk-nav[data-clear] {
+  border-top-color: transparent;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-void) 55%, transparent), transparent);
+  box-shadow: none;
+}
+.gk-nav[data-clear] .gk-nav__label {
+  text-shadow: 0 1px 3px var(--gk-void), 0 0 6px var(--gk-void);
+}
+.gk-nav[data-clear] .gk-nav__item[aria-current='page'] {
+  background: radial-gradient(60% 70% at 50% 100%, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent);
+}
+/* on a desk the places sit side by side in the top bar, the art beside the name and the key after it */
+.gk-nav--bar {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+  padding: 0;
+  border-top: 0;
+  background: none;
+  box-shadow: none;
+}
+.gk-nav--bar .gk-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 0 10px;
+}
+.gk-nav--bar .gk-nav__item[aria-current='page'] {
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent 75%);
+}
+.gk-nav--bar .gk-nav__item:hover {
+  color: var(--gk-ink);
+}
+.gk-nav__key {
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: var(--gk-r-sm);
+  border: 1px solid var(--gk-metal-edge);
+  color: var(--gk-ink-3);
+  font-size: var(--gk-t-floor);
+  line-height: 16px;
+  text-align: center;
 }
 
 .gk-field {

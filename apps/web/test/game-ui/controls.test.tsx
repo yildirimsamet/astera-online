@@ -203,6 +203,94 @@ describe('tabs and the bottom bar', () => {
   });
 });
 
+/**
+ * THE GAME'S OWN BOTTOM BAR (G1-a, 2026-11-14): what the shell's dock said before it moved
+ * onto the kit \u2014 a place keeps saying what waits behind it, and the bar can stand
+ * see-through over the galaxy or sit in a desk's top bar.
+ */
+describe('the bottom bar, as the game\u2019s dock', () => {
+  const places = [{ id: 'galaxy', label: 'Galaxy' }, { id: 'base', label: 'Base' }, { id: 'fleet', label: 'Fleet' }];
+
+  it('hands a press on the open place to onReselect, never to onChange', () => {
+    const onChange = vi.fn();
+    const onReselect = vi.fn();
+    render(<BottomNav label="Main" items={places} value="galaxy" onChange={onChange} onReselect={onReselect} />);
+    press(screen.getByRole('button', { name: 'Galaxy' }));
+    expect(onReselect).toHaveBeenCalledWith('galaxy');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('marks no place while a page from elsewhere is open', () => {
+    render(<BottomNav label="Main" items={places} value={null} onChange={vi.fn()} />);
+    expect(screen.getAllByRole('button').filter((button) => button.hasAttribute('aria-current'))).toHaveLength(0);
+  });
+
+  it('says what waits behind a place after its name', () => {
+    render(<BottomNav label="Main" items={[{ id: 'intel', label: 'Intel', badge: 3, said: 'New reports: 3' }]} value={null} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Intel \u00b7 New reports: 3' })).toHaveTextContent('3');
+  });
+
+  it('counts a state quietly, apart from the red of news', () => {
+    const { container } = render(<BottomNav label="Main" items={[{ id: 'fleet', label: 'Fleet', tally: 2 }]} value={null} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-tally]')).toHaveTextContent('2');
+    expect(container.querySelector('.gk-dot')).toBeNull();
+  });
+
+  it('dots a place with a gap to close, with no number', () => {
+    const { container } = render(<BottomNav label="Main" items={[{ id: 'base', label: 'Base', warn: true }]} value={null} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-warn]')).toBeEmptyDOMElement();
+  });
+
+  it('rings a place toward its next event, and draws no ring without one', () => {
+    const { container, rerender } = render(<BottomNav label="Main" items={[{ id: 'fleet', label: 'Fleet', progress: 0.4 }]} value={null} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-ring]')).toHaveAttribute('data-progress', '0.4');
+    rerender(<BottomNav label="Main" items={[{ id: 'fleet', label: 'Fleet', progress: null }]} value={null} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-ring]')).toBeNull();
+  });
+
+  it('shines a place that has just opened, with its word', () => {
+    render(<BottomNav label="Main" items={[{ id: 'base', label: 'Base', fresh: 'New' }]} value={null} onChange={vi.fn()} />);
+    const base = screen.getByRole('button', { name: /Base/ });
+    expect(base).toHaveAttribute('data-fresh');
+    expect(base).toHaveTextContent('New');
+  });
+
+  it('keeps a place that does nothing in its place, inert', () => {
+    const onChange = vi.fn();
+    render(<BottomNav label="Main" items={[...places, { id: 'clan', label: 'Clan', disabled: true }]} value="galaxy" onChange={onChange} />);
+    const clan = screen.getByRole('button', { name: 'Clan' });
+    expect(clan).toBeDisabled();
+    press(clan);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+  });
+
+  it('lets a lesson find a place and names the key that opens it', () => {
+    render(<BottomNav label="Main" items={[{ id: 'base', label: 'Base', guide: 'dock-base', shortcut: '2' }]} value={null} onChange={vi.fn()} />);
+    const base = screen.getByRole('button', { name: 'Base' });
+    expect(base).toHaveAttribute('data-guide', 'dock-base');
+    expect(base).toHaveAttribute('aria-keyshortcuts', '2');
+    expect(base.querySelector('kbd')).toBeNull();
+  });
+
+  /** Owner, 2026-09-24: over the galaxy the bar lets the scene through. */
+  it('stands see-through when clear, on its metal otherwise', () => {
+    const { rerender } = render(<BottomNav label="Main" items={places} value="galaxy" onChange={vi.fn()} clear />);
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-clear');
+    rerender(<BottomNav label="Main" items={places} value="base" onChange={vi.fn()} />);
+    expect(screen.getByRole('navigation')).not.toHaveAttribute('data-clear');
+  });
+
+  /** E11 \u00b7 K10: on a desk the same places sit in the top bar, each with its key. */
+  it('sits in a desk\u2019s top bar with each place\u2019s key, never see-through', () => {
+    render(<BottomNav label="Main" items={places.map((place, index) => ({ ...place, shortcut: String(index + 1) }))} value="galaxy" onChange={vi.fn()} bar clear />);
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveAttribute('data-bar');
+    expect(nav).not.toHaveAttribute('data-clear');
+    expect(within(nav).getAllByRole('button').map((button) => button.querySelector('kbd')?.textContent)).toEqual(['1', '2', '3']);
+  });
+});
+
 describe('the bottom bar\u2019s locked word', () => {
   it('says what opens a locked place, then clears by itself', () => {
     vi.useFakeTimers();

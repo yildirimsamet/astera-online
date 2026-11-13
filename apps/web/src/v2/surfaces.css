@@ -42,7 +42,8 @@
  * (the Academy, the rehearsal) nothing sets it and sheets take the full screen.
  */
 .v2-shell {
-  --v2-dock-h: calc(4rem + env(safe-area-inset-bottom));
+  /* The kit's bottom bar (G1-a): 40 px art, a 12 px name, its edge and padding (game-ui.css .gk-nav). */
+  --v2-dock-h: calc(69px + env(safe-area-inset-bottom));
   /* The top bar and the Now line; the shell measures the real height (`--v2-top-h` inline). */
   --v2-top-h: calc(3rem + env(safe-area-inset-top));
 }

@@ -335,14 +335,16 @@ function HudScreen() {
       </div>
       <div className="gk-scene__nav">
         <CoachMark x={50} y={10} hand={HAND} step="2/3" text="Filon hazır: hedef seçmek için Filo’ya dokun" />
+        {/* Over the galaxy the game's bar lets the scene through (owner, 2026-09-24). */}
         <BottomNav
           label="Ana menü"
           value={tab}
           onChange={setTab}
+          clear
           items={[
             { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
-            { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), badge: 1 },
-            { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+            { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true },
+            { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.4 },
             { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 3 },
             { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2 ile açılır' },
           ]}
@@ -809,6 +811,48 @@ function Catalog() {
               { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2' },
             ]}
           />
+          {/* What waits behind each place: a gap (warning dot), a state (steel count + landing ring), news (red), a place just opened. */}
+          <BottomNav
+            label="Durumlar"
+            value={null}
+            onChange={() => undefined}
+            items={[
+              { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+              { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true },
+              { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.65 },
+              { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 12 },
+              { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), fresh: 'Yeni' },
+            ]}
+          />
+          {/* A season with no clan layer: the place stays, inert. */}
+          <BottomNav
+            label="Klansız sezon"
+            value="base"
+            onChange={() => undefined}
+            items={[
+              { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+              { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base) },
+              { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+              { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel) },
+              { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), disabled: true },
+            ]}
+          />
+          {/* On a desk: the same places in the top bar, each with its key. */}
+          <div className="h-14 overflow-x-auto">
+            <BottomNav
+              label="Masaüstü"
+              value="galaxy"
+              onChange={() => undefined}
+              bar
+              items={[
+                { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy), shortcut: '1' },
+                { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true, shortcut: '2' },
+                { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.4, shortcut: '3' },
+                { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 3, shortcut: '4' },
+                { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), shortcut: '5' },
+              ]}
+            />
+          </div>
         </Section>
       </div>
     </Screen>
