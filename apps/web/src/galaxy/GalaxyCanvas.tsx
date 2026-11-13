@@ -113,6 +113,8 @@ const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { ScanReveals } from './ScanReveals.jsx';
+import { CoreLevelUps } from './CoreLevelUps.jsx';
+import type { CoreClock } from './coreLevelUp.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { MiningFlights, miningFocusRadius, miningReach } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
@@ -282,6 +284,11 @@ export interface GalaxyCanvasProps {
    * (D124). Absent draws nothing, which is right for a client ahead of its server.
    */
   sensors?: readonly ReachRing[];
+  /**
+   * The player's own worlds' Command Core clocks: their level and when queued upgrades finish. A Core
+   * that levels up plays its step on the map (owner, 2026-11-13). Absent outside the galaxy screen.
+   */
+  cores?: readonly CoreClock[];
   /** Radiation clouds (K3, F10). Public, like the worlds; absent draws nothing. */
   radiation?: readonly RadiationSourceView[];
   hpRadiation?: readonly HpRadiationSourceView[];
@@ -415,6 +422,7 @@ export function GalaxyCanvas({
   intergalacticConvoy = null,
   meteorShower = false,
   sensors,
+  cores,
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
@@ -964,6 +972,10 @@ export function GalaxyCanvas({
         {/* The first time a world is known, the telescope's scan finds out who holds it (owner, 2026-11-12). */}
         <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
           <ScanReveals nodes={nodes} selfId={selfId} sensors={sensors} />
+        </Suspense></SkinAssetBoundary>
+        {/* A Core that levels up steps the world up on the map; a tier jump says so (owner, 2026-11-13). */}
+        <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+          <CoreLevelUps nodes={nodes} cores={cores} selfId={selfId} />
         </Suspense></SkinAssetBoundary>
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>

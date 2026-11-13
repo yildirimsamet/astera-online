@@ -12,6 +12,9 @@
   */
 export const galaxy = {
   settlementAway: "Mission de colonisation lancée vers {{world}}",
+  /** The Core crossed a tier, over the world on the map (owner, 2026-11-13). */
+  coreTierUp: "Palier {{tier}}",
+  coreTierUpLine: "Tu peux désormais croiser des rivaux plus développés",
   deathStarAway: "Étoile de la Mort lancée vers {{world}}",
   onlineToday: "<0>{{count}}</0> en ligne sur les dernières 24 h",
   worlds: "{{count}} planètes",

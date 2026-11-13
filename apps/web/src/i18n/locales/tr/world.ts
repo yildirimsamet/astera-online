@@ -10,6 +10,9 @@
 
 export const galaxy = {
   settlementAway: "{{world}} için yerleşim görevi yola çıktı",
+  /** Çekirdek kademe atladı: haritada dünyanın üstünde (owner, 2026-11-13). */
+  coreTierUp: "Kademe {{tier}}",
+  coreTierUpLine: "Daha gelişmiş rakiplerle karşılaşabilirsin",
   deathStarAway: "Ölüm Yıldızı {{world}} yönüne fırlatıldı",
   onlineToday: "24 saatte <0>{{count}}</0> çevrimiçi",
   worlds: "{{count}} gezegen",
