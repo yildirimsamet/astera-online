@@ -3,10 +3,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { worldRadius } from '@astera/rules';
 import type { BuildOrderView } from '../src/api/schemas.js';
 import {
-  beginGrowth, CORE_SEEN_KEY, coreClocks, coreLevelAt, drawnRadius, GROW_SETTLE_S, growthMoving, LEVEL_LANDS,
-  levelFrame, levelKind, levelLength, nextLevelUp, owedLevelUps, pruneGrowth, readCoreSeen, rememberCoreSeen,
-  resetGrowth, seenLevels, TIER_LANDS, type CoreClock,
+  beginGrowth, CORE_SEEN_KEY, coreClocks, coreLevelAt, crossesPeak, drawnRadius, GROW_SETTLE_S, growthMoving, LEVEL_LANDS,
+  levelFrame, levelKind, levelLength, levelUpKey, mergeSeen, nextLevelUp, owedLevelUps, pruneGrowth, readCoreSeen,
+  rebaseStale, rememberCoreSeen, resetGrowth, TIER_LANDS, type CoreClock, type LevelUp,
 } from '../src/galaxy/coreLevelUp.js';
+import { chronicle as deChronicle } from '../src/i18n/locales/de/chronicle.js';
+import { galaxy as deGalaxy } from '../src/i18n/locales/de/world.js';
+import { chronicle as enChronicle } from '../src/i18n/locales/en/chronicle.js';
+import { galaxy as enGalaxy } from '../src/i18n/locales/en/world.js';
+import { chronicle as esChronicle } from '../src/i18n/locales/es/chronicle.js';
+import { galaxy as esGalaxy } from '../src/i18n/locales/es/world.js';
+import { chronicle as frChronicle } from '../src/i18n/locales/fr/chronicle.js';
+import { galaxy as frGalaxy } from '../src/i18n/locales/fr/world.js';
+import { chronicle as jaChronicle } from '../src/i18n/locales/ja/chronicle.js';
+import { galaxy as jaGalaxy } from '../src/i18n/locales/ja/world.js';
+import { chronicle as trChronicle } from '../src/i18n/locales/tr/chronicle.js';
+import { galaxy as trGalaxy } from '../src/i18n/locales/tr/world.js';
 import { planetView } from './fixtures.js';
 
 /*
@@ -153,14 +165,89 @@ describe('what plays, and when', () => {
     expect(nextLevelUp([], T)).toBeNull();
   });
 
-  it('what is remembered after a look is every own world at its level now — lower too, so a rebuilt Core plays again', () => {
-    expect(seenLevels([core('home', 10, [T - 1]), core('colony', 3)], T)).toEqual(new Map([['home', 11], ['colony', 3]]));
+  it('a second queued upgrade on the same world is next once the first has been taken', () => {
+    const cores = [core('home', 10, [T + 60_000, T + 120_000])];
+    expect(nextLevelUp(cores, T, new Map([['home', 11]]))).toMatchObject({ from: 11, to: 12, start: T + 120_000 - LEVEL_LANDS * 1000 });
+    expect(nextLevelUp(cores, T, new Map([['home', 12]]))).toBeNull();
+    expect(nextLevelUp([...cores, core('colony', 2, [T + 90_000])], T, new Map([['home', 12]]))?.id).toBe('colony');
+  });
+});
+
+describe('what this device remembers after a look', () => {
+  const look = (over: Partial<Parameters<typeof mergeSeen>[1]> = {}) => ({
+    cores: [] as CoreClock[], owned: new Set(['home', 'colony', 'far']), now: T,
+    shown: new Map<string, number>(), pending: new Set<string>(), ...over,
   });
 
-  it('a step already played is remembered at its new level even before its queue has run out, so the next open does not play it twice', () => {
-    const played = new Map([['home', 11], ['lost-colony', 6]]);
-    expect(seenLevels([core('home', 10, [T + 900]), core('colony', 3)], T, played)).toEqual(new Map([['home', 11], ['colony', 3]]));
-    expect(seenLevels([core('home', 12)], T, played)).toEqual(new Map([['home', 12]]));
+  it('every own world on the map at its level now — lower too, so a rebuilt Core plays again', () => {
+    const cores = [core('home', 10, [T - 1]), core('colony', 3)];
+    expect(mergeSeen(null, look({ cores }))).toEqual(new Map([['home', 11], ['colony', 3]]));
+    expect(mergeSeen(new Map([['home', 13]]), look({ cores }))).toEqual(new Map([['home', 11], ['colony', 3]]));
+  });
+
+  it('a step already on the map is remembered at its new level before its queue has run out', () => {
+    const cores = [core('home', 10, [T + 900])];
+    expect(mergeSeen(new Map([['home', 10]]), look({ cores, shown: new Map([['home', 11]]) }))).toEqual(new Map([['home', 11]]));
+  });
+
+  it('a step still waiting for its turn keeps the level last shown, so closing the game first owes it again', () => {
+    const cores = [core('home', 10)];
+    expect(mergeSeen(new Map([['home', 8]]), look({ cores, pending: new Set(['home']) }))).toEqual(new Map([['home', 8]]));
+  });
+
+  it('an own world this map does not draw keeps its record; a world no longer owned is forgotten', () => {
+    const before = new Map([['home', 10], ['far', 5], ['lost', 6]]);
+    expect(mergeSeen(before, look({ cores: [core('home', 10)] }))).toEqual(new Map([['home', 10], ['far', 5]]));
+  });
+
+  it('a look with nothing on the map changes nothing it still owns', () => {
+    expect(mergeSeen(new Map([['home', 10]]), look())).toEqual(new Map([['home', 10]]));
+  });
+});
+
+describe('a step the map could not draw on time', () => {
+  const up: LevelUp = { id: 'home', from: 10, to: 11, kind: 'level', tier: 4, start: T };
+
+  it('plays from the start when its slot comes late (the map was hidden), rather than being skipped', () => {
+    expect(rebaseStale(up, T + 16)).toBe(up);
+    expect(rebaseStale(up, T + 60_000)).toEqual({ ...up, start: T + 60_000 });
+  });
+
+  it('each step has its own sound, so two steps on one world within a minute both sound', () => {
+    expect(levelUpKey(up)).not.toBe(levelUpKey({ ...up, from: 11, to: 12 }));
+    expect(levelUpKey(up)).not.toBe(levelUpKey({ ...up, id: 'colony' }));
+  });
+});
+
+describe('who you meet changes only when the tallest Core crosses a tier', () => {
+  const tierUp = (id: string): LevelUp => ({ id, from: 9, to: 10, kind: 'tier', tier: 4, start: T });
+
+  it('the tallest world crossing a tier changes who you meet', () => {
+    expect(crossesPeak(tierUp('home'), [core('home', 9), core('colony', 6)], T)).toBe(true);
+  });
+
+  it('a colony crossing a tier the tallest world already holds or passed does not', () => {
+    expect(crossesPeak(tierUp('colony'), [core('home', 13), core('colony', 9)], T)).toBe(false);
+    expect(crossesPeak(tierUp('colony'), [core('home', 12), core('colony', 9)], T)).toBe(false);
+  });
+
+  it('an ordinary level never does', () => {
+    expect(crossesPeak({ ...tierUp('home'), from: 10, to: 11, kind: 'level' }, [core('home', 10)], T)).toBe(false);
+  });
+});
+
+describe('the tier word over the world', () => {
+  const pairs = {
+    de: [deGalaxy, deChronicle], en: [enGalaxy, enChronicle], es: [esGalaxy, esChronicle],
+    fr: [frGalaxy, frChronicle], ja: [jaGalaxy, jaChronicle], tr: [trGalaxy, trChronicle],
+  } as const;
+
+  it('is the word the rest of the game uses for a tier, in every language', () => {
+    for (const [locale, [galaxy, chronicle]] of Object.entries(pairs)) {
+      const word = galaxy.coreTierUp.replace('{{tier}}', '').trim().toLocaleLowerCase(locale);
+      // Without its placeholders: `{{tier}}` would match "tier" by itself.
+      expect(chronicle.launcherCoreTier.replace(/\{\{\w+\}\}/g, ' ').toLocaleLowerCase(locale), locale).toContain(word);
+    }
   });
 });
 
@@ -255,6 +342,19 @@ describe('wired into the galaxy', () => {
     expect(field.match(/drawnRadius\(node, /g)?.length).toBeGreaterThanOrEqual(2);
     expect(field).toMatch(/growthMoving\(/);
     expect(readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8')).toMatch(/drawnRadius\(node, /);
+  });
+
+  it('the Dyson shell about a world grows with it', () => {
+    expect(readFileSync('src/galaxy/DysonShells.tsx', 'utf8')).toMatch(/shellRadius\(drawnRadius\(wearer\.planet, /);
+  });
+
+  it('a step is remembered when it takes its slot, not when it is queued, and says who you meet only at the peak', () => {
+    const levelUps = readFileSync('src/galaxy/CoreLevelUps.tsx', 'utf8');
+    const queue = /const queue = useCallback\(([\s\S]*?)\n {2}\}, \[\]\);/.exec(levelUps)?.[1] ?? '';
+    expect(queue).not.toMatch(/rememberCoreSeen/);
+    expect(levelUps).toMatch(/rebaseStale\(/);
+    expect(levelUps).toMatch(/crossesPeak\(/);
+    expect(levelUps).toMatch(/word\.peak && [\s\S]{0,260}coreTierUpLine/);
   });
 
   it('plays only the player\'s own worlds: the clocks come from their own planets', () => {

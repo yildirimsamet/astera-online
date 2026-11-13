@@ -6,7 +6,7 @@
 export const galaxy = {
   settlementAway: "Flota colonizadora enviada a {{world}}",
   /** The Core crossed a tier, over the world on the map (owner, 2026-11-13). */
-  coreTierUp: "Tier {{tier}}",
+  coreTierUp: "Nivel {{tier}}",
   coreTierUpLine: "Ahora puedes enfrentarte a rivales más desarrollados",
   deathStarAway: "Estrella de la Muerte lanzada hacia {{world}}",
   /** Rolling daily activity; the map deliberately omits the instantaneous count. */

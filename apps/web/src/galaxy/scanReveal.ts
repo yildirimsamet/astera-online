@@ -86,6 +86,18 @@ export interface ScanPlan { waves: ScanWave[]; targets: ScanTarget[] }
 const gap = (p: Vec3Tuple, q: Vec3Tuple): number => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 const nearest = (to: Vec3Tuple, from: readonly Vec3Tuple[]): Vec3Tuple | null =>
   from.reduce<Vec3Tuple | null>((best, at) => (best === null || gap(at, to) < gap(best, to) ? at : best), null);
+/** How far a world lies from the nearest of the player's own; nought with none on the map. */
+const fromHome = (node: PlanetNode, owned: readonly Vec3Tuple[]): number => {
+  const home = nearest(node.position, owned);
+  return home ? gap(home, node.position) : 0;
+};
+
+/** The `limit` new worlds nearest the player's own, so a flood of news shows what is close to home first. */
+export function nearestFirst(fresh: readonly PlanetNode[], nodes: readonly PlanetNode[], limit: number): PlanetNode[] {
+  const owned = nodes.filter((node) => node.isOwned).map((node) => node.position);
+  return [...fresh].sort((a, b) => fromHome(a, owned) - fromHome(b, owned)).slice(0, limit);
+}
+
 /** The colour of the world's own pin, so the lock says who holds it in the map's own words. */
 const toneOf = (node: PlanetNode): string => (node.isClanmate ? CLANMATE_COLOUR : pinColour(node.kind));
 
@@ -116,8 +128,7 @@ export function planScan(fresh: readonly PlanetNode[], nodes: readonly PlanetNod
     waves.push({ at, reach, travel });
     for (const { node, distance } of worlds) targets.push(target(node, reach > 0 ? (travel * distance) / reach : travel));
   }
-  const fromHome = (node: PlanetNode): number => { const home = nearest(node.position, owned); return home ? gap(home, node.position) : 0; };
-  [...inPlace].sort((a, b) => fromHome(a) - fromHome(b)).forEach((node, i) => { targets.push(target(node, IN_PLACE_FIRST + IN_PLACE_STEP * i)); });
+  [...inPlace].sort((a, b) => fromHome(a, owned) - fromHome(b, owned)).forEach((node, i) => { targets.push(target(node, IN_PLACE_FIRST + IN_PLACE_STEP * i)); });
   return { waves, targets };
 }
 

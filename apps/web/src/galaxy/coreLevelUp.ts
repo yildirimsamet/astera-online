@@ -162,27 +162,66 @@ export function owedLevelUps(cores: readonly CoreClock[], seen: ReadonlyMap<stri
   });
 }
 
-/** The soonest queued upgrade still to finish, timed so its world steps exactly as its queue ends. */
-export function nextLevelUp(cores: readonly CoreClock[], now: number): LevelUp | null {
+/**
+ * The soonest queued upgrade still to finish, timed so its world steps exactly as its queue ends. A step
+ * this visit has already taken (`taken`: the highest level queued per world) is passed over for the one
+ * after it, so a second upgrade queued on the same world is armed in its turn.
+ */
+export function nextLevelUp(cores: readonly CoreClock[], now: number, taken: ReadonlyMap<string, number> = new Map()): LevelUp | null {
   let next: LevelUp | null = null;
   for (const core of cores) {
-    const finish = core.finishes.find((at) => at > now);
-    if (finish === undefined) continue;
-    const from = coreLevelAt(core, now);
-    const kind = levelKind(from, from + 1);
-    const candidate = step(core.id, from, from + 1, finish - landsAfter(kind) * 1000);
-    if (next === null || candidate.start < next.start) next = candidate;
+    const level = coreLevelAt(core, now);
+    const done = taken.get(core.id) ?? -Infinity;
+    for (const [i, finish] of core.finishes.filter((at) => at > now).entries()) {
+      const from = level + i;
+      if (from + 1 <= done) continue;
+      const candidate = step(core.id, from, from + 1, finish - landsAfter(levelKind(from, from + 1)) * 1000);
+      if (next === null || candidate.start < next.start) next = candidate;
+      break;
+    }
   }
   return next;
 }
 
+/** The game's word "you can now meet more developed rivals" is true only when the tallest Core's tier rises (D168). */
+export const crossesPeak = (up: LevelUp, cores: readonly CoreClock[], now: number): boolean =>
+  up.kind === 'tier' && cores.every((core) => core.id === up.id || coreTier(coreLevelAt(core, now)) < up.tier);
+
+/** A step whose slot comes this late (the map was hidden, or both slots busy) plays from its start, now. */
+export const STALE_MS = 250;
+export const rebaseStale = (up: LevelUp, now: number): LevelUp => (now - up.start > STALE_MS ? { ...up, start: now } : up);
+
+/** One sound per step: a second step on the same world within the sound's minute still sounds. */
+export const levelUpKey = (up: LevelUp): string => `core:${up.id}:${String(up.to)}`;
+
+/** What one look has to go on. */
+export interface Look {
+  /** The own worlds on this map. */
+  cores: readonly CoreClock[];
+  /** Every world the player owns, drawn here or not. */
+  owned: ReadonlySet<string>;
+  now: number;
+  /** The highest level each world has put on the map this visit. */
+  shown: ReadonlyMap<string, number>;
+  /** Worlds with a step queued that has not yet taken its slot. */
+  pending: ReadonlySet<string>;
+}
+
 /**
- * What a look leaves remembered: every own world at its level now — lower too, so a rebuilt Core plays.
- * A step already played this visit counts at its new level even before its queue has run out (a live
- * step starts early), so closing the game before the map reads the new level does not owe it again.
+ * What a look leaves remembered. Each own world on the map at its level now — lower too, so a rebuilt
+ * Core plays — or at the step it has already put on the map, which starts before its queue runs out.
+ * A world whose step is still waiting for its slot keeps the level last shown, so closing the game before
+ * it plays owes it again. A world owned but not on this map keeps its record; one no longer owned is
+ * dropped, so a world won back later does not play the levels it gained in someone else's hands.
  */
-export const seenLevels = (cores: readonly CoreClock[], now: number, played: ReadonlyMap<string, number> = new Map()): Map<string, number> =>
-  new Map(cores.map((core) => [core.id, Math.max(coreLevelAt(core, now), played.get(core.id) ?? -Infinity)]));
+export function mergeSeen(previous: ReadonlyMap<string, number> | null, look: Look): Map<string, number> {
+  const next = new Map([...(previous ?? new Map<string, number>())].filter(([id]) => look.owned.has(id)));
+  for (const core of look.cores) {
+    if (look.pending.has(core.id)) continue;
+    next.set(core.id, Math.max(coreLevelAt(core, look.now), look.shown.get(core.id) ?? -Infinity));
+  }
+  return next;
+}
 
 export const CORE_SEEN_KEY = 'astera.core.seen';
 const stored = z.object({ self: z.string(), levels: z.record(z.string(), z.number().int()) });

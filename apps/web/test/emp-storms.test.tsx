@@ -56,6 +56,12 @@ describe('the EMP storms of the galaxy', () => {
     quiet.mockRestore();
   });
 
+  it('its ions turn whole turns between the shader clock’s wraps, so none jumps when it wraps', () => {
+    const storm = readFileSync('src/galaxy/EmpStorm.tsx', 'utf8');
+    expect(storm).toMatch(/const TURN_PER_WRAP = \(\(2 \* Math\.PI\) \/ SHADER_WRAP\)/);
+    expect(storm).toMatch(/float spin = uT \* \(1\.0 \+ floor\(aSeed\.w \* 3\.0\)\) \* \$\{TURN_PER_WRAP\}/);
+  });
+
   it('is part of the galaxy, beside the ember that tells it from afar', () => {
     expect(readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8')).toContain('<EmpStorms nodes={nodes} />');
   });

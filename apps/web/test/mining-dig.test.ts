@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MiningRun } from '../src/api/schemas.js';
-import { DIG_SECONDS, DIG_TAIL_SECONDS, digFrame, digHoldMs, runDig, runLaden } from '../src/galaxy/miningDig.js';
+import { DIG_SECONDS, DIG_TAIL_SECONDS, digFrame, digHoldMs, forgetReach, heldReach, runDig, runLaden, settleRoll } from '../src/galaxy/miningDig.js';
 import { runPosition, toWorld, type Vec3Tuple } from '../src/galaxy/scene.js';
 
 /*
@@ -34,6 +34,20 @@ describe('the dig timeline', () => {
     expect(digFrame(DIG_SECONDS + 0.05).sparks).toBe(0);
     expect(digFrame(DIG_SECONDS + 0.6).heat).toBeLessThan(0.2);
     expect(digFrame(DIG_SECONDS + DIG_TAIL_SECONDS).heat).toBe(0);
+  });
+
+  it('dims the lit hold as the drill eases away, so it never blinks out', () => {
+    expect(digFrame(DIG_SECONDS + 0.2).cargo).toBeGreaterThan(0.95);
+    expect(digFrame(DIG_SECONDS + DIG_TAIL_SECONDS - 0.25).cargo).toBeLessThan(0.6);
+    expect(digFrame(DIG_SECONDS + DIG_TAIL_SECONDS).cargo).toBeCloseTo(0, 9);
+  });
+
+  it('brings the drill’s turn to rest on a whole turn', () => {
+    let roll = 7.9;
+    for (let i = 0; i < 48; i++) roll = settleRoll(roll, 1 / 60);
+    expect(Math.abs(roll - Math.PI * 2)).toBeLessThan(0.02);
+    expect(settleRoll(Math.PI * 4, 1 / 60)).toBeCloseTo(Math.PI * 4, 12);
+    expect(settleRoll(1, Number.NaN)).toBe(1);
   });
 
   it('fills the hold during the bite and keeps it full', () => {
@@ -151,5 +165,51 @@ describe('where the drill works: on the rock’s near face, not inside it', () =
     for (const ms of [-600_000, -1, 0, 1500, 60_000]) {
       expect(runPosition(run(), home, at(ms), [], 0)).toEqual(runPosition(run(), home, at(ms)));
     }
+  });
+});
+
+describe('the rock keeps flying its orbit while the drill works it', () => {
+  // A rock drifting along +x at 0.1 world units a second, on the meeting point at arrival.
+  const rockAt = (ms: number): Vec3Tuple => [rock[0] + (ms - ARRIVE.getTime()) / 10_000, rock[1], rock[2]];
+  const moved = (p: Vec3Tuple, dx: number): Vec3Tuple => [p[0] + dx, p[1], p[2]];
+
+  it('rides with the rock while it waits for the answer and through the bite', () => {
+    const face = runPosition(run(), home, ARRIVE.getTime(), [], REACH, rockAt);
+    near(face, runPosition(run(), home, ARRIVE.getTime(), [], REACH));
+    near(runPosition(run(), home, at(1500), [], REACH, rockAt), moved(face, 0.15));
+    near(runPosition(laden(), home, at(1000), [], REACH, rockAt), moved(face, 0.1));
+  });
+
+  it('lets go of it on the way home without a jump, and still lands on time', () => {
+    const end = at(DIG_SECONDS * 1000);
+    expect(gap(runPosition(laden(), home, end - 1, [], REACH, rockAt), runPosition(laden(), home, end + 1, [], REACH, rockAt))).toBeLessThan(0.001);
+    near(runPosition(laden(), home, HOME_AT.getTime(), [], REACH, rockAt), runPosition(laden(), home, HOME_AT.getTime()));
+  });
+
+  it('flies a run turned round in open space (its rock ran dry first) exactly as the server stored it', () => {
+    const turned = run({ status: 'returning', arriveAt: new Date(at(-60_000)), intercept: { x: 0, y: 0, z: 300 }, homeAt: new Date(at(600_000)) });
+    for (const ms of [-60_000, -59_000, 0, 30_000]) {
+      expect(runPosition(turned, home, at(ms), [], REACH, rockAt)).toEqual(runPosition(turned, home, at(ms)));
+    }
+  });
+});
+
+describe('a target that leaves the map while a drill is on it', () => {
+  it('keeps the last stand-off it saw, so the drill never drops into the target’s centre', () => {
+    forgetReach(new Set());
+    expect(heldReach('r1', 0)).toBe(0);
+    expect(heldReach('r1', 0.8)).toBe(0.8);
+    expect(heldReach('r1', 0)).toBe(0.8);
+    expect(heldReach('r1', 0.9)).toBe(0.9);
+    expect(heldReach('r2', 0)).toBe(0);
+  });
+
+  it('forgets a run once it is no longer flying', () => {
+    forgetReach(new Set());
+    heldReach('r1', 0.8);
+    heldReach('r2', 0.5);
+    forgetReach(new Set(['r2']));
+    expect(heldReach('r1', 0)).toBe(0);
+    expect(heldReach('r2', 0)).toBe(0.5);
   });
 });

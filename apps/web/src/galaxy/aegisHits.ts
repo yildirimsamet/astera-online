@@ -24,6 +24,8 @@ export interface AegisHit {
   direction: Vec3Tuple;
   /** Server milliseconds at which it strikes. */
   at: number;
+  /** 0..1 how bright, as bright as the raid's own fire (a distant, effect-only raid is fainter). */
+  strength: number;
 }
 
 const raids = new Map<string, readonly AegisHit[]>();
@@ -42,7 +44,7 @@ export function clearAegisHits(raid: string): void {
  * Writes the newest hits still rippling at `now` into the dome program's arrays, ages 0..1, and
  * returns how many there are. Allocates nothing per frame beyond the shared scratch list.
  */
-export function aegisHitUniforms(now: number, into: { centres: THREE.Vector3[]; directions: THREE.Vector3[]; ages: number[] }): number {
+export function aegisHitUniforms(now: number, into: { centres: THREE.Vector3[]; directions: THREE.Vector3[]; ages: number[]; strengths: number[] }): number {
   live.length = 0;
   if (!Number.isFinite(now)) return 0;
   for (const hits of raids.values()) {
@@ -58,6 +60,7 @@ export function aegisHitUniforms(now: number, into: { centres: THREE.Vector3[]; 
     into.centres[i]?.set(...hit.centre);
     into.directions[i]?.set(...hit.direction);
     into.ages[i] = age;
+    into.strengths[i] = hit.strength;
   }
   return count;
 }

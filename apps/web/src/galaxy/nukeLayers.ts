@@ -29,6 +29,8 @@ export function nukeLayers(seconds: number) {
   const disc = ramp(t, 0.35, 2.25);
   const rise = ramp(t, 0.15, 3.85);
   const spread = ramp(t, 0.6, 6.4);
+  // The crater's glow and the ash go out over the last moment rather than blink off with the strike.
+  const out = 1 - ramp(t, NUKE_SECONDS - 0.6, 0.6);
   return {
     flash: on * Math.max(0, 1 - t / 0.6) ** 2,
     fireball: on * ramp(t, 0, 0.08) * (1 - ramp(t, 1.6, 1.8)) ** 0.8,
@@ -41,9 +43,9 @@ export function nukeLayers(seconds: number) {
     columnHeight: on * easeOut(rise, 2),
     cap: on * ramp(t, 0.6, 1.2) * (1 - ramp(t, 5.8, 2.2)) ** 1.3,
     capProgress: on * spread,
-    ember: on * ramp(t, 0.1, 0.3) * (1 - 0.6 * ramp(t, 1, 7)),
+    ember: on * ramp(t, 0.1, 0.3) * (1 - 0.6 * ramp(t, 1, 7)) * out,
     heat: on * (1 - ramp(t, 0.3, 7.7)),
-    ash: on * 0.4 * easeOut(front, 1.6),
+    ash: on * 0.4 * easeOut(front, 1.6) * out,
     light: on * (Math.max(0, 1 - t / 1.4) ** 2 + 0.12 * (1 - ramp(t, 1, 7))),
   };
 }

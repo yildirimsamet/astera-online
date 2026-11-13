@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { galaxySchema } from '../src/api/schemas.js';
 import { CLANMATE_COLOUR, PIN_COLOUR } from '../src/galaxy/PlanetField.js';
 import {
-  freshlyKnown, knownIds, planScan, readSeen, rememberSeen, SCAN_ARRIVES, SCAN_ENDS, SCAN_LOCKS, SCAN_SEEN_KEY,
+  freshlyKnown, knownIds, nearestFirst, planScan, readSeen, rememberSeen, SCAN_ARRIVES, SCAN_ENDS, SCAN_LOCKS, SCAN_SEEN_KEY,
   scanFrame, scanLength, waveFrame, type ScanEye,
 } from '../src/galaxy/scanReveal.js';
 import { planetNodes, toWorld, type PlanetNode, type Vec3Tuple } from '../src/galaxy/scene.js';
@@ -96,6 +96,18 @@ describe('which worlds are newly known', () => {
   it('a world already shown is not shown again, even when a probe record becomes a live reading', () => {
     const later = galaxy.map((node) => (node.id === 'probed' ? { ...node, intel: 'RESOLVED' as const } : node));
     expect(freshlyKnown(later, new Set(['rival', 'probed']))).toEqual([]);
+  });
+
+  it('a flood of news shows the worlds nearest the player’s own first', () => {
+    const crowd = nodes(
+      home,
+      { id: 'colony', isOwned: true, kind: 'COLONY', position: at(1000, 0) },
+      { id: 'far', position: at(500, 0) },
+      { id: 'by-colony', position: at(1010, 0) },
+      { id: 'near', position: at(20, 0) },
+    );
+    expect(nearestFirst(freshlyKnown(crowd, new Set()), crowd, 2).map((node) => node.id)).toEqual(['by-colony', 'near']);
+    expect(nearestFirst([], crowd, 2)).toEqual([]);
   });
 
   it('the remembered set keeps every world ever known, even one that has gone dark again', () => {
@@ -219,5 +231,12 @@ describe('the scan is in the galaxy, drawn without a real light', () => {
     expect(scan).not.toMatch(/<(point|directional|spot|ambient)Light\b/);
     expect(scan).toContain('createRehearsal');
     expect(scan).toMatch(/new THREE\.InstancedMesh\(/);
+  });
+
+  it('keeps the nearest news when there is too much to show, and sounds every wave', () => {
+    const scan = readFileSync('src/galaxy/ScanReveals.tsx', 'utf8');
+    expect(scan).toMatch(/nearestFirst\(freshlyKnown\(nodes, seen\), nodes, MAX_TARGETS\)/);
+    // A sound key holds for a minute: a second scan within one would be silent.
+    expect(scan).not.toMatch(/key: 'scan:wave'/);
   });
 });

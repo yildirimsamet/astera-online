@@ -42,9 +42,16 @@ describe('the nuclear strike timeline', () => {
     expect(nukeLayers(3).cap).toBeGreaterThan(0.8);
   });
 
-  it('leaves a crater still burning at the end, cooling as it goes', () => {
-    expect(nukeLayers(7.9).ember).toBeGreaterThan(0.3);
+  it('leaves a crater still burning near the end, cooling as it goes', () => {
+    expect(nukeLayers(7.3).ember).toBeGreaterThan(0.3);
     expect(nukeLayers(1).heat).toBeGreaterThan(nukeLayers(7).heat);
+  });
+
+  it('lets the crater and the ash go out over the last moment, never blink off', () => {
+    const end = NUKE_SECONDS - 0.01;
+    expect(nukeLayers(end).ember).toBeLessThan(0.05);
+    expect(nukeLayers(end).ash).toBeLessThan(0.05);
+    expect(nukeLayers(NUKE_SECONDS - 0.6).ash).toBeGreaterThan(0.3);
   });
 
   it('draws nothing from a clock it cannot read', () => {
@@ -114,6 +121,10 @@ describe('the strike point', () => {
 describe('the nuclear strike lights the world without a light', () => {
   it('brings no light into the scene', () => {
     expect(readFileSync('src/galaxy/NukeBlast.tsx', 'utf8')).not.toMatch(/pointLight|PointLight|spotLight|SpotLight|directionalLight|DirectionalLight/);
+  });
+
+  it('nor does the plain strike drawn while its art loads, for a viewer who arrives late', () => {
+    expect(readFileSync('src/galaxy/DeathStarImpact.tsx', 'utf8')).not.toMatch(/pointLight|PointLight/);
   });
 });
 

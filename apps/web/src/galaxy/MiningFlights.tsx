@@ -1,5 +1,5 @@
 import { useModelScale } from './modelScale.js';
-import { Suspense, useMemo, useRef, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,6 +8,7 @@ import { MODEL } from '../ui/assets.js';
 import { Hull, Wake, useLine } from './Fleets.jsx';
 import {
   asteroidRadius,
+  asteroidWorldPosition,
   CRAFT_SCALE,
   runHomePosition,
   runPosition,
@@ -21,10 +22,10 @@ import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { EngineJets, type EngineUnit } from './EngineJets.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
-import { DIG_SECONDS, runDig } from './miningDig.js';
+import { DIG_SECONDS, forgetReach, heldReach, runDig } from './miningDig.js';
 import { MiningDig, type DrillMotion } from './MiningDig.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
-import { wreckRadius, type WreckView } from './Wrecks.js';
+import { VOID_RADIUS, wreckRadius, type WreckView } from './Wrecks.js';
 
 /**
  * PROSPECTORS, IN TRANSIT. D19.
@@ -68,8 +69,21 @@ export function miningReach(
   }
   const field = wrecks.find((w) => w.id === run.debrisFieldId);
   if (!field) return 0;
-  const world = field.planetId === null ? undefined : nodes.find((n) => n.id === field.planetId);
-  return wreckRadius(world?.radius ?? null, scale) + half;
+  if (field.planetId === null) return wreckRadius(null, scale) + half;
+  // A world this client does not draw: `Wrecks` rings its field about a stand-in world.
+  const world = nodes.find((n) => n.id === field.planetId);
+  return wreckRadius(world?.radius ?? VOID_RADIUS * scale, scale) + half;
+}
+
+/** Where a run's rock is drawn at a server instant, so its drill rides with it (`runPosition`); none for a field. */
+export function miningRockAt(
+  run: Pick<MiningRun, 'targetKind' | 'asteroidId'>,
+  asteroids: readonly AsteroidView[],
+  seasonStart: Date | undefined,
+): ((ms: number) => Vec3Tuple) | undefined {
+  if (run.targetKind !== 'asteroid' || !seasonStart) return undefined;
+  const rock = asteroids.find((a) => a.id === run.asteroidId);
+  return rock ? (ms) => asteroidWorldPosition(rock, seasonStart, ms) : undefined;
 }
 
 export function miningFocusRadius(craft: number): number {
@@ -103,12 +117,14 @@ export function MiningFlights({
   wrecks,
   home,
   nodes,
+  seasonStart,
   focusedId,
   onSelect,
 }: {
   runs: readonly MiningRun[];
-  /** The targets, so a drill stops on its target's face (`miningReach`). */
-  asteroids: readonly Pick<AsteroidView, 'id' | 'level'>[];
+  /** The targets, so a drill stops on its target's face (`miningReach`) and rides its rock (`miningRockAt`). */
+  asteroids: readonly AsteroidView[];
+  seasonStart: Date | undefined;
   wrecks: readonly WreckView[];
   home: { x: number; y: number; z: number };
   /** The worlds, so the home endpoint uses its shared surface clearance. D120. */
@@ -118,6 +134,7 @@ export function MiningFlights({
 }) {
   const scale = useModelScale();
   const flying = runs.filter((r) => r.status !== 'done');
+  useEffect(() => { forgetReach(new Set(runs.filter((r) => r.status !== 'done').map((r) => r.id))); }, [runs]);
   if (flying.length === 0) return null;
 
   return (
@@ -128,7 +145,8 @@ export function MiningFlights({
           run={run}
           home={runHomePosition(run, nodes, home)}
           nodes={nodes}
-          reach={miningReach(run, asteroids, wrecks, nodes, scale)}
+          reach={heldReach(run.id, miningReach(run, asteroids, wrecks, nodes, scale))}
+          rockAt={miningRockAt(run, asteroids, seasonStart)}
           focused={run.id === focusedId}
           onSelect={() => {
             onSelect(run.id);
@@ -144,6 +162,7 @@ function Run({
   home,
   nodes,
   reach,
+  rockAt,
   focused,
   onSelect,
 }: {
@@ -151,6 +170,7 @@ function Run({
   home: { x: number; y: number; z: number };
   nodes: readonly PlanetNode[];
   reach: number;
+  rockAt: ((ms: number) => Vec3Tuple) | undefined;
   focused: boolean;
   onSelect: () => void;
 }) {
@@ -198,11 +218,11 @@ function Run({
     if (!node) return;
     const now = serverNow();
     // The same helper the camera reads, so a focused run stays centred.
-    const at = runPosition(run, home, now, nodes, reach);
+    const at = runPosition(run, home, now, nodes, reach, rockAt);
     node.position.set(at[0], at[1], at[2]);
     // It faces its target through the bite, then turns for home rather than snapping round.
     const dig = runDig(run, now);
-    const facing = dig !== null && dig < DIG_SECONDS ? rock : to;
+    const facing = dig !== null && dig < DIG_SECONDS ? rockAt?.(now) ?? rock : to;
     aim.pose.position.copy(node.position);
     aim.pose.lookAt(facing[0], facing[1], facing[2]);
     if (aim.placed) node.quaternion.slerp(aim.pose.quaternion, 1 - Math.exp(-delta * 4));
@@ -248,7 +268,8 @@ function Run({
             <Craft key={marker.ordinal} offset={slotOffset(i, STYLE.scale * 1.5)} motion={motion} />
           ))}
         </Suspense>
-        {!run.recalledAt && (
+        {/* No dig where this client cannot see the target: it would spark in empty space, or inside a world. */}
+        {!run.recalledAt && reach > 0 && (
           <SkinAssetBoundary fallback={null}>
             <Suspense fallback={null}>
               <MiningDig run={run} length={STYLE.scale} motion={motion} />

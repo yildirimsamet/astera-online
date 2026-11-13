@@ -11,7 +11,7 @@ import { createRehearsal, type Rehearsal } from './rehearsal.js';
 import type { PlanetNode } from './scene.js';
 import { sensorShellColour, type ReachRing } from './SensorRings.jsx';
 import {
-  freshlyKnown, knownIds, planScan, readSeen, rememberSeen, SCAN_ARRIVES, SCAN_ENDS, SCAN_LOCKS, scanFrame, waveFrame,
+  freshlyKnown, knownIds, nearestFirst, planScan, readSeen, rememberSeen, SCAN_ARRIVES, SCAN_ENDS, SCAN_LOCKS, scanFrame, waveFrame,
   type ScanPlan, type ScanTarget, type ScanWave,
 } from './scanReveal.js';
 import { atlasBatch } from './StrategicBlast.jsx';
@@ -141,7 +141,7 @@ export function ScanReveals({ nodes, selfId, sensors }: {
     const seen = readSeen(selfId);
     const known = knownIds(nodes, seen);
     if (seen === null || known.size > seen.size) rememberSeen(selfId, known);
-    const fresh = freshlyKnown(nodes, seen).slice(0, MAX_TARGETS);
+    const fresh = nearestFirst(freshlyKnown(nodes, seen), nodes, MAX_TARGETS);
     if (fresh.length === 0) return;
     const reach = (eyes.current ?? []).map((post) => ({ at: toWorld(post.at), reach: post.identify / VIEW.scale }));
     queued.current.push(planScan(fresh, nodes, reach));
@@ -169,7 +169,7 @@ export function ScanReveals({ nodes, selfId, sensors }: {
     for (const plan of queued.current.splice(0)) {
       for (const wave of plan.waves) waves.current.push({ wave, start: now });
       for (const target of plan.targets) targets.current.push({ target, start: now + target.start, locked: false });
-      if (plan.waves.length > 0) playSound('charge', { gain: 0.6, key: 'scan:wave' });
+      if (plan.waves.length > 0) playSound('charge', { gain: 0.6 });
     }
     targets.current = targets.current.filter((live) => now - live.start < SCAN_ENDS - SCAN_ARRIVES).slice(-MAX_TARGETS);
     waves.current = waves.current.filter((live) => (now - live.start) / live.wave.travel < 1.5).slice(-MAX_WAVES);

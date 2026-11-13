@@ -7,7 +7,7 @@ import { empSlot } from './empSchedule.js';
 import { VESSEL_BAYS, type DamageSpot } from './mainSky.js';
 import { NUKE_SMOKE } from './NukeBlast.js';
 import { atlasBatch } from './StrategicBlast.jsx';
-import { burnTargets, easeBurn, loopLayers, puffState, SMOKE_PUFFS, type BurnLook } from './vesselBurn.js';
+import { burnOut, burnTargets, easeBurn, loopLayers, puffState, SMOKE_PUFFS, type BurnLook } from './vesselBurn.js';
 
 /*
   THE WRECKED SHIP'S FIRES (owner approved the lab's smoke and flames, 2026-11-12). Over every bay
@@ -55,7 +55,6 @@ const SPARK_FRAG = /* glsl */`
   }`;
 
 const seed = (n: number): number => { const x = Math.sin(n * 91.3 + 7.1) * 43758.5453; return x - Math.floor(x); };
-const isOut = (look: BurnLook): boolean => look.smoke + look.flame + look.glow + look.sparks <= 0;
 const copyLooks = (looks: Record<VesselSystem, BurnLook>): Record<VesselSystem, BurnLook> => ({
   REFINERY: { ...looks.REFINERY }, SURVEY: { ...looks.SURVEY }, DEFENCE: { ...looks.DEFENCE }, CARGO: { ...looks.CARGO }, DRIVE: { ...looks.DRIVE },
 });
@@ -85,10 +84,10 @@ export function VesselBurn({ hull, damage }: { hull: VesselHull; damage: readonl
     });
     return { geometry, material, phase, on };
   }, [bays]);
-  useEffect(() => () => {
-    for (const batch of [smoke, fire]) { batch.geometry.dispose(); batch.material.dispose(); }
-    sparks.geometry.dispose(); sparks.material.dispose();
-  }, [smoke, fire, sparks]);
+  // Each frees only its own: a new hull rebuilds the sparks while the smoke and flames stay in use.
+  useEffect(() => () => { smoke.geometry.dispose(); smoke.material.dispose(); }, [smoke]);
+  useEffect(() => () => { fire.geometry.dispose(); fire.material.dispose(); }, [fire]);
+  useEffect(() => () => { sparks.geometry.dispose(); sparks.material.dispose(); }, [sparks]);
 
   const targets = useMemo(() => burnTargets(damage), [damage]);
   const shown = useRef<Record<VesselSystem, BurnLook> | null>(null);
@@ -97,6 +96,7 @@ export function VesselBurn({ hull, damage }: { hull: VesselHull; damage: readonl
   const flames = useRef<THREE.InstancedMesh>(null);
   const glows = useRef<THREE.Group>(null);
   const scratch = useMemo(() => new THREE.Object3D(), []);
+  const none = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), []);
   const facing = useMemo(() => new THREE.Quaternion(), []);
   const grown = useMemo(() => new THREE.Vector3(), []);
 
@@ -106,7 +106,7 @@ export function VesselBurn({ hull, damage }: { hull: VesselHull; damage: readonl
     // A ship first seen burning is already burning; only a change of repairs fades.
     shown.current ??= copyLooks(targets);
     const now = shown.current;
-    if (VESSEL_SYSTEMS.every((system) => isOut(now[system]) && isOut(targets[system]))) {
+    if (VESSEL_SYSTEMS.every((system) => burnOut(now[system]) && burnOut(targets[system]))) {
       group.visible = false;
       return;
     }
@@ -119,7 +119,17 @@ export function VesselBurn({ hull, damage }: { hull: VesselHull; damage: readonl
       const look = now[system];
       easeBurn(look, targets[system], delta);
       const at = bays[b]!;
-      burning ||= look.smoke + look.flame + look.glow + look.sparks > 0;
+      const glow = glowGroup.children[b];
+      if (burnOut(look)) {
+        // Out while others burn: its quads would still be drawn, see-through, over the hull.
+        for (let k = 0; k < SMOKE_PUFFS; k++) puffMesh.setMatrixAt(b * SMOKE_PUFFS + k, none);
+        for (let i = b * FLAMES * LAYERS; i < (b + 1) * FLAMES * LAYERS; i++) flameMesh.setMatrixAt(i, none);
+        sparks.phase[b] = -1;
+        sparks.on[b] = 0;
+        if (glow instanceof THREE.Sprite) glow.material.opacity = 0;
+        continue;
+      }
+      burning = true;
       for (let k = 0; k < SMOKE_PUFFS; k++) {
         const i = b * SMOKE_PUFFS + k;
         const puff = puffState(b, k, t);
@@ -153,7 +163,6 @@ export function VesselBurn({ hull, damage }: { hull: VesselHull; damage: readonl
       const burst = empSlot(20 + b, t, 0.6);
       sparks.phase[b] = look.sparks > 0 && burst.active ? burst.phase : -1;
       sparks.on[b] = look.sparks;
-      const glow = glowGroup.children[b];
       if (glow instanceof THREE.Sprite) {
         glow.position.copy(at);
         glow.material.opacity = look.glow * (0.55 + 0.25 * Math.sin(t * 11 + b * 2) * Math.sin(t * 3.7));

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { VesselSystem } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import { damageSpots, type VesselLights } from '../src/galaxy/mainSky.js';
-import { BURN_FADE_SECONDS, burnTargets, easeBurn, loopLayers, puffState, SMOKE_PUFFS, type BurnLook } from '../src/galaxy/vesselBurn.js';
+import { BURN_FADE_SECONDS, burnOut, burnTargets, easeBurn, loopLayers, puffState, SMOKE_PUFFS, type BurnLook } from '../src/galaxy/vesselBurn.js';
 
 /*
   THE WRECKED SHIP BURNS LIKE THE LAB'S (owner approved the smoke and flames, 2026-11-12): a smoke
@@ -44,6 +44,19 @@ describe('how each bay burns', () => {
   it('a mended system is out, and a mended ship does not burn at all', () => {
     expect(look({ ...all(0), DEFENCE: 1 }, 'DEFENCE')).toEqual(zero);
     for (const system of ['REFINERY', 'SURVEY', 'DEFENCE', 'CARGO', 'DRIVE'] as const) expect(look(all(1), system)).toEqual(zero);
+  });
+});
+
+describe('a bay that is out costs nothing', () => {
+  it('is out only when nothing of it shows', () => {
+    expect(burnOut(zero)).toBe(true);
+    expect(burnOut({ ...zero, smoke: 0.01 })).toBe(false);
+    expect(burnOut({ ...zero, sparks: 1 })).toBe(false);
+  });
+
+  it('draws none of its puffs or flames while the others burn', () => {
+    const burn = readFileSync('src/galaxy/VesselBurn.tsx', 'utf8');
+    expect(burn).toMatch(/if \(burnOut\(look\)\) \{[\s\S]{0,400}setMatrixAt\([^)]*none\)/);
   });
 });
 
@@ -132,5 +145,16 @@ describe('the ship burns through one batched effect, with no real light', () => 
     expect(body).not.toMatch(/function (Blaze|Sparks)\b/);
     const burn = readFileSync('src/galaxy/VesselBurn.tsx', 'utf8');
     expect(burn).not.toMatch(/<(point|directional|spot|ambient)Light\b/);
+  });
+
+  it('a ship that has never been hit loads no fire art; once hit, it keeps the burn to let it go out', () => {
+    const body = readFileSync('src/galaxy/VesselBody.tsx', 'utf8');
+    expect(body).toMatch(/useState\(damage\.length > 0\)/);
+    expect(body).toMatch(/\{lit && \(\s*<SkinAssetBoundary/);
+  });
+
+  it('a new hull frees only its own sparks, never the smoke and flames still in use', () => {
+    const burn = readFileSync('src/galaxy/VesselBurn.tsx', 'utf8');
+    expect(burn).toMatch(/useEffect\(\(\) => \(\) => \{ sparks\.geometry\.dispose\(\); sparks\.material\.dispose\(\); \}, \[sparks\]\)/);
   });
 });

@@ -25,6 +25,8 @@ const ARC_SECONDS = 0.55;
 const BOLT_SECONDS = 0.32;
 /** The shaders' own clock wraps, so their noise keeps float precision through the whole hour. */
 const SHADER_WRAP = 120;
+/** One whole turn per shader-clock wrap: an ion turning whole turns is where it was when the clock wraps. */
+const TURN_PER_WRAP = ((2 * Math.PI) / SHADER_WRAP).toFixed(8);
 
 const RIM_VERT = /* glsl */`
   varying vec3 vNormal; varying vec3 vView; varying vec3 vDir;
@@ -55,7 +57,7 @@ const ION_VERT = /* glsl */`
   attribute vec4 aSeed; uniform float uT; uniform float uPx; uniform float uRef;
   varying float vGlow;
   void main() {
-    float spin = uT * (0.05 + 0.12 * aSeed.w) * (aSeed.z > 0.5 ? 1.0 : -1.0);
+    float spin = uT * (1.0 + floor(aSeed.w * 3.0)) * ${TURN_PER_WRAP} * (aSeed.z > 0.5 ? 1.0 : -1.0);
     vec3 p = position; float c = cos(spin), s = sin(spin);
     p = vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);

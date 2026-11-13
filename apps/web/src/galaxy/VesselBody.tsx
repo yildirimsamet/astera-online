@@ -1,5 +1,5 @@
 import { useLoader } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -69,14 +69,20 @@ export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0
     return { body, outline, owned };
   }, [gltf.scene, rim, rimOpacity, rimWidth]);
   useEffect(() => () => { owned.forEach((material) => { material.dispose(); }); }, [owned]);
+  // A ship never hit (a jump's ship, a fresh one) loads no fire art; once hit it keeps the burn, so a
+  // repaired ship's fires go out over their moment instead of vanishing.
+  const [lit, setLit] = useState(damage.length > 0);
+  if (!lit && damage.length > 0) setLit(true);
   return (
     <group>
       <primitive object={outline} />
       <primitive object={body} />
       {/* Its own boundary: fire art that fails or is still loading never takes the hull with it. */}
-      <SkinAssetBoundary fallback={null}>
-        <Suspense fallback={null}><VesselBurn hull={hull} damage={damage} /></Suspense>
-      </SkinAssetBoundary>
+      {lit && (
+        <SkinAssetBoundary fallback={null}>
+          <Suspense fallback={null}><VesselBurn hull={hull} damage={damage} /></Suspense>
+        </SkinAssetBoundary>
+      )}
     </group>
   );
 }

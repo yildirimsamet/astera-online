@@ -17,8 +17,9 @@ const slots = () => ({
   centres: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3()),
   directions: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3()),
   ages: Array.from({ length: AEGIS_HIT_SLOTS }, () => -1),
+  strengths: Array.from({ length: AEGIS_HIT_SLOTS }, () => 0),
 });
-const hit = (at: number, x = 1): AegisHit => ({ centre: [5, 0, 0], direction: [x, 0, 0], at });
+const hit = (at: number, x = 1): AegisHit => ({ centre: [5, 0, 0], direction: [x, 0, 0], at, strength: 1 });
 
 afterEach(() => { clearAegisHits('a'); clearAegisHits('b'); });
 
@@ -50,6 +51,15 @@ describe('the hits rippling over the Aegis domes', () => {
     expect(into.directions.map((d) => d.x)).not.toContain(0);
     expect(into.centres[0]!.toArray()).toEqual([5, 0, 0]);
     for (let i = 1; i < AEGIS_HIT_SLOTS; i++) expect(into.ages[i]!).toBeGreaterThanOrEqual(into.ages[i - 1]!);
+  });
+
+  it('a raid seen only as a distant effect ripples as faintly as its fire', () => {
+    strikeAegis('a', [{ ...hit(1_000), strength: 0.4 }]);
+    const into = slots();
+    expect(aegisHitUniforms(1_100, into)).toBe(1);
+    expect(into.strengths[0]).toBe(0.4);
+    expect(createShieldMaterial().fragmentShader).toMatch(/uHitStrength\[i\]/);
+    expect(readFileSync('src/galaxy/Bombardment.tsx', 'utf8')).toMatch(/strength: intensity/);
   });
 
   it('forgets a raid once it is over', () => {

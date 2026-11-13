@@ -22,6 +22,9 @@ export interface BurnLook {
 /** How long a mended bay takes to settle most of the way out. */
 export const BURN_FADE_SECONDS = 0.7;
 
+/** A bay with nothing showing: it draws nothing at all. */
+export const burnOut = (look: BurnLook): boolean => look.smoke + look.flame + look.glow + look.sparks <= 0;
+
 const OUT: BurnLook = { smoke: 0, flame: 0, glow: 0, sparks: 0 };
 
 /** What each bay shows: a wrecked machine burns, one under repair smoulders, wiring sparks. */

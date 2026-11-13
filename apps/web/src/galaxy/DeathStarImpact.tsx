@@ -254,7 +254,6 @@ function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {
   const rings = useRef<(THREE.Sprite | null)[]>([]);
   const shell = useRef<THREE.Mesh>(null);
   const arcs = useRef<(THREE.Mesh | null)[]>([]);
-  const light = useRef<THREE.PointLight>(null);
   const ring = useMemo(ringTexture, []);
   const heard = useRef(false);
   const soundPosition = useMemo(() => new THREE.Vector3(...event.position), [event.position]);
@@ -300,16 +299,11 @@ function GeometricImpact({ event }: { event: DeathStarImpactEvent }) {
       (arc.material as THREE.MeshBasicMaterial).opacity =
         Math.max(0, fade * (0.8 - i * 0.12)) * event.intensity;
     });
-    if (light.current) {
-      light.current.intensity = Math.max(0, 60 * (1 - elapsed * 3.2) ** 3)
-        * event.intensity;
-    }
   });
 
   return (
     <group ref={root} name="death-star-emp-impact" position={event.position}>
       <FullRate />
-      <pointLight ref={light} color="#63f5ff" distance={event.radius * 24} intensity={60} decay={2} />
       <sprite ref={flash} renderOrder={1310}>
         <spriteMaterial
           map={ring}

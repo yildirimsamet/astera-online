@@ -116,7 +116,8 @@ import { ScanReveals } from './ScanReveals.jsx';
 import { CoreLevelUps } from './CoreLevelUps.jsx';
 import type { CoreClock } from './coreLevelUp.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
-import { MiningFlights, miningFocusRadius, miningReach } from './MiningFlights.jsx';
+import { MiningFlights, miningFocusRadius, miningReach, miningRockAt } from './MiningFlights.jsx';
+import { heldReach } from './miningDig.js';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
 import { monumentFocusDistance } from './MonumentModel.js';
@@ -598,7 +599,7 @@ export function GalaxyCanvas({
       const run = runs.find((r) => r.id === focus.id);
       if (!run) return null;
       const origin = runHomePosition(run, nodes, homePosition);
-      return () => runPosition(run, origin, serverNow(), nodes, miningReach(run, asteroids, wrecks, nodes, scale));
+      return () => runPosition(run, origin, serverNow(), nodes, heldReach(run.id, miningReach(run, asteroids, wrecks, nodes, scale)), miningRockAt(run, asteroids, seasonStart));
     }
 
     /**
@@ -1009,6 +1010,7 @@ export function GalaxyCanvas({
             wrecks={wrecks}
             home={homePosition}
             nodes={nodes}
+            seasonStart={seasonStart}
             focusedId={focus?.kind === 'run' ? focus.id : null}
             onSelect={(id) => {
               onFocus({ kind: 'run', id });

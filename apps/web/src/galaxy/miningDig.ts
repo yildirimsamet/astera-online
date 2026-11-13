@@ -36,7 +36,8 @@ export function digFrame(seconds: number): DigFrame {
   return {
     sparks: t < DIG_SECONDS ? ramp(t, 0, 0.15) * (1 - ramp(t, DIG_SECONDS - 0.2, 0.2)) : 0,
     heat: ramp(t, 0, 0.6) * (1 - ramp(t, DIG_SECONDS, 0.5)),
-    cargo: ramp(t, 0.2, DIG_SECONDS - 0.2),
+    // Full through the bite, then dimming as the drill eases away, so the lit hold never blinks out.
+    cargo: ramp(t, 0.2, DIG_SECONDS - 0.2) * (1 - ramp(t, DIG_SECONDS + DIG_TAIL_SECONDS - 0.5, 0.5)),
     spin: t < DIG_SECONDS ? ramp(t, 0, 0.25) : 1 - ramp(t, DIG_SECONDS, 0.3),
   };
 }
@@ -62,4 +63,31 @@ export function runDig(run: DigRun, now: number): number | null {
 export function digHoldMs(run: DigRun): number {
   if (!runLaden(run) || !run.homeAt) return 0;
   return Math.max(0, Math.min(DIG_SECONDS * 1000, (run.homeAt.getTime() - run.arriveAt.getTime()) / 2));
+}
+
+/** The drill's turn comes to rest on a whole turn as the cut cools, so letting go of it never snaps. */
+export function settleRoll(roll: number, delta: number): number {
+  const rest = Math.round(roll / (Math.PI * 2)) * Math.PI * 2;
+  const step = Number.isFinite(delta) ? Math.max(0, delta) : 0;
+  return roll + (rest - roll) * (1 - Math.exp(-step * 6));
+}
+
+/**
+ * THE LAST STAND-OFF EACH RUN SAW. A wreck field emptied by this very run leaves the map in the same
+ * update that turns the run home, and a stand-off of zero would drop the drill into the field's centre
+ * (a world's, for a ring) during its bite. So a run keeps the last one it had.
+ */
+const lastReach = new Map<string, number>();
+
+export function heldReach(runId: string, reach: number): number {
+  if (reach > 0) {
+    lastReach.set(runId, reach);
+    return reach;
+  }
+  return lastReach.get(runId) ?? 0;
+}
+
+/** Drop the runs no longer flying. */
+export function forgetReach(flying: ReadonlySet<string>): void {
+  for (const id of lastReach.keys()) if (!flying.has(id)) lastReach.delete(id);
 }

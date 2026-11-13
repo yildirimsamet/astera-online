@@ -161,7 +161,10 @@ export function Bombardment({
   const sight = useMemo(() => ({ squadron: new THREE.Vector3(), centre: new THREE.Vector3(), towards: new THREE.Vector3() }), []);
   // Where each round meets the world, and the same in world space for its Aegis dome (`aegisHits`).
   const rounds = useMemo(() => domeHits(shots, slots, distance, radius, arriveAt), [shots, slots, distance, radius, arriveAt]);
-  const struck = useMemo<AegisHit[]>(() => rounds.map((round) => ({ centre: [0, 0, 0], direction: [1, 0, 0], at: round.at })), [rounds]);
+  const struck = useMemo<AegisHit[]>(
+    () => rounds.map((round) => ({ centre: [0, 0, 0], direction: [1, 0, 0], at: round.at, strength: intensity })),
+    [rounds, intensity],
+  );
   useEffect(() => () => { clearAegisHits(volleyKey); }, [volleyKey]);
   useFrame(({ camera }) => {
     const node = root.current;

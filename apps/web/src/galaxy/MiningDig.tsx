@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { playSceneSound } from './audio.js';
-import { DIG_SECONDS, digFrame, runDig, runLaden } from './miningDig.js';
+import { DIG_SECONDS, digFrame, runDig, runLaden, settleRoll } from './miningDig.js';
 import { NUKE_SMOKE } from './NukeBlast.js';
 import { createRehearsal, type Rehearsal } from './rehearsal.js';
 import { atlasBatch } from './StrategicBlast.jsx';
@@ -105,6 +105,11 @@ export function MiningDig({ run, length, motion }: { run: MiningRun; length: num
   }, [chunkGeometry, chunkMaterial]);
   const filled = useRef(0);
   const heard = useRef(false);
+  // Torn down mid-bite (a recall the server took just before contact): the drill stops turning and shaking.
+  useEffect(() => {
+    const drill = motion.current;
+    return () => { drill.roll = 0; drill.shake = 0; };
+  }, [motion]);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const facing = useMemo(() => new THREE.Quaternion(), []);
   const where = useMemo(() => new THREE.Vector3(), []);
@@ -126,7 +131,7 @@ export function MiningDig({ run, length, motion }: { run: MiningRun; length: num
     // Chunks and the lit hold wait for the server's word that there was ore to take.
     filled.current = runLaden(run) ? Math.min(1, filled.current + delta / 0.15) : 0;
     const cargo = filled.current;
-    drill.roll += delta * f.spin * 9;
+    drill.roll = t > DIG_SECONDS ? settleRoll(drill.roll + delta * f.spin * 9, delta) : drill.roll + delta * f.spin * 9;
     drill.shake = f.sparks;
 
     if (!heard.current && t < 0.25) {

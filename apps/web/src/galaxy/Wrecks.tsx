@@ -105,7 +105,7 @@ export interface WreckView {
  * that it cannot be mistaken for a planet, large enough to be tappable at mobile
  * map scale. It sits between the smallest and largest world rings on purpose.
  */
-const VOID_RADIUS = 0.5;
+export const VOID_RADIUS = 0.5;
 
 /** A void field's rubble shells, as fractions of its size: the smaller ones fill the larger's hole. */
 const VOID_SHELLS = [1, 0.68, 0.4] as const;

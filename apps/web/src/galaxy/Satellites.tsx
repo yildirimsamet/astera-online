@@ -508,6 +508,7 @@ const SHIELD_FRAG = `
   uniform vec3 uHitCentre[${String(AEGIS_HIT_SLOTS)}];
   uniform vec3 uHitDir[${String(AEGIS_HIT_SLOTS)}];
   uniform float uHitAge[${String(AEGIS_HIT_SLOTS)}];
+  uniform float uHitStrength[${String(AEGIS_HIT_SLOTS)}];
 
   const vec2 S = vec2(1.0, 1.7320508);
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -554,7 +555,7 @@ const SHIELD_FRAG = `
       float apart = acos(clamp(dot(n, uHitDir[i]), -1.0, 1.0));
       float wave = (apart - age * 0.75) / 0.07;
       float core = apart / 0.1;
-      hit += exp(-(wave * wave)) * (1.0 - age) * (0.5 + 2.6 * lattice) + exp(-(core * core)) * (1.0 - age) * (1.0 - age) * 2.2;
+      hit += (exp(-(wave * wave)) * (1.0 - age) * (0.5 + 2.6 * lattice) + exp(-(core * core)) * (1.0 - age) * (1.0 - age) * 2.2) * uHitStrength[i];
     }
     hit *= vAlive;
     float glow = rim * 0.6 + bands * rim * 0.75 + ring * (0.4 + 0.4 * rim) + lattice * (0.035 + 0.2 * rim) + blink * 0.18 * (0.5 + d);
@@ -566,12 +567,13 @@ const SHIELD_FRAG = `
 `;
 
 /** The raid hits the dome program reads, newest first (`aegisHitUniforms`). */
-export interface DomeHitSlots { centres: THREE.Vector3[]; directions: THREE.Vector3[]; ages: number[] }
+export interface DomeHitSlots { centres: THREE.Vector3[]; directions: THREE.Vector3[]; ages: number[]; strengths: number[] }
 
 export const domeHitSlots = (): DomeHitSlots => ({
   centres: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3()),
   directions: Array.from({ length: AEGIS_HIT_SLOTS }, () => new THREE.Vector3(1, 0, 0)),
   ages: Array.from({ length: AEGIS_HIT_SLOTS }, () => -1),
+  strengths: Array.from({ length: AEGIS_HIT_SLOTS }, () => 0),
 });
 
 /** The one material every dome is drawn with. */
@@ -587,6 +589,7 @@ export function createShieldMaterial(hits: DomeHitSlots = domeHitSlots()): THREE
       uHitCentre: { value: hits.centres },
       uHitDir: { value: hits.directions },
       uHitAge: { value: hits.ages },
+      uHitStrength: { value: hits.strengths },
     },
     transparent: true,
     depthWrite: false,

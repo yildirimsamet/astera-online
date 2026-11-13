@@ -672,6 +672,12 @@ export function legEnd(
  * and eases it away again on the way home; a full drill first holds there for its bite (`digHoldMs`).
  * Both ends of every leg and every time are unchanged, and a recalled run, which turned round in open
  * space, flies exactly the line the server stored.
+ *
+ * A ROCK FLIES ON THROUGH THE BITE. The meeting point is where the rock was at arrival; it keeps flying
+ * its orbit while the drill waits for the answer and bites. `rockAt` (the rock's drawn position at a
+ * server instant) lets the drill ride with it, then let go of it smoothly on the way home. It also tells
+ * a run turned round in open space — its rock ran dry before it got there, so its meeting point is far
+ * from the rock — which flies the server's line like a recalled one.
  */
 export function runPosition(
   run: MiningRun,
@@ -679,6 +685,7 @@ export function runPosition(
   now: number,
   nodes: readonly PlanetNode[] = [],
   reach = 0,
+  rockAt?: (ms: number) => Vec3Tuple,
 ): Vec3Tuple {
   const returning = run.status === 'returning';
   const [from, to, departAt, arriveAt] = returning
@@ -695,7 +702,22 @@ export function runPosition(
     interpolatePosition(leg.from, leg.to, departAt.getTime() + hold, arriveAt.getTime(), now),
   );
   if (!(reach > 0) || (returning && run.recalledAt)) return drawn;
-  return standOff(drawn, toWorld(run.intercept), toWorld(returning ? leg.to : leg.from), reach);
+  const arrive = run.arriveAt.getTime();
+  const meeting = toWorld(run.intercept);
+  const origin = rockAt?.(arrive);
+  if (returning && origin && Math.hypot(origin[0] - meeting[0], origin[1] - meeting[1], origin[2] - meeting[2]) > reach) return drawn;
+  const placed = standOff(drawn, meeting, toWorld(returning ? leg.to : leg.from), reach);
+  if (!rockAt || !origin || !(now > arrive)) return placed;
+  const letGo = arrive + hold;
+  const there = rockAt(returning ? Math.min(now, letGo) : now);
+  const span = Math.max(1, (run.homeAt ?? run.arriveAt).getTime() - letGo);
+  const p = returning ? Math.max(0, Math.min(1, (now - letGo) / span)) : 0;
+  const ride = 1 - p * p * (3 - 2 * p);
+  return [
+    placed[0] + (there[0] - origin[0]) * ride,
+    placed[1] + (there[1] - origin[1]) * ride,
+    placed[2] + (there[2] - origin[2]) * ride,
+  ];
 }
 
 /**

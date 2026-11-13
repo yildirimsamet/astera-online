@@ -8,8 +8,8 @@ import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import {
-  beginGrowth, drawnRadius, landsAfter, levelFrame, levelLength, nextLevelUp, owedLevelUps, pruneGrowth, readCoreSeen,
-  rememberCoreSeen, seenLevels, type CoreClock, type LevelUp,
+  beginGrowth, crossesPeak, drawnRadius, landsAfter, levelFrame, levelLength, levelUpKey, mergeSeen, nextLevelUp,
+  owedLevelUps, pruneGrowth, readCoreSeen, rebaseStale, rememberCoreSeen, type CoreClock, type LevelUp,
 } from './coreLevelUp.js';
 import { FULL_RATE_FPS, HoldRate } from './frames.jsx';
 import { screenFloorScale } from './publicMoments.js';
@@ -86,10 +86,17 @@ const DISC_FRAG = /* glsl */`
 
 const hash = (n: number): number => { const x = Math.sin(n * 12.9898 + 4.1) * 43758.5453; return x - Math.floor(x); };
 
-/** A slot's step and what has already sounded. */
+/** A slot's step, what has already sounded, and whether it changes who the player meets. */
 interface Live {
   up: LevelUp;
   boomed: boolean;
+  peak: boolean;
+}
+
+/** The world holds its old size until the step's detonation, then springs to the new one. */
+function grow(up: LevelUp, nodes: readonly PlanetNode[]): void {
+  const base = nodes.find((node) => node.id === up.id)?.coreLevel ?? up.from;
+  beginGrowth(up.id, { from: up.from, to: up.to, at: up.start + landsAfter(up.kind) * 1000, base });
 }
 
 export function CoreLevelUps({ nodes, cores, selfId }: {
@@ -100,8 +107,12 @@ export function CoreLevelUps({ nodes, cores, selfId }: {
 }) {
   const [playing, setPlaying] = useState(false);
   const queued = useRef<LevelUp[]>([]);
-  /** The highest level each world has played this visit, so a live step is not owed again when the queue reads in. */
+  /** The highest level each world has queued this visit, so one step is never queued twice. */
   const played = useRef(new Map<string, number>());
+  /** The highest level each world has put on the map this visit: what the record may say was seen. */
+  const shown = useRef(new Map<string, number>());
+  /** Bumped when the live timer fires, so the next queued upgrade is armed in its turn. */
+  const [armed, setArmed] = useState(0);
   const where = useRef(nodes);
   useEffect(() => { where.current = nodes; }, [nodes]);
 
@@ -111,17 +122,27 @@ export function CoreLevelUps({ nodes, cores, selfId }: {
     return (cores ?? []).filter((core) => mine.has(core.id));
   }, [cores, nodes]);
 
-  const latest = useRef({ own, selfId });
-  useEffect(() => { latest.current = { own, selfId }; }, [own, selfId]);
+  const latest = useRef({ own, all: cores ?? [], selfId });
+  useEffect(() => { latest.current = { own, all: cores ?? [], selfId }; }, [own, cores, selfId]);
+
+  /**
+   * The record is written as a step takes its slot, never as it is queued: a step queued while the map is
+   * hidden (the app in the background, the Base screen over it) has not been seen, and stays owed.
+   */
+  const remember = useCallback((now: number) => {
+    const { own: onMap, all, selfId: self } = latest.current;
+    // Nothing on the map yet (still loading) is no look at all.
+    if (!self || onMap.length === 0) return;
+    rememberCoreSeen(self, mergeSeen(readCoreSeen(self), {
+      cores: onMap, owned: new Set(all.map((core) => core.id)), now,
+      shown: shown.current, pending: new Set(queued.current.map((up) => up.id)),
+    }));
+  }, []);
 
   const queue = useCallback((up: LevelUp) => {
     if ((played.current.get(up.id) ?? -Infinity) >= up.to) return;
     played.current.set(up.id, up.to);
-    // Remembered at once: a live step starts before its queue has run out.
-    const { own: cores, selfId: self } = latest.current;
-    if (self) rememberCoreSeen(self, seenLevels(cores, serverNow(), played.current));
-    const base = where.current.find((node) => node.id === up.id)?.coreLevel ?? up.from;
-    beginGrowth(up.id, { from: up.from, to: up.to, at: up.start + landsAfter(up.kind) * 1000, base });
+    grow(up, where.current);
     queued.current.push(up);
     setPlaying(true);
   }, []);
@@ -130,24 +151,24 @@ export function CoreLevelUps({ nodes, cores, selfId }: {
   useEffect(() => {
     const now = serverNow();
     pruneGrowth(nodes, now);
-    if (!selfId) return;
+    if (!selfId || own.length === 0) return;
     let start = now;
     for (const up of owedLevelUps(own, readCoreSeen(selfId), now)) {
       queue({ ...up, start });
       start += (levelLength(up.kind) + OWED_GAP_S) * 1000;
     }
-    rememberCoreSeen(selfId, seenLevels(own, now, played.current));
-  }, [own, nodes, selfId, queue]);
+    remember(now);
+  }, [own, nodes, selfId, queue, remember]);
 
   // The next queued upgrade, live: its light starts gathering so the world steps as the queue ends.
   useEffect(() => {
     if (!selfId) return;
     const now = serverNow();
-    const next = nextLevelUp(own, now);
+    const next = nextLevelUp(own, now, played.current);
     if (!next) return;
-    const timer = window.setTimeout(() => { queue(next); }, Math.max(0, next.start - now));
+    const timer = window.setTimeout(() => { queue(next); setArmed((n) => n + 1); }, Math.max(0, next.start - now));
     return () => { window.clearTimeout(timer); };
-  }, [own, selfId, queue]);
+  }, [own, selfId, queue, armed]);
 
   const root = useRef<THREE.Group>(null);
   const rehearsal = useRef<Rehearsal | null>(null);
@@ -159,15 +180,21 @@ export function CoreLevelUps({ nodes, cores, selfId }: {
     rehearsal.current ??= createRehearsal(group);
     if (rehearsal.current.next()) return;
     const now = serverNow();
-    // A step takes a free slot once its start has come; a third waits for one.
-    queued.current = queued.current.filter((up) => {
-      if (up.start > now) return true;
+    // A step takes a free slot once its start has come; a third waits for one. One that waited (for a slot,
+    // or for the map to be drawn again) plays from its start, now, and its world steps with it.
+    const waited = queued.current.length;
+    queued.current = queued.current.filter((waiting) => {
+      if (waiting.start > now) return true;
       const cell = cells.find((candidate) => candidate.live === null);
       if (!cell) return true;
-      cell.live = { up, boomed: false };
-      if ((now - up.start) / 1000 < 0.3) playSound('charge', { gain: 0.5, key: `core:${up.id}` });
+      const up = rebaseStale(waiting, now);
+      if (up !== waiting) grow(up, where.current);
+      cell.live = { up, boomed: false, peak: crossesPeak(up, latest.current.all, now) };
+      shown.current.set(up.id, Math.max(shown.current.get(up.id) ?? -Infinity, up.to));
+      playSound('charge', { gain: 0.5, key: levelUpKey(up) });
       return false;
     });
+    if (queued.current.length < waited) remember(now);
     for (const cell of cells) {
       if (cell.live && (now - cell.live.up.start) / 1000 > levelLength(cell.live.up.kind)) cell.live = null;
     }
@@ -225,8 +252,8 @@ function LevelUpSlot({ cell, where }: { cell: { live: Live | null }; where: { cu
   const tilted = useRef<THREE.Mesh>(null);
   const flash = useRef<THREE.Sprite>(null);
   const wordAnchor = useRef<THREE.Group>(null);
-  const word = useRef<HTMLDivElement>(null);
-  const [tier, setTier] = useState<number | null>(null);
+  const label = useRef<HTMLDivElement>(null);
+  const [word, setWord] = useState<{ tier: number; peak: boolean } | null>(null);
   const shown = useRef<LevelUp | null>(null);
   const toCamera = useMemo(() => new THREE.Vector3(), []);
   const up = useMemo(() => new THREE.Vector3(), []);
@@ -243,7 +270,7 @@ function LevelUpSlot({ cell, where }: { cell: { live: Live | null }; where: { cu
     const live = cell.live;
     if (live?.up !== shown.current) {
       shown.current = live?.up ?? null;
-      setTier(live?.up.kind === 'tier' ? live.up.tier : null);
+      setWord(live?.up.kind === 'tier' ? { tier: live.up.tier, peak: live.peak } : null);
     }
     const node = live ? where.current.find((candidate) => candidate.id === live.up.id) : undefined;
     const group = at.current;
@@ -254,7 +281,7 @@ function LevelUpSlot({ cell, where }: { cell: { live: Live | null }; where: { cu
     const big = step.kind === 'tier';
     if (!live.boomed && f.flash > 0) {
       live.boomed = true;
-      playSound('rankup', { gain: big ? 1 : 0.75, key: `core:${step.id}:step` });
+      playSound('rankup', { gain: big ? 1 : 0.75, key: `${levelUpKey(step)}:step` });
       haptic(big ? 'rumble' : 'commit');
     }
 
@@ -303,11 +330,11 @@ function LevelUpSlot({ cell, where }: { cell: { live: Live | null }; where: { cu
       tilted.current.scale.setScalar(R * (1.08 + reach * 0.8 * k));
       rings[2]!.opacity = big && k > 0 ? 0.8 * (1 - k) ** 1.6 : 0;
     }
-    if (wordAnchor.current && word.current) {
+    if (wordAnchor.current && label.current) {
       // Above the world as the camera sees it, from wherever it looks.
       wordAnchor.current.position.copy(up.set(0, 1, 0).applyQuaternion(camera.quaternion).multiplyScalar(R * 2.05));
-      word.current.style.opacity = String(f.label);
-      word.current.style.transform = `translateY(${String((1 - f.label) * 10)}px) scale(${String(0.92 + 0.08 * f.label)})`;
+      label.current.style.opacity = String(f.label);
+      label.current.style.transform = `translateY(${String((1 - f.label) * 10)}px) scale(${String(0.92 + 0.08 * f.label)})`;
     }
   });
 
@@ -323,16 +350,19 @@ function LevelUpSlot({ cell, where }: { cell: { live: Live | null }; where: { cu
       </group>
       <mesh ref={tilted} material={rings[2]} rotation={[-Math.PI / 2 + 1.05, 0.35, 0]} renderOrder={1} frustumCulled={false}><ringGeometry args={[0.985, 1, 128]} /></mesh>
       <sprite ref={flash} material={halo} renderOrder={4} frustumCulled={false} />
-      {tier !== null && (
+      {word !== null && (
         <group ref={wordAnchor}>
           <Html center zIndexRange={[9, 9]} style={{ pointerEvents: 'none' }}>
-            <div ref={word} className="whitespace-nowrap text-center" style={{ opacity: 0 }}>
+            <div ref={label} className="whitespace-nowrap text-center" style={{ opacity: 0 }}>
               <p className="font-v2-ui text-readout font-bold uppercase tracking-wide text-v2-premium" style={{ textShadow: '0 0 14px rgb(255 207 107 / 0.55)' }}>
-                {t('galaxy.coreTierUp', { tier })}
+                {t('galaxy.coreTierUp', { tier: word.tier })}
               </p>
-              <p className="mt-1 font-v2-ui text-label text-v2-ink-2" style={{ textShadow: '0 1px 6px rgb(0 0 0 / 0.95)' }}>
-                {t('galaxy.coreTierUpLine')}
-              </p>
+              {/* Who you meet follows the tallest Core (D168): a colony below it changes nothing there. */}
+              {word.peak && (
+                <p className="mt-1 font-v2-ui text-label text-v2-ink-2" style={{ textShadow: '0 1px 6px rgb(0 0 0 / 0.95)' }}>
+                  {t('galaxy.coreTierUpLine')}
+                </p>
+              )}
             </div>
           </Html>
         </group>

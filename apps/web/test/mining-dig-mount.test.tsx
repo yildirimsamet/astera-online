@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { MiningRun } from '../src/api/schemas.js';
 import { MINING_CRAFT_LENGTH, miningReach } from '../src/galaxy/MiningFlights.js';
-import { wreckRadius, type WreckView } from '../src/galaxy/Wrecks.js';
+import { VOID_RADIUS, wreckRadius, type WreckView } from '../src/galaxy/Wrecks.js';
 import { asteroidRadius, type PlanetNode } from '../src/galaxy/scene.js';
 
 const source = (file: string) => readFileSync(`src/galaxy/${file}`, 'utf8');
@@ -31,6 +31,11 @@ describe('how far from its target a drill stops', () => {
     expect(wreckRadius(0.9)).toBeGreaterThan(0.9);
   });
 
+  it('a field whose world is not drawn: the ring the map draws about its stand-in world', () => {
+    const debris = run({ id: 'r-ring-hidden', targetKind: 'debris', asteroidId: null, debrisFieldId: 'w-ring' });
+    expect(miningReach(debris, rocks, [ringField], [], 1)).toBeCloseTo(wreckRadius(VOID_RADIUS) + MINING_CRAFT_LENGTH / 2, 9);
+  });
+
   it('a target this client cannot see: no stand-off, the old path', () => {
     expect(miningReach(run({ asteroidId: 'zzzzzzzzzzzzzzzzzzzzzz' }), rocks, [], [], 1)).toBe(0);
     expect(miningReach(run({ targetKind: 'debris', asteroidId: null, debrisFieldId: 'gone' }), rocks, [voidField], [], 1)).toBe(0);
@@ -40,14 +45,22 @@ describe('how far from its target a drill stops', () => {
 describe('the dig is mounted on the craft that flies, and the camera follows the same path', () => {
   it('each run flies with its stand-off and carries its dig', () => {
     const mining = source('MiningFlights.tsx');
-    expect(mining).toContain('runPosition(run, home, now, nodes, reach)');
+    expect(mining).toContain('runPosition(run, home, now, nodes, reach, rockAt)');
+    expect(mining).toContain('reach={heldReach(run.id, miningReach(run, asteroids, wrecks, nodes, scale))}');
     expect(mining).toMatch(/<MiningDig\b/);
+    // No dig where this client cannot see the target: it would spark in empty space, or inside a world.
+    expect(mining).toMatch(/reach > 0 && \(\s*<SkinAssetBoundary[\s\S]{0,120}<MiningDig\b/);
   });
 
   it('a focused run is followed along the identical stand-off', () => {
     const canvas = source('GalaxyCanvas.tsx');
-    expect(canvas).toMatch(/runPosition\(run, origin, serverNow\(\), nodes, miningReach\(run, asteroids, wrecks, nodes, scale\)\)/);
+    expect(canvas).toMatch(/runPosition\(run, origin, serverNow\(\), nodes, heldReach\(run\.id, miningReach\(run, asteroids, wrecks, nodes, scale\)\), miningRockAt\(run, asteroids, seasonStart\)\)/);
+    expect(canvas).toMatch(/<MiningFlights[\s\S]{0,260}seasonStart=\{seasonStart\}/);
     expect(canvas).toMatch(/<MiningFlights[\s\S]{0,200}asteroids=\{asteroids\}[\s\S]{0,80}wrecks=\{wrecks\}/);
+  });
+
+  it('lets go of the drill when the dig is torn down mid-bite (a late recall)', () => {
+    expect(source('MiningDig.tsx')).toMatch(/useEffect\(\(\) => \{\s*const drill = motion\.current;\s*return \(\) => \{ drill\.roll = 0; drill\.shake = 0; \};/);
   });
 
   it('works without a real light: the cut’s glow is drawn, never lit', () => {
