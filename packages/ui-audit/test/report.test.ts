@@ -122,6 +122,45 @@ describe('the markdown report', () => {
     expect(sections[1]).toMatch(/basılmadı/);
     expect(sections[1]).not.toMatch(/_Yok\._/);
   });
+
+  /** Review of stage 1 (2026-11-13): a placeholder is text too (WCAG 1.4.3); its contrast was measured, never counted. */
+  it('counts a placeholder that fails contrast on its own line', () => {
+    const [first] = entries;
+    if (!first?.audit) throw new Error('the fixture needs a measured entry');
+    const faint = { min: 1, p5: 1.4, median: 1.6, apcaP5: 10 };
+    const field: Entry = { ...first, audit: { ...first.audit, texts: [text(14, { placeholder: true, contrast: faint }), text(14, { placeholder: true })] } };
+    const markdown = renderReport(summarize([field], surfaces), { title: 'Test', date: '2026-11-11' });
+    expect(markdown).toMatch(/Kontrastı yetmeyen yer tutucu \(placeholder\): 1\b/);
+  });
+
+  /** Review of stage 1 (2026-11-13): 1.2 names K3 (<8 px to a neighbour) and T4 (>80, XAG); both reach the report. */
+  it('reports targets closer than 8 px to a neighbour and lines over 80 characters', () => {
+    const [first] = entries;
+    if (!first?.audit) throw new Error('the fixture needs a measured entry');
+    const crowded: Entry = {
+      ...first,
+      audit: {
+        ...first.audit,
+        targets: [target(48, { nearestGap: 4 }), target(48, { nearestGap: 8 }), target(48, { nearestGap: null })],
+        texts: [text(14, { lines: 3, charsPerLine: 90 }), text(14, { lines: 3, charsPerLine: 60 })],
+      },
+    };
+    const markdown = renderReport(summarize([crowded], surfaces), { title: 'Test', date: '2026-11-11' });
+    expect(markdown).toMatch(/Komşusuna 8 px'ten yakın hedef \(K3\): 1\b/);
+    expect(markdown).toMatch(/Satır başına 80 karakterden fazla \(T4, XAG\): 1\b/);
+    expect(markdown).toMatch(/Satır başına 50 karakterden fazla: 2\b/);
+  });
+
+  /** Review of stage 1 (2026-11-13): a press the test could not judge is counted apart, never as an answer. */
+  it('counts a press it could not judge on its own line, neither answered nor silent', () => {
+    const [first] = entries;
+    if (!first?.audit) throw new Error('the fixture needs a measured entry');
+    const judged: Entry = { ...first, audit: { ...first.audit, targets: [target(48, { feedback: 'unsure' }), target(48, { feedback: 'immediate' })] } };
+    const section = renderReport(summarize([judged], surfaces), { title: 'Test', date: '2026-11-11' }).split('### Basma tepkisi (F1)')[1]?.split('###')[0] ?? '';
+    expect(section).toMatch(/\| Ölçülemedi[^|]*\| 1 \| %50 \|/);
+    expect(section).toMatch(/\| 100 ms içinde \(pointerdown\) \| 1 \| %50 \|/);
+    expect(section).toMatch(/\| Yok \| 0 \|/);
+  });
 });
 
 describe('text load per screenful (W1)', () => {

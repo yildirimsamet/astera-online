@@ -1,5 +1,6 @@
+import { createServer } from 'node:http';
 import { describe, expect, it } from 'vitest';
-import { stackPlan } from '../src/stack.js';
+import { ready, stackPlan } from '../src/stack.js';
 
 describe('the local game stack for the client driver', () => {
   const plan = stackPlan({ run: 'r42', password: 'pw-123456', apiPort: 3231, webPort: 5232, users: 150 });
@@ -36,5 +37,25 @@ describe('the local game stack for the client driver', () => {
 
   it('refuses a run id that would change the database name', () => {
     expect(() => stackPlan({ run: 'x; drop', password: 'pw-123456', apiPort: 1, webPort: 2, users: 1 })).toThrow();
+  });
+});
+
+/**
+ * Review of stage 1 (2026-11-13): an old API or Vite left on the port answers the poll while the new
+ * child dies of "address in use", and the run would measure the old stack. Ready means our child answers.
+ */
+describe('when the stack is ready', () => {
+  it('fails at once when the child it waits for has exited, even if something answers the port', async () => {
+    const old = createServer((_req, res) => { res.end('ok'); });
+    await new Promise<void>((resolve) => { old.listen(0, '127.0.0.1', resolve); });
+    const address = old.address();
+    if (address === null || typeof address === 'string') throw new Error('the stand-in server has no port');
+    const url = `http://127.0.0.1:${String(address.port)}/`;
+    try {
+      await expect(ready(url, 5_000, { exitCode: 1 })).rejects.toThrow(/exited/);
+      await expect(ready(url, 5_000, { exitCode: null })).resolves.toBeUndefined();
+    } finally {
+      await new Promise((resolve) => { old.close(resolve); });
+    }
   });
 });

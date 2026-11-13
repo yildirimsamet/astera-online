@@ -575,8 +575,9 @@ const clippedSideways = (start: Element): boolean => {
 
 const HIDE_ID = 'ui-audit-hide';
 const HIDE_CSS = `
-  *, *::before, *::after { color: transparent !important; -webkit-text-fill-color: transparent !important; caret-color: transparent !important; text-decoration-color: transparent !important; transition: none !important; }
-  ::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; }
+  /* Only the letters go: \`color\` stays, so plates, borders and shadows drawn in currentColor stay too. */
+  *, *::before, *::after { -webkit-text-fill-color: transparent !important; -webkit-text-stroke-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; text-decoration-color: transparent !important; transition: none !important; }
+  ::placeholder { -webkit-text-fill-color: transparent !important; }
   [${ICON}] { visibility: hidden !important; }
 `;
 const FREEZE_ID = 'ui-audit-freeze';

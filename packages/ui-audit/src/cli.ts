@@ -42,7 +42,7 @@ import { flashMoments, NOT_FILMED } from './flashMoments.js';
 import { startStack, type Stack } from './stack.js';
 import { renderStatic } from './static.js';
 import { isWhatIf, renderWhatIf, whatIfCss, whatIfSummary, type WhatIfName, type WhatIfSummary } from './whatif.js';
-import { PROFILES, planJobs, previousRun, runFolder, runJobs, summaryPath, type Profile, type Visit } from './run.js';
+import { PROFILES, planJobs, previousRun, runDate, runFolder, runJobs, summaryPath, type Profile, type Visit } from './run.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** The local calendar day: a run after midnight in Türkiye belongs to that day. */
@@ -76,7 +76,6 @@ const { values, positionals } = parseArgs({
 });
 const kit = values.kit;
 const auditedSurfaces = kit ? KIT_SURFACES : SURFACES;
-const mdPath = values.md ?? join(ROOT, 'reports/ui-audit', `${kit ? 'kit' : 'baseline'}-${today}.md`);
 
 function parseWhatIf(name: string | undefined): WhatIfName | undefined {
   if (name === undefined) return undefined;
@@ -86,6 +85,9 @@ function parseWhatIf(name: string | undefined): WhatIfName | undefined {
 const whatIf = parseWhatIf(values.whatif);
 const base = resolve(ROOT, values.out ?? join('out/ui-audit', runFolder(today, { kit })));
 const out = whatIf ? `${base}-whatif-${whatIf}` : base;
+/** The day the run folder belongs to: re-reporting an older run keeps its own date and its own "previous". */
+const runDay = runDate(base, today);
+const mdPath = values.md ?? join(ROOT, 'reports/ui-audit', `${kit ? 'kit' : 'baseline'}-${runDay}.md`);
 
 function isProfile(name: string): name is Profile['name'] {
   return name in PROFILES;
@@ -165,7 +167,7 @@ function isSummary(value: unknown): value is Summary {
 async function previousBaseline(): Promise<{ date: string; summary: Summary } | null> {
   const runs = dirname(base);
   if (!existsSync(runs)) return null;
-  const date = previousRun((await readdir(runs)).filter((f) => existsSync(summaryPath(join(runs, f)))), today);
+  const date = previousRun((await readdir(runs)).filter((f) => existsSync(summaryPath(join(runs, f)))), runDay);
   if (!date) return null;
   const parsed: unknown = JSON.parse(await readFile(summaryPath(join(runs, date)), 'utf8'));
   if (!isSummary(parsed)) throw new Error(`${summaryPath(join(runs, date))} is not a summary`);
@@ -198,7 +200,7 @@ async function report(): Promise<void> {
   const noPrevious = kit ? '_Kit ölçümü oyun ölçümüyle karşılaştırılmaz._\n' : '_Önceki ölçüm yok: bu ilk baseline._\n';
   await mkdir(dirname(md), { recursive: true });
   await writeFile(md, [
-    renderReport(summary, { title: `${kit ? 'Oyun arayüzü kiti ölçümü' : 'UI/UX başlangıç ölçümü'} — ${today}`, date: today }),
+    renderReport(summary, { title: `${kit ? 'Oyun arayüzü kiti ölçümü' : 'UI/UX başlangıç ölçümü'} — ${runDay}`, date: runDay }),
     previous ? renderComparison(compareSummaries(previous.summary, summary), previous.date) : noPrevious,
     sections ? `## Ya yazı ölçeği büyüseydi (plan §1.3)\n\n${sections}` : '',
   ].join('\n'));

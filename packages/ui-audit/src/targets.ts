@@ -72,16 +72,31 @@ const pointToBox = ([x, y]: [number, number], box: Box): number =>
  * WCAG 2.5.8 spacing exception: a target under `size` either way passes only if a
  * `size`-diameter circle on its box centre touches no other target and no other
  * undersized target's circle. Returns the failing targets in input order.
+ *
+ * Given the samples, a neighbour is measured by the cells it really covers: a backdrop's
+ * box is the whole screen, but it covers only the frame round the dialog it surrounds.
  */
-export function spacingFailures(regions: readonly HitRegion[], size = 24): string[] {
+export function spacingFailures(regions: readonly HitRegion[], size = 24, samples: readonly HitSample[] = [], step = 0): string[] {
   const undersized = (r: HitRegion) => r.width < size || r.height < size;
+  const cellsOf = new Map<string, Box[]>();
+  for (const { x, y, target } of samples) {
+    if (target === null) continue;
+    const cells = cellsOf.get(target) ?? [];
+    if (cells.length === 0) cellsOf.set(target, cells);
+    cells.push({ left: x, top: y, right: x + step, bottom: y + step });
+  }
+  const touches = (c: [number, number], other: HitRegion): boolean => {
+    if (pointToBox(c, other.box) >= size / 2) return false;
+    const cells = cellsOf.get(other.target);
+    return cells === undefined || cells.some((cell) => pointToBox(c, cell) < size / 2);
+  };
   return regions
     .filter(undersized)
     .filter((region) => {
       const c = centre(region);
       return regions.some((other) => {
         if (other === region) return false;
-        if (pointToBox(c, other.box) < size / 2) return true;
+        if (touches(c, other)) return true;
         const o = centre(other);
         return undersized(other) && Math.hypot(c[0] - o[0], c[1] - o[1]) < size;
       });

@@ -97,11 +97,19 @@ export async function enlist(page: Page, world: ClientWorld, username: string, j
   return signed;
 }
 
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/** The driver registers commanders, joins a galaxy and posts chat: it plays only on this machine. */
+export function localOnly(base: string): void {
+  if (!LOCAL_HOSTS.has(new URL(base).hostname)) throw new Error(`the client driver plays only on a local game, not ${base}`);
+}
+
 /**
  * The run's shared world: the stack's address and password, and the cadet registered now. A
  * starter game has no cadet: no starter way needs one, and a new commander cannot join there.
  */
 export async function clientWorld(browser: Browser, base: string, password: string, starter: boolean): Promise<ClientWorld> {
+  localOnly(base);
   if (starter) return { base, password, cadet: '', starter };
   const context = await browser.newContext();
   try {

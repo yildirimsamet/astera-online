@@ -41,8 +41,9 @@ export function tightLines(t: { lines: number; lineHeight: number | null }): boo
 }
 
 /** More than fifty characters a line on a phone. */
-export function wideLines(t: { lines: number; charsPerLine: number }): boolean {
-  return t.lines > 1 && t.charsPerLine > 50;
+/** T4: more characters per line than a phone reads well (50), or than XAG allows anywhere (80). */
+export function wideLines(t: { lines: number; charsPerLine: number }, limit: 50 | 80 = 50): boolean {
+  return t.lines > 1 && t.charsPerLine > limit;
 }
 
 export function thinSmall(t: { fontWeight: number; renderedSize: number }): boolean {

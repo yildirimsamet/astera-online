@@ -7,7 +7,7 @@
  */
 
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import type { Browser, Page } from 'playwright';
 import { auditSurface } from './audit.js';
 import type { Reach } from './inventory.js';
@@ -78,6 +78,11 @@ export const summaryPath = (out: string): string => join(out, 'summary.json');
 export const runFolder = (date: string, { kit = false } = {}): string => (kit ? `kit-${date}` : date);
 
 /** The latest day before `today` among run folders that hold a summary; what-if and device runs are not baselines. */
+/** The day a run folder belongs to (`2026-11-05`, `kit-2026-11-12`); any other folder is today's. */
+export function runDate(folder: string, today: string): string {
+  return /^(?:kit-)?(\d{4}-\d{2}-\d{2})$/.exec(basename(folder))?.[1] ?? today;
+}
+
 export function previousRun(folders: readonly string[], today: string): string | null {
   return folders.filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f) && f < today).sort().at(-1) ?? null;
 }

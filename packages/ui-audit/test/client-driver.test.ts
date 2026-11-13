@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientVisits, fresh } from '../src/drivers/client.js';
+import { clientVisits, fresh, localOnly } from '../src/drivers/client.js';
 import { SURFACES } from '../src/inventory.js';
 
 /** The ways in that need a signed-in commander on a real game server. */
@@ -44,5 +44,13 @@ describe('a fresh commander', () => {
     const b = fresh();
     expect(a).toMatch(/^uia[a-z0-9]{6,28}$/);
     expect(a).not.toBe(b);
+  });
+});
+
+/** Review of stage 1 (2026-11-13): the driver registers commanders and posts chat; never on a real server. */
+describe('where the client driver may play', () => {
+  it('plays only on this machine', () => {
+    for (const base of ['http://127.0.0.1:5232', 'http://localhost:5232', 'http://[::1]:5232']) expect(() => { localOnly(base); }).not.toThrow();
+    for (const base of ['https://asteraonline.com', 'http://10.0.0.5:5232', 'http://localhost.evil.example']) expect(() => { localOnly(base); }).toThrow(/local/);
   });
 });

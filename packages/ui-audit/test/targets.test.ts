@@ -64,6 +64,16 @@ describe('WCAG 2.5.8: an undersized target needs a clear 24 px circle', () => {
     expect(spacingFailures([box('small', 0, 0, 20), box('big', 23, 0, 48)])).toEqual([]);
   });
 
+  /** Review of stage 1 (2026-11-13): a backdrop around a dialog covers the frame, not the dialog it surrounds. */
+  it('measures a neighbour by the cells it really covers, so a backdrop round a dialog does not fail its buttons', () => {
+    const dialog = (hole: { from: number; to: number }) => sample([{ id: 'backdrop', x: 0, y: 0, w: 120, h: 120 }, { id: 'button', x: 50, y: 50, w: 20, h: 20 }])
+      .map((s) => (s.target === 'backdrop' && s.x >= hole.from && s.x < hole.to && s.y >= hole.from && s.y < hole.to ? { ...s, target: null } : s));
+    const roomy = dialog({ from: 30, to: 90 });
+    expect(spacingFailures(hitRegions(roomy, STEP), 24, roomy, STEP)).toEqual([]);
+    const tight = dialog({ from: 50, to: 70 });
+    expect(spacingFailures(hitRegions(tight, STEP), 24, tight, STEP)).toEqual(['button']);
+  });
+
   it('never fails a target that is 24 px both ways', () => {
     expect(spacingFailures([box('a', 0, 0, 24), box('b', 24, 0, 24)])).toEqual([]);
   });

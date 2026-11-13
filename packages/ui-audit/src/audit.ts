@@ -25,8 +25,14 @@ import { hitRegions, rectGap, spacingFailures, type Box, type HitRegion, type Hi
  * its show-press gesture, so on a phone it can arrive late; emulated touch never sends
  * that gesture, so the state is forced over CDP instead.
  * none: nothing visible answers a press.
+ * unsure: the press cannot be judged. The region changed with no press at all (an animation
+ * the freeze does not hold), or the press changed the screen for good (a control that acts on
+ * pointerdown). Neither difference is evidence of press feedback, so neither is credited.
  */
-export type Feedback = 'immediate' | 'active' | 'none';
+export type Feedback = 'immediate' | 'active' | 'none' | 'unsure';
+
+/** Long enough for the kit's slowest settle (280 ms) to finish before the next image. */
+const SETTLE_MS = 350;
 
 export interface AuditedText extends Omit<RawText, 'color' | 'opacity' | 'rects' | 'inkRects' | 'covered' | 'halo'> {
   box: Box;
@@ -192,12 +198,24 @@ async function pressFeedback(page: Page, presses: { index: number; at: [number, 
       const whole: Box[] = [{ left: 0, top: 0, right: region.width, bottom: region.height }];
       const differs = (a: Image, c: Image) => changedShare(a, c, whole, viewport.dpr) > 0.01;
 
+      // Two images with no press between them: a region that moves by itself cannot be judged.
+      const first = await shot(region);
+      await page.waitForTimeout(100);
       const before = await shot(region);
+      if (differs(first, before)) {
+        out.set(index, 'unsure');
+        continue;
+      }
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at[0], y: at[1] }] });
       await page.waitForTimeout(100);
       const touched = await shot(region);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(SETTLE_MS);
+      // A cancelled press leaves nothing behind; one that acted on pointerdown did something real.
+      if (differs(before, await shot(region))) {
+        out.set(index, 'unsure');
+        continue;
+      }
       if (differs(before, touched)) {
         out.set(index, 'immediate');
         continue;
@@ -212,7 +230,7 @@ async function pressFeedback(page: Page, presses: { index: number; at: [number, 
       await page.waitForTimeout(250);
       const active = await shot(region);
       await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(SETTLE_MS);
       out.set(index, differs(before, active) ? 'active' : 'none');
     }
   } finally {
@@ -266,7 +284,7 @@ export async function auditPage(page: Page, { surface, frames = 3, gridStep = 2,
     samples.push({ x: (i % cols) * step, y: Math.floor(i / cols) * step, target: cell >= 0 ? String(cell) : null });
   });
   const regions = new Map(hitRegions(samples, step).map((region) => [region.target, region]));
-  const failing = new Set(spacingFailures([...regions.values()]));
+  const failing = new Set(spacingFailures([...regions.values()], 24, samples, step));
 
   const presses = feedback
     ? raw.targets.flatMap((t, index) => {

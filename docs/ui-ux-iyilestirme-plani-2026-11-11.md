@@ -103,7 +103,7 @@ Eşikler raporun ilgili bölümünden gelir. 1. aşama standart koymaz. Her aday
 | T6 | İnce ağırlık | 16 px altında 400'den ince ağırlık | Sayı |
 | **T7** | Taşma ve kesilme | Üç nokta, `scrollWidth > clientWidth`, kırpılmış metin | Her örnek |
 | **C1** | Gerçek kontrast | İki ekran görüntüsü alınır: metin görünür ve metin şeffaf. Metnin altındaki zemin piksellerinden en kötü ve medyan WCAG oranı ile APCA Lc hesaplanır. Metin opaklığı da hesaba katılır | <4,5 (metin), <3 (büyük metin) |
-| C2 | Hareketli zemin | Galaksi canlı olduğu için C1 birkaç karede tekrarlanır, en kötüsü alınır. Uygulanan: 3 kare, 400 ms arayla (plandaki örnek 2 sn'de 5 kareydi; gökyüzü 19 dk'da döndüğü için kısa aralık yetiyor, hızlı efektler flaş filminde ölçülüyor) | Aynı |
+| C2 | Hareketli zemin | Galaksi canlı olduğu için C1 birkaç karede tekrarlanır, en kötüsü alınır. Uygulanan: 2 kare (hızlı koşuda 1), 400 ms arayla (plandaki örnek 2 sn'de 5 kareydi; gökyüzü 19 dk'da döndüğü için kısa aralık yetiyor, hızlı efektler flaş filminde ölçülüyor) | Aynı |
 | C3 | İkon ve kontrol kontrastı | Yalnızca ikonlu butonlarda ikonun zemine karşı kontrastı | <3 |
 | **K1** | Dokunulabilir öğeler | Rol veya etiket (`button`, `a`, `input`, `role=*`), `tabindex` ve `cursor:pointer` taranır | Liste |
 | **K2** | Gerçek dokunma alanı | Ekran 2 px'lik ızgarada `elementFromPoint` ile örneklenir. Her hedefin gerçekte yakaladığı alan, etkin boyutu ve çakışmaları çıkar | <24 (WCAG AA), <44, <48 |

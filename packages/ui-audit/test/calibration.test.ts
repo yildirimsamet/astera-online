@@ -2,6 +2,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium, type Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { auditPage, type SurfaceAudit } from '../src/audit.js';
+import { contrastVerdict } from '../src/criteria.js';
 
 /**
  * THE AUDIT AGAINST A PAGE WHOSE ANSWERS ARE KNOWN.
@@ -206,5 +207,30 @@ describe('layout, colour, motion and words', () => {
     expect(audit.stats.sentences).toBeGreaterThanOrEqual(3);
     expect(audit.stats.longestSentence).toBeGreaterThanOrEqual(7);
     expect(audit.stats.atesman).not.toBeNull();
+  });
+});
+
+/**
+ * NO FALSE ALARM, ANYWHERE (review of stage 1, 2026-11-13): each check flags exactly the planted
+ * cases, so a control the audit wrongly flags fails here, not only in spacing.
+ */
+describe('exactly what is planted', () => {
+  const keys = (list: readonly { key: string | null }[]) => list.map((x) => x.key).sort();
+  it('fails contrast only on the faint text and the faint placeholder', () => {
+    // #blink is F2's planted fast blink: its contrast depends on the frame that caught it, so it is left out.
+    const fails = audit.texts.filter((t) => t.key !== 'blink' && t.rendered && contrastVerdict(t) === 'fail');
+    expect(keys(fails)).toEqual(['field', 'low']);
+  });
+  it('finds cut text only where text is cut', () => {
+    expect(keys(audit.texts.filter((t) => t.truncated || t.clipped))).toEqual(['clip', 'clip-in-scroller', 'half-cut', 'trunc']);
+  });
+  it('calls small only the small targets', () => {
+    expect(keys(audit.targets.filter((t) => t.region !== null && Math.min(t.region.width, t.region.height) < 44)))
+      .toEqual(['clickable-div', 'covered', 'disabled', 'field', 'small', 'tight-a', 'tight-b']);
+  });
+  it('calls silent only the controls with no press answer', () => {
+    expect(keys(audit.targets.filter((t) => t.feedback === 'none'))).toEqual([
+      'backdrop', 'clickable-div', 'covered', 'field', 'icon-only', 'nofeedback', 'padded-control', 'small', 'tight-a', 'tight-b', 'wrap-toggle',
+    ]);
   });
 });

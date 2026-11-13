@@ -47,9 +47,14 @@ export function stackPlan({ run, password, apiPort, webPort, users, starter = fa
 
 const psql = (sql: string) => exec('docker', ['exec', 'astera-pg', 'psql', '-U', 'astera', '-d', 'astera', '-v', 'ON_ERROR_STOP=1', '-c', sql]);
 
-async function ready(url: string, ms: number): Promise<void> {
+/**
+ * Ready when OUR child answers: an old API or Vite left on the port answers too, while the new child
+ * dies of "address in use", so a child that has exited fails the wait at once.
+ */
+export async function ready(url: string, ms: number, child: { exitCode: number | null }): Promise<void> {
   const until = Date.now() + ms;
   while (Date.now() < until) {
+    if (child.exitCode !== null) throw new Error(`exited (${String(child.exitCode)}) before ${url} was ready; is the port already taken?`);
     const ok = await fetch(url).then((r) => r.ok, () => false);
     if (ok) return;
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -90,10 +95,8 @@ export async function startStack({ root, logs, run, password, apiPort = 3231, we
       const code = await new Promise<number | null>((resolve) => child.on('exit', resolve));
       if (code !== 0) throw new Error(`${log.replace('.log', '')} failed (${String(code)}); see ${join(logs, log)}`);
     }
-    launch(plan.api, join(root, 'apps/server'), 'api.log');
-    await ready(plan.health, 90_000);
-    launch(plan.web, root, 'web.log');
-    await ready(`${plan.url}/`, 90_000);
+    await ready(plan.health, 90_000, launch(plan.api, join(root, 'apps/server'), 'api.log'));
+    await ready(`${plan.url}/`, 90_000, launch(plan.web, root, 'web.log'));
     return { url: plan.url, password, database: plan.database, stop };
   } catch (error) {
     await stop();

@@ -54,8 +54,10 @@ describe('a scrolled surface', () => {
   });
 
   it('sees the press answer of a button in every part, not only the first (2026-11-12: later parts pressed a stale twin)', () => {
-    const silent = lit.targets.filter((t) => t.name.startsWith('Seç') && t.feedback === 'none').map((t) => t.name);
-    expect(silent).toEqual([]);
+    // Every button pressed and answered: an unpressed one (null) is not an answer either (review, 2026-11-13).
+    const buttons = lit.targets.filter((t) => t.name.startsWith('Seç'));
+    expect(buttons).toHaveLength(20);
+    expect(buttons.filter((t) => t.feedback !== 'active' && t.feedback !== 'immediate').map((t) => t.name)).toEqual([]);
   });
 
   it('presses a button again once it shows whole, when the first press reached only a strip of it', () => {

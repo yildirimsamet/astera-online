@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui-audit press</title>
+<!--
+  Presses whose honest answer is "could not tell" (review of stage 1, 2026-11-13). The ids are
+  what test/press.test.ts looks for.
+-->
+<style>
+  body { margin: 0; background: #000; color: #fff; font: 16px/1.4 sans-serif; }
+  .abs { position: absolute; margin: 0; }
+  button { appearance: none; border: 0; padding: 0; background: #222; color: #fff; font: inherit; }
+
+  /* Answers on pointerdown and lets go on cancel: a real, immediate answer. */
+  #answers { top: 20px; left: 20px; width: 140px; height: 48px; }
+  #answers.pressed { background: #4af; }
+  /* Acts on pointerdown (a count goes up) and stays changed: the press did something. */
+  #acts { top: 100px; left: 20px; width: 140px; height: 48px; }
+  #acts.done { background: #a43; }
+  /* Moves by itself through a finite animation the freeze does not hold: no press needed to differ. */
+  #drifts { top: 180px; left: 20px; width: 140px; height: 48px; animation: drift 0.6s linear 20 alternate; }
+  @keyframes drift { from { background: #222; } to { background: #6c6; } }
+</style>
+</head>
+<body>
+  <button class="abs" id="answers">Anında</button>
+  <button class="abs" id="acts">Bir gemi</button>
+  <button class="abs" id="drifts">Kıpırdar</button>
+<script>
+  const answers = document.getElementById('answers');
+  answers.addEventListener('pointerdown', () => answers.classList.add('pressed'));
+  for (const type of ['pointerup', 'pointercancel']) answers.addEventListener(type, () => answers.classList.remove('pressed'));
+  const acts = document.getElementById('acts');
+  let ships = 0;
+  acts.addEventListener('pointerdown', () => { ships += 1; acts.textContent = `${ships} gemi`; acts.classList.add('done'); });
+</script>
+</body>
+</html>

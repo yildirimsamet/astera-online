@@ -5,7 +5,7 @@
  * not run, so a gap in the baseline is visible rather than silent.
  */
 
-import type { AuditedTarget, AuditedText, SurfaceAudit } from './audit.js';
+import type { AuditedTarget, AuditedText, Feedback, SurfaceAudit } from './audit.js';
 import { contrastVerdict, distinctSizes, edgeBand, fastBlink, gestureZone, shoutedSmall, sizeBucket, slowTransition, targetBand, thinSmall, tightLines, wideLines, type SizeBucket, type TargetBand } from './criteria.js';
 import type { Surface } from './inventory.js';
 import { words } from './readability.js';
@@ -75,9 +75,15 @@ export interface ProfileSummary {
   shouted: TextHit[];
   tight: TextHit[];
   wide: TextHit[];
+  /** A field's placeholder under the contrast floor: text too (WCAG 1.4.3), kept apart from the page's words. */
+  placeholderFails: TextHit[];
+  /** T4's XAG band: over 80 characters per line. */
+  widest: TextHit[];
   thin: TextHit[];
   targets: Record<TargetBand, number>;
   spacingFails: TargetHit[];
+  /** K3: closer than 8 px to the nearest neighbouring target. */
+  close: TargetHit[];
   edgeSmall: TargetHit[];
   /** Targets reaching into the Android back-gesture strips or the home bar. */
   gestureZone: TargetHit[];
@@ -86,7 +92,7 @@ export interface ProfileSummary {
   /** No name, no text, no icon: a backdrop or a bare tap area. */
   unnamedAreas: TargetHit[];
   iconContrastFails: TargetHit[];
-  feedback: Record<'immediate' | 'active' | 'none', number>;
+  feedback: Record<Feedback, number>;
   noFeedback: TargetHit[];
   slowTransitions: (Where & { label: string; seconds: number })[];
   fastBlinks: (Where & { label: string; name: string; seconds: number })[];
@@ -146,8 +152,8 @@ const zeroTargets = (): Record<TargetBand, number> => ({ '<24': 0, '24–44': 0,
 
 function profileSummary(entries: readonly Entry[], profile: string): ProfileSummary {
   const out: ProfileSummary = {
-    entries: 0, texts: 0, sizes: zeroSizes(), contrastFails: [], shouted: [], tight: [], wide: [], thin: [], targets: zeroTargets(),
-    spacingFails: [], edgeSmall: [], gestureZone: [], iconOnly: 0, unnamedIcons: [], unnamedAreas: [], iconContrastFails: [], feedback: { immediate: 0, active: 0, none: 0 },
+    entries: 0, texts: 0, sizes: zeroSizes(), contrastFails: [], shouted: [], tight: [], wide: [], widest: [], thin: [], placeholderFails: [], targets: zeroTargets(),
+    spacingFails: [], close: [], edgeSmall: [], gestureZone: [], iconOnly: 0, unnamedIcons: [], unnamedAreas: [], iconContrastFails: [], feedback: { immediate: 0, active: 0, none: 0, unsure: 0 },
     noFeedback: [], slowTransitions: [], fastBlinks: [], offGrid: { values: 0, total: 0 }, rows: [],
   };
   for (const e of entries) {
@@ -161,13 +167,18 @@ function profileSummary(entries: readonly Entry[], profile: string): ProfileSumm
       if (shoutedSmall(t)) out.shouted.push(textHit(e, t));
       if (tightLines(t)) out.tight.push(textHit(e, t, `satır aralığı ${t.lineHeight?.toFixed(2) ?? '?'}`));
       if (wideLines(t)) out.wide.push(textHit(e, t, `${String(t.charsPerLine)} karakter/satır`));
+      if (wideLines(t, 80)) out.widest.push(textHit(e, t, `${String(t.charsPerLine)} karakter/satır`));
       if (thinSmall(t)) out.thin.push(textHit(e, t, `ağırlık ${String(t.fontWeight)}`));
+    }
+    for (const t of audit.texts.filter((x) => x.rendered && x.placeholder)) {
+      if (contrastVerdict(t) === 'fail') out.placeholderFails.push(textHit(e, t, `p5 ${t.contrast?.p5.toFixed(2) ?? '?'}:1`));
     }
     for (const t of reachable(audit)) {
       const region = t.region;
       if (!region) continue;
       out.targets[targetBand(region)] += 1;
       if (t.spacingFail) out.spacingFails.push(targetHit(e, t));
+      if (t.nearestGap !== null && t.nearestGap < 8) out.close.push(targetHit(e, t, `${String(t.nearestGap)} px`));
       if (Math.min(region.width, region.height) < 44 && edgeBand(region.box, audit.viewport.height) !== 'middle') out.edgeSmall.push(targetHit(e, t, edgeBand(region.box, audit.viewport.height)));
       const zone = gestureZone(region.box, audit.viewport);
       if (zone) out.gestureZone.push(targetHit(e, t, zone));
@@ -229,7 +240,7 @@ function profileSection(p: ProfileSummary, title: string): string {
   const sizeRows = Object.entries(p.sizes).map(([bucket, n]) => `| ${bucket} px | ${String(n)} | ${pct(n, p.texts)} |`).join('\n');
   const targetTotal = Object.values(p.targets).reduce((a, b) => a + b, 0);
   const targetRows = Object.entries(p.targets).map(([band, n]) => `| ${band} px | ${String(n)} | ${pct(n, targetTotal)} |`).join('\n');
-  const feedbackTotal = p.feedback.immediate + p.feedback.active + p.feedback.none;
+  const feedbackTotal = p.feedback.immediate + p.feedback.active + p.feedback.none + p.feedback.unsure;
   return `## ${title}
 
 ${String(p.entries)} ölçüm, ${String(p.texts)} görünen metin, ${String(targetTotal)} dokunma hedefi (yalnız tr ve en).
@@ -244,7 +255,7 @@ ${sizeRows}
 
 Metnin arkasındaki en kötü %5'lik piksel diliminde WCAG oranı: normal metin 4,5:1, büyük metin 3:1.
 
-${String(p.contrastFails.length)} metin kalıyor.
+${String(p.contrastFails.length)} metin kalıyor. Kontrastı yetmeyen yer tutucu (placeholder): ${String(p.placeholderFails.length)}.
 
 ${list(p.contrastFails, (h) => `${at(h)} — "${h.text}" (${String(h.size)} px, ${h.detail})`)}
 İkon kontrastı 3:1'in altında: ${String(p.iconContrastFails.length)}
@@ -257,6 +268,7 @@ ${list(p.iconContrastFails, (h) => `${at(h)} — ${h.name || h.label} (${h.detai
 ${targetRows}
 
 - WCAG 2.5.8 aralık hatası: ${String(p.spacingFails.length)}
+- Komşusuna 8 px'ten yakın hedef (K3): ${String(p.close.length)}
 - Ekranın üst ve alt %15'inde 44 px'ten küçük hedef: ${String(p.edgeSmall.length)}
 - Android hareket alanına (yanlarda 24 px, altta 32 px; varsayılan değerler) uzanan hedef: ${String(p.gestureZone.length)} (sol ${String(p.gestureZone.filter((h) => h.detail === 'left').length)}, sağ ${String(p.gestureZone.filter((h) => h.detail === 'right').length)}, alt ${String(p.gestureZone.filter((h) => h.detail === 'bottom').length)})
 - Yalnız ikonlu hedef: ${String(p.iconOnly)}; bunların adı olmayanı: ${String(p.unnamedIcons.length)}
@@ -278,6 +290,7 @@ ${feedbackTotal === 0 ? '_Bu ekranda basılmadı; basma tepkisi yalnız tr/telef
 | 100 ms içinde (pointerdown) | ${String(p.feedback.immediate)} | ${pct(p.feedback.immediate, feedbackTotal)} |
 | Yalnız CSS :active | ${String(p.feedback.active)} | ${pct(p.feedback.active, feedbackTotal)} |
 | Yok | ${String(p.feedback.none)} | ${pct(p.feedback.none, feedbackTotal)} |
+| Ölçülemedi (kendiliğinden kıpırdıyor ya da basış ekranı değiştirdi) | ${String(p.feedback.unsure)} | ${pct(p.feedback.unsure, feedbackTotal)} |
 
 ${list(p.noFeedback, (h) => `${at(h)} — ${h.name || h.label}`)}`}
 ### Yazı alışkanlıkları (T2–T6)
@@ -285,6 +298,7 @@ ${list(p.noFeedback, (h) => `${at(h)} — ${h.name || h.label}`)}`}
 - 12 px ve altında, büyük harfli, ikiden fazla kelime: ${String(p.shouted.length)}
 - Çok satırlı ve satır aralığı 1,3'ün altında: ${String(p.tight.length)}
 - Satır başına 50 karakterden fazla: ${String(p.wide.length)}
+- Satır başına 80 karakterden fazla (T4, XAG): ${String(p.widest.length)}
 - 16 px altında ince ağırlık: ${String(p.thin.length)}
 
 ${list(p.shouted, (h) => `${at(h)} — "${h.text}" (${String(h.size)} px)`)}
