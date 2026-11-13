@@ -143,6 +143,89 @@ Bakıldı: `galaxy-hud__client-galaxy-mid`, `menu__client-menu` (+ `.p1`), `bell
 5. Saldırı kartı oyunun en ağır anı ama sıradan bir kart.
 6. Marka şeridi her oyun ekranında yer tutuyor.
 
+### 3.5 G1 karar notu (4.C 1. ve 2. adım, 2026-11-14)
+
+**Oyuncunun anı:** Oyuncu oyunu her açtığında bu kabuğu görür. İlk bakışta üç şeyi anlamalı:
+- Güvende miyim? (kalkan, gelen saldırı)
+- Ne birikti? (kaynak, atölye)
+- Sırada ne var? (en yakın sayaç)
+
+Ardından tek dokunuşla toplar ya da bir yere gider. Galaksi oyunun sahnesidir; kabuk onu örtmez.
+
+**Göz (galeri, 2026-11-14, `out/ui-audit/g1-2026-11-14/`):** her G1 durumuna galeri yolu açıldı (969343ae). Eksikler:
+
+| Yer | Bugün |
+|---|---|
+| Zil | aynı sondanın iki satırı ayrı ayrı duruyor (gruplanmıyor); sheet yarım yükseklikte açılıyor; aile renkleri iyi okunuyor; dosya v1 dilinde (38 iz) |
+| Bağlam kartı | saldırı kartı düz bir kart, geri sayım mono yazıyla saniye saniye; tekli olayda "Göster" yok; ticaret gemisi satırında iki yazı tipi karışık |
+| Menü | ayarlarda dil seçimi tarayıcının `<select>` kutusu (web formu); ses sürgüleri elle çizilmiş; kitteki `LanguagePicker`, `Slider`, `Toggle` kullanılmıyor; dört öğe biçimi; "2 ödül hazır" kartı "Ödüller" satırının tekrarı; sezon bitince iki kart üst üste; Akademi karoları yarım satır bırakıyor; galeri sheet başlığı İngilizce sabit ("Commander / Your account") |
+| Üst bar | kalkan süresi "⌂6s", ☰ düğmesinin ~8 px altında; sinyal güçlendirme ve tatil düz metin şeritleri; marka şeridi ≈ 38 px; atölye ipucu balonu Şimdi çizgisinin üstüne biniyor; alt menü etiketleri 10 px |
+| Tost | kısmi toplama hata tonunda (kırmızı ⚠): renk rolü hatası; tost atölye ipucunun yerine biniyor |
+| Galaksi okuması | iki sütunlu mono ızgara hizasız, başıboş "·" işaretleri; basılabilir sayılar yalnız noktalı alt çizgiyle belli; hedef listesi elle çizilmiş popover |
+
+**Ölçüm (öncesi, `reports/ui-audit/g1-before-2026-11-14.md`):** 17 galeri yolu, 6 dil, telefon, dar ekran ve masaüstü; 238 ölçüm, 2 zaman aşımı. Telefonda (tr + en):
+
+| Ölçü | Sonuç |
+|---|---|
+| 12 px altı metin | 788 metnin 629'u (%80); en küçüğü 7 px (kalkan süresi) |
+| 44 px altı dokunma hedefi | 476 hedefin 336'sı (%71) |
+| Basınca 100 ms içinde tepki | 232 hedefin 0'ı; %95'inde hiç tepki yok |
+| Kesilen metin | 15 (menüdeki ödül satırı fr/es/tr; fr dar ekranda "Renseignement") |
+| Kelime bütçesi | yalnız zil aşıyor: ekran başına 54,5 kelime, 3 uzun blok |
+
+En kötü üç yer: ayarlar (puan 119), galaksi okuması (90), zil (82).
+
+**Kit karşılaştırması:** kitin HUD görünümü (`out/ui-kit/r5/kit-ui-kit-hud.png`) bu kabuğun hedefi:
+- kaynak hapları (sanat + sayı + depo çubuğu);
+- sayaç plakaları (halka + süre + başlık);
+- durum çipleri;
+- sanat simgeli alt menü.
+
+Rakip (Whiteout, `out/competitors/2026-11-11/whiteout/`) için menü girişi oyuncunun portresidir. Etkiler portrenin altında simge satırı olarak durur. Alt menüde boyalı simgeler ve kırmızı nokta kullanılır.
+
+**İş birimleri (sırayla; her biri kendi 4.C döngüsünden geçer, biri bitmeden öteki başlamaz):**
+
+| # | Birim | Ne değişir | Neden |
+|---|---|---|---|
+| G1-a | Alt menü | Kitin `BottomNav` parçası, sanat simgeleri (`DOCK_ART`) ile. Galakside saydam kalır, sayfa açıkken metal zemin alır. Masaüstünde üst bardaki sekme çubuğu aynı parçadan çizilir. Basışın sesi ve titreşimi olur. | Owner'ın "kit oyunda yok" dediği ilk yer. Önce kite girecekler: filo iniş halkası, sessiz sayı (havadaki gemi), Üs uyarı noktası, "Yeni" ışıltısı, devre dışı yer, aynı sekmeye ikinci basış (eve uç), saydam kip, masaüstü sekme çubuğu ve 1–5 tuşu |
+| G1-b | Üst bar | Kaynaklar kitin `ResourceHud` parçasıyla (sanat, sayı, depo çubuğu) çizilir. Atölye çizgisi 44 px dokunma alanlı tek toplama düğmesi olur; ilk ipucu `CoachMark` ile gösterilir. ☰ düğmesinin yerine komutan rozeti gelir. Kalkan, sinyal güçlendirme ve tatil, barın altında tek `StatusChip` satırında toplanır. Hediye ve zil `RoundButton` + `Dot` olur. Marka şeridi kitin diline geçer. | Kalkan oyuncu için kritik ama bugün en küçük öğe; toplama en sık eylem ama 16 px; üç ayrı düz metin şeridi var |
+| G1-c | Şimdi çizgisi, sayaç sheet'i | Kitin sayaç plakası: halka, süre, başlık, ton kenarı. Sheet satırları aynı dilde, türüne göre glif taşır. | Kit HUD görünümündeki plakalar |
+| G1-d | Köşeler, bağlam kartı, tost | Galaksi okuması kit çipleri ve kit açılır listesiyle çizilir. Ev ve sohbet `RoundButton`, olay çipleri `StatusChip` olur. Saldırı kartı kırmızı `CutPlate`, `Timer` halkası ve `GameButton` alır; saldırı gelince ses ve titreşim. Tekli olayda da "Göster" olur. Tost kitin `Banner` tost biçimini alır; kısmi toplama sarı (uyarı) olur. | Saldırı oyunun en ağır anı; kısmi toplamada renk rolü hatası |
+| G1-e | Zil, sinyal akışı | Sekmeler `GameTabs`. Satırlar kit satırı: aile rengi, glif, zaman. Üst üste gelen aynı olay gruplanır. Boş akış `EmptyState`. | Kabuktaki tek v1 yeri |
+| G1-f | Menü, ayarlar | Bölümler `SectionTag` ile ayrılır, tek öğe dili kullanılır. Ödül tekrarı kalkar. Ayarlarda kitin `LanguagePicker`, `Toggle`, `Slider` parçaları. Akademi karoları satırı doldurur. Sheet başlığı çevrilir. | Dört öğe biçimi; web formu seçim kutusu |
+| G1-g | Masaüstü özeti | Kitin `Plate`, `QueueSlot`, `FreeSlot` parçaları | Yalnız masaüstü |
+
+**Gezinme değişiklikleri:**
+1. ☰ düğmesi komutan rozetine döner. Gittiği yer aynı: Komutan sayfası. Kalkan süresi rozetin altından durum satırına geçer.
+2. Menüdeki "N ödül hazır" kartı kalkar. Ödüller üst bardaki hediyeden ve menüdeki tek "Ödüller" satırından açılır.
+3. Bunun dışında gezinme değişmez. Korunanlar:
+   - alt menünün sırası;
+   - Galaksi'ye ikinci basışla eve uçuş;
+   - 1–5, Boşluk ve Esc tuşları;
+   - kronik → zil sekmesi.
+
+**Korunan owner kararları:**
+- atölye üst barda, tek bakışta (2026-09-25);
+- zil sayısı kırmızı (2026-09-24);
+- alt menü galakside saydam (2026-09-24);
+- güçlendirme işareti kalkanla aynı renk (2026-09-16);
+- oyunda görünen marka adı (2026-10-07, `docs/brand-recall-plan.md`).
+
+**Owner'a soru (en sonda sorulacak, o zamana kadar uygulanmaz):** Marka şeridi oyun ekranında ≈ 38 px (812 px'lik ekranın %4,7'si) yer tutuyor ve oyuncunun hiçbir kararını taşımıyor. Bu madde 2026-10-07 tarihli "oyunda görünen ad" kararını (`docs/brand-recall-plan.md`) değiştirir. Öneri:
+- ad yükleme ekranında, menünün başında ve Komutan sayfasında kalır;
+- oyun ekranındaki şerit kalkar;
+- Mağaza düğmesi üst bara sanat simgesiyle girer.
+
+Faydası: galaksiye bir satır daha yer açılır, Mağaza tek yerden açılır. Değiştirelim mi? Onay gelene kadar şerit kitin diline taşınır ve yerinde kalır.
+
+**Envanter düzeltmesi:** `starter/UniverseChip.tsx`, `starter/MainGalaxyRow.tsx`, `starter/DepartureBoard.tsx` ve `starter/ShipLog.tsx` yalnız koloni gemisindeyken çiziliyor. Dördü G15 `starter` yüzeyine taşındı (owner: başlangıç yolculuğu en sonda).
+
+`shell/PendingStrip.tsx` içinde iki tür kod var:
+- canlı kanca `useAirborne` ve türleri G1-d'de `lib/` altına taşınacak;
+- `PendingStrip` ve `FlightList` bileşenlerini yalnız ölü `Academy`/`Rehearsal` ile bir regresyon testi kullanıyor.
+
+Taşımadan sonra dosya ölü kod listesine girer; silme owner onayıyla yapılır.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

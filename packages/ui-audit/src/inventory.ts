@@ -63,7 +63,7 @@ export const SURFACES: GameSurface[] = [
   {
     id: 'galaxy-hud',
     what: 'Galaksi ana ekranı ve HUD: üst bar, iş satırı, dock, köşeler, sinyaller',
-    files: ['screens/GalaxyView.tsx', 'v2/shell/GameShell.tsx', 'v2/shell/HudTop.tsx', 'v2/shell/HudDock.tsx', 'v2/hud/TopBar.tsx', 'v2/hud/WorksLine.tsx', 'v2/hud/Dock.tsx', 'v2/hud/GalaxyCorners.tsx', 'v2/hud/ContextSlot.tsx', 'v2/hud/BaseSwitch.tsx', 'shell/PendingStrip.tsx', 'screens/UnknownSignalHud.tsx', 'starter/UniverseChip.tsx', 'starter/MainGalaxyRow.tsx'],
+    files: ['screens/GalaxyView.tsx', 'v2/shell/GameShell.tsx', 'v2/shell/HudTop.tsx', 'v2/shell/HudDock.tsx', 'v2/hud/TopBar.tsx', 'v2/hud/WorksLine.tsx', 'v2/hud/Dock.tsx', 'v2/hud/GalaxyCorners.tsx', 'v2/hud/ContextSlot.tsx', 'v2/hud/BaseSwitch.tsx', 'shell/PendingStrip.tsx', 'screens/UnknownSignalHud.tsx'],
     reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:readout', 'gallery:toast', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
     group: 'G1',
   },
@@ -144,7 +144,7 @@ export const SURFACES: GameSurface[] = [
   },
 
   // Menu, commander and meta.
-  { id: 'menu', what: 'Menü, mağaza vitrini, kalkış panosu, gemi günlüğü', files: ['shell/MenuPanel.tsx', 'shell/ShopShowcase.tsx', 'shell/ShopShowcasePoster.tsx', 'starter/DepartureBoard.tsx', 'starter/ShipLog.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
+  { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx', 'shell/ShopShowcase.tsx', 'shell/ShopShowcasePoster.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
   { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-archive'], group: 'G9', unreached: ['komutan profili (arşiv)'] },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },
@@ -196,8 +196,10 @@ export const SURFACES: GameSurface[] = [
   },
   {
     id: 'starter',
-    what: 'Başlangıç galaksisi: gemi, onarım, sandık, kalkış, rehber',
-    files: ['starter/ArrivalHost.tsx', 'starter/VesselScreen.tsx', 'starter/YardDeck.tsx', 'starter/CrateBay.tsx', 'starter/LandingChoice.tsx', 'starter/MigrationPanel.tsx', 'starter/RepairCard.tsx', 'starter/RepairSlots.tsx', 'starter/ShipHero.tsx', 'starter/SystemTabs.tsx', 'starter/UnlockMoment.tsx', 'starter/OutpostOutcome.tsx', 'starter/JumpCall.tsx', 'starter/ObjectiveLine.tsx', 'starter/tutorial/AwayChip.tsx', 'starter/tutorial/DragHint.tsx', 'starter/tutorial/PinchHint.tsx', 'starter/tutorial/StarterAftercare.tsx', 'starter/tutorial/StarterTutorialCoach.tsx', 'starter/tutorial/StarterWaitLine.tsx', 'starter/tutorial/visualGoal.tsx'],
+    what: 'Başlangıç galaksisi: gemi, onarım, sandık, kalkış, rehber; galaksideki evren çipi ve ana galaksi satırı, menüdeki kalkış panosu ve gemi günlüğü',
+    files: ['starter/ArrivalHost.tsx', 'starter/VesselScreen.tsx', 'starter/YardDeck.tsx', 'starter/CrateBay.tsx', 'starter/LandingChoice.tsx', 'starter/MigrationPanel.tsx', 'starter/RepairCard.tsx', 'starter/RepairSlots.tsx', 'starter/ShipHero.tsx', 'starter/SystemTabs.tsx', 'starter/UnlockMoment.tsx', 'starter/OutpostOutcome.tsx', 'starter/JumpCall.tsx', 'starter/ObjectiveLine.tsx', 'starter/tutorial/AwayChip.tsx', 'starter/tutorial/DragHint.tsx', 'starter/tutorial/PinchHint.tsx', 'starter/tutorial/StarterAftercare.tsx', 'starter/tutorial/StarterTutorialCoach.tsx', 'starter/tutorial/StarterWaitLine.tsx', 'starter/tutorial/visualGoal.tsx',
+      // Drawn in the galaxy and the menu, but only aboard the colony ship: redesigned with the journey, last (owner 2026-11-13).
+      'starter/UniverseChip.tsx', 'starter/MainGalaxyRow.tsx', 'starter/DepartureBoard.tsx', 'starter/ShipLog.tsx'],
     reach: ['starter:arrival', 'starter:vessel', 'starter:repair', 'starter:crate', 'starter:tutorial', 'starter:jump', 'starter:drive'],
     group: 'G15',
   },
