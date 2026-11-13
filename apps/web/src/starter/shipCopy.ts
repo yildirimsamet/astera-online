@@ -17,7 +17,6 @@ export function requirementLine(need: StepRequirement): string {
   switch (need.kind) {
     case 'MODULE': return need.stage > 1 ? `${moduleName(need.module)} ${String(need.stage)}` : moduleName(need.module);
     case 'FACT': return i18n.t(`starter.fact.${need.fact}`);
-    case 'PARTS': return i18n.t('starter.partsNeeded', { count: need.count });
   }
 }
 

@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   STARTER,
   asteroidTargetPerHour,
-  canTakePart,
   distance,
   fleetCount,
-  mulberry32,
-  openPartTarget,
-  pickPartSite,
   starterSitePlan,
   starterSlots,
 } from '../src/index.js';
@@ -57,29 +53,6 @@ describe('the shared sites', () => {
 
   it('is the same for the same seed', () => {
     expect(starterSitePlan(11, starterSlots(11))).toEqual(plan);
-  });
-});
-
-describe('thrust parts', () => {
-  it('keeps at least two open, and half of those hunting', () => {
-    expect(openPartTarget(0)).toBe(2);
-    expect(openPartTarget(4)).toBe(2);
-    expect(openPartTarget(5)).toBe(3);
-    expect(openPartTarget(20)).toBe(10);
-  });
-
-  it('stops a ship taking more than it needs', () => {
-    expect(canTakePart(2)).toBe(true);
-    expect(canTakePart(STARTER.parts.needed)).toBe(false);
-  });
-
-  it('lands only on a site with no part on it', () => {
-    const sites = [{ id: 'a', hasPart: true }, { id: 'b', hasPart: false }, { id: 'c', hasPart: true }];
-    for (let seed = 0; seed < 20; seed++) expect(pickPartSite(sites, mulberry32(seed))?.id).toBe('b');
-  });
-
-  it('answers null when every site holds one', () => {
-    expect(pickPartSite([{ id: 'a', hasPart: true }], mulberry32(1))).toBeNull();
   });
 });
 

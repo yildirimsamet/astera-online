@@ -379,7 +379,5 @@ export const errors = {
   MIGRATION_SEASON_WAIT: "Die Saison endet in {{daysLeft}} Tagen. Warte auf die neue, um zu den Ersten zu gehören.",
   LANDING_GONE: "Ein anderes Schiff hat diese Adresse gerade belegt. Wähle neu aus den jetzt offenen.",
   MIGRATION_IN_PROGRESS: "Dein Schiff startet bereits.",
-  NOTHING_TO_LOAD: "Der Tank ist voll, oder du hast kein Deuterium zum Laden.",
-  FUEL_LOCKED: "Beende zuerst die Schubmontage und die zweite Deuteriumanlage.",
   NO_FRONTIER: "Gerade sind alle Galaxien voll. Dein Schiff bleibt bereit, versuche es bald erneut.",
 } as const;

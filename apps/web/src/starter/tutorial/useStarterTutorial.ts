@@ -86,7 +86,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   }, [vesselId]);
   if (!vessel || !plan) return null;
   const queued = vessel.queue.flatMap(o => REPAIR_LADDER.find(s => s.module === o.subject && s.stage === o.stage) ?? []);
-  const next = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel }, queued)?.step;
+  const next = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts }, queued)?.step;
   const purse = { alloy: held.alloy, crystal: held.crystal, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal };
   const income = { alloyPerHour: plan.planet.alloyPerHour, crystalPerHour: plan.planet.crystalPerHour };
   const backIn = next ? timeToAfford(next, purse, income) : 0;
@@ -115,7 +115,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   };
   const answer = tutorialStep(input);
   const offers = opportunities({
-    progress: { modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel },
+    progress: { modules: vessel.modules, facts: vessel.facts },
     queue: vessel.queue,
     held: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium, bufferAlloy: held.bufferAlloy, bufferCrystal: held.bufferCrystal, bufferDeuterium: held.bufferDeuterium },
     income,

@@ -2,7 +2,7 @@ import type { PlanetSlot } from '../galaxy.js';
 import type { Vec3 } from '../types.js';
 import { distance } from '../travel.js';
 import { STARTER } from './constants.js';
-import { canLoadFuel, jumpWindowOpen, type VesselProgress } from './ladder.js';
+import { jumpWindowOpen, type VesselProgress } from './ladder.js';
 
 const DAY_MS = 86_400_000;
 
@@ -22,12 +22,6 @@ export function departureBlock(input: { progress: VesselProgress; flying: number
   const left = input.seasonEndsAtMs - input.nowMs;
   if (left < STARTER.migrationCutoffDays * DAY_MS) return { code: 'MIGRATION_SEASON_WAIT', daysLeft: Math.ceil(left / DAY_MS) };
   return null;
-}
-
-/** Whole units, and never more than the tank has room for. No order buys fuel: it is carried over from stock. */
-export function fuelToLoad(progress: VesselProgress, stock: number, amount: number): number {
-  if (!canLoadFuel(progress) || !Number.isFinite(amount) || amount <= 0) return 0;
-  return Math.max(0, Math.floor(Math.min(amount, stock, STARTER.fuelForJump - progress.fuel)));
 }
 
 export interface LandingChoice extends PlanetSlot {

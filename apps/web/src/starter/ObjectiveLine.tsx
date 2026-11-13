@@ -21,7 +21,7 @@ import { goalRepair, useStarterGoal, useStarterLesson } from './tutorial/visualG
 import { repairWait } from './tutorial/script.js';
 import { repairGainIcon, stepEffects } from './steps.js';
 
-const progressOf = (vessel: VesselView) => ({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel });
+const progressOf = (vessel: VesselView) => ({ modules: vessel.modules, facts: vessel.facts });
 
 /** Longer than this and the line says "that is all for now" with a clock time, so leaving is fine. */
 const REST_MINUTES = 15;

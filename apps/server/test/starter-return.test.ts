@@ -30,7 +30,7 @@ describe('what the ship tells a returning commander', () => {
     const at = world.f.clock.now();
     await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'PARTIAL', attacking: false, opponent: 'Other', loot: { alloy: 40, crystal: 10, deuterium: 0 }, lost: 2 }, at);
     await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'DECISIVE', attacking: true, opponent: 'Other', loot: { alloy: 90, crystal: 0, deuterium: 0 }, lost: 1 }, at);
-    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 70, crystal: 30, deuterium: 0 }, part: false }, at);
+    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 70, crystal: 30, deuterium: 0 } }, at);
     await tell(me.vesselId, 'PROBE_DETECTED', {}, at);
     await tell(me.vesselId, 'PROBE_DETECTED', {}, at);
     const { entries } = await story(me.headers);
@@ -45,7 +45,7 @@ describe('what the ship tells a returning commander', () => {
     const me = await aboard(world, 'Me');
     world.f.clock.advance(60);
     const at = world.f.clock.now();
-    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 200, crystal: 100, deuterium: 0 }, part: false, ships: 1, wasted: { alloy: 50, crystal: 0, deuterium: 0 } }, at);
+    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 200, crystal: 100, deuterium: 0 }, ships: 1, wasted: { alloy: 50, crystal: 0, deuterium: 0 } }, at);
     const { entries } = await story(me.headers);
     expect(entries.find(entry => entry.kind === 'fleet_returned')).toMatchObject({ params: { resources: 250, alloy: 150, crystal: 100, deuterium: 0, lost: 50, ships: 1 } });
   });
@@ -82,7 +82,7 @@ describe('what the ship tells a returning commander', () => {
     const at = world.f.clock.now();
     for (let i = 0; i < 6; i++) await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'REPELLED', attacking: false, opponent: `Raider ${String(i)}`, loot: { alloy: 0, crystal: 0, deuterium: 0 }, lost: 0 }, new Date(at.getTime() - i * 1000));
     await tell(me.vesselId, 'BATTLE_REPORT', { grade: 'DECISIVE', attacking: true, opponent: 'Tevis', opponentKind: 'OUTPOST', loot: { alloy: 60, crystal: 0, deuterium: 0 }, lost: 0 }, new Date(at.getTime() - 30_000));
-    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 70, crystal: 30, deuterium: 0 }, part: false, ships: 1 }, at);
+    await tell(me.vesselId, 'FLEET_HOME', { kind: 'MINE', cargo: { alloy: 70, crystal: 30, deuterium: 0 }, ships: 1 }, at);
     const kinds = (await story(me.headers)).entries.map(entry => entry.kind);
     expect(kinds.slice(0, 2)).toEqual(['raid_result', 'fleet_returned']);
   });

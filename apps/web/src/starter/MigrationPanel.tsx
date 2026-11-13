@@ -50,7 +50,7 @@ export function MigrationPanel({ vessel, onJump }: { vessel: VesselView; onJump:
   const { t } = useTranslation();
   const { data: view } = useMigration();
   const now = useNow(30_000);
-  const progress: VesselProgress = { modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel };
+  const progress: VesselProgress = { modules: vessel.modules, facts: vessel.facts };
   const outlook = view ? jumpOutlook(view.target, now) : null;
   // The outlook already says a full frontier or a closed season; the block line says the rest.
   const block = view?.block && !(outlook && (view.block.code === 'NO_FRONTIER' || view.block.code === 'MIGRATION_SEASON_WAIT')) ? view.block : null;

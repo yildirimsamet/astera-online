@@ -723,7 +723,6 @@ export class Api {
   markVesselUnlockSeen = (feature: StarterFeature) =>
     this.send('/api/starter/unlocks/seen', vesselAnswerSchema, { method: 'POST', body: { feature } });
   vesselMigration = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/migration', migrationViewSchema, options);
-  loadVesselFuel = (amount: number) => this.send('/api/starter/fuel', vesselAnswerSchema, { method: 'POST', body: { amount } });
   migrateVessel = (slot: number | null) =>
     this.send('/api/starter/migrate', landingSchema, { method: 'POST', body: slot === null ? {} : { slot } });
   starterDepartures = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/starter/departures', departuresSchema, options);

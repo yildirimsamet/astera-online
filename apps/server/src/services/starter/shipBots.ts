@@ -1,5 +1,5 @@
 import {
-  HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, nextSteps, openingProgress, partsVisible,
+  HULLS, REPAIR_LADDER, STARTER, afterQueue, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, nextSteps, openingProgress,
   RESEARCH_PROJECTS, seededFrom, shipBotTarget, starterOutcomeTable, combatValue,
   fleetEntries, hullBulk,
   type HullId, type RepairStep, type VesselProgress,
@@ -16,7 +16,6 @@ import { accountHasPlayHistory } from '../player.js';
 import { dockFleet } from './dock.js';
 import { enlistVessel } from './enlist.js';
 import { launchVesselFleet } from './fleet.js';
-import { loadFuel } from './migration.js';
 import { launchVesselHarvest, launchVesselMining, starterMiningView } from './mining.js';
 import { buildAtVessel, researchAtVessel } from './orders.js';
 import { launchVesselProbe } from './probe.js';
@@ -75,7 +74,7 @@ export function shipBotStayMs(vesselId: string, sinceMs: number): number {
 export const shipBotStayOver = (vesselId: string, since: Date, now: Date): boolean =>
   now.getTime() - since.getTime() >= shipBotStayMs(vesselId, since.getTime());
 
-const progressOfView = (view: VesselView): VesselProgress => ({ modules: view.modules, facts: view.facts, parts: view.parts, fuel: view.fuel });
+const progressOfView = (view: VesselView): VesselProgress => ({ modules: view.modules, facts: view.facts });
 const repairsOf = (view: VesselView): RepairStep[] => view.queue.filter(order => order.queue === 'CONSTRUCTION')
   .flatMap(order => REPAIR_LADDER.find(step => step.module === order.subject && step.stage === order.stage) ?? []);
 const queueIn = (view: VesselView, queue: VesselView['queue'][number]['queue']) => view.queue.filter(order => order.queue === queue).length;
@@ -265,14 +264,6 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
     }
   }
 
-  if (canLoadFuel(afterQueue(progress, [])) && view.fuel < STARTER.fuelForJump && view.deuterium >= 1) {
-    const amount = Math.floor(Math.min(view.deuterium, STARTER.fuelForJump - view.fuel));
-    if (amount > 0) {
-      const done = await attempt('fuel', () => loadFuel(db, accountId, amount, clock));
-      if (done) return done;
-    }
-  }
-
   if (isFeatureOpen(progress, 'intel')) {
     const target = await newNeighbourToRead(db, view, now);
     if (target) {
@@ -300,10 +291,6 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
     const mining = await starterMiningView(db, accountId, clock);
     const rock = mining.asteroids[0];
     const field = mining.debris[0];
-    if (field && partsVisible(progress)) {
-      const done = await attempt('harvest', () => launchVesselHarvest(db, accountId, field.id, home('PROSPECTOR'), clock));
-      if (done) return done;
-    }
     if (rock) {
       const done = await attempt('mine', () => launchVesselMining(db, accountId, rock.id, home('PROSPECTOR'), clock));
       if (done) return done;

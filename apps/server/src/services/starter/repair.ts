@@ -24,7 +24,6 @@ const named = (need: StepRequirement): string => {
   switch (need.kind) {
     case 'MODULE': return `${need.module}:${String(need.stage)}`;
     case 'FACT': return need.fact;
-    case 'PARTS': return `PARTS:${String(need.count)}`;
   }
 };
 

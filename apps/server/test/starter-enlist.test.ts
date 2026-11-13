@@ -22,8 +22,9 @@ describe('taking a colony ship', () => {
     const view = response.json<{ vessel: Record<string, unknown> & { position: { x: number; y: number; z: number } } }>().vessel;
     expect(view).toMatchObject({
       status: 'ACTIVE', name: 'Newcomer', alloy: STARTER.opening.alloy, crystal: STARTER.opening.crystal, deuterium: 0,
-      modules: STARTER.opening.modules, facts: [], parts: 0, fuel: 0,
+      modules: STARTER.opening.modules, facts: [],
     });
+    for (const gone of ['parts', 'fuel', 'jumpFuel']) expect(view).not.toHaveProperty(gone);
     expect(Math.hypot(view.position.x, view.position.y, view.position.z)).toBeLessThanOrEqual(STARTER.radius);
   });
 

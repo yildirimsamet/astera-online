@@ -101,7 +101,6 @@ describe('a queued repair, on the surfaces that list orders', () => {
 
   it('names a module only a ship has', () => {
     expect(buildOrderLabel(order('SURVEY'))).toBe('Survey antenna');
-    expect(buildOrderLabel(order('DRIVE_THRUST'))).toBe('Thrust assembly');
   });
 
   it('keeps the main name for a module the main game has', () => {

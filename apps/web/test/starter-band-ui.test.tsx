@@ -107,10 +107,9 @@ describe('an outpost says what it is', () => {
     expect(them!.outpost).toBeUndefined();
   });
 
-  it('marks a part only when the map says there is one', () => {
-    expect(open(outpost())).not.toContain('thrust part');
-    cleanup();
-    expect(open(outpost({ hasPart: true }))).toContain('thrust part');
+  // Plan 2026-11-13 §5.6 (S2): no part is hunted, so an outpost names none.
+  it('names no part on an outpost', () => {
+    expect(open(outpost())).not.toMatch(/thrust part/i);
   });
 });
 

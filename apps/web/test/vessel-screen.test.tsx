@@ -9,7 +9,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildingArt, instrumentArt } from '../src/ui/assets.js';
 import { RESEARCH_SCENES, cardScene } from '../src/ui/atmosphere.js';
-import { cardStep, heroArt, moduleArt, pickStep, rateChange, systemOpen } from '../src/starter/shipScreen.js';
+import { cardStep, heroArt, moduleArt, pickStep, rateChange, systemArt, systemOpen } from '../src/starter/shipScreen.js';
 import { stepEffects, timeToAfford } from '../src/starter/steps.js';
 import { VesselScreen } from '../src/starter/VesselScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -558,8 +558,7 @@ describe('what a system shows', () => {
 
   it('borrows from the game for what no planet has, and paints no machine of its own', () => {
     expect(moduleArt('SURVEY', 1)).toMatch(/atmosphere\/uplink/);
-    expect(moduleArt('DRIVE_HULL', 1)).toBe(RESEARCH_SCENES.STARSHIP_ENGINEERING.src);
-    expect(moduleArt('DRIVE_THRUST', 1)).toBe(RESEARCH_SCENES.SHIP_PROPULSION.src);
+    expect(systemArt('DRIVE')).toBe(RESEARCH_SCENES.SHIP_PROPULSION.src);
   });
 
   it('points at a real file for every repair on the ladder', () => {

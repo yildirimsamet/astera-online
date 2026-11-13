@@ -1,8 +1,8 @@
-import { isFeatureOpen, moduleStage, outpostName, partsVisible, siteCode, sensorZone, vesselSphere, type StarterFeature, type Vec3 } from '@astera/rules';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { isFeatureOpen, outpostName, siteCode, type StarterFeature, type Vec3 } from '@astera/rules';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
-import { starterGalaxies, starterSites, vesselBotState, vesselMissions, vesselProbeReports, vessels } from '../../db/schema.js';
+import { starterGalaxies, vesselMissions, vessels } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { progressOf, saveVessel, settleVessel, type LockedVessel, type VesselRow } from './vessel.js';
 
@@ -71,36 +71,3 @@ export async function claimLanding(tx: Tx, missionId: string, to: 'RETURNING' | 
 export const siteName = (site: { id: string; kind: string }): string =>
   site.kind === 'OUTPOST' ? outpostName(site.id) : siteCode(site);
 
-/**
- * WHO KNOWS WHERE A PART IS. Plan §3.5. Only a ship hunting one, and only for a place it can see or
- * has read with a probe. A part that has since gone takes its mark with it. `hasPart` is absent
- * rather than false for everyone else, so there is nothing to find in the payload.
- */
-export async function partSight(q: Queryable, row: VesselRow): Promise<(site: { id: string; x: number; y: number; z: number; hasPart: boolean }) => boolean> {
-  const progress = progressOf(row);
-  if (!partsVisible(progress)) return () => false;
-  const reports = await q.select({ siteId: vesselProbeReports.targetSiteId, snapshot: vesselProbeReports.snapshot }).from(vesselProbeReports)
-    .where(and(eq(vesselProbeReports.observerVesselId, row.id), isNotNull(vesselProbeReports.targetSiteId), isNotNull(vesselProbeReports.deliveredAt))).orderBy(desc(vesselProbeReports.at));
-  const read = new Map<string, Record<string, unknown>>();
-  for (const report of reports) if (report.siteId && !read.has(report.siteId)) read.set(report.siteId, report.snapshot);
-  const sphere = vesselSphere(placeOf(row), moduleStage(progress, 'TELESCOPE'), moduleStage(progress, 'RADAR'), row.id);
-  return site => site.hasPart && (read.get(site.id)?.hasPart === true || sensorZone([sphere], { x: site.x, y: site.y, z: site.z }) === 'IDENTIFIED');
-}
-
-/**
- * A SCARCE PART WAITS FOR A PERSON. Plan §3.12. A ship the server plays may take one only while there
- * are more out there than people hunting them; it goes off and does something else, and that is all
- * anyone sees of the rule.
- */
-export async function mayTakePart(q: Queryable, row: VesselRow): Promise<boolean> {
-  const [bot] = await q.select({ id: vesselBotState.vesselId }).from(vesselBotState).where(eq(vesselBotState.vesselId, row.id));
-  if (!bot) return true;
-  const people = await q.select({ modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel }).from(vessels)
-    .leftJoin(vesselBotState, eq(vesselBotState.vesselId, vessels.id))
-    .where(and(eq(vessels.starterGalaxyId, row.starterGalaxyId), eq(vessels.status, 'ACTIVE'), isNull(vesselBotState.vesselId)));
-  const hunting = people.filter(person => partsVisible(person)).length;
-  if (hunting === 0) return true;
-  const [open] = await q.select({ n: sql<number>`count(*)::int` }).from(starterSites)
-    .where(and(eq(starterSites.starterGalaxyId, row.starterGalaxyId), eq(starterSites.hasPart, true)));
-  return (open?.n ?? 0) > hunting;
-}

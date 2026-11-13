@@ -89,7 +89,7 @@ describe('the next step', () => {
   it('waits for the last required repair in the queue before it offers the jump', () => {
     const modules: Record<string, number> = {};
     for (const s of REPAIR_LADDER) if (s.required && s.module !== 'SHIPYARD') modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-    const progress: VesselProgress = { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], parts: 0, fuel: 0 };
+    const progress: VesselProgress = { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'] };
     const readyAt = new Date('2026-11-08T12:00:00Z');
     const queue = [{ queue: 'CONSTRUCTION', subject: 'SHIPYARD', stage: 1, readyAt }];
     expect(next(input({ progress, queue, held: empty }))).toEqual({ kind: 'wait', readyAt });
@@ -124,7 +124,7 @@ it('keeps the first mining flight ahead of another affordable repair', () => {
 const loopDone = (): VesselProgress => {
   const modules: Record<string, number> = {};
   for (const s of REPAIR_LADDER) if (s.required) modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-  return { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], parts: 0, fuel: 0 };
+  return { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'] };
 };
 const full = { alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
 /** Enough for the next repairs, short of what the hold carries. */

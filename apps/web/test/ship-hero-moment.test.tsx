@@ -11,12 +11,16 @@ vi.mock('../src/lib/haptics.js', () => haptics);
 
 /**
  * THREE WEIGHTS OF "IT IS FIXED" (plan F8). A routine repair answers at its own bay; a repair that opens
- * something leaves the sound to the card that names it; the engines take the whole ship. One event is
- * celebrated once.
+ * something leaves the sound to the card that names it; the drive waking takes the whole ship. One event
+ * is celebrated once. The drive wakes when the jump window opens (plan 2026-11-13 §5.1): the first
+ * loop's last repair, or the last deed of it.
  */
 const base = openingProgress();
-const ship = (modules: Record<string, number>): VesselProgress => ({ ...base, modules: { ...base.modules, ...modules } });
+const ship = (modules: Record<string, number>, facts: VesselProgress['facts'] = []): VesselProgress => ({ ...base, modules: { ...base.modules, ...modules }, facts });
 const road = { REFINERY: 2, EXTRACTOR: 1 };
+const DEEDS: VesselProgress['facts'] = ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
+const BEFORE_YARD = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+const LOOP = { ...BEFORE_YARD, SHIPYARD: 1 };
 
 describe('the weight of a repair', () => {
   it('is nothing when no repair came in', () => {
@@ -28,11 +32,17 @@ describe('the weight of a repair', () => {
   it('is a capability when it opens something new', () => {
     expect(repairMoment(ship(road), ship({ ...road, TELESCOPE: 1 }))).toEqual({ system: 'DEFENCE', tier: 'capability' });
   });
-  it('is the big one when the engines are in', () => {
-    expect(repairMoment(ship({ DRIVE_HULL: 1 }), ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 }))).toEqual({ system: 'DRIVE', tier: 'big' });
+  it('is the big one when the repair that ends the first loop opens the window', () => {
+    expect(repairMoment(ship(BEFORE_YARD, DEEDS), ship(LOOP, DEEDS))).toEqual({ system: 'DRIVE', tier: 'big' });
+  });
+  it('is the big one when the loop\'s last deed opens it, with no repair at all', () => {
+    expect(repairMoment(ship(LOOP, ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT']), ship(LOOP, DEEDS))).toEqual({ system: 'DRIVE', tier: 'big' });
+  });
+  it('is not the big one for the loop\'s last repair while a deed is still missing', () => {
+    expect(repairMoment(ship(BEFORE_YARD), ship(LOOP))?.tier).not.toBe('big');
   });
   it('takes the heaviest of several that landed together', () => {
-    expect(repairMoment(ship({ REFINERY: 2, DRIVE_HULL: 1 }), ship({ REFINERY: 3, DRIVE_HULL: 1, DRIVE_THRUST: 1 }))?.tier).toBe('big');
+    expect(repairMoment(ship({ ...BEFORE_YARD, REFINERY: 2 }, DEEDS), ship({ ...LOOP, REFINERY: 3 }, DEEDS))?.tier).toBe('big');
   });
 });
 
@@ -56,7 +66,7 @@ describe('the ship on screen', () => {
     expect(document.querySelector('[data-bay="REFINERY"]')?.getAttribute('data-condition')).toBe('mending');
   });
   it('lights the engines once for a player who was away when they came in', () => {
-    const lit = ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 });
+    const lit = ship(LOOP, DEEDS);
     render(draw(lit));
     expect(moment()).toBe('big');
     expect(sound.playSound).toHaveBeenCalledTimes(1);
@@ -67,11 +77,11 @@ describe('the ship on screen', () => {
     expect(sound.playSound).toHaveBeenCalledTimes(1);
   });
   it('does not light them again for a player who watched them come in', () => {
-    const { rerender } = render(draw(ship({ DRIVE_HULL: 1 })));
-    rerender(draw(ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 })));
+    const { rerender } = render(draw(ship(BEFORE_YARD, DEEDS)));
+    rerender(draw(ship(LOOP, DEEDS)));
     expect(moment()).toBe('big');
     cleanup();
-    render(draw(ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 })));
+    render(draw(ship(LOOP, DEEDS)));
     expect(moment()).toBeNull();
   });
   it('says nothing on opening a ship already repaired', () => {
@@ -97,8 +107,8 @@ describe('the ship on screen', () => {
     expect(sound.playSound).not.toHaveBeenCalled();
   });
   it('lights the engines with the whole ship', () => {
-    const view = render(draw(ship({ DRIVE_HULL: 1 })));
-    view.rerender(draw(ship({ DRIVE_HULL: 1, DRIVE_THRUST: 1 })));
+    const view = render(draw(ship(LOOP, ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT'])));
+    view.rerender(draw(ship(LOOP, DEEDS)));
     expect(moment()).toBe('big');
     expect(sound.playSound).toHaveBeenCalledWith('ignite', { seconds: 2.5 });
     expect(haptics.haptic).toHaveBeenCalledWith('rumble');

@@ -62,7 +62,7 @@ describe('the colony ship commands', () => {
     }
   });
   it('names the rest, which only the answer can confirm', () => {
-    const answered = { '/api/starter/collect': 'collect', '/api/starter/fuel': 'fuel', '/api/starter/watch': 'watch',
+    const answered = { '/api/starter/collect': 'collect', '/api/starter/watch': 'watch',
       '/api/starter/fleet/:id/recall': 'recall', '/api/starter/mining/runs/:id/recall': 'recall',
       '/api/starter/mining/runs/0bb258b3-c801-4675-a7a4-a30793c1a8ab/recall': 'recall', '/api/starter/orders/:id/cancel': 'cancel_build' };
     for (const [path, code] of Object.entries(answered)) {

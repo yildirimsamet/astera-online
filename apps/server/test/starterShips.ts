@@ -27,7 +27,7 @@ export async function openWindow(world: StarterWorld, id: string): Promise<void>
   const modules: VesselModules = { ...row!.modules };
   for (const step of REPAIR_LADDER.filter(s => s.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
   const facts = [...new Set<VesselFact>([...row!.facts, 'FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'])];
-  const opened = readyCrates({ modules, facts, parts: row!.parts, fuel: row!.fuel }, row!.cratesOpened).map(crate => crate.id);
+  const opened = readyCrates({ modules, facts }, row!.cratesOpened).map(crate => crate.id);
   await world.f.db.update(vessels).set({ modules, facts, cratesOpened: [...row!.cratesOpened, ...opened] }).where(eq(vessels.id, id));
 }
 

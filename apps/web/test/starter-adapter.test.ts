@@ -15,8 +15,8 @@ describe('a ship, as the planet screens read it', () => {
   });
 
   it('carries the ship itself, so one read serves the galaxy and the ship screen', () => {
-    const progress = { ...openingProgress(), modules: { REFINERY: 2 }, parts: 2 };
-    expect(parsed({ progress }).vessel).toMatchObject({ id: 'ship-1', parts: 2, modules: { REFINERY: 2 }, features: ['production'] });
+    const progress = { ...openingProgress(), modules: { REFINERY: 2 } };
+    expect(parsed({ progress }).vessel).toMatchObject({ id: 'ship-1', modules: { REFINERY: 2 }, features: ['production'] });
   });
 
   it('keeps the ship as its identity', () => {

@@ -20,8 +20,6 @@ import { wireVessel } from './starterVesselFixture.js';
 const repaired: VesselProgress = {
   modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 },
   facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'],
-  parts: 0,
-  fuel: 0,
 };
 
 const ship = (progress: VesselProgress, alloy: number = STARTER.carry.alloy, crystal: number = STARTER.carry.crystal) =>

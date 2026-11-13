@@ -1,7 +1,7 @@
 import { VESSEL_SYSTEMS, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
-import { SYSTEM_ART, SYSTEM_ICON, moduleArt, systemOpen, systemPercent } from './shipScreen.js';
+import { SYSTEM_ICON, systemArt, systemOpen, systemPercent } from './shipScreen.js';
 
 /**
  * The five systems as five pictures. A locked one still opens: its card says what it needs. The lock
@@ -28,7 +28,7 @@ export function SystemTabs({ progress, ahead, selected, onSelect }: {
             onClick={() => { onSelect(system); }}
             className={`relative h-[74px] overflow-hidden rounded-control border bg-v2-void text-center ${on ? 'border-v2-self shadow-[0_0_12px_-1px_var(--color-v2-self)]' : 'border-v2-line'}`}
           >
-            <img src={moduleArt(SYSTEM_ART[system], 1)} alt="" draggable={false}
+            <img src={systemArt(system)} alt="" draggable={false}
               className={`absolute inset-0 size-full object-cover ${open ? '' : 'opacity-60 saturate-[.6]'}`} />
             <span aria-hidden="true" className="absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-v2-void/90 to-transparent" />
             <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-v2-void to-transparent" />

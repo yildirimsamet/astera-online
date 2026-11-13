@@ -51,8 +51,6 @@ export const vesselSchema = z.object({
   modules: z.record(vesselModule, z.number()),
   research: z.record(z.string(), z.number()),
   facts: z.array(vesselFact),
-  parts: z.number().int().nonnegative(),
-  fuel: z.number().nonnegative(),
   pvpOpenAt: z.coerce.date().nullable(),
   recoveryUntil: z.coerce.date().nullable(),
   progress: z.object({ done: z.number(), total: z.number(), share: z.number() }),
@@ -68,7 +66,6 @@ export const vesselSchema = z.object({
   queue: z.array(vesselOrderSchema),
   fleet: z.record(z.string(), z.number()),
   damage: z.array(z.object({ hull: hullId, count: z.number().int().positive(), damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().optional() })).default([]),
-  jumpFuel: z.number(),
   /** Attack bays in the air right now. */
   flying: z.number().int().nonnegative().default(0),
 });

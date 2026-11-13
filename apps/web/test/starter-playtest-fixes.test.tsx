@@ -1,4 +1,4 @@
-import { STARTER, type VesselProgress } from '@astera/rules';
+import type { VesselProgress } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -15,7 +15,6 @@ import { REPAIR_STATION_ITEM } from '../src/lib/repairStation.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
 import { DESTINATION } from '../src/shell/Signals.js';
 import { vesselToPlanetView } from '../src/starter/adapter.js';
-import { wreckWorthProbing } from '../src/starter/partMarks.js';
 import { VesselScreen } from '../src/starter/VesselScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { FleetPage, type FleetWorld } from '../src/v2/hud/FleetPage.js';
@@ -23,7 +22,7 @@ import { wireVessel } from './starterVesselFixture.js';
 
 const NOW = new Date('2026-11-05T12:00:00.000Z').getTime();
 const intel: IntelView = { watching: [], probeReports: [], probeCooldowns: [], radarLog: [], probeCost: { alloy: 65, crystal: 40, deuterium: 0 } };
-const yardOpen: VesselProgress = { modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1, AEGIS: 1 }, facts: ['FIRST_BATTLE_REPORT'], parts: 0, fuel: 0 };
+const yardOpen: VesselProgress = { modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1, AEGIS: 1 }, facts: ['FIRST_BATTLE_REPORT'] };
 const ship = (fleet: Record<string, number> = {}, damage: unknown[] = []): VesselView =>
   vesselSchema.parse(wireVessel({ progress: yardOpen, fleet, damage }));
 
@@ -156,48 +155,14 @@ describe('an outpost\'s dossier aboard', () => {
   });
 });
 
-describe('finding a part on a wreck', () => {
-  const hunting = { features: ['drive'], parts: 1 };
-
-  it('is worth a probe on a standing wreck, to a ship hunting a part', () => {
-    expect(wreckWorthProbing(hunting, 5000)).toBe(true);
-  });
-
-  it('is not worth one on a battle\'s debris, which never holds a part', () => {
-    expect(wreckWorthProbing(hunting, STARTER.battleDebris.decayMinutes)).toBe(false);
-  });
-
-  it('is not worth one before the hunt, after it, or to a commander with no ship', () => {
-    expect(wreckWorthProbing({ features: [], parts: 0 }, 5000)).toBe(false);
-    expect(wreckWorthProbing({ features: ['drive'], parts: STARTER.parts.needed }, 5000)).toBe(false);
-    expect(wreckWorthProbing(undefined, 5000)).toBe(false);
-  });
-
-  const field = (hasPart?: boolean) => ({ id: 'wreck-1', planetId: null, at: { x: 1, y: 0, z: 0 }, alloy: 100, crystal: 50, deuterium: 0, minutesLeft: 900, ...(hasPart ? { hasPart } : {}) });
-  const card = (over: ReturnType<typeof field>, probe: boolean, fetch?: typeof globalThis.fetch, onLaunched = vi.fn()) => {
-    providers(<DebrisFocus field={over} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} atHome={() => ({ room: 9999, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
-      run={undefined} craftReadyAt={null} onSend={vi.fn()} onClose={vi.fn()} busy={false} open onToggle={vi.fn()}
-      {...(probe ? { probe: { intel, onLaunched } } : {})} />, fetch);
-    return onLaunched;
-  };
-
-  it('sends the probe the Engine panel asks for', async () => {
-    const fetch = vi.fn<typeof globalThis.fetch>(() => Promise.resolve(new Response(JSON.stringify({ missionId: 'm', arriveAt: new Date(NOW).toISOString(), flightMinutes: 1 }), { status: 200, headers: { 'content-type': 'application/json' } })));
-    const launched = card(field(), true, fetch);
-    fireEvent.click(screen.getByRole('button', { name: /Send a probe/ }));
-    await waitFor(() => { expect(launched).toHaveBeenCalled(); });
-    const sent = fetch.mock.calls.find(([url]) => typeof url === 'string' && url.includes('/api/intel/probe'));
-    expect(sent?.[1]?.body).toContain('wreck-1');
-  });
-
-  it('has nothing left to ask once the part is known', () => {
-    card(field(true), true);
+// Plan 2026-11-13 §5.6 (S2): no part is hunted, so a wreck's card has no probe to send and no part to name.
+describe('a wreck aboard', () => {
+  it('offers salvage and no probe', () => {
+    const field = { id: 'wreck-1', planetId: null, at: { x: 1, y: 0, z: 0 }, alloy: 100, crystal: 50, deuterium: 0, minutesLeft: 900 };
+    providers(<DebrisFocus field={field} planetName={undefined} craftAvailable={1} craftHold={200} reachMinutes={5} atHome={() => ({ room: 9999, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
+      run={undefined} craftReadyAt={null} onSend={vi.fn()} onClose={vi.fn()} busy={false} open onToggle={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /Send a probe/ })).toBeNull();
-  });
-
-  it('offers none to a commander who is not hunting', () => {
-    card(field(), false);
-    expect(screen.queryByRole('button', { name: /Send a probe/ })).toBeNull();
+    expect(screen.queryByTestId('part-here')).toBeNull();
   });
 });
 

@@ -27,7 +27,6 @@ import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
 import { holdShare } from '../starter/hold.js';
 import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
-import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
 import { salvageReachMinutes } from '../lib/salvageReach.js';
 import { hasOtherShip, nearestRock, nearestShip } from '../starter/neighbour.js';
@@ -94,7 +93,6 @@ import type {
   Contact,
   GalaxyPlanet,
   HistoricalSeasonResult,
-  IntelView,
   MiningRun,
   MiningView,
   RivalMark,
@@ -1027,7 +1025,6 @@ export function GalaxyView({
       })),
     ], [galaxy.data?.monuments, season.data?.monumentHonorees, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks,
       activeWorldPosition, mining.statusData?.craftSpeed, minuteNow]);
-  const shipParts = useMemo(() => partMarks(planets, wrecks), [planets, wrecks]);
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],
@@ -1394,7 +1391,7 @@ export function GalaxyView({
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
         watched={watched}
         {...(ship && jump?.inGame && jump.stage === 'flight' && jump.world ? { flight: { jump, world: jump.world } } : {})}
-        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, parts: shipParts, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
@@ -1651,7 +1648,6 @@ export function GalaxyView({
 
       {!coachFocus && focus?.kind === 'debris' && (
         <DebrisFocusHost
-          intel={intel.data}
           field={wrecks.find((d) => d.id === focus.id)}
           planets={planets}
           runs={runs}
@@ -1964,7 +1960,7 @@ export function GalaxyView({
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
-          <JumpCall progress={{ modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }} onOpen={() => { onPanel('planet'); }} />
+          <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} onOpen={() => { onPanel('planet'); }} />
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
           {ship.unlockToAnnounce
             ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
@@ -2797,9 +2793,7 @@ function DebrisFocusHost({
   onToggle,
   onClose,
   onSend,
-  intel,
 }: {
-  intel: IntelView | undefined;
   field: {
     id: string;
     /** Null for a pirate battle: the fight had no world under it. D150. */
@@ -2862,7 +2856,6 @@ function DebrisFocusHost({
       onSend={(craft) => {
         onSend(field.id, craft);
       }}
-      {...(wreckWorthProbing(planetQuery.data?.vessel, field.minutesLeft) ? { probe: { intel, onLaunched: onClose } } : {})}
     />
   );
 }

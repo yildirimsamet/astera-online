@@ -1,5 +1,5 @@
 import {
-  PROSPECTOR, STARTER, canTakePart, distance, interceptOrbit, isFeatureOpen, moduleStage, orbitPosition, orbitSeedOf, partsVisible, prospectorHoldMult, rocksInSight, starterAsteroidOrbit, travelExact, vesselSphere,
+  PROSPECTOR, STARTER, distance, interceptOrbit, isFeatureOpen, moduleStage, orbitPosition, orbitSeedOf, prospectorHoldMult, rocksInSight, starterAsteroidOrbit, travelExact, vesselSphere,
   type Resources, type Vec3,
 } from '@astera/rules';
 import { and, eq, gt, inArray, isNull, or } from 'drizzle-orm';
@@ -14,7 +14,7 @@ import { readHome, takeFromHome, writeHome } from './fleet.js';
 import { markProgress } from './quiet.js';
 import { starterPendingView } from './traffic.js';
 import { progressOf, refuseLeft, vesselView, withVesselLock, type LockedVessel, type VesselRow } from './vessel.js';
-import { assertFeatureOpen, inShips, mayTakePart, partSight, placeOf, takeFlightToRecall, type MissionRow } from './world.js';
+import { assertFeatureOpen, inShips, placeOf, takeFlightToRecall, type MissionRow } from './world.js';
 
 type SiteRow = typeof starterSites.$inferSelect;
 
@@ -69,7 +69,6 @@ async function miningOf(q: Tx | Db, row: VesselRow, epoch: Date, now: Date) {
   )) : [];
   const flights = await q.select().from(vesselMissions).where(and(eq(vesselMissions.ownerVesselId, row.id), eq(vesselMissions.kind, 'MINE'), inArray(vesselMissions.status, ['OUTBOUND', 'RETURNING'])));
   const salvage = isFeatureOpen(progress, 'salvage');
-  const seesPart = await partSight(q, row);
   // Only the ring's nearest few (owner 2026-11-08), and always the rock this ship's own craft are flying to.
   const stage = moduleStage(progress, 'TELESCOPE');
   const live = sites.filter(site => site.kind === 'ASTEROID' && asteroidView(site, epoch, now).active);
@@ -86,10 +85,9 @@ async function miningOf(q: Tx | Db, row: VesselRow, epoch: Date, now: Date) {
     craftCooldowns: [],
     asteroids: shownRocks.map(site => asteroidView(site, epoch, now)),
     nextFieldChangeAt: null,
-    debris: sites.filter(site => salvage && site.kind !== 'ASTEROID' && (stockOf(site) > 0 || seesPart(site))).map(site => ({
+    debris: sites.filter(site => salvage && site.kind !== 'ASTEROID' && stockOf(site) > 0).map(site => ({
       id: site.id, planetId: null, at: placeOfSite(site), alloy: site.alloy, crystal: site.crystal, deuterium: site.deuterium,
       minutesLeft: site.expiresAt ? minutesSince(now, site.expiresAt) : 10_000,
-      ...(seesPart(site) ? { hasPart: true } : {}),
     })),
     runs: flights.map(flight => {
       const rock = sites.some(site => site.id === flight.targetSiteId && site.kind === 'ASTEROID');
@@ -174,7 +172,7 @@ export const launchVesselHarvest = (db: Db, accountId: string, fieldId: string, 
     await markProgress(tx, vessel, clock);
     const site = await lockSite(tx, vessel.row.starterGalaxyId, fieldId, ['WRECK', 'BATTLE_WRECK']);
     if (!site) throw new GameError('NO_SUCH_FIELD', 'No such field', 404);
-    if (stockOf(site) <= 0 && !site.hasPart) throw new GameError('FIELD_EMPTY', 'Nothing left there', 409);
+    if (stockOf(site) <= 0) throw new GameError('FIELD_EMPTY', 'Nothing left there', 409);
     const to = placeOfSite(site);
     const minutes = travelExact(distance(placeOf(vessel.row), to), STARTER.prospectorSpeed);
     return sendCraft(tx, vessel, clock, { site, rock: false, to, arriveAt: new Date(vessel.now.getTime() + minutes * 60_000) }, craft);
@@ -215,18 +213,16 @@ export async function resolveMiningLanding(tx: Tx, mission: MissionRow, clock: C
     const [site] = await tx.select().from(starterSites).where(eq(starterSites.id, mission.targetSiteId!)).for('update');
     const now = clock.now();
     const cargo = owner && site ? takeShare(site, holdEach(owner.row) * (mission.fleet.PROSPECTOR ?? 0)) : { alloy: 0, crystal: 0, deuterium: 0 };
-    const carriesPart = Boolean(owner && site && site.hasPart && partsVisible(progressOf(owner.row)) && canTakePart(owner.row.parts) && await mayTakePart(tx, owner.row));
     if (site) {
       const left = stockOf(site) - cargo.alloy - cargo.crystal - cargo.deuterium;
       const emptied = left <= 0.0001;
       await tx.update(starterSites).set({
         alloy: site.alloy - cargo.alloy, crystal: site.crystal - cargo.crystal, deuterium: site.deuterium - cargo.deuterium,
-        hasPart: site.hasPart && !carriesPart,
         ...(emptied && site.kind === 'WRECK' && !site.respawnAt ? { respawnAt: new Date(now.getTime() + STARTER.sites.wrecks.respawnMinutes * 60_000) } : {}),
       }).where(eq(starterSites.id, site.id));
     }
     const homeAt = new Date(mission.arriveAt.getTime() + travelExact(distance({ x: mission.toX, y: mission.toY, z: mission.toZ }, { x: mission.fromX, y: mission.fromY, z: mission.fromZ }), STARTER.prospectorSpeed * PROSPECTOR.returnSpeedFactor) * 60_000);
-    const claimed = await tx.update(vesselMissions).set({ status: 'RETURNING', returnAt: homeAt, cargo, carriesPart, dug: true })
+    const claimed = await tx.update(vesselMissions).set({ status: 'RETURNING', returnAt: homeAt, cargo, dug: true })
       .where(and(eq(vesselMissions.id, mission.id), eq(vesselMissions.status, 'OUTBOUND'))).returning({ id: vesselMissions.id });
     if (claimed.length === 0) return;
     await scheduleStarter(tx, { starterGalaxyId: mission.starterGalaxyId, kind: 'vessel_mission_return', refId: mission.id, resolveAt: homeAt });

@@ -112,12 +112,6 @@ describe('the first session', () => {
     expect(long).toEqual([]);
   });
 
-  // Owner 2026-11-08 (N4): four hours a part. The ship still takes days, now through its works and fuel.
-  it('keeps the engine at four hours a part, so the ship still takes days', () => {
-    expect(step('DRIVE_HULL', 1).minutes).toBe(240);
-    expect(step('DRIVE_THRUST', 1).minutes).toBe(240);
-  });
-
   /**
    * The guided session reaches the yard and the third refinery in well under twenty minutes, and
    * nothing in it waits on the store for more than a minute (owner 2026-11-08, N10). The Vault is the

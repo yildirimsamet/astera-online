@@ -12,7 +12,6 @@ afterAll(async () => { await (await testDb()).close(); });
 interface MigrationView {
   block: { code: string } | null;
   target: { shard: string; name: string; seasonEndsAt: string } | null;
-  fuel: { loaded: number; needed: number; canLoad: boolean };
   fill: { alloy: number; crystal: number; deuterium: number; ships: number };
   full: boolean;
   cargo: { alloy: number; crystal: number; deuterium: number; fleet: Fleet };
@@ -20,8 +19,6 @@ interface MigrationView {
   choices: { index: number; x: number; y: number; z: number; neighbours: number }[];
 }
 interface Landing { placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string; position: { x: number; y: number; z: number } }; cargo: MigrationView['cargo'] }
-
-const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
 describe('the jump', () => {
   let world: StarterWorld;
@@ -40,43 +37,16 @@ describe('the jump', () => {
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
 
-  describe('the tank', () => {
-    it('moves Deuterium from stock into the tank, whole units, and never over the top', async () => {
-      const person = await aboard(world, 'Pilot', THRUST);
-      await enrich(world, person.vesselId, 0, 0, 200);
-      const first = await post(world, '/api/starter/fuel', person.headers, { amount: 30 });
-      expect(first.statusCode).toBe(200);
-      let ship = await shipOf(person.vesselId);
-      expect(ship.fuel).toBe(30);
-      expect(ship.deuterium).toBeCloseTo(170, 0);
-      await post(world, '/api/starter/fuel', person.headers, { amount: 500 });
-      ship = await shipOf(person.vesselId);
-      expect(ship.fuel).toBe(STARTER.fuelForJump);
-      expect(ship.deuterium).toBeCloseTo(200 - STARTER.fuelForJump, 0);
-    });
-
-    it('stays shut until the thrust assembly and the second plant are in', async () => {
-      const person = await aboard(world, 'Pilot');
-      await enrich(world, person.vesselId, 0, 0, 200);
-      const refused = await post(world, '/api/starter/fuel', person.headers, { amount: 30 });
-      expect(refused.statusCode).toBe(409);
-      expect(refused.json<{ error: string }>().error).toBe('FUEL_LOCKED');
-    });
-
-    it('says so when there is nothing to move', async () => {
-      const person = await aboard(world, 'Pilot', THRUST);
-      await enrich(world, person.vesselId, 0, 0, 0);
-      const refused = await post(world, '/api/starter/fuel', person.headers, { amount: 30 });
-      expect(refused.statusCode).toBe(409);
-      expect(refused.json<{ error: string }>().error).toBe('NOTHING_TO_LOAD');
-    });
-
-    it('rejects a nonsense amount at the door', async () => {
-      const person = await aboard(world, 'Pilot', THRUST);
-      for (const amount of [-1, 0, 1.5, '9']) {
-        expect((await post(world, '/api/starter/fuel', person.headers, { amount })).statusCode).toBe(400);
-      }
-    });
+  // Plan 2026-11-13 §5.6 (S2): the jump burns no tank, so there is none to load and none to show.
+  it('has no tank to load and shows none', async () => {
+    const person = await ready();
+    await enrich(world, person.vesselId, 0, 0, 200);
+    expect((await post(world, '/api/starter/fuel', person.headers, { amount: 30 })).statusCode).toBe(404);
+    const view = await get<Record<string, unknown>>(world, '/api/starter/migration', person.headers);
+    expect(view).not.toHaveProperty('fuel');
+    const vessel = (await get<{ vessel: Record<string, unknown> }>(world, '/api/starter/vessel', person.headers)).vessel;
+    for (const gone of ['fuel', 'parts', 'jumpFuel']) expect(vessel).not.toHaveProperty(gone);
+    expect((await shipOf(person.vesselId)).deuterium).toBeCloseTo(200, 0);
   });
 
   describe('what the panel reads', () => {
@@ -119,7 +89,7 @@ describe('the jump', () => {
       await enrich(world, person.vesselId, 0, 0, 0);
       await world.f.db.update(vessels).set({ cratesOpened: [] }).where(eq(vessels.id, person.vesselId));
       const ship = await shipOf(person.vesselId);
-      const crates = readyCrates({ modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, []);
+      const crates = readyCrates({ modules: ship.modules, facts: ship.facts }, []);
       const purse = { alloy: crates.reduce((sum, c) => sum + c.reward.alloy, 0), crystal: crates.reduce((sum, c) => sum + c.reward.crystal, 0) };
       expect(purse.alloy).toBeGreaterThan(0);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
@@ -219,12 +189,6 @@ describe('the jump', () => {
       const refused = await jump(person.headers);
       expect(refused.statusCode).toBe(409);
       expect(refused.json<{ error: string }>().error).toBe('MIGRATION_NOT_READY');
-    });
-
-    it('asks no drive, part or fuel of a ship whose window is open', async () => {
-      const person = await ready();
-      await world.f.db.update(vessels).set({ fuel: 0, parts: 0 }).where(eq(vessels.id, person.vesselId));
-      expect((await jump(person.headers)).statusCode).toBe(200);
     });
 
     it('answers PLACEMENT_CHANGED after it has gone, so a second device moves on too', async () => {

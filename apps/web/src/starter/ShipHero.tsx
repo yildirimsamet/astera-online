@@ -1,4 +1,4 @@
-import { VESSEL_SYSTEMS, moduleStage, vesselHull, vesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { VESSEL_SYSTEMS, jumpWindowOpen, vesselHull, vesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
@@ -20,17 +20,18 @@ function rememberIgnition(id: string): void {
 }
 
 /**
- * Hours of work usually end with the player away, and the engines coming in is worth coming back to:
- * an ignition nobody watched waits for the first look at the ship. Everything else starts from now.
+ * The first loop often ends with the player away (a mining run home), and the drive waking is worth
+ * coming back to: an ignition nobody watched waits for the first look at the ship. Everything else
+ * starts from now. The ship a moment before is the one whose run had not come home yet.
  */
 function beforeThisVisit(id: string, progress: VesselProgress): VesselProgress {
-  if (moduleStage(progress, 'DRIVE_THRUST') < 1) return progress;
+  if (!jumpWindowOpen(progress)) return progress;
   try {
     if (window.localStorage.getItem(ignitionKey(id)) !== null) return progress;
   } catch {
     return progress;
   }
-  return { ...progress, modules: { ...progress.modules, DRIVE_THRUST: 0 } };
+  return { ...progress, facts: progress.facts.filter(fact => fact !== 'FIRST_MINING_RETURN') };
 }
 
 /**

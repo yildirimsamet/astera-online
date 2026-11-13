@@ -1,4 +1,4 @@
-import { STARTER, type StarterFeature, type VesselSystem } from '@astera/rules';
+import type { StarterFeature, VesselSystem } from '@astera/rules';
 import { useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VesselView } from '../api/starterSchemas.js';
@@ -13,7 +13,7 @@ import { unlockHeld, watchUnlockHold } from './tutorial/unlockHold.js';
 export const FEATURE_SYSTEM: Record<StarterFeature, VesselSystem> = {
   production: 'REFINERY', intel: 'SURVEY', fleet: 'CARGO', chat: 'SURVEY', salvage: 'CARGO', research: 'CARGO',
   telescope: 'DEFENCE', radar: 'DEFENCE', defence: 'DEFENCE', attack: 'DEFENCE', deuterium: 'REFINERY',
-  drive: 'DRIVE', migration: 'DRIVE',
+  migration: 'DRIVE',
 };
 
 /** Only what can be tried there and then gets a "Try it": the works, and a probe at the nearest ship. */
@@ -83,7 +83,7 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
         <span aria-hidden="true" className="size-1.5 rounded-full bg-v2-self shadow-[0_0_8px_var(--color-v2-self)] animate-[ember_1.4s_ease-in-out_infinite]" />
         <span className="v2-legend text-v2-self">{t('starter.unlock.online', { system: t(`starter.system.${system}`) })}</span>
       </p>
-      <p className="mt-1 text-caption leading-snug text-v2-ink">{t(`starter.feature.${feature}.line`, { count: STARTER.parts.needed })}</p>
+      <p className="mt-1 text-caption leading-snug text-v2-ink">{t(`starter.feature.${feature}.line`)}</p>
       <div className="mt-2 flex justify-end gap-2">
         <button
           type="button"

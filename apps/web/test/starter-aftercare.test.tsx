@@ -58,10 +58,10 @@ it('asks a commander without the guide once the first haul is home, and gives no
   const away = { ...ship(), facts: ['FIRST_PROBE_REPORT' as const] };
   const { rerender } = render(<StarterAftercare vessel={away} farewelled={false} guided={false} />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
-  rerender(<StarterAftercare vessel={{ ...ship(), modules, parts: 1 }} farewelled={false} guided={false} />);
+  rerender(<StarterAftercare vessel={{ ...ship(), modules }} farewelled={false} guided={false} />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
   state.native = true;
-  rerender(<StarterAftercare vessel={{ ...ship(), modules, parts: 1 }} farewelled={false} guided={false} />);
+  rerender(<StarterAftercare vessel={{ ...ship(), modules }} farewelled={false} guided={false} />);
   expect(screen.getByRole('button', { name: /notify me/i })).toBeTruthy();
   expect(screen.queryByText(/Send a/u)).toBeNull();
 });

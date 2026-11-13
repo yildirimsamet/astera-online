@@ -17,7 +17,7 @@ afterEach(cleanup);
 /** The first loop done (plan 2026-11-13 §5.1). */
 const LOOP: VesselProgress = {
   modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 },
-  facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], parts: 0, fuel: 0,
+  facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'],
 };
 
 const view = (over: Partial<Record<keyof MigrationView, unknown>> = {}) => ({

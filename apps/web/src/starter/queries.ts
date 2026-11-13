@@ -47,17 +47,6 @@ export function useMigration() {
   return useQuery({ queryKey: keys.migration, queryFn: ({ signal }) => api.vesselMigration({ signal }) });
 }
 
-/** A loaded tank changes the ship and what the panel may offer, together. */
-export function useLoadFuel() {
-  const api = useApi();
-  const apply = useApplyPlanet();
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (amount: number) => api.loadVesselFuel(amount),
-    onSuccess: ({ vessel }) => { void apply(vesselToPlanetView(vessel)); void client.invalidateQueries({ queryKey: keys.migration }); },
-  });
-}
-
 export function useMigrate() {
   const api = useApi();
   const client = useQueryClient();

@@ -6,7 +6,7 @@ import type { Queryable } from '../../db/client.js';
 import { accounts, shards, starterGalaxies, starterSites, vesselBattleReports, vesselProbeReports, vessels } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { progressOf, refuseLeft } from './vessel.js';
-import { partSight, siteName } from './world.js';
+import { siteName } from './world.js';
 
 /** This galaxy has no end, and a season clock reaching zero sends a client to the galaxy list. */
 const FAR_AWAY_MS = 365 * 86_400_000;
@@ -85,7 +85,6 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
   const outposts = isFeatureOpen(progress, 'fleet')
     ? await q.select().from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxy.id), eq(starterSites.kind, 'OUTPOST')))
     : [];
-  const seesPart = outposts.length > 0 ? await partSight(q, row) : () => false;
   const position = { x: row.x, y: row.y, z: row.z };
   // The first hunt's two, marked alike until the first outpost win (§5.2): where to look, not which guard is which.
   const hunting = !progress.facts.includes('FIRST_OUTPOST_VICTORY');
@@ -163,7 +162,6 @@ export async function starterGalaxyView(q: Queryable, accountId: string, clock: 
         satellites: [],
         state: { kind: 'NORMAL' as const },
         neutral: { tier: tierOf(site.level), threat: threatOf(site.level), reserve: reserveOf(site.level), claimUntil: null },
-        ...(seesPart(site) ? { hasPart: true } : {}),
         ...(firstHunt(site) ? { firstHunt: true } : {}),
         ...(lost.has(site.id) ? { huntLost: true } : {}),
       })),

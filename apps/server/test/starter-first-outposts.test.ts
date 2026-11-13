@@ -57,7 +57,7 @@ describe('the first outposts', () => {
     const counter = found.find(site => site.level === 2)!;
     expect(wall.guardFull).toEqual({ WARDEN: STARTER.sites.outposts.guards[0] });
     expect(['DART', 'PIKE']).toContain(held(counter.guardFull)[0]);
-    expect(wall).toMatchObject({ stockFull: STARTER.sites.outposts.stock[0], respawnAt: null, hasPart: false });
+    expect(wall).toMatchObject({ stockFull: STARTER.sites.outposts.stock[0], respawnAt: null });
     for (const site of found) {
       const minutes = travelExact(distance(me, site), fleetSpeed({ DART: 2 }, {}));
       expect(minutes).toBeGreaterThanOrEqual(3);

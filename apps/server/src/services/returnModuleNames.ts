@@ -10,9 +10,7 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "Telescope",
     "RADAR": "Radar",
     "AEGIS": "Aegis",
-    "SURVEY": "Survey antenna",
-    "DRIVE_HULL": "Drive hull",
-    "DRIVE_THRUST": "Thrust assembly"
+    "SURVEY": "Survey antenna"
   },
   "tr": {
     "REFINERY": "Alaşım Rafinerisi",
@@ -24,9 +22,7 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "Teleskop",
     "RADAR": "Radar",
     "AEGIS": "Aegis",
-    "SURVEY": "Keşif anteni",
-    "DRIVE_HULL": "Motor gövdesi",
-    "DRIVE_THRUST": "İtki montajı"
+    "SURVEY": "Keşif anteni"
   },
   "de": {
     "REFINERY": "Legierungsraffinerie",
@@ -38,9 +34,7 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "Teleskop",
     "RADAR": "Radar",
     "AEGIS": "Aegis",
-    "SURVEY": "Erkundungsantenne",
-    "DRIVE_HULL": "Antriebsrumpf",
-    "DRIVE_THRUST": "Schubmontage"
+    "SURVEY": "Erkundungsantenne"
   },
   "fr": {
     "REFINERY": "Raffinerie d\\",
@@ -52,9 +46,7 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "Télescope",
     "RADAR": "Radar",
     "AEGIS": "Aegis",
-    "SURVEY": "Antenne d’exploration",
-    "DRIVE_HULL": "Coque du moteur",
-    "DRIVE_THRUST": "Montage de poussée"
+    "SURVEY": "Antenne d’exploration"
   },
   "es": {
     "REFINERY": "Refinería de aleaciones",
@@ -66,9 +58,7 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "Telescopio",
     "RADAR": "Radar",
     "AEGIS": "Égida",
-    "SURVEY": "Antena de exploración",
-    "DRIVE_HULL": "Casco del motor",
-    "DRIVE_THRUST": "Montaje de empuje"
+    "SURVEY": "Antena de exploración"
   },
   "ja": {
     "REFINERY": "合金精錬所",
@@ -80,8 +70,6 @@ export const returnModuleNames: Record<string, Record<string, string>> = {
     "TELESCOPE": "望遠鏡",
     "RADAR": "レーダー",
     "AEGIS": "イージス",
-    "SURVEY": "探査アンテナ",
-    "DRIVE_HULL": "エンジン船体",
-    "DRIVE_THRUST": "推力アセンブリ"
+    "SURVEY": "探査アンテナ"
   }
 };

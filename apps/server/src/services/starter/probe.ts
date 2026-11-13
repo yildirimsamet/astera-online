@@ -1,6 +1,6 @@
 import {
   PROBE, STARTER, bearingBetween, classReading, combatValue, computeLoot, detectChance, distance, fuzzBand, garrisonOf, moduleStage,
-  partitionCombatFleet, partsVisible, repairProgress, seededFrom, travelExact, unarmedCount, vaultProtects, vesselEconomyInput,
+  partitionCombatFleet, repairProgress, seededFrom, travelExact, unarmedCount, vaultProtects, vesselEconomyInput,
   vesselProbeAccuracy, STARTER_PVP_BALANCE, fleetCount, type Fleet, type HpDamageLots,
 } from '@astera/rules';
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
@@ -104,7 +104,7 @@ async function readShip(tx: Tx, target: VesselRow, accuracy: number, missionId: 
 }
 
 /** What a place holds, which is the question before flying a fleet there. */
-function readSite(site: typeof starterSites.$inferSelect, accuracy: number, missionId: string, hunting: boolean) {
+function readSite(site: typeof starterSites.$inferSelect, accuracy: number, missionId: string) {
   const stream = (salt: number) => seededFrom(missionId, salt);
   const guard = site.guard ?? {};
   return {
@@ -114,7 +114,6 @@ function readSite(site: typeof starterSites.$inferSelect, accuracy: number, miss
     fleetSize: fuzzBand(fleetCount(guard), accuracy, stream(4)),
     fleetHome: true,
     classReading: classReading(guard, accuracy, stream(5)),
-    ...(hunting ? { hasPart: site.hasPart } : {}),
     // The first hunt's report (plan F4) reads as an outpost's: who holds it and what it pays.
     ...(site.kind === 'OUTPOST' ? { outpost: true } : {}),
   };
@@ -146,7 +145,7 @@ export async function resolveVesselProbe(tx: Tx, mission: MissionRow, clock: Clo
       if (!site) return;
       await tx.insert(vesselProbeReports).values({
         observerVesselId: observer.row.id, targetSiteId: site.id, missionId: mission.id,
-        targetName: siteName(site), at: now, accuracy, snapshot: readSite(site, accuracy, mission.id, partsVisible(progressOf(observer.row))), detected: false,
+        targetName: siteName(site), at: now, accuracy, snapshot: readSite(site, accuracy, mission.id), detected: false,
       });
       return;
     }

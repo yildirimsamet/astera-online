@@ -3,7 +3,7 @@ import type { AnalyticsName, AnalyticsProperties } from '../api/analyticsSchemas
 import { vesselSchema, type VesselView } from '../api/starterSchemas.js';
 import { observe } from '../lib/playerAnalytics/runtime.js';
 
-type Snapshot = Pick<VesselView, 'modules' | 'facts' | 'parts' | 'features'>;
+type Snapshot = Pick<VesselView, 'modules' | 'facts' | 'features'>;
 type Observed = (name: AnalyticsName, properties?: AnalyticsProperties) => void;
 
 const FACT_EVENT: Readonly<Partial<Record<VesselFact, AnalyticsName>>> = {
@@ -31,7 +31,6 @@ export function vesselMilestones(before: Snapshot | null, ship: Snapshot): { nam
     const name = FACT_EVENT[fact];
     if (name && !before.facts.includes(fact)) events.push({ name, properties: {} });
   }
-  if (ship.parts > before.parts) events.push({ name: 'vessel_part_found', properties: { count: ship.parts } });
   return events;
 }
 
@@ -40,7 +39,7 @@ const store = (id: string) => `astera.vessel-seen.${id}`;
 const tryJson = (text: string): unknown => { try { return JSON.parse(text); } catch { return null; } };
 
 /** What this device wrote, read back as anything else may have written it. */
-const snapshotSchema = vesselSchema.pick({ modules: true, facts: true, parts: true, features: true });
+const snapshotSchema = vesselSchema.pick({ modules: true, facts: true, features: true });
 
 const parsed = (text: string | null): Snapshot | null => {
   if (!text) return null;
@@ -52,7 +51,7 @@ export function announceVessel(ship: Snapshot & { id?: string }, send: Observed)
   const key = store(ship.id ?? 'ship');
   try {
     for (const event of vesselMilestones(parsed(localStorage.getItem(key)), ship)) send(event.name, event.properties);
-    localStorage.setItem(key, JSON.stringify({ modules: ship.modules, facts: ship.facts, parts: ship.parts, features: ship.features }));
+    localStorage.setItem(key, JSON.stringify({ modules: ship.modules, facts: ship.facts, features: ship.features }));
   } catch {
     // With no storage nothing can be told apart from a reload, so nothing is told.
   }

@@ -13,7 +13,7 @@ export type StepEffect =
   | { kind: 'storeCeiling'; from: number; to: number }
   | { kind: 'reach'; sensor: 'telescope' | 'radar'; distance: number }
   | { kind: 'aegis'; hp: number }
-  | { kind: 'note'; note: 'surveyBand' | 'driveHull' | 'driveThrust' };
+  | { kind: 'note'; note: 'surveyBand' };
 
 const gain = (rate: (level: number) => number, stage: number): number => Math.round(rate(stage) - rate(stage - 1));
 
@@ -32,8 +32,6 @@ function ownEffect(step: RepairStep, progress: VesselProgress): StepEffect | nul
     case 'RADAR': return { kind: 'reach', sensor: 'radar', distance: STARTER.radar[stage] ?? 0 };
     case 'AEGIS': return { kind: 'aegis', hp: vesselAegisHp(stage) };
     case 'SURVEY': return stage > 1 ? { kind: 'note', note: 'surveyBand' } : null;
-    case 'DRIVE_HULL': return { kind: 'note', note: 'driveHull' };
-    case 'DRIVE_THRUST': return { kind: 'note', note: 'driveThrust' };
     case 'SHIPYARD': return null;
   }
 }
@@ -84,7 +82,7 @@ export function repairGainIcon(step: RepairStep): IconId {
     case 'SURVEY': return 'i-probe';
     case 'TELESCOPE': return 'i-telescope';
     case 'RADAR': return 'i-radar';
-    case 'SHIPYARD': case 'DRIVE_HULL': case 'DRIVE_THRUST': return 'i-fleet';
+    case 'SHIPYARD': return 'i-fleet';
     case 'AEGIS': return 'i-shield';
     case 'VAULT': case 'HANGAR': return 'i-transfer';
     case 'DEUTERIUM_PLANT': return 'm-recover';

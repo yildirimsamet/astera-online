@@ -16,7 +16,6 @@ export const VESSEL_MODULES = [
   'SURVEY',
   'SHIPYARD', 'HANGAR',
   'TELESCOPE', 'RADAR', 'AEGIS',
-  'DRIVE_HULL', 'DRIVE_THRUST',
 ] as const;
 export type VesselModule = (typeof VESSEL_MODULES)[number];
 
@@ -29,16 +28,11 @@ export type VesselModules = Partial<Record<VesselModule, number>>;
 export interface VesselProgress {
   modules: VesselModules;
   facts: readonly VesselFact[];
-  /** Thrust parts held. A ship keeps what it took and can hold no more than it needs. */
-  parts: number;
-  /** Deuterium already in the drive's tank, out of reach of a raid. */
-  fuel: number;
 }
 
 export type StepRequirement =
   | { kind: 'MODULE'; module: VesselModule; stage: number }
-  | { kind: 'FACT'; fact: VesselFact }
-  | { kind: 'PARTS'; count: number };
+  | { kind: 'FACT'; fact: VesselFact };
 
 export interface RepairStep {
   system: VesselSystem;
@@ -75,8 +69,7 @@ const step = (
 /**
  * Seconds as the ladder's minutes: the guided first session (owner 2026-11-06) runs in seconds. After it
  * the timers ramp (90 s, 2, 3, 5 minutes in the guided session, owner 2026-11-07; then 20, 30, 40, 60)
- * instead of jumping from one minute to forty-five. The engine takes four hours a part (owner
- * 2026-11-08, N4): the fuel, not the engine, is what a ship waits on before the jump.
+ * instead of jumping from one minute to forty-five.
  */
 const seconds = (count: number): number => count / 60;
 
@@ -104,11 +97,6 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   // first, it would leave a ship that can never pay another repair (plan F3, `starter-ladder`).
   step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, false, [needs('SHIPYARD', 1)], { deuterium: STARTER.deuteriumGrant }),
   step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, false, [needs('EXTRACTOR', 2)]),
-  // The ship leaves seeing what is around it (owner 2026-11-08, N3); no battle is asked of anyone.
-  step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, false, [
-    needs('REFINERY', 4), needs('EXTRACTOR', 3), needs('SURVEY', 2), needs('HANGAR', 2), needs('RADAR', 1),
-  ]),
-  step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 240, false, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
 
   // The shield is a choice (owner 2026-11-08, N3): it brings the pirates and opens other ships, both ways.
   step('DEFENCE', 'AEGIS', 1, 315, 237, 45, false, [needs('SHIPYARD', 1)]),
@@ -132,7 +120,7 @@ const STEPS_OUTSIDE_THE_LADDER = 2;
 const WINDOW_FACTS: readonly VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
 
 export const openingProgress = (): VesselProgress => ({
-  modules: { ...STARTER.opening.modules }, facts: [], parts: 0, fuel: 0,
+  modules: { ...STARTER.opening.modules }, facts: [],
 });
 
 const findStep = (module: VesselModule, stage: number): RepairStep | undefined =>
@@ -148,7 +136,6 @@ const requirementMet = (progress: VesselProgress, need: StepRequirement): boolea
   switch (need.kind) {
     case 'MODULE': return moduleStage(progress, need.module) >= need.stage;
     case 'FACT': return progress.facts.includes(need.fact);
-    case 'PARTS': return progress.parts >= need.count;
   }
 };
 
@@ -182,7 +169,7 @@ export function nextSteps(progress: VesselProgress): RepairStep[] {
 
 /**
  * THE SHIP AS IT WILL BE ONCE THE QUEUE HAS RUN, which is what a new order is judged against: the
- * queue runs in order, so anything already in it finishes first. Facts and parts are not queued.
+ * queue runs in order, so anything already in it finishes first. Facts are not queued.
  */
 export function afterQueue(progress: VesselProgress, queued: readonly RepairStep[]): VesselProgress {
   const modules: VesselModules = { ...progress.modules };
@@ -222,9 +209,6 @@ export function nextRequiredStep(progress: VesselProgress, queued: readonly Repa
  */
 export const jumpWindowOpen = (progress: VesselProgress): boolean =>
   REQUIRED_STEPS.every(s => moduleStage(progress, s.module) >= s.stage) && WINDOW_FACTS.every(fact => progress.facts.includes(fact));
-
-export const canLoadFuel = (progress: VesselProgress): boolean =>
-  moduleStage(progress, 'DRIVE_THRUST') >= 1 && moduleStage(progress, 'DEUTERIUM_PLANT') >= 2;
 
 export interface SystemProgress { done: number; total: number }
 

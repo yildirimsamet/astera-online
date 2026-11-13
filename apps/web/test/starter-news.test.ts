@@ -15,9 +15,10 @@ describe('what the ship tells its commander', () => {
     expect(say('BATTLE_REPORT', { grade: 'DECISIVE', attacking: false, opponent: 'Vex', loot: {} })).toBe('Vex attacked your ship. Read the report.');
   });
 
-  it('says what came home and whether it carried a part', () => {
-    expect(say('FLEET_HOME', { kind: 'ATTACK', cargo: { alloy: 40, crystal: 0, deuterium: 0 }, part: false })).toBe('Your fleet is back.');
-    expect(say('FLEET_HOME', { kind: 'ATTACK', cargo: { alloy: 0, crystal: 0, deuterium: 0 }, part: true })).toBe('Your fleet is back with a thrust part.');
+  // Plan 2026-11-13 §5.6 (S2): no part comes home any more, not even on a note saved before.
+  it('says what came home, and names no part', () => {
+    expect(say('FLEET_HOME', { kind: 'ATTACK', cargo: { alloy: 40, crystal: 0, deuterium: 0 } })).toBe('Your fleet is back.');
+    expect(say('FLEET_HOME', { kind: 'ATTACK', cargo: { alloy: 0, crystal: 0, deuterium: 0 }, part: true })).toBe('Your fleet is back.');
   });
 
   it('says a target was gone', () => {

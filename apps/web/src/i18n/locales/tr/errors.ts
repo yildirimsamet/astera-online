@@ -348,7 +348,5 @@ export const errors = {
   MIGRATION_SEASON_WAIT: "Sezon {{daysLeft}} gün sonra bitiyor. Yeni sezonda ilk gelenlerden biri olmak için bekle.",
   LANDING_GONE: "Bu adresi az önce başka bir gemi aldı. Şu an açık olanlardan yeniden seç.",
   MIGRATION_IN_PROGRESS: "Gemin zaten kalkıyor.",
-  NOTHING_TO_LOAD: "Depo dolu ya da yükleyecek Döteryumun yok.",
-  FUEL_LOCKED: "Önce itki montajını ve ikinci Döteryum tesisini bitir.",
   NO_FRONTIER: "Şu anda bütün galaksiler dolu. Geminiz hazır bekliyor, birazdan yeniden deneyin.",
 } as const;

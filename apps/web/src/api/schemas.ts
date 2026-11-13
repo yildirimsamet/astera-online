@@ -1660,8 +1660,6 @@ export const galaxySchema = z.object({
       position: vec3,
       /** A colony ship or an abandoned outpost in place of a world (`starter`), and how a hull looked when last seen. */
       body: z.enum(['VESSEL', 'OUTPOST']).optional(),
-      /** A thrust part this ship can see here. Absent for anyone not hunting one. */
-      hasPart: z.boolean().optional(),
       /** One of this ship's two first outposts, until its first outpost win (plan §5.2). */
       firstHunt: z.boolean().optional(),
       huntLost: z.boolean().optional(),
@@ -2580,8 +2578,6 @@ export const intelSchema = z.object({
       fleetHome: z.boolean(),
       /** How much of a colony ship is mended, in percent. Ships only; no planet has this. */
       repair: band.optional(),
-      /** A shared place holds an engine part. Places only. */
-      hasPart: z.boolean().optional(),
       /** An outpost of the starter galaxy (plan F4): its report reads as the first hunt's. */
       outpost: z.boolean().optional(),
       deathStar: z.enum(['READY', 'BUILDING', 'NONE', 'UNKNOWN']).optional(),
@@ -3355,8 +3351,6 @@ export const miningSchema = z.object({
       crystal: z.number(),
       deuterium: z.number(),
       minutesLeft: z.number(),
-      /** A thrust part this ship can see here. Colony ships only. */
-      hasPart: z.boolean().optional(),
     }),
   ),
   runs: z.array(

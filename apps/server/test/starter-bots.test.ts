@@ -2,11 +2,10 @@ import { STARTER, STARTER_CRATES, dockBill, shipBotTarget, type VesselModules } 
 import { and, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { players, starterDepartures, starterGalaxies, starterSites, vesselBotState, vesselMissions, vesselOrders, vesselProbeReports, vesselUnits, vessels } from '../src/db/schema.js';
+import { players, starterDepartures, starterGalaxies, vesselBotState, vesselMissions, vesselOrders, vesselProbeReports, vesselUnits, vessels } from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import { crewGalaxies, crewTakesShield, shipBotStayMs, sweepShipBots, takeShipBotTurn } from '../src/services/starter/shipBots.js';
-import { resolveMiningLanding } from '../src/services/starter/mining.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
@@ -14,7 +13,7 @@ import { aboard, arm, enrich, pass } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 const log = pino({ level: process.env.SHIP_BOT_LOG ?? 'silent' });
-const READY: VesselModules = { REFINERY: 5, EXTRACTOR: 3, VAULT: 1, SURVEY: 2, AEGIS: 1, TELESCOPE: 1, RADAR: 1, SHIPYARD: 1, HANGAR: 2, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 };
+const READY: VesselModules = { REFINERY: 5, EXTRACTOR: 3, VAULT: 1, SURVEY: 2, AEGIS: 1, TELESCOPE: 1, RADAR: 1, SHIPYARD: 1, HANGAR: 2, DEUTERIUM_PLANT: 2 };
 const FACTS = ['FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_PROBE_REPORT'] as const;
 /** The crates already opened, so a test about another choice is not decided by a crate's purse. */
 const OPENED = STARTER_CRATES.map(crate => crate.id);
@@ -276,28 +275,6 @@ describe('the ships the server plays', () => {
     await turn(bot!.ship.accountId);
     const docks = await world.f.db.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, bot!.ship.id), eq(vesselOrders.queue, 'DOCK')));
     expect(docks).toHaveLength(1);
-  });
-
-  it('leaves a scarce part for a person hunting one', async () => {
-    await names(1);
-    const me = await aboard(world, 'Me', READY);
-    await world.f.db.update(vessels).set({ facts: [...FACTS] }).where(eq(vessels.id, me.vesselId));
-    await crew();
-    const [bot] = await bots();
-    await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], parts: 0 }).where(eq(vessels.id, bot!.ship.id));
-    await sweepStarterWorld(world.f.db, world.f.clock);
-    await world.f.db.update(starterSites).set({ hasPart: false });
-    const [wreck] = await world.f.db.select().from(starterSites).where(eq(starterSites.kind, 'WRECK'));
-    await world.f.db.update(starterSites).set({ hasPart: true }).where(eq(starterSites.id, wreck!.id));
-    const [mission] = await world.f.db.insert(vesselMissions).values({
-      starterGalaxyId: wreck!.starterGalaxyId, ownerVesselId: bot!.ship.id, kind: 'MINE', targetSiteId: wreck!.id,
-      fromX: 0, fromY: 0, fromZ: 0, toX: wreck!.x, toY: wreck!.y, toZ: wreck!.z, fleet: { PROSPECTOR: 1 }, damage: [], departAt: world.f.clock.now(), arriveAt: world.f.clock.now(),
-    }).returning();
-    await world.f.db.transaction(tx => resolveMiningLanding(tx, mission!, world.f.clock));
-    const [after] = await world.f.db.select().from(vessels).where(eq(vessels.id, bot!.ship.id));
-    expect(after!.parts).toBe(0);
-    const [site] = await world.f.db.select().from(starterSites).where(eq(starterSites.id, wreck!.id));
-    expect(site!.hasPart).toBe(true);
   });
 
   describe('the main galaxy\'s seats', () => {

@@ -31,8 +31,8 @@ export interface LockedVessel {
 
 const minutesSince = (epoch: Date, at: Date): number => (at.getTime() - epoch.getTime()) / 60_000;
 
-export const progressOf = (row: Pick<VesselRow, 'modules' | 'facts' | 'parts' | 'fuel'>): VesselProgress =>
-  ({ modules: row.modules, facts: row.facts, parts: row.parts, fuel: row.fuel });
+export const progressOf = (row: Pick<VesselRow, 'modules' | 'facts'>): VesselProgress =>
+  ({ modules: row.modules, facts: row.facts });
 
 export const economyOf = (row: VesselRow): PlanetEconomyState => ({
   alloy: row.alloy,
@@ -166,8 +166,6 @@ export async function saveVessel(tx: Tx, row: VesselRow): Promise<void> {
     modules: row.modules,
     research: row.research,
     facts: row.facts,
-    parts: row.parts,
-    fuel: row.fuel,
     pvpOpenAt: row.pvpOpenAt,
     recoveryUntil: row.recoveryUntil,
     unlocksSeen: row.unlocksSeen,
@@ -253,8 +251,6 @@ export async function vesselView(q: Queryable, row: VesselRow, epoch: Date, ordi
     modules: row.modules,
     research: row.research,
     facts: row.facts,
-    parts: row.parts,
-    fuel: row.fuel,
     pvpOpenAt: row.pvpOpenAt?.toISOString() ?? null,
     recoveryUntil: row.recoveryUntil?.toISOString() ?? null,
     progress: repairProgress(progress),
@@ -270,7 +266,6 @@ export async function vesselView(q: Queryable, row: VesselRow, epoch: Date, ordi
     flying: (await q.select({ id: vesselMissions.id }).from(vesselMissions).where(and(
       eq(vesselMissions.ownerVesselId, row.id), inArray(vesselMissions.kind, ['ATTACK', 'RAID_SITE']), inArray(vesselMissions.status, ['OUTBOUND', 'RETURNING']),
     ))).length,
-    jumpFuel: STARTER.fuelForJump,
   };
 }
 

@@ -33,7 +33,7 @@ describe('claiming the ship from the prologue', () => {
   });
 
   it('does not take the browser\'s word for anything', async () => {
-    await claim({ intents: [{ kind: 'build', building: 'REFINERY', level: 9 }], alloy: 999_999, modules: { DRIVE_THRUST: 4 } }).catch(() => undefined);
+    await claim({ intents: [{ kind: 'build', building: 'REFINERY', level: 9 }], alloy: 999_999, modules: { RADAR: 4 } }).catch(() => undefined);
     const [account] = await world.f.db.select().from(accounts).where(eq(accounts.username, 'prologue_pilot'));
     if (!account) return;
     const row = await ship();

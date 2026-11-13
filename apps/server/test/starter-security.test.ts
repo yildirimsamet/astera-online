@@ -46,8 +46,6 @@ describe('the ship API, without a pass', () => {
     ['/api/starter/repair', { module: 'REFINERY', stage: 1e9 }],
     ['/api/starter/build', { hull: 'DEATH_STAR', count: 1 }],
     ['/api/starter/build', { hull: 'DART', count: -5 }],
-    ['/api/starter/fuel', { amount: -90 }],
-    ['/api/starter/fuel', { amount: Number.MAX_VALUE }],
     ['/api/starter/migrate', { slot: 1, force: true }],
     ['/api/starter/chat/messages', { content: 'x'.repeat(10_000), language: 'en' }],
     ['/api/starter/return/seen', { asOf: 'yesterday-ish' }],

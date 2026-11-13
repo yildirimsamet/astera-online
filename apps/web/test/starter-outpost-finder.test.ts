@@ -4,18 +4,18 @@ import { outpostFinderTargets } from '../src/starter/outpostTargets.js';
 
 /**
  * THE OUTPOST LIST, WHEN THE FIRST HUNT STARTS (plan §5.2, F4d). The ship's two first outposts lead the
- * list and say so; a part's outpost comes next; the galaxy's others follow as before.
+ * list and say so; the galaxy's others follow as before.
  */
 const at = { x: 0, y: 0, z: 0 };
-const post = (id: string, over: { firstHunt?: boolean; hasPart?: boolean; coreLevel?: number } = {}) =>
+const post = (id: string, over: { firstHunt?: boolean; coreLevel?: number } = {}) =>
   ({ id, name: id, body: 'OUTPOST' as const, position: at, coreLevel: over.coreLevel ?? 1, ...over });
 
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('the outpost list', () => {
-  it('puts the first hunt\'s two first, then the one with a part, then the rest as they came', () => {
-    const listed = outpostFinderTargets([post('Ash'), post('Bel', { hasPart: true }), post('Cor', { firstHunt: true }), post('Dun'), post('Eld', { firstHunt: true, coreLevel: 2 })], i18n.t);
-    expect(listed.map(target => target.id)).toEqual(['Cor', 'Eld', 'Bel', 'Ash', 'Dun']);
+  it('puts the first hunt\'s two first, then the rest as they came', () => {
+    const listed = outpostFinderTargets([post('Ash'), post('Bel'), post('Cor', { firstHunt: true }), post('Dun'), post('Eld', { firstHunt: true, coreLevel: 2 })], i18n.t);
+    expect(listed.map(target => target.id)).toEqual(['Cor', 'Eld', 'Ash', 'Bel', 'Dun']);
   });
 
   it('names the first hunt\'s two for what they are, with their level', () => {

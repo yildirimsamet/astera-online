@@ -19,7 +19,7 @@ const timed = (order: VesselView['queue'][number], slot: number) => ({
  * test rather than a screen.
  */
 export function vesselToPlanetView(vessel: VesselView): PlanetView {
-  const progress: VesselProgress = { modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel };
+  const progress: VesselProgress = { modules: vessel.modules, facts: vessel.facts };
   const stage = (module: VesselModule): number => moduleStage(progress, module);
   const hangar = stage('HANGAR');
   const shieldMax = vesselAegisHp(stage('AEGIS'));

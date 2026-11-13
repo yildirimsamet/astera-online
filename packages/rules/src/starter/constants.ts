@@ -60,7 +60,6 @@ export const STARTER = {
     wrecks: { count: 6, stock: [300, 600], respawnMinutes: 120 },
     outposts: { count: 8, guards: [2, 3, 6], stock: [250, 450, 900], respawnMinutes: 360 },
   },
-  parts: { needed: 3, respawnMinutes: 120, minOpen: 2 },
   /**
    * The first Prospector's rock (retention plan §6.3): a finished Shipyard with no rock this close is
    * given one passing between `near` and `far` units away, about a minute's flight.
@@ -75,7 +74,6 @@ export const STARTER = {
   firstOutposts: { near: 300, far: 450, extraMax: 60 },
   /** The main game's own projects at its own prices, two levels at most. They end with the ship. */
   research: { projects: ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'PROSPECTOR_HOLDS'], maxLevel: 2 },
-  fuelForJump: 90,
   deuteriumGrant: 20,
   carry: { alloy: 2000, crystal: 1000, deuterium: 50, ships: 6 },
   retentionDays: 30,

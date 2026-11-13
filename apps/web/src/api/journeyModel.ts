@@ -52,7 +52,7 @@ export function journeyPlayer(input: JourneyInput, now: number, absentMinutes: n
   add('probe', input.facts.includes('FIRST_PROBE_REPORT') || work.some(w => w.code === 'PROBE'));
   add('yard', (input.modules.SHIPYARD ?? 0) >= 1);
   // Plan 2026-11-13 §5.1: the first loop done, the jump the player's to choose.
-  add('window', jumpWindowOpen({ modules: knownModules(input.modules), facts: input.facts.filter(isFact), parts: 0, fuel: 0 }));
+  add('window', jumpWindowOpen({ modules: knownModules(input.modules), facts: input.facts.filter(isFact) }));
   add('built', work.some(w => w.kind === 'order' && w.queue === 'YARD' && w.done));
   add('battle', input.facts.includes('FIRST_BATTLE_REPORT') || work.some(w => w.code === 'RAID_SITE' || w.code === 'RAID_SHIP'));
   add('victory', input.facts.includes('FIRST_OUTPOST_VICTORY'));

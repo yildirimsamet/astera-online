@@ -2,7 +2,7 @@ import type { VesselModule } from '@astera/rules';
 import i18n from '../i18n/index.js';
 import { buildingName, instrumentLabel } from '../i18n/names.js';
 
-const SHIP_ONLY = ['SURVEY', 'DRIVE_HULL', 'DRIVE_THRUST'] as const;
+const SHIP_ONLY = ['SURVEY'] as const;
 type ShipOnlyModule = (typeof SHIP_ONLY)[number];
 
 /** On the queue's wire a subject is any string. These three have no building behind them. */
@@ -14,7 +14,7 @@ export function moduleName(module: VesselModule): string {
       return buildingName(module);
     case 'TELESCOPE': case 'RADAR': case 'AEGIS':
       return instrumentLabel(module);
-    case 'SURVEY': case 'DRIVE_HULL': case 'DRIVE_THRUST':
+    case 'SURVEY':
       return i18n.t(`starter.module.${module}`);
   }
 }

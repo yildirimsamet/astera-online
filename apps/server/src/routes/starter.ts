@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { blockBody, buildBody, crateBody, chatListQuery, chatPostBody, chatReadBody, fuelBody, harvestBody, idempotencyHeader, launchBody, migrateBody, miningBody, orderParams, probeBody, repairBody, replayParams, researchBody, returnSeenBody, unlockBody, watchBody } from '../schemas/starter.js';
+import { blockBody, buildBody, crateBody, chatListQuery, chatPostBody, chatReadBody, harvestBody, idempotencyHeader, launchBody, migrateBody, miningBody, orderParams, probeBody, repairBody, replayParams, researchBody, returnSeenBody, unlockBody, watchBody } from '../schemas/starter.js';
 import { queueServerAnalytics } from '../services/analyticsServerFacts.js';
 import { GameError } from '../services/planet.js';
 import { blockStarterAuthor, markStarterChatRead, postStarterChat, readStarterChat, reportStarterChat, unreadStarterChat } from '../services/starter/chat.js';
 import { dockFleet } from '../services/starter/dock.js';
 import { enlistVessel } from '../services/starter/enlist.js';
 import { launchVesselFleet, recallVesselFleet } from '../services/starter/fleet.js';
-import { arrivalOwed, departureBoard, inboundShips, loadFuel, markArrivalSeen, migrationView, runDeparture } from '../services/starter/migration.js';
+import { arrivalOwed, departureBoard, inboundShips, markArrivalSeen, migrationView, runDeparture } from '../services/starter/migration.js';
 import { launchVesselHarvest, launchVesselMining, recallVesselMining, starterMiningView } from '../services/starter/mining.js';
 import { buildAtVessel, researchAtVessel } from '../services/starter/orders.js';
 import { starterReplayView, starterReportsView } from '../services/starter/reports.js';
@@ -141,11 +141,6 @@ export function registerStarterRoutes(app: FastifyInstance): void {
 
   app.get('/api/starter/notifications', { preHandler: requireAuth }, async (req) =>
     ({ notifications: await listNotifications(app.db, req.accountId!) }));
-
-  app.post('/api/starter/fuel', { preHandler: requireAuth }, async (req) => {
-    const { amount } = fuelBody.parse(req.body ?? {});
-    return { vessel: await loadFuel(app.db, req.accountId!, amount, app.clock) };
-  });
 
   app.get('/api/starter/migration', { preHandler: requireAuth }, (req) => migrationView(app.db, req.accountId!, app.clock));
 

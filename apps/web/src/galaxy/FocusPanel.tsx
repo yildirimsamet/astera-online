@@ -1,4 +1,3 @@
-import { PartHere } from '../starter/PartHere.js';
 import { worldKindKey } from './worldKind.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { FlightEscort } from '../ui/FlightEscort.js';
@@ -1016,7 +1015,6 @@ export function PlanetFocus({
   const carry = fleetCargo(planet.fleet, flightModifiers(planet).tech);
   const outpostLines = target.body === 'OUTPOST' ? (
     <>
-      {target.hasPart && <PartHere />}
       <p data-testid="outpost-rule" className="text-micro leading-snug text-v2-ink-2">
         {t('starter.outpost.rule', {
           amount: full(STARTER.sites.outposts.stock[Math.min(STARTER.sites.outposts.stock.length, Math.max(1, target.coreLevel)) - 1] ?? 0),
@@ -3998,7 +3996,6 @@ export function DebrisFocus({
   busy,
   open,
   onToggle,
-  probe,
 }: {
   field: {
     id: string;
@@ -4006,10 +4003,7 @@ export function DebrisFocus({
     crystal: number;
     deuterium: number;
     minutesLeft: number;
-    hasPart?: boolean | undefined;
   };
-  /** A ship hunting a thrust part: the probe that says whether this wreck holds one. */
-  probe?: { intel: IntelView | undefined; onLaunched: (targetName: string) => void };
   planetName: string | undefined;
   craftAvailable: number;
   craftHold: number;
@@ -4078,8 +4072,6 @@ export function DebrisFocus({
       }
       actions={
         <>
-        {field.hasPart && <div className="basis-full"><PartHere /></div>}
-        {probe && !field.hasPart && <ProbeControl target={{ id: field.id, name: planetName ?? '' }} intel={probe.intel} onLaunched={probe.onLaunched} />}
         {run && <MiningCommitments run={run} lane="debris" />}
           <button
             type="button"

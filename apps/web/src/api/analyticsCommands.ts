@@ -2,7 +2,7 @@ const STARTER_ROUTES: Record<string, string> = {
   '/api/starter/repair': 'module_repair', '/api/starter/build': 'build', '/api/starter/research': 'research',
   '/api/starter/dock': 'dock', '/api/starter/probe': 'probe', '/api/starter/fleet/launch': 'attack',
   '/api/starter/mining/launch': 'mining', '/api/starter/mining/harvest': 'harvest',
-  '/api/starter/collect': 'collect', '/api/starter/fuel': 'fuel', '/api/starter/watch': 'watch',
+  '/api/starter/collect': 'collect', '/api/starter/watch': 'watch',
 };
 
 /** Stable categories shared by request observation and server provenance; no raw paths are stored. */

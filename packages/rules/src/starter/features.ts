@@ -1,6 +1,5 @@
-import { REPAIR_LADDER, jumpWindowOpen, missingForStep, moduleStage, type VesselFact, type VesselModule, type VesselProgress } from './ladder.js';
+import { jumpWindowOpen, moduleStage, type VesselFact, type VesselModule, type VesselProgress } from './ladder.js';
 import { STARTER } from './constants.js';
-import { canTakePart } from './sites.js';
 
 /**
  * WHAT A COMMANDER CAN USE ABOARD. Plan §3.7.
@@ -15,7 +14,7 @@ import { canTakePart } from './sites.js';
  */
 export const STARTER_FEATURES = [
   'production', 'intel', 'fleet', 'chat', 'salvage', 'research', 'telescope',
-  'radar', 'defence', 'attack', 'deuterium', 'drive', 'migration',
+  'radar', 'defence', 'attack', 'deuterium', 'migration',
 ] as const;
 export type StarterFeature = (typeof STARTER_FEATURES)[number];
 
@@ -28,8 +27,6 @@ export type MainGalaxyFeature = (typeof MAIN_GALAXY_FEATURES)[number];
 
 const stage = (module: VesselModule, reached: number) => (p: VesselProgress) => moduleStage(p, module) >= reached;
 const happened = (fact: VesselFact) => (p: VesselProgress) => p.facts.includes(fact);
-
-const DRIVE_HULL_STEP = REPAIR_LADDER.find(s => s.module === 'DRIVE_HULL')!;
 
 const OPENS: Record<StarterFeature, (progress: VesselProgress) => boolean> = {
   production: stage('REFINERY', 1),
@@ -44,8 +41,6 @@ const OPENS: Record<StarterFeature, (progress: VesselProgress) => boolean> = {
   // A ship that strikes ships can be struck back: the battle report and its own shield (owner 2026-11-08, N2).
   attack: p => happened('FIRST_BATTLE_REPORT')(p) && stage('AEGIS', 1)(p),
   deuterium: stage('DEUTERIUM_PLANT', 1),
-  // The panel opens when the hull can be ordered, so the two can never disagree.
-  drive: p => missingForStep(p, DRIVE_HULL_STEP).length === 0,
   migration: jumpWindowOpen,
 };
 
@@ -62,10 +57,6 @@ export const nextLockedFeature = (progress: VesselProgress): StarterFeature | nu
 export function nextUnlockToAnnounce(progress: VesselProgress, seen: readonly StarterFeature[]): StarterFeature | null {
   return STARTER_FEATURES.find(feature => OPENS[feature](progress) && !seen.includes(feature)) ?? null;
 }
-
-/** Thrust parts exist only for those hunting them: the panel open, and room left to carry one. */
-export const partsVisible = (progress: VesselProgress): boolean =>
-  OPENS.drive(progress) && canTakePart(progress.parts);
 
 /** Neighbours for a galaxy with this many active people. Nobody there means nobody to live beside. */
 export const shipBotTarget = (activePeople: number): number =>

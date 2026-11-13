@@ -35,7 +35,7 @@ import { StarterWaitLine } from './tutorial/StarterWaitLine.js';
 import { useStarterLesson } from './tutorial/visualGoal.js';
 import { YardDeck } from './YardDeck.js';
 
-const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel });
+const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts });
 
 const repairs = (vessel: VesselView): VesselView['queue'] => vessel.queue.filter(order => order.queue === 'CONSTRUCTION');
 

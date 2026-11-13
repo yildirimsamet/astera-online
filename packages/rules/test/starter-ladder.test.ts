@@ -8,7 +8,6 @@ import {
   VESSEL_SYSTEMS,
   afterQueue,
   alloyRate,
-  canLoadFuel,
   canOrderStep,
   crystalRate,
   jumpWindowOpen,
@@ -57,8 +56,9 @@ function closure(step: RepairStep): Partial<Record<VesselModule, number>> {
 }
 
 describe('the repair ladder', () => {
-  it('has all five systems, and no step twice', () => {
-    expect(new Set(REPAIR_LADDER.map(s => s.system))).toEqual(new Set(VESSEL_SYSTEMS));
+  // The drive is the jump window's own system, with no repair of its own (plan 2026-11-13 §5.6).
+  it('has every system but the drive, and no step twice', () => {
+    expect(new Set(REPAIR_LADDER.map(s => s.system))).toEqual(new Set(VESSEL_SYSTEMS.filter(system => system !== 'DRIVE')));
     const keys = REPAIR_LADDER.map(s => `${s.module}:${String(s.stage)}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
@@ -86,9 +86,15 @@ describe('the repair ladder', () => {
     // Owner 2026-11-08 (N11): both are used in the first session.
     expect(bill('TELESCOPE', 1)).toEqual([250, 150, 15 / 60]);
     expect(bill('RADAR', 1)).toEqual([200, 120, 15 / 60]);
-    // Owner 2026-11-08 (N4): four hours each, so the fuel and not the engine is what a ship waits on.
-    expect(bill('DRIVE_HULL', 1)).toEqual([2200, 1100, 240]);
-    expect(bill('DRIVE_THRUST', 1)).toEqual([1800, 1200, 240]);
+  });
+
+  // Plan 2026-11-13 §5.6 (S2): the jump is a window, not a repair, so the drive has none.
+  it('has no drive repair and no drive module', () => {
+    expect(REPAIR_LADDER.filter(s => s.system === 'DRIVE')).toEqual([]);
+    expect(VESSEL_MODULES).not.toContain('DRIVE_HULL');
+    expect(VESSEL_MODULES).not.toContain('DRIVE_THRUST');
+    const kinds: string[] = REPAIR_LADDER.flatMap(s => s.requires).map(need => need.kind);
+    expect(kinds.filter(kind => !['MODULE', 'FACT'].includes(kind))).toEqual([]);
   });
 
   it('keeps the price of the shield a player may choose', () => {
@@ -120,7 +126,7 @@ describe('the repair ladder', () => {
   });
 
   it('can reach every step, with no cycle', () => {
-    let progress: VesselProgress = { ...openingProgress(), facts: ALL_FACTS, parts: STARTER.parts.needed };
+    let progress: VesselProgress = { ...openingProgress(), facts: ALL_FACTS };
     const left = new Set(REPAIR_LADDER);
     for (let pass = 0; pass <= REPAIR_LADDER.length && left.size > 0; pass++) {
       for (const step of [...left]) {
@@ -190,7 +196,7 @@ describe('the repair ladder', () => {
 
 describe('ordering a repair', () => {
   it('starts with the refinery running and nothing else', () => {
-    expect(openingProgress()).toEqual({ modules: { REFINERY: 1 }, facts: [], parts: 0, fuel: 0 });
+    expect(openingProgress()).toEqual({ modules: { REFINERY: 1 }, facts: [] });
   });
 
   it('refuses a step the ladder does not hold', () => {
@@ -226,16 +232,6 @@ describe('ordering a repair', () => {
     expect(canOrderStep({ ...withModules({ TELESCOPE: 1 }), facts: ['FIRST_MINING_SENT'] }, 'RADAR', 1).ok).toBe(true);
     expect(miss('SURVEY', 2, withModules({ SURVEY: 1, SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }]);
     expect(miss('HANGAR', 2, withModules({ SHIPYARD: 1 }))).toEqual([{ kind: 'FACT', fact: 'FIRST_MINING_RETURN' }]);
-    expect(miss('DRIVE_THRUST', 1, withModules({ DRIVE_HULL: 1 }))).toEqual([{ kind: 'PARTS', count: STARTER.parts.needed }]);
-    expect(miss('DRIVE_THRUST', 1, withModules({ DRIVE_HULL: 1 }, { parts: 2 }))).toEqual([{ kind: 'PARTS', count: STARTER.parts.needed }]);
-    expect(canOrderStep(withModules({ DRIVE_HULL: 1 }, { parts: 3 }), 'DRIVE_THRUST', 1).ok).toBe(true);
-  });
-
-  it('opens the drive once the radar is up, with no battle asked of anyone', () => {
-    const ready = withModules({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
-    expect(canOrderStep(ready, 'DRIVE_HULL', 1)).toEqual({ ok: false, code: 'REPAIR_REQUIREMENT', missing: [{ kind: 'MODULE', module: 'RADAR', stage: 1 }] });
-    expect(canOrderStep({ ...ready, modules: { ...ready.modules, RADAR: 1 } }, 'DRIVE_HULL', 1).ok).toBe(true);
-    expect(find('DRIVE_HULL', 1).requires).not.toContainEqual({ kind: 'FACT', fact: 'FIRST_BATTLE_REPORT' });
   });
 
   it('never needs the shield on the way to the jump', () => {
@@ -249,11 +245,10 @@ describe('ordering a repair', () => {
       if (stage > 1) visit(module, stage - 1);
       for (const need of step.requires) if (need.kind === 'MODULE') visit(need.module, need.stage);
     };
-    visit('DRIVE_THRUST', 1);
-    visit('DEUTERIUM_PLANT', 2);
-    expect([...needed].filter(key => !key.startsWith('HANGAR:1')).sort()).toEqual([
-      'DEUTERIUM_PLANT:1', 'DEUTERIUM_PLANT:2', 'DRIVE_HULL:1', 'DRIVE_THRUST:1', 'EXTRACTOR:1', 'EXTRACTOR:2', 'EXTRACTOR:3',
-      'HANGAR:2', 'RADAR:1', 'REFINERY:1', 'REFINERY:2', 'REFINERY:3', 'REFINERY:4', 'SHIPYARD:1', 'SURVEY:1', 'SURVEY:2', 'TELESCOPE:1',
+    // The jump asks the first loop's repairs and nothing behind them (plan 2026-11-13 §5.1).
+    for (const step of REPAIR_LADDER.filter(s => s.required)) visit(step.module, step.stage);
+    expect([...needed].sort()).toEqual([
+      'EXTRACTOR:1', 'RADAR:1', 'REFINERY:1', 'REFINERY:2', 'SHIPYARD:1', 'SURVEY:1', 'TELESCOPE:1',
     ]);
   });
 
@@ -327,7 +322,7 @@ describe('the jump window', () => {
   });
 
   it('asks nothing of a drive, a part or the fuel', () => {
-    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: LOOP_FACTS, parts: 0, fuel: 0 }))).toBe(true);
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: LOOP_FACTS }))).toBe(true);
   });
 });
 
@@ -385,14 +380,6 @@ describe('the whole ship, apart from the jump', () => {
   });
 });
 
-describe('the fuel tank', () => {
-  it('needs the thrust assembly and the second deuterium stage', () => {
-    expect(canLoadFuel(withModules({ DRIVE_THRUST: 1 }))).toBe(false);
-    expect(canLoadFuel(withModules({ DEUTERIUM_PLANT: 2 }))).toBe(false);
-    expect(canLoadFuel(withModules({ DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 }))).toBe(true);
-  });
-});
-
 const allRepaired = (): VesselModules => {
   const modules: VesselModules = {};
   for (const { module, stage } of REPAIR_LADDER) modules[module] = Math.max(modules[module] ?? 0, stage);
@@ -403,8 +390,6 @@ describe('the five systems, as the ship screen counts them', () => {
   const everything = (): VesselProgress => ({
     modules: allRepaired(),
     facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'],
-    parts: STARTER.parts.needed,
-    fuel: STARTER.fuelForJump,
   });
 
   it('adds up to the same total the repair bar shows', () => {
@@ -469,14 +454,14 @@ describe('the next required repair', () => {
   });
 
   it('is nothing once every required step is done', () => {
-    expect(nextRequiredStep({ modules: allRepaired(), facts: [], parts: 0, fuel: 0 }, [])).toBeNull();
+    expect(nextRequiredStep({ modules: allRepaired(), facts: [] }, [])).toBeNull();
   });
 });
 
 describe('how a ship looks', () => {
   it('starts wrecked and ends renewed', () => {
     expect(vesselLook(openingProgress())).toBe('WRECKED');
-    expect(vesselLook({ modules: allRepaired(), facts: [], parts: 0, fuel: STARTER.fuelForJump })).toBe('RENEWED');
+    expect(vesselLook({ modules: allRepaired(), facts: [] })).toBe('RENEWED');
   });
 
   it('is patched in between', () => {

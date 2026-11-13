@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, VESSEL_MODULES, openFeatures, missingForStep, moduleStage, systemProgress, vesselRate,
+  REPAIR_LADDER, VESSEL_MODULES, jumpWindowOpen, openFeatures, missingForStep, moduleStage, systemProgress, vesselRate,
   type RepairStep, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { buildingArt, instrumentArt } from '../ui/assets.js';
@@ -14,8 +14,8 @@ export const heroArt = (hull: VesselHull, look: VesselLook): string =>
 /** What no planet has wears the game's nearest scene, never a picture of its own. */
 const BORROWED = {
   SURVEY: '/assets/images/atmosphere/uplink-v2.webp',
-  DRIVE_HULL: RESEARCH_SCENES.STARSHIP_ENGINEERING.src,
-  DRIVE_THRUST: RESEARCH_SCENES.SHIP_PROPULSION.src,
+  /** The drive has no repair of its own (plan 2026-11-13 §5.6); its tab keeps the propulsion scene. */
+  DRIVE: RESEARCH_SCENES.SHIP_PROPULSION.src,
 };
 
 /**
@@ -23,7 +23,7 @@ const BORROWED = {
  * planet after the jump.
  */
 export function moduleArt(module: VesselModule, stage: number): string {
-  if (module === 'SURVEY' || module === 'DRIVE_HULL' || module === 'DRIVE_THRUST') return BORROWED[module];
+  if (module === 'SURVEY') return BORROWED.SURVEY;
   const raw = module === 'TELESCOPE' || module === 'RADAR' || module === 'AEGIS' ? instrumentArt(module, stage) : buildingArt(module, stage);
   return cardScene(raw)?.src ?? raw ?? BORROWED.SURVEY;
 }
@@ -36,9 +36,11 @@ export const SYSTEM_ICON: Record<VesselSystem, IconId> = {
   REFINERY: 'i-mine', SURVEY: 'i-radar', DEFENCE: 'i-shield', CARGO: 'i-transfer', DRIVE: 'i-fleet',
 };
 
-export const SYSTEM_ART: Record<VesselSystem, VesselModule> = {
-  REFINERY: 'REFINERY', SURVEY: 'SURVEY', DEFENCE: 'AEGIS', CARGO: 'HANGAR', DRIVE: 'DRIVE_THRUST',
+const SYSTEM_ART: Record<Exclude<VesselSystem, 'DRIVE'>, VesselModule> = {
+  REFINERY: 'REFINERY', SURVEY: 'SURVEY', DEFENCE: 'AEGIS', CARGO: 'HANGAR',
 };
+
+export const systemArt = (system: VesselSystem): string => system === 'DRIVE' ? BORROWED.DRIVE : moduleArt(SYSTEM_ART[system], 1);
 
 export const systemPercent = (progress: VesselProgress, system: VesselSystem): number => {
   const { done, total } = systemProgress(progress, system);
@@ -55,13 +57,14 @@ export interface RepairMoment { system: VesselSystem; tier: RepairTier }
 const TIER_WEIGHT: Record<RepairTier, number> = { routine: 0, capability: 1, big: 2 };
 
 function tierOf(step: RepairStep, before: VesselProgress): RepairTier {
-  if (step.module === 'DRIVE_THRUST') return 'big';
   const after = { ...before, modules: { ...before.modules, [step.module]: step.stage } };
   return openFeatures(after).size > openFeatures(before).size ? 'capability' : 'routine';
 }
 
 /** The answer a repair that has just come in deserves; the heaviest if several landed together. */
 export function repairMoment(before: VesselProgress, after: VesselProgress): RepairMoment | null {
+  // The drive wakes with the jump window (plan 2026-11-13 §5.1), from a repair or from the loop's last deed.
+  if (!jumpWindowOpen(before) && jumpWindowOpen(after)) return { system: 'DRIVE', tier: 'big' };
   let found: RepairMoment | null = null;
   for (const step of REPAIR_LADDER) {
     if (moduleStage(before, step.module) >= step.stage || moduleStage(after, step.module) < step.stage) continue;

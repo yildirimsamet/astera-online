@@ -1,21 +1,18 @@
-import { STARTER } from '@astera/rules';
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { planets, players, starterDepartures, units, vesselMigrations, vessels } from '../src/db/schema.js';
 import { runDeparture, sweepDepartures, type DepartureStep } from '../src/services/starter/migration.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, arm, enrich, post, type StarterWorld } from './starterShips.js';
+import { aboard, arm, enrich, openWindow, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
-
-const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
 describe('a jump cut short', () => {
   let world: StarterWorld;
   const ready = async () => {
-    const person = await aboard(world, 'Pilot', THRUST);
-    await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, person.vesselId));
+    const person = await aboard(world, 'Pilot');
+    await openWindow(world, person.vesselId);
     await arm(world, person.vesselId, { DART: 2 });
     await enrich(world, person.vesselId, 1000, 500, 20);
     return person;
@@ -83,7 +80,6 @@ describe('a jump cut short', () => {
     await sweepDepartures(world.f.db, world.f.clock);
     const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, person.vesselId));
     expect(ship!.status).toBe('ACTIVE');
-    expect(ship!.fuel).toBe(STARTER.fuelForJump);
     expect(ship!.alloy).toBeCloseTo(1000, 0);
   });
 

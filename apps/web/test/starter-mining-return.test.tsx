@@ -37,8 +37,9 @@ describe('the Prospector\'s signal, aboard', () => {
     expect(said({ cargo: { alloy: 0, crystal: 0, deuterium: 0 } })).toBe('Your Prospector is back empty: there was nothing left to take.');
   });
 
-  it('adds the thrust part it found', () => {
-    expect(said({ part: true })).toBe('Your Prospector is back with 200: all of it is in the works. It found a thrust part too.');
+  // Plan 2026-11-13 §5.6 (S2): no part is found any more; a note saved before still reads as a haul.
+  it('names no part, even on a note saved when parts were found', () => {
+    expect(said({ part: true })).toBe('Your Prospector is back with 200: all of it is in the works.');
   });
 
   it('reads a war fleet as before', () => {

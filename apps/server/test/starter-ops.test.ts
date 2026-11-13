@@ -1,4 +1,3 @@
-import { STARTER } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { planets, starterEvents, starterGalaxies, starterSites, vesselMigrations, vesselMissions, vesselUnits, vessels } from '../src/db/schema.js';
@@ -69,7 +68,6 @@ describe('what an operator can do to the ship galaxies', () => {
       const answer = await world.app.inject({ method: 'POST', url: '/api/starter/migrate', headers: me.headers, payload: { slot: null, force: true } });
       expect(answer.statusCode).toBeGreaterThanOrEqual(400);
       const [row] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
-      expect(row!.fuel).toBeLessThan(STARTER.fuelForJump);
       expect(row!.status).toBe('ACTIVE');
     });
   });

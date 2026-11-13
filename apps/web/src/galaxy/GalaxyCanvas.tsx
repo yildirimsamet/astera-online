@@ -6,7 +6,6 @@ import { DepartureBeams } from './DepartureBeams.js';
 import { leavingIds, withoutLeaving, type WatchedFlight } from './watchedFlights.js';
 import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
-import { PartMarks } from './PartMarks.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
 import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
@@ -232,7 +231,7 @@ export interface GalaxyCanvasProps {
   watched?: readonly WatchedFlight[];
   /** This ship's own jump, flown here from where it stands (owner, 2026-11-09). The view hands it the camera. */
   flight?: { jump: Jump; world: JumpWorld };
-  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; parts: readonly Vec3[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
+  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
   unknownSignals?: readonly UnknownSignalView[];
   /** F2 Klan Alarmı: clanmate worlds under a raid still in the air, from the reader's bell. */
   clanAlarms?: readonly ActiveClanAlarm[];
@@ -962,7 +961,6 @@ export function GalaxyCanvas({
           {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} />}
           <VesselField ships={leftBehind} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
           <DepartureBeams beams={starter.beams} offset={mainOffset} />
-          <PartMarks marks={starter.parts} />
         </Suspense>}
         {watched && watched.length > 0 && <Suspense fallback={null}><JumpWatch flights={watched} /></Suspense>}
         {flight && <Suspense fallback={null}><LiveJumpScene jump={flight.jump} world={flight.world} offset={toWorld(mainOffset ?? NO_OFFSET)} /></Suspense>}

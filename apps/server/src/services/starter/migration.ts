@@ -1,5 +1,5 @@
 import { planPlanetReturn } from '../returnPlanning.js';
-import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, fuelToLoad, holdIsFull, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
+import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, holdIsFull, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
 import { and, desc, eq, gt, inArray, isNull, lte, ne, sql, asc, notInArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
@@ -11,9 +11,8 @@ import { joinSeason, readPlacement, slotsHeldForReturn, type JoinResult } from '
 import { galaxyOf } from '../season.js';
 import { listServers, resolveJoinTarget, type JoinTarget } from '../servers.js';
 import { readHome } from './fleet.js';
-import { markProgress } from './quiet.js';
 import { openReadyCrates } from './repair.js';
-import { activeOrders, lockVesselForDeparture, progressOf, readVessel, saveVessel, settleVessel, vesselView, withVesselLock, type LockedVessel, type VesselOrderRow, type VesselRow, type VesselView } from './vessel.js';
+import { activeOrders, lockVesselForDeparture, progressOf, readVessel, saveVessel, settleVessel, type LockedVessel, type VesselOrderRow, type VesselRow } from './vessel.js';
 
 /** How long a jump may be someone's own running request before the sweep takes it over. */
 const SWEEP_AFTER_MS = 2 * 60_000;
@@ -60,27 +59,11 @@ function paidBack<T extends Pick<VesselRow, 'alloy' | 'crystal' | 'deuterium'>>(
   return orders.reduce((sum, { cost }) => ({ ...sum, alloy: sum.alloy + cost.alloy, crystal: sum.crystal + cost.crystal, deuterium: sum.deuterium + cost.deuterium }), row);
 }
 
-/** The tank fills from stock, by hand: flying and leaving draw on the same Deuterium, and that is the decision. */
-export const loadFuel = (db: Db, accountId: string, amount: number, clock: Clock): Promise<VesselView> =>
-  withVesselLock(db, accountId, clock, async (tx, vessel) => {
-    const progress = progressOf(vessel.row);
-    const moved = fuelToLoad(progress, vessel.row.deuterium, amount);
-    if (moved <= 0) {
-      if (fuelToLoad(progress, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) <= 0 && progress.fuel < STARTER.fuelForJump) {
-        throw new GameError('FUEL_LOCKED', 'The tank is not connected yet', 409);
-      }
-      throw new GameError('NOTHING_TO_LOAD', 'Nothing to load', 409);
-    }
-    await markProgress(tx, vessel, clock);
-    vessel.row = { ...vessel.row, deuterium: vessel.row.deuterium - moved, fuel: vessel.row.fuel + moved };
-    return vesselView(tx, vessel.row, vessel.epoch, vessel.galaxyOrdinal);
-  });
-
 /** Everything the panel shows before the press. Addresses are read only for a ship that can use them. */
 export async function migrationView(db: Db, accountId: string, clock: Clock) {
   const ship = await readVessel(db, accountId, clock);
   const home = await readHome(db, ship.id);
-  const progress = { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel };
+  const progress = { modules: ship.modules, facts: ship.facts };
   const frontier = await openFrontier(db, clock);
   const block = frontier?.seasonEndsAt
     ? departureBlock({ progress, flying: await flyingCount(db, ship.id), seasonEndsAtMs: frontier.seasonEndsAt.getTime(), nowMs: clock.now().getTime() })
@@ -97,7 +80,6 @@ export async function migrationView(db: Db, accountId: string, clock: Clock) {
   return {
     block,
     target: frontier?.seasonEndsAt ? { shard: frontier.code, name: frontier.name, seasonEndsAt: frontier.seasonEndsAt.toISOString() } : null,
-    fuel: { loaded: ship.fuel, needed: STARTER.fuelForJump, canLoad: fuelToLoad(progress, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) > 0 || ship.fuel >= STARTER.fuelForJump },
     cargo,
     fill: {
       alloy: cargo.alloy / STARTER.carry.alloy,
@@ -371,7 +353,7 @@ async function announceNewSeason(db: Db, clock: Clock): Promise<void> {
   const [season] = fresh;
   if (!season) return;
   // A ship that waited out a season with nothing left to repair has fallen asleep by now: it is the one waiting most.
-  const waiting = (await db.select({ id: vessels.id, modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel }).from(vessels)
+  const waiting = (await db.select({ id: vessels.id, modules: vessels.modules, facts: vessels.facts }).from(vessels)
     .where(inArray(vessels.status, ['ACTIVE', 'DORMANT']))).filter(ship => jumpWindowOpen(progressOf(ship)));
   if (waiting.length === 0) return;
   await db.insert(vesselNotifications).values(waiting.map(ship => ({

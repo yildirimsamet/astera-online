@@ -782,19 +782,18 @@ function describeAboard({ kind, payload }: NotificationView, now: number): strin
   }
   if (kind === 'FLEET_HOME') {
     const held = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
-    const home = z.object({ kind: z.string().optional(), part: z.boolean().default(false), ships: z.number().int().positive().default(1), cargo: held.optional(), wasted: held.optional() }).safeParse(payload);
+    const home = z.object({ kind: z.string().optional(), ships: z.number().int().positive().default(1), cargo: held.optional(), wasted: held.optional() }).safeParse(payload);
     if (!home.success) return null;
-    const { part, ships: count, cargo, wasted } = home.data;
-    if (home.data.kind !== 'MINE' || !cargo) return i18n.t(part ? 'starter.news.fleetHomePart' : 'starter.news.fleetHome');
+    const { ships: count, cargo, wasted } = home.data;
+    if (home.data.kind !== 'MINE' || !cargo) return i18n.t('starter.news.fleetHome');
     // A haul lands in the works and loses what finds no room (F5): brought, landed and lost, apart.
     const brought = Math.round(cargo.alloy + cargo.crystal + cargo.deuterium);
     const lost = wasted ? Math.round(wasted.alloy + wasted.crystal + wasted.deuterium) : 0;
-    const line = brought < 1
+    return brought < 1
       ? i18n.t('starter.news.mineEmpty', { count })
       : lost >= 1
         ? i18n.t('starter.news.mineLost', { count, brought: compact(brought), landed: compact(brought - lost), lost: compact(lost) })
         : i18n.t('starter.news.mineHome', { count, brought: compact(brought) });
-    return part ? `${line} ${i18n.t('starter.news.minePart')}` : line;
   }
   if (kind === 'FLEET_TURNED_BACK') return i18n.t('starter.news.turnedBack');
   if (kind === 'CRATE_OPENED') {

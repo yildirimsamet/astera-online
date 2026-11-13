@@ -38,15 +38,15 @@ it('batches long repairs in thirty minutes and ignores short jobs', async () => 
   const visible = await world.app.inject({ url: '/api/starter/notifications', headers: { authorization: `Bearer ${await world.app.tokens.issueAccess(ship.accountId)}` } });
   expect(visible.body).not.toContain('PUSH_SENT');
 });
-it('rings for the first three mining returns, then only when a part returns', async () => {
+it('rings for the first three mining returns and then stays quiet', async () => {
   const ship = await setup();
   for (let i = 0; i < 5; i++) {
-    const [mission] = await world.f.db.insert(vesselMissions).values({ starterGalaxyId: ship.starterGalaxyId, ownerVesselId: ship.id, kind: 'MINE', status: 'RETURNING', fromX: ship.x, fromY: ship.y, fromZ: ship.z, toX: ship.x + 100, toY: ship.y, toZ: ship.z, departAt: world.f.clock.now(), arriveAt: world.f.clock.now(), returnAt: world.f.clock.now(), fleet: { PROSPECTOR: 1 }, cargo: { alloy: 10, crystal: 0, deuterium: 0 }, carriesPart: i === 4 }).returning();
+    const [mission] = await world.f.db.insert(vesselMissions).values({ starterGalaxyId: ship.starterGalaxyId, ownerVesselId: ship.id, kind: 'MINE', status: 'RETURNING', fromX: ship.x, fromY: ship.y, fromZ: ship.z, toX: ship.x + 100, toY: ship.y, toZ: ship.z, departAt: world.f.clock.now(), arriveAt: world.f.clock.now(), returnAt: world.f.clock.now(), fleet: { PROSPECTOR: 1 }, cargo: { alloy: 10, crystal: 0, deuterium: 0 } }).returning();
     await resolveMissionReturn(world.f.db, mission!.id, world.f.clock);
     await resolveMissionReturn(world.f.db, mission!.id, world.f.clock);
     await flush();
   }
-  expect(sent.filter(m => m.kind === 'miner_home')).toHaveLength(4);
+  expect(sent.filter(m => m.kind === 'miner_home')).toHaveLength(3);
 });
 
 it('includes long dock repairs in the same repair batch', async () => {

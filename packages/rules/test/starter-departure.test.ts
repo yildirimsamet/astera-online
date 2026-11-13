@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER, canLoadFuel, departureBlock, fuelToLoad, landingChoices, openingProgress, type PlanetSlot, type VesselProgress } from '../src/index.js';
+import { STARTER, departureBlock, landingChoices, openingProgress, type PlanetSlot, type VesselProgress } from '../src/index.js';
 
 /** The first loop done (plan 2026-11-13 §5.1): no drive, no part and no fuel asked. */
 const ready = (over: Partial<VesselProgress> = {}): VesselProgress => ({
@@ -14,7 +14,6 @@ describe('may this ship leave', () => {
 
   it('leaves with the window open, every fleet home, and time in the season', () => {
     expect(ask()).toBeNull();
-    expect(ask({ progress: ready({ fuel: 0, parts: 0 }) })).toBeNull();
   });
 
   it('wants the first loop done first: a mining run home and a probe report', () => {
@@ -36,30 +35,6 @@ describe('may this ship leave', () => {
   it('names the window before the fleet before the season, so one thing is asked at a time', () => {
     expect(ask({ progress: ready({ facts: [] }), flying: 2, seasonEndsAtMs: NOW + DAY })?.code).toBe('MIGRATION_NOT_READY');
     expect(ask({ flying: 2, seasonEndsAtMs: NOW + DAY })?.code).toBe('MIGRATION_FLEET_OUT');
-  });
-});
-
-describe('loading the tank', () => {
-  const thrust = (over: Partial<VesselProgress> = {}): VesselProgress => ({
-    ...openingProgress(), modules: { REFINERY: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 }, ...over,
-  });
-
-  it('opens with the thrust assembly and the second plant', () => {
-    expect(canLoadFuel(thrust())).toBe(true);
-    expect(canLoadFuel(openingProgress())).toBe(false);
-  });
-
-  it('moves what you ask, up to what you hold and what the tank has room for', () => {
-    expect(fuelToLoad(thrust({ fuel: 0 }), 500, 30)).toBe(30);
-    expect(fuelToLoad(thrust({ fuel: 0 }), 12.7, 30)).toBe(12);
-    expect(fuelToLoad(thrust({ fuel: STARTER.fuelForJump - 5 }), 500, 30)).toBe(5);
-  });
-
-  it('moves nothing for a ship that cannot load, a full tank or a nonsense amount', () => {
-    expect(fuelToLoad(openingProgress(), 500, 30)).toBe(0);
-    expect(fuelToLoad(thrust({ fuel: STARTER.fuelForJump }), 500, 30)).toBe(0);
-    expect(fuelToLoad(thrust(), 500, -3)).toBe(0);
-    expect(fuelToLoad(thrust(), 500, Number.NaN)).toBe(0);
   });
 });
 

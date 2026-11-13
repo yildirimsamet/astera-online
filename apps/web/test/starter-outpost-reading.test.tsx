@@ -27,7 +27,7 @@ const NOW = new Date('2026-11-08T12:00:00.000Z').getTime();
 const WALL: ClassReading = { kind: 'RANGES', shares: { BULWARK: { low: 55, high: 100 }, SKIRMISHER: { low: 0, high: 45 }, LANCE: { low: 0, high: 45 } } };
 /** What the yard's two Darts carry home; the miner stays behind. */
 const CARRY = fleetCargo({ DART: 2 }, {});
-const yard: VesselProgress = { modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'], parts: 0, fuel: 0 };
+const yard: VesselProgress = { modules: { REFINERY: 3, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_PROBE_REPORT'] };
 
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 afterEach(() => { cleanup(); setStarterMode(false); });

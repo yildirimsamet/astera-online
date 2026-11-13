@@ -118,18 +118,6 @@ export function firstOutpostSeed(role: FirstOutpostRole, at: Vec3, random: Rng):
   return { kind: 'OUTPOST', x: at.x, y: at.y, z: at.z, level, stock: stock[level - 1]!, guard: { [hull]: guards[level - 1]! } };
 }
 
-/** Half of those hunting, and never fewer than two, so that a thin galaxy cannot strand anyone. */
-export const openPartTarget = (shipsHunting: number): number =>
-  Math.max(STARTER.parts.minOpen, Math.ceil(shipsHunting / 2));
-
-/** A ship holds what it needs and no more, or it could take parts just to keep them from others. */
-export const canTakePart = (held: number): boolean => held < STARTER.parts.needed;
-
-export function pickPartSite<T extends { hasPart: boolean }>(sites: readonly T[], random: Rng): T | null {
-  const free = sites.filter(site => !site.hasPart);
-  return free[Math.floor(random() * free.length)] ?? null;
-}
-
 /**
  * ROCKS PER HOUR. `planAsteroidHour` fixes the main game's own rate per player, so it cannot be
  * asked for this one: mining is deliberately scarce here or it would outrun production.

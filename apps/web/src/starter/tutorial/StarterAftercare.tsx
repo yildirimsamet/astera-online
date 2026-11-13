@@ -29,7 +29,7 @@ export function StarterAftercare({ vessel, farewelled, guided }: { vessel: Vesse
   const [busy, setBusy] = useState(false);
   const hintKey = `astera.starter.hint.${vessel.id}`;
   const [hintClosed, closeHint] = useState(() => { try { return sessionStorage.getItem(hintKey) === 'closed'; } catch { return false; } });
-  const first = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel }, []);
+  const first = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts }, []);
   const need = first?.missing.find(need => need.kind === 'FACT');
   const deniedAt = permission.deniedAt;
   const retry = permission.attempts === 1 && deniedAt !== null && vessel.queue.some(order =>

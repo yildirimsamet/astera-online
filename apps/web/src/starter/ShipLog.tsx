@@ -8,7 +8,7 @@ import { SYSTEM_ICON } from './shipScreen.js';
 type Chapter = 'POWER' | VesselSystem;
 type ChapterState = 'done' | 'now' | 'ahead';
 
-const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts, parts: vessel.parts, fuel: vessel.fuel });
+const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts });
 
 /** Which system the next required repair belongs to, the queue counted as run; the Drive at the end. */
 function current(vessel: VesselView): VesselSystem {

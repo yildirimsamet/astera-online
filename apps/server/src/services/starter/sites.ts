@@ -1,12 +1,11 @@
 import {
-  asteroidTargetPerHour, openPartTarget, partsVisible, pickPartSite, seededFrom, starterSitePlan, starterSlots,
+  asteroidTargetPerHour, starterSitePlan, starterSlots,
 } from '@astera/rules';
 import { and, eq, gt, inArray, isNotNull, lte } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Tx } from '../../db/client.js';
 import { starterGalaxies, starterSites, vessels } from '../../db/schema.js';
 import { publishShard } from '../../stream/bus.js';
-import { progressOf } from './vessel.js';
 import { ensureFirstRocks, insertRock } from './rocks.js';
 import { randomUUID } from 'node:crypto';
 import { launchPirates } from './npcRaids.js';
@@ -56,22 +55,6 @@ async function growRocks(tx: Tx, galaxy: Galaxy, active: number, now: Date): Pro
   await publishShard(tx, galaxy.id, 'mining');
 }
 
-/** Enough open parts for those hunting, so a thin galaxy cannot strand anyone (§3.5). */
-async function keepPartsOpen(tx: Tx, galaxy: Galaxy, hunting: number, now: Date): Promise<void> {
-  if (hunting === 0) return;
-  const places = await tx.select().from(starterSites).where(and(eq(starterSites.starterGalaxyId, galaxy.id), inArray(starterSites.kind, ['WRECK', 'OUTPOST'])));
-  const open = places.filter(place => place.hasPart).length;
-  const owed = openPartTarget(hunting) - open;
-  const random = seededFrom(galaxy.id, now.getTime());
-  const free = [...places];
-  for (let i = 0; i < owed; i++) {
-    const place = pickPartSite(free, random);
-    if (!place) return;
-    place.hasPart = true;
-    await tx.update(starterSites).set({ hasPart: true }).where(eq(starterSites.id, place.id));
-  }
-}
-
 /**
  * THE GALAXY'S OWN TIMETABLE, on the worker's sweep. Idempotent by construction: each step looks at
  * what is there and owes only the difference, so that a missed or a doubled sweep changes nothing.
@@ -93,7 +76,6 @@ export async function sweepStarterWorld(db: Db, clock: Clock): Promise<void> {
       for (const row of ships.filter(ship => (ship.modules.TELESCOPE ?? 0) >= 1 && !ship.facts.includes('FIRST_MINING_SENT'))) {
         await ensureFirstRocks(tx, { row, epoch: galaxy.epoch, now });
       }
-      await keepPartsOpen(tx, galaxy, ships.filter(ship => partsVisible(progressOf(ship))).length, now);
       await launchPirates(tx, galaxy, ships, now);
     });
   }

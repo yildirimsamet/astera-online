@@ -29,7 +29,7 @@ describe('the next-step line over the galaxy', () => {
   });
 
   it('says what the repair opens, in a word', () => {
-    render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel({ alloy: 10_000, crystal: 10_000, modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN'], parts: 0, fuel: 0 } }))} fetchedAt={Date.now()} onOpenShip={vi.fn()} />);
+    render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel({ alloy: 10_000, crystal: 10_000, modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN'] } }))} fetchedAt={Date.now()} onOpenShip={vi.fn()} />);
     expect(screen.getByTestId('ship-objective').textContent).toMatch(/opens probes/i);
   });
 
@@ -97,7 +97,7 @@ it('asks for the zoom, and is no shortcut past it', () => {
  * names the pick. It speaks up by itself when the guide hands over, and again after each pick is done.
  */
 describe('the advisor behind the next-step line', () => {
-  const rich = { alloy: 10_000, crystal: 10_000, bufferAlloy: 50, progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN' as const], parts: 0, fuel: 0 } };
+  const rich = { alloy: 10_000, crystal: 10_000, bufferAlloy: 50, progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN' as const] } };
   // After the road: the ship the yard opened up, where several repairs stand side by side.
   const yard = { progress: { ...rich.progress, modules: { ...rich.progress.modules, SURVEY: 1, SHIPYARD: 1 } } };
   const survey = REPAIR_LADDER.find(s => s.module === 'SURVEY' && s.stage === 1)!;
@@ -135,7 +135,8 @@ describe('the advisor behind the next-step line', () => {
 
   it('makes a pick the line, remembers it for the ship, and folds away with a sound', () => {
     render(line(yard));
-    expect(screen.getByTestId('ship-objective').textContent).toContain('Extractor');
+    // The first loop's report is still owed, so the line asks for it first (plan 2026-11-13 §5.1).
+    expect(screen.getByTestId('ship-objective').textContent).toMatch(/probe the nearest ship/i);
     fireEvent.click(screen.getByRole('button', { name: /other choices/i }));
     sound.mockClear();
     fireEvent.click(screen.getByTestId('starter-advice').querySelector('[data-advice="repair:REFINERY:3"]')!);
@@ -186,7 +187,7 @@ describe('the advisor behind the next-step line', () => {
  */
 describe('the first hunt on the next-step line', () => {
   const modules = { REFINERY: 3, EXTRACTOR: 2, SURVEY: 1, VAULT: 1, SHIPYARD: 1 };
-  const progress: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT'], parts: 0, fuel: 0 };
+  const progress: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT'] };
   const shipyard = { alloy: 0, crystal: 0, bufferAlloy: 0, modules, features: ['production', 'intel', 'fleet'], progress };
   const hunt = (props: Partial<Parameters<typeof ObjectiveLine>[0]>) =>
     render(<ObjectiveLine vessel={vesselSchema.parse(wireVessel(shipyard))} fetchedAt={Date.now()} onOpenShip={vi.fn()} mining {...props} />);

@@ -1,4 +1,4 @@
-import { STARTER, crateStates, openFeatures, openingProgress, repairProgress, type VesselProgress } from '@astera/rules';
+import { crateStates, openFeatures, openingProgress, repairProgress, type VesselProgress } from '@astera/rules';
 import type { VesselView } from '../src/api/starterSchemas.js';
 
 /** A ship as the server answers it: dates as strings, because this is what crosses the wire. */
@@ -23,8 +23,6 @@ export function wireVessel(over: Partial<Record<keyof VesselView, unknown>> & { 
     modules: progress.modules,
     research: {},
     facts: progress.facts,
-    parts: progress.parts,
-    fuel: progress.fuel,
     pvpOpenAt: null,
     recoveryUntil: null,
     progress: repairProgress(progress),
@@ -33,7 +31,6 @@ export function wireVessel(over: Partial<Record<keyof VesselView, unknown>> & { 
     crates: crateStates(progress, []),
     queue: [],
     fleet: {},
-    jumpFuel: STARTER.fuelForJump,
     ...rest,
   };
 }

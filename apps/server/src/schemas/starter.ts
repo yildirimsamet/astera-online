@@ -23,7 +23,6 @@ export const launchBody = z.object({
 }).strict();
 export const miningBody = z.object({ asteroidId: z.string().regex(/^[A-Za-z0-9_-]{22}$/), craft: z.number().int().min(1).max(1000), originPlanetId: z.string().uuid().optional() }).strict();
 export const harvestBody = z.object({ fieldId: z.string().uuid(), craft: z.number().int().min(1).max(1000), originPlanetId: z.string().uuid().optional() }).strict();
-export const fuelBody = z.object({ amount: z.number().int().positive().max(1_000_000) }).strict();
 export const migrateBody = z.object({ slot: z.number().int().min(0).max(100_000).optional() }).strict();
 export const replayParams = z.object({ id: z.string().uuid() });
 export const idempotencyHeader = z.string().min(1).max(200).optional();

@@ -180,16 +180,6 @@ describe('a battle aboard', () => {
       expect(mission.cargo.alloy + mission.cargo.crystal).toBeGreaterThan(0);
     });
 
-    it('leaves the part behind unless the win is decisive', async () => {
-      const { me, site } = await atOutpost({ DART: 1 }, 3);
-      await world.f.db.update(starterSites).set({ hasPart: true }).where(eq(starterSites.id, site.id));
-      await world.f.db.update(vessels).set({ modules: { ...READY, DRIVE_HULL: 1 } }).where(eq(vessels.id, me.vesselId));
-      await launch(me.headers, site.id, { DART: 1 });
-      await pass(world, 4);
-      const [after] = await world.f.db.select().from(starterSites).where(eq(starterSites.id, site.id));
-      expect(after!.hasPart).toBe(true);
-    });
-
     it('comes back to life after its wait', async () => {
       const { me, site } = await atOutpost({ DART: 16 });
       await launch(me.headers, site.id, { DART: 16 });

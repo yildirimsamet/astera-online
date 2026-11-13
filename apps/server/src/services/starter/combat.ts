@@ -1,6 +1,6 @@
 import {
-  MULTI_WORLD, STARTER, STARTER_PVP_BALANCE, activeBattleFleet, battleDebrisOf, canTakePart, cargoWasLimited, computeLoot, fleetCargo, fleetCount, fleetEntries,
-  garrisonOf, moduleStage, normalizeHpDamage, outpostHaul, partsVisible, recoveryUntilAfter, seededFrom, starterBattle, vaultProtects, vesselAegisHp, vesselEconomyInput, vesselHull,
+  MULTI_WORLD, STARTER, STARTER_PVP_BALANCE, activeBattleFleet, battleDebrisOf, cargoWasLimited, computeLoot, fleetCargo, fleetCount, fleetEntries,
+  garrisonOf, moduleStage, normalizeHpDamage, outpostHaul, recoveryUntilAfter, seededFrom, starterBattle, vaultProtects, vesselAegisHp, vesselEconomyInput, vesselHull,
   type BattleResult, type Fleet, type Resources, type StarterBattleRecord, type VesselFact,
 } from '@astera/rules';
 import { and, desc, eq } from 'drizzle-orm';
@@ -12,7 +12,7 @@ import { scheduleStarter } from '../../worker/starterQueue.js';
 import { buildBattleReplay, prepareBattleReplay } from '../battleReplay.js';
 import { attackAnswer, readHome, turnBack, writeHome } from './fleet.js';
 import { progressOf, type LockedVessel, type VesselRow } from './vessel.js';
-import { inShips, mayTakePart, placeOf, siteName, type MissionRow } from './world.js';
+import { inShips, placeOf, siteName, type MissionRow } from './world.js';
 
 const addFact = (row: VesselRow, fact: VesselFact): VesselRow => row.facts.includes(fact) ? row : { ...row, facts: [...row.facts, fact] };
 const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
@@ -20,7 +20,7 @@ const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 /** Everything that happens after the guns, for one side that came and one that stood. */
 async function afterBattle(tx: Tx, input: {
   mission: MissionRow; result: BattleResult; attacker: LockedVessel | undefined; defender: LockedVessel | undefined;
-  loot: Resources; carriesPart: boolean; written: Omit<StarterBattleRecord, 'grade' | 'rounds' | 'attackerLosses' | 'defenderLosses' | 'attackerRetreated' | 'defenderRetreated' | 'attackerDamage' | 'defenderDamage' | 'wreckValue'>;
+  loot: Resources; written: Omit<StarterBattleRecord, 'grade' | 'rounds' | 'attackerLosses' | 'defenderLosses' | 'attackerRetreated' | 'defenderRetreated' | 'attackerDamage' | 'defenderDamage' | 'wreckValue'>;
   attackerVisible: boolean; names: { attacker: string; defender: string }; siteId: string | null; replay: ReturnType<typeof buildBattleReplay>; now: Date; at: { x: number; y: number; z: number };
   /** What only the side that came is told. */
   toAttacker?: { firstVictory?: boolean; firstDefeat?: boolean; beatenBy?: string };
@@ -46,7 +46,6 @@ async function afterBattle(tx: Tx, input: {
     fleet: survivors,
     damage: normalizeHpDamage(survivors, result.attackerDamage),
     cargo: anyLeft ? input.loot : NOTHING,
-    carriesPart: anyLeft && input.carriesPart,
   }).where(eq(vesselMissions.id, mission.id));
   if (anyLeft) await scheduleStarter(tx, { starterGalaxyId: mission.starterGalaxyId, kind: 'vessel_mission_return', refId: mission.id, resolveAt: returnAt });
 
@@ -130,7 +129,7 @@ export async function resolveVesselBattle(tx: Tx, mission: MissionRow, clock: Cl
 
     const replay = buildBattleReplay(capture, result, { environment: 'VESSEL', vessel: { hull: vesselHull(defender.row.id) }, aegisCapacity: vesselAegisHp(moduleStage(progressOf(defender.row), 'AEGIS')), defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
-      mission, result, attacker, defender, loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium }, carriesPart: false, siteId: null, replay, attackerVisible: capture.attackerVisible, now,
+      mission, result, attacker, defender, loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium }, siteId: null, replay, attackerVisible: capture.attackerVisible, now,
       at: placeOf(defender.row),
       names: { attacker: attacker?.row.name ?? 'PIRATE', defender: defender.row.name },
       written: {
@@ -172,7 +171,6 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
     const haul = outpostHaul(stock, result.grade, hold);
     const wanted = outpostHaul(stock, result.grade, Number.MAX_SAFE_INTEGER);
     const decisive = result.grade === 'DECISIVE';
-    const carriesPart = decisive && site.hasPart && partsVisible(progressOf(attacker.row)) && canTakePart(attacker.row.parts) && await mayTakePart(tx, attacker.row);
     // Retreating craft survive the battle but no longer stand at the outpost.
     const remainingGuard = activeBattleFleet(result.defenderSurvivors, result.defenderRetreated);
     const cleared = fleetCount(remainingGuard) === 0;
@@ -182,7 +180,6 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
     await tx.update(starterSites).set({
       guard: remainingGuard,
       alloy: site.alloy - haul.alloy, crystal: site.crystal - haul.crystal, deuterium: site.deuterium - haul.deuterium,
-      hasPart: site.hasPart && !carriesPart,
       respawnAt,
     }).where(and(eq(starterSites.id, site.id)));
 
@@ -197,7 +194,7 @@ async function resolveOutpostBattle(tx: Tx, mission: MissionRow, clock: Clock): 
     const beatenBy = found ? null : await clearedBy(tx, site.id, attacker.row.id);
     const replay = buildBattleReplay(capture, result, { environment: 'PLANET', aegisCapacity: 0, defenceOffline: false, escape: null, control: null });
     await afterBattle(tx, {
-      mission, result, attacker, defender: undefined, loot: haul, carriesPart, siteId: site.id, replay, attackerVisible: capture.attackerVisible, now,
+      mission, result, attacker, defender: undefined, loot: haul, siteId: site.id, replay, attackerVisible: capture.attackerVisible, now,
       at: { x: site.x, y: site.y, z: site.z },
       names: { attacker: attacker.row.name, defender: siteName(site) },
       written: {

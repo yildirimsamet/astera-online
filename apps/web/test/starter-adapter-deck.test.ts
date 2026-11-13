@@ -9,7 +9,7 @@ const order = (queue: string, subject: string, stage = 1, count = 1) => ({
   id: `${queue}-1`, queue, subject, stage, count, startedAt: '2026-11-01T00:00:00.000Z', readyAt: '2026-11-01T01:00:00.000Z', cost: { alloy: 1, crystal: 1, deuterium: 0 },
 });
 const view = (over: Parameters<typeof wireVessel>[0]) => vesselToPlanetView(vesselSchema.parse(wireVessel(over)));
-const lab = { modules: { REFINERY: 1, HANGAR: 2 }, facts: [], parts: 0, fuel: 0 };
+const lab = { modules: { REFINERY: 1, HANGAR: 2 }, facts: [] };
 
 /** Every queue aboard, in the planet's shape, or the screens would show the wrong things in them. */
 describe('the deck, as the planet screens read it', () => {

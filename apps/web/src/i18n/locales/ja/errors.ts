@@ -379,7 +379,5 @@ export const errors = {
   MIGRATION_SEASON_WAIT: "シーズンはあと{{daysLeft}}日で終わります。最初の到着者になるため新シーズンを待ちましょう。",
   LANDING_GONE: "そのアドレスは他の船が取りました。今空いているものから選び直してください。",
   MIGRATION_IN_PROGRESS: "船はすでに出発しています。",
-  NOTHING_TO_LOAD: "タンクが満杯か、積めるデューテリウムがありません。",
-  FUEL_LOCKED: "先に推進組立と第2デューテリウムプラントを終えましょう。",
   NO_FRONTIER: "現在、すべての銀河が満員です。船は待機しています。しばらくしてからもう一度お試しください。",
 } as const;

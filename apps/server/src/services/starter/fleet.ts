@@ -259,19 +259,18 @@ export async function landMission(tx: Tx, mission: MissionRow, clock: Clock): Pr
         crystal: owner.row.crystal + mission.cargo.crystal,
         deuterium: owner.row.deuterium + mission.cargo.deuterium,
       }),
-      parts: owner.row.parts + (mission.carriesPart ? 1 : 0),
       // Only a run that dug counts: one called back on its way out is not the first loop's mining run (§5.1).
       facts: mission.kind === 'MINE' && mission.dug && !owner.row.facts.includes('FIRST_MINING_RETURN') ? [...owner.row.facts, 'FIRST_MINING_RETURN'] : owner.row.facts,
     };
     if (mined) {
       const [returns] = await tx.select({ n: count() }).from(vesselMissions).where(and(eq(vesselMissions.ownerVesselId, owner.row.id), eq(vesselMissions.kind, 'MINE'), eq(vesselMissions.status, 'DONE')));
-      if ((returns?.n ?? 0) <= 3 || mission.carriesPart) await scheduleStarter(tx, {
+      if ((returns?.n ?? 0) <= 3) await scheduleStarter(tx, {
         starterGalaxyId: mission.starterGalaxyId, kind: 'vessel_push', refId: owner.row.id,
         dedupeKey: `miner-home:${mission.id}`, payload: { kind: 'miner_home', refId: mission.id }, resolveAt: owner.now,
       });
     }
     await tx.insert(vesselNotifications).values({
-      vesselId: owner.row.id, kind: 'FLEET_HOME', refId: mission.id, payload: { kind: mission.kind, cargo: mission.cargo, part: mission.carriesPart, ships: fleetCount(mission.fleet), ...(landed ? { wasted: landed.wasted } : {}) }, createdAt: owner.now,
+      vesselId: owner.row.id, kind: 'FLEET_HOME', refId: mission.id, payload: { kind: mission.kind, cargo: mission.cargo, ships: fleetCount(mission.fleet), ...(landed ? { wasted: landed.wasted } : {}) }, createdAt: owner.now,
     }).onConflictDoNothing();
     await publish(tx, owner.row.id, 'private:vessel-sight');
   });

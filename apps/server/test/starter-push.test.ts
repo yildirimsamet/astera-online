@@ -99,7 +99,7 @@ describe('a phone, aboard', () => {
   it('rings when a repair opens a system, and stays quiet for one that opens nothing', async () => {
     const me = await aboard(world, 'Me', { REFINERY: 1 });
     await device(me.id, 'tok');
-    const start: VesselProgress = { modules: { REFINERY: 1 }, facts: [], parts: 0, fuel: 0 };
+    const start: VesselProgress = { modules: { REFINERY: 1 }, facts: [] };
     const opens = (step: RepairStep) => openFeatures(afterQueue(start, [step])).size > openFeatures(start).size;
     const opener = REPAIR_LADDER.find(opens)!;
     const silent = REPAIR_LADDER.find(step => !opens(step) && !(step.module === 'REFINERY' && step.stage === 1) && !openFeatures(afterQueue(afterQueue(start, [opener]), [step])).has('fleet') && step.module !== opener.module)!;

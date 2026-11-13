@@ -2,14 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   MAIN_GALAXY_FEATURES,
   REPAIR_LADDER,
-  STARTER,
   STARTER_FEATURES,
   isFeatureOpen,
   nextLockedFeature,
   nextUnlockToAnnounce,
   openFeatures,
   openingProgress,
-  partsVisible,
   type StarterFeature,
   type VesselFact,
   type VesselModule,
@@ -43,22 +41,9 @@ describe('what a commander can use', () => {
     expect(isFeatureOpen(progress, feature)).toBe(true);
   });
 
-  it('opens the drive panel only when the hull can be ordered', () => {
-    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
-    expect(isFeatureOpen(ready, 'drive')).toBe(false);
-    expect(isFeatureOpen({ ...ready, modules: { ...ready.modules, RADAR: 1 } }, 'drive')).toBe(true);
-  });
-
-  it('shows parts only to those with the drive panel open', () => {
-    const ready = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1 });
-    expect(partsVisible(ready)).toBe(false);
-    expect(partsVisible({ ...ready, modules: { ...ready.modules, RADAR: 1 } })).toBe(true);
-  });
-
-  it('stops showing parts to a ship that holds all it can carry', () => {
-    const hunting = at({ REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1, RADAR: 1 });
-    expect(partsVisible({ ...hunting, parts: STARTER.parts.needed - 1 })).toBe(true);
-    expect(partsVisible({ ...hunting, parts: STARTER.parts.needed })).toBe(false);
+  // Plan 2026-11-13 §5.6 (S2): the drive opens with the jump window; it is no feature of its own.
+  it('has no drive feature apart from the jump', () => {
+    expect(STARTER_FEATURES).not.toContain('drive');
   });
 
   it('never opens more than one system on one repair', () => {
@@ -91,7 +76,7 @@ describe('what a commander can use', () => {
   it('keeps the main galaxy\'s systems out, whatever is repaired', () => {
     const everything = at(
       Object.fromEntries(REPAIR_LADDER.map(s => [s.module, s.stage])),
-      { facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], parts: 3, fuel: STARTER.fuelForJump },
+      { facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] },
     );
     const open: ReadonlySet<string> = openFeatures(everything);
     expect(open.size).toBe(STARTER_FEATURES.length);
@@ -109,7 +94,7 @@ describe('what the screen says next', () => {
   it('has nothing to say when all is open', () => {
     const everything = at(
       Object.fromEntries(REPAIR_LADDER.map(s => [s.module, s.stage])),
-      { facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], fuel: STARTER.fuelForJump },
+      { facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] },
     );
     expect(nextLockedFeature(everything)).toBeNull();
   });

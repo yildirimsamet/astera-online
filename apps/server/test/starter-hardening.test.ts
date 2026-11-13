@@ -436,7 +436,7 @@ describe('what the review of the ship galaxies found', () => {
   });
 
   describe('a ready ship the server seats', () => {
-    const READY = { REFINERY: 5, EXTRACTOR: 3, VAULT: 1, SURVEY: 2, AEGIS: 1, TELESCOPE: 1, RADAR: 1, SHIPYARD: 1, HANGAR: 2, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 };
+    const READY = { REFINERY: 5, EXTRACTOR: 3, VAULT: 1, SURVEY: 2, AEGIS: 1, TELESCOPE: 1, RADAR: 1, SHIPYARD: 1, HANGAR: 2, DEUTERIUM_PLANT: 2 };
     const FACTS = ['FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_PROBE_REPORT'] as const;
     const crewedReady = async () => {
       await addBot(world.f.db, 'Pilot Aa', world.f.clock);

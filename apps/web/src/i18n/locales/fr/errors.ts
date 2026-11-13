@@ -347,7 +347,5 @@
   MIGRATION_SEASON_WAIT: "La saison se termine dans {{daysLeft}} jours. Attends la nouvelle pour arriver parmi les premiers.",
   LANDING_GONE: "Un autre vaisseau vient de prendre cette adresse. Choisis à nouveau parmi celles encore libres.",
   MIGRATION_IN_PROGRESS: "Ton vaisseau part déjà.",
-  NOTHING_TO_LOAD: "Le réservoir est plein, ou tu n'as pas de Deutérium à charger.",
-  FUEL_LOCKED: "Termine d'abord le montage de poussée et la deuxième usine de Deutérium.",
   NO_FRONTIER: "Toutes les galaxies sont pleines pour l'instant. Ton vaisseau reste prêt, réessaie bientôt.",
   } as const;
