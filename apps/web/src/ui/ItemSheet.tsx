@@ -80,6 +80,14 @@ const HORIZON = 3;
 
 
 
+/** The item's English name, whatever the page speaks. */
+const englishName = (item: ItemRef): string =>
+  item.kind === 'building'
+    ? i18n.t(`vocabulary.building.${item.id}.name`, { lng: 'en' })
+    : item.kind === 'instrument'
+      ? i18n.t(`vocabulary.instrument.${item.id}.name`, { lng: 'en' })
+      : i18n.t(`vocabulary.satellite.${item.id}.name`, { lng: 'en' });
+
 export function ItemSheet({
   item,
   name,
@@ -163,6 +171,8 @@ export function ItemSheet({
               : t('itemSheet.eyebrowLevel', { level: durableLevel })
         }
         title={name}
+        // The head is set in capitals in the page language: an English name ("Aegis" in Turkish) stays English, never "AEGİS".
+        {...(name === englishName(item) ? { titleLang: 'en' } : {})}
         onClose={onClose}
         footer={<div ref={observation}>
           {terminal ? (
@@ -453,8 +463,8 @@ function Commit({
               {sentence(blocked.reason)} →
             </GameButton>
           ) : (
-            <p className="gk-inote gk-inote--plate">
-              <Glyph id="lock" />
+            <p className="gk-inote gk-inote--plate" {...(blocked.waits ? { 'data-waits': '' } : {})}>
+              <Glyph id={blocked.waits ? 'timed' : 'lock'} />
               <span>{sentence(blocked.reason)}</span>
             </p>
           )
@@ -463,7 +473,8 @@ function Commit({
             tone="action"
             size="lg"
             wide
-            heavy
+            // Core 9 → 10 opens the consent first; that hold is the commitment, so this press is a plain one.
+            heavy={!(item.kind === 'building' && item.id === 'CORE' && level === 9)}
             glyph={affordable ? 'up' : 'timed'}
             pending={pending}
             disabledReason={affordable

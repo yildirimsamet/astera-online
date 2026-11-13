@@ -94,6 +94,17 @@ describe('the sheet', () => {
     expect(screen.getByRole('heading', { name: 'Thistle' })).toHaveAttribute('lang', 'en');
   });
 
+  /** Review of 4.1 (2026-11-13): the kit head drew neither, so a page that passed them lost them. */
+  it('keeps the lead and the title action in the kit head too', () => {
+    render(
+      <Sheet title="Tharsis" kit={{ tone: 'hostile' }} lead={<span>→ Samet</span>} titleAction={<button type="button">Mute list</button>} onClose={vi.fn()}>
+        body
+      </Sheet>,
+    );
+    expect(screen.getByRole('heading', { name: /Tharsis/ })).toHaveTextContent('→ Samet');
+    expect(screen.getByRole('button', { name: 'Mute list' })).toBeInTheDocument();
+  });
+
   /*
     A phone keyboard closes when a field loses focus, and a page laid out around it moves:
     the first press on Close then only closed the keyboard (owner, chat, 2026-11-10).

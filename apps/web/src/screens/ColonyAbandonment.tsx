@@ -4,6 +4,9 @@ import { ApiError } from '../api/client.js';
 import { useAbandonColony, useColonyAbandonment } from '../api/colonyAbandonment.js';
 import { colonyAbandonmentReasonSchema, type PlanetView } from '../api/schemas.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { Banner, GameButton, GameHold, Glyph } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import type { z } from 'zod';
@@ -19,9 +22,11 @@ export function ColonyAbandonment({ planet }: { planet: PlanetView }) {
 function ColonyControl({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  // Answers like every kit control, and only a press that began on it.
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen(true); });
   return <>
     {/* Stage 4.1: a quiet kit row; the weight of the act lives in the sheet it opens. */}
-    <button type="button" onClick={() => { setOpen(true); }} className="gk gk-exitrow">
+    <button type="button" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick} className="gk gk-exitrow">
       <span className="gk-exitrow__glyph"><Glyph id="colony" /></span>
       <span className="gk-exitrow__label">{t('planet.abandon.action')}</span>
       <Glyph id="next" />

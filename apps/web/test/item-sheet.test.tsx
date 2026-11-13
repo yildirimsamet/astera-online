@@ -7,6 +7,8 @@ import { instrumentGain } from '../src/lib/gains.js';
 import { orderMinutes } from '../src/lib/orderTime.js';
 import { duration } from '../src/lib/time.js';
 import { ItemSheet, type ItemRef } from '../src/ui/ItemSheet.js';
+import type { Blocked } from '../src/ui/UpgradeRow.js';
+import { Glyph } from '../src/game-ui/index.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { playSound } from '../src/lib/sound.js';
 import type * as Sound from '../src/lib/sound.js';
@@ -61,6 +63,7 @@ const RICH = { alloy: 100_000, crystal: 50_000 };
 
 const show = ({
   item = { kind: 'instrument', id: 'TELESCOPE' },
+  name = 'Telescope',
   over = {},
   held = RICH,
   queued,
@@ -70,18 +73,19 @@ const show = ({
   onClose = vi.fn(),
 }: {
   item?: ItemRef;
+  name?: string;
   over?: Partial<Omit<PlanetView, 'planet'>>;
   held?: { alloy: number; crystal: number };
   queued?: string;
   completed?: string;
-  blocked?: { reason: string; onFix?: () => void };
+  blocked?: Blocked;
   onAct?: () => void;
   onClose?: () => void;
 } = {}) =>
   render(
     <ItemSheet
       item={item}
-      name="Telescope"
+      name={name}
       role="Watches a world silently."
       planet={planet(over)}
       held={held}
@@ -171,6 +175,37 @@ describe('the sheet', () => {
     await userEvent.click(screen.getByRole('button', { name: /raise to l4/i }));
     expect(onAct).toHaveBeenCalledOnce();
     expect(vi.mocked(playSound).mock.calls.map(([cue]) => cue)).toEqual(['confirm']);
+  });
+
+  /** Review of 4.1 (2026-11-13): Core 9 → 10 opens the consent; that press commits nothing yet. */
+  it('opens the Core 10 consent with a plain press, leaving the commit cue to the consent', async () => {
+    const onAct = vi.fn();
+    show({ item: { kind: 'building', id: 'CORE' }, over: { buildings: { CORE: 9, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1 } }, onAct });
+    vi.mocked(playSound).mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
+    expect(onAct).toHaveBeenCalledOnce();
+    expect(vi.mocked(playSound).mock.calls.map(([cue]) => cue)).toEqual(['tap']);
+  });
+
+  /** The kit head shouts in capitals; an English name stays English (owner on planet names: no "AEGİS"). */
+  it('marks the head English when the name is the English one, so Turkish capitals leave it alone', () => {
+    // In Turkish the Aegis keeps its English name; the tests speak English, so the Telescope stands in.
+    show({ item: { kind: 'instrument', id: 'TELESCOPE' }, name: 'Telescope' });
+    expect(screen.getByRole('heading', { name: 'Telescope' })).toHaveAttribute('lang', 'en');
+  });
+
+  it('leaves a translated name in the page language', () => {
+    show({ item: { kind: 'instrument', id: 'TELESCOPE' }, name: 'Teleskop' });
+    expect(screen.getByRole('heading', { name: 'Teleskop' })).not.toHaveAttribute('lang');
+  });
+
+  /** A requirement still being built is a wait, not a wall: the hourglass, as on the building card. */
+  it('shows a requirement under way with the hourglass, not the padlock', () => {
+    const { container } = render(<Glyph id="timed" />);
+    const hourglass = container.querySelector('path')?.getAttribute('d');
+    show({ item: { kind: 'building', id: 'REFINERY' }, blocked: { reason: 'Core 4 under way', waits: true } });
+    const note = document.querySelector('[data-act] .gk-inote');
+    expect(note?.querySelector('path')?.getAttribute('d')).toBe(hourglass);
   });
 
   it('says on the dead button when a short player will have enough', () => {

@@ -257,7 +257,12 @@ export function Sheet({
               {kit.art ? <img className="gk-sheet__art" src={kit.art} alt="" draggable={false} /> : <span />}
               <div className="min-w-0">
                 {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
-                <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>{title}</h2>
+                <div className={titleAction ? 'flex min-w-0 items-center gap-2' : undefined}>
+                  <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>
+                    {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="truncate">{title}</span></span> : title}
+                  </h2>
+                  {titleAction}
+                </div>
                 {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
               </div>
               <button

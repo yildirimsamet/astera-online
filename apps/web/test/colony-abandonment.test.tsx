@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -12,6 +12,10 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import i18n from '../src/i18n/index.js';
 import { describeNotification, isAlarming, isUrgent, signalFamily, signalOutcome } from '../src/lib/notifications.js';
 import { planetView } from './fixtures.js';
+import { haptic } from '../src/lib/haptics.js';
+import type * as Haptics from '../src/lib/haptics.js';
+
+vi.mock('../src/lib/haptics.js', async (original) => ({ ...await original<typeof Haptics>(), haptic: vi.fn() }));
 
 const colonyId = '00000000-0000-4000-8000-000000000003';
 const homeId = '00000000-0000-4000-8000-000000000001';
@@ -101,6 +105,19 @@ describe('colony abandonment confirmation', () => {
     renderDoor(capital);
     expect(screen.queryByRole('button', { name: 'Abandon colony' })).not.toBeInTheDocument();
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  /** Review of 4.1 (2026-11-13): the row answers like every kit control, and only a press that began on it. */
+  it('answers a press on the exit row with its own tap and buzz, and ignores a stray click', async () => {
+    renderDoor();
+    const row = screen.getByRole('button', { name: 'Abandon colony' });
+    fireEvent.click(row, { detail: 1 });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    vi.mocked(haptic).mockClear();
+    await userEvent.click(row);
+    expect(haptic).toHaveBeenCalledWith('tap');
+    expect(row.closest('[data-own-sound]')).not.toBeNull();
+    expect(await screen.findByRole('dialog', { name: 'Abandon this colony?' })).toBeInTheDocument();
   });
 
   it('opens a named confirmation and explains losses before submitting', async () => {

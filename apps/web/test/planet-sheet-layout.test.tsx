@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -360,5 +361,17 @@ describe('the Base and its Defence tab', () => {
     for (const id of ['planet-firepower', 'planet-defence', 'planet-shield', 'planet-exposed']) {
       expect(screen.getByTestId(id), id).toBeInTheDocument();
     }
+  });
+});
+
+/**
+ * A WORLD'S NAME IS AN ENGLISH WORD (stage 4.1, owner on THİSTLE): the world page's kit head names it
+ * in English, so Turkish capitals never dot its i. Wiring check: the page sits in the 3D galaxy view.
+ */
+describe('the world page head', () => {
+  it('names the world in English', () => {
+    const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
+    const page = source.slice(source.indexOf("{panel === 'planet' && planet.data"), source.indexOf('<PlanetScreen', source.indexOf("{panel === 'planet' && planet.data")));
+    expect(page).toMatch(/title=\{planet\.data\.planet\.name\}\s+titleLang="en"/);
   });
 });
