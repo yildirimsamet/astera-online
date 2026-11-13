@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, lte, notInArray, sql } from 'drizzle-orm';
-import { coreTier, honorReferenceAt } from '@astera/rules';
+import { and, asc, desc, eq, gt, lte, notInArray, or, sql } from 'drizzle-orm';
+import { coreTier, HONOR_HISTORY_HOURS, honorReferenceAt, type HonorObservation } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { accounts, buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
+import { accounts, buildings, honorEvents, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
 import { ownedHonorNavy } from './honorNavy.js';
 
 /**
@@ -39,13 +39,42 @@ export async function observeHonorOwner(tx: Tx, playerId: string, at?: Date): Pr
   await tx.insert(honorObservations).values({ seasonId: identity.seasonId, playerId, at: stamp, navy, coreTier: tier });
 }
 
+export interface HonorCombatLoss { at: number; value: number }
+
+/** What each owner lost in battle during the day before `at`. The Honor journal is the
+ * witness: its evidence already holds every side's armed loss in the navy's own measure. */
+export async function honorCombatLosses(db: Queryable, seasonId: string, playerIds: readonly string[], at: Date): Promise<Map<string, HonorCombatLoss[]>> {
+  const losses = new Map<string, HonorCombatLoss[]>(playerIds.map(id => [id, []]));
+  const fought = playerIds.flatMap(id => {
+    const member = JSON.stringify([{ id }]);
+    return [sql`${honorEvents.evidence}->'attack' @> ${member}::jsonb`, sql`${honorEvents.evidence}->'defence' @> ${member}::jsonb`];
+  });
+  const rows = await db.select({ evidence: honorEvents.evidence }).from(honorEvents).where(and(eq(honorEvents.seasonId, seasonId),
+    gt(honorEvents.at, new Date(at.getTime() - HONOR_HISTORY_HOURS * 3_600_000)), lte(honorEvents.at, at), or(...fought)));
+  for (const { evidence } of rows) {
+    for (const row of [...evidence.attack, ...evidence.defence]) {
+      if (row.combatLoss > 0) losses.get(row.id)?.push({ at: evidence.at, value: row.combatLoss });
+    }
+  }
+  return losses;
+}
+
+/** A loss belongs to the first observation taken at or after it, the one that saw it. */
+export function withCombatLosses(history: readonly HonorObservation[], losses: readonly HonorCombatLoss[]): HonorObservation[] {
+  const rows = [...history].sort((a, b) => a.at - b.at || (a.order ?? 0) - (b.order ?? 0));
+  return rows.map((row, index) => ({ ...row, combatLoss: losses.reduce((sum, loss) =>
+    sum + (loss.at <= row.at && loss.at > (rows[index - 1]?.at ?? -Infinity) ? loss.value : 0), 0) }));
+}
+
 /** Historical reference at commitment, never today's navy applied to an older launch. */
 export async function honorOwnerReference(db: Queryable, seasonId: string, playerId: string, at: Date, throughOrder?: number): Promise<{ navy: number; tier: number }> {
   const rows = await db.select().from(honorObservations).where(and(eq(honorObservations.seasonId, seasonId),
     eq(honorObservations.playerId, playerId), lte(honorObservations.at, at),
     ...(throughOrder === undefined ? [] : [lte(honorObservations.id, throughOrder)])))
     .orderBy(asc(honorObservations.at), asc(honorObservations.id));
-  return honorReferenceAt(rows.map(row => ({ at: row.at.getTime(), order: row.id, navy: row.navy, coreTier: row.coreTier })), at.getTime());
+  const losses = await honorCombatLosses(db, seasonId, [playerId], at);
+  return honorReferenceAt(withCombatLosses(rows.map(row => ({ at: row.at.getTime(), order: row.id, navy: row.navy, coreTier: row.coreTier })),
+    losses.get(playerId) ?? []), at.getTime());
 }
 
 /** One read snapshot, no new locks. Match Honor's season Core peak, including

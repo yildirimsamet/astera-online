@@ -979,6 +979,20 @@ competitive races.
 A lower-tier target under half of own navy is weak and carries the sanction. Each launch freezes its table
 (`weakNavyBand: 50`), so older launches and the scores they produced stay as they were. Defenders keep the 75/50 bands.
 
+**Honor fair-fight table (owner, 2026-11-12, `weakNavyBand: 33`):** chosen after replaying the live and the
+previous season. Same return bands as 2026-11-09, plus four changes for new launches only:
+- The attacker's loss debit follows the return: full, half or none (a weak-target sanction keeps the whole debit).
+  A won fight at odds that cannot pay no longer scores negative.
+- The 24-hour navy peak forgets ships destroyed in battle at once, on both sides. The loss is read from the
+  Honor journal (`honor_events.evidence[].combatLoss`), exactly what the replay measured; ships that leave any
+  other way, including losses to pirates and neutral worlds (not journalled), stay for the day.
+- A lower-tier target is weak only under a third of own navy (half return between 1.5:1 and 3:1).
+- Repeat rule: when this attacker already raided this defender as a selected target in the 24 hours before
+  the battle, and own navy is over 3× the defender's, the raid is a weak-target sanction at any tier. The fact
+  is read at landing and frozen into the evidence relation (`repeatRaid: true`). The first such raid against an
+  equal or higher tier is neutral. The launch card warns from the same journal plus own attack flights already
+  on the way to that commander.
+
 **Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
 galaxy/season's highest Honor tier treats an attack on exactly one tier below as
 an equal-tier attack. All commanders tied at the top qualify. The lower-tier

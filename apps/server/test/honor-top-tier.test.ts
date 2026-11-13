@@ -20,8 +20,9 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 22); // tier 8
     await setLevel(f.db, f.planetIds[1]!, 'CORE', 19); // tier 7
     await giveUnits(f.db, f.planetIds[0]!, { DART: 100 });
-    // 49 %: just below the weak-target band (2026-11-09), so lifting the leader exception still makes it weak.
-    await giveUnits(f.db, f.planetIds[1]!, { DART: 49 });
+    // 30 %: just below the weak-target band (a third since 2026-11-12), so lifting the leader exception
+    // still makes it weak. Read on the same-tier column the exception gives, 3.3:1 pays nothing.
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 30 });
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock, 4));
     await f.db.update(honorSeasons).set({ mode: 'ACTIVE', rankedAt: f.clock.now() });
   });
@@ -32,7 +33,7 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
 
   it('previews the top-to-adjacent exception and keeps the reverse upward advantage', async () => {
     const before = await f.db.select().from(honorObservations);
-    expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'HALF', topTierPeer: true });
+    expect(await preview()).toMatchObject({ kind: 'PEER', militaryReturn: 'NONE', topTierPeer: true });
     expect(await preview(1, 0)).toMatchObject({ kind: 'UPPER', militaryReturn: 'FULL' });
     expect(await f.db.select().from(honorObservations)).toEqual(before);
     expect(JSON.stringify(await preview())).not.toMatch(/galaxyTopTier|navy|playerId|accountId/);
@@ -119,9 +120,11 @@ describe('galaxy top tier frozen with Honor dispatch', () => {
     expect(strategic).toMatchObject({ galaxyTopTier: 8 });
     strategic.tactical = [{ actor: f.playerIds[0]!, enemy: f.playerIds[1]!, base: 4_000_000, pressureFifths: 160_000 }];
     const result = replayHonor([strategic, military], 4);
+    // Not a sanction: at 3.3:1 on the same-tier column the raid neither earns nor costs.
     expect(result.events[0]!.pool.attack.exposures[0]?.bullying).toBe(false);
-    expect(result.events[0]!.attack.total).toBeGreaterThan(0);
-    expect(result.events[1]!.attack.total).toBeGreaterThan(0);
+    expect(result.events[1]!.pool.attack.exposures[0]?.bullying).toBe(false);
+    expect(result.events[0]!.attack.total).toBe(0);
+    expect(result.events[1]!.attack.total).toBe(0);
     const { galaxyTopTier: _top, ...legacy } = honorEvidenceSchema.parse(military);
     expect(replayHonor([legacy], 4).events[0]!.attack.total).toBeLessThan(0);
     expect(replayHonor([legacy], 4).events[0]!.pool.defence).toEqual(result.events[0]!.pool.defence);

@@ -34,16 +34,19 @@ export function honorNumber(value: bigint): number {
   return Number(value);
 }
 
-/** Owner 2026-11-09: what new dispatches freeze. Older contracts keep their own table. */
-export const HONOR_ATTACK_NAVY_BAND = 50;
-export type HonorWeakNavyBand = 75 | typeof HONOR_ATTACK_NAVY_BAND;
+/** Owner 2026-11-12: what new dispatches freeze. Older contracts keep their own table. */
+export const HONOR_ATTACK_NAVY_BAND = 33;
+export type HonorWeakNavyBand = 75 | 50 | typeof HONOR_ATTACK_NAVY_BAND;
 
 export interface HonorComparison {
   /** Frozen galaxy/season maximum at dispatch. Absent on historical contracts. */
   galaxyTopTier?: number;
-  /** Frozen at dispatch; each value names a whole attack table. 50 is the current one,
-   * 75 the 2026-10-30 lower-tier rule. Absent on historical contracts: any smaller navy. */
+  /** Frozen at dispatch; each value names a whole attack table. 33 is the current one
+   * (weak beyond 3:1, loss debit scaled by the return, repeat raids), 50 the 2026-11-09
+   * table, 75 the 2026-10-30 lower-tier rule. Absent on historical contracts: any smaller navy. */
   weakNavyBand?: HonorWeakNavyBand;
+  /** This attacker already fought this defender inside the last day. Table 33 only. */
+  repeatRaid?: boolean;
   ownTier: number;
   enemyTier: number;
   ownNavy: number;
@@ -71,9 +74,10 @@ export function honorChallenge(q: HonorComparison): HonorChallenge {
   }
   const a = honorInteger(q.ownNavy), d = honorInteger(q.enemyNavy);
   const topTierPeer = q.ownTier === q.galaxyTopTier && q.enemyTier === q.ownTier - 1;
-  const relaxed = q.weakNavyBand === HONOR_ATTACK_NAVY_BAND;
-  const smaller = q.weakNavyBand === undefined ? d < a : relaxed ? 2n * d < a : 4n * d < 3n * a;
-  const weak = !topTierPeer && q.enemyTier < q.ownTier && (smaller || d === 0n);
+  const fair = q.weakNavyBand === HONOR_ATTACK_NAVY_BAND, relaxed = fair || q.weakNavyBand === 50;
+  const smaller = q.weakNavyBand === undefined ? d < a : fair ? 3n * d < a : relaxed ? 2n * d < a : 4n * d < 3n * a;
+  // The first raid on a commander far below you is only worthless; coming back is bullying.
+  const weak = (!topTierPeer && q.enemyTier < q.ownTier && (smaller || d === 0n)) || (fair && q.repeatRaid === true && 3n * d < a);
   const upper = q.enemyTier > q.ownTier && d >= a && d > 0n;
   return {
     kind: weak ? 'WEAK' : upper ? 'UPPER' : 'PEER',
@@ -108,6 +112,12 @@ export interface HonorSideResult extends HonorChallenge {
   bullying: boolean;
 }
 
+/** Table 33: a fight counts for the loss as much as it counts for the gain. A sanctioned
+ * raid and every older contract pay for the whole loss. */
+export function honorLossDebit(loss: bigint, band: HonorWeakNavyBand | undefined, factor: number): bigint {
+  return band === HONOR_ATTACK_NAVY_BAND ? 100n * loss * BigInt(factor) / 1_000_000n : 100n * loss;
+}
+
 export function honorCombatBase(k: bigint, l: bigint): bigint {
   return k === 0n ? 0n : 1000n * k * (2n * k + l) / (2n * (k + l));
 }
@@ -120,7 +130,7 @@ export function honorHarmFifths(loss: number, loot: number, lootPercent = 20): b
 
 export function honorSide(q: HonorSideInput): HonorSideResult {
   const c = honorChallenge({ ...q, galaxyTopTier: q.defending ? undefined : q.galaxyTopTier,
-    weakNavyBand: q.defending ? undefined : q.weakNavyBand });
+    weakNavyBand: q.defending ? undefined : q.weakNavyBand, repeatRaid: q.defending ? undefined : q.repeatRaid });
   const k = honorInteger(q.k), l = honorInteger(q.l);
   const enemyLoss = honorInteger(q.enemyLoss), loot = honorInteger(q.loot);
   const budget = honorInteger(q.retaliationFifths);
@@ -129,8 +139,8 @@ export function honorSide(q: HonorSideInput): HonorSideResult {
   if (q.defending && loot !== 0n) throw new RangeError('A defender cannot earn raid loot');
   const zero: HonorSideResult = { ...c, raw: 0, gain: 0, lossDebit: 0, weakDebit: 0, retaliationSpentFifths: 0, bullying: false };
   if (!q.eligible) return zero;
-  const lossDebit = q.defending ? 0n : 100n * l;
   const bullying = !q.defending && c.kind === 'WEAK';
+  const lossDebit = q.defending ? 0n : honorLossDebit(l, q.weakNavyBand, bullying ? 1_000_000 : c.gainFactor);
   if (bullying) {
     const exposure = honorHarmFifths(q.enemyLoss, q.loot, q.retaliationLootPercent);
     const used = budget < exposure ? budget : exposure;

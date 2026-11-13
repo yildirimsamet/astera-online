@@ -18,7 +18,7 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
       {t('leaderboard.honorTarget.topTierPeer')}
     </p>}
     {(value.kind === 'WEAK' || (!value.related && value.militaryReturn !== 'NONE')) && <p className="text-caption leading-relaxed text-v2-ink-2">
-      {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? 'weakWarning' : 'eligible'}`)}
+      {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? value.repeatRaid ? 'repeatRaid' : 'weakWarning' : 'eligible'}`)}
     </p>}
     {value.related ? <p className="text-caption leading-relaxed text-v2-ink">{t('leaderboard.honorReason.RELATED')}</p>
       : value.kind !== 'WEAK' && <p className="text-caption leading-relaxed text-v2-ink-2">

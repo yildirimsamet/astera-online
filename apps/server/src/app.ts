@@ -254,6 +254,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       staleMinutes: opts.env.WORKER_STALE_MINUTES,
       botsEnabled: opts.env.BOTS_ENABLED,
       botsPerGalaxy: opts.env.BOTS_PER_GALAXY,
+      botMinSeats: opts.env.BOTS_MIN_SEATS,
+      botMinAwake: opts.env.BOTS_MIN_AWAKE,
       silentSpaceEnabled: opts.env.SILENT_SPACE_ENABLED,
       silentSpaceBatch: opts.env.SILENT_SPACE_BATCH,
       silentSpaceMaxShards: opts.env.SILENT_SPACE_MAX_SHARDS,
@@ -552,6 +554,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       streamRequired: opts.env.ROLE === 'api',
       role: opts.env.ROLE,
       botCap: opts.env.BOTS_PER_GALAXY,
+      botFloors: { seats: opts.env.BOTS_MIN_SEATS, awake: opts.env.BOTS_MIN_AWAKE },
     });
     // A worker exposes only its loopback operations surface. It must never become
     // an accidental fourth public API replica merely because metrics need a port.

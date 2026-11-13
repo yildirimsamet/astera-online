@@ -14,18 +14,27 @@ const SESSION_EXTENSION_MS = 10 * 60_000;
 const nonNegativeInteger = (value: number): number =>
   Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 
-export function botSeatTarget(people: number, operatorCap: number): number {
+/** Owner 2026-11-12: operator minimums (`BOTS_MIN_SEATS`, `BOTS_MIN_AWAKE`); zero keeps pure demand. */
+export interface BotFloors {
+  seats: number;
+  awake: number;
+}
+
+export const NO_BOT_FLOORS: BotFloors = { seats: 0, awake: 0 };
+
+export function botSeatTarget(people: number, operatorCap: number, floor = 0): number {
   const n = nonNegativeInteger(people);
   const cap = Math.min(MULTI_WORLD.botSlots, nonNegativeInteger(operatorCap));
   if (n === 0 || cap === 0) return 0;
-  return Math.min(cap, Math.max(2, Math.round(n * BOT_SHARE)));
+  return Math.min(cap, Math.max(2, Math.round(n * BOT_SHARE), nonNegativeInteger(floor)));
 }
 
-export function botAwakeTarget(activePeople: number, seatedBots: number): number {
+/** The floor holds even with nobody online, so the first commander to arrive finds company. */
+export function botAwakeTarget(activePeople: number, seatedBots: number, floor = 0): number {
   const active = nonNegativeInteger(activePeople);
   const seated = nonNegativeInteger(seatedBots);
-  if (active === 0 || seated === 0) return 0;
-  return Math.min(seated, Math.ceil(seated / 2), Math.max(1, Math.round(active * ACTIVE_SHARE)));
+  const demand = active === 0 ? 0 : Math.max(1, Math.round(active * ACTIVE_SHARE));
+  return Math.min(seated, Math.ceil(seated / 2), Math.max(demand, nonNegativeInteger(floor)));
 }
 
 export interface BotSessionCandidate {

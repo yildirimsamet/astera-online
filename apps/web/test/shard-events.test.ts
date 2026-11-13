@@ -414,8 +414,10 @@ describe('what a private clan event asks the client to read', () => {
   });
 });
 
-it('refreshes Honor receipts and personal economic quotes without a blanket gameplay resync',()=>{
-  expect(readsForPrivateEvent('private:honor')).toEqual([keys.reports, keys.planet, keys.planets, keys.leaderboard]);
+// A booked raid can turn the next launch into a repeat and moves the 24-hour peak (2026-11-12),
+// so an open launch card refreshes its Honor guidance too.
+it('refreshes Honor receipts, personal economic quotes and launch guidance without a blanket gameplay resync',()=>{
+  expect(readsForPrivateEvent('private:honor')).toEqual([keys.reports, keys.planet, keys.planets, keys.leaderboard, ['honor-target']]);
 });
 
 /** Reads every open screen keeps mounted: a landing must not pay for them. Query plan, 2026-11-03. */

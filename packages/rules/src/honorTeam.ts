@@ -1,5 +1,5 @@
 import {
-  honorChallenge, honorCombatBase, honorHarmFifths, honorInteger, honorNumber, honorPairCredit, honorSplit,
+  honorChallenge, honorCombatBase, honorLossDebit, honorHarmFifths, honorInteger, honorNumber, honorPairCredit, honorSplit,
   type HonorShare, type HonorWeakNavyBand, type HonorWeight,
 } from './honor.js';
 
@@ -25,6 +25,8 @@ export interface HonorRelation {
   a: string;
   b: string;
   related: boolean;
+  /** Committed fact: this attacker already fought this defender inside the last day. */
+  repeatRaid?: boolean;
   weakRepeat: number;
   retaliationFifths: number;
 }
@@ -118,12 +120,12 @@ export function honorSharedSide(input: Pick<HonorTeamInput, 'attack' | 'defence'
 
 type HonorComparisonPolicy = Pick<HonorTeamInput, 'galaxyTopTier' | 'weakNavyBand' | 'defendingCurrentNavy' | 'defendingZeroNavyFloor'>;
 
-function memberChallenge(input: HonorComparisonPolicy, a: HonorMember, d: HonorMember, defending: boolean) {
+function memberChallenge(input: HonorComparisonPolicy, a: HonorMember, d: HonorMember, defending: boolean, repeatRaid = false) {
   const ownNavy = defending && input.defendingCurrentNavy ? Math.max(a.navy, a.defenceNavy ?? a.navy)
     : defending && input.defendingZeroNavyFloor && a.navy === 0 ? a.weight : a.navy;
   return honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy, enemyNavy: d.navy,
     galaxyTopTier: defending ? undefined : input.galaxyTopTier,
-    weakNavyBand: defending ? undefined : input.weakNavyBand });
+    weakNavyBand: defending ? undefined : input.weakNavyBand, repeatRaid: !defending && repeatRaid });
 }
 
 /** The coarse band behind an owner's military return, so a receipt can say why a
@@ -171,15 +173,16 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
     if (W === 0n && (L > 0n || K > 0n || enemy.some(row => row.lootLost > 0))) {
       throw new Error('Battle evidence without a participating force');
     }
-    let numerator = 0n;
+    let numerator = 0n, debitFactor = 0;
     for (const d of enemy) {
       const harm = defending ? 0 : honorNumber(honorHarmFifths(d.loss, d.lootLost, input.retaliationLootPercent));
       const harmShares = honorSplit(harm, weights);
       for (const a of own) {
         const relation = relations.get(honorPairKey(a.id, d.id));
-        const c = memberChallenge(input, a, d, defending);
+        const c = memberChallenge(input, a, d, defending, relation?.repeatRaid);
         const bullying = !defending && c.kind === 'WEAK'
           && (input.selectedDefenders === undefined || input.selectedDefenders.includes(d.id));
+        debitFactor = Math.max(debitFactor, bullying ? 1_000_000 : c.gainFactor);
         const harmFifths = harmShares.find(row => row.actor === a.id)?.points ?? 0;
         const exposure: HonorExposure = { actor: a.id, enemy: d.id, positive: 0, harmFifths, retaliationSpentFifths: 0, bullying };
         if (bullying) {
@@ -218,7 +221,8 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
         exposure.positive = honorNumber(BigInt(exposure.positive) + gain);
       }
     }
-    const raw = honorNumber((W === 0n ? 0n : numerator / W) - (defending ? 0n : 100n * permanentLoss));
+    const raw = honorNumber((W === 0n ? 0n : numerator / W)
+      - (defending ? 0n : honorLossDebit(permanentLoss, input.weakNavyBand, debitFactor)));
     // Pair exposure reserves the NET positive side pool, never charges it twice.
     if (raw > 0) {
       const allocation = honorSplit(raw, exposures.map(e => ({ actor: honorPairKey(e.actor, e.enemy), weight: e.positive })));
