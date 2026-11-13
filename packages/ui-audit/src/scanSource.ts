@@ -9,7 +9,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { phrases } from './drivers/phrase.js';
 import { OUT_OF_SCOPE } from './inventory.js';
-import { actionCoverage, animationUses, fontSizes, holdDurations, keyframes, pushCopies, tokenOverrides, typeTokens, type StaticScan } from './static.js';
+import { actionCoverage, animationUses, classDialects, dialectOf, fontSizes, holdDurations, keyframes, pushCopies, tokenOverrides, typeTokens, type StaticScan } from './static.js';
 
 const LANGS = ['tr', 'en', 'fr', 'de', 'es', 'ja'];
 
@@ -43,6 +43,7 @@ export async function scanSource(repo: string): Promise<StaticScan> {
     return Object.entries(bodies).map(([kind, body]) => ({ source: 'local' as const, file: `i18n/${lang}/notificationCenter.ts`, line: 0, lang, kind, title: titles[kind] ?? '—', body }));
   }))).flat();
 
+  const classes = classDialects(css.map((f) => ({ path: f.path, text: f.text })));
   const sound = web.find((f) => f.path === 'lib/sound.ts')?.text ?? '';
   const tap = /addEventListener\('click'[\s\S]*?closest\('([^']+)'\)/.exec(sound) ?? /closest\('([^']+)'\)[\s\S]*?play\('tap'/.exec(sound);
 
@@ -55,5 +56,6 @@ export async function scanSource(repo: string): Promise<StaticScan> {
     holds: web.flatMap((f) => holdDurations(f.path, f.text)),
     coverage: web.filter((f) => f.path.endsWith('.tsx')).map((f) => actionCoverage(f.path, f.text, kit)),
     notifications: [...push, ...local],
+    dialects: web.filter((f) => f.path.endsWith('.tsx')).map((f) => dialectOf(f.path, f.text, classes)),
   };
 }

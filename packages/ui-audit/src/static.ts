@@ -7,6 +7,9 @@
  * on a lock screen. Pure functions over source text; the CLI feeds them files.
  */
 
+import { dirname, join, normalize } from 'node:path/posix';
+import { GROUPS, type GameSurface } from './inventory.js';
+
 export type SizeKind = 'css' | 'token' | 'tailwind' | 'arbitrary' | 'inline' | '3d' | 'canvas';
 
 export interface FontSize {
@@ -261,6 +264,96 @@ export function fillPlaceholders(text: string): string {
   return text.replace(/\{\{?\s*(\w+)\s*\}?\}/g, (_, name: string) => SAMPLE[name] ?? name);
 }
 
+/**
+ * Which design dialect a screen file still speaks (stage 4.A, 2026-11-13). A surface is
+ * rebuilt when its files carry no v1, v2 or own-stylesheet mark. Counts are marks: each
+ * kit import and each class.
+ */
+export type DialectKey = 'v1' | 'v2' | 'own' | 'kit';
+
+export interface Dialect {
+  file: string;
+  /** The old chrome: `ui/kit` imports, `styles.css` and `styles/` classes, bone/dim/faint colours, the old type scale. */
+  v1: number;
+  /** `v2/kit` imports, `v2/*.css` classes and `*-v2-*` colour utilities. */
+  v2: number;
+  /** Classes from a screen's own stylesheet (simulator, wiki, arena, landing…). */
+  own: number;
+  /** The game kit: `game-ui` imports and `gk-` classes. */
+  kit: number;
+}
+
+/** The classes a stylesheet's selectors name, in order and once each. */
+export function cssClasses(source: string): string[] {
+  return [...new Set([...uncomment(source).matchAll(/(?:^|[\s,>+~(}])\.([a-zA-Z_][\w-]*)/g)].map((m) => m[1] ?? ''))];
+}
+
+/** `styles/atmosphere.css` came with the v2 scene art (2026-10-15); `styles.css` and the chrome are v1. */
+const sheetDialect = (path: string): DialectKey =>
+  path.startsWith('game-ui/') ? 'kit' : path.startsWith('v2/') || path === 'styles/atmosphere.css' ? 'v2' : path === 'styles.css' || path.startsWith('styles/') ? 'v1' : 'own';
+const PRIORITY: DialectKey[] = ['v1', 'v2', 'kit', 'own'];
+/** Tailwind utilities a sheet restyles inside its own scope (`.simulator .sr-only`): still Tailwind's. */
+const TAILWIND_UTILITY = /^(?:sr-only|not-sr-only|(?:overflow|overscroll)(?:-[xy])?-[a-z]+)$/;
+
+/** Each class under its `v2-`/`gk-` name or the sheet that defines it; a class two sheets name goes to the older dialect. */
+export function classDialects(sheets: readonly { path: string; text: string }[]): Map<string, DialectKey> {
+  const out = new Map<string, DialectKey>();
+  const ordered = [...sheets].sort((a, b) => PRIORITY.indexOf(sheetDialect(a.path)) - PRIORITY.indexOf(sheetDialect(b.path)));
+  for (const sheet of ordered) {
+    for (const name of cssClasses(sheet.text)) {
+      if (out.has(name) || TAILWIND_UTILITY.test(name)) continue;
+      // A `v2-` class written into the old global sheet is still v2.
+      out.set(name, name.startsWith('v2-') ? 'v2' : name.startsWith('gk-') ? 'kit' : sheetDialect(sheet.path));
+    }
+  }
+  return out;
+}
+
+/** Comments and string literals in source order; a comment is skipped whole, so a quote inside it opens nothing. */
+const LITERAL = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+/** The v1 ink colours and type scale, Tailwind utilities from `styles.css`'s theme rather than classes it defines. */
+const V1_TOKEN = /^(?:(?:text|bg|border|ring|fill|stroke|from|via|to|divide|outline|decoration|placeholder|shadow|caret|accent)-(?:bone|dim|faint)|text-(?:body|label|caption|micro))$/;
+const V2_TOKEN = /^[a-z]+(?:-[a-z]+)*-v2-[a-z0-9-]+$/;
+const KIT_CLASS = /^gk-[a-z0-9-]+$/;
+
+/** Where `className={…}` expressions run. */
+function classRanges(source: string): [number, number][] {
+  return [...source.matchAll(/className=\{/g)].map((m) => {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    for (; i < source.length && depth > 0; i += 1) depth += source[i] === '{' ? 1 : source[i] === '}' ? -1 : 0;
+    return [m.index, i];
+  });
+}
+
+export function dialectOf(file: string, source: string, classes: ReadonlyMap<string, DialectKey>): Dialect {
+  const out: Dialect = { file, v1: 0, v2: 0, own: 0, kit: 0 };
+  const ranges = classRanges(source);
+  for (const m of source.matchAll(LITERAL)) {
+    const text = m[0];
+    if (text.startsWith('/')) continue;
+    const inner = text.slice(1, -1);
+    if (inner.startsWith('./') || inner.startsWith('../')) {
+      const path = normalize(join(dirname(file), inner));
+      if (/^ui\/kit(?:\/|$)/.test(path)) out.v1 += 1;
+      else if (/^v2\/kit(?:\/|$)/.test(path)) out.v2 += 1;
+      else if (/^game-ui(?:\/|$)/.test(path)) out.kit += 1;
+      continue;
+    }
+    // A lone string (`'name'`, `kind: 'works-full'`) is data unless a className takes it;
+    // only a token shape (`'text-dim'`, `'gk-row'`) reads as a class anywhere.
+    const words = inner.split(/\s+/).filter((w) => w.length > 0);
+    const classy = words.length > 1 || source.slice(Math.max(0, m.index - 10), m.index) === 'className=' || ranges.some(([a, b]) => m.index > a && m.index < b);
+    for (const word of words) {
+      // `hover:text-dim/70`, and a quoted class inside a template's `${a ? 'plate-lit' : ''}`.
+      const name = word.replace(/^['"{(]+|['"})]+$/g, '').replace(/^(?:[a-z0-9-]+:)+/, '').replace(/\/\d+$/, '');
+      const key = KIT_CLASS.test(name) ? 'kit' : V2_TOKEN.test(name) ? 'v2' : V1_TOKEN.test(name) ? 'v1' : classy ? (classes.get(name) ?? null) : null;
+      if (key !== null) out[key] += 1;
+    }
+  }
+  return out;
+}
+
 export interface StaticScan {
   tokens: Record<string, number>;
   overrides: TokenOverride[];
@@ -272,6 +365,7 @@ export interface StaticScan {
   holds: HoldDuration[];
   coverage: ActionCoverage[];
   notifications: (PushCopy & { source: 'push' | 'local' })[];
+  dialects: Dialect[];
 }
 
 /** Changes light, repeats, and cycles more than three times a second (WCAG 2.3.1 territory). */
@@ -279,7 +373,23 @@ const fastLight = (a: StaticScan['animations'][number]) => a.seconds > 0 && a.se
 
 const where = (x: { file: string; line: number }) => `${x.file}:${String(x.line)}`;
 
-export function renderStatic(scan: StaticScan, { date }: { date: string }): string {
+type ReportedSurface = Pick<GameSurface, 'id' | 'group' | 'files' | 'unreached'>;
+
+/** One row per surface, in group order: its files' dialect marks added up, and what no way in reaches yet. */
+function surfaceRows(dialects: readonly Dialect[], surfaces: readonly ReportedSurface[]) {
+  const byFile = new Map(dialects.map((d) => [d.file, d]));
+  return [...surfaces].sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group)).map((s) => {
+    const marks = s.files.map((f) => byFile.get(f)).filter((d) => d !== undefined);
+    const sum = (key: DialectKey) => marks.reduce((n, d) => n + d[key], 0);
+    const has = s.files.length > 0;
+    const counts = has ? [sum('v1'), sum('v2'), sum('own'), sum('kit')].map(String) : ['—', '—', '—', '—'];
+    const left = s.unreached ?? [];
+    return { has, old: has && sum('v1') + sum('v2') + sum('own') > 0, left: left.length, line: `| ${s.group} | ${s.id} | ${counts.join(' | ')} | ${left.length > 0 ? left.join('; ') : '—'} |` };
+  });
+}
+
+export function renderStatic(scan: StaticScan, { date, surfaces }: { date: string; surfaces: readonly ReportedSurface[] }): string {
+  const rows = surfaceRows(scan.dialects, surfaces);
   const shown = scan.fontSizes.filter((f) => f.kind !== '3d');
   const tokenRows = Object.entries(scan.tokens).sort((a, b) => a[1] - b[1]).map(([name, px]) => {
     const uses = shown.filter((f) => f.token === name);
@@ -303,6 +413,23 @@ export function renderStatic(scan: StaticScan, { date }: { date: string }): stri
   return `# Statik tarama — ${date}
 
 Kaynak kodda bildirilen değerler. Çalışan arayüzün ulaşamadığı yerler (plan §1.4). Sayılar kullanım yeri sayısıdır, ekranda görünme sayısı değildir.
+
+## Tasarım dili ve ulaşılmamış durumlar (yüzey başına)
+
+4. aşamada (2026-11-13) bir yüzey, dosyaları eski dillerden iz taşımadığında ve her durumuna bir ulaşım yolu olduğunda biter. Sayılar işaret sayısıdır, yani içe aktarmalar ve sınıflar:
+
+- v1: \`ui/kit\`, \`styles.css\` ve \`styles/\` sınıfları (plate, slab, legend, name…), bone/dim/faint renkleri, eski yazı ölçeği (\`text-body/label/caption/micro\`)
+- v2: \`v2/kit\`, \`v2/*.css\` sınıfları, \`*-v2-*\`
+- kendi CSS'i: ekranın kendi stil dosyasındaki sınıflar (simülatör, Wiki, arena, giriş…)
+- kit: \`game-ui\`, \`gk-*\`
+
+Paylaşılan parçalar (\`ui/\`, \`v2/kit/\`) burada sayılmaz; kullanıldıkları yüzeyle birlikte değişirler. Kendi dosyası olmayan yüzey \`—\` gösterir. Tek kelimelik düz bir dize (\`'name'\`) yalnız \`className\` içindeyse sınıf sayılır.
+
+Eski dil (v1, v2 ya da kendi CSS'i) izi kalan yüzey: ${String(rows.filter((r) => r.old).length)} / ${String(rows.filter((r) => r.has).length)}. Ulaşılmamış durum: ${String(rows.reduce((n, r) => n + r.left, 0))}.
+
+| Grup | Yüzey | v1 | v2 | kendi CSS | kit | Ulaşılmamış durumlar |
+|---|---|---|---|---|---|---|
+${rows.map((r) => r.line).join('\n')}
 
 ## Yazı boyutları
 

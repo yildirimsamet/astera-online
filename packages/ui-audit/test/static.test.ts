@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { actionCoverage, animationUses, fillPlaceholders, fontSizes, holdDurations, keyframes, pushCopies, renderStatic, tokenOverrides, typeTokens, type StaticScan } from '../src/static.js';
+import type { GameSurface } from '../src/inventory.js';
+import { actionCoverage, animationUses, classDialects, cssClasses, dialectOf, fillPlaceholders, fontSizes, holdDurations, keyframes, pushCopies, renderStatic, tokenOverrides, typeTokens, type StaticScan } from '../src/static.js';
 
 const CSS = `
 @theme {
@@ -140,6 +141,56 @@ describe('notification copy', () => {
   });
 });
 
+describe('the design dialect a screen file still speaks (stage 4.A, 2026-11-13)', () => {
+  const CLASSES = classDialects([
+    { path: 'styles/chrome.css', text: '/* .ghost */\n.plate, .plate-inset { color: red; }\n.slab-primary:hover > .works-fill { margin: .5rem; }' },
+    { path: 'styles.css', text: "@import './styles/chrome.css';\n.legend { background: url(a.png); }\n.name { }\n.v2-segmented-option { }" },
+    { path: 'v2/surfaces.css', text: '.v2-panel { }' },
+    { path: 'styles/atmosphere.css', text: '.sheet-art-head { }' },
+    { path: 'battle-simulator/simulator.css', text: '.sim-field-error { }\n.simulator .sr-only { }\n.simulator .overflow-y-auto { }' },
+    { path: 'game-ui/game-ui.css', text: '.gk-plate { }' },
+  ]);
+
+  it('reads the classes a stylesheet defines, never a number, a file name or a comment', () => {
+    expect(cssClasses('/* .ghost */\n.plate, .plate-inset { margin: .5rem; background: url(a.png); }\n.a:hover > .b-c { }')).toEqual(['plate', 'plate-inset', 'a', 'b-c']);
+  });
+
+  it('files each class under the dialect of the sheet that defines it, or its v2-/gk- name; a Tailwind utility a sheet restyles stays Tailwind\'s', () => {
+    expect(Object.fromEntries(CLASSES)).toEqual({ plate: 'v1', 'plate-inset': 'v1', 'slab-primary': 'v1', 'works-fill': 'v1', legend: 'v1', name: 'v1', 'v2-segmented-option': 'v2', 'v2-panel': 'v2', 'sheet-art-head': 'v2', 'simulator': 'own', 'sim-field-error': 'own', 'gk-plate': 'kit' });
+  });
+
+  it('counts the old chrome (v1): its kit imports, its classes, and the bone/dim/faint colours and old type scale', () => {
+    const v1 = "import { Button } from '../../ui/kit';\nimport { Meter } from '../../ui/kit/Meter';\n<div className=\"plate plate-inset slab-primary legend text-bone hover:text-dim/70 border-faint text-micro\" />";
+    expect(dialectOf('screens/clan/A.tsx', v1, CLASSES)).toEqual({ file: 'screens/clan/A.tsx', v1: 10, v2: 0, own: 0, kit: 0 });
+  });
+
+  it('counts the v2 kit imports, resolved from the file (`../kit` inside v2/), its classes and v2 colour utilities', () => {
+    const v2 = "import { Sheet } from '../kit/Sheet';\n<p className={`v2-panel text-v2-ink-2 bg-v2-panel/40 ${x}`} />";
+    expect(dialectOf('v2/hud/B.tsx', v2, CLASSES)).toEqual({ file: 'v2/hud/B.tsx', v1: 0, v2: 4, own: 0, kit: 0 });
+  });
+
+  it('counts a screen\'s own stylesheet as a dialect of its own', () => {
+    expect(dialectOf('battle-simulator/S.tsx', '<p className="sim-field-error" />', CLASSES)).toEqual({ file: 'battle-simulator/S.tsx', v1: 0, v2: 0, own: 1, kit: 0 });
+  });
+
+  it('counts the game kit imports and gk- classes, and never reads a gk- class as the old chrome', () => {
+    const kit = "import { GameButton } from '../game-ui';\nimport { GameHold } from '../game-ui/buttons';\n<div className=\"gk-plate gk-t-body gk-inote--plate\" />";
+    expect(dialectOf('screens/C.tsx', kit, CLASSES)).toEqual({ file: 'screens/C.tsx', v1: 0, v2: 0, own: 0, kit: 5 });
+  });
+
+  it('reads a stylesheet\'s class from a lone string only where a className takes it; a token shape counts anywhere', () => {
+    const classed = "<b className=\"legend\" /><i className={on ? 'plate' : `name`} />";
+    expect(dialectOf('screens/E.tsx', classed, CLASSES).v1).toBe(3);
+    const data = "const key = 'name';\nregister('plate');\nconst kind = 'works-fill';\nconst tone = ok ? 'text-v2-ink' : 'text-dim';";
+    expect(dialectOf('screens/F.tsx', data, CLASSES)).toEqual({ file: 'screens/F.tsx', v1: 1, v2: 1, own: 0, kit: 0 });
+  });
+
+  it('reads no comment, link, component name or identifier as a class', () => {
+    const quiet = "// plate text-bone, don't\n/* slab 'chip' */\nconst url = 'https://x.y/plate';\n{/* legend */}\n<Plate tone=\"lit\" />\nconst plateCount = legendary + field;\nimport { x } from './kit';";
+    expect(dialectOf('screens/D.tsx', quiet, CLASSES)).toEqual({ file: 'screens/D.tsx', v1: 0, v2: 0, own: 0, kit: 0 });
+  });
+});
+
 describe('the static report', () => {
   const scan: StaticScan = {
     tokens: { micro: 9, body: 12 },
@@ -162,8 +213,18 @@ describe('the static report', () => {
       { source: 'push', file: 'p.ts', line: 1, lang: 'tr', kind: 'incoming_attack', title: 'Saldırı geliyor', body: 'Kestrel dünyana bir filo yaklaşıyor. Varış: 12 dk.' },
       { source: 'local', file: 'notificationCenter', line: 0, lang: 'tr', kind: 'fleet', title: 'Filo eve döndü', body: 'Bir filo döndü.' },
     ],
+    dialects: [
+      { file: 'shell/Bell.tsx', v1: 3, v2: 1, own: 0, kit: 0 },
+      { file: 'shell/Feed.tsx', v1: 0, v2: 1, own: 4, kit: 2 },
+      { file: 'screens/Base.tsx', v1: 0, v2: 0, own: 0, kit: 7 },
+    ],
   };
-  const markdown = renderStatic(scan, { date: '2026-11-11' });
+  const surfaces: Pick<GameSurface, 'id' | 'group' | 'files' | 'unreached'>[] = [
+    { id: 'base', group: 'G10', files: ['screens/Base.tsx'] },
+    { id: 'bell', group: 'G1', files: ['shell/Bell.tsx', 'shell/Feed.tsx'], unreached: ['sinyal satırları', 'boş akış'] },
+    { id: 'planet', group: 'G2', files: [] },
+  ];
+  const markdown = renderStatic(scan, { date: '2026-11-11', surfaces });
 
   it('counts each token by uses and files, and lists sizes under 9 px with their place', () => {
     expect(markdown).toMatch(/\| micro \| 9 px \| 2 \| 1 \|/);
@@ -181,6 +242,16 @@ describe('the static report', () => {
     expect(markdown).toContain('`button, [role="button"]`');
     expect(markdown).toMatch(/x\.tsx — 4 eylem/);
     expect(markdown).not.toMatch(/y\.tsx — 2 eylem/);
+  });
+
+  it('adds up each surface\'s dialect over its files, in group order, beside the states nothing reaches yet', () => {
+    expect(markdown).toMatch(/\| G1 \| bell \| 3 \| 2 \| 4 \| 2 \| sinyal satırları; boş akış \|/);
+    expect(markdown).toMatch(/\| G10 \| base \| 0 \| 0 \| 0 \| 7 \| — \|/);
+    expect(markdown.indexOf('| G2 | planet')).toBeLessThan(markdown.indexOf('| G10 | base'));
+    // No file of its own: drawn by shared parts, so it is neither clean nor counted.
+    expect(markdown).toMatch(/\| G2 \| planet \| — \| — \| — \| — \| — \|/);
+    expect(markdown).toContain('Eski dil (v1, v2 ya da kendi CSS\'i) izi kalan yüzey: 1 / 2');
+    expect(markdown).toContain('Ulaşılmamış durum: 2');
   });
 
   it('shows where a notification body passes 40 characters', () => {

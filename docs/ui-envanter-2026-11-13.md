@@ -123,7 +123,18 @@ Telefon (≤ v2-split)                         Masaüstü (E11 · K10)
 
 **Canlı oyunda olmayan eski kabuk (ölü kod adayı, silinmedi; tam liste "Paylaşılan arayüz parçaları" bölümünde de):** `shell/StatusBar.tsx`, `PendingStrip` bileşeni ve sinyal düğmesi `Signals` yalnızca eski `onboarding/Academy.tsx` ve `onboarding/Rehearsal.tsx` içinde çiziliyor; bu iki dosyayı hiçbir canlı dosya içe aktarmıyor (yalnız testler). `useAirborne` ve `FlightList` canlıda kullanılıyor. Owner'a liste olarak sunulacak.
 
-### 3.3 G1 için ilk gözlemler (ekran görüntüsü öncesi, koddan)
+### 3.3 G1: göz (2026-11-11 ölçümünün görüntüleri, `out/ui-envanter/temel-2026-11-11/`)
+
+Bakıldı: `galaxy-hud__client-galaxy-mid`, `menu__client-menu` (+ `.p1`), `bell__gallery-bell`.
+
+1. **Üst krom ≈ 90 CSS px:** marka şeridi (≈ 38) + kaynak barı (≈ 50). Galaksiden önce ekranın %11'i; marka şeridi karar taşımıyor.
+2. **Atölye ipucu balonu Now çizgisinin üstüne biniyor:** "☝ Üretim havuzda birikir…" balonu en acil sayacın metnini kapatıyor (galakside ve galeride). Hata.
+3. **Zil galerisi yer tutucu:** "Signal rows draw here (SignalsFeed)." Sinyal akışının gerçek görüntüsü hiç ölçülmemiş. `inventory.ts` içinde `bell.unreached` olarak kayıtlı; ulaşım yolu G1'in 1. adımında eklenir.
+4. **Menüde tekrar:** "20 ödül hazır" satırı + "Ödüller" kategorisi aynı yere gidiyor; Mağaza üç yerden (marka şeridi, menü karosu, üst bar dışında vitrin) açılıyor. Menü dört ayrı öğe biçimi taşıyor (satır, iki karo, geniş karo, kategori listesi).
+5. **Dock:** düz çizgi simgeler + 10 px etiket. Kitteki sanat simgeleri (`DOCK_ART`) ve `BottomNav` kullanılmıyor.
+6. **Galaksi okuması:** "177 gezegen · 30 enkaz / 8 anıt" noktalı alt çizgili 10 px mono; dokunulabilir olduğu anlaşılmıyor.
+
+### 3.4 G1 için ilk gözlemler (ekran görüntüsü öncesi, koddan)
 
 1. Kit kabukta hiç yok: Dock, ayarlar ve menü için kit parçaları (`BottomNav`, `Toggle`, `Slider`, `LanguagePicker`, `ListRow`) hazır duruyor.
 2. Sinyal akışı v1 dilinde: kabuktaki tek "üç dil" yeri.
@@ -144,7 +155,50 @@ Telefon (≤ v2-split)                         Masaüstü (E11 · K10)
 
 **Yazı ölçeği:** `styles.css` bugün `--text-body 12px`, `--text-label 11px`, `--text-caption 10px`, `--text-micro 9px`. Kit dışındaki her yüzey 2. aşama kararının (12 px altı yazı yok; 12/13/14/16/19/24, sayı 18) altında kalıyor. Kit kendi ölçeğini taşıyor (`--gk-t-floor`, `--gk-t-small`, `--gk-t-body`, `--gk-t-lead`, `--gk-t-title`, `--gk-t-number`). Yeniden tasarım her yüzeyi kit ölçeğine taşır; eski token'lar yüzey yüzey boşalır.
 
-**Sonuç:** bir yüzeyi "bitti" saymak için üç dilden birinin kalıntısı kalmamalı. Ölçüm aracına "v1/v2 token'ı kaldı mı" denetimi eklenecek (4.A.4).
+**Sonuç:** bir yüzeyi "bitti" saymak için eski dillerden hiçbir kalıntı kalmamalı.
+
+**Ölçüm (4.A.4, 2026-11-13):** `pnpm --filter @astera/ui-audit cli static` raporunun ilk bölümü "Tasarım dili ve ulaşılmamış durumlar" adını taşır. Bölüm, her yüzeyin dosyalarındaki işaretleri dört sütunda sayar:
+
+| Sütun | Neyi sayar |
+|---|---|
+| v1 | `ui/kit`, `styles.css` ve `chrome.css` sınıfları, bone/dim/faint, eski yazı ölçeği `text-body/label/caption/micro` |
+| v2 | `v2/kit`, `v2/*.css` ve `atmosphere.css` sınıfları, `*-v2-*` |
+| kendi CSS'i | simülatör, Wiki, arena, giriş, miras, eğitim |
+| kit | `game-ui`, `gk-*` |
+
+Aynı tablo, her yüzeyin henüz hiçbir yolla ulaşılamayan durumlarını da listeler. Kod: `packages/ui-audit/src/static.ts` `dialectOf` ve `classDialects`; `inventory.ts` `group` ve `unreached`.
+
+İlk ölçüm `reports/ui-audit/static-2026-11-14.md` dosyasında. Kendi dosyası olan 50 yüzeyin 50'sinde eski dil izi var. Kit izi yalnız Üs'te (30) ve kabukta (2). Ulaşılmamış durum sayısı 66.
+
+**Bitti kuralı:** bir yüzey ancak şu iki koşul birlikte sağlanınca biter:
+- bu tabloda v1, v2 ve kendi CSS'i sütunları 0;
+- ulaşılmamış durum listesi boş.
+
+Paylaşılan parçalar (`ui/`, `v2/kit/`) bu tabloda sayılmaz; ilk kullanan grupta kite taşınırlar. Tek kelimelik düz bir dize yalnız `className` içindeyse sınıf sayılır, böylece `'name'` gibi veri anahtarları sayılmaz.
+
+## Öncelik: ölçüm puanı (2026-11-11, telefon, tr, yüzeyin en kötü yolu)
+
+Puan = 12 px altı metin + 3 × kontrast hatası + 2 × 44 px altı hedef + tepkisiz hedef + 3 × kesilen metin + 5 × yana taşma (`packages/ui-audit/src/report.ts`). O günden beri değişen tek yüzey Üs (4.1); diğer puanlar geçerli. Görüntüler: `out/ui-envanter/temel-2026-11-11/` (tr telefon, 356 dosya).
+
+| Puan | Yüzey (grup) | En kötü yol |
+|---|---|---|
+| 2019 | profil (G10): ülke seçici | `gallery:country-picker` |
+| 585 | ödüller (G6) | `client:rewards` |
+| 472 | klan (G7): yardım | `gallery:clan-aid` |
+| 465 | Üs (G2): Filo sekmesi (4.1 öncesi) | `gallery:base-fleet` |
+| 363 | savaş tekrarı (G5) | `client:battle-replay` |
+| 250 | başlangıç (G15) | `starter:drive` |
+| 242 | yerleşme (G4) | `gallery:claim-mine` |
+| 235 | aktarma (G4) | `gallery:transfer-radiation` |
+| 232 | olay rehberi (G3) | `client:events-guide` |
+| 206 | odak (G4) | `gallery:support-focus` |
+| 203 / 202 / 201 / 200 | araştırma (G2) / istihbarat (G3) / sohbet (G8) / anıt (G9) | |
+| 199 / 193 / 191 / 190 / 188 | arena (G12) / simülatör (G11) / bilinmeyen sinyal (G4) / saldırı (G4) / konvoy (G4) | |
+| 182 / 181 / 179 / 174 / 171 / 171 | raporlar (G5) / ticaret (G4) / galaksi HUD (G1) / miras (G10) / mağaza (G6) / dünyalar (G2) | |
+| 163–140 | kronik, geri bildirim, menü (G1: 149), duyurular, bildirim merkezi, giriş | |
+| ≤ 115 | sıralama, Sessiz Uzay, sezon özeti, klan desteği, Wiki, filo, envanter, bağış, Now çizgisi (74), eğitim, kuyruk, dönüş (67), vuruş, görüş sheet'i, deneme şeridi, galaksiler, zil (46, yer tutucu), göz atma | |
+
+**Sıra kuralı:** grup sırası §4.B'de kalır (önce kabuk: her ekranın çerçevesi). Grup içinde yüzeyler bu puan ve "Oyuncu anı" ağırlığıyla sıralanır. Ölçülmemiş durumlar (her grubun tablosundaki "Durumlar" sütunu) grubun 1. adımında (§4.C incele) görüntülenir.
 
 ## G2. Üs, araştırma, tersane, filo, onarım
 
@@ -259,7 +313,7 @@ Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen
 | 6 | Deneme şeridi | `CosmeticTrialBar` (30) | denediğim kaplamayı al / bırak | | galakside, deneme sırasında | v2 | |
 | 7 | Mağaza vitrini (menüde) | `shell/ShopShowcase` (73) | | | menü | v2 | G1 menüsüyle birlikte |
 | 8 | Destek ol | `DonateScreen` (222) | bağış | web / uygulama (adres satırları, destek kartları) | menü | v2 | |
-| 9 | Komutan Mirası ödül açılışı | `legacy/AwardReveal` (295), `AwardScene` (157), `AwardStage` (82), `AwardSheet` (164), `AwardTile` (73), `LegacyPeek` (190) | ödül / unvan açılış anı | sırada bekleyen açılışlar | otomatik (`LegacyRevealHost`), profil | v2 | Kendi sahnesi var; kit ödül dili (`RewardPod`, ışın) ile birleşmeli. |
+| 9 | Komutan Mirası ödül açılışı | `legacy/AwardReveal` (295), `AwardScene` (157), `AwardStage` (82), `AwardSheet` (164), `AwardTile` (73), `LegacyPeek` (190) | ödül / unvan açılış anı | sırada bekleyen açılışlar | otomatik (`LegacyRevealHost`), profil | v2 + `legacy.css` | Kendi sahnesi var; kit ödül dili (`RewardPod`, ışın) ile birleşmeli. Envanterde `legacy` yüzeyi G10'da (profil ve vitrinle tek yüzey); kit ödül dili G6'da kurulur, açılış G10'da ona taşınır. |
 
 ## G7. Klan (owner örneği)
 

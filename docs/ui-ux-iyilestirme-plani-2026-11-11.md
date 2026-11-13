@@ -674,11 +674,32 @@ Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyunc
 
 | Grup | Envanter | Karar | Kit eki | Uygulama | Ölçüm | Owner baktı |
 |---|---|---|---|---|---|---|
-| G1 Kabuk | ⏳ | | | | | |
-| G2 Üs, tersane, filo | ⏳ | (Üs 4.1 ✅ 2026-11-12) | | | | |
-| G3–G15 | ⏳ | | | | | |
+| G1 Kabuk | ✅ 2026-11-13 | ⏳ | | | | |
+| G2 Üs, tersane, filo | ✅ 2026-11-13 | (Üs 4.1 ✅ 2026-11-12) | | | | |
+| G3–G15 | ✅ 2026-11-13 | | | | | |
+
+**4.A kapanışı (2026-11-13):**
+
+- Harita `docs/ui-envanter-2026-11-13.md`:
+  - 21 panel;
+  - G1'den G15'e grup tabloları (durum, açılış, dil, not);
+  - paylaşılan parçalar ve v2 kit haritası;
+  - öncelik tablosu (2026-11-11 ölçüm puanı);
+  - G1 göz notları.
+- Ölçüm aracı:
+  - her yüzeyin bir grubu var (`group`);
+  - henüz ulaşılamayan durumlar (`unreached`) testle tutuluyor (`inventory.test.ts`);
+  - yüzey başına dil sayımı yapılıyor (`static.ts` `dialectOf`), ilk ölçüm `reports/ui-audit/static-2026-11-14.md` dosyasında.
+- Bir yüzeyin bitti kuralı: v1, v2 ve kendi CSS'i izi 0, ulaşılmamış durum listesi boş.
+- Görüntüler 2026-11-11 ölçümünden: `out/ui-envanter/temel-2026-11-11/` (tr telefon, 356 dosya; o günden beri yalnız Üs değişti).
+- Ulaşılmamış 66 durumun ulaşım yolu her grubun 4.C 1. adımında eklenir.
+  - Yükleniyor ve hata durumları ortak `Waiting` ve `Unreachable` parçalarıyla çiziliyor; bir kez, kit parçası olarak ölçülür (G1).
 
 **Doğrulanmış olgular:**
+- Ölçüm 2026-11-13: kendi dosyası olan 50 yüzeyin 50'sinde eski dil izi var; kit izi yalnız Üs'te (30) ve kabukta (2). Beş ayrı dil daha var: simülatör (`sim-*`), Wiki (`wiki-*`), arena, giriş/yükleme (`landing-*`), miras (`legacy-*`).
+- Zil galerisi yer tutucu çiziyor ("Signal rows draw here"); gerçek sinyal akışı (`shell/Signals.tsx`, v1) hiç ölçülmedi. Göz atma galerisi de yer tutucu.
+- Atölye ipucu balonu Now çizgisinin üstüne biniyor (hata, G1).
+- Ölü kod adayları (owner'a liste, silinmedi): `onboarding/Academy.tsx`, `Rehearsal.tsx`, `BeatCard.tsx`, `shell/StatusBar.tsx`, `PendingStrip` bileşeni, `Signals` sinyal düğmesi, `ui/RangeBand`, `ui/Clarity` (yalnız testler kullanıyor); `chrome.css` `.works*` sınıflarını yalnız ölü `StatusBar` kullanıyor.
 - Yerel oyun: ana checkout'tan `DATABASE_URL=postgres://astera:astera@localhost:5433/astera_play pnpm start --skip-build` (ortak `astera` veritabanında başka dalın migration'ları var, master'ınki orada düşüyor).
 - Kitte olup oyuna takılmayanlar: `BottomNav`, `Toggle`, `Lever`, `Slider`, `LanguagePicker`, `RewardPod`, `UnitCard`, `CoachMark`, `Dialog`.
 - `../blindspace-uiux` çalışma ağacında başka bir oturumun commit edilmemiş `RoomGauge` değişiklikleri var (`game-ui/index.ts`, `game-ui/readouts.tsx`, `test/game-ui/room-gauge.test.tsx`); dokunulmuyor.
