@@ -129,6 +129,21 @@
     "eurAmount": 249,
     "tryAmount": 6900
   },
+  "engine-mach": {
+    "productId": "dc63f62b-6fcd-4f2c-94df-19c6a663d632",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-pulsar": {
+    "productId": "938baf7c-f816-448b-8d24-622419e7ddc1",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-ion": {
+    "productId": "20213045-eece-4687-97bd-9606efe94934",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
   "flag-sovereign": {
     "productId": "ad865e1a-eaf1-4973-86c9-198e0a0b6f8c",
     "eurAmount": 199,

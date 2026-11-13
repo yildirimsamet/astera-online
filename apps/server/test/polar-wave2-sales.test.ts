@@ -20,6 +20,8 @@ const wave = [
   'flag-sovereign', 'flag-kraken', 'flag-oni', 'flag-voideye', 'flag-valkyrie',
   'flag-scarab', 'flag-stag', 'flag-horizon', 'flag-tiger', 'flag-scorpion',
 ] as const;
+/** Drives added after the second wave (2026-11-13); the first-wave mapping never had them either. */
+const later = ['engine-mach', 'engine-pulsar', 'engine-ion'] as const;
 const root = resolve(import.meta.dirname, '../../..');
 const mapping = await readFile(resolve(root, 'config/polar-cosmetics.sandbox.json'), 'utf8');
 const template = parseEnv(await readFile(resolve(root, '.env.example'), 'utf8'));
@@ -184,7 +186,7 @@ describe('second-wave Polar delivery with the shipped sandbox catalogue', () => 
     if (!intent) throw new Error('Missing reserved order');
     await close();
     const oldMapping = Object.fromEntries(Object.entries(env.POLAR_COSMETIC_PRODUCTS)
-      .filter(([id]) => !wave.some(item => item === id)));
+      .filter(([id]) => ![...wave, ...later].some(item => item === id)));
     expect(Object.keys(oldMapping)).toHaveLength(20);
     const replacement = buildApp({ db: fixture.db, clock: fixture.clock, logger: pino({ level: 'silent' }),
       env: { ...env, POLAR_COSMETIC_PRODUCTS: oldMapping, POLAR_CHECKOUT_ENABLED: false } });
