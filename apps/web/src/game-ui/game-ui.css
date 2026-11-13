@@ -319,7 +319,7 @@
   --face-lo: var(--gk-steel-lo);
   --lip: var(--gk-steel-lip);
   cursor: not-allowed;
-  color: var(--gk-ink-3);
+  color: var(--gk-ink-2);
 }
 .gk-btn:disabled,
 .gk-btn:disabled * {
@@ -760,6 +760,7 @@
   /* The shine sits above the numeral; the number itself stands on deep red (4.5:1). */
   background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gk-hostile) 50%, var(--gk-hostile-lo)) 0, var(--gk-hostile-lo) 40%, color-mix(in srgb, var(--gk-hostile-lo) 60%, var(--gk-hostile-lip)));
   font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
   font-weight: var(--gk-display-weight);
   font-size: var(--gk-t-floor);
   color: var(--gk-ink);
@@ -1629,7 +1630,7 @@
   flex-shrink: 0;
   place-items: center;
   height: 84px;
-  background: radial-gradient(60% 60% at 50% 45%, color-mix(in srgb, var(--gk-info) 16%, transparent), transparent 75%);
+  background: radial-gradient(60% 60% at 50% 45%, color-mix(in srgb, var(--gk-tint) 16%, transparent), transparent 75%);
 }
 .gk-bcard__level {
   position: absolute;
@@ -2639,7 +2640,8 @@
   border: 1px solid var(--gk-outline);
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
   box-shadow: inset 0 2px 5px var(--gk-outline);
-  touch-action: none;
+  /* Sideways drags are pointer events; a vertical swipe scrolls the sheet. */
+  touch-action: pan-y;
 }
 .gk-lever__handle {
   position: absolute;
@@ -2694,7 +2696,8 @@
 .gk-slider__track {
   position: relative;
   height: var(--gk-hit);
-  touch-action: none;
+  /* Sideways drags are pointer events; a vertical swipe scrolls the sheet. */
+  touch-action: pan-y;
   cursor: pointer;
 }
 .gk-slider__rail {
@@ -3138,7 +3141,7 @@
   box-shadow: inset 0 2px 6px var(--gk-outline);
   color: inherit;
   cursor: pointer;
-  touch-action: pan-x;
+  touch-action: pan-y;
 }
 .gk-bay[aria-pressed='true'] {
   border-color: var(--gk-self);
@@ -3279,6 +3282,7 @@
 }
 .gk-lang__name {
   font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
   font-weight: var(--gk-display-weight);
   font-size: var(--gk-t-small);
   line-height: 1.1;
@@ -3336,6 +3340,7 @@
 }
 .gk-status__value {
   font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
   font-weight: var(--gk-display-weight);
   font-size: var(--gk-t-small);
   color: var(--tone);
@@ -3543,6 +3548,7 @@
   position: relative;
   margin-top: -6%;
   font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
   font-weight: var(--gk-display-weight);
   /* Grows with its tile, never under the 12 px floor. */
   font-size: max(var(--gk-t-floor), 0.3em);
@@ -3696,69 +3702,4 @@
   height: 26px;
   border-radius: 6px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent), 0 0 0 1px var(--gk-outline);
-}
-
-/* ── the standard's decision page (gallery, stage 2.2–2.8) ─────────────────── */
-
-/* A sample redrawn under the option picked: its own type tokens, hit size or gutter. */
-.gk-std__sample {
-  font-size: var(--gk-t-body);
-}
-.gk-std__sample[data-std-hits] button {
-  outline: 1px dashed var(--gk-warn);
-  outline-offset: 0;
-}
-.gk-std__defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-/* Text over a bright world: bare, outlined and on a plate. */
-.gk-std__ground {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  padding: 16px 12px;
-  border-radius: var(--gk-r-md);
-  background-size: 170% auto;
-  background-position: 40% 45%;
-}
-.gk-std__plate {
-  padding: 2px 8px;
-  border-radius: var(--gk-r-sm);
-  background: var(--gk-scrim);
-}
-/* Today's button: a thin frame that does nothing when pressed. */
-.gk-std__flat {
-  min-height: var(--gk-hit);
-  border: 1px solid var(--gk-glass-edge);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--gk-ink-2);
-  font: inherit;
-  font-size: 12px;
-}
-.gk-std__stage {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  min-height: 112px;
-}
-.gk-std__drawer {
-  width: 100%;
-  transform: translateY(18px);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform var(--std-ms) var(--gk-ease), opacity var(--std-ms) var(--gk-ease);
-}
-.gk-std__drawer[data-open] {
-  transform: none;
-  opacity: 1;
-  pointer-events: auto;
-}
-/* Full bleed, so the gutter is measured from the screen's edge. */
-.gk-std__gutter {
-  margin-inline: -10px;
-  padding-inline: var(--std-gutter);
 }

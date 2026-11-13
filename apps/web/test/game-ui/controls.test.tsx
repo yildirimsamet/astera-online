@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { BottomNav, GameTabs, InfoPeek, Lever, Slider, Toggle } from '../../src/game-ui/index.js';
@@ -82,6 +82,25 @@ describe('the slider', () => {
     expect(onChange).toHaveBeenLastCalledWith(40);
     fireEvent.keyDown(slider, { key: 'Home' });
     expect(onChange).toHaveBeenLastCalledWith(0);
+  });
+
+  it('lets a thumb scrolling the sheet pass over it: a touch alone, or one the page took for a scroll, moves nothing', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
+    const slider = screen.getByRole('slider');
+    fireEvent.pointerDown(slider, { button: 0, clientX: 0 });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.pointerCancel(slider);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('a tap on the track still jumps to where it landed', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
+    const slider = screen.getByRole('slider');
+    fireEvent.pointerDown(slider, { button: 0, clientX: 0 });
+    fireEvent.pointerUp(slider, { clientX: 0 });
+    expect(onChange).toHaveBeenCalledWith(0);
   });
 
   it('does not report a move past the end', () => {
@@ -181,6 +200,21 @@ describe('tabs and the bottom bar', () => {
     expect(onChange).toHaveBeenCalledWith('base');
     press(within(nav).getByRole('button', { name: /Clan/ }));
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the bottom bar\u2019s locked word', () => {
+  it('says what opens a locked place, then clears by itself', () => {
+    vi.useFakeTimers();
+    try {
+      render(<BottomNav label="Main" items={[{ id: 'galaxy', label: 'Galaxy' }, { id: 'clan', label: 'Clan', locked: 'Shipyard 2' }]} value="galaxy" onChange={vi.fn()} />);
+      press(screen.getByRole('button', { name: /Clan/ }));
+      expect(screen.getByRole('status')).toHaveTextContent('Shipyard 2');
+      act(() => { vi.advanceTimersByTime(3_000); });
+      expect(screen.queryByRole('status')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

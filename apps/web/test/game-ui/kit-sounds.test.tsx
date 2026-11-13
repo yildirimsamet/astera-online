@@ -49,7 +49,7 @@ describe('the kit plays them at its moments', () => {
   });
 
   it('charges while a hold is down', () => {
-    render(<GameHold label="Attack" detail="39 ships" onCommit={() => undefined} />);
+    render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={() => undefined} />);
     fireEvent.pointerDown(screen.getByRole('button', { name: /Attack/ }), { button: 0 });
     expect(cues()).toContain('charge');
   });

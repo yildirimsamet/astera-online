@@ -15,6 +15,7 @@ import type { CssVars } from '../../game-ui/style.js';
 import { haptic, type Weight } from '../../lib/haptics.js';
 import { playSound, type SoundCue } from '../../lib/sound.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
+import './standard-gallery.css';
 
 /* ── 2.2 type: one composition, three ladders ───────────────────────────────── */
 
@@ -364,11 +365,11 @@ const HAPTICS: readonly { weight: Weight; sound: SoundCue; label: string }[] = [
   { weight: 'tap', sound: 'tap', label: 'Dokunuş' },
   { weight: 'commit', sound: 'confirm', label: 'Onay' },
   { weight: 'warn', sound: 'alert', label: 'Uyarı' },
-  { weight: 'thunk', sound: 'switch', label: 'Şalter' },
+  { weight: 'thunk', sound: 'lever', label: 'Şalter' },
 ];
 
 function TimingDecision() {
-  const [speed, setSpeed] = useState('240');
+  const [speed, setSpeed] = useState('160');
   const [open, setOpen] = useState(false);
   const drawer: CssVars = { '--std-ms': `${speed}ms` };
   return (
@@ -376,7 +377,7 @@ function TimingDecision() {
       no="2.6"
       title="Süreler ve geri bildirim"
       question="Basılı tutma eylemin ağırlığına göre uzar. Telefonda bas ve hisset."
-      advice="Geri alınan 0,6 sn, kaynak harcayan 1 sn, geri alınamayan 1,5 sn. Basma tepkisi 80 ms, panel 240 ms."
+      advice="Geri alınan 0,6 sn, kaynak harcayan 1 sn, geri alınamayan 1,5 sn. Basma tepkisi 80 ms, panel 160 ms."
     >
       <div className="grid gap-1">
         <span className="gk-label">Geri alınır · filo geri çağrılabilir</span>

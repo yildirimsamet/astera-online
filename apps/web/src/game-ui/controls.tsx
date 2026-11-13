@@ -1,7 +1,7 @@
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
 import { Glyph, type GlyphId } from './icons.js';
@@ -36,7 +36,7 @@ export function Toggle({
     onChange(!checked);
   });
   return (
-    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {art && <img className="gk-toggle__art" src={art} alt="" />}
       <span className="gk-toggle__words">
         <span className="gk-toggle__label">{label}</span>
@@ -91,7 +91,7 @@ export function Lever({
   };
   const style: CssVars = { '--n': options.length, '--i': index };
   return (
-    <div className="gk-lever">
+    <div className="gk-lever" {...OWN_SOUND}>
       <div className="flex items-baseline justify-between gap-2">
         <span id={labelId} className="gk-label">{label}</span>
         {note !== undefined && <span className="gk-sub">{note}</span>}
@@ -151,6 +151,7 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 export function Slider({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (next: number) => void }) {
   const { t } = useTranslation();
   const dragging = useRef(false);
+  const start = useRef<number | null>(null);
   const set = (next: number): void => {
     const clamped = Math.min(max, Math.max(0, next));
     if (clamped === value) return;
@@ -173,7 +174,7 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
   };
   const share = max <= 0 ? 0 : (value / max) * 100;
   return (
-    <div className="gk-slider">
+    <div className="gk-slider" {...OWN_SOUND}>
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.fewer', { name: label })} {...fewer}>
         <span className="gk-round__face"><Glyph id="minus" /></span>
       </button>
@@ -186,14 +187,21 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
         aria-valuenow={value}
         className="gk-slider__track"
         onKeyDown={onKeyDown}
-        onPointerDown={(event) => {
-          dragging.current = true;
-          event.currentTarget.setPointerCapture(event.pointerId);
+        // Like the lever: the track takes the pointer only once it travels sideways, so a thumb scrolling
+        // the sheet passes over it (touch-action pan-y); a tap still jumps to where it landed.
+        onPointerDown={(event) => { start.current = event.clientX; dragging.current = false; }}
+        onPointerMove={(event) => {
+          if (start.current === null) return;
+          if (!dragging.current && Math.abs(event.clientX - start.current) < 6) return;
+          if (!dragging.current) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }
           set(sliderValue(along(event), max));
         }}
-        onPointerMove={(event) => { if (dragging.current) set(sliderValue(along(event), max)); }}
-        onPointerUp={() => { dragging.current = false; }}
-        onPointerCancel={() => { dragging.current = false; }}
+        onPointerUp={(event) => {
+          if (start.current !== null && !dragging.current) set(sliderValue(along(event), max));
+          start.current = null;
+          dragging.current = false;
+        }}
+        onPointerCancel={() => { start.current = null; dragging.current = false; }}
       >
         <span className="gk-slider__rail"><span className="gk-slider__fill" style={{ width: `${String(share)}%` }} /></span>
         <span className="gk-slider__knob" style={{ left: `${String(share)}%` }} />
@@ -253,7 +261,7 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, 
   };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="gk-tabs" onKeyDown={walk}>
+      <div role="tablist" aria-label={label} className="gk-tabs" {...OWN_SOUND} onKeyDown={walk}>
         {tabs.map((tab) => (
           <GameTab
             key={tab.id}
@@ -319,14 +327,23 @@ export interface NavItem extends TabItem {
   art?: string;
 }
 
+/** How long the bottom bar's "locked" word stays over the game. */
+const REFUSED_MS = 2_500;
+
 /**
  * THE BOTTOM BAR: painted art for each place; the current one rises and glows.
  * A locked place shows its padlock and, pressed, says what opens it.
  */
 export function BottomNav({ label, items, value, onChange }: { label: string; items: readonly NavItem[]; value: string; onChange: (id: string) => void }) {
   const [refused, setRefused] = useState<string | null>(null);
+  // The word floats over the game: it says its piece and goes.
+  useEffect(() => {
+    if (refused === null) return undefined;
+    const gone = window.setTimeout(() => { setRefused(null); }, REFUSED_MS);
+    return () => { window.clearTimeout(gone); };
+  }, [refused]);
   return (
-    <nav aria-label={label} className="gk gk-nav relative">
+    <nav aria-label={label} className="gk gk-nav relative" {...OWN_SOUND}>
       {refused !== null && (
         <p role="status" className="gk-nav__status gk-banner gk-banner--warn gk-banner--toast">
           <span className="gk-banner__icon"><Glyph id="lock" /></span>
@@ -426,30 +443,49 @@ export const LANGUAGE_FLAG: Record<Language, string> = {
  * flag, so a player lost in a language they cannot read still finds their own.
  */
 export function LanguagePicker({ label, value, onChange }: { label: string; value: Language; onChange: (language: Language) => void }) {
+  const choose = (language: Language): void => {
+    if (language === value) return;
+    playSound('tap');
+    haptic('tap');
+    onChange(language);
+  };
+  // One stop for the Tab key; the arrows walk the languages, as in any radio group.
+  const walk = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = (LANGUAGES.indexOf(value) + step + LANGUAGES.length) % LANGUAGES.length;
+    const language = LANGUAGES[next];
+    if (language === undefined) return;
+    choose(language);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
   return (
-    <div role="radiogroup" aria-label={label} className="gk-langs">
+    <div role="radiogroup" aria-label={label} className="gk-langs" {...OWN_SOUND}>
       {LANGUAGES.map((language) => (
-        <LanguageOption key={language} language={language} chosen={language === value} onChoose={() => { onChange(language); }} />
+        <LanguageOption key={language} language={language} chosen={language === value} onChoose={() => { choose(language); }} onKeyDown={walk} />
       ))}
     </div>
   );
 }
 
-function LanguageOption({ language, chosen, onChoose }: { language: Language; chosen: boolean; onChoose: () => void }) {
-  const own = useOwnPress(() => {
-    if (chosen) return;
-    playSound('tap');
-    haptic('tap');
-    onChoose();
-  });
+function LanguageOption({ language, chosen, onChoose, onKeyDown }: {
+  language: Language;
+  chosen: boolean;
+  onChoose: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}) {
+  const own = useOwnPress(onChoose);
   return (
     <button
       type="button"
       role="radio"
       aria-checked={chosen}
+      tabIndex={chosen ? 0 : -1}
       className="gk-lang"
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
+      onKeyDown={onKeyDown}
     >
       <img className="gk-lang__flag" src={LANGUAGE_FLAG[language]} alt="" width={40} height={41} draggable={false} />
       <span className="gk-lang__name">{LANGUAGE_LABEL[language]}</span>

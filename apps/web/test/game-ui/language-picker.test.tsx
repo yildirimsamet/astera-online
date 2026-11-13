@@ -36,6 +36,16 @@ describe('the language picker', () => {
     expect(onChange).toHaveBeenCalledWith('ja');
   });
 
+  it('is one stop for the Tab key, and the arrows walk the languages', () => {
+    const onChange = vi.fn();
+    render(<LanguagePicker label="Dil" value="tr" onChange={onChange} />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([screen.getByRole('radio', { name: 'Türkçe' })]);
+    const at = LANGUAGES.indexOf('tr');
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Türkçe' }), { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith(LANGUAGES[(at + 1) % LANGUAGES.length]);
+  });
+
   it('does nothing when the chosen language is tapped again', () => {
     const onChange = vi.fn();
     render(<LanguagePicker label="Dil" value="tr" onChange={onChange} />);

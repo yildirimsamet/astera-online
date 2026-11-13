@@ -27,6 +27,11 @@ describe('the ship card', () => {
     expect(onChange).toHaveBeenCalledWith(25);
   });
 
+  it('tells a reader how many are chosen, beside what a tap does', () => {
+    card(24);
+    expect(screen.getByRole('button', { name: /more Dart/i })).toHaveAccessibleDescription('24');
+  });
+
   it('adds nothing once the whole stock is chosen', () => {
     const onChange = card(40);
     tap(screen.getByRole('button', { name: /more Dart/i }));

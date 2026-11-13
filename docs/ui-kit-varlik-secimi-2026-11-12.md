@@ -330,5 +330,5 @@ VFX kit galerisine değil, ilgili sahneye (arena, galaksi, savaş tekrarı) gire
 
 **Kitin açık kararlarına katkı:**
 
-- **Font:** ✅ Owner seçti (2026-11-12): Russo One; başlık, buton ve sayıda kullanılır. Gövde metni Saira'da kalır. Uzun Türkçe başlıklarda kesilme S22 turunda kontrol edilir.
+- **Font:** ✅ Owner seçti (2026-11-12): önce Russo One; aynı gün 2.9 "Komuta + Grafit" ile başlık, buton ve sayı Saira dar kalına geçti (a1e88c45). Gövde metni Saira'da kalır. Uzun Türkçe başlıklarda kesilme S22 turunda kontrol edilir.
 - **Alaşım rengi:** ✅ Bakıra kaydı (#c27a55), owner 2026-11-12.

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * ONE TYPE SCALE (owner 2026-11-12, standard 2.2 and stage 3.1). Every word in the kit takes
- * its size from the `--gk-t-*` steps in tokens.css — 12 / 13 / 14 / 16 / 19 / 24, numbers 18 —
+ * its size from the `--gk-t-*` steps in tokens.css — 12 / 13 / 14 / 16 / 19 / 24, numbers 18, hero 30 —
  * so a size cannot drift on one surface, and none goes under the 12 px floor. A font size that
  * only sizes a glyph (an icon drawn 1em wide) is not text and is named below with its reason.
  */
@@ -30,7 +30,6 @@ const NOT_TEXT = new Map([
   ['.gk-lang__tick', 'the tick by the chosen language'],
   ['.gk-status__coin', 'the glyph on a status coin'],
   ['.gk-store__safe .gk-glyph', 'the shield on a store\'s raid-safe box'],
-  ['.gk-std__flat', "today's flat button on the owner's decision page, not kit UI"],
 ]);
 
 const rawSizes = (): [string, string][] =>
@@ -46,10 +45,9 @@ const files = (dir: string): string[] =>
     entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]);
 
 describe('the kit type scale', () => {
-  it('keeps every step at the 12 px floor or above', () => {
-    const steps = [...tokens.matchAll(/--gk-t-([\w-]+):\s*(\d+)px/g)].map(([, name, px]) => [name, Number(px)] as const);
-    expect(steps.length).toBeGreaterThanOrEqual(7);
-    expect(steps.filter(([, px]) => px < 12)).toEqual([]);
+  it('holds exactly the decided steps, none under the 12 px floor', () => {
+    const steps = Object.fromEntries([...tokens.matchAll(/--gk-t-([\w-]+):\s*(\d+)px/g)].map(([, name = '', px]) => [name, Number(px)]));
+    expect(steps).toEqual({ floor: 12, small: 13, body: 14, lead: 16, title: 19, head: 24, number: 18, hero: 30 });
   });
 
   it('sizes every word in the kit stylesheet from the scale', () => {

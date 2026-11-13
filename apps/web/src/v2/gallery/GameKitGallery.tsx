@@ -139,7 +139,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
         meta={<><span className="gk-pill gk-pill--warn">Denk hedef</span><span className="gk-sub inline-flex items-center gap-1"><Glyph id="clock" />3 sa önce görüldü</span></>}
         onClose={() => undefined}
         footer={(
-          <GameHold
+          <GameHold weight="reversible"
             label="SALDIR"
             detail={`${fmt(total)} gemi`}
             glyph="attack"
@@ -551,9 +551,9 @@ function Catalog() {
         </Section>
 
         <Section title="Basılı tut · kritik hamle">
-          <GameHold label="SALDIR" detail="39 gemi" glyph="attack" commitSound="launch" onCommit={() => undefined} />
-          <GameHold label="GERİ ÇAĞIR" detail={'dönüş 8\u00a0dk'} tone="danger" glyph="back_home" onCommit={() => undefined} />
-          <GameHold label="SALDIR" onCommit={() => undefined} disabledReason="Uçuş yuvası dolu · 12:40’ta açılır" />
+          <GameHold weight="reversible" label="SALDIR" detail="39 gemi" glyph="attack" commitSound="launch" onCommit={() => undefined} />
+          <GameHold weight="reversible" label="GERİ ÇAĞIR" detail={'dönüş 8\u00a0dk'} tone="danger" glyph="back_home" onCommit={() => undefined} />
+          <GameHold weight="reversible" label="SALDIR" onCommit={() => undefined} disabledReason="Uçuş yuvası dolu · 12:40’ta açılır" />
         </Section>
 
         <Section title="Plakalar">

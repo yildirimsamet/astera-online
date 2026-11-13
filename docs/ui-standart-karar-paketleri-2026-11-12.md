@@ -12,7 +12,7 @@ Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](
 | 2.3 Metin bütçesi | **Bütçeli** | |
 | 2.4 Dokunma | **44 px** | |
 | 2.5 Renk rolleri | **A**: kitin 6 rolü ve 3 kural | Owner "Normal" dedi; kitteki hâli (A) olarak okundu. |
-| 2.6 Süreler | **Panel 160 ms** | Basılı tutma için seçim gelmedi. Önerim B (0,6 / 1 / 1,5 sn) varsayıldı; owner aksini söylerse değişir. |
+| 2.6 Süreler | **Panel 160 ms · basılı tutma B** | Basılı tutma B (0,6 / 1 / 1,5 sn) 3.5'te `GameHold` `weight` olarak kuruldu. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla seçilir (owner 2026-11-12). |
 | 2.7 Kenar boşluğu | **12 px** | |
 | 2.8 Sayı biçimi | **K/M** (240,1K · 1,4M) | |
 | 2.9 Görünüm | **Komuta + Grafit** | Kitin varsayılanı oldu. Başlık, buton ve sayı fontu Russo One yerine Saira dar kalın. Owner yukarıdaki notları onayladı ("tamam"). |
@@ -253,7 +253,7 @@ Diğer roller her zeminde 6'nın üstünde.
   - v2 `HoldButton` ve başlangıç kargo bölmesi 600 ms;
   - prolog 850 ms.
 
-**Kit:** Basma 80 ms'de göçer, cevap 160 ms, yerleşme 280 ms. Basılı tutma 600 ms. Bu tur `GameHold` süreyi parametre olarak almaya başladı (`holdMs`); varsayılan değişmedi.
+**Kit:** Basma 80 ms'de göçer, cevap 160 ms, yerleşme 280 ms. Basılı tutma 600 ms. `GameHold` süreyi ağırlıkla alır (`weight`: `reversible` 0,6 / `spends` 1 / `final` 1,5 sn; 3.5).
 
 **Araştırma:**
 - Tepki ≤ 100 ms.
@@ -366,7 +366,7 @@ Karar sayfası kurulurken kitte üç yerleşim sorunu bulundu ve düzeltildi. He
 2. **`GameHold`:** Uzun bir yan yazı ("1,5 sn · geri alınamaz") fiilin üstüne biniyordu. Yan yazı artık kendi sütununda (en çok %42) satır kırıyor.
 3. **Sekme rozeti:** 1. düzeltmeden sonra "HAKİMİYET" ve yanındaki sayı rozeti sekmeye sığmadı. Rozet, oyunlardaki gibi sekmenin sağ üst köşesine taşındı; ad tüm genişliği kullanıyor.
 
-Ek olarak `GameHold` ve `useHoldPress` isteğe bağlı bir basılı tutma süresi (`holdMs`) aldı. Varsayılan 600 ms ve bugünkü davranış değişmedi.
+Ek olarak `GameHold` ve `useHoldPress` bir basılı tutma süresi aldı. 3.5'ten beri `GameHold` bunu ağırlıkla seçer (`weight`, zorunlu).
 
 ## 2.9 Görünüm: dil ve panel rengi
 
@@ -436,7 +436,7 @@ Rol renklerine (amber, turkuaz, kırmızı, yeşil, sarı, mavi) dokunulmadı; b
   - Nötr panel renkleri ve NASA fotoğrafı gibi gökyüzünü öne çıkarır.
   - Dar font uzun Türkçe sözcüklere sığar: "GERİ ÇAĞIR" iki satırdan bire indi.
   - Bedel: 2026-11-12'deki Russo One kararı yeniden açılır; başlık, buton ve sayı fontu Saira dar kalın olur.
-  - Bedel: 2.2 "Bugün" ölçeğiyle dar font daha da küçük görünür. Başlık ve buton 1–2 px büyütülmeli.
+  - Bedel: dar font aynı boyutta daha küçük görünür. Owner 2026-11-12 yan yana görselden sonra büyütmeyi istemedi; 2.2 kitin ölçeği (B) olarak kaldı.
 - **C · Komuta + Karbon:** Daha askerî ve sıcak. Bedel: bakır alaşım ve amber ile birlikte ekran kahveye kayar.
 - **D · Komuta + Lacivert:** Dil değişir, mavi kalır.
 
@@ -515,7 +515,7 @@ Hata sayılmayanlar: tek ondalık yüzünden sayılar biraz uzadı. Bu, 2.8 kara
 
 ## Sıradaki
 
-- 3. aşama: kararlar token'a ve koruyucu teste çevrilir. "Bugün" ölçeği dar fontla daha küçük göründüğü için başlık ve buton 1–2 px büyütülerek ölçülür.
+- ✅ 3. aşama: kararlar token'a ve koruyucu teste çevrildi. Ölçek kitin ölçeği (B); dar font için büyütme yok (owner 2026-11-12).
 - ✅ Kit, ui-audit taramasına ayrı bir "kit" yüzeyi olarak eklendi (owner onayı, 2026-11-12): `pnpm ui:audit run --kit`, sonuç `reports/ui-audit/kit-<tarih>.md`.
 - ✅ Elle çizilmiş ince glifler dolgulu stile çevrildi (owner onayı, 2026-11-12): 18 glif paketlerden izlendi, `attack_up` yeni kılıçla kuruldu, hız göstergesinin 16 px'te kaybolan çentikleri atıldı. Koruyucu test: her glif kutusunun en az beşte birini doldurur (sıra çubukları `bay`, `speed_up` hariç). Kasa, hangar, menü, yukarı/aşağı anlamı değişmesin diye çizimde kaldı.
 - ✅ Seçilen arayüz sesleri kite bağlandı (41430c6a).

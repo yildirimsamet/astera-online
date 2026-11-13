@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
-import { playSound, type SoundCue } from '../lib/sound.js';
+import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { HOLD_MS, useHoldPress } from '../v2/kit/useHoldPress.js';
 import { Glyph, type GlyphId } from './icons.js';
@@ -60,6 +60,7 @@ export function GameButton({
   return (
     <button
       type="button"
+      {...OWN_SOUND}
       className={`gk-btn${tone(look)}${sizing}${wide ? ' gk-btn--wide' : ''} ${className}`}
       disabled={disabledReason !== null}
       aria-busy={pending || undefined}
@@ -94,6 +95,7 @@ export function RoundButton({
   return (
     <button
       type="button"
+      {...OWN_SOUND}
       aria-label={label}
       className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}`}
       onPointerDown={own.onPointerDown}
@@ -118,6 +120,7 @@ export function Chip({
   return (
     <button
       type="button"
+      {...OWN_SOUND}
       className="gk-hit"
       disabled={disabled}
       {...(label === undefined ? {} : { 'aria-label': label })}
@@ -140,8 +143,8 @@ export interface GameHoldProps {
   tone?: 'action' | 'danger';
   glyph?: GlyphId;
   commitSound?: SoundCue;
-  /** How heavy the action is; a heavier one holds longer. */
-  weight?: HoldWeight;
+  /** How heavy the action is; a heavier one holds longer. No default: each action picks its own (stage 4). */
+  weight: HoldWeight;
 }
 
 /**
@@ -157,7 +160,7 @@ const HOLD_WEIGHT_MS: Record<HoldWeight, number> = { reversible: HOLD_MS, spends
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight = 'reversible',
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight,
 }: GameHoldProps) {
   const holdMs = HOLD_WEIGHT_MS[weight];
   const { t } = useTranslation();
@@ -194,6 +197,7 @@ export function GameHold({
     <>
       <button
         type="button"
+        {...OWN_SOUND}
         className={face}
         style={style}
         aria-describedby={hintId}

@@ -591,7 +591,7 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 | 3.5 ✅ | Süreler | `--gk-panel: 160ms`; diyalog 280 ms yerine onunla açılıyor. `GameHold` serbest `holdMs` yerine ağırlık alıyor: `reversible` 0,6 / `spends` 1 / `final` 1,5 sn (hangi eylemin hangisi olacağı 4. aşamada) | `tokens.test.ts`, `buttons.test.tsx` |
 | 3.6 ✅ | Kenar boşluğu 12 px | `--gk-gutter: 12px`; sheet başlığı, gövdesi, alt şeridi, katalog ve HUD 10/8 px'ten 12 px'e geçti | `tokens.test.ts` |
 | 3.7 ✅ | Sayı biçimi K/M | Oyunun tek kısa biçimlendiricisi `lib/format.compact` değişti: altı dilde K/M, her boyutta tek ondalık, ",0" atılır, 999.960 → 1M. Eşikler aynı kaldı (B1: depo 99.999'a kadar tam). Bu dalda oyun ekranlarındaki kısa sayılar da K/M'ye geçti | `i18n.test.ts` + ekran testlerindeki yansımalar |
-| 3.8 ✅ | Kit ölçümü | `reports/ui-audit/kit-2026-11-12.md` (84 ölçüm, 6 dil, 3 boyut): 12 px altı yazı 0, kontrast 0, ikon kontrastı 0, 44 px altı hedef 0, 2.5.8 aralık 0, tepkisiz hedef 0. Kesilme 1: Japonca 320 px'te galerinin Türkçe örnek kelimesi "Gönderiliyor" (gerçek Japonca metin sığıyor). Değişen görünüm ve araç düzeltmeleri: `docs/ui-standart-karar-paketleri-2026-11-12.md` "Kit ölçümüyle değişen görünüm". L2 (%46,6 ızgara dışı boşluk) 4. aşamanın ekran düzeni işi | Raporda küçük yazı ("Bugün" tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
+| 3.8 ✅ | Kit ölçümü | `reports/ui-audit/kit-2026-11-12.md` (84 ölçüm, 6 dil, 3 boyut): 12 px altı yazı 0, kontrast 0, ikon kontrastı 0, 44 px altı hedef 0, 2.5.8 aralık 0, tepkisiz hedef 0. Kesilme 1: Japonca 320 px'te galerinin Türkçe örnek kelimesi "Gönderiliyor" (gerçek Japonca metin sığıyor). Değişen görünüm ve araç düzeltmeleri: `docs/ui-standart-karar-paketleri-2026-11-12.md` "Kit ölçümüyle değişen görünüm". L2 (%46,6 ızgara dışı boşluk) 4. aşamanın ekran düzeni işi | Raporda küçük yazı (kitin 12 px tabanına göre), kontrast, 44 px, basma tepkisi ve kesilme temiz |
 | 3.9 ⏸ | S22 turu | Kit ekranları telefonda; owner 2026-11-12: "S22 işini sonlara bırakalım" | Owner dokunarak onaylar |
 
 **Owner'a sorular:**
@@ -599,7 +599,7 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 1. **Başlık ve buton yazısı:** Saira dar yüz, aynı piksel boyutunda Russo One'dan küçük görünüyor. Bu iki rolü ölçerek 1–2 px büyütelim mi?
    - ✅ Owner 2026-11-12, yan yana görselden sonra (`out/ui-kit/fixes/yazi-boyu-karsilastirma.png`): "Şu anki gayet iyi duruyor, gereksiz büyütmeyelim." Büyütme yok.
    - ✅ Netleşti (owner 2026-11-12, aynı görseli gönderip): "Bugün" derken görseldeki "Şimdi" sütununu, yani kitin bugünkü boyutlarını kastetmiş. 2.2 kitin ölçeği (B) olarak düzeltildi; 3.1 onu kilitler.
-2. **%115 yazı boyutu ayarı:** "Bugün" ölçeğinin güvenlik supabı olarak 5. aşamadan bu aşamaya alalım mı?
+2. **%115 yazı boyutu ayarı:** Yazı ölçeğinin güvenlik supabı olarak 5. aşamadan bu aşamaya alalım mı?
    - ✅ Owner 2026-11-12: aciliyeti yok, 5. aşamada kalır.
 3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?
    - ✅ Owner 2026-11-12: evet, 4. aşamada.

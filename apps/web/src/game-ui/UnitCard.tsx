@@ -1,8 +1,8 @@
 import type { HullClass } from '@astera/rules';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
 import { Glyph } from './icons.js';
@@ -40,17 +40,18 @@ export function UnitCard({ name, art, cls, multiplier, home, chosen, onChange, e
   const more = useRepeatPress((n) => { change(chosen + n); }, chosen < home, home);
   const fewer = useRepeatPress((n) => { change(chosen - n); }, chosen > 0, home);
   const full = chosen >= home;
+  const countId = useId();
   return (
-    <div className={`gk-unit gk-plate${chosen > 0 ? ' gk-edge-self' : ''}`} {...(full ? { 'data-full': '' } : {})}>
+    <div className={`gk-unit gk-plate${chosen > 0 ? ' gk-edge-self' : ''}`} {...OWN_SOUND} {...(full ? { 'data-full': '' } : {})}>
       <div className="gk-unit__head">
         <Emblem cls={cls} />
         <span className="gk-unit__name gk-display gk-outlined">{name}</span>
         <span className="gk-unit__home gk-display gk-num"><Glyph id="home" />{home}</span>
       </div>
-      <button type="button" className="gk-unit__stage" aria-label={t('launch.more', { name })} aria-disabled={full || undefined} {...more}>
+      <button type="button" className="gk-unit__stage" aria-label={t('launch.more', { name })} aria-describedby={countId} aria-disabled={full || undefined} {...more}>
         <img key={chosen} className="gk-unit__art" src={art} alt="" {...(chosen > 0 ? { 'data-nudge': '' } : {})} />
         {multiplier !== null && <span className="gk-unit__mult"><MultiplierBadge value={multiplier} /></span>}
-        <span className="gk-unit__count"><CountBadge value={chosen} /></span>
+        <span id={countId} className="gk-unit__count"><CountBadge value={chosen} /></span>
       </button>
       {chosen > 0 && (
         <button type="button" className="gk-round gk-round--small gk-unit__minus" aria-label={t('launch.fewer', { name })} {...fewer}>
@@ -82,7 +83,7 @@ export function UnitBay({
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onSelect(); });
   const share: CssVars = { '--share': `${String(home > 0 ? Math.round((chosen / home) * 100) : 0)}%` };
   return (
-    <button type="button" className="gk-bay" aria-pressed={selected} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" className="gk-bay" aria-pressed={selected} {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       <span className="gk-bay__band">
         {multiplier !== null && <MultiplierBadge value={multiplier} />}
       </span>

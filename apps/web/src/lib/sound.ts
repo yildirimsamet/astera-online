@@ -54,6 +54,19 @@ const WAITS_MS = 1_200;
 const FADE_SECONDS = 0.06;
 
 /** A cue may fail silently, never delay or reject the action it accompanies. */
+/**
+ * Marks a control, or the group it sits in, that plays its own sound (the game kit: a tab clicks, a
+ * lever throws, a locked press says no). The mixer's own click is for every other button.
+ */
+export const OWN_SOUND = { 'data-own-sound': '' } as const;
+
+/** Whether the mixer's click sounds for a click on `target`: a live control without a sound of its own. */
+export function tapsFor(target: Element): boolean {
+  const control = target.closest('button, [role="button"], [role="tab"], summary');
+  if (!control || control.hasAttribute('disabled') || control.getAttribute('aria-disabled') === 'true') return false;
+  return control.closest('[data-own-sound]') === null;
+}
+
 export function playSound(cue: SoundCue, options: SoundOptions = {}): void {
   try { mixer?.play(cue, options); } catch { /* Browser audio failure cannot reject a game action. */ }
 }
@@ -184,8 +197,7 @@ class SoundMixer {
   };
   click = (event: MouseEvent): void => {
     if (event.defaultPrevented || !event.isTrusted || !(event.target instanceof Element)) return;
-    const control = event.target.closest('button, [role="button"], [role="tab"], summary');
-    if (!control || control.hasAttribute('disabled') || control.getAttribute('aria-disabled') === 'true') return;
+    if (!tapsFor(event.target)) return;
     this.unlock();
     this.play('tap', {});
   };

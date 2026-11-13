@@ -42,6 +42,10 @@ export function useHoldPress(onCommit: () => void, disabled: boolean, holdMs = H
   const [holding, setHolding] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [nudge, setNudge] = useState(false);
+  // The timer reads the action and its state as they stand when the hold completes, not as they were
+  // when it began: a server update during the hold changes what is sent, or that it can be sent at all.
+  const latest = useRef({ onCommit, disabled });
+  useEffect(() => { latest.current = { onCommit, disabled }; });
 
   /** Ends a hold. `released` is a finger or key let go: if the hold had not gone through, say how. */
   const stop = (released = false): void => {
@@ -61,12 +65,15 @@ export function useHoldPress(onCommit: () => void, disabled: boolean, holdMs = H
     if (disabled || timer.current !== null) return;
     haptic('tap');
     setNudge(false);
+    // A hold is its own answer: an Enter armed earlier must not take the click that ends it as a second.
+    setConfirming(false);
     setHolding(true);
     timer.current = window.setTimeout(() => {
       timer.current = null;
       setHolding(false);
+      if (latest.current.disabled) return;
       haptic('commit');
-      onCommit();
+      latest.current.onCommit();
     }, holdMs);
   };
 
@@ -115,6 +122,8 @@ export function useHoldPress(onCommit: () => void, disabled: boolean, holdMs = H
           if (!event.repeat) start();
         } else if (event.key === 'Enter') {
           event.preventDefault();
+          // A key held down repeats: only a second, separate press confirms.
+          if (event.repeat) return;
           if (confirming) {
             setConfirming(false);
             onCommit();

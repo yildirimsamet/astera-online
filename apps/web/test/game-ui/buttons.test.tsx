@@ -52,7 +52,7 @@ describe('the hold action', () => {
 
   it('commits after a held press and shows its detail', () => {
     const onCommit = vi.fn();
-    render(<GameHold label="Attack" detail="39 ships" onCommit={onCommit} />);
+    render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} />);
     const button = screen.getByRole('button', { name: /Attack/ });
     expect(button).toHaveTextContent('39 ships');
     fireEvent.pointerDown(button, { button: 0 });
@@ -76,16 +76,16 @@ describe('the hold action', () => {
   });
 
   it('holds for the lightest weight when none is named, as the v2 hold button does', () => {
-    render(<GameHold label="Attack" onCommit={() => undefined} />);
+    render(<GameHold weight="reversible" label="Attack" onCommit={() => undefined} />);
     expect(screen.getByRole('button', { name: /Attack/ }).style.getPropertyValue('--gk-hold-ms')).toBe(`${String(HOLD_MS)}ms`);
   });
 
   it('commits nothing on a tap and refuses with a reason', () => {
     const onCommit = vi.fn();
-    const { rerender } = render(<GameHold label="Attack" detail="39 ships" onCommit={onCommit} />);
+    const { rerender } = render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} />);
     press(screen.getByRole('button', { name: /Attack/ }));
     expect(onCommit).not.toHaveBeenCalled();
-    rerender(<GameHold label="Attack" detail="39 ships" onCommit={onCommit} disabledReason="No free flight bay" />);
+    rerender(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} disabledReason="No free flight bay" />);
     expect(screen.getByRole('button', { name: /No free flight bay/ })).toBeDisabled();
   });
 });

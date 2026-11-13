@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 
 /** The two paintings share one 320 px frame (`export-icons.py`), so the lid opens in place. */
@@ -52,6 +52,7 @@ export function RewardPod({ label, onOpen, opened = false, children }: RewardPod
       <span className="gk-pod__glow" aria-hidden="true" />
       <button
         type="button"
+        {...OWN_SOUND}
         className="gk-pod__body"
         aria-label={label}
         aria-disabled={state !== 'closed'}

@@ -101,6 +101,9 @@ export function Dialog({
 }) {
   const titleId = useId();
   const rang = useRef(false);
+  const box = useRef<HTMLDivElement>(null);
+  // Focus starts inside, so a keyboard or a reader is in the dialog it was shown.
+  useEffect(() => { box.current?.focus(); }, []);
   useEffect(() => {
     if (sound === undefined || rang.current) return;
     rang.current = true;
@@ -109,7 +112,7 @@ export function Dialog({
   return (
     <div className="gk gk-scrim">
       {rays && <span className="gk-rays" aria-hidden="true" />}
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`gk-dialog gk-dialog--${tone} gk-plate gk-bolts`}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className={`gk-dialog gk-dialog--${tone} gk-plate gk-bolts`}>
         <div id={titleId} className="gk-dialog__ribbon gk-display gk-outlined">{ribbon}</div>
         {children}
         {actions !== undefined && <div className="mt-3 grid gap-1">{actions}</div>}
@@ -182,7 +185,8 @@ export function CoachMark({
     <div className="gk-coach" style={{ left: `${String(x)}%`, top: `${String(y)}%` }}>
       <span className="gk-coach__ring" aria-hidden="true" />
       <img className="gk-coach__hand" src={hand} alt="" />
-      <div className="gk-coach__bubble" style={{ ...place, left: '-110px' }}>
+      {/* Shifted by its own width at the share the point sits at: inside the frame at either edge. */}
+      <div className="gk-coach__bubble" style={{ ...place, left: 0, translate: `-${String(x)}% 0` }}>
         {step !== undefined && <span className="gk-coach__step">{step}</span>}
         {text}
       </div>
