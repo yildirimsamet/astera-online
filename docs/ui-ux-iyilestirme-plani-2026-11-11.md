@@ -23,7 +23,7 @@ Başlangıç: 2026-11-11. Dayanak: [`mobil-ui-ux-arastirmasi-2026-11-11.md`](mob
 | 1 | Ölçüm aracı, başlangıç ölçümü ve flaş güvenliği | 🔍 Uygulandı ve review edildi (1.14); owner kontrolü ve iki karar bekliyor. Tam yeniden ölçüm en sona kaldı (1.9) |
 | 2 | Standart kararları (owner ile): **oyun arayüzü dili (sanat yönü)**, yazı ölçeği, dokunma alanı, renk, metin bütçesi, süreler | ✅ 2.1 yön B. 2.2–2.9 kararlandı (2026-11-12); 2.9 görünüm Komuta + Grafit, başlık fontu Russo One yerine Saira dar kalın: [karar paketleri](ui-standart-karar-paketleri-2026-11-12.md) |
 | 3 | Altyapı: token'lar, dokunma alanı yardımcısı, koruyucu testler, **oyun arayüzü kiti** (font, buton ve panel malzemeleri, ikon seti, basma animasyonu, ses ve titreşim eşlemesi; galeride hazır parça olarak; owner onayı 2026-11-11) | ✅ 3.1–3.8 bitti, S22 öncesi kod incelemesi düzeltildi (cd4fc12f). 3.9 S22 turu en sona kaldı (owner, 2026-11-12) |
-| 4 | Ekran ekran uygulama (ilk deneyim akışından başlayarak) | ⏳ |
+| 4 | Bütün oyunun envanteri ve yeniden tasarımı (owner 2026-11-13 yeniden kurdu: §4.0) | 🔨 4.1 Üs bitti; 4.A envanter başlıyor |
 | 5 | Erişilebilirlik ayarları: yazı boyutu, haptik, basılı tutma alternatifi, flaş azaltma | ⏳ |
 | 6 | Ek araştırmalar: risk iletişimi, ses, Türkiye verisi, rakip ekranları (paralel yürüyebilir) | ⏳ |
 | 7 | Yaş gruplarıyla anlaşılırlık testi | ⏳ |
@@ -604,7 +604,86 @@ Owner sorulara cevap verdi ve sırayı onayladı ("Şimdi neye başlayacaksın?"
 3. **Basılı tutma ağırlıkları:** 3. aşama üç seviyeyi kurar. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla birlikte mi kararlaştırılsın?
    - ✅ Owner 2026-11-12: evet, 4. aşamada.
 
-## Aşama 4: Ekran ekran uygulama (owner ile planlandı 2026-11-12, uygulanıyor)
+## Aşama 4: Bütün oyunun envanteri ve yeniden tasarımı (owner 2026-11-13 yeniden kurdu, uygulanıyor)
+
+Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyuncunun her ekranda gördüğü üst bar, alt menü ve menüler hâlâ eski. Bu bölüm 2026-11-12 sırasını ve onay kuralını değiştirir; aşağıdaki eski kararlar geçmiş olarak durur.
+
+### 4.0 Owner kararları (2026-11-13)
+
+1. **İş iki parça.** (A) Bütün ekranlar, her durumları, her sheet ve her öğe baştan sona çıkarılır. (B) Her biri incelenir; kite ve o yerin işine göre **baştan tasarlanır**. "Eski öğe çıksın, yeni öğe girsin" değildir.
+2. **Döngü:** incele → nasıl bir düzen uygun, karar ver → düzenle → incele. Kite ve tasarımımıza uymayan ya da uydurulamayan bir öğe çıkarsa durulur, önce kite tasarımı eklenir.
+3. **Onay:** beklemeden devam. Claude karar verir, uygular, sıradakine geçer. Owner biten ekranlara uygun olduğunda paket paket bakar; geri bildirimi sonra işlenir. (2026-11-12'deki "owner bakmadan sonraki ekrana geçilmez" kuralının yerine.)
+   - **Ama asla seri ve özensiz değil (owner, 2026-11-13): "Asla seriye bağlayıp; incelemeden özensiz şekilde hızlı hızlı ilerleme!"** Onay beklememek hız demek değildir. Her yüzey, değişiklikten önce ve sonra 4.C'deki incelemenin tamamından geçmeden bitmiş sayılmaz ve sıradakine geçilmez. Birden çok ekranı incelemesiz arka arkaya bağlamak yasaktır.
+4. **Serbestlik: gezinme dahil her şey Claude'da**, konuştuğumuz tasarım kurallarına bağlı (4.0.1). Owner'ın örneği Klan ekranı: kartların iç içe girdiği, tıka basa doldurulmuş yerler. Çözüm: zorla doldurma yok; gereken yer kompakt, uzun açıklama bilgi kutusunda, gerekirse yeni sekme ve bölüm.
+5. **Kapsam: her şey.** Oyun içi bütün ekranlar, Savaş Alanı (arena), giriş sayfası ve kayıt, Wiki ve Akademi, halka açık sayfalar. Yönetim paneli 2026-11-11'de kapsam dışıydı; oyuncu görmediği için en sona konur.
+6. **Başlangıç yolculuğu en sonda:** prolog, uçuş okulu, başlangıç galaksisi. O işi yürüten oturum (`blindspace-new-player`, `feat/new-player-journey`) owner tarafından durduruldu.
+7. Değişmeyenler: oyun kuralı, denge ve sunucu davranışı değişmez (gerekirse sorulur); yayın ekran grubu hazır olunca master'a, canlıya owner "çıkar" deyince; boşa çıkan eski parçalar listelenir, owner onayıyla silinir.
+
+#### 4.0.1 Bağlayıcı tasarım kuralları (tek yerde)
+
+| Kaynak | Kural |
+|---|---|
+| 2. aşama kararları | Yazı ölçeği 12 / 13 / 14 / 16 / 19 / 24, sayı 18; 12 px altı yazı yok. Dokunma hedefi ≥ 44 px. Kenar boşluğu 12 px. Renk rolleri (yeşil yap, kırmızı tehlike, altın ödül; yalnız renkle anlatılan bilgi yok). Panel 160 ms. Sayılar K/M. Basılı tutma ağırlığı: geri alınabilir 0,6 / harcayan 1 / kesin 1,5 sn. |
+| Metin bütçesi | Ekran başına ≤ 55 kelime, ≤ 1 uzun blok. Satır olguyu söyler, kural dokununca açılır (kademeli açıklama). `docs/ux-writing.md`. |
+| CLAUDE.md §4 | Clarity, Predictability, Decision support, Interaction cost, Premium; ve §4.6 oyun hissi: eylemin fiziği, her eyleme ses + titreşim + görsel cevap, canlı sahne, tekdüzelik yok, sıradaki adım görünür. |
+| Owner örneği (Klan) | Kart içinde kart yok. İki sütunlu kartta metin taşmaz. Bir bölüm bir işi anlatır; anlatılacak çok şey varsa sekme ya da bölüm açılır. Açıklama paragrafı yerine bilgi kutusu (`InfoPeek` ya da dokununca açılan sheet). |
+| Ekran ekonomisi | 350 px telefonda bilgi yoğunluğu süsten önce gelir; her boşluğun amacı var. Masaüstü de tasarlanır: genişlik sınırlı, gerekirse sütun; raster büyütülmez. |
+
+### 4.A Envanter (önce bu, tamamı)
+
+**Çıktılar:**
+
+1. **Harita:** `docs/ui-envanter-2026-11-13.md`. Gezinme ağacı (alt menü → ekran → sekme → sheet → sheet içinden açılan), her yüzey için: oyuncu buraya neden gelir, hangi kararı verir, durumları, öğeleri, bugünkü sorunlar (ölçüm + göz), kitte karşılığı olmayan öğeler, öncelik.
+2. **Ölçüm aracının envanteri durum düzeyine iner:** `packages/ui-audit/src/inventory.ts` bugün 55 yüzeyi dosya düzeyinde tutuyor. Her yüzeye durum listesi ve her duruma ulaşım yolu (galeri görünümü ya da istemci senaryosu) eklenir.
+3. **Görüntüler:** her yüzeyin her durumu 350 px'te (tr), seçilenleri masaüstünde: `out/ui-envanter/`.
+
+**Yöntem:** koddan (her rota, sheet ve dialog açan her çağrı, koşullu her çizim) ve yerel oyunda üç hesapla gezerek: yeni, orta, geç oyuncu (`client:galaxy-new|mid|late` senaryoları). Durum kalıbı: boş, tipik, yoğun, kilitli, bekliyor, yükleniyor, hata, eğitim vurgusu, en uzun dil (DE/FR).
+
+**Bitiş ölçütleri (test olur):** kodda açılan her ekran, sheet ve dialog envanterde (`inventory.test.ts` genişler); her yüzeyin en az bir durumu ve her durumun ulaşım yolu var; haritada her yüzeyin sorun ve öncelik satırı dolu.
+
+### 4.B Sıra (Claude'un kararı, envanterden sonra gerekirse güncellenir)
+
+| # | Grup | Neden bu sırada |
+|---|---|---|
+| G1 | **Kabuk:** üst bar, alt menü, köşe butonları, zil ve olay listesi, komutan menüsü, ayarlar | Her ekranın çerçevesi; önce bu oturmazsa her ekran iki kez elden geçer |
+| G2 | **Üs** (4.1 kabukla birlikte yeniden gözden geçer) ve **tersane, filo, onarım** (eski 4.2) | Oyunun ana döngüsü burada başlar |
+| G3 | **İstihbarat:** teleskop, radar, sonda raporu, istihbarat sekmesi | Döngünün kalbi: bilgi → karar |
+| G4 | **Galaksi ve gönderme:** gezegen sayfası, hedef seçimi, filo gönderme, transfer, ticaret, yerleşme, madencilik | Karar → eylem |
+| G5 | **Sonuç:** savaş raporu ve tekrarı, kronik, yokken olanlar | Sonuç → yeni istihbarat |
+| G6 | **Ödüller, mağaza, envanter, kozmetik** | |
+| G7 | **Klan:** ekran, savaş, destek, bağış, dalga (owner örneği) | |
+| G8 | **İletişim:** sohbet, topluluk, duyurular, bildirim merkezi, geri bildirim | |
+| G9 | **Sıralama ve sezon:** liderlik, sezon arşivi ve özeti, anıtlar | |
+| G10 | **Hesap:** güvenlik, şifre, silme, tatil, sunucular ve galaksiler | |
+| G11 | **Wiki, Akademi, simülatör** | |
+| G12 | **Savaş Alanı (arena)** | Kendi HUD'u ve 50 dosyası olan ayrı dünya |
+| G13 | **Giriş sayfası, kayıt ve halka açık sayfalar** | Oyun dışı kapı |
+| G14 | **Yönetim paneli** | Oyuncu görmez |
+| G15 | **Başlangıç yolculuğu:** prolog, uçuş okulu, başlangıç galaksisi | Owner: en sona |
+
+### 4.C Her yüzeyin döngüsü
+
+1. **İncele:** oyuncunun anı (neden geldi, ilk neyi fark etmeli, hangi eylem, sonra dünyada ne değişir), beş ilke, ölçüm raporu, 6 dil, 350 px ve masaüstü.
+2. **Karar notu** (bu belgede, grubun altında, birkaç satır): ne değişiyor ve neden; gezinme değişikliği açıkça yazılır.
+3. **Kite eksik parça** varsa önce kit: galeri + test + kit ölçümü.
+4. **Uygula** (TDD; CSS ve className istisna). Ses, titreşim ve hareket dahil.
+5. **İncele:** ui-audit ölçümü temiz (12 px altı yazı, kontrast, 44 px, aralık, basma tepkisi, kesilme, kelime bütçesi), görüntüler 350 px × 6 dil + masaüstü, yerel oyunda bir oyuncu gibi akış.
+6. **Master'a alınır;** owner'a paket notu: ne değişti, oyunda nereden bakılır.
+
+### 4.D Not defteri
+
+| Grup | Envanter | Karar | Kit eki | Uygulama | Ölçüm | Owner baktı |
+|---|---|---|---|---|---|---|
+| G1 Kabuk | ⏳ | | | | | |
+| G2 Üs, tersane, filo | ⏳ | (Üs 4.1 ✅ 2026-11-12) | | | | |
+| G3–G15 | ⏳ | | | | | |
+
+**Doğrulanmış olgular:**
+- Yerel oyun: ana checkout'tan `DATABASE_URL=postgres://astera:astera@localhost:5433/astera_play pnpm start --skip-build` (ortak `astera` veritabanında başka dalın migration'ları var, master'ınki orada düşüyor).
+- Kitte olup oyuna takılmayanlar: `BottomNav`, `Toggle`, `Lever`, `Slider`, `LanguagePicker`, `RewardPod`, `UnitCard`, `CoachMark`, `Dialog`.
+- `../blindspace-uiux` çalışma ağacında başka bir oturumun commit edilmemiş `RoomGauge` değişiklikleri var (`game-ui/index.ts`, `game-ui/readouts.tsx`, `test/game-ui/room-gauge.test.tsx`); dokunulmuyor.
+
+### 4.E 2026-11-12 kararları (geçmiş; sıra ve onay kuralı 4.0 ile değişti)
 
 **Owner kararları (2026-11-12):**
 
