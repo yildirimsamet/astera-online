@@ -88,6 +88,23 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
+  /** Stage 4.1: "Thistle" in Turkish capitals read THİSTLE; a name keeps the capitals of the language it is named in. */
+  it('writes a title in the language it is named in, when told', () => {
+    render(<Sheet title="Thistle" eyebrow="Samet" kit={{ tone: 'self' }} titleLang="en" onClose={vi.fn()}>body</Sheet>);
+    expect(screen.getByRole('heading', { name: 'Thistle' })).toHaveAttribute('lang', 'en');
+  });
+
+  /** Review of 4.1 (2026-11-13): the kit head drew neither, so a page that passed them lost them. */
+  it('keeps the lead and the title action in the kit head too', () => {
+    render(
+      <Sheet title="Tharsis" kit={{ tone: 'hostile' }} lead={<span>→ Samet</span>} titleAction={<button type="button">Mute list</button>} onClose={vi.fn()}>
+        body
+      </Sheet>,
+    );
+    expect(screen.getByRole('heading', { name: /Tharsis/ })).toHaveTextContent('→ Samet');
+    expect(screen.getByRole('button', { name: 'Mute list' })).toBeInTheDocument();
+  });
+
   /*
     A phone keyboard closes when a field loses focus, and a page laid out around it moves:
     the first press on Close then only closed the keyboard (owner, chat, 2026-11-10).
@@ -378,5 +395,36 @@ describe('the sheet on a wide screen', () => {
     unmount();
     const dialog = render(<Sheet title="Refinery" onClose={vi.fn()} detents={['fit']}>body</Sheet>);
     expect(dialog.container.querySelector('[data-scrim]')).not.toHaveClass('v2-split:hidden');
+  });
+});
+
+/**
+ * THE SHEET IN THE KIT'S LOOK (stage 4.1). A screen moves to the kit by asking for it:
+ * the head becomes a plate with the subject's picture, its title in the display face and
+ * a line of meta under it; the body and the foot take the kit's metal. Nothing the sheet
+ * does changes: its handle, its close, Escape and the pull all answer as before.
+ */
+describe('the sheet in the kit look', () => {
+  const kit = { art: '/assets/core.png', meta: <span>Gelişim sınırı</span> };
+
+  it('draws the kit head: the picture, the eyebrow, the title and a line of meta', () => {
+    const view = render(<Sheet title="Komuta Çekirdeği" eyebrow="Seviye 6" kit={kit} onClose={vi.fn()} footer={<span>foot</span>}>body</Sheet>);
+    const panel = screen.getByRole('dialog', { name: 'Komuta Çekirdeği' });
+    expect(panel).toHaveClass('gk-sheet');
+    expect(screen.getByRole('heading', { name: 'Komuta Çekirdeği' })).toHaveClass('gk-sheet__title');
+    expect(view.container.querySelector('.gk-sheet__head img')).toHaveAttribute('src', '/assets/core.png');
+    expect(view.container.querySelector('.gk-sheet__eyebrow')).toHaveTextContent('Seviye 6');
+    expect(view.container.querySelector('.gk-sheet__meta')).toHaveTextContent('Gelişim sınırı');
+    expect(view.container.querySelector('.gk-sheet__foot')).toHaveTextContent('foot');
+  });
+
+  it('keeps the sheet’s own moves: the close, Escape and the handle', async () => {
+    const onClose = vi.fn();
+    render(<Sheet title="Komuta Çekirdeği" kit={kit} onClose={onClose} detents={['half', 'full']}>body</Sheet>);
+    await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });

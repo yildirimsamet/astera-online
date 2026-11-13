@@ -97,7 +97,7 @@ describe('what the Garbage Collector brought home, in Signals', () => {
       lootAlloy: 400, lootCrystal: 100, lootDeuterium: 0, unitsLost: 3, shipsHome: 40,
       ...lifted,
     }), AT.getTime());
-    expect(line).toMatch(/15k salvage/);
+    expect(line).toMatch(/15K salvage/);
   });
 
   it('says nothing about salvage when no collector lifted anything', () => {
@@ -113,14 +113,14 @@ describe('what the Garbage Collector brought home, in Signals', () => {
       trip: 'raid', ships: 40, fromUsername: 'Sable', fromPlanetName: 'Tharsis',
       lootAlloy: 400, lootCrystal: 100, lootDeuterium: 0, ...lifted,
     }), AT.getTime());
-    expect(line).toMatch(/15k salvage/);
+    expect(line).toMatch(/15K salvage/);
   });
 
   it('comes home with salvage even when the hold came home empty', () => {
     const line = describeNotification(news('fleet_returned', {
       trip: 'raid', ships: 12, lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, ...lifted,
     }), AT.getTime());
-    expect(line).toMatch(/15k salvage/);
+    expect(line).toMatch(/15K salvage/);
     expect(line).not.toMatch(/empty-handed/i);
   });
 
@@ -128,7 +128,7 @@ describe('what the Garbage Collector brought home, in Signals', () => {
     const line = describeNotification(news('fleet_returned', {
       trip: 'pirate', ships: 30, lootAlloy: 800, lootCrystal: 200, lootDeuterium: 0, ...lifted,
     }), AT.getTime());
-    expect(line).toMatch(/15k salvage/);
+    expect(line).toMatch(/15K salvage/);
   });
 });
 

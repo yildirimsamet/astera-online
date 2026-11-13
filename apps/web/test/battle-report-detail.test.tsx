@@ -579,7 +579,7 @@ describe('what a battle report explains', () => {
       attacking: false,
       salvage: { alloy: 9_000, crystal: 5_000, deuterium: 1_000 },
     }));
-    expect(screen.getByText(/Their Garbage Collectors lifted 15k of the wreckage/)).toBeVisible();
+    expect(screen.getByText(/Their Garbage Collectors lifted 15K of the wreckage/)).toBeVisible();
     expect(screen.queryByTestId('report-salvage')).not.toBeInTheDocument();
   });
 

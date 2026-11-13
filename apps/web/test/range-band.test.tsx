@@ -59,14 +59,14 @@ describe('the range band', () => {
   /** The figures stay, small and under the shape, to be checked rather than parsed. */
   it('still carries both ends as digits', () => {
     const view = band({ low: 1200, high: 3400 });
-    expect(view.container.textContent).toContain('1.2k');
-    expect(view.container.textContent).toContain('3.4k');
+    expect(view.container.textContent).toContain('1.2K');
+    expect(view.container.textContent).toContain('3.4K');
   });
 
   it('says the whole reading out loud for a screen reader', () => {
     const view = band({ label: 'Stock', low: 1200, high: 3400 });
     expect(view.container.querySelector('[role="img"]'))
-      .toHaveAttribute('aria-label', expect.stringContaining('between 1.2k and 3.4k'));
+      .toHaveAttribute('aria-label', expect.stringContaining('between 1.2K and 3.4K'));
   });
 
   /** A probe that read nothing must not divide by zero. */

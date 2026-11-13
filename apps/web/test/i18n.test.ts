@@ -26,7 +26,7 @@ import {
 } from '../src/i18n/languages.js';
 import { describeError } from '../src/i18n/errors.js';
 import { ApiError } from '../src/api/client.js';
-import { compact, full, percent } from '../src/lib/format.js';
+import { compact, full, percent, stock } from '../src/lib/format.js';
 import { countdown, duration, staleness } from '../src/lib/time.js';
 
 /**
@@ -330,6 +330,9 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // "Premium" is how a Turkish storefront names its tier, too — the store's badge (2026-09-25).
   'skins.premium',
   'fleetPage.hangar',
+  // K and M are the game's own letters in every language (owner 2026-11-12, standard 2.8).
+  'units.thousands',
+  'units.millions',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
@@ -556,6 +559,24 @@ describe('every added language keeps the locale contract', () => {
       }
     }
     expect(broken).toEqual([]);
+  });
+});
+
+/** Stage 4.1: the Bellows lines listed "alaşım, kristal ve Döteryum" — one capital in a run of three. */
+describe('a list of the three resources writes them alike', () => {
+  it('keeps deuterium lower-case beside alloy and crystal on the Bellows', () => {
+    for (const line of [tr.planet.grow.multiplierNote, tr.gains.foundry.unlocks]) {
+      expect(line).toMatch(/alaşım, kristal ve döteryum/);
+    }
+  });
+});
+
+/** Stage 4.1: a final hold's verb is drawn at head size on a 350 px face; measured, 18 characters is what fits. */
+describe('a final hold says its verb in a few letters', () => {
+  it.each([['tr', tr], ['en', en], ['de', de], ['fr', fr], ['es', es], ['ja', ja]] as const)('keeps the %s hold labels short', (_lang, locale) => {
+    for (const verb of [locale.vacation.coreConfirm, locale.planet.abandon.confirm]) {
+      expect(verb.length).toBeLessThanOrEqual(18);
+    }
   });
 });
 
@@ -912,18 +933,54 @@ describe('numbers and clocks follow the language', () => {
    * screen — an English number wearing a Turkish suffix.
    */
   it("uses the language's decimal mark in the compact form", async () => {
-    // Under ten thousand keeps one decimal; above it, none. Both forms have to
-    // survive the language change — the suffix as well as the separator.
-    expect(compact(1240)).toBe('1.2k');
-    expect(compact(12400)).toBe('12k');
+    // K and M in every language, the decimal mark the language's own (owner 2026-11-12, 2.8).
+    expect(compact(1240)).toBe('1.2K');
+    expect(compact(12400)).toBe('12.4K');
     await i18n.changeLanguage('tr');
-    // Turkish writes a thousand "B" and a million "Mn", as its own number formats do; a bare "b"
-    // was read as an unknown unit (player test B-01). The space never breaks a figure in two.
-    expect(compact(1240)).toBe('1,2\u00a0B');
-    expect(compact(12400)).toBe('12\u00a0B');
-    expect(compact(1_240_000)).toBe('1,2\u00a0Mn');
+    // Turkish once wrote "B" and "Mn"; "B" reads as billion to anyone who plays in English and
+    // "Mn" is nobody's abbreviation. Players know K and M from other games, as Whiteout writes them.
+    expect(compact(1240)).toBe('1,2K');
+    expect(compact(240_100)).toBe('240,1K');
+    expect(compact(1_240_000)).toBe('1,2M');
     await i18n.changeLanguage('en');
   });
+
+  it('keeps one decimal at every size and drops a bare ".0" (owner 2026-11-12, 2.8)', () => {
+    expect(compact(240_100)).toBe('240.1K');
+    expect(compact(240_000)).toBe('240K');
+    expect(compact(4_000)).toBe('4K');
+    expect(compact(12_400_000)).toBe('12.4M');
+    expect(compact(3_000_000)).toBe('3M');
+  });
+
+  it('moves up a unit when rounding reaches a thousand of it', () => {
+    expect(compact(999_960)).toBe('1M');
+    expect(compact(999_940)).toBe('999.9K');
+    expect(compact(999.6)).toBe('1K');
+    expect(compact(999)).toBe('999');
+  });
+
+  it('writes a loss with its sign, the same way', () => {
+    expect(compact(-4_200)).toBe('-4.2K');
+    expect(compact(-1_500_000)).toBe('-1.5M');
+    // halves round away from zero both ways, so a loss prints the size of the gain it mirrors
+    expect(compact(4_250)).toBe('4.3K');
+    expect(compact(-4_250)).toBe('-4.3K');
+    expect(compact(-999.5)).toBe('-1K');
+  });
+
+  it('keeps a store whole up to 99,999 and short above it (B1)', () => {
+    expect(stock(99_999)).toBe('99,999');
+    expect(stock(240_100)).toBe('240.1K');
+  });
+
+  it.each([['de', de], ['en', en], ['es', es], ['fr', fr], ['ja', ja], ['tr', tr]] as const)(
+    'spells thousands K and millions M in %s, with no space to break',
+    (_lng, bundle) => {
+      expect(bundle.units.thousands).toBe('{{value}}K');
+      expect(bundle.units.millions).toBe('{{value}}M');
+    },
+  );
 
   it('puts the percent sign on the side the language puts it', async () => {
     expect(percent(0.4)).toBe('40%');

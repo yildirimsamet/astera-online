@@ -1,0 +1,1147 @@
+[
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "kaynak sayacı",
+  "text": "113",
+  "shape": "caps",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 16.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "oyuncu adı",
+  "text": "Sen",
+  "shape": "caps",
+  "inkDp": 14,
+  "inkMm": 2.51,
+  "emDp": 19.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "alt satır",
+  "text": "Klan yok",
+  "shape": "full",
+  "inkDp": 9.3,
+  "inkMm": 1.68,
+  "emDp": 9.8
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "başlık",
+  "text": "Eğitim Süreci",
+  "shape": "full",
+  "inkDp": 14.3,
+  "inkMm": 2.57,
+  "emDp": 15.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "cümle",
+  "text": "çok oyunculu savaşları açmak için",
+  "shape": "full",
+  "inkDp": 9.7,
+  "inkMm": 1.74,
+  "emDp": 10.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "ilerleme",
+  "text": "1/3",
+  "shape": "caps",
+  "inkDp": 8.7,
+  "inkMm": 1.56,
+  "emDp": 12
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "bölüm etiketi",
+  "text": "Etkinlik",
+  "shape": "caps",
+  "inkDp": 14.7,
+  "inkMm": 2.63,
+  "emDp": 20.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "birincil buton",
+  "text": "Savaş",
+  "shape": "full",
+  "inkDp": 22.7,
+  "inkMm": 4.07,
+  "emDp": 23.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "ipucu balonu",
+  "text": "Daha Fazla ödül için savaş",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "alt menü etiketi",
+  "text": "Savaş",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "birincil buton (Savaş)",
+  "button": {
+   "x": 374,
+   "y": 1825,
+   "w": 361,
+   "h": 185
+  },
+  "wDp": 120.3,
+  "hDp": 61.7,
+  "wMm": 21.4,
+  "hMm": 11.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "profil butonu",
+  "button": {
+   "x": 640,
+   "y": 227,
+   "w": 112,
+   "h": 112
+  },
+  "wDp": 37.3,
+  "hDp": 37.3,
+  "wMm": 6.6,
+  "hMm": 6.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ana ekran",
+  "label": "menü butonu",
+  "button": {
+   "x": 929,
+   "y": 228,
+   "w": 111,
+   "h": 111
+  },
+  "wDp": 37,
+  "hDp": 37,
+  "wMm": 6.6,
+  "hMm": 6.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "başlık",
+  "text": "Şövalye",
+  "shape": "full",
+  "inkDp": 32,
+  "inkMm": 5.74,
+  "emDp": 33.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "ilerleme",
+  "text": "0/4",
+  "shape": "caps",
+  "inkDp": 14.7,
+  "inkMm": 2.63,
+  "emDp": 20.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "kart seviyesi",
+  "text": "2. Seviye",
+  "shape": "full",
+  "inkDp": 18,
+  "inkMm": 3.23,
+  "emDp": 18.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "istatistik etiketi",
+  "text": "Hasar",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 18.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "istatistik değeri",
+  "text": "86",
+  "shape": "caps",
+  "inkDp": 19.3,
+  "inkMm": 3.47,
+  "emDp": 26.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "artış",
+  "text": "+7",
+  "shape": "caps",
+  "inkDp": 18,
+  "inkMm": 3.23,
+  "emDp": 25
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "istatistik etiketi",
+  "text": "Hasar/Sn",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 18.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart yükseltme sonucu",
+  "label": "istatistik etiketi",
+  "text": "Can",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 18.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "başlık",
+  "text": "Şövalye",
+  "shape": "full",
+  "inkDp": 20.7,
+  "inkMm": 3.71,
+  "emDp": 21.8
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "alt başlık",
+  "text": "1. Seviye",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "küçük etiket",
+  "text": "ENDERLİK",
+  "shape": "accented",
+  "inkDp": 6.3,
+  "inkMm": 1.14,
+  "emDp": 7.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "değer",
+  "text": "Sıradan",
+  "shape": "caps",
+  "inkDp": 9.7,
+  "inkMm": 1.74,
+  "emDp": 13.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "sayaç",
+  "text": "2/2",
+  "shape": "caps",
+  "inkDp": 9.3,
+  "inkMm": 1.68,
+  "emDp": 13
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "buton üst etiketi",
+  "text": "Yükselt",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 18.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "buton yazısı",
+  "text": "Kullan",
+  "shape": "caps",
+  "inkDp": 17.7,
+  "inkMm": 3.17,
+  "emDp": 24.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "ikincil buton (Yükselt)",
+  "button": {
+   "x": 413,
+   "y": 1840,
+   "w": 253,
+   "h": 121
+  },
+  "wDp": 84.3,
+  "hDp": 40.3,
+  "wMm": 15,
+  "hMm": 7.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "birincil buton (Kullan)",
+  "button": {
+   "x": 768,
+   "y": 1838,
+   "w": 218,
+   "h": 122
+  },
+  "wDp": 72.7,
+  "hDp": 40.7,
+  "wMm": 12.9,
+  "hMm": 7.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "kart penceresi",
+  "label": "kapat",
+  "button": {
+   "x": 935,
+   "y": 772,
+   "w": 67,
+   "h": 67
+  },
+  "wDp": 22.3,
+  "hDp": 22.3,
+  "wMm": 4,
+  "hMm": 4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "kaynak sayacı",
+  "text": "113",
+  "shape": "caps",
+  "inkDp": 15.3,
+  "inkMm": 2.75,
+  "emDp": 21.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "sayfa başlığı",
+  "text": "Teklifler",
+  "shape": "caps",
+  "inkDp": 19,
+  "inkMm": 3.41,
+  "emDp": 26.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "bölüm başlığı",
+  "text": "Kraliyet Başlangıç Paketi",
+  "shape": "full",
+  "inkDp": 20,
+  "inkMm": 3.59,
+  "emDp": 21.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "süre",
+  "text": "Bitmesine: 2 g 23 sa",
+  "shape": "full",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 9.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "miktar",
+  "text": "10000",
+  "shape": "caps",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 15.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "fiyat",
+  "text": "₺15,00",
+  "shape": "full",
+  "inkDp": 16.7,
+  "inkMm": 2.99,
+  "emDp": 17.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "mağaza",
+  "label": "alt menü etiketi",
+  "text": "Dükkan",
+  "shape": "caps",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 16.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "üst başlık",
+  "text": "İşte Karşında:",
+  "shape": "full",
+  "inkDp": 18.7,
+  "inkMm": 3.35,
+  "emDp": 19.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "başlık",
+  "text": "Royale Taktikleri!",
+  "shape": "full",
+  "inkDp": 25.3,
+  "inkMm": 4.55,
+  "emDp": 26.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "cümle (balon)",
+  "text": "Takımını güçlendir, rakiplerini yen",
+  "shape": "full",
+  "inkDp": 14.3,
+  "inkMm": 2.57,
+  "emDp": 15.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "bölüm başlığı",
+  "text": "Birlikler Çağır",
+  "shape": "full",
+  "inkDp": 14,
+  "inkMm": 2.51,
+  "emDp": 14.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "ipucu",
+  "text": "Satmak için birlikleri",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "açıklama",
+  "text": "Her tur iksir kazanırsın ve üç birlikten",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "açıklama",
+  "text": "Birlikleri dükkana geri sürükleyerek",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "eğitim penceresi",
+  "label": "kapat",
+  "button": {
+   "x": 925,
+   "y": 454,
+   "w": 67,
+   "h": 67
+  },
+  "wDp": 22.3,
+  "hDp": 22.3,
+  "wMm": 4,
+  "hMm": 4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "başlık",
+  "text": "Ayarlar",
+  "shape": "full",
+  "inkDp": 18,
+  "inkMm": 3.23,
+  "emDp": 18.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "cümle",
+  "text": "Oyununu korumak ve birden çok cihazda",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "buton yazısı",
+  "text": "BAĞLAN",
+  "shape": "accented",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 15.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "balon",
+  "text": "Bağlan ve",
+  "shape": "full",
+  "inkDp": 9.7,
+  "inkMm": 1.74,
+  "emDp": 10.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "küçük etiket",
+  "text": "Ses",
+  "shape": "caps",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 11.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "buton yazısı",
+  "text": "Türkçe",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "etiket",
+  "text": "Ödül Şanslarını Göster",
+  "shape": "full",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 11.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "buton yazısı",
+  "text": "Hizmet Koşulları",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "ikincil buton yazısı",
+  "text": "API Belirteci",
+  "shape": "caps",
+  "inkDp": 8,
+  "inkMm": 1.44,
+  "emDp": 11.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "en küçük",
+  "text": "Oyuncu Kimliği: 49-88521914",
+  "shape": "full",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 10.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "birincil buton (BAĞLAN)",
+  "button": {
+   "x": 101,
+   "y": 766,
+   "w": 305,
+   "h": 128
+  },
+  "wDp": 101.7,
+  "hDp": 42.7,
+  "wMm": 18.1,
+  "hMm": 7.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "ayar butonu (Ses)",
+  "button": {
+   "x": 96,
+   "y": 1038,
+   "w": 427,
+   "h": 73
+  },
+  "wDp": 142.3,
+  "hDp": 24.3,
+  "wMm": 25.3,
+  "hMm": 4.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "ayar butonu (Hizmet Koşulları)",
+  "button": {
+   "x": 552,
+   "y": 1812,
+   "w": 427,
+   "h": 73
+  },
+  "wDp": 142.3,
+  "hDp": 24.3,
+  "wMm": 25.3,
+  "hMm": 4.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "ayarlar",
+  "label": "ikincil buton (API)",
+  "button": {
+   "x": 102,
+   "y": 1902,
+   "w": 420,
+   "h": 70
+  },
+  "wDp": 140,
+  "hDp": 23.3,
+  "wMm": 24.9,
+  "hMm": 4.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "başlık",
+  "text": "En İyi Asiller",
+  "shape": "full",
+  "inkDp": 18.7,
+  "inkMm": 3.35,
+  "emDp": 19.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "sekme",
+  "text": "Oyuncular",
+  "shape": "full",
+  "inkDp": 12.7,
+  "inkMm": 2.27,
+  "emDp": 13.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "buton yazısı",
+  "text": "Küresel",
+  "shape": "caps",
+  "inkDp": 14.7,
+  "inkMm": 2.63,
+  "emDp": 20.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "satır adı",
+  "text": "Miku",
+  "shape": "caps",
+  "inkDp": 12.3,
+  "inkMm": 2.21,
+  "emDp": 17.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "satır alt yazısı",
+  "text": "discord.gg/hog",
+  "shape": "full",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 10.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "puan",
+  "text": "2588",
+  "shape": "caps",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 16.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "sıra",
+  "text": "3",
+  "shape": "caps",
+  "inkDp": 11.7,
+  "inkMm": 2.09,
+  "emDp": 16.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "sekme butonu (Küresel)",
+  "button": {
+   "x": 227,
+   "y": 644,
+   "w": 298,
+   "h": 97
+  },
+  "wDp": 99.3,
+  "hDp": 32.3,
+  "wMm": 17.7,
+  "hMm": 5.8
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "liste satırı",
+  "button": {
+   "x": 60,
+   "y": 1515,
+   "w": 958,
+   "h": 139
+  },
+  "wDp": 319.3,
+  "hDp": 46.3,
+  "wMm": 56.8,
+  "hMm": 8.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "sıralama",
+  "label": "kapat",
+  "button": {
+   "x": 969,
+   "y": 425,
+   "w": 72,
+   "h": 71
+  },
+  "wDp": 24,
+  "hDp": 23.7,
+  "wMm": 4.3,
+  "hMm": 4.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "başlık",
+  "text": "Klan",
+  "shape": "caps",
+  "inkDp": 16,
+  "inkMm": 2.87,
+  "emDp": 22.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "klan adı",
+  "text": "Efsane",
+  "shape": "caps",
+  "inkDp": 14.3,
+  "inkMm": 2.57,
+  "emDp": 19.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "açıklama",
+  "text": "Klan savaşları yapmayanlar",
+  "shape": "full",
+  "inkDp": 10.3,
+  "inkMm": 1.85,
+  "emDp": 10.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "istatistik etiketi",
+  "text": "KONUM",
+  "shape": "caps",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 13.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "istatistik etiketi",
+  "text": "GEREKEN",
+  "shape": "caps",
+  "inkDp": 9.3,
+  "inkMm": 1.68,
+  "emDp": 13
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "istatistik değeri",
+  "text": "Türkiye",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "üye adı",
+  "text": "selli",
+  "shape": "caps",
+  "inkDp": 11.3,
+  "inkMm": 2.03,
+  "emDp": 15.7
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "üye rolü",
+  "text": "Lider Yardımcısı",
+  "shape": "caps",
+  "inkDp": 8.3,
+  "inkMm": 1.5,
+  "emDp": 11.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "kupa",
+  "text": "13917",
+  "shape": "caps",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 18.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "buton yazısı",
+  "text": "Katıl",
+  "shape": "caps",
+  "inkDp": 14.3,
+  "inkMm": 2.57,
+  "emDp": 19.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "birincil buton (Katıl)",
+  "button": {
+   "x": 782,
+   "y": 1118,
+   "w": 234,
+   "h": 94
+  },
+  "wDp": 78,
+  "hDp": 31.3,
+  "wMm": 13.9,
+  "hMm": 5.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "üye satırı",
+  "button": {
+   "x": 60,
+   "y": 1430,
+   "w": 958,
+   "h": 139
+  },
+  "wDp": 319.3,
+  "hDp": 46.3,
+  "wMm": 56.8,
+  "hMm": 8.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan",
+  "label": "kapat",
+  "button": {
+   "x": 969,
+   "y": 425,
+   "w": 72,
+   "h": 71
+  },
+  "wDp": 24,
+  "hDp": 23.7,
+  "wMm": 4.3,
+  "hMm": 4.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "klan adı",
+  "text": "Efsane",
+  "shape": "caps",
+  "inkDp": 13,
+  "inkMm": 2.33,
+  "emDp": 18.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "alt satır",
+  "text": "Çevrimiçi üyeler: 1",
+  "shape": "full",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 9.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "istek sahibi",
+  "text": "İLAYDA",
+  "shape": "accented",
+  "inkDp": 10.7,
+  "inkMm": 1.91,
+  "emDp": 12.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "istek başlığı",
+  "text": "Kart İsteği!",
+  "shape": "full",
+  "inkDp": 11,
+  "inkMm": 1.97,
+  "emDp": 11.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "küçük etiket",
+  "text": "Sana ait:",
+  "shape": "caps",
+  "inkDp": 8.7,
+  "inkMm": 1.56,
+  "emDp": 12
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "küçük etiket",
+  "text": "Alınan Kartlar:",
+  "shape": "caps",
+  "inkDp": 9,
+  "inkMm": 1.62,
+  "emDp": 12.5
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "sayaç",
+  "text": "3/4",
+  "shape": "caps",
+  "inkDp": 8.7,
+  "inkMm": 1.56,
+  "emDp": 12
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "buton yazısı",
+  "text": "Bağış Yap",
+  "shape": "full",
+  "inkDp": 14.7,
+  "inkMm": 2.63,
+  "emDp": 15.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "sistem satırı",
+  "text": "Yıldırım Klana katıldı.",
+  "shape": "caps",
+  "inkDp": 9.7,
+  "inkMm": 1.74,
+  "emDp": 13.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "mesaj",
+  "text": "Yeni bir Efsanevi Kart açıldı!",
+  "shape": "full",
+  "inkDp": 12,
+  "inkMm": 2.15,
+  "emDp": 12.6
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "buton yazısı",
+  "text": "TAMAM",
+  "shape": "caps",
+  "inkDp": 16,
+  "inkMm": 2.87,
+  "emDp": 22.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "satır butonu (Bağış Yap)",
+  "button": {
+   "x": 749,
+   "y": 698,
+   "w": 220,
+   "h": 71
+  },
+  "wDp": 73.3,
+  "hDp": 23.7,
+  "wMm": 13,
+  "hMm": 4.2
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "alt buton (Kart İste)",
+  "button": {
+   "x": 23,
+   "y": 1991,
+   "w": 260,
+   "h": 107
+  },
+  "wDp": 86.7,
+  "hDp": 35.7,
+  "wMm": 15.4,
+  "hMm": 6.4
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "alt buton (Dostluk Savaşı)",
+  "button": {
+   "x": 321,
+   "y": 1993,
+   "w": 252,
+   "h": 105
+  },
+  "wDp": 84,
+  "hDp": 35,
+  "wMm": 14.9,
+  "hMm": 6.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "klan sohbeti",
+  "label": "birincil buton (TAMAM)",
+  "button": {
+   "x": 413,
+   "y": 2213,
+   "w": 253,
+   "h": 102
+  },
+  "wDp": 84.3,
+  "hDp": 34,
+  "wMm": 15,
+  "hMm": 6.1
+ },
+ {
+  "game": "clash-royale",
+  "screen": "menü",
+  "label": "menü öğesi",
+  "text": "Savaş Günlüğü",
+  "shape": "full",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 14
+ },
+ {
+  "game": "clash-royale",
+  "screen": "menü",
+  "label": "menü öğesi",
+  "text": "Liderlik Tabloları",
+  "shape": "caps",
+  "inkDp": 10,
+  "inkMm": 1.79,
+  "emDp": 13.9
+ },
+ {
+  "game": "clash-royale",
+  "screen": "menü",
+  "label": "menü öğesi",
+  "text": "Ayarlar",
+  "shape": "full",
+  "inkDp": 13.3,
+  "inkMm": 2.39,
+  "emDp": 14
+ },
+ {
+  "game": "clash-royale",
+  "screen": "menü",
+  "label": "menü öğesi butonu",
+  "button": {
+   "x": 429,
+   "y": 158,
+   "w": 436,
+   "h": 106
+  },
+  "wDp": 145.3,
+  "hDp": 35.3,
+  "wMm": 25.8,
+  "hMm": 6.3
+ },
+ {
+  "game": "clash-royale",
+  "screen": "menü",
+  "label": "menü öğesi butonu (Ayarlar)",
+  "button": {
+   "x": 429,
+   "y": 1146,
+   "w": 436,
+   "h": 102
+  },
+  "wDp": 145.3,
+  "hDp": 34,
+  "wMm": 25.8,
+  "hMm": 6.1
+ }
+]

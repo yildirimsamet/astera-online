@@ -53,6 +53,7 @@ import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
 import { RadiationBombEffects } from './RadiationBombEffects.js';
 import { PlanetEmbers } from './PlanetEmbers.js';
+import { EmpStorms } from './EmpStorms.js';
 import { FaultMarks } from './FaultMarks.js';
 import { AlarmRings } from './AlarmRings.js';
 import type { ActiveClanAlarm } from '../lib/clanAlarm.js';
@@ -111,7 +112,12 @@ import { OpeningWork, useOpeningViews, useSightRequest } from './OpeningViews.js
 const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
-import { MiningFlights, miningFocusRadius } from './MiningFlights.jsx';
+import { ScanReveals } from './ScanReveals.jsx';
+import { CoreLevelUps } from './CoreLevelUps.jsx';
+import type { CoreClock } from './coreLevelUp.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
+import { MiningFlights, miningFocusRadius, miningReach, miningRockAt } from './MiningFlights.jsx';
+import { heldReach } from './miningDig.js';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
 import { monumentFocusDistance } from './MonumentModel.js';
@@ -279,6 +285,11 @@ export interface GalaxyCanvasProps {
    * (D124). Absent draws nothing, which is right for a client ahead of its server.
    */
   sensors?: readonly ReachRing[];
+  /**
+   * The player's own worlds' Command Core clocks: their level and when queued upgrades finish. A Core
+   * that levels up plays its step on the map (owner, 2026-11-13). Absent outside the galaxy screen.
+   */
+  cores?: readonly CoreClock[];
   /** Radiation clouds (K3, F10). Public, like the worlds; absent draws nothing. */
   radiation?: readonly RadiationSourceView[];
   hpRadiation?: readonly HpRadiationSourceView[];
@@ -412,6 +423,7 @@ export function GalaxyCanvas({
   intergalacticConvoy = null,
   meteorShower = false,
   sensors,
+  cores,
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
@@ -587,7 +599,7 @@ export function GalaxyCanvas({
       const run = runs.find((r) => r.id === focus.id);
       if (!run) return null;
       const origin = runHomePosition(run, nodes, homePosition);
-      return () => runPosition(run, origin, serverNow(), nodes);
+      return () => runPosition(run, origin, serverNow(), nodes, heldReach(run.id, miningReach(run, asteroids, wrecks, nodes, scale)), miningRockAt(run, asteroids, seasonStart));
     }
 
     /**
@@ -693,7 +705,7 @@ export function GalaxyCanvas({
       return contact ? contactFocusRadius(contact) * scale : 0;
     }
     return 0;
-  }, [focus, nodes, asteroids, runs, pending, contacts, scale]);
+  }, [focus, nodes, asteroids, wrecks, runs, pending, contacts, scale]);
 
   /**
    * WHAT IS FOCUSED, AS A STABLE STRING — and it is the fix for a camera that
@@ -915,6 +927,8 @@ export function GalaxyCanvas({
         <RadiationBombEffects sources={hpRadiation} nodes={nodes} monuments={monuments} />
         {/* A Death Star's EMP hour, as a dull ember that survives the zoom (owner, 2026-10-16). */}
         <PlanetEmbers nodes={nodes} />
+        {/* Up close, the storm over that world for its hour (owner, 2026-11-12). */}
+        <EmpStorms nodes={nodes} />
         {/* The commander's own broken colonies, at every zoom (owner, 2026-10-16). */}
         <FaultMarks nodes={nodes} />
         {/* A clanmate under a raid: a red ring at every zoom, and the raid's trail if radar read it (F2). */}
@@ -956,6 +970,14 @@ export function GalaxyCanvas({
         */}
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
+        {/* The first time a world is known, the telescope's scan finds out who holds it (owner, 2026-11-12). */}
+        <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+          <ScanReveals nodes={nodes} selfId={selfId} sensors={sensors} />
+        </Suspense></SkinAssetBoundary>
+        {/* A Core that levels up steps the world up on the map; a tier jump says so (owner, 2026-11-13). */}
+        <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+          <CoreLevelUps nodes={nodes} cores={cores} selfId={selfId} />
+        </Suspense></SkinAssetBoundary>
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>
           <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
@@ -984,8 +1006,11 @@ export function GalaxyCanvas({
         {homePosition && (
           <MiningFlights
             runs={runs}
+            asteroids={asteroids}
+            wrecks={wrecks}
             home={homePosition}
             nodes={nodes}
+            seasonStart={seasonStart}
             focusedId={focus?.kind === 'run' ? focus.id : null}
             onSelect={(id) => {
               onFocus({ kind: 'run', id });

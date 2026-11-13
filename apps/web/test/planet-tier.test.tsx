@@ -66,7 +66,8 @@ describe('a commander can read their own world’s tier', () => {
    */
   it('sets it in micro type', () => {
     const view = render(<PlanetHero planet={at(9)} />);
-    expect(view.container.querySelector('[data-planet-tier]')).toHaveClass('text-micro');
+    // Stage 4.1: the kit's caption step (`--gk-t-floor`), the sheet's smallest.
+    expect(view.container.querySelector('[data-planet-tier]')).toHaveClass('gk-hero__tier');
   });
 
   it.each(['tr', 'en'])('names the figure in %s', async (lang) => {
@@ -82,6 +83,13 @@ describe('a commander can read their own world’s tier', () => {
    * sheet that printed "Tier 0" — or nothing — for a world mid-capture would be
    * stating something the rules never produce.
    */
+  /** Owner 2026-11-12 (4.1): the page head names the world and stays on screen; the card says what kind and how far. */
+  it('leaves the world\'s name to the page head', () => {
+    const view = render(<PlanetHero planet={planetView({}, { name: 'Kestrel-12' })} />);
+    expect(view.container).not.toHaveTextContent('Kestrel-12');
+    expect(view.container.querySelector('[data-planet-tier]')).not.toBeNull();
+  });
+
   it('floors a world with no Core at tier 1', () => {
     const view = render(<PlanetHero planet={planetView({ buildings: {} })} />);
     expect(view.container.querySelector('[data-planet-tier]')).toHaveTextContent(/\b1\b/);

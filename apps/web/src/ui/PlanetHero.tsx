@@ -16,13 +16,12 @@ import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
+import { SATELLITE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
+import { Banner, Glyph, StoreGauge } from '../game-ui/index.js';
 import { Meter } from './kit/index.js';
-import { LockIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 import { StarField } from '../v2/kit/StarField.js';
-import { StoreBar } from '../v2/kit/StoreBar.js';
 
 /**
  * "This is MY planet."
@@ -66,40 +65,32 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
   return (
     <div className="flex flex-col gap-2">
       {loyalty && (
-        <div data-loyalty data-testid="loyalty-line" className="border-t border-v2-line/70 pt-1">
-          <div className="flex items-baseline gap-2">
-            <span className="v2-legend text-v2-ink-3">{t('faults.loyalty.title')}</span>
-            <span className="h-1 flex-1 overflow-hidden rounded-full bg-v2-deep/60">
+        <div data-loyalty data-testid="loyalty-line" className="gk gk-loyalty">
+          <div className="gk-loyalty__row">
+            <span className="gk-label">{t('faults.loyalty.title')}</span>
+            <span className="gk-bar gk-loyalty__bar">
               <span
                 data-loyalty-bar
-                className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-v2-self'}`}
+                className={`gk-bar__fill ${loyalty.value <= 25 ? 'gk-fill-hostile' : 'gk-fill-self'}`}
                 style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
               />
             </span>
-            <span className="font-v2-mono text-caption text-v2-ink">
-              {t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}
-            </span>
+            <span className="gk-loyalty__value gk-num">{t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}</span>
             {loyalty.minutesLeft !== null && (
-              <span className="font-v2-mono text-micro text-v2-ink-3">
-                {t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}
-              </span>
+              <span className="gk-sub gk-num">{t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}</span>
             )}
           </div>
-          <p className="mt-0.5 text-micro text-v2-ink-3">
-            {t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}
-          </p>
-          <div data-testid="fault-protection" className="mt-2 rounded-chip border border-v2-self/20 bg-v2-self/5 px-2 py-1.5">
+          <p className="gk-sub">{t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}</p>
+          <div data-testid="fault-protection" className="gk-loyalty__guard">
             {faultProtectionRemaining > 0 && (
-              <p className="font-v2-mono text-caption text-v2-self">
+              <p className="gk-loyalty__guarded gk-num">
                 {t(faultProtectionPaused ? 'faults.protection.paused' : 'faults.protection.active', {
                   time: countdown(faultProtectionRemaining),
                 })}
               </p>
             )}
-            <p className="text-micro leading-snug text-v2-ink-2">{t('faults.protection.rule')}</p>
-            {(planet.faults?.length ?? 0) > 0 && (
-              <p className="mt-0.5 text-micro text-v2-ink-3">{t('faults.protection.existing')}</p>
-            )}
+            <p className="gk-sub">{t('faults.protection.rule')}</p>
+            {(planet.faults?.length ?? 0) > 0 && <p className="gk-sub">{t('faults.protection.existing')}</p>}
           </div>
         </div>
       )}
@@ -112,7 +103,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
         THE WORLD IS THE HERO (E5, the mock's Base): the portrait centred and large, its
         satellites on the ring around it, the name and the kind under it.
       */}
-      <div data-planet-subject className="relative isolate flex flex-col items-center gap-1 overflow-hidden rounded-control pb-3 pt-3">
+      <div data-planet-subject className="gk relative isolate flex flex-col items-center gap-1 overflow-hidden rounded-control pb-3 pt-3">
         {/* The world on the galaxy, as the mock draws it: the sky is this section's alone. */}
         <StarField className="absolute inset-0 -z-10" />
         <div data-planet-portrait className="flex flex-col items-center">
@@ -131,9 +122,8 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
             />
             <OrbitSockets planet={planet} />
           </div>
-          <p className="v2-name max-w-full truncate text-body">{planet.planet.name}</p>
-          <div className="flex items-baseline gap-1.5 text-micro text-v2-ink-3">
-            <span className={`uppercase tracking-wide ${planet.planet.kind === 'COLONY' ? 'text-v2-self' : 'text-v2-ink-2'}`}>
+          <div className="gk-hero__kind">
+            <span className={`gk-label${planet.planet.kind === 'COLONY' ? ' gk-tone-self' : ''}`}>
               {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
             </span>
             <span aria-hidden>·</span>
@@ -170,7 +160,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
 function TierMark({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   return (
-    <p data-planet-tier className="v2-legend mt-1 text-center text-micro">
+    <p data-planet-tier className="gk-hero__tier">
       {t('planetHero.tier', { tier: coreTier(planet.buildings.CORE ?? 0) })}
     </p>
   );
@@ -234,31 +224,21 @@ function OrbitSockets({ planet }: { planet: PlanetView }) {
             role="img"
             aria-label={label}
             title={label}
-            className={`absolute left-1/2 top-1/2 grid size-7 place-items-center rounded-full ${
-              state === 'held'
-                ? 'border border-v2-self/50 bg-v2-panel'
-                : state === 'inactive'
-                  ? 'border border-v2-line bg-v2-deep/80 text-v2-ink-3'
-                : state === 'open'
-                  ? 'border border-dashed border-v2-line-hi bg-v2-deep/60'
-                  : 'border border-v2-line bg-v2-deep/80 text-v2-ink-3'
-            }`}
+            className="gk-socket"
             style={{ transform: `rotate(${String(angle)}deg) translate(70px) rotate(${String(-angle)}deg) translate(-50%, -50%)` }}
           >
             {satellite && (
               <img
                 src={SATELLITE_ART[satellite]}
                 alt=""
-                className={state === 'inactive'
-                  ? 'size-6 object-contain opacity-45 grayscale'
-                  : 'size-6 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]'}
+                className="gk-socket__art"
               />
             )}
-            {state === 'inactive' && <LockIcon className="absolute -right-1 -top-1 size-2.5" />}
+            {state === 'inactive' && <span className="gk-socket__badge"><Glyph id="lock" /></span>}
             {state === 'locked' && (
               <>
-                <LockIcon className="size-3" />
-                <span className="absolute -bottom-3.5 font-v2-mono text-micro text-v2-ink-3">{socketOpensAt(index)}</span>
+                <Glyph id="lock" />
+                <span className="gk-socket__level gk-num">{socketOpensAt(index)}</span>
               </>
             )}
           </span>
@@ -279,10 +259,10 @@ function OrbitLine({ planet }: { planet: PlanetView }) {
     parts.push(<span key="used">{t('planetHero.orbit')} <span>{t('planet.orbit.slotsUsed', { used, total })}</span></span>);
   }
   /* A full orbit is a ceiling the Core raises: a gap in yellow, never a threat's red (K2). */
-  if (full) parts.push(<span key="full" className="text-v2-warn">{t('planet.orbit.slotsNone')}</span>);
+  if (full) parts.push(<span key="full" className="gk-tone-warn">{t('planet.orbit.slotsNone')}</span>);
   if (next !== null) parts.push(<span key="next">{t('planet.orbit.slotsNext', { level: next })}</span>);
   return (
-    <p data-testid="orbit-line" className="mt-0.5 text-center font-v2-mono text-micro text-v2-ink-3">
+    <p data-testid="orbit-line" className="gk-hero__orbit gk-num">
       {parts.map((part, index) => <Fragment key={String(index)}>{index > 0 && ' · '}{part}</Fragment>)}
     </p>
   );
@@ -295,8 +275,8 @@ function OrbitLine({ planet }: { planet: PlanetView }) {
  * picture). In three narrow columns the bar was a hundred pixels and the Vault's bracket
  * on it read as a square; a full-width row gives the cells room, so the bracket hugs the
  * cells it protects. Each row reads left to right: the resource, what the store holds of
- * what it can, the cells with the safe part bracketed under the shield (`StoreBar`), and
- * the rate at the end. The rule of the bracket is said once, under the rows.
+ * what it can, the bar with the safe part boxed under the shield (the kit's `StoreGauge`,
+ * stage 4.1), and the rate at the end. The rule of the box is said once, under the rows.
  *
  * DEUTERIUM IS ALWAYS HERE. Owner instruction, 2026-09-15: *"bu sectionda döteryum
  * üretimi gözükmüyor"* — it is the resource that decides whether a fleet can leave,
@@ -310,47 +290,25 @@ function ProductionRow({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const p = planet.planet;
   const rows = [
-    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy, tone: 'text-v2-alloy' },
-    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal, tone: 'text-v2-crystal' },
-    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium, tone: 'text-v2-deut' },
+    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy },
+    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal },
+    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium },
   ] as const;
 
   return (
-    <div data-testid="planet-rates" className="flex flex-col gap-1.5 px-1 font-v2-ui">
-      {rows.map(({ id, rate, held, cap, safe, tone }) => {
-        const filled = held >= cap;
-        return (
-          <div
-            key={id}
-            data-resource={id}
-            role="group"
-            aria-label={t(`planetHero.${id}Store`, {
-              held: full(Math.floor(held)),
-              cap: full(cap),
-              safe: full(safe),
-            })}
-            className="grid grid-cols-[0.875rem_4.75rem_minmax(0,1fr)_3.5rem] items-end gap-x-2"
-          >
-            <img src={RESOURCE_ART[id]} alt="" aria-hidden className="mb-[-1px] size-3.5 object-contain" />
-            <span
-              data-testid={`store-${id}`}
-              className={`truncate font-v2-mono text-caption leading-none tabular-nums ${filled ? 'text-v2-warn' : 'text-v2-ink'}`}
-            >
-              {compact(held)}
-              <span className={filled ? '' : 'text-v2-ink-3'}>/{compact(cap)}</span>
-            </span>
-            <StoreBar value={held} cap={cap} safe={safe} tone={id} />
-            <p
-              data-testid={`rate-${id}`}
-              className={`truncate text-right font-v2-mono text-caption font-semibold leading-none ${tone}`}
-            >
-              {rate > 0 ? `+${compact(rate)}` : compact(rate)}
-              <span className="font-normal text-micro text-v2-ink-3">{t('planetHero.perHourSuffix')}</span>
-            </p>
-          </div>
-        );
-      })}
-      <p className="text-micro leading-snug text-v2-ink-3">{t('planetHero.storeRule')}</p>
+    <div data-testid="planet-rates" className="gk gk-stores">
+      {rows.map(({ id, rate, held, cap, safe }) => (
+        <StoreGauge
+          key={id}
+          resource={id}
+          held={held}
+          cap={cap}
+          safe={safe}
+          rate={rate}
+          label={t(`planetHero.${id}Store`, { held: full(Math.floor(held)), cap: full(cap), safe: full(safe) })}
+        />
+      ))}
+      <p className="gk-sub gk-stores__rule">{t('planetHero.storeRule')}</p>
     </div>
   );
 }
@@ -384,9 +342,9 @@ function Firepower({ planet, coreOnline }: { planet: PlanetView; coreOnline: boo
 function Disrupted({ ms }: { ms: number }) {
   const { t } = useTranslation();
   return (
-    <p className="mt-1 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 text-center font-v2-mono text-caption text-v2-hostile">
-      {t('planetHero.disrupted', { countdown: countdown(ms) })}
-    </p>
+    <div className="gk">
+      <Banner tone="hostile" variant="strip" title={<span className="gk-num">{t('planetHero.disrupted', { countdown: countdown(ms) })}</span>} />
+    </div>
   );
 }
 

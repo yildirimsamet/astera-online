@@ -733,7 +733,7 @@ export const units = {
   daysHours: '{{d}}d {{h}}h',
   minutes: '{{m}}m',
   numberLocale: 'fr-FR',
-  thousands: '{{value}}k',
+  thousands: '{{value}}K',
   millions: '{{value}}M',
   percent: '{{value}}%',
   rangeJoin: '–',

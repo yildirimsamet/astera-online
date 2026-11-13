@@ -1,4 +1,6 @@
 import { createViewMemo, viewChanged } from './viewMemo.js';
+import { drawnRadius } from './coreLevelUp.js';
+import { serverNow } from '../lib/clock.js';
 import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
@@ -347,6 +349,7 @@ function LoadedPlanetSkinModel({
     let fullCount = 0;
     let lowCount = 0;
     let hitCount = 0;
+    const now = serverNow();
     let seated = false;
     for (const node of nodes) {
       const distance = camera.position.distanceTo(helper.position.set(...node.position));
@@ -358,7 +361,7 @@ function LoadedPlanetSkinModel({
         planetSkinRotation(node.id, previewPhaseOffset, clock.elapsedTime, freezeRotation),
         0,
       );
-      helper.scale.setScalar(node.radius * PLANET_SKIN_BODY_SCALE);
+      helper.scale.setScalar(drawnRadius(node, now) * PLANET_SKIN_BODY_SCALE);
       helper.updateMatrix();
       const mesh = lod === 'full' ? full : low;
       const index = lod === 'full' ? fullCount++ : lowCount++;

@@ -48,7 +48,7 @@ export const vacation = {
   "coreEyebrow": "司令コア · レベル10",
   "coreTitle": "次の挑戦に進みますか？",
   "coreBody": "この惑星の司令コアがレベル10になるとTier 4に入ります。この帯域では、より発展した相手と戦う可能性があります。艦隊、防衛、開発を整えてから進めましょう。",
-  "coreConfirm": "レベル10を注文",
+  "coreConfirm": "レベル10に強化",
   "coreBack": "今は待つ",
   "VACATION_ACTIVE": "命令を出す前に休暇を終了してください。",
   "VACATION_MAIN_ONLY": "休暇モードはメイン銀河で利用できます。",

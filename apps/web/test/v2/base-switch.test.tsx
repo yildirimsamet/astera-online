@@ -29,12 +29,13 @@ describe('the Base switch', () => {
   // Owner 2026-10-27: "bu tabların içindeki yazıların yanına renkli iconlar koy".
   it('marks each page with its own coloured glyph beside its word', () => {
     render(<BaseSwitch value="world" onChange={vi.fn()} arenaAvailable />);
-    const glyphs = ['This world', 'Research', 'Commander ship'].map(name => {
-      const glyph = screen.getByRole('tab', { name }).querySelector('svg');
+    // Stage 4.1: the kit's tabs carry the glyph, each in its own tone.
+    const tones = ['This world', 'Research', 'Commander ship'].map(name => {
+      const glyph = screen.getByRole('tab', { name }).querySelector<HTMLElement>('.gk-tab__glyph');
       expect(glyph).toHaveAttribute('aria-hidden', 'true');
-      return glyph?.getAttribute('class') ?? '';
+      expect(glyph?.querySelector('svg')).not.toBeNull();
+      return glyph?.style.color;
     });
-    const tones = glyphs.map(name => /text-v2-[a-z]+/.exec(name)?.[0]);
     expect(tones.every(Boolean)).toBe(true);
     expect(new Set(tones).size).toBe(3);
   });
@@ -59,5 +60,11 @@ describe('the galaxy hosts it on both Base pages', () => {
     expect(ship).toMatch(/headerArt=\{ATMOSPHERE\.commanderShip\}/);
     for (const head of [world, ship]) expect(head).not.toMatch(/quietTitle/);
     for (const art of [ATMOSPHERE.baseWorld, ATMOSPHERE.commanderShip]) expect(existsSync(`public${art.src}`)).toBe(true);
+  });
+
+  /** World names are English words (server `planetNameFor`): Turkish capitals would write QUİLLON. */
+  it('writes the world\'s name in the language it is named in', () => {
+    const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && ("), source.indexOf('<BaseSwitch', source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && (")));
+    expect(world).toMatch(/titleLang="en"/);
   });
 });

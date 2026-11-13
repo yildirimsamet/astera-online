@@ -27,11 +27,24 @@
     linear-gradient(0deg, var(--color-v2-panel), transparent 45%);
 }
 .sheet-art-head header { position: relative; }
-.sheet-art-head header > button {
+/* v2 heads only: the kit's head (.gk-sheet__head) has its own round plates */
+.sheet-art-head header:not(.gk-sheet__head) > button {
   background-color: rgb(4 6 11 / 65%);
   border-radius: var(--radius-control);
 }
-.sheet-art-head header p { color: var(--color-v2-ink-2); }
+.sheet-art-head header:not(.gk-sheet__head) p { color: var(--color-v2-ink-2); }
+/* The kit's head over a page's own art (owner 2026-10-27: the world has its art): the art is
+   the plate, so the kit's metal plate steps aside and only its type and round close stay;
+   the art fades into the kit sheet's metal, not the v2 panel. */
+.sheet-art-head .gk-sheet__head {
+  background: none;
+  clip-path: none;
+}
+.sheet-art-head .gk-sheet__head::before { content: none; }
+.gk-sheet .sheet-art-head [data-sheet-art]::after {
+  background: linear-gradient(90deg, rgb(4 6 11 / 85%), rgb(4 6 11 / 40%) 65%, rgb(4 6 11 / 25%)),
+    linear-gradient(0deg, var(--gk-metal-2), transparent 45%);
+}
 
 .commander-menu {
   --menu-art-shade: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-deep) 90%, transparent), transparent);
@@ -81,8 +94,8 @@
   background: linear-gradient(0deg, rgb(8 13 24 / 25%), transparent 70%);
 }
 [data-layout='card'] [data-art]:has(.building-scene-art) ~ [data-card-copy] {
-  background: rgb(13 20 35 / 75%);
-  border-top: 1px solid rgb(109 137 181 / 12%);
+  background: color-mix(in srgb, var(--gk-metal-2) 80%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 12%, transparent);
   backdrop-filter: blur(3px);
 }
 [data-layout='card']:has(.building-scene-art) [data-card-copy] [class*='ink-3'] {
@@ -92,7 +105,7 @@
 [data-layout='card'] [data-art] > span { z-index: 1; }
 [data-layout='card'] [data-art]:has(.building-scene-art) [data-art-lock] {
   bottom: auto;
-  height: 96px;
+  height: 84px;
 }
 [data-layout='card'] [data-art] img[data-art-state='locked'] { filter: grayscale(1) brightness(.85); }
 
@@ -121,30 +134,24 @@
 [data-base-surface='defend'] { --section-material: var(--color-v2-neutral); }
 [data-base-surface='tactical'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 28%, var(--color-v2-neutral)); }
 [data-base-surface='reach'] { --section-material: var(--color-v2-sky-cool); }
-[data-base-surface] :is([data-layout='card'], .repair-scene) {
+/* Cards wear the kit's own metal and edge (.gk-bcard); only the repair scene keeps the section tint. */
+[data-base-surface] .repair-scene {
   border-color: color-mix(in srgb, var(--section-material) 30%, var(--color-v2-line));
   background-image: linear-gradient(135deg, color-mix(in srgb, var(--section-material) 5%, transparent), transparent 75%);
 }
-[data-base-surface] :is([data-layout='card'], .repair-scene)[data-highlighted] {
+[data-base-surface] .repair-scene[data-highlighted] {
   border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
 }
-[data-base-surface] [data-row-line='name'] {
-  box-shadow: 0 1px color-mix(in srgb, var(--section-material) 14%, transparent);
-}
-#planet-tab-grow { --tab-material: var(--color-v2-alloy); }
-#planet-tab-orbit { --tab-material: var(--color-v2-sky-violet); }
-#planet-tab-defend { --tab-material: var(--color-v2-neutral); }
-#planet-tab-tactical { --tab-material: color-mix(in srgb, var(--color-v2-alloy) 40%, var(--color-v2-neutral)); }
-#planet-tab-reach { --tab-material: var(--color-v2-sky-cool); }
-[id^='planet-tab-'] { box-shadow: inset 0 2px color-mix(in srgb, var(--tab-material) 60%, transparent); }
+/* The planet's tabs wear the kit's plates (.gk-tab); no per-tab tint, as the cards. */
 
-[data-queue-lane] {
+/* The v2 lanes only; the kit's lanes (.gk-lane) stand on their own slots. */
+[data-queue-lane]:not(.gk-lane) {
   padding-inline: 6px;
   border: 1px solid var(--color-v2-line);
   border-radius: var(--radius-control);
   background-image: linear-gradient(100deg, color-mix(in srgb, var(--color-v2-line-hi) 10%, transparent), transparent);
 }
-[data-queue-lane] > p { color: var(--color-v2-ink-2); }
+[data-queue-lane]:not(.gk-lane) > p { color: var(--color-v2-ink-2); }
 
 [data-constellation-card] {
   border-color: color-mix(in srgb, var(--color-v2-sky-violet) 45%, var(--color-v2-line));

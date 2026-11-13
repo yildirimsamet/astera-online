@@ -62,3 +62,36 @@ it('reserves just one extra two-triangle patch for Tempest map lightning', () =>
   expect(tempest.index!.count - prism.index!.count).toBe(6);
   tempest.dispose(); prism.dispose();
 });
+
+it('gives Mach shock pinches, Pulsar a short teardrop jet and Ion a needle throat into a long widening wake', () => {
+  const tail = (style: 'aurora' | 'mach' | 'pulsar' | 'ion') => {
+    const geometry = createPlumeGeometry(style);
+    geometry.computeBoundingBox();
+    const z = geometry.boundingBox!.min.z;
+    geometry.dispose();
+    return z;
+  };
+  for (const style of ['mach', 'pulsar', 'ion'] as const) {
+    const geometry = createPlumeGeometry(style);
+    expect(geometry.index!.count / 3, style).toBeLessThanOrEqual(1536);
+    expect(plumeRadius(1, style), style).toBe(0);
+    expect(plumeRadius(0, style), style).toBeLessThan(plumeRadius(.15, style));
+    geometry.computeBoundingBox();
+    expect(geometry.boundingBox!.max.z, style).toBeLessThan(0);
+    geometry.dispose();
+  }
+  // Mach: a few soft diamonds down the first half of the jet, gentler than Helios' twelve chambers.
+  const samples = Array.from({ length: 121 }, (_, i) => plumeRadius(i * .005, 'mach'));
+  const pinches = samples.filter((r, i) => i > 0 && i < samples.length - 1 && r < samples[i - 1]! && r < samples[i + 1]!).length;
+  expect(pinches).toBeGreaterThanOrEqual(3);
+  expect(pinches).toBeLessThanOrEqual(5);
+  // Pulsar: fattest just behind the nozzle, and the shortest flame in the shop.
+  const pulsar = Array.from({ length: 101 }, (_, i) => plumeRadius(i / 100, 'pulsar'));
+  const aurora = Array.from({ length: 101 }, (_, i) => plumeRadius(i / 100, 'aurora'));
+  expect(pulsar.indexOf(Math.max(...pulsar))).toBeLessThan(aurora.indexOf(Math.max(...aurora)));
+  expect(tail('pulsar')).toBeGreaterThan(tail('aurora') * .8);
+  // Ion: a needle at the nozzle, a wake that keeps widening, the longest flame.
+  expect(plumeRadius(.05, 'ion')).toBeLessThan(plumeRadius(.05, 'aurora') * .7);
+  expect(plumeRadius(.6, 'ion')).toBeGreaterThan(plumeRadius(.15, 'ion') * 1.3);
+  expect(tail('ion')).toBeLessThan(tail('aurora'));
+});

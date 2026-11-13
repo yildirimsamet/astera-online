@@ -7,7 +7,8 @@
 * Defend / Orbit / Reach / Grow : deux verbes et deux noms, ce qui choque peu en
 * anglais. En français, mélanger « Défendre / Renseignement / Portée / Développer »
 * rendrait la barre incohérente, car l’impératif s’adresse directement au joueur.
-* Les quatre deviennent donc des noms : Production · Renseignement · Défense · Flotte.
+* Les quatre deviennent donc des noms : Production · Infos · Défense · Flotte (« Infos »,
+* court, pour que les cinq onglets tiennent sur un téléphone de 350 px).
 * L’onglet dit « ce qui se trouve ici » ; la phrase dessous dit « ce que tu décides ici ».
   */
 export const planet = {
@@ -87,7 +88,7 @@ export const planet = {
     "action": "Abandonner la colonie",
     "title": "Abandonner cette colonie ?",
     "cancel": "Garder la colonie",
-    "confirm": "Oui, abandonner",
+    "confirm": "Abandonner",
     "pending": "Abandon en cours…",
     "irreversible": "Cette colonie devient neutre et libère une place de colonie. Tu ne peux pas annuler cette action.",
     "keeps": "Les bâtiments, satellites, ressources et défenses terrestres restent sur la planète. Les Étoiles de la Mort prêtes et les charges d’interception y restent aussi.",
@@ -165,7 +166,7 @@ export const planet = {
     defendProblem: "Défense",
     defendQuestion:
       "Améliore ici Aegis, le Magasin et les défenses au sol.",
-    orbitProblem: "Renseignement",
+    orbitProblem: "Infos",
     orbitQuestion:
       "Construis ici les outils qui te permettent d’observer tes rivaux.",
     reachProblem: "Flotte",
@@ -521,6 +522,7 @@ export const upgradeRow = {
   takes: "{{duration}}",
   takesLabel: "Construction : {{duration}}",
   ladder: "Niveau {{level}} / {{max}}",
+  level: "Niveau {{level}}",
 } as const;
 export const action = {
   verbRaise: "Améliorer",
@@ -586,8 +588,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · avant les unités",
   vaultSafe: "Protégé dans le Dépôt",
   storeLabel: "Dépôt",
-  storeRule:
-    "Le niveau du Dépôt détermine la longueur de ces barres ; la zone encadrée par un bouclier représente la part protégée contre les raids.",
+  storeRule: "Un Dépôt plus haut allonge les barres ; un raid ne prend pas la zone au bouclier.",
   alloyStore: "{{held}} / {{cap}} alliage, dont {{safe}} protégés",
   crystalStore: "{{held}} / {{cap}} cristal, dont {{safe}} protégés",
   deuteriumStore: "{{held}} / {{cap}} Deutérium, dont {{safe}} protégés",
@@ -845,7 +846,7 @@ export const faults = {
     title: "Loyauté de ce monde",
     battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
     line: "Loyauté : {{value}} %. Elle baisse avec {{count}} pannes actives. À ce rythme, elle atteint zéro dans {{time}} et tu perds la colonie.",
-    bar: "Loyauté %{{value}}",
+    bar: "{{value}} %",
     left: "{{time}} restantes",
   },
   price: {

@@ -107,7 +107,14 @@ vec3 impactDirection = vPlanetImpactPosition / max(length(vPlanetImpactPosition)
 float impactLon = abs(impactDirection.x) + abs(impactDirection.z) < 1e-6 ? 0.0 : atan(impactDirection.z, impactDirection.x);
 vec2 impactUv = vec2(impactLon / 6.28318530718 + 0.5,
   asin(clamp(impactDirection.y, -1.0, 1.0)) / 3.14159265359 + 0.5);
-vec2 impactScar = texture2D(uPlanetImpactMask, impactUv).rg;
+// Longitude jumps a whole turn on one meridian. Left to the GPU, that jump reads as the whole mask
+// passing inside one pixel and picks its blurriest level, the mask's average red: a thin dashed line
+// from pole to pole (owner, 2026-11-12). Folding the jump out keeps the right level on the seam.
+vec2 impactDx = dFdx(impactUv);
+vec2 impactDy = dFdy(impactUv);
+impactDx.x -= floor(impactDx.x + 0.5);
+impactDy.x -= floor(impactDy.x + 0.5);
+vec2 impactScar = textureGrad(uPlanetImpactMask, impactUv, impactDx, impactDy).rg;
 diffuseColor.rgb *= 1.0 - impactScar.g * 0.65;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 // Molten, not painted (owner, 2026-10-16: "daha belirgin daha parlak daha glowing"): the
@@ -120,5 +127,5 @@ impactGlow *= vColor.rgb;
 #endif
 totalEmissiveRadiance += impactGlow;`);
   };
-  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v3`;
+  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v4`;
 }

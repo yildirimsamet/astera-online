@@ -130,7 +130,16 @@ it('asks before ordering Core level 10 and spends nothing when dismissed', async
   expect(upgrade).not.toHaveBeenCalled();
   await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about command core/i }));
   await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
-  await userEvent.click(screen.getByRole('button', { name: 'Order level 10' }));
+  // Owner 2026-11-12 (4.1): the vacation lock opens for good, so the consent is the final 1.5 s hold.
+  const hold = within(screen.getByRole('dialog')).getByRole('button', { name: /Raise to L10/ });
+  // the hold has the footer's whole width; the way back is under it
+  expect([...screen.getByRole('dialog').querySelectorAll('[data-consent-foot] > button')].map((face) => face.textContent))
+    .toEqual([expect.stringMatching(/^Raise to L10/), 'Wait for now']);
+  expect(hold.style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+  await userEvent.click(hold);
+  expect(upgrade).not.toHaveBeenCalled();
+  hold.focus();
+  await userEvent.keyboard('{Enter}{Enter}');
   expect(upgrade).toHaveBeenCalledOnce();
   expect(upgrade.mock.calls[0]?.[0]).toEqual({ type: 'CORE', confirmedLevel: 10 });
 });
@@ -368,7 +377,7 @@ describe('the two build queues', () => {
     const queues = screen.getByRole('region', { name: 'Build queues' });
     expect(within(queues).getByText('Construction')).toBeInTheDocument();
     expect(within(queues).getByText('Yard')).toBeInTheDocument();
-    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(2);
+    expect(queues.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(2);
     const lanes = within(queues).getAllByRole('button');
     expect(lanes[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
     expect(lanes[1]?.getAttribute('aria-label') ?? '').toMatch(/Dart/);
@@ -427,7 +436,7 @@ describe('the two build queues', () => {
       send a guaranteed 404 is worse than no control.
     */
     const queues = screen.getByRole('region', { name: 'Build queues' });
-    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(1);
+    expect(queues.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(1);
     await userEvent.click(within(queues).getAllByRole('button')[0]!);
     const sheet = await screen.findByRole('dialog', { name: 'Build queues' });
     expect(within(sheet).queryByRole('button', { name: /^Cancel / })).toBeNull();
@@ -458,7 +467,7 @@ describe('the two build queues', () => {
 
     const row = view.container.querySelector('#row-REFINERY [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'queued');
-    expect(row).toHaveTextContent('L3');
+    expect(within(row as HTMLElement).getByRole('img', { name: 'Level 3' })).toHaveTextContent(/^3$/);
     expect(row).toHaveTextContent('1 order queued');
     await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about alloy refinery/i }));
     await userEvent.click(screen.getByRole('button', { name: /raise to l5/i }));

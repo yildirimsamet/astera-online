@@ -8,6 +8,8 @@ import { unitModel } from './model.js';
 import { STANCE_LIGHT, isWrecked, type PlanetNode } from './scene.js';
 import { resolvedOnly } from './Satellites.jsx';
 import { sphereInFrustum } from './frustum.js';
+import { drawnRadius } from './coreLevelUp.js';
+import { serverNow } from '../lib/clock.js';
 
 /**
  * WHAT A SEASON OF DEVELOPMENT LOOKS LIKE FROM ORBIT.
@@ -707,11 +709,13 @@ function Shell({
     const spinX = (t / PERIOD_X) * Math.PI * 2;
     let fullDrawn = 0;
     let lowDrawn = 0;
+    const now = serverNow();
 
     wearers.forEach((wearer) => {
       const [px, py, pz] = wearer.planet.position;
       const light = STANCE_LIGHT[wearer.planet.stance];
-      const radius = shellRadius(wearer.planet.radius);
+      // The shell grows with its world through a Core step (`drawnRadius`).
+      const radius = shellRadius(drawnRadius(wearer.planet, now));
       const distance = Math.hypot(
         camera.position.x - px,
         camera.position.y - py,

@@ -280,6 +280,18 @@ importers:
         specifier: workspace:*
         version: link:../rules
 
+  packages/ui-audit:
+    devDependencies:
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@22.20.1)
+
 packages:
 
   '@adobe/css-tools@4.5.0':
@@ -469,7 +481,7 @@ packages:
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.19.12':
     resolution: {integrity: sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==}

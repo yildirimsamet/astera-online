@@ -82,8 +82,16 @@ describe('the planet hero states colony loyalty', () => {
   it('draws loyalty in your colour, never grey', () => {
     render(<PlanetHero planet={planetView({ loyalty: { value: 80, minutesLeft: null } })} />);
     const bar = screen.getByTestId('loyalty-line').querySelector('[data-loyalty-bar]')!;
-    expect(bar).toHaveClass('bg-v2-self');
+    expect(bar).toHaveClass('gk-fill-self');
     expect(bar.className).not.toMatch(/ink|bone|grey|gray/);
+  });
+
+  /** Stage 4.1 word budget: the heading names it; the figure beside the bar is only the figure. */
+  it('says the word loyalty once, in the heading', () => {
+    render(<PlanetHero planet={planetView({ loyalty: { value: 64, minutesLeft: null } })} />);
+    const line = screen.getByTestId('loyalty-line');
+    expect(line.textContent.match(/loyalty/gi)).toHaveLength(1);
+    expect(line).toHaveTextContent('64%');
   });
 
   it('does not invent loyalty for a payload without it', () => {

@@ -87,7 +87,7 @@ export const planet = {
     "action": "Koloniyi terk et",
     "title": "Koloniyi terk edecek misin?",
     "cancel": "Vazgeç",
-    "confirm": "Evet, koloniyi terk et",
+    "confirm": "Terk et",
     "pending": "Terk ediliyor…",
     "irreversible": "Bu koloni tarafsız olur ve koloni kotanda bir yer açılır. Bu işlemi geri alamazsın.",
     "keeps": "Binalar, uydular, kaynaklar ve yer savunmaları gezegende kalır. Hazır Ölüm Yıldızları ve önleme mühimmatı da gezegende kalır.",
@@ -407,7 +407,7 @@ export const planet = {
   grow: {
     multiplierBand: "Üretim uydusu",
     multiplierNote:
-      "Körük, bu dünyanın alaşım, kristal ve Döteryum üretimini %6 artırır ve ortak yörünge ağında bir yuva kaplar.",
+      "Körük, bu dünyanın alaşım, kristal ve döteryum üretimini %6 artırır ve ortak yörünge ağında bir yuva kaplar.",
   },
 
   projectSheet: {
@@ -523,6 +523,7 @@ export const upgradeRow = {
   takes: "{{duration}}",
   takesLabel: "Yapımı {{duration}} sürer",
   ladder: "Seviye {{level}} / {{max}}",
+  level: "Seviye {{level}}",
 } as const;
 
 export const action = {
@@ -588,7 +589,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/sa · birliklerden önce",
   vaultSafe: "Kasada güvende",
   storeLabel: "Depo",
-  storeRule: "Depo seviyesi bu çubukların uzunluğunu belirler; kalkanlı kutu akına karşı korumalı dilimdir.",
+  storeRule: "Depo yükseldikçe çubuk uzar; kalkanlı kutuyu akın alamaz.",
   alloyStore: "{{held}} / {{cap}} alaşım, {{safe}} kadarı korumalı",
   crystalStore: "{{held}} / {{cap}} kristal, {{safe}} kadarı korumalı",
   deuteriumStore: "{{held}} / {{cap}} döteryum, {{safe}} kadarı korumalı",
@@ -839,7 +840,7 @@ export const faults = {
     title: "Bu dünyanın sadakati",
     battleLoss: "Hafif yenilgi −15 · ağır yenilgi −30 · Ölüm Yıldızı −{{strike}}",
     line: "Sadakat: %{{value}}. {{count}} arıza nedeniyle düşüyor. Bu hızla {{time}} içinde sıfıra ulaşır ve koloniyi kaybedersin.",
-    bar: "Sadakat %{{value}}",
+    bar: "%{{value}}",
     left: "{{time}} kaldı",
   },
   price: {

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from './Button.js';
+import { Banner, GameButton } from '../../game-ui/index.js';
 
 /**
  * The furniture: headings, dividers, empty states, loading states.
@@ -166,9 +166,9 @@ export function SkeletonText({ lines = 3, className = '' }: { lines?: number; cl
 /** Where a whole surface is still arriving. Says what is coming, not "Loading…". */
 export function Waiting({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 px-2 py-6">
-      <span className="size-2 animate-pulse rounded-full bg-crystal shadow-[0_0_10px_1px_rgba(89,200,255,0.8)]" />
-      <p className="legend">{children}</p>
+    <div className="gk gk-waiting">
+      <span className="gk-waiting__dot" aria-hidden="true" />
+      <p className="gk-label">{children}</p>
     </div>
   );
 }
@@ -192,13 +192,11 @@ export function Waiting({ children }: { children: ReactNode }) {
 export function Unreachable({ what, onRetry }: { what: string; onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className="px-2 py-6" role="alert">
+    <div className="gk gk-unreachable" role="alert">
       {/* `what` arrives already translated from the caller, which is the one that
           knows WHICH surface failed. The sentence around it is this component's. */}
-      <p className="text-body text-threat-ink">{t('surface.unreachable', { what })}</p>
-      <Button className="mt-3" onClick={onRetry}>
-        {t('surface.retry')}
-      </Button>
+      <Banner tone="hostile" variant="strip" glyph="refresh" title={t('surface.unreachable', { what })} />
+      <GameButton glyph="refresh" onPress={onRetry}>{t('surface.retry')}</GameButton>
     </div>
   );
 }

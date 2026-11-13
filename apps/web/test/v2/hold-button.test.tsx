@@ -23,6 +23,16 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the hold-to-commit button', () => {
+  it('does not commit a hold whose action became impossible halfway', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(<HoldButton label="Launch 74 ships" onCommit={onCommit} />);
+    fireEvent.pointerDown(screen.getByRole('button'), { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS / 2); });
+    rerender(<HoldButton label="Launch 74 ships" onCommit={onCommit} disabledReason="Not enough fuel" />);
+    act(() => { vi.advanceTimersByTime(HOLD_MS * 2); });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it('commits only after an unbroken hold', () => {
     const { onCommit, button } = setup();
     fireEvent.pointerDown(button, { button: 0 });
@@ -125,6 +135,38 @@ describe('the hold-to-commit button', () => {
     expect(button).not.toHaveTextContent('sure?');
     fireEvent.keyDown(button, { key: 'Enter' });
     expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it('a hold after an armed Enter commits once, not again on the click that ends it', () => {
+    const { onCommit, button } = setup();
+    fireEvent.keyDown(button, { key: 'Enter' });
+    fireEvent.pointerDown(button, { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS); });
+    fireEvent.pointerUp(button);
+    fireEvent.click(button, { detail: 1 });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('a held Enter key never confirms by itself', () => {
+    const { onCommit, button } = setup();
+    fireEvent.keyDown(button, { key: 'Enter' });
+    fireEvent.keyDown(button, { key: 'Enter', repeat: true });
+    fireEvent.keyDown(button, { key: 'Enter', repeat: true });
+    expect(onCommit).not.toHaveBeenCalled();
+    fireEvent.keyDown(button, { key: 'Enter' });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('a hold commits the action as it stands when the hold completes', () => {
+    const first = vi.fn();
+    const latest = vi.fn();
+    const { rerender } = render(<HoldButton label="Launch 74 ships" onCommit={first} />);
+    fireEvent.pointerDown(screen.getByRole('button'), { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS / 2); });
+    rerender(<HoldButton label="Launch 80 ships" onCommit={latest} />);
+    act(() => { vi.advanceTimersByTime(HOLD_MS); });
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledTimes(1);
   });
 
   it('commits only once however long it is held', () => {

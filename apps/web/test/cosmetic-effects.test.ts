@@ -54,6 +54,19 @@ it('isolates each new ring and engine in its own program, so one faulty driver p
   expect(effectProgram('prism', 1).fragmentShader).not.toBe(effectProgram('prism', 0).fragmentShader);
 });
 
+it('gives Mach, Pulsar and Ion their own drive programs, each budgeted for a formation at map range', () => {
+  const drives = ['tempest', 'prism', 'mach', 'pulsar', 'ion'] as const;
+  expect(new Set(drives.map(style => effectProgram(style, 1).fragmentShader)).size).toBe(drives.length);
+  for (const style of ['mach', 'pulsar', 'ion'] as const) {
+    const program = effectProgram(style, 1);
+    expect(program.fragmentShader, style).not.toBe(effectFragment);
+    expect(program.vertexShader, style).not.toBe(effectVertex);
+    // Motors merge into one pixel far away: the formation shares one glow, or bloom swells it.
+    expect(program.fragmentShader, style).toContain('uNozzleCount');
+    expect(program.fragmentShader, style).toContain('vPlumePixels');
+  }
+});
+
 it('gilds only the paid standards of the new wave; the included ones stay plain cloth', () => {
   const wave = ['sovereign', 'kraken', 'oni', 'voideye', 'valkyrie', 'scarab', 'stag', 'horizon', 'tiger', 'scorpion'] as const;
   for (const style of wave) expect(cosmeticEffectRecipe(style).sheen, style).toBe(true);

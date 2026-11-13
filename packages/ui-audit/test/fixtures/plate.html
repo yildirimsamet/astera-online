@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui-audit plate</title>
+<!-- A plate drawn in its text's own colour (Tailwind's bg-current/60): the player sees it, so the ground is light. -->
+<style>
+  body { margin: 0; background: #000; color: #fff; font: 16px/1.4 sans-serif; }
+  #plate { position: absolute; top: 20px; left: 20px; margin: 0; padding: 8px 12px; color: #fff; background: color-mix(in srgb, currentColor 60%, #000); }
+</style>
+</head>
+<body>
+  <p id="plate">Plaka yazısı</p>
+</body>
+</html>

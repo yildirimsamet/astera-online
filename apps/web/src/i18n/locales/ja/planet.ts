@@ -80,7 +80,7 @@ export const planet = {
     "action": "植民地を放棄",
     "title": "この植民地を放棄しますか？",
     "cancel": "植民地を維持",
-    "confirm": "はい、放棄する",
+    "confirm": "放棄する",
     "pending": "放棄中…",
     "irreversible": "この植民地は中立になり、植民地枠が1つ空きます。この操作は取り消せません。",
     "keeps": "建物、衛星、資源、地上防衛は惑星に残ります。発射準備済みのデス・スターと迎撃弾も残ります。",
@@ -537,6 +537,7 @@ export const upgradeRow = {
   takesLabel: "ビルドには {{duration}} がかかります",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
+  level: "レベル{{level}}",
 } as const;
 
 /** The control at the right-hand edge of every row. */
@@ -607,7 +608,7 @@ export const planetHero = {
   shieldRegen: "+{{amount}}/h · 船より先に吸収",
   vaultSafe: "貯蔵庫で保護中",
   storeLabel: "貯蔵庫",
-  storeRule: "貯蔵庫 レベルは、これらのバーの長さを設定します。シールドの下のブラケットは襲撃から安全です。",
+  storeRule: "貯蔵庫を上げるとバーが伸びます。盾の枠内は略奪されません。",
   alloyStore: "{{cap}} 合金の {{held}}、{{safe}} 保護",
   crystalStore: "{{held}} の {{cap}} クリスタル、{{safe}} 保護",
   deuteriumStore: "{{held}} の {{cap}} 重水素、{{safe}} 保護",
@@ -885,7 +886,7 @@ export const faults = {
     title: "この惑星の忠誠度",
     battleLoss: "部分的敗北 −15 · 決定的敗北 −30 · デス・スター −{{strike}}",
     line: "忠誠度：{{value}}%。{{count}}件の故障により低下しています。この速度では{{time}}後にゼロとなり、植民地を失います。",
-    bar: "忠誠度{{value}}%",
+    bar: "{{value}}%",
     left: "残り{{time}}",
   },
   price: {

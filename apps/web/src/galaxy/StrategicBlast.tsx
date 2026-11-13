@@ -11,7 +11,7 @@ import { playSceneSound } from './audio.js';
 import { screenFloorScale } from './publicMoments.js';
 
 /** The smallest world radius, in screen pixels, a strike's fire is drawn around. */
-const BLAST_MIN_PIXELS = 7;
+export const BLAST_MIN_PIXELS = 7;
 import { unitModel } from './model.js';
 
 const FRAGMENT = '/assets/models/debris/wreck-plate-gd-v3.glb';
@@ -25,7 +25,7 @@ export function prewarmStrategicBlast(): void {
 }
 
 /** Every cloud has its own continuous frame while sharing one source and one draw. */
-function atlasBatch(map: THREE.Texture, count: number, additive: boolean, columns = 8, rows = 8) {
+export function atlasBatch(map: THREE.Texture, count: number, additive: boolean, columns = 8, rows = 8, depthTest = false) {
   map.colorSpace = THREE.SRGBColorSpace;
   map.generateMipmaps = false;
   map.minFilter = THREE.LinearFilter;
@@ -38,7 +38,7 @@ function atlasBatch(map: THREE.Texture, count: number, additive: boolean, column
   geometry.setAttribute('aTint', colours);
   const material = new THREE.ShaderMaterial({
     uniforms: { uMap: { value: map }, uGrid: { value: new THREE.Vector2(columns, rows) } },
-    transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
+    transparent: true, depthWrite: false, depthTest, toneMapped: false,
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     vertexShader: `
       attribute float aFrame; attribute float aAlpha; attribute vec3 aTint;

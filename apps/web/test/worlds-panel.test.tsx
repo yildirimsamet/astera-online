@@ -75,8 +75,8 @@ describe('the worlds panel', () => {
     render(panel());
 
     const capitalRow = row('Kestrel-12');
-    expect(within(capitalRow).getByText('9.4k')).toBeInTheDocument();
-    expect(within(capitalRow).getByText('2.1k')).toBeInTheDocument();
+    expect(within(capitalRow).getByText('9.4K')).toBeInTheDocument();
+    expect(within(capitalRow).getByText('2.1K')).toBeInTheDocument();
     // Five at home plus two guns, and one bay of three already flying.
     expect(within(capitalRow).getByText(/7 craft/i)).toBeInTheDocument();
     /*

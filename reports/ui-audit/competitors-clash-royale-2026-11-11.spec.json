@@ -1,0 +1,1067 @@
+[
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_154648_Clash Royale.png",
+    "screen": "ana ekran",
+    "words": 23,
+    "items": [
+      {
+        "label": "kaynak sayacı",
+        "text": "113",
+        "box": [
+          642,
+          108,
+          714,
+          156
+        ]
+      },
+      {
+        "label": "oyuncu adı",
+        "text": "Sen",
+        "box": [
+          30,
+          244,
+          116,
+          286
+        ]
+      },
+      {
+        "label": "alt satır",
+        "text": "Klan yok",
+        "box": [
+          30,
+          294,
+          156,
+          326
+        ]
+      },
+      {
+        "label": "başlık",
+        "text": "Eğitim Süreci",
+        "box": [
+          414,
+          364,
+          722,
+          412
+        ]
+      },
+      {
+        "label": "cümle",
+        "text": "çok oyunculu savaşları açmak için",
+        "box": [
+          300,
+          414,
+          826,
+          450
+        ]
+      },
+      {
+        "label": "ilerleme",
+        "text": "1/3",
+        "box": [
+          538,
+          466,
+          602,
+          502
+        ],
+        "shape": "caps"
+      },
+      {
+        "label": "bölüm etiketi",
+        "text": "Etkinlik",
+        "box": [
+          498,
+          1594,
+          662,
+          1638
+        ]
+      },
+      {
+        "label": "birincil buton",
+        "text": "Savaş",
+        "box": [
+          450,
+          1876,
+          662,
+          1952
+        ]
+      },
+      {
+        "label": "ipucu balonu",
+        "text": "Daha Fazla ödül için savaş",
+        "box": [
+          342,
+          2084,
+          786,
+          2126
+        ]
+      },
+      {
+        "label": "alt menü etiketi",
+        "text": "Savaş",
+        "box": [
+          484,
+          2290,
+          598,
+          2334
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "birincil buton (Savaş)",
+        "seed": [
+          410,
+          1850
+        ]
+      },
+      {
+        "label": "profil butonu",
+        "seed": [
+          660,
+          240
+        ]
+      },
+      {
+        "label": "menü butonu",
+        "seed": [
+          930,
+          250
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_154642_Clash Royale.png",
+    "screen": "kart yükseltme sonucu",
+    "words": 13,
+    "items": [
+      {
+        "label": "başlık",
+        "text": "Şövalye",
+        "box": [
+          320,
+          340,
+          764,
+          436
+        ]
+      },
+      {
+        "label": "ilerleme",
+        "text": "0/4",
+        "box": [
+          536,
+          480,
+          652,
+          524
+        ],
+        "shape": "caps"
+      },
+      {
+        "label": "kart seviyesi",
+        "text": "2. Seviye",
+        "box": [
+          390,
+          966,
+          680,
+          1020
+        ]
+      },
+      {
+        "label": "istatistik etiketi",
+        "text": "Hasar",
+        "box": [
+          500,
+          1114,
+          632,
+          1154
+        ]
+      },
+      {
+        "label": "istatistik değeri",
+        "text": "86",
+        "box": [
+          500,
+          1166,
+          594,
+          1224
+        ]
+      },
+      {
+        "label": "artış",
+        "text": "+7",
+        "box": [
+          628,
+          1170,
+          696,
+          1224
+        ]
+      },
+      {
+        "label": "istatistik etiketi",
+        "text": "Hasar/Sn",
+        "box": [
+          500,
+          1266,
+          704,
+          1306
+        ],
+        "shape": "caps"
+      },
+      {
+        "label": "istatistik etiketi",
+        "text": "Can",
+        "box": [
+          500,
+          1416,
+          584,
+          1456
+        ]
+      }
+    ],
+    "buttons": []
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_154636_Clash Royale.png",
+    "screen": "kart penceresi",
+    "words": 12,
+    "items": [
+      {
+        "label": "başlık",
+        "text": "Şövalye",
+        "box": [
+          536,
+          820,
+          796,
+          890
+        ]
+      },
+      {
+        "label": "alt başlık",
+        "text": "1. Seviye",
+        "box": [
+          564,
+          900,
+          764,
+          944
+        ]
+      },
+      {
+        "label": "küçük etiket",
+        "text": "ENDERLİK",
+        "box": [
+          396,
+          1080,
+          556,
+          1112
+        ]
+      },
+      {
+        "label": "değer",
+        "text": "Sıradan",
+        "box": [
+          396,
+          1132,
+          560,
+          1172
+        ]
+      },
+      {
+        "label": "sayaç",
+        "text": "2/2",
+        "box": [
+          196,
+          1144,
+          252,
+          1176
+        ],
+        "shape": "caps"
+      },
+      {
+        "label": "buton üst etiketi",
+        "text": "Yükselt",
+        "box": [
+          468,
+          1850,
+          620,
+          1890
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Kullan",
+        "box": [
+          790,
+          1874,
+          966,
+          1930
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "ikincil buton (Yükselt)",
+        "seed": [
+          444,
+          1920
+        ]
+      },
+      {
+        "label": "birincil buton (Kullan)",
+        "seed": [
+          800,
+          1846
+        ]
+      },
+      {
+        "label": "kapat",
+        "seed": [
+          968,
+          814
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155122_Clash Royale.png",
+    "screen": "mağaza",
+    "words": 26,
+    "items": [
+      {
+        "label": "kaynak sayacı",
+        "text": "113",
+        "box": [
+          644,
+          110,
+          712,
+          156
+        ]
+      },
+      {
+        "label": "sayfa başlığı",
+        "text": "Teklifler",
+        "box": [
+          380,
+          330,
+          736,
+          400
+        ]
+      },
+      {
+        "label": "bölüm başlığı",
+        "text": "Kraliyet Başlangıç Paketi",
+        "box": [
+          124,
+          580,
+          956,
+          640
+        ]
+      },
+      {
+        "label": "süre",
+        "text": "Bitmesine: 2 g 23 sa",
+        "box": [
+          372,
+          668,
+          716,
+          700
+        ]
+      },
+      {
+        "label": "miktar",
+        "text": "10000",
+        "box": [
+          160,
+          1130,
+          280,
+          1164
+        ]
+      },
+      {
+        "label": "fiyat",
+        "text": "₺15,00",
+        "box": [
+          428,
+          1360,
+          616,
+          1410
+        ]
+      },
+      {
+        "label": "alt menü etiketi",
+        "text": "Dükkan",
+        "box": [
+          112,
+          2290,
+          248,
+          2326
+        ]
+      }
+    ],
+    "buttons": []
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155147_Clash Royale.png",
+    "screen": "eğitim penceresi",
+    "words": 48,
+    "items": [
+      {
+        "label": "üst başlık",
+        "text": "İşte Karşında:",
+        "box": [
+          80,
+          540,
+          476,
+          596
+        ]
+      },
+      {
+        "label": "başlık",
+        "text": "Royale Taktikleri!",
+        "box": [
+          80,
+          604,
+          784,
+          680
+        ]
+      },
+      {
+        "label": "cümle (balon)",
+        "text": "Takımını güçlendir, rakiplerini yen",
+        "box": [
+          164,
+          860,
+          924,
+          904
+        ]
+      },
+      {
+        "label": "bölüm başlığı",
+        "text": "Birlikler Çağır",
+        "box": [
+          372,
+          1126,
+          712,
+          1170
+        ]
+      },
+      {
+        "label": "ipucu",
+        "text": "Satmak için birlikleri",
+        "box": [
+          320,
+          1600,
+          672,
+          1636
+        ]
+      },
+      {
+        "label": "açıklama",
+        "text": "Her tur iksir kazanırsın ve üç birlikten",
+        "box": [
+          176,
+          1780,
+          904,
+          1820
+        ]
+      },
+      {
+        "label": "açıklama",
+        "text": "Birlikleri dükkana geri sürükleyerek",
+        "box": [
+          204,
+          1950,
+          880,
+          1990
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "kapat",
+        "seed": [
+          940,
+          454
+        ],
+        "tolerance": 90
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155241_Clash Royale.png",
+    "screen": "ayarlar",
+    "words": 49,
+    "items": [
+      {
+        "label": "başlık",
+        "text": "Ayarlar",
+        "box": [
+          420,
+          330,
+          660,
+          384
+        ]
+      },
+      {
+        "label": "cümle",
+        "text": "Oyununu korumak ve birden çok cihazda",
+        "box": [
+          216,
+          632,
+          868,
+          668
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "BAĞLAN",
+        "box": [
+          176,
+          812,
+          332,
+          852
+        ]
+      },
+      {
+        "label": "balon",
+        "text": "Bağlan ve",
+        "box": [
+          584,
+          784,
+          724,
+          816
+        ]
+      },
+      {
+        "label": "küçük etiket",
+        "text": "Ses",
+        "box": [
+          280,
+          996,
+          336,
+          1028
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Türkçe",
+        "box": [
+          696,
+          1054,
+          836,
+          1090
+        ]
+      },
+      {
+        "label": "etiket",
+        "text": "Ödül Şanslarını Göster",
+        "box": [
+          372,
+          1316,
+          708,
+          1352
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Hizmet Koşulları",
+        "box": [
+          612,
+          1824,
+          924,
+          1864
+        ]
+      },
+      {
+        "label": "ikincil buton yazısı",
+        "text": "API Belirteci",
+        "box": [
+          212,
+          1924,
+          412,
+          1956
+        ]
+      },
+      {
+        "label": "en küçük",
+        "text": "Oyuncu Kimliği: 49-88521914",
+        "box": [
+          132,
+          2000,
+          496,
+          2032
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "birincil buton (BAĞLAN)",
+        "seed": [
+          130,
+          800
+        ]
+      },
+      {
+        "label": "ayar butonu (Ses)",
+        "seed": [
+          130,
+          1110
+        ]
+      },
+      {
+        "label": "ayar butonu (Hizmet Koşulları)",
+        "seed": [
+          570,
+          1884
+        ]
+      },
+      {
+        "label": "ikincil buton (API)",
+        "seed": [
+          130,
+          1940
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155248_Clash Royale.png",
+    "screen": "sıralama",
+    "words": 34,
+    "items": [
+      {
+        "label": "başlık",
+        "text": "En İyi Asiller",
+        "box": [
+          350,
+          428,
+          732,
+          484
+        ]
+      },
+      {
+        "label": "sekme",
+        "text": "Oyuncular",
+        "box": [
+          104,
+          544,
+          344,
+          584
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Küresel",
+        "box": [
+          284,
+          668,
+          468,
+          712
+        ]
+      },
+      {
+        "label": "satır adı",
+        "text": "Miku",
+        "box": [
+          316,
+          1536,
+          420,
+          1576
+        ]
+      },
+      {
+        "label": "satır alt yazısı",
+        "text": "discord.gg/hog",
+        "box": [
+          316,
+          1590,
+          564,
+          1636
+        ]
+      },
+      {
+        "label": "puan",
+        "text": "2588",
+        "box": [
+          888,
+          1560,
+          988,
+          1600
+        ]
+      },
+      {
+        "label": "sıra",
+        "text": "3",
+        "box": [
+          120,
+          1560,
+          152,
+          1604
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "sekme butonu (Küresel)",
+        "seed": [
+          240,
+          738
+        ]
+      },
+      {
+        "label": "liste satırı",
+        "seed": [
+          700,
+          1530
+        ]
+      },
+      {
+        "label": "kapat",
+        "seed": [
+          1005,
+          425
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155318_Clash Royale.png",
+    "screen": "klan",
+    "words": 45,
+    "items": [
+      {
+        "label": "başlık",
+        "text": "Klan",
+        "box": [
+          476,
+          436,
+          608,
+          484
+        ]
+      },
+      {
+        "label": "klan adı",
+        "text": "Efsane",
+        "box": [
+          568,
+          644,
+          744,
+          690
+        ]
+      },
+      {
+        "label": "açıklama",
+        "text": "Klan savaşları yapmayanlar",
+        "box": [
+          428,
+          708,
+          880,
+          744
+        ]
+      },
+      {
+        "label": "istatistik etiketi",
+        "text": "KONUM",
+        "box": [
+          116,
+          950,
+          244,
+          980
+        ]
+      },
+      {
+        "label": "istatistik etiketi",
+        "text": "GEREKEN",
+        "box": [
+          392,
+          936,
+          524,
+          964
+        ]
+      },
+      {
+        "label": "istatistik değeri",
+        "text": "Türkiye",
+        "box": [
+          108,
+          1000,
+          252,
+          1036
+        ]
+      },
+      {
+        "label": "üye adı",
+        "text": "selli",
+        "box": [
+          320,
+          1454,
+          400,
+          1490
+        ]
+      },
+      {
+        "label": "üye rolü",
+        "text": "Lider Yardımcısı",
+        "box": [
+          320,
+          1512,
+          592,
+          1548
+        ]
+      },
+      {
+        "label": "kupa",
+        "text": "13917",
+        "box": [
+          880,
+          1476,
+          988,
+          1516
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Katıl",
+        "box": [
+          840,
+          1140,
+          956,
+          1184
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "birincil buton (Katıl)",
+        "seed": [
+          800,
+          1170
+        ]
+      },
+      {
+        "label": "üye satırı",
+        "seed": [
+          620,
+          1450
+        ]
+      },
+      {
+        "label": "kapat",
+        "seed": [
+          1000,
+          493
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155330_Clash Royale.png",
+    "screen": "klan sohbeti",
+    "words": 53,
+    "items": [
+      {
+        "label": "klan adı",
+        "text": "Efsane",
+        "box": [
+          160,
+          144,
+          316,
+          188
+        ]
+      },
+      {
+        "label": "alt satır",
+        "text": "Çevrimiçi üyeler: 1",
+        "box": [
+          204,
+          210,
+          480,
+          242
+        ]
+      },
+      {
+        "label": "istek sahibi",
+        "text": "İLAYDA",
+        "box": [
+          494,
+          554,
+          596,
+          586
+        ]
+      },
+      {
+        "label": "istek başlığı",
+        "text": "Kart İsteği!",
+        "box": [
+          436,
+          590,
+          640,
+          626
+        ]
+      },
+      {
+        "label": "küçük etiket",
+        "text": "Sana ait:",
+        "box": [
+          272,
+          656,
+          408,
+          684
+        ]
+      },
+      {
+        "label": "küçük etiket",
+        "text": "Alınan Kartlar:",
+        "box": [
+          514,
+          800,
+          740,
+          832
+        ]
+      },
+      {
+        "label": "sayaç",
+        "text": "3/4",
+        "box": [
+          596,
+          848,
+          652,
+          874
+        ],
+        "shape": "caps"
+      },
+      {
+        "label": "buton yazısı",
+        "text": "Bağış Yap",
+        "box": [
+          772,
+          710,
+          952,
+          754
+        ]
+      },
+      {
+        "label": "sistem satırı",
+        "text": "Yıldırım Klana katıldı.",
+        "box": [
+          364,
+          966,
+          716,
+          1002
+        ]
+      },
+      {
+        "label": "mesaj",
+        "text": "Yeni bir Efsanevi Kart açıldı!",
+        "box": [
+          266,
+          1576,
+          768,
+          1612
+        ]
+      },
+      {
+        "label": "buton yazısı",
+        "text": "TAMAM",
+        "box": [
+          444,
+          2242,
+          636,
+          2290
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "satır butonu (Bağış Yap)",
+        "seed": [
+          770,
+          768
+        ]
+      },
+      {
+        "label": "alt buton (Kart İste)",
+        "seed": [
+          40,
+          2010
+        ]
+      },
+      {
+        "label": "alt buton (Dostluk Savaşı)",
+        "seed": [
+          340,
+          2090
+        ]
+      },
+      {
+        "label": "birincil buton (TAMAM)",
+        "seed": [
+          430,
+          2240
+        ]
+      }
+    ]
+  },
+  {
+    "game": "clash-royale",
+    "file": "out/competitors/2026-11-11/clash-royale/Screenshot_20261111_155238_Clash Royale.png",
+    "screen": "menü",
+    "words": 16,
+    "items": [
+      {
+        "label": "menü öğesi",
+        "text": "Savaş Günlüğü",
+        "box": [
+          544,
+          190,
+          840,
+          230
+        ]
+      },
+      {
+        "label": "menü öğesi",
+        "text": "Liderlik Tabloları",
+        "box": [
+          540,
+          332,
+          840,
+          368
+        ]
+      },
+      {
+        "label": "menü öğesi",
+        "text": "Ayarlar",
+        "box": [
+          608,
+          1180,
+          772,
+          1220
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "label": "menü öğesi butonu",
+        "seed": [
+          520,
+          240
+        ]
+      },
+      {
+        "label": "menü öğesi butonu (Ayarlar)",
+        "seed": [
+          530,
+          1180
+        ]
+      }
+    ]
+  }
+]

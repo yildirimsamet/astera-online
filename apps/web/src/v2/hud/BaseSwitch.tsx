@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Icon } from '../icons.js';
-import { Segmented } from '../kit/Segmented.js';
+import { GameTabs } from '../../game-ui/index.js';
 
 export type BaseView = 'world' | 'research' | 'ship';
 
@@ -17,14 +16,14 @@ export function BaseSwitch({ value, onChange, arenaAvailable = false }: {
 }) {
   const { t } = useTranslation();
   return (
-    <div className="px-3 pb-2 pt-1">
-      <Segmented
+    <div className="gk px-3 pb-2 pt-1">
+      <GameTabs
         label={t('baseSwitch.label')}
-        options={[
+        tabs={[
           // Owner 2026-10-27: a coloured glyph beside each word — the world, its research, the ship flown.
-          { id: 'world', label: t('baseSwitch.world'), icon: <Icon id="i-base" className="size-4 shrink-0 text-v2-alloy" /> },
-          { id: 'research', label: t('baseSwitch.research'), icon: <Icon id="i-spark" className="size-4 shrink-0 text-v2-crystal" /> },
-          ...(arenaAvailable ? [{ id: 'ship' as const, label: t('arena.nav'), icon: <Icon id="i-fleet" className="size-4 shrink-0 text-v2-self" /> }] : []),
+          { id: 'world', label: t('baseSwitch.world'), glyph: { id: 'home', tone: 'alloy' } },
+          { id: 'research', label: t('baseSwitch.research'), glyph: { id: 'star', tone: 'crystal' } },
+          ...(arenaAvailable ? [{ id: 'ship' as const, label: t('arena.nav'), glyph: { id: 'rocket' as const, tone: 'self' as const } }] : []),
         ]}
         value={value}
         onChange={onChange}

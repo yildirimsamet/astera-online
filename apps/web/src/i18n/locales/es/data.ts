@@ -660,7 +660,7 @@ export const units = {
   minutes: '{{m}}m',
   /** Which BCP-47 locale groups thousands and formats decimals. */
   numberLocale: 'es-ES',
-  thousands: '{{value}}k',
+  thousands: '{{value}}K',
   millions: '{{value}}M',
   percent: '{{value}}%',
   rangeJoin: '–',
