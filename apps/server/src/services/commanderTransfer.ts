@@ -93,7 +93,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       if (player.vacationUntil && player.vacationUntil > now) defer('ACTIVE');
       if (now >= source.endsAt || now >= target.endsAt) defer('SEASON');
       if (!returning && options.ownerRequested !== true
-        && !silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, resetAt: player.silentSpaceResetAt?.getTime(), joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, now.getTime())) defer('ACTIVE');
+        && !silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, resetAt: player.silentSpaceResetAt?.getTime(), joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime(), newcomerShieldUntil: player.newcomerShieldUntil?.getTime() ?? null }, now.getTime())) defer('ACTIVE');
       if (returning) {
         const [application] = await tx.select().from(returnApplications).where(eq(returnApplications.id, applicationId)).for('update', { noWait: true });
         if (application?.playerId !== playerId || application.status !== 'QUEUED' || now >= application.expiresAt

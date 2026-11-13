@@ -16,6 +16,22 @@ const event = (at: number, name: string, properties: JourneyInput['observations'
   contextId: 'tab', sessionId: 'session', ...extra,
 });
 
+// Plan 2026-11-13 §5.1 and Faz 2: the dashboard sees the moment the jump window opens.
+describe('the jump window', () => {
+  const loop = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  it('is a stage once the six repairs, a mining run home and a probe report are in', () => {
+    const open = journeyPlayer(input({ modules: loop, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] }), now, 30);
+    expect(open.milestones).toContain('window');
+    expect(open.stage).toBe('window');
+  });
+
+  it('is not reached while a deed is missing', () => {
+    const closed = journeyPlayer(input({ modules: loop, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] }), now, 30);
+    expect(closed.milestones).not.toContain('window');
+    expect(summarizeJourney([closed]).stages.find(stage => stage.id === 'window')?.reached).toBe(0);
+  });
+});
+
 describe('a journey uses gameplay evidence rather than the last guide prompt', () => {
   it('keeps a skipped guide apart from actual progress and reads commands without analytics attribution', () => {
     const player = journeyPlayer(input({ guideOffAt: now - 100 * minute,

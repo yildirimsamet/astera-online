@@ -125,6 +125,29 @@ describe('digging and salvage aboard', () => {
     expect(missions.reduce((sum, m) => sum + m.cargo.alloy, 0)).toBeCloseTo(50, 0);
   });
 
+  // Plan 2026-11-13 §5.1: the jump window asks for a real dig, so a run called back on its way out does not count.
+  it('does not take a run called back before the rock for a dig', async () => {
+    const me = await ready();
+    const site = await rock();
+    const { runId } = (await post(world, '/api/starter/mining/launch', me.headers, { asteroidId: opaque(site.id), craft: 1 })).json<{ runId: string }>();
+    expect((await post(world, `/api/starter/mining/runs/${runId}/recall`, me.headers)).statusCode).toBe(200);
+    await pass(world, 60);
+    const [mission] = await world.f.db.select().from(vesselMissions).where(eq(vesselMissions.ownerVesselId, me.vesselId));
+    expect(mission!.status).toBe('DONE');
+    expect((await ship(me.vesselId)).facts).not.toContain('FIRST_MINING_RETURN');
+  });
+
+  it('takes a dig at a rock someone else emptied for a dig, though it brings nothing home', async () => {
+    const me = await ready();
+    const site = await rock();
+    await post(world, '/api/starter/mining/launch', me.headers, { asteroidId: opaque(site.id), craft: 1 });
+    await world.f.db.update(starterSites).set({ alloy: 0, crystal: 0, deuterium: 0 }).where(eq(starterSites.id, site.id));
+    await pass(world, 60);
+    const [mission] = await world.f.db.select().from(vesselMissions).where(eq(vesselMissions.ownerVesselId, me.vesselId));
+    expect(mission!.cargo).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
+    expect((await ship(me.vesselId)).facts).toContain('FIRST_MINING_RETURN');
+  });
+
   it('refuses an empty rock before the flight', async () => {
     const me = await ready();
     const site = await rock();

@@ -2,7 +2,7 @@ import type { JourneyPlayer } from '../api/journeySchemas.js';
 
 export const STAGE_LABELS: Record<JourneyPlayer['stage'], string> = {
   registered: 'Kayıt', enlisted: 'Gemiye katılım', refinery: 'İlk onarım', mining: 'İlk madencilik', probe: 'İlk sonda',
-  yard: 'Tersane açıldı', built: 'Gemi üretimi', battle: 'İlk savaş', victory: 'İlk zafer', departed: 'Ana galaksiye göç',
+  yard: 'Tersane açıldı', window: 'Sıçrama penceresi açıldı', built: 'Gemi üretimi', battle: 'İlk savaş', victory: 'İlk zafer', departed: 'Ana galaksiye göç',
 };
 const LABELS: Record<string, string> = {
   MINE: 'Madencilik gönderdi', PROBE: 'Sonda gönderdi', RAID_SITE: 'Karakola saldırdı', RAID_SHIP: 'Gemiye saldırdı',

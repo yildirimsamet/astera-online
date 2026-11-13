@@ -14,17 +14,18 @@ import { wireVessel } from './starterVesselFixture.js';
 
 /**
  * A SHIP THAT CAN LEAVE SAYS SO WHERE THE PLAYER IS (owner playtest 2026-11-09). The galaxy carries a
- * call to the jump, and the ship opens on the drive, where "prepare the jump" is: it used to open on
- * the refinery, with every repair done and the way out one tab away.
+ * call to the jump once the first loop is done (plan 2026-11-13 §4.3). The ship opens on the drive once
+ * the hold is full, when leaving is the advice; while it has room the ship opens on its repairs.
  */
 const repaired: VesselProgress = {
-  modules: { REFINERY: 4, EXTRACTOR: 3, TELESCOPE: 1, RADAR: 1, SURVEY: 2, SHIPYARD: 1, VAULT: 1, HANGAR: 2, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 },
-  facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT', 'FIRST_OUTPOST_VICTORY'],
+  modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 },
+  facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'],
   parts: 0,
-  fuel: STARTER.fuelForJump,
+  fuel: 0,
 };
 
-const ship = (progress: VesselProgress) => vesselSchema.parse(wireVessel({ alloy: 4000, crystal: 1500, deuterium: 200, progress }));
+const ship = (progress: VesselProgress, alloy: number = STARTER.carry.alloy, crystal: number = STARTER.carry.crystal) =>
+  vesselSchema.parse(wireVessel({ alloy, crystal, deuterium: 200, progress }));
 
 const wrap = (children: React.ReactNode) => {
   const fetch: typeof globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({ error: 'NOPE', message: 'nope' }), { status: 404 }));
@@ -36,10 +37,16 @@ beforeEach(async () => { await i18n.changeLanguage('en'); });
 afterEach(cleanup);
 
 describe('a ship ready to leave', () => {
-  it('opens on the drive, where the jump is prepared', () => {
+  const driveTab = () => screen.getAllByRole('tab').find(tab => tab.getAttribute('data-guide') === 'system-DRIVE');
+
+  it('opens on the drive once the hold is full, where the jump is prepared', () => {
     render(wrap(<VesselScreen vessel={ship(repaired)} fetchedAt={Date.now()} />));
-    const drive = screen.getAllByRole('tab').find(tab => tab.getAttribute('data-guide') === 'system-DRIVE');
-    expect(drive).toHaveAttribute('aria-selected', 'true');
+    expect(driveTab()).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens on its repairs while the hold still has room', () => {
+    render(wrap(<VesselScreen vessel={ship(repaired, 500, 200)} fetchedAt={Date.now()} />));
+    expect(driveTab()).toHaveAttribute('aria-selected', 'false');
   });
 
   it('calls the player to the jump from the galaxy, and the call opens the ship', () => {
@@ -49,8 +56,8 @@ describe('a ship ready to leave', () => {
     expect(onOpen).toHaveBeenCalledOnce();
   });
 
-  it('says nothing while the tank is not full', () => {
-    const { container } = render(<JumpCall progress={{ ...repaired, fuel: STARTER.fuelForJump - 1 }} onOpen={vi.fn()} />);
+  it('says nothing before the first loop is done', () => {
+    const { container } = render(<JumpCall progress={{ ...repaired, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] }} onOpen={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

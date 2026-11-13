@@ -91,23 +91,24 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
   step('CARGO', 'SHIPYARD', 1, 800, 300, 1, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
 
-  // The rest of the ship opens with the yard.
-  step('REFINERY', 'EXTRACTOR', 2, 77, 58, seconds(60), true, [needs('SHIPYARD', 1)]),
-  step('REFINERY', 'REFINERY', 3, 548, 69, seconds(90), true, [needs('SHIPYARD', 1)]),
-  step('REFINERY', 'VAULT', 1, 300, 150, 2, true, [needs('SHIPYARD', 1)]),
-  step('REFINERY', 'EXTRACTOR', 3, 274, 206, 5, true),
-  step('SURVEY', 'SURVEY', 2, 600, 350, 20, true, [needs('SHIPYARD', 1), fact('FIRST_PROBE_REPORT')]),
-  step('CARGO', 'HANGAR', 2, 1000, 350, 30, true, [needs('SHIPYARD', 1), fact('FIRST_MINING_RETURN')]),
-  step('REFINERY', 'REFINERY', 4, 886, 111, 60, true),
+  // The rest of the ship opens with the yard, and all of it is the player's choice (plan 2026-11-13 §5.1):
+  // the first loop above opens the jump window; what follows grows the works and fills the hold.
+  step('REFINERY', 'EXTRACTOR', 2, 77, 58, seconds(60), false, [needs('SHIPYARD', 1)]),
+  step('REFINERY', 'REFINERY', 3, 548, 69, seconds(90), false, [needs('SHIPYARD', 1)]),
+  step('REFINERY', 'VAULT', 1, 300, 150, 2, false, [needs('SHIPYARD', 1)]),
+  step('REFINERY', 'EXTRACTOR', 3, 274, 206, 5, false),
+  step('SURVEY', 'SURVEY', 2, 600, 350, 20, false, [needs('SHIPYARD', 1), fact('FIRST_PROBE_REPORT')]),
+  step('CARGO', 'HANGAR', 2, 1000, 350, 30, false, [needs('SHIPYARD', 1), fact('FIRST_MINING_RETURN')]),
+  step('REFINERY', 'REFINERY', 4, 886, 111, 60, false),
   // Its price is the whole opening crystal, which nothing makes before the first Extractor: bought
   // first, it would leave a ship that can never pay another repair (plan F3, `starter-ladder`).
-  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, true, [needs('SHIPYARD', 1)], { deuterium: STARTER.deuteriumGrant }),
-  step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, true, [needs('EXTRACTOR', 2)]),
+  step('REFINERY', 'DEUTERIUM_PLANT', 1, 400, 300, 60, false, [needs('SHIPYARD', 1)], { deuterium: STARTER.deuteriumGrant }),
+  step('REFINERY', 'DEUTERIUM_PLANT', 2, 800, 600, 120, false, [needs('EXTRACTOR', 2)]),
   // The ship leaves seeing what is around it (owner 2026-11-08, N3); no battle is asked of anyone.
-  step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, true, [
+  step('DRIVE', 'DRIVE_HULL', 1, 2200, 1100, 240, false, [
     needs('REFINERY', 4), needs('EXTRACTOR', 3), needs('SURVEY', 2), needs('HANGAR', 2), needs('RADAR', 1),
   ]),
-  step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 240, true, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
+  step('DRIVE', 'DRIVE_THRUST', 1, 1800, 1200, 240, false, [needs('DRIVE_HULL', 1), { kind: 'PARTS', count: STARTER.parts.needed }]),
 
   // The shield is a choice (owner 2026-11-08, N3): it brings the pirates and opens other ships, both ways.
   step('DEFENCE', 'AEGIS', 1, 315, 237, 45, false, [needs('SHIPYARD', 1)]),
@@ -124,8 +125,11 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
 ];
 
 const REQUIRED_STEPS = REPAIR_LADDER.filter(s => s.required);
-/** The refinery the prologue leaves running, and the fuel, which no order buys. */
+/** The refinery the prologue leaves running, and the open window, which no order buys. */
 const STEPS_OUTSIDE_THE_LADDER = 2;
+
+/** What the first loop has to have happened, besides its six repairs: a rock dug and a probe read. */
+const WINDOW_FACTS: readonly VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
 
 export const openingProgress = (): VesselProgress => ({
   modules: { ...STARTER.opening.modules }, facts: [], parts: 0, fuel: 0,
@@ -211,7 +215,13 @@ export function nextRequiredStep(progress: VesselProgress, queued: readonly Repa
   return first ? { step: first, missing: missingForStep(ship, first) } : null;
 }
 
-export const isJumpReady = (progress: VesselProgress): boolean => progress.fuel >= STARTER.fuelForJump;
+/**
+ * THE JUMP WINDOW (plan 2026-11-13 §5.1). The first loop done, and the ship may leave whenever its
+ * commander chooses: the six repairs, a mining run home from a real dig and a probe report. No drive,
+ * part or fuel is asked; staying is what fills the hold.
+ */
+export const jumpWindowOpen = (progress: VesselProgress): boolean =>
+  REQUIRED_STEPS.every(s => moduleStage(progress, s.module) >= s.stage) && WINDOW_FACTS.every(fact => progress.facts.includes(fact));
 
 export const canLoadFuel = (progress: VesselProgress): boolean =>
   moduleStage(progress, 'DRIVE_THRUST') >= 1 && moduleStage(progress, 'DEUTERIUM_PLANT') >= 2;
@@ -223,17 +233,17 @@ export function systemProgress(progress: VesselProgress, system: VesselSystem): 
   const steps = REQUIRED_STEPS.filter(s => s.system === system);
   const repaired = steps.filter(s => moduleStage(progress, s.module) >= s.stage).length;
   if (system === 'REFINERY') return { done: repaired + (moduleStage(progress, 'REFINERY') >= 1 ? 1 : 0), total: steps.length + 1 };
-  if (system === 'DRIVE') return { done: repaired + (isJumpReady(progress) ? 1 : 0), total: steps.length + 1 };
+  if (system === 'DRIVE') return { done: repaired + (jumpWindowOpen(progress) ? 1 : 0), total: steps.length + 1 };
   return { done: repaired, total: steps.length };
 }
 
 export interface RepairProgress { done: number; total: number; share: number }
 
-/** The ship screen's "Onarım %43". Optional repairs are a player's own business, so they do not move it. */
+/** The ship screen's "Onarım %43": how far the jump window is. Optional repairs are a player's own business, so they do not move it. */
 export function repairProgress(progress: VesselProgress): RepairProgress {
   const total = REQUIRED_STEPS.length + STEPS_OUTSIDE_THE_LADDER;
   const repaired = REQUIRED_STEPS.filter(s => moduleStage(progress, s.module) >= s.stage).length;
-  const done = repaired + (moduleStage(progress, 'REFINERY') >= 1 ? 1 : 0) + (isJumpReady(progress) ? 1 : 0);
+  const done = repaired + (moduleStage(progress, 'REFINERY') >= 1 ? 1 : 0) + (jumpWindowOpen(progress) ? 1 : 0);
   return { done, total, share: done / total };
 }
 

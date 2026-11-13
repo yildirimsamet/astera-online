@@ -98,7 +98,7 @@ const strategicView = (row: StrategicRow) => ({
 });
 
 function departureOf(
-  player: Pick<typeof players.$inferSelect, 'lastProgressAt' | 'joinedAt' | 'mainEnteredAt' | 'silentSpaceResetAt'> | undefined,
+  player: Pick<typeof players.$inferSelect, 'lastProgressAt' | 'joinedAt' | 'mainEnteredAt' | 'silentSpaceResetAt' | 'newcomerShieldUntil'> | undefined,
   p: Pick<LockedPlanet, 'silentSpace' | 'seasonEndsAt' | 'vacationUntil'>,
 ): Date | null {
   if (!player || p.silentSpace || p.vacationUntil) return null;
@@ -107,6 +107,7 @@ function departureOf(
     resetAt: player.silentSpaceResetAt?.getTime(),
     joinedAt: player.joinedAt.getTime(),
     mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime(),
+    newcomerShieldUntil: player.newcomerShieldUntil?.getTime() ?? null,
   });
   return at < p.seasonEndsAt.getTime() ? new Date(at) : null;
 }

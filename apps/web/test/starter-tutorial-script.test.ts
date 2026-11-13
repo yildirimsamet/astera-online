@@ -290,9 +290,8 @@ describe('where the hand goes for a chosen opportunity', () => {
     expect(adviceMarks({ kind: 'mine' }, 'ship')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
   });
 
-  it('loads fuel aboard, under the drive', () => {
-    expect(adviceMarks({ kind: 'fuel' }, 'ship')).toEqual({ marks: ['[data-guide="fuel"]', '[data-guide="system-DRIVE"]'] });
-    expect(adviceMarks({ kind: 'fuel' }, 'other')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
+  it('points the jump at the drive aboard', () => {
+    expect(adviceMarks({ kind: 'jump' }, 'ship')).toEqual({ marks: ['[data-guide="system-DRIVE"]'] });
   });
 
   // The first hunt (F4e): the probe button on an open outpost, else that outpost's flag, else the line.

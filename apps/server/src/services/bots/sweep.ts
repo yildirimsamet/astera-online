@@ -1,11 +1,11 @@
 import { and, asc, eq, gt, gte, inArray, isNull, lte, ne, notInArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
-import { ACADEMY_STEPS, ASTEROID_DYNAMIC, MULTI_WORLD, SERVERS, hashSeed, isJumpReady, mulberry32 } from '@astera/rules';
+import { ACADEMY_STEPS, ASTEROID_DYNAMIC, MULTI_WORLD, SERVERS, hashSeed, jumpWindowOpen, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
-import { botProfiles, planets, players, seasons, shards, vesselMissions, vessels } from '../../db/schema.js';
+import { botProfiles, planets, players, seasons, shards, vesselBotState, vesselMissions, vessels } from '../../db/schema.js';
 import { runDeparture } from '../starter/migration.js';
-import { sleepPlayedShip } from '../starter/shipBots.js';
+import { shipBotStayOver, sleepPlayedShip } from '../starter/shipBots.js';
 import { joinSeason } from '../player.js';
 import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
@@ -99,12 +99,18 @@ export async function ensureBotSeats(
 
   let seated = 0;
   /*
-    A NAME WITH NO SHIP FIRST, THEN ONE READY TO JUMP. Plan §3.12. A ship still on its ladder gives up
-    its place only when nothing else can sit: the main galaxy comes first, and its ship sleeps as a
-    person's would. A ship that left long ago is a name with no ship.
+    A NAME WITH NO SHIP FIRST, THEN ONE READY TO JUMP. Plan §3.12. Ready is the window open and the
+    crew's own stay over (plan 2026-11-13 §5.4). A ship still playing gives up its place only when
+    nothing else can sit: the main galaxy comes first, and its ship sleeps as a person's would. A ship
+    that left long ago is a name with no ship.
   */
-  const ships = await db.select({ accountId: vessels.accountId, id: vessels.id, status: vessels.status, modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel }).from(vessels)
-    .innerJoin(botProfiles, eq(botProfiles.accountId, vessels.accountId)).where(ne(vessels.status, 'DEPARTED'));
+  const ships = await db.select({
+    accountId: vessels.accountId, id: vessels.id, status: vessels.status, modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel,
+    crewSince: vesselBotState.createdAt,
+  }).from(vessels)
+    .innerJoin(botProfiles, eq(botProfiles.accountId, vessels.accountId))
+    .leftJoin(vesselBotState, eq(vesselBotState.vesselId, vessels.id))
+    .where(ne(vessels.status, 'DEPARTED'));
   // Something in the air refuses the jump: that ship is not ready yet, and must not hold a place in the batch.
   const inAir = new Set(ships.length === 0 ? [] : (await db.select({ id: vesselMissions.ownerVesselId }).from(vesselMissions).where(and(
     inArray(vesselMissions.ownerVesselId, ships.map(ship => ship.id)), inArray(vesselMissions.status, ['OUTBOUND', 'RETURNING']),
@@ -113,7 +119,8 @@ export async function ensureBotSeats(
   const seatOrder = (accountId: string): number => {
     const ship = shipOf.get(accountId);
     if (!ship) return 0;
-    return ship.status === 'ACTIVE' && isJumpReady(ship) && !inAir.has(ship.id) ? 1 : 2;
+    const stayed = ship.crewSince === null || shipBotStayOver(ship.id, ship.crewSince, clock.now());
+    return ship.status === 'ACTIVE' && jumpWindowOpen(ship) && stayed && !inAir.has(ship.id) ? 1 : 2;
   };
   let free = profiles.filter((profile) => !seasonOf.has(profile.accountId))
     .sort((a, b) => seatOrder(a.accountId) - seatOrder(b.accountId) || a.ordinal - b.ordinal);

@@ -1,4 +1,4 @@
-import { REPAIR_LADDER, isJumpReady, missingForStep, moduleStage, type VesselFact, type VesselModule, type VesselProgress } from './ladder.js';
+import { REPAIR_LADDER, jumpWindowOpen, missingForStep, moduleStage, type VesselFact, type VesselModule, type VesselProgress } from './ladder.js';
 import { STARTER } from './constants.js';
 import { canTakePart } from './sites.js';
 
@@ -46,7 +46,7 @@ const OPENS: Record<StarterFeature, (progress: VesselProgress) => boolean> = {
   deuterium: stage('DEUTERIUM_PLANT', 1),
   // The panel opens when the hull can be ordered, so the two can never disagree.
   drive: p => missingForStep(p, DRIVE_HULL_STEP).length === 0,
-  migration: isJumpReady,
+  migration: jumpWindowOpen,
 };
 
 export const isFeatureOpen = (progress: VesselProgress, feature: StarterFeature): boolean => OPENS[feature](progress);

@@ -32,7 +32,6 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-outpost-guide="', 'galaxy/OutpostGuide.tsx', 'data-outpost-guide={node.id}'],
   ['data-guide="dock-base"', 'v2/hud/Dock.tsx', 'data-guide={`dock-${tab}`}'],
   ['data-guide="dock-intel"', 'v2/hud/Dock.tsx', 'data-guide={`dock-${tab}`}'],
-  ['data-guide="fuel"', 'starter/MigrationPanel.tsx', 'data-guide="fuel"'],
   ['data-known="probe"', 'screens/IntelScreen.tsx', 'data-known="probe"'],
   ['data-report-open', 'screens/IntelScreen.tsx', 'data-report-open=""'],
   ['data-dossier-loot', 'v2/hud/TargetDossier.tsx', '<section data-dossier-loot'],

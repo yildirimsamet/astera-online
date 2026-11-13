@@ -1,16 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Api } from '../src/api/client.js';
-import { ApiProvider } from '../src/api/context.js';
-import { keys } from '../src/api/keys.js';
-import { vesselSchema } from '../src/api/starterSchemas.js';
 import { DebrisFocus } from '../src/galaxy/FocusPanel.js';
 import { GalaxyReadout } from '../src/v2/hud/GalaxyCorners.js';
 import { partMarks, partsSeen } from '../src/starter/partMarks.js';
-import { MigrationPanel } from '../src/starter/MigrationPanel.js';
-import { ToastProvider } from '../src/ui/Toast.js';
-import { wireVessel } from './starterVesselFixture.js';
 
 afterEach(cleanup);
 
@@ -27,30 +19,6 @@ describe('where a part is marked', () => {
 
   it('is empty before any data has come', () => {
     expect(partMarks(undefined, undefined)).toEqual([]);
-  });
-});
-
-describe('the Drive panel while hunting', () => {
-  // The drive hull can be ordered, so the parts are on the map (`partsVisible`).
-  // The drive opens once the radar is up (owner 2026-11-08): no battle is asked of it.
-  const HUNTING = { modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, HANGAR: 2, TELESCOPE: 1, RADAR: 1 }, facts: [], parts: 1, fuel: 0 };
-  function panel(seen: { galaxy?: object; mining?: object }) {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-    if (seen.galaxy) client.setQueryData(keys.galaxy, seen.galaxy);
-    const fetch: typeof globalThis.fetch = () => Promise.resolve(new Response('{}', { status: 404 }));
-    render(<QueryClientProvider client={client}><ApiProvider api={new Api({ fetch, authTransport: null })}><ToastProvider>
-      <MigrationPanel vessel={vesselSchema.parse(wireVessel({ progress: HUNTING }))} onJump={vi.fn()} />
-    </ToastProvider></ApiProvider></QueryClientProvider>);
-  }
-
-  it('says how many it has found, and that the map marks them', () => {
-    panel({ galaxy: { planets: [{ id: 'a', position: at(1), hasPart: true }] } });
-    expect(screen.getByTestId('parts-seen').textContent).toMatch(/1/);
-  });
-
-  it('says how to find one when none is in sight', () => {
-    panel({ galaxy: { planets: [] } });
-    expect(screen.getByTestId('parts-seen').textContent).toMatch(/probe/i);
   });
 });
 

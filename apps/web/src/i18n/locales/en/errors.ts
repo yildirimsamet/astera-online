@@ -374,7 +374,7 @@ export const errors = {
   RESEARCH_LOCKED: "This galaxy's lab does not offer that project yet.",
   RESEARCH_MAXED: "That project is at its highest level here.",
   WATCH_COOLDOWN: "This slot is still resting. Try again when it is ready.",
-  MIGRATION_NOT_READY: "Fill the fuel tank first.",
+  MIGRATION_NOT_READY: "The drive wakes after the first loop: the first repairs, a mining run home and a probe report.",
   MIGRATION_FLEET_OUT: "Every fleet has to be home before the jump.",
   MIGRATION_SEASON_WAIT: "The season ends in {{daysLeft}} days. Wait for the new one to arrive among the first.",
   LANDING_GONE: "Another ship just took that address. Choose again from the ones open now.",

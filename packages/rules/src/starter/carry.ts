@@ -41,3 +41,10 @@ export function migrationCargo(holdings: VesselHoldings): MigrationCargo {
     fleet,
   };
 }
+
+/**
+ * NOTHING MORE WOULD GO DOWN WITH IT (plan 2026-11-13 §5.2–5.3): alloy and crystal at their ceiling.
+ * Deuterium is left out: its ceiling is small and the flights spend it, so it would never stay full.
+ */
+export const holdIsFull = (cargo: Pick<MigrationCargo, 'alloy' | 'crystal'>): boolean =>
+  cargo.alloy >= STARTER.carry.alloy && cargo.crystal >= STARTER.carry.crystal;

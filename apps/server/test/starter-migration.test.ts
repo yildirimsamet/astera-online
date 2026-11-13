@@ -1,11 +1,11 @@
-import { FIRST_SEASON_START, STARTER, vesselHull, type Fleet } from '@astera/rules';
+import { FIRST_SEASON_START, STARTER, readyCrates, vesselHull, type Fleet } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accounts, planets, players, seasons, starterDepartures, starterGalaxies, units, vesselMigrations, vesselMissions, vesselOrders, vesselUnits, vessels } from '../src/db/schema.js';
 import { recomputeWealth } from '../src/services/planet.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, arm, enrich, get, post, type StarterWorld } from './starterShips.js';
+import { aboard, arm, enrich, get, openWindow, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
@@ -13,6 +13,8 @@ interface MigrationView {
   block: { code: string } | null;
   target: { shard: string; name: string; seasonEndsAt: string } | null;
   fuel: { loaded: number; needed: number; canLoad: boolean };
+  fill: { alloy: number; crystal: number; deuterium: number; ships: number };
+  full: boolean;
   cargo: { alloy: number; crystal: number; deuterium: number; fleet: Fleet };
   left: { alloy: number; crystal: number; deuterium: number; ships: number };
   choices: { index: number; x: number; y: number; z: number; neighbours: number }[];
@@ -24,9 +26,10 @@ const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 describe('the jump', () => {
   let world: StarterWorld;
   const ready = async (name = 'Pilot', fleet: Fleet = {}) => {
-    const person = await aboard(world, name, THRUST);
+    const person = await aboard(world, name);
+    await openWindow(world, person.vesselId);
     // The works emptied: these cases read the store and the hold, not the prologue's first batch.
-    await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump, bufferAlloy: 0 }).where(eq(vessels.id, person.vesselId));
+    await world.f.db.update(vessels).set({ bufferAlloy: 0 }).where(eq(vessels.id, person.vesselId));
     await arm(world, person.vesselId, fleet);
     return person;
   };
@@ -79,7 +82,8 @@ describe('the jump', () => {
   describe('what the panel reads', () => {
     it('caps opened crate resources in both the departure view and the landed hold', async () => {
       const person = await ready();
-      await world.f.db.update(vessels).set({ modules: { ...THRUST, REFINERY: 3, SURVEY: 2, SHIPYARD: 1, EXTRACTOR: 3 }, alloy: 1900, crystal: 950, deuterium: 100 }).where(eq(vessels.id, person.vesselId));
+      const { modules } = await shipOf(person.vesselId);
+      await world.f.db.update(vessels).set({ modules: { ...modules, REFINERY: 3, SURVEY: 2, EXTRACTOR: 3 }, alloy: 1900, crystal: 950, deuterium: 100 }).where(eq(vessels.id, person.vesselId));
       expect((await post(world, '/api/starter/crates/open', person.headers, {})).statusCode).toBe(200);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(view.cargo).toMatchObject({ alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal, deuterium: STARTER.carry.deuterium });
@@ -87,16 +91,41 @@ describe('the jump', () => {
       expect(landed.cargo).toMatchObject({ alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal, deuterium: STARTER.carry.deuterium });
     });
 
-    it('states the tank, the target, the hold, what stays behind and three addresses', async () => {
+    it('states the target, the hold, what stays behind and three addresses', async () => {
       const person = await ready('Pilot', { DART: 8 });
       await enrich(world, person.vesselId, 5000, 300, 80);
       const body = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(body.block).toBeNull();
-      expect(body.fuel).toEqual({ loaded: STARTER.fuelForJump, needed: STARTER.fuelForJump, canLoad: true });
       expect(body.target?.name.length).toBeGreaterThan(0);
       expect(body.cargo).toMatchObject({ alloy: STARTER.carry.alloy, crystal: 300, deuterium: STARTER.carry.deuterium, fleet: { DART: 6 } });
       expect(body.left).toMatchObject({ alloy: 3000, deuterium: 30, ships: 2 });
       expect(body.choices).toHaveLength(3);
+    });
+
+    // Plan 2026-11-13 §4.4: each ceiling and how near it is, and the moment nothing more would go down.
+    it('reads how full the hold is, and says when nothing more would go down', async () => {
+      const person = await ready('Pilot', { DART: 3 });
+      await enrich(world, person.vesselId, STARTER.carry.alloy / 2, STARTER.carry.crystal / 4, 0);
+      const half = await get<MigrationView>(world, '/api/starter/migration', person.headers);
+      expect(half.fill).toEqual({ alloy: 0.5, crystal: 0.25, deuterium: 0, ships: 0.5 });
+      expect(half.full).toBe(false);
+      await enrich(world, person.vesselId, STARTER.carry.alloy, STARTER.carry.crystal, 0);
+      expect((await get<MigrationView>(world, '/api/starter/migration', person.headers)).full).toBe(true);
+    });
+
+    // §4.6: a crate left shut was lost in the jump, and an early jump would lose more of them.
+    it('opens the crates that are ready before it counts the hold, on the panel and in the jump alike', async () => {
+      const person = await ready();
+      await enrich(world, person.vesselId, 0, 0, 0);
+      await world.f.db.update(vessels).set({ cratesOpened: [] }).where(eq(vessels.id, person.vesselId));
+      const ship = await shipOf(person.vesselId);
+      const crates = readyCrates({ modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, []);
+      const purse = { alloy: crates.reduce((sum, c) => sum + c.reward.alloy, 0), crystal: crates.reduce((sum, c) => sum + c.reward.crystal, 0) };
+      expect(purse.alloy).toBeGreaterThan(0);
+      const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
+      expect(view.cargo).toMatchObject(purse);
+      expect((await jump(person.headers)).json<Landing>().cargo).toMatchObject(purse);
+      expect((await shipOf(person.vesselId)).cratesOpened).toEqual(expect.arrayContaining(crates.map(c => c.id)));
     });
 
     it('never names who lives near an address: only how many', async () => {
@@ -118,7 +147,7 @@ describe('the jump', () => {
     it('counts what is still in work as paid back, the way the jump does', async () => {
       const person = await ready();
       await enrich(world, person.vesselId, 1000, 500, 0);
-      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 })).statusCode).toBe(200);
+      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 3 })).statusCode).toBe(200);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(view.cargo).toMatchObject({ alloy: 1000, crystal: 500 });
       expect(view.left).toMatchObject({ alloy: 0, crystal: 0 });
@@ -128,7 +157,7 @@ describe('the jump', () => {
     it('leaves behind what the refund pushes over the hold', async () => {
       const person = await ready();
       await enrich(world, person.vesselId, STARTER.carry.alloy + 20, STARTER.carry.crystal + 10, 0);
-      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 })).statusCode).toBe(200);
+      expect((await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 3 })).statusCode).toBe(200);
       const view = await get<MigrationView>(world, '/api/starter/migration', person.headers);
       expect(view.cargo).toMatchObject({ alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal });
       expect(view.left).toMatchObject({ alloy: 20, crystal: 10 });
@@ -177,12 +206,26 @@ describe('the jump', () => {
         expect(refused.json<{ error: string }>().error).toBe(code);
         const ship = await shipOf(person.vesselId);
         expect(ship.status).toBe('ACTIVE');
-        expect(ship.fuel).toBe(STARTER.fuelForJump);
         expect(ship.alloy).toBeCloseTo(900, 0);
         const [row] = await world.f.db.select().from(players).where(eq(players.accountId, person.id));
         expect(row).toBeUndefined();
       });
     }
+
+    // Plan 2026-11-13 §5.1: the first loop opens the window; no drive, part or fuel is asked.
+    it('refuses a ship whose first loop is not done', async () => {
+      const person = await ready();
+      await world.f.db.update(vessels).set({ facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] }).where(eq(vessels.id, person.vesselId));
+      const refused = await jump(person.headers);
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json<{ error: string }>().error).toBe('MIGRATION_NOT_READY');
+    });
+
+    it('asks no drive, part or fuel of a ship whose window is open', async () => {
+      const person = await ready();
+      await world.f.db.update(vessels).set({ fuel: 0, parts: 0 }).where(eq(vessels.id, person.vesselId));
+      expect((await jump(person.headers)).statusCode).toBe(200);
+    });
 
     it('answers PLACEMENT_CHANGED after it has gone, so a second device moves on too', async () => {
       const person = await ready();
@@ -244,7 +287,7 @@ describe('the jump', () => {
       await enrich(world, person.vesselId, 1000, 500, 0);
       const before = await get<{ vessel: { alloy: number } }>(world, '/api/starter/vessel', person.headers);
       expect(before.vessel.alloy).toBeCloseTo(1000, 0);
-      const repair = await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 2 });
+      const repair = await post(world, '/api/starter/repair', person.headers, { module: 'REFINERY', stage: 3 });
       expect(repair.statusCode).toBe(200);
       const body = (await jump(person.headers)).json<Landing>();
       expect(body.cargo.alloy).toBe(1000);

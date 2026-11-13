@@ -1,5 +1,5 @@
 import {
-  HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, openingProgress, partsVisible,
+  HULLS, REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, nextSteps, openingProgress, partsVisible,
   RESEARCH_PROJECTS, seededFrom, shipBotTarget, starterOutcomeTable, combatValue,
   fleetEntries, hullBulk,
   type HullId, type RepairStep, type VesselProgress,
@@ -53,6 +53,27 @@ const personaOf = (name: string | undefined) => PERSONAS.find(persona => persona
 
 /** A crew's own choice of the shield, drawn once from its ship and never changed. */
 export const crewTakesShield = (vesselId: string): boolean => seededFrom(vesselId, 'aegis')() < SHIELD_SHARE;
+
+/**
+ * HOW LONG A CREW STAYS ABOARD (plan 2026-11-13 §5.4), drawn for each arrival from its own seed: some
+ * leave in the first day's first sessions, most once the hold is full, a few play on for days. A
+ * design assumption until people's own stays are measured (Faz 5).
+ */
+const STAYS: readonly { share: number; hours: readonly [number, number] }[] = [
+  { share: 0.3, hours: [1, 3] },
+  { share: 0.5, hours: [8, 30] },
+  { share: 0.2, hours: [48, 120] },
+];
+export function shipBotStayMs(vesselId: string, sinceMs: number): number {
+  const roll = seededFrom(vesselId, 'stay', sinceMs);
+  let pick = roll();
+  const stay = STAYS.find(({ share }) => (pick -= share) < 0) ?? STAYS[STAYS.length - 1]!;
+  return between(stay.hours, roll()) * 3_600_000;
+}
+
+/** Its stay is over: it plays no more, and waits for a seat with whatever it built, or falls asleep as a person who left does. */
+export const shipBotStayOver = (vesselId: string, since: Date, now: Date): boolean =>
+  now.getTime() - since.getTime() >= shipBotStayMs(vesselId, since.getTime());
 
 const progressOfView = (view: VesselView): VesselProgress => ({ modules: view.modules, facts: view.facts, parts: view.parts, fuel: view.fuel });
 const repairsOf = (view: VesselView): RepairStep[] => view.queue.filter(order => order.queue === 'CONSTRUCTION')
@@ -205,6 +226,8 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
   };
   let view = await readVessel(db, accountId, clock);
   if (view.status !== 'ACTIVE') return null;
+  const [crew] = await db.select({ since: vesselBotState.createdAt }).from(vesselBotState).where(eq(vesselBotState.vesselId, view.id));
+  if (crew && shipBotStayOver(view.id, crew.since, now)) return null;
   const progress = progressOfView(view);
   if (isFeatureOpen(progress, 'production') && view.bufferAlloy + view.bufferCrystal + view.bufferDeuterium > 0) {
     await attempt('collect', () => collectAtVessel(db, accountId, clock));
@@ -223,10 +246,13 @@ export async function takeShipBotTurn(db: Db, accountId: string, clock: Clock, l
     if (done) return done;
   }
 
+  // Past the first loop every repair is a choice (§5.4), and the shield stays the crew's own.
   const next = nextRequiredStep(progress, repairsOf(view));
-  if (next?.missing.length === 0 && queueIn(view, 'CONSTRUCTION') < STARTER.queues.construction
-    && view.alloy >= next.step.alloy && view.crystal >= next.step.crystal) {
-    const done = await attempt('repair', () => orderRepair(db, accountId, next.step.module, next.step.stage, clock));
+  const step = next
+    ? (next.missing.length === 0 ? next.step : undefined)
+    : nextSteps(afterQueue(progress, repairsOf(view))).find(s => s.module !== 'AEGIS' || crewTakesShield(view.id));
+  if (step && queueIn(view, 'CONSTRUCTION') < STARTER.queues.construction && view.alloy >= step.alloy && view.crystal >= step.crystal) {
+    const done = await attempt('repair', () => orderRepair(db, accountId, step.module, step.stage, clock));
     if (done) return done;
   }
 

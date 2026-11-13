@@ -14,6 +14,7 @@ afterAll(async () => { await (await testDb()).close(); });
 interface VesselAnswer {
   id: string; alloy: number; crystal: number; deuterium: number; bufferAlloy: number;
   modules: Record<string, number>; queue: { id: string; subject: string; stage: number; readyAt: string; startedAt: string }[];
+  unlockToAnnounce: string | null;
 }
 
 describe('repairing the ship', () => {

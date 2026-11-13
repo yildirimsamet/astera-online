@@ -82,17 +82,23 @@ describe('the guide on and off', () => {
 
 describe('a move the advisor did not recommend', () => {
   const PAST_ROAD = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  const deeds: VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
+  // The first loop done and the hold not yet full, so a repair leads and the jump waits (plan 2026-11-13 §5.1).
+  const roomLeft = { ...none, alloy: 50_000, crystal: 900 };
+  // The road walked, and the report and the haul read when they came.
+  const walkedAll = () => { localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['farewell', 'openIntel', 'openReport', 'report', 'collectMine'])); };
 
   it('counts as progress: nothing is taught about it, it leaves the offers, and the pick stands', () => {
-    ship(PAST_ROAD, [], ALL_CRATES);
-    state.held = rich;
-    walked();
+    ship(PAST_ROAD, deeds, ALL_CRATES);
+    state.held = roomLeft;
+    walkedAll();
     const before = tutorial().now();
-    const [recommended, other] = before.offers;
-    expect(other?.kind).toBe('repair');
+    const [recommended] = before.offers;
+    const other = before.offers.slice(1).find(offer => offer.kind === 'repair');
+    expect(recommended?.kind).toBe('repair');
     if (other?.kind !== 'repair' || !recommended) throw new Error('two repairs on offer');
     localStorage.setItem(`astera.starter.advice.ship-1`, JSON.stringify({ pick: opportunityKey(recommended), shown: true }));
-    ship(PAST_ROAD, [], ALL_CRATES, { queue: [order(other.step.module, other.step.stage, 30)] });
+    ship(PAST_ROAD, deeds, ALL_CRATES, { queue: [order(other.step.module, other.step.stage, 30)] });
     const after = tutorial().now();
     expect(after.answer.kind).toBe('advise');
     expect(after.offers.map(opportunityKey)).not.toContain(opportunityKey(other));
@@ -100,10 +106,9 @@ describe('a move the advisor did not recommend', () => {
   });
 
   it('lets the pick go once the player has done it', () => {
-    const deeds: VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
     ship(PAST_ROAD, deeds, ALL_CRATES);
-    state.held = rich;
-    walked();
+    state.held = roomLeft;
+    walkedAll();
     const [recommended] = tutorial().now().offers;
     if (recommended?.kind !== 'repair') throw new Error('a repair first');
     localStorage.setItem(`astera.starter.advice.ship-1`, JSON.stringify({ pick: opportunityKey(recommended), shown: true }));

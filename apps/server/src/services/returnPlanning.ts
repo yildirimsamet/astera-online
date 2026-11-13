@@ -1,6 +1,6 @@
 import {
-  REWARD_CHAINS, REPAIR_LADDER, alloyRate, buildingCost, collectorCap, crystalRate,
-  nextRequiredStep, type BuildingId,
+  REWARD_CHAINS, REPAIR_LADDER, afterQueue, alloyRate, buildingCost, collectorCap, crystalRate, holdIsFull,
+  nextRequiredStep, nextSteps, readyCrates, type BuildingId, type RepairStep,
   vesselRate,
 } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
@@ -26,12 +26,25 @@ function affordableAt(target: Target | undefined, held: Purse, rates: { alloy: n
   const ms = Math.max(wait(target.alloy, held.alloy, held.bufferAlloy, rates.alloy), wait(target.crystal, held.crystal, held.bufferCrystal, rates.crystal));
   return Number.isFinite(ms) ? new Date(now.getTime() + Math.ceil(ms)) : null;
 }
+const asTarget = (step: RepairStep): Target => ({ ...step, subject: `${step.module}:${String(step.stage)}` });
+
 export async function starterTarget(tx: Tx, ship: Ship): Promise<Target | undefined> {
-  const orders = await tx.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, ship.id), eq(vesselOrders.queue, 'CONSTRUCTION'), eq(vesselOrders.status, 'BUILDING')));
-  const queued = orders.flatMap(o => REPAIR_LADDER.find(s => s.module === o.subject && s.stage === o.stage) ?? []);
-  const next = nextRequiredStep({ modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel }, queued);
-  if (!next || next.missing.length) return undefined;
-  return { ...next.step, subject: `${next.step.module}:${String(next.step.stage)}` };
+  const orders = await tx.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, ship.id), eq(vesselOrders.status, 'BUILDING')));
+  const queued = orders.filter(o => o.queue === 'CONSTRUCTION').flatMap(o => REPAIR_LADDER.find(s => s.module === o.subject && s.stage === o.stage) ?? []);
+  const progress = { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel };
+  const next = nextRequiredStep(progress, queued);
+  if (next) return next.missing.length ? undefined : asTarget(next.step);
+  // Past the first loop every repair is the player's choice (plan 2026-11-13 §5.3). A full hold has
+  // nothing to wait for: what the jump would carry is already there, so the move is the jump.
+  const crates = readyCrates(progress, ship.cratesOpened);
+  const sum = (pick: (c: { alloy: number; crystal: number }) => number) => orders.reduce((total, o) => total + pick(o.cost), 0);
+  const held = {
+    alloy: ship.alloy + ship.bufferAlloy + sum(c => c.alloy) + crates.reduce((total, c) => total + c.reward.alloy, 0),
+    crystal: ship.crystal + ship.bufferCrystal + sum(c => c.crystal) + crates.reduce((total, c) => total + c.reward.crystal, 0),
+  };
+  if (holdIsFull(held)) return undefined;
+  const step = nextSteps(afterQueue(progress, queued))[0];
+  return step ? asTarget(step) : undefined;
 }
 export async function planStarterReturn(tx: Tx, ship: Ship, now: Date, eligible = false): Promise<void> {
   if (!eligible) return;

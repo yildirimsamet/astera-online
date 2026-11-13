@@ -1,3 +1,4 @@
+import { VESSEL_FACTS, VESSEL_MODULES, jumpWindowOpen, type VesselFact, type VesselModules } from '@astera/rules';
 import { summarizePlayerObservations, type ReportObservation } from './analyticsReportModel.js';
 import { summarizeActivity } from './analyticsModel.js';
 import { JOURNEY_STAGES, type JourneyPlayer } from './journeySchemas.js';
@@ -15,6 +16,10 @@ const maxAt = (values: readonly (number | null)[]): number | null => {
   const known = values.filter((at): at is number => at !== null);
   return known.length ? Math.max(...known) : null;
 };
+/** The stored record read as the rules read it: unknown names are left out, never guessed at. */
+const isFact = (fact: string): fact is VesselFact => (VESSEL_FACTS as readonly string[]).includes(fact);
+const knownModules = (modules: JourneyInput['modules']): VesselModules =>
+  Object.fromEntries(VESSEL_MODULES.flatMap(module => modules[module] === undefined ? [] : [[module, modules[module]]]));
 const activityNames = new Set(['game_ready', 'foreground_started', 'foreground_ended', 'command_attempted', 'surface_visible', 'training_exit_requested']);
 
 /** Server state proves progress; client samples prove observed playing time. Neither proves a reason to leave. */
@@ -46,6 +51,8 @@ export function journeyPlayer(input: JourneyInput, now: number, absentMinutes: n
   add('mining', input.facts.some(f => f === 'FIRST_MINING_SENT' || f === 'FIRST_MINING_RETURN') || work.some(w => w.code === 'MINE'));
   add('probe', input.facts.includes('FIRST_PROBE_REPORT') || work.some(w => w.code === 'PROBE'));
   add('yard', (input.modules.SHIPYARD ?? 0) >= 1);
+  // Plan 2026-11-13 §5.1: the first loop done, the jump the player's to choose.
+  add('window', jumpWindowOpen({ modules: knownModules(input.modules), facts: input.facts.filter(isFact), parts: 0, fuel: 0 }));
   add('built', work.some(w => w.kind === 'order' && w.queue === 'YARD' && w.done));
   add('battle', input.facts.includes('FIRST_BATTLE_REPORT') || work.some(w => w.code === 'RAID_SITE' || w.code === 'RAID_SHIP'));
   add('victory', input.facts.includes('FIRST_OUTPOST_VICTORY'));

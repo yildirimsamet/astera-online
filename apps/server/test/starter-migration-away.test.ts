@@ -6,13 +6,12 @@ import { sweepDepartures } from '../src/services/starter/migration.js';
 import { sweepQuietShips } from '../src/services/starter/quiet.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, arm, enrich, get, post, type StarterWorld } from './starterShips.js';
+import { aboard, arm, enrich, get, openWindow, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
 const HOUR = 60;
 const DAY_MS = 86_400_000;
-const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
 /**
  * COMING BACK LATE IS NOT LOSING THE JUMP (plan 2026-11-08 F7, moment 15: "geç dönmek, gün
@@ -22,8 +21,9 @@ const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 describe('a ready ship its owner left', () => {
   let world: StarterWorld;
   const ready = async () => {
-    const person = await aboard(world, 'Pilot', THRUST);
-    await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump, bufferAlloy: 0 }).where(eq(vessels.id, person.vesselId));
+    const person = await aboard(world, 'Pilot');
+    await openWindow(world, person.vesselId);
+    await world.f.db.update(vessels).set({ bufferAlloy: 0 }).where(eq(vessels.id, person.vesselId));
     await arm(world, person.vesselId, { DART: 2 });
     await enrich(world, person.vesselId, 1000, 500, 20);
     return person;
@@ -50,9 +50,8 @@ describe('a ready ship its owner left', () => {
       const person = await ready();
       world.f.clock.advance(hours * HOUR);
       await sweepQuietShips(world.f.db, world.f.clock);
-      // Asleep from the 48th hour on: the place is given up, the ship and its tank are not.
+      // Asleep from the 48th hour on: the place is given up, the ship and its open window are not.
       expect((await shipOf(person.vesselId)).status).toBe(hours >= STARTER.idleMs / 3_600_000 ? 'DORMANT' : 'ACTIVE');
-      expect((await shipOf(person.vesselId)).fuel).toBe(STARTER.fuelForJump);
 
       const view = await get<{ block: unknown }>(world, '/api/starter/migration', person.headers);
       expect(view.block).toBeNull();
@@ -63,21 +62,6 @@ describe('a ready ship its owner left', () => {
       expect((await shipOf(person.vesselId)).status).toBe('DEPARTED');
     });
   }
-
-  it('finishes the thrust it queued before leaving, and fills the tank on return', async () => {
-    const person = await aboard(world, 'Pilot', { DRIVE_HULL: 1, DEUTERIUM_PLANT: 2 });
-    await world.f.db.update(vessels).set({ parts: STARTER.parts.needed, bufferAlloy: 0 }).where(eq(vessels.id, person.vesselId));
-    await enrich(world, person.vesselId, 5000, 5000, 200);
-    expect((await post(world, '/api/starter/repair', person.headers, { module: 'DRIVE_THRUST', stage: 1 })).statusCode).toBe(200);
-
-    world.f.clock.advance(72 * HOUR);
-    await sweepQuietShips(world.f.db, world.f.clock);
-    const fuelled = await post(world, '/api/starter/fuel', person.headers, { amount: STARTER.fuelForJump });
-    expect(fuelled.statusCode).toBe(200);
-    expect((await shipOf(person.vesselId)).fuel).toBe(STARTER.fuelForJump);
-    expect((await post(world, '/api/starter/migrate', person.headers)).statusCode).toBe(200);
-    await landed(person.id);
-  });
 
   it('hears of a new season even after falling asleep while it waited for one', async () => {
     const person = await ready();

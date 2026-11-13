@@ -1,4 +1,3 @@
-import { STARTER } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
 
@@ -28,14 +27,13 @@ export function MainGalaxyRow({ sky, now, jumpReady, road, onOpenShip, onClose }
   sky: { server: string; worlds: number; seasonEndsAt: Date | null };
   now: number;
   jumpReady: boolean;
-  /** The repairs done, as a share, and the Deuterium in the jump tank. */
-  road: { repair: number; fuel: number };
+  /** The way to the jump window and how full the hold is, each as a share (plan 2026-11-13 §4.4). */
+  road: { repair: number; hold: number };
   onOpenShip: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const days = sky.seasonEndsAt ? Math.max(0, Math.ceil((sky.seasonEndsAt.getTime() - now) / DAY_MS)) : null;
-  const need = STARTER.fuelForJump;
   return (
     <div data-testid="main-galaxy-row" role="status" className="pointer-events-auto relative mx-auto flex w-full max-w-[440px] flex-col gap-2 overflow-hidden rounded-plate border border-v2-self/40 bg-v2-panel/95 px-3 py-2.5 font-v2-ui shadow-lg animate-[line-in_0.4s_ease-out_both]">
       <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 size-36 animate-[ember_4s_ease-in-out_infinite] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-v2-self)_35%,transparent),transparent)]" />
@@ -52,7 +50,7 @@ export function MainGalaxyRow({ sky, now, jumpReady, road, onOpenShip, onClose }
       <p className="relative text-caption leading-snug text-v2-ink">{t('starter.mainRow.story')}</p>
       <ol className="relative flex gap-3">
         <Leg label={t('starter.mainRow.legRepair')} share={road.repair} figure={`${String(Math.round(road.repair * 100))}%`} done={road.repair >= 1} />
-        <Leg label={t('starter.mainRow.legFuel')} share={road.fuel / need} figure={`${String(Math.floor(road.fuel))}/${String(need)}`} done={road.fuel >= need} />
+        <Leg label={t('starter.mainRow.legHold')} share={road.hold} figure={`${String(Math.floor(road.hold * 100))}%`} done={road.hold >= 1} />
       </ol>
       <p className="relative text-micro leading-snug text-v2-ink-3">
         {days === null ? t('starter.mainRow.waiting') : t('starter.mainRow.facts', { worlds: sky.worlds, days })}

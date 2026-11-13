@@ -55,13 +55,13 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
     // Admit waiting commanders first so departures cannot exhaust every pass.
     const departureBudget = result.movedOut + result.returned < batchSize && performance.now() < deadline;
     // D212: thirty hours since the last development or combat order; a login moves nothing.
-    // GREATEST skips a null `last_progress_at`, exactly as `silentSpaceDueAt` does.
+    // GREATEST skips a null `last_progress_at` and a given-up shield, exactly as `silentSpaceDueAt` does (S5).
     const cutoff = new Date(now.getTime() - SILENT_SPACE.idleMs);
     const candidates = await db.select({ player: players, season: seasons }).from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id)).innerJoin(shards, eq(shards.id, seasons.shardId))
       .where(and(eq(shards.role, 'MAIN'), eq(seasons.status, 'live'), gt(seasons.endsAt, now),
         options.exemptAccountIds?.length ? notInArray(players.accountId, [...options.exemptAccountIds]) : undefined,
-        sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}, ${players.silentSpaceResetAt}) <= ${cutoff.toISOString()}::timestamptz`,
+        sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}, ${players.silentSpaceResetAt}, ${players.newcomerShieldUntil}) <= ${cutoff.toISOString()}::timestamptz`,
         sql`(${players.vacationUntil} is null or ${players.vacationUntil} <= ${now.toISOString()}::timestamptz)`,
         state.cursorPlayerId ? gt(players.id, state.cursorPlayerId) : undefined))
       .orderBy(asc(players.id)).limit(50);
@@ -125,7 +125,7 @@ export async function describeSilentSpaceDeparture(db: Db, clock: Clock, command
   return {
     playerId: player.id, accountId: player.accountId, commander: name, seasonId: season.id, shard: shard.name, worlds,
     inactive: silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, resetAt: player.silentSpaceResetAt?.getTime(), joinedAt: player.joinedAt.getTime(),
-      mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, clock.now().getTime()),
+      mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime(), newcomerShieldUntil: player.newcomerShieldUntil?.getTime() ?? null }, clock.now().getTime()),
   };
 }
 

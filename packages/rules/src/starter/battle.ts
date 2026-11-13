@@ -5,7 +5,7 @@ import type { PvpBalance } from '../pvpBalance.js';
 import type { Grade, Rng } from '../types.js';
 import { STARTER } from './constants.js';
 import { isFeatureOpen } from './features.js';
-import { isJumpReady, moduleStage, type VesselProgress } from './ladder.js';
+import { moduleStage, type VesselProgress } from './ladder.js';
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -92,8 +92,9 @@ export function canAttackVessel(question: AttackQuestion): AttackAnswer {
   const { attacker, target, nowMs } = question;
   // The attacker is asked what the target is asked: a shield, and the record that it went up.
   if (!isFeatureOpen(attacker.progress, 'attack') || attacker.pvpOpenAtMs === null) return { ok: false, code: 'FEATURE_LOCKED' };
-  // Without this a ship could hold off its jump and spend its days on newcomers (A9).
-  if (isJumpReady(attacker.progress) || nowMs - attacker.enlistedAtMs >= STARTER.pvp.lockAfterDays * DAY_MS) {
+  // Without this a ship could stay aboard and spend its days on newcomers (A9). The window opens in the
+  // first session, so the fourteenth day is the lock (S1, owner 2026-11-13); an unshielded ship is never a target.
+  if (nowMs - attacker.enlistedAtMs >= STARTER.pvp.lockAfterDays * DAY_MS) {
     return { ok: false, code: 'PVP_LOCKED' };
   }
   if (attacker.id === target.id || target.status !== 'ACTIVE') return { ok: false, code: 'TARGET_GONE' };

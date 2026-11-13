@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   REPAIR_LADDER, STARTER, STARTER_CRATES, afterQueue, canOrderStep, cancelRefund, collectVessel, isFeatureOpen, readyCrates, stepDependsOn,
-  type RepairStep, type StarterFeature, type StepRequirement, type VesselModule,
+  type RepairStep, type StarterCrate, type StarterFeature, type StepRequirement, type VesselModule,
 } from '@astera/rules';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
@@ -12,7 +12,7 @@ import { GameError } from '../planet.js';
 import { vesselProvenance } from '../commandOrigin.js';
 import { planStarterReturn } from '../returnPlanning.js';
 import { markProgress } from './quiet.js';
-import { activeOrders, economyOf, progressOf, vesselView, withEconomy, withVesselLock, type LockedVessel, type VesselOrderRow, type VesselView } from './vessel.js';
+import { activeOrders, economyOf, progressOf, vesselView, withEconomy, withVesselLock, type LockedVessel, type VesselOrderRow, type VesselRow, type VesselView } from './vessel.js';
 
 const stepOf = (order: Pick<VesselOrderRow, 'subject' | 'stage'>): RepairStep | undefined =>
   REPAIR_LADDER.find(step => step.module === order.subject && step.stage === order.stage);
@@ -128,20 +128,32 @@ export const markUnlockSeen = (db: Db, accountId: string, feature: StarterFeatur
   });
 
 /**
+ * The ready crates, or the one named, opened into the store, where any reward lands. Also the jump's
+ * first act (plan 2026-11-13 §4.6): a crate left shut would otherwise stay behind with the ship.
+ */
+export function openReadyCrates(row: VesselRow, id?: string): { row: VesselRow; opened: StarterCrate[] } {
+  const ready = readyCrates(progressOf(row), row.cratesOpened).filter(crate => id === undefined || crate.id === id);
+  return {
+    row: {
+      ...row,
+      alloy: row.alloy + ready.reduce((sum, crate) => sum + crate.reward.alloy, 0),
+      crystal: row.crystal + ready.reduce((sum, crate) => sum + crate.reward.crystal, 0),
+      cratesOpened: [...row.cratesOpened, ...ready.map(crate => crate.id)],
+    },
+    opened: ready,
+  };
+}
+
+/**
  * KURTARMA KASALARI (retention plan §6.2). A named crate opens if it is ready; none named opens every
- * ready one, the panel's "open all". The purse goes into the store, where any reward lands.
+ * ready one, the panel's "open all".
  */
 export const openCrates = (db: Db, accountId: string, id: string | undefined, clock: Clock): Promise<{ vessel: VesselView; opened: string[] }> =>
   withVesselLock(db, accountId, clock, async (tx, vessel) => {
     if (id !== undefined && !STARTER_CRATES.some(crate => crate.id === id)) throw new GameError('UNKNOWN_CRATE', 'That crate does not exist', 400);
-    const ready = readyCrates(progressOf(vessel.row), vessel.row.cratesOpened).filter(crate => id === undefined || crate.id === id);
+    const { row, opened: ready } = openReadyCrates(vessel.row, id);
     if (id !== undefined && ready.length === 0) throw new GameError('CRATE_NOT_READY', 'That crate is not ready to open', 409);
-    vessel.row = {
-      ...vessel.row,
-      alloy: vessel.row.alloy + ready.reduce((sum, crate) => sum + crate.reward.alloy, 0),
-      crystal: vessel.row.crystal + ready.reduce((sum, crate) => sum + crate.reward.crystal, 0),
-      cratesOpened: [...vessel.row.cratesOpened, ...ready.map(crate => crate.id)],
-    };
+    vessel.row = row;
     // Into the ship's log (F5), already read: the player opened it with their own hand.
     if (ready.length > 0) {
       await tx.insert(vesselNotifications).values({

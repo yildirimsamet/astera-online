@@ -260,7 +260,8 @@ export async function landMission(tx: Tx, mission: MissionRow, clock: Clock): Pr
         deuterium: owner.row.deuterium + mission.cargo.deuterium,
       }),
       parts: owner.row.parts + (mission.carriesPart ? 1 : 0),
-      facts: mission.kind === 'MINE' && !owner.row.facts.includes('FIRST_MINING_RETURN') ? [...owner.row.facts, 'FIRST_MINING_RETURN'] : owner.row.facts,
+      // Only a run that dug counts: one called back on its way out is not the first loop's mining run (§5.1).
+      facts: mission.kind === 'MINE' && mission.dug && !owner.row.facts.includes('FIRST_MINING_RETURN') ? [...owner.row.facts, 'FIRST_MINING_RETURN'] : owner.row.facts,
     };
     if (mined) {
       const [returns] = await tx.select({ n: count() }).from(vesselMissions).where(and(eq(vesselMissions.ownerVesselId, owner.row.id), eq(vesselMissions.kind, 'MINE'), eq(vesselMissions.status, 'DONE')));

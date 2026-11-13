@@ -218,9 +218,10 @@ describe('the ship screen', () => {
       expect(document.body.textContent).not.toMatch(/\blevel\b|\blvl\b|\bLv\b/i);
     });
 
+    // The first loop's six repairs and the refinery the ship came with: one of eight (plan 2026-11-13 §5.1).
     it('shows the repair share of the whole ship', () => {
       show(vessel());
-      expect(screen.getByTestId('ship-repair').textContent).toContain('5%');
+      expect(screen.getByTestId('ship-repair').textContent).toContain('13%');
     });
 
     // What the bar counts is the jump's, not the whole ship's (plan F7): a choice left undone is no repair missing.
@@ -245,7 +246,7 @@ describe('the ship screen', () => {
     it('are five tabs with their share repaired', () => {
       show(vessel());
       expect(screen.getAllByRole('tab')).toHaveLength(5);
-      expect(tab(/refinery module/i).textContent).toContain('10%');
+      expect(tab(/refinery module/i).textContent).toContain('33%');
       expect(tab(/survey antenna/i).textContent).toContain('0%');
     });
 
@@ -411,6 +412,8 @@ describe('the ship screen', () => {
       modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1, AEGIS: 1, DEUTERIUM_PLANT: 2 },
     };
     show(vessel({ progress, alloy: 5000, crystal: 5000 }));
+    // Past the first loop the antenna's next repair is a choice, and it waits on a probe report.
+    fireEvent.click(tab(/survey antenna/i));
     const card = within(screen.getByTestId('next-repair'));
     expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     expect(card.getByTestId('repair-missing').textContent).toMatch(/probe report/i);
@@ -489,7 +492,7 @@ describe('the ship screen', () => {
     show(vessel(), () => new Response(JSON.stringify({ error: 'INSUFFICIENT_RESOURCES', message: 'x' }), { status: 409, headers: { 'content-type': 'application/json' } }));
     fireEvent.click(within(screen.getByTestId('next-repair')).getByRole('button', { name: 'Repair' }));
     await waitFor(() => { expect(screen.getByRole('status').textContent).not.toBe(''); });
-    expect(screen.getByTestId('ship-repair').textContent).toContain('5%');
+    expect(screen.getByTestId('ship-repair').textContent).toContain('13%');
   });
 });
 

@@ -374,7 +374,7 @@ export const errors = {
   RESEARCH_LOCKED: "Das Labor dieser Galaxie bietet dieses Projekt noch nicht an.",
   RESEARCH_MAXED: "Dieses Projekt ist hier auf der höchsten Stufe.",
   WATCH_COOLDOWN: "Dieser Platz ruht noch. Versuche es wieder, wenn er bereit ist.",
-  MIGRATION_NOT_READY: "Fülle zuerst den Treibstofftank.",
+  MIGRATION_NOT_READY: "Der Antrieb erwacht nach der ersten Runde: die ersten Reparaturen, eine heimgekehrte Bergbaufahrt und ein Sondenbericht.",
   MIGRATION_FLEET_OUT: "Vor dem Sprung müssen alle Flotten zu Hause sein.",
   MIGRATION_SEASON_WAIT: "Die Saison endet in {{daysLeft}} Tagen. Warte auf die neue, um zu den Ersten zu gehören.",
   LANDING_GONE: "Ein anderes Schiff hat diese Adresse gerade belegt. Wähle neu aus den jetzt offenen.",

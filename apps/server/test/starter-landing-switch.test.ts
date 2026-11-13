@@ -1,22 +1,17 @@
-import { STARTER } from '@astera/rules';
-import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { vessels } from '../src/db/schema.js';
 import { joinSeason } from '../src/services/player.js';
 import { bootstrapServers, resolveJoinTarget } from '../src/services/servers.js';
 import { makeAccount, testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, get, post, type StarterWorld } from './starterShips.js';
+import { aboard, get, openWindow, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
-
-const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
 describe('Vantage is full', () => {
   let world: StarterWorld;
   const ready = async () => {
-    const person = await aboard(world, 'Pilot', THRUST);
-    await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, person.vesselId));
+    const person = await aboard(world, 'Pilot');
+    await openWindow(world, person.vesselId);
     return person;
   };
   const fillFirst = async () => {

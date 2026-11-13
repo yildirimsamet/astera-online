@@ -343,7 +343,7 @@ export const errors = {
   RESEARCH_LOCKED: "Bu galaksinin laboratuvarı o projeyi henüz sunmuyor.",
   RESEARCH_MAXED: "O proje burada en yüksek seviyesinde.",
   WATCH_COOLDOWN: "Bu yuva hâlâ dinleniyor. Hazır olunca yeniden dene.",
-  MIGRATION_NOT_READY: "Önce yakıt deposunu doldur.",
+  MIGRATION_NOT_READY: "Motor ilk döngüden sonra uyanır: ilk onarımlar, eve dönen bir maden seferi ve bir sonda raporu.",
   MIGRATION_FLEET_OUT: "Kalkıştan önce bütün filolar evde olmalı.",
   MIGRATION_SEASON_WAIT: "Sezon {{daysLeft}} gün sonra bitiyor. Yeni sezonda ilk gelenlerden biri olmak için bekle.",
   LANDING_GONE: "Bu adresi az önce başka bir gemi aldı. Şu an açık olanlardan yeniden seç.",

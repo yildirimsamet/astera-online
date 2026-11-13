@@ -1,5 +1,5 @@
 import { planPlanetReturn } from '../returnPlanning.js';
-import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, fuelToLoad, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
+import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, fuelToLoad, holdIsFull, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
 import { and, desc, eq, gt, inArray, isNull, lte, ne, sql, asc, notInArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
@@ -12,6 +12,7 @@ import { galaxyOf } from '../season.js';
 import { listServers, resolveJoinTarget, type JoinTarget } from '../servers.js';
 import { readHome } from './fleet.js';
 import { markProgress } from './quiet.js';
+import { openReadyCrates } from './repair.js';
 import { activeOrders, lockVesselForDeparture, progressOf, readVessel, saveVessel, settleVessel, vesselView, withVesselLock, type LockedVessel, type VesselOrderRow, type VesselRow, type VesselView } from './vessel.js';
 
 /** How long a jump may be someone's own running request before the sweep takes it over. */
@@ -83,9 +84,12 @@ export async function migrationView(db: Db, accountId: string, clock: Clock) {
   const frontier = await openFrontier(db, clock);
   const block = frontier?.seasonEndsAt
     ? departureBlock({ progress, flying: await flyingCount(db, ship.id), seasonEndsAtMs: frontier.seasonEndsAt.getTime(), nowMs: clock.now().getTime() })
-    : ship.fuel >= STARTER.fuelForJump ? { code: 'NO_FRONTIER' as const } : { code: 'MIGRATION_NOT_READY' as const };
+    : jumpWindowOpen(progress) ? { code: 'NO_FRONTIER' as const } : { code: 'MIGRATION_NOT_READY' as const };
 
-  const held = holdingsOf(paidBack(ship, await activeOrders(db, ship.id)));
+  // The jump opens what is ready before it counts (§4.6), so the panel counts it too.
+  const crates = ship.crates.filter(crate => crate.state === 'ready');
+  const opened = { ...ship, alloy: ship.alloy + crates.reduce((sum, c) => sum + c.alloy, 0), crystal: ship.crystal + crates.reduce((sum, c) => sum + c.crystal, 0) };
+  const held = holdingsOf(paidBack(opened, await activeOrders(db, ship.id)));
   const cargo = migrationCargo({ ...held, fleet: home.fleet, damage: home.damage });
   const carried = fleetEntries(cargo.fleet).reduce((sum, [, count]) => sum + count, 0);
   const owned = fleetEntries(home.fleet).reduce((sum, [, count]) => sum + count, 0);
@@ -95,6 +99,13 @@ export async function migrationView(db: Db, accountId: string, clock: Clock) {
     target: frontier?.seasonEndsAt ? { shard: frontier.code, name: frontier.name, seasonEndsAt: frontier.seasonEndsAt.toISOString() } : null,
     fuel: { loaded: ship.fuel, needed: STARTER.fuelForJump, canLoad: fuelToLoad(progress, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) > 0 || ship.fuel >= STARTER.fuelForJump },
     cargo,
+    fill: {
+      alloy: cargo.alloy / STARTER.carry.alloy,
+      crystal: cargo.crystal / STARTER.carry.crystal,
+      deuterium: cargo.deuterium / STARTER.carry.deuterium,
+      ships: carried / STARTER.carry.ships,
+    },
+    full: holdIsFull(cargo),
     left: {
       alloy: Math.max(0, Math.floor(held.alloy) - cargo.alloy),
       crystal: Math.max(0, Math.floor(held.crystal) - cargo.crystal),
@@ -127,7 +138,7 @@ async function commitDeparture(db: Db, accountId: string, clock: Clock, { slot, 
     const endsAt = season ? Number.POSITIVE_INFINITY : frontier?.seasonEndsAt?.getTime();
     const block = endsAt !== undefined
       ? departureBlock({ progress: progressOf(vessel.row), flying: await flyingCount(tx, vessel.row.id), seasonEndsAtMs: endsAt, nowMs: vessel.now.getTime() })
-      : progressOf(vessel.row).fuel >= STARTER.fuelForJump ? { code: 'NO_FRONTIER' as const } : { code: 'MIGRATION_NOT_READY' as const };
+      : jumpWindowOpen(progressOf(vessel.row)) ? { code: 'NO_FRONTIER' as const } : { code: 'MIGRATION_NOT_READY' as const };
     if (block && !(force && frontier?.seasonEndsAt)) {
       const { code, ...params } = block;
       throw new GameError(code, 'This ship cannot leave yet', 409, params);
@@ -143,6 +154,7 @@ const landingGone = () => new GameError('LANDING_GONE', 'That address is no long
 /** The conditions have been met: the works stop, the hold is counted, and nothing can spend it now. */
 async function holdForDeparture(tx: Tx, vessel: LockedVessel, slot: number | null, season: string | null): Promise<MigrationCargo> {
   await cancelAllOrders(tx, vessel);
+  vessel.row = openReadyCrates(vessel.row).row;
   const home = await readHome(tx, vessel.row.id);
   const cargo = migrationCargo({ ...holdingsOf(vessel.row), fleet: home.fleet, damage: home.damage });
   await saveVessel(tx, vessel.row);
@@ -359,8 +371,8 @@ async function announceNewSeason(db: Db, clock: Clock): Promise<void> {
   const [season] = fresh;
   if (!season) return;
   // A ship that waited out a season with nothing left to repair has fallen asleep by now: it is the one waiting most.
-  const waiting = await db.select({ id: vessels.id }).from(vessels)
-    .where(and(inArray(vessels.status, ['ACTIVE', 'DORMANT']), sql`${vessels.fuel} >= ${STARTER.fuelForJump}`));
+  const waiting = (await db.select({ id: vessels.id, modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel }).from(vessels)
+    .where(inArray(vessels.status, ['ACTIVE', 'DORMANT']))).filter(ship => jumpWindowOpen(progressOf(ship)));
   if (waiting.length === 0) return;
   await db.insert(vesselNotifications).values(waiting.map(ship => ({
     vesselId: ship.id, kind: 'SEASON_OPEN', refId: season.id, payload: { shardName: season.shardName === '' ? season.code : season.shardName }, createdAt: now,

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   STARTER,
   canAttackVessel,
+  jumpWindowOpen,
   openingProgress,
   recoveryUntilAfter,
   vesselPvpOpenAt,
+  type VesselProgress,
   type VesselStanding,
 } from '../src/index.js';
 
@@ -92,9 +94,15 @@ describe('the attacker\'s own shield', () => {
 });
 
 describe('the limit on staying aboard', () => {
-  it('stops a ship ready to jump from attacking players', () => {
-    expect(ask({ attacker: { progress: { ...openingProgress(), modules: { AEGIS: 1 }, facts: ['FIRST_BATTLE_REPORT'], fuel: STARTER.fuelForJump } } }))
-      .toEqual({ ok: false, code: 'PVP_LOCKED' });
+  // S1 (owner 2026-11-13): the window opens in the first session, so it is no longer the lock; the fourteenth day is.
+  it('lets a ship with its window open strike shielded ships in its first fourteen days', () => {
+    const progress: VesselProgress = {
+      ...openingProgress(),
+      modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1, AEGIS: 1 },
+      facts: ['FIRST_BATTLE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'],
+    };
+    expect(jumpWindowOpen(progress)).toBe(true);
+    expect(ask({ attacker: { progress } }).ok).toBe(true);
   });
 
   it('stops a ship past its fourteenth day, not before', () => {

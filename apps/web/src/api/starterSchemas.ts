@@ -117,8 +117,11 @@ export const migrationViewSchema = z.object({
     z.object({ code: z.literal('MIGRATION_SEASON_WAIT'), daysLeft: z.number() }),
   ]).nullable(),
   target: z.object({ shard: z.string(), name: z.string(), seasonEndsAt: z.coerce.date() }).nullable(),
-  fuel: z.object({ loaded: z.number(), needed: z.number(), canLoad: z.boolean() }),
   cargo: moved,
+  /** What the hold takes against what a jump carries, each 0 to 1 (plan 2026-11-13 §4.4). */
+  fill: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number(), ships: z.number() }),
+  /** Alloy and crystal both at the cap: more earned here is not carried. */
+  full: z.boolean(),
   left: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number(), ships: z.number() }),
   choices: z.array(z.object({ index: z.number(), x: z.number(), y: z.number(), z: z.number(), neighbours: z.number() })),
 });

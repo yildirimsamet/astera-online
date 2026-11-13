@@ -342,7 +342,7 @@
   RESEARCH_LOCKED: "Le labo de cette galaxie ne propose pas encore ce projet.",
   RESEARCH_MAXED: "Ce projet est à son plus haut niveau ici.",
   WATCH_COOLDOWN: "Cet emplacement se repose encore. Réessaie quand il sera prêt.",
-  MIGRATION_NOT_READY: "Remplis d'abord le réservoir.",
+  MIGRATION_NOT_READY: "La propulsion s'éveille après la première boucle : les premières réparations, une expédition minière rentrée et un rapport de sonde.",
   MIGRATION_FLEET_OUT: "Toutes les flottes doivent être rentrées avant le saut.",
   MIGRATION_SEASON_WAIT: "La saison se termine dans {{daysLeft}} jours. Attends la nouvelle pour arriver parmi les premiers.",
   LANDING_GONE: "Un autre vaisseau vient de prendre cette adresse. Choisis à nouveau parmi celles encore libres.",

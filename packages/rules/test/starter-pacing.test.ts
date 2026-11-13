@@ -1,131 +1,116 @@
 import { describe, expect, it } from 'vitest';
 import {
-  REPAIR_LADDER,
   STARTER,
   advanceVesselEconomy,
   afterQueue,
-  canLoadFuel,
   collectVessel,
-  isFeatureOpen,
+  jumpWindowOpen,
   nextSteps,
   openingEconomy,
   openingProgress,
   readyCrates,
   type RepairStep,
+  type VesselFact,
   type VesselProgress,
 } from '../src/index.js';
 
 /**
- * A SHORT MODEL, NOT A SEASON SIMULATION. It plays the real ladder with the real works for one
- * ship and no neighbours: no combat, no loot, one purchase of fleet. What it answers is whether
- * the numbers can hold the 3–5 day promise, and the promise is only ever re-tuned by play.
+ * A SHORT MODEL, NOT A SEASON SIMULATION. It plays the real ladder with the real works for one ship
+ * and no neighbours: no combat and no loot beyond the salvage crates. What it answers is whether the
+ * numbers hold the promise of plan 2026-11-13 §4.3–4.4, and the promise is only ever re-tuned by play.
  */
 const QUEUE = STARTER.queues.construction;
+const TICK_MINUTES = 0.25;
 const SESSION_MINUTES = 20;
-const TICK_MINUTES = 5;
 const DAY = 24 * 60;
-const FLEET = { alloy: 1800, crystal: 700, minutes: 12 };
-const TRIP = { alloy: 150, crystal: 50 };
-const TRIPS_PER_SESSION = 2;
-const PART_HAUL = { alloy: 200, crystal: 100 };
+/** Round trips of the first session's flights, as the guide plays them. */
+const MINING_TRIP_MINUTES = 4;
+const PROBE_TRIP_MINUTES = 2;
+/** What a session's two mining runs bring home once the window is open. */
+const TRIPS = { alloy: 300, crystal: 100 };
+/** The works a player who stays may grow; the rest of the ship does not fill a hold. */
+const WORKS = new Set(['REFINERY', 'EXTRACTOR', 'VAULT']);
 
-function daysToJump(sessionHours: readonly number[]): number {
+interface Pace { windowMinutes: number; fullHours: number }
+
+/** The first session starts at signup; `sessionHours` are the later ones, by hour of the day. */
+function pace(sessionHours: readonly number[], growsWorks: boolean): Pace {
   let progress: VesselProgress = openingProgress();
   let economy = openingEconomy(0);
   let queue: { step: RepairStep; endsAt: number }[] = [];
-  let tail = 0, fleetBought = false, lastSession = -1;
+  let tail = 0, lastSession = -1, windowMinutes = Infinity, sentAt = Infinity, surveyAt = Infinity;
   const opened: string[] = [];
+  const happen = (fact: VesselFact) => {
+    if (!progress.facts.includes(fact)) progress = { ...progress, facts: [...progress.facts, fact] };
+  };
 
-  for (let now = 0; now < 30 * DAY; now += TICK_MINUTES) {
+  for (let now = 0; now < 3 * DAY; now += TICK_MINUTES) {
     economy = advanceVesselEconomy(economy, progress.modules, now);
-    for (const { step } of queue.filter(q => q.endsAt <= now)) {
-      progress = { ...progress, modules: { ...progress.modules, [step.module]: step.stage } };
-      if (step.grants?.deuterium) economy = { ...economy, deuterium: economy.deuterium + step.grants.deuterium };
-    }
+    for (const { step } of queue.filter(q => q.endsAt <= now)) progress = { ...progress, modules: { ...progress.modules, [step.module]: step.stage } };
     queue = queue.filter(q => q.endsAt > now);
 
     const minuteOfDay = now % DAY;
-    const session = sessionHours.findIndex(h => minuteOfDay >= h * 60 && minuteOfDay < h * 60 + SESSION_MINUTES);
-    if (session < 0) continue;
+    const session = now < SESSION_MINUTES ? -2 : sessionHours.findIndex(h => minuteOfDay >= h * 60 && minuteOfDay < h * 60 + SESSION_MINUTES);
+    if (session === -1) continue;
 
     economy = collectVessel(economy, progress.modules).state;
-    // The salvage crates (retention plan §6.2) are opened the moment they are ready.
     for (const crate of readyCrates(progress, opened)) {
       opened.push(crate.id);
       economy = { ...economy, alloy: economy.alloy + crate.reward.alloy, crystal: economy.crystal + crate.reward.crystal };
     }
+    if ((progress.modules.TELESCOPE ?? 0) >= 1 && sentAt === Infinity) { sentAt = now; happen('FIRST_MINING_SENT'); }
+    if (now >= sentAt + MINING_TRIP_MINUTES) happen('FIRST_MINING_RETURN');
+    if ((progress.modules.SURVEY ?? 0) >= 1 && surveyAt === Infinity) surveyAt = now;
+    if (now >= surveyAt + PROBE_TRIP_MINUTES) happen('FIRST_PROBE_REPORT');
     const key = Math.floor(now / DAY) * 100 + session;
-    if (key !== lastSession) {
+    if (windowMinutes < now && key !== lastSession) {
       lastSession = key;
-      if (isFeatureOpen(progress, 'telescope') && !progress.facts.includes('FIRST_MINING_SENT')) progress = { ...progress, facts: [...progress.facts, 'FIRST_MINING_SENT'] };
-      if (isFeatureOpen(progress, 'intel') && !progress.facts.includes('FIRST_PROBE_REPORT')) progress = { ...progress, facts: [...progress.facts, 'FIRST_PROBE_REPORT'] };
-      if (isFeatureOpen(progress, 'fleet')) {
-        economy = { ...economy, alloy: economy.alloy + TRIPS_PER_SESSION * TRIP.alloy, crystal: economy.crystal + TRIPS_PER_SESSION * TRIP.crystal };
-        if (!progress.facts.includes('FIRST_MINING_RETURN')) progress = { ...progress, facts: [...progress.facts, 'FIRST_MINING_RETURN'] };
-      }
-      if (isFeatureOpen(progress, 'defence') && !progress.facts.includes('FIRST_BATTLE_REPORT')) progress = { ...progress, facts: [...progress.facts, 'FIRST_BATTLE_REPORT'] };
-      if (isFeatureOpen(progress, 'drive') && progress.parts < STARTER.parts.needed) {
-        progress = { ...progress, parts: progress.parts + 1 };
-        economy = { ...economy, alloy: economy.alloy + PART_HAUL.alloy, crystal: economy.crystal + PART_HAUL.crystal };
-      }
-    }
-
-    if (!fleetBought && isFeatureOpen(progress, 'fleet') && economy.alloy >= FLEET.alloy && economy.crystal >= FLEET.crystal) {
-      economy = { ...economy, alloy: economy.alloy - FLEET.alloy, crystal: economy.crystal - FLEET.crystal };
-      fleetBought = true;
+      economy = { ...economy, alloy: economy.alloy + TRIPS.alloy, crystal: economy.crystal + TRIPS.crystal };
     }
 
     while (queue.length < QUEUE) {
-      const planned = afterQueue(progress, queue.map(q => q.step));
-      const step = nextSteps(planned).find(s => s.required);
+      const step = nextSteps(afterQueue(progress, queue.map(q => q.step))).find(s => s.required || (growsWorks && WORKS.has(s.module)));
       if (!step || economy.alloy < step.alloy || economy.crystal < step.crystal) break;
       economy = { ...economy, alloy: economy.alloy - step.alloy, crystal: economy.crystal - step.crystal };
       tail = Math.max(tail, now) + step.minutes;
       queue.push({ step, endsAt: tail });
     }
 
-    if (queue.length === 0 && canLoadFuel(progress) && economy.deuterium >= STARTER.fuelForJump) return now / DAY;
+    if (windowMinutes === Infinity && jumpWindowOpen(progress)) windowMinutes = now;
+    // The hold counts what a queued repair would hand back (§5.2), so a running order does not hide it.
+    const back = queue.reduce((sum, q) => ({ alloy: sum.alloy + q.step.alloy, crystal: sum.crystal + q.step.crystal }), { alloy: 0, crystal: 0 });
+    if (windowMinutes < Infinity && economy.alloy + back.alloy >= STARTER.carry.alloy && economy.crystal + back.crystal >= STARTER.carry.crystal) {
+      return { windowMinutes, fullHours: now / 60 };
+    }
   }
-  return Infinity;
+  return { windowMinutes, fullHours: Infinity };
 }
 
 /**
- * THE PROMISE AFTER THE OWNER'S 2026-11-08 TEMPO (N3, N4): no battle on the way, four hours a part
- * for the engine, the radar in the gate. Measured on this model: 6.8 days at one session a day, 3.4
- * at two, 2.5 at three or four, 1.7 at fifteen. Two to three days is the normal pace, and no schedule
- * of sessions reaches the main galaxy inside its first day: the works, not the engine or the fuel,
- * are what a ship waits on (a deuterium plant ordered early slows it, since the store pays for it).
+ * THE PROMISE OF PLAN 2026-11-13. Measured on this model: the window opens 4.5 minutes in, which is
+ * the timers and the two flights and nothing else; the hold is full at the second session of the
+ * first day (9 h), whether the player saves or grows the works, and at the 20 h session for a
+ * player who comes once a day. Staying is worth about a second first-season package (§4.4).
  */
 describe('how long the ship takes', () => {
-  it('has a required ladder a player can finish', () => {
-    expect(REPAIR_LADDER.some(s => s.required)).toBe(true);
-    expect(Number.isFinite(daysToJump([9, 20]))).toBe(true);
+  it('opens the window inside the first session, waiting on no resource', () => {
+    // The six timers (130 s) and the two flights: anything above that would be a wait for resources.
+    expect(pace([9, 20], false).windowMinutes).toBeLessThanOrEqual(130 / 60 + MINING_TRIP_MINUTES + PROBE_TRIP_MINUTES);
   });
 
-  it('takes under four days at two sessions a day', () => {
-    expect(daysToJump([9, 20])).toBeLessThan(4);
+  it('fills the hold by the second session of the first day for a player who saves', () => {
+    expect(pace([9, 20], false).fullHours).toBeLessThan(9.5);
   });
 
-  it('takes two to three days at three sessions a day', () => {
-    const days = daysToJump([9, 13, 20]);
-    expect(days).toBeGreaterThanOrEqual(2);
-    expect(days).toBeLessThanOrEqual(3);
+  it('fills it as soon for a player who grows the works', () => {
+    expect(pace([9, 20], true).fullHours).toBeLessThan(9.5);
   });
 
-  // Owner 2026-11-09: the works aboard make three times as much, so the ship leaves sooner.
-  it('still takes more than a day and a half at four sessions a day', () => {
-    expect(daysToJump([9, 13, 18, 22])).toBeGreaterThanOrEqual(1.5);
+  it('fills it inside the first day for a player who comes once a day', () => {
+    expect(pace([20], false).fullHours).toBeLessThan(24);
   });
 
-  it('never lands the most active player inside the first day', () => {
-    const days = daysToJump([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    expect(days).toBeGreaterThan(1);
-    expect(days).toBeLessThan(2);
-  });
-
-  it('still lands a player who comes once a day', () => {
-    const days = daysToJump([20]);
-    expect(days).toBeGreaterThan(5);
-    expect(days).toBeLessThan(12);
+  it('never fills it inside the first session: leaving early is the lighter landing', () => {
+    expect(pace([9, 20], false).fullHours).toBeGreaterThan(SESSION_MINUTES / 60);
   });
 });

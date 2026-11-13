@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const JOURNEY_STAGES = ['registered', 'enlisted', 'refinery', 'mining', 'probe', 'yard', 'built', 'battle', 'victory', 'departed'] as const;
+export const JOURNEY_STAGES = ['registered', 'enlisted', 'refinery', 'mining', 'probe', 'yard', 'window', 'built', 'battle', 'victory', 'departed'] as const;
 const stage = z.enum(JOURNEY_STAGES);
 const stamp = z.number().finite();
 const evidence = z.object({ at: stamp, code: z.string() });

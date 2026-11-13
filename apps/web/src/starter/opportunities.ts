@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, STARTER, afterQueue, canLoadFuel, isJumpReady, nextRequiredStep, nextSteps,
+  REPAIR_LADDER, STARTER, afterQueue, holdIsFull, jumpWindowOpen, nextRequiredStep, nextSteps,
   type RepairStep, type StarterFeature, type VesselFact, type VesselProgress,
 } from '@astera/rules';
 import type { HuntStage } from './hunt.js';
@@ -15,8 +15,6 @@ export type Opportunity =
   | { kind: 'mine' }
   | { kind: 'underway'; what: 'probe' | 'mine' }
   | { kind: 'fact'; fact: VesselFact }
-  | { kind: 'parts'; count: number }
-  | { kind: 'fuel' }
   | { kind: 'jump' }
   | { kind: 'hunt'; hunt: HuntStage; mining: boolean };
 
@@ -79,9 +77,33 @@ function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportuni
   return hunt.stage === 'probe' || hunt.stage === 'decide' || hunt.stage === 'retry' ? { act: offer } : { state: offer };
 }
 
-/** Fuel moves from the store; Deuterium still in the works is one collect away. */
-function tank(input: OpportunityInput): Opportunity {
-  return input.held.deuterium < 1 && input.held.bufferDeuterium >= 1 ? { kind: 'collect' } : { kind: 'fuel' };
+/** The hold counts the store and the works alike: a collect moves them, the jump carries both (§4.4). */
+const holdFull = ({ held }: OpportunityInput): boolean =>
+  holdIsFull({ alloy: held.alloy + held.bufferAlloy, crystal: held.crystal + held.bufferCrystal });
+
+/**
+ * PAST THE FIRST LOOP (plan 2026-11-13 §4.3–4.5). Leaving and staying are both fair: a full hold
+ * brings the jump to the front, otherwise the line names what a ship that stays does, and the jump
+ * waits on the list. A flight out keeps the ship from leaving, so the line says that instead.
+ */
+function afterLoop(input: OpportunityInput, queued: RepairStep[], full: boolean, soonest: () => Date): Opportunity {
+  const { progress, held, income } = input;
+  const open = jumpWindowOpen(progress);
+  const jump = (): Opportunity => input.mining === true ? { kind: 'underway', what: 'mine' } : { kind: 'jump' };
+  if (open && holdFull(input)) return jump();
+  const hunt = huntOf(input);
+  if (hunt.act) return hunt.act;
+  const flying = flyingFor(input);
+  const deeds = deedsLeft(input);
+  const todo = deeds.find(deed => !flying[deed]);
+  if (todo) return { kind: todo };
+  if (!open) return deeds[0] ? { kind: 'underway', what: deeds[0] } : { kind: 'wait', readyAt: soonest() };
+  if (input.crateReady === true) return { kind: 'crate' };
+  const step = full ? undefined : nextSteps(afterQueue(progress, queued))[0];
+  if (!step) return jump();
+  if (held.alloy >= step.alloy && held.crystal >= step.crystal) return { kind: 'repair', step };
+  if (held.alloy + held.bufferAlloy >= step.alloy && held.crystal + held.bufferCrystal >= step.crystal) return { kind: 'collect' };
+  return { kind: 'save', step, minutes: timeToAfford(step, held, income) };
 }
 
 /** Everything doable this moment, in the order an advisor would offer it. */
@@ -93,16 +115,17 @@ function choices(input: OpportunityInput): Opportunity[] {
   const flying = flyingFor(input);
   const deeds = deedsLeft(input).filter(deed => !flying[deed]).map((kind): Opportunity => ({ kind }));
   const works = held.bufferAlloy >= 1 || held.bufferCrystal >= 1 || held.bufferDeuterium >= 1;
-  const fuel = canLoadFuel(progress) && !isJumpReady(progress) && held.deuterium >= 1;
+  const jump = jumpWindowOpen(progress);
   const { act: hunt } = huntOf(input);
-  // The hunt leads here as it leads the line: it is the moment's story, a repair waits a minute.
+  // The hunt leads here as it leads the line: it is the moment's story, a repair waits a minute. The
+  // jump comes after it, the first hunt kept ahead (plan 2026-11-13 §4.3).
   return [
     ...(hunt ? [hunt] : []),
     ...repairs.filter(s => s.required).map((step): Opportunity => ({ kind: 'repair', step })),
     ...deeds,
+    ...(jump ? [{ kind: 'jump' } as const] : []),
     ...repairs.filter(s => !s.required).map((step): Opportunity => ({ kind: 'repair', step })),
     ...(works ? [{ kind: 'collect' } as const] : []),
-    ...(fuel ? [{ kind: 'fuel' } as const] : []),
   ];
 }
 
@@ -116,8 +139,8 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   const { repairs, queued, full } = repairQueue(input);
   const soonest = (): Date => new Date(Math.min(...repairs.map(order => order.readyAt.getTime())));
   const next = nextRequiredStep(progress, queued);
-  // Every required repair is done or queued. The tank opens only once the thrust and the second plant are in.
-  if (!next) return isJumpReady(progress) ? { kind: 'jump' } : canLoadFuel(progress) ? tank(input) : { kind: 'wait', readyAt: soonest() };
+  // Every required repair is done or queued: the rest of the loop, then the window.
+  if (!next) return afterLoop(input, queued, full, soonest);
   const { step } = next;
   const storePays = held.alloy >= step.alloy && held.crystal >= step.crystal;
   if (features.includes('telescope') && !progress.facts.includes('FIRST_MINING_RETURN') && input.mining !== true) return { kind: 'mine' };
@@ -136,9 +159,6 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   if (out) return { kind: 'underway', what: out };
   const fact = next.missing.find(need => need.kind === 'FACT');
   if (fact?.kind === 'FACT') return { kind: 'fact', fact: fact.fact };
-  const parts = next.missing.find(need => need.kind === 'PARTS');
-  // The rule names the whole need; the line asks only for what the hold still lacks.
-  if (parts?.kind === 'PARTS') return { kind: 'parts', count: Math.max(0, parts.count - progress.parts) };
   if (repairs.length > 0 && (next.missing.length > 0 || full)) return { kind: 'wait', readyAt: soonest() };
   if (storePays && next.missing.length === 0) return { kind: 'repair', step };
   if (held.alloy + held.bufferAlloy >= step.alloy && held.crystal + held.bufferCrystal >= step.crystal) return { kind: 'collect' };

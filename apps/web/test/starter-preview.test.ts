@@ -149,10 +149,11 @@ describe('the lights aboard', () => {
     expect(vesselLights(openingProgress()).SURVEY).toBe(0);
   });
 
-  it('lights a system as far as it is repaired', () => {
-    const lights = vesselLights({ ...openingProgress(), modules: { SURVEY: 1 } });
-    expect(lights.SURVEY).toBe(0.5);
-    expect(vesselLights({ ...openingProgress(), modules: { SURVEY: 2 } }).SURVEY).toBe(1);
+  // The first loop's repairs light a system; later repairs are a choice and leave the look as it is (plan 2026-11-13 §5.1).
+  it('lights a system as far as its first-loop repairs go', () => {
+    expect(vesselLights({ ...openingProgress(), modules: { REFINERY: 1 } }).REFINERY).toBeCloseTo(1 / 3);
+    expect(vesselLights({ ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1 } }).REFINERY).toBe(1);
+    expect(vesselLights({ ...openingProgress(), modules: { TELESCOPE: 1 } }).DEFENCE).toBe(0.5);
   });
 });
 

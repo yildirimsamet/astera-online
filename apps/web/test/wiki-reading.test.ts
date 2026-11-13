@@ -213,9 +213,11 @@ describe('Wiki on the colony ship', () => {
       expect(galaxy).toContain(String(STARTER.pvp.bashLimit));
       expect(galaxy).toContain(String(STARTER.pvp.dailyRaidCap));
       expect(galaxy).toContain(String(STARTER.idleMs / 3_600_000));
+      expect(galaxy).toContain(String(STARTER.pvp.lockAfterDays));
+      // Plan 2026-11-13 §5.1: the drive asks for the first loop, and for no fuel or parts.
       const jump = text('basics.the-jump', language);
-      expect(jump).toContain(String(STARTER.fuelForJump));
-      expect(jump).toContain(String(STARTER.parts.needed));
+      expect(jump).toMatch(language === 'en' ? /first loop/u : /ilk döngü/u);
+      expect(jump).not.toMatch(language === 'en' ? /thrust part|tank/u : /itki parçası|depoda/u);
       expect(jump).toContain(number(STARTER.carry.alloy, language));
       expect(jump).toContain(String(STARTER.carry.ships));
     }

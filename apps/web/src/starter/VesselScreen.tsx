@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, STARTER, afterQueue, isJumpReady, nextRequiredStep, vesselHull, vesselLook,
+  REPAIR_LADDER, STARTER, afterQueue, jumpWindowOpen, nextRequiredStep, vesselHull, vesselLook,
   type RepairStep, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,7 @@ import { vesselToPlanetView } from './adapter.js';
 import { startJump } from './jump.js';
 import { LandingChoice } from './LandingChoice.js';
 import { MigrationPanel } from './MigrationPanel.js';
+import { holdShare } from './hold.js';
 import { CrateBay } from './CrateBay.js';
 import { useMainSky, useOpenCrates, useRepairVessel } from './queries.js';
 import { pressedWorld } from './jumpWorld.js';
@@ -105,8 +106,9 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   const held = useProjected(view.planet, fetchedAt);
   const progress = progressOf(vessel);
   const ahead = afterQueue(progress, queuedSteps(vessel));
-  // A ship that can leave opens where it leaves from (owner playtest 2026-11-09).
-  const [system, setSystem] = useState<VesselSystem>(() => isJumpReady(progress) ? 'DRIVE' : nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
+  // A ship whose hold is full opens where it leaves from (owner playtest 2026-11-09); one with room
+  // opens on its repairs, which is how the hold fills (plan 2026-11-13 §4.5).
+  const [system, setSystem] = useState<VesselSystem>(() => jumpWindowOpen(progress) && holdShare(vessel) >= 1 ? 'DRIVE' : nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
   const [picked, setPicked] = useState<RepairStep | null>(null);
   const [jumping, setJumping] = useState<MigrationView | null>(null);
   const [deck, setDeck] = useState<ShipDeck>('repairs');
@@ -163,7 +165,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
           </span>
         </div>
         <span aria-hidden="true" className="text-micro text-v2-ink-2">›</span>
-        <span aria-label={t('starter.mainRow.legFuel')} className="flex shrink-0 flex-col items-center text-v2-crystal"><Icon id="m-recover" className="size-4"/><span className="font-v2-mono text-micro">{vessel.fuel}/{vessel.jumpFuel}</span></span>
+        <span data-testid="ship-hold" aria-label={t('starter.mainRow.legHold')} className="flex shrink-0 flex-col items-center text-v2-crystal"><Icon id="i-collect" className="size-4"/><span className="font-v2-mono text-micro">{Math.floor(holdShare(vessel) * 100)}%</span></span>
         <span aria-hidden="true" className="text-micro text-v2-ink-2">›</span>
         <img src="/assets/images/starter/galaxy-badge.webp" alt={t('starter.visual.galaxy')} draggable={false} className="h-7 w-9 shrink-0 object-cover mix-blend-screen [mask-image:radial-gradient(closest-side,#000_55%,transparent)]" />
       </div>

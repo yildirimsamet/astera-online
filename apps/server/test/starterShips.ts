@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
-import { fleetEntries, type Fleet, type VesselModules } from '@astera/rules';
+import { REPAIR_LADDER, fleetEntries, readyCrates, type Fleet, type VesselFact, type VesselModules } from '@astera/rules';
 import { starterSites, vesselUnits, vessels } from '../src/db/schema.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -16,6 +16,19 @@ export async function aboard(world: StarterWorld, name = 'Pilot', modules?: Vess
   const id = body.vessel.id;
   if (modules) await world.f.db.update(vessels).set({ modules: { REFINERY: 1, ...modules } }).where(eq(vessels.id, id));
   return { ...person, vesselId: id, position: body.vessel.position, headers: bearer(person.token) };
+}
+
+/**
+ * THE FIRST LOOP DONE (plan 2026-11-13 §5.1): the jump window open, on top of whatever the ship has.
+ * Its crates are opened, as the guide opens them, so a case that reads the hold reads only its own.
+ */
+export async function openWindow(world: StarterWorld, id: string): Promise<void> {
+  const [row] = await world.f.db.select().from(vessels).where(eq(vessels.id, id));
+  const modules: VesselModules = { ...row!.modules };
+  for (const step of REPAIR_LADDER.filter(s => s.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
+  const facts = [...new Set<VesselFact>([...row!.facts, 'FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'])];
+  const opened = readyCrates({ modules, facts, parts: row!.parts, fuel: row!.fuel }, row!.cratesOpened).map(crate => crate.id);
+  await world.f.db.update(vessels).set({ modules, facts, cratesOpened: [...row!.cratesOpened, ...opened] }).where(eq(vessels.id, id));
 }
 
 export const placeShip = (world: StarterWorld, id: string, at: { x: number; y?: number; z?: number }) =>

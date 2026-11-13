@@ -61,7 +61,7 @@ describe('the board', () => {
 describe('the main galaxy, tapped from a ship', () => {
   const sky = { server: 'Vantage', worlds: 412, seasonEndsAt: new Date(NOW + 10 * 86_400_000) };
 
-  const road = { repair: 0.4, fuel: 30 };
+  const road = { repair: 0.4, hold: 0.25 };
 
   it('reads its name, its worlds and the days left, and offers no way there but the ship', () => {
     const open = vi.fn();
@@ -82,11 +82,20 @@ describe('the main galaxy, tapped from a ship', () => {
     const body = screen.getByTestId('main-galaxy-row');
     expect(body).toHaveTextContent(/real journey/iu);
     expect(body).toHaveTextContent('40%');
-    expect(body).toHaveTextContent(`30/${String(STARTER.fuelForJump)}`);
+    expect(body).toHaveTextContent('25%');
+    expect(body).not.toHaveTextContent(/fuel/iu);
+  });
+
+  // Plan 2026-11-13 §4.3: the jump asks for the first loop only; what the hold carries is the reason to stay.
+  it('says the jump is the player\'s to choose once the drive is up, and what a fuller hold is for', () => {
+    render(<MainGalaxyRow sky={sky} now={NOW} jumpReady road={road} onOpenShip={vi.fn()} onClose={vi.fn()} />);
+    const body = screen.getByTestId('main-galaxy-row');
+    expect(body).toHaveTextContent(/whenever you like/iu);
+    expect(body).toHaveTextContent(/hold/iu);
   });
 
   it('says the season is being awaited when none is live', () => {
-    render(<MainGalaxyRow sky={{ server: 'Vantage', worlds: 0, seasonEndsAt: null }} now={NOW} jumpReady={false} road={{ repair: 0, fuel: 0 }} onOpenShip={vi.fn()} onClose={vi.fn()} />);
+    render(<MainGalaxyRow sky={{ server: 'Vantage', worlds: 0, seasonEndsAt: null }} now={NOW} jumpReady={false} road={{ repair: 0, hold: 0 }} onOpenShip={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByTestId('main-galaxy-row')).toHaveTextContent(/new season/iu);
   });
 });

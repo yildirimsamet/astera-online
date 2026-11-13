@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER, fleetCount, hangarLoad, migrationCargo } from '../src/index.js';
+import { STARTER, fleetCount, hangarLoad, holdIsFull, migrationCargo } from '../src/index.js';
 
 const plenty = { alloy: 99_999, crystal: 99_999, deuterium: 99_999 };
 
@@ -51,5 +51,20 @@ describe('what the hold carries down', () => {
     const FIRST_SEASON_ROOM = 20;
     const cargo = migrationCargo({ ...plenty, fleet: { WARDEN: 6, PROSPECTOR: 6 }, damage: [] });
     expect(hangarLoad(cargo.fleet) + FIRST_SEASON_ROOM).toBeLessThanOrEqual(FIRST_HANGAR_ROOM);
+  });
+});
+
+// Plan 2026-11-13 §5.2–5.3: a full hold is the moment staying stops adding to the landing.
+describe('a full hold', () => {
+  const cargo = (alloy: number, crystal: number, deuterium = 0) => migrationCargo({ alloy, crystal, deuterium, fleet: {}, damage: [] });
+
+  it('is full when alloy and crystal both reach their ceiling', () => {
+    expect(holdIsFull(cargo(STARTER.carry.alloy, STARTER.carry.crystal))).toBe(true);
+    expect(holdIsFull(cargo(99_999, 99_999))).toBe(true);
+  });
+
+  it('is not full while either is short, whatever the deuterium', () => {
+    expect(holdIsFull(cargo(STARTER.carry.alloy - 1, STARTER.carry.crystal, 99_999))).toBe(false);
+    expect(holdIsFull(cargo(STARTER.carry.alloy, STARTER.carry.crystal - 1, 99_999))).toBe(false);
   });
 });

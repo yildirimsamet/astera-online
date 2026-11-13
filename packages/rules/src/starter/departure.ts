@@ -2,7 +2,7 @@ import type { PlanetSlot } from '../galaxy.js';
 import type { Vec3 } from '../types.js';
 import { distance } from '../travel.js';
 import { STARTER } from './constants.js';
-import { canLoadFuel, isJumpReady, type VesselProgress } from './ladder.js';
+import { canLoadFuel, jumpWindowOpen, type VesselProgress } from './ladder.js';
 
 const DAY_MS = 86_400_000;
 
@@ -13,11 +13,11 @@ export type DepartureBlock =
 
 /**
  * WHAT STANDS BETWEEN A SHIP AND THE JUMP, the first thing only. Plan §3.8. The order is the order
- * a player can do something about it: the tank, then the fleet, then the calendar. A season that
+ * a player can do something about it: the first loop, then the fleet, then the calendar. A season that
  * ends inside the cutoff is not a refusal of the ship: it plays on and leaves into the next one.
  */
 export function departureBlock(input: { progress: VesselProgress; flying: number; seasonEndsAtMs: number; nowMs: number }): DepartureBlock | null {
-  if (!isJumpReady(input.progress)) return { code: 'MIGRATION_NOT_READY' };
+  if (!jumpWindowOpen(input.progress)) return { code: 'MIGRATION_NOT_READY' };
   if (input.flying > 0) return { code: 'MIGRATION_FLEET_OUT', flying: input.flying };
   const left = input.seasonEndsAtMs - input.nowMs;
   if (left < STARTER.migrationCutoffDays * DAY_MS) return { code: 'MIGRATION_SEASON_WAIT', daysLeft: Math.ceil(left / DAY_MS) };

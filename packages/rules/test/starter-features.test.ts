@@ -37,7 +37,7 @@ describe('what a commander can use', () => {
     ['defence', at({ AEGIS: 1 })],
     ['attack', at({ AEGIS: 1 }, { facts: ['FIRST_BATTLE_REPORT'] })],
     ['deuterium', at({ DEUTERIUM_PLANT: 1 })],
-    ['migration', at({}, { fuel: STARTER.fuelForJump })],
+    ['migration', at({ REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, { facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] })],
   ])('opens %s on its own trigger', (feature, progress) => {
     expect(isFeatureOpen(openingProgress(), feature)).toBe(false);
     expect(isFeatureOpen(progress, feature)).toBe(true);

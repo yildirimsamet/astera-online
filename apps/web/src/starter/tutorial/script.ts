@@ -265,10 +265,9 @@ export function adviceMarks(choice: Opportunity, view: TutorialView): { marks: r
     case 'crate': return aboard(view, [CRATE]);
     case 'probe': return outside(view, ['[data-guide="probe"]', '[data-guide="objective"]']);
     case 'mine': return outside(view, ['[data-guide="mine"]', '[data-guide="objective"]']);
-    case 'fuel': return aboard(view, ['[data-guide="fuel"]', tab('DRIVE')]);
     case 'jump': return aboard(view, [tab('DRIVE')]);
     case 'hunt': return huntMarks(choice.hunt, view);
-    case 'save': case 'wait': case 'underway': case 'fact': case 'parts': return NOWHERE;
+    case 'save': case 'wait': case 'underway': case 'fact': return NOWHERE;
   }
 }
 

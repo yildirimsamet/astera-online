@@ -140,6 +140,19 @@ it('retains an inactive defender while somebody else is attacking it', async () 
   expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('FLIGHT');
   expect(await f.db.select().from(commanderTransfers)).toHaveLength(0);
 });
+// S5, owner 2026-11-13: a newcomer inside the shield is not taken; the thirty hours start when it ends.
+it('leaves a commander inside the newcomer shield in place, in the sweep and in the locked recheck', async () => {
+  const f = await idleFixture();
+  const until = new Date(f.clock.now().getTime() + 24 * 3_600_000);
+  await f.db.update(players).set({ newcomerShieldUntil: until }).where(eq(players.id, f.playerIds[0]!));
+  expect((await runSilentSpaceSweep(f.db, f.clock, { batchSize: 5 })).movedOut).toBe(0);
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('ACTIVE');
+  f.clock.advance((24 + 30) * 60);
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
+  expect((await runSilentSpaceSweep(f.db, f.clock, { batchSize: 5 })).movedOut).toBe(1);
+});
+
 it('runs one bounded sweep across replicas per five minutes and picks existing inactive players', async () => {
   const f = await idleFixture();
   const first = await runSilentSpaceSweep(f.db, f.clock, { batchSize: 1 });

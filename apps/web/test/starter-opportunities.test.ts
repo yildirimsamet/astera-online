@@ -15,6 +15,7 @@ const step = (module: string, stage: number) => {
 const first = step('REFINERY', 2);
 
 const next = (i: OpportunityInput) => opportunities(i)[0];
+const empty = { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
 
 const input = (over: Partial<OpportunityInput> = {}): OpportunityInput => ({
   progress: openingProgress(),
@@ -85,22 +86,14 @@ describe('the next step', () => {
     expect(next(input({ progress, held: poor, features: ['production', 'intel', 'fleet', 'telescope'], mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
   });
 
-  it('asks for fuel once every required repair is done, and for the jump when the tank is full', () => {
+  it('waits for the last required repair in the queue before it offers the jump', () => {
     const modules: Record<string, number> = {};
-    for (const s of REPAIR_LADDER) if (s.required) modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-    const done: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], parts: STARTER.parts.needed, fuel: 0 };
-    expect(next(input({ progress: done }))).toEqual({ kind: 'fuel' });
-    expect(next(input({ progress: { ...done, fuel: STARTER.fuelForJump } }))).toEqual({ kind: 'jump' });
-  });
-
-  // The tank stays shut until the thrust assembly and the second plant are in: asking for fuel then is a dead end.
-  it('waits for the last required repair in the queue before it asks for fuel', () => {
-    const modules: Record<string, number> = {};
-    for (const s of REPAIR_LADDER) if (s.required && s.module !== 'DRIVE_THRUST') modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-    const progress: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], parts: STARTER.parts.needed, fuel: 0 };
+    for (const s of REPAIR_LADDER) if (s.required && s.module !== 'SHIPYARD') modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
+    const progress: VesselProgress = { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], parts: 0, fuel: 0 };
     const readyAt = new Date('2026-11-08T12:00:00Z');
-    const queue = [{ queue: 'CONSTRUCTION', subject: 'DRIVE_THRUST', stage: 1, readyAt }];
-    expect(next(input({ progress, queue }))).toEqual({ kind: 'wait', readyAt });
+    const queue = [{ queue: 'CONSTRUCTION', subject: 'SHIPYARD', stage: 1, readyAt }];
+    expect(next(input({ progress, queue, held: empty }))).toEqual({ kind: 'wait', readyAt });
+    expect(opportunities(input({ progress, queue, held: empty })).map(o => o.kind)).not.toContain('jump');
   });
 });
 
@@ -127,26 +120,51 @@ it('keeps the first mining flight ahead of another affordable repair', () => {
   expect(next(input({ progress, features: ['production', 'intel', 'fleet', 'telescope'] }))).toEqual({ kind: 'mine' });
 });
 
-/** The line counts what is still to find, as the NPC's hint does: a part in the hold is not asked for again. */
-it('asks only for the thrust parts still missing', () => {
-  const modules: Record<string, number> = {};
-  for (const s of REPAIR_LADDER) if (s.required && s.module !== 'DRIVE_THRUST') modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-  const progress: VesselProgress = { modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], parts: 1, fuel: 0 };
-  expect(next(input({ progress }))).toEqual({ kind: 'parts', count: STARTER.parts.needed - 1 });
-});
-
-/** Every required repair in, the thrust parts in the hold: what is left is the tank. */
-const departureReady = (): VesselProgress => {
+/** The first loop done (plan 2026-11-13 §5.1): the six repairs, a mining run home and a first report. */
+const loopDone = (): VesselProgress => {
   const modules: Record<string, number> = {};
   for (const s of REPAIR_LADDER) if (s.required) modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-  return { modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'], parts: STARTER.parts.needed, fuel: 0 };
+  return { modules, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], parts: 0, fuel: 0 };
 };
-const empty = { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
+const full = { alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal, bufferAlloy: 0, bufferCrystal: 0, deuterium: 0, bufferDeuterium: 0 };
+/** Enough for the next repairs, short of what the hold carries. */
+const some = { ...full, alloy: 1500, crystal: 800 };
 
-describe('the tank', () => {
-  it('loads from the store, and asks for a collect first when the Deuterium is still in the works', () => {
-    expect(next(input({ progress: departureReady(), held: { ...empty, deuterium: 40 } }))).toEqual({ kind: 'fuel' });
-    expect(next(input({ progress: departureReady(), held: { ...empty, bufferDeuterium: 40 } }))).toEqual({ kind: 'collect' });
+/**
+ * PLAN 2026-11-13 §4.3–4.5: once the window opens the jump is on the list; staying is just as fair. The
+ * first hunt keeps its place ahead of it, and a full hold brings the jump to the front.
+ */
+describe('the jump window', () => {
+  it('puts the jump on the list once the first loop is done, and never asks for fuel or parts', () => {
+    const kinds = opportunities(input({ progress: loopDone(), held: some })).map(o => o.kind);
+    expect(kinds).toContain('jump');
+    expect(kinds).not.toContain('fuel');
+    expect(kinds).not.toContain('parts');
+  });
+
+  it('leads with what a ship that stays does: a repair the store pays', () => {
+    expect(next(input({ progress: loopDone(), held: some }))).toMatchObject({ kind: 'repair' });
+  });
+
+  it('keeps the first hunt ahead of the jump', () => {
+    const answers = opportunities(input({ progress: loopDone(), held: some, hunt: { stage: 'decide' } }));
+    expect(answers[0]).toMatchObject({ kind: 'hunt' });
+    expect(answers.map(o => o.kind).indexOf('hunt')).toBeLessThan(answers.map(o => o.kind).indexOf('jump'));
+  });
+
+  it('brings the jump to the front once the hold is full', () => {
+    expect(next(input({ progress: loopDone(), held: full }))).toEqual({ kind: 'jump' });
+    expect(next(input({ progress: loopDone(), held: { ...full, alloy: 0, bufferAlloy: STARTER.carry.alloy } }))).toEqual({ kind: 'jump' });
+  });
+
+  it('says the Prospector is out instead, while a flight keeps the ship from leaving', () => {
+    expect(next(input({ progress: loopDone(), held: full, mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
+  });
+
+  it('offers the jump when nothing else is left to do', () => {
+    expect(next(input({ progress: loopDone(), held: empty }))).toMatchObject({ kind: 'save' });
+    const all: VesselProgress = { ...loopDone(), modules: Object.fromEntries(REPAIR_LADDER.map(s => [s.module, 9])) };
+    expect(next(input({ progress: all, held: empty }))).toEqual({ kind: 'jump' });
   });
 });
 

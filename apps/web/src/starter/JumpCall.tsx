@@ -1,4 +1,4 @@
-import { isJumpReady, type VesselProgress } from '@astera/rules';
+import { jumpWindowOpen, type VesselProgress } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
@@ -6,13 +6,13 @@ import { Icon } from '../v2/icons.js';
 import './jumpCall.css';
 
 /**
- * THE WAY OUT, WHERE THE PLAYER IS (owner playtest 2026-11-09). A full tank is the whole of the starter
- * galaxy's story arriving at its end; it says so over the galaxy, at the thumb, and opens the ship on
- * the drive. The panel there says what still stands in the way, if anything does.
+ * THE WAY OUT, WHERE THE PLAYER IS (owner playtest 2026-11-09). Once the first loop is done the drive
+ * runs for one jump (plan 2026-11-13 §4.3); the call says so over the galaxy, at the thumb, and opens
+ * the ship. When to go stays the player's: there is no countdown.
  */
 export function JumpCall({ progress, onOpen }: { progress: VesselProgress; onOpen: () => void }) {
   const { t } = useTranslation();
-  if (!isJumpReady(progress)) return null;
+  if (!jumpWindowOpen(progress)) return null;
   return (
     <button
       type="button"

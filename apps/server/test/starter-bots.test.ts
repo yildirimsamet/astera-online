@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { players, starterDepartures, starterGalaxies, starterSites, vesselBotState, vesselMissions, vesselOrders, vesselProbeReports, vesselUnits, vessels } from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
-import { crewGalaxies, crewTakesShield, sweepShipBots, takeShipBotTurn } from '../src/services/starter/shipBots.js';
+import { crewGalaxies, crewTakesShield, shipBotStayMs, sweepShipBots, takeShipBotTurn } from '../src/services/starter/shipBots.js';
 import { resolveMiningLanding } from '../src/services/starter/mining.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
@@ -25,6 +25,32 @@ describe('how many neighbours', () => {
     expect(shipBotTarget(1)).toBe(STARTER.bots.min);
     expect(shipBotTarget(3)).toBe(20);
     expect(shipBotTarget(100)).toBe(STARTER.bots.max);
+  });
+});
+
+/**
+ * PLAN 2026-11-13 §5.4: a server ship stays aboard as long as a person might, then leaves. The shares
+ * are a design assumption until people's own stays are measured (Faz 5).
+ */
+describe('how long a server ship stays aboard', () => {
+  const HOUR = 3_600_000;
+  const hours = Array.from({ length: 3000 }, (_, i) => shipBotStayMs(`ship-${String(i)}`, 0) / HOUR);
+  const share = (from: number, to: number) => hours.filter(h => h >= from && h < to).length / hours.length;
+
+  it('draws its own stay, the same each time it is asked', () => {
+    expect(shipBotStayMs('ship-1', 0)).toBe(shipBotStayMs('ship-1', 0));
+  });
+
+  it('leaves early, within the day or after days, in shares like people\'s', () => {
+    expect(share(1, 3)).toBeCloseTo(0.3, 1);
+    expect(share(8, 30)).toBeCloseTo(0.5, 1);
+    expect(share(48, 120)).toBeCloseTo(0.2, 1);
+    expect(share(0, 1) + share(3, 8) + share(30, 48) + share(120, Infinity)).toBe(0);
+  });
+
+  it('draws a new stay when it wakes, as a person who comes back plays a new run', () => {
+    const again = Array.from({ length: 20 }, (_, i) => shipBotStayMs(`ship-${String(i)}`, 86_400_000));
+    expect(again).not.toEqual(hours.slice(0, 20).map(h => h * HOUR));
   });
 });
 
@@ -89,6 +115,34 @@ describe('the ships the server plays', () => {
     await turn(bot!.ship.accountId);
     const [after] = await world.f.db.select().from(vessels).where(eq(vessels.id, bot!.ship.id));
     expect(after!.alloy).toBeLessThan(5000);
+  });
+
+  // Plan 2026-11-13 §5.4: past the window every repair is a choice, and a crew that stays makes them.
+  it('keeps repairing past the first loop, as a person who stays does', async () => {
+    await names(1);
+    await aboard(world, 'Me');
+    await crew();
+    const [bot] = await bots();
+    await world.f.db.update(vessels).set({
+      modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1, AEGIS: 1 },
+      facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], cratesOpened: OPENED,
+      alloy: 5000, crystal: 5000, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0,
+    }).where(eq(vessels.id, bot!.ship.id));
+    expect(await turn(bot!.ship.accountId)).toBe('repair');
+    const orders = await world.f.db.select().from(vesselOrders).where(eq(vesselOrders.vesselId, bot!.ship.id));
+    expect(orders.map(order => `${order.subject} ${String(order.stage)}`)).toEqual(['EXTRACTOR 2']);
+  });
+
+  it('stops playing once its stay is over, as a person who leaves the game does', async () => {
+    await names(1);
+    await aboard(world, 'Me');
+    await crew();
+    const [bot] = await bots();
+    await world.f.db.update(vessels).set({ modules: { REFINERY: 1 }, alloy: 5000, crystal: 5000 }).where(eq(vessels.id, bot!.ship.id));
+    await world.f.db.update(vesselBotState).set({ createdAt: new Date(world.f.clock.now().getTime() - 200 * 3_600_000) }).where(eq(vesselBotState.vesselId, bot!.ship.id));
+    expect(await turn(bot!.ship.accountId)).toBeNull();
+    const [after] = await world.f.db.select().from(vessels).where(eq(vessels.id, bot!.ship.id));
+    expect(after!.alloy).toBe(5000);
   });
 
   /** Retention plan §6.2: a person's purse grows by the crates, so a server ship's must too. */
@@ -266,12 +320,29 @@ describe('the ships the server plays', () => {
       const crewed = await bots();
       expect(crewed).toHaveLength(2);
       for (const { ship } of crewed) {
-        await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], parts: 3, fuel: STARTER.fuelForJump, alloy: 100, crystal: 100, deuterium: 10 }).where(eq(vessels.id, ship.id));
+        await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], alloy: 100, crystal: 100, deuterium: 10 }).where(eq(vessels.id, ship.id));
+        await world.f.db.update(vesselBotState).set({ createdAt: new Date(world.f.clock.now().getTime() - 200 * 3_600_000) }).where(eq(vesselBotState.vesselId, ship.id));
       }
       await ensureBotSeats(world.f.db, world.f.clock, log);
       const board = await world.f.db.select().from(starterDepartures);
       expect(board.length).toBeGreaterThan(0);
       for (const line of board) expect(await inMain(line.accountId)).toBe(true);
+    });
+
+    // §5.4: the window opens in the first session; a crew jumps when its own stay is over, not before.
+    it('take a ready ship to the jump only once its stay is over', async () => {
+      await names(2);
+      await aboard(world, 'Me');
+      for (let i = 0; i < 2; i++) { await crew(); world.f.clock.advance(11); }
+      const [done, staying] = await bots();
+      for (const { ship } of [done!, staying!]) {
+        await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], alloy: 100, crystal: 100, deuterium: 10 }).where(eq(vessels.id, ship.id));
+      }
+      await world.f.db.update(vesselBotState).set({ createdAt: new Date(world.f.clock.now().getTime() - 200 * 3_600_000) }).where(eq(vesselBotState.vesselId, done!.ship.id));
+      await world.f.db.update(vesselBotState).set({ createdAt: world.f.clock.now() }).where(eq(vesselBotState.vesselId, staying!.ship.id));
+      await ensureBotSeats(world.f.db, world.f.clock, log);
+      const board = (await world.f.db.select().from(starterDepartures)).map(line => line.accountId);
+      expect(board).toEqual([done!.ship.accountId]);
     });
 
     it('take a ship that is not ready only last, and that ship goes quiet', async () => {

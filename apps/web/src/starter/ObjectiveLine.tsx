@@ -52,8 +52,6 @@ function useLine(objective: Opportunity, now: number): { text: string; tap: Tap;
     case 'mine': return { text: t('starter.objective.mine'), tap: 'rock', rest: false };
     case 'underway': return { text: t(objective.what === 'probe' ? 'starter.objective.underwayProbe' : 'starter.objective.underwayMine'), tap: null, rest: false };
     case 'fact': return { text: t(`starter.factHow.${objective.fact}`), tap: null, rest: false };
-    case 'parts': return { text: t('starter.objective.parts', { count: objective.count }), tap: null, rest: false };
-    case 'fuel': return { text: t('starter.objective.fuel'), tap: 'ship', rest: false };
     case 'jump': return { text: t('starter.mainRow.ready'), tap: 'ship', rest: false };
     case 'hunt': return huntLine(objective, t);
   }
@@ -86,12 +84,10 @@ function offerIcon(offer: Opportunity): IconId {
     case 'crate': return 'i-spark';
     case 'probe': return 'i-probe';
     case 'mine': return 'i-mine';
-    case 'fuel': return 'm-recover';
     case 'jump': return 'i-galaxy';
     case 'underway': return offer.what === 'probe' ? 'i-probe' : 'i-mine';
     case 'save': case 'wait': return 'i-hourglass';
     case 'fact': return 'i-info';
-    case 'parts': return 'i-spark';
     case 'hunt': return offer.hunt.stage === 'probe' || offer.hunt.stage === 'probing' ? 'i-probe' : 'i-attack';
   }
 }
@@ -131,7 +127,6 @@ function OfferFacts({ offer, held, progress }: { offer: Opportunity; held: Held;
       </span>
     );
   }
-  if (offer.kind === 'fuel') return <span className="flex items-center text-micro"><Amount resource="deuterium" value={Math.floor(held.deuterium)} /></span>;
   return null;
 }
 
@@ -145,7 +140,6 @@ function useOfferName(offer: Opportunity, now: number): string {
     case 'crate': return t('starter.visual.crate');
     case 'probe': return t('starter.visual.probe');
     case 'mine': return t('starter.visual.mine');
-    case 'fuel': return t('starter.advice.fuel');
     case 'jump': return t('starter.visual.galaxy');
     case 'hunt': return offer.hunt.stage === 'probe' ? t('starter.advice.huntProbe') : offer.hunt.stage === 'decide' ? t('starter.advice.huntDecide') : offer.hunt.stage === 'retry' ? t('starter.advice.huntRetry') : line.text;
     default: return line.text;

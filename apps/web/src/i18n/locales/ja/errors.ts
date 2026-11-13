@@ -374,7 +374,7 @@ export const errors = {
   RESEARCH_LOCKED: "この銀河の研究所ではまだそのプロジェクトを行えません。",
   RESEARCH_MAXED: "このプロジェクトはここでは最高レベルです。",
   WATCH_COOLDOWN: "この枠はまだ休止中です。準備ができたら再度お試しください。",
-  MIGRATION_NOT_READY: "まず燃料タンクを満たしましょう。",
+  MIGRATION_NOT_READY: "推進系は最初の一巡のあとに目覚めます。最初の修理、帰還した採掘1回、探査報告1件が必要です。",
   MIGRATION_FLEET_OUT: "ジャンプの前に全艦隊を帰還させましょう。",
   MIGRATION_SEASON_WAIT: "シーズンはあと{{daysLeft}}日で終わります。最初の到着者になるため新シーズンを待ちましょう。",
   LANDING_GONE: "そのアドレスは他の船が取りました。今空いているものから選び直してください。",

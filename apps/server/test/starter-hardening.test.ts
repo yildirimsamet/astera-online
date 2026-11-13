@@ -19,7 +19,7 @@ import type * as Bus from '../src/stream/bus.js';
 import { publishShard } from '../src/stream/bus.js';
 import { makeAccount, testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, arm, enrich, get, pass, placeShip, post, siteOf, type StarterWorld } from './starterShips.js';
+import { aboard, arm, enrich, get, openWindow, pass, placeShip, post, siteOf, type StarterWorld } from './starterShips.js';
 
 vi.mock('../src/stream/bus.js', async (original) => {
   const real = await original<typeof Bus>();
@@ -29,7 +29,6 @@ vi.mock('../src/stream/bus.js', async (original) => {
 afterAll(async () => { await (await testDb()).close(); });
 const log = pino({ level: 'silent' });
 
-const JUMP_READY = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 const FIGHTER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3, AEGIS: 1, RADAR: 1, TELESCOPE: 1 };
 const MINER = { SHIPYARD: 1, SURVEY: 1, REFINERY: 3 };
 
@@ -171,8 +170,9 @@ describe('what the review of the ship galaxies found', () => {
 
   describe('a jump pressed twice', () => {
     const ready = async (name = 'Pilot', fleet: Fleet = {}) => {
-      const person = await aboard(world, name, JUMP_READY);
-      await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump, alloy: 500, crystal: 0, deuterium: 0 }).where(eq(vessels.id, person.vesselId));
+      const person = await aboard(world, name);
+      await openWindow(world, person.vesselId);
+      await world.f.db.update(vessels).set({ alloy: 500, crystal: 0, deuterium: 0 }).where(eq(vessels.id, person.vesselId));
       await arm(world, person.vesselId, fleet);
       return person;
     };
@@ -232,8 +232,8 @@ describe('what the review of the ship galaxies found', () => {
 
   describe('the three addresses', () => {
     const ready = async () => {
-      const person = await aboard(world, 'Pilot', JUMP_READY);
-      await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, person.vesselId));
+      const person = await aboard(world, 'Pilot');
+      await openWindow(world, person.vesselId);
       return person;
     };
     const free = async (notIn: readonly number[]) => {
@@ -443,7 +443,9 @@ describe('what the review of the ship galaxies found', () => {
       await aboard(world, 'Me');
       await crewGalaxies(world.f.db, world.f.clock, log);
       const [bot] = await world.f.db.select({ ship: vessels }).from(vesselBotState).innerJoin(vessels, eq(vessels.id, vesselBotState.vesselId));
-      await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], parts: 3, fuel: STARTER.fuelForJump, alloy: 100, crystal: 100, deuterium: 10 }).where(eq(vessels.id, bot!.ship.id));
+      await world.f.db.update(vessels).set({ modules: READY, facts: [...FACTS], alloy: 100, crystal: 100, deuterium: 10 }).where(eq(vessels.id, bot!.ship.id));
+      // Its stay is over (plan 2026-11-13 §5.4): ready is the window open and the crew done with the galaxy.
+      await world.f.db.update(vesselBotState).set({ createdAt: new Date(world.f.clock.now().getTime() - 200 * 3_600_000) }).where(eq(vesselBotState.vesselId, bot!.ship.id));
       return bot!.ship;
     };
 
@@ -537,8 +539,8 @@ describe('what the review of the ship galaxies found', () => {
         : Reflect.get(target, key, receiver) as unknown,
     });
     const stuck = async () => {
-      const person = await aboard(world, 'Pilot', JUMP_READY);
-      await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, person.vesselId));
+      const person = await aboard(world, 'Pilot');
+      await openWindow(world, person.vesselId);
       await runDeparture(world.f.db, person.id, world.f.clock, { afterStep: (step) => { if (step === 'committed') throw new GameError('TEST_CUT', 'cut here', 500); } }).catch(() => undefined);
       world.f.clock.advance(3);
       return person;

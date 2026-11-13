@@ -14,13 +14,18 @@ import { urlOf, wireVessel } from './starterVesselFixture.js';
 
 afterEach(cleanup);
 
-const THRUST: VesselProgress = { modules: { REFINERY: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 }, facts: [], parts: 3, fuel: 40 };
+/** The first loop done (plan 2026-11-13 §5.1). */
+const LOOP: VesselProgress = {
+  modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 },
+  facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], parts: 0, fuel: 0,
+};
 
 const view = (over: Partial<Record<keyof MigrationView, unknown>> = {}) => ({
-  block: { code: 'MIGRATION_NOT_READY' },
+  block: null,
   target: { shard: 'EU-1', name: 'Vantage', seasonEndsAt: '2027-01-01T00:00:00.000Z' },
-  fuel: { loaded: 40, needed: STARTER.fuelForJump, canLoad: true },
   cargo: { alloy: 2000, crystal: 300, deuterium: 50, fleet: { DART: 6 } },
+  fill: { alloy: 1, crystal: 0.3, deuterium: 1, ships: 1 },
+  full: false,
   left: { alloy: 3000, crystal: 0, deuterium: 30, ships: 2 },
   choices: [],
   ...over,
@@ -45,142 +50,87 @@ const harness = (migration: object | (() => object), ask: (url: string, init?: R
   ) };
 };
 
-const shipWith = (progress: VesselProgress, deuterium = 200) => vesselSchema.parse(wireVessel({ progress, deuterium }));
+const shipWith = (progress: VesselProgress = LOOP) => vesselSchema.parse(wireVessel({ progress, deuterium: 200 }));
 
-describe('the drive panel', () => {
-  it('shows the tank in units and offers to load what can be loaded', async () => {
-    const { wrap, fetcher } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('tank-level')).toHaveTextContent(`40/${String(STARTER.fuelForJump)}`);
-    // The advisor's "load fuel" points here (plan F3).
-    expect(screen.getByRole('button', { name: /Load all/u }).getAttribute('data-guide')).toBe('fuel');
-    fireEvent.click(screen.getByRole('button', { name: /Load all/u }));
-    await waitFor(() => { expect(fetcher.mock.calls.some(([url]) => urlOf(url).includes('/api/starter/fuel'))).toBe(true); });
-    const call = fetcher.mock.calls.find(([url]) => urlOf(url).includes('/api/starter/fuel'))!;
-    expect(JSON.parse(z.string().parse(call[1]?.body))).toEqual({ amount: 50 });
-  });
-
-  it('names what the tank waits for instead of showing a dead control', async () => {
-    const { wrap } = harness(view({ fuel: { loaded: 0, needed: 90, canLoad: false } }));
-    render(wrap(<MigrationPanel vessel={shipWith({ ...THRUST, modules: { REFINERY: 1 }, fuel: 0 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('tank-locked')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Load/u })).toBeNull();
-  });
-
-  it('says how the parts come, and counts them', async () => {
+/**
+ * THE INPUTS OF THE CHOICE, NOT THE ANSWER (plan 2026-11-13 §4.4). The panel says what the hold takes
+ * against what a jump carries, what stays behind and what the season says; no drive, part or tank.
+ */
+describe('the jump panel', () => {
+  it('shows each resource of the hold against what a jump carries, and no tank or parts', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith({ ...THRUST, parts: 1 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('parts-count')).toHaveTextContent(`1/${String(STARTER.parts.needed)}`);
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('hold-alloy')).toHaveTextContent(`2,000/${STARTER.carry.alloy.toLocaleString('en')}`);
+    expect(screen.getByTestId('hold-crystal')).toHaveTextContent(`300/${STARTER.carry.crystal.toLocaleString('en')}`);
+    expect(screen.getByTestId('hold-ships')).toHaveTextContent(`6/${String(STARTER.carry.ships)}`);
+    expect(screen.queryByTestId('tank-level')).toBeNull();
+    expect(screen.queryByTestId('parts-count')).toBeNull();
+    expect(screen.queryByTestId('plan-DRIVE_HULL')).toBeNull();
   });
 
-  /**
-   * A HUNT IS OFFERED ONLY WHERE THERE IS ONE (player test D-03). Before the drive hull can be ordered
-   * no part is on the map, and the panel still said "send a probe to a wreck or an outpost".
-   */
-  it('says when the parts will show, before they are on the map', async () => {
-    const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith({ ...THRUST, modules: { REFINERY: 1 }, parts: 0 })} onJump={vi.fn()} />));
-    const hint = await screen.findByTestId('parts-seen');
-    expect(hint.textContent).toContain('They show on the map once the drive hull can be repaired.');
-    expect(hint.textContent).not.toMatch(/send a probe/iu);
+  it('says what the first loop still asks while the drive is not up, and offers no jump', async () => {
+    const { wrap } = harness(view({ block: { code: 'MIGRATION_NOT_READY' } }));
+    render(wrap(<MigrationPanel vessel={shipWith({ ...LOOP, facts: ['FIRST_MINING_SENT'] })} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('jump-block')).toHaveTextContent(/mining run/iu);
+    expect(screen.queryByRole('button', { name: /Prepare the jump/u })).toBeNull();
+  });
+
+  it('says when the hold is full that more is not carried', async () => {
+    const { wrap } = harness(view({ full: true, fill: { alloy: 1, crystal: 1, deuterium: 0.2, ships: 0.5 } }));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('hold-full')).toHaveTextContent(/hold is full/iu);
   });
 
   /**
    * THE LOSS IS SAID WHILE IT CAN STILL BE SPENT (player test: 14,306 alloy and 3 ships lost, seen
    * only on the last screen). The panel where the jump is prepared names what will stay behind.
    */
-  it('names what will stay behind, and what a jump can carry, before the jump', async () => {
+  it('names what will stay behind, and that repairs stay aboard, before the jump', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-left')).toHaveTextContent('Stays behind and is lost: 3,000 alloy, 0 crystal, 30 Deuterium, 2 ships.');
-    expect(screen.getByTestId('jump-carry')).toHaveTextContent(
-      `A jump carries at most ${STARTER.carry.alloy.toLocaleString('en')} alloy, ${STARTER.carry.crystal.toLocaleString('en')} crystal, ${String(STARTER.carry.deuterium)} Deuterium and ${String(STARTER.carry.ships)} ships.`);
+    expect(screen.getByTestId('jump-stays')).toHaveTextContent(/repairs and research stay aboard/iu);
   });
 
   it('opens the choice once nothing stands in the way', async () => {
     const onJump = vi.fn();
-    const { wrap } = harness(view({ block: null, fuel: { loaded: 90, needed: 90, canLoad: true } }));
-    render(wrap(<MigrationPanel vessel={shipWith({ ...THRUST, fuel: 90 })} onJump={onJump} />));
+    const { wrap } = harness(view());
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={onJump} />));
     fireEvent.click(await screen.findByRole('button', { name: /Prepare the jump/u }));
     expect(onJump).toHaveBeenCalledOnce();
   });
 
   it('gives the season reason and keeps the ship playing', async () => {
-    const { wrap } = harness(view({ block: { code: 'MIGRATION_SEASON_WAIT', daysLeft: 3 }, fuel: { loaded: 90, needed: 90, canLoad: true } }));
-    render(wrap(<MigrationPanel vessel={shipWith({ ...THRUST, fuel: 90 })} onJump={vi.fn()} />));
+    const { wrap } = harness(view({ block: { code: 'MIGRATION_SEASON_WAIT', daysLeft: 3 } }));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-block')).toHaveTextContent(/3 days/u);
     expect(screen.queryByRole('button', { name: /Prepare the jump/u })).toBeNull();
   });
-});
 
-/**
- * THE LAST STRETCH AS ONE PLAN (plan 2026-11-08 F7, moment 15): both engines, the fuel and what holds
- * the jump, in the panel where it is prepared; and the season or a full frontier said before the
- * tank is full (moment 16), with what the player can do meanwhile.
- */
-describe('the departure plan', () => {
-  const GATE = { REFINERY: 4, EXTRACTOR: 3, SURVEY: 2, SHIPYARD: 1, HANGAR: 2, TELESCOPE: 1, RADAR: 1 };
-  const facts: VesselProgress['facts'] = ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'];
-  const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
-  const order = (subject: string, hours: number) => ({
-    id: subject, queue: 'CONSTRUCTION', subject, stage: 1, count: 1, startedAt: new Date().toISOString(), readyAt: inHours(hours), cost: { alloy: 0, crystal: 0, deuterium: 0 },
-  });
-  const planShip = (progress: VesselProgress, over: Record<string, unknown> = {}) =>
-    vesselSchema.parse(wireVessel({ progress, deuterium: 0, ...over }));
-
-  it('calls an engine on the queue queued, never ready', async () => {
-    const { wrap } = harness(view());
-    const vessel = planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2 }, facts, parts: 3, fuel: 0 },
-      { queue: [order('DRIVE_HULL', 3), order('DRIVE_THRUST', 7)] });
-    render(wrap(<MigrationPanel vessel={vessel} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-DRIVE_HULL')).toHaveTextContent(/Queued · done in \d/u);
-    expect(screen.getByTestId('plan-DRIVE_THRUST')).toHaveTextContent(/Queued · done in \d/u);
-    expect(screen.getByTestId('plan-DRIVE_THRUST')).not.toHaveTextContent(/Repaired/u);
+  it('says the Prospector has to come home first', async () => {
+    const { wrap } = harness(view({ block: { code: 'MIGRATION_FLEET_OUT', flying: 1 } }));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('jump-block')).toBeInTheDocument();
   });
 
-  it('says what an engine still waits for', async () => {
-    const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1 }, facts, parts: 1, fuel: 0 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-DRIVE_HULL')).toHaveTextContent(/Repaired/u);
-    expect(screen.getByTestId('plan-DRIVE_THRUST')).toHaveTextContent(/Waits for/u);
-  });
-
-  it('says when the fuel is aboard, that flights slow it, and what holds the jump', async () => {
-    const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2, DRIVE_HULL: 1, DRIVE_THRUST: 1 }, facts, parts: 3, fuel: 20 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-fuel')).toHaveTextContent(/20\/90 aboard · full in \dh/u);
-    expect(screen.getByTestId('plan-flights')).toHaveTextContent(/no Deuterium is flown/u);
-    expect(screen.getByTestId('plan-waits')).toHaveTextContent(/fuel is what holds the jump/u);
-  });
-
-  it('shows what the second plant would gain while the first runs alone', async () => {
-    const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 1 }, facts, parts: 0, fuel: 20 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-lever')).toHaveTextContent(/With Deuterium Refinery 2: full in/u);
-  });
-
-  it('says the optional repairs stay aboard', async () => {
-    const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={planShip({ modules: { ...GATE, DEUTERIUM_PLANT: 2 }, facts, parts: 0, fuel: 0 })} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('plan-optional')).toHaveTextContent(/optional repairs left/u);
-  });
-
-  it('says at once, tank or no tank, that no galaxy has room', async () => {
-    const { wrap } = harness(view({ target: null }));
-    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+  it('says at once that no galaxy has room', async () => {
+    const { wrap } = harness(view({ target: null, block: { code: 'NO_FRONTIER' } }));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/No galaxy has room/u);
+    expect(screen.queryByTestId('jump-block')).toBeNull();
   });
 
-  it('says before the tank is full that the season has stopped taking ships', async () => {
+  it('says the season has stopped taking ships', async () => {
+    const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
     const { wrap } = harness(view({ target: { shard: 'EU-1', name: 'Vantage', seasonEndsAt: inHours(72) } }));
-    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/next season/u);
   });
 
-  it('says nothing early when the season has room for the plan', async () => {
+  it('says nothing about the season when it has room', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith(THRUST)} onJump={vi.fn()} />));
-    await screen.findByTestId('tank-level');
+    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    await screen.findByTestId('hold-alloy');
     expect(screen.queryByTestId('jump-outlook')).toBeNull();
   });
 });

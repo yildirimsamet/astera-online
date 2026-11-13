@@ -31,30 +31,22 @@ it('asks at farewell, retries only on a later long repair, and then stops', asyn
   render(<StarterAftercare vessel={{ ...vessel, queue }} farewelled guided />);
   expect(screen.queryByRole('button', { name: /notify me/i })).toBeNull();
 });
-it('offers one optional visit hint with only the missing thrust parts, and dismisses on one tap', async () => {
-  const { REPAIR_LADDER } = await import('@astera/rules');
-  const modules: VesselModules = {};
-  for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
-  modules.DRIVE_THRUST = 0;
-  const vessel = { ...ship(), modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] as const, parts: 1 };
-  const { rerender } = render(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts] }} farewelled guided />);
-  expect(screen.getByText(/Find 2 thrust parts/)).toBeTruthy();
+// The one deed a required repair waits on (plan 2026-11-13 §5.1): the radar waits for a Prospector sent out.
+const beforeRadar = () => ({ ...ship(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: [] });
+it('offers one optional visit hint with the deed the next repair waits on, and dismisses on one tap', () => {
+  const { rerender } = render(<StarterAftercare vessel={beforeRadar()} farewelled guided />);
+  expect(screen.getByText(/Send a Prospector to an asteroid\./u)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /understood/i }));
-  rerender(<StarterAftercare vessel={{ ...vessel, facts: [...vessel.facts], parts: 0 }} farewelled guided />);
+  rerender(<StarterAftercare vessel={beforeRadar()} farewelled guided />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
 });
-it('remembers dismissal across mounts and calculates a changed need from the current ship', async () => {
-  const { REPAIR_LADDER } = await import('@astera/rules');
-  const modules: VesselModules = {};
-  for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
-  modules.DRIVE_THRUST = 0;
-  const vessel = { ...ship(), modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN', 'FIRST_BATTLE_REPORT'] as const, parts: 1 };
-  const view = { ...vessel, facts: [...vessel.facts] };
-  const { rerender, unmount } = render(<StarterAftercare vessel={view} farewelled guided />);
-  rerender(<StarterAftercare vessel={{ ...view, parts: 2 }} farewelled guided />);
-  expect(screen.getByText(/Find 1 thrust parts/)).toBeTruthy();
+it('remembers dismissal across mounts, and says nothing once no repair waits on a deed', () => {
+  const { unmount } = render(<StarterAftercare vessel={beforeRadar()} farewelled guided />);
   fireEvent.click(screen.getByRole('button', { name: /understood/i })); unmount();
-  render(<StarterAftercare vessel={view} farewelled guided />);
+  const { unmount: again } = render(<StarterAftercare vessel={beforeRadar()} farewelled guided />);
+  expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
+  again(); sessionStorage.clear();
+  render(<StarterAftercare vessel={{ ...beforeRadar(), facts: ['FIRST_MINING_SENT'] }} farewelled guided />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
 });
 
@@ -63,7 +55,6 @@ it('asks a commander without the guide once the first haul is home, and gives no
   const { REPAIR_LADDER } = await import('@astera/rules');
   const modules: VesselModules = {};
   for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
-  modules.DRIVE_THRUST = 0;
   const away = { ...ship(), facts: ['FIRST_PROBE_REPORT' as const] };
   const { rerender } = render(<StarterAftercare vessel={away} farewelled={false} guided={false} />);
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
@@ -72,5 +63,5 @@ it('asks a commander without the guide once the first haul is home, and gives no
   state.native = true;
   rerender(<StarterAftercare vessel={{ ...ship(), modules, parts: 1 }} farewelled={false} guided={false} />);
   expect(screen.getByRole('button', { name: /notify me/i })).toBeTruthy();
-  expect(screen.queryByText(/thrust parts/)).toBeNull();
+  expect(screen.queryByText(/Send a/u)).toBeNull();
 });

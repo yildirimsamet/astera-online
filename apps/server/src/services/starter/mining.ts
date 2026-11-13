@@ -226,7 +226,7 @@ export async function resolveMiningLanding(tx: Tx, mission: MissionRow, clock: C
       }).where(eq(starterSites.id, site.id));
     }
     const homeAt = new Date(mission.arriveAt.getTime() + travelExact(distance({ x: mission.toX, y: mission.toY, z: mission.toZ }, { x: mission.fromX, y: mission.fromY, z: mission.fromZ }), STARTER.prospectorSpeed * PROSPECTOR.returnSpeedFactor) * 60_000);
-    const claimed = await tx.update(vesselMissions).set({ status: 'RETURNING', returnAt: homeAt, cargo, carriesPart })
+    const claimed = await tx.update(vesselMissions).set({ status: 'RETURNING', returnAt: homeAt, cargo, carriesPart, dug: true })
       .where(and(eq(vesselMissions.id, mission.id), eq(vesselMissions.status, 'OUTBOUND'))).returning({ id: vesselMissions.id });
     if (claimed.length === 0) return;
     await scheduleStarter(tx, { starterGalaxyId: mission.starterGalaxyId, kind: 'vessel_mission_return', refId: mission.id, resolveAt: homeAt });

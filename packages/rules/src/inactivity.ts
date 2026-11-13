@@ -22,11 +22,13 @@ export interface SilentSpaceClock {
   readonly joinedAt: number;
   readonly mainEnteredAt: number;
   readonly resetAt?: number | undefined;
+  /** S5, owner 2026-11-13: while the newcomer shield stands the clock waits; null once it is given up. */
+  readonly newcomerShieldUntil?: number | null | undefined;
 }
 
 /** When the commander becomes due to leave. All instants are server epoch milliseconds. */
 export function silentSpaceDueAt(state: SilentSpaceClock): number {
-  return Math.max(state.lastProgressAt ?? -Infinity, state.joinedAt, state.mainEnteredAt, state.resetAt ?? -Infinity) + SILENT_SPACE.idleMs;
+  return Math.max(state.lastProgressAt ?? -Infinity, state.joinedAt, state.mainEnteredAt, state.resetAt ?? -Infinity, state.newcomerShieldUntil ?? -Infinity) + SILENT_SPACE.idleMs;
 }
 
 /** Inclusive: exactly thirty hours is due. */

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { STARTER, canLoadFuel, departureBlock, fuelToLoad, landingChoices, openingProgress, type PlanetSlot, type VesselProgress } from '../src/index.js';
 
-const ready = (over: Partial<VesselProgress> = {}): VesselProgress => ({ ...openingProgress(), fuel: STARTER.fuelForJump, ...over });
+/** The first loop done (plan 2026-11-13 §5.1): no drive, no part and no fuel asked. */
+const ready = (over: Partial<VesselProgress> = {}): VesselProgress => ({
+  ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], ...over,
+});
 const NOW = Date.UTC(2026, 10, 5);
 const DAY = 86_400_000;
 
@@ -9,12 +12,15 @@ describe('may this ship leave', () => {
   const ask = (over: Partial<Parameters<typeof departureBlock>[0]> = {}) =>
     departureBlock({ progress: ready(), flying: 0, seasonEndsAtMs: NOW + 30 * DAY, nowMs: NOW, ...over });
 
-  it('leaves with a full tank, every fleet home, and time in the season', () => {
+  it('leaves with the window open, every fleet home, and time in the season', () => {
     expect(ask()).toBeNull();
+    expect(ask({ progress: ready({ fuel: 0, parts: 0 }) })).toBeNull();
   });
 
-  it('wants the tank full first: that is the one thing the drive asks for', () => {
-    expect(ask({ progress: ready({ fuel: STARTER.fuelForJump - 1 }) })).toEqual({ code: 'MIGRATION_NOT_READY' });
+  it('wants the first loop done first: a mining run home and a probe report', () => {
+    expect(ask({ progress: ready({ facts: ['FIRST_PROBE_REPORT'] }) })).toEqual({ code: 'MIGRATION_NOT_READY' });
+    expect(ask({ progress: ready({ facts: ['FIRST_MINING_RETURN'] }) })).toEqual({ code: 'MIGRATION_NOT_READY' });
+    expect(ask({ progress: openingProgress() })).toEqual({ code: 'MIGRATION_NOT_READY' });
   });
 
   it('waits for what is in the air', () => {
@@ -27,8 +33,8 @@ describe('may this ship leave', () => {
     expect(ask({ seasonEndsAtMs: NOW + STARTER.migrationCutoffDays * DAY - 1 })).toEqual({ code: 'MIGRATION_SEASON_WAIT', daysLeft: 5 });
   });
 
-  it('names the tank before the fleet before the season, so one thing is asked at a time', () => {
-    expect(ask({ progress: ready({ fuel: 0 }), flying: 2, seasonEndsAtMs: NOW + DAY })?.code).toBe('MIGRATION_NOT_READY');
+  it('names the window before the fleet before the season, so one thing is asked at a time', () => {
+    expect(ask({ progress: ready({ facts: [] }), flying: 2, seasonEndsAtMs: NOW + DAY })?.code).toBe('MIGRATION_NOT_READY');
     expect(ask({ flying: 2, seasonEndsAtMs: NOW + DAY })?.code).toBe('MIGRATION_FLEET_OUT');
   });
 });

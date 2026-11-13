@@ -5774,6 +5774,8 @@ export const vesselMissions = pgTable('vessel_missions', {
   cargo: jsonb('cargo').$type<Resources>().notNull().default({ alloy: 0, crystal: 0, deuterium: 0 }),
   /** A thrust part taken on this run. */
   carriesPart: boolean('carries_part').notNull().default(false),
+  /** A mining run that reached its rock and dug, even for nothing: one called back on its way out did not (plan 2026-11-13 §5.1). */
+  dug: boolean('dug').notNull().default(false),
   fuelPaid: integer('fuel_paid').notNull().default(0),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),

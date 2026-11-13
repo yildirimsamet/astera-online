@@ -4,7 +4,7 @@ import { pushDevices, returnReminders, vesselNotifications, vesselUnits, vessels
 import { planStarterReturn, sweepReturnSignals } from '../src/services/returnSignals.js';
 import { setPushTransport, type PushMessage } from '../src/services/notificationCenter.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, arm, enrich, post } from './starterShips.js';
+import { aboard, arm, enrich, openWindow, post } from './starterShips.js';
 import { testDb } from './helpers.js';
 import { countStatements } from '../src/db/client.js';
 import { Presence } from '../src/services/presence.js';
@@ -14,7 +14,9 @@ afterEach(async () => { setPushTransport(null); await world.built.close(); });
 afterAll(async () => { await (await testDb()).close(); });
 const setup = async () => {
   const me = await aboard(world, 'Me', { REFINERY: 2, EXTRACTOR: 2, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 });
-  await world.f.db.update(vessels).set({ alloy: 150, crystal: 0, bufferAlloy: 0, bufferCrystal: 0 }).where(eq(vessels.id, me.vesselId));
+  // Its crates opened, as the guide opens them: shut, they would count in a full hold (§5.3).
+  const { STARTER_CRATES } = await import('@astera/rules');
+  await world.f.db.update(vessels).set({ alloy: 150, crystal: 0, bufferAlloy: 0, bufferCrystal: 0, cratesOpened: STARTER_CRATES.map(c => c.id) }).where(eq(vessels.id, me.vesselId));
   await world.f.db.insert(pushDevices).values({ token: 'tok', accountId: me.id, platform: 'android', locale: 'en', createdAt: world.f.clock.now(), lastSeenAt: world.f.clock.now() });
   await world.f.db.transaction(async tx => { const [ship] = await tx.select().from(vessels).where(eq(vessels.id, me.vesselId)); await planStarterReturn(tx, ship!, world.f.clock.now(), true); });
   return me;
@@ -33,6 +35,16 @@ it('plans affordability, requires three hours away and limits the funded notice 
   await world.f.db.transaction(async tx => { const [ship] = await tx.select().from(vessels).where(eq(vessels.id, me.vesselId)); await planStarterReturn(tx, ship!, world.f.clock.now(), true); });
   await sweepReturnSignals(world.f.db, world.f.clock);
   expect(sent).toHaveLength(1);
+});
+// Plan 2026-11-13 §5.3: past the window the next repair is the player's choice, and a full hold has nothing to wait for.
+it('makes no repair appointment for a ship whose hold is full: its move is the jump', async () => {
+  const { STARTER } = await import('@astera/rules');
+  const me = await setup();
+  await openWindow(world, me.vesselId);
+  await world.f.db.update(vessels).set({ alloy: STARTER.carry.alloy, crystal: STARTER.carry.crystal }).where(eq(vessels.id, me.vesselId));
+  await world.f.db.transaction(async tx => { const [ship] = await tx.select().from(vessels).where(eq(vessels.id, me.vesselId)); await planStarterReturn(tx, ship!, world.f.clock.now(), true); });
+  const [reminder] = await world.f.db.select().from(returnReminders);
+  expect(reminder).toMatchObject({ subject: null, nextRepairAt: null });
 });
 it('sends news only for real events at 24 and 72 hours, at most twice per absence', async () => {
   const me = await setup();
@@ -95,12 +107,11 @@ it('stamps starter presence and resets its absence in one statement', async () =
   expect(reminder?.absenceAt).toEqual(world.f.clock.now());
 });
 it('carries return signals to the landed capital and ends funded notices after seven days', async () => {
-  const { STARTER } = await import('@astera/rules');
   const { players, planets, vesselMigrations, notifications } = await import('../src/db/schema.js');
   const { planPlanetReturn } = await import('../src/services/returnSignals.js');
   const { loadLocked } = await import('../src/services/planet.js');
-  const me = await aboard(world, 'Landing', { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 });
-  await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, me.vesselId));
+  const me = await aboard(world, 'Landing');
+  await openWindow(world, me.vesselId);
   await world.f.db.insert(pushDevices).values({ token: 'landed', accountId: me.id, platform: 'android', locale: 'en', createdAt: world.f.clock.now(), lastSeenAt: world.f.clock.now() });
   const jump = await post(world, '/api/starter/migrate', me.headers);
   expect(jump.statusCode).toBe(200);

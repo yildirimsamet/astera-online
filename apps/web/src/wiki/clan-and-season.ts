@@ -146,11 +146,11 @@ export const clanAndSeasonArticles: readonly WikiArticle[] = [
   topic('season', 'silent-space', l('Silent Space & returning', 'Sessiz Uzay ve dönüş'),
     l("Learn when inactivity moves your planets to Silent Space, which actions remain available and how to apply to return to your galaxy.", "Hareketsizlikte gezegenlerinin ne zaman Sessiz Uzay’a taşındığını, açık kalan işlemleri ve galaksine dönüş başvurusunu öğren."),
     l([
-      "If you start no attack, building upgrade, research, ship or ground-defence order for 30 hours, your planets move to Silent Space. Logging in alone does not reset this timer. In the last 12 hours, the timer line below the top bar shows remaining time.",
+      "If you start no attack, building upgrade, research, ship or ground-defence order for 30 hours, your planets move to Silent Space. While your newcomer shield stands the timer waits; the 30 hours start when it ends. Logging in alone does not reset this timer. In the last 12 hours, the timer line below the top bar shows remaining time.",
       "Your planets and progress are preserved, and you can continue development. Resource production slows to 50% of normal. Raids, asteroid and debris gathering, pirate attacks, trade and convoy strikes are unavailable there. The move does not delete your account or reset your capital.",
       "Apply through the Silent Space menu while your former galaxy accepts return applications. When room opens, the oldest eligible application is considered. Active flights or insufficient planet space can delay a return even if you are first in the queue.",
     ], [
-      "30 saat boyunca saldırı, bina geliştirme, araştırma, gemi veya yer savunması üretimi başlatmazsan gezegenlerin Sessiz Uzay’a taşınır. Yalnız giriş yapmak sayacı sıfırlamaz. Son 12 saatte üst çubuğun altındaki zamanlayıcı satırı kalan süreyi gösterir.",
+      "30 saat boyunca saldırı, bina geliştirme, araştırma, gemi veya yer savunması üretimi başlatmazsan gezegenlerin Sessiz Uzay’a taşınır. Yeni oyuncu kalkanın sürerken sayaç işlemez; 30 saat kalkan bitince başlar. Yalnız giriş yapmak sayacı sıfırlamaz. Son 12 saatte üst çubuğun altındaki zamanlayıcı satırı kalan süreyi gösterir.",
       "Gezegenlerin ve ilerlemen korunur; geliştirmeye devam edebilirsin. Kaynak üretimi normal hızın %50’sine düşer. Akın, asteroit ve enkaz toplama, korsan saldırısı, ticaret ve konvoy saldırısı yapılamaz. Taşınma hesabını silmez veya ana gezegenini sıfırlamaz.",
       "Eski galaksin başvuru kabul ederken Sessiz Uzay menüsünden dönüşe başvur. Yer açılınca en eski uygun başvuru değerlendirilir. Aktif uçuş veya yetersiz gezegen alanı dönüşü geciktirebilir; ilk sırada olmak hemen dönüş garantisi değildir.",
     ]),

@@ -43,6 +43,18 @@ describe('Silent Space departure after 30 hours without development or combat', 
     expect(silentSpaceDue(state, -hour)).toBe(false);
   });
 
+  // S5, owner 2026-11-13: a commander inside the newcomer shield is not taken; the clock starts when it ends.
+  it('starts the thirty hours when the newcomer shield ends', () => {
+    const shielded = { ...state, newcomerShieldUntil: 72 * hour };
+    expect(silentSpaceDueAt(shielded)).toBe(102 * hour);
+    expect(silentSpaceDue(shielded, 102 * hour - 1)).toBe(false);
+    expect(silentSpaceDue(shielded, 102 * hour)).toBe(true);
+  });
+
+  it('keeps the plain rule once the shield is given up by attacking', () => {
+    expect(silentSpaceDueAt({ ...state, newcomerShieldUntil: null })).toBe(30 * hour);
+  });
+
   it('halves production and nothing else', () => {
     expect(SILENT_SPACE.productionPace).toBe(0.5);
   });

@@ -24,6 +24,7 @@ import { useDepartures, useInbound, useMainSky, useUniverse } from '../starter/q
 import { departuresWatched, inboundWatched } from '../galaxy/watchedFlights.js';
 import { currentJump, markGameDrawn, useJump } from '../starter/jump.js';
 import { MainGalaxyRow } from '../starter/MainGalaxyRow.js';
+import { holdShare } from '../starter/hold.js';
 import { contactRail } from '../galaxy/contactRail.js';
 import { beamsNow } from '../galaxy/mainSky.js';
 import { partMarks, wreckWorthProbing } from '../starter/partMarks.js';
@@ -1555,7 +1556,7 @@ export function GalaxyView({
       {bottom === 'destination' && mainRowOpen && mainSkyAnswer && (
         <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-20">
           <MainGalaxyRow sky={mainSkyAnswer} now={beamClock} jumpReady={ship?.features.includes('migration') ?? false}
-            road={{ repair: ship?.progress.share ?? 0, fuel: ship?.fuel ?? 0 }}
+            road={{ repair: ship?.progress.share ?? 0, hold: ship ? holdShare(ship) : 0 }}
             onOpenShip={() => { setMainRowOpen(false); onPanel('planet'); }} onClose={() => { setMainRowOpen(false); }} />
         </div>
       )}

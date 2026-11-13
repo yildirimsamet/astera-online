@@ -5,18 +5,17 @@ import { seasons, vesselNotifications, vessels } from '../src/db/schema.js';
 import { sweepDepartures } from '../src/services/starter/migration.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
-import { aboard, get, post, type StarterWorld } from './starterShips.js';
+import { aboard, get, openWindow, post, type StarterWorld } from './starterShips.js';
 
 afterAll(async () => { await (await testDb()).close(); });
 
 const DAY = 86_400_000;
-const THRUST = { DRIVE_HULL: 1, DRIVE_THRUST: 1, DEUTERIUM_PLANT: 2 };
 
 describe('the jump and the calendar', () => {
   let world: StarterWorld;
   const ready = async () => {
-    const person = await aboard(world, 'Pilot', THRUST);
-    await world.f.db.update(vessels).set({ fuel: STARTER.fuelForJump }).where(eq(vessels.id, person.vesselId));
+    const person = await aboard(world, 'Pilot');
+    await openWindow(world, person.vesselId);
     return person;
   };
   const ending = (days: number) => world.f.db.update(seasons)

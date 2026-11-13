@@ -1,0 +1,1 @@
+ALTER TABLE "vessel_missions" ADD COLUMN "dug" boolean DEFAULT false NOT NULL;

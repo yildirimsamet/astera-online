@@ -11,6 +11,7 @@ import {
   canLoadFuel,
   canOrderStep,
   crystalRate,
+  jumpWindowOpen,
   moduleStage,
   nextRequiredStep,
   nextSteps,
@@ -94,8 +95,11 @@ describe('the repair ladder', () => {
     expect([find('AEGIS', 1).alloy, find('AEGIS', 1).crystal, find('AEGIS', 1).minutes]).toEqual([315, 237, 45]);
   });
 
-  it('counts 18 steps to the drive, with the opening refinery among them', () => {
-    expect(REPAIR_LADDER.filter(s => s.required).length + 1).toBe(18);
+  // Plan 2026-11-13 §5.1: the first loop opens the jump window; everything after it is the player's choice.
+  it('asks only the first six repairs of the jump, in the order the first session takes them', () => {
+    expect(REPAIR_LADDER.filter(s => s.required).map(s => `${s.module} ${String(s.stage)}`))
+      .toEqual(['REFINERY 2', 'EXTRACTOR 1', 'TELESCOPE 1', 'RADAR 1', 'SURVEY 1', 'SHIPYARD 1']);
+    expect(REPAIR_LADDER.slice(0, 6).every(s => s.required)).toBe(true);
   });
 
   it('marks the extras as optional, so a player can choose', () => {
@@ -303,11 +307,35 @@ describe('the list of modules', () => {
   });
 });
 
-describe('the progress line', () => {
-  const everything = Object.fromEntries(REPAIR_LADDER.filter(s => s.required).map(s => [s.module, s.stage]));
+const FIRST_LOOP = Object.fromEntries(REPAIR_LADDER.filter(s => s.required).map(s => [s.module, s.stage]));
+const LOOP_FACTS: readonly VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
 
-  it('counts the opening refinery and the fuel', () => {
-    expect(repairProgress(openingProgress())).toEqual({ done: 1, total: 19, share: 1 / 19 });
+describe('the jump window', () => {
+  it('is shut on a new ship', () => {
+    expect(jumpWindowOpen(openingProgress())).toBe(false);
+  });
+
+  it('opens once the first loop is done: six repairs, a mining run home and a probe report', () => {
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: LOOP_FACTS }))).toBe(true);
+  });
+
+  it('stays shut while any part of the loop is missing', () => {
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: ['FIRST_MINING_RETURN'] }))).toBe(false);
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: ['FIRST_PROBE_REPORT'] }))).toBe(false);
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT'] }))).toBe(false);
+    expect(jumpWindowOpen(withModules({ ...FIRST_LOOP, SHIPYARD: 0 }, { facts: LOOP_FACTS }))).toBe(false);
+  });
+
+  it('asks nothing of a drive, a part or the fuel', () => {
+    expect(jumpWindowOpen(withModules(FIRST_LOOP, { facts: LOOP_FACTS, parts: 0, fuel: 0 }))).toBe(true);
+  });
+});
+
+describe('the progress line', () => {
+  const everything = FIRST_LOOP;
+
+  it('counts the opening refinery and the window', () => {
+    expect(repairProgress(openingProgress())).toEqual({ done: 1, total: 8, share: 1 / 8 });
   });
 
   it('does not count optional steps', () => {
@@ -316,10 +344,10 @@ describe('the progress line', () => {
     expect(repairProgress(withModules({ TELESCOPE: 3 })).done).toBe(2);
   });
 
-  it('reaches the whole only with the fuel in the tank', () => {
-    expect(repairProgress(withModules(everything)).done).toBe(18);
-    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump - 1 })).done).toBe(18);
-    expect(repairProgress(withModules(everything, { fuel: STARTER.fuelForJump }))).toEqual({ done: 19, total: 19, share: 1 });
+  it('reaches the whole only once the window opens', () => {
+    expect(repairProgress(withModules(everything)).done).toBe(7);
+    expect(repairProgress(withModules(everything, { facts: ['FIRST_MINING_RETURN'] })).done).toBe(7);
+    expect(repairProgress(withModules(everything, { facts: LOOP_FACTS }))).toEqual({ done: 8, total: 8, share: 1 });
   });
 });
 
@@ -339,7 +367,7 @@ describe('the whole ship, apart from the jump', () => {
   });
 
   it('is not whole on a ship that is ready to leave with its choices still open', () => {
-    const progress = withModules(ready, { fuel: STARTER.fuelForJump, parts: STARTER.parts.needed });
+    const progress = withModules(ready, { facts: LOOP_FACTS });
     expect(repairProgress(progress).share).toBe(1);
     const whole = wholeShipProgress(progress);
     expect(whole.done).toBeLessThan(whole.total);
@@ -395,14 +423,15 @@ describe('the five systems, as the ship screen counts them', () => {
     expect(systemProgress(openingProgress(), 'SURVEY').done).toBe(0);
   });
 
-  it('counts the fuel on the drive, since no order buys it', () => {
-    expect(systemProgress(openingProgress(), 'DRIVE').total).toBe(3);
-    expect(systemProgress(everything(), 'DRIVE').done).toBe(3);
+  it('lights the drive when the window opens, since no order buys it', () => {
+    expect(systemProgress(openingProgress(), 'DRIVE')).toEqual({ done: 0, total: 1 });
+    expect(systemProgress(withModules(FIRST_LOOP), 'DRIVE')).toEqual({ done: 0, total: 1 });
+    expect(systemProgress(everything(), 'DRIVE')).toEqual({ done: 1, total: 1 });
   });
 
   it('does not count an optional repair', () => {
     const progress: VesselProgress = { ...openingProgress(), modules: { SURVEY: 3 } };
-    expect(systemProgress(progress, 'SURVEY')).toEqual({ done: 2, total: 2 });
+    expect(systemProgress(progress, 'SURVEY')).toEqual({ done: 1, total: 1 });
   });
 
   it('counts the telescope and the radar on the defence, and leaves the shield to the player', () => {
@@ -435,12 +464,8 @@ describe('the next required repair', () => {
   });
 
   it('says what stands in the way when every step left is waiting on something', () => {
-    const progress: VesselProgress = {
-      ...openingProgress(),
-      modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1, AEGIS: 1, DEUTERIUM_PLANT: 2 },
-    };
-    const next = nextRequiredStep({ ...progress, modules: { ...progress.modules, REFINERY: 4 } }, []);
-    expect(next).toMatchObject({ step: { module: 'SURVEY', stage: 2 }, missing: [{ kind: 'FACT', fact: 'FIRST_PROBE_REPORT' }] });
+    const next = nextRequiredStep(withModules({ REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }), []);
+    expect(next).toMatchObject({ step: { module: 'RADAR', stage: 1 }, missing: [{ kind: 'FACT', fact: 'FIRST_MINING_SENT' }] });
   });
 
   it('is nothing once every required step is done', () => {

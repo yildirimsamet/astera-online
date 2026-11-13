@@ -1744,6 +1744,20 @@
       "when": 1794343892741,
       "tag": "0248_clan_perks_f2",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1794532911047,
+      "tag": "0249_mining_run_dug",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1794534209050,
+      "tag": "0250_retire_drive_work",
+      "breakpoints": true
     }
   ]
 }
