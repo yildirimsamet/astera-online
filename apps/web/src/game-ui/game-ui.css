@@ -86,8 +86,6 @@
 .gk-tone-hostile { color: var(--gk-hostile); }
 .gk-tone-good { color: var(--gk-good); }
 .gk-tone-warn { color: var(--gk-warn); }
-.gk-tone-info { color: var(--gk-info); }
-.gk-tone-muted { color: var(--gk-ink-3); }
 
 /* ── plates and wells ──────────────────────────────────────────────────────── */
 
@@ -302,8 +300,7 @@
 .gk-btn > * {
   position: relative;
 }
-.gk-btn:active:not(:disabled),
-.gk-btn[data-pressed] {
+.gk-btn:active:not(:disabled) {
   transform: translateY(1px);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--face-hi) 35%, transparent),
@@ -544,10 +541,6 @@
 }
 .gk-hit:disabled .gk-chip {
   opacity: 0.4;
-}
-.gk-chip--static {
-  box-shadow: none;
-  background: color-mix(in srgb, var(--gk-metal-1) 85%, transparent);
 }
 
 /* ── the hold action ───────────────────────────────────────────────────────── */
@@ -1163,14 +1156,6 @@
   position: absolute;
   inset: 0 0 0 auto;
   background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--gk-hostile) 50%, transparent) 0 3px, transparent 3px 7px);
-}
-.gk-bar__mark {
-  position: absolute;
-  top: -1px;
-  bottom: -1px;
-  width: 2px;
-  background: var(--gk-ink);
-  box-shadow: 0 0 0 1px var(--gk-outline);
 }
 .gk-bar__band {
   position: absolute;
