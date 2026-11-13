@@ -3,6 +3,7 @@ import i18n from '../i18n/index.js';
 import { copyText } from '../lib/clipboard.js';
 import { Button } from '../ui/kit/index.js';
 import { observe } from '../lib/playerAnalytics/runtime.js';
+import { errorWhere } from '../lib/playerAnalytics/errorWhere.js';
 import { failTrainingEntry } from '../lib/playerAnalytics/trainingEntry.js';
 import {
   crashReportText,
@@ -73,7 +74,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: unknown, info: ErrorInfo): void {
-    observe('client_error', { code: 'react_render' });
+    observe('client_error', { code: 'react_render', ...errorWhere(error) });
     failTrainingEntry();
     const record = describeCrash(error, info.componentStack ?? null);
     rememberCrash(record);

@@ -1955,8 +1955,10 @@ export function GalaxyView({
         THE BASE AND ITS RESEARCH (M5): the page stands under the top bar so the purse stays in
         sight while it is spent. Owner 2026-10-27: it is headed by its own art, as research is.
       */}
+      {/* A selection that draws a card already took the foot (`bottomSurface`); the own ship draws none,
+          so a tap on it must not hide the step the guide points at (prod 2026-11-13: 5 of 6 stuck guides). */}
       {ship && bottom === 'starter' && (
-        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null && !focusGone ? 'hidden' : ''}`}>
+        <div className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
           {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}

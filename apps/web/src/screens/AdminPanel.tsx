@@ -27,10 +27,12 @@ import { AdminShopierQueue } from './AdminShopierQueue.js';
 import { AdminStarterPanel } from './AdminStarterPanel.js';
 import { AdminDeletionQueue } from './AdminDeletionQueue.js';
 import { AnalyticsAdminPanel } from './AnalyticsAdminPanel.js';
+import { JourneyDashboard } from './JourneyDashboard.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ANALYTICS' | 'STARTER';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ANALYTICS' | 'STARTER' | 'JOURNEY';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
+  JOURNEY: 'admin-journey-tab',
   ANALYTICS: 'admin-analytics-tab',
   REPORTS: 'admin-reports-tab',
   DELETION: 'admin-deletion-tab',
@@ -66,6 +68,7 @@ export default function AdminPanel() {
           onChange={setTab}
           tabId={(id) => ADMIN_TAB_ID[id]}
           options={[
+            { id: 'JOURNEY', label: 'Oyuncu yolculuğu' },
             { id: 'ANALYTICS', label: 'Oyuncu davranışı' },
             { id: 'PLAYERS', label: t('community.admin.ops.playersTab') },
             { id: 'DELETION', label: t('accountDeletion.admin.tab') },
@@ -85,7 +88,7 @@ export default function AdminPanel() {
         aria-labelledby={ADMIN_TAB_ID[tab]}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-6"
       >
-        {tab === 'ANALYTICS' ? <AnalyticsAdminPanel /> : tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
+        {tab === 'JOURNEY' ? <JourneyDashboard /> : tab === 'ANALYTICS' ? <AnalyticsAdminPanel /> : tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
               : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : tab === 'STARTER' ? <AdminStarterPanel /> : <SupporterForm />}

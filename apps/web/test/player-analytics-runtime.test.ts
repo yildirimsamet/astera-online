@@ -148,6 +148,23 @@ it('limits repeated error detail and reports suppressed counts instead of floodi
       .toMatchObject({ properties: { code: 'react_render', phase: 'errors_suppressed', count: 7 } });
   } finally { stop(); }
 });
+it('sends where an uncaught error was thrown and its type, never its message', async () => {
+  vi.useFakeTimers(); chooseAnalytics('granted'); const fetch = delivery(); vi.stubGlobal('fetch', fetch);
+  const stop = startPlayerAnalytics();
+  try {
+    await vi.advanceTimersByTimeAsync(0);
+    const error = new TypeError('private player text');
+    error.stack = 'TypeError: private player text\n    at Xe (https://astera.example/assets/index-Bq3x9.js:3:9)';
+    const event = new ErrorEvent('error', { error, message: 'private player text', filename: 'https://astera.example/assets/index-Bq3x9.js', lineno: 3, colno: 9, cancelable: true });
+    window.dispatchEvent(event);
+    await vi.advanceTimersByTimeAsync(60000);
+    const body = bodyText(fetch.mock.calls.find(([url]) => urlText(url).endsWith('/events'))?.[1]?.body);
+    expect(body).not.toContain('private player text');
+    const batch = analyticsBatchSchema.parse(JSON.parse(body));
+    expect(batch.events.find(e => e.name === 'client_error')?.properties)
+      .toEqual({ code: 'unhandled_error', subject: 'index-Bq3x9.js:3:9', variant: 'TypeError' });
+  } finally { stop(); }
+});
 it('starts a separate frame sample when the product mode changes', async () => {
   vi.useFakeTimers(); chooseAnalytics('granted'); const fetch = delivery(); vi.stubGlobal('fetch', fetch);
   const stop = startPlayerAnalytics();

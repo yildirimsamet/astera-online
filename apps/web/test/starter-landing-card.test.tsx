@@ -61,6 +61,14 @@ describe('the card after the landing', () => {
     expect(total).toHaveTextContent(`${String(6 + packageShips)} ships`);
   });
 
+  // No sweep deletes an idle world (reclaim has had no caller since b27db1ae): the card must not threaten one.
+  it('does not warn of a deletion the game never makes', async () => {
+    harness();
+    const card = await screen.findByTestId('landing-card');
+    expect(card).not.toHaveTextContent(/deleted/iu);
+    expect(i18n.exists('starter.landing.line.absence')).toBe(false);
+  });
+
   it('offers a first sortie with the fleet and fuel that are ready', async () => {
     const { onPanel, fetcher } = harness();
     const move = within(await screen.findByTestId('arrival-decide'));

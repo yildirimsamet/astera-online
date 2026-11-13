@@ -249,6 +249,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
 | `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken |
+| `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` | Yeni oyuncunun ilk oturumu, sıçrama kararı, ilk hafta ve tutunma ölçümüne dokunurken |
 
 Diğer konular için `docs/` klasörüne bak.
 

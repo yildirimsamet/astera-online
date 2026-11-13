@@ -1,4 +1,5 @@
 import { starterFunnel } from '../services/starterFunnel.js';
+import { registerJourneyAnalytics } from './journeyAnalytics.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, notInArray, notExists, or, sql } from 'drizzle-orm';
@@ -9,6 +10,7 @@ import { analyticsAdminQuerySchema, analyticsFiltersSchema, type AnalyticsFilter
 import { analyticsCohorts, signupRetention } from '../services/analyticsCohorts.js';
 
 export function registerAnalyticsAdmin(app: FastifyInstance): void {
+  registerJourneyAnalytics(app);
   const excluded = () => and(notExists(app.db.select({ id: botProfiles.accountId }).from(botProfiles).where(eq(botProfiles.accountId, accounts.id))),
     app.adminUsernames.size ? notInArray(accounts.username, [...app.adminUsernames]) : undefined);
   const matchingVisits = (filters: AnalyticsFilters, start: Date) => app.db.select({ id: analyticsVisitors.id }).from(analyticsVisitors)

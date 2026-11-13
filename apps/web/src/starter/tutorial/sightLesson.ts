@@ -16,6 +16,13 @@ export function sightLesson(answer: TutorialAnswer | null): 'telescope' | 'radar
 export const rockSheetStaysOpen = (answer: TutorialAnswer | null): boolean =>
   answer?.kind === 'step' && (answer.id === 'findRock' || answer.id === 'mine');
 
+/**
+ * The rocks in the ring wear a soft ring from the moment they land (play-test 2026-11-13: framed to the
+ * whole ring, a rock is a few pixels and the first look found a dark field) until the player has one.
+ */
+export const rockMarks = (answer: TutorialAnswer | null): boolean =>
+  answer?.kind === 'step' && !answer.nav && (answer.id === 'telescopeLook' || answer.id === 'zoomRock' || answer.id === 'findRock');
+
 /** While the player is asked to come closer, a rock is not yet to be touched (owner playtest 2026-11-09). */
 export const rocksHeld = (answer: TutorialAnswer | null): boolean =>
   answer?.kind === 'step' && answer.id === 'zoomRock' && !answer.nav;

@@ -17,7 +17,7 @@ import { scenePlayed, startJump, useJump, fromTheLanding } from './jump.js';
 import { dismissTip, tipDismissed, tipFor, type LandingTip } from './landingTips.js';
 import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 
-const CARD_LINES = ['battle', 'shield', 'absence', 'core', 'opened', 'alerts'] as const;
+const CARD_LINES = ['battle', 'shield', 'core', 'opened', 'alerts'] as const;
 
 interface Holding { alloy: number; crystal: number; deuterium: number; fleet: Fleet }
 

@@ -358,6 +358,12 @@ describe('repairing the ship', () => {
   });
 
   describe('announcing an opening', () => {
+    // Plan Faz 1 (play-test 2026-11-13): the prologue lights the refinery and collects its first
+    // alloy, so a card saying "refinery online" right after it only repeats it under a second text.
+    it('does not announce the refinery the prologue already lit', async () => {
+      expect((await read()).unlockToAnnounce).toBeNull();
+    });
+
     it('remembers what has been shown, and only known features', async () => {
       const headers = bearer(token);
       const seen = await world.app.inject({ method: 'POST', url: '/api/starter/unlocks/seen', headers, payload: { feature: 'production' } });

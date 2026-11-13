@@ -163,6 +163,9 @@ describe('ErrorBoundary', () => {
 
 it('observes a render failure with a fixed code without copying its message into telemetry', () => {
   show(<Boom message="private diagnostic text" />);
-  expect(observations.observe).toHaveBeenCalledWith('client_error', { code: 'react_render' });
+  // Where it threw and what type it was, so a crash before the first order can be found (Faz 0, 2026-11-13).
+  expect(observations.observe).toHaveBeenCalledWith('client_error', expect.objectContaining({
+    code: 'react_render', variant: 'Error', subject: expect.stringMatching(/:\d+:\d+$/u) as unknown,
+  }));
   expect(JSON.stringify(observations.observe.mock.calls)).not.toContain('private diagnostic text');
 });

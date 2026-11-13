@@ -155,6 +155,8 @@ export async function enlistVessel(db: Db, accountId: string, clock: Clock, admi
       bufferAlloy: economy.bufferAlloy,
       lastTickMinutes: economy.lastTickMinutes,
       modules: openingProgress().modules,
+      // The prologue lit the refinery and collected its first alloy: its "online" card would only repeat it.
+      unlocksSeen: ['production'],
       sightSince: now,
       enlistedAt: now,
       lastSeenAt: now,

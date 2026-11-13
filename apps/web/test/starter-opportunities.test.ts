@@ -156,6 +156,14 @@ describe('a probe needs someone to probe', () => {
     const answers = opportunities(input({ progress, held: empty, features: ['production', 'intel'], alone: true }));
     expect(answers.map(answer => answer.kind)).not.toContain('probe');
   });
+
+  // Plan 2026-11-13 Faz 1: the jump window will ask for a first report, and a lone ship must still reach
+  // one. It does through the first hunt: the outposts are always there, and their probe is offered first.
+  it('reaches its first report through the first hunt instead', () => {
+    const yard: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] };
+    const answers = opportunities(input({ progress: yard, held: empty, features: ['production', 'intel', 'fleet', 'telescope'], alone: true, hunt: { stage: 'probe', target: 'post' } }));
+    expect(answers[0]).toMatchObject({ kind: 'hunt', hunt: { stage: 'probe', target: 'post' } });
+  });
 });
 
 describe('the other choices of this moment', () => {

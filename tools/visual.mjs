@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--journey')) {
+  const { verifyJourney } = await import('./journey-visual.mjs');
+  await verifyJourney(process.argv[2] ?? 'out/player-journey');
+  process.exit(0);
+}
+
 if (process.argv.includes('--galaxy-labels')) {
   const { verifyGalaxyLabels } = await import('./galaxy-labels-visual.mjs');
   await verifyGalaxyLabels(process.argv[2] ?? 'out/galaxy-labels');

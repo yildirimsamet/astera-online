@@ -666,6 +666,24 @@ html:lang(ja) {
   }
 }
 
+/** A mark arriving in the scene: out of nothing, a little past its size, then still. */
+@keyframes sight-land {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /** An emissive edge breathing. Reserved for a state that wants attention. */
 @keyframes ember {
 

@@ -5,6 +5,7 @@ import { isAppActive, watchAppActivity } from '../../platform/activity.js';
 import { runtime } from '../../platform/runtime.js';
 import i18n from '../../i18n/index.js';
 import { FrameObservations } from './performance.js';
+import { errorWhere } from './errorWhere.js';
 
 let client: PlayerAnalytics | null = null;
 let identity: { accountId: string | null; token: string | null } = { accountId: null, token: null };
@@ -57,8 +58,8 @@ export function startPlayerAnalytics(): () => void {
   const interact = (event: Event) => { if (event.isTrusted) client?.interact(); };
   const suspend = () => { client?.foreground(false); };
   const online = () => { observe('network_recovered'); void client?.flush(); };
-  const error = () => { observe('client_error', { code: 'unhandled_error' }); };
-  const rejection = () => { observe('client_error', { code: 'unhandled_rejection' }); };
+  const error = (event: ErrorEvent) => { observe('client_error', { code: 'unhandled_error', ...errorWhere(event.error, event) }); };
+  const rejection = (event: PromiseRejectionEvent) => { observe('client_error', { code: 'unhandled_rejection', ...errorWhere(event.reason) }); };
   const installed = () => { observe('install_result', { code: 'installed' }); };
   const installOffered = () => { observe('install_offer', { code: 'browser_prompt' }); };
   const contextLost = () => { observe('client_error', { code: 'webgl_context_lost' }); };

@@ -4,6 +4,8 @@
 **Durum:** Kararlar alındı; kod yazılmadı.
 **Yerini aldığı yerler:** `ilk-deneyim-elde-tutma-plani-2026-11-06.md` §5.1 (zaman çizelgesi), §6.1'deki motor süreleri, §6.3 (rehber), §6.4'teki onarım dronu ile ilk savaş ve ilk PvP satırları, Q3, Q5 ve Q10. O planda korunan maddeler §4 F9'dadır.
 
+> **Güncelleme, owner 2026-11-13:** N4 (motor 4 + 4 saat) ve "Geçiş (hızlı ~20 sa, normal 2–3 gün)" satırı yerini `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`'ye bıraktı. Sıçrama ilk tam döngüden sonra oyuncunun kararıdır. F9 maddeleri o planın Faz 4'üne taşındı. N6, N7, N10 ve N12 korunur.
+
 > Hedef döngü: **bilgi edin → gerçek seçenekleri karşılaştır → filoyu gönder → sonucu gör → kendi ikinci kararını ver.**
 > İlk duygusal tepe, sekizinci onarım değil, oyuncunun kendi seçtiği ilk dış seferin sonucudur.
 

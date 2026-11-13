@@ -3,6 +3,7 @@ import { arrivalSchema, departuresSchema, inboundSchema, landingSchema, mainSkyS
 import { observe, analyticsHeaders, analyticsRecording, syncAnalyticsIdentity } from '../lib/playerAnalytics/runtime.js';
 import { analyticsAuth, analyticsCommand } from './analyticsCommands.js';
 import { analyticsAdminSchema, analyticsTimelineSchema, anonymousVisitsSchema, type AnalyticsFilters } from './analyticsAdminSchemas.js';
+import { journeyReportSchema, type JourneyQuery } from './journeySchemas.js';
 import { commanderShipSchema, galaxyShipModelsSchema } from './commanderShipSchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
@@ -335,6 +336,9 @@ export interface IntergalacticConvoyLaunchInput {
  * a durable refresh credential to JavaScript. Short access still requires XSS defences.
  */
 export class Api {
+  analyticsJourney = (options: JourneyQuery = {}) => this.send(`/api/admin/analytics/journey?${new URLSearchParams(
+    Object.entries(options).flatMap(([key, value]: [string, string | number | undefined]) => value === undefined ? [] : [[key, String(value)]]),
+  )}`, journeyReportSchema);
   analyticsAdmin = (options: AnalyticsFilters & { inactiveHours: 0 | 24 | 48 | 72; after?: string; username?: string }) => {
     const query = new URLSearchParams({ inactiveHours: String(options.inactiveHours) });
     for (const key of ['build', 'source', 'platform', 'locale', 'trainingVersion', 'after', 'username'] as const) {

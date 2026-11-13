@@ -1,7 +1,7 @@
 import { describe,expect,it } from 'vitest';
 import type { Contact } from '../src/api/schemas.js';
 import type { TutorialAnswer, TutorialLineId } from '../src/starter/tutorial/script.js';
-import { CARD_AFTER_REVEAL_MS, REVEAL_FLEETS_MS, REVEAL_ROCKS_MS, rocksHeld, rockSheetStaysOpen, sightLesson, lessonContact, sightNow, telescopeReveal } from '../src/starter/tutorial/sightLesson.js';
+import { CARD_AFTER_REVEAL_MS, REVEAL_FLEETS_MS, REVEAL_ROCKS_MS, rockMarks, rocksHeld, rockSheetStaysOpen, sightLesson, lessonContact, sightNow, telescopeReveal } from '../src/starter/tutorial/sightLesson.js';
 import { SHELL_SPREAD_SECONDS } from '../src/galaxy/SensorRings.js';
 const answer=(id:TutorialLineId):TutorialAnswer=>({kind:'step',id,step:'read',chapter:7,strict:false,marks:[]});
 const contact=(id:string,kind:Contact['kind'],x=0):Contact=>({id,kind,from:{x,y:0,z:0},to:{x:x+10,y:0,z:0},startAt:new Date(),endAt:new Date(Date.now()+5000)});
@@ -71,6 +71,21 @@ describe('the zoom before the rock',()=>{
   expect(rocksHeld(answer('findRock'))).toBe(false);
   expect(rocksHeld({kind:'step',id:'zoomRock',step:'press',chapter:6,strict:false,marks:[],nav:'closePage'})).toBe(false);
   expect(rocksHeld(null)).toBe(false);
+ });
+});
+
+// Play-test 2026-11-13: at the ring's framing a rock is a few pixels, so the reveal showed a dark field.
+describe('which rocks wear a soft ring',()=>{
+ it('marks the rocks the telescope brings in on its first look, and keeps them marked to the rock',()=>{
+  expect(rockMarks(answer('telescopeLook'))).toBe(true);
+  expect(rockMarks(answer('zoomRock'))).toBe(true);
+  expect(rockMarks(answer('findRock'))).toBe(true);
+ });
+ it('marks none behind the note the look waits on, nor anywhere else',()=>{
+  expect(rockMarks({kind:'step',id:'telescopeLook',step:'press',chapter:7,strict:false,marks:[],nav:'dismissUnlock'})).toBe(false);
+  expect(rockMarks(answer('mine'))).toBe(false);
+  expect(rockMarks({kind:'advise'})).toBe(false);
+  expect(rockMarks(null)).toBe(false);
  });
 });
 

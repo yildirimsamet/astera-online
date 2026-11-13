@@ -106,6 +106,24 @@ describe('sending a probe', () => {
     expect(flight!.status).toBe('DONE');
   });
 
+  // Plan 2026-11-13 Faz 1: the jump window will ask for a first report. A ship with no neighbour reads one
+  // of the first hunt's outposts instead, and that report counts.
+  it('gives a ship alone in its galaxy its first report from a first-hunt outpost', async () => {
+    const me = await aboard(world, 'Alone', { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 });
+    await world.f.db.update(vessels).set({ alloy: 5000, crystal: 5000 }).where(eq(vessels.id, me.vesselId));
+    // The yard's own repair lays out the first hunt's two outposts.
+    expect((await post(world, '/api/starter/repair', me.headers, { module: 'SHIPYARD', stage: 1 })).statusCode).toBe(200);
+    await pass(world, 10);
+    const map = await get<{ planets: { id: string; firstHunt?: boolean }[] }>(world, '/api/starter/galaxy', me.headers);
+    const outpost = map.planets.find(planet => planet.firstHunt === true);
+    expect(outpost).toBeDefined();
+    const answer = await fly(me.headers, outpost!.id);
+    expect(answer.statusCode).toBe(200);
+    await pass(world, answer.json<{ flightMinutes: number }>().flightMinutes * 2 + 1);
+    const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+    expect(ship!.facts).toContain<VesselFact>('FIRST_PROBE_REPORT');
+  });
+
   it('opens the antenna\'s next repair with the first report', async () => {
     const me = await scout();
     const other = await aboard(world, 'Other');

@@ -4,6 +4,8 @@
 
 Bu belge deploy, migration veya prod sorgusu izni vermez. Kararlar burada tutulur.
 
+> **Güncelleme, owner 2026-11-13:** K4 ve A17 (3–5 gün), K7 (motor parçası) ve A11 (bot kalkışı) değişti. Sıçrama artık ilk tam döngüden sonra açılan, oyuncunun seçtiği bir karardır; motor, yakıt ve parça şartı kalkar. A9'daki "göçe hazır" koşulu kalkar; 14 gün sınırı kalır. Geçerli kurallar: `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`. Kod henüz değişmedi.
+
 ## 1. Özet
 
 Yeni oyuncu ana galaksiye doğrudan girmez. Vantage'ın yanında duran küçük, gerçek çok oyunculu bir galakside, arızalı bir Koloni Gemisi'yle başlar. 3–5 gün boyunca kaynak üretir, sonda yollar, teleskop ve radar kullanır, filo gönderir, küçük savaşlara girer. Bütün bunları gerçek oyuncularla yaşarken geminin beş arızalı sistemini onarır. Motor onarılınca gemi kalkar, animasyonla ana galaksiye geçer, tüketilir ve yerinde oyuncunun ilk gezegeni oluşur.

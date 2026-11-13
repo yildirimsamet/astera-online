@@ -848,6 +848,11 @@ asteroid mining, wreck harvests, pirate raids, merchant runs and convoy strikes 
 research, production, transfers and probes stay open. The Now line warns in the last 12 hours.
 Plan and edge cases: `docs/silent-space-waiting-room-plan.md`.
 
+**Owner change, 2026-11-13 (S5, `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`):** while a
+commander's newcomer shield (`newcomerShieldUntil`) stands, the 30-hour clock does not run; it starts
+when the shield ends. A commander who drops the shield by attacking a player is back on the plain
+rule. Decided, not yet in code: until that plan's Faz 2 ships, the paragraph above is what runs.
+
 D174 (superseded on the entry rule): after 48 hours without authenticated API activity, the
 commander and all developed worlds move to Silent Space. MAIN colony addresses become initial-state unowned neutrals. A return
 application reuses available departure colony sites with the applicant's own development.
