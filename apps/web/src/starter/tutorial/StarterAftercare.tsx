@@ -1,4 +1,4 @@
-import { nextRequiredStep } from '@astera/rules';
+import { WINDOW_FACTS, nextRequiredStep, type VesselFact } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -30,7 +30,10 @@ export function StarterAftercare({ vessel, farewelled, guided }: { vessel: Vesse
   const hintKey = `astera.starter.hint.${vessel.id}`;
   const [hintClosed, closeHint] = useState(() => { try { return sessionStorage.getItem(hintKey) === 'closed'; } catch { return false; } });
   const first = nextRequiredStep({ modules: vessel.modules, facts: vessel.facts }, []);
-  const need = first?.missing.find(need => need.kind === 'FACT');
+  // Past the six repairs the jump still waits on the first loop's deeds, which sit outside the ladder.
+  const need: VesselFact | undefined = first
+    ? first.missing.flatMap(need => need.kind === 'FACT' ? [need.fact] : [])[0]
+    : WINDOW_FACTS.find(fact => !vessel.facts.includes(fact));
   const deniedAt = permission.deniedAt;
   const retry = permission.attempts === 1 && deniedAt !== null && vessel.queue.some(order =>
     order.queue === 'CONSTRUCTION' && order.startedAt.getTime() > deniedAt && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000);
@@ -51,7 +54,7 @@ export function StarterAftercare({ vessel, farewelled, guided }: { vessel: Vesse
     try { sessionStorage.setItem(hintKey, 'closed'); } catch { /* The mounted visit still remembers. */ }
     closeHint(true);
   };
-  const task = need?.kind === 'FACT' ? t(`starter.factHow.${need.fact}`) : '';
+  const task = need ? t(`starter.factHow.${need}`) : '';
   return <aside data-starter-aftercare className="fixed inset-x-3 top-[max(72px,env(safe-area-inset-top))] z-[85] mx-auto flex max-w-md gap-2 rounded-control border border-v2-self/50 bg-v2-deep/95 p-3 font-v2-ui shadow-lg">
     <img src="/assets/images/general/tutorial-npc.png" alt="" className="size-16 shrink-0 object-contain" />
     <div className="min-w-0 flex-1">

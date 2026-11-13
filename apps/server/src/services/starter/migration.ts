@@ -1,5 +1,5 @@
 import { planPlanetReturn } from '../returnPlanning.js';
-import { ACADEMY_STEPS, STARTER, departureBlock, fleetEntries, holdIsFull, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
+import { ACADEMY_STEPS, STARTER, WINDOW_FACTS, departureBlock, fleetEntries, holdIsFull, jumpHold, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
 import { and, desc, eq, gt, inArray, isNull, lte, ne, sql, asc, notInArray } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
@@ -69,10 +69,8 @@ export async function migrationView(db: Db, accountId: string, clock: Clock) {
     ? departureBlock({ progress, flying: await flyingCount(db, ship.id), seasonEndsAtMs: frontier.seasonEndsAt.getTime(), nowMs: clock.now().getTime() })
     : jumpWindowOpen(progress) ? { code: 'NO_FRONTIER' as const } : { code: 'MIGRATION_NOT_READY' as const };
 
-  // The jump opens what is ready before it counts (§4.6), so the panel counts it too.
-  const crates = ship.crates.filter(crate => crate.state === 'ready');
-  const opened = { ...ship, alloy: ship.alloy + crates.reduce((sum, c) => sum + c.alloy, 0), crystal: ship.crystal + crates.reduce((sum, c) => sum + c.crystal, 0) };
-  const held = holdingsOf(paidBack(opened, await activeOrders(db, ship.id)));
+  // The jump pays work back and opens what is ready before it counts (§4.6), so the panel counts both too.
+  const held = jumpHold(ship, await activeOrders(db, ship.id), ship.crates.filter(crate => crate.state === 'ready'));
   const cargo = migrationCargo({ ...held, fleet: home.fleet, damage: home.damage });
   const carried = fleetEntries(cargo.fleet).reduce((sum, [, count]) => sum + count, 0);
   const owned = fleetEntries(home.fleet).reduce((sum, [, count]) => sum + count, 0);
@@ -353,8 +351,10 @@ async function announceNewSeason(db: Db, clock: Clock): Promise<void> {
   const [season] = fresh;
   if (!season) return;
   // A ship that waited out a season with nothing left to repair has fallen asleep by now: it is the one waiting most.
+  // The window's two deeds are read in the table, so only ships past the first loop come back; the rule decides.
+  const deeds = sql`array[${sql.join(WINDOW_FACTS.map(fact => sql`${fact}`), sql`, `)}]::text[]`;
   const waiting = (await db.select({ id: vessels.id, modules: vessels.modules, facts: vessels.facts }).from(vessels)
-    .where(inArray(vessels.status, ['ACTIVE', 'DORMANT']))).filter(ship => jumpWindowOpen(progressOf(ship)));
+    .where(and(inArray(vessels.status, ['ACTIVE', 'DORMANT']), sql`${vessels.facts} ?& ${deeds}`))).filter(ship => jumpWindowOpen(progressOf(ship)));
   if (waiting.length === 0) return;
   await db.insert(vesselNotifications).values(waiting.map(ship => ({
     vesselId: ship.id, kind: 'SEASON_OPEN', refId: season.id, payload: { shardName: season.shardName === '' ? season.code : season.shardName }, createdAt: now,

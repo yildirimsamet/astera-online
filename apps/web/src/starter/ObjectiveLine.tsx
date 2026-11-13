@@ -20,6 +20,7 @@ import { useAdviceMemory } from './tutorial/adviceMemory.js';
 import { goalRepair, useStarterGoal, useStarterLesson } from './tutorial/visualGoal.js';
 import { repairWait } from './tutorial/script.js';
 import { repairGainIcon, stepEffects } from './steps.js';
+import { holdFull } from './hold.js';
 
 const progressOf = (vessel: VesselView) => ({ modules: vessel.modules, facts: vessel.facts });
 
@@ -217,6 +218,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
     mining,
     alone,
     hunt,
+    holdFull: holdFull({ ...purse, queue: vessel.queue, crates: vessel.crates }),
   });
   // THE ADVISOR (plan F3, N1). The line names what the player picked, else the first offer.
   const [memory, remember] = useAdviceMemory(vessel.id);

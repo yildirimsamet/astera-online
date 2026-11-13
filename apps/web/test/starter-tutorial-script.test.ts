@@ -241,6 +241,42 @@ describe('the first-time moments', () => {
 });
 
 /**
+ * Play-through 2026-11-13 (plan §10.6): the window opened with the yard while the guide was asking for a
+ * crate. The drive's ignition sounded, but the card stood over the ship and its light was never seen.
+ * The window's card speaks first; the guide and the advisor wait until it is closed.
+ */
+describe('the jump window has the floor', () => {
+  const yard = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  const facts = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] as const;
+  const read = ['openIntel', 'openReport', 'report', 'collectMine'];
+  const opened = awake({ modules: yard, facts, acked: read, view: 'ship', unlockToAnnounce: 'migration', crates: [{ id: 'SHIPYARD:1', state: 'ready' }] });
+
+  it('keeps the guide quiet while the window\'s card stands, aboard and out on the galaxy', () => {
+    expect(at(opened)).toEqual({ kind: 'quiet' });
+    expect(at({ ...opened, view: 'galaxy' })).toEqual({ kind: 'quiet' });
+  });
+
+  // Code review 2026-11-13: the card is drawn on the galaxy and aboard, never over a page. On one (the
+  // report the window waited for is read there), the guide leads back out to it instead of going quiet.
+  it('leads a player on a page back out to the card first', () => {
+    expect(at({ ...opened, view: 'other' })).toMatchObject({ kind: 'step', nav: 'closePage', marks: ['[data-sheet-close]'] });
+  });
+
+  it('keeps the advisor quiet too, for a ship the guide has already left', () => {
+    expect(at({ ...opened, crates: [], acked: [...read, 'buildShip', 'farewell'] })).toEqual({ kind: 'quiet' });
+  });
+
+  it('picks up where it was once the card is closed', () => {
+    expect(at({ ...opened, unlockToAnnounce: null })).toMatchObject({ id: 'firstCrate' });
+    expect(at({ ...opened, unlockToAnnounce: null, crates: [], acked: [...read, 'buildShip'] })).toMatchObject({ id: 'farewell' });
+  });
+
+  it('lets no other system\'s card silence it', () => {
+    expect(at({ ...opened, unlockToAnnounce: 'research' })).toMatchObject({ kind: 'step', id: 'firstCrate' });
+  });
+});
+
+/**
  * Owner playtest 2026-11-06: alone in a new galaxy, the probe line pointed at a neighbour that did not
  * exist. A report lesson with no report to read is passed over, never waited on.
  */

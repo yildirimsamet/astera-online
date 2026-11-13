@@ -152,13 +152,21 @@ describe('the jump window', () => {
     expect(answers.map(o => o.kind).indexOf('hunt')).toBeLessThan(answers.map(o => o.kind).indexOf('jump'));
   });
 
+  // The hold is read the way the jump counts it (`hold.ts`, code review 2026-11-13), and handed in.
   it('brings the jump to the front once the hold is full', () => {
-    expect(next(input({ progress: loopDone(), held: full }))).toEqual({ kind: 'jump' });
-    expect(next(input({ progress: loopDone(), held: { ...full, alloy: 0, bufferAlloy: STARTER.carry.alloy } }))).toEqual({ kind: 'jump' });
+    expect(next(input({ progress: loopDone(), held: some, holdFull: true }))).toEqual({ kind: 'jump' });
   });
 
   it('says the Prospector is out instead, while a flight keeps the ship from leaving', () => {
-    expect(next(input({ progress: loopDone(), held: full, mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
+    expect(next(input({ progress: loopDone(), held: some, holdFull: true, mining: true }))).toEqual({ kind: 'underway', what: 'mine' });
+  });
+
+  // Code review 2026-11-13: a full repair queue is no reason to leave, and the jump would call those repairs off.
+  it('waits for a full repair queue rather than send a ship with room in its hold away', () => {
+    const soon = new Date('2026-11-13T20:00:00Z');
+    const queue = REPAIR_LADDER.filter(s => !s.required).slice(0, STARTER.queues.construction)
+      .map((s, i) => ({ queue: 'CONSTRUCTION', subject: s.module, stage: s.stage, readyAt: new Date(soon.getTime() + i * 60_000) }));
+    expect(next(input({ progress: loopDone(), held: some, queue }))).toEqual({ kind: 'wait', readyAt: soon });
   });
 
   it('offers the jump when nothing else is left to do', () => {
@@ -181,6 +189,12 @@ describe('a probe needs someone to probe', () => {
     const yard: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] };
     const answers = opportunities(input({ progress: yard, held: empty, features: ['production', 'intel', 'fleet', 'telescope'], alone: true, hunt: { stage: 'probe', target: 'post' } }));
     expect(answers[0]).toMatchObject({ kind: 'hunt', hunt: { stage: 'probe', target: 'post' } });
+  });
+
+  // Code review 2026-11-13: alone, past the hunt and with nothing queued, the line waited for an Invalid Date.
+  it('names what still opens the jump when nothing is under way', () => {
+    const yard: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] };
+    expect(next(input({ progress: yard, held: empty, features: ['production', 'intel', 'fleet', 'telescope'], alone: true }))).toEqual({ kind: 'fact', fact: 'FIRST_PROBE_REPORT' });
   });
 });
 

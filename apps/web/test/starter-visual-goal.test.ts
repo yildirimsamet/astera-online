@@ -37,6 +37,12 @@ describe('what the marks follow', () => {
     expect(goalMarks(goal({ choice: { kind: 'repair', step: shield }, picked: true, view: 'ship' })).marks[0]).toBe('[data-guide="repair-order"][data-step="AEGIS:1"]');
   });
 
+  // Code review 2026-11-13: while the jump window's card speaks, nothing else is lit.
+  it('lights nothing while the guide is quiet for the jump window\'s card', () => {
+    const quiet = starterGoal({ answer: { kind: 'quiet' }, offers: [{ kind: 'collect' }], view: 'galaxy' }, true);
+    expect(goalMarks(quiet)).toEqual({ marks: [], hand: false });
+  });
+
   it('has nothing to press for a state the advisor only names', () => {
     expect(goalMarks(goal({ choice: { kind: 'save', step: shield, minutes: 20 }, picked: true }))).toEqual({ marks: [], hand: false });
     expect(goalMarks(goal({ choice: null }))).toEqual({ marks: [], hand: false });

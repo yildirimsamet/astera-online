@@ -12,12 +12,15 @@ import { errors as ja } from '../src/i18n/locales/ja/errors.js';
 import { errors as tr } from '../src/i18n/locales/tr/errors.js';
 
 const services = join(import.meta.dirname, '../../server/src/services/starter');
+// The attack refusals are thrown from a table keyed by code (`ATTACK_MESSAGES`), so its keys are read too:
+// PVP_LOCKED and three more reached the player as "something went wrong" (plan 2026-11-13 §10.7, 6).
 const codes = new Set(readdirSync(services).flatMap(file =>
-  [...readFileSync(join(services, file), 'utf8').matchAll(/(?:GameError\(|code: )'([A-Z_]+)'/g)].map(match => match[1]!)));
+  [...readFileSync(join(services, file), 'utf8').matchAll(/(?:GameError\(|code: )'([A-Z_]+)'|^ {2}([A-Z_]+): \['/gm)].map(match => (match[1] ?? match[2])!)));
 
 describe('what a ship can be told', () => {
   it.each(Object.entries({ en, tr, de, es, fr, ja }))('%s has words for every refusal the ship services can send', (_locale, errors) => {
     expect(codes.size).toBeGreaterThan(20);
+    expect(codes).toContain('PVP_LOCKED');
     expect([...codes].filter(code => !(code in errors))).toEqual([]);
   });
 });

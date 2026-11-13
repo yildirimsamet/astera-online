@@ -418,7 +418,7 @@ describe('the ship screen', () => {
     expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     expect(card.getByTestId('repair-missing').textContent).toMatch(/probe report/i);
     // And how that event comes, where a first-time player looked for it (player test A-05).
-    expect(card.getByTestId('repair-how').textContent).toBe('Send a probe to a neighbouring ship.');
+    expect(card.getByTestId('repair-how').textContent).toBe('Send a probe to a neighbouring ship or an outpost.');
   });
 
   /**

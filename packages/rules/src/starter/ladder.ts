@@ -117,7 +117,8 @@ const REQUIRED_STEPS = REPAIR_LADDER.filter(s => s.required);
 const STEPS_OUTSIDE_THE_LADDER = 2;
 
 /** What the first loop has to have happened, besides its six repairs: a rock dug and a probe read. */
-const WINDOW_FACTS: readonly VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
+/** The first loop's two deeds the jump window waits on beside the six repairs (plan 2026-11-13 §5.1). */
+export const WINDOW_FACTS: readonly VesselFact[] = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'];
 
 export const openingProgress = (): VesselProgress => ({
   modules: { ...STARTER.opening.modules }, facts: [],
@@ -209,6 +210,24 @@ export function nextRequiredStep(progress: VesselProgress, queued: readonly Repa
  */
 export const jumpWindowOpen = (progress: VesselProgress): boolean =>
   REQUIRED_STEPS.every(s => moduleStage(progress, s.module) >= s.stage) && WINDOW_FACTS.every(fact => progress.facts.includes(fact));
+
+/**
+ * A NEIGHBOUR WHO CAME EARLIER (owner 2026-11-13): a new crew stands somewhere along the required
+ * repairs, as a person who arrived hours ago would. `roll` in [0, 1) picks how many lie behind it, each
+ * count from none to all as likely as another. The facts a repair asks for come with it; the window's
+ * own facts do not, so the crew still opens the jump the way a person does.
+ */
+export function headStartProgress(roll: number): VesselProgress {
+  let progress = openingProgress();
+  const repairs = Math.floor(roll * (REQUIRED_STEPS.length + 1));
+  for (let i = 0; i < repairs; i++) {
+    const next = nextRequiredStep(progress, []);
+    if (!next || next.missing.some(need => need.kind !== 'FACT')) break;
+    const facts = [...progress.facts, ...next.missing.flatMap(need => need.kind === 'FACT' && !progress.facts.includes(need.fact) ? [need.fact] : [])];
+    progress = { facts, modules: { ...progress.modules, [next.step.module]: next.step.stage } };
+  }
+  return progress;
+}
 
 export interface SystemProgress { done: number; total: number }
 

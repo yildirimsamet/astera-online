@@ -105,7 +105,7 @@ export async function ensureBotSeats(
     that left long ago is a name with no ship.
   */
   const ships = await db.select({
-    accountId: vessels.accountId, id: vessels.id, status: vessels.status, modules: vessels.modules, facts: vessels.facts, parts: vessels.parts, fuel: vessels.fuel,
+    accountId: vessels.accountId, id: vessels.id, status: vessels.status, modules: vessels.modules, facts: vessels.facts,
     crewSince: vesselBotState.createdAt,
   }).from(vessels)
     .innerJoin(botProfiles, eq(botProfiles.accountId, vessels.accountId))

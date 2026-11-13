@@ -13,6 +13,7 @@ import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
 import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
+import { holdFull } from '../hold.js';
 
 /** Remembered only on this device; the ship itself carries everything else. */
 const keyOf = (vesselId: string): string => `astera.starter.tutorial.${vesselId}`;
@@ -128,6 +129,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     alone,
     // The same hunt the line is given, so the lit control and a pick follow it too.
     hunt: huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? []),
+    holdFull: holdFull({ ...held, queue: vessel.queue, crates: vessel.crates }),
   });
   const pick = advice.pick === null ? undefined : offers.find(offer => opportunityKey(offer) === advice.pick);
   const waiting = answer.kind === 'step' && answer.step === 'wait' ? answer.id : null;

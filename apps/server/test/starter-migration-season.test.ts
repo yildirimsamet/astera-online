@@ -64,11 +64,22 @@ describe('the jump and the calendar', () => {
       expect(typeof rows[0]!.payload.shardName).toBe('string');
     });
 
-    it('tells nobody whose tank is not full', async () => {
+    it('tells nobody whose jump window is shut', async () => {
       const person = await aboard(world, 'Pilot');
       await opens();
       await sweepDepartures(world.f.db, world.f.clock);
       expect((await told(person.vesselId)).filter(row => row.kind === 'SEASON_OPEN')).toHaveLength(0);
+    });
+
+    // Code review 2026-11-13: the window's two deeds are read where the ships are, and the rest of the rule after.
+    it('tells nobody a deed or a repair short of the window', async () => {
+      const deed = await ready();
+      const repair = await aboard(world, 'Other');
+      await world.f.db.update(vessels).set({ facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] }).where(eq(vessels.id, deed.vesselId));
+      await world.f.db.update(vessels).set({ facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] }).where(eq(vessels.id, repair.vesselId));
+      await opens();
+      await sweepDepartures(world.f.db, world.f.clock);
+      for (const ship of [deed, repair]) expect((await told(ship.vesselId)).filter(row => row.kind === 'SEASON_OPEN')).toHaveLength(0);
     });
 
     it('says nothing about a season long under way', async () => {

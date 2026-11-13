@@ -5,7 +5,7 @@ export const STAGE_LABELS: Record<JourneyPlayer['stage'], string> = {
   yard: 'Tersane açıldı', window: 'Sıçrama penceresi açıldı', built: 'Gemi üretimi', battle: 'İlk savaş', victory: 'İlk zafer', departed: 'Ana galaksiye göç',
 };
 const LABELS: Record<string, string> = {
-  MINE: 'Madencilik gönderdi', PROBE: 'Sonda gönderdi', RAID_SITE: 'Karakola saldırdı', RAID_SHIP: 'Gemiye saldırdı',
+  MINE: 'Madencilik gönderdi', PROBE: 'Sonda gönderdi', RAID_SITE: 'Karakola saldırdı', ATTACK: 'Gemiye saldırdı',
   REFINERY: 'Rafineri onarımı', EXTRACTOR: 'Kristal çıkarıcı onarımı', SURVEY: 'Keşif sistemi onarımı', SHIPYARD: 'Tersane onarımı',
   TELESCOPE: 'Teleskop onarımı', RADAR: 'Radar onarımı', AEGIS: 'Aegis onarımı', VAULT: 'Kasa onarımı',
   DART: 'Dart üretimi', PIKE: 'Pike üretimi', WARDEN: 'Warden üretimi', DOCK: 'Gemi onarımı',

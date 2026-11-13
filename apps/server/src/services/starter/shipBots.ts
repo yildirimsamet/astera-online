@@ -1,5 +1,5 @@
 import {
-  HULLS, REPAIR_LADDER, STARTER, afterQueue, canOrderStep, dockBill, hangarLoad, isFeatureOpen, nextRequiredStep, nextSteps, openingProgress,
+  HULLS, REPAIR_LADDER, STARTER, afterQueue, canOrderStep, dockBill, hangarLoad, headStartProgress, isFeatureOpen, nextRequiredStep, nextSteps,
   RESEARCH_PROJECTS, seededFrom, shipBotTarget, starterOutcomeTable, combatValue,
   fleetEntries, hullBulk,
   type HullId, type RepairStep, type VesselProgress,
@@ -35,7 +35,6 @@ const ATTACK_ONE_IN = 8;
 const READING_LIFE_MS = 6 * 3_600_000;
 /** It has to be clearly stronger: the table says what an even fight costs, and that is not worth a day. */
 const ATTACK_RATIO = starterOutcomeTable().find(row => row.ratio >= 2)?.ratio ?? 2;
-const OPENING_STAGES = 9;
 /** Owner 2026-11-08 (N3): the shield is a choice. Some crews take it and some do not, as people do. */
 const SHIELD_SHARE = 0.6;
 const WANT_DARTS = 6;
@@ -81,17 +80,7 @@ const queueIn = (view: VesselView, queue: VesselView['queue'][number]['queue']) 
 
 /** A new neighbour stands somewhere along the ladder, with what those repairs would have given it. */
 async function startPartWay(db: Db, vesselId: string, roll: () => number): Promise<void> {
-  let progress: VesselProgress = openingProgress();
-  const stages = Math.floor(roll() * OPENING_STAGES);
-  const facts = new Set(progress.facts);
-  for (let i = 0; i < stages; i++) {
-    const next = nextRequiredStep(progress, []);
-    if (!next) break;
-    for (const need of next.missing) if (need.kind === 'FACT') facts.add(need.fact);
-    const stuck = next.missing.some(need => need.kind !== 'FACT');
-    if (stuck) break;
-    progress = { ...progress, facts: [...facts], modules: { ...progress.modules, [next.step.module]: next.step.stage } };
-  }
+  const progress = headStartProgress(roll());
   await db.update(vessels).set({ modules: progress.modules, facts: [...progress.facts] }).where(eq(vessels.id, vesselId));
   // What those repairs would have handed over.
   const given = REPAIR_LADDER.filter(step => (progress.modules[step.module] ?? 0) >= step.stage).flatMap(step => fleetEntries(step.grants?.fleet ?? {}));

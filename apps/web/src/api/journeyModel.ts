@@ -54,7 +54,7 @@ export function journeyPlayer(input: JourneyInput, now: number, absentMinutes: n
   // Plan 2026-11-13 §5.1: the first loop done, the jump the player's to choose.
   add('window', jumpWindowOpen({ modules: knownModules(input.modules), facts: input.facts.filter(isFact) }));
   add('built', work.some(w => w.kind === 'order' && w.queue === 'YARD' && w.done));
-  add('battle', input.facts.includes('FIRST_BATTLE_REPORT') || work.some(w => w.code === 'RAID_SITE' || w.code === 'RAID_SHIP'));
+  add('battle', input.facts.includes('FIRST_BATTLE_REPORT') || work.some(w => w.code === 'RAID_SITE' || w.code === 'ATTACK'));
   add('victory', input.facts.includes('FIRST_OUTPOST_VICTORY'));
   add('departed', input.departed);
   const history: JourneyPlayer['history'] = work.map(w => ({ at: w.at, code: w.code, kind: 'command' }));

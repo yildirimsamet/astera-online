@@ -16,6 +16,14 @@ const event = (at: number, name: string, properties: JourneyInput['observations'
   contextId: 'tab', sessionId: 'session', ...extra,
 });
 
+// Code review 2026-11-13: a strike on another ship is an ATTACK flight; nothing is ever called RAID_SHIP.
+describe('the first battle', () => {
+  it('is reached by a strike on another ship that is still in the air', () => {
+    const struck = journeyPlayer(input({ work: [{ at: now - 10 * minute, endsAt: null, kind: 'mission', code: 'ATTACK', done: false }] }), now, 30);
+    expect(struck.milestones).toContain('battle');
+  });
+});
+
 // Plan 2026-11-13 §5.1 and Faz 2: the dashboard sees the moment the jump window opens.
 describe('the jump window', () => {
   const loop = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };

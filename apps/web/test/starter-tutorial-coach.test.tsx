@@ -436,6 +436,17 @@ describe('the online card waits its turn', () => {
     view.unmount();
     expect(unlockHeld()).toBe(false);
   });
+
+  // Play-through 2026-11-13: the jump window's card goes before the guide, which steps off the screen for it.
+  it('steps away and lets the jump window\'s card through while the guide is quiet', async () => {
+    const { unlockHeld } = await import('../src/starter/tutorial/unlockHold.js');
+    const view = render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'firstCrate', step: 'press', marks: ['[data-guide="crate"]'], chapter: 2, strict: false }, ack: vi.fn(), backIn: 50 }} />);
+    expect(unlockHeld()).toBe(true);
+    view.rerender(<StarterTutorialCoach tutorial={{ answer: { kind: 'quiet' }, ack: vi.fn(), backIn: 50 }} />);
+    expect(unlockHeld()).toBe(false);
+    expect(document.querySelector('[data-school-coach]')).toBeNull();
+    view.unmount();
+  });
 });
 
 /** Owner playtest 2026-11-07: never more than ten seconds with nothing to do; past a minute the NPC leaves and comes back. */

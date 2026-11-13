@@ -61,7 +61,9 @@ export type TutorialAnswer =
     strict: boolean;
   }
   /** Nothing to teach: the advisor offers what this ship can do, and the player chooses. */
-  | { kind: 'advise' };
+  | { kind: 'advise' }
+  /** The ship has the floor: the jump window's card speaks, and the guide and the advisor wait for it. */
+  | { kind: 'quiet' };
 export type TutorialStep = Extract<TutorialAnswer, { kind: 'step' }>;
 
 type Place = 'galaxy' | 'ship' | 'any';
@@ -232,6 +234,18 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
     const core = nextIn(CORE, input);
     if (core) return core;
   }
+  // The jump window opening is the first session's turn (play-through 2026-11-13): a crate card stood
+  // over the ship, and the drive's light was missed. Its card speaks first; the guide resumes after it.
+  // The card is drawn out on the galaxy and aboard, never over a page: from one, the way out comes first.
+  if (input.unlockToAnnounce === 'migration') {
+    const next = input.view === 'other' ? afterCore(input) : null;
+    return next?.kind === 'step' ? { ...next, step: 'press', marks: ['[data-sheet-close]'], nav: 'closePage' } : { kind: 'quiet' };
+  }
+  return afterCore(input);
+}
+
+/** Past the core: a moment that is due, then the road, else the advisor. */
+function afterCore(input: TutorialInput): TutorialAnswer {
   for (const part of MOMENTS) {
     if (!part.due(input)) continue;
     const moment = nextIn(part, input);

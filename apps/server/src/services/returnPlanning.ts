@@ -1,5 +1,5 @@
 import {
-  REWARD_CHAINS, REPAIR_LADDER, afterQueue, alloyRate, buildingCost, collectorCap, crystalRate, holdIsFull,
+  REWARD_CHAINS, REPAIR_LADDER, afterQueue, alloyRate, buildingCost, collectorCap, crystalRate, holdIsFull, jumpHold,
   nextRequiredStep, nextSteps, readyCrates, type BuildingId, type RepairStep,
   vesselRate,
 } from '@astera/rules';
@@ -31,18 +31,12 @@ const asTarget = (step: RepairStep): Target => ({ ...step, subject: `${step.modu
 export async function starterTarget(tx: Tx, ship: Ship): Promise<Target | undefined> {
   const orders = await tx.select().from(vesselOrders).where(and(eq(vesselOrders.vesselId, ship.id), eq(vesselOrders.status, 'BUILDING')));
   const queued = orders.filter(o => o.queue === 'CONSTRUCTION').flatMap(o => REPAIR_LADDER.find(s => s.module === o.subject && s.stage === o.stage) ?? []);
-  const progress = { modules: ship.modules, facts: ship.facts, parts: ship.parts, fuel: ship.fuel };
+  const progress = { modules: ship.modules, facts: ship.facts };
   const next = nextRequiredStep(progress, queued);
   if (next) return next.missing.length ? undefined : asTarget(next.step);
   // Past the first loop every repair is the player's choice (plan 2026-11-13 §5.3). A full hold has
   // nothing to wait for: what the jump would carry is already there, so the move is the jump.
-  const crates = readyCrates(progress, ship.cratesOpened);
-  const sum = (pick: (c: { alloy: number; crystal: number }) => number) => orders.reduce((total, o) => total + pick(o.cost), 0);
-  const held = {
-    alloy: ship.alloy + ship.bufferAlloy + sum(c => c.alloy) + crates.reduce((total, c) => total + c.reward.alloy, 0),
-    crystal: ship.crystal + ship.bufferCrystal + sum(c => c.crystal) + crates.reduce((total, c) => total + c.reward.crystal, 0),
-  };
-  if (holdIsFull(held)) return undefined;
+  if (holdIsFull(jumpHold(ship, orders, readyCrates(progress, ship.cratesOpened).map(crate => crate.reward)))) return undefined;
   const step = nextSteps(afterQueue(progress, queued))[0];
   return step ? asTarget(step) : undefined;
 }

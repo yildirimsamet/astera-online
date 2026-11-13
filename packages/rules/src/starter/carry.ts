@@ -43,6 +43,24 @@ export function migrationCargo(holdings: VesselHoldings): MigrationCargo {
 }
 
 /**
+ * WHAT THE JUMP WOULD TAKE DOWN, BEFORE THE CEILING (plan 2026-11-13 §5.2). The store, the works, what
+ * work in progress pays back in full when the jump calls it off, and the ready crates the jump opens
+ * before it counts. The panel, the return reminder and the ship's own screens all read the hold here.
+ */
+export function jumpHold(
+  ship: Resources & { bufferAlloy: number; bufferCrystal: number; bufferDeuterium: number },
+  orders: readonly { cost: Resources }[],
+  crates: readonly Pick<Resources, 'alloy' | 'crystal'>[],
+): Resources {
+  const sum = (pick: (r: Resources) => number) => orders.reduce((total, order) => total + pick(order.cost), 0);
+  return {
+    alloy: ship.alloy + ship.bufferAlloy + sum(r => r.alloy) + crates.reduce((total, crate) => total + crate.alloy, 0),
+    crystal: ship.crystal + ship.bufferCrystal + sum(r => r.crystal) + crates.reduce((total, crate) => total + crate.crystal, 0),
+    deuterium: ship.deuterium + ship.bufferDeuterium + sum(r => r.deuterium),
+  };
+}
+
+/**
  * NOTHING MORE WOULD GO DOWN WITH IT (plan 2026-11-13 §5.2–5.3): alloy and crystal at their ceiling.
  * Deuterium is left out: its ceiling is small and the flights spend it, so it would never stay full.
  */

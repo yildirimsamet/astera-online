@@ -1,5 +1,5 @@
 import {
-  REPAIR_LADDER, STARTER, afterQueue, holdIsFull, jumpWindowOpen, nextRequiredStep, nextSteps,
+  REPAIR_LADDER, STARTER, WINDOW_FACTS, afterQueue, jumpWindowOpen, nextRequiredStep, nextSteps,
   type RepairStep, type StarterFeature, type VesselFact, type VesselProgress,
 } from '@astera/rules';
 import type { HuntStage } from './hunt.js';
@@ -35,6 +35,8 @@ export interface OpportunityInput {
   alone?: boolean;
   /** The first hunt's step while the map marks its two outposts (`huntStage`). */
   hunt?: HuntStage | null;
+  /** Nothing more would go down with the ship, counted as the jump counts it (`holdFull` in hold.ts). */
+  holdFull?: boolean;
 }
 
 const DEED_FACT = { probe: 'FIRST_PROBE_REPORT', mine: 'FIRST_MINING_RETURN' } as const satisfies Record<'probe' | 'mine', VesselFact>;
@@ -77,29 +79,33 @@ function huntOf(input: OpportunityInput): { act?: Opportunity; state?: Opportuni
   return hunt.stage === 'probe' || hunt.stage === 'decide' || hunt.stage === 'retry' ? { act: offer } : { state: offer };
 }
 
-/** The hold counts the store and the works alike: a collect moves them, the jump carries both (§4.4). */
-const holdFull = ({ held }: OpportunityInput): boolean =>
-  holdIsFull({ alloy: held.alloy + held.bufferAlloy, crystal: held.crystal + held.bufferCrystal });
-
 /**
  * PAST THE FIRST LOOP (plan 2026-11-13 §4.3–4.5). Leaving and staying are both fair: a full hold
  * brings the jump to the front, otherwise the line names what a ship that stays does, and the jump
  * waits on the list. A flight out keeps the ship from leaving, so the line says that instead.
  */
-function afterLoop(input: OpportunityInput, queued: RepairStep[], full: boolean, soonest: () => Date): Opportunity {
+function afterLoop(input: OpportunityInput, queued: RepairStep[], full: boolean, soonest: (() => Date) | null): Opportunity {
   const { progress, held, income } = input;
   const open = jumpWindowOpen(progress);
   const jump = (): Opportunity => input.mining === true ? { kind: 'underway', what: 'mine' } : { kind: 'jump' };
-  if (open && holdFull(input)) return jump();
+  if (open && input.holdFull === true) return jump();
   const hunt = huntOf(input);
   if (hunt.act) return hunt.act;
   const flying = flyingFor(input);
   const deeds = deedsLeft(input);
   const todo = deeds.find(deed => !flying[deed]);
   if (todo) return { kind: todo };
-  if (!open) return deeds[0] ? { kind: 'underway', what: deeds[0] } : { kind: 'wait', readyAt: soonest() };
+  if (!open) {
+    if (deeds[0]) return { kind: 'underway', what: deeds[0] };
+    // Nothing in the air and a deed still missing (a lone ship past its hunt): say what opens the jump.
+    const missing = WINDOW_FACTS.find(fact => !progress.facts.includes(fact));
+    if (missing) return { kind: 'fact', fact: missing };
+    if (soonest) return { kind: 'wait', readyAt: soonest() };
+  }
   if (input.crateReady === true) return { kind: 'crate' };
-  const step = full ? undefined : nextSteps(afterQueue(progress, queued))[0];
+  // A full repair queue is no reason to leave: the jump would call those repairs off.
+  if (full && soonest) return { kind: 'wait', readyAt: soonest() };
+  const step = nextSteps(afterQueue(progress, queued))[0];
   if (!step) return jump();
   if (held.alloy >= step.alloy && held.crystal >= step.crystal) return { kind: 'repair', step };
   if (held.alloy + held.bufferAlloy >= step.alloy && held.crystal + held.bufferCrystal >= step.crystal) return { kind: 'collect' };
@@ -140,7 +146,7 @@ function firstOpportunity(input: OpportunityInput): Opportunity {
   const soonest = (): Date => new Date(Math.min(...repairs.map(order => order.readyAt.getTime())));
   const next = nextRequiredStep(progress, queued);
   // Every required repair is done or queued: the rest of the loop, then the window.
-  if (!next) return afterLoop(input, queued, full, soonest);
+  if (!next) return afterLoop(input, queued, full, repairs.length > 0 ? soonest : null);
   const { step } = next;
   const storePays = held.alloy >= step.alloy && held.crystal >= step.crystal;
   if (features.includes('telescope') && !progress.facts.includes('FIRST_MINING_RETURN') && input.mining !== true) return { kind: 'mine' };

@@ -50,6 +50,16 @@ it('remembers dismissal across mounts, and says nothing once no repair waits on 
   expect(document.querySelector('[data-starter-aftercare]')).toBeNull();
 });
 
+// Code review 2026-11-13: the window's deeds sit outside the ladder, so past the six repairs the hint had
+// nothing to name and fell silent just when the jump waited on a deed.
+it('names the deed the jump still waits on once the six repairs are done', async () => {
+  const { REPAIR_LADDER } = await import('@astera/rules');
+  const modules: VesselModules = {};
+  for (const step of REPAIR_LADDER.filter(step => step.required)) modules[step.module] = Math.max(modules[step.module] ?? 0, step.stage);
+  render(<StarterAftercare vessel={{ ...ship(), modules, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] }} farewelled guided />);
+  expect(screen.getByText(/Send a probe to a neighbouring ship or an outpost\./u)).toBeTruthy();
+});
+
 /** Plan F3: the phone permission does not hang on the guide; without it, the ask comes at the same point. */
 it('asks a commander without the guide once the first haul is home, and gives no hint', async () => {
   const { REPAIR_LADDER } = await import('@astera/rules');

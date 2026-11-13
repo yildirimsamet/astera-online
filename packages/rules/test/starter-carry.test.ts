@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER, fleetCount, hangarLoad, holdIsFull, migrationCargo } from '../src/index.js';
+import { STARTER, fleetCount, hangarLoad, holdIsFull, jumpHold, migrationCargo } from '../src/index.js';
 
 const plenty = { alloy: 99_999, crystal: 99_999, deuterium: 99_999 };
 
@@ -66,5 +66,22 @@ describe('a full hold', () => {
   it('is not full while either is short, whatever the deuterium', () => {
     expect(holdIsFull(cargo(STARTER.carry.alloy - 1, STARTER.carry.crystal, 99_999))).toBe(false);
     expect(holdIsFull(cargo(STARTER.carry.alloy, STARTER.carry.crystal - 1, 99_999))).toBe(false);
+  });
+});
+
+/**
+ * WHAT THE JUMP WOULD TAKE DOWN, BEFORE THE CEILING (plan 2026-11-13 §5.2; code review 2026-11-13). The
+ * panel counted work in progress and ready crates, the ship's own screens did not: one hold read two
+ * ways. Every surface now reads it from this one sum.
+ */
+describe('what the jump would take down', () => {
+  const ship = { alloy: 1000, crystal: 400, deuterium: 10, bufferAlloy: 50, bufferCrystal: 20, bufferDeuterium: 2 };
+  it('counts the store and the works', () => {
+    expect(jumpHold(ship, [], [])).toEqual({ alloy: 1050, crystal: 420, deuterium: 12 });
+  });
+
+  it('adds what work in progress pays back when the jump calls it off, and the ready crates it opens first', () => {
+    expect(jumpHold(ship, [{ cost: { alloy: 300, crystal: 100, deuterium: 1 } }], [{ alloy: 200, crystal: 80 }]))
+      .toEqual({ alloy: 1550, crystal: 600, deuterium: 13 });
   });
 });

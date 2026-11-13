@@ -30,7 +30,8 @@ export const useStarterGoal = () => useContext(StarterGoal);
 export function starterGoal(tutorial: Pick<StarterTutorial, 'answer' | 'offers' | 'pick' | 'view'>, guided: boolean): StarterGoalValue {
   return {
     step: guided && tutorial.answer.kind === 'step' ? tutorial.answer : null,
-    choice: tutorial.pick ?? tutorial.offers[0] ?? null,
+    // While the jump window's card speaks, nothing else is lit.
+    choice: tutorial.answer.kind === 'quiet' ? null : tutorial.pick ?? tutorial.offers[0] ?? null,
     picked: tutorial.pick !== undefined,
     guided,
     view: tutorial.view,
