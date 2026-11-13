@@ -19,6 +19,18 @@ function film(seconds: number, colour: (t: number) => Rgb, litCells = CELLS, off
   return frames;
 }
 
+/** Frames where each cell's colour is its own function of time. */
+function filmCells(seconds: number, colour: (t: number, cell: number) => Rgb): FlashFrame[] {
+  const frames: FlashFrame[] = [];
+  for (let i = 0; i < seconds * FPS; i += 1) {
+    const t = i / FPS;
+    const cells = new Float64Array(CELLS * 3);
+    for (let c = 0; c < CELLS; c += 1) cells.set(colour(t, c), c * 3);
+    frames.push({ time: t, cells });
+  }
+  return frames;
+}
+
 const square = (hz: number, on: Rgb, off: Rgb = [0, 0, 0]) => (t: number): Rgb => (Math.floor(t * hz * 2) % 2 === 0 ? off : on);
 const OPTIONS = { cellArea: CELL_AREA, areaThreshold: 20_000 };
 
@@ -49,6 +61,25 @@ describe('WCAG 2.3.1 general flash', () => {
   it('counts one explosion as one flash', () => {
     const boom = (t: number): Rgb => (t > 0.2 && t < 0.35 ? [255, 255, 255] : [0, 0, 0]);
     expect(flashReport(film(1, boom), OPTIONS).generalPerSecond).toBe(1);
+  });
+
+  it('fails a 4 Hz flash that grows in and out over a few frames, as an explosion does', () => {
+    // 12 of 16 cells (30 000 px², over the 20 000 threshold), lit 3 a frame: no single frame reaches it.
+    const report = flashReport(filmCells(2, (t, c) => {
+      if (c >= 12) return [0, 0, 0];
+      const half = Math.floor(t * 4 * 2);
+      const since = Math.round((t - half / 8) * FPS);
+      const settled = since >= Math.floor(c / 3);
+      const on = half % 2 === 1 ? settled : !settled;
+      return on ? [255, 255, 255] : [0, 0, 0];
+    }), OPTIONS);
+    expect(report.generalPerSecond).toBe(4);
+    expect(report.fails).toBe(true);
+  });
+
+  it('counts two halves of the view swapping light as each half flashing, not twice that', () => {
+    const report = flashReport(filmCells(2, (t, c) => ((Math.floor(t * 4 * 2) + c) % 2 === 0 ? [255, 255, 255] : [0, 0, 0])), OPTIONS);
+    expect(report.generalPerSecond).toBe(4);
   });
 
   it('counts a slow fade up and down as one flash, not one per frame', () => {

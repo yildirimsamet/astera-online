@@ -155,6 +155,14 @@ describe('text load per screenful (W1)', () => {
     expect(over).toMatch(/^[^\n]*\n+- a · `gallery:x` · 60 kelime\/ekran · 0,5 uzun blok\/ekran/);
     expect(over).not.toMatch(/gallery:y/);
   });
+
+  it('names a screen over the long-block budget even when twenty others carry more words', () => {
+    const wordy = Array.from({ length: 21 }, (_, i): Entry => ({ ...loaded, reach: `gallery:w${String(i)}`, audit: audit({ texts: [text(12)], stats: stats(50), parts: 1 }) }));
+    const blocky: Entry = { ...loaded, reach: 'gallery:blocky', audit: audit({ texts: [text(12, { text: long }), text(12, { text: long })], stats: stats(12), parts: 1 }) };
+    const crowded = renderReport(summarize([...wordy, blocky], surfaces), { title: 'Test', date: '2026-11-11' });
+    const named = ((crowded.split('Bütçeyi aşan')[1] ?? '').split('| Yüzey')[0]) ?? '';
+    expect(named).toMatch(/`gallery:blocky` · 12 kelime\/ekran · 2 uzun blok\/ekran/);
+  });
 });
 
 describe('the difference from the previous baseline', () => {

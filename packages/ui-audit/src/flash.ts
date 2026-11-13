@@ -8,9 +8,11 @@
  *
  * Frames arrive as a grid of averaged cells. Each cell keeps the extreme it has reached
  * since its last transition, so a fade spread over many frames is one change rather than
- * none, and a cell transitions when it swings back by the threshold. A frame counts as a
- * transition when the cells that swung the same way cover the area threshold. The phone's
- * 10° field is about the width of the screen, so all of it is summed: conservative.
+ * none, and a cell transitions when it swings back by the threshold. The view transitions
+ * when the cells that swung the same way since its last transition cover the area
+ * threshold, so a flash that grows in over a few frames (an explosion, a bloom) counts like
+ * one that appears at once. The phone's 10° field is about the width of the screen, so all
+ * of it is summed: conservative.
  */
 
 export interface FlashFrame {
@@ -113,6 +115,46 @@ interface Transition {
   dir: -1 | 1;
 }
 
+/**
+ * The area that has swung each way since the whole view last transitioned. Each cell counts once, by
+ * the way it last swung: a small patch flickering on and off moves its area between the two sides,
+ * never piles it up into a large one.
+ */
+class Sweep {
+  private readonly dirs: (-1 | 1 | undefined)[] = [];
+  private up = 0;
+  private down = 0;
+  private last: -1 | 0 | 1 = 0;
+
+  add(cell: number, dir: -1 | 0 | 1, area: number): void {
+    const before = this.dirs[cell];
+    if (dir === 0 || before === dir) return;
+    if (before === 1) this.up -= area;
+    if (before === -1) this.down -= area;
+    this.dirs[cell] = dir;
+    if (dir === 1) this.up += area;
+    else this.down += area;
+  }
+
+  /** At a frame's end: a transition once one way's area reaches the threshold, then every cell starts again. */
+  settle(time: number, threshold: number, into: Transition[]): void {
+    const up = this.up >= threshold && this.last !== 1;
+    const down = this.down >= threshold && this.last !== -1;
+    if (!up && !down) return;
+    if (up && down) {
+      into.push({ time, dir: 1 }, { time, dir: -1 });
+      this.last = -1;
+    } else {
+      const dir = up ? 1 : -1;
+      into.push({ time, dir });
+      this.last = dir;
+    }
+    this.dirs.length = 0;
+    this.up = 0;
+    this.down = 0;
+  }
+}
+
 /** Most flashes (pairs of opposing transitions) in any one-second window. */
 function peak(transitions: readonly Transition[]): { flashes: number; at: number | null } {
   let flashes = 0;
@@ -144,9 +186,9 @@ export function flashReport(frames: readonly FlashFrame[], { cellArea, areaThres
   const general: Transition[] = [];
   const red: Transition[] = [];
   const swings: { general: Swing; red: Swing }[] = [];
+  const sweep = { general: new Sweep(), red: new Sweep() };
 
   for (const { time, cells } of frames) {
-    const area = { general: { up: 0, down: 0 }, red: { up: 0, down: 0 } };
     for (let c = 0; c * 3 + 2 < cells.length; c += 1) {
       const r = linear(cells[c * 3] ?? 0);
       const g = linear(cells[c * 3 + 1] ?? 0);
@@ -158,17 +200,11 @@ export function flashReport(frames: readonly FlashFrame[], { cellArea, areaThres
         swings[c] = { general: new Swing(lum), red: new Swing(rr) };
         continue;
       }
-      const g1 = swing.general.step(lum, GENERAL, (darker) => darker < DARKER_BELOW);
-      const r1 = swing.red.step(rr, RED, () => true);
-      if (g1 === 1) area.general.up += cellArea;
-      if (g1 === -1) area.general.down += cellArea;
-      if (r1 === 1) area.red.up += cellArea;
-      if (r1 === -1) area.red.down += cellArea;
+      sweep.general.add(c, swing.general.step(lum, GENERAL, (darker) => darker < DARKER_BELOW), cellArea);
+      sweep.red.add(c, swing.red.step(rr, RED, () => true), cellArea);
     }
-    if (area.general.up >= areaThreshold) general.push({ time, dir: 1 });
-    if (area.general.down >= areaThreshold) general.push({ time, dir: -1 });
-    if (area.red.up >= areaThreshold) red.push({ time, dir: 1 });
-    if (area.red.down >= areaThreshold) red.push({ time, dir: -1 });
+    sweep.general.settle(time, areaThreshold, general);
+    sweep.red.settle(time, areaThreshold, red);
   }
 
   const g = peak(general);

@@ -318,7 +318,8 @@ function textLoad(rows: readonly SurfaceRow[]): string {
   const heaviest = [...mine].sort((a, b) => b.perScreen - a.perScreen).slice(0, 20);
   const wordMedian = median(mine.map((r) => r.perScreen));
   const blockMedian = median(mine.map((r) => r.blocksPerScreen));
-  const over = heaviest.filter((r) => r.perScreen > WORD_BUDGET || r.blocksPerScreen > BLOCK_BUDGET);
+  // Every screen over either budget, not only the wordiest: a few words in long blocks is over it too.
+  const over = [...mine].sort((a, b) => b.perScreen - a.perScreen).filter((r) => r.perScreen > WORD_BUDGET || r.blocksPerScreen > BLOCK_BUDGET);
   return `## Metin yükü (W1, telefon, Türkçe)
 
 Ekran başına kelime: yüzeyin kelimesi ÷ kaydırma parçası. Uzun blok: 6 ve daha çok kelimelik metin. Rakip referansı: araştırma §7.3.
@@ -327,7 +328,7 @@ ${String(mine.length)} ölçüm. Ekran başına kelime ortancası ${decimal(word
 
 **Bütçe (2.3):** kelime ortancası ${verdict(wordMedian, WORD_BUDGET)} · uzun blok ortancası ${verdict(blockMedian, BLOCK_BUDGET)}
 
-Bütçeyi aşan ekranlar (ekran başına ${String(WORD_BUDGET)} kelimeden ya da ${String(BLOCK_BUDGET)} uzun bloktan fazla, en ağır 20 içinden):
+Bütçeyi aşan ekranlar (ekran başına ${String(WORD_BUDGET)} kelimeden ya da ${String(BLOCK_BUDGET)} uzun bloktan fazla):
 
 ${over.length === 0 ? '_Yok._' : over.map((r) => `- ${r.surface} · \`${r.reach}\` · ${decimal(r.perScreen)} kelime/ekran · ${decimal(r.blocksPerScreen)} uzun blok/ekran`).join('\n')}
 
