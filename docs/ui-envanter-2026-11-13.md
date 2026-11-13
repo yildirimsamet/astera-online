@@ -121,7 +121,7 @@ Telefon (≤ v2-split)                         Masaüstü (E11 · K10)
 
 **Kabuk davranışları (değişirse korunacak):** sekme kilidi tostu (`gate.tabLock`), klavye 1–5 / Boşluk / Esc, kronik → zil sekmesi, Galaksi'ye ikinci basış eve uçar, sayfa açılınca sayaç sheet'i kapanır, dock galaksi üstünde saydam.
 
-**Canlı oyunda olmayan eski kabuk (ölü kod adayı, silinmedi):** `shell/StatusBar.tsx`, `PendingStrip` bileşeni ve sinyal düğmesi `Signals` yalnızca eski `onboarding/Academy.tsx` ve `onboarding/Rehearsal.tsx` içinde çiziliyor; bu iki dosyayı hiçbir canlı dosya içe aktarmıyor (yalnız testler). `useAirborne` ve `FlightList` canlıda kullanılıyor. Owner'a liste olarak sunulacak.
+**Canlı oyunda olmayan eski kabuk (ölü kod adayı, silinmedi; tam liste "Paylaşılan arayüz parçaları" bölümünde de):** `shell/StatusBar.tsx`, `PendingStrip` bileşeni ve sinyal düğmesi `Signals` yalnızca eski `onboarding/Academy.tsx` ve `onboarding/Rehearsal.tsx` içinde çiziliyor; bu iki dosyayı hiçbir canlı dosya içe aktarmıyor (yalnız testler). `useAirborne` ve `FlightList` canlıda kullanılıyor. Owner'a liste olarak sunulacak.
 
 ### 3.3 G1 için ilk gözlemler (ekran görüntüsü öncesi, koddan)
 
@@ -179,6 +179,270 @@ Okundu: `screens/PlanetScreen.tsx` 182–700 (ekran gövdesi, sekmeler, sheet'le
 2. Kaynak harcayan dört eylem düz butonla yapılıyor (gemi üret, onar, arıza onar, aktar). 2. aşama kuralı: harcayan → 1 sn basılı tutma.
 3. Onarım istasyonu ve tersane sheet'i owner'ın Klan örneğindeki "tıka basa" kalıbında. Sekme ya da adım, bilgi kutusu ve kısa metin gerekiyor.
 4. Filo sekmesi (Üs içinde) yedi bölümü tek kaydırmada taşıyor. Ayrı Filo sayfasıyla görev paylaşımı yeniden düşünülecek (G2 karar notu).
+
+## G3. İstihbarat
+
+Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.
+
+| # | Yüzey | Dosya | Oyuncu anı · karar | Durumlar | Açılış | Dil | Not |
+|---|---|---|---|---|---|---|---|
+| 1 | İstihbarat sayfası | `IntelScreen` | "Komşularım hakkında ne biliyorum, kime saldırabilirim?" | yükleniyor, hata, gemide; raf: Gözetleme / Raporlar / Radar | Dock İstihbarat; bildirim (Raporlar rafı + savaş/sonda) | v2 + v1 (`Clarity`) | **İç içe iki sekme çubuğu:** Raporlar rafının içinde ikinci bir `Segmented` (Sondalar / Savaşlar). |
+| 2 | Gözetleme rafı · teleskop rafı | `TelescopeShelf` | teleskop yuvaları neyi izliyor | teleskop yok (alet kartı), boş yuva, kısmi / tam kapsama, radar yok uyarısı, aralıklı görüş notu | raf | v2 | Uyarı ve notlar 9 px. |
+| 3 | Gözetleme rafı · işaretli rakipler | `Rivals` | işaretlediğim rakibe git | yok; kayıp işaret | raf | v2 | Menüdeki işaret çipleriyle aynı veri, iki yerde. |
+| 4 | Gözetleme rafı · bilinenler | `Known`, `KnownWatch`, `KnownProbe` | bildiğim dünyalar, ne kadar taze | boş; teleskop / sonda satırı; tazelik işareti; açıklama aç/kapa | raf | v2 + v1 `ClarityMark` | |
+| 5 | Radar özeti | `RadarGlance` + `DayLine` | son 24 saatte kaç temas | radar yoksa yok | Gözetleme rafının altı → Radar rafı | v2 | |
+| 6 | Raporlar · sondalar | `ProbeShelf`, `RangeRow`, `HuntHowTo` | sonda raporu: stok / savunma / gemi aralıkları, benimkiyle kıyas | sonda yok (alet kartı: maliyet), rapor yok, filo evde (keskin) / uzakta (geniş), yakalandı, gemide av ipucu, karakol | raf | v2 | Karar desteğinin kalbi: aralık + "benim değerim" doğru fikir; görsel dili eski. |
+| 7 | Raporlar · savaşlar | `screens/BattleReports.tsx` (2472 satır) | savaş listesi ve raporu | | raf, bildirim | | G5'te |
+| 8 | Radar rafı | `RadarShelf`, `RadarReach` | radar menzili, uyarı süresi, günün temasları | radar yok, seviyeye göre notlar (yavaş filo, köken) | raf | v2 | |
+| 9 | Alet kartı | `Instrument` | eksik aleti kur | — | teleskop / sonda / radar yokken | v2 | "Kur" Üs'ün İstihbarat sekmesine götürür. |
+| 10 | Görüş çipi + sheet'i | `v2/hud/ViewSheet.tsx` `ViewChip`, `ViewSheet` | galakside teleskop / radar katmanlarını aç-kapa; olay rehberi | katman açık / kapalı | galaksi köşesi | v2 | Kit `Toggle` adayı. |
+| 11 | Galaksi olay rehberi | `screens/GalaxyEventsGuide.tsx` | olaylar nasıl çalışır | | `ViewSheet` | v1 | |
+
+**G3 için ilk gözlemler:** iç içe sekmeler (raf + alt raf) tek düzeye inmeli; uyarılar ve notlar 9 px; teleskop yuvaları ile "bilinenler" aynı konuyu iki listede anlatıyor (karar notunda birleşme düşünülecek).
+
+## G4. Galaksi ve gönderme
+
+Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.
+
+**Ortak çerçeve (`Shell`, bütün odak kartları):** kapalıyken galaksinin altında tek satırlık ray (üst etiket, başlık, tek olgu, aç oku, kapat ×), altında isteğe bağlı "göz atma" bölümü. Açıkken dock'tan yukarı en çok `65dvh` dosya; eylemler alttaki yapışkan şeritte, sarılarak dizilir. Telefonun geri hareketi önce dosyayı kapatır, sonra seçimi bırakır. Dil: v2. 9 px üst etiket ve özet.
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Dil | Not |
+|---|---|---|---|---|---|---|
+| 1 | Gezegen odağı | `FocusPanel.tsx` `PlanetFocus` (538–1363) | **Oyunun ana karar yüzeyi:** "Bu dünyaya saldırayım mı, sonda mı, yerleşeyim mi?" | keşfedilmemiş; kendi dünyam (`OwnedPlanetFocus`); klan üyesi; tatilde; kalkanlı; menzil (Onur bandı) dışı; Sessiz Uzay; tersane isyanı; uçuş yuvası yok; pencere açık; radyasyon sığınağı | v2 | Açık dosya: stratejik rehber, pencere, radyasyon, `TargetDossier`, rakip geçmişi, kaynağa göre olgular (`FactRow`), boşluk satırları (`GapRow` + `CloseGap`), hedef radyasyon aleti, Ölüm Yıldızı, radyasyon bombası. Eylemler: saldır, sonda, yerleş, aktar, destek gönder, klan hedefi. Engel nedeni düğme etiketinde. Yüksek öncelik, en karmaşık yüzey. |
+| 2 | Hedef dosyası | `v2/hud/TargetDossier.tsx` (357) | bildiklerim ve tahmin aralıkları | | v2 | |
+| 3 | Ölüm Yıldızı vuruşu | `FocusPanel` `DeathStarSection`, `StrikeSheet` | | engeller (menzil, kalkan, köken toparlanıyor, yuva) | v2 | |
+| 4 | Anıt odağı | `MonumentFocus` → `screens/MonumentSheet.tsx` (280) | | | v2 | G9 ile birlikte |
+| 5 | Asteroit / madencilik | `FocusPanel` `AsteroidFocus` + `GalaxyView` `AsteroidFocusHost` | "Hangi gemiyle kazayım?" | taahhütler, gemi dinleniyor, eve taşıma, depo dolu | v2 | `CraftPicker` |
+| 6 | Enkaz | `DebrisFocus` + `DebrisFocusHost` | enkaz topla | | v2 | |
+| 7 | Korsan | `PirateFocus` + `PirateFocusHost` | korsana saldır | | v2 | |
+| 8 | Ticaret gemisi | `TradeFocus` → `screens/TradeSheet.tsx` (780) | takas | | v2 | sheet'te 2 `range`, `Segmented`, 2 sayıcı |
+| 9 | Galaksiler arası konvoy | `IntergalacticConvoyFocus` → `screens/IntergalacticConvoySheet.tsx` (356) | konvoya baskın | | v2 | |
+| 10 | Madencilik uçuşu | `RunFocus` | geri çağır | | v2 | |
+| 11 | Uçuş (kendi / gelen) | `ThreadFocus` | geri çağır; anıta odak | | v2 | |
+| 12 | Temas | `ContactFocus` | salt okunur | | v2 | |
+| 13 | Saldırı gönder | `screens/LaunchSheet.tsx` (449) | "Hangi gemilerle, ne kadar?" | dünya / korsan hedefi | v2 | basılı tutma (v2 `HoldButton`), 2 sayıcı |
+| 14 | Aktar | `screens/TransferSheet.tsx` (613) | dünyalar arası kaynak / gemi | | v2 | `range` + 2 sayıcı + basılı tutma |
+| 15 | Yerleş | `screens/SettlementSheet.tsx` (148) | koloni kur | | v2 | basılı tutma |
+| 16 | Klan desteği gönder | `screens/ClanSupportSheet.tsx` | | | v2 | G7 |
+| 17 | Bilinmeyen sinyal | `screens/UnknownSignalHud.tsx` çip + `UnknownSignalSheet.tsx` (140) | "Sinyali araştırmaya gemi göndereyim mi?" | açık (geri sayım) / sonuç (korsan, kaplama) / gemi yok → üret | v2 | köken seçimi **yerli `<select>`**; gönder düz buton |
+| 18 | Dünyalar paneli | `WorldsPanel` | | | v1 | G2'de yazıldı |
+
+**G4 için ilk gözlemler:** gönderme sheet'leri zaten basılı tutmayla onaylanıyor (iyi), ama v2 `HoldButton` görünümünde; kit `GameHold` ağırlıkları (harcayan 1 sn, kesin 1,5 sn) uygulanacak. Gezegen odağı bir yüzeyde 10'dan fazla bölüm taşıyor; dosya içinde sekme/bölüm düzeni karar notunda. `FocusPanel.tsx` 4191 satır: yeniden tasarımda bileşenlere bölünmesi bakım için de gerekli.
+
+## G5. Sonuç: rapor, tekrar, kronik, dönüş
+
+Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
+
+| # | Yüzey | Dosya | Oyuncu anı · karar | Durumlar | Açılış | Dil | Not |
+|---|---|---|---|---|---|---|---|
+| 1 | Savaş listesi | `BattleReports` | geçmiş savaşlar | boş; okunmamış; stratejik satır (Ölüm Yıldızı, bomba) | İstihbarat › Raporlar › Savaşlar | v2 | |
+| 2 | Rapor kapısı | `BattleReportDoor` | bildirimden tek rapora; yoksa listeye | | `report` paneli | v2 | |
+| 3 | Savaş raporu | `BattleReports` `ReportSheet` | **"Ne oldu, neden, şimdi ne yapayım?"** — sonuç yeni istihbarat üretir | kazandı / kaybetti / berabere; korsan; ortak savaş (klan); savunma hattı; boş geçiş; gemi ele geçirildi; kalkan etkisi; Hakimiyet dökümü; ganimet; sadakat darbesi | liste, bildirim, zil | v2 | **Tek kaydırmada 15+ bölüm:** tekrar düğmeleri, hüküm, yerler, neden, dönüm noktası, onların tahtası, benim gücüm, kayıplar, turlar (tur başına hesap + atış kartı), formül (`details`), Hakimiyet dökümü, sonuçlar, klanlar. Sekme (Özet / Kuvvetler / Turlar / Sonuç) adayı. "Tekrar saldır" → hedef dosyası. Yüksek öncelik. |
+| 4 | Stratejik rapor | `StrategicReportSheet` | Ölüm Yıldızı / bomba sonucu | | stratejik satır | v2 | |
+| 5 | Savaş tekrarı | `battle-simulator/BattleReplayDialog.tsx`, `BattleReplay.tsx`, `BattleStage.tsx` (3D) | savaşı izle | kayıt yok / güç yetersiz / çok büyük; yükleniyor; yüklenemedi (yeniden yükle) | raporun "Savaşı izle ▷" | v2 + `simulator.css` | ▷ ve ↗ düz karakter. G11 simülatörüyle aynı sahneyi paylaşır. |
+| 6 | Simülatörde dene | `SimulatorHost` | aynı kuvvetleri simülatörde dene | | raporun "Simülatörde dene ↗" | | G11 |
+| 7 | Anıt raporu | `screens/MonumentReportSheet.tsx` (88) | | | | v2 | G9 ile |
+| 8 | Kronik | `screens/ChronicleScreen.tsx` (245) | galakside ne oldu | yükleniyor, hata, boş | zil › Kronik | **v1** (`ui/kit` `Button`, `EmptyState`, `Waiting`) | |
+| 9 | Dönüş hikâyesi | `v2/hud/AwaySheet.tsx` | "Ben yokken ne oldu?" | gemide ayrı hikâye; kahraman satır + satırlar + gözlemler + onarım bakımı | otomatik | v2 | Owner'ın 'Ne oldu acaba?' hedefinin karşılandığı an; sunumu düz liste. Yüksek öncelik (yeniden katılım). |
+
+## G6. Ödüller, mağaza, envanter, kozmetik
+
+Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Açılış | Dil | Not |
+|---|---|---|---|---|---|---|---|
+| 1 | Ödüller | `RewardsScreen` (225) | "Ne kazandım, al" | yükleniyor, hata, boş; sosyal kart (adımlar, sürekli / bekliyor / alındı); hedef zincirleri (açık / katlı, alınabilir önde), aşama satırları, taşma uyarısı (başkente gider) | üst bar 🎁, menü | v2 (`v2/kit/Surface` `Button`, `Plate`) | **Ödül alma düz buton.** Kitte `RewardPod` (kapsül açılma animasyonu) hazır ve kullanılmıyor: CLAUDE.md §4.6 "önemli an kendine özgü sunum". Yüksek öncelik (ilk oturumda oyuncunun gördüğü ilk ödül anı). |
+| 2 | Mağaza (kaplamalar) | `SkinsScreen` (482) | "Hangi görünüm, ne kadar?" | gezegen kategorisi (önizleme 15 rem, koleksiyon, paket) / diğer kategoriler (`CosmeticCollection`); web / uygulama; deneme | menü, üst bar Mağaza, sinyal sonucu | v2 + 2 v1 izi | Kategori gezinmesi `CosmeticNavigation` |
+| 3 | Envanter | `SkinInventoryScreen` (205) | sahip olduklarımı giy | boş (mağazaya git), gezegen başına görünüm çipleri, bekliyor | menü, mağaza | v2 + 1 v1 izi | |
+| 4 | Kozmetik koleksiyonu / önizleme / gezinme | `CosmeticCollection` (97), `CosmeticPreview` (62), `CosmeticNavigation` (33), `SkinPreview` (73), `ShipSkinDrive` (18) | | | mağaza, envanter | v2 | |
+| 5 | Ödeme | `ShopierCheckout` (94) | satın al | | mağaza | v2 | Polar / Shopier akışı; sunucu kuralı değişmez. |
+| 6 | Deneme şeridi | `CosmeticTrialBar` (30) | denediğim kaplamayı al / bırak | | galakside, deneme sırasında | v2 | |
+| 7 | Mağaza vitrini (menüde) | `shell/ShopShowcase` (73) | | | menü | v2 | G1 menüsüyle birlikte |
+| 8 | Destek ol | `DonateScreen` (222) | bağış | web / uygulama (adres satırları, destek kartları) | menü | v2 | |
+| 9 | Komutan Mirası ödül açılışı | `legacy/AwardReveal` (295), `AwardScene` (157), `AwardStage` (82), `AwardSheet` (164), `AwardTile` (73), `LegacyPeek` (190) | ödül / unvan açılış anı | sırada bekleyen açılışlar | otomatik (`LegacyRevealHost`), profil | v2 | Kendi sahnesi var; kit ödül dili (`RewardPod`, ışın) ile birleşmeli. |
+
+## G7. Klan (owner örneği)
+
+Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dallar), 312–617 ve 1559–1946 iskelet (dışarıdan bakış, yardım paneli); diğer klan dosyalarında dil sayımı.
+
+**Dallar:** yükleniyor / hata / **dışarıda** (`ClanOutside`: başlık, faydalar, klan kur, klan profilleri, katıl) / **üye** (`ClanHeader` + Genel sekmesinde arena takım paneli + 5 sekme: Genel · Güç · Üyeler · Yardım · Savaş).
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Dil | Not |
+|---|---|---|---|---|---|---|
+| 1 | Dışarıda | `ClanOutside`, `ClanBenefits`, `FoundClan`, `ClanProfile` | "Klana gireyim mi, kurayım mı?" | davet, başvuru, klan kur (ad / etiket girişi) | v2 | uzun tanıtım + faydalar + form + liste tek sayfada |
+| 2 | Klan başlığı | `ClanHeader` | klanım: ad, etiket, rolüm | lider / üye | v2 | |
+| 3 | Genel | `ClanOverview`, `ClanSeats`, `ClanStandings`, `ClanEventRow` | klanın durumu, sıralaması, olaylar | olgun klan (olaylar) / yeni | v2 | arena takım paneli üstte |
+| 4 | Güç | `ClanStrengthPanel`, `ClanStrengthView` | klanın gücü | | v2 | |
+| 5 | Üyeler | `ClanMembers` | üyeler, roller, yönetim | lider eylemleri, onay (`Confirmation`) | v2 | |
+| 6 | Yardım | `ClanAidPanel` (1559–1946) | kaynak isteği / bağış / limit | uyum sağlıyor (bekleme), istek formu, limit, kalan | v2 | **Owner'ın gösterdiği yer:** `Plate` içinde `Plate` (içe gömülü `sunk`), istek formu **3 yerli `<select>`** (`SelectField`), kaynak rakam blokları alt alta. |
+| 7 | Savaş | `ClanWarPanel` (506) | klan savaşı | hata, veri | v2 + 1 v1 | basılı tutma var |
+| 8 | Klan bayrağı | `ClanBanner` (294) | | | v2 | |
+| 9 | Bağış sheet'i | `ClanDonateSheet` (111) | | | v2 | |
+| 10 | Dalga sheet'i | `ClanWaveSheet` (228) | | | v2 | basılı tutma |
+| 11 | Destek gönder | `ClanSupportSheet` (244) | | | v2 | basılı tutma |
+| 12 | Savunma duruşu + destek bölmesi | `ClanSupportBay` (271) `DefencePostureCard`, `ClanSupportBay` | gelen destek, duruş anahtarı | | v2 | Üs › Filo sekmesinde duruyor (G2 ile ortak) |
+| 13 | Klan sohbeti | `ChatScreen` klan kanalı | | | | G8 |
+
+**G7 için ilk gözlemler:** owner'ın tarifi kodda doğrulandı: kart içinde kart, form alanları yerli `select`, uzun metin blokları. Yardım sekmesi kendi içinde en az üç iş taşıyor (istek, bağış, limit); sekme ya da adım gerekecek.
+
+## G8. İletişim
+
+Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Dil | Not |
+|---|---|---|---|---|---|---|
+| 1 | Sohbet | `ChatScreen` (1095) + `ChatHost` | konuş, rakibi tanı, klanla plan | kanal: Genel / Klan / DM (`Segmented`); gemide yalnız Genel; okunmamış; sessize alınmış gizli; yönetici klan kanalı; medya ekleme (yönetici); tepki listesi; klan olay satırı; klavye açık | v2 | Genel kanalın dil seçimi **yerli `<select>`** → kitte `LanguagePicker` hazır. Yönetici klan kanalı da `<select>`. |
+| 2 | DM paneli | `ChatScreen` `DmPanel` | özel mesaj | | v2 | |
+| 3 | Medya, tepkiler | `ChatMediaAttachment` (111), `ChatMediaComposer` (97), `ChatReactionRoster` (73) | | | v2 | |
+| 4 | İçerik bildir | `ContentReportSheet` (61) | mesaj / oyuncu bildir | | v2 | 2 yerli `<select>` |
+| 5 | Sessize alınanlar | `ChatHost` içi sheet | | boş / liste | v2 | G1'de |
+| 6 | Engellenenler | `CommunityBlocks` (66) `BlockedPlayersSheet` | | | v2 | |
+| 7 | Topluluk kuralları | `CommunityPolicy` (59) | | | v2 | |
+| 8 | Duyurular | `AnnouncementsScreen` (70) | | okunmamış | **v1** | |
+| 9 | Geri bildirim | `FeedbackScreen` (88) | | | **v1** + `Segmented` | |
+| 10 | Bildirim Merkezi | `NotificationCenterSheet` (379) | "Saldırı olursa haberim olsun mu, ne kadara?" | kurulu değil, boş cüzdan, kapsıyor; zamanlama | v2 + 1 v1 | menüdeki kartla açılır |
+
+## G9. Sıralama, sezon, anıtlar
+
+Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Dil | Not |
+|---|---|---|---|---|---|---|
+| 1 | Sıralama sayfası | `SeasonArchiveScreen` (1320) | "Neredeyim, kimi geçebilirim, ne kazanırım?" | yatay sezon şeridi (canlı + geçmiş; kaydırdıkça yüklenir), yükleniyor, hata | **v1 ağırlıklı** (78 v1 token) | |
+| 2 | Canlı sıralama | `LeaderboardScreen` (330) + `ui/SeasonRewardBoard` (232) | sıram, ödül merdiveni | Onur / Hakimiyet; ben | v1 + v2, `Segmented` | ödül tahtası sıralamanın üstünde |
+| 3 | Geçmiş sezon | `ArchivedLeaderboard`, `GalaxyRecordPanel`, `RecordNotices` | | dondu / silindi; kayıt eksik (eski sezonlar) | v1 | |
+| 4 | Komutan profili (arşiv) | `CommanderProfile` + `SeasonStats`, `CareerStats`, `HullBreakdown`, `ResourceStats`, `ComparedStat`, `LeadCard`, `HeroFigure` | bir komutanın sezonu ve kariyeri | `Segmented` sekmeler | v1 | büyük istatistik yığını |
+| 5 | Sezon özeti | `SeasonRecap` (316) | sezon bitti: ne yaptım | | **v1** | menü, sezon sonu |
+| 6 | Sonraki sezon | `ui/NextSeason` (39) | sezon dondu, sıradaki ne zaman | | v1 | galaksi katmanı |
+| 7 | Anıt sheet'i | `MonumentSheet` (280) + `MonumentBattleRules` (21), `MonumentRoutePreview` (36) | anıta dalga gönder | zor / kolay; dalga beklemede | v2 | 4 basılı tutma |
+| 8 | Anıt raporu | `MonumentReportSheet` (88) | | | v2 | |
+
+## G10. Hesap
+
+Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
+
+| # | Yüzey | Dosya (satır) | Oyuncu anı · karar | Durumlar | Dil | Not |
+|---|---|---|---|---|---|---|
+| 1 | Profil (Hesap) | `shell/ProfilePage` (122) | kimliğim, ayarlarım | | v2 + v2 `Button` | komutan kartı, tatil, güvenlik, hesap silme, ülke, miras, çıkış |
+| 2 | Komutan kartı | `v2/hud/CommanderCard` (111) | sıra, Onur, dünyalar, kalkan, gün | | v2 | |
+| 3 | Komutan Mirası profili | `legacy/LegacyProfile` (271), `ShowcaseEditor` (65), `ShowcaseShelf` (111) | vitrinim | `Segmented` | v2 + 3 v1 | |
+| 4 | Ülke seçici | `CountryPicker` | | | v2 | |
+| 5 | Tatil | `VacationSheet` (110) | tatile çık | | v2 + 1 v1 | |
+| 6 | Hesap güvenliği / şifre / silme | `AccountSecuritySheet` (96), `PasswordResetSheet` (60), `AccountDeletionSheet` (62) | | | v2 | |
+| 7 | Sessiz Uzay dönüşü | `shell/SilentSpaceNotice` (90) | 30 saat emir yok: geri dön | | **v1** | `return` paneli |
+| 8 | Galaksi seçimi | `screens/ServersScreen` (247) | hangi galaksiye gireyim | geçen sezon sonucu, hata | **v1** | uygulama katmanı 11 |
+
+## G11. Wiki, Akademi, simülatör
+
+Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
+
+| # | Yüzey | Dosya (satır) | Dil | Not |
+|---|---|---|---|---|
+| 1 | Wiki | `screens/WikiScreen` (54) + `wiki/WikiContent.tsx` (112) + içerik dosyaları (`wiki/*.ts`) | kendi `wiki-*` CSS'i | **Dördüncü dil.** Owner: oyuncular Wiki'yi açmıyor; kural yalnız orada ise anlatılmamış sayılır. Bot ifadesi yasağı burada da geçerli. |
+| 2 | Akademi menüsü | `MenuPanel` › Akademi | v2 | G1'de |
+| 3 | Savaş simülatörü | `battle-simulator/BattleSimulator` (141), `SimulatorDialog` (37), `SideEditor` (94), `UnitInspector` (48), `SimulationNumberInput` (25), `BattleBalance`, `RetreatRoster`, 3D `BattleStage` | kendi `simulator.css`'i (`sim-*`) | **Beşinci dil.** Tam ekran (`?simulator=1`), menü karosu, rapordan "dene". |
+
+## G12. Savaş Alanı (arena)
+
+Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
+
+| # | Yüzey | Dosya (satır) |
+|---|---|---|
+| 1 | Giriş kapısı | `ArenaGate` (44) |
+| 2 | Kum havuzu / maç | `Sandbox` (579), `Hud` (198), `Controls` (306), `PingWheel` (116), `MapSheet` (124), `LoopLine` (14), `SpectatorPanel` (27) |
+| 3 | Seçiciler | `ModePicker` (22), `ClassPicker` (84), `GraphicsPicker` (14) |
+| 4 | Takım | `TeamPanel` (184) (klan Genel sekmesinde de) |
+| 5 | Hangar | `Hangar` (83), `hangar/HangarPanel` (232), `HangarStage` (279), `ShipDesk` (336) (Üs anahtarı › Gemi) |
+| 6 | Emeği geçenler | `credits.tsx` (20) |
+
+Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak alanı, hareket halinde okuma) ayrı incelenecek. `docs/komutan-gemisi/README.md` okunacak.
+
+## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
+
+| # | Yüzey | Dosya (satır) | Dil | Not |
+|---|---|---|---|---|
+| 1 | Web giriş sayfası | `landing/public/PublicLanding.tsx`, `PublicLandingScreen.tsx`, `WebLandingGate.tsx` (30), `ConsentPlacement.tsx`, `public-landing.css` | kendi CSS'i | Owner kararı (2026-10-18): yalnız bu CSS'te hareket tercihi (reduced motion) dikkate alınır. `docs/landing-premium-redesign-2026-10-18.md`. |
+| 2 | Uygulama giriş ekranı | `screens/LandingScreen` (423) + `landing/LandingScene.tsx` (466, 3D) | v2 + `landing-*` | güvenlik uyarısı, e-posta, hata, açık dialog |
+| 3 | Giriş / kayıt dialogu | `screens/LandingAuthDialog` (214) | v2 + 1 v1 | |
+| 4 | Yükleniyor | `shell/LoadingScreen` (51) | `landing-*` | bağlantı; galakside tarama / harita / yükseltme örtüsü |
+| 5 | Bakım | `shell/MaintenanceScreen` (67) | v1 + v2 | |
+| 6 | Sürüm eski | `shell/UpdateRequired` (40) | v1 | |
+| 7 | Hata sınırı | `shell/ErrorBoundary` (173) | v1 | çökme ekranı |
+| 8 | Engellendi | `App.tsx` katman 12 | web: `LandingScreen`; uygulama: düz `main` | uygulamadaki hâli çıplak |
+| 9 | Marka quiz'i / yükleme kartı | `brand/BrandQuiz` (60), `brand/RecallHost` (114) | `brand-*` | |
+| 10 | Halka açık sayfalar | `public/*.html` (22: TR/EN çiftleri; fiyatlar, gizlilik, çerez, KVKK, koşullar, iade, iletişim, hakkında, hızlı başlangıç, topluluk kuralları, hesap silme, ödeme) | düz HTML + CSS | |
+
+## G14. Yönetim paneli (oyuncu görmez, en son)
+
+`screens/AdminPanel`, `AdminPlayersPanel`, `AdminContentReports`, `AdminReportMedia`, `AdminDeletionQueue`, `AdminShopierQueue`, `AdminStarterPanel`, `AnalyticsAdminPanel` (toplam 1274 satır). v1 ağırlıklı.
+
+## G15. Başlangıç yolculuğu (owner: en sona)
+
+| Parça | Dosyalar |
+|---|---|
+| Prolog | `onboarding/prologue/Prologue.tsx`, `Handbook.tsx` |
+| Eğitim kapısı | `onboarding/TrainingDoor.tsx`, `ClaimDialog.tsx`, `Gate.tsx`, `TutorialHand.tsx`, `BeatCard.tsx` |
+| Uçuş okulu | `onboarding/flightSchool/FlightSchool.tsx`, `SchoolCamera`, `SchoolCoach`, `SchoolHighlight`, `SchoolLookHint`, `SchoolPointer` |
+| Başlangıç galaksisi | `starter/*` (22 bileşen: `VesselScreen`, `ShipHero`, `ShipLog`, `RepairCard`, `RepairSlots`, `YardDeck`, `CrateBay`, `DepartureBoard`, `JumpCall`, `LandingChoice`, `MainGalaxyRow`, `MigrationPanel`, `ObjectiveLine`, `OutpostOutcome`, `OutpostReading`, `PartHere`, `SystemTabs`, `TempoNote`, `UniverseChip`, `UnlockMoment`, `ArrivalHost`, `StarterPreview`), kabuktaki `StarterGoalPulse`, `StarterTutorialCoach`, `StarterAftercare`, `JumpScene`, `MigrationSequence` |
+| Eski Akademi (canlıda yok) | `onboarding/Academy.tsx`, `Rehearsal.tsx`: hiçbir canlı dosya içe aktarmıyor; ölü kod adayı (§3.2 sonu) |
+
+## Paylaşılan arayüz parçaları (`ui/`)
+
+Ölçüldü (2026-11-13): satır, kaç canlı dosyanın kullandığı, dil. Bir parça kite geçince kullanan her ekran birden düzelir; bu yüzden grup işinin içinde, ilk kullanan grupta ele alınır.
+
+| Parça | Satır | Kullanan | Dil | Kit karşılığı (aday) | İlk grup |
+|---|---|---|---|---|---|
+| `Toast` | 166 | 33 | v2 | yok → **kit boşluğu** | G1 |
+| `AtmosphereArt` | 23 | 11 | — | `Plate` / `CutPlate` sanatı | G1 |
+| `QuantityStepper` | 194 | 10 | v1 + v2 | yok → **kit boşluğu** (sayıcı) | G2 |
+| `RankingScores`, `HonorSoloNotice`, `HonorBenefits`, `HonorBattleSummary`, `HonorTargetCard` | 20–92 | 1–7 | v2 | `HonorBadge`, `StatPlaque` | G9 / G4 |
+| `marks` (`FaultMark` vb.) | 81 | 6 | v1 | `Glyph` | G2 |
+| `UpgradeRow` | 916 | 6 | kit (+ v1 izi) | — | 4.1 |
+| `RadiationPreview`, `RadiationIndicator`, `TargetRadiationInstrument`, `ShipRadiationProtection`, `PlanetRadiationProtection` | 18–74 | 1–6 | v2 / kit | `StatusChip`, `ProgressBar` | G2 / G4 |
+| `Tally`, `Rungs`, `Medal`, `PlanetSigil`, `ClanTag`, `PerkArt` | 19–159 | 2–5 | — / v1 | `LevelBadge`, `Emblem`, `ClanEmblem` | G7 / G9 |
+| `SpendBar`, `CapacityBar`, `SurvivorBar`, `FlightBar` | 131–168 | 1–5 | v1 | `SpendBar`, `CargoBar`, `ProgressBar` (kitte var) | G2 / G4 |
+| `CounterMark` (`CounterCycle`) | 260 | 5 | v1 | `MultiplierBadge` | G2 |
+| `Action` | 570 | 5 | v1 + v2 | `GameButton` / `GameHold` | G2 |
+| `PaceRow`, `EscortRow`, `FlightEscort`, `EscapeReadout`, `BattleEnemyFleet`, `BattleRetreatNote`, `DistributedFireRules`, `PirateProfitCard` | 13–115 | 1–3 | v2 | `ListRow`, `StatPlaque` | G4 / G5 |
+| `QueueStrip` | 273 | 2 | v1 | `QueueSlot` | G2 |
+| `ShipHealthInventory` | 68 | 2 | v2 | `UnitCard` | G2 |
+| `FleetCards` | 160 | 1 | v1 | `UnitCard` / `UnitBay` | G4 |
+| `RichContent` | 120 | 2 | v1 | — | G8 |
+| `SeasonRewardBoard`, `SeasonRewardReceipt` | 26–232 | 1 | v1 / v2 | `RewardPod` | G9 |
+| `LanguageSwitch` | 29 | 3 | v2 | `LanguagePicker` (kitte var) | G1 |
+| `FpsReadout`, `hitboxDebug` | — | — | — | geliştirici; kapsam dışı | — |
+
+**Kitte olmayan, sık kullanılan parçalar (kit boşluğu adayları, ilk kullanan grupta önce kite eklenir):** tost (`Toast`), sayıcı (`QuantityStepper`), aralıklı okuma (`RangeRow`/aralık çubuğu, G3), onay dialogu (`Confirm`: kitte `Dialog` var, uyumu bakılacak), sekme içi seçim (iki seçenekli `Segmented` → `GameTabs` ya da `Lever`), ülke / bayrak seçici.
+
+**Canlıda kullanılmayan (yalnız testler):** `ui/RangeBand.tsx`, `ui/Clarity.tsx` (İstihbarat `v2/kit/Freshness` kullanıyor). Ölü kod adayı listesine eklendi.
+
+**Kalan küçük dosyalar ve gruplar:** `screens/RadiationBombControls` (G2 Taktik, G4), `screens/securityFields` (G10), `screens/faultScope` (G2, çizimsiz bağlam), `shell/ConsentNotice` (G13; çerez / analitik onayı, menü Ayarlar'dan yeniden açılır), `shell/ShopShowcasePoster` (G6), `v2/hud/ReportScene` (G5), `v2/hud/ResearchConstellation` (G2), `brand/FullscreenButton`, `brand/Install`, `brand/OpeningScene`, `brand/Preview` (G13), `onboarding/prologue/ShipScene` (G15).
+
+## v2 kitinin parçaları (`v2/kit`, `v2/identity`) ve oyun kitindeki yerleri
+
+Ölçüldü (2026-11-13). `Sheet` çerçevesi kalır (başlığı 4.1'de kite geçti); diğerleri kullanan yüzey yeniden tasarlandıkça boşalır. Son kullanıcı gidince parça silinmek üzere owner'a listelenir.
+
+| v2 parçası | Satır | Kullanan | Oyun kitinde | Not |
+|---|---|---|---|---|
+| `Sheet` | 334 | 46 | `SheetFrame` + mevcut çerçeve | çerçeve davranışı (detent, geri, odak) korunur |
+| `Surface` (`Button`, `Plate`, `EmptyState`, `PriceTag`…) | 272 | 42 | `GameButton`, `Plate`, `EmptyState`, `CostLine` | |
+| `HoldButton` | 134 | 18 | `GameHold` (ağırlık 0,6 / 1 / 1,5 sn) | |
+| `Segmented` | 80 | 14 | `GameTabs`, `Lever` | |
+| `ClassEmblem` | 38 | 12 | `Emblem` / sınıf rozeti | sınıf renkleri kıyası (plan §4.E) |
+| `Flag` | 29 | 11 | `flagTileSrc` / bayrak karosu | |
+| `Cost` | 37 | 7 | `CostLine` | |
+| `Toggle` | 40 | 6 | `Toggle` | |
+| `QueueLane`, `QueueSheet` | 130, 141 | 6, 3 | `QueueSlot` | |
+| `ChoiceChips` | 60 | 4 | `Chip` | |
+| `Figure`, `SignalBars`, `ChargeTally`, `StoreBar`, `RoomBar`, `NeedBar`, `ResourceMeter` | 18–109 | 1–3 | `StatPlaque`, `RangeBars`, `StoreGauge`, `CargoBar`, `SpendBar`, `ResourceHud` | |
+| `MatchupLine`, `ForceRuler` | 124, 222 | 2 | `MultiplierBadge`, yok → bakılacak | savaş kıyas çizgisi |
+| `Freshness` (`AgeStamp`, `ClarityMark`) | 108 | 2 | yok → **kit boşluğu** (tazelik damgası) | G3 |
+| `CountryPicker` | 51 | 2 | yok → **kit boşluğu** | G10 |
+| `StarField` | 93 | 2 | — | dekor |
+
+## 3D sahne (`galaxy/`, ~90 dosya)
+
+Arayüz yüzeyi değil, oyun dünyası: gezegenler, filolar, uçuşlar, efektler (`NukeBlast`, `EmpStorm`, `StrategicBlast`, `DeathStarImpact`, `CoreLevelUps`, `ScanReveals`, `MiningDig`, `JumpStreaks`…), işaretler (`FaultMarks`, `PartMarks`, `SensorRings`, `AlarmRings`, `RankBadge`, `CommanderShipLabel`). Bu envanterin satırı değil; her grubun "sonuç dünyada görünsün" adımında ilgili sahne parçası birlikte ele alınır (plan §4.E VFX dağılımı). Sahne üstündeki **etiket ve işaretler** (`RankBadge`, `CommanderShipLabel`, `OutpostGuide`, `UnknownSignalGuide`, `TargetMapPreview`) arayüz sayılır ve G4'te bakılır.
 
 ## 4. Galaksi: odak ve katmanlar
 
