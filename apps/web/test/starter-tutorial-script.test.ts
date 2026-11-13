@@ -372,7 +372,10 @@ it('has a line in every language for each step it speaks, and none for a step it
   const ids = ROAD.map(step => step.id).sort();
   const chapters = [...new Set(ROAD.map(step => String(step.chapter)))].sort();
   for (const starter of [en, tr, de, fr, es, ja]) {
-    expect(Object.keys(starter.tutorial.line).sort()).toEqual(ids);
+    // The handover has a second line for a ship whose jump window is open (plan 2026-11-13 §4.3), as an i18next context.
+    const lines = Object.keys(starter.tutorial.line);
+    expect(lines.filter(key => key !== 'farewell_open').sort()).toEqual(ids);
+    expect(lines).toContain('farewell_open');
     expect(Object.keys(starter.tutorial.chapter).sort()).toEqual(chapters);
   }
 });

@@ -79,7 +79,19 @@ describe('the starter tutorial on screen', () => {
   it('says how far the ship is repaired when it hands over', () => {
     render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 26 }} />);
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
-    expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/26/);
+    const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
+    expect(said).toMatch(/26/);
+    expect(said).not.toMatch(/jump is open/i);
+  });
+
+  // Plan 2026-11-13 §4.3: the handover after the first loop is the jump window. It says so, and leaves the when to the player.
+  it('hands over a ship whose jump window is open with the choice, not with work', () => {
+    render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 100, windowOpen: true }} />);
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
+    expect(said).toMatch(/jump is open/i);
+    expect(said).toMatch(/your call/i);
+    expect(said).not.toMatch(/finish/i);
   });
 
   /** Review 2026-11-06: an NPC that waits on a control the screen never drew holds the player forever. */

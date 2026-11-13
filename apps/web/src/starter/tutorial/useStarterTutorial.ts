@@ -1,6 +1,6 @@
 import type { VesselView } from '../../api/starterSchemas.js';
 import { z } from 'zod';
-import { REPAIR_LADDER, nextRequiredStep } from '@astera/rules';
+import { REPAIR_LADDER, jumpWindowOpen, nextRequiredStep } from '@astera/rules';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useGalaxy, useIntel, useMining, usePending, usePlanet, useTraffic } from '../../api/queries.js';
 import { useProjected } from '../../lib/projection.js';
@@ -49,6 +49,8 @@ export interface StarterTutorial {
   farewelled?: boolean;
   /** How much of the ship is repaired, in percent: what the handover says. */
   repaired?: number;
+  /** The jump window is open (plan 2026-11-13 §5.1): the handover gives the player the choice, not more work. */
+  windowOpen?: boolean;
   /** When the work a wait step is for is done, and how long it runs in all. */
   wait?: TutorialWait;
   vessel?: VesselView;
@@ -132,6 +134,6 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const wait = waiting === null ? null : repairWait(waiting, vessel.queue);
   return {
     answer, view, offers, ...(pick ? { pick } : {}), backIn, ack, vessel, farewelled: list.includes('farewell'),
-    repaired: Math.round(vessel.progress.share * 100), ...(wait ? { wait } : {}),
+    repaired: Math.round(vessel.progress.share * 100), windowOpen: jumpWindowOpen({ modules: vessel.modules, facts: vessel.facts }), ...(wait ? { wait } : {}),
   };
 }

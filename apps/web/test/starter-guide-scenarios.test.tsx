@@ -54,6 +54,19 @@ const tutorial = (view: 'galaxy' | 'ship' = 'galaxy') => {
 };
 const stepId = (answer: ReturnType<ReturnType<typeof tutorial>['now']>['answer']) => answer.kind === 'step' ? answer.id : answer.kind;
 
+// Plan 2026-11-13 §5.1: the handover reads the jump window the server opens, not the share alone.
+describe('the handover and the jump window', () => {
+  const loop = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  it('knows the window is open once the loop\'s repairs and deeds are all in', () => {
+    ship(loop, ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT']);
+    expect(tutorial().now().windowOpen).toBe(true);
+  });
+  it('knows it is shut while a deed of the loop is missing', () => {
+    ship(loop, ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT']);
+    expect(tutorial().now().windowOpen).toBe(false);
+  });
+});
+
 describe('the guide on and off', () => {
   it('points a player without the guide where the guide would, and holds nothing for them', () => {
     ship({}, [], [], { unlockToAnnounce: null });
