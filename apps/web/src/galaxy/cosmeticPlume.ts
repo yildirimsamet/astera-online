@@ -7,6 +7,11 @@ export function plumeRadius(t: number, style: CosmeticStyle = 'aurora'): number 
   // Tempest: a tight channel the arcs can wrap. Prism: a beam that fans out as it disperses.
   if (style === 'tempest') return (.045 + .17 * Math.sin(Math.PI * Math.pow(t, .6))) * Math.pow(1 - t, .5);
   if (style === 'prism') return (.05 + .3 * Math.pow(t, .8)) * Math.pow(1 - t, .5);
+  // Mach: a rocket jet with soft standing pinches where its shock diamonds sit (Helios has twelve hard chambers).
+  if (style === 'mach') return (.05 + .2 * Math.sin(Math.PI * Math.pow(t, .6))) * Math.pow(1 - t, .55) * (.8 + .2 * Math.cos(t * Math.PI * 10 - .6));
+  // Pulsar: a short fighter jet, fattest just behind the nozzle, a teardrop. Ion: a needle throat into a widening wake.
+  if (style === 'pulsar') return (.06 + .22 * Math.sin(Math.PI * Math.pow(t, .4))) * Math.pow(1 - t, 1.1);
+  if (style === 'ion') return (.025 + .3 * Math.pow(t, .75)) * Math.pow(1 - t, .5);
   const base = (.055 + .24 * Math.sin(Math.PI * Math.pow(t, .65))) * Math.pow(1 - t, .55);
   if (style === 'singularity') return base * .5;
   if (style === 'helios') return base * (.35 + .65 * Math.pow(.5 + .5 * Math.cos(t * Math.PI * 12), 2));
@@ -16,7 +21,7 @@ export function plumeOpacity(t: number): number {
   const smooth = (x: number) => { const v = Math.max(0, Math.min(1, x)); return v * v * (3 - 2 * v); };
   return smooth(t / .07) * (1 - smooth((t - .65) / .35));
 }
-const PLUME_LENGTH: Partial<Record<CosmeticStyle, number>> = { titan: 1.85, singularity: 2.65, helios: 2.2, tempest: 2.4, prism: 2.6 };
+const PLUME_LENGTH: Partial<Record<CosmeticStyle, number>> = { titan: 1.85, singularity: 2.65, helios: 2.2, tempest: 2.4, prism: 2.6, mach: 2.5, pulsar: 1.65, ion: 3 };
 /** UV.x wraps the nozzle; UV.y runs from nozzle to tail. No exposed card edges. */
 export function createPlumeGeometry(style: CosmeticStyle = 'aurora'): BufferGeometry {
   const positions: number[] = [], uv: number[] = [], opacity: number[] = [], indices: number[] = [];

@@ -372,6 +372,105 @@ export const prismPlumeFragment = `
 `;
 
 /**
+ * The third drive wave (vfx lab 2026-11-12, owner: sell them as exhaust skins). Shared ending: far away a
+ * formation's motors merge into one pixel, so they share one glow, as Tempest's do; else bloom swells it.
+ * Noise is read on a circle round the tube (`rim`), so the shell has no seam where its UV wraps.
+ */
+const DRIVE_HEAD = `
+  varying float vEnvelope;
+  varying vec2 vUv;
+  varying float vPlumePixels;
+  uniform float uTime;
+  uniform float uNozzleCount;
+  ${NOISE}
+  vec2 rim(float around, float r) { return vec2(cos(around), sin(around)) * r; }
+`;
+const DRIVE_END = `
+  if (alpha < .005) discard;
+  float detail = smoothstep(.75, 6.0, vPlumePixels);
+  float glowGain = mix(.18, 1.0, detail) / mix(max(1.0, uNozzleCount), 1.0, detail);
+  gl_FragColor = vec4(colour, min(alpha, 1.0) * glowGain);
+  ${OUTPUT}
+`;
+
+/** Mach: a white-hot core, an orange sheath that flickers, standing blue-white shock diamonds. */
+export const machPlumeFragment = `
+  ${DRIVE_HEAD}
+  void main() {
+    float along = clamp(vUv.y, 0.0, 1.0);
+    float around = vUv.x * TAU;
+    float flicker = .93 + .07 * sin(uTime * 57.0);
+    // The diamonds stand still in the jet, at the waists of its pinches (see plumeRadius), fading downstream.
+    float diamond = pow(max(0.0, .5 - .5 * cos(along * TAU * 5.0 - .6)), 6.0) * (1.0 - smoothstep(0.0, .75, along));
+    vec3 colour;
+    float alpha;
+    if (vUv.x > 1.5) {
+      // The core cools fast, so the diamonds stand out down the jet as bright beads.
+      float core = pow(max(1.0 - along, 0.0), 2.6);
+      colour = vec3(1.0, .9, .75) * core + vec3(.7, .9, 1.0) * diamond;
+      alpha = vEnvelope * (core * .9 + diamond * 1.2) * flicker;
+    } else {
+      float n = noise21(rim(around, 1.3) + vec2(along * 7.0 - uTime * 9.0, along * 3.0));
+      float n2 = noise21(rim(around, 3.1) + vec2(along * 15.0 - uTime * 14.0, 7.0));
+      float body = pow(max(1.0 - along, 0.0), 1.2);
+      // Colour at most 1 in its main channel: brighter would wash the orange to beige in sRGB.
+      colour = mix(vec3(1.0, .26, .04) * (.7 + .3 * n), vec3(1.0, .85, .65), diamond);
+      alpha = vEnvelope * body * (.2 + .5 * n * n2 + diamond * .6) * flicker;
+    }
+    ${DRIVE_END}
+  }
+`;
+
+/** Pulsar: a short violet fighter jet round a white core, breathing with the throttle. */
+export const pulsarPlumeFragment = `
+  ${DRIVE_HEAD}
+  void main() {
+    float along = clamp(vUv.y, 0.0, 1.0);
+    float around = vUv.x * TAU;
+    float throb = .9 + .1 * sin(uTime * 31.0) * sin(uTime * 7.3);
+    // The jet's reach breathes with the throb; its tip closes before the tube does.
+    float reach = along / throb;
+    float tip = 1.0 - smoothstep(.55, .95, reach);
+    vec3 colour;
+    float alpha;
+    if (vUv.x > 1.5) {
+      colour = vec3(1.5, 1.45, 1.6);
+      alpha = vEnvelope * exp(-reach * 3.2) * tip;
+    } else {
+      // Violet streaks racing back along the jet.
+      float n = noise21(rim(around, 2.2) + vec2(along * 6.0 - uTime * 10.0, 0.0));
+      float streak = noise21(rim(around, 5.0) + vec2(along * 2.0 - uTime * 6.0, 3.0));
+      colour = vec3(.48, .12, 1.0) * (.7 + .3 * n) + vec3(.2, .1, .3) * streak;
+      alpha = vEnvelope * tip * (.16 + .26 * n * streak + .08 * n) * throb;
+    }
+    ${DRIVE_END}
+  }
+`;
+
+/** Ion: a blue-white needle with pulses running down it, then a long, slow, turbulent wake. */
+export const ionPlumeFragment = `
+  ${DRIVE_HEAD}
+  void main() {
+    float along = clamp(vUv.y, 0.0, 1.0);
+    float around = vUv.x * TAU;
+    vec3 colour;
+    float alpha;
+    if (vUv.x > 1.5) {
+      float pulse = .82 + .18 * sin(uTime * 9.0 - along * 30.0);
+      float needle = pow(max(1.0 - along, 0.0), .8) * exp(-along * 2.2);
+      colour = vec3(.85, .95, 1.0) * pulse;
+      alpha = vEnvelope * needle * pulse;
+    } else {
+      float wake = fbm(rim(around, 1.4) + vec2(along * 4.5 - uTime * 1.1, along * 2.0));
+      float body = pow(max(1.0 - along, 0.0), .9) * smoothstep(.02, .2, along);
+      colour = mix(vec3(.2, .6, 1.0), vec3(.08, .3, 1.0), along) * (.75 + .25 * wake);
+      alpha = vEnvelope * body * (.08 + .6 * wake * wake);
+    }
+    ${DRIVE_END}
+  }
+`;
+
+/**
  * Standards whose cloth outline is authored in the artwork (transparent outside it).
  * Paid standards add a gilded sheen: light sweeping across bright metal thread and the
  * crests of the folds. Included standards keep plain cloth.

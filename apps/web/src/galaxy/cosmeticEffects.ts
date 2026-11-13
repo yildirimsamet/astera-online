@@ -1,8 +1,8 @@
 import type { CosmeticStyle } from '@astera/rules';
 import type { Vec3Tuple } from './scene.js';
 import {
-  bannerFragment, bannerVertex, infernoFragment, nebulaFragment, plumeVertex, prismDustFragment,
-  prismPlumeFragment, ringVertex, saturnFragment, tempestFragment,
+  bannerFragment, bannerVertex, infernoFragment, ionPlumeFragment, machPlumeFragment, nebulaFragment, plumeVertex, prismDustFragment,
+  prismPlumeFragment, pulsarPlumeFragment, ringVertex, saturnFragment, tempestFragment,
 } from './cosmeticShaders.js';
 
 /** Raise the flag above the hulls; +Z is the nose and the cloth streams down -Z. */
@@ -31,6 +31,10 @@ export const cosmeticEffectRecipe = (style: CosmeticStyle): EffectRecipe => {
     case 'inferno': return { bands: 2, particles: 0, radius: 1.95, motion: 32, colour: '#ff7a3d', secondary: '#ffc27a' };
     case 'nebula': return { bands: 3, particles: 0, radius: 2.02, motion: 33, colour: '#ff8fd8', secondary: '#7fe8ff' };
     case 'tempest': return { bands: 3, particles: 0, radius: 1.35, motion: 40, colour: '#8fd8ff', secondary: '#c9b8ff' };
+    // Drives read uStyle only above 39.5 (Tempest's bolts): the third wave stays below it.
+    case 'mach': return { bands: 2, particles: 0, radius: 1.35, motion: 34, colour: '#ffb070', secondary: '#cfe0ff' };
+    case 'pulsar': return { bands: 1, particles: 0, radius: 1.35, motion: 35, colour: '#a77bff', secondary: '#f4efff' };
+    case 'ion': return { bands: 1, particles: 0, radius: 1.35, motion: 36, colour: '#5aa8ff', secondary: '#dff1ff' };
     case 'bastion': return standard(50, '#a3a99f', '#c9cdc6', false);
     case 'meridian': return standard(51, '#8f9fb8', '#d7dee8', false);
     case 'sovereign': return standard(52, '#f4c95d', '#fff1c4');
@@ -59,7 +63,9 @@ export const cosmeticEffectRecipe = (style: CosmeticStyle): EffectRecipe => {
 
 const NEW_STANDARDS: ReadonlySet<CosmeticStyle> = new Set<CosmeticStyle>(['bastion', 'meridian', 'sovereign', 'kraken', 'oni', 'voideye', 'valkyrie', 'scarab', 'stag', 'horizon', 'tiger', 'scorpion']);
 const NEW_RINGS: Partial<Record<CosmeticStyle, string>> = { saturn: saturnFragment, prism: prismDustFragment, inferno: infernoFragment, nebula: nebulaFragment };
-const NEW_DRIVES: Partial<Record<CosmeticStyle, string>> = { tempest: tempestFragment, prism: prismPlumeFragment };
+const NEW_DRIVES: Partial<Record<CosmeticStyle, string>> = {
+  tempest: tempestFragment, prism: prismPlumeFragment, mach: machPlumeFragment, pulsar: pulsarPlumeFragment, ion: ionPlumeFragment,
+};
 
 /**
  * Products sold before the second wave keep the shared program they shipped with. Each new
