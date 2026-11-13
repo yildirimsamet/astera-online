@@ -71,6 +71,23 @@ export function playSound(cue: SoundCue, options: SoundOptions = {}): void {
   try { mixer?.play(cue, options); } catch { /* Browser audio failure cannot reject a game action. */ }
 }
 
+/**
+ * Where a held cue sounds inside its file, in seconds: the loop skips the silence around it. The charge
+ * file is 0.47 s and sounds only from 0.115 s to 0.285 s (measured 2026-11-13).
+ */
+const SUSTAIN: Partial<Record<SoundCue, { from: number; to: number }>> = { charge: { from: 0.115, to: 0.285 } };
+/** How much a held cue quickens and rises by the end of its hold. */
+const HOLD_RISE = 1.5;
+const NOTHING = (): void => undefined;
+
+/**
+ * A cue that lasts while a finger is down (owner 2026-11-13): it loops, quickens and rises over
+ * `seconds`, and the returned function lets it go with a short fade.
+ */
+export function holdSound(cue: SoundCue, seconds: number): () => void {
+  try { return mixer?.hold(cue, seconds) ?? NOTHING; } catch { return NOTHING; }
+}
+
 class SoundMixer {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -183,6 +200,44 @@ class SoundMixer {
         voice.stop(end);
       }
     } catch { release(); }
+  }
+
+  hold(cue: SoundCue, seconds: number): () => void {
+    const context = this.context, master = this.master, buffer = this.buffers.get(cue);
+    if (this.disposed || !preference.enabled || preference.volume === 0 || !isAppActive()
+      || context?.state !== 'running' || !master || !buffer || !Number.isFinite(seconds) || seconds <= 0) return NOTHING;
+    if (this.voices.size >= MAX_VOICES) {
+      const oldest = this.voices.values().next().value;
+      if (oldest) { oldest.stop(); this.voices.delete(oldest); }
+    }
+    const span = SUSTAIN[cue] ?? { from: 0, to: buffer.duration };
+    const voice = context.createBufferSource();
+    const level = context.createGain();
+    const now = context.currentTime;
+    voice.buffer = buffer;
+    voice.loop = true;
+    voice.loopStart = span.from;
+    voice.loopEnd = span.to;
+    voice.playbackRate.setValueAtTime(1, now);
+    voice.playbackRate.linearRampToValueAtTime(HOLD_RISE, now + seconds);
+    level.gain.value = MIX[cue];
+    voice.connect(level).connect(master);
+    this.voices.add(voice);
+    const release = () => { this.voices.delete(voice); voice.disconnect(); level.disconnect(); };
+    voice.onended = release;
+    try { voice.start(now, span.from); } catch { release(); return NOTHING; }
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      try {
+        const at = context.currentTime;
+        level.gain.cancelScheduledValues(at);
+        level.gain.setValueAtTime(level.gain.value, at);
+        level.gain.linearRampToValueAtTime(0, at + FADE_SECONDS);
+        voice.stop(at + FADE_SECONDS);
+      } catch { release(); }
+    };
   }
 
   private stop(): void {

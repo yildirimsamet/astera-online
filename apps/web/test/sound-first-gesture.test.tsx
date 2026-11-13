@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { playSound, useSoundEffects } from '../src/lib/sound.js';
+import { holdSound, playSound, useSoundEffects } from '../src/lib/sound.js';
 
 /**
  * THE FIRST THING THE PLAYER TOUCHES HAS TO SOUND (owner playtest 2026-11-08). A phone opens audio only
@@ -8,8 +8,11 @@ import { playSound, useSoundEffects } from '../src/lib/sound.js';
  * moment for the audio to open instead of being lost.
  */
 let resumes = true;
-const started: { buffer: unknown; stop: ReturnType<typeof vi.fn> }[] = [];
-let gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn> };
+interface Param { value: number; setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn>; cancelScheduledValues: ReturnType<typeof vi.fn> }
+const param = (): Param => ({ value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), cancelScheduledValues: vi.fn() });
+interface Voice { buffer: unknown; loop: boolean; loopStart: number; loopEnd: number; playbackRate: Param; start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }
+const started: Voice[] = [];
+let gain: Param;
 
 class FakeContext {
   state = 'suspended';
@@ -18,7 +21,7 @@ class FakeContext {
   destination = {};
   private node = () => ({ connect: (next: unknown) => next, disconnect: () => undefined });
   createGain() {
-    gain = { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() };
+    gain = param();
     return { ...this.node(), gain };
   }
   createDynamicsCompressor() {
@@ -28,10 +31,11 @@ class FakeContext {
   createStereoPanner() { return { ...this.node(), pan: { value: 0 } }; }
   createBuffer() { return { copyToChannel: () => undefined }; }
   createBufferSource() {
-    const voice = { ...this.node(), buffer: null as unknown, onended: null, start: vi.fn(() => { started.push(voice); }), stop: vi.fn() };
+    const voice = { ...this.node(), buffer: null as unknown, onended: null, loop: false, loopStart: 0, loopEnd: 0, playbackRate: param(),
+      start: vi.fn(() => { started.push(voice); }), stop: vi.fn() };
     return voice;
   }
-  decodeAudioData() { return Promise.reject(new Error('no files here')); }
+  decodeAudioData() { return Promise.resolve({ duration: 0.467 }); }
   resume() {
     if (!resumes) return Promise.reject(new Error('not on pointerdown'));
     this.state = 'running';
@@ -103,3 +107,48 @@ describe('a cue cut short', () => {
     expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 1);
   });
 });
+
+/**
+ * THE CHARGE LASTS THE HOLD (owner 2026-11-13). The file is 0.47 s and only 0.115–0.285 s of it sounds,
+ * so a 1 s hold went quiet half way. Held, the cue loops the part that sounds, quickens and rises with the
+ * dial, and lets go with a short fade the moment it is released.
+ */
+describe('a cue held down', () => {
+  const open = async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(url.includes('/charge-v1.')
+      ? new Response(new ArrayBuffer(8)) : new Response(null, { status: 404 }))));
+    renderHook(() => { useSoundEffects(); });
+    fireEvent.pointerDown(document.body);
+    await act(async () => { await new Promise((done) => { setTimeout(done, 0); }); });
+  };
+
+  it('loops the part that sounds, from its first note, and rises over the hold', async () => {
+    await open();
+    holdSound('charge', 1);
+    const voice = started[0];
+    expect(voice?.loop).toBe(true);
+    expect(voice?.loopStart).toBeCloseTo(0.115, 3);
+    expect(voice?.loopEnd).toBeCloseTo(0.285, 3);
+    expect(voice?.start).toHaveBeenCalledWith(0, voice?.loopStart);
+    expect(voice?.playbackRate.linearRampToValueAtTime).toHaveBeenCalledWith(1.5, 1);
+    expect(voice?.stop).not.toHaveBeenCalledWith(expect.any(Number));
+  });
+
+  it('fades out and stops the moment it is let go, and only once', async () => {
+    await open();
+    const letGo = holdSound('charge', 1);
+    letGo();
+    letGo();
+    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 0.06);
+    expect(started[0]?.stop).toHaveBeenCalledOnce();
+    expect(started[0]?.stop).toHaveBeenCalledWith(0.06);
+  });
+
+  it('is silent and harmless before the audio opens', () => {
+    renderHook(() => { useSoundEffects(); });
+    const letGo = holdSound('charge', 1);
+    expect(() => { letGo(); }).not.toThrow();
+    expect(started).toHaveLength(0);
+  });
+});
+

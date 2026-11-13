@@ -3,10 +3,11 @@ import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BottomNav, Dialog, GameButton, GameHold, GameTabs, Lever, RewardPod, Slider, Toggle, UnitCard } from '../../src/game-ui/index.js';
 import { POD_OPEN_MS } from '../../src/game-ui/RewardPod.js';
-import { playSound } from '../../src/lib/sound.js';
+import { holdSound, playSound } from '../../src/lib/sound.js';
 import type * as Sound from '../../src/lib/sound.js';
 
-vi.mock('../../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn() }));
+const letGo = vi.hoisted(() => vi.fn());
+vi.mock('../../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn(), holdSound: vi.fn(() => letGo) }));
 
 /**
  * EACH KIT MOMENT HAS ITS OWN SOUND (owner's picks, 2026-11-12, out/ui-kit/sesler): the pod
@@ -21,7 +22,7 @@ const press = (element: HTMLElement): void => {
 };
 const cues = (): unknown[] => vi.mocked(playSound).mock.calls.map(([cue]) => cue);
 
-beforeEach(() => { vi.mocked(playSound).mockClear(); });
+beforeEach(() => { vi.mocked(playSound).mockClear(); vi.mocked(holdSound).mockClear(); letGo.mockClear(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the picked sounds', () => {
@@ -48,10 +49,25 @@ describe('the kit plays them at its moments', () => {
     expect(cues()).not.toContain('tap');
   });
 
-  it('charges while a hold is down', () => {
-    render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={() => undefined} />);
+  /** Owner 2026-11-13: the 0.47 s file ran out half way through a 1 s hold; the charge now lasts the hold. */
+  it.each([['reversible', 0.6], ['spends', 1], ['final', 1.5]] as const)('charges for the whole %s hold and stops when the finger lifts', (weight, seconds) => {
+    render(<GameHold weight={weight} label="Attack" detail="39 ships" onCommit={() => undefined} />);
+    const hold = screen.getByRole('button', { name: /Attack/ });
+    fireEvent.pointerDown(hold, { button: 0 });
+    expect(vi.mocked(holdSound).mock.calls).toEqual([['charge', seconds]]);
+    expect(letGo).not.toHaveBeenCalled();
+    fireEvent.pointerUp(hold);
+    expect(letGo).toHaveBeenCalledOnce();
+    expect(cues()).not.toContain('charge');
+  });
+
+  it('stops the charge when the hold commits', () => {
+    vi.useFakeTimers();
+    render(<GameHold weight="spends" label="Attack" detail="39 ships" onCommit={() => undefined} />);
     fireEvent.pointerDown(screen.getByRole('button', { name: /Attack/ }), { button: 0 });
-    expect(cues()).toContain('charge');
+    act(() => { vi.advanceTimersByTime(1_100); });
+    expect(letGo).toHaveBeenCalledOnce();
+    expect(cues()).toContain('confirm');
   });
 
   it('clicks a tab open and says no to a locked one', () => {
