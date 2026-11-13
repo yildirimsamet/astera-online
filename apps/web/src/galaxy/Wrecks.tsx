@@ -195,6 +195,18 @@ export function wreckShape(planetRadius: number, isVoid: boolean, scale = 1): { 
   };
 }
 
+/**
+ * How far from a field's centre its drawn rubble reaches, for a drill that comes to work it: a ring's
+ * own line about its world, or the inside of a void heap's rubble (its outer pieces are loose).
+ */
+export function wreckRadius(planetRadius: number | null, scale = 1): number {
+  if (planetRadius === null) {
+    const { ringRadius, tube } = wreckShape(VOID_RADIUS, true, scale);
+    return (ringRadius + tube) * 0.6;
+  }
+  return wreckShape(planetRadius / scale, false, scale).ringRadius;
+}
+
 function Wreck({
   wreck,
   at,

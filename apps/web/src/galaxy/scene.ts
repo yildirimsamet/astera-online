@@ -16,6 +16,7 @@ import {
 } from '@astera/rules';
 import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/schemas.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
+import { digHoldMs } from './miningDig.js';
 
 /**
  * The galaxy, as the 3D surface needs it.
@@ -664,12 +665,20 @@ export function legEnd(
  * The outbound leg flies the planet to the INTERCEPTION POINT — not to the rock,
  * which has moved on by the time anyone arrives — and the return leg flies that
  * same line backwards. Kept identical to `MiningFlights`, for the reason above.
+ *
+ * THE DRILL WORKS ON ITS TARGET'S NEAR FACE, NOT INSIDE IT (owner approved the dig, 2026-11-12). The
+ * meeting point is the rock's centre, so a drill drawn there vanished into it. `reach` — the target's
+ * drawn radius plus half the drill (`miningReach`) — eases it to a stop that far short on its own side,
+ * and eases it away again on the way home; a full drill first holds there for its bite (`digHoldMs`).
+ * Both ends of every leg and every time are unchanged, and a recalled run, which turned round in open
+ * space, flies exactly the line the server stored.
  */
 export function runPosition(
   run: MiningRun,
   home: { x: number; y: number; z: number },
   now: number,
   nodes: readonly PlanetNode[] = [],
+  reach = 0,
 ): Vec3Tuple {
   const returning = run.status === 'returning';
   const [from, to, departAt, arriveAt] = returning
@@ -681,9 +690,31 @@ export function runPosition(
   const leg = returning
     ? visualLeg(from, to, 0, clearance)
     : visualLeg(from, to, clearance, 0);
-  return toWorld(
-    interpolatePosition(leg.from, leg.to, departAt.getTime(), arriveAt.getTime(), now),
+  const hold = returning ? digHoldMs(run) : 0;
+  const drawn = toWorld(
+    interpolatePosition(leg.from, leg.to, departAt.getTime() + hold, arriveAt.getTime(), now),
   );
+  if (!(reach > 0) || (returning && run.recalledAt)) return drawn;
+  return standOff(drawn, toWorld(run.intercept), toWorld(returning ? leg.to : leg.from), reach);
+}
+
+/**
+ * A point on the line from `target` to `far`, pushed back off `target` so it comes to rest `reach`
+ * short of it: `d + r·(1 − d/L)^(L/r)` along the line never moves backwards, meets `far` exactly and
+ * reaches `target`'s face at zero speed. Never more than half the line, so a short leg cannot start
+ * behind its own world.
+ */
+function standOff(point: Vec3Tuple, target: Vec3Tuple, far: Vec3Tuple, reach: number): Vec3Tuple {
+  const ux = far[0] - target[0];
+  const uy = far[1] - target[1];
+  const uz = far[2] - target[2];
+  const length = Math.hypot(ux, uy, uz);
+  if (!(length > 0)) return point;
+  const r = Math.min(reach, length / 2);
+  const along = ((point[0] - target[0]) * ux + (point[1] - target[1]) * uy + (point[2] - target[2]) * uz) / length;
+  const d = Math.max(0, Math.min(length, along));
+  const out = (d + r * (1 - d / length) ** (length / r)) / length;
+  return [target[0] + ux * out, target[1] + uy * out, target[2] + uz * out];
 }
 
 /**

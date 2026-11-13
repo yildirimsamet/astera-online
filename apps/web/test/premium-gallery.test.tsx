@@ -183,6 +183,28 @@ describe('premium asset review gallery', () => {
     expect(scene().planets[0]?.intel).toBe('RESOLVED');
   });
 
+  it('lets a prospector arrive in view and hears its full hold a second later, as in the game', () => {
+    vi.useFakeTimers();
+    try {
+      render(<PremiumSpaceGallery />);
+      fireEvent.click(screen.getByRole('button', { name: 'Madencilik' }));
+      const opened = Date.now();
+      const first = scene().runs[0];
+      expect(first?.status).toBe('outbound');
+      // It flies in after the scene opens, so the reviewer sees it reach the field and bite.
+      expect(first!.arriveAt.getTime() - opened).toBe(2500);
+      act(() => { vi.advanceTimersByTime(2500 + 999); });
+      expect(scene().runs[0]?.status).toBe('outbound');
+      act(() => { vi.advanceTimersByTime(1); });
+      const answered = scene().runs[0];
+      expect(answered?.status).toBe('returning');
+      expect((answered?.minedAlloy ?? 0) + (answered?.minedCrystal ?? 0)).toBeGreaterThan(0);
+      expect(answered?.arriveAt.getTime()).toBe(first?.arriveAt.getTime());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('turns the struck world to its EMP hour when the galaxy would hear of it, as in the game', () => {
     vi.useFakeTimers();
     try {

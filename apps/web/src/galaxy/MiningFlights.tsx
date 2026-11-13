@@ -1,12 +1,13 @@
 import { useModelScale } from './modelScale.js';
-import { Suspense, useMemo, useRef } from 'react';
+import { Suspense, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import type { MiningRun } from '../api/schemas.js';
+import type { AsteroidView, MiningRun } from '../api/schemas.js';
 import { MODEL } from '../ui/assets.js';
 import { Hull, Wake, useLine } from './Fleets.jsx';
 import {
+  asteroidRadius,
   CRAFT_SCALE,
   runHomePosition,
   runPosition,
@@ -20,6 +21,10 @@ import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { EngineJets, type EngineUnit } from './EngineJets.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
+import { DIG_SECONDS, runDig } from './miningDig.js';
+import { MiningDig, type DrillMotion } from './MiningDig.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.js';
+import { wreckRadius, type WreckView } from './Wrecks.js';
 
 /**
  * PROSPECTORS, IN TRANSIT. D19.
@@ -41,6 +46,31 @@ import { nativeEngineAnchors } from './engineAnchors.js';
  */
 
 const STYLE = { colour: '#d9a441', scale: 0.26 * CRAFT_SCALE, flame: '#ffc073' } as const;
+/** A drill's drawn length at model scale one. */
+export const MINING_CRAFT_LENGTH = STYLE.scale;
+
+/**
+ * How far from its target's centre a run's drill comes to rest (`runPosition`): the target's drawn
+ * radius plus half the drill, so the nose is on the face. Zero for a target this client cannot see,
+ * which keeps the old path.
+ */
+export function miningReach(
+  run: Pick<MiningRun, 'targetKind' | 'asteroidId' | 'debrisFieldId'>,
+  asteroids: readonly Pick<AsteroidView, 'id' | 'level'>[],
+  wrecks: readonly WreckView[],
+  nodes: readonly Pick<PlanetNode, 'id' | 'radius'>[],
+  scale: number,
+): number {
+  const half = (MINING_CRAFT_LENGTH * scale) / 2;
+  if (run.targetKind === 'asteroid') {
+    const rock = asteroids.find((a) => a.id === run.asteroidId);
+    return rock ? asteroidRadius(rock.level, scale) + half : 0;
+  }
+  const field = wrecks.find((w) => w.id === run.debrisFieldId);
+  if (!field) return 0;
+  const world = field.planetId === null ? undefined : nodes.find((n) => n.id === field.planetId);
+  return wreckRadius(world?.radius ?? null, scale) + half;
+}
 
 export function miningFocusRadius(craft: number): number {
   const hullRadius = STYLE.scale * Math.sqrt(3) / 2;
@@ -69,18 +99,24 @@ useGLTF.preload(MODEL.drill, false);
 
 export function MiningFlights({
   runs,
+  asteroids,
+  wrecks,
   home,
   nodes,
   focusedId,
   onSelect,
 }: {
   runs: readonly MiningRun[];
+  /** The targets, so a drill stops on its target's face (`miningReach`). */
+  asteroids: readonly Pick<AsteroidView, 'id' | 'level'>[];
+  wrecks: readonly WreckView[];
   home: { x: number; y: number; z: number };
   /** The worlds, so the home endpoint uses its shared surface clearance. D120. */
   nodes: readonly PlanetNode[];
   focusedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const scale = useModelScale();
   const flying = runs.filter((r) => r.status !== 'done');
   if (flying.length === 0) return null;
 
@@ -92,6 +128,7 @@ export function MiningFlights({
           run={run}
           home={runHomePosition(run, nodes, home)}
           nodes={nodes}
+          reach={miningReach(run, asteroids, wrecks, nodes, scale)}
           focused={run.id === focusedId}
           onSelect={() => {
             onSelect(run.id);
@@ -106,12 +143,14 @@ function Run({
   run,
   home,
   nodes,
+  reach,
   focused,
   onSelect,
 }: {
   run: MiningRun;
   home: { x: number; y: number; z: number };
   nodes: readonly PlanetNode[];
+  reach: number;
   focused: boolean;
   onSelect: () => void;
 }) {
@@ -150,14 +189,25 @@ function Run({
 
   /** One buffer for the life of the run, written both ends per frame. See `useLine`. */
   const line = useLine();
+  const rock = useMemo(() => toWorld(run.intercept), [run.intercept]);
+  const motion = useRef<DrillMotion>({ roll: 0, shake: 0 });
+  const aim = useMemo(() => ({ pose: new THREE.Object3D(), placed: false }), []);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const node = group.current;
     if (!node) return;
+    const now = serverNow();
     // The same helper the camera reads, so a focused run stays centred.
-    const at = runPosition(run, home, serverNow(), nodes);
+    const at = runPosition(run, home, now, nodes, reach);
     node.position.set(at[0], at[1], at[2]);
-    node.lookAt(to[0], to[1], to[2]);
+    // It faces its target through the bite, then turns for home rather than snapping round.
+    const dig = runDig(run, now);
+    const facing = dig !== null && dig < DIG_SECONDS ? rock : to;
+    aim.pose.position.copy(node.position);
+    aim.pose.lookAt(facing[0], facing[1], facing[2]);
+    if (aim.placed) node.quaternion.slerp(aim.pose.quaternion, 1 - Math.exp(-delta * 4));
+    else node.quaternion.copy(aim.pose.quaternion);
+    aim.placed = true;
 
     const points = line.getAttribute('position') as THREE.BufferAttribute;
     points.setXYZ(0, at[0], at[1], at[2]);
@@ -195,9 +245,16 @@ function Run({
         <group scale={scale}><Suspense fallback={null}>
           <EngineJets units={engines} aimDistance={aimDistance} name="mining-engine-jets" />
           {markers.map((marker, i) => (
-            <Craft key={marker.ordinal} offset={slotOffset(i, STYLE.scale * 1.5)} />
+            <Craft key={marker.ordinal} offset={slotOffset(i, STYLE.scale * 1.5)} motion={motion} />
           ))}
-        </Suspense></group>
+        </Suspense>
+        {!run.recalledAt && (
+          <SkinAssetBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <MiningDig run={run} length={STYLE.scale} motion={motion} />
+            </Suspense>
+          </SkinAssetBoundary>
+        )}</group>
       </group>
     </>
   );
@@ -210,11 +267,23 @@ function Run({
  * craft doing one job together and reads as a single object. Five slots above it
  * would state a capacity it does not have.
  */
-function Craft({ offset }: { offset: [number, number, number] }) {
+function Craft({ offset, motion }: { offset: [number, number, number]; motion: RefObject<DrillMotion> }) {
+  const bit = useRef<THREE.Group>(null);
+  // Turning and shuddering through the bite (`MiningDig`), still the rest of the trip.
+  useFrame(({ clock }) => {
+    const node = bit.current;
+    if (!node) return;
+    const { roll, shake } = motion.current;
+    node.rotation.z = roll;
+    const jolt = shake * STYLE.scale * 0.012;
+    node.position.set(jolt * Math.sin(clock.elapsedTime * 91), jolt * Math.sin(clock.elapsedTime * 73 + 1), 0);
+  });
   return (
     <group position={offset}>
       <Wake scale={STYLE.scale} colour={STYLE.flame} />
-      <Hull url={MODEL.drill} scale={STYLE.scale} glow={STYLE.colour} focused={false} />
+      <group ref={bit}>
+        <Hull url={MODEL.drill} scale={STYLE.scale} glow={STYLE.colour} focused={false} />
+      </group>
     </group>
   );
 }

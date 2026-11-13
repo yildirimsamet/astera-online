@@ -43,6 +43,6 @@ describe('every model loader has a boundary of its own', () => {
     const mining = source('MiningFlights.tsx');
     expect(mining).not.toContain('MiningPulse');
     expect(mining).toContain('<EngineJets');
-    expect(mining).toContain('runPosition(run, home, serverNow(), nodes)');
+    expect(mining).toContain('runPosition(run, home, now, nodes, reach)');
   });
 });

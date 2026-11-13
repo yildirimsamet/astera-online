@@ -112,7 +112,7 @@ import { OpeningWork, useOpeningViews, useSightRequest } from './OpeningViews.js
 const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
-import { MiningFlights, miningFocusRadius } from './MiningFlights.jsx';
+import { MiningFlights, miningFocusRadius, miningReach } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
 import { monumentFocusDistance } from './MonumentModel.js';
@@ -588,7 +588,7 @@ export function GalaxyCanvas({
       const run = runs.find((r) => r.id === focus.id);
       if (!run) return null;
       const origin = runHomePosition(run, nodes, homePosition);
-      return () => runPosition(run, origin, serverNow(), nodes);
+      return () => runPosition(run, origin, serverNow(), nodes, miningReach(run, asteroids, wrecks, nodes, scale));
     }
 
     /**
@@ -694,7 +694,7 @@ export function GalaxyCanvas({
       return contact ? contactFocusRadius(contact) * scale : 0;
     }
     return 0;
-  }, [focus, nodes, asteroids, runs, pending, contacts, scale]);
+  }, [focus, nodes, asteroids, wrecks, runs, pending, contacts, scale]);
 
   /**
    * WHAT IS FOCUSED, AS A STABLE STRING — and it is the fix for a camera that
@@ -987,6 +987,8 @@ export function GalaxyCanvas({
         {homePosition && (
           <MiningFlights
             runs={runs}
+            asteroids={asteroids}
+            wrecks={wrecks}
             home={homePosition}
             nodes={nodes}
             focusedId={focus?.kind === 'run' ? focus.id : null}

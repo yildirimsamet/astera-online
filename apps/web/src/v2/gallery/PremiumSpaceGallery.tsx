@@ -31,6 +31,8 @@ const ENGINE_OPTIONS = cosmeticsInCategory('ENGINE');
 const IMPACT_MS = 1800;
 /** The game refetches the galaxy this long after an arrival (`ARRIVAL_SETTLE_OFFSETS`). */
 const HEARD_MS = 1000;
+/** The prospector reaches its field this long after the mining scene opens, so the dig plays in view. */
+const MINING_ARRIVE_MS = 2500;
 const SCENES = [
   ['ship', 'Gemi inceleme'], ['planet', 'Gezegen'], ['wreck', 'Enkaz'], ['asteroid', 'İzotop asteroidi'],
   ['fleet', 'Filo'], ['monument', 'Anıt'], ['battle', 'Savaş'], ['strategic', 'Stratejik çarpma'],
@@ -76,7 +78,8 @@ export function PremiumSpaceGallery() {
   const markReady = useCallback(() => { setReady(true); }, []);
   useEffect(() => {
     if (sample.mode !== 'mining') return;
-    const timer = setTimeout(() => { setMiningConfirmation(sample.serial); }, 2500);
+    // The prospector reaches the field in view and the galaxy hears its full hold a second later.
+    const timer = setTimeout(() => { setMiningConfirmation(sample.serial); }, MINING_ARRIVE_MS + HEARD_MS);
     return () => { clearTimeout(timer); };
   }, [sample]);
   // A strike that lands starts its world's EMP hour, and the galaxy hears of it a second later, as in
@@ -132,7 +135,8 @@ export function PremiumSpaceGallery() {
   const runs = useMemo<MiningRun[]>(() => sample.mode === 'mining' ? [{
     id: `premium-mining-${String(sample.serial)}`, planetId: 'p-1', targetKind: 'debris', asteroidId: null, debrisFieldId: 'premium-wreck',
     status: miningConfirmation === sample.serial ? 'returning' : 'outbound', craft: 1,
-    departAt: new Date(sample.at - 60_000), arriveAt: new Date(sample.at), homeAt: new Date(sample.at + 40_000), intercept: TARGET,
+    departAt: new Date(sample.at + MINING_ARRIVE_MS - 60_000), arriveAt: new Date(sample.at + MINING_ARRIVE_MS),
+    homeAt: new Date(sample.at + MINING_ARRIVE_MS + 40_000), intercept: TARGET,
     minedAlloy: miningConfirmation === sample.serial ? 250 : 0, minedCrystal: miningConfirmation === sample.serial ? 50 : 0, minedDeuterium: 0,
   }] : [], [sample, miningConfirmation]);
   const replay = (mode: Mode, rockId: string = rockChoice.rockId) => {
