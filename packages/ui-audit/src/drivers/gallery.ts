@@ -33,6 +33,11 @@ export const GALLERY_STEPS: Partial<Record<string, (page: Page, lang: string) =>
     await page.locator('[data-cosmetic-trial]').waitFor();
     await page.waitForTimeout(1200);
   },
+  /** The reading's counts are presses; the monuments' list is what one opens. */
+  readout: async (page) => {
+    await page.locator('[data-testid="view-caption"] [aria-expanded]').last().click();
+    await page.waitForTimeout(400);
+  },
 };
 
 export function galleryVisits(base: string, surfaces: readonly Surface[]): Visit[] {

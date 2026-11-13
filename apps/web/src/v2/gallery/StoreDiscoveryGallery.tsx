@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { keys } from '../../api/keys.js';
+import type { PlanetView, SeasonInfo } from '../../api/schemas.js';
 import { ApiProvider } from '../../api/context.js';
 import { WorldProvider } from '../../api/world.js';
 import { GalaxyView, type Panel } from '../../screens/GalaxyView.js';
@@ -10,8 +11,13 @@ import { createStoreDiscoveryApi } from './storeDiscoveryApi.js';
 import { ProfilePage } from '../../shell/ProfilePage.js';
 import { dismissProfile, leaveProfile, useProfileRoute } from '../../shell/profileRoute.js';
 
-/** Review the real HUD, menu and cosmetic screens without a login or a payment. */
-export function StoreDiscoveryGallery() {
+const HOUR = 3_600_000;
+
+/**
+ * Review the real HUD, menu and cosmetic screens without a login or a payment.
+ * `protected`: a newcomer's shield and a signal boost on the bar; `vacation`: the vacation strip.
+ */
+export function StoreDiscoveryGallery({ hud }: { hud?: 'protected' | 'vacation' }) {
   const profileOpen = useProfileRoute();
   const waiting = new URLSearchParams(window.location.search).get('menu-state') === 'waiting';
   const commander = waiting ? 'Kestrel Sable Andromeda' : 'Orion';
@@ -24,6 +30,14 @@ export function StoreDiscoveryGallery() {
       id: '00000000-0000-4000-8000-000000000001', title: 'Astera Online', bodyHtml: '<p>Astera Online</p>', publishedAt: new Date(), seen: false,
     }] : [] }, { updatedAt });
     next.setQueryData(keys.leaderboard, { ladder: [], you: null }, { updatedAt });
+    const home = next.getQueryData<PlanetView>(keys.planetById('trial-home'));
+    if (hud && home) {
+      next.setQueryData(keys.planetById('trial-home'), hud === 'vacation'
+        ? { ...home, vacationUntil: new Date(Date.now() + 40 * HOUR) }
+        : { ...home, planet: { ...home.planet, signalBoostUntil: new Date(Date.now() + 1.5 * HOUR) } }, { updatedAt });
+    }
+    const season = next.getQueryData<SeasonInfo>(keys.season);
+    if (hud === 'protected' && season) next.setQueryData(keys.season, { ...season, shieldUntil: new Date(Date.now() + 7 * HOUR), shieldKind: 'NEWCOMER' }, { updatedAt });
     return next;
   });
   const [api] = useState(() => createStoreDiscoveryApi(client));

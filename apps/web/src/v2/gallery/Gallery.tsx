@@ -8,7 +8,7 @@ import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
 import { cosmeticById, RESEARCH_PROJECTS } from '@astera/rules';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
@@ -45,6 +45,10 @@ import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
+import { GalaxyReadout } from '../hud/GalaxyCorners.js';
+import { useToast } from '../../ui/Toast.js';
+import { SignalsFeed } from '../../shell/Signals.js';
+import type { NotificationView } from '../../api/schemas.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
@@ -498,7 +502,9 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
 /** The commander surface and live ladder, staged together so their v2 density can be inspected. */
 const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
 
-function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboard-archive' }) {
+type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' | 'menu-ended';
+
+function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-archive' }) {
   const [client] = useState(() => {
     const next = new QueryClient();
     next.setQueryData(keys.rewards, { chains: [], claimable: 2 });
@@ -571,10 +577,15 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
   return (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
-        {page === 'menu' ? (
+        {page.startsWith('menu') ? (
           <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
-              <MenuPanel commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} onReplayAcademy={noop} />
+              <MenuPanel
+                commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR"
+                ended={page === 'menu-ended'} hasSeasonResult={page === 'menu-ended'}
+                page={page === 'menu-settings' ? 'settings' : page === 'menu-academy' ? 'academy' : page === 'menu-community' ? 'community' : 'home'}
+                onPageChange={noop} onOpen={noop} onSignOut={noop} onReplayAcademy={noop}
+              />
             </div>
           </Sheet>
         ) : page === 'leaderboard' ? (
@@ -774,6 +785,58 @@ function GalleryNotificationCenter({ state }: { state: 'built' | 'new' }) {
   return <NotificationCenterSheet onClose={noop} />;
 }
 
+/**
+ * The bell as a mid-game commander opens it: a clanmate's raid in the air, a fleet on the
+ * way in, and the history under it, grouped (owner 2026-11-13: measure the real feed, not a
+ * stand-in). `empty` is the first evening, before anything has happened.
+ */
+function GalleryBell({ empty = false }: { empty?: boolean }) {
+  const [api] = useState(() => new Api());
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const at = (minutes: number) => new Date(NOW - minutes * MIN);
+    const news = (id: string, kind: string, minutes: number, payload: Record<string, unknown>, seen = true): NotificationView => ({ id, kind, payload, refId: null, seen, at: at(minutes) });
+    const notifications: NotificationView[] = empty ? [] : [
+      news('n-alarm', 'clan_alarm', 2, { arriveAt: new Date(NOW + 14 * MIN).toISOString(), etaMinutes: 14, targetPlanetName: 'Kuzgun', alarmId: '00000000-0000-4000-8000-0000000000a1', hostPlayerId: 'ayse', hostPlanetId: 'kuzgun', hostName: 'Ayşe' }, false),
+      news('n-incoming', 'incoming_fleet', 4, { arriveAt: new Date(NOW + 9 * MIN).toISOString(), etaMinutes: 13, targetPlanetName: 'Thistle' }, false),
+      news('n-raided', 'raided', 35, { grade: 'PARTIAL', lootAlloy: 900, lootCrystal: 240, unitsLost: 3, targetPlanetName: 'Thistle' }, false),
+      news('n-won', 'raid_result', 80, { grade: 'DECISIVE', lootAlloy: 3_100, lootCrystal: 1_000, unitsLost: 2, shipsHome: 28, targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-1', 'probe_report', 140, { targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-2', 'probe_report', 150, { targetPlanetName: 'Kestrel-12' }),
+      news('n-home', 'fleet_returned', 190, { trip: 'raid', ships: 26, lootAlloy: 3_100, lootCrystal: 1_000 }),
+      news('n-scan', 'scan_detected', 260, {}),
+      news('n-unlock', 'unlock', 420, { unlock: 'RADAR' }),
+    ];
+    next.setQueryData(keys.notifications, { notifications });
+    next.setQueryData(keys.planet, planetView({}, { id: 'p-1', name: 'Thistle', alloy: 4_200, crystal: 900, deuterium: 640, alloyCap: 40_000, crystalCap: 30_000, deuteriumCap: 20_000 }));
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <BellSheet
+          tab="signals"
+          onTab={noop}
+          onClose={noop}
+          unseen={empty ? 0 : 3}
+          signals={<SignalsFeed justRead={new Set()} onGo={noop} onFocusPlanet={noop} onFocusMonument={noop} />}
+          chronicle={null}
+        />
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+/** One toast, said once the page is up: what every action answers with today (G1, 2026-11-14). */
+function GalleryToast({ error = false }: { error?: boolean }) {
+  const say = useToast();
+  useEffect(() => {
+    // The works' own two answers: everything collected, or the store full and some left behind.
+    say(error ? i18n.t('statusBar.works.collectedPartly', { moved: '1,2K', held: '3K' }) : i18n.t('statusBar.works.collected', { amount: '4,2K' }), error ? 'error' : 'info');
+  }, [say, error]);
+  return null;
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
@@ -814,7 +877,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
-  if (view === 'menu') return <GalleryCommander page="menu" />;
+  if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
@@ -902,16 +965,36 @@ function Views({ view }: { view: string }) {
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
-  if (view === 'bell') {
+  if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
+  if (view === 'toast' || view === 'toast-error') return <GalleryToast error={view === 'toast-error'} />;
+  if (view === 'readout') {
+    // The galaxy's top-right reading in a busy late galaxy; the audit opens the monument list.
+    const monument = (n: number, difficulty: 'EASY' | 'HARD', detail: string) => ({ kind: 'monument' as const, id: `m${String(n)}`, label: `Monument ${String(n)}`, detail, difficulty, ordinal: n });
     return (
-      <BellSheet
-        tab="signals"
-        onTab={noop}
-        onClose={noop}
-        unseen={2}
-        signals={<p className="text-caption text-v2-ink-2">Signal rows draw here (SignalsFeed).</p>}
-        chronicle={null}
-      />
+      <div className="flex justify-end px-3 pt-3">
+        <GalaxyReadout
+          onlineToday={42}
+          counts={{ worlds: 177, fleetsAway: 4, rocks: 12, pirates: 3, wrecks: 30, monuments: 8 }}
+          targets={[monument(1, 'EASY', '2,1K uzaklık'), monument(3, 'EASY', '3,4K uzaklık'), monument(5, 'HARD', '4,0K uzaklık'), monument(7, 'HARD', '6,2K uzaklık'),
+            { kind: 'debris', id: 'd1', label: 'Kestrel-12', detail: '+4,1K' }]}
+          onFocusTarget={noop}
+        />
+      </div>
+    );
+  }
+  if (view === 'context-attack' || view === 'context-event' || view === 'context-events') {
+    // The card where the game draws it: above the dock, over the galaxy.
+    const shower = { id: 'e1', kind: 'ASTEROID_SHOWER' as const, startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 };
+    const events = view === 'context-attack' ? [] : view === 'context-event' ? [shower]
+      : [shower, {
+        id: 'e2', kind: 'TRADE_SHIP' as const, startsAt: at(-20), endsAt: at(90), rate: TRADE.rate, appearsAtMinute: 580, expiresAtMinute: 690,
+        orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+      }];
+    return (
+      <div className="relative h-dvh [--v2-dock-h:4rem]">
+        <ContextSlot {...slotBase} threats={view === 'context-attack' ? [thread('incoming', 9)] : []} events={events} />
+        <div className="absolute inset-x-0 bottom-0"><Dock active="galaxy" badges={quiet} onSelect={noop} /></div>
+      </div>
     );
   }
   if (view === 'view') {
@@ -1145,6 +1228,7 @@ export function Gallery({ view }: { view: string | null }) {
   if (view === 'fleet-towing') return <FleetTowingGallery />;
   if (view === 'premium-space') return <PremiumSpaceGallery />;
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;
+  if (view === 'hud-protected' || view === 'hud-vacation') return <StoreDiscoveryGallery hud={view === 'hud-protected' ? 'protected' : 'vacation'} />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
