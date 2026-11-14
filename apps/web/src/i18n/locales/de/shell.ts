@@ -588,7 +588,7 @@ export const chat = {
     title: 'DM', loading: 'Direktnachrichten werden geöffnet', conversations: 'Direktnachrichten',
     start: 'Neue Direktnachricht', closeTab: 'Tab {{name}} schließen', searchLabel: 'Kommandanten suchen',
     searchPlaceholder: 'Kommandanten suchen', cancel: 'Abbrechen', contacts: 'Kommandanten',
-    noContacts: 'Kein verfügbarer Kommandant gefunden.', empty: 'Wähle einen Kommandanten für ein privates Gespräch.',
+    noContacts: 'Kein verfügbarer Kommandant gefunden.', emptyTitle: 'Noch keine privaten Nachrichten', empty: 'Wähle einen Kommandanten für ein privates Gespräch.',
     emptyConversation: 'Sag {{name}} Hallo.', list: 'Nachrichten mit {{name}}',
     placeholder: 'Nachricht an {{name}}', waitingHint: 'Dieser Kommandant ist in Silent Space. Nach der Rückkehr könnt ihr weiterschreiben.',
     seasonEndedHint: 'Diese Saison ist beendet. Direktnachrichten beginnen in der nächsten Saison neu.',

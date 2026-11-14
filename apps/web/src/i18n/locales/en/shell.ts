@@ -589,7 +589,7 @@ export const chat = {
     title: 'DM', loading: 'Opening direct messages', conversations: 'Direct message conversations',
     start: 'Start a DM', closeTab: 'Close {{name}} tab', searchLabel: 'Find a commander',
     searchPlaceholder: 'Search commanders', cancel: 'Cancel', contacts: 'Commanders',
-    noContacts: 'No available commander matches.', empty: 'Choose a commander to start a private conversation.',
+    noContacts: 'No available commander matches.', emptyTitle: 'No private messages yet', empty: 'Choose a commander to start a private conversation.',
     emptyConversation: 'Say hello to {{name}}.', list: 'Messages with {{name}}',
     placeholder: 'Message {{name}}', waitingHint: 'This commander is in Silent Space. You can write again when they return to this galaxy.',
     seasonEndedHint: 'This season has ended. Direct messages open fresh in the next season.',

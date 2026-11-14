@@ -45,6 +45,10 @@ function show(channel: ChatChannel = 'general', options: { delay?: boolean; fail
   render(<QueryClientProvider client={q}><ApiProvider api={api}>{options.admin ? <AdminPanel /> : <ChatScreen initialChannel={channel} onFocusPlanet={vi.fn()} />}</ApiProvider></QueryClientProvider>);
   return posts;
 }
+/** The report's two questions are the kit's plates (C3): a press answers each. */
+const choose = (dialog: HTMLElement, question: string, answer: string): void => {
+  fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: question })).getByRole('radio', { name: answer }));
+};
 async function open() {
   const bubble = document.querySelector(`[data-chat-message="${id}"]`); if (!bubble) throw new Error('Missing fixture bubble');
   fireEvent.contextMenu(bubble); fireEvent.click(screen.getByRole('button', { name: 'Report' }));
@@ -52,8 +56,8 @@ async function open() {
 }
 it.each(['general', 'clan', 'dm'] as const)('submits the exact %s message selector without client evidence and displays only a receipt', async channel => {
   const posts = show(channel); const dialog = await open();
-  expect(within(dialog).getByRole('button', { name: 'Send report' })).toBeDisabled();
-  fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'SPAM' } });
+  expect(within(dialog).getByRole('button', { name: 'Choose a reason' })).toBeDisabled();
+  choose(dialog, 'Reason', 'Spam');
   fireEvent.change(within(dialog).getByLabelText('Additional details (optional)'), { target: { value: 'Please review' } });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Send report' }));
   expect(await within(dialog).findByRole('status')).toHaveTextContent('Report received');
@@ -62,8 +66,8 @@ it.each(['general', 'clan', 'dm'] as const)('submits the exact %s message select
 });
 it('can report a player from the same context and preserves the editable form after failure', async () => {
   const posts = show('general', { fail: true }); const dialog = await open();
-  fireEvent.change(within(dialog).getByLabelText('What are you reporting?'), { target: { value: 'player' } });
-  fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'INAPPROPRIATE_NAME' } });
+  choose(dialog, 'What are you reporting?', 'Player');
+  choose(dialog, 'Reason', 'Inappropriate name');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Send report' }));
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('Too many reports');
   expect(within(dialog).queryByRole('status')).toBeNull();
@@ -73,9 +77,24 @@ it('coalesces repeated taps and never offers a self-report', async () => {
   const posts = show('general', { delay: true });
   const own = document.querySelector('[data-chat-message="mine"]'); if (!own) throw new Error('Missing self fixture');
   fireEvent.contextMenu(own); expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
-  const dialog = await open(); fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'SPAM' } });
+  const dialog = await open(); choose(dialog, 'Reason', 'Spam');
   const submit = within(dialog).getByRole('button', { name: 'Send report' }); fireEvent.click(submit); fireEvent.click(submit);
-  await waitFor(() => { expect(posts).toHaveLength(1); }); expect(submit).toBeDisabled();
+  await waitFor(() => { expect(posts).toHaveLength(1); }); expect(submit).toHaveAttribute('aria-busy', 'true');
+});
+it('asks what and why on the kit’s plates and answers with a kit receipt (C3)', async () => {
+  show('general'); const dialog = await open();
+  const what = within(dialog).getByRole('radiogroup', { name: 'What are you reporting?' });
+  expect(within(what).getByRole('radio', { name: 'Message' })).toHaveAttribute('aria-checked', 'true');
+  const why = within(dialog).getByRole('radiogroup', { name: 'Reason' });
+  expect(why).toHaveClass('gk-choices--grid');
+  expect(within(why).getAllByRole('radio')).toHaveLength(7);
+  expect(within(dialog).getByLabelText('Additional details (optional)')).toHaveClass('gk-field__input');
+  choose(dialog, 'Reason', 'Spam');
+  const send = within(dialog).getByRole('button', { name: 'Send report' });
+  expect(send).toHaveClass('gk-btn'); fireEvent.click(send);
+  const receipt = await within(dialog).findByRole('status');
+  expect(receipt.closest('.gk-banner')).toHaveClass('gk-banner--good');
+  expect(within(dialog).getAllByRole('button', { name: 'Close' }).some((button) => button.classList.contains('gk-btn'))).toBe(true);
 });
 it('keeps reporting available on retained blocked DM history without enabling reply or reaction', async () => {
   show('dm', { blocked: true }); await open();

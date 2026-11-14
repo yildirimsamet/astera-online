@@ -16,6 +16,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ButtonHTMLAttributes,
   type PointerEvent as ReactPointerEvent,
   type SyntheticEvent,
   type UIEvent,
@@ -40,7 +41,9 @@ import {
   useMessageReaction,
 } from '../api/queries.js';
 import { describeError } from '../i18n/errors.js';
-import { EmptyState as KitEmpty, GameTabs, Glyph, LANGUAGE_FLAG, LanguagePicker, artIconSrc, type ArtIconId, type TabItem } from '../game-ui/index.js';
+import {
+  Dot, EmptyState as KitEmpty, GameButton, GameTabs, Glyph, LANGUAGE_FLAG, LanguagePicker, RoundButton, artIconSrc, type ArtIconId, type TabItem,
+} from '../game-ui/index.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { currentLanguage } from '../i18n/index.js';
@@ -53,7 +56,7 @@ import type { ClanTagTier } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
 import { clockTime, useNow } from '../lib/time.js';
 import { describeClanEvent, type ClanChatEvent } from '../lib/clanChatEvent.js';
-import { CloseIcon, HeartIcon, HonorIcon, MuteIcon, PlusIcon } from '../ui/icons/index.js';
+import { HeartIcon, HonorIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { EmptyState } from '../v2/kit/Surface.js';
 import { Trophy, type Place } from '../ui/Medal.js';
@@ -61,7 +64,8 @@ import { useAdminChatScopes, useAdminClanChat, useAdminPostClanChat } from '../a
 
 const PODIUM_BORDER: Record<Place, string> = { 1: 'border-rank-gold/35', 2: 'border-rank-silver/35', 3: 'border-rank-copper/35' };
 const PODIUM_INK: Record<Place, string> = { 1: 'text-rank-gold', 2: 'text-rank-silver', 3: 'text-rank-copper' };
-const RECOGNITION_BUTTON = 'relative -my-1 inline-flex min-h-7 min-w-6 shrink-0 touch-manipulation items-center justify-center self-center rounded-cell after:absolute after:-inset-1 hover:bg-v2-line/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current';
+/** A thumb's 44 px around a 14 px mark; the line keeps its height, and the gaps beside it lend 6 px each (C3). */
+const RECOGNITION_BUTTON = 'relative -mx-1.5 -my-3 inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center self-center rounded-cell transition-transform active:scale-90 hover:bg-v2-line/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current';
 
 interface RecognitionHint {
   key: string;
@@ -115,6 +119,37 @@ function ClanEventLine({ event, at }: { event: ClanChatEvent; at: Date }) {
       <span className="min-w-0">{text}<span className="ml-1.5 font-v2-mono text-v2-ink-2">{clockTime(at)}</span></span>
     </p>
   );
+}
+
+/** A plain kit press for the chat's own small parts: a sound, its buzz, once (C3). */
+function Press({ onPress, sound = 'tap', ...button }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'onPointerDown' | 'type'> & {
+  onPress: () => void;
+  sound?: 'tap' | 'tab';
+}) {
+  const own = useOwnPress(() => { playSound(sound); haptic('tap'); onPress(); });
+  return <button type="button" {...OWN_SOUND} {...button} onPointerDown={own.onPointerDown} onClick={own.onClick} />;
+}
+
+/** A message's reaction: a 28 px pill on a 44 px key; a press opens who reacted, beside it (C3). */
+function ReactionChip({ emoji, count, mine, onOpen }: { emoji: string; count: number; mine: boolean; onOpen: (anchor: HTMLButtonElement) => void }) {
+  const { t } = useTranslation();
+  const key = useRef<HTMLButtonElement>(null);
+  const own = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    if (key.current) onOpen(key.current);
+  });
+  return (
+    <button ref={key} type="button" {...OWN_SOUND} aria-haspopup="dialog" aria-label={t('chat.reactionCount', { emoji, count })}
+      className="gk-react" {...(mine ? { 'data-mine': '' } : {})} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-react__pill"><span aria-hidden="true">{emoji}</span><span className="gk-num">{count}</span></span>
+    </button>
+  );
+}
+
+/** A commander's crest in a list of names: the first letters of up to two words. */
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] ?? '').join('').toLocaleUpperCase();
 }
 
 /** Which room: the galaxy's general channel or the commander's clan. */
@@ -465,50 +500,50 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
   }
   if (!conversations.data) return <Waiting>{t('chat.dm.loading')}</Waiting>;
 
+  const closePeer = (playerId: string): void => {
+    setClosedPeers((current) => new Set(current).add(playerId));
+    if (selectedPeerId === playerId) setSelectedPeerId(null);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
-      <div data-chat-dm-tabs className="flex shrink-0 items-stretch gap-1 border-b border-v2-line px-3 py-1.5">
-        <div role="tablist" aria-label={t('chat.dm.conversations')} className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1.5">
-          {tabs.map((peer) => (
-            <span key={peer.playerId} className={`flex max-w-40 shrink-0 items-center rounded-t-control border border-b-0 ${
-              activePeerId === peer.playerId ? 'border-v2-line-hi bg-v2-raise' : 'border-v2-line bg-v2-deep'
-            }`}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePeerId === peer.playerId}
-                aria-label={peer.unreadCount > 0
-                  ? t('chat.channelUnread', { channel: peer.username, count: peer.unreadCount })
-                  : peer.username}
-                className="min-w-0 truncate px-2 py-1.5 text-micro text-v2-ink"
-                onClick={() => { setSelectedPeerId(peer.playerId); setPickerOpen(false); }}
-              >
-                {peer.username}
-                {peer.unreadCount > 0 ? <span aria-hidden className="ml-1 text-v2-self">●</span> : null}
-              </button>
-              <button
-                type="button"
-                aria-label={t('chat.dm.closeTab', { name: peer.username })}
-                className="grid size-6 shrink-0 place-items-center text-v2-ink-3 hover:text-v2-ink"
-                onClick={() => {
-                  setClosedPeers((current) => new Set(current).add(peer.playerId));
-                  if (selectedPeerId === peer.playerId) setSelectedPeerId(null);
-                }}
-              ><CloseIcon className="size-3" /></button>
-            </span>
-          ))}
+      {tabs.length > 0 ? (
+        <div data-chat-dm-tabs className="flex shrink-0 items-center gap-2 border-b border-v2-line px-[var(--gk-gutter)] py-1.5">
+          {/* THE OPEN LETTERS (C3): one plate each, its red count, and on the open one its own close key. */}
+          <div role="tablist" aria-label={t('chat.dm.conversations')} className="gk-peers">
+            {tabs.map((peer) => {
+              const open = activePeerId === peer.playerId;
+              return (
+                <span key={peer.playerId} className="gk-peer" {...(open ? { 'data-open': '' } : {})}>
+                  <Press
+                    role="tab"
+                    sound="tab"
+                    aria-selected={open}
+                    aria-label={peer.unreadCount > 0
+                      ? t('chat.channelUnread', { channel: peer.username, count: peer.unreadCount })
+                      : peer.username}
+                    className="gk-peer__tab"
+                    onPress={() => { setSelectedPeerId(peer.playerId); setPickerOpen(false); }}
+                  >
+                    <span className="gk-peer__name">{peer.username}</span>
+                    {peer.unreadCount > 0 ? <Dot count={peer.unreadCount} /> : null}
+                  </Press>
+                  {open ? (
+                    <Press className="gk-peer__close" aria-label={t('chat.dm.closeTab', { name: peer.username })} onPress={() => { closePeer(peer.playerId); }}>
+                      <Glyph id="close" />
+                    </Press>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
+          <RoundButton small glyph="plus" label={t('chat.dm.start')} onPress={() => { setPickerOpen(true); }} />
         </div>
-        <button
-          type="button"
-          aria-label={t('chat.dm.start')}
-          className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-line-hi bg-v2-raise text-v2-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-          onClick={() => { setPickerOpen(true); }}
-        ><PlusIcon className="size-4" /></button>
-      </div>
+      ) : null}
 
       {pickerOpen ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        <div className="gk min-h-0 flex-1 overflow-y-auto px-[var(--gk-gutter)] py-3">
           <div className="flex items-center gap-2">
             <input
               type="search"
@@ -516,37 +551,47 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
               placeholder={t('chat.dm.searchPlaceholder')}
               value={search}
               onChange={(event) => { setSearch(event.currentTarget.value); }}
-              className="h-10 min-w-0 flex-1 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink outline-none focus:border-v2-self"
+              className="gk-field__input min-w-0 flex-1"
             />
-            <button type="button" onClick={() => { setPickerOpen(false); }} className="text-caption text-v2-ink-2">{t('chat.dm.cancel')}</button>
+            <GameButton size="sm" onPress={() => { setPickerOpen(false); }}>{t('chat.dm.cancel')}</GameButton>
           </div>
           {contacts.isError ? <Unreachable what={t('chat.dm.contacts')} onRetry={() => { void contacts.refetch(); }} /> : null}
-          {contacts.data?.contacts.length === 0 ? <p className="py-5 text-caption text-v2-ink-3">{t('chat.dm.noContacts')}</p> : null}
-          <div className="mt-2 grid gap-1">
+          {contacts.data?.contacts.length === 0 ? <p className="gk-sub py-5">{t('chat.dm.noContacts')}</p> : null}
+          <ul aria-label={t('chat.dm.contacts')} className="mt-3 grid gap-1.5">
             {contacts.data?.contacts.map((peer) => (
-              <button
-                key={peer.playerId}
-                type="button"
-                className="rounded-control border border-v2-line bg-v2-deep px-3 py-2 text-left text-caption text-v2-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                onClick={() => { selectContact(peer); }}
-              >{peer.username}</button>
+              <li key={peer.playerId}>
+                <Press className="gk-contact" onPress={() => { selectContact(peer); }}>
+                  <span className="gk-avatar gk-display gk-outlined" aria-hidden="true">{initials(peer.username)}</span>
+                  <span className="gk-contact__name">{peer.username}</span>
+                  <span className="gk-contact__mark"><Glyph id="mail" /></span>
+                </Press>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       ) : !activePeer || !activePeerId ? (
-        <div className="px-3 py-6"><EmptyState title={t('chat.dm.empty')} /></div>
+        <div className="gk px-[var(--gk-gutter)] py-6">
+          <KitEmpty art={artIconSrc('menu-friends')} title={t('chat.dm.emptyTitle')} body={t('chat.dm.empty')}
+            action={<GameButton tone="action" glyph="plus" onPress={() => { setPickerOpen(true); }}>{t('chat.dm.start')}</GameButton>} />
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between border-b border-v2-line px-3 py-1.5">
-            <span className="min-w-0 truncate text-caption font-semibold text-v2-ink">{activePeer.username}</span>
-            {activeConversation?.communityBlockedByMe ? <button type="button" aria-label={t('moderation.blocks.manage')} className="min-h-9 shrink-0 px-2 text-micro text-v2-self underline underline-offset-2" onClick={() => { setShowBlocked(true); }}>{t('moderation.blocks.manage')}</button> : activeConversation ? (
-              <button
-                type="button"
-                disabled={block.isPending}
+          <div className="gk flex shrink-0 items-center justify-between gap-2 border-b border-v2-line py-0.5 pl-[var(--gk-gutter)] pr-2">
+            <span className="gk-display min-w-0 truncate text-title">{activePeer.username}</span>
+            {activeConversation?.communityBlockedByMe ? (
+              <GameButton size="sm" glyph="block" onPress={() => { setShowBlocked(true); }}>{t('moderation.blocks.manage')}</GameButton>
+            ) : activeConversation ? (
+              /* A word, not the round key of the blocked list above it: what this does, and to whom for a reader. */
+              <Press
+                className={`gk-btn gk-btn--sm${activeConversation.blockedByMe ? '' : ' gk-btn--danger'}`}
                 aria-label={t(activeConversation.blockedByMe ? 'chat.dm.unblock' : 'chat.dm.block', { name: activePeer.username })}
-                className="shrink-0 px-2 py-1 text-micro text-v2-ink-3 underline underline-offset-2 disabled:opacity-50"
-                onClick={() => { block.mutate({ targetPlayerId: activePeerId, blocked: !activeConversation.blockedByMe }); }}
-              >{t(activeConversation.blockedByMe ? 'chat.dm.unblockShort' : 'chat.dm.blockShort')}</button>
+                onPress={() => {
+                  if (!block.isPending) block.mutate({ targetPlayerId: activePeerId, blocked: !activeConversation.blockedByMe });
+                }}
+              >
+                <span className="gk-btn__glyph"><Glyph id="block" /></span>
+                <span>{t(activeConversation.blockedByMe ? 'chat.dm.unblockShort' : 'chat.dm.blockShort')}</span>
+              </Press>
             ) : null}
           </div>
           {messages.isError ? (
@@ -874,11 +919,11 @@ function ChannelPanel({
               ? <KitEmpty art={artIconSrc(empty.art)} title={empty.title} body={empty.body ?? ''} />
               : <KitEmpty art={artIconSrc('hud-chat')} title={t('chat.personalMutes.hiddenEmpty')} body={t('chat.personalMutes.hint')} />}
             {messages.length > 0 && hasNextPage && (
-              <button type="button" disabled={fetchingOlder}
-                className="mx-auto mt-3 flex min-h-9 items-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-self disabled:opacity-50"
-                onClick={() => { if (history.current) loadOlder(history.current); }}>
-                {t('chat.older')}
-              </button>
+              <div className="mt-3 flex justify-center">
+                <GameButton size="sm" glyph="up" pending={fetchingOlder} onPress={() => { if (history.current) loadOlder(history.current); }}>
+                  {t('chat.older')}
+                </GameButton>
+              </div>
             )}
           </div>
         ) : (
@@ -892,6 +937,7 @@ function ChannelPanel({
                 <div className="relative min-w-0 max-w-[84%]">
                   <div
                     data-chat-message={message.id}
+                    {...(actionMessageId === message.id ? { 'data-held': '' } : {})}
                     tabIndex={0}
                     aria-label={t('chat.messageActions', { name: message.username })}
                     onPointerDown={(event) => {
@@ -928,25 +974,22 @@ function ChannelPanel({
                         : message.self ? selfSurface : 'border-v2-line bg-v2-deep'
                     }`}
                   >
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-center gap-2">
                       {message.self ? (
                         <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></strong>
                       ) : message.planetId ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Press
+                          onPress={() => {
                             const planetId = message.planetId;
-                            if (!planetId) return;
-                            haptic('tap');
-                            onFocusPlanet(planetId);
+                            if (planetId) onFocusPlanet(planetId);
                           }}
                           data-chat-author
-                          className={`min-w-0 truncate text-caption font-semibold underline decoration-v2-ink-3/50 underline-offset-2 ${
+                          className={`-my-3 flex min-h-11 min-w-0 items-center transition-transform active:scale-95 text-caption font-semibold underline decoration-v2-ink-3/50 underline-offset-2 ${
                             message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'
                           }`}
                         >
-                          <TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} />
-                        </button>
+                          <span className="truncate"><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
+                        </Press>
                       ) : (
                         <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
                       )}
@@ -986,55 +1029,51 @@ function ChannelPanel({
                     </p>
                   </div>
                   {message.reactions?.length ? (
-                    <div className="relative z-10 -mt-1 ml-2 flex flex-wrap gap-1" aria-label={t('chat.reactions')}>
+                    <div className={`relative z-10 -mt-3 flex flex-wrap ${message.self ? 'mr-1 justify-end' : 'ml-1'}`} aria-label={t('chat.reactions')}>
                       {message.reactions.map((item) => (
-                        <button key={item.emoji} type="button" aria-haspopup="dialog"
-                          aria-label={t('chat.reactionCount', { emoji: item.emoji, count: item.count })}
-                          className={`relative min-h-7 rounded-pill border bg-v2-deep px-2 py-0.5 text-micro leading-none shadow-sm after:absolute after:inset-x-0 after:-inset-y-1.5 ${item.mine ? 'border-v2-self text-v2-self' : 'border-v2-line-hi text-v2-ink-2'}`}
-                          onClick={(event) => { setActionMessageId(null); setPickerMessageId(null); setRoster({ messageId: message.id, anchor: event.currentTarget }); }}
-                        >{item.emoji} {item.count}</button>
+                        <ReactionChip key={item.emoji} emoji={item.emoji} count={item.count} mine={item.mine}
+                          onOpen={(anchor) => { setActionMessageId(null); setPickerMessageId(null); setRoster({ messageId: message.id, anchor }); }} />
                       ))}
                     </div>
                   ) : null}
                   {actionMessageId === message.id ? (
-                    <div data-chat-message-actions className={`absolute ${message.self ? 'right-0' : 'left-0'} z-20 mt-1 flex w-full min-w-36 items-center justify-between rounded-pill border border-v2-line-hi bg-v2-raise/95 p-0.5 shadow-lg ${message.reactions?.length ? 'top-1/2' : 'top-1/2'} !py-0`}>
-                      {canReact && policyAccepted && !disabledReason ? <button type="button" aria-label={t('chat.addReaction')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                        onClick={(event) => {
+                    /* A HELD MESSAGE'S KEYS (C3): a strip of the kit's round keys under the bubble it answers. */
+                    <div data-chat-message-actions className={`gk-keystrip absolute top-full z-20 mt-1 ${message.self ? 'right-0' : 'left-0'}`}>
+                      {canReact && policyAccepted && !disabledReason ? <RoundButton small glyph="react" label={t('chat.addReaction')}
+                        onPress={() => {
                           const log = history.current;
-                          const row = event.currentTarget.closest('[data-chat-row]');
+                          const row = log?.querySelector(`[data-chat-row="${CSS.escape(message.id)}"]`);
                           if (log && row) setPickerBelow(row.getBoundingClientRect().top - log.getBoundingClientRect().top < 72);
                           setPickerMessageId(pickerMessageId === message.id ? null : message.id);
-                        }}
-                      >☺</button> : null}
+                        }} /> : null}
                       {onMute && !disabledReason && tone !== 'dm' && !message.self && message.admin !== true ? (
-                        <button type="button" data-chat-mute aria-label={t('chat.personalMutes.mute', { name: message.username })}
-                          className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                          onClick={() => {
+                        <Press data-chat-mute aria-label={t('chat.personalMutes.mute', { name: message.username })} className="gk-round gk-round--small"
+                          onPress={() => {
                             onMute(message);
                             setActionMessageId(null); setPickerMessageId(null);
                             if (replyTarget?.authorPlayerId === message.authorPlayerId) onReplyTarget(null);
                           }}
-                        ><MuteIcon className="size-4" /></button>
+                        ><span className="gk-round__face"><Glyph id="mute" /></span></Press>
                       ) : null}
-                      {canReply && !disabledReason ? <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
-                        onClick={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }}
-                      >↩</button> : null}
-                      {!message.self ? <button type="button" aria-label={t('moderation.report')} className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                        onClick={() => { setReportSubject({ channel: tone, messageId: message.id, playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }}
-                      ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0" /></svg></button> : null}
-                      {!message.self ? <button type="button" aria-label={t('moderation.blocks.action')} className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                        onClick={() => { setBlockSubject({ playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }}
-                      ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3ZM8 12h8" /></svg></button> : null}
+                      {canReply && !disabledReason ? <RoundButton small glyph="reply" label={t('chat.reply')}
+                        onPress={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }} /> : null}
+                      {!message.self ? <RoundButton small glyph="flag" label={t('moderation.report')}
+                        onPress={() => { setReportSubject({ channel: tone, messageId: message.id, playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }} /> : null}
+                      {!message.self ? <RoundButton small glyph="block" tone="danger" label={t('moderation.blocks.action')}
+                        onPress={() => { setBlockSubject({ playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }} /> : null}
                     </div>
                   ) : null}
                   {canReact && policyAccepted && pickerMessageId === message.id && !disabledReason ? (
-                    <div data-chat-reaction-picker className={`absolute ${message.self ? 'right-0' : 'left-0'} z-30 grid w-max grid-cols-6 gap-0.5 rounded-pill border border-v2-line-hi bg-v2-raise p-1 shadow-xl ${pickerBelow ? 'bottom-1/2 mt-14' : 'bottom-1/2'}`} role="group" aria-label={t('chat.chooseReaction')}>
-                      {REACTION_EMOJIS.map((emoji) => (
-                        <button key={emoji} type="button" aria-label={t('chat.reactWith', { emoji })} aria-pressed={message.reactions?.some(item => item.emoji === emoji && item.mine) ?? false}
-                          disabled={reaction.isPending} className="grid size-7 place-items-center rounded-full text-caption hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                          onClick={() => { reaction.mutate({ channel: tone, messageId: message.id, emoji: message.reactions?.some(item => item.emoji === emoji && item.mine) ? null : emoji }); setPickerMessageId(null); setActionMessageId(null); }}
-                        >{emoji}</button>
-                      ))}
+                    <div data-chat-reaction-picker role="group" aria-label={t('chat.chooseReaction')}
+                      className={`gk-keystrip absolute z-30 ${message.self ? 'right-0' : 'left-0'} ${pickerBelow ? 'top-full mt-[52px]' : 'bottom-full mb-1'}`}>
+                      {REACTION_EMOJIS.map((emoji) => {
+                        const chosen = message.reactions?.some(item => item.emoji === emoji && item.mine) ?? false;
+                        return (
+                          <Press key={emoji} aria-label={t('chat.reactWith', { emoji })} aria-pressed={chosen} disabled={reaction.isPending} className="gk-emoji"
+                            onPress={() => { reaction.mutate({ channel: tone, messageId: message.id, emoji: chosen ? null : emoji }); setPickerMessageId(null); setActionMessageId(null); }}
+                          >{emoji}</Press>
+                        );
+                      })}
                     </div>
                   ) : null}
                 </div>
@@ -1056,21 +1095,24 @@ function ChannelPanel({
 
       <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
         {isAdmin ? <ChatMediaComposer pasteTarget={composer} value={media} onChange={setMedia} onBusy={setUploading} disabled={posting || disabledReason !== null} /> : null}
-        {disabledReason ? <p role="status" className="mb-2 text-micro text-v2-warn">{disabledReason}</p> : null}
+        {disabledReason ? <p role="status" className="mb-2 flex items-start gap-1.5 text-caption leading-snug text-v2-warn"><Glyph id="lock" className="gk-glyph mt-0.5 shrink-0" />{disabledReason}</p> : null}
         {replyTarget ? (
           <div className="mb-2 flex min-w-0 items-start gap-2 rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1" data-chat-composer-reply={replyTarget.id}>
             <div className="min-w-0 flex-1 text-micro">
               <span className="block font-semibold text-v2-self">{t('chat.replyingTo', { name: replyTarget.username })}</span>
               <span className="block truncate text-v2-ink-2">{replyTarget.content || (replyTarget.media ? t(`chat.media.${replyTarget.media.kind === 'image' ? 'photo' : replyTarget.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
             </div>
-            <button type="button" aria-label={t('chat.cancelReply')} onPointerDown={keepComposerFocus} onClick={() => { onReplyTarget(null); }}><CloseIcon className="size-4" /></button>
+            <button type="button" {...OWN_SOUND} aria-label={t('chat.cancelReply')} onPointerDown={keepComposerFocus}
+              onClick={() => { playSound('tap'); haptic('tap'); onReplyTarget(null); }}
+              className="gk-round gk-round--small -my-2 -mr-2 shrink-0"><span className="gk-round__face"><Glyph id="close" /></span></button>
           </div>
         ) : null}
         <div className="flex items-center gap-2">
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">{placeholder}</span>
+          {/* Named on itself, not by a wrapping label, so the slot's own rim answers a press. */}
+          <div className="min-w-0 flex-1">
             <textarea
               ref={composer}
+              aria-label={placeholder}
               value={draft}
               disabled={disabledReason !== null}
               rows={1}
@@ -1087,7 +1129,7 @@ function ChannelPanel({
               }}
               className="gk-field__input chat-composer block w-full resize-none"
             />
-          </label>
+          </div>
           <button
             type="submit"
             {...OWN_SOUND}

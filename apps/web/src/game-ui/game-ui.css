@@ -3530,6 +3530,243 @@ button.gk-trow:focus-visible {
   }
 }
 
+/* ── C3: the chat's corners ─────────────────────────────────────────────── */
+
+/* A HELD MESSAGE'S KEYS and its six emoji (C3): a dark strip of round keys that grows out of
+   the bubble it answers. */
+.gk-keystrip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 10px 24px var(--gk-outline), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent);
+  animation: gk-keystrip-in var(--gk-panel) var(--gk-pop) both;
+}
+@keyframes gk-keystrip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gk-emoji {
+  display: grid;
+  place-items: center;
+  width: var(--gk-hit);
+  height: var(--gk-hit);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: var(--gk-t-title);
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-emoji[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--gk-self) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 70%, transparent);
+}
+.gk-emoji:active {
+  transform: scale(0.84);
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+.gk-emoji:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-emoji:disabled {
+  opacity: 0.5;
+}
+
+/* A REACTION a thumb can hit (C3): the pill is 28 px, its key the kit's 44; yours in your colour. */
+.gk-react {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--gk-hit);
+  min-height: var(--gk-hit);
+  padding: 0 1px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-react__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 2px 6px var(--gk-outline);
+  color: var(--gk-ink-2);
+  font-size: var(--gk-t-small);
+  line-height: 1;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-react[data-mine] .gk-react__pill {
+  color: var(--gk-self);
+  border-color: color-mix(in srgb, var(--gk-self) 70%, var(--gk-metal-edge));
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-react:active .gk-react__pill {
+  transform: scale(0.88);
+}
+.gk-react:focus-visible {
+  outline: none;
+}
+.gk-react:focus-visible .gk-react__pill {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 1px;
+}
+
+/* THE PRIVATE ROOM'S LETTERS (C3): one plate per open conversation — its name, a red count,
+   and on the open one its own close key; the open one lit like a chosen tab. */
+.gk-peers {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gk-peer {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  max-width: 11rem;
+  border-radius: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-peer[data-open] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent 80%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}
+.gk-peer__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: var(--gk-hit);
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--gk-ink-2);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-peer[data-open] .gk-peer__tab {
+  padding-right: 2px;
+  color: var(--gk-ink);
+}
+.gk-peer__tab:active {
+  transform: translateY(1px);
+}
+.gk-peer__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-peer__close {
+  display: grid;
+  place-items: center;
+  width: var(--gk-hit);
+  border: 0;
+  background: none;
+  color: var(--gk-ink-2);
+  font-size: var(--gk-t-small);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-peer__close:active {
+  color: var(--gk-ink);
+  background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+
+/* A COMMANDER TO WRITE TO (C3): crest, name, and the letter it opens. */
+.gk-contact {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s3);
+  width: 100%;
+  min-height: 52px;
+  padding: 6px var(--gk-s3) 6px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-contact:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, var(--gk-metal-3), var(--gk-metal-2));
+}
+.gk-contact__name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-contact__mark {
+  color: var(--gk-self);
+  font-size: var(--gk-t-lead);
+}
+
+/* A small panel beside what opened it (who reacted, C3). */
+.gk-pop {
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-deep));
+  box-shadow: 0 14px 32px var(--gk-outline);
+  animation: gk-keystrip-in var(--gk-panel) var(--gk-pop) both;
+}
+
+/* Many answers two to a row (a report's seven reasons, C3): sentence case, a long one wraps in its
+   plate. Two classes, so the row of plates defined further down does not take it back. */
+.gk-tabs.gk-choices--grid {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: visible;
+}
+.gk-choices--grid > .gk-tab {
+  padding: 6px 8px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+/* A field of several lines keeps the slot's glass and gets its breath at the top. */
+textarea.gk-field__input {
+  padding-block: 10px;
+  line-height: 1.4;
+  resize: none;
+}
+
 /* A round key that cannot act yet (nothing to send): dimmed, and it does not move under the thumb. */
 .gk-round:disabled {
   cursor: default;

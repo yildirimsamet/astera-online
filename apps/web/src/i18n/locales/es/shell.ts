@@ -588,7 +588,7 @@ export const chat = {
     title: 'MD', loading: 'Abriendo mensajes privados', conversations: 'Conversaciones privadas',
     start: 'Nuevo mensaje privado', closeTab: 'Cerrar pestaña de {{name}}', searchLabel: 'Buscar comandante',
     searchPlaceholder: 'Buscar comandantes', cancel: 'Cancelar', contacts: 'Comandantes',
-    noContacts: 'No hay comandantes disponibles.', empty: 'Elige un comandante para iniciar una conversación privada.',
+    noContacts: 'No hay comandantes disponibles.', emptyTitle: 'Aún no hay mensajes privados', empty: 'Elige un comandante para iniciar una conversación privada.',
     emptyConversation: 'Saluda a {{name}}.', list: 'Mensajes con {{name}}',
     placeholder: 'Escribir a {{name}}', waitingHint: 'Este comandante está en Silent Space. Podrás escribirle cuando regrese.',
     seasonEndedHint: 'Esta temporada terminó. Los mensajes privados empezarán de nuevo en la próxima.',

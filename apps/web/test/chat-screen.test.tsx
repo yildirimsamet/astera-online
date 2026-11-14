@@ -215,7 +215,7 @@ describe('galaxy chat surface', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /👍.*1/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Reactions' });
     expect(await screen.findByText('Vantage')).toBeInTheDocument();
-    expect(dialog.querySelector('[data-reaction-roster]')).toHaveStyle({ height: '108px', overflowY: 'auto' });
+    expect(dialog.querySelector('[data-reaction-roster]')).toHaveStyle({ height: '120px', overflowY: 'auto' });
     expect(api.reactToMessage).not.toHaveBeenCalled();
     const user = userEvent.setup();
     await user.keyboard('{Tab}');

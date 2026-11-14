@@ -758,6 +758,67 @@ Sohbet:
 
 Kalanlar mesaj balonlarının içinde ve C3'ün işi: tepki çipleri, yazar adının dünyaya uçuran bağlantısı, sezon kupası ve destekçi kalbi; uzun basışla açılan eylem çubuğu ve emoji seçici (28 px). Üç noktayla kesilen 12 metnin hepsi yanıtlanan mesajın tek satırlık alıntısı; önizleme olduğu için bilerek böyle.
 
+**C3 sohbetin köşeleri ✅ (2026-11-14, yardımcı oturum).** G8 #2 DM paneli, #3 medya ve tepkiler, #4 içerik bildir. Oyuncunun anları şunlar: bir mesaja basılı tutup ona cevap vermek, tepki bırakmak, susturmak, bildirmek ya da engellemek; birinin tepkisine bakıp kimlerin bıraktığını görmek; yazarın adına dokunup dünyasına uçmak; özel mesajda kiminle konuştuğunu seçmek, yeni birine yazmak, gerekirse engellemek. Mesaj, tepki, bildirim ve engel kuralları değişmedi.
+
+Önce kite eklenenler:
+- Üç işaret: `react` (gülen yüz), `reply` (geri dönen ok), `flag` (bildirme flaması).
+- `Choices` artık `columns={2}` alıyor; çok cevaplı bir soru iki sütuna diziliyor. Henüz cevaplanmamış bir soruda Tab ilk cevaba gidiyor; önceden klavye gruba hiç giremiyordu.
+- Malzemeler:
+  - `.gk-keystrip`: tutulan mesajın tuş şeridi.
+  - `.gk-emoji`: 44 px emoji tuşu.
+  - `.gk-react`: 28 px hap üstünde 44 px tepki tuşu.
+  - `.gk-peers` / `.gk-peer`: özel mektup plakaları.
+  - `.gk-contact`: yazılacak komutan satırı.
+  - `.gk-pop`: yanında açılan küçük panel.
+- Çok satırlı cam alan (`textarea.gk-field__input`) üstten nefes alıyor.
+
+Sohbet:
+- Basılı tutulan balon parmağın altında yavaşça çöküyor. Tuşlar açılınca balon kendi renginde yanıyor ve tuş şeridi balonun altından çıkıyor. Önceden şerit balonun yazısının üstüne biniyordu.
+- Tuşlar kitin küçük yuvarlak tuşları: tepki, sustur (ortada, sahibin kararı), yanıtla, bildir, engelle (kırmızı). Önceden 28 px ve yarısı karakterden (☺ ↩) yapılmıştı.
+- Emoji seçici altı adet 44 px tuş. Seçtiğin emoji kendi renginde basılı duruyor. Basınca bir tık ve bir titreşim geliyor.
+- Tepkiler kitin hapları. Senin tepkin kendi renginde. Basınca tepkiyi bırakanların paneli açılıyor; kapatma tuşu kitin yuvarlak tuşu, satırlar 40 px.
+- Yazar adı ve sezon kupası/destekçi kalbi 44 px tuş. Satır yüksekliği değişmedi; dokunma alanı satırın dışına taşıyor. Yazar adı dünyaya uçarken artık ses de veriyor.
+- Yanıt iptali kitin küçük yuvarlak tuşu. "Daha eski mesajlar" kitin tuşu. Yazılamayan konuşmanın nedeni kilit işaretiyle 13 px.
+
+Özel mesaj:
+- Açık konuşmalar plaka. Okunmamış sayısı kırmızı sayı. Kapatma tuşu yalnız açık olanda, 44 px. Yeni konuşma tuşu kitin yuvarlak artısı.
+- Hiç konuşma yoksa sekme satırı gizleniyor. Kitin boş durumu "Henüz özel mesaj yok" diyor ve altında "Yeni DM başlat" tuşu var; önceden yalnız bir cümle vardı.
+- Komutan arama kitin cam alanı, "Vazgeç" kitin tuşu. Komutanlar arması, adı ve mektup işaretiyle 52 px satırlar.
+- Engelleme düğmesi yazılı bir kit tuşu ("Engelle" kırmızı, "Engeli kaldır" çelik). Başlıktaki engellenenler listesinin yuvarlak tuşuyla karışmıyor. Okuyucu kimi engellediğini duyuyor. Yolda olan bir engel ikinci basışı göndermiyor.
+
+İçerik bildir:
+- İki yerli `<select>` kalktı. "Neyi bildiriyorsun?" iki plaka. Yedi neden iki sütunda.
+- Gönder tuşu neden seçilene kadar "Bir neden seç" diyor. Gönderirken dönen bir işaret gösteriyor. Makbuz kitin yeşil bandı, numarası altında. Form açıkken alttaki ikinci "Kapat" kalktı; başlıktaki kapatma yetiyor.
+
+Medya (yönetici ekler, herkes görür):
+- Ekle, Fotoğraf, Video, YouTube, Ekle/İptal/Yeniden dene kitin tuşları. Bağlantı alanı cam alan.
+- Tam ekran fotoğrafın kapatma tuşu kitin yuvarlak tuşu. Dikey/yatay geçişi kitin tuşu.
+
+Galeriye sekiz görünüm eklendi: `chat-dm`, `chat-dm-empty`, `chat-dm-new`, `chat-actions`, `chat-react`, `chat-roster`, `chat-report`, `chat-media`. Basış isteyen görünüm, varınca o basışı kendisi yapıyor. Denetimin sohbet yollarına yazıldılar; "ulaşılamayan" listesinde yalnız engellenenler ve sessize alınanlar kaldı (C4).
+
+Ölçüm: `reports/ui-audit/c3-chat-corners-after-2026-11-14.md`, dokuz yol, 126 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 28 | 2 → 0 |
+| Kontrastı yetmeyen metin | 6 | 4 |
+| 44 px altı hedef | 138 | 20 |
+| WCAG aralık hatası | 20 | 10 |
+| Basınca tepkisiz | 74 | 6 → 0 |
+| Üç noktayla kesilen metin | 79 | 89 → 79 |
+| 300 ms üstü geçiş | 0 | 64 → 0 |
+
+Ölçümden sonra dört şey düzeltildi; "→" ile gösterilenler `gallery:chat` ve `gallery:chat-actions` yolları yeniden ölçülerek (28 ölçüm) ve bir sonda ile doğrulandı:
+- Tepki panelinin başlığı 10 px'ti. Panel sohbetin dışına açıldığı için sohbetin yazı tabanı ona uygulanmıyordu; artık kitin 14 px'ini alıyor.
+- Fransızca dar ekranda yazar adı ("Mira") sıkışıp kesiliyordu. Kupa ve kalp tuşları 44 px kalıyor ama yanlarındaki boşluktan 6'şar px ödünç alıyor.
+- Yazma alanı bir etiketin içindeydi; basınca yanan kenar etikete gidiyordu. Artık alan kendi adını taşıyor.
+- Balonun çökme süresi 450 ms'ten 280 ms'ye indi.
+
+Kalanlar:
+- Kontrast: tutulan mesajın tuş şeridinin altında kalan saat yazısı.
+- 44 px altı: listenin tepesinde neredeyse görünmeyen balonun 14 px'lik ucu ve tepki panelinin altında kalan sekme. İkisi de gerçek bir küçük hedef değil.
+- Kesilen metin: yanıtlanan mesajın tek satırlık alıntısı (bilerek böyle) ile Fransızca, İspanyolca ve Japoncada sheet başlığı ("Signaler un contenu ou un joueur"). Başlık G1'in çerçevesinin işi.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.
