@@ -297,7 +297,7 @@
   SILENT_SPACE_LOCKED: "Les attaques et la collecte sont fermées dans l’Espace Silencieux. Pour les utiliser, demande ton retour depuis Menu → Espace Silencieux.",
   NOT_IN_WAITING: 'Tu appartiens déjà à une galaxie principale.',
   WAITING_JOIN_FORBIDDEN: 'Choisis une galaxie principale ouverte pour commencer à jouer.',
-  SHIPYARD_TOO_LOW: 'Un Chantier Spatial de niveau {{level}} est requis',
+  SHIPYARD_TOO_LOW: 'Un Chantier spatial de niveau {{level}} est requis',
   SLOT_COOLING: 'Cet emplacement est encore en récupération ; {{minutes}} minutes restantes',
   TARGET_PROSPECTOR_CAP: 'Ce monde peut accueillir au maximum {{max}} Prospecteurs ; il en possède déjà {{have}}.',
   TARGET_HANGAR_FULL: 'Le Hangar de ce monde est plein : {{used}} sur {{capacity}} d’espace sont utilisés et cette flotte en exige {{needed}}.',

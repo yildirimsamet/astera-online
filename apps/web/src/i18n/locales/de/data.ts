@@ -314,10 +314,10 @@ export const gains = {
     raisesCap: 'Erhöht die Niveauobergrenze für Gebäude',
   },
   hangar: {
-    label: 'Flottenraum',
-    value: '{{room}} Raum',
+    label: 'Flottenplätze',
+    value: '{{room}} Plätze',
     none: 'Kein Hangar',
-    ceiling: 'Bis zu {{room}} auf der obersten Sprosse',
+    ceiling: 'Bis zu {{room}} auf der höchsten Stufe',
   },
   refinery: {
     label: 'Legierung pro Stunde',

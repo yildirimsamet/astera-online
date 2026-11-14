@@ -2228,6 +2228,106 @@ button.gk-trow:focus-visible {
   font-weight: 600;
   color: var(--gk-ink-2);
 }
+/* a lane with nothing in it while another works: one dashed line in the warning colour —
+   time going unspent — and a door to the tab that fills it (G2-c) */
+.gk-qidle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 4px 10px;
+  border: 1px dashed color-mix(in srgb, var(--gk-warn) 55%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-warn) 6%, transparent);
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease), transform var(--gk-quick) var(--gk-ease);
+}
+.gk-qidle .gk-tag__rule {
+  flex: 1;
+}
+.gk-qidle:active {
+  background: color-mix(in srgb, var(--gk-warn) 16%, transparent);
+  transform: scale(0.99);
+}
+.gk-qidle:focus-visible {
+  outline: 2px solid var(--gk-warn);
+  outline-offset: 2px;
+}
+.gk-qidle__free {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-warn);
+  white-space: nowrap;
+}
+.gk-qidle__free .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── what is broken on this world: crews at work as timers, the rest as doors to their sheet (G2-c) ── */
+
+.gk-faults {
+  display: grid;
+  gap: 2px;
+}
+.gk-faults .gk-tag__name {
+  color: var(--gk-warn);
+}
+.gk-faults__list > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-frow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  align-items: center;
+  column-gap: 9px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 2px;
+  border-radius: var(--gk-r-sm);
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-frow:active {
+  background: color-mix(in srgb, var(--gk-warn) 12%, transparent);
+}
+.gk-frow:focus-visible {
+  outline: 2px solid var(--gk-warn);
+  outline-offset: -2px;
+}
+/* No crew on it yet: an empty ring, dashed, in the warning colour — the timer it will become. */
+.gk-frow__coin {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px dashed color-mix(in srgb, var(--gk-warn) 60%, transparent);
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--gk-warn);
+}
+.gk-frow__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-frow__name {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.gk-frow > .gk-glyph {
+  color: var(--gk-ink-3);
+}
 
 /* ── what a thing costs: resources as pictures, the short one marked, the time at the end ── */
 

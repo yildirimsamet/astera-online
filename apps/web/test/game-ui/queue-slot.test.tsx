@@ -89,3 +89,11 @@ describe('the free slot', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 });
+
+/** A kit press answers with its own sound, so the mixer's click must not sound as well (G2-c). */
+describe('a press on a queue slot', () => {
+  it('answers with its own sound alone', () => {
+    slot();
+    expect(screen.getByRole('button', { name: 'Alaşım Rafinerisi · 2 sa 10 dk' })).toHaveAttribute('data-own-sound');
+  });
+});

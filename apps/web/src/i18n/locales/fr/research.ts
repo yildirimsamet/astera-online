@@ -33,7 +33,7 @@ export const research = {
   queueCapacity: "{{count}} emplacements",
   queueLane: "Recherche du commandant",
   queueGlobalHint:
-    "Cette file appartient à ton commandant et une recherche commencée ne peut pas être annulée. Les files de Construction et de Chantier Spatial de chaque planète fonctionnent séparément.",
+    "Cette file appartient à ton commandant et une recherche commencée ne peut pas être annulée. Les files de Construction et de Chantier spatial de chaque planète fonctionnent séparément.",
   runningLabel: "En cours",
   runningFinishes: "se termine à {{time}}",
   idleLabel: "Aucune recherche en cours",
@@ -71,7 +71,7 @@ export const research = {
   sheetComplete: "Recherche terminée",
   sheetCost: "Coût de la recherche",
   sheetOnce:
-    "Entre dans la file de Recherche commune de ton commandant. N’utilise aucun emplacement de Construction ni de Chantier Spatial.",
+    "Entre dans la file de Recherche commune de ton commandant. N’utilise aucun emplacement de Construction ni de Chantier spatial.",
   sheetRung: "Niveau {{level}} sur {{max}}. Chaque niveau est acheté séparément.",
   isotopeName: "Spectrométrie Isotopique",
   isotopeTag: "Débloque l’extraction du Deutérium",
@@ -97,7 +97,7 @@ export const research = {
     "Chaque palier débloque trois niveaux supplémentaires de Raffinerie de Deutérium sur tous tes mondes.",
   synthesisDetail:
     "Chaque palier de recherche augmente de trois le niveau maximal de la Raffinerie de Deutérium sur tous tes mondes. Tu dois ensuite construire séparément ces niveaux de Raffinerie sur chaque monde où tu veux produire davantage de carburant.",
-  yardName: "Automatisation du Chantier Spatial",
+  yardName: "Automatisation du Chantier spatial",
   yardTag: "Construit les vaisseaux plus rapidement",
   yardRole:
     "Réduit la durée des nouvelles commandes de vaisseaux et de défenses au sol sur toutes vos planètes.",
@@ -130,9 +130,9 @@ export const research = {
   engineeringName: "Ingénierie Stellaire",
   engineeringTag: "Débloque les vaisseaux de haut palier",
   engineeringRole:
-    "Ingénierie I autorise les coques de troisième palier et Ingénierie II celles de quatrième palier. Les recherches de systèmes et les conditions de Chantier Spatial propres à chaque vaisseau restent applicables.",
+    "Ingénierie I autorise les coques de troisième palier et Ingénierie II celles de quatrième palier. Les recherches de systèmes et les conditions de Chantier spatial propres à chaque vaisseau restent applicables.",
   engineeringDetail:
-    "Le niveau 1 satisfait le prérequis d’ingénierie des vaisseaux de palier 3. Le niveau 2 fait de même pour le palier 4. Chaque vaisseau peut aussi exiger Puissance, Armure, Propulsion ou Charges Gravitiques. Le niveau de Chantier naval requis reste nécessaire.",
+    "Le niveau 1 satisfait le prérequis d’ingénierie des vaisseaux de palier 3. Le niveau 2 fait de même pour le palier 4. Chaque vaisseau peut aussi exiger Puissance, Armure, Propulsion ou Charges Gravitiques. Le niveau de Chantier spatial requis reste nécessaire.",
   powerName: "Puissance des Vaisseaux",
   powerTag: "Augmente l’attaque des vaisseaux de combat",
   powerRole:

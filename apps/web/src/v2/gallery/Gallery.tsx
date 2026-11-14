@@ -238,7 +238,7 @@ const launchIntel: IntelView = {
  * commander has no damaged ship, so the card and its sheet are photographed here.
  * `empty` draws the station with nothing in it; `open` names the row the sheet opens on.
  */
-function GalleryBase({ empty = false, open = false, production = false }: { empty?: boolean; open?: boolean; production?: boolean }) {
+function GalleryBase({ empty = false, open = false, production = false, faults = false }: { empty?: boolean; open?: boolean; production?: boolean; faults?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const order = (id: string, slot: number, subject: string, count: number, from: number, to: number) => ({
@@ -250,6 +250,14 @@ function GalleryBase({ empty = false, open = false, production = false }: { empt
       buildings: { CORE: 6, REFINERY: 5, EXTRACTOR: 5, VAULT: 2, SHIPYARD: 4, HANGAR: 3 },
       fleet: { DART: 40, TALON: 10, WARDEN: 2 },
       rulesetVersion: 14,
+      // G2-c: one crew at work, two faults no crew is on yet — one the store can pay, one it cannot.
+      ...(faults ? {
+        faults: [
+          { id: 'f-1', kind: 'REFINERY_OUTAGE' as const, startedAt: new Date(NOW - 40 * MIN), cost: { alloy: 600, crystal: 200, deuterium: 0 }, repair: { slot: 0, readyAt: new Date(NOW + 7 * MIN) } },
+          { id: 'f-2', kind: 'VAULT_LEAK' as const, startedAt: new Date(NOW - 20 * MIN), cost: { alloy: 300, crystal: 0, deuterium: 0 }, repair: null },
+          { id: 'f-3', kind: 'TELESCOPE_FAULT' as const, startedAt: new Date(NOW - 10 * MIN), cost: { alloy: 900, crystal: 1_200, deuterium: 0 }, repair: null },
+        ],
+      } : {}),
       ...(empty ? {} : {
         fleetDocked: { BALLISTA: 1, TALON: 2, WARDEN: 1, DART: 3 },
         dock: {
@@ -873,6 +881,7 @@ function Views({ view }: { view: string }) {
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
+  if (view === 'base-faults') return <GalleryBase production faults />;
   if (view === 'base-research') return <GalleryResearch />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;

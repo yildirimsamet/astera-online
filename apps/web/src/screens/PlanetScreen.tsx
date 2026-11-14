@@ -71,7 +71,9 @@ import {
   useBuildDeathStar,
 } from '../api/queries.js';
 import type { FaultView, PlanetView } from '../api/schemas.js';
-import { FaultMark } from '../ui/marks.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { FaultSheet } from './FaultSheet.js';
 import { FaultProvider, useFaults } from './faultScope.js';
 
@@ -139,7 +141,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, GameButton, GameHold, GameTabs, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, GameButton, GameHold, GameTabs, Glyph, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -508,7 +510,7 @@ export function PlanetScreen({
         */}
         {(data.faults?.length ?? 0) > 0 && (
           <div className="px-[var(--gk-gutter)] pt-2">
-            <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
+            <FaultRepairs planet={data} held={held} onOpen={(fault) => { setFaultSheet(fault.id); }} />
           </div>
         )}
 
@@ -521,7 +523,7 @@ export function PlanetScreen({
         </div>}
 
         <div className="flex flex-col gap-2 px-[var(--gk-gutter)]">
-          <BaseQueues planet={data} />
+          <BaseQueues planet={data} onIdle={(lane) => { setTab(lane === 'CONSTRUCTION' ? 'grow' : 'reach'); }} />
         </div>
 
         {recovering && (
@@ -702,9 +704,11 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
  */
 function FaultRepairs({
   planet,
+  held,
   onOpen,
 }: {
   planet: PlanetView;
+  held: Projected;
   onOpen: (fault: FaultView) => void;
 }) {
   const { t } = useTranslation();
@@ -733,67 +737,56 @@ function FaultRepairs({
     .toSorted((a, b) => FAULT_KINDS.indexOf(a.kind) - FAULT_KINDS.indexOf(b.kind));
 
   return (
-    <section className="overflow-hidden rounded-control border border-v2-warn/40 bg-v2-panel font-v2-ui" aria-label={t('faults.strip.title')}>
-      <header className="flex items-baseline gap-2 border-b border-v2-line px-3 py-2">
-        <h2 className="v2-legend flex items-center gap-1 text-v2-warn">
-          <FaultMark className="size-[13px]" />
-          {t('faults.strip.title')}
-        </h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-v2-line to-transparent" />
-        <span className="font-v2-mono text-micro text-v2-ink-3">
-          {t('faults.strip.capacity', { count: FAULT.repairSlots })}
-        </span>
-      </header>
-      <ul className="flex flex-col">
-        {running.map((fault) => (
-          <li key={fault.id}>
-            {/*
-              NO CANCEL CONTROL, and its absence is the contract. `QueueStrip` takes an
-              optional `onCancel` for exactly this reason and the build queue passes one;
-              this lane does not, and neither does commander research.
-            */}
-            <button
-              type="button"
-              data-fault-lane="running"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left"
-              onClick={() => { onOpen(fault); }}
-            >
-              <span className="v2-legend shrink-0 text-v2-ink-3">
-                {t('faults.strip.lane', { slot: (fault.repair?.slot ?? 0) + 1 })}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-caption text-v2-ink-2">
-                {t(`faults.name.${fault.kind}`)}
-              </span>
-              <span className="shrink-0 font-v2-mono text-caption text-v2-ink">
-                {fault.repair ? countdown(fault.repair.readyAt.getTime() - now) : ''}
-              </span>
-            </button>
-          </li>
-        ))}
+    <section className="gk gk-faults" aria-label={t('faults.strip.title')}>
+      <SectionTag as="h2" aside={t('faults.strip.capacity', { count: FAULT.repairSlots })}>{t('faults.strip.title')}</SectionTag>
+      <ul className="gk-faults__list">
+        {running.map((fault) => {
+          const left = fault.repair ? Math.max(0, fault.repair.readyAt.getTime() - now) : 0;
+          return (
+            <li key={fault.id} data-fault-lane="running">
+              {/*
+                NO CANCEL CONTROL, and its absence is the contract. `QueueStrip` takes an
+                optional `onCancel` for exactly this reason and the build queue passes one;
+                this lane does not, and neither does commander research. The ring measures
+                against the longest a repair can take: the server says when it is ready, not
+                when it began.
+              */}
+              <TimerRow
+                tone="warn"
+                glyph="repair"
+                remaining={left}
+                total={FAULT.repairMaxMinutes * 60_000}
+                title={t(`faults.name.${fault.kind}`)}
+                detail={t('faults.strip.lane', { slot: (fault.repair?.slot ?? 0) + 1 })}
+                time={countdown(left)}
+                onPress={() => { onOpen(fault); }}
+              />
+            </li>
+          );
+        })}
         {waiting.map((fault) => (
           <li key={fault.id}>
-            <button
-              type="button"
-              data-fault-lane="waiting"
-              className="flex w-full items-center gap-2 border-t border-v2-line px-3 py-2 text-left first:border-t-0"
-              onClick={() => { onOpen(fault); }}
-            >
-              <span className="min-w-0 flex-1 truncate text-caption text-v2-ink">
-                {t(`faults.name.${fault.kind}`)}
-              </span>
-              <span className="shrink-0 font-v2-mono text-caption text-v2-ink-3">
-                {fault.cost.crystal > 0
-                  ? t('faults.strip.priceBoth', {
-                    alloy: full(fault.cost.alloy),
-                    crystal: full(fault.cost.crystal),
-                  })
-                  : t('faults.strip.priceAlloy', { alloy: full(fault.cost.alloy) })}
-              </span>
-            </button>
+            <FaultLine fault={fault} held={held} onOpen={onOpen} />
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/** A fault no crew is on yet: what is broken and what it costs to mend, a door to its sheet (G2-c). */
+function FaultLine({ fault, held, onOpen }: { fault: FaultView; held: Projected; onOpen: (fault: FaultView) => void }) {
+  const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(fault); });
+  return (
+    <button type="button" {...OWN_SOUND} data-fault-lane="waiting" className="gk-frow" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-frow__coin" aria-hidden="true"><Glyph id="damaged" /></span>
+      <span className="gk-frow__text">
+        <span className="gk-frow__name">{t(`faults.name.${fault.kind}`)}</span>
+        <CostLine cost={fault.cost} held={held} />
+      </span>
+      <Glyph id="next" />
+    </button>
   );
 }
 

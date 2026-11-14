@@ -181,6 +181,20 @@ describe('onarım şeridi', () => {
     expect(screen.getByRole('heading', { name: 'Telescope failure' })).toBeInTheDocument();
   });
 
+  /** G2-c: koşan onarım kitin zamanlayıcı satırı, bekleyen arıza fiyatını kaynak resimleriyle söyler. */
+  it('oyun kitinde: koşan onarım zamanlayıcı satırı, bekleyen arıza fiyatıyla', () => {
+    show([
+      fault('VAULT_LEAK'),
+      { ...fault('CORE_OUTAGE'), repair: { slot: 1, readyAt: new Date(Date.now() + 600_000) } },
+    ], 'grow');
+    const strip = screen.getByRole('region', { name: 'Repairs' });
+    expect(strip.querySelector('[data-fault-lane="running"] .gk-trow')).not.toBeNull();
+    expect(strip.querySelector('[data-fault-lane="running"]')).toHaveTextContent('Crew 2');
+    const waiting = strip.querySelector('[data-fault-lane="waiting"]')!;
+    expect(waiting.querySelector('.gk-cost')).not.toBeNull();
+    expect(waiting).toHaveAttribute('data-own-sound');
+  });
+
   it('koşan ve bekleyen arızalar aynı listede, koşanlar önce', () => {
     show([
       fault('VAULT_LEAK'),

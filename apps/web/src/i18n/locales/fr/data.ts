@@ -57,7 +57,7 @@ export const vocabulary = {
       detail: 'Le magasin grandit d’abord grâce à son échelle d’heures de production créée. À des niveaux élevés, si cet étage est trop petit, le magasin L s\'agrandit pour contenir 110 % du coût de l\'alliage de la raffinerie d\'alliage L → L + 1 et du coût du cristal de l\'extracteur de cristal L → L + 1 ; la fenêtre horaire qui en résulte s\'applique également au Deutérium. Un raid ne peut pas atteindre le moindre des 10 % inférieurs du magasin ou 8 heures de production de cette ressource. Le magasin ne combat ni ne réduit les dégâts reçus.',
     },
     SHIPYARD: {
-      name: 'Chantier naval',
+      name: 'Chantier spatial',
       tag: 'Ouvre des vaisseaux',
       role: 'Déverrouille les coques · accélère la construction des navires et de la défense au sol · définit la précision et la furtivité des sondes',
       detail: 'Les niveaux supérieurs ouvrent de nouvelles classes de coque et terminent les navires et les défenses au sol plus rapidement. Ils affinent également les lectures de vos sondes et rendent vos propres sondes plus difficiles à attraper. Les niveaux de chantier naval n’ajoutent aucun emplacement de file d’attente.',
@@ -391,8 +391,8 @@ export const gains = {
     raisesCap: 'Relève le plafond des bâtiments',
   },
   hangar: {
-    label: 'Salle de flotte',
-    value: 'Salle {{room}}',
+    label: 'Places de flotte',
+    value: '{{room}} places',
     none: 'Pas de hangar',
     ceiling: 'Jusqu\'à {{room}} au niveau supérieur',
   },

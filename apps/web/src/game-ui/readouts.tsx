@@ -536,7 +536,7 @@ export function QueueSlot({ art, name, count = 1, progress, left, state, label, 
   const built = Math.min(1, Math.max(0, progress));
   const mark = SLOT_MARK[state];
   return (
-    <button type="button" className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" {...OWN_SOUND} className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       <span className="gk-qslot__ring" aria-hidden="true">
         <svg viewBox="0 0 38 38">
           <circle className="gk-qslot__track" cx="19" cy="19" r="16" />

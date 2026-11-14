@@ -179,6 +179,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "En cola",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} hueco libre",
+    freeSlots_other: "{{count}} huecos libres",
     ends: "finaliza {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancelar {{name}}",
@@ -186,7 +189,7 @@ export const planet = {
     idle: "Nada en construcción",
     capacity: "{{count}} ranuras cada una",
     construction: "Construcción",
-    yard: "Yarda",
+    yard: "Astillero",
     repair: "Reparaciones",
     slotFree: "Gratis",
     empty: "No hay trabajo comprometido",
@@ -843,8 +846,6 @@ export const faults = {
   strip: {
     title: "Reparaciones",
     capacity: "{{count}} tripulaciones",
-    priceAlloy: "{{alloy}} aleación",
-    priceBoth: "{{alloy}} aleación · {{crystal}} cristal",
     lane: "Equipo {{slot}}",
   },
   tab: "Averías activas",

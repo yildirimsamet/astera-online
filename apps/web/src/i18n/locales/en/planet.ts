@@ -179,6 +179,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "Queued",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} free slot",
+    freeSlots_other: "{{count}} free slots",
     ends: "ends {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancel {{name}}",
@@ -847,8 +850,6 @@ export const faults = {
   strip: {
     title: "Repairs",
     capacity: "{{count}} crews",
-    priceAlloy: "{{alloy}} alloy",
-    priceBoth: "{{alloy}} alloy · {{crystal}} crystal",
     lane: "Crew {{slot}}",
   },
   tab: "Active faults",

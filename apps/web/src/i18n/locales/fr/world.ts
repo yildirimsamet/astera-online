@@ -387,7 +387,7 @@ export const focus = {
     attackOriginRecovering: "Attaque · planète capitale en récupération",
     attackSilentSpace: "Attaque impossible · fermé dans l’Espace Silencieux",
     attackSilentSpaceShort: "Espace Silencieux",
-    attackShipyardRevolt: "Attaque impossible · mutinerie au Chantier Spatial",
+    attackShipyardRevolt: "Attaque impossible · mutinerie au Chantier spatial",
     attackShipyardRevoltShort: "Mutinerie",
     radiationHere: "Nuage de radiation : chaque vaisseau ici perd {{pct}} % de sa coque par minute. Au-delà de 20 %, il attend la Station de réparation.",
     radiationShelter: "Dans un nuage de radiation, mais sous un abri : les vaisseaux ici ne reçoivent aucune dose.",

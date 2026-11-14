@@ -179,6 +179,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "待機中",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "空き{{count}}枠",
+    freeSlots_other: "空き{{count}}枠",
     ends: "{{time}}に完了",
     segment: "{{name}} · {{duration}}",
     cancelOne: "{{name}}をキャンセル",
@@ -847,8 +850,6 @@ export const faults = {
   strip: {
     title: "修理",
     capacity: "修理班{{count}}組",
-    priceAlloy: "{{alloy}} 合金",
-    priceBoth: "{{alloy}}合金・{{crystal}}クリスタル",
     lane: "修理班{{slot}}",
   },
   tab: "発生中の故障",

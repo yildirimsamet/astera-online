@@ -337,7 +337,7 @@ export const repairStation = {
   ruleTime: "Durée : la même part de son temps de construction. Les niveaux de {{shipyard}} et {{automation}} la raccourcissent.",
   ruleIndustrial: "La recherche {{industrial}} réduit prix et durée à 75 %, puis à 50 %.",
   youPay: "Tu paies {{pct}} % maintenant.",
-  ruleQueue: "Les travaux se suivent, jusqu’à {{depth}} en file, à part de la file du Chantier naval.",
+  ruleQueue: "Les travaux se suivent, jusqu’à {{depth}} en file, à part de la file du Chantier spatial.",
   ruleCancel: "Une annulation rend la moitié du prix ; les vaisseaux attendent à nouveau.",
   industrialChip: "{{industrial}} −{{off}} %",
   damagedHeading: "Vaisseaux endommagés",

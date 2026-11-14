@@ -47,11 +47,27 @@ describe('the Base queues', () => {
     expect(screen.queryByRole('group')).toBeNull();
   });
 
-  it('draws construction and the yard as lanes of rings, free slots said', () => {
+  it('draws a working lane as a lane of rings, its free slots said', () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} />, { wrapper: wrap });
-    expect(screen.getAllByRole('group')).toHaveLength(2);
+    expect(screen.getAllByRole('group')).toHaveLength(1);
     expect(document.querySelectorAll('.gk-qslot[data-state]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-free-slot]').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[data-free-slot]')).toHaveLength(2);
+  });
+
+  /**
+   * AN IDLE LANE IS ONE LINE (G2-c). While another lane works, a lane with nothing in it is not
+   * three empty cells but one dashed line in the warning colour — its whole room free — and a
+   * press takes the player to the tab that fills it.
+   */
+  it('folds an idle lane to one line beside a working one, and that line goes to fill it', async () => {
+    const onIdle = vi.fn();
+    render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} onIdle={onIdle} />, { wrapper: wrap });
+    const idle = document.querySelector<HTMLElement>('[data-lane-idle="YARD"]')!;
+    expect(idle).not.toBeNull();
+    expect(idle.querySelector('.gk-qslot')).toBeNull();
+    expect(idle).toHaveTextContent('3');
+    await userEvent.setup().click(idle);
+    expect(onIdle).toHaveBeenCalledWith('YARD');
   });
 
   /** Stage 4.1: the kit's slots — only the head runs; the one behind it waits, said in words. */
@@ -64,11 +80,13 @@ describe('the Base queues', () => {
     expect(slots[1]).toHaveTextContent(/queued/i);
   });
 
+  /* G2-c: the other two, idle, are one line each beside it rather than lanes of empty cells. */
   it('adds the Repair Station\'s lane beside the other two while a repair runs', () => {
     const repair = order({ id: 'r1', queue: 'REPAIR', kind: 'REPAIR', subject: 'BALLISTA', count: 2 });
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [], YARD: [], REPAIR: [repair] } })} />, { wrapper: wrap });
-    expect(screen.getAllByRole('group')).toHaveLength(3);
+    expect(screen.getAllByRole('group')).toHaveLength(1);
     expect(screen.getByRole('group', { name: /repair/i })).toBeInTheDocument();
+    expect([...document.querySelectorAll<HTMLElement>('[data-lane-idle]')].map((line) => line.dataset.laneIdle)).toEqual(['CONSTRUCTION', 'YARD']);
   });
 
   /** The lane already says Repair: the slot spends its few letters on the ship, the reader still hears the whole order. */
@@ -81,9 +99,11 @@ describe('the Base queues', () => {
     expect(slot).toHaveAccessibleName(/^Repair · Ballista/i);
   });
 
-  it('keeps two lanes when nothing is being repaired', () => {
+  it('draws no repair lane when nothing is being repaired', () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [], REPAIR: [] } })} />, { wrapper: wrap });
-    expect(screen.getAllByRole('group')).toHaveLength(2);
+    expect(screen.getAllByRole('group')).toHaveLength(1);
+    expect(document.querySelector('[data-lane-idle="YARD"]')).not.toBeNull();
+    expect(screen.queryByRole('group', { name: /repair/i })).toBeNull();
   });
 
   it('opens the queue sheet on a tap, and cancels only after Confirm', async () => {

@@ -590,7 +590,7 @@ Galeride 350 px'te bakıldı (`base-production`, `base-fleet`, üç kaydırma). 
 | G2-f | Onarım istasyonu | "Hangi gemileri onarayım?" | Kart ve sheet kitte; tıka basa yığın sekme/adıma iner; onar ve hurda basılı tutma. Yüksek öncelik. |
 | G2-g | Taktik ve Savunma özeti | "Stratejik silah üreteyim mi? Savunmam ne durumda?" | v2 `HoldButton` → kit `GameHold`; depo ve şarj kit okumalarıyla. Savunma sekmesinin başındaki özet kutuları (v2, 9 px) kitte. |
 | G2-h | Filo sekmesi ve Filo sayfası | "Gemilerim nerede, kaç tane?" | Filo sekmesinin yedi bölümü ile ayrı Filo sayfasının görev paylaşımı kararı (gezinme değişebilir); `Segmented` → `GameTabs`; anıt dalgası satırları kitte. |
-| G2-i | Araştırma | "Sırada hangi araştırma?" | Yıldız haritası, seçili kart ve proje sheet'i kitte; 9–10 px yazılar kalkar. |
+| G2-i | Araştırma | "Sırada hangi araştırma?" | Yıldız haritası, seçili kart ve proje sheet'i kitte; 9–10 px yazılar kalkar. de "Sprosse" / es "peldaño" (basamak) birebir çevirileri araştırma metinlerinden kalkar. |
 | G2-j | Dünyalar paneli | "Hangi dünyamda ne var, kaynak aktar" | v1 → kit; iki yerli `<select>` yerine dünya seçici; aktarma basılı tutma. Yüksek öncelik. |
 
 **G2-a Üs kabuğu ✅ (2026-11-14).** Oyuncunun anı: Üs'ü açınca "hangi bölümdeyim, nereye bakmalıyım?" sorusunun cevabı. Asıl karar bir bölüme geçmek. Sekmelerin sırası, açtığı yerler ve kurallar değişmedi.
@@ -650,6 +650,38 @@ Kit sayfasındaki "Bina kartı" bölümü yeni metinlerle güncellendi.
 Görülen ama bu birimin işi olmayanlar:
 - Savunma sekmesinin başındaki özet kutuları (Ateş gücü, Savunma, Kalkan, Risk altında) v2 dilinde ve 9 px yazılı. G2-g'ye eklendi.
 - es `errors.ts` `TARGET_HANGAR_FULL` metninde de "habitación" var. G4 gönderme biriminde düzelecek.
+
+**G2-c kuyruklar ve arıza onarımları ✅ (2026-11-14).** Oyuncunun anı: Üs'e girince "ne yapılıyor, nerede boşluk var, ne bozuk?" sorusuna tek bakışta cevap. Kurallar, kuyruk sheet'i ve arıza sheet'i değişmedi.
+
+Kuyruklar:
+- Bir hat çalışırken boş kalan hat artık üç boş hücre değil, tek satır. Satır kesik çizgili ve uyarı renginde, çünkü boş hat harcanmayan zaman: "İNŞAAT ——— + 3 boş hat". Satır 44 px'lik bir kapı; basınca o hattı dolduran sekmeye geçiyor (İnşaat → Üretim, Tersane → Filo).
+- Çalışan hat aynı kaldı: yuvalar halka, boşlar "Boş hat".
+- Hiçbir şey çalışmıyorsa tek satır kuralı da aynı kaldı.
+- Kuyruk yuvasına basınca iki ses çalıyordu: kendi sesi ve genel düğme sesi. Yuva artık kendi sesini işaretliyor (`data-own-sound`).
+- fr "En attente" yerine "En file" yazıyor, yuvaya sığıyor.
+
+Arıza onarımları (eski v1 şeridinden kite):
+- Başlık uyarı renginde "ONARIM", yanında ekip sayısı.
+- Ekibin çalıştığı arıza kitin zamanlayıcı satırı: dolan halka, ad, "1. ekip", kalan süre.
+- Bekleyen arıza bir kapı satırı: kesik halkalı arıza işareti (başlayınca zamanlayıcıya dönüşecek boş halka), ad, altında fiyat, sağda ok. Kasanın yetmediği kaynak işaretli.
+- Satırlar 52 px; basınca uyarı renginde yanıyor, ses ve titreşim veriyor.
+
+Metin:
+- Kuyruk adı ile bina adı aynı: de "Yard" yerine "Werft", es "Yarda" (uzunluk birimi) yerine "Astillero". fr'de iki ad vardı ("Chantier naval" ve "Chantier Spatial"); hepsi "Chantier spatial".
+- Hangar kartındaki makine çevirileri: fr "Salle 810" (salon) yerine "810 places", de "810 Raum" yerine "810 Plätze", ja "810 ルーム" yerine "810枠", ja "いいえ 格納庫" yerine "格納庫なし". de "Sprosse" ve es "peldaño" Hangar tavanından kalktı. Araştırma metinlerinde de var; orası G2-i'de düzelecek.
+
+Kit sayfasına `base-faults` görünümü eklendi: 1 arıza onarımda, 2 arıza bekliyor (biri kasanın ödeyemediği fiyatla). Denetim artık bunu da ölçüyor; "arıza onarım hatları" ulaşılamayan durumlar listesinden çıktı.
+
+Ölçüm: `reports/ui-audit/g2c-after-2026-11-14.md` (aynı üç yol) ve `g2c-faults-2026-11-14.md` (`base-faults`).
+- G2-b ile karşılaştırma: kesilen metin 6 → 0 (fr "En attente" ve ja bekleme cümlesi). 12 px altı metin, kontrast ve hedef sayıları aynı. Telefonda görünen metin 452 → 434: iki boş hattın altı hücresi iki satıra indi.
+- `base-faults`: 12 px altı metin 0, kontrast hatası 0, kesilen metin 0. Tek bulgu galerinin kökündeki 2×2 px alan; oyunda yok.
+- İlk koşuda bir ölçüm (`base-fleet` en/telefon) "boş yüzey" verdi; o tek ölçüm yeniden koşturuldu, karşılaştırma tam 42 ölçümle.
+
+Denetim envanteri G1-b'den beri eski dosya adını (`WorksLine.tsx`) gösteriyordu; `StatusLine.tsx` olarak düzeldi. Bunu `packages/ui-audit` testleri yakaladı; o testler artık her birimin regresyonunda koşuyor.
+
+Görülen ama bu birimin işi olmayanlar:
+- 320 px'te ja üst kaynak göstergesinde "12,400" komşu kutuya değiyor (G1 üst çubuk; G1 kapandıktan sonra görüldü). G2-c'nin hemen ardından küçük bir G1 düzeltmesi olarak ele alınacak.
+- de metinlerde "Sie" ile "du" karışık: yaklaşık 340 "Sie/Ihre" kalıbına karşı 409 "du/dein" (Üs sekmesi açıklaması "Entwickeln Sie hier Ihre Schiffe"). Oyun tr'de "sen", fr'de "tu" diyor; de "du"ya inecek. Ayrı bir metin birimi; yardımcının sonraki partisine verilecek.
 
 ## G3. İstihbarat
 

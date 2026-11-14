@@ -664,7 +664,7 @@ export const dossier = {
     "Selon la valeur des unités capables de tirer. Au-delà de la moitié, une catégorie est considérée comme dominante.",
   shapeUnread: "Illisible",
   shapeUnreadNote:
-    "Leur Voile est plus avancé que le Chantier Spatial qui a envoyé la sonde.",
+    "Leur Voile est plus avancé que le Chantier spatial qui a envoyé la sonde.",
   shapeRangesNote: "Selon la valeur de ce qui peut tirer. Chaque part est une fourchette ; la vraie part s’y trouve.",
   shieldLabel: "Puissance du bouclier",
   shieldNote:
