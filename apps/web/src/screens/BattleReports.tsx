@@ -615,7 +615,7 @@ export function StrategicReportSheet({
 
           <Losses
             fleet={report.destroyedFleet}
-            tone="text-v2-hostile"
+            tone="threat"
             empty={t('reports.strategicNoFleetLost')}
           />
 
@@ -875,15 +875,15 @@ function ReportSheet({
           roster is the caller's own board, so it discloses nothing: this is the one
           force in the fight the reader already commanded.
         */}
-        <div>
-        <h3 className="text-caption font-semibold text-v2-ink">
-          {t(fleetEntries(report.yourFleet).length > 0 ? 'reports.yourForce' : 'reports.yours')}
-        </h3>
-        {fleetEntries(report.yourFleet).length > 0 ? (
-          <YourForce report={report} />
-        ) : (
-          <Losses fleet={report.yourLosses} tone="text-v2-hostile" empty={t('reports.yoursEmpty')} />
-        )}
+        <div className="gk-report__block">
+          <h3 className="gk-report__subhead">
+            {t(fleetEntries(report.yourFleet).length > 0 ? 'reports.yourForce' : 'reports.yours')}
+          </h3>
+          {fleetEntries(report.yourFleet).length > 0 ? (
+            <YourForce report={report} />
+          ) : (
+            <Losses fleet={report.yourLosses} tone="threat" empty={t('reports.yoursEmpty')} />
+          )}
         </div>
         {/*
           THE WALKOVER, WHICH IS THE MOST COMMON RAID IN THE GAME AND THE ONE THE
@@ -907,23 +907,20 @@ function ReportSheet({
             </p>
           </section>
         ) : (
-        <div>
-        <h3 className="text-caption font-semibold text-v2-ink">{t('reports.howItWent')}</h3>
-        <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('reports.calculation.fireNote')}</p>
-        {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules targetLimit={report.rounds.find(round => round.targetLimit !== undefined)?.targetLimit} /> : null}
-        {!report.pirate ? <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('reports.roundDamageNote')}</p> : null}
-        <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
-          {report.rounds.map((round) => (
-            <BattleRound key={round.round} report={report} round={round} />
-          ))}
-        </div>
-        {report.pirate && <HoldsTaken report={report} />}
-        <details className="mt-3">
-          <summary className="cursor-pointer py-3 text-caption font-semibold text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
-            {t('reports.rulesToggle')}
-          </summary>
-          <CombatFormula grade={report.grade} pirate={report.pirate != null} balance={report.pvpBalance ?? STANDARD_PVP_BALANCE} />
-        </details>
+        <div className="gk-report__block">
+          <h3 className="gk-report__subhead">{t('reports.howItWent')}</h3>
+          <p className="gk-report__copy">{t('reports.calculation.fireNote')}</p>
+          {!report.pirate ? <p className="gk-report__copy">{t('reports.roundDamageNote')}</p> : null}
+          {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules targetLimit={report.rounds.find(round => round.targetLimit !== undefined)?.targetLimit} /> : null}
+          <div className="gk-ledger gk-rounds">
+            {report.rounds.map((round) => (
+              <BattleRound key={round.round} report={report} round={round} />
+            ))}
+          </div>
+          {report.pirate && <HoldsTaken report={report} />}
+          <RulesRow glyph="help" title={t('reports.rulesToggle')}>
+            <CombatFormula grade={report.grade} pirate={report.pirate != null} balance={report.pvpBalance ?? STANDARD_PVP_BALANCE} />
+          </RulesRow>
         </div>
         )}
       </section>
@@ -1137,11 +1134,11 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   const joint = report.jointWar;
   if (!joint) return null;
-  return <section data-joint-war className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3">
-    <h3 className="text-caption font-semibold font-semibold text-v2-ink">
+  return <section data-joint-war className="gk-well gk-report__why">
+    <h3 className="gk-report__subhead">
       {t('clanWar.report.title', { tag: joint.clan.tag })}
     </h3>
-    <p className="mt-1 text-micro text-v2-ink-2">
+    <p className="gk-report__copy">
       {t('clanWar.report.summary', {
         count: joint.attackerCount,
         sent: unitCount(joint.sent),
@@ -1149,7 +1146,7 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
         returned: unitCount(joint.survivors),
       })}
     </p>
-    <p className="mt-1 text-micro text-v2-ink-3">
+    <p className="gk-report__copy" data-tone="quiet">
       {t('clanWar.report.ratio', {
         attackers: joint.attackerCount,
         // Only the host's Dominion moves against a supported line (owner, 2026-10-02): the
@@ -1158,17 +1155,16 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
       })}
     </p>
     {joint.baseExchange !== null && joint.adjustedTransfer !== null && (
-      <p className="mt-1 text-micro text-v2-crystal">
+      <p className="gk-report__copy" data-tone="crystal">
         {t('clanWar.report.audit', {
           base: signed(joint.baseExchange),
           adjusted: signed(joint.adjustedTransfer),
         })}
       </p>
     )}
-    {joint.participants.map((participant) => <div key={participant.playerId}
-      className="mt-3 border-t border-v2-line pt-3">
-      <p className="font-semibold text-v2-ink">{participant.name}</p>
-      <p className="mt-1 text-micro text-v2-ink-2">
+    {joint.participants.map((participant) => <div key={participant.playerId} className="gk-report__member">
+      <p className="gk-report__subhead">{participant.name}</p>
+      <p className="gk-report__copy">
         {t('clanWar.report.participant', {
           sent: unitCount(participant.sent),
           lost: unitCount(participant.losses),
@@ -1179,19 +1175,19 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
           dominion: signed(participant.dominion),
         })}
       </p>
-      <ul className="mt-2 space-y-1">
-        {participant.waves.map((wave) => <li key={wave.id} className="text-micro text-v2-ink-3">
-          {t('clanWar.report.wave', {
+      <ul className="gk-report__waves">
+        {participant.waves.map((wave) => <li key={wave.id}>
+          <span className="gk-report__copy" data-tone="quiet">{t('clanWar.report.wave', {
             world: wave.originPlanetName,
             sent: unitCount(wave.sent),
             lost: unitCount(wave.losses),
             returned: unitCount(wave.survivors),
-          })}
-          <span className="block text-v2-ink-2">{t('clanWar.report.waveRewards', {
+          })}</span>
+          <span className="gk-report__copy">{t('clanWar.report.waveRewards', {
             loot: full(wave.loot.alloy + wave.loot.crystal + wave.loot.deuterium),
             salvage: full(wave.salvage.alloy + wave.salvage.crystal + wave.salvage.deuterium),
           })}</span>
-          <span className="block text-v2-ink-2">
+          <span className="gk-report__copy">
             {wave.destinationPlanetName
               ? t('clanWar.report.waveState', {
                   status: t(`clanWar.status.${wave.status}`),
@@ -1199,7 +1195,7 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
                 })
               : t(`clanWar.status.${wave.status}`)}
           </span>
-          {wave.returnAt && <span className="block text-v2-ink-2">
+          {wave.returnAt && <span className="gk-report__copy">
             {t('clanWar.report.returnAt', {
               time: new Intl.DateTimeFormat(t('units.numberLocale'), {
                 dateStyle: 'short', timeStyle: 'short',
@@ -1246,49 +1242,47 @@ function DefenseLineForces({ report }: { report: OrdinaryReport }) {
       .sort((a, b) => b.ships - a.ships || a.member.name.localeCompare(b.member.name))[0] ?? null
     : null;
   return (
-    <section data-defense-line aria-label={t('clanSupport.lineTitle')}
-      className="mt-3 rounded-control border border-v2-line bg-v2-deep/40 p-3">
-      <h3 className="flex items-baseline justify-between gap-2 text-caption font-semibold text-v2-ink">
+    <section data-defense-line aria-label={t('clanSupport.lineTitle')} className="gk-well gk-report__why">
+      <h3 className="gk-report__sumhead gk-report__subhead">
         {t('clanSupport.lineTitle')}
-        <span className="font-v2-mono text-micro font-normal text-v2-ink-3">
+        <span className="gk-report__label gk-num">
           {t('clanSupport.lineCount', { count: line.defenderCount })}
         </span>
       </h3>
       {hero && (
-        <p data-line-hero="" className="mt-1.5 flex items-center gap-1.5 rounded-control border border-v2-premium/40 bg-v2-premium/10 px-2 py-1 text-micro font-semibold text-v2-premium">
-          <span aria-hidden="true">★</span>
+        <p data-line-hero="" className="gk-report__hero">
+          <Glyph id="star" />
           <span className="min-w-0">{hero.member.sent
             ? t('clanSupport.lineHero', { name: hero.member.name, count: hero.ships })
             : t('clanSupport.lineHeroName', { name: hero.member.name })}</span>
         </p>
       )}
-      <ul className="mt-1 divide-y divide-v2-line/70">
+      <ul className="gk-report__line">
         {line.members.map((member) => (
-          <li key={member.playerId} className="flex items-center gap-2 py-1.5">
+          <li key={member.playerId}>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span className="truncate text-caption font-semibold text-v2-ink">{member.name}</span>
-                <span className={`shrink-0 rounded-cell border px-1 text-micro ${member.role === 'HOST'
-                  ? 'border-v2-ink-3 text-v2-ink' : 'border-v2-line text-v2-ink-2'}`}>
+              <span className="gk-report__who">
+                <span className="gk-report__subhead gk-person__name">{member.name}</span>
+                <span className="gk-report__role" data-role={member.role}>
                   {t(member.role === 'HOST' ? 'clanSupport.lineHost' : 'clanSupport.lineSupport')}
                 </span>
               </span>
-              <span className="block font-v2-mono text-micro text-v2-ink-2">
+              <span className="gk-report__label gk-num">
                 {t('clanSupport.lineLost', { count: unitCount(member.losses) })}
                 {member.survivors !== null && ` · ${t('clanSupport.lineKept', { count: unitCount(member.survivors) })}`}
               </span>
             </span>
             {/* Only the host's Dominion moves (owner, 2026-10-02): a supporter's row carries none. */}
             {member.role === 'HOST' && (
-              <span className="shrink-0 font-v2-mono text-micro text-v2-ink">
+              <span className="gk-report__copy gk-num" data-strong="">
                 {t('clanSupport.lineDominion', { value: signed(member.dominion) })}
               </span>
             )}
           </li>
         ))}
       </ul>
-      {factorLine && <p className="mt-1 text-micro font-semibold leading-snug text-v2-ink">{factorLine}</p>}
-      <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('clanSupport.lineRule')}</p>
+      {factorLine && <p className="gk-report__copy" data-strong="">{factorLine}</p>}
+      <p className="gk-report__copy" data-tone="quiet">{t('clanSupport.lineRule')}</p>
     </section>
   );
 }
@@ -1576,9 +1570,9 @@ function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirat
   const { t } = useTranslation();
   const percent = (share: number) => decimal(share * 100, Number.isInteger(share * 100) ? 0 : 1);
   return (
-    <section data-combat-formula className="rounded-control border border-v2-line bg-v2-deep/40 mt-2 px-3 py-2">
-      <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.formulaHeading')}</p>
-      <ol className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
+    <section data-combat-formula className="gk-report__formula">
+      <p className="gk-report__subhead">{t('reports.calculation.formulaHeading')}</p>
+      <ol>
         <li>{t('reports.calculation.formulaBase')}</li>
         <li>
           {t('reports.calculation.formulaCounter', {
@@ -1593,36 +1587,45 @@ function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirat
           })}
         </li>
       </ol>
-      <div className="mt-3 grid gap-1 border-t border-v2-line/60 pt-3 text-micro leading-relaxed text-v2-ink-3">
+      <div className="gk-report__formulanotes">
         <p>{t('reports.calculation.formulaHp')}</p>
         <p>{t('reports.calculation.formulaCarry')}</p>
         <p>{t('reports.calculation.formulaSupport')}</p>
       </div>
-      <div className="mt-3 border-t border-v2-line/60 pt-3">
-        <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.resultHeading')}</p>
-        <ul className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
-          {(['DECISIVE', 'PARTIAL', 'REPELLED'] as const).map((result) => (
-            <li
-              key={result}
-              className={result === grade ? 'text-v2-ink' : undefined}
-            >
-              {t(
-                pirate && result === 'DECISIVE'
-                  ? 'reports.calculation.resultDecisivePirate'
-                  : RESULT_EXPLANATION[result],
-                {
-                  threshold: full(COMBAT.partialThreshold * 100),
-                  decisiveLoot: percent(balance.lootDecisive),
-                  partialLoot: percent(balance.lootPartial),
-                  decisiveBuffer: percent(balance.lootDecisive * balance.lootBufferShare),
-                  partialBuffer: percent(balance.lootPartial * balance.lootBufferShare),
-                },
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <p className="gk-report__subhead">{t('reports.calculation.resultHeading')}</p>
+      <ul>
+        {(['DECISIVE', 'PARTIAL', 'REPELLED'] as const).map((result) => (
+          <li key={result} {...(result === grade ? { 'data-this-fight': '' } : {})}>
+            {t(
+              pirate && result === 'DECISIVE'
+                ? 'reports.calculation.resultDecisivePirate'
+                : RESULT_EXPLANATION[result],
+              {
+                threshold: full(COMBAT.partialThreshold * 100),
+                decisiveLoot: percent(balance.lootDecisive),
+                partialLoot: percent(balance.lootPartial),
+                decisiveBuffer: percent(balance.lootDecisive * balance.lootBufferShare),
+                partialBuffer: percent(balance.lootPartial * balance.lootBufferShare),
+              },
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
+  );
+}
+
+/** A rule a reader opens when they want the arithmetic: the kit's rules row, closed until pressed. */
+function RulesRow({ glyph, title, children }: { glyph: GlyphId; title: string; children: ReactNode }) {
+  return (
+    <details className="gk-rules">
+      <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <Glyph id={glyph} />
+        <span className="flex-1">{title}</span>
+        <span className="gk-rules__chev"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-rules__body">{children}</div>
+    </details>
   );
 }
 
@@ -1653,7 +1656,7 @@ function HoldsTaken({ report }: { report: OrdinaryReport }) {
     .filter(([, n]) => n > 0);
   if (taken.length === 0) return null;
   return (
-    <p data-testid="pirate-overrun" className="mt-2 border-l-2 border-v2-self pl-3 text-caption leading-relaxed text-v2-ink-2">
+    <p data-testid="pirate-overrun" className="gk-report__note" data-tone="good">
       {t('reports.pirateOverrun', {
         fleet: taken.map(([hull, n]) => `${String(n)} ${hullLabel(hull)}`).join(t('counter.lineJoin')),
       })}
@@ -1694,49 +1697,35 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
   const defendersRemain = report.grade === 'REPELLED';
 
   return (
-    <section className="rounded-control border border-v2-line bg-v2-deep/40 relative mb-2 overflow-hidden p-3 mt-3">
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-v2-crystal/80 to-transparent"
-      />
-      <div className="flex items-center gap-2">
-        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-v2-line bg-v2-raise/40">
-          <span aria-hidden className="absolute inset-2 rounded-full bg-v2-raise/60 blur-lg" />
+    <section className="gk-well gk-aegis">
+      <div className="gk-aegis__head">
+        <span className="gk-aegis__art" data-down={after <= 0 ? '' : undefined}>
           <img
             src={instrumentArt('AEGIS', 1) ?? ''}
             alt={t('reports.aegis.aria')}
-            width={64}
-            height={64}
+            width={56}
+            height={56}
             loading="lazy"
-            className={`relative size-16 object-contain ${after <= 0 ? 'opacity-45 grayscale' : ''}`}
           />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="text-micro font-semibold text-v2-crystal">
+        <div className="gk-aegis__words">
+          <div className="gk-aegis__title">
+            <p className="gk-report__subhead">
               {t(report.attacking ? 'reports.aegis.labelTheirs' : 'reports.aegis.labelYours')}
             </p>
             <span
               data-aegis-status={status}
               data-tone={status === 'broken' ? 'threat' : status === 'held' ? 'good' : 'neutral'}
-              className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold ${
-                status === 'broken' ? 'border-v2-hostile/50 text-v2-hostile'
-                  : status === 'held' ? 'border-v2-self/50 text-v2-self' : 'border-v2-alloy/50 text-v2-alloy'
-              }`}
+              className="gk-aegis__status"
             >
               {t(`reports.aegis.${status}`)}
             </span>
           </div>
-          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
+          <p className="gk-report__copy">
             {t(report.opponentKind ? 'starter.reports.aegisNote' : 'reports.aegis.note')}
           </p>
           {after <= 0 ? (
-            <p
-              data-aegis-outcome
-              className={`mt-2 text-caption font-semibold leading-relaxed ${
-                defendersRemain ? 'text-v2-alloy' : 'text-v2-ink'
-              }`}
-            >
+            <p data-aegis-outcome className="gk-report__copy" data-strong="" {...(defendersRemain ? { 'data-tone': 'warn' } : {})}>
               {t(
                 defendersRemain
                   ? 'reports.aegis.brokenUnitsRemain'
@@ -1748,36 +1737,23 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
           ) : null}
         </div>
       </div>
-      <div className="relative mt-3 grid grid-cols-2 gap-6 border-t border-v2-line/60 pt-3">
+      <div className="gk-aegis__span">
         <div>
-          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.before')}</p>
-          <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(before)}</p>
+          <p className="gk-report__label">{t('reports.aegis.before')}</p>
+          <p className="gk-report__figure gk-num">{full(before)}</p>
         </div>
-        <span
-          aria-hidden
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 text-micro text-v2-ink-3"
-        >
-          →
-        </span>
-        <div className="text-right">
-          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.after')}</p>
-          <p className={`font-v2-mono tabular-nums mt-1 text-caption font-semibold ${after <= 0 ? 'text-v2-hostile' : 'text-v2-crystal'}`}>
-            {full(after)}
-          </p>
+        <span className="gk-aegis__arrow" aria-hidden="true"><Glyph id="next" /></span>
+        <div className="gk-aegis__after">
+          <p className="gk-report__label">{t('reports.aegis.after')}</p>
+          <p className="gk-report__figure gk-num" data-tone={after <= 0 ? 'threat' : 'crystal'}>{full(after)}</p>
         </div>
       </div>
-      <div className="mt-3">
-        <div className="h-2 overflow-hidden rounded-cell bg-v2-line">
-          <span
-            data-shield-remaining={remaining}
-            className="block h-full bg-gradient-to-r from-v2-crystal/65 to-v2-crystal"
-            style={{ width: `${String(remaining)}%` }}
-          />
-        </div>
-        <p className="font-v2-mono tabular-nums mt-2 text-right text-micro text-v2-crystal">
-          {t('reports.aegis.absorbed', { amount: full(report.shieldAbsorbed) })}
-        </p>
+      <div className="gk-aegis__meter">
+        <span data-shield-remaining={remaining} style={{ width: `${String(remaining)}%` }} />
       </div>
+      <p className="gk-report__label gk-num gk-aegis__absorbed">
+        {t('reports.aegis.absorbed', { amount: full(report.shieldAbsorbed) })}
+      </p>
     </section>
   );
 }
@@ -1787,10 +1763,10 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
   return (
     <section
       data-combat-round={round.round}
-      className="border-b border-v2-line/60 p-3 last:border-b-0"
+      className="gk-turn"
       aria-label={t('reports.calculation.round', { round: round.round })}
     >
-      <h4 className="mb-3 text-caption font-semibold font-semibold text-v2-ink">
+      <h4 className="gk-report__subhead">
         {t('reports.calculation.round', { round: round.round })}
       </h4>
       <RoundBalance
@@ -1798,12 +1774,12 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
         took={report.attacking ? round.defenderDamage : round.attackerDamage}
       />
       {round.shieldAbsorbed > 0 ? (
-        <p className="mt-2 text-caption text-v2-crystal">
+        <p className="gk-report__copy" data-tone="crystal">
           {t('reports.roundShield', { amount: full(round.shieldAbsorbed) })}
         </p>
       ) : null}
       {round.attackerShipShieldAbsorbed !== undefined && round.defenderShipShieldAbsorbed !== undefined ? (
-        <p data-round-ship-shields className="mt-2 text-caption leading-relaxed text-v2-crystal">
+        <p data-round-ship-shields className="gk-report__copy" data-tone="crystal">
           {t('research.shipShieldRound', {
             your: full(report.attacking ? round.attackerShipShieldAbsorbed : round.defenderShipShieldAbsorbed),
             their: full(report.attacking ? round.defenderShipShieldAbsorbed : round.attackerShipShieldAbsorbed),
@@ -1817,12 +1793,9 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
       <BattleRetreatNote fleet={round.yourRetreated} enemyCount={round.theirRetreatedCount} />
       <RoundStanding report={report} round={round} />
       {hasCalculationTelemetry(round) ? (
-        <details className="mt-2 border-t border-v2-line/60">
-          <summary className="cursor-pointer py-3 text-caption text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
-            {t('reports.roundCalculationToggle')}
-          </summary>
+        <RulesRow glyph="target" title={t('reports.roundCalculationToggle')}>
           <RoundCalculation report={report} round={round} />
-        </details>
+        </RulesRow>
       ) : null}
     </section>
   );
@@ -1838,8 +1811,8 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
   const after = round.shieldAfter!;
 
   return (
-    <div data-round-calculation>
-      <div className="grid grid-cols-2 gap-2">
+    <div data-round-calculation className="gk-report__calc">
+      <div className="gk-report__pair">
         <ShotCard label={t('reports.calculation.yourShot')} power={yourPower} roll={yourRoll} />
         <ShotCard label={t('reports.calculation.theirShot')} power={theirPower} roll={theirRoll} />
       </div>
@@ -1853,50 +1826,47 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
         present, which tells the reader a shield was a thing that might have
         happened here. The step is real and stays; what it reports on is different.
       */}
-      <div className="mt-2 border-t border-v2-line/60 pt-3">
-        <p className="text-caption font-semibold text-v2-ink">
-          {t(
-            report.pirate
-              ? round.defenderShipShieldAbsorbed !== undefined
-                ? 'research.shipShieldStage'
-                : 'reports.calculation.openSpace'
-              : before > 0
-                ? 'reports.calculation.aegis'
-                : 'reports.calculation.noAegis',
-          )}
-        </p>
-        {report.pirate ? (
-          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
-          </p>
-        ) : before > 0 ? (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.shieldCharge')}</p>
-              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-crystal">
-                {full(before)} <span className="text-v2-ink-3">→</span> {full(after)}
-              </p>
-              <p className="mt-1 text-micro text-v2-ink-2">
-                {t('reports.calculation.absorbed', { amount: full(round.shieldAbsorbed) })}
-              </p>
-            </div>
-            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.reachedHulls')}</p>
-              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(round.attackerHullDamage!)}</p>
-              {round.shieldBreakerDamage > 0 ? (
-                <p className="mt-1 text-micro text-v2-deut">
-                  {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
-          </p>
+      <p className="gk-report__subhead">
+        {t(
+          report.pirate
+            ? round.defenderShipShieldAbsorbed !== undefined
+              ? 'research.shipShieldStage'
+              : 'reports.calculation.openSpace'
+            : before > 0
+              ? 'reports.calculation.aegis'
+              : 'reports.calculation.noAegis',
         )}
-      </div>
-
+      </p>
+      {report.pirate ? (
+        <p className="gk-report__copy">
+          {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
+        </p>
+      ) : before > 0 ? (
+        <div className="gk-report__pair">
+          <div className="gk-well gk-report__cell">
+            <p className="gk-report__label">{t('reports.calculation.shieldCharge')}</p>
+            <p className="gk-report__value gk-num" data-tone="crystal">
+              {full(before)} <span data-tone="quiet">→</span> {full(after)}
+            </p>
+            <p className="gk-report__label">
+              {t('reports.calculation.absorbed', { amount: full(round.shieldAbsorbed) })}
+            </p>
+          </div>
+          <div className="gk-well gk-report__cell">
+            <p className="gk-report__label">{t('reports.calculation.reachedHulls')}</p>
+            <p className="gk-report__value gk-num">{full(round.attackerHullDamage!)}</p>
+            {round.shieldBreakerDamage > 0 ? (
+              <p className="gk-report__label" data-tone="deut">
+                {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <p className="gk-report__copy">
+          {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
+        </p>
+      )}
     </div>
   );
 }
@@ -1910,11 +1880,11 @@ function ShotCard({ label, power, roll }: { label: string; power: number; roll: 
       ? 'reports.calculation.negativePercent'
       : 'reports.calculation.neutralPercent';
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <p className="v2-legend text-v2-ink-3">{label}</p>
-      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(power)}</p>
-      <p className={`font-v2-mono tabular-nums mt-1 text-micro ${change >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}>
-        <span className="text-v2-ink-3">{t('reports.calculation.shotChange')} </span>
+    <div className="gk-well gk-report__cell">
+      <p className="gk-report__label">{label}</p>
+      <p className="gk-report__value gk-num">{full(power)}</p>
+      <p className="gk-report__label gk-num" data-tone={change >= 0 ? 'good' : 'threat'}>
+        <span data-tone="quiet">{t('reports.calculation.shotChange')} </span>
         {t(changeKey, { amount: full(Math.abs(change)) })}
       </p>
     </div>
@@ -1953,27 +1923,34 @@ function ForceRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div data-force-row={hull} className="grid gap-2 border-b border-v2-line/60 p-3 last:border-b-0 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-      <span className="flex min-w-0 items-center gap-2">
-        {HULL_ART[hull] ? (
-          <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} className="size-8 object-contain" />
-        ) : (
-          <span aria-hidden className="v2-legend w-6 text-center">GRD</span>
-        )}
-        <span className="min-w-0">
-          <span className="block text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
-          <span className="mt-1 block text-micro text-v2-ink-2">{t(
-            HULLS[hull].ground ? 'reports.force.groundType'
-              : HULLS[hull].atk === 0 ? 'reports.force.supportType' : 'reports.force.combatType',
-          )}</span>
-        </span>
-      </span>
+    <div data-force-row={hull} className="gk-force">
+      <HullName hull={hull} kind={t(
+        HULLS[hull].ground ? 'reports.force.groundType'
+          : HULLS[hull].atk === 0 ? 'reports.force.supportType' : 'reports.force.combatType',
+      )} />
       <SurvivorBar
-        sent={sent} lost={lost} rebuilt={rebuilt} side={side}
+        compactRow sent={sent} lost={lost} rebuilt={rebuilt} side={side}
         sentLabel={t(side === 'theirs' ? 'reports.force.arrived' : attacking ? 'reports.verdict.sent' : 'reports.force.held')}
         leftLabel={t(side === 'yours' && attacking && !HULLS[hull].ground ? 'reports.verdict.returned' : 'reports.force.left')}
       />
     </div>
+  );
+}
+
+/** A hull as the report names it: its picture (or the ground mark), its name, and what kind of unit it is. */
+function HullName({ hull, kind }: { hull: HullId; kind?: string }) {
+  return (
+    <span className="gk-force__hull">
+      {HULL_ART[hull] ? (
+        <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} />
+      ) : (
+        <HullMark hull={hull} className="gk-force__mark" />
+      )}
+      <span className="gk-force__name">
+        <span className="gk-report__subhead">{hullLabel(hull)}</span>
+        {kind !== undefined && <span className="gk-report__label">{kind}</span>}
+      </span>
+    </span>
   );
 }
 
@@ -2003,7 +1980,7 @@ function YourForce({ report }: { report: OrdinaryReport }) {
   const rebuilt = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
 
   return (
-    <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
+    <div className="gk-ledger gk-forces">
       {entries.map(([hull, count]) => (
         <ForceRow
           key={hull}
@@ -2018,11 +1995,9 @@ function YourForce({ report }: { report: OrdinaryReport }) {
         THE SAME PICTURE FOR THE WHOLE FORCE, which is the line a player reads
         first and the one the table only ever had as a sentence.
       */}
-      <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-        <span className="text-caption font-semibold text-v2-ink">
-          {t('reports.verdict.total')}
-        </span>
-        <SurvivorBar sent={brought} lost={lost} rebuilt={rebuilt}
+      <div className="gk-force" data-total="">
+        <span className="gk-report__subhead">{t('reports.verdict.total')}</span>
+        <SurvivorBar compactRow sent={brought} lost={lost} rebuilt={rebuilt}
           sentLabel={t(report.attacking ? 'reports.verdict.sent' : 'reports.force.held')}
           leftLabel={t(report.attacking ? 'reports.verdict.returned' : 'reports.force.left')}
         />
@@ -2049,24 +2024,24 @@ function RoundCasualties({
   const { t } = useTranslation();
   const mine = fleetEntries(yours);
   const others = fleetEntries(theirs);
-  const line = (label: string, entries: ReturnType<typeof fleetEntries>, tone: string) => (
-    <div className="min-w-0">
-      <p className="text-caption font-semibold text-v2-ink">{label}</p>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-      {entries.map(([hull, count]) => (
-        <span key={hull} className={`rounded-cell border border-v2-line/60 px-2 py-1 text-caption ${tone}`}>
-          {full(count)} {hullLabel(hull)}
-        </span>
-      ))}
-      {entries.length === 0 ? <span className="text-caption text-v2-ink-2">{t('reports.roundNoCasualties')}</span> : null}
+  const line = (label: string, entries: ReturnType<typeof fleetEntries>, tone: 'threat' | 'plain') => (
+    <div className="gk-report__casualties">
+      <p className="gk-report__label">{label}</p>
+      <div className="gk-hullchips">
+        {entries.map(([hull, count]) => (
+          <span key={hull} className="gk-hullchip" data-tone={tone}>
+            {full(count)} {hullLabel(hull)}
+          </span>
+        ))}
+        {entries.length === 0 ? <span className="gk-report__copy" data-tone="quiet">{t('reports.roundNoCasualties')}</span> : null}
       </div>
     </div>
   );
 
   return (
-    <div data-round-losses className="mt-3 grid gap-3 border-t border-v2-line/60 pt-3 sm:grid-cols-2">
-      {line(t('reports.roundLossesYours'), mine, 'text-v2-hostile')}
-      {line(t('reports.roundLossesTheirs'), others, 'text-v2-ink')}
+    <div data-round-losses className="gk-report__block gk-report__rule">
+      {line(t('reports.roundLossesYours'), mine, 'threat')}
+      {line(t('reports.roundLossesTheirs'), others, 'plain')}
     </div>
   );
 }
@@ -2086,35 +2061,30 @@ function RoundStanding({ report, round }: { report: OrdinaryReport; round: Round
   const supportExposed = standing?.combat === 0 && standing.support > 0;
 
   return (
-    <div
-      data-round-standing={round.round}
-      className={`mt-3 border-l-2 pl-3 ${
-        noForce || supportExposed ? 'border-threat' : 'border-v2-line'
-      }`}
-    >
-      <p className="text-micro font-semibold text-v2-ink">
+    <div data-round-standing={round.round} className="gk-report__note" data-tone={noForce || supportExposed ? 'threat' : 'plain'}>
+      <p className="gk-report__label" data-strong="">
         {t('reports.roundStanding.heading', { round: round.round })}
       </p>
-      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+      <p className="gk-report__copy">
         {standing ? t('reports.roundStanding.summary', {
           combat: full(standing.combat), support: full(standing.support),
         }) : t('reports.roundStanding.unknownOwn')}
       </p>
       {supportExposed ? (
-        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
+        <p className="gk-report__copy" data-strong="" data-tone="threat">
           {t('reports.roundStanding.supportExposed')}
         </p>
       ) : noForce ? (
-        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
+        <p className="gk-report__copy" data-strong="" data-tone="threat">
           {t('reports.roundStanding.noneLeft')}
         </p>
       ) : null}
       {enemy ? (
-        <div data-enemy-round-standing className="mt-2 border-t border-v2-line/60 pt-2">
-          <p className="text-micro font-semibold text-v2-ink">
+        <div data-enemy-round-standing className="gk-report__rule">
+          <p className="gk-report__label" data-strong="">
             {t('reports.roundStanding.enemyHeading', { round: round.round })}
           </p>
-          <p className="mt-1 text-caption text-v2-ink-2">
+          <p className="gk-report__copy">
             {t('reports.roundStanding.summary', { combat: full(enemy.combat), support: full(enemy.support) })}
           </p>
         </div>
@@ -2279,20 +2249,16 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
   const { t } = useTranslation();
   const top = Math.max(1, dealt, took);
   return (
-    <span className="grid gap-2">
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-caption text-v2-ink">{t('reports.roundDealt')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
-          <span className="block h-full bg-v2-self" style={{ width: `${String((dealt / top) * 100)}%` }} />
-        </span>
-        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(dealt)}</span>
+    <span className="gk-roundbars">
+      <span className="gk-roundbar" data-side="dealt">
+        <span className="gk-report__copy">{t('reports.roundDealt')}</span>
+        <span className="gk-roundbar__track"><span style={{ width: `${String((dealt / top) * 100)}%` }} /></span>
+        <span className="gk-report__copy gk-num">{full(dealt)}</span>
       </span>
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-caption text-v2-hostile">{t('reports.roundTook')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
-          <span className="block h-full bg-v2-hostile" style={{ width: `${String((took / top) * 100)}%` }} />
-        </span>
-        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(took)}</span>
+      <span className="gk-roundbar" data-side="took">
+        <span className="gk-report__copy" data-tone="threat">{t('reports.roundTook')}</span>
+        <span className="gk-roundbar__track"><span style={{ width: `${String((took / top) * 100)}%` }} /></span>
+        <span className="gk-report__copy gk-num">{full(took)}</span>
       </span>
     </span>
   );
@@ -2315,24 +2281,24 @@ function BattleMetric({
   );
 }
 
-function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; tone: string; empty: string }) {
+function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; tone: 'threat' | 'plain' | 'alloy'; empty: string }) {
   const entries = fleetEntries(fleet);
   if (entries.length === 0) {
-    return <p className="mt-2 text-caption text-v2-ink-3">{empty}</p>;
+    return <p className="gk-report__copy" data-tone="quiet">{empty}</p>;
   }
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="gk-hullchips">
       {entries.map(([hull, count]) => (
-        <div key={hull} className="rounded-control border border-v2-line bg-v2-deep/40 flex items-center gap-2 px-3 py-2">
+        <div key={hull} className="gk-hullcard">
           {HULL_ART[hull] ? (
-            <img src={HULL_ART[hull]} alt="" aria-hidden className="size-8 object-contain" />
+            <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} />
           ) : (
-            <span className="v2-legend">GRD</span>
+            <HullMark hull={hull} className="gk-force__mark" />
           )}
           <div>
-            <p className={`font-v2-mono tabular-nums text-caption font-semibold leading-none ${tone}`}>{full(count)}</p>
-            <p className="v2-legend mt-1">{hullLabel(hull)}</p>
+            <p className="gk-report__value gk-num" data-tone={tone}>{full(count)}</p>
+            <p className="gk-report__label">{hullLabel(hull)}</p>
           </div>
         </div>
       ))}
@@ -2365,10 +2331,10 @@ function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; t
 function TheirBoard({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   if (report.enemyFleetVisibility === 'FULL') return <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />;
-  if (report.enemyFleetVisibility !== undefined) return <section data-their-board="floor" className="mt-3">
-    <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardFloor')}</h3>
+  if (report.enemyFleetVisibility !== undefined) return <section data-their-board="floor" className="gk-report__block">
+    <h3 className="gk-report__subhead">{t('reports.theirBoardFloor')}</h3>
     <BattleIntelNotice visibility={report.enemyFleetVisibility} />
-    <Losses fleet={report.theirLosses} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
+    <Losses fleet={report.theirLosses} tone="plain" empty={t('reports.theirsEmpty')} />
   </section>;
 
   /*
@@ -2398,16 +2364,16 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
     Object.fromEntries(rows);
 
   return (
-    <section data-their-board={complete ? 'complete' : 'floor'} className="mt-3">
-      <div className={complete ? '' : 'border-l-2 border-alloy pl-3'}>
-        <h3 className="text-caption font-semibold text-v2-ink">
+    <section data-their-board={complete ? 'complete' : 'floor'} className="gk-report__block">
+      <div className={complete ? 'gk-report__block' : 'gk-report__note gk-report__block'} {...(complete ? {} : { 'data-tone': 'warn' })}>
+        <h3 className="gk-report__subhead">
           {emptyAtStart
             ? t('reports.theirBoardEmptyAtStart')
             : entries.length === 0 && !complete
             ? t('reports.theirBoardNothing')
             : t(complete ? 'reports.theirBoardComplete' : 'reports.theirBoardFloor')}
         </h3>
-        <p className={`mt-1 text-caption leading-relaxed ${complete ? 'text-v2-ink-2' : 'text-v2-alloy'}`}>
+        <p className="gk-report__copy" {...(complete ? {} : { 'data-tone': 'warn' })}>
           {t(emptyAtStart ? 'reports.theirBoardEmptyAtStartNote'
             : complete ? 'reports.theirBoardCompleteNote'
             : report.attacking ? 'reports.theirBoardFloorNote' : 'reports.theirBoardMissingRosterNote')}
@@ -2416,24 +2382,24 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
 
       {ships.length > 0 && (
         <>
-          <p className="v2-legend mt-2 text-v2-crystal/85">{t('reports.shipsHeading')}</p>
-          <Losses fleet={asFleet(ships)} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
+          <p className="gk-report__label" data-tone="crystal">{t('reports.shipsHeading')}</p>
+          <Losses fleet={asFleet(ships)} tone="plain" empty={t('reports.theirsEmpty')} />
         </>
       )}
 
       {ground.length > 0 ? (
-        <div data-ground-group className="mt-2">
-          <p className="v2-legend text-v2-alloy">{t('reports.groundHeading')}</p>
-          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+        <div data-ground-group className="gk-report__block">
+          <p className="gk-report__label" data-tone="alloy">{t('reports.groundHeading')}</p>
+          <p className="gk-report__copy">
             {t('reports.groundNote', { percent: full(COMBAT.defenceSalvage * 100) })}
           </p>
-          <Losses fleet={asFleet(ground)} tone="text-v2-alloy" empty={t('reports.theirsEmpty')} />
+          <Losses fleet={asFleet(ground)} tone="alloy" empty={t('reports.theirsEmpty')} />
         </div>
       ) : complete && !emptyAtStart ? (
         /* Only a DECISIVE proves a negative. See the docblock. */
-        <div data-no-ground className="mt-2 border-l border-v2-line/60 pl-3">
-          <p className="v2-legend text-v2-ink-3">{t('reports.noGroundHeading')}</p>
-          <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('reports.noGroundNote')}</p>
+        <div data-no-ground className="gk-report__note" data-tone="plain">
+          <p className="gk-report__label" data-strong="">{t('reports.noGroundHeading')}</p>
+          <p className="gk-report__copy" data-tone="quiet">{t('reports.noGroundNote')}</p>
         </div>
       ) : null}
     </section>
@@ -2468,12 +2434,12 @@ function IncomingForce({
   const destroyed = fleetEntries(report.theirLosses).reduce((sum, [, n]) => sum + n, 0);
 
   return (
-    <section data-their-board="arrived" className="mt-3">
-      <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardArrived')}</h3>
-      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+    <section data-their-board="arrived" className="gk-report__block">
+      <h3 className="gk-report__subhead">{t('reports.theirBoardArrived')}</h3>
+      <p className="gk-report__copy">
         {t('reports.theirBoardArrivedNote')}
       </p>
-      <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
+      <div className="gk-ledger gk-forces" data-side="theirs">
         {entries.map(([hull, count]) => (
           <ForceRow
             key={hull}
@@ -2483,9 +2449,9 @@ function IncomingForce({
             side="theirs"
           />
         ))}
-        <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-          <span className="text-caption font-semibold text-v2-ink">{t('reports.verdict.total')}</span>
-          <SurvivorBar sent={arrived} lost={destroyed} side="theirs" sentLabel={t('reports.force.arrived')} />
+        <div className="gk-force" data-total="">
+          <span className="gk-report__subhead">{t('reports.verdict.total')}</span>
+          <SurvivorBar compactRow sent={arrived} lost={destroyed} side="theirs" sentLabel={t('reports.force.arrived')} />
         </div>
       </div>
     </section>

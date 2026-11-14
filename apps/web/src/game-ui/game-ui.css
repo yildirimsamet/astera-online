@@ -8758,7 +8758,17 @@ button.gk-probe__head:active {
   min-width: 0;
   width: 100%;
 }
-.gk-survivor[data-compact] { width: auto; }
+/* a hull's row: the three labelled figures on one line, the bar under them */
+.gk-survivor[data-compact] { gap: var(--gk-s1); }
+.gk-survivor[data-compact] .gk-survivor__figures {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--gk-s4);
+  row-gap: 0;
+}
+.gk-survivor[data-compact] .gk-survivor__fig { display: flex; align-items: baseline; gap: var(--gk-s1); }
+.gk-survivor[data-compact] .gk-survivor__value { font-size: var(--gk-t-body); }
+.gk-survivor[data-compact] .gk-survivor__bar { height: 6px; }
 .gk-survivor__figures {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8809,6 +8819,286 @@ button.gk-probe__head:active {
   line-height: 1.4;
   color: var(--gk-good);
 }
+
+
+/* ── C15b: what was there and who died when — forces, Aegis, rounds (G5 #3) ── */
+
+.gk-report__block {
+  display: grid;
+  gap: var(--gk-s2);
+  min-width: 0;
+}
+.gk-report__label[data-strong] { font-weight: 700; color: var(--gk-ink); }
+.gk-report__label[data-tone='crystal'] { color: var(--gk-crystal); font-weight: 700; }
+.gk-report__label[data-tone='alloy'] { color: var(--gk-alloy-hi); font-weight: 700; }
+.gk-report__label[data-tone='good'] { color: var(--gk-self); }
+.gk-report__label[data-tone='threat'] { color: var(--gk-hostile); }
+.gk-report__label[data-tone='deut'] { color: var(--gk-deut); }
+.gk-report__label [data-tone='quiet'],
+.gk-report__value [data-tone='quiet'] { color: var(--gk-ink-3); }
+.gk-report__copy[data-tone='crystal'] { color: var(--gk-crystal); }
+.gk-report__figure[data-tone='crystal'] { color: var(--gk-crystal); }
+.gk-report__note[data-tone='warn'] { border-left-color: var(--gk-warn); color: var(--gk-warn); }
+.gk-report__note[data-tone='plain'] { border-left-color: color-mix(in srgb, var(--gk-metal-edge) 90%, transparent); color: var(--gk-ink-2); }
+.gk-report__note > * + * { margin-top: 4px; }
+.gk-report__value {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gk-ink);
+}
+.gk-report__value[data-tone='threat'] { color: var(--gk-hostile); }
+.gk-report__value[data-tone='alloy'] { color: var(--gk-alloy-hi); }
+.gk-report__value[data-tone='crystal'] { color: var(--gk-crystal); }
+/* a thin rule between two halves of one card */
+.gk-report__rule {
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-report__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-report__cell {
+  display: grid;
+  gap: var(--gk-s1);
+  padding: var(--gk-s2) var(--gk-s3);
+  min-width: 0;
+}
+.gk-report__calc {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-report__casualties { display: grid; gap: 4px; min-width: 0; }
+.gk-report__hero {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s1) var(--gk-s2);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-warn) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-warn) 40%, transparent);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-report__hero .gk-glyph { width: 15px; height: 15px; }
+.gk-report__line { display: grid; }
+.gk-report__line li {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) 0;
+}
+.gk-report__line li + li { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+.gk-report__who { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gk-s2); }
+.gk-report__role {
+  padding: 1px 6px;
+  border-radius: var(--gk-r-sm);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-metal-edge) 90%, transparent);
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-report__role[data-role='HOST'] { color: var(--gk-ink); box-shadow: inset 0 0 0 1px var(--gk-ink-3); }
+.gk-report__member {
+  display: grid;
+  gap: 4px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-report__waves { display: grid; gap: var(--gk-s2); }
+.gk-report__waves li { display: grid; gap: var(--gk-s1); }
+.gk-report__formula {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* the steps carry their own numbers ("1 · …"), so the list draws none */
+.gk-report__formula ol {
+  display: grid;
+  gap: var(--gk-s2);
+  list-style: none;
+}
+.gk-report__formula ul {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-report__formula li[data-this-fight] { color: var(--gk-ink); font-weight: 700; }
+.gk-report__formulanotes {
+  display: grid;
+  gap: 4px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+  color: var(--gk-ink-3);
+}
+
+/* A FORCE, ONE HULL A ROW: picture, name and kind, then the survivor bar under it */
+.gk-forces[data-side='theirs'] {
+  border-color: color-mix(in srgb, var(--gk-hostile) 35%, var(--gk-metal-edge));
+}
+.gk-force {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--gk-s3);
+  row-gap: var(--gk-s1);
+  padding: var(--gk-s2) var(--gk-s3);
+  min-width: 0;
+}
+.gk-force + .gk-force { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+.gk-force[data-total] {
+  border-top-color: var(--gk-metal-edge);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-ink) 4%, transparent), transparent);
+}
+/* the picture stands at the left of both lines; the name and the figures share the right column */
+.gk-force__hull { display: contents; }
+.gk-force__hull > img,
+.gk-force__hull > .gk-force__mark { grid-column: 1; grid-row: 1 / span 2; }
+.gk-force__hull img { width: 32px; height: 32px; object-fit: contain; }
+.gk-force__mark { width: 28px; height: 28px; justify-self: center; color: var(--gk-ink-2); }
+.gk-force__name {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--gk-s2);
+  min-width: 0;
+}
+.gk-force > .gk-survivor,
+.gk-force[data-total] > .gk-report__subhead { grid-column: 2; }
+
+/* what died, hull by hull: a picture card, or a chip inside a round */
+.gk-hullchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gk-s2);
+}
+.gk-hullcard {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s1) var(--gk-s3) var(--gk-s1) var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-hullcard img { width: 32px; height: 32px; object-fit: contain; }
+.gk-hullchip {
+  padding: 3px var(--gk-s2);
+  border-radius: var(--gk-r-sm);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-metal-edge) 90%, transparent);
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink);
+}
+.gk-hullchip[data-tone='threat'] {
+  color: var(--gk-hostile);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-hostile) 40%, transparent);
+}
+
+/* THE AEGIS AS A COMBATANT: its portrait, its state, before → after, what it soaked */
+.gk-aegis {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+}
+.gk-aegis__head { display: flex; align-items: flex-start; gap: var(--gk-s3); }
+.gk-aegis__art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--gk-r-md);
+  background: radial-gradient(circle, color-mix(in srgb, var(--gk-crystal) 16%, transparent), transparent 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-crystal) 25%, transparent);
+}
+.gk-aegis__art img { width: 56px; height: 56px; object-fit: contain; }
+.gk-aegis__art[data-down] img { opacity: 0.45; filter: grayscale(1); }
+.gk-aegis__words { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.gk-aegis__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-aegis__status {
+  --tone: var(--gk-alloy-hi);
+  padding: 2px 8px;
+  border-radius: var(--gk-r-sm);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 55%, transparent);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tone);
+}
+.gk-aegis__status[data-tone='threat'] { --tone: var(--gk-hostile); }
+.gk-aegis__status[data-tone='good'] { --tone: var(--gk-self); }
+.gk-aegis__span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: var(--gk-s2);
+  padding-top: var(--gk-s3);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-aegis__arrow { color: var(--gk-ink-3); padding-bottom: 4px; }
+.gk-aegis__arrow .gk-glyph { width: 16px; height: 16px; }
+.gk-aegis__after { text-align: right; }
+.gk-aegis__meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--gk-metal-shadow) 85%, transparent);
+}
+.gk-aegis__meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-crystal) 65%, transparent), var(--gk-crystal));
+}
+.gk-aegis__absorbed { text-align: right; color: var(--gk-crystal); }
+
+/* THE ROUNDS: one ledger, a round a row (gk-turn: the kit already has a gk-round button); what each side dealt as two bars */
+.gk-turn {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  min-width: 0;
+}
+.gk-turn + .gk-turn { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+/* inside a round its arithmetic is a quiet line under a rule, not a second card */
+.gk-turn .gk-rules {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+  border-radius: 0;
+  background: none;
+}
+.gk-turn .gk-rules__head {
+  padding: 0;
+  font-size: var(--gk-t-small);
+  color: var(--gk-crystal);
+}
+.gk-turn .gk-rules__body { padding: 0 0 var(--gk-s2); }
+.gk-roundbars { display: grid; gap: var(--gk-s2); }
+.gk-roundbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-roundbar__track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+}
+.gk-roundbar__track span { display: block; height: 100%; background: var(--gk-self); }
+.gk-roundbar[data-side='took'] .gk-roundbar__track span { background: var(--gk-hostile); }
+.gk-roundbar .gk-num { min-width: 52px; text-align: right; color: var(--gk-ink); }
 
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
