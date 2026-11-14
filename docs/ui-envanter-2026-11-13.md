@@ -471,6 +471,20 @@ Eski `ui/kit/Sheet` (v1, yaklaşık 10 yüzey: araştırma, klan, ticaret, arız
 
 Ölçüm (`reports/ui-audit/g1g1-after-2026-11-14.md`: menü, ayarlar, Akademi, Topluluk, sezon sonu, zil, boş zil, sayaçlar; 6 dil × 3 boyut), her yolun son ölçümüne göre telefonda: 12 px altı metin 16 → 0, kontrast hatası 12 → 0, 44 px altı hedef 36 → 0, aralık hatası 12 → 0, tepkisiz hedef 24 → 0. Masaüstünde de bu ölçütlerde bulgu yok. G1'in sheet'lerinde ölçülen bulgu kalmadı. Galeride altı yüzey daha göz kontrolünden geçti: zil, zamanlayıcılar, tamirhane, Bildirim Merkezi, saldırı ve savaş raporu.
 
+**G1-g2 masaüstü özeti ✅ (2026-11-14).** Oyuncunun anı: bilgisayarda galaksiye bakarken tek bakışta "dünyalarım ne durumda, havada ne var, hangi kuyruğum boş?" sorusunun cevabı. Asıl karar boş bir kuyruğu doldurmak ya da gelen saldırıya bakmak. Satırların açtığı yerler ve kurallar değişmedi: saldırı tek kırmızı şey, boş kuyruk sarı.
+
+Önce kite eklenen: `SectionTag` `as`. Etiket istenince bölümünün başlığı (h2/h3) olur; okuyucu özeti başlıklarla gezer.
+
+Özet:
+- Bölümler kitin etiketiyle başlıyor; sayısı sağda.
+- Dünya kitin kesik plakası: para üstünde başkent ya da koloni işareti, ad, gemiler. Ekrandaki dünya kendi renginde yanıyor. Gelen saldırı kırmızı siren ve sayı. Gemi satırı kesilmiyor, sarıyor.
+- Havadakiler zamanlayıcılar sheet'inin satırları (`TimerRow`): işareti boşalan bir halkada, kalan süre ve iniş saati. Bize gelen saldırı kırmızı; dönen filo geri dönüş işareti taşıyor. İşaretler zamanlayıcılarla aynı tablodan.
+- Kuyrukta her iş aynı satırla çiziliyor; arkada bekleyen iş sarı "Sırada". Boş kuyruk kitin boş yuvası gibi kesikli ve sarı, 44 px.
+- Basışlar kitin sesi ve titreşimiyle cevap veriyor.
+- Kit sayfasına dolu bir özet bölümü eklendi ("Masaüstü özeti"): saldırı, iki yönde uçuş, çalışan ve boş kuyruklar.
+
+Ölçüm (`reports/ui-audit/g1g2-after-2026-11-14.md`, `gallery:store-discovery`, masaüstü, tr ve en), G1-b'ye göre: 9–10 px metin 42 → 4, kontrast hatası 18 → 6, 24–44 px hedef 12 → 0, kenardaki küçük hedef 2 → 0. Özetin içinde bulgu yok. Kalan küçük metin ve kontrast bulguları galaksi haritasının gezegen etiketleri ("Ana gezegen", komutan adı; 8–9 px), galaksi biriminin işi. Not: "IN THE AIR" etiketi 12 px, büyük harf ve üç kelime olduğu için yazım alışkanlığı kuralına takılıyor (de "IN DER LUFT", es "EN EL AIRE" de öyle). Bu bir metin kararı, owner'a soruldu.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

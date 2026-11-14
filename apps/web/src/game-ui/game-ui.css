@@ -2965,6 +2965,139 @@ button.gk-trow:focus-visible {
   height: 16px;
 }
 
+/* ── the desk outline: a wide screen's column of what is mine (G1-g2) ───────────── */
+
+.gk-desk {
+  padding: var(--gk-s3) var(--gk-gutter);
+  border-right: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 320px);
+}
+/* A world: its mark on a coin, its name, its ships; the one on screen is lit in your colour. */
+.gk-wrow {
+  --edge: var(--gk-metal-edge);
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 10px 6px 8px;
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, filter var(--gk-quick) var(--gk-ease);
+}
+.gk-wrow[aria-current='true'] {
+  --edge: linear-gradient(90deg, var(--gk-self), color-mix(in srgb, var(--gk-self) 30%, var(--gk-metal-edge)));
+}
+.gk-wrow:hover { filter: brightness(1.08); }
+.gk-wrow:active { transform: translateY(1px) scale(0.985); filter: brightness(1.12); }
+.gk-wrow:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+.gk-wrow__coin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--gk-self);
+  background: radial-gradient(circle at 50% 35%, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-wrow__coin .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-wrow__name {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* An attack coming for the world: the one red thing in the column (K2). */
+.gk-wrow__threat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gk-hostile) 70%, transparent);
+  background: color-mix(in srgb, var(--gk-hostile) 22%, var(--gk-metal-3));
+  font-size: var(--gk-t-small);
+  font-weight: 800;
+  color: var(--gk-ink);
+}
+.gk-wrow__threat .gk-glyph {
+  width: 13px;
+  height: 13px;
+  color: var(--gk-hostile);
+}
+/* A lane of work: its name and how full it is, its orders as the timers sheet draws them. */
+.gk-olane {
+  display: grid;
+  width: 100%;
+  padding: 6px 8px 2px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-olane:hover { border-color: var(--gk-metal-edge); }
+.gk-olane:active { transform: translateY(1px) scale(0.985); }
+.gk-olane:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+.gk-olane__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 24px;
+  padding-bottom: 4px;
+}
+.gk-olane__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-olane__state {
+  flex-shrink: 0;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-olane .gk-trow {
+  min-height: 44px;
+  padding: 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 45%, transparent);
+}
+/* Nothing in it: drawn as the kit's free slot is, a dashed gap you can close (warn, not red). */
+.gk-olane[data-idle] {
+  align-content: center;
+  min-height: var(--gk-hit);
+  padding-bottom: 6px;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--gk-warn) 40%, var(--gk-metal-edge));
+  background: color-mix(in srgb, var(--gk-outline) 35%, transparent);
+}
+.gk-olane[data-idle] .gk-olane__head { min-height: 20px; padding-bottom: 0; }
+.gk-olane[data-idle] .gk-olane__name { color: var(--gk-ink-2); }
+.gk-olane[data-idle] .gk-olane__state { color: var(--gk-warn); }
+.gk-olane[data-idle]:hover { border-color: color-mix(in srgb, var(--gk-warn) 65%, var(--gk-metal-edge)); }
+
 /* ── the commander's card at the head of the menu (G1-f2) ─────────────────────── */
 
 /* Their medallion, as on the top bar, their name and clan, and a way into their profile. */

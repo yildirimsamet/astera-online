@@ -107,8 +107,8 @@ describe('the desk outline', () => {
   it('counts what is in the air and opens a flight on the galaxy', async () => {
     const props = outline({ flights: [flight(), flight({ key: 'thread:m-2', title: 'Raid on you', incoming: true, mark: 'incoming' })] });
     expect(screen.getByRole('heading', { name: /In the air/ })).toHaveTextContent('2');
-    expect(screen.getByRole('button', { name: 'Your fleet → Kestrel' })).toHaveTextContent('4m 00s');
-    await userEvent.click(screen.getByRole('button', { name: 'Your fleet → Kestrel' }));
+    expect(screen.getByRole('button', { name: /^Your fleet → Kestrel/ })).toHaveTextContent('4m 00s');
+    await userEvent.click(screen.getByRole('button', { name: /^Your fleet → Kestrel/ }));
     expect(props.onFlight).toHaveBeenCalledWith(expect.objectContaining({ key: 'thread:m-1' }));
   });
 
@@ -121,7 +121,8 @@ describe('the desk outline', () => {
     outline();
     const lanes = screen.getAllByRole('button', { name: /^(Research|Construction|Yard)/ });
     expect(lanes.map((lane) => lane.getAttribute('aria-label')?.split(' · ')[0])).toEqual(['Research', 'Construction', 'Yard']);
-    expect(screen.getByText('Alloy Refinery')).toBeInTheDocument();
+    // The order's name with how many it builds, on the timer row's one line.
+    expect(screen.getByText('Alloy Refinery ×4')).toBeInTheDocument();
     expect(screen.getByText('12m 00s')).toBeInTheDocument();
   });
 
@@ -159,5 +160,41 @@ describe('the desk outline', () => {
       queues: [...queues, { worldId: 'p-2', world: 'Kestrel', lane: 'construction', orders: [] }],
     });
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Thistle', 'Kestrel']);
+  });
+});
+
+/**
+ * THE DESK OUTLINE ON THE KIT (G1-g2, 2026-11-14). It was the last of the shell in the old dress:
+ * 9 px words, flat boxes. Each part is the kit's now: the section tag heads it, a world is a cut
+ * plate, a flight and an order are the timer rows the timers sheet uses, and a lane with nothing
+ * in it is drawn as the kit's free slot is — a gap you can close.
+ */
+describe('the desk outline, on the kit', () => {
+  it('stands in the kit, each part headed by the kit’s section tag', () => {
+    outline();
+    const column = screen.getByRole('complementary', { name: 'Outline' });
+    expect(column).toHaveClass('gk');
+    for (const heading of within(column).getAllByRole('heading')) expect(heading).toHaveClass('gk-tag');
+  });
+
+  it('draws a world as a kit plate, an attack on it a red siren with its count', () => {
+    outline({ worlds: [world({ threats: 2 })] });
+    const row = screen.getByRole('button', { name: /^Thistle/ });
+    expect(row).toHaveClass('gk-wrow');
+    expect(row.querySelector('[data-tone="hostile"]')).toHaveTextContent('2');
+  });
+
+  it('draws a flight as the timers sheet does, red when it comes for you', () => {
+    outline({ flights: [flight(), flight({ key: 'thread:m-2', title: 'Raid on you', incoming: true, mark: 'incoming' })] });
+    expect(screen.getByRole('button', { name: /^Your fleet → Kestrel/ })).toHaveClass('gk-trow');
+    expect(screen.getByRole('button', { name: /^Raid on you/ })).toHaveAttribute('data-tone', 'hostile');
+  });
+
+  it('draws each order in a lane as a timer row, and an idle lane as a free slot', () => {
+    outline();
+    const construction = screen.getByRole('button', { name: /^Construction/ });
+    expect(construction.querySelector('.gk-trow')).toHaveTextContent('Alloy Refinery');
+    expect(screen.getByRole('button', { name: /^Yard/ })).toHaveClass('gk-olane');
+    expect(screen.getByRole('button', { name: /^Yard/ })).toHaveAttribute('data-idle');
   });
 });

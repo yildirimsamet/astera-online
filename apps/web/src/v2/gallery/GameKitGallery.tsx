@@ -21,6 +21,8 @@ import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import type { BuildOrderView } from '../../api/schemas.js';
+import { Outline } from '../hud/Outline.js';
 import { UpgradeRow } from '../../ui/UpgradeRow.js';
 import { StarField } from '../kit/StarField.js';
 import { Unreachable, Waiting } from '../../ui/kit/Surface.js';
@@ -469,6 +471,43 @@ function MenuParts() {
         <MenuTile tile="center" wide tone="warn" glyph="bell" art={ATMOSPHERE.notificationCenter.src} artAt={ATMOSPHERE.notificationCenter.position}
           label="Bildirim Merkezi" hint="Saldırı uyarısı" status="Saldırı uyarısı gitmez: döteryum ekle." badge="Kasa boş" onPress={noop} />
       </TileGrid>
+    </div>
+  );
+}
+
+/** The desk outline (G1-g2) full: an attack coming, flights both ways, a lane at work and idle ones. */
+function DeskParts() {
+  const noop = (): undefined => undefined;
+  const now = Date.parse('2026-11-14T12:00:00Z');
+  const min = 60_000;
+  const order = (id: string, subject: string, from: number, to: number): BuildOrderView => ({
+    id, queue: 'CONSTRUCTION', slot: 0, kind: 'BUILDING', subject, count: 1,
+    startedAt: new Date(now + from * min), finishesAt: new Date(now + to * min), cost: { alloy: 300, crystal: 100, deuterium: 0 },
+  });
+  return (
+    <div className="h-[760px]">
+      <Outline
+        now={now}
+        worlds={[
+          { id: 'p-1', name: 'Kestrel', capital: true, active: true, ships: 39, away: 12, threats: 1 },
+          { id: 'p-2', name: 'Vega', capital: false, active: false, ships: 0, away: 0, threats: 0 },
+        ]}
+        flights={[
+          { key: 'a', title: 'Saldırı → Kestrel', detail: 'Sable · 24 gemi', arrival: now + 4 * min + 12_000, incoming: true, engages: false, mark: 'incoming', span: { from: now - 8 * min, to: now + 4 * min } },
+          { key: 'b', title: 'Filon → Tharsis', detail: '12 gemi', arrival: now + 25 * min, leg: 'outbound', incoming: false, engages: true, mark: 'fleet', span: { from: now - 5 * min, to: now + 25 * min }, focus: { kind: 'thread', key: 'b' } },
+          { key: 'c', title: 'Sondaların dönüyor', detail: '2 sonda', arrival: now + 40 * min, leg: 'return', incoming: false, engages: false, mark: 'mining', span: { from: now - 10 * min, to: now + 40 * min } },
+        ]}
+        queues={[
+          { worldId: null, world: null, lane: 'research', orders: [] },
+          { worldId: 'p-1', world: 'Kestrel', lane: 'construction', orders: [order('o-1', 'REFINERY', -10, 12), order('o-2', 'EXTRACTOR', 12, 40)] },
+          { worldId: 'p-1', world: 'Kestrel', lane: 'yard', orders: [] },
+          { worldId: 'p-2', world: 'Vega', lane: 'construction', orders: [] },
+          { worldId: 'p-2', world: 'Vega', lane: 'yard', orders: [] },
+        ]}
+        onWorld={noop}
+        onFlight={noop}
+        onQueue={noop}
+      />
     </div>
   );
 }
@@ -926,6 +965,10 @@ function Catalog() {
 
         <Section title="Menü karoları · çağrı, haber, mağaza, uyarı">
           <MenuParts />
+        </Section>
+
+        <Section title="Masaüstü özeti · dünyalar, havada, kuyruklar">
+          <DeskParts />
         </Section>
 
         <Section title="Okumalar">

@@ -42,13 +42,18 @@ export function CutPlate({
 }
 
 /** A stencil tag naming a section, with a rule out to the edge and an optional note at the end. */
-export function SectionTag({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+export function SectionTag({ children, aside, as: Element = 'div' }: {
+  children: ReactNode;
+  aside?: ReactNode;
+  /** The heading of its part, where a reader walks a landmark by headings (the desk outline). */
+  as?: 'div' | 'h2' | 'h3';
+}) {
   return (
-    <div className="gk-tag">
+    <Element className="gk-tag">
       <span className="gk-tag__name">{children}</span>
       <span className="gk-tag__rule" aria-hidden="true" />
       {aside !== undefined && <span className="gk-tag__aside">{aside}</span>}
-    </div>
+    </Element>
   );
 }
 
