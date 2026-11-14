@@ -408,7 +408,7 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
  * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
  * another shelf than Watch (C8: the probe reports; C9: the radar, and each missing instrument).
  */
-function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar' }) {
+function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar'; named?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
@@ -421,7 +421,7 @@ function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'prob
       accuracy: 0.82, stock: { low: 18_000, high: 26_000 }, deuteriumStock: null,
       defence: { low: 4_000, high: 7_000 }, fleetSize: { low: 12, high: 20 }, fleetHome: true, detected: false, ...over,
     });
-    client.setQueryData(['planet'], planetView({ instruments: blind ? { TELESCOPE: 0, RADAR: 0 } : { TELESCOPE: 4, RADAR: 4 } }, { id: 'p-1' }));
+    client.setQueryData(['planet'], planetView({ instruments: blind ? { TELESCOPE: 0, RADAR: 0 } : { TELESCOPE: 4, RADAR: named ? 5 : 4 } }, { id: 'p-1' }));
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
     client.setQueryData(['reports'], { reports: [], rivals: [] });
     if (blind) {
@@ -439,7 +439,8 @@ function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'prob
       ],
       probeCooldowns: [],
       radarLog: [
-        { at: new Date(NOW - 50 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: 'NW', originPlanetName: 'Kestrel' },
+        // Radar 5 names the scanner: the row splits into two doors (owner 2026-11-14)
+        { at: new Date(NOW - 50 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: 'NW', originPlanetName: 'Kestrel', ...(named ? { originPlanetId: 'p-kestrel' } : {}) },
         { at: new Date(NOW - 7 * 60 * MIN), planetId: 'p-1', planetName: 'Hollow', bearing: 'S', originPlanetName: null },
         { at: new Date(NOW - 26 * 60 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: null, originPlanetName: null },
       ],
@@ -968,6 +969,7 @@ function Views({ view }: { view: string }) {
   if (view === 'intel-blind') return <GalleryIntel blind />;
   if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
   if (view === 'intel-radar') return <GalleryIntel shelf="radar" />;
+  if (view === 'intel-radar-named') return <GalleryIntel shelf="radar" named />;
   if (view === 'intel-blind-probes') return <GalleryIntel blind shelf="probes" />;
   if (view === 'intel-blind-radar') return <GalleryIntel blind shelf="radar" />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;

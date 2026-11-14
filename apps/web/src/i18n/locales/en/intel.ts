@@ -109,6 +109,8 @@ export const intel = {
     origin: ' · {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: ' · {{planet}}',
+    /** The second door of a scan Radar 5 named: your own world it hit (owner 2026-11-14). */
+    hitWorld: 'Scanned world',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Something is out there',
     ringWarn: 'Timed warning',

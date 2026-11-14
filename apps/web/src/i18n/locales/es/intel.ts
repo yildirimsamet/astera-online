@@ -109,6 +109,7 @@ export const intel = {
     origin: '· {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: '· {{planet}}',
+    hitWorld: 'Mundo escaneado',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Hay algo ahí fuera',
     ringWarn: 'Aviso cronometrado',

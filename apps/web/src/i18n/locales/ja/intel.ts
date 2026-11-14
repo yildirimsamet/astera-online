@@ -109,6 +109,7 @@ export const intel = {
     origin: " · {{planet}}",
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: " · {{planet}}",
+    hitWorld: "スキャンされた惑星",
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: "何かがそこにあります",
     ringWarn: "時間制限付き警告",

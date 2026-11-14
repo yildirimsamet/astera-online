@@ -104,6 +104,7 @@ export const intel = {
     origin: ' · {{planet}}',
     /** Taramanın hangi dünyaya geldiği. */
     onWorld: ' · {{planet}}',
+    hitWorld: 'Taranan dünyan',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Hareket algılandı',
     ringWarn: 'Zamanlı uyarı',

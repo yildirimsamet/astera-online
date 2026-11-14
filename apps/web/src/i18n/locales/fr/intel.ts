@@ -111,6 +111,7 @@ export const intel = {
     origin: " · {{planet}}",
     /** Le monde sur lequel le sondage est arrivé. */
     onWorld: " · {{planet}}",
+    hitWorld: "Monde scanné",
     /* Légendes placées à côté des deux anneaux dessinés ; l’image porte le reste. */
     ringSense: "Mouvement détecté",
     ringWarn: "Alerte temporisée",

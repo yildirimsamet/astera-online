@@ -889,7 +889,7 @@ Doğrulanamayanlar:
 Doğrulanamayanlar:
 - Sessiz radar ve gemideki radar (onarım dili) galeride yok; yalnız testlerle doğrulandı.
 
-**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar.
+**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar. → **Yanıt (owner, 2026-11-14):** iki kapı. Bkz. C11.
 
 **C10 Görünüm sayfası ve galaksi olayları rehberi ✅ (2026-11-14, yardımcı oturum).** G3 #10/#11. Katman ve takvim kuralları değişmedi.
 
@@ -924,6 +924,20 @@ Doğrulanamayanlar:
 - Cihaz saati Türkiye saatinden farklı olan bir oyuncunun "Yerel" satırı yalnız testle doğrulandı; bu makine Türkiye saatinde.
 
 **Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım.
+
+**C11 Radar 5 taramasının iki kapısı ✅ (2026-11-14, yardımcı oturum).** C9 owner sorusunun yanıtı. Radar ve tarama kuralları değişmedi.
+
+- **Ne değişti:** Radar 5 taramayı yapanı adlandırdığında satır iki ayrı basış oldu:
+  - Üstteki satır (nokta, "Tarama yakalandı", yön ve taramayı yapanın adı, süre) onun dosyasını açar.
+  - Altında, kesik çizgili bir dikişle bağlı ikinci kapı: hedef işareti, "Taranan dünyan" ve dünyanın adı. Kendi dünyanı açar.
+  - Dünyanın adı artık üst satırda tekrar edilmiyor.
+- **Ölçüler:** iki kapı da en az 44 px. Üst kapı 54 px, alt kapı 44 px.
+- **Ne değişmedi:** adı bilinmeyen tarama tek kapı kaldı ve taranan dünyayı açıyor. Sunucu taranan dünyayı göndermezse (eski sunucu) adı bilinen tarama da tek kapı.
+- **Tepki:** iki kapı da kitin dokunma sesi ve titreşimiyle açılıyor. Alt kapı basınca kendi rengiyle koyulaşıyor.
+- Yeni anahtar ×6: `intel.radar.hitWorld`.
+- Galeri: `intel-radar-named` (Radar 5, taramayı yapanın adı ve dünyası belli).
+
+Ölçüm: `reports/ui-audit/c11-radar-scan-doors-after-2026-11-14.md`, bir yol, 14 ölçüm. Bütün ölçüler önce de sonra da 0. İlk koşuda alt kapı basınca tepkisizdi; düzeltildi ve yeniden ölçüldü.
 
 ## G4. Galaksi ve gönderme
 

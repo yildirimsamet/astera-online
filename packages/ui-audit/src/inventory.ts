@@ -109,7 +109,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'research', what: 'Araştırma takımyıldızı', files: ['screens/ResearchPanel.tsx', 'v2/hud/ResearchConstellation.tsx'], reach: ['gallery:base-research'], group: 'G2', unreached: ["proje sheet'i", 'tatilde duraklatılmış'] },
 
   // Intelligence and reports.
-  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel', 'gallery:intel-blind', 'gallery:intel-probes', 'gallery:intel-radar', 'gallery:intel-blind-probes', 'gallery:intel-blind-radar'], group: 'G3', unreached: ['Savaşlar rafı (G5)'] },
+  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel', 'gallery:intel-blind', 'gallery:intel-probes', 'gallery:intel-radar', 'gallery:intel-radar-named', 'gallery:intel-blind-probes', 'gallery:intel-blind-radar'], group: 'G3', unreached: ['Savaşlar rafı (G5)'] },
   {
     id: 'reports',
     what: 'Savaş raporları ve anıt raporu',
