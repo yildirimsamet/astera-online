@@ -891,6 +891,40 @@ Doğrulanamayanlar:
 
 **Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar.
 
+**C10 Görünüm sayfası ve galaksi olayları rehberi ✅ (2026-11-14, yardımcı oturum).** G3 #10/#11. Katman ve takvim kuralları değişmedi.
+
+- **Görünüm sayfası (`ViewSheet`):**
+  - Kitin boyalı başlığı var (teleskop resmi, galaksi kodu).
+  - "Katmanlar" etiketinin altında iki katman kitin kollu anahtarı (`Toggle`) oldu; her birinin yanında kendi aletinin resmi var. Anahtar ses ve titreşimle yanıt veriyor; sayfa, çizilen menzil görünsün diye yine kapanıyor.
+  - Akademi'nin işaret ettiği `data-sensor-toggle`, anahtarı saran kutuda duruyor. Akademi bu kutuya `closest()` ile ulaşıyor.
+  - Olaylar rehberine giden yol kitin defter satırı: saat işareti, ad ve ok.
+- **Galaksi olayları rehberi (`GalaxyEventsGuide`, v1'den kite):**
+  - Sayfa v2 sayfasına geçti; kit başlığında kronometre resmi var.
+  - "Sıradaki etkinlik" yeşil, ışıklı bir plaka. İşaret yavaşça parlıyor; parıltı yalnız saydamlık değiştirdiği için çizimi ucuz.
+  - Türkiye saati ayrı bir rozet.
+  - Her olay kendi renginde bir kit plakası: asteroit kristal, tüccar alaşım, konvoy düşman rengi. İşaret kutusu, başlık, kural metni ve pencereler var.
+  - Gün adları büyük harfle bağırmıyor ve pencerelerin üstünde duruyor. Böylece bir satıra iki pencere sığıyor; önceden yerel saat satırı yüzünden pencereler tek tek alt alta diziliyordu.
+  - Uzun "Bilinmeyen sinyal" metni, takvim olayı olmadığı için sona taşındı. Adının altında katlanıyor (`details.gk-rules`); önceden 11 satırlık bir duvardı.
+  - Japonca başlık "ギャラクシーイベント" → "銀河イベント" ve üst satır → "週間カレンダー" oldu. İkisi de ses taklidiydi.
+- **Galeri:** `events-guide` görünümü eklendi (sıradaki yağmur 42 dk sonra).
+
+Ölçüm: `reports/ui-audit/c10-view-guide-chronicle-after-2026-11-14.md` (Kronik de bu raporda; notu G5'te).
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 134 | 0 |
+| Kontrastı yetmeyen metin | 30 | 0 |
+| 44 px altı hedef | 15 | 0 |
+| WCAG 2.5.8 aralık hatası | 2 | 0 |
+| Basınca tepkisiz | 8 | 0 |
+
+Üç yüzey birlikte ölçüldü: dört yol (`view`, `events-guide`, `chronicle`, `chronicle-empty`), 56 ölçüm.
+
+Doğrulanamayanlar:
+- Cihaz saati Türkiye saatinden farklı olan bir oyuncunun "Yerel" satırı yalnız testle doğrulandı; bu makine Türkiye saatinde.
+
+**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.
@@ -963,6 +997,23 @@ Gemideki hikâye (kahraman satırı, "Ayrıntılar" açıcısı, çevrimiçi ola
 | Yazı alışkanlığı | 0 | 0 |
 
 Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve neye vardıkları); daha da kısaltmak satırın karar değerini düşürür. Sheet'in kararmış arka planı "adsız dokunulabilir alan" sayılıyor; sheet çerçevesinin işi, öncesinde de vardı.
+
+**C10 Kronik ✅ (2026-11-14, yardımcı oturum).** G5 #8. Zilin "Kronik" sekmesi; v1'den kite geçti. Olay gruplama (8 dakika kuralı), olay türleri ve hangi dünyaya gidilebildiği değişmedi.
+
+- **Defter satırı:** her an kitin defterinde (`gk-ledger`) bir satır.
+  - Soldaki renkli işaret haberin türünü söylüyor:
+    - düşman rengi: bombardıman, Ölüm Yıldızı
+    - altın: Merkez kademesi, Hakimiyet liderliği, sezon perdesi, kontrol devri
+    - yeşil: tüccar, enkaz, açılan dünyalar
+    - sönük: tükenen kaya ya da biten olay
+  - Başlık büyük harfle bağırmıyor, 14 px ve kalın.
+  - Zaman başlığın satırında, sağda; tekrar sayısı (×2) zamanın üstünde.
+- **Satır bir kapı:** gidilebilen bir dünyaya ait anda satırın tamamı kapı. Ekran okuyucu satırı başlıkla adlandırıyor, hikâyeyi ve zamanı açıklama olarak okuyor. Önceden yalnız başlık basılabiliyordu ve 44 px altındaydı.
+- **Boş kronik:** kitin boş durumu (galaksi resmi, "Galaksi şimdilik sakin" ve alt cümle). Yeni anahtar ×6: `chronicle.emptyTitle`; `chronicle.empty` ikinci cümleye indi.
+- **Daha eski olaylar:** kitin tuşu, yüklenirken dönüyor.
+- **Galeri:** `chronicle` ve `chronicle-empty` görünümleri eklendi. Zil sekmesi, örnek bir hafta (iki bombardıman tek satırda, Ölüm Yıldızı, tüccar, kademe, liderlik, tükenen kaya, Savaş perdesi).
+
+Ölçüm: `reports/ui-audit/c10-view-guide-chronicle-after-2026-11-14.md`.
 
 ## G6. Ödüller, mağaza, envanter, kozmetik
 

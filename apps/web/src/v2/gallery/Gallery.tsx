@@ -51,7 +51,9 @@ import { BellSheet } from '../hud/BellSheet.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell } from '../hud/GalaxyCorners.js';
 import { useToast } from '../../ui/Toast.js';
 import { SignalsFeed } from '../../shell/Signals.js';
-import type { NotificationView } from '../../api/schemas.js';
+import type { GalaxyEvent, NotificationView } from '../../api/schemas.js';
+import { ChronicleScreen } from '../../screens/ChronicleScreen.js';
+import { GalaxyEventsGuide } from '../../screens/GalaxyEventsGuide.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
@@ -885,6 +887,49 @@ function GalleryBell({ empty = false }: { empty?: boolean }) {
 }
 
 /**
+ * The bell's chronicle tab as a galaxy a few days in reads it (C10): a raid run folded into
+ * one row, a Death Star strike, the merchant arriving, a world's Core tier and the Dominion
+ * lead, a spent rock and the season's turn. `empty` is a galaxy where nothing public has
+ * happened yet.
+ */
+function GalleryChronicle({ empty = false }: { empty?: boolean }) {
+  const [api] = useState(() => new Api());
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const at = (minutes: number) => new Date(NOW - minutes * MIN);
+    const events: GalaxyEvent[] = empty ? [] : [
+      { id: 'c-raid-1', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(12), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-raid-2', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(16), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-ds', kind: 'death_star_impact', subjectPlanetId: 'p-vela', occurredAt: at(55), payload: { planetName: 'Vela-3', outcome: 'FIRST_STRIKE', capturable: true } },
+      { id: 'c-trade', kind: 'galaxy_event_started', subjectPlanetId: null, occurredAt: at(90), payload: { eventKind: 'TRADE_SHIP', startsAt: at(90).toISOString(), endsAt: at(-90).toISOString(), rate: { alloy: 1, crystal: 2, deuterium: 32 } } },
+      { id: 'c-core', kind: 'core_tier', subjectPlanetId: 'p-thistle', occurredAt: at(180), payload: { planetName: 'Thistle', commanderName: 'Mimar', tier: 3 } },
+      { id: 'c-lead', kind: 'dominion_leader', subjectPlanetId: 'p-thistle', occurredAt: at(240), payload: { planetName: 'Thistle', commanderName: 'Mimar' } },
+      { id: 'c-iso', kind: 'isotope_exhausted', subjectPlanetId: null, occurredAt: at(400), payload: {} },
+      { id: 'c-act', kind: 'season_act', subjectPlanetId: null, occurredAt: at(1440), payload: { act: 'war' } },
+    ];
+    next.setQueryData(keys.chronicle, { pages: [{ events, nextBefore: empty ? null : 'older' }], pageParams: [null] });
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <BellSheet tab="chronicle" onTab={noop} onClose={noop} unseen={0} signals={null} chronicle={<ChronicleScreen onFocusPlanet={noop} />} />
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+/** The galaxy events guide with the next shower 42 minutes out (C10). */
+function GalleryEventsGuide() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(keys.galaxyEvents, { events: [], next: { kind: 'ASTEROID_SHOWER', startsAt: new Date(Date.now() + 42 * MIN) } });
+    return null;
+  });
+  return <GalaxyEventsGuide onClose={noop} />;
+}
+
+/**
  * One toast, said once the page is up: what every action answers with (G1-d3, 2026-11-14) —
  * the works collected, the store full and some left behind, and a refusal.
  */
@@ -1043,6 +1088,8 @@ function Views({ view }: { view: string }) {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
   if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
+  if (view === 'chronicle' || view === 'chronicle-empty') return <GalleryChronicle empty={view === 'chronicle-empty'} />;
+  if (view === 'events-guide') return <GalleryEventsGuide />;
   if (view === 'toast') return <GalleryToast tone="info" />;
   if (view === 'toast-warn') return <GalleryToast tone="warn" />;
   if (view === 'toast-error') return <GalleryToast tone="error" />;

@@ -18,7 +18,9 @@ export const chronicle = {
   launcherTradeShipEnded: 'Trade ship departed',
   list: 'Public events in this galaxy',
   repeatCount: '{{count}} times',
-  empty: 'The galaxy is quiet for now. The next launch may change that.',
+  /** C10: the kit empty state's title; `empty` is its body. */
+  emptyTitle: 'The galaxy is quiet for now',
+  empty: 'The next launch may change that.',
   older: 'Load earlier events',
   loadingOlder: 'Reading earlier events',
   bombardment: 'Bombardment reached {{planet}}',

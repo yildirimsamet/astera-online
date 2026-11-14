@@ -1,21 +1,21 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SETTLEMENT_PRIORITY_MINUTES } from '@astera/rules';
 import { useChronicle } from '../api/queries.js';
+import { EmptyState, GameButton, Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useNow } from '../lib/time.js';
-import {
-  AlloyIcon,
-  CoreIcon,
-  DrillIcon,
-  GalaxyIcon,
-  LeaderboardIcon,
-  PlanetIcon,
-} from '../ui/icons/index.js';
-import { Button, EmptyState } from '../ui/kit/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+
+/** How a moment reads at a glance (C10): a blow, a rise, an opening, or something that ran out. */
+type Tone = 'hostile' | 'gold' | 'good' | 'quiet';
+
+/** A galaxy event's own mark: the merchant's crate, the convoy, the shower's rock. */
+const EVENT_GLYPH = { TRADE_SHIP: 'crate', INTERGALACTIC_CONVOY: 'rocket', ASTEROID_SHOWER: 'asteroid' } as const satisfies Record<string, GlyphId>;
 
 const GROUP_MS = 8 * 60_000;
 
@@ -61,16 +61,16 @@ export function ChronicleScreen({
   if (!chronicle.data) return <Waiting>{t('surface.waitingChronicle')}</Waiting>;
 
   return (
-    <div role="log" aria-label={t('chronicle.list')} aria-live="polite" className="py-2">
+    <div role="log" aria-label={t('chronicle.list')} aria-live="polite" className="gk gk-chron">
       {events.length === 0 ? (
-        <div className="py-6"><EmptyState title={t('chronicle.empty')} /></div>
+        <EmptyState art={artIconSrc('nav-galaxy')} title={t('chronicle.emptyTitle')} body={t('chronicle.empty')} />
       ) : (
-        <ol className="divide-y divide-line-soft">
+        <ol className="gk-ledger">
           {events.map(({ event, count }) => {
             let title: string;
             let detail: string;
-            let tone = 'border-opportunity/35 text-opportunity';
-            let icon = <GalaxyIcon className="size-4" />;
+            let tone: Tone = 'good';
+            let glyph: GlyphId = 'star';
             switch (event.kind) {
               case 'bombardment':
                 title = t(count > 1 ? 'chronicle.bombardmentGrouped' : 'chronicle.bombardment', {
@@ -78,37 +78,43 @@ export function ChronicleScreen({
                   count,
                 });
                 detail = t('chronicle.bombardmentDetail', { commander: event.payload.commanderName });
-                tone = 'border-threat/35 text-threat';
-                icon = <PlanetIcon className="size-4" />;
+                tone = 'hostile';
+                glyph = 'attack';
                 break;
               case 'core_tier':
                 title = t('chronicle.coreTier', { planet: event.payload.planetName, tier: event.payload.tier });
                 detail = t('chronicle.coreTierDetail', { commander: event.payload.commanderName });
-                icon = <CoreIcon className="size-4" />;
+                tone = 'gold';
+                glyph = 'up';
                 break;
               case 'isotope_exhausted':
                 title = t('chronicle.isotopeExhausted');
                 detail = t('chronicle.isotopeExhaustedDetail');
-                icon = <DrillIcon className="size-4" />;
+                tone = 'quiet';
+                glyph = 'mine';
                 break;
               case 'wreck_formed':
                 title = t('chronicle.wreckFormed', { planet: event.payload.planetName });
                 detail = t('chronicle.wreckFormedDetail');
-                icon = <AlloyIcon className="size-4" />;
+                glyph = 'debris';
                 break;
               case 'wreck_exhausted':
                 title = t('chronicle.wreckExhausted', { planet: event.payload.planetName });
                 detail = t('chronicle.wreckExhaustedDetail');
-                icon = <AlloyIcon className="size-4" />;
+                tone = 'quiet';
+                glyph = 'debris';
                 break;
               case 'dominion_leader':
                 title = t('chronicle.dominionLeader', { commander: event.payload.commanderName });
                 detail = t('chronicle.dominionLeaderDetail', { planet: event.payload.planetName });
-                icon = <LeaderboardIcon className="size-4" />;
+                tone = 'gold';
+                glyph = 'ranking';
                 break;
               case 'season_act':
                 title = t(`chronicle.act.${event.payload.act}.title`);
                 detail = t(`chronicle.act.${event.payload.act}.detail`);
+                tone = 'gold';
+                glyph = 'history';
                 break;
               case 'neutral_claim':
                 title = t('chronicle.neutralClaim', {
@@ -116,7 +122,7 @@ export function ChronicleScreen({
                   tier: event.payload.tier,
                 });
                 detail = t('chronicle.neutralClaimDetail', { minutes: SETTLEMENT_PRIORITY_MINUTES });
-                icon = <PlanetIcon className="size-4" />;
+                glyph = 'colony';
                 break;
               case 'neutral_opened':
                 title = t('chronicle.neutralOpened', { total: event.payload.total });
@@ -125,7 +131,7 @@ export function ChronicleScreen({
                   t2: event.payload.tiers[2],
                   t3: event.payload.tiers[3],
                 });
-                icon = <GalaxyIcon className="size-4" />;
+                glyph = 'colony';
                 break;
               case 'death_star_impact':
                 title = t('chronicle.deathStarImpact', { planet: event.payload.planetName });
@@ -134,15 +140,16 @@ export function ChronicleScreen({
                     ? 'CAPITAL_STRIKE'
                     : event.payload.outcome
                 }`);
-                tone = 'border-threat/35 text-threat';
-                icon = <PlanetIcon className="size-4" />;
+                tone = 'hostile';
+                glyph = 'critical';
                 break;
               case 'control_transfer':
                 title = t('chronicle.controlTransfer', { planet: event.payload.planetName });
                 detail = t('chronicle.controlTransferDetail', {
                   commander: event.payload.commanderName,
                 });
-                icon = <CoreIcon className="size-4" />;
+                tone = 'gold';
+                glyph = 'flag';
                 break;
               /*
                 TWO PUBLIC EVENTS SHARE ONE ROW KIND. D156.
@@ -170,7 +177,7 @@ export function ChronicleScreen({
                     : t('chronicle.asteroidShowerStartedDetail', {
                       multiplier: event.payload.asteroidSpawnMultiplier,
                     });
-                icon = <GalaxyIcon className="size-4" />;
+                glyph = EVENT_GLYPH[event.payload.eventKind];
                 break;
               case 'galaxy_event_ended':
                 title = event.payload.eventKind === 'TRADE_SHIP'
@@ -183,7 +190,8 @@ export function ChronicleScreen({
                   : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
                     ? t('chronicle.intergalacticConvoyEndedDetail')
                     : t('chronicle.asteroidShowerEndedDetail');
-                icon = <GalaxyIcon className="size-4" />;
+                tone = 'quiet';
+                glyph = EVENT_GLYPH[event.payload.eventKind];
                 break;
             }
             const focus = event.subjectPlanetId
@@ -191,55 +199,83 @@ export function ChronicleScreen({
                 ? () => { onFocusPlanet(event.subjectPlanetId!); }
                 : null;
             return (
-              <li key={event.id} className="flex gap-2 px-2 py-3">
-                <div className={`mt-1 grid size-9 shrink-0 place-items-center rounded-full border ${tone}`}>
-                  {icon}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  {/*
-                    WHEN sits on the headline's own line rather than under the
-                    body. It is the second thing read on every row of a log and it
-                    was the last, three lines down, in the faintest ink on screen.
-                  */}
-                  <div className="flex items-baseline gap-2">
-                    {focus ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          haptic('tap');
-                          focus();
-                        }}
-                        className="name min-w-0 flex-1 text-left text-bone underline decoration-transparent underline-offset-2 transition-colors hover:decoration-bone/40"
-                      >
-                        {title}
-                      </button>
-                    ) : <p className="name min-w-0 flex-1 text-bone">{title}</p>}
-                    {count > 1 && (
-                      <span className="chip shrink-0" aria-label={t('chronicle.repeatCount', { count })}>
-                        ×{count}
-                      </span>
-                    )}
-                    <time
-                      className="num shrink-0 text-micro text-faint"
-                      dateTime={event.occurredAt.toISOString()}
-                    >
-                      {chatRelativeTime(event.occurredAt, now, t)}
-                    </time>
-                  </div>
-                  <p className="text-caption leading-snug text-dim">{detail}</p>
-                </div>
+              <li key={event.id}>
+                <Moment
+                  title={title}
+                  detail={detail}
+                  tone={tone}
+                  glyph={glyph}
+                  count={count}
+                  at={event.occurredAt}
+                  now={now}
+                  onFocus={focus}
+                />
               </li>
             );
           })}
         </ol>
       )}
       {chronicle.hasNextPage && (
-        <div className="px-2 pt-2 text-center">
-          <Button size="sm" variant="ghost" disabled={chronicle.isFetchingNextPage} onClick={() => { void chronicle.fetchNextPage(); }}>
-            {chronicle.isFetchingNextPage ? t('chronicle.loadingOlder') : t('chronicle.older')}
-          </Button>
-        </div>
+        <GameButton size="sm" wide pending={chronicle.isFetchingNextPage} onPress={() => { void chronicle.fetchNextPage(); }}>
+          {chronicle.isFetchingNextPage ? t('chronicle.loadingOlder') : t('chronicle.older')}
+        </GameButton>
       )}
     </div>
   );
+}
+
+/**
+ * ONE REMEMBERED MOMENT, ONE KIT ROW (C10). Its mark says at a glance what kind of news
+ * it is; WHEN sits beside the headline, the second thing read on every row of a log. A
+ * moment on a world you can reach is a door as a whole, named by its headline and told
+ * by its story, so a reader hears both.
+ */
+function Moment({ title, detail, tone, glyph, count, at, now, onFocus }: {
+  title: string;
+  detail: string;
+  tone: Tone;
+  glyph: GlyphId;
+  count: number;
+  at: Date;
+  now: number;
+  onFocus: (() => void) | null;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocus?.(); });
+  const face = (
+    <>
+      <span className="gk-chron__mark" data-tone={tone} aria-hidden="true"><Glyph id={glyph} /></span>
+      <span className="gk-ledger__words">
+        <span id={`${id}-title`} className="gk-ledger__title">{title}</span>
+        <span id={`${id}-story`} className="gk-ledger__sub">{detail}</span>
+      </span>
+      <span className="gk-chron__side">
+        {count > 1 && (
+          <span className="gk-chron__count gk-num">
+            <span aria-hidden="true">×{count}</span>
+            <span className="sr-only">{t('chronicle.repeatCount', { count })}</span>
+          </span>
+        )}
+        <time id={`${id}-when`} className="gk-chron__time gk-num" dateTime={at.toISOString()}>
+          {chatRelativeTime(at, now, t)}
+        </time>
+      </span>
+    </>
+  );
+  return onFocus
+    ? (
+      <button
+        type="button"
+        className="gk-ledger__row"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={`${id}-story ${id}-when`}
+        {...OWN_SOUND}
+        onPointerDown={own.onPointerDown}
+        onClick={own.onClick}
+      >
+        {face}
+      </button>
+    )
+    : <div className="gk-ledger__row">{face}</div>;
 }

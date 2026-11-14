@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics.js';
-import { Icon, type IconId } from '../icons.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
+import { instrumentArt } from '../../ui/assets.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Sheet } from '../kit/Sheet.js';
-import { RoundButton, artIconSrc } from '../../game-ui/index.js';
+import { Glyph, RoundButton, SectionTag, Toggle, artIconSrc } from '../../game-ui/index.js';
 
 /**
  * THE VIEW CHIP: the telescope, the one control in that corner beside home. Owner,
@@ -32,43 +34,43 @@ export interface ViewSheetProps {
   onClose: () => void;
 }
 
+/**
+ * ONE LAYER, ONE KIT SWITCH (C10): the instrument pictured beside the lever that draws
+ * its reach. `data-sensor-toggle` names the instrument for the Academy's Telescope
+ * exercise, which points at `[data-sensor-toggle="telescope"]`.
+ */
 function Layer({
   id,
-  icon,
   label,
   detail,
   on,
   onPress,
 }: {
-  /** Which instrument: the Academy's Telescope exercise points at `[data-sensor-toggle="telescope"]`. */
   id: 'telescope' | 'radar';
-  icon: IconId;
   label: string;
   detail: string;
   on: boolean;
   onPress: () => void;
 }) {
+  const art = instrumentArt(id === 'telescope' ? 'TELESCOPE' : 'RADAR', 1);
   return (
-    <button
-      type="button"
-      data-sensor-toggle={id}
-      role="switch"
-      aria-checked={on}
-      onClick={() => { haptic('tap'); onPress(); }}
-      className="flex w-full items-center gap-3 border-b border-v2-line/60 py-2.5 text-left last:border-b-0"
-    >
-      <Icon id={icon} className={`size-5 shrink-0 ${on ? 'text-v2-self' : 'text-v2-ink-3'}`} />
-      <span className="grid min-w-0 flex-1">
-        <span className="text-caption font-semibold text-v2-ink">{label}</span>
-        <span className="text-micro text-v2-ink-3">{detail}</span>
-      </span>
-      <span
-        aria-hidden="true"
-        className={`relative h-5 w-9 shrink-0 rounded-full border ${on ? 'border-v2-self/60 bg-v2-self/25' : 'border-v2-line bg-v2-raise'}`}
-      >
-        <span className={`absolute top-0.5 size-3.5 rounded-full ${on ? 'right-0.5 bg-v2-self' : 'left-0.5 bg-v2-ink-3'}`} />
-      </span>
-    </button>
+    <div data-sensor-toggle={id}>
+      <Toggle checked={on} onChange={onPress} label={label} sub={detail} {...(art ? { art } : {})} />
+    </div>
+  );
+}
+
+/** The door to the events guide: a kit row that says where it goes. */
+function EventsDoor({ label, onOpen }: { label: string; onOpen: () => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  return (
+    <div className="gk-ledger">
+      <button type="button" className="gk-ledger__row" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+        <span className="gk-ledger__mark gk-view__mark" aria-hidden="true"><Glyph id="timed" /></span>
+        <span className="gk-ledger__words"><span className="gk-ledger__title">{label}</span></span>
+        <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>
+      </button>
+    </div>
   );
 }
 
@@ -84,6 +86,7 @@ function Layer({
  * has a naked-eye neighbourhood); the Radar's is ABSENT, not greyed, until a
  * Radar runs — a control that draws nothing teaches that the pair is decorative.
  * A figure an older server does not send is left out, never printed as zero.
+ * C10: on the kit — its painted head, the kit's lever switches, a door to the guide.
  */
 export function ViewSheet({
   shard,
@@ -96,18 +99,17 @@ export function ViewSheet({
 }: ViewSheetProps) {
   const { t } = useTranslation();
   return (
-    <Sheet title={t('view.title')} eyebrow={shard} onClose={onClose}>
-      <div className="flex flex-col gap-3">
-        <div>
-          <p className="text-micro uppercase tracking-wide text-v2-ink-3">{t('view.layers')}</p>
-          {/*
-            A LAYER IS SWITCHED TO BE SEEN: the sheet closes on the press so the circle
-            it drew is on screen at once — and the Academy's Telescope exercise, which
-            offers no close button, is never left under a sheet.
-          */}
+    <Sheet title={t('view.title')} eyebrow={shard} onClose={onClose} kit={{ art: artIconSrc('hud-view'), tone: 'self' }}>
+      <div className="gk gk-view">
+        <SectionTag>{t('view.layers')}</SectionTag>
+        {/*
+          A LAYER IS SWITCHED TO BE SEEN: the sheet closes on the press so the circle
+          it drew is on screen at once — and the Academy's Telescope exercise, which
+          offers no close button, is never left under a sheet.
+        */}
+        <div className="gk-switches gk-view__layers">
           <Layer
             id="telescope"
-            icon="i-telescope"
             label={t('view.telescope')}
             detail={t('view.telescopeDetail')}
             on={telescope}
@@ -116,7 +118,6 @@ export function ViewSheet({
           {radar !== undefined && onToggleRadar !== undefined && (
             <Layer
               id="radar"
-              icon="i-radar"
               label={t('view.radar')}
               detail={t('view.radarDetail')}
               on={radar}
@@ -124,15 +125,7 @@ export function ViewSheet({
             />
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => { haptic('tap'); onOpenEvents(); }}
-          className="flex items-center justify-between rounded-control border border-v2-line px-3 py-2.5 text-caption text-v2-ink"
-        >
-          {t('view.events')}
-          <Icon id="i-chev" className="size-4 text-v2-ink-3" />
-        </button>
+        <EventsDoor label={t('view.events')} onOpen={onOpenEvents} />
       </div>
     </Sheet>
   );

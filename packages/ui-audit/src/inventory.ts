@@ -72,14 +72,14 @@ export const SURFACES: GameSurface[] = [
   { id: 'outline', what: 'Üs ve filo özeti katmanı', files: ['v2/hud/Outline.tsx', 'v2/shell/OutlineHost.tsx'], reach: ['client:outline'], group: 'G1' },
   { id: 'fleet', what: 'Filo sayfası: havada, evde, oda', files: ['v2/hud/FleetPage.tsx', 'v2/shell/FleetHost.tsx'], reach: ['gallery:fleet', 'gallery:fleet-home', 'gallery:fleet-room', 'gallery:support-fleet'], group: 'G2', unreached: ['Havada: anıtta bekleyen dalga satırları'] },
   { id: 'bell', what: 'Zil: sinyal akışı ve kronik sekmesi', files: ['v2/hud/BellSheet.tsx', 'v2/shell/BellHost.tsx', 'shell/Signals.tsx'], reach: ['gallery:bell', 'gallery:bell-empty'], group: 'G1' },
-  { id: 'chronicle', what: 'Kronik: galaksi geçmişi', files: ['screens/ChronicleScreen.tsx'], reach: ['client:chronicle'], group: 'G5' },
+  { id: 'chronicle', what: 'Kronik: galaksi geçmişi', files: ['screens/ChronicleScreen.tsx'], reach: ['client:chronicle', 'gallery:chronicle', 'gallery:chronicle-empty'], group: 'G5' },
   { id: 'away', what: 'Yokken olanlar özeti', files: ['v2/hud/AwaySheet.tsx', 'v2/shell/AwayHost.tsx'], reach: ['gallery:away'], group: 'G5', unreached: ['gemideki dönüş hikâyesi'] },
   { id: 'view-sheet', what: 'Görünüm ayarları sayfası', files: ['v2/hud/ViewSheet.tsx'], reach: ['gallery:view'], group: 'G3' },
   { id: 'queue', what: 'İnşa ve tersane kuyruğu', files: [], reach: ['gallery:queue'], group: 'G2' },
   { id: 'peek', what: 'Gezegene hızlı bakış', files: [], reach: ['gallery:peek'], group: 'G4', unreached: ['gerçek odak kartının göz atma bölümü (galeri yer tutucu çiziyor)'] },
   { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['client:return'], group: 'G10' },
   { id: 'worlds', what: 'Dünyalar paneli', files: ['screens/WorldsPanel.tsx'], reach: ['client:worlds'], group: 'G2', unreached: ['tek dünya (aktarma yok)'] },
-  { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide'], group: 'G3' },
+  { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide'], group: 'G3' },
   { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal'], group: 'G4', unreached: ['sonuç: korsan', 'sonuç: kaplama', 'gemi yok, üretime yönlendirme'] },
 
   // Reading a target and acting on it.

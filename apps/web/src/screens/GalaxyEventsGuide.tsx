@@ -5,13 +5,16 @@ import {
   type GalaxyEventDays,
   type GalaxyEventKind,
 } from '@astera/rules';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents } from '../api/queries.js';
+import { Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { serverNow } from '../lib/clock.js';
 import { decimal } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { duration, useNow } from '../lib/time.js';
-import { CargoIcon, CrystalIcon, GalaxyIcon } from '../ui/icons/index.js';
-import { Sheet } from '../ui/kit/Sheet.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 
 const twoDigits = (value: number): string => String(value).padStart(2, '0');
 const MINUTE_MS = 60_000;
@@ -120,6 +123,12 @@ function byDays<T extends { readonly days?: GalaxyEventDays; readonly startsAtLo
     .filter((group) => group.windows.length > 0);
 }
 
+/**
+ * THE GALAXY EVENTS GUIDE (C10, on the kit). It answers "when is the next one, and what
+ * does it give me?": a lit countdown to the next event, then one plate per event with its
+ * rule and its windows, each kind of day on its own row. The unknown signal is a personal
+ * event, not a calendar one, so its rules fold under their name at the foot.
+ */
 export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const events = useGalaxyEvents();
@@ -133,103 +142,96 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
       eyebrow={t('galaxy.eventsGuide.eyebrow')}
       title={t('galaxy.eventsGuide.title')}
       onClose={onClose}
+      kit={{ art: artIconSrc('hud-timers'), tone: 'self' }}
     >
-      <div className="pb-2">
+      <div className="gk gk-guide">
         <NextEventSummary event={events.data?.next ?? null} />
-        <div className="plate plate-inset flex items-center justify-between gap-3 rounded-chip px-3 py-2">
-          <p className="text-caption leading-snug text-dim">{t('galaxy.eventsGuide.intro')}</p>
-          <span className="legend shrink-0 rounded-full border border-crystal/25 bg-crystal/10 px-2 py-1 text-micro text-crystal">
-            {t('galaxy.eventsGuide.timeZone')}
-          </span>
-        </div>
-
-        <div className="mt-3 space-y-3">
-          <section className="rounded-chip border border-v2-crystal/20 bg-v2-crystal/5 p-3">
-            <h3 className="text-caption font-semibold text-v2-crystal">{t('unknownSignal.title')}</h3>
-            <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.wiki')}</p>
-            <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.collector')}</p>
-          </section>
-          <EventCard
-            tone="crystal"
-            icon={<CrystalIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.asteroid.title')}
-            summary={t('galaxy.eventsGuide.asteroid.summary', {
-              rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
-              frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
-              window: SPAWN_GATE.onlineWindowMinutes,
-            })}
-          >
-            {asteroidGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="ASTEROID_SHOWER"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    days={'days' in window ? window.days : undefined}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                    detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-
-          <EventCard
-            tone="alloy"
-            icon={<CargoIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.trade.title')}
-            summary={t('galaxy.eventsGuide.trade.summary')}
-            note={t('galaxy.eventsGuide.trade.rate')}
-          >
-            {tradeGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="TRADE_SHIP"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-
-          <EventCard
-            tone="threat"
-            icon={<GalaxyIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.convoy.title')}
-            summary={t('galaxy.eventsGuide.convoy.summary')}
-            note={t('galaxy.eventsGuide.convoy.note')}
-          >
-            {convoyGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="INTERGALACTIC_CONVOY"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    days={window.days}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-        </div>
-
-        <p className="mt-3 text-center text-micro leading-relaxed text-faint">
-          {t('galaxy.eventsGuide.dailyNote')}
+        <p className="gk-guide__intro">
+          <span>{t('galaxy.eventsGuide.intro')}</span>
+          <span className="gk-guide__zone"><Glyph id="clock" />{t('galaxy.eventsGuide.timeZone')}</span>
         </p>
+
+        <EventCard
+          tone="crystal"
+          glyph="asteroid"
+          title={t('galaxy.eventsGuide.asteroid.title')}
+          summary={t('galaxy.eventsGuide.asteroid.summary', {
+            rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
+            frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
+            window: SPAWN_GATE.onlineWindowMinutes,
+          })}
+        >
+          {asteroidGroups.map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((window) => (
+                <TimePill
+                  key={window.startsAtLocalMinute}
+                  kind="ASTEROID_SHOWER"
+                  startsAtLocalMinute={window.startsAtLocalMinute}
+                  endsAtLocalMinute={window.endsAtLocalMinute}
+                  days={'days' in window ? window.days : undefined}
+                  time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                  detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
+                />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <EventCard
+          tone="alloy"
+          glyph="crate"
+          title={t('galaxy.eventsGuide.trade.title')}
+          summary={t('galaxy.eventsGuide.trade.summary')}
+          note={t('galaxy.eventsGuide.trade.rate')}
+        >
+          {tradeGroups.map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((window) => (
+                <TimePill
+                  key={window.startsAtLocalMinute}
+                  kind="TRADE_SHIP"
+                  startsAtLocalMinute={window.startsAtLocalMinute}
+                  endsAtLocalMinute={window.endsAtLocalMinute}
+                  time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <EventCard
+          tone="hostile"
+          glyph="rocket"
+          title={t('galaxy.eventsGuide.convoy.title')}
+          summary={t('galaxy.eventsGuide.convoy.summary')}
+          note={t('galaxy.eventsGuide.convoy.note')}
+        >
+          {convoyGroups.map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((window) => (
+                <TimePill
+                  key={window.startsAtLocalMinute}
+                  kind="INTERGALACTIC_CONVOY"
+                  startsAtLocalMinute={window.startsAtLocalMinute}
+                  endsAtLocalMinute={window.endsAtLocalMinute}
+                  days={window.days}
+                  time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <SignalRules />
+
+        <p className="gk-note gk-guide__daily">{t('galaxy.eventsGuide.dailyNote')}</p>
       </div>
     </Sheet>
   );
 }
 
+/** The next public event, lit: what it is and how long until it starts. */
 function NextEventSummary({ event }: { event: { kind: GalaxyEventKind; startsAt: Date } | null }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
@@ -237,68 +239,73 @@ function NextEventSummary({ event }: { event: { kind: GalaxyEventKind; startsAt:
   const eventName = t(`galaxy.eventsGuide.event.${event.kind}`);
   const left = duration((event.startsAt.getTime() - now) / MINUTE_MS);
   return (
-    <div
-      role="status"
-      aria-label={t('galaxy.eventsGuide.nextLabel')}
-      className="plate plate-cut mb-3 border border-opportunity/30 bg-opportunity/8 px-3 py-3"
-    >
-      <span className="legend text-opportunity">{t('galaxy.eventsGuide.nextLabel')}</span>
-      <p className="name mt-1 text-bone">
-        {t('galaxy.eventsGuide.nextUpcoming', {
-          event: eventName,
-          duration: left,
-        })}
-      </p>
+    <div role="status" aria-label={t('galaxy.eventsGuide.nextLabel')} className="gk-nextevent">
+      <span className="gk-nextevent__mark" aria-hidden="true"><Glyph id="timed" /></span>
+      <span className="gk-nextevent__words">
+        <span className="gk-nextevent__label">{t('galaxy.eventsGuide.nextLabel')}</span>
+        <span className="gk-nextevent__line">
+          {t('galaxy.eventsGuide.nextUpcoming', { event: eventName, duration: left })}
+        </span>
+      </span>
     </div>
   );
 }
 
+/** The personal signal's rules, one press away under their name. */
+function SignalRules() {
+  const { t } = useTranslation();
+  return (
+    <details className="gk-rules">
+      <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <Glyph id="siren" />
+        <span className="flex-1">{t('unknownSignal.title')}</span>
+        <span className="gk-rules__chev"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-rules__body">
+        <p>{t('unknownSignal.wiki')}</p>
+        <p>{t('unknownSignal.collector')}</p>
+      </div>
+    </details>
+  );
+}
+
+/** One event as a kit plate: its mark in its colour, its rule, then its windows by kind of day. */
 function EventCard({
   tone,
-  icon,
+  glyph,
   title,
   summary,
   note,
   children,
 }: {
-  tone: 'crystal' | 'alloy' | 'threat';
-  icon: React.ReactNode;
+  tone: 'crystal' | 'alloy' | 'hostile';
+  glyph: GlyphId;
   title: string;
   summary: string;
   note?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  const toneClass = {
-    crystal: 'border-crystal/25 text-crystal',
-    alloy: 'border-alloy/25 text-alloy',
-    threat: 'border-threat/25 text-threat',
-  }[tone];
-
   return (
-    <article className={`plate plate-inset rounded-plate border px-3 py-3 ${toneClass}`}>
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-chip border border-current/25 bg-current/5">
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="name text-bone">{title}</h3>
-          <p className="mt-1 text-caption leading-snug text-dim">{summary}</p>
+    <article className="gk-event" data-tone={tone}>
+      <div className="gk-event__head">
+        <span className="gk-event__bay" aria-hidden="true"><Glyph id={glyph} /></span>
+        <div className="gk-event__words">
+          <h3 className="gk-event__title">{title}</h3>
+          <p className="gk-event__summary">{summary}</p>
         </div>
       </div>
-      <div className="mt-3 space-y-1.5">{children}</div>
-      {note === undefined ? null : (
-        <p className="mt-3 border-t border-line-soft pt-2 text-caption leading-snug text-bone">{note}</p>
-      )}
+      <div className="gk-event__days">{children}</div>
+      {note === undefined ? null : <p className="gk-event__note">{note}</p>}
     </article>
   );
 }
 
 /** One kind of day: its name on the left, its windows beside it. */
-function DayRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DayRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div data-event-days className="flex items-center gap-2">
-      <span className="legend w-[62px] shrink-0 text-dim">{label}</span>
-      <div className="flex min-w-0 flex-wrap gap-1.5">{children}</div>
+    <div data-event-days className="gk-event__day">
+      <span data-day-name className="gk-event__dayname">{label}</span>
+      <div className="gk-event__windows">{children}</div>
     </div>
   );
 }
@@ -317,13 +324,13 @@ function TimePill({
     ? null
     : `${deviceClock(next.startsAt)}–${deviceClock(next.endsAt)}`;
   return (
-    <span className="plate plate-inset inline-flex flex-col rounded-chip px-2 py-1 text-bone">
-      <span className="num inline-flex items-center gap-1 text-label">
+    <span className="gk-window">
+      <span data-window-time className="gk-window__time gk-num">
         <span>{time}</span>
-        {detail === undefined ? null : <span className="text-crystal">{detail}</span>}
+        {detail === undefined ? null : <span className="gk-window__boost">{detail}</span>}
       </span>
       {local === null ? null : (
-        <span className="text-micro text-faint">{t('galaxy.eventsGuide.localTime', { time: local })}</span>
+        <span className="gk-window__local">{t('galaxy.eventsGuide.localTime', { time: local })}</span>
       )}
     </span>
   );

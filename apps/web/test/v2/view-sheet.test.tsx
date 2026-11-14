@@ -224,8 +224,23 @@ describe('the view sheet', () => {
 
   it('marks each layer by its instrument, for the Academy to point at', () => {
     render(<ViewSheet {...props({ radar: false, onToggleRadar: vi.fn() })} />);
-    expect(screen.getByRole('switch', { name: /Telescope reach/ })).toHaveAttribute('data-sensor-toggle', 'telescope');
-    expect(screen.getByRole('switch', { name: /Radar reach/ })).toHaveAttribute('data-sensor-toggle', 'radar');
+    expect(screen.getByRole('switch', { name: /Telescope reach/ }).closest('[data-sensor-toggle]')).toHaveAttribute('data-sensor-toggle', 'telescope');
+    expect(screen.getByRole('switch', { name: /Radar reach/ }).closest('[data-sensor-toggle]')).toHaveAttribute('data-sensor-toggle', 'radar');
+  });
+
+  /** C10: a layer is switched with the kit's lever switch, its instrument pictured beside it. */
+  it('switches each layer with the kit switch, beside its instrument', () => {
+    render(<ViewSheet {...props({ radar: false, onToggleRadar: vi.fn() })} />);
+    for (const name of [/Telescope reach/, /Radar reach/]) {
+      const layer = screen.getByRole('switch', { name });
+      expect(layer).toHaveClass('gk-toggle');
+      expect(layer.querySelector('img.gk-toggle__art')).not.toBeNull();
+    }
+  });
+
+  it('opens the events guide from a kit door', () => {
+    render(<ViewSheet {...props()} />);
+    expect(screen.getByRole('button', { name: 'Galaxy events guide' })).toHaveClass('gk-ledger__row');
   });
 
   it('opens the galaxy events guide', async () => {
