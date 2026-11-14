@@ -9,19 +9,19 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Núcleo de comando', tag: 'Desbloquea niveles más altos', role: "Limita el nivel de las estructuras, excepto el Hangar. En la capital abre espacios para colonias en los niveles 9, 13 y 16.", detail: "Limita el nivel de las estructuras de este mundo, excepto el Hangar, que tiene su propio límite. Algunos niveles añaden espacios de vuelo, órbita y defensa terrestre. Acelera la instalación de instrumentos y satélites, excepto el Enlace ascendente. El tiempo de mejora de un edificio depende de su tipo y nivel. El núcleo de la capital determina el tiempo y algunos requisitos de investigación. Sus niveles 9, 13 y 16 abren los tres espacios de colonia." },
-    REFINERY: { name: 'Refinería de aleaciones', tag: 'Hace aleación', role: 'Aleación por hora y almacenamiento de aleaciones', detail: 'Cada nivel aumenta los ingresos de aleación pasiva y la cantidad que se puede almacenar. La aleación paga la mayor parte de la construcción y los cascos, por lo que esto acorta muchas esperas futuras.' },
-    EXTRACTOR: { name: 'Extractor de cristales', tag: 'Hace cristal', role: 'Cristal por hora y almacenamiento de cristal', detail: 'Cada nivel aumenta los ingresos y el almacenamiento de cristales pasivos. El cristal es la mitad más rara del hardware, los instrumentos y los costos de investigación avanzados.' },
-    VAULT: { name: "Almacén", tag: 'Profundiza la almacén', role: 'Amplía el almacenamiento de recursos y deja un 10% de margen para las próximas actualizaciones de productores de cristales y aleaciones correspondientes. El 10% inferior, con un límite de 8 horas de producción, está a salvo de redadas.', detail: 'La Almacén crece primero según su escala de horas de producción creada por su autor. En niveles altos, si ese piso es demasiado pequeño, la Almacén L se expande para contener el 110% del costo de aleación de Refinería de aleación L→L+1 y el costo de cristal Extractor de cristal L→L+1; la ventana horaria resultante también se aplica al deuterio. Una incursión no puede alcanzar el 10% inferior de la almacén u 8 horas de producción de ese recurso, lo que sea menor. La Almacén no lucha ni reduce el daño recibido.' },
-    SHIPYARD: { name: 'Astillero', tag: 'Desbloquea mejores naves', role: 'Desbloquea cascos · acelera la construcción de naves y defensa terrestre · establece la precisión y el sigilo de la sonda', detail: 'Los niveles más altos abren nuevas clases de cascos y completan naves y defensas terrestres más rápido. También agudizan las lecturas de sus sondas y hacen que sus propias sondas sean más difíciles de detectar. Los niveles de astillero no añaden espacios en la cola.' },
-    HANGAR: { name: 'Hangar', tag: 'Establece cuánta flota cabe', role: 'Espacio de flota en este mundo · se mejora con cualquier Núcleo de Mando', detail: "Cada nave ocupa espacio en el Hangar según su tamaño, también cuando está fuera del planeta. Las defensas terrestres no ocupan ese espacio. Un Hangar lleno impide construir o recibir más naves; conserva las existentes. Los niveles superiores pueden requerir mejorar el Almacén para reunir su coste." },
+    CORE: { name: 'Núcleo de comando', tag: 'Sube el nivel máximo', role: "Limita el nivel de las estructuras, excepto el Hangar. En la capital abre espacios para colonias en los niveles 9, 13 y 16.", detail: "Limita el nivel de las estructuras de este mundo, excepto el Hangar, que tiene su propio límite. Algunos niveles añaden espacios de vuelo, órbita y defensa terrestre. Acelera la instalación de instrumentos y satélites, excepto el Enlace ascendente. El tiempo de mejora de un edificio depende de su tipo y nivel. El núcleo de la capital determina el tiempo y algunos requisitos de investigación. Sus niveles 9, 13 y 16 abren los tres espacios de colonia." },
+    REFINERY: { name: 'Refinería de aleaciones', tag: 'Produce aleación', role: 'Aleación por hora y almacenamiento de aleaciones', detail: 'Cada nivel aumenta los ingresos de aleación pasiva y la cantidad que se puede almacenar. La aleación paga la mayor parte de la construcción y los cascos, por lo que esto acorta muchas esperas futuras.' },
+    EXTRACTOR: { name: 'Extractor de cristales', tag: 'Produce cristal', role: 'Cristal por hora y almacenamiento de cristal', detail: 'Cada nivel aumenta los ingresos y el almacenamiento de cristales pasivos. El cristal es la mitad más rara del hardware, los instrumentos y los costos de investigación avanzados.' },
+    VAULT: { name: "Almacén", tag: 'Amplía el almacén', role: 'Amplía el almacenamiento de recursos y deja un 10% de margen para las próximas actualizaciones de productores de cristales y aleaciones correspondientes. El 10% inferior, con un límite de 8 horas de producción, está a salvo de redadas.', detail: 'La Almacén crece primero según su escala de horas de producción creada por su autor. En niveles altos, si ese piso es demasiado pequeño, la Almacén L se expande para contener el 110% del costo de aleación de Refinería de aleación L→L+1 y el costo de cristal Extractor de cristal L→L+1; la ventana horaria resultante también se aplica al deuterio. Una incursión no puede alcanzar el 10% inferior de la almacén u 8 horas de producción de ese recurso, lo que sea menor. La Almacén no lucha ni reduce el daño recibido.' },
+    SHIPYARD: { name: 'Astillero', tag: 'Abre mejores naves', role: 'Desbloquea cascos · acelera la construcción de naves y defensa terrestre · establece la precisión y el sigilo de la sonda', detail: 'Los niveles más altos abren nuevas clases de cascos y completan naves y defensas terrestres más rápido. También agudizan las lecturas de sus sondas y hacen que sus propias sondas sean más difíciles de detectar. Los niveles de astillero no añaden espacios en la cola.' },
+    HANGAR: { name: 'Hangar', tag: 'Espacio para la flota', role: 'Espacio de flota en este mundo · se mejora con cualquier Núcleo de Mando', detail: "Cada nave ocupa espacio en el Hangar según su tamaño, también cuando está fuera del planeta. Las defensas terrestres no ocupan ese espacio. Un Hangar lleno impide construir o recibir más naves; conserva las existentes. Los niveles superiores pueden requerir mejorar el Almacén para reunir su coste." },
     DEUTERIUM_PLANT: { name: 'Refinería de deuterio', tag: 'Produce deuterio', role: 'Deuterio por hora y almacenamiento de combustible · su techo lo fija Deuterio Síntesis', detail: 'Cada nivel aumenta la producción pasiva de deuterio y la cantidad que se puede almacenar. El deuterio alimenta los lanzamientos de flotas; investiga el siguiente peldaño de síntesis de deuterio cuando la refinería alcance su nivel máximo.' },
   },
 
   instrument: {
     TELESCOPE: {
       name: 'Telescopio',
-      tag: 'Resolver movimiento distante',
+      tag: 'Ve movimiento lejano',
       role:
         'Identifica movimiento dentro de su alcance; Los espacios de reloj se convierten en 1, 2, 3 y 4 en L1, L3, L5 y L7. Silencioso.',
       roleNone:
@@ -32,7 +32,7 @@ export const vocabulary = {
     },
     RADAR: {
       name: 'Radar',
-      tag: 'Distinguir las amenazas hacia usted',
+      tag: 'Detecta lo que viene',
       role:
         'Detecta movimiento dentro de su círculo, mejora la detección de sondas y marca las amenazas dirigidas a este mundo con una hora de llegada.',
       roleNone:
@@ -61,7 +61,7 @@ export const vocabulary = {
     },
     VEIL: {
       name: 'Velo',
-      tag: 'Esconderse de los telescopios',
+      tag: 'Oculta de telescopios',
       role: "Degrada lo que cualquier telescopio puede leer sobre ti.",
       roleNone:
         'Puede hacer que el estado de tu flota sea ilegible para un telescopio contrario. Oculta información pero no inventa lecturas falsas ni detiene las investigaciones.',
@@ -74,7 +74,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: 'Enlace ascendente',
-      tag: 'Desbloquea telescopio y radar',
+      tag: 'Abre telescopio, radar',
       role:
         'Requerido para instalar un telescopio o radar en este mundo. Utiliza una ranura de órbita y no proporciona bonificación de producción ni de defensa.',
       blurb:
@@ -83,7 +83,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: 'Fundición',
-      tag: 'Más mineral cada hora',
+      tag: 'Más producción',
       role:
         'Aumenta la producción de aleaciones pasivas, cristales y deuterio de este mundo en un 6 %.',
       blurb:
@@ -250,19 +250,19 @@ export const vocabulary = {
     },
     BASTION: {
       name: 'Bastión',
-      tag: 'Cañones terrestres pesados',
+      tag: 'Cañón de tierra pesado',
       role: 'Defensa terrestre · nunca puede abandonar el planeta',
       pitch: 'Defensa terrestre pesada con ventaja contra cascos clase Lanza; vulnerable a los hostigadores.',
       detail: 'Los bastiones nunca abandonan el planeta. Su clase Baluarte les da una ventaja contra los cascos de clase Lanza, mientras que los Hostigadores reciben la ventaja contra ellos. Después del combate, el 60% de los cañones terrestres destruidos se restauran, redondeando hacia abajo.',
     },
     HARPOON: {
-      name: 'Arpón', tag: 'Cañón terrestre Lanza', role: 'Defensa terrestre · emplazamiento Lanza estacionario',
+      name: 'Arpón', tag: 'Cañón de tierra Lanza', role: 'Defensa terrestre · emplazamiento Lanza estacionario',
       pitch: 'Rompe formaciones de Hostigadores; vulnerable a Baluartes.',
       detail: 'Los Arpones nunca abandonan el planeta. Su clase Lanza les da ventaja contra Hostigadores, mientras que los Baluartes los contrarrestan. Usan capacidad terrestre; el 60 % de los cañones destruidos se reconstruye tras el combate, redondeando hacia abajo.',
     },
     THORN: {
       name: 'Espina',
-      tag: 'Cañones terrestres ligeros',
+      tag: 'Cañón de tierra ligero',
       role: 'Defensa terrestre · ligera, barata y nunca se va',
       pitch: 'Defensa terrestre de bajo costo con ventaja contra Baluartes; vulnerable a las lanzas.',
       detail: 'Las espinas nunca abandonan el planeta. Su clase Hostigador les da una ventaja contra los cascos de clase Baluarte, mientras que los cascos de clase Lanza reciben la ventaja contra ellos. Utilizan capacidad terrestre; El 60% de los cañones terrestres destruidos se restauran después del combate, redondeando hacia abajo.',
@@ -303,6 +303,8 @@ export const vocabulary = {
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
   rangeUnits: '{{count}} unidades',
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: '{{count}}',
 
   core: {
     label: 'Construir techo',
@@ -313,7 +315,7 @@ export const gains = {
   },
   hangar: {
     label: 'Sala de flota',
-    value: '{{room}} habitación',
+    value: '{{room}} plazas',
     none: 'Sin hangar',
     ceiling: 'Hasta {{room}} en el peldaño superior',
   },
@@ -330,6 +332,7 @@ export const gains = {
   vault: {
     label: 'Profundidad de la almacén',
     value: '{{store}}h almacén · {{safe}}h protegido',
+    brief: '{{store}} h',
   },
   shipyard: {
     timeLabel: "Tiempo de producción",
@@ -384,8 +387,8 @@ export const gains = {
   },
   uplink: {
     label: 'Telescopio y Radar',
-    now: 'bloqueado',
-    next: 'desbloqueado',
+    now: 'cerrado',
+    next: 'abierto',
     unlocks: 'Se puede instalar un telescopio y un radar en este mundo.',
   },
   derrick: {
@@ -653,6 +656,7 @@ export const units = {
   todayAt: 'Hoy {{time}}',
   yesterdayAt: 'Ayer {{time}}',
   hoursMinutes: '{{h}}h {{m}}m',
+  hours: '{{h}}h',
   minutesSeconds: '{{m}}m {{s}}s',
   hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',
   seconds: '{{s}}s',

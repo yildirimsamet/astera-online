@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import type { Gain } from '../lib/gains.js';
+import { cardEffect, type Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { CostLine, Glyph, LevelBadge } from '../game-ui/index.js';
 import { Rungs } from './Rungs.js';
-import { duration } from '../lib/time.js';
+import { duration, roughDuration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, TimeCost, useOrderDuration, type Verb } from './Action.js';
 import { FaultMark, LockMark } from './marks.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
@@ -48,6 +48,11 @@ export interface Blocked {
   onFix?: () => void;
   /** A refusal time lifts (a full queue), not a condition to meet: the hourglass, not the lock. */
   waits?: boolean;
+  /**
+   * The card's words: the conditions alone ("Deuterium Synthesis L2"), without the sentence
+   * around them, so a lock fits the foot of a building card (G2-b). A reader hears `reason`.
+   */
+  short?: string;
 }
 
 /**
@@ -83,6 +88,27 @@ function useCondensedWhenCut(ref: RefObject<HTMLHeadingElement | null>, text: st
 }
 
 /** The card's time cost, in the kit's line: a clock and the wait as the player will live it. */
+/**
+ * A CARD'S EFFECT LINE (owner note 4, G2-b): the figures, now → next, in one line; the label
+ * goes to a reader, since the purpose line above already says what the figures are.
+ */
+function CardEffect({ gain }: { gain: Gain }) {
+  const { t } = useTranslation();
+  const line = cardEffect(gain);
+  // resource art stands in for the figures only where the card shows the gain's own pair
+  const pair = gain.brief === undefined && gain.maxed !== true ? gain.resourcePair : undefined;
+  return (
+    <>
+      <span className="sr-only">{gain.label} </span>
+      {line.now !== undefined && (pair ? <ResourceAmounts resources={pair.now} label={line.now} /> : <span className="gk-num">{line.now}</span>)}
+      <span className="gk-bcard__to">
+        {line.now !== undefined && <span className="gk-bcard__becomes" aria-label={t('upgradeRow.becomes')}>→</span>}
+        {pair ? <ResourceAmounts resources={pair.next} label={line.next} /> : <span className="gk-bcard__next gk-num">{line.next}</span>}
+      </span>
+    </>
+  );
+}
+
 function CardTime({ minutes }: { minutes: number }) {
   const { t } = useTranslation();
   const spoken = useOrderDuration(minutes);
@@ -282,6 +308,8 @@ export function UpgradeRow({
       : null;
 
   if (layout === 'card') {
+    // a lock that time does not lift stands where the price would; a full queue keeps the price
+    const door = summary !== 'hull' && blocked && !blocked.waits && !acknowledging ? blocked : undefined;
     const levelMark = maxLevel !== undefined && maxLevel > 1
       ? <Rungs level={level ?? 0} max={maxLevel} next={!completed} />
       : level !== undefined && level > 0
@@ -328,6 +356,13 @@ export function UpgradeRow({
             </span>
           )}
           {levelMark !== null && <span className="gk-bcard__level">{levelMark}</span>}
+          {/* an order already queued, on a card that takes another: the foot is the next order's */}
+          {summary !== 'hull' && queued && queuedActionable && (
+            <span data-card-queued className="gk-bcard__queued">
+              <Glyph id="timed" />
+              <span>{queued}</span>
+            </span>
+          )}
         </div>
         <div data-card-copy className="gk-bcard__copy">
           {/* THE NAME WHOLE: it wraps, it is never cut. */}
@@ -345,78 +380,88 @@ export function UpgradeRow({
               </p>
             )}
           </div>
-          {summary !== 'hull' && (nameBadge !== undefined || tag) && (
-            <div className="gk-bcard__tag">
+          {/* ONE LINE OF WHAT IT IS FOR (owner note 4): the tag, or the role where there is none. */}
+          {summary !== 'hull' && (
+            <div data-card-purpose className="gk-bcard__tag">
               {nameBadge}
-              {tag && <p>{tag}</p>}
+              <p className="gk-bcard__line">{tag ?? role}</p>
             </div>
           )}
-          {summary === 'hull' ? (
-            (completed ?? queued ?? blocked) && <span role="status" className="sr-only">{completed ?? queued ?? blocked?.reason}</span>
-          ) : inactive ? (
-            <p className="gk-bcard__note" data-tone="warn">{inactive}</p>
-          ) : blocked && !acknowledging ? (
-            blocked.onFix ? (
-              <button
-                type="button"
-                data-blocked-reason
-                data-has-fix
-                onClick={(event) => {
-                  event.stopPropagation();
-                  playSound('tap');
-                  haptic('tap');
-                  blocked.onFix?.();
-                }}
-                className="gk-bcard__door"
-              >
-                <Glyph id="lock" />
-                <span>{blocked.reason}</span>
-                <Glyph id="next" />
-              </button>
+          {/* ONE LINE OF WHAT THE NEXT LEVEL DOES: the figures; the label is the purpose line's to say. */}
+          {summary !== 'hull' && (
+            <p data-card-effect className="gk-bcard__gain" {...(inactive ? { 'data-tone': 'warn' } : {})}>
+              {inactive ?? (gain && <CardEffect gain={gain} />)}
+            </p>
+          )}
+          {/* THE FOOT: the price, and under it one line of time or state; a lock stands where the price would. */}
+          <div data-card-foot className="gk-bcard__foot">
+            {door ? (
+              door.onFix ? (
+                <button
+                  type="button"
+                  data-blocked-reason
+                  data-has-fix
+                  {...(door.short === undefined ? {} : { 'aria-label': door.reason })}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    playSound('tap');
+                    haptic('tap');
+                    door.onFix?.();
+                  }}
+                  className="gk-bcard__door"
+                >
+                  <Glyph id="lock" />
+                  <span className="gk-bcard__door-text">{door.short ?? door.reason}</span>
+                  <Glyph id="next" />
+                </button>
+              ) : (
+                <p data-blocked-reason className="gk-bcard__door" data-still="">
+                  <Glyph id="lock" />
+                  <span className="gk-bcard__door-text" {...(door.short === undefined ? {} : { 'aria-hidden': true })}>{door.short ?? door.reason}</span>
+                  {door.short !== undefined && <span className="sr-only">{door.reason}</span>}
+                </p>
+              )
             ) : (
-              <p data-blocked-reason className="gk-bcard__note" data-tone="warn" {...(blocked.waits ? { 'data-waits': '' } : {})}>
-                <Glyph id={blocked.waits ? 'timed' : 'lock'} />
-                <span>{blocked.reason}</span>
-              </p>
-            )
-          ) : queued ? (
-            <p role="status" className="gk-bcard__note" data-tone="self">
-              <Glyph id="timed" />
-              <span>{queued}</span>
-            </p>
-          ) : completed ? (
-            <p role="status" className="gk-bcard__note">
-              <Glyph id="check" />
-              <span>{completed}</span>
-            </p>
-          ) : gain ? (
-            <p className="gk-bcard__gain">
-              <span className="gk-bcard__gain-label">{gain.label} </span>
-              {gain.now !== undefined && (gain.resourcePair
-                ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
-                : <span className="gk-num">{gain.now}</span>)}
-              {/* the arrow rides with what it points at, never alone at a line's end */}
-              <span className="gk-bcard__to">
-                {gain.now !== undefined && <span className="gk-bcard__becomes" aria-label={t('upgradeRow.becomes')}>→</span>}
-                {gain.resourcePair
-                  ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
-                  : <span className="gk-bcard__next gk-num">{gain.next}</span>}
-              </span>
-            </p>
-          ) : (
-            <p className="gk-bcard__note">{role}</p>
-          )}
-          {(summary === 'hull' || (!completed && (!queued || queuedActionable))) && (
-            <div data-card-price className="gk-bcard__price">
-              <CostLine cost={cost} held={held} {...(takes === undefined ? {} : { time: <CardTime minutes={takes} /> })} />
-            </div>
-          )}
-          {summary !== 'hull' && !affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
-            <p data-wait className="gk-bcard__wait">
-              <Glyph id="timed" />
-              <span>{t('itemSheet.affordIn', { duration: duration(waitMinutes) })}</span>
-            </p>
-          )}
+              <>
+                {(summary === 'hull' || (!completed && (!queued || queuedActionable))) && (
+                  <div data-card-price className="gk-bcard__price">
+                    <CostLine cost={cost} held={held} />
+                  </div>
+                )}
+                <div data-card-status className="gk-bcard__status">
+                  {summary === 'hull' ? (
+                    <>
+                      {takes !== undefined && <CardTime minutes={takes} />}
+                      {(completed ?? queued ?? blocked) && <span role="status" className="sr-only">{completed ?? queued ?? blocked?.reason}</span>}
+                    </>
+                  ) : blocked && !acknowledging ? (
+                    <p data-blocked-reason data-waits="" className="gk-bcard__note" data-tone="warn">
+                      <Glyph id="timed" />
+                      <span {...(blocked.short === undefined ? {} : { 'aria-hidden': true })}>{blocked.short ?? blocked.reason}</span>
+                      {blocked.short !== undefined && <span className="sr-only">{blocked.reason}</span>}
+                    </p>
+                  ) : queued && !queuedActionable ? (
+                    <p role="status" className="gk-bcard__note" data-tone="self">
+                      <Glyph id="timed" />
+                      <span>{queued}</span>
+                    </p>
+                  ) : completed ? (
+                    <p role="status" className="gk-bcard__note">
+                      <Glyph id="check" />
+                      <span>{completed}</span>
+                    </p>
+                  ) : !affordable && waitMinutes !== null ? (
+                    <p data-wait className="gk-bcard__wait">
+                      <Glyph id="timed" />
+                      <span>{t('itemSheet.affordIn', { duration: roughDuration(waitMinutes) })}</span>
+                    </p>
+                  ) : (
+                    takes !== undefined && <CardTime minutes={takes} />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           {!onOpen && (
             <span data-act className="gk-bcard__act">
               <ActionButton

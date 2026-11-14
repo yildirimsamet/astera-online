@@ -9,19 +9,19 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: "Sets local structure level limits and opens flight bays, orbit slots and ground-defence capacity.", detail: "The Core limits local structure levels; Hangar has an independent limit. Certain levels add flight bays, orbit slots and ground-defence capacity. Core upgrades shorten instrument and satellite installation, except Uplink. Building upgrade time depends on building type and level. The capital’s Core determines research time and some research requirements. On the capital, levels 9, 13 and 16 open the first, second and third colony slots." },
+    CORE: { name: 'Command Core', tag: 'Raises the level cap', role: "Sets local structure level limits and opens flight bays, orbit slots and ground-defence capacity.", detail: "The Core limits local structure levels; Hangar has an independent limit. Certain levels add flight bays, orbit slots and ground-defence capacity. Core upgrades shorten instrument and satellite installation, except Uplink. Building upgrade time depends on building type and level. The capital’s Core determines research time and some research requirements. On the capital, levels 9, 13 and 16 open the first, second and third colony slots." },
     REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: "Increases this planet’s hourly alloy production and alloy storage capacity.", detail: "Each level produces more alloy in the Works and increases how much alloy fits in the Store. Collect the produced resources before spending them. Alloy is used in most buildings, ships and ground defences." },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: "Increases this planet’s hourly crystal production and crystal storage capacity.", detail: "Each level produces more crystal in the Works and increases how much crystal fits in the Store. Collect it before spending. Crystal is required for advanced ships, instruments and research." },
     VAULT: { name: 'Store', tag: 'Deepens the store', role: "Expands storage. Raids cannot take the smaller of 10% of capacity or 8 hours of production.", detail: "Each level stores more hours of production. Capacity also covers at least 110% of the next same-level alloy or crystal producer upgrade cost. At Store level L, these are the alloy cost of Refinery L→L+1 and crystal cost of Extractor L→L+1. The resulting storage hours also apply to deuterium. The protected amount is the smaller of 10% of capacity or 8 hours of that resource’s production. Remaining stock can be raided; the Store does not absorb combat damage." },
     SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: "Opens new units, speeds ship and ground-defence production, and improves your probes.", detail: "Higher levels meet more ship and ground-defence build requirements and shorten production time. They improve your probes’ accuracy and make them harder for enemy Radar to detect. They do not add queue slots. Advanced units can also require completed research." },
-    HANGAR: { name: 'Hangar', tag: 'Sets how much fleet fits', role: "Provides room for this planet’s ships. Its upgrades are independent of Command Core level.", detail: "Ships use room according to their size, including ships away on missions or waiting for repair. Ground defences use separate ground capacity. New ship orders and arrivals need available room. A full Hangar does not delete existing ships. Higher upgrade prices may require a larger Store to collect enough resources." },
+    HANGAR: { name: 'Hangar', tag: 'Room for the fleet', role: "Provides room for this planet’s ships. Its upgrades are independent of Command Core level.", detail: "Ships use room according to their size, including ships away on missions or waiting for repair. Ground defences use separate ground capacity. New ship orders and arrivals need available room. A full Hangar does not delete existing ships. Higher upgrade prices may require a larger Store to collect enough resources." },
     DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: "Increases hourly deuterium production and storage. Deuterium Synthesis also limits its level.", detail: "Each level increases deuterium produced in the Works and the Store capacity derived from that production. Deuterium supplies flight fuel. The next upgrade must fit both local Command Core and Deuterium Synthesis limits. Research more Synthesis levels when its limit blocks further upgrades." },
   },
 
   instrument: {
     TELESCOPE: {
       name: 'Telescope',
-      tag: 'Resolve distant movement',
+      tag: 'Sees distant movement',
       role:
         "Identifies moving contacts. Levels 1, 3, 5 and 7 provide 1, 2, 3 and 4 silent watch slots respectively.",
       roleNone:
@@ -32,7 +32,7 @@ export const vocabulary = {
     },
     RADAR: {
       name: 'Radar',
-      tag: 'Distinguish threats to you',
+      tag: 'Spots what is inbound',
       role:
         "Detects nearby movement and probes, and warns about attacks aimed at this planet.",
       roleNone:
@@ -61,7 +61,7 @@ export const vocabulary = {
     },
     VEIL: {
       name: 'Veil',
-      tag: 'Hide from telescopes',
+      tag: 'Hides from telescopes',
       role: "Makes enemy Telescope readings less clear and can reduce probe accuracy on this planet.",
       roleNone:
         'Can make your fleet status unreadable to an opposing Telescope. It hides information but neither invents false readings nor stops probes.',
@@ -74,7 +74,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: 'Uplink',
-      tag: 'Unlocks Telescope and Radar',
+      tag: 'Opens Telescope/Radar',
       role:
         "Unlocks Telescope and Radar installation on this planet and uses one orbit slot.",
       blurb:
@@ -83,7 +83,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: 'Foundry',
-      tag: 'More ore every hour',
+      tag: 'Raises all production',
       role:
         "Increases this planet’s hourly alloy, crystal and deuterium production by 6%.",
       blurb:
@@ -303,6 +303,8 @@ export const vocabulary = {
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
   rangeUnits: '{{count}} units',
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: '{{count}} units',
 
   core: {
     label: 'Build ceiling',
@@ -330,6 +332,7 @@ export const gains = {
   vault: {
     label: 'Store depth',
     value: '{{store}}h store · {{safe}}h protected',
+    brief: '{{store}}h',
   },
   shipyard: {
     timeLabel: "Production time",
@@ -653,6 +656,7 @@ export const units = {
   todayAt: 'Today {{time}}',
   yesterdayAt: 'Yesterday {{time}}',
   hoursMinutes: '{{h}}h {{m}}m',
+  hours: '{{h}}h',
   minutesSeconds: '{{m}}m {{s}}s',
   hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',
   seconds: '{{s}}s',

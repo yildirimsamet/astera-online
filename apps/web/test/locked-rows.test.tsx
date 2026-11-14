@@ -212,4 +212,23 @@ describe('pressing the reason', () => {
 
     expect(view.baseElement.querySelector('[data-item-sheet]')).toBeNull();
   });
+
+  /**
+   * THE CARD'S WORDS (G2-b, owner note 4): a lock stands at the card's foot, so it says the
+   * condition alone — "Core L2", not "Requires: Core L2" — and a reader hears the sentence.
+   */
+  it('says the condition alone on the card, the whole sentence to a reader', () => {
+    const view = openTab('grow', bare);
+    const fix = view.container.querySelector<HTMLElement>('#row-REFINERY [data-has-fix]')!;
+    expect(fix.textContent).not.toMatch(/Requires/);
+    expect(fix).toHaveAccessibleName(/^Requires: /);
+  });
+
+  /** The fuel works' gate names its rung like every other research gate, so it fits the card. */
+  it('names the Deuterium Synthesis rung the fuel works waits for', () => {
+    const view = openTab('grow', bare);
+    const fix = view.container.querySelector<HTMLElement>('#row-DEUTERIUM_PLANT [data-has-fix]')!;
+    // the same rung words the hulls' research gates use
+    expect(fix.textContent).toBe('Deuterium Synthesis I');
+  });
 });

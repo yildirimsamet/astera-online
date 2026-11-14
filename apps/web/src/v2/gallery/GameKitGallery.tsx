@@ -1083,7 +1083,7 @@ function Catalog() {
 }
 
 /** A tag names the part in one or two words; what follows a "·" is its note, in plain case. */
-/* ── the building card in every state the base screen draws (stage 4.1) ───────── */
+/* ── the building card in every state the base screen draws: one skeleton (owner note 4, G2-b) ── */
 
 const CARD = {
   layout: 'card' as const,
@@ -1101,21 +1101,22 @@ function BuildingCards() {
   return (
     <div className="grid grid-cols-2 gap-2">
       <UpgradeRow {...refinery} gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13} />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.CORE)} name="Komuta Çekirdeği" tag="Gezegenin gelişim sınırı" level={6}
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.CORE)} name="Komuta Çekirdeği" tag="Seviye sınırını açar" level={6}
         gain={{ label: 'Bina seviye sınırı', now: 'Sv. 6', next: 'Sv. 7' }} cost={{ alloy: 1_400, crystal: 3_900 }} takes={18} />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.DEUTERIUM_PLANT)} name="Döteryum Rafinerisi" tag="Döteryum üretir" level={0} unowned
-        blocked={{ reason: 'Önce şunlar gerekli: Döteryum Sentezi', onFix: () => undefined }} cost={{ alloy: 30, crystal: 30 }} takes={3} />
+        gain={{ label: 'Saatlik döteryum', now: '0/sa', next: '2/sa' }}
+        blocked={{ reason: 'Önce şunlar gerekli: Döteryum Sentezi I', short: 'Döteryum Sentezi I', onFix: () => undefined }} cost={{ alloy: 30, crystal: 30 }} takes={3} />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.EXTRACTOR)} name="Kristal Ocağı" tag="Kristal üretir" level={5} queued="1 sipariş sırada" queuedActionable
         gain={{ label: 'Saatlik kristal', now: '244/sa', next: '310/sa' }} cost={{ alloy: 900, crystal: 640 }} takes={21} flash />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.VAULT)} name="Depo" tag="Depo kapasitesini büyütür" level={4} faulty
-        gain={{ label: 'Depo derinliği', now: '39 sa depo · 4 sa korumalı', next: '46 sa depo · 5 sa korumalı' }} cost={{ alloy: 154, crystal: 77 }} takes={5} />
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.VAULT)} name="Depo" tag="Depoyu büyütür" level={4} faulty
+        gain={{ label: 'Depo derinliği', now: '39 sa depo · 4 sa korumalı', next: '46 sa depo · 5 sa korumalı', brief: { now: '39 sa', next: '46 sa' } }} cost={{ alloy: 154, crystal: 77 }} takes={5} />
       <UpgradeRow {...refinery} gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13} highlighted />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.DEUTERIUM_PLANT)} name="Döteryum Rafinerisi" tag="Döteryum üretir" level={9} completed="en üst seviyede" cost={{ alloy: 0, crystal: 0 }} />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.HANGAR)} name="Hangar" tag="Gemileri korur" level={0} unowned
-        gain={{ label: 'Korunan gemi', next: '40' }} cost={{ alloy: 600, crystal: 400, deuterium: 1_200 }} takes={40} />
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.HANGAR)} name="Hangar" tag="Filo alanını büyütür" level={0} unowned
+        gain={{ label: 'Filo alanı', now: 'Hangar yok', next: '80 alan', brief: { now: '0', next: '80 alan' } }} cost={{ alloy: 600, crystal: 400, deuterium: 1_200 }} takes={40} />
       {/* the construction queue is full: time lifts it, so it wears the hourglass and has no fix to press */}
       <UpgradeRow {...refinery} name="Alaşım Rafinerisi" gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13}
-        blocked={{ reason: 'Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.', waits: true }} />
+        blocked={{ reason: 'Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.', short: 'Sıra dolu', waits: true }} />
     </div>
   );
 }

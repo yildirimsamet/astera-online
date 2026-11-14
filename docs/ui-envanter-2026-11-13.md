@@ -588,7 +588,7 @@ Galeride 350 px'te bakıldı (`base-production`, `base-fleet`, üç kaydırma). 
 | G2-d | Arıza | "Onarmaya değer mi?" | `FaultSheet` (v1) kitte; saatlik kayıp ve fiyat yan yana; Onar 1 sn basılı tutma. |
 | G2-e | Tersane | "Kaç tane, hangi gövde?" | `BuildSheet` kitin `UnitCard`/`UnitBay` parçalarıyla; uzun yığın adımlara iner; Üret 1 sn basılı tutma. Yüksek öncelik. |
 | G2-f | Onarım istasyonu | "Hangi gemileri onarayım?" | Kart ve sheet kitte; tıka basa yığın sekme/adıma iner; onar ve hurda basılı tutma. Yüksek öncelik. |
-| G2-g | Taktik | "Stratejik silah üreteyim mi?" | v2 `HoldButton` → kit `GameHold`; depo ve şarj kit okumalarıyla. |
+| G2-g | Taktik ve Savunma özeti | "Stratejik silah üreteyim mi? Savunmam ne durumda?" | v2 `HoldButton` → kit `GameHold`; depo ve şarj kit okumalarıyla. Savunma sekmesinin başındaki özet kutuları (v2, 9 px) kitte. |
 | G2-h | Filo sekmesi ve Filo sayfası | "Gemilerim nerede, kaç tane?" | Filo sekmesinin yedi bölümü ile ayrı Filo sayfasının görev paylaşımı kararı (gezinme değişebilir); `Segmented` → `GameTabs`; anıt dalgası satırları kitte. |
 | G2-i | Araştırma | "Sırada hangi araştırma?" | Yıldız haritası, seçili kart ve proje sheet'i kitte; 9–10 px yazılar kalkar. |
 | G2-j | Dünyalar paneli | "Hangi dünyamda ne var, kaynak aktar" | v1 → kit; iki yerli `<select>` yerine dünya seçici; aktarma basılı tutma. Yüksek öncelik. |
@@ -609,6 +609,47 @@ Galeride 350 px'te bakıldı (`base-production`, `base-fleet`, üç kaydırma). 
 - Her yolda tek bir 2×2 px adsız dokunma alanı (`root`) var. Galerinin kökü, oyunda yok.
 
 Bina kartlarında "~53 dk sonra yeter" yazısının "~" işareti kartın yazı tipinde eksi gibi okunuyor ("-53 dk"; owner'ın ekranında "Enough in -9h 09m"). G2-b'de düzelecek.
+
+**G2-b bina kartları ✅ (2026-11-14).** Oyuncunun anı: Üs'te kartları yan yana karşılaştırıp "neyi yükselteyim?" sorusunu cevaplamak. Her kartta aynı yerde dört şey görünüyor: ne işe yaradığı, sonraki seviyenin ne getirdiği, fiyatı ve ne zaman yeteceği. Fiyatlar, kurallar ve kartın açtığı sheet değişmedi.
+
+Önce kite eklenen:
+- Kart iskeleti (`UpgradeRow` kart düzeni, owner notu 4): resim bandı 84 px; ad; amaç (`data-card-purpose`, 1 satır); etki (`data-card-effect`, 1 satır); ayak (`data-card-foot`). Ayakta fiyat ve altında bir satır süre ya da durum var.
+- Kazanca kartın kısa biçimi: `Gain.brief`, `cardEffect`.
+- Kilide kartın kısa sözü: `Blocked.short`.
+- Sıradaki sipariş işareti: `gk-bcard__queued`.
+
+Kart:
+- Etki satırında yalnız rakamlar var ("482/sa → 611/sa"). Etiketi okuyucu duyuyor; ne olduğunu üstteki amaç satırı söylüyor.
+- Kilit fiyatın yerinde duruyor: "🔒 Döteryum Sentezi I ›".
+- Sıra doluysa fiyat kalıyor, altında kum saatiyle "Sıra dolu" yazıyor.
+- Kaynak yetmiyorsa süre satırında "53 dk sonra yeter" var.
+- Sırada siparişi olan ve bir sonrakini de alabilen kartta sipariş resmin altında küçük bir işaret. Ayak bir sonraki siparişin fiyatı ve süresi.
+- Bütün bina kartları aynı boyda: 199 px (önce 180–251 px). Gemi kartları kendi aralarında 217 px.
+
+Metin (6 dil):
+- Amaç satırları tek satıra sığacak biçimde yazıldı.
+- Makine çevirisi kokan satırlar düzeldi: de "Vertieft den Shop", "Erkennen Sie Bedrohungen für Sie"; es "Profundiza la almacén", "habitación"; ja "遠くの動きを解決する"; fr "Unités 2138".
+- Uzun etkilerin kart biçimi var: Depo saatleri, Hangar alanı, Teleskop ve Radar menzili, Körük, Kılavuz.
+- Test: `card-copy.test.ts`, her dilde amaç ≤ 22, etki ≤ 18 sütun (Japonca karakter 2 sütun).
+- "~" bütün dillerde kalktı (ja "約" bir kelime olduğu için kaldı).
+- Döteryum kilidi artık öteki araştırma kapıları gibi "Döteryum Sentezi I" diyor. Eski "Bir kademe daha Döteryum Sentezi araştır" metni silindi.
+
+Gemi kartları:
+- Eski v2 kurallarından çıktı: 9 px alt satır, 12 px ad, ham renkler, sağa itilmiş süre.
+- Sınıf işareti adla aynı satırda.
+- Ayak bina kartıyla aynı: fiyat, altında süre.
+
+Kit sayfasındaki "Bina kartı" bölümü yeni metinlerle güncellendi.
+
+Ölçüm: `reports/ui-audit/g2b-after-2026-11-14.md` (`base-production`, `base-fleet`, `base-fleet-empty`).
+- G2-a ile karşılaştırma: 12 px altı metin, kontrast ve hedef sayıları aynı.
+- İlk "after" ölçümünde tek satır kuralı 51 metni kesiyordu (ja bekleme cümlesi, 320 px'te tr/es bekleme satırı, kilit satırının yüksekliği). Kart bekleme süresi bir saatin üstünde yukarı yuvarlanınca ("17 sa sonra yeter"; tam süre sheet'te) ve kısaltmalar yapılınca 6'ya indi.
+- Kalan 4 bulgu G2-c'nin işi: fr kuyruktaki "En attente". Kalan 2 bulgu, 320 px'te ja "約17時間で足ります", "約" kalkınca giderildi.
+- Denetim yalnız Üs'ün varsayılan sekmesini ölçüyor. Beş sekmenin bütün kartları ayrıca 6 dilde, 320 ve 350 px'te tarandı: kesilen metin yok (scratchpad `cutcheck.mjs`). Bu yüzden 320 px'te taşan beş satır daha kısaldı: en "Opens Telescope/Radar", de "Leichte/Schwere Bodenkanone", es "Ve movimiento lejano" ve "Enlace en órbita", ja "観測機器を解放".
+
+Görülen ama bu birimin işi olmayanlar:
+- Savunma sekmesinin başındaki özet kutuları (Ateş gücü, Savunma, Kalkan, Risk altında) v2 dilinde ve 9 px yazılı. G2-g'ye eklendi.
+- es `errors.ts` `TARGET_HANGAR_FULL` metninde de "habitación" var. G4 gönderme biriminde düzelecek.
 
 ## G3. İstihbarat
 

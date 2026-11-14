@@ -426,10 +426,10 @@ export const planet = {
     shipyard: "Chantier Spatial niveau {{level}}",
     research: "{{research}} {{level}}",
     requirements: "Requis : {{requirements}}",
-    plantRung: "Recherche un palier supplémentaire de Synthèse du Deutérium",
     maxed: "niveau maximal",
     queueFull:
       "Il y a déjà 3 commandes dans la file. Attends que l’une d’elles se termine ou annule-en une avant d’ajouter celle-ci.",
+    queueFullShort: "File pleine",
   },
   done: {
     raised: "{{name}} est maintenant au niveau {{level}}",
@@ -499,7 +499,7 @@ export const itemSheet = {
   rungLevel: "Niv.{{level}}",
   nextLook: "Nouvel aspect au niveau {{level}}",
   queueFill: "File de construction {{used}}/{{total}}",
-  affordIn: "Assez dans ~{{duration}}",
+  affordIn: "Assez dans {{duration}}",
   short: "Ressources insuffisantes",
   orbitalDoesHeading: "Ce qu’il apporte",
   orbitalOnce: "Acheté une fois ; jamais amélioré",

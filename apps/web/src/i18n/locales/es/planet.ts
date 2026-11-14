@@ -419,15 +419,14 @@ export const planet = {
   /** Why a row cannot be pressed yet. Each is a door, so each names its fix. */
   blocked: {
     core: "Núcleo L{{level}}",
-    uplink: "un enlace ascendente en órbita",
+    uplink: "Enlace en órbita",
     orbitSlot: "un espacio orbital libre",
     shipyard: "Astillero L{{level}}",
     research: "{{research}} {{level}}",
     requirements: "Requiere: {{requirements}}",
     maxed: "en su nivel más alto",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Investiga otro peldaño de la síntesis de deuterio",
     queueFull: "Ya hay 3 pedidos esperando. Termine o cancele uno para agregar esto.",
+    queueFullShort: "Cola llena",
   },
 
   /** What a purchase says once it has landed. */
@@ -500,7 +499,7 @@ export const itemSheet = {
   rungLevel: "L{{level}}",
   nextLook: "Nuevo aspecto en L{{level}}",
   queueFill: "Cola de obras {{used}}/{{total}}",
-  affordIn: "Suficiente en ~{{duration}}",
+  affordIn: "Suficiente en {{duration}}",
   short: "Recursos insuficientes",
   orbitalDoesHeading: "Qué hace",
   orbitalOnce: "Se compra una vez; nunca se mejora",

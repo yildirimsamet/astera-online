@@ -80,6 +80,10 @@ export const levelsOf = (planet: PlanetView): BuildingLevels => ({
 const rangeWord = (units: number): string =>
   i18n.t('gains.rangeUnits', { count: Math.round(units) });
 
+/** A range on a building card: the unit word only where the line has room for it (G2-b). */
+const rangeShort = (units: number): string =>
+  i18n.t('gains.rangeShort', { count: Math.round(units) });
+
 const sensorReachAt = (telescope: number, radar: number) =>
   sensorSphere({ x: 0, y: 0, z: 0 }, telescope, radar);
 
@@ -93,6 +97,12 @@ const radarReachWord = (level: number): string => {
     warn: Math.round(warn),
   });
 };
+
+/** The radar on a card: how far its warning reaches, now and next (the sheet says the rest). */
+const radarBrief = (level: number, next: number): { now: string; next: string } => ({
+  now: String(Math.round(Math.max(0, radarRange(level)))),
+  next: rangeShort(Math.max(0, radarRange(next))),
+});
 
 export interface Gain {
   /** The quantity being bought, named as the player feels it. */
@@ -130,6 +140,20 @@ export interface Gain {
    * the single worst thing an upgrade screen can do.
    */
   maxed?: true;
+  /**
+   * THE CARD'S LINE, where the figures are too long for one (owner note 4, G2-b): a building
+   * card says its effect in one line and its sheet says the rest. Absent, the card shows
+   * `now` and `next` as they are.
+   */
+  brief?: { now?: string; next: string };
+}
+
+/** A building card's effect line: the figures alone; the label is the card's purpose line. */
+export function cardEffect(gain: Gain): { now?: string; next: string } {
+  const line = gain.brief ?? gain;
+  // at the top of its ladder a card says where it stands, not "X → X"
+  if (gain.maxed === true || line.now === undefined) return { next: line.next };
+  return { now: line.now, next: line.next };
 }
 
 /** D212: the pace a world's works run at — halved in Silent Space, whole everywhere else. */
@@ -185,6 +209,7 @@ export function buildingGain(
         label: i18n.t('gains.hangar.label'),
         now: room(level),
         next: room(Math.min(next, HANGAR.maxLevel)),
+        brief: { now: level < 1 ? '0' : compact(hangarCapacity(level)), next: room(Math.min(next, HANGAR.maxLevel)) },
         ceiling: i18n.t('gains.hangar.ceiling', { room: compact(hangarCapacity(HANGAR.maxLevel)) }),
         ...(level >= HANGAR.maxLevel ? { maxed: true as const } : {}),
       };
@@ -219,11 +244,13 @@ export function buildingGain(
         store: full(Math.round(storageHours(level_))),
         safe: full(Math.round(protectedHours(level_))),
       });
+      const store = (level_: number) => i18n.t('gains.vault.brief', { store: full(Math.round(storageHours(level_))) });
       return {
         label: i18n.t('gains.vault.label'),
         now: hours(level),
         next: hours(next),
         wrapOnRow: true,
+        brief: { now: store(level), next: store(next) },
       };
     }
     case 'SHIPYARD': {
@@ -309,6 +336,7 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
         label: i18n.t('gains.telescope.rangeLabel'),
         now: rangeWord(sensorReachAt(level, 0).identify),
         next: rangeWord(reach),
+        brief: { now: String(Math.round(sensorReachAt(level, 0).identify)), next: rangeShort(reach) },
         unlocks:
           telescopeSlots(next + 1) > nextSlots
             ? i18n.t('gains.telescope.nextSlot', {
@@ -344,6 +372,7 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
           next: radarReachWord(level),
           unlocks: i18n.t('gains.radar.maxed'),
           maxed: true,
+          brief: radarBrief(level, level),
         };
       }
       if (next <= 2) {
@@ -352,6 +381,7 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
           now: radarReachWord(level),
           next: radarReachWord(next),
           unlocks: i18n.t(next === 1 ? 'gains.radar.l1' : 'gains.radar.bearing'),
+          brief: radarBrief(level, next),
         };
       }
       /**
@@ -367,6 +397,7 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
         label: i18n.t('gains.radar.sweepLabel'),
         now: radarReachWord(level),
         next: radarReachWord(next),
+        brief: radarBrief(level, next),
         ...(next === 3
           ? { unlocks: i18n.t('gains.radar.interception') }
           : next === 4
@@ -432,6 +463,7 @@ export function satelliteGain(id: SatelliteId): Gain {
         next: i18n.t('gains.foundry.next', {
           percent: Math.round((SATELLITES.FOUNDRY.production - 1) * 100),
         }),
+        brief: { next: i18n.t('gains.foundry.next', { percent: Math.round((SATELLITES.FOUNDRY.production - 1) * 100) }) },
         unlocks: i18n.t('gains.foundry.unlocks'),
       };
     case 'UPLINK':
@@ -453,6 +485,7 @@ export function satelliteGain(id: SatelliteId): Gain {
         label: i18n.t('gains.beacon.label'),
         now: i18n.t('gains.beacon.now'),
         next: i18n.t('gains.beacon.next', { factor: SATELLITES.BEACON.speed }),
+        brief: { next: i18n.t('gains.beacon.next', { factor: SATELLITES.BEACON.speed }) },
         unlocks: i18n.t('gains.beacon.unlocks'),
       };
   }

@@ -1071,7 +1071,7 @@ function Tabs({
 }
 
 /** Three orders already waiting: a refusal the queue lifts as one finishes (the hourglass, not the lock). */
-const queueFull = (): Blocked => ({ reason: i18n.t('planet.blocked.queueFull'), waits: true });
+const queueFull = (): Blocked => ({ reason: i18n.t('planet.blocked.queueFull'), short: i18n.t('planet.blocked.queueFullShort'), waits: true });
 
 /* ── shared plumbing ────────────────────────────────────────── */
 
@@ -1145,8 +1145,11 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     */
     // `nextLevel` is the PROJECTED CURRENT level, which is exactly what `build.ts`
     // compares — `level >= ceiling` there and here, so the two cannot drift.
-    const plantCapped = id === 'DEUTERIUM_PLANT'
-      && nextLevel >= plantCeiling(projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0);
+    const synthesis = projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0;
+    const plantCapped = id === 'DEUTERIUM_PLANT' && nextLevel >= plantCeiling(synthesis);
+    // the rung that lifts the cap past this level, named like every other research gate (G2-b)
+    let synthesisRung = synthesis + 1;
+    while (plantCeiling(synthesisRung) <= nextLevel && synthesisRung < RESEARCH_MAX_LEVEL.DEUTERIUM_SYNTHESIS) synthesisRung += 1;
     // The final ceiling has no research rung beyond it to send the player to.
     const plantMaxed = id === 'DEUTERIUM_PLANT'
       && nextLevel >= plantCeiling(RESEARCH_MAX_LEVEL.DEUTERIUM_SYNTHESIS);
@@ -1168,7 +1171,12 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
       : nextLevel >= core ? core + 1 : null;
     const prerequisites = [
       ...(coreGate === null ? [] : [i18n.t('planet.blocked.core', { level: coreGate })]),
-      ...(plantCapped ? [i18n.t('planet.blocked.plantRung')] : []),
+      ...(plantCapped
+        ? [i18n.t('planet.blocked.research', {
+          research: researchName('DEUTERIUM_SYNTHESIS'),
+          level: RESEARCH_RUNG[synthesisRung] ?? `L${String(synthesisRung)}`,
+        })]
+        : []),
     ];
     const blocked: Blocked | undefined = completed
       ? undefined
@@ -1177,6 +1185,7 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
         : prerequisites.length > 0
           ? {
             reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
+            short: prerequisites.join(' · '),
             onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
           }
           : orders.length >= BUILD.queueDepth
@@ -1303,6 +1312,7 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
       : prerequisites.length > 0
         ? {
           reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
+          short: prerequisites.join(' · '),
           onFix: () => { onNeed(needsUplink ? 'UPLINK' : 'CORE'); },
         }
         : orders.length >= BUILD.queueDepth

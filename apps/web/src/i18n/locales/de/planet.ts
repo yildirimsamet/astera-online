@@ -425,9 +425,8 @@ export const planet = {
     research: "{{research}} {{level}}",
     requirements: "Erfordert: {{requirements}}",
     maxed: "auf höchstem Niveau",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Erforschen Sie eine weitere Stufe der Deuteriumsynthese",
     queueFull: "3 Bestellungen warten bereits. Beenden oder brechen Sie einen Vorgang ab, um ihn hinzuzufügen.",
+    queueFullShort: "Warteschlange voll",
   },
 
   /** What a purchase says once it has landed. */
@@ -500,7 +499,7 @@ export const itemSheet = {
   rungLevel: "L{{level}}",
   nextLook: "Neues Aussehen ab L{{level}}",
   queueFill: "Bauschlange {{used}}/{{total}}",
-  affordIn: "Reicht in ~{{duration}}",
+  affordIn: "Reicht in {{duration}}",
   short: "Nicht genug Ressourcen",
   orbitalDoesHeading: "Was es tut",
   orbitalOnce: "Einmal gekauft – nie ausgebaut",

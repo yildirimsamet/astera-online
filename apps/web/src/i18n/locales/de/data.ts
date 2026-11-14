@@ -9,19 +9,19 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Befehlskern', tag: 'Schaltet höhere Level frei', role: "Bestimmt die Stufengrenzen der Anlagen außer dem Hangar. Auf dem Heimatplaneten öffnet er Kolonieplätze auf Stufe 9, 13 und 16.", detail: "Bestimmt die Stufengrenzen dieser Welt außer dem Hangar mit seiner eigenen Grenze. Bestimmte Stufen schaffen Flugbuchten, Orbitplätze und Raum für Bodenabwehr. Er beschleunigt Instrumente und Satelliten außer dem Uplink. Gebäudeausbauten haben eigene Zeiten nach Typ und Stufe. Der Befehlskern des Heimatplaneten bestimmt Forschungszeiten und manche Voraussetzungen. Seine Stufen 9, 13 und 16 öffnen den ersten, zweiten und dritten Kolonieplatz." },
-    REFINERY: { name: 'Legierungsraffinerie', tag: 'Erstellt Legierung', role: 'Legierung pro Stunde und Legierungslagerung', detail: 'Jedes Level erhöht das passive Legierungseinkommen und die Menge, die gespeichert werden kann. Die meisten Konstruktionen und Rümpfe werden aus Legierungen finanziert, was viele zukünftige Wartezeiten verkürzt.' },
-    EXTRACTOR: { name: 'Kristallextraktor', tag: 'Macht Kristall', role: 'Kristall pro Stunde und Kristallspeicher', detail: 'Jedes Level erhöht das passive Kristalleinkommen und die Lagerung. Kristall ist die seltenere Hälfte der Kosten für fortschrittliche Hardware, Instrumente und Forschung.' },
-    VAULT: { name: 'Speicher', tag: 'Vertieft den Shop', role: 'Erweitert den Ressourcenspeicher und lässt 10 % Spielraum für die nächsten passenden Legierungs- und Kristallhersteller-Upgrades. Die unteren 10 %, deren Produktionszeit auf 8 Stunden begrenzt ist, sind vor Überfällen sicher.', detail: 'Der Speicher wächst zunächst um seine erstellte Produktionsstundenleiter. Wenn diese Etage auf hohen Ebenen zu klein ist, wird Lager L erweitert, um 110 % der Legierungskosten der Legierungsraffinerie L→L+1 und des Kristallextraktors L→L+1 der Kristallkosten aufzunehmen. das daraus resultierende Stundenfenster gilt auch für Deuterium. Ein Überfall kann nicht die unteren 10 % des Lagers oder 8 Stunden der Produktion dieser Ressource erreichen. Der Speicher kämpft nicht und reduziert den eingehenden Schaden nicht.' },
-    SHIPYARD: { name: 'Werft', tag: 'Schaltet bessere Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte Ihrer Sonden und erschweren das Erfassen Ihrer eigenen Sonden. Werftebenen fügen keine Warteschlangenplätze hinzu.' },
-    HANGAR: { name: 'Hangar', tag: 'Legt fest, wie viel Flotte hineinpasst', role: 'Flottenraum auf dieser Welt · bei jedem Kommandokern ausbaubar', detail: 'Jedes Schiff belegt Hangarraum nach seiner Größe, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein voller Hangar baut und empfängt keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Jede Stufe kostet ein Drittel der Flotte, für die sie Platz schafft; die oberen Stufen kosten daher mehr, als eine Welt ohne ausgebauten Speicher auf einmal fassen kann.' },
+    CORE: { name: 'Befehlskern', tag: 'Hebt die Levelgrenze', role: "Bestimmt die Stufengrenzen der Anlagen außer dem Hangar. Auf dem Heimatplaneten öffnet er Kolonieplätze auf Stufe 9, 13 und 16.", detail: "Bestimmt die Stufengrenzen dieser Welt außer dem Hangar mit seiner eigenen Grenze. Bestimmte Stufen schaffen Flugbuchten, Orbitplätze und Raum für Bodenabwehr. Er beschleunigt Instrumente und Satelliten außer dem Uplink. Gebäudeausbauten haben eigene Zeiten nach Typ und Stufe. Der Befehlskern des Heimatplaneten bestimmt Forschungszeiten und manche Voraussetzungen. Seine Stufen 9, 13 und 16 öffnen den ersten, zweiten und dritten Kolonieplatz." },
+    REFINERY: { name: 'Legierungsraffinerie', tag: 'Erzeugt Legierung', role: 'Legierung pro Stunde und Legierungslagerung', detail: 'Jedes Level erhöht das passive Legierungseinkommen und die Menge, die gespeichert werden kann. Die meisten Konstruktionen und Rümpfe werden aus Legierungen finanziert, was viele zukünftige Wartezeiten verkürzt.' },
+    EXTRACTOR: { name: 'Kristallextraktor', tag: 'Erzeugt Kristall', role: 'Kristall pro Stunde und Kristallspeicher', detail: 'Jedes Level erhöht das passive Kristalleinkommen und die Lagerung. Kristall ist die seltenere Hälfte der Kosten für fortschrittliche Hardware, Instrumente und Forschung.' },
+    VAULT: { name: 'Speicher', tag: 'Erweitert Speicher', role: 'Erweitert den Ressourcenspeicher und lässt 10 % Spielraum für die nächsten passenden Legierungs- und Kristallhersteller-Upgrades. Die unteren 10 %, deren Produktionszeit auf 8 Stunden begrenzt ist, sind vor Überfällen sicher.', detail: 'Der Speicher wächst zunächst um seine erstellte Produktionsstundenleiter. Wenn diese Etage auf hohen Ebenen zu klein ist, wird Lager L erweitert, um 110 % der Legierungskosten der Legierungsraffinerie L→L+1 und des Kristallextraktors L→L+1 der Kristallkosten aufzunehmen. das daraus resultierende Stundenfenster gilt auch für Deuterium. Ein Überfall kann nicht die unteren 10 % des Lagers oder 8 Stunden der Produktion dieser Ressource erreichen. Der Speicher kämpft nicht und reduziert den eingehenden Schaden nicht.' },
+    SHIPYARD: { name: 'Werft', tag: 'Schaltet Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte Ihrer Sonden und erschweren das Erfassen Ihrer eigenen Sonden. Werftebenen fügen keine Warteschlangenplätze hinzu.' },
+    HANGAR: { name: 'Hangar', tag: 'Platz für die Flotte', role: 'Flottenraum auf dieser Welt · bei jedem Kommandokern ausbaubar', detail: 'Jedes Schiff belegt Hangarraum nach seiner Größe, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein voller Hangar baut und empfängt keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Jede Stufe kostet ein Drittel der Flotte, für die sie Platz schafft; die oberen Stufen kosten daher mehr, als eine Welt ohne ausgebauten Speicher auf einmal fassen kann.' },
     DEUTERIUM_PLANT: { name: 'Deuterium-Raffinerie', tag: 'Stellt Deuterium her', role: 'Deuterium pro Stunde und Brennstoffspeicher · die Obergrenze wird durch die Deuteriumsynthese festgelegt', detail: "Jede Stufe erhöht die Deuteriumproduktion pro Stunde und die Speicherkapazität. Deuterium ist der Treibstoff für Flottenflüge. Wenn die Deuterium-Raffinerie ihre Stufengrenze erreicht, erforsche die nächste Stufe der Deuteriumsynthese." },
   },
 
   instrument: {
     TELESCOPE: {
       name: 'Teleskop',
-      tag: 'Fernbewegung auflösen',
+      tag: 'Sieht ferne Bewegung',
       role:
         'Identifiziert Bewegungen innerhalb seiner Reichweite; Die Uhrenplätze werden zu 1, 2, 3 und 4 bei L1, L3, L5 und L7. Still.',
       roleNone:
@@ -32,7 +32,7 @@ export const vocabulary = {
     },
     RADAR: {
       name: 'Radar',
-      tag: 'Erkennen Sie Bedrohungen für Sie',
+      tag: 'Erkennt, was kommt',
       role:
         'Erkennt Bewegungen innerhalb seines Kreises, verbessert die Sondenerkennung und markiert Bedrohungen, die auf diese Welt gerichtet sind, mit einer Ankunftszeit.',
       roleNone:
@@ -51,7 +51,7 @@ export const vocabulary = {
     },
     AEGIS: {
       name: 'Aegis',
-      tag: 'Schild für deinen Planeten',
+      tag: 'Schild des Planeten',
       role: 'Ein Planetenschild, das vor Einheiten Schaden erleidet und jede Stunde 35 % seines Maximums regeneriert.',
       roleNone:
         'Absorbiert Angriffsschaden vor Schiffen und Bodengeschützen und regeneriert sich dann ohne Ressourcen. Es liefert keine Informationen.',
@@ -61,7 +61,7 @@ export const vocabulary = {
     },
     VEIL: {
       name: 'Schleier',
-      tag: 'Vor Teleskopen verstecken',
+      tag: 'Tarnt vor Teleskopen',
       role: "Degradiert, was jedes Teleskop über Sie lesen kann.",
       roleNone:
         'Kann Ihren Flottenstatus für ein gegnerisches Teleskop unleserlich machen. Es verbirgt Informationen, erfindet aber weder falsche Messwerte noch stoppt es Untersuchungen.',
@@ -74,7 +74,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: 'Uplink',
-      tag: 'Schaltet Teleskop und Radar frei',
+      tag: 'Öffnet Teleskop, Radar',
       role:
         'Erforderlich, um ein Teleskop oder Radar auf dieser Welt zu installieren. Es nutzt einen Orbitplatz und bietet keinen Produktions- oder Verteidigungsbonus.',
       blurb:
@@ -83,7 +83,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: 'Gießerei',
-      tag: 'Jede Stunde mehr Erz',
+      tag: 'Mehr Produktion',
       role:
         'Erhöht die passive Legierungs-, Kristall- und Deuteriumproduktion dieser Welt um 6 %.',
       blurb:
@@ -250,19 +250,19 @@ export const vocabulary = {
     },
     BASTION: {
       name: 'Bastion',
-      tag: 'Schwere Bodengeschütze',
+      tag: 'Schwere Bodenkanone',
       role: 'Bodenverteidigung · kann den Planeten niemals verlassen',
       pitch: 'Schwere Bodenverteidigung mit einem Vorteil gegenüber Rümpfen der Lanzenklasse; anfällig für Scharmützler.',
       detail: 'Bastionen verlassen niemals den Planeten. Ihre Bollwerk-Klasse verschafft ihnen einen Vorteil gegenüber Rümpfen der Lanzenklasse, während Scharmützler ihnen gegenüber einen Vorteil haben. Nach dem Kampf werden 60 % der zerstörten Bodengeschütze wiederhergestellt (abgerundet).',
     },
     HARPOON: {
-      name: 'Harpune', tag: 'Lanzen-Bodengeschütz', role: 'Bodenverteidigung · ortsfeste Lanzenstellung',
+      name: 'Harpune', tag: 'Lanzen-Bodenkanone', role: 'Bodenverteidigung · ortsfeste Lanzenstellung',
       pitch: 'Durchbricht Plänklerformationen; anfällig gegen Bollwerke.',
       detail: 'Harpunen verlassen den Planeten nie. Als Lanzen haben sie einen Vorteil gegen Plänkler, während Bollwerke sie kontern. Sie belegen Bodenkapazität; 60 % zerstörter Bodengeschütze werden nach dem Kampf abgerundet wiederhergestellt.',
     },
     THORN: {
       name: 'Dorn',
-      tag: 'Leichte Bodengeschütze',
+      tag: 'Leichte Bodenkanone',
       role: 'Bodenverteidigung · leicht, günstig und blättert nie ab',
       pitch: 'Kostengünstige Bodenverteidigung mit Vorteil gegenüber Bollwerken; anfällig für Lanzen.',
       detail: 'Dornen verlassen niemals den Planeten. Ihre Scharmützler-Klasse verschafft ihnen einen Vorteil gegenüber Rümpfen der Bollwerkklasse, während Rümpfe der Lanzenklasse ihnen gegenüber im Vorteil sind. Sie nutzen die Bodenkapazität; 60 % der zerstörten Bodengeschütze werden nach dem Kampf wiederhergestellt, abgerundet.',
@@ -303,6 +303,8 @@ export const vocabulary = {
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
   rangeUnits: '{{count}} Einheiten',
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: '{{count}}',
 
   core: {
     label: 'Decke bauen',
@@ -330,6 +332,7 @@ export const gains = {
   vault: {
     label: 'Speichertiefe',
     value: '{{store}}h Speicher · {{safe}}h geschützt',
+    brief: '{{store}} h',
   },
   shipyard: {
     timeLabel: "Produktionszeit",
@@ -385,7 +388,7 @@ export const gains = {
   uplink: {
     label: 'Teleskop und Radar',
     now: 'gesperrt',
-    next: 'freigeschaltet',
+    next: 'frei',
     unlocks: 'Auf dieser Welt können ein Teleskop und ein Radar installiert werden',
   },
   derrick: {
@@ -653,6 +656,7 @@ export const units = {
   todayAt: 'Heute {{time}}',
   yesterdayAt: 'Gestern {{time}}',
   hoursMinutes: '{{h}}h {{m}}m',
+  hours: '{{h}}h',
   minutesSeconds: '{{m}}m {{s}}s',
   hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',
   seconds: '{{s}}s',
