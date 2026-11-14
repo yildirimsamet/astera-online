@@ -172,6 +172,8 @@ it('says a transfer cannot be taken back before it, and transfers only on the ho
   expect(screen.getByText(/cannot be moved back/)).toBeInTheDocument();
   const key = screen.getByRole('button', { name: /^Transfer/ });
   expect(key).toHaveTextContent('150');
+  // Owner 2026-11-14: the transfer takes the shortest hold, the kit's reversible weight.
+  expect(key.style.getPropertyValue('--gk-hold-ms')).toBe('600ms');
   fireEvent.click(key);
   expect(fund).not.toHaveBeenCalled();
   hold(/^Transfer/);

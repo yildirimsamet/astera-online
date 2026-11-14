@@ -1277,7 +1277,7 @@ Kite eklenenler (malzeme):
 Yüzey:
 - Sheet artık kitin başlığında açılıyor; başlıkta vericinin resmi duruyor.
 - 9–10 px yazıların hepsi 12–14 px'e çıktı.
-- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor.
+- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor. → owner 2026-11-14: aktarma en kısa basılı tutmaya indi (0,6 sn). Bkz. C13.
   - Aktarmanın eski onay penceresi kalktı. "Kasadaki döteryum geri aktarılamaz" cümlesi artık kilit işaretiyle tuşun üstünde, harcamadan önce görünüyor.
   - Tuş eksik olanı kendisi söylüyor. Kurarken "Kaynak yetmiyor". Aktarırken "Tam bir miktar yaz" ya da "Depoda bu kadar yok".
   - Kullanılmaz hâle gelen dört anahtar 6 dilden silindi: `confirmTitle`, `confirm`, `back`, `walletAfter`.
@@ -1331,6 +1331,12 @@ Doğrulanamayanlar:
 - Almanca bir anadil konuşanı metinleri okumadı. Owner Almanca bilmiyor; yeniden yazımlar İngilizce kaynağa göre yapıldı.
 - Ekran görüntüleri yalnız dört yüzeyde çekildi: sonda rafı, radar rafı, savunma raporu, saldırı sheet'i. Metinlerin çoğu kısaldı; uzayanlar tek tek bakılmadı.
 - Hitapla ilgisi olmayan makine çevirisi kalıntıları hâlâ var (ör. "Wert der bewaffneten Einheit"). Ayrı bir Almanca okuma işi.
+
+**C13 Kısa basılı tutmalar ✅ (2026-11-14, yardımcı oturum).** Owner kararı: onay penceresinden basılı tutmaya dönen eylemler en kısa ağırlığı kullanır (geri alınabilir ağırlık, 0,6 sn).
+- **Döteryum aktarımı (C6):** 1 sn'lik "harcar" ağırlığından 0,6 sn'ye indi. Aktarım geri alınamıyor; kısa süre owner'ın açık kararı. "Geri alınamaz" satırı tuşun üstünde kilit işaretiyle duruyor.
+- **Oyuncu engelleme (C4):** zaten 0,6 sn'ydi. Değişmedi; testte sabitlendi.
+- **Tamirhanedeki parçalama:** koordinatörün işi, bu birimde dokunulmadı.
+- **Testler:** iki tuşun süresi testte ölçülüyor (`--gk-hold-ms` 600 ms). Tuşun görünüşü değişmedi; yalnız dolma süresi kısaldı. Bu yüzden ölçüm (audit) koşulmadı.
 
 ## G9. Sıralama, sezon, anıtlar
 
