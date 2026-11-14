@@ -13,7 +13,8 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
+import type { FaultView, GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
+import { FaultSheet } from '../../screens/FaultSheet.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { HangarPanel } from '../../arena/hangar/HangarPanel.js';
 import TeamPanel from '../../arena/TeamPanel.js';
@@ -282,6 +283,26 @@ function GalleryBase({ empty = false, open = false, production = false, faults =
       <PlanetScreen focusGroup={production ? 'grow' : 'reach'} {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
     </Sheet>
   );
+}
+
+/**
+ * THE FAULT SHEET (G2-d): a colony's refinery dark and no crew on it yet, with a leak a crew is
+ * already mending. `running` opens the one a crew is on; `short` leaves the store below the price.
+ */
+function GalleryFault({ running = false, short = false }: { running?: boolean; short?: boolean }) {
+  const blackout: FaultView = {
+    id: 'f-1', kind: 'REFINERY_OUTAGE', startedAt: new Date(NOW - 40 * MIN), cost: { alloy: 1_200, crystal: 400, deuterium: 0 },
+    repair: running ? { slot: 1, readyAt: new Date(NOW + 7 * MIN) } : null,
+  };
+  const leak: FaultView = {
+    id: 'f-2', kind: 'VAULT_LEAK', startedAt: new Date(NOW - 25 * MIN), cost: { alloy: 300, crystal: 0, deuterium: 0 },
+    repair: { slot: 0, readyAt: new Date(NOW + 3 * MIN) },
+  };
+  const world = planetView(
+    { buildings: { CORE: 6, REFINERY: 7, EXTRACTOR: 5, VAULT: 3 }, faults: [blackout, leak], loyalty: { value: 62, minutesLeft: 14 * 60 } },
+    { id: 'p-1', name: 'Thistle', kind: 'COLONY', alloy: short ? 900 : 4_000, crystal: 2_000, deuterium: 600, alloyPerHour: 0, nominalAlloyPerHour: 1_770 },
+  );
+  return <FaultSheet fault={blackout} planet={world} onClose={noop} />;
 }
 
 /**
@@ -882,6 +903,9 @@ function Views({ view }: { view: string }) {
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
   if (view === 'base-faults') return <GalleryBase production faults />;
+  if (view === 'fault-sheet') return <GalleryFault />;
+  if (view === 'fault-sheet-running') return <GalleryFault running />;
+  if (view === 'fault-sheet-short') return <GalleryFault short />;
   if (view === 'base-research') return <GalleryResearch />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;

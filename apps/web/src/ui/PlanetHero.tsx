@@ -37,6 +37,30 @@ import { StarField } from '../v2/kit/StarField.js';
  * the fleet — answers "can this world hold?", so it opens the Defence tab instead
  * (`DefenceReadings`). Nothing was dropped; each fact moved to the question it answers.
  */
+/**
+ * A COLONY'S LOYALTY IN ONE ROW: the bar, the figure, and how long it lasts at this rate. The
+ * hero and the fault sheet draw it alike, so the two never disagree about how long a world has.
+ */
+export function LoyaltyRow({ loyalty }: { loyalty: { value: number; minutesLeft: number | null } }) {
+  const { t } = useTranslation();
+  return (
+    <div className="gk-loyalty__row">
+      <span className="gk-label">{t('faults.loyalty.title')}</span>
+      <span className="gk-bar gk-loyalty__bar">
+        <span
+          data-loyalty-bar
+          className={`gk-bar__fill ${loyalty.value <= 25 ? 'gk-fill-hostile' : 'gk-fill-self'}`}
+          style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
+        />
+      </span>
+      <span className="gk-loyalty__value gk-num">{t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}</span>
+      {loyalty.minutesLeft !== null && (
+        <span className="gk-sub gk-num">{t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}</span>
+      )}
+    </div>
+  );
+}
+
 export function PlanetHero({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const now = useNow(1000);
@@ -66,20 +90,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
     <div className="flex flex-col gap-2">
       {loyalty && (
         <div data-loyalty data-testid="loyalty-line" className="gk gk-loyalty">
-          <div className="gk-loyalty__row">
-            <span className="gk-label">{t('faults.loyalty.title')}</span>
-            <span className="gk-bar gk-loyalty__bar">
-              <span
-                data-loyalty-bar
-                className={`gk-bar__fill ${loyalty.value <= 25 ? 'gk-fill-hostile' : 'gk-fill-self'}`}
-                style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
-              />
-            </span>
-            <span className="gk-loyalty__value gk-num">{t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}</span>
-            {loyalty.minutesLeft !== null && (
-              <span className="gk-sub gk-num">{t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}</span>
-            )}
-          </div>
+          <LoyaltyRow loyalty={loyalty} />
           <p className="gk-sub">{t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}</p>
           <div data-testid="fault-protection" className="gk-loyalty__guard">
             {faultProtectionRemaining > 0 && (

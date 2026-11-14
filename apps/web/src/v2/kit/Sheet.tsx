@@ -104,7 +104,7 @@ export interface SheetProps {
    * a plate with the subject's picture, the title in the display face and a line of meta;
    * the body and the foot take the kit's metal. What the sheet does does not change.
    */
-  kit?: { art?: string; meta?: ReactNode; tone?: 'self' | 'hostile' };
+  kit?: { art?: string; meta?: ReactNode; tone?: 'self' | 'hostile' | 'warn' };
 }
 
 /**
