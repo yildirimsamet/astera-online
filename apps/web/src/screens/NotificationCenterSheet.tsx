@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ALERT_TIMINGS, PAID_ALERTS, type AlertTiming, type PaidAlertKind } from '@astera/rules';
@@ -8,33 +8,26 @@ import {
 import { PAID_ALERT_KINDS, type NotificationCenter } from '../api/notificationCenterSchemas.js';
 import { useApi } from '../api/context.js';
 import { usePlanet } from '../api/queries.js';
+import { Banner, CostLine, GameButton, GameHold, Glyph, SectionTag, Toggle, type GlyphId } from '../game-ui/index.js';
 import { LANGUAGES, type Language } from '../i18n/languages.js';
 import { full } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
 import { useProjected } from '../lib/projection.js';
 import { LOCAL_ALERT_CATEGORIES } from '../lib/localAlerts.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import {
   allowExactLocalAlerts, disableLocalAlerts, enableLocalAlerts, setLocalAlertPrefs, useLocalAlertSettings, usePhonePermission,
 } from '../platform/localNotifications.js';
 import { connectPush } from '../platform/push.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { BroadcastIcon, ClockIcon, DeathStarIcon, IncomingIcon, ScanIcon } from '../ui/icons/index.js';
-import { Confirm, ConfirmLine } from '../ui/kit/Confirm.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { describe } from '../ui/Toast.js';
-import { Cost } from '../v2/kit/Cost.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Button, Note, Section } from '../v2/kit/Surface.js';
-import { Toggle } from '../v2/kit/Toggle.js';
 
-const KIND_ICON = { incoming_attack: IncomingIcon, incoming_strategic: DeathStarIcon, probe_detected: ScanIcon } as const;
+const KIND_GLYPH: Record<PaidAlertKind, GlyphId> = { incoming_attack: 'attack', incoming_strategic: 'radiation', probe_detected: 'eye' };
 const RECENT_SHOWN = 5;
 const HARDWARE = '/assets/images/general/notification_center_1.webp';
-
-/** The transmitter itself, in the 74px socket the base's hardware uses. */
-function Hardware() {
-  return <img src={HARDWARE} alt="" aria-hidden="true" draggable={false} decoding="async"
-    className="size-[74px] shrink-0 object-contain drop-shadow-[0_6px_14px_rgb(0_0_0/0.55)]" />;
-}
 
 /** What one alert of this kind costs today, at the commander's timing where it has one. */
 function priceOf(view: NotificationCenter, kind: PaidAlertKind): number {
@@ -43,15 +36,26 @@ function priceOf(view: NotificationCenter, kind: PaidAlertKind): number {
 
 function Deuterium({ amount, className = '' }: { amount: number; className?: string }) {
   const { t } = useTranslation();
-  return <span className={`inline-flex items-center gap-1 font-v2-mono tabular-nums ${className}`}>
-    <img src={RESOURCE_ART.deuterium} alt={t('vocabulary.resource.deuterium')} className="size-3.5 shrink-0 object-contain" />
+  return <span className={`gk-deut gk-num ${className}`}>
+    <img src={RESOURCE_ART.deuterium} alt={t('vocabulary.resource.deuterium')} draggable={false} />
     {full(amount)}
   </span>;
+}
+
+/** A setback said on the kit: what the server answered, in the hostile tone. */
+function Failure({ error }: { error: unknown }) {
+  return <Banner tone="hostile" glyph="warn" role="alert" title={describe(error)} />;
 }
 
 /**
  * BİLDİRİM MERKEZİ. Owner 2026-10-30, docs/bildirim-merkezi-plani-2026-10-30.md.
  * Android only: the web has no way in and no trace of it.
+ *
+ * ON THE GAME KIT (C6, 2026-11-14). The player's question is "will I know before they land,
+ * and what does it cost me?": the wallet answers it first, in alerts it pays for; the timing
+ * is a dial of four lit rows with their price each; the kinds are the kit's switches. Building
+ * and every transfer spend, so both are the kit's one-second hold, the transfer's "it cannot
+ * come back" said above it rather than in a dialog after.
  */
 export function NotificationCenterSheet({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -59,13 +63,13 @@ export function NotificationCenterSheet({ onClose }: { onClose: () => void }) {
   const view = query.data;
   return createPortal(<div>
     <Sheet placement="dialog" title={t('notificationCenter.title')} eyebrow={t('notificationCenter.eyebrow')}
-      headerArt={ATMOSPHERE.notificationCenter} onClose={onClose} detents={['full']}>
-      <div data-notification-center className="flex flex-col gap-4 pb-3">
-        <p className="text-caption leading-relaxed text-v2-ink-2">{t('notificationCenter.lead')}</p>
-        {!view ? <>
-            <Note>{query.isError ? t('notificationCenter.loadError') : t('notificationCenter.loading')}</Note>
-            {query.isError && <Button onClick={() => { void query.refetch(); }}>{t('notificationCenter.retry')}</Button>}
-          </>
+      headerArt={ATMOSPHERE.notificationCenter} kit={{ art: HARDWARE, tone: 'self' }} onClose={onClose} detents={['full']}>
+      <div data-notification-center className="gk-center">
+        <p className="gk-copy">{t('notificationCenter.lead')}</p>
+        {!view ? <div className="grid gap-2">
+            <p role="status" className="gk-note">{query.isError ? t('notificationCenter.loadError') : t('notificationCenter.loading')}</p>
+            {query.isError && <GameButton size="sm" glyph="refresh" onPress={() => { void query.refetch(); }}>{t('notificationCenter.retry')}</GameButton>}
+          </div>
           : view.built ? <Built view={view} /> : <Unbuilt view={view} />}
         <PhoneAlerts />
       </div>
@@ -73,24 +77,33 @@ export function NotificationCenterSheet({ onClose }: { onClose: () => void }) {
   </div>, document.body);
 }
 
+/** One line of a kit ledger: a mark, what it is, and what it costs or came to. */
+function LedgerRow({ glyph, tone, title, sub, side }: { glyph: GlyphId; tone?: 'hostile'; title: ReactNode; sub: ReactNode; side: ReactNode }) {
+  return <li className="gk-ledger__row">
+    <span className="gk-ledger__mark" {...(tone ? { 'data-tone': tone } : {})}><Glyph id={glyph} /></span>
+    <span className="gk-ledger__words">
+      <span className="gk-ledger__title">{title}</span>
+      <span className="gk-ledger__sub">{sub}</span>
+    </span>
+    <span className="gk-ledger__side">{side}</span>
+  </li>;
+}
+
 /** The three paid kinds, at their floor: what the centre is for before it is built. */
 function KindsPreview() {
   const { t } = useTranslation();
-  return <ul className="divide-y divide-v2-line rounded-control border border-v2-line bg-v2-panel px-3">
-    {PAID_ALERT_KINDS.map(kind => {
-      const Icon = KIND_ICON[kind];
-      const row: { timed?: Record<AlertTiming, { floor: number }>; now?: { floor: number } } = PAID_ALERTS[kind];
-      const floor = row.now?.floor ?? row.timed?.T3.floor ?? 0;
-      return <li key={kind} className="flex items-center gap-3 py-2.5">
-        <Icon className="size-5 shrink-0 text-v2-hostile" />
-        <div className="min-w-0 flex-1">
-          <p className="text-caption font-semibold text-v2-ink">{t(`notificationCenter.kind.${kind}`)}</p>
-          <p className="text-micro leading-snug text-v2-ink-3">{t(`notificationCenter.kindRule.${kind}`)}</p>
-        </div>
-        <span className="shrink-0 text-micro text-v2-ink-3">{t('notificationCenter.from')} <Deuterium amount={floor} className="text-v2-ink-2" /></span>
-      </li>;
-    })}
-  </ul>;
+  return <div className="grid gap-2">
+    <SectionTag>{t('notificationCenter.kindsTitle')}</SectionTag>
+    <ul aria-label={t('notificationCenter.kindsTitle')} className="gk-ledger">
+      {PAID_ALERT_KINDS.map(kind => {
+        const row: { timed?: Record<AlertTiming, { floor: number }>; now?: { floor: number } } = PAID_ALERTS[kind];
+        const floor = row.now?.floor ?? row.timed?.T3.floor ?? 0;
+        return <LedgerRow key={kind} glyph={KIND_GLYPH[kind]} tone="hostile" title={t(`notificationCenter.kind.${kind}`)}
+          sub={t(`notificationCenter.kindRule.${kind}`)}
+          side={<><span className="gk-note">{t('notificationCenter.from')}</span><Deuterium amount={floor} /></>} />;
+      })}
+    </ul>
+  </div>;
 }
 
 /** Asks the phone for notifications and hands its FCM address to the server (`platform/push.ts`). */
@@ -117,22 +130,18 @@ function Unbuilt({ view }: { view: NotificationCenter }) {
   const short = !world || world.held.alloy < cost.alloy || world.held.crystal < cost.crystal || world.held.deuterium < cost.deuterium;
   return <>
     <KindsPreview />
-    <div className="flex flex-col gap-3 rounded-control border border-v2-line-hi bg-v2-panel p-3">
-      <div className="flex items-center gap-3">
-        <Hardware />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <span className="text-body font-semibold text-v2-ink">{t('notificationCenter.buildCost')}</span>
-            <Cost cost={cost} {...(world ? { held: world.held } : {})} />
-          </div>
-          <p className="text-caption leading-relaxed text-v2-ink-2">{t('notificationCenter.buildFrom', { world: world?.name ?? '—' })}</p>
-        </div>
+    <section aria-label={t('notificationCenter.buildCost')} className="gk-well gk-center__build">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <span className="gk-label">{t('notificationCenter.buildCost')}</span>
+        <CostLine cost={cost} {...(world ? { held: world.held } : {})} />
       </div>
-      <Button size="lg" full variant="primary" disabled={short || build.isPending}
-        onClick={() => { if (world) build.mutate(world.id, { onSuccess: () => { void askPush(); } }); }}>{t('notificationCenter.build')}</Button>
-      {short && world && <p className="text-micro text-v2-warn">{t('notificationCenter.buildShort')}</p>}
-    </div>
-    {build.error && <Note>{describe(build.error)}</Note>}
+      <p className="gk-note">{t('notificationCenter.buildFrom', { world: world?.name ?? '—' })}</p>
+      {short && world && <p className="gk-center__warn">{t('notificationCenter.buildShort')}</p>}
+      <GameHold weight="spends" glyph="bell" label={t('notificationCenter.build')}
+        disabledReason={short ? t('notificationCenter.buildShortReason') : null}
+        onCommit={() => { if (world && !build.isPending) build.mutate(world.id, { onSuccess: () => { void askPush(); } }); }} />
+    </section>
+    {build.error && <Failure error={build.error} />}
   </>;
 }
 
@@ -141,89 +150,94 @@ function Built({ view }: { view: NotificationCenter }) {
   const settings = useNotificationCenterSettings();
   const attack = view.prices.incoming_attack[view.timing];
   const covers = Math.floor(view.wallet / attack);
+  // One setting at a time: the next is worked out from the view the last one answers with.
   const setMuted = (kind: PaidAlertKind, on: boolean) => {
+    if (settings.isPending) return;
     settings.mutate({ muted: on ? view.muted.filter(k => k !== kind) : [...view.muted, kind] });
   };
   return <>
     <PushOff />
-    <section aria-label={t('notificationCenter.wallet')}
-      className={`flex flex-col gap-3 rounded-control border p-3 ${covers > 0 ? 'border-v2-self/30 bg-v2-self/5' : 'border-v2-warn/40 bg-v2-warn/5'}`}>
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('notificationCenter.wallet')}</span>
-          <Deuterium amount={view.wallet} className={`text-title ${covers > 0 ? 'text-v2-self' : 'text-v2-warn'}`} />
-        </div>
-        <p className={`text-caption leading-snug ${covers > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
-          {covers > 0 ? t('notificationCenter.covers', { count: covers, timing: t(`notificationCenter.timingOption.${view.timing}`) }) : t('notificationCenter.empty')}</p>
-        {view.unfunded > 0 && <p className="text-caption leading-snug text-v2-warn">{t('notificationCenter.unfunded', { count: view.unfunded })}</p>}
-        <p className="text-micro leading-snug text-v2-ink-3">{t('notificationCenter.walletRule')}</p>
+    <section aria-label={t('notificationCenter.wallet')} className="gk-wallet" {...(covers > 0 ? {} : { 'data-short': '' })}>
+      <div className="gk-wallet__head">
+        <span className="gk-label">{t('notificationCenter.wallet')}</span>
+        <Deuterium amount={view.wallet} className="gk-wallet__sum" />
       </div>
+      <p className="gk-wallet__covers">
+        {covers > 0 ? t('notificationCenter.covers', { count: covers, timing: t(`notificationCenter.timingOption.${view.timing}`) }) : t('notificationCenter.empty')}</p>
+      {view.unfunded > 0 && <p className="gk-center__warn">{t('notificationCenter.unfunded', { count: view.unfunded })}</p>}
+      <p className="gk-note">{t('notificationCenter.walletRule')}</p>
       <Transfer view={view} />
     </section>
 
-    <Section label={t('notificationCenter.timingTitle')}>
-      {/* A setting, not a price list: the moment is the choice, the price per alert its consequence. */}
-      <div role="radiogroup" aria-label={t('notificationCenter.timingTitle')}
-        className="flex flex-col divide-y divide-v2-line rounded-control border border-v2-line bg-v2-panel">
-        {ALERT_TIMINGS.map(timing => {
-          const on = timing === view.timing;
-          return <button key={timing} type="button" role="radio" aria-checked={on} disabled={settings.isPending}
-            onClick={() => { if (!on) settings.mutate({ timing }); }}
-            className="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left transition-colors first:rounded-t-control last:rounded-b-control hover:bg-v2-raise focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-v2-self">
-            <span aria-hidden="true" className={`grid size-4 shrink-0 place-items-center rounded-full border ${on ? 'border-v2-self' : 'border-v2-line-hi'}`}>
-              {on && <span className="size-2 rounded-full bg-v2-self" />}
-            </span>
-            <span className={`min-w-0 flex-1 text-caption ${on ? 'font-semibold text-v2-ink' : 'text-v2-ink-2'}`}>{t(`notificationCenter.timingOption.${timing}`)}</span>
-            <span className="flex shrink-0 items-center gap-1 text-micro text-v2-ink-3">
-              <Deuterium amount={view.prices.incoming_attack[timing]} className={on ? 'text-v2-self' : 'text-v2-ink-2'} />
-              {t('notificationCenter.perAlert')}
-            </span>
-          </button>;
-        })}
-      </div>
-      <p className="text-micro leading-relaxed text-v2-ink-3">{t('notificationCenter.timingRule')}</p>
-    </Section>
+    <Timing view={view} pending={settings.isPending} onChoose={timing => { settings.mutate({ timing }); }} />
 
-    <Section label={t('notificationCenter.kindsTitle')}>
-      <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
+    <div className="grid gap-2">
+      <SectionTag>{t('notificationCenter.kindsTitle')}</SectionTag>
+      <div className="gk-switches">
         {PAID_ALERT_KINDS.map(kind => {
-          const Icon = KIND_ICON[kind];
           const on = !view.muted.includes(kind);
-          return <Toggle key={kind} tone="self" checked={on} disabled={settings.isPending} onChange={value => { setMuted(kind, value); }}>
-            <span className="flex items-center gap-2">
-              <Icon className={`size-4 shrink-0 ${on ? 'text-v2-hostile' : 'text-v2-ink-3'}`} />
-              <span className="min-w-0 flex-1 font-semibold">{t(`notificationCenter.kind.${kind}`)}</span>
-              <Deuterium amount={priceOf(view, kind)} className="shrink-0 text-micro text-v2-ink-2" />
-            </span>
-            <span className="mt-0.5 block text-micro text-v2-ink-3">{t(`notificationCenter.kindRule.${kind}`)}</span>
-          </Toggle>;
+          return <Toggle key={kind} checked={on} onChange={value => { setMuted(kind, value); }} sub={t(`notificationCenter.kindRule.${kind}`)}
+            label={<span className="gk-kindline">
+              <span className="gk-kindline__mark" {...(on ? { 'data-on': '' } : {})}><Glyph id={KIND_GLYPH[kind]} /></span>
+              <span className="gk-kindline__name">{t(`notificationCenter.kind.${kind}`)}</span>
+              <Deuterium amount={priceOf(view, kind)} />
+            </span>} />;
         })}
       </div>
-    </Section>
+    </div>
 
     {view.recent.length > 0 && <Recent view={view} />}
 
-    <details className="rounded-control border border-v2-line p-3 text-caption text-v2-ink-2">
-      <summary className="cursor-pointer font-semibold text-v2-ink">{t('notificationCenter.rulesTitle')}</summary>
-      <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4 leading-relaxed">
-        {(['ruleRadar', 'ruleRecall', 'ruleShort', 'ruleUndelivered', 'ruleInGame'] as const).map(key => <li key={key}>{t(`notificationCenter.${key}`)}</li>)}
-      </ul>
-      <p className="mt-3 leading-relaxed">{t('notificationCenter.priceRule', { rate: full(view.deuteriumPerHour) })}</p>
-      <table className="mt-2 w-full font-v2-mono text-micro">
-        <tbody>
-          {ALERT_TIMINGS.map(timing => {
-            const price = PAID_ALERTS.incoming_attack.timed[timing];
-            return <tr key={timing} className="border-t border-v2-line">
-              <td className="py-1 font-v2-ui">{t(`notificationCenter.timing.${timing}`)}</td>
-              <td className="py-1 text-right">{t('notificationCenter.hours', { count: price.hours })}</td>
-              <td className="py-1 text-right">{t('notificationCenter.floor', { amount: price.floor })}</td>
-            </tr>;
-          })}
-        </tbody>
-      </table>
-    </details>
-    {settings.error && <Note>{describe(settings.error)}</Note>}
+    <Rules view={view} />
+    {settings.error && <Failure error={settings.error} />}
   </>;
+}
+
+/** A setting, not a price list: the moment is the choice, the price per alert its consequence. */
+function Timing({ view, pending, onChoose }: { view: NotificationCenter; pending: boolean; onChoose: (timing: AlertTiming) => void }) {
+  const { t } = useTranslation();
+  const question = useId();
+  const choose = (timing: AlertTiming): void => {
+    if (pending || timing === view.timing) return;
+    playSound('tab');
+    haptic('tap');
+    onChoose(timing);
+  };
+  const walk = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const step = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const at = ALERT_TIMINGS.indexOf(view.timing) + step;
+    const next = ALERT_TIMINGS[at];
+    if (next === undefined) return;
+    choose(next);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
+  };
+  return <div className="grid gap-2">
+    <p id={question} className="gk-center__ask">{t('notificationCenter.timingTitle')}</p>
+    <div role="radiogroup" aria-labelledby={question} className="gk-rate" {...OWN_SOUND}>
+      {ALERT_TIMINGS.map(timing => <RateRow key={timing} on={timing === view.timing} label={t(`notificationCenter.timingOption.${timing}`)}
+        price={<><Deuterium amount={view.prices.incoming_attack[timing]} />{t('notificationCenter.perAlert')}</>}
+        onChoose={() => { choose(timing); }} onKeyDown={walk} />)}
+    </div>
+    <p className="gk-note">{t('notificationCenter.timingRule')}</p>
+  </div>;
+}
+
+function RateRow({ on, label, price, onChoose, onKeyDown }: {
+  on: boolean;
+  label: string;
+  price: ReactNode;
+  onChoose: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}) {
+  const own = useOwnPress(onChoose);
+  return <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} className="gk-rate__row"
+    onPointerDown={own.onPointerDown} onClick={own.onClick} onKeyDown={onKeyDown}>
+    <span className="gk-rate__lamp" aria-hidden="true" />
+    <span className="gk-rate__words">{label}</span>
+    <span className="gk-rate__price">{price}</span>
+  </button>;
 }
 
 /**
@@ -238,23 +252,14 @@ function PushOff() {
   const [asking, setAsking] = useState(false);
   const [refused, setRefused] = useState(false);
   if (display === 'granted' || display === 'unknown') return null;
-  return <div data-push-off role="status" className="flex flex-col gap-2.5 rounded-control border border-v2-warn/50 bg-v2-warn/10 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
-    <div className="flex items-start gap-2.5">
-      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-warn/60 bg-v2-warn/15 text-v2-warn">
-        <BroadcastIcon className="size-4" />
-      </span>
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-caption font-semibold text-v2-warn">{t('notificationCenter.pushOffTitle')}</p>
-        <p className="text-micro leading-snug text-v2-ink-2">{t('notificationCenter.pushOff')}</p>
-      </div>
-    </div>
-    <button type="button" disabled={asking} onClick={() => {
+  return <div data-push-off className="grid gap-2">
+    <Banner tone="warn" glyph="bell" role="status" title={t('notificationCenter.pushOffTitle')} body={t('notificationCenter.pushOff')} />
+    <GameButton wide tone="action" glyph="bell" pending={asking} onPress={() => {
+      if (asking) return;
       setAsking(true);
       void askPush().then(result => { setRefused(result === 'denied'); }).finally(() => { setAsking(false); });
-    }}
-      className="flex min-h-10 items-center justify-center rounded-control bg-v2-warn px-3 text-caption font-semibold text-v2-deep shadow-[0_0_18px_rgb(255_204_77/0.22)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v2-warn disabled:opacity-60">
-      {t('notificationCenter.pushAllow')}</button>
-    {refused && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.pushDenied')}</p>}
+    }}>{t('notificationCenter.pushAllow')}</GameButton>
+    {refused && <p className="gk-center__warn">{t('notificationCenter.pushDenied')}</p>}
   </div>;
 }
 
@@ -264,67 +269,99 @@ function Transfer({ view }: { view: NotificationCenter }) {
   const world = useSelectedWorld();
   const fund = useFundNotificationCenter();
   const [text, setText] = useState('');
-  const [confirming, setConfirming] = useState(false);
   const store = Math.floor(world?.held.deuterium ?? 0);
   const amount = Number(text);
-  const valid = text !== '' && Number.isInteger(amount) && amount >= 1 && amount <= store;
+  const whole = text !== '' && Number.isInteger(amount) && amount >= 1;
+  const valid = whole && amount <= store;
   const after = view.wallet + amount;
-  return <div className="flex flex-col gap-2 border-t border-v2-line pt-3">
+  const reason = !whole ? t('notificationCenter.amountFirst') : !valid ? t('notificationCenter.amountOver') : null;
+  return <div className="gk-wallet__transfer">
     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-      <span className="text-caption font-semibold text-v2-ink">{t('notificationCenter.transferTitle')}</span>
-      <span className="text-micro text-v2-ink-3">{t('notificationCenter.transferFrom', { world: world?.name ?? '—' })} <Deuterium amount={store} className="text-v2-ink-2" /></span>
+      <span className="gk-center__ask">{t('notificationCenter.transferTitle')}</span>
+      <span className="gk-note">{t('notificationCenter.transferFrom', { world: world?.name ?? '—' })} <Deuterium amount={store} /></span>
     </div>
     <div className="flex gap-2">
-      <div className="relative min-w-0 flex-1">
-        <input type="number" inputMode="numeric" min={1} max={store} step={1} value={text}
-          aria-label={t('notificationCenter.amount')} placeholder={t('notificationCenter.amount')}
-          onChange={event => { setText(event.target.value); }}
-          className="min-h-11 w-full rounded-control border border-v2-line bg-v2-deep pl-3 pr-16 font-v2-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-body text-v2-ink placeholder:font-v2-ui placeholder:text-caption placeholder:text-v2-ink-3 focus-visible:outline-2 focus-visible:outline-v2-self" />
-        <button type="button" disabled={store < 1} onClick={() => { setText(String(store)); }}
-          className="absolute right-1.5 top-1/2 min-h-8 -translate-y-1/2 rounded-chip px-2 text-micro font-semibold text-v2-self transition-colors hover:bg-v2-self/10 disabled:opacity-40">
-          {t('notificationCenter.all')}</button>
-      </div>
-      <Button variant="primary" disabled={!valid || fund.isPending} onClick={() => { setConfirming(true); }}>{t('notificationCenter.transfer')}</Button>
+      <input type="number" inputMode="numeric" min={1} max={store} step={1} value={text}
+        aria-label={t('notificationCenter.amount')} placeholder={t('notificationCenter.amount')}
+        onChange={event => { setText(event.target.value); }}
+        className="gk-field__input gk-num gk-amount" />
+      {store >= 1 && <GameButton size="sm" onPress={() => { setText(String(store)); }}>{t('notificationCenter.all')}</GameButton>}
     </div>
-    {valid && <p className="text-micro leading-snug text-v2-ink-2">
-      {t('notificationCenter.transferPreview', { wallet: full(after), count: Math.floor(after / view.prices.incoming_attack[view.timing]) })}</p>}
-    {fund.error && <Note>{describe(fund.error)}</Note>}
-    {confirming && world && <Confirm eyebrow={t('notificationCenter.title')} title={t('notificationCenter.confirmTitle', { amount: full(amount) })}
-      confirmLabel={t('notificationCenter.confirm', { amount: full(amount) })} backLabel={t('notificationCenter.back')} pending={fund.isPending}
-      onClose={() => { setConfirming(false); }} onConfirm={() => {
-        fund.mutate({ planetId: world.id, amount }, { onSuccess: () => { setConfirming(false); setText(''); } });
-      }}>
-      <ConfirmLine label={world.name} value={`−${full(amount)}`} />
-      <ConfirmLine label={t('notificationCenter.walletAfter')} value={full(after)} tone="kept" />
-      <p className="mt-2 text-body leading-relaxed text-v2-ink-2">{t('notificationCenter.confirmBody')}</p>
-    </Confirm>}
+    {valid && <>
+      <p className="gk-note">{t('notificationCenter.transferPreview', { wallet: full(after), count: Math.floor(after / view.prices.incoming_attack[view.timing]) })}</p>
+      <p className="gk-center__final"><Glyph id="lock" />{t('notificationCenter.confirmBody')}</p>
+    </>}
+    <GameHold weight="spends" glyph="fuel" label={t('notificationCenter.transfer')} detail={valid ? <Deuterium amount={amount} /> : undefined}
+      disabledReason={reason} onCommit={() => {
+        if (!world || fund.isPending) return;
+        fund.mutate({ planetId: world.id, amount }, { onSuccess: () => { setText(''); } });
+      }} />
+    {fund.error && <Failure error={fund.error} />}
   </div>;
 }
 
 function Recent({ view }: { view: NotificationCenter }) {
   const { t, i18n } = useTranslation();
   const time = (date: Date) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(date);
-  return <Section label={t('notificationCenter.recentTitle')}>
-    <ul aria-label={t('notificationCenter.recentTitle')} className="divide-y divide-v2-line rounded-control border border-v2-line bg-v2-panel px-3">
+  return <div className="grid gap-2">
+    <SectionTag>{t('notificationCenter.recentTitle')}</SectionTag>
+    <ul aria-label={t('notificationCenter.recentTitle')} className="gk-ledger">
       {view.recent.slice(0, RECENT_SHOWN).map((row, index) => {
-        const Icon = KIND_ICON[row.kind];
         const target = row.payload.targetPlanetName;
         const charged = row.status === 'SENT' && row.price !== null;
-        return <li key={index} className="flex items-center gap-2.5 py-2">
-          <Icon className="size-4 shrink-0 text-v2-ink-3" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-caption text-v2-ink">{t(`notificationCenter.kind.${row.kind}`)}{target ? ` · ${target}` : ''}</p>
-            <p className="font-v2-mono text-micro text-v2-ink-3">{time(row.sendAt)}</p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end">
-            <span className={`text-micro font-semibold ${row.status === 'SENT' ? 'text-v2-self' : row.status === 'UNFUNDED' ? 'text-v2-warn' : 'text-v2-ink-3'}`}>
-              {t(`notificationCenter.status.${row.status}`)}</span>
-            {charged && <span className="font-v2-mono text-micro text-v2-ink-2">−{full(row.price ?? 0)}</span>}
-          </div>
-        </li>;
+        const tone = row.status === 'SENT' ? 'sent' : row.status === 'UNFUNDED' ? 'short' : 'none';
+        return <LedgerRow key={index} glyph={KIND_GLYPH[row.kind]}
+          title={`${t(`notificationCenter.kind.${row.kind}`)}${target ? ` · ${target}` : ''}`}
+          sub={<span className="gk-num">{time(row.sendAt)}</span>}
+          side={<span className="gk-ledger__status" data-tone={tone}>
+            <span>{t(`notificationCenter.status.${row.status}`)}</span>
+            {charged && <span className="gk-num">−{full(row.price ?? 0)}</span>}
+          </span>} />;
       })}
     </ul>
-  </Section>;
+  </div>;
+}
+
+/** The whole rule, one press away: what is never charged, and what an alert costs. */
+function Rules({ view }: { view: NotificationCenter }) {
+  const { t } = useTranslation();
+  return <details className="gk-rules">
+    <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+      <Glyph id="help" />
+      <span className="flex-1">{t('notificationCenter.rulesTitle')}</span>
+      <span className="gk-rules__chev"><Glyph id="down" /></span>
+    </summary>
+    <div className="gk-rules__body">
+      <ul>
+        {(['ruleRadar', 'ruleRecall', 'ruleShort', 'ruleUndelivered', 'ruleInGame'] as const).map(key => <li key={key}>{t(`notificationCenter.${key}`)}</li>)}
+      </ul>
+      <p>{t('notificationCenter.priceRule', { rate: full(view.deuteriumPerHour) })}</p>
+      <table className="gk-num">
+        <tbody>
+          {ALERT_TIMINGS.map(timing => {
+            const price = PAID_ALERTS.incoming_attack.timed[timing];
+            return <tr key={timing}>
+              <td>{t(`notificationCenter.timing.${timing}`)}</td>
+              <td>{t('notificationCenter.hours', { count: price.hours })}</td>
+              <td>{t('notificationCenter.floor', { amount: price.floor })}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </details>;
+}
+
+/**
+ * Android 12+ without the on-time alarm: in a game of minutes, the one thing on this section
+ * worth a tap. Exported for the v2 gallery.
+ */
+export function LateAlerts() {
+  const { t } = useTranslation();
+  return <div data-local-late className="grid gap-2">
+    <Banner tone="warn" glyph="clock" role="status" title={t('notificationCenter.local.lateTitle')} body={t('notificationCenter.local.late')} />
+    <GameButton wide tone="action" glyph="clock" onPress={() => { void allowExactLocalAlerts(); }}>{t('notificationCenter.local.allowExact')}</GameButton>
+  </div>;
 }
 
 /**
@@ -332,25 +369,6 @@ function Recent({ view }: { view: NotificationCenter }) {
  * is the player's choice; the phone's permission is read live, and a block set in the phone
  * settings is said here rather than failing in silence.
  */
-/** Android 12+ without the on-time alarm: in a game of minutes, the one thing on this section worth a tap. Exported for the v2 gallery. */
-export function LateAlerts() {
-  const { t } = useTranslation();
-  return <div data-local-late role="status" className="flex flex-col gap-2.5 rounded-control border border-v2-warn/50 bg-v2-warn/10 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
-    <div className="flex items-start gap-2.5">
-      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-warn/60 bg-v2-warn/15 text-v2-warn">
-        <ClockIcon className="size-4" />
-      </span>
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-caption font-semibold text-v2-warn">{t('notificationCenter.local.lateTitle')}</p>
-        <p className="text-micro leading-snug text-v2-ink-2">{t('notificationCenter.local.late')}</p>
-      </div>
-    </div>
-    <button type="button" onClick={() => { void allowExactLocalAlerts(); }}
-      className="flex min-h-10 items-center justify-center rounded-control bg-v2-warn px-3 text-caption font-semibold text-v2-deep shadow-[0_0_18px_rgb(255_204_77/0.22)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v2-warn">
-      {t('notificationCenter.local.allowExact')}</button>
-  </div>;
-}
-
 function PhoneAlerts() {
   const { t } = useTranslation();
   const settings = useLocalAlertSettings();
@@ -358,22 +376,24 @@ function PhoneAlerts() {
   const [tried, setTried] = useState(false);
   const [asking, setAsking] = useState(false);
   const blocked = permission.display === 'denied';
-  return <Section label={t('notificationCenter.local.section')}>
-    <p className="text-caption leading-relaxed text-v2-ink-2">{t('notificationCenter.local.sectionBody')}</p>
-    <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-      <Toggle tone="self" checked={settings.enabled} disabled={asking} onChange={on => {
+  return <div className="grid gap-2">
+    <SectionTag>{t('notificationCenter.local.section')}</SectionTag>
+    <p className="gk-copy">{t('notificationCenter.local.sectionBody')}</p>
+    <div className="gk-switches">
+      <Toggle checked={settings.enabled} label={t('notificationCenter.local.switch')} onChange={on => {
+        if (asking) return;
         if (!on) { disableLocalAlerts(); return; }
         setAsking(true);
         void enableLocalAlerts().finally(() => { setTried(true); setAsking(false); });
-      }}><span className="font-semibold">{t('notificationCenter.local.switch')}</span></Toggle>
-      {settings.enabled && <div className={`ml-6 grid grid-cols-2 gap-x-2 border-t border-v2-line pt-1 ${blocked ? 'opacity-50' : ''}`}>
-        {LOCAL_ALERT_CATEGORIES.map(category => <Toggle key={category} tone="self" checked={settings.prefs[category]}
-          onChange={on => { setLocalAlertPrefs({ ...settings.prefs, [category]: on }); }}>
-          {t(`notificationCenter.local.category.${category}`)}</Toggle>)}
+      }} />
+      {settings.enabled && <div className="gk-switches__grid" {...(blocked ? { 'data-blocked': '' } : {})}>
+        {LOCAL_ALERT_CATEGORIES.map(category => <Toggle key={category} checked={settings.prefs[category]}
+          label={t(`notificationCenter.local.category.${category}`)}
+          onChange={on => { setLocalAlertPrefs({ ...settings.prefs, [category]: on }); }} />)}
       </div>}
     </div>
-    {blocked && settings.enabled && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.local.blocked')}</p>}
-    {blocked && !settings.enabled && tried && <p className="text-micro leading-snug text-v2-warn">{t('notificationCenter.local.denied')}</p>}
+    {blocked && settings.enabled && <p className="gk-center__warn">{t('notificationCenter.local.blocked')}</p>}
+    {blocked && !settings.enabled && tried && <p className="gk-center__warn">{t('notificationCenter.local.denied')}</p>}
     {settings.enabled && permission.display === 'granted' && permission.exact === 'denied' && <LateAlerts />}
-  </Section>;
+  </div>;
 }

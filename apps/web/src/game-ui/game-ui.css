@@ -5969,3 +5969,368 @@ html:lang(ja) .gk-tab {
     box-shadow: 0 0 10px color-mix(in srgb, var(--gk-self) 45%, transparent);
   }
 }
+
+/* ── C6: the Notification Center ───────────────────────────────────────── */
+
+.gk-center {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gk-s4);
+  padding-bottom: var(--gk-s3);
+}
+/* a question the player answers here, or the name of the one thing they do */
+.gk-center__ask {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--gk-ink);
+}
+.gk-center__warn {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-warn);
+}
+/* what cannot be taken back, said above the hold that does it */
+.gk-center__final {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--gk-warn);
+}
+.gk-center__final .gk-glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.gk-center__build {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+
+/* deuterium beside its amount, wherever the centre names a price */
+.gk-deut {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.gk-deut img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+/* THE WALLET: the answer first — how many alerts it pays for; amber when it pays for none. */
+.gk-wallet {
+  --tone: var(--gk-self);
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--gk-metal-edge));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 3px 0 0 var(--tone), 0 6px 16px var(--gk-outline);
+}
+.gk-wallet[data-short] {
+  --tone: var(--gk-warn);
+}
+.gk-wallet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+}
+.gk-wallet__sum {
+  gap: 6px;
+  font-family: var(--gk-font-display);
+  font-size: var(--gk-t-title);
+  color: var(--tone);
+}
+.gk-wallet__sum img {
+  width: 22px;
+  height: 22px;
+}
+.gk-wallet__covers {
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--gk-ink);
+}
+.gk-wallet[data-short] .gk-wallet__covers {
+  color: var(--gk-warn);
+}
+.gk-wallet__transfer {
+  display: grid;
+  gap: var(--gk-s2);
+  margin-top: var(--gk-s1);
+  padding-top: var(--gk-s3);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+}
+.gk-amount {
+  flex: 1;
+  min-width: 0;
+  appearance: textfield;
+}
+.gk-amount::-webkit-inner-spin-button,
+.gk-amount::-webkit-outer-spin-button {
+  appearance: none;
+}
+.gk-amount::placeholder {
+  font-size: var(--gk-t-body);
+}
+
+/* THE TIMING DIAL: four lit rows, each with what one alert costs at it. */
+.gk-rate {
+  display: grid;
+  gap: 6px;
+}
+.gk-rate__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--gk-hit);
+  padding: 6px var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  color: var(--gk-ink-2);
+  font-size: var(--gk-t-body);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-quick) var(--gk-ease), border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-rate__row:active {
+  transform: scale(0.98);
+}
+.gk-rate__row:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+.gk-rate__row[aria-checked='true'] {
+  border-color: color-mix(in srgb, var(--gk-self) 60%, var(--gk-metal-edge));
+  color: var(--gk-ink);
+  font-weight: 700;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 16%, transparent), transparent 75%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 3px 0 0 var(--gk-self);
+}
+.gk-rate__lamp {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--gk-metal-edge);
+  background: radial-gradient(circle at 40% 35%, var(--gk-metal-2), var(--gk-outline));
+  box-shadow: inset 0 1px 2px var(--gk-outline);
+}
+.gk-rate__row[aria-checked='true'] .gk-rate__lamp {
+  border-color: var(--gk-self-lip);
+  background: radial-gradient(circle at 40% 35%, var(--gk-self-hi), var(--gk-self) 60%, var(--gk-self-lo));
+  box-shadow: 0 0 10px var(--gk-self);
+}
+.gk-rate__words {
+  flex: 1;
+  min-width: 0;
+}
+.gk-rate__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: var(--gk-t-small);
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+.gk-rate__row[aria-checked='true'] .gk-rate__price {
+  color: var(--gk-self);
+}
+
+/* a group of the kit's switches on one plate */
+.gk-switches {
+  display: grid;
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-switches > .gk-toggle + .gk-toggle,
+.gk-switches > .gk-switches__grid {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-switches__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.gk-switches__grid[data-blocked] {
+  opacity: 0.5;
+}
+.gk-kindline {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-kindline__mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--gk-ink-3);
+}
+.gk-kindline__mark .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-kindline__mark[data-on] {
+  color: var(--gk-hostile);
+}
+.gk-kindline__name {
+  flex: 1;
+  min-width: 0;
+}
+.gk-kindline .gk-deut {
+  font-size: var(--gk-t-small);
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+
+/* A KIT LEDGER: the paid kinds before the build, the alerts that went out after. */
+.gk-ledger {
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-ledger__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-height: var(--gk-hit);
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-ledger__row + .gk-ledger__row {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-ledger__mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--gk-ink-3);
+}
+.gk-ledger__mark .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-ledger__mark[data-tone='hostile'] {
+  color: var(--gk-hostile);
+}
+.gk-ledger__words {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.gk-ledger__title {
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-body);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-ledger__sub {
+  font-size: var(--gk-t-floor);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-ledger__side {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: var(--gk-t-small);
+}
+.gk-ledger__status {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+}
+.gk-ledger__status[data-tone='sent'] {
+  color: var(--gk-self);
+}
+.gk-ledger__status[data-tone='short'] {
+  color: var(--gk-warn);
+}
+.gk-ledger__status[data-tone='none'] {
+  color: var(--gk-ink-2);
+}
+.gk-ledger__status .gk-num {
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+
+/* THE RULES, one press away: a kit row that opens onto the whole rule and the price table. */
+.gk-rules {
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-rules__head {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s3);
+  list-style: none;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-rules__head::-webkit-details-marker {
+  display: none;
+}
+.gk-rules__head:active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 7%, transparent), transparent 85%);
+}
+.gk-rules__head .gk-glyph {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.gk-rules__chev {
+  display: inline-flex;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-rules[open] .gk-rules__chev {
+  transform: rotate(180deg);
+}
+.gk-rules__body {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s3) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
+.gk-rules__body ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+  list-style: disc;
+}
+.gk-rules__body table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.gk-rules__body td {
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-rules__body td + td {
+  text-align: right;
+}

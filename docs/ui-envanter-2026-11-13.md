@@ -1018,6 +1018,50 @@ Galeriye üç görünüm eklendi: `announcements`, `announcements-empty`, `feedb
 
 Ekran görüntüleri dört dilde çekildi. Almancada gönder tuşu iki satıra iniyordu; söz "Mindestens 3 Zeichen" diye kısaltıldı. Japoncada boş sayfa cümlesinin son hecesi tek başına alt satıra düşüyordu; cümle kısaltıldı. Bu iki düzeltme ölçümden önce yapıldı.
 
+**C6 Bildirim Merkezi ✅ (2026-11-14, yardımcı oturum).** G8 #10. Oyuncunun sorusu şu: "Saldırı gelirse haberim olur mu, bu bana kaça mal olur?" Sheet bu soruyu yukarıdan aşağıya cevaplıyor. Önce kasa ve kaç uyarıya yettiği geliyor, sonra zamanlama ve fiyatı, sonra hangi uyarıların açık olduğu. Uyarı fiyatları, kasa kuralı ve gönderim kuralları değişmedi.
+
+Kite eklenenler (malzeme):
+- `.gk-wallet`: kasa plakası. Kasa en az bir uyarıyı ödüyorsa oyuncunun renginde, ödemiyorsa amber.
+- `.gk-rate`: zamanlama kadranı. Her satırda bir lamba ve o zamanlamada bir uyarının fiyatı var.
+- `.gk-ledger`: sabit bir defter satırı (işaret, ad, alt satır, yan değer). Kurulmadan önceki üç ücretli tür ve son uyarılar bunu kullanıyor.
+- `.gk-switches`: bir plakada toplanmış anahtarlar.
+- `.gk-rules`: kuralları açan satır.
+- `.gk-deut`: döteryum ve miktar.
+- `.gk-center__*`: soru, uyarı ve geri alınamaz satırı.
+
+Yüzey:
+- Sheet artık kitin başlığında açılıyor; başlıkta vericinin resmi duruyor.
+- 9–10 px yazıların hepsi 12–14 px'e çıktı.
+- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor.
+  - Aktarmanın eski onay penceresi kalktı. "Kasadaki döteryum geri aktarılamaz" cümlesi artık kilit işaretiyle tuşun üstünde, harcamadan önce görünüyor.
+  - Tuş eksik olanı kendisi söylüyor. Kurarken "Kaynak yetmiyor". Aktarırken "Tam bir miktar yaz" ya da "Depoda bu kadar yok".
+  - Kullanılmaz hâle gelen dört anahtar 6 dilden silindi: `confirmTitle`, `confirm`, `back`, `walletAfter`.
+- `buildShort` artık yalnız ne yapılacağını söylüyor: "Başka bir dünya seç ya da kaynak birikmesini bekle."
+- Yeni anahtarlar, her biri 6 dilde: `buildShortReason`, `amountFirst`, `amountOver`.
+- `local.section` "Sipariş hatırlatmaları" diye kısaldı. Üç kelimeden uzun, büyük harfli küçük başlık olmasın diye.
+- **Zamanlama:** dört lambalı satır, her birinde uyarı başına fiyat.
+- **Ücretli türler:** kitin anahtarı. Satırda türün işareti, adı ve fiyatı var.
+- **Telefon izni ve geç uyarı kartları:** kitin amber bandı ve altında kitin turuncu tuşu.
+- **Bekleyen ayar:** bir ayar sunucuya giderken ikinci dokunuş yok sayılıyor. Böylece iki hızlı dokunuş birbirini silemez. Yeni bir testle kontrol ediliyor.
+
+Ölçüm: `reports/ui-audit/c6-notification-center-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 156 | 0 |
+| Kontrastı yetmeyen metin | 52 | 4 |
+| 44 px altı hedef | 12 | 4 |
+| Basınca tepkisiz | 13 | 2 |
+| Kesilen / kırpılan metin | 0 | 0 |
+
+Kalanların hepsi G1'in sheet çerçevesine ait:
+- Kontrast: kit başlığında, atmosfer resmi üstündeki göz başlığı ("Telefon uyarıları", 4,3:1).
+- Küçük hedef ve tepkisiz hedef: tam ekran diyalogda neredeyse görünmeyen 2×2 px'lik arka perde düğmesi.
+
+Ekran görüntüleri dört dilde çekildi: üst, orta, kurallar açık alt, kurulmamış merkez, geç uyarı. Ölçümden önce iki şey düzeltildi:
+- Almancada son uyarılar satırındaki ad üç noktayla kesiliyordu. Ad artık kesilmiyor, alt satıra iniyor.
+- Almancada geç uyarı tuşu iki satıra iniyordu. Söz "Pünktlich zustellen" diye kısaltıldı.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.
