@@ -88,7 +88,8 @@ describe('hurt ships on the Fleet page', () => {
 
   it('keeps the transfer for a world', () => {
     page(false);
-    expect(screen.getByRole('button', { name: /Move to workshop/ })).toBeTruthy();
+    // With nothing chosen yet the kit button says what it waits for (G2-h2).
+    expect(screen.getByRole('button', { name: 'Select ships' })).toBeTruthy();
   });
 });
 

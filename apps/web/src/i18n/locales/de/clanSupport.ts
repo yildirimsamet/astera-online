@@ -29,6 +29,8 @@ export const clanSupport = {
   closedEmpty: 'Schalte oben die Clan-Unterstützung ein, damit Clanmitglieder hier Schiffe stationieren können.',
   waveMeta: '{{ships}} Schiffe · {{bulk}} Platz',
   leftFor: 'noch {{time}}',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: 'übrig',
   arriving: 'Ankunft in {{time}}',
   damaged: 'Beschädigt',
   outOfBand: 'Außerhalb des Stufenbands · fliegt bei einem Angriff unberührt heim',

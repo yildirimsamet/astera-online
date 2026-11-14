@@ -34,6 +34,8 @@ export const clanSupport = {
   closedEmpty: 'Turn on clan support above to let clanmates station ships here.',
   waveMeta: '{{ships}} ships · {{bulk}} room',
   leftFor: '{{time}} left',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: 'left',
   arriving: 'Arrives in {{time}}',
   damaged: 'Damaged',
   outOfBand: 'Out of tier band · goes home untouched if a raid lands',

@@ -96,6 +96,16 @@ describe('the hold action', () => {
     expect(screen.getByRole('button', { name: /No free flight bay/ })).toBeDisabled();
   });
 
+  /** G2-h2 (2026-11-15): a hold inside a list row (a fleet's recall) is a steel plate a thumb's height, not the page's big move. */
+  it('can be a compact steel hold for a row, and is the big lit one otherwise', () => {
+    const { rerender } = render(<GameHold weight="reversible" label="Recall" onCommit={() => undefined} />);
+    expect(screen.getByRole('button', { name: /Recall/ })).toHaveClass('gk-btn--lg', 'gk-btn--action');
+    rerender(<GameHold weight="reversible" size="md" tone="steel" glyph="recall" label="Recall" detail="Home in 4m" onCommit={() => undefined} />);
+    const hold = screen.getByRole('button', { name: /Recall/ });
+    expect(hold).toHaveClass('gk-hold', 'gk-hold--md', 'gk-btn--steel');
+    expect(hold).not.toHaveClass('gk-btn--lg');
+  });
+
   /** G2-f (2026-11-14): "2 Schiffe reparieren" did not fit a 320 px phone; the verb shrinks to its line, never cut. */
   it('hands its verb’s length to the style, so a long one can fit a narrow phone', () => {
     const { container } = render(<GameHold weight="spends" label="2 Schiffe reparieren" onCommit={() => undefined} />);

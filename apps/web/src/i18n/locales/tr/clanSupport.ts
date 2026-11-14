@@ -29,6 +29,8 @@ export const clanSupport = {
   closedEmpty: 'Klan arkadaşların buraya gemi konuşlandırabilsin diye yukarıdan klan desteğini aç.',
   waveMeta: '{{ships}} gemi · {{bulk}} yer',
   leftFor: '{{time}} kaldı',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: 'kaldı',
   arriving: '{{time}} sonra varır',
   damaged: 'Hasarlı',
   outOfBand: 'Kademe bandı dışında · saldırı gelirse savaşmadan eve döner',

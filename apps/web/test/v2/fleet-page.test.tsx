@@ -69,7 +69,8 @@ describe('the Fleet page', () => {
       damage: [{ hull: 'DART', count: 2, damageBp: 5000 }] }), workshopRadiation: true };
     render(<FleetPage {...props({ tab: 'home', worlds: [irradiated], onDock, onOpenRepairStation })} />);
     await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1');
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
+    // A dead kit button says why on its face (G2-h2).
+    expect(screen.getByRole('button', { name: 'Closed by radiation' })).toBeDisabled();
     expect(screen.getByText(/Radiation closes entry/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '1 in repair' }));
     expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
@@ -113,24 +114,15 @@ describe('the Fleet page', () => {
     expect(screen.getByRole('tab', { name: 'In flight' })).toBeInTheDocument();
   });
 
+  /** G2-h2: how far along it is, the ring's arc — what is left of the leg, as the timers sheet draws it. */
   it('lists each flight with its countdown, how far along it is and the clock it lands at', () => {
     render(<FleetPage {...props()} />);
     const row = screen.getByRole('listitem');
     expect(within(row).getByText('Your fleet → Kestrel')).toBeInTheDocument();
     expect(within(row).getByText('4m 00s')).toBeInTheDocument();
-    expect(row.querySelector('[data-progress]')).toHaveAttribute('data-progress', '0.5');
+    const arc = row.querySelector('.gk-timer__arc')!;
+    expect(Number(arc.getAttribute('stroke-dashoffset'))).toBeCloseTo(Number(arc.getAttribute('stroke-dasharray')) / 2, 3);
     expect(within(row).getByText(new RegExp(`at ${clockTime(new Date(NOW + 4 * MIN))}`))).toBeInTheDocument();
-  });
-
-  /*
-    A flight coming home travels the track from the far end: the fill runs from the right
-    and covers what it has flown. Seen in the gallery: a return leg 30% along drew 70%.
-  */
-  it('fills a homeward track from the far end by what it has flown', () => {
-    render(<FleetPage {...props({ flights: [flight({ leg: 'return', span: { from: NOW - 3 * MIN, to: NOW + 7 * MIN } })] })} />);
-    const fill = screen.getByRole('listitem').querySelector<HTMLElement>('[data-progress] > span');
-    expect(fill?.style.width).toBe('30%');
-    expect(fill).toHaveClass('ml-auto');
   });
 
   it('labels a slowed flight with its pace, and a full-speed one with nothing', () => {
@@ -143,10 +135,8 @@ describe('the Fleet page', () => {
   it('offers a recall only where the server allows, saying how long the way home would take', () => {
     const { rerender } = render(<FleetPage {...props({ flights: [flight({ recallMission: { missionId: 'm-1' } })] })} />);
     const recall = screen.getByRole('button', { name: /recall/i });
-    // Four minutes out, so four minutes back — said on the row, beside the button (the mock).
-    expect(recall).toHaveTextContent(/^Recall$/);
-    expect(recall).toHaveAccessibleName('Recall · If recalled, home in 4m 00s');
-    expect(recall.closest('li')).toHaveTextContent('If recalled, home in 4m 00s');
+    // Four minutes out, so four minutes back — written on the hold itself (G2-h2).
+    expect(recall).toHaveAccessibleName(/^Recall.*Home in 4m 00s$/);
 
     rerender(<FleetPage {...props({ flights: [flight()] })} />);
     expect(screen.queryByRole('button', { name: /recall/i })).toBeNull();
@@ -159,17 +149,19 @@ describe('the Fleet page', () => {
     const onFocus = vi.fn();
     const item = flight({ recallMission: { missionId: 'm-1' } });
     render(<FleetPage {...props({ flights: [item], onRecall, onFocus })} />);
-    await userEvent.click(screen.getByRole('button', { name: /recall/i }));
+    screen.getByRole('button', { name: /recall/i }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(onRecall).toHaveBeenCalledWith(item);
     expect(onFocus).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: /your fleet → kestrel/i }));
     expect(onFocus).toHaveBeenCalledWith(item);
   });
 
-  it('holds the button while its recall is on the way', () => {
+  it('says the recall is on the way instead of offering it again', () => {
     const item = flight({ recallMission: { missionId: 'm-1' } });
     render(<FleetPage {...props({ flights: [item], recalling: item.key })} />);
-    expect(screen.getByRole('button', { name: /recall/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /recall/i })).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('Turning…');
   });
 
   it('marks an attack coming for you in red, and only that', () => {

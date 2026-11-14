@@ -29,6 +29,8 @@ export const clanSupport = {
   closedEmpty: 'Activa el apoyo de clan arriba para que tus compañeros puedan apostar naves aquí.',
   waveMeta: '{{ships}} naves · {{bulk}} de espacio',
   leftFor: 'quedan {{time}}',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: 'restante',
   arriving: 'Llega en {{time}}',
   damaged: 'Dañada',
   outOfBand: 'Fuera de la banda de nivel · vuelve intacta si llega un ataque',

@@ -149,7 +149,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "{{pct}}% speed",
   recall: "Recall",
-  recallHome: "If recalled, home in {{time}}",
+  recallHome: "Home in {{time}}",
   recalling: "Turning…",
   emptyAir: "Nothing in the air. Tap a world, a rock or a pirate on the galaxy to send ships.",
   focusWorld: "Show {{world}} in the galaxy",

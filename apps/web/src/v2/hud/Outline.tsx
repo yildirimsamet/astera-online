@@ -39,7 +39,7 @@ const LANE = {
 const LANE_MARK = { research: 'zoom', construction: 'up', yard: 'up', repair: 'repair' } as const satisfies Record<OutlineLaneId, GlyphId>;
 
 /** What kind of flight it is, as the timers sheet marks it (G1-c); a flight coming home is a recall. */
-const FLIGHT_MARK: Record<FlightMark, GlyphId> = {
+export const FLIGHT_MARK: Record<FlightMark, GlyphId> = {
   unknown_signal: 'target',
   monument: 'star',
   fleet: 'rocket',

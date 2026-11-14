@@ -821,6 +821,23 @@ Kalanlar ve nedeni:
 - **Silinen:** `PlanetScreen`'den v2 `RoomBar`. `RoomBar` artık yalnız başlangıç galaksisinin tersanesinde (`YardDeck`, G15).
 - **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h1-after-2026-11-15.md`. 12 px altı metin Filo sekmesinde 9→0, Savunma'da 13→0, boş filoda 8→0. Kontrast hatası 6→0, 10→0, 5→0. Kalan tek hedef G1 çerçevesi. Kesilme ve taşma 0.
 
+**G2-h2 Filo sayfası ✅ (2026-11-15).**
+- **An:** "Havada ne var, bana bir şey geliyor mu, bir filoyu geri çevirmeli miyim, yer var mı?"
+- **Değişen:**
+  - Kit başlığı göstergelerin ait olduğu dünyayı yazar. Saldırı gelirken başlıkta kırmızı "N saldırı geliyor" uyarısı çıkar; sanatlı başlık plakanın tonunu gizlediği için uyarı sözle verilir.
+  - Sekmeler iki katlı: simge üstte, ad altta.
+  - Uçuş yuvası ve Hangar göstergeleri kalan yeri sözle verir ("boş 1"). Dolunca sarıya dönüp "Dolu" yazar.
+  - Uçuşlar zamanlayıcılar sayfasının halka satırlarıdır.
+  - Geri çağırma, klan dalgası dahil, 0,6 sn'lik satır içi çelik basılı tutmadır; üstünde "Eve dönüş X" yazar. Kit `GameHold`'a `size: 'md'` ve `tone: 'steel'` eklendi.
+  - Evde ve Hangar sekmelerinde dünya adları 44 px'lik kapılardır. Gemiler sınıf amblemleriyle, "tamirde" etiketi kit çipi olarak gösterilir.
+- **Silinen:** Filo sayfasındaki v2 `Room`, `Segmented`, `ClassEmblem` ve `Icon` kullanımları (bileşenleri başka ekranlar kullanıyor, onlar kaldı). Uçuş ilerleme çizgisinin yerini halka aldı.
+- **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h2-after-2026-11-15.md`.
+  - 12 px altı metin: havada 21→0, evde 20→0, Hangar 19→0, klan 33→0.
+  - Kontrast: 8/5/5/6→0. Ölçümden sonra kalan son hata başlıktaki uyarı yazısındaydı. Nabız siren ikonuna taşındı, yazı açık kırmızıya alındı; yeniden ölçümde 0 (`out/ui-audit/g2h2-recheck-2026-11-15`).
+  - 44 px altı hedef: 8/6/5/6→0. Kalan tek ölçüm galerinin kök öğesi.
+  - Puan: 69/53/49/69→3.
+- **Açık soru:** Geri çağırma 0,6 sn tutulur (yanlış dokunuşa karşı). Daha ağır sayılırsa 1 sn yapılabilir.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

@@ -46,7 +46,9 @@ describe('the clan support group on the Fleet page', () => {
       wave({ id: 'w2', status: 'OUTBOUND', stationedAt: null, expiresAt: null,
         sentAt: new Date(NOW - 5 * MIN).toISOString(), arriveAt: new Date(NOW + 10 * MIN).toISOString() }),
     ], recalling: null, onRecall })} />);
-    await userEvent.setup().click(screen.getByRole('button', { name: /^recall/i }));
+    // The way home is a short hold, as a flight's is (G2-h2).
+    screen.getByRole('button', { name: /^recall/i }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(onRecall).toHaveBeenCalledWith('w1');
     expect(screen.getByRole('button', { name: /turn back/i })).toBeInTheDocument();
     expect(screen.getByText(/home in the time it has flown/i)).toBeInTheDocument();

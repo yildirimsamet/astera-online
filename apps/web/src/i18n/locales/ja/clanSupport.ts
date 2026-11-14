@@ -29,6 +29,8 @@ export const clanSupport = {
   closedEmpty: 'クランメイトがここに駐留できるよう、上でクラン支援をオンにしてください。',
   waveMeta: '{{ships}}隻 · スペース{{bulk}}',
   leftFor: '残り{{time}}',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: '残り',
   arriving: '{{time}}後に到着',
   damaged: '損傷',
   outOfBand: 'ティア帯の外 · 襲撃が来たら戦わずに帰還',

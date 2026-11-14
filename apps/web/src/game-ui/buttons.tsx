@@ -182,9 +182,12 @@ export interface GameHoldProps {
   detail?: ReactNode;
   onCommit: () => void;
   disabledReason?: string | null;
-  tone?: 'action' | 'danger';
+  /** `steel` for a hold that is not the screen's one move (a fleet's recall in its row). */
+  tone?: 'action' | 'danger' | 'steel';
   glyph?: GlyphId;
   commitSound?: SoundCue;
+  /** `md`: a thumb's height, to sit inside a list row (G2-h2); `lg`, the default, is the screen's move. */
+  size?: 'lg' | 'md';
   /** How heavy the action is; a heavier one holds longer. No default: each action picks its own (stage 4). */
   weight: HoldWeight;
 }
@@ -202,7 +205,7 @@ const HOLD_WEIGHT_MS: Record<HoldWeight, number> = { reversible: HOLD_MS, spends
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight,
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight, size = 'lg',
 }: GameHoldProps) {
   const holdMs = HOLD_WEIGHT_MS[weight];
   const { t } = useTranslation();
@@ -226,7 +229,7 @@ export function GameHold({
     return () => { window.clearTimeout(done); };
   }, [committed]);
 
-  const face = `gk-btn gk-btn--${look} gk-btn--lg gk-hold`;
+  const face = `gk-btn gk-btn--${look} ${size === 'lg' ? 'gk-btn--lg' : 'gk-hold--md'} gk-hold`;
   if (disabledReason !== null) {
     return (
       <button type="button" disabled className={face}>
