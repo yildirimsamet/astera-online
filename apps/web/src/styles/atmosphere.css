@@ -109,27 +109,10 @@
 }
 .scene-panel [class~='text-v2-ink-3'] { color: var(--color-v2-ink-2); }
 .repair-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 70%) 45%, rgb(8 13 24 / 12%) 85%); }
-.repair-scene [data-repair-copy] { align-self: flex-end; }
-.repair-scene button > svg { align-self: flex-end; margin-bottom: 28px; }
 .tactical-scene { min-height: 260px; justify-content: flex-end; }
 .tactical-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 72%) 42%, rgb(8 13 24 / 16%) 85%); }
 
-/* A material accent is a section identifier. Selection/action still uses self turquoise. */
-[data-base-surface] { --section-material: var(--color-v2-line-hi); }
-[data-base-surface='grow'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 55%, var(--color-v2-line-hi)); }
-[data-base-surface='orbit'] { --section-material: var(--color-v2-sky-violet); }
-[data-base-surface='defend'] { --section-material: var(--color-v2-neutral); }
-[data-base-surface='tactical'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 28%, var(--color-v2-neutral)); }
-[data-base-surface='reach'] { --section-material: var(--color-v2-sky-cool); }
-/* Cards wear the kit's own metal and edge (.gk-bcard); only the repair scene keeps the section tint. */
-[data-base-surface] .repair-scene {
-  border-color: color-mix(in srgb, var(--section-material) 30%, var(--color-v2-line));
-  background-image: linear-gradient(135deg, color-mix(in srgb, var(--section-material) 5%, transparent), transparent 75%);
-}
-[data-base-surface] .repair-scene[data-highlighted] {
-  border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
-}
-/* The planet's tabs wear the kit's plates (.gk-tab); no per-tab tint, as the cards. */
+/* The Base's cards wear the kit's own metal and edge (.gk-bcard, .gk-scard), and its tabs the kit's plates (.gk-tab): no per-section tint. */
 
 /* The v2 lanes only; the kit's lanes (.gk-lane) stand on their own slots. */
 [data-queue-lane]:not(.gk-lane) {
@@ -177,7 +160,6 @@
   background: linear-gradient(90deg, rgb(8 13 24 / 93%), rgb(8 13 24 / 78%) 50%, rgb(8 13 24 / 48%)),
     linear-gradient(0deg, rgb(8 13 24 / 90%), transparent 65%);
 }
-.repair-hero::before { background: linear-gradient(0deg, rgb(8 13 24 / 95%), rgb(8 13 24 / 65%) 45%, rgb(8 13 24 / 12%) 85%); }
 
 /* A ship's complete silhouette wins over a full-card crop. Match its source ratio. */
 [data-layout='card'] [data-art]:has([data-scene-fit='contain']) {

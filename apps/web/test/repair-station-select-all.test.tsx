@@ -55,7 +55,7 @@ describe('select all damaged ships in the Repair Station', () => {
     expect(counts()).toEqual([2, 3]);
     await userEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
     expect(counts()).toEqual([0, 0]);
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Select ships' })).toBeDisabled();
     await userEvent.click(all());
     expect(counts()).toEqual([2, 3]);
   });
@@ -72,7 +72,7 @@ describe('select all damaged ships in the Repair Station', () => {
     expect(counts()).toEqual([2, 3, 4]);
     const changed = { ...next, fleetDamage: next.fleetDamage.map(lot => lot.hull === 'DART' ? { ...lot, remainderBp: 0.5 } : lot) };
     view.rerender(content(changed));
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Select ships' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Ship health changed');
     await userEvent.click(all());
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -90,7 +90,9 @@ describe('select all damaged ships in the Repair Station', () => {
     expect(screen.getByText('Repair reserved')).toBeVisible();
     expect(within(screen.getByTestId('repair-total')).getByText('3 selected')).toBeVisible();
     expect(mutations.repair).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Repair 3 ships' }));
+    const hold = screen.getByRole('button', { name: /^Repair 3 ships/ });
+    hold.focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(mutations.repair).toHaveBeenCalledWith(expect.objectContaining({ request: { lots: [
       { id: 'waiting', count: 3, damageBp: 5000, remainderBp: 0 },
     ] } }), expect.any(Object));
@@ -136,8 +138,8 @@ describe('select all damaged ships in the Repair Station', () => {
   it('keeps radiation restrictions and explicit scrap selection in place', async () => {
     render(content({ ...world(), workshopRadiation: true }));
     await userEvent.click(all());
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    expect(screen.getByRole('button', { name: 'Closed by radiation' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('radio', { name: 'Scrap' }));
     expect(screen.queryByRole('button', { name: 'Select all' })).not.toBeInTheDocument();
     expect(counts()).toEqual([0, 0, 0, 0]);
     expect(mutations.maintenance).not.toHaveBeenCalled();

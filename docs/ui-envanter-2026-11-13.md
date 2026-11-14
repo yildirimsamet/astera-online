@@ -604,7 +604,7 @@ Galeride 350 px'te bakıldı (`base-production`, `base-fleet`, üç kaydırma). 
 
 Ölçüm: `reports/ui-audit/g2a-after-2026-11-14.md` (`base-production`, `base-fleet`, `base-fleet-empty`; telefon, dar, masaüstü). G1'den sonra Üs ölçülmemişti; bu ölçüm G2'nin başlangıç ölçümü. Üretim yolu temiz: 12 px altı metin 0, kontrast hatası 0. Kalanlar sonraki birimlerin:
 - Filo sekmesindeki hangar odası göstergesi (v2): 9–10 px metin, 4,1:1 kontrast, 2 yolda 15 metin. G2-h.
-- Onarım istasyonu kartı basınca tepki vermiyor. G2-f.
+- Onarım istasyonu kartı basınca tepki vermiyor. G2-f. (✅ G2-f'de düzeldi.)
 - Kuyruktaki "En attente" fr'de üç noktayla kesiliyor. G2-c.
 - Her yolda tek bir 2×2 px adsız dokunma alanı (`root`) var. Galerinin kökü, oyunda yok.
 
@@ -706,6 +706,47 @@ Kit sayfasına üç görünüm eklendi ve denetim bunları ölçüyor: `fault-sh
 **Sıra değişti: G2-f ve G2-g, G2-e'den önce.** Tersane sheet'i (G2-e) ve hangar odası (G2-h) aynı parçaya dayanıyor: Hangar/zemin odası ve siparişin ondan aldığı pay. Bu çalışma ağacında o parçanın kit hâli yarım duruyor: `RoomGauge` (`game-ui/readouts.tsx`, `game-ui/index.ts`, `test/game-ui/room-gauge.test.tsx`). Başka bir oturum 2026-11-12'de eski 4.2 aşaması için başlatmış; commit edilmemiş, CSS'i yok, kullanan yer yok. Plan bu değişikliklere dokunulmamasını söylüyor.
 
 Owner'a soru (G2-e ve G2-h'yi bekletiyor): Bu yarım `RoomGauge` işini sahiplenip G2-e/G2-h'de bitireyim mi, yoksa o oturum dönecek mi? Cevap gelmezse G2-f ve G2-g'den sonra G2-e yapılır; oda çubuğu o zamana kadar v2 `RoomBar` olarak kalır ve G2-h'de kite geçer.
+
+**G2-f onarım istasyonu ✅ (2026-11-14).** Oyuncunun anı: savaştan yaralı gemiler döndü; "hangilerini onarıp savaşa geri sokayım, hangilerini parçalayayım, ne kadar tutar?" Kurallar (ücretsiz aktarım, ücretli onarım, sıra derinliği, iptalde yarı iade, radyasyon kapanışı, 50 grup sınırı, aynı isteğin aynı anahtarla tekrarı) değişmedi.
+
+- Kart (Filo sekmesi, iki sütun) v2'den kitin metaline geçti: 242 px'ten 114 px'e. Tamirhane resmi kartın sağında, yazı solda metal bir örtü üstünde. Ad, sıra doluluğu (dolunca uyarı renginde), görev cümlesi, "3 gemi bekliyor" ve "4 onarımda" etiketleri, çalışan işin çubuğu ve süresi. Onarım sürerken resimdeki kaynak ışığı yanıp sönüyor. Bütün kart tek kapı: kendi sesi ve titreşimiyle açılıyor, basınca iniyor (eskiden basınca tepkisizdi).
+- Sheet: 250 px'lik kahraman resmi kalktı; resim başlığın arkasında, altında "Şu an %75 ödüyorsun". Kural tek satır, ayrıntısı "?" ile açılıyor (`InfoPeek`). Üç istatistik kutusu ve iki `Segmented` kalktı.
+- Yerler sekme oldu: Hangar / Tamirhane / Kuyruk 2/3. Hangar ve Tamirhane sekmesinde karar bekleyen gemi sayısı rozet olarak var (okuyucu "Hangar · 8 hasarlı gemi" duyar). Sheet karar bekleyen yerde açılıyor: önce evdeki yaralılar, sonra tamirhanede bekleyenler, sonra kuyruk.
+- İş emri bir şalter (`Lever`): Hangarda Onarım / Parçalama; Tamirhanede Onarım / Geri al / Parçalama. Yer değişince seçim de iş emri de sıfırlanıyor; parçalama bir sekmeden ötekine taşınmıyor. Radyasyonda tamirhane "Geri al"da açılıyor (tahliye, radyasyonun kapatmadığı tek iş).
+- Altta her zaman tek eylem: Hangarda "Tamirhaneye aktar" (ücretsiz, geri alınabilir: düz basış), Tamirhanede "N gemiyi onar" 1 sn basılı tutma (harcayan), "Hangara geri al" düz basış, Parçalama 1,5 sn kırmızı basılı tutma (kesin). Eski parçalama onay penceresi kalktı; geri dönecek kaynaklar (sıfır olanlar da) basmadan önce altta yazıyor, üstte kilit işaretiyle "Anında ve geri alınamaz". Kilitli düğme sebebini yüzünde söylüyor ("Gemi seç", "Onarılacak gemileri seç", "Kuyruk dolu · 3/3", "Kasa yetmiyor", "Radyasyon nedeniyle kapalı", "Çok fazla grup").
+- Gemi grupları kitte: resim, ad ve adet, can yüzdesi, çubuk (yalnız savaşamayacak kadar yaralıyken uyarı renginde), kitin sayacı. Onarımı zaten süren grup tek satır ("Onarıma ayrıldı") ve listenin sonunda; eskiden "1 adet var" diyerek yanıltıyordu. Seçim yokken fiyat çizilmiyor ("0 sn" yazmıyor).
+- Kuyruk kendi sekmesinde: halka, gemilerin adı (sekme zaten onarım dediği için "Onarım ·" öneki yok), hasar, bitiş ya da başlama süresi, İptal (iade onayı aynı).
+
+Ortak parçalarda:
+- `QuantityStepper` `look="kit"`: 44 px adımlar kendi tık sesi ve titreşimiyle; tavana ulaşan son basış ağır titreşim. Sınıfları `gk-qty*` (kitin `CountBadge`'i `gk-count` kullanıyordu, ilk denemede çakıştı).
+- `GameHold` fiili uzunluğuna göre küçülüyor (`--gk-len`, kap sorgusu): "2 Schiffe reparieren" 320 px'te kesiliyordu. Kısa fiiller 24 px kalıyor.
+- Çift ses düzeltildi: bina kartının açma düğmesi ve `InfoPeek`'in "?" düğmesi kendi sesini çalıyordu ama işaretsizdi; genel karıştırıcı ikinci kez tıklıyordu. `InfoPeek` kuralı artık liste taşıyabiliyor (`p` yerine `div`).
+- Tip ölçeği testi: G2-c'nin arıza satırı parası (`.gk-frow__coin`) yalnız simge taşıyor; testin simge listesine eklendi (yardımcı ajan buldu).
+- `atmosphere.css`: yalnız eski karttaki ve kahramandaki kurallar ve artık hiçbir yerin okumadığı `--section-material` değişkenleri silindi; başlangıç galaksisindeki `YardDeck` `.repair-scene`'i kullanmaya devam ediyor.
+
+Metin (6 dil): yeni `damagedShips`, `maintenance.order` (İş emri), `maintenance.back` (Geri al), `maintenance.scrapSelected`, `maintenance.radiationShort`, `tooManyShort`. Kullanılmayan `statWaiting`, `statRepairing`, `queueHeading`, `maintenance.scrapAction`, `maintenance.scrapConfirm`, `maintenance.keep` silindi. Daha önce ölü olan `outOfAction` (Geri al modunun açıklaması) ve `maintenance.select` yeniden kullanılıyor.
+
+Ölü kod adayı (benden önce de kullanılmıyordu, silinmedi; owner'a liste): `repairStation.statQueue`, `tagline`, `industrialChip`, `selectNone`, `choose`, `noneWaiting`, `share`, `selected_one/_other`.
+
+Owner'ın bakması için: parçalama onay penceresi 1,5 sn basılı tutmaya döndü (yardımcının C4 engelleme ve C6 döteryum aktarımıyla aynı çizgi). Geri alınabilir küçük bir değişiklik.
+
+Kit sayfasına üç görünüm eklendi ve denetim bunları ölçüyor: `repair-station-hangar`, `repair-station-queue`, `repair-station-radiation`.
+
+Ölçüm: `reports/ui-audit/g2f-after-2026-11-14.md` (yedi görünüm, 6 dil, telefon, dar ve masaüstü; 98 ölçüm). Sheet'in son ölçümü 4.1'deydi (`reports/ui-audit/4.1-2026-11-12.md`, telefon, tr):
+
+| `repair-station` | 4.1 | G2-f |
+|---|---|---|
+| 12 px altı metin | 68/81 | 0/50 |
+| Kontrast hatası | 20 | 0 |
+| 44 px altı hedef | 26/26 | 1/24 |
+| Basınca tepkisiz | 22 | 1 |
+| Kelime | 135 | 92 |
+
+Kalan tek hedef ve tek tepkisiz alan G1 sheet çerçevesinin 2×2 px arka plan düğmesi (yardımcının C5–C7 ölçümlerinde de var). Boş istasyon 28/35 → 0/22 küçük metin, 15/15 → 0/15 küçük hedef. Kesilen ve kırpılan metin bütün dillerde ve boyutlarda 0. Ekran başına 12–20 kelime (bütçe 55). Filo sekmesinde (`base-fleet`) 12 px altı metin 15'ten 9'a indi; kalanların hepsi hangar odası çubuğunda (v2 `RoomBar`, G2-h).
+
+Bilerek bırakılan: 0'dayken kilitli eksi düğmesinin simgesi 2,4:1. Pasif kontrol (WCAG 1.4.11 muaf); soluk görünmesi "daha aşağı inemezsin" demek.
+
+Ölçümden sonra düzeltilenler (yeniden ölçüldü): sayaçtaki "Tümü" 26 px genişlikteydi, adım düğmeleri 43 px yüksekliğindeydi (çerçeve içinde); sayı alanına dokununca görünür bir tepki yoktu, şimdi turkuaz çerçeve yanıyor.
 
 ## G3. İstihbarat
 
