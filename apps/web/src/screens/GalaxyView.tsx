@@ -11,6 +11,7 @@ import { useRequest } from '../lib/useRequest.js';
 import { useSensorReach } from '../lib/useSensorReach.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
+import { artIconSrc } from '../game-ui/index.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { bellState } from '../lib/bell.js';
@@ -2200,6 +2201,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
           headerArt={ATMOSPHERE.announcements}
+          kit={{ tone: 'self' }}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
         >
@@ -2212,6 +2214,8 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('community.feedback.eyebrow')}
+          headerArt={ATMOSPHERE.feedback}
+          kit={{ art: artIconSrc('hud-chat'), tone: 'self' }}
           title={t('community.feedback.title')}
           onClose={() => { onPanel(null); }}
         >

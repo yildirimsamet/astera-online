@@ -6,6 +6,7 @@ import { ApiProvider } from '../../api/context.js';
 import { keys } from '../../api/keys.js';
 import { AnnouncementsScreen } from '../../screens/AnnouncementsScreen.js';
 import { FeedbackScreen } from '../../screens/FeedbackScreen.js';
+import { artIconSrc } from '../../game-ui/index.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { Sheet } from '../kit/Sheet.js';
 
@@ -51,14 +52,15 @@ function Stage({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view === 'feedback') {
     return (
-      <Sheet detents={['full']} eyebrow={t('community.feedback.eyebrow')} title={t('community.feedback.title')} onClose={noop}>
+      <Sheet detents={['full']} eyebrow={t('community.feedback.eyebrow')} headerArt={ATMOSPHERE.feedback}
+        kit={{ art: artIconSrc('hud-chat'), tone: 'self' }} title={t('community.feedback.title')} onClose={noop}>
         <FeedbackScreen />
       </Sheet>
     );
   }
   return (
     <Sheet detents={['full']} eyebrow={t('community.announcements.eyebrow')} headerArt={ATMOSPHERE.announcements}
-      title={t('community.announcements.title')} onClose={noop}>
+      kit={{ tone: 'self' }} title={t('community.announcements.title')} onClose={noop}>
       <AnnouncementsScreen />
     </Sheet>
   );
