@@ -64,6 +64,33 @@ describe('a row of news', () => {
     expect(container.querySelectorAll('button')).toHaveLength(2);
   });
 
+  /**
+   * THE RETURN STORY'S ROW (C1, 2026-11-14): what it came to sits under the sentence, quieter, and
+   * the row can say where its press goes — the eye reads the door, the reader hears it once, on the press.
+   */
+  it('says what it came to under the sentence, quieter', () => {
+    const { container } = render(<NewsRow glyph="target" tone="hostile" detail="Biri senin resmini çıkarıyor.">2 tarama seni buldu</NewsRow>);
+    expect(container.querySelector('.gk-news__line')).toHaveTextContent('2 tarama seni buldu');
+    expect(container.querySelector('.gk-news__detail')).toHaveTextContent('Biri senin resmini çıkarıyor.');
+  });
+
+  it('can show where its press goes under the sentence, said once to a reader', () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <NewsRow glyph="target" tone="hostile" open={{ label: 'Radarı aç', onPress: onOpen, shown: true }}>2 tarama seni buldu</NewsRow>,
+    );
+    const door = container.querySelector('.gk-news__door');
+    expect(door).toHaveTextContent('Radarı aç');
+    expect(door).toHaveAttribute('aria-hidden', 'true');
+    press(screen.getByRole('button', { name: 'Radarı aç' }));
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('keeps its door to itself unless asked to show it', () => {
+    const { container } = render(<NewsRow glyph="attack" tone="hostile" open={{ label: 'İlgili raporu aç', onPress: vi.fn() }}>x</NewsRow>);
+    expect(container.querySelector('.gk-news__door')).toBeNull();
+  });
+
   it('heads a galaxy-wide row with what it is, so it is never read as personal news', () => {
     render(<NewsRow glyph="star" tone="info" banner="Galaksi olayı">Galakside asteroid yağmuru başladı.</NewsRow>);
     expect(screen.getByText('Galaksi olayı')).toHaveClass('gk-news__banner');

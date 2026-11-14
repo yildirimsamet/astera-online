@@ -263,7 +263,7 @@ export const away = {
   sighting: "{{planet}}の艦隊が出航しました",
   sightingBack: "{{time}}ごろ帰還・望遠鏡で確認",
   sightingSeen: "望遠鏡で確認",
-  careLoyalty: "{{world}}の忠誠度{{loyalty}}%",
+  careLoyalty: "忠誠度{{loyalty}}%",
   careFaults_one: "故障が{{count}}件続いています",
   careFaults_other: "故障が{{count}}件続いています",
 };

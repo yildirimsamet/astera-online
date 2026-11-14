@@ -3,6 +3,8 @@ import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReturnEntry, ReturnPayload } from '../../api/schemas.js';
+import { Banner, GameButton, NewsList, NewsRow, type GlyphId, type NewsOutcome, type NewsTone } from '../../game-ui/index.js';
+import type { CssVars } from '../../game-ui/style.js';
 import { serverNow } from '../../lib/clock.js';
 import { FEATURE_SYSTEM } from '../../starter/UnlockMoment.js';
 import { aboardRows, awayRows, type AwayDoor, type AwayRow, type AwayTone, type Sighting, type WorldCare } from '../../lib/awayStory.js';
@@ -17,7 +19,8 @@ import { ATMOSPHERE } from '../../ui/atmosphere.js';
 /**
  * THE MARK EACH LINE STANDS BEHIND (the mock's square): red only for a threat to you
  * (K2), your colour for what you gained, and an opening drawn as an outline — it is a
- * chance, not yet anything of yours.
+ * chance, not yet anything of yours. The ship's story keeps it (G15); the world's lines are
+ * the kit's news (C1).
  */
 const TONE: Record<AwayTone, string> = {
   alarm: 'border-v2-hostile/50 bg-v2-hostile/10 text-v2-hostile',
@@ -25,7 +28,36 @@ const TONE: Record<AwayTone, string> = {
   opportunity: 'border-dashed border-v2-line-hi text-v2-ink-2',
 };
 
-/** What the line is about, in one glyph. */
+/** The coin's colour: a threat the enemy's red (K2), a gain green, an opening the galaxy's blue. */
+const NEWS_TONE: Record<AwayTone, NewsTone> = { alarm: 'hostile', gain: 'good', opportunity: 'info' };
+
+/** What the line is about, on the kit's coin. */
+function glyphOf(row: AwayRow): GlyphId {
+  if (row.kind === 'sighting') return 'eye';
+  switch (row.entry.kind) {
+    case 'raided': return 'shield';
+    case 'raid_result': return 'attack';
+    case 'scan_detected': return 'target';
+    case 'convoy_result': return 'crate';
+    case 'fleet_returned': return 'recall';
+    case 'accrued': return 'mine';
+    case 'unlock': return 'unlock';
+  }
+}
+
+/**
+ * How a fight went for the reader: the ground its line lies on. A raid held is a win, a raid
+ * that took is a loss; your own raid thrown back is amber — your loss, not a threat (red stays K2's).
+ */
+function outcomeOf(row: AwayRow): NewsOutcome {
+  if (row.kind !== 'entry') return 'neutral';
+  const { entry } = row;
+  if (entry.kind === 'raided') return entry.params.grade === 'REPELLED' ? 'win' : 'loss';
+  if (entry.kind === 'raid_result') return entry.params.grade === 'REPELLED' ? 'partial' : 'win';
+  return 'neutral';
+}
+
+/** What the ship's hero line is about, in one glyph. */
 function iconOf(row: AwayRow): IconId {
   if (row.kind === 'sighting') return 'i-telescope';
   switch (row.entry.kind) {
@@ -112,7 +144,7 @@ function seen(sighting: Sighting, t: TFunction): { title: string; detail: string
   };
 }
 
-/** The door, written as the mock writes it: a link under the line, not a slab beside it. */
+/** The door under the ship's hero line: a link, as the mock writes it (G15 keeps it). */
 function Door({ label, onOpen }: { label: string; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} className="mt-1 py-0.5 text-micro font-semibold text-v2-self">
@@ -121,25 +153,28 @@ function Door({ label, onOpen }: { label: string; onOpen: () => void }) {
   );
 }
 
-function Line({ row, aboard, onDoor }: { row: AwayRow; aboard: boolean; onDoor: (door: AwayDoor, planetId?: string) => void }) {
+/**
+ * ONE LINE OF THE STORY (C1): the kit's row of news. The whole row is its one door, as wide as
+ * the card, and says under the sentence where it goes; a sighting names whose fleet is out.
+ */
+function Line({ row, aboard, index, onDoor }: { row: AwayRow; aboard: boolean; index: number; onDoor: (door: AwayDoor, planetId?: string) => void }) {
   const { t } = useTranslation();
   const { title, detail } = row.kind === 'entry' ? words(row.entry, t, aboard) : seen(row.sighting, t);
   const planetId = row.kind === 'sighting' ? row.sighting.planetId : undefined;
+  const door = aboard && row.door === 'base' ? t('starter.away.toShip') : t(`away.door.${row.door}`);
+  const order: CssVars = { '--i': index };
   return (
-    <li data-away-row="" data-tone={row.tone} className="flex gap-3 py-3 first:pt-1 last:pb-1">
-      <span aria-hidden="true" className={`grid size-9 shrink-0 place-items-center rounded-control border ${TONE[row.tone]}`}>
-        <Icon id={iconOf(row)} className="size-4" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col items-start">
-        <span className="flex min-w-0 max-w-full items-center gap-1.5 text-caption font-semibold leading-snug text-v2-ink">
-          {row.kind === 'sighting' && (
-            <span className="shrink-0 rounded-chip border border-v2-line px-1 text-micro text-v2-ink-2">{row.sighting.owner}</span>
-          )}
-          <span className="min-w-0">{title}</span>
-        </span>
-        <span className="text-micro leading-snug text-v2-ink-2">{detail}</span>
-        <Door label={aboard && row.door === 'base' ? t('starter.away.toShip') : t(`away.door.${row.door}`)} onOpen={() => { onDoor(row.door, planetId); }} />
-      </span>
+    <li data-away-row="" data-tone={row.tone} className="gk-away__row" style={order}>
+      <NewsRow
+        glyph={glyphOf(row)}
+        tone={NEWS_TONE[row.tone]}
+        outcome={outcomeOf(row)}
+        fresh
+        detail={row.kind === 'sighting' ? `${row.sighting.owner} · ${detail}` : detail}
+        open={{ label: door, onPress: () => { onDoor(row.door, planetId); }, shown: true }}
+      >
+        <strong>{title}</strong>
+      </NewsRow>
     </li>
   );
 }
@@ -204,11 +239,11 @@ function AboardStory({ story, onDoor }: { story: ReturnPayload; onDoor: (door: A
         </button>
       )}
       {open && (
-        <ul className="flex flex-col divide-y divide-v2-line">
-          {rest.map((row) => (
-            <Line aboard key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`} row={row} onDoor={onDoor} />
+        <NewsList label={t('away.title')}>
+          {rest.map((row, index) => (
+            <Line aboard index={index} key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`} row={row} onDoor={onDoor} />
           ))}
-        </ul>
+        </NewsList>
       )}
       {systems.length > 0 && (
         <p data-testid="away-online" className="flex items-center gap-1.5 text-micro leading-snug text-v2-self">
@@ -229,6 +264,10 @@ function AboardStory({ story, onDoor }: { story: ReturnPayload; onDoor: (door: A
  * live), each with the one door that answers it; under them the world that needs
  * repairs, if one does; the whole list one press away in Signals. Every way out of it
  * is a dismissal, and the shell closes the window on it.
+ *
+ * On the kit (C1, 2026-11-14): the lines are the kit's news, read out one after another and
+ * landing with the weight of the first; the world to repair is a warning with its own press;
+ * the two ways out are the kit's buttons.
  */
 export function AwaySheet({
   story,
@@ -252,6 +291,12 @@ export function AwaySheet({
 }) {
   const { t } = useTranslation();
   const rows = aboard ? [] : awayRows(story.entries, sightings);
+  // It lands with the weight of what it leads with: a threat as an alert, anything else as a confirmation.
+  // The ship's story sounds its own hero line.
+  const lead = rows[0]?.tone;
+  useEffect(() => {
+    if (lead !== undefined) playSound(lead === 'alarm' ? 'alert' : 'confirm');
+  }, [lead]);
   return (
     <Sheet
       title={t('away.title')}
@@ -261,53 +306,44 @@ export function AwaySheet({
       placement="card"
       onClose={onDismiss}
       footer={(
-        <div className="grid grid-cols-[auto_1fr] gap-2">
-          <button
-            type="button"
-            onClick={onAll}
-            className="min-h-10 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink"
-          >
-            {t('away.all', { count: story.entries.length })}
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink"
-          >
-            {t('away.done')}
-          </button>
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+          <GameButton tone="steel" size="sm" onPress={onAll}>{t('away.all', { count: story.entries.length })}</GameButton>
+          <GameButton tone="action" wide onPress={onDismiss}>{t('away.done')}</GameButton>
         </div>
       )}
     >
-      {aboard && <AboardStory story={story} onDoor={onDoor} />}
-      <ul className="flex flex-col divide-y divide-v2-line">
-        {rows.map((row) => (
-          <Line
-            aboard={aboard}
-            key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`}
-            row={row}
-            onDoor={onDoor}
-          />
-        ))}
-      </ul>
-      {care && (
-        <p
-          data-away-care=""
-          className="mt-2 flex items-start gap-2 rounded-control border border-v2-warn/40 bg-v2-warn/5 px-3 py-2 text-micro leading-snug text-v2-warn"
-        >
-          <Icon id="i-warn" className="mt-px size-3.5 shrink-0" />
-          <span>
-            {[
-              care.loyalty === null ? care.name : t('away.careLoyalty', { world: care.name, loyalty: care.loyalty }),
-              t('away.careFaults', { count: care.faults }),
-            ].join(' · ')}
-            {' · '}
-            <button type="button" onClick={() => { onDoor('repair', care.planetId); }} className="font-semibold underline underline-offset-2">
-              {t('away.door.repair')}
-            </button>
-          </span>
-        </p>
-      )}
+      <div className="gk gk-away">
+        {aboard && <AboardStory story={story} onDoor={onDoor} />}
+        {rows.length > 0 && (
+          <NewsList label={t('away.title')}>
+            {rows.map((row, index) => (
+              <Line
+                aboard={aboard}
+                index={index}
+                key={row.kind === 'entry' ? `${row.entry.kind}-${String(row.entry.at.getTime())}` : `seen-${row.sighting.planetId}`}
+                row={row}
+                onDoor={onDoor}
+              />
+            ))}
+          </NewsList>
+        )}
+        {care && (
+          <div data-away-care="">
+            <Banner
+              variant="strip"
+              tone="warn"
+              glyph="repair"
+              role={null}
+              title={care.name}
+              body={[
+                ...(care.loyalty === null ? [] : [t('away.careLoyalty', { loyalty: care.loyalty })]),
+                t('away.careFaults', { count: care.faults }),
+              ].join(' · ')}
+              action={<GameButton tone="steel" size="sm" glyph="repair" onPress={() => { onDoor('repair', care.planetId); }}>{t('away.door.repair')}</GameButton>}
+            />
+          </div>
+        )}
+      </div>
     </Sheet>
   );
 }

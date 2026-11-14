@@ -475,6 +475,22 @@ function MenuParts() {
   );
 }
 
+/** The return story's lines (C1): what happened, what it came to, and the door each row is. */
+function ReturnParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-3">
+      <NewsList label="Sen yokken">
+        <li><NewsRow glyph="target" tone="hostile" fresh detail="Biri senin resmini çıkarıyor." open={{ label: 'Radarı aç', onPress: noop, shown: true }}><strong>2 tarama seni buldu</strong></NewsRow></li>
+        <li><NewsRow glyph="shield" tone="good" outcome="win" fresh detail="Hattı tutarken 3 birlik kayıp" open={{ label: 'Raporu aç', onPress: noop, shown: true }}><strong>Savunma tuttu</strong></NewsRow></li>
+        <li><NewsRow glyph="eye" tone="info" fresh detail="NOVA · Dönüş ~12:20 · Teleskop gördü" open={{ label: 'Dosyayı aç', onPress: noop, shown: true }}><strong>Orin filosu dışarıda</strong></NewsRow></li>
+      </NewsList>
+      <Banner variant="strip" tone="warn" glyph="repair" role={null} title="Thistle-88" body="Sadakat %50 · 2 arıza duruyor"
+        action={<GameButton tone="steel" size="sm" glyph="repair" onPress={noop}>Onar</GameButton>} />
+    </div>
+  );
+}
+
 /** The desk outline (G1-g2) full: an attack coming, flights both ways, a lane at work and idle ones. */
 function DeskParts() {
   const noop = (): undefined => undefined;
@@ -965,6 +981,10 @@ function Catalog() {
 
         <Section title="Menü karoları · çağrı, haber, mağaza, uyarı">
           <MenuParts />
+        </Section>
+
+        <Section title="Dönüş hikâyesi · ne oldu, neye vardı, kapısı">
+          <ReturnParts />
         </Section>
 
         <Section title="Masaüstü özeti · dünyalar, havada, kuyruklar">

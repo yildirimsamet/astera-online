@@ -3432,6 +3432,28 @@ button.gk-trow:focus-visible {
 .gk-news__line strong {
   font-weight: 800;
 }
+.gk-news__detail {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+  overflow-wrap: anywhere;
+}
+/* Where the row goes, said to the eye: the game's narrow face in the player's colour, and a
+   chevron. In sentence case: at the floor size a three-word door in capitals reads as noise (T2). */
+.gk-news__door {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-floor);
+  letter-spacing: 0.02em;
+  color: var(--gk-self);
+}
+.gk-news__door::after {
+  content: '›';
+}
 .gk-news__tool {
   position: relative;
   z-index: 1;
@@ -3449,6 +3471,43 @@ button.gk-trow:focus-visible {
 }
 .gk-newslist__rows > li + li {
   border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 50%, transparent);
+}
+
+/* ── the return story (C1, 2026-11-14): what happened, told one line after another ── */
+
+.gk-away {
+  display: grid;
+  gap: var(--gk-s3);
+}
+/* The lines arrive one after another, as a debrief is read out; the first carries the weight. */
+.gk-away__row {
+  animation: gk-away-in 420ms var(--gk-pop) both;
+  animation-delay: calc(var(--i, 0) * 120ms + 140ms);
+}
+.gk-away__row:first-child .gk-news {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  min-height: 64px;
+}
+.gk-away__row:first-child .gk-news__coin {
+  width: 44px;
+  height: 44px;
+}
+.gk-away__row:first-child .gk-news__coin .gk-glyph {
+  width: 24px;
+  height: 24px;
+}
+.gk-away__row:first-child .gk-news__line {
+  font-size: var(--gk-t-body);
+}
+@keyframes gk-away-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ── banners, peeks, empty, coach ──────────────────────────────────────────── */

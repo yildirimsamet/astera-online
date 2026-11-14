@@ -11,6 +11,10 @@ import { duration } from '../../src/lib/time.js';
 import { AwaySheet } from '../../src/v2/hud/AwaySheet.js';
 import { AwayHost } from '../../src/v2/shell/AwayHost.js';
 
+const { heard, buzz } = vi.hoisted(() => ({ heard: vi.fn(), buzz: vi.fn() }));
+vi.mock('../../src/lib/sound.js', async (actual) => ({ ...await actual<Record<string, unknown>>(), playSound: heard }));
+vi.mock('../../src/lib/haptics.js', async (actual) => ({ ...await actual<Record<string, unknown>>(), haptic: buzz }));
+
 /**
  * WHILE YOU WERE AWAY. E10 · K5 · S3.
  *
@@ -37,6 +41,8 @@ const story = (over: Partial<ReturnPayload> = {}): ReturnPayload => ({
 
 afterEach(async () => {
   await i18n.changeLanguage('en');
+  heard.mockClear();
+  buzz.mockClear();
 });
 
 describe('the away sheet', () => {
@@ -52,10 +58,42 @@ describe('the away sheet', () => {
     expect(screen.getByRole('dialog', { name: 'While you were away' })).toHaveAttribute('data-placement', 'card');
   });
 
-  it('writes each door as a link under its line', () => {
+  /**
+   * ON THE KIT (C1, 2026-11-14): each line is the kit's row of news, one press as wide as the card
+   * that says where it goes under the sentence — not a 20 px link. The coin wears the line's weight:
+   * a threat red, a gain green, an opening the galaxy's blue; all of it is news since the last visit.
+   */
+  it('makes each line one press as wide as the card, and shows its door under it', () => {
     show();
     const first = document.querySelectorAll<HTMLElement>('[data-away-row]')[0]!;
-    expect(within(first).getByRole('button', { name: 'Open the radar →' })).toBeInTheDocument();
+    expect(within(first).getByRole('button', { name: 'Open the radar' })).toHaveClass('gk-news__open');
+    expect(first.querySelector('.gk-news__door')).toHaveTextContent('Open the radar');
+    expect(first.querySelector('.gk-news__detail')).toHaveTextContent('Someone is building a picture of you.');
+  });
+
+  it('wears each line’s weight on its coin, lit as news', () => {
+    show({}, { sightings: [{ planetId: 'p-orin', planetName: 'Orin', owner: 'NOVA', etaMinutes: 70 }] });
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-away-row]')];
+    const news = rows.map((row) => row.querySelector('.gk-news'));
+    expect(news.map((row) => row?.getAttribute('data-tone'))).toEqual(['hostile', 'good', 'info']);
+    expect(news.every((row) => row?.hasAttribute('data-fresh'))).toBe(true);
+    expect(news[0]?.querySelector('.gk-news__coin')).toHaveAttribute('data-glyph', 'target');
+    expect(news[2]?.querySelector('.gk-news__coin')).toHaveAttribute('data-glyph', 'eye');
+  });
+
+  it('lays a raid on the ground of how it went', () => {
+    show({ entries: [
+      { kind: 'raided', params: { grade: 'REPELLED', loot: 0, lost: 3 }, at: at(40) },
+      { kind: 'raided', params: { grade: 'DECISIVE', loot: 1_200, lost: 3 }, at: at(50) },
+    ] });
+    const outcomes = [...document.querySelectorAll<HTMLElement>('[data-away-row] .gk-news')].map((row) => row.getAttribute('data-outcome'));
+    expect(outcomes).toEqual(['loss', 'win']);
+  });
+
+  it('lands with the weight of its first line', () => {
+    show();
+    expect(heard).toHaveBeenCalledWith('alert');
+    expect(heard).toHaveBeenCalledOnce();
   });
 
   it('tells a live Telescope sighting as the opportunity, and opens its dossier', async () => {
@@ -65,16 +103,20 @@ describe('the away sheet', () => {
     expect(sighting).toHaveTextContent('NOVA');
     expect(sighting).toHaveTextContent(/Orin’s fleet is out/);
     expect(sighting).toHaveTextContent(/seen by your Telescope/);
-    await userEvent.click(within(sighting).getByRole('button', { name: 'Open the dossier →' }));
+    await userEvent.click(within(sighting).getByRole('button', { name: 'Open the dossier' }));
     expect(onDoor).toHaveBeenCalledWith('dossier', 'p-orin');
   });
 
   it('warns of the world that needs repairs, with the door to them', async () => {
     const { onDoor } = show({}, { care: { planetId: 'p-88', name: 'Thistle-88', faults: 2, loyalty: 50 } });
     const care = document.querySelector<HTMLElement>('[data-away-care]')!;
-    expect(care).toHaveTextContent('Thistle-88 loyalty 50%');
-    expect(care).toHaveTextContent('2 faults standing');
-    await userEvent.click(within(care).getByRole('button', { name: 'repair' }));
+    // The world's name heads it alone, so a long name never folds the line beside its press.
+    expect(care.querySelector('.gk-banner__title')).toHaveTextContent(/^Thistle-88$/);
+    expect(care.querySelector('.gk-banner__body')).toHaveTextContent('Loyalty 50% · 2 faults standing');
+    expect(care.querySelector('.gk-banner--warn')).not.toBeNull();
+    const repair = within(care).getByRole('button', { name: 'Repair' });
+    expect(repair).toHaveClass('gk-btn');
+    await userEvent.click(repair);
     expect(onDoor).toHaveBeenCalledWith('repair', 'p-88');
   });
 
@@ -107,12 +149,17 @@ describe('the away sheet', () => {
     expect(onDoor).toHaveBeenCalledWith('intel', undefined);
   });
 
-  it('offers the whole list, and goes back to the galaxy', async () => {
+  it('offers the whole list, and goes back to the galaxy, on the kit’s buttons', async () => {
     const { onAll, onDismiss } = show();
-    await userEvent.click(screen.getByRole('button', { name: 'All (5)' }));
+    const all = screen.getByRole('button', { name: 'All (5)' });
+    const done = screen.getByRole('button', { name: 'Back to the galaxy' });
+    expect(all).toHaveClass('gk-btn');
+    expect(done).toHaveClass('gk-btn--action');
+    await userEvent.click(all);
     expect(onAll).toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Back to the galaxy' }));
+    await userEvent.click(done);
     expect(onDismiss).toHaveBeenCalled();
+    expect(buzz).toHaveBeenCalledTimes(2);
   });
 });
 

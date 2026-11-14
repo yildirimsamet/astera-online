@@ -641,6 +641,34 @@ Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi
 | 8 | Kronik | `screens/ChronicleScreen.tsx` (245) | galakside ne oldu | yükleniyor, hata, boş | zil › Kronik | **v1** (`ui/kit` `Button`, `EmptyState`, `Waiting`) | |
 | 9 | Dönüş hikâyesi | `v2/hud/AwaySheet.tsx` | "Ben yokken ne oldu?" | gemide ayrı hikâye; kahraman satır + satırlar + gözlemler + onarım bakımı | otomatik | v2 | Owner'ın 'Ne oldu acaba?' hedefinin karşılandığı an; sunumu düz liste. Yüksek öncelik (yeniden katılım). |
 
+**C1 dönüş hikâyesi ✅ (2026-11-14, yardımcı oturum).** Oyuncunun anı: en az 30 dakika sonra oyuna dönünce, galaksi açılır açılmaz "ben yokken ne oldu?" sorusunun cevabı. Asıl karar hangi kapıdan önce gireceği: rapor, radar, rakibin dosyası ya da onarım. Hangi üç satırın, hangi sırayla söylendiği (önce tehdit, sonra kazanç, sonra fırsat) ve pencerenin ne zaman kapandığı değişmedi.
+
+Karar: satırlar G1-e'deki zilin haber satırıyla aynı dilde olur; hikâye ayrıca bir "rapor okunuyor" hissi taşır. Eski kapılar satırın altında 20 px'lik bağlantılardı; şimdi bütün satır kapının kendisi.
+
+Önce kite eklenen: `NewsRow` `detail` (cümlenin altında, daha sönük, neye vardığı) ve `open.shown` (satırın nereye açıldığı cümlenin altında yazılır; okuyucu bunu basışta bir kez duyar).
+
+Dönüş hikâyesi:
+- Her satır kitin haber satırı. Para satırın ağırlığını taşıyor: tehdit kırmızı, kazanç yeşil, fırsat galaksinin mavisi. Hepsi son girişten beri yeni, bu yüzden parlak ve noktalı. İşaretler: tarama nişangâh, akın kalkan, kendi akının saldırı, konvoy sandık, dönen filo geri dönüş, birikim maden, açılan sistem kilit, teleskop göz.
+- Savaşın zemini nasıl gittiğini söylüyor: tutulan savunma yeşil, alınan akın kırmızı, geri püskürtülen kendi akının amber (kayıp, tehdit değil; kırmızı K2'nin).
+- Bütün satır 56 px'lik tek basış. Altında "Radarı aç ›" gibi kapısı yazıyor; sesi ve titreşimi kitin.
+- Satırlar sırayla, 120 ms arayla, soldan kayarak geliyor; rapor okunur gibi. İlk satır ağırlığı taşıyor: daha büyük para ve yazı. Hikâye ilk satırının ağırlığıyla açılıyor: tehditse uyarı sesi, değilse onay sesi. Gemideki hikâye kendi kahraman satırının sesini çalıyor.
+- Onarım isteyen dünya kitin sarı uyarı şeridi. Başında yalnız dünyanın adı var, altında sadakat ve arıza sayısı. Yanında 44 px'lik "Onar" düğmesi. Eski hâli satır içinde 12 px altı çizili bir kelimeydi.
+- Alttaki iki çıkış kitin düğmeleri: "Tümü (n)" çelik, "Galaksiye dön" turuncu eylem.
+- Kit sayfasına "Dönüş hikâyesi" bölümü eklendi.
+
+Gemideki hikâye (kahraman satırı, "Ayrıntılar" açıcısı, çevrimiçi olan sistemler) G15'te ele alınacak; yalnız açılan ayrıntı satırları bu kit satırını kullanıyor.
+
+Ölçüm: `reports/ui-audit/c1-away-after-2026-11-14.md`, `gallery:away`, 14 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 36 | 0 |
+| 44 px altı hedef | 12 | 0 |
+| Basınca tepkisiz | 6 | 0 |
+| Yazı alışkanlığı | 0 | 0 |
+
+Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve neye vardıkları); daha da kısaltmak satırın karar değerini düşürür. Sheet'in kararmış arka planı "adsız dokunulabilir alan" sayılıyor; sheet çerçevesinin işi, öncesinde de vardı.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
