@@ -9411,6 +9411,11 @@ button.gk-probe__head:active {
 /* a monument nobody holds after the wave: neither side's colour */
 .gk-report__verdict[data-tone='neutral'] { --tone: var(--gk-ink-3); }
 .gk-strike .gk-report__tallyrow .gk-num[data-tone='threat'] { color: var(--gk-hostile); }
+/* who sent the weapon is the eyebrow: beside the Death Star's art it wraps rather than lose the name (de/fr/es) */
+.gk-sheet:has(.gk-strike) .gk-sheet__eyebrow {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 /* a monument fight's rounds, inside their rules row */
 .gk-mrounds {
   display: grid;

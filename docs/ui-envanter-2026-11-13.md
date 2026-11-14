@@ -1222,6 +1222,8 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 4 görünüm, galeriye `report-sheet-strike/-bomb/-monument` eklendi): puan 59→0 (Ölüm Yıldızı), 20→0 (bomba), 33→5 (anıt), 13→0 (EMP koloni); 12 px altı 77→2, kontrast 10→0, tepkisiz 6→1; bomba ekranı 110→55 kelime. Anıtta kalanlar `RankingScores` (C19) ve sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c17-strategic-monument-after-2026-11-15.md`.
 - **Açık soru:** yok. Anıt raporunda "Kurtardığın döteryum: 17,000" ve "%68,0000 sağlık" ondalıkları (eski, `decimal(…, 3/4)`) Türkçede binlik gibi okunuyor; G9 sonunda kısaltılabilir.
 
+**G5 kapanışı (2026-11-15, yardımcı oturum).** 6 dil, telefon, 7 rapor görünümü (`reports/ui-audit/g5-close-6lang-2026-11-15.md`): taşma ve kırpılma 0; kesilen 3 → 0 (stratejik raporun başlık üstü satırı de/fr/es'de Ölüm Yıldızı resminin yanında kesiliyordu, artık iki satıra iner). Tekrar kapısı de/fr/es'de tek satır: "Ansehen / Simulieren", "Regarder / Simuler", "Ver / Simular". ja hüküm sözleri: 自軍, 残存, 撃破, 敵ユニット撃破, 自陣営/敵陣営 ("あなたの力", "立っている" gibi düz çeviriler gitti). Kalan 12 px altı: G9'un `RankingScores` göstergesi (C19). Geniş rapor test grubu (90 dosya) yeşil.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
