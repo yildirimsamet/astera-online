@@ -854,6 +854,118 @@ Kalanlar:
 
 Almanca metin "Sie" diye hitap ediyor ("In jedem Slot, den Sie haben"). Bu, sıradaki Almanca hitap biriminin işi.
 
+**C8 Sondalar rafı ✅ (2026-11-14, yardımcı oturum).** G3 #6, karar desteğinin kalbi. Oyuncunun sorusu şu: "Sonda ne getirdi, bu dünya benimkine göre büyük mü küçük mü, saldırmaya değer mi?" Aralık mantığı (`probeAxis`, sıfırdan başlayan çizgi, bantta "benim değerim") ve sonda kuralları değişmedi.
+
+- **Anahtar satırı:** rafın tepesinde küçük turkuaz bir çizgi ve "bant onların tahmini, turkuaz çizgi senin dünyan" cümlesi. Aşağıdaki her satırın nasıl okunacağı tek yerde söyleniyor.
+- **Rapor kartı:** kitin plakası (`.gk-probe`).
+  - Baş: dünya resmi, ad, doğruluk, sinyal çubukları ve yaş. Dosya açılabiliyorsa başın tamamı dosyaya giden kapı.
+  - Ölçümler (stok, silahlı birlik değeri, gemi) bir cam kuyuda duruyor (`.gk-readings`).
+  - Bantlar 14 px'lik izde; "sen" çizgisi turkuaz ve hafif parlıyor.
+  - Değerler 12 px ve kalın.
+- **Kart altı:**
+  - "Sondayı yakaladılar" uyarısı göz işaretiyle amber renkte.
+  - "Dosyayı aç" kitin küçük tuşu. Karakol raporundaki "Saldır" kitin kırmızı tuşu.
+  - İki tuş da öğreticinin işaret ettiği `data-report-open` işaretini koruyor.
+- **İlk av kartı (`HuntHowTo`):** oyuncunun renginde kenarı olan bir kural kartı; yazı 9 px'ten 13–14 px'e çıktı.
+- **Çeviri düzeltmeleri:**
+  - Almancada "yakalandı" cümlesi bozuktu ("Sie haben es erwischt\nDie"). "Die Sonde wurde entdeckt" yapıldı.
+  - Japoncada "Dosyayı aç" ses taklidiydi ("オープンドシエ"). "調査書を開く" yapıldı.
+- **C7'den kalan kırık test:** C7'nin grup testlerinde `starter-outpost-reading` eksikti. Bu test hâlâ eski Raporlar sekmesini arıyordu; artık "Sonda raporları" sekmesine basıyor.
+- **Galeri:** `intel-probes` görünümü eklendi.
+- **Sınıf adı:** `.gk-range` Üs'te zaten kullanılıyordu. Çakışmasın diye bu malzemenin adı `.gk-reading` oldu.
+
+Ölçüm: `reports/ui-audit/c8-intel-probes-after-2026-11-14.md`, bir yol, 14 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 50 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 8 | 0 |
+| Basınca tepkisiz | 4 | 0 |
+| Kesilen metin (bütün diller) | 12 | 0 |
+
+Doğrulanamayanlar:
+- Gemideki av (karakol okuması ve "Saldır") galeride yok; yalnız testlerle doğrulandı.
+- `OutpostReading` başlangıç ekranlarına ait (G15); ona dokunulmadı.
+
+**C9 Radar rafı ve eksik alet kartı ✅ (2026-11-14, yardımcı oturum).** G3 #8/#9. Oyuncunun sorusu şu: "Beni kim tarıyor, radarım ne kadar uzağı duyuyor, bir sonraki seviye bana ne kazandırır?" Radar kuralları, menziller ve tarama günlüğü değişmedi.
+
+- **Radar ekranı (`.gk-scope`):** disk galaksiye göre gerçek boyutunda duruyor. İçinde ince bir artı işareti var; uyarı halkasının içinde turkuaz bir tarama ışını dönüyor. Disk artık canlı bir alet, durağan bir çizim değil.
+  - Yandaki açıklama:
+    - Seviye başlığı 14 px.
+    - Her halkanın adı ve menzili birimiyle ("4275 birim"); değer, adın altında.
+    - Kesik çizgili dış halkanın ne olduğu yazıyor: "Galaksinin kenarı". Önceden halkaların neye göre ölçüldüğü söylenmiyordu.
+- **Sonraki seviye:** kilit işaretli tek satır ("5. seviye çıkış dünyasının adını verir"). Yavaş filo kuralı ayrı bir not.
+- **Son 24 saat:** cam kuyuda; başlık büyük harfle bağırmıyor.
+- **Tarama listesi:** kitin defteri (`gk-ledger`). Her tarama tek satır ve tek kapı:
+  - Radar taramayı yapanı adlandırdıysa (5. seviye) satır onun dosyasını açar; yoksa taramanın düştüğü kendi dünyanı.
+  - Eskiden satır içinde iki küçük altı çizili bağlantı vardı (44 px altı).
+  - Son 6 saatin taraması kırmızı noktayla atıyor.
+  - Dünya adı bölünmüyor.
+- **Sessiz radar:** turkuaz tikli bir "dinlemede" şeridi.
+- **Eksik alet kartı (`Instrument`, `.gk-instrument`):** Teleskop, Sonda ve Radar için ortak.
+  - Alet kendi yuvasında hafifçe süzülüyor.
+  - "Radarın yok" satırı kilit işaretli ve amber renkte.
+  - Ne vereceği 14 px; bedeli not olarak.
+  - "Yörüngeyi aç" kitin turuncu ana tuşu oldu (eskiden 36 px'lik çerçeve).
+- **Çeviri düzeltmeleri:**
+  - Almanca "Offener Orbit" → "Orbit öffnen"; İspanyolca "Órbita abierta" → "Abrir órbita"; Japonca "オープンオービット" → "軌道を開く".
+  - tr ve fr yön satırı "·" ile başlıyordu; düzeltildi.
+  - Japonca: "レーダー がありません" boşluğu kaldırıldı. L2/L5 cümleleri anlamlı hâle geldi ("L5 は惑星に名前を付けます" → "L5 では発信元の惑星名がわかります").
+  - Yeni anahtarlar ×6: `intel.radar.rim`, `intel.radar.reach`.
+- **C7 artığı:** "Netlik ve yaş" düğmesinin alt 2 px'i alttaki satırın altında kalıyordu. Düğme öne alındı.
+- **Kullanılmayan sabit:** C9'la birlikte `HEADING` ve `CARD` sabitlerini kullanan yer kalmadı; silindi.
+- **Galeri:** `intel-radar`, `intel-blind-probes` ve `intel-blind-radar` görünümleri eklendi. Envanterde ulaşılamayan tek parça artık Savaşlar rafı (G5'in işi).
+
+Ölçüm: `reports/ui-audit/c9-intel-radar-after-2026-11-14.md`, dört yol, 56 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 64 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 12 | 0 (C7'nin "Netlik ve yaş" düğmesi ayrı koşuyla doğrulandı) |
+| Basınca tepkisiz | 6 | 0 |
+| Kesilen metin (bütün diller) | 5 | 0 |
+
+Doğrulanamayanlar:
+- Sessiz radar ve gemideki radar (onarım dili) galeride yok; yalnız testlerle doğrulandı.
+
+**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar.
+
+**C10 Görünüm sayfası ve galaksi olayları rehberi ✅ (2026-11-14, yardımcı oturum).** G3 #10/#11. Katman ve takvim kuralları değişmedi.
+
+- **Görünüm sayfası (`ViewSheet`):**
+  - Kitin boyalı başlığı var (teleskop resmi, galaksi kodu).
+  - "Katmanlar" etiketinin altında iki katman kitin kollu anahtarı (`Toggle`) oldu; her birinin yanında kendi aletinin resmi var. Anahtar ses ve titreşimle yanıt veriyor; sayfa, çizilen menzil görünsün diye yine kapanıyor.
+  - Akademi'nin işaret ettiği `data-sensor-toggle`, anahtarı saran kutuda duruyor. Akademi bu kutuya `closest()` ile ulaşıyor.
+  - Olaylar rehberine giden yol kitin defter satırı: saat işareti, ad ve ok.
+- **Galaksi olayları rehberi (`GalaxyEventsGuide`, v1'den kite):**
+  - Sayfa v2 sayfasına geçti; kit başlığında kronometre resmi var.
+  - "Sıradaki etkinlik" yeşil, ışıklı bir plaka. İşaret yavaşça parlıyor; parıltı yalnız saydamlık değiştirdiği için çizimi ucuz.
+  - Türkiye saati ayrı bir rozet.
+  - Her olay kendi renginde bir kit plakası: asteroit kristal, tüccar alaşım, konvoy düşman rengi. İşaret kutusu, başlık, kural metni ve pencereler var.
+  - Gün adları büyük harfle bağırmıyor ve pencerelerin üstünde duruyor. Böylece bir satıra iki pencere sığıyor; önceden yerel saat satırı yüzünden pencereler tek tek alt alta diziliyordu.
+  - Uzun "Bilinmeyen sinyal" metni, takvim olayı olmadığı için sona taşındı. Adının altında katlanıyor (`details.gk-rules`); önceden 11 satırlık bir duvardı.
+  - Japonca başlık "ギャラクシーイベント" → "銀河イベント" ve üst satır → "週間カレンダー" oldu. İkisi de ses taklidiydi.
+- **Galeri:** `events-guide` görünümü eklendi (sıradaki yağmur 42 dk sonra).
+
+Ölçüm: `reports/ui-audit/c10-view-guide-chronicle-after-2026-11-14.md` (Kronik de bu raporda; notu G5'te).
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 134 | 0 |
+| Kontrastı yetmeyen metin | 30 | 0 |
+| 44 px altı hedef | 15 | 0 |
+| WCAG 2.5.8 aralık hatası | 2 | 0 |
+| Basınca tepkisiz | 8 | 0 |
+
+Üç yüzey birlikte ölçüldü: dört yol (`view`, `events-guide`, `chronicle`, `chronicle-empty`), 56 ölçüm.
+
+Doğrulanamayanlar:
+- Cihaz saati Türkiye saatinden farklı olan bir oyuncunun "Yerel" satırı yalnız testle doğrulandı; bu makine Türkiye saatinde.
+
+**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.
@@ -926,6 +1038,23 @@ Gemideki hikâye (kahraman satırı, "Ayrıntılar" açıcısı, çevrimiçi ola
 | Yazı alışkanlığı | 0 | 0 |
 
 Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve neye vardıkları); daha da kısaltmak satırın karar değerini düşürür. Sheet'in kararmış arka planı "adsız dokunulabilir alan" sayılıyor; sheet çerçevesinin işi, öncesinde de vardı.
+
+**C10 Kronik ✅ (2026-11-14, yardımcı oturum).** G5 #8. Zilin "Kronik" sekmesi; v1'den kite geçti. Olay gruplama (8 dakika kuralı), olay türleri ve hangi dünyaya gidilebildiği değişmedi.
+
+- **Defter satırı:** her an kitin defterinde (`gk-ledger`) bir satır.
+  - Soldaki renkli işaret haberin türünü söylüyor:
+    - düşman rengi: bombardıman, Ölüm Yıldızı
+    - altın: Merkez kademesi, Hakimiyet liderliği, sezon perdesi, kontrol devri
+    - yeşil: tüccar, enkaz, açılan dünyalar
+    - sönük: tükenen kaya ya da biten olay
+  - Başlık büyük harfle bağırmıyor, 14 px ve kalın.
+  - Zaman başlığın satırında, sağda; tekrar sayısı (×2) zamanın üstünde.
+- **Satır bir kapı:** gidilebilen bir dünyaya ait anda satırın tamamı kapı. Ekran okuyucu satırı başlıkla adlandırıyor, hikâyeyi ve zamanı açıklama olarak okuyor. Önceden yalnız başlık basılabiliyordu ve 44 px altındaydı.
+- **Boş kronik:** kitin boş durumu (galaksi resmi, "Galaksi şimdilik sakin" ve alt cümle). Yeni anahtar ×6: `chronicle.emptyTitle`; `chronicle.empty` ikinci cümleye indi.
+- **Daha eski olaylar:** kitin tuşu, yüklenirken dönüyor.
+- **Galeri:** `chronicle` ve `chronicle-empty` görünümleri eklendi. Zil sekmesi, örnek bir hafta (iki bombardıman tek satırda, Ölüm Yıldızı, tüccar, kademe, liderlik, tükenen kaya, Savaş perdesi).
+
+Ölçüm: `reports/ui-audit/c10-view-guide-chronicle-after-2026-11-14.md`.
 
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
@@ -1188,6 +1317,31 @@ Kalanların hepsi G1'in sheet çerçevesine ait:
 Ekran görüntüleri dört dilde çekildi: üst, orta, kurallar açık alt, kurulmamış merkez, geç uyarı. Ölçümden önce iki şey düzeltildi:
 - Almancada son uyarılar satırındaki ad üç noktayla kesiliyordu. Ad artık kesilmiyor, alt satıra iniyor.
 - Almancada geç uyarı tuşu iki satıra iniyordu. Söz "Pünktlich zustellen" diye kısaltıldı.
+
+**Almanca hitap birimi ✅ (2026-11-14, yardımcı oturum).** Bütün oyun; G2 notundaki "de 'du'ya inecek" maddesinin işi.
+
+Almanca metin oyuncuya iki türlü hitap ediyordu: yaklaşık 400 metin "du", 380 metin "Sie" diyordu. Bazen aynı ekranda ikisi birden vardı. Savaş raporunda "Senin tarafın" ile "Onların tarafı" aynı sözdü ("Ihre Seite").
+
+- **Karar:** `docs/ux-writing.md` Almanca için bir şey söylemiyor. Çoğunluk "du" olduğu için oyun "du" diyor; Türkçedeki "sen"in karşılığı. Owner 2026-11-14'te onayladı.
+- **Kapsam:** 15 Almanca dosyada 317 metin yeniden yazıldı; başka dile dokunulmadı.
+  - Komutlar "du" kipinde ("Wähle", "Sende", "Tippe").
+  - Tuşlar ve başlıklar mastarla ("Sonde senden", "Modell ansehen", "Angriff planen").
+  - Bir clanın tamamına "ihr" ile sesleniliyor ("Baut gemeinsam das erste Schiff").
+- **Dokunulan metinlerdeki çeviri hataları:** "Warteschlangenebene 2" → "gib Level 2 in Auftrag", "Hof" → "Werft", "Kostenvoranschlag" → "Schätzung", "abgebrannte Brennelemente" → "verbrauchter Treibstoff", "Schlachtzug" → "Überfall", "Hauptbuch" → "Bilanz". Bunlar makine çevirisi kalıntılarıydı.
+- **"Sie" = "onlar" olan metinler:** 69 metin cümle başında "Sie/Ihr" ile "onlar/onların" ya da "o" diyor ("Ihre Flotte ist nicht zu Hause" = onların filosu). Bunlar İngilizce kaynağıyla tek tek okunup testte adıyla listelendi.
+- **Test:** `test/german-du.test.ts`.
+  - Cümle ortasındaki büyük harfli "Sie/Ihr…" yalnız resmî "siz" olabilir; böyle bir metin testi kırar.
+  - Cümle başındakiler yalnız listede adı varsa geçer.
+  - Listedeki her metnin hâlâ "sie/ihr" ile başladığı da denetleniyor. Böylece liste eskimez.
+  - "Senin tarafın" ile "onların tarafı" artık farklı söz.
+- **Denetim:** Her yeni metindeki `{{…}}` yer tutucuları ve `<0>` etiketleri hem eski metinle hem İngilizce kaynakla birebir aynı. Değişmesi istenmeyen hiçbir metin değişmedi; bu, dosyalar okunup karşılaştırılarak doğrulandı.
+- **Halka açık sayfa:** Landing'in Almancası zaten "du" diyordu; dokunulmadı.
+- **Ekranda görülen bir hata daha:** Sonda raporunda "fleet was out" "Flotte war ausgefallen" (filo arızalandı) diye çevrilmişti; "Flotte war unterwegs" yapıldı. Bu satır karar için önemli: dışarıdaki filo fırsat demek.
+
+Doğrulanamayanlar:
+- Almanca bir anadil konuşanı metinleri okumadı. Owner Almanca bilmiyor; yeniden yazımlar İngilizce kaynağa göre yapıldı.
+- Ekran görüntüleri yalnız dört yüzeyde çekildi: sonda rafı, radar rafı, savunma raporu, saldırı sheet'i. Metinlerin çoğu kısaldı; uzayanlar tek tek bakılmadı.
+- Hitapla ilgisi olmayan makine çevirisi kalıntıları hâlâ var (ör. "Wert der bewaffneten Einheit"). Ayrı bir Almanca okuma işi.
 
 ## G9. Sıralama, sezon, anıtlar
 

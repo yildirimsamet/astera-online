@@ -25,7 +25,7 @@ export const intel = {
     window: 'Ventana {{duration}}',
     empty: 'Aún no sabes nada: un telescopio vigila en vivo, una sonda trae una lectura.',
   },
-  openOrbit: 'Órbita abierta',
+  openOrbit: 'Abrir órbita',
   coverage: {
     label: 'Cobertura',
     blind: 'No puedes ver ni un solo planeta',
@@ -114,6 +114,9 @@ export const intel = {
     ringWarn: 'Aviso cronometrado',
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: 'Detección y aviso cronometrado',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Borde de la galaxia',
+    reach: '{{value}} unidades',
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the

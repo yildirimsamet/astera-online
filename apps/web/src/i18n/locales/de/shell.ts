@@ -84,7 +84,7 @@ export const pendingStrip = {
    */
   incomingAt: 'Eingehend → {{world}}',
   incomingFromAt: 'Eingehend → {{world}} · von {{origin}}',
-  probe: 'Ihre Sonde → {{target}}',
+  probe: 'Deine Sonde → {{target}}',
   deathStar: 'Dein Todesstern → {{target}}',
   settlement: 'Besiedlung → {{target}}',
   transfer: 'Übertragung → {{target}}',
@@ -102,7 +102,7 @@ export const pendingStrip = {
   intergalacticConvoyOut: 'Angriff → Intergalaktischer Konvoi',
   intergalacticConvoyHome: 'Der Angriff kehrt zurück · Intergalaktischer Konvoi',
   fleetHome: 'Deine Flotte kehrt von {{target}} zurück',
-  fleetOut: 'Ihre Flotte → {{target}}',
+  fleetOut: 'Deine Flotte → {{target}}',
   engaging: 'Im Gefecht',
   more: '+{{count}}',
   drillOut: 'Deine Prospector → Asteroid',
@@ -126,7 +126,7 @@ export const pendingStrip = {
    * "hidden by fog" over a fleet the commander can watch crossing their own circle
    * reads as the interface disagreeing with the picture.
    */
-  incomingVisible: 'Eingehende Warnung · auf Ihren Sensoren – tippen Sie, um nachzuschauen',
+  incomingVisible: 'Warnung im Anflug · auf deinen Sensoren – tippe, um nachzusehen',
   /**
    * THE RADAR LADDER, FINALLY WORTH CLIMBING. D123.
    *
@@ -146,7 +146,7 @@ export const signals = {
   beaconUnread: 'Signale – {{count}} ungelesen',
   title: 'Signale',
   eyebrowUnread: '{{count}} neu',
-  eyebrowRead: 'Alles was Ihnen gesagt wurde',
+  eyebrowRead: 'Alles, was dir gesagt wurde',
   statusHeading: 'Im Moment',
   eventsHeading: 'Was ist passiert?',
   openEvent: 'Zugehöriger Bericht öffnen',
@@ -164,7 +164,7 @@ export const signals = {
     disruptedLine: 'Deine Werke sind offline',
     disruptedDetail: 'Überfallen. Die Produktion wird in {{duration}} wieder aufgenommen.',
     worksStoppedLine: 'Die Arbeiten wurden eingestellt',
-    worksStoppedDetail: 'Die Arbeiten sind voll. Die Produktion wird bei {{amount}} pro Stunde pausiert, bis Sie die Ware abholen.',
+    worksStoppedDetail: 'Die Werke sind voll. Die Produktion steht bei {{amount}} pro Stunde still, bis du abholst.',
     alloyStoreLine: 'Legierungslager ist voll',
     crystalStoreLine: 'Kristallspeicher ist voll',
     storeDetail: "{{amount}} Ressourcen warten in dem Produktionslager. Gib gelagerte Ressourcen aus oder erhöhe die Kapazität, um Platz zu schaffen.",
@@ -295,7 +295,7 @@ export const menu = {
   rivalLostLabel: 'Rivalensignal verloren',
   /** The chip's own face. The sentence above is still its accessible name. */
   rivalLostShort: 'Markierung verloren',
-  rivalLostHint: 'Diese Welt ist verschwunden. Löschen Sie die Markierung.',
+  rivalLostHint: 'Diese Welt ist verschwunden. Entferne die Markierung.',
   rivalCleared: 'Der verlorene Rival-Marker wurde gelöscht.',
   accountHeading: 'Konto',
   soundLabel: 'Musik',
@@ -312,7 +312,7 @@ export const menu = {
    * alone is a number, "3 / 9" is a position — it says how far the arrows reach
    * and that there is something on the other side of them.
    */
-  trackLabel: 'Verfolgen Sie {{index}} / {{total}}',
+  trackLabel: 'Titel {{index}} / {{total}}',
   trackPrev: 'Vorheriger Titel',
   trackNext: 'Nächster Titel',
   trackClock: '{{position}} / {{duration}}',
@@ -428,7 +428,7 @@ export const leaderboard = {
   searchLabel: 'Suche nach Kommandanten, Planeten oder Clans',
   searchPlaceholder: 'Kommandant, Planet oder Clan',
   noMatch: 'Kein Kommandant, Planet oder Clan entspricht dieser Suche.',
-  locationUnknown: "Sie haben den Standort dieses Kommandanten noch nicht ermittelt.",
+  locationUnknown: "Du hast den Standort dieses Kommandanten noch nicht entdeckt.",
   /*
     THE IN-SEASON PRIZE — the answer to "what am I playing for".
     It sits directly above the standings, because that is where the decision is.
@@ -444,14 +444,14 @@ export const leaderboard = {
     table: 'Preis nach Ort',
     tableCount: 'Top {{places}} Orte · zur Inspektion geöffnet',
     place: 'Rang {{place}}',
-    holding: 'Rang {{place}} · Sie gewinnen hier',
-    paidWhen: 'Es landet in dem Moment, in dem Sie Ihre Welt in der neuen Saison gefunden haben.',
+    holding: 'Rang {{place}} · du gewinnst das gerade',
+    paidWhen: 'Die Belohnung landet in dem Moment, in dem du deine Welt in der neuen Saison gründest.',
     standing: 'Rang {{place}}',
     behind: '{{score}} mehr Dominion, um die Spitze zu erreichen {{places}}.',
     minimum: '{{score}} mehr Dominion für einen Preis erforderlich.',
     botIneligible: "Du kannst in dieser Saison keinen Saisonpreis erhalten.",
     climb: 'Erreiche die Spitze {{places}} und nimm es.',
-    unranked: 'Treten Sie dieser Galaxie bei, um an der Rangliste teilzunehmen.',
+    unranked: 'Tritt dieser Galaxie bei, um in die Rangliste zu kommen.',
   },
   archive: {
     selectorLabel: 'Saisonrekorde',
@@ -465,18 +465,18 @@ export const leaderboard = {
     percentile: 'Top {{share}} % · {{rank}} der {{commanders}} Kommandeure',
     fieldSize: '{{count}} Kommandeure',
     medals: 'Trophäen',
-    signature: 'Ihr Signaturschiff',
+    signature: 'Dein Signaturschiff',
     leadWorks: 'Produktion',
     leadProduced: 'Gesamtproduktion',
     leadRuns: 'von {{count}} Asteroidenläufen',
-    signatureCount: 'Sie haben {{count}} erstellt',
+    signatureCount: 'Du hast {{count}} gebaut',
     multiple: '×{{value}}',
     share: '{{value}}%',
     loadingOlder: 'Ältere Staffeln werden geladen',
     completedBoard: 'Saison-Rangliste abgeschlossen',
     waitingBoard: 'Öffnen der fertigen Bestenliste',
     emptyBoard: 'Für diese Galaxie wurden keine Commander-Ergebnisse aufgezeichnet.',
-    searchLabel: 'Durchsuchen Sie die abgeschlossene Staffel nach Kommandant',
+    searchLabel: 'Durchsuche die abgeschlossene Saison nach Kommandant',
     searchPlaceholder: 'Kommandant',
     noMatch: 'Kein Kommandant entspricht dieser Suche.',
     galaxyRecord: {
@@ -501,7 +501,7 @@ export const leaderboard = {
     /** The three-column breakdown truncates; the long sentence is said once above. */
     averageShort: 'Andere: {{value}}',
     statsUnavailable: 'Für diese Saison wurden keine detaillierten Aufzeichnungen geführt.',
-    statsUnavailableHint: 'Ihr Rang und Titel bleiben erhalten. Was nie gemessen wurde, wird nicht als Null angezeigt.',
+    statsUnavailableHint: 'Dein Rang und Titel bleiben erhalten. Was nie gemessen wurde, wird nicht als Null angezeigt.',
     legacyStats: {
       title: 'Konservierter Saisonrekord',
       hint: 'Aufgezeichnete Kampffiguren werden angezeigt. Wirtschaftlichkeit, Flottenproduktion und Exploration wurden nicht gemessen und werden weggelassen.',
@@ -678,6 +678,6 @@ export const crash = {
   detailHide: 'Details ausblenden',
   /** What the developer needs, in the one gesture a phone can make. */
   copy: 'Bericht kopieren',
-  copied: 'Kopiert – senden Sie es uns',
-  copyFailed: 'Konnte nicht kopiert werden. Machen Sie stattdessen einen Screenshot des Details.',
+  copied: 'Kopiert – schick es uns',
+  copyFailed: 'Kopieren hat nicht geklappt. Mach stattdessen einen Screenshot der Details.',
 } as const;

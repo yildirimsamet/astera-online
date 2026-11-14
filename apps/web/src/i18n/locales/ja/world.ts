@@ -45,8 +45,8 @@ export const galaxy = {
   hideRadar: "レーダー リーチを非表示",
   eventsGuide: {
     open: "銀河イベントを表示",
-    eyebrow: "ウィークリーカレンダー",
-    title: "ギャラクシーイベント",
+    eyebrow: "週間カレンダー",
+    title: "銀河イベント",
     intro: "平日と週末に繰り返されるウィンドウ。",
     timeZone: "トゥルキエ時間 (UTC+3)",
     nextLabel: "次のイベント",

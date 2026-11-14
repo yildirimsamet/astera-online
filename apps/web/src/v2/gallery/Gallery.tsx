@@ -51,7 +51,9 @@ import { BellSheet } from '../hud/BellSheet.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell } from '../hud/GalaxyCorners.js';
 import { useToast } from '../../ui/Toast.js';
 import { SignalsFeed } from '../../shell/Signals.js';
-import type { NotificationView } from '../../api/schemas.js';
+import type { GalaxyEvent, NotificationView } from '../../api/schemas.js';
+import { ChronicleScreen } from '../../screens/ChronicleScreen.js';
+import { GalaxyEventsGuide } from '../../screens/GalaxyEventsGuide.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
@@ -430,9 +432,10 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
 /**
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
  * has no Telescope and no Radar, so this is where the full shelves are photographed.
- * `blind` is the first evening (C7): no instrument, no mark, nothing known yet.
+ * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
+ * another shelf than Watch (C8: the probe reports; C9: the radar, and each missing instrument).
  */
-function GalleryIntel({ blind = false }: { blind?: boolean }) {
+function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar' }) {
   const client = useQueryClient();
   useState(() => {
     const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
@@ -474,6 +477,7 @@ function GalleryIntel({ blind = false }: { blind?: boolean }) {
   return (
     <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       <IntelScreen
+        {...(shelf ? { open: { stop: shelf, request: 1 } } : {})}
         rivals={blind ? [] : [
           { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
           { planetId: 'p-vega', slot: 1, owner: 'Vega', name: 'Mira', lost: false },
@@ -910,6 +914,49 @@ function GalleryBell({ empty = false }: { empty?: boolean }) {
 }
 
 /**
+ * The bell's chronicle tab as a galaxy a few days in reads it (C10): a raid run folded into
+ * one row, a Death Star strike, the merchant arriving, a world's Core tier and the Dominion
+ * lead, a spent rock and the season's turn. `empty` is a galaxy where nothing public has
+ * happened yet.
+ */
+function GalleryChronicle({ empty = false }: { empty?: boolean }) {
+  const [api] = useState(() => new Api());
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const at = (minutes: number) => new Date(NOW - minutes * MIN);
+    const events: GalaxyEvent[] = empty ? [] : [
+      { id: 'c-raid-1', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(12), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-raid-2', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(16), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-ds', kind: 'death_star_impact', subjectPlanetId: 'p-vela', occurredAt: at(55), payload: { planetName: 'Vela-3', outcome: 'FIRST_STRIKE', capturable: true } },
+      { id: 'c-trade', kind: 'galaxy_event_started', subjectPlanetId: null, occurredAt: at(90), payload: { eventKind: 'TRADE_SHIP', startsAt: at(90).toISOString(), endsAt: at(-90).toISOString(), rate: { alloy: 1, crystal: 2, deuterium: 32 } } },
+      { id: 'c-core', kind: 'core_tier', subjectPlanetId: 'p-thistle', occurredAt: at(180), payload: { planetName: 'Thistle', commanderName: 'Mimar', tier: 3 } },
+      { id: 'c-lead', kind: 'dominion_leader', subjectPlanetId: 'p-thistle', occurredAt: at(240), payload: { planetName: 'Thistle', commanderName: 'Mimar' } },
+      { id: 'c-iso', kind: 'isotope_exhausted', subjectPlanetId: null, occurredAt: at(400), payload: {} },
+      { id: 'c-act', kind: 'season_act', subjectPlanetId: null, occurredAt: at(1440), payload: { act: 'war' } },
+    ];
+    next.setQueryData(keys.chronicle, { pages: [{ events, nextBefore: empty ? null : 'older' }], pageParams: [null] });
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <BellSheet tab="chronicle" onTab={noop} onClose={noop} unseen={0} signals={null} chronicle={<ChronicleScreen onFocusPlanet={noop} />} />
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+/** The galaxy events guide with the next shower 42 minutes out (C10). */
+function GalleryEventsGuide() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(keys.galaxyEvents, { events: [], next: { kind: 'ASTEROID_SHOWER', startsAt: new Date(Date.now() + 42 * MIN) } });
+    return null;
+  });
+  return <GalaxyEventsGuide onClose={noop} />;
+}
+
+/**
  * One toast, said once the page is up: what every action answers with (G1-d3, 2026-11-14) —
  * the works collected, the store full and some left behind, and a refusal.
  */
@@ -946,6 +993,10 @@ function Views({ view }: { view: string }) {
   if (view === 'legacy-peek' || view === 'legacy-profile') return <LegacyPeekGallery page={view === 'legacy-peek' ? 'peek' : 'profile'} />;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'intel-blind') return <GalleryIntel blind />;
+  if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
+  if (view === 'intel-radar') return <GalleryIntel shelf="radar" />;
+  if (view === 'intel-blind-probes') return <GalleryIntel blind shelf="probes" />;
+  if (view === 'intel-blind-radar') return <GalleryIntel blind shelf="radar" />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;
@@ -1066,6 +1117,8 @@ function Views({ view }: { view: string }) {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
   if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
+  if (view === 'chronicle' || view === 'chronicle-empty') return <GalleryChronicle empty={view === 'chronicle-empty'} />;
+  if (view === 'events-guide') return <GalleryEventsGuide />;
   if (view === 'toast') return <GalleryToast tone="info" />;
   if (view === 'toast-warn') return <GalleryToast tone="warn" />;
   if (view === 'toast-error') return <GalleryToast tone="error" />;

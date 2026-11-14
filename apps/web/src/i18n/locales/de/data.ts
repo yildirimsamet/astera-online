@@ -13,7 +13,7 @@ export const vocabulary = {
     REFINERY: { name: 'Legierungsraffinerie', tag: 'Erzeugt Legierung', role: 'Legierung pro Stunde und Legierungslagerung', detail: 'Jedes Level erhöht das passive Legierungseinkommen und die Menge, die gespeichert werden kann. Die meisten Konstruktionen und Rümpfe werden aus Legierungen finanziert, was viele zukünftige Wartezeiten verkürzt.' },
     EXTRACTOR: { name: 'Kristallextraktor', tag: 'Erzeugt Kristall', role: 'Kristall pro Stunde und Kristallspeicher', detail: 'Jedes Level erhöht das passive Kristalleinkommen und die Lagerung. Kristall ist die seltenere Hälfte der Kosten für fortschrittliche Hardware, Instrumente und Forschung.' },
     VAULT: { name: 'Speicher', tag: 'Erweitert Speicher', role: 'Erweitert den Ressourcenspeicher und lässt 10 % Spielraum für die nächsten passenden Legierungs- und Kristallhersteller-Upgrades. Die unteren 10 %, deren Produktionszeit auf 8 Stunden begrenzt ist, sind vor Überfällen sicher.', detail: 'Der Speicher wächst zunächst um seine erstellte Produktionsstundenleiter. Wenn diese Etage auf hohen Ebenen zu klein ist, wird Lager L erweitert, um 110 % der Legierungskosten der Legierungsraffinerie L→L+1 und des Kristallextraktors L→L+1 der Kristallkosten aufzunehmen. das daraus resultierende Stundenfenster gilt auch für Deuterium. Ein Überfall kann nicht die unteren 10 % des Lagers oder 8 Stunden der Produktion dieser Ressource erreichen. Der Speicher kämpft nicht und reduziert den eingehenden Schaden nicht.' },
-    SHIPYARD: { name: 'Werft', tag: 'Schaltet Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte Ihrer Sonden und erschweren das Erfassen Ihrer eigenen Sonden. Werftebenen fügen keine Warteschlangenplätze hinzu.' },
+    SHIPYARD: { name: 'Werft', tag: 'Schaltet Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte deiner Sonden und machen es schwerer, deine eigenen Sonden zu erfassen. Werftlevel fügen keine Warteschlangenplätze hinzu.' },
     HANGAR: { name: 'Hangar', tag: 'Platz für die Flotte', role: 'Flottenraum auf dieser Welt · bei jedem Kommandokern ausbaubar', detail: 'Jedes Schiff belegt Hangarraum nach seiner Größe, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein voller Hangar baut und empfängt keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Jede Stufe kostet ein Drittel der Flotte, für die sie Platz schafft; die oberen Stufen kosten daher mehr, als eine Welt ohne ausgebauten Speicher auf einmal fassen kann.' },
     DEUTERIUM_PLANT: { name: 'Deuterium-Raffinerie', tag: 'Stellt Deuterium her', role: 'Deuterium pro Stunde und Brennstoffspeicher · die Obergrenze wird durch die Deuteriumsynthese festgelegt', detail: "Jede Stufe erhöht die Deuteriumproduktion pro Stunde und die Speicherkapazität. Deuterium ist der Treibstoff für Flottenflüge. Wenn die Deuterium-Raffinerie ihre Stufengrenze erreicht, erforsche die nächste Stufe der Deuteriumsynthese." },
   },
@@ -25,10 +25,10 @@ export const vocabulary = {
       role:
         'Identifiziert Bewegungen innerhalb seiner Reichweite; Die Uhrenplätze werden zu 1, 2, 3 und 4 bei L1, L3, L5 und L7. Still.',
       roleNone:
-        'Identifiziert entfernte Bewegungen und ermöglicht es Ihnen, eine ausgewählte Welt still zu beobachten, um herauszufinden, ob sich ihre Flotte zu Hause befindet. Erfordert einen Uplink im Orbit.',
+        'Identifiziert entfernte Bewegungen und lässt dich eine ausgewählte Welt still beobachten, um zu erfahren, ob ihre Flotte zu Hause ist. Erfordert einen Uplink im Orbit.',
       roleOwned:
         'Erweitert den Bereich, in dem sich bewegende Fahrzeuge identifiziert werden, und bietet stille Überwachungsplätze. Es gibt Intelligenz, keinen Schutz.',
-      detail: 'Weitere Level erweitern die Bewegungskontaktsicht und enthüllen vorbeiziehende Asteroiden, wenn sie diesen Bereich betreten. Ein enthüllter Stein bleibt bekannt, bis er verschwunden ist. L1, L3, L5 und L7 bieten einen, zwei, drei und vier Silent-Watch-Slots. Ein Teleskop warnt niemals, dass eine Flotte auf Sie gerichtet ist.',
+      detail: 'Weitere Level erweitern die Bewegungskontaktsicht und enthüllen vorbeiziehende Asteroiden, wenn sie diesen Bereich betreten. Ein enthüllter Stein bleibt bekannt, bis er verschwunden ist. L1, L3, L5 und L7 bieten einen, zwei, drei und vier Silent-Watch-Slots. Ein Teleskop warnt niemals, dass eine Flotte auf dich gerichtet ist.',
     },
     RADAR: {
       name: 'Radar',
@@ -62,12 +62,12 @@ export const vocabulary = {
     VEIL: {
       name: 'Schleier',
       tag: 'Tarnt vor Teleskopen',
-      role: "Degradiert, was jedes Teleskop über Sie lesen kann.",
+      role: "Verschlechtert, was jedes Teleskop über dich lesen kann.",
       roleNone:
-        'Kann Ihren Flottenstatus für ein gegnerisches Teleskop unleserlich machen. Es verbirgt Informationen, erfindet aber weder falsche Messwerte noch stoppt es Untersuchungen.',
+        'Kann deinen Flottenstatus für ein gegnerisches Teleskop unlesbar machen. Er verbirgt Informationen, erfindet aber weder falsche Messwerte, noch stoppt er Sonden.',
       roleOwned:
-        'Kann Ihren Flottenstatus für ein gegnerisches Teleskop unleserlich machen. Es verbirgt Informationen, erfindet aber weder falsche Messwerte noch stoppt es Untersuchungen.',
-      detail: 'Ein stärkerer Schleier macht stärkere Teleskopwerte zunichte und verringert die Genauigkeit der Werftsonde. Es verbirgt Ihren Zustand; Es erfindet keine falschen Daten und blockiert keine eingehende Untersuchung.',
+        'Kann deinen Flottenstatus für ein gegnerisches Teleskop unlesbar machen. Er verbirgt Informationen, erfindet aber weder falsche Messwerte, noch stoppt er Sonden.',
+      detail: 'Ein stärkerer Schleier macht stärkere Teleskopwerte zunichte und verringert die Genauigkeit der Werftsonde. Er verbirgt deinen Zustand; er erfindet keine falschen Daten und blockiert keine eingehende Sonde.',
     },
   },
 
@@ -79,7 +79,7 @@ export const vocabulary = {
         'Erforderlich, um ein Teleskop oder Radar auf dieser Welt zu installieren. Es nutzt einen Orbitplatz und bietet keinen Produktions- oder Verteidigungsbonus.',
       blurb:
         'Ein Kommunikationsrelais, das das Teleskop und das Radar freischaltet. Es erweitert die Sicht nicht von alleine.',
-      detail: 'Installieren Sie es einmal, um den Teleskop- und Radarbau auf dieser Welt verfügbar zu machen. Es nutzt einen Orbit-Slot und benötigt nie eigene Level.',
+      detail: 'Installiere ihn einmal, um Teleskop und Radar auf dieser Welt baubar zu machen. Er belegt einen Orbitplatz und braucht nie eigene Level.',
     },
     FOUNDRY: {
       name: 'Gießerei',
@@ -105,7 +105,7 @@ export const vocabulary = {
       role:
         'Lässt hier gestartete Überfall-, Transfer-, Handels- und Clan-Hilfsflotten auf beiden Strecken 1,2-mal schneller reisen.',
       blurb:
-        'Ein Navigationszeichen für Überfall-, Transfer-, Handels- und Clan-Hilfsflotten. Kürzere Flüge bedeuten ein kürzeres Zeitfenster für Ihre Verteidigung auswärts.',
+        'Ein Navigationszeichen für Überfall-, Transfer-, Handels- und Clan-Hilfsflotten. Kürzere Flüge bedeuten ein kürzeres Zeitfenster, in dem deine Verteidigung unterwegs ist.',
       detail: 'Sein Geschwindigkeitsmultiplikator von 1,2 gilt für ausgehende und zurückkehrende Überfall-, Transfer-, Handels- und Clan-Hilfsflotten, die hier gestartet werden. Es wirkt sich nicht auf Siedlungsflotten oder Prospektoren aus und es ändert weder Angriffs-, Rüstungs-, Fracht- noch Treibstoffkosten.',
     },
   },
@@ -214,7 +214,7 @@ export const vocabulary = {
       name: 'Garbage Collector',
       tag: 'Hebt {{salvage}} des Wracks',
       role: 'Spezialunterstützungsrumpf: Feuert nichts ab und sammelt nach dem Gefecht, in das er geflogen ist, Wrackteile ein.',
-      pitch: 'Fliegt wie ein Transporter hinter der Linie und macht die letzten Schüsse. Halten Sie Kriegsschiffe daneben – sobald sie fallen, ist es Beute.',
+      pitch: 'Fliegt wie ein Transporter hinter der Linie und gibt die letzten Schüsse ab. Halte Kriegsschiffe an seiner Seite – sobald sie fallen, ist es Beute.',
       detail: 'Wenn die Schlacht endet, hebt jeder noch lebende Sammler bis zu {{salvage}} des Wracks hoch – in der wrackeigenen Mischung aus Legierung, Kristall und Deuterium – bevor der Rest als öffentliches Feld treibt. Der Transport landet im Lager der Flotte. Es fügt dem Laderaum nichts hinzu, kann nicht ohne ein Kriegsschiff fliegen, kann nicht auf ein Wrackfeld oder einen Asteroiden geschickt werden und sammelt bei der Verteidigung nichts ein.',
     },
     CATACLYSM: {
@@ -290,13 +290,13 @@ export const vocabulary = {
     },
     RADAR: {
       title: 'Radar freigeschaltet',
-      body: 'Eine Uplink- und Radarfangsonde; Ab L1 markiert sein Kreis auch auf Sie gerichtete Bedrohungen mit ihrer Ankunftszeit.',
+      body: 'Uplink und Radar fangen Sonden ab; ab L1 markiert sein Kreis auch Bedrohungen, die auf dich zielen, mit ihrer Ankunftszeit.',
     },
     EXPLORER: {
       title: 'Explorer freigeschaltet',
       body: "Sende eine Sonde, um die Flotte und Ressourcen des Ziels zu erkunden. Der Bericht kann Schätzungen enthalten; das Ziel kann den Scan bemerken.",
     },
-    VEIL: { title: 'Schleier freigeschaltet', body: 'Ihr Flottenstatus kann für jeden, der zuschaut, als UNBEKANNT angezeigt werden.' },
+    VEIL: { title: 'Schleier freigeschaltet', body: 'Dein Flottenstatus kann für jeden Beobachter als UNBEKANNT erscheinen.' },
   },
 } as const;
 
@@ -343,8 +343,8 @@ export const gains = {
   },
 
   telescope: {
-    slotsLabel: 'Planeten, die Sie beobachten können',
-    rangeLabel: 'Wie weit Sie sehen können',
+    slotsLabel: 'Planeten, die du beobachten kannst',
+    rangeLabel: 'Wie weit du sehen kannst',
     maxed: 'Oberste Ebene: {{slots}} Uhrenslots und {{range}} Einheiten des beweglichen Kontaktvisiers; genug, um die Galaxie zu umspannen',
     reachAndCooldown: 'erreicht {{range}} · ein Slot wird in {{hours}}h neu ausgerichtet',
     nextSlot: 'Die nächste Ebene fügt einen {{ordinal}}-Slot hinzu',
@@ -401,7 +401,7 @@ export const gains = {
     label: 'Überfall-, Transfer-, Handels- und Hilfsflotten',
     now: 'normale Geschwindigkeit',
     next: '{{factor}}× schneller',
-    unlocks: 'Hin und zurück – ein kürzeres Zeitfenster mit Ihrer Verteidigung auswärts',
+    unlocks: 'Hin und zurück – ein kürzeres Zeitfenster, in dem deine Verteidigung unterwegs ist',
   },
   /** Every research row names the quantity or permission the player actually buys. */
   research: {
@@ -413,7 +413,7 @@ export const gains = {
       "Erhöht die maximale Rumpfstärke und die persönliche Schildkapazität aller mobilen Schiffe, einschließlich Transporter. Die Bodenverteidigung ist nicht betroffen.",
     speedLabel: 'Flottengeschwindigkeit',
     speedScope:
-      'Alle Schiffe Ihrer Flotte. Eine gemischte Flotte fliegt immer noch mit der – verbesserten – Geschwindigkeit ihres langsamsten Mitglieds; Prospektoren und Sonden sind davon nicht betroffen.',
+      'Alle Schiffe deiner Flotte. Eine gemischte Flotte fliegt weiter mit der – verbesserten – Geschwindigkeit ihres langsamsten Schiffs; Prospektoren und Sonden sind nicht betroffen.',
     engineeringLabel: 'Zugang zur Rumpfebene',
     engineeringTier: 'Stufe {{tier}}',
     engineeringScope:
@@ -454,28 +454,28 @@ export const directives = {
   inboundAction: 'Jetzt ausgeben',
 
   undefendedTitle: 'Diese Welt hat keine Bodenverteidigung',
-  undefendedDetail: '{{amount}} ist Überfalls ausgesetzt. Bauen Sie Dornen oder Bastionen zur dauerhaften Verteidigung.',
+  undefendedDetail: '{{amount}} ist Überfällen ausgesetzt. Baue Dornen oder Bastionen zur dauerhaften Verteidigung.',
   undefendedAction: 'Verteidigung aufbauen',
 
-  exposedTitle: '{{amount}} kann von Ihnen genommen werden',
+  exposedTitle: '{{amount}} kann dir genommen werden',
   exposedDetail: "Der Speicher schützt {{now}} Ressourcen vor Angriffen. Die nächste Stufe schützt {{next}}.",
   exposedAction: "Speicher ausbauen",
 
-  scannedTitle_one: 'Jemand hat Sie gescannt',
-  scannedTitle_other: '{{count}} scannt gegen Sie',
-  scannedDetail: 'Sie versuchen, Ihren Bestand und Ihre Verteidigung kennenzulernen. Ein Schleier reduziert, was ihre Sonde enthüllen kann.',
+  scannedTitle_one: 'Jemand hat dich gescannt',
+  scannedTitle_other: '{{count}} Scans gegen dich',
+  scannedDetail: 'Sie versuchen, deinen Bestand und deine Verteidigung zu erkunden. Ein Schleier verringert, was ihre Sonde enthüllen kann.',
   scannedAction: 'Siehe Protokoll',
 
   windowTitle: "Die Flotte von {{name}} ist weg",
-  windowDetailUnknownJustNow: 'Gerade gesehen. Sie wissen nicht, wann es zurückkommt.',
-  windowDetailUnknown: 'Vor {{age}} gesehen. Sie wissen nicht, wann es zurückkommt.',
+  windowDetailUnknownJustNow: 'Gerade gesehen. Du weißt nicht, wann es zurückkommt.',
+  windowDetailUnknown: 'Vor {{age}} gesehen. Du weißt nicht, wann es zurückkommt.',
   windowDetailEta:
     'Zurück in etwa {{duration}}. Ihr Planet enthält alles, was sie zurückgelassen haben.',
-  windowAction: 'Öffnen Sie das Fenster',
+  windowAction: 'Fenster öffnen',
 
   storageFullTitle: '{{amount}} kann nicht gesammelt werden',
   storageFullDetail:
-    'Ihr Laden ist voll, sodass die Werke nirgendwo entleert werden können. Gib etwas aus und beanspruche es.',
+    'Dein Lager ist voll, deshalb können die Werke nichts mehr abgeben. Gib etwas aus und hol den Ertrag ab.',
   storageFullAction: 'Gib es aus',
 
   /** The card that carries the top directive. */
@@ -515,7 +515,7 @@ export const notifications = {
   composition: '{{count}} {{hull}}',
   join: ' · ',
 
-  raidedFallback: 'Sie wurden überfallen.',
+  raidedFallback: 'Du wurdest überfallen.',
   repelledHead: 'Überfall abgewehrt · {{cost}}',
   repelledLost: '{{count}} hat den Besitz verloren',
   repelledTheirs: '{{count}} von ihnen zerstört',
@@ -536,7 +536,7 @@ export const notifications = {
   radiationLost_other: "Strahlung hat {{count}} Schiffe {{way}} zerstört · noch {{left}} unterwegs",
   radiationWay: "unterwegs",
   radiationWayTo: "auf dem Weg nach {{name}}",
-  raidedNothing: 'Überfallen · Sie haben nichts',
+  raidedNothing: 'Überfallen · sie haben nichts erbeutet',
   /** Taktik geri çekilme, Verteidiger: die Schiffe sind abgehoben, oder der Tank reichte nicht. */
   raidedEscaped_one: '{{count}} Schiff abgehoben',
   raidedEscaped_other: '{{count}} Schiffe abgehoben',
@@ -546,7 +546,7 @@ export const notifications = {
   raidTargetFled: 'ihre Schiffe sind abgehoben',
 
   raidResultFallback: 'Dein Überfall wurde gelöst.',
-  raidWiped: '{{target}} gehalten · Ihre Flotte wurde zerstört · {{count}} Schiffe verloren',
+  raidWiped: '{{target}} hat gehalten · deine Flotte wurde zerstört · {{count}} Schiffe verloren',
   raidResult: '{{grade}} bei {{target}} · {{detail}} · {{count}} Schiffe verloren',
   raidNothing: 'nichts vergeben',
   spoilAlloy: '+{{amount}} Legierung',
@@ -555,7 +555,7 @@ export const notifications = {
   /** What a raid's Garbage Collectors lifted off the wreck — never counted as loot. D200. */
   spoilSalvage: '+{{amount}} Bergung',
 
-  fleetFallback: 'Ihre Flotte ist zu Hause.',
+  fleetFallback: 'Deine Flotte ist zu Hause.',
   fleetHomeLooted: 'Flottenheimat{{where}} · {{count}} Schiffe · +{{amount}} geplündert',
   fleetHomeEmpty: 'Flottenheimat{{where}} · {{count}} Schiffe · mit leeren Händen',
   fleetHomeRecalled: 'Flotte zurück{{where}} · {{count}} Schiffe · vor dem Angriff zurückgerufen',
@@ -580,7 +580,7 @@ export const notifications = {
    * who got there first.
    */
   targetGonePirate: 'Pirat {{callsign}} wurde bereits zerstört · {{count}} Schiffe kehren um',
-  targetGoneAsteroid: 'Der Stein wurde abgetragen, bevor Sie ankamen · {{count}} Bohrer drehen sich um',
+  targetGoneAsteroid: 'Der Stein war abgebaut, bevor du ankamst · {{count}} Bohrer kehren um',
   targetGoneDebris: 'Das Wrackfeld wurde bereits bereinigt · {{count}} Bohrer drehen um',
   pirateHome: 'Rückkehr der Piraten · {{count}} Schiffe · +{{amount}} geplündert',
   pirateHomeEmpty: 'Rückkehr der Piraten · {{count}} Schiffe · mit leeren Händen',
@@ -589,7 +589,7 @@ export const notifications = {
   pirateHomeTowed_looted: 'Rückkehr der Piraten · {{count}} Schiffe · +{{amount}} geplündert · {{hull}} gefangen',
   pirateHomeTowed_empty: 'Rückkehr der Piraten · {{count}} Schiffe · {{hull}} gefangen',
   fleetFrom: 'von {{origin}}',
-  probeLost: 'Ihre Sonde ging verloren · dieser Flug konnte nicht abgeschlossen werden',
+  probeLost: 'Deine Sonde ging verloren · dieser Flug konnte nicht abgeschlossen werden',
   recalled: '{{count}} Raumschiff zurückgekehrt · dieser Flug konnte nicht abgeschlossen werden',
   miningRecalledHome: '{{count}} Prospektoren-Startseite · Rückruf abgeschlossen',
   transferReturningCapacity: 'Transfer zurück von {{target}} · Zielkapazität im Flug gefüllt',
@@ -602,7 +602,7 @@ export const notifications = {
   haulPartly: '{{what}} Startseite · {{landed}} · {{amount}} verloren, funktioniert voll',
   haul: '{{what}} Startseite · {{landed}}',
 
-  scanDetected: 'Scan erkannt. Jemand sammelt Informationen über Ihre Welt.',
+  scanDetected: 'Scan erkannt. Jemand sammelt Informationen über deine Welt.',
 
   probeFallback: 'Eine Sonde ist zu Hause. Sein Bericht ist lesbar.',
   probeHome: 'Probe-Home · {{target}} ist lesbar{{caught}}',
@@ -626,7 +626,7 @@ export const notifications = {
   colonyLoyalty: '{{planet}} rutscht ab – {{count}} Dinge sind kaputt und es erklärt die Unabhängigkeit in {{time}}.',
   settlementLost: 'Siedlungsrennen verloren · die Kuriere und die Fracht kehren zurück',
   interceptedDefended: 'Dein Gitter hat einen Todesstern zerstört. {{range}} Einheiten.',
-  interceptedLost: 'Ihr Todesstern wurde {{range}} Einheiten vor seinem Ziel zerstört.',
+  interceptedLost: 'Dein Todesstern wurde {{range}} Einheiten vor seinem Ziel zerstört.',
   interceptedFallback: 'Ein Todesstern wurde im Flug zerstört.',
   asteroidShowerStarted: 'Ein Asteroidenschauer hat in der Galaxie begonnen.',
   asteroidShowerEnded: 'Der Asteroidenschauer ist beendet · der Asteroidenspawn ist wieder normal.',

@@ -6374,6 +6374,9 @@ html:lang(ja) .gk-tab {
 }
 /* "clarity and age": the rule one press deeper, beside the list's tag */
 .gk-intel__how {
+  /* its 44 px reach spills past the tag line: stay above the line below it (C9 audit) */
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -6587,6 +6590,189 @@ button.gk-ledger__row:disabled {
   justify-content: space-between;
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
+}
+
+/* ── C8: a probe report ─────────────────────────────────────────────────── */
+
+/* the key to every report: a range is theirs, the teal line is you */
+.gk-probes__key {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-probes__you {
+  flex: none;
+  width: 3px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 2px;
+  background: var(--gk-self);
+  box-shadow: 0 0 6px var(--gk-self);
+}
+.gk-probe {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3) var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 6px 16px var(--gk-outline);
+}
+.gk-probe__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--gk-hit);
+  margin-inline: -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+button.gk-probe__head {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.gk-probe__head:active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 8%, transparent), transparent 85%);
+}
+.gk-probe__who {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.gk-probe__name {
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--gk-ink);
+}
+.gk-probe__world {
+  margin-left: 6px;
+  font-size: var(--gk-t-floor);
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+.gk-probe__accuracy {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-probe__read {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  flex: none;
+}
+.gk-probe__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-probe__caught {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-warn);
+}
+.gk-probe__caught .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+/* THE READINGS IN A GLASS WELL: each a line from zero, their band, your mark. */
+.gk-readings {
+  display: grid;
+  gap: 8px;
+  padding: 10px var(--gk-s3);
+}
+.gk-reading {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr) 4.75rem;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-reading__label {
+  font-size: var(--gk-t-floor);
+  line-height: 1.25;
+  color: var(--gk-ink-2);
+}
+.gk-reading__track {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+.gk-reading__track::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--gk-ink) 24%, transparent);
+}
+.gk-reading__band {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+}
+.gk-reading__you {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 6px var(--gk-self);
+}
+.gk-reading__value {
+  text-align: right;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+
+/* how two outposts are weighed: the first hunt's rule card */
+.gk-howto {
+  display: grid;
+  gap: 6px;
+  padding: var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 3px 0 0 var(--gk-self);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
+.gk-howto__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-howto__title .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-howto__go {
+  font-weight: 700;
+  color: var(--gk-ink);
 }
 
 /* ── a count: minus, the figure, plus, and All (G2-f, 2026-11-14) ─────────────── */
@@ -7105,6 +7291,577 @@ button.gk-ledger__row:disabled {
   background: color-mix(in srgb, var(--gk-outline) 55%, transparent);
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
+}
+
+/* ── C9: the radar scope, the scan ledger, an instrument you do not own ────── */
+
+/* THE SCOPE: the disc at its true size against the galaxy, the beam sweeping what you hear. */
+.gk-scope {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 6px 16px var(--gk-outline);
+}
+.gk-scope__disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gk-self) 10%, transparent), transparent 70%),
+    var(--gk-outline);
+  box-shadow:
+    inset 0 0 0 1px var(--gk-glass-edge),
+    inset 0 3px 10px var(--gk-metal-shadow);
+}
+/* the graticule: a faint crosshair through you */
+.gk-scope__disc::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(color-mix(in srgb, var(--gk-self) 16%, transparent), color-mix(in srgb, var(--gk-self) 16%, transparent)) center / 1px 100% no-repeat,
+    linear-gradient(color-mix(in srgb, var(--gk-self) 16%, transparent), color-mix(in srgb, var(--gk-self) 16%, transparent)) center / 100% 1px no-repeat;
+}
+.gk-scope__rim {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--gk-ink) 40%, transparent);
+}
+.gk-scope__ring {
+  position: absolute;
+  border-radius: 50%;
+}
+.gk-scope__ring--sense {
+  border: 1px dashed color-mix(in srgb, var(--gk-self) 55%, transparent);
+}
+.gk-scope__ring--warn {
+  overflow: hidden;
+  border: 1.5px solid var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 12%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--gk-self) 40%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--gk-self) 25%, transparent);
+}
+/* THE BEAM: a live instrument, not a diagram — its lit edge leads, its trail fades behind. */
+.gk-scope__ring--warn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 280deg, color-mix(in srgb, var(--gk-self) 55%, transparent) 358deg, var(--gk-self) 360deg);
+  animation: gk-scope-sweep 4s linear infinite;
+}
+@keyframes gk-scope-sweep {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.gk-scope__you {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gk-self);
+  box-shadow: 0 0 6px var(--gk-self);
+}
+.gk-scope__legend {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.gk-scope__title {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--gk-ink);
+}
+.gk-scope__keys {
+  display: grid;
+  gap: 6px;
+}
+.gk-scope__key {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 1px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+/* the value sits under its name: a narrow legend never squeezes a long caption against it */
+.gk-scope__key dd {
+  grid-column: 2;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gk-scope__key[data-lit] dt {
+  color: var(--gk-ink);
+}
+.gk-scope__key[data-lit] dd {
+  color: var(--gk-self);
+}
+.gk-scope__swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.gk-scope__swatch[data-swatch='sense'] {
+  border: 1px dashed color-mix(in srgb, var(--gk-self) 55%, transparent);
+}
+.gk-scope__swatch[data-swatch='warn'] {
+  border: 1.5px solid var(--gk-self);
+  background: color-mix(in srgb, var(--gk-self) 25%, transparent);
+}
+.gk-scope__swatch[data-swatch='rim'] {
+  border: 1px dashed color-mix(in srgb, var(--gk-ink) 40%, transparent);
+}
+.gk-scope__edge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+
+/* what the next level adds, behind a lock */
+.gk-radar__next {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-radar__next .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.gk-radar__day {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: 10px var(--gk-s3);
+}
+.gk-radar__dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-radar__dayhead .gk-num {
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+.gk-radar__quiet {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: 10px var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 35%, var(--gk-metal-edge));
+  background: color-mix(in srgb, var(--gk-self) 8%, transparent);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink);
+}
+.gk-radar__quiet .gk-glyph {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--gk-self);
+}
+
+/* ONE SCAN, ONE ROW: a fresh one is a live threat, and its dot pings. */
+.gk-scan__dot {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.gk-scan__dot[data-fresh]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--gk-hostile);
+  animation: gk-scan-ping 1.8s ease-out infinite;
+}
+@keyframes gk-scan-ping {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+.gk-scan__world {
+  white-space: nowrap;
+  color: var(--gk-self);
+}
+.gk-scan__origin {
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-scan__age {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+
+/* AN INSTRUMENT YOU DO NOT OWN: it idles in its bay, what is missing sits behind a lock. */
+.gk-instrument {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 6px 16px var(--gk-outline);
+}
+.gk-instrument > .gk-btn {
+  grid-column: 1 / -1;
+}
+.gk-instrument__bay {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: var(--gk-r-sm);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent 70%),
+    var(--gk-outline);
+  box-shadow:
+    inset 0 0 0 1px var(--gk-glass-edge),
+    inset 0 3px 10px var(--gk-metal-shadow);
+}
+.gk-instrument__art {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px var(--gk-outline));
+  animation: gk-instrument-idle 5s ease-in-out infinite;
+}
+@keyframes gk-instrument-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.gk-instrument__words {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.gk-instrument__missing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-instrument__missing .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.gk-instrument__gives {
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  color: var(--gk-ink);
+}
+
+/* ── C10: the View sheet, the galaxy events guide, the chronicle ───────────── */
+
+.gk-view {
+  display: grid;
+  gap: var(--gk-s3);
+}
+.gk-view__layers > [data-sensor-toggle] + [data-sensor-toggle] {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-view__mark {
+  color: var(--gk-self);
+}
+
+/* THE EVENTS GUIDE: a lit countdown, then one plate per event. */
+.gk-guide {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s2);
+}
+.gk-nextevent {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: 10px var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--gk-good) 55%, var(--gk-metal-edge));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-good) 18%, transparent), transparent 80%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 3px 0 0 var(--gk-good), 0 6px 16px var(--gk-outline);
+}
+.gk-nextevent__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--gk-good);
+  background: color-mix(in srgb, var(--gk-good) 14%, var(--gk-outline));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gk-good) 45%, transparent);
+}
+/* the mark breathes while the wait runs: an opacity glow, cheap to draw */
+.gk-nextevent__mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--gk-good), 0 0 12px color-mix(in srgb, var(--gk-good) 55%, transparent);
+  opacity: 0;
+  animation: gk-nextevent-glow 2.4s ease-in-out infinite;
+}
+.gk-nextevent__mark .gk-glyph {
+  width: 20px;
+  height: 20px;
+}
+@keyframes gk-nextevent-glow {
+  50% {
+    opacity: 1;
+  }
+}
+.gk-nextevent__words {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-nextevent__label {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-good);
+}
+.gk-nextevent__line {
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--gk-ink);
+}
+.gk-guide__intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px var(--gk-s2);
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-guide__zone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gk-crystal) 40%, transparent);
+  background: color-mix(in srgb, var(--gk-crystal) 10%, transparent);
+  font-weight: 700;
+  color: var(--gk-crystal);
+  white-space: nowrap;
+}
+.gk-guide__zone .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-guide__daily {
+  text-align: center;
+}
+.gk-event {
+  --tone: var(--gk-crystal);
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, var(--gk-metal-edge));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--tone) 7%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 6px 16px var(--gk-outline);
+}
+.gk-event[data-tone='alloy'] {
+  --tone: var(--gk-alloy);
+}
+.gk-event[data-tone='hostile'] {
+  --tone: var(--gk-hostile);
+}
+.gk-event__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gk-s3);
+}
+.gk-event__bay {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--gk-r-sm);
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--gk-outline));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, transparent);
+}
+.gk-event__bay .gk-glyph {
+  width: 24px;
+  height: 24px;
+}
+.gk-event__words {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.gk-event__title {
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gk-ink);
+}
+.gk-event__summary {
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
+.gk-event__days {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* the kind of day over its windows: the windows get the whole width, two to a line */
+.gk-event__day {
+  display: grid;
+  gap: 4px;
+}
+.gk-event__dayname {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gk-ink-2);
+}
+.gk-event__windows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gk-event__note {
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink);
+}
+.gk-window {
+  display: inline-grid;
+  gap: 1px;
+  padding: 4px 8px;
+  border-radius: var(--gk-r-sm);
+  border: 1px solid var(--gk-glass-edge);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+}
+.gk-window__time {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-window__boost {
+  color: var(--gk-crystal);
+}
+.gk-window__local {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+
+/* THE CHRONICLE: what the galaxy saw, one ledger row a moment. */
+.gk-chron {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-block: var(--gk-s2);
+}
+.gk-chron__mark {
+  --tone: var(--gk-good);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--gk-outline));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent);
+}
+.gk-chron__mark[data-tone='hostile'] {
+  --tone: var(--gk-hostile);
+}
+.gk-chron__mark[data-tone='gold'] {
+  --tone: var(--gk-gold);
+}
+.gk-chron__mark[data-tone='quiet'] {
+  --tone: var(--gk-ink-2);
+}
+.gk-chron__mark .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-chron__side {
+  display: grid;
+  justify-items: end;
+  align-self: flex-start;
+  gap: 4px;
+  flex: none;
+  padding-top: 2px;
+}
+.gk-chron__count {
+  padding: 1px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo));
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-chron__time {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+  white-space: nowrap;
 }
 
 /* ── a strategic bay: Death Star, interception battery, radiation bomb (G2-g, 2026-11-14) ── */

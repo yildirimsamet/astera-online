@@ -18,7 +18,9 @@ export const chronicle = {
   launcherTradeShipEnded: 'Handelsschiff ist abgefahren',
   list: 'Öffentliche Ereignisse in dieser Galaxie',
   repeatCount: '{{count}} Mal',
-  empty: 'Die Galaxie ist vorerst ruhig. Der nächste Start könnte das ändern.',
+  /** C10: the kit empty state's title; `empty` is its body. */
+  emptyTitle: 'Die Galaxie ist vorerst ruhig',
+  empty: 'Der nächste Start könnte das ändern.',
   older: 'Frühere Ereignisse laden',
   loadingOlder: 'Lesen früherer Ereignisse',
   bombardment: 'Bombardierung erreicht {{planet}}',

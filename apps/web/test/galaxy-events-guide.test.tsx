@@ -74,8 +74,8 @@ describe('galaxy events guide', () => {
       const card = screen.getByRole('heading', { name: heading }).closest('article');
       expect(card, `${heading} has no card`).not.toBeNull();
       return [...card!.querySelectorAll('[data-event-days]')].map((row) => [
-        row.querySelector('.legend')?.textContent ?? '',
-        [...row.querySelectorAll('.num')].map((pill) => pill.textContent),
+        row.querySelector('[data-day-name]')?.textContent ?? '',
+        [...row.querySelectorAll('[data-window-time]')].map((pill) => pill.textContent),
       ]);
     };
 
@@ -113,6 +113,26 @@ describe('galaxy events guide', () => {
       expect(text).toContain('5');
       expect(text).not.toBe(i18n.t('galaxy.eventsGuide.asteroid.summary', { lng: language, rate: '0.75', frontMinutes: 30, window: 9 }));
     }
+  });
+
+  /** C10: the guide on the kit — a lit countdown, each event a plate, the signal's rules folded under their name. */
+  it('counts down to the next event on a lit kit plate', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-18T16:30:00.000Z'));
+    schedule.setNext({ kind: 'ASTEROID_SHOWER', startsAt: new Date('2026-09-18T17:00:00.000Z') });
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    expect(screen.getByRole('status', { name: 'Sıradaki etkinlik' })).toHaveClass('gk-nextevent');
+    vi.useRealTimers();
+  });
+
+  it('lays each event on a kit plate and folds the unknown signal under its name', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    for (const heading of ['Asteroid Yağmuru', 'Ticaret Gemisi', 'Galaksilerarası Konvoy']) {
+      expect(screen.getByRole('heading', { name: heading }).closest('article')).toHaveClass('gk-event');
+    }
+    const signal = screen.getByText('Bilinmeyen sinyal').closest('details');
+    expect(signal).not.toBeNull();
+    expect(signal).not.toHaveAttribute('open');
   });
 
   it('explains the reward and interaction rules without technical language', () => {

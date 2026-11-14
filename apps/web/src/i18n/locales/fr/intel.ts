@@ -107,7 +107,7 @@ export const intel = {
     cost: "Sans Radar, la plupart des sondes envoyées vers ce monde passent inaperçues.",
     quiet: "Aucun sondage détecté. Radar de niveau {{level}} à l’écoute.",
     scan: "Sondage détecté",
-    bearing: " · depuis la direction galactique {{bearing}}",
+    bearing: "depuis la direction galactique {{bearing}}",
     origin: " · {{planet}}",
     /** Le monde sur lequel le sondage est arrivé. */
     onWorld: " · {{planet}}",
@@ -116,6 +116,9 @@ export const intel = {
     ringWarn: "Alerte temporisée",
     /** Tant que les deux anneaux sont confondus, un seul titre suffit. */
     ringOne: "Détection et alerte temporisée",
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: "Bord de la galaxie",
+    reach: "{{value}} unités",
     /** Même lecture pour ceux qui ne voient pas les anneaux. */
     noteFleets:
       "Un Radar de niveau {{level}} distingue à {{sense}} unités les menaces dirigées contre toi, mais n’affiche leur temps d’arrivée qu’à partir de {{warn}} unités.",

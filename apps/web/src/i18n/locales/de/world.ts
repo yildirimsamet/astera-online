@@ -95,7 +95,7 @@ export const galaxy = {
   recovery: "Schutz nach Rückkehr durchbrochen",
   emp: "EMP-Ausfall",
   claimOpen: "Kann beansprucht werden",
-  claimMine: "Ihr Vorrang",
+  claimMine: "Dein Vorrang",
   claimPriority: "Vorrang des Angreifers",
 
   /** What a launch says as it leaves. */
@@ -176,26 +176,26 @@ export const focus = {
     settleNeedPriority: "Kolonie gründen · Vorrang des Angreifers",
     settleRecovering: "Kolonie gefunden · Ursprung wird wiederhergestellt",
     settleWhy: {
-      recovering: "Ihre Welt erholt sich – noch kann keine Flotte sie verlassen.",
+      recovering: "Deine Welt erholt sich – noch kann keine Flotte sie verlassen.",
       colonyCore: "Nächste Kolonie benötigt Kommandokern {{required}} · jetzt {{current}}",
-      colonyMax: "Sie besitzen bereits die meisten Kolonien, die es gibt: {{max}}.",
+      colonyMax: "Du besitzt bereits die meisten Kolonien, die möglich sind: {{max}}.",
       flightBay: "Jeder Flugschacht wird genutzt – ich habe ihn gefunden, als eine Flotte landete.",
       courier: "{{need}} Kuriere benötigt · {{have}} hier",
       alloy: "{{need}} Legierung benötigt · {{have}} hier",
       crystal: "{{need}} Kristall benötigt · {{have}} hier",
       fuel: "{{need}} Deuterium benötigt · {{have}} hier",
       tooLate: "Kuriere von hier landen nach Rennende.",
-      priority: "Bis sein Vorrang endet, darf nur der Angreifer landen. Starten Sie in {{wait}}, dann landen Ihre Kuriere genau zu dessen Ende.",
+      priority: "Bis sein Vorrang endet, darf nur der Angreifer landen. Starte in {{wait}}, dann landen deine Kuriere genau zu dessen Ende.",
     },
     settlementConfirm: {
       eyebrow: "Kolonierasse",
       title: "{{world}} gefunden",
       unsurveyedTitle: "Diese Welt gefunden",
       race: "Die erste gültige Zwei-Kurier-Flotte erobert die Welt.",
-      priorityMineFirst: "Ihr Vorrang: Ihre Kuriere landen, bevor er endet – niemand kann vor Ihnen landen.",
-      priorityMineLate: "Ihre Kuriere landen nach dem Ende Ihres Vorrangs; ab dann gewinnt die erste gültige Ankunft.",
+      priorityMineFirst: "Dein Vorrang: Deine Kuriere landen, bevor er endet – niemand kann vor dir landen.",
+      priorityMineLate: "Deine Kuriere landen nach dem Ende deines Vorrangs; ab dann gewinnt die erste gültige Ankunft.",
       noRecall:
-        "Kolonieschiffe können nicht zurückgerufen werden. Wenn Sie die Kolonie gefunden haben, werden die Gründungskosten ausgegeben und die Welt wird mit dem Bestand ihrer Stufe geöffnet. Wenn ein anderer Kommandant zuerst gewinnt, kehren Ihre Kuriere und Gründungskosten zurück; abgebrannte Brennelemente nicht.",
+        "Kolonieschiffe können nicht zurückgerufen werden. Wenn du die Kolonie gründest, sind die Gründungskosten ausgegeben, und die Welt öffnet mit dem Bestand ihrer Stufe. Wenn ein anderer Kommandant zuerst gewinnt, kehren deine Kuriere und die Gründungskosten zurück; verbrauchter Treibstoff nicht.",
       transports: "Kolonieschiffe",
       foundingCost: "Gründungskosten",
       opensWith: "Kolonie wird geöffnet mit",
@@ -273,41 +273,41 @@ export const focus = {
       "Ein weiterer EMP-Angriff startet die einstündige Unterdrückung neu; die Kontrolle bleibt unverändert.",
     capitalEmp: "Hauptwelt unter EMP",
     capitalEmpHint: "Bis das einstündige EMP endet, bleibt die Aegis leer und Bodenverteidigungen nehmen an keinem Kampf teil.",
-    yourCapital: "Ihr geschütztes Hauptwelt",
+    yourCapital: "Deine geschützte Hauptwelt",
     yourColony: "Deine Kolonie",
-    transferHint: "Bewegen Sie Schiffe und Ressourcen hierher und wählen Sie, welche Schiffe zurückfliegen.",
+    transferHint: "Verlege Schiffe und Ressourcen hierher und wähle, welche Schiffe zurückfliegen.",
     transferRoute: "Welttransfer",
     transferOrigin: "Ursprung",
     transferTarget: "Ziel",
     transferFrom: "Von {{origin}}",
     transferCraft: "Bastelbereit",
-    transferPrepare: "Wählen Sie Schiff und Ressourcen",
+    transferPrepare: "Schiffe und Ressourcen wählen",
     transferRecovering: "Die Ursprungswelt erholt sich",
     colonyRoute: "Route zu einer Kolonie",
     claimOpen: "Kolonierennen eröffnet",
-    settlementInFlight: "Ihre Kolonieschiffe sind unterwegs",
+    settlementInFlight: "Deine Kolonieschiffe sind unterwegs",
     claimRaceExplain: "Es gehört noch niemandem. Die ersten zwei gültigen Kuriere, die eintreffen, nehmen es entgegen.",
     colonySlots: "{{used}} / {{total}} Kolonieplätze",
     routeRaid: "Gewinne einen entscheidenden Überfall",
     routeRaidDetail: "Angriff mit Kampfschiffen. Zerstöre jeden Verteidiger und den Schild.\nDas",
     routeClaim: "-Rennen wird automatisch geöffnet",
-    routeClaimDetail: "Nichts zum Senden. Ein entscheidender Überfall eröffnet das öffentliche Rennen von selbst – haben Sie dabei einen freien Kolonieplatz, gehören die ersten {{minutes}} Min. nur Ihnen.",
+    routeClaimDetail: "Nichts zu senden. Ein entscheidender Überfall eröffnet das öffentliche Rennen von selbst – hast du dabei einen freien Kolonieplatz, gehören die ersten {{minutes}} Min. nur dir.",
     routeSettle: "Entsende die Kolonieflotte",
-    routeSettleDetail: "Senden Sie erst jetzt die Gründungsschiffe und Fracht. Die erste gültige Ankunft gewinnt.",
-    routeSettleInFlightDetail: "Ihre Gründungsflotte fliegt. Der erste gültige Teilnehmer gewinnt.",
+    routeSettleDetail: "Sende erst jetzt die Gründungsschiffe und die Fracht. Die erste gültige Ankunft gewinnt.",
+    routeSettleInFlightDetail: "Deine Gründungsflotte fliegt. Die erste gültige Ankunft gewinnt.",
     raidFleetBadge: "Überfall-Flotte",
     raidFleetExplain:
-      "Wählen Sie Kampfschiffe im Überfall-Bildschirm und zerstören Sie jeden Verteidiger und den Schild. Für Schritt 1 werden keine Kuriere, Gründungsfracht oder Kolonieplätze benötigt.",
+      "Wähle Kampfschiffe im Überfall-Bildschirm und zerstöre jeden Verteidiger und den Schild. Für Schritt 1 brauchst du keine Kuriere, keine Gründungsfracht und keinen Kolonieplatz.",
     automaticBadge: "Automatisch",
     automaticExplain:
       "Ein entscheidender Überfall eröffnet das Rennen automatisch. Für Schritt 2 schickst du kein weiteres Schiff und bezahlst auch keine andere Ressource.",
     settlementAwayBadge: "Im Flug",
     settlementAwayExplain:
-      "Ihre beiden Kuriere und die Gründungsfracht sind abgereist. Sie können nicht zurückgerufen werden; Die erste gültige Ankunft erobert die Welt.",
+      "Deine beiden Kuriere und die Gründungsfracht sind abgeflogen. Sie können nicht zurückgerufen werden; die erste gültige Ankunft erobert die Welt.",
     claimCloses: "Schließt in {{duration}}",
-    claimPriorityMineTitle: "Kolonierennen · Ihr Vorrang",
+    claimPriorityMineTitle: "Kolonierennen · dein Vorrang",
     claimPriorityOtherTitle: "Kolonierennen · Vorrang des Angreifers",
-    claimPriorityMineExplain: "Sie haben diesen Anspruch eröffnet: In den ersten {{minutes}} Min. dürfen nur Ihre Kuriere landen. Danach treten alle an.",
+    claimPriorityMineExplain: "Du hast diesen Anspruch eröffnet: In den ersten {{minutes}} Min. dürfen nur deine Kuriere landen. Danach treten alle an.",
     claimPriorityOtherExplain: "Der Angreifer, der diesen Anspruch eröffnet hat, hat die ersten {{minutes}} Min.: Nur seine Kuriere dürfen landen. Danach gewinnt die erste gültige Ankunft.",
     claimPriorityCloses: "Vorrang endet in {{priority}} · Rennen schließt in {{closes}}",
     claimRaidStillOpen:
@@ -316,7 +316,7 @@ export const focus = {
     colonySlotNeedsCore: "Kolonieplatz: Kommandokern {{required}} nötig · jetzt {{current}}",
     colonySlotsFull: "Kolonieplätze voll ({{max}})",
     colonySlotExplain:
-      "Der Kommandokern Ihrer Hauptstadt muss beim Abflug der Gründungsflotte einen freien Kolonieplatz bieten. Ist er frei, wenn Ihr Überfall das Rennen eröffnet, gehören Ihnen auch die ersten {{minutes}} Min.",
+      "Der Kommandokern deiner Hauptstadt muss beim Abflug der Gründungsflotte einen freien Kolonieplatz bieten. Ist er frei, wenn dein Überfall das Rennen eröffnet, gehören dir auch die ersten {{minutes}} Min.",
     captureColonySlotExplain:
       "Wird benötigt, um eine Kolonie zu gründen, niemals, um eine anzugreifen: Ein Todesstern überträgt nichts.",
     openFlightBay: "1 Freiflugbucht",
@@ -358,14 +358,14 @@ export const focus = {
      * says the one thing a struck commander most needs to hear.
      */
     recoveryDropWarning:
-      "{{duration}} übrig. Bis dahin wird nichts produziert und nichts gestartet. Die Welt bleibt Ihnen und Ihre Flotte ist intakt.",
+      "Noch {{duration}}. Bis dahin wird nichts produziert und nichts gestartet. Die Welt bleibt deine, und deine Flotte ist intakt.",
     empWarning: "{{duration}} verbleiben. Aegis regeneriert nicht; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
 
     eyebrow: "Wird von {{owner}} gehalten",
     location: "Welt · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */
     unsurveyedEyebrow: "Welt · nicht vermessen",
-    unsurveyedTitle: "Sie haben hier noch nie nachgeschaut",
+    unsurveyedTitle: "Du hast hier noch nie nachgesehen",
     /* Paired side by side on the rail, so the verb is the label and the cost is
        its own micro line. See `ProbeControl`. */
     /**
@@ -392,7 +392,7 @@ export const focus = {
     attackShort: "Angriff planen",
     probeShort: "-Sonde",
     probeCoolingShort: "Sonde in {{duration}}",
-    attack: "Planen Sie einen Angriff",
+    attack: "Angriff planen",
     attackNeutralAgain: "Erneuter Überfall · Anspruch unverändert",
     attackOriginRecovering: "-Angriff · Ursprung wird wiederhergestellt",
     attackSilentSpace: "Kann nicht angreifen · im Stillen Raum geschlossen",
@@ -404,7 +404,7 @@ export const focus = {
     windowOpen:
       "Ihre Flotte ist nicht zu Hause. Das ist das Fenster, um das sich das ganze Spiel dreht.",
     distance: "Abstand",
-    reach: "Ihre Reichweite",
+    reach: "Deine Reichweite",
     reachUnknown: "—",
 
     headlineFleetAway: "Flotte weg",
@@ -414,17 +414,17 @@ export const focus = {
     headlineFought: "hat gegen {{age}} gekämpft",
     headlineNone: "Keine Informationen",
 
-    installTelescope: "Installieren Sie ein Teleskop",
+    installTelescope: "Teleskop installieren",
     watchSlot: "Watch · Slot {{slot}}",
     replaceSlot: "Slot {{slot}} · ersetzt {{target}}",
     watching: "Beobachten {{target}}",
-    sendProbe: "Senden Sie eine Sonde · {{alloy}} Legierung · {{crystal}} Kristall",
+    sendProbe: "Sonde senden · {{alloy}} Legierung · {{crystal}} Kristall",
     probeAway: "Sonde entfernt · meldet sich in {{duration}} zurück",
     /*
       ONE LOOK PER WORLD PER HOUR (D121). The control says which world is closed
       and for how long, rather than letting the player spend the tap to find out.
     */
-    probeCooling: "Sie haben gerade hier nachgesehen · eine weitere Sonde in {{duration}}",
+    probeCooling: "Du hast gerade hier nachgesehen · nächste Sonde in {{duration}}",
     markRival: "Rivalen markieren",
     rivalMarkedAction: "Rivale",
     rivalMarked: "{{commander}} ist jetzt dein Rivale.",
@@ -442,13 +442,13 @@ export const focus = {
     rivalNoContact:
       "Du hast diesen Kommandanten markiert. Der erste Schritt zwischen euch wartet noch.",
     rivalAhead:
-      "Du hältst die Kante. Sie können noch mehr Dominion von Ihnen zurückgewinnen.",
+      "Du hast die Nase vorn. Sie können noch mehr Dominion von dir zurückgewinnen.",
     rivalBehind: "Sie behalten die Nase vorn. Die Schulden sind noch offen.",
     rivalEven:
-      "Das Hauptbuch zwischen Ihnen ist ausgeglichen. Die nächste Begegnung bricht es.",
+      "Die Bilanz zwischen euch ist ausgeglichen. Die nächste Begegnung entscheidet sie.",
     rivalFeud: "{{count}} Begegnungen haben dazu geführt, dass dies mehr als ein einzelner Überfall war.",
     rivalPurpose:
-      "Pinnt diesen Kommandanten und Ihren gemeinsamen Saisonrekord. Es gewährt keinen Kampf- oder Informationsbonus.",
+      "Heftet diesen Kommandanten und eure gemeinsame Saisonbilanz an. Es gibt keinen Kampf- oder Aufklärungsbonus.",
   },
 
   asteroid: {
@@ -461,7 +461,7 @@ export const focus = {
     stateReturning: "auf dem Heimweg",
     stateInbound: "eingehend",
     noCraft: "Keine Prospektoren zu Hause",
-    tooLate: "Es wird verschwunden sein, bevor Sie ankommen",
+    tooLate: "Es ist verschwunden, bevor du ankommst",
     researchNeeded: "Forschungsisotopenspektrometrie zuerst",
     /**
      * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
@@ -471,7 +471,7 @@ export const focus = {
      * job. Where the rule came from belongs in the docs, not on the control.
      */
     resting: "Schiff ruht · {{duration}}",
-    send: "Senden Sie {{count}} · {{duration}}",
+    send: "{{count}} senden · {{duration}}",
     oreLeft: "Erz übrig",
     leavesIn: "Geht rein",
     composition: "Zusammensetzung",
@@ -479,7 +479,7 @@ export const focus = {
     compositionUnknown: "Isotopenzusammensetzung unbekannt",
     compositionIsotope: "{{crystal}} % Kristall · {{deuterium}} % Deuterium",
     deuteriumRoute:
-      "Schicken Sie Prospektoren, um Deuterium zu bergen. Der Rücktransport landet im Werk; Sammeln Sie es im Lager.",
+      "Schick Prospektoren, um Deuterium zu bergen. Die Rückfracht landet in den Werken; sammle sie ins Lager.",
     speed: "Geschwindigkeit",
     speedValue: "{{rate}}/min",
     taken: "Jemand hat bereits {{amount}} daraus entnommen.",
@@ -491,7 +491,7 @@ export const focus = {
     derrickPitch:
       "Ein <0>{{name}}</0> im Orbit würde dafür sorgen, dass jeder <1>{{hold}}</1> schneller dort ankommt.",
     intercept:
-      "Ihr Schiff würde es in {{reach}} erreichen, mit {{spare}} übrig.",
+      "Dein Fahrzeug würde es in {{reach}} erreichen, mit {{spare}} Puffer.",
   },
 
   haul: {
@@ -518,14 +518,14 @@ export const focus = {
     stateInbound: "eingehend",
     noCraft: "Kein Schiff zu Hause",
     measuring: "Flugzeit wird berechnet…",
-    tooLate: "Es wird verschwunden sein, bevor Sie ankommen",
+    tooLate: "Es ist verschwunden, bevor du ankommst",
     resting: "Schiff ruht · {{duration}}",
-    send: "Senden Sie {{count}} · {{duration}}",
+    send: "{{count}} senden · {{duration}}",
     alloyLeft: "Legierung übrig",
     crystalLeft: "Kristall übrig",
     deuteriumLeft: "Deuterium übrig",
     goneIn: "Eingegangen",
-    yourHold: "Ihr Laderaum",
+    yourHold: "Dein Laderaum",
     body: "Jemand hat hier eine Flotte verloren. Es verblasst, und jeder kann es sehen – wer zuerst dort ankommt, nimmt, was übrig bleibt.",
   },
 
@@ -574,7 +574,7 @@ export const focus = {
 
   contact: {
     eyebrowBattle: "Ein Überfall landet",
-    eyebrowInbound: "Dieser Kontakt kommt für Sie",
+    eyebrowInbound: "Dieser Kontakt kommt auf dich zu",
     eyebrowSalvage: "Jemand rettet",
     eyebrowMining: "Jemand schürft",
     eyebrowProbe: "Jemand ist auf der Suche",
@@ -582,7 +582,7 @@ export const focus = {
     titleUnknown: "Nicht identifiziert",
     eyebrowUnknown: "Da draußen ist etwas",
     unknownHint:
-      "Außerhalb der Sichtweite Ihres Teleskops. Wenn dieser Kontakt in Sicht kommt, werden der Schiffstyp und bei einer Flotte die genauen Rümpfe und Anzahlen ablesbar.",
+      "Außerhalb der Sichtweite deines Teleskops. Wenn dieser Kontakt in Sicht kommt, werden der Schiffstyp und bei einer Flotte die genauen Rümpfe und Anzahlen ablesbar.",
     /**
      * RADAR L5 NAMES THE KIND WITHOUT NAMING THE CRAFT.
      *
@@ -600,7 +600,7 @@ export const focus = {
     titlePirate: "Piratenflotte",
     eyebrowPirate: "Piraten sind da draußen",
     boundaryPirate:
-      "Sie können die Piraten selbst sehen und sehen, was sie fliegen. Nichts darüber, woher sie kamen, und nichts über ihre Umlaufbahn – ein Pirat ist eine Position, keine Route.",
+      "Du kannst die Piraten selbst sehen und was sie fliegen. Nichts darüber, woher sie kamen, und nichts über ihre Umlaufbahn – ein Pirat ist eine Position, keine Route.",
     working: "Im Einsatz",
     craftCount: "{{count}} Schiff",
     /**
@@ -616,12 +616,12 @@ export const focus = {
     massHeavy: "Große Flotte",
     massHint: "Nur Größe – kein Manifest in diesem Bereich.",
     inboundHint:
-      "Radar weiß, dass es auf eine Ihrer Welten gerichtet ist. Die Ankunftszeit wird separat als zeitgesteuerte Warnung übermittelt.",
+      "Das Radar weiß, dass es auf eine deiner Welten zielt. Die Ankunftszeit kommt separat als zeitgesteuerte Warnung.",
     bombarding: "Bombardierung",
     settling: "Beruhigt sich jetzt",
     unattributed: "Ohne Zuordnung",
     arrivalUnknown: "Ankunft unbekannt",
-    inboundNoClock: "Auf Sie gerichtet · keine Ankunftszeit",
+    inboundNoClock: "Zielt auf dich · keine Ankunftszeit",
     craftLabel: "Schiff",
     craftUnknown: "—",
     statusLabel: "-Status",
@@ -635,11 +635,11 @@ export const focus = {
     boundaryMining:
       "Du hast diesen Felsen entdeckt, daher ist sein Abbauweg sichtbar: Ziel, Route und Uhr. Was nach Hause kommt, bleibt privat.",
     boundaryFleet:
-      "Im Visier des Teleskops können Sie das Fahrzeug selbst identifizieren. Für eine Flotte sind die genauen Rümpfe und Anzahlen sichtbar. Sein Besitzer, Herkunft und Ziel sind es nicht.",
+      "Im Blickfeld des Teleskops kannst du das Fahrzeug selbst identifizieren; bei einer Flotte sind die genauen Rümpfe und Anzahlen sichtbar. Besitzer, Herkunft und Ziel nicht.",
     boundaryUnknown:
-      "Sie können nur Bewegungen sehen. Art, Größe, Eigentümer, Herkunft und Ziel des Fahrzeugs fehlen in dieser Lesart.",
+      "Du kannst nur Bewegung sehen. Art, Größe, Besitzer, Herkunft und Ziel des Fahrzeugs fehlen in dieser Messung.",
     telescopeHint:
-      "Wenn Sie eine Welt beobachten, erfahren Sie, ob ihre Flotte zu Hause ist. Das sind die Informationen, die Bewegungen auf der Karte in ein mögliches Angriffsfenster verwandeln.",
+      "Wenn du eine Welt beobachtest, erfährst du, ob ihre Flotte zu Hause ist. Genau diese Information macht aus Bewegungen auf der Karte ein mögliches Angriffsfenster.",
     wreckHint:
       "Wrack ist öffentlich. Was von beiden Flotten übrig bleibt, wird in Kürze dort im Orbit sein, und jeder kann es holen.",
   },
@@ -684,7 +684,7 @@ export const pirate = {
   damagePenalty: "Diese Flotte verursacht {{percent}} % weniger Schaden",
   /** Opens the same commitment sheet a raid on a world opens. D150. */
   attack: "Angriff",
-  yourFleet: "Ihre Flotte",
+  yourFleet: "Deine Flotte",
   atHome: "{{count}} zu Hause",
   fewer: "Weniger {{name}}",
   more: "Mehr {{name}}",
@@ -704,7 +704,7 @@ export const pirate = {
   mass: "Masse",
   leavesIn: "Geht rein",
   reach: "Erreicht es in {{duration}}",
-  reachLabel: "Sie kommen an",
+  reachLabel: "Du kommst an in",
   /**
    * WHAT THE CREW IS WORTH, ON THE SHEET'S OWN AXIS. D183.
    *
@@ -713,15 +713,15 @@ export const pirate = {
    * where the player only needs to know which figure is bigger.
    */
   strengthLabel: "Feuerkraft",
-  tooLate: "Es verlässt das Gebiet, bevor Sie es erreichen können",
+  tooLate: "Es verlässt das Gebiet, bevor du es erreichen kannst",
   unreachable: "Nichts auf dieser Welt könnte es fangen",
   alreadyRaiding: "Auf dieser Welt gibt es bereits einen Überfall",
-  outOfSight: "Nicht auf Ihren Sensoren",
+  outOfSight: "Nicht auf deinen Sensoren",
   noShips: "Keine Schiffe zu Hause",
-  captureHint: "Bei einem entscheidenden Sieg erhalten Sie möglicherweise ein Schiff seiner Besatzung",
+  captureHint: "Bei einem entscheidenden Sieg erhältst du möglicherweise ein Schiff seiner Besatzung",
   captured: "{{hull}} erfasst",
   captureMissed: "Nichts mehr übrig, was es wert wäre, nach Hause geschleppt zu werden",
-  send: "Senden Sie {{count}} · {{duration}}",
+  send: "{{count}} senden · {{duration}}",
   outbound: "Einen Piratenüberfall kannst du vor Gefechtsbeginn einmal zurückrufen.",
   holdsHint: "Sind seine Kriegsschiffe gefallen, können seine Frachter nicht entkommen – auch sie gehören dir.",
   /**
@@ -732,9 +732,9 @@ export const pirate = {
    * current — an orbit is solvable and the crew is the lane's live state, exactly
    * as a rock you have found keeps reporting its remaining ore.
    */
-  remembered: "Verfolgt, seit Sie es identifiziert haben · derzeit nicht auf Ihren Sensoren",
+  remembered: "Verfolgt, seit du es identifiziert hast · gerade nicht auf deinen Sensoren",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
     "Ein identifizierter Pirat bleibt bis zur Zerstörung oder zum Ablauf gelistet. Außerhalb der Sensorreichweite bleiben Route und bekannte Besatzung sichtbar. Die Live-Sicht hängt weiter von der Reichweite ab.",
-  hoardHint: "Was Sie nach Hause tragen, wird durch die von Ihnen mitgebrachten Laderäume begrenzt.",
+  hoardHint: "Was du nach Hause trägst, ist durch die mitgebrachten Laderäume begrenzt.",
 } as const;

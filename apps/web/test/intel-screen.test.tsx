@@ -245,6 +245,16 @@ describe('the watch shelf', () => {
     expect(document.querySelector('[data-instrument-diagram="radar"]')).not.toBeNull();
   });
 
+  /** C9: a missing instrument is sold on the kit — what it is missing behind a lock, and the kit's key to build it. */
+  it('sells a missing instrument on the kit, with the kit key to Orbit', async () => {
+    show({ telescope: 0, radar: 0, watching: 0, worlds: 47, onOpenOrbit: vi.fn() });
+    await shelf('Radar');
+    const card = document.querySelector<HTMLElement>('[data-instrument-diagram="radar"]')!.closest<HTMLElement>('.gk-instrument')!;
+    expect(card).not.toBeNull();
+    expect(within(card).getByText('You have no Radar').closest('.gk-instrument__missing')).not.toBeNull();
+    expect(within(card).getByRole('button', { name: 'Open Orbit' })).toHaveClass('gk-btn');
+  });
+
   /**
    * The next slot is offered only where the next level genuinely buys one. D18 gives
    * slots at L1, L3 and L5, so at L1 the next level buys nothing here and saying
@@ -432,6 +442,35 @@ describe('the radar, glanced from the watch shelf', () => {
     await shelf('Radar');
     await userEvent.click(screen.getByRole('button', { name: /Kestrel/ }));
     expect(focus).toHaveBeenCalledWith('enemy-world');
+  });
+
+  /** C9: a scan is one ledger row and one door — to whoever scanned you once Radar names them, else to the world it hit. */
+  it('makes each scan one door, to the world that scanned you once the Radar names it', async () => {
+    const focus = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5, radarLog: [{ ...scans[0]!, originPlanetId: 'enemy-world' }, scans[1]!], onOpenDossier: focus });
+    await shelf('Radar');
+    const named = screen.getAllByRole('button', { name: /Kestrel/ });
+    expect(named).toHaveLength(1);
+    expect(named[0]).toHaveClass('gk-ledger__row');
+    expect(named[0]!.textContent).toMatch(/Home/);
+    const plain = screen.getAllByRole('button', { name: /Home/ });
+    expect(plain).toHaveLength(2);
+    await userEvent.click(plain[1]!);
+    expect(focus).toHaveBeenCalledWith('p1');
+  });
+
+  it('says what the next Radar level adds, behind a lock', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans });
+    await shelf('Radar');
+    expect(document.querySelector('[data-radar-next]')?.textContent).toMatch(/L5 names the planet/);
+  });
+
+  it('reads the reach in units against the galaxy edge it is drawn on', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    await shelf('Radar');
+    const card = document.querySelector('[data-radar-reach]')!.parentElement!;
+    expect(card.textContent).toContain(`${String(radarRange(5))} units`);
+    expect(card.textContent).toMatch(/Galaxy edge/);
   });
 });
 
@@ -706,6 +745,27 @@ describe('what a probe brought back', () => {
     await shelf('Probe reports');
     await userEvent.click(screen.getByRole('button', { name: /open dossier/i }));
     expect(onOpenDossier).toHaveBeenCalledWith('q0');
+  });
+
+  /** C8: a report is the kit's plate — a head that opens the dossier, the readings in a glass well. */
+  it('lays each report on the kit: a plate, its readings in a well, its head a door', async () => {
+    const onOpenDossier = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { detected: true })], onOpenDossier });
+    await shelf('Probe reports');
+    const card = document.querySelector<HTMLElement>('article')!;
+    expect(card).toHaveClass('gk-probe');
+    expect(card.querySelector('.gk-readings')?.querySelectorAll('[data-range-band]')).toHaveLength(3);
+    expect(within(card).getByText(/they caught it/i)).toHaveClass('gk-probe__caught');
+    expect(within(card).getByRole('button', { name: /open dossier/i })).toHaveClass('gk-btn');
+    await userEvent.click(within(card).getByRole('button', { name: /Someone/ }));
+    expect(onOpenDossier).toHaveBeenCalledWith('q0');
+  });
+
+  it('keeps the head a plain heading when there is no dossier to open', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Probe reports');
+    expect(screen.queryByRole('button', { name: /Someone/ })).toBeNull();
+    expect(screen.getByText('Someone')).toBeInTheDocument();
   });
 
   describe('aboard a ship', () => {

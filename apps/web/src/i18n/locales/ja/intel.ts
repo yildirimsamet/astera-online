@@ -25,7 +25,7 @@ export const intel = {
     window: "ウィンドウ {{duration}}",
     empty: "まだ何も知られていません: 望遠鏡 はライブを監視し、プローブは 1 つの読み取り値を返します。",
   },
-  openOrbit: "オープンオービット",
+  openOrbit: "軌道を開く",
   coverage: {
     label: "カバレッジ",
     blind: "単一の惑星を見ることはできません",
@@ -60,7 +60,7 @@ export const intel = {
   },
 
   probes: {
-    openDossier: "オープンドシエ",
+    openDossier: "調査書を開く",
     heading: "プローブレポート",
     newest: "新しい順",
     missing: "プローブは戻ってきません",
@@ -99,7 +99,7 @@ export const intel = {
     day: "過去 24 時間",
     heading: "誰があなたを見ていますか",
     level: "レーダー L{{level}}",
-    missing: "レーダー がありません",
+    missing: "レーダーがありません",
     gives:
       "範囲内の動きと、自分の惑星を狙う脅威の到着時間を示します。探査機を検出できますが、必ず検出するわけではありません。",
     cost: "レーダーがなければ、この惑星への探査機の多くは検出されずに通過します。",
@@ -114,6 +114,9 @@ export const intel = {
     ringWarn: "時間制限付き警告",
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: "検出と時限警告",
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: "銀河の端",
+    reach: "{{value}} 単位",
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the
@@ -131,8 +134,8 @@ export const intel = {
      */
     noteSlow: "低速で重い艦隊が レーダー リーチ内に長く留まります。",
     noteProbesLegacy: "レーダー L{{level}} はプローブを捕捉し、そのサークル内に侵入する艦隊について警告します。",
-    noteBearing: "L2 は、来た方向を追加します。",
-    noteOrigin: "L5 は惑星に名前を付けます。",
+    noteBearing: "L2 では来た方向もわかります。",
+    noteOrigin: "L5 では発信元の惑星名がわかります。",
   },
 } as const;
 
