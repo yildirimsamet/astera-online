@@ -847,6 +847,50 @@ Doğrulanamayanlar:
 - Gemideki av (karakol okuması ve "Saldır") galeride yok; yalnız testlerle doğrulandı.
 - `OutpostReading` başlangıç ekranlarına ait (G15); ona dokunulmadı.
 
+**C9 Radar rafı ve eksik alet kartı ✅ (2026-11-14, yardımcı oturum).** G3 #8/#9. Oyuncunun sorusu şu: "Beni kim tarıyor, radarım ne kadar uzağı duyuyor, bir sonraki seviye bana ne kazandırır?" Radar kuralları, menziller ve tarama günlüğü değişmedi.
+
+- **Radar ekranı (`.gk-scope`):** disk galaksiye göre gerçek boyutunda duruyor. İçinde ince bir artı işareti var; uyarı halkasının içinde turkuaz bir tarama ışını dönüyor. Disk artık canlı bir alet, durağan bir çizim değil.
+  - Yandaki açıklama:
+    - Seviye başlığı 14 px.
+    - Her halkanın adı ve menzili birimiyle ("4275 birim"); değer, adın altında.
+    - Kesik çizgili dış halkanın ne olduğu yazıyor: "Galaksinin kenarı". Önceden halkaların neye göre ölçüldüğü söylenmiyordu.
+- **Sonraki seviye:** kilit işaretli tek satır ("5. seviye çıkış dünyasının adını verir"). Yavaş filo kuralı ayrı bir not.
+- **Son 24 saat:** cam kuyuda; başlık büyük harfle bağırmıyor.
+- **Tarama listesi:** kitin defteri (`gk-ledger`). Her tarama tek satır ve tek kapı:
+  - Radar taramayı yapanı adlandırdıysa (5. seviye) satır onun dosyasını açar; yoksa taramanın düştüğü kendi dünyanı.
+  - Eskiden satır içinde iki küçük altı çizili bağlantı vardı (44 px altı).
+  - Son 6 saatin taraması kırmızı noktayla atıyor.
+  - Dünya adı bölünmüyor.
+- **Sessiz radar:** turkuaz tikli bir "dinlemede" şeridi.
+- **Eksik alet kartı (`Instrument`, `.gk-instrument`):** Teleskop, Sonda ve Radar için ortak.
+  - Alet kendi yuvasında hafifçe süzülüyor.
+  - "Radarın yok" satırı kilit işaretli ve amber renkte.
+  - Ne vereceği 14 px; bedeli not olarak.
+  - "Yörüngeyi aç" kitin turuncu ana tuşu oldu (eskiden 36 px'lik çerçeve).
+- **Çeviri düzeltmeleri:**
+  - Almanca "Offener Orbit" → "Orbit öffnen"; İspanyolca "Órbita abierta" → "Abrir órbita"; Japonca "オープンオービット" → "軌道を開く".
+  - tr ve fr yön satırı "·" ile başlıyordu; düzeltildi.
+  - Japonca: "レーダー がありません" boşluğu kaldırıldı. L2/L5 cümleleri anlamlı hâle geldi ("L5 は惑星に名前を付けます" → "L5 では発信元の惑星名がわかります").
+  - Yeni anahtarlar ×6: `intel.radar.rim`, `intel.radar.reach`.
+- **C7 artığı:** "Netlik ve yaş" düğmesinin alt 2 px'i alttaki satırın altında kalıyordu. Düğme öne alındı.
+- **Kullanılmayan sabit:** C9'la birlikte `HEADING` ve `CARD` sabitlerini kullanan yer kalmadı; silindi.
+- **Galeri:** `intel-radar`, `intel-blind-probes` ve `intel-blind-radar` görünümleri eklendi. Envanterde ulaşılamayan tek parça artık Savaşlar rafı (G5'in işi).
+
+Ölçüm: `reports/ui-audit/c9-intel-radar-after-2026-11-14.md`, dört yol, 56 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 64 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 12 | 0 (C7'nin "Netlik ve yaş" düğmesi ayrı koşuyla doğrulandı) |
+| Basınca tepkisiz | 6 | 0 |
+| Kesilen metin (bütün diller) | 5 | 0 |
+
+Doğrulanamayanlar:
+- Sessiz radar ve gemideki radar (onarım dili) galeride yok; yalnız testlerle doğrulandı.
+
+**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.

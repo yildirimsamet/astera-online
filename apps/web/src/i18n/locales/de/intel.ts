@@ -25,7 +25,7 @@ export const intel = {
     window: 'Fenster {{duration}}',
     empty: 'Noch nichts bekannt: Ein Teleskop beobachtet live, eine Sonde bringt eine Messung zurück.',
   },
-  openOrbit: 'Offener Orbit',
+  openOrbit: 'Orbit öffnen',
   coverage: {
     label: '-Abdeckung',
     blind: 'Sie können nicht in einen einzelnen Planeten sehen',
@@ -114,6 +114,9 @@ export const intel = {
     ringWarn: 'Zeitgesteuerte Warnung',
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: 'Erkennung und zeitgesteuerte Warnung',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Rand der Galaxie',
+    reach: '{{value}} Einheiten',
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the

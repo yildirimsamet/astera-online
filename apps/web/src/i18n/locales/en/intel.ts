@@ -114,6 +114,9 @@ export const intel = {
     ringWarn: 'Timed warning',
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: 'Detection and timed warning',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Galaxy edge',
+    reach: '{{value}} units',
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the

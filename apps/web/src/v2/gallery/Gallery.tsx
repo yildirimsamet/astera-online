@@ -404,7 +404,7 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
  * has no Telescope and no Radar, so this is where the full shelves are photographed.
  * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
- * another shelf than Watch (C8: the probe reports).
+ * another shelf than Watch (C8: the probe reports; C9: the radar, and each missing instrument).
  */
 function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar' }) {
   const client = useQueryClient();
@@ -922,6 +922,9 @@ function Views({ view }: { view: string }) {
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'intel-blind') return <GalleryIntel blind />;
   if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
+  if (view === 'intel-radar') return <GalleryIntel shelf="radar" />;
+  if (view === 'intel-blind-probes') return <GalleryIntel blind shelf="probes" />;
+  if (view === 'intel-blind-radar') return <GalleryIntel blind shelf="radar" />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;

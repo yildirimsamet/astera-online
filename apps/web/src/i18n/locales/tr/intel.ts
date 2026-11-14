@@ -100,7 +100,7 @@ export const intel = {
     cost: "Radar olmadan bu gezegene gönderilen sondaların çoğu fark edilmeden geçer.",
     quiet: "Tespit edilen tarama yok. {{level}}. seviye Radar dinlemede.",
     scan: 'Tarama yakalandı',
-    bearing: ' · galaktik {{bearing}} yönünden',
+    bearing: 'galaktik {{bearing}} yönünden',
     origin: ' · {{planet}}',
     /** Taramanın hangi dünyaya geldiği. */
     onWorld: ' · {{planet}}',
@@ -109,6 +109,9 @@ export const intel = {
     ringWarn: 'Zamanlı uyarı',
     /** İki çember tek olduğu sürece tek başlık, çemberin ne yaptığını söyler. */
     ringOne: 'Tespit ve zamanlı uyarı',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Galaksinin kenarı',
+    reach: '{{value}} birim',
     /** Halkaları göremeyen için aynı okuma; iki çember bu bilgiyi zaten taşıyor. */
     noteFleets:
       '{{level}}. seviye Radar, {{sense}} birimde sana yönelen tehdidi ayırt eder ancak varış süresini {{warn}} birime girdiğinde gösterir.',

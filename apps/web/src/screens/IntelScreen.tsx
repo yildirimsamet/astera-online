@@ -28,7 +28,7 @@ import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { heroArt } from '../starter/shipScreen.js';
-import { GameTabs, Glyph, SectionTag, type TabItem } from '../game-ui/index.js';
+import { GameButton, GameTabs, Glyph, SectionTag, type TabItem } from '../game-ui/index.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
@@ -74,8 +74,6 @@ type Watch = IntelView['watching'][number];
 type Probe = IntelView['probeReports'][number];
 type Scan = IntelView['radarLog'][number];
 
-const HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
-const CARD = 'rounded-control border border-v2-line bg-v2-panel';
 const HOUR = 60 * 60_000;
 
 /** A neighbour aboard is a ship. Its id gives its hull; its state is a matter for the report's bands. */
@@ -757,8 +755,12 @@ function RadarShelf({
     );
   }
   const today = scans.filter((scan) => now - scan.at.getTime() <= 24 * HOUR).length;
+  // What the next level adds, said where the player weighs building it (C9: behind a lock).
+  const next = radar <= 0 ? null
+    : radar < 2 ? t(aboard ? 'starter.intel.radarBearing' : 'intel.radar.noteBearing')
+    : !aboard && radar < 5 ? t('intel.radar.noteOrigin') : null;
   return (
-    <>
+    <div className="gk-intel__part">
       {/*
         A REACH, NOT A COUNTDOWN — AND A REACH YOU CAN SEE. D49, D126: the rings at their
         true fraction of the disc; the half no picture can draw (a slow fleet is seen for
@@ -773,69 +775,81 @@ function RadarShelf({
           aboard={aboard}
         />
       )}
-      {radar > 0 && (
-        <p className="text-micro leading-snug text-v2-ink-2">
-          {radarDetectsFleets(radar) && t('intel.radar.noteSlow')}
-          {radar < 2 && t(aboard ? 'starter.intel.radarBearing' : 'intel.radar.noteBearing')}
-          {!aboard && radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
+      {radarDetectsFleets(radar) && <p className="gk-note">{t('intel.radar.noteSlow')}</p>}
+      {next !== null && (
+        <p data-radar-next="" className="gk-radar__next">
+          <Glyph id="lock" />
+          <span>{next.trim()}</span>
         </p>
       )}
-      <section className={`flex flex-col gap-1.5 px-3 py-2.5 ${CARD}`}>
-        <p className="flex items-center justify-between gap-2">
-          <span className={HEADING}>{t('intel.radar.day')}</span>
-          <span className="text-micro text-v2-ink-2">{t('intel.radar.contacts', { count: today })}</span>
+      <section className="gk-well gk-radar__day" aria-labelledby="intel-radar-day">
+        <p className="gk-radar__dayhead">
+          <span id="intel-radar-day">{t('intel.radar.day')}</span>
+          <span className="gk-num">{t('intel.radar.contacts', { count: today })}</span>
         </p>
         <DayLine scans={scans} now={now} />
       </section>
       {scans.length === 0 ? (
-        <p className="text-caption text-v2-ink-2">{aboard ? t('starter.intel.radarQuiet') : t('intel.radar.quiet', { level: radar })}</p>
+        <p className="gk-radar__quiet">
+          <Glyph id="check" />
+          <span>{aboard ? t('starter.intel.radarQuiet') : t('intel.radar.quiet', { level: radar })}</span>
+        </p>
       ) : (
-        <ul className="divide-y divide-v2-line">
+        <ul className="gk-ledger" aria-label={t('intel.radar.heading')}>
           {scans.map((scan) => (
-            <li key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`} data-scan className="flex items-center gap-2.5 py-2">
-              <span
-                data-scan-dot=""
-                aria-hidden="true"
-                className={`size-2 shrink-0 rounded-full ${fresh(scan, now) ? 'bg-v2-hostile' : 'bg-v2-ink-3'}`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-caption text-v2-ink">
-                  {t('intel.radar.scan')}
-                  {/* WHICH WORLD: the log covers every world a commander holds. */}
-                  {scan.planetName !== undefined && (scan.planetId && onFocusPlanet ? (
-                    <button type="button" onClick={() => { if (scan.planetId) onFocusPlanet(scan.planetId); }} className="text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-                      {t('intel.radar.onWorld', { planet: scan.planetName })}
-                    </button>
-                  ) : <span className="text-v2-self">{t('intel.radar.onWorld', { planet: scan.planetName })}</span>)}
-                </p>
-                {(scan.bearing !== null || scan.originPlanetName !== null) && (
-                  <p className="truncate text-micro text-v2-ink-3">
-                    {scan.bearing && t('intel.radar.bearing', { bearing: scan.bearing })}
-                    {scan.originPlanetName && (
-                      scan.originPlanetId && onFocusPlanet ? (
-                        <button type="button" onClick={() => { if (scan.originPlanetId) onFocusPlanet(scan.originPlanetId); }} className="text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-                          {t('intel.radar.origin', { planet: scan.originPlanetName })}
-                        </button>
-                      ) : <span className="text-v2-ink">{t('intel.radar.origin', { planet: scan.originPlanetName })}</span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">
-                {staleness((now - scan.at.getTime()) / 60_000)}
-              </span>
+            <li key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`} data-scan="">
+              <ScanRow scan={scan} now={now} {...(onFocusPlanet ? { onFocusPlanet } : {})} />
             </li>
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * ONE SCAN, ONE DOOR (C9). The row opens whoever scanned you once the Radar names them —
+ * the dossier a reply is planned from — and otherwise the world of yours it landed on.
+ */
+function ScanRow({ scan, now, onFocusPlanet }: { scan: Scan; now: number; onFocusPlanet?: (planetId: string) => void }) {
+  const { t } = useTranslation();
+  const door = scan.originPlanetId ?? scan.planetId ?? null;
+  const live = fresh(scan, now);
+  const face = (
+    <>
+      <span
+        data-scan-dot=""
+        aria-hidden="true"
+        {...(live ? { 'data-fresh': '' } : {})}
+        className={`gk-scan__dot ${live ? 'bg-v2-hostile' : 'bg-v2-ink-3'}`}
+      />
+      <span className="gk-ledger__words">
+        <span className="gk-ledger__title">
+          {t('intel.radar.scan')}
+          {/* WHICH WORLD: the log covers every world a commander holds. */}
+          {scan.planetName !== undefined && <>{' '}<span className="gk-scan__world">{t('intel.radar.onWorld', { planet: scan.planetName })}</span></>}
+        </span>
+        {(scan.bearing !== null || scan.originPlanetName !== null) && (
+          <span className="gk-ledger__sub">
+            {scan.bearing && t('intel.radar.bearing', { bearing: scan.bearing })}
+            {scan.originPlanetName && <>{' '}<span className="gk-scan__origin">{t('intel.radar.origin', { planet: scan.originPlanetName })}</span></>}
+          </span>
+        )}
+      </span>
+      <span className="gk-ledger__side gk-scan__age gk-num">{staleness((now - scan.at.getTime()) / 60_000)}</span>
+      {door !== null && onFocusPlanet && <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>}
     </>
   );
+  return door === null
+    ? <div className="gk-ledger__row">{face}</div>
+    : <KnownRow planetId={door} {...(onFocusPlanet ? { onFocusPlanet } : {})}>{face}</KnownRow>;
 }
 
 /**
  * THE RADAR VOLUME, AT ITS TRUE SIZE AGAINST THE DISC. D126. Scaled against the
  * galaxy's radius, which is what makes it worth drawing at all; one ring while
- * detection and timed warning are one number, two the day the tables split.
+ * detection and timed warning are one number, two the day the tables split. C9: a
+ * scope on the kit — the beam sweeps inside what you hear, the legend names the edge.
  */
 function RadarReach({ sense, warn, level, aboard }: { sense: number; warn: number; level: number; aboard: boolean }) {
   const { t } = useTranslation();
@@ -845,50 +859,52 @@ function RadarReach({ sense, warn, level, aboard }: { sense: number; warn: numbe
   const merged = sense === warn;
 
   return (
-    <div className={`flex items-center gap-3 p-3 ${CARD}`}>
+    <div className="gk-scope">
       <div
         data-radar-reach
-        className="relative grid size-[104px] shrink-0 place-items-center rounded-full bg-v2-deep"
+        className="gk-scope__disc"
         role="img"
         aria-label={aboard
           ? t(merged ? 'starter.intel.radarFleetsOne' : 'starter.intel.radarFleets', { level, sense, warn })
           : t(merged ? 'intel.radar.noteFleetsOne' : 'intel.radar.noteFleets', { level, sense, warn })}
       >
         {/* THE RIM OF THE GALAXY. Everything else is measured against it. */}
-        <span className="absolute inset-0 rounded-full border border-dashed border-v2-line-hi" />
+        <span className="gk-scope__rim" />
         {!merged && (
           <span
             data-ring="sense"
-            className="absolute rounded-full border border-dashed border-v2-self/45"
+            className="gk-scope__ring gk-scope__ring--sense"
             style={{ width: `${String(senseSize)}%`, height: `${String(senseSize)}%` }}
           />
         )}
         <span
           data-ring="warn"
-          className="absolute rounded-full border border-v2-self bg-v2-self/10"
+          className="gk-scope__ring gk-scope__ring--warn"
           style={{ width: `${String(warnSize)}%`, height: `${String(warnSize)}%` }}
         />
         {/* YOU, at the centre of both. */}
-        <span className="absolute size-1.5 rounded-full bg-v2-self" />
+        <span className="gk-scope__you" />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-      <p className={HEADING}>{t(aboard ? 'starter.intel.radarLevel' : 'intel.radar.level', { level })}</p>
-      <dl className="flex flex-col gap-1.5">
-        {!merged && (
-          <div className="flex items-center gap-2">
-            <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-dashed border-v2-self/45" />
-            <dt className="min-w-0 flex-1 truncate text-micro text-v2-ink-2">{t('intel.radar.ringSense')}</dt>
-            <dd className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{sense}</dd>
+      <div className="gk-scope__legend">
+        <p className="gk-scope__title">{t(aboard ? 'starter.intel.radarLevel' : 'intel.radar.level', { level })}</p>
+        <dl className="gk-scope__keys">
+          {!merged && (
+            <div className="gk-scope__key">
+              <span aria-hidden="true" className="gk-scope__swatch" data-swatch="sense" />
+              <dt>{t('intel.radar.ringSense')}</dt>
+              <dd className="gk-num">{t('intel.radar.reach', { value: sense })}</dd>
+            </div>
+          )}
+          <div className="gk-scope__key" data-lit="">
+            <span aria-hidden="true" className="gk-scope__swatch" data-swatch="warn" />
+            <dt>{t(merged ? 'intel.radar.ringOne' : 'intel.radar.ringWarn')}</dt>
+            <dd className="gk-num">{t('intel.radar.reach', { value: warn })}</dd>
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-v2-self bg-v2-self/20" />
-          <dt className="min-w-0 flex-1 truncate text-micro text-v2-ink">
-            {t(merged ? 'intel.radar.ringOne' : 'intel.radar.ringWarn')}
-          </dt>
-          <dd className="shrink-0 font-v2-mono text-micro text-v2-self">{warn}</dd>
-        </div>
-      </dl>
+        </dl>
+        <p className="gk-scope__edge">
+          <span aria-hidden="true" className="gk-scope__swatch" data-swatch="rim" />
+          {t('intel.radar.rim')}
+        </p>
       </div>
     </div>
   );
@@ -899,7 +915,8 @@ function RadarReach({ sense, warn, level, aboard }: { sense: number; warn: numbe
 /**
  * An instrument you do not own, sold as a capability: the art at full strength, the
  * line says what it would tell you, and the cost is stated plainly. A player should
- * finish reading it wanting the thing.
+ * finish reading it wanting the thing. C9: a kit plate — the instrument idles in its
+ * bay, what is missing sits behind a lock, and the kit's key goes to build it.
  */
 function Instrument({
   kind,
@@ -919,25 +936,18 @@ function Instrument({
   onAct?: () => void;
 }) {
   return (
-    <div className={`grid grid-cols-[72px_1fr] items-center gap-3 p-3 ${CARD}`}>
-      <div data-instrument-diagram={kind} className="grid size-[72px] place-items-center overflow-hidden rounded-control bg-v2-deep" aria-hidden>
-        {art && <img src={art} alt="" className="size-16 object-contain" />}
+    <section className="gk-instrument">
+      <div data-instrument-diagram={kind} className="gk-instrument__bay" aria-hidden>
+        {art && <img src={art} alt="" className="gk-instrument__art" />}
       </div>
-      <div className="min-w-0">
-        <p className="text-micro font-semibold text-v2-warn">{missing}</p>
-        <p className="mt-0.5 text-caption leading-snug text-v2-ink">{gives}</p>
-        <p className="mt-1 text-micro leading-snug text-v2-ink-3">{cost}</p>
-        {onAct && action && (
-          <button
-            type="button"
-            onClick={onAct}
-            className="mt-2 min-h-9 w-full rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink"
-          >
-            {action}
-            <span aria-hidden> →</span>
-          </button>
-        )}
+      <div className="gk-instrument__words">
+        <p className="gk-instrument__missing"><Glyph id="lock" /><span>{missing}</span></p>
+        <p className="gk-instrument__gives">{gives}</p>
+        <p className="gk-note">{cost}</p>
       </div>
-    </div>
+      {onAct && action && (
+        <GameButton tone="action" wide glyph="up" onPress={onAct}>{action}</GameButton>
+      )}
+    </section>
   );
 }
