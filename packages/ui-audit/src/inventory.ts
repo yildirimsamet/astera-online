@@ -120,7 +120,7 @@ export const SURFACES: GameSurface[] = [
     ],
     group: 'G5', unreached: ['boş savaş listesi'],
   },
-  { id: 'battle-replay', what: 'Savaş tekrarı', files: ['battle-simulator/BattleReplay.tsx', 'battle-simulator/BattleReplayDialog.tsx', 'battle-simulator/BattleStage.tsx', 'battle-simulator/RetreatRoster.tsx', 'battle-simulator/UnitInspector.tsx'], reach: ['client:battle-replay'], group: 'G5', unreached: ['kayıt yok / güç yetersiz / çok büyük', 'yüklenemedi (yeniden yükle)'] },
+  { id: 'battle-replay', what: 'Savaş tekrarı', files: ['battle-simulator/BattleReplay.tsx', 'battle-simulator/BattleReplayDialog.tsx', 'battle-simulator/BattleStage.tsx', 'battle-simulator/RetreatRoster.tsx', 'battle-simulator/UnitInspector.tsx'], reach: ['gallery:replay-loading', 'gallery:replay-failed', 'client:battle-replay'], group: 'G5', unreached: ['3B görünüm yüklenemedi (yeniden yükle)'] },
   {
     id: 'simulator',
     what: 'Savaş simülatörü',

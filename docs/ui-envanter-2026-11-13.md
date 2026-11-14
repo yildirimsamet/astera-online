@@ -1221,6 +1221,14 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 7 görünüm): C15b sonrasına göre puan 89→8 (baskın), 68→8 (savunma), 59→6 (korsan), 41→4 (destek); bağımsız sahne görünümleri 0 ve 2. 12 px altı 211→18, kontrast 18→2, 44 px altı 9→1, tepkisiz 15→6; kesilme ve taşma 0. Kalanlar: tekrar kapısı (C16b), G9'un sayı göstergesi ve galerideki sayfa arkalığı (G1 çerçevesi). `reports/ui-audit/c16a-report-scene-after-2026-11-15.md`.
 - **Açık soru:** yok. `RankingScores` (Honor/Hâkimiyet sayıları) liderlik tablosuyla birlikte G9'da kite geçecek.
 
+**C16b Savaş raporu: tekrar kapısı ve tekrar kabuğu ✅ (2026-11-15, yardımcı oturum).** G5 #5; 3B sahnenin kendisi (BattleReplay, simülatörün dili) G11'de.
+- **An:** raporun en üstünde "savaşı izle / simülatörde dene"; basınca tam ekran tekrar açılır, kayıt gelene kadar bekler, gelmezse yeniden dener.
+- **Değişen:** kapı tek satır: izle çelik düğme (göz), dene sessiz düğme; sayfanın tek turuncusu yine "Yeniden saldır". 3B görünüm inerken izle düğmesi döner (basış hemen yanıt alır). Kabuğun başı sayfaların kit başı: solda yuvarlak geri, "SAVAŞ TEKRARI" ve kayıt notu; bekleme ve hata kitin dilinde, sahnenin yerinde hafif ışık. Sahne `.simulator` çerçevesini kabuğun içinde korur, simülatörün düğme kuralları kit düğmelerine ulaşmaz. Galeride `replay-loading`, `replay-failed`, `replay-stage` (sonuncusu ölçülmüyor, G11 için).
+- **Düzeltme:** telefon yan tutulunca eski baş tamamen gizleniyordu; geri hareketi olmayan telefonda çıkış kalmıyordu. Artık baş daralır, geri düğmesi kalır. "Kayıt yok" notu 9 px'ten 13 px'e (kontrast geçiyor).
+- **Kaldırılan:** eski `sim-header` başı ve onun `simulator.css` düğme kuralı, kökteki z-index (kabuk taşıyor).
+- **Ölçüm** (tr; telefon, dar, masaüstü; 7 rapor + 2 kabuk görünümü): C16a sonrasına göre 12 px altı 18→4, kontrast 2→0, tepkisiz 6→0; kesilme ve taşma 0. Kabuk görünümleri 12 ve 16 puan. Kalan 12 px altı 4 metin G9'un sayı göstergesi. `reports/ui-audit/c16b-replay-door-after-2026-11-15.md`.
+- **Açık soru:** yok. de/fr/es'de iki düğme 350 px'te iki satıra iner (izle tam satır, dene altında); grup sonu 6 dil turunda daha kısa söz bakılacak.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.

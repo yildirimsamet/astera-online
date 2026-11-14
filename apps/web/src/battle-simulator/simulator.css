@@ -339,9 +339,7 @@
 .sim-shot-detail p b { color: #e2f0ff; }
 
 /* ── the real replay inside the game ── */
-.sim-real-replay { z-index: 160; }
 .sim-real-replay .sim-real-body { flex: 1; min-height: 0; }
-.sim-real-replay .sim-header button { flex-shrink: 0; min-height: 36px; padding: 6px 12px; font-size: 12px; }
 /* The simulator over the game (menu, report): above the report sheet and its replay. */
 .sim-layer:focus { outline: none; }
 .sim-layer .simulator { z-index: 170; }
