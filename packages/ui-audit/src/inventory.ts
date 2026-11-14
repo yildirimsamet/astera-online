@@ -117,6 +117,7 @@ export const SURFACES: GameSurface[] = [
     reach: [
       'gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter', 'gallery:intel-battles',
       'gallery:report-sheet', 'gallery:report-sheet-defend', 'gallery:report-sheet-pirate',
+      'gallery:report-sheet-strike', 'gallery:report-sheet-bomb', 'gallery:report-sheet-monument',
     ],
     group: 'G5', unreached: ['boş savaş listesi'],
   },

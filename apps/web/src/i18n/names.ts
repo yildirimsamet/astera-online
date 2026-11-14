@@ -1,6 +1,8 @@
 import {
   ALL_HULLS,
+  BUILDING_IDS,
   SALVAGE,
+  SATELLITE_IDS,
   type BuildingId,
   type HullClass,
   type HullId,
@@ -133,6 +135,16 @@ export const hullName = (id: string): string | null => (HULL_IDS.has(id) ? hullL
 
 export const instrumentName = (id: string): string | null =>
   INSTRUMENT_IDS.has(id) ? instrumentLabel(id as InstrumentId) : null;
+
+/** A building or a satellite off the wire (a strategic report's losses, C17). */
+export const buildingNameOf = (id: string): string | null => {
+  const known = BUILDING_IDS.find((building) => building === id);
+  return known === undefined ? null : buildingName(known);
+};
+export const satelliteNameOf = (id: string): string | null => {
+  const known = SATELLITE_IDS.find((satellite) => satellite === id);
+  return known === undefined ? null : satelliteLabel(known);
+};
 
 /** The four things a season can hand you, announced the moment they open. */
 export type Unlockable = 'TELESCOPE' | 'RADAR' | 'EXPLORER' | 'VEIL';

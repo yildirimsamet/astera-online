@@ -11,11 +11,30 @@ import { serverNow } from '../lib/clock.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
 import { RankingScores } from '../ui/RankingScores.js';
-import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey } from '../lib/battleOutcome.js';
+import { RulesRow } from '../ui/RulesRow.js';
+import { SurvivorBar } from '../ui/SurvivorBar.js';
+import { HULL_ART } from '../ui/assets.js';
+import { GameButton } from '../game-ui/buttons.js';
+import { SectionTag } from '../game-ui/surfaces.js';
+import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from '../lib/battleOutcome.js';
 import { MonumentBattleRules } from './MonumentBattleRules.js';
 import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
+/** The verdict plate's colour, from the side's result (the same reading the battle list's mark wears). */
+const PLATE_TONE: Record<BattleOutcome, 'good' | 'partial' | 'threat' | 'neutral'> = {
+  win: 'good', partial: 'partial', loss: 'threat', neutral: 'neutral',
+};
+
+/**
+ * A WAVE INTO A MONUMENT, AND WHAT CAME OF IT (C17, G9 #8), on the battle report's kit.
+ *
+ * The moment: the wave has fought — is the monument ours, what did it cost, should the next
+ * wave go? One plate in the colour of the side's result (control, grade, a wiped fleet), the
+ * Honor it moved, who stood against it, then each own hull as a survivor row, the enemy board,
+ * the haul, and the rounds and rules each one rules row away. The door back to the monument
+ * closes it.
+ */
 export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
   report: MonumentBattleReport; onClose: () => void; onFocusMonument?: (id: string) => void;
 }) {
@@ -30,59 +49,68 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
   const opponents = Array.isArray(rawOpponents)
     ? rawOpponents as NonNullable<MonumentBattleReport['opponents']>
     : [];
-  return <Sheet title={name} onClose={onClose}>
-    <div data-monument-report className="grid gap-3 font-v2-ui text-caption text-v2-ink">
+  return <Sheet title={name} onClose={onClose} detents={['full']} kit={{ tone: outcome === 'loss' ? 'hostile' : 'self' }}>
+    <div data-monument-report className="gk-report">
       <BattleReplayAction kind="MONUMENT" id={report.id} status={report.replayStatus} />
-      <p className="text-micro text-v2-ink-3">{dayClock(report.at, serverNow())} · {t('reports.rounds', { count: report.roundCount })}</p>
-      <section data-battle-outcome={outcome} className={`grid gap-2 rounded-control border p-3 ${battleTone[outcome]}`}>
-        <p className="font-semibold text-v2-ink">{t(monumentControlKey(report))}</p>
-        <p className="w-fit rounded-cell border border-current/30 px-2 py-1 text-micro font-semibold">{t(monumentGradeKey(report))}</p>
-        {wiped && fleetCount(report.yourLosses) > 0 && <p className="font-semibold text-v2-hostile">{t('monument.battleResult.wiped')}</p>}
+      <section data-battle-outcome={outcome} data-tone={PLATE_TONE[outcome]} className="gk-well gk-report__verdict">
+        <p className="gk-report__label gk-num">{dayClock(report.at, serverNow())} · {t('reports.rounds', { count: report.roundCount })}</p>
+        <h3 className="gk-report__subhead">{t(monumentControlKey(report))}</h3>
+        <p className="gk-report__copy" data-strong="">{t(monumentGradeKey(report))}</p>
+        {wiped && fleetCount(report.yourLosses) > 0 && <p className="gk-report__copy" data-tone="threat" data-strong="">{t('monument.battleResult.wiped')}</p>}
+        {opponents.length > 0 && <p className="gk-report__copy">{t('monument.reportOpponents', { names: opponents.map((opponent) => opponent.kind === 'NEUTRAL'
+          ? t('monument.neutral') : opponent.clanTag ? `${opponent.name} [${opponent.clanTag}]` : opponent.name).join(' · ') })}</p>}
       </section>
       <HonorBattleSummary receipt={report.honor} dominion={report.dominion} />
-      {opponents.length > 0 && <p>{t('monument.reportOpponents', { names: opponents.map((opponent) => opponent.kind === 'NEUTRAL'
-        ? t('monument.neutral') : opponent.clanTag ? `${opponent.name} [${opponent.clanTag}]` : opponent.name).join(' · ') })}</p>}
-      <p>{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</p>
+      {!report.honor ? <RankingScores dominion={report.dominion} /> : null}
       {(report.admirals ?? []).map((admiral, index) => {
         // Y9: a capture leaves the fleet in the monument and sends the escort home alone; a loss repairs it.
         const values = { ship: arenaCopy().classes[admiral.ship].name, level: arenaCopy().level(admiral.level) };
         const won = report.control === 'ATTACKER';
-        return <p key={`admiral:${String(index)}`} data-effect="admiral"
-          className={!report.attacking ? 'text-v2-ink-2' : won ? 'text-v2-self' : 'text-v2-warn'}>
+        return <p key={`admiral:${String(index)}`} data-effect="admiral" className="gk-report__note"
+          data-tone={!report.attacking ? 'plain' : won ? 'good' : 'warn'}>
           {!report.attacking ? t('reports.effects.admiralRaider', values)
             : won ? t('reports.effects.admiralHeld', values) : t('reports.effects.admiralRepair', { ...values, minutes: ADMIRAL_WAIT.repairMinutes })}
         </p>;
       })}
-      <div className="grid gap-1.5">
-        {fleetEntries(report.yourFleet).map(([hull, sent]) => <p key={hull} className="flex items-center justify-between gap-2">
-          <span>{hullLabel(hull)}</span><span className="font-v2-mono">{t('monument.reportHull', { sent, left: report.yourSurvivors[hull] ?? 0, lost: report.yourLosses[hull] ?? 0 })}</span>
+
+      <section className="gk-report__part">
+        <SectionTag as="h2">{t('reports.q.who')}</SectionTag>
+        <p className="gk-report__copy">{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</p>
+        <div className="gk-ledger gk-forces">
+          {fleetEntries(report.yourFleet).map(([hull, sent]) => <div key={hull} data-own-hull={hull} className="gk-force">
+            <span className="gk-force__hull">
+              {HULL_ART[hull] && <img src={HULL_ART[hull]} alt="" width={32} height={32} />}
+              <span className="gk-force__name"><span className="gk-report__subhead">{hullLabel(hull)}</span></span>
+            </span>
+            <SurvivorBar compactRow sent={sent} lost={report.yourLosses[hull] ?? 0} side="yours"
+              sentLabel={t('reports.verdict.sent')} leftLabel={t('reports.force.left')} />
+          </div>)}
+        </div>
+        <BattleRetreatNote fleet={report.yourRetreated} enemyCount={report.theirRetreatedCount} />
+        {report.yourDamage.map((lot, index) => <p key={`${lot.hull}:${String(index)}`} className="gk-report__copy">
+          {t('monument.reportHealth', { count: lot.count, hull: hullLabel(lot.hull), health: decimal((10_000 - lot.damageBp - lot.remainderBp) / 100, 4) })}
         </p>)}
-      </div>
-      <BattleRetreatNote fleet={report.yourRetreated} enemyCount={report.theirRetreatedCount} />
-      {report.yourDamage.map((lot, index) => <p key={`${lot.hull}:${String(index)}`} className="text-micro text-v2-ink-2">
-        {t('monument.reportHealth', { count: lot.count, hull: hullLabel(lot.hull), health: decimal((10_000 - lot.damageBp - lot.remainderBp) / 100, 4) })}
-      </p>)}
-      {report.enemyFleetVisibility === 'FULL'
-        ? <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />
-        : <><BattleIntelNotice visibility={report.enemyFleetVisibility} />
-          {fleetCount(report.theirLosses) > 0 && <p>{t('monument.reportEnemyLosses', { fleet: fleetLine(report.theirLosses) })}</p>}</>}
-      <p>{t('monument.reportLoot', { amount: decimal(report.lootDeuterium, 3) })}</p>
-      {!report.honor ? <RankingScores dominion={report.dominion} /> : null}
-      {report.rounds && report.rounds.length > 0 && <details className="rounded-control border border-v2-line/60 px-3 py-2">
-        <summary className="cursor-pointer min-h-8 font-semibold text-v2-crystal">{t('reports.howItWent')}</summary>
-        <div className="mt-2 grid gap-3">
-          {report.rounds.map(round => <section key={round.round} data-monument-round={round.round}
-            className="grid gap-2 border-t border-v2-line/60 pt-2">
-            <h3 className="font-semibold">{t('reports.calculation.round', { round: round.round })}</h3>
+        {report.enemyFleetVisibility === 'FULL'
+          ? <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />
+          : <><BattleIntelNotice visibility={report.enemyFleetVisibility} />
+            {fleetCount(report.theirLosses) > 0 && <p className="gk-report__copy">{t('monument.reportEnemyLosses', { fleet: fleetLine(report.theirLosses) })}</p>}</>}
+        <p className="gk-report__copy" data-strong="">{t('monument.reportLoot', { amount: decimal(report.lootDeuterium, 3) })}</p>
+      </section>
+
+      {report.rounds && report.rounds.length > 0 && <RulesRow glyph="clock" title={t('reports.howItWent')}>
+        <div className="gk-mrounds">
+          {report.rounds.map(round => <section key={round.round} data-monument-round={round.round} className="gk-mround">
+            <h3 className="gk-report__subhead">{t('reports.calculation.round', { round: round.round })}</h3>
             <p>{t('reports.roundLossesYours')}: {fleetLine(round.yourLosses) || t('reports.roundNoCasualties')}</p>
             <p>{t('reports.roundLossesTheirs')}: {fleetLine(round.theirLosses) || t('reports.roundNoCasualties')}</p>
             <BattleRetreatNote fleet={round.yourRetreated} enemyCount={round.theirRetreatedCount} />
           </section>)}
         </div>
-      </details>}
+      </RulesRow>}
       <MonumentBattleRules targetLimit={report.rounds?.find(round => round.targetLimit !== undefined)?.targetLimit ?? null} />
-      {onFocusMonument && <button type="button" className="min-h-10 rounded-control border border-v2-line px-3 font-semibold text-v2-self"
-        onClick={() => { onClose(); onFocusMonument(report.monument.id); }}>{t('monument.look', { name })}</button>}
+      {onFocusMonument && <GameButton wide glyph="target" onPress={() => { onClose(); onFocusMonument(report.monument.id); }}>
+        {t('monument.look', { name })}
+      </GameButton>}
     </div>
   </Sheet>;
 }

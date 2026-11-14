@@ -9398,6 +9398,35 @@ button.gk-probe__head:active {
   }
 }
 
+/* ── C17: a strategic weapon's result and a monument wave's report (G5 #4, G9 #8) ── */
+/* four figures of what a Death Star broke, two by two */
+.gk-report__metrics[data-cols='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: var(--gk-s3);
+}
+.gk-report__metrics[data-cols='2'] .gk-report__metric:nth-child(odd) {
+  padding-left: 0;
+  border-left: 0;
+}
+/* a monument nobody holds after the wave: neither side's colour */
+.gk-report__verdict[data-tone='neutral'] { --tone: var(--gk-ink-3); }
+.gk-strike .gk-report__tallyrow .gk-num[data-tone='threat'] { color: var(--gk-hostile); }
+/* a monument fight's rounds, inside their rules row */
+.gk-mrounds {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-mround {
+  display: grid;
+  gap: 4px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-mround:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {

@@ -1215,6 +1215,13 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 7 rapor + 2 kabuk görünümü): C16a sonrasına göre 12 px altı 18→4, kontrast 2→0, tepkisiz 6→0; kesilme ve taşma 0. Kabuk görünümleri 12 ve 16 puan. Kalan 12 px altı 4 metin G9'un sayı göstergesi. `reports/ui-audit/c16b-replay-door-after-2026-11-15.md`.
 - **Açık soru:** yok. de/fr/es'de iki düğme 350 px'te iki satıra iner (izle tam satır, dene altında); grup sonu 6 dil turunda daha kısa söz bakılacak.
 
+**C17 Stratejik rapor ve anıt raporu ✅ (2026-11-15, yardımcı oturum).** G5 #4 ve G9 #8.
+- **An:** Ölüm Yıldızı ya da radyasyon bombası düştü (senin ya da sana) — ne kırdı, koloni hâlâ benim mi? Anıta dalga gitti — anıt kimin, neye mal oldu?
+- **Değişen:** iki sayfa kitin çerçevesinde (Ölüm Yıldızı resmi, kimin haberiyse o renk). Rota iki 44 px dünya kapısı (önce 12 px altı çizili ad). Stratejik: sonucun rengindeki plakada 2×2 rakam, altında kitin etiketleriyle madenler (resimli), gemi/savunma, düşen seviyeler, kuyruk; adlar artık oyuncunun dilinde (`SHIPYARD` → Tersane, `DEUTERIUM_PLANT` → Döteryum Rafinerisi). Bomba: plakada yalnız olanlar (sadakat, arızalar); bombanın kuralları kapalı "Bomba nasıl işler" satırında. Anıt: plaka (tarih · tur, kontrol, derece, karşı taraf), kendi gövdeleri hayatta kalan çubuğuyla, turlar ve savaş kuralları kitin kural satırlarında, "Anıta bak" kitin düğmesi. Yeni anahtar ×6: `reports.strategicFleetLost`, `reports.strategicBombRules`. `RulesRow` paylaşılan parça oldu (`ui/RulesRow.tsx`).
+- **Kaldırılan:** `StrategicMetric` (v2 legend), `battleTone` (v2 renk tablosu), anıt raporundaki bütün v2 sınıfları.
+- **Ölçüm** (tr; telefon, dar, masaüstü; 4 görünüm, galeriye `report-sheet-strike/-bomb/-monument` eklendi): puan 59→0 (Ölüm Yıldızı), 20→0 (bomba), 33→5 (anıt), 13→0 (EMP koloni); 12 px altı 77→2, kontrast 10→0, tepkisiz 6→1; bomba ekranı 110→55 kelime. Anıtta kalanlar `RankingScores` (C19) ve sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c17-strategic-monument-after-2026-11-15.md`.
+- **Açık soru:** yok. Anıt raporunda "Kurtardığın döteryum: 17,000" ve "%68,0000 sağlık" ondalıkları (eski, `decimal(…, 3/4)`) Türkçede binlik gibi okunuyor; G9 sonunda kısaltılabilir.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.

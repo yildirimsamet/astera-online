@@ -440,6 +440,8 @@ export const reports = {
   strategicNoLevelLoss: "建物や計器のレベルは失われました。",
   strategicDestroyedOrders: "建設物が破壊されました",
   strategicNoOrdersLost: "アクティブな建設オーダーは破棄されませんでした。",
+  strategicFleetLost: "破壊された艦船と防衛",
+  strategicBombRules: "爆弾の仕組み",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: "要求のない世界",

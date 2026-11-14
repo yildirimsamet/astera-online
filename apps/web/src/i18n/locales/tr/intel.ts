@@ -400,6 +400,8 @@ export const reports = {
   strategicNoLevelLoss: 'Bina veya enstrüman seviyesi düşmedi.',
   strategicDestroyedOrders: 'Yok edilen inşaatlar',
   strategicNoOrdersLost: 'Aktif inşaat emri yok edilmedi.',
+  strategicFleetLost: "Yok edilen gemi ve savunma",
+  strategicBombRules: "Bomba nasıl işler",
 
   neutralHolder: 'sahipsiz bir dünya',
 

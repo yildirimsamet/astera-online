@@ -61,10 +61,3 @@ export const monumentControlKey = (result: { attacking: boolean; control: 'ATTAC
 export const monumentGradeKey = (result: { attacking: boolean; grade: Grade; defenderCargoRetreated?: boolean }) =>
   result.defenderCargoRetreated ? 'monument.battleResult.cargoRetreat'
     : gradeKeys[result.attacking ? 'attacking' : 'defending'][result.grade];
-
-export const battleTone: Record<BattleOutcome, string> = {
-  win: 'border-v2-self/40 bg-v2-self/5 text-v2-self',
-  partial: 'border-v2-alloy/40 bg-v2-alloy/5 text-v2-alloy',
-  loss: 'border-v2-hostile/40 bg-v2-hostile/5 text-v2-hostile',
-  neutral: 'border-v2-line bg-v2-deep/40 text-v2-ink-2',
-};
