@@ -48,10 +48,13 @@ export const galaxy = {
     eyebrow: "Weekly calendar",
     title: "Galaxy events",
     intro: "The windows that repeat through the working week and at the weekend.",
-    timeZone: "Türkiye time (UTC+3)",
+    timeZone: "Your time ({{zone}})",
     nextLabel: "Next event",
     nextUpcoming: "{{event}} · in {{duration}}",
-    localTime: "Local · {{time}}",
+    /** Under the intro, only when a window starts on another day for the player than for the galaxy. */
+    dayShift: "Days follow the galaxy's calendar (Türkiye). +1 is the next day for you, −1 the day before.",
+    nextDay: "next day",
+    previousDay: "previous day",
     event: {
       ASTEROID_SHOWER: "Asteroid Shower",
       TRADE_SHIP: "Trade Ship",

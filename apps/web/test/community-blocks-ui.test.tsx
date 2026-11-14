@@ -50,6 +50,8 @@ it('requires confirmation, explains the social scope and submits only the target
   expect(within(dialog).getByText(/does not affect fleets or battles/i)).toBeInTheDocument();
   expect(within(dialog).queryByRole('checkbox')).toBeNull();
   expect(within(dialog).getByRole('button', { name: /^Block/ })).toHaveClass('gk-hold');
+  // Owner 2026-11-14: blocking takes the shortest hold, the kit's reversible weight.
+  expect(within(dialog).getByRole('button', { name: /^Block/ }).style.getPropertyValue('--gk-hold-ms')).toBe('600ms');
   holdToBlock(dialog);
   const done = await within(dialog).findByRole('status');
   expect(done).toHaveTextContent('Player blocked'); expect(done).toHaveClass('gk-banner--good');

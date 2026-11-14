@@ -444,19 +444,43 @@ describe('the radar, glanced from the watch shelf', () => {
     expect(focus).toHaveBeenCalledWith('enemy-world');
   });
 
-  /** C9: a scan is one ledger row and one door — to whoever scanned you once Radar names them, else to the world it hit. */
-  it('makes each scan one door, to the world that scanned you once the Radar names it', async () => {
+  /**
+   * Owner 2026-11-14: once Radar 5 names who scanned you, a scan has two doors, each its own
+   * press — the scanner's dossier, and your own world it hit. An unnamed scan keeps one.
+   */
+  it('splits a named scan into two doors: who scanned you, and your world it hit', async () => {
     const focus = vi.fn();
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5, radarLog: [{ ...scans[0]!, originPlanetId: 'enemy-world' }, scans[1]!], onOpenDossier: focus });
     await shelf('Radar');
-    const named = screen.getAllByRole('button', { name: /Kestrel/ });
-    expect(named).toHaveLength(1);
-    expect(named[0]).toHaveClass('gk-ledger__row');
-    expect(named[0]!.textContent).toMatch(/Home/);
-    const plain = screen.getAllByRole('button', { name: /Home/ });
-    expect(plain).toHaveLength(2);
-    await userEvent.click(plain[1]!);
-    expect(focus).toHaveBeenCalledWith('p1');
+    const [named, plain] = [...document.querySelectorAll<HTMLElement>('[data-scan]')];
+    expect(within(named!).getAllByRole('button')).toHaveLength(2);
+    const scanner = within(named!).getByRole('button', { name: /Kestrel/ });
+    const world = within(named!).getByRole('button', { name: /Scanned world.*Home/ });
+    expect(scanner).toHaveAttribute('data-door', 'origin');
+    expect(scanner.textContent).not.toMatch(/Home/);
+    expect(world).toHaveAttribute('data-door', 'world');
+    expect(world.textContent).not.toMatch(/Kestrel/);
+    await userEvent.click(scanner);
+    expect(focus).toHaveBeenLastCalledWith('enemy-world');
+    await userEvent.click(world);
+    expect(focus).toHaveBeenLastCalledWith('p1');
+
+    const only = within(plain!).getByRole('button');
+    expect(only).toHaveClass('gk-ledger__row');
+    expect(only.textContent).toMatch(/Home/);
+    await userEvent.click(only);
+    expect(focus).toHaveBeenLastCalledWith('p1');
+  });
+
+  it('keeps a named scan one door when the server sends no world it hit', async () => {
+    const focus = vi.fn();
+    const { planetId: _id, planetName: _name, ...older } = scans[0]!;
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5, radarLog: [{ ...older, originPlanetId: 'enemy-world' }], onOpenDossier: focus });
+    await shelf('Radar');
+    const row = document.querySelector<HTMLElement>('[data-scan]')!;
+    expect(within(row).getAllByRole('button')).toHaveLength(1);
+    await userEvent.click(within(row).getByRole('button', { name: /Kestrel/ }));
+    expect(focus).toHaveBeenLastCalledWith('enemy-world');
   });
 
   it('says what the next Radar level adds, behind a lock', async () => {

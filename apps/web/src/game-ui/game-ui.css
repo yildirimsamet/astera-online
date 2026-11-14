@@ -7528,6 +7528,35 @@ button.gk-probe__head:active {
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
 }
+/* TWO DOORS (owner 2026-11-14): under a scan Radar 5 named, a second press opens your own
+   world it hit — set in under the words, joined to the row by a dashed seam. */
+.gk-ledger__row.gk-scan__hit {
+  min-height: var(--gk-hit);
+  padding-left: calc(var(--gk-s3) + 8px + var(--gk-s2));
+  border-top: 1px dashed color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 5%, transparent);
+}
+.gk-ledger__row.gk-scan__hit:enabled:active {
+  background: color-mix(in srgb, var(--gk-self) 18%, transparent);
+}
+.gk-scan__hit > .gk-glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--gk-self);
+}
+.gk-scan__hitwords {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+}
+.gk-scan__hitlabel {
+  color: var(--gk-ink-2);
+}
+.gk-scan__hitwords .gk-scan__world {
+  font-weight: 700;
+}
 
 /* AN INSTRUMENT YOU DO NOT OWN: it idles in its bay, what is missing sits behind a lock. */
 .gk-instrument {
@@ -7787,8 +7816,9 @@ button.gk-probe__head:active {
   color: var(--gk-ink);
 }
 .gk-window {
-  display: inline-grid;
-  gap: 1px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   padding: 4px 8px;
   border-radius: var(--gk-r-sm);
   border: 1px solid var(--gk-glass-edge);
@@ -7805,9 +7835,12 @@ button.gk-probe__head:active {
 .gk-window__boost {
   color: var(--gk-crystal);
 }
-.gk-window__local {
+/* a window whose start lands on another day for the player than for the galaxy: +1, −1 */
+.gk-window__shift {
   font-size: var(--gk-t-floor);
-  color: var(--gk-ink-2);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gk-warn);
 }
 
 /* THE CHRONICLE: what the galaxy saw, one ledger row a moment. */

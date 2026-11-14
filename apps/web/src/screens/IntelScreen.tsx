@@ -434,10 +434,13 @@ function Known({ watching, probes, now, aboard, onFocusPlanet }: {
 }
 
 /** A known world's row: the whole row opens its dossier on the galaxy. */
-function KnownRow({ planetId, onFocusPlanet, children }: { planetId: string; onFocusPlanet?: (planetId: string) => void; children: ReactNode }) {
+function KnownRow({ planetId, onFocusPlanet, door, children }: {
+  planetId: string; onFocusPlanet?: (planetId: string) => void; door?: 'origin' | 'world'; children: ReactNode;
+}) {
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocusPlanet?.(planetId); });
   return (
-    <button type="button" disabled={!onFocusPlanet} className="gk-ledger__row" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" disabled={!onFocusPlanet} className={door === 'world' ? 'gk-ledger__row gk-scan__hit' : 'gk-ledger__row'}
+      {...(door ? { 'data-door': door } : {})} {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {children}
     </button>
   );
@@ -815,6 +818,11 @@ function ScanRow({ scan, now, onFocusPlanet }: { scan: Scan; now: number; onFocu
   const { t } = useTranslation();
   const door = scan.originPlanetId ?? scan.planetId ?? null;
   const live = fresh(scan, now);
+  // TWO DOORS (owner 2026-11-14): once Radar 5 names who scanned you, the row opens their
+  // dossier and a second press under it opens your own world they hit.
+  const hit = scan.originPlanetId && scan.planetId !== undefined && scan.planetName !== undefined && onFocusPlanet
+    ? { id: scan.planetId, name: scan.planetName, open: onFocusPlanet }
+    : null;
   const face = (
     <>
       <span
@@ -827,7 +835,7 @@ function ScanRow({ scan, now, onFocusPlanet }: { scan: Scan; now: number; onFocu
         <span className="gk-ledger__title">
           {t('intel.radar.scan')}
           {/* WHICH WORLD: the log covers every world a commander holds. */}
-          {scan.planetName !== undefined && <>{' '}<span className="gk-scan__world">{t('intel.radar.onWorld', { planet: scan.planetName })}</span></>}
+          {scan.planetName !== undefined && hit === null && <>{' '}<span className="gk-scan__world">{t('intel.radar.onWorld', { planet: scan.planetName })}</span></>}
         </span>
         {(scan.bearing !== null || scan.originPlanetName !== null) && (
           <span className="gk-ledger__sub">
@@ -840,9 +848,21 @@ function ScanRow({ scan, now, onFocusPlanet }: { scan: Scan; now: number; onFocu
       {door !== null && onFocusPlanet && <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>}
     </>
   );
-  return door === null
-    ? <div className="gk-ledger__row">{face}</div>
-    : <KnownRow planetId={door} {...(onFocusPlanet ? { onFocusPlanet } : {})}>{face}</KnownRow>;
+  if (door === null) return <div className="gk-ledger__row">{face}</div>;
+  if (hit === null) return <KnownRow planetId={door} {...(onFocusPlanet ? { onFocusPlanet } : {})}>{face}</KnownRow>;
+  return (
+    <>
+      <KnownRow planetId={door} onFocusPlanet={hit.open} door="origin">{face}</KnownRow>
+      <KnownRow planetId={hit.id} onFocusPlanet={hit.open} door="world">
+        <Glyph id="target" />
+        <span className="gk-scan__hitwords">
+          <span className="gk-scan__hitlabel">{t('intel.radar.hitWorld')}</span>{' '}
+          <span className="gk-scan__world">{hit.name}</span>
+        </span>
+        <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>
+      </KnownRow>
+    </>
+  );
 }
 
 /**

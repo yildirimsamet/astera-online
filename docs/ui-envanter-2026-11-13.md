@@ -942,7 +942,7 @@ Doğrulanamayanlar:
 Doğrulanamayanlar:
 - Sessiz radar ve gemideki radar (onarım dili) galeride yok; yalnız testlerle doğrulandı.
 
-**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar.
+**Owner sorusu:** Bir tarama satırı artık tek kapı. 5. seviyede satır, taramayı yapanın dosyasını açıyor; satırdaki kendi dünyanın adı ayrıca basılamıyor. Bunun nedeni şu: karşılık vermek için gereken bilgi o dosyada, kendi dünyanın yeri ise zaten belli. İki kapı istersen satır iki çipe bölünebilir; satır biraz uzar. → **Yanıt (owner, 2026-11-14):** iki kapı. Bkz. C11.
 
 **C10 Görünüm sayfası ve galaksi olayları rehberi ✅ (2026-11-14, yardımcı oturum).** G3 #10/#11. Katman ve takvim kuralları değişmedi.
 
@@ -976,7 +976,37 @@ Doğrulanamayanlar:
 Doğrulanamayanlar:
 - Cihaz saati Türkiye saatinden farklı olan bir oyuncunun "Yerel" satırı yalnız testle doğrulandı; bu makine Türkiye saatinde.
 
-**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım.
+**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım. → **Yanıt (owner, 2026-11-14):** her oyuncu saatleri kendi saat diliminde, birincil saat olarak görsün. Bkz. C12.
+
+**C11 Radar 5 taramasının iki kapısı ✅ (2026-11-14, yardımcı oturum).** C9 owner sorusunun yanıtı. Radar ve tarama kuralları değişmedi.
+
+- **Ne değişti:** Radar 5 taramayı yapanı adlandırdığında satır iki ayrı basış oldu:
+  - Üstteki satır (nokta, "Tarama yakalandı", yön ve taramayı yapanın adı, süre) onun dosyasını açar.
+  - Altında, kesik çizgili bir dikişle bağlı ikinci kapı: hedef işareti, "Taranan dünyan" ve dünyanın adı. Kendi dünyanı açar.
+  - Dünyanın adı artık üst satırda tekrar edilmiyor.
+- **Ölçüler:** iki kapı da en az 44 px. Üst kapı 54 px, alt kapı 44 px.
+- **Ne değişmedi:** adı bilinmeyen tarama tek kapı kaldı ve taranan dünyayı açıyor. Sunucu taranan dünyayı göndermezse (eski sunucu) adı bilinen tarama da tek kapı.
+- **Tepki:** iki kapı da kitin dokunma sesi ve titreşimiyle açılıyor. Alt kapı basınca kendi rengiyle koyulaşıyor.
+- Yeni anahtar ×6: `intel.radar.hitWorld`.
+- Galeri: `intel-radar-named` (Radar 5, taramayı yapanın adı ve dünyası belli).
+
+Ölçüm: `reports/ui-audit/c11-radar-scan-doors-after-2026-11-14.md`, bir yol, 14 ölçüm. Bütün ölçüler önce de sonra da 0. İlk koşuda alt kapı basınca tepkisizdi; düzeltildi ve yeniden ölçüldü.
+
+**C12 Etkinlik saatleri oyuncunun kendi saatinde ✅ (2026-11-14, yardımcı oturum).** C10 owner sorusunun yanıtı. Takvim kuralları değişmedi; yalnız gösterim.
+
+- **Ne değişti:**
+  - Rehberdeki bütün saatler cihazın saat diliminde yazıyor. Saat dilimi `Intl`'den okunuyor.
+  - Türkiye saatinin altındaki ikinci "Yerel · …" satırı kalktı. Pencere tek satır oldu, kartlar kısaldı.
+  - Başlıktaki çip saat dilimini adlandırıyor: "Senin saatin (GMT+9)". Önceden "Türkiye saati (UTC+3)" yazıyordu.
+- **Günler galaksinin:** "Hafta içi" ve "Hafta sonu" Türkiye günleri olarak kaldı. Tokyo'da hafta içi 20:00 yağmuru ertesi gün 02:00'de başlıyor.
+  - Böyle bir pencerenin yanında amber bir "+1" ya da "−1" var. Ekran okuyucu bunu "ertesi gün" / "önceki gün" diye okuyor.
+  - Böyle bir pencere varsa başlığın altında tek satır bunu açıklıyor. Türkiye saatindeki oyuncu bu satırı ve işaretleri hiç görmüyor.
+  - Her gün çalışan pencerenin başka bir güne düşmesi anlamsız; ona işaret konmuyor.
+- **Yaz saati:** her pencerenin bir sonraki çalışması o günkü saat dilimiyle okunuyor. New York'ta eylülde 7 saat geride (test ediliyor).
+- **Sıra:** bir satırdaki pencereler oyuncunun saatine göre sıralanıyor. Gece 06:00'dan önceki saatler, önceki gibi günün sonunda okunuyor.
+- **Anahtarlar ×6:** `timeZone` artık `{{zone}}` alıyor. `dayShift`, `nextDay` ve `previousDay` eklendi. Kullanılmayan `localTime` silindi.
+- **Testler:** Türkiye, Tokyo, New York ve Honolulu (−1) için ayrı ayrı. Testler saat dilimini kendisi veriyor; böylece testi çalıştıran makinenin saat dilimine bağlı değiller.
+- **Galeri:** `events-guide-tokyo`.
 
 ## G4. Galaksi ve gönderme
 
@@ -1300,7 +1330,7 @@ Kite eklenenler (malzeme):
 Yüzey:
 - Sheet artık kitin başlığında açılıyor; başlıkta vericinin resmi duruyor.
 - 9–10 px yazıların hepsi 12–14 px'e çıktı.
-- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor.
+- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor. → owner 2026-11-14: aktarma en kısa basılı tutmaya indi (0,6 sn). Bkz. C13.
   - Aktarmanın eski onay penceresi kalktı. "Kasadaki döteryum geri aktarılamaz" cümlesi artık kilit işaretiyle tuşun üstünde, harcamadan önce görünüyor.
   - Tuş eksik olanı kendisi söylüyor. Kurarken "Kaynak yetmiyor". Aktarırken "Tam bir miktar yaz" ya da "Depoda bu kadar yok".
   - Kullanılmaz hâle gelen dört anahtar 6 dilden silindi: `confirmTitle`, `confirm`, `back`, `walletAfter`.
@@ -1354,6 +1384,12 @@ Doğrulanamayanlar:
 - Almanca bir anadil konuşanı metinleri okumadı. Owner Almanca bilmiyor; yeniden yazımlar İngilizce kaynağa göre yapıldı.
 - Ekran görüntüleri yalnız dört yüzeyde çekildi: sonda rafı, radar rafı, savunma raporu, saldırı sheet'i. Metinlerin çoğu kısaldı; uzayanlar tek tek bakılmadı.
 - Hitapla ilgisi olmayan makine çevirisi kalıntıları hâlâ var (ör. "Wert der bewaffneten Einheit"). Ayrı bir Almanca okuma işi.
+
+**C13 Kısa basılı tutmalar ✅ (2026-11-14, yardımcı oturum).** Owner kararı: onay penceresinden basılı tutmaya dönen eylemler en kısa ağırlığı kullanır (geri alınabilir ağırlık, 0,6 sn).
+- **Döteryum aktarımı (C6):** 1 sn'lik "harcar" ağırlığından 0,6 sn'ye indi. Aktarım geri alınamıyor; kısa süre owner'ın açık kararı. "Geri alınamaz" satırı tuşun üstünde kilit işaretiyle duruyor.
+- **Oyuncu engelleme (C4):** zaten 0,6 sn'ydi. Değişmedi; testte sabitlendi.
+- **Tamirhanedeki parçalama:** koordinatörün işi, bu birimde dokunulmadı.
+- **Testler:** iki tuşun süresi testte ölçülüyor (`--gk-hold-ms` 600 ms). Tuşun görünüşü değişmedi; yalnız dolma süresi kısaldı. Bu yüzden ölçüm (audit) koşulmadı.
 
 ## G9. Sıralama, sezon, anıtlar
 

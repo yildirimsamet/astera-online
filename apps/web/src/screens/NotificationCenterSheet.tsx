@@ -291,7 +291,8 @@ function Transfer({ view }: { view: NotificationCenter }) {
       <p className="gk-note">{t('notificationCenter.transferPreview', { wallet: full(after), count: Math.floor(after / view.prices.incoming_attack[view.timing]) })}</p>
       <p className="gk-center__final"><Glyph id="lock" />{t('notificationCenter.confirmBody')}</p>
     </>}
-    <GameHold weight="spends" glyph="fuel" label={t('notificationCenter.transfer')} detail={valid ? <Deuterium amount={amount} /> : undefined}
+    {/* owner 2026-11-14: the shortest hold, though the transfer cannot be taken back */}
+    <GameHold weight="reversible" glyph="fuel" label={t('notificationCenter.transfer')} detail={valid ? <Deuterium amount={amount} /> : undefined}
       disabledReason={reason} onCommit={() => {
         if (!world || fund.isPending) return;
         fund.mutate({ planetId: world.id, amount }, { onSuccess: () => { setText(''); } });
