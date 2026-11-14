@@ -878,7 +878,7 @@ Kalanlar ve nedeni:
   - Sırada olan projenin kartı artık fiyat göstermiyor, çünkü basış sunulmuyor.
 - **Silinen:** v1 `Sheet` + `ActionButton` + `Price` kullanımı. Eski portre CSS'i (chrome.css'teki "commitment portrait" ve atmosphere.css'teki araştırma portresi; başka kullanan yok).
 - **Galeri:** `base-research-sheet`, `base-research-locked`, `base-research-paused`. Envanterde ulaşılamayan iki durum ("proje sheet'i", "tatilde duraklatılmış") kapandı.
-- **Ölçüm** (Türkçe; telefon, 320, masaüstü; dört görünüm): `reports/ui-audit/g2i2-after-2026-11-15.md`. 12 px altı, kontrast, 44 px altı ve tepkisiz hepsi 0. Puan 0/0/0/3; kalan 3, "Durdu" düzeltmesinden önceki kesilmeydi.
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü; dört görünüm): `reports/ui-audit/g2i2-after-2026-11-15.md`. 12 px altı, kontrast, 44 px altı ve tepkisiz hepsi 0. Puan 0/0/0/3; kalan 3, "Durdu" düzeltmesinden önceki kesilmeydi. Düzeltmeden sonra duraklatılmış görünüm yeniden ölçüldü: 0.
 
 ## G3. İstihbarat
 
