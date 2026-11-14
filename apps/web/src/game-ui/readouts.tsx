@@ -229,10 +229,19 @@ function HudPill({ item }: { item: HudResource }) {
     item.onPress?.();
   });
   const safe = item.safe ?? 0;
+  // the figure's length, so the style can fit a long one to a narrow pill (`.gk-res__amount`)
+  const length: CssVars = { '--gk-len': item.amount.length };
   const body = (
     <>
       <img className="gk-res__art" src={item.art} alt="" draggable={false} />
-      <span key={item.flight} className="gk-res__amount gk-display gk-num gk-outlined" {...(item.flight === undefined ? {} : { 'data-bump': '' })}>{item.amount}</span>
+      <span
+        key={item.flight}
+        className="gk-res__amount gk-display gk-num gk-outlined"
+        style={length}
+        {...(item.flight === undefined ? {} : { 'data-bump': '' })}
+      >
+        {item.amount}
+      </span>
       {item.pool !== undefined
         ? <span data-pool="" data-tone={item.pool.tone} className="gk-res__pool gk-num">{item.pool.text}</span>
         : item.rate !== undefined && <span className="gk-res__rate">{item.rate}</span>}

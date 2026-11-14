@@ -1371,6 +1371,7 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   position: relative;
   flex: 1;
   min-width: 0;
+  container-type: inline-size;
   display: grid;
   align-content: center;
   height: 38px;
@@ -1391,8 +1392,11 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   object-fit: contain;
   filter: drop-shadow(0 2px 2px var(--gk-outline));
 }
+/* A whole figure fits its pill: full size where it fits, smaller only when its length would
+   overrun the pill (about 0.56 em a character in the display face), never under the floor.
+   At 350 px "12,400" needed 52 px of a 49 px pill (G1 follow-up, 2026-11-14). */
 .gk-res__amount {
-  font-size: var(--gk-t-lead);
+  font-size: max(var(--gk-t-floor), min(var(--gk-t-lead), calc(100cqi / (var(--gk-len, 4) * 0.56))));
   white-space: nowrap;
   color: var(--gk-ink);
 }

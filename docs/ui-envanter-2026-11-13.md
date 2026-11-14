@@ -680,7 +680,7 @@ Kit sayfasına `base-faults` görünümü eklendi: 1 arıza onarımda, 2 arıza 
 Denetim envanteri G1-b'den beri eski dosya adını (`WorksLine.tsx`) gösteriyordu; `StatusLine.tsx` olarak düzeldi. Bunu `packages/ui-audit` testleri yakaladı; o testler artık her birimin regresyonunda koşuyor.
 
 Görülen ama bu birimin işi olmayanlar:
-- 320 px'te ja üst kaynak göstergesinde "12,400" komşu kutuya değiyor (G1 üst çubuk; G1 kapandıktan sonra görüldü). G2-c'nin hemen ardından küçük bir G1 düzeltmesi olarak ele alınacak.
+- 320 px'te ja üst kaynak göstergesinde "12,400" komşu kutuya değiyor (G1 üst çubuk; G1 kapandıktan sonra görüldü). ✅ G2-c'nin ardından düzeldi: ölçünce 350 px'te de taşıyordu ("12,400" 52 px, hap 49 px). Hap artık kendi genişliğini, rakam kendi uzunluğunu biliyor; yazı yalnız sığmadığında küçülüyor (350 px'te 6 haneli rakam 14,5 px, 320 px'te 12 px taban; kısa rakamlar ve 390 px 16 px kalıyor). Üst çubuk 99.999'a kadar tam rakam kuralı değişmedi.
 - de metinlerde "Sie" ile "du" karışık: yaklaşık 340 "Sie/Ihre" kalıbına karşı 409 "du/dein" (Üs sekmesi açıklaması "Entwickeln Sie hier Ihre Schiffe"). Oyun tr'de "sen", fr'de "tu" diyor; de "du"ya inecek. Ayrı bir metin birimi; yardımcının sonraki partisine verilecek.
 
 ## G3. İstihbarat
