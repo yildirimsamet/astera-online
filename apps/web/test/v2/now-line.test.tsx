@@ -86,15 +86,60 @@ describe('the Now line', () => {
     expect(within(line).getByText('+1')).toBeInTheDocument();
   });
 
-  /** Owner, 2026-09-24: the dot beats on every timer, not only an enemy's — something is running. */
-  it('beats the dot in front of every timer, yours and an enemy’s', () => {
+  /**
+   * Owner, 2026-09-24: the mark beats on every timer, not only an enemy's — something is
+   * running. Since G1-c (2026-11-14) the beat is the ring's, in its owner's colour.
+   */
+  it('beats the ring in front of every timer, yours and an enemy’s', () => {
     const { container, rerender } = render(
       <NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />,
     );
-    const dot = () => container.querySelector('[data-now-dot]');
-    expect(dot()).toHaveClass('animate-pulse', 'bg-v2-self');
+    const ring = () => container.querySelector('[data-now-line] .gk-timer');
+    expect(ring()).toHaveAttribute('data-beat');
+    expect(ring()).toHaveAttribute('data-tone', 'self');
     rerender(<NowLine entries={entries({ threads: [thread('incoming', 60_000)] })} now={NOW} {...closed()} />);
-    expect(dot()).toHaveClass('animate-pulse', 'bg-v2-hostile');
+    expect(ring()).toHaveAttribute('data-beat');
+    expect(ring()).toHaveAttribute('data-tone', 'hostile');
+  });
+
+  /**
+   * The shell floats the line over the galaxy in a layer that lets presses through to the
+   * scene (G1-c, found on the phone 2026-11-14: the plate could not be pressed): the plate
+   * takes them back.
+   */
+  it('takes a press back from the pass-through layer it floats in', () => {
+    const { container } = render(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />);
+    expect(container.querySelector('[data-now-line]')?.className).toContain('[&_button]:pointer-events-auto');
+  });
+
+  /**
+   * The plate floats in a layer of its own over the galaxy; the board it opens must not stay
+   * in that layer, or the galaxy's cards draw over it (found on the phone, 2026-11-14).
+   */
+  it('opens the board over the whole game, not inside the layer the plate floats in', () => {
+    const { container } = render(
+      <div data-now-float=""><NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} open /></div>,
+    );
+    const sheet = screen.getByRole('dialog', { name: 'Timers' });
+    expect(container.querySelector('[data-now-float]')?.contains(sheet)).toBe(false);
+  });
+
+  it('marks the timer by what it is', () => {
+    const { container, rerender } = render(<NowLine entries={entries({ threads: [thread('incoming', 60_000)] })} now={NOW} {...closed()} />);
+    const mark = () => container.querySelector('[data-now-line] .gk-timer__ring')?.getAttribute('data-glyph');
+    expect(mark()).toBe('siren');
+    rerender(<NowLine entries={entries({ builds: [refinery] })} now={NOW} {...closed()} />);
+    expect(mark()).toBe('up');
+  });
+
+  it('drains the ring over the flight’s whole, and guesses none it was not told', () => {
+    const { container, rerender } = render(<NowLine entries={entries({ threads: [flying('transfer', 'transfer-1', 60_000)] })} now={NOW} {...closed()} />);
+    const arc = () => container.querySelector('[data-now-line] .gk-timer__arc');
+    // Left a minute ago, lands in one: half of the flight is still ahead.
+    const length = Number(arc()?.getAttribute('stroke-dasharray'));
+    expect(Number(arc()?.getAttribute('stroke-dashoffset'))).toBeCloseTo(length * 0.5);
+    rerender(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />);
+    expect(arc()).toBeNull();
   });
 
   it('draws your own timers in your colour', () => {
@@ -146,7 +191,12 @@ describe('the Now line', () => {
     expect(within(rows[0]!).getByText('2m 00s')).toBeInTheDocument();
     expect(within(rows[0]!).getByText(/^at /)).toBeInTheDocument();
     expect(within(rows[0]!).getByText('Work finishing')).toBeInTheDocument();
+    expect(rows[0]!.querySelector('.gk-timer__ring')).toHaveAttribute('data-glyph', 'up');
+    expect(rows[0]!.querySelector('.gk-timer__arc')).not.toBeNull();
     for (const row of rows.slice(1)) {
+      // Its clock is not running yet: the ring holds no arc.
+      expect(row.querySelector('.gk-timer__ring')).toHaveAttribute('data-glyph', 'up');
+      expect(row.querySelector('.gk-timer__arc')).toBeNull();
       expect(within(row).getByText('Queued')).toBeInTheDocument();
       // A queued order is not finishing: it says when it starts.
       expect(within(row).getByText('Starts when the one ahead finishes')).toBeInTheDocument();
@@ -156,6 +206,22 @@ describe('the Now line', () => {
     }
     // And the line says how many more the sheet holds.
     expect(screen.getByText('+2')).toBeInTheDocument();
+  });
+
+  /**
+   * THE BOARD OF EVERY TIMER (G1-c): it opens under a painted stopwatch and says the order it
+   * lists in, so an enemy an hour out above a transfer landing in a minute is a rule, not a
+   * mistake. While something is coming for you the head is red.
+   */
+  it('opens under the stopwatch and says the order it lists in', () => {
+    const { rerender } = render(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} open />);
+    let sheet = screen.getByRole('dialog', { name: 'Timers' });
+    expect(sheet.querySelector('.gk-sheet__art')?.getAttribute('src')).toMatch(/hud-timers\.webp$/);
+    expect(within(sheet).getByText('Enemies first, then the soonest')).toBeInTheDocument();
+    expect(sheet.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--self');
+    rerender(<NowLine entries={entries({ threads: [thread('transfer', 60_000), thread('incoming', 3_600_000)] })} now={NOW} {...closed()} open />);
+    sheet = screen.getByRole('dialog', { name: 'Timers' });
+    expect(sheet.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--hostile');
   });
 
   it.each([

@@ -36,6 +36,11 @@ describe('the painted icons', () => {
     for (const id of ['hud-medallion', 'hud-bell', 'hud-chat']) expect(ART_ICONS).toContain(id);
   });
 
+  /** G1-c (2026-11-14): the timers sheet opens under a painted stopwatch. */
+  it('paints the stopwatch over the board of every timer', () => {
+    expect(ART_ICONS).toContain('hud-timers');
+  });
+
   it('paints every place in the dock', () => {
     for (const tab of DOCK_TABS) expect(ART_ICONS).toContain(DOCK_ART[tab]);
   });

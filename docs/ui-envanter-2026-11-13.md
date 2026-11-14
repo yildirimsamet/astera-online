@@ -290,6 +290,34 @@ G1-b'nin bıraktığı ölü kod adayları (silinmedi, owner'a liste olarak sunu
 - `v2/kit/ResourceMeter.tsx`: yalnız galeri ve kendi testi.
 - `ui/SignalBoostNote.tsx`: yalnız ölü `shell/StatusBar.tsx` içinde.
 
+**G1-c Şimdi çizgisi ve sayaç sheet'i ✅ (2026-11-14).** Oyuncunun anı: oyun açılınca "bana bir şey geliyor mu, sıradaki ne iniyor?" Durum satırının altındaki tek plaka bunu söyler; bir dokunuş bütün sayaçları açar.
+
+Önce kite eklenenler (galeri: `ui-kit` "Sayaçlar" bölümü):
+- `TimerPlate`: kesik köşeli plaka, rengi sayacın sahibinden (sen teal, düşman kırmızı, uyarı amber); halka, büyük süre, ad ve tek cümle, arkasındakiler için "+N". Plakanın tamamı tek basış (ses + titreşim). Düşman adı bir kez okunur (`aria-live`), saniye okunmaz. Baştaki sayaç değişince plaka yukarıdan düşerek gelir.
+- `TimerRow`: sayaç listesinin satırı; halka ve işaret, ad ve cümle, süre ve "saat 14:32"; sırada bekleyen iş için kum saati ve "Sırada" (owner, 2026-10-06). Kameranın gidebildiği satır basılabilir, gerisi bilgi.
+- `Timer`: renk (`tone`), sürerken nabız (`beat`, owner 2026-09-24: her sayaçta işaret atar), yalnız halka (metinsiz) ve bütünü bilinmeyen sayaçta yalnız iz.
+- Kesik plakanın uyarı rengi (`gk-cut--warn`).
+- Codex ile ev stilinde boyalı kronometre (`hud-timers`): sayaç sheet'inin başlığı.
+
+Kural (`lib/nowLine.ts`, testli):
+- `nowSpan`: halka yalnız oyunun bildiği bütün üzerinde boşalır (uçuşun kalkışı, işin başlangıcı, olayın penceresi, süren bakım). Kalkan, Sessiz Uzay'a geçiş, ilerideki bakım ve sırada bekleyen iş için uydurma bir bütün yerine yalnız iz çizilir. Düşmanın kalkışı ancak galaksi onu görüyorsa bilinir.
+- `nowGlyph`: her sayacın işareti (saldırı siren, vuruş, filo roket, dönüş geri çağırma, sonda göz, aktarım/konvoy sandık, destek, koloni, radyasyon, anıt yıldız, sinyal hedef, sondaj kazma, yapım ok, araştırma büyüteç, olay türüne göre, kalkan, uyarı, bakım dişli).
+- `nowTone`: kırmızı yalnız düşmana.
+
+Sheet: başlıkta kronometre ve sıralama kuralı ("Önce düşman, sonra en yakını", 6 dil): bir saat uzaktaki düşmanın bir dakikada inen aktarımın üstünde durması hata değil, kural olarak okunur. Düşman yoldayken başlık plakası kırmızı.
+
+Oyunda bulunan iki hata (ikisi de G1-b'nin yüzen katmanından):
+- Plaka basılamıyordu: yüzen katman basışları galaksiye geçiriyor, kit düğmesi geri almıyordu. Düzeltildi, testli.
+- Sayaç sheet'i yüzen katmanın içinde kaldığı için galaksinin bağlam kartı ve köşe düğmeleri sheet'in üstüne çiziliyordu. Sheet artık `body`'ye açılıyor, testli.
+
+Hizalama (owner notu 2): plaka, durum satırı ve ilk ipucu bandı 12 px'lik ana boşluktan başlıyor.
+
+Ölçüm (`reports/ui-audit/g1c-after-2026-11-14.md`, `gallery:timers`, 6 dil × 3 boyut), G1 öncesine göre telefonda: 12 px altı metin 25 → 0, kontrast hatası 5 → 0, 44 px altı hedef 8 → 1, tepkisiz hedef 9 → 2, kesilen metin 0 (dar ekranda ad iki satıra sarılıyor). Kalan hedef ve tepkisiz alan bütün sheet'lerin ortak parçası: 16 px'lik "Genişlet" tutamağı ve adsız arka plan. Sheet birimine (G1-g, owner notu 1 ile) bırakıldı.
+
+Yerel oyunda 350 px'te denendi: yapım başlatıldı, plaka "ALAŞIM RAFİNERİSİ · İş bitiyor · +2" ile halkası dolarak göründü; basınca sheet açıldı, sıradaki iş kum saatiyle, olay sandıkla okundu; galaksinin köşeleri plakanın altından başlıyor.
+
+Kit ölçümünde G1'den önce de olan tek tepkisiz hedef: galerideki `Slider` örneği ("Ok"); kit sürgüsüne dokunan birimde ele alınacak (G1-f ayarlar).
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

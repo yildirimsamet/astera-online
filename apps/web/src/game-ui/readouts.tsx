@@ -367,21 +367,118 @@ export function StatusChip({ glyph, tone, label, value, until, onPress }: {
   );
 }
 
-export function Timer({ remaining, total, text, glyph = 'clock' }: { remaining: number; total: number; text: string; glyph?: GlyphId }) {
+/** Whose a timer is: yours, an enemy's, or a warning. */
+export type TimerTone = 'self' | 'hostile' | 'warn';
+
+/**
+ * A countdown ring, with the time beside it when there is one. The ring drains over the
+ * timer's whole; with no whole known (`total` 0) it draws only its track, never a guessed
+ * arc. `beat`: something is under way, so the mark beats in its owner's colour.
+ */
+export function Timer({ remaining, total, text, glyph = 'clock', tone, beat = false }: {
+  remaining: number;
+  total: number;
+  text?: string;
+  glyph?: GlyphId;
+  tone?: TimerTone;
+  beat?: boolean;
+}) {
   const left = ringFraction(remaining, total);
   const length = 2 * Math.PI * 14;
   return (
-    <span className="gk-timer">
-      <span className="gk-timer__ring" aria-hidden="true">
+    <span className="gk-timer" {...(tone === undefined ? {} : { 'data-tone': tone })} {...(beat ? { 'data-beat': '' } : {})}>
+      <span className="gk-timer__ring" data-glyph={glyph} aria-hidden="true">
         <svg viewBox="0 0 34 34">
           <circle className="gk-timer__track" cx="17" cy="17" r="14" />
-          <circle className="gk-timer__arc" cx="17" cy="17" r="14" strokeDasharray={length} strokeDashoffset={length * (1 - left)} />
+          {total > 0 && <circle className="gk-timer__arc" cx="17" cy="17" r="14" strokeDasharray={length} strokeDashoffset={length * (1 - left)} />}
         </svg>
         <Glyph id={glyph} />
       </span>
-      <span className="gk-timer__time gk-display gk-num gk-outlined">{text}</span>
+      {text !== undefined && <span className="gk-timer__time gk-display gk-num gk-outlined">{text}</span>}
     </span>
   );
+}
+
+/**
+ * THE TIMER PLATE (G1-c, 2026-11-14): the one timer that matters most, under the top bar. A
+ * cut plate in the colour of whose it is, the ring, the time large, what it is and one
+ * clause, and "+N" for the timers behind it. The whole plate is one press. `live`: an enemy
+ * is announced once, by its title — never the time, which would read the clock aloud.
+ */
+export function TimerPlate({ tone, glyph, remaining, total, time, title, detail, more = 0, live = false, label, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  remaining: number;
+  /** The whole the ring drains over; 0 when it is not known. */
+  total: number;
+  time: string;
+  title: string;
+  detail?: string;
+  /** How many timers wait behind it. */
+  more?: number;
+  live?: boolean;
+  /** What the plate is, for a screen reader ("Most urgent timer"). */
+  label: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} className="gk-tplate" data-tone={tone} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className={`gk-cut gk-cut--${tone} gk-tplate__plate`}>
+        <span className="sr-only">{label}</span>
+        <Timer remaining={remaining} total={total} glyph={glyph} tone={tone} beat />
+        <span className="gk-tplate__time gk-display gk-num gk-outlined">{time}</span>
+        <span className="gk-tplate__text">
+          <span className="gk-tplate__title gk-label" {...(live ? { 'aria-live': 'polite' as const } : {})}>{title}</span>
+          {detail !== undefined && <span className="gk-sub">{detail}</span>}
+        </span>
+        {more > 0 && <span className="gk-tplate__more gk-num">+{more}</span>}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * A ROW IN A LIST OF TIMERS: the ring and its mark, what it is and one clause, and the time
+ * with the clock time it lands at — or, for an order whose clock is not running yet, an
+ * hourglass and the word for why (owner, 2026-10-06). One press when it can take you to the
+ * timer; information otherwise.
+ */
+export function TimerRow({ tone, glyph, remaining, total, title, detail, time, at, waiting, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  remaining: number;
+  total: number;
+  title: string;
+  detail?: string;
+  time?: string;
+  /** The clock time it lands at ("at 14:32"). */
+  at?: string;
+  /** In place of a time: why no clock runs yet ("Queued"). */
+  waiting?: string;
+  onPress?: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress?.(); });
+  const body = (
+    <>
+      <Timer remaining={remaining} total={total} glyph={glyph} tone={tone} />
+      <span className="gk-trow__text">
+        <span className="gk-trow__title">{title}</span>
+        {detail !== undefined && <span className="gk-sub">{detail}</span>}
+      </span>
+      {waiting !== undefined ? (
+        <span data-waiting="" className="gk-trow__wait"><Glyph id="timed" />{waiting}</span>
+      ) : (
+        <span className="gk-trow__end">
+          {time !== undefined && <span className="gk-trow__time gk-num">{time}</span>}
+          {at !== undefined && <span className="gk-sub gk-num">{at}</span>}
+        </span>
+      )}
+    </>
+  );
+  return onPress === undefined
+    ? <div className="gk-trow" data-tone={tone}>{body}</div>
+    : <button type="button" {...OWN_SOUND} className="gk-trow" data-tone={tone} onPointerDown={own.onPointerDown} onClick={own.onClick}>{body}</button>;
 }
 
 interface Cost { alloy: number; crystal: number; deuterium?: number }

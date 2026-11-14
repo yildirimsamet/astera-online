@@ -56,7 +56,7 @@ export function StatusLine({ now, world, shield, recoveryUntil, signalUntil, vac
   if (!world && !shielded && !recovery && !signal && !vacation && rewards <= 0) return null;
 
   return (
-    <div data-status-line="" className="pointer-events-none flex flex-wrap items-center gap-x-1 px-1.5 [&_button]:pointer-events-auto">
+    <div data-status-line="" className="pointer-events-none flex flex-wrap items-center gap-x-1 pl-[calc(var(--gk-gutter)-2px)] pr-1.5 [&_button]:pointer-events-auto">
       {world && (
         <Chip label={t(world.capital ? 'statusBar.capitalWorld' : 'statusBar.colonyWorld', { name: world.name })} onPress={onWorld}>
           <Glyph id={world.capital ? 'home' : 'colony'} />

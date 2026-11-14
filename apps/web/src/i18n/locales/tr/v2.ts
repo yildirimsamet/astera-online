@@ -70,6 +70,8 @@ export const now = {
   label: 'En acil zamanlayıcı',
   /** The sheet one tap under it: every timer. */
   sheet: 'Zamanlayıcılar',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Önce düşman, sonra en yakını',
   work: 'İş bitiyor',
   research: 'Araştırma bitiyor',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */

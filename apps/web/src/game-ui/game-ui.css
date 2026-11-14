@@ -1520,6 +1520,170 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   font-size: var(--gk-t-lead);
 }
 
+/* ── a timer's colour, and its beat while it runs (G1-c, 2026-11-14) ─────────── */
+
+.gk-timer[data-tone='self'] { --gk-timer-c: var(--gk-self); }
+.gk-timer[data-tone='hostile'] { --gk-timer-c: var(--gk-hostile); }
+.gk-timer[data-tone='warn'] { --gk-timer-c: var(--gk-warn); }
+.gk-timer[data-tone] .gk-timer__ring {
+  color: var(--gk-timer-c);
+}
+.gk-timer[data-tone] .gk-timer__arc {
+  stroke: var(--gk-timer-c);
+}
+/* Something is under way: the mark beats in its owner's colour (owner, 2026-09-24). */
+.gk-timer[data-beat] .gk-timer__ring .gk-glyph {
+  animation: gk-timer-beat 1.6s var(--gk-ease) infinite;
+}
+@keyframes gk-timer-beat {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.84); opacity: 0.7; }
+}
+
+.gk-cut--warn {
+  --edge: linear-gradient(90deg, var(--gk-warn), color-mix(in srgb, var(--gk-warn) 30%, var(--gk-metal-edge)));
+  --face:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-warn) 16%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+
+/* ── the timer plate: the one timer that matters most, under the top bar ──────── */
+
+.gk-tplate {
+  /* As wide as what it says, never wider than a phone's reach: a long name truncates. */
+  display: block;
+  width: fit-content;
+  max-width: min(100%, 360px);
+  border-radius: var(--gk-r-sm);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-tplate__plate {
+  --cut: 8px;
+  display: grid;
+  grid-template-columns: 34px auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 7px;
+  min-height: 44px;
+  padding: 4px 9px 4px 5px;
+  color: var(--gk-ink);
+  /* A new head drops in: the line answers what just changed. */
+  animation: gk-drop var(--gk-settle) var(--gk-pop);
+}
+.gk-tplate:active .gk-tplate__plate {
+  transform: translateY(1px) scale(0.985);
+}
+.gk-tplate:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 3px;
+}
+.gk-tplate__time {
+  font-size: var(--gk-t-lead);
+  line-height: 1;
+  white-space: nowrap;
+}
+.gk-tplate[data-tone='hostile'] .gk-tplate__time {
+  color: var(--gk-hostile);
+}
+.gk-tplate[data-tone='warn'] .gk-tplate__time {
+  color: var(--gk-warn);
+}
+.gk-tplate__text {
+  display: grid;
+  min-width: 0;
+}
+.gk-tplate__text .gk-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The name says where: on a narrow phone it takes a second line rather than lose its target
+   ("AKTARIM → KE…", audit 2026-11-14). */
+.gk-tplate__title {
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  color: var(--gk-ink);
+}
+.gk-tplate__more {
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-ink) 16%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--gk-ink-2);
+}
+
+/* ── a row in a list of timers ─────────────────────────────────────────────── */
+
+.gk-tlist > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-trow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 9px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 2px;
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+button.gk-trow {
+  border-radius: var(--gk-r-sm);
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+button.gk-trow:active {
+  background: color-mix(in srgb, var(--gk-self) 10%, transparent);
+}
+button.gk-trow:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-trow__text {
+  display: grid;
+  min-width: 0;
+}
+/* A row wraps its name and its clause rather than cut them: both are short, two lines at most. */
+.gk-trow__title,
+.gk-trow__text .gk-sub {
+  overflow-wrap: anywhere;
+}
+.gk-trow__title {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.gk-trow__end {
+  display: grid;
+  justify-items: end;
+}
+.gk-trow__time {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gk-trow[data-tone='hostile'] .gk-trow__time {
+  color: var(--gk-hostile);
+}
+.gk-trow[data-tone='warn'] .gk-trow__time {
+  color: var(--gk-warn);
+}
+.gk-trow__wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+  white-space: nowrap;
+}
+
 /* ── a slot of work: ring around the picture, name and time beside it ──────── */
 
 .gk-qslot {
@@ -3714,11 +3878,6 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
 .gk-scene__toast--low {
   top: 158px;
 }
-.gk-scene__flight .gk-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .gk-scene__sheet--tall {
   height: calc(100dvh - 28px);
 }
@@ -3732,16 +3891,9 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
 }
 .gk-scene__rail {
   display: grid;
+  justify-items: start;
   gap: 6px;
-  width: 236px;
-  padding: 4px 8px;
-}
-.gk-scene__flight {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 4px;
+  padding: 4px var(--gk-gutter);
 }
 .gk-scene__world {
   flex: 1;

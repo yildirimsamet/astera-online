@@ -70,6 +70,8 @@ export const now = {
   label: 'Temporizador más urgente',
   /** The sheet one tap under it: every timer. */
   sheet: 'Temporizadores',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Primero los enemigos, luego lo más próximo',
   work: 'Obra a punto de terminar',
   research: 'Investigación a punto de terminar',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */

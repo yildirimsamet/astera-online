@@ -7,6 +7,7 @@ import type {
   PendingThread,
   ResearchQueueOrderView,
 } from '../api/schemas.js';
+import type { GlyphId } from '../game-ui/icons.js';
 import i18n from '../i18n/index.js';
 import { researchName } from '../i18n/names.js';
 import { contactFor, flightFocus, flightTitle, incomingDetail, runArrival, runTitle, type FlightFocus } from './flights.js';
@@ -180,5 +181,98 @@ export function describeNow(
         ? { title: i18n.t('now.maintenanceOn'), detail: i18n.t('now.maintenanceOnDetail') }
         : { title: i18n.t('now.maintenance', { from: clockTime(new Date(entry.startsAt)), to: clockTime(new Date(entry.until)) }),
           detail: i18n.t('now.maintenanceDetail') };
+  }
+}
+
+/** Whose a timer is, by its colour: red only for an enemy, amber for a warning, yours otherwise. */
+export type NowTone = 'self' | 'hostile' | 'warn';
+
+export function nowTone(entry: NowEntry): NowTone {
+  if (entry.kind === 'incoming') return 'hostile';
+  // D212: leaving the galaxy is a warning, never an enemy. F0.9: so is a maintenance window.
+  if (entry.kind === 'silentSpace' || entry.kind === 'maintenance') return 'warn';
+  return 'self';
+}
+
+/**
+ * THE WHOLE A TIMER RUNS OVER (G1-c, 2026-11-14): its ring drains across it. Only a whole
+ * the game was told — a flight's departure, work's start, an event's window, a maintenance
+ * under way. The shield, the move to Silent Space and a maintenance still ahead have none,
+ * and an order behind the head of its lane has no running clock: their rings stay empty
+ * rather than drain over a made-up whole.
+ */
+export function nowSpan(entry: NowEntry, contacts: readonly Contact[] = []): { from: number; to: number } | null {
+  switch (entry.kind) {
+    case 'incoming': {
+      // Seen leaving by the galaxy, or not at all: an enemy's departure is not ours to know.
+      const seen = contactFor(entry.thread, contacts);
+      return seen ? { from: seen.startAt.getTime(), to: seen.endAt.getTime() } : null;
+    }
+    case 'strike':
+    case 'flight':
+      return entry.thread.path ? { from: entry.thread.path.departAt.getTime(), to: entry.at } : null;
+    case 'run':
+      // Home from where it turned: its recall, or the rock it reached.
+      return entry.run.status === 'returning'
+        ? { from: (entry.run.recalledAt ?? entry.run.arriveAt).getTime(), to: entry.at }
+        : { from: entry.run.departAt.getTime(), to: entry.at };
+    case 'build':
+    case 'research':
+      return entry.waiting || entry.order.startedAt === undefined ? null : { from: entry.order.startedAt.getTime(), to: entry.at };
+    case 'event':
+      return { from: entry.event.startsAt.getTime(), to: entry.at };
+    case 'maintenance':
+      return entry.started ? { from: entry.startsAt, to: entry.until } : null;
+    case 'shield':
+    case 'silentSpace':
+      return null;
+  }
+}
+
+/** A flight's mark by what it carries; anything else in the air is a rocket. */
+const FLIGHT_GLYPH: Partial<Record<PendingThread['kind'], GlyphId>> = {
+  probe: 'eye',
+  transfer: 'crate',
+  trade: 'crate',
+  intergalactic_convoy: 'crate',
+  settlement: 'colony',
+  radiation_bomb: 'radiation',
+  monument: 'star',
+  unknown_signal: 'target',
+};
+
+const EVENT_GLYPH = {
+  ASTEROID_SHOWER: 'asteroid',
+  TRADE_SHIP: 'crate',
+  INTERGALACTIC_CONVOY: 'crate',
+} as const satisfies Record<ActiveGalaxyEvent['kind'], GlyphId>;
+
+/** THE MARK EACH TIMER WEARS (G1-c): a list of timers reads before a word of it does. */
+export function nowGlyph(entry: NowEntry): GlyphId {
+  switch (entry.kind) {
+    case 'incoming':
+      return 'siren';
+    case 'strike':
+      return 'attack';
+    case 'flight': {
+      const { thread } = entry;
+      if (thread.leg === 'return') return 'recall';
+      if (thread.clanSupport === true) return 'support';
+      return FLIGHT_GLYPH[thread.kind] ?? 'rocket';
+    }
+    case 'run':
+      return 'mine';
+    case 'build':
+      return 'up';
+    case 'research':
+      return 'zoom';
+    case 'event':
+      return EVENT_GLYPH[entry.event.kind];
+    case 'shield':
+      return 'shield';
+    case 'silentSpace':
+      return 'warn';
+    case 'maintenance':
+      return 'settings';
   }
 }

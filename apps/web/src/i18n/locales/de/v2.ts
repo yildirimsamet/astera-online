@@ -70,6 +70,8 @@ export const now = {
   label: 'Dringendster Timer',
   /** The sheet one tap under it: every timer. */
   sheet: 'Timer',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Feinde zuerst, dann das Nächste',
   work: 'Bau wird fertig',
   research: 'Forschung wird fertig',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */

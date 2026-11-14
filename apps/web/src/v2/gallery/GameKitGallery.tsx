@@ -13,7 +13,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
-  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, Toggle, UnitBay, UnitCard,
+  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
 import type { Language } from '../../i18n/languages.js';
@@ -342,26 +342,40 @@ function TopBarParts() {
   );
 }
 
+/**
+ * THE TIMERS (G1-c, 2026-11-14): the one timer that matters most as a plate under the top
+ * bar — an enemy's in red, yours in your colour, a warning in amber, a ring with no arc where
+ * the whole is not known — and the rows of the board one tap under it.
+ */
+function TimerParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <>
+      <div className="grid justify-items-start gap-2">
+        <TimerPlate tone="hostile" glyph="siren" remaining={252} total={1_800} time="4:12" title="Saldırı → Kestrel" detail="Görüşte · 39 gemi" more={3} live label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="self" glyph="rocket" remaining={1_500} total={3_600} time="25 dk" title="Filon → Tharsis" detail="12 gemi" label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="warn" glyph="warn" remaining={0} total={0} time="6 sa 40 dk" title="Sessiz Uzay’a geçiş" detail="Bir yapım, araştırma ya da saldırı başlat" label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="self" glyph="up" remaining={110} total={3_600} time="1:50" title="Alaşım Rafinerisi 12 · çok uzun bir yapı adı" detail="İş bitiyor" more={1} label="En acil sayaç" onPress={noop} />
+      </div>
+      <ul className="gk-tlist">
+        <li><TimerRow tone="hostile" glyph="siren" remaining={252} total={1_800} title="Saldırı → Kestrel" detail="Görüşte · 39 gemi" time="4 dk 12 sn" at="12:44’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="rocket" remaining={1_500} total={3_600} title="Filon → Tharsis" detail="12 gemi" time="25 dk" at="13:05’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="mine" remaining={300} total={1_200} title="Sondaların → Göktaşı" detail="2 sonda" time="5 dk" at="12:45’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="up" remaining={110} total={3_600} title="Alaşım Rafinerisi 12" detail="İş bitiyor" time="1 dk 50 sn" at="12:42’de" /></li>
+        <li><TimerRow tone="self" glyph="up" remaining={0} total={0} title="Depo 4" detail="Öndeki bitince başlar" waiting="Sırada" /></li>
+        <li><TimerRow tone="warn" glyph="settings" remaining={0} total={0} title="Bakım 03:00–03:30" detail="Bu sırada saldırı inmez" time="14 sa 20 dk" at="03:00’te" /></li>
+      </ul>
+    </>
+  );
+}
+
 function HudScreen() {
   const [tab, setTab] = useState('galaxy');
   return (
     <div className="gk-scene">
       <ResourceHud items={HUD} end={<Medallion initials="YI" label="Komutan · menü" onPress={() => undefined} />} />
       <div className="gk-scene__rail">
-        <CutPlate tone="hostile" className="gk-scene__flight">
-          <Timer remaining={7 * 60} total={12 * 60} text="7:00" glyph="attack" />
-          <span className="min-w-0">
-            <span className="gk-label block">Akın · Tharsis</span>
-            <span className="gk-sub block truncate">39 gemi · varış 12:40</span>
-          </span>
-        </CutPlate>
-        <CutPlate tone="self" className="gk-scene__flight">
-          <Timer remaining={50 * 60} total={160 * 60} text="2:28" glyph="up" />
-          <span className="min-w-0">
-            <span className="gk-label block">Tersane 2</span>
-            <span className="gk-sub block truncate">yapılıyor</span>
-          </span>
-        </CutPlate>
+        <TimerPlate tone="hostile" glyph="siren" remaining={7 * 60} total={12 * 60} time="7:00" title="Akın · Tharsis" detail="39 gemi · varış 12:40" more={1} live label="En acil sayaç" onPress={() => undefined} />
       </div>
       <div className="gk-scene__world">
         <img className="gk-scene__planet" src={HOME_ART} alt="" />
@@ -788,6 +802,10 @@ function Catalog() {
 
         <Section title="Üst bar · kaynak hapları, zil, komutan, etkiler">
           <TopBarParts />
+        </Section>
+
+        <Section title="Sayaçlar · en acil sayaç, sayaç listesi">
+          <TimerParts />
         </Section>
 
         <Section title="Okumalar">

@@ -74,6 +74,8 @@ export const now = {
   label: "次に起きること",
   /** The sheet one tap under it: every timer. */
   sheet: "タイマー",
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: '敵が先、次に近い順',
   work: "作業完了",
   research: "研究完了",
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
