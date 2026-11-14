@@ -50,6 +50,17 @@ describe('the resource pill', () => {
     expect(container.querySelector<HTMLElement>('[data-safe]')?.style.left).toBe('30%');
   });
 
+  /*
+    A WHOLE FIGURE FITS ITS PILL (G1 follow-up, 2026-11-14). The bar keeps whole figures to
+    99,999, and at 350 px "12,400" needed 52 px of a 49 px pill (39 px at 320). The figure
+    hands its length to the style, which sizes it to the pill only when it would not fit.
+  */
+  it('hands its figure’s length to the style, so a long one can fit a narrow pill', () => {
+    const { container } = render(<ResourceHud items={[alloy, { ...alloy, id: 'crystal', amount: '12,400' }]} />);
+    const figures = [...container.querySelectorAll<HTMLElement>('.gk-res__amount')];
+    expect(figures.map((figure) => figure.style.getPropertyValue('--gk-len'))).toEqual(['5', '6']);
+  });
+
   it('keeps a hidden resource’s place so the others never move, and draws nothing in it', () => {
     const { container } = render(<ResourceHud items={[alloy, { ...alloy, id: 'deut', tone: 'deut', label: 'Deuterium', hidden: true }]} />);
     expect(container.querySelectorAll('.gk-res')).toHaveLength(2);

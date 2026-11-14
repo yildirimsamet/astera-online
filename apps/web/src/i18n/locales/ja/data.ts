@@ -314,10 +314,10 @@ export const gains = {
     raisesCap: "建物のレベル天井を上げる",
   },
   hangar: {
-    label: "艦隊ルーム",
-    value: "{{room}} ルーム",
-    none: "いいえ 格納庫",
-    ceiling: "最上段は {{room}} まで",
+    label: "艦隊の収容枠",
+    value: "{{room}}枠",
+    none: "格納庫なし",
+    ceiling: "最大レベルで {{room}}枠まで",
   },
   refinery: {
     label: "合金/時間",

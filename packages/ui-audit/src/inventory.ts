@@ -63,7 +63,7 @@ export const SURFACES: GameSurface[] = [
   {
     id: 'galaxy-hud',
     what: 'Galaksi ana ekranı ve HUD: üst bar, iş satırı, dock, köşeler, sinyaller',
-    files: ['screens/GalaxyView.tsx', 'v2/shell/GameShell.tsx', 'v2/shell/HudTop.tsx', 'v2/shell/HudDock.tsx', 'v2/hud/TopBar.tsx', 'v2/hud/WorksLine.tsx', 'v2/hud/Dock.tsx', 'v2/hud/GalaxyCorners.tsx', 'v2/hud/ContextSlot.tsx', 'v2/hud/BaseSwitch.tsx', 'shell/PendingStrip.tsx', 'screens/UnknownSignalHud.tsx'],
+    files: ['screens/GalaxyView.tsx', 'v2/shell/GameShell.tsx', 'v2/shell/HudTop.tsx', 'v2/shell/HudDock.tsx', 'v2/hud/TopBar.tsx', 'v2/hud/StatusLine.tsx', 'v2/hud/Dock.tsx', 'v2/hud/GalaxyCorners.tsx', 'v2/hud/ContextSlot.tsx', 'v2/hud/BaseSwitch.tsx', 'shell/PendingStrip.tsx', 'screens/UnknownSignalHud.tsx'],
     reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:context-suggestion', 'gallery:context-selected', 'gallery:readout', 'gallery:toast', 'gallery:toast-warn', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
     group: 'G1',
   },
@@ -103,8 +103,8 @@ export const SURFACES: GameSurface[] = [
     id: 'planet',
     what: 'Gezegen sayfası: filo, üretim, onarım, stratejik, arıza, klan destek bölmesi',
     files: ['screens/PlanetScreen.tsx', 'v2/shell/BaseQueues.tsx', 'screens/RepairStation.tsx', 'screens/FaultSheet.tsx', 'screens/faultScope.tsx', 'screens/ColonyAbandonment.tsx', 'screens/ClanSupportBay.tsx'],
-    reach: ['gallery:base-fleet', 'gallery:base-production', 'gallery:base-fleet-empty', 'gallery:repair-station', 'gallery:repair-station-empty', 'gallery:strategic-forge', 'gallery:strategic-battery', 'gallery:support-hangar', 'gallery:support-hangar-escape', 'gallery:support-hangar-locked', 'gallery:support-hangar-hold', 'gallery:support-hangar-both', 'gallery:support-hangar-alarm', 'client:planet-colony'],
-    group: 'G2', unreached: ['arıza onarım hatları', "arıza sheet'i", "gemi üretme sheet'i (BuildSheet)", 'toparlanma bandı', 'EMP bandı', 'çekirdek onayı (tatilde)', 'onarım: hurda ve iptal onayı'],
+    reach: ['gallery:base-fleet', 'gallery:base-production', 'gallery:base-fleet-empty', 'gallery:base-faults', 'gallery:repair-station', 'gallery:repair-station-empty', 'gallery:strategic-forge', 'gallery:strategic-battery', 'gallery:support-hangar', 'gallery:support-hangar-escape', 'gallery:support-hangar-locked', 'gallery:support-hangar-hold', 'gallery:support-hangar-both', 'gallery:support-hangar-alarm', 'client:planet-colony'],
+    group: 'G2', unreached: ["arıza sheet'i", "gemi üretme sheet'i (BuildSheet)", 'toparlanma bandı', 'EMP bandı', 'çekirdek onayı (tatilde)', 'onarım: hurda ve iptal onayı'],
   },
   { id: 'research', what: 'Araştırma takımyıldızı', files: ['screens/ResearchPanel.tsx', 'v2/hud/ResearchConstellation.tsx'], reach: ['gallery:base-research'], group: 'G2', unreached: ["proje sheet'i", 'tatilde duraklatılmış'] },
 

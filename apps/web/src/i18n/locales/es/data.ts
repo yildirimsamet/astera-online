@@ -317,7 +317,7 @@ export const gains = {
     label: 'Sala de flota',
     value: '{{room}} plazas',
     none: 'Sin hangar',
-    ceiling: 'Hasta {{room}} en el peldaño superior',
+    ceiling: 'Hasta {{room}} en el nivel máximo',
   },
   refinery: {
     label: 'Aleación por hora',

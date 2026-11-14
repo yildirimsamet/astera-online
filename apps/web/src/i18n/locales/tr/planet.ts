@@ -180,6 +180,9 @@ export const planet = {
 
   queue: {
     waiting: "Sırada",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} boş hat",
+    freeSlots_other: "{{count}} boş hat",
     ends: "{{time}}’de biter",
     segment: "{{name}} · {{duration}}",
     cancelOne: "{{name}} siparişini iptal et",
@@ -804,8 +807,6 @@ export const faults = {
   strip: {
     title: "Onarım",
     capacity: "{{count}} ekip",
-    priceAlloy: "{{alloy}} alaşım",
-    priceBoth: "{{alloy}} alaşım · {{crystal}} kristal",
     lane: "{{slot}}. ekip",
   },
   tab: "Arızalar",

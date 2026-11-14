@@ -3,8 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { BUILD } from '@astera/rules';
 import { useCancelBuildOrder } from '../../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../../api/schemas.js';
-import { FreeSlot, QueueSlot, type SlotState } from '../../game-ui/index.js';
+import { FreeSlot, Glyph, QueueSlot, type SlotState } from '../../game-ui/index.js';
 import { full } from '../../lib/format.js';
+import { haptic } from '../../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { buildOrderArt, buildOrderLabel, orderProgress, orderWaiting, repairSubject } from '../../lib/orders.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
@@ -53,6 +56,29 @@ function Lane({ label, orders, now, onOpen }: { label: string; orders: readonly 
   );
 }
 
+/** A lane the commander can fill: construction is raised from the cards, the yard from the hulls. */
+export type IdleLane = 'CONSTRUCTION' | 'YARD';
+
+/**
+ * AN IDLE LANE IS ONE LINE (G2-c). While another lane works, a lane with nothing in it is not
+ * three empty cells but one dashed line in the warning colour — a free lane is time going
+ * unspent — and a press takes the player to the tab that fills it.
+ */
+function IdleLine({ lane, label, onPress }: { lane: IdleLane; label: string; onPress?: (lane: IdleLane) => void }) {
+  const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress?.(lane); });
+  return (
+    <button type="button" {...OWN_SOUND} data-lane-idle={lane} className="gk-qidle" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-label">{label}</span>
+      <span className="gk-tag__rule" aria-hidden="true" />
+      <span className="gk-qidle__free">
+        <Glyph id="plus" />
+        {t('planet.queue.freeSlots', { count: BUILD.queueDepth })}
+      </span>
+    </button>
+  );
+}
+
 /**
  * THE BASE'S QUEUES AS RINGS. Spec B12 · E5 (docs/ui-v2/gozlemevi.md).
  *
@@ -64,7 +90,7 @@ function Lane({ label, orders, now, onOpen }: { label: string; orders: readonly 
  * sıraları sectionda üretim yoksa bile full section açık bom bom duruyor."* The
  * capacity stays on that line, so the rule the cells teach is still on screen.
  */
-export function BaseQueues({ planet }: { planet: PlanetView }) {
+export function BaseQueues({ planet, onIdle }: { planet: PlanetView; onIdle?: (lane: IdleLane) => void }) {
   const { t } = useTranslation();
   const now = useNow(1000);
   const cancel = useCancelBuildOrder();
@@ -101,8 +127,12 @@ export function BaseQueues({ planet }: { planet: PlanetView }) {
 
   return (
     <section aria-label={t('planet.queue.title')} className="gk grid gap-2">
-      <Lane label={t('planet.queue.construction')} orders={queues.CONSTRUCTION} now={now} onOpen={() => { setOpen(true); }} />
-      <Lane label={t('planet.queue.yard')} orders={queues.YARD} now={now} onOpen={() => { setOpen(true); }} />
+      {queues.CONSTRUCTION.length > 0
+        ? <Lane label={t('planet.queue.construction')} orders={queues.CONSTRUCTION} now={now} onOpen={() => { setOpen(true); }} />
+        : <IdleLine lane="CONSTRUCTION" label={t('planet.queue.construction')} {...(onIdle ? { onPress: onIdle } : {})} />}
+      {queues.YARD.length > 0
+        ? <Lane label={t('planet.queue.yard')} orders={queues.YARD} now={now} onOpen={() => { setOpen(true); }} />
+        : <IdleLine lane="YARD" label={t('planet.queue.yard')} {...(onIdle ? { onPress: onIdle } : {})} />}
       {repairs.length > 0 && (
         <Lane label={t('planet.queue.repair')} orders={repairs} now={now} onOpen={() => { setOpen(true); }} />
       )}

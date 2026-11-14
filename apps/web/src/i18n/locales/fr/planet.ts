@@ -156,7 +156,7 @@ export const planet = {
     started: "Construction de l’Étoile de la Mort lancée",
     hint: "Ramène l’Aegis de la cible à zéro. Pendant 1 heure, l’Aegis ne se recharge pas et les défenses terrestres ne prennent part à aucun combat. Chaque frappe sur une colonie lui retire {{loss}} de loyauté et provoque 1 panne aléatoire. Frappe {{hits}} fois de suite une colonie à 100 de loyauté et elle tombe, puis devient neutre.",
     needCore: "Noyau niveau {{level}}",
-    needShipyard: "Chantier Spatial niveau {{level}}",
+    needShipyard: "Chantier spatial niveau {{level}}",
     needOperational: "Monde opérationnel",
     buildTime: "{{duration}} · une arme · aucun rappel possible",
     needs: 'Requiert {{need}}',
@@ -179,7 +179,10 @@ export const planet = {
     tacticalQuestion: "Construis et gère ici les outils tactiques.",
   },
   queue: {
-    waiting: "En attente",
+    waiting: "En file",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} place libre",
+    freeSlots_other: "{{count}} places libres",
     ends: "se termine à {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Annuler la commande {{name}}",
@@ -187,7 +190,7 @@ export const planet = {
     idle: "Aucune production",
     capacity: "{{count}} places chacune",
     construction: "Construction",
-    yard: "Chantier Spatial",
+    yard: "Chantier spatial",
     repair: "Réparations",
     slotFree: "Libre",
     empty: "Aucun travail assigné",
@@ -335,7 +338,7 @@ export const planet = {
     },
     frontierBand: "Recherches de pointe",
     frontierNote:
-      "Les recherches utilisent la file commune de ton commandant. La Construction et le Chantier Spatial continuent de fonctionner séparément.",
+      "Les recherches utilisent la file commune de ton commandant. La Construction et le Chantier spatial continuent de fonctionner séparément.",
     isotopeName: "Spectrométrie Isotopique",
     isotopeTag: "Débloque l’extraction du Deutérium",
     isotopeRole:
@@ -365,7 +368,7 @@ export const planet = {
     doctrineTag: "Meilleure attaque et meilleur blindage",
     doctrineRole:
       "Augmente ensemble l’attaque et la résistance des défenses au sol. Rapports de classes, capacité au sol et récupération restent inchangés.",
-    yardName: "Automatisation du Chantier Spatial",
+    yardName: "Automatisation du Chantier spatial",
     yardTag: "Construit les vaisseaux plus rapidement",
     yardRole:
       "Réduit le temps de production des vaisseaux mobiles ; n’affecte ni les défenses terrestres ni la capacité des files de production.",
@@ -423,7 +426,7 @@ export const planet = {
     core: "Noyau niveau {{level}}",
     uplink: "Antenne en orbite",
     orbitSlot: "emplacement orbital libre",
-    shipyard: "Chantier Spatial niveau {{level}}",
+    shipyard: "Chantier spatial niveau {{level}}",
     research: "{{research}} {{level}}",
     requirements: "Requis : {{requirements}}",
     maxed: "niveau maximal",
@@ -672,7 +675,7 @@ export const launch = {
   max: "Maximum de {{name}}",
   maxShort: "Maximum",
   noShips:
-    "Aucun vaisseau n’est présent. Construis-en au Chantier Spatial ou attends le retour de ceux qui sont en mission.",
+    "Aucun vaisseau n’est présent. Construis-en au Chantier spatial ou attends le retour de ceux qui sont en mission.",
   warning:
     "Cette flotte ne défendra pas ta planète avant son retour. {{count}} unités restent sur place.",
   shieldWarning:
@@ -796,14 +799,12 @@ export const faults = {
   mark: "Panne active",
   launchBlock: {
     SILENT_SPACE: "Fermé dans l’Espace Silencieux — reviens pour l’utiliser",
-    SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
+    SHIPYARD_REVOLT: "Mutinerie au Chantier spatial",
     PROSPECTOR_FAULT: "Centre des Prospecteurs en panne",
   },
   strip: {
     title: "Réparation",
     capacity: "{{count}} équipes",
-    priceAlloy: "{{alloy}} alliage",
-    priceBoth: "{{alloy}} alliage · {{crystal}} cristal",
     lane: "Équipe {{slot}}",
   },
   tab: "Pannes actives",
@@ -814,7 +815,7 @@ export const faults = {
     VAULT_LEAK: "Fuite du Magasin",
     CORE_OUTAGE: "Coupure de courant au centre de commandement",
     TELESCOPE_FAULT: "Panne du Télescope",
-    SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
+    SHIPYARD_REVOLT: "Mutinerie au Chantier spatial",
     PROSPECTOR_FAULT: "Panne du centre des Prospecteurs",
   },
   stopped: {

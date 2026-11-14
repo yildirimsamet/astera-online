@@ -65,7 +65,7 @@ export const rewards = {
       tag: "Augmente la limite de niveau des bâtiments, sauf le Hangar",
     },
     SHIPYARD: {
-      name: "Chantier Spatial",
+      name: "Chantier spatial",
       tag: "Nouvelles classes de vaisseaux et production plus rapide",
     },
     REFINERY: {
