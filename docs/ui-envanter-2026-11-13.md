@@ -1174,6 +1174,14 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 5 rapor görünümü): puan 304→193 (baskın), 219→145 (savunma), 165→122 (korsan), 131/122→77 (destek); 12 px altı 719→461, kontrast 50→32, 44 px altı 22→17, tepkisiz 28→23; kesilme ve taşma 0. Kalanların hepsi üstteki sahnede (C16) ve kuvvet/tur bloklarında (C15b); bu birimin bölümlerinde bulgu yok. Kitin büyük harfli 12 px bölüm etiketi T2'ye düşüyor (kit tercihi). `reports/ui-audit/c15a-report-sheet-after-2026-11-15.md`.
 - **Açık soru:** yok. Uzunluk C15b'den sonra yeniden ölçülecek.
 
+**C15b Savaş raporu: kuvvetler, Aegis ve turlar ✅ (2026-11-15, yardımcı oturum).** G5 #3'ün ikinci yarısı.
+- **An:** oyuncu "karşıda ne vardı, kim ne zaman öldü?" diye okuyor; iki taraf aynı satırdan okunuyor.
+- **Değişen:** bir gövde tek sıkı satır (solda resim; ad ve tür, etiketli üç sayı tek satırda, altında çubuk): satır ~118 → ~66 px; etiketli sayılar korunuyor (sahibin "dört sütunlu tablo okunmuyor" raporu). Aegis kitin camında, durumu sözle (çip); turlar tek kit defteri (`gk-turn`, kitte `gk-round` düğme olduğu için), her turun atış hesabı turun içinde sessiz bir kural satırı; savaş ve dağınık ateş kuralları kitin kural satırı (ses + titreşim). Destek hattı, ortak savaş, kayıp çipleri ve geri çekilme notu kitte.
+- **Çeviri düzeltmesi:** de "Links"/es "Izquierda" (yön!) → "Übrig"/"Quedan"; de/es Aegis durumları İngilizceydi; ja 開催中 ("oturumda") → 健在, rapor etiketleri 投入/保有/喪失/生存. Galeri savunma örneği yeniden kurulan Tabya'yı artık gösteriyor.
+- **Kaldırılan:** bu bölümlerdeki bütün v1/v2 sınıfları; adım listesinin çift numarası.
+- **Ölçüm** (tr; telefon, dar, masaüstü; 5 rapor görünümü): C15a sonrasına göre puan 193→89 (baskın), 145→68 (savunma), 122→59 (korsan), 77→41 (destek); 12 px altı 461→211, kontrast 32→18, 44 px altı 17→9, tepkisiz 23→15; kesilme ve taşma 0. Kalanların hepsi üstteki sahnede (C16) ve kitin bölüm etiketinde. Savunma görünümü artık 3 gövde gösteriyor (örnek veri). `reports/ui-audit/c15b-report-forces-after-2026-11-15.md`.
+- **Açık soru:** yok. ja verdict'te kalan zayıf çeviriler (yourForce "あなたの力", standing) grup sonu 6 dil turunda.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.

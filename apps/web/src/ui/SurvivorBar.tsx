@@ -37,7 +37,7 @@ export function SurvivorBar({
   lost: number;
   /** Ground guns that salvaged back — never counted as never-lost. */
   rebuilt?: number;
-  /** Row form: shorter, no caption, for one hull inside a list. */
+  /** Row form: the three labelled figures on one line, for one hull inside a list. */
   compactRow?: boolean;
   /** The surrounding summary may already print these figures at display size. */
   showFigures?: boolean;
