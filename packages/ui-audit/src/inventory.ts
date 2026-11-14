@@ -109,13 +109,16 @@ export const SURFACES: GameSurface[] = [
   { id: 'research', what: 'Araştırma takımyıldızı', files: ['screens/ResearchPanel.tsx', 'v2/hud/ResearchConstellation.tsx'], reach: ['gallery:base-research'], group: 'G2', unreached: ["proje sheet'i", 'tatilde duraklatılmış'] },
 
   // Intelligence and reports.
-  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel', 'gallery:intel-blind', 'gallery:intel-probes', 'gallery:intel-radar', 'gallery:intel-radar-named', 'gallery:intel-blind-probes', 'gallery:intel-blind-radar'], group: 'G3', unreached: ['Savaşlar rafı (G5)'] },
+  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel', 'gallery:intel-blind', 'gallery:intel-probes', 'gallery:intel-radar', 'gallery:intel-radar-named', 'gallery:intel-blind-probes', 'gallery:intel-blind-radar'], group: 'G3' },
   {
     id: 'reports',
     what: 'Savaş raporları ve anıt raporu',
     files: ['screens/BattleReports.tsx', 'v2/hud/ReportScene.tsx', 'screens/MonumentReportSheet.tsx', 'battle-simulator/BattleReplayAction.tsx'],
-    reach: ['gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter'],
-    group: 'G5', unreached: ['savaş listesi (boş, okunmamış, stratejik satır)', 'korsan raporu', 'Hakimiyet dökümü'],
+    reach: [
+      'gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter', 'gallery:intel-battles',
+      'gallery:report-sheet', 'gallery:report-sheet-defend', 'gallery:report-sheet-pirate',
+    ],
+    group: 'G5', unreached: ['boş savaş listesi'],
   },
   { id: 'battle-replay', what: 'Savaş tekrarı', files: ['battle-simulator/BattleReplay.tsx', 'battle-simulator/BattleReplayDialog.tsx', 'battle-simulator/BattleStage.tsx', 'battle-simulator/RetreatRoster.tsx', 'battle-simulator/UnitInspector.tsx'], reach: ['client:battle-replay'], group: 'G5', unreached: ['kayıt yok / güç yetersiz / çok büyük', 'yüklenemedi (yeniden yükle)'] },
   {

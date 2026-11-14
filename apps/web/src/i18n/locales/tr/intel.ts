@@ -142,7 +142,7 @@ export const reports = {
   enemyRetreated: "Düşmanın {{count}} gemisi kaçarak sağ kaldı.",
   turningPointRetreated: "{{round}}. tur sonunda savaşmaya devam eden savaş gemin kalmadı. Bazı gemiler sağ kaçtı.",
   heading: 'Savaş raporları',
-  newest: 'en yeni önce',
+  emptyTitle: "Henüz savaş yok",
   empty:
     'Galakside henüz çatışma kaydı yok. Savaş raporu, karşı tarafın gerçek kuvvetini ve çatışma sonucunu doğrudan gösterir.',
   youRaided: 'Akın ettiğin: ',
@@ -287,6 +287,16 @@ export const reports = {
     who: 'Filona ne oldu?',
     changed: 'Ganimet ve puan değişimi',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Sıradaki hamlen",
+    again: "Yeniden saldır: {{planet}}",
+    againNote: "Bu savaşta görülen savunma dosyada",
+    source: "Saldıranın dünyası: {{planet}}",
+    sourceNote: "Baskın buradan geldi",
+    wreck: "Enkaza git: {{planet}}",
+    wreckNote: "{{amount}} değerinde; ilk gelen alır",
+  },
   walkoverHeading: 'Burada savunabilecek birlik yoktu',
   walkoverBody:
     'Savaşabilecek filo veya yer savunması yoktu. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',
@@ -369,6 +379,7 @@ export const reports = {
   strategicSecededAttacker: "Koloni koptu ve tarafsız oldu; artık kimsenin değil.",
   strategicSecededDefender: "Kolonin koptu ve tarafsız oldu.",
   strategicSecededShort: "koloni koptu",
+  strategicDamageShort: "{{amount}} hasar",
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',

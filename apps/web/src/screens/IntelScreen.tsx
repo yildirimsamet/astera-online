@@ -439,7 +439,7 @@ function KnownRow({ planetId, onFocusPlanet, door, children }: {
 }) {
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocusPlanet?.(planetId); });
   return (
-    <button type="button" disabled={!onFocusPlanet} className={door === 'world' ? 'gk-ledger__row gk-scan__hit' : 'gk-ledger__row'}
+    <button type="button" disabled={!onFocusPlanet} className={door === 'world' ? 'gk-ledger__row gk-ledger__seam' : 'gk-ledger__row'}
       {...(door ? { 'data-door': door } : {})} {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {children}
     </button>

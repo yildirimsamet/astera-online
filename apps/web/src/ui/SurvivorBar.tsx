@@ -67,16 +67,17 @@ export function SurvivorBar({
   const alivePart = (alive / total) * 100;
   const diedPart = (died / total) * 100;
   const backPart = (back / total) * 100;
-  const lostTone = side === 'theirs'
-    ? died > 0 ? 'text-opportunity' : 'text-dim'
-    : died > 0 ? 'text-threat-ink' : 'text-dim';
+  // The tone is stated (`data-tone`), and the kit paints it: the same figure is good news on one side and a threat on the other.
+  const lostTone = died === 0 ? 'quiet' : side === 'theirs' ? 'good' : 'threat';
   const leftTone = side === 'theirs'
-    ? alive + back > 0 ? 'text-threat-ink' : 'text-opportunity'
-    : alive + back === 0 ? 'text-threat-ink' : 'text-bone';
+    ? alive + back > 0 ? 'threat' : 'good'
+    : alive + back === 0 ? 'threat' : 'plain';
 
   return (
     <span
-      className={`flex min-w-0 flex-col gap-2 ${compactRow ? '' : 'w-full'}`}
+      className="gk-survivor"
+      data-side={side}
+      {...(compactRow ? { 'data-compact': '' } : {})}
       role="img"
       aria-label={t('reports.force.reading', {
         sent: full(sent),
@@ -85,44 +86,32 @@ export function SurvivorBar({
       })}
     >
       {showFigures ? (
-        <span className="grid w-full grid-cols-3 gap-2 text-left">
-          <span>
-            <span className="block text-label text-dim">{sentLabel ?? t('reports.force.start')}</span>
-            <span data-sent className="num block text-title text-bone">{full(sent)}</span>
+        <span className="gk-survivor__figures">
+          <span className="gk-survivor__fig">
+            <span className="gk-survivor__label">{sentLabel ?? t('reports.force.start')}</span>
+            <span data-sent className="gk-survivor__value gk-num">{full(sent)}</span>
           </span>
-          <span>
-            <span className="block text-label text-dim">{t('reports.force.lost')}</span>
-            <span data-lost className={`num block text-title ${lostTone}`}>
+          <span className="gk-survivor__fig">
+            <span className="gk-survivor__label">{t('reports.force.lost')}</span>
+            <span data-lost data-tone={lostTone} className="gk-survivor__value gk-num">
               {full(died)}
             </span>
           </span>
-          <span>
-            <span className="block text-label text-dim">{leftLabel ?? t('reports.force.left')}</span>
-            <span data-alive className={`num block text-title ${leftTone}`}>
+          <span className="gk-survivor__fig">
+            <span className="gk-survivor__label">{leftLabel ?? t('reports.force.left')}</span>
+            <span data-alive data-tone={leftTone} className="gk-survivor__value gk-num">
               {full(alive + back)}
             </span>
           </span>
         </span>
       ) : null}
-      <span aria-hidden className="socket relative flex h-2 w-full min-w-0 overflow-hidden rounded-full">
-        <span
-          data-part="alive"
-          className={`h-full ${side === 'theirs' ? 'bg-threat/70' : 'bg-v2-self'}`}
-          style={{ width: `${String(alivePart)}%` }}
-        />
-        <span
-          data-part="lost"
-          className={`h-full ${side === 'theirs' ? 'bg-opportunity/70' : 'bg-threat/80'}`}
-          style={{ width: `${String(diedPart)}%`, backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 4px, rgb(255 255 255 / 20%) 4px 6px)' }}
-        />
-        <span
-          data-part="rebuilt"
-          className="absolute right-0 h-full bg-opportunity/90"
-          style={{ width: `${String(backPart)}%` }}
-        />
+      <span aria-hidden className="gk-survivor__bar">
+        <span data-part="alive" className="gk-survivor__part" style={{ width: `${String(alivePart)}%` }} />
+        <span data-part="lost" className="gk-survivor__part" style={{ width: `${String(diedPart)}%` }} />
+        <span data-part="rebuilt" className="gk-survivor__part gk-survivor__over" style={{ width: `${String(backPart)}%` }} />
       </span>
       {back > 0 && showFigures ? (
-        <span data-rebuilt className="w-full text-label leading-relaxed text-opportunity">
+        <span data-rebuilt className="gk-survivor__note">
           {t('reports.force.rebuiltNote', { count: full(back) })}
         </span>
       ) : null}

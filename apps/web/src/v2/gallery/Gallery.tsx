@@ -38,6 +38,7 @@ import { PlanetModelsGallery } from './PlanetModelsGallery.js';
 import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
+import { GalleryReports } from './GalleryReports.js';
 import { GalleryChat } from './GalleryChat.js';
 import { GalleryCommunity } from './GalleryCommunity.js';
 import { WorldProvider } from '../../api/world.js';
@@ -465,6 +466,46 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
  * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
  * another shelf than Watch (C8: the probe reports; C9: the radar, and each missing instrument).
  */
+/**
+ * THE BATTLES SHELF'S WEEK (G5, C14): a raid half won with Honor, a defence that held
+ * against a clan, a pirate crew that broke you, a Death Star that took a colony, and a
+ * monument fight — every kind of row the list draws.
+ */
+function galleryBattles(): unknown[] {
+  const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+  const ordinary = {
+    neutral: false, rounds: [
+      { round: 1, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 6 }, defenderLosses: { PIKE: 10 } },
+      { round: 2, attackerDamage: 640, defenderDamage: 120, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 3 }, defenderLosses: { PIKE: 8 } },
+      { round: 3, attackerDamage: 90, defenderDamage: 40, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: {}, defenderLosses: { BASTION: 2 } },
+    ],
+    yourLosses: { DART: 9 }, theirLosses: { PIKE: 18, BASTION: 2 }, yourFleet: { DART: 23, TALON: 19 }, theirFleet: {},
+    lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, dominion: 0, shieldAbsorbed: 0, cargoLimited: false,
+    defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0,
+  };
+  return [
+    { ...ordinary, id: 'b-raid', missionId: 'm-raid', at: ago(20), grade: 'PARTIAL', attacking: true,
+      opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel', yourPlanet: 'Bellwether', yourPlanetId: 'p-1',
+      defenderClan: { id: 'c-1', tag: 'NOVA', name: 'Nova Drift' },
+      lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240, dominion: 120, honor: { delta: 38_400_000, reason: 'COMBAT' } },
+    { ...ordinary, id: 'b-held', missionId: 'm-held', at: ago(3 * 60), grade: 'REPELLED', attacking: false,
+      opponentName: 'Rook', opponentPlanet: 'Hollow-88', opponentPlanetId: 'p-hollow', yourPlanet: 'Bellwether', yourPlanetId: 'p-1',
+      attackerClan: { id: 'c-2', tag: 'IRON', name: 'Iron Veil' }, dominion: 64, honor: { delta: 21_000_000, reason: 'COMBAT' },
+      yourFleet: { RAMPART: 10, PIKE: 12 }, theirFleet: { DART: 30 }, yourLosses: { PIKE: 2 }, theirLosses: { DART: 30 } },
+    { ...ordinary, id: 'b-pirate', missionId: null, pirateRaidId: 'pr-1', at: ago(9 * 60), grade: 'REPELLED', attacking: true,
+      opponentName: 'Pirates', opponentPlanet: '', opponentPlanetId: null, yourPlanet: 'Thistle-131', yourPlanetId: 'p-131',
+      pirate: { level: 3, callsign: 'Red Maw', damageMult: 1.4, capturedHull: null }, yourLosses: { DART: 23 }, rounds: ordinary.rounds.slice(0, 2) },
+    { kind: 'STRATEGIC', id: 's-colony', missionId: 'm-colony', at: ago(26 * 60), attacking: true,
+      opponentName: 'Sable', opponentPlanet: 'Tharsis', opponentPlanetId: 'p2', yourPlanet: 'Thistle', yourPlanetId: 'p-1',
+      outcome: 'FIRST_STRIKE', damage: 18_400, destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 1_800, trigger: null, loyalty: { before: 18, after: 0 }, honor: { delta: 12_000_000, reason: 'TACTICAL' } },
+    { kind: 'MONUMENT', id: 'battle-3', at: ago(2 * 24 * 60), attacking: true, grade: 'PARTIAL', control: 'DEFENDER', roundCount: 5,
+      monument: { id: '00000000-0000-4000-8000-000000000003', ordinal: 3, position: { x: 6000, y: 410, z: -500 } },
+      yourFleet: { CITADEL: 3, ARGOSY: 2 }, yourSurvivors: { CITADEL: 2, ARGOSY: 1 }, yourLosses: { CITADEL: 1, ARGOSY: 1 },
+      yourDamage: [], theirLosses: { DART: 12 }, lootDeuterium: 17, dominion: -123 },
+  ];
+}
+
 function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar'; named?: boolean }) {
   const client = useQueryClient();
   useState(() => {
@@ -480,7 +521,7 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
     });
     client.setQueryData(['planet'], planetView({ instruments: blind ? { TELESCOPE: 0, RADAR: 0 } : { TELESCOPE: 4, RADAR: named ? 5 : 4 } }, { id: 'p-1' }));
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
-    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    client.setQueryData(['reports'], { reports: shelf === 'battles' ? galleryBattles() : [], rivals: [] });
     if (blind) {
       client.setQueryData(['intel'], { watching: [], probeReports: [], probeCooldowns: [], radarLog: [], probeCost: { alloy: 50, crystal: 50 } });
       return null;
@@ -516,6 +557,7 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
         onFocusRival={noop}
         onOpenDossier={noop}
         onOpenOrbit={noop}
+        {...(shelf === 'battles' ? { onFocusPlanet: noop } : {})}
       />
     </Sheet>
   );
@@ -1007,6 +1049,7 @@ function Views({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
+  if (view.startsWith('report-sheet')) return <GalleryReports view={view} />;
   if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
@@ -1026,6 +1069,7 @@ function Views({ view }: { view: string }) {
   if (view === 'intel-blind') return <GalleryIntel blind />;
   if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
   if (view === 'intel-radar') return <GalleryIntel shelf="radar" />;
+  if (view === 'intel-battles') return <GalleryIntel shelf="battles" />;
   if (view === 'intel-radar-named') return <GalleryIntel shelf="radar" named />;
   if (view === 'intel-blind-probes') return <GalleryIntel blind shelf="probes" />;
   if (view === 'intel-blind-radar') return <GalleryIntel blind shelf="radar" />;

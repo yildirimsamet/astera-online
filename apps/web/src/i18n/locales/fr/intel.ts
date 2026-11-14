@@ -151,7 +151,7 @@ export const reports = {
   enemyRetreated: "{{count}} vaisseaux ennemis ont fui et survécu.",
   turningPointRetreated: "Après le tour {{round}}, aucun vaisseau de guerre ne combattait encore. Certains ont fui vivants.",
   heading: "Rapports de combat",
-  newest: "plus récents d’abord",
+  emptyTitle: "Aucune bataille pour l’instant",
   empty:
     "Aucun combat n’a encore été enregistré dans la galaxie. Un rapport de combat révèle directement les forces réellement engagées et l’issue de l’affrontement.",
   youRaided: "Tu as attaqué : ",
@@ -317,6 +317,16 @@ export const reports = {
     who: "Qu’est-il arrivé à ta flotte ?",
     changed: "Butin et variation des points",
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Ton prochain coup",
+    again: "Attaquer à nouveau : {{planet}}",
+    againNote: "La défense vue est dans son dossier",
+    source: "Monde de l’attaquant : {{planet}}",
+    sourceNote: "Le raid venait d’ici",
+    wreck: "Aller à l’épave : {{planet}}",
+    wreckNote: "Vaut {{amount}} ; au premier arrivé",
+  },
   walkoverHeading: "Aucune unité ne pouvait défendre ici",
   walkoverBody:
     "Il n’y avait ni flotte ni défense terrestre capable de combattre. Tes vaisseaux sont arrivés, ont chargé leur cargaison et sont repartis. Aucun affrontement n’a eu lieu.",
@@ -411,6 +421,7 @@ export const reports = {
   strategicSecededAttacker: "La colonie a fait sécession et est devenue neutre : elle n’appartient plus à personne.",
   strategicSecededDefender: "Ta colonie a fait sécession et est devenue neutre.",
   strategicSecededShort: "colonie perdue",
+  strategicDamageShort: "{{amount}} de dégâts",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",
