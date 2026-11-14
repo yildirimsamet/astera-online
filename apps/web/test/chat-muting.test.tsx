@@ -101,7 +101,8 @@ describe('personal chat mute controls', () => {
     show(); await muteScout();
     const manager = screen.getByRole('button', { name: 'Muted players' });
     const heading = screen.getByRole('heading', { name: 'Chat' });
-    expect(manager.parentElement).toContainElement(heading);
+    // In the title row beside the page's name (the frame wraps a title's keys since G1-g1).
+    expect(manager.closest('[data-sheet-header]')).toContainElement(heading);
     await userEvent.click(manager);
     const list = screen.getByRole('dialog', { name: 'Muted players' });
     expect(within(list).getByText('Scout')).toBeInTheDocument();
@@ -121,7 +122,8 @@ describe('personal chat mute controls', () => {
   });
   it('keeps already-muted authors hidden after changing the general chat language', async () => {
     show(); await muteScout();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await userEvent.click(screen.getByRole('button', { name: /^Chat language/ }));
+    await userEvent.click(within(screen.getByRole('radiogroup', { name: 'Chat language' })).getByRole('radio', { name: 'Türkçe' }));
     expect(screen.queryByText('First Scout message')).not.toBeInTheDocument();
     expect(screen.getByText('Third message')).toBeInTheDocument();
   });

@@ -99,6 +99,18 @@ describe('the chat page', () => {
     expect(panel.querySelector('[data-sheet-body]')).toHaveClass('overflow-hidden');
   });
 
+  /**
+   * ON THE KIT (C2, 2026-11-14): the two lists the page keeps — players muted on this device, players
+   * blocked — are the kit's round keys in the title, each with its own mark, 44 px to the thumb.
+   */
+  it('keeps the muted and blocked lists behind the kit’s round keys in its title', () => {
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const muted = screen.getByRole('button', { name: 'Muted players' });
+    const blocked = screen.getByRole('button', { name: 'Blocked players' });
+    for (const key of [muted, blocked]) expect(key).toHaveClass('gk-round', 'gk-round--small');
+    expect(muted.querySelector('svg.gk-glyph')).not.toBeNull();
+  });
+
   it('opens on the general channel by default', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Chat' })).toBeInTheDocument();

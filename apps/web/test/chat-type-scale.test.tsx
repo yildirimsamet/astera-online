@@ -24,7 +24,10 @@ describe('the chat type scale', () => {
     const block = /\.chat-type\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
     expect(block, '.chat-type is missing from chrome.css').not.toBe('');
     expect(block).toMatch(/--text-body:\s*16px/);
-    expect(block).toMatch(/--text-micro:\s*11px/);
+    // The kit's floor (owner 2026-11-12): nothing in the chat is drawn under 12 px.
+    expect(block).toMatch(/--text-micro:\s*12px/);
+    expect(block).toMatch(/--text-caption:\s*13px/);
+    expect(block).toMatch(/--text-label:\s*12px/);
   });
 
   it('leaves the global scale where it was', () => {

@@ -581,6 +581,7 @@ export const chat = {
   launcherBothUnread: 'Abrir chat: {{general}} no leído en General, {{clan}} en Clan',
   channelsLabel: 'Canales de chat',
   languageLabel: 'Idioma del chat',
+  languageChip: "Idioma del chat: {{language}}",
   general: 'General',
   clan: 'Clan',
   dm: {
@@ -598,7 +599,8 @@ export const chat = {
   clanLocked: 'El chat del clan es privado para un equipo.',
   clanLockedHint: 'Únete o funda un clan, entonces este canal se abre inmediatamente.',
   list: 'Mensajes de galaxia',
-  empty: 'Nadie ha hablado todavía. Sé la primera voz en la galaxia.',
+  emptyTitle: "Nadie ha hablado todavía",
+  emptyBody: "Sé la primera voz en la galaxia.",
   older: 'Cargar mensajes antiguos',
   loadingOlder: 'Cargando mensajes antiguos',
   placeholder: 'Mensaje a la galaxia',

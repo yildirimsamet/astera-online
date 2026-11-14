@@ -3473,6 +3473,73 @@ button.gk-trow:focus-visible {
   border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 50%, transparent);
 }
 
+/* ── a language chip (C2, 2026-11-14): the flag of the room you are in (its name is the reader's); a press drops the six flags ── */
+
+.gk-langchip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  padding: 0 6px 0 8px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-langchip[aria-expanded='true'] {
+  color: var(--gk-ink);
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}
+.gk-langchip:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, var(--gk-metal-3), var(--gk-metal-2));
+}
+.gk-langchip__flag {
+  width: 24px;
+  height: 25px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px var(--gk-outline));
+}
+.gk-langchip__open {
+  display: inline-grid;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-langchip__open .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-langchip[aria-expanded='true'] .gk-langchip__open {
+  transform: rotate(180deg);
+}
+.gk-langdrop {
+  margin-top: var(--gk-s2);
+  animation: gk-langdrop-in 220ms var(--gk-pop) both;
+}
+@keyframes gk-langdrop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A round key that cannot act yet (nothing to send): dimmed, and it does not move under the thumb. */
+.gk-round:disabled {
+  cursor: default;
+}
+.gk-round:disabled .gk-round__face {
+  filter: saturate(0.15) brightness(0.65);
+  transform: none;
+  box-shadow: none;
+}
+
 /* ── the return story (C1, 2026-11-14): what happened, told one line after another ── */
 
 .gk-away {
@@ -4133,6 +4200,10 @@ button:active > .gk-sheet__grab {
 }
 .gk-tab[data-locked] {
   color: var(--gk-ink-3);
+}
+/* A Japanese name breaks between any two characters; on a plate it keeps its word (クラ/ン, C2). */
+html:lang(ja) .gk-tab {
+  word-break: keep-all;
 }
 .gk-tab .gk-glyph {
   font-size: 13px;

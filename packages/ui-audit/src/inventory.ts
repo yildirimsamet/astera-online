@@ -139,7 +139,7 @@ export const SURFACES: GameSurface[] = [
     id: 'chat',
     what: 'Sohbet, medya, tepkiler, engelleme, şikâyet',
     files: ['screens/ChatScreen.tsx', 'v2/shell/ChatHost.tsx', 'screens/ChatMediaAttachment.tsx', 'screens/ChatMediaComposer.tsx', 'screens/ChatReactionRoster.tsx', 'screens/CommunityBlocks.tsx', 'screens/ContentReportSheet.tsx'],
-    reach: ['gallery:support-chat', 'client:chat', 'client:chat-rules'],
+    reach: ['gallery:chat', 'gallery:chat-empty', 'gallery:chat-clan', 'gallery:support-chat', 'client:chat', 'client:chat-rules'],
     group: 'G8', unreached: ['DM paneli', 'medya ekleme', 'tepki listesi', "içerik bildir sheet'i", 'engellenenler', 'sessize alınanlar'],
   },
 

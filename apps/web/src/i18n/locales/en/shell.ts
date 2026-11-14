@@ -582,6 +582,7 @@ export const chat = {
   launcherBothUnread: 'Open chat — {{general}} unread in General, {{clan}} in Clan',
   channelsLabel: 'Chat channels',
   languageLabel: 'Chat language',
+  languageChip: "Chat language: {{language}}",
   general: 'General',
   clan: 'Clan',
   dm: {
@@ -599,7 +600,8 @@ export const chat = {
   clanLocked: 'Clan chat is private to a crew.',
   clanLockedHint: 'Join or found a clan, then this channel opens immediately.',
   list: 'Galaxy messages',
-  empty: 'No one has spoken yet. Be the first voice in the galaxy.',
+  emptyTitle: "No one has spoken yet",
+  emptyBody: "Be the first voice in the galaxy.",
   older: 'Load older messages',
   loadingOlder: 'Loading older messages',
   placeholder: 'Message the galaxy',

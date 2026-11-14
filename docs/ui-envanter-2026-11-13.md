@@ -726,6 +726,38 @@ Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/Ch
 | 9 | Geri bildirim | `FeedbackScreen` (88) | | | **v1** + `Segmented` | |
 | 10 | Bildirim Merkezi | `NotificationCenterSheet` (379) | "Saldırı olursa haberim olsun mu, ne kadara?" | kurulu değil, boş cüzdan, kapsıyor; zamanlama | v2 + 1 v1 | menüdeki kartla açılır |
 
+**C2 sohbet ✅ (2026-11-14, yardımcı oturum).** Oyuncunun anı: galaksideki sohbet düğmesine basıp odaya bakmak, konuşmak ya da klanla plan yapmak. Asıl kararlar şunlar: hangi odadayım (Galaksi, Klan, Özel), galaksi odası hangi dilde, mesajı yazıp göndermek. Odaların kuralları, okunmamış sayıları ve dil tercihinin cihazda saklanması değişmedi.
+
+Önce kite eklenenler:
+- `TabItem.spoken`: sekmenin okuyucuya söylenen tam adı ("Klan — 2 okunmamış"). Göz sayıyı okur. Altındaki bir olgu (`mark`) varsa önce o söylenir.
+- İki işaret: `mute` (üstü çizili hoparlör) ve `block` (giriş yok levhası).
+- `.gk-langchip`: odanın bayrağı; basınca altına altı bayrak düşer (`gk-langdrop`).
+- `.gk-round:disabled`: gönderecek bir şey yokken tuş söner ve basınca kıpırdamaz.
+- Japonca sekme adı bölünmez (`html:lang(ja) .gk-tab`, "クラ/ン" gitti).
+
+Sohbet:
+- Sayfa başlığı artık kesilmiyor. Telefona özel sıkıştırma (12 px tutamak, 28 px tuşlar) G1-g1'in 44 px tutamağıyla başlığı sayfanın kenarının altına itiyordu; kaldırıldı. Çerçeve her sheet'teki kit çerçevesi.
+- Başlıktaki iki liste (sessize alınanlar, engellenenler) kitin küçük yuvarlak tuşları ve kendi işaretleriyle.
+- Odalar kitin sekmeleri: Galaksi konuşma balonu, Klan sancak, Özel mektup. Okunmamış sayısı köşedeki kırmızı sayı; okuyucu "Klan — 2 okunmamış" duyar.
+- Galaksi odasının dili yerli `<select>` yerine bayrak çipi. Basınca kitin altı bayraklı dil seçicisi satırın altına açılır, bir bayrak seçince kapanır. Oyunun kendi dili değişmez. Oda değişince açık seçici kapanır.
+- Boş oda kitin boş durumu: sohbet resmi süzülür; başlık "Henüz kimse konuşmadı", altında "Galaksideki ilk ses sen ol." Klan için klan resmi ve kendi cümlesi. Gizlenen mesajlar için de aynı dil ("Görünen mesaj yok" ve neden). Klansız oyuncunun kilitli odası da aynı parça.
+- Yazma alanı kitin cam yuvası (44 px, metin ortada). Gönder tuşu kitin parlak yuvarlak tuşu; boşken söner, yazınca yanar. Klavye için odak koruması aynı kaldı.
+- Sohbetin yazı ölçeği kitin tabanında: saat, alıntı ve notlar 12 px, adlar 13 px. Saatler, alıntılar ve kalan karakter sayısı bir ton açıldı.
+- Galeriye üç görünüm eklendi (`chat`, `chat-empty`, `chat-clan`) ve denetimin sohbet yollarına yazıldı.
+
+Ölçüm: `reports/ui-audit/c2-chat-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 56 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 86 | 14 |
+| WCAG aralık hatası | 32 | 8 |
+| Basınca tepkisiz | 40 | 15 |
+| Kırpılan metin | 36 | 0 |
+
+Kalanlar mesaj balonlarının içinde ve C3'ün işi: tepki çipleri, yazar adının dünyaya uçuran bağlantısı, sezon kupası ve destekçi kalbi; uzun basışla açılan eylem çubuğu ve emoji seçici (28 px). Üç noktayla kesilen 12 metnin hepsi yanıtlanan mesajın tek satırlık alıntısı; önizleme olduğu için bilerek böyle.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.

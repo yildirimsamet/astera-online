@@ -531,6 +531,7 @@ export const chat = {
     "Ouvrir le chat — Général : {{general}}, Clan : {{clan}} non lus",
   channelsLabel: "Canaux de discussion",
   languageLabel: 'Langue du chat',
+  languageChip: "Langue du chat : {{language}}",
   general: "Général",
   clan: "Clan",
   dm: {
@@ -548,7 +549,8 @@ export const chat = {
   clanLocked: "Le chat du clan est réservé à ton équipe.",
   clanLockedHint: "Rejoins ou crée un clan ; ce canal s’ouvrira immédiatement.",
   list: "Messages de la galaxie",
-  empty: "Personne n’a encore parlé. Sois la première voix de la galaxie.",
+  emptyTitle: "Personne n’a encore parlé",
+  emptyBody: "Sois la première voix de la galaxie.",
   older: "Charger les anciens messages",
   loadingOlder: "Chargement des anciens messages",
   placeholder: "Écrire un message à la galaxie",

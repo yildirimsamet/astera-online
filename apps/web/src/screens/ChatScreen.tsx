@@ -40,8 +40,11 @@ import {
   useMessageReaction,
 } from '../api/queries.js';
 import { describeError } from '../i18n/errors.js';
+import { EmptyState as KitEmpty, GameTabs, Glyph, LANGUAGE_FLAG, LanguagePicker, artIconSrc, type ArtIconId, type TabItem } from '../game-ui/index.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { currentLanguage } from '../i18n/index.js';
-import { isLanguage, LANGUAGES, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
+import { isLanguage, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
 import { isChatMessageVisible, type ChatMuteAuthor, type MutedChatPlayer } from '../lib/chatMutes.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { TaggedName } from '../ui/ClanTag.js';
@@ -50,9 +53,8 @@ import type { ClanTagTier } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
 import { clockTime, useNow } from '../lib/time.js';
 import { describeClanEvent, type ClanChatEvent } from '../lib/clanChatEvent.js';
-import { ClanIcon, CloseIcon, HeartIcon, HonorIcon, MuteIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
+import { CloseIcon, HeartIcon, HonorIcon, MuteIcon, PlusIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
-import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
 import { Trophy, type Place } from '../ui/Medal.js';
 import { useAdminChatScopes, useAdminClanChat, useAdminPostClanChat } from '../api/adminQueries.js';
@@ -110,7 +112,7 @@ function ClanEventLine({ event, at }: { event: ClanChatEvent; at: Date }) {
       className={`flex max-w-[92%] items-center gap-2 rounded-control border px-2 py-1 text-micro leading-snug ${alarm
         ? 'border-v2-hostile/45 bg-v2-hostile/10 text-v2-ink' : 'border-v2-ally/35 bg-v2-ally/10 text-v2-ink'}`}>
       {perk && <PerkArt perk={perk} className={`size-6 ${alarm ? 'animate-pulse' : ''}`} />}
-      <span className="min-w-0">{text}<span className="ml-1.5 font-v2-mono text-v2-ink-3">{clockTime(at)}</span></span>
+      <span className="min-w-0">{text}<span className="ml-1.5 font-v2-mono text-v2-ink-2">{clockTime(at)}</span></span>
     </p>
   );
 }
@@ -119,6 +121,42 @@ function ClanEventLine({ event, at }: { event: ClanChatEvent; at: Date }) {
 export type ChatChannel = 'general' | 'clan' | 'dm';
 
 const CHAT_LANGUAGE_STORAGE_KEY = 'astera.chat.language.v1';
+
+/** Each room's mark on its tab (C2): the galaxy's talk, the clan's banner, a private letter. */
+const ROOM_MARK = {
+  general: { id: 'chat', tone: 'info' },
+  clan: { id: 'banner', tone: 'good' },
+  dm: { id: 'mail', tone: 'self' },
+} as const satisfies Record<ChatChannel, NonNullable<TabItem['glyph']>>;
+
+/** What a room with nothing in it says, and the picture it says it with (C2). */
+interface RoomEmpty { title: string; body?: string; art: ArtIconId }
+
+/**
+ * THE GALAXY ROOM'S LANGUAGE (C2, 2026-11-14): a chip with the room's flag says which room the
+ * reader is in; a press drops the six flags. It moves the reader between rooms and never
+ * changes the game's own language.
+ */
+function RoomLanguageChip({ value, open, panel, onToggle }: { value: Language; open: boolean; panel: string; onToggle: () => void }) {
+  const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onToggle(); });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      className="gk-langchip"
+      aria-label={t('chat.languageChip', { language: LANGUAGE_LABEL[value] })}
+      aria-expanded={open}
+      aria-controls={panel}
+      data-language={value}
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      <img className="gk-langchip__flag" src={LANGUAGE_FLAG[value]} alt="" width={24} height={25} draggable={false} />
+      <span className="gk-langchip__open" aria-hidden="true"><Glyph id="down" /></span>
+    </button>
+  );
+}
 const NO_PERSONAL_MUTES: readonly MutedChatPlayer[] = [];
 
 /**
@@ -160,6 +198,8 @@ export function ChatScreen({
   const channel: ChatChannel = aboard ? 'general' : chosen;
   const operator = isAdmin && !aboard;
   const [chatLanguage, setChatLanguage] = useState<Language>(initialChatLanguage);
+  const [choosingLanguage, setChoosingLanguage] = useState(false);
+  const languagePanel = useId();
   const [generalDrafts, setGeneralDrafts] = useState<Partial<Record<Language, string>>>({});
   const [generalReplies, setGeneralReplies] = useState<Partial<Record<Language, MessageRow | null>>>({});
   const [clanDraft, setClanDraft] = useState(initialClanDraft);
@@ -185,76 +225,54 @@ export function ChatScreen({
     [clan.data?.pages],
   );
 
+  const room = (id: ChatChannel, label: string, unread: number): TabItem<ChatChannel> => ({
+    id, label, glyph: ROOM_MARK[id], badge: unread,
+    ...(unread > 0 ? { spoken: t('chat.channelUnread', { channel: label, count: unread }) } : {}),
+  });
   const tabs = [
-    {
-      id: 'general' as const,
-      label: t('chat.general'),
-      dot: generalUnread > 0,
-      name: generalUnread > 0
-        ? t('chat.channelUnread', { channel: t('chat.general'), count: generalUnread })
-        : t('chat.general'),
-    },
-    {
-      id: 'clan' as const,
-      label: t('chat.clan'),
-      dot: clanUnread > 0,
-      name: clanUnread > 0
-        ? t('chat.channelUnread', { channel: t('chat.clan'), count: clanUnread })
-        : t('chat.clan'),
-    },
-    {
-      id: 'dm' as const,
-      label: t('chat.dm.title'),
-      dot: dmUnread > 0,
-      name: dmUnread > 0
-        ? t('chat.channelUnread', { channel: t('chat.dm.title'), count: dmUnread })
-        : t('chat.dm.title'),
-    },
+    room('general', t('chat.general'), generalUnread),
+    room('clan', t('chat.clan'), clanUnread),
+    room('dm', t('chat.dm.title'), dmUnread),
   ];
+  const chooseLanguage = (next: Language): void => {
+    setChatLanguage(next);
+    setChoosingLanguage(false);
+    try {
+      localStorage.setItem(CHAT_LANGUAGE_STORAGE_KEY, next);
+    } catch {
+      // Keep the current selection usable when storage is blocked or full.
+    }
+  };
 
   return (
     <div data-chat-room={channel} className="chat-type flex h-full min-h-0 flex-col">
       {/*
-        D6: the two rooms and, for the galaxy's room, its language — one row, the
-        language a small select at the end rather than a page-wide field.
+        D6: the rooms and, for the galaxy's room, its language — one row: the rooms as the kit's
+        tabs, the language a flag chip at the end that drops the six flags under the row (C2).
       */}
-      <div data-chat-controls className="flex shrink-0 items-center gap-2 border-b border-v2-line px-3 pb-2">
-        <div className="min-w-0 flex-1">
-          {aboard ? (
-            <p className="truncate text-caption font-semibold text-v2-ink">{t('starter.chatRoom')}</p>
-          ) : (
-            <Segmented
-              options={tabs}
-              value={channel}
-              onChange={setChannel}
-              label={t('chat.channelsLabel')}
-              tabId={(id) => `chat-tab-${id}`}
-            />
-          )}
+      <div data-chat-controls className="gk shrink-0 border-b border-v2-line px-[var(--gk-gutter)] pb-2">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            {aboard ? (
+              <p className="truncate text-caption font-semibold text-v2-ink">{t('starter.chatRoom')}</p>
+            ) : (
+              <GameTabs
+                label={t('chat.channelsLabel')}
+                tabs={tabs}
+                value={channel}
+                onChange={(next) => { setChannel(next); setChoosingLanguage(false); }}
+                ids={{ tab: (id) => `chat-tab-${id}`, panel: (id) => `chat-panel-${id}` }}
+              />
+            )}
+          </div>
+          {channel === 'general' ? (
+            <RoomLanguageChip value={chatLanguage} open={choosingLanguage} panel={languagePanel} onToggle={() => { setChoosingLanguage(!choosingLanguage); }} />
+          ) : null}
         </div>
-        {channel === 'general' ? (
-          <label className="shrink-0">
-            <span className="sr-only">{t('chat.languageLabel')}</span>
-            <select
-              aria-label={t('chat.languageLabel')}
-              className="h-8 max-w-[7.5rem] rounded-control border border-v2-line-hi bg-v2-deep px-2 text-micro text-v2-ink outline-none focus:border-v2-self"
-              value={chatLanguage}
-              onChange={(event) => {
-                const next = event.currentTarget.value;
-                if (!isLanguage(next)) return;
-                setChatLanguage(next);
-                try {
-                  localStorage.setItem(CHAT_LANGUAGE_STORAGE_KEY, next);
-                } catch {
-                  // Keep the current selection usable when storage is blocked or full.
-                }
-              }}
-            >
-              {LANGUAGES.map((language) => (
-                <option key={language} value={language}>{LANGUAGE_LABEL[language]}</option>
-              ))}
-            </select>
-          </label>
+        {channel === 'general' && choosingLanguage ? (
+          <div id={languagePanel} className="gk-langdrop">
+            <LanguagePicker label={t('chat.languageLabel')} value={chatLanguage} onChange={chooseLanguage} />
+          </div>
         ) : null}
       </div>
 
@@ -276,7 +294,7 @@ export function ChatScreen({
               mutedPlayers={mutedPlayers}
               onMute={onMute}
               listLabel={t('chat.list')}
-              empty={t('chat.empty')}
+              empty={{ title: t('chat.emptyTitle'), body: t('chat.emptyBody'), art: 'hud-chat' }}
               loadingOlder={t('chat.loadingOlder')}
               placeholder={t('chat.placeholder')}
               draft={generalDrafts[chatLanguage] ?? ''}
@@ -307,10 +325,8 @@ export function ChatScreen({
         ) : isAdmin ? (
           <AdminClanChannel onFocusPlanet={onFocusPlanet} />
         ) : !inClan ? (
-          <div className="px-2 py-6">
-            <EmptyState icon={<ClanIcon className="size-6" />} title={t('chat.clanLocked')}>
-              {t('chat.clanLockedHint')}
-            </EmptyState>
+          <div className="gk px-[var(--gk-gutter)] py-4">
+            <KitEmpty art={artIconSrc('menu-clan')} title={t('chat.clanLocked')} body={t('chat.clanLockedHint')} />
           </div>
         ) : clan.isError ? (
           <Unreachable what={t('clan.chat.heading')} onRetry={() => { void clan.refetch(); }} />
@@ -323,7 +339,7 @@ export function ChatScreen({
             mutedPlayers={mutedPlayers}
             onMute={onMute}
             listLabel={t('clan.chat.list')}
-            empty={t('clan.chat.empty')}
+            empty={{ title: t('clan.chat.emptyTitle'), body: t('clan.chat.emptyBody'), art: 'menu-clan' }}
             loadingOlder={t('clan.chat.loadingOlder')}
             placeholder={t('clan.chat.placeholder')}
             draft={clanDraft}
@@ -379,7 +395,7 @@ function AdminSelectedClanChat({ clanId, onFocusPlanet }: { clanId: string; onFo
   const messages = useMemo(() => [...(chat.data?.pages ?? [])].reverse().flatMap(page => page.messages), [chat.data?.pages]);
   if (chat.isError) return <Unreachable what={t('clan.chat.heading')} onRetry={() => { void chat.refetch(); }} />;
   if (!chat.data) return <Waiting>{t('clan.chat.waiting')}</Waiting>;
-  return <ChannelPanel messages={messages} listLabel={t('clan.chat.list')} empty={t('clan.chat.empty')}
+  return <ChannelPanel messages={messages} listLabel={t('clan.chat.list')} empty={{ title: t('clan.chat.emptyTitle'), body: t('clan.chat.emptyBody'), art: 'menu-clan' }}
     loadingOlder={t('clan.chat.loadingOlder')} placeholder={t('clan.chat.placeholder')}
     draft={draft} onDraft={setDraft} replyTarget={reply} onReplyTarget={setReply} onFocusPlanet={onFocusPlanet}
     hasNextPage={chat.hasNextPage} fetchingOlder={chat.isFetchingNextPage} onOlder={() => chat.fetchNextPage()}
@@ -542,7 +558,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
               key={activePeerId}
               messages={chatMessages}
               listLabel={t('chat.dm.list', { name: activePeer.username })}
-              empty={t('chat.dm.emptyConversation', { name: activePeer.username })}
+              empty={{ title: t('chat.dm.emptyConversation', { name: activePeer.username }), art: 'menu-friends' }}
               loadingOlder={t('chat.loadingOlder')}
               placeholder={t('chat.dm.placeholder', { name: activePeer.username })}
               draft={drafts[activePeerId] ?? ''}
@@ -602,7 +618,7 @@ function ChannelPanel({
 }: {
   messages: readonly MessageRow[];
   listLabel: string;
-  empty: string;
+  empty: RoomEmpty;
   loadingOlder: string;
   placeholder: string;
   draft: string;
@@ -848,13 +864,15 @@ function ChannelPanel({
         onScroll={handleHistoryScroll}
       >
         {fetchingOlder ? (
-          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-v2-ink-3" role="status">
+          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-v2-ink-2" role="status">
             {loadingOlder}
           </div>
         ) : null}
         {visibleMessages.length === 0 ? (
-          <div className="py-6">
-            <EmptyState title={messages.length === 0 ? empty : t('chat.personalMutes.hiddenEmpty')} />
+          <div className="gk py-4">
+            {messages.length === 0
+              ? <KitEmpty art={artIconSrc(empty.art)} title={empty.title} body={empty.body ?? ''} />
+              : <KitEmpty art={artIconSrc('hud-chat')} title={t('chat.personalMutes.hiddenEmpty')} body={t('chat.personalMutes.hint')} />}
             {messages.length > 0 && hasNextPage && (
               <button type="button" disabled={fetchingOlder}
                 className="mx-auto mt-3 flex min-h-9 items-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-self disabled:opacity-50"
@@ -952,14 +970,14 @@ function ChannelPanel({
                           {message.previousSeasonRanking === 'HONOR' ? <HonorIcon className="ml-0.5 size-3" /> : null}
                         </button>
                       )}
-                      <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3" dateTime={message.createdAt.toISOString()}>
+                      <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-2" dateTime={message.createdAt.toISOString()}>
                         {chatRelativeTime(message.createdAt, now, t)}
                       </time>
                     </div>
                     {message.replyTo ? (
                       <div className="mt-1 max-w-full rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1 text-micro" data-chat-reply={message.replyTo.id}>
                         <span className="block font-semibold text-v2-self">{message.replyTo.username}</span>
-                        <span className="block truncate text-v2-ink-3">{message.replyTo.content || (message.replyTo.media ? t(`chat.media.${message.replyTo.media.kind === 'image' ? 'photo' : message.replyTo.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
+                        <span className="block truncate text-v2-ink-2">{message.replyTo.content || (message.replyTo.media ? t(`chat.media.${message.replyTo.media.kind === 'image' ? 'photo' : message.replyTo.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
                       </div>
                     ) : null}
                     {message.media ? <ChatMediaAttachment key={message.media.kind === 'youtube' ? message.media.videoId : message.media.assetId} media={message.media} channel={tone} messageId={message.id} onLoad={() => { const log = history.current; if (log && followingLatest.current) log.scrollTop = log.scrollHeight; }} /> : null}
@@ -1067,25 +1085,26 @@ function ChannelPanel({
                 event.preventDefault();
                 if (!event.repeat) event.currentTarget.form?.requestSubmit();
               }}
-              className="block h-10 w-full resize-none rounded-pill border border-v2-line-hi bg-v2-deep px-4 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self"
+              className="gk-field__input chat-composer block w-full resize-none"
             />
           </label>
           <button
             type="submit"
+            {...OWN_SOUND}
             aria-label={t('chat.send')}
             disabled={(!draft.trim() && !media) || posting || uploading || disabledReason !== null}
             onPointerDown={keepComposerFocus}
-            onClick={() => { haptic('tap'); }}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+            onClick={() => { playSound('tap'); haptic('tap'); }}
+            className="gk-round gk-round--self chat-send"
           >
-            <SendIcon className="size-4" />
+            <span className="gk-round__face"><Glyph id="next" /></span>
           </button>
         </div>
         {postError || reaction.error || maxChars - Array.from(draft).length <= 30 ? (
           <div className="mt-1 flex justify-between gap-2 text-micro">
             <span className="text-v2-warn">{postError || reaction.error ? describeError(postError ?? reaction.error) : ''}</span>
             {maxChars - Array.from(draft).length <= 30 ? (
-              <span className="ml-auto text-v2-ink-3">{t('chat.remaining', { count: maxChars - Array.from(draft).length })}</span>
+              <span className="ml-auto text-v2-ink-2">{t('chat.remaining', { count: maxChars - Array.from(draft).length })}</span>
             ) : null}
           </div>
         ) : null}
