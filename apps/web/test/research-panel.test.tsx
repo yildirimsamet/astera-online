@@ -1047,14 +1047,14 @@ describe('the sheet portrait', () => {
   it('draws the rung held on a ladder', async () => {
     const view = show({ research: allOpen({ CARGO_HOLDS: { level: 2 } }) });
     const sheet = await open(view, 'CARGO_HOLDS');
-    expect(sheet.querySelector('.item-portrait-index')?.textContent).toBe('02');
+    expect(sheet.querySelector('.gk-rhero__index')?.textContent).toBe('02');
   });
 
   /** A permission has no rung to report, so it shows no index. */
   it('draws no rung on a permission', async () => {
     const view = show({ research: allOpen({ GRAVITIC_CHARGES: { level: 1, completed: true } }) });
     const sheet = await open(view, 'GRAVITIC_CHARGES');
-    expect(sheet.querySelector('.item-portrait-index')).toBeNull();
+    expect(sheet.querySelector('.gk-rhero__index')).toBeNull();
   });
 });
 

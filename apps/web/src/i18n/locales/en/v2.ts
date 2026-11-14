@@ -16,6 +16,8 @@ export const hold = {
 export const lane = {
   /** A slot in the lane with nothing in it. */
   free: '+ Free slot',
+  /** A ring a vacation stopped, in one word; the slot's name for a reader says why. */
+  paused: 'Paused',
 };
 
 /** B1: a resource meter on the top bar. */

@@ -908,19 +908,53 @@ function GalleryEscort() {
   return null;
 }
 
-function GalleryResearch() {
+/**
+ * RESEARCH (G2-i): the map with the card; `sheet` opens Ship Armor's Details, `locked` shows a
+ * card whose door is a missing prerequisite, `paused` a lane stopped by a vacation.
+ */
+function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'locked' | 'paused' }) {
   const client = useQueryClient();
   useState(() => {
     const fixture = planetView({ academyStep: null, buildings: { CORE: 15, SHIPYARD: 9, HANGAR: 6 } },
       { alloy: 90_000, crystal: 40_000, deuterium: 15_000 });
-    client.setQueryData(keys.planet, { ...fixture, research: fixture.research.map((project) => ({
+    const research = fixture.research.map((project) => ({
       ...project, discovered: true, available: true, availableAt: new Date('2026-01-01'), level: 1,
       maxLevel: RESEARCH_PROJECTS[project.id].maxLevel,
       completed: RESEARCH_PROJECTS[project.id].maxLevel === 1,
-    })) });
+    }));
+    const shut = variant === 'locked'
+      ? research.map((project) => project.id === 'ISOTOPE_SPECTROMETRY'
+        ? { ...project, level: 0, completed: false }
+        : project.id === 'DENSE_FUEL_CELLS'
+          ? { ...project, level: 0, completed: false, discovered: false, queueDiscovered: false, available: false, queueAvailable: false, prerequisiteMet: false, queuePrerequisiteMet: false }
+          : project)
+      : research;
+    const paused = new Date(Date.now() - 40 * MIN);
+    client.setQueryData(keys.planet, {
+      ...fixture,
+      research: shut,
+      ...(variant === 'paused' ? { researchQueue: [{
+        id: 'research-0', slot: 0, projectId: 'SHIP_ARMOR' as const, level: 2, cost: RESEARCH_PROJECTS.SHIP_ARMOR.costAt(2),
+        startedAt: new Date(Date.now() - 80 * MIN), finishesAt: new Date(Date.now() + 70 * MIN), pausedAt: paused,
+      }] } : {}),
+    });
     return null;
   });
-  return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']}><ResearchPanel /></Sheet>;
+  useEffect(() => {
+    if (variant !== 'sheet') return undefined;
+    // the Details press, as a player makes it
+    const timer = window.setTimeout(() => {
+      const details = [...document.querySelectorAll('[data-constellation-card] button')].find((button) => button.textContent === 'Ayrıntılar');
+      if (details instanceof HTMLElement) details.click();
+    }, 300);
+    return () => { window.clearTimeout(timer); };
+  }, [variant]);
+  const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
+  return (
+    <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']}>
+      <ResearchPanel {...(focus ? { focus } : {})} />
+    </Sheet>
+  );
 }
 
 /** Bildirim Merkezi (owner 2026-10-30): built with a ledger, and not yet built. */
@@ -1091,6 +1125,9 @@ function Views({ view }: { view: string }) {
   if (view === 'build-sheet-special') return <GalleryBuild hull="NULLIFIER" />;
   if (view === 'build-sheet-gun') return <GalleryBuild hull="THORN" />;
   if (view === 'base-research') return <GalleryResearch />;
+  if (view === 'base-research-sheet') return <GalleryResearch variant="sheet" />;
+  if (view === 'base-research-locked') return <GalleryResearch variant="locked" />;
+  if (view === 'base-research-paused') return <GalleryResearch variant="paused" />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
   if (view === 'repair-station-hangar') return <GalleryBase open hangar />;

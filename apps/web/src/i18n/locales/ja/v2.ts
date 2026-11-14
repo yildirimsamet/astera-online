@@ -16,6 +16,7 @@ export const hold = {
 export const lane = {
   /** A slot in the lane with nothing in it. */
   free: "+ 空き枠",
+  paused: "停止中",
 };
 
 /** B1: a resource meter on the top bar. */

@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Hatta boş duran yer. */
   free: '+ Boş hat',
+  paused: 'Durdu',
 };
 
 /** B1: üst çubuktaki kaynak ölçeri. */

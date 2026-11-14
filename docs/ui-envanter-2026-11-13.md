@@ -869,6 +869,17 @@ Kalanlar ve nedeni:
   - 12 px altı metin 45/54 → 0. Kontrast 13 → 0. 44 px altı hedef 17/26 → 0. Kesilen 10 → 0.
   - Puan 168 → 1. Kalan 1, seçili yıldızın basış tepkisiydi; düzeltildi (seçiliyken basınca halka küçülüyor).
 
+**G2-i2 Proje sayfası, kilitli ve duraklatılmış hâller ✅ (2026-11-15).** Bu iş G2-i'yi kapatır.
+- **An:** "Bu projenin tamamı ne: ne kazandırır, nasıl işler, bu seviye neye mal olur?" Kartın bir dokunuş ötesi.
+- **Değişen:**
+  - "Ayrıntılar" artık bir kit sheet'i, Üs'teki bina sayfasının dilinde. Başlık şeridinde projenin etiketi var. Kahraman bölümünde projenin sahnesi, üstünde tutulan seviye ("02"), kazanç (şimdi → sonra, tavan) ve kit seviye noktaları duruyor. Altında rolü ve "nasıl işler" kuyusu.
+  - Alt kısımda: o seviyenin fiyatı ve süresi, "5 seviyenin 3. seviyesi" ve tek basış. Basış kartla aynı: ağır turuncu "Araştır"; kaynak yetmezse sebep yazılıyor. Önkoşul eksikse kit kapı düğmesi; basınca sheet kapanıyor ve o yıldız seçiliyor. Sıradaysa durum plakası.
+  - Tatildeyken şerit satırı "Sürüyor" demiyor, sarıyla "Duraklatıldı — tatil modu" diyor. Kit halkalarında duraklatılmış iş tek kelime: "🔒 Durdu" (6 dil); ekran okuyucu uzun cümleyi duyuyor. Bu düzeltme Üs şeritlerine de uygulandı.
+  - Sırada olan projenin kartı artık fiyat göstermiyor, çünkü basış sunulmuyor.
+- **Silinen:** v1 `Sheet` + `ActionButton` + `Price` kullanımı. Eski portre CSS'i (chrome.css'teki "commitment portrait" ve atmosphere.css'teki araştırma portresi; başka kullanan yok).
+- **Galeri:** `base-research-sheet`, `base-research-locked`, `base-research-paused`. Envanterde ulaşılamayan iki durum ("proje sheet'i", "tatilde duraklatılmış") kapandı.
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü; dört görünüm): `reports/ui-audit/g2i2-after-2026-11-15.md`. 12 px altı, kontrast, 44 px altı ve tepkisiz hepsi 0. Puan 0/0/0/3; kalan 3, "Durdu" düzeltmesinden önceki kesilmeydi.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

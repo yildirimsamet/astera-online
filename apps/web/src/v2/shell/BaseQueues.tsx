@@ -45,6 +45,7 @@ export function Lane({ label, orders, now, onOpen, slots = BUILD.queueDepth }: {
         {orders.map((order) => {
           const name = buildOrderLabel(order);
           const left = orderLeft(order, now);
+          const state = slotState(order, now);
           return (
             <QueueSlot
               key={order.id}
@@ -52,8 +53,9 @@ export function Lane({ label, orders, now, onOpen, slots = BUILD.queueDepth }: {
               name={order.kind === 'REPAIR' ? repairSubject(order) : name}
               count={order.kind === 'RESEARCH' ? 1 : order.count}
               progress={orderProgress(order, now)}
-              left={left}
-              state={slotState(order, now)}
+              // a ring is narrow: a stopped one says so in a word, its name for a reader says why
+              left={state === 'paused' ? t('lane.paused') : left}
+              state={state}
               label={t('planet.queue.segment', { name, duration: left })}
               onPress={() => { onOpen(order); }}
             />

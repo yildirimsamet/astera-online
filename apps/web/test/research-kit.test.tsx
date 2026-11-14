@@ -195,6 +195,8 @@ describe('the selected project’s card on the kit', () => {
     const isotope = card('ISOTOPE_SPECTROMETRY');
     expect(within(isotope).getByRole('status')).toHaveTextContent('Researching');
     expect(within(isotope).queryByRole('button', { name: /^research$/i })).toBeNull();
+    // nothing is offered, so no price is either
+    expect(isotope.querySelector('.gk-cost')).toBeNull();
   });
 });
 
@@ -210,8 +212,84 @@ describe('the research lane on the kit', () => {
     expect(slot.querySelector('.gk-qslot__count')).toBeNull();
   });
 
+  it('says a lane stopped by a vacation is stopped, never that it runs', () => {
+    const stopped = { ...order('SHIP_ARMOR', new Date('2026-08-28T11:30:00.000Z')), pausedAt: new Date('2026-08-28T10:00:00.000Z') };
+    show(world({}, { researchQueue: [stopped] }));
+    const line = document.querySelector('[data-research-running]')!;
+    expect(line).not.toHaveTextContent(/under way/i);
+    expect(line).toHaveTextContent(/paused/i);
+    expect(line.querySelector('[data-tone="warn"]')).not.toBeNull();
+  });
+
+  it('writes a paused ring in one short word, the whole reason left for a reader', () => {
+    const stopped = { ...order('SHIP_ARMOR', new Date('2026-08-28T11:30:00.000Z')), pausedAt: new Date('2026-08-28T10:00:00.000Z') };
+    show(world({}, { researchQueue: [stopped] }));
+    const slot = document.querySelector<HTMLElement>('[data-queue-lane] .gk-qslot')!;
+    expect(slot.querySelector('.gk-qslot__time')).toHaveTextContent(/^Paused$/);
+    expect(slot).toHaveAccessibleName(/vacation mode/);
+  });
+
   it('says what runs and when it ends, in the kit’s small line', () => {
     show(world({}, { researchQueue: [order('SHIP_ARMOR', new Date('2026-08-28T11:30:00.000Z'))] }));
     expect(document.querySelector('[data-research-running]')).toHaveClass('gk-sub');
+  });
+});
+
+/**
+ * G2-i2: THE PROJECT SHEET ON THE KIT. "Details" opens the whole of one project: the scene
+ * and the rung held, what the next rung buys, how it works, the price of exactly that rung,
+ * and the same one press as the card — or the door, or the state, where the press would be.
+ */
+describe('the project sheet on the kit', () => {
+  const details = async (id: ResearchProjectId): Promise<HTMLElement> => {
+    await userEvent.click(within(card(id)).getByRole('button', { name: /^details$/i }));
+    return document.querySelector<HTMLElement>('[data-item-sheet]')!;
+  };
+
+  it('is a kit sheet: the project’s scene, the rung held, the gain, how it works', async () => {
+    show(world({ CARGO_HOLDS: { level: 2, cost: RESEARCH_PROJECTS.CARGO_HOLDS.costAt(3) } }));
+    const sheet = await details('CARGO_HOLDS');
+    expect(sheet.querySelector('.gk-sheet')).not.toBeNull();
+    const hero = sheet.querySelector('[data-research-portrait]')!;
+    expect(hero).toHaveClass('gk-ihero');
+    expect(hero.querySelector('.gk-rhero__index')).toHaveTextContent('02');
+    expect(hero.querySelector('[data-research-gain]')).not.toBeNull();
+    expect(sheet.querySelector('[data-item-detail]')).toHaveClass('gk-well');
+    expect(sheet).toHaveTextContent(/Level 3 of 5/);
+    expect(sheet.querySelector('.gk-cost')).not.toBeNull();
+    expect(v2Painted(sheet)).toEqual([]);
+  });
+
+  it('researches with the kit’s heavy press and closes', async () => {
+    show();
+    const sheet = await details('CARGO_HOLDS');
+    const press = within(sheet).getByRole('button', { name: /^research$/i });
+    expect(press).toHaveClass('gk-btn', 'gk-btn--action');
+    await userEvent.click(press);
+    expect(mutate).toHaveBeenCalledWith('CARGO_HOLDS', expect.anything());
+    expect(document.querySelector('[data-item-sheet]')).toBeNull();
+  });
+
+  it('says a price the store cannot pay on the press', async () => {
+    show(world({}, {}, { alloy: 0, crystal: 0, deuterium: 0 }));
+    const sheet = await details('CARGO_HOLDS');
+    expect(within(sheet).getByRole('button', { name: /not enough resources/i })).toBeDisabled();
+  });
+
+  it('turns a missing prerequisite into the kit door, which walks to its star', async () => {
+    show(world({ DENSE_FUEL_CELLS: { discovered: false, queueDiscovered: false, available: false, queueAvailable: false } }));
+    const sheet = await details('DENSE_FUEL_CELLS');
+    const door = within(sheet).getByRole('button', { name: /Isotope Spectrometry first/i });
+    expect(door).toHaveClass('gk-btn--door');
+    await userEvent.click(door);
+    expect(document.querySelector('[data-item-sheet]')).toBeNull();
+    expect(star('ISOTOPE_SPECTROMETRY')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('says a project on the queue is under way where the press would be', async () => {
+    show(world({}, { researchQueue: [order('CARGO_HOLDS', new Date('2026-08-28T11:30:00.000Z'))] }));
+    const sheet = await details('CARGO_HOLDS');
+    expect(within(sheet).getByRole('status')).toHaveTextContent('Researching');
+    expect(within(sheet).queryByRole('button', { name: /^research$/i })).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Ein leerer Platz in der Schlange. */
   free: '+ Freier Platz',
+  paused: 'Pausiert',
 };
 
 /** B1: eine Ressourcenanzeige in der oberen Leiste. */

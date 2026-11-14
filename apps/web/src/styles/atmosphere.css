@@ -173,17 +173,3 @@
 [data-hull-family-group] > button > div > span:not(:first-of-type),
 [data-hull-family-group] > button > div > svg { color: var(--color-v2-self); }
 
-/* The landscape portrait keeps its rung visible above the complete scene. */
-[data-research-portrait] .item-portrait-index {
-  z-index: 2;
-  right: 8px;
-  bottom: 8px;
-  padding: 4px 7px;
-  border: 1px solid var(--color-v2-line-hi);
-  border-radius: var(--radius-control);
-  color: var(--color-v2-ink);
-  background: rgb(4 6 11 / 80%);
-  font-size: 14px;
-  letter-spacing: normal;
-}
-[data-research-portrait] .item-portrait-index::before { content: 'L'; margin-right: 2px; }

@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Une place vide dans la file. */
   free: '+ Place libre',
+  paused: 'En pause',
 };
 
 /** B1 : une jauge de ressource dans la barre du haut. */
