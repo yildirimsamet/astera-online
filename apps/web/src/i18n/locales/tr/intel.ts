@@ -142,7 +142,7 @@ export const reports = {
   enemyRetreated: "Düşmanın {{count}} gemisi kaçarak sağ kaldı.",
   turningPointRetreated: "{{round}}. tur sonunda savaşmaya devam eden savaş gemin kalmadı. Bazı gemiler sağ kaçtı.",
   heading: 'Savaş raporları',
-  newest: 'en yeni önce',
+  emptyTitle: "Henüz savaş yok",
   empty:
     'Galakside henüz çatışma kaydı yok. Savaş raporu, karşı tarafın gerçek kuvvetini ve çatışma sonucunu doğrudan gösterir.',
   youRaided: 'Akın ettiğin: ',
@@ -369,6 +369,7 @@ export const reports = {
   strategicSecededAttacker: "Koloni koptu ve tarafsız oldu; artık kimsenin değil.",
   strategicSecededDefender: "Kolonin koptu ve tarafsız oldu.",
   strategicSecededShort: "koloni koptu",
+  strategicDamageShort: "{{amount}} hasar",
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',

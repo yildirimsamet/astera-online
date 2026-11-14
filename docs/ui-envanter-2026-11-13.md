@@ -1098,6 +1098,38 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 
 Ölçüm: `reports/ui-audit/c10-view-guide-chronicle-after-2026-11-14.md`.
 
+**C14 Savaş listesi ✅ (2026-11-14, yardımcı oturum).** G5 #1 ve #2. Oyuncunun anı: İstihbarat › Savaşlar'da geçmiş savaşlara bakıp hangisini açacağını seçmek. Hangi raporun listelendiği, sırası ve rapor kapısının (`BattleReportDoor`: bildirimden tek rapora, bulamazsa listeye) davranışı değişmedi.
+
+- **Defter satırı:** her savaş kitin defterinde (`gk-ledger`) bir satır ve satırın tamamı raporun kapısı.
+  - Soldaki işaret sonucun rengini taşıyor: kazanılan turkuaz, kısmi bakır, kaybedilen kırmızı. İşaretin simgesi savaşın türünü söylüyor: kendi akının saldırı, sana yapılan akın kalkan, korsan, klan desteği, Ölüm Yıldızı nişangâh, radyasyon bombası, anıt bayrak.
+  - Başlık kiminle olduğunu söylüyor ("Akın ettiğin: [NOVA] VEX"). Altında aynı renkte hüküm, sonra zaman · yer · tur sayısı.
+  - Onur ve Hâkimiyet değişimi tek satırda, simgeleriyle. Ekran okuyucu adlarını okuyor. Sıfır değişim yazılmıyor.
+  - Önceden hüküm çerçeveli bir rozetti, puanlar sağda iki satırlık bir sütundu; stratejik satırın başlığı üç noktayla kesiliyordu.
+- **Stratejik satır:** sonuç oyuncunun tarafından okunuyor. Senin isabet eden saldırın kazanç rengi, sana isabet eden kayıp rengi; önceden her isabet kırmızıydı. Hasar artık birimiyle yazıyor ("18,4K hasar"). Yeni anahtar ×6: `reports.strategicDamageShort`.
+- **Boş liste:** kitin boş durumu, raporlar resmiyle. Yeni anahtar ×6: `reports.emptyTitle`.
+- **Dünya kapısı:** savaşın olduğu dünya kendi kapısını koruyor. Satırın altında, kesik çizgili dikişle bağlı ikinci kapı: nişangâh ve dünyanın adı (44 px). Önceden satır içinde 12 px'lik, altı çizili bir addı.
+  - Bu kapı ve C11'deki "taranan dünyan" kapısı artık aynı kit sınıfını kullanıyor: `gk-ledger__seam`.
+  - Dünyanın adı bir kez yazılıyor: kapı varsa yalnız kapıda, yoksa satırda düz yazı.
+- **Çeviri düzeltmeleri:** satır başlığındaki açılış sözleri birkaç dilde adla birleşiyordu ("Du hast überfallenPiratenflotte", "Dein Todesstern im VisierSable").
+  - Japoncada "による襲撃" adın önüne geliyordu.
+  - Japoncada "あなたの デス・スター がターゲットにされています" "Ölüm Yıldızın hedef alındı" demekti; tersi.
+  - de, es ve ja açılışları "…: " biçimine getirildi. Satır, adın önüne her dilde bir boşluk koyuyor.
+- **Kaldırılan:** yalnız listenin kullandığı `GradeMark` ve başlığın yanındaki "en yeni önce" (`reports.newest` ×6) kullanılmaz oldu; silindi. Liste yine en yeni önde.
+- Galeri: `intel-battles` (akın, savunma, korsan, Ölüm Yıldızı, anıt).
+
+Ölçüm: `reports/ui-audit/c14-battle-list-after-2026-11-14.md`. Sonra iki yol, 28 ölçüm: dikiş sınıfı paylaşıldığı için C11'in `intel-radar-named` görünümü de yeniden ölçüldü; değerleri C11'dekiyle aynı.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 99 | 0 |
+| Kontrastı yetmeyen metin | 34 | 0 |
+| 44 px altı hedef | 2 | 2 |
+| Aralık hatası | 0 | 2 |
+| Basınca tepkisiz | 5 | 1 |
+| Kesilen metin (bütün diller) | 21 | 0 |
+
+- Sonradaki 44 px, aralık ve tepkisiz kayıtlarının hepsi aynı öğe: sayfanın arkasındaki 2×2 px'lik kapatma alanı (G1 sayfa çerçevesi). Liste ekranı doldurunca sayfa tam boy açılıyor, arkada 2 px kalıyor. Listenin kendi satırlarında bulgu yok. Sayfa çerçevesinin işi; bu birimde değiştirilmedi.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.

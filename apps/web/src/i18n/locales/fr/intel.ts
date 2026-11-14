@@ -151,7 +151,7 @@ export const reports = {
   enemyRetreated: "{{count}} vaisseaux ennemis ont fui et survécu.",
   turningPointRetreated: "Après le tour {{round}}, aucun vaisseau de guerre ne combattait encore. Certains ont fui vivants.",
   heading: "Rapports de combat",
-  newest: "plus récents d’abord",
+  emptyTitle: "Aucune bataille pour l’instant",
   empty:
     "Aucun combat n’a encore été enregistré dans la galaxie. Un rapport de combat révèle directement les forces réellement engagées et l’issue de l’affrontement.",
   youRaided: "Tu as attaqué : ",
@@ -411,6 +411,7 @@ export const reports = {
   strategicSecededAttacker: "La colonie a fait sécession et est devenue neutre : elle n’appartient plus à personne.",
   strategicSecededDefender: "Ta colonie a fait sécession et est devenue neutre.",
   strategicSecededShort: "colonie perdue",
+  strategicDamageShort: "{{amount}} de dégâts",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",

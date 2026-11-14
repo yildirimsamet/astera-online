@@ -7528,21 +7528,30 @@ button.gk-probe__head:active {
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
 }
-/* TWO DOORS (owner 2026-11-14): under a scan Radar 5 named, a second press opens your own
-   world it hit — set in under the words, joined to the row by a dashed seam. */
-.gk-ledger__row.gk-scan__hit {
+/* A SECOND DOOR UNDER A LEDGER ROW (owner 2026-11-14): a world the row is about, set in
+   under the words and joined to the row by a dashed seam — the scan's world it hit (C11),
+   the world a fight was at (C14). `--seam-indent` lines it up with the row's words. */
+.gk-ledger__row.gk-ledger__seam {
   min-height: var(--gk-hit);
-  padding-left: calc(var(--gk-s3) + 8px + var(--gk-s2));
+  padding-left: calc(var(--gk-s3) + var(--seam-indent, 8px) + var(--gk-s2));
   border-top: 1px dashed color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
   background: color-mix(in srgb, var(--gk-self) 5%, transparent);
 }
-.gk-ledger__row.gk-scan__hit:enabled:active {
+.gk-ledger__row.gk-ledger__seam:enabled:active {
   background: color-mix(in srgb, var(--gk-self) 18%, transparent);
 }
-.gk-scan__hit > .gk-glyph {
+.gk-ledger__seam > .gk-glyph {
   flex: none;
   width: 16px;
   height: 16px;
+  color: var(--gk-self);
+}
+.gk-ledger__seamname {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
   color: var(--gk-self);
 }
 .gk-scan__hitwords {
@@ -7556,6 +7565,92 @@ button.gk-probe__head:active {
 }
 .gk-scan__hitwords .gk-scan__world {
   font-weight: 700;
+}
+
+/* THE BATTLES SHELF (C14): one fight a ledger row — the outcome's colour on the mark and the
+   verdict, who it was against, then where, how long and what it moved on the ladder. */
+.gk-battle {
+  --tone: var(--gk-ink-2);
+  align-items: flex-start;
+  padding-block: 10px;
+}
+.gk-battle__mark,
+.gk-battle__verdict {
+  --tone: var(--gk-ink-2);
+}
+.gk-battle__mark[data-tone='win'],
+.gk-battle__verdict[data-tone='win'] {
+  --tone: var(--gk-self);
+}
+.gk-battle__mark[data-tone='partial'],
+.gk-battle__verdict[data-tone='partial'] {
+  --tone: var(--gk-alloy-hi);
+}
+.gk-battle__mark[data-tone='loss'],
+.gk-battle__verdict[data-tone='loss'] {
+  --tone: var(--gk-hostile-hi);
+}
+.gk-battle__mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--tone) 26%, transparent), color-mix(in srgb, var(--tone) 8%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
+  color: var(--tone);
+}
+.gk-battle__mark .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-battle__verdict {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--tone);
+}
+.gk-battle__clan {
+  color: var(--gk-crystal);
+}
+.gk-battle__ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: var(--gk-t-floor);
+}
+.gk-battle__honor,
+.gk-battle__dominion {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gk-battle__honor {
+  color: var(--gk-self);
+}
+.gk-battle__dominion {
+  color: var(--gk-ink);
+}
+.gk-battle__icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+.gk-battle__damage,
+.gk-battle__seceded {
+  font-weight: 700;
+  color: var(--gk-hostile-hi);
+}
+.gk-battle__next {
+  align-self: center;
+}
+.gk-battles .gk-ledger__seam {
+  --seam-indent: 32px;
 }
 
 /* AN INSTRUMENT YOU DO NOT OWN: it idles in its bay, what is missing sits behind a lock. */

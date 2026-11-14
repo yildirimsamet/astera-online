@@ -156,7 +156,7 @@ export const reports = {
   enemyRetreated: "Enemy ships that retreated and survived: {{count}}.",
   turningPointRetreated: "After round {{round}}, no warships remained fighting. Some ships retreated alive.",
   heading: 'Battle reports',
-  newest: 'newest first',
+  emptyTitle: "No battles yet",
   empty:
     'Nothing has been fought over yet. A battle is the only intel in this game that is never a guess.',
   youRaided: 'You raided ',
@@ -410,6 +410,7 @@ export const reports = {
   strategicSecededAttacker: "The colony seceded and turned neutral — nobody holds it now.",
   strategicSecededDefender: "Your colony seceded and turned neutral.",
   strategicSecededShort: "colony seceded",
+  strategicDamageShort: "{{amount}} damage",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',

@@ -4,11 +4,11 @@ import { useStarterGate } from '../starter/gate.js';
 import { TempoNote } from '../starter/TempoNote.js';
 import { DistributedFireRules } from '../ui/DistributedFireRules.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STANDARD_PVP_BALANCE, type PvpBalance, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
 import { useReadReportSignals } from '../session/useReadReportSignals.js';
-import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome } from '../lib/battleOutcome.js';
+import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome, type BattleOutcome } from '../lib/battleOutcome.js';
 import { usePlanet, useReports } from '../api/queries.js';
 import { outpostReportLines } from '../starter/outpostReport.js';
 import { vesselToPlanetView } from '../starter/adapter.js';
@@ -21,13 +21,18 @@ import { duration, staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART, instrumentArt } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
-import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
+import { Unreachable } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { EmptyState, Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { DominionIcon, HonorIcon } from '../ui/icons/index.js';
+import { honorScore } from '../lib/honor.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { ReportScene } from '../v2/hud/ReportScene.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
-import { RankingScores } from '../ui/RankingScores.js';
 import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
@@ -272,13 +277,10 @@ export function BattleReports({
   }, [reports, requestedMissionId, requestedSequence, closedRequest]);
 
   return (
-    <Section
-      label={t('reports.heading')}
-      aside={reports.length > 0 ? t('reports.newest') : undefined}
-    >
+    <div className="gk-intel__part">
       {/*
         AN EMPTY LIST AND A FAILED ONE ARE NOT THE SAME SENTENCE.
-        
+
         Both left `reports` empty, so a request that never arrived was reported as
         "nothing has been fought over yet" — the interface stating a fact about the
         season on the strength of a network error.
@@ -291,74 +293,19 @@ export function BattleReports({
           }}
         />
       ) : isPending ? null : reports.length === 0 ? (
-        <EmptyState title={t('reports.empty')} />
+        <EmptyState art={artIconSrc('menu-reports')} title={t('reports.emptyTitle')} body={t('reports.empty')} />
       ) : (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40">
-          {reports.map((report) => {
-            if (report.kind === 'MONUMENT') return <button type="button" key={report.id} data-report-row=""
-              data-battle-outcome={battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })}
-              onClick={() => { setOpen(report); }} className="grid w-full gap-1 border-b border-v2-line/60 px-3 py-3 text-left text-caption last:border-b-0">
-              <span className="font-semibold text-v2-ink">{monumentName(report.monument.ordinal)} · {t(monumentControlKey(report))}</span>
-              <span className={`w-fit rounded-cell border px-2 py-1 text-micro ${battleTone[battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })]}`}>{t(monumentGradeKey(report))}</span>
-              <span className="text-micro text-v2-ink-2">{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</span>
-              <span className="flex items-end justify-between gap-2"><span className="font-v2-mono text-micro text-v2-ink-3">{staleness((now - report.at.getTime()) / 60_000)}</span><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span>
-            </button>;
-            if (report.kind === 'STRATEGIC') {
-              return (
-                <StrategicReportRow
-                  key={report.id}
-                  report={report}
-                  now={now}
-                  onOpen={() => { setOpen(report); }}
-                  onFocusPlanet={doors.onFocusPlanet}
-                />
-              );
-            }
-            const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
-            // A supporter's row names the clanmate's world their ships stood at.
-            const listedPlanetId = report.supportedAt?.planetId ?? (report.pirate
-              ? report.yourPlanetId
-              : report.attacking ? report.opponentPlanetId : report.yourPlanetId);
-            const listedPlanet = report.supportedAt?.planetName ?? (report.pirate
-              ? report.yourPlanet
-              : report.attacking ? report.opponentPlanet : report.yourPlanet);
-            return (
-              <div key={report.id} className="border-b border-v2-line/60 last:border-b-0">
-                <button
-                  type="button"
-                  data-report-row=""
-                  onClick={() => { setOpen(report); }}
-                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
-                >
-                  <GradeMark report={report} />
-                  <div className="col-span-2 min-w-0">
-                    <p className="break-words text-caption text-v2-ink">
-                      {report.supportedAt
-                        ? t('clanSupport.rowRaidedBy', { host: report.supportedAt.hostName })
-                        : t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
-                      {opponentClan ? (
-                        <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
-                      ) : null}
-                      <span className="text-v2-ink-2">{opponentOf(report)}</span>
-                    </p>
-                  </div>
-                  {/* A swing of zero moves nobody's score, so it has no figure. */}
-                  {report.honor || (report.dominion !== null && report.dominion !== 0) ? <span className="col-start-2 row-start-1 max-w-40"><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span> : null}
-                </button>
-                <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
-                {listedPlanet !== '' && (listedPlanetId && doors.onFocusPlanet ? (
-                  <button type="button" data-report-planet onClick={() => { doors.onFocusPlanet?.(listedPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-                    {listedPlanet}
-                  </button>
-                ) : <span>{listedPlanet}</span>)}
-                {listedPlanet !== '' && <span aria-hidden>·</span>}
-                <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
-                {report.rounds.length > 0 && <span>· {t('reports.rounds', { count: report.rounds.length })}</span>}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        // C14: newest first, one ledger row a fight, each row the door to its report.
+        <ol className="gk-ledger gk-battles" aria-label={t('reports.heading')}>
+          {reports.map((report) => (
+            <li key={report.id}>
+              {report.kind === 'MONUMENT' ? <MonumentRow report={report} now={now} onOpen={() => { setOpen(report); }} />
+                : report.kind === 'STRATEGIC'
+                  ? <StrategicReportRow report={report} now={now} onOpen={() => { setOpen(report); }} {...(doors.onFocusPlanet ? { onFocusPlanet: doors.onFocusPlanet } : {})} />
+                  : <BattleRow report={report} now={now} onOpen={() => { setOpen(report); }} {...(doors.onFocusPlanet ? { onFocusPlanet: doors.onFocusPlanet } : {})} />}
+            </li>
+          ))}
+        </ol>
       )}
 
       {open && (
@@ -368,7 +315,7 @@ export function BattleReports({
           <ReportSheet report={open} onClose={closeReport} {...doors} />
         )
       )}
-    </Section>
+    </div>
   );
 }
 
@@ -379,56 +326,161 @@ const STRATEGIC_OUTCOME = {
   INTERCEPTED: 'reports.strategicIntercepted',
 } as const;
 
-function StrategicReportRow({
-  report,
-  now,
-  onOpen,
-  onFocusPlanet,
-}: {
-  report: StrategicReport;
-  now: number;
-  onOpen: () => void;
-  onFocusPlanet?: (planetId: string) => void;
+/** A strike read from your side: yours landed or was stopped, theirs hit you or was stopped. */
+function strategicOutcome(report: StrategicReport): BattleOutcome {
+  if (report.outcome === 'INEFFECTIVE') return 'partial';
+  const landed = report.outcome !== 'INTERCEPTED';
+  return landed === report.attacking ? 'win' : 'loss';
+}
+
+const BATTLE_GLYPH = (report: OrdinaryReport): GlyphId =>
+  report.pirate ? 'pirate' : report.supportedAt ? 'support' : report.attacking ? 'attack' : 'shield';
+
+/**
+ * ONE FIGHT AS A KIT LEDGER ROW (C14). The mark carries the outcome in its colour, so the
+ * list reads before a word does; then who it was against, the verdict in that colour, and
+ * how long ago, where and what it moved on the ladder. The whole row is the report's door;
+ * the world the fight was at keeps its own door, a seam under the row (`WorldSeam`).
+ */
+function LedgerDoor({ outcome, glyph, onOpen, title, verdict, meta, ladder, age }: {
+  outcome: BattleOutcome; glyph: GlyphId; onOpen: () => void;
+  title: ReactNode; verdict: ReactNode; meta: readonly ReactNode[]; ladder?: ReactNode; age: string;
+}) {
+  // how long ago, then whatever else the row knows, dot-separated; an empty part says nothing
+  const parts = [<span key="age" className="gk-num">{age}</span>, ...meta.filter((part) => part !== null && part !== '')];
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  return (
+    <button type="button" data-report-row="" data-battle-outcome={outcome} className="gk-ledger__row gk-battle" {...OWN_SOUND}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-battle__mark" data-tone={outcome} aria-hidden="true"><Glyph id={glyph} /></span>
+      <span className="gk-ledger__words">
+        <span className="gk-ledger__title">{title}</span>
+        <span className="gk-battle__verdict" data-tone={outcome}>{verdict}</span>
+        <span className="gk-ledger__sub">{parts.map((part, index) => <Fragment key={index}>{index > 0 ? ' · ' : null}{typeof part === 'string' ? <span>{part}</span> : part}</Fragment>)}</span>
+        {ladder}
+      </span>
+      <span className="gk-ledger__mark gk-battle__next" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
+/** What a fight moved on the ladder, in one line: Honor, then Dominion; a zero moves nothing. */
+function LadderLine({ honor, dominion }: { honor?: number | null; dominion?: number | null }) {
+  const { t } = useTranslation();
+  if ((honor === undefined || honor === null) && (dominion === undefined || dominion === null || dominion === 0)) return null;
+  return (
+    <span className="gk-battle__ladder">
+      {honor !== undefined && honor !== null && (
+        <span data-battle-honor="" className="gk-battle__honor gk-num">
+          <HonorIcon className="gk-battle__icon" /><span className="sr-only">{t('leaderboard.honorTitle')}</span>{honor > 0 ? '+' : ''}{honorScore(honor)}
+        </span>
+      )}
+      {dominion !== undefined && dominion !== null && dominion !== 0 && (
+        <span data-battle-dominion="" className="gk-battle__dominion gk-num">
+          <DominionIcon className="gk-battle__icon" /><span className="sr-only">{t('leaderboard.score')}</span>{signed(dominion)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** The world a fight was at, its own door under the row: flies there, opens nothing else. */
+function WorldSeam({ planetId, name, onFocusPlanet }: { planetId: string; name: string; onFocusPlanet: (planetId: string) => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocusPlanet(planetId); });
+  return (
+    <button type="button" data-report-planet="" className="gk-ledger__row gk-ledger__seam" {...OWN_SOUND}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <Glyph id="target" />
+      <span className="gk-ledger__seamname">{name}</span>
+      <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
+/** A lead-in and the name after it: some languages' lead-ins end without a space. */
+const leadIn = (text: string): string => (/\s$/u.test(text) ? text : `${text} `);
+
+function BattleRow({ report, now, onOpen, onFocusPlanet }: {
+  report: OrdinaryReport; now: number; onOpen: () => void; onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
-  const stopped = report.outcome === 'INTERCEPTED';
+  const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
+  // A supporter's row names the clanmate's world their ships stood at.
+  const listedPlanetId = report.supportedAt?.planetId ?? (report.pirate
+    ? report.yourPlanetId
+    : report.attacking ? report.opponentPlanetId : report.yourPlanetId);
+  const listedPlanet = report.supportedAt?.planetName ?? (report.pirate
+    ? report.yourPlanet
+    : report.attacking ? report.opponentPlanet : report.yourPlanet);
+  const seam = listedPlanetId && listedPlanet !== '' && onFocusPlanet ? { id: listedPlanetId, open: onFocusPlanet } : null;
+  return (
+    <>
+    <LedgerDoor
+      outcome={ordinaryBattleOutcome(report)}
+      glyph={BATTLE_GLYPH(report)}
+      onOpen={onOpen}
+      title={<>
+        {leadIn(report.supportedAt
+          ? t('clanSupport.rowRaidedBy', { host: report.supportedAt.hostName })
+          : t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy'))}
+        {opponentClan ? <><span className="gk-battle__clan" title={opponentClan.name}>[{opponentClan.tag}]</span>{' '}</> : null}
+        <span>{opponentOf(report)}</span>
+      </>}
+      verdict={verdictTitle(report)}
+      // the world is named once: on its own door when there is one, else here
+      meta={[seam ? null : listedPlanet, report.rounds.length > 0 ? t('reports.rounds', { count: report.rounds.length }) : null]}
+      ladder={<LadderLine honor={report.honor?.delta} dominion={report.dominion} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+    {seam && <WorldSeam planetId={seam.id} name={listedPlanet} onFocusPlanet={seam.open} />}
+    </>
+  );
+}
+
+function MonumentRow({ report, now, onOpen }: { report: Extract<Report, { kind: 'MONUMENT' }>; now: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <LedgerDoor
+      outcome={battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })}
+      glyph="flag"
+      onOpen={onOpen}
+      title={monumentName(report.monument.ordinal)}
+      verdict={`${t(monumentGradeKey(report))} ${t(monumentControlKey(report))}`}
+      meta={[t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })]}
+      ladder={<LadderLine honor={report.honor?.delta} dominion={report.dominion} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+  );
+}
+
+function StrategicReportRow({ report, now, onOpen, onFocusPlanet }: {
+  report: StrategicReport; now: number; onOpen: () => void; onFocusPlanet?: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
   const targetName = report.radiation?.monumentOrdinal && report.attacking
     ? monumentName(report.radiation.monumentOrdinal) : report.opponentPlanet;
+  const seam = report.opponentPlanetId && onFocusPlanet ? { id: report.opponentPlanetId, open: onFocusPlanet } : null;
   return (
-    <div className="border-b border-v2-line/60 last:border-b-0">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex w-full items-center gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
-      >
-        <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
-          {t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-caption text-v2-ink">
-            {t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
-            <span className="text-v2-ink-2">{report.opponentName}</span>
-          </p>
-        </div>
-        {report.honor ? <RankingScores honor={report.honor.delta} change /> : null}
-        {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
-      </button>
-      <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
-        {report.opponentPlanetId && onFocusPlanet ? (
-          <button type="button" data-report-planet onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-            {targetName}
-          </button>
-        ) : <span>{targetName}</span>}
-        <span aria-hidden>·</span>
-        <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
-        {report.loyalty?.after === 0 && (
-          <>
-            <span aria-hidden>·</span>
-            <span className="font-v2-ui text-v2-hostile">{t('reports.strategicSecededShort')}</span>
-          </>
-        )}
-      </p>
-    </div>
+    <>
+    <LedgerDoor
+      outcome={strategicOutcome(report)}
+      glyph={report.radiation ? 'radiation' : 'target'}
+      onOpen={onOpen}
+      title={<>
+        {leadIn(t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy'))}
+        <span>{report.opponentName}</span>
+      </>}
+      verdict={t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
+      meta={[
+        seam ? null : targetName,
+        report.damage > 0 ? <span className="gk-battle__damage gk-num">{t('reports.strategicDamageShort', { amount: compact(report.damage) })}</span> : null,
+        report.loyalty?.after === 0 ? <span className="gk-battle__seceded">{t('reports.strategicSecededShort')}</span> : null,
+      ]}
+      ladder={<LadderLine honor={report.honor?.delta} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+    {seam && <WorldSeam planetId={seam.id} name={targetName} onFocusPlanet={seam.open} />}
+    </>
   );
 }
 
@@ -618,18 +670,6 @@ function StrategicMetric({ label, value }: { label: string; value: string }) {
  * DECISIVE, PARTIAL and REPELLED are the three outcomes the whole combat model
  * produces, and which one you got is the first thing a player looks for.
  */
-function GradeMark({ report }: { report: OrdinaryReport }) {
-  const outcome = ordinaryBattleOutcome(report);
-  return (
-    <span
-      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-caption font-semibold ${battleTone[outcome]}`}
-      title={verdictTitle(report)}
-    >
-      {verdictTitle(report)}
-    </span>
-  );
-}
-
 function ReportSheet({
   report,
   onClose,
