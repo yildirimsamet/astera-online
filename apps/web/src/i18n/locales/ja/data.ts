@@ -21,7 +21,7 @@ export const vocabulary = {
   instrument: {
     TELESCOPE: {
       name: "望遠鏡",
-      tag: "遠くの動きを解決する",
+      tag: "遠くの動きを見る",
       role:
         "到達範囲内の動きを識別します。監視スロットは、L1、L3、L5、L7 で 1、2、3、4 になります。静けさ。",
       roleNone:
@@ -32,7 +32,7 @@ export const vocabulary = {
     },
     RADAR: {
       name: "レーダー",
-      tag: "あなたに対する脅威を区別してください",
+      tag: "迫る脅威を見分ける",
       role:
         "円内の動きを検出し、プローブ検出を向上させ、この世界を狙った脅威を到着時刻でマークします。",
       roleNone:
@@ -51,7 +51,7 @@ export const vocabulary = {
     },
     AEGIS: {
       name: "イージス",
-      tag: "あなたの惑星のためのシールド",
+      tag: "惑星を守るシールド",
       role: "ユニットよりも先にダメージを受け、1 時間ごとに最大値の 35% を回復する惑星のシールド。",
       roleNone:
         "船や地上砲よりも先に襲撃ダメージを吸収し、その後リソースなしで再生します。それは何のインテリジェンスも提供しません。",
@@ -74,7 +74,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: "アップリンク",
-      tag: "望遠鏡 および レーダー のロックを解除します",
+      tag: "観測機器を解放",
       role:
         "望遠鏡またはレーダーをこのワールドにインストールするために必要です。軌道スロットを 1 つ使用し、生産ボーナスや防御ボーナスは提供されません。",
       blurb:
@@ -83,7 +83,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: "鋳造所",
-      tag: "1時間ごとに鉱石が増加",
+      tag: "生産量を増やす",
       role:
         "この世界の不動態合金、結晶、重水素の生産量を 6% 増加させます。",
       blurb:
@@ -303,6 +303,8 @@ export const vocabulary = {
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
   rangeUnits: "{{count}} ユニット",
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: "{{count}}",
 
   core: {
     label: "天井を構築する",
@@ -330,6 +332,7 @@ export const gains = {
   vault: {
     label: "貯蔵庫の深さ",
     value: "{{store}}h 貯蔵庫 · {{safe}}h 保護されています",
+    brief: "{{store}}時間",
   },
   shipyard: {
     timeLabel: "建造時間",
@@ -384,8 +387,8 @@ export const gains = {
   },
   uplink: {
     label: "望遠鏡 および レーダー",
-    now: "ロックされました",
-    next: "ロック解除されました",
+    now: "ロック中",
+    next: "解放",
     unlocks: "望遠鏡とレーダーはこのワールドにインストール可能です",
   },
   derrick: {
@@ -653,6 +656,7 @@ export const units = {
   todayAt: "今日 {{time}}",
   yesterdayAt: "昨日 {{time}}",
   hoursMinutes: "{{h}}時間{{m}}分",
+  hours: "{{h}}時間",
   minutesSeconds: "{{m}}分{{s}}秒",
   hoursMinutesSeconds: "{{h}}時間{{m}}分{{s}}秒",
   seconds: "{{s}}秒",

@@ -424,10 +424,10 @@ export const planet = {
     shipyard: "Tersane {{level}}. seviye",
     research: "{{research}} {{level}}. seviye",
     requirements: "Önce şunlar gerekli: {{requirements}}",
-    plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",
     queueFull:
       "Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.",
+    queueFullShort: "Sıra dolu",
   },
 
   done: {
@@ -499,7 +499,7 @@ export const itemSheet = {
   rungLevel: "Sv.{{level}}",
   nextLook: "Yeni görünüm · Sv.{{level}}",
   queueFill: "İnşaat sırası {{used}}/{{total}}",
-  affordIn: "~{{duration}} sonra yeter",
+  affordIn: "{{duration}} sonra yeter",
   short: "Kaynak yetmiyor",
   orbitalDoesHeading: "Ne işe yarar",
   orbitalOnce: "Bir kez alınır; yükseltilmez",

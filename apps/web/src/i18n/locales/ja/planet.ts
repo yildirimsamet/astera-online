@@ -425,9 +425,8 @@ export const planet = {
     research: "{{research}} {{level}}",
     requirements: "必要条件：{{requirements}}",
     maxed: "最高レベルに到達しています",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "重水素合成のもう一段の研究",
     queueFull: "すでに 3 件の注文が待機中です。これを追加するには、1 つを終了またはキャンセルします。",
+    queueFullShort: "キューが満杯",
   },
 
   /** What a purchase says once it has landed. */
@@ -504,7 +503,7 @@ export const itemSheet = {
   /** The construction queue the order joins, as it stands. */
   queueFill: "建設キュー{{used}}/{{total}}",
   /** The primary, when the price is not met yet. */
-  affordIn: "あと約{{duration}}で資源が足ります",
+  affordIn: "{{duration}}で足ります",
   short: "資源が足りません",
   orbitalDoesHeading: "機能",
   orbitalOnce: "一度だけ建設できます · レベルは上げられません",

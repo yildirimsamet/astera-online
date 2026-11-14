@@ -249,6 +249,16 @@ describe('tabs and the bottom bar', () => {
     expect(glyph?.style.color).toBe('var(--gk-alloy)');
   });
 
+  /** Owner note 3 (2026-11-14): the Base's tabs are two storeys — the mark over the name, 44 px. */
+  it('stacks a tab\'s mark over its name when asked, lit with the tab rather than in a tone of its own', () => {
+    render(<GameTabs label="Base" stacked tabs={[{ id: 'grow', label: 'Production', glyph: { id: 'mine' } }, { id: 'orbit', label: 'Intel', glyph: { id: 'eye' } }]} value="grow" onChange={vi.fn()} />);
+    expect(screen.getByRole('tablist')).toHaveClass('gk-tabs--stacked');
+    const tab = screen.getByRole('tab', { name: 'Production' });
+    const glyph = tab.querySelector<HTMLElement>('.gk-tab__glyph');
+    expect(tab.firstElementChild).toBe(glyph);
+    expect(glyph?.style.color).toBe('');
+  });
+
   it('shows a mark on a tab and says what it means to a reader', () => {
     render(<GameTabs label="Base" tabs={[{ id: 'grow', label: 'Production', mark: { glyph: 'damaged', hint: 'Production — something has stopped' } }]} value="grow" onChange={vi.fn()} />);
     const tab = screen.getByRole('tab', { name: 'Production — something has stopped' });

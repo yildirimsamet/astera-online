@@ -150,6 +150,17 @@ export function durationPrecise(minutes: number): string {
  * arrived, and a view whose cache is a few seconds behind the server should say so
  * rather than announce a wait of none.
  */
+/**
+ * A WAIT ON A BUILDING CARD, ROUNDED UP (G2-b). The card has one line for "when will it be
+ * enough", and that figure is an estimate and a floor, so past the first hour it says the hour
+ * it will be there by ("17 sa", not "16 sa 32 dk"); under an hour it keeps the minutes, and a day
+ * or more reads as days and hours. The sheet keeps the minutes.
+ */
+export function roughDuration(minutes: number): string {
+  if (minutes < 60 || minutes >= 24 * 60) return duration(minutes);
+  return i18n.t('units.hours', { h: Math.ceil(minutes / 60) });
+}
+
 export function untilReady(minutes: number): string {
   return minutes <= 0 ? i18n.t('units.imminent') : duration(minutes);
 }

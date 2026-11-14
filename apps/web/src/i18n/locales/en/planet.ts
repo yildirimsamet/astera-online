@@ -425,9 +425,8 @@ export const planet = {
     research: "{{research}} {{level}}",
     requirements: "Requires: {{requirements}}",
     maxed: "at its highest level",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Research another level of Deuterium Synthesis",
     queueFull: "3 orders are already waiting. Finish or cancel one to add this.",
+    queueFullShort: "Queue full",
   },
 
   /** What a purchase says once it has landed. */
@@ -504,7 +503,7 @@ export const itemSheet = {
   /** The construction queue the order joins, as it stands. */
   queueFill: "Build queue {{used}}/{{total}}",
   /** The primary, when the price is not met yet. */
-  affordIn: "Enough in ~{{duration}}",
+  affordIn: "Enough in {{duration}}",
   short: "Not enough resources",
   orbitalDoesHeading: "What it does",
   orbitalOnce: "Bought once — never raised",

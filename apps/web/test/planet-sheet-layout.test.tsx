@@ -120,6 +120,13 @@ describe('the tab bar', () => {
     expect(labels()).toEqual((['grow', 'orbit', 'defend', 'tactical', 'reach'] as const).map(name));
   });
 
+  /** Owner note 3 (2026-11-14): each tab wears its mark over its name, two storeys. */
+  it('marks each tab over its name: production a pick, intel an eye, defence a shield, tactical a target, the fleet a rocket', () => {
+    show();
+    expect(screen.getByRole('tablist')).toHaveClass('gk-tabs--stacked');
+    expect(screen.getAllByRole('tab').map((tab) => tab.querySelector('.gk-tab__glyph')?.getAttribute('data-glyph'))).toEqual(['mine', 'eye', 'shield', 'target', 'rocket']);
+  });
+
   it('lays out a lesson’s revealed tabs in the bar’s order', () => {
     const client = new QueryClient();
     render(<QueryClientProvider client={client}><ToastProvider>

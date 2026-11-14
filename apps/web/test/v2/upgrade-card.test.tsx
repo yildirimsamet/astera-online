@@ -17,7 +17,8 @@ import { UpgradeRow } from '../../src/ui/UpgradeRow.js';
 const base = {
   art: '/assets/images/general/command_core_1.png',
   name: 'Command Core',
-  role: 'Unlocks higher levels',
+  tag: 'Raises the level cap',
+  role: 'Sets how high every other building can go',
   level: 2,
   gain: { label: 'Build cap', now: 'L2', next: 'L3' },
   cost: { alloy: 125, crystal: 34 },
@@ -68,8 +69,10 @@ describe('an upgrade as a card', () => {
 
   it('says when a card it cannot pay for will be affordable, in the words its sheet uses', () => {
     render(<UpgradeRow {...base} held={{ alloy: 25, crystal: 0 }} income={{ alloyPerHour: 60, crystalPerHour: 60 }} onOpen={vi.fn()} />);
-    // short 100 alloy and 34 crystal at 60 an hour: the alloy is the longer wait, 100 minutes
-    expect(document.querySelector('[data-layout="card"] [data-wait]')).toHaveTextContent(/^Enough in ~1h 40m$/);
+    // short 100 alloy and 34 crystal at 60 an hour: the alloy is the longer wait, 100 minutes,
+    // rounded up to the hour on the card. No "~": in the card's face a tilde reads as a minus
+    // ("-1h 40m", the owner's report).
+    expect(document.querySelector('[data-layout="card"] [data-wait]')).toHaveTextContent(/^Enough in 2h$/);
   });
 
   it('marks on the price the resource the store cannot pay yet', () => {
@@ -91,5 +94,103 @@ describe('an upgrade as a card', () => {
     const act = document.querySelector<HTMLElement>('[data-layout="card"] [data-act] button')!;
     await userEvent.click(act);
     expect(onAct).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * A FIXED SKELETON (owner note 4, G2-b, 2026-11-14): the picture, the name, one line of what
+   * it is for, one line of what the next level does, and the foot — the price, and under it one
+   * line of time or state. A lock stands where the price would. Two cards side by side are the
+   * same height whatever they say.
+   */
+  describe('the skeleton', () => {
+    const slots = () => {
+      const card = document.querySelector<HTMLElement>('[data-layout="card"]')!;
+      return {
+        purpose: card.querySelector<HTMLElement>('[data-card-purpose]'),
+        effect: card.querySelector<HTMLElement>('[data-card-effect]'),
+        foot: card.querySelector<HTMLElement>('[data-card-foot]'),
+        price: card.querySelector<HTMLElement>('[data-card-foot] [data-card-price]'),
+        status: card.querySelector<HTMLElement>('[data-card-foot] [data-card-status]'),
+      };
+    };
+
+    it('says what it is for in one line, and what the next level does in another', () => {
+      render(<UpgradeRow {...base} onOpen={vi.fn()} />);
+      const { purpose, effect } = slots();
+      expect(purpose).toHaveTextContent('Raises the level cap');
+      // the figures are the line; the label is the purpose line's to say, and a reader still hears it
+      expect(effect).toHaveTextContent('L2→L3');
+      expect(within(effect!).getByText('Build cap', { exact: false })).toHaveClass('sr-only');
+    });
+
+    it('says the card’s short form of a long effect, never the sheet’s whole sentence', () => {
+      render(<UpgradeRow {...base} gain={{ label: 'Store depth', now: '39h store · 4h protected', next: '46h store · 5h protected', brief: { now: '39h', next: '46h' } }} onOpen={vi.fn()} />);
+      expect(slots().effect).toHaveTextContent('39h→46h');
+      expect(slots().effect).not.toHaveTextContent('protected');
+    });
+
+    it('keeps the effect line when nothing follows, so the foot stays where its neighbour’s is', () => {
+      render(<UpgradeRow {...base} gain={undefined} onOpen={vi.fn()} />);
+      expect(slots().effect).not.toBeNull();
+    });
+
+    it('shows the price, and how long the work takes under it', () => {
+      render(<UpgradeRow {...base} takes={18} onOpen={vi.fn()} />);
+      const { price, status } = slots();
+      expect(price).toHaveTextContent('125');
+      expect(price!.querySelector('[data-testid="order-time"]')).toBeNull();
+      expect(status!.querySelector('[data-testid="order-time"]')).not.toBeNull();
+    });
+
+    it('when short, says when it will be enough where the time would be', () => {
+      render(<UpgradeRow {...base} takes={18} held={{ alloy: 25, crystal: 0 }} income={{ alloyPerHour: 60, crystalPerHour: 60 }} onOpen={vi.fn()} />);
+      const { status } = slots();
+      expect(status).toHaveTextContent('Enough in 2h');
+      expect(status!.querySelector('[data-testid="order-time"]')).toBeNull();
+    });
+
+    it('stands a lock where the price would be, in the card’s short words, the whole reason for a reader', async () => {
+      const onFix = vi.fn();
+      render(<UpgradeRow {...base} unowned blocked={{ reason: 'Requires: Deuterium Synthesis L2', short: 'Deuterium Synthesis L2', onFix }} onOpen={vi.fn()} />);
+      const { foot, price } = slots();
+      expect(price).toBeNull();
+      const door = within(foot!).getByRole('button', { name: 'Requires: Deuterium Synthesis L2' });
+      expect(door).toHaveTextContent('Deuterium Synthesis L2');
+      expect(door).not.toHaveTextContent('Requires');
+      await userEvent.click(door);
+      expect(onFix).toHaveBeenCalledOnce();
+    });
+
+    it('keeps the price on a refusal time lifts, the wait under it', () => {
+      render(<UpgradeRow {...base} blocked={{ reason: 'The queue already holds 3 orders.', short: 'Queue full', waits: true }} onOpen={vi.fn()} />);
+      const { price, status } = slots();
+      expect(price).toHaveTextContent('125');
+      expect(status).toHaveTextContent('Queue full');
+      expect(status!.querySelector('[data-blocked-reason]')).toHaveAttribute('data-waits');
+    });
+
+    it('says an order in the queue at the foot, without a price to pay twice', () => {
+      render(<UpgradeRow {...base} queued="Queued for L3" onOpen={vi.fn()} />);
+      const { price, status } = slots();
+      expect(price).toBeNull();
+      expect(status).toHaveTextContent('Queued for L3');
+    });
+
+    it('wears an order already queued on its picture when it takes another, the next order’s time under the price', () => {
+      render(<UpgradeRow {...base} takes={18} queued="1 order queued" queuedActionable onOpen={vi.fn()} />);
+      const card = document.querySelector<HTMLElement>('[data-layout="card"]')!;
+      expect(card.querySelector('[data-art] [data-card-queued]')).toHaveTextContent('1 order queued');
+      const { price, status } = slots();
+      expect(price).toHaveTextContent('125');
+      expect(status!.querySelector('[data-testid="order-time"]')).not.toBeNull();
+      expect(status).not.toHaveTextContent('1 order queued');
+    });
+
+    it('says a finished ladder at the foot', () => {
+      render(<UpgradeRow {...base} completed="At the top level" onOpen={vi.fn()} />);
+      const { price, status } = slots();
+      expect(price).toBeNull();
+      expect(status).toHaveTextContent('At the top level');
+    });
   });
 });

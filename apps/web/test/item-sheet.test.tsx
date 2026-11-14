@@ -212,7 +212,8 @@ describe('the sheet', () => {
     show({ item: { kind: 'building', id: 'REFINERY' }, held: { alloy: 0, crystal: 0 } });
     const move = document.querySelector<HTMLButtonElement>('[data-act] button');
     expect(move).toBeDisabled();
-    expect(move).toHaveTextContent(/^Enough in ~/);
+    // no "~": in the game's display face a tilde reads as a minus ("-1h 40m"; G2-b)
+    expect(move).toHaveTextContent(/^Enough in \d/);
   });
 });
 

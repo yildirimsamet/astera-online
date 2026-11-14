@@ -34,37 +34,37 @@ export const vocabulary = {
   building: {
     CORE: {
       name: 'Noyau de commande',
-      tag: 'Débloque des niveaux plus élevés',
+      tag: 'Relève le plafond',
       role: "Fixe la limite de niveau des structures, sauf le Hangar. Sur la capitale, ouvre des places de colonie aux niveaux 9, 13 et 16.",
       detail: "Fixe la limite de niveau des structures de ce monde, sauf le Hangar, qui a sa propre limite. Certains niveaux ajoutent des rampes de vol, des places orbitales et de la capacité de défense au sol. Accélère l’installation des instruments et des satellites, sauf la Liaison montante. Le temps d’amélioration d’un bâtiment dépend de son type et de son niveau. Le noyau de la capitale détermine le temps de recherche et certaines conditions. Les niveaux 9, 13 et 16 de la capitale ouvrent les trois places de colonie.",
     },
     REFINERY: {
       name: 'Raffinerie d\'alliages',
-      tag: 'Fait de l\'alliage',
+      tag: 'Produit de l’alliage',
       role: 'Alliage par heure et stockage d\'alliage',
       detail: 'Chaque niveau augmente les revenus de l\'alliage passif et le montant pouvant être stocké. L\'alliage finance la plupart des constructions et des coques, ce qui réduit de nombreuses attentes futures.',
     },
     EXTRACTOR: {
       name: 'Extracteur de cristaux',
-      tag: 'Donne du cristal',
+      tag: 'Produit du cristal',
       role: 'Cristal par heure et stockage de cristaux',
       detail: 'Chaque niveau augmente les revenus et le stockage de cristal. Le cristal est la ressource la plus rare pour les équipements, les instruments et les recherches avancées.',
     },
     VAULT: {
       name: 'Magasin',
-      tag: 'Approfondit le magasin',
+      tag: 'Agrandit le magasin',
       role: 'Étend le stockage des ressources et laisse une marge de 10 % pour les prochaines mises à niveau correspondantes du producteur d\'alliages et de cristaux. Les 10 % les plus pauvres, plafonnés à 8 heures de production, sont à l’abri des raids.',
       detail: 'Le magasin grandit d’abord grâce à son échelle d’heures de production créée. À des niveaux élevés, si cet étage est trop petit, le magasin L s\'agrandit pour contenir 110 % du coût de l\'alliage de la raffinerie d\'alliage L → L + 1 et du coût du cristal de l\'extracteur de cristal L → L + 1 ; la fenêtre horaire qui en résulte s\'applique également au Deutérium. Un raid ne peut pas atteindre le moindre des 10 % inférieurs du magasin ou 8 heures de production de cette ressource. Le magasin ne combat ni ne réduit les dégâts reçus.',
     },
     SHIPYARD: {
       name: 'Chantier naval',
-      tag: 'Débloque de meilleurs vaisseaux',
+      tag: 'Ouvre des vaisseaux',
       role: 'Déverrouille les coques · accélère la construction des navires et de la défense au sol · définit la précision et la furtivité des sondes',
       detail: 'Les niveaux supérieurs ouvrent de nouvelles classes de coque et terminent les navires et les défenses au sol plus rapidement. Ils affinent également les lectures de vos sondes et rendent vos propres sondes plus difficiles à attraper. Les niveaux de chantier naval n’ajoutent aucun emplacement de file d’attente.',
     },
     HANGAR: {
       name: 'Hangar',
-      tag: 'Définit la taille de la flotte',
+      tag: 'Place pour la flotte',
       role: 'Espace de flotte sur ce monde · s\'améliore à tout niveau du Noyau de commandement',
       detail: 'Chaque navire occupe de l\'espace dans le hangar selon sa taille, y compris les navires loin de chez eux ; les défenses terrestres non. Un hangar plein ne construit et ne reçoit plus de navires, mais ne perd rien de ce qu\'il contient déjà. Chaque échelon coûte un tiers de la flotte à laquelle il fait de la place ; les échelons supérieurs coûtent donc plus qu\'un monde sans Magasin amélioré ne peut contenir d\'un coup.',
     },
@@ -79,7 +79,7 @@ export const vocabulary = {
   instrument: {
     TELESCOPE: {
       name: 'Télescope',
-      tag: 'Résoudre les mouvements à distance',
+      tag: 'Voit les mouvements',
       role:
         'Identifie le mouvement à sa portée ; les emplacements de montre deviennent 1, 2, 3 et 4 en L1, L3, L5 et L7. Silencieux.',
       roleNone:
@@ -90,7 +90,7 @@ export const vocabulary = {
     },
     RADAR: {
       name: 'Radar',
-      tag: 'Distinguer les menaces qui vous pèsent',
+      tag: 'Repère ce qui arrive',
       role:
         'Détecte les mouvements à l\'intérieur de son cercle, améliore la détection des sondes et marque les menaces visant ce monde avec une heure d\'arrivée.',
       roleNone:
@@ -101,7 +101,7 @@ export const vocabulary = {
     },
     AEGIS: {
       name: 'Aegis',
-      tag: 'Bouclier pour votre planète',
+      tag: 'Bouclier planétaire',
       role: 'Un bouclier planétaire qui subit des dégâts avant les unités et régénère 35% de son maximum chaque heure.',
       roleNone:
         'Absorbe les dégâts du raid avant les navires et les canons au sol, puis se régénère sans ressources. Il ne fournit aucune intelligence.',
@@ -111,7 +111,7 @@ export const vocabulary = {
     },
     VEIL: {
       name: 'Voile',
-      tag: 'Se cacher des télescopes',
+      tag: 'Cache aux télescopes',
       role: 'Dégrade ce que n\'importe quel télescope peut lire sur vous.',
       roleNone:
         'Peut rendre le statut de votre flotte illisible pour un télescope adverse. Il cache des informations mais n\'invente pas de fausses lectures ni n\'arrête les sondes.',
@@ -124,7 +124,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: 'Liaison montante',
-      tag: 'Débloque le télescope et le radar',
+      tag: 'Ouvre télescope, radar',
       role:
         'Nécessaire pour installer un télescope ou un radar sur ce monde. Il utilise un emplacement orbital et n\'offre aucun bonus de production ou de défense.',
       blurb:
@@ -133,7 +133,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: 'Fonderie',
-      tag: 'Plus de minerai toutes les heures',
+      tag: 'Plus de production',
       role:
         'Augmente la production mondiale d’alliages passifs, de cristaux et de deutérium de 6 %.',
       blurb:
@@ -142,7 +142,7 @@ export const vocabulary = {
     },
     DERRICK: {
       name: 'Derrick',
-      tag: 'Un meilleur vaisseau minier',
+      tag: 'Renforce les mineurs',
       role:
         'Donne à chaque prospecteur possédé par ce monde une capacité de charge de 2 × et une vitesse de déplacement de 1,5 ×.',
       blurb:
@@ -151,7 +151,7 @@ export const vocabulary = {
     },
     BEACON: {
       name: 'Balise',
-      tag: 'Des flottes plus rapides',
+      tag: 'Flottes plus rapides',
       role:
         'Permet aux flottes de raid, de transfert, de commerce et d\'aide aux clans lancées ici de voyager 1,2 fois plus vite sur les deux jambes.',
       blurb:
@@ -326,7 +326,7 @@ export const vocabulary = {
     },
     BASTION: {
       name: 'Bastion',
-      tag: 'Canons terrestres lourds',
+      tag: 'Canons lourds au sol',
       role: 'Défense terrestre · ne peut jamais quitter la planète',
       pitch: 'Défense terrestre lourde avec un avantage contre les coques de classe Lance ; vulnérable aux tirailleurs.',
       detail: 'Les bastions ne quittent jamais la planète. Leur classe Bulwark leur donne un avantage contre les coques de classe Lance, tandis que les tirailleurs reçoivent l\'avantage contre eux. Après le combat, 60 % des canons terrestres détruits sont restaurés, arrondis à l\'inférieur.',
@@ -379,7 +379,9 @@ export const vocabulary = {
 } as const;
 
 export const gains = {
-  rangeUnits: 'Unités {{count}}',
+  rangeUnits: '{{count}} unités',
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: '{{count}} unités',
 
   core: {
     label: 'Construire un plafond',
@@ -407,6 +409,7 @@ export const gains = {
   vault: {
     label: 'Profondeur du magasin',
     value: 'Magasin {{store}}h · {{safe}}h protégé',
+    brief: '{{store}} h',
   },
   shipyard: {
     timeLabel: "Durée de production",
@@ -727,6 +730,7 @@ export const units = {
   todayAt: 'Aujourd’hui {{time}}',
   yesterdayAt: 'Hier {{time}}',
   hoursMinutes: '{{h}}h {{m}}m',
+  hours: '{{h}}h',
   minutesSeconds: '{{m}}m {{s}}s',
   hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',
   seconds: '{{s}}s',

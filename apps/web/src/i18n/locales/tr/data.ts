@@ -34,7 +34,7 @@ export const vocabulary = {
   building: {
     CORE: {
       name: 'Komuta Çekirdeği',
-      tag: 'Gezegenin gelişim sınırı',
+      tag: 'Seviye sınırını açar',
       role: "Gezegenin yapı seviye sınırlarını belirler; uçuş rampası, yörünge yuvası ve yer savunması kapasitesi açar.",
       detail: "Çekirdek, gezegenin yapı seviyelerini sınırlar; Hangarın sınırı bağımsızdır. Belirli seviyelerde uçuş rampası, yörünge yuvası ve yer savunması kapasitesi ekler. Yükseltmeler, gezegen cihazlarının ve Anten dışındaki uyduların kurulumunu hızlandırır. Bina yükseltme süresi, bina türüne ve seviyesine bağlıdır. Araştırma süresini ve bazı araştırma koşullarını ana gezegendeki Çekirdek belirler. Ana gezegende 9, 13 ve 16. seviyeler, sırasıyla birinci, ikinci ve üçüncü koloni yuvasını açar.",
     },
@@ -52,7 +52,7 @@ export const vocabulary = {
     },
     VAULT: {
       name: 'Depo',
-      tag: 'Depo kapasitesini büyütür',
+      tag: 'Depoyu büyütür',
       role: "Depoyu büyütür. Kapasitenin %10’u ile 8 saatlik üretimden küçük olanı akından korunur.",
       detail: "Her seviye, daha fazla saatlik üretime karşılık gelen kaynak tutar. Kapasite, aynı seviyedeki alaşım veya kristal üreticisinin sonraki yükseltme bedelinin en az %110’unu da karşılar. Örneğin Depo 3 için Rafineri 3→4 alaşım bedeli ve Ocak 3→4 kristal bedeli kullanılır. Böyle hesaplanan depolama saatleri döteryuma da uygulanır. Korunan miktar, kapasitenin %10’u ile o kaynağın 8 saatlik üretiminden küçük olanıdır. Kalan stok yağmalanabilir; Depo savaş hasarını emmez.",
     },
@@ -64,7 +64,7 @@ export const vocabulary = {
     },
     HANGAR: {
       name: 'Hangar',
-      tag: 'Filonun sığacağı yeri belirler',
+      tag: 'Filo alanını büyütür',
       role: "Bu gezegenin gemilerine alan sağlar. Komuta Çekirdeği seviyesinden bağımsız yükseltilir.",
       detail: "Gemiler büyüklüğüne göre alan kullanır; görevdekiler ve onarım bekleyenler de sayılır. Yer savunmaları ayrı yer kapasitesi kullanır. Yeni gemi siparişleri ve gelen gemiler için boş alan gerekir. Hangar dolunca mevcut gemiler silinmez. Yüksek yükseltme bedelini toplamak için Depoyu büyütmen gerekebilir.",
     },
@@ -124,7 +124,7 @@ export const vocabulary = {
   satellite: {
     UPLINK: {
       name: 'Anten',
-      tag: 'Teleskop ve Radarı açar',
+      tag: 'Teleskop ve Radar açar',
       role:
         "Bu gezegende Teleskop ve Radar kurulumunu açar; bir yörünge yuvası kullanır.",
       blurb:
@@ -133,7 +133,7 @@ export const vocabulary = {
     },
     FOUNDRY: {
       name: 'Körük',
-      tag: 'Saatlik üretimi artırır',
+      tag: 'Üretimi artırır',
       role:
         "Bu gezegenin saatlik alaşım, kristal ve döteryum üretimini %6 artırır.",
       blurb:
@@ -142,7 +142,7 @@ export const vocabulary = {
     },
     DERRICK: {
       name: 'Matkap',
-      tag: 'Madencileri güçlendirir',
+      tag: 'Kazıcıyı güçlendirir',
       role:
         "Bu gezegenin Kazıcı ambarlarını 2 katına, Kazıcı hızını 1,5 katına çıkarır.",
       blurb:
@@ -380,6 +380,8 @@ export const vocabulary = {
 
 export const gains = {
   rangeUnits: '{{count}} birim',
+  /** A building card's range, where the unit word does not fit the line (G2-b). */
+  rangeShort: '{{count}} birim',
 
   core: {
     label: 'Bina seviye sınırı',
@@ -407,6 +409,7 @@ export const gains = {
   vault: {
     label: 'Depo derinliği',
     value: '{{store}} sa depo · {{safe}} sa korumalı',
+    brief: '{{store}} sa',
   },
   shipyard: {
     timeLabel: "Üretim süresi",
@@ -727,6 +730,7 @@ export const units = {
   todayAt: 'Bugün {{time}}',
   yesterdayAt: 'Dün {{time}}',
   hoursMinutes: '{{h}} sa {{m}} dk',
+  hours: '{{h}} sa',
   minutesSeconds: '{{m}} dk {{s}} sn',
   hoursMinutesSeconds: '{{h}} sa {{m}} dk {{s}} sn',
   seconds: '{{s}} sn',

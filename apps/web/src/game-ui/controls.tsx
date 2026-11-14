@@ -307,8 +307,11 @@ export interface TabItem<T extends string = string> {
   spoken?: string;
   /** A fact about what is under the tab (something stopped): its glyph, and what it means to a reader. */
   mark?: { glyph: GlyphId; hint: string };
-  /** A picture of the place beside its name, in its own tone (the word stays the name). */
-  glyph?: { id: GlyphId; tone: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
+  /**
+   * A picture of the place beside its name (the word stays the name): in its own tone, or with no
+   * tone lit with the tab itself, as a stacked bar draws it.
+   */
+  glyph?: { id: GlyphId; tone?: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
 }
 
 /** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
@@ -325,7 +328,7 @@ const stepTo = (key: string, index: number, count: number): number =>
  * switching costs nothing. `lessonMarks` puts `data-tab` on each, which is how a lesson
  * points at one (and lets one be pressed); only the tabs a lesson may use ask for it.
  */
-export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, lessonMarks = false }: {
+export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, lessonMarks = false, stacked = false }: {
   label: string;
   tabs: readonly TabItem<T>[];
   value: T;
@@ -333,6 +336,8 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, 
   /** The tab's own id and the panel it opens, for a reader to follow from one to the other. */
   ids?: { tab: (id: T) => string; panel: (id: T) => string };
   lessonMarks?: boolean;
+  /** Two storeys: each tab's mark over its name (owner note 3, 2026-11-14: the Base's five tabs). */
+  stacked?: boolean;
 }) {
   const [refused, setRefused] = useState<string | null>(null);
   const buttons = useRef(new Map<T, HTMLButtonElement>());
@@ -346,7 +351,7 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, 
   };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="gk-tabs" {...OWN_SOUND} onKeyDown={walk}>
+      <div role="tablist" aria-label={label} className={stacked ? 'gk-tabs gk-tabs--stacked' : 'gk-tabs'} {...OWN_SOUND} onKeyDown={walk}>
         {tabs.map((tab) => (
           <GameTab
             key={tab.id}
@@ -399,7 +404,7 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
     >
       {tab.locked && <Glyph id="lock" />}
       {tab.glyph && (
-        <span className="gk-tab__glyph" aria-hidden="true" style={{ color: `var(--gk-${tab.glyph.tone})` }}><Glyph id={tab.glyph.id} /></span>
+        <span className="gk-tab__glyph" aria-hidden="true" data-glyph={tab.glyph.id} {...(tab.glyph.tone === undefined ? {} : { style: { color: `var(--gk-${tab.glyph.tone})` } })}><Glyph id={tab.glyph.id} /></span>
       )}
       {tab.label}
       {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}

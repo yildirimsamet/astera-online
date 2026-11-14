@@ -675,7 +675,7 @@ Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyunc
 | Grup | Envanter | Karar | Kit eki | Uygulama | Ölçüm | Owner baktı |
 |---|---|---|---|---|---|---|
 | G1 Kabuk | ✅ 2026-11-13 | ✅ 2026-11-14 (envanter §3.5, 7 iş birimi G1-a…g) | G1-a `BottomNav` eki ✅, G1-b `Medallion` + zil sallanması ✅, G1-c `TimerPlate` + `TimerRow` ✅, G1-d1 `ContextCard` + `ContextStrip` ✅, G1-d2 `Tally` + `DropPanel` + `PickRow` + `RoundButton lit` ✅, G1-d3 `Banner role` ✅, G1-e `NewsRow` + `NewsList` ✅, G1-f `Slider readout` + `Choices` + `SettingLink` + `MenuTile` + `TileGrid` ✅, G1-g `SectionTag as` ✅ | G1-a alt menü ✅, G1-b üst bar ✅, G1-c sayaçlar ✅, G1-d1 bağlam kartı ✅, G1-d2 köşeler ✅, G1-d3 bildirim balonu ✅, G1-e zil ✅, G1-f ayarlar + menü ✅, G1-g1 sheet çerçevesi ✅ (owner notu 1 dahil), G1-g2 masaüstü özeti ✅ — **G1 kapandı (2026-11-14)** | öncesi: `reports/ui-audit/g1-before-2026-11-14.md` | |
-| G2 Üs, tersane, filo | ✅ 2026-11-13 | (Üs 4.1 ✅ 2026-11-12) | | | | |
+| G2 Üs, tersane, filo | ✅ 2026-11-13 | ✅ 2026-11-14 (envanter G2, 10 iş birimi G2-a…j) | G2-a `GameTabs stacked` ✅, G2-b kart iskeleti (`Gain.brief`, `cardEffect`, `Blocked.short`, `roughDuration`) ✅ | G2-a Üs kabuğu ✅ (owner notu 2 ve 3), G2-b bina kartları ✅ (owner notu 4) | `reports/ui-audit/g2a-after-2026-11-14.md` (G2 başlangıcı), `g2b-after` | |
 | G3–G15 | ✅ 2026-11-13 | | | | | |
 
 **4.A kapanışı (2026-11-13):**
@@ -697,8 +697,8 @@ Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyunc
 
 **Owner notları (2026-11-14), sırası gelince yapılacak:**
 1. Sayfa başlığındaki resmin alt kenarı keskin. Panel rengine eriyen bir geçiş (mask) kullanılacak. Ortak parça olduğu için tek yerden düzeltilecek. Ne zaman: G1 kapanışı. ✅ G1-g1 (2026-11-14).
-2. Dikey hizalama bozuk: bölümler 8, 12 ve 16 px kenar boşluğu kullanıyor, kutulu ve kutusuz öğeler karışık. Kural: tek kenar çizgisi (`--gk-gutter` 12 px), kutunun dış kenarı metnin başladığı çizgide. Ne zaman: G2.
-3. Alt sekmelere (Üretim, Bilgi, Savunma, Taktiksel, Filo) ikon eklenecek. İkon yazının üstünde olacak, iki katlı ve 44 px yüksekliğinde; yan yana konursa 350 px'e sığmıyor. Ne zaman: G2.
+2. Dikey hizalama bozuk: bölümler 8, 12 ve 16 px kenar boşluğu kullanıyor, kutulu ve kutusuz öğeler karışık. Kural: tek kenar çizgisi (`--gk-gutter` 12 px), kutunun dış kenarı metnin başladığı çizgide. Ne zaman: G2. ✅ G2-a (2026-11-14), Üs gövdesi; öteki yüzeyler kendi birimlerinde aynı çizgiye geçer.
+3. Alt sekmelere (Üretim, Bilgi, Savunma, Taktiksel, Filo) ikon eklenecek. İkon yazının üstünde olacak, iki katlı ve 44 px yüksekliğinde; yan yana konursa 350 px'e sığmıyor. Ne zaman: G2. ✅ G2-a (2026-11-14).
 4. Bina kartlarında açıklama resmin üstüne biniyor ve uzun açıklama yanındaki kartı da uzatıyor. Çözüm sabit iskelet:
    - üstte sabit yükseklikte resim bandı;
    - ad;
@@ -706,7 +706,7 @@ Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyunc
    - 1 satır etki (ayrıntısı sayfada);
    - en altta sabit fiyat satırı.
 
-   Ne zaman: G2 ve G3.
+   Ne zaman: G2 ve G3. ✅ G2-b (2026-11-14), Üs'ün bina ve gemi kartları; G3'teki kartlar kendi biriminde.
 5. Palet solgun bulundu. Dört tema hazırlandı (A Grafit, B Gözlemevi, C Kobalt krom ki önerilen, D Gece altını): https://claude.ai/artifact/7kVfj7m7BNSqThE1sJNgaX. Tema dosyaları `out/tema-onizleme-2026-11-14/` klasöründe; **Owner Gözlemevi'ni seçti (2026-11-14)**. Değerler `game-ui/tokens.css` dosyasına yazıldı, `v2/tokens.css` değişmedi. Testi: `tokens.test.ts`.
 
 **Doğrulanmış olgular:**
