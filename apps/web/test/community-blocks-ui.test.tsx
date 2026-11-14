@@ -35,6 +35,11 @@ function show(options: { blocked?: boolean; fail?: boolean; delay?: boolean; loa
   render(<QueryClientProvider client={q}><ApiProvider api={api}><ChatHost accountId="own-account" onClose={vi.fn()} onFocusPlanet={vi.fn()} channel={options.dm ? 'dm' : 'general'} /></ApiProvider></QueryClientProvider>);
   return writes;
 }
+/** Blocking is a hold (C4) with one short verb on it: the keyboard's way is Enter, then Enter again to confirm. */
+const holdToBlock = (dialog: HTMLElement): void => {
+  const key = within(dialog).getByRole('button', { name: /^Block/ });
+  fireEvent.keyDown(key, { key: 'Enter' }); fireEvent.keyDown(key, { key: 'Enter' });
+};
 async function openBlock() {
   const bubble = document.querySelector(`[data-chat-message="${message.id}"]`); if (!bubble) throw new Error('Missing bubble');
   fireEvent.contextMenu(bubble); fireEvent.click(screen.getByRole('button', { name: 'Block player' }));
@@ -43,25 +48,30 @@ async function openBlock() {
 it('requires confirmation, explains the social scope and submits only the target player id', async () => {
   const writes = show(); const dialog = await openBlock();
   expect(within(dialog).getByText(/does not affect fleets or battles/i)).toBeInTheDocument();
-  const submit = within(dialog).getByRole('button', { name: 'Confirm block' }); expect(submit).toBeDisabled();
-  fireEvent.click(within(dialog).getByRole('checkbox')); fireEvent.click(submit);
-  expect(await within(dialog).findByRole('status')).toHaveTextContent('Player blocked');
+  expect(within(dialog).queryByRole('checkbox')).toBeNull();
+  expect(within(dialog).getByRole('button', { name: /^Block/ })).toHaveClass('gk-hold');
+  holdToBlock(dialog);
+  const done = await within(dialog).findByRole('status');
+  expect(done).toHaveTextContent('Player blocked'); expect(done).toHaveClass('gk-banner--good');
   expect(writes).toEqual([{ method: 'POST', path: '/api/community/blocks', body: { targetPlayerId: playerId } }]);
   expect(screen.queryByText('Scout message')).toBeNull();
 });
 it('loads persistent blocks from the header and unblocks the exact account without depending on its old player id', async () => {
   const writes = show({ blocked: true }); fireEvent.click(screen.getByRole('button', { name: 'Blocked players' }));
   const dialog = await screen.findByRole('dialog', { name: 'Blocked players' });
-  fireEvent.click(await within(dialog).findByRole('button', { name: 'Unblock Scout' }));
-  expect(await within(dialog).findByText('No blocked players.')).toBeInTheDocument();
+  const unblock = await within(dialog).findByRole('button', { name: 'Unblock Scout' });
+  expect(unblock).toHaveClass('gk-btn'); expect(unblock).toHaveTextContent('Unblock');
+  expect(unblock.closest('.gk-person')).toHaveTextContent('Scout');
+  fireEvent.click(unblock);
+  expect((await within(dialog).findByText('No blocked players.')).closest('.gk-empty')).not.toBeNull();
   expect(writes).toEqual([{ method: 'DELETE', path: `/api/community/blocks/${accountId}`, body: null }]);
   expect(await screen.findByText('Scout message')).toBeInTheDocument();
 });
 it('preserves the confirmation and displays a failure instead of claiming a block succeeded', async () => {
   show({ fail: true }); const dialog = await openBlock();
-  fireEvent.click(within(dialog).getByRole('checkbox')); fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm block' }));
+  holdToBlock(dialog);
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('The block could not be confirmed');
-  expect(within(dialog).queryByRole('status')).toBeNull(); expect(within(dialog).getByRole('button', { name: 'Confirm block' })).toBeEnabled();
+  expect(within(dialog).queryByRole('status')).toBeNull(); expect(within(dialog).getByRole('button', { name: /^Block/ })).toBeEnabled();
 });
 it('distinguishes a failed list from an empty list and provides retry', async () => {
   show({ loadFail: true }); fireEvent.click(screen.getByRole('button', { name: 'Blocked players' }));
@@ -70,9 +80,9 @@ it('distinguishes a failed list from an empty list and provides retry', async ()
   expect(within(dialog).queryByText('No blocked players.')).toBeNull(); expect(within(dialog).getByRole('button', { name: 'Try again' })).toBeEnabled();
 });
 it('coalesces taps while a block is in flight', async () => {
-  const writes = show({ delay: true }); const dialog = await openBlock(); fireEvent.click(within(dialog).getByRole('checkbox'));
-  const submit = within(dialog).getByRole('button', { name: 'Confirm block' }); fireEvent.click(submit); fireEvent.click(submit);
-  await waitFor(() => { expect(writes).toHaveLength(1); }); expect(submit).toBeDisabled();
+  const writes = show({ delay: true }); const dialog = await openBlock();
+  holdToBlock(dialog); holdToBlock(dialog);
+  await waitFor(() => { expect(writes).toHaveLength(1); });
 });
 it('directs a full community block in DM to its manager rather than pretending the old DM-only unblock removes it', async () => {
   const writes = show({ blocked: true, dm: true });
@@ -84,7 +94,7 @@ it('clears a reply to the blocked author when the block succeeds', async () => {
   show(); const bubble = document.querySelector(`[data-chat-message="${message.id}"]`); if (!bubble) throw new Error('Missing message');
   fireEvent.contextMenu(bubble); fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
   expect(screen.getByText(/Replying to Scout/)).toBeInTheDocument();
-  const dialog = await openBlock(); fireEvent.click(within(dialog).getByRole('checkbox')); fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm block' }));
+  const dialog = await openBlock(); holdToBlock(dialog);
   expect(await within(dialog).findByRole('status')).toHaveTextContent('Player blocked');
   expect(screen.queryByText(/Replying to Scout/)).toBeNull();
 });

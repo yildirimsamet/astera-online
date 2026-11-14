@@ -3,7 +3,8 @@ export const community = {
   announcements: {
     eyebrow: 'Desde el mando de Astera',
     title: 'Anuncios',
-    empty: 'Aún no hay anuncios. Las actualizaciones del equipo aparecerán aquí.',
+    emptyTitle: 'Aún no hay anuncios',
+    empty: 'Las actualizaciones del equipo aparecerán aquí.',
     new: 'NUEVO',
   },
   feedback: {
@@ -18,6 +19,7 @@ export const community = {
     send: 'Enviar opinión',
     sending: 'Envío…',
     sent: 'Hemos recibido tu mensaje. Gracias por ayudarnos a dar forma a Astera.',
+    tooShort: 'Escribe al menos 3 caracteres',
   },
   admin: {
     ops: adminOps,

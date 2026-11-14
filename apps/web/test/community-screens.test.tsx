@@ -83,7 +83,7 @@ describe('community surfaces', () => {
     });
     render(<Wrapper><FeedbackScreen /></Wrapper>);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Idea' }));
+    await user.click(screen.getByRole('radio', { name: 'Idea' }));
     const message = screen.getByRole('textbox', { name: 'Your message' });
     await user.type(message, '<script>literal player report</script>');
     await user.click(screen.getByRole('button', { name: 'Send feedback' }));
@@ -93,6 +93,69 @@ describe('community surfaces', () => {
     });
     expect(message).toHaveValue('');
     expect(screen.getByText(/Received/)).toBeInTheDocument();
+  });
+
+  /** ON THE KIT (C5, 2026-11-14). */
+  it('lays each announcement out as the kit’s plate, a new one lit with its tag', () => {
+    const { client, api, Wrapper } = setup();
+    const page = { announcements: [
+      { id: '9f17dddc-7e43-4ba5-99b0-41c93df7c891', title: 'Storm tonight', bodyHtml: '<p>Rocks fall at nine.</p>', publishedAt, seen: false },
+      { id: '9f17dddc-7e43-4ba5-99b0-41c93df7c892', title: 'Season 19', bodyHtml: '<p>It began.</p>', publishedAt, seen: true },
+    ] };
+    client.setQueryData(keys.announcements, page);
+    vi.spyOn(api, 'announcements').mockResolvedValue(page);
+    vi.spyOn(api, 'markAnnouncementsRead').mockResolvedValue({ marked: 1 });
+    render(<Wrapper><AnnouncementsScreen /></Wrapper>);
+    const fresh = screen.getByRole('heading', { name: 'Storm tonight' }).closest('.gk-notice');
+    expect(fresh).toHaveAttribute('data-new');
+    expect(fresh?.querySelector('.gk-newtag')).toHaveTextContent('NEW');
+    const old = screen.getByRole('heading', { name: 'Season 19' }).closest('.gk-notice');
+    expect(old).not.toHaveAttribute('data-new');
+    expect(old?.querySelector('.gk-newtag')).toBeNull();
+    expect(old?.querySelector('time')).toHaveAttribute('datetime', publishedAt.toISOString());
+  });
+
+  /** Marking read flips `seen` at once (optimistic); the light must stay for the visit or nobody sees it. */
+  it('keeps a new announcement lit for this visit after it is marked read', async () => {
+    const { client, api, Wrapper } = setup();
+    const page = { announcements: [{ id: '9f17dddc-7e43-4ba5-99b0-41c93df7c893', title: 'Storm tonight', bodyHtml: '<p>Soon.</p>', publishedAt, seen: false }] };
+    client.setQueryData(keys.announcements, page);
+    vi.spyOn(api, 'announcements').mockResolvedValue({ announcements: page.announcements.map((row) => ({ ...row, seen: true })) });
+    const mark = vi.spyOn(api, 'markAnnouncementsRead').mockResolvedValue({ marked: 1 });
+    render(<Wrapper><AnnouncementsScreen /></Wrapper>);
+    await waitFor(() => { expect(mark).toHaveBeenCalled(); });
+    await waitFor(() => { expect(client.getQueryData<typeof page>(keys.announcements)?.announcements[0]?.seen).toBe(true); });
+    expect(screen.getByRole('heading', { name: 'Storm tonight' }).closest('.gk-notice')).toHaveAttribute('data-new');
+  });
+
+  it('says an empty announcements page on the kit', () => {
+    const { client, api, Wrapper } = setup();
+    client.setQueryData(keys.announcements, { announcements: [] });
+    vi.spyOn(api, 'announcements').mockResolvedValue({ announcements: [] });
+    render(<Wrapper><AnnouncementsScreen /></Wrapper>);
+    const empty = document.querySelector('.gk-empty');
+    expect(empty?.querySelector('.gk-empty__title')).toHaveTextContent('No announcements yet');
+    expect(empty?.querySelector('.gk-empty__body')).toHaveTextContent('Updates from the team will appear here.');
+  });
+
+  it('asks the kind on the kit’s plates, writes in the glass slot, and the send key says what it needs', async () => {
+    const { api, Wrapper } = setup();
+    vi.spyOn(api, 'sendFeedback').mockResolvedValue({ feedback: { id: '4ec4b146-7870-4766-8583-1ad4f7993169', createdAt: publishedAt } });
+    render(<Wrapper><FeedbackScreen /></Wrapper>);
+    const kinds = screen.getByRole('radiogroup', { name: 'Feedback type' });
+    expect(kinds).toHaveClass('gk-choices');
+    expect(screen.getByRole('radio', { name: 'Bug' })).toHaveAttribute('aria-checked', 'true');
+    const message = screen.getByRole('textbox', { name: 'Your message' });
+    expect(message).toHaveClass('gk-field__input');
+    expect(screen.getByRole('button', { name: 'Write at least 3 characters' })).toBeDisabled();
+    const user = userEvent.setup();
+    await user.type(message, 'Great game');
+    const send = screen.getByRole('button', { name: 'Send feedback' });
+    expect(send).toHaveClass('gk-btn');
+    await user.click(send);
+    const thanks = await screen.findByRole('status');
+    expect(thanks).toHaveClass('gk-banner--good');
+    expect(thanks).toHaveTextContent(/Received/);
   });
 
   it('shows one WYSIWYG composer with simultaneous mobile and desktop previews', () => {

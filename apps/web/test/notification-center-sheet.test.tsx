@@ -19,11 +19,12 @@ const fresh = (): NotificationCenter => ({
 });
 let view: NotificationCenter | undefined = fresh();
 const build = vi.fn(); const fund = vi.fn(); const settings = vi.fn(); let queried: boolean[] = [];
+const pending = { settings: false };
 vi.mock('../src/api/notificationCenter.js', () => ({
   useNotificationCenter: (enabled: boolean) => { queried.push(enabled); return { data: enabled ? view : undefined, isPending: false, isError: false, refetch: vi.fn() }; },
   useBuildNotificationCenter: () => ({ mutate: build, isPending: false, error: null }),
   useFundNotificationCenter: () => ({ mutate: fund, isPending: false, error: null }),
-  useNotificationCenterSettings: () => ({ mutate: settings, isPending: false, error: null }),
+  useNotificationCenterSettings: () => ({ mutate: settings, isPending: pending.settings, error: null }),
 }));
 const phone = { enabled: false, prefs: { build: true, research: true, ships: true, fleet: true } };
 const enable = vi.fn(() => Promise.resolve(false)); const disable = vi.fn(); const setPrefs = vi.fn(); const allowExact = vi.fn();
@@ -44,21 +45,30 @@ afterEach(() => {
   connectPush.mockClear(); connectPush.mockImplementation(() => Promise.resolve('on'));
   phone.enabled = false; permission.display = 'prompt'; permission.exact = 'granted'; allowExact.mockClear(); enable.mockClear(); disable.mockClear(); setPrefs.mockClear(); caps.localNotifications = true;
   view = fresh(); caps.notificationCenter = true; queried = []; world.deuterium = 400; world.alloy = 5000;
-  build.mockClear(); fund.mockClear(); settings.mockClear();
+  build.mockClear(); fund.mockClear(); settings.mockClear(); pending.settings = false;
 });
+
+/** The kit's hold from the keyboard: Enter arms it, a second Enter commits (`useHoldPress`). */
+const hold = (name: RegExp): void => {
+  const key = screen.getByRole('button', { name });
+  fireEvent.keyDown(key, { key: 'Enter' }); fireEvent.keyDown(key, { key: 'Enter' });
+};
 
 it('offers the one-time build from the selected world and says what is short', () => {
   view = { ...fresh(), built: false };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   expect(screen.getByText(/Paid from Earth/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Build the center' }));
+  // Building spends: a tap only says how, the kit's one-second hold builds.
+  fireEvent.click(screen.getByRole('button', { name: /^Build the center/ }));
+  expect(build).not.toHaveBeenCalled();
+  hold(/^Build the center/);
   expect(build).toHaveBeenCalledWith('home', expect.anything());
 });
 
 it('asks for notifications the moment the center is built, since it exists to reach the phone', () => {
   view = { ...fresh(), built: false };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Build the center' }));
+  hold(/^Build the center/);
   expect(connectPush).not.toHaveBeenCalled();
   const options = build.mock.calls[0]?.[1] as { onSuccess: () => void };
   options.onSuccess();
@@ -71,6 +81,7 @@ it('warns that raid alerts cannot reach a phone without notifications, and asks 
   const card = document.querySelector('[data-push-off]');
   expect(card).toHaveTextContent("Raid alerts can't reach this phone");
   expect(card).toHaveTextContent(/no deuterium leaves the wallet/);
+  expect(card?.querySelector('.gk-banner')).toHaveClass('gk-banner--warn');
   fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Allow notifications' }));
   expect(connectPush).toHaveBeenCalledWith(pushApi, expect.objectContaining({ ask: true }));
   expect(await within(card as HTMLElement).findByRole('button', { name: 'Allow notifications' })).toBeEnabled();
@@ -95,10 +106,12 @@ it('shows no push warning while the phone allows notifications, nor before the c
   expect(document.querySelector('[data-push-off]')).toBeNull();
 });
 
-it('cannot build while the selected world is short', () => {
+it('cannot build while the selected world is short, and the key says so', () => {
   view = { ...fresh(), built: false }; world.alloy = 100;
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByRole('button', { name: 'Build the center' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: /^Build the center/ })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Not enough resources' })).toBeDisabled();
+  expect(screen.getByText('Select another world, or wait for resources to build up.')).toBeInTheDocument();
 });
 
 it('says how many attack alerts the wallet pays for, naming the chosen timing', () => {
@@ -112,11 +125,13 @@ it('warns when the wallet cannot pay for the next alert and counts what was miss
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   expect(screen.getByText(/cannot pay for the next attack alert/)).toBeInTheDocument();
   expect(screen.getByText(/2 alerts were not sent in the last 24 hours/)).toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Wallet' })).toHaveAttribute('data-short');
 });
 
 it('asks when an attack alert should arrive, as a setting with its price per alert', () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   const group = screen.getByRole('radiogroup', { name: 'When should an attack alert reach you?' });
+  expect(group).toHaveClass('gk-rate');
   expect(within(group).getAllByRole('radio').map(radio => radio.textContent)).toEqual([
     expect.stringContaining('3 minutes before it lands'), expect.stringContaining('5 minutes before it lands'),
     expect.stringContaining('15 minutes before it lands'), expect.stringContaining('As soon as radar sees it'),
@@ -135,30 +150,44 @@ it('says the one wallet pays for every alert, whatever the timing', () => {
 it('turns a paid kind off and on', () => {
   view = { ...fresh(), muted: ['incoming_strategic'] };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByRole('checkbox', { name: /Strategic weapon/ })).toHaveAttribute('aria-checked', 'false');
-  fireEvent.click(screen.getByRole('checkbox', { name: /Probe detected/ }));
+  expect(screen.getByRole('switch', { name: /Strategic weapon/ })).toHaveAttribute('aria-checked', 'false');
+  fireEvent.click(screen.getByRole('switch', { name: /Probe detected/ }));
   expect(settings).toHaveBeenCalledWith({ muted: ['incoming_strategic', 'probe_detected'] });
-  fireEvent.click(screen.getByRole('checkbox', { name: /Strategic weapon/ }));
+  fireEvent.click(screen.getByRole('switch', { name: /Strategic weapon/ }));
   expect(settings).toHaveBeenLastCalledWith({ muted: [] });
 });
 
-it('transfers only after the player confirms it cannot be taken back', () => {
+it('lets no second setting go out while one is on its way, so two taps cannot undo each other', () => {
+  pending.settings = true;
   render(<NotificationCenterSheet onClose={vi.fn()} />);
+  fireEvent.click(screen.getByRole('switch', { name: /Probe detected/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /15 minutes/ }));
+  expect(settings).not.toHaveBeenCalled();
+});
+
+it('says a transfer cannot be taken back before it, and transfers only on the hold', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.queryByText(/cannot be moved back/)).toBeNull();
   fireEvent.change(screen.getByRole('spinbutton', { name: 'Deuterium to transfer' }), { target: { value: '150' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Transfer' }));
-  expect(fund).not.toHaveBeenCalled();
   expect(screen.getByText(/cannot be moved back/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Transfer 150' }));
+  const key = screen.getByRole('button', { name: /^Transfer/ });
+  expect(key).toHaveTextContent('150');
+  fireEvent.click(key);
+  expect(fund).not.toHaveBeenCalled();
+  hold(/^Transfer/);
   expect(fund).toHaveBeenCalledWith({ planetId: 'home', amount: 150 }, expect.anything());
 });
 
 it('refuses a transfer the selected world cannot cover or that is not a whole positive number', () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   const amount = screen.getByRole('spinbutton', { name: 'Deuterium to transfer' });
-  for (const value of ['401', '0', '-5', '2.5', '']) {
+  fireEvent.change(amount, { target: { value: '401' } });
+  expect(screen.getByRole('button', { name: 'Not that much in store' })).toBeDisabled();
+  for (const value of ['0', '-5', '2.5', '']) {
     fireEvent.change(amount, { target: { value } });
-    expect(screen.getByRole('button', { name: 'Transfer' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enter a whole amount' })).toBeDisabled();
   }
+  expect(screen.queryByRole('button', { name: /^Transfer/ })).toBeNull();
 });
 
 it('offers no alert-count picks, only the whole store', () => {
@@ -213,9 +242,9 @@ it('names the radiation bomb among strategic weapons and the half-hour spacing o
 
 it('offers the free phone alerts in the app, asking the phone only when switched on', async () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  const master = screen.getByRole('checkbox', { name: 'Alert me when orders finish' });
+  const master = screen.getByRole('switch', { name: 'Alert me when orders finish' });
   expect(master).toHaveAttribute('aria-checked', 'false');
-  expect(screen.queryByRole('checkbox', { name: 'Research' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('switch', { name: 'Research' })).not.toBeInTheDocument();
   enable.mockImplementationOnce(() => { permission.display = 'denied'; return Promise.resolve(false); });
   fireEvent.click(master);
   expect(enable).toHaveBeenCalledOnce();
@@ -233,6 +262,7 @@ it('warns, in its own card, when the phone would deliver alerts late, and offers
   render(<NotificationCenterSheet onClose={vi.fn()} />);
   const card = document.querySelector<HTMLElement>('[data-local-late]');
   expect(card).toHaveTextContent('Alerts can come late');
+  expect(card?.querySelector('.gk-banner')).toHaveClass('gk-banner--warn');
   expect(card).toHaveTextContent(/up to an hour/);
   fireEvent.click(within(card!).getByRole('button', { name: 'Allow on-time alerts' }));
   expect(allowExact).toHaveBeenCalledOnce();
@@ -248,14 +278,23 @@ it('says nothing about permissions while all is well', () => {
 it('turns a free category off and the whole thing off', () => {
   phone.enabled = true; permission.display = 'granted';
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Research' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Research' }));
   expect(setPrefs).toHaveBeenCalledWith({ build: true, research: false, ships: true, fleet: true });
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Alert me when orders finish' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Alert me when orders finish' }));
   expect(disable).toHaveBeenCalledOnce();
 });
 
 it('shows the free phone alerts before the center is built', () => {
   view = { ...fresh(), built: false };
   render(<NotificationCenterSheet onClose={vi.fn()} />);
-  expect(screen.getByRole('checkbox', { name: 'Alert me when orders finish' })).toBeInTheDocument();
+  expect(screen.getByRole('switch', { name: 'Alert me when orders finish' })).toBeInTheDocument();
+});
+
+it('stands on the kit: the transmitter in the sheet’s head, the paid kinds on its plates', () => {
+  view = { ...fresh(), built: false };
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(document.querySelector('.gk-sheet__head .gk-sheet__art')).toHaveAttribute('src', '/assets/images/general/notification_center_1.webp');
+  const kinds = screen.getByRole('list', { name: 'Radar alerts' });
+  expect(kinds).toHaveClass('gk-ledger');
+  expect(within(kinds).getAllByRole('listitem')).toHaveLength(3);
 });

@@ -39,6 +39,8 @@ export interface GameButtonProps {
    * the commit cue and buzz instead of a tap, so the press lands with its weight.
    */
   heavy?: boolean;
+  /** The whole name for a reader when the face says less ("Unblock" → "Unblock Scout", C4). */
+  spoken?: string;
 }
 
 /**
@@ -48,7 +50,7 @@ export interface GameButtonProps {
  */
 export function GameButton({
   children, onPress, tone: look = 'steel', size = 'md', wide = false, glyph, cost, detail,
-  disabledReason = null, pending = false, className = '', heavy = false,
+  disabledReason = null, pending = false, className = '', heavy = false, spoken,
 }: GameButtonProps) {
   const own = useOwnPress(() => {
     if (pending || disabledReason !== null) return;
@@ -66,6 +68,7 @@ export function GameButton({
       className={`gk-btn${tone(look)}${sizing}${wide ? ' gk-btn--wide' : ''} ${className}`}
       disabled={disabledReason !== null}
       aria-busy={pending || undefined}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >

@@ -228,11 +228,13 @@ export function Slider({ label, value, max, onChange, readout }: {
  * lit as an open tab is. A radio group, since choosing one is the whole act: it takes effect on
  * the press, and the arrows walk it with one stop for the Tab key.
  */
-export function Choices<T extends string>({ label, options, value, onChange }: {
+export function Choices<T extends string>({ label, options, value, onChange, columns }: {
   label: string;
   options: readonly { id: T; label: string }[];
   value: T;
   onChange: (next: T) => void;
+  /** Many answers (a report's seven reasons, C3) sit two to a row instead of one long row. */
+  columns?: 2;
 }) {
   const choose = (id: T): void => {
     if (id === value) return;
@@ -248,24 +250,28 @@ export function Choices<T extends string>({ label, options, value, onChange }: {
     choose(next.id);
     event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
   };
+  // A question not yet answered keeps its Tab stop on the first answer.
+  const unanswered = !options.some((option) => option.id === value);
   return (
-    <div role="radiogroup" aria-label={label} className="gk-tabs gk-choices" {...OWN_SOUND}>
-      {options.map((option) => (
-        <ChoicePlate key={option.id} label={option.label} chosen={option.id === value} onChoose={() => { choose(option.id); }} onKeyDown={walk} />
+    <div role="radiogroup" aria-label={label} className={`gk-tabs gk-choices${columns === 2 ? ' gk-choices--grid' : ''}`} {...OWN_SOUND}>
+      {options.map((option, index) => (
+        <ChoicePlate key={option.id} label={option.label} chosen={option.id === value} tabbable={option.id === value || (unanswered && index === 0)}
+          onChoose={() => { choose(option.id); }} onKeyDown={walk} />
       ))}
     </div>
   );
 }
 
-function ChoicePlate({ label, chosen, onChoose, onKeyDown }: {
+function ChoicePlate({ label, chosen, tabbable, onChoose, onKeyDown }: {
   label: string;
   chosen: boolean;
+  tabbable: boolean;
   onChoose: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const own = useOwnPress(onChoose);
   return (
-    <button type="button" role="radio" aria-checked={chosen} tabIndex={chosen ? 0 : -1} className="gk-tab"
+    <button type="button" role="radio" aria-checked={chosen} tabIndex={tabbable ? 0 : -1} className="gk-tab"
       onPointerDown={own.onPointerDown} onClick={own.onClick} onKeyDown={onKeyDown}>
       {label}
     </button>

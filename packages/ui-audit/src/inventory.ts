@@ -109,7 +109,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'research', what: 'Araştırma takımyıldızı', files: ['screens/ResearchPanel.tsx', 'v2/hud/ResearchConstellation.tsx'], reach: ['gallery:base-research'], group: 'G2', unreached: ["proje sheet'i", 'tatilde duraklatılmış'] },
 
   // Intelligence and reports.
-  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel'], group: 'G3', unreached: ['Raporlar rafı: sondalar', 'Raporlar rafı: savaş listesi', 'Radar rafı', 'alet kartı (teleskop / sonda / radar yok)'] },
+  { id: 'intel', what: 'İstihbarat merkezi', files: ['screens/IntelScreen.tsx'], reach: ['gallery:intel', 'gallery:intel-blind'], group: 'G3', unreached: ['Raporlar rafı: sondalar', 'Raporlar rafı: savaş listesi', 'Radar rafı', 'alet kartı (sonda / radar yok)'] },
   {
     id: 'reports',
     what: 'Savaş raporları ve anıt raporu',
@@ -139,8 +139,12 @@ export const SURFACES: GameSurface[] = [
     id: 'chat',
     what: 'Sohbet, medya, tepkiler, engelleme, şikâyet',
     files: ['screens/ChatScreen.tsx', 'v2/shell/ChatHost.tsx', 'screens/ChatMediaAttachment.tsx', 'screens/ChatMediaComposer.tsx', 'screens/ChatReactionRoster.tsx', 'screens/CommunityBlocks.tsx', 'screens/ContentReportSheet.tsx'],
-    reach: ['gallery:chat', 'gallery:chat-empty', 'gallery:chat-clan', 'gallery:support-chat', 'client:chat', 'client:chat-rules'],
-    group: 'G8', unreached: ['DM paneli', 'medya ekleme', 'tepki listesi', "içerik bildir sheet'i", 'engellenenler', 'sessize alınanlar'],
+    reach: [
+      'gallery:chat', 'gallery:chat-empty', 'gallery:chat-clan', 'gallery:chat-dm', 'gallery:chat-dm-empty', 'gallery:chat-dm-new', 'gallery:chat-actions',
+      'gallery:chat-react', 'gallery:chat-roster', 'gallery:chat-report', 'gallery:chat-media', 'gallery:chat-muted', 'gallery:chat-muted-empty',
+      'gallery:chat-blocked', 'gallery:chat-block', 'gallery:chat-policy', 'gallery:support-chat', 'client:chat', 'client:chat-rules',
+    ],
+    group: 'G8',
   },
 
   // Menu, commander and meta.
@@ -148,8 +152,8 @@ export const SURFACES: GameSurface[] = [
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
   { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-archive'], group: 'G9', unreached: ['komutan profili (arşiv)'] },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },
-  { id: 'announcements', what: 'Duyurular', files: ['screens/AnnouncementsScreen.tsx'], reach: ['client:announcements'], group: 'G8' },
-  { id: 'feedback', what: 'Geri bildirim formu', files: ['screens/FeedbackScreen.tsx'], reach: ['client:feedback'], group: 'G8' },
+  { id: 'announcements', what: 'Duyurular', files: ['screens/AnnouncementsScreen.tsx'], reach: ['gallery:announcements', 'gallery:announcements-empty', 'client:announcements'], group: 'G8' },
+  { id: 'feedback', what: 'Geri bildirim formu', files: ['screens/FeedbackScreen.tsx'], reach: ['gallery:feedback', 'client:feedback'], group: 'G8' },
   { id: 'donate', what: 'Bağış', files: ['screens/DonateScreen.tsx'], reach: ['gallery:donate'], group: 'G6' },
   {
     id: 'shop',

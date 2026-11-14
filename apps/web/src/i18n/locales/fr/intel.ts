@@ -11,7 +11,8 @@ export const intel = {
   shelf: {
     label: 'Renseignement',
     watch: 'Veille',
-    reports: 'Rapports',
+    probes: 'Sondes',
+    battles: 'Combats',
     radar: 'Radar',
   },
   rivals: {
@@ -29,9 +30,6 @@ export const intel = {
     empty: 'Rien de connu pour l’instant : un télescope observe en direct, une sonde rapporte une lecture.',
   },
   openOrbit: "Ouvrir l’orbite",
-  tabs: {
-    label: "Rapports de renseignement",
-  },
   coverage: {
     label: "Couverture",
     blind: "Tu ne peux voir l’intérieur d’aucune planète",

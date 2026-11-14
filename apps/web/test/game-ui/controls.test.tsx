@@ -162,6 +162,19 @@ describe('the choices of a setting', () => {
     fireEvent.keyDown(screen.getByRole('radio', { name: 'Dengeli' }), { key: 'ArrowRight' });
     expect(onChange).toHaveBeenCalledWith('low');
   });
+
+  /** A question with no answer yet (a report's reason, C3): the keyboard still finds the group. */
+  it('keeps the Tab stop on the first one while nothing is chosen', () => {
+    render(<Choices<'' | 'high' | 'balanced' | 'low'> label="Görüntü kalitesi" options={rungs} value="" onChange={vi.fn()} />);
+    expect(screen.getByRole('radio', { name: 'Yüksek' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: 'Dengeli' })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getAllByRole('radio').every((radio) => radio.getAttribute('aria-checked') === 'false')).toBe(true);
+  });
+
+  it('lays many choices out two to a row when asked (C3)', () => {
+    render(<Choices label="Görüntü kalitesi" options={rungs} value="balanced" onChange={vi.fn()} columns={2} />);
+    expect(screen.getByRole('radiogroup', { name: 'Görüntü kalitesi' })).toHaveClass('gk-choices', 'gk-choices--grid');
+  });
 });
 
 /** A setting that opens somewhere else, saying where it stands on its line (G1-f). */

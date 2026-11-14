@@ -39,6 +39,7 @@ import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
 import { GalleryChat } from './GalleryChat.js';
+import { GalleryCommunity } from './GalleryCommunity.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -402,8 +403,9 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
 /**
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
  * has no Telescope and no Radar, so this is where the full shelves are photographed.
+ * `blind` is the first evening (C7): no instrument, no mark, nothing known yet.
  */
-function GalleryIntel() {
+function GalleryIntel({ blind = false }: { blind?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
@@ -416,9 +418,13 @@ function GalleryIntel() {
       accuracy: 0.82, stock: { low: 18_000, high: 26_000 }, deuteriumStock: null,
       defence: { low: 4_000, high: 7_000 }, fleetSize: { low: 12, high: 20 }, fleetHome: true, detected: false, ...over,
     });
-    client.setQueryData(['planet'], planetView({ instruments: { TELESCOPE: 4, RADAR: 4 } }, { id: 'p-1' }));
+    client.setQueryData(['planet'], planetView({ instruments: blind ? { TELESCOPE: 0, RADAR: 0 } : { TELESCOPE: 4, RADAR: 4 } }, { id: 'p-1' }));
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
     client.setQueryData(['reports'], { reports: [], rivals: [] });
+    if (blind) {
+      client.setQueryData(['intel'], { watching: [], probeReports: [], probeCooldowns: [], radarLog: [], probeCost: { alloy: 50, crystal: 50 } });
+      return null;
+    }
     client.setQueryData(['intel'], {
       watching: [
         watch(0, 'p-kestrel', 'VEX', {}),
@@ -439,9 +445,9 @@ function GalleryIntel() {
     return null;
   });
   return (
-    <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed>
+    <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       <IntelScreen
-        rivals={[
+        rivals={blind ? [] : [
           { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
           { planetId: 'p-vega', slot: 1, owner: 'Vega', name: 'Mira', lost: false },
         ]}
@@ -897,6 +903,7 @@ function Views({ view }: { view: string }) {
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
+  if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
   if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
@@ -911,6 +918,7 @@ function Views({ view }: { view: string }) {
   if (view === 'legacy-reveal') return <LegacyRevealGallery />;
   if (view === 'legacy-peek' || view === 'legacy-profile') return <LegacyPeekGallery page={view === 'legacy-peek' ? 'peek' : 'profile'} />;
   if (view === 'intel') return <GalleryIntel />;
+  if (view === 'intel-blind') return <GalleryIntel blind />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;

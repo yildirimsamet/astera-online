@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { ChatMedia } from '@astera/rules';
 import { useApi } from '../api/context.js';
-import { CloseIcon } from '../ui/icons/index.js';
+import { GameButton, Glyph, RoundButton } from '../game-ui/index.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import type { ChatChannel } from './ChatScreen.js';
 
@@ -52,8 +52,8 @@ function NativeAttachment(props: AttachmentProps & { media: Exclude<ChatMedia, {
   return <div ref={anchor}>
     {source?.key === key ? <AttachmentView {...props} sourceUrl={source.url} autoPlay={props.media.kind === 'video'} />
       : props.media.kind === 'video' && !requested ? <button type="button" onClick={() => { setRequested(true); }}
-        className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-4 text-body text-v2-ink hover:border-v2-self/50">
-        <span aria-hidden="true">▶</span>{t('chat.media.play')}
+        className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-4 text-body text-v2-ink transition-transform hover:border-v2-self/50 active:scale-[0.98]">
+        <Glyph id="next" />{t('chat.media.play')}
       </button> : <div role="status" className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full animate-pulse items-center justify-center rounded-control border border-v2-line-hi bg-v2-deep text-micro text-v2-ink-2">
         {t(props.media.kind === 'video' ? 'chat.media.video' : 'chat.media.photo')}
       </div>}
@@ -90,20 +90,20 @@ function AttachmentView({ media, channel, messageId, onLoad, preview = false, so
       <iframe title={t('chat.media.youtube')} src={`https://www.youtube-nocookie.com/embed/${media.videoId}`} loading="lazy"
         className="h-full w-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen />
     </div>
-    {!preview ? <button type="button" className="mt-1 min-h-8 rounded-control border border-v2-line-hi px-2 text-micro text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self"
-      onClick={() => { setPortrait(current => !current); }}>{t(portrait ? 'chat.media.showLandscape' : 'chat.media.showPortrait')}</button> : null}
+    {!preview ? <div className="mt-1"><GameButton size="sm" onPress={() => { setPortrait(current => !current); }}>
+      {t(portrait ? 'chat.media.showLandscape' : 'chat.media.showPortrait')}</GameButton></div> : null}
   </div>;
   const url = sourceUrl ?? api.chatMediaUrl(media.assetId, channel, messageId);
   if (media.kind === 'video') return <video controls playsInline autoPlay={autoPlay} preload="metadata" className={`my-2 ${width} ${preview ? 'max-h-[min(8rem,18dvh)]' : 'max-h-64'} max-w-full rounded-control border border-v2-line-hi bg-v2-deep`} onLoadedMetadata={onLoad} onError={() => { setFailed(true); }} aria-label={t('chat.media.video')}>
     <source src={url} type={media.mimeType} />
   </video>;
   return <>
-    <button ref={opener} type="button" aria-label={t('chat.media.openImage')} className="my-2 block max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep" onClick={() => { setExpanded(true); }}>
+    <button ref={opener} type="button" aria-label={t('chat.media.openImage')} className="my-2 block max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep transition-transform active:scale-[0.98]" onClick={() => { setExpanded(true); }}>
       <img src={url} alt={t('chat.media.photo')} loading="lazy" className={`${preview ? 'max-h-[min(8rem,18dvh)] w-auto' : 'max-h-64 w-[min(68vw,320px)]'} max-w-full object-contain`} onLoad={onLoad} onError={() => { setFailed(true); }} />
     </button>
     {expanded ? createPortal(<div className="fixed inset-0 z-[120] flex items-center justify-center bg-v2-deep/95 p-4" onClick={() => { setExpanded(false); }}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-label={t('chat.media.photo')} onClick={event => { event.stopPropagation(); }} className="relative max-h-full max-w-full">
-        <button type="button" className="absolute right-2 top-2 grid size-10 place-items-center rounded-full border border-v2-line-hi bg-v2-deep text-v2-ink shadow-xl" aria-label={t('sheet.close')} onClick={() => { setExpanded(false); }}><CloseIcon className="size-5" /></button>
+        <div className="gk absolute right-2 top-2"><RoundButton glyph="close" label={t('sheet.close')} onPress={() => { setExpanded(false); }} /></div>
         <img src={url} alt={t('chat.media.photo')} className="max-h-[85dvh] max-w-full rounded-control object-contain" />
       </div>
     </div>, document.body) : null}

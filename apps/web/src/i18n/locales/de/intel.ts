@@ -7,7 +7,8 @@ export const intel = {
   shelf: {
     label: 'Aufklärung',
     watch: 'Beobachtung',
-    reports: 'Berichte',
+    probes: 'Sonden',
+    battles: 'Kämpfe',
     radar: 'Radar',
   },
   rivals: {
@@ -25,9 +26,6 @@ export const intel = {
     empty: 'Noch nichts bekannt: Ein Teleskop beobachtet live, eine Sonde bringt eine Messung zurück.',
   },
   openOrbit: 'Offener Orbit',
-  tabs: {
-    label: 'Intel-Berichte',
-  },
   coverage: {
     label: '-Abdeckung',
     blind: 'Sie können nicht in einen einzelnen Planeten sehen',

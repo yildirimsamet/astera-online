@@ -768,6 +768,51 @@ Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (
 
 **G3 için ilk gözlemler:** iç içe sekmeler (raf + alt raf) tek düzeye inmeli; uyarılar ve notlar 9 px; teleskop yuvaları ile "bilinenler" aynı konuyu iki listede anlatıyor (karar notunda birleşme düşünülecek).
 
+**C7 İstihbarat sayfası ve Gözlem rafı ✅ (2026-11-14, yardımcı oturum).** G3 #1–#5. Oyuncunun sorusu şu: "Komşularım hakkında ne biliyorum, kime saldırabilirim?" Teleskop, sonda ve radar kuralları değişmedi.
+
+**İç içe sekme kalktı.** Raporlar rafının içindeki ikinci sekme çubuğu (Sondalar / Savaşlar) yok artık. Dört raf tek sıradaki kit sekmelerinde duruyor: Gözlem, Sondalar, Savaşlar, Radar. Sekmeler `GameTabs stacked`; her sekmede adın üstünde işareti var (göz, büyüteç, saldırı, siren).
+- Sekmedeki ad kısa ("Sondalar"). Okuyucu tam adı duyar ("Sonda raporları").
+- Bildirimden gelen savaş raporu doğrudan Savaşlar rafına iner.
+- `intel.shelf.probes` ve `intel.shelf.battles` 6 dilde eklendi. Kullanılmaz hâle gelen `intel.shelf.reports` ve `intel.tabs.label` silindi.
+- Japoncada Gözlem sekmesi "時計" (kol saati) yazıyordu. "監視" yapıldı.
+
+Sayfa artık kitin başlığıyla açılıyor (`kit={{ tone: 'self' }}`).
+
+Gözlem rafı:
+- **Teleskop yuvaları:** her yuva bir mercek (`.gk-lens`).
+  - Dolu mercek oyuncunun renginde parlıyor; hedefin resmi ve adı içinde.
+  - Boş mercek kesik çizgili ve yavaşça yanıp sönerek bekliyor.
+  - Sıradaki seviyede açılacak mercek kilitli; hangi seviyede açılacağı yazıyor.
+  - Not: Üs'te `.gk-socket` adı zaten kullanılıyordu. Çakışmasın diye bu malzemenin adı `gk-lens` oldu.
+- **İşaretli rakipler:** menüdeki rakip çipinin aynısı (`gk-chip gk-rival` ve 44 px'lik dokunma alanı). Bir rakip iki yerde aynı görünüyor.
+- **Bildiklerin:**
+  - Her satır C6'nın defter satırı ve bir kapı: basınca dünyanın dosyası açılıyor.
+  - Filo durumu satırda bir etiket. "Pencere 1 sa 12 dk" oyuncunun renginde bir çip.
+  - "Netlik ve yaş" kuralı yardım işaretiyle bir dokunuş derinde.
+- **Radar özeti:** basılabilir bir plaka. Son 24 saatin çizgisinde son 6 saatteki temaslar kırmızı yanıyor.
+- 9–10 px'lik bütün notlar 12–14 px'e çıktı.
+- v2 `AgeStamp` ve `ClarityMark` 11 px'ten 12 px'e çıktı. `TargetDossier` de bu değişiklikten yararlanıyor.
+
+Galeriye `intel-blind` görünümü eklendi: teleskop yok, radar yok, işaret yok, bilinen yok.
+
+Ölçüm: `reports/ui-audit/c7-intel-watch-after-2026-11-14.md`, iki yol, 28 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 136 | 10 |
+| Kontrastı yetmeyen metin | 72 | 4 |
+| 44 px altı hedef | 22 | 6 |
+| Basınca tepkisiz | 16 | 2 |
+| Kesilen metin (bütün diller) | 49 | 0 |
+
+Kalanlar:
+- 12 px altındaki 10 metin, 44 px altındaki hedefler ve tepkisiz "Yörüngeyi aç" tuşu alet kartına ait (C9).
+- Kalan küçük hedeflerin bir kısmı G1 sheet'inin 2×2 px'lik arka perdesi.
+- Kontrastı yetmeyen 4 metnin ikisi de alet kartında.
+- Diğer ikisi eski sonda raporunun yaş yazısıydı ("19 sa 00 dk önce", 3,7:1). Ölçümden sonra yaş yazısı her yaşta ikinci mürekkebe alındı; yaşı artık resmin grenli dokusu anlatıyor. Bu düzeltme yeniden ölçülmedi.
+
+Almanca metin "Sie" diye hitap ediyor ("In jedem Slot, den Sie haben"). Bu, sıradaki Almanca hitap biriminin işi.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.
@@ -929,6 +974,179 @@ Sohbet:
 | Kırpılan metin | 36 | 0 |
 
 Kalanlar mesaj balonlarının içinde ve C3'ün işi: tepki çipleri, yazar adının dünyaya uçuran bağlantısı, sezon kupası ve destekçi kalbi; uzun basışla açılan eylem çubuğu ve emoji seçici (28 px). Üç noktayla kesilen 12 metnin hepsi yanıtlanan mesajın tek satırlık alıntısı; önizleme olduğu için bilerek böyle.
+
+**C3 sohbetin köşeleri ✅ (2026-11-14, yardımcı oturum).** G8 #2 DM paneli, #3 medya ve tepkiler, #4 içerik bildir. Oyuncunun anları şunlar: bir mesaja basılı tutup ona cevap vermek, tepki bırakmak, susturmak, bildirmek ya da engellemek; birinin tepkisine bakıp kimlerin bıraktığını görmek; yazarın adına dokunup dünyasına uçmak; özel mesajda kiminle konuştuğunu seçmek, yeni birine yazmak, gerekirse engellemek. Mesaj, tepki, bildirim ve engel kuralları değişmedi.
+
+Önce kite eklenenler:
+- Üç işaret: `react` (gülen yüz), `reply` (geri dönen ok), `flag` (bildirme flaması).
+- `Choices` artık `columns={2}` alıyor; çok cevaplı bir soru iki sütuna diziliyor. Henüz cevaplanmamış bir soruda Tab ilk cevaba gidiyor; önceden klavye gruba hiç giremiyordu.
+- Malzemeler:
+  - `.gk-keystrip`: tutulan mesajın tuş şeridi.
+  - `.gk-emoji`: 44 px emoji tuşu.
+  - `.gk-react`: 28 px hap üstünde 44 px tepki tuşu.
+  - `.gk-peers` / `.gk-peer`: özel mektup plakaları.
+  - `.gk-contact`: yazılacak komutan satırı.
+  - `.gk-pop`: yanında açılan küçük panel.
+- Çok satırlı cam alan (`textarea.gk-field__input`) üstten nefes alıyor.
+
+Sohbet:
+- Basılı tutulan balon parmağın altında yavaşça çöküyor. Tuşlar açılınca balon kendi renginde yanıyor ve tuş şeridi balonun altından çıkıyor. Önceden şerit balonun yazısının üstüne biniyordu.
+- Tuşlar kitin küçük yuvarlak tuşları: tepki, sustur (ortada, sahibin kararı), yanıtla, bildir, engelle (kırmızı). Önceden 28 px ve yarısı karakterden (☺ ↩) yapılmıştı.
+- Emoji seçici altı adet 44 px tuş. Seçtiğin emoji kendi renginde basılı duruyor. Basınca bir tık ve bir titreşim geliyor.
+- Tepkiler kitin hapları. Senin tepkin kendi renginde. Basınca tepkiyi bırakanların paneli açılıyor; kapatma tuşu kitin yuvarlak tuşu, satırlar 40 px.
+- Yazar adı ve sezon kupası/destekçi kalbi 44 px tuş. Satır yüksekliği değişmedi; dokunma alanı satırın dışına taşıyor. Yazar adı dünyaya uçarken artık ses de veriyor.
+- Yanıt iptali kitin küçük yuvarlak tuşu. "Daha eski mesajlar" kitin tuşu. Yazılamayan konuşmanın nedeni kilit işaretiyle 13 px.
+
+Özel mesaj:
+- Açık konuşmalar plaka. Okunmamış sayısı kırmızı sayı. Kapatma tuşu yalnız açık olanda, 44 px. Yeni konuşma tuşu kitin yuvarlak artısı.
+- Hiç konuşma yoksa sekme satırı gizleniyor. Kitin boş durumu "Henüz özel mesaj yok" diyor ve altında "Yeni DM başlat" tuşu var; önceden yalnız bir cümle vardı.
+- Komutan arama kitin cam alanı, "Vazgeç" kitin tuşu. Komutanlar arması, adı ve mektup işaretiyle 52 px satırlar.
+- Engelleme düğmesi yazılı bir kit tuşu ("Engelle" kırmızı, "Engeli kaldır" çelik). Başlıktaki engellenenler listesinin yuvarlak tuşuyla karışmıyor. Okuyucu kimi engellediğini duyuyor. Yolda olan bir engel ikinci basışı göndermiyor.
+
+İçerik bildir:
+- İki yerli `<select>` kalktı. "Neyi bildiriyorsun?" iki plaka. Yedi neden iki sütunda.
+- Gönder tuşu neden seçilene kadar "Bir neden seç" diyor. Gönderirken dönen bir işaret gösteriyor. Makbuz kitin yeşil bandı, numarası altında. Form açıkken alttaki ikinci "Kapat" kalktı; başlıktaki kapatma yetiyor.
+
+Medya (yönetici ekler, herkes görür):
+- Ekle, Fotoğraf, Video, YouTube, Ekle/İptal/Yeniden dene kitin tuşları. Bağlantı alanı cam alan.
+- Tam ekran fotoğrafın kapatma tuşu kitin yuvarlak tuşu. Dikey/yatay geçişi kitin tuşu.
+
+Galeriye sekiz görünüm eklendi: `chat-dm`, `chat-dm-empty`, `chat-dm-new`, `chat-actions`, `chat-react`, `chat-roster`, `chat-report`, `chat-media`. Basış isteyen görünüm, varınca o basışı kendisi yapıyor. Denetimin sohbet yollarına yazıldılar; "ulaşılamayan" listesinde yalnız engellenenler ve sessize alınanlar kaldı (C4).
+
+Ölçüm: `reports/ui-audit/c3-chat-corners-after-2026-11-14.md`, dokuz yol, 126 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 28 | 2 → 0 |
+| Kontrastı yetmeyen metin | 6 | 4 |
+| 44 px altı hedef | 138 | 20 |
+| WCAG aralık hatası | 20 | 10 |
+| Basınca tepkisiz | 74 | 6 → 0 |
+| Üç noktayla kesilen metin | 79 | 89 → 79 |
+| 300 ms üstü geçiş | 0 | 64 → 0 |
+
+Ölçümden sonra dört şey düzeltildi; "→" ile gösterilenler `gallery:chat` ve `gallery:chat-actions` yolları yeniden ölçülerek (28 ölçüm) ve bir sonda ile doğrulandı:
+- Tepki panelinin başlığı 10 px'ti. Panel sohbetin dışına açıldığı için sohbetin yazı tabanı ona uygulanmıyordu; artık kitin 14 px'ini alıyor.
+- Fransızca dar ekranda yazar adı ("Mira") sıkışıp kesiliyordu. Kupa ve kalp tuşları 44 px kalıyor ama yanlarındaki boşluktan 6'şar px ödünç alıyor.
+- Yazma alanı bir etiketin içindeydi; basınca yanan kenar etikete gidiyordu. Artık alan kendi adını taşıyor.
+- Balonun çökme süresi 450 ms'ten 280 ms'ye indi.
+
+Kalanlar:
+- Kontrast: tutulan mesajın tuş şeridinin altında kalan saat yazısı.
+- 44 px altı: listenin tepesinde neredeyse görünmeyen balonun 14 px'lik ucu ve tepki panelinin altında kalan sekme. İkisi de gerçek bir küçük hedef değil.
+- Kesilen metin: yanıtlanan mesajın tek satırlık alıntısı (bilerek böyle) ile Fransızca, İspanyolca ve Japoncada sheet başlığı ("Signaler un contenu ou un joueur"). Başlık G1'in çerçevesinin işi.
+
+**C4 susturulanlar, engellenenler, topluluk kuralları ✅ (2026-11-14, yardımcı oturum).** G8 #5, #6, #7. Oyuncunun anları şunlar: kimi susturduğunu ya da engellediğini görüp geri almak; sohbette rahatsız eden birini engellemek; ilk kez yazmadan önce kuralları okuyup kabul etmek. Susturma, engel ve kural kabulü kuralları değişmedi.
+
+Önce kite eklenenler:
+- `GameButton.spoken`: tuşun okuyucuya söylenen tam adı. Yüzünde "Engeli kaldır", okuyucu "Vega'nın engelini kaldır" duyar. Aynı tuştan oluşan bir listede her tuş kimin olduğunu söyler.
+- `PersonRow` ve `crestOf` (`screens/CommunityBlocks.tsx`): bir listedeki tek komutan; arma, ad ve yapılacak tek iş. C3'teki komutan satırı da aynı armayı kullanıyor.
+- Malzemeler:
+  - `.gk-person`: listedeki komutan satırı.
+  - `.gk-note`: okunan dipnot (12 px, ikinci mürekkep).
+  - `.gk-linkchip`: oyundan dışarı çıkan bağlantı çipi (↗).
+  - `.gk-agree` ve `.gk-check`: kabul satırı ve onay kutusu. Kutu işaretlenince oyuncunun renginde yanıyor; satırın tamamı dokunma alanı.
+
+Yüzeyler:
+- **Susturulanlar ve Engellenenler:** her komutan kitin satırında, kendi tuşuyla. Liste boşsa kitin boş durumu "nasıl eklenir"i söylüyor ("Birini susturmak için mesajına basılı tut."; iki yeni anahtar ×6). Engellenenlerde alttaki ikinci "Kapat" kalktı; başlıktaki kapatma yetiyor.
+- **Oyuncuyu engelle:** "Engellemek istiyorum" kutusu ve "Engeli onayla" düğmesi tek bir kırmızı basılı tutmaya dönüştü (`GameHold`, geri alınabilir ağırlık, 0,6 sn). Basılı tutmak zaten "emin misin?" demek. Klavyede Enter, sonra yine Enter. Sonuç kitin yeşil bandı. Kullanılmaz hâle gelen `moderation.blocks.confirm` anahtarı 6 dilden silindi.
+- **Topluluk kuralları** (sohbet ve klan sohbeti): bağlantılar çip, kutu kitin kutusu. Kabul tuşu kutu işaretlenmeden "Önce kuralları kabul et" diyor (yeni anahtar ×6) ve gönderirken dönüyor. Kayıttaki "katılmak kabul etmektir" notu (G15) değişmedi.
+
+Galeriye beş görünüm eklendi: `chat-muted`, `chat-muted-empty`, `chat-blocked`, `chat-block`, `chat-policy`. Denetimin sohbet yollarına yazıldılar; sohbette ulaşılamayan yüzey kalmadı.
+
+Ölçüm: `reports/ui-audit/c4-chat-lists-after-2026-11-14.md`, beş yol, 70 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 44 | 0 |
+| Kontrastı yetmeyen metin | 2 | 0 |
+| 44 px altı hedef | 18 | 4 |
+| WCAG aralık hatası | 4 | 0 |
+| Basınca tepkisiz | 12 | 2 |
+| Kırpılan metin | 0 | 5 |
+
+Ölçümden sonra üç şey düzeltildi ve dört dilde ekran görüntüsüyle bakıldı (yeniden ölçülmedi):
+- Kırpılan 5 metin, Fransızca ve Almancada basılı tutma tuşundaki "Confirmer le blocage" idi. Tuştaki söz artık tek fiil ("Engelle", "Bloquer", "Blockieren"); sheet'in başlığı zaten "Oyuncuyu engelle" diyor.
+- Dar Türkçe ekranda susturulanlardaki "Kael Draven" kesiliyordu. Ad artık kesilmiyor, gerekirse ikinci satıra iniyor.
+- Tepkisiz 2 hedef, kabul satırıydı. Satır basınca hafifçe aydınlanıyor.
+
+Kalan 4 küçük hedef, sheet'in arkasında kalan sohbetin yarım görünen yazar adı. Yeni bir küçük hedef değil.
+
+**C5 duyurular ve geri bildirim ✅ (2026-11-14, yardımcı oturum).** G8 #8 ve #9. Oyuncunun iki anı var. Birincisi ekipten yeni bir söz gelince onu ilk bakışta ayırmak. İkincisi ekibe bir şey yazmak ve gittiğini görmek. Duyuru okundu işareti ve geri bildirim gönderme kuralları (en az 3 harf, 2000 sınırı) değişmedi.
+
+Önce kite eklenenler:
+- `.gk-notice`: duyuru plakası. Yeni bir duyuru plakanın kenarında oyuncunun rengiyle yanar.
+- `.gk-newtag`: yavaş parlayan "YENİ" etiketi. Duyuru okundu sayılsa da bu ziyaret boyunca yanık kalır. Oyuncu açtığı anda neyin yeni olduğunu kaybetmez.
+
+Yüzeyler:
+- **Duyurular:**
+  - Her duyuru bir plaka. Başlık 16 px, metin 14 px ve ikinci mürekkepte (eskisi 13 px, soluk).
+  - Boş sayfa kitin boş durumunu kullanıyor. Başlığı "Henüz duyuru yok", altında "Ekibin kısa notları ve güncellemeleri burada görünecek." Bunun için yeni `emptyTitle` anahtarı eklendi ve `empty` ikinci cümlesine indi; 6 dilde.
+- **Geri bildirim:**
+  - Tür seçimi kitin plakalarında (`Choices`); eski `Segmented` kalktı.
+  - Mesaj kitin cam alanında.
+  - Kalan karakter sayısı okunur bir dipnot.
+  - Gönder tuşu eksik olanı kendisi söylüyor: "En az 3 harf yaz" (yeni `tooShort` anahtarı ×6). Gönderirken dönüyor.
+  - Gönderim sonrası kitin yeşil bandı çıkıyor.
+
+Galeriye üç görünüm eklendi: `announcements`, `announcements-empty`, `feedback`. Denetimin yollarına yazıldılar.
+
+Ölçüm: `reports/ui-audit/c5-community-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 14 | 0 |
+| Kontrastı yetmeyen metin | 4 | 0 |
+| 44 px altı hedef | 6 | 0 |
+| Basınca tepkisiz | 5 | 0 |
+| Kesilen / kırpılan metin | 0 | 0 |
+| 300 ms üstü geçiş | 0 | 0 |
+
+Ekran görüntüleri dört dilde çekildi. Almancada gönder tuşu iki satıra iniyordu; söz "Mindestens 3 Zeichen" diye kısaltıldı. Japoncada boş sayfa cümlesinin son hecesi tek başına alt satıra düşüyordu; cümle kısaltıldı. Bu iki düzeltme ölçümden önce yapıldı.
+
+**C6 Bildirim Merkezi ✅ (2026-11-14, yardımcı oturum).** G8 #10. Oyuncunun sorusu şu: "Saldırı gelirse haberim olur mu, bu bana kaça mal olur?" Sheet bu soruyu yukarıdan aşağıya cevaplıyor. Önce kasa ve kaç uyarıya yettiği geliyor, sonra zamanlama ve fiyatı, sonra hangi uyarıların açık olduğu. Uyarı fiyatları, kasa kuralı ve gönderim kuralları değişmedi.
+
+Kite eklenenler (malzeme):
+- `.gk-wallet`: kasa plakası. Kasa en az bir uyarıyı ödüyorsa oyuncunun renginde, ödemiyorsa amber.
+- `.gk-rate`: zamanlama kadranı. Her satırda bir lamba ve o zamanlamada bir uyarının fiyatı var.
+- `.gk-ledger`: sabit bir defter satırı (işaret, ad, alt satır, yan değer). Kurulmadan önceki üç ücretli tür ve son uyarılar bunu kullanıyor.
+- `.gk-switches`: bir plakada toplanmış anahtarlar.
+- `.gk-rules`: kuralları açan satır.
+- `.gk-deut`: döteryum ve miktar.
+- `.gk-center__*`: soru, uyarı ve geri alınamaz satırı.
+
+Yüzey:
+- Sheet artık kitin başlığında açılıyor; başlıkta vericinin resmi duruyor.
+- 9–10 px yazıların hepsi 12–14 px'e çıktı.
+- **Kur ve aktar artık basılı tutma.** Kitin "harcar" ağırlığı kullanılıyor (`GameHold`, 1 sn). G2-d'deki onarım da aynı ağırlığı kullanıyor.
+  - Aktarmanın eski onay penceresi kalktı. "Kasadaki döteryum geri aktarılamaz" cümlesi artık kilit işaretiyle tuşun üstünde, harcamadan önce görünüyor.
+  - Tuş eksik olanı kendisi söylüyor. Kurarken "Kaynak yetmiyor". Aktarırken "Tam bir miktar yaz" ya da "Depoda bu kadar yok".
+  - Kullanılmaz hâle gelen dört anahtar 6 dilden silindi: `confirmTitle`, `confirm`, `back`, `walletAfter`.
+- `buildShort` artık yalnız ne yapılacağını söylüyor: "Başka bir dünya seç ya da kaynak birikmesini bekle."
+- Yeni anahtarlar, her biri 6 dilde: `buildShortReason`, `amountFirst`, `amountOver`.
+- `local.section` "Sipariş hatırlatmaları" diye kısaldı. Üç kelimeden uzun, büyük harfli küçük başlık olmasın diye.
+- **Zamanlama:** dört lambalı satır, her birinde uyarı başına fiyat.
+- **Ücretli türler:** kitin anahtarı. Satırda türün işareti, adı ve fiyatı var.
+- **Telefon izni ve geç uyarı kartları:** kitin amber bandı ve altında kitin turuncu tuşu.
+- **Bekleyen ayar:** bir ayar sunucuya giderken ikinci dokunuş yok sayılıyor. Böylece iki hızlı dokunuş birbirini silemez. Yeni bir testle kontrol ediliyor.
+
+Ölçüm: `reports/ui-audit/c6-notification-center-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 156 | 0 |
+| Kontrastı yetmeyen metin | 52 | 4 |
+| 44 px altı hedef | 12 | 4 |
+| Basınca tepkisiz | 13 | 2 |
+| Kesilen / kırpılan metin | 0 | 0 |
+
+Kalanların hepsi G1'in sheet çerçevesine ait:
+- Kontrast: kit başlığında, atmosfer resmi üstündeki göz başlığı ("Telefon uyarıları", 4,3:1).
+- Küçük hedef ve tepkisiz hedef: tam ekran diyalogda neredeyse görünmeyen 2×2 px'lik arka perde düğmesi.
+
+Ekran görüntüleri dört dilde çekildi: üst, orta, kurallar açık alt, kurulmamış merkez, geç uyarı. Ölçümden önce iki şey düzeltildi:
+- Almancada son uyarılar satırındaki ad üç noktayla kesiliyordu. Ad artık kesilmiyor, alt satıra iniyor.
+- Almancada geç uyarı tuşu iki satıra iniyordu. Söz "Pünktlich zustellen" diye kısaltıldı.
 
 ## G9. Sıralama, sezon, anıtlar
 

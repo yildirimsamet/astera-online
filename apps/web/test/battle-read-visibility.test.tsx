@@ -35,7 +35,7 @@ it('leaves a battle unread in Watch and the probe shelf, then reads the shown ba
   const f = setup();
   render(<QueryClientProvider client={f.client}><ApiProvider api={f.api}><IntelScreen /></ApiProvider></QueryClientProvider>);
   expect(f.marked).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('tab', { name: 'Reports' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Probe reports' }));
   expect(f.marked).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('tab', { name: /Battle reports/i }));
   await waitFor(() => { expect(f.marked).toHaveBeenCalledWith([notificationId]); });

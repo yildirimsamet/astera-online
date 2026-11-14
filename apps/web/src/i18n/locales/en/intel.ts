@@ -7,7 +7,8 @@ export const intel = {
   shelf: {
     label: 'Intel',
     watch: 'Watch',
-    reports: 'Reports',
+    probes: 'Probes',
+    battles: 'Battles',
     radar: 'Radar',
   },
   rivals: {
@@ -25,9 +26,6 @@ export const intel = {
     empty: 'Nothing known yet: a Telescope watches live, a probe brings back one reading.',
   },
   openOrbit: 'Open Orbit',
-  tabs: {
-    label: 'Intel reports',
-  },
   coverage: {
     label: 'Coverage',
     blind: 'You cannot see into a single planet',
