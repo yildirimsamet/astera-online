@@ -25,14 +25,14 @@ import { compact, full, percent } from '../lib/format.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { heroArt } from '../starter/shipScreen.js';
+import { GameTabs, Glyph, SectionTag, type TabItem } from '../game-ui/index.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
-import { Icon } from '../v2/icons.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../v2/kit/Freshness.js';
-import { Segmented } from '../v2/kit/Segmented.js';
 import { SignalBars } from '../v2/kit/SignalBars.js';
 import { BattleReports, type ReportDoors } from './BattleReports.jsx';
 
@@ -47,15 +47,18 @@ import { BattleReports, type ReportDoors } from './BattleReports.jsx';
  *     known: a live reading wears its clarity (bars), a probe reading its age (grain,
  *     "4h ago") — the two never share a mark (K11). An away fleet is an opportunity,
  *     so it gets a window chip with the time it has.
- *   · REPORTS — the probe and battle lists this screen always had.
+ *   · PROBES and BATTLES — the two report lists this screen always had.
  *   · RADAR — who is looking at ME: the reach, the day's scans on a line, the log.
+ *
+ * ONE ROW OF FOUR (C7, 2026-11-14): the two report lists were a second tab bar inside a
+ * "Reports" shelf; they are shelves of their own now, on the kit's stacked tabs, so every
+ * list is one tap from any other.
  *
  * Empty states stay the most valuable real estate in the game: each names the
  * instrument that would fill it and what it would tell the player.
  */
 
-type Shelf = 'watch' | 'reports' | 'radar';
-type Stop = 'probes' | 'battles';
+type Shelf = 'watch' | 'probes' | 'battles' | 'radar';
 
 /** A marked rival as the menu resolves it (`rivalMenuRows`): the commander, found on the disc. */
 export interface RivalRow {
@@ -101,7 +104,7 @@ export function IntelScreen({
    * is a counter rather than a boolean so a second notification still lands after the
    * reader has moved off the shelf the first one opened.
    */
-  open?: { stop: Stop; request: number; reportMissionId?: string };
+  open?: { stop: Shelf; request: number; reportMissionId?: string };
   /** The rivals marked on the galaxy, resolved against the disc. */
   rivals?: readonly RivalRow[];
   /** Takes the player to a marked rival on the galaxy. */
@@ -114,16 +117,14 @@ export function IntelScreen({
   const planet = usePlanet();
   const galaxy = useGalaxy();
   const now = useNow(30_000);
-  const [shelf, setShelf] = useState<Shelf>(open ? 'reports' : 'watch');
-  const [stop, setStop] = useState<Stop>(open?.stop ?? 'probes');
+  const [shelf, setShelf] = useState<Shelf>(open?.stop ?? 'watch');
   const requestedStop = open?.stop;
   const request = open?.request;
-  useReadReportSignals(shelf === 'reports' && stop === 'probes' && !intel.isError && intel.data !== undefined,
+  useReadReportSignals(shelf === 'probes' && !intel.isError && intel.data !== undefined,
     (intel.data?.probeReports ?? []).flatMap(report => report.missionId ? [report.missionId] : []));
   useEffect(() => {
     if (!requestedStop) return;
-    setShelf('reports');
-    setStop(requestedStop);
+    setShelf(requestedStop);
   }, [requestedStop, request]);
 
   // An error leaves `data` undefined but is not a load in progress, and a pulse over a
@@ -161,23 +162,27 @@ export function IntelScreen({
    */
   const anyRadar = radar > 0 || (galaxy.data?.sensors ?? []).some((post) => post.detect > 0);
 
+  const shelves: readonly TabItem<Shelf>[] = [
+    { id: 'watch', label: t('intel.shelf.watch'), glyph: { id: 'eye' } },
+    { id: 'probes', label: t('intel.shelf.probes'), spoken: t('intel.probes.heading'), glyph: { id: 'zoom' } },
+    { id: 'battles', label: t('intel.shelf.battles'), spoken: t('reports.heading'), glyph: { id: 'attack' } },
+    { id: 'radar', label: t('intel.shelf.radar'), glyph: { id: 'siren' } },
+  ];
+
   return (
     <GameActions>
-      <div className="flex flex-col gap-3 px-3 py-3 font-v2-ui">
-        <Segmented
+      <div className="gk gk-intel">
+        <GameTabs
+          stacked
           label={t('intel.shelf.label')}
-          options={[
-            { id: 'watch', label: t('intel.shelf.watch') },
-            { id: 'reports', label: t('intel.shelf.reports') },
-            { id: 'radar', label: t('intel.shelf.radar') },
-          ]}
+          tabs={shelves}
           value={shelf}
           onChange={setShelf}
-          tabId={(id) => `intel-shelf-${id}`}
+          ids={{ tab: (id) => `intel-shelf-${id}`, panel: (id) => `intel-panel-${id}` }}
         />
 
         {shelf === 'watch' && (
-          <div role="tabpanel" aria-labelledby="intel-shelf-watch" className="flex flex-col gap-3">
+          <div role="tabpanel" id="intel-panel-watch" aria-labelledby="intel-shelf-watch" className="gk-intel__shelf">
             <TelescopeShelf
               telescope={telescope}
               slots={slots}
@@ -201,64 +206,44 @@ export function IntelScreen({
           </div>
         )}
 
-        {shelf === 'reports' && (
-          <div role="tabpanel" aria-labelledby="intel-shelf-reports" className="flex flex-col gap-3">
-            <Segmented
-              label={t('intel.tabs.label')}
-              options={[
-                { id: 'probes', label: t('intel.probes.heading') },
-                { id: 'battles', label: t('reports.heading') },
-              ]}
-              value={stop}
-              onChange={setStop}
-              tabId={(id) => `intel-tab-${id}`}
+        {shelf === 'probes' && (
+          <div role="tabpanel" id="intel-panel-probes" aria-labelledby="intel-shelf-probes" className="gk-intel__shelf">
+            <ProbeShelf
+              probes={probeReports}
+              now={now}
+              yours={planet.data ? yardstickOf(planet.data) : null}
+              aboard={aboard}
+              hunt={aboard && planet.data ? {
+                carry: fleetCargo(planet.data.fleet, flightModifiers(planet.data).tech),
+                own: dominantClass(planet.data.fleet),
+                crate: planet.data.vessel ? sealedVictoryCrate(planet.data.vessel) : null,
+              } : null}
+              {...(onOpenDossier ? { onOpenDossier } : {})}
             />
-            <div role="tabpanel" aria-labelledby="intel-tab-probes" hidden={stop !== 'probes'}>
-              <ProbeShelf
-                probes={probeReports}
-                now={now}
-                yours={planet.data ? yardstickOf(planet.data) : null}
-                aboard={aboard}
-                hunt={aboard && planet.data ? {
-                  carry: fleetCargo(planet.data.fleet, flightModifiers(planet.data).tech),
-                  own: dominantClass(planet.data.fleet),
-                  crate: planet.data.vessel ? sealedVictoryCrate(planet.data.vessel) : null,
-                } : null}
-                {...(onOpenDossier ? { onOpenDossier } : {})}
-              />
-            </div>
-            <div role="tabpanel" aria-labelledby="intel-tab-battles" hidden={stop !== 'battles'}>
-              <BattleReports
-                visible={stop === 'battles'}
-                {...(open?.reportMissionId
-                  ? { open: { missionId: open.reportMissionId, request: open.request } }
-                  : {})}
-                /* A report's "Attack again" is the raided world's dossier (E6), as from a notification. */
-                {...(onOpenDossier ? { onAttackAgain: onOpenDossier } : {})}
-                {...doors}
-              />
-            </div>
+          </div>
+        )}
+
+        {shelf === 'battles' && (
+          <div role="tabpanel" id="intel-panel-battles" aria-labelledby="intel-shelf-battles" className="gk-intel__shelf">
+            <BattleReports
+              visible
+              {...(open?.reportMissionId
+                ? { open: { missionId: open.reportMissionId, request: open.request } }
+                : {})}
+              /* A report's "Attack again" is the raided world's dossier (E6), as from a notification. */
+              {...(onOpenDossier ? { onAttackAgain: onOpenDossier } : {})}
+              {...doors}
+            />
           </div>
         )}
 
         {shelf === 'radar' && (
-          <div role="tabpanel" aria-labelledby="intel-shelf-radar" className="flex flex-col gap-3">
+          <div role="tabpanel" id="intel-panel-radar" aria-labelledby="intel-shelf-radar" className="gk-intel__shelf">
             <RadarShelf aboard={aboard} radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})} />
           </div>
         )}
       </div>
     </GameActions>
-  );
-}
-
-/** A heading with its rule and, on the right, a count or a door. */
-function Band({ label, aside }: { label: string; aside?: ReactNode }) {
-  return (
-    <p className={`flex items-center gap-2 ${HEADING}`}>
-      {label}
-      <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
-      {aside}
-    </p>
   );
 }
 
@@ -294,11 +279,10 @@ function TelescopeShelf({
   const next = slots > 0 && telescopeSlots(telescope + 1) > slots ? telescope + 1 : null;
 
   return (
-    <section className="flex flex-col gap-2">
-      <Band
-        label={t('intel.watching.heading')}
-        aside={slots > 0 ? <span className="font-v2-mono normal-case tracking-normal">{`${String(seen)}/${String(slots)}`}</span> : undefined}
-      />
+    <section className="gk-intel__part">
+      <SectionTag aside={slots > 0 ? <span className="gk-num">{`${String(seen)}/${String(slots)}`}</span> : undefined}>
+        {t('intel.watching.heading')}
+      </SectionTag>
       {telescope === 0 ? (
         <Instrument
           kind="telescope"
@@ -309,62 +293,48 @@ function TelescopeShelf({
           {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t(aboard ? 'starter.intel.openShip' : 'intel.openOrbit') } : {})}
         />
       ) : (
-        <div data-telescope-rack className="grid grid-cols-4 gap-1.5">
+        <div data-telescope-rack className="gk-lenses">
           {Array.from({ length: slots }, (_, slot) => {
             const watch = mine.find((item) => item.slot === slot);
             const label = t('intel.watching.slotLabel', { slot: slot + 1 });
             return watch ? (
-              <div
-                key={slot}
-                data-slot={slot + 1}
-                title={label}
-                className={`flex min-w-0 flex-col items-center gap-1 px-1 py-1.5 ${CARD}`}
-              >
-                <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={watch.reading.state} className="size-8" />
-                <span className="w-full truncate text-center text-micro text-v2-ink">{watch.targetName}</span>
+              <div key={slot} data-slot={slot + 1} data-filled="" title={label} className="gk-lens">
+                <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={watch.reading.state} className="size-9" />
+                <span className="gk-lens__name">{watch.targetName}</span>
               </div>
             ) : (
-              <div
-                key={slot}
-                data-slot={slot + 1}
-                title={label}
-                className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-dashed border-v2-line-hi px-1 py-1.5 text-v2-ink-3"
-              >
-                <span aria-hidden="true" className="grid size-8 place-items-center text-body">+</span>
-                <span className="w-full truncate text-center text-micro">{t('intel.watching.slotEmpty')}</span>
+              <div key={slot} data-slot={slot + 1} data-idle="" title={label} className="gk-lens">
+                <span aria-hidden="true" className="gk-lens__mark"><Glyph id="plus" /></span>
+                <span className="gk-lens__name">{t('intel.watching.slotEmpty')}</span>
               </div>
             );
           })}
           {next !== null && (
-            <div
-              data-slot-next
-              title={t(aboard ? 'starter.intel.oneMore' : 'intel.coverage.oneMore', { level: next })}
-              className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-v2-line px-1 py-1.5 text-v2-ink-3 opacity-70"
-            >
-              <span className="grid size-8 place-items-center"><Icon id="i-lock" className="size-4" /></span>
-              <span className="w-full truncate text-center text-micro">{t(aboard ? 'starter.intel.nextSlot' : 'intel.watching.nextSlot', { level: next })}</span>
+            <div data-slot-next data-locked="" title={t(aboard ? 'starter.intel.oneMore' : 'intel.coverage.oneMore', { level: next })} className="gk-lens">
+              <span aria-hidden="true" className="gk-lens__mark"><Glyph id="lock" /></span>
+              <span className="gk-lens__name">{t(aboard ? 'starter.intel.nextSlot' : 'intel.watching.nextSlot', { level: next })}</span>
             </div>
           )}
         </div>
       )}
-      <div className="flex flex-col gap-0.5">
-        <p className="text-caption text-v2-ink">
+      <div className="grid gap-1">
+        <p className="gk-intel__lead">
           {slots === 0
             ? t(aboard ? 'starter.intel.blind' : 'intel.coverage.blind')
             : idle > 0
               ? t('intel.coverage.partial', { seen, count: slots })
               : t('intel.coverage.full')}
         </p>
-        <p className="text-micro leading-snug text-v2-ink-3">
+        <p className="gk-note">
           {slots === 0
             ? t('intel.coverage.blindHint')
             : idle > 0
               ? t(aboard ? 'starter.intel.idleHint' : 'intel.coverage.idleHint', { count: idle })
               : t(aboard ? 'starter.intel.scarcity' : 'intel.coverage.scarcity', { neighbours, count: slots })}
         </p>
-        {radar === 0 && <p className="text-micro leading-snug text-v2-warn">{t('intel.coverage.noRadar')}</p>}
+        {radar === 0 && <p className="gk-intel__warn">{t('intel.coverage.noRadar')}</p>}
         {mine.some((w) => w.reading.state === 'INTERMITTENT') && (
-          <p className="text-micro leading-snug text-v2-ink-3">{t('intel.watching.intermittent')}</p>
+          <p className="gk-note">{t('intel.watching.intermittent')}</p>
         )}
       </div>
     </section>
@@ -379,38 +349,43 @@ function TelescopeShelf({
 function Rivals({ rivals, onFocusRival }: { rivals: readonly RivalRow[]; onFocusRival?: (planetId: string) => void }) {
   const { t } = useTranslation();
   return (
-    <section data-rivals className="flex flex-col gap-2">
-      <Band
-        label={t('intel.rivals.heading')}
-        aside={<span className="font-v2-mono normal-case tracking-normal">{`${String(rivals.length)} / ${String(RIVAL.max)}`}</span>}
-      />
+    <section data-rivals className="gk-intel__part">
+      <SectionTag aside={<span className="gk-num">{`${String(rivals.length)} / ${String(RIVAL.max)}`}</span>}>
+        {t('intel.rivals.heading')}
+      </SectionTag>
       {rivals.length === 0 ? (
-        <p className="text-micro leading-snug text-v2-ink-3">{t('intel.rivals.none')}</p>
+        <p className="gk-note">{t('intel.rivals.none')}</p>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {rivals.map((rival) => {
-            const colour: CSSProperties = { color: rivalColour(rival.slot), borderColor: rivalColour(rival.slot) };
-            const text = `${String(rival.slot + 1)} · ${rival.lost ? t('intel.rivals.lost') : rival.owner || rival.name}`;
-            return rival.lost || !onFocusRival ? (
-              <span key={rival.slot} className="rounded-chip border px-2 py-1 text-micro font-semibold opacity-60" style={colour}>
-                {text}
-              </span>
-            ) : (
-              <button
-                key={rival.slot}
-                type="button"
-                onClick={() => { onFocusRival(rival.planetId); }}
-                className="rounded-chip border px-2 py-1 text-micro font-semibold"
-                style={colour}
-              >
-                {text}
-              </button>
-            );
-          })}
+        <div className="gk-rivals">
+          {rivals.map((rival) => (
+            <RivalMark
+              key={rival.slot}
+              rival={rival}
+              text={`${String(rival.slot + 1)} · ${rival.lost ? t('intel.rivals.lost') : rival.owner || rival.name}`}
+              {...(rival.lost || !onFocusRival ? {} : { onPress: () => { onFocusRival(rival.planetId); } })}
+            />
+          ))}
         </div>
       )}
     </section>
   );
+}
+
+/**
+ * One mark on the menu's own rival chip (G1-f2), so a rival looks the same in both places:
+ * a door to them, or just a name when there is nowhere to go.
+ */
+function RivalMark({ rival, text, onPress }: { rival: RivalRow; text: string; onPress?: () => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress?.(); });
+  const chip = (
+    <span className="gk-chip gk-rival" {...(onPress ? {} : { 'data-lost': '' })}>
+      <span aria-hidden="true" className="gk-rival__dot" style={{ backgroundColor: rivalColour(rival.slot) }} />
+      <span className="min-w-0 truncate">{text}</span>
+    </span>
+  );
+  return onPress ? (
+    <button type="button" className="gk-hit max-w-full" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>{chip}</button>
+  ) : chip;
 }
 
 /**
@@ -424,6 +399,7 @@ function Known({ watching, probes, now, aboard, onFocusPlanet }: {
 }) {
   const { t } = useTranslation();
   const [legend, setLegend] = useState(false);
+  const how = useOwnPress(() => { playSound('tap'); haptic('tap'); setLegend((shown) => !shown); });
   const watched = new Set(watching.map((w) => w.targetPlanetId));
   const read = new Set<string>();
   const probed = probes.filter((report) => {
@@ -433,25 +409,22 @@ function Known({ watching, probes, now, aboard, onFocusPlanet }: {
   });
 
   return (
-    <section className="flex flex-col gap-1.5">
-      <Band
-        label={t('intel.known.heading')}
+    <section className="gk-intel__part">
+      <SectionTag
         aside={(
-          <button
-            type="button"
-            aria-expanded={legend}
-            onClick={() => { setLegend((shown) => !shown); }}
-            className="normal-case tracking-normal text-v2-self"
-          >
-            {t('intel.known.legendToggle')} ›
+          <button type="button" aria-expanded={legend} className="gk-intel__how" {...OWN_SOUND} onPointerDown={how.onPointerDown} onClick={how.onClick}>
+            <Glyph id="help" />
+            {t('intel.known.legendToggle')}
           </button>
         )}
-      />
-      {legend && <p data-known-legend className="text-micro leading-snug text-v2-ink-2">{t('intel.known.legend')}</p>}
+      >
+        {t('intel.known.heading')}
+      </SectionTag>
+      {legend && <p data-known-legend className="gk-well gk-intel__legend">{t('intel.known.legend')}</p>}
       {watching.length === 0 && probed.length === 0 ? (
-        <p className="text-micro leading-snug text-v2-ink-3">{t('intel.known.empty')}</p>
+        <p className="gk-note">{t('intel.known.empty')}</p>
       ) : (
-        <ul data-known-list className="divide-y divide-v2-line">
+        <ul data-known-list className="gk-ledger">
           {watching.map((watch) => <KnownWatch aboard={aboard} key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} onFocusPlanet={onFocusPlanet} />)}
           {probed.map((report) => (
             <KnownProbe aboard={aboard} key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} onFocusPlanet={onFocusPlanet} />
@@ -462,61 +435,72 @@ function Known({ watching, probes, now, aboard, onFocusPlanet }: {
   );
 }
 
+/** A known world's row: the whole row opens its dossier on the galaxy. */
+function KnownRow({ planetId, onFocusPlanet, children }: { planetId: string; onFocusPlanet?: (planetId: string) => void; children: ReactNode }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocusPlanet?.(planetId); });
+  return (
+    <button type="button" disabled={!onFocusPlanet} className="gk-ledger__row" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      {children}
+    </button>
+  );
+}
+
 function KnownWatch({ watch, aboard, onFocusPlanet }: { watch: Watch; aboard: boolean; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   const { status, state, staleMinutes, etaMinutes } = watch.reading;
   // E7: an away fleet is the opportunity, and its window is timed only when the reading says so.
   const window = status === 'AWAY' && etaMinutes !== null;
   return (
-    <li data-known="watch"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(watch.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
-      <AgedThumb src={targetArt(watch.targetPlanetId, aboard)} alt="" clarity={state} />
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5">
-          <span className="truncate text-caption font-semibold text-v2-ink">{watch.ownerName}</span>
-          <span className={`shrink-0 text-micro uppercase tracking-wide ${status === 'AWAY' ? 'text-v2-self' : 'text-v2-ink-2'}`}>
-            {t(FLEET_WORD[status])}
+    <li data-known="watch">
+      <KnownRow planetId={watch.targetPlanetId} {...(onFocusPlanet ? { onFocusPlanet } : {})}>
+        <AgedThumb src={targetArt(watch.targetPlanetId, aboard)} alt="" clarity={state} />
+        <span className="gk-ledger__words">
+          <span className="gk-ledger__title">
+            {watch.ownerName}
+            <span className="gk-intel__fleet" {...(status === 'AWAY' ? { 'data-away': '' } : {})}>{t(FLEET_WORD[status])}</span>
           </span>
-        </p>
-        <p className="truncate text-micro text-v2-ink-3">
-          {watch.targetName} · {t('intel.known.telescope')} · {staleness(staleMinutes)}
-        </p>
-      </div>
-      {window ? (
-        <span data-window className="shrink-0 rounded-chip border border-v2-self/60 bg-v2-self/10 px-2 py-0.5 text-micro font-semibold text-v2-self">
-          {t('intel.known.window', { duration: duration(etaMinutes) })}
+          <span className="gk-ledger__sub">{watch.targetName} · {t('intel.known.telescope')} · {staleness(staleMinutes)}</span>
         </span>
-      ) : (
-        <ClarityMark state={state} />
-      )}
-    </button></li>
+        <span className="gk-ledger__side">
+          {window ? (
+            <span data-window className="gk-intel__window">{t('intel.known.window', { duration: duration(etaMinutes) })}</span>
+          ) : (
+            <ClarityMark state={state} />
+          )}
+        </span>
+      </KnownRow>
+    </li>
   );
 }
 
 function KnownProbe({ report, minutes, aboard, onFocusPlanet }: { report: Probe; minutes: number; aboard: boolean; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   return (
-    <li data-known="probe"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(report.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
-      <AgedThumb src={targetArt(report.targetPlanetId, aboard)} alt="" ageMinutes={minutes} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</p>
-        <p className="truncate text-micro text-v2-ink-3">
-          {report.targetName !== report.targetUsername && `${report.targetName} · `}{t('intel.known.probe')} · {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
-        </p>
-      </div>
-      <AgeStamp minutes={minutes} />
-    </button></li>
+    <li data-known="probe">
+      <KnownRow planetId={report.targetPlanetId} {...(onFocusPlanet ? { onFocusPlanet } : {})}>
+        <AgedThumb src={targetArt(report.targetPlanetId, aboard)} alt="" ageMinutes={minutes} />
+        <span className="gk-ledger__words">
+          <span className="gk-ledger__title">{report.targetUsername}</span>
+          <span className="gk-ledger__sub">
+            {report.targetName !== report.targetUsername && `${report.targetName} · `}{t('intel.known.probe')} · {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
+          </span>
+        </span>
+        <span className="gk-ledger__side"><AgeStamp minutes={minutes} /></span>
+      </KnownRow>
+    </li>
   );
 }
 
 /** The radar, glanced from the watch shelf: the day's contacts on a line, one tap to the log. */
 function RadarGlance({ scans, now, onOpen }: { scans: readonly Scan[]; now: number; onOpen: () => void }) {
   const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
   const today = scans.filter((scan) => now - scan.at.getTime() <= 24 * HOUR).length;
   return (
-    <button type="button" data-radar-glance onClick={onOpen} className={`flex flex-col gap-1.5 px-3 py-2.5 text-left ${CARD}`}>
-      <span className="flex items-center justify-between gap-2">
-        <span className={HEADING}>{t('intel.radar.glance')}</span>
-        <span className="text-micro text-v2-ink-2">{t('intel.radar.contacts', { count: today })} ›</span>
+    <button type="button" data-radar-glance className="gk-glance" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-glance__head">
+        <span className="gk-glance__title">{t('intel.radar.glance')}</span>
+        <span className="gk-glance__count">{t('intel.radar.contacts', { count: today })}<Glyph id="next" /></span>
       </span>
       <DayLine scans={scans} now={now} />
     </button>
@@ -532,21 +516,21 @@ function DayLine({ scans, now }: { scans: readonly Scan[]; now: number }) {
   const { t } = useTranslation();
   const start = now - 24 * HOUR;
   return (
-    <span className="flex flex-col gap-0.5">
-      <span aria-hidden="true" className="relative block h-5">
-        <span className="absolute inset-x-0 top-1/2 h-px bg-v2-line-hi" />
+    <span className="gk-dayline">
+      <span aria-hidden="true" className="gk-dayline__track">
         {scans
           .filter((scan) => scan.at.getTime() >= start && scan.at.getTime() <= now)
           .map((scan) => (
             <span
               key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`}
               data-scan-tick=""
-              className={`absolute top-0.5 h-4 w-0.5 -translate-x-1/2 rounded-full ${fresh(scan, now) ? 'bg-v2-hostile' : 'bg-v2-ink-3'}`}
+              {...(fresh(scan, now) ? { 'data-fresh': '' } : {})}
+              className="gk-dayline__tick"
               style={{ left: `${String(((scan.at.getTime() - start) / (24 * HOUR)) * 100)}%` }}
             />
           ))}
       </span>
-      <span className="flex justify-between font-v2-mono text-micro text-v2-ink-3">
+      <span className="gk-dayline__ends gk-num">
         <span>{t('intel.radar.dayAgo')}</span>
         <span>{t('intel.radar.now')}</span>
       </span>

@@ -58,7 +58,7 @@ export function ClarityMark({ state }: { state: ClarityState }) {
           />
         ))}
       </span>
-      <span className="font-v2-mono text-label text-v2-ink-2">{word}</span>
+      <span className="font-v2-mono text-body text-v2-ink-2">{word}</span>
     </span>
   );
 }
@@ -67,9 +67,8 @@ export function ClarityMark({ state }: { state: ClarityState }) {
 export function AgeStamp({ minutes }: { minutes: number }) {
   // `staleness` reads i18n directly; subscribing here re-words the stamp when the language changes.
   useTranslation();
-  const tier = ageTier(minutes);
-  const tone = tier === 'fresh' || tier === 'aging' ? 'text-v2-ink-2' : 'text-v2-ink-3';
-  return <span data-age={tier} className={`font-v2-mono text-label ${tone}`}>{staleness(minutes)}</span>;
+  // One readable tone at every age (C7): the picture's grain says how old, the words must stay legible.
+  return <span data-age={ageTier(minutes)} className="font-v2-mono text-body text-v2-ink-2">{staleness(minutes)}</span>;
 }
 
 export interface AgedThumbProps {

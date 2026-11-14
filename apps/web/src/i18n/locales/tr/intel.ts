@@ -11,7 +11,8 @@ export const intel = {
   shelf: {
     label: 'İstihbarat',
     watch: 'Gözlem',
-    reports: 'Raporlar',
+    probes: 'Sondalar',
+    battles: 'Savaşlar',
     radar: 'Radar',
   },
   rivals: {
@@ -29,9 +30,6 @@ export const intel = {
     empty: 'Henüz bir şey bilmiyorsun: teleskop canlı izler, sonda tek bir okuma getirir.',
   },
   openOrbit: 'Yörüngeyi aç',
-  tabs: {
-    label: 'İstihbarat raporları',
-  },
   coverage: {
     label: 'Kapsama',
     blind: 'Tek bir gezegenin bile içini göremiyorsun',

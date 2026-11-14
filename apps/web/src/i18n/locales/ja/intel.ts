@@ -6,8 +6,9 @@
 export const intel = {
   shelf: {
     label: "情報",
-    watch: "時計",
-    reports: "レポート",
+    watch: "監視",
+    probes: "探査機",
+    battles: "戦闘",
     radar: "レーダー",
   },
   rivals: {
@@ -25,9 +26,6 @@ export const intel = {
     empty: "まだ何も知られていません: 望遠鏡 はライブを監視し、プローブは 1 つの読み取り値を返します。",
   },
   openOrbit: "オープンオービット",
-  tabs: {
-    label: "情報のレポート",
-  },
   coverage: {
     label: "カバレッジ",
     blind: "単一の惑星を見ることはできません",

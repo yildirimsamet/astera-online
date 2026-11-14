@@ -166,7 +166,7 @@ const show = (opts: {
   );
 };
 
-const shelf = async (name: 'Watch' | 'Reports' | 'Radar') => {
+const shelf = async (name: 'Watch' | 'Probe reports' | 'Battle reports' | 'Radar') => {
   await userEvent.click(screen.getByRole('tab', { name }));
 };
 const rack = (): HTMLElement => document.querySelector<HTMLElement>('[data-telescope-rack]')!;
@@ -183,8 +183,19 @@ describe('three shelves', () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
     expect(screen.getByRole('tablist', { name: 'Intel' })).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Watch' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Probe reports' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByRole('tab', { name: 'Radar' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  /** C7: one row of four shelves on the kit's stacked tabs — no second tab bar inside a shelf. */
+  it('puts every shelf on one kit tab row, each with its mark over a short name', () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    expect(screen.getAllByRole('tablist')).toHaveLength(1);
+    const row = screen.getByRole('tablist', { name: 'Intel' });
+    expect(row).toHaveClass('gk-tabs', 'gk-tabs--stacked');
+    expect(within(row).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Watch', 'Probes', 'Battles', 'Radar']);
+    expect(row.querySelectorAll('svg')).toHaveLength(4);
   });
 });
 
@@ -192,6 +203,8 @@ describe('the watch shelf', () => {
   it('shows every Telescope slot with its target, or idle', () => {
     show({ telescope: 5, watching: 1, worlds: 47 });
     expect(rack().querySelectorAll('[data-slot]')).toHaveLength(telescopeSlots(5));
+    expect(rack().querySelectorAll('.gk-lens')).toHaveLength(telescopeSlots(5));
+    expect(rack().querySelector('[data-slot="1"]')).toHaveAttribute('data-filled');
     expect(within(rack()).getByText('World 0')).toBeInTheDocument();
     expect(within(rack()).getAllByText('Idle')).toHaveLength(telescopeSlots(5) - 1);
   });
@@ -299,6 +312,8 @@ describe('the rivals you marked', () => {
     const onFocusRival = vi.fn();
     show({ telescope: 1, watching: 0, worlds: 20, rivals, onFocusRival });
     const marks = within(document.querySelector<HTMLElement>('[data-rivals]')!).getAllByRole('button');
+    // The menu's rival chip, the same mark in both places (G1-f2).
+    expect(marks.every((mark) => mark.querySelector('.gk-chip.gk-rival') !== null)).toBe(true);
     expect(marks.map((mark) => mark.textContent)).toEqual([
       expect.stringMatching(/1 · Vex/),
       expect.stringMatching(/2 · Vega/),
@@ -329,6 +344,7 @@ describe('what you know', () => {
   it('lists a watched world live, with its clarity as bars and never a ship count', () => {
     show({ telescope: 3, watching: 1, worlds: 20 });
     const row = document.querySelector<HTMLElement>('[data-known="watch"]')!;
+    expect(row.closest('ul')).toHaveClass('gk-ledger');
     expect(row).toHaveTextContent('Someone');
     expect(within(row).getByRole('img', { name: /clarity/i })).toBeInTheDocument();
     // A live reading does not age: its picture carries clarity, never grain.
@@ -380,6 +396,7 @@ describe('the radar, glanced from the watch shelf', () => {
   it('counts the day’s contacts and opens the radar', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans });
     const glance = screen.getByRole('button', { name: /2 contacts/i });
+    expect(glance).toHaveClass('gk-glance');
     await userEvent.click(glance);
     expect(screen.getByRole('tab', { name: 'Radar' })).toHaveAttribute('aria-selected', 'true');
   });
@@ -472,11 +489,10 @@ describe('what the radar promises', () => {
   });
 });
 
-describe('report tabs', () => {
-  it('defaults to probe reports and exposes one active panel', async () => {
+describe('the report shelves', () => {
+  it('opens probe reports with one tap and shows only that panel', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
-    await shelf('Reports');
-    expect(screen.getByRole('tablist', { name: 'Intel reports' })).toBeVisible();
+    await shelf('Probe reports');
     expect(screen.getByRole('tab', { name: 'Probe reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
     expect(screen.queryByRole('tabpanel', { name: 'Battle reports' })).not.toBeInTheDocument();
@@ -484,8 +500,7 @@ describe('report tabs', () => {
 
   it('opens battle reports with one tap and hides the probe panel', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
-    await shelf('Reports');
-    await userEvent.click(screen.getByRole('tab', { name: 'Battle reports' }));
+    await shelf('Battle reports');
     expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
     expect(screen.queryByRole('tabpanel', { name: 'Probe reports' })).not.toBeInTheDocument();
@@ -494,26 +509,24 @@ describe('report tabs', () => {
 
   it('moves selection and focus with arrow keys', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
-    await shelf('Reports');
-    const probes = screen.getByRole('tab', { name: 'Probe reports' });
-    probes.focus();
+    const watch = screen.getByRole('tab', { name: 'Watch' });
+    watch.focus();
     await userEvent.keyboard('{ArrowRight}');
-    expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveFocus();
-    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Probe reports' })).toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
     await userEvent.keyboard('{Home}');
-    expect(probes).toHaveFocus();
+    expect(watch).toHaveFocus();
   });
 
   it('wraps both arrow directions at the ends of the tablist', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
-    await shelf('Reports');
-    const probes = screen.getByRole('tab', { name: 'Probe reports' });
-    const battles = screen.getByRole('tab', { name: 'Battle reports' });
-    probes.focus();
+    const watch = screen.getByRole('tab', { name: 'Watch' });
+    const radar = screen.getByRole('tab', { name: 'Radar' });
+    watch.focus();
     await userEvent.keyboard('{ArrowLeft}');
-    expect(battles).toHaveFocus();
+    expect(radar).toHaveFocus();
     await userEvent.keyboard('{ArrowRight}');
-    expect(probes).toHaveFocus();
+    expect(watch).toHaveFocus();
   });
 
   it('uses Turkish tab names without case-folding dotted İ', async () => {
@@ -521,11 +534,10 @@ describe('report tabs', () => {
     await i18n.changeLanguage('tr');
     try {
       show({ telescope: 1, watching: 0, worlds: 20 });
+      expect(screen.getByRole('tablist', { name: 'İstihbarat' })).toBeVisible();
       expect(screen.getByRole('tab', { name: 'Gözlem' })).toBeVisible();
-      await userEvent.click(screen.getByRole('tab', { name: 'Raporlar' }));
-      expect(screen.getByRole('tablist', { name: 'İstihbarat raporları' })).toBeVisible();
-      expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toBeVisible();
-      expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toBeVisible();
+      expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toHaveTextContent('Sondalar');
+      expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toHaveTextContent('Savaşlar');
     } finally {
       await i18n.changeLanguage('en');
     }
@@ -540,7 +552,7 @@ describe('landing on the shelf that was asked for', () => {
 
   it('opens on the battle reports when the caller named them', () => {
     show({ telescope: 1, watching: 0, worlds: 20, open: { stop: 'battles', request: 1 } });
-    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
     expect(screen.queryByRole('tabpanel', { name: 'Probe reports' })).not.toBeInTheDocument();
   });
@@ -609,24 +621,24 @@ describe('what a probe brought back', () => {
 
   it('draws a vague reading wider than a sharp one', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(200, 2000)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     const vague = bandWidth(0);
     cleanup();
 
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1800, 2000)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(bandWidth(0)).toBeLessThan(vague);
   });
 
   it('draws one band per thing the probe read', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(document.querySelectorAll('[data-range-band]')).toHaveLength(3);
   });
 
   it('still carries both ends as digits, under the shape', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1200, 3400)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(screen.getAllByText(/1\.2K/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3\.4K/).length).toBeGreaterThan(0);
   });
@@ -637,7 +649,7 @@ describe('what a probe brought back', () => {
    */
   it('draws their reading in their colour, sharper when the fleet was home', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400), report(100, 400, { targetPlanetId: 'q5', fleetHome: false })] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     const bands = [...document.querySelectorAll<HTMLElement>('[data-part="band"]')];
     expect(bands[0]).toHaveClass('bg-v2-neutral');
     expect(bands[3]).not.toHaveClass('bg-v2-neutral');
@@ -651,7 +663,7 @@ describe('what a probe brought back', () => {
    */
   it('marks your own world on every row, in your colour, and says so', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     const marks = [...document.querySelectorAll<HTMLElement>('[data-range-band] [data-you]')];
     expect(marks).toHaveLength(3);
     for (const mark of marks) expect(mark).toHaveClass('bg-v2-self');
@@ -661,7 +673,7 @@ describe('what a probe brought back', () => {
 
   it('puts a reading bigger than yours to the right of your mark', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     const ships = [...document.querySelectorAll<HTMLElement>('[data-range-band]')][2]!;
     const you = Number.parseFloat(ships.querySelector<HTMLElement>('[data-you]')!.style.left);
     const start = Number.parseFloat(ships.querySelector<HTMLElement>('[data-part="band"]')!.style.left);
@@ -670,7 +682,7 @@ describe('what a probe brought back', () => {
 
   it('shows the accuracy as signal strength and says the figure out loud', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(screen.getByRole('img', { name: /80%.*accuracy/i })).toBeInTheDocument();
     expect(screen.getByText('80% accuracy · fleet was home')).toBeVisible();
     expect(screen.getByText(/These numbers are estimated ranges/)).toBeVisible();
@@ -678,20 +690,20 @@ describe('what a probe brought back', () => {
 
   it('states a lower accuracy and the fleet-away qualification in visible words', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { accuracy: 0.55, fleetHome: false })] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(screen.getByText('55% accuracy · fleet was out')).toBeVisible();
   });
 
   it('says when the target caught the probe', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { detected: true })] });
-    await shelf('Reports');
+    await shelf('Probe reports');
     expect(screen.getByText(/they caught it/i)).toBeInTheDocument();
   });
 
   it('opens the dossier of the world it read', async () => {
     const onOpenDossier = vi.fn();
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)], onOpenDossier });
-    await shelf('Reports');
+    await shelf('Probe reports');
     await userEvent.click(screen.getByRole('button', { name: /open dossier/i }));
     expect(onOpenDossier).toHaveBeenCalledWith('q0');
   });
@@ -721,7 +733,7 @@ describe('what a probe brought back', () => {
 
     it('measures a reading against your ship, not your world', async () => {
       show({ aboard: true, telescope: 1, watching: 0, worlds: 8, probes: [report(100, 400)] });
-      await shelf('Reports');
+      await shelf('Probe reports');
       expect(document.body.textContent).not.toMatch(/your world/i);
     });
 

@@ -727,6 +727,51 @@ Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (
 
 **G3 için ilk gözlemler:** iç içe sekmeler (raf + alt raf) tek düzeye inmeli; uyarılar ve notlar 9 px; teleskop yuvaları ile "bilinenler" aynı konuyu iki listede anlatıyor (karar notunda birleşme düşünülecek).
 
+**C7 İstihbarat sayfası ve Gözlem rafı ✅ (2026-11-14, yardımcı oturum).** G3 #1–#5. Oyuncunun sorusu şu: "Komşularım hakkında ne biliyorum, kime saldırabilirim?" Teleskop, sonda ve radar kuralları değişmedi.
+
+**İç içe sekme kalktı.** Raporlar rafının içindeki ikinci sekme çubuğu (Sondalar / Savaşlar) yok artık. Dört raf tek sıradaki kit sekmelerinde duruyor: Gözlem, Sondalar, Savaşlar, Radar. Sekmeler `GameTabs stacked`; her sekmede adın üstünde işareti var (göz, büyüteç, saldırı, siren).
+- Sekmedeki ad kısa ("Sondalar"). Okuyucu tam adı duyar ("Sonda raporları").
+- Bildirimden gelen savaş raporu doğrudan Savaşlar rafına iner.
+- `intel.shelf.probes` ve `intel.shelf.battles` 6 dilde eklendi. Kullanılmaz hâle gelen `intel.shelf.reports` ve `intel.tabs.label` silindi.
+- Japoncada Gözlem sekmesi "時計" (kol saati) yazıyordu. "監視" yapıldı.
+
+Sayfa artık kitin başlığıyla açılıyor (`kit={{ tone: 'self' }}`).
+
+Gözlem rafı:
+- **Teleskop yuvaları:** her yuva bir mercek (`.gk-lens`).
+  - Dolu mercek oyuncunun renginde parlıyor; hedefin resmi ve adı içinde.
+  - Boş mercek kesik çizgili ve yavaşça yanıp sönerek bekliyor.
+  - Sıradaki seviyede açılacak mercek kilitli; hangi seviyede açılacağı yazıyor.
+  - Not: Üs'te `.gk-socket` adı zaten kullanılıyordu. Çakışmasın diye bu malzemenin adı `gk-lens` oldu.
+- **İşaretli rakipler:** menüdeki rakip çipinin aynısı (`gk-chip gk-rival` ve 44 px'lik dokunma alanı). Bir rakip iki yerde aynı görünüyor.
+- **Bildiklerin:**
+  - Her satır C6'nın defter satırı ve bir kapı: basınca dünyanın dosyası açılıyor.
+  - Filo durumu satırda bir etiket. "Pencere 1 sa 12 dk" oyuncunun renginde bir çip.
+  - "Netlik ve yaş" kuralı yardım işaretiyle bir dokunuş derinde.
+- **Radar özeti:** basılabilir bir plaka. Son 24 saatin çizgisinde son 6 saatteki temaslar kırmızı yanıyor.
+- 9–10 px'lik bütün notlar 12–14 px'e çıktı.
+- v2 `AgeStamp` ve `ClarityMark` 11 px'ten 12 px'e çıktı. `TargetDossier` de bu değişiklikten yararlanıyor.
+
+Galeriye `intel-blind` görünümü eklendi: teleskop yok, radar yok, işaret yok, bilinen yok.
+
+Ölçüm: `reports/ui-audit/c7-intel-watch-after-2026-11-14.md`, iki yol, 28 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 136 | 10 |
+| Kontrastı yetmeyen metin | 72 | 4 |
+| 44 px altı hedef | 22 | 6 |
+| Basınca tepkisiz | 16 | 2 |
+| Kesilen metin (bütün diller) | 49 | 0 |
+
+Kalanlar:
+- 12 px altındaki 10 metin, 44 px altındaki hedefler ve tepkisiz "Yörüngeyi aç" tuşu alet kartına ait (C9).
+- Kalan küçük hedeflerin bir kısmı G1 sheet'inin 2×2 px'lik arka perdesi.
+- Kontrastı yetmeyen 4 metnin ikisi de alet kartında.
+- Diğer ikisi eski sonda raporunun yaş yazısıydı ("19 sa 00 dk önce", 3,7:1). Ölçümden sonra yaş yazısı her yaşta ikinci mürekkebe alındı; yaşı artık resmin grenli dokusu anlatıyor. Bu düzeltme yeniden ölçülmedi.
+
+Almanca metin "Sie" diye hitap ediyor ("In jedem Slot, den Sie haben"). Bu, sıradaki Almanca hitap biriminin işi.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.

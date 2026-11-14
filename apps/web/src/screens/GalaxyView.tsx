@@ -2345,6 +2345,7 @@ export function GalaxyView({
           placement="page"
           eyebrow={t('galaxy.panelIntelEyebrow')}
           headerArt={ATMOSPHERE.intel}
+          kit={{ tone: 'self' }}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);

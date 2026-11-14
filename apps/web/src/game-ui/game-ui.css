@@ -6334,3 +6334,254 @@ html:lang(ja) .gk-tab {
 .gk-rules__body td + td {
   text-align: right;
 }
+
+/* ── C7: the Intel page and its watch shelf ────────────────────────────── */
+
+.gk-intel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+}
+.gk-intel__shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gk-s4);
+}
+.gk-intel__part {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-intel__lead {
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--gk-ink);
+}
+.gk-intel__warn {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-warn);
+}
+.gk-intel__legend {
+  padding: 10px var(--gk-s3);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+}
+/* "clarity and age": the rule one press deeper, beside the list's tag */
+.gk-intel__how {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--gk-hit);
+  margin-block: -12px;
+  padding: 0 2px 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--gk-self);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity var(--gk-quick) var(--gk-ease);
+}
+.gk-intel__how .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-intel__how:active {
+  opacity: 0.6;
+}
+.gk-intel__fleet {
+  margin-left: 6px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gk-ink-2);
+}
+.gk-intel__fleet[data-away] {
+  color: var(--gk-self);
+}
+/* an away fleet's window: the opportunity, in the player's colour */
+.gk-intel__window {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 60%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 14%, transparent);
+  color: var(--gk-self);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 0 10px -4px var(--gk-self);
+}
+
+/* THE TELESCOPE RACK: a lens per slot — lit with its target, dashed and waiting, or locked. */
+.gk-lenses {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.gk-lens {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  min-height: 76px;
+  padding: 8px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  text-align: center;
+}
+.gk-lens[data-filled] {
+  border-color: color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 12%, transparent), 0 0 12px -6px var(--gk-self);
+}
+.gk-lens[data-idle] {
+  border-style: dashed;
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+}
+.gk-lens[data-locked] {
+  opacity: 0.75;
+}
+.gk-lens__mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px dashed var(--gk-metal-edge);
+  color: var(--gk-ink-3);
+}
+.gk-lens__mark .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-lens[data-idle] .gk-lens__mark {
+  animation: gk-lens-wait 2.6s ease-in-out infinite;
+}
+@keyframes gk-lens-wait {
+  50% {
+    border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+    color: var(--gk-self);
+  }
+}
+.gk-lens__name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-floor);
+  line-height: 1.25;
+  color: var(--gk-ink-2);
+}
+.gk-lens[data-filled] .gk-lens__name {
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+
+/* the marked rivals: the menu's rival chips (G1-f2), wrapped */
+.gk-rivals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+/* a ledger whose rows are doors (what you know → the world's dossier) */
+.gk-ledger > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+button.gk-ledger__row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.gk-ledger__row:enabled:active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 8%, transparent), transparent 85%);
+}
+button.gk-ledger__row:disabled {
+  cursor: default;
+}
+
+/* THE RADAR AT A GLANCE: the day's contacts on a line, a door to the radar shelf. */
+.gk-glance {
+  display: grid;
+  gap: var(--gk-s2);
+  width: 100%;
+  padding: 10px var(--gk-s3);
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-glance:active {
+  transform: scale(0.98);
+}
+.gk-glance__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-glance__title {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-glance__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-self);
+}
+.gk-glance__count .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-dayline {
+  display: grid;
+  gap: 4px;
+}
+.gk-dayline__track {
+  position: relative;
+  display: block;
+  height: 22px;
+}
+.gk-dayline__track::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--gk-ink) 22%, transparent);
+}
+.gk-dayline__tick {
+  position: absolute;
+  top: 3px;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--gk-ink-3);
+  transform: translateX(-50%);
+}
+.gk-dayline__tick[data-fresh] {
+  background: var(--gk-hostile);
+  box-shadow: 0 0 6px var(--gk-hostile);
+}
+.gk-dayline__ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
