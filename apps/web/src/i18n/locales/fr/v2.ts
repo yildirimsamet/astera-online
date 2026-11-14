@@ -172,6 +172,8 @@ export const reportScene = {
   rounds_one: "{{count}} tour",
   rounds_other: "{{count}} tours",
   you: "Toi",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Garnison neutre",
   destroyed: "{{count}} détruits",
   hidden: "Ce qui leur reste et le reste du terrain restent cachés ; un rapport ne dit que ce que tu as détruit.",
   whyDecisive: "D’où viennent les pertes",

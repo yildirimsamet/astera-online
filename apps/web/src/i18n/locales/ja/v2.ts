@@ -176,6 +176,8 @@ export const reportScene = {
   rounds_one: "{{count}}ラウンド",
   rounds_other: "{{count}}ラウンド",
   you: "あなた",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "中立守備隊",
   destroyed: "{{count}}を破壊",
   hidden: "敵に残る戦力と戦場の全体像は不明です。報告書には、あなたが撃破したものだけが載ります。",
   whyDecisive: "損失の理由",

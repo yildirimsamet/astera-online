@@ -16,7 +16,8 @@ export interface OutpostReportFacts {
   beatenBy?: string | null | undefined;
 }
 
-export interface OutpostLine { key: 'beaten' | 'victoryCrate' | 'why' | 'rebuild'; tone: string; text: string }
+/** A lesson's weight, stated (C16a): the report's kit paints it. */
+export interface OutpostLine { key: 'beaten' | 'victoryCrate' | 'why' | 'rebuild'; tone: 'warn' | 'good' | 'plain' | 'alloy'; text: string }
 
 const armed = (fleet: Fleet): [HullId, number][] => fleetEntries(fleet).filter(([hull, count]) => count > 0 && HULLS[hull].cls !== 'SUPPORT');
 
@@ -71,10 +72,10 @@ function rebuild(facts: OutpostReportFacts, t: TFunction, view: PlanetView): str
 export function outpostReportLines(facts: OutpostReportFacts, t: TFunction, view: PlanetView): OutpostLine[] {
   if (!facts.attacking || facts.opponentKind === undefined) return [];
   const said = [
-    { key: 'beaten', tone: 'text-v2-warn', text: facts.beatenBy ? t('starter.reports.beatenBy', { name: facts.beatenBy }) : null },
-    { key: 'victoryCrate', tone: 'text-v2-self', text: facts.firstVictory === true ? t('starter.reports.firstVictory') : null },
-    { key: 'why', tone: 'text-v2-ink', text: why(facts, t) },
-    { key: 'rebuild', tone: 'text-v2-alloy', text: rebuild(facts, t, view) },
+    { key: 'beaten', tone: 'warn', text: facts.beatenBy ? t('starter.reports.beatenBy', { name: facts.beatenBy }) : null },
+    { key: 'victoryCrate', tone: 'good', text: facts.firstVictory === true ? t('starter.reports.firstVictory') : null },
+    { key: 'why', tone: 'plain', text: why(facts, t) },
+    { key: 'rebuild', tone: 'alloy', text: rebuild(facts, t, view) },
   ] as const;
   return said.flatMap(line => line.text === null ? [] : [{ key: line.key, tone: line.tone, text: line.text }]);
 }
