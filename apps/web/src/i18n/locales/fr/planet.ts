@@ -131,8 +131,6 @@ export const planet = {
     started: "Chargement de la munition",
     hint: "Arrête une Étoile de la mort ou une bombe radiologique dans l’anneau d’interception Radar ou après identification au Télescope. Chaque tir consomme une charge de la batterie de la planète ciblée.",
     colonyHint: "Chaque Étoile de la Mort qui passe coûte {{loss}} de loyauté à cette colonie et provoque 1 panne aléatoire.",
-    readyHint:
-      "Arrête une Étoile de la mort ou une bombe radiologique dans l’anneau d’interception Radar ou après identification au Télescope. Chaque tir consomme une charge de la batterie de la planète ciblée.",
     noRadarHint:
       "La munition reste chargée, mais ce monde ne dispose plus de rayon d’interception Radar. Réactive l’Antenne et un Radar de niveau 3 ; le champ de vision d’un Télescope sur un autre de tes mondes peut toujours déclencher le tir.",
     needRadar: "Radar niveau {{level}}",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "Durée de l’EMP",
     loyaltyDamage: "Loyauté par impact colonial",
-    eyebrow: "Arme EMP tactique",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Met l’Aegis de la cible à zéro et coupe ses défenses au sol.",
     tally: "{{used}} armes sur {{total}} disponibles",
     none: "Aucune Étoile de la Mort sur ce monde",
     building: "Construction · {{duration}}",

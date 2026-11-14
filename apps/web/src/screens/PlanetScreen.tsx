@@ -5,7 +5,7 @@ import { RadiationBombForgeHost } from './RadiationBombControls.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
 import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
@@ -132,7 +132,7 @@ import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
-import { AtmosphereImage, CardArtwork } from '../ui/AtmosphereArt.js';
+import { CardArtwork } from '../ui/AtmosphereArt.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { CounterCycle } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
@@ -141,13 +141,12 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, CostLine, GameButton, GameHold, GameTabs, Glyph, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, GameButton, GameHold, GameTabs, Glyph, InfoPeek, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
-import { TacticalStock } from '../ui/TacticalStock.js';
+import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock } from '../ui/ArmCard.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { RoomBar } from '../v2/kit/RoomBar.js';
@@ -846,73 +845,72 @@ function DeathStarForge({
         ? t('planet.deathStar.needs', { need: needOperational })
         : shortfall(short, planet);
 
+  const state = primary?.status ?? 'LOCKED';
+  const secondBuild = activeBuild !== undefined && activeBuild !== primary;
+  const buildingText = (asset: NonNullable<typeof activeBuild>): string => t('planet.deathStar.building', {
+    duration: asset.readyAt
+      ? untilReady((asset.readyAt.getTime() - now) / 60_000)
+      : duration((asset.remainingSeconds ?? 0) / 60),
+  });
   return (
-    <section
-      data-strategic-state={primary?.status ?? 'LOCKED'}
-      data-strategic-count={weapons.length}
-      data-strategic-capacity={stockpile}
-      data-locked={!live && (!core || !yard)}
-      className={`tactical-production tactical-production--death-star font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+    <ArmCard
+      art={{ ...ATMOSPHERE.strategic, position: '50% 20%' }}
+      locked={!live && (!core || !yard)}
+      working={buildingCount > 0}
+      glyph="target"
+      name={t('focus.planet.deathStar')}
+      stock={<ArmStock ready={readyCount} loading={buildingCount} paused={pausedCount} total={pad} capacity={stockpile} />}
+      marks={{ 'data-strategic-state': state, 'data-strategic-count': weapons.length, 'data-strategic-capacity': stockpile }}
+      className={FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}
     >
-      <div className="tactical-production__scene" aria-hidden="true">
-        <AtmosphereImage art={{ ...ATMOSPHERE.strategic, position: '50% 20%' }} className="tactical-production__art" />
-      </div>
-      <div className="tactical-production__body">
-        <div className="tactical-production__heading">
-          <h4><Icon id="i-attack" className="size-3.5" />{t('focus.planet.deathStar')}</h4>
-          <TacticalStock ready={readyCount} loading={buildingCount} paused={pausedCount} total={pad} capacity={stockpile} />
-        </div>
-        <p className="tactical-production__eyebrow">{t('planet.deathStar.eyebrow')}</p>
-        <p className="tactical-production__status" data-state={primary?.status ?? 'EMPTY'}><i aria-hidden="true" />
-          {primary?.status === 'READY'
-            ? t('planet.deathStar.ready')
-            : primary?.status === 'PAUSED'
-              ? t('planet.deathStar.paused')
-              : primary?.status === 'BUILDING'
-                ? t('planet.deathStar.building', {
-                  duration: primary.readyAt
-                    ? untilReady((primary.readyAt.getTime() - now) / 60_000)
-                    : duration((primary.remainingSeconds ?? 0) / 60),
-                })
-                : t('planet.deathStar.none')}
-        </p>
-        {progress !== null && <ChargeProgress share={progress} mark="data-strategic-progress" />}
-        <dl className="tactical-production__specs">
-          <div><dt><Icon id="i-clock" className="size-3" />{t('planet.deathStar.empDuration')}</dt>
-            <dd>{duration(DEATH_STAR.empMinutes)}</dd></div>
-          <div><dt><Icon id="i-base" className="size-3" />{t('planet.deathStar.loyaltyDamage')}</dt>
-            <dd>−{DEATH_STAR.colonyLoyaltyLoss}</dd></div>
-        </dl>
-        <p className="tactical-production__hint">
-          {t('planet.deathStar.hint', { loss: DEATH_STAR.colonyLoyaltyLoss, hits: hitsToTakeLoyalColony })}
-        </p>
-        {!room && stockpileLevel < 1 && (
-          <CapacityNext project="STRATEGIC_STOCKPILE" total={strategicStockpile(1)} onOpen={() => { onNeed('STRATEGIC_STOCKPILE'); }} />
-        )}
-        {room && <>
-          <ul className="flex flex-wrap gap-1.5">
-            <TacticalNeed ok={core} onFix={() => { onNeed('CORE'); }}>{needCore}</TacticalNeed>
-            <TacticalNeed ok={yard} onFix={() => { onNeed('SHIPYARD'); }}>{needShipyard}</TacticalNeed>
-            <TacticalNeed ok={!recovering}>{needOperational}</TacticalNeed>
-          </ul>
-          <div className="tactical-production__price">
-            <Cost cost={DEATH_STAR.cost} held={held} />
-            <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
-              <Icon id="i-clock" className="size-3 shrink-0" />
-              {t('planet.deathStar.buildTime', { duration: duration(DEATH_STAR.buildMinutes) })}
-            </span>
-          </div>
-          <div data-act><HoldButton label={t('planet.deathStar.build')}
-            disabledReason={strategicBuild.isPending ? t('planet.deathStar.started') : refusal}
-            onCommit={() => {
-              strategicBuild.mutate(undefined, {
-                onSuccess: () => { say(t('planet.deathStar.started')); },
-                onError: (error) => { say(describe(error), 'error'); },
-              });
-            }} /></div>
-        </>}
-      </div>
-    </section>
+      <ArmStatus
+        tone={state === 'READY' ? 'good' : state === 'BUILDING' ? 'self' : state === 'PAUSED' ? 'warn' : 'quiet'}
+        text={primary?.status === 'READY'
+          ? t('planet.deathStar.ready')
+          : primary?.status === 'PAUSED'
+            ? t('planet.deathStar.paused')
+            : primary?.status === 'BUILDING'
+              ? buildingText(primary)
+              : t('planet.deathStar.none')}
+        {...(progress !== null && !secondBuild ? { progress: { share: progress, mark: 'data-strategic-progress' as const } } : {})}
+      />
+      {/* A second weapon building behind a ready one gets its own line, so the bar never reads as the ready one's. */}
+      {secondBuild && (
+        <ArmStatus tone="self" text={buildingText(activeBuild)}
+          {...(progress === null ? {} : { progress: { share: progress, mark: 'data-strategic-progress' as const } })} />
+      )}
+      <ArmSpecs items={[
+        { glyph: 'clock', label: t('planet.deathStar.empDuration'), value: duration(DEATH_STAR.empMinutes) },
+        { glyph: 'colony', label: t('planet.deathStar.loyaltyDamage'), value: `−${String(DEATH_STAR.colonyLoyaltyLoss)}` },
+      ]} />
+      <InfoPeek
+        fact={t('planet.deathStar.rule')}
+        about={t('itemSheet.howItWorks')}
+        rule={<p>{t('planet.deathStar.hint', { loss: DEATH_STAR.colonyLoyaltyLoss, hits: hitsToTakeLoyalColony })}</p>}
+      />
+      {!room && stockpileLevel < 1 && (
+        <ArmNext project="STRATEGIC_STOCKPILE"
+          text={t('planet.capacityNext', { name: researchName('STRATEGIC_STOCKPILE'), total: strategicStockpile(1) })}
+          onOpen={() => { onNeed('STRATEGIC_STOCKPILE'); }} />
+      )}
+      {room && <>
+        <ArmNeeds needs={[
+          { ok: core, text: needCore, onFix: () => { onNeed('CORE'); } },
+          { ok: yard, text: needShipyard, onFix: () => { onNeed('SHIPYARD'); } },
+          { ok: !recovering, text: needOperational },
+        ]} />
+        <CostLine cost={DEATH_STAR.cost} held={held} time={<span className="gk-cost__time"><Glyph id="clock" />
+          {t('planet.deathStar.buildTime', { duration: duration(DEATH_STAR.buildMinutes) })}</span>} />
+        <div data-act><GameHold label={t('planet.deathStar.build')} weight="spends" glyph="target" commitSound="ignite"
+          disabledReason={strategicBuild.isPending ? t('planet.deathStar.started') : refusal}
+          onCommit={() => {
+            strategicBuild.mutate(undefined, {
+              onSuccess: () => { say(t('planet.deathStar.started')); },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }} /></div>
+      </>}
+    </ArmCard>
   );
 }
 
@@ -920,31 +918,6 @@ function DeathStarForge({
 const researchLevel = (planet: PlanetView, id: ResearchProjectId): number =>
   planet.research.find((project) => project.id === id)?.level ?? 0;
 
-/**
- * A FULL PAD, AND THE RESEARCH THAT MAKES IT BIGGER. Owner, 2026-10-01.
- *
- * Said where the limit is met rather than on the research map: the commander who has
- * just filled the pad is the one asking "how do I hold more", and a quiet full panel
- * does not answer it. Neutral rather than warn — nothing is wrong, there is a next step.
- */
-function CapacityNext({ project, total, onOpen }: {
-  project: ResearchProjectId;
-  total: number;
-  onOpen: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <button
-      type="button"
-      data-capacity-next={project}
-      onClick={onOpen}
-      className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-v2-line bg-v2-deep/40 px-2.5 text-left text-caption text-v2-ink-2"
-    >
-      <span>{t('planet.capacityNext', { name: researchName(project), total })}</span>
-      <span aria-hidden="true" className="text-v2-ink-3">›</span>
-    </button>
-  );
-}
 
 /** What a purse that cannot pay says in place of the commit: when, or that it cannot tell. */
 function shortfall(
@@ -957,46 +930,6 @@ function shortfall(
     ? null
     : affordWait(short, { alloyPerHour: planet.planet.alloyPerHour, crystalPerHour: planet.planet.crystalPerHour });
   return wait === null ? i18n.t('itemSheet.short') : i18n.t('itemSheet.affordIn', { duration: duration(wait) });
-}
-
-/** A build under way, in your colour: never the grey fill round 2 retired. */
-function ChargeProgress({ share, mark }: { share: number; mark: 'data-strategic-progress' | 'data-charge-progress' }) {
-  return (
-    <span aria-hidden="true" className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-v2-line">
-      <span {...{ [mark]: '' }} className="block h-full bg-v2-self" style={{ width: `${String(share)}%` }} />
-    </span>
-  );
-}
-
-/**
- * ONE REQUIREMENT, AS A CHIP. Met reads quiet; unmet is warn — a gap the commander can
- * close, never red (I1) — and where there is somewhere to close it, it is the door.
- */
-function TacticalNeed({ ok, onFix, children }: { ok: boolean; onFix?: () => void; children: ReactNode }) {
-  const chip = 'flex items-center gap-1 rounded-chip border px-2 py-0.5 text-micro';
-  if (ok) {
-    return (
-      <li data-met="true" className={`${chip} border-v2-line text-v2-ink-2`}>
-        <span aria-hidden="true" className="text-v2-self">✓</span>
-        {children}
-      </li>
-    );
-  }
-  return (
-    <li data-met="false" className="flex">
-      {onFix ? (
-        <button type="button" onClick={onFix} className={`${chip} border-v2-warn/50 font-semibold text-v2-warn`}>
-          <span aria-hidden="true">○</span>
-          {children} ›
-        </button>
-      ) : (
-        <span className={`${chip} border-v2-warn/50 text-v2-warn`}>
-          <span aria-hidden="true">○</span>
-          {children}
-        </span>
-      )}
-    </li>
-  );
 }
 
 /**
@@ -1812,104 +1745,82 @@ function InterceptorBattery({
         ? t('planet.deathStar.needs', { need: needOperational })
         : shortfall(short, planet);
   const needs = (
-    <ul className="flex flex-wrap gap-1.5">
-      <TacticalNeed ok={uplink} onFix={() => { onNeed('UPLINK'); }}>{needUplink}</TacticalNeed>
-      <TacticalNeed ok={radarLevelMet} onFix={() => { onNeed('RADAR'); }}>{needRadar}</TacticalNeed>
-      {room && !noRadarProtection && <TacticalNeed ok={!recovering}>{needOperational}</TacticalNeed>}
-    </ul>
+    <ArmNeeds needs={[
+      { ok: uplink, text: needUplink, onFix: () => { onNeed('UPLINK'); } },
+      { ok: radarLevelMet, text: needRadar, onFix: () => { onNeed('RADAR'); } },
+      ...(room && !noRadarProtection ? [{ ok: !recovering, text: needOperational }] : []),
+    ]} />
   );
 
   return (
-    <section
-      data-interceptor-state={state}
-      data-locked={charges.length === 0 && (!uplink || !radarReady)}
-      className={`tactical-production tactical-production--battery font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+    <ArmCard
+      art={ATMOSPHERE.interceptor}
+      locked={charges.length === 0 && (!uplink || !radarReady)}
+      working={charges.some((asset) => asset.status === 'BUILDING')}
+      glyph="shield"
+      name={t('planet.interceptor.eyebrow')}
+      stock={<span data-interceptor-capacity><ArmStock ready={loaded}
+        loading={charges.filter((asset) => asset.status === 'BUILDING').length}
+        paused={charges.filter((asset) => asset.status === 'PAUSED').length}
+        total={pad} capacity={capacity} kind="charges" /></span>}
+      marks={{ 'data-interceptor-state': state }}
+      className={FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}
     >
-      <div className="tactical-production__scene" aria-hidden="true">
-        <AtmosphereImage art={ATMOSPHERE.interceptor} className="tactical-production__art" />
-      </div>
-      <div className="tactical-production__body">
-          <div className="tactical-production__heading">
-            <h4><Icon id="i-shield" className="size-3.5" />{t('planet.interceptor.eyebrow')}</h4>
-            <div data-interceptor-capacity><TacticalStock ready={loaded}
-              loading={charges.filter(asset => asset.status === 'BUILDING').length}
-              paused={charges.filter(asset => asset.status === 'PAUSED').length}
-              total={pad} capacity={capacity} kind="charges" /></div>
-          </div>
-          <p className="tactical-production__status" data-state={state}><i aria-hidden="true" />
-            {noRadarProtection
-              ? t('planet.interceptor.noRadar')
-              : charge?.status === 'READY'
-                ? t('planet.interceptor.ready', { count: loaded })
-                : charge?.status === 'PAUSED'
-                  ? t('planet.interceptor.paused')
-                  : charge?.status === 'BUILDING'
-                    ? t('planet.interceptor.building', {
-                      duration: charge.readyAt
-                        ? untilReady((charge.readyAt.getTime() - now) / 60_000)
-                        : duration((charge.remainingSeconds ?? 0) / 60),
-                    })
-                    : t('planet.interceptor.none')}
-          </p>
-          {loading && (
-            <ChargeProgress share={buildShare(loading, ANTI_STRATEGIC.buildMinutes, now)} mark="data-charge-progress" />
-          )}
-          <p className="tactical-production__hint">
-            {t(noRadarProtection
-              ? 'planet.interceptor.noRadarHint'
-              : charge?.status === 'READY'
-                ? 'planet.interceptor.readyHint'
-                : 'planet.interceptor.hint')}
-          </p>
-          {/* Why a colony wants one: what every weapon that gets through costs it. */}
-          {planet.planet.kind === 'COLONY' && (
-            <p data-interceptor-colony className="mt-1 text-micro leading-snug text-v2-ink-3">
-              {t('planet.interceptor.colonyHint', { loss: DEATH_STAR.colonyLoyaltyLoss })}
-            </p>
-          )}
-
+      <ArmStatus
+        tone={noRadarProtection || charge?.status === 'PAUSED' ? 'warn' : charge?.status === 'READY' ? 'good' : charge ? 'self' : 'quiet'}
+        text={noRadarProtection
+          ? t('planet.interceptor.noRadar')
+          : charge?.status === 'READY'
+            ? t('planet.interceptor.ready', { count: loaded })
+            : charge?.status === 'PAUSED'
+              ? t('planet.interceptor.paused')
+              : charge?.status === 'BUILDING'
+                ? t('planet.interceptor.building', {
+                  duration: charge.readyAt
+                    ? untilReady((charge.readyAt.getTime() - now) / 60_000)
+                    : duration((charge.remainingSeconds ?? 0) / 60),
+                })
+                : t('planet.interceptor.none')}
+        {...(loading ? { progress: { share: buildShare(loading, ANTI_STRATEGIC.buildMinutes, now), mark: 'data-charge-progress' as const } } : {})}
+      />
+      <p className="gk-sub gk-arm__rule">
+        {t(noRadarProtection ? 'planet.interceptor.noRadarHint' : 'planet.interceptor.hint')}
+      </p>
+      {/* Why a colony wants one: what every weapon that gets through costs it. */}
+      {planet.planet.kind === 'COLONY' && (
+        <p data-interceptor-colony className="gk-arm__note"><Glyph id="colony" />
+          {t('planet.interceptor.colonyHint', { loss: DEATH_STAR.colonyLoyaltyLoss })}
+        </p>
+      )}
       {/*
         THE REQUIREMENTS STAY ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
         rather than an alarm: the Uplink and the Radar both point at the row that
         would close them. A loaded charge whose ring went dark shows them again.
       */}
       {!room && !researchMaxed('INTERCEPTION_GRID', gridLevel) && (
-        <CapacityNext
-          project="INTERCEPTION_GRID"
-          total={interceptorCapacity(gridLevel + 1)}
-          onOpen={() => { onNeed('INTERCEPTION_GRID'); }}
-        />
+        <ArmNext project="INTERCEPTION_GRID"
+          text={t('planet.capacityNext', { name: researchName('INTERCEPTION_GRID'), total: interceptorCapacity(gridLevel + 1) })}
+          onOpen={() => { onNeed('INTERCEPTION_GRID'); }} />
       )}
       {room && !noRadarProtection && (
         <>
           {needs}
-          <div className="tactical-production__price">
-            <Cost cost={ANTI_STRATEGIC.cost} held={held} />
-            <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
-              <Icon id="i-clock" className="size-3 shrink-0" />
-              {t('planet.interceptor.buildTime', { duration: duration(ANTI_STRATEGIC.buildMinutes) })}
-            </span>
-          </div>
-          <span data-act className="block">
-            <button
-              type="button"
-              disabled={refusal !== null || load.isPending}
-              onClick={() => {
-                load.mutate(undefined, {
-                  onSuccess: () => { say(t('planet.interceptor.started')); },
-                  onError: (error) => { say(describe(error), 'error'); },
-                });
-              }}
-              className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
-            >
-              {refusal ?? (charges.length > 0 ? t('planet.interceptor.buildSecond') : t('planet.interceptor.build'))}
-            </button>
-          </span>
+          <CostLine cost={ANTI_STRATEGIC.cost} held={held} time={<span className="gk-cost__time"><Glyph id="clock" />
+            {t('planet.interceptor.buildTime', { duration: duration(ANTI_STRATEGIC.buildMinutes) })}</span>} />
+          <div data-act><GameHold
+            label={charges.length > 0 ? t('planet.interceptor.buildSecond') : t('planet.interceptor.build')}
+            weight="spends" glyph="shield" commitSound="shield"
+            disabledReason={load.isPending ? t('planet.interceptor.started') : refusal}
+            onCommit={() => {
+              load.mutate(undefined, {
+                onSuccess: () => { say(t('planet.interceptor.started')); },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            }} /></div>
         </>
       )}
       {charge !== null && !radarReady && needs}
-      </div>
-    </section>
+    </ArmCard>
   );
 }
 

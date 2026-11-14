@@ -193,7 +193,9 @@ describe('the orbit surface', () => {
       { shield: 80, shieldMax: 120, shieldPerHour: 48 },
     );
     expect(screen.getByText('80 / 120')).toBeInTheDocument();
-    expect(screen.getByRole('meter', { name: 'Aegis shield charge' })).toHaveAttribute('aria-valuenow', '67');
+    const charge = screen.getByRole('progressbar', { name: 'Aegis shield charge' });
+    expect(charge).toHaveAttribute('aria-valuenow', '80');
+    expect(charge).toHaveAttribute('aria-valuemax', '120');
     expect(screen.getByText(/\+48\/h/i)).toBeInTheDocument();
   });
 

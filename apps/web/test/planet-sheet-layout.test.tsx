@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
@@ -60,6 +61,9 @@ vi.mock('../src/api/queries.js', async () => {
     useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
+
+/** The forge keeps its whole rule one tap away (G2-g): the "?" beside its one line. */
+const openRule = async () => { await userEvent.click(screen.getByRole('button', { name: 'How it works' })); };
 
 const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical') => {
   current = rich();
@@ -240,9 +244,9 @@ describe('what a Death Star strike actually does', () => {
   it('uses the same image-and-body production layout and a labelled stock counter', () => {
     const view = show('tactical');
     const forge = view.container.querySelector('[data-strategic-state]');
-    expect(forge).toHaveClass('tactical-production');
-    expect(forge?.querySelector('.tactical-production__scene img')).toHaveAttribute('src', '/assets/images/atmosphere/strategic-v2.webp');
-    expect(forge?.querySelector('.tactical-production__body')).not.toBeNull();
+    expect(forge).toHaveClass('gk-arm');
+    expect(forge?.querySelector('.gk-arm__art img')).toHaveAttribute('src', '/assets/images/atmosphere/strategic-v2.webp');
+    expect(forge?.querySelector('.gk-arm__body')).not.toBeNull();
     expect(forge?.querySelector('[data-stock-counter]')).toHaveTextContent('Stock 0/1');
     expect(screen.getByRole('heading', { name: 'Death Star' })).toBeInTheDocument();
   });
@@ -288,8 +292,9 @@ describe('what a Death Star strike actually does', () => {
    * rule the game stopped having. A weapon this expensive being sold on a
    * mechanic that does not exist is the most costly copy error the sheet can make.
    */
-  it('states the deadline rather than a capture', () => {
+  it('states the deadline rather than a capture', async () => {
     show('tactical');
+    await openRule();
     expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     for (const forbidden of ['ele geçir', 'capture']) {
       expect(deathStarHint().toLowerCase()).not.toContain(forbidden);
@@ -317,6 +322,7 @@ describe('what a Death Star strike actually does', () => {
       expect(copy).not.toMatch(/hasar almaz|take damage|or less|veya altında|kopar|secede/i);
     }
     await i18n.changeLanguage('en');
+    await openRule();
     expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tek darbe ne yapar|what one impact does/i }))
       .not.toBeInTheDocument();

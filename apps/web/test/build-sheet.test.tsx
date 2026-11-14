@@ -220,7 +220,7 @@ describe('strategic hardware hierarchy', () => {
     expect(forge).toHaveAttribute('data-strategic-state', 'READY');
     expect(forge).toHaveAttribute('data-strategic-count', '1');
     expect(forge).toHaveAttribute('data-strategic-capacity', '2');
-    const button = within(forge).getByRole('button', { name: 'Build' });
+    const button = within(forge).getByRole('button', { name: /^Build/ });
     expect(button).toBeEnabled();
 
     // A tap is not a commitment.
@@ -260,7 +260,7 @@ describe('strategic hardware hierarchy', () => {
 
     const forge = forgeOf(view);
     expect(forge).toHaveAttribute('data-strategic-capacity', '1');
-    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+    expect(within(forge).queryByRole('button', { name: /^Build/ })).toBeNull();
     const next = within(forge).getByRole('button', { name: /strategic stockpile/i });
     expect(next).toHaveTextContent('2');
     await userEvent.click(next);
@@ -276,7 +276,7 @@ describe('strategic hardware hierarchy', () => {
 
     const forge = forgeOf(view);
     expect(forge.querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
-    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+    expect(within(forge).queryByRole('button', { name: /^Build/ })).toBeNull();
   });
 
   /**
@@ -305,9 +305,8 @@ describe('strategic hardware hierarchy', () => {
     expect(forge).toHaveTextContent(/Ready: 1.*Building: 1/i);
     expect([...forge.querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
       .toEqual(['ready', 'loading']);
-    const progress = forge.querySelector<HTMLElement>('[data-strategic-progress]')!;
+    const progress = forge.querySelector<HTMLElement>('[data-strategic-progress] .gk-bar__fill')!;
     expect(Number.parseFloat(progress.style.width)).toBeCloseTo(50, 0);
-    expect(progress).toHaveClass('bg-v2-self');
   });
 
   /** A ready first slot must not suppress the wake-up for the second slot. */

@@ -130,8 +130,6 @@ export const planet = {
     started: "Ladung wird geladen",
     hint: "Stoppt einen Todesstern oder eine Strahlungsbombe im Radar-Abfangring oder bei Identifizierung im Teleskopsichtfeld. Jeder Schuss verbraucht eine Ladung der Batterie des Zielplaneten.",
     colonyHint: "Jeder Todesstern, der durchkommt, kostet diese Kolonie {{loss}} Loyalität und löst 1 zufällige Störung aus.",
-    readyHint:
-      "Stoppt einen Todesstern oder eine Strahlungsbombe im Radar-Abfangring oder bei Identifizierung im Teleskopsichtfeld. Jeder Schuss verbraucht eine Ladung der Batterie des Zielplaneten.",
     noRadarHint:
       "Die Ladung bleibt geladen, aber diese Welt hat keinen Radar-Abfangring. Stellen Sie Uplink und Radar 3 wieder her. Ein Teleskopblick aus einer anderen Welt kann es immer noch auslösen.",
     needRadar: "Radar L{{level}}",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "EMP-Dauer",
     loyaltyDamage: "Kolonieloyalität pro Treffer",
-    eyebrow: "Taktische EMP-Waffe",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Setzt die Aegis des Ziels auf null und legt seine Bodenverteidigung still.",
     tally: "{{used}} von {{total}} Waffen vorhanden",
     none: "Kein Todesstern auf dieser Welt",
     building: "Gebäude · {{duration}}",
@@ -587,11 +586,11 @@ export const planetHero = {
   defence: "Verteidigung",
   defenceNone: "Keine",
   defenceShips_one: "{{count}} Schiff",
-  defenceShips_other: "{{count}} wird versendet",
-  defenceGuns_one: "{{count}} Waffe",
-  defenceGuns_other: "{{count}} Waffen",
-  defenceUnarmed_one: "{{count}} Transport in der Zeile",
-  defenceUnarmed_other: "{{count}} transportiert in der Zeile",
+  defenceShips_other: "{{count}} Schiffe",
+  defenceGuns_one: "{{count}} Bodengeschütz",
+  defenceGuns_other: "{{count}} Bodengeschütze",
+  defenceUnarmed_one: "{{count}} Transporter in der Linie",
+  defenceUnarmed_other: "{{count}} Transporter in der Linie",
   defenceDocked_one: "{{count}} in der Reparaturstation · verteidigt nicht",
   defenceDocked_other: "{{count}} in der Reparaturstation · verteidigen nicht",
   fleetAway: "{{count}} in der Luft",

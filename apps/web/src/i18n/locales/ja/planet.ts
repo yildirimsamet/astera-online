@@ -130,8 +130,6 @@ export const planet = {
     started: "迎撃弾の装填開始",
     hint: "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
     colonyHint: "突破したデス・スター1基につき、この植民地の忠誠度は{{loss}}下がり、ランダムな故障が1件発生します。",
-    readyHint:
-      "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
     noRadarHint:
       "迎撃弾は装填済みですが、この惑星のレーダー迎撃範囲は使えません。アップリンクとレーダーL3を復旧してください。別の惑星の望遠鏡が標的を捉えれば発射できます。",
     needRadar: "レーダー L{{level}}",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "EMP効果時間",
     loyaltyDamage: "命中ごとのコロニー忠誠度",
-    eyebrow: "戦術EMP兵器",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "目標のイージスを0にし、地上防衛を沈黙させます。",
     tally: "{{used}}/{{total}}基を保有",
     none: "この惑星にデス・スターはありません",
     building: "建造中 · {{duration}}",

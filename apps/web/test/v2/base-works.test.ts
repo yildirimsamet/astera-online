@@ -19,7 +19,7 @@ describe('the works', () => {
   it('are not on the base any more, whose hero stays out of the Academy', () => {
     const base = read('src/screens/PlanetScreen.tsx');
     expect(base).not.toMatch(/CollectHost|WorksPool/);
-    expect(base).toMatch(/\{!lesson && <div className="flex flex-col gap-2 px-2 pt-2">\s*<PlanetHero planet=\{data\} \/>/);
+    expect(base).toMatch(/\{!lesson && <div className="flex flex-col gap-2 px-\[var\(--gk-gutter\)\] pt-2">\s*<PlanetHero planet=\{data\} \/>/);
   });
 
   it('do not ride the home world on the galaxy', () => {

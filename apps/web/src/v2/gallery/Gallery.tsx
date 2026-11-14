@@ -324,10 +324,37 @@ function GalleryFault({ running = false, short = false }: { running?: boolean; s
  * THE STRATEGIC PAIR WITH FULL PADS AND NO RESEARCH (owner, 2026-10-01): one Death Star and
  * two charges, each panel naming the research that raises it. `tab` picks the panel.
  */
-function GalleryStrategic({ tab }: { tab: 'tactical' | 'defend' }) {
+/** The strategic bays (G2-g): armed, with the radiation forge open and a weapon building, or locked on a young world. */
+function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' }) {
   const client = useQueryClient();
   useState(() => {
     const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: null, remainingSeconds: 0 });
+    const building = (id: string, hours: number) => ({ id, status: 'BUILDING' as const, readyAt: new Date(Date.now() + hours * 3_600_000), remainingSeconds: hours * 3600 });
+    if (variant === 'locked') {
+      client.setQueryData(['planet'], planetView({
+        buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 2, HANGAR: 2 },
+        instruments: { RADAR: 1, TELESCOPE: 1 },
+      }, { id: 'p-1', alloy: 4_200, crystal: 1_800, deuterium: 300, alloyPerHour: 600, crystalPerHour: 200 }));
+      return null;
+    }
+    if (variant === 'radiation') {
+      const world = planetView({}, {});
+      client.setQueryData(['planet'], planetView({
+        buildings: { CORE: 13, REFINERY: 12, EXTRACTOR: 12, VAULT: 8, SHIPYARD: 6, HANGAR: 4 },
+        instruments: { RADAR: 3, TELESCOPE: 3 },
+        orbit: ['UPLINK'],
+        strategic: ready('ds-1'),
+        deathStars: [ready('ds-1'), building('ds-2', 5)],
+        research: world.research.map((project) => project.id === 'STRATEGIC_STOCKPILE'
+          ? { ...project, level: 1, discovered: true, completed: true, available: false } : project),
+        radiationBombsAvailable: true,
+        radiationBombs: [
+          { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
+          { id: 'rb-2', level: 2, status: 'BUILDING', readyAt: new Date(Date.now() + 40 * 60_000), remainingSeconds: 2400 },
+        ],
+      }, { id: 'p-1', alloy: 420_000, crystal: 260_000, deuterium: 40_000, alloyPerHour: 2_400, crystalPerHour: 900 }));
+      return null;
+    }
     client.setQueryData(['planet'], planetView({
       buildings: { CORE: 12, REFINERY: 10, EXTRACTOR: 10, VAULT: 6, SHIPYARD: 5, HANGAR: 3 },
       instruments: { RADAR: 3, TELESCOPE: 2 },
@@ -936,6 +963,8 @@ function Views({ view }: { view: string }) {
   if (view === 'repair-station-radiation') return <GalleryBase open radiation />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
   if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
+  if (view === 'strategic-radiation') return <GalleryStrategic tab="tactical" variant="radiation" />;
+  if (view === 'strategic-locked') return <GalleryStrategic tab="tactical" variant="locked" />;
   if (view === 'repair-station-empty') return <GalleryBase empty open />;
   if (view === 'launch-radiation') return <GalleryRadiation surface="launch" />;
   if (view === 'launch-radiation-lethal') return <GalleryRadiation surface="launch-lethal" />;

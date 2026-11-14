@@ -198,9 +198,13 @@ describe('what it says it needs', () => {
 });
 
 describe('the charge itself', () => {
-  it('loads one when pressed', async () => {
+  /** It spends, so it is a one-second hold (G2-g): a tap does not load it. */
+  it('loads one on a hold, never on a tap', async () => {
     const view = show(armed());
     await userEvent.click(button(view)!);
+    expect(build).not.toHaveBeenCalled();
+    button(view)!.focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(build).toHaveBeenCalledOnce();
   });
 
@@ -328,7 +332,7 @@ describe('the charge itself', () => {
     }));
     expect([...block(view).querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
       .toEqual(['ready', 'loading']);
-    expect(block(view).querySelector('[data-charge-progress]')).toHaveClass('bg-v2-self');
+    expect(block(view).querySelector('[data-charge-progress] .gk-bar')).not.toBeNull();
   });
 
   it('sends a Radar too low to be trusted to the Radar', async () => {

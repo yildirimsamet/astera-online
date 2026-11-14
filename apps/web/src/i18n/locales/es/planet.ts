@@ -130,8 +130,6 @@ export const planet = {
     started: "Cargando carga",
     hint: "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia y provoca 1 avería aleatoria.",
-    readyHint:
-      "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     noRadarHint:
       "La carga sigue cargada, pero este mundo no tiene anillo de interceptación de radar. Restaurar su enlace ascendente y radar 3; La vista telescópica de otro mundo todavía puede activarlo.",
     needRadar: "Radar L{{level}}",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "Duración del EMP",
     loyaltyDamage: "Lealtad colonial por impacto",
-    eyebrow: "Arma EMP táctica",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Deja la Égida del objetivo en cero y silencia sus defensas terrestres.",
     tally: "{{used}} de {{total}} armas disponibles",
     none: "No hay Estrella de la Muerte en este mundo",
     building: "Edificio · {{duration}}",
@@ -588,8 +587,8 @@ export const planetHero = {
   defenceNone: "Ninguno",
   defenceShips_one: "{{count}} nave",
   defenceShips_other: "{{count}} naves",
-  defenceGuns_one: "{{count}} pistola",
-  defenceGuns_other: "{{count}} pistolas",
+  defenceGuns_one: "{{count}} cañón",
+  defenceGuns_other: "{{count}} cañones",
   defenceUnarmed_one: "{{count}} transporte en la línea",
   defenceUnarmed_other: "{{count}} transportes en la línea",
   defenceDocked_one: "{{count}} en la Estación de Reparación · no defiende",

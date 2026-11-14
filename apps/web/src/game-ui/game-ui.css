@@ -7106,3 +7106,456 @@ button.gk-ledger__row:disabled {
   font-size: var(--gk-t-floor);
   color: var(--gk-ink-2);
 }
+
+/* ── a strategic bay: Death Star, interception battery, radiation bomb (G2-g, 2026-11-14) ── */
+
+/* THE BAY: a metal plate whose top is the hardware's picture; what is built here glows. */
+.gk-arm {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  box-shadow: 0 2px 0 var(--gk-outline);
+}
+.gk-arm__art {
+  position: relative;
+  aspect-ratio: 3 / 1;
+  overflow: hidden;
+  background: var(--gk-void);
+}
+.gk-arm__art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* the picture melts into the plate so the name sits on the hardware */
+.gk-arm__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, var(--gk-metal-2), transparent 55%);
+}
+.gk-arm[data-locked='true'] .gk-arm__art img {
+  filter: grayscale(1) brightness(0.6);
+}
+/* something is being built: the forge light beats over the picture */
+.gk-arm[data-working] .gk-arm__art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at 62% 70%, color-mix(in srgb, var(--gk-self) 50%, transparent), transparent 30%);
+  mix-blend-mode: screen;
+  animation: gk-weld 1.7s ease-in-out infinite;
+}
+.gk-arm__body {
+  position: relative;
+  display: grid;
+  gap: var(--gk-s2);
+  margin-top: -14px;
+  padding: 0 var(--gk-s3) var(--gk-s3);
+  min-width: 0;
+}
+.gk-arm__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  min-width: 0;
+}
+.gk-arm__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-arm__name > .gk-glyph {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.gk-arm__level {
+  display: inline-flex;
+  gap: 1px;
+  color: var(--gk-warn);
+}
+.gk-arm__level .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-arm__stock {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.gk-arm__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-arm__mix {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+  white-space: nowrap;
+}
+.gk-arm__status {
+  --tone: var(--gk-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--tone);
+}
+.gk-arm__status[data-tone='good'] { --tone: var(--gk-good); }
+.gk-arm__status[data-tone='self'] { --tone: var(--gk-self); }
+.gk-arm__status[data-tone='warn'] { --tone: var(--gk-warn); }
+.gk-arm__lamp {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 6px var(--tone);
+}
+.gk-arm__status[data-tone='quiet'] .gk-arm__lamp {
+  box-shadow: none;
+  opacity: 0.6;
+}
+.gk-arm__status[data-tone='good'] .gk-arm__lamp,
+.gk-arm__status[data-tone='self'] .gk-arm__lamp {
+  animation: gk-arm-lamp 1.6s ease-in-out infinite;
+}
+@keyframes gk-arm-lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.gk-arm__bar {
+  margin-top: -2px;
+}
+.gk-arm__specs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gk-s2);
+  margin: 0;
+}
+.gk-arm__spec {
+  display: grid;
+  gap: 2px;
+  padding: 6px var(--gk-s2);
+  min-width: 0;
+}
+.gk-arm__spec dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+  line-height: 1.25;
+}
+.gk-arm__spec dt .gk-glyph {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--gk-info);
+}
+.gk-arm__spec dd {
+  margin: 0;
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-arm__rule {
+  margin: 0;
+}
+.gk-arm__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--gk-t-floor);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-arm__note .gk-glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--gk-warn);
+}
+.gk-arm__rules {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+.gk-arm__needs {
+  display: flex;
+  flex-wrap: wrap;
+  /* a door is 44 px tall around a 28 px chip, so the rows need no gap of their own */
+  gap: 0 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* ONE REQUIREMENT: a quiet tick when met, amber when not, and a door where it can be closed */
+.gk-need-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--gk-warn) 55%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-warn) 10%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+  white-space: nowrap;
+}
+.gk-need-chip[data-met] {
+  border-color: color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  background: transparent;
+  color: var(--gk-ink-2);
+}
+.gk-need-chip .gk-glyph {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.gk-need-chip[data-met] .gk-glyph {
+  color: var(--gk-good);
+}
+.gk-need-door {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--gk-hit);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-need-door:active {
+  transform: translateY(1px);
+}
+.gk-need-door:active .gk-need-chip {
+  background: color-mix(in srgb, var(--gk-warn) 22%, transparent);
+}
+/* A FULL PAD'S NEXT STEP: a door to the research that makes it bigger */
+.gk-arm__next {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 4px var(--gk-s2);
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  text-align: left;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-arm__next .gk-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--gk-self);
+}
+.gk-arm__next:active {
+  transform: translateY(1px);
+  border-color: var(--gk-self);
+}
+
+/* THE PAD AS CELLS: lit ready, outlined while it builds, amber while stopped, violet in flight */
+.gk-cells {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.gk-cells__cell {
+  width: 7px;
+  height: 14px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-ink) 14%, transparent);
+}
+.gk-cells__cell[data-cell='ready'] {
+  background: var(--gk-self);
+  box-shadow: 0 0 6px var(--gk-self);
+}
+.gk-cells__cell[data-cell='loading'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--gk-self);
+}
+.gk-cells__cell[data-cell='paused'] {
+  background: color-mix(in srgb, var(--gk-warn) 20%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--gk-warn);
+}
+.gk-cells__cell[data-cell='flight'] {
+  background: color-mix(in srgb, var(--gk-info) 20%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--gk-info);
+}
+
+/* THE RADIATION FORGE: the lever for the level, the rule a tap away, then the chosen bay */
+.gk-armory {
+  display: grid;
+  gap: var(--gk-s2);
+}
+
+/* ── the head of the Defence tab: four readings and the force (G2-g, 2026-11-14) ── */
+
+.gk-verdicts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gk-s2);
+}
+.gk-verdicts__fleet {
+  grid-column: 1 / -1;
+}
+.gk-verdict {
+  --tone: var(--gk-ink);
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: var(--gk-s2);
+  min-width: 0;
+}
+.gk-verdict__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.gk-verdict__head .gk-label {
+  letter-spacing: 0.06em;
+  min-width: 0;
+}
+.gk-verdict[data-tone='gap'],
+.gk-verdict[data-tone='warn'] { --tone: var(--gk-warn); }
+.gk-verdict[data-tone='good'] { --tone: var(--gk-good); }
+.gk-verdict__coin {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, transparent);
+  color: var(--tone);
+}
+.gk-verdict__coin .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-verdict__value {
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--tone);
+  overflow-wrap: anywhere;
+}
+.gk-verdict__sub {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-3);
+}
+.gk-verdict .gk-bar {
+  margin-top: 4px;
+}
+
+/* THE FORCE, FOLDED BY FAMILY: a 44 px head carrying its count, then the hulls as chips */
+.gk-fleetbands {
+  display: grid;
+}
+.gk-fleetband__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: var(--gk-hit);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-fleetband__head > .gk-glyph {
+  width: 12px;
+  height: 12px;
+  color: var(--gk-ink-3);
+}
+.gk-fleetband__head:active {
+  transform: translateY(1px);
+}
+.gk-fleetband__head:active .gk-label {
+  color: var(--gk-self);
+}
+.gk-fleetband__count {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-fleetband__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 0 0 var(--gk-s2) 18px;
+}
+.gk-fleetchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gk-fleetchip__art {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.gk-fleetchip__name {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-fleetchip__home {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-fleetchip__away,
+.gk-fleetchip__docked {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+.gk-fleetchip__away .gk-glyph,
+.gk-fleetchip__docked .gk-glyph {
+  width: 11px;
+  height: 11px;
+}
+.gk-fleetchip__docked {
+  color: var(--gk-warn);
+}

@@ -9,75 +9,118 @@ import { describeError } from '../i18n/errors.js';
 import { countdown, useNow } from '../lib/time.js';
 import { decimal } from '../lib/format.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
-import { Cost } from '../v2/kit/Cost.js';
 import { useToast } from '../ui/Toast.js';
 import { useSeasonLocked } from '../session/seasonLock.js';
 import { Toggle } from '../v2/kit/Toggle.js';
-import { Icon } from '../v2/icons.js';
-import { TacticalStock } from '../ui/TacticalStock.js';
+import { ArmCard, ArmSpecs, ArmStatus, Cells, type Cell } from '../ui/ArmCard.js';
+import { CostLine, GameHold, Glyph, InfoPeek, Lever } from '../game-ui/index.js';
 import { HonorIcon } from '../ui/icons/index.js';
 
 const LEVELS = [1, 2, 3] as const;
-const Art = ({ level }: { level: RadiationBombLevel }) => <div className="tactical-production__scene radiation-product__scene" aria-hidden="true">
-  <img className="tactical-production__art radiation-product__art" alt="" loading="lazy" decoding="async"
-    src={`/assets/images/tactical/radiation-bomb-forge-l${String(level)}.webp`} />
-</div>;
+type Asset = PlanetView['radiationBombs'][number];
 
+/** One slot per level, read as the stock cells read it. */
+const cellOf = (asset: Asset | undefined): Cell =>
+  asset?.status === 'READY' ? 'ready'
+  : asset?.status === 'LAUNCHED' ? 'flight'
+  : asset?.status === 'PAUSED' ? 'paused'
+  : asset ? 'loading' : 'empty';
+
+/** The forge opens on the first level with an empty slot (the one that can be built), else the first ready one. */
+const opening = (bombs: readonly Asset[]): RadiationBombLevel =>
+  LEVELS.find((level) => !bombs.some((bomb) => bomb.level === level))
+  ?? LEVELS.find((level) => bombs.some((bomb) => bomb.level === level && bomb.status === 'READY'))
+  ?? 1;
+
+/**
+ * THE RADIATION-BOMB FORGE (G2-g, 2026-11-14): ONE BAY, A LEVER FOR THE LEVEL. Three levels build
+ * in parallel, one slot each, so the three slots read together in one row of cells beside the
+ * lever, and the bay shows the chosen level whole: its picture, its state, what it does and its
+ * hold. Three full bays stacked were three screens of scrolling for one decision.
+ */
 export function RadiationBombForge({ planet, held, now, pending, onBuild, disabledReason = null }: {
   planet: PlanetView; held: Resources; now: number; pending: boolean;
   onBuild: (level: RadiationBombLevel) => void; disabledReason?: string | null;
 }) {
   const { t } = useTranslation();
+  const [level, setLevel] = useState<RadiationBombLevel>(() => opening(planet.radiationBombs));
   if (!planet.radiationBombsAvailable) return null;
   const gates = (planet.buildings.CORE ?? 0) >= RADIATION_BOMB.requiredCore
     && (planet.buildings.SHIPYARD ?? 0) >= RADIATION_BOMB.requiredShipyard;
-  return <section className="radiation-forge" aria-label={t('planet.radiationBomb.title')}>
-    <header><h3>{t('planet.radiationBomb.title')}</h3><p>{t('planet.radiationBomb.stock')}</p></header>
-    <div className="radiation-forge__products">{LEVELS.map(level => {
-      const product = RADIATION_BOMB.levels[level];
-      const asset = planet.radiationBombs.find(item => item.level === level);
-      const duration = radiationBombBuildSeconds(level);
-      const seconds = asset?.readyAt ? Math.max(0, (asset.readyAt.getTime() - now) / 1000) : asset?.remainingSeconds ?? 0;
-      const status = asset?.status === 'READY' ? t('planet.radiationBomb.ready')
-        : asset?.status === 'LAUNCHED' ? t('planet.radiationBomb.flying')
-        : asset?.status === 'PAUSED' ? t('planet.radiationBomb.paused')
-        : asset ? t('planet.radiationBomb.building', { time: countdown(seconds * 1000) }) : t('planet.radiationBomb.empty');
-      const canAfford = held.alloy >= product.cost.alloy && held.crystal >= product.cost.crystal && held.deuterium >= product.cost.deuterium;
-      const refusal = disabledReason ?? (!gates ? t('planet.radiationBomb.need') : pending
-        ? t('planet.radiationBomb.building', { time: '…' }) : !canAfford ? t('errors.INSUFFICIENT_RESOURCES') : null);
-      return <article className="tactical-production radiation-product" key={level} data-testid={`radiation-product-${String(level)}`}
-        data-level={level} data-state={asset?.status ?? 'EMPTY'} data-locked={!gates && !asset}>
-        <Art level={level} /><div className="tactical-production__body radiation-product__body">
-          <div className="tactical-production__heading radiation-product__heading">
-            <h4>{t('planet.radiationBomb.title')}
-              <span className="radiation-product__level" data-radiation-level={level}>
-                {t('planet.radiationBomb.level', { level })}
-                <span aria-hidden="true">{Array.from({ length: level }, (_, index) => <Icon key={index} id="i-radiation" className="size-3" />)}</span>
-              </span></h4>
-            <TacticalStock ready={asset?.status === 'READY' ? 1 : 0} loading={asset?.status === 'BUILDING' ? 1 : 0}
-              paused={asset?.status === 'PAUSED' ? 1 : 0} inFlight={asset?.status === 'LAUNCHED' ? 1 : 0} total={RADIATION_BOMB.stockPerLevel} />
-          </div>
-          <p className="tactical-production__status radiation-product__status" data-state={asset?.status ?? 'EMPTY'}><i aria-hidden="true" />{status}</p>
-          <dl className="tactical-production__specs radiation-product__specs">
-            <div><dt><Icon id="i-radiation" className="size-3" />{t('planet.radiationBomb.strengthLabel')}</dt>
-              <dd>{t('planet.radiationBomb.rate', { rate: decimal(RADIATION_LEVEL_HP_PER_MINUTE[level]) })}</dd></div>
-            <div><dt><Icon id="i-clock" className="size-3" />{t('planet.radiationBomb.durationLabel')}</dt>
-              <dd>{countdown(RADIATION_BOMB.durationMinutes * 60_000)}</dd></div>
-          </dl>
-          <p className="tactical-production__hint" data-colony-payload>{t('planet.radiationBomb.colonyEffects', {
-            loyalty: product.colonyLoyaltyLoss, faults: product.colonyFaults,
-          })}</p>
-          {asset?.status === 'BUILDING' && <progress aria-label={status} max={duration} value={Math.max(0, duration - seconds)} />}
-          {!asset && <><div className="tactical-production__price radiation-product__price"><Cost cost={product.cost} held={held} />
-            <span>{countdown(duration * 1000)}</span></div>
-            <HoldButton label={t('planet.radiationBomb.build', { level })} disabledReason={refusal}
-              onCommit={() => { onBuild(level); }} /></>}
-        </div>
-      </article>;
-    })}</div>
-    <details><summary>{t('itemSheet.howItWorks')}</summary><p>{t('planet.radiationBomb.effect')}</p><p>{t('planet.radiationBomb.colonyRules')}</p><p>{t('planet.radiationBomb.workshop')}</p><p data-honor-weapon-rule>{t(planet.honorTacticalCredit ? 'planet.radiationBomb.honor' : 'leaderboard.honorWeaponsInactive')}</p></details>
+  const slotOf = (value: RadiationBombLevel) => planet.radiationBombs.find((item) => item.level === value);
+  const product = RADIATION_BOMB.levels[level];
+  const asset = slotOf(level);
+  const cell = cellOf(asset);
+  const total = radiationBombBuildSeconds(level);
+  const seconds = asset?.readyAt ? Math.max(0, (asset.readyAt.getTime() - now) / 1000) : asset?.remainingSeconds ?? 0;
+  const statusOf = (slot: Asset | undefined): string => {
+    const left = slot?.readyAt ? Math.max(0, (slot.readyAt.getTime() - now) / 1000) : slot?.remainingSeconds ?? 0;
+    return slot?.status === 'READY' ? t('planet.radiationBomb.ready')
+      : slot?.status === 'LAUNCHED' ? t('planet.radiationBomb.flying')
+      : slot?.status === 'PAUSED' ? t('planet.radiationBomb.paused')
+      : slot ? t('planet.radiationBomb.building', { time: countdown(left * 1000) }) : t('planet.radiationBomb.empty');
+  };
+  const status = statusOf(asset);
+  const canAfford = held.alloy >= product.cost.alloy && held.crystal >= product.cost.crystal && held.deuterium >= product.cost.deuterium;
+  const refusal = disabledReason ?? (!gates ? t('planet.radiationBomb.need') : pending
+    ? t('planet.radiationBomb.building', { time: '…' }) : !canAfford ? t('errors.INSUFFICIENT_RESOURCES') : null);
+  const slots = LEVELS.map((value) => `${t('planet.radiationBomb.level', { level: value })}: ${statusOf(slotOf(value))}`);
+  return <section className="gk gk-armory" aria-label={t('planet.radiationBomb.title')}>
+    <Lever
+      label={t('planet.radiationBomb.title')}
+      options={LEVELS.map((value) => ({ id: String(value), label: t('planet.radiationBomb.level', { level: value }) }))}
+      value={String(level)}
+      onChange={(id) => { setLevel(LEVELS.find((value) => String(value) === id) ?? 1); }}
+      note={<span data-testid="radiation-levels"><Cells cells={LEVELS.map((value) => cellOf(slotOf(value)))} label={slots.join(' · ')} /></span>}
+    />
+    <InfoPeek
+      fact={t('planet.radiationBomb.stock')}
+      about={t('itemSheet.howItWorks')}
+      rule={<ul className="gk-arm__rules">
+        <li>{t('planet.radiationBomb.effect')}</li>
+        <li>{t('planet.radiationBomb.colonyRules')}</li>
+        <li>{t('planet.radiationBomb.workshop')}</li>
+        <li data-honor-weapon-rule>{t(planet.honorTacticalCredit ? 'planet.radiationBomb.honor' : 'leaderboard.honorWeaponsInactive')}</li>
+      </ul>}
+    />
+    <ArmCard
+      key={level}
+      art={{ src: `/assets/images/tactical/radiation-bomb-forge-l${String(level)}.webp`, position: '50% 50%' }}
+      locked={!gates && !asset}
+      working={asset?.status === 'BUILDING'}
+      glyph="radiation"
+      name={<>{t('planet.radiationBomb.title')}
+        <span className="gk-arm__level" data-radiation-level={level}>
+          {LEVELS.slice(0, level).map((value) => <Glyph key={value} id="radiation" />)}
+        </span></>}
+      stock={<span className="gk-arm__stock"><span className="gk-arm__count">
+        <span data-stock-counter className="gk-num">{t('planet.tacticalStock.stock', { used: cell === 'empty' ? 0 : 1, total: RADIATION_BOMB.stockPerLevel })}</span>
+        <Cells cells={[cell]} label={status} />
+      </span></span>}
+      marks={{ 'data-testid': `radiation-product-${String(level)}`, 'data-level': level, 'data-state': asset?.status ?? 'EMPTY' }}
+    >
+      {/* An empty slot says nothing here: "Stock 0/1" beside the name already does. */}
+      {cell !== 'empty' && <ArmStatus
+        tone={cell === 'ready' ? 'good' : cell === 'paused' ? 'warn' : 'self'}
+        text={status}
+        {...(asset?.status === 'BUILDING' ? { progress: { share: total > 0 ? ((total - seconds) / total) * 100 : 0, mark: 'data-bomb-progress' as const } } : {})}
+      />}
+      <ArmSpecs items={[
+        { glyph: 'radiation', label: t('planet.radiationBomb.strengthLabel'), value: t('planet.radiationBomb.rate', { rate: decimal(RADIATION_LEVEL_HP_PER_MINUTE[level]) }) },
+        { glyph: 'clock', label: t('planet.radiationBomb.durationLabel'), value: countdown(RADIATION_BOMB.durationMinutes * 60_000) },
+      ]} />
+      <p className="gk-arm__note" data-colony-payload><Glyph id="colony" />{t('planet.radiationBomb.colonyEffects', {
+        loyalty: product.colonyLoyaltyLoss, faults: product.colonyFaults,
+      })}</p>
+      {!asset && <>
+        <CostLine cost={product.cost} held={held} time={<span className="gk-cost__time"><Glyph id="clock" />{countdown(total * 1000)}</span>} />
+        <div data-act><GameHold label={t('planet.radiationBomb.build', { level })} weight="spends" glyph="radiation" commitSound="ignite"
+          disabledReason={refusal} onCommit={() => { onBuild(level); }} /></div>
+      </>}
+    </ArmCard>
   </section>;
 }
+
 
 export function RadiationBombForgeHost({ planet, held, disabledReason }: {
   planet: PlanetView; held: Resources; disabledReason?: string | null;

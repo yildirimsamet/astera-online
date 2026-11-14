@@ -130,8 +130,6 @@ export const planet = {
     started: "Mühimmat yükleniyor",
     hint: "Radar önleme alanına giren veya Teleskop görüşünde tanımlanan bir Ölüm Yıldızını ya da radyasyon bombasını vurur. Her atış, hedef gezegenin bataryasından bir şarj tüketir.",
     colonyHint: "Geçen her Ölüm Yıldızı bu koloniden {{loss}} sadakat götürür ve 1 rastgele arıza çıkarır.",
-    readyHint:
-      "Radar önleme alanına giren veya Teleskop görüşünde tanımlanan bir Ölüm Yıldızını ya da radyasyon bombasını vurur. Her atış, hedef gezegenin bataryasından bir şarj tüketir.",
     noRadarHint:
       "Mühimmat yüklü kalır ancak bu dünyanın Radar önleme çemberi yoktur. Anten’i ve Radar 3’ü yeniden etkinleştir; başka bir dünyandaki Teleskop görüşü yine ateşlemeyi başlatabilir.",
     needRadar: "Radar {{level}}. seviye",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "EMP süresi",
     loyaltyDamage: "Koloni sadakati / isabet",
-    eyebrow: "Taktiksel EMP silahı",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Hedefin Aegis’ini sıfırlar, yer savunmalarını susturur.",
     tally: "{{total}} silahtan {{used}} tanesi hazır veya üretimde",
     none: "Bu dünyada Ölüm Yıldızı yok",
     building: "Üretiliyor · {{duration}}",

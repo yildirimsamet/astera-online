@@ -130,8 +130,6 @@ export const planet = {
     started: "Charge loading",
     hint: "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty and breaks 1 random fault.",
-    readyHint:
-      "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     noRadarHint:
       "The charge remains loaded, but this world has no Radar interception ring. Restore its Uplink and Radar 3; Telescope sight from another world can still trigger it.",
     needRadar: "Radar L{{level}}",
@@ -144,7 +142,8 @@ export const planet = {
   deathStar: {
     empDuration: "EMP duration",
     loyaltyDamage: "Loyalty per colony hit",
-    eyebrow: "Tactical EMP weapon",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Zeroes the target's Aegis and silences its ground defences.",
     tally: "{{used}} of {{total}} weapons held",
     none: "No Death Star on this world",
     building: "Building · {{duration}}",

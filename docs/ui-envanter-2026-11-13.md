@@ -648,7 +648,7 @@ Kit sayfasındaki "Bina kartı" bölümü yeni metinlerle güncellendi.
 - Denetim yalnız Üs'ün varsayılan sekmesini ölçüyor. Beş sekmenin bütün kartları ayrıca 6 dilde, 320 ve 350 px'te tarandı: kesilen metin yok (scratchpad `cutcheck.mjs`). Bu yüzden 320 px'te taşan beş satır daha kısaldı: en "Opens Telescope/Radar", de "Leichte/Schwere Bodenkanone", es "Ve movimiento lejano" ve "Enlace en órbita", ja "観測機器を解放".
 
 Görülen ama bu birimin işi olmayanlar:
-- Savunma sekmesinin başındaki özet kutuları (Ateş gücü, Savunma, Kalkan, Risk altında) v2 dilinde ve 9 px yazılı. G2-g'ye eklendi.
+- Savunma sekmesinin başındaki özet kutuları (Ateş gücü, Savunma, Kalkan, Risk altında) v2 dilinde ve 9 px yazılı. G2-g'ye eklendi. (✅ G2-g'de kitte.)
 - es `errors.ts` `TARGET_HANGAR_FULL` metninde de "habitación" var. G4 gönderme biriminde düzelecek.
 
 **G2-c kuyruklar ve arıza onarımları ✅ (2026-11-14).** Oyuncunun anı: Üs'e girince "ne yapılıyor, nerede boşluk var, ne bozuk?" sorusuna tek bakışta cevap. Kurallar, kuyruk sheet'i ve arıza sheet'i değişmedi.
@@ -747,6 +747,47 @@ Kalan tek hedef ve tek tepkisiz alan G1 sheet çerçevesinin 2×2 px arka plan d
 Bilerek bırakılan: 0'dayken kilitli eksi düğmesinin simgesi 2,4:1. Pasif kontrol (WCAG 1.4.11 muaf); soluk görünmesi "daha aşağı inemezsin" demek.
 
 Ölçümden sonra düzeltilenler (yeniden ölçüldü): sayaçtaki "Tümü" 26 px genişlikteydi, adım düğmeleri 43 px yüksekliğindeydi (çerçeve içinde); sayı alanına dokununca görünür bir tepki yoktu, şimdi turkuaz çerçeve yanıyor.
+
+**G2-g taktik ve Savunma özeti ✅ (2026-11-14).** Oyuncunun anı: Taktik sekmesinde "stratejik silah üreteyim mi, ne yapar, kaça mal olur, bu dünya kaç tane tutar?"; Savunma sekmesinin başında "dünyam ne durumda, ne onu durdurur?". Kurallar (Ölüm Yıldızı, önleme şarjı, radyasyon bombası; stok, gereksinim, fiyat, süre, araştırma kapısı) değişmedi.
+
+Ortak silah kartı (`ui/ArmCard.tsx`, kitin `gk-arm` sınıfları). Ölüm Yıldızı atölyesi, önleme bataryası ve radyasyon bombası atölyesi aynı kartı kullanıyor:
+- Üstte donanımın resmi. Kilitliyken gri, bir şey üretilirken üstünde kaynak ışığı atıyor (G2-f'nin `gk-weld` ritmi).
+- Ad, stok sayacı ("Stok 1/2") ve stok hücreleri: hazır dolu ve parlak, üretimde çerçeveli, durmuşsa amber, uçuşta mor. Karışık stokta altında "Hazır: 1 · Üretimde: 1"; tek durumda bu satır yok, durum satırı söylüyor.
+- Durum satırı lambalı: hazır yeşil ve nabız atıyor, üretim turkuaz, duraklama / radar halkası yok amber, hiç yok sönük. Üretim kitin çubuğuyla. İkinci silah üretilirken kendi satırı ve çubuğu var; eskiden çubuk "Fırlatmaya hazır" satırının altına düşüyordu.
+- Ne yaptığı iki küçük kuyuda (Ölüm Yıldızı: EMP süresi, koloni sadakat kaybı; radyasyon: korumadan önceki hasar, etki süresi).
+- Kural tek satır ve "?" (`InfoPeek`). Ölüm Yıldızının 55 kelimelik paragrafı artık bir dokunuş uzakta. Yeni tek satır `planet.deathStar.rule` (6 dil): "Hedefin Aegis'ini sıfırlar, yer savunmalarını susturur." Bu satır "TAKTİKSEL EMP SİLAHI" üst satırını gereksiz kıldı; üst satır ve `planet.deathStar.eyebrow` kalktı (ilk ölçümde ekran başına 62 kelimeyle bütçeyi aşan ekranın payı).
+- Gereksinimler çip: karşılanan sessiz tik, eksik olan amber; düzeltilebilecek yerde 44 px kapı (Çekirdek / Tersane → Üretim satırı; Uplink / Radar → İstihbarat).
+- Fiyat kitin maliyet satırında, yanında süre ("1 sa 13 dk · tek silah · geri çağrılamaz").
+- Üretim 1 sn basılı tutma (harcayan). Ölüm Yıldızı ve radyasyon bombası v2 `HoldButton`'dı; önleme şarjı düz bir düğmeydi ve tek dokunuşla kaynak harcıyordu, artık o da basılı tutma. Ses: atölye ateşleniyor (`ignite`), şarj kalkan sesiyle.
+- Dolu stok araştırma kapısıyla bitiyor ("Stratejik Depo ile: dünya başına 2 ›"), kitin kapı satırı.
+
+Radyasyon bombası atölyesi: üç tam kart (üç ekran kaydırma) tek kart ve bir seviye şalteri oldu. Şalterin yanında üç seviyenin slotu tek bakışta hücre olarak (hazır / uçuşta / boş). Atölye boş slotu olan ilk seviyede açılıyor (üretilebilecek olan). Boş slotta "Stok boş · 0/1" satırı kalktı (sayaç zaten söylüyor). Katlanmış `details` paragrafları "?" altında madde listesi; Onur kuralı sezona göre aynı.
+
+Savunma özeti (`DefenceReadings`): dört v2 kutusu (9 px) kitin cam kuyularına geçti. Her birinin rengi ve adının yanında simgeli madalyonu var (simge yanda, böylece 320 px Almanca "VERTEIDIGUNG" kutunun tüm genişliğini alıyor): Ateş gücü, Savunma (hattın neyden oluştuğu), Kalkan (kitin bölmeli çubuğu, saatlik dolum), Risk altında. Altındaki filo (`FleetCards`) kitte: aile başlıkları 44 px kapı ve sayısını taşıyor, gemiler 20 px resim, 12 px ad, evdeki sayı, havadaki (↑) ve tamirhanedeki (anahtar) ayrı.
+
+Silinen (bu değişiklikle kullanılmaz oldu): `ui/TacticalStock.tsx`, `v2/kit/ChargeTally.tsx` ve testi, `PlanetScreen`'deki `CapacityNext`, `ChargeProgress`, `TacticalNeed`, `PlanetHero`'daki `Firepower` ve v2 `Meter` kullanımı, `surfaces.css`'teki `.tactical-production*`, `.tactical-stock*`, `.radiation-forge*`, `.radiation-product*` kuralları ve yalnız onların okuduğu dört renk (`--color-v2-radiation-tier-1/2/3`, `--color-v2-radiation-flying`), `planet.interceptor.readyHint` (6 dilde `hint` ile birebir aynıydı), `planet.deathStar.eyebrow`.
+
+Ölü kod adayı (benden önce de kullanılmıyordu, silinmedi; owner'a liste): `--color-v2-radiation-product-border/glow/ground/title/rate`. Eski görsel doğrulama betikleri `tools/tactical-production-visual.mjs`, `tools/radiation-forge-visual.mjs`, `tools/radiation-bomb-visual.mjs` ve `tools/honor-benefits-visual.mjs`'in bir adımı eski v2 seçicilerini arıyor; denetim ve galeri artık bu işi yapıyor. Silinsin mi, owner'a soru.
+
+Kit sayfasına iki görünüm eklendi ve denetim bunları ölçüyor: `strategic-radiation` (radyasyon atölyesi açık, ikinci Ölüm Yıldızı üretimde), `strategic-locked` (genç dünya, kilitli atölye).
+
+Çeviri düzeltmeleri (savunma satırı, test eklendi): de "12 wird versendet" (12 gönderiliyor) → "12 Schiffe", "Waffe(n)" → "Bodengeschütz(e)", "Transport / transportiert in der Zeile" (metin satırında) → "Transporter in der Linie"; es "pistola(s)" (tabanca) → "cañón / cañones".
+
+Ölçüm: `reports/ui-audit/g2g-after-2026-11-14.md` (dört görünüm, 6 dil, telefon, dar ve masaüstü; 56 ölçüm). Önceki ölçüm 4.1'de (`reports/ui-audit/4.1-2026-11-12.md`, telefon, tr):
+
+| | Atölye 4.1 | Atölye G2-g | Savunma 4.1 | Savunma G2-g |
+|---|---|---|---|---|
+| 12 px altı metin | 13/65 | 0/59 | 34/91 | 13/85 |
+| Kontrast hatası | 1 | 0 | 17 | 10 |
+| 44 px altı hedef | 9/17 | 1/16 | 10/22 | 1/20 |
+| Basınca tepkisiz | 9 | 1 | 10 | 1 |
+| Kelime | 160 | 121 | 225 | 223 |
+
+Radyasyon açık görünüm 0/72, kilitli atölye 0/61 küçük metin; ikisinde de kontrast hatası yok. Kalan tek hedef ve tek tepkisiz alan G1 sheet çerçevesinin 2×2 px arka plan düğmesi. Kesilen ve kırpılan metin bütün dillerde ve boyutlarda 0.
+
+Savunma görünümünde kalan 13 küçük metin ve 10 kontrast hatasının hepsi yer odası çubuğunda ("Yer odası", "0 / 30", "boş 30", Kirpi / Zıpkın / Tabya çipleri, iki not satırı). O parça v2 `RoomBar`, G2-h'nin işi. Savunma özetinde ve bataryada bulgu yok.
+
+Metin yükü: atölye ekranı ilk ölçümde ekran başına 62 kelimeydi (bütçe 55). Tekrar eden üst satır kalkınca 60,5'e indi. Kartın kendisi yaklaşık 28 kelime. Görünüm iki ekran boyunda olduğu için ortalamayı sekmelerin üstündeki Üs başlığı (depo kuralı, radyasyon koruması, koloniyi bırak, kuyruklar) belirliyor. Başlık G2-a'nın işiydi; owner'ın son bakışı için not. Kilitli 57,5, savunma 55,8, radyasyon 50,3.
 
 ## G3. İstihbarat
 
@@ -1252,7 +1293,7 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 | `PaceRow`, `EscortRow`, `FlightEscort`, `EscapeReadout`, `BattleEnemyFleet`, `BattleRetreatNote`, `DistributedFireRules`, `PirateProfitCard` | 13–115 | 1–3 | v2 | `ListRow`, `StatPlaque` | G4 / G5 |
 | `QueueStrip` | 273 | 2 | v1 | `QueueSlot` | G2 |
 | `ShipHealthInventory` | 68 | 2 | v2 | `UnitCard` | G2 |
-| `FleetCards` | 160 | 1 | v1 | `UnitCard` / `UnitBay` | G4 |
+| `FleetCards` | 160 | 1 | v1 | kit (`gk-fleetband`, `gk-fleetchip`) | G2-g ✅ (Savunma özetinin altında, tek kullanıcısı orası) |
 | `RichContent` | 120 | 2 | v1 | — | G8 |
 | `SeasonRewardBoard`, `SeasonRewardReceipt` | 26–232 | 1 | v1 / v2 | `RewardPod` | G9 |
 | `LanguageSwitch` | 29 | 3 | v2 | `LanguagePicker` (kitte var) | G1 |
