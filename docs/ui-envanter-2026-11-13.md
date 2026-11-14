@@ -390,6 +390,32 @@ Rapordaki tek bulgu, bilgi balonunun kapatma ikonunda 1,00:1, ölçüm aracını
 
 Yerel oyunda 350 px'te denendi: kaynak hapına basıldı, "1,4K toplandı" üst çubuğun altına düştü (≈0,45 sn) ve süresi dolunca kalktı. Açıkken sağ üst sayımların ilk satırını örtüyor; tek satırlık ve 2,4 sn'lik olduğu için bilinçli.
 
+**G1-e zil ve sinyal akışı ✅ (2026-11-14).** Oyuncunun anı: döndü, zile bastı; "ben yokken ne oldu, hangisi beni bekliyor?" Akış döngünün istihbarat halkasıdır: savaş raporu yeni istihbarat, satır o rapora, yuvarlak düğme o dünyaya götürür. Hangi haberin nereye açıldığı (`DESTINATION`), aile ve sonuç kuralları (D142, owner'ın yeşil/kırmızı zemini), okunmuş işaretleme ve sayaç değişmedi.
+
+Önce kite eklenenler (galeri: `ui-kit` "Haberler" bölümü; `game-ui/news.tsx`):
+- `NewsRow`: ailesinin renginde para ve içinde olanın işareti, cümle, ne kadar önce.
+  - Zemin sonucu söyler: kazanç ince yeşil, kısmi ince amber, kayıp ince kırmızı, ikisi de değilse zemin yok.
+  - Yeni satırın parası yanar ve köşesinde nokta durur (kayıpta kırmızı). Okunmuş satır rengini daha düşük ışıkta tutar.
+  - Satıra basınca ilgili şey açılır; basılınca satır senin renginde yanar.
+  - Sonda kendi yuvarlak düğmesi durabilir.
+  - Herkesi ilgilendiren satırın (galaksi olayı) başında ne olduğu yazar, kenarında kendi renginde ray olur.
+- `NewsList`: başlıklı ya da yalnız okuyucuya adlı liste, kesik köşeli plaka.
+
+Akış:
+- Sekmeler kitin `GameTabs` parçası; açık sekmenin gövdesi adlandırdığı panel. Kronik sekmesinin içi G5'te.
+- "Şu anda" (dolu atölye, bozulan üretim, dolu depo, havadaki klan alarmı) ve "Neler oldu" aynı satırla çizilir. İkinci başlık yalnız ilki varken yazar.
+- İşaretler kitin glifleri, Şimdi çizgisiyle aynı dil: gelen saldırı siren, akın kılıç, korsan kafatası, sondan göz, birinin taraması büyüteç, dönüş geri ok, fetih bayrak, kaybedilen dünya koloni, stratejik silah radyasyon. Galaksi olayı kendi işaretini taşır (yağmur göktaşı, tüccar sandık, konvoy roket).
+- Kimlik (oyuncu, gezegen) cümlede kalın. Oraya uçuş satırın sonunda yuvarlak hedef düğmesi ("Haritada göster: Sable"). Eskiden altı çizili adın kendisiydi: başparmağın tutturması gereken bir yazı satırıydı ve satırın kendi basışının üstünde duruyordu.
+- Aynı dünyadan art arda gelen sonda raporları tek satır ("×2"; yakalanan sonda ya da başka dünya ayrı kalır). Taramalar zaten katlanıyordu (D45).
+- Boş akış kitin `EmptyState` parçası: zilin boyalı resmi, "Ortalık sakin" ve buraya neyin geleceği.
+- Satırların yazısı düz mürekkepte. Eskiden alarm satırları kırmızı yazıyla yazılıyordu; renk artık para ve zeminde (kitin kuralı: ton çerçeveyi ve işareti boyar, sözü değil).
+
+Ölçüm (`reports/ui-audit/g1e-after-2026-11-14.md`, 2 yol × 6 dil × 3 boyut), G1-b'deki aynı yollara göre telefonda: 12 px altı metin 30 → 2, kontrast hatası 15 → 2, 44 px altı hedef 16 → 8, tepkisiz hedef 18 → 6, kesilen metin 0. Kalanların hepsi ortak sheet çerçevesinde ve G1-g'nin işi: başlıktaki "3 yeni" (9 px, 3,87:1), "Genişlet" tutamacı (16 px), adsız arka perde, "Kapat"ın basış tepkisi. Akışın satırlarında bulgu yok.
+
+Kelime yükü ekran başına 55'ten 52,5'e indi (bütçe 55). "Uzun blok" sayısı 3 kalıyor: her satır bir haber cümlesi, paragraf değil. Cümleler sunucudan ve bildirim kataloğundan geliyor; kısaltmak ayrı bir yazı işi.
+
+Yerel oyunda 350 px'te zil açıldı. Hesabın gerçek akışı (üç galaksi olayı) başlık, ray ve okunmamış noktalarıyla çizildi; Kronik sekmesine geçildi.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

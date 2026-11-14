@@ -116,8 +116,11 @@ export const signals = {
   eventsHeading: 'Neler oldu',
   openEvent: 'İlgili raporu aç',
   worldEvent: 'Galaksi olayı',
-  empty:
-    "Henüz bildirim yok. Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada gösterilir.",
+  emptyTitle: "Ortalık sakin",
+  emptyBody:
+    "Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada görünür.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Haritada göster: {{name}}",
   repeat: '×{{count}}',
 
   status: {

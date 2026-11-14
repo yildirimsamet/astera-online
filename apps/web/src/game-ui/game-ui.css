@@ -2884,6 +2884,124 @@ button.gk-trow:focus-visible {
   background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-warn) 55%, transparent) 0 3px, transparent 3px 6px);
 }
 
+/* ── the news: what happened while the player was away (G1-e, 2026-11-14) ─────── */
+
+.gk-news {
+  --news: var(--gk-ink-3);
+  --news-ink: var(--gk-ink-2);
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 56px;
+  padding: 8px 8px 8px 12px;
+}
+.gk-news[data-tone='hostile'] { --news: var(--gk-hostile); --news-ink: var(--gk-hostile-hi); }
+.gk-news[data-tone='good'] { --news: var(--gk-good); --news-ink: var(--gk-good-hi); }
+.gk-news[data-tone='warn'] { --news: var(--gk-warn); --news-ink: var(--gk-warn); }
+.gk-news[data-tone='info'] { --news: var(--gk-info); --news-ink: var(--gk-info); }
+.gk-news[data-tone='alloy'] { --news: var(--gk-alloy); --news-ink: var(--gk-alloy-hi); }
+.gk-news[data-tone='crystal'] { --news: var(--gk-crystal); --news-ink: var(--gk-crystal); }
+/* The ground says how it went: thinly, so the sentence over it and the coin beside it lead. */
+.gk-news[data-outcome='win'] { background: linear-gradient(90deg, color-mix(in srgb, var(--gk-good) 13%, transparent), transparent 85%); }
+.gk-news[data-outcome='partial'] { background: linear-gradient(90deg, color-mix(in srgb, var(--gk-warn) 10%, transparent), transparent 85%); }
+.gk-news[data-outcome='loss'] { background: linear-gradient(90deg, color-mix(in srgb, var(--gk-hostile) 13%, transparent), transparent 85%); }
+/* A row about everyone wears a rail in its colour: news of the galaxy, not of you. */
+.gk-news[data-banner] { box-shadow: inset 3px 0 0 var(--news); }
+
+/* The row's press lies under its words; they let it through, the round press rises over it. */
+.gk-news__open {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-news__open:active {
+  background: color-mix(in srgb, var(--gk-self) 16%, transparent);
+  box-shadow: inset 3px 0 0 var(--gk-self);
+}
+.gk-news__open:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-news__coin,
+.gk-news__text {
+  position: relative;
+  pointer-events: none;
+}
+/* Read, the coin keeps its colour at a lower light; new, it is lit and wears a dot. */
+.gk-news__coin {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--news);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--news) 14%, var(--gk-metal-2)), var(--gk-metal-3));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--news) 28%, transparent);
+  opacity: 0.7;
+}
+.gk-news__coin .gk-glyph {
+  width: 20px;
+  height: 20px;
+}
+.gk-news[data-fresh] .gk-news__coin {
+  opacity: 1;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--news) 34%, var(--gk-metal-2)), var(--gk-metal-3));
+  box-shadow: inset 0 0 0 1.5px var(--news), 0 0 12px color-mix(in srgb, var(--news) 40%, transparent);
+}
+.gk-news__dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gk-self);
+  box-shadow: 0 0 0 2px var(--gk-metal-3), 0 0 8px var(--gk-self);
+}
+.gk-news[data-outcome='loss'] .gk-news__dot {
+  background: var(--gk-hostile);
+  box-shadow: 0 0 0 2px var(--gk-metal-3), 0 0 8px var(--gk-hostile);
+}
+.gk-news__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-news__banner {
+  color: var(--news-ink);
+}
+.gk-news__line {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-news__line strong {
+  font-weight: 800;
+}
+.gk-news__tool {
+  position: relative;
+  z-index: 1;
+}
+
+.gk-newslist {
+  display: grid;
+  gap: 6px;
+}
+.gk-newslist + .gk-newslist {
+  margin-top: 12px;
+}
+.gk-newslist__head {
+  padding-inline: 4px;
+}
+.gk-newslist__rows > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 50%, transparent);
+}
+
 /* ── banners, peeks, empty, coach ──────────────────────────────────────────── */
 
 .gk-banner {

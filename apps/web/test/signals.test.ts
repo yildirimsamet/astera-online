@@ -225,6 +225,31 @@ describe('folding repeated news', () => {
   it('leaves rows that carry numbers alone', () => {
     expect(group([raid('a'), raid('b')])).toHaveLength(2);
   });
+
+  /**
+   * THE SAME PROBE REPORT, TWICE, IS ONE LINE (G1-e, 2026-11-14). Two probes home from the same
+   * world in a row say the same sentence and open the same shelf; the second row only pushed
+   * the rest down. A probe on another world, or one that was caught, is different news.
+   */
+  const probe = (id: string, target: string, detected = false, seen = true): NotificationView => ({
+    id,
+    kind: 'probe_report',
+    payload: { targetPlanetId: `p-${target}`, targetPlanetName: target, detected },
+    seen,
+    at: new Date(),
+  });
+
+  it('folds probe reports from the same world into one row with a count', () => {
+    const folded = group([probe('a', 'Kestrel-12'), probe('b', 'Kestrel-12', false, false)]);
+    expect(folded).toHaveLength(1);
+    expect(folded[0]!.repeats).toBe(2);
+    expect(folded[0]!.event.seen).toBe(false);
+  });
+
+  it('keeps probe reports from different worlds, or a caught probe, on their own rows', () => {
+    expect(group([probe('a', 'Kestrel-12'), probe('b', 'Thistle')])).toHaveLength(2);
+    expect(group([probe('a', 'Kestrel-12'), probe('b', 'Kestrel-12', true)])).toHaveLength(2);
+  });
 });
 
 /**

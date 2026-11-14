@@ -11,7 +11,7 @@ import '../../game-ui/game-ui.css';
 import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, NewsList, NewsRow, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
@@ -427,6 +427,26 @@ function FinderParts() {
           <RoundButton art={artIconSrc('hud-view')} label="Görünüm" lit onPress={noop} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The news (G1-e): what is true now, then what happened; lit while new, ground by outcome. */
+function NewsParts() {
+  const noop = (): undefined => undefined;
+  const open = { label: 'İlgili raporu aç', onPress: noop };
+  return (
+    <div className="grid gap-1">
+      <NewsList title="Şu anda">
+        <li><NewsRow glyph="timed" tone="alloy" fresh open={{ label: 'Atölye durdu', onPress: noop }}><strong>Atölye durdu</strong> · Atölye dolu. Toplayana dek üretim saatte 1,2K'da duruyor.</NewsRow></li>
+      </NewsList>
+      <NewsList title="Neler oldu">
+        <li><NewsRow glyph="attack" tone="hostile" outcome="loss" fresh age="35 dk önce" open={open}
+          tool={<RoundButton small glyph="target" label="Haritada göster: Sable" onPress={noop} />}><strong>Sable</strong> · Akın yedin · −1,1K gitti · 3 birlik kayıp</NewsRow></li>
+        <li><NewsRow glyph="attack" tone="good" outcome="win" age="1 sa 20 dk önce" open={open}><strong>Kestrel-12</strong> üzerinde KESİN · +3,1K alaşım · 2 gemi kayıp</NewsRow></li>
+        <li><NewsRow glyph="star" tone="info" banner="Galaksi olayı" age="3 sa önce" open={open}>Galakside asteroid yağmuru başladı.</NewsRow></li>
+        <li><NewsRow glyph="zoom" tone="warn" age="4 sa 20 dk önce" open={open}>Tarama yakalandı <span className="gk-num">×3</span></NewsRow></li>
+      </NewsList>
     </div>
   );
 }
@@ -876,6 +896,10 @@ function Catalog() {
 
         <Section title="Bulucu · sayımlar, açılan liste, ev ve görünüm">
           <FinderParts />
+        </Section>
+
+        <Section title="Haberler · şu anda, neler oldu, galaksi olayı">
+          <NewsParts />
         </Section>
 
         <Section title="Okumalar">

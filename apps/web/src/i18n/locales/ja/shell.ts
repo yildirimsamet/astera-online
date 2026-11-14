@@ -152,8 +152,11 @@ export const signals = {
   openEvent: "関連レポートを開く",
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: "銀河の出来事",
-  empty:
-    "通知はまだありません。接近する艦隊の警告、検出した偵察機、帰還した艦船をここに表示します。",
+  emptyTitle: "静かです",
+  emptyBody:
+    "接近する艦隊の警告、検出した偵察機、帰還した艦船をここに表示します。",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "マップで表示: {{name}}",
   repeat: "×{{count}}",
 
   /** The states that are true right now, rather than things that happened. */

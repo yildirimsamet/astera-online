@@ -152,8 +152,11 @@ export const signals = {
   openEvent: 'Open related report',
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: 'Galaxy event',
-  empty:
-    "No notifications yet. Fleet warnings, detected probes and returning ships appear here.",
+  emptyTitle: "All quiet",
+  emptyBody:
+    "Fleet warnings, detected probes and returning ships appear here.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Show {{name}} on the map",
   repeat: '×{{count}}',
 
   /** The states that are true right now, rather than things that happened. */

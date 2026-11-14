@@ -801,10 +801,10 @@ function GalleryBell({ empty = false }: { empty?: boolean }) {
     const notifications: NotificationView[] = empty ? [] : [
       news('n-alarm', 'clan_alarm', 2, { arriveAt: new Date(NOW + 14 * MIN).toISOString(), etaMinutes: 14, targetPlanetName: 'Kuzgun', alarmId: '00000000-0000-4000-8000-0000000000a1', hostPlayerId: 'ayse', hostPlanetId: 'kuzgun', hostName: 'Ayşe' }, false),
       news('n-incoming', 'incoming_fleet', 4, { arriveAt: new Date(NOW + 9 * MIN).toISOString(), etaMinutes: 13, targetPlanetName: 'Thistle' }, false),
-      news('n-raided', 'raided', 35, { grade: 'PARTIAL', lootAlloy: 900, lootCrystal: 240, unitsLost: 3, targetPlanetName: 'Thistle' }, false),
+      news('n-raided', 'raided', 35, { grade: 'PARTIAL', lootAlloy: 900, lootCrystal: 240, unitsLost: 3, targetPlanetName: 'Thistle', originPlanetId: 'p-sable', originUsername: 'Sable', originPlanetName: 'Corvid' }, false),
       news('n-won', 'raid_result', 80, { grade: 'DECISIVE', lootAlloy: 3_100, lootCrystal: 1_000, unitsLost: 2, shipsHome: 28, targetPlanetName: 'Kestrel-12' }),
-      news('n-probe-1', 'probe_report', 140, { targetPlanetName: 'Kestrel-12' }),
-      news('n-probe-2', 'probe_report', 150, { targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-1', 'probe_report', 140, { targetPlanetId: 'p-kestrel', targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-2', 'probe_report', 150, { targetPlanetId: 'p-kestrel', targetPlanetName: 'Kestrel-12' }),
       news('n-home', 'fleet_returned', 190, { trip: 'raid', ships: 26, lootAlloy: 3_100, lootCrystal: 1_000 }),
       news('n-scan', 'scan_detected', 260, {}),
       news('n-unlock', 'unlock', 420, { unlock: 'RADAR' }),

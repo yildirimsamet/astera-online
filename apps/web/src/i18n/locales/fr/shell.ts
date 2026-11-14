@@ -116,8 +116,11 @@ export const signals = {
   eventsHeading: "Ce qui s’est passé",
   openEvent: "Ouvrir le rapport associé",
   worldEvent: "Événement galactique",
-  empty:
-    "Aucune notification. Les alertes de flotte, sondes détectées et retours de vaisseaux s’affichent ici.",
+  emptyTitle: "Tout est calme",
+  emptyBody:
+    "Les alertes de flotte, sondes détectées et retours de vaisseaux s’affichent ici.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Montrer sur la carte : {{name}}",
   repeat: "×{{count}}",
   status: {
     disruptedLine: "Stock de production hors service",

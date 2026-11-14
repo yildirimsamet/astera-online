@@ -36,6 +36,15 @@ describe('the bell sheet', () => {
     expect(onTab).toHaveBeenCalledWith('chronicle');
   });
 
+  /** G1-e: the kit's metal tabs, and the open one's body is the panel it names. */
+  it('switches on the kit\u2019s tabs, each naming the panel it opens', () => {
+    render(<BellSheet {...props()} />);
+    const tab = screen.getByRole('tab', { name: 'Signals' });
+    expect(tab.closest('.gk-tabs')).not.toBeNull();
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', tab.getAttribute('aria-controls'));
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('signal rows');
+  });
+
   it('holds Signals and the Chronicle, and no chat', () => {
     render(<BellSheet {...props()} />);
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Signals', 'Chronicle']);

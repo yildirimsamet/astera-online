@@ -8,11 +8,12 @@ import { useMarkSeen, useNotifications, usePlanet } from '../api/queries.js';
 import { observeOutcomes } from '../session/outcomeVisible.js';
 import type { NotificationView, PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
+import { EmptyState, NewsList, NewsRow, RoundButton, artIconSrc, type GlyphId, type NewsTone } from '../game-ui/index.js';
 import { compact } from '../lib/format.js';
+import { EVENT_GLYPH } from '../lib/nowLine.js';
 import { haptic } from '../lib/haptics.js';
 import {
   describeNotification,
-  isAlarming,
   notificationIdentity,
   notificationMonumentTarget,
   signalFamily,
@@ -20,31 +21,12 @@ import {
   signalOutcome,
   type SignalFamily,
   type SignalGlyph,
-  type SignalOutcome,
 } from '../lib/notifications.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/kit/index.js';
 import type { Panel, PanelStop } from '../screens/GalaxyView.jsx';
 import { serverNow } from '../lib/clock.js';
-import {
-  AlloyIcon,
-  BellIcon,
-  ConquestIcon,
-  CrystalIcon,
-  DeathStarIcon,
-  DisruptedIcon,
-  EyeIcon,
-  GalaxyIcon,
-  IncomingIcon,
-  RaidedIcon,
-  RefineryIcon,
-  ReturnedIcon,
-  ScanIcon,
-  SkullIcon,
-  UnlockIcon,
-  WorldLostIcon,
-} from '../ui/icons/index.js';
 
 /**
  * SIGNALS — everything the galaxy said while you were not reading.
@@ -248,53 +230,36 @@ export function SignalsFeed({
   );
   const rightNow = status.length > 0 || live.length > 0;
 
+  /*
+    THE FEED ON THE KIT (G1-e, 2026-11-14): what is true right now on a plate of its own, then
+    what happened. A head only where "Right now" stands above it to be told apart from; the
+    list is still named for a reader. Nothing yet is said with the bell's picture.
+  */
   return (
     <>
       {rightNow && (
-        <div className="mb-6 mt-2">
-          <p className="legend mb-2">{t('signals.statusHeading')}</p>
-          <div className="plate plate-inset">
-            {live.map(row)}
-            {status.map((item) => (
-              <button
-                key={item.line}
-                type="button"
-                disabled={!item.go}
-                onClick={() => {
-                  if (!item.go) return;
-                  onGo(item.go);
-                }}
-                className="flex w-full items-start gap-2 border-b border-line-soft p-3 text-left last:border-b-0"
+        <NewsList title={t('signals.statusHeading')}>
+          {live.map(row)}
+          {status.map((item) => (
+            <li key={item.line}>
+              <NewsRow
+                glyph={STATUS_MARK[item.kind]}
+                tone={STATUS_TONE[item.tone]}
+                fresh
+                {...(item.go === undefined ? {} : { open: { label: item.line, onPress: () => { if (item.go !== undefined) onGo(item.go); } } })}
               >
-                <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal'}`} aria-hidden>
-                  <StatusGlyph kind={item.kind} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-body text-bone">{item.line}</span>
-                  <span className="mt-1 block text-caption text-faint">{item.detail}</span>
-                </span>
-                {item.go && (
-                  <span aria-hidden className="shrink-0 text-body text-faint">
-                    →
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+                <strong>{item.line}</strong> · {item.detail}
+              </NewsRow>
+            </li>
+          ))}
+        </NewsList>
       )}
-
-      {/* A heading only when "Right now" stands above it to be told apart from. */}
-      {rightNow && groups.length > 0 && <p className="legend mb-2">{t('signals.eventsHeading')}</p>}
       {groups.length === 0 && live.length > 0 ? null : events.length === 0 ? (
-        <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
-          <BellIcon className="size-10 text-faint" />
-          <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
-        </div>
+        <EmptyState art={artIconSrc('hud-bell')} title={t('signals.emptyTitle')} body={t('signals.emptyBody')} />
+      ) : rightNow ? (
+        <NewsList title={t('signals.eventsHeading')}>{groups.map(row)}</NewsList>
       ) : (
-        <div className="plate plate-inset">
-          {groups.map(row)}
-        </div>
+        <NewsList label={t('signals.eventsHeading')}>{groups.map(row)}</NewsList>
       )}
     </>
   );
@@ -412,7 +377,25 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
  * carries no figures of its own. Anything with a number in it says something
  * different every time and must stay on its own line.
  */
-const FOLDABLE = new Set(['scan_detected']);
+/*
+  WHAT A RUN HAS TO SHARE TO FOLD, per kind. Every scan says the same sentence. A probe report
+  names its world and whether the probe was caught, and opens the probe shelf rather than a
+  report of its own (G1-e, 2026-11-14): two home from the same world, both unseen or both caught,
+  are one line; another world or another fate is different news.
+*/
+const probeFold = z.object({
+  targetPlanetId: z.string().optional(),
+  targetPlanetName: z.string().optional(),
+  detected: z.boolean().optional(),
+});
+const FOLD_KEY: Partial<Record<string, (event: NotificationView) => string>> = {
+  scan_detected: () => '',
+  probe_report: (event) => {
+    const parsed = probeFold.safeParse(event.payload);
+    const probe = parsed.success ? parsed.data : {};
+    return `${probe.targetPlanetId ?? probe.targetPlanetName ?? ''}|${String(probe.detected === true)}`;
+  },
+};
 
 interface Group {
   event: NotificationView;
@@ -423,7 +406,8 @@ export function group(events: readonly NotificationView[]): Group[] {
   const out: Group[] = [];
   for (const event of events) {
     const last = out[out.length - 1];
-    if (last && FOLDABLE.has(event.kind) && last.event.kind === event.kind) {
+    const key = FOLD_KEY[event.kind];
+    if (last && key && last.event.kind === event.kind && key(last.event) === key(event)) {
       last.repeats += 1;
       // The newest of a run keeps the row, and its unseen state is the run's:
       // one unread scan in a fold of five must not read as already handled.
@@ -436,73 +420,60 @@ export function group(events: readonly NotificationView[]): Group[] {
 }
 
 /**
- * HOW EACH FAMILY OF NEWS IS PAINTED. D142.
+ * HOW EACH FAMILY OF NEWS IS PAINTED. D142, on the kit since G1-e (2026-11-14).
  *
  * `docs/visual-design.md`: **icons carry shape, the interface carries colour.**
- * So the family decides the chip's hue and `signalGlyph` decides its shape, and a
- * row is never separated from its neighbour by only one of the two.
- *
- * THE READ COLUMN IS DIMMER, NOT GREY. Every chip used to turn furniture-grey the
- * moment the row was seen, which threw the category away as soon as the player
- * looked at the list — so a history of forty rows was forty identical grey dots.
- * A read row keeps its colour at about a third of the intensity: still legible as
- * "that was a loss", clearly no longer new.
+ * So the family decides the coin's hue and `signalGlyph` decides its mark, and a
+ * row is never separated from its neighbour by only one of the two. A read row
+ * keeps its colour at a lower light (`NewsRow`): still legible as "that was a loss",
+ * clearly no longer new.
  *
  * PIRATE AND THREAT SHARE THE RED, DELIBERATELY. An identified pirate wears a red
  * skull on the disc (`PIRATE_MARK`, `galaxy/Fleets.tsx`) and the mark, not the hue,
- * is what says "a target rather than a commander". A second red would teach a
- * distinction the galaxy itself does not draw.
+ * is what says "a target rather than a commander".
  */
-const FAMILY_SKIN: Record<SignalFamily, { live: string; read: string }> = {
-  threat: {
-    live: 'border-threat/75 bg-threat/55 text-threat-ink',
-    read: 'border-threat/44 bg-threat/[0.2] text-threat-ink/55',
-  },
-  pirate: {
-    live: 'border-threat/75 bg-threat/55 text-threat-ink',
-    read: 'border-threat/44 bg-threat/[0.2] text-threat-ink/55',
-  },
-  gain: {
-    live: 'border-opportunity/45 bg-opportunity/30 text-opportunity',
-    read: 'border-opportunity/20 bg-opportunity/[0.2] text-opportunity/75',
-  },
-  watch: {
-    live: 'border-alloy/45 bg-alloy/30 text-alloy',
-    read: 'border-alloy/20 bg-alloy/[0.2] text-alloy/75',
-  },
-  world: {
-    live: 'border-crystal/45 bg-crystal/30 text-crystal',
-    read: 'border-crystal/20 bg-crystal/[0.2] text-crystal/75',
-  },
+const FAMILY_TONE: Record<SignalFamily, NewsTone> = {
+  threat: 'hostile',
+  pirate: 'hostile',
+  gain: 'good',
+  watch: 'warn',
+  world: 'info',
   // A kind this build has never heard of. Furniture, on purpose — see `signalFamily`.
-  note: {
-    live: 'border-line-soft bg-deep text-faint',
-    read: 'border-line-soft bg-deep text-faint',
-  },
+  note: 'steel',
 };
 
-/**
- * THE GROUND A ROW SITS ON — whether the news went the reader's way. Owner rule.
- *
- * A thin green for a win, a thin red for a loss, nothing for what is neither. The
- * values are deliberately near the floor: this is a tint on the plate, not a
- * highlight, and at any real strength it would fight both the sentence over it and
- * the chip beside it.
- *
- * NEUTRAL KEEPS THE OLD BEHAVIOUR EXACTLY — the faint aqua when unread and bare
- * plate once read — because a wash on a row that is neither a win nor a loss makes
- * three states out of two and costs the other two their meaning.
- *
- * WHICH IS WHY NEWNESS MOVED OFF THE BACKGROUND. Two `raided` rows, one read and
- * one not, are both losses and are now painted identically; the unread mark is the
- * design system's `.pip`, the only thing on this surface shaped like it.
- */
-const OUTCOME_WASH: Record<SignalOutcome, string> = {
-  win: 'bg-opportunity/[0.1]',
-  partial: 'bg-alloy/[0.06]',
-  loss: 'bg-threat/[0.05]',
-  neutral: '',
+/** The kit's mark for each kind of news, the same marks the Now line and the galaxy wear. */
+const SIGNAL_MARK: Record<SignalGlyph, GlyphId> = {
+  incoming: 'siren',
+  strategic: 'radiation',
+  raided: 'attack',
+  returned: 'recall',
+  skull: 'pirate',
+  // Your instrument looking out; the magnifier is somebody looking at you.
+  probe: 'eye',
+  scan: 'zoom',
+  unlock: 'unlock',
+  conquest: 'banner',
+  'world-lost': 'colony',
+  galaxy: 'star',
+  bell: 'bell',
 };
+
+/** A galaxy event wears the mark its chip wears on the galaxy and on the Now line. */
+const eventKindOf = z.object({ eventKind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']) });
+function newsMark(event: NotificationView): GlyphId {
+  const galaxy = eventKindOf.safeParse(event.payload);
+  if (signalFamily(event) === 'world' && galaxy.success) return EVENT_GLYPH[galaxy.data.eventKind];
+  return SIGNAL_MARK[signalGlyph(event)];
+}
+
+const STATUS_MARK: Record<Status['kind'], GlyphId> = {
+  disrupted: 'damaged',
+  'works-full': 'timed',
+  'alloy-full': 'crate',
+  'crystal-full': 'crate',
+};
+const STATUS_TONE: Record<Status['tone'], NewsTone> = { threat: 'hostile', alloy: 'alloy', crystal: 'crystal' };
 
 function Event({
   event,
@@ -530,198 +501,110 @@ function Event({
   const line = describeNotification(event, now);
   if (!line) return null;
   const family = signalFamily(event);
-  const outcome = signalOutcome(event);
-  const bad = isAlarming(event);
   const destination = DESTINATION[event.kind];
   const age = staleness((now - event.at.getTime()) / 60_000);
-  /**
-   * The outcome owns the background; a neutral row keeps the old aqua-when-unread.
-   * `pip` then carries newness on its own, for every family at once.
-   */
-  const wash = outcome === 'neutral'
-    ? (unread ? 'bg-crystal/[0.04]' : '')
-    : OUTCOME_WASH[outcome];
-  const pip = unread
-    ? (
-      <span
-        data-unread
-        aria-hidden
-        /*
-          `pointer-events-none`, like the sentence beside it: the row's door is a
-          full-bleed button UNDER this mark, and a positioned decoration paints
-          over it. An unread row is exactly the row a reader taps, and the corner
-          of the newest one was the one spot on it that swallowed the tap.
-        */
-        className={`pip pointer-events-none absolute right-2 top-2.5 ${outcome === 'loss' ? 'pip-threat' : ''}`}
-      />
-    )
-    : null;
+  const subject = notificationIdentity(event);
 
-  const sentence = (
-    <Sentence
-      onFocusMonument={onFocusMonument}
-      line={line}
-      event={event}
-      repeats={repeats}
-      onFocusPlanet={onFocusPlanet}
-    />
-  );
+  const openIt = (): void => {
+      if (!destination) return;
+      if (event.kind === 'unknown_signal_result' && event.refId) {
+        onGo(null);
+        openUnknownSignal(event.refId);
+        return;
+      }
+      const alarm = clanAlarmOf(event);
+      if (alarm) {
+        onGo(null);
+        openClanAlarm(alarm);
+        return;
+      }
+      const monument = notificationMonumentTarget(event);
+      if (monument?.monumentId && destination.stop !== 'battles' && onFocusMonument) {
+        onFocusMonument(monument.monumentId);
+        return;
+      }
+      /*
+        THE SHELF DECIDES WHETHER THE ROW NAMES A FIGHT. Owner report.
 
-  const open = destination
-    ? (
-      <button
-        type="button"
-        aria-label={i18n.t('signals.openEvent')}
-        onClick={() => {
-          if (event.kind === 'unknown_signal_result' && event.refId) {
-            onGo(null);
-            openUnknownSignal(event.refId);
-            return;
-          }
-          const alarm = clanAlarmOf(event);
-          if (alarm) {
-            onGo(null);
-            openClanAlarm(alarm);
-            return;
-          }
-          const monument = notificationMonumentTarget(event);
-          if (monument?.monumentId && destination.stop !== 'battles' && onFocusMonument) {
-            onFocusMonument(monument.monumentId);
-            return;
-          }
-          /*
-            THE SHELF DECIDES WHETHER THE ROW NAMES A FIGHT. Owner report.
+        A battle notification is about ONE report, and `refId` is that fight on
+        every kind that routes to the battle shelf — the mission for a raid, a
+        Death Star and an interception, the raid itself for a pirate (D150),
+        and `BattleReports` matches both binders. This used to be a list of two
+        kinds, so a Death Star resolving and a rocket being shot down opened
+        the list and left the reader to find their own report in it.
 
-            A battle notification is about ONE report, and `refId` is that fight on
-            every kind that routes to the battle shelf — the mission for a raid, a
-            Death Star and an interception, the raid itself for a pirate (D150),
-            and `BattleReports` matches both binders. This used to be a list of two
-            kinds, so a Death Star resolving and a rocket being shot down opened
-            the list and left the reader to find their own report in it.
+        Read off the destination, the rule is stated once: a fifth battle kind
+        gets it by routing there, which is the only place it can be forgotten.
+      */
+      const bomb = event.kind === 'radiation_bomb_result' || (event.kind === 'strategic_intercepted'
+        && z.object({ weaponKind: z.literal('RADIATION_BOMB') }).safeParse(event.payload).success);
+      const reportMissionId = destination.stop === 'battles' && event.refId
+        ? bomb ? `bomb:${event.refId}` : event.refId : undefined;
+      /*
+        A FAULT NAMES A WORLD, A TAB AND A ROW, and all three come off the payload
+        rather than being worked out here. The server's copy has to travel with the
+        notification anyway — it is what makes the press work on a build that has
+        never heard of the fault it is announcing — so deriving a second answer on
+        this side would be a table to keep in step for no gain.
+      */
+      const payload = event.payload as
+        { planetId?: unknown; group?: unknown; itemId?: unknown } | undefined;
+      const focus = {
+        ...(typeof payload?.planetId === 'string' ? { planetId: payload.planetId } : {}),
+        ...(typeof payload?.group === 'string' ? { group: payload.group } : {}),
+        ...(typeof payload?.itemId === 'string' ? { itemId: payload.itemId } : {}),
+      };
+      /*
+        NOTHING TO POINT AT MEANS NOTHING IS SENT. Most news has no row in it, and
+        handing every one of them an empty object would make the argument meaningless
+        and every existing caller's signature a lie about what it receives.
+      */
+      onGo(
+        destination.panel,
+        destination.stop,
+        reportMissionId,
+        Object.keys(focus).length > 0 ? focus : undefined,
+      );
+  };
 
-            Read off the destination, the rule is stated once: a fifth battle kind
-            gets it by routing there, which is the only place it can be forgotten.
-          */
-          const bomb = event.kind === 'radiation_bomb_result' || (event.kind === 'strategic_intercepted'
-            && z.object({ weaponKind: z.literal('RADIATION_BOMB') }).safeParse(event.payload).success);
-          const reportMissionId = destination.stop === 'battles' && event.refId
-            ? bomb ? `bomb:${event.refId}` : event.refId : undefined;
-          /*
-            A FAULT NAMES A WORLD, A TAB AND A ROW, and all three come off the payload
-            rather than being worked out here. The server's copy has to travel with the
-            notification anyway — it is what makes the press work on a build that has
-            never heard of the fault it is announcing — so deriving a second answer on
-            this side would be a table to keep in step for no gain.
-          */
-          const payload = event.payload as
-            { planetId?: unknown; group?: unknown; itemId?: unknown } | undefined;
-          const focus = {
-            ...(typeof payload?.planetId === 'string' ? { planetId: payload.planetId } : {}),
-            ...(typeof payload?.group === 'string' ? { group: payload.group } : {}),
-            ...(typeof payload?.itemId === 'string' ? { itemId: payload.itemId } : {}),
-          };
-          /*
-            NOTHING TO POINT AT MEANS NOTHING IS SENT. Most news has no row in it, and
-            handing every one of them an empty object would make the argument meaningless
-            and every existing caller's signature a lie about what it receives.
-          */
-          onGo(
-            destination.panel,
-            destination.stop,
-            reportMissionId,
-            Object.keys(focus).length > 0 ? focus : undefined,
-          );
-        }}
-        className="absolute inset-0"
-      />
-    )
-    : null;
+  /*
+    THE WAY TO WHOEVER IT NAMES IS A ROUND PRESS OF ITS OWN (G1-e, 2026-11-14). It was the
+    underlined name in the sentence: a line of text the thumb had to hit, lying over the row's
+    own press. The name stays bold; the target at the row's end flies there.
+  */
+  const fly = subject?.monumentId !== undefined && onFocusMonument
+    ? () => { if (subject.monumentId !== undefined) onFocusMonument(subject.monumentId); }
+    : subject?.planetId !== undefined
+      ? () => { if (subject.planetId !== undefined) onFocusPlanet(subject.planetId); }
+      : null;
 
-  /**
-   * A GALAXY EVENT IS NOT PERSONAL MAIL, AND IS NOT DRAWN LIKE IT.
-   *
-   * An asteroid shower happened to the whole shard. Rendered as an ordinary row it
-   * sat between "your fleet came home" and "you were raided" in the same shape, so
-   * the reader's first question was which of their worlds it was about — a question
-   * the sentence cannot answer because there is no world in it.
-   *
-   * A framed plate with a lit rail and a GALAXY EVENT eyebrow, in the same crystal
-   * the live event chip on the disc uses (`ActiveGalaxyEvent`), so the two read as
-   * one thing seen twice rather than two unrelated notices.
-   */
-  if (family === 'world') {
-    return (
-      <div
-        data-testid="signal-event"
-        data-signal-id={event.id}
-        data-family={family}
-        className={`relative w-full border-b border-line-soft p-2 last:border-b-0 ${wash}`}
-      >
-        {open}
-        {pip}
-        <div className="relative overflow-hidden rounded-plate border border-crystal/30 bg-[radial-gradient(130%_120%_at_0%_0%,rgb(89_200_255/0.14),transparent_62%)] p-3">
-          <span
-            aria-hidden
-            className="absolute inset-y-0 left-0 w-[2px] bg-crystal/70 shadow-[0_0_10px_rgba(89,200,255,0.65)]"
-          />
-          <div className="flex items-center gap-2">
-            <span data-glyph={signalGlyph(event)} className="shrink-0 text-crystal" aria-hidden>
-              <EventGlyph glyph={signalGlyph(event)} className="size-4" />
-            </span>
-            <p className="legend text-micro text-crystal">{i18n.t('signals.worldEvent')}</p>
-            <span className="num ml-auto shrink-0 text-label text-faint">{age}</span>
-          </div>
-          <p className="pointer-events-none relative mt-1.5 text-body text-bone">{sentence}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const skin = FAMILY_SKIN[family];
   return (
-    <div
-      data-testid="signal-event"
-      data-signal-id={event.id}
-      data-family={family}
-      className={`relative flex w-full items-start gap-2 border-b border-line-soft p-3 pr-6 text-left last:border-b-0 ${wash}`}
-    >
-      {open}
-      {pip}
-      <span
-        data-glyph={signalGlyph(event)}
-        className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${unread ? skin.live : skin.read
-          }`}
-        aria-hidden
+    <li data-testid="signal-event" data-signal-id={event.id} data-family={family}>
+      <NewsRow
+        glyph={newsMark(event)}
+        tone={FAMILY_TONE[family]}
+        outcome={signalOutcome(event)}
+        fresh={unread}
+        age={age}
+        /*
+          A GALAXY EVENT IS NOT PERSONAL MAIL, AND IS NOT DRAWN LIKE IT. An asteroid shower
+          happened to the whole shard; it says so above its sentence, in the blue the event's
+          own chip on the galaxy wears, with a rail down its edge.
+        */
+        {...(family === 'world' ? { banner: i18n.t('signals.worldEvent') } : {})}
+        {...(destination ? { open: { label: i18n.t('signals.openEvent'), onPress: openIt } } : {})}
+        {...(fly === null || subject === null ? {} : {
+          tool: <RoundButton small glyph="target" label={i18n.t('signals.showOnMap', { name: subject.label })} onPress={fly} />,
+        })}
       >
-        <EventGlyph glyph={signalGlyph(event)} />
-      </span>
-      <span className="pointer-events-none relative min-w-0 flex-1">
-        <span className={`relative block text-body ${bad ? 'text-threat-ink' : 'text-bone'}`}>
-          {sentence}
-        </span>
-        <span className="num mt-1 block text-label text-faint">{age}</span>
-      </span>
-    </div>
+        <Sentence line={line} event={event} repeats={repeats} />
+      </NewsRow>
+    </li>
   );
 }
 
-/**
- * The sentence, with the one identity in it made bold and — when it is a world —
- * a way to fly there. Extracted only because two row shapes now print it.
- */
-function Sentence({
-  line,
-  event,
-  repeats,
-  onFocusPlanet,
-  onFocusMonument,
-}: {
-  line: string;
-  event: NotificationView;
-  repeats: number;
-  onFocusPlanet: (planetId: string) => void;
-  onFocusMonument?: (monumentId: string) => void;
-}) {
+/** The sentence, with the one identity in it made bold. */
+function Sentence({ line, event, repeats }: { line: string; event: NotificationView; repeats: number }) {
   const subject = notificationIdentity(event);
   const subjectAt = subject === null ? -1 : line.indexOf(subject.label);
   return (
@@ -729,28 +612,11 @@ function Sentence({
       {subject && subjectAt >= 0 ? (
         <>
           {line.slice(0, subjectAt)}
-          {subject.monumentId && onFocusMonument ? <button type="button"
-            onClick={() => { if (subject.monumentId) onFocusMonument(subject.monumentId); }}
-            className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2">{subject.label}</button> : subject.planetId ? (
-            <button
-              type="button"
-              onClick={() => {
-                haptic('tap');
-                onFocusPlanet(subject.planetId!);
-              }}
-              className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2"
-            >
-              {subject.label}
-            </button>
-          ) : (
-            <strong className="font-bold">{subject.label}</strong>
-          )}
+          <strong>{subject.label}</strong>
           {line.slice(subjectAt + subject.label.length)}
         </>
       ) : line}
-      {repeats > 1 && (
-        <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
-      )}
+      {repeats > 1 && <span className="gk-num"> {i18n.t('signals.repeat', { count: repeats })}</span>}
     </>
   );
 }
@@ -823,51 +689,6 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
   }
 
   return out;
-}
-
-function StatusGlyph({ kind }: { kind: Status['kind'] }) {
-  if (kind === 'disrupted') return <DisruptedIcon className="size-5" />;
-  if (kind === 'works-full') return <RefineryIcon className="size-5" />;
-  if (kind === 'alloy-full') return <AlloyIcon className="size-5" />;
-  return <CrystalIcon className="size-5" />;
-}
-
-/**
- * THE SHAPE HALF. `signalGlyph` decides which; this only draws it.
- *
- * The split matters because the decision is testable as data and the drawing is
- * not: eight kinds used to reach the bell here, and nothing failed — a bell is a
- * perfectly valid icon, it just says nothing. The classifier's own test now
- * refuses to let any kind the server can send fall through to it.
- */
-function EventGlyph({ glyph, className = 'size-5' }: { glyph: SignalGlyph; className?: string }) {
-  switch (glyph) {
-    case 'incoming':
-      return <IncomingIcon className={className} />;
-    case 'strategic':
-      return <DeathStarIcon className={className} />;
-    case 'raided':
-      return <RaidedIcon className={className} />;
-    case 'returned':
-      return <ReturnedIcon className={className} />;
-    case 'skull':
-      return <SkullIcon className={className} />;
-    /** Your instrument looking out; the ping below is somebody looking at you. */
-    case 'probe':
-      return <EyeIcon className={className} />;
-    case 'scan':
-      return <ScanIcon className={className} />;
-    case 'unlock':
-      return <UnlockIcon className={className} />;
-    case 'conquest':
-      return <ConquestIcon className={className} />;
-    case 'world-lost':
-      return <WorldLostIcon className={className} />;
-    case 'galaxy':
-      return <GalaxyIcon className={className} />;
-    default:
-      return <BellIcon className={className} />;
-  }
 }
 
 function stores(planet: PlanetView, held: Projected) {

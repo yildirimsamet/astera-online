@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Segmented } from '../kit/Segmented.js';
+import { GameTabs } from '../../game-ui/index.js';
 import { Sheet } from '../kit/Sheet.js';
 
 export type BellTab = 'signals' | 'chronicle';
@@ -31,6 +31,8 @@ const FEED = ['half', 'full'] as const;
  */
 export function BellSheet({ tab, onTab, onClose, unseen, signals, chronicle }: BellSheetProps) {
   const { t } = useTranslation();
+  const id = useId();
+  const ids = { tab: (which: BellTab) => `${id}-tab-${which}`, panel: (which: BellTab) => `${id}-panel-${which}` };
 
   return (
     <Sheet
@@ -40,18 +42,23 @@ export function BellSheet({ tab, onTab, onClose, unseen, signals, chronicle }: B
       onClose={onClose}
       detents={FEED}
     >
-      <div className="mb-2 shrink-0">
-        <Segmented
+      {/* The kit's metal tabs (G1-e, 2026-11-14); the open one's body is the panel it names. */}
+      <div className="gk mb-3 shrink-0">
+        <GameTabs
           label={t('bell.label')}
           value={tab}
           onChange={onTab}
-          options={[
+          ids={ids}
+          tabs={[
             { id: 'signals', label: t('bell.signals') },
             { id: 'chronicle', label: t('bell.chronicle') },
           ]}
         />
       </div>
-      {tab === 'signals' ? signals : chronicle}
+      {/* The feed is on the kit; the chronicle keeps its own dress until its unit (G5). */}
+      <div role="tabpanel" id={ids.panel(tab)} aria-labelledby={ids.tab(tab)} {...(tab === 'signals' ? { className: 'gk' } : {})}>
+        {tab === 'signals' ? signals : chronicle}
+      </div>
     </Sheet>
   );
 }
