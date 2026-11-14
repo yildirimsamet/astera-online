@@ -318,6 +318,29 @@ Yerel oyunda 350 px'te denendi: yapım başlatıldı, plaka "ALAŞIM RAFİNERİS
 
 Kit ölçümünde G1'den önce de olan tek tepkisiz hedef: galerideki `Slider` örneği ("Ok"); kit sürgüsüne dokunan birimde ele alınacak (G1-f ayarlar).
 
+**G1-d1 bağlam kartı ✅ (2026-11-14).** Oyuncunun anı: galaksiye bakarken "şu an bilmem gereken tek şey ne?" Ekranın altında tek kart durur: önce gelen saldırı, yoksa galaksi olayı, yoksa tek öneri. Kural (`contextSlot`) ve kapatılan kartların hafızası değişmedi; kartın kendisi kitin diline geçti.
+
+Önce kite eklenenler (galeri: `ui-kit` "Bağlam kartı" bölümü):
+- `ContextCard`: kesik köşeli plaka, rengi kimin olduğundan. Başlıkta halka içinde işaret, üst satırda ne olduğu, altında büyük süre ("9 dk 00 sn sonra iner"). Halka zamanı bilinen bütün üzerinde boşalır. Yalnız düşmanda nabız atar: her zaman kıpırdayan kart okunmaz. Başlığın sağında yuvarlak düğmeler (bak, katla, kapat), altta ad, tek cümle ve eylem satırı. Kart aşağıdan yükselerek gelir.
+- `ContextStrip`: katlanmış öneri; tek satır, tek basış, kendi renginde.
+- Satır (`gk-crow`): birden çok olay aynı kartta, her biri kendi "Göster" düğmesiyle.
+
+Kartlar:
+- Saldırı: siren, düşmanın galaksinin gördüğü uçuşu üzerinde boşalan halka, "Savunmayı hazırla" (kalkan işaretli kırmızı düğme). Görüşteki saldırıya başlıkta göz düğmesi ("Ona bak"). İki düğme yan yana yalnız Japoncada tek satıra sığıyordu; alt alta durunca kart 175 px yerine 227 px oluyor, galaksinin üçte birini kapatıyordu. Göz, katla düğmesiyle aynı desende başlığa çıktı; eylem satırı her dilde tek düğme.
+- Olay: tekse kendi işareti (yağmur göktaşı, tüccar ve konvoy sandık) ve penceresi üzerinde boşalan halka; birden çoksa yıldız. Kalan süre gövdede yazdığı için başlıkta tekrar edilmez. Tüccarın kuru resimlerle çizilir (kitin maliyet satırı, aralarında sessiz "="); kalan süresi diğer olaylarla aynı yazıda.
+- Öneri: türüne göre (tehdit uyarı, fırsat hedef); katlanınca şerit, tercih cihazda kalır.
+- Seçim açıkken bekleyen saldırı: kırmızı durum çipi, siren ve sayı (eskiden kılıç; saldırı her yerde sirenle çizilir).
+
+Bulunan ve düzeltilen hata: seçim açıkken saldırı çipi galaksinin `top-2` noktasına konuyordu. G1-b'den beri durum satırı galaksinin üstünde yüzdüğü için çip kalkan çipinin altında kalırdı. Artık köşeler gibi yüzen satırların ölçülen yüksekliğinden (`--v2-float-h`) başlıyor. Zil ve sohbet, kart yokken 8 px'ten, kart varken 12 px'ten duruyordu; ikisi de 12 px'lik ana boşlukta.
+
+Kontrast: kırmızı plakada kırmızı üst satır 3,97:1'de kalıyordu; düşman kartında ve şeridinde bir ton açık kırmızı (`--gk-hostile-hi`) kullanılıyor.
+
+Galeriye iki yol eklendi (`context-suggestion`, `context-selected`); saldırı yolu artık görüşteki bir saldırı (halka ve göz düğmesiyle).
+
+Ölçüm (`reports/ui-audit/g1d-after-2026-11-14.md`, 5 yol × 6 dil × 3 boyut), aynı üç yolun G1-b ölçümüne göre telefonda: 12 px altı metin 34 → 0, kontrast hatası 2 → 0, 44 px altı hedef 10 → 0, tepkisiz hedef 5 → 0, kesilen metin 0.
+
+Yerel oyunda 350 px'te galaksi açıldı; hesabın o an saldırısı, olayı ya da önerisi yoktu, kart çizilmedi ve zil ile sohbet alt köşede tek başına duruyordu. Kartın kendisi galeride, oyunun alt menüsüyle aynı yerleşimde denetlendi. Saldırı gelince ses zaten var (canlı uyarı tostu "alert" çalıyor); titreşim tost birimine (G1-d3) bırakıldı.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

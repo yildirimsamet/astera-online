@@ -2,27 +2,26 @@ import { incomingCopy } from '../../starter/shipCopy.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent, Contact, PendingThread } from '../../api/schemas.js';
+import { ContextCard, ContextStrip, GameButton, RoundButton, StatusChip, type GlyphId, type TimerTone } from '../../game-ui/index.js';
 import { contextSlot, slotKey, threatKeyOf } from '../../lib/contextSlot.js';
 import type { Directive, DirectiveKind } from '../../lib/directives.js';
 import { compact } from '../../lib/format.js';
 import { useAccordion } from '../../lib/accordion.js';
-import { EVENT_NAME } from '../../lib/nowLine.js';
+import { EVENT_GLYPH, EVENT_NAME } from '../../lib/nowLine.js';
 import { contactFor, flightTitle, incomingDetail } from '../../lib/flights.js';
 import { countdown } from '../../lib/time.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
-import { Icon } from '../icons.js';
-
-type Tone = 'hostile' | 'self';
-
-const ACCENT: Record<Tone, { bar: string; eyebrow: string; action: string }> = {
-  hostile: { bar: 'bg-v2-hostile', eyebrow: 'text-v2-hostile', action: 'border-v2-hostile/60 bg-v2-hostile/15' },
-  self: { bar: 'bg-v2-self', eyebrow: 'text-v2-self', action: 'border-v2-self/60 bg-v2-self/15' },
-};
 
 /** A suggestion wears what it is: red only for something happening to you. */
-const SUGGESTION_TONE: Record<DirectiveKind, Tone> = {
+const SUGGESTION_TONE: Record<DirectiveKind, TimerTone> = {
   threat: 'hostile',
   opportunity: 'self',
+};
+
+/** And the mark of what it is: a warning, or something to take. */
+const SUGGESTION_GLYPH: Record<DirectiveKind, GlyphId> = {
+  threat: 'warn',
+  opportunity: 'target',
 };
 
 const SUGGESTION_LABEL = {
@@ -30,103 +29,26 @@ const SUGGESTION_LABEL = {
   opportunity: 'directives.kindOpportunity',
 } as const satisfies Record<DirectiveKind, string>;
 
-interface Action {
-  label: string;
-  onPress: () => void;
-}
-
-/** One card: an accent in the colour of what it is, a line of what, a clause of why, and what to do. */
-function Card({
-  tone,
-  eyebrow,
-  title,
-  detail,
-  timer,
-  actions,
-  onDismiss,
-  onFold,
-}: {
-  tone: Tone;
-  eyebrow: string;
-  title: string;
-  detail: ReactNode;
-  timer?: string;
-  actions: readonly Action[];
-  onDismiss: () => void;
-  /** Fold the card to one line (the suggestion's size preference). */
-  onFold?: () => void;
-}) {
-  const { t } = useTranslation();
-  const accent = ACCENT[tone];
-  return (
-    <section
-      aria-label={eyebrow}
-      data-tone={tone}
-      className="pointer-events-auto relative mx-auto w-full max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/95 font-v2-ui"
-    >
-      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-0.5 ${accent.bar}`} />
-      <div className="flex flex-col gap-1 py-2.5 pl-3.5 pr-2">
-        <div className="flex items-center gap-2">
-          <p className={`min-w-0 flex-1 truncate text-micro font-semibold uppercase tracking-wide ${accent.eyebrow}`}>{eyebrow}</p>
-          {timer && <span className="shrink-0 font-v2-mono text-caption text-v2-ink">{timer}</span>}
-          {onFold && (
-            <button
-              type="button"
-              aria-label={t('directives.hide')}
-              onClick={onFold}
-              className="grid size-7 shrink-0 place-items-center rounded-control text-v2-ink-3"
-            >
-              <Icon id="i-chev" className="size-3.5 rotate-90" />
-            </button>
-          )}
-          <button
-            type="button"
-            aria-label={t('slot.dismiss')}
-            onClick={onDismiss}
-            className="grid size-7 shrink-0 place-items-center rounded-control text-v2-ink-3"
-          >
-            <Icon id="i-close" className="size-3.5" />
-          </button>
-        </div>
-        {title && <p className="pr-2 text-body font-semibold leading-snug text-v2-ink">{title}</p>}
-        <div className="pr-2 text-caption leading-snug text-v2-ink-2">{detail}</div>
-        {actions.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-2">
-            {actions.map((action, index) => (
-              <button
-                key={action.label}
-                type="button"
-                onClick={action.onPress}
-                className={`rounded-control border px-3 py-1.5 text-caption font-semibold text-v2-ink ${
-                  index === 0 ? accent.action : 'border-v2-line bg-transparent'
-                }`}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
 /** What an event is doing right now, in its own terms. */
 function EventDetail({ event, now }: { event: ActiveGalaxyEvent; now: number }) {
   const { t } = useTranslation();
   const remaining = countdown(event.endsAt.getTime() - now);
   switch (event.kind) {
     case 'TRADE_SHIP':
+      // The rate is drawn, not written: what one Deuterium buys of each good, each as its picture.
       return (
-        <span className="flex flex-wrap items-center gap-1 font-v2-mono">
-          {(['alloy', 'crystal', 'deuterium'] as const).map((good, index) => (
-            <span key={good} className="flex items-center gap-0.5">
-              {index > 0 && <span aria-hidden="true" className="text-v2-ink-3">=</span>}
-              <img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} className="size-3.5 object-contain" />
-              {compact(event.rate.deuterium / event.rate[good])}
-            </span>
-          ))}
-          <span className="ml-1 text-v2-ink-3">{t('trade.chipRemaining', { remaining })}</span>
+        <span className="grid gap-0.5">
+          <span className="gk-cost">
+            {(['alloy', 'crystal', 'deuterium'] as const).map((good, index) => (
+              <span key={good} className="gk-cost__part gk-num">
+                {index > 0 && <span aria-hidden="true" className="gk-cost__eq">=</span>}
+                <img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} draggable={false} />
+                {compact(event.rate.deuterium / event.rate[good])}
+              </span>
+            ))}
+          </span>
+          {/* The time left in the same words and type as every other event's line. */}
+          <span>{t('trade.chipRemaining', { remaining })}</span>
         </span>
       );
     case 'INTERGALACTIC_CONVOY':
@@ -154,33 +76,44 @@ function Suggestion({
   const { t } = useTranslation();
   const guide = useAccordion('guide', ['directive']);
   const tone = SUGGESTION_TONE[directive.kind];
+  const glyph = SUGGESTION_GLYPH[directive.kind];
   const eyebrow = t(SUGGESTION_LABEL[directive.kind]);
 
   if (!guide.isOpen('directive')) {
     return (
-      <button
-        type="button"
-        aria-label={t('directives.show')}
-        onClick={() => { guide.toggle('directive'); }}
-        className="pointer-events-auto mx-auto flex h-9 w-full max-w-xl items-center gap-2 rounded-control border border-v2-line bg-v2-panel/95 px-3 text-left font-v2-ui"
-      >
-        <span className={`shrink-0 text-micro font-semibold uppercase tracking-wide ${ACCENT[tone].eyebrow}`}>{eyebrow}</span>
-        <span className="min-w-0 flex-1 truncate text-caption text-v2-ink-2">{directive.title}</span>
-        <Icon id="i-chev" className="size-3.5 shrink-0 -rotate-90 text-v2-ink-3" />
-      </button>
+      <div className="pointer-events-auto">
+        <ContextStrip
+          tone={tone}
+          glyph={glyph}
+          eyebrow={eyebrow}
+          title={directive.title}
+          label={t('directives.show')}
+          onPress={() => { guide.toggle('directive'); }}
+        />
+      </div>
     );
   }
 
   return (
-    <Card
-      tone={tone}
-      eyebrow={eyebrow}
-      title={directive.title}
-      detail={directive.detail}
-      actions={[{ label: directive.action.label, onPress: () => { onAct(directive); } }]}
-      onDismiss={onDismiss}
-      onFold={() => { guide.toggle('directive'); }}
-    />
+    <div className="pointer-events-auto">
+      <ContextCard
+        tone={tone}
+        glyph={glyph}
+        eyebrow={eyebrow}
+        title={directive.title}
+        actions={(
+          <GameButton tone={tone === 'hostile' ? 'danger' : 'self'} size="sm" onPress={() => { onAct(directive); }}>
+            {directive.action.label}
+          </GameButton>
+        )}
+        dismissLabel={t('slot.dismiss')}
+        onDismiss={onDismiss}
+        foldLabel={t('directives.hide')}
+        onFold={() => { guide.toggle('directive'); }}
+      >
+        {directive.detail}
+      </ContextCard>
+    </div>
   );
 }
 
@@ -222,17 +155,21 @@ export interface ContextSlotProps {
 }
 
 /**
- * THE CONTEXT SLOT. Spec B3 (docs/ui-v2/gozlemevi.md).
+ * THE CONTEXT SLOT. Spec B3 (docs/ui-v2/gozlemevi.md); on the game kit since G1-d
+ * (2026-11-14).
  *
  * One card at the foot of the galaxy, never two: the nearest attack coming for
- * you, else the galaxy event, else one suggestion (`contextSlot` decides). A card
- * closed is remembered by what it was about, so it stays closed while a new
- * attack, event or suggestion still arrives. Each event is closed on its own, so
- * one leaving the card never brings back another the player already closed.
+ * you, else the galaxy event, else one suggestion (`contextSlot` decides). Each
+ * card wears the mark of what it is in a ring that drains as its time runs out —
+ * an attack its beating siren over the flight the galaxy saw leave, an event its
+ * own mark over its window, a suggestion its kind. A card closed is remembered by
+ * what it was about, so it stays closed while a new attack, event or suggestion
+ * still arrives. Each event is closed on its own, so one leaving the card never
+ * brings back another the player already closed.
  *
  * A SELECTION KEEPS ITS SCREEN. When the player has picked something the disc's
- * own panel draws it, and an attack does not tear it away: it waits as a red pill
- * at the top, and pressing the pill is the player choosing to look.
+ * own panel draws it, and an attack does not tear it away: it waits as a red chip
+ * with its count at the top, and pressing the chip is the player choosing to look.
  *
  * It replaced `SituationGuide` (the suggestion) and the `ActiveGalaxyEvent` chip
  * (the event) in F2.
@@ -256,7 +193,7 @@ export function ContextSlot({
   const { t } = useTranslation();
   const [lookingAtThreat, setLookingAtThreat] = useState(false);
 
-  // A new selection is the player's context again: the pill goes back to being a pill.
+  // A new selection is the player's context again: the chip goes back to being a chip.
   useEffect(() => {
     if (selected) setLookingAtThreat(false);
   }, [selected]);
@@ -277,7 +214,7 @@ export function ContextSlot({
   const foot = (content: ReactNode) => (
     <div
       data-slot-foot
-      className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20 flex flex-col gap-2 v2-split:left-auto v2-split:w-80"
+      className="pointer-events-none absolute inset-x-[var(--gk-gutter)] bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20 flex flex-col gap-2 v2-split:left-auto v2-split:w-80"
     >
       {corner !== undefined && <div className="flex justify-end">{corner}</div>}
       {content}
@@ -289,21 +226,21 @@ export function ContextSlot({
     if (slot.threatPill === 0) return lone;
     return (
       <>
-      {lone}
-      <div className="pointer-events-none absolute left-2 top-2 z-20">
-        <button
-          type="button"
-          aria-label={t('slot.pill', { count: slot.threatPill })}
-          onClick={() => {
-            setLookingAtThreat(true);
-            onClearSelection();
-          }}
-          className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-hostile/60 bg-v2-hostile/20 px-1 font-v2-mono text-caption font-semibold text-v2-ink"
-        >
-          <Icon id="i-attack" className="size-3.5 text-v2-hostile" />
-          {slot.threatPill}
-        </button>
-      </div>
+        {lone}
+        {/* The top-left corner, under the status and Now lines that float over the galaxy, as the corners start. */}
+        <div className="pointer-events-none absolute left-[var(--gk-gutter)] top-[calc(var(--v2-float-h,0px)+0.25rem)] z-20 [&_button]:pointer-events-auto">
+          <StatusChip
+            // The siren is an attack coming for you everywhere it is drawn (the Now line, the card).
+            glyph="siren"
+            tone="hostile"
+            label={t('slot.pill', { count: slot.threatPill })}
+            value={String(slot.threatPill)}
+            onPress={() => {
+              setLookingAtThreat(true);
+              onClearSelection();
+            }}
+          />
+        </div>
       </>
     );
   }
@@ -312,67 +249,85 @@ export function ContextSlot({
   if (slot.card === 'threat' && nearest) {
     const contact = contactFor(nearest, contacts);
     const read = incomingCopy(nearest);
+    const prepare = read?.prepare !== false;
     card = (
-      <Card
+      <ContextCard
+        // Each card is keyed by what it is about: a new attack rises in, it does not repaint the old card.
+        key={slotKey('threat', threatKeyOf(nearest))}
         tone="hostile"
+        glyph="siren"
         eyebrow={read?.eyebrow ?? t('slot.incoming')}
         title={flightTitle(nearest)}
-        detail={read?.detail ?? incomingDetail(nearest, contact)}
-        timer={t('slot.lands', { time: countdown(nearest.arriveAt.getTime() - now) })}
-        actions={[
-          ...(read?.prepare === false ? [] : [{ label: t('slot.prepare'), onPress: () => { onPrepare(nearest); } }]),
-          ...(contact ? [{ label: t('slot.look'), onPress: () => { onLook(contact.id); } }] : []),
-        ]}
+        timer={{
+          remaining: nearest.arriveAt.getTime() - now,
+          // The whole is the flight the galaxy saw leave; an attack not seen leaving has none.
+          total: contact ? contact.endAt.getTime() - contact.startAt.getTime() : 0,
+          text: t('slot.lands', { time: countdown(nearest.arriveAt.getTime() - now) }),
+        }}
+        {...(prepare ? {
+          actions: <GameButton tone="danger" size="sm" glyph="shield" onPress={() => { onPrepare(nearest); }}>{t('slot.prepare')}</GameButton>,
+        } : {})}
+        /*
+          An attack in sight can be looked at: a round eye beside the close. Two buttons side by
+          side fitted one row only in Japanese and made the card a third of the galaxy (G1-d).
+        */
+        {...(contact === undefined ? {} : {
+          tools: <RoundButton small glyph="eye" label={t('slot.look')} onPress={() => { onLook(contact.id); }} />,
+        })}
+        dismissLabel={t('slot.dismiss')}
         onDismiss={() => {
           onDismiss([slotKey('threat', threatKeyOf(nearest))]);
           setLookingAtThreat(false);
         }}
-      />
+      >
+        {read?.detail ?? incomingDetail(nearest, contact)}
+      </ContextCard>
     );
   } else if (slot.card === 'event' && open.length > 0) {
     const several = open.length > 1;
     const [first] = open;
     card = (
-      <Card
+      <ContextCard
+        key={slotKey('event', open.map((event) => event.id).join('+'))}
         tone="self"
+        // One event wears its own mark and drains over its window; several share the star.
+        glyph={several || !first ? 'star' : EVENT_GLYPH[first.kind]}
         eyebrow={t('slot.event')}
         // One event is named by the title; several are named on their own rows (seen in the game: both, twice).
-        title={several || !first ? '' : t(EVENT_NAME[first.kind])}
-        detail={(
-          <ul className="flex flex-col gap-1.5">
-            {open.map((event) => (
-              <li key={event.id} className="flex items-center gap-2 pb-2 mb-1 border-b border-v2-self/15">
-                <span className="min-w-0 flex-1">
-                  {several && <div className="mb-0.5 font-semibold text-v2-ink">{t(EVENT_NAME[event.kind])}</div>}
-                  <div> <EventDetail event={event} now={now} /></div>
-                </span>
-                {event.kind !== 'ASTEROID_SHOWER' && (
-                  <button
-                    type="button"
-                    onClick={() => { onShowEvent(event); }}
-                    className="shrink-0 rounded-control border border-v2-self/60 bg-v2-self/15 px-2.5 py-1 text-caption font-semibold text-v2-ink"
-                  >
-                    {t('slot.show')}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        actions={[]}
+        {...(several || !first ? {} : {
+          title: t(EVENT_NAME[first.kind]),
+          // Its body already says the time left: the ring alone, no words twice.
+          timer: { remaining: first.endsAt.getTime() - now, total: first.endsAt.getTime() - first.startsAt.getTime() },
+        })}
+        dismissLabel={t('slot.dismiss')}
         onDismiss={() => { onDismiss(open.map((event) => slotKey('event', event.id))); }}
-      />
+      >
+        <ul>
+          {open.map((event) => (
+            <li key={event.id} className="gk-crow">
+              <span className="grid min-w-0 gap-0.5">
+                {several && <span className="gk-crow__name">{t(EVENT_NAME[event.kind])}</span>}
+                <span><EventDetail event={event} now={now} /></span>
+              </span>
+              {event.kind !== 'ASTEROID_SHOWER' && (
+                <GameButton tone="self" size="sm" glyph="eye" onPress={() => { onShowEvent(event); }}>{t('slot.show')}</GameButton>
+              )}
+            </li>
+          ))}
+        </ul>
+      </ContextCard>
     );
   } else if (slot.card === 'suggestion' && suggestion) {
-    card = (
+    return foot(
       <Suggestion
+        key={slotKey('suggestion', suggestion.id)}
         directive={suggestion}
         onAct={onAct}
         onDismiss={() => { onDismiss([slotKey('suggestion', suggestion.id)]); }}
-      />
+      />,
     );
   }
 
   if (card === null) return corner === undefined ? null : foot(null);
-  return foot(card);
+  return foot(<div className="pointer-events-auto">{card}</div>);
 }

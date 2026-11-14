@@ -241,7 +241,7 @@ const FLIGHT_GLYPH: Partial<Record<PendingThread['kind'], GlyphId>> = {
   unknown_signal: 'target',
 };
 
-const EVENT_GLYPH = {
+export const EVENT_GLYPH = {
   ASTEROID_SHOWER: 'asteroid',
   TRADE_SHIP: 'crate',
   INTERGALACTIC_CONVOY: 'crate',

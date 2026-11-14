@@ -1684,6 +1684,149 @@ button.gk-trow:focus-visible {
   white-space: nowrap;
 }
 
+/* ── the card at the foot of the galaxy (G1-d, 2026-11-14) ──────────────────── */
+
+.gk-ccard {
+  --cut: 10px;
+  --ccard-c: var(--gk-self);
+  display: grid;
+  gap: 4px;
+  padding: 6px 4px 10px 8px;
+  color: var(--gk-ink);
+  /* It rises into the foot of the screen: something just came to say. */
+  animation: gk-rise var(--gk-settle) var(--gk-pop);
+}
+.gk-ccard[data-tone='hostile'] { --ccard-c: var(--gk-hostile); }
+.gk-ccard[data-tone='warn'] { --ccard-c: var(--gk-warn); }
+.gk-ccard__head {
+  display: grid;
+  /* the ring, the heading, then however many round presses the card carries */
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  align-items: center;
+  column-gap: 8px;
+}
+.gk-ccard__heading {
+  display: grid;
+  min-width: 0;
+}
+/* On the red plate the red word is lit a step: 4.5:1 at the eyebrow's size (audit, G1-d). */
+.gk-ccard__eyebrow {
+  color: var(--ccard-c);
+}
+.gk-ccard[data-tone='hostile'] .gk-ccard__eyebrow {
+  color: var(--gk-hostile-hi);
+}
+.gk-ccard__time {
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+/* Everything under the head stands on the heading's edge, not under the ring. */
+.gk-ccard__title,
+.gk-ccard__body,
+.gk-ccard__actions {
+  margin-left: 42px;
+  margin-right: 8px;
+}
+.gk-ccard__title {
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.gk-ccard__body {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-ccard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+@keyframes gk-rise {
+  0% { transform: translateY(14px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* A row on a card that holds several things (events): what, its clause, and its own press. */
+.gk-crow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  padding: 6px 0;
+}
+.gk-crow + .gk-crow {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-crow__name {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+
+/* The card folded to one line: what it is and its title, one press to open it again. */
+.gk-cstrip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-cstrip__plate {
+  --cut: 8px;
+  display: grid;
+  grid-template-columns: 24px auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding: 0 10px 0 8px;
+}
+.gk-cstrip:active .gk-cstrip__plate {
+  transform: translateY(1px) scale(0.99);
+}
+.gk-cstrip:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+.gk-cstrip__coin {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--gk-self);
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+.gk-cstrip__coin .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+.gk-cstrip[data-tone='hostile'] .gk-cstrip__coin { color: var(--gk-hostile); }
+.gk-cstrip[data-tone='hostile'] .gk-cstrip__eyebrow { color: var(--gk-hostile-hi); }
+.gk-cstrip[data-tone='warn'] .gk-cstrip__coin,
+.gk-cstrip[data-tone='warn'] .gk-cstrip__eyebrow { color: var(--gk-warn); }
+.gk-cstrip__eyebrow {
+  color: var(--gk-self);
+}
+.gk-cstrip__title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-cstrip__open {
+  display: grid;
+  color: var(--gk-ink-3);
+}
+.gk-cstrip__open .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+
 /* ── a slot of work: ring around the picture, name and time beside it ──────── */
 
 .gk-qslot {
@@ -1924,6 +2067,11 @@ button.gk-trow:focus-visible {
 .gk-cost__time .gk-glyph {
   width: 12px;
   height: 12px;
+}
+/* An exchange rate reads as amounts that are worth the same: the sign between them stays quiet. */
+.gk-cost__eq {
+  margin-right: 2px;
+  color: var(--gk-ink-3);
 }
 
 /* ── a building card: the scene, its level on it, the name whole, what it becomes, the price ── */

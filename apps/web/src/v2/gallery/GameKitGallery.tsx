@@ -11,7 +11,7 @@ import '../../game-ui/game-ui.css';
 import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
@@ -366,6 +366,35 @@ function TimerParts() {
         <li><TimerRow tone="warn" glyph="settings" remaining={0} total={0} title="Bakım 03:00–03:30" detail="Bu sırada saldırı inmez" time="14 sa 20 dk" at="03:00’te" /></li>
       </ul>
     </>
+  );
+}
+
+/** The card at the foot of the galaxy (G1-d): an attack, an event, a suggestion, and the suggestion folded. */
+function ContextParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-2">
+      <ContextCard
+        tone="hostile" glyph="siren" eyebrow="Gelen saldırı" title="Geliyor → Kestrel"
+        timer={{ remaining: 540, total: 600, text: '9 dk 00 sn sonra iner' }}
+        actions={<GameButton tone="danger" size="sm" glyph="shield" onPress={noop}>Savunmayı hazırla</GameButton>}
+        tools={<RoundButton small glyph="eye" label="Ona bak" onPress={noop} />}
+        dismissLabel="Kapat" onDismiss={noop}
+      >
+        Görüşte · 39 gemi
+      </ContextCard>
+      <ContextCard tone="self" glyph="asteroid" eyebrow="Galaksi olayı" title="Asteroid yağmuru" timer={{ remaining: 1_800, total: 5_400 }} dismissLabel="Kapat" onDismiss={noop}>
+        Oluşma ×2 · 30 dk 00 sn kaldı
+      </ContextCard>
+      <ContextCard
+        tone="self" glyph="target" eyebrow="Fırsat" title="456 toplanamıyor"
+        actions={<GameButton tone="self" size="sm" onPress={noop}>Harca</GameButton>}
+        dismissLabel="Kapat" onDismiss={noop} foldLabel="Gizle" onFold={noop}
+      >
+        456 işlikte bekliyor; depo dolu.
+      </ContextCard>
+      <ContextStrip tone="hostile" glyph="warn" eyebrow="Tehdit" title="Bu dünyanın yer savunması yok" label="Göster" onPress={noop} />
+    </div>
   );
 }
 
@@ -806,6 +835,10 @@ function Catalog() {
 
         <Section title="Sayaçlar · en acil sayaç, sayaç listesi">
           <TimerParts />
+        </Section>
+
+        <Section title="Bağlam kartı · saldırı, olay, öneri, katlanmış öneri">
+          <ContextParts />
         </Section>
 
         <Section title="Okumalar">

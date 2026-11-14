@@ -984,6 +984,27 @@ function Views({ view }: { view: string }) {
       </div>
     );
   }
+  if (view === 'context-suggestion' || view === 'context-selected') {
+    // A suggestion (open; folding is remembered on the device), and an attack waiting beside a selection.
+    return (
+      <div className="relative h-dvh [--v2-dock-h:4rem]">
+        {view === 'context-suggestion' ? (
+          <ContextSlot
+            {...slotBase}
+            suggestion={{
+              id: 'undefended',
+              kind: 'threat',
+              title: 'Bu dünyanın yer savunması yok',
+              detail: '456 yağmaya açık. Kalıcı savunma için Diken ya da Burç kur.',
+              action: { label: 'Savunma kur', screen: 'planet', group: 'defend' },
+              weight: 820,
+            }}
+          />
+        ) : <ContextSlot {...slotBase} selected threats={[thread('incoming', 9), thread('incoming', 20)]} />}
+        <div className="absolute inset-x-0 bottom-0"><Dock active="galaxy" badges={quiet} onSelect={noop} /></div>
+      </div>
+    );
+  }
   if (view === 'context-attack' || view === 'context-event' || view === 'context-events') {
     // The card where the game draws it: above the dock, over the galaxy.
     const shower = { id: 'e1', kind: 'ASTEROID_SHOWER' as const, startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 };
@@ -994,7 +1015,13 @@ function Views({ view }: { view: string }) {
       }];
     return (
       <div className="relative h-dvh [--v2-dock-h:4rem]">
-        <ContextSlot {...slotBase} threats={view === 'context-attack' ? [thread('incoming', 9)] : []} events={events} />
+        <ContextSlot
+          {...slotBase}
+          // An attack in sight: the galaxy saw it leave three minutes ago, so its ring drains and it can be looked at.
+          threats={view === 'context-attack' ? [thread('incoming', 9, { contactId: 'c-1' })] : []}
+          contacts={[{ id: 'c-1', kind: 'unknown', from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 1 }, startAt: at(-3), endAt: at(9), inbound: true }]}
+          events={events}
+        />
         <div className="absolute inset-x-0 bottom-0"><Dock active="galaxy" badges={quiet} onSelect={noop} /></div>
       </div>
     );
@@ -1366,16 +1393,16 @@ export function Gallery({ view }: { view: string | null }) {
       </div>
 
       <Section title="B3 · context slot">
-        <div className="relative h-36">
+        <div className="relative h-44">
           <ContextSlot {...slotBase} threats={[thread('incoming', 9)]} />
         </div>
-        <div className="relative h-32">
+        <div className="relative h-40">
           <ContextSlot
             {...slotBase}
             events={[{ id: 'e1', kind: 'ASTEROID_SHOWER', startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 }]}
           />
         </div>
-        <div className="relative h-36">
+        <div className="relative h-52">
           <ContextSlot
             {...slotBase}
             suggestion={{
@@ -1388,7 +1415,7 @@ export function Gallery({ view }: { view: string | null }) {
             }}
           />
         </div>
-        <div className="relative h-12">
+        <div className="relative h-14">
           <ContextSlot {...slotBase} selected threats={[thread('incoming', 9), thread('incoming', 20)]} />
         </div>
       </Section>

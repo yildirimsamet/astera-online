@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { playSound, type SoundCue } from '../lib/sound.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { RoundButton } from './buttons.js';
 import { Glyph, type GlyphId } from './icons.js';
+import { Timer, type TimerTone } from './readouts.js';
 import type { CssVars } from './style.js';
 
 type Edge = 'self' | 'hostile' | 'warn';
@@ -191,5 +194,75 @@ export function CoachMark({
         {text}
       </div>
     </div>
+  );
+}
+
+/**
+ * THE CARD AT THE FOOT OF THE GALAXY (G1-d, 2026-11-14): the one thing that matters now — an
+ * attack coming, a galaxy event, a suggestion. A cut plate in the colour of whose it is, the
+ * thing's mark in a ring that drains over its clock (only the track when its whole is not
+ * known), the time large beside what it is, a line of what, a clause of why, and what to do on
+ * its own row. It beats only for an enemy: a card that always moves is a card nobody reads.
+ */
+export function ContextCard({
+  tone, glyph, eyebrow, title, timer, children, actions, tools, onDismiss, dismissLabel, onFold, foldLabel,
+}: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  /** What it is ("Incoming attack"); it names the region. */
+  eyebrow: string;
+  title?: string;
+  /** Its clock: the ring's reading, and the words beside it when the body does not already say them. */
+  timer?: { remaining: number; total: number; text?: string };
+  /** Why: one clause, or the rows of what it holds. */
+  children?: ReactNode;
+  actions?: ReactNode;
+  /** Round presses in the head beside the close (look at it): a second press that keeps the actions on one row. */
+  tools?: ReactNode;
+  onDismiss: () => void;
+  dismissLabel: string;
+  /** Fold it to one line (a suggestion, at the size the player chose). */
+  onFold?: () => void;
+  foldLabel?: string;
+}) {
+  return (
+    <section aria-label={eyebrow} data-tone={tone} className={`gk-ccard gk-cut gk-cut--${tone}`}>
+      <div className="gk-ccard__head">
+        <Timer remaining={timer?.remaining ?? 0} total={timer?.total ?? 0} glyph={glyph} tone={tone} beat={tone === 'hostile'} />
+        <span className="gk-ccard__heading">
+          <span className="gk-label gk-ccard__eyebrow">{eyebrow}</span>
+          {timer?.text !== undefined && <span className="gk-ccard__time gk-display gk-num">{timer.text}</span>}
+        </span>
+        {tools}
+        {onFold !== undefined && <RoundButton small glyph="down" label={foldLabel ?? ''} onPress={onFold} />}
+        <RoundButton small glyph="close" label={dismissLabel} onPress={onDismiss} />
+      </div>
+      {title !== undefined && title !== '' && <p className="gk-ccard__title">{title}</p>}
+      {children !== undefined && <div className="gk-ccard__body">{children}</div>}
+      {actions !== undefined && <div className="gk-ccard__actions">{actions}</div>}
+    </section>
+  );
+}
+
+/** A folded card: one line, one press — what it is and its title, in its colour — that opens it again. */
+export function ContextStrip({ tone, glyph, eyebrow, title, label, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  eyebrow: string;
+  title: string;
+  /** What the press does ("Show"). */
+  label: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={label} data-tone={tone} className="gk-cstrip" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className={`gk-cut gk-cut--${tone} gk-cstrip__plate`}>
+        <span className="gk-cstrip__coin" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-label gk-cstrip__eyebrow">{eyebrow}</span>
+        <span className="gk-cstrip__title">{title}</span>
+        <span className="gk-cstrip__open" aria-hidden="true"><Glyph id="next" /></span>
+      </span>
+    </button>
   );
 }

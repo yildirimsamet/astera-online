@@ -1907,7 +1907,7 @@ export function GalaxyView({
 
       {/* The bell and the chat still in reach on a galaxy with no slot and no next-season card. */}
       {cornerButtons && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{cornerButtons}</div>
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
