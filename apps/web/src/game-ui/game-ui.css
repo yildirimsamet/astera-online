@@ -3531,6 +3531,14 @@ button.gk-trow:focus-visible {
   margin: 7px auto 2px;
   background: color-mix(in srgb, var(--gk-ink) 22%, transparent);
 }
+/* The bar lights and stretches under the thumb: the pull was felt. */
+button:active > .gk-sheet__grab {
+  width: 48px;
+  background: color-mix(in srgb, var(--gk-ink) 55%, transparent);
+}
+.gk-sheet__grab {
+  transition: width var(--gk-quick) var(--gk-ease), background-color var(--gk-quick) var(--gk-ease);
+}
 .gk-sheet__head {
   display: grid;
   grid-template-columns: auto 1fr auto;

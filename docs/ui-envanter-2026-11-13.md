@@ -458,6 +458,19 @@ Kullanılmaz kalanlar (owner'a sorulacak, silinmedi): `shell/ShopShowcase.tsx` +
 
 Ölçüm (`reports/ui-audit/g1f2-after-2026-11-14.md`, 4 yol × 6 dil × 3 boyut), G1-b'ye göre: 12 px altı metin 118 → 12, kontrast hatası 18 → 8, tepkisiz hedef 40 → 13, kesilen metin 10 → 0, görünen metin 206 → 186. 44 px altı hedef 20 → 20, aralık hatası 4 → 6: artış alt sayfalarda G1-f1'de galeriye gelen "Geri" düğmesinden. Kalan bulguların hepsi ortak sheet çerçevesinde: 9 px "Komutan" üst satırı (3,87:1), Daralt (16 px), Geri ve Kapat (32 px), adsız arka plan. Bunlar G1-g'nin işi; menünün içinde bulgu yok.
 
+**G1-g1 sheet çerçevesi ✅ (2026-11-14).** Sheet'in çerçevesi oyunda neredeyse her yerde, yaklaşık 40 yüzeyde ortak. G1'deki her ölçümde kalan bulgular burada toplanıyordu. Sheet'in davranışı değişmedi: yükseklikler, çekme, Escape ve arka plana dokununca kapanma aynı. Değişen, çerçevenin parçaları:
+- **Başlık resmi panele eriyor** (owner notu 1). Resmin alt kenarı keskin bir çizgiyle bitmiyor; maske resmi ve gölgesini birlikte saydamlaştırıyor. Altındaki panel v2 paneli de olsa kitin metali de olsa geçişte dikiş kalmıyor.
+- **Geri ve Kapat kitin yuvarlak plakaları.** İki başlık biçiminde de dokunma alanı 44 px; düz başlıkta yüz küçük olanı. Basınca bir kez titreşiyor; sesi mikserin tıklaması. Escape, arka plan ve çekme titreşmiyor, çünkü bu basışlar o düğmeler değil.
+- **Üst satır** kitin okunur satırı oldu: 9 px ve 3,87:1 yerine 12 px, `--gk-ink-2`.
+- **Tutamaç** görünüşte aynı 16 px'lik satırda kalıyor. Dokunma alanı 64×44 px; Geri ile Kapat arasında başlığın boş ortasına uzanıyor. Basınca çubuk parlıyor ve uzuyor.
+- **Başlık yanındaki düğmeler** (sohbetin susturma ve engel listesi) tutamaç alanının üstünde duruyor; çakıştıkları yerde basış düğmeye gidiyor.
+- **Arka plan** basınca bir an koyulaşıyor, sonra sheet kapanıyor.
+- Menünün alt şeridindeki yazılar 12 px'e çıktı (G1-f2'den kalan).
+
+Eski `ui/kit/Sheet` (v1, yaklaşık 10 yüzey: araştırma, klan, ticaret, arıza…) bu birimin dışında. O yüzeyler kendi birimlerinde v2 sheet'e geçecek.
+
+Ölçüm (`reports/ui-audit/g1g1-after-2026-11-14.md`: menü, ayarlar, Akademi, Topluluk, sezon sonu, zil, boş zil, sayaçlar; 6 dil × 3 boyut), her yolun son ölçümüne göre telefonda: 12 px altı metin 16 → 0, kontrast hatası 12 → 0, 44 px altı hedef 36 → 0, aralık hatası 12 → 0, tepkisiz hedef 24 → 0. Masaüstünde de bu ölçütlerde bulgu yok. G1'in sheet'lerinde ölçülen bulgu kalmadı. Galeride altı yüzey daha göz kontrolünden geçti: zil, zamanlayıcılar, tamirhane, Bildirim Merkezi, saldırı ve savaş raporu.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

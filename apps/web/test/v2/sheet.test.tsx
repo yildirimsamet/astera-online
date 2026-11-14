@@ -7,6 +7,10 @@ import { dragStep, nextDetent } from '../../src/lib/sheet.js';
 import { Sheet } from '../../src/v2/kit/Sheet.js';
 import { Sheet as OldSheet } from '../../src/ui/kit/Sheet.js';
 
+/** Every buzz a sheet's own controls make. */
+const buzz = vi.hoisted(() => vi.fn());
+vi.mock('../../src/lib/haptics.js', async (actual) => ({ ...await actual<Record<string, unknown>>(), haptic: buzz }));
+
 /**
  * THE SHEET THAT OPENS OVER THE GALAXY. Spec B3/gestures (docs/ui-v2/gozlemevi.md).
  *
@@ -426,5 +430,48 @@ describe('the sheet in the kit look', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * THE SHEET'S OWN CONTROLS ON THE KIT (G1-g, 2026-11-14). Every sheet shares one frame, and it
+ * was the last of the old dress on every measured screen: a back and a close of 32 px that did
+ * not answer a press. They are the kit's round plates now, a thumb's 44 px, in either look, and
+ * a press buzzes once — the mixer's click is their sound.
+ */
+describe('the sheet’s own controls', () => {
+  it.each([
+    ['the plain head', undefined],
+    ['the kit head', { meta: <span>m</span> }],
+  ])('draws back and close as the kit’s round plates in %s, and a press buzzes once', async (_, kit) => {
+    const onBack = vi.fn();
+    const onClose = vi.fn();
+    render(<Sheet title="Akademi" eyebrow="Komutan" onBack={onBack} onClose={onClose} {...(kit ? { kit } : {})}>body</Sheet>);
+    const back = screen.getByRole('button', { name: 'Back' });
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(back).toHaveClass('gk-round');
+    expect(close).toHaveClass('gk-round');
+    buzz.mockClear();
+    await userEvent.click(back);
+    expect(buzz).toHaveBeenCalledOnce();
+    expect(onBack).toHaveBeenCalledOnce();
+    buzz.mockClear();
+    await userEvent.click(close);
+    expect(buzz).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a press beside the title above the handle’s long reach, in either look', () => {
+    for (const kit of [undefined, { meta: <span>m</span> }]) {
+      const view = render(<Sheet title="Sohbet" titleAction={<button type="button">Engellenenler</button>} onClose={vi.fn()} {...(kit ? { kit } : {})}>body</Sheet>);
+      const lift = screen.getByRole('button', { name: 'Engellenenler' }).closest('[data-title-action]');
+      expect(lift).toHaveClass('relative', 'z-20');
+      view.unmount();
+    }
+  });
+
+  it('writes the eyebrow in the kit’s readable line, never the 9 px caption', () => {
+    const view = render(<Sheet title="Akademi" eyebrow="Komutan" onClose={vi.fn()}>body</Sheet>);
+    expect(view.container.querySelector('.gk-sheet__eyebrow')).toHaveTextContent('Komutan');
   });
 });
