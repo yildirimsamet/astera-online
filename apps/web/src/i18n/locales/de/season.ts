@@ -39,7 +39,7 @@ export const seasonRecap = {
   menuLabel: 'Saisonrekord',
   menuHint: 'Dein endgültiger Rang, Rivalen und Schlachten',
   latestLabel: 'Rekord der letzten Saison',
-  latestHint: 'Sehen Sie, wie Ihre letzte Galaxie endete',
+  latestHint: 'Sieh dir an, wie deine letzte Galaxie endete',
   ended: 'Abgeschlossen',
   seasonLabel: 'Saison',
 } as const;

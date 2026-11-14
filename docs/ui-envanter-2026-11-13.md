@@ -1277,6 +1277,31 @@ Ekran görüntüleri dört dilde çekildi: üst, orta, kurallar açık alt, kuru
 - Almancada son uyarılar satırındaki ad üç noktayla kesiliyordu. Ad artık kesilmiyor, alt satıra iniyor.
 - Almancada geç uyarı tuşu iki satıra iniyordu. Söz "Pünktlich zustellen" diye kısaltıldı.
 
+**Almanca hitap birimi ✅ (2026-11-14, yardımcı oturum).** Bütün oyun; G2 notundaki "de 'du'ya inecek" maddesinin işi.
+
+Almanca metin oyuncuya iki türlü hitap ediyordu: yaklaşık 400 metin "du", 380 metin "Sie" diyordu. Bazen aynı ekranda ikisi birden vardı. Savaş raporunda "Senin tarafın" ile "Onların tarafı" aynı sözdü ("Ihre Seite").
+
+- **Karar:** `docs/ux-writing.md` Almanca için bir şey söylemiyor. Çoğunluk "du" olduğu için oyun "du" diyor; Türkçedeki "sen"in karşılığı. Owner 2026-11-14'te onayladı.
+- **Kapsam:** 15 Almanca dosyada 317 metin yeniden yazıldı; başka dile dokunulmadı.
+  - Komutlar "du" kipinde ("Wähle", "Sende", "Tippe").
+  - Tuşlar ve başlıklar mastarla ("Sonde senden", "Modell ansehen", "Angriff planen").
+  - Bir clanın tamamına "ihr" ile sesleniliyor ("Baut gemeinsam das erste Schiff").
+- **Dokunulan metinlerdeki çeviri hataları:** "Warteschlangenebene 2" → "gib Level 2 in Auftrag", "Hof" → "Werft", "Kostenvoranschlag" → "Schätzung", "abgebrannte Brennelemente" → "verbrauchter Treibstoff", "Schlachtzug" → "Überfall", "Hauptbuch" → "Bilanz". Bunlar makine çevirisi kalıntılarıydı.
+- **"Sie" = "onlar" olan metinler:** 69 metin cümle başında "Sie/Ihr" ile "onlar/onların" ya da "o" diyor ("Ihre Flotte ist nicht zu Hause" = onların filosu). Bunlar İngilizce kaynağıyla tek tek okunup testte adıyla listelendi.
+- **Test:** `test/german-du.test.ts`.
+  - Cümle ortasındaki büyük harfli "Sie/Ihr…" yalnız resmî "siz" olabilir; böyle bir metin testi kırar.
+  - Cümle başındakiler yalnız listede adı varsa geçer.
+  - Listedeki her metnin hâlâ "sie/ihr" ile başladığı da denetleniyor. Böylece liste eskimez.
+  - "Senin tarafın" ile "onların tarafı" artık farklı söz.
+- **Denetim:** Her yeni metindeki `{{…}}` yer tutucuları ve `<0>` etiketleri hem eski metinle hem İngilizce kaynakla birebir aynı. Değişmesi istenmeyen hiçbir metin değişmedi; bu, dosyalar okunup karşılaştırılarak doğrulandı.
+- **Halka açık sayfa:** Landing'in Almancası zaten "du" diyordu; dokunulmadı.
+- **Ekranda görülen bir hata daha:** Sonda raporunda "fleet was out" "Flotte war ausgefallen" (filo arızalandı) diye çevrilmişti; "Flotte war unterwegs" yapıldı. Bu satır karar için önemli: dışarıdaki filo fırsat demek.
+
+Doğrulanamayanlar:
+- Almanca bir anadil konuşanı metinleri okumadı. Owner Almanca bilmiyor; yeniden yazımlar İngilizce kaynağa göre yapıldı.
+- Ekran görüntüleri yalnız dört yüzeyde çekildi: sonda rafı, radar rafı, savunma raporu, saldırı sheet'i. Metinlerin çoğu kısaldı; uzayanlar tek tek bakılmadı.
+- Hitapla ilgisi olmayan makine çevirisi kalıntıları hâlâ var (ör. "Wert der bewaffneten Einheit"). Ayrı bir Almanca okuma işi.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.

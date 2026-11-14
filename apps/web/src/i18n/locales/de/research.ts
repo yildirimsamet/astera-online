@@ -86,21 +86,21 @@ export const research = {
   sheetEyebrow: "Forschungsprojekt",
   sheetComplete: "Forschung abgeschlossen",
   sheetCost: "Forschungskosten",
-  sheetOnce: "Wird in Ihrer kommandantenweiten Forschungswarteschlange platziert. Es wird kein Bau- oder Hofplatz verwendet.",
+  sheetOnce: "Wird in deine kommandantenweite Forschungswarteschlange gestellt. Es belegt keinen Bau- oder Werftplatz.",
   sheetRung: "Stufe {{level}} von {{max}}. Jede Stufe wird separat gekauft.",
 
   isotopeName: "Isotopenspektrometrie",
   isotopeTag: "Schaltet den Deuteriumabbau frei",
   isotopeRole:
-    "Zeigt das Deuterium in Isotopengesteinen an und ermöglicht es Ihnen, Prospektoren dorthin zu schicken. Der Rücktransport gelangt ins Werk.",
+    "Zeigt das Deuterium in Isotopengestein und lässt dich Prospektoren dorthin schicken. Die Rückfracht landet in den Werken.",
   isotopeDetail:
     "Erforsche es einmal, um Isotopen-Asteroiden in auswählbare Bergbauziele zu verwandeln. Es schaltet den Zugang zum umstrittenen Deuterium frei; Es erzeugt keinen passiven Treibstoff auf einem Planeten.",
   denseName: "Dichte Brennstoffzellen",
   denseTag: "Schaltet den Schiffsantrieb frei",
   denseRole:
-    "Um es aufzudecken, füllen Sie Ihre Fracht in einem Überfall auf, während die Beute auf dem Ziel verbleibt. Durch den Abschluss wird die Forschungsleiter „Schiffsantrieb“ geöffnet.",
+    "Um es aufzudecken, fülle deine Fracht in einem Überfall, während noch Beute auf dem Ziel liegt. Der Abschluss öffnet die Forschungsleiter „Schiffsantrieb“.",
   denseDetail:
-    "Wenn Sie es abschließen, wird die Schiffsantriebsforschung für Ihren Kommandanten dauerhaft geöffnet. Der Antrieb verbessert jedes Schiff Ihrer Flotte und ist auch Teil des Atlas-Build-Gate; Prospektoren oder Sonden werden dadurch nicht verändert.",
+    "Wenn du es abschließt, wird die Schiffsantriebsforschung für deinen Kommandanten dauerhaft geöffnet. Der Antrieb verbessert jedes Schiff deiner Flotte und ist auch Teil der Bauvoraussetzung für Atlas; Prospektoren oder Sonden werden dadurch nicht verändert.",
   graviticName: "Gravitische Ladungen",
   graviticTag: "Schaltet den Nullifier frei",
   graviticRole:
@@ -113,7 +113,7 @@ export const research = {
   synthesisRole:
     "Jede Sprosse öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
   synthesisDetail:
-    "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Sie bauen die Raffinerieebenen immer noch separat, in denen Sie Treibstoff produzieren müssen.",
+    "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Die Raffinerie baust du weiterhin auf jeder Welt einzeln aus, auf der du Treibstoff brauchst.",
   yardName: "Yard-Automatisierung",
   yardTag: "Baut Schiffe schneller",
   yardRole:

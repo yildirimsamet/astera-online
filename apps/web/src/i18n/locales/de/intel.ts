@@ -28,19 +28,19 @@ export const intel = {
   openOrbit: 'Orbit öffnen',
   coverage: {
     label: '-Abdeckung',
-    blind: 'Sie können nicht in einen einzelnen Planeten sehen',
-    partial_one: 'Beobachten Sie {{seen}} Ihres {{count}}-Slots',
-    partial_other: 'Beobachten Sie {{seen}} Ihrer {{count}} Slots',
-    full: 'In jedem Slot, den Sie haben, beobachten Sie jemanden',
+    blind: 'Du kannst in keinen einzigen Planeten hineinsehen',
+    partial_one: 'Du beobachtest {{seen}} von {{count}} Slot',
+    partial_other: 'Du beobachtest {{seen}} von {{count}} Slots',
+    full: 'Jeder deiner Slots beobachtet jemanden',
     blindHint: 'Ein Teleskop ist der günstigste Weg, das zu verhindern.',
-    idleHint_one: '{{count}}-Steckplatz ist inaktiv. Wählen Sie eine Welt in der Galaxie aus und richten Sie eine auf sie.',
-    idleHint_other: '{{count}} Slots sind inaktiv. Wählen Sie eine Welt in der Galaxie aus und richten Sie eine auf sie.',
+    idleHint_one: '{{count}} Slot ist frei. Wähle eine Welt in der Galaxie und richte ihn auf sie.',
+    idleHint_other: '{{count}} Slots sind frei. Wähle eine Welt in der Galaxie und richte einen auf sie.',
     scarcity_one:
-      '{{neighbours}} Welten da draußen und {{count}} Auge zum Ausgeben. Das Verschieben eines Gegenstands kostet eine Abklingzeit. Wählen Sie also aus, wen.',
+      '{{neighbours}} Welten da draußen und {{count}} Auge zu vergeben. Ein Wechsel kostet eine Abklingzeit, also wähle, wen.',
     scarcity_other:
-      '{{neighbours}} Welten da draußen und {{count}} Augen zum Ausgeben. Das Verschieben eines Gegenstands kostet eine Abklingzeit. Wählen Sie also aus, wen.',
+      '{{neighbours}} Welten da draußen und {{count}} Augen zu vergeben. Ein Wechsel kostet eine Abklingzeit, also wähle, wen.',
     oneMore: 'Telescope L{{level}} würde sich noch einen ansehen.',
-    noRadar: 'Und ohne Radar können Sie eine auf Sie gerichtete Bedrohung nicht von anderen Bewegungen unterscheiden.',
+    noRadar: 'Und ohne Radar kannst du eine Bedrohung, die auf dich zielt, nicht von anderen Bewegungen unterscheiden.',
   },
 
   watching: {
@@ -50,9 +50,9 @@ export const intel = {
     slotLabel: 'Steckplatz {{slot}}',
     slotEmpty: 'Leerlauf',
     missingNoSlot: 'Kein Slot ist auf irgendetwas gerichtet',
-    missingNoTelescope: 'Sie haben kein Teleskop',
+    missingNoTelescope: 'Du hast kein Teleskop',
     gives: "Zeigt, ob eine Flotte die beobachtete Welt verlassen hat. Berücksichtige bei einem Überfall das Alter der Messung und die verbliebene Verteidigung.",
-    costPoint: 'Wählen Sie einen Planeten in der Galaxie aus und richten Sie einen Schlitz darauf.',
+    costPoint: 'Wähle einen Planeten in der Galaxie und richte einen Slot auf ihn.',
     costInstall: 'Installiere eines von deinem Planetenbildschirm.',
     away: 'Ihr Planet wird durch alles verteidigt, was sie zurückgelassen haben.',
     intermittent:
@@ -76,12 +76,12 @@ export const intel = {
      * Speed leads the sentence on the owner's instruction: a probe is the fastest
      * thing a commander can arm, and nobody was using it.
      */
-    cost: 'Schnell und günstig – {{alloy}} Legierung, {{crystal}} Kristall, und es übertrifft jedes Kriegsschiff, das Sie besitzen. Ihr Radar könnte es erfassen.',
+    cost: 'Schnell und günstig – {{alloy}} Legierung, {{crystal}} Kristall, und sie ist schneller als jedes deiner Kriegsschiffe. Ihr Radar könnte sie erfassen.',
     stock: 'Lagerbestand',
     defence: 'Wert der bewaffneten Einheit',
     ships: 'Schiffe',
     accuracyHome: '{{percent}} Genauigkeit · Flotte war zu Hause',
-    accuracyOut: '{{percent}} Genauigkeit · Flotte war ausgefallen',
+    accuracyOut: '{{percent}} Genauigkeit · Flotte war unterwegs',
     scaleNote: 'Jeder Balken beginnt bei null: das Band ist ihre Schätzung, die türkise Linie deine Welt.',
     estimateNote: 'Bei diesen Zahlen handelt es sich um geschätzte Bereiche. Der Wert der bewaffneten Einheit schließt den Schild und unbewaffnete Schiffe aus.',
     caught: 'Die Sonde wurde entdeckt',
@@ -123,10 +123,10 @@ export const intel = {
      * one form a screen reader can take.
      */
     noteFleets:
-      'Radar L{{level}} unterscheidet eine auf Sie gerichtete Bedrohung in {{sense}} Einheiten, ohne Uhr. Bei {{warn}} Einheiten wird die Ankunftszeit hinzugefügt.',
+      'Radar L{{level}} unterscheidet eine Bedrohung, die auf dich zielt, ab {{sense}} Einheiten, ohne Uhr. Ab {{warn}} Einheiten kommt die Ankunftszeit hinzu.',
     /** The merged form. One circle, both products, one sentence. */
     noteFleetsOne:
-      'Radar L{{level}} zeigt das sich bewegende Raumschiff zu {{sense}} Einheiten und markiert mit seiner Ankunftszeit eine auf Ihre Welt gerichtete Bedrohung.',
+      'Radar L{{level}} zeigt Flugobjekte in Bewegung bis {{sense}} Einheiten und markiert eine Bedrohung, die auf deine Welt zielt, mit ihrer Ankunftszeit.',
     /**
      * THE HALF NO PICTURE CAN DRAW. D49: a reach is what the defender owns and
      * the warning it buys is what the ATTACKER decides, by choosing what to fly.
@@ -176,9 +176,9 @@ export const reports = {
   pirateCaptured: 'Von Piraten',
   pirateOverrun: 'Ohne Geleitschutz konnten die Frachter nicht entkommen: {{fleet}}.',
   pirateCapturedNote:
-    'Intakt aus dem Wrack einer von Ihnen zerstörten Besatzung entnommen. Es schließt sich der Garnison der Welt an, zu der Ihre Flotte zurückkehrt – auch wenn die Hangarkapazität überschritten ist – und zählt nicht als eine, die Sie gebaut haben.',
+    'Intakt aus dem Wrack einer Crew geborgen, die du zerstört hast. Es schließt sich der Garnison der Welt an, zu der deine Flotte zurückkehrt – auch über die Hangarkapazität hinaus – und zählt nicht als von dir gebaut.',
   youHeld: 'Du hast den Überfall gestoppt. Der Angreifer hat keine Ressourcen beansprucht.',
-  youFell: 'Der Überfall hat Ihre Verteidigung beschädigt.',
+  youFell: 'Der Überfall hat deine Verteidigung beschädigt.',
   /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */
   shipsLost: 'Schiffe verloren',
   haul: 'Was nach Hause kam',
@@ -197,17 +197,17 @@ export const reports = {
     lootGained: 'Gesicherte Beute',
     lootLost: 'Beute von dir genommen',
     enemyLosses: 'Dauerhafte Verluste des Gegners',
-    ownLosses: 'Ihre dauerhaften Verluste',
+    ownLosses: 'Deine dauerhaften Verluste',
     total: 'Gesamtpunktänderung',
   },
   clansAtLaunch: 'Clans, als diese Flotte gestartet wurde',
-  yourClan: 'Ihre Seite',
+  yourClan: 'Deine Seite',
   theirClan: 'Ihre Seite',
   noClan: 'Kein Clan',
   verdict: {
     label: 'Kampfergebnis',
     yourForce: 'Deine Streitmacht',
-    yourLosses: 'Ihre Verluste',
+    yourLosses: 'Deine Verluste',
     sent: 'Gesendet',
     held: 'Hatte',
     total: 'Gesamt',
@@ -217,10 +217,10 @@ export const reports = {
     destroyed: 'Du hast zerstört',
     enemyDestroyed: 'Feindliche Einheiten zerstört',
     attackerDestroyed: 'Angreifende Schiffe zerstört',
-    noneReturned: 'Keines Ihrer Schiffe hat die Schlacht überlebt.',
-    someReturned: '{{count}} Ihrer Schiffe haben die Schlacht überlebt.',
-    enemySurvivedNote: 'Feindliche Einheiten bleiben; ihre Zählung ist verborgen. Diese Nummer ist nur das, was Sie zerstört haben.',
-    enemyUnknownNote: 'Diese Nummer ist nur das, was Sie zerstört haben; Die verbleibende Anzahl der Feinde wird ausgeblendet.',
+    noneReturned: 'Keines deiner Schiffe hat die Schlacht überlebt.',
+    someReturned: '{{count}} deiner Schiffe haben die Schlacht überlebt.',
+    enemySurvivedNote: 'Feindliche Einheiten bleiben; ihre Anzahl ist verborgen. Diese Zahl ist nur das, was du zerstört hast.',
+    enemyUnknownNote: 'Diese Zahl ist nur das, was du zerstört hast; die verbleibende Anzahl der Feinde ist verborgen.',
     loot: 'Beute',
     rosterUnknown: 'Dieser Bericht hat keine Startanzahl. Die Anzahl der Überlebenden kann nicht berechnet werden.',
     walkoverSummary: 'Es waren keine Einheiten zur Verteidigung des Ziels da. Es gab keinen Kampf.',
@@ -228,14 +228,14 @@ export const reports = {
     title: {
       attacking: {
         DECISIVE: 'Dein Überfall war erfolgreich',
-        DECISIVE_WIPED: 'Sie haben die Verteidigung durchbrochen, aber Ihre Flotte verloren',
+        DECISIVE_WIPED: 'Du hast die Verteidigung durchbrochen, aber deine Flotte verloren',
         PARTIAL: 'Dein Überfall war teilweise erfolgreich',
-        PARTIAL_WIPED: 'Sie haben die Verteidigung beschädigt, aber Ihre Flotte verloren',
+        PARTIAL_WIPED: 'Du hast die Verteidigung beschädigt, aber deine Flotte verloren',
         REPELLED: 'Dein Überfall wurde abgewehrt',
       },
       defending: {
-        DECISIVE: 'Ihre Verteidigung wurde verletzt',
-        PARTIAL: 'Ihre Verteidigung wurde teilweise verletzt',
+        DECISIVE: 'Deine Verteidigung wurde durchbrochen',
+        PARTIAL: 'Deine Verteidigung wurde teilweise durchbrochen',
         REPELLED: 'Du hast den Überfall gestoppt',
       },
     },
@@ -247,8 +247,8 @@ export const reports = {
       },
       defending: {
         DECISIVE: "Keine Einheit kämpfte mehr in deiner Verteidigung.",
-        PARTIAL: 'Der Angreifer hatte keinen vollständigen Erfolg: Ihre Einheiten oder Ihr Schild standen noch.',
-        REPELLED: 'Ihre Verteidigung hat gehalten. Der Angreifer erbeutete keine Beute.',
+        PARTIAL: 'Der Angreifer hatte keinen vollen Erfolg: Deine Einheiten oder dein Schild standen noch.',
+        REPELLED: 'Deine Verteidigung hat gehalten. Der Angreifer hat nichts erbeutet.',
       },
     },
   },
@@ -264,18 +264,18 @@ export const reports = {
   theirsEmpty: 'Nichts von ihnen wurde zerstört.',
   /** The roster table. 'What it cost you' describes one of its three columns. */
   yourForce: 'Deine Streitmacht',
-  yours: 'Was es Sie gekostet hat',
+  yours: 'Was es dich gekostet hat',
   yoursEmpty: 'Du hast nichts verloren.',
   howItWent: 'Wie es gelaufen ist',
   reasonHeading: 'Warum dieses Ergebnis?',
   rulesToggle: 'Kampfregeln und Berechnung',
   roundCalculationToggle: 'Zeigt die Schussberechnung dieser Runde an',
-  roundLossesYours: 'Ihre Einheiten zerstört',
+  roundLossesYours: 'Deine Einheiten zerstört',
   roundLossesTheirs: 'Feindliche Einheiten zerstört',
   roundNoCasualties: 'Keine Verluste',
   roundShield: "Die Aegis des Verteidigers absorbierte {{amount}} Schaden.",
-  turningPointSupport: 'Nach Runde {{round}} hatten Sie keine feuerfähigen Einheiten. Die {{support}} verbleibenden Unterstützungsschiffe konnten nicht angreifen.',
-  turningPointWiped: 'Nach Runde {{round}} wurde Ihre gesamte Streitmacht zerstört.',
+  turningPointSupport: 'Nach Runde {{round}} hattest du keine feuerfähigen Einheiten mehr. Die {{support}} verbleibenden Unterstützungsschiffe konnten nicht angreifen.',
+  turningPointWiped: 'Nach Runde {{round}} wurde deine gesamte Streitmacht zerstört.',
   roundDamageNote: 'Die Schadenswerte beinhalten jeglichen vom Schild des Verteidigers absorbierten Schaden.',
   roundDealt: 'Du hast ausgeteilt',
   roundTook: 'Du hast genommen',
@@ -308,18 +308,18 @@ export const reports = {
   /** The four questions a battle report answers, in the order a reader asks them. */
   q: {
     happened: 'Was ist passiert?',
-    there: 'Was Sie über den Feind erfahren haben',
+    there: 'Was du über den Feind erfahren hast',
     enemyForce: 'Feindliche Einheiten zu Beginn der Schlacht',
     enemyLosses: 'Was du vom Feind zerstört hast',
     incomingForce: 'Die Flotte, die dich angegriffen hat',
-    who: 'Was ist mit Ihrer Truppe passiert?',
+    who: 'Was ist mit deiner Truppe passiert?',
     changed: 'Beute- und Punkteänderungen',
   },
   walkoverHeading: 'Hier stand keine verteidigende Streitmacht',
   walkoverBody:
-    'Hier stand weder eine Kampfflotte noch eine Bodenverteidigung. Ihre Schiffe sind angekommen, beladen und abgereist. Es gab keinen Kampf zu berichten.',
+    'Hier stand weder eine Kampfflotte noch eine Bodenverteidigung. Deine Schiffe sind angekommen, haben geladen und sind abgeflogen. Es gab keinen Kampf zu berichten.',
   walkoverDefendingBody:
-    'Auf Ihrer Welt standen keine verteidigenden Einheiten. Die angreifende Flotte konnte die verfügbare Beute kampflos an sich nehmen.',
+    'Auf deiner Welt standen keine verteidigenden Einheiten. Die angreifende Flotte konnte die verfügbare Beute kampflos nehmen.',
   /** Their board, and how far the reading goes. */
   theirBoardComplete: 'Alle Einheiten, die zu Beginn der Schlacht verteidigen',
   theirBoardCompleteNote:
@@ -329,8 +329,8 @@ export const reports = {
     'Es befanden sich keine Kampfschiffe oder Bodengeschütze am Ziel, daher gibt es hier keine Liste der zerstörten Einheiten.',
   theirBoardFloor: 'Nur zerstörte Einheiten',
   theirBoardFloorNote:
-    'Dies ist nicht die gesamte Flotte des Feindes. Es werden nur die in dieser Schlacht zerstörten Einheiten aufgeführt. Die verbleibenden Einheiten werden hier nicht angezeigt; Senden Sie eine neue Sonde für einen Kostenvoranschlag.',
-  theirBoardMissingRosterNote: 'Dieser Bericht enthält keine Startaufstellung für die angreifende Flotte. Es werden nur die Schiffe aufgelistet, die Sie zerstört haben. Hinterbliebene können nicht berechnet werden.',
+    'Das ist nicht die gesamte Flotte des Feindes. Aufgeführt sind nur die in dieser Schlacht zerstörten Einheiten. Die verbleibenden Einheiten werden hier nicht gezeigt; sende eine neue Sonde für eine Schätzung.',
+  theirBoardMissingRosterNote: 'Dieser Bericht enthält keine Startaufstellung der angreifenden Flotte. Aufgeführt sind nur die Schiffe, die du zerstört hast; Überlebende lassen sich nicht berechnen.',
   theirBoardNothing: 'Du hast nichts zerstört',
   /**
    * THE DEFENDER'S VERSION, WHICH IS NOT A BOUND AT ALL. D164.
@@ -342,7 +342,7 @@ export const reports = {
    */
   theirBoardArrived: 'Was auf dich zukam',
   theirBoardArrivedNote:
-    'Die gesamte Flotte, die auf Sie geschickt wurde, einschließlich Kampf- und Unterstützungsschiffen. In jeder Zeile ist angegeben, wie viele ankamen, zerstört wurden und blieben.',
+    'Die gesamte Flotte, die auf dich geschickt wurde, einschließlich Kampf- und Unterstützungsschiffen. Jede Zeile zeigt, wie viele ankamen, zerstört wurden und übrig blieben.',
   /** The wall, stated apart from the ships, because it is a different kind of thing. */
   groundHeading: 'Bodenverteidigung',
   groundNote: 'Diese Waffen verteidigen den Planeten und können nicht fliegen. {{percent}} % jedes zerstörten Typs werden nach dem Kampf wieder aufgebaut, abgerundet. Ihre Verluste werden getrennt von Schiffen behandelt.',
@@ -413,7 +413,7 @@ export const reports = {
   strategicIntercepted: 'INTERCEPTED',
   radiationYouAttacked: "Deine Strahlungsbombe traf auf ",
   radiationAttackedBy: "Strahlungsbombe von ",
-  strategicYouAttacked: 'Ihr Todesstern im Visier',
+  strategicYouAttacked: 'Dein Todesstern im Visier',
   strategicAttackedBy: 'Todesstern gesendet von',
   strategicDestroyedInFlight: 'Todesstern im Flug zerstört',
   strategicRadarTrigger: 'Die Zielwelt griff es an, nachdem es den Radar-L3+-Abfangring überquert hatte.',
@@ -452,7 +452,7 @@ export const reports = {
       DECISIVE: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
       DECISIVE_WIPED: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
       DECISIVE_WITHOUT_SHIELD: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
-      WALKOVER: 'Hier standen keine verteidigenden Einheiten; Die verfügbare Beute stand Ihrer Flotte offen.',
+      WALKOVER: 'Hier standen keine verteidigenden Einheiten; die verfügbare Beute stand deiner Flotte offen.',
       PARTIAL: "Genug Verteidigungswert wurde zerstört oder zog sich zurück. Ein Teil der Beute wurde freigegeben.",
       PARTIAL_WIPED: "Genug Verteidigungswert wurde zerstört oder zog sich für einen Teilerfolg zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
       REPELLED: "Zerstörte oder geflohene Einheiten erreichten nicht {{threshold}}% des anfänglichen Verteidigungswerts. Der Angriff wurde abgewehrt.",
@@ -461,10 +461,10 @@ export const reports = {
       DECISIVE: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
       DECISIVE_WITHOUT_SHIELD: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
       DECISIVE_WIPED: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
-      WALKOVER: 'Auf Ihrer Welt standen keine verteidigenden Einheiten, daher stand die verfügbare Beute den Plünderern offen.',
+      WALKOVER: 'Auf deiner Welt standen keine verteidigenden Einheiten, daher stand die verfügbare Beute den Plünderern offen.',
       PARTIAL: "Genug Verteidigungswert wurde zerstört oder zog sich zurück. Ein Teil der Beute wurde freigegeben.",
       PARTIAL_WIPED: "Genug Verteidigungswert wurde zerstört oder zog sich für einen Teilerfolg zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
-      REPELLED: 'Ihre Verteidigung hat gehalten. Sie haben nichts überstanden und nichts mitgenommen.',
+      REPELLED: 'Deine Verteidigung hat gehalten. Sie sind nicht durchgekommen und haben nichts mitgenommen.',
     },
   },
 
@@ -479,11 +479,11 @@ export const reports = {
     shieldTheirs: 'Ihr Schild absorbierte {{amount}} Schaden, bevor etwas den Rumpf erreichte.',
     shieldYours: 'Dein Schild hat {{amount}} Schaden absorbiert, bevor irgendetwas den Rumpf erreicht hat.',
     cargoLimited:
-      'Ihre Laderäume waren voll. Es gab mehr auf dieser Welt, als man transportieren konnte – bringen Sie Kurier-, Wanderer-, Atlas- oder Argosy-Transporte mit.\nDas Bodengeschütz',
+      'Deine Laderäume waren voll. Auf dieser Welt gab es mehr, als du tragen konntest – bring Kurier-, Wanderer-, Atlas- oder Argosy-Transporter mit.',
     salvaged_one: '{{count}} wurde nach der Schlacht aus seinen eigenen Trümmern wieder aufgebaut.',
     salvaged_other: '{{count}} Bodengeschütze wurden nach der Schlacht aus ihren eigenen Trümmern wieder aufgebaut.',
     worksTheirs: 'Ihre Werke sind für {{duration}} offline. Dort wird nichts produziert.',
-    worksYours: 'Ihre Werke wurden für {{duration}} offline geschaltet.',
+    worksYours: 'Deine Werke wurden für {{duration}} lahmgelegt.',
     /** The defender's copy of what the raider's collectors lifted. D200. */
     salvageTheirs: 'Ihre Müllsammler hoben {{amount}} des Wracks auf, bevor es treiben konnte.',
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
@@ -501,18 +501,18 @@ export const reports = {
      * hours of the reader's own production, against the bar. Owner instruction, 2026-09-18.
      */
     recoveryProgress:
-      'Wiederherstellungsschild: {{hours}} von {{bar}} h Ihrer netto verlorenen Produktion in den letzten {{window}} h. Erreiche {{bar}} und niemand kann dich für {{shield}} h überfallen; Gewinne aus eigenen Überfalls werden abgezogen.',
+      'Wiederherstellungsschild: {{hours}} von {{bar}} h deiner Produktion in den letzten {{window}} h netto verloren. Erreiche {{bar}}, und niemand kann dich {{shield}} h lang überfallen; Gewinne aus deinen eigenen Überfällen werden abgezogen.',
     recoveryEarned:
-      'Diese Niederlage brachte Ihnen einen {{shield}} h Wiederherstellungsschild ein: {{hours}} h Ihrer Nettoproduktion gingen in den letzten {{window}} h verloren.',
+      'Diese Niederlage brachte dir einen Wiederherstellungsschild für {{shield}} h: {{hours}} h deiner Produktion gingen in den letzten {{window}} h netto verloren.',
     recoveryRefused:
-      '{{hours}} h Ihrer Produktion sind in den letzten {{window}} h netto verloren gegangen – über die {{bar}} h-Leiste hinaus, aber es wird kein Schild gewährt, während Ihr eigener Überfall in der Luft ist.',
+      '{{hours}} h deiner Produktion sind in den letzten {{window}} h netto verloren gegangen – über der Grenze von {{bar}} h, aber solange dein eigener Überfall unterwegs ist, gibt es keinen Schild.',
     wreck: '{{amount}} im Wrack treibt über {{planet}}. Jeder kann hingehen und es mitnehmen.',
     /** The same field, read from the world it is drifting over. */
     clanPurse: 'Siegesbeute: {{amounts}} gingen in die Clankasse.',
-    wreckYours: '{{amount}} in Trümmern treibt in Ihrer eigenen Umlaufbahn. Jeder kann es nehmen – auch Sie.',
+    wreckYours: '{{amount}} in Trümmern treiben in deinem eigenen Orbit. Jeder kann sie holen – auch du.',
     /** No orbit to name: the field sits at the rendezvous, in open space. */
     wreckVoid:
-      '{{amount}} in Trümmern treibt beim Rendezvous im offenen Raum. Schicken Sie einen Prospektor – und das kann auch jeder andere tun, der das gesehen hat.',
+      '{{amount}} in Trümmern treiben am Treffpunkt im offenen Raum. Schick einen Prospektor – das kann auch jeder andere, der es gesehen hat.',
   },
 
   /** The caller's own board: what went in, what died, what was standing after. */
@@ -539,12 +539,12 @@ export const reports = {
   roundYours: 'Du',
   roundNoLosses: 'Keine Seite hat in dieser Runde eine Einheit verloren.',
   roundStanding: {
-    unknownOwn: 'Dieser Bericht hat keine Startzählungen; Ihre verbleibenden Einheiten können nicht berechnet werden.',
+    unknownOwn: 'Dieser Bericht hat keine Startzahlen; deine verbleibenden Einheiten lassen sich nicht berechnen.',
     heading: 'Deine Seite nach Runde {{round}}',
     enemyHeading: 'Angreifende Flotte nach Runde {{round}}',
     summary: '{{combat}} feuerfähige Einheiten · {{support}} unbewaffnete Unterstützungsschiffe',
     supportExposed: 'Unterstützungsschiffe können nicht schießen. Es bleiben keine Kampfeinheiten übrig, um sie zu schützen.',
-    noneLeft: 'Sie haben keine Einheiten mehr, um weiter zu kämpfen.',
+    noneLeft: 'Du hast keine Einheiten mehr, um weiterzukämpfen.',
     unknownEnemy: 'Der verbleibende Zählerstand des Gegners wird ausgeblendet. Die oben genannten feindlichen Verluste beziehen sich nicht auf die gesamte Flotte.',
   },
 } as const;
@@ -606,7 +606,7 @@ export const dossier = {
 
   ownerLabel: 'Gehalten von',
   ownerNote: 'Kostenlos für alle, die ganze Saison über.',
-  ownerRecordNote: 'Wessen Flagge Ihre Sonde gefunden hat. Möglicherweise hat es seitdem den Besitzer gewechselt.',
+  ownerRecordNote: 'Wessen Flagge deine Sonde gefunden hat. Die Welt kann seitdem den Besitzer gewechselt haben.',
 
   developmentLabel: 'Entwicklung',
   developmentValue: 'Stufe {{tier}}',
@@ -615,20 +615,20 @@ export const dossier = {
     "Überfälle und Todesstern-Angriffe sind nur zwischen Kommandanten erlaubt, die höchstens eine Stufe auseinanderliegen; gezählt wird jeweils die am weitesten entwickelte Welt. Deine ist Stufe {{mine}}, du erreichst also die Stufen {{low}}–{{high}}. Dies ist vielleicht nicht ihre am weitesten entwickelte Welt. Ist einer der Kommandanten auf Stufe 1–3, darf jeder einen einzelnen Überfall auf den anderen senden und muss danach 12 Stunden ab dem Kampf warten. Ein anfliegender Überfall reserviert dieses Recht; ein Rückruf startet keine Wartezeit. Todessterne und gemeinsame Clanoperationen sind ausgenommen.",
 
   hardwareLabel: 'Satelliten im Orbit',
-  hardwareNote: 'Sie können die Hardware sehen. Was es kann, kostet eine Sonde.',
-  hardwareRecordNote: 'Was war im Orbit, als Ihre Sonde vorbeiflog? Möglicherweise haben sie mehr gebaut.',
+  hardwareNote: 'Du kannst die Hardware sehen. Was sie kann, kostet eine Sonde.',
+  hardwareRecordNote: 'Was im Orbit war, als deine Sonde vorbeiflog. Möglicherweise haben sie mehr gebaut.',
 
   fleetLabel: 'Ihre Flotte',
   fleetUnreadable: 'Nicht lesbar',
   fleetAway: 'Nicht zu Hause',
   fleetHome: 'Startseite',
-  fleetVeiledNote: 'Ihr Schleier schlägt Ihr Teleskop. Erhöhen Sie es oder senden Sie stattdessen eine Sonde.',
-  fleetAwayUnknownNote: 'Sie können nicht sagen, wann es zurückkommt. Das ist das Risiko, das Sie eingehen.',
+  fleetVeiledNote: 'Ihr Schleier schlägt dein Teleskop. Baue es aus oder sende stattdessen eine Sonde.',
+  fleetAwayUnknownNote: 'Du kannst nicht sagen, wann sie zurückkommt. Das ist das Risiko, das du eingehst.',
   fleetAwayNote: 'Ihr Planet wird durch alles verteidigt, was sie zurückgelassen haben.',
-  fleetHomeNote: 'Zuschauen ist still – ihnen wird nie gesagt, dass Sie hinschauen.',
+  fleetHomeNote: 'Beobachten ist still – sie erfahren nie, dass du hinschaust.',
 
-  fleetGapNoTelescope: 'Sie haben kein Teleskop',
-  fleetGapOutOfRange: 'Außerhalb der Reichweite Ihres Teleskops',
+  fleetGapNoTelescope: 'Du hast kein Teleskop',
+  fleetGapOutOfRange: 'Außerhalb der Reichweite deines Teleskops',
   fleetGapNoSlot: 'Hier ist kein Slot angegeben',
   fleetGapWhy:
     'Die wertvollste Tatsache im Spiel: Eine Flotte, die unterwegs ist, kann ihren Planeten nicht verteidigen.',
@@ -641,7 +641,7 @@ export const dossier = {
    * naming a different quantity than the one printed under it.
    */
   stockLabel: 'Jetzt überfallbar',
-  stockNote: 'Was für ein entscheidender Überfall das sein könnte. Der Tresorboden befindet sich nicht darin und Ihre eigenen Laderäume könnten ihn noch weiter verschließen.',
+  stockNote: 'Was ein entscheidender Überfall mitnehmen könnte. Der Tresorboden ist nicht enthalten, und deine eigenen Laderäume können es weiter begrenzen.',
   stockCaught: 'Ihr Radar hat die Sonde erfasst – sie wissen, dass jemand hingesehen hat.',
   stockClean: 'Die Sonde gelangte unbemerkt rein und raus.',
   /** The one force unit, D199 — what the hulls and guns that can fire cost. */
@@ -695,20 +695,20 @@ export const dossier = {
   loyaltyNote_other: "Ein Todesstern kostet {{loss}} Loyalität pro Treffer. {{count}} Treffer in Folge würden diese Kolonie zu Fall bringen.",
   doctrinesLabel: 'Kampfdoktrin',
   doctrinesNone: 'Keine recherchiert',
-  doctrinesNote: 'Ihre Rümpfe kämpfen besser, als die Tabelle sagt. Dies ist der Multiplikator, den Sie erreichen würden.',
+  doctrinesNote: 'Ihre Rümpfe kämpfen besser, als die Tabelle sagt. Das ist der Multiplikator, auf den du treffen würdest.',
   doctrinesNoneNote: 'Sie hatten nichts über ihre Hüllen untersucht, als die Sonde nachschaute.',
   researchWindowNote: "Als Fenster gemessen: Jede wahre Stufe liegt in ihrem Fenster. Höhere Stufen lassen ihre Schiffe stärker kämpfen.",
 
   surfaceGapLabel: 'Alles über diese Welt',
   surfaceGapMissing: 'Du hast diese Welt noch nie gesehen',
   surfaceGapWhy:
-    'Sie können nicht sehen, wer es hält, wie weit sie entfernt sind oder was sich im Orbit befindet. Eine Sonde bringt alles auf einmal zurück.',
+    'Du kannst nicht sehen, wem sie gehört, wie weit sie entwickelt ist oder was im Orbit ist. Eine Sonde bringt alles auf einmal zurück.',
 
   probeGapLabel: 'Ressourcen und Verteidigung',
   probeGapMissing: 'Du hast noch nie genau hingesehen',
-  probeGapAged: 'Ihre Interpretation dieser Welt ist veraltet',
+  probeGapAged: 'Deine Messung dieser Welt ist veraltet',
   probeGapWhy:
-    'Sie sind dabei, eine Flotte auf das zu setzen, was da unten ist. Eine Sonde wandelt diese Vermutung in eine Spanne um.',
+    'Du setzt gleich eine Flotte auf das, was da unten ist. Eine Sonde macht aus dieser Vermutung eine Spanne.',
 
   compositionLabel: 'Dem Feld bekannt',
   compositionValue: 'mindestens {{fleet}}',
