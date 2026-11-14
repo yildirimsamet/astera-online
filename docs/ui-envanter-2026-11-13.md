@@ -705,7 +705,7 @@ Kit sayfasına üç görünüm eklendi ve denetim bunları ölçüyor: `fault-sh
 
 **Sıra değişti: G2-f ve G2-g, G2-e'den önce.** Tersane sheet'i (G2-e) ve hangar odası (G2-h) aynı parçaya dayanıyor: Hangar/zemin odası ve siparişin ondan aldığı pay. Bu çalışma ağacında o parçanın kit hâli yarım duruyor: `RoomGauge` (`game-ui/readouts.tsx`, `game-ui/index.ts`, `test/game-ui/room-gauge.test.tsx`). Başka bir oturum 2026-11-12'de eski 4.2 aşaması için başlatmış; commit edilmemiş, CSS'i yok, kullanan yer yok. Plan bu değişikliklere dokunulmamasını söylüyor.
 
-Owner'a soru (G2-e ve G2-h'yi bekletiyor): Bu yarım `RoomGauge` işini sahiplenip G2-e/G2-h'de bitireyim mi, yoksa o oturum dönecek mi? Cevap gelmezse G2-f ve G2-g'den sonra G2-e yapılır; oda çubuğu o zamana kadar v2 `RoomBar` olarak kalır ve G2-h'de kite geçer.
+Owner'a soru (G2-e ve G2-h'yi bekletiyor): Bu yarım `RoomGauge` işini sahiplenip G2-e/G2-h'de bitireyim mi, yoksa o oturum dönecek mi? Cevap gelmezse G2-f ve G2-g'den sonra G2-e yapılır; oda çubuğu o zamana kadar v2 `RoomBar` olarak kalır ve G2-h'de kite geçer. **Yanıt (owner, 2026-11-14): benim görevim.** G2-e'de bitirildi (aşağıda).
 
 **G2-f onarım istasyonu ✅ (2026-11-14).** Oyuncunun anı: savaştan yaralı gemiler döndü; "hangilerini onarıp savaşa geri sokayım, hangilerini parçalayayım, ne kadar tutar?" Kurallar (ücretsiz aktarım, ücretli onarım, sıra derinliği, iptalde yarı iade, radyasyon kapanışı, 50 grup sınırı, aynı isteğin aynı anahtarla tekrarı) değişmedi.
 
@@ -800,6 +800,26 @@ Kalanlar ve nedeni:
 - `brand/Identity.tsx` `BrandMasthead`: marka önizleme sayfası ve `tools/fullscreen-visual.mjs` hâlâ çiziyor; kullanılıyor, silinmedi.
 - Eski Akademi zinciri (`onboarding/Academy.tsx`, `Rehearsal.tsx`, `shell/StatusBar.tsx`, `ui/SignalBoostNote.tsx`, `PendingStrip`, `Signals`): durdurulan yeni oyuncu dalı (`feat/new-player-journey`) bu dosyalara dokunuyor; şimdi silmek o dalı birleştirirken çakışma çıkarır. G15'te silinecek.
 - `tools/` betikleri: yukarıda, `tools/visual.mjs` kaydedilince.
+
+**G2-e Tersane sipariş sheet'i ✅ (2026-11-14).**
+- **An:** oyuncu bir gövdeye dokundu: "Bu gemiden kaç tane, ne işe yarar, kaça mal olur?" Kurallar değişmedi.
+- **Değişen:**
+  - Önceden iki ekran olan sheet artık tek ekranda karar veriyor.
+  - Gövde kartında gemi gökyüzünde süzülüyor; üstünde sınıf ve "8 ev · 3 dış", köşesinde zıplayan "×N" var.
+  - Altında güçlü/zayıf çipleri çarpanlarıyla (D124); "?" sınıf döngüsünü açıyor.
+  - Altı değer kit kuyularında; gemi kalkanı ve radyasyon koruması kendi "?"'leriyle.
+  - Adet, Maks ve neyin durdurduğu alt barda, fiyat ve "Yap"ın üstünde (baş parmak alanı).
+  - "Yap" Yükselt gibi tek ağır basış (owner 4.1 kararı: iptal edilebilir sipariş).
+  - Kilitli gövdede her gereksinim ayrı kapı çipi; adet gizli. Hangar dolu ve kaynak yetmiyor durumları Yükselt sheet'iyle aynı dilde.
+  - `RoomGauge` bitirildi (CSS yazıldı); siparişin payı çizgili ve akıyor.
+- **Silinen:** `HULL_SKY`, v2 `Cost`/`Icon` kullanımı. `CounterCycle` ve `ShipRadiationProtection` kite geçti. v2 `RoomBar` G2-h ve G15 için kaldı.
+- **Ölçüm** (`reports/ui-audit/g2e-after-2026-11-14.md`, 6 görünüm, 84 ölçüm): 12 px altı metin 0, kontrast hatası 0. 44 px altı ve tepkisiz hedef görünüm başına 1; bu G1 çerçevesinin bilinen arka plan düğmesi. Kırpma 0. Tek kesilme Fransızca 320 px'teydi; metin kısaldı ve bir test koruyor. Ekran başına 43–65 kelime. Eski sheet galeriden ölçülemiyordu.
+
+**G2-h1 Hangar ve yer odası ✅ (2026-11-15).** G2-h üçe bölündü: h1 odalar, h2 Filo sayfası, h3 klan savunma duruşu ve destek bölmesi.
+- **An:** "Bu dünyada gemiye ve topa ne kadar yer var?"
+- **Değişen:** Filo sekmesindeki hangar odası ve Savunma sekmesindeki yer odası G2-e'nin kit `RoomGauge`'una geçti. Not satırı ("Dönen filo her zaman sığar… Hangar 4 odayı 470 → 810 yapar") kartın içinde. Toplar kit çiplerinde; boş olan sönük.
+- **Silinen:** `PlanetScreen`'den v2 `RoomBar`. `RoomBar` artık yalnız başlangıç galaksisinin tersanesinde (`YardDeck`, G15).
+- **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h1-after-2026-11-15.md`. 12 px altı metin Filo sekmesinde 9→0, Savunma'da 13→0, boş filoda 8→0. Kontrast hatası 6→0, 10→0, 5→0. Kalan tek hedef G1 çerçevesi. Kesilme ve taşma 0.
 
 ## G3. İstihbarat
 

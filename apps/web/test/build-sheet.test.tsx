@@ -968,7 +968,7 @@ describe('the matchup on a hull sheet', () => {
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(/lance/i);
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(factor(COMBAT.weakMult));
     // Weak is a gap to plan around, not a threat: warn, never hostile red.
-    expect(screen.getByTestId('counter-weak').className).toMatch(/v2-warn/);
+    expect(screen.getByTestId('counter-weak')).toHaveAttribute('data-tone', 'warn');
   });
 
   it('opens the whole cycle on a tap, with this hull lit', async () => {
@@ -990,10 +990,11 @@ describe('special ship roles before crafting', () => {
     expect(role).toHaveTextContent(/bonus damage hits only the shield/i);
     expect(role).toHaveTextContent(/shield is empty.*normal attack/i);
     expect(document.querySelector('[data-item-detail]')).toBeNull();
+    // G2-e: the hull card (picture, matchup, figures) first, the role under it, the long reading last.
     const how = screen.getByRole('button', { name: /how it works/i });
     const matchup = document.querySelector('[data-counter-cycle]');
-    expect(how.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(matchup && role.compareDocumentPosition(matchup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(role.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(matchup && matchup.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('states the per-survivor salvage ceiling and attack-only limits without describing it as loot cargo', async () => {
@@ -1273,5 +1274,28 @@ describe('the room sections', () => {
       `Command Core ${String(next)} makes it ${compact(groundSlots(6))} → ${compact(groundSlots(next))}`,
     );
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(/never leave/i);
+  });
+
+  /** G2-h: both rooms on the kit's gauge; their notes and the guns at the 12 px floor. */
+  const v2Classes = (root: Element): string[] => [...root.querySelectorAll<HTMLElement>('[class]')]
+    .flatMap((node) => [...node.classList])
+    .filter((name) => /^(v2-|font-v2|text-micro|text-caption|text-v2|bg-v2|border-v2|text-faint|text-dim|text-bone|num$)/.test(name));
+
+  it('draws the Hangar room on the kit gauge, its note under it, nothing of the v2 type left', () => {
+    show({ fleet: { DART: 10 }, fleetAway: { DART: 2 } });
+    const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
+    expect(section.querySelector('[data-room-bar]')).toHaveClass('gk-room', 'gk-well');
+    expect(section.querySelector('.gk-room__note')).toHaveTextContent(/returning fleet always fits/i);
+    expect(v2Classes(section)).toEqual([]);
+  });
+
+  it('names the guns in kit chips inside the ground gauge, an empty one quiet', () => {
+    show({ ground: { THORN: 3 } }, 'defend');
+    const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    const guns = [...section.querySelectorAll<HTMLElement>('[data-room-bar] .gk-room__gun')];
+    expect(guns.map((gun) => gun.textContent)).toEqual(['Thorn 3', 'Harpoon 0', 'Bastion 0']);
+    expect(guns[0]).not.toHaveAttribute('data-empty');
+    expect(guns[1]).toHaveAttribute('data-empty');
+    expect(v2Classes(section)).toEqual([]);
   });
 });

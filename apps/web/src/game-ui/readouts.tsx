@@ -331,6 +331,63 @@ export function StoreGauge({ resource, held, cap, safe, rate, label }: {
   );
 }
 
+type RoomPart = 'home' | 'away' | 'queued' | 'incoming';
+const ROOM_PARTS: readonly RoomPart[] = ['home', 'away', 'queued', 'incoming'];
+
+/**
+ * A WORLD'S ROOM, AND WHAT THIS ORDER TAKES OF IT (stage 4.2; D1 the build sheet, D2 the
+ * Hangar and ground). The figure reads "taken +this order / total"; the bar draws each
+ * part at its share in your colour — full at home, lighter away, hatched in the queue,
+ * striped and lit for the order being decided — and the legend names each part beside
+ * the swatch it wears. An empty part is neither drawn nor named.
+ */
+export function RoomGauge({ label, total, home, away, queued, incoming = 0, children }: {
+  label: string;
+  total: number;
+  home: number;
+  away: number;
+  queued: number;
+  /** The order on the sheet; zero where nothing is being ordered. */
+  incoming?: number;
+  /** What the section adds inside the well, under the legend (the ground's guns). */
+  children?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const taken = home + away + queued;
+  // Scaled against whichever is bigger, so an order past the end still fits the bar.
+  const scale = Math.max(total, taken + incoming);
+  const amounts: Record<RoomPart, number> = { home, away, queued, incoming };
+  const shown = ROOM_PARTS.filter((part) => amounts[part] > 0);
+  const free = Math.max(0, total - taken - incoming);
+  return (
+    <section data-room-bar="" className="gk-room gk-well">
+      <p className="gk-room__head">
+        <span className="gk-label">{label}</span>
+        <span data-room-figure="" className="gk-room__figure gk-num">
+          {compact(taken)}
+          {incoming > 0 && <span className="gk-room__more"> +{compact(incoming)}</span>}
+          <span className="gk-room__total"> / {compact(total)}</span>
+        </span>
+      </p>
+      <span role="img" aria-label={t('roomBar.reading', { label, used: compact(taken + incoming), total: compact(total) })} className="gk-bar gk-room__bar">
+        {scale > 0 && shown.map((part) => (
+          <span key={part} data-part={part} className="gk-room__part" style={{ width: pct(Math.round((amounts[part] / scale) * 1000) / 10) }} />
+        ))}
+      </span>
+      <p data-room-legend="" className="gk-room__legend">
+        {shown.map((part) => (
+          <span key={part} className="gk-room__key" {...(part === 'incoming' ? { 'data-order': '' } : {})}>
+            <span aria-hidden="true" data-part={part} className="gk-room__swatch" />
+            {t(`roomBar.${part}`, { value: compact(amounts[part]) })}
+          </span>
+        ))}
+        <span className="gk-room__key">{t('roomBar.free', { value: compact(free) })}</span>
+      </p>
+      {children}
+    </section>
+  );
+}
+
 /** A countdown ring with the time beside it. */
 export type StatusTone = 'good' | 'hostile' | 'warn' | 'info';
 

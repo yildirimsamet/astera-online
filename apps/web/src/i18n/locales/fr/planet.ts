@@ -452,7 +452,7 @@ export const planet = {
       collectorUse: 'Ajoute-le à une flotte d’attaque avec des vaisseaux de combat. Il récupère les débris de cette bataille et ramène les ressources.',
       collectorLimit: 'Il n’augmente pas la capacité de butin et ne récupère rien en défense. Tu ne peux pas l’envoyer vers des astéroïdes ou des champs de débris.',
     },
-    eyebrowGround: "Défense terrestre · ne décolle jamais",
+    eyebrowGround: "Défense au sol · ne part jamais",
     eyebrowMobile: "Coque mobile",
     howMany: "Combien",
     fewer: "Réduire {{name}}",

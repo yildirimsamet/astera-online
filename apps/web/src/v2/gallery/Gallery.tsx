@@ -7,7 +7,7 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById, RESEARCH_PROJECTS } from '@astera/rules';
+import { cosmeticById, groundSlots, hangarCapacity, hullBulk, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -23,7 +23,7 @@ import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
-import { PlanetScreen } from '../../screens/PlanetScreen.js';
+import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
@@ -320,6 +320,37 @@ function GalleryFault({ running = false, short = false }: { running?: boolean; s
     { id: 'p-1', name: 'Thistle', kind: 'COLONY', alloy: short ? 900 : 4_000, crystal: 2_000, deuterium: 600, alloyPerHour: 0, nominalAlloyPerHour: 1_770 },
   );
   return <FaultSheet fault={blackout} planet={world} onClose={noop} />;
+}
+
+type BuildVariant = 'ready' | 'short' | 'locked' | 'full';
+
+/**
+ * THE SHIPYARD'S ORDER SHEET (G2-e): a hull you can order, one you cannot pay for yet, one the
+ * yard cannot build, a full Hangar, a special role and a ground gun.
+ */
+function GalleryBuild({ hull, variant = 'ready' }: { hull: HullId; variant?: BuildVariant }) {
+  const hangar = hangarCapacity(4);
+  const researched = new Set(['STARSHIP_ENGINEERING', 'GRAVITIC_CHARGES', 'SHIP_POWER']);
+  const base = planetView({}, {});
+  const world = planetView({
+    buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 7, VAULT: 4, SHIPYARD: variant === 'locked' ? 2 : 4, HANGAR: 4 },
+    fleet: variant === 'full' ? { RAMPART: Math.floor(hangar / hullBulk('RAMPART')) } : { TALON: 8, DART: 12 },
+    fleetAway: variant === 'full' ? {} : { TALON: 3 },
+    ground: { THORN: 4 },
+    capacity: { hangar, hangarUsed: 0, ground: groundSlots(8), groundUsed: 0 },
+    research: variant === 'locked' ? base.research
+      : base.research.map((project) => researched.has(project.id) ? { ...project, level: 2, completed: true, discovered: true } : project),
+  }, {
+    id: 'p-1', name: 'Thistle',
+    alloy: variant === 'short' ? 900 : 48_000, crystal: variant === 'short' ? 200 : 16_000, deuterium: variant === 'short' ? 20 : 2_400,
+    alloyPerHour: 1_800, crystalPerHour: 600,
+  });
+  return (
+    <div data-build-sheet>
+      <BuildSheet hull={hull} planet={world} held={{ alloy: world.planet.alloy, crystal: world.planet.crystal, deuterium: world.planet.deuterium }}
+        onNeed={noop} onClose={noop} />
+    </div>
+  );
 }
 
 /**
@@ -1051,6 +1082,12 @@ function Views({ view }: { view: string }) {
   if (view === 'fault-sheet') return <GalleryFault />;
   if (view === 'fault-sheet-running') return <GalleryFault running />;
   if (view === 'fault-sheet-short') return <GalleryFault short />;
+  if (view === 'build-sheet') return <GalleryBuild hull="TALON" />;
+  if (view === 'build-sheet-short') return <GalleryBuild hull="STRONGHOLD" variant="short" />;
+  if (view === 'build-sheet-locked') return <GalleryBuild hull="TEMPEST" variant="locked" />;
+  if (view === 'build-sheet-full') return <GalleryBuild hull="DART" variant="full" />;
+  if (view === 'build-sheet-special') return <GalleryBuild hull="NULLIFIER" />;
+  if (view === 'build-sheet-gun') return <GalleryBuild hull="THORN" />;
   if (view === 'base-research') return <GalleryResearch />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
