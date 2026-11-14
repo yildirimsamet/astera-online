@@ -713,7 +713,7 @@ Owner'a soru (G2-e ve G2-h'yi bekletiyor): Bu yarım `RoomGauge` işini sahiplen
 - Sheet: 250 px'lik kahraman resmi kalktı; resim başlığın arkasında, altında "Şu an %75 ödüyorsun". Kural tek satır, ayrıntısı "?" ile açılıyor (`InfoPeek`). Üç istatistik kutusu ve iki `Segmented` kalktı.
 - Yerler sekme oldu: Hangar / Tamirhane / Kuyruk 2/3. Hangar ve Tamirhane sekmesinde karar bekleyen gemi sayısı rozet olarak var (okuyucu "Hangar · 8 hasarlı gemi" duyar). Sheet karar bekleyen yerde açılıyor: önce evdeki yaralılar, sonra tamirhanede bekleyenler, sonra kuyruk.
 - İş emri bir şalter (`Lever`): Hangarda Onarım / Parçalama; Tamirhanede Onarım / Geri al / Parçalama. Yer değişince seçim de iş emri de sıfırlanıyor; parçalama bir sekmeden ötekine taşınmıyor. Radyasyonda tamirhane "Geri al"da açılıyor (tahliye, radyasyonun kapatmadığı tek iş).
-- Altta her zaman tek eylem: Hangarda "Tamirhaneye aktar" (ücretsiz, geri alınabilir: düz basış), Tamirhanede "N gemiyi onar" 1 sn basılı tutma (harcayan), "Hangara geri al" düz basış, Parçalama 1,5 sn kırmızı basılı tutma (kesin). Eski parçalama onay penceresi kalktı; geri dönecek kaynaklar (sıfır olanlar da) basmadan önce altta yazıyor, üstte kilit işaretiyle "Anında ve geri alınamaz". Kilitli düğme sebebini yüzünde söylüyor ("Gemi seç", "Onarılacak gemileri seç", "Kuyruk dolu · 3/3", "Kasa yetmiyor", "Radyasyon nedeniyle kapalı", "Çok fazla grup").
+- Altta her zaman tek eylem: Hangarda "Tamirhaneye aktar" (ücretsiz, geri alınabilir: düz basış), Tamirhanede "N gemiyi onar" 1 sn basılı tutma (harcayan), "Hangara geri al" düz basış, Parçalama kırmızı basılı tutma (önce 1,5 sn; owner 2026-11-14: 0,6 sn). Eski parçalama onay penceresi kalktı; geri dönecek kaynaklar (sıfır olanlar da) basmadan önce altta yazıyor, üstte kilit işaretiyle "Anında ve geri alınamaz". Kilitli düğme sebebini yüzünde söylüyor ("Gemi seç", "Onarılacak gemileri seç", "Kuyruk dolu · 3/3", "Kasa yetmiyor", "Radyasyon nedeniyle kapalı", "Çok fazla grup").
 - Gemi grupları kitte: resim, ad ve adet, can yüzdesi, çubuk (yalnız savaşamayacak kadar yaralıyken uyarı renginde), kitin sayacı. Onarımı zaten süren grup tek satır ("Onarıma ayrıldı") ve listenin sonunda; eskiden "1 adet var" diyerek yanıltıyordu. Seçim yokken fiyat çizilmiyor ("0 sn" yazmıyor).
 - Kuyruk kendi sekmesinde: halka, gemilerin adı (sekme zaten onarım dediği için "Onarım ·" öneki yok), hasar, bitiş ya da başlama süresi, İptal (iade onayı aynı).
 
@@ -728,7 +728,7 @@ Metin (6 dil): yeni `damagedShips`, `maintenance.order` (İş emri), `maintenanc
 
 Ölü kod (benden önce de kullanılmıyordu): `repairStation.statQueue`, `tagline`, `industrialChip`, `selectNone`, `choose`, `noneWaiting`, `share`, `selected_one/_other`. Owner onayıyla 2026-11-14'te silindi (aşağıda "Temizlik").
 
-Owner'ın bakması için: parçalama onay penceresi 1,5 sn basılı tutmaya döndü (yardımcının C4 engelleme ve C6 döteryum aktarımıyla aynı çizgi). Geri alınabilir küçük bir değişiklik.
+Parçalama onay penceresi basılı tutmaya döndü (yardımcının C4 engelleme ve C6 döteryum aktarımıyla aynı çizgi). Owner, 2026-11-14: onay penceresinin yerini alan üç basılı tutma en kısa süreyi (0,6 sn) kullanır; parçalama 1,5 sn'den 0,6 sn'ye indi.
 
 Kit sayfasına üç görünüm eklendi ve denetim bunları ölçüyor: `repair-station-hangar`, `repair-station-queue`, `repair-station-radiation`.
 

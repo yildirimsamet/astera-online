@@ -345,7 +345,8 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
       {t('repairStation.maintenance.return')}
     </GameButton>
   ) : mode === 'SCRAP' ? (
-    <GameHold weight="final" tone="danger" glyph="debris" commitSound="impact"
+    // a confirm dialog once: the shortest hold (owner, 2026-11-14)
+    <GameHold weight="reversible" tone="danger" glyph="debris" commitSound="impact"
       label={t('repairStation.maintenance.scrapSelected', { count: choice.ships })} disabledReason={otherReason}
       onCommit={() => { if (choice.selection) move('SCRAP', choice.selection); }} />
   ) : place === 'HOME' ? (

@@ -58,7 +58,8 @@ beforeEach(async () => {
  * THE REPAIR STATION ON THE GAME KIT (G2-f, 2026-11-14). The card is a door half the height it
  * was, the workshop's picture behind it; the station opens on the place that needs a decision,
  * the places are tabs, repair-or-scrap is a lever, and the two commitments are holds — a repair
- * spends (one second), a scrap is final (a second and a half).
+ * spends (one second); a scrap took a confirm dialog once, so it takes the shortest hold (owner,
+ * 2026-11-14: 0.6 s).
  */
 describe('the Repair Station card on the kit', () => {
   it('is one door that answers with its own sound and opens the station', async () => {
@@ -151,7 +152,8 @@ describe('the Repair Station sheet on the kit', () => {
       { id: 'lot-1', count: 3, damageBp: 3500, remainderBp: 0 }] } }), expect.anything());
   });
 
-  it('says what a scrap gives back before a final hold, and only the hold scraps', async () => {
+  // Owner 2026-11-14: the holds that replaced a confirm dialog take the shortest hold, 0.6 s.
+  it('says what a scrap gives back before a short hold, and only the hold scraps', async () => {
     open(planetView({ fleet: { DART: 4 }, fleetDamage: [], dock: dock([]), queues: queues([]) }));
     await userEvent.click(screen.getByRole('radio', { name: 'Scrap' }));
     await userEvent.click(screen.getByRole('button', { name: 'Select all Dart' }));
@@ -159,6 +161,7 @@ describe('the Repair Station sheet on the kit', () => {
     expect(returned?.querySelectorAll('img')).toHaveLength(3);
     const hold = screen.getByRole('button', { name: /^Scrap 4 ships/ });
     expect(hold).toHaveClass('gk-hold', 'gk-btn--danger');
+    expect(hold.getAttribute('style')).toContain('--gk-hold-ms: 600ms');
     await userEvent.click(hold);
     expect(mutations.maintenance).not.toHaveBeenCalled();
     hold.focus();
