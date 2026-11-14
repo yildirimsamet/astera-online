@@ -716,6 +716,34 @@ Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi
 | 8 | Kronik | `screens/ChronicleScreen.tsx` (245) | galakside ne oldu | yükleniyor, hata, boş | zil › Kronik | **v1** (`ui/kit` `Button`, `EmptyState`, `Waiting`) | |
 | 9 | Dönüş hikâyesi | `v2/hud/AwaySheet.tsx` | "Ben yokken ne oldu?" | gemide ayrı hikâye; kahraman satır + satırlar + gözlemler + onarım bakımı | otomatik | v2 | Owner'ın 'Ne oldu acaba?' hedefinin karşılandığı an; sunumu düz liste. Yüksek öncelik (yeniden katılım). |
 
+**C1 dönüş hikâyesi ✅ (2026-11-14, yardımcı oturum).** Oyuncunun anı: en az 30 dakika sonra oyuna dönünce, galaksi açılır açılmaz "ben yokken ne oldu?" sorusunun cevabı. Asıl karar hangi kapıdan önce gireceği: rapor, radar, rakibin dosyası ya da onarım. Hangi üç satırın, hangi sırayla söylendiği (önce tehdit, sonra kazanç, sonra fırsat) ve pencerenin ne zaman kapandığı değişmedi.
+
+Karar: satırlar G1-e'deki zilin haber satırıyla aynı dilde olur; hikâye ayrıca bir "rapor okunuyor" hissi taşır. Eski kapılar satırın altında 20 px'lik bağlantılardı; şimdi bütün satır kapının kendisi.
+
+Önce kite eklenen: `NewsRow` `detail` (cümlenin altında, daha sönük, neye vardığı) ve `open.shown` (satırın nereye açıldığı cümlenin altında yazılır; okuyucu bunu basışta bir kez duyar).
+
+Dönüş hikâyesi:
+- Her satır kitin haber satırı. Para satırın ağırlığını taşıyor: tehdit kırmızı, kazanç yeşil, fırsat galaksinin mavisi. Hepsi son girişten beri yeni, bu yüzden parlak ve noktalı. İşaretler: tarama nişangâh, akın kalkan, kendi akının saldırı, konvoy sandık, dönen filo geri dönüş, birikim maden, açılan sistem kilit, teleskop göz.
+- Savaşın zemini nasıl gittiğini söylüyor: tutulan savunma yeşil, alınan akın kırmızı, geri püskürtülen kendi akının amber (kayıp, tehdit değil; kırmızı K2'nin).
+- Bütün satır 56 px'lik tek basış. Altında "Radarı aç ›" gibi kapısı yazıyor; sesi ve titreşimi kitin.
+- Satırlar sırayla, 120 ms arayla, soldan kayarak geliyor; rapor okunur gibi. İlk satır ağırlığı taşıyor: daha büyük para ve yazı. Hikâye ilk satırının ağırlığıyla açılıyor: tehditse uyarı sesi, değilse onay sesi. Gemideki hikâye kendi kahraman satırının sesini çalıyor.
+- Onarım isteyen dünya kitin sarı uyarı şeridi. Başında yalnız dünyanın adı var, altında sadakat ve arıza sayısı. Yanında 44 px'lik "Onar" düğmesi. Eski hâli satır içinde 12 px altı çizili bir kelimeydi.
+- Alttaki iki çıkış kitin düğmeleri: "Tümü (n)" çelik, "Galaksiye dön" turuncu eylem.
+- Kit sayfasına "Dönüş hikâyesi" bölümü eklendi.
+
+Gemideki hikâye (kahraman satırı, "Ayrıntılar" açıcısı, çevrimiçi olan sistemler) G15'te ele alınacak; yalnız açılan ayrıntı satırları bu kit satırını kullanıyor.
+
+Ölçüm: `reports/ui-audit/c1-away-after-2026-11-14.md`, `gallery:away`, 14 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 36 | 0 |
+| 44 px altı hedef | 12 | 0 |
+| Basınca tepkisiz | 6 | 0 |
+| Yazı alışkanlığı | 0 | 0 |
+
+Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve neye vardıkları); daha da kısaltmak satırın karar değerini düşürür. Sheet'in kararmış arka planı "adsız dokunulabilir alan" sayılıyor; sheet çerçevesinin işi, öncesinde de vardı.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
@@ -772,6 +800,38 @@ Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/Ch
 | 8 | Duyurular | `AnnouncementsScreen` (70) | | okunmamış | **v1** | |
 | 9 | Geri bildirim | `FeedbackScreen` (88) | | | **v1** + `Segmented` | |
 | 10 | Bildirim Merkezi | `NotificationCenterSheet` (379) | "Saldırı olursa haberim olsun mu, ne kadara?" | kurulu değil, boş cüzdan, kapsıyor; zamanlama | v2 + 1 v1 | menüdeki kartla açılır |
+
+**C2 sohbet ✅ (2026-11-14, yardımcı oturum).** Oyuncunun anı: galaksideki sohbet düğmesine basıp odaya bakmak, konuşmak ya da klanla plan yapmak. Asıl kararlar şunlar: hangi odadayım (Galaksi, Klan, Özel), galaksi odası hangi dilde, mesajı yazıp göndermek. Odaların kuralları, okunmamış sayıları ve dil tercihinin cihazda saklanması değişmedi.
+
+Önce kite eklenenler:
+- `TabItem.spoken`: sekmenin okuyucuya söylenen tam adı ("Klan — 2 okunmamış"). Göz sayıyı okur. Altındaki bir olgu (`mark`) varsa önce o söylenir.
+- İki işaret: `mute` (üstü çizili hoparlör) ve `block` (giriş yok levhası).
+- `.gk-langchip`: odanın bayrağı; basınca altına altı bayrak düşer (`gk-langdrop`).
+- `.gk-round:disabled`: gönderecek bir şey yokken tuş söner ve basınca kıpırdamaz.
+- Japonca sekme adı bölünmez (`html:lang(ja) .gk-tab`, "クラ/ン" gitti).
+
+Sohbet:
+- Sayfa başlığı artık kesilmiyor. Telefona özel sıkıştırma (12 px tutamak, 28 px tuşlar) G1-g1'in 44 px tutamağıyla başlığı sayfanın kenarının altına itiyordu; kaldırıldı. Çerçeve her sheet'teki kit çerçevesi.
+- Başlıktaki iki liste (sessize alınanlar, engellenenler) kitin küçük yuvarlak tuşları ve kendi işaretleriyle.
+- Odalar kitin sekmeleri: Galaksi konuşma balonu, Klan sancak, Özel mektup. Okunmamış sayısı köşedeki kırmızı sayı; okuyucu "Klan — 2 okunmamış" duyar.
+- Galaksi odasının dili yerli `<select>` yerine bayrak çipi. Basınca kitin altı bayraklı dil seçicisi satırın altına açılır, bir bayrak seçince kapanır. Oyunun kendi dili değişmez. Oda değişince açık seçici kapanır.
+- Boş oda kitin boş durumu: sohbet resmi süzülür; başlık "Henüz kimse konuşmadı", altında "Galaksideki ilk ses sen ol." Klan için klan resmi ve kendi cümlesi. Gizlenen mesajlar için de aynı dil ("Görünen mesaj yok" ve neden). Klansız oyuncunun kilitli odası da aynı parça.
+- Yazma alanı kitin cam yuvası (44 px, metin ortada). Gönder tuşu kitin parlak yuvarlak tuşu; boşken söner, yazınca yanar. Klavye için odak koruması aynı kaldı.
+- Sohbetin yazı ölçeği kitin tabanında: saat, alıntı ve notlar 12 px, adlar 13 px. Saatler, alıntılar ve kalan karakter sayısı bir ton açıldı.
+- Galeriye üç görünüm eklendi (`chat`, `chat-empty`, `chat-clan`) ve denetimin sohbet yollarına yazıldı.
+
+Ölçüm: `reports/ui-audit/c2-chat-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 56 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 86 | 14 |
+| WCAG aralık hatası | 32 | 8 |
+| Basınca tepkisiz | 40 | 15 |
+| Kırpılan metin | 36 | 0 |
+
+Kalanlar mesaj balonlarının içinde ve C3'ün işi: tepki çipleri, yazar adının dünyaya uçuran bağlantısı, sezon kupası ve destekçi kalbi; uzun basışla açılan eylem çubuğu ve emoji seçici (28 px). Üç noktayla kesilen 12 metnin hepsi yanıtlanan mesajın tek satırlık alıntısı; önizleme olduğu için bilerek böyle.
 
 ## G9. Sıralama, sezon, anıtlar
 

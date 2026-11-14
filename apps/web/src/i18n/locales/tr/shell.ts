@@ -519,6 +519,7 @@ export const chat = {
   launcherBothUnread: 'Sohbeti aç — Genelde {{general}}, Klanda {{clan}} okunmamış',
   channelsLabel: 'Sohbet kanalları',
   languageLabel: 'Sohbet dili',
+  languageChip: "Sohbet dili: {{language}}",
   general: 'Genel',
   clan: 'Klan',
   dm: {
@@ -536,7 +537,8 @@ export const chat = {
   clanLocked: 'Klan sohbeti yalnız ekibine açıktır.',
   clanLockedHint: 'Bir klana katıl veya klan kur; bu kanal hemen açılır.',
   list: 'Galaksi mesajları',
-  empty: 'Henüz kimse konuşmadı. Galaksideki ilk ses sen ol.',
+  emptyTitle: "Henüz kimse konuşmadı",
+  emptyBody: "Galaksideki ilk ses sen ol.",
   older: 'Eski mesajları yükle',
   loadingOlder: 'Eski mesajlar yükleniyor',
   placeholder: 'Galaksiye mesaj yaz',

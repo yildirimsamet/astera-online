@@ -1,7 +1,7 @@
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -82,6 +82,17 @@ function show(
   return { api, post, postClan, client, onFocusPlanet, unmount };
 }
 
+/**
+ * THE GALAXY ROOM'S LANGUAGE (C2, 2026-11-14): a chip with the room's flag says which room you are
+ * in; a press drops the six flags (the kit's language picker) and a flag moves you to that room.
+ */
+const roomLanguage = (name = 'Chat language'): HTMLElement => screen.getByRole('button', { name: new RegExp(`^${name}`) });
+const pickLanguage = async (label: string, name = 'Chat language'): Promise<void> => {
+  const user = userEvent.setup();
+  await user.click(roomLanguage(name));
+  await user.click(within(screen.getByRole('radiogroup', { name })).getByRole('radio', { name: label }));
+};
+
 beforeAll(() => {
   Element.prototype.scrollIntoView = scrollIntoView;
 });
@@ -94,6 +105,53 @@ afterEach(async () => {
 });
 
 describe('galaxy chat surface', () => {
+  /** ON THE KIT (C2, 2026-11-14). */
+  it('lays the rooms out as the kit’s tabs, each with its mark, its unread count and its news for a reader', () => {
+    show();
+    const rooms = screen.getByRole('tablist', { name: 'Chat channels' });
+    expect(rooms).toHaveClass('gk-tabs');
+    const general = within(rooms).getByRole('tab', { name: 'General — 1 unread' });
+    expect(general).toHaveClass('gk-tab');
+    expect(general.querySelector('.gk-dot')).toHaveTextContent('1');
+    expect(general.querySelector('.gk-tab__glyph')).not.toBeNull();
+    expect(within(rooms).getByRole('tab', { name: 'Clan — 1 unread' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('drops the six flags from the room’s language chip, and closes them on a choice', async () => {
+    show();
+    const chip = roomLanguage();
+    expect(chip).toHaveAccessibleName('Chat language: English');
+    expect(chip).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('radiogroup', { name: 'Chat language' })).toBeNull();
+    await userEvent.setup().click(chip);
+    expect(chip).toHaveAttribute('aria-expanded', 'true');
+    const flags = screen.getByRole('radiogroup', { name: 'Chat language' });
+    expect(within(flags).getAllByRole('radio')).toHaveLength(6);
+    expect(within(flags).getByRole('radio', { name: 'English' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.setup().click(within(flags).getByRole('radio', { name: 'Deutsch' }));
+    expect(screen.queryByRole('radiogroup', { name: 'Chat language' })).toBeNull();
+    expect(roomLanguage()).toHaveAccessibleName('Chat language: Deutsch');
+  });
+
+  it('says an empty room on the kit: what it is, and what to do', () => {
+    show(vi.fn(), 'general', { pages: [{ messages: [], nextBefore: null }], pageParams: [null] });
+    const empty = document.querySelector('.gk-empty');
+    expect(empty).not.toBeNull();
+    expect(empty?.querySelector('.gk-empty__title')).toHaveTextContent('No one has spoken yet');
+    expect(empty?.querySelector('.gk-empty__body')).toHaveTextContent('Be the first voice in the galaxy.');
+  });
+
+  it('writes in the kit’s glass slot and sends with a lit round key', async () => {
+    show();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    expect(composer).toHaveClass('gk-field__input');
+    const send = screen.getByRole('button', { name: 'Send' });
+    expect(send).toHaveClass('gk-round', 'gk-round--self');
+    expect(send).toBeDisabled();
+    await userEvent.setup().type(composer, 'Selam');
+    expect(send).toBeEnabled();
+  });
+
   it('marks each previous-season podium place with a quiet border and a cup beside the author', () => {
     show(vi.fn(), 'general', {
       pages: [{ messages: initial.pages[0]!.messages.map((message, index) => ({
@@ -384,65 +442,62 @@ describe('galaxy chat surface', () => {
   it('opens the public chat in the application language', async () => {
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'fr');
   });
 
   it('reopens on the last chosen chat language while the application stays English', async () => {
     const { unmount } = show();
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     unmount();
 
     show();
-    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('tr');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'tr');
     expect(i18n.resolvedLanguage).toBe('en');
   });
 
   it('keeps the saved chat language when the application language changes', async () => {
     const { unmount } = show();
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     unmount();
 
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('tr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'tr');
     expect(i18n.resolvedLanguage).toBe('fr');
   });
 
   it('restores a valid saved chat language on a fresh screen', () => {
     localStorage.setItem('astera.chat.language.v1', 'ja');
     show();
-    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('ja');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'ja');
   });
 
   it('falls back to the application language for an unsupported saved chat language', async () => {
     localStorage.setItem('astera.chat.language.v1', 'invalid');
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'fr');
   });
 
   it('can still open and switch chat languages when browser storage is blocked', async () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });
     show();
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
-    expect(select).toHaveValue('en');
-    await userEvent.setup().selectOptions(select, 'tr');
-    expect(select).toHaveValue('tr');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'en');
+    await pickLanguage('Türkçe');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'tr');
   });
 
   it('switches the public chat language without changing the app language', async () => {
-    const user = userEvent.setup();
     show();
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
-    expect(select).toHaveValue('en');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'en');
 
-    await user.selectOptions(select, 'fr');
-    expect(select).toHaveValue('fr');
+    await pickLanguage('Français');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'fr');
     expect(i18n.resolvedLanguage).toBe('en');
 
-    await user.selectOptions(select, 'ja');
-    expect(select).toHaveValue('ja');
+    await pickLanguage('日本語');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'ja');
     expect(i18n.resolvedLanguage).toBe('en');
   });
 
@@ -456,16 +511,15 @@ describe('galaxy chat surface', () => {
       }],
       pageParams: [null],
     });
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
-    await user.selectOptions(select, 'fr');
+    await pickLanguage('Français');
     expect(screen.getByText('Bonsoir')).toBeInTheDocument();
     expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('');
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Brouillon français');
-    await user.selectOptions(select, 'en');
+    await pickLanguage('English');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
-    await user.selectOptions(select, 'fr');
+    await pickLanguage('Français');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('Brouillon français');
   });
   it('keeps the composer outside the independently scrolling message history', () => {
@@ -484,7 +538,7 @@ describe('galaxy chat surface', () => {
     expect(screen.queryByText('Rim temiz')).not.toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Clan — 1 unread' }));
-    expect(screen.queryByRole('combobox', { name: 'Chat language' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Chat language/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
     expect(screen.getByText('Rim temiz')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message your clan' })).toBeEnabled();
@@ -618,11 +672,11 @@ describe('galaxy chat surface', () => {
     client.setQueryData(keys.chatMessagesFor('tr'), initial);
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Merhaba');
     await user.keyboard('{Enter}');
     await waitFor(() => { expect(post).toHaveBeenCalledWith('tr', 'Merhaba'); });
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'en');
+    await pickLanguage('English');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
   });
 

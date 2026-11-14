@@ -15,7 +15,7 @@ export type NewsTone = 'hostile' | 'good' | 'warn' | 'info' | 'alloy' | 'crystal
 /** How the news went for the reader: the ground the row lies on. Neutral has none. */
 export type NewsOutcome = 'win' | 'partial' | 'loss' | 'neutral';
 
-export function NewsRow({ glyph, tone, outcome = 'neutral', fresh = false, banner, age, open, tool, children }: {
+export function NewsRow({ glyph, tone, outcome = 'neutral', fresh = false, banner, age, detail, open, tool, children }: {
   glyph: GlyphId;
   tone: NewsTone;
   outcome?: NewsOutcome;
@@ -25,8 +25,13 @@ export function NewsRow({ glyph, tone, outcome = 'neutral', fresh = false, banne
   banner?: string;
   /** How long ago ("35 min ago"). */
   age?: string;
-  /** What a press on the row opens, and its name for a reader. */
-  open?: { label: string; onPress: () => void };
+  /** What it came to, under the sentence and quieter ("Someone is building a picture of you."). */
+  detail?: ReactNode;
+  /**
+   * What a press on the row opens, and its name for a reader. `shown` writes the name under the
+   * sentence too, so the eye knows where the row goes (the return story, C1); the reader hears it once.
+   */
+  open?: { label: string; onPress: () => void; shown?: boolean };
   /** A round press of its own at the row's end (fly to whoever it names). */
   tool?: ReactNode;
   /** The sentence. */
@@ -51,7 +56,9 @@ export function NewsRow({ glyph, tone, outcome = 'neutral', fresh = false, banne
       <span className="gk-news__text">
         {banner !== undefined && <span className="gk-label gk-news__banner">{banner}</span>}
         <span className="gk-news__line">{children}</span>
+        {detail !== undefined && <span className="gk-news__detail">{detail}</span>}
         {age !== undefined && <span className="gk-sub gk-num">{age}</span>}
+        {open?.shown === true && <span className="gk-news__door" aria-hidden="true">{open.label}</span>}
       </span>
       {tool !== undefined && <span className="gk-news__tool">{tool}</span>}
     </div>

@@ -1508,11 +1508,26 @@
  */
 .chat-type {
   --text-body: 16px;
-  --text-micro: 11px;
+  /* The kit's floor (owner 2026-11-12): times, quotes and notes in the chat never go under 12 px. */
+  --text-micro: 12px;
+  --text-caption: 13px;
+  --text-label: 12px;
 }
 
 .chat-type [data-chat-author] {
-  font-size: 12px;
+  font-size: 13px;
+}
+
+/* The composer is the kit's glass slot; it grows with no handle, and the send key sits beside it. */
+.chat-type .chat-composer {
+  min-height: var(--gk-hit);
+  max-height: 120px;
+  padding: 11px var(--gk-s3);
+  line-height: 20px;
+}
+/* The room's own tint is darker than the glass the kit's hint was measured on. */
+.chat-type .chat-composer::placeholder {
+  color: var(--gk-ink-2);
 }
 
 .chat-type [data-chat-podium-icon] svg {
@@ -1540,46 +1555,12 @@
   border-color: #315541;
 }
 
+/*
+  C2 (2026-11-14): the phone's compact header (a 12 px handle, 28 px keys, a shrunken title) is
+  gone. It pulled the title up under the sheet's edge once the frame's handle became a 44 px grip
+  (G1-g1), and its keys were under the thumb's 44 px. The frame is the kit's, as on every sheet.
+*/
 @media (width < 700px) {
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] > button {
-    height: 12px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header {
-    padding-bottom: 4px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] h2 {
-    font-size: var(--text-title);
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header button {
-    width: 28px;
-    height: 28px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  [data-chat-controls] {
-    gap: 4px;
-    padding-inline: 8px;
-    padding-bottom: 4px;
-  }
-
-  [data-chat-controls] .v2-segmented-option {
-    min-height: 28px;
-    padding: 4px 8px;
-  }
-
-  [data-chat-controls] select {
-    height: 28px;
-    max-width: 7rem;
-    padding-inline: 4px;
-  }
-
   /* Only composing borrows the HUD space. Blur restores the normal sheet frame. */
   [data-chat-host]:has(textarea:focus) > [data-sheet-holder] {
     top: var(--chat-viewport-top, 0px);

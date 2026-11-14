@@ -363,8 +363,8 @@ export const clan = {
     heading: "Chat du clan",
     waiting: "Ouverture du chat du clan",
     list: "Messages du clan",
-    empty:
-      "Ton équipe n’a encore rien dit. Que le premier message prépare le prochain mouvement.",
+    emptyTitle: "Ton équipe n’a encore rien dit",
+    emptyBody: "Que le premier message prépare le prochain mouvement.",
     older: "Charger les anciens messages",
     loadingOlder: "Chargement des anciens messages",
     placeholder: "Écrire un message à ton clan",

@@ -90,7 +90,7 @@ describe('the kit glyphs', () => {
     ['speed_up', 'speed raised'], ['defense_down', 'defence lowered'], ['timed', 'a timed effect'],
     ['critical', 'critical hit'], ['fuel', 'fuel'], ['hull', 'hull strength'], ['target', 'range, target'],
     ['ranking', 'ranking'], ['history', 'history'], ['share', 'share'], ['siren', 'alarm'],
-    ['settings', 'settings'], ['mail', 'mail'], ['chat', 'chat'], ['unlock', 'unlocked'],
+    ['settings', 'settings'], ['mail', 'mail'], ['chat', 'chat'], ['mute', 'mute a player (C2)'], ['block', 'block a player (C2)'], ['unlock', 'unlocked'],
     ['refresh', 'refresh'], ['zoom', 'zoom in'], ['banner', 'a clan with no flag yet'],
     ['class_skirmisher', 'Akıncı: an arrowhead'], ['class_lance', 'Mızrak: a spear'],
     ['class_bulwark', 'Sur: a walled shield'], ['class_support', 'Destek: a cross in a ring'],

@@ -1,7 +1,7 @@
 import { BlockedPlayersSheet } from '../../screens/CommunityBlocks.js';
 import { useEffect, useRef, useState } from 'react';
 import { addChatMute, readChatMutes, writeChatMutes, type ChatMuteAuthor } from '../../lib/chatMutes.js';
-import { MuteIcon } from '../../ui/icons/index.js';
+import { RoundButton } from '../../game-ui/index.js';
 import { useTranslation } from 'react-i18next';
 import { useChatUnread, useClanBadge, useDmUnread } from '../../api/queries.js';
 import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
@@ -73,15 +73,8 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
     <>
       <div ref={host} data-chat-host>
       <Sheet title={t('bell.chat')} titleAction={(<>
-        <button type="button" aria-label={t('chat.personalMutes.title')} aria-haspopup="dialog"
-          className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-          onClick={() => { setShowMuted(true); }}>
-          <MuteIcon className="size-4" />
-          {mutedPlayers.length > 0 && <span aria-hidden className="absolute -top-1 -right-1 min-w-3.5 rounded-pill bg-v2-self px-0.5 font-v2-mono text-micro text-v2-self-ink">{mutedPlayers.length}</span>}
-        </button>
-        <button type="button" aria-label={t('moderation.blocks.title')} aria-haspopup="dialog" className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self" onClick={() => { setShowBlocked(true); }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3ZM8 12h8" /></svg>
-        </button>
+        <RoundButton small glyph="mute" label={t('chat.personalMutes.title')} onPress={() => { setShowMuted(true); }} />
+        <RoundButton small glyph="block" label={t('moderation.blocks.title')} onPress={() => { setShowBlocked(true); }} />
       </>)} onClose={onClose} detents={['full']} contained fixedHeight>
         <div className="min-h-0 flex-1">
           <ChatScreen

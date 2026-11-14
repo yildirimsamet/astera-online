@@ -297,6 +297,8 @@ export interface TabItem<T extends string = string> {
   /** What opens it; a locked tab says this instead of opening. */
   locked?: string | null;
   badge?: number;
+  /** The tab's whole name as a reader hears it, with what its count means ("Clan — 2 unread"); the eye reads the count (C2). */
+  spoken?: string;
   /** A fact about what is under the tab (something stopped): its glyph, and what it means to a reader. */
   mark?: { glyph: GlyphId; hint: string };
   /**
@@ -389,7 +391,7 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
       {...(marked ? { 'data-tab': tab.id } : {})}
       {...(tabId === undefined ? {} : { id: tabId })}
       {...(panelId === undefined ? {} : { 'aria-controls': panelId })}
-      {...(tab.mark ? { 'aria-label': tab.mark.hint } : {})}
+      {...(tab.mark ? { 'aria-label': tab.mark.hint } : tab.spoken === undefined ? {} : { 'aria-label': tab.spoken })}
       {...(tab.locked ? { 'data-locked': '' } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}

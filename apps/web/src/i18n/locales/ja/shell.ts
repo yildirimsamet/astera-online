@@ -582,6 +582,7 @@ export const chat = {
   launcherBothUnread: "オープンチャット — 一般では {{general}} 未読、クランでは {{clan}}",
   channelsLabel: "チャット チャネル",
   languageLabel: "チャット言語",
+  languageChip: "チャット言語：{{language}}",
   general: "一般",
   clan: "クラン",
   dm: {
@@ -599,7 +600,8 @@ export const chat = {
   clanLocked: "クランチャットはクルー専用です。",
   clanLockedHint: "クランに参加するかクランを見つけると、このチャンネルがすぐに開きます。",
   list: "ギャラクシーメッセージ",
-  empty: "まだ誰も発言していません。銀河系で最初の声を上げましょう。",
+  emptyTitle: "まだ誰も発言していません",
+  emptyBody: "銀河系で最初の声を上げましょう。",
   older: "古いメッセージをロードします",
   loadingOlder: "古いメッセージをロードしています",
   placeholder: "銀河にメッセージを",
