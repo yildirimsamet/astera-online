@@ -172,6 +172,8 @@ export const reportScene = {
   rounds_one: "{{count}} tur",
   rounds_other: "{{count}} tur",
   you: "Sen",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Tarafsız garnizon",
   destroyed: "{{count}} yok edildi",
   hidden: "Kalanları ve sahaya çıkardığı filo gizli; rapor yalnızca yok ettiğini söyler.",
   whyDecisive: "Kayıplar nereden geldi",

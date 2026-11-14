@@ -36,7 +36,10 @@ const RAID = {
   lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240, cargoLimited: true,
   dominion: 120,
   dominionBreakdown: { ruleVersion: 7, lootValue: 4_580, enemyPermanentLossValue: 9_200, ownPermanentLossValue: 4_100, rawExchange: 9_680 },
-  honor: { delta: 38_000_000, reason: 'COMBAT' },
+  honor: {
+    delta: 38_000_000, reason: 'COMBAT',
+    breakdown: { teamDelta: 38_000_000, rawTeamDelta: 41_000_000, participants: 1, contributionPpm: 1_000_000, militaryDamage: 9_200, permanentLoss: 4_100 },
+  },
   shieldAbsorbed: 2_400, shieldBefore: 2_400, shieldAfter: 0, defenceSalvage: {},
   salvage: { alloy: 600, crystal: 240, deuterium: 0 }, wreckValue: 5_200, disruptedMinutes: 0,
   yourDamage: [{ hull: 'TALON', count: 1, damageBp: 3_400 }, { hull: 'DART', count: 2, damageBp: 900 }],
@@ -68,7 +71,7 @@ const DEFENCE = {
 const PIRATE = {
   kind: 'BATTLE', id: 'r-pirate', missionId: null, pirateRaidId: 'raid-7', at: iso(-8), grade: 'DECISIVE', replayStatus: 'AVAILABLE',
   pirate: { level: 2, callsign: 'Rook', damageMult: 0.7, capturedHull: 'VIPER' },
-  attacking: true, opponentName: 'Pirates', opponentPlanet: '', opponentPlanetId: null,
+  attacking: true, opponentName: 'Pirate L2-Rook', opponentPlanet: '', opponentPlanetId: null,
   yourPlanet: 'Bellwether', yourPlanetId: 'p-1', neutral: false,
   rounds: [
     { round: 1, attackerRoll: 1.06, defenderRoll: 0.94, attackerDamage: 7_200, defenderDamage: 1_900, shieldAbsorbed: 0, shieldBreakerDamage: 0,

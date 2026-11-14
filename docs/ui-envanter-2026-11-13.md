@@ -1199,6 +1199,14 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 5 rapor görünümü): C15a sonrasına göre puan 193→89 (baskın), 145→68 (savunma), 122→59 (korsan), 77→41 (destek); 12 px altı 461→211, kontrast 32→18, 44 px altı 17→9, tepkisiz 23→15; kesilme ve taşma 0. Kalanların hepsi üstteki sahnede (C16) ve kitin bölüm etiketinde. Savunma görünümü artık 3 gövde gösteriyor (örnek veri). `reports/ui-audit/c15b-report-forces-after-2026-11-15.md`.
 - **Açık soru:** yok. ja verdict'te kalan zayıf çeviriler (yourForce "あなたの力", standing) grup sonu 6 dil turunda.
 
+**C16a Savaş raporu: sahne ✅ (2026-11-15, yardımcı oturum).** G5 #3'ün ilk ekranı (ReportScene) ve Honor özeti; tekrar kapısı C16b'de.
+- **An:** rapor açılınca ilk ekran: dünya, sonuç sözcüğü, ganimet, iki taraf, neden, bilanço ve kapılar.
+- **Değişen:** sahne kitte (`gk-debrief`, kitte `gk-scene` olduğu için). Sözcük solda, dünyanın resmi sağ üstte; resim artık sözcüğün ve satırların arkasına düşmüyor (kontrast). Sözcüğün rengi `data-tone`. İki taraf kitin hayatta kalan çubuğuyla; karşı tarafın kaybı yeşil (senin ateşin), seninki kırmızı. Kapılar kitin düğmeleri; "Yeniden saldır" tek turuncu eylem. Honor özeti kitin camında, dökümü kitin kural satırı (ses + titreşim). Ganimet kayıttaki ganimet satırıyla aynı.
+- **Düzeltme:** sahne korsanı sunucunun İngilizce yedek adıyla ("Pirate L2-Rook") yazıyordu; artık listedeki gibi yerel ad (D150). Tarafsız dünyada boş ad yerine "Tarafsız garnizon" (`reportScene.neutralSide` ×6).
+- **Kaldırılan:** sahnedeki 12 px altı çizili dünya adı düğmesi; aynı dünyaya 44 px'lik kapı birkaç satır aşağıdaki rotada (C15a). `ReportScene.onFocusPlanet` bu yüzden kalktı.
+- **Ölçüm** (tr; telefon, dar, masaüstü; 7 görünüm): C15b sonrasına göre puan 89→8 (baskın), 68→8 (savunma), 59→6 (korsan), 41→4 (destek); bağımsız sahne görünümleri 0 ve 2. 12 px altı 211→18, kontrast 18→2, 44 px altı 9→1, tepkisiz 15→6; kesilme ve taşma 0. Kalanlar: tekrar kapısı (C16b), G9'un sayı göstergesi ve galerideki sayfa arkalığı (G1 çerçevesi). `reports/ui-audit/c16a-report-scene-after-2026-11-15.md`.
+- **Açık soru:** yok. `RankingScores` (Honor/Hâkimiyet sayıları) liderlik tablosuyla birlikte G9'da kite geçecek.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.

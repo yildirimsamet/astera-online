@@ -741,7 +741,6 @@ function ReportSheet({
         onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
         {...(onShare ? { onShare } : {})}
         told={told}
-        {...(onFocusPlanet ? { onFocusPlanet } : {})}
         {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
       />
       {/*
