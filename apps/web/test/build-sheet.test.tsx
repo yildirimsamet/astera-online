@@ -1275,4 +1275,27 @@ describe('the room sections', () => {
     );
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(/never leave/i);
   });
+
+  /** G2-h: both rooms on the kit's gauge; their notes and the guns at the 12 px floor. */
+  const v2Classes = (root: Element): string[] => [...root.querySelectorAll<HTMLElement>('[class]')]
+    .flatMap((node) => [...node.classList])
+    .filter((name) => /^(v2-|font-v2|text-micro|text-caption|text-v2|bg-v2|border-v2|text-faint|text-dim|text-bone|num$)/.test(name));
+
+  it('draws the Hangar room on the kit gauge, its note under it, nothing of the v2 type left', () => {
+    show({ fleet: { DART: 10 }, fleetAway: { DART: 2 } });
+    const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
+    expect(section.querySelector('[data-room-bar]')).toHaveClass('gk-room', 'gk-well');
+    expect(section.querySelector('.gk-room__note')).toHaveTextContent(/returning fleet always fits/i);
+    expect(v2Classes(section)).toEqual([]);
+  });
+
+  it('names the guns in kit chips inside the ground gauge, an empty one quiet', () => {
+    show({ ground: { THORN: 3 } }, 'defend');
+    const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    const guns = [...section.querySelectorAll<HTMLElement>('[data-room-bar] .gk-room__gun')];
+    expect(guns.map((gun) => gun.textContent)).toEqual(['Thorn 3', 'Harpoon 0', 'Bastion 0']);
+    expect(guns[0]).not.toHaveAttribute('data-empty');
+    expect(guns[1]).toHaveAttribute('data-empty');
+    expect(v2Classes(section)).toEqual([]);
+  });
 });

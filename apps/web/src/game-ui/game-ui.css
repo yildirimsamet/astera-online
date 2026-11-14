@@ -8708,3 +8708,34 @@ button.gk-probe__head:active {
   min-width: 0;
   text-align: right;
 }
+/* the room's own words inside its well: the rule, the next rung, the guns that stand on it (G2-h) */
+.gk-room__note {
+  line-height: 1.35;
+}
+.gk-room__guns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gk-room__gun {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 35%, var(--gk-glass-edge));
+  border-radius: 2px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-room__gun .gk-num {
+  color: var(--gk-self);
+}
+.gk-room__gun[data-empty] {
+  border-color: var(--gk-glass-edge);
+  color: var(--gk-ink-3);
+}
+.gk-room__gun[data-empty] .gk-num {
+  color: var(--gk-ink-3);
+}

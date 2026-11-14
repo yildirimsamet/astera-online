@@ -815,6 +815,12 @@ Kalanlar ve nedeni:
 - **Silinen:** `HULL_SKY`, v2 `Cost`/`Icon` kullanımı. `CounterCycle` ve `ShipRadiationProtection` kite geçti. v2 `RoomBar` G2-h ve G15 için kaldı.
 - **Ölçüm** (`reports/ui-audit/g2e-after-2026-11-14.md`, 6 görünüm, 84 ölçüm): 12 px altı metin 0, kontrast hatası 0. 44 px altı ve tepkisiz hedef görünüm başına 1; bu G1 çerçevesinin bilinen arka plan düğmesi. Kırpma 0. Tek kesilme Fransızca 320 px'teydi; metin kısaldı ve bir test koruyor. Ekran başına 43–65 kelime. Eski sheet galeriden ölçülemiyordu.
 
+**G2-h1 Hangar ve yer odası ✅ (2026-11-15).** G2-h üçe bölündü: h1 odalar, h2 Filo sayfası, h3 klan savunma duruşu ve destek bölmesi.
+- **An:** "Bu dünyada gemiye ve topa ne kadar yer var?"
+- **Değişen:** Filo sekmesindeki hangar odası ve Savunma sekmesindeki yer odası G2-e'nin kit `RoomGauge`'una geçti. Not satırı ("Dönen filo her zaman sığar… Hangar 4 odayı 470 → 810 yapar") kartın içinde. Toplar kit çiplerinde; boş olan sönük.
+- **Silinen:** `PlanetScreen`'den v2 `RoomBar`. `RoomBar` artık yalnız başlangıç galaksisinin tersanesinde (`YardDeck`, G15).
+- **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h1-after-2026-11-15.md`. 12 px altı metin Filo sekmesinde 9→0, Savunma'da 13→0, boş filoda 8→0. Kontrast hatası 6→0, 10→0, 5→0. Kalan tek hedef G1 çerçevesi. Kesilme ve taşma 0.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

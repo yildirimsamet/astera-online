@@ -147,7 +147,6 @@ import { roomParts } from '../lib/room.js';
 import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock, type ArmNeed } from '../ui/ArmCard.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
-import { RoomBar } from '../v2/kit/RoomBar.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { BaseQueues } from '../v2/shell/BaseQueues.js';
 import { REPAIR_STATION_ITEM } from '../lib/repairStation.js';
@@ -2605,14 +2604,15 @@ function HangarRoom({ planet }: { planet: PlanetView }) {
   const level = projectedQueueState(planet, 'CONSTRUCTION').buildings.HANGAR;
   const next = level < HANGAR.maxLevel ? level + 1 : null;
   return (
-    <div data-hangar-room className="flex flex-col gap-1.5">
-      <RoomBar label={t('roomBar.hangar')} total={room.total} home={room.home} away={room.away} queued={room.queued} />
-      <p className="px-1 text-micro leading-snug text-v2-ink-2">
-        {t('roomBar.returnFits')}
-        {next !== null && (
-          <> {t('roomBar.nextHangar', { level: next, from: compact(hangarCapacity(level)), to: compact(hangarCapacity(next)) })}</>
-        )}
-      </p>
+    <div data-hangar-room className="gk">
+      <RoomGauge label={t('roomBar.hangar')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
+        <p className="gk-sub gk-room__note">
+          {t('roomBar.returnFits')}
+          {next !== null && (
+            <> {t('roomBar.nextHangar', { level: next, from: compact(hangarCapacity(level)), to: compact(hangarCapacity(next)) })}</>
+          )}
+        </p>
+      </RoomGauge>
     </div>
   );
 }
@@ -2633,28 +2633,25 @@ function GroundRoom({ planet }: { planet: PlanetView }) {
     if (groundSlots(level) > groundSlots(core)) next = level;
   }
   return (
-    <div data-ground-room className="flex flex-col gap-1.5">
-      <RoomBar label={t('roomBar.ground')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
-        <p className="flex flex-wrap gap-1.5 pt-0.5">
+    <div data-ground-room className="gk">
+      <RoomGauge label={t('roomBar.ground')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
+        <p className="gk-room__guns">
           {GUNS.map((gun) => {
             const standing = planet.ground[gun] ?? 0;
             return (
-              <span
-                key={gun}
-                className={`rounded-chip border border-v2-line px-1.5 py-0.5 text-micro ${standing > 0 ? 'text-v2-ink' : 'text-v2-ink-3'}`}
-              >
-                {hullLabel(gun)} <span className="font-v2-mono">{standing}</span>
+              <span key={gun} className="gk-room__gun" {...(standing > 0 ? {} : { 'data-empty': '' })}>
+                {hullLabel(gun)} <span className="gk-num">{standing}</span>
               </span>
             );
           })}
         </p>
-      </RoomBar>
-      <p className="px-1 text-micro leading-snug text-v2-ink-2">
-        {t('roomBar.gunsStay')}
-        {next !== null && (
-          <> {t('roomBar.nextCore', { level: next, from: compact(groundSlots(core)), to: compact(groundSlots(next)) })}</>
-        )}
-      </p>
+        <p className="gk-sub gk-room__note">
+          {t('roomBar.gunsStay')}
+          {next !== null && (
+            <> {t('roomBar.nextCore', { level: next, from: compact(groundSlots(core)), to: compact(groundSlots(next)) })}</>
+          )}
+        </p>
+      </RoomGauge>
     </div>
   );
 }
