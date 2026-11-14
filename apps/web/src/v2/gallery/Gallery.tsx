@@ -38,6 +38,7 @@ import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
 import { GalleryChat } from './GalleryChat.js';
+import { GalleryCommunity } from './GalleryCommunity.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -862,6 +863,7 @@ function Views({ view }: { view: string }) {
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
+  if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
   if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>

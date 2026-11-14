@@ -962,6 +962,38 @@ Galeriye beş görünüm eklendi: `chat-muted`, `chat-muted-empty`, `chat-blocke
 
 Kalan 4 küçük hedef, sheet'in arkasında kalan sohbetin yarım görünen yazar adı. Yeni bir küçük hedef değil.
 
+**C5 duyurular ve geri bildirim ✅ (2026-11-14, yardımcı oturum).** G8 #8 ve #9. Oyuncunun iki anı var. Birincisi ekipten yeni bir söz gelince onu ilk bakışta ayırmak. İkincisi ekibe bir şey yazmak ve gittiğini görmek. Duyuru okundu işareti ve geri bildirim gönderme kuralları (en az 3 harf, 2000 sınırı) değişmedi.
+
+Önce kite eklenenler:
+- `.gk-notice`: duyuru plakası. Yeni bir duyuru plakanın kenarında oyuncunun rengiyle yanar.
+- `.gk-newtag`: yavaş parlayan "YENİ" etiketi. Duyuru okundu sayılsa da bu ziyaret boyunca yanık kalır. Oyuncu açtığı anda neyin yeni olduğunu kaybetmez.
+
+Yüzeyler:
+- **Duyurular:**
+  - Her duyuru bir plaka. Başlık 16 px, metin 14 px ve ikinci mürekkepte (eskisi 13 px, soluk).
+  - Boş sayfa kitin boş durumunu kullanıyor. Başlığı "Henüz duyuru yok", altında "Ekibin kısa notları ve güncellemeleri burada görünecek." Bunun için yeni `emptyTitle` anahtarı eklendi ve `empty` ikinci cümlesine indi; 6 dilde.
+- **Geri bildirim:**
+  - Tür seçimi kitin plakalarında (`Choices`); eski `Segmented` kalktı.
+  - Mesaj kitin cam alanında.
+  - Kalan karakter sayısı okunur bir dipnot.
+  - Gönder tuşu eksik olanı kendisi söylüyor: "En az 3 harf yaz" (yeni `tooShort` anahtarı ×6). Gönderirken dönüyor.
+  - Gönderim sonrası kitin yeşil bandı çıkıyor.
+
+Galeriye üç görünüm eklendi: `announcements`, `announcements-empty`, `feedback`. Denetimin yollarına yazıldılar.
+
+Ölçüm: `reports/ui-audit/c5-community-after-2026-11-14.md`, üç yol, 42 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 14 | 0 |
+| Kontrastı yetmeyen metin | 4 | 0 |
+| 44 px altı hedef | 6 | 0 |
+| Basınca tepkisiz | 5 | 0 |
+| Kesilen / kırpılan metin | 0 | 0 |
+| 300 ms üstü geçiş | 0 | 0 |
+
+Ekran görüntüleri dört dilde çekildi. Almancada gönder tuşu iki satıra iniyordu; söz "Mindestens 3 Zeichen" diye kısaltıldı. Japoncada boş sayfa cümlesinin son hecesi tek başına alt satıra düşüyordu; cümle kısaltıldı. Bu iki düzeltme ölçümden önce yapıldı.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.

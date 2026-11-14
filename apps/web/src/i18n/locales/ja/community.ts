@@ -3,7 +3,8 @@ export const community = {
   announcements: {
     eyebrow: "アステラコマンドより",
     title: "お知らせ",
-    empty: "まだ発表はありません。チームからの最新情報がここに表示されます。",
+    emptyTitle: "まだ発表はありません",
+    empty: "チームの最新情報がここに届きます。",
     new: "新規",
   },
   feedback: {
@@ -18,6 +19,7 @@ export const community = {
     send: "フィードバックを送信する",
     sending: "送信中…",
     sent: "受信しました。アステラの造形にご協力いただきありがとうございます。",
+    tooShort: "3文字以上入力してください",
   },
   admin: {
     ops: adminOps,

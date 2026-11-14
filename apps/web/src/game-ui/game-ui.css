@@ -5821,3 +5821,58 @@ html:lang(ja) .gk-tab {
   border-radius: 6px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent), 0 0 0 1px var(--gk-outline);
 }
+
+/* ── C5: word from command, a line to the team ─────────────────────────── */
+
+/* AN ANNOUNCEMENT (C5): a plate; a new one wears the player's colour down its edge and a tag. */
+.gk-notice {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: 0 6px 16px var(--gk-outline);
+}
+.gk-notice[data-new] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  box-shadow:
+    inset 3px 0 0 var(--gk-self),
+    0 6px 18px var(--gk-outline),
+    0 0 18px color-mix(in srgb, var(--gk-self) 16%, transparent);
+}
+.gk-notice__head {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3) var(--gk-s3) 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-notice__title {
+  margin: 0;
+  font-size: var(--gk-t-lead);
+  line-height: 1.25;
+  color: var(--gk-ink);
+}
+.gk-notice__body {
+  padding: 10px var(--gk-s3) var(--gk-s3);
+  font-size: var(--gk-t-body);
+  line-height: 1.5;
+  color: var(--gk-ink-2);
+}
+.gk-newtag {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 60%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 20%, transparent);
+  color: var(--gk-self);
+  font-family: var(--gk-font-display);
+  font-size: var(--gk-t-floor);
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  animation: gk-newtag-glow 2.4s ease-in-out infinite;
+}
+@keyframes gk-newtag-glow {
+  50% {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--gk-self) 45%, transparent);
+  }
+}

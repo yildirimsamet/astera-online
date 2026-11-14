@@ -152,8 +152,8 @@ export const SURFACES: GameSurface[] = [
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
   { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-archive'], group: 'G9', unreached: ['komutan profili (arşiv)'] },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },
-  { id: 'announcements', what: 'Duyurular', files: ['screens/AnnouncementsScreen.tsx'], reach: ['client:announcements'], group: 'G8' },
-  { id: 'feedback', what: 'Geri bildirim formu', files: ['screens/FeedbackScreen.tsx'], reach: ['client:feedback'], group: 'G8' },
+  { id: 'announcements', what: 'Duyurular', files: ['screens/AnnouncementsScreen.tsx'], reach: ['gallery:announcements', 'gallery:announcements-empty', 'client:announcements'], group: 'G8' },
+  { id: 'feedback', what: 'Geri bildirim formu', files: ['screens/FeedbackScreen.tsx'], reach: ['gallery:feedback', 'client:feedback'], group: 'G8' },
   { id: 'donate', what: 'Bağış', files: ['screens/DonateScreen.tsx'], reach: ['gallery:donate'], group: 'G6' },
   {
     id: 'shop',

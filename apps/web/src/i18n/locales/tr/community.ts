@@ -3,7 +3,8 @@ export const community = {
   announcements: {
     eyebrow: 'Astera komutasından',
     title: 'Duyurular',
-    empty: 'Henüz duyuru yok. Ekibin kısa notları ve güncellemeleri burada görünecek.',
+    emptyTitle: 'Henüz duyuru yok',
+    empty: 'Ekibin kısa notları ve güncellemeleri burada görünecek.',
     new: 'YENİ',
   },
   feedback: {
@@ -18,6 +19,7 @@ export const community = {
     send: 'Geri bildirim gönder',
     sending: 'Gönderiliyor…',
     sent: 'Ulaştı. Astera’yı şekillendirmemize yardım ettiğin için teşekkürler.',
+    tooShort: 'En az 3 harf yaz',
   },
   admin: {
     ops: adminOps,
