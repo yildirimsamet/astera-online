@@ -968,7 +968,7 @@ describe('the matchup on a hull sheet', () => {
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(/lance/i);
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(factor(COMBAT.weakMult));
     // Weak is a gap to plan around, not a threat: warn, never hostile red.
-    expect(screen.getByTestId('counter-weak').className).toMatch(/v2-warn/);
+    expect(screen.getByTestId('counter-weak')).toHaveAttribute('data-tone', 'warn');
   });
 
   it('opens the whole cycle on a tap, with this hull lit', async () => {
@@ -990,10 +990,11 @@ describe('special ship roles before crafting', () => {
     expect(role).toHaveTextContent(/bonus damage hits only the shield/i);
     expect(role).toHaveTextContent(/shield is empty.*normal attack/i);
     expect(document.querySelector('[data-item-detail]')).toBeNull();
+    // G2-e: the hull card (picture, matchup, figures) first, the role under it, the long reading last.
     const how = screen.getByRole('button', { name: /how it works/i });
     const matchup = document.querySelector('[data-counter-cycle]');
-    expect(how.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(matchup && role.compareDocumentPosition(matchup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(role.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(matchup && matchup.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('states the per-survivor salvage ceiling and attack-only limits without describing it as loot cargo', async () => {

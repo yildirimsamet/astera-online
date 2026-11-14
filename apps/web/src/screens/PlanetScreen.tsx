@@ -141,13 +141,11 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, CostLine, GameButton, GameHold, GameTabs, Glyph, InfoPeek, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, RoomGauge, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
-import { Icon } from '../v2/icons.js';
-import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock } from '../ui/ArmCard.js';
+import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock, type ArmNeed } from '../ui/ArmCard.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
-import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { RoomBar } from '../v2/kit/RoomBar.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
@@ -2682,7 +2680,6 @@ export function BuildSheet({
   const say = useToast();
   const lesson = useAcademyLesson();
   const [explained, setExplained] = useState(false);
-  const [cycle, setCycle] = useState(false);
   // The hand points straight to Build. Offer the authored quantity, not the
   // live game's default of one, which the local lesson correctly refuses.
   const school = useSchoolPresentation();
@@ -2726,6 +2723,19 @@ export function BuildSheet({
   const capped = prospectorCapped || capacityCapped;
   const shipyard = planet.buildings.SHIPYARD ?? 0;
   const accessBlock = hullAccessBlock(hull, shipyard, yardProjection, onNeed);
+  // The same needs one by one (G2-e): a met one ticked, an unmet one a door to its fix.
+  const needs: ArmNeed[] = accessBlock === undefined ? [] : [
+    ...(spec.minShipyard > 0 ? [{
+      ok: shipyard >= spec.minShipyard,
+      text: t('planet.blocked.shipyard', { level: spec.minShipyard }),
+      onFix: () => { onNeed('SHIPYARD'); onClose(); },
+    }] : []),
+    ...spec.requiredResearch.map(({ project, level }) => ({
+      ok: (yardProjection.research.get(project) ?? 0) >= level,
+      text: t('planet.blocked.research', { research: researchName(project), level: RESEARCH_RUNG[level] ?? `L${String(level)}` }),
+      onFix: () => { onNeed(project); onClose(); },
+    })),
+  ];
   const yardOrders = planet.queues?.YARD.length ?? 0;
   const blocked: Blocked | undefined = accessBlock
     ?? (yardOrders >= BUILD.queueDepth
@@ -2797,200 +2807,151 @@ export function BuildSheet({
   return (
     <V2Sheet
       detents={['fit']}
+      kit={{ tone: 'self', meta: <span className="gk-sub">{hullTag(hull)}</span> }}
       eyebrow={
         spec.ground ? t('planet.buildSheet.eyebrowGround') : t('planet.buildSheet.eyebrowMobile')
       }
       title={hullLabel(hull)}
       onClose={onClose}
       footer={capped ? undefined : (
-        <div className="flex flex-col gap-2">
+        <div className="gk grid gap-2">
+          {/*
+            HOW MANY: the act, so it sits over the price and the press, in the thumb's reach and
+            never scrolled away; the note beside Max says what stops it there. In a lesson the
+            authored count is the whole offer and no reason applies.
+          */}
+          {!blocked && <div data-build-count className="gk-build__count">
+            <QuantityStepper
+              look="kit"
+              value={clamped}
+              min={lessonCount ?? 1}
+              max={lessonCount ?? ceiling}
+              onChange={setCount}
+              decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
+              increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}
+              valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
+              maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
+              maxText={lessonCount !== null
+                ? t('planet.buildSheet.maxOf', { value: lessonCount })
+                : fits > 0 ? t('planet.buildSheet.maxOf', { value: fits }) : t('planet.buildSheet.maxShort')}
+            />
+            {lessonCount === null && fits > 0 && <span data-fits className="gk-sub gk-build__fits">{bound}</span>}
+            {hull === 'PROSPECTOR' && fits > 0 && (
+              <span className="gk-sub gk-build__held">{t('planet.buildSheet.heldOfMax', { owned: committed, max: prospectorMax })}</span>
+            )}
+          </div>}
           <div className="flex items-center justify-between gap-2">
-            <span data-build-price className="flex min-w-0 items-center gap-2">
-              <span className="font-v2-mono text-micro text-v2-ink-3">{clamped} ×</span>
-              <Cost cost={total} held={held} />
-              {/*
-                AND WHAT THE BATCH COSTS IN TIME. Owner report. It moves with the
-                stepper: ten Darts is a different evening from one.
-              */}
-              <span
-                data-testid="build-sheet-time"
-                className="flex items-center gap-1 whitespace-nowrap font-v2-mono text-micro text-v2-ink-2"
-                aria-label={t('upgradeRow.takesLabel', { duration: takes })}
-              >
-                <Icon id="i-clock" className="size-3 shrink-0" />
-                {takes}
-              </span>
+            {/*
+              THE BATCH'S PRICE AND WHAT IT COSTS IN TIME, once, beside the commit. Owner
+              report: it moves with the stepper, ten Darts is a different evening from one.
+            */}
+            <span data-build-price className="gk-build__price">
+              <span className="gk-build__times gk-num">{clamped} ×</span>
+              <CostLine cost={total} held={held} time={(
+                <span data-testid="build-sheet-time" className="gk-cost__time" aria-label={t('upgradeRow.takesLabel', { duration: takes })}>
+                  <Glyph id="clock" />{takes}
+                </span>
+              )} />
             </span>
-            <span data-queue-fill className="shrink-0 text-micro text-v2-ink-3">
+            <span data-queue-fill className="gk-sub shrink-0">
               {t('planet.buildSheet.yardFill', { used: yardOrders, total: BUILD.queueDepth })}
             </span>
           </div>
           {/*
-            `data-commit` is this sheet's own commitment, and `data-ready` appears
-            only once the count is at the ceiling. The onboarding lights the ceiling
-            option first and then moves to here, so the opening grant is spent in one
-            press rather than one ship at a time.
+            `data-commit` is this sheet's own commitment, and `data-ready` appears only once
+            the count is at the ceiling. The onboarding lights the ceiling option first and
+            then moves here, so the opening grant is spent in one press.
           */}
           <span data-act data-commit className="block" {...(clamped === ceiling ? { 'data-ready': true } : {})}>
             {blocked ? (
-              // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): warn, and it goes where the fix is.
-              <button
-                type="button"
-                data-lock-state="closed"
-                disabled={!blocked.onFix}
-                onClick={() => {
-                  blocked.onFix?.();
-                  onClose();
-                }}
-                className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-warn/50 px-3 text-caption font-semibold text-v2-warn disabled:border-v2-line disabled:text-v2-ink-2"
-              >
-                <Icon id="i-lock" className="size-3.5 shrink-0" />
-                {blocked.reason}
-                {blocked.onFix && ' →'}
-              </button>
+              // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): each one goes where its fix is.
+              needs.length > 0 ? <ArmNeeds needs={needs} /> : (
+                <p className="gk-inote gk-inote--plate" {...(blocked.waits ? { 'data-waits': '' } : {})}>
+                  <Glyph id={blocked.waits ? 'timed' : 'lock'} />
+                  <span>{blocked.reason}</span>
+                </p>
+              )
             ) : (
-              <button
-                type="button"
-                disabled={!canPay || build.isPending}
-                onClick={commit}
-                className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
+              // An order the yard can cancel at half is Upgrade's weight: one heavy press (owner, 2026-11-12).
+              <GameButton
+                tone="action"
+                size="lg"
+                wide
+                heavy
+                glyph={canPay ? (spec.ground ? 'shield' : 'rocket') : 'timed'}
+                pending={build.isPending}
+                disabledReason={canPay ? null : wait === null ? t('itemSheet.short') : t('itemSheet.affordIn', { duration: duration(wait) })}
+                onPress={commit}
               >
-                {canPay
-                  ? t('planet.buildSheet.build', { count: clamped })
-                  : wait === null
-                    ? t('itemSheet.short')
-                    : t('itemSheet.affordIn', { duration: duration(wait) })}
-              </button>
+                {t('planet.buildSheet.build', { count: clamped })}
+              </GameButton>
             )}
           </span>
         </div>
       )}
     >
-      <div className="flex flex-col gap-3 pt-1">
-        <section
-          data-build-art
-          className="relative rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5"
-          style={HULL_SKY}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 rounded-chip border border-v2-line-hi bg-v2-raise/60 px-1.5 py-0.5 text-micro font-semibold text-v2-ink-2">
-              <ClassEmblem cls={spec.cls} decorative />
-              {combatClassLabel(spec.cls)}
-            </span>
-            <span className="font-v2-mono text-micro text-v2-ink-2">
+      <div className="gk gk-build">
+        {/*
+          THE HULL CARD: the ship over its sky with its class and where its ships are, what it
+          beats and what beats it (D124: the rule where the hull is chosen), and its figures.
+        */}
+        <section data-build-art className="gk-hull">
+          <div className="gk-hull__stage">
+            {art && (
+              <div data-build-scene role="img" aria-label={hullLabel(hull)} className="gk-hull__scene">
+                <CardArtwork src={art} locked={false} unowned={false} />
+              </div>
+            )}
+            <span className="gk-hull__class"><span aria-hidden="true"><Emblem cls={spec.cls} /></span>{combatClassLabel(spec.cls)}</span>
+            <span className="gk-hull__where gk-num">
               {/* A gun never leaves, so it is only ever standing. */}
               {spec.ground
                 ? t('planet.buildSheet.standing', { value: home })
                 : t('planet.reach.hullLocationCounts', { home, away })}
             </span>
+            {/* The order on the picture: it bumps with every step of the count. */}
+            {!capped && !blocked && <span key={clamped} aria-hidden="true" className="gk-hull__order gk-num">×{clamped}</span>}
           </div>
-          {art && <div data-build-scene role="img" aria-label={hullLabel(hull)} className="relative mt-2 grid aspect-[3/2] place-items-center overflow-hidden rounded-control"><CardArtwork src={art} locked={false} unowned={false} /></div>}
-          <p className="text-center text-caption text-v2-ink-2">{hullTag(hull)}</p>
+          <HullMatchup cls={spec.cls} />
           <HullStats hull={hull} tech={tech} />
         </section>
 
-        <div className="flex flex-col gap-1.5">
-          <p className="text-caption leading-snug text-v2-ink-2">
-            <span>{hullPitch(hull)}</span>{' '}
-            <button
-              type="button"
-              aria-expanded={explained}
-              onClick={() => { setExplained((open) => !open); }}
-              className="font-semibold text-v2-self"
-            >
-              {t('itemSheet.howItWorks')} ›
-            </button>
-          </p>
-          {explained && <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{hullDetail(hull)}</p>}
-        </div>
-
         {(hull === 'NULLIFIER' || hull === 'GARBAGE_COLLECTOR') && (
-          <section aria-label={t('planet.buildSheet.specialRole.title')} data-special-role
-            className="flex flex-col gap-2 rounded-control border border-v2-self/45 bg-v2-self/5 px-3 py-2.5">
-            <h3 className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-v2-self">
-              <Icon id={hull === 'NULLIFIER' ? 'i-shield' : 'i-collect'} className="size-3.5 shrink-0" />
+          <section aria-label={t('planet.buildSheet.specialRole.title')} data-special-role className="gk-well gk-build__role">
+            <h3 className="gk-build__roletitle">
+              <Glyph id={hull === 'NULLIFIER' ? 'shield' : 'debris'} />
               {t('planet.buildSheet.specialRole.title')}
             </h3>
-            <p className="text-caption font-semibold leading-snug text-v2-ink">{hull === 'NULLIFIER'
+            <p className="gk-build__roleeffect">{hull === 'NULLIFIER'
               ? t('planet.buildSheet.specialRole.nullifierEffect', { multiplier: factor(1 + SHIELD_BREAKER.bonusShieldDamageMult) })
               : t('planet.buildSheet.specialRole.collectorEffect', { amount: full(SALVAGE.perCollector) })}</p>
-            {hull === 'GARBAGE_COLLECTOR' && <p className="text-caption leading-snug text-v2-ink-2">{t('planet.buildSheet.specialRole.collectorUse')}</p>}
-            <p className="text-caption leading-snug text-v2-ink-2">{t(hull === 'NULLIFIER'
+            {hull === 'GARBAGE_COLLECTOR' && <p className="gk-sub">{t('planet.buildSheet.specialRole.collectorUse')}</p>}
+            <p className="gk-sub">{t(hull === 'NULLIFIER'
               ? 'planet.buildSheet.specialRole.nullifierLimit' : 'planet.buildSheet.specialRole.collectorLimit')}</p>
           </section>
         )}
 
-        {/*
-          THE RULE WHERE THE HULL IS CHOSEN. D124: the multipliers existed on one
-          screen in the game — the battle report, after the fleet was lost. The line
-          states what this hull beats and what beats it, with the numbers the resolver
-          uses; the whole cycle is one tap deeper.
-        */}
-        <section data-counter-cycle className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
-          <p className="flex items-center justify-between gap-2">
-            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('counter.heading')}</span>
-            <button
-              type="button"
-              aria-expanded={cycle}
-              onClick={() => { setCycle((open) => !open); }}
-              className="text-micro font-semibold text-v2-self"
-            >
-              {t('planet.buildSheet.cycle')} ›
-            </button>
-          </p>
-          <HullMatchup cls={spec.cls} />
-          {cycle && <CounterCycle highlight={spec.cls} />}
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <p className="flex items-center gap-2 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
-            {t('planet.buildSheet.howMany')}
-            <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
-          </p>
-          {capped ? (
-            <p className="text-caption leading-snug text-v2-warn">
-              {prospectorCapped
-                ? t('planet.buildSheet.capped', { count: committed })
-                : spec.ground
-                  ? t('planet.capacity.full', { used: poolUsed, total: room.total })
-                  : t('planet.capacity.hangarFull', { used: poolUsed, total: room.total })}
+        {capped && (
+          <section data-build-count className="grid gap-2">
+            <SectionTag>{t('planet.buildSheet.howMany')}</SectionTag>
+            <p className="gk-inote" data-tone="warn">
+              <Glyph id="warn" />
+              <span>
+                {prospectorCapped
+                  ? t('planet.buildSheet.capped', { count: committed })
+                  : spec.ground
+                    ? t('planet.capacity.full', { used: poolUsed, total: room.total })
+                    : t('planet.capacity.hangarFull', { used: poolUsed, total: room.total })}
+              </span>
             </p>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <QuantityStepper
-                look="v2"
-                value={clamped}
-                min={lessonCount ?? 1}
-                max={lessonCount ?? ceiling}
-                onChange={setCount}
-                decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
-                increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}
-                valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
-                maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
-                // Max says how many; the line beside it, what stops it there. In a
-                // lesson the authored count is the whole offer, and no reason applies.
-                maxText={lessonCount !== null
-                  ? t('planet.buildSheet.maxOf', { value: lessonCount })
-                  : fits > 0 ? t('planet.buildSheet.maxOf', { value: fits }) : t('planet.buildSheet.maxShort')}
-              />
-              {lessonCount === null && fits > 0 && (
-                <span data-fits className="min-w-0 text-right text-micro leading-snug text-v2-ink-3">{bound}</span>
-              )}
-            </div>
-          )}
-          {hull === 'PROSPECTOR' && fits > 0 && (
-            <p className="text-micro text-v2-ink-3">
-              {t('planet.buildSheet.heldOfMax', { owned: committed, max: prospectorMax })}
-            </p>
-          )}
-        </section>
+          </section>
+        )}
 
         {/*
-          THE ROOM, AS A PICTURE, IN YOUR COLOUR. The order's own share moves under
-          the stepper directly above it, so pressing "+" and watching the room go is
-          the rule teaching itself.
+          THE ROOM, IN YOUR COLOUR. The order's own share moves with the stepper in the foot,
+          so pressing "+" and watching the room go is the rule teaching itself.
         */}
-        <RoomBar
+        <RoomGauge
           label={t(spec.ground ? 'roomBar.ground' : 'roomBar.hangar')}
           total={room.total}
           home={room.home}
@@ -2999,8 +2960,35 @@ export function BuildSheet({
           incoming={capped ? 0 : bulk * clamped}
         />
 
+        {/* Progressive disclosure: the pitch is the fact, the long reading one tap deeper. */}
+        <div className="grid gap-1.5">
+          <div className="gk-iabout">
+            <p className="gk-iabout__role">{hullPitch(hull)}</p>
+            <button
+              type="button"
+              aria-expanded={explained}
+              onClick={() => {
+                playSound('tap');
+                setExplained((open) => !open);
+              }}
+              className="gk-hit gk-iabout__how"
+            >
+              <span className="gk-chip">
+                <Glyph id="help" />
+                {t('itemSheet.howItWorks')}
+              </span>
+            </button>
+          </div>
+          {explained && (
+            <div data-item-detail className="gk-well gk-iabout__detail">
+              <p>{hullDetail(hull)}</p>
+            </div>
+          )}
+        </div>
+
+        {/* HOW FAR OFF, as a distance: it sits last, against the footer's price and its "enough in". */}
         {!capped && !blocked && !canPay && (
-          <div className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+          <div className="gk-well grid gap-2 px-2.5 py-2">
             {short.alloy > 0 && <NeedBar resource="alloy" have={held.alloy} need={total.alloy} />}
             {short.crystal > 0 && <NeedBar resource="crystal" have={held.crystal} need={total.crystal} />}
             {short.deuterium > 0 && <NeedBar resource="deuterium" have={held.deuterium} need={total.deuterium} />}
@@ -3011,16 +2999,22 @@ export function BuildSheet({
   );
 }
 
-/** The still sky behind a hull: decoration, never a meaning. */
-const HULL_SKY = {
-  backgroundImage:
-    'radial-gradient(70% 90% at 60% 45%, color-mix(in srgb, var(--color-v2-sky-blue) 30%, transparent), transparent 75%)',
+/** Each figure's picture and its colour: what hurts is red, what holds is yours, what moves is sky. */
+const STAT_LOOK: Record<string, { glyph: GlyphId; tone: string }> = {
+  attack: { glyph: 'attack', tone: 'hostile' },
+  hull: { glyph: 'hull', tone: 'self' },
+  speed: { glyph: 'speed', tone: 'info' },
+  cargo: { glyph: 'crate', tone: 'quiet' },
+  salvage: { glyph: 'debris', tone: 'quiet' },
+  room: { glyph: 'bay', tone: 'quiet' },
+  fuel: { glyph: 'fuel', tone: 'warn' },
 };
 
 /**
  * THE SIX FIGURES A HULL IS COMPARED BY, labelled in every cell: attack, durability,
  * speed, cargo (or salvage), the room it takes and the fuel it burns. A gun never
  * moves, so its speed says "fixed" and its fuel says nothing, rather than nought.
+ * Then the two layers that travel with a ship: its shield and its radiation guard.
  */
 export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
   const spec = HULLS[hull];
@@ -3042,54 +3036,60 @@ export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
     },
   ];
   return (
-    <dl data-build-stats className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
-      {cells.map((cell) => (
-        <div key={cell.id} data-stat={cell.id} className="min-w-0 rounded-chip border border-v2-line bg-v2-panel/50 px-1 py-1.5 text-center">
-          <Icon id={cell.id === 'attack' ? 'i-attack' : cell.id === 'hull' ? 'i-shield' : cell.id === 'speed' ? 'i-fleet'
-            : cell.id === 'cargo' || cell.id === 'salvage' ? 'i-collect' : cell.id === 'room' ? 'i-base' : 'i-spark'}
-            className={`mx-auto mb-1 size-4 ${cell.id === 'attack' ? 'text-v2-hostile' : cell.id === 'hull' ? 'text-v2-self'
-              : cell.id === 'speed' ? 'text-v2-sky-blue' : cell.id === 'fuel' ? 'text-v2-warn' : 'text-v2-ink-2'}`} />
-          <dt className="text-micro leading-tight text-v2-ink-3">{cell.label}</dt>
-          <dd className="font-v2-mono text-caption tabular-nums text-v2-ink">{cell.value}</dd>
+    <>
+    <dl data-build-stats className="gk-hullstats">
+      {cells.map((cell) => {
+        const look = STAT_LOOK[cell.id] ?? { glyph: 'star', tone: 'quiet' };
+        return (
+          <div key={cell.id} data-stat={cell.id} data-tone={look.tone} className="gk-hullstat gk-well">
+            <dt>{cell.label}</dt>
+            <dd className="gk-num"><Glyph id={look.glyph} />{cell.value}</dd>
+          </div>
+        );
+      })}
+      {!spec.ground && (
+        <div data-stat="ship-shield" data-tone="crystal" className="gk-hullstat gk-hullstat--half gk-well">
+          <dt>{i18n.t('research.shipShieldStat')}</dt>
+          <dd className="gk-num"><Glyph id="shield" />{compact(shipShieldHp(tech, hull))}</dd>
         </div>
-      ))}
-      {!spec.ground ? (
-        <div data-stat="ship-shield" className="col-span-3 flex items-center gap-2 rounded-control border border-v2-crystal/30 bg-v2-crystal/5 px-3 py-2">
-          <Icon id="i-shield" className="size-4 shrink-0 text-v2-crystal" />
-          <dt className="flex-1 text-micro text-v2-ink-2">{i18n.t('research.shipShieldStat')}</dt>
-          <dd className="font-v2-mono text-caption tabular-nums text-v2-crystal">{compact(shipShieldHp(tech, hull))}</dd>
-        </div>
-      ) : null}
+      )}
       <ShipRadiationProtection hull={hull} tech={tech} />
-      {!spec.ground ? <p className="col-span-3 text-micro leading-relaxed text-v2-ink-3">{i18n.t('research.shipShieldHint')}</p> : null}
     </dl>
+    {/* What the shield number means, read where it is shown (ship shields, 2026-10-20). */}
+    {!spec.ground && <p className="gk-sub gk-hullstats__note">{i18n.t('research.shipShieldHint')}</p>}
+    </>
   );
 }
 
 /**
  * WHAT THIS HULL BEATS AND WHAT BEATS IT, with the multipliers the resolver applies
  * to its fire. Strong wears your colour; weak is a gap to plan around, not a threat,
- * so it is warn and never hostile red (K2). Support is outside the cycle.
+ * so it is amber and never hostile red (K2). Support is outside the cycle. The whole
+ * cycle is one tap deeper.
  */
 function HullMatchup({ cls }: { cls: HullClass }) {
   const { t } = useTranslation();
   const prey = counters(cls);
   const predator = counteredBy(cls);
-  if (prey === null || predator === null) {
-    return <p data-testid="counter-support" className="text-caption leading-snug text-v2-ink-2">{t('counter.supportNote')}</p>;
-  }
+  const fact = prey === null || predator === null
+    ? <span data-testid="counter-support" className="gk-sub">{t('counter.supportNote')}</span>
+    : (
+      <span className="gk-matchup">
+        <span data-testid="counter-strong" data-tone="self" className="gk-matchup__side">
+          <span aria-hidden="true"><Emblem cls={prey} /></span>
+          {t('counter.strongVs', { class: combatClassLabel(prey) })}
+          <span className="gk-matchup__mult gk-num">{factor(COMBAT.strongMult)}</span>
+        </span>
+        <span data-testid="counter-weak" data-tone="warn" className="gk-matchup__side">
+          <span aria-hidden="true"><Emblem cls={predator} /></span>
+          {t('counter.weakVs', { class: combatClassLabel(predator) })}
+          <span className="gk-matchup__mult gk-num">{factor(COMBAT.weakMult)}</span>
+        </span>
+      </span>
+    );
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption">
-      <span data-testid="counter-strong" className="flex items-center gap-1 text-v2-self">
-        <ClassEmblem cls={prey} decorative />
-        {t('counter.strongVs', { class: combatClassLabel(prey) })}
-        <span className="font-v2-mono">{factor(COMBAT.strongMult)}</span>
-      </span>
-      <span data-testid="counter-weak" className="flex items-center gap-1 text-v2-warn">
-        <ClassEmblem cls={predator} decorative />
-        {t('counter.weakVs', { class: combatClassLabel(predator) })}
-        <span className="font-v2-mono">{factor(COMBAT.weakMult)}</span>
-      </span>
-    </p>
+    <div data-counter-cycle className="gk-build__matchup">
+      <InfoPeek fact={fact} about={t('planet.buildSheet.cycle')} rule={<CounterCycle highlight={cls} />} />
+    </div>
   );
 }

@@ -429,8 +429,9 @@ describe('a hull gated on research', () => {
       .querySelector<HTMLElement>(`#row-${hull} [data-open-item]`);
     expect(opener, `${hull} does not open`).not.toBeNull();
     await userEvent.click(opener!);
+    // G2-e: each need is a chip; the first unmet one is the door to its fix
     const lock = view.baseElement
-      .querySelector<HTMLElement>('[data-build-sheet] [data-lock-state="closed"]');
+      .querySelector<HTMLElement>('[data-build-sheet] [data-commit] .gk-need-door');
     expect(lock, `${hull} states no requirement`).not.toBeNull();
     return lock!;
   };
