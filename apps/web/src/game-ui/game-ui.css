@@ -1141,13 +1141,21 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   padding-top: var(--gk-s1);
   border-top: 1px solid var(--gk-metal-edge);
 }
+/* Two storeys: the name, the figure and the time it lasts on top, the bar the whole width under
+   them — side by side, a long name ("BU DÜNYANIN SADAKATİ") crushed the bar to a dot at 350 px. */
 .gk-loyalty__row {
-  display: flex;
-  align-items: center;
-  gap: var(--gk-s2);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  column-gap: var(--gk-s2);
+  row-gap: 5px;
+}
+.gk-loyalty__row > * {
+  grid-row: 1;
 }
 .gk-loyalty__bar {
-  flex: 1;
+  grid-row: 2;
+  grid-column: 1 / -1;
   height: 6px;
 }
 .gk-loyalty__value {
@@ -2331,6 +2339,88 @@ button.gk-trow:focus-visible {
 }
 .gk-frow > .gk-glyph {
   color: var(--gk-ink-3);
+}
+
+/* ── the fault sheet (G2-d): what it stopped, its hour beside its price, the world's stake ── */
+
+.gk-fault {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: 4px var(--gk-gutter) var(--gk-s3);
+}
+.gk-fault__what {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-fault__mark {
+  display: grid;
+  place-items: center;
+  padding-top: 2px;
+  color: var(--gk-warn);
+}
+.gk-fault__mark .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+/* the two halves of the decision side by side; a fault without an hourly figure prices alone */
+.gk-fault__ledger {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--gk-s2);
+}
+.gk-fault__half {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 8px 10px;
+}
+.gk-fault__rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-warn);
+  white-space: nowrap;
+}
+.gk-fault__rate img,
+.gk-fault__rate .gk-glyph {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.gk-fault__range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-fault__range .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+/* the rule said before the hold, not discovered after it */
+.gk-fault__final {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-warn);
+}
+.gk-fault__final .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
 
 /* ── what a thing costs: resources as pictures, the short one marked, the time at the end ── */
@@ -4353,14 +4443,15 @@ button:active > .gk-sheet__grab {
 }
 .gk-sheet__head {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* the title's column never grows past the close: a long word breaks inside it (de at 320 px) */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gk-s3);
   margin: 4px var(--gk-gutter) 0;
   padding: 8px 4px 8px 10px;
 }
 .gk-sheet__head--back {
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
 }
 .gk-sheet__art {
   width: 58px;
@@ -4380,6 +4471,8 @@ button:active > .gk-sheet__grab {
 .gk-sheet__title {
   font-size: var(--gk-t-head);
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .gk-sheet__meta {
   display: flex;

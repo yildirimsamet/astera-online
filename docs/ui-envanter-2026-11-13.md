@@ -683,6 +683,30 @@ Görülen ama bu birimin işi olmayanlar:
 - 320 px'te ja üst kaynak göstergesinde "12,400" komşu kutuya değiyor (G1 üst çubuk; G1 kapandıktan sonra görüldü). ✅ G2-c'nin ardından düzeldi: ölçünce 350 px'te de taşıyordu ("12,400" 52 px, hap 49 px). Hap artık kendi genişliğini, rakam kendi uzunluğunu biliyor; yazı yalnız sığmadığında küçülüyor (350 px'te 6 haneli rakam 14,5 px, 320 px'te 12 px taban; kısa rakamlar ve 390 px 16 px kalıyor). Üst çubuk 99.999'a kadar tam rakam kuralı değişmedi.
 - de metinlerde "Sie" ile "du" karışık: yaklaşık 340 "Sie/Ihre" kalıbına karşı 409 "du/dein" (Üs sekmesi açıklaması "Entwickeln Sie hier Ihre Schiffe"). Oyun tr'de "sen", fr'de "tu" diyor; de "du"ya inecek. Ayrı bir metin birimi; yardımcının sonraki partisine verilecek.
 
+**G2-d arıza sheet'i ✅ (2026-11-14).** Oyuncunun anı: bozuk bir şeye dokundu; "onarmaya değer mi, şimdi mi?" Sheet bu soruya tek bakışta cevap veriyor. Kurallar (ekip sayısı, fiyat, süre aralığı, iptal yok) değişmedi.
+
+- Sheet v1'den (`plate`, `legend`, v1 `Button`) kite geçti. Başlık uyarı tonunda (`kit.tone: 'warn'`, kitin yeni tonu); altında "2/3 ekip boşta".
+- Ne oldu: bozuk işaretiyle tek cümle.
+- Karar iki yarıda yan yana. Solda "Sana neye mal oluyor": kaynağın resmi, saatlik rakam (1.770/sa) ve iki kelime ("alaşım üretilmiyor"). Sağda "Onarım": fiyat (kasanın yetmediği kaynak işaretli) ve süre aralığı. Rakam vermeyen arızalarda (tersane isyanı gibi) fiyat tek başına duruyor; ne durduğunu üstteki cümle söylüyor.
+- Döteryum rafinerisi arızası artık "her saatlik döteryum" cümlesi yerine rakam veriyor; alaşım ve kristal arızalarıyla aynı kuralla (adlık üretim × sessiz uzay temposu).
+- Koloninin sadakati, kahramanla aynı ortak satırla (`LoyaltyRow`) çiziliyor; altında "2 arıza yüzünden düşüyor. Sıfırda koloniyi kaybedersin." Eski cümle yüzdeyi ve süreyi bir kez daha tekrarlıyordu.
+- Onar 1 sn basılı tutma (`GameHold`, harcayan eylem ağırlığı, kaynak sesi `weld`). Üstünde uyarı renginde "Başlayan onarım iptal edilemez." Ekip yoksa ya da kasa yetmiyorsa düğme kilitli ve sebebini yüzünde söylüyor ("3 ekibin hepsi dışarıda", "Kasa yetmiyor").
+- Ekip başındaysa ayakta kitin zamanlayıcı satırı: dolan halka, "Bir ekip başında", "2. ekip", kalan süre. İptal düğmesi yok; sözleşme bu.
+
+Ortak parçalarda:
+- Sadakat satırı iki katlı: ad, yüzde ve kalan süre üstte, çubuk altta tam genişlikte. Yan yana iken "BU DÜNYANIN SADAKATİ" iki satıra kırılıp çubuğu 350 px'te bir noktaya eziyordu; kahramanda da aynıydı.
+- Sheet başlığının sütunu artık kapatma düğmesinin altına uzamıyor. 320 px'te de "LEGIERUNGSRAFFINERIE" düğmenin altına giriyordu; şimdi hecesinden bölünüyor (`hyphens: auto`, sayfanın dili).
+
+Metin (6 dil): de "Was es braucht" ve es "Lo que está tardando" ("sana neye mal oluyor" anlamını vermiyordu) düzeldi. de ekip için "Besatzung" ve "Crew", es "tripulación" ve "equipo" karışıktı; de "Trupp", es "equipo" oldu. Kullanılmayan `toll.*` cümleleri, `price.crew`, `price.parts`, `running` ve `loyalty.line` silindi.
+
+Kit sayfasına üç görünüm eklendi ve denetim bunları ölçüyor: `fault-sheet`, `fault-sheet-running`, `fault-sheet-short`. "arıza sheet'i" ulaşılamayan durumlar listesinden çıktı.
+
+Ölçüm: `reports/ui-audit/g2d-after-2026-11-14.md` (üç görünüm, 6 dil, telefon, dar ve masaüstü; 42 ölçüm). 12 px altı metin 0, kontrast hatası 0, 44 px altı hedef 0, basınca tepkisiz hedef 0, kesilen ve kırpılan metin 0. Telefonda ekran başına 54–62 kelime (bütçe 55): tek ekranda karar için gereken her şey var, kaydırma yok. Eski sheet ölçülemiyordu (galeride yolu yoktu), karşılaştırma yok.
+
+**Sıra değişti: G2-f ve G2-g, G2-e'den önce.** Tersane sheet'i (G2-e) ve hangar odası (G2-h) aynı parçaya dayanıyor: Hangar/zemin odası ve siparişin ondan aldığı pay. Bu çalışma ağacında o parçanın kit hâli yarım duruyor: `RoomGauge` (`game-ui/readouts.tsx`, `game-ui/index.ts`, `test/game-ui/room-gauge.test.tsx`). Başka bir oturum 2026-11-12'de eski 4.2 aşaması için başlatmış; commit edilmemiş, CSS'i yok, kullanan yer yok. Plan bu değişikliklere dokunulmamasını söylüyor.
+
+Owner'a soru (G2-e ve G2-h'yi bekletiyor): Bu yarım `RoomGauge` işini sahiplenip G2-e/G2-h'de bitireyim mi, yoksa o oturum dönecek mi? Cevap gelmezse G2-f ve G2-g'den sonra G2-e yapılır; oda çubuğu o zamana kadar v2 `RoomBar` olarak kalır ve G2-h'de kite geçer.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.
