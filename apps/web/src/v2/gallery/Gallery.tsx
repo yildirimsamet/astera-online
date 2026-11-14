@@ -42,7 +42,7 @@ import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
-import type { AirborneItem } from '../../shell/PendingStrip.js';
+import type { AirborneItem } from '../../lib/airborne.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell } from '../hud/GalaxyCorners.js';

@@ -2,7 +2,7 @@ import { BUILD } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OutlineLaneId, OutlineQueue, OutlineWorld } from '../../lib/outline.js';
-import type { AirborneItem } from '../../shell/PendingStrip.js';
+import type { AirborneItem } from '../../lib/airborne.js';
 import { Icon } from '../icons.js';
 import { OrderLeft, OrderName, OrderRing } from '../kit/QueueLane.js';
 import { FlightRow } from './FleetPage.js';

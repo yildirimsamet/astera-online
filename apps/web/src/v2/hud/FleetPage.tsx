@@ -9,7 +9,7 @@ import { garrisonOf, legProgress, paceShown, recallPreview, type roomOf } from '
 import { decimal, full } from '../../lib/format.js';
 import { clockTime, countdown, durationPrecise } from '../../lib/time.js';
 import { supportVerdict } from '../../lib/clanAlarm.js';
-import type { AirborneItem, FlightMark } from '../../shell/PendingStrip.js';
+import type { AirborneItem, FlightMark } from '../../lib/airborne.js';
 import { Icon, type IconId } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { Segmented } from '../kit/Segmented.js';

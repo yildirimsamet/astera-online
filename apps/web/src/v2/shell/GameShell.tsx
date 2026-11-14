@@ -4,7 +4,7 @@ import { DESK_QUERY, useMedia } from '../../lib/media.js';
 import { shortcutOf } from '../../lib/shortcuts.js';
 import { bellTabFor, dockAction, tabOfPanel } from '../../lib/shellRoute.js';
 import type { Panel, PanelStop } from '../../screens/GalaxyView.jsx';
-import type { StripFocus } from '../../shell/PendingStrip.js';
+import type { StripFocus } from '../../lib/airborne.js';
 import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
 import type { AwayDoor } from '../../lib/awayStory.js';

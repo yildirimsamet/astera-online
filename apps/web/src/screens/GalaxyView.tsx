@@ -197,7 +197,7 @@ import {
   reconcileOwnInterceptionImpacts,
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
-import type { StripFocus } from '../shell/PendingStrip.js';
+import type { StripFocus } from '../lib/airborne.js';
 import {
   keepsPlanetGroup,
   returnsToMenu,

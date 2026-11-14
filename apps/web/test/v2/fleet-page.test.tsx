@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { roomOf } from '../../src/lib/fleetPage.js';
 import { clockTime } from '../../src/lib/time.js';
-import type { AirborneItem } from '../../src/shell/PendingStrip.js';
+import type { AirborneItem } from '../../src/lib/airborne.js';
 import { FleetPage, type FleetPageProps, type FleetWorld } from '../../src/v2/hud/FleetPage.js';
 
 /**

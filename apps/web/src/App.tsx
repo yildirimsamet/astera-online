@@ -39,7 +39,7 @@ import { MaintenanceScreen } from './shell/MaintenanceScreen.js';
 import { dismissProfile, leaveProfile, useProfileRoute } from './shell/profileRoute.js';
 import { ProfileHost } from './shell/ProfileHost.js';
 import { commanderKnownHere } from './lib/returning.js';
-import type { StripFocus } from './shell/PendingStrip.js';
+import type { StripFocus } from './lib/airborne.js';
 import {
   nextPanelFocus,
   nextPanelStop,

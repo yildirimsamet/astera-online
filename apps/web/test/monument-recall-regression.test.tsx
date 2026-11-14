@@ -9,7 +9,8 @@ import { monumentsSchema } from '../src/api/schemas.js';
 import { resetClock } from '../src/lib/clock.js';
 import { flightRecallInput } from '../src/lib/flights.js';
 import { monumentPendingThreads } from '../src/lib/monumentFlights.js';
-import { FlightList, useAirborne } from '../src/shell/PendingStrip.js';
+import { useAirborne } from '../src/lib/airborne.js';
+import { FlightList } from '../src/shell/PendingStrip.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { FlightRow } from '../src/v2/hud/FleetPage.js';
 

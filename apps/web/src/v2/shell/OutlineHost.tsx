@@ -1,7 +1,7 @@
 import { usePending, usePlanet } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
 import { outlineQueues, outlineWorlds } from '../../lib/outline.js';
-import { useAirborne, type StripFocus } from '../../shell/PendingStrip.js';
+import { useAirborne, type StripFocus } from '../../lib/airborne.js';
 import { Outline } from '../hud/Outline.js';
 import type { ShellRoute } from './GameShell.js';
 

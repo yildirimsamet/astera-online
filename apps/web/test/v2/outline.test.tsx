@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView } from '../../src/api/schemas.js';
-import type { AirborneItem } from '../../src/shell/PendingStrip.js';
+import type { AirborneItem } from '../../src/lib/airborne.js';
 import { Outline, type OutlineProps, type OutlineQueue, type OutlineWorld } from '../../src/v2/hud/Outline.js';
 
 /**
