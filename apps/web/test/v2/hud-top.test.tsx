@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,8 @@ import { ToastProvider } from '../../src/ui/Toast.js';
 import { SchoolPresentationContext } from '../../src/onboarding/flightSchool/presentation.js';
 import { HudTop } from '../../src/v2/shell/HudTop.js';
 import { planetView } from '../fixtures.js';
+import { vesselSchema } from '../../src/api/starterSchemas.js';
+import { wireVessel } from '../starterVesselFixture.js';
 
 /**
  * THE TOP OF THE v2 SHELL, WIRED. Spec B1, B2 (docs/ui-v2/gozlemevi.md).
@@ -53,7 +56,7 @@ vi.mock('../../src/api/world.js', () => ({
 }));
 
 const handlers = () => ({
-  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(),
+  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(),
   nowOpen: false, onNow: vi.fn(), onFocusCraft: vi.fn(),
 });
 
@@ -70,20 +73,31 @@ beforeEach(() => {
 });
 
 describe('the wired top of the shell', () => {
-  it.each([false, true])('shows the signal factor and collector reminder with recovery=%s', recovery => {
+  it.each([false, true])('shows the signal factor, and the collector reminder on a press, with recovery=%s', async recovery => {
     planet.planet.signalBoostUntil = new Date(Date.now() + 3_600_000);
     planet.planet.productionBoostUntil = recovery ? new Date(Date.now() + 3_600_000) : null;
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    expect(screen.getByText(`Signal production ×${recovery ? '2.5' : '2'}`)).toBeInTheDocument();
-    expect(screen.getByText(/collect during the boost/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(`^Signal production · ×${recovery ? '2\\.5' : '2'} · `) }));
+    expect(await screen.findByText(/collect during the boost/i)).toBeInTheDocument();
   });
-  it('opens the shop directly from the brand strip without routing through the commander menu', async () => {
+  /** Owner 2026-11-14: the strip went; the shop keeps a painted door of its own, over the galaxy. */
+  it('opens the shop from a painted door on the floating row, without routing through the menu', async () => {
     const onShop = vi.fn();
     const on = handlers();
-    render(<HudTop commander="Samet" {...on} onShop={onShop} />, { wrapper: ToastProvider });
-    await userEvent.click(screen.getByRole('button', { name: 'Shop' }));
+    const { container } = render(<HudTop commander="Samet" {...on} onShop={onShop} />, { wrapper: ToastProvider });
+    const shop = screen.getByRole('button', { name: 'Shop' });
+    expect(shop.closest('[data-now-float]')).not.toBeNull();
+    expect(shop.querySelector('img')?.getAttribute('src')).toMatch(/menu-shop\.webp$/);
+    await userEvent.click(shop);
     expect(onShop).toHaveBeenCalledTimes(1);
     expect(on.onCommander).not.toHaveBeenCalled();
+    expect(container.querySelector('.brand-masthead')).toBeNull();
+  });
+
+  it('keeps the shop door shut aboard a colony ship', () => {
+    planet = { ...planet, vessel: vesselSchema.parse(wireVessel()) };
+    render(<HudTop commander="Samet" {...handlers()} onShop={vi.fn()} />, { wrapper: ToastProvider });
+    expect(screen.queryByRole('button', { name: 'Shop' })).toBeNull();
   });
 
   it('includes native monument flights on the Now line without a planet mission', () => {
@@ -101,8 +115,8 @@ describe('the wired top of the shell', () => {
   });
   it('reads the active world’s stores', () => {
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    expect(screen.getByRole('button', { name: 'Alloy: 500 of 2,000' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Crystal: 120 of 600' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Alloy: 500 of 2,000 · / })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Crystal: 120 of 600 · / })).toBeInTheDocument();
   });
 
   it('draws the world mark only once there is a second world', () => {
@@ -113,14 +127,10 @@ describe('the wired top of the shell', () => {
     expect(screen.getByRole('button', { name: 'CAPITAL · Kestrel-12' })).toBeInTheDocument();
   });
 
-  it('counts unseen news on the bell, and never a standing state', () => {
-    planet = planetView({}, { alloy: 2_000 });
-    notifications = [
-      { id: 'n1', kind: 'fleet_returned', payload: {}, seen: false, at: new Date() },
-      { id: 'n2', kind: 'fleet_returned', payload: {}, seen: true, at: new Date() },
-    ];
+  it('carries no bell: it sits on the galaxy, beside the chat (owner 2026-11-14)', () => {
+    notifications = [{ id: 'n1', kind: 'fleet_returned', payload: {}, seen: false, at: new Date() }];
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    expect(screen.getByRole('button', { name: 'Signals — 1 unread' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Signals/ })).toBeNull();
   });
 
   it('puts an attack on its way on the Now line', () => {
@@ -151,10 +161,38 @@ describe('the wired top of the shell', () => {
     expect(on.onFocusCraft).toHaveBeenCalledWith({ kind: 'thread', key: 'probe-1' });
   });
 
-  it('wears the shield on the chip while it holds', () => {
-    shieldUntil = new Date(Date.now() + 3 * 3_600_000);
+  it('wears the shield as a chip of its own while it holds', () => {
+    // Half an hour off the hour, so the shell's clock may sit a few seconds either side of the test's.
+    shieldUntil = new Date(Date.now() + 2.5 * 3_600_000);
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    expect(screen.getByRole('button', { name: /^Commander Samet/ })).toHaveAttribute('data-shielded');
+    expect(screen.getByRole('button', { name: /^Newcomer shield · 2h/ })).toBeInTheDocument();
+  });
+
+  it('publishes how far it floats over the galaxy, and takes it back when it goes', () => {
+    const fire: (() => void)[] = [];
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { fire.push(callback); }
+      observe(): void { /* jsdom lays nothing out */ }
+      disconnect(): void { /* nothing held */ }
+    });
+    claimable = 2;
+    const { unmount } = render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    act(() => { for (const each of fire) each(); });
+    expect(document.documentElement.style.getPropertyValue('--v2-float-h')).toBe('0px');
+    unmount();
+    expect(document.documentElement.style.getPropertyValue('--v2-float-h')).toBe('');
+    vi.unstubAllGlobals();
+  });
+
+  it('starts the galaxy\u2019s top corners under what floats over it, so neither covers the other', () => {
+    expect(readFileSync('src/screens/GalaxyView.tsx', 'utf8')).toMatch(/data-galaxy-top-corners=""[^>]*var\(--v2-float-h/);
+  });
+
+  it('ends the top bar with the commander\u2019s medallion, wearing their initials', () => {
+    render(<HudTop commander="samet yıldız" {...handlers()} />, { wrapper: ToastProvider });
+    const medal = screen.getByRole('button', { name: /^Commander samet yıldız/ });
+    expect(medal.closest('header.gk-hudbar')?.lastElementChild).toBe(medal);
+    expect(medal).toHaveTextContent('SY');
   });
 
   it('routes its controls to the shell', async () => {
@@ -163,11 +201,9 @@ describe('the wired top of the shell', () => {
     render(<HudTop commander="Samet" {...on} />, { wrapper: ToastProvider });
     await userEvent.click(screen.getByRole('button', { name: /^Commander Samet/ }));
     await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Signals' }));
-    await userEvent.click(screen.getByTestId('claimable-rewards'));
+    await userEvent.click(screen.getByRole('button', { name: /^Rewards · 2/ }));
     expect(on.onCommander).toHaveBeenCalledTimes(1);
     expect(on.onEconomy).toHaveBeenCalledTimes(1);
-    expect(on.onBell).toHaveBeenCalledTimes(1);
     expect(on.onRewards).toHaveBeenCalledTimes(1);
   });
 
@@ -179,7 +215,7 @@ describe('the wired top of the shell', () => {
   it('shows what waits in the works and collects it in one request', async () => {
     planet = planetView({}, { bufferAlloy: 400, bufferCrystal: 30 });
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    await userEvent.click(screen.getByRole('button', { name: /^Works · 400 alloy, 30 crystal/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alloy: 500 of 2,000 · 400 in the Works · Collect$/ }));
     expect(mutate).toHaveBeenCalledTimes(1);
   });
 
@@ -190,9 +226,9 @@ describe('the wired top of the shell', () => {
       options.onSuccess({ planet, moved: { alloy: 400, crystal: 0, deuterium: 0 }, blocked: { alloy: 0, crystal: 0, deuterium: 0 } });
     });
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    await userEvent.click(screen.getByRole('button', { name: /^Works/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
     expect(await screen.findByText('Collected 400')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Alloy: 900 of 2,000' })).toHaveTextContent('900');
+    expect(screen.getByRole('button', { name: /^Alloy: 900 of 2,000 · / })).toHaveTextContent('900');
   });
 
   it('keeps a collection effect on its originating world when selection changes in flight', async () => {
@@ -202,13 +238,13 @@ describe('the wired top of the shell', () => {
       finish = options.onSuccess;
     });
     const { container, rerender } = render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
-    await userEvent.click(screen.getByRole('button', { name: /^Works/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
     const collected = planetView({}, { alloy: 900 });
     planet = planetView({}, { id: 'p2', alloy: 536, deuterium: 2 });
     worlds = [collected, planet];
     rerender(<HudTop commander="Samet" {...handlers()} />);
     act(() => { finish({ planet: collected, moved: { alloy: 400, crystal: 0, deuterium: 0 }, blocked: { alloy: 0, crystal: 0, deuterium: 0 } }); });
-    expect(screen.getByRole('button', { name: 'Alloy: 536 of 2,000' })).toHaveTextContent('536');
+    expect(screen.getByRole('button', { name: /^Alloy: 536 of 2,000 · / })).toHaveTextContent('536');
     expect(container.querySelector('[data-collect-particle]')).toBeNull();
   });
 
@@ -216,7 +252,7 @@ describe('the wired top of the shell', () => {
     const on = handlers();
     planet = planetView({}, { bufferAlloy: 400, alloy: 2000, crystal: 600, deuterium: 300 });
     render(<HudTop commander="Samet" {...on} />, { wrapper: ToastProvider });
-    await userEvent.click(screen.getByRole('button', { name: /Store full$/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alloy: .* · Store full$/ }));
     expect(on.onEconomy).toHaveBeenCalledTimes(1);
     expect(mutate).not.toHaveBeenCalled();
   });

@@ -45,7 +45,7 @@ import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
-import { GalaxyReadout } from '../hud/GalaxyCorners.js';
+import { ChatChip, GalaxyReadout, SignalBell } from '../hud/GalaxyCorners.js';
 import { useToast } from '../../ui/Toast.js';
 import { SignalsFeed } from '../../shell/Signals.js';
 import type { NotificationView } from '../../api/schemas.js';
@@ -53,6 +53,7 @@ import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
 import { NowLine, type NowLineProps } from '../hud/NowLine.js';
+import { StatusLine, type StatusLineProps } from '../hud/StatusLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
 import { ViewChip, ViewSheet } from '../hud/ViewSheet.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
@@ -136,33 +137,34 @@ const works = (
       noRoom,
       stopped,
     },
-    fill: { alloy: Math.min(1, each.alloy / 1_000), crystal: Math.min(1, each.crystal / 1_000), deuterium: Math.min(1, each.deuterium / 500) },
-    fullInMinutes: stopped.length > 0 ? null : 140,
     pending: false,
     onCollect: noop,
-    onOpenBase: noop,
   };
 };
 
 const topBar: TopBarProps = {
-  commander: 'Samet',
-  shield: null,
-  now: NOW,
-  world: null,
   stock: {
     alloy: { value: 12_400, cap: 20_000, safe: 6_000 },
     crystal: { value: 3_105, cap: 8_000, safe: 2_400 },
     deuterium: { value: 860, cap: 4_000, safe: 1_200 },
   },
   works: works({ alloy: 2_200, crystal: 862, deuterium: 40 }),
-  bell: { unseen: 0, urgent: false },
-  rewards: 0,
-  boosted: false,
-  onCommander: noop,
-  onRewards: noop,
-  onWorld: noop,
+  commander: { initials: 'YI', name: 'Yildirim' },
   onResource: noop,
-  onBell: noop,
+  onCommander: noop,
+};
+
+const statusLine: StatusLineProps = {
+  now: NOW,
+  world: null,
+  shield: null,
+  recoveryUntil: null,
+  signalUntil: null,
+  vacationUntil: null,
+  rewards: 0,
+  onWorld: noop,
+  onRewards: noop,
+  onHint: noop,
 };
 
 const slotBase: ContextSlotProps = {
@@ -1263,14 +1265,21 @@ export function Gallery({ view }: { view: string | null }) {
         <TopBar {...topBar} works={works({ alloy: 0, crystal: 0, deuterium: 0 }, { ripe: false })} />
         <TopBar
           {...topBar}
-          shield={{ until: NOW + 7 * 60 * MIN, kind: 'RECOVERY' }}
-          world={{ capital: false, name: 'Hollow' }}
           stock={{ ...topBar.stock, alloy: { value: 20_000, cap: 20_000, safe: 6_000 }, crystal: { value: 184_000, cap: 250_000, safe: 60_000 } }}
           works={works({ alloy: 4_000, crystal: 9_000, deuterium: 0 }, { stopped: ['crystal'], noRoom: ['alloy'] })}
-          bell={{ unseen: 12, urgent: true }}
-          rewards={2}
-          boosted
         />
+        {/* The bell and the chat, low on the galaxy's right (owner, 2026-11-14). */}
+        <div className="flex justify-end gap-2 px-3">
+          <SignalBell unseen={0} urgent={false} onOpen={noop} />
+          <ChatChip unread={0} onOpen={noop} />
+        </div>
+        <div className="flex justify-end gap-2 px-3">
+          <SignalBell unseen={12} urgent onOpen={noop} />
+          <ChatChip unread={3} onOpen={noop} />
+        </div>
+        <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} rewards={2} />
+        <StatusLine {...statusLine} world={{ capital: false, name: 'Hollow' }} shield={{ until: NOW + 50 * 60 * MIN, kind: 'RECOVERY' }} recoveryUntil={NOW + 50 * 60 * MIN} />
+        <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} rewards={12} />
       </Section>
 
       <Section title="B2 · now line">

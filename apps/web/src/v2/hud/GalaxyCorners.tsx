@@ -4,6 +4,7 @@ import type { ActiveGalaxyEvent } from '../../api/schemas.js';
 import type { Focus } from '../../galaxy/FocusPanel.jsx';
 import { EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
+import { RoundButton, artIconSrc } from '../../game-ui/index.js';
 import { Icon, type IconId } from '../icons.js';
 import type { MonumentDifficulty } from '@astera/rules';
 import { useNativeBack } from '../../platform/nativeBack.js';
@@ -166,17 +167,31 @@ export function HomeChip({ onHome, aboard = false }: { onHome: () => void; aboar
 export function ChatChip({ unread, onOpen }: { unread: number; onOpen: () => void }) {
   const { t } = useTranslation();
   return (
-    <button
-      type="button"
-      aria-label={unread > 0 ? `${t('bell.chat')} · ${t('bell.chatUnread', { count: unread })}` : t('bell.chat')}
-      onClick={onOpen}
-      className={ROUND}
-    >
-      <Icon id="i-chat" className="size-4" />
-      {unread > 0 && (
-        <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-v2-self ring-2 ring-v2-deep" />
-      )}
-    </button>
+    <RoundButton
+      art={artIconSrc('hud-chat')}
+      label={unread > 0 ? `${t('bell.chat')} · ${t('bell.chatUnread', { count: unread })}` : t('bell.chat')}
+      count={unread}
+      onPress={onOpen}
+    />
+  );
+}
+
+/**
+ * THE BELL, LEFT OF THE CHAT (owner, 2026-11-14). The strip above the top bar went and the
+ * menu took the bell's place at its end; the bell came down here, where a thumb reaches it.
+ * It counts news, not states, swings when news arrives and beats only for something that
+ * cannot wait: a bell that always moves is a bell nobody reads.
+ */
+export function SignalBell({ unseen, urgent, onOpen }: { unseen: number; urgent: boolean; onOpen: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <RoundButton
+      art={artIconSrc('hud-bell')}
+      label={unseen > 0 ? t('signals.beaconUnread', { count: unseen }) : t('signals.beacon')}
+      count={unseen}
+      urgent={urgent}
+      onPress={onOpen}
+    />
   );
 }
 

@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent } from '../../src/api/schemas.js';
-import { ChatChip, EventChips, HomeChip } from '../../src/v2/hud/GalaxyCorners.js';
+import { ChatChip, EventChips, HomeChip, SignalBell } from '../../src/v2/hud/GalaxyCorners.js';
 
 /**
  * THE GALAXY'S CORNERS. Owner feedback, 2026-09-24.
@@ -56,6 +56,39 @@ describe('the chat, in reach', () => {
     rerender(<ChatChip unread={4} onOpen={onOpen} />);
     await userEvent.click(screen.getByRole('button', { name: /chat.*4 unread/i }));
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('is painted in the house style, as the bell beside it is', () => {
+    render(<ChatChip unread={2} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /chat/i }).querySelector('img')?.getAttribute('src')).toMatch(/hud-chat\.webp$/);
+  });
+});
+
+/**
+ * THE BELL, BESIDE THE CHAT (owner 2026-11-14). The strip above the bar went; the menu took
+ * the bell's place at its end and the bell came down to the galaxy, left of the chat, where
+ * a thumb reaches it. It counts news, swings when news arrives and beats only for the urgent.
+ */
+describe('the bell on the galaxy', () => {
+  it('is a painted bell that counts unseen news and opens the signals', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<SignalBell unseen={0} urgent={false} onOpen={onOpen} />);
+    expect(screen.getByRole('button', { name: 'Signals' }).querySelector('img')?.getAttribute('src')).toMatch(/hud-bell\.webp$/);
+    rerender(<SignalBell unseen={3} urgent={false} onOpen={onOpen} />);
+    const bell = screen.getByRole('button', { name: 'Signals — 3 unread' });
+    expect(within(bell).getByText('3')).toHaveClass('gk-dot');
+    await userEvent.click(bell);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('swings when news arrives and beats only for an urgent one', () => {
+    const { rerender } = render(<SignalBell unseen={0} urgent={false} onOpen={vi.fn()} />);
+    rerender(<SignalBell unseen={2} urgent={false} onOpen={vi.fn()} />);
+    const bell = screen.getByRole('button', { name: 'Signals — 2 unread' });
+    expect(bell).toHaveAttribute('data-rang', '1');
+    expect(bell).not.toHaveAttribute('data-urgent');
+    rerender(<SignalBell unseen={2} urgent onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Signals — 2 unread' })).toHaveAttribute('data-urgent');
   });
 });
 

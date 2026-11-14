@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { combatClassLabel } from '../i18n/names.js';
 import { compact, factor } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Glyph, type GlyphId } from './icons.js';
@@ -195,32 +195,90 @@ export interface HudResource {
   id: string;
   art: string;
   amount: string;
-  /** Production per hour, already formatted ("+2,2K"). */
+  /** Production per hour, already formatted ("+2,2K"); a pool, when given, takes its line. */
   rate?: string;
   /** How full the store is, 0…1; full turns the amount yellow. */
   store?: number;
+  /** The share of the store a raid cannot take, 0…1: a tick on the store bar. */
+  safe?: number;
+  /**
+   * What waits in the works for this store, already formatted, in the colour of what a
+   * press does: green worth collecting, yellow a gap to close (the vessel is full and has
+   * stopped, or the store has no room for it), quiet while there is little.
+   */
+  pool?: { text: string; tone: 'good' | 'warn' | 'quiet' };
+  /** A press is worth it now: the pill breathes until it is pressed. */
+  ripe?: boolean;
+  /** Not in use yet (a colony ship): the place stays and holds nothing, so the others never move. */
+  hidden?: boolean;
+  /** A new value for each collection that lands: the art flies in and the figure bumps. */
+  flight?: number;
   tone: 'alloy' | 'crystal' | 'deut';
+  /** The whole name: what it holds — and, on a press, what the press does. */
   label: string;
+  /** Makes the pill one press. */
+  onPress?: () => void;
 }
 
-/** The resource bar across the top: art overlapping a dark pill, as games draw it. */
+const FLIGHT = [0, 1, 2] as const;
+
+function HudPill({ item }: { item: HudResource }) {
+  const own = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    item.onPress?.();
+  });
+  const safe = item.safe ?? 0;
+  const body = (
+    <>
+      <img className="gk-res__art" src={item.art} alt="" draggable={false} />
+      <span key={item.flight} className="gk-res__amount gk-display gk-num gk-outlined" {...(item.flight === undefined ? {} : { 'data-bump': '' })}>{item.amount}</span>
+      {item.pool !== undefined
+        ? <span data-pool="" data-tone={item.pool.tone} className="gk-res__pool gk-num">{item.pool.text}</span>
+        : item.rate !== undefined && <span className="gk-res__rate">{item.rate}</span>}
+      {item.store !== undefined && (
+        <span className="gk-res__store" aria-hidden="true">
+          <span className="gk-res__fill" style={{ width: pct(Math.round(Math.min(1, item.store) * 1000) / 10) }} />
+          {safe > 0 && <span data-safe="" className="gk-res__safe" style={{ left: pct(Math.round(Math.min(1, safe) * 1000) / 10) }} />}
+        </span>
+      )}
+      {item.flight !== undefined && FLIGHT.map((index) => {
+        const place: CssVars = { '--i': index };
+        return <img key={`${String(item.flight)}:${String(index)}`} data-collect-particle="" className="gk-res__fly" src={item.art} alt="" aria-hidden="true" style={place} />;
+      })}
+    </>
+  );
+  const look = `gk-res${(item.store ?? 0) >= 1 ? ' gk-res--full' : ''}`;
+  const colour = { color: `var(--gk-${item.tone})` };
+  return item.onPress === undefined
+    ? <div className={look} style={colour} data-pill={item.id} aria-label={item.label} role="group">{body}</div>
+    : (
+      <button
+        type="button"
+        {...OWN_SOUND}
+        className={`${look} gk-res--press`}
+        style={colour}
+        data-pill={item.id}
+        aria-label={item.label}
+        {...(item.ripe ? { 'data-ripe': '' } : {})}
+        onPointerDown={own.onPointerDown}
+        onClick={own.onClick}
+      >
+        {body}
+      </button>
+    );
+}
+
+/**
+ * The resource bar across the top: art overlapping a dark pill, as games draw it. A pill
+ * given a press is the one press that deals with its resource; one left out keeps its place.
+ */
 export function ResourceHud({ items, end }: { items: readonly HudResource[]; end?: ReactNode }) {
   return (
     <div className="gk-hud">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className={`gk-res${(item.store ?? 0) >= 1 ? ' gk-res--full' : ''}`}
-          style={{ color: `var(--gk-${item.tone})` }}
-          aria-label={`${item.label} ${item.amount}`}
-          role="group"
-        >
-          <img className="gk-res__art" src={item.art} alt="" />
-          <span className="gk-res__amount gk-display gk-num gk-outlined">{item.amount}</span>
-          {item.rate !== undefined && <span className="gk-res__rate">{item.rate}</span>}
-          {item.store !== undefined && <span className="gk-res__store"><span style={{ width: pct(Math.min(1, item.store) * 100) }} /></span>}
-        </div>
-      ))}
+      {items.map((item) => (item.hidden
+        ? <span key={item.id} className="gk-res" data-pill={item.id} data-hidden="" aria-hidden="true" />
+        : <HudPill key={item.id} item={item} />))}
       {end}
     </div>
   );
@@ -272,14 +330,40 @@ export type StatusTone = 'good' | 'hostile' | 'warn' | 'info';
  * change, and the time it has left. Green helps you, red hurts you, yellow is a risk you can
  * still dodge. The name is for a screen reader; on screen the mark carries it.
  */
-export function StatusChip({ glyph, tone, label, value, until }: { glyph: GlyphId; tone: StatusTone; label: string; value: string; until?: string }) {
-  return (
+export function StatusChip({ glyph, tone, label, value, until, onPress }: {
+  glyph: GlyphId;
+  tone: StatusTone;
+  label: string;
+  value: string;
+  until?: string;
+  /** Makes the chip a question: a press says what the effect does (a 44 px target round the chip). */
+  onPress?: () => void;
+}) {
+  const own = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    onPress?.();
+  });
+  const chip = (
     <span className="gk-status" data-tone={tone}>
       <span className="gk-status__coin"><Glyph id={glyph} /></span>
-      <span className="sr-only">{label}</span>
+      {onPress === undefined && <span className="sr-only">{label}</span>}
       <span className="gk-status__value gk-num">{value}</span>
       {until !== undefined && <span className="gk-status__until gk-num">{until}</span>}
     </span>
+  );
+  if (onPress === undefined) return chip;
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      className="gk-hit"
+      aria-label={[label, value, ...(until === undefined ? [] : [until])].join(' · ')}
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      {chip}
+    </button>
   );
 }
 

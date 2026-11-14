@@ -31,6 +31,11 @@ describe('the painted icons', () => {
     for (const id of ['medal-1', 'medal-2', 'medal-3', 'trophy', 'crown', 'crown-silver', 'star']) expect(ART_ICONS).toContain(id);
   });
 
+  /** G1-b (owner 2026-11-14): the strip above the bar went; what it held got painted homes. */
+  it('paints the commander’s ring, and the bell and the chat that sit together on the galaxy', () => {
+    for (const id of ['hud-medallion', 'hud-bell', 'hud-chat']) expect(ART_ICONS).toContain(id);
+  });
+
   it('paints every place in the dock', () => {
     for (const tab of DOCK_TABS) expect(ART_ICONS).toContain(DOCK_ART[tab]);
   });

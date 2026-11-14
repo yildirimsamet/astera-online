@@ -20,12 +20,16 @@ export const statusBar = {
   menuWaiting: '{{count}} ödül bekliyor',
   clanWaiting: '{{count}} klan gelişmesi bekliyor',
   newcomerShield: {
+    name: "Yeni komutan kalkanı",
     hint: '{{duration}} boyunca sana akın yapılamaz',
   },
   recoveryShield: {
+    name: "Toparlanma kalkanı",
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
   recoveryBoost: {
+    name: "Toparlanma üretimi",
+    value: "+%50",
     mark: "Üretim +%50",
     note: 'Koruma boyunca +%50 üretim',
   },
@@ -38,7 +42,8 @@ export const statusBar = {
     label: 'Havuz',
     labelFull: 'Havuz dolu',
     collect: 'Topla',
-    firstTip: "Üretim havuzda birikir. Harcayabilmek için kaynakları depoya topla.",
+    inPool: "Havuzda {{amount}}",
+    firstTip: "Toplamak için bir kaynağa dokun",
     fullStopped: 'Doldu — üretim durdu',
     fillsIn: '{{time}} sonra dolar',
     gathers: 'Üretim sen toplayana dek burada birikir',

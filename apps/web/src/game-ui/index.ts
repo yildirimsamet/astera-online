@@ -4,7 +4,7 @@
  * is only a composition of them. Gallery: `v2-gallery.html?view=ui-kit`.
  */
 import './game-ui.css';
-export { Chip, GameButton, GameHold, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps, type HoldWeight } from './buttons.js';
+export { Chip, GameButton, GameHold, Medallion, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps, type HoldWeight } from './buttons.js';
 export {
   BottomNav, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
 } from './controls.js';

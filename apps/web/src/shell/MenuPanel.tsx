@@ -52,6 +52,8 @@ import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
 import type { CountryCode } from '@astera/rules';
 import { InstallButton } from '../brand/Install.js';
+import { FullscreenButton } from '../brand/FullscreenButton.js';
+import { AsteraSigil } from '../brand/Identity.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { ShopShowcase } from './ShopShowcase.js';
 import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
@@ -266,10 +268,21 @@ export function MenuPanel({
             </section>
           )}
 
-          <div className="flex items-center justify-between gap-3 border-t border-v2-line pt-2">
-            <InstallButton compact variant="ghost" />
+          {/* The app's own controls; full screen came here when the brand strip left the game screen (G1-b, 2026-11-14). */}
+          <div data-menu-foot="" className="flex items-center justify-between gap-3 border-t border-v2-line pt-2">
+            <span className="flex items-center gap-2">
+              <InstallButton compact variant="ghost" />
+              <FullscreenButton />
+            </span>
             {onResume && <button type="button" onClick={onResume} className="ml-auto flex min-h-11 items-center gap-2 text-caption font-medium text-v2-ink-2 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self">{t('menu.navigation.resume')}<Icon id="i-chev" className="size-3.5" /></button>}
           </div>
+          {/* Brand recall (2026-10-07): the name and the address that reopens the game, here since the strip left the game screen. */}
+          <p data-menu-brand="" className="-mt-2 flex items-center justify-center gap-1.5 text-body text-v2-ink-2">
+            <AsteraSigil className="size-4" />
+            <span>Astera Online</span>
+            <span aria-hidden="true">·</span>
+            <span className="font-v2-mono">asteraonline<span className="text-v2-self">.space</span></span>
+          </p>
         </>
       ) : (
         <>

@@ -120,7 +120,7 @@ function ResourceActions() {
 
 const topHandlers = {
   onCommander: () => undefined, onRewards: () => undefined, onWorlds: () => undefined,
-  onEconomy: () => undefined, onBell: () => undefined, nowOpen: false,
+  onEconomy: () => undefined, nowOpen: false,
   onNow: () => undefined, onFocusCraft: () => undefined,
 };
 
@@ -643,9 +643,10 @@ describe('one resource snapshot per owned world', () => {
     render(<ToastProvider><HudTop commander="Samet" {...topHandlers} /><Readings /><ResourceActions /></ToastProvider>, { wrapper });
     await userEvent.click(screen.getByRole('button', { name: action }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Alloy: 536 of 2,000' })).toHaveTextContent('536');
-      expect(screen.getByRole('button', { name: 'Crystal: 500 of 600' })).toHaveTextContent('500');
-      expect(screen.getByRole('button', { name: 'Deuterium: 2 of 300' })).toHaveTextContent('2');
+      // The pill's name carries what waits in the works after the store's reading (G1-b).
+      expect(screen.getByRole('button', { name: /^Alloy: 536 of 2,000(?: · |$)/ })).toHaveTextContent('536');
+      expect(screen.getByRole('button', { name: /^Crystal: 500 of 600(?: · |$)/ })).toHaveTextContent('500');
+      expect(screen.getByRole('button', { name: /^Deuterium: 2 of 300(?: · |$)/ })).toHaveTextContent('2');
       expect(screen.getByLabelText('owned world')).toHaveTextContent('"deuterium":2');
     });
   });

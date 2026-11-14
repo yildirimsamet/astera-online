@@ -64,6 +64,8 @@ export interface GameShellProps {
      * clan line to start from where one is handed over (a report told to the clan, M4).
      */
     onOpenChat: (channel?: ChatChannel, draft?: string) => void;
+    /** The bell's sheet on Signals: the bell sits on the galaxy, left of the chat (owner, 2026-11-14). */
+    onOpenBell: () => void;
   }) => ReactNode;
 }
 
@@ -279,7 +281,6 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
           setWorldsRequest((n) => n + 1);
         }}
         onEconomy={() => { route('planet', undefined, undefined, { group: 'grow' }); }}
-        onBell={() => { openBell('signals'); }}
         nowOpen={nowOpen}
         onNow={setNowOpen}
         onFocusCraft={onFocusCraft}
@@ -307,7 +308,7 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
           />
         )}
         <main className="relative min-w-0 flex-1">
-          {galaxy({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat: openChat })}
+          {galaxy({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat: openChat, onOpenBell: () => { openBell('signals'); } })}
           {!desk && <div className="absolute inset-x-0 bottom-0 z-50">{dock}</div>}
         </main>
       </div>

@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: "受取可能な報酬{{count}}件",
   clanWaiting: "クランの新着{{count}}件",
   newcomerShield: {
+    name: "新人シールド",
     hint: "あと{{duration}}は襲撃されません",
   },
   recoveryShield: {
+    name: "回復シールド",
     hint: "回復シールド · あと{{duration}}は襲撃されません",
   },
   recoveryBoost: {
+    name: "回復生産",
+    value: "+50%",
     mark: "生産量+50%",
     note: "シールド時出力 +50%",
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: "生産施設",
     labelFull: "生産施設が満杯",
     collect: "回収",
-    firstTip: "生産した資源は生産プールに貯まります。使う前に貯蔵庫へ回収してください。",
+    inPool: "生産プールに{{amount}}",
+    firstTip: "資源をタップして回収",
     fullStopped: "満杯 · 生産停止",
     fillsIn: "満杯まで{{time}}",
     gathers: "回収するまで生産した資源がここに貯まります",

@@ -8,7 +8,8 @@ game. Approved quiz reward: 100 Alloy, 50 Crystal, 20 Deuterium.
 
 - Keep the existing wordmark on the landing page. Add a compact SVG brand masthead
   above the real game's resource row; show the name/address/install action in the
-  menu and the name in the existing Academy heading.
+  menu and the name in the existing Academy heading. **Superseded 2026-11-14:** the
+  masthead left the game screen; see "Owner decision — 2026-11-14" at the end.
 - Loading: large immediately readable Astera Online lettering, a distinctive orbital
   silhouette, quiet stars, the return address, truthful status/progress. CSS,
   no new bitmap/font dependency, no minimum duration. Motion always remains active.
@@ -336,3 +337,20 @@ Pending after design review, run small checks sequentially with one worker:
 No new tests have been written or run for this redesign. Full-suite success is
 not claimed. The current web type check has passed; focused lint covers the changed
 brand/loading/readiness implementation. Regression tests remain after owner review.
+
+## Owner decision — 2026-11-14: the name leaves the game screen
+
+The UI/UX stage 4 top bar (G1-b, `docs/ui-envanter-2026-11-13.md` §3.5) chose the
+owner's layout: the commander medallion takes the right end of the HUD row, and the
+brand strip above the resources is removed. The 38 px strip cost the galaxy the most
+space on a 350 px phone and repeated a name the player had already seen.
+
+Where the name still lives:
+- the loading screen (unchanged: the large lettering, the orbit, the address);
+- the menu's foot: a one-line signature (`data-menu-brand`) with the sigil, "Astera
+  Online" and the address `asteraonline.space`, beside the install and fullscreen
+  actions;
+- the Academy heading, the return card and the address quiz (unchanged).
+
+`BrandMasthead` is no longer drawn in the game; it remains only in the brand preview
+and its tests. Deleting it waits for the owner's per-item approval.

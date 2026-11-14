@@ -13,7 +13,8 @@ import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
-import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import { bellState } from '../lib/bell.js';
+import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { outpostFinderTargets } from '../starter/outpostTargets.js';
 import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
@@ -327,6 +328,7 @@ export function GalaxyView({
   centerRequest,
   clearRequest,
   onOpenChat,
+  onOpenBell,
   showChat = true,
   showGuidance = true,
 }: {
@@ -435,6 +437,8 @@ export function GalaxyView({
   clearRequest?: number;
   /** Open chat as its own page on a given room: the war room's "Clan chat" (E9). */
   onOpenChat?: (channel?: ChatChannel, draft?: string) => void;
+  /** The bell's sheet, held by the shell: the bell sits left of the chat (owner, 2026-11-14). */
+  onOpenBell?: () => void;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -1343,6 +1347,16 @@ export function GalaxyView({
   const chatButton = showGuidance && showChat && gate.open('chat')
     ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
+  /**
+   * THE BELL, LEFT OF THE CHAT (owner, 2026-11-14): "Zil butonunu galaksi ekranında sağ
+   * alttaki chat butonunun soluna taşısak". The strip above the top bar went and the menu took
+   * the bell's place; the two ride together wherever the chat stood, and the bell stands
+   * alone on a ship whose chat has not opened yet. Only the shell holds the bell's sheet.
+   */
+  const bellButton = onOpenBell ? <SignalBell {...bellState(bell.data?.notifications ?? [], now)} onOpen={onOpenBell} /> : null;
+  const cornerButtons = bellButton || chatButton
+    ? <div data-corner-buttons="" className="pointer-events-auto flex items-center gap-2">{bellButton}{chatButton}</div>
+    : null;
   /** Daily activity and the galaxy's objects (top right). */
   const galaxyReadout = {
     ...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday }),
@@ -1461,7 +1475,7 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 pt-1">
+      <div data-galaxy-top-corners="" style={{ paddingTop: 'calc(var(--v2-float-h, 0px) + 0.25rem)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
             focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
@@ -1886,14 +1900,14 @@ export function GalaxyView({
 
       {season.data?.status === 'frozen' && panel === null && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
-          {chatButton && <div className="flex justify-end">{chatButton}</div>}
+          {cornerButtons && <div className="flex justify-end">{cornerButtons}</div>}
           <NextSeason endsAt={season.data.endsAt} />
         </div>
       )}
 
-      {/* Chat still in reach on a galaxy with no slot and no next-season card. */}
-      {chatButton && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{chatButton}</div>
+      {/* The bell and the chat still in reach on a galaxy with no slot and no next-season card. */}
+      {cornerButtons && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{cornerButtons}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
@@ -1910,7 +1924,7 @@ export function GalaxyView({
       */}
       {slotShown && planet.data && season.data && (
         <ContextSlot
-          {...(chatButton ? { corner: chatButton } : {})}
+          {...(cornerButtons ? { corner: cornerButtons } : {})}
           now={now}
           selected={slotSelected}
           threats={threads.filter((thread) => thread.kind === 'incoming')}
@@ -1961,7 +1975,7 @@ export function GalaxyView({
       */}
       {ship && bottom === 'starter' && (
         <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null && !focusGone ? 'hidden' : ''}`}>
-          {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
+          {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}

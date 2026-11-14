@@ -294,7 +294,7 @@ function SessionApp() {
           setPanel(null);
           setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
         }}
-        galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat }) => (
+        galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat, onOpenBell }) => (
           <>
           <GalaxyView
             onSceneReady={analyticsSceneReady}
@@ -322,6 +322,7 @@ function SessionApp() {
             centerRequest={centerRequest}
             clearRequest={clearRequest}
             onOpenChat={onOpenChat}
+            onOpenBell={onOpenBell}
           />
           {!session.me.vessel && <ArrivalHost onPanel={onPanel} />}
           {profileOpen && <ProfileHost name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}

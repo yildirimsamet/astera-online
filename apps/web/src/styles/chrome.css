@@ -1603,11 +1603,8 @@
     display: none;
   }
 }
-/* Give the Now line room only while a timer exists. An empty timer row leaves the
-   galaxy readout at the top edge instead of making a blank 48 px band. */
-.v2-shell:has([data-now-line]) [data-galaxy-top-corners] {
-  top: 3rem;
-}
+/* The galaxy's top corners start under the status line and the Now line by their measured
+   height (`--v2-float-h`, HudTop, G1-b): nothing to add here while a timer exists. */
 /* The desktop Outline owns the left column under the top bar; the Now line floats over
    the galaxy beside it, as it does on a phone. 260px is the Outline's own width. */
 .v2-shell:has([data-outline]) [data-now-float] {

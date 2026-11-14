@@ -10,8 +10,10 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string): string => readFileSync(path, 'utf8');
 
 describe('the works', () => {
-  it('are drawn by the top bar, under the stores', () => {
-    expect(read('src/v2/hud/TopBar.tsx')).toMatch(/<WorksLine/);
+  it('are drawn by the top bar, in each store\u2019s own pill (G1-b, 2026-11-14)', () => {
+    const bar = read('src/v2/hud/TopBar.tsx');
+    expect(bar).toMatch(/data-works-line/);
+    expect(bar).toMatch(/pool:/);
   });
 
   it('are not on the base any more, whose hero stays out of the Academy', () => {

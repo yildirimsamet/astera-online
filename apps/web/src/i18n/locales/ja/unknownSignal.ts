@@ -65,5 +65,6 @@ export const unknownSignal = {
   "flightOut": "自分の艦隊 → 未知の信号",
   "flightHome": "信号調査艦隊 → 基地",
   "boost": "信号による生産 ×{{factor}}",
+  "boostName": "信号による生産",
   "boostDetail": "残り{{time}} · ブースト中に回収。"
 } as const;

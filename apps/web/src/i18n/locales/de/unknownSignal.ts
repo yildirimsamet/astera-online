@@ -65,5 +65,6 @@ export const unknownSignal = {
   "flightOut": "Deine Flotte → unbekanntes Signal",
   "flightHome": "Deine Signalflotte → Heimat",
   "boost": "Signalproduktion ×{{factor}}",
+  "boostName": "Signalproduktion",
   "boostDetail": "Noch {{time}} · während des Bonus abholen."
 } as const;

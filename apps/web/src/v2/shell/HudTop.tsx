@@ -1,11 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useCollect,
   useGalaxyEvents,
   useMaintenanceNotice,
   useMining,
-  useNotifications,
   usePending,
   useMonuments,
   usePlanet,
@@ -15,8 +14,7 @@ import {
 } from '../../api/queries.js';
 import { hpRadiationApplies } from '@astera/rules';
 import { useWorld } from '../../api/world.js';
-import { bellState } from '../../lib/bell.js';
-import { collectState, worksOutlook } from '../../lib/collect.js';
+import { collectState } from '../../lib/collect.js';
 import { compact } from '../../lib/format.js';
 import { haptic } from '../../lib/haptics.js';
 import { nowEntries } from '../../lib/nowLine.js';
@@ -25,18 +23,28 @@ import type { FlightFocus } from '../../lib/flights.js';
 import { useProjected } from '../../lib/projection.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
+import { RoundButton, artIconSrc } from '../../game-ui/index.js';
 import { NowLine } from '../hud/NowLine.js';
+import { StatusLine } from '../hud/StatusLine.js';
 import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
-import { BrandMasthead } from '../../brand/Identity.js';
-import { SignalBoostNote } from '../../ui/SignalBoostNote.js';
+import { capabilities } from '../../platform/runtime.js';
 import { useSchoolPresentation } from '../../onboarding/flightSchool/presentation.js';
 import { gateOf } from '../../starter/gate.js';
 
+/** A commander's initials for the medallion: the first letters of two words, or the first two of one. */
+export function initials(name: string, language: string): string {
+  const words = name.trim().split(/\s+/).filter((word) => word.length > 0);
+  const letters = words.length > 1
+    ? words.slice(0, 2).map((word) => Array.from(word)[0] ?? '')
+    : Array.from(words[0] ?? '').slice(0, 2);
+  return letters.join('').toLocaleUpperCase(language);
+}
+
 export interface HudTopProps {
   commander: string;
-  /** The commander chip: the Commander page (today's menu). */
+  /** The medallion at the end of the top bar: the menu. */
   onCommander: () => void;
-  /** A direct store entrance in the brand strip, beside the wordmark. */
+  /** The shop's own painted door on the floating row, where the web sells (owner, 2026-11-14). */
   onShop?: () => void;
   /** The gift: open claimable rewards directly. */
   onRewards: () => void;
@@ -44,7 +52,6 @@ export interface HudTopProps {
   onWorlds: () => void;
   /** A resource meter: the economy detail. */
   onEconomy: () => void;
-  onBell: () => void;
   /** The Now line's timers sheet, held by the shell. */
   nowOpen: boolean;
   onNow: (open: boolean) => void;
@@ -61,7 +68,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
+export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
   const { t, i18n } = useTranslation();
   const now = useNow(1_000);
   const school = useSchoolPresentation();
@@ -77,8 +84,23 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
     return () => { window.clearTimeout(timer); };
   }, [transfer]);
   const say = useToast();
+  const float = useRef<HTMLDivElement>(null);
+  /*
+    How far the status line and the Now line float over the galaxy (`--v2-float-h`): the
+    galaxy's top corners start under them, so neither covers the other.
+  */
+  useEffect(() => {
+    const node = float.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+    const root = document.documentElement.style;
+    const observer = new ResizeObserver(() => { root.setProperty('--v2-float-h', `${String(node.offsetHeight)}px`); });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      root.removeProperty('--v2-float-h');
+    };
+  }, []);
   const season = useSeason().data;
-  const notifications = useNotifications().data?.notifications ?? [];
   const rewards = useRewards().data?.claimable ?? 0;
   const pending = usePending().data?.pending ?? [];
   const monuments = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0)).data;
@@ -94,61 +116,46 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   const shieldUntil = season?.shieldUntil ?? null;
   const boostUntil = data?.planet.productionBoostUntil ?? null;
   const signalUntil = data?.planet.signalBoostUntil ?? null;
-  const signalActive = signalUntil !== null && signalUntil.getTime() > now;
-  const signalLabel = signalActive ? t('unknownSignal.boost', { factor: boostUntil && boostUntil.getTime() > now ? 2.5 : 2 }) : undefined;
 
   /*
     THE WORKS, ON THE TOP BAR (owner, 2026-09-25): the same reading, request and toast the
     collect bubble and the Base's pool used — both gone, this is where the works are read.
   */
   const world = data?.planet;
-  const works = world ? (() => {
-    const caps = { alloy: world.bufferAlloyCap, crystal: world.bufferCrystalCap, deuterium: world.bufferDeuteriumCap };
-    const vessels = { alloy: held.bufferAlloy, crystal: held.bufferCrystal, deuterium: held.bufferDeuterium };
-    const outlook = worksOutlook({
-      caps,
-      works: vessels,
-      rates: { alloy: world.alloyPerHour, crystal: world.crystalPerHour, deuterium: world.deuteriumPerHour ?? 0 },
-    });
-    return {
-      state: collectState({
-        caps,
-        works: vessels,
-        store: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium },
-        storeCaps: { alloy: world.alloyCap, crystal: world.crystalCap, deuterium: world.deuteriumCap },
-      }),
-      fill: outlook.fill,
-      fullInMinutes: outlook.fullInMinutes,
-      pending: collect.isPending,
-      onCollect: () => {
-        haptic('commit');
-        collect.mutate(undefined, {
-          onSuccess: (result) => {
-            setTransfer({
-              id: Date.now(),
-              planetId: result.planet.planet.id,
-              each: {
-                alloy: { from: result.planet.planet.alloy - result.moved.alloy, to: result.planet.planet.alloy },
-                crystal: { from: result.planet.planet.crystal - result.moved.crystal, to: result.planet.planet.crystal },
-                deuterium: { from: result.planet.planet.deuterium - result.moved.deuterium, to: result.planet.planet.deuterium },
-              },
-            });
-            const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
-            const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
-            say(
-              kept > 0
-                ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
-                : t('statusBar.works.collected', { amount: compact(moved) }),
-              kept > 0 ? 'error' : undefined,
-            );
-          },
-          onError: (error) => { say(describe(error), 'error'); },
-        });
-      },
-      // A store that can take none of it is raised where the Vault is built.
-      onOpenBase: onEconomy,
-    };
-  })() : undefined;
+  const works = world ? {
+    state: collectState({
+      caps: { alloy: world.bufferAlloyCap, crystal: world.bufferCrystalCap, deuterium: world.bufferDeuteriumCap },
+      works: { alloy: held.bufferAlloy, crystal: held.bufferCrystal, deuterium: held.bufferDeuterium },
+      store: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium },
+      storeCaps: { alloy: world.alloyCap, crystal: world.crystalCap, deuterium: world.deuteriumCap },
+    }),
+    pending: collect.isPending,
+    onCollect: () => {
+      haptic('commit');
+      collect.mutate(undefined, {
+        onSuccess: (result) => {
+          setTransfer({
+            id: Date.now(),
+            planetId: result.planet.planet.id,
+            each: {
+              alloy: { from: result.planet.planet.alloy - result.moved.alloy, to: result.planet.planet.alloy },
+              crystal: { from: result.planet.planet.crystal - result.moved.crystal, to: result.planet.planet.crystal },
+              deuterium: { from: result.planet.planet.deuterium - result.moved.deuterium, to: result.planet.planet.deuterium },
+            },
+          });
+          const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
+          const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
+          say(
+            kept > 0
+              ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
+              : t('statusBar.works.collected', { amount: compact(moved) }),
+            kept > 0 ? 'error' : undefined,
+          );
+        },
+        onError: (error) => { say(describe(error), 'error'); },
+      });
+    },
+  } : undefined;
 
   const timers = {
     now,
@@ -169,46 +176,59 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
 
   return (
     <div className="relative shrink-0">
-      <BrandMasthead onShop={data?.vessel ? undefined : onShop} />
-      {data?.vacationUntil && <div role="status" className="border-b border-v2-self/20 bg-v2-self/10 px-3 py-1 text-center text-caption text-v2-self">
-        {t('vacation.title')} · {t('vacation.until', { time: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(data.vacationUntil) })}
-      </div>}
+      {/*
+        The brand strip that stood above the bar went (owner, 2026-11-14): the name lives on
+        the loading screen and in the menu, and the bar takes the notch inset itself.
+      */}
       <TopBar
-        commander={commander}
-        shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
-        now={now}
-        world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
         {...(gateOf(data?.vessel).open('deuterium') ? {} : { hidden: ['deuterium'] as const })}
         stock={{
           alloy: { value: held.alloy, cap: data?.planet.alloyCap ?? 0, safe: data?.planet.vaultProtected.alloy ?? 0 },
           crystal: { value: held.crystal, cap: data?.planet.crystalCap ?? 0, safe: data?.planet.vaultProtected.crystal ?? 0 },
           deuterium: { value: held.deuterium, cap: data?.planet.deuteriumCap ?? 0, safe: data?.planet.vaultProtected.deuterium ?? 0 },
         }}
-        bell={bellState(notifications, now)}
-        rewards={rewards}
-        boosted={signalActive || (boostUntil !== null && boostUntil.getTime() > now)}
-        boostLabel={signalLabel}
         {...(works ? { works } : {})}
         transfer={transfer?.planetId === data?.planet.id ? transfer : null}
-        onCommander={onCommander}
-        onRewards={onRewards}
-        onWorld={onWorlds}
+        commander={{ initials: initials(commander, i18n.language), name: commander }}
         onResource={onEconomy}
-        onBell={onBell}
+        onCommander={onCommander}
         {...(tabs === undefined ? {} : { tabs })}
       />
-      <SignalBoostNote until={signalUntil} recoveryUntil={boostUntil} now={now} />
-      <NowLine
-        floating
-        entries={entries}
-        sheet={sheet}
-        now={now}
-        contacts={contacts}
-        open={nowOpen}
-        onOpen={() => { onNow(true); }}
-        onClose={() => { onNow(false); }}
-        onFocus={onFocusCraft}
-      />
+      {/* Over the galaxy, under the bar: what holds over your worlds, then the timers. It costs the scene no row. */}
+      <div ref={float} data-now-float="" className="pointer-events-none absolute inset-x-0 top-full z-20 pt-1">
+        <div className="flex items-start">
+          <div className="min-w-0 flex-1">
+            <StatusLine
+              now={now}
+              world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
+              shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
+              recoveryUntil={boostUntil?.getTime() ?? null}
+              signalUntil={signalUntil?.getTime() ?? null}
+              vacationUntil={data?.vacationUntil?.getTime() ?? null}
+              rewards={rewards}
+              onWorld={onWorlds}
+              onRewards={onRewards}
+              onHint={(text) => { say(text); }}
+            />
+          </div>
+          {/* The shop's own door, where the web sells and never aboard a colony ship. */}
+          {onShop && !data?.vessel && capabilities().webCheckout && (
+            <div className="pointer-events-auto shrink-0 pr-1">
+              <RoundButton art={artIconSrc('menu-shop')} label={t('menu.skinsShopLabel')} onPress={onShop} />
+            </div>
+          )}
+        </div>
+        <NowLine
+          entries={entries}
+          sheet={sheet}
+          now={now}
+          contacts={contacts}
+          open={nowOpen}
+          onOpen={() => { onNow(true); }}
+          onClose={() => { onNow(false); }}
+          onFocus={onFocusCraft}
+        />
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
-  FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
+  FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
@@ -299,16 +299,54 @@ function BaseScreen() {
 /* ── the HUD: the world a player opens the game into ────────────────────────── */
 
 const HUD: readonly HudResource[] = [
-  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8K', rate: '+2,2K', store: 0.62, tone: 'alloy', label: 'Alaşım' },
-  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1K', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal' },
-  { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', rate: '+180', store: 0.3, tone: 'deut', label: 'Döteryum' },
+  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8K', rate: '+2,2K', store: 0.62, tone: 'alloy', label: 'Alaşım 9.840 / 16.000' },
+  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1K', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal 2.140 / 2.140' },
+  { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', rate: '+180', store: 0.3, tone: 'deut', label: 'Döteryum 860 / 2.800' },
 ];
+
+/**
+ * THE TOP BAR'S PARTS (G1-b): each pill the press for its store — green waiting to be
+ * collected and breathing, yellow a gap to close, quiet while little waits — the share a
+ * raid cannot take as a notch, a place kept for a resource not in use yet; the commander's
+ * medallion at the end of the bar (owner 2026-11-14); the bell and the chat as they sit
+ * together on the galaxy — a press on the bell here brings news, and it swings; the gift's
+ * painting; effects that answer a press.
+ */
+function TopBarParts() {
+  const [flight, setFlight] = useState<number | undefined>(undefined);
+  const [news, setNews] = useState(3);
+  const collect = (): void => { setFlight(Date.now()); window.setTimeout(() => { setFlight(undefined); }, 1_200); };
+  const alloy: HudResource = { id: 'alloy', art: RESOURCE_ART.alloy, amount: '12.400', store: 0.62, safe: 0.25, pool: { text: '+2,2K', tone: 'good' }, ripe: true, tone: 'alloy', label: 'Alaşım 12.400 / 20.000 · atölyede +2.200 · Topla', onPress: collect, ...(flight === undefined ? {} : { flight }) };
+  const crystal: HudResource = { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2.140', store: 1, safe: 0.25, pool: { text: '+640', tone: 'warn' }, tone: 'crystal', label: 'Kristal dolu 2.140 / 2.140 · atölyede +640 · Depoda yer yok', onPress: () => undefined };
+  const deut: HudResource = { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', store: 0.3, pool: { text: '+12', tone: 'quiet' }, tone: 'deut', label: 'Döteryum 860 / 2.800 · atölyede +12', onPress: () => undefined };
+  const medal = <Medallion initials="YI" label="Komutan Yıldırım · menü" onPress={() => undefined} />;
+  return (
+    <>
+      <div className="gk-hudbar"><div className="min-w-0 flex-1"><ResourceHud items={[alloy, crystal, deut]} /></div>{medal}</div>
+      <div className="gk-hudbar"><div className="min-w-0 flex-1"><ResourceHud items={[alloy, crystal, { ...deut, hidden: true }]} /></div>{medal}</div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <RoundButton art={artIconSrc('hud-bell')} label={`Sinyaller · ${String(news)} okunmamış`} count={news} onPress={() => { setNews((n) => n + 1); }} />
+        <RoundButton art={artIconSrc('hud-chat')} label="Sohbet · 2 okunmamış" count={2} onPress={() => undefined} />
+        <RoundButton art={artIconSrc('hud-bell')} label="Sinyaller · saldırı geliyor" count={1} urgent onPress={() => undefined} />
+        <RoundButton art={artIconSrc('hud-chat')} label="Sohbet" onPress={() => undefined} />
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <RoundButton art={artIconSrc('gift')} label="Ödüller · 7 hazır" count={7} onPress={() => undefined} />
+        <RoundButton art={artIconSrc('menu-shop')} label="Mağaza" onPress={() => undefined} />
+        <StatusChip glyph="shield" tone="info" label="Yeni komutan kalkanı" value="2 g 6 sa" onPress={() => undefined} />
+        <StatusChip glyph="up" tone="info" label="Toparlanma üretimi" value="×1,5" until="5 sa" onPress={() => undefined} />
+        <StatusChip glyph="up" tone="good" label="Sinyal üretimi" value="×2" until="3 sa" onPress={() => undefined} />
+        <StatusChip glyph="timed" tone="info" label="Tatil" value="Tatil" until="18.11 21:00" onPress={() => undefined} />
+      </div>
+    </>
+  );
+}
 
 function HudScreen() {
   const [tab, setTab] = useState('galaxy');
   return (
     <div className="gk-scene">
-      <ResourceHud items={HUD} end={<RoundButton glyph="bell" label="Bildirimler" onPress={() => undefined} />} />
+      <ResourceHud items={HUD} end={<Medallion initials="YI" label="Komutan · menü" onPress={() => undefined} />} />
       <div className="gk-scene__rail">
         <CutPlate tone="hostile" className="gk-scene__flight">
           <Timer remaining={7 * 60} total={12 * 60} text="7:00" glyph="attack" />
@@ -746,6 +784,10 @@ function Catalog() {
           <RangeBars mine={{ low: 24, high: 28 }} theirs={{ low: 21, high: null }} mineLabel="Sen" theirsLabel="Onlar" mineText="24–28K" theirsText="21K+" />
           <SpendBar spend={120} stock={860} label="Yakıt" art={RESOURCE_ART.deuterium} text="−120 / 860" />
           <div className="grid gap-1"><span className="gk-label">Kargo · ganimet</span><CargoBar capacity={16.7} loot={LOOT} /></div>
+        </Section>
+
+        <Section title="Üst bar · kaynak hapları, zil, komutan, etkiler">
+          <TopBarParts />
         </Section>
 
         <Section title="Okumalar">

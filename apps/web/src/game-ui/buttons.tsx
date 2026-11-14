@@ -4,7 +4,9 @@ import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, holdSound, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { HOLD_MS, useHoldPress } from '../v2/kit/useHoldPress.js';
+import { artIconSrc } from './art.js';
 import { Glyph, type GlyphId } from './icons.js';
+import { Dot } from './readouts.js';
 import type { CssVars } from './style.js';
 
 export type ButtonTone = 'action' | 'steel' | 'self' | 'danger' | 'ghost';
@@ -81,27 +83,61 @@ export function GameButton({
   );
 }
 
+/** What a round button wears: a glyph, letters (a commander's initials) or a painting at its full 40 px. */
+type RoundFace =
+  | { glyph: GlyphId; face?: undefined; art?: undefined }
+  | { face: string; glyph?: undefined; art?: undefined }
+  | { art: string; glyph?: undefined; face?: undefined };
+
 /** A round button: close, back, help. The face is 36 px, the hit area 44. */
 export function RoundButton({
-  glyph, label, onPress, tone: look = 'steel', small = false,
-}: {
-  glyph: GlyphId;
+  glyph, face, art, label, onPress, tone: look = 'steel', small = false, count = 0, urgent = false,
+}: RoundFace & {
   label: string;
   onPress: () => void;
   tone?: 'steel' | 'danger' | 'self';
   small?: boolean;
+  /** News behind it, in the red of news; nothing at zero. */
+  count?: number;
+  /** Something that cannot wait: the button beats. A count alone never does — a bar that always moves is not read. */
+  urgent?: boolean;
 }) {
   const own = useOwnPress(() => { answer(); onPress(); });
+  /*
+    A count that rises is news arriving: the face swings once (its key restarts the swing),
+    a falling count is quiet. Adjusted while rendering, so the swing lands with the number.
+  */
+  const [news, setNews] = useState({ seen: 0, rang: 0 });
+  if (count !== news.seen) setNews({ seen: count, rang: count > news.seen ? news.rang + 1 : news.rang });
   return (
     <button
       type="button"
       {...OWN_SOUND}
       aria-label={label}
-      className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}`}
+      className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}${art === undefined ? '' : ' gk-round--art'}`}
+      {...(urgent ? { 'data-urgent': '' } : {})}
+      {...(news.rang > 0 ? { 'data-rang': String(news.rang) } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
-      <span className="gk-round__face"><Glyph id={glyph} /></span>
+      {art === undefined
+        ? <span key={news.rang} className="gk-round__face">{glyph === undefined ? <span className="gk-round__letters gk-display">{face}</span> : <Glyph id={glyph} />}</span>
+        : <img key={news.rang} className="gk-round__art" src={art} alt="" draggable={false} />}
+      {count > 0 && <span className="gk-round__count" aria-hidden="true"><Dot count={count} /></span>}
+    </button>
+  );
+}
+
+/**
+ * THE COMMANDER'S MEDALLION (G1-b, 2026-11-14): their initials inside a painted ring at the
+ * end of the top bar. It is the menu — the one door to everything that is not the galaxy.
+ */
+export function Medallion({ initials, label, onPress }: { initials: string; label: string; onPress: () => void }) {
+  const own = useOwnPress(() => { answer(); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={label} className="gk-medal" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-medal__face gk-display" aria-hidden="true">{initials}</span>
+      <img className="gk-medal__ring" src={artIconSrc('hud-medallion')} alt="" draggable={false} />
     </button>
   );
 }

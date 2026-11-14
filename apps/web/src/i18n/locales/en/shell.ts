@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: '{{count}} rewards waiting',
   clanWaiting: '{{count}} clan updates waiting',
   newcomerShield: {
+    name: "Newcomer shield",
     hint: 'You cannot be raided for {{duration}}',
   },
   recoveryShield: {
+    name: "Recovery shield",
     hint: 'Recovery shield — you cannot be raided for {{duration}}',
   },
   recoveryBoost: {
+    name: "Recovery production",
+    value: "+50%",
     mark: "Production +50%",
     note: '+50% output while shielded',
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: 'Works',
     labelFull: 'Works full',
     collect: 'Collect',
-    firstTip: "Production gathers in the Works. Collect it into the Store before spending it.",
+    inPool: "{{amount}} in the Works",
+    firstTip: "Tap a resource to collect it",
     fullStopped: 'Full — production stopped',
     fillsIn: 'full in {{time}}',
     gathers: 'Production gathers here until you collect it',

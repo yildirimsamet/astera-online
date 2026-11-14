@@ -167,6 +167,23 @@ describe('the compact commander menu', () => {
     expect(screen.getByRole('link', { name: new RegExp(`^${i18n.t('menu.navigation.account')}\\.`) })).toHaveAttribute('href', '/profile');
   });
 
+  /** G1-b (owner 2026-11-14): the brand strip left the game screen; full screen came here, beside install. */
+  it('keeps full screen in reach at the foot of the menu, beside install', () => {
+    const view = show();
+    const fullscreen = screen.getByRole('button', { name: /fullscreen/i });
+    const install = view.container.querySelector('[data-menu-foot]');
+    expect(install).not.toBeNull();
+    expect(install?.contains(fullscreen)).toBe(true);
+  });
+
+  /** Brand recall (2026-10-07): with the strip gone from the game screen, the menu carries the name and the address. */
+  it('signs its foot with the game’s name and the address that reopens it', () => {
+    const view = show();
+    const sign = view.container.querySelector('[data-menu-brand]');
+    expect(sign).toHaveTextContent('Astera Online');
+    expect(sign).toHaveTextContent('asteraonline.space');
+  });
+
   it('retains independent rival focus and lost-mark removal without adding rows', () => {
     const onFocusRival = vi.fn(), onClearRival = vi.fn();
     const view = show({ rivals: [{ planetId: 'a', slot: 0, owner: 'Sable', name: 'A', lost: false }, { planetId: 'b', slot: 1, owner: '', name: '', lost: true }], onFocusRival, onClearRival });

@@ -65,5 +65,6 @@ export const unknownSignal = {
   "flightOut": "Filon → bilinmeyen sinyal",
   "flightHome": "Sinyal filon → ana üs",
   "boost": "Sinyal üretimi ×{{factor}}",
+  "boostName": "Sinyal üretimi",
   "boostDetail": "{{time}} kaldı · destek süresince topla."
 } as const;

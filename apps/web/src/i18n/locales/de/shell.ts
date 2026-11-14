@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: '{{count}} Belohnungen warten',
   clanWaiting: '{{count}} Clan-Updates warten',
   newcomerShield: {
+    name: "Neulingsschutz",
     hint: 'Du bist noch {{duration}} vor Überfällen geschützt',
   },
   recoveryShield: {
+    name: "Schutzschild",
     hint: 'Schutzschild: Noch {{duration}} lang kann dich niemand überfallen',
   },
   recoveryBoost: {
+    name: "Erholungsproduktion",
+    value: "+50 %",
     mark: 'Produktion +50 %',
     note: 'Während des Schutzes produziert deine Welt 50 % mehr',
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: 'Produktionslager',
     labelFull: 'Produktionslager voll',
     collect: 'Abholen',
-    firstTip: "Hole Ressourcen aus dem Produktionslager in den Speicher, um sie auszugeben.",
+    inPool: "{{amount}} im Produktionslager",
+    firstTip: "Tippe auf eine Ressource, um sie abzuholen",
     fullStopped: 'Voll — Produktion gestoppt',
     fillsIn: 'voll in {{time}}',
     gathers: 'Die Produktion sammelt sich hier, bis du sie abholst',

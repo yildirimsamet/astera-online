@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: '{{count}} recompensas en espera',
   clanWaiting: '{{count}} novedades del clan pendientes',
   newcomerShield: {
+    name: "Escudo de novato",
     hint: 'No puedes ser atacado por {{duration}}',
   },
   recoveryShield: {
+    name: "Escudo de recuperación",
     hint: 'Escudo de recuperación: no puedes ser atacado por {{duration}}',
   },
   recoveryBoost: {
+    name: "Producción de recuperación",
+    value: "+50 %",
     mark: 'Producción +50 %',
     note: 'Producción un 50 % mayor mientras dure la protección',
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: 'Depósito de producción',
     labelFull: 'Depósito de producción lleno',
     collect: 'Recoger',
-    firstTip: "La producción se acumula antes de almacenarse. Recógela en el almacén para poder gastarla.",
+    inPool: "{{amount}} en el depósito de producción",
+    firstTip: "Toca un recurso para recogerlo",
     fullStopped: 'Lleno — producción detenida',
     fillsIn: 'lleno en {{time}}',
     gathers: 'La producción se acumula aquí hasta que la recojas',

@@ -209,14 +209,9 @@ Rakip (Whiteout, `out/competitors/2026-11-11/whiteout/`) için menü girişi oyu
 - zil sayısı kırmızı (2026-09-24);
 - alt menü galakside saydam (2026-09-24);
 - güçlendirme işareti kalkanla aynı renk (2026-09-16);
-- oyunda görünen marka adı (2026-10-07, `docs/brand-recall-plan.md`).
+- oyunda görünen marka adı (2026-10-07; 2026-11-14'te owner kararıyla şerit kalktı, ad menüde ve yükleme ekranında).
 
-**Owner'a soru (en sonda sorulacak, o zamana kadar uygulanmaz):** Marka şeridi oyun ekranında ≈ 38 px (812 px'lik ekranın %4,7'si) yer tutuyor ve oyuncunun hiçbir kararını taşımıyor. Bu madde 2026-10-07 tarihli "oyunda görünen ad" kararını (`docs/brand-recall-plan.md`) değiştirir. Öneri:
-- ad yükleme ekranında, menünün başında ve Komutan sayfasında kalır;
-- oyun ekranındaki şerit kalkar;
-- Mağaza düğmesi üst bara sanat simgesiyle girer.
-
-Faydası: galaksiye bir satır daha yer açılır, Mağaza tek yerden açılır. Değiştirelim mi? Onay gelene kadar şerit kitin diline taşınır ve yerinde kalır.
+**Owner kararı (2026-11-14, G1-b sırasında soruldu):** marka şeridi oyun ekranından kalktı. Bu, 2026-10-07 tarihli "oyunda görünen ad" kararını değiştirir; soru bunu açıkça söyledi, owner onayladı. Ad yükleme ekranında, menünün altındaki imza satırında ve Akademi başlığında kalır (`docs/brand-recall-plan.md`, "Owner decision — 2026-11-14"). Galaksiye ≈ 38 px yer açıldı.
 
 **Envanter düzeltmesi:** `starter/UniverseChip.tsx`, `starter/MainGalaxyRow.tsx`, `starter/DepartureBoard.tsx` ve `starter/ShipLog.tsx` yalnız koloni gemisindeyken çiziliyor. Dördü G15 `starter` yüzeyine taşındı (owner: başlangıç yolculuğu en sonda).
 
@@ -254,6 +249,46 @@ Kabuk artık alt menünün gerçek yüksekliğini yayınlar (69 px; `--v2-dock-h
 Kit ölçümü (`reports/ui-audit/kit-2026-11-14.md`): 12 px altı yazı, 44 px altı hedef ve kontrast hatası 0.
 
 Yerel oyunda yeni bir komutanla beş sekmeye basıldı: sayfa açıkken menü metal zemin alıyor, açık sekme yanıyor. `Dock.tsx` eski dil izi 0.
+
+**G1-b üst bar ✅ (2026-11-14).** Owner'ın seçtiği düzen:
+- marka şeridi oyun ekranından kalktı (karar yukarıda);
+- üst bar = kitin `ResourceHud` hapları (sanat, sayı, depo çubuğu; atölye birikimi hapın içinde, tek dokunuşla toplanır) + sağ uçta komutan madalyonu;
+- madalyon (`Medallion`, yeni kit parçası): metal halkalı yuvarlak portre, içinde baş harfler; menüyü açar, eski çelik kare ☰ düğmesinin yerini aldı;
+- zil galakside sağ alta, sohbetin soluna indi (`SignalBell`); ikisi de plakasız boyalı simge (`RoundButton art`), haber gelince zil sallanır (`data-rang`), acil haberde nabız atar;
+- barın altında tek durum satırı (`StatusLine`), solda: iki dünya varken okunan dünya, kalkan, güçlendirmeler ve tatil kit çipleriyle (süreleriyle; basınca anlamı söylenir), yanında hediye;
+- Mağaza kapısı aynı satırın sağ ucunda boyalı simge (yalnız web ödemesi açıkken, koloni gemisinde yok);
+- tam ekran düğmesi menünün altına, kurulum düğmesinin yanına taşındı; altında marka imzası.
+
+Kite eklenenler (galeri: `ui-kit` "Üst bar" bölümü): `Medallion`, `RoundButton` haber sallanması, üç Codex sanatı (`hud-medallion`, `hud-bell`, `hud-chat`, ev stilinde, 160 px webp).
+
+Palet: owner 2026-11-14'te üç temayı karşılaştırdı ve Gözlemevi lacivertini seçti (grafit solgun kalıyordu). Kitin bütün metal, cam ve çelik token'ları `tokens.css`'te bu lacivertle yeniden yazıldı; koruyucu test mavi tonu ve v2 zeminine eşitliği arar.
+
+Yerel oyunda 350 px'te (tr, ja) denendi: madalyon menüyü açıyor; zil "Neler oldu" sheet'ini açıyor; kalkan ve hediye solda, Mağaza sağda; sohbet ve zil bağlam kartının üstünde.
+
+Ölçüm (`reports/ui-audit/g1b-after-2026-11-14.md`; kabuğun 16 galeri yolu, 6 dil × 3 boyut, G1 öncesiyle karşılaştırmalı):
+
+| Ölçü (telefon) | G1 öncesi | G1-b sonrası |
+|---|---|---|
+| 12 px altı metin | 629 | 321 |
+| 44 px altı hedef | 336 | 110 |
+| Basınca tepkisiz hedef | 220 | 88 |
+| Kontrast hatası | 137 | 94 |
+| Kesilen metin (bütün diller) | 15 | 10 |
+
+Üst barın bütün hedefleri (üç hap, madalyon, dünya çipi, kalkan/sinyal/tatil çipleri, Mağaza) 44 px ve basınca tepki veriyor. Ölçümün bulduğu iki eksik kapatıldı: durum çipleri basınca tepki vermiyordu, menüdeki marka imzası 3,87:1 kontrastta kalıyordu (şimdi 8,55:1). Kalan bulgular sıradaki birimlerin yüzeylerinde (sayaçlar, köşeler, bağlam kartı, zil, menü) ve galaksi etiketlerinde (G4).
+
+Kit ölçümü (`reports/ui-audit/kit-2026-11-14.md`, yeniden): 12 px altı yazı, 44 px altı hedef ve kontrast hatası 0. Lacivert palette kitin sessiz yazısı (`--gk-ink-3`) aydınlık plaka yüzlerinde 4,2:1'e düşüyordu; #95a3c1'e açıldı. Acil haberli zilin nabzı basış küçülmesini örtüyordu; basışa parlama eklendi.
+
+Ölçüm sırasında bulunan G1-b hatası: `chrome.css`, Şimdi çizgisi varken galaksinin üst köşelerini sabit 3rem aşağı itiyordu; köşeler artık yüzen satırların ölçülen yüksekliğiyle (`--v2-float-h`) iniyor, çift itme kalktı.
+
+Bilinen boşluk: Uçuş Okulu ve mağaza keşif galerisi zil göstermez (`showGuidance` kapalı; G15'te ele alınacak). Koloni gemisinde bir seçim açıkken köşe kümesi gizlenir (sohbet de önceden böyleydi).
+
+`v2/hud/WorksLine.tsx` ve testi silindi: atölye çizgisinin işini kaynak hapları devraldı (yerine geçen parça, ölü kod değil).
+
+G1-b'nin bıraktığı ölü kod adayları (silinmedi, owner'a liste olarak sunulacak):
+- `brand/Identity.tsx` içindeki `BrandMasthead` ve `brand/styles.css` içindeki `.brand-masthead` kuralları: yalnız marka önizlemesi ve testler çiziyor. `.brand-masthead-fullscreen*` canlı: tam ekran düğmesi menüde bu kuralları kullanıyor.
+- `v2/kit/ResourceMeter.tsx`: yalnız galeri ve kendi testi.
+- `ui/SignalBoostNote.tsx`: yalnız ölü `shell/StatusBar.tsx` içinde.
 
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 

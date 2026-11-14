@@ -65,5 +65,6 @@ export const unknownSignal = {
   "flightOut": "Tu flota → señal desconocida",
   "flightHome": "Tu flota de señal → hogar",
   "boost": "Producción por señal ×{{factor}}",
+  "boostName": "Producción por señal",
   "boostDetail": "Queda {{time}} · recoge durante la bonificación."
 } as const;

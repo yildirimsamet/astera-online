@@ -22,12 +22,16 @@ export const statusBar = {
   menuWaiting: "{{count}} récompenses en attente",
   clanWaiting: "{{count}} nouveautés de clan en attente",
   newcomerShield: {
+    name: "Bouclier de débutant",
     hint: "Aucun raid ne peut te viser pendant {{duration}}",
   },
   recoveryShield: {
+    name: "Bouclier de récupération",
     hint: "Bouclier de récupération : aucun raid ne peut te viser pendant {{duration}}",
   },
   recoveryBoost: {
+    name: "Production de récupération",
+    value: "+50 %",
     mark: "Production +50 %",
     note: "Production +50 % pendant la protection",
   },
@@ -40,7 +44,8 @@ export const statusBar = {
     label: "Stock de production",
     labelFull: "Stock de production plein",
     collect: "Collecter",
-    firstTip: "Récupère les ressources du Stock de production dans le Magasin pour les dépenser.",
+    inPool: "{{amount}} dans le Stock de production",
+    firstTip: "Touche une ressource pour la collecter",
     fullStopped: "Plein — production arrêtée",
     fillsIn: "plein dans {{time}}",
     gathers: "La production s’accumule ici jusqu’à ce que tu la collectes",
