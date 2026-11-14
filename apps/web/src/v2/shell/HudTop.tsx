@@ -149,7 +149,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
             kept > 0
               ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
               : t('statusBar.works.collected', { amount: compact(moved) }),
-            kept > 0 ? 'error' : undefined,
+            kept > 0 ? 'warn' : undefined,
           );
         },
         onError: (error) => { say(describe(error), 'error'); },

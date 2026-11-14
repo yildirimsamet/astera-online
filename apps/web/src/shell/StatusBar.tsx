@@ -314,7 +314,7 @@ function Works({
                       held: compact(held),
                     })
                   : t('statusBar.works.collected', { amount: compact(moved) }),
-                held > 0 ? 'error' : undefined,
+                held > 0 ? 'warn' : undefined,
               );
             },
             onError: (err) => {

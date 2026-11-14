@@ -231,6 +231,19 @@ describe('the wired top of the shell', () => {
     expect(screen.getByRole('button', { name: /^Alloy: 900 of 2,000 · / })).toHaveTextContent('900');
   });
 
+  it('warns, rather than refuses, when the store keeps some of it back', async () => {
+    planet = planetView({}, { bufferAlloy: 400 });
+    mutate.mockImplementation((_input: undefined, options: { onSuccess: (r: unknown) => void }) => {
+      planet = planetView({}, { alloy: 2000 });
+      options.onSuccess({ planet, moved: { alloy: 100, crystal: 0, deuterium: 0 }, blocked: { alloy: 300, crystal: 0, deuterium: 0 } });
+    });
+    render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
+    const toast = (await screen.findByRole('status')).querySelector('.gk-banner');
+    expect(toast).toHaveClass('gk-banner--warn');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('keeps a collection effect on its originating world when selection changes in flight', async () => {
     planet = planetView({}, { bufferAlloy: 400 });
     let finish = (_answer: unknown): void => undefined;

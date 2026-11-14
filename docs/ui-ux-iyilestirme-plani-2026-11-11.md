@@ -674,7 +674,7 @@ Owner: "Asıl büyük işe şimdi başlıyoruz." 4.1 (Üs) kitle çıktı; oyunc
 
 | Grup | Envanter | Karar | Kit eki | Uygulama | Ölçüm | Owner baktı |
 |---|---|---|---|---|---|---|
-| G1 Kabuk | ✅ 2026-11-13 | ✅ 2026-11-14 (envanter §3.5, 7 iş birimi G1-a…g) | G1-a `BottomNav` eki ✅, G1-b `Medallion` + zil sallanması ✅, G1-c `TimerPlate` + `TimerRow` ✅, G1-d1 `ContextCard` + `ContextStrip` ✅, G1-d2 `Tally` + `DropPanel` + `PickRow` + `RoundButton lit` ✅ | G1-a alt menü ✅, G1-b üst bar ✅, G1-c sayaçlar ✅, G1-d1 bağlam kartı ✅, G1-d2 köşeler ✅, G1-d3 ⏳ | öncesi: `reports/ui-audit/g1-before-2026-11-14.md` | |
+| G1 Kabuk | ✅ 2026-11-13 | ✅ 2026-11-14 (envanter §3.5, 7 iş birimi G1-a…g) | G1-a `BottomNav` eki ✅, G1-b `Medallion` + zil sallanması ✅, G1-c `TimerPlate` + `TimerRow` ✅, G1-d1 `ContextCard` + `ContextStrip` ✅, G1-d2 `Tally` + `DropPanel` + `PickRow` + `RoundButton lit` ✅, G1-d3 `Banner role` ✅ | G1-a alt menü ✅, G1-b üst bar ✅, G1-c sayaçlar ✅, G1-d1 bağlam kartı ✅, G1-d2 köşeler ✅, G1-d3 bildirim balonu ✅, G1-e ⏳ | öncesi: `reports/ui-audit/g1-before-2026-11-14.md` | |
 | G2 Üs, tersane, filo | ✅ 2026-11-13 | (Üs 4.1 ✅ 2026-11-12) | | | | |
 | G3–G15 | ✅ 2026-11-13 | | | | | |
 

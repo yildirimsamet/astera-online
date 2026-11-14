@@ -1,6 +1,10 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DWELL_MS, ERROR_DWELL_MS, ToastProvider, useToast, useSilenceToasts } from '../src/ui/Toast.js';
+
+const cues = vi.hoisted(() => ({ playSound: vi.fn(), haptic: vi.fn() }));
+vi.mock('../src/lib/sound.js', async (importActual) => ({ ...await importActual<Record<string, unknown>>(), playSound: cues.playSound }));
+vi.mock('../src/lib/haptics.js', async (importActual) => ({ ...await importActual<Record<string, unknown>>(), haptic: cues.haptic }));
 
 function QuietAcademy() { useSilenceToasts(); return null; }
 
@@ -15,7 +19,9 @@ function QuietAcademy() { useSilenceToasts(); return null; }
  * fleet coming home could silently eat the warning that a raid was inbound.
  */
 
-function Speaker({ lines }: { lines: readonly [string, 'info' | 'error'][] }) {
+type Line = readonly [string, 'info' | 'warn' | 'error'];
+
+function Speaker({ lines }: { lines: readonly Line[] }) {
   const say = useToast();
   return (
     <button
@@ -29,7 +35,7 @@ function Speaker({ lines }: { lines: readonly [string, 'info' | 'error'][] }) {
   );
 }
 
-const speak = (lines: readonly [string, 'info' | 'error'][]) => {
+const speak = (lines: readonly Line[]) => {
   render(
     <ToastProvider>
       <Speaker lines={lines} />
@@ -133,5 +139,90 @@ describe('the toast queue', () => {
     });
     // The first has had its turn and handed over — one line, not two.
     expect(screen.getAllByRole('status')).toHaveLength(1);
+  });
+});
+
+/**
+ * THE TOAST ON THE KIT (G1-d3, 2026-11-14). The answer every action gets is a kit toast: a
+ * cut line that drops in under the top bar, its rim and mark in the colour of what it says —
+ * news in the info blue, a "done, but" in the warning amber, a refusal in the enemy's red —
+ * and the words in plain ink so any of them reads. A refusal is said aloud at once and felt in
+ * the hand; a warning is felt and stays as long as a refusal, because both ask to be read.
+ */
+describe('the toast on the kit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    cues.playSound.mockReset();
+    cues.haptic.mockReset();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['info', 'Ore home · +812 alloy', null],
+    ['warn', '1,2K collected · 3K left in the pool', 'gk-banner--warn'],
+    ['error', 'Command Core must be raised first', 'gk-banner--hostile'],
+  ] as const)('wears the colour of what it says: %s', (tone, text, paint) => {
+    speak([[text, tone]]);
+    const toast = screen.getByRole('status').querySelector('.gk-banner');
+    expect(toast).toHaveClass('gk-banner--toast');
+    expect(toast).toHaveTextContent(text);
+    for (const other of ['gk-banner--warn', 'gk-banner--hostile']) {
+      if (other === paint) expect(toast).toHaveClass(other);
+      else expect(toast).not.toHaveClass(other);
+    }
+  });
+
+  it('says a refusal at once', () => {
+    speak([['Command Core must be raised first', 'error']]);
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'assertive');
+    expect(screen.getByRole('alert')).toHaveTextContent('Command Core must be raised first');
+  });
+
+  it('says a warning when the reader is free: it is not a refusal', () => {
+    speak([['1,2K collected · 3K left in the pool', 'warn']]);
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['info', 'confirm', null],
+    ['warn', 'confirm', 'warn'],
+    ['error', 'alert', 'warn'],
+  ] as const)('answers %s with its sound, and in the hand only when it asks to be read', (tone, cue, buzz) => {
+    speak([['line', tone]]);
+    expect(cues.playSound).toHaveBeenCalledWith(cue);
+    if (buzz === null) expect(cues.haptic).not.toHaveBeenCalled();
+    else expect(cues.haptic).toHaveBeenCalledWith(buzz);
+  });
+
+  it('holds a warning as long as a refusal', () => {
+    speak([['1,2K collected · 3K left in the pool', 'warn']]);
+    act(() => { vi.advanceTimersByTime(DWELL_MS + 100); });
+    expect(screen.getByRole('status')).toHaveTextContent('3K left in the pool');
+    act(() => { vi.advanceTimersByTime(ERROR_DWELL_MS - DWELL_MS); });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('closes with the kit\u2019s round button', () => {
+    speak([['only', 'info']]);
+    const close = screen.getByRole('button', { name: 'Dismiss message' });
+    expect(close).toHaveClass('gk-round', 'gk-round--small');
+    act(() => {
+      fireEvent.pointerDown(close, { button: 0 });
+      fireEvent.pointerUp(close);
+      fireEvent.click(close, { detail: 1 });
+    });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('lets the Academy keep its refusals and drops its warnings with its news', () => {
+    function QuietButRefusing() { useSilenceToasts(true); return null; }
+    render(<ToastProvider><QuietButRefusing /><Speaker lines={[['kept back', 'warn'], ['news', 'info'], ['refused', 'error']]} /></ToastProvider>);
+    act(() => { screen.getByRole('button', { name: 'speak' }).click(); });
+    expect(screen.getByRole('status')).toHaveTextContent('refused');
+    act(() => { vi.advanceTimersByTime(ERROR_DWELL_MS + 100); });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

@@ -829,13 +829,19 @@ function GalleryBell({ empty = false }: { empty?: boolean }) {
   );
 }
 
-/** One toast, said once the page is up: what every action answers with today (G1, 2026-11-14). */
-function GalleryToast({ error = false }: { error?: boolean }) {
+/**
+ * One toast, said once the page is up: what every action answers with (G1-d3, 2026-11-14) —
+ * the works collected, the store full and some left behind, and a refusal.
+ */
+function GalleryToast({ tone }: { tone: 'info' | 'warn' | 'error' }) {
   const say = useToast();
   useEffect(() => {
-    // The works' own two answers: everything collected, or the store full and some left behind.
-    say(error ? i18n.t('statusBar.works.collectedPartly', { moved: '1,2K', held: '3K' }) : i18n.t('statusBar.works.collected', { amount: '4,2K' }), error ? 'error' : 'info');
-  }, [say, error]);
+    say({
+      info: i18n.t('statusBar.works.collected', { amount: '4,2K' }),
+      warn: i18n.t('statusBar.works.collectedPartly', { moved: '1,2K', held: '3K' }),
+      error: i18n.t('convoy.cannotReach'),
+    }[tone], tone);
+  }, [say, tone]);
   return null;
 }
 
@@ -968,7 +974,9 @@ function Views({ view }: { view: string }) {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
   if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
-  if (view === 'toast' || view === 'toast-error') return <GalleryToast error={view === 'toast-error'} />;
+  if (view === 'toast') return <GalleryToast tone="info" />;
+  if (view === 'toast-warn') return <GalleryToast tone="warn" />;
+  if (view === 'toast-error') return <GalleryToast tone="error" />;
   if (view === 'readout') {
     // The galaxy's top-right reading in a busy late galaxy; the audit opens the monument list.
     const monument = (n: number, difficulty: 'EASY' | 'HARD', detail: string) => ({ kind: 'monument' as const, id: `m${String(n)}`, label: `Monument ${String(n)}`, detail, difficulty, ordinal: n });

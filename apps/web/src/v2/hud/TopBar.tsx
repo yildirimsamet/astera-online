@@ -126,7 +126,7 @@ export function TopBar({ stock, hidden = [], works, transfer = null, commander, 
       </header>
       {/* Once, the first time something waits: in the flow, so it covers nothing under it. */}
       {teach && (
-        <div role="note" className="px-[var(--gk-gutter)] pb-1">
+        <div role="note" className="gk px-[var(--gk-gutter)] pb-1">
           <Banner variant="strip" tone="info" glyph="up" title={t('statusBar.works.firstTip')} body={t('statusBar.works.gathers')} />
         </div>
       )}

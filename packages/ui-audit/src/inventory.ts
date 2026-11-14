@@ -64,7 +64,7 @@ export const SURFACES: GameSurface[] = [
     id: 'galaxy-hud',
     what: 'Galaksi ana ekranı ve HUD: üst bar, iş satırı, dock, köşeler, sinyaller',
     files: ['screens/GalaxyView.tsx', 'v2/shell/GameShell.tsx', 'v2/shell/HudTop.tsx', 'v2/shell/HudDock.tsx', 'v2/hud/TopBar.tsx', 'v2/hud/WorksLine.tsx', 'v2/hud/Dock.tsx', 'v2/hud/GalaxyCorners.tsx', 'v2/hud/ContextSlot.tsx', 'v2/hud/BaseSwitch.tsx', 'shell/PendingStrip.tsx', 'screens/UnknownSignalHud.tsx'],
-    reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:context-suggestion', 'gallery:context-selected', 'gallery:readout', 'gallery:toast', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
+    reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:context-suggestion', 'gallery:context-selected', 'gallery:readout', 'gallery:toast', 'gallery:toast-warn', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
     group: 'G1',
   },
   { id: 'cosmetic-trial', what: 'Kozmetik deneme şeridi, galaksi üzerinde', files: ['screens/CosmeticTrialBar.tsx'], reach: ['gallery:cosmetic-trial'], group: 'G6' },

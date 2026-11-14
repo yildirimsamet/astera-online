@@ -1,10 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Banner, RoundButton, type GlyphId } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { describeError } from '../i18n/errors.js';
-import { Icon } from '../v2/icons.js';
 
-type Tone = 'info' | 'error';
+/** News; a "done, but" to read (the store kept some back); a refusal, or a threat. */
+type Tone = 'info' | 'warn' | 'error';
+
+/** Each tone's kit face: the colour of what it says, and its mark. */
+const FACE: Record<Tone, { tone: 'info' | 'warn' | 'hostile'; glyph: GlyphId }> = {
+  info: { tone: 'info', glyph: 'star' },
+  warn: { tone: 'warn', glyph: 'warn' },
+  error: { tone: 'hostile', glyph: 'warn' },
+};
 interface Message {
   id: number;
   text: string;
@@ -35,7 +44,7 @@ export const ERROR_DWELL_MS = 4000;
 let sequence = 0;
 
 /**
- * One line, bottom of the screen, gone in four seconds.
+ * One line under the top bar, gone in a few seconds.
  *
  * Refusals are the main thing that lands here, and a refusal must say what to do
  * next — the API writes them that way ("Command Core must be raised first") and
@@ -68,16 +77,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const message = queue[0] ?? null;
 
   const say = useCallback((text: string, tone: Tone = 'info') => {
-    if (quiet.current > 0 || (tone === 'info' && quietInfo.current > 0)) return;
+    if (quiet.current > 0 || (tone !== 'error' && quietInfo.current > 0)) return;
     sequence += 1;
     setQueue((current) => [...current, { id: sequence, text, tone }]);
   }, []);
 
   const head = message?.id;
-  const dwell = message?.tone === 'error' ? ERROR_DWELL_MS : DWELL_MS;
+  const tone = message?.tone;
+  // A warning asks to be read as a refusal does: it holds as long, and is felt in the hand.
+  const dwell = tone === undefined || tone === 'info' ? DWELL_MS : ERROR_DWELL_MS;
   useEffect(() => {
-    if (head !== undefined) playSound(message?.tone === 'error' ? 'alert' : 'confirm');
-  }, [head, message?.tone]);
+    if (head === undefined || tone === undefined) return;
+    playSound(tone === 'error' ? 'alert' : 'confirm');
+    if (tone !== 'info') haptic('warn');
+  }, [head, tone]);
   useEffect(() => {
     if (head === undefined) return;
     const id = setTimeout(() => {
@@ -104,43 +117,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            * height as `--toast-lift` while it is mounted; everywhere else the
            * variable is absent and the original offset stands.
            */
-          className="pointer-events-none fixed inset-x-3 top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-[90] flex justify-center font-v2-ui"
+          className="gk pointer-events-none fixed inset-x-[var(--gk-gutter)] top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-[90] flex justify-center"
         >
           {/*
-            A REFUSAL LOOKS LIKE A REFUSAL, AND IT USED TO LOOK LIKE THE WEATHER.
-
-            The error variant differed from the informational one by a slightly
-            pink text colour and `border-alert/50` — which drew nothing at all,
-            because `.plate` builds its edge from `box-shadow` and carries no
-            border width, so a border COLOUR is a declaration the browser drops in
-            silence. The one signal in the game that says "that did not happen"
-            was a two-shade difference inside a sentence.
-
-            It is a plate lit in the threat colour with a mark on it now, which is
-            the grammar every other state in this interface already uses: hue for
-            the category, light for the fact that it is on right now.
+            A REFUSAL LOOKS LIKE A REFUSAL (G1-d3, 2026-11-14: the kit's toast). The rim and the
+            mark take the colour of what it says — news in the info blue, a "done, but" in the
+            warning amber, a refusal in the enemy's red — and the words stay in plain ink, so
+            every one of them reads. Its key restarts the drop for each line in turn.
           */}
-          <div
-            key={message.id}
-            role={message.tone === 'error' ? 'alert' : undefined}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-control border px-3 py-2.5 text-caption leading-snug shadow-[0_16px_36px_rgba(0,0,0,0.42)] ${
-              message.tone === 'error'
-                ? 'border-v2-hostile/55 bg-v2-panel/95 text-v2-ink'
-                : 'border-v2-self/35 bg-v2-panel/95 text-v2-ink'
-            }`}
-          >
-            <span aria-hidden className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-control ${message.tone === 'error' ? 'bg-v2-hostile/12 text-v2-hostile' : 'bg-v2-self/12 text-v2-self'}`}>
-              <Icon id={message.tone === 'error' ? 'i-warn' : 'i-spark'} className="size-4" />
-            </span>
-            <p className="min-w-0 flex-1 py-1">{message.text}</p>
-            <button
-              type="button"
-              aria-label={t('toast.dismiss')}
-              className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 hover:bg-v2-raise hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
-              onClick={() => { setQueue((current) => current.slice(1)); }}
-            >
-              <Icon id="i-close" className="size-4" />
-            </button>
+          <div key={message.id} className="pointer-events-auto w-full max-w-sm">
+            <Banner
+              variant="toast"
+              tone={FACE[message.tone].tone}
+              glyph={FACE[message.tone].glyph}
+              role={message.tone === 'error' ? 'alert' : null}
+              title={message.text}
+              action={<RoundButton small glyph="close" label={t('toast.dismiss')} onPress={() => { setQueue((current) => current.slice(1)); }} />}
+            />
           </div>
         </div>
       )}

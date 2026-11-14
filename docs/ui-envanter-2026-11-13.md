@@ -221,6 +221,8 @@ Rakip (Whiteout, `out/competitors/2026-11-11/whiteout/`) için menü girişi oyu
 
 Taşımadan sonra dosya ölü kod listesine girer; silme owner onayıyla yapılır.
 
+**Yapıldı (2026-11-14, `e4fa9c3b`):** `useAirborne`, `AirborneItem`, `FlightMark` ve `StripFocus` artık `lib/airborne.ts` içinde; davranış değişmedi. `shell/PendingStrip.tsx` (`PendingStrip`, `FlightList`) ölü kod aday listesinde.
+
 ### 3.6 G1 ilerleme
 
 **G1-a alt menü ✅ (2026-11-14).** Kitin `BottomNav` parçası oyunun alt menüsü oldu.
@@ -367,6 +369,26 @@ Yerel oyunda 350 px'te denendi: "Sen yokken" penceresi kapatıldı, anıt sayım
 Kit ölçümünün (ana kit sayfası, tr ve en telefon) G1-c'den bulduğu iki eksik kapatıldı: kırmızı sayaç plakasındaki süre 4,28:1 kalıyordu (artık bir ton açık kırmızı, bağlam kartının üst satırı gibi); plakanın alt cümlesi kesiliyordu ("Bir yapım, araştırma ya da saldırı başlat": Sessiz Uzay'dan çıkış yolu), artık sarılıyor. Kitte kalan kesilmeler taban kuyruğu yuvalarında ("Komuta Çekirdeği", "Duraklatıldı — tatil modu", "sahiplenince başlar"); G2'de (Üs) ele alınacak.
 
 Owner'a soru (karar bekliyor, uygulamayı durdurmuyor): sayımlar artık kelimesiz (işaret + rakam), kelimeler okuyucuda ve basınca açılan listenin başlığında. "Bir bakışta" isteği (2026-09-24) yerinde, ama ilk kez gelen oyuncu kafatasının "korsan" olduğunu basmadan bilmeyebilir. İstenirse sayımın altına küçük kelime eklenir (köşe ≈ 20 px uzar).
+
+**G1-d3 bildirim balonu ✅ (2026-11-14).** Oyuncunun anı: bir şeye bastı ya da bir şey oldu; "oldu mu, olmadı mı?" Her eylemin cevabı üst çubuğun altına düşen tek satırdır. Sıra kuralı (D45), süreler ve Akademi'nin susturması değişmedi; balonun kendisi kitin diline geçti.
+
+Balon (kitin `Banner` toast biçimi):
+- Üç ton, rengini söylediği şeyden alır: haber bilgi mavisinde yıldızla; "oldu ama" (depo dolu, bir kısmı havuzda kaldı) uyarı amberinde; ret ya da tehdit düşman kırmızısında. Kenar ve işaret renkli, yazı düz mürekkepte: her biri okunur.
+- Yeni `warn` tonu: kısmi toplama artık ret gibi kırmızı değil, amber (`HudTop`, eski `StatusBar`). Bir ret kadar ekranda kalır (4 sn) ve elde hissedilir.
+- Ses ve titreşim: haber "confirm" çalar, titreşmez (canlı haberler sık gelir); uyarı "confirm" + `haptic('warn')`; ret "alert" + `haptic('warn')`. Ret hâlâ hemen okunur (`role=alert`, `aria-live=assertive`).
+- Kapatma kitin küçük yuvarlak düğmesi (44 px).
+- Kenarlar 12 px'lik ana boşlukta, en fazla 384 px.
+- Kitte: `Banner` `role` aldı (toast varsayılanı `status`; içinde durduğu yer zaten konuşuyorsa `null`).
+
+Bulunan ve düzeltilen hata: üst çubuğun ilk ipucu şeridi ("Toplamak için bir kaynağa dokun") kitin kök sınıfı dışında kaldığı için kit yazısı yerine eski IBM Plex'e düşüyordu (G1-b'den kalma). Şerit artık `.gk` içinde, Saira.
+
+Galeriye `toast-warn` yolu eklendi; `toast-error` artık gerçek bir ret ("Buradaki hiçbir filo akını zamanında tamamlayamaz").
+
+Ölçüm (`reports/ui-audit/g1d3-after-2026-11-14.md`, 3 yol × 6 dil × 3 boyut), G1-b'deki iki balon yoluna göre telefonda: 12 px altı metin 4 → 0, 44 px altı hedef 4 → 0, tepkisiz hedef 2 → 0, kontrast ve kesilme 0.
+
+Rapordaki tek bulgu, bilgi balonunun kapatma ikonunda 1,00:1, ölçüm aracının yanılgısı. Araç arka planı birkaç karede çekiyor; 2,4 sn'lik bilgi balonu bu sırada kalkıyor. Balon 9 sn tutulunca aynı düğme 11,1:1 ölçüldü (uyarı ve ret balonlarında da 11,1:1). Eski balonda raporlanan 1,00:1 de büyük olasılıkla aynı yanılgıydı.
+
+Yerel oyunda 350 px'te denendi: kaynak hapına basıldı, "1,4K toplandı" üst çubuğun altına düştü (≈0,45 sn) ve süresi dolunca kalktı. Açıkken sağ üst sayımların ilk satırını örtüyor; tek satırlık ve 2,4 sn'lik olduğu için bilinçli.
 
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 

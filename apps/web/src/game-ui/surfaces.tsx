@@ -133,7 +133,7 @@ const BANNER_GLYPH: Record<'info' | 'good' | 'warn' | 'hostile', GlyphId> = {
  * colours the rim and the icon, never the words, so it stays readable.
  */
 export function Banner({
-  tone = 'info', title, body, action, variant = 'block', glyph,
+  tone = 'info', title, body, action, variant = 'block', glyph, role = variant === 'toast' ? 'status' : null,
 }: {
   tone?: 'info' | 'good' | 'warn' | 'hostile';
   title: ReactNode;
@@ -141,11 +141,13 @@ export function Banner({
   action?: ReactNode;
   variant?: 'block' | 'strip' | 'toast';
   glyph?: GlyphId;
+  /** How it is read out: a toast speaks as a status; `null` where the place it sits in already speaks for it. */
+  role?: 'status' | 'alert' | null;
 }) {
   return (
     <div
       className={`gk-banner${tone === 'info' ? '' : ` gk-banner--${tone}`} gk-banner--${variant}`}
-      {...(variant === 'toast' ? { role: 'status' } : {})}
+      {...(role === null ? {} : { role })}
     >
       <span className="gk-banner__icon" aria-hidden="true"><Glyph id={glyph ?? BANNER_GLYPH[tone]} /></span>
       <span className="min-w-0">
