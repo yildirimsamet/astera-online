@@ -22,12 +22,18 @@
   /* Moves by itself through a finite animation the freeze does not hold: no press needed to differ. */
   #drifts { top: 180px; left: 20px; width: 140px; height: 48px; animation: drift 0.6s linear 20 alternate; }
   @keyframes drift { from { background: #222; } to { background: #6c6; } }
+  /* A press outside closes a popover: the row below it is gone before its own turn comes. */
+  #closer { top: 260px; left: 20px; width: 140px; height: 48px; }
+  #gone { top: 330px; left: 20px; width: 140px; height: 48px; }
+  #gone:active { background: #4af; }
 </style>
 </head>
 <body>
   <button class="abs" id="answers">Anında</button>
   <button class="abs" id="acts">Bir gemi</button>
   <button class="abs" id="drifts">Kıpırdar</button>
+  <button class="abs" id="closer">Dışarı</button>
+  <button class="abs" id="gone">Satır</button>
 <script>
   const answers = document.getElementById('answers');
   answers.addEventListener('pointerdown', () => answers.classList.add('pressed'));
@@ -35,6 +41,7 @@
   const acts = document.getElementById('acts');
   let ships = 0;
   acts.addEventListener('pointerdown', () => { ships += 1; acts.textContent = `${ships} gemi`; acts.classList.add('done'); });
+  document.getElementById('closer').addEventListener('pointerdown', () => document.getElementById('gone')?.remove());
 </script>
 </body>
 </html>

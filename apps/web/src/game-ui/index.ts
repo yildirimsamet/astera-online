@@ -16,6 +16,7 @@ export {
   type TimerTone,
 } from './readouts.js';
 export { Banner, CoachMark, ContextCard, ContextStrip, CutPlate, Dialog, EmptyState, Plate, SectionTag, SheetFrame, Well } from './surfaces.js';
+export { DropGroup, DropPanel, PickRow, Tally, type TallyPaint } from './finder.js';
 export { CLAN_LEVEL_ART, ClanEmblem, ClanLevelBadge, FLAG_IDS, HONOR_ART, HonorBadge, flagTileSrc, type FlagId } from './ranks.js';
 export { POD_ART, POD_OPEN_MS, RewardPod, type RewardPodProps } from './RewardPod.js';
 export { UnitBay, UnitCard, type UnitCardProps } from './UnitCard.js';

@@ -41,6 +41,11 @@ describe('the painted icons', () => {
     expect(ART_ICONS).toContain('hud-timers');
   });
 
+  /** G1-d2 (2026-11-14): the way home and the view at the galaxy's top right, painted as the bell and chat are. */
+  it('paints the way home and the view over the galaxy', () => {
+    for (const id of ['hud-home', 'hud-view']) expect(ART_ICONS).toContain(id);
+  });
+
   it('paints every place in the dock', () => {
     for (const tab of DOCK_TABS) expect(ART_ICONS).toContain(DOCK_ART[tab]);
   });

@@ -39,4 +39,9 @@ describe('the press test', () => {
   it('does not credit a region that moves by itself', () => {
     expect(feedback('drifts')).toBe('unsure');
   });
+
+  /** G1-d2 (2026-11-14): pressing the galaxy's event chip closed the finder, and its rows were counted as dead. */
+  it('cannot judge a control an earlier press took off the screen', () => {
+    expect(feedback('gone')).toBe('unsure');
+  });
 });

@@ -522,6 +522,19 @@
   right: -4px;
   pointer-events: none;
 }
+/* A state of its own is on: a small lamp at its foot in your colour, as a lit switch shows. */
+.gk-round[data-lit]::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gk-self);
+  box-shadow: 0 0 0 1.5px var(--gk-outline), 0 0 8px var(--gk-self);
+  pointer-events: none;
+}
 /* News arriving: the face swings once from its crown, as a bell does when it is struck. */
 .gk-round[data-rang] .gk-round__face,
 .gk-round[data-rang] .gk-round__art {
@@ -1582,8 +1595,9 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
 }
+/* On the red plate the red time is lit a step, as the card's eyebrow is: 4.5:1 (kit audit, G1-d2). */
 .gk-tplate[data-tone='hostile'] .gk-tplate__time {
-  color: var(--gk-hostile);
+  color: var(--gk-hostile-hi);
 }
 .gk-tplate[data-tone='warn'] .gk-tplate__time {
   color: var(--gk-warn);
@@ -1592,10 +1606,9 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   display: grid;
   min-width: 0;
 }
+/* The clause can be the way out ("start a build, research or an attack"): it wraps, it is never cut (kit audit, G1-d2). */
 .gk-tplate__text .gk-sub {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 /* The name says where: on a narrow phone it takes a second line rather than lose its target
    ("AKTARIM → KE…", audit 2026-11-14). */
@@ -1825,6 +1838,197 @@ button.gk-trow:focus-visible {
 .gk-cstrip__open .gk-glyph {
   width: 14px;
   height: 14px;
+}
+
+/* ── the finder: counts of what is out there, and the list a count drops (G1-d2) ── */
+
+/* Each count wears the colour of what it counts; words in that colour are lit a step for 4.5:1. */
+.gk-tally,
+.gk-drop { --paint: var(--gk-self); --paint-ink: var(--gk-self); }
+.gk-tally[data-paint='hostile'],
+.gk-drop[data-paint='hostile'] { --paint: var(--gk-hostile); --paint-ink: var(--gk-hostile-hi); }
+.gk-tally[data-paint='warn'],
+.gk-drop[data-paint='warn'] { --paint: var(--gk-warn); --paint-ink: var(--gk-warn); }
+.gk-tally[data-paint='alloy'],
+.gk-drop[data-paint='alloy'] { --paint: var(--gk-alloy); --paint-ink: var(--gk-alloy-hi); }
+.gk-tally[data-paint='crystal'],
+.gk-drop[data-paint='crystal'] { --paint: var(--gk-crystal); --paint-ink: var(--gk-crystal); }
+.gk-tally[data-paint='deut'],
+.gk-drop[data-paint='deut'] { --paint: var(--gk-deut); --paint-ink: var(--gk-deut); }
+
+/* Words over the stars beside the counts: no plate, the scene shows through, an outline keeps them read. */
+.gk-scene-line {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+  text-shadow: 0 1px 2px var(--gk-outline), 0 0 6px var(--gk-outline);
+}
+.gk-scene-line strong {
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-scene-line__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--gk-self);
+  box-shadow: 0 0 6px var(--gk-self);
+}
+
+/* A count that only reads stands as tall as one that presses, so a row of them stays a row. */
+.gk-tally-wrap {
+  display: inline-grid;
+  place-items: center;
+  min-height: var(--gk-hit);
+}
+.gk-tally {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 7px 0 3px;
+  border-radius: 999px;
+  color: var(--gk-ink);
+  background: color-mix(in srgb, var(--gk-metal-3) 84%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--paint) 45%, var(--gk-metal-edge)),
+    inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 10%, transparent),
+    0 2px 6px var(--gk-metal-shadow);
+  transition: transform var(--gk-quick) var(--gk-ease), box-shadow var(--gk-quick) var(--gk-ease);
+}
+.gk-tally__coin {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--paint);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--paint) 26%, var(--gk-metal-2)), var(--gk-metal-3));
+}
+.gk-tally__coin .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+.gk-tally__value {
+  font-size: var(--gk-t-body);
+  line-height: 1;
+}
+/* What a press does: the list drops; the mark turns over while it is open. */
+.gk-tally__open {
+  display: grid;
+  color: var(--gk-ink-3);
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-tally__open .gk-glyph {
+  width: 10px;
+  height: 10px;
+}
+.gk-tally-hit:active .gk-tally {
+  transform: translateY(1px) scale(0.95);
+  box-shadow: 0 0 0 1.5px var(--paint), 0 0 10px color-mix(in srgb, var(--paint) 45%, transparent);
+}
+.gk-tally-hit[aria-expanded='true'] .gk-tally {
+  box-shadow: 0 0 0 1.5px var(--paint), 0 0 12px color-mix(in srgb, var(--paint) 40%, transparent);
+}
+.gk-tally-hit[aria-expanded='true'] .gk-tally__open {
+  transform: rotate(180deg);
+  color: var(--paint);
+}
+.gk-tally-hit:focus-visible .gk-tally {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+
+/* The list drops under the counts, on a cut plate of its own, its head in the count's colour. */
+.gk-drop {
+  --cut: 10px;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  width: min(80vw, 300px);
+  margin-top: 4px;
+  padding: 6px 4px 6px 6px;
+  text-align: left;
+  pointer-events: auto;
+  animation: gk-drop var(--gk-settle) var(--gk-pop);
+}
+.gk-drop__title {
+  padding: 2px 6px 6px;
+  color: var(--paint-ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--paint) 30%, var(--gk-metal-edge));
+}
+.gk-drop__list {
+  max-height: 38vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.gk-drop__list > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 50%, transparent);
+}
+.gk-drop__group {
+  padding: 8px 6px 2px;
+}
+.gk-drop__group[data-tone='hostile'] { color: var(--gk-hostile-hi); }
+.gk-drop__group[data-tone='self'] { color: var(--gk-self); }
+
+/* One thing out there: its place, its name and clause, the mark of where the camera flies. */
+.gk-pick {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 22px;
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 6px;
+  border-radius: var(--gk-r-sm);
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+/* Under the thumb the row lights in your colour, a bar at its edge, and the mark leaps: the camera is about to fly. */
+.gk-pick:active {
+  background: color-mix(in srgb, var(--gk-self) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--gk-self);
+}
+.gk-pick:active .gk-pick__mark {
+  transform: scale(1.2);
+}
+.gk-pick:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-pick__index {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-3);
+}
+.gk-pick__text {
+  display: grid;
+  min-width: 0;
+}
+.gk-pick__title {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.gk-pick__text .gk-sub {
+  overflow-wrap: anywhere;
+}
+.gk-pick__mark {
+  display: grid;
+  place-items: center;
+  color: var(--gk-self);
+  transition: transform var(--gk-quick) var(--gk-pop);
+}
+.gk-pick[data-tone='hostile'] .gk-pick__mark {
+  color: var(--gk-hostile);
+}
+.gk-pick__mark .gk-glyph {
+  width: 16px;
+  height: 16px;
 }
 
 /* ── a slot of work: ring around the picture, name and time beside it ──────── */

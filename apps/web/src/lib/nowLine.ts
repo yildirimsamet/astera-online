@@ -241,10 +241,11 @@ const FLIGHT_GLYPH: Partial<Record<PendingThread['kind'], GlyphId>> = {
   unknown_signal: 'target',
 };
 
+/** An event's mark: the shower its rock, the merchant its goods, the convoy a fleet passing (G1-d2). */
 export const EVENT_GLYPH = {
   ASTEROID_SHOWER: 'asteroid',
   TRADE_SHIP: 'crate',
-  INTERGALACTIC_CONVOY: 'crate',
+  INTERGALACTIC_CONVOY: 'rocket',
 } as const satisfies Record<ActiveGalaxyEvent['kind'], GlyphId>;
 
 /** THE MARK EACH TIMER WEARS (G1-c): a list of timers reads before a word of it does. */

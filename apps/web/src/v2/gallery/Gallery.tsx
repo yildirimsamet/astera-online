@@ -45,7 +45,7 @@ import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
-import { ChatChip, GalaxyReadout, SignalBell } from '../hud/GalaxyCorners.js';
+import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell } from '../hud/GalaxyCorners.js';
 import { useToast } from '../../ui/Toast.js';
 import { SignalsFeed } from '../../shell/Signals.js';
 import type { NotificationView } from '../../api/schemas.js';
@@ -972,15 +972,28 @@ function Views({ view }: { view: string }) {
   if (view === 'readout') {
     // The galaxy's top-right reading in a busy late galaxy; the audit opens the monument list.
     const monument = (n: number, difficulty: 'EASY' | 'HARD', detail: string) => ({ kind: 'monument' as const, id: `m${String(n)}`, label: `Monument ${String(n)}`, detail, difficulty, ordinal: n });
+    // The galaxy's two top corners as the game lays them out (G1-d2): the events left, the reading, home and the view right.
+    const events = [
+      { id: 'e1', kind: 'ASTEROID_SHOWER' as const, startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 },
+      {
+        id: 'e2', kind: 'TRADE_SHIP' as const, startsAt: at(-20), endsAt: at(90), rate: TRADE.rate, appearsAtMinute: 580, expiresAtMinute: 690,
+        orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+      },
+    ];
     return (
-      <div className="flex justify-end px-3 pt-3">
-        <GalaxyReadout
-          onlineToday={42}
-          counts={{ worlds: 177, fleetsAway: 4, rocks: 12, pirates: 3, wrecks: 30, monuments: 8 }}
-          targets={[monument(1, 'EASY', '2,1K uzaklık'), monument(3, 'EASY', '3,4K uzaklık'), monument(5, 'HARD', '4,0K uzaklık'), monument(7, 'HARD', '6,2K uzaklık'),
-            { kind: 'debris', id: 'd1', label: 'Kestrel-12', detail: '+4,1K' }]}
-          onFocusTarget={noop}
-        />
+      <div className="flex items-start justify-between px-[var(--gk-gutter)] pt-3">
+        <EventChips events={events} now={NOW} onOpen={noop} />
+        <div className="flex flex-col items-end">
+          <GalaxyReadout
+            onlineToday={42}
+            counts={{ worlds: 177, fleetsAway: 4, rocks: 12, pirates: 3, wrecks: 30, monuments: 8 }}
+            targets={[monument(1, 'EASY', '2,1K uzaklık'), monument(3, 'EASY', '3,4K uzaklık'), monument(5, 'HARD', '4,0K uzaklık'), monument(7, 'HARD', '6,2K uzaklık'),
+              { kind: 'debris', id: 'd1', label: 'Kestrel-12', detail: '+4,1K' }]}
+            onFocusTarget={noop}
+          />
+          <HomeChip onHome={noop} />
+          <ViewChip layersOn onOpen={noop} />
+        </div>
       </div>
     );
   }

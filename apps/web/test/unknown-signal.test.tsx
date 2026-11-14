@@ -8,6 +8,7 @@ import { HULLS, type UnknownSignalOutcome } from '@astera/rules';
 import type { UnknownSignalView } from '../src/api/schemas.js';
 import { UnknownSignalSheet } from '../src/screens/UnknownSignalSheet.js';
 import { UnknownSignalHud } from '../src/screens/UnknownSignalHud.js';
+import { Glyph } from '../src/game-ui/index.js';
 import { unknownSignalQuote, unknownSignalMarkerState, openUnknownSignal, subscribeUnknownSignal } from '../src/lib/unknownSignal.js';
 import { readsForPrivateEvent, readsForShardEvent } from '../src/session/shardEvents.js';
 import { keys } from '../src/api/keys.js';
@@ -142,6 +143,17 @@ describe('unknown signal client integration', () => {
     view.rerender(<UnknownSignalHud {...hud} focusedId={data.signals[0]!.id} />);
     fireEvent.click(screen.getByRole('button', { name: 'Investigate signal' }));
     expect(onSend).toHaveBeenCalledWith(data.signals[0]!.id, 'DART');
+  });
+  /** G1-d2 (2026-11-14): beside the galaxy's events, a kit chip with the signal's mark and its time. */
+  it('waits in the corner as a kit chip with the target mark and the time it has left', () => {
+    const p = props();
+    const data = { signals: [{ ...signal(), expiresAt: new Date(Date.now() + 3_600_000) }], radar: { capitalPlanetId: p.planet.planet.id, at: p.planet.planet.position, level: 0, range: 2700 }, tier: 1 as const };
+    const { container } = render(<UnknownSignalHud data={data} planet={p.planet} focusedId={null} worlds={[p.planet]} onFocus={vi.fn()} onSend={vi.fn()}
+      onClose={p.onClose} onOrigin={vi.fn()} onBuild={p.onBuild} onSkins={p.onSkins} onDetected={vi.fn()} />);
+    const chip = container.querySelector('[data-unknown-signal-chip] .gk-status');
+    expect(chip).toHaveAttribute('data-tone', 'info');
+    const target = render(<Glyph id="target" />).container.querySelector('path')?.getAttribute('d');
+    expect(chip?.querySelector('.gk-status__coin path')?.getAttribute('d')).toBe(target);
   });
   it('keeps a dispatched signal targeted and uses bounded arrival effects and expiry fade', () => {
     const s = signal();

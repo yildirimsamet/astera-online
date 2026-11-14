@@ -1475,7 +1475,7 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" style={{ paddingTop: 'calc(var(--v2-float-h, 0px) + 0.25rem)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
+      <div data-galaxy-top-corners="" style={{ paddingTop: 'calc(var(--v2-float-h, 0px) + 0.25rem)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
             focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
@@ -1519,7 +1519,7 @@ export function GalaxyView({
           `data-sensor-toggles`, not `data-disc-controls`: the chip carries the sensor
           switches now, and the Academy reveals it with them for its Telescope exercise.
         */}
-        <div className="pointer-events-none flex flex-col items-end gap-1.5">
+        <div className="pointer-events-none flex flex-col items-end">
           {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
           {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
           {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}

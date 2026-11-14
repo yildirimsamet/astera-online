@@ -50,6 +50,20 @@ const shower: ActiveGalaxyEvent = {
   id: '00000000-0000-4000-8000-000000000001', kind: 'ASTEROID_SHOWER', startsAt: at(-45), endsAt: at(10), asteroidSpawnMultiplier: 2,
 };
 
+const merchant: ActiveGalaxyEvent = {
+  id: '00000000-0000-4000-8000-000000000002', kind: 'TRADE_SHIP', startsAt: at(-10), endsAt: at(10),
+  rate: { alloy: 1, crystal: 2, deuterium: 4 }, appearsAtMinute: 0, expiresAtMinute: 30,
+  orbit: { radius: 100, period: 60, phase: 0, inclination: 0, ascendingNode: 0, speed: 1 },
+};
+
+const convoy: ActiveGalaxyEvent = {
+  id: '00000000-0000-4000-8000-000000000003', kind: 'INTERGALACTIC_CONVOY', startsAt: at(-10), endsAt: at(10),
+  appearsAtMinute: 0, expiresAtMinute: 30,
+  route: { from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 0 }, velocity: { x: 1, y: 0, z: 0 }, speed: 1 },
+  visual: { formationVersion: 1 },
+  rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 1, shipDropChanceAtFullQuality: 0.5, maxAwardedShips: 3 },
+};
+
 const research: ResearchQueueOrderView = {
   id: 'r-1', slot: 0, projectId: 'CARGO_HOLDS', level: 2, startedAt: at(-120), finishesAt: at(4),
   cost: { alloy: 1, crystal: 0, deuterium: 0 },
@@ -134,6 +148,9 @@ describe('the mark each timer wears', () => {
     ['a drill', { runs: [run('outbound')] }, 'mine'],
     ['a building', { builds: [order(-60, 3)] }, 'up'],
     ['an event', { events: [shower] }, 'asteroid'],
+    ['the merchant', { events: [merchant] }, 'crate'],
+    // A fleet passing through, told from the merchant where its name is not written (G1-d2).
+    ['a convoy passing through', { events: [convoy] }, 'rocket'],
     ['the shield', { shieldUntil: at(30) }, 'shield'],
     ['the move to Silent Space', { silentSpaceAt: at(60) }, 'warn'],
     ['a maintenance', { maintenance: { startsAt: at(60), endsAt: at(90) } }, 'settings'],

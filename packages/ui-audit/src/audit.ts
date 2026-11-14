@@ -26,8 +26,9 @@ import { hitRegions, rectGap, spacingFailures, type Box, type HitRegion, type Hi
  * that gesture, so the state is forced over CDP instead.
  * none: nothing visible answers a press.
  * unsure: the press cannot be judged. The region changed with no press at all (an animation
- * the freeze does not hold), or the press changed the screen for good (a control that acts on
- * pointerdown). Neither difference is evidence of press feedback, so neither is credited.
+ * the freeze does not hold), the press changed the screen for good (a control that acts on
+ * pointerdown), or the control was gone by its turn (an earlier press closed its popover).
+ * None of these is evidence of press feedback, so none is credited.
  */
 export type Feedback = 'immediate' | 'active' | 'none' | 'unsure';
 
@@ -222,8 +223,9 @@ async function pressFeedback(page: Page, presses: { index: number; at: [number, 
       }
 
       const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: `[${TARGET}="${String(index)}"]` });
+      // Gone before its turn — an earlier press outside closed the popover it stood in: it cannot be judged.
       if (nodeId === 0) {
-        out.set(index, 'none');
+        out.set(index, 'unsure');
         continue;
       }
       await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['active'] });

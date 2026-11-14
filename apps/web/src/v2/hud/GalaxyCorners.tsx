@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent } from '../../api/schemas.js';
 import type { Focus } from '../../galaxy/FocusPanel.jsx';
-import { EVENT_NAME } from '../../lib/nowLine.js';
+import { EVENT_GLYPH, EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
-import { RoundButton, artIconSrc } from '../../game-ui/index.js';
-import { Icon, type IconId } from '../icons.js';
+import { DropGroup, DropPanel, PickRow, RoundButton, StatusChip, Tally, artIconSrc, type GlyphId, type TallyPaint } from '../../game-ui/index.js';
 import type { MonumentDifficulty } from '@astera/rules';
 import { useNativeBack } from '../../platform/nativeBack.js';
 
@@ -20,14 +19,13 @@ import { useNativeBack } from '../../platform/nativeBack.js';
  * draws them; and chat stands low on the right, where a thumb reaches it.
  */
 
-const ROUND = 'pointer-events-auto relative grid size-9 place-items-center rounded-full border border-v2-line-hi bg-v2-panel/10 text-v2-ink-2';
-
 /**
  * WHAT IS OUT THERE, AT A GLANCE. Owner, 2026-09-24: who is in the galaxy and what it
  * holds, back at the top right where the disc's caption stood — a sheet away, nobody
- * read it. Two short lines, right-aligned, no ground of its own: the stars show through
- * and a shadow keeps the words read. Each count wears the colour of what it is (K2);
- * a figure an older server does not send is left out, never printed as zero.
+ * read it. On the game kit since G1-d2 (2026-11-14): who is here reads as two quiet lines
+ * of words over the stars; what can be found is a row of counts, each in the colour of what
+ * it counts with its mark (K2), and a press on one drops the list of them — the finder of
+ * the loop's next target. A figure an older server does not send is left out, never zero.
  */
 export interface GalaxyTarget {
   kind: 'asteroid' | 'contact' | 'debris' | 'monument' | 'planet';
@@ -37,6 +35,15 @@ export interface GalaxyTarget {
   difficulty?: MonumentDifficulty;
   ordinal?: number;
 }
+
+/** Each thing that can be found wears its own mark and colour (K2): ore crystal, pirates red, wrecks alloy. */
+const FINDABLE: Record<GalaxyTarget['kind'], { glyph: GlyphId; paint: TallyPaint }> = {
+  asteroid: { glyph: 'asteroid', paint: 'crystal' },
+  contact: { glyph: 'pirate', paint: 'hostile' },
+  debris: { glyph: 'debris', paint: 'alloy' },
+  planet: { glyph: 'colony', paint: 'warn' },
+  monument: { glyph: 'star', paint: 'deut' },
+};
 
 export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget }: {
   onlineToday?: number;
@@ -73,94 +80,96 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
     const order = (target: GalaxyTarget) => target.difficulty === 'HARD' ? 0 : target.difficulty === 'EASY' ? 1 : 2;
     listed.sort((a, b) => order(a) - order(b) || (a.ordinal ?? 0) - (b.ordinal ?? 0));
   }
-  const countLabel = openKind === 'planet' ? t('starter.readout.outposts', { count: counts.outposts ?? 0 }) : openKind === 'monument' ? t('monument.finder', { count: counts.monuments ?? 0 }) : openKind === 'asteroid'
-    ? t('galaxy.rocks', { count: counts.rocks })
-    : openKind === 'contact'
-      ? t('galaxy.pirates', { count: counts.pirates })
-      : t('galaxy.wrecks', { count: counts.wrecks });
-  const count = (kind: GalaxyTarget['kind'], value: number, label: string, colour: string) => {
+  /** A count's words without the separator they carry when they run on in a sentence. */
+  const words = (text: string): string => text.trim().replace(/^·\s*/, '');
+  const LABEL: Record<GalaxyTarget['kind'], string> = {
+    asteroid: t('galaxy.rocks', { count: counts.rocks }),
+    contact: t('galaxy.pirates', { count: counts.pirates }),
+    debris: t('galaxy.wrecks', { count: counts.wrecks }),
+    planet: t('starter.readout.outposts', { count: counts.outposts ?? 0 }),
+    monument: t('monument.finder', { count: counts.monuments ?? 0 }),
+  };
+  const tally = (kind: GalaxyTarget['kind'], value: number) => {
     if (value === 0) return null;
+    const { glyph, paint } = FINDABLE[kind];
+    const label = words(LABEL[kind]);
     if (!onFocusTarget || !targets.some((target) => target.kind === kind)) {
-      return <span className={colour}>{label}</span>;
+      return <Tally key={kind} glyph={glyph} paint={paint} value={String(value)} label={label} />;
     }
     return (
-      <button
-        type="button"
-        aria-expanded={openKind === kind}
-        aria-controls={openKind === kind ? 'galaxy-target-list' : undefined}
-        onClick={() => { setOpenKind((current) => current === kind ? null : kind); }}
-        className={`pointer-events-auto inline-flex min-h-5 items-center justify-end px-1 text-right underline decoration-dotted underline-offset-2 ${colour}`}
-      >
-        {label}
-      </button>
+      <Tally
+        key={kind}
+        glyph={glyph}
+        paint={paint}
+        value={String(value)}
+        label={label}
+        expanded={openKind === kind}
+        {...(openKind === kind ? { controls: 'galaxy-target-list' } : {})}
+        onPress={() => { setOpenKind((current) => current === kind ? null : kind); }}
+      />
     );
   };
+  const tallies = [
+    tally('asteroid', counts.rocks),
+    tally('contact', counts.pirates),
+    tally('debris', counts.wrecks),
+    tally('planet', counts.outposts ?? 0),
+    tally('monument', counts.monuments ?? 0),
+  ].filter((node) => node !== null);
   return (
     <div
       ref={root}
       data-galaxy-readout
       data-native-back-layer={openKind !== null && listed.length > 0 ? 'popover' : undefined}
-      className="pointer-events-none relative flex max-w-[58vw] flex-col items-end gap-0.5 text-right font-v2-ui [text-shadow:0_1px_3px_var(--color-v2-void)]"
+      className="pointer-events-none relative flex max-w-[min(82vw,320px)] flex-col items-end text-right"
     >
       {/* Owner, 2026-10-11: daily activity only; live counts reveal quiet attack windows. */}
       {onlineToday !== undefined && (
-        <p className="flex items-center gap-1.5 text-caption text-v2-ink-2">
-          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-v2-self" />
-          <span><Trans i18nKey="galaxy.onlineToday" count={onlineToday}
-            components={[<strong key="count" className="font-bold text-v2-ink" />]} /></span>
+        <p className="gk-scene-line flex items-center gap-1.5">
+          <span aria-hidden="true" className="gk-scene-line__dot" />
+          <span><Trans i18nKey="galaxy.onlineToday" count={onlineToday} components={[<strong key="count" />]} /></span>
         </p>
       )}
-      <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">
-        <span className="text-v2-self flex items-center" >{counts.ships === undefined ? t('galaxy.worlds', { count: counts.worlds }) : t('starter.readout.ships', { count: counts.ships })}</span>
-        {counts.fleetsAway > 0 && <span className="text-v2-self flex items-center">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
-        {count('asteroid', counts.rocks, t('galaxy.rocks', { count: counts.rocks }), 'text-v2-crystal flex items-center')}
-        {count('contact', counts.pirates, t('galaxy.pirates', { count: counts.pirates }), 'col-start-2 text-v2-hostile flex items-center')}
-        {count('debris', counts.wrecks, t('galaxy.wrecks', { count: counts.wrecks }), 'text-v2-alloy flex items-center')}
-        {count('planet', counts.outposts ?? 0, t('starter.readout.outposts', { count: counts.outposts ?? 0 }), 'text-v2-warn flex items-center')}
-        {count('monument', counts.monuments ?? 0, t('monument.finder', { count: counts.monuments ?? 0 }), 'text-v2-deut flex items-center')}
-      </p>
+      <div data-testid="view-caption" className="flex flex-col items-end">
+        {/* Who is here reads as words; what can be found is counted, each in its own colour. */}
+        <p className="gk-scene-line">
+          {counts.ships === undefined ? t('galaxy.worlds', { count: counts.worlds }) : t('starter.readout.ships', { count: counts.ships })}
+          {counts.fleetsAway > 0 && t('galaxy.fleetAway', { count: counts.fleetsAway })}
+        </p>
+        {tallies.length > 0 && <div className="flex flex-wrap justify-end gap-x-1 [&_button]:pointer-events-auto">{tallies}</div>}
+      </div>
       {openKind !== null && listed.length > 0 && (
-        <ul
-          id="galaxy-target-list"
-          aria-label={countLabel.trim().replace(/^·\s*/, '')}
-          className="pointer-events-auto absolute right-0 top-full z-20 mt-2 max-h-[38vh] w-[min(74vw,17rem)] overflow-y-auto rounded-control border border-v2-line-hi bg-v2-deep p-1 text-left shadow-lg"
-        >
-          {listed.map((target, index) => (
-            <li key={target.id}>
-              {(target.difficulty === 'HARD' || target.difficulty === 'EASY') && listed[index - 1]?.difficulty !== target.difficulty &&
-                <h3 className={`px-2 pb-1 pt-2 text-caption font-semibold ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
-                  {t(target.difficulty === 'HARD' ? 'monument.hard' : 'monument.easy')}</h3>}
-              <button
-                type="button"
-                onClick={() => {
-                  onFocusTarget?.({ kind: target.kind, id: target.id });
-                  setOpenKind(null);
-                }}
-                className="flex min-h-10 w-full items-center gap-2 rounded-chip px-2 py-1 text-left hover:bg-v2-raise focus-visible:bg-v2-raise"
-              >
-                <span className="font-v2-mono text-micro text-v2-ink-3">{String(target.ordinal ?? index + 1).padStart(2, '0')}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block break-words text-caption text-v2-ink">{target.label}</span>
-                  <span className="block truncate text-micro text-v2-ink-3">{target.detail}</span>
-                </span>
-                <Icon id="i-mark" className={`size-3.5 shrink-0 ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <DropPanel id="galaxy-target-list" label={words(LABEL[openKind])} title={words(LABEL[openKind])} paint={FINDABLE[openKind].paint}>
+          {listed.map((target, index) => {
+            const hard = target.difficulty === 'HARD';
+            const heads = (target.difficulty === 'HARD' || target.difficulty === 'EASY') && listed[index - 1]?.difficulty !== target.difficulty;
+            return (
+              <li key={target.id}>
+                {heads && <DropGroup tone={hard ? 'hostile' : 'self'}>{t(hard ? 'monument.hard' : 'monument.easy')}</DropGroup>}
+                <PickRow
+                  glyph="target"
+                  tone={hard ? 'hostile' : 'self'}
+                  index={String(target.ordinal ?? index + 1).padStart(2, '0')}
+                  title={target.label}
+                  detail={target.detail}
+                  onPress={() => {
+                    onFocusTarget?.({ kind: target.kind, id: target.id });
+                    setOpenKind(null);
+                  }}
+                />
+              </li>
+            );
+          })}
+        </DropPanel>
       )}
     </div>
   );
 }
 
-/** Fly the camera to the active world — the disc's old Home mark. */
+/** Fly the camera to the active world — the disc's old Home mark; a painted pin on a world (G1-d2). */
 export function HomeChip({ onHome, aboard = false }: { onHome: () => void; aboard?: boolean }) {
   const { t } = useTranslation();
-  return (
-    <button type="button" aria-label={t(aboard ? 'starter.intel.home' : 'view.home')} onClick={onHome} className={ROUND}>
-      <Icon id="m-capital" className="size-4" />
-    </button>
-  );
+  return <RoundButton art={artIconSrc('hud-home')} label={t(aboard ? 'starter.intel.home' : 'view.home')} onPress={onHome} />;
 }
 
 /** The chat, one press away; a dot while something is unread. */
@@ -195,16 +204,12 @@ export function SignalBell({ unseen, urgent, onOpen }: { unseen: number; urgent:
   );
 }
 
-const EVENT_ICON = {
-  TRADE_SHIP: 'i-trade',
-  INTERGALACTIC_CONVOY: 'i-fleet',
-  ASTEROID_SHOWER: 'm-rock',
-} as const satisfies Record<ActiveGalaxyEvent['kind'], IconId>;
-
 /**
  * THE EVENTS RUNNING NOW, EACH WITH ITS TIME LEFT — as the mock draws them under the Now
  * line. The context card says the same once; closed, it said nothing, and the event
- * was still running.
+ * was still running. Kit status chips since G1-d2 (2026-11-14): the event's mark, the
+ * shower's multiplier, the time left; the name is the chip's name for the reader and the
+ * card's title when the event arrives. A press frames the ship or opens the events guide.
  */
 export function EventChips({
   events,
@@ -218,24 +223,20 @@ export function EventChips({
   const { t } = useTranslation();
   if (events.length === 0) return null;
   return (
-    <div className="flex flex-col items-start gap-1.5">
+    <div className="flex flex-col items-start [&_button]:pointer-events-auto">
       {events.map((event) => {
-        const name = t(EVENT_NAME[event.kind]);
         const left = duration(Math.max(0, event.endsAt.getTime() - now) / 60_000);
-        const multiplier = event.kind === 'ASTEROID_SHOWER' ? `${String(event.asteroidSpawnMultiplier)}x` : null;
+        const shower = event.kind === 'ASTEROID_SHOWER';
         return (
-          <button
+          <StatusChip
             key={event.id}
-            type="button"
-            aria-label={`${name}${multiplier === null ? '' : ` · ${multiplier}`} · ${left}`}
-            onClick={() => { onOpen(event); }}
-            className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-line-hi bg-v2-panel/60 px-1 font-v2-ui"
-          >
-            <Icon id={EVENT_ICON[event.kind]} className="size-3.5 text-v2-self" />
-            <span className="text-micro text-v2-ink-2">{name}</span>
-            {multiplier !== null && <span className="font-v2-mono text-micro font-semibold text-v2-self">{multiplier}</span>}
-            <span className="font-v2-mono text-micro font-semibold text-v2-ink">{left}</span>
-          </button>
+            glyph={EVENT_GLYPH[event.kind]}
+            tone="info"
+            label={t(EVENT_NAME[event.kind])}
+            value={shower ? `${String(event.asteroidSpawnMultiplier)}x` : left}
+            {...(shower ? { until: left } : {})}
+            onPress={() => { onOpen(event); }}
+          />
         );
       })}
     </div>

@@ -91,7 +91,7 @@ type RoundFace =
 
 /** A round button: close, back, help. The face is 36 px, the hit area 44. */
 export function RoundButton({
-  glyph, face, art, label, onPress, tone: look = 'steel', small = false, count = 0, urgent = false,
+  glyph, face, art, label, onPress, tone: look = 'steel', small = false, count = 0, urgent = false, lit = false,
 }: RoundFace & {
   label: string;
   onPress: () => void;
@@ -101,6 +101,8 @@ export function RoundButton({
   count?: number;
   /** Something that cannot wait: the button beats. A count alone never does — a bar that always moves is not read. */
   urgent?: boolean;
+  /** A state of its own is on (a sensor's reach drawn on the map): a light at its foot. */
+  lit?: boolean;
 }) {
   const own = useOwnPress(() => { answer(); onPress(); });
   /*
@@ -116,6 +118,7 @@ export function RoundButton({
       aria-label={label}
       className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}${art === undefined ? '' : ' gk-round--art'}`}
       {...(urgent ? { 'data-urgent': '' } : {})}
+      {...(lit ? { 'data-lit': '' } : {})}
       {...(news.rang > 0 ? { 'data-rang': String(news.rang) } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}

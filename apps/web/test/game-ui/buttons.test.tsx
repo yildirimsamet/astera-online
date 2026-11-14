@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GameButton, GameHold } from '../../src/game-ui/index.js';
+import { GameButton, GameHold, RoundButton } from '../../src/game-ui/index.js';
 import { HOLD_MS } from '../../src/v2/kit/useHoldPress.js';
 
 beforeEach(() => { vi.useFakeTimers(); });
@@ -87,5 +87,15 @@ describe('the hold action', () => {
     expect(onCommit).not.toHaveBeenCalled();
     rerender(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} disabledReason="No free flight bay" />);
     expect(screen.getByRole('button', { name: /No free flight bay/ })).toBeDisabled();
+  });
+});
+
+/** G1-d2 (2026-11-14): a round button can say a state of its own is on, with a light at its foot. */
+describe('the round button', () => {
+  it('is lit only while its state is on', () => {
+    const { rerender } = render(<RoundButton glyph="eye" label="View" onPress={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'View' })).not.toHaveAttribute('data-lit');
+    rerender(<RoundButton glyph="eye" label="View" lit onPress={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute('data-lit');
   });
 });

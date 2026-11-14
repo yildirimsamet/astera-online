@@ -11,7 +11,7 @@ import '../../game-ui/game-ui.css';
 import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
@@ -394,6 +394,39 @@ function ContextParts() {
         456 işlikte bekliyor; depo dolu.
       </ContextCard>
       <ContextStrip tone="hostile" glyph="warn" eyebrow="Tehdit" title="Bu dünyanın yer savunması yok" label="Göster" onPress={noop} />
+    </div>
+  );
+}
+
+/** The finder at the galaxy's top right (G1-d2): counts in their colours, the list one drops, the lit view. */
+function FinderParts() {
+  const [open, setOpen] = useState(true);
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid justify-items-end gap-1">
+      <div className="flex flex-wrap justify-end gap-x-1">
+        <Tally glyph="asteroid" paint="crystal" value="12" label="12 kaya" />
+        <Tally glyph="pirate" paint="hostile" value="3" label="3 korsan" />
+        <Tally glyph="debris" paint="alloy" value="30" label="30 enkaz" onPress={noop} />
+        <Tally glyph="colony" paint="warn" value="2" label="2 karakol" onPress={noop} />
+        <Tally glyph="star" paint="deut" value="8" label="8 anıt" expanded={open} onPress={() => { setOpen((now) => !now); }} />
+      </div>
+      <div className="relative h-[260px] w-full">
+        {/* A zero-high anchor: the panel drops from the counts' foot, as it does in the game. */}
+        <div className="absolute inset-x-0 top-0 h-0">
+        {open && (
+          <DropPanel id="kit-finder" label="8 anıt" title="8 anıt" paint="deut">
+            <li><DropGroup tone="hostile">Zor</DropGroup><PickRow glyph="target" tone="hostile" index="05" title="Kadim Gözlemevi" detail="4,0K uzaklık" onPress={noop} /></li>
+            <li><PickRow glyph="target" tone="hostile" index="07" title="Terk Edilmiş İstasyon" detail="6,2K uzaklık" onPress={noop} /></li>
+            <li><DropGroup tone="self">Kolay</DropGroup><PickRow glyph="target" tone="self" index="01" title="Parçalanmış Dünya Gemisi" detail="2,1K uzaklık" onPress={noop} /></li>
+          </DropPanel>
+        )}
+        </div>
+        <div className="absolute left-0 top-0 grid gap-1">
+          <RoundButton art={artIconSrc('hud-home')} label="Dünyana uç" onPress={noop} />
+          <RoundButton art={artIconSrc('hud-view')} label="Görünüm" lit onPress={noop} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -839,6 +872,10 @@ function Catalog() {
 
         <Section title="Bağlam kartı · saldırı, olay, öneri, katlanmış öneri">
           <ContextParts />
+        </Section>
+
+        <Section title="Bulucu · sayımlar, açılan liste, ev ve görünüm">
+          <FinderParts />
         </Section>
 
         <Section title="Okumalar">

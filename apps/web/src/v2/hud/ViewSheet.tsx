@@ -2,27 +2,21 @@ import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics.js';
 import { Icon, type IconId } from '../icons.js';
 import { Sheet } from '../kit/Sheet.js';
+import { RoundButton, artIconSrc } from '../../game-ui/index.js';
 
-/** The chip at top right of the galaxy: the one control in that corner. */
 /**
- * THE VIEW CHIP: the telescope, round, like the corner's other buttons. Owner,
- * 2026-09-24: the icon says it — Home and chat carry no word either. The word stays
- * as its accessible name; a teal ring says a layer is drawn.
+ * THE VIEW CHIP: the telescope, the one control in that corner beside home. Owner,
+ * 2026-09-24: the icon says it — home and chat carry no word either; the word stays as its
+ * accessible name. Painted as the bell and chat are since G1-d2 (2026-11-14); a lamp at its
+ * foot says a sensor's reach is drawn on the map, as the old teal ring did.
+ * `data-view-chip` is its handle for the Academy and the visual tools.
  */
 export function ViewChip({ layersOn, onOpen }: { layersOn: boolean; onOpen: () => void }) {
   const { t } = useTranslation();
   return (
-    <button
-      type="button"
-      data-view-chip=""
-      aria-label={t('view.chip')}
-      onClick={() => { haptic('tap'); onOpen(); }}
-      className={`pointer-events-auto grid size-9 place-items-center rounded-full border bg-v2-panel/60 ${
-        layersOn ? 'border-v2-self/60 text-v2-self' : 'border-v2-line-hi text-v2-ink-2'
-      }`}
-    >
-      <Icon id="i-telescope" className="size-4" />
-    </button>
+    <span data-view-chip="" className="pointer-events-auto inline-grid">
+      <RoundButton art={artIconSrc('hud-view')} label={t('view.chip')} lit={layersOn} onPress={onOpen} />
+    </span>
   );
 }
 

@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent } from '../../src/api/schemas.js';
+import { Glyph } from '../../src/game-ui/index.js';
 import { ChatChip, EventChips, HomeChip, SignalBell } from '../../src/v2/hud/GalaxyCorners.js';
 
 /**
@@ -38,6 +39,16 @@ describe('the way home', () => {
     render(<HomeChip onHome={onHome} />);
     await userEvent.click(screen.getByRole('button', { name: /fly to your world/i }));
     expect(onHome).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** G1-d2 (2026-11-14): painted as the bell and chat are, a 44 px press with its sound. */
+describe('the way home on the kit', () => {
+  it('is a painted pin on a world', () => {
+    render(<HomeChip onHome={vi.fn()} />);
+    const home = screen.getByRole('button', { name: /fly to your world/i });
+    expect(home).toHaveClass('gk-round');
+    expect(home.querySelector('img')?.getAttribute('src')).toMatch(/hud-home\.webp$/);
   });
 });
 
@@ -99,12 +110,13 @@ describe('the events running now', () => {
     expect(screen.getByRole('button', { name: /asteroid shower.*1h 30m/i })).toBeInTheDocument();
   });
 
-  it('shows the actual shower multiplier in the primary color before its remaining time', async () => {
+  /** The multiplier changes with the calendar: the chip shows the one running, before its time (G1-d2: a kit chip). */
+  it('shows the actual shower multiplier before its remaining time', async () => {
     const onOpen = vi.fn();
     const { rerender } = render(<EventChips events={[trade, shower]} now={NOW} onOpen={onOpen} />);
     const chip = screen.getByRole('button', { name: /asteroid shower.*2x.*1h 30m/i });
-    expect(within(chip).getByText('2x')).toHaveClass('text-v2-self');
-    expect(chip.textContent).toMatch(/Asteroid shower2x1h 30m/i);
+    expect(within(chip).getByText('2x')).toHaveClass('gk-status__value');
+    expect(chip.textContent).toMatch(/2x1h 30m/i);
     expect(within(screen.getByRole('button', { name: /trade ship/i })).queryByText(/\dx/)).toBeNull();
     await userEvent.click(chip);
     expect(onOpen).toHaveBeenCalledWith(shower);
@@ -112,6 +124,14 @@ describe('the events running now', () => {
     rerender(<EventChips events={[oldCalendarEvent]} now={NOW} onOpen={onOpen} />);
     expect(screen.getByRole('button', { name: /asteroid shower.*5x/i })).toBeInTheDocument();
     expect(screen.queryByText('2x')).toBeNull();
+  });
+
+  it('wears each event\'s own mark on a kit chip: the rock, the merchant\'s goods', () => {
+    const mark = (id: 'asteroid' | 'crate') => render(<Glyph id={id} />).container.querySelector('path')?.getAttribute('d');
+    render(<EventChips events={[trade, shower]} now={NOW} onOpen={vi.fn()} />);
+    const path = (name: RegExp) => screen.getByRole('button', { name }).querySelector('.gk-status__coin path')?.getAttribute('d');
+    expect(path(/asteroid shower/i)).toBe(mark('asteroid'));
+    expect(path(/trade ship/i)).toBe(mark('crate'));
   });
 
   it('hands the pressed event to its host', async () => {

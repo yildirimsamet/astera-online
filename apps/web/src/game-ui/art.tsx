@@ -15,6 +15,8 @@ export const ART_ICONS = [
   'hud-medallion', 'hud-bell', 'hud-chat',
   // the stopwatch over the board of every timer (G1-c, 2026-11-14)
   'hud-timers',
+  // the way home and the view at the galaxy's top right (G1-d2, 2026-11-14)
+  'hud-home', 'hud-view',
   // the menu
   'menu-clan', 'menu-friends', 'menu-missions', 'menu-news', 'menu-ranking', 'menu-reports', 'menu-shop',
   // cosmetic collections

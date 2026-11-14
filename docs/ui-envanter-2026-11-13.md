@@ -341,6 +341,33 @@ Galeriye iki yol eklendi (`context-suggestion`, `context-selected`); saldırı y
 
 Yerel oyunda 350 px'te galaksi açıldı; hesabın o an saldırısı, olayı ya da önerisi yoktu, kart çizilmedi ve zil ile sohbet alt köşede tek başına duruyordu. Kartın kendisi galeride, oyunun alt menüsüyle aynı yerleşimde denetlendi. Saldırı gelince ses zaten var (canlı uyarı tostu "alert" çalıyor); titreşim tost birimine (G1-d3) bırakıldı.
 
+**G1-d2 galaksinin köşeleri ✅ (2026-11-14).** Oyuncunun anı: "dışarıda benim için ne var, ben neredeyim?" Sağ üst köşe döngünün bulucusudur (istihbarat → fırsat): sayıma basınca o şeylerin listesi düşer, satıra basınca kamera oraya uçar.
+
+Önce kite eklenenler (galeri: `ui-kit` "Bulucu" bölümü; `game-ui/finder.tsx`):
+- `Tally`: dışarıdaki bir şeyin sayımı. İşareti kendi renginde (kaya kristal mavisi, korsan düşman kırmızısı, enkaz alaşım, karakol amber, anıt döteryum), rakam büyük. Kelime okuyucunun adıdır ve listenin başlığında yazar. Basılabilen sayımda küçük bir ok listeyi söyler, liste açıkken döner.
+- `DropPanel` + `DropGroup`: sayımın altından düşen kesik köşeli liste, başlığı sayımın renginde; anıtlarda "Zor/Kolay" başlıkları.
+- `PickRow`: sıra (anıtın sırası), ad ve cümle, uçulacak yerin işareti. Basınca satır senin renginde yanar, kenarında ışık çizgisi belirir, işaret büyür.
+- `pirate` glifi (çizildi: kafatası).
+- `RoundButton` `lit`: kendi durumu açık olan düğmenin ayağında küçük bir lamba.
+- Codex ile ev stilinde iki boyalı ikon: `hud-home` (bir dünyanın üstünde konum iğnesi) ve `hud-view` (kaideli teleskop). İkişer varyant üretildi; kubbe varyantı alt menüdeki "Üs" ile, kubbeli teleskop top taretiyle karışacağı için seçilmedi.
+
+Köşeler:
+- Okuma: kim burada iki sessiz satırda kelimeyle ("24 saatte 4 çevrimiçi", "177 gezegen · 4 filo dışarıda"); bulunabilenler tek sıra sayım. Sütun en fazla `min(82vw, 320px)`; tr ve de'de dört sayım tek satıra sığıyor (64vw'de anıt ikinci satıra düşüp 44 px yer kaplıyordu).
+- Ev ve görünüm: boyalı yuvarlak düğmeler (zil ve sohbet gibi). Görünümün eski teal halkasının yerini lamba aldı (bir sensörün menzili haritada çizili).
+- Olay çipleri: kitin durum çipi; işaret, yağmurun çarpanı, kalan süre. Olayın adı okuyucunun adıdır ve olay geldiğinde bağlam kartının başlığıdır. Ad yazılmadığı için konvoy artık roket işaretini taşıyor (önce tüccarla aynı sandığı taşıyordu); Şimdi çizgisinde ve kartta da aynı işaret.
+- Bilinmeyen sinyal: kitin durum çipi, hedef işareti (Şimdi çizgisindeki işaret) ve kalan süre.
+- İki köşe de 12 px'lik ana boşlukta.
+
+Denetim aracında bulunan hata (`packages/ui-audit`, testli): araç hedeflere sırayla dokunuyor. Listenin dışındaki bir hedefe (olay çipi, kaynak hapı) dokunması listeyi kapatıyor, sıra gelince var olmayan satırlar "tepkisiz" sayılıyordu. Kaybolan hedef artık "ölçülemedi". Satırların basış tepkisi ayrıca doğrudan ölçüldü: zorlanan basışta satır piksellerinin %92'si değişiyor.
+
+Ölçüm (`reports/ui-audit/g1d2-after-2026-11-14.md`, `gallery:readout` artık iki köşeyi oyundaki gibi diziyor, 6 dil × 3 boyut), aynı yolun G1-b ölçümüne göre telefonda: 12 px altı metin 45 → 0, kontrast hatası 16 → 0, 44 px altı hedef 12 → 2, tepkisiz hedef 6 → 0, kesilen metin 0. Kalan iki hedef ve iki aralık bulgusu aynı şey: liste açıkken altında kalan ev düğmesi (açılır liste dokunulunca kapanır; bilinçli).
+
+Yerel oyunda 350 px'te denendi: "Sen yokken" penceresi kapatıldı, anıt sayımına basıldı, gerçek sekiz anıt Zor/Kolay başlıklarıyla açıldı; ev iğnesi ve teleskop sayımların altında.
+
+Kit ölçümünün (ana kit sayfası, tr ve en telefon) G1-c'den bulduğu iki eksik kapatıldı: kırmızı sayaç plakasındaki süre 4,28:1 kalıyordu (artık bir ton açık kırmızı, bağlam kartının üst satırı gibi); plakanın alt cümlesi kesiliyordu ("Bir yapım, araştırma ya da saldırı başlat": Sessiz Uzay'dan çıkış yolu), artık sarılıyor. Kitte kalan kesilmeler taban kuyruğu yuvalarında ("Komuta Çekirdeği", "Duraklatıldı — tatil modu", "sahiplenince başlar"); G2'de (Üs) ele alınacak.
+
+Owner'a soru (karar bekliyor, uygulamayı durdurmuyor): sayımlar artık kelimesiz (işaret + rakam), kelimeler okuyucuda ve basınca açılan listenin başlığında. "Bir bakışta" isteği (2026-09-24) yerinde, ama ilk kez gelen oyuncu kafatasının "korsan" olduğunu basmadan bilmeyebilir. İstenirse sayımın altına küçük kelime eklenir (köşe ≈ 20 px uzar).
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):
