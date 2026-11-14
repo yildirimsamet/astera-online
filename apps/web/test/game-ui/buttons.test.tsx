@@ -88,6 +88,12 @@ describe('the hold action', () => {
     rerender(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} disabledReason="No free flight bay" />);
     expect(screen.getByRole('button', { name: /No free flight bay/ })).toBeDisabled();
   });
+
+  /** G2-f (2026-11-14): "2 Schiffe reparieren" did not fit a 320 px phone; the verb shrinks to its line, never cut. */
+  it('hands its verb’s length to the style, so a long one can fit a narrow phone', () => {
+    const { container } = render(<GameHold weight="spends" label="2 Schiffe reparieren" onCommit={() => undefined} />);
+    expect(container.querySelector<HTMLElement>('.gk-hold__label')?.style.getPropertyValue('--gk-len')).toBe('20');
+  });
 });
 
 /** G1-d2 (2026-11-14): a round button can say a state of its own is on, with a light at its foot. */

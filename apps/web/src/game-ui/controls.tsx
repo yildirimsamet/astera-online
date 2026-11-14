@@ -540,7 +540,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ruleId = useId();
-  const own = useOwnPress(() => { playSound('tap'); setOpen((was) => !was); });
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
   return (
     <div>
       <div className="gk-peek__row">
@@ -548,6 +548,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
         <span className="gk-peek__fact">{fact}</span>
         <button
           type="button"
+          {...OWN_SOUND}
           className="gk-round gk-round--small"
           aria-label={about ?? t('counter.compareRuleToggle')}
           aria-expanded={open}
@@ -558,7 +559,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
           <span className="gk-round__face"><Glyph id="help" /></span>
         </button>
       </div>
-      {open && <p id={ruleId} className="gk-peek__rule gk-well">{rule}</p>}
+      {open && <div id={ruleId} className="gk-peek__rule gk-well">{rule}</div>}
     </div>
   );
 }

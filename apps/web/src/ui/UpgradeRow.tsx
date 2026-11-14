@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { cardEffect, type Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { CostLine, Glyph, LevelBadge } from '../game-ui/index.js';
 import { Rungs } from './Rungs.js';
 import { duration, roughDuration } from '../lib/time.js';
@@ -330,6 +330,7 @@ export function UpgradeRow({
             type="button"
             aria-label={t('upgradeRow.about', { name })}
             data-open-item
+            {...OWN_SOUND}
             className="gk-bcard__open"
             onClick={() => {
               playSound('tap');

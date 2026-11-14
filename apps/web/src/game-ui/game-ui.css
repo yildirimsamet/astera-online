@@ -717,9 +717,12 @@ html:lang(ja) .gk-medal__face { font-size: var(--gk-t-floor); letter-spacing: 0;
   gap: 2px;
   /* the verb keeps its line; on a narrow phone the spend beside it wraps first */
   flex: 1;
+  min-width: 0;
+  container-type: inline-size;
 }
+/* the verb at head size, shrunk by its length (`--gk-len`) to the room it has, never cut */
 .gk-hold__label {
-  font-size: var(--gk-t-head);
+  font-size: max(var(--gk-t-floor), min(var(--gk-t-head), calc(100cqi / (var(--gk-len, 8) * 0.6))));
   line-height: 1;
   white-space: nowrap;
 }
@@ -5564,4 +5567,522 @@ html:lang(ja) .gk-tab {
   height: 26px;
   border-radius: 6px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 40%, transparent), 0 0 0 1px var(--gk-outline);
+}
+
+/* ── a count: minus, the figure, plus, and All (G2-f, 2026-11-14) ─────────────── */
+
+.gk-qty {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+.gk-qty__group {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+}
+.gk-qty__step {
+  display: grid;
+  place-items: center;
+  width: var(--gk-hit);
+  min-height: var(--gk-hit);
+  color: var(--gk-ink-2);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease), color var(--gk-quick) var(--gk-ease);
+}
+.gk-qty__step .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-qty__step:active:not(:disabled) {
+  background: color-mix(in srgb, var(--gk-self) 22%, var(--gk-metal-2));
+  color: var(--gk-ink);
+}
+.gk-qty__step:disabled {
+  color: color-mix(in srgb, var(--gk-ink-3) 45%, transparent);
+}
+.gk-qty__field {
+  width: 48px;
+  border-inline: 1px solid var(--gk-metal-edge);
+  background: transparent;
+  text-align: center;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink);
+  outline: none;
+}
+/* a touch on the figure lights it too: the keyboard is coming */
+.gk-qty__field:active,
+.gk-qty__field:focus {
+  box-shadow: inset 0 0 0 2px var(--gk-self);
+}
+.gk-qty__max,
+.gk-qty__reset {
+  min-width: var(--gk-hit);
+  min-height: var(--gk-hit);
+  padding: 0 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-qty__reset {
+  color: var(--gk-ink-2);
+}
+.gk-qty__max:active:not(:disabled),
+.gk-qty__reset:active:not(:disabled) {
+  color: var(--gk-ink);
+}
+.gk-qty__max:disabled,
+.gk-qty__reset:disabled {
+  color: var(--gk-ink-3);
+}
+
+/* ── a group of ships at one health: picture, count, health, and how many to take (G2-f) ── */
+
+.gk-hgroups {
+  display: grid;
+  gap: 6px;
+}
+.gk-hgroup {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-hgroup[data-critical] {
+  border-color: color-mix(in srgb, var(--gk-warn) 55%, transparent);
+}
+.gk-hgroup__main {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+}
+.gk-hgroup__art {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-outline) 55%, transparent);
+  color: var(--gk-ink-3);
+}
+.gk-hgroup__art img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+.gk-hgroup__text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.gk-hgroup__head,
+.gk-hgroup__state {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gk-hgroup__name {
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-hgroup__count {
+  flex: none;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-hgroup__state {
+  font-size: var(--gk-t-floor);
+}
+.gk-hgroup__health {
+  font-weight: 700;
+}
+.gk-hgroup__health[data-tone='warn'],
+.gk-hgroup__fight[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-hgroup__health[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-hgroup__fight {
+  color: var(--gk-ink-2);
+  text-align: right;
+}
+.gk-hgroup__fight[data-tone='warn'] {
+  font-weight: 700;
+}
+.gk-hgroup__meter {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+.gk-hgroup__meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gk-self);
+}
+.gk-hgroup__meter > span[data-tone='warn'] {
+  background: var(--gk-warn);
+}
+.gk-hgroup__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 0 10px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+  background: color-mix(in srgb, var(--gk-outline) 30%, transparent);
+}
+.gk-hgroup__reserved {
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-hgroup__pick {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.gk-hgroup__pick:disabled {
+  opacity: 0.45;
+}
+
+/* ── the Repair Station's door in the Base (G2-f, 2026-11-14) ─────────────────── */
+
+.gk-scard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  box-shadow: 0 2px 0 var(--gk-outline);
+  transition: transform var(--gk-press) linear;
+}
+.gk-scard:has(> .gk-scard__door:active) {
+  transform: translateY(1px) scale(0.99);
+}
+/* the workshop stands at the right; the words sit on a veil of the card's own metal at the left */
+.gk-scard > .atmosphere-image {
+  z-index: -3;
+  filter: none;
+}
+.gk-scard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--gk-metal-2) 0%, color-mix(in srgb, var(--gk-metal-2) 90%, transparent) 46%, color-mix(in srgb, var(--gk-metal-2) 15%, transparent) 100%);
+}
+/* a job on the cradle: the welding light on the hull beats while ships are being mended */
+.gk-scard[data-working]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 74% 62%, color-mix(in srgb, var(--gk-self) 55%, transparent), transparent 22%);
+  mix-blend-mode: screen;
+  animation: gk-weld 1.7s ease-in-out infinite;
+}
+@keyframes gk-weld {
+  0%, 100% { opacity: 0.15; }
+  12% { opacity: 0.9; }
+  18% { opacity: 0.35; }
+  24% { opacity: 0.8; }
+  60% { opacity: 0.25; }
+}
+.gk-scard[data-highlighted] {
+  border-color: color-mix(in srgb, var(--gk-self) 75%, transparent);
+  box-shadow: 0 2px 0 var(--gk-outline), 0 0 0 1px color-mix(in srgb, var(--gk-self) 35%, transparent), 0 0 18px color-mix(in srgb, var(--gk-self) 30%, transparent);
+}
+.gk-scard__door {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'head next' 'role next' 'tags next' 'run next';
+  align-items: center;
+  gap: 4px var(--gk-s2);
+  width: 100%;
+  min-height: 112px;
+  padding: 10px 8px 10px var(--gk-s3);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-scard__door:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-scard__head {
+  grid-area: head;
+  display: flex;
+  align-items: baseline;
+  gap: var(--gk-s2);
+  min-width: 0;
+}
+.gk-scard__name {
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-scard__fill {
+  flex: none;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-scard__fill[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-scard__role {
+  grid-area: role;
+  max-width: 72%;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-scard__tags,
+.gk-scard__idle {
+  grid-area: tags;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.gk-scard__idle {
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+.gk-scard__idle .gk-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--gk-self);
+}
+.gk-scard__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-outline) 70%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+}
+.gk-scard__tag[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-scard__tag[data-tone='self'] {
+  color: var(--gk-self);
+}
+.gk-scard__tag .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-scard__run {
+  grid-area: run;
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-scard__bar {
+  display: block;
+  flex: 1;
+  height: 6px;
+}
+.gk-scard__time {
+  flex: none;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-scard__next {
+  grid-area: next;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 80%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gk-metal-2) 80%, transparent);
+  color: var(--gk-ink-2);
+}
+.gk-scard__next .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── the Repair Station's sheet: places as tabs, the work as a lever (G2-f) ───── */
+
+.gk-station {
+  display: grid;
+  gap: var(--gk-s2);
+  padding-top: var(--gk-s1);
+}
+.gk-station__rules {
+  display: grid;
+  gap: 4px;
+  padding-left: 14px;
+  list-style: disc;
+}
+.gk-station__panel {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-station__panel > .gk-sub {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.gk-station__panel > .gk-sub[data-tone='warn'] {
+  color: var(--gk-warn);
+  font-weight: 600;
+}
+.gk-station__panel > .gk-sub .gk-glyph {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+}
+.gk-station__picks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--gk-s1);
+  margin-block: -6px;
+}
+.gk-station__foot {
+  display: grid;
+  gap: 6px;
+}
+.gk-station__note {
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-warn);
+}
+.gk-station__total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--gk-s2);
+  min-height: 22px;
+}
+.gk-station__returned {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px var(--gk-s2);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-station__returned > .gk-sub {
+  font-family: var(--gk-font-text);
+  font-weight: 500;
+  font-stretch: normal;
+}
+.gk-station__returned img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-station__wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+.gk-station__wait .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── a job in the repair queue: its ring, what it holds, its cancel (G2-f) ──── */
+
+.gk-jobs {
+  display: grid;
+  gap: 6px;
+}
+.gk-job {
+  display: grid;
+  gap: 6px;
+  padding: 6px 6px 6px var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-job[data-state='running'] {
+  border-color: color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-job__main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-job__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-job__title {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-job__harm {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-job__lots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gk-job__lot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-outline) 55%, transparent);
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
 }

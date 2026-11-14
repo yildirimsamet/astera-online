@@ -142,6 +142,17 @@ const openStation = async (): Promise<HTMLElement> => {
   return screen.getByRole('dialog', { name: 'Repair Station' });
 };
 
+/** The queue has a tab of its own (G2-f). */
+const openQueue = async (station: HTMLElement): Promise<void> => {
+  await userEvent.click(within(station).getByRole('tab', { name: /^Queue/ }));
+};
+
+/** A repair spends, so it is a one-second hold (G2-f); a reader commits it with two presses of Enter. */
+const holdToCommit = async (hold: HTMLElement): Promise<void> => {
+  hold.focus();
+  await userEvent.keyboard('{Enter}{Enter}');
+};
+
 beforeEach(() => {
   // jsdom has no layout, so no `scrollIntoView`; a named row is scrolled to (see `locked-rows`).
   Element.prototype.scrollIntoView = vi.fn();
@@ -156,17 +167,16 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the Repair Station card', () => {
-  it('shows one complete repair bay scene in the opened station while preserving its readings', async () => {
+  it('wears the repair bay behind its head, and keeps its readings on the tabs', async () => {
     show();
     const station = await openStation();
-    const hero = station.querySelector('[data-repair-hero]');
-    expect(hero).not.toBeNull();
-    expect(hero?.querySelectorAll('img')).toHaveLength(1);
-    expect(hero?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('src', '/assets/images/atmosphere/repair-v2.webp');
-    expect(hero?.querySelector('img')).toHaveAttribute('alt', '');
-    expect(hero).toHaveTextContent(/Wounds remain until paid repair/);
-    expect(station).toHaveTextContent(/Waiting/);
-    expect(station).toHaveTextContent(/Under repair/);
+    const head = station.querySelector('[data-sheet-header]');
+    expect(head?.querySelectorAll('img[data-atmosphere-image]')).toHaveLength(1);
+    expect(head?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('src', '/assets/images/atmosphere/repair-v2.webp');
+    expect(head?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('alt', '');
+    expect(station).toHaveTextContent(/Wounds remain until paid repair/);
+    expect(within(station).getByRole('tab', { name: 'Workshop · 3 ships waiting' })).toBeInTheDocument();
+    expect(within(station).getByRole('tab', { name: 'Queue 1/3' })).toBeInTheDocument();
   });
 
   it('is not there in a season dealt before the Repair Station', () => {
@@ -241,6 +251,7 @@ describe('the Repair Station menu', () => {
     const busy = within(station).getAllByTestId('health-group').find(row => within(row).queryByText('Ballista'));
     expect(busy).toBeDefined();
     expect(within(busy!).queryByRole('textbox')).toBeNull();
+    await openQueue(station);
     const running = within(station).getAllByTestId('repair-job')[0]!;
     expect(running).toHaveTextContent(/Ballista/);
     expect(running).toHaveTextContent(/64% damaged/i);
@@ -250,7 +261,7 @@ describe('the Repair Station menu', () => {
     show();
     const station = await openStation();
     await choose(station, /Talon/, '2');
-    await userEvent.click(within(station).getByRole('button', { name: /repair 2 ships/i }));
+    await holdToCommit(within(station).getByRole('button', { name: /repair 2 ships/i }));
     expect(startRepair).toHaveBeenCalledWith(expect.objectContaining({ planetId: 'p1',
       request: { lots: [{ id: 'lot-2', count: 2, damageBp: 3500, remainderBp: 0 }] } }), expect.any(Object));
     expect(startRepair.mock.calls[0]?.[0]).toHaveProperty('key', expect.any(String));
@@ -316,7 +327,7 @@ describe('the Repair Station menu', () => {
     const station = await openStation();
     await choose(station, /Talon/, '2');
     await choose(station, /Warden/);
-    await userEvent.click(within(station).getByRole('button', { name: /repair 3 ships/i }));
+    await holdToCommit(within(station).getByRole('button', { name: /repair 3 ships/i }));
     const refusal = new ApiError('REPAIR_LOT_BUSY', 'Those ships are already under repair', 409, {});
     const onError = callbackOf(startRepair.mock.calls[0]?.[1], 'onError');
     act(() => { onError(refusal); });
@@ -344,6 +355,8 @@ describe('the Repair Station menu', () => {
     show(world({ queues: { CONSTRUCTION: [], YARD: [], REPAIR: [job({ finishesAt: new Date(NOW - 1_000) })] } }));
     expect(card()).toHaveTextContent(/finishing/i);
     const station = await openStation();
+    expect(within(station).queryByTestId('repair-wait')).toBeNull();
+    await openQueue(station);
     const [settling] = within(station).getAllByTestId('repair-job');
     expect(settling).toHaveTextContent(/finishing/i);
     expect(settling).not.toHaveTextContent(/done in/i);
@@ -365,6 +378,7 @@ describe('the Repair Station menu', () => {
       },
     }));
     const station = await openStation();
+    await openQueue(station);
     const [running, queued] = within(station).getAllByTestId('repair-job');
     expect(running).toHaveTextContent(/done in 3m/i);
     expect(queued).toHaveTextContent(/starts in 3m/i);
@@ -379,6 +393,7 @@ describe('the Repair Station menu', () => {
       queues: { CONSTRUCTION: [], YARD: [], REPAIR: [job({ subject: 'ALL', count: 4 })] },
     }));
     const station = await openStation();
+    await openQueue(station);
     const [mixed] = within(station).getAllByTestId('repair-job');
     expect(mixed).toHaveTextContent(/mixed ships/i);
     expect(mixed).toHaveTextContent(/Ballista/);
@@ -390,6 +405,7 @@ describe('the Repair Station menu', () => {
   it('cancels a job only after the confirm that names the refund', async () => {
     show();
     const station = await openStation();
+    await openQueue(station);
     const running = within(station).getAllByTestId('repair-job')[0]!;
     await userEvent.click(within(running).getByRole('button', { name: /cancel/i }));
     expect(cancelRepair).not.toHaveBeenCalled();
@@ -415,6 +431,7 @@ describe('the Repair Station menu', () => {
     show(world({ fleetDocked: {}, dock: { lots: [], waiting: { cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 0 }, pct: 100 }, queues: { CONSTRUCTION: [], YARD: [], REPAIR: [] } }));
     const station = await openStation();
     expect(station).toHaveTextContent(/no ships in this group/i);
+    await openQueue(station);
     expect(station).toHaveTextContent(/nothing under repair/i);
     expect(within(station).queryByRole('checkbox')).toBeNull();
   });

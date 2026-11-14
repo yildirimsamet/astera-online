@@ -22,6 +22,13 @@ const world = () => planetView({ fleet: { DART: 3 }, fleetDamage: [{ hull: 'DART
   queues: { CONSTRUCTION: [], YARD: [], REPAIR: [] } });
 const held = { alloy: 100_000, crystal: 100_000, deuterium: 100_000 };
 const draw = (planet = world()) => render(<ToastProvider><RepairStationSheet planet={planet} held={held} onClose={vi.fn()} /></ToastProvider>);
+/** Repair and scrap are holds (G2-f); a reader commits one with two presses of Enter. */
+const holdToCommit = async (hold: HTMLElement): Promise<void> => {
+  hold.focus();
+  await userEvent.keyboard('{Enter}{Enter}');
+};
+/** Repair or scrap is a lever (G2-f). */
+const scrapMode = async (): Promise<void> => { await userEvent.click(screen.getByRole('radio', { name: 'Scrap' })); };
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('manual repair station actions', () => {
@@ -35,7 +42,7 @@ describe('manual repair station actions', () => {
     await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1');
     expect(screen.getByText('Honor benefit: −10%')).toBeVisible();
     expect(screen.getByText('After research: 50% base repair share')).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: /Repair 1/ }));
+    await holdToCommit(screen.getByRole('button', { name: /^Repair 1/ }));
     expect(mutations.repair.mock.calls[0]?.[0].request).toMatchObject({ expectedHonorTier: 2 });
   });
   it.each([1, 2])('shows positive damage for sub-bp wounds in a repair job with %s lots', count => {
@@ -50,24 +57,20 @@ describe('manual repair station actions', () => {
     expect(within(screen.getByTestId('repair-job')).queryAllByText('0% damaged')).toHaveLength(0);
     expect(within(screen.getByTestId('repair-job')).getAllByText('1% damaged')).toHaveLength(count);
   });
-  it('reuses the scrap intent when a lost response is retried after reopening its confirmation', async () => {
+  it('reuses the scrap intent when a lost response is retried with a second hold', async () => {
     draw(planetView({ ...world(), fleet: { DART: 4 }, fleetDamage: [] }));
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await scrapMode();
     await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1');
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
-    await userEvent.click(screen.getByTestId('confirm-commit'));
+    await holdToCommit(screen.getByRole('button', { name: /^Scrap 1 ship/ }));
     const [first, callbacks] = mutations.maintenance.mock.calls[0]!;
     act(() => { callbacks.onError(new Error('Response lost after commit')); });
-    await userEvent.click(screen.getByRole('button', { name: 'Keep ships' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
-    await userEvent.click(screen.getByTestId('confirm-commit'));
+    await holdToCommit(screen.getByRole('button', { name: /^Scrap 1 ship/ }));
     expect(mutations.maintenance.mock.calls[1]?.[0]).toEqual(first);
   });
   it('shows zero resource returns explicitly for a barely surviving ship', async () => {
     draw(planetView({ ...world(), fleet: { DART: 1 }, fleetDamage: [{ hull: 'DART', count: 1, damageBp: 9999, remainderBp: 0.75 }] }));
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await scrapMode();
     await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1');
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
     const resources = screen.getByText('Resources returned').parentElement;
     if (!resources) throw new Error('Missing resource return confirmation');
     expect(within(resources).getAllByText('0')).toHaveLength(3);
@@ -94,17 +97,15 @@ describe('manual repair station actions', () => {
     expect(screen.getByRole('textbox')).toHaveValue('0');
     expect(mutations.repair).not.toHaveBeenCalled();
   });
-  it('clears the old selection and scrap confirmation when the displayed planet changes', async () => {
+  it('clears the old selection and the scrap lever when the displayed planet changes', async () => {
     const first = world();
     const { rerender } = draw(first);
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await scrapMode();
     await userEvent.type(within(screen.getAllByTestId('health-group').at(-1)!).getByRole('textbox'), '1');
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
-    expect(screen.getByTestId('confirm-commit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Scrap 1 ship/ })).toBeEnabled();
     const next = { ...first, planet: { ...first.planet, id: 'another-world', name: 'Other world' } };
     rerender(<ToastProvider><RepairStationSheet planet={next} held={held} onClose={vi.fn()} /></ToastProvider>);
-    expect(screen.queryByTestId('confirm-commit')).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Repair' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('radio', { name: 'Repair' })).toHaveAttribute('aria-checked', 'true');
     for (const input of screen.getAllByRole('textbox')) expect(input).toHaveValue('0');
     expect(mutations.maintenance).not.toHaveBeenCalled();
   });
@@ -112,7 +113,7 @@ describe('manual repair station actions', () => {
     draw(planetView({ ...world(), fleet: { DART: 51 }, fleetDamage: Array.from({ length: 51 }, (_, index) =>
       ({ hull: 'DART' as const, count: 1, damageBp: index + 1 })) }));
     for (const input of screen.getAllByRole('textbox')) fireEvent.change(input, { target: { value: '1' } });
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Too many groups' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Choose at most 50 health groups per action.');
   });
   it('explains radiation closure while keeping return to hangar available', async () => {
@@ -121,13 +122,18 @@ describe('manual repair station actions', () => {
         repairing: false, orderId: null, minutes: 10, cost: { alloy: 10, crystal: 0, deuterium: 0 } }],
       waiting: { cost: { alloy: 10, crystal: 0, deuterium: 0 }, minutes: 10 } } }));
     expect(screen.getByRole('status')).toHaveTextContent(/Radiation/);
-    await userEvent.click(screen.getByRole('tab', { name: 'Workshop' }));
+    await userEvent.click(screen.getByRole('tab', { name: /^Workshop/ }));
+    // the workshop opens on the way back, the one order radiation leaves
     await userEvent.type(within(screen.getAllByTestId('health-group')[0]!).getByRole('textbox'), '1');
-    expect(screen.getByRole('button', { name: 'Repair 1 ship' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Return to hangar' })).toBeEnabled();
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Repair' }));
     await userEvent.type(within(screen.getAllByTestId('health-group')[0]!).getByRole('textbox'), '1');
-    expect(screen.getByRole('button', { name: 'Scrap ships' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Closed by radiation' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^Repair 1 ship/ })).toBeNull();
+    await scrapMode();
+    await userEvent.type(within(screen.getAllByTestId('health-group')[0]!).getByRole('textbox'), '1');
+    expect(screen.getByRole('button', { name: 'Closed by radiation' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^Scrap 1 ship/ })).toBeNull();
   });
   it('transfers only the explicitly selected wounded quantity without starting a paid repair', async () => {
     draw();
@@ -145,36 +151,35 @@ describe('manual repair station actions', () => {
       damageBp: 5000, remainderBp: 0.25, repairing: false, orderId: null, minutes: 10,
       cost: { alloy: 10, crystal: 0, deuterium: 0 } }],
       waiting: { cost: { alloy: 10, crystal: 0, deuterium: 0 }, minutes: 10 } } }));
-    expect(screen.getByRole('tab', { name: 'Workshop' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Workshop/ })).toHaveAttribute('aria-selected', 'true');
     await userEvent.type(within(screen.getAllByTestId('health-group')[0]!).getByRole('textbox'), '1');
-    await userEvent.click(screen.getByRole('button', { name: 'Repair 1 ship' }));
+    await holdToCommit(screen.getByRole('button', { name: /^Repair 1 ship/ }));
     const [first, callbacks] = mutations.repair.mock.calls[0]!;
     expect(first.key).toEqual(expect.any(String));
     expect(first).toMatchObject({ request: { lots: [{ id: 'wounded', count: 1,
       damageBp: 5000, remainderBp: 0.25 }] } });
     act(() => { callbacks.onError(new Error('Response lost')); });
-    await userEvent.click(screen.getByRole('button', { name: 'Repair 1 ship' }));
+    await holdToCommit(screen.getByRole('button', { name: /^Repair 1 ship/ }));
     expect(mutations.repair.mock.calls[1]?.[0]).toEqual(first);
   });
 
-  it('requires a confirmation showing resource returns before scrapping a healthy ship', async () => {
+  it('shows the resource return before a final hold scraps a healthy ship', async () => {
     draw();
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await scrapMode();
     const group = screen.getAllByTestId('health-group').at(-1)!;
     await userEvent.type(within(group).getByRole('textbox'), '1');
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
-    expect(mutations.maintenance).not.toHaveBeenCalled();
     expect(screen.getByText('Resources returned')).toBeInTheDocument();
-    await userEvent.click(screen.getByTestId('confirm-commit'));
+    await userEvent.click(screen.getByRole('button', { name: /^Scrap 1 ship/ }));
+    expect(mutations.maintenance).not.toHaveBeenCalled();
+    await holdToCommit(screen.getByRole('button', { name: /^Scrap 1 ship/ }));
     expect(mutations.maintenance).toHaveBeenCalledWith(expect.objectContaining({ action: 'SCRAP',
       selection: { source: 'HOME', groups: [{ hull: 'DART', count: 1, damageBp: 0, remainderBp: 0 }] } }), expect.any(Object));
   });
 
-  it('shows the exact resource return in the irreversible confirmation', async () => {
+  it('shows the exact resource return before the irreversible hold', async () => {
     draw(planetView({ ...world(), fleet: { CITADEL: 1000 }, fleetDamage: [] }));
-    await userEvent.click(screen.getByRole('tab', { name: 'Scrap' }));
+    await scrapMode();
     await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1000');
-    await userEvent.click(screen.getByRole('button', { name: 'Scrap ships' }));
     const refund = shipScrapReturn({ CITADEL: 1000 }, []);
     expect(screen.getByText(full(refund.alloy))).toBeInTheDocument();
     expect(screen.getByText(full(refund.crystal))).toBeInTheDocument();

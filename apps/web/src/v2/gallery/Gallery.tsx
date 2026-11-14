@@ -239,7 +239,14 @@ const launchIntel: IntelView = {
  * commander has no damaged ship, so the card and its sheet are photographed here.
  * `empty` draws the station with nothing in it; `open` names the row the sheet opens on.
  */
-function GalleryBase({ empty = false, open = false, production = false, faults = false }: { empty?: boolean; open?: boolean; production?: boolean; faults?: boolean }) {
+/**
+ * THE BASE (G2): `open` raises the Repair Station on it. G2-f: `hangar` puts wounded ships at
+ * home (the station opens on the Hangar), `working` leaves only jobs already on the cradle (it
+ * opens on the Queue), `radiation` closes the workshop.
+ */
+function GalleryBase({ empty = false, open = false, production = false, faults = false, hangar = false, working = false, radiation = false }: {
+  empty?: boolean; open?: boolean; production?: boolean; faults?: boolean; hangar?: boolean; working?: boolean; radiation?: boolean;
+}) {
   const client = useQueryClient();
   useState(() => {
     const order = (id: string, slot: number, subject: string, count: number, from: number, to: number) => ({
@@ -259,14 +266,21 @@ function GalleryBase({ empty = false, open = false, production = false, faults =
           { id: 'f-3', kind: 'TELESCOPE_FAULT' as const, startedAt: new Date(NOW - 10 * MIN), cost: { alloy: 900, crystal: 1_200, deuterium: 0 }, repair: null },
         ],
       } : {}),
+      ...(hangar ? { fleetDamage: [
+        { hull: 'DART' as const, count: 6, damageBp: 4200, remainderBp: 0 },
+        { hull: 'TALON' as const, count: 2, damageBp: 9600, remainderBp: 0 },
+      ] } : {}),
+      ...(radiation ? { workshopRadiation: true } : {}),
       ...(empty ? {} : {
         fleetDocked: { BALLISTA: 1, TALON: 2, WARDEN: 1, DART: 3 },
         dock: {
           lots: [
             { id: 'lot-1', hull: 'BALLISTA', count: 1, damageBp: 6400, repairing: true, orderId: 'r-1', cost: { alloy: 1_273, crystal: 488, deuterium: 4 }, minutes: 5.1 },
             { id: 'lot-4', hull: 'DART', count: 3, damageBp: 2600, repairing: true, orderId: 'r-2', cost: { alloy: 94, crystal: 31, deuterium: 0 }, minutes: 0.9 },
-            { id: 'lot-2', hull: 'TALON', count: 2, damageBp: 3500, repairing: false, orderId: null, cost: { alloy: 551, crystal: 230, deuterium: 2 }, minutes: 2.3 },
-            { id: 'lot-3', hull: 'WARDEN', count: 1, damageBp: 8800, repairing: false, orderId: null, cost: { alloy: 335, crystal: 134, deuterium: 0 }, minutes: 1.5 },
+            ...(working ? [] : [
+              { id: 'lot-2', hull: 'TALON' as const, count: 2, damageBp: 3500, repairing: false, orderId: null, cost: { alloy: 551, crystal: 230, deuterium: 2 }, minutes: 2.3 },
+              { id: 'lot-3', hull: 'WARDEN' as const, count: 1, damageBp: 8800, repairing: false, orderId: null, cost: { alloy: 335, crystal: 134, deuterium: 0 }, minutes: 1.5 },
+            ]),
           ],
           waiting: { cost: { alloy: 886, crystal: 364, deuterium: 2 }, minutes: 3.8 },
           pct: 75,
@@ -909,6 +923,9 @@ function Views({ view }: { view: string }) {
   if (view === 'base-research') return <GalleryResearch />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
+  if (view === 'repair-station-hangar') return <GalleryBase open hangar />;
+  if (view === 'repair-station-queue') return <GalleryBase open working />;
+  if (view === 'repair-station-radiation') return <GalleryBase open radiation />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
   if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
   if (view === 'repair-station-empty') return <GalleryBase empty open />;

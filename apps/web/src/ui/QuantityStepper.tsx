@@ -1,5 +1,7 @@
 import { useState, type ChangeEvent } from 'react';
+import { Glyph } from '../game-ui/icons.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { Button, IconButton } from './kit/index.js';
 
 interface QuantityStepperProps {
@@ -28,8 +30,10 @@ interface QuantityStepperProps {
   /**
    * `v2` is the Gözlemevi's row control (B14): minus, the count and plus in one
    * bordered group, Max as a word beside it. The same presses, labels and markers.
+   * `kit` is the same row on the game kit (G2-f): 44 px steps that tick and tap on their
+   * own, the last one to the ceiling landing with a thunk.
    */
-  look?: 'plate' | 'v2';
+  look?: 'plate' | 'v2' | 'kit';
 }
 
 /** One exact count control for build, launch and any later fleet commitment. */
@@ -87,6 +91,40 @@ export function QuantityStepper({
       className={className}
     />
   );
+
+  if (look === 'kit') {
+    const press = (next: number): void => {
+      playSound('tick');
+      haptic(next >= upper && upper > min ? 'thunk' : 'tap');
+      commit(next);
+    };
+    const step = (label: string, disabled: boolean, next: number, glyph: 'minus' | 'plus') => (
+      <button type="button" {...OWN_SOUND} aria-label={label} disabled={disabled} onClick={() => { press(next); }} className="gk-qty__step">
+        <Glyph id={glyph} />
+      </button>
+    );
+    return (
+      <div className="gk-qty">
+        <div className="gk-qty__group">
+          {step(decreaseLabel, current <= min, current - 1, 'minus')}
+          {field('gk-qty__field gk-num')}
+          {step(increaseLabel, current >= upper, current + 1, 'plus')}
+        </div>
+        <span data-count-max>
+          <button type="button" {...OWN_SOUND} aria-label={maxLabel} disabled={current >= upper} onClick={() => { press(upper); }} className="gk-qty__max">
+            {maxText}
+          </button>
+        </span>
+        {resetLabel !== undefined && (
+          <span data-count-reset>
+            <button type="button" {...OWN_SOUND} aria-label={resetLabel} disabled={current <= min} onClick={() => { press(min); }} className="gk-qty__reset">
+              {resetText}
+            </button>
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (look === 'v2') {
     const step = (label: string, disabled: boolean, next: number, face: string) => (

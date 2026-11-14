@@ -234,6 +234,8 @@ export function GameHold({
   }
 
   const style: CssVars = { '--gk-hold-ms': `${String(holdMs)}ms` };
+  // the verb keeps one line: a long one (German, at 320 px) shrinks to fit it, never cut
+  const labelLength: CssVars = { '--gk-len': label.length };
   const hint = confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : t('hold.verb');
   return (
     <>
@@ -256,7 +258,7 @@ export function GameHold({
           <Glyph id={glyph} />
         </span>
         <span className="gk-hold__words">
-          <span className="gk-hold__label">{label}</span>
+          <span className="gk-hold__label" style={labelLength}>{label}</span>
           <span className="gk-btn__detail">{hint}</span>
         </span>
         {detail !== undefined && <span className="gk-hold__aside">{detail}</span>}

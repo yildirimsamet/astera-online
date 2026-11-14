@@ -392,4 +392,14 @@ describe('the info peek', () => {
     render(<InfoPeek fact="0 HP/min" rule="Aegis guards ships here." about="About planet radiation protection" />);
     expect(screen.getByRole('button', { name: 'About planet radiation protection' })).toHaveAttribute('aria-expanded', 'false');
   });
+
+  /** It plays its own tap, so the global mixer must not click a second time; a rule of several lines may be a list. */
+  it('answers with its own sound, and holds a rule of several lines', () => {
+    render(<InfoPeek fact="Wounds remain" rule={<ul><li>No free repair.</li><li>Half back on a cancel.</li></ul>} about="How it works" />);
+    const toggle = screen.getByRole('button', { name: 'How it works' });
+    expect(toggle).toHaveAttribute('data-own-sound');
+    press(toggle);
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(document.querySelector('p ul')).toBeNull();
+  });
 });

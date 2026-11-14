@@ -48,6 +48,11 @@ describe('an upgrade as a card', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it('answers its open with its own sound, so the global mixer does not click a second time', () => {
+    render(<UpgradeRow {...base} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /command core/i })).toHaveAttribute('data-own-sound');
+  });
+
   it('keeps a lock’s reason a door to what opens it, not the detail', async () => {
     const onOpen = vi.fn();
     const onFix = vi.fn();
