@@ -8,14 +8,16 @@ beforeEach(async () => { localStorage.clear(); vi.stubEnv('VITE_ASTERA_PLAYER_AN
 afterEach(() => { vi.unstubAllEnvs(); });
 it('shows an off switch without asking for initial permission', async () => {
   render(<AnalyticsSetting />); expect(screen.queryByRole('dialog')).toBeNull(); expect(analyticsChoice()).toBeNull();
-  await userEvent.click(screen.getByRole('button', { name: 'Oyun ölçümü: Açık' }));
-  expect(analyticsChoice()).toBe('denied'); expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
+  const measured = screen.getByRole('switch', { name: /Oyun ölçümü/ });
+  expect(measured).toHaveAttribute('aria-checked', 'true');
+  await userEvent.click(measured);
+  expect(analyticsChoice()).toBe('denied'); expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
 });
 it('refreshes the preference after another tab changes it', () => {
   render(<AnalyticsSetting />); localStorage.setItem('astera.player-analytics.choice', JSON.stringify({ version: 1, decision: 'denied' }));
   act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'astera.player-analytics.choice' })); });
-  expect(screen.getByRole('button')).toHaveTextContent('Oyun ölçümü: Kapalı');
+  expect(screen.getByRole('switch', { name: /Oyun ölçümü/ })).toHaveAttribute('aria-checked', 'false');
 });
 it('is absent while the build switch is off', () => {
-  vi.stubEnv('VITE_ASTERA_PLAYER_ANALYTICS', '0'); render(<AnalyticsSetting />); expect(screen.queryByRole('button')).toBeNull();
+  vi.stubEnv('VITE_ASTERA_PLAYER_ANALYTICS', '0'); render(<AnalyticsSetting />); expect(screen.queryByRole('switch')).toBeNull();
 });

@@ -644,9 +644,10 @@ describe('reaching the way out', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) }));
+    // The kit's slider (G1-f): its level is announced, and the arrows move it a step.
     const slider = screen.getByRole('slider', { name: /music volume/i });
-    expect(slider).toHaveValue('35');
-    fireEvent.change(slider, { target: { value: '36' } });
+    expect(slider).toHaveAttribute('aria-valuenow', '35');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
     expect(musicVolume()).toBeCloseTo(0.36, 5);
   });
 

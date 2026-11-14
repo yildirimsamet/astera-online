@@ -148,7 +148,14 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
  * A SLIDER FOR A COUNT: drag the knob, nudge with − and + (hold to run), or send
  * everything with MAX. Ticks as it moves.
  */
-export function Slider({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (next: number) => void }) {
+export function Slider({ label, value, max, onChange, readout }: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (next: number) => void;
+  /** A level (a volume) says where it stands in place of the max button: "all of it" means nothing there. */
+  readout?: string;
+}) {
   const { t } = useTranslation();
   const dragging = useRef(false);
   const start = useRef<number | null>(null);
@@ -209,8 +216,78 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.more', { name: label })} {...more}>
         <span className="gk-round__face"><Glyph id="plus" /></span>
       </button>
-      <Chip label={t('launch.max', { name: label })} onPress={() => { set(max); }} disabled={value === max}>{t('launch.maxShort')}</Chip>
+      {readout === undefined
+        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(max); }} disabled={value === max}>{t('launch.maxShort')}</Chip>
+        : <output className="gk-slider__level gk-num">{readout}</output>}
     </div>
+  );
+}
+
+/**
+ * A SETTING'S CHOICES (G1-f, 2026-11-14): a few named positions on metal plates, the chosen one
+ * lit as an open tab is. A radio group, since choosing one is the whole act: it takes effect on
+ * the press, and the arrows walk it with one stop for the Tab key.
+ */
+export function Choices<T extends string>({ label, options, value, onChange }: {
+  label: string;
+  options: readonly { id: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  const choose = (id: T): void => {
+    if (id === value) return;
+    playSound('tab');
+    haptic('tap');
+    onChange(id);
+  };
+  const walk = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const at = stepTo(event.key, options.findIndex((option) => option.id === value), options.length);
+    const next = options[at];
+    if (next === undefined || next.id === value) return;
+    event.preventDefault();
+    choose(next.id);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
+  };
+  return (
+    <div role="radiogroup" aria-label={label} className="gk-tabs gk-choices" {...OWN_SOUND}>
+      {options.map((option) => (
+        <ChoicePlate key={option.id} label={option.label} chosen={option.id === value} onChoose={() => { choose(option.id); }} onKeyDown={walk} />
+      ))}
+    </div>
+  );
+}
+
+function ChoicePlate({ label, chosen, onChoose, onKeyDown }: {
+  label: string;
+  chosen: boolean;
+  onChoose: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}) {
+  const own = useOwnPress(onChoose);
+  return (
+    <button type="button" role="radio" aria-checked={chosen} tabIndex={chosen ? 0 : -1} className="gk-tab"
+      onPointerDown={own.onPointerDown} onClick={own.onClick} onKeyDown={onKeyDown}>
+      {label}
+    </button>
+  );
+}
+
+/** A setting that opens somewhere else, saying on its line where it stands (G1-f). */
+export function SettingLink({ label, name, value, onPress }: {
+  label: string;
+  /** A fuller name for a reader than the line's short one ("Privacy & cookie settings"). */
+  name?: string;
+  value: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} className="gk-setlink" {...(name === undefined ? {} : { 'aria-label': `${name}. ${value}` })}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-label gk-setlink__label">{label}</span>
+      <span className="gk-setlink__value">{value}</span>
+      <span className="gk-setlink__go" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
   );
 }
 

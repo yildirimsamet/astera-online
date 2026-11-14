@@ -576,16 +576,19 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
     return next;
   });
   const [api] = useState(() => new Api());
+  const menuPage = page === 'menu-settings' ? 'settings' : page === 'menu-academy' ? 'academy' : page === 'menu-community' ? 'community' : 'home';
   return (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
         {page.startsWith('menu') ? (
-          <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
+          // Headed as the game heads it (G1-f): the commander's eyebrow, the page's name, a way back from a page.
+          <Sheet eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
+            {...(menuPage === 'home' ? {} : { onBack: noop })} onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
               <MenuPanel
                 commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR"
                 ended={page === 'menu-ended'} hasSeasonResult={page === 'menu-ended'}
-                page={page === 'menu-settings' ? 'settings' : page === 'menu-academy' ? 'academy' : page === 'menu-community' ? 'community' : 'home'}
+                page={menuPage}
                 onPageChange={noop} onOpen={noop} onSignOut={noop} onReplayAcademy={noop}
               />
             </div>

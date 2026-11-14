@@ -2884,6 +2884,87 @@ button.gk-trow:focus-visible {
   background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-warn) 55%, transparent) 0 3px, transparent 3px 6px);
 }
 
+/* What is playing: the way back, the piece and where in it, the way on (G1-f). */
+.gk-np {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px 2px;
+}
+.gk-np__piece {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.gk-np__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gk-np__name {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.gk-np__piece[data-off] .gk-np__name {
+  color: var(--gk-ink-3);
+}
+.gk-np__bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gk-glass);
+  box-shadow: inset 0 1px 2px var(--gk-outline);
+  overflow: hidden;
+}
+.gk-np__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gk-self-lo), var(--gk-self));
+  transition: width 1s linear;
+}
+.gk-np__piece[data-off] .gk-np__fill {
+  background: var(--gk-ink-3);
+}
+
+/* A setting that opens elsewhere: its name, where it stands, the way in (G1-f). */
+.gk-setlink {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 20px;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-height: var(--gk-hit);
+  padding: 4px 4px 4px 0;
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-setlink:active {
+  background: color-mix(in srgb, var(--gk-self) 14%, transparent);
+}
+.gk-setlink:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+.gk-setlink__value {
+  font-size: var(--gk-t-small);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.gk-setlink__go {
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-3);
+}
+.gk-setlink__go .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+
 /* ── the news: what happened while the player was away (G1-e, 2026-11-14) ─────── */
 
 .gk-news {
@@ -3545,6 +3626,23 @@ button.gk-trow:focus-visible {
   outline-offset: 2px;
   border-radius: 8px;
 }
+/* Gripped: the knob swells and lights the moment the thumb lands (G1-f). */
+.gk-slider__knob {
+  transition: transform var(--gk-quick) var(--gk-ease), box-shadow var(--gk-quick) var(--gk-ease);
+}
+.gk-slider__track:active .gk-slider__knob {
+  transform: scale(1.14);
+  box-shadow: 0 3px 0 var(--gk-steel-lip), 0 0 0 2px var(--gk-self), 0 0 12px color-mix(in srgb, var(--gk-self) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 45%, transparent);
+}
+/* A level's figure, where the max button would stand: as wide as "%100". */
+.gk-slider__level {
+  min-width: 42px;
+  padding-left: 4px;
+  text-align: right;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
+}
 
 .gk-tabs {
   display: grid;
@@ -3580,7 +3678,8 @@ button.gk-trow:focus-visible {
   cursor: pointer;
   touch-action: manipulation;
 }
-.gk-tab[aria-selected='true'] {
+.gk-tab[aria-selected='true'],
+.gk-tab[aria-checked='true'] {
   color: var(--gk-ink);
   border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
   background:
@@ -3593,7 +3692,8 @@ button.gk-trow:focus-visible {
   background: linear-gradient(180deg, var(--gk-metal-3), var(--gk-metal-2));
   box-shadow: inset 0 2px 5px var(--gk-outline);
 }
-.gk-tab[aria-selected='true']:active {
+.gk-tab[aria-selected='true']:active,
+.gk-tab[aria-checked='true']:active {
   box-shadow: inset 0 2px 5px var(--gk-outline), inset 0 -2px 0 var(--gk-self);
 }
 .gk-tab[data-locked] {

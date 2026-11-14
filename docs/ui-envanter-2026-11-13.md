@@ -416,6 +416,26 @@ Kelime yükü ekran başına 55'ten 52,5'e indi (bütçe 55). "Uzun blok" sayıs
 
 Yerel oyunda 350 px'te zil açıldı. Hesabın gerçek akışı (üç galaksi olayı) başlık, ray ve okunmamış noktalarıyla çizildi; Kronik sekmesine geçildi.
 
+**G1-f1 ayarlar ✅ (2026-11-14).** Oyuncunun anı: "sesi kısayım, dili değiştireyim, telefonum ısınıyor." 2026-11-11 ölçümünün en kötü yüzeyi (puan 119). Ayarların kendileri ve ne yaptıkları değişmedi; her satır kitin bir kontrolü oldu.
+
+Önce kite eklenenler (galeri: `ui-kit`):
+- `Slider` `readout`: ses düzeyi gibi bir seviye, "Tümü" düğmesinin yerinde yüzdesini söyler.
+- `Slider` basış tepkisi: başparmak değince tutamaç büyür ve yanar. Kit ölçümünün G1'den önce de bulduğu tek tepkisiz hedef ("Ok" sürgüsü) kapandı.
+- `Choices`: bir ayarın birkaç konumu. Sekme plakası görünümünde, seçili olan yanar; radyo grubudur ve basınca hemen geçer.
+- `SettingLink`: başka yerde açılan bir ayar; adı, durduğu yer ve ok (Gizlilik).
+
+Ayarlar:
+- Dil: tarayıcının seçim kutusu yerine kitin bayraklı `LanguagePicker` parçası.
+- Müzik ve efektler: her biri bir şalter (`Toggle`) ve yüzdesini söyleyen sürgü. Çalan parça satırı kitin yuvarlak düğmeleri ve ilerleme çizgisiyle çizildi.
+- Görüntü kalitesi: `Choices` ve seçilenin cümlesi.
+- Kare hızı ve oyun ölçümü: şalter. Ölçüm metnine şalterin adı eklendi (6 dil); durum artık "Açık/Kapalı" cümlesi yerine şalterin lambasından okunuyor.
+- Gizlilik: `SettingLink`.
+- Sayfa kitin `SectionTag` parçasıyla başlıyor; gruplar plakalarda.
+
+Galerideki menü sheet'inin başlığı oyundaki gibi çevrildi ("Your account / Commander" sabitti).
+
+Ölçüm (`reports/ui-audit/g1f1-after-2026-11-14.md`, 6 dil × 3 boyut), G1-b'ye göre telefonda: 12 px altı metin 36 → 2, kontrast hatası 22 → 2, 44 px altı hedef 30 → 6, aralık hatası 2 → 0, tepkisiz hedef 14 → 3. Kalanların hepsi ortak sheet çerçevesinde (başlıktaki 9 px üst satır, Daralt, Geri, Kapat); G1-g'nin işi. Ayarların içinde bulgu yok.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

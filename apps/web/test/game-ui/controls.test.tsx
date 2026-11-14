@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { BottomNav, GameTabs, InfoPeek, Lever, Slider, Toggle } from '../../src/game-ui/index.js';
+import { BottomNav, Choices, GameTabs, InfoPeek, Lever, SettingLink, Slider, Toggle } from '../../src/game-ui/index.js';
 
 /** A press that began on the control, as a finger makes it (see `useOwnPress`). */
 const press = (element: HTMLElement): void => {
@@ -118,6 +118,66 @@ describe('the slider', () => {
     expect(onChange).toHaveBeenLastCalledWith(25);
     press(screen.getByRole('button', { name: /max/i }));
     expect(onChange).toHaveBeenLastCalledWith(40);
+  });
+
+  /** G1-f, 2026-11-14: a level (a volume) says where it stands; "all of it" means nothing there. */
+  it('can say its level in place of the max button', () => {
+    render(<Slider label="Müzik ses düzeyi" value={35} max={100} readout="%35" onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /max|maks/i })).toBeNull();
+    const level = screen.getByText('%35');
+    expect(level.tagName).toBe('OUTPUT');
+    expect(screen.getByRole('slider', { name: 'Müzik ses düzeyi' })).toHaveAttribute('aria-valuenow', '35');
+  });
+});
+
+/**
+ * A SETTING'S CHOICES (G1-f, 2026-11-14): a few named positions on metal plates, the chosen one
+ * lit, the way a lever's positions are — a radio group, since choosing one is the whole act.
+ */
+describe('the choices of a setting', () => {
+  const rungs = [{ id: 'high', label: 'Yüksek' }, { id: 'balanced', label: 'Dengeli' }, { id: 'low', label: 'Düşük' }] as const;
+
+  it('is a radio group named for the setting, with the chosen one checked', () => {
+    render(<Choices label="Görüntü kalitesi" options={rungs} value="balanced" onChange={vi.fn()} />);
+    const group = screen.getByRole('radiogroup', { name: 'Görüntü kalitesi' });
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    expect(screen.getByRole('radio', { name: 'Dengeli' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Yüksek' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('takes a press at once, and does nothing for the one already chosen', () => {
+    const onChange = vi.fn();
+    render(<Choices label="Görüntü kalitesi" options={rungs} value="balanced" onChange={onChange} />);
+    press(screen.getByRole('radio', { name: 'Düşük' }));
+    expect(onChange).toHaveBeenCalledWith('low');
+    press(screen.getByRole('radio', { name: 'Dengeli' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('walks with the arrows and keeps one stop for the Tab key', () => {
+    const onChange = vi.fn();
+    render(<Choices label="Görüntü kalitesi" options={rungs} value="balanced" onChange={onChange} />);
+    expect(screen.getByRole('radio', { name: 'Dengeli' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: 'Yüksek' })).toHaveAttribute('tabindex', '-1');
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Dengeli' }), { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith('low');
+  });
+});
+
+/** A setting that opens somewhere else, saying where it stands on its line (G1-f). */
+describe('a setting that opens elsewhere', () => {
+  it('names the setting and its state, and opens on a press', () => {
+    const onPress = vi.fn();
+    render(<SettingLink label="Gizlilik" value="Henüz seçilmedi" onPress={onPress} />);
+    const link = screen.getByRole('button', { name: /Gizlilik/ });
+    expect(link).toHaveTextContent('Henüz seçilmedi');
+    press(link);
+    expect(onPress).toHaveBeenCalledOnce();
+  });
+
+  it('can carry a fuller name for a reader, and says its state in it', () => {
+    render(<SettingLink label="Gizlilik" name="Gizlilik ve çerez ayarları" value="Reddedildi" onPress={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Gizlilik ve çerez ayarları. Reddedildi' })).toBeInTheDocument();
   });
 });
 

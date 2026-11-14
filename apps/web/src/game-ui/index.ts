@@ -6,7 +6,7 @@
 import './game-ui.css';
 export { Chip, GameButton, GameHold, Medallion, RoundButton, type ButtonTone, type GameButtonProps, type GameHoldProps, type HoldWeight } from './buttons.js';
 export {
-  BottomNav, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
+  BottomNav, Choices, GameTabs, InfoPeek, LANGUAGE_FLAG, LanguagePicker, Lever, SettingLink, Slider, TextField, Toggle, type LeverOption, type NavItem, type TabItem,
 } from './controls.js';
 export { ART_ICONS, ART_SIZES, ArtIcon, DOCK_ART, artIconSrc, type ArtIconId, type ArtSize } from './art.js';
 export { GLYPH_IDS, Glyph, type GlyphId } from './icons.js';

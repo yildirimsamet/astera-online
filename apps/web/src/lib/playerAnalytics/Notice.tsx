@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Toggle } from '../../game-ui/index.js';
 import { analyticsCopy } from './copy.js';
 import { analyticsAvailable, analyticsChoice, chooseAnalytics, ANALYTICS_CHOICE_EVENT } from './preference.js';
 
@@ -17,6 +18,6 @@ export function AnalyticsSetting() {
   }, []);
   if (!analyticsAvailable()) return null;
   const copy = analyticsCopy(i18n.resolvedLanguage), enabled = choice !== 'denied';
-  return <button type="button" aria-pressed={enabled} className="min-h-11 w-full px-3 text-left text-label text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
-    onClick={() => { chooseAnalytics(enabled ? 'denied' : 'granted'); }}>{enabled ? copy.on : copy.off}</button>;
+  // The kit's switch (G1-f, 2026-11-14): its lamp says the state, so the name stays the name.
+  return <Toggle checked={enabled} label={copy.label} onChange={(next) => { chooseAnalytics(next ? 'granted' : 'denied'); }} />;
 }

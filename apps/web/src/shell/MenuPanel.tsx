@@ -1,5 +1,5 @@
 import { DepartureBoard } from '../starter/DepartureBoard.js';
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
 import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +26,11 @@ import {
   setRenderQuality,
   useRenderQuality,
 } from '../lib/quality.js';
-import { Segmented } from '../v2/kit/Segmented.js';
-import { Section, SectionHead } from '../v2/kit/Surface.js';
+import { SectionHead } from '../v2/kit/Surface.js';
+import { Choices, LanguagePicker, Plate, RoundButton, SectionTag, SettingLink, Slider, Toggle } from '../game-ui/index.js';
+import { currentLanguage } from '../i18n/index.js';
+import { setLanguage } from '../i18n/document.js';
+import { analyticsAvailable } from '../lib/playerAnalytics/preference.js';
 import {
   ChevronIcon,
   BellIcon,
@@ -37,15 +40,11 @@ import {
   RewardIcon,
   SendIcon,
   LockIcon,
-  SpeakerOffIcon,
-  SkipIcon,
-  SpeakerOnIcon,
   GuideIcon,
   HeartIcon,
   AttackIcon,
   BroadcastIcon,
 } from '../ui/icons/index.js';
-import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { AnalyticsSetting } from '../lib/playerAnalytics/Notice.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
@@ -367,53 +366,47 @@ export function MenuPanel({
             </MenuGroup>
 
           )}
-          {page === 'settings' && <>
-            <Section label={t('menu.deviceHeading')}>
-              <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
-                <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
-                  <LanguageSwitch compact />
-                </SettingRow>
+          {page === 'settings' && (
+            /*
+              THE SETTINGS ON THE KIT (G1-f, 2026-11-14). Every line is a kit control: the language
+              a row of flags, each sound a switch you throw and a slider that says its level, the
+              picture a choice of lit plates, the frame meter a switch, and privacy a line that
+              says where it stands and opens the notice.
+            */
+            <section data-device-settings className="gk grid gap-2">
+              <SectionTag>{t('menu.deviceHeading')}</SectionTag>
+              <Plate className="grid gap-1.5 p-2">
+                <p className="gk-label">{t('settings.sectionLabel')}</p>
+                <LanguagePicker label={t('settings.sectionLabel')} value={currentLanguage()} onChange={(next) => { void setLanguage(next); }} />
+              </Plate>
+              <Plate className="grid gap-1 p-1.5">
                 <SoundSetting />
-                <EffectsSetting />
                 <NowPlaying />
+              </Plate>
+              <Plate className="grid gap-1 p-1.5"><EffectsSetting /></Plate>
+              <Plate className="grid gap-1 p-1.5">
                 <QualitySetting />
                 <FpsSetting />
-                <AnalyticsSetting />
-                {/*
-                  THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
-
-                  A consent answer is stored per DEVICE, exactly like the language, the
-                  sound and the resolution above it — so it is a fourth line here
-                  rather than a fifth section heading on a sheet that is already long.
-
-                  IT SHOWS THE ANSWER RATHER THAN ONLY THE DOOR. A row that reads
-                  "Privacy settings ›" makes the player open a dialog to find out where
-                  they stand; this one says it on the line. The rule behind it — what
-                  is stored either way — is one tap deeper, in the notice itself.
-
-                  `reopenGoogleCmp()` first: in the EEA, the UK and Switzerland the
-                  answer lives inside Google's certified message and only Google can
-                  reopen it. Everywhere else that call reports failure and the game's
-                  own notice comes up.
-                */}
-                {(platform.webAds || platform.webAnalytics) && <SettingRow label={t('consent.menuRowLabel')}>
-                  <button
-                    type="button"
-                    data-consent-settings
-                    aria-label={t('consent.menuLabel')}
-                    className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-v2-self"
-                    onClick={() => {
-                      if (!reopenGoogleCmp()) openConsentNotice();
-                    }}
-                  >
-                    <span className="min-w-0 truncate text-label text-v2-ink">{t(consentHint)}</span>
-                    <ChevronIcon className="size-4 shrink-0 text-v2-ink-3" />
-                  </button>
-                </SettingRow>}
-              </div>
-            </Section>
-
-          </>}
+              </Plate>
+              {/*
+                THE WAY BACK TO A CHOICE ALREADY MADE. A consent answer is stored per DEVICE, like
+                the language and the sound, and the line says the answer rather than only the door.
+                `reopenGoogleCmp()` first: in the EEA, the UK and Switzerland the answer lives inside
+                Google's certified message and only Google can reopen it; elsewhere the game's own
+                notice comes up.
+              */}
+              {(analyticsAvailable() || platform.webAds || platform.webAnalytics) && (
+                <Plate className="grid gap-1 p-1.5">
+                  <AnalyticsSetting />
+                  {(platform.webAds || platform.webAnalytics) && (
+                    <span data-consent-settings="" className="block px-1.5">
+                      <SettingLink label={t('consent.menuRowLabel')} name={t('consent.menuLabel')} value={t(consentHint)} onPress={() => { if (!reopenGoogleCmp()) openConsentNotice(); }} />
+                    </span>
+                  )}
+                </Plate>
+              )}
+            </section>
+          )}
         </>
       )}
       {centerOpen && <NotificationCenterSheet onClose={() => { setCenterOpen(false); }} />}
@@ -599,173 +592,56 @@ function RivalChip({
   );
 }
 
-function SettingRow({
-  label,
-  children,
-  below,
-  title,
-  stack = false,
-}: {
-  label: string;
-  children: ReactNode;
-  below?: string;
-  title?: string;
-    stack?: boolean;
-}) {
-  return (
-    <div data-setting-row className="px-2 py-2" {...(title === undefined ? {} : { title })}>
-      {/*
-        THE LABEL KEEPS ITS WORD, THE CONTROL ITS ROOM (M5, seen at 350 in German): a
-        64px label column cut "BILDQUALITÄT" and laid "Noch nicht ausgewählt" over
-        "DATENSCHUTZ". The label takes its own width; a control that no longer fits
-        beside it goes under it rather than over it.
-      */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <span className="v2-legend min-w-16 shrink-0 leading-tight">{label}</span>
-        <div className={stack ? 'basis-full' : 'min-w-48 flex-1'}>{children}</div>
-      </div>
-      {below === undefined ? null : (
-        <p className="mt-1.5 text-micro leading-snug text-v2-ink-3">{below}</p>
-      )}
-    </div>
-  );
-}
-
 function EffectsSetting() {
   const { t } = useTranslation();
   const on = useEffectsEnabled();
-  const volume = useEffectsVolume();
-  const percent = Math.round(volume * 100);
+  const percent = Math.round(useEffectsVolume() * 100);
   return (
-    <SettingRow label={t('menu.effectsLabel')}>
-      <div className="flex items-center gap-2">
-        <button type="button" aria-pressed={on}
-          aria-label={`${t('menu.effectsLabel')}. ${t(on ? 'menu.effectsOn' : 'menu.effectsOff')}`}
-          onClick={() => { setEffectsEnabled(!on); if (!on) playSound('confirm'); }}
-          className={`grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep transition-colors ${on ? 'text-v2-self' : 'text-v2-ink-3'}`}>
-          {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
-        </button>
-        <input type="range" min={0} max={100} step={1} value={percent}
-          aria-label={t('menu.effectsVolumeLabel')}
-          style={{ '--slider-fill': `${String(percent)}%`, '--slider-tone': 'var(--color-v2-self)' } as CSSProperties}
-          onChange={(event) => { setEffectsVolume(event.currentTarget.valueAsNumber / 100); }}
-          onPointerUp={() => { playSound('confirm'); }} className="slider min-w-0 flex-1" />
-        <output className="w-8 shrink-0 text-right font-v2-mono text-micro text-v2-self">
-          {t('menu.volumeValue', { volume: percent })}
-        </output>
+    <>
+      <Toggle checked={on} label={t('menu.effectsLabel')} onChange={(next) => { setEffectsEnabled(next); if (next) playSound('confirm'); }} />
+      <div className="px-1.5">
+        <Slider label={t('menu.effectsVolumeLabel')} value={percent} max={100} readout={t('menu.volumeValue', { volume: percent })}
+          onChange={(next) => { setEffectsVolume(next / 100); }} />
       </div>
-    </SettingRow>
+    </>
   );
 }
 
 function SoundSetting() {
   const { t } = useTranslation();
   const on = useMusicEnabled();
-  const volume = useMusicVolume();
-  const percent = Math.round(volume * 100);
-
+  const percent = Math.round(useMusicVolume() * 100);
   return (
-    <SettingRow label={t('menu.soundLabel')}>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-pressed={on}
-          aria-label={`${t('menu.soundLabel')}. ${on ? t('menu.soundOn') : t('menu.soundOff')}`}
-          onClick={() => {
-            haptic('tap');
-            setMusicEnabled(!on);
-          }}
-          className={`grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep transition-colors ${
-            on ? 'text-v2-self' : 'text-v2-ink-3'
-          }`}
-        >
-          {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
-        </button>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={percent}
-          aria-label={t('menu.volumeLabel')}
-          style={{ '--slider-fill': `${String(percent)}%`, '--slider-tone': 'var(--color-v2-self)' } as CSSProperties}
-          onChange={(event) => {
-            setMusicVolume(event.currentTarget.valueAsNumber / 100);
-          }}
-          className="slider min-w-0 flex-1"
-        />
-        <output className="w-8 shrink-0 text-right font-v2-mono text-micro text-v2-self">
-          {t('menu.volumeValue', { volume: percent })}
-        </output>
+    <>
+      <Toggle checked={on} label={t('menu.soundLabel')} onChange={setMusicEnabled} />
+      <div className="px-1.5">
+        <Slider label={t('menu.volumeLabel')} value={percent} max={100} readout={t('menu.volumeValue', { volume: percent })}
+          onChange={(next) => { setMusicVolume(next / 100); }} />
       </div>
-    </SettingRow>
+    </>
   );
 }
 
+/** Which of the pieces is sounding, where in it, and the way to the next one. */
 function NowPlaying() {
   const { t } = useTranslation();
   const on = useMusicEnabled();
   const { track, position, duration } = useMusicPlayback();
-
-  const elapsed = formatTrackTime(position);
-    const total = formatTrackTime(duration, { blankAtZero: true });
   const share = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
-
-  const skip = (move: () => void) => () => {
-    haptic('tap');
-    move();
-  };
-
   return (
-    <div data-now-playing className="px-2 py-2">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label={t('menu.trackPrev')}
-          onClick={skip(prevTrack)}
-          className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep text-v2-ink-3 transition-colors hover:text-v2-ink"
-        >
-          <SkipIcon className="size-3.5 -scale-x-100" />
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className={`truncate text-micro ${on ? 'text-v2-ink' : 'text-v2-ink-3'}`}>
-              {t('menu.trackLabel', { index: track + 1, total: MUSIC_TRACKS.length })}
-            </span>
-            <span data-testid="now-playing-clock" className="shrink-0 font-v2-mono text-micro text-v2-ink-3">
-              {t('menu.trackClock', { position: elapsed, duration: total })}
-            </span>
-          </div>
-          {/*
-            ONE SECOND OF LINEAR EASE, MATCHING THE TICK THAT FEEDS IT. The store
-            reports whole seconds, so an un-eased bar would jump nine pixels at a
-            time; a transition exactly as long as the interval turns the same data
-            into a hand that sweeps.
-          */}
-          <div
-            data-testid="now-playing-bar"
-            aria-hidden
-            className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-v2-deep"
-          >
-            <div
-              className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${
-                on ? 'bg-v2-self' : 'bg-v2-line-hi'
-              }`}
-              style={{ width: `${String(share)}%` }}
-            />
-          </div>
-        </div>
-
-        <button
-          type="button"
-          aria-label={t('menu.trackNext')}
-          onClick={skip(nextTrack)}
-          className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep text-v2-ink-3 transition-colors hover:text-v2-ink"
-        >
-          <SkipIcon className="size-3.5" />
-        </button>
+    <div data-now-playing="" className="gk-np">
+      <RoundButton small glyph="back" label={t('menu.trackPrev')} onPress={prevTrack} />
+      <div className="gk-np__piece" {...(on ? {} : { 'data-off': '' })}>
+        <span className="gk-np__line">
+          <span className="gk-np__name">{t('menu.trackLabel', { index: track + 1, total: MUSIC_TRACKS.length })}</span>
+          <span data-testid="now-playing-clock" className="gk-sub gk-num">
+            {t('menu.trackClock', { position: formatTrackTime(position), duration: formatTrackTime(duration, { blankAtZero: true }) })}
+          </span>
+        </span>
+        {/* One second of linear ease, matching the tick that feeds it: the hand sweeps rather than jumps. */}
+        <span data-testid="now-playing-bar" aria-hidden="true" className="gk-np__bar"><span className="gk-np__fill" style={{ width: `${String(share)}%` }} /></span>
       </div>
+      <RoundButton small glyph="next" label={t('menu.trackNext')} onPress={nextTrack} />
     </div>
   );
 }
@@ -773,43 +649,16 @@ function NowPlaying() {
 function QualitySetting() {
   const { t } = useTranslation();
   const quality = useRenderQuality();
-
-  const segments = RENDER_QUALITIES.map((id) => ({
-    id,
-    label: t(`menu.quality.${id}`),
-  }));
-
   return (
-    <SettingRow stack label={t('menu.qualityLabel')} below={t(`menu.qualityHint.${quality}`)}>
-      <Segmented
-        label={t('menu.qualityLabel')}
-        options={segments}
-        value={quality}
-        onChange={setRenderQuality}
-      />
-    </SettingRow>
+    <div className="grid gap-1.5 px-1.5 pb-1 pt-1.5">
+      <p className="gk-label">{t('menu.qualityLabel')}</p>
+      <Choices label={t('menu.qualityLabel')} options={RENDER_QUALITIES.map((id) => ({ id, label: t(`menu.quality.${id}`) }))} value={quality} onChange={setRenderQuality} />
+      <p className="gk-sub">{t(`menu.qualityHint.${quality}`)}</p>
+    </div>
   );
 }
 
 function FpsSetting() {
   const { t } = useTranslation();
-  const on = useFpsMeterEnabled();
-  return (
-    <SettingRow label={t('menu.fpsLabel')} {...(on ? { below: t('menu.fpsHint') } : {})}>
-      <button
-        type="button"
-        aria-pressed={on}
-        aria-label={`${t('menu.fpsLabel')}. ${on ? t('menu.fpsOn') : t('menu.fpsOff')}`}
-        onClick={() => {
-          haptic('tap');
-          setFpsMeterEnabled(!on);
-        }}
-        className={`rounded-control border border-v2-line bg-v2-deep px-3 py-1.5 text-micro transition-colors ${
-          on ? 'text-v2-self' : 'text-v2-ink-3'
-        }`}
-      >
-        {on ? t('menu.fpsOn') : t('menu.fpsOff')}
-      </button>
-    </SettingRow>
-  );
+  return <Toggle checked={useFpsMeterEnabled()} label={t('menu.fpsLabel')} sub={t('menu.fpsHint')} onChange={setFpsMeterEnabled} />;
 }
