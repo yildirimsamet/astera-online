@@ -168,7 +168,7 @@ describe('an outpost\'s probe report on the intel page', () => {
     const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={queries}><ApiProvider api={new Api({ fetch: starterFetch(fetch, () => true) })}><IntelScreen onOpenOrbit={() => undefined} {...(onOpenDossier ? { onOpenDossier } : {})} /></ApiProvider></QueryClientProvider>);
     await screen.findAllByText(/Telescope/);
-    fireEvent.click(screen.getByRole('tab', { name: /Reports/ }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Probe reports' }));
   };
 
   it('reads its guard, the triangle and the holds, under the outpost\'s own name and picture', async () => {

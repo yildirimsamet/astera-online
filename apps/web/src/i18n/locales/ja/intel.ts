@@ -60,7 +60,7 @@ export const intel = {
   },
 
   probes: {
-    openDossier: "オープンドシエ",
+    openDossier: "調査書を開く",
     heading: "プローブレポート",
     newest: "新しい順",
     missing: "プローブは戻ってきません",

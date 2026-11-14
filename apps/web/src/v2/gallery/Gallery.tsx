@@ -389,9 +389,10 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
 /**
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
  * has no Telescope and no Radar, so this is where the full shelves are photographed.
- * `blind` is the first evening (C7): no instrument, no mark, nothing known yet.
+ * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
+ * another shelf than Watch (C8: the probe reports).
  */
-function GalleryIntel({ blind = false }: { blind?: boolean }) {
+function GalleryIntel({ blind = false, shelf }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar' }) {
   const client = useQueryClient();
   useState(() => {
     const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
@@ -433,6 +434,7 @@ function GalleryIntel({ blind = false }: { blind?: boolean }) {
   return (
     <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       <IntelScreen
+        {...(shelf ? { open: { stop: shelf, request: 1 } } : {})}
         rivals={blind ? [] : [
           { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
           { planetId: 'p-vega', slot: 1, owner: 'Vega', name: 'Mira', lost: false },
@@ -905,6 +907,7 @@ function Views({ view }: { view: string }) {
   if (view === 'legacy-peek' || view === 'legacy-profile') return <LegacyPeekGallery page={view === 'legacy-peek' ? 'peek' : 'profile'} />;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'intel-blind') return <GalleryIntel blind />;
+  if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;

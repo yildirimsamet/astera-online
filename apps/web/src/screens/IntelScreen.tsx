@@ -572,77 +572,98 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
     );
   }
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-micro leading-snug text-v2-ink-3">
-        {t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}
+    <div className="gk-intel__part">
+      {/* The key to every row below: a range is theirs, the teal line is you. */}
+      <p className="gk-probes__key">
+        {yours !== null && <span aria-hidden="true" className="gk-probes__you" />}
+        <span>{t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}</span>
       </p>
       {hunt?.crate && probes.some(report => report.outpost === true) && <HuntHowTo />}
-      {probes.map((report) => {
-        const minutes = (now - report.at.getTime()) / 60_000;
-        const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
-          percent: percent(report.accuracy),
-        });
-        const outpost = hunt !== null && report.outpost === true;
-        const heading = (
-          <>
-            <span className="flex min-w-0 items-baseline gap-1.5">
-              <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
-              {report.targetName !== report.targetUsername && <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>}
-            </span>
-            <span className="block text-micro text-v2-ink-2">{accuracy}</span>
-          </>
-        );
-        return (
-          <article key={`${report.targetPlanetId}-${String(report.at.getTime())}`} className={`flex flex-col gap-2 p-3 ${CARD}`}>
-            <div className="flex items-center gap-2.5">
-              {/* An outpost is drawn as a world on the map, and here as there. */}
-              <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} />
-              {onOpenDossier
-                ? <button type="button" onClick={() => { onOpenDossier(report.targetPlanetId); }} className="min-w-0 flex-1 text-left">{heading}</button>
-                : <div className="min-w-0 flex-1">{heading}</div>}
-              <div className="flex shrink-0 flex-col items-end gap-0.5">
-                <SignalBars accuracy={report.accuracy} label={accuracy} />
-                <AgeStamp minutes={minutes} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} mine={yours?.stock ?? null} />
-              <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} mine={yours?.defence ?? null} />
-              <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
-              {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
-            </div>
-            {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} own={hunt.own} />}
-            {/* An outpost is decided here: the door goes straight to its attack (owner playtest 2026-11-08). */}
-            {outpost && onOpenDossier && (
-              <button
-                type="button"
-                data-report-open=""
-                onClick={() => { playSound('tap'); haptic('tap'); onOpenDossier(report.targetPlanetId); }}
-                className="min-h-11 rounded-control border border-v2-hostile/70 bg-v2-hostile/20 text-caption font-semibold text-v2-ink active:scale-[.98]"
-              >
-                {t('starter.intel.attack')}
-              </button>
-            )}
-            {(report.detected || (onOpenDossier && !outpost)) && (
-              <div className="flex items-center justify-between gap-2">
-                {/* Being caught is the cost of looking: a gap to plan around, said in warn. */}
-                <span className="text-micro text-v2-warn">{report.detected ? t('intel.probes.caught') : ''}</span>
-                {onOpenDossier && !outpost && (
-                  <button
-                    type="button"
-                    data-report-open=""
-                    onClick={() => { onOpenDossier(report.targetPlanetId); }}
-                    className="text-micro font-semibold text-v2-self"
-                  >
-                    {t('intel.probes.openDossier')} ›
-                  </button>
-                )}
-              </div>
-            )}
-          </article>
-        );
-      })}
+      {probes.map((report) => (
+        <ProbeReport
+          key={`${report.targetPlanetId}-${String(report.at.getTime())}`}
+          report={report}
+          minutes={(now - report.at.getTime()) / 60_000}
+          yours={yours}
+          aboard={aboard}
+          hunt={hunt}
+          {...(onOpenDossier ? { onOpenDossier } : {})}
+        />
+      ))}
     </div>
+  );
+}
+
+/**
+ * ONE PROBE REPORT ON THE KIT (C8): the head names who was read and how well — a door to
+ * their dossier — the three readings sit in a glass well against your own mark, and the
+ * foot says whether they caught it and where to go next.
+ */
+function ProbeReport({ report, minutes, yours, aboard, hunt, onOpenDossier }: {
+  report: Probe;
+  minutes: number;
+  yours: Yardstick | null;
+  aboard: boolean;
+  hunt: { carry: number; own: HullClass | null; crate: { alloy: number; crystal: number } | null } | null;
+  onOpenDossier?: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const open = (): void => { playSound('tap'); haptic('tap'); onOpenDossier?.(report.targetPlanetId); };
+  const head = useOwnPress(open);
+  const door = useOwnPress(open);
+  const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
+    percent: percent(report.accuracy),
+  });
+  const outpost = hunt !== null && report.outpost === true;
+  const face = (
+    <>
+      {/* An outpost is drawn as a world on the map, and here as there. */}
+      <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} className="size-11" />
+      <span className="gk-probe__who">
+        <span className="gk-probe__name">
+          {report.targetUsername}
+          {report.targetName !== report.targetUsername && <span className="gk-probe__world">{report.targetName}</span>}
+        </span>
+        <span className="gk-probe__accuracy">{accuracy}</span>
+      </span>
+      <span className="gk-probe__read">
+        <SignalBars accuracy={report.accuracy} label={accuracy} />
+        <AgeStamp minutes={minutes} />
+      </span>
+    </>
+  );
+  return (
+    <article className="gk-probe">
+      {onOpenDossier
+        ? <button type="button" className="gk-probe__head" {...OWN_SOUND} onPointerDown={head.onPointerDown} onClick={head.onClick}>{face}</button>
+        : <div className="gk-probe__head">{face}</div>}
+      <div className="gk-well gk-readings">
+        <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} mine={yours?.stock ?? null} />
+        <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} mine={yours?.defence ?? null} />
+        <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
+        {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
+      </div>
+      {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} own={hunt.own} />}
+      {/* An outpost is decided here: the door goes straight to its attack (owner playtest 2026-11-08). */}
+      {outpost && onOpenDossier && (
+        <button type="button" data-report-open="" className="gk-btn gk-btn--danger gk-btn--wide" {...OWN_SOUND} onPointerDown={door.onPointerDown} onClick={door.onClick}>
+          <Glyph id="attack" />
+          {t('starter.intel.attack')}
+        </button>
+      )}
+      {(report.detected || (onOpenDossier && !outpost)) && (
+        <div className="gk-probe__foot">
+          {/* Being caught is the cost of looking: a gap to plan around, said in warn. */}
+          {report.detected ? <span className="gk-probe__caught"><Glyph id="eye" />{t('intel.probes.caught')}</span> : <span />}
+          {onOpenDossier && !outpost && (
+            <button type="button" data-report-open="" className="gk-btn gk-btn--sm" {...OWN_SOUND} onPointerDown={door.onPointerDown} onClick={door.onClick}>
+              {t('intel.probes.openDossier')}
+              <Glyph id="next" />
+            </button>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -650,12 +671,12 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
 function HuntHowTo() {
   const { t } = useTranslation();
   return (
-    <section data-testid="hunt-howto" className="flex flex-col gap-1 rounded-control border border-v2-self/30 bg-v2-self/5 p-2.5">
-      <h3 className="v2-legend text-v2-self">{t('starter.intel.howTo.title')}</h3>
-      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.guard')}</p>
-      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.bars')}</p>
-      <p className="text-micro leading-snug text-v2-ink-2">{t('starter.intel.howTo.carry')}</p>
-      <p className="text-micro font-semibold leading-snug text-v2-ink">{t('starter.intel.howTo.go', { attack: t('starter.intel.attack') })}</p>
+    <section data-testid="hunt-howto" className="gk-howto">
+      <h3 className="gk-howto__title"><Glyph id="target" />{t('starter.intel.howTo.title')}</h3>
+      <p>{t('starter.intel.howTo.guard')}</p>
+      <p>{t('starter.intel.howTo.bars')}</p>
+      <p>{t('starter.intel.howTo.carry')}</p>
+      <p className="gk-howto__go">{t('starter.intel.howTo.go', { attack: t('starter.intel.attack') })}</p>
     </section>
   );
 }
@@ -678,29 +699,27 @@ function RangeRow({ label, low, high, sharp, mine }: { label: string; low: numbe
   const { start, width, you } = probeAxis(low, high, mine);
   const reading = t('rangeBand.reading', { label, low: compact(Math.max(0, low)), high: compact(high) });
   return (
-    <div data-range-band className="grid grid-cols-[5rem_minmax(0,1fr)_4.75rem] items-center gap-2">
-      <span className="truncate text-micro text-v2-ink-3">{label}</span>
+    <div data-range-band className="gk-reading">
+      <span className="gk-reading__label">{label}</span>
       <span
         role="img"
         aria-label={mine === null ? reading : `${reading} · ${t('rangeBand.yours', { value: compact(mine) })}`}
-        className="relative block h-2.5"
+        className="gk-reading__track"
       >
-        {/* The axis: a hairline from zero, not a grey bar. */}
-        <span aria-hidden className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-v2-line-hi" />
         <span
           data-part="band"
-          className={`absolute inset-y-0.5 rounded-full ${sharp ? 'bg-v2-neutral' : ''}`}
+          className={`gk-reading__band ${sharp ? 'bg-v2-neutral' : ''}`}
           style={{ left: `${String(start)}%`, width: `${String(width)}%`, ...(sharp ? {} : BLURRED) }}
         />
         {you !== null && (
           <span
             data-you=""
-            className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-v2-self"
+            className="gk-reading__you bg-v2-self"
             style={{ left: `${String(you)}%` }}
           />
         )}
       </span>
-      <span className="truncate text-right font-v2-mono text-micro text-v2-ink-2">{`${compact(Math.max(0, low))}–${compact(high)}`}</span>
+      <span className="gk-reading__value gk-num">{`${compact(Math.max(0, low))}–${compact(high)}`}</span>
     </div>
   );
 }

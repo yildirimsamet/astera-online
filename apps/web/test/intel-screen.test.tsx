@@ -708,6 +708,27 @@ describe('what a probe brought back', () => {
     expect(onOpenDossier).toHaveBeenCalledWith('q0');
   });
 
+  /** C8: a report is the kit's plate — a head that opens the dossier, the readings in a glass well. */
+  it('lays each report on the kit: a plate, its readings in a well, its head a door', async () => {
+    const onOpenDossier = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { detected: true })], onOpenDossier });
+    await shelf('Probe reports');
+    const card = document.querySelector<HTMLElement>('article')!;
+    expect(card).toHaveClass('gk-probe');
+    expect(card.querySelector('.gk-readings')?.querySelectorAll('[data-range-band]')).toHaveLength(3);
+    expect(within(card).getByText(/they caught it/i)).toHaveClass('gk-probe__caught');
+    expect(within(card).getByRole('button', { name: /open dossier/i })).toHaveClass('gk-btn');
+    await userEvent.click(within(card).getByRole('button', { name: /Someone/ }));
+    expect(onOpenDossier).toHaveBeenCalledWith('q0');
+  });
+
+  it('keeps the head a plain heading when there is no dossier to open', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Probe reports');
+    expect(screen.queryByRole('button', { name: /Someone/ })).toBeNull();
+    expect(screen.getByText('Someone')).toBeInTheDocument();
+  });
+
   describe('aboard a ship', () => {
     it('counts one idle slot without a plural that lies, and points at ships', async () => {
       show({ aboard: true, telescope: 1, watching: 0, worlds: 8 });

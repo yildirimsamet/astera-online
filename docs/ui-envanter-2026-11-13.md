@@ -772,6 +772,40 @@ Kalanlar:
 
 Almanca metin "Sie" diye hitap ediyor ("In jedem Slot, den Sie haben"). Bu, sıradaki Almanca hitap biriminin işi.
 
+**C8 Sondalar rafı ✅ (2026-11-14, yardımcı oturum).** G3 #6, karar desteğinin kalbi. Oyuncunun sorusu şu: "Sonda ne getirdi, bu dünya benimkine göre büyük mü küçük mü, saldırmaya değer mi?" Aralık mantığı (`probeAxis`, sıfırdan başlayan çizgi, bantta "benim değerim") ve sonda kuralları değişmedi.
+
+- **Anahtar satırı:** rafın tepesinde küçük turkuaz bir çizgi ve "bant onların tahmini, turkuaz çizgi senin dünyan" cümlesi. Aşağıdaki her satırın nasıl okunacağı tek yerde söyleniyor.
+- **Rapor kartı:** kitin plakası (`.gk-probe`).
+  - Baş: dünya resmi, ad, doğruluk, sinyal çubukları ve yaş. Dosya açılabiliyorsa başın tamamı dosyaya giden kapı.
+  - Ölçümler (stok, silahlı birlik değeri, gemi) bir cam kuyuda duruyor (`.gk-readings`).
+  - Bantlar 14 px'lik izde; "sen" çizgisi turkuaz ve hafif parlıyor.
+  - Değerler 12 px ve kalın.
+- **Kart altı:**
+  - "Sondayı yakaladılar" uyarısı göz işaretiyle amber renkte.
+  - "Dosyayı aç" kitin küçük tuşu. Karakol raporundaki "Saldır" kitin kırmızı tuşu.
+  - İki tuş da öğreticinin işaret ettiği `data-report-open` işaretini koruyor.
+- **İlk av kartı (`HuntHowTo`):** oyuncunun renginde kenarı olan bir kural kartı; yazı 9 px'ten 13–14 px'e çıktı.
+- **Çeviri düzeltmeleri:**
+  - Almancada "yakalandı" cümlesi bozuktu ("Sie haben es erwischt\nDie"). "Die Sonde wurde entdeckt" yapıldı.
+  - Japoncada "Dosyayı aç" ses taklidiydi ("オープンドシエ"). "調査書を開く" yapıldı.
+- **C7'den kalan kırık test:** C7'nin grup testlerinde `starter-outpost-reading` eksikti. Bu test hâlâ eski Raporlar sekmesini arıyordu; artık "Sonda raporları" sekmesine basıyor.
+- **Galeri:** `intel-probes` görünümü eklendi.
+- **Sınıf adı:** `.gk-range` Üs'te zaten kullanılıyordu. Çakışmasın diye bu malzemenin adı `.gk-reading` oldu.
+
+Ölçüm: `reports/ui-audit/c8-intel-probes-after-2026-11-14.md`, bir yol, 14 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 50 | 0 |
+| Kontrastı yetmeyen metin | 20 | 0 |
+| 44 px altı hedef | 8 | 0 |
+| Basınca tepkisiz | 4 | 0 |
+| Kesilen metin (bütün diller) | 12 | 0 |
+
+Doğrulanamayanlar:
+- Gemideki av (karakol okuması ve "Saldır") galeride yok; yalnız testlerle doğrulandı.
+- `OutpostReading` başlangıç ekranlarına ait (G15); ona dokunulmadı.
+
 ## G4. Galaksi ve gönderme
 
 Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 iskelet (`PlanetFocus`); dosya haritası aşağıda. Hangi yüzeyin nereden açıldığı §4 ve §5'te.
