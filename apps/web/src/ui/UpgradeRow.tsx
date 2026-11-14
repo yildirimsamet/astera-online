@@ -109,7 +109,7 @@ function CardEffect({ gain }: { gain: Gain }) {
   );
 }
 
-function CardTime({ minutes }: { minutes: number }) {
+export function CardTime({ minutes }: { minutes: number }) {
   const { t } = useTranslation();
   const spoken = useOrderDuration(minutes);
   return (

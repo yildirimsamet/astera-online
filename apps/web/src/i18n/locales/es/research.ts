@@ -132,7 +132,7 @@ export const research = {
     "Reduce el coste y el tiempo de cada trabajo de la Estación de Reparación",
   industrialDetail:
     "Reduce el coste y tiempo de reparación en todos tus planetas. El nivel 1 aplica el 75 % de lo normal; el nivel 2 aplica el 50 %. No acelera la construcción de naves.",
-  holdsName: "Retenciones del prospector",
+  holdsName: "Bodegas del prospector",
   holdsTag: "Las naves mineras llevan más",
   holdsRole: "Aumenta todas las reservas del Prospector; La bonificación por capacidad de la torre de perforación se aplica en la parte superior.",
   holdsDetail:

@@ -370,7 +370,7 @@ export const planet = {
     yardTag: "Construye naves más rápido",
     yardRole:
       "Reduce el tiempo de construcción de cada casco · El Astillero aún marca la curva",
-    holdsName: "Retenciones del prospector",
+    holdsName: "Bodegas del prospector",
     holdsTag: "Las naves mineras llevan más",
     holdsRole: "Aumenta cada bodega de Prospector y se multiplica con la bonificación de capacidad x2 de la torre de perforación.",
     cargoName: "Bodegas de carga",

@@ -182,9 +182,7 @@ const reason = (view: View, id: ResearchProjectId): string =>
 
 /** Open one project's sheet — the card is the decision, the sheet the whole picture. */
 const open = async (view: View, id: ResearchProjectId): Promise<HTMLElement> => {
-  const opener = pick(view, id).querySelector<HTMLElement>('[data-open-item]');
-  expect(opener, `${id} does not open`).not.toBeNull();
-  await userEvent.click(opener!);
+  await userEvent.click(within(pick(view, id)).getByRole('button', { name: /^details$/i }));
   const sheet = view.baseElement.querySelector<HTMLElement>('[data-item-sheet]');
   expect(sheet, `${id} opened no sheet`).not.toBeNull();
   return sheet!;

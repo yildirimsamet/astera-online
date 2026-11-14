@@ -40,8 +40,10 @@ export const RESEARCH_GROUPS = [
     label: 'research.doctrineBand',
     note: 'research.doctrineNote',
     projects: [
+      // Propulsion carries a second line (its prerequisite is a Frontier star), so it stands
+      // last in its column, where the quarter has room under it (G2-i).
       'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR',
-      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE', 'SHIP_SHIELDS',
+      'SHIP_SHIELDS', 'EMPLACEMENT_DOCTRINE', 'SHIP_PROPULSION',
     ],
   },
   {
@@ -100,9 +102,16 @@ const SPOTS: Record<number, readonly (readonly [number, number])[]> = {
   3: [[LEFT, 0.2], [RIGHT, 0.4], [LEFT, 0.62]],
   4: [[LEFT, 0.16], [RIGHT, 0.3], [LEFT, 0.5], [RIGHT, 0.66]],
   5: [[LEFT, 0.14], [RIGHT, 0.26], [LEFT, 0.44], [RIGHT, 0.58], [LEFT, 0.74]],
-  // Industry since Industrial: three a column, the tightest the label height allows.
-  6: [[LEFT, 0.14], [RIGHT, 0.2], [LEFT, 0.41], [RIGHT, 0.47], [LEFT, 0.68], [RIGHT, 0.74]],
+  // Three a column: a whole name on two lines under each star, and room for a third line last.
+  6: [[LEFT, 0.14], [RIGHT, 0.135], [LEFT, 0.38], [RIGHT, 0.36], [LEFT, 0.62], [RIGHT, 0.585]],
 };
+
+/**
+ * HOW TALL THE MAP IS FOR ITS WIDTH (G2-i, 2026-11-15). A name is whole, on up to two lines,
+ * so a column of three stars needs a quarter this tall at 320 px (test/constellation.test.ts).
+ * Aboard the ship the same map holds four stars; the ship's lab gets its own in G15.
+ */
+export const CONSTELLATION_ASPECT = 1.25;
 
 /**
  * THE RESEARCH CONSTELLATION. Spec E8 · K9 (docs/ui-v2/gozlemevi.md).

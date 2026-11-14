@@ -123,11 +123,6 @@
 }
 [data-queue-lane]:not(.gk-lane) > p { color: var(--color-v2-ink-2); }
 
-[data-constellation-card] {
-  border-color: color-mix(in srgb, var(--color-v2-sky-violet) 45%, var(--color-v2-line));
-  background-image: linear-gradient(120deg, color-mix(in srgb, var(--color-v2-sky-violet) 10%, transparent), transparent);
-}
-[data-constellation] [data-region] { color: var(--color-v2-ink-2); }
 
 .clan-command-head { position: relative; isolation: isolate; overflow: hidden; }
 .clan-command-head > .atmosphere-image { z-index: -2; }
@@ -155,11 +150,6 @@
 .menu-account-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 85%), rgb(8 13 24 / 50%)); }
 .inventory-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 90%), rgb(8 13 24 / 60%)); }
 
-.research-selection-scene { min-height: 220px; scroll-margin-block: 12px; }
-.research-selection-scene::before {
-  background: linear-gradient(90deg, rgb(8 13 24 / 93%), rgb(8 13 24 / 78%) 50%, rgb(8 13 24 / 48%)),
-    linear-gradient(0deg, rgb(8 13 24 / 90%), transparent 65%);
-}
 
 /* A ship's complete silhouette wins over a full-card crop. Match its source ratio. */
 [data-layout='card'] [data-art]:has([data-scene-fit='contain']) {

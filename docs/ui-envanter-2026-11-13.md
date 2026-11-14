@@ -855,6 +855,20 @@ Kalanlar ve nedeni:
   - 44 px altı hedef 5/5/6/2/2/3 → 0.
   - Puan 91/93/102/21/20/17 → 1/2/1/1/1/1.
 
+**G2-i1 Araştırma haritası, seçili kart ve şerit ✅ (2026-11-15).** Proje sayfası ("Ayrıntılar") G2-i2'de.
+- **An:** "Sırada ne araştırayım, ne kazandırır, önünde ne var?" Harita bakış, alttaki kart karar.
+- **Değişen:**
+  - Harita kit'te (`gk-cmap`). İsimler artık kesilmiyor; iki satıra kadar, 12 px dar yazıyla tam yazılıyor. Her yıldız 44 px'lik bir basma hedefi, ses ve titreşimle.
+  - Kilitli yıldızda yalnız halka sönüyor, isim okunur kalıyor. Şeritteki proje atıyor, seçili olan halkalı.
+  - Harita oranı 1/1.25. 320 px'te sütun 76 px, en uzun Türkçe kelime ("Spektrometrisi") 72 px. Harita sheet'in kenar boşluğunu aşıp kenardan kenara uzanıyor. Doktrin'de Kalkanlar ile İtki'nin yeri değişti (İtki'nin "← Yoğun Yakıt Hücreleri" satırı çeyreğin dibinde). Yerleşim testi artık piksel modeliyle ölçüyor.
+  - Kart kit'te (`gk-rcard`): sahne sağda, isim ve kit seviye noktaları, kazanç satırı, önkoşul ✓ çipi, açtığı gemiler çip olarak, fiyat ve süre tek satırda. "Ayrıntılar" çelik, "Araştır" ağır turuncu basış. Kaynak yetmezse düğme sebebini söylüyor. Önkoşul eksikse kapı sarı kesikli bir şerit; basınca o yıldıza gidiyor.
+  - Şerit, Üs'ün kit halka şeridi (`Lane` dışa açıldı). Araştırma seviye saydığı için halkada "×2" yok.
+- **Silinen:** gemideki alçak harita (`compact`, iki satırlık isimlerle sığmıyordu; gemiye özel harita G15'te). atmosphere.css'teki eski kart ve bölge kuralları; bunlar yeni kartı eski renge boyuyordu. Galeri sheet'i artık gerçek uygulamadaki gibi kenar boşluklu.
+- **Ayrıca:** tavan satırındaki çift nokta ("%10 · · tavan") giderildi. Yanlış çeviriler düzeltildi: de "Prospektor hält" → "Prospektor-Laderäume", "Yard-Automatisierung" → "Werftautomatik"; es "Retenciones del prospector" → "Bodegas del prospector".
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü): `reports/ui-audit/g2i-before-2026-11-15.md` → `g2i-after-2026-11-15.md`.
+  - 12 px altı metin 45/54 → 0. Kontrast 13 → 0. 44 px altı hedef 17/26 → 0. Kesilen 10 → 0.
+  - Puan 168 → 1. Kalan 1, seçili yıldızın basış tepkisiydi; düzeltildi (seçiliyken basınca halka küçülüyor).
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

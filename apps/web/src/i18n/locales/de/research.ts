@@ -114,7 +114,7 @@ export const research = {
     "Jede Sprosse öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
   synthesisDetail:
     "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Die Raffinerie baust du weiterhin auf jeder Welt einzeln aus, auf der du Treibstoff brauchst.",
-  yardName: "Yard-Automatisierung",
+  yardName: "Werftautomatik",
   yardTag: "Baut Schiffe schneller",
   yardRole:
     "Verkürzt neue Bauaufträge für Schiffe und Bodenverteidigung auf allen deinen Planeten.",
@@ -132,7 +132,7 @@ export const research = {
     "Senkt Kosten und Dauer jedes Auftrags der Reparaturstation",
   industrialDetail:
     "Senkt Schiffsreparaturkosten und -zeit auf allen Planeten. Stufe 1 nutzt 75 % der normalen Kosten und Zeit; Stufe 2 nutzt 50 %. Schiffsbau wird nicht beschleunigt.",
-  holdsName: "Prospektor hält",
+  holdsName: "Prospektor-Laderäume",
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
   holdsDetail:

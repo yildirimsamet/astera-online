@@ -24,6 +24,7 @@ export function Rungs({
   level,
   max,
   next = false,
+  look = 'v1',
 }: {
   /** Rungs held. */
   level: number;
@@ -31,9 +32,21 @@ export function Rungs({
   max: number;
   /** Whether to light the rung about to be bought as the one on offer. */
   next?: boolean;
+  /** The game kit's pips (G2-i): the same three states in the kit's own colours. */
+  look?: 'v1' | 'kit';
 }) {
   const { t } = useTranslation();
   const held = Math.max(0, Math.min(max, Math.floor(level)));
+
+  if (look === 'kit') {
+    return (
+      <span className="gk-rungs" role="img" aria-label={t('upgradeRow.ladder', { level: held, max })}>
+        {Array.from({ length: max }, (_unused, index) => (
+          <span key={index} aria-hidden data-rung={index < held ? 'held' : next && index === held ? 'next' : 'open'} className="gk-rungs__rung" />
+        ))}
+      </span>
+    );
+  }
 
   return (
     <span

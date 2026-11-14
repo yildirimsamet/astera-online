@@ -366,11 +366,11 @@ export const planet = {
     doctrineTag: "Besserer Angriff und Panzerung",
     doctrineRole:
       "Erhöht Angriff und Rumpfstärke der Bodenverteidigung gemeinsam. Klassenverhältnisse, Bodenkapazität und Bergung bleiben unverändert.",
-    yardName: "Yard-Automatisierung",
+    yardName: "Werftautomatik",
     yardTag: "Baut Schiffe schneller",
     yardRole:
       "Verkürzt die Bauzeit jedes Rumpfes · die Werft gibt immer noch die Kurve",
-    holdsName: "Prospektor hält",
+    holdsName: "Prospektor-Laderäume",
     holdsTag: "Bergbauschiffe transportieren mehr",
     holdsRole: "Erhöht jeden Prospektor-Laderaum und multipliziert ihn mit dem 2-fachen Kapazitätsbonus des Derrick",
     cargoName: "Frachträume",

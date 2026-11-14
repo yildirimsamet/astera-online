@@ -919,7 +919,7 @@ function GalleryResearch() {
     })) });
     return null;
   });
-  return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
+  return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']}><ResearchPanel /></Sheet>;
 }
 
 /** Bildirim Merkezi (owner 2026-10-30): built with a ledger, and not yet built. */

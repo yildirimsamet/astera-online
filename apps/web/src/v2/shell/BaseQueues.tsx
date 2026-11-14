@@ -23,12 +23,21 @@ const slotState = (order: BuildOrderView, now: number): SlotState => {
 
 /**
  * ONE LANE OF THE KIT'S SLOTS (stage 4.1): an order is a ring round its picture that
- * fills as it builds, an empty slot says so. A slot is a glance; a press opens the sheet.
+ * fills as it builds, an empty slot says so. A slot is a glance; a press opens the sheet —
+ * on research, the order's project on the map (G2-i). A research order counts a level, not
+ * a batch, so its ring wears no "×".
  */
-function Lane({ label, orders, now, onOpen }: { label: string; orders: readonly BuildOrderView[]; now: number; onOpen: () => void }) {
+export function Lane({ label, orders, now, onOpen, slots = BUILD.queueDepth }: {
+  label: string;
+  orders: readonly BuildOrderView[];
+  now: number;
+  onOpen: (order: BuildOrderView) => void;
+  /** How deep this queue is; a colony ship researches one project at a time. */
+  slots?: number;
+}) {
   const { t } = useTranslation();
   const labelId = useId();
-  const free = Math.max(0, BUILD.queueDepth - orders.length);
+  const free = Math.max(0, slots - orders.length);
   return (
     <div data-queue-lane role="group" aria-labelledby={labelId} className="gk-lane">
       <p id={labelId} className="gk-label">{label}</p>
@@ -41,12 +50,12 @@ function Lane({ label, orders, now, onOpen }: { label: string; orders: readonly 
               key={order.id}
               art={buildOrderArt(order)}
               name={order.kind === 'REPAIR' ? repairSubject(order) : name}
-              count={order.count}
+              count={order.kind === 'RESEARCH' ? 1 : order.count}
               progress={orderProgress(order, now)}
               left={left}
               state={slotState(order, now)}
               label={t('planet.queue.segment', { name, duration: left })}
-              onPress={onOpen}
+              onPress={() => { onOpen(order); }}
             />
           );
         })}
