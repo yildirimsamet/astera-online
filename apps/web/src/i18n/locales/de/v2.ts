@@ -145,7 +145,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "{{pct}} % Tempo",
   recall: "Zurückrufen",
-  recallHome: "Zurückgerufen in {{time}} daheim",
+  recallHome: "Daheim in {{time}}",
   recalling: "Kehrt um…",
   emptyAir: "Nichts in der Luft. Tippe in der Galaxie auf eine Welt, einen Felsen oder einen Piraten, um Schiffe zu senden.",
   focusWorld: "{{world}} in der Galaxie zeigen",

@@ -821,6 +821,40 @@ Kalanlar ve nedeni:
 - **Silinen:** `PlanetScreen`'den v2 `RoomBar`. `RoomBar` artık yalnız başlangıç galaksisinin tersanesinde (`YardDeck`, G15).
 - **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h1-after-2026-11-15.md`. 12 px altı metin Filo sekmesinde 9→0, Savunma'da 13→0, boş filoda 8→0. Kontrast hatası 6→0, 10→0, 5→0. Kalan tek hedef G1 çerçevesi. Kesilme ve taşma 0.
 
+**G2-h2 Filo sayfası ✅ (2026-11-15).**
+- **An:** "Havada ne var, bana bir şey geliyor mu, bir filoyu geri çevirmeli miyim, yer var mı?"
+- **Değişen:**
+  - Kit başlığı göstergelerin ait olduğu dünyayı yazar. Saldırı gelirken başlıkta kırmızı "N saldırı geliyor" uyarısı çıkar; sanatlı başlık plakanın tonunu gizlediği için uyarı sözle verilir.
+  - Sekmeler iki katlı: simge üstte, ad altta.
+  - Uçuş yuvası ve Hangar göstergeleri kalan yeri sözle verir ("boş 1"). Dolunca sarıya dönüp "Dolu" yazar.
+  - Uçuşlar zamanlayıcılar sayfasının halka satırlarıdır.
+  - Geri çağırma, klan dalgası dahil, 0,6 sn'lik satır içi çelik basılı tutmadır; üstünde "Eve dönüş X" yazar. Kit `GameHold`'a `size: 'md'` ve `tone: 'steel'` eklendi.
+  - Evde ve Hangar sekmelerinde dünya adları 44 px'lik kapılardır. Gemiler sınıf amblemleriyle, "tamirde" etiketi kit çipi olarak gösterilir.
+- **Silinen:** Filo sayfasındaki v2 `Room`, `Segmented`, `ClassEmblem` ve `Icon` kullanımları (bileşenleri başka ekranlar kullanıyor, onlar kaldı). Uçuş ilerleme çizgisinin yerini halka aldı.
+- **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h-before-2026-11-14.md` → `reports/ui-audit/g2h2-after-2026-11-15.md`.
+  - 12 px altı metin: havada 21→0, evde 20→0, Hangar 19→0, klan 33→0.
+  - Kontrast: 8/5/5/6→0. Ölçümden sonra kalan son hata başlıktaki uyarı yazısındaydı. Nabız siren ikonuna taşındı, yazı açık kırmızıya alındı; yeniden ölçümde 0 (`out/ui-audit/g2h2-recheck-2026-11-15`).
+  - 44 px altı hedef: 8/6/5/6→0. Kalan tek ölçüm galerinin kök öğesi.
+  - Puan: 69/53/49/69→3.
+- **Açık soru:** Geri çağırma 0,6 sn tutulur (yanlış dokunuşa karşı). Daha ağır sayılırsa 1 sn yapılabilir.
+
+**G2-h3 Savunma duruşu ve klan destek bölmesi ✅ (2026-11-15).** Bu iş G2-h'yi kapatır.
+- **An:** "Ezici bir saldırıda filom kalksın mı, klan arkadaşlarım burada nöbet tutsun mu, kim burada ve bana ne kadara mal oluyor?"
+- **Değişen:**
+  - Duruş kartında artık "Kaydet" yok: iki kit şalteri var ve çevrilen şalter hemen uygulanır. Sunucu reddederse şalter geri döner ve sebebi yazılır.
+  - Nöbetteki dalgalar varken desteği kapatmak bir uyarı şeridi ve 0,6 sn'lik "Eve gönder" basılı tutmasıyla olur. "Desteği koru" kapatmadan çıkar.
+  - Klan dışındayken destek şalteri kilitli. Basınca ret sesi ve titreşimi gelir; sebebi şalterin altında yazar. Kit `Toggle`'a `locked` eklendi.
+  - Bölme bir kit kuyusu. İki parçalı çubuk ve lejant var. Hâkimiyet çarpanı görünür, kuralı "?" düğmesinin arkasındadır.
+  - Dalgalar Filo sayfasının halka satırlarında gösterilir. "Geri gönder" 0,6 sn basılı tutmadır; üstünde "Yakıt iade edilmez" yazar.
+  - Alarm cevabı, siren ikonu atan kırmızı bir şerittir.
+  - Onur notunun kit görünümü eklendi (`HonorSoloNotice look="kit"`).
+- **Silinen:** `clanSupport.save`, `cancel` ve `sendBackOf` anahtarları (6 dil; başka kullanan yok). `sendBackConfirm`'ün yerini kısa `sendBackCost` aldı. Kapatma uyarısı "Kaydetmek…" yerine "Kapatmak…" diye başlar.
+- **Ölçüm** (Türkçe; telefon, 320 ve masaüstü): `reports/ui-audit/g2h3-before-2026-11-15.md` → `reports/ui-audit/g2h3-after-2026-11-15.md`. Altı durumun sırası: açık, ikisi, alarm, bekle, kaçış, kilitli.
+  - 12 px altı metin 34/36/39/9/8/7 → 1/2/1/1/1/1. Kalan metin Savunma sekmesinin `EscapeReadout` satırıdır; o satır G4/G5'te ele alınacak.
+  - Kontrast 14/14/15/2/2/1 → 0. Masaüstünde çelik "Geri gönder" 4,48:1 ölçüldü; düğmenin yüzü biraz koyulaştırıldı.
+  - 44 px altı hedef 5/5/6/2/2/3 → 0.
+  - Puan 91/93/102/21/20/17 → 1/2/1/1/1/1.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

@@ -145,7 +145,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "%{{pct}} hız",
   recall: "Geri çağır",
-  recallHome: "Geri çağırırsan {{time}} içinde evde",
+  recallHome: "Eve dönüş {{time}}",
   recalling: "Dönüyor…",
   emptyAir: "Havada bir şey yok. Gemi göndermek için galakside bir dünyaya, kayaya ya da korsana dokun.",
   focusWorld: "{{world}} gezegenini galakside göster",

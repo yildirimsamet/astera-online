@@ -9787,3 +9787,514 @@ button.gk-probe__head:active {
 .gk-room__gun[data-empty] .gk-num {
   color: var(--gk-ink-3);
 }
+
+/* ── G2-h2 (2026-11-15): the Fleet page on the kit ─────────────────────────── */
+
+.gk-fleet {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+.gk-fleet__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+}
+.gk-fleet__where,
+.gk-fleet__threat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gk-ink-2);
+}
+.gk-fleet__where .gk-glyph,
+.gk-fleet__threat .gk-glyph {
+  width: 13px;
+  height: 13px;
+  color: var(--gk-self);
+}
+.gk-fleet__threat {
+  font-weight: 700;
+  /* the lit red: over the head's art the plain red fell just short of 4.5:1 */
+  color: var(--gk-hostile-hi);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+/* the siren beats, the words stay at full strength (a fading word lost its contrast) */
+.gk-fleet__threat .gk-glyph {
+  color: var(--gk-hostile);
+  animation: gk-fleet-beat 0.9s var(--gk-ease) infinite alternate;
+}
+@keyframes gk-fleet-beat {
+  from { transform: scale(1); }
+  to { transform: scale(1.22); }
+}
+.gk-fleet__gauges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+/* A gauge: its name, then the figure with what is left in words beside it, then the bar. */
+.gk-fgauge {
+  display: grid;
+  gap: 3px;
+  padding: 7px 10px 8px;
+}
+.gk-fgauge .gk-label {
+  overflow-wrap: anywhere;
+}
+.gk-fgauge__read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--gk-s2);
+  margin-bottom: 2px;
+}
+.gk-fgauge__figure {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-fgauge__left {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-fgauge[data-full] .gk-fgauge__figure,
+.gk-fgauge[data-full] .gk-fgauge__left {
+  color: var(--gk-warn);
+}
+.gk-fleet__empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-fleet__empty .gk-glyph {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--gk-self);
+}
+.gk-fleet__group {
+  display: grid;
+  gap: 6px;
+}
+.gk-fleet__worlds {
+  display: grid;
+  gap: 8px;
+}
+.gk-fleet__rule {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+}
+
+/* A flight: the ring row, and under its words what it may still do. */
+.gk-flight {
+  padding-bottom: 2px;
+}
+.gk-flight__more {
+  /* under the row's words, past its ring (2 + 34 + 9 px) */
+  margin: 0 0 6px 45px;
+}
+.gk-flight__turning {
+  display: flex;
+  align-items: center;
+  min-height: var(--gk-hit);
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-flight__note,
+.gk-flight__race {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-3);
+}
+.gk-flight__note .gk-glyph {
+  width: 13px;
+  height: 13px;
+  align-self: center;
+}
+.gk-flight__race .gk-num {
+  color: var(--gk-ink-2);
+}
+.gk-flight__verdict {
+  font-weight: 700;
+}
+.gk-flight [data-tone='good'] { color: var(--gk-good); }
+.gk-flight [data-tone='warn'] { color: var(--gk-warn); }
+.gk-flight [data-tone='hostile'] { color: var(--gk-hostile); font-weight: 700; }
+
+/* The hold inside a row: a thumb's height, its verb at lead size, its dial smaller. */
+.gk-hold--md {
+  --cut: 8px;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s3) 2px 6px;
+  gap: var(--gk-s2);
+}
+/* a row's steel hold sits a shade darker, so its white verb keeps 4.5:1 over the face's lit top */
+.gk-hold--md.gk-btn--steel {
+  --face: color-mix(in srgb, var(--gk-steel) 70%, var(--gk-steel-lo));
+}
+.gk-hold--md .gk-hold__dial {
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+}
+.gk-hold--md .gk-hold__ring {
+  inset: -3px;
+  width: 36px;
+  height: 36px;
+}
+.gk-hold--md .gk-hold__label {
+  font-size: max(var(--gk-t-floor), min(var(--gk-t-lead), calc(100cqi / (var(--gk-len, 8) * 0.6))));
+}
+.gk-hold--md .gk-btn__detail {
+  font-size: var(--gk-t-floor);
+}
+.gk-hold--md .gk-hold__aside {
+  /* "Eve dönüş / 5 dk 00 sn": two even lines, never a lone "00 sn" */
+  text-wrap: balance;
+  font-size: var(--gk-t-small);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* A monument wave at its post: a door to the monument. */
+.gk-mhold {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 7px 10px 7px 8px;
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, filter var(--gk-quick) var(--gk-ease);
+}
+.gk-mhold:active { transform: translateY(1px) scale(0.985); filter: brightness(1.12); }
+.gk-mhold:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-mhold__coin,
+.gk-world__coin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--gk-self);
+  background: radial-gradient(circle at 50% 35%, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 45%, transparent);
+}
+.gk-mhold__coin .gk-glyph,
+.gk-world__coin .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+.gk-mhold__text {
+  display: grid;
+  min-width: 0;
+}
+.gk-mhold__title {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-mhold [data-tone='deut'] { color: var(--gk-deut); }
+.gk-mhold [data-tone='hostile'] { color: var(--gk-hostile); font-weight: 700; }
+.gk-mhold > .gk-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--gk-ink-3);
+}
+
+/* A world: its door, its counts, its hulls; hurt ships under a rule of their own. */
+.gk-world {
+  display: grid;
+  gap: 6px;
+  padding: 4px 10px 9px;
+}
+.gk-world__door {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  margin: 0 -4px;
+  padding: 2px 4px;
+  border-radius: var(--gk-r-sm);
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-world__door:active { background: color-mix(in srgb, var(--gk-self) 10%, transparent); }
+.gk-world__door:focus-visible { outline: 2px solid var(--gk-self); outline-offset: -2px; }
+.gk-world__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+}
+.gk-world__kind {
+  font-size: var(--gk-t-floor);
+  font-weight: 600;
+  color: var(--gk-ink-3);
+}
+.gk-world__door > .gk-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--gk-ink-3);
+}
+.gk-world__counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+.gk-world__counts [data-tone='away'] { color: var(--gk-ink-3); }
+.gk-world__counts .gk-chip {
+  color: var(--gk-warn);
+}
+.gk-world__counts .gk-chip .gk-glyph {
+  width: 13px;
+  height: 13px;
+}
+.gk-garrison {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gk-garrison__hull {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 2px 9px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--gk-metal-edge);
+  background: color-mix(in srgb, var(--gk-steel) 55%, transparent);
+  font-size: var(--gk-t-small);
+  font-weight: 600;
+  color: var(--gk-ink-2);
+}
+.gk-garrison__hull .gk-emblem {
+  width: 24px;
+  height: 24px;
+}
+.gk-garrison__hull .gk-num {
+  color: var(--gk-ink);
+  font-weight: 700;
+}
+.gk-world__hurt {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+}
+.gk-world__hurt-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-world__hurt-head .gk-glyph {
+  width: 15px;
+  height: 15px;
+}
+.gk-world [data-tone='warn'] { color: var(--gk-warn); }
+.gk-world__stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* A world's room on the Hangar view: the name, Full when it is, the figure; the bar under. */
+.gk-wroom {
+  display: grid;
+  gap: 4px;
+}
+.gk-wroom__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gk-s2);
+}
+.gk-wroom__head .gk-label {
+  flex: 1;
+  min-width: 0;
+}
+.gk-wroom__full {
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gk-warn);
+}
+.gk-wroom__figure {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-wroom[data-full] .gk-wroom__figure { color: var(--gk-warn); }
+
+/* ── G2-h3 (2026-11-15): the defence posture and the clan support bay ──────── */
+
+.gk-posture,
+.gk-sbay {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+.gk-posture__note {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-posture [data-tone='warn'] { color: var(--gk-warn); }
+.gk-posture [data-tone='self'] { color: var(--gk-self); }
+.gk-posture__ask {
+  display: grid;
+  gap: 6px;
+}
+.gk-posture__ask > .gk-btn--ghost {
+  justify-self: center;
+}
+/* A switch that cannot move yet: dimmed, its reason in the line under its name. */
+.gk-toggle[data-locked] .gk-switch {
+  opacity: 0.4;
+}
+.gk-toggle[data-locked] .gk-toggle__label {
+  color: var(--gk-ink-3);
+}
+
+/* The bay: its room as a two-part bar (standing full, flying in lighter), then who is here. */
+.gk-sbay__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-sbay__figure {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-lead);
+  color: var(--gk-ink);
+  white-space: nowrap;
+}
+.gk-sbay__total { color: var(--gk-ink-3); }
+.gk-sbay__bar {
+  display: flex;
+  height: 12px;
+}
+.gk-sbay__part {
+  flex: none;
+  height: 100%;
+}
+.gk-sbay [data-part='standing'] { background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self) 55%, var(--gk-self-lo)); }
+.gk-sbay [data-part='inbound'] { background: color-mix(in srgb, var(--gk-self) 42%, transparent); }
+.gk-sbay__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-sbay__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.gk-sbay__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.gk-sbay__factor .gk-num {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink);
+}
+.gk-sbay__closed {
+  padding: 0 4px;
+  font-size: var(--gk-t-small);
+}
+.gk-sbay__damaged {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gk-warn) 55%, transparent);
+  background: color-mix(in srgb, var(--gk-warn) 12%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+/* The clan's answer to your alarm: a red strip whose siren beats. */
+.gk-sbay__alarm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--gk-hostile) 45%, transparent);
+  background: color-mix(in srgb, var(--gk-hostile) 12%, transparent);
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-sbay__alarm > .gk-glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--gk-hostile-hi);
+  animation: gk-fleet-beat 0.9s var(--gk-ease) infinite alternate;
+}
+.gk-sbay__alarm-text {
+  min-width: 0;
+}
+.gk-sbay__alarm-seen {
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-sbay__alarm-clock {
+  display: block;
+  color: var(--gk-ink-3);
+}
+.gk-sbay__alarm [data-tone='good'] { color: var(--gk-good); }
+.gk-sbay__alarm [data-tone='warn'] { color: var(--gk-warn); }

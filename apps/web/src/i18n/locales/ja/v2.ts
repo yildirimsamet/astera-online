@@ -149,7 +149,7 @@ export const fleetPage = {
   hangar: "格納庫",
   pace: "{{pct}}% 速度",
   recall: "呼び戻す",
-  recallHome: "呼び戻すと{{time}}後に帰還",
+  recallHome: "{{time}}後に帰還",
   recalling: "帰還へ転針中…",
   emptyAir: "飛行中の艦隊はありません。銀河にある惑星、小惑星、海賊をタップして艦船を派遣できます。",
   focusWorld: "{{world}}を銀河で表示",

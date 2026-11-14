@@ -121,7 +121,9 @@ describe('the wired Fleet page', () => {
   it('turns a raid through the flight recall', async () => {
     rows = [raid];
     host();
-    await userEvent.click(screen.getByRole('button', { name: /^recall/i }));
+    // A recall is a short hold (G2-h2): Enter arms it, a second Enter commits.
+    screen.getByRole('button', { name: /^recall/i }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(recallFlight).toHaveBeenCalledWith({ missionId: 'mission-1' }, expect.any(Object));
     expect(recallMining).not.toHaveBeenCalled();
   });
@@ -131,8 +133,9 @@ describe('the wired Fleet page', () => {
       monumentRecall: { minutes: 9 } }];
     host();
     const button = screen.getByRole('button', { name: /^recall/i });
-    expect(button).toHaveAccessibleName('Recall · If recalled, home in 9m 00s');
-    await userEvent.click(button);
+    expect(button).toHaveAccessibleName(/^Recall.*Home in 9m 00s$/);
+    button.focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     const recalled: unknown = recallFlight.mock.lastCall?.[0];
     expect(recalled).toEqual({ missionId: 'mission-1', monument: true });
     expect(recallMining).not.toHaveBeenCalled();
@@ -157,7 +160,9 @@ describe('the wired Fleet page', () => {
       recalledAt: null,
     }];
     host();
-    await userEvent.click(screen.getByRole('button', { name: /^recall/i }));
+    // A recall is a short hold (G2-h2): Enter arms it, a second Enter commits.
+    screen.getByRole('button', { name: /^recall/i }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(recallMining).toHaveBeenCalledWith({ runId: 'run-1', originPlanetId: 'p-1' }, expect.any(Object));
   });
 
@@ -174,7 +179,8 @@ describe('the wired Fleet page', () => {
   it('shows every world’s garrison with what is away', async () => {
     host();
     await userEvent.click(screen.getByRole('tab', { name: /at home/i }));
-    expect(screen.getByText('Thistle')).toBeInTheDocument();
+    // The sheet's head names the world on top too (G2-h2); the card's door is the world's own.
+    expect(screen.getByRole('button', { name: /show thistle in the galaxy/i })).toHaveTextContent('Thistle');
     expect(screen.getByText('6 away')).toBeInTheDocument();
   });
 
