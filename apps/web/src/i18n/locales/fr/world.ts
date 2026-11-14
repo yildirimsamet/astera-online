@@ -57,10 +57,12 @@ export const galaxy = {
     title: "Événements galactiques",
     intro:
       "Les horaires des événements récurrents de semaine et de week-end sont indiqués ici.",
-    timeZone: "Heure de Turquie (UTC+3)",
+    timeZone: "Ton heure ({{zone}})",
     nextLabel: "Prochain événement",
     nextUpcoming: "{{event}} · dans {{duration}}",
-    localTime: "Heure locale · {{time}}",
+    dayShift: "Les jours suivent le calendrier de la galaxie (Turquie). +1 est le lendemain pour toi, −1 la veille.",
+    nextDay: "lendemain",
+    previousDay: "veille",
     event: {
       ASTEROID_SHOWER: "Pluie d’Astéroïdes",
       TRADE_SHIP: "Vaisseau marchand",

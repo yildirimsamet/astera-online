@@ -7816,8 +7816,9 @@ button.gk-probe__head:active {
   color: var(--gk-ink);
 }
 .gk-window {
-  display: inline-grid;
-  gap: 1px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   padding: 4px 8px;
   border-radius: var(--gk-r-sm);
   border: 1px solid var(--gk-glass-edge);
@@ -7834,9 +7835,12 @@ button.gk-probe__head:active {
 .gk-window__boost {
   color: var(--gk-crystal);
 }
-.gk-window__local {
+/* a window whose start lands on another day for the player than for the galaxy: +1, −1 */
+.gk-window__shift {
   font-size: var(--gk-t-floor);
-  color: var(--gk-ink-2);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gk-warn);
 }
 
 /* THE CHRONICLE: what the galaxy saw, one ledger row a moment. */

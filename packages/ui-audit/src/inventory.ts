@@ -79,7 +79,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'peek', what: 'Gezegene hızlı bakış', files: [], reach: ['gallery:peek'], group: 'G4', unreached: ['gerçek odak kartının göz atma bölümü (galeri yer tutucu çiziyor)'] },
   { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['client:return'], group: 'G10' },
   { id: 'worlds', what: 'Dünyalar paneli', files: ['screens/WorldsPanel.tsx'], reach: ['client:worlds'], group: 'G2', unreached: ['tek dünya (aktarma yok)'] },
-  { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide'], group: 'G3' },
+  { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide', 'gallery:events-guide-tokyo'], group: 'G3' },
   { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal'], group: 'G4', unreached: ['sonuç: korsan', 'sonuç: kaplama', 'gemi yok, üretime yönlendirme'] },
 
   // Reading a target and acting on it.

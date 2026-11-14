@@ -923,7 +923,7 @@ Doğrulanamayanlar:
 Doğrulanamayanlar:
 - Cihaz saati Türkiye saatinden farklı olan bir oyuncunun "Yerel" satırı yalnız testle doğrulandı; bu makine Türkiye saatinde.
 
-**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım.
+**Owner sorusu:** Cihaz saati Türkiye saatiyle aynıysa "Yerel · 20:00–20:30" satırı aynı saati ikinci kez yazıyor; Türk oyuncuların çoğu için bu bir gürültü. Yalnız saatler farklıyken gösterelim mi? Mevcut test bu satırın her zaman göründüğünü bekliyor, o yüzden bu turda dokunmadım. → **Yanıt (owner, 2026-11-14):** her oyuncu saatleri kendi saat diliminde, birincil saat olarak görsün. Bkz. C12.
 
 **C11 Radar 5 taramasının iki kapısı ✅ (2026-11-14, yardımcı oturum).** C9 owner sorusunun yanıtı. Radar ve tarama kuralları değişmedi.
 
@@ -938,6 +938,22 @@ Doğrulanamayanlar:
 - Galeri: `intel-radar-named` (Radar 5, taramayı yapanın adı ve dünyası belli).
 
 Ölçüm: `reports/ui-audit/c11-radar-scan-doors-after-2026-11-14.md`, bir yol, 14 ölçüm. Bütün ölçüler önce de sonra da 0. İlk koşuda alt kapı basınca tepkisizdi; düzeltildi ve yeniden ölçüldü.
+
+**C12 Etkinlik saatleri oyuncunun kendi saatinde ✅ (2026-11-14, yardımcı oturum).** C10 owner sorusunun yanıtı. Takvim kuralları değişmedi; yalnız gösterim.
+
+- **Ne değişti:**
+  - Rehberdeki bütün saatler cihazın saat diliminde yazıyor. Saat dilimi `Intl`'den okunuyor.
+  - Türkiye saatinin altındaki ikinci "Yerel · …" satırı kalktı. Pencere tek satır oldu, kartlar kısaldı.
+  - Başlıktaki çip saat dilimini adlandırıyor: "Senin saatin (GMT+9)". Önceden "Türkiye saati (UTC+3)" yazıyordu.
+- **Günler galaksinin:** "Hafta içi" ve "Hafta sonu" Türkiye günleri olarak kaldı. Tokyo'da hafta içi 20:00 yağmuru ertesi gün 02:00'de başlıyor.
+  - Böyle bir pencerenin yanında amber bir "+1" ya da "−1" var. Ekran okuyucu bunu "ertesi gün" / "önceki gün" diye okuyor.
+  - Böyle bir pencere varsa başlığın altında tek satır bunu açıklıyor. Türkiye saatindeki oyuncu bu satırı ve işaretleri hiç görmüyor.
+  - Her gün çalışan pencerenin başka bir güne düşmesi anlamsız; ona işaret konmuyor.
+- **Yaz saati:** her pencerenin bir sonraki çalışması o günkü saat dilimiyle okunuyor. New York'ta eylülde 7 saat geride (test ediliyor).
+- **Sıra:** bir satırdaki pencereler oyuncunun saatine göre sıralanıyor. Gece 06:00'dan önceki saatler, önceki gibi günün sonunda okunuyor.
+- **Anahtarlar ×6:** `timeZone` artık `{{zone}}` alıyor. `dayShift`, `nextDay` ve `previousDay` eklendi. Kullanılmayan `localTime` silindi.
+- **Testler:** Türkiye, Tokyo, New York ve Honolulu (−1) için ayrı ayrı. Testler saat dilimini kendisi veriyor; böylece testi çalıştıran makinenin saat dilimine bağlı değiller.
+- **Galeri:** `events-guide-tokyo`.
 
 ## G4. Galaksi ve gönderme
 

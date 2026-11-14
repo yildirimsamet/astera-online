@@ -921,13 +921,13 @@ function GalleryChronicle({ empty = false }: { empty?: boolean }) {
 }
 
 /** The galaxy events guide with the next shower 42 minutes out (C10). */
-function GalleryEventsGuide() {
+function GalleryEventsGuide({ timeZone }: { timeZone?: string }) {
   const client = useQueryClient();
   useState(() => {
     client.setQueryData(keys.galaxyEvents, { events: [], next: { kind: 'ASTEROID_SHOWER', startsAt: new Date(Date.now() + 42 * MIN) } });
     return null;
   });
-  return <GalaxyEventsGuide onClose={noop} />;
+  return <GalaxyEventsGuide onClose={noop} {...(timeZone ? { timeZone } : {})} />;
 }
 
 /**
@@ -1092,6 +1092,8 @@ function Views({ view }: { view: string }) {
   if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
   if (view === 'chronicle' || view === 'chronicle-empty') return <GalleryChronicle empty={view === 'chronicle-empty'} />;
   if (view === 'events-guide') return <GalleryEventsGuide />;
+  // a player six hours ahead of the galaxy: the late windows land on the next day (owner 2026-11-14)
+  if (view === 'events-guide-tokyo') return <GalleryEventsGuide timeZone="Asia/Tokyo" />;
   if (view === 'toast') return <GalleryToast tone="info" />;
   if (view === 'toast-warn') return <GalleryToast tone="warn" />;
   if (view === 'toast-error') return <GalleryToast tone="error" />;
