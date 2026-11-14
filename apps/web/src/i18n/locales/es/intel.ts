@@ -560,8 +560,6 @@ export const clarity = {
   unreadable: 'UNREADABLE',
   fleetHome: 'INICIO DE LA FLOTA',
   fleetAway: 'FLOTA LEJOS',
-  backIn: '· de vuelta en {{minutes}}m',
-  unwatched: 'ningún reloj asignado',
 } as const;
 
 /** What you know about another world, and how you know it. */

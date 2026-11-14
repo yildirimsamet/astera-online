@@ -20,9 +20,8 @@ export const spend = {
   shortfall: '{{short}}不足',
 } as const;
 
-/** A probe's fuzzed reading, drawn as the doubt it is: `RangeBand`. */
+/** A probe's fuzzed reading, as the Intel page states it. */
 export const rangeBand = {
-  join: " – ",
   reading: "{{label}}：{{low}}～{{high}}の範囲",
   yours: "あなた：{{value}}",
 } as const;

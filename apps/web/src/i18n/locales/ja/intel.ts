@@ -560,8 +560,6 @@ export const clarity = {
   unreadable: "読み取れません",
   fleetHome: "艦隊ホーム",
   fleetAway: "艦隊・アウェイ",
-  backIn: "· {{minutes}}mに戻る",
-  unwatched: "監視が割り当てられていません",
 } as const;
 
 /** What you know about another world, and how you know it. */

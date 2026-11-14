@@ -289,7 +289,7 @@ Bilinen boşluk: Uçuş Okulu ve mağaza keşif galerisi zil göstermez (`showGu
 
 G1-b'nin bıraktığı ölü kod adayları (silinmedi, owner'a liste olarak sunulacak):
 - `brand/Identity.tsx` içindeki `BrandMasthead` ve `brand/styles.css` içindeki `.brand-masthead` kuralları: yalnız marka önizlemesi ve testler çiziyor. `.brand-masthead-fullscreen*` canlı: tam ekran düğmesi menüde bu kuralları kullanıyor.
-- `v2/kit/ResourceMeter.tsx`: yalnız galeri ve kendi testi.
+- `v2/kit/ResourceMeter.tsx`: yalnız galeri ve kendi testi. (2026-11-14'te silindi.)
 - `ui/SignalBoostNote.tsx`: yalnız ölü `shell/StatusBar.tsx` içinde.
 
 **G1-c Şimdi çizgisi ve sayaç sheet'i ✅ (2026-11-14).** Oyuncunun anı: oyun açılınca "bana bir şey geliyor mu, sıradaki ne iniyor?" Durum satırının altındaki tek plaka bunu söyler; bir dokunuş bütün sayaçları açar.
@@ -726,7 +726,7 @@ Ortak parçalarda:
 
 Metin (6 dil): yeni `damagedShips`, `maintenance.order` (İş emri), `maintenance.back` (Geri al), `maintenance.scrapSelected`, `maintenance.radiationShort`, `tooManyShort`. Kullanılmayan `statWaiting`, `statRepairing`, `queueHeading`, `maintenance.scrapAction`, `maintenance.scrapConfirm`, `maintenance.keep` silindi. Daha önce ölü olan `outOfAction` (Geri al modunun açıklaması) ve `maintenance.select` yeniden kullanılıyor.
 
-Ölü kod adayı (benden önce de kullanılmıyordu, silinmedi; owner'a liste): `repairStation.statQueue`, `tagline`, `industrialChip`, `selectNone`, `choose`, `noneWaiting`, `share`, `selected_one/_other`.
+Ölü kod (benden önce de kullanılmıyordu): `repairStation.statQueue`, `tagline`, `industrialChip`, `selectNone`, `choose`, `noneWaiting`, `share`, `selected_one/_other`. Owner onayıyla 2026-11-14'te silindi (aşağıda "Temizlik").
 
 Owner'ın bakması için: parçalama onay penceresi 1,5 sn basılı tutmaya döndü (yardımcının C4 engelleme ve C6 döteryum aktarımıyla aynı çizgi). Geri alınabilir küçük bir değişiklik.
 
@@ -767,7 +767,7 @@ Savunma özeti (`DefenceReadings`): dört v2 kutusu (9 px) kitin cam kuyularına
 
 Silinen (bu değişiklikle kullanılmaz oldu): `ui/TacticalStock.tsx`, `v2/kit/ChargeTally.tsx` ve testi, `PlanetScreen`'deki `CapacityNext`, `ChargeProgress`, `TacticalNeed`, `PlanetHero`'daki `Firepower` ve v2 `Meter` kullanımı, `surfaces.css`'teki `.tactical-production*`, `.tactical-stock*`, `.radiation-forge*`, `.radiation-product*` kuralları ve yalnız onların okuduğu dört renk (`--color-v2-radiation-tier-1/2/3`, `--color-v2-radiation-flying`), `planet.interceptor.readyHint` (6 dilde `hint` ile birebir aynıydı), `planet.deathStar.eyebrow`.
 
-Ölü kod adayı (benden önce de kullanılmıyordu, silinmedi; owner'a liste): `--color-v2-radiation-product-border/glow/ground/title/rate`. Eski görsel doğrulama betikleri `tools/tactical-production-visual.mjs`, `tools/radiation-forge-visual.mjs`, `tools/radiation-bomb-visual.mjs` ve `tools/honor-benefits-visual.mjs`'in bir adımı eski v2 seçicilerini arıyor; denetim ve galeri artık bu işi yapıyor. Silinsin mi, owner'a soru.
+Ölü kod (benden önce de kullanılmıyordu): `--color-v2-radiation-product-border/glow/ground/title/rate`. Owner onayıyla 2026-11-14'te silindi (aşağıda "Temizlik"). Eski görsel doğrulama betikleri `tools/tactical-production-visual.mjs`, `tools/radiation-forge-visual.mjs`, `tools/radiation-bomb-visual.mjs` ve `tools/honor-benefits-visual.mjs`'in bir adımı eski v2 seçicilerini arıyor. Owner silmeyi onayladı; ana çalışma alanında başka bir oturumun kaydedilmemiş `tools/visual.mjs` değişikliği var (bu betikleri o dosya çağırıyor), o kaydedilince silinecek.
 
 Kit sayfasına iki görünüm eklendi ve denetim bunları ölçüyor: `strategic-radiation` (radyasyon atölyesi açık, ikinci Ölüm Yıldızı üretimde), `strategic-locked` (genç dünya, kilitli atölye).
 
@@ -788,6 +788,18 @@ Radyasyon açık görünüm 0/72, kilitli atölye 0/61 küçük metin; ikisinde 
 Savunma görünümünde kalan 13 küçük metin ve 10 kontrast hatasının hepsi yer odası çubuğunda ("Yer odası", "0 / 30", "boş 30", Kirpi / Zıpkın / Tabya çipleri, iki not satırı). O parça v2 `RoomBar`, G2-h'nin işi. Savunma özetinde ve bataryada bulgu yok.
 
 Metin yükü: atölye ekranı ilk ölçümde ekran başına 62 kelimeydi (bütçe 55). Tekrar eden üst satır kalkınca 60,5'e indi. Kartın kendisi yaklaşık 28 kelime. Görünüm iki ekran boyunda olduğu için ortalamayı sekmelerin üstündeki Üs başlığı (depo kuralı, radyasyon koruması, koloniyi bırak, kuyruklar) belirliyor. Başlık G2-a'nın işiydi; owner'ın son bakışı için not. Kilitli 57,5, savunma 55,8, radyasyon 50,3.
+
+**Temizlik: hiç kullanılmayan arayüz kodu (owner, 2026-11-14: "hiç kullanılmıyorsa gereksiz kodu silebilirsin").** Her parçanın kullanıcısı tek tek arandı (içe aktarma, `t('…')` anahtarı, dinamik ve önekli anahtar, galeri, araçlar):
+- Onarım istasyonunun 9 anahtarı (6 dil): `statQueue`, `tagline`, `industrialChip`, `selectNone`, `choose`, `noneWaiting`, `share`, `selected_one/_other`.
+- `--color-v2-radiation-product-*` (5 renk).
+- `v2/kit/ResourceMeter.tsx` ve testi (yalnız v2 galerisi çiziyordu; galeri bölümü "segmented" oldu).
+- `ui/RangeBand.tsx` ve testi; yalnız onun okuduğu `rangeBand.join` (6 dil; `i18n.test.ts` istisna listesinden de çıktı). `rangeBand.reading` ve `rangeBand.yours` İstihbarat'ta kullanılıyor, kaldı.
+- `ui/Clarity.tsx` ve `fog.test.tsx` içindeki beş testi; yalnız onun okuduğu `clarity.backIn`, `clarity.unwatched` (6 dil). Diğer `clarity.*` anahtarları İstihbarat ve `Freshness`'te kullanılıyor, kaldı.
+
+Kalanlar ve nedeni:
+- `brand/Identity.tsx` `BrandMasthead`: marka önizleme sayfası ve `tools/fullscreen-visual.mjs` hâlâ çiziyor; kullanılıyor, silinmedi.
+- Eski Akademi zinciri (`onboarding/Academy.tsx`, `Rehearsal.tsx`, `shell/StatusBar.tsx`, `ui/SignalBoostNote.tsx`, `PendingStrip`, `Signals`): durdurulan yeni oyuncu dalı (`feat/new-player-journey`) bu dosyalara dokunuyor; şimdi silmek o dalı birleştirirken çakışma çıkarır. G15'te silinecek.
+- `tools/` betikleri: yukarıda, `tools/visual.mjs` kaydedilince.
 
 ## G3. İstihbarat
 
@@ -1455,7 +1467,7 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 
 **Kitte olmayan, sık kullanılan parçalar (kit boşluğu adayları, ilk kullanan grupta önce kite eklenir):** tost (`Toast`), sayıcı (`QuantityStepper`), aralıklı okuma (`RangeRow`/aralık çubuğu, G3), onay dialogu (`Confirm`: kitte `Dialog` var, uyumu bakılacak), sekme içi seçim (iki seçenekli `Segmented` → `GameTabs` ya da `Lever`), ülke / bayrak seçici.
 
-**Canlıda kullanılmayan (yalnız testler):** `ui/RangeBand.tsx`, `ui/Clarity.tsx` (İstihbarat `v2/kit/Freshness` kullanıyor). Ölü kod adayı listesine eklendi.
+**Canlıda kullanılmayan (yalnız testler):** `ui/RangeBand.tsx`, `ui/Clarity.tsx` (İstihbarat `v2/kit/Freshness` kullanıyor). 2026-11-14'te silindi.
 
 **Kalan küçük dosyalar ve gruplar:** `screens/RadiationBombControls` (G2 Taktik, G4), `screens/securityFields` (G10), `screens/faultScope` (G2, çizimsiz bağlam), `shell/ConsentNotice` (G13; çerez / analitik onayı, menü Ayarlar'dan yeniden açılır), `shell/ShopShowcasePoster` (G6), `v2/hud/ReportScene` (G5), `v2/hud/ResearchConstellation` (G2), `brand/FullscreenButton`, `brand/Install`, `brand/OpeningScene`, `brand/Preview` (G13), `onboarding/prologue/ShipScene` (G15).
 

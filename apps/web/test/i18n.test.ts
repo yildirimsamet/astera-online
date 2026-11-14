@@ -345,8 +345,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'action.statFuelNone',
   'planetHero.shieldValue',
   'units.rangeJoin',
-  // The dash between the two ends of a probe's range. Punctuation.
-  'rangeBand.join',
   // The dot between the two firepower lines and between the notes under them.
   // Punctuation; the lines and notes it separates are translated. D199.
   'counter.lineJoin',

@@ -507,8 +507,6 @@ export const clarity = {
   unreadable: 'OKUNAMIYOR',
   fleetHome: 'FİLO EVDE',
   fleetAway: 'FİLO DIŞARIDA',
-  backIn: ' · {{minutes}} dk sonra döner',
-  unwatched: 'izlemeye alınmadı',
 } as const;
 
 export const dossier = {

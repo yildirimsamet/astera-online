@@ -68,7 +68,6 @@ import { HoldButton } from '../kit/HoldButton.js';
 import { MatchupLine } from '../kit/MatchupLine.js';
 import { QueueLane } from '../kit/QueueLane.js';
 import { QueueSheet } from '../kit/QueueSheet.js';
-import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
@@ -1539,12 +1538,7 @@ export function Gallery({ view }: { view: string | null }) {
           <HoldButton label="Launch" onCommit={noop} disabledReason="Not enough Deuterium: 240 short" />
         </Section>
 
-        <Section title="resource meter · segmented">
-          <div className="grid grid-cols-3 gap-2">
-            <ResourceMeter resource="alloy" value={12_400} cap={20_000} safe={6_000} />
-            <ResourceMeter resource="crystal" value={8_000} cap={8_000} safe={2_400} />
-            <ResourceMeter resource="deuterium" value={0} cap={0} />
-          </div>
+        <Section title="segmented">
           <Segmented
             label="Bell"
             value="signals"

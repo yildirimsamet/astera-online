@@ -575,8 +575,6 @@ export const clarity = {
   unreadable: "ILLISIBLE",
   fleetHome: "FLOTTE PRÉSENTE",
   fleetAway: "FLOTTE ABSENTE",
-  backIn: " · retour dans {{minutes}} min",
-  unwatched: "non surveillée",
 } as const;
 export const dossier = {
   /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */

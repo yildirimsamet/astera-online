@@ -560,8 +560,6 @@ export const clarity = {
   unreadable: 'UNREADABLE',
   fleetHome: 'FLOTTENHAUS',
   fleetAway: 'FLOTTE WEG',
-  backIn: '· zurück in {{minutes}}m',
-  unwatched: 'keine Überwachung zugewiesen',
 } as const;
 
 /** What you know about another world, and how you know it. */
