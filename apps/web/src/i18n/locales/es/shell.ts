@@ -610,6 +610,7 @@ export const chat = {
     title: "Jugadores silenciados",
     hint: "Oculta sus mensajes de los chats general y de clan en este dispositivo.",
     empty: "No hay jugadores silenciados.",
+    emptyHint: "Para silenciar a alguien, mantén pulsado su mensaje.",
     mute: "Silenciar a {{name}}",
     unmute: "Dejar de silenciar a {{name}}",
     unmuteShort: "Quitar silencio",

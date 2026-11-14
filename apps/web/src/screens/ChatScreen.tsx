@@ -1,7 +1,7 @@
 import { useStarterGate } from '../starter/gate.js';
 import { CommunityPolicyGate } from './CommunityPolicy.js';
 import { useCommunityPolicy, policyIsAccepted } from '../api/communityPolicy.js';
-import { BlockPlayerSheet, BlockedPlayersSheet, type BlockSubject } from './CommunityBlocks.js';
+import { BlockPlayerSheet, BlockedPlayersSheet, crestOf, type BlockSubject } from './CommunityBlocks.js';
 import { ContentReportSheet, type ReportSubject } from './ContentReportSheet.js';
 import { ChatMediaAttachment } from './ChatMediaAttachment.js';
 import { ChatMediaComposer } from './ChatMediaComposer.js';
@@ -145,11 +145,6 @@ function ReactionChip({ emoji, count, mine, onOpen }: { emoji: string; count: nu
       <span className="gk-react__pill"><span aria-hidden="true">{emoji}</span><span className="gk-num">{count}</span></span>
     </button>
   );
-}
-
-/** A commander's crest in a list of names: the first letters of up to two words. */
-function initials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] ?? '').join('').toLocaleUpperCase();
 }
 
 /** Which room: the galaxy's general channel or the commander's clan. */
@@ -561,7 +556,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
             {contacts.data?.contacts.map((peer) => (
               <li key={peer.playerId}>
                 <Press className="gk-contact" onPress={() => { selectContact(peer); }}>
-                  <span className="gk-avatar gk-display gk-outlined" aria-hidden="true">{initials(peer.username)}</span>
+                  <span className="gk-avatar gk-display gk-outlined" aria-hidden="true">{crestOf(peer.username)}</span>
                   <span className="gk-contact__name">{peer.username}</span>
                   <span className="gk-contact__mark"><Glyph id="mail" /></span>
                 </Press>

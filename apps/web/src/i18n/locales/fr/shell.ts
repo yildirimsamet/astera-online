@@ -560,6 +560,7 @@ export const chat = {
     title: "Joueurs masqués",
     hint: "Masque leurs messages des salons général et de clan sur cet appareil.",
     empty: "Aucun joueur masqué.",
+    emptyHint: "Pour masquer quelqu’un, maintiens son message appuyé.",
     mute: "Masquer {{name}}",
     unmute: "Réafficher {{name}}",
     unmuteShort: "Réafficher",

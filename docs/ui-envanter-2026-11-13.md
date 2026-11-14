@@ -894,6 +894,42 @@ Kalanlar:
 - 44 px altı: listenin tepesinde neredeyse görünmeyen balonun 14 px'lik ucu ve tepki panelinin altında kalan sekme. İkisi de gerçek bir küçük hedef değil.
 - Kesilen metin: yanıtlanan mesajın tek satırlık alıntısı (bilerek böyle) ile Fransızca, İspanyolca ve Japoncada sheet başlığı ("Signaler un contenu ou un joueur"). Başlık G1'in çerçevesinin işi.
 
+**C4 susturulanlar, engellenenler, topluluk kuralları ✅ (2026-11-14, yardımcı oturum).** G8 #5, #6, #7. Oyuncunun anları şunlar: kimi susturduğunu ya da engellediğini görüp geri almak; sohbette rahatsız eden birini engellemek; ilk kez yazmadan önce kuralları okuyup kabul etmek. Susturma, engel ve kural kabulü kuralları değişmedi.
+
+Önce kite eklenenler:
+- `GameButton.spoken`: tuşun okuyucuya söylenen tam adı. Yüzünde "Engeli kaldır", okuyucu "Vega'nın engelini kaldır" duyar. Aynı tuştan oluşan bir listede her tuş kimin olduğunu söyler.
+- `PersonRow` ve `crestOf` (`screens/CommunityBlocks.tsx`): bir listedeki tek komutan; arma, ad ve yapılacak tek iş. C3'teki komutan satırı da aynı armayı kullanıyor.
+- Malzemeler:
+  - `.gk-person`: listedeki komutan satırı.
+  - `.gk-note`: okunan dipnot (12 px, ikinci mürekkep).
+  - `.gk-linkchip`: oyundan dışarı çıkan bağlantı çipi (↗).
+  - `.gk-agree` ve `.gk-check`: kabul satırı ve onay kutusu. Kutu işaretlenince oyuncunun renginde yanıyor; satırın tamamı dokunma alanı.
+
+Yüzeyler:
+- **Susturulanlar ve Engellenenler:** her komutan kitin satırında, kendi tuşuyla. Liste boşsa kitin boş durumu "nasıl eklenir"i söylüyor ("Birini susturmak için mesajına basılı tut."; iki yeni anahtar ×6). Engellenenlerde alttaki ikinci "Kapat" kalktı; başlıktaki kapatma yetiyor.
+- **Oyuncuyu engelle:** "Engellemek istiyorum" kutusu ve "Engeli onayla" düğmesi tek bir kırmızı basılı tutmaya dönüştü (`GameHold`, geri alınabilir ağırlık, 0,6 sn). Basılı tutmak zaten "emin misin?" demek. Klavyede Enter, sonra yine Enter. Sonuç kitin yeşil bandı. Kullanılmaz hâle gelen `moderation.blocks.confirm` anahtarı 6 dilden silindi.
+- **Topluluk kuralları** (sohbet ve klan sohbeti): bağlantılar çip, kutu kitin kutusu. Kabul tuşu kutu işaretlenmeden "Önce kuralları kabul et" diyor (yeni anahtar ×6) ve gönderirken dönüyor. Kayıttaki "katılmak kabul etmektir" notu (G15) değişmedi.
+
+Galeriye beş görünüm eklendi: `chat-muted`, `chat-muted-empty`, `chat-blocked`, `chat-block`, `chat-policy`. Denetimin sohbet yollarına yazıldılar; sohbette ulaşılamayan yüzey kalmadı.
+
+Ölçüm: `reports/ui-audit/c4-chat-lists-after-2026-11-14.md`, beş yol, 70 ölçüm.
+
+| Ölçü | Önce | Sonra |
+|---|---|---|
+| 12 px altı metin | 44 | 0 |
+| Kontrastı yetmeyen metin | 2 | 0 |
+| 44 px altı hedef | 18 | 4 |
+| WCAG aralık hatası | 4 | 0 |
+| Basınca tepkisiz | 12 | 2 |
+| Kırpılan metin | 0 | 5 |
+
+Ölçümden sonra üç şey düzeltildi ve dört dilde ekran görüntüsüyle bakıldı (yeniden ölçülmedi):
+- Kırpılan 5 metin, Fransızca ve Almancada basılı tutma tuşundaki "Confirmer le blocage" idi. Tuştaki söz artık tek fiil ("Engelle", "Bloquer", "Blockieren"); sheet'in başlığı zaten "Oyuncuyu engelle" diyor.
+- Dar Türkçe ekranda susturulanlardaki "Kael Draven" kesiliyordu. Ad artık kesilmiyor, gerekirse ikinci satıra iniyor.
+- Tepkisiz 2 hedef, kabul satırıydı. Satır basınca hafifçe aydınlanıyor.
+
+Kalan 4 küçük hedef, sheet'in arkasında kalan sohbetin yarım görünen yazar adı. Yeni bir küçük hedef değil.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.

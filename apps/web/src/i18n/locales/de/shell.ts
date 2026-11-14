@@ -610,6 +610,7 @@ export const chat = {
     title: "Stummgeschaltete Spieler",
     hint: "Blendet ihre Nachrichten im allgemeinen und im Clan-Chat auf diesem Gerät aus.",
     empty: "Keine stummgeschalteten Spieler.",
+    emptyHint: "Halte eine Nachricht gedrückt, um jemanden stummzuschalten.",
     mute: "{{name}} stummschalten",
     unmute: "Stummschaltung von {{name}} aufheben",
     unmuteShort: "Aufheben",

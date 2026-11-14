@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CHAT_LANGUAGES, COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import { chatMuteStorageKey } from '../../lib/chatMutes.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { keys } from '../../api/keys.js';
@@ -16,6 +17,9 @@ import { ChatHost } from '../shell/ChatHost.js';
  * (`chat-actions`, `chat-react`), who reacted (`chat-roster`), the report sheet (`chat-report`)
  * and the operator's photo (`chat-media`). A view that needs a press makes it once on arrival,
  * finding the control by what a reader hears, so the same view shows the old and the new page.
+ *
+ * C4 adds the muted list (`chat-muted`, `chat-muted-empty`), the blocked list (`chat-blocked`),
+ * blocking a player (`chat-block`) and the rules a newcomer accepts before writing (`chat-policy`).
  *
  * Development only (`v2-gallery.html`); nothing here is imported by the game.
  */
@@ -58,6 +62,21 @@ const DM: Row[] = [
 ];
 const CONTACTS = [peer('orin', 'Orin'), peer('vega', 'Vega'), peer('lyra', 'Lyra'), peer('kael', 'Kael Draven')];
 
+const ACCOUNT = 'gallery';
+const MUTED = [{ playerId: 'orin', username: 'Orin' }, { playerId: 'kael', username: 'Kael Draven' }];
+const BLOCKED = [
+  { accountId: '0d6c9a4e-6b1f-4c43-9d1e-2f5d8b7a1c01', username: 'Vega', createdAt: at(2_000).toISOString() },
+  { accountId: '0d6c9a4e-6b1f-4c43-9d1e-2f5d8b7a1c02', username: 'Kael Draven', createdAt: at(9_000).toISOString() },
+];
+
+/** The muted list lives on the device: the gallery writes it before the chat reads it. */
+function seedMutes(view: string): void {
+  try {
+    if (view === 'chat-muted') localStorage.setItem(chatMuteStorageKey(ACCOUNT), JSON.stringify(MUTED));
+    else localStorage.removeItem(chatMuteStorageKey(ACCOUNT));
+  } catch { /* A gallery without storage shows the empty list. */ }
+}
+
 const clanLine = (id: string, minutes: number, over: Row): Row => ({
   id, authorPlayerId: 'mira', planetId: 'p', username: 'Mira', content: '', createdAt: at(minutes), self: false, ...over,
 });
@@ -80,15 +99,21 @@ function answer(view: string): typeof fetch {
   return (input) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     const body = url.includes('/api/dm/conversations') ? threadsOf(view)
-      : url.includes('/api/dm/contacts') ? { contacts: CONTACTS } : null;
+      : url.includes('/api/dm/contacts') ? { contacts: CONTACTS }
+        : url.includes('/api/community/blocks') ? { blocks: BLOCKED }
+          : url.includes('/api/community/policy') ? policyOf(view) : null;
     return Promise.resolve(body === null ? new Response('{}', { status: 404 }) : new Response(JSON.stringify(body), { status: 200 }));
   };
+}
+
+function policyOf(view: string): { version: string; acceptedAt: Date | null } {
+  return { version: COMMUNITY_POLICY_VERSION, acceptedAt: view === 'chat-policy' ? null : new Date(NOW) };
 }
 
 function seed(view: string): QueryClient {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   const empty = view === 'chat-empty';
-  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date(NOW) });
+  client.setQueryData(keys.communityPolicy, policyOf(view));
   client.setQueryData(keys.clanBadge, {
     available: true, membership: { clanId: 'c', name: 'Orbit Wardens', tag: 'ORB', role: 'MEMBER', matureAt: at(9_000), mature: true },
     attention: false, attentionCount: 0, clanChatUnread: view === 'chat-clan' ? 0 : 2,
@@ -140,6 +165,13 @@ function useArrivalPress(view: string): void {
       const outer = pressWhenThere(message, hold, () => { inner = pressWhenThere(() => byLabel(t('chat.addReaction')), click); });
       return () => { outer(); inner?.(); };
     }
+    if (view === 'chat-block') {
+      let inner: (() => void) | undefined;
+      const outer = pressWhenThere(message, hold, () => { inner = pressWhenThere(() => byLabel(t('moderation.blocks.action')), click); });
+      return () => { outer(); inner?.(); };
+    }
+    if (view === 'chat-muted' || view === 'chat-muted-empty') return pressWhenThere(() => byLabel(t('chat.personalMutes.title')), click);
+    if (view === 'chat-blocked') return pressWhenThere(() => byLabel(t('moderation.blocks.title')), click);
     if (view === 'chat-report') {
       let inner: (() => void) | undefined;
       const outer = pressWhenThere(message, hold, () => { inner = pressWhenThere(() => byLabel(t('moderation.report')), click); });
@@ -156,12 +188,12 @@ function useArrivalPress(view: string): void {
 
 function Stage({ view }: { view: string }) {
   useArrivalPress(view);
-  return <ChatHost onClose={noop} onFocusPlanet={noop} isAdmin={view === 'chat-media'}
+  return <ChatHost accountId={ACCOUNT} onClose={noop} onFocusPlanet={noop} isAdmin={view === 'chat-media'}
     channel={view === 'chat-clan' ? 'clan' : view.startsWith('chat-dm') ? 'dm' : 'general'} />;
 }
 
 export function GalleryChat({ view }: { view: string }) {
-  const [client] = useState(() => seed(view));
+  const [client] = useState(() => { seedMutes(view); return seed(view); });
   const [api] = useState(() => {
     const gallery = new Api({ fetch: answer(view) });
     gallery.chatMediaUrl = () => PHOTO;

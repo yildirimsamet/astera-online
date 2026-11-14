@@ -611,6 +611,7 @@ export const chat = {
     title: "Muted players",
     hint: "Hides their General and Clan messages on this device.",
     empty: "No muted players.",
+    emptyHint: "To mute someone, press and hold their message.",
     mute: "Mute {{name}}",
     unmute: "Unmute {{name}}",
     unmuteShort: "Unmute",

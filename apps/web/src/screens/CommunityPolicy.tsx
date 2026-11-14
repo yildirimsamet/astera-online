@@ -7,17 +7,17 @@ import { keys } from '../api/keys.js';
 import { policyIsAccepted, type useCommunityPolicy } from '../api/communityPolicy.js';
 import { matchLanguage } from '../i18n/languages.js';
 import { publisherUrl } from '../lib/publisherPages.js';
-import { Button } from '../v2/kit/Surface.js';
+import { GameButton } from '../game-ui/index.js';
 
 /** A legal/community agreement is independent of advertising consent. */
 export function CommunityPolicyAgreement({ checked, disabled = false, onChange }: { checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
   const { t, i18n } = useTranslation();
   return <div className="grid gap-2">
-    <div className="flex flex-wrap gap-x-4 text-caption text-v2-self">
-      <a className="flex min-h-11 items-center underline underline-offset-4" href={publisherUrl('community', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer">{t('moderation.policy.communityLink')}</a>
-      <a className="flex min-h-11 items-center underline underline-offset-4" href={publisherUrl('terms', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer">{t('moderation.policy.termsLink')}</a>
+    <div className="flex flex-wrap gap-2">
+      <a className="gk-linkchip" href={publisherUrl('community', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer">{t('moderation.policy.communityLink')}</a>
+      <a className="gk-linkchip" href={publisherUrl('terms', i18n.resolvedLanguage)} target="_blank" rel="noopener noreferrer">{t('moderation.policy.termsLink')}</a>
     </div>
-    <label className="flex min-h-11 items-start gap-3 text-caption leading-relaxed text-v2-ink-2"><input className="mt-1 size-5 shrink-0 accent-v2-self" type="checkbox" checked={checked} disabled={disabled} onChange={event => { onChange(event.target.checked); }} />{t('moderation.policy.agreement')}</label>
+    <label className="gk-agree"><input className="gk-check" type="checkbox" checked={checked} disabled={disabled} onChange={event => { onChange(event.target.checked); }} /><span>{t('moderation.policy.agreement')}</span></label>
   </div>;
 }
 /** Joining is the agreement (owner playtest 2026-11-06): the rules sit a tap away above the button. */
@@ -44,16 +44,18 @@ export function CommunityPolicyGate({ policy, children }: { policy: ReturnType<t
     } catch { setFailed(true); } finally { active.current = false; setBusy(false); }
   };
   if (policyIsAccepted(policy)) return children;
-  return <section className="grid shrink-0 gap-2 overflow-y-auto border-t border-v2-line bg-v2-panel px-3 py-3">
-    <h3 className="text-caption font-semibold text-v2-ink">{t('moderation.policy.title')}</h3>
-    {policy.isPending ? <p className="text-caption text-v2-ink-2">{t('moderation.policy.loading')}</p> : policy.isError ? <>
-      <p role="alert" className="text-caption text-v2-warn">{t('moderation.policy.unavailable')}</p>
-      <Button size="lg" onClick={() => { void policy.refetch(); }}>{t('moderation.blocks.retry')}</Button>
-    </> : policy.data.version !== COMMUNITY_POLICY_VERSION ? <p role="alert" className="text-caption text-v2-warn">{t('moderation.policy.update')}</p> : <>
-      <p className="text-caption leading-relaxed text-v2-ink-2">{t('moderation.policy.summary')}</p>
+  /* THE ROOM'S RULES (C4): read, tick, accept — on the kit; the dead key says what it still needs. */
+  return <section className="gk grid shrink-0 gap-3 overflow-y-auto border-t border-v2-line bg-v2-panel px-[var(--gk-gutter)] py-3">
+    <h3 className="gk-display text-title">{t('moderation.policy.title')}</h3>
+    {policy.isPending ? <p className="gk-copy">{t('moderation.policy.loading')}</p> : policy.isError ? <>
+      <p role="alert" className="text-v2-warn">{t('moderation.policy.unavailable')}</p>
+      <GameButton wide glyph="refresh" onPress={() => { void policy.refetch(); }}>{t('moderation.blocks.retry')}</GameButton>
+    </> : policy.data.version !== COMMUNITY_POLICY_VERSION ? <p role="alert" className="text-v2-warn">{t('moderation.policy.update')}</p> : <>
+      <p className="gk-copy">{t('moderation.policy.summary')}</p>
       <CommunityPolicyAgreement checked={checked} onChange={setChecked} disabled={busy} />
-      {failed ? <p role="alert" className="text-caption text-v2-warn">{t('moderation.policy.failed')}</p> : null}
-      <Button size="lg" full variant="primary" disabled={!checked || busy} onClick={() => { void agree(); }}>{t('moderation.policy.accept')}</Button>
+      {failed ? <p role="alert" className="text-v2-warn">{t('moderation.policy.failed')}</p> : null}
+      <GameButton wide tone="action" glyph="check" pending={busy} disabledReason={checked ? null : t('moderation.policy.agreeFirst')}
+        onPress={() => { void agree(); }}>{t('moderation.policy.accept')}</GameButton>
     </>}
   </section>;
 }

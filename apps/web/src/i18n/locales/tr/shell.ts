@@ -548,6 +548,7 @@ export const chat = {
     title: "Susturulanlar",
     hint: "Bu cihazda genel ve klan sohbetindeki mesajlarını gizler.",
     empty: "Henüz susturulan kimse yok.",
+    emptyHint: "Birini susturmak için mesajına basılı tut.",
     mute: "{{name}} kişisini sustur",
     unmute: "{{name}} kişisinin susturmasını kaldır",
     unmuteShort: "Susturmayı kaldır",

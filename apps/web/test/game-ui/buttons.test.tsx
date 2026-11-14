@@ -29,6 +29,13 @@ describe('the game button', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  /** "Unblock" on the face, "Unblock Scout" for a reader: a row of the same key says whose it is (C4). */
+  it('names itself in full for a reader when its face says less', () => {
+    render(<GameButton onPress={vi.fn()} spoken="Unblock Scout">Unblock</GameButton>);
+    const button = screen.getByRole('button', { name: 'Unblock Scout' });
+    expect(button).toHaveTextContent('Unblock');
+  });
+
   it('is busy, not pressable, while its action is pending', () => {
     const onPress = vi.fn();
     render(<GameButton onPress={onPress} pending>Upgrade</GameButton>);

@@ -141,9 +141,10 @@ export const SURFACES: GameSurface[] = [
     files: ['screens/ChatScreen.tsx', 'v2/shell/ChatHost.tsx', 'screens/ChatMediaAttachment.tsx', 'screens/ChatMediaComposer.tsx', 'screens/ChatReactionRoster.tsx', 'screens/CommunityBlocks.tsx', 'screens/ContentReportSheet.tsx'],
     reach: [
       'gallery:chat', 'gallery:chat-empty', 'gallery:chat-clan', 'gallery:chat-dm', 'gallery:chat-dm-empty', 'gallery:chat-dm-new', 'gallery:chat-actions',
-      'gallery:chat-react', 'gallery:chat-roster', 'gallery:chat-report', 'gallery:chat-media', 'gallery:support-chat', 'client:chat', 'client:chat-rules',
+      'gallery:chat-react', 'gallery:chat-roster', 'gallery:chat-report', 'gallery:chat-media', 'gallery:chat-muted', 'gallery:chat-muted-empty',
+      'gallery:chat-blocked', 'gallery:chat-block', 'gallery:chat-policy', 'gallery:support-chat', 'client:chat', 'client:chat-rules',
     ],
-    group: 'G8', unreached: ['engellenenler', 'sessize alınanlar'],
+    group: 'G8',
   },
 
   // Menu, commander and meta.
