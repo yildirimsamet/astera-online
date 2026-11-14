@@ -270,6 +270,6 @@ describe('the support row', () => {
     const row = screen.getByRole('button', {
       name: new RegExp(i18n.t('community.donate.menuLabel'), 'i'),
     });
-    expect(row).toHaveClass('text-v2-self');
+    expect(row).toHaveAttribute('data-tone', 'self');
   });
 });

@@ -12,6 +12,10 @@ import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
 
+/** Every buzz the menu makes, to count how many a single press gives. */
+const buzz = vi.hoisted(() => vi.fn());
+vi.mock('../src/lib/haptics.js', async (actual) => ({ ...await actual<Record<string, unknown>>(), haptic: buzz }));
+
 function harness() {
   const fetch = vi.fn(() =>
     Promise.resolve(
@@ -79,18 +83,19 @@ describe('the compact commander menu', () => {
     const view = render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
     const leaderboard = screen.getByRole('button', { name: named(i18n.t('menu.leaderboardLabel'), i18n.t('menu.leaderboardHint')) });
     const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
-    expect(leaderboard).toHaveAttribute('data-menu-tile');
-    expect(leaderboard).toHaveClass('menu-art-tile');
+    // G1-f2: one kind of thing — every place is the kit's tile, with its own picture.
+    expect(leaderboard).toHaveAttribute('data-tile', 'leaderboard');
+    expect(leaderboard).toHaveClass('gk-mtile');
     expect(leaderboard.querySelector('img')).toBeInTheDocument();
     expect(leaderboard.compareDocumentPosition(rewards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(rewards).not.toHaveAttribute('data-menu-tile');
-    expect(rewards).toHaveAttribute('data-menu-category', 'rewards');
+    expect(rewards).toHaveAttribute('data-tile', 'rewards');
+    expect(rewards).toHaveClass('gk-mtile');
     fireEvent.click(leaderboard);
     expect(onOpen).toHaveBeenLastCalledWith('leaderboard');
     fireEvent.click(rewards);
     expect(onOpen).toHaveBeenLastCalledWith('rewards');
     expect(view.container.querySelector('[data-menu-page]')).toHaveAttribute('data-menu-page', 'home');
-    expect(view.container.querySelector('[data-menu-category="season"]')).toBeNull();
+    expect(view.container.querySelector('[data-tile="season"]')).toBeNull();
   });
 
   it('opens support directly above settings and keeps it out of the community submenu', () => {
@@ -146,17 +151,44 @@ describe('the compact commander menu', () => {
     queries.setQueryData(keys.announcements, { announcements: [{ seen: false }, { seen: true }] });
     const onOpen = vi.fn();
     render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
-    fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.navigation.rewardsReady', { count: 3 }), i18n.t('menu.rewardsHint')) }));
+    // G1-f2: the count rides the Rewards tile; the second "3 rewards ready" row that repeated it is gone.
+    const ready = i18n.t('menu.navigation.rewardsReady', { count: 3 });
+    const rewards = screen.getByRole('button', { name: `${named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint'))}. ${ready}` });
+    expect(rewards.querySelector('.gk-dot')).toHaveTextContent('3');
+    expect(screen.getAllByRole('button', { name: new RegExp(ready) })).toHaveLength(1);
+    fireEvent.click(rewards);
     expect(onOpen).toHaveBeenCalledWith('rewards');
     expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.community')}\\.`) })).toHaveTextContent(i18n.t('menu.announcementsWaiting', { count: 1 }));
   });
 
   it('puts season results and placement first, and creates no urgency for vacation', () => {
     const view = show({ inSilentSpace: true, hasSeasonResult: true });
-    const rows = view.container.querySelectorAll('[data-menu-row]');
-    expect(rows).toHaveLength(2);
+    // The two calls stand first, across the row, before any other place.
+    const tiles = [...view.container.querySelectorAll('[data-tile]')].map((tile) => tile.getAttribute('data-tile'));
+    expect(tiles.slice(0, 2)).toEqual(['return', 'recap']);
+    expect(view.container.querySelector('[data-tile="return"]')).toHaveAttribute('data-wide');
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('silentSpace.menu')}\\.`) }));
     expect(screen.queryByRole('button', { name: /^Vacation/ })).toBeNull();
+  });
+
+  it('draws every place the home page opens as one kind of tile, in named groups', () => {
+    const view = show({ isAdmin: true });
+    const places = view.container.querySelectorAll('[data-tile]');
+    expect(places.length).toBeGreaterThanOrEqual(7);
+    for (const place of places) expect(place).toHaveClass('gk-mtile');
+    expect(view.container.querySelector('[data-menu-row], [data-menu-category], [data-menu-tile]')).toBeNull();
+    const tags = [...view.container.querySelectorAll('.gk-tag')].map((tag) => tag.textContent);
+    expect(tags).toEqual(expect.arrayContaining([i18n.t('menu.seasonHeading'), i18n.t('skins.collection'), i18n.t('menu.gameHeading')]));
+  });
+
+  it('answers a press on a tile that opens a page once: one buzz, not two', () => {
+    show();
+    buzz.mockClear();
+    enter('academy');
+    expect(buzz).toHaveBeenCalledOnce();
+    buzz.mockClear();
+    back();
+    expect(buzz).toHaveBeenCalledOnce();
   });
 
   it('keeps identity, galaxy and season context at the top; account operations inside the profile', () => {

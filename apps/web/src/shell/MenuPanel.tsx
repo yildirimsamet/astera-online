@@ -1,9 +1,9 @@
 import { DepartureBoard } from '../starter/DepartureBoard.js';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
 import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
-import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
+import { OWN_SOUND, playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
 import { useAnnouncements, useLeaderboard, usePlanet, useRewards } from '../api/queries.js';
 import { gateOf } from '../starter/gate.js';
 import { ShipLog } from '../starter/ShipLog.js';
@@ -20,31 +20,17 @@ import {
 } from '../lib/music.js';
 import { rivalColour } from '../galaxy/PlanetField.jsx';
 import { haptic } from '../lib/haptics.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { useNow, untilReady } from '../lib/time.js';
 import {
   RENDER_QUALITIES,
   setRenderQuality,
   useRenderQuality,
 } from '../lib/quality.js';
-import { SectionHead } from '../v2/kit/Surface.js';
-import { Choices, LanguagePicker, Plate, RoundButton, SectionTag, SettingLink, Slider, Toggle } from '../game-ui/index.js';
+import { artIconSrc, Choices, Glyph, LanguagePicker, MenuTile, Plate, RoundButton, SectionTag, SettingLink, Slider, TileGrid, Toggle } from '../game-ui/index.js';
 import { currentLanguage } from '../i18n/index.js';
 import { setLanguage } from '../i18n/document.js';
 import { analyticsAvailable } from '../lib/playerAnalytics/preference.js';
-import {
-  ChevronIcon,
-  BellIcon,
-  CloseIcon,
-  GalaxyIcon,
-  LeaderboardIcon,
-  RewardIcon,
-  SendIcon,
-  LockIcon,
-  GuideIcon,
-  HeartIcon,
-  AttackIcon,
-  BroadcastIcon,
-} from '../ui/icons/index.js';
 import { AnalyticsSetting } from '../lib/playerAnalytics/Notice.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
@@ -54,14 +40,15 @@ import { InstallButton } from '../brand/Install.js';
 import { FullscreenButton } from '../brand/FullscreenButton.js';
 import { AsteraSigil } from '../brand/Identity.js';
 import { Flag } from '../v2/identity/Flag.js';
-import { ShopShowcase } from './ShopShowcase.js';
-import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
-import { AtmosphereImage } from '../ui/AtmosphereArt.js';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { capabilities } from '../platform/runtime.js';
 import { SimulatorHost } from '../battle-simulator/SimulatorHost.js';
 
 import { Icon } from '../v2/icons.js';
 import { openProfile } from './profileRoute.js';
+
+/** The store's poster: lava with an Inferno ring, and the Red Dragon under a Phoenix standard. */
+const SHOP_POSTER = '/assets/images/cosmetics/shop-showcase-static.webp';
 
 /** Main navigation stays short; details mount only in their selected category. */
 export type MenuPage = 'home' | 'academy' | 'community' | 'settings';
@@ -167,8 +154,8 @@ export function MenuPanel({
   const root = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef<MenuPage | null>(null);
+  // Every way in or back is a kit press, which answers with its own sound and buzz.
   const navigate = (next: MenuPage): void => {
-    haptic('tap');
     setLocalPage(next);
     onPageChange?.(next);
   };
@@ -177,7 +164,7 @@ export function MenuPanel({
     previousPage.current = page;
     if (previous === page) return;
     if (page === 'home') {
-      root.current?.querySelector<HTMLElement>(previous === null ? '[data-menu-identity]' : `[data-menu-category="${previous}"]`)?.focus();
+      root.current?.querySelector<HTMLElement>(previous === null ? '[data-menu-identity]' : `[data-tile="${previous}"]`)?.focus();
     } else {
       heading.current?.focus();
     }
@@ -187,7 +174,7 @@ export function MenuPanel({
   const seasonTime = ended ? t('seasonRecap.ended') : hoursLeft === null ? t('galaxy.commander.endsUnknown') : untilReady(hoursLeft * 60);
 
   return (
-    <div ref={root} data-v2-commander-menu data-menu-page={page} className="commander-menu flex flex-col gap-4 font-v2-ui text-v2-ink">
+    <div ref={root} data-v2-commander-menu data-menu-page={page} className="commander-menu gk flex flex-col gap-3">
       {page === 'home' ? (
         <>
           <div className="menu-identity-block">
@@ -197,48 +184,79 @@ export function MenuPanel({
                 event.preventDefault();
                 openProfile();
               }}
-              className="group flex min-h-14 items-center gap-3 px-1 text-left">
-              {/* px-1 owner decision */}
-              <span aria-hidden="true" className="menu-avatar grid size-11 shrink-0 place-items-center rounded-control border border-v2-line-hi font-semibold text-v2-ink">{Array.from(name).slice(0, 2).join('').toLocaleUpperCase(i18n.resolvedLanguage)}</span>
-              {/* rounded-8 owner decision */}
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5"><Flag code={country} language={i18n.resolvedLanguage ?? 'en'} /><span className="min-w-0 break-words text-body font-semibold">{clan ? `[${clan.tag}] ` : ''}{name}</span></span>
-                <span className="mt-1 block break-words text-label text-v2-ink-2">{clan?.name ?? (gate.aboard ? t('starter.eyebrow') : t('menu.profile.noClan'))}</span>
+              className="gk-idcard">
+              {/* The commander's medallion, as on the top bar: the same face opens the same page. */}
+              <span className="gk-medal" aria-hidden="true">
+                <span className="gk-medal__face gk-display">{Array.from(name).slice(0, 2).join('').toLocaleUpperCase(i18n.resolvedLanguage)}</span>
+                <img className="gk-medal__ring" src={artIconSrc('hud-medallion')} alt="" draggable={false} />
               </span>
-              <ChevronIcon className="size-4 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5"><Flag code={country} language={i18n.resolvedLanguage ?? 'en'} /><span className="gk-idcard__name">{clan ? `[${clan.tag}] ` : ''}{name}</span></span>
+                <span className="gk-sub block">{clan?.name ?? (gate.aboard ? t('starter.eyebrow') : t('menu.profile.noClan'))}</span>
+              </span>
+              <span className="gk-idcard__go" aria-hidden="true"><Glyph id="next" /></span>
             </a>
-            <div data-menu-context className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-micro text-v2-ink-2">
-              <span className="flex min-w-0 items-center gap-1.5"><GalaxyIcon className="size-3.5 shrink-0" /><span className="break-words">{galaxy ?? t('galaxy.commander.galaxyUnknown')}{shard && shard !== galaxy ? ` · ${shard}` : ''}</span></span>
-              {!gate.aboard && <span>{t(ended ? 'seasonRecap.seasonLabel' : 'galaxy.commander.endsLabel')} <strong className="font-v2-mono font-medium text-v2-ink">{seasonTime}</strong></span>}
+            <div data-menu-context className="gk-idcard__context">
+              <span className="flex min-w-0 items-center gap-1.5"><Glyph id="colony" /><span className="break-words">{galaxy ?? t('galaxy.commander.galaxyUnknown')}{shard && shard !== galaxy ? ` · ${shard}` : ''}</span></span>
+              {!gate.aboard && <span className="flex items-center gap-1.5"><Glyph id="clock" />{t(ended ? 'seasonRecap.seasonLabel' : 'galaxy.commander.endsLabel')} <strong className="gk-num">{seasonTime}</strong></span>}
             </div>
           </div>
           {/* Owner 2026-11-06: aboard, the menu tells the story and where the ship stands in it. */}
           {vessel && <ShipLog vessel={vessel} onOpenShip={() => { onOpen('planet'); }} />}
-          {(inSilentSpace || hasSeasonResult || waiting > 0) && <div className="flex flex-col gap-2">
-            {inSilentSpace && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} onClick={() => { onOpen('return'); }} />}
-            {hasSeasonResult && <MenuRow icon={<GalaxyIcon className="size-5" />} label={t('seasonRecap.menuLabel')} hint={t('seasonRecap.menuHint')} onClick={() => { onOpen('recap'); }} />}
-            {waiting > 0 && <MenuRow icon={<RewardIcon className="size-5" />} label={t('menu.navigation.rewardsReady', { count: waiting })} hint={t('menu.rewardsHint')} onClick={() => { onOpen('rewards'); }} />}
-          </div>}
-          {!gate.aboard && <ShopShowcase compact onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />}
-          {platform.notificationCenter && <CenterCard
-            status={centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
-            {...(centerEmpty ? { badge: t('notificationCenter.menuEmpty') } : {})}
-            onClick={() => { haptic('tap'); setCenterOpen(true); }} />}
-          <nav aria-label={t('menu.navigation.title')} className="divide-y divide-v2-line">
-            {gate.aboard && <div className="pb-3"><DepartureBoard now={Date.now()} /></div>}
-            {!gate.aboard && <div data-menu-leaderboard className="grid pb-3">
-              <MenuTile art={ATMOSPHERE.commander} icon={<LeaderboardIcon className="size-5" />} label={t('menu.leaderboardLabel')} hint={t('menu.leaderboardHint')} onClick={() => { onOpen('leaderboard'); }} />
-            </div>}
-            {!gate.aboard && <MenuCategory id="rewards" icon={<RewardIcon className="size-5" />} label={t('menu.rewardsLabel')} hint={t('menu.rewardsHint')} onClick={() => { haptic('tap'); onOpen('rewards'); }} />}
-            <MenuCategory id="academy" icon={<GuideIcon className="size-5" />} label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onClick={() => { navigate('academy'); }} />
-            <MenuCategory id="community" icon={<Icon id="i-chat" className="size-5" />} label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')} badge={announcementWaiting > 0 ? t('menu.announcementsWaiting', { count: announcementWaiting }) : undefined} onClick={() => { navigate('community'); }} />
-            {platform.webCheckout && <MenuCategory id="donate" primary icon={<HeartIcon className="size-5" />} label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onClick={() => { haptic('tap'); onOpen('donate'); }} />}
-            <MenuCategory id="settings" icon={<Icon id="i-settings" className="size-5" />} label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} onClick={() => { navigate('settings'); }} />
+          {/*
+            ONE KIND OF THING (G1-f2, 2026-11-14): every place the menu opens is the kit's tile,
+            with its own picture, in named groups. A call to act stands first, across the row.
+            The "N rewards ready" row that repeated the Rewards tile is gone: its count rides it.
+          */}
+          {(inSilentSpace || hasSeasonResult) && <TileGrid>
+            {inSilentSpace && <MenuTile tile="return" wide tone="self" glyph="recall" art={ATMOSPHERE.galaxyAccount.src} artAt={ATMOSPHERE.galaxyAccount.position}
+              label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} status={t('silentSpace.menuHint')} onPress={() => { onOpen('return'); }} />}
+            {hasSeasonResult && <MenuTile tile="recap" wide tone="self" glyph="ranking" art={ATMOSPHERE.season.src} artAt={ATMOSPHERE.season.position}
+              label={t('seasonRecap.menuLabel')} hint={t('seasonRecap.menuHint')} status={t('seasonRecap.menuHint')} onPress={() => { onOpen('recap'); }} />}
+          </TileGrid>}
+          {!gate.aboard && <section className="grid gap-2">
+            <SectionTag>{t('menu.seasonHeading')}</SectionTag>
+            <TileGrid>
+              <MenuTile tile="leaderboard" glyph="ranking" art={ATMOSPHERE.commander.src} artAt={ATMOSPHERE.commander.position}
+                label={t('menu.leaderboardLabel')} hint={t('menu.leaderboardHint')} onPress={() => { onOpen('leaderboard'); }} />
+              <MenuTile tile="rewards" glyph="crate" art={ATMOSPHERE.rewards.src} artAt={ATMOSPHERE.rewards.position}
+                label={t('menu.rewardsLabel')} hint={t('menu.rewardsHint')} news={{ count: waiting, said: t('menu.navigation.rewardsReady', { count: waiting }) }}
+                onPress={() => { onOpen('rewards'); }} />
+            </TileGrid>
+          </section>}
+          {(!gate.aboard || platform.notificationCenter) && <section className="grid gap-2">
+            <SectionTag>{t('skins.collection')}</SectionTag>
+            <TileGrid>
+              {!gate.aboard && platform.webCheckout && <MenuTile tile="shop" tone="premium" glyph="star" art={SHOP_POSTER} artAt="60% 45%"
+                label={t('menu.skinsShopLabel')} hint={t('menu.skinsShopHint')} onPress={() => { onOpen('skin-shop'); }} />}
+              {!gate.aboard && <MenuTile tile="inventory" glyph="bay" art={ATMOSPHERE.inventory.src} artAt={ATMOSPHERE.inventory.position}
+                label={t('menu.skinsInventoryLabel')} hint={t('menu.skinsInventoryHint')} onPress={() => { onOpen('skin-inventory'); }} />}
+              {platform.notificationCenter && <MenuTile tile="center" wide glyph="bell" art={ATMOSPHERE.notificationCenter.src} artAt={ATMOSPHERE.notificationCenter.position}
+                {...(centerEmpty ? { tone: 'warn' as const, badge: t('notificationCenter.menuEmpty') } : {})}
+                label={t('notificationCenter.title')} hint={t('notificationCenter.menuHint')}
+                status={centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
+                onPress={() => { setCenterOpen(true); }} />}
+            </TileGrid>
+          </section>}
+          {gate.aboard && <DepartureBoard now={Date.now()} />}
+          <nav aria-label={t('menu.navigation.title')} className="grid gap-2">
+            <SectionTag>{t('menu.gameHeading')}</SectionTag>
+            <TileGrid>
+              <MenuTile tile="academy" glyph="help" art={ATMOSPHERE.academy.src} artAt={ATMOSPHERE.academy.position}
+                label={t('menu.navigation.academy')} hint={t('menu.navigation.academyHint')} onPress={() => { navigate('academy'); }} />
+              <MenuTile tile="community" glyph="chat" art={ATMOSPHERE.clan.src} artAt={ATMOSPHERE.clan.position}
+                label={t('menu.navigation.community')} hint={t('menu.navigation.communityHint')}
+                news={{ count: announcementWaiting, said: t('menu.announcementsWaiting', { count: announcementWaiting }) }} onPress={() => { navigate('community'); }} />
+              {platform.webCheckout && <MenuTile tile="donate" tone="self" glyph="support" art={ATMOSPHERE.donate.src} artAt={ATMOSPHERE.donate.position}
+                label={t('community.donate.menuLabel')} hint={t('community.donate.menuHint')} onPress={() => { onOpen('donate'); }} />}
+              <MenuTile tile="settings" glyph="settings" art={ATMOSPHERE.commanderRoom.src} artAt={ATMOSPHERE.commanderRoom.position}
+                label={t('menu.navigation.settings')} hint={t('menu.navigation.settingsHint')} onPress={() => { navigate('settings'); }} />
+            </TileGrid>
           </nav>
           {marks.length > 0 && (
-            <section data-menu-group className="flex flex-col gap-2">
-              <SectionHead label={t('menu.marksHeading')} />
-              <div data-rival-chips className="flex flex-wrap gap-1.5">
+            <section data-menu-group className="grid gap-2">
+              <SectionTag>{t('menu.marksHeading')}</SectionTag>
+              <div data-rival-chips className="flex flex-wrap gap-x-1">
                 {marks.map((mark) =>
                   mark.lost ? (
                     <RivalChip
@@ -286,85 +304,44 @@ export function MenuPanel({
       ) : (
         <>
           <div className={controlledPage === undefined ? 'flex items-center gap-3 border-b border-v2-line pb-3' : 'sr-only'}>
-            {controlledPage === undefined && <button type="button" onClick={() => { navigate('home'); }} aria-label={t('menu.navigation.back')} className="grid size-11 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-panel text-v2-ink-2 hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self"><ChevronIcon className="size-4 rotate-180" /></button>}
+            {controlledPage === undefined && <RoundButton small glyph="back" label={t('menu.navigation.back')} onPress={() => { navigate('home'); }} />}
             <h2 ref={heading} tabIndex={-1} className="text-body font-semibold outline-none">{t(`menu.navigation.${page}`)}</h2>
           </div>
           {page === 'community' && (
-            <MenuGroup label={t('menu.asteraHeading')}>
-              <MenuTile
-                icon={<BellIcon className="size-5" />}
-                label={t('menu.announcementsLabel')}
-                art={ATMOSPHERE.announcements}
-                hint={t('menu.announcementsHint')}
-                attention={announcementWaiting > 0}
-                {...(announcementWaiting > 0
-                  ? { badge: t('menu.announcementsWaiting', { count: announcementWaiting }) }
-                  : {})}
-                onClick={() => {
-                  onOpen('announcements');
-                }}
-              />
-              <MenuTile
-                icon={<SendIcon className="size-5" />}
-                label={t('menu.feedbackLabel')}
-                art={ATMOSPHERE.feedback}
-                hint={t('menu.feedbackHint')}
-                onClick={() => {
-                  onOpen('feedback');
-                }}
-              />
-              {isAdmin && (
-                <MenuTile
-                  icon={<LockIcon className="size-5" />}
-                  label={t('community.admin.menuLabel')}
-                  hint={t('community.admin.menuHint')}
-                  onClick={() => {
-                    onOpen('admin');
-                  }}
-                />
-              )}
-            </MenuGroup>
-
+            <section data-menu-group className="grid gap-2">
+              <SectionTag>{t('menu.asteraHeading')}</SectionTag>
+              <TileGrid>
+                <MenuTile tile="announcements" glyph="banner" art={ATMOSPHERE.announcements.src} artAt={ATMOSPHERE.announcements.position}
+                  label={t('menu.announcementsLabel')} hint={t('menu.announcementsHint')}
+                  news={{ count: announcementWaiting, said: t('menu.announcementsWaiting', { count: announcementWaiting }) }}
+                  onPress={() => { onOpen('announcements'); }} />
+                <MenuTile tile="feedback" glyph="mail" art={ATMOSPHERE.feedback.src} artAt={ATMOSPHERE.feedback.position}
+                  label={t('menu.feedbackLabel')} hint={t('menu.feedbackHint')} onPress={() => { onOpen('feedback'); }} />
+                {isAdmin && <MenuTile tile="admin" glyph="lock" label={t('community.admin.menuLabel')} hint={t('community.admin.menuHint')}
+                  onPress={() => { onOpen('admin'); }} />}
+              </TileGrid>
+            </section>
           )}
           {page === 'academy' && (
-            <MenuGroup label={t('menu.helpHeading')}>
-              <MenuTile
-                icon={<GuideIcon className="size-5" />}
-                label={t('menu.guideLabel')}
-                art={ATMOSPHERE.intel}
-                hint={t('menu.guideHint')}
-                onClick={() => { onOpen('wiki'); }}
-              />
-              {/* Over the menu, not instead of it: closing the simulator lands back here. It opens with the yard's first fight. */}
-              {gate.open('fleet') && <MenuTile
-                icon={<AttackIcon className="size-5" />}
-                label={t('simulator.title')}
-                art={ATMOSPHERE.simulator}
-                hint={t('menu.simulatorHint')}
-                onClick={() => {
-                  simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                  setSimulatorOpen(true);
-                }}
-              />}
+            <section data-menu-group className="grid gap-2">
+              <SectionTag>{t('menu.helpHeading')}</SectionTag>
+              <TileGrid>
+                <MenuTile tile="wiki" glyph="help" art={ATMOSPHERE.intel.src} artAt={ATMOSPHERE.intel.position}
+                  label={t('menu.guideLabel')} hint={t('menu.guideHint')} onPress={() => { onOpen('wiki'); }} />
+                {/* Over the menu, not instead of it: closing the simulator lands back here. It opens with the yard's first fight. */}
+                {gate.open('fleet') && <MenuTile tile="simulator" glyph="attack" art={ATMOSPHERE.simulator.src} artAt={ATMOSPHERE.simulator.position}
+                  label={t('simulator.title')} hint={t('menu.simulatorHint')}
+                  onPress={() => {
+                    simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    setSimulatorOpen(true);
+                  }} />}
+                {onGuideOn && <MenuTile tile="guide-on" glyph="refresh" art={ATMOSPHERE.academy.src} artAt={ATMOSPHERE.academy.position}
+                  label={t('starter.tutorial.skip.again')} hint={t('starter.tutorial.skip.againHint')} onPress={onGuideOn} />}
+                {onReplayAcademy && <MenuTile tile="replay" glyph="history" art={ATMOSPHERE.academy.src} artAt={ATMOSPHERE.academy.position}
+                  label={t('academy.replay')} hint={t('academy.replayHint')} onPress={onReplayAcademy} />}
+              </TileGrid>
               {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); }} />}
-              {onGuideOn && <MenuTile
-                icon={<GuideIcon className="size-5" />}
-                label={t('starter.tutorial.skip.again')}
-                art={ATMOSPHERE.academy}
-                hint={t('starter.tutorial.skip.againHint')}
-                onClick={onGuideOn}
-              />}
-              {onReplayAcademy && (
-                <MenuTile
-                  icon={<GuideIcon className="size-5" />}
-                  label={t('academy.replay')}
-                art={ATMOSPHERE.academy}
-                  hint={t('academy.replayHint')}
-                  onClick={onReplayAcademy}
-                />
-              )}
-            </MenuGroup>
-
+            </section>
           )}
           {page === 'settings' && (
             /*
@@ -414,180 +391,22 @@ export function MenuPanel({
   );
 }
 
-function MenuCategory({ id, icon, label, hint, badge, primary = false, onClick }: {
-  id: MenuPage | 'rewards' | 'donate'; icon: ReactNode; label: string; hint: string; badge?: string | undefined; primary?: boolean; onClick: () => void;
-}) {
-  return <button type="button" data-menu-category={id} aria-label={`${label}. ${hint}${badge ? `. ${badge}` : ''}`} onClick={onClick}
-    className={`menu-category group flex min-h-14 w-full items-center gap-3 rounded-control px-1 py-2.5 text-left transition-colors hover:bg-v2-panel focus-visible:outline-2 focus-visible:outline-v2-self ${primary ? 'text-v2-self' : ''}`}>
-    <span aria-hidden="true" className={`shrink-0 ${primary ? 'text-v2-self' : 'text-v2-ink-2 group-hover:text-v2-ink'}`}>{icon}</span>
-    <span className="min-w-0 flex-1"><span className="block text-caption font-semibold">{label}</span><span className="mt-1 block text-label leading-snug text-v2-ink-2">{hint}</span></span>
-    {badge && <span className="max-w-24 rounded-chip border border-v2-self/25 bg-v2-self/8 px-1.5 py-1 text-micro text-v2-self">{badge}</span>}
-    <ChevronIcon className="size-3.5 shrink-0 text-v2-ink-3 group-hover:text-v2-ink" />
-  </button>;
-}
-
-/**
- * BİLDİRİM MERKEZİ, under the inventory (owner 2026-10-31): the one menu card that says whether
- * the commander will hear of a raid, so it states the wallet's reach rather than a slogan.
- */
-function CenterCard({ status, badge, onClick }: { status: string; badge?: string; onClick: () => void }) {
-  const { t } = useTranslation();
-  const label = t('notificationCenter.title');
-  return <button type="button" data-menu-center onClick={onClick} aria-label={`${label}. ${status}${badge ? `. ${badge}` : ''}`}
-    className={`scene-panel inventory-scene relative overflow-hidden rounded-control border bg-v2-panel p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-v2-self ${
-      badge ? 'border-v2-warn/45 hover:border-v2-warn/70' : 'border-v2-line hover:border-v2-line-hi'}`}>
-    <AtmosphereImage art={ATMOSPHERE.notificationCenter} />
-    <BroadcastIcon className={`size-4 ${badge ? 'text-v2-warn' : 'text-v2-ink-2'}`} />
-    <span className="mt-4 block text-caption font-semibold text-v2-ink">{label}</span>
-    <span className={`mt-1 block text-label leading-snug ${badge ? 'text-v2-warn' : 'text-v2-ink-2'}`}>{status}</span>
-    {badge && <span className="absolute right-2.5 top-2.5 rounded-chip border border-v2-warn/40 bg-v2-warn/15 px-1.5 py-0.5 text-micro font-semibold leading-none text-v2-warn">{badge}</span>}
-  </button>;
-}
-
-function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section data-menu-group className="flex flex-col gap-2">
-      <SectionHead label={label} />
-      <div data-menu-grid className="grid grid-cols-2 gap-2">{children}</div>
-    </section>
-  );
-}
-
-function MenuTile({
-  art,
-  icon,
-  label,
-  hint,
-  badge,
-  attention = false,
-  onClick,
-  href,
-}: {
-  art?: AtmosphereArt;
-  icon: ReactNode;
-  label: string;
-  hint: string;
-  badge?: string;
-  attention?: boolean;
-  onClick?: () => void;
-  href?: string;
-}) {
-  const Element = href === undefined ? 'button' : 'a';
-  return (
-    <Element
-      {...(href === undefined ? { type: 'button' as const } : { href })}
-      onClick={() => {
-        haptic('tap');
-        onClick?.();
-      }}
-      /*
-        THE HINT IS THE ACCESSIBLE NAME, NOT A SECOND LINE. Owner directive:
-        *"gereksiz fazla yazı yerine tasarımın kendini anlattığı ... temiz premium."*
-
-        MOVED rather than deleted, and the tests that name these destinations read
-        this exact sentence — `${label}. ${hint}` — so the pairing is load-bearing.
-      */
-      aria-label={`${label}. ${hint}`}
-      data-menu-tile
-      className={`group relative flex min-h-20 flex-col items-start justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 text-left transition-colors hover:border-v2-line-hi hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self active:bg-v2-raise ${art ? 'menu-art-tile' : ''}`}
-    >
-      {art && <AtmosphereImage art={art} />}
-      <span
-        data-attention={attention || undefined}
-        className={`grid size-8 shrink-0 place-items-center rounded-control border transition-colors ${
-          attention
-            ? 'border-v2-self/45 bg-v2-self/10 text-v2-self'
-            : 'border-v2-line bg-v2-deep text-v2-ink-2 group-hover:text-v2-ink'
-        }`}
-      >
-        {icon}
-      </span>
-      <span aria-hidden data-fit="condensed" className="w-full font-v2-ui text-caption font-semibold leading-tight text-v2-ink">
-        {label}
-      </span>
-      {/*
-        THE COUNT RIDES THE GLYPH'S LINE, opposite it, where the tile has nothing
-        else to do with the width. It is a number rather than a dot because there
-        is room for it here and the header's dot has already done the job of
-        saying THAT something is waiting.
-      */}
-      {badge === undefined ? null : (
-        <span data-menu-badge className="absolute right-2 top-2 rounded-chip bg-v2-self/15 px-1.5 py-0.5 font-v2-mono text-micro leading-none text-v2-self">
-          {badge}
-        </span>
-      )}
-    </Element>
-  );
-}
-
-function MenuRow({
-  icon,
-  label,
-  hint,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      data-menu-row
-      onClick={() => {
-        haptic('tap');
-        onClick();
-      }}
-      aria-label={`${label}. ${hint}`}
-      className="flex w-full items-center gap-2 rounded-control border border-v2-self/40 bg-v2-self/8 px-3 py-2.5 text-left transition-colors hover:bg-v2-self/12 focus-visible:outline-2 focus-visible:outline-v2-self"
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-self/30 bg-v2-self/10 text-v2-self">
-        {icon}
-      </span>
-      <span aria-hidden className="min-w-0 flex-1">
-        <span className="block truncate text-caption font-semibold text-v2-ink">{label}</span>
-        <span className="mt-0.5 block truncate text-micro leading-tight text-v2-ink-2">{hint}</span>
-      </span>
-      <ChevronIcon className="size-4 shrink-0 text-v2-self" />
-    </button>
-  );
-}
-
-function RivalChip({
-  slot,
-  face,
-  name,
-  lost = false,
-  onClick,
-}: {
+/** A kept mark: the rival's colour and name on a kit chip; a lost one clears itself. */
+function RivalChip({ slot, face, name, lost = false, onClick }: {
   slot: number;
   face: string;
   name: string;
   lost?: boolean;
   onClick: () => void;
 }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onClick(); });
   return (
-    <button
-      type="button"
-      data-rival-chip
-      aria-label={name}
-      onClick={() => {
-        haptic('tap');
-        onClick();
-      }}
-      className={`flex min-w-0 max-w-full items-center gap-1.5 rounded-chip border border-v2-line-hi bg-v2-panel px-2.5 py-1.5 transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self ${
-        lost ? 'opacity-70' : ''
-      }`}
-    >
-      <span
-        aria-hidden
-        data-rival-dot={slot}
-        className="block size-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: rivalColour(slot) }}
-      />
-      <span aria-hidden className="min-w-0 truncate text-label font-semibold text-v2-ink">{face}</span>
-      {lost && <CloseIcon className="size-3 shrink-0 text-v2-ink-3" />}
+    <button type="button" {...OWN_SOUND} data-rival-chip aria-label={name} className="gk-hit max-w-full" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-chip gk-rival" {...(lost ? { 'data-lost': '' } : {})}>
+        <span aria-hidden data-rival-dot={slot} className="gk-rival__dot" style={{ backgroundColor: rivalColour(slot) }} />
+        <span aria-hidden className="min-w-0 truncate">{face}</span>
+        {lost && <Glyph id="close" />}
+      </span>
     </button>
   );
 }

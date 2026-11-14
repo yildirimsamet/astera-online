@@ -2965,6 +2965,241 @@ button.gk-trow:focus-visible {
   height: 16px;
 }
 
+/* ── the commander's card at the head of the menu (G1-f2) ─────────────────────── */
+
+/* Their medallion, as on the top bar, their name and clan, and a way into their profile. */
+.gk-idcard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 4px 6px 4px 0;
+  border-radius: var(--gk-r-sm);
+  color: var(--gk-ink);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-idcard:hover { background: color-mix(in srgb, var(--gk-ink) 4%, transparent); }
+.gk-idcard:active { transform: translateY(1px); background: color-mix(in srgb, var(--gk-ink) 7%, transparent); }
+/* Focus lights the card from within: the menu opens with it focused, so a ring would shout. */
+.gk-idcard:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--gk-self) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-self) 55%, transparent);
+}
+.gk-idcard .gk-medal {
+  width: 52px;
+  height: 52px;
+  cursor: inherit;
+}
+.gk-idcard .gk-medal__face {
+  width: 36px;
+  height: 36px;
+  font-size: var(--gk-t-lead);
+}
+.gk-idcard .gk-medal__ring {
+  width: 52px;
+  height: 52px;
+}
+.gk-idcard__name {
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.gk-idcard__go {
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-3);
+}
+.gk-idcard__go .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+/* Where the commander stands: their galaxy and how long the season has left. */
+.gk-idcard__context {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding: 6px 2px 0;
+  border-top: 1px solid var(--gk-metal-edge);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-idcard__context .gk-glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--gk-ink-3);
+}
+.gk-idcard__context strong {
+  color: var(--gk-ink);
+}
+
+/* A kept mark: the rival's colour beside their name; a lost one fades and clears itself. */
+.gk-rival {
+  max-width: 100%;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.gk-rival__dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--gk-outline);
+}
+.gk-rival[data-lost] { opacity: 0.7; }
+.gk-rival .gk-glyph {
+  width: 12px;
+  height: 12px;
+  color: var(--gk-ink-3);
+}
+
+/* ── the menu's tiles: every place the commander's menu opens (G1-f2) ─────────── */
+
+.gk-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+/* An odd last tile goes across the row rather than leave half of it empty. */
+.gk-tiles > :last-child:nth-child(odd),
+.gk-tiles > [data-wide] {
+  grid-column: 1 / -1;
+}
+.gk-mtile {
+  --tone: var(--gk-metal-edge);
+  --edge: var(--gk-metal-edge);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: space-between;
+  align-items: end;
+  gap: 6px 8px;
+  width: 100%;
+  min-height: 76px;
+  padding: 8px 10px 10px;
+  text-align: left;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-quick) var(--gk-ease), filter var(--gk-quick) var(--gk-ease);
+}
+/* A small tile stacks its coin over its name, so a long word has the plate's whole width. */
+.gk-mtile__coin { grid-area: 1 / 1; justify-self: start; align-self: start; }
+.gk-mtile__text { grid-area: 2 / 1 / 3 / -1; }
+.gk-mtile__chip { grid-area: 1 / 2; }
+/* Across the row there is width to spare: the coin stands beside the words. */
+.gk-mtile[data-wide] {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  min-height: 60px;
+  align-items: center;
+  align-content: center;
+  padding: 10px;
+}
+.gk-mtile[data-wide] .gk-mtile__coin { grid-area: 1 / 1; align-self: center; }
+.gk-mtile[data-wide] .gk-mtile__text { grid-area: 1 / 2; }
+.gk-mtile[data-wide] .gk-mtile__chip { grid-area: 1 / 3; }
+.gk-mtile[data-tone='premium'] { --tone: var(--gk-gold); --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge))); }
+.gk-mtile[data-tone='self'] { --tone: var(--gk-self); --edge: linear-gradient(90deg, var(--gk-self), color-mix(in srgb, var(--gk-self) 30%, var(--gk-metal-edge))); }
+.gk-mtile[data-tone='warn'] { --tone: var(--gk-warn); --edge: linear-gradient(90deg, var(--gk-warn), color-mix(in srgb, var(--gk-warn) 30%, var(--gk-metal-edge))); }
+.gk-mtile:active {
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(1.12);
+}
+.gk-mtile:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+/*
+  The place's picture fills the right of the plate and fades into the metal toward the name,
+  and down under it: the name sits on the metal, the picture lit above it (4.5:1 over the
+  brightest art, G1-f2 audit). Only the mask's alpha counts, so its colour is any opaque ink.
+*/
+.gk-mtile__art {
+  --solid: var(--gk-ink);
+  --faint: color-mix(in srgb, var(--gk-ink) 22%, transparent);
+  position: absolute;
+  inset: 1px 1px 1px 30%;
+  z-index: -1;
+  width: calc(70% - 2px);
+  height: calc(100% - 2px);
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, var(--solid) 45%), linear-gradient(180deg, var(--solid) 30%, var(--faint) 92%);
+  mask-image: linear-gradient(90deg, transparent, var(--solid) 45%), linear-gradient(180deg, var(--solid) 30%, var(--faint) 92%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  opacity: 0.85;
+}
+/* Across the row the words run over the picture's middle, so it lights only toward the end. */
+.gk-mtile[data-wide] .gk-mtile__art {
+  -webkit-mask-image: linear-gradient(90deg, transparent 5%, var(--faint) 45%, var(--solid) 92%);
+  mask-image: linear-gradient(90deg, transparent 5%, var(--faint) 45%, var(--solid) 92%);
+}
+.gk-mtile__coin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--tone) 70%, var(--gk-ink));
+  background: radial-gradient(circle at 50% 35%, var(--gk-metal-1), var(--gk-metal-3));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 60%, transparent), 0 2px 6px var(--gk-outline);
+}
+.gk-mtile[data-tone='steel'] .gk-mtile__coin {
+  color: var(--gk-ink-2);
+}
+.gk-mtile__coin .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-mtile__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-shadow: 0 1px 3px var(--gk-outline), 0 0 8px var(--gk-outline);
+}
+.gk-mtile__label {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.gk-mtile__status {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+  line-height: 1.3;
+}
+.gk-mtile[data-tone='warn'] .gk-mtile__status {
+  color: var(--gk-warn);
+}
+.gk-mtile__news {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.gk-mtile__chip {
+  align-self: center;
+  padding: 2px 6px;
+  border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  background: color-mix(in srgb, var(--tone) 18%, var(--gk-metal-3));
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--tone);
+  white-space: nowrap;
+}
+
 /* ── the news: what happened while the player was away (G1-e, 2026-11-14) ─────── */
 
 .gk-news {

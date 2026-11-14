@@ -256,6 +256,8 @@ export const menu = {
   helpHeading: 'Help',
   deviceHeading: 'This device',
   marksHeading: 'Your marks',
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: 'Game',
   intelLabel: 'Intel',
   intelHint: 'Telescope, probes, radar and battle reports',
   rewardsLabel: 'Rewards',

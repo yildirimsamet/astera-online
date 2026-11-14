@@ -206,6 +206,8 @@ export const menu = {
   helpHeading: 'Yardım',
   deviceHeading: 'Bu cihaz',
   marksHeading: 'İşaretlerin',
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: 'Oyun',
   intelLabel: 'İstihbarat',
   intelHint: 'İzlediğin dünyalar, Radar kayıtları, sondalar ve savaş raporları',
   rewardsLabel: 'Ödüller',

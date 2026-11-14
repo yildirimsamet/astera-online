@@ -204,6 +204,8 @@ export const menu = {
   helpHeading: "Aide",
   deviceHeading: "Cet appareil",
   marksHeading: "Tes repères",
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: "Jeu",
   intelLabel: "Renseignement",
   intelHint: "Mondes surveillés, relevés Radar, sondes et rapports de combat",
   rewardsLabel: "Récompenses",

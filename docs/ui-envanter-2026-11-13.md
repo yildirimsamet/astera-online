@@ -436,6 +436,28 @@ Galerideki menü sheet'inin başlığı oyundaki gibi çevrildi ("Your account /
 
 Ölçüm (`reports/ui-audit/g1f1-after-2026-11-14.md`, 6 dil × 3 boyut), G1-b'ye göre telefonda: 12 px altı metin 36 → 2, kontrast hatası 22 → 2, 44 px altı hedef 30 → 6, aralık hatası 2 → 0, tepkisiz hedef 14 → 3. Kalanların hepsi ortak sheet çerçevesinde (başlıktaki 9 px üst satır, Daralt, Geri, Kapat); G1-g'nin işi. Ayarların içinde bulgu yok.
 
+**G1-f2 menü ✅ (2026-11-14).** Oyuncunun anı: madalyona bastı; "sıralamam ne, ödülüm var mı, ayarlar nerede?" Menüde dört ayrı öğe biçimi vardı: satır, kategori, karo ve vitrin. Ayrıca bir "N ödül hazır" satırı, Ödüller satırının sayısını tekrarlıyordu. Menünün açtığı yerler, sıraları ve gemideyken gizlenenler değişmedi.
+
+Önce kite eklenenler (galeri: `ui-kit`, "Menü karoları"):
+- `MenuTile`: menünün açtığı her yer. Kesik plakada yerin resmi, para üstünde işareti ve adı. Arkasındaki yenilik kırmızı sayı olarak görünür, uyarı çip olarak. Geniş karo yerin durumunu bir satırda söyler. Okuyucu adı ve arkasında ne olduğunu duyar. Tonlar: çelik, mağaza (altın), çağrı (kendi rengi), uyarı (sarı).
+- Dar karoda para üstte, ad altta durur; uzun kelime ("Announcements", "Einstellungen") plakanın tüm genişliğini kullanır. Gerekirse kelime hecelenir, harf ortasından bölünmez. Geniş karoda para adın yanındadır.
+- Resim adın altında metale doğru solar. En parlak resimde bile ad 4,5:1 kontrastın üstünde kalır.
+- `TileGrid`: karoları ikişer dizer; tek kalan son karo satırı doldurur.
+
+Menü:
+- Başta komutan kartı: madalyon (üst bardakiyle aynı), bayrak, ad, klan, profile ok. Altında galaksi ve sezon süresi.
+- Çağrılar en üstte, satır boyu: Sessiz Uzay'dan dönüş ve sezon kaydı.
+- Gruplar `SectionTag` ile ayrıldı: **Bu sezon** (Sıralama, Ödüller), **Koleksiyon** (Mağaza, Envanter, Android'de Bildirim Merkezi), **Oyun** (Akademi, Topluluk, web'de Destek ol, Ayarlar). "Oyun" başlığı 6 dile eklendi.
+- "N ödül hazır" satırı kalktı. Sayı artık Ödüller karosunun köşesinde.
+- Topluluk karosu klan resmini aldı. Duyurular resmi Topluluk sayfasındaki Duyurular karosunda kaldı.
+- Rakip işaretleri kit çipi oldu: rakibin rengi, adı, 44 px dokunma alanı, basınca ses ve titreşim.
+- Alt şeritteki "Hızlı erişim ekle" ve "Tam ekran" düğmeleri 44 px oldu ve basınca tepki veriyor.
+- Akademi ve Topluluk sayfaları da aynı karolarla çizildi; simülatör kapanınca odak açan karoya döner.
+
+Kullanılmaz kalanlar (owner'a sorulacak, silinmedi): `shell/ShopShowcase.tsx` + `ShopShowcasePoster.tsx`, testleri `test/shop-showcase.test.tsx` ve `native-surfaces` içindeki vitrin kısmı, CSS'te `.menu-shop-*`, `.shop-showcase-*`, `.menu-collection`, `.inventory-scene`. Bu değişiklikle kullanılmaz hale gelen menü CSS'i (`[data-menu-identity]`, `[data-menu-tile]`, `.menu-avatar`, `.menu-art-tile`) silindi.
+
+Ölçüm (`reports/ui-audit/g1f2-after-2026-11-14.md`, 4 yol × 6 dil × 3 boyut), G1-b'ye göre: 12 px altı metin 118 → 12, kontrast hatası 18 → 8, tepkisiz hedef 40 → 13, kesilen metin 10 → 0, görünen metin 206 → 186. 44 px altı hedef 20 → 20, aralık hatası 4 → 6: artış alt sayfalarda G1-f1'de galeriye gelen "Geri" düğmesinden. Kalan bulguların hepsi ortak sheet çerçevesinde: 9 px "Komutan" üst satırı (3,87:1), Daralt (16 px), Geri ve Kapat (32 px), adsız arka plan. Bunlar G1-g'nin işi; menünün içinde bulgu yok.
+
 ## 3A. Genel bulgu: üç tasarım dili yan yana
 
 Ölçüldü (2026-11-13, `apps/web/src`, test/galeri/dev hariç):

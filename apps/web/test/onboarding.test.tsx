@@ -715,8 +715,7 @@ describe('reaching the way out', () => {
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.community')}\\.`) }));
     const announcements = screen.getByRole('button', { name: /^announcements\./i });
-    expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-v2-self');
-    expect(announcements).toHaveTextContent('1');
+    expect(announcements.querySelector('.gk-dot')).toHaveTextContent('1');
   });
 
   it('offers one-tap focus for a live Rival and a clear action for a reclaimed one', async () => {

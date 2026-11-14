@@ -256,6 +256,8 @@ export const menu = {
   helpHeading: "ヘルプ",
   deviceHeading: "このデバイス",
   marksHeading: "あなたのマーク",
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: "ゲーム",
   intelLabel: "情報",
   intelHint: "望遠鏡、探査機、レーダー、戦闘レポート",
   rewardsLabel: "報酬",

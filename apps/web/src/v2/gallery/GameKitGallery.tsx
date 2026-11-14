@@ -11,7 +11,7 @@ import '../../game-ui/game-ui.css';
 import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, NewsList, NewsRow, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  Banner, BottomNav, CLAN_LEVEL_ART, MenuTile, TileGrid, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, NewsList, NewsRow, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
   FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
   ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
@@ -20,6 +20,7 @@ import type { Language } from '../../i18n/languages.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { UpgradeRow } from '../../ui/UpgradeRow.js';
 import { StarField } from '../kit/StarField.js';
 import { Unreachable, Waiting } from '../../ui/kit/Surface.js';
@@ -447,6 +448,27 @@ function NewsParts() {
         <li><NewsRow glyph="star" tone="info" banner="Galaksi olayı" age="3 sa önce" open={open}>Galakside asteroid yağmuru başladı.</NewsRow></li>
         <li><NewsRow glyph="zoom" tone="warn" age="4 sa 20 dk önce" open={open}>Tarama yakalandı <span className="gk-num">×3</span></NewsRow></li>
       </NewsList>
+    </div>
+  );
+}
+
+/** The menu's tiles (G1-f2): a call across the row, a place with news, the store, a warning. */
+function MenuParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-2">
+      <TileGrid>
+        <MenuTile tile="return" wide tone="self" glyph="recall" art={ATMOSPHERE.galaxyAccount.src} artAt={ATMOSPHERE.galaxyAccount.position}
+          label="Galaksiye dön" hint="Sessiz Uzay’dan çık" status="Sessiz Uzay’dan çık, eski yerine dön" onPress={noop} />
+      </TileGrid>
+      <TileGrid>
+        <MenuTile tile="leaderboard" glyph="ranking" art={ATMOSPHERE.commander.src} artAt={ATMOSPHERE.commander.position} label="Liderlik tablosu" hint="Dominion ve Onur" onPress={noop} />
+        <MenuTile tile="rewards" glyph="crate" art={ATMOSPHERE.rewards.src} artAt={ATMOSPHERE.rewards.position} label="Ödüller" hint="Topla" news={{ count: 3, said: '3 ödül hazır' }} onPress={noop} />
+        <MenuTile tile="shop" tone="premium" glyph="star" art="/assets/images/cosmetics/shop-showcase-static.webp" artAt="60% 45%" label="Mağaza" hint="Görünümler" onPress={noop} />
+        <MenuTile tile="inventory" glyph="bay" art={ATMOSPHERE.inventory.src} artAt={ATMOSPHERE.inventory.position} label="Envanter" hint="Sahip oldukların" onPress={noop} />
+        <MenuTile tile="center" wide tone="warn" glyph="bell" art={ATMOSPHERE.notificationCenter.src} artAt={ATMOSPHERE.notificationCenter.position}
+          label="Bildirim Merkezi" hint="Saldırı uyarısı" status="Saldırı uyarısı gitmez: döteryum ekle." badge="Kasa boş" onPress={noop} />
+      </TileGrid>
     </div>
   );
 }
@@ -900,6 +922,10 @@ function Catalog() {
 
         <Section title="Haberler · şu anda, neler oldu, galaksi olayı">
           <NewsParts />
+        </Section>
+
+        <Section title="Menü karoları · çağrı, haber, mağaza, uyarı">
+          <MenuParts />
         </Section>
 
         <Section title="Okumalar">

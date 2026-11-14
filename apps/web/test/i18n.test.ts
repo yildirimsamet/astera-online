@@ -1067,3 +1067,14 @@ describe('every key the tree holds actually resolves', () => {
     expect(unresolved).toEqual([]);
   });
 });
+
+/**
+ * A LABEL THAT STANDS BEFORE ITS VALUE. The season clock reads "Season ends in · 1d 0h": the
+ * label, then the time beside it. Japanese runs words together, so a space inside a Japanese
+ * label is the hole a value was meant to fill ("シーズンは に終了します 1日0時間").
+ */
+describe('the season clock label in Japanese', () => {
+  it('leaves no hole for the time it stands before', () => {
+    expect(ja.galaxy.commander.endsLabel).not.toMatch(/\s/);
+  });
+});

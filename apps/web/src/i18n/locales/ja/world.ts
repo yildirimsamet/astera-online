@@ -110,7 +110,7 @@ export const galaxy = {
   commander: {
     galaxyLabel: "ギャラクシー",
     galaxyUnknown: "—",
-    endsLabel: "シーズンは に終了します",
+    endsLabel: "シーズン終了まで",
     endsUnknown: "—",
     wipeNote: "ワイプではすべての銀河がリセットされ、全員が再びスタートします。",
     signOut: "サインアウト",
