@@ -576,6 +576,40 @@ Okundu: `screens/PlanetScreen.tsx` 182–700 (ekran gövdesi, sekmeler, sheet'le
 3. Onarım istasyonu ve tersane sheet'i owner'ın Klan örneğindeki "tıka basa" kalıbında. Sekme ya da adım, bilgi kutusu ve kısa metin gerekiyor.
 4. Filo sekmesi (Üs içinde) yedi bölümü tek kaydırmada taşıyor. Ayrı Filo sayfasıyla görev paylaşımı yeniden düşünülecek (G2 karar notu).
 
+**G2 iş birimleri (2026-11-14; G1 gibi her biri incele → karar ver → yap → incele döngüsünden geçer, biri bitmeden öteki başlamaz):**
+
+Galeride 350 px'te bakıldı (`base-production`, `base-fleet`, üç kaydırma). Görülenler: alt sekmeler yalnız yazı (owner notu 3); aynı satırdaki bina kartlarının boyu farklı, kilit metni kartı uzatıyor (owner notu 4); bölümler farklı kenar boşluklarında (owner notu 2); hiçbir şey yapılmıyorken bile üç kuyruk üç satır "+ Boş hat" kutusu; Filo sekmesinde onarım kartı ve hangar çubuğu v2.
+
+| # | Birim | Oyuncu anı | Ne değişir |
+|---|---|---|---|
+| G2-a | Üs kabuğu | "Hangi bölümdeyim, nereye bakmalıyım?" | Alt sekmeler iki katlı: ikon üstte, yazı altta, 44 px (owner notu 3). Üs gövdesi tek kenar çizgisinde (`--gk-gutter`, owner notu 2). Sekmenin açıklama satırı ve bölüm etiketleri aynı çizgide. |
+| G2-b | Bina kartları | "Neyi yükselteyim?" | Sabit iskelet (owner notu 4): sabit resim bandı, ad, 1 satır amaç, 1 satır etki, en altta sabit fiyat satırı. Kilit ve "yetmiyor" fiyat satırının yerinde. Ayrıntı sheet'te. |
+| G2-c | Kuyruklar | "Ne yapılıyor, nerede boşluk var?" | Boş hatlar tek satır sayısı; çalışan hatta yuvalar. Arıza onarım hatları aynı dilde. |
+| G2-d | Arıza | "Onarmaya değer mi?" | `FaultSheet` (v1) kitte; saatlik kayıp ve fiyat yan yana; Onar 1 sn basılı tutma. |
+| G2-e | Tersane | "Kaç tane, hangi gövde?" | `BuildSheet` kitin `UnitCard`/`UnitBay` parçalarıyla; uzun yığın adımlara iner; Üret 1 sn basılı tutma. Yüksek öncelik. |
+| G2-f | Onarım istasyonu | "Hangi gemileri onarayım?" | Kart ve sheet kitte; tıka basa yığın sekme/adıma iner; onar ve hurda basılı tutma. Yüksek öncelik. |
+| G2-g | Taktik | "Stratejik silah üreteyim mi?" | v2 `HoldButton` → kit `GameHold`; depo ve şarj kit okumalarıyla. |
+| G2-h | Filo sekmesi ve Filo sayfası | "Gemilerim nerede, kaç tane?" | Filo sekmesinin yedi bölümü ile ayrı Filo sayfasının görev paylaşımı kararı (gezinme değişebilir); `Segmented` → `GameTabs`; anıt dalgası satırları kitte. |
+| G2-i | Araştırma | "Sırada hangi araştırma?" | Yıldız haritası, seçili kart ve proje sheet'i kitte; 9–10 px yazılar kalkar. |
+| G2-j | Dünyalar paneli | "Hangi dünyamda ne var, kaynak aktar" | v1 → kit; iki yerli `<select>` yerine dünya seçici; aktarma basılı tutma. Yüksek öncelik. |
+
+**G2-a Üs kabuğu ✅ (2026-11-14).** Oyuncunun anı: Üs'ü açınca "hangi bölümdeyim, nereye bakmalıyım?" sorusunun cevabı. Asıl karar bir bölüme geçmek. Sekmelerin sırası, açtığı yerler ve kurallar değişmedi.
+
+Önce kite eklenen: `GameTabs` `stacked`. İki katlı sekme: işaret üstte, ad altta, 44 px. Seçili sekmenin işareti kendi renginde yanıyor. Bir arıza işareti köşede duruyor, böylece iki kat ortada kalıyor. `TabItem.glyph` artık `{ id, tone? }`; tonu verilmeyen işaret sekmenin yazısıyla aynı renkte.
+
+Üs:
+- Beş alt sekme iki katlı: Üretim kazma, Bilgi göz, Savunma kalkan, Taktiksel nişangâh, Filo roket.
+- Üs gövdesindeki bütün bloklar (arıza onarımları, kahraman, kuyruklar, toparlanma ve EMP bantları, sekme gövdesi) tek kenar çizgisinde: `--gk-gutter`, 350 px'te soldan 13 px. Kitin bölüm bandı, bina grubu başlığı ve depo okuması kendi iç boşluklarını bıraktı, kenarı taşıyan tek şey dış çizgi. Kutuların içindeki yazılar (oda kutusu, taktik kutusu, kart içleri) kutunun kendi boşluğunda; kutunun dış kenarı çizgide.
+- 350 px'te tr, en, de (PRODUKTION) ve ja sığıyor. 320 px'te Almanca beşinci sekme kesiliyor ve sıra kayıyor; kitin "uzun kelime genişliğini korur, sıra kayar" kuralı bu.
+
+Ölçüm: `reports/ui-audit/g2a-after-2026-11-14.md` (`base-production`, `base-fleet`, `base-fleet-empty`; telefon, dar, masaüstü). G1'den sonra Üs ölçülmemişti; bu ölçüm G2'nin başlangıç ölçümü. Üretim yolu temiz: 12 px altı metin 0, kontrast hatası 0. Kalanlar sonraki birimlerin:
+- Filo sekmesindeki hangar odası göstergesi (v2): 9–10 px metin, 4,1:1 kontrast, 2 yolda 15 metin. G2-h.
+- Onarım istasyonu kartı basınca tepki vermiyor. G2-f.
+- Kuyruktaki "En attente" fr'de üç noktayla kesiliyor. G2-c.
+- Her yolda tek bir 2×2 px adsız dokunma alanı (`root`) var. Galerinin kökü, oyunda yok.
+
+Bina kartlarında "~53 dk sonra yeter" yazısının "~" işareti kartın yazı tipinde eksi gibi okunuyor ("-53 dk"; owner'ın ekranında "Enough in -9h 09m"). G2-b'de düzelecek.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

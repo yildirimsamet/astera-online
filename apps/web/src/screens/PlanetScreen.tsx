@@ -139,7 +139,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, GameButton, GameHold, GameTabs } from '../game-ui/index.js';
+import { Banner, GameButton, GameHold, GameTabs, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
@@ -208,6 +208,9 @@ const GROUPS = {
   grow: { problem: 'planet.tabs.growProblem', question: 'planet.tabs.growQuestion' },
   tactical: { problem: 'planet.tabs.tacticalProblem', question: 'planet.tabs.tacticalQuestion' },
 } as const satisfies Record<GroupId, { problem: string; question: string }>;
+
+/** Each tab's mark over its name (owner note 3, 2026-11-14): what the tab grows, at a glance. */
+const GROUP_MARK = { grow: 'mine', orbit: 'eye', defend: 'shield', tactical: 'target', reach: 'rocket' } as const satisfies Record<GroupId, GlyphId>;
 
 /** Everything the detail sheet needs, gathered where the row already knows it. */
 export interface SheetSpec {
@@ -504,12 +507,12 @@ export function PlanetScreen({
           with the loyalty line the hero opens on right under it.
         */}
         {(data.faults?.length ?? 0) > 0 && (
-          <div className="px-2 pt-2">
+          <div className="px-[var(--gk-gutter)] pt-2">
             <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
           </div>
         )}
 
-        {!lesson && <div className="flex flex-col gap-2 px-2 pt-2">
+        {!lesson && <div className="flex flex-col gap-2 px-[var(--gk-gutter)] pt-2">
           <PlanetHero planet={data} />
           <PlanetRadiationProtection planet={data} />
           <TargetRadiationInstrument target={{ kind: 'PLANET', id: data.planet.id }} tech={techOf(data)}
@@ -517,19 +520,19 @@ export function PlanetScreen({
           <ColonyAbandonment planet={data} />
         </div>}
 
-        <div className="flex flex-col gap-2 px-2">
+        <div className="flex flex-col gap-2 px-[var(--gk-gutter)]">
           <BaseQueues planet={data} />
         </div>
 
         {recovering && (
-          <div className="gk mx-2">
+          <div className="gk mx-[var(--gk-gutter)]">
             <Banner tone="hostile" variant="strip" glyph="repair"
               title={t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
         )}
 
         {empActive && (
-          <div className="gk mx-2">
+          <div className="gk mx-[var(--gk-gutter)]">
             <Banner tone="hostile" variant="strip" glyph="critical"
               title={t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })} />
           </div>
@@ -541,7 +544,7 @@ export function PlanetScreen({
           broken={brokenGroups}
         />
 
-        <div className="flex flex-col gap-4 px-2">
+        <div className="flex flex-col gap-4 px-[var(--gk-gutter)]">
           <div
             id={`planet-panel-${active}`}
             data-base-surface={active}
@@ -1048,6 +1051,7 @@ function Tabs({
         tabs={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
           id,
           label: t(GROUPS[id].problem),
+          glyph: { id: GROUP_MARK[id] },
           /*
             NO COUNT. The glyph says "something under here has stopped", which is the
             one thing a player cannot find out without opening all four tabs. HOW MANY
@@ -1060,6 +1064,7 @@ function Tabs({
         onChange={onSelect}
         ids={{ tab: (id) => `planet-tab-${id}`, panel: (id) => `planet-panel-${id}` }}
         lessonMarks
+        stacked
       />
     </div>
   );
