@@ -1,7 +1,0 @@
-/* A report is read and quoted: its words can be selected, and long names break. */
-.battle-report {
-  overflow-wrap: anywhere;
-  -webkit-user-select: text;
-  user-select: text;
-  -webkit-touch-callout: default;
-}

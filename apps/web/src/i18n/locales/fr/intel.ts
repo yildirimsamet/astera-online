@@ -317,6 +317,16 @@ export const reports = {
     who: "Qu’est-il arrivé à ta flotte ?",
     changed: "Butin et variation des points",
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Ton prochain coup",
+    again: "Attaquer à nouveau : {{planet}}",
+    againNote: "La défense vue est dans son dossier",
+    source: "Monde de l’attaquant : {{planet}}",
+    sourceNote: "Le raid venait d’ici",
+    wreck: "Aller à l’épave : {{planet}}",
+    wreckNote: "Vaut {{amount}} ; au premier arrivé",
+  },
   walkoverHeading: "Aucune unité ne pouvait défendre ici",
   walkoverBody:
     "Il n’y avait ni flotte ni défense terrestre capable de combattre. Tes vaisseaux sont arrivés, ont chargé leur cargaison et sont repartis. Aucun affrontement n’a eu lieu.",

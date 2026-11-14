@@ -425,19 +425,20 @@ describe('what a battle report explains', () => {
   it('names the world an attacker launched from, pointing out', async () => {
     await openSheet(report({ yourPlanet: 'Quillon-116' }));
     expect(screen.getByText('Quillon-116')).toBeVisible();
-    expect(screen.getByText('→')).toBeVisible();
+    // the arrow is drawn (C15): it points out of the reader's world on a raid
+    expect(document.querySelector('[data-route-arrow]')).toHaveAttribute('data-dir', 'out');
   });
 
   it('names the world a defender was hit at, pointing in', async () => {
     await openSheet(report({ attacking: false, yourPlanet: 'Neutral T1-29' }));
     expect(within(screen.getByRole('dialog')).getByText('Neutral T1-29')).toBeVisible();
-    expect(screen.getByText('←')).toBeVisible();
+    expect(document.querySelector('[data-route-arrow]')).toHaveAttribute('data-dir', 'in');
   });
 
   /** A world that has since ceased to exist leaves the line out rather than blank. */
   it('omits the route when the world is gone', async () => {
     await openSheet(report({ yourPlanet: '' }));
-    expect(screen.queryByText('→')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-report-route]')).toBeNull();
   });
 
   it('does not repeat the opening loss and loot summary in the bookkeeping section', async () => {

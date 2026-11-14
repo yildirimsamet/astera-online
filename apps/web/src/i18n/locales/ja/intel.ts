@@ -316,6 +316,16 @@ export const reports = {
     who: "あなたの勢力はどうなりましたか？",
     changed: "戦利品とポイントの変更",
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "次の一手",
+    again: "もう一度攻撃：{{planet}}",
+    againNote: "見えた防衛は記録済み",
+    source: "襲撃者の惑星：{{planet}}",
+    sourceNote: "襲撃はここから",
+    wreck: "残骸へ：{{planet}}",
+    wreckNote: "価値{{amount}}・早い者勝ち",
+  },
   walkoverHeading: "ここには守備部隊はいませんでした",
   walkoverBody:
     "ここには戦闘艦隊も地上防衛も存在しませんでした。あなたの船が到着し、荷物を積み込んで出発しました。報告すべき戦いはなかった。",

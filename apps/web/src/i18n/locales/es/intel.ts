@@ -316,6 +316,16 @@ export const reports = {
     who: '¿Qué pasó con tu fuerza?',
     changed: 'Botín y cambios de puntos',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Tu siguiente jugada",
+    again: "Atacar de nuevo: {{planet}}",
+    againNote: "La defensa vista está en su expediente",
+    source: "Mundo del atacante: {{planet}}",
+    sourceNote: "El asalto vino de aquí",
+    wreck: "Ir a los restos: {{planet}}",
+    wreckNote: "Valen {{amount}}; para quien llegue primero",
+  },
   walkoverHeading: 'No había ninguna fuerza defensora aquí.',
   walkoverBody:
     'Aquí no había ninguna flota de combate ni defensa terrestre. Tus naves llegaron, cargaron y partieron. No hubo pelea que reportar.',

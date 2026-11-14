@@ -317,6 +317,16 @@ export const reports = {
     who: 'What happened to your force?',
     changed: 'Loot and point changes',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Your next move",
+    again: "Attack again: {{planet}}",
+    againNote: "The defence this fight saw is in its dossier",
+    source: "Raider’s world: {{planet}}",
+    sourceNote: "Where the raid came from",
+    wreck: "Go to the wreck: {{planet}}",
+    wreckNote: "Worth {{amount}}; first to arrive takes it",
+  },
   walkoverHeading: 'No defending force stood here',
   walkoverBody:
     'No combat fleet or ground defence stood here. Your ships arrived, loaded, and left. There was no fight to report.',

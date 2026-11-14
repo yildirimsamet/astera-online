@@ -287,6 +287,16 @@ export const reports = {
     who: 'Filona ne oldu?',
     changed: 'Ganimet ve puan değişimi',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Sıradaki hamlen",
+    again: "Yeniden saldır: {{planet}}",
+    againNote: "Bu savaşta görülen savunma dosyada",
+    source: "Saldıranın dünyası: {{planet}}",
+    sourceNote: "Baskın buradan geldi",
+    wreck: "Enkaza git: {{planet}}",
+    wreckNote: "{{amount}} değerinde; ilk gelen alır",
+  },
   walkoverHeading: 'Burada savunabilecek birlik yoktu',
   walkoverBody:
     'Savaşabilecek filo veya yer savunması yoktu. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',

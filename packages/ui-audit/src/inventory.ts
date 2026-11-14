@@ -114,8 +114,11 @@ export const SURFACES: GameSurface[] = [
     id: 'reports',
     what: 'Savaş raporları ve anıt raporu',
     files: ['screens/BattleReports.tsx', 'v2/hud/ReportScene.tsx', 'screens/MonumentReportSheet.tsx', 'battle-simulator/BattleReplayAction.tsx'],
-    reach: ['gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter', 'gallery:intel-battles'],
-    group: 'G5', unreached: ['boş savaş listesi', 'korsan raporu', 'Hakimiyet dökümü'],
+    reach: [
+      'gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter', 'gallery:intel-battles',
+      'gallery:report-sheet', 'gallery:report-sheet-defend', 'gallery:report-sheet-pirate',
+    ],
+    group: 'G5', unreached: ['boş savaş listesi'],
   },
   { id: 'battle-replay', what: 'Savaş tekrarı', files: ['battle-simulator/BattleReplay.tsx', 'battle-simulator/BattleReplayDialog.tsx', 'battle-simulator/BattleStage.tsx', 'battle-simulator/RetreatRoster.tsx', 'battle-simulator/UnitInspector.tsx'], reach: ['client:battle-replay'], group: 'G5', unreached: ['kayıt yok / güç yetersiz / çok büyük', 'yüklenemedi (yeniden yükle)'] },
   {

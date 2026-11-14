@@ -43,10 +43,10 @@ describe('the survivor bar', () => {
 
   it('treats zero enemy survivors as good news and surviving enemies as a threat', () => {
     const none = render(<SurvivorBar sent={20} lost={20} side="theirs" />);
-    expect(none.container.querySelector('[data-alive]')).toHaveClass('text-opportunity');
+    expect(none.container.querySelector('[data-alive]')).toHaveAttribute('data-tone', 'good');
     none.unmount();
     const some = render(<SurvivorBar sent={20} lost={5} side="theirs" />);
-    expect(some.container.querySelector('[data-alive]')).toHaveClass('text-threat-ink');
+    expect(some.container.querySelector('[data-alive]')).toHaveAttribute('data-tone', 'threat');
   });
 
   /**
@@ -81,7 +81,7 @@ describe('the survivor bar', () => {
   it('overlays rebuilt guns within the lost portion rather than clipping a third flex segment', () => {
     const view = render(<SurvivorBar sent={10} lost={7} rebuilt={99} />);
     expect(widthOf(view, 'rebuilt')).toBe(70);
-    expect(view.container.querySelector('[data-part="rebuilt"]')).toHaveClass('absolute');
+    expect(view.container.querySelector('[data-part="rebuilt"]')).toHaveClass('gk-survivor__over');
     expect(view.container.querySelector('[data-alive]')).toHaveTextContent('10');
     expect(view.container.querySelector('[data-rebuilt]')).toHaveTextContent(/7.*after battle/);
   });
@@ -104,6 +104,13 @@ describe('the survivor bar', () => {
   it('survives an empty force without dividing by nothing', () => {
     const view = render(<SurvivorBar sent={0} lost={0} />);
     expect(Number.isFinite(widthOf(view, 'alive'))).toBe(true);
+  });
+
+  it('is drawn with the kit: no v1 or v2 type, colour or box classes', () => {
+    const view = render(<SurvivorBar sent={10} lost={7} rebuilt={4} side="theirs" />);
+    const stray = [...view.container.querySelectorAll('.text-label, .text-title, .text-dim, .text-bone, .num, .socket, [class*="v2-"], [class*="threat"], [class*="opportunity"]')];
+    expect(stray.map((el) => el.className)).toEqual([]);
+    expect(view.container.querySelector('[role="img"]')).toHaveClass('gk-survivor');
   });
 
   it('reads the whole thing out for a screen reader', () => {

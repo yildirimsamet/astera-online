@@ -316,6 +316,16 @@ export const reports = {
     who: 'Was ist mit deiner Truppe passiert?',
     changed: 'Beute- und Punkteänderungen',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Dein nächster Zug",
+    again: "Erneut angreifen: {{planet}}",
+    againNote: "Die gesehene Verteidigung steht in der Akte",
+    source: "Welt des Angreifers: {{planet}}",
+    sourceNote: "Von hier kam der Überfall",
+    wreck: "Zum Wrack: {{planet}}",
+    wreckNote: "{{amount}} wert; wer zuerst kommt, nimmt es",
+  },
   walkoverHeading: 'Hier stand keine verteidigende Streitmacht',
   walkoverBody:
     'Hier stand weder eine Kampfflotte noch eine Bodenverteidigung. Deine Schiffe sind angekommen, haben geladen und sind abgeflogen. Es gab keinen Kampf zu berichten.',

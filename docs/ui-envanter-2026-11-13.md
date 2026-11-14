@@ -1130,6 +1130,13 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 
 - Sonradaki 44 px, aralık ve tepkisiz kayıtlarının hepsi aynı öğe: sayfanın arkasındaki 2×2 px'lik kapatma alanı (G1 sayfa çerçevesi). Liste ekranı doldurunca sayfa tam boy açılıyor, arkada 2 px kalıyor. Listenin kendi satırlarında bulgu yok. Sayfa çerçevesinin işi; bu birimde değiştirilmedi.
 
+**C15a Savaş raporu: çerçeve ve sıradaki hamle ✅ (2026-11-15, yardımcı oturum).** G5 #3'ün ilk yarısı; kuvvetler ve turlar C15b'de, sahne C16'da.
+- **An:** oyuncu raporu açıp "ne oldu, neden, şimdi ne yapayım?" diye okuyor; dört sorunun test edilen sırası korunuyor.
+- **Değişen:** her soru kitin etiketi altında kendi bölümünde; sonuç kendi renginde plaka; rota iki 44 px dünya kapısı (önce 12 px altı çizili ad); neden, boş geçiş, Hâkimiyet dökümü, sonuçlar ve klanlar kitin camında; `SurvivorBar` kitte (`data-tone`). Yeni kapanış "Sıradaki hamlen": yeniden saldır, saldıranın dünyası, enkaza git; her kapı yalnız açılabiliyorsa görünür, korsanda yok (`reports.next.*` ×7).
+- **Kaldırılan:** `battle-report.css` (seçilebilir metin kuralı `.gk-report`te).
+- **Ölçüm** (tr; telefon, dar, masaüstü; 5 rapor görünümü): puan 304→193 (baskın), 219→145 (savunma), 165→122 (korsan), 131/122→77 (destek); 12 px altı 719→461, kontrast 50→32, 44 px altı 22→17, tepkisiz 28→23; kesilme ve taşma 0. Kalanların hepsi üstteki sahnede (C16) ve kuvvet/tur bloklarında (C15b); bu birimin bölümlerinde bulgu yok. Kitin büyük harfli 12 px bölüm etiketi T2'ye düşüyor (kit tercihi). `reports/ui-audit/c15a-report-sheet-after-2026-11-15.md`.
+- **Açık soru:** yok. Uzunluk C15b'den sonra yeniden ölçülecek.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
