@@ -9280,6 +9280,124 @@ button.gk-probe__head:active {
 .gk-honor__sum dd { overflow-wrap: anywhere; }
 .gk-honor__sum [data-tone='plain'] { color: var(--gk-ink); }
 
+/* ── C16b: the door to the recorded fight, and the full-screen shell around it (G5 #5) ── */
+.gk-replaydoor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gk-s2);
+}
+.gk-replaydoor > .gk-btn {
+  flex: 1 1 auto;
+}
+/* watching is what the row is for: it takes the room first and wraps last */
+.gk-replaydoor > .gk-replaydoor__watch {
+  flex-grow: 3;
+}
+/* the quiet move has no plate to pad: its inset goes to the label, so both fit one row at 350 px */
+.gk-replaydoor > .gk-replaydoor__try {
+  padding-inline: var(--gk-s1);
+}
+.gk-replaydoor__wait {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+}
+.gk-replaydoor__say {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-replaydoor__mark {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--gk-warn);
+}
+.gk-replaydoor__mark .gk-glyph {
+  width: 22px;
+  height: 22px;
+}
+.gk-replaydoor__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gk-s2);
+}
+/* over the report sheet (z 160); the simulator opened from it stands above (170) */
+.gk-replay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  background: var(--gk-deep);
+}
+.gk-replay__head {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s3);
+  margin: var(--gk-s1) var(--gk-gutter);
+  padding: var(--gk-s1) var(--gk-s3) var(--gk-s1) var(--gk-s1);
+}
+.gk-replay__title h1 {
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.gk-replay__title p {
+  margin-top: 2px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+/* the stage keeps the simulator's frame, as the rest of this layer rather than a second one */
+.gk-replay > .simulator {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding-top: 0;
+}
+.gk-replay__wait {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--gk-s4);
+  padding: var(--gk-s6);
+  text-align: center;
+  font-size: var(--gk-t-body);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+  /* where the fight will stand: a faint light, so the wait is a stage and not a void */
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gk-self) 8%, transparent), transparent) center / 340px 340px no-repeat;
+}
+.gk-replay__wait .gk-spin {
+  width: 28px;
+  height: 28px;
+}
+/* a phone held sideways: the stage takes the height, the way back stays */
+@media (max-height: 500px) {
+  .gk-replay__head {
+    margin-block: 2px;
+    padding-block: 0;
+  }
+  .gk-replay__title p {
+    display: none;
+  }
+}
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {
