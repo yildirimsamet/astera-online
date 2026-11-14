@@ -28,6 +28,18 @@ describe('the toggle switch', () => {
     fireEvent.click(screen.getByRole('switch'), { detail: 1 });
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  /** G2-h3 (2026-11-15): a switch that cannot move yet (clan support outside a clan) still answers a press, with a refusal. */
+  it('stays put when locked, and says so to a reader', () => {
+    const onChange = vi.fn();
+    render(<Toggle label="Accept clan support" sub="Join a clan first" checked={false} locked onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: /Accept clan support/ });
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    expect(toggle).toHaveAttribute('data-locked');
+    press(toggle);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+  });
 });
 
 describe('the lever', () => {

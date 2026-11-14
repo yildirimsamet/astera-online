@@ -8,11 +8,10 @@ export const clanSupport = {
   holdBoth: 'Les deux coupés : ta flotte se bat toujours.',
   bothOn: 'Les deux activés : face à un raid qui dépasse toute la ligne, ta flotte et le soutien décollent ensemble. Ton réservoir ne paie que pour tes vaisseaux.',
   supportLocked: 'Rejoins un clan pour accepter le soutien de clan.',
-  save: 'Enregistrer',
   saving: 'Enregistrement…',
-  confirmClose_one: 'Enregistrer renvoie {{count}} vague de soutien. Aucun carburant n’est rendu.',
-  confirmClose_other: 'Enregistrer renvoie {{count}} vagues de soutien. Aucun carburant n’est rendu.',
-  confirm: 'Les renvoyer et enregistrer',
+  confirmClose_one: 'Fermer renvoie {{count}} vague de soutien. Aucun carburant n’est rendu.',
+  confirmClose_other: 'Fermer renvoie {{count}} vagues de soutien. Aucun carburant n’est rendu.',
+  confirm: 'Les renvoyer',
   keep: 'Garder le soutien',
 
   bayTitle: 'Soutien de clan',
@@ -23,6 +22,8 @@ export const clanSupport = {
   bayFactor: 'Domination ×{{factor}} · défaite ×{{factor}}, victoire ÷{{factor}}',
   bayFactorNone: 'Domination ×1 · rien qui tire n’est encore en poste ici',
   bayFactorRule: "Le facteur de soutien est limité à 5. Il multiplie ta perte propre au combat et divise ton gain. Les pertes permanentes des soutiens comptent séparément à leur valeur en ressources.",
+  /** The bay's factor help button, for a reader (G2-h3). */
+  bayFactorAbout: 'Comment marche le facteur',
   ruleLine: 'Soutenue, ta flotte ne se replie jamais · les soutiens combattent avec leurs propres recherches.',
   ruleLineLift: 'Si un raid dépasse toute la ligne, elle décolle ensemble · les soutiens combattent avec leurs propres recherches.',
   empty: 'Aucun membre du clan n’est encore en poste ici.',
@@ -35,9 +36,8 @@ export const clanSupport = {
   damaged: 'Endommagée',
   outOfBand: 'Hors de la bande de palier · rentre intacte si un raid arrive',
   sendBack: 'Renvoyer',
-  sendBackOf: 'Renvoyer les vaisseaux de {{name}}',
-  sendBackConfirm: 'Renvoyer ces vaisseaux ? Aucun carburant n’est rendu.',
-  cancel: 'Annuler',
+  /** On the hold that sends a wave home (G2-h3). */
+  sendBackCost: 'Carburant non rendu',
   more_one: 'Afficher {{count}} vague de plus',
   more_other: 'Afficher {{count}} vagues de plus',
 

@@ -22,21 +22,29 @@ const along = (event: PointerEvent<HTMLElement>): number => {
  * lamp that lights teal when it is on; it clacks and thunks.
  */
 export function Toggle({
-  checked, onChange, label, sub, art,
+  checked, onChange, label, sub, art, locked = false,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: ReactNode;
   sub?: ReactNode;
   art?: string;
+  /** It cannot move yet (G2-h3): a press answers with a refusal, and `sub` says why. */
+  locked?: boolean;
 }) {
   const own = useOwnPress(() => {
+    if (locked) {
+      playSound('refuse');
+      haptic('warn');
+      return;
+    }
     playSound('lever');
     haptic('thunk');
     onChange(!checked);
   });
   return (
-    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND}
+      {...(locked ? { 'aria-disabled': true, 'data-locked': '' } : {})} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {art && <img className="gk-toggle__art" src={art} alt="" />}
       <span className="gk-toggle__words">
         <span className="gk-toggle__label">{label}</span>

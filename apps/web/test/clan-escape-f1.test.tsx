@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, renderHook, screen } from '@testing-library/react';
+import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -70,7 +70,8 @@ function show(node: React.ReactNode, fetch = vi.fn()) {
   render(<QueryClientProvider client={client}><ApiProvider api={api}>{node}</ApiProvider></QueryClientProvider>);
   return fetch;
 }
-const toggle = (name: RegExp) => screen.getByRole('checkbox', { name });
+// G2-h3: the kit's switches; flipping one applies it, there is no Save.
+const toggle = (name: RegExp) => screen.getByRole('switch', { name });
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 
 describe('F1 — the posture card takes both toggles', () => {
@@ -89,7 +90,7 @@ describe('F1 — the posture card takes both toggles', () => {
       vi.fn().mockResolvedValue(ok({ planet: planetView(), returnedWaves: 0 })));
     await user.click(toggle(/clan support/i));
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');
-    await user.click(screen.getByRole('button', { name: /^save/i }));
+    await waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1); });
     const [, init] = fetch.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(typeof init.body === 'string' ? init.body : '')).toEqual({ escape: true, support: true });
   });
@@ -100,15 +101,14 @@ describe('F1 — the posture card takes both toggles', () => {
       vi.fn().mockResolvedValue(ok({ planet: planetView(), returnedWaves: 0 })));
     await user.click(toggle(/tactical retreat/i));
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'true');
-    await user.click(screen.getByRole('button', { name: /^save/i }));
-    expect(fetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1); });
+    expect(screen.queryByText(/support wave home/i)).toBeNull();
   });
 
   it('asks before closing the door on standing waves', async () => {
     const user = userEvent.setup();
     const fetch = show(<DefencePostureCard planet={world('ESCAPE_SUPPORT', 1)} />);
     await user.click(toggle(/clan support/i));
-    await user.click(screen.getByRole('button', { name: /^save/i }));
     expect(screen.getByText(/1 support wave home/i)).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
   });

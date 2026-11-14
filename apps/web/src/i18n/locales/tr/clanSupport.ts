@@ -8,11 +8,10 @@ export const clanSupport = {
   holdBoth: 'İkisi de kapalı: filon her zaman savaşır.',
   bothOn: 'İkisi de açık: tüm hattı ezecek bir saldırıda filon ve destek birlikte kalkar. Depondan yalnız kendi gemilerinin yakıtı düşer.',
   supportLocked: 'Klan desteği için bir klana katılmalısın.',
-  save: 'Kaydet',
   saving: 'Kaydediliyor…',
-  confirmClose_one: 'Kaydetmek {{count}} destek dalgasını eve gönderir. Yakıt iade edilmez.',
-  confirmClose_other: 'Kaydetmek {{count}} destek dalgasını eve gönderir. Yakıt iade edilmez.',
-  confirm: 'Eve gönder ve kaydet',
+  confirmClose_one: 'Kapatmak {{count}} destek dalgasını eve gönderir. Yakıt iade edilmez.',
+  confirmClose_other: 'Kapatmak {{count}} destek dalgasını eve gönderir. Yakıt iade edilmez.',
+  confirm: 'Eve gönder',
   keep: 'Desteği koru',
 
   bayTitle: 'Klan desteği',
@@ -23,6 +22,8 @@ export const clanSupport = {
   bayFactor: 'Hâkimiyet ×{{factor}} · kaybedersen ×{{factor}}, kazanırsan ÷{{factor}}',
   bayFactorNone: 'Hâkimiyet ×1 · burada henüz ateş eden bir destek yok',
   bayFactorRule: "Hâkimiyet hesabında destek çarpanı en fazla 5’tir. Kendi savaş kaybın çarpanla büyür; kazancın çarpana bölünür. Destekçilerin kalıcı gemi kayıpları ayrıca kaynak değerleriyle sayılır.",
+  /** The bay's factor help button, for a reader (G2-h3). */
+  bayFactorAbout: 'Çarpan nasıl işler',
   ruleLine: 'Destek varken filon geri çekilmez · destekçiler kendi araştırmalarıyla savaşır.',
   ruleLineLift: 'Saldırı tüm hattı ezecekse hat birlikte kalkar · destekçiler kendi araştırmalarıyla savaşır.',
   empty: 'Burada henüz nöbet tutan klan arkadaşı yok.',
@@ -35,9 +36,8 @@ export const clanSupport = {
   damaged: 'Hasarlı',
   outOfBand: 'Kademe bandı dışında · saldırı gelirse savaşmadan eve döner',
   sendBack: 'Geri gönder',
-  sendBackOf: '{{name}} adlı komutanın gemilerini geri gönder',
-  sendBackConfirm: 'Bu gemiler eve gönderilsin mi? Yakıt iade edilmez.',
-  cancel: 'Vazgeç',
+  /** On the hold that sends a wave home (G2-h3). */
+  sendBackCost: 'Yakıt iade edilmez',
   more_one: '{{count}} dalga daha göster',
   more_other: '{{count}} dalga daha göster',
 

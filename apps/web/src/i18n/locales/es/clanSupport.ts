@@ -8,11 +8,10 @@ export const clanSupport = {
   holdBoth: 'Ambos apagados: tu flota siempre lucha.',
   bothOn: 'Ambos activos: ante un ataque que supera a toda la línea, tu flota y el apoyo despegan juntos. Tu tanque solo paga por tus naves.',
   supportLocked: 'Únete a un clan para aceptar apoyo de clan.',
-  save: 'Guardar',
   saving: 'Guardando…',
-  confirmClose_one: 'Guardar envía a casa {{count}} oleada de apoyo. No se devuelve combustible.',
-  confirmClose_other: 'Guardar envía a casa {{count}} oleadas de apoyo. No se devuelve combustible.',
-  confirm: 'Enviarlas a casa y guardar',
+  confirmClose_one: 'Cerrar envía a casa {{count}} oleada de apoyo. No se devuelve combustible.',
+  confirmClose_other: 'Cerrar envía a casa {{count}} oleadas de apoyo. No se devuelve combustible.',
+  confirm: 'Enviar a casa',
   keep: 'Mantener el apoyo',
 
   bayTitle: 'Apoyo de clan',
@@ -23,6 +22,8 @@ export const clanSupport = {
   bayFactor: 'Dominio ×{{factor}} · derrota ×{{factor}}, victoria ÷{{factor}}',
   bayFactorNone: 'Dominio ×1 · aquí aún no hay nada apostado que dispare',
   bayFactorRule: "El factor de apoyo tiene un máximo de 5. Multiplica tu propia pérdida de combate y divide tu ganancia. Las pérdidas permanentes de los apoyos cuentan aparte por su valor en recursos.",
+  /** The bay's factor help button, for a reader (G2-h3). */
+  bayFactorAbout: 'Cómo funciona el factor',
   ruleLine: 'Con apoyo tu flota nunca se retira · los aliados luchan con su propia investigación.',
   ruleLineLift: 'Si un ataque supera a toda la línea, despega junta · los aliados luchan con su propia investigación.',
   empty: 'Aún no hay ningún compañero de clan apostado aquí.',
@@ -35,9 +36,8 @@ export const clanSupport = {
   damaged: 'Dañada',
   outOfBand: 'Fuera de la banda de nivel · vuelve intacta si llega un ataque',
   sendBack: 'Devolver',
-  sendBackOf: 'Devolver las naves de {{name}}',
-  sendBackConfirm: '¿Enviar estas naves a casa? No se devuelve combustible.',
-  cancel: 'Cancelar',
+  /** On the hold that sends a wave home (G2-h3). */
+  sendBackCost: 'Sin devolver combustible',
   more_one: 'Mostrar {{count}} oleada más',
   more_other: 'Mostrar {{count}} oleadas más',
 
