@@ -15382,3 +15382,89 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   word-break: break-all;
   color: var(--gk-ink);
 }
+
+/* ── G7-a: the picker — a field's name and its pick on a metal face; a press drops the kit list ── */
+.gk-picker { display: grid; gap: 3px; min-width: 0; }
+.gk-picker__face {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-picker__box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--gk-hit);
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  transition: transform var(--gk-press) linear;
+}
+.gk-picker--fact .gk-picker__box { background: none; box-shadow: none; border-style: dashed; }
+.gk-picker__face:active .gk-picker__box { transform: translateY(1px); }
+.gk-picker__face:focus-visible .gk-picker__box { outline: 2px solid var(--gk-outline); outline-offset: 2px; }
+.gk-picker__face[aria-expanded='true'] .gk-picker__box { border-color: var(--gk-self); box-shadow: 0 0 0 1px var(--gk-self), 0 2px 0 var(--gk-outline); }
+.gk-picker__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--gk-t-small); font-weight: 700; }
+.gk-picker__box > .gk-glyph { flex: none; width: 14px; height: 14px; color: var(--gk-ink-2); transition: transform var(--gk-quick) var(--gk-ease); }
+.gk-picker__face[aria-expanded='true'] .gk-picker__box > .gk-glyph { transform: rotate(180deg); color: var(--gk-self); }
+.gk-picker__list {
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  animation: gk-drop var(--gk-quick) var(--gk-ease);
+}
+.gk-picker__pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--gk-r-sm);
+  background: none;
+  text-align: left;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-picker__pick:active,
+.gk-picker__pick[aria-selected='true'] { background: color-mix(in srgb, var(--gk-self) 12%, transparent); }
+.gk-picker__pick:focus-visible { outline: 2px solid var(--gk-outline); outline-offset: -2px; }
+.gk-picker__name { flex: 1; min-width: 0; font-size: var(--gk-t-small); font-weight: 700; overflow-wrap: anywhere; }
+.gk-picker__pick > .gk-glyph { width: 16px; height: 16px; color: var(--gk-self); }
+
+/* ── G7-a: the aid tab — receive on a switch, the route on pickers, a convoy packed on the kit ── */
+.gk-aid { display: grid; gap: var(--gk-s4); }
+.gk-aid__part { display: grid; gap: var(--gk-s2); }
+.gk-aid__chips { display: flex; flex-wrap: wrap; gap: var(--gk-s1); }
+.gk-aid__route { display: grid; gap: var(--gk-s2); }
+@media (min-width: 640px) { .gk-aid__route { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.gk-aid__quote { display: grid; gap: var(--gk-s2); padding: var(--gk-s3); }
+.gk-aid__bays { display: flex; align-items: center; justify-content: space-between; gap: var(--gk-s2); }
+.gk-aid__limit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gk-s1) var(--gk-s2); font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-aid__transfers { display: grid; gap: var(--gk-s2); margin: 0; padding: 0; list-style: none; }
+.gk-aid__transfer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--gk-s2); padding: var(--gk-s2) var(--gk-s3); }
+.gk-aid__transfer > .gk-sub { grid-column: 1 / -1; }
+.gk-aid__who { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gk-aid__transfer > .gk-chip[data-tone='good'] { color: var(--gk-good); }
+.gk-aid__transfer > .gk-chip[data-tone='hostile'] { color: var(--gk-hostile); }
+.gk-aid__transfer > .gk-chip[data-tone='self'] { color: var(--gk-self); }
+/* the strike's name and its ready chip read on their own red wash: the bright end of the tone (G4 close, contrast) */
+.gk-strike__title, .gk-strike__ready { color: color-mix(in srgb, var(--gk-strike-tone) 45%, var(--gk-hostile-hi)); }
+.gk-strike[data-weapon='radiation'] .gk-strike__title, .gk-strike[data-weapon='radiation'] .gk-strike__ready { color: var(--gk-warn); }

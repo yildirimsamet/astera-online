@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { BottomNav, Choices, GameTabs, InfoPeek, Lever, SettingLink, Slider, Toggle } from '../../src/game-ui/index.js';
+import { BottomNav, Choices, GameTabs, InfoPeek, Lever, Picker, SettingLink, Slider, Toggle } from '../../src/game-ui/index.js';
 
 /** A press that began on the control, as a finger makes it (see `useOwnPress`). */
 const press = (element: HTMLElement): void => {
@@ -455,5 +455,44 @@ describe('the info peek', () => {
     press(toggle);
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(document.querySelector('p ul')).toBeNull();
+  });
+});
+
+/**
+ * G7-a (2026-11-15): A PICK FROM A LIST THAT CAN BE LONG — a clanmate among thirty, a world among
+ * four. The face names the field and what is picked; a press drops the kit list; a pick closes it.
+ * No browser `<select>`: the list is the game's, and a lone answer is a fact, not a control.
+ */
+describe('the picker', () => {
+  const options = [{ id: 'ada', label: 'Ada' }, { id: 'kim', label: 'Kim', sub: '2 worlds' }];
+
+  it('names the field and the pick on its face, and drops the list on a press', () => {
+    const onChange = vi.fn();
+    render(<Picker label="Recipient" value="ada" options={options} onChange={onChange} />);
+    const face = screen.getByRole('button', { name: 'Recipient: Ada' });
+    expect(face).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('listbox')).toBeNull();
+    press(face);
+    expect(face).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('listbox', { name: 'Recipient' });
+    expect(within(list).getByRole('option', { name: /Ada/ })).toHaveAttribute('aria-selected', 'true');
+    press(within(list).getByRole('option', { name: /Kim/ }));
+    expect(onChange).toHaveBeenCalledWith('kim');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('closes on Escape without picking', () => {
+    const onChange = vi.fn();
+    render(<Picker label="Recipient" value="ada" options={options} onChange={onChange} />);
+    press(screen.getByRole('button', { name: 'Recipient: Ada' }));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('shows a lone answer as a fact, with nothing to press', () => {
+    render(<Picker label="Origin" value="ada" options={[options[0]!]} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText('Ada')).toBeInTheDocument();
   });
 });

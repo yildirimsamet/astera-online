@@ -1319,6 +1319,8 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Değişen:** Bölümler kitin etiketiyle; dava camda, "Geliştiriciden bir not" 44 px katlama satırı (ses + titreşim, ok döner). Dört kart resmi yine düğmenin kendisi; basınca ses, titreşim ve hafif çökme. Cüzdanlar camda, "Kopyala" kitin küçük düğmesi; kopyalanınca yeşile döner, tik gelir, adı değişir. Notlar kitin dipnotu. Sac kitin (yıldız resmi).
 - **Ölçüm** (tr; telefon, dar, masaüstü): 39 → 3 (kalan 3 arkalık); 12 px altı 15→0, kontrast 5→0. `reports/ui-audit/c41-donate-after-2026-11-15.md` (önce: `g6-shop-before`).
 
+**G4 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 9 yüzey, 40 görünüm × 6 dil = 239 ölçüm (`g4-close-6lang-2026-11-15.md`). Kesilen 0, yana taşma 0. Bulunan iki şey düzeltildi (`g4-close-fix-2026-11-15.md`): Ölüm Yıldızı başlığı ve "1 hazır" çipi kendi kırmızı zemininde 4,3:1 kalıyordu → tonun açık ucu, kontrast 0. fr yerleşme tutuşu "Envoyer les vaisseaux de colonisation" kırpılıyordu → "Envoyer les colons", kırpılan 0. Kalan: yerleşme `claim-other` görünümünde 3 küçük/tepkisiz hedef (yarış satırının yanındaki başkasının hakkı), sheet'lerin ortak karartması (3 puan).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

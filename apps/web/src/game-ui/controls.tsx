@@ -701,3 +701,59 @@ function LanguageOption({ language, chosen, onChoose, onKeyDown }: {
     </button>
   );
 }
+
+/**
+ * A PICK FROM A LIST THAT CAN BE LONG (G7-a): a clanmate among thirty, a world among four. The face
+ * names the field and what is picked; a press drops the kit list below it; a pick closes it, and so
+ * does Escape. A lone answer is a fact on a dashed face, with nothing to press.
+ */
+export function Picker<T extends string>({ label, value, options, onChange }: {
+  label: string;
+  value: T;
+  options: readonly { id: T; label: string; sub?: string }[];
+  onChange: (id: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const current = options.find((option) => option.id === value) ?? options[0];
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
+  if (options.length <= 1) {
+    return (
+      <div className="gk-picker gk-picker--fact">
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label ?? '—'}</span></span>
+      </div>
+    );
+  }
+  return (
+    <div className="gk-picker">
+      <button type="button" {...OWN_SOUND} className="gk-picker__face" aria-label={`${label}: ${current?.label ?? ''}`}
+        aria-haspopup="listbox" aria-expanded={open} {...(open ? { 'aria-controls': listId } : {})}
+        onPointerDown={toggle.onPointerDown} onClick={toggle.onClick}>
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label}</span><Glyph id="down" /></span>
+      </button>
+      {open && (
+        <div id={listId} role="listbox" aria-label={label} className="gk-picker__list"
+          onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false); } }}>
+          {options.map((option) => (
+            <PickerOption key={option.id} label={option.label} sub={option.sub} chosen={option.id === value}
+              onPick={() => { setOpen(false); if (option.id !== value) onChange(option.id); }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PickerOption({ label, sub, chosen, onPick }: { label: string; sub: string | undefined; chosen: boolean; onPick: () => void }) {
+  const own = useOwnPress(() => { playSound('tab'); haptic('tap'); onPick(); });
+  return (
+    <button type="button" role="option" aria-selected={chosen} {...OWN_SOUND} className="gk-picker__pick"
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-picker__name">{label}</span>
+      {sub !== undefined && <span className="gk-sub">{sub}</span>}
+      {chosen && <Glyph id="check" />}
+    </button>
+  );
+}
