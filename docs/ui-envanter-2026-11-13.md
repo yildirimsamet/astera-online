@@ -1272,6 +1272,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Açık not: "Gidiş" iki kuyuda iki ayrı şey (hacim / süre). Eskiden de böyleydi; owner bakışında ele alınabilir.
 - **Ölçüm** `g4i1-before/after-2026-11-15.md`: `trade` 147 → 3 (kalan: sayfa arka planı).
 
+**G4-i2 konvoy akını, ticaret ve konvoy kartları ✅ (2026-11-15).** Oyuncunun anı: "konvoya vurayım mı, tüccara gitmeye değer mi?"
+- Konvoy sayfası kitte, akın renginde. Önce kurallar bir kuyuda (karşılık vermez / 5 sn / geri çağrılamaz), ardından filo kitin gemi satırlarında. Eve gelecekler gerçek bir tablo: sütun başlıkları adlı, inen sütun kalın. Gönder 1 sn basılı tutma.
+- Ticaret kartında eşit değer, her malın kendi renginde kit çubukları; rakamlar kuyuda. Konvoy kartı da kitte; iki kartın düğmesi kitin ana düğmesi (engelde sebep yazar).
+- Galeriye `focus-trade` ve `focus-convoy` eklendi. Tüccar ve konvoy olayları ortak sabitlere alındı.
+- `gk-rate` bildirim merkeziyle çakışıyordu, `gk-par` oldu. FocusPanel'in eski `BTN`/`BTN_PRIMARY` sabitleri artık kullanılmadığı için silindi.
+- **Ölçüm** `g4i2-before/after-2026-11-15.md`: konvoy 154 → 3, ticaret kartı 12 → 0, konvoy kartı 6 → 0.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

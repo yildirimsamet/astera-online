@@ -21,6 +21,8 @@ import TeamPanel from '../../arena/TeamPanel.js';
 import { BaseSwitch } from '../hud/BaseSwitch.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
+import type { IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
+import type { TradeShipEvent } from '../../lib/trade.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
 import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
@@ -29,7 +31,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { AsteroidFocus, ContactFocus, DebrisFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { AsteroidFocus, ContactFocus, DebrisFocus, IntergalacticConvoyFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus, TradeFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -909,6 +911,22 @@ function GalleryMonumentFocus() {
     emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
 }
 
+/** The convoy and the merchant every gallery view of them shares: one crossing, one window. */
+const GALLERY_CONVOY: IntergalacticConvoyEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
+  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
+  appearsAtMinute: 1140, expiresAtMinute: 1260,
+  route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+  visual: { formationVersion: 1 },
+  rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
+};
+const GALLERY_MERCHANT: TradeShipEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
+  startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
+  rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
+  orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+};
+
 /**
  * G4-h1: the two mining cards as a player meets them. The rock: an isotope-rich one, a craft already
  * out on it and one resting, the Derrick still to buy. The wreck: a haul whose crystal will not
@@ -1340,6 +1358,15 @@ function Views({ view }: { view: string }) {
         ...(radar ? { mass: 'HEAVY' as const, silhouette: 'fleet' as const, inbound: true } : { fleet: { DART: 8, TEMPEST: 2, COURIER: 3 } }) }} />
     );
   }
+  // G4-i2: the merchant and the convoy as the focus card shows them, before the sheet opens.
+  if (view === 'focus-trade') {
+    return <TradeFocus merchant={GALLERY_MERCHANT} fleetAtHome={{ ATLAS: 12, DART: 4 }} fleetAway={{}} minutesLeft={150} reachMinutes={10}
+      onClose={noop} onTrade={noop} open onToggle={noop} />;
+  }
+  if (view === 'focus-convoy') {
+    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={110} reachMinutes={14} hasCombatCraft launchLocked={false}
+      occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
+  }
   if (view === 'focus-run') {
     return (
       <RunFocus run={{ id: 'run-2', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'returning', craft: 2,
@@ -1575,14 +1602,7 @@ function Views({ view }: { view: string }) {
   if (view === 'convoy') {
     return (
       <IntergalacticConvoySheet
-        event={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-          startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-          appearsAtMinute: 1140, expiresAtMinute: 1260,
-          route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
-          visual: { formationVersion: 1 },
-          rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
-        }}
+        event={GALLERY_CONVOY}
         seasonStart={new Date(NOW - 1150 * MIN)}
         planet={launchWorld}
         onClose={noop}
@@ -1723,12 +1743,7 @@ function Views({ view }: { view: string }) {
   if (view === 'trade') {
     return (
       <TradeSheet
-        merchant={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
-          startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
-          rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
-          orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
-        }}
+        merchant={GALLERY_MERCHANT}
         seasonStart={new Date(NOW - 600 * MIN)}
         planet={planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 })}
         onClose={noop}

@@ -14846,3 +14846,33 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-trade__legfigs .gk-figure:not([data-binding]) .gk-figure__value { color: var(--gk-ink-2); }
 .gk-trade__legfigs .gk-figure[data-binding] .gk-label { color: var(--gk-ink); }
 .gk-trade__warning { display: grid; gap: 2px; }
+
+/* ── G4-i2 the convoy's raid sheet: rules first, what comes home in a named table ── */
+.gk-convoy__rules { display: grid; gap: 6px; padding: var(--gk-s2) var(--gk-s3); }
+.gk-convoy__lead { font-size: var(--gk-t-body); font-weight: 600; line-height: 1.35; color: var(--gk-ink); }
+.gk-convoy__haul { padding: var(--gk-s2) var(--gk-s3); }
+.gk-convoy__table { width: 100%; border-collapse: collapse; }
+.gk-convoy__table th,
+.gk-convoy__table td { padding: 4px 0 4px 8px; text-align: right; }
+.gk-convoy__table th:first-child { padding-left: 0; text-align: left; }
+.gk-convoy__table thead th { font-size: var(--gk-t-floor); vertical-align: bottom; }
+.gk-convoy__table tbody th img { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; }
+.gk-convoy__table td { font-size: var(--gk-t-small); color: var(--gk-ink-3); }
+.gk-convoy__table td[data-col='raw'] { color: var(--gk-ink-2); }
+.gk-convoy__table td[data-col='landed'] { font-weight: 700; color: var(--gk-ink); }
+.gk-convoy__table tbody tr + tr { border-top: 1px solid color-mix(in srgb, var(--gk-ink) 7%, transparent); }
+/* The merchant's rate on the rail: each good's own colour, so a bar is known before it is read. */
+.gk-par { display: grid; gap: 6px; }
+.gk-par__row { display: grid; grid-template-columns: 16px minmax(0, 1fr) 52px; align-items: center; gap: 8px; }
+.gk-par__row img { width: 16px; height: 16px; object-fit: contain; }
+.gk-par__bar {
+  --rate-c: var(--gk-alloy);
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gk-ink) 9%, transparent);
+}
+.gk-par__bar[data-resource='crystal'] { --rate-c: var(--gk-crystal); }
+.gk-par__bar[data-resource='deuterium'] { --rate-c: var(--gk-deut); }
+.gk-par__fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--rate-c) 55%, transparent), var(--rate-c)); }
+.gk-par__amount { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); text-align: right; }

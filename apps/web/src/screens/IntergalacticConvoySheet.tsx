@@ -35,7 +35,7 @@ import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { HonorEffectQuote } from '../ui/HonorBenefits.js';
 import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
+import { GameHold, Glyph, SectionTag } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -222,14 +222,19 @@ export function IntergalacticConvoySheet({
 
   return (
     <Sheet
+      kit={{ tone: 'hostile' }}
       eyebrow={t('convoy.sheetEyebrow', { duration: duration(minutesLeft) })}
       title={t('convoy.sheetTitle')}
       onClose={onClose}
       detents={['full']}
       footer={
-        <div data-testid="convoy-commit">
+        <div data-testid="convoy-commit" className="gk gk-launch__commit">
           <RadiationPreview radiation={radiation} />
-          <HoldButton
+          {/* A strike spends both legs' fuel and cannot be called back: the kit's spend weight, one second. */}
+          <GameHold
+            weight="spends"
+            glyph="attack"
+            commitSound="impact"
             label={t('convoy.commit')}
             disabledReason={launch.isPending ? t('convoy.sending') : refusal}
             onCommit={commit}
@@ -237,34 +242,33 @@ export function IntergalacticConvoySheet({
         </div>
       }
     >
-      <div className="mt-1 grid gap-1 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
-        <p className="text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
-        <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.engagement')}</p>
-        <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
-      </div>
+      <div className="gk-trade">
+      {/* The rules before the wing: it does not shoot back, it fires for five seconds, and it is one-way. */}
+      <section data-convoy-rules className="gk-well gk-convoy__rules">
+        <p className="gk-convoy__lead">{t('convoy.boundary')}</p>
+        <p className="gk-inote"><Glyph id="timed" />{t('convoy.engagement')}</p>
+        <p className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('convoy.irreversible')}</p>
+      </section>
 
-      <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.fleetHeading')}</h3>
-      <div className="mt-1">
-        {owned.map((hull) => {
-          const available = combatReady[hull] ?? 0;
-          const art = HULL_ART[hull];
-          return (
-            <div key={hull} data-hull-row={hull} className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${(fleet[hull] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}>
-              <div className="flex items-center gap-2">
-                <span data-art className="grid size-8 shrink-0 place-items-center">
-                  {art ? (
-                    <img src={art} alt="" aria-hidden className="size-8 object-contain" loading="lazy" />
-                  ) : (
-                    <HullMark hull={hull} className="size-6 text-v2-ink-3" />
-                  )}
+      <section className="gk-launch__fleet">
+        <SectionTag as="h3">{t('convoy.fleetHeading')}</SectionTag>
+        <div className="gk-ledger gk-launch__rows">
+          {owned.map((hull) => {
+            const available = combatReady[hull] ?? 0;
+            const chosen = fleet[hull] ?? 0;
+            const art = HULL_ART[hull];
+            return (
+              <div key={hull} data-hull-row={hull} className="gk-lrow gk-lrow--tight" {...(chosen > 0 ? { 'data-chosen': '' } : {})}>
+                <span data-art className="gk-lrow__art">
+                  {art ? <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" /> : <HullMark hull={hull} className="gk-lrow__mark" />}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
-                  <span className="font-v2-mono text-micro text-v2-ink-3">{t('convoy.atHome', { count: available })}</span>
+                <span className="gk-lrow__name">{hullLabel(hull)}</span>
+                <span className="gk-sub gk-num gk-lrow__info" aria-label={t('convoy.atHome', { count: available })}>
+                  {chosen}<span className="gk-lrow__of">/{available}</span>
                 </span>
                 <QuantityStepper
-                  look="v2"
-                  value={fleet[hull] ?? 0}
+                  look="kit"
+                  value={chosen}
                   min={0}
                   max={available}
                   onChange={(value) => { setShip(hull, value); }}
@@ -275,72 +279,61 @@ export function IntergalacticConvoySheet({
                   maxText={t('convoy.maxShort')}
                 />
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </section>
 
-      <div className="mt-3"><HonorEffectQuote kind="convoy" value={planet.honorBenefits} base={baseReward} net={reward} /></div>
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
+      <HonorEffectQuote kind="convoy" value={planet.honorBenefits} base={baseReward} net={reward} />
+      <dl className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Reading label={t('convoy.firepower')} value={full(firepower)} />
         <Reading label={t('convoy.cargo')} value={full(cargo)} />
-        <Reading
-          label={t('convoy.resourceQuality')}
-          value={`${String(Math.round((quote?.resourceQualityFactor ?? 0) * 100))}%`}
-        />
-        <Reading
-          label={t('convoy.shipQuality')}
-          value={`${String(Math.round((quote?.shipQualityFactor ?? 0) * 100))}%`}
-        />
-      </div>
+        <Reading label={t('convoy.resourceQuality')} value={`${String(Math.round((quote?.resourceQualityFactor ?? 0) * 100))}%`} />
+        <Reading label={t('convoy.shipQuality')} value={`${String(Math.round((quote?.shipQualityFactor ?? 0) * 100))}%`} />
+      </dl>
 
       {/*
         THE COLUMNS ARE NAMED, BECAUSE A PHONE HAS NO HOVER. D124 · CLARITY.
-
-        Three numbers a row — the world's hourly ceiling, what the wing's quality
-        leaves of it, and what the hold actually brings home — carried their
-        meaning in `title` attributes, which on the one device this game is built
-        for do not exist. A number is not information until the player knows what
-        it means, so the heading row states all three once and the rows stay as
-        tight as they were.
+        Three numbers a row — the world's hourly ceiling, what the wing's quality leaves of it,
+        and what the hold actually brings home — so the head row states all three once, as a
+        real table's column headers, and the rows stay tight.
       */}
-      <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.actual')}</h3>
-      <div className="mt-1.5 grid gap-1.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
-          <span />
-          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('convoy.cap', { hours: event.rewardPolicy.resourceCapHours })}</span>
-          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('convoy.raw')}</span>
-          <span className="min-w-14 text-right text-micro uppercase tracking-wide text-v2-ink-3">
-            {t('convoy.landed')}
-          </span>
+      <section className="gk-launch__fleet">
+        <SectionTag as="h3">{t('convoy.actual')}</SectionTag>
+        <div className="gk-well gk-convoy__haul">
+          <table className="gk-convoy__table">
+            <thead>
+              <tr>
+                <th scope="col"><span className="sr-only">{t('convoy.cargo')}</span></th>
+                <th scope="col" className="gk-label">{t('convoy.cap', { hours: event.rewardPolicy.resourceCapHours })}</th>
+                <th scope="col" className="gk-label">{t('convoy.raw')}</th>
+                <th scope="col" className="gk-label">{t('convoy.landed')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {GOODS.map((good) => (
+                <tr key={good}>
+                  <th scope="row"><img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} /></th>
+                  <td className="gk-num" data-col="cap">{full(productionCap[good])}</td>
+                  <td className="gk-num" data-col="raw">{full(quote?.rawResourceReward[good] ?? ZERO[good])}</td>
+                  <td className="gk-num" data-col="landed">{full(reward[good])}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {GOODS.map((good) => (
-          <div key={good} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 text-caption">
-            <img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} className="size-4 object-contain" />
-            <span className="font-v2-mono text-v2-ink-3">{full(productionCap[good])}</span>
-            <span className="font-v2-mono text-v2-ink-2">{full(quote?.rawResourceReward[good] ?? ZERO[good])}</span>
-            <span className="min-w-14 text-right font-v2-mono text-v2-ink">{full(reward[good])}</span>
-          </div>
-        ))}
-      </div>
+      </section>
 
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
-        <Reading
-          label={t('convoy.shipChance')}
-          value={`${compact((quote?.shipDropChance ?? 0) * 100)}%`}
-        />
+      <dl className="gk-well gk-figures gk-figures--well gk-figures--two">
+        <Reading label={t('convoy.shipChance')} value={`${compact((quote?.shipDropChance ?? 0) * 100)}%`} />
         <Reading
           label={t('convoy.shipPrizeLabel')}
-          value={quote
-            ? t('convoy.shipPrize', {
-                max: event.rewardPolicy.maxAwardedShips,
-                tier: quote.maxTier,
-              })
-            : '—'}
+          value={quote ? t('convoy.shipPrize', { max: event.rewardPolicy.maxAwardedShips, tier: quote.maxTier }) : '—'}
         />
         <Reading label={t('convoy.outbound')} value={route ? duration(route.oneWayMinutes) : '—'} />
         <Reading label={t('convoy.home')} value={route ? duration(route.exposureMinutes) : '—'} />
         <Reading label={t('convoy.fuel')} value={full(fuel)} />
+      </dl>
       </div>
     </Sheet>
   );
@@ -348,9 +341,9 @@ export function IntergalacticConvoySheet({
 
 function Reading({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
-      <p className="text-micro text-v2-ink-3">{label}</p>
-      <p className="mt-0.5 font-v2-mono text-caption font-semibold text-v2-ink">{value}</p>
+    <div className="gk-figure">
+      <dt className="gk-label">{label}</dt>
+      <dd className="gk-num gk-figure__value">{value}</dd>
     </div>
   );
 }

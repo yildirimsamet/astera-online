@@ -177,14 +177,6 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
 }
 
 /**
- * THE GÖZLEMEVI'S BUTTONS (K2). One primary per surface, in your colour, marked
- * `data-primary` so a test can hold the rule; everything else is outlined. A disabled
- * control keeps its words — its reason is on its face — and only dims.
- */
-const BTN = 'flex min-h-10 items-center justify-center gap-1.5 rounded-control px-3 text-center font-v2-ui text-caption font-semibold leading-tight transition-colors disabled:cursor-not-allowed';
-const BTN_PRIMARY = `${BTN} bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3`;
-
-/**
  * FOCUS OPENS CLOSED. Owner decision.
  *
  * Tapping something in the disc used to throw a full panel over the bottom of the
@@ -2837,34 +2829,27 @@ export function IntergalacticConvoyFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 15 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 15 ? 'gk-tone-warn' : ''}>{duration(minutesLeft)}</span>
           {reachMinutes !== null
             ? ` · ${t('convoy.summaryReach', { duration: duration(reachMinutes) })}`
             : ''}
         </span>
       )}
       actions={(
-        <button
-          type="button"
-          data-testid="convoy-open"
-          data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-          disabled={refusal !== null}
-          onClick={onRaid}
-        >
-          {refusal ?? t('convoy.open')}
-        </button>
+        <GameButton tone="action" wide glyph="attack" className="gk-focus__wide" marks={{ 'data-testid': 'convoy-open', 'data-primary': '' }}
+          disabledReason={refusal} onPress={onRaid}>
+          {t('convoy.open')}
+        </GameButton>
       )}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
-        <Figure
-          label={t('convoy.shipChance')}
-          value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`}
-        />
+      <div className="gk-fbody">
+        <div className="gk-well gk-figures gk-figures--well gk-figures--two">
+          <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
+          <Figure label={t('convoy.shipChance')} value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`} />
+        </div>
+        <p className="gk-sub gk-convoy__lead">{t('convoy.boundary')}</p>
+        <p className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('convoy.irreversible')}</p>
       </div>
-      <p className="mt-3 text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
-      <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
     </Shell>
   );
 }
@@ -2944,37 +2929,29 @@ export function TradeFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 30 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 30 ? 'gk-tone-warn' : ''}>{duration(minutesLeft)}</span>
           {reach !== null && ` · ${t('trade.summaryReach', { duration: duration(reach) })}`}
         </span>
       )}
       actions={(
-        <button
-          type="button"
-          data-testid="trade-open"
-          data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-          disabled={launchBlock !== null || !hasCraft || !hasCarrier || tooLate}
-          onClick={onTrade}
-        >
-          {/*
-            THE SAME LADDER THE SHEET USES, TRUNCATED TO WHAT A RAIL CAN KNOW.
-            Everything below this — the bay, the swap, the hold, the store, the fuel
-            — depends on a convoy that has not been chosen yet, so it belongs to the
-            sheet. What a rail can answer is whether there is any point opening one.
-          */}
-          {launchBlock !== null
+        /*
+          THE SAME LADDER THE SHEET USES, TRUNCATED TO WHAT A RAIL CAN KNOW. Everything below
+          this — the bay, the swap, the hold, the store, the fuel — depends on a convoy that has
+          not been chosen yet, so it belongs to the sheet.
+        */
+        <GameButton tone="action" wide glyph="share" className="gk-focus__wide" marks={{ 'data-testid': 'trade-open', 'data-primary': '' }}
+          onPress={onTrade}
+          disabledReason={launchBlock !== null
             ? t(`faults.launchBlock.${launchBlock}`)
             : carriersAway
               ? t('trade.carriersAway')
-            : !hasCraft
-              ? t('trade.noCraft')
-              : !hasCarrier
-                ? t('trade.noCarrier')
-                : tooLate
-                  ? t('trade.tooLate')
-                  : t('trade.open')}
-        </button>
+              : !hasCraft
+                ? t('trade.noCraft')
+                : !hasCarrier
+                  ? t('trade.noCarrier')
+                  : tooLate ? t('trade.tooLate') : null}>
+          {t('trade.open')}
+        </GameButton>
       )}
     >
       {/*
@@ -2985,8 +2962,9 @@ export function TradeFocus({
         so current and persisted historical rates both render without fractions.
         D208's 1 · 2 · 32 rate reads 32 Alloy · 16 Crystal · 1 Deuterium.
       */}
-      <p className="v2-legend mb-2">{t('trade.rateHeading')}</p>
-      <div data-testid="trade-rate" className="space-y-2">
+      <div className="gk-fbody">
+      <p className="gk-label">{t('trade.rateHeading')}</p>
+      <div data-testid="trade-rate" className="gk-par">
         {TRADE_RESOURCES.map((resource) => {
           const anchor = rateAnchor(merchant.rate);
           const amount = anchor / merchant.rate[resource];
@@ -2996,35 +2974,26 @@ export function TradeFocus({
             merchant.rate.deuterium,
           );
           return (
-            <div key={resource} data-rate-row data-resource={resource} className="flex items-center gap-2">
-              <img
-                src={RESOURCE_ART[resource]}
-                alt=""
-                aria-hidden
-                className="size-4 shrink-0 object-contain"
-              />
+            <div key={resource} data-rate-row data-resource={resource} className="gk-par__row">
+              <img src={RESOURCE_ART[resource]} alt="" aria-hidden />
               <span
-                className="rounded-control border border-v2-line bg-v2-raise h-2.5 min-w-0 flex-1 overflow-hidden rounded-full"
+                className="gk-par__bar"
+                data-resource={resource}
                 role="img"
                 aria-label={t('trade.rateReading', {
                   amount: full(amount),
                   resource: t(`trade.${resource}`),
                 })}
               >
-                <span
-                  className={`block h-full ${RATE_FILL[resource]}`}
-                  style={{ width: `${String(Math.max(2, (amount / widest) * 100))}%` }}
-                />
+                <span className="gk-par__fill" style={{ width: `${String(Math.max(2, (amount / widest) * 100))}%` }} />
               </span>
-              <span className="font-v2-mono w-14 shrink-0 text-right text-caption text-v2-ink">
-                {full(amount)}
-              </span>
+              <span className="gk-num gk-par__amount">{full(amount)}</span>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure
           label={t('trade.leavesIn')}
           value={duration(minutesLeft)}
@@ -3060,7 +3029,8 @@ export function TradeFocus({
         />
       </div>
 
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('trade.boundary')}</p>
+      <p className="gk-sub">{t('trade.boundary')}</p>
+      </div>
     </Shell>
   );
 }
@@ -3068,12 +3038,6 @@ export function TradeFocus({
 /** The three substances, in the order every surface in the game lists them. */
 const TRADE_RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
 
-/** Each substance's own colour, so a bar is identified before it is read. */
-const RATE_FILL: Record<(typeof TRADE_RESOURCES)[number], string> = {
-  alloy: 'bg-alloy/80',
-  crystal: 'bg-v2-self/80',
-  deuterium: 'bg-deuterium/80',
-};
 
 /* ── your own craft, in transit ──────────────────────────────── */
 
