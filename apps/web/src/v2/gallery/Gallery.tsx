@@ -13,7 +13,8 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { FaultView, GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
+import type { FaultView, GalaxyPlanet, IntelView, PlanetView, UnknownSignalView } from '../../api/schemas.js';
+import { UnknownSignalSheet } from '../../screens/UnknownSignalSheet.js';
 import { FaultSheet } from '../../screens/FaultSheet.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { HangarPanel } from '../../arena/hangar/HangarPanel.js';
@@ -849,6 +850,29 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
 }
 
 /**
+ * G4-k: THE UNKNOWN SIGNAL — open from a capital with two colonies, with no Courier at home,
+ * and three outcomes come home: an ambush, a cosmetic, a derelict warship.
+ */
+function GallerySignal({ state }: { state: 'open' | 'noship' | 'pirates' | 'skin' | 'derelict' }) {
+  const outcome = state === 'pirates' ? { kind: 'PIRATES' as const }
+    : state === 'skin' ? { kind: 'SKIN' as const, cosmeticId: 'planet-lava' }
+    : state === 'derelict' ? { kind: 'DERELICT' as const, hull: 'PIKE' as const, damageBp: 3000 } : null;
+  const signal: UnknownSignalView = {
+    id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
+    appearedAt: new Date(NOW - 12 * MIN), expiresAt: new Date(NOW + 48 * MIN), originPlanetId: null, origin: null,
+    fleet: null, damage: null, departAt: null, arriveAt: null, returnDepartAt: null, returnAt: null,
+    recalledAt: null, outcome, deliveredAt: null, pirateFree: false,
+  };
+  const fleet = state === 'noship' ? { DART: 2 } : { DART: 3, PIKE: 1, COURIER: 2 };
+  const planet = { ...launchWorld, fleet };
+  return (
+    <UnknownSignalSheet signal={signal} planet={planet} radar={{ level: 2, range: 3200 }} tier={1} now={NOW}
+      origins={state === 'open' ? [{ id: planet.planet.id, name: planet.planet.name }, { id: 'c-2', name: 'Vesta' }, { id: 'c-3', name: 'Hollow' }] : undefined}
+      onOrigin={noop} onClose={noop} onSend={noop} onBuild={noop} onSkins={noop} />
+  );
+}
+
+/**
  * G4-j: THE TWO STRIKES ON THE FOCUS RAIL, OPENED — a probed colony, a Death Star ready on the
  * pad and two radiation bombs in stock, so the camera sees both folds' heads and bodies.
  */
@@ -1366,6 +1390,9 @@ function Views({ view }: { view: string }) {
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
   if (view === 'focus-strike') return <GalleryStrikes />;
+  if (view === 'signal' || view === 'signal-noship' || view === 'signal-pirates' || view === 'signal-skin' || view === 'signal-derelict') {
+    return <GallerySignal state={view === 'signal' ? 'open' : view === 'signal-noship' ? 'noship' : view === 'signal-pirates' ? 'pirates' : view === 'signal-skin' ? 'skin' : 'derelict'} />;
+  }
   if (view === 'focus-band') return <GalleryBand />;
   if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
   if (view === 'focus-own') return <GalleryFocusClosed own />;

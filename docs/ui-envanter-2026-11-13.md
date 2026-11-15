@@ -1287,6 +1287,15 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - `GameHold` `marks` aldı (`data-death-star`). Eski `strike-launch`/`radiation-launch`/`honor-note` CSS'i ve 11 kullanılmayan radyasyon token'ı silindi.
 - Galeri: `focus-strike` (iki vuruş açık). Audit: strike 37 → 0, focus-strike 0; envanterden "Ölüm Yıldızı bölümü" ulaşılamazı kalktı.
 
+### G4-k — bilinmeyen sinyal kitte (2026-11-15)
+
+- **An:** "Sinyale gemi göndereyim mi, neyi riske atarım?"
+- Kit sheet'i (kayıpta düşman tonu). Başta nefes alan bir işaret (iki halka dalgası). Kalkış dünyası yerli `<select>` yerine kit plakaları (`Choices`, görünür etiketli). Yolculuk kit kuyusunda, gemiler kit gemi plakalarında (seçili kristal ışıklı, olmayan soluk), Kurye satırı dar ekranda üret düğmesini alta alıyor.
+- Beş sonuç kuyuda glyph + yüzde + ad (korsan kırmızı, sıfır olan üstü çizili), ödül ayrıntıları `RulesRow` katında. Risk düşman notu + kit maliyet satırı.
+- Gönder: kitin 1 sn'lik basılı tutuşu; engelde neden düğmenin yüzünde (eski ayrı durum satırı kalktı). Sunucu hatası uyarı notu.
+- Sonuçlar: korsan (kırmızı kafatası halesi), kaplama kartı, enkaz gemi — her biri kendi tonunda kit kuyusunda, buluntu görseli açılırken büyür.
+- Galeri: `signal`, `signal-noship`, `signal-pirates`, `signal-skin`, `signal-derelict`; envanterdeki üç ulaşılamaz durum kapandı. Audit: 191 → 3 (kalan: ortak sheet karartması).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

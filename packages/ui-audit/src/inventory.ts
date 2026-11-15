@@ -80,7 +80,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['gallery:silent-space', 'gallery:silent-space-queued', 'client:return'], group: 'G10' },
   { id: 'worlds', what: 'Dünyalar paneli', files: ['screens/WorldsPanel.tsx'], reach: ['client:worlds', 'gallery:worlds', 'gallery:worlds-one'], group: 'G2' },
   { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide', 'gallery:events-guide-tokyo'], group: 'G3' },
-  { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal'], group: 'G4', unreached: ['sonuç: korsan', 'sonuç: kaplama', 'gemi yok, üretime yönlendirme'] },
+  { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal', 'gallery:signal', 'gallery:signal-noship', 'gallery:signal-pirates', 'gallery:signal-skin', 'gallery:signal-derelict'], group: 'G4' },
 
   // Reading a target and acting on it.
   {

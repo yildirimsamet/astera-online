@@ -8,9 +8,11 @@ import { durationPrecise, countdown } from '../lib/time.js';
 import { defaultUnknownSignalWarship, unknownSignalQuote } from '../lib/unknownSignal.js';
 import { HULL_ART } from '../ui/assets.js';
 import { cosmeticCard, cosmeticCopy } from '../ui/cosmeticCopy.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Cost } from '../v2/kit/Cost.js';
-import { Icon } from '../v2/icons.js';
+import { Choices, CostLine, GameButton, GameHold, Glyph, type GlyphId } from '../game-ui/index.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { haptic } from '../lib/haptics.js';
 
 export function UnknownSignalGlyph({ className = '' }: { className?: string }) {
   return <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true">
@@ -37,10 +39,9 @@ export interface UnknownSignalSheetProps {
   onSkins: () => void;
 }
 
-const OUTCOMES = [
-  ['RESOURCES', 'resources', 'i-mine'], ['ENERGY', 'energy', 'i-spark'], ['DERELICT', 'derelict', 'i-fleet'], ['PIRATES', 'pirates', 'i-warn'], ['SKIN', 'skin', 'i-gift'],
-] as const;
-const FIELD = 'min-w-0 rounded-control border border-v2-line bg-v2-deep/70 px-2.5 py-2';
+const OUTCOMES: readonly (readonly ['RESOURCES' | 'ENERGY' | 'DERELICT' | 'PIRATES' | 'SKIN', string, GlyphId])[] = [
+  ['RESOURCES', 'resources', 'crate'], ['ENERGY', 'energy', 'speed'], ['DERELICT', 'derelict', 'hull'], ['PIRATES', 'pirates', 'pirate'], ['SKIN', 'skin', 'star'],
+];
 
 export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = false, error, origins, onOrigin,
   onClose, onSend, onBuild, onSkins }: UnknownSignalSheetProps) {
@@ -63,78 +64,86 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
       health: Math.round((10_000 - result.damageBp) / 100) })
     : result?.kind === 'PIRATES' ? t('unknownSignal.pirateResult')
     : result?.kind === 'SKIN' ? t('unknownSignal.skinResult', { name: t(cosmeticCopy(result.cosmeticId).nameKey) }) : null;
+  const refusal = busy ? t('unknownSignal.sending') : quote.blocked ? t(`unknownSignal.${quote.blocked}`, { fuel: full(quote.fuel) }) : null;
+  const courierHome = planet.fleet.COURIER ?? 0;
+  const lost = result?.kind === 'PIRATES' || signal.status === 'lost' || cargoLost || derelictLost;
 
   return <Sheet title={t('unknownSignal.title')} eyebrow={open ? countdown(left) : t(result?.kind === 'PIRATES' ? 'unknownSignal.pirates'
     : signal.status === 'lost' ? 'unknownSignal.lost' : cargoLost || derelictLost ? 'unknownSignal.rewardLost' : signal.status === 'done' ? 'unknownSignal.delivered'
-    : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')} onClose={onClose} detents={['fit']} placement="dialog"
-    footer={open ? <div className="space-y-2">
-      {(quote.blocked ?? error) && <p role="status" className="text-caption text-v2-warn">{error ?? (quote.blocked ? t(`unknownSignal.${quote.blocked}`, { fuel: full(quote.fuel) }) : '')}</p>}
-      <button type="button" className="w-full rounded-control border border-v2-crystal/30 bg-v2-crystal/10 px-3 py-2.5 font-v2-ui text-caption font-semibold text-v2-crystal transition-colors hover:bg-v2-crystal/20 disabled:opacity-40"
-        disabled={busy || quote.blocked !== null} onClick={() => { onSend(hull); }}>{t(busy ? 'unknownSignal.sending' : 'unknownSignal.send')}</button>
+    : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')} onClose={onClose} detents={open ? ['full'] : ['fit']}
+    kit={{ tone: lost ? 'hostile' : 'self' }}
+    footer={open ? <div className="gk gk-launch__commit">
+      {error && <p role="alert" className="gk-inote" data-tone="warn">{error}</p>}
+      {/* Two ships go out at risk and the fuel is spent: the kit's spending weight, one second. */}
+      <GameHold weight="spends" glyph="eye" commitSound="launch" label={t('unknownSignal.send')} disabledReason={refusal} onCommit={() => { onSend(hull); }} />
     </div> : undefined}>
-    <div className="space-y-3 font-v2-ui" data-unknown-signal-sheet="">
-      {open && <div className="relative flex min-h-20 items-center gap-3 overflow-hidden rounded-control border border-v2-crystal/15 bg-[radial-gradient(ellipse_at_15%_50%,#163541_0%,#09101b_65%)] px-3 py-2.5">
-        <UnknownSignalGlyph className="size-12 shrink-0 text-v2-crystal drop-shadow-[0_0_12px_#7de6ff55]" />
-        <div className="min-w-0"><p className="text-caption text-v2-crystal">{t('unknownSignal.detected')}</p><p className="mt-1 text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.description')}</p></div>
+    <div className="gk gk-signal" data-unknown-signal-sheet="">
+      {open && <div className="gk-signal__scene">
+        <span className="gk-signal__beacon" aria-hidden="true"><UnknownSignalGlyph className="gk-signal__glyph" /></span>
+        <div className="gk-signal__words"><p className="gk-signal__lead">{t('unknownSignal.detected')}</p><p className="gk-sub">{t('unknownSignal.description')}</p></div>
       </div>}
-      {result ? <div data-testid="unknown-signal-result" className={`space-y-2 rounded-control border p-3 ${result.kind === 'PIRATES' ? 'border-v2-hostile/30 bg-v2-hostile/5' : 'border-v2-crystal/20 bg-v2-crystal/5'}`}>
-        {result.kind === 'DERELICT' && <img src={HULL_ART[result.hull] ?? undefined} alt={hullName(result.hull) ?? result.hull} className="mx-auto h-24 w-full object-contain" />}
-        {result.kind === 'SKIN' && <img src={cosmeticCard(result.cosmeticId)} alt={t(cosmeticCopy(result.cosmeticId).nameKey)} className="mx-auto h-32 w-full rounded-control object-contain" />}
-        <p className="text-caption leading-relaxed text-v2-ink">{rewardCopy}</p>
-        {result.kind === 'RESOURCES' && <Cost cost={result.loot} />}
-        {result.kind === 'ENERGY' && <p className="text-caption text-v2-crystal">{t('unknownSignal.collector')}</p>}
-        {result.kind === 'SKIN' && <button type="button" onClick={onSkins} className="rounded-control border border-v2-crystal/30 px-3 py-2 text-caption text-v2-crystal">{t('unknownSignal.skins')}</button>}
-        {(result.kind === 'RESOURCES' || result.kind === 'DERELICT') && !derelictLost && <p className="text-micro text-v2-ink-3">{t(cargoLost
+      {result ? <div data-testid="unknown-signal-result" className="gk-well gk-signal__result" data-tone={result.kind === 'PIRATES' ? 'hostile' : 'self'}>
+        {result.kind === 'DERELICT' && <img src={HULL_ART[result.hull] ?? undefined} alt={hullName(result.hull) ?? result.hull} className="gk-signal__find" />}
+        {result.kind === 'SKIN' && <img src={cosmeticCard(result.cosmeticId)} alt={t(cosmeticCopy(result.cosmeticId).nameKey)} className="gk-signal__find gk-signal__find--card" />}
+        {result.kind === 'PIRATES' && <span className="gk-signal__ambush" aria-hidden="true"><Glyph id="pirate" /></span>}
+        <p className="gk-signal__lead">{rewardCopy}</p>
+        {result.kind === 'RESOURCES' && <CostLine cost={result.loot} />}
+        {result.kind === 'ENERGY' && <p className="gk-inote" data-tone="self"><Glyph id="speed" />{t('unknownSignal.collector')}</p>}
+        {result.kind === 'SKIN' && <GameButton size="sm" glyph="star" onPress={onSkins}>{t('unknownSignal.skins')}</GameButton>}
+        {(result.kind === 'RESOURCES' || result.kind === 'DERELICT') && !derelictLost && <p className="gk-sub">{t(cargoLost
           ? 'unknownSignal.cargoLost' : signal.deliveredAt ? 'unknownSignal.delivered' : 'unknownSignal.inTransit')}</p>}
       </div> : open ? <>
-        {origins && origins.length > 1 && onOrigin ? <label className="flex items-center justify-between gap-2 text-caption text-v2-ink-2">{t('unknownSignal.origin')}
-          <select className="min-w-0 rounded-control border border-v2-line bg-v2-deep px-2 py-1.5 text-caption text-v2-ink" value={planet.planet.id} onChange={event => { onOrigin(event.target.value); }}>
-            {origins.map(origin => <option key={origin.id} value={origin.id}>{origin.name}</option>)}
-          </select></label> : <p className="flex justify-between text-micro text-v2-ink-3"><span>{t('unknownSignal.origin')}</span><span>{planet.planet.name}</span></p>}
-        <div className="grid grid-cols-3 gap-1.5">{facts.map(([label, value]) => <div key={label} className={FIELD}>
-          <span className="block text-micro text-v2-ink-3">{t(`unknownSignal.${label}`)}</span><span className="mt-1 block font-v2-mono text-caption text-v2-ink">{value}</span>
-        </div>)}</div>
-        <p className="flex justify-between text-micro text-v2-ink-3"><span>{t('unknownSignal.distance')}</span><span className="font-v2-mono">{full(Math.round(quote.distance))}</span></p>
-        <div>
-          <p className="mb-1.5 text-micro text-v2-ink-3">{t('unknownSignal.warship')} · 1</p>
-          <div role="radiogroup" aria-label={t('unknownSignal.warship')} className="grid grid-cols-4 gap-1.5">{UNKNOWN_SIGNAL.warshipHulls.map(id => {
+        {origins && origins.length > 1 && onOrigin
+          ? <section className="gk-signal__crew"><p className="gk-label" aria-hidden="true">{t('unknownSignal.origin')}</p>
+            <Choices label={t('unknownSignal.origin')} value={planet.planet.id} onChange={onOrigin} columns={origins.length > 2 ? 2 : undefined}
+              options={origins.map((origin) => ({ id: origin.id, label: origin.name }))} /></section>
+          : <p className="gk-signal__from"><span className="gk-label">{t('unknownSignal.origin')}</span><span>{planet.planet.name}</span></p>}
+        <dl className="gk-well gk-figures gk-signal__trip">{facts.map(([label, value]) => <div key={label} className="gk-figure">
+          <dt className="gk-label">{t(`unknownSignal.${label}`)}</dt><dd className="gk-num gk-figure__value">{value}</dd>
+        </div>)}</dl>
+        <p className="gk-signal__from"><span className="gk-label">{t('unknownSignal.distance')}</span><span className="gk-num">{full(Math.round(quote.distance))}</span></p>
+        <section className="gk-signal__crew">
+          <p className="gk-label">{t('unknownSignal.warship')} · 1</p>
+          <div role="radiogroup" aria-label={t('unknownSignal.warship')} className="gk-signal__hulls" {...OWN_SOUND}>{UNKNOWN_SIGNAL.warshipHulls.map(id => {
             const count = planet.fleet[id] ?? 0;
-            return <button key={id} type="button" role="radio" aria-checked={id === hull} aria-label={`${hullName(id)} · ${String(count)}`} onClick={() => { setSelection(id); }}
-              className={`min-w-0 rounded-control border px-1 py-1.5 transition-colors ${id === hull ? 'border-v2-crystal/50 bg-v2-crystal/10' : 'border-v2-line bg-v2-deep/60'}`}>
-              <img src={HULL_ART[id] ?? undefined} alt="" className="h-12 w-full object-contain" /><span className="block truncate text-micro text-v2-ink">{hullName(id)}</span>
-              <span className={`mt-0.5 block font-v2-mono text-micro ${count ? 'text-v2-crystal' : 'text-v2-warn'}`}>{count ? String(count) : t('unknownSignal.missing')}</span>
+            return <button key={id} type="button" role="radio" aria-checked={id === hull} aria-label={`${hullName(id)} · ${String(count)}`} className="gk-signal__hull"
+              {...(count === 0 ? { 'data-missing': '' } : {})}
+              onClick={() => { if (id === hull) return; playSound('tab'); haptic('tap'); setSelection(id); }}>
+              <img src={HULL_ART[id] ?? undefined} alt="" /><span className="gk-signal__hullname">{hullName(id)}</span>
+              <span className="gk-num gk-signal__count">{count ? String(count) : t('unknownSignal.missing')}</span>
             </button>;
           })}</div>
-          {(planet.fleet[hull] ?? 0) === 0 && <button type="button" className="mt-1.5 text-caption text-v2-crystal underline decoration-v2-crystal/30 underline-offset-4" onClick={() => { onBuild(hull); }}>{t('unknownSignal.build', { ship: hullName(hull) })}</button>}
-        </div>
-        <div className={`${FIELD} flex items-center gap-2.5`}>
-          <img src={HULL_ART.COURIER ?? undefined} alt="" className="h-11 w-16 shrink-0 object-contain" />
-          <div className="min-w-0 flex-1"><p className="text-caption text-v2-ink">{t('unknownSignal.courier')} · 1</p><p className="text-micro text-v2-ink-3">{t('unknownSignal.available', { count: planet.fleet.COURIER ?? 0 })}</p></div>
-          {(planet.fleet.COURIER ?? 0) === 0 && <button type="button" onClick={() => { onBuild('COURIER'); }} className="max-w-28 text-right text-caption text-v2-crystal">{t('unknownSignal.build', { ship: hullName('COURIER') })}</button>}
-        </div>
-        {(planet.fleet.COURIER ?? 0) === 0 && (planet.buildings.SHIPYARD ?? 0) < 1 && <p className="text-micro text-v2-warn">{t('unknownSignal.needsShipyard')}</p>}
-        <div className="rounded-control border border-v2-line px-2.5 py-2">
-          <div className="mb-2 flex items-center justify-between"><span className="text-micro text-v2-ink-3">{t('unknownSignal.odds')}</span><span aria-hidden="true" className="text-micro text-v2-crystal">⌁</span></div>
-          <div className="grid grid-cols-5 gap-1">{OUTCOMES.map(([kind, label, icon]) => <div key={kind} className="min-w-0 text-center">
-            <Icon id={icon} className={`mx-auto mb-1 size-4 ${odds[kind] === 0 ? 'text-v2-ink-3' : kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal/70'}`} />
-            <span className={`block font-v2-mono text-caption ${odds[kind] === 0 ? 'text-v2-ink-3 line-through' : kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal'}`}>{odds[kind]}%</span>
-            <span className="mt-0.5 block text-micro leading-tight text-v2-ink-2">{t(`unknownSignal.${label}`)}</span>
-          </div>)}</div>
-          <details className="mt-2 border-t border-v2-line pt-1.5 text-micro leading-relaxed text-v2-ink-3"><summary className="cursor-pointer text-v2-ink-2">{t('unknownSignal.details')}</summary>
-            <div className="mt-2 space-y-1.5">{(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', ...(signal.pirateFree ? [] : ['piratesInfo'] as const)] as const).map(key => <p key={key}>{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}</div>
-          </details>
-        </div>
+          {(planet.fleet[hull] ?? 0) === 0 && <GameButton size="sm" glyph="plus" onPress={() => { onBuild(hull); }}>{t('unknownSignal.build', { ship: hullName(hull) })}</GameButton>}
+          <div className="gk-signal__courier" {...(courierHome === 0 ? { 'data-missing': '' } : {})}>
+            <img src={HULL_ART.COURIER ?? undefined} alt="" />
+            <div className="gk-signal__words"><p className="gk-signal__lead">{t('unknownSignal.courier')} · 1</p><p className="gk-sub">{t('unknownSignal.available', { count: courierHome })}</p></div>
+            {courierHome === 0 && <GameButton size="sm" glyph="plus" onPress={() => { onBuild('COURIER'); }}>{t('unknownSignal.build', { ship: hullName('COURIER') })}</GameButton>}
+          </div>
+          {courierHome === 0 && (planet.buildings.SHIPYARD ?? 0) < 1 && <p className="gk-inote" data-tone="warn">{t('unknownSignal.needsShipyard')}</p>}
+        </section>
+        <section data-signal-odds className="gk-well gk-signal__odds">
+          <p className="gk-label">{t('unknownSignal.odds')}</p>
+          <ul className="gk-signal__outcomes">{OUTCOMES.map(([kind, label, glyph]) => <li key={kind} className="gk-signal__outcome"
+            data-tone={odds[kind] === 0 ? 'none' : kind === 'PIRATES' ? 'hostile' : 'self'}>
+            <Glyph id={glyph} />
+            <span className="gk-num gk-signal__odd">{odds[kind]}%</span>
+            <span className="gk-signal__kind">{t(`unknownSignal.${label}`)}</span>
+          </li>)}</ul>
+          <RulesRow glyph="help" title={t('unknownSignal.details')}>
+            {(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', ...(signal.pirateFree ? [] : ['piratesInfo'] as const)] as const).map(key => <p key={key} className="gk-sub">{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}
+          </RulesRow>
+        </section>
         {signal.pirateFree
-          ? <p className="border-l-2 border-v2-crystal/60 pl-2.5 text-micro leading-relaxed text-v2-crystal">{t('unknownSignal.firstSafe')}</p>
-          : <div className="space-y-1.5 border-l-2 border-v2-hostile/60 pl-2.5"><p className="text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><Cost cost={quote.risk} /></div>}
-      </> : <p className="text-caption text-v2-ink-2">{t(signal.status === 'lost' ? 'unknownSignal.lostBeforeArrival' : signal.status === 'done' ? 'unknownSignal.delivered'
+          ? <p className="gk-inote" data-tone="self">{t('unknownSignal.firstSafe')}</p>
+          : <div className="gk-inote gk-signal__risk" data-tone="hostile"><p>{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><CostLine cost={quote.risk} /></div>}
+      </> : <p className="gk-signal__lead">{t(signal.status === 'lost' ? 'unknownSignal.lostBeforeArrival' : signal.status === 'done' ? 'unknownSignal.delivered'
         : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')}</p>}
-      <div className="rounded-control border border-v2-crystal/15 bg-v2-crystal/5 px-2.5 py-2 text-micro leading-relaxed text-v2-ink-3">
-        <p className="text-v2-crystal">{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</p>
-        {radar.level === 0 && <p className="mt-1.5">{t('unknownSignal.zeroRadar')}</p>}
-        <p className="mt-1.5">{t('unknownSignal.radarHelp')}</p>
+      <div className="gk-signal__radar">
+        <p className="gk-signal__radarlevel"><Glyph id="eye" />{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</p>
+        {radar.level === 0 && <p className="gk-sub">{t('unknownSignal.zeroRadar')}</p>}
+        <p className="gk-sub">{t('unknownSignal.radarHelp')}</p>
       </div>
-      {open && expired && <p className="text-micro text-v2-warn">{t('unknownSignal.expired')}</p>}
+      {open && expired && <p className="gk-inote" data-tone="warn">{t('unknownSignal.expired')}</p>}
     </div>
   </Sheet>;
 }
