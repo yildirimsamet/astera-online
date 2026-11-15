@@ -14800,3 +14800,30 @@ button.gk-fact__head:active .gk-fact__line {
   color: var(--gk-gold);
 }
 .gk-reveal__placed .gk-glyph { width: 16px; height: 16px; }
+
+/* ── G4-h2 the pirate, a contact, a run and a flight of mine: one body rhythm, crews on chips ── */
+.gk-fbody { display: grid; gap: 8px; }
+.gk-fnotes { display: grid; gap: 4px; }
+.gk-fbody .gk-figures { margin: 0; }
+.gk-focus__quiet { display: block; font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-inote[data-tone='hostile'] { color: var(--gk-hostile-hi); }
+.gk-crew {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gk-crew__hull {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 3px 9px 3px 6px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-metal-1) 90%, transparent), var(--gk-metal-3));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gk-ink) 8%, transparent);
+}
+.gk-crew__mark { width: 16px; height: 16px; flex-shrink: 0; color: var(--gk-ink-2); }
+.gk-crew__name { font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.gk-crew__count { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+[data-tone='hostile'] .gk-crew__hull { border-color: color-mix(in srgb, var(--gk-hostile) 35%, var(--gk-metal-edge)); }

@@ -22,7 +22,10 @@ describe('recall from the selected craft', () => {
     const onRecall = vi.fn();
     render(<RunFocus run={run()} rock={undefined} wreck={undefined} minutesRemaining={10}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={onRecall} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Recall Prospectors' }));
+    const hold = screen.getByRole('button', { name: /^recall prospectors/i });
+    // a kit hold since G4-h2 (0.6 s): the keyboard's press and release stand in for the finger
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onRecall).toHaveBeenCalledOnce();
   });
 
@@ -33,7 +36,7 @@ describe('recall from the selected craft', () => {
   ])('does not offer a second or late Prospector recall (%j)', (over) => {
     render(<RunFocus run={run(over)} rock={undefined} wreck={undefined} minutesRemaining={0}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Recall Prospectors' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^recall prospectors/i })).not.toBeInTheDocument();
   });
 
   it('disables a Prospector recall already being submitted', () => {
@@ -46,7 +49,10 @@ describe('recall from the selected craft', () => {
     const onRecall = vi.fn();
     render(<ThreadFocus thread={thread()} minutesRemaining={10}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={onRecall} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Recall fleet' }));
+    const hold = screen.getByRole('button', { name: /^recall fleet/i });
+    // a kit hold since G4-h2 (0.6 s): the keyboard's press and release stand in for the finger
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onRecall).toHaveBeenCalledOnce();
   });
 
@@ -57,7 +63,7 @@ describe('recall from the selected craft', () => {
   ])('does not invent permission to recall a flight (%j)', (over) => {
     render(<ThreadFocus thread={thread(over)} minutesRemaining={0}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Recall fleet' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^recall fleet/i })).not.toBeInTheDocument();
   });
 
   /**

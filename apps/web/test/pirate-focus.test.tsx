@@ -143,7 +143,7 @@ describe('the pirate rail', () => {
     // a chip that grows a heading is the compact-by-default rule going backwards.
     const name = document.querySelector('[data-crew-hull="TEMPEST"] [data-crew-name]');
     expect(name, 'the hull name is not its own element').not.toBeNull();
-    expect(name!.className).toContain('text-micro');
+    expect(name!.className).toContain('gk-crew__name');
   });
 
   it('says nothing about a crew it cannot see', () => {
@@ -229,7 +229,7 @@ describe('the pirate rail', () => {
     unmount();
 
     panel(identified({ expiresInMinutes: 12 }), { DART: 10 });
-    expect(document.querySelector('[data-focus-rail] .text-v2-warn')).toBeTruthy();
+    expect(document.querySelector('[data-focus-rail] .gk-tone-warn')).toBeTruthy();
     expect(document.querySelector('[data-focus-rail] .text-v2-hostile')).toBeNull();
   });
 });

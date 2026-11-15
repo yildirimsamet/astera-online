@@ -1255,6 +1255,15 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Rakamlar kit kuyusunda, iki sütun. Döteryum yolu yeşil not. Sığmayan yük sarı not ve kitin "Önce topla" düğmesi; sığarsa sessiz.
 - **Ölçüm** `g4h1-before/after-2026-11-15.md`: `focus-asteroid` 47 → 0, `focus-debris` 25 → 0.
 
+**G4-h2 korsan, temas, maden seferi, uçuşum ✅ (2026-11-15).** Oyuncunun anı: "saldırayım mı, o ne, geri çağırayım mı?"
+- Galeriye dört görünüm eklendi: `focus-pirate`, `focus-contact` (bana gelen radar teması), `focus-contact-fleet` (tam görüş), `focus-run` (eve dönen Kazıcılar).
+- Ekipler kitin çiplerinde: geminin işareti, adı (12 px), sayısı (kalın). Korsan, temas ve uçuşum aynı çipi kullanıyor.
+- Rakamlar kit kuyusunda, iki sütun (korsanda üç sütun "Bölgeden ayrılmasına"yı kelime ortasından kırıyordu).
+- Notlar kit notları: korsanın hasar cezası (kalkan), izleniyor (göz), radar okuması (hedef), bana yönelmiş (kırmızı siren), eve dönen yük (sandık).
+- Korsana saldır kitin ana düğmesi; akın zaten yoldaysa not. Ayrıca anıta bak kit düğmesi.
+- Geri çağırma artık kitin hafif basılı tutması (0,6 sn). Bir kez yapılır ve geri alınamaz, ama harcamaz. Bekleyen şeritteki geri çağırma hâlâ dokunma; kendi biriminde gelecek. **Owner sorusu açık.**
+- **Ölçüm** `g4h2-before/after-2026-11-15.md`: korsan 30 → 0, temas 19 → 0, tam filo 15 → 0, uçuş 7 → 0, korsan uçuşu 3 → 0, sefer 0 → 0.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

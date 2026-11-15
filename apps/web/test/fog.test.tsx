@@ -224,8 +224,9 @@ describe('a foreign contact, as rendered', () => {
   it('lists exact hulls and total craft when Telescope sight supplies a manifest', () => {
     const { container } = show(contact({ fleet: { DART: 12, PIKE: 3 } }));
     expect(screen.getByText(/15 craft/i)).toBeInTheDocument();
-    expect(container.textContent).toMatch(/12 Dart/i);
-    expect(container.textContent).toMatch(/3 Pike/i);
+    // each hull on its own kit chip since G4-h2: the name, then the count
+    expect(container.querySelector('[data-crew-hull="DART"]')?.textContent).toMatch(/Dart\s*12/i);
+    expect(container.querySelector('[data-crew-hull="PIKE"]')?.textContent).toMatch(/Pike\s*3/i);
     expect(container.textContent).not.toMatch(/no manifest at this range/i);
   });
 

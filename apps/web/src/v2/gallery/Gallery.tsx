@@ -29,7 +29,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { AsteroidFocus, DebrisFocus, MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { AsteroidFocus, ContactFocus, DebrisFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -46,7 +46,7 @@ import { GalleryReplay } from './GalleryReplay.js';
 import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
-import { TRADE } from '@astera/rules';
+import { PIRATE, TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../lib/airborne.js';
@@ -1323,6 +1323,31 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-neutral') return <GalleryFocusNeutral />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'focus-asteroid' || view === 'focus-debris') return <GalleryMining kind={view === 'focus-asteroid' ? 'asteroid' : 'debris'} />;
+  // G4-h2: a pirate seen by the eye; a contact read by Radar coming at me; one in full sight; my Prospectors coming home.
+  if (view === 'focus-pirate') {
+    return (
+      <PirateFocus pirate={{ id: 'pirate-9', callsign: 'mJtQ', zone: 'IDENTIFIED', at: { x: 100, y: 0, z: 0 }, expiresInMinutes: 96,
+        reachMinutes: 12, reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }], level: 3,
+        fleet: { TEMPEST: 1, DART: 4, COURIER: 2 }, damageMult: PIRATE.damageMult[3], mass: 'MEDIUM', remembered: true }}
+        fleetAtHome={{ DART: 12, LANCER: 3 }} onClose={noop} onAttack={noop} raiding={false} open onToggle={noop} />
+    );
+  }
+  if (view === 'focus-contact' || view === 'focus-contact-fleet') {
+    const radar = view === 'focus-contact';
+    return (
+      <ContactFocus open onToggle={noop} onClose={noop} contact={{ id: 'c-1', kind: radar ? 'unknown' : 'fleet',
+        from: { x: 0, y: 0, z: 0 }, to: { x: 100, y: 0, z: 0 }, startAt: new Date(NOW - MIN), endAt: new Date(NOW + 9 * MIN),
+        ...(radar ? { mass: 'HEAVY' as const, silhouette: 'fleet' as const, inbound: true } : { fleet: { DART: 8, TEMPEST: 2, COURIER: 3 } }) }} />
+    );
+  }
+  if (view === 'focus-run') {
+    return (
+      <RunFocus run={{ id: 'run-2', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'returning', craft: 2,
+        departAt: new Date(NOW - 20 * MIN), arriveAt: new Date(NOW - 8 * MIN), recalledAt: null, homeAt: new Date(NOW + 6 * MIN),
+        intercept: { x: 0, y: 0, z: 0 }, minedAlloy: 380, minedCrystal: 160, minedDeuterium: 60 }}
+        rock={undefined} wreck={undefined} minutesRemaining={6} onClose={noop} open onToggle={noop} />
+    );
+  }
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
