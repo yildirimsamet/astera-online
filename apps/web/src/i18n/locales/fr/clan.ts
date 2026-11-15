@@ -158,6 +158,8 @@ export const clan = {
     recruiting: "Accepter les candidatures",
     recruitingHint: "Les joueurs peuvent trouver ce clan et y postuler.",
     submit: "Créer le clan",
+    needIdentity: 'Nom et tag requis',
+    needGate: 'Remplis d’abord les conditions',
     created: "Clan créé. Tu en es désormais le chef.",
   },
   adaptation: {

@@ -156,6 +156,8 @@ export const clan = {
     recruiting: "申請を受け付けます",
     recruitingHint: "プレイヤーはこのクランを見つけて応募できます。",
     submit: "クランを設立",
+    needIdentity: '名前とタグを入力',
+    needGate: '先に条件を満たす',
     created: "クラン設立。あなたはそのリーダーです。",
   },
   adaptation: {

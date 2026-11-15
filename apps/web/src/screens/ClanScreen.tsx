@@ -62,25 +62,17 @@ import { launchFault } from '../lib/faults.js';
 import { full, signed } from '../lib/format.js';
 import { duration, minutesUntil, useNow } from '../lib/time.js';
 import { useWorld } from '../api/world.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { Cells, type Cell } from '../ui/ArmCard.js';
-import { CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle, type GlyphId } from '../game-ui/index.js';
+import { artIconSrc, CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle, type GlyphId } from '../game-ui/index.js';
 import { RulesRow } from '../ui/RulesRow.js';
-import { ClanIcon, CoreIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import {
-  Button,
-  Chip,
-  EmptyState,
-  Note,
-  Plate,
-  PriceTag,
-  Section,
-} from '../v2/kit/Surface.js';
 import { ClanWarPanel } from './ClanWarPanel.js';
 
 type ClanTab = 'overview' | 'strength' | 'members' | 'aid' | 'war';
@@ -329,96 +321,86 @@ function ClanOutside({
       },
     });
   };
+  /** Why Apply cannot be pressed, said on its face; null while it can. */
+  const applyRefusal = (clan: { id: string; recruiting: boolean; memberCount: number }): string | null =>
+    pendingApplications.has(clan.id) ? t('clan.directory.pending')
+      : locked ? t('clan.directory.locked', { duration: lockedFor })
+        : clan.memberCount >= CLAN.maxMembers ? t('clan.directory.full')
+          : !clan.recruiting ? t('clan.directory.closed')
+            : null;
 
   return (
-    <div className="flex flex-col gap-4 px-3 py-2">
-      <header className="clan-command-head rounded-control border border-v2-ally/40 bg-v2-panel px-3 py-3">
+    <div data-testid="clan-outside" className="gk gk-clan gk-guild">
+      {/*
+        THE PITCH, IN THE CLAN'S OWN LIGHT. Why five commanders beat one, what founding
+        costs to the unit, and the two roads — find a crew, or raise a banner. The sheet's
+        head already says "seasonal clans", so the pitch opens on its headline.
+      */}
+      <header className="gk-guild__hero">
         <AtmosphereImage art={ATMOSPHERE.clan} />
-        <p className="mb-2 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-widest text-v2-ally">
-          <ClanIcon className="size-4" />{t('clan.outside.eyebrow')}
-        </p>
-        <h3 className="max-w-72 text-title font-semibold leading-tight text-v2-ink">{t('clan.outside.title')}</h3>
-        <p className="mt-2 text-caption leading-snug text-v2-ink-2">{t('clan.outside.body')}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-control border border-v2-ally/25 bg-v2-deep/70 px-2 py-1.5">
-          <span className="text-micro text-v2-ink-2">{t('clan.found.cost')}</span>
-          <PriceTag alloy={home.creation.cost.alloy} crystal={home.creation.cost.crystal} exact />
-        </div>
-        <p className="mt-1.5 text-micro leading-snug text-v2-ink-2">
-          {t('clan.outside.requirements', { level: home.creation.requiredCoreLevel })}
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <a href="#clan-directory-search" className="grid min-h-11 place-items-center rounded-control bg-v2-self px-2 py-2 text-center text-caption font-semibold text-v2-self-ink outline-none focus-visible:ring-2 focus-visible:ring-v2-ink">{t('clan.outside.joinAction')}</a>
-          <a href="#clan-found-name" className="grid min-h-11 place-items-center rounded-control border border-v2-line-hi bg-v2-deep/80 px-2 py-2 text-center text-caption font-semibold text-v2-ink outline-none focus-visible:ring-2 focus-visible:ring-v2-self">{t('clan.outside.foundAction')}</a>
+        <h3 className="gk-guild__title">{t('clan.outside.title')}</h3>
+        <p className="gk-sub">{t('clan.outside.body')}</p>
+        <FoundingPrice cost={home.creation.cost} />
+        <p className="gk-sub gk-guild__gate">{t('clan.outside.requirements', { level: home.creation.requiredCoreLevel })}</p>
+        <div className="gk-guild__routes">
+          <a href="#clan-directory-search" className="gk-btn gk-btn--action gk-btn--sm" onClick={() => { haptic('tap'); }}>
+            <span className="gk-btn__glyph"><Glyph id="zoom" /></span><span>{t('clan.outside.joinAction')}</span>
+          </a>
+          <a href="#clan-found-name" className="gk-btn gk-btn--sm" onClick={() => { haptic('tap'); }}>
+            <span className="gk-btn__glyph"><Glyph id="banner" /></span><span>{t('clan.outside.foundAction')}</span>
+          </a>
         </div>
       </header>
 
-      <ClanBenefits />
+      <div className="gk-clan__panel gk-clan__parts">
+        <ClanBenefits />
 
-      {hasDepot ? (
-        <Section label={t('clan.depot.formerHeading')}>
-          <Plate tone="opportunity" className="px-2 py-2">
-            <p className="text-body text-v2-ink">{t('clan.depot.formerBody')}</p>
-            <ResourceFigures resources={depot} className="mt-3" />
-            <Button
-              className="mt-2"
-              variant="primary"
-              disabled={actions.claimDepot.isPending}
-              onClick={() => { actions.claimDepot.mutate(); }}
-            >
-              {t('clan.depot.claim')}
-            </Button>
-            <MutationError mutation={actions.claimDepot} />
-          </Plate>
-        </Section>
-      ) : null}
+        {hasDepot ? (
+          <section className="gk-clan__part">
+            <SectionTag as="h3">{t('clan.depot.formerHeading')}</SectionTag>
+            <div className="gk-well gk-clan__depot">
+              <p className="gk-sub">{t('clan.depot.formerBody')}</p>
+              <ResourceFigures resources={depot} />
+              <GameButton tone="action" wide glyph="crate" pending={actions.claimDepot.isPending}
+                onPress={() => { actions.claimDepot.mutate(); }}>
+                {t('clan.depot.claim')}
+              </GameButton>
+              <MutationError mutation={actions.claimDepot} />
+            </div>
+          </section>
+        ) : null}
 
-      {home.requests.length > 0 ? (
-        <Section label={t('clan.requests.heading')}>
-          <div className="flex flex-col gap-2">
+        {home.requests.length > 0 ? (
+          <section className="gk-clan__part">
+            <SectionTag as="h3">{t('clan.requests.heading')}</SectionTag>
             {home.requests.map((request) => {
               const pending = request.status === 'PENDING';
               return (
-                <Plate key={request.id} className="px-2 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate text-v2-ink">[{request.clanTag}] {request.clanName}</p>
-                      <p className="mt-1 text-caption text-v2-ink-3">
-                        {request.kind === 'INVITATION'
-                          ? t('clan.requests.invitation')
-                          : t(`clan.requests.status.${request.status}`)}
-                      </p>
-                    </div>
-                    {pending ? <Chip tone="opportunity">{duration(minutesUntil(request.expiresAt, now))}</Chip> : null}
-                  </div>
+                <div key={request.id} className="gk-well gk-clan__request" data-request={request.kind}>
+                  <p className="gk-crewlist__name">
+                    <strong>[{request.clanTag}] {request.clanName}</strong>
+                    {pending ? <span className="gk-chip gk-crewlist__chip gk-num" data-tone="warn">{duration(minutesUntil(request.expiresAt, now))}</span> : null}
+                  </p>
+                  <p className="gk-sub">
+                    {request.kind === 'INVITATION' ? t('clan.requests.invitation') : t(`clan.requests.status.${request.status}`)}
+                  </p>
                   {pending && request.kind === 'INVITATION' ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        disabled={locked || actions.accept.isPending}
-                        onClick={() => { accept(request.id, false); }}
-                      >
-                        {locked ? t('clan.requests.locked', { duration: lockedFor }) : t('clan.requests.accept')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={actions.reject.isPending}
-                        onClick={() => { actions.reject.mutate(request.id); }}
-                      >
+                    <div className="gk-clan__pair">
+                      <GameButton size="sm" tone="action" glyph="check" pending={actions.accept.isPending}
+                        disabledReason={locked ? t('clan.requests.locked', { duration: lockedFor }) : null}
+                        onPress={() => { accept(request.id, false); }}>
+                        {t('clan.requests.accept')}
+                      </GameButton>
+                      <GameButton size="sm" glyph="close" pending={actions.reject.isPending}
+                        onPress={() => { actions.reject.mutate(request.id); }}>
                         {t('clan.requests.decline')}
-                      </Button>
+                      </GameButton>
                     </div>
                   ) : pending ? (
-                    <Button
-                      className="mt-2"
-                      size="sm"
-                      variant="ghost"
-                      disabled={actions.withdraw.isPending}
-                      onClick={() => { actions.withdraw.mutate(request.id); }}
-                    >
+                    <GameButton size="sm" glyph="back" pending={actions.withdraw.isPending}
+                      onPress={() => { actions.withdraw.mutate(request.id); }}>
                       {t('clan.requests.withdraw')}
-                    </Button>
+                    </GameButton>
                   ) : null}
                   {hostileRequest === request.id ? (
                     <Confirmation
@@ -430,146 +412,114 @@ function ClanOutside({
                       busy={actions.accept.isPending}
                     />
                   ) : null}
-                  <MutationError mutation={actions.accept} />
-                </Plate>
+                </div>
               );
             })}
-          </div>
-          <MutationError mutation={actions.reject} />
-          <MutationError mutation={actions.withdraw} />
-        </Section>
-      ) : null}
+            <MutationError mutation={actions.accept} />
+            <MutationError mutation={actions.reject} />
+            <MutationError mutation={actions.withdraw} />
+          </section>
+        ) : null}
 
-      <Section label={t('clan.directory.heading')} aside={directory.data ? t('clan.directory.count', { count: directoryTotal }) : undefined}>
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchDraft.trim());
-          }}
-        >
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">{t('clan.directory.search')}</span>
+        <section className="gk-clan__part">
+          <SectionTag as="h3" aside={directory.data ? t('clan.directory.count', { count: directoryTotal }) : undefined}>
+            {t('clan.directory.heading')}
+          </SectionTag>
+          <form
+            className="gk-guild__search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(searchDraft.trim());
+            }}
+          >
+            <label htmlFor="clan-directory-search" className="sr-only">{t('clan.directory.search')}</label>
             <input
               id="clan-directory-search"
+              type="search"
               value={searchDraft}
               maxLength={40}
               onChange={(event) => { setSearchDraft(event.currentTarget.value); }}
               placeholder={t('clan.directory.search')}
-              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10"
+              className="gk-field__input"
             />
-          </label>
-          <Button type="submit">{t('clan.directory.find')}</Button>
-        </form>
-        {directory.isError ? (
-          <Unreachable what={t('clan.directory.heading')} onRetry={() => { void directory.refetch(); }} />
-        ) : !directory.data ? (
-          <Waiting>{t('clan.directory.waiting')}</Waiting>
-        ) : listedClans.length === 0 ? (
-          <EmptyState title={t('clan.directory.empty')} />
-        ) : (
-          <ol className="flex flex-col gap-2">
-            {listedClans.map((clan) => {
-              const applied = pendingApplications.has(clan.id);
-              const fullClan = clan.memberCount >= CLAN.maxMembers;
-              const canApply = clan.recruiting && !fullClan && !applied && !locked;
-              return (
-                <li key={clan.id}>
-                  <Plate className="px-2 py-2">
+            <GameButton submit glyph="zoom" onPress={() => undefined}>{t('clan.directory.find')}</GameButton>
+          </form>
+          {directory.isError ? (
+            <Unreachable what={t('clan.directory.heading')} onRetry={() => { void directory.refetch(); }} />
+          ) : !directory.data ? (
+            <Waiting>{t('clan.directory.waiting')}</Waiting>
+          ) : listedClans.length === 0 ? (
+            <p className="gk-inote"><Glyph id="zoom" />{t('clan.directory.empty')}</p>
+          ) : (
+            <ol className="gk-guild__list">
+              {listedClans.map((clan) => {
+                const refusal = applyRefusal(clan);
+                return (
+                  <li key={clan.id} className="gk-well gk-guild__clan" {...(refusal === null ? { 'data-open': '' } : {})}>
                     {/*
                       THE ROW IS THE DOOR. D183, owner report: *"Bir klan'a tıklayıp
                       incelenmiyor. Sıradan bir kullanıcı bir klanda kimler var onu
-                      bile göremiyor."*
-
-                      The row used to be a card with one control on it — Apply —
-                      which asks a commander to join five strangers on the strength
-                      of a member count. Pressing the row itself opens the profile,
-                      the same grammar every other list in the game uses (D118: a
-                      thing is focused before it is committed to), and Apply lives
-                      in both places because the decision can be made from either.
+                      bile göremiyor."* Pressing the row opens the profile — the roster is
+                      the fact joining turns on — and Apply lives in both places.
                     */}
                     <button
                       type="button"
-                      className="w-full text-left"
+                      {...OWN_SOUND}
+                      className="gk-guild__door"
                       aria-label={t('clan.directory.inspect', { clan: clan.name })}
-                      onClick={() => { setInspecting(clan.id); }}
+                      onClick={() => { playSound('tap'); haptic('tap'); setInspecting(clan.id); }}
                     >
-                      <div className="flex items-start gap-2">
-                        <span className="rounded-control bg-v2-deep grid size-8 shrink-0 place-items-center rounded-control text-v2-self">
-                          <ClanIcon className="size-4" />
+                      <span className="gk-guild__badge gk-num"><ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} bracket={false} /></span>
+                      <span className="gk-guild__who">
+                        <span className="gk-crewlist__name">
+                          <strong>{clan.name}</strong>
+                          {clan.level !== null ? <span className="gk-chip gk-crewlist__chip">{t('clanWar.level', { level: clan.level })}</span> : null}
                         </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Chip tone="crystal"><ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} /></Chip>
-                            <strong className="font-semibold truncate text-v2-ink">{clan.name}</strong>
-                            {clan.level !== null && (
-                              <Chip tone="opportunity">{t('clanWar.level', { level: clan.level })}</Chip>
-                            )}
-                          </div>
-                          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
-                            {clan.description || t('clan.noDescription')}
-                          </p>
-                          <p className="mt-2 text-label text-v2-ink-3">
-                            {t('clan.directory.meta', {
-                              leader: clan.leaderName,
-                              members: clan.memberCount,
-                              score: clan.score === 0 ? full(0) : signed(clan.score),
-                            })}
-                          </p>
-                        </div>
-                      </div>
+                        <span className="gk-sub gk-guild__motto">{clan.description || t('clan.noDescription')}</span>
+                        <span className="gk-guild__meta">
+                          {t('clan.directory.meta', {
+                            leader: clan.leaderName,
+                            members: clan.memberCount,
+                            score: clan.score === 0 ? full(0) : signed(clan.score),
+                          })}
+                        </span>
+                      </span>
+                      <span className="gk-guild__chev" aria-hidden="true"><Glyph id="next" /></span>
                     </button>
-                    <Button
-                      full
-                      className="mt-2"
-                      size="sm"
-                      variant={canApply ? 'primary' : 'ghost'}
-                      ariaLabel={t('clan.directory.applyTo', { clan: clan.name })}
-                      disabled={!canApply || actions.apply.isPending}
-                      onClick={() => {
+                    <GameButton size="sm" className="gk-guild__apply" tone={refusal === null ? 'action' : 'steel'} glyph="mail"
+                      spoken={t('clan.directory.applyTo', { clan: clan.name })}
+                      disabledReason={refusal}
+                      pending={actions.apply.isPending}
+                      onPress={() => {
                         actions.apply.mutate(clan.id, {
                           onSuccess: () => { setNotice(t('clan.directory.applied')); },
                         });
-                      }}
-                    >
-                      {applied
-                        ? t('clan.directory.pending')
-                        : locked
-                          ? t('clan.directory.locked', { duration: lockedFor })
-                          : fullClan
-                            ? t('clan.directory.full')
-                            : clan.recruiting
-                              ? t('clan.directory.apply')
-                              : t('clan.directory.closed')}
-                    </Button>
-                  </Plate>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {directory.hasNextPage ? (
-          <Button
-            full
-            variant="ghost"
-            disabled={directory.isFetchingNextPage}
-            onClick={() => { void directory.fetchNextPage(); }}
-          >
-            {directory.isFetchingNextPage ? t('clan.directory.loadingMore') : t('clan.directory.more')}
-          </Button>
-        ) : null}
-        {notice ? <p role="status" className="text-caption text-v2-self">{notice}</p> : null}
-        <MutationError mutation={actions.apply} />
-      </Section>
+                      }}>
+                      {t('clan.directory.apply')}
+                    </GameButton>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {directory.hasNextPage ? (
+            <GameButton wide glyph="down" pending={directory.isFetchingNextPage}
+              onPress={() => { void directory.fetchNextPage(); }}>
+              {directory.isFetchingNextPage ? t('clan.directory.loadingMore') : t('clan.directory.more')}
+            </GameButton>
+          ) : null}
+          {notice ? <p role="status" className="gk-inote" data-tone="good"><Glyph id="check" />{notice}</p> : null}
+          <MutationError mutation={actions.apply} />
+        </section>
 
-      <FoundClan home={home} actions={actions} />
+        <FoundClan home={home} actions={actions} />
+      </div>
 
       {inspecting !== null && (
         <ClanProfile
           clanId={inspecting}
           applying={actions.apply.isPending}
-          canApply={!locked}
-          applied={pendingApplications.has(inspecting)}
+          refusal={(clan) => applyRefusal(clan)}
           onApply={() => {
             actions.apply.mutate(inspecting, {
               onSuccess: () => {
@@ -582,6 +532,21 @@ function ClanOutside({
         />
       )}
     </div>
+  );
+}
+
+/** The founding price to the unit: a decision this size is not read off "2K". */
+function FoundingPrice({ cost }: { cost: Resources }) {
+  const { t } = useTranslation();
+  return (
+    <dl className="gk-guild__price">
+      <dt className="gk-label">{t('clan.found.cost')}</dt>
+      {(['alloy', 'crystal', 'deuterium'] as const).filter((of) => cost[of] > 0).map((of) => (
+        <dd key={of} className="gk-num" data-resource={of}>
+          <img src={RESOURCE_ART[of]} alt={t(`clan.resources.${of}`)} />{full(cost[of])}
+        </dd>
+      ))}
+    </dl>
   );
 }
 
@@ -599,15 +564,14 @@ function ClanOutside({
  */
 function ClanProfile({
   clanId,
-  canApply,
-  applied,
+  refusal,
   applying,
   onApply,
   onClose,
 }: {
   clanId: string;
-  canApply: boolean;
-  applied: boolean;
+  /** Why Apply cannot be pressed for this clan, the directory's own answer; null while it can. */
+  refusal: (clan: { id: string; recruiting: boolean; memberCount: number }) => string | null;
   applying: boolean;
   onApply: () => void;
   onClose: () => void;
@@ -615,83 +579,60 @@ function ClanProfile({
   const { t } = useTranslation();
   const profile = useClanProfile(clanId);
   const clan = profile.data;
-  const atCapacity = clan !== undefined && clan.memberCount >= CLAN.maxMembers;
+  const refused = clan ? refusal(clan) : null;
 
   return (
     <Sheet
       eyebrow={t('clan.profile.eyebrow')}
       title={clan ? `[${clan.tag}] ${clan.name}` : t('clan.profile.loading')}
+      kit={{ art: artIconSrc('menu-clan'), tone: 'self' }}
       onClose={onClose}
       footer={clan && (
-        <Button
-          full
-          variant={canApply && clan.recruiting && !atCapacity && !applied ? 'primary' : 'ghost'}
-          ariaLabel={t('clan.directory.applyTo', { clan: clan.name })}
-          disabled={!canApply || !clan.recruiting || atCapacity || applied || applying}
-          onClick={onApply}
-        >
-          {applied
-            ? t('clan.directory.pending')
-            : atCapacity
-              ? t('clan.directory.full')
-              : clan.recruiting
-                ? t('clan.directory.apply')
-                : t('clan.directory.closed')}
-        </Button>
+        <GameButton wide tone={refused === null ? 'action' : 'steel'} glyph="mail"
+          spoken={t('clan.directory.applyTo', { clan: clan.name })}
+          disabledReason={refused} pending={applying} onPress={onApply}>
+          {t('clan.directory.apply')}
+        </GameButton>
       )}
     >
       {profile.isError ? (
-        <Unreachable
-          what={t('clan.profile.eyebrow')}
-          onRetry={() => { void profile.refetch(); }}
-        />
+        <Unreachable what={t('clan.profile.eyebrow')} onRetry={() => { void profile.refetch(); }} />
       ) : !clan ? (
         <Waiting>{t('clan.profile.loading')}</Waiting>
       ) : (
-        <>
-          <p className="text-caption leading-relaxed text-v2-ink-2">
-            {clan.description || t('clan.noDescription')}
-          </p>
-          {clan.level !== null && (
-            <p className="mt-2 text-label text-v2-self">
-              {t('clanWar.level', { level: clan.level })}
+        <div className="gk-clan__parts">
+          <div className="gk-clan__part">
+            <p className="gk-sub">{clan.description || t('clan.noDescription')}</p>
+            <p className="gk-guild__meta">
+              {clan.level !== null ? <span className="gk-chip gk-crewlist__chip" data-tone="self">{t('clanWar.level', { level: clan.level })}</span> : null}
+              {t('clan.directory.meta', {
+                leader: clan.leaderName,
+                members: clan.memberCount,
+                score: clan.score === 0 ? full(0) : signed(clan.score),
+              })}
             </p>
-          )}
-          <p className="mt-2 text-label text-v2-ink-3">
-            {t('clan.directory.meta', {
-              leader: clan.leaderName,
-              members: clan.memberCount,
-              score: clan.score === 0 ? full(0) : signed(clan.score),
-            })}
-          </p>
-          <h3 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-4 mb-2">
-            {t('clan.profile.roster', { count: clan.members.length })}
-          </h3>
+          </div>
           {/*
             ONE LINE PER COMMANDER: who they are, what seat they hold, and their
-            Dominion. Three facts, one row — the compact directive, and the same
-            shape the clan's own Strength tab already lists its crew in.
+            Dominion. Three facts, one row — the same shape the clan's own crew list takes.
           */}
-          <ol className="flex flex-col gap-1">
-            {clan.members.map((mate) => (
-              <li
-                key={mate.playerId}
-                data-clan-member={mate.playerId}
-                className="flex items-baseline justify-between gap-2 border-b border-v2-line pb-1 last:border-0"
-              >
-                <span className="flex min-w-0 items-baseline gap-2">
-                  <strong className="font-semibold truncate text-v2-ink">{mate.username}</strong>
-                  {mate.role === 'LEADER' && (
-                    <span className="text-micro font-semibold uppercase tracking-wide text-v2-self">{t('clan.profile.leader')}</span>
-                  )}
-                </span>
-                <span className="font-v2-mono tabular-nums shrink-0 text-caption text-v2-ink-2">
-                  {mate.dominion === 0 ? full(0) : signed(mate.dominion)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </>
+          <section className="gk-clan__part">
+            <SectionTag as="h3" aside={t('seasonRecap.dominion')}>{t('clan.profile.roster', { count: clan.members.length })}</SectionTag>
+            <ol className="gk-well gk-crewlist">
+              {clan.members.map((mate) => (
+                <li key={mate.playerId} data-clan-member={mate.playerId} className="gk-crewlist__row gk-guild__mate">
+                  <span className="gk-crewlist__name">
+                    <strong>{mate.username}</strong>
+                    {mate.role === 'LEADER' ? <span className="gk-chip gk-clan__role">{t('clan.profile.leader')}</span> : null}
+                  </span>
+                  <span className="gk-num gk-guild__dominion" data-tone={mate.dominion > 0 ? 'self' : mate.dominion < 0 ? 'hostile' : 'plain'}>
+                    {mate.dominion === 0 ? full(0) : signed(mate.dominion)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
       )}
     </Sheet>
   );
@@ -744,98 +685,89 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
   const locked = recruitmentLocked(home, now);
   const coreReady = home.creation.coreLevel >= home.creation.requiredCoreLevel;
   const identityReady = clanNameIsValid(name) && clanTagIsValid(tag);
-  const canCreate = coreReady && home.creation.affordable && !locked && identityReady;
+  // The button says what is still missing: the gate above first, then the identity below.
+  const refusal = !coreReady || !home.creation.affordable || locked ? t('clan.found.needGate')
+    : !identityReady ? t('clan.found.needIdentity')
+      : null;
 
   const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (!canCreate || actions.create.isPending) return;
+    if (refusal !== null || actions.create.isPending) return;
     actions.create.mutate({ name, tag, description, recruiting }, {
       onSuccess: () => { setCreated(true); },
     });
   };
 
   return (
-    <Section label={t('clan.found.heading')}>
-      <Plate className="px-2 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-micro font-semibold ${coreReady ? 'border-v2-self/50 text-v2-self' : 'border-v2-warn/50 text-v2-warn'}`}
-          >
-            <CoreIcon className="size-3.5" />
+    <section className="gk-clan__part">
+      <SectionTag as="h3">{t('clan.found.heading')}</SectionTag>
+      <div className="gk-well gk-guild__found">
+        <div className="gk-guild__gates">
+          <span className="gk-chip gk-crewlist__chip" data-tone={coreReady ? 'self' : 'warn'}>
+            <Glyph id={coreReady ? 'check' : 'lock'} />
             {t('clan.found.core', { current: home.creation.coreLevel, required: home.creation.requiredCoreLevel })}
           </span>
-          <span className="text-micro text-v2-ink-3">{t('clan.found.cost')}</span>
-          <PriceTag
-            alloy={home.creation.cost.alloy}
-            crystal={home.creation.cost.crystal}
-            exact
-          />
+          <FoundingPrice cost={home.creation.cost} />
         </div>
         {locked ? (
-          <p className="mt-3 text-caption text-v2-hostile">
+          <p className="gk-inote" data-tone="hostile"><Glyph id="clock" />
             {t('clan.found.locked', { duration: duration(minutesUntil(home.creation.unlockedAt!, now)) })}
           </p>
         ) : null}
-        <Note>{t('clan.found.identityNote')}</Note>
+        <p className="gk-inote" data-tone="warn"><Glyph id="warn" />{t('clan.found.identityNote')}</p>
 
-        <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="mt-2 flex flex-col gap-2">
-          <label>
-            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.nameLabel')}</span>
-            <input
-              id="clan-found-name"
-              value={name}
-              maxLength={CLAN.nameMaxChars}
-              onChange={(event) => { setName(event.currentTarget.value); }}
-              placeholder={t('clan.found.namePlaceholder')}
-              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10"
-            />
-          </label>
-          <label>
-            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.tagLabel')}</span>
-            <input
-              value={tag}
-              maxLength={CLAN.tagMaxChars}
-              onChange={(event) => { setTag(event.currentTarget.value.toUpperCase()); }}
-              placeholder="ORB"
-              autoCapitalize="characters"
-              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10 uppercase"
-            />
-          </label>
-          <label>
-            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.descriptionLabel')}</span>
+        <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="gk-clan__part">
+          <div className="gk-guild__ident">
+            <div className="gk-field">
+              <label htmlFor="clan-found-name" className="gk-label">{t('clan.found.nameLabel')}</label>
+              <input
+                id="clan-found-name"
+                value={name}
+                maxLength={CLAN.nameMaxChars}
+                onChange={(event) => { setName(event.currentTarget.value); }}
+                placeholder={t('clan.found.namePlaceholder')}
+                className="gk-field__input"
+              />
+            </div>
+            <div className="gk-field gk-guild__tagfield">
+              <label htmlFor="clan-found-tag" className="gk-label">{t('clan.found.tagLabel')}</label>
+              <input
+                id="clan-found-tag"
+                value={tag}
+                maxLength={CLAN.tagMaxChars}
+                onChange={(event) => { setTag(event.currentTarget.value.toUpperCase()); }}
+                placeholder="ORB"
+                autoCapitalize="characters"
+                className="gk-field__input gk-num"
+              />
+            </div>
+          </div>
+          <div className="gk-field">
+            <label htmlFor="clan-found-description" className="gk-label">{t('clan.found.descriptionLabel')}</label>
             <textarea
+              id="clan-found-description"
               value={description}
-              rows={3}
+              rows={2}
               onChange={(event) => {
                 setDescription(Array.from(event.currentTarget.value).slice(0, CLAN.descriptionMaxChars).join(''));
               }}
               placeholder={t('clan.found.descriptionPlaceholder')}
-              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self resize-none"
+              className="gk-field__input gk-field__area"
             />
-            <span className="mt-1 block text-right text-micro text-v2-ink-3">
+            <span className="gk-guild__left gk-num">
               {t('clan.charactersLeft', { count: CLAN.descriptionMaxChars - Array.from(description).length })}
             </span>
-          </label>
-          <label className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-deep px-3 py-2">
-            <input
-              type="checkbox"
-              checked={recruiting}
-              onChange={(event) => { setRecruiting(event.currentTarget.checked); }}
-              className="size-4 accent-[var(--color-v2-self)]"
-            />
-            <span>
-              <span className="block text-caption font-semibold text-v2-ink">{t('clan.found.recruiting')}</span>
-              <span className="block text-micro text-v2-ink-3">{t('clan.found.recruitingHint')}</span>
-            </span>
-          </label>
-          <Button type="submit" full variant="primary" disabled={!canCreate || actions.create.isPending}>
+          </div>
+          <Toggle checked={recruiting} label={t('clan.found.recruiting')} sub={t('clan.found.recruitingHint')} onChange={setRecruiting} />
+          <GameButton submit tone="action" wide glyph="banner" spoken={t('clan.found.submit')}
+            disabledReason={refusal} pending={actions.create.isPending} onPress={() => undefined}>
             {t('clan.found.submit')}
-          </Button>
+          </GameButton>
         </form></CommunityPolicyGate>
-        {created ? <p role="status" className="mt-3 text-caption text-v2-self">{t('clan.found.created')}</p> : null}
+        {created ? <p role="status" className="gk-inote" data-tone="good"><Glyph id="check" />{t('clan.found.created')}</p> : null}
         <MutationError mutation={actions.create} />
-      </Plate>
-    </Section>
+      </div>
+    </section>
   );
 }
 
@@ -1787,7 +1719,7 @@ function ResourceFigures({
 
 function MutationError({ mutation }: { mutation: Pick<UseMutationResult, 'isError' | 'error'> }) {
   return mutation.isError
-    ? <p role="alert" className="mt-3 text-caption leading-relaxed text-v2-hostile">{describeError(mutation.error)}</p>
+    ? <p role="alert" className="gk-inote" data-tone="warn"><Glyph id="warn" />{describeError(mutation.error)}</p>
     : null;
 }
 

@@ -523,3 +523,48 @@ it('offers community agreement for leader text edits while retaining membership 
   expect(screen.queryByRole('button', { name: 'Save settings' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Disband clan' })).toBeInTheDocument();
 });
+
+/**
+ * G7-f (2026-11-15): A CLANLESS COMMANDER'S CLAN SCREEN ON THE GAME KIT. "Should I join, whom, or
+ * found my own?" The pitch in the clan's hero with the exact founding price, the requests and the
+ * directory as kit rows, a clan's profile on a kit sheet, and the founding form on kit fields and
+ * the kit's switch — its button says what is still missing instead of lying dark.
+ */
+const V2_LOOK = /(^|\s)(text|bg|border|font)-v2-|rounded-control|clan-command-head|(^|\s)text-(micro|body|caption|label|title)(\s|$)/;
+const oldPaint = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+
+describe('the clan’s outside on the kit', () => {
+  it('draws the pitch, the requests, the directory and the founding with none of the old look', async () => {
+    show(outside);
+    await screen.findByRole('button', { name: /inspect orbit wardens/i });
+    const root = screen.getByTestId('clan-outside');
+    expect(oldPaint(root)).toEqual([]);
+    expect(root.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(screen.getByRole('switch', { name: /Accept applications/ })).toHaveClass('gk-toggle');
+    expect(screen.getByRole('button', { name: 'Apply to Orbit Wardens' })).toHaveClass('gk-btn');
+  });
+
+  it('opens a clan’s profile on a kit sheet', async () => {
+    const { api } = show({ ...outside, requests: [] });
+    vi.spyOn(api, 'clan').mockResolvedValue({
+      ...directory.clans[0]!,
+      members: [{ playerId: 'p-1', username: 'Vantage', role: 'LEADER' as const, dominion: 640 }],
+    });
+    await userEvent.setup().click(screen.getByRole('button', { name: /inspect orbit wardens/i }));
+    await screen.findByText('Vantage');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveClass('gk-sheet');
+    expect(oldPaint(dialog)).toEqual([]);
+  });
+
+  it('says on the founding button what is still missing', async () => {
+    show({ ...outside, requests: [], creation: { ...outside.creation, coreLevel: 7, affordable: true } });
+    const submit = screen.getByRole('button', { name: 'Found a clan' });
+    expect(submit).toHaveTextContent('Name it and tag it');
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Clan name'), 'Nova Guard');
+    await user.type(screen.getByLabelText('Short tag'), 'nvg');
+    expect(submit).toHaveTextContent('Found a clan');
+  });
+});

@@ -156,6 +156,8 @@ export const clan = {
     recruiting: 'Accept applications',
     recruitingHint: 'Players can find and apply to this clan.',
     submit: 'Found a clan',
+    needIdentity: 'Name it and tag it',
+    needGate: 'Meet the gate above',
     created: 'Clan founded. You are its leader.',
   },
   adaptation: {

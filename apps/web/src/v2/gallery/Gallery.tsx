@@ -49,7 +49,7 @@ import { GalleryReplay } from './GalleryReplay.js';
 import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
-import { PIRATE, TRADE } from '@astera/rules';
+import { COMMUNITY_POLICY_VERSION, PIRATE, TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../lib/airborne.js';
@@ -578,10 +578,38 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab, quote = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean }) {
+function GalleryClan({ tab, quote = false, outside = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+    if (outside) {
+      // G7-f: a clanless commander — an invitation, an application waiting, loot left from a former clan, a directory of four.
+      const later = (minutes: number) => new Date(NOW + minutes * MIN);
+      client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: ago(9000) });
+      client.setQueryData(keys.clanHome, {
+        state: 'OUTSIDE',
+        requests: [
+          { id: 'r-1', clanId: 'c-orb', clanName: 'Orbital Guild', clanTag: 'ORB', kind: 'INVITATION', status: 'PENDING', expiresAt: later(20 * 60), resolvedAt: null },
+          { id: 'r-2', clanId: 'c-ash', clanName: 'Ashen Wake', clanTag: 'ASH', kind: 'APPLICATION', status: 'PENDING', expiresAt: later(9 * 60), resolvedAt: null },
+        ],
+        depot: { alloy: 1_840, crystal: 620, deuterium: 0 },
+        creation: { capitalPlanetId: 'p-1', coreLevel: 6, intel: 'RESOLVED', requiredCoreLevel: 7,
+          cost: { alloy: 20_000, crystal: 10_000, deuterium: 0 }, affordable: false, unlockedAt: null },
+      });
+      client.setQueryData(keys.clanDepot, { resources: { alloy: 1_840, crystal: 620, deuterium: 0 }, purseRemaining: { alloy: 0, crystal: 0, deuterium: 0 } });
+      const listed = [
+        { id: 'c-orb', name: 'Orbital Guild', tag: 'ORB', description: 'Watch the rim. Bring everyone home.', recruiting: true, leaderName: 'Ada', memberCount: 4, score: 2_900, level: 6, members: [] },
+        { id: 'c-ash', name: 'Ashen Wake', tag: 'ASH', description: 'Night raids, clean returns.', recruiting: true, leaderName: 'Korr', memberCount: 3, score: 1_420, level: 3, members: [] },
+        { id: 'c-tide', name: 'Tidebreakers of the Long Dark', tag: 'TIDE', description: '', recruiting: false, leaderName: 'Mira', memberCount: 5, score: 880, level: null, members: [] },
+        { id: 'c-lum', name: 'Lumen', tag: 'LUM', description: 'Miners first. We share the haul.', recruiting: true, leaderName: 'Orin', memberCount: 1, score: 0, level: null, members: [] },
+      ];
+      client.setQueryData(keys.clanDirectory(''), { pages: [{ clans: listed, total: listed.length }], pageParams: [0] });
+      client.setQueryData(keys.clanProfile('c-orb'), { ...listed[0], members: [
+        { playerId: 'ada', username: 'Ada', role: 'LEADER', dominion: 14_200 }, { playerId: 'mira', username: 'Mira', role: 'MEMBER', dominion: 9_800 },
+        { playerId: 'tarn', username: 'Tarn', role: 'MEMBER', dominion: 2_100 }, { playerId: 'orin', username: 'Orin', role: 'MEMBER', dominion: 0 },
+      ] });
+      return null;
+    }
     const person = (playerId: string, username: string, slot: number, active: number, role: 'LEADER' | 'MEMBER' = 'MEMBER') => ({
       playerId, username, role, slot, joinedAt: ago(9000), matureAt: ago(8000), mature: true, aidEnabled: true,
       lastActiveAt: ago(active), activeRecently: active < 30,
@@ -1455,6 +1483,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
   if (view === 'clan-aid-quote') return <GalleryClan tab="aid" quote />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
+  if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;

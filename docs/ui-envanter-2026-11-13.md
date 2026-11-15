@@ -1503,7 +1503,7 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | G7-c | Genel | "Klan ne durumda?" | koltuklar, sıralama, olaylar, arena takım paneli |
 | G7-d | Güç | "Ne kadar güçlüyüz?" | |
 | G7-e | Üyeler | "Kim aktif, kimi yöneteyim?" | `Confirmation` → kit basılı tutma |
-| G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | tanıtım, klan kur formu, profiller, katıl; galeride ulaşılamıyor |
+| G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | ✅ aşağıda |
 | G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | `ClanWarPanel` içindeki v1 `Button` geri çağırma → kit tutuş |
 | G7-h | Bağış sheet'i | | |
 | G7-i | Destek gönder + savunma duruşu | | |
@@ -1548,6 +1548,19 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Başvurular kuyuda, Kabul / Reddet kit düğmeleri. Davet: yerli `<select>` yerine kit `Picker` (aday yoksa kesik çizgili gerçek). Ayarlar: kit metin alanı, işe alım kit şalteri, Kaydet kit düğmesi.
 - Silinen: üyeler panelindeki `Plate`/`Section`/`Chip`/`Button`/`Note`/`EmptyState` ve yerli `select`/checkbox.
 - Audit: üyeler 3 (kalan: ortak sheet karartması).
+
+**G7-f Dışarıda (klansız komutan) ✅ (2026-11-15).**
+- **An:** "Klana gireyim mi, hangisine, yoksa kendim mi kurayım?"
+- Tanıtım klanın atmosferinde: başlık, kuruluş bedeli tam rakamla ("2K" değil), şart, iki yol (Ekibini bul / Klanını kur). Telefonda iki yol alt alta, her biri tek satır. Sayfa başlığıyla aynı "Sezonluk klanlar" üst yazısı silindi.
+- İstekler kuyuda: davet Kabul / Reddet, başvuru Geri çek kit düğmeleri; kalan süre çipte. Eski ganimet kuyuda kit düğmesiyle.
+- Dizin: kit arama alanı + Ara; her klan bir kapı (etiket rozeti, ad, seviye çipi, iki satır slogan, lider/üye/Hâkimiyet, ok). Başvur sağda küçük kit düğmesi; basılamıyorsa yüzünde nedeni (bekliyor, dolu, alım kapalı, kilitli).
+- Klan profili kit sheet'i: slogan, seviye, kadro tek kuyuda (Lider altın çip, Hâkimiyet sütun başlığıyla), altta Başvur.
+- Klan kur: Komuta Çekirdeği çipi (kilit/onay), bedel, kimlik uyarısı, ad + kısa etiket yan yana, açıklama, işe alım kit şalteri (yerli checkbox gitti). Düğme kararmak yerine eksik olanı söyler: "Önce koşulları karşıla" / "Ad ve etiket gir" (6 dil, yeni).
+- Çeviri düzeltmeleri: de "Einen Clan gefunden" → "Clan gründen", es "Encontrado un clan" → "Fundar clan" (ikisi de "bir klan bulundu" diyordu); de/es dizindeki "Anwenden"/"Aplicar" → "Bewerben"/"Solicitar". Türkçe yol düğmeleri kısaldı.
+- Silinen: dışarıdaki `Plate`/`Section`/`Chip`/`Button`/`Note`/`EmptyState`/`PriceTag`, `ClanIcon`/`CoreIcon`, `.clan-command-head` CSS'i. `MutationError` kit notu oldu.
+- Galeri: `clan-outside` (davet, bekleyen başvuru, eski ganimet, dört klan, profil). Envanterde "dışarıda" artık ulaşılamayan değil.
+- Audit (yalnız sonrası; görünüm önce galeride yoktu): 3 (kalan: ortak sheet karartması). Taşma 0, kontrast 0. Kelime yükü 77/ekran: tanıtımın fayda kartları (G7-c kararı).
+- Not: topluluk sözleşmesi kapısı (`CommunityPolicyGate`) sohbetle ortak; içindeki v2 kalıntıları ve yerli onay kutusu G8'de.
 
 ## G8. İletişim
 

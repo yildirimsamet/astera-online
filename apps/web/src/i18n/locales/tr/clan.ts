@@ -52,8 +52,8 @@ export const clan = {
     title: "Beş komutan. Birlikte daha ileri.",
     body: "Gezegenlerini birlikte savun, filolarınızı birleştir ve anıtlar için ekibinle mücadele et.",
     requirements: "Kurmak için ana gezegende Komuta Çekirdeği {{level}} ve bu kaynaklar gerekir. Katılırken kuruluş bedeli ödemezsin.",
-    joinAction: "Ekibimi bul",
-    foundAction: "Kendi klanımı kur",
+    joinAction: "Ekibini bul",
+    foundAction: "Klanını kur",
   },
   benefits: {
     heading: 'Neden katılayım?',
@@ -151,6 +151,8 @@ export const clan = {
     recruiting: 'Başvuru kabul et',
     recruitingHint: 'Oyuncular bu klanı bulup başvurabilir.',
     submit: 'Klan kur',
+    needIdentity: 'Ad ve etiket gir',
+    needGate: 'Önce koşulları karşıla',
     created: 'Klan kuruldu. Artık lider sensin.',
   },
   adaptation: {
