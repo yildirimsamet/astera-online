@@ -1553,6 +1553,13 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeri `leaderboard-archive` görünümüne galaksi kaydı eklendi): puan 56→0; 12 px altı 35/74→0, kontrast 2→0, 44 px altı 2→0, tepkisiz 11→0, kesilen 7→0. `reports/ui-audit/c20-season-archive-after-2026-11-15.md`.
 - **Kalan:** arşivdeki komutan karnesi (C21); `HonorBenefitsSection` hâlâ v2 (canlı sıralamada, galeri verisinde yok).
 
+**C21 Arşivde komutan karnesi ve kariyer ✅ (2026-11-15, yardımcı oturum).** G9 #4.
+- **An:** "Bu komutan o sezon ne yaptı, herkese göre nasıldı, kariyeri ne?" Karşılaştırmalar (oranlar, ortalamalar, çubuk ölçeği), eski sezon/eksik kayıt/erken bitiş ayrımı ve sezonlar arası geçiş değişmedi.
+- **Değişen:** Baş, sezon sonu ekranıyla (C18) aynı an: ışıklı zemin, dünyanın üstünde madalya (kürsüde dönen ışık), ad büyük, "İlk %1" satırı, sıra ve Hâkimiyet/Honor kitin plakalarında. Görünümler kitin sekmeleri; geri dönüş kitin düğmesi. Her rakam kitin camında tek kart (ikon, ad, rakam, "×2,6 kat", iki çubuk, "Diğerleri"); ad artık kesilmiyor ("Sefer başına as…" gitti). Bildirimler (erken bitiş, eksik kayıt, eski sezon) kitin şeridi. Kariyer rafı tek camda beş rakam; toplamlar kitin defter tablosu; sezonlar C19/C20'nin kapı satırı. Bölüm başlarındaki v2 ikonları yerine kitin glifleri.
+- **Kaldırılan:** `Segmented`, `Section`, `Stat`, `ArtWell`, v2 ikonları, `MEDAL`/`medalOf` (Tailwind halka/gölge tablosu) ve bütün v1/v2 sınıfları.
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-archive-profile` ve `-career` eklendi, ui-audit'e satıra basıp sekmeye geçen iki adım; envanterdeki "komutan profili (arşiv)" artık ulaşılıyor): puan 141→0 (sezon), 65→0 (kariyer); 12 px altı 113/161→0 ve 34/72→0, kontrast 12→0, 44 px altı 4→0, tepkisiz 9→0, kesilen 2→0. Sezon sayfası 3290→3192 px (içerik aynı). `reports/ui-audit/c21-commander-record-after-2026-11-15.md`.
+- **Kalan:** yok.
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

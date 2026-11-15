@@ -9926,6 +9926,259 @@ button.gk-probe__head:active {
 .gk-arch__fig { color: var(--gk-ink-2); }
 .gk-arch__clanrank { margin-right: 4px; color: var(--gk-ink-3); }
 
+/* ── a commander's season record and career (C21, 2026-11-15) ── */
+.gk-prof {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3) var(--gk-gutter) var(--gk-s5);
+}
+.gk-prof__back { display: flex; }
+/* the record's head: the recap's lit ground, the world with its medal, the two plaques */
+.gk-prof__head {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s1);
+  overflow: hidden;
+  padding: var(--gk-s4) var(--gk-s3) var(--gk-s3);
+  text-align: center;
+}
+.gk-prof__sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gk-crystal) 18%, transparent), transparent 55%),
+    radial-gradient(circle at 18% 100%, color-mix(in srgb, var(--gk-self) 10%, transparent), transparent 45%);
+}
+.gk-prof__crest {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--gk-s1);
+}
+.gk-prof__crest .gk-rays {
+  top: 50%;
+  width: 280px;
+  height: 280px;
+  margin: -140px 0 0 -140px;
+}
+.gk-prof__medal {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+}
+.gk-prof__eyebrow { position: relative; color: var(--gk-crystal); }
+.gk-prof__name {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gk-s2);
+  min-width: 0;
+}
+.gk-prof__title {
+  font-size: var(--gk-t-head);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-prof__who {
+  position: relative;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+  overflow-wrap: anywhere;
+}
+.gk-prof__standing {
+  position: relative;
+  margin-top: var(--gk-s1);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-crystal);
+}
+.gk-prof__standing[data-place='1'] { color: var(--gk-gold); }
+.gk-prof__heroes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+  width: 100%;
+  margin-top: var(--gk-s2);
+  text-align: left;
+}
+.gk-prof__body,
+.gk-prof__part,
+.gk-prof__stories {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-prof__body { gap: var(--gk-s4); }
+.gk-prof__storyhead { color: var(--gk-crystal); }
+.gk-prof__storyhead[data-tone='gold'] { color: var(--gk-action-hi); }
+/* a section's opening line: the render at the size it was painted for, the headline, its note */
+.gk-prof__lead {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-prof__leadart {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+.gk-prof__leadwords {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gk-prof__hulls {
+  display: grid;
+  gap: 4px;
+}
+.gk-prof__hulls li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+}
+.gk-prof__hulls img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.gk-prof__hullname { min-width: 0; overflow-wrap: anywhere; color: var(--gk-ink-2); }
+/* the career shelf: five figures, the medal colours where a place was earned */
+.gk-prof__shelf {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gk-s3) var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-prof__fig {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-prof__figval {
+  font-size: var(--gk-t-number);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--gk-ink);
+}
+.gk-prof__figval[data-tone='gold'] { color: var(--gk-gold); }
+.gk-prof__figval[data-tone='crystal'] { color: var(--gk-crystal); }
+.gk-prof__figval[data-tone='quiet'] { color: var(--gk-ink-3); }
+.gk-prof__figlabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.gk-prof__podium { display: inline-flex; }
+.gk-prof__podium > * + * { margin-left: -4px; }
+.gk-prof__totals dd { color: var(--gk-ink); }
+.gk-prof__season { grid-template-columns: 32px minmax(0, 1fr) auto; }
+
+/* one figure against the field: the figure, the multiple said out loud, the two bars */
+.gk-cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-cmp {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--gk-s2);
+}
+.gk-cmp__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gk-crystal);
+  overflow-wrap: anywhere;
+}
+.gk-cmp__label .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.gk-cmp__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.gk-cmp__value {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-cmp__times {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-cmp__times[data-ahead] { color: var(--gk-self); }
+.gk-cmp__others {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-cmp__res {
+  display: grid;
+  gap: 4px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 40%, transparent);
+}
+.gk-cmp__resname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-cmp__resname img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.gk-cmp__bar {
+  position: relative;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--gk-void) 70%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-metal-edge) 50%, transparent);
+}
+.gk-cmp__bar[data-tone='field'] { height: 3px; }
+.gk-cmp__bar > [data-bar] {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-crystal) 55%, transparent), var(--gk-crystal));
+}
+.gk-cmp__bar > [data-bar='ahead'] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-crystal) 70%, transparent), var(--gk-self));
+}
+.gk-cmp__bar > [data-bar='field'] { background: color-mix(in srgb, var(--gk-ink) 35%, transparent); }
+@media (min-width: 768px) {
+  .gk-cmp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {
