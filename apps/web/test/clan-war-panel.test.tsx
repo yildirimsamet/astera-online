@@ -73,6 +73,8 @@ const openWave = async (): Promise<void> => {
 const send = (): HTMLElement => within(document.querySelector<HTMLElement>('[data-wave-commit]')!).getByRole('button');
 /** The leader's held launch of the joint strike (K4). */
 const strike = (): HTMLElement => within(document.querySelector<HTMLElement>('[data-strike-commit]')!).getByRole('button');
+/** The held gift to the treasury: a gift cannot be called back. */
+const gift = (): HTMLElement => within(document.querySelector<HTMLElement>('[data-donate-commit]')!).getByRole('button');
 const hold = (button: HTMLElement): void => {
   fireEvent.keyDown(button, { key: 'Enter' });
   fireEvent.keyDown(button, { key: 'Enter' });
@@ -304,7 +306,7 @@ describe('clan war decision surface', () => {
     await user.click(within(within(donation).getByRole('radiogroup', { name: /pay from world/i })).getByRole('radio', { name: 'Origin B' }));
 
     const alloy = within(donation).getByRole('slider', { name: /alloy/i });
-    expect(alloy).toHaveAttribute('max', '8');
+    expect(alloy).toHaveAttribute('aria-valuemax', '8');
     await user.click(within(donation).getByRole('button', { name: /close/i }));
 
     await openWave();
@@ -318,12 +320,15 @@ describe('clan war decision surface', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /^donate/i }));
     const donation = screen.getByRole('dialog', { name: /donate/i });
-    fireEvent.change(within(donation).getByRole('slider', { name: /alloy/i }), { target: { value: '30' } });
-    await user.click(within(donation).getByRole('button', { name: /^donate/i }));
-    expect(donate).toHaveBeenCalledWith(expect.objectContaining({
-      planetId: 'origin-a',
-      resources: { alloy: 30, crystal: 0, deuterium: 0 },
-    }));
+    const alloy = within(donation).getByRole('slider', { name: /alloy/i });
+    for (let step = 0; step < 30; step += 1) fireEvent.keyDown(alloy, { key: 'ArrowRight' });
+    hold(gift());
+    await waitFor(() => {
+      expect(donate).toHaveBeenCalledWith(expect.objectContaining({
+        planetId: 'origin-a',
+        resources: { alloy: 30, crystal: 0, deuterium: 0 },
+      }));
+    });
   });
 
   /**
@@ -342,14 +347,17 @@ describe('clan war decision surface', () => {
       </ApiProvider></QueryClientProvider>
     );
     const { rerender } = render(sheet(empty));
-    fireEvent.change(screen.getByRole('slider', { name: /alloy/i }), { target: { value: '30' } });
+    const alloy = screen.getByRole('slider', { name: /alloy/i });
+    for (let step = 0; step < 30; step += 1) fireEvent.keyDown(alloy, { key: 'ArrowRight' });
 
     rerender(sheet({ ...empty, room: { alloy: 12, crystal: 100, deuterium: 10 } }));
-    await userEvent.click(screen.getByRole('button', { name: /^donate/i }));
-    expect(donate).toHaveBeenLastCalledWith(expect.objectContaining({ resources: { alloy: 12, crystal: 0, deuterium: 0 } }));
+    hold(gift());
+    await waitFor(() => {
+      expect(donate).toHaveBeenLastCalledWith(expect.objectContaining({ resources: { alloy: 12, crystal: 0, deuterium: 0 } }));
+    });
 
     rerender(sheet({ ...empty, room: { alloy: 0, crystal: 100, deuterium: 10 } }));
-    expect(screen.getByRole('button', { name: /^donate/i })).toBeDisabled();
+    expect(gift()).toBeDisabled();
   });
 
   it('does not ask an unprotected leader to acknowledge shield loss', () => {
@@ -609,5 +617,26 @@ describe('the war room on the kit', () => {
     expect(oldPaint(dialog)).toEqual([]);
     expect(document.querySelector('[data-hull-row="DART"]')).toHaveClass('gk-lrow');
     expect(send().style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
+});
+
+/**
+ * G7-h (2026-11-15): A GIFT TO THE CLAN'S TREASURY ON THE KIT. "How much do I give, and from where?"
+ * The world on the kit's choices, each resource on the aid page's rows (what the world holds, what the
+ * gift takes, the kit's slider capped by stock and by what the treasury still needs), and the gift on
+ * the kit's FINAL hold: given is given.
+ */
+describe('the donation on the kit', () => {
+  it('is a kit sheet with kit sliders and the final hold, and says what is missing', () => {
+    show(active, 'MEMBER', [origin, other]);
+    fireEvent.click(screen.getByRole('button', { name: /^donate/i }));
+    const dialog = screen.getByRole('dialog', { name: /donate/i });
+    expect(dialog).toHaveClass('gk-sheet');
+    expect(oldPaint(dialog)).toEqual([]);
+    expect(within(dialog).getByRole('slider', { name: /alloy/i })).toHaveClass('gk-slider__track');
+    expect(gift()).toBeDisabled();
+    expect(gift()).toHaveTextContent(/pick an amount/i);
+    fireEvent.keyDown(within(dialog).getByRole('slider', { name: /alloy/i }), { key: 'ArrowRight' });
+    expect(gift().style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
   });
 });

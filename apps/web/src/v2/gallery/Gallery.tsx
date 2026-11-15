@@ -13,7 +13,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { FaultView, GalaxyPlanet, IntelView, PlanetView, UnknownSignalView } from '../../api/schemas.js';
+import type { ClanWar, FaultView, GalaxyPlanet, IntelView, PlanetView, UnknownSignalView } from '../../api/schemas.js';
 import { UnknownSignalSheet } from '../../screens/UnknownSignalSheet.js';
 import { FaultSheet } from '../../screens/FaultSheet.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
@@ -32,6 +32,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
+import { ClanDonateSheet } from '../../screens/ClanDonateSheet.js';
 import { AsteroidFocus, ContactFocus, DebrisFocus, IntergalacticConvoyFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus, TradeFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
@@ -578,7 +579,7 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab, quote = false, outside = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean }) {
+function GalleryClan({ tab, quote = false, outside = false, donate = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
@@ -703,6 +704,10 @@ function GalleryClan({ tab, quote = false, outside = false }: { tab: 'overview' 
       </WorldProvider>
     </Sheet>
   );
+  // G7-h: the treasury's gift page, opened over the war room.
+  const war = client.getQueryData<ClanWar>(keys.clanWar);
+  const worlds = client.getQueryData<{ planets: PlanetView[] }>(keys.planets)?.planets ?? [];
+  if (donate && war) return <>{screen}<ClanDonateSheet war={war} worlds={worlds} onClose={noop} /></>;
   return quote ? <ApiProvider api={api}>{screen}</ApiProvider> : screen;
 }
 
@@ -1483,6 +1488,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
   if (view === 'clan-aid-quote') return <GalleryClan tab="aid" quote />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
+  if (view === 'clan-donate') return <GalleryClan tab="war" donate />;
   if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;

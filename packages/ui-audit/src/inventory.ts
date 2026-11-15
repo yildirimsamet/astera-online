@@ -134,8 +134,8 @@ export const SURFACES: GameSurface[] = [
   {
     id: 'clan',
     what: 'Klan: genel, güç, üyeler, yardım, savaş, dalga',
-    files: ['screens/ClanScreen.tsx', 'screens/ClanWarPanel.tsx', 'screens/ClanBanner.tsx', 'screens/ClanDonateSheet.tsx', 'screens/ClanWaveSheet.tsx', 'screens/CommunityPolicy.tsx'],
-    reach: ['gallery:clan', 'gallery:clan-strength', 'gallery:clan-members', 'gallery:clan-aid', 'gallery:clan-aid-quote', 'gallery:clan-outside', 'gallery:clan-war', 'gallery:wave', 'gallery:wave-critical', 'gallery:support-banner', 'gallery:support-banner-gold'],
+    files: ['screens/ClanScreen.tsx', 'screens/ClanConfirmation.tsx', 'screens/ClanWarPanel.tsx', 'screens/ClanBanner.tsx', 'screens/ClanDonateSheet.tsx', 'screens/ClanWaveSheet.tsx', 'screens/CommunityPolicy.tsx'],
+    reach: ['gallery:clan', 'gallery:clan-strength', 'gallery:clan-members', 'gallery:clan-aid', 'gallery:clan-aid-quote', 'gallery:clan-outside', 'gallery:clan-war', 'gallery:clan-donate', 'gallery:wave', 'gallery:wave-critical', 'gallery:support-banner', 'gallery:support-banner-gold'],
     group: 'G7', unreached: ['lider eylem onayı'],
   },
   { id: 'clan-support', what: 'Klan savunma desteği', files: ['screens/ClanSupportSheet.tsx'], reach: ['gallery:support-sheet', 'gallery:support-sheet-alarm', 'gallery:support-clanmate', 'gallery:support-clanmate-closed'], group: 'G7' },

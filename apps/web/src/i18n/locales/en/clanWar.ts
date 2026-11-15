@@ -95,6 +95,8 @@ export const clanWar = {
   figFuel: 'Fuel',
   figOf: 'of {{total}}',
   waveShips: 'Your wave',
+  donatePick: 'Pick an amount first',
+  donateNeed: 'treasury needs {{amount}}',
   figThisOne: 'this wave takes 1',
   figArrive: 'At the gathering',
   figPersonal: 'Your Hangar',

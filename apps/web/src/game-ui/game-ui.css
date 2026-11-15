@@ -15890,3 +15890,6 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-war__shield { display: grid; gap: var(--gk-s1); padding: var(--gk-s2); border-radius: var(--gk-r-sm); border: 1px solid color-mix(in srgb, var(--gk-hostile) 40%, transparent); background: color-mix(in srgb, var(--gk-hostile) 6%, transparent); }
 .gk-war__cancel { justify-self: start; }
 .gk-war__status { font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-self); }
+
+/* ── G7-h: a gift to the treasury — the aid page's resource rows, what the treasury still needs at the right ── */
+.gk-donate__need { margin-left: auto; }

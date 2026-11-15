@@ -94,6 +94,8 @@ export const clanWar = {
   figFuel: 'Yakıt',
   figOf: '{{total}} içinden',
   waveShips: 'Dalgan',
+  donatePick: 'Önce miktar seç',
+  donateNeed: 'hazine {{amount}} ister',
   figThisOne: 'bu dalga 1 yuva',
   figArrive: 'Toplanmaya varış',
   figPersonal: 'Senin hangarın',

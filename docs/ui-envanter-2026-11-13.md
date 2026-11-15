@@ -1505,7 +1505,7 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | G7-e | Üyeler | "Kim aktif, kimi yöneteyim?" | `Confirmation` → kit basılı tutma |
 | G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | ✅ aşağıda |
 | G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | ✅ aşağıda |
-| G7-h | Bağış sheet'i | | |
+| G7-h | Bağış sheet'i | "Hazineye ne kadar, hangi dünyadan?" | ✅ aşağıda |
 | G7-i | Destek gönder + savunma duruşu | | |
 | G7-j | Klan bayrağı | | |
 
@@ -1571,6 +1571,14 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Dalga sayfası kit sheet'i, saldırı rengi: köken kit seçenekleri, gemiler Konvoy'un kit satırlarında (seçilen / evdeki), teklif kit rakamlarında, kurallar notlarda, gönder kitin harcama tutuşu (1 sn). Yeni metin: `clanWar.waveShips` (6 dil).
 - Silinen: savaş odasındaki `Plate`/`Button`/v2 `Toggle`/`HoldButton`/`Confirm`/`Icon`/`ClassEmblem` kullanımı; artık kimsenin kullanmadığı `v2/kit/Toggle.tsx`.
 - Audit: 196 → 110. Kalan bulguların hepsi sancakta (9 px basamaklar, küçük basamak hedefleri; G7-j). Rakip çipi kontrastı düzeltildi. Teklifli dalga sayfası galeride fiyatlanamıyor; testlerle doğrulandı.
+
+**G7-h Bağış sayfası ✅ (2026-11-15).**
+- **An:** "Ortak hazineye ne kadar vereyim, hangi dünyadan?"
+- Kit sheet'i. Dünya kit seçeneklerinde. Her kaynak Yardım sayfasının satırında: ad, hazinenin kalan ihtiyacı ("hazine 40.000 ister"), dünyanın stoğundan düşen çubuk ve seçilen miktar, kit kaydırıcı (stok ya da ihtiyaç, hangisi azsa) ve Maks.
+- Bağış geri alınamaz → kitin kesin tutuşu (1,5 sn); miktar seçilmeden yüzünde "Önce miktar seç". Odanın küçülmesi korunur: gönderilen, kaydırıcının gösterdiğidir.
+- Yeni metinler: `clanWar.donatePick`, `clanWar.donateNeed` (6 dil). Galeri: `clan-donate`.
+- Envanter düzeltmesi: G7-g'de eklenen `ClanConfirmation.tsx` klan yüzeyine yazıldı (envanter testi kırmızıydı).
+- Audit (yalnız sonrası; sayfa önce galeride yoktu): 0.
 
 ## G8. İletişim
 
