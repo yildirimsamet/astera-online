@@ -1797,6 +1797,29 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - Raftaki uzun ödül adları (fr "Vice-champion de Domination", es "Guardián de monumentos IV") iki satıra sığmıyordu: levha artık üç satır alıyor. İngilizcede sezon kartının "Season ends in" etiketi resmin aydınlık yerine düşüp 3,5:1'e iniyordu: kartın perdesi sağ kenarda %60'a çıktı. İkisi de yeniden ölçüldü, 0.
 - Kalan: kit sacının başlığında göz-çizgisi ve başlık birkaç piksel kırpılıyor (bütün dillerde, G1 sac başlığı); "Season ends in" üç kelimelik büyük harf etiket (T2, yalnız en; metin menüde de kullanılıyor, kısaltılmadı). `LegacyPeek` (61), ödül sayfası (27) ve açılış sahnesi (14) bu partinin dışında, v2'de.
 
+**C30 Sac başlığındaki kırpılma ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 1.
+- **Kök neden:** Kitin sac başlığı değil, galerinin çerçevesi. `LegacyGallery` sahneyi galeri çubuğunun altından başlayan `relative h-dvh overflow-hidden` bir kutuya koyuyordu; sabit konumlu sac o kutunun üstüne taşınca başlığın üst pikselleri kutunun dışında kalıp "kırpılan" sayılıyordu. Gerçek oyunda sac böyle bir kutunun içinde değil.
+- **Değişen:** Galeri çerçevesi ekranın tamamı (`fixed inset-0`), oyundaki galaksi gibi. Ürün kodu değişmedi; göz-çizgisinin iki satıra inmesi master'da zaten vardı.
+- **Not:** `FleetTowingGallery` ve `CommanderPresenceGallery` aynı çerçeveyi kullanıyor; ölçümlerinde sac varsa aynı sahte kırpılma çıkar.
+- **Ölçüm** (legacy-profile; 6 dil, telefon ve dar): kırpılan 10→0. `reports/ui-audit/c30-sheet-head-after-2026-11-15.md`.
+
+**C31 Küçük vitrin (`LegacyPeek`) ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 2.
+- **An:** Haritada bir isme dokunan oyuncu "bu kim?" diye bakıyor: unvan, raftaki altı parça, en iyi dereceler, son iki sezon, sonra tüm miras. Okunan veri ve akış değişmedi.
+- **Değişen:** Kitin kart sacı (kupa resimli başlık). Unvan altın rozet (profille aynı), sayaç kalın; raf pirinç rafta kaldı, parça adları 12 px (önce 9), adı nadirlik renginde, sezon etiketi altında; en iyi dereceler camda madalyalı; son sezonlar camda satır satır; "Tüm mirası gör" kitin ana düğmesi. Parça basışı `useOwnPress` + ses + titreşim.
+- **Ortak:** `PodiumPlace` artık tek kit derecesi (profildeki sezon kartları da onu kullanıyor; kopya `SeasonPlace` silindi). Derece etiketleri büyük harfsiz, "En iyi Hâkimiyet" madalyanın yanına sığsın diye.
+- **Ölçüm** (tr; telefon, dar, masaüstü): küçük vitrin 61→1 (arkalık), profil 6→3; 12 px altı 27→0, kontrast 8→0. `reports/ui-audit/c31-legacy-peek-after-2026-11-15.md`.
+
+**C32 Ödül sayfası ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 3: `AwardSheet`, `LockedAwardSheet`, `AwardStage` çerçevesi.
+- **An:** "Bu parça ne, ne zaman kazandım, kaç kişide var, nasıl kazanılır; vitrine mi koyayım, unvan mı yapayım?" Kurallar ve istekler değişmedi.
+- **Değişen:** Kitin sacı (kupa; kilitli hedefte kilit resmi). Nadirlik, sezon ve kademe kit etiketleri; aktif unvan altın rozet; bilgiler camda satır satır, sahip sayısı altın; "Nasıl kazanılır" camda, sıradaki kademe kitin çubuğunda. Vitrin ve unvan kitin düğmeleri; vitrin doluyken düğme kilit ikonuyla "Vitrin dolu" diyor (yeni kısa anahtar `legacy.award.shelfFullShort`, 6 dil), uzun açıklama altında. Hatalar banner, yeniden dene banner'ın içinde. Sahne çerçevesi kitin metali (`gk-stage`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 27→3 (arkalık); 12 px altı 12→0, kontrast 3→0. `reports/ui-audit/c32-legacy-award-after-2026-11-15.md`.
+
+**C33 Ödül açılış sahnesi ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 4: `AwardReveal`.
+- **An:** "Bir parça kazandım!" Karanlık oda, ışık çekirdeği, parlama, kıvılcımlar ve 3D parçanın yükselişi aynen kaldı (`legacy.css`); sıra, görüldü işareti, Escape, odak ve dokununca girişi bitirme değişmedi.
+- **Değişen:** Yazılar kitin: sayaç kalın, göz-çizgisi kitin etiketi, ad görüntü yazısıyla 24 px, nadirlik/sezon/kategori ödül sayfasıyla aynı etiketler, kazanma kuralı 14 px. Sonraki / kalanları aç / kapat kitin ana düğmesi (ikonlu), vitrine koy kitin düğmesi; vitrinde ise altın tikli satır. Toplu açılışta parça adları 13 px.
+- **Ölçüm** (tr; telefon, dar, masaüstü): 14→0; 12 px altı 8→0. `reports/ui-audit/c33-legacy-reveal-after-2026-11-15.md`.
+- **Grup sonu, 6 dil (telefon; profil, küçük vitrin, ödül, açılış):** kesilme ve kırpılma 0. Kalan tek not: üç kelimelik büyük harf göz-çizgileri ("Yeni parça kazandın", "How to earn it") — kutlamanın bilinçli görünüşü, dokunulmadı. `reports/ui-audit/g10b-langs-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

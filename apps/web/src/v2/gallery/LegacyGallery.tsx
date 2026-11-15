@@ -167,7 +167,8 @@ export function LegacyPeekGallery({ page }: { page: 'peek' | 'profile' }) {
   })])[0]!;
   return (
     <QueryClientProvider client={client}><ApiProvider api={api}>
-      <div className="relative h-dvh overflow-hidden bg-v2-void">
+      {/* the whole screen, as the galaxy is: a frame that starts under the gallery bar would cut the sheet head it does not hold */}
+      <div className="fixed inset-0 overflow-hidden bg-v2-void">
         <img src={ATMOSPHERE.season.src} alt="" className="absolute inset-0 size-full object-cover opacity-60" />
         {page === 'profile' && !open && <div className="absolute inset-x-4 top-24"><LegacyEntryCard onOpen={() => { setOpen(true); }} /></div>}
         <span className="galaxy-world-label absolute left-1/2 top-[38%] flex -translate-x-1/2 flex-col items-center gap-0.5 text-center"
@@ -190,7 +191,8 @@ export function LegacyRevealGallery() {
   const [api] = useState(() => legacyGalleryApi(true));
   return (
     <QueryClientProvider client={client}><ApiProvider api={api}>
-      <div className="relative h-dvh overflow-hidden bg-v2-void">
+      {/* the whole screen, as the galaxy is: a frame that starts under the gallery bar would cut the sheet head it does not hold */}
+      <div className="fixed inset-0 overflow-hidden bg-v2-void">
         <img src={ATMOSPHERE.season.src} alt="" className="absolute inset-0 size-full object-cover opacity-60" />
         <LegacyRevealHost ready />
       </div>

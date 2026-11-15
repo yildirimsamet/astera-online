@@ -148,21 +148,8 @@ function SeasonHistory({ publicId, awards, onOpen }: { publicId: string; awards:
   );
 }
 
-export function PodiumPlace({ rank, label }: { rank: number | null; label: string }) {
-  const { t } = useTranslation();
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      {rank !== null && isPlace(rank) ? <Medal place={rank} size={20} /> : null}
-      <span className="flex flex-col leading-tight">
-        <span className="text-micro text-v2-ink-3">{label}</span>
-        <span className="font-v2-mono text-caption font-semibold">{rank === null ? t('legacy.seasons.noPlace') : `#${String(rank)}`}</span>
-      </span>
-    </span>
-  );
-}
-
 /** A place on one ladder: its medal when it is a podium, the number in the display face. */
-function SeasonPlace({ rank, label }: { rank: number | null; label: string }) {
+export function PodiumPlace({ rank, label }: { rank: number | null; label: string }) {
   const { t } = useTranslation();
   return (
     <span className="gk-legacy__place">
@@ -204,8 +191,8 @@ function SeasonCard({ season, awards, onOpen }: { season: LegacySeason; awards: 
         {season.endReason === 'FORCED_WIPE' && <span className="gk-legacy__flag">{t('legacy.seasons.forced')}</span>}
       </header>
       <div className="gk-legacy__places">
-        <SeasonPlace rank={honorRank} label={t('legacy.seasons.honor')} />
-        <SeasonPlace rank={season.dominion > 0 ? season.dominionRank : null} label={t('legacy.seasons.dominion')} />
+        <PodiumPlace rank={honorRank} label={t('legacy.seasons.honor')} />
+        <PodiumPlace rank={season.dominion > 0 ? season.dominionRank : null} label={t('legacy.seasons.dominion')} />
       </div>
       {stats ? (
         <dl className="gk-cmdr__cells gk-well">

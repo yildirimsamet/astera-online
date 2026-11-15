@@ -14580,3 +14580,223 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-haulhome > img { flex-shrink: 0; width: 16px; height: 16px; object-fit: contain; }
 .gk-haulhome > p { flex: 1; min-width: 0; }
 .gk-haulhome > .gk-btn { flex-shrink: 0; }
+
+
+/* ── the small showcase over the galaxy (G10, C31) ─────────────────────────────── */
+
+.gk-peek { gap: var(--gk-s3); padding-bottom: 4px; outline: none; }
+.gk-peek__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--gk-s2);
+}
+.gk-peek__shelf {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--gk-s3) var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s2) var(--gk-s3);
+  border-radius: var(--gk-r-sm);
+}
+.gk-peek__slot {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: end center;
+}
+.gk-peek__piece {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--gk-r-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-peek__piece:active { transform: translateY(1px) scale(0.97); }
+.gk-peek__piece:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-peek__art {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+}
+.gk-peek__pic { position: relative; z-index: 1; width: 100%; height: 100%; }
+.gk-peek__name {
+  display: -webkit-box;
+  min-height: 2.5em;
+  padding: 1px 2px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.gk-peek__edition {
+  min-height: 1.2em;
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  color: var(--gk-ink-2);
+}
+.gk-peek__empty {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+}
+.gk-peek__empty .legacy-peek-socket {
+  width: 60%;
+  height: 4px;
+  border-radius: 2px;
+}
+.gk-peek__best { padding: var(--gk-s2) var(--gk-s3); }
+.gk-peek__seasons { display: grid; }
+.gk-peek__season {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+}
+.gk-peek__season + .gk-peek__season { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-peek__seasonname { min-width: 0; color: var(--gk-ink); }
+.gk-peek__seasonname > span { color: var(--gk-ink-2); }
+.gk-peek__seasonplaces { font-weight: 700; color: var(--gk-ink-2); }
+/* a place's ladder keeps its own case: "En iyi Hâkimiyet" reads on one line beside its medal */
+.gk-legacy__placewords .gk-label { text-transform: none; letter-spacing: 0.01em; }
+
+/* ── one piece, one tap deeper (G10, C32) ─────────────────────────────────────── */
+
+.gk-award { gap: var(--gk-s3); padding-bottom: var(--gk-s4); outline: none; }
+.gk-award__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gk-award__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-award__chip .legacy-rarity-dot { width: 6px; height: 6px; border-radius: 50%; }
+.gk-award__facts { display: grid; margin: 0; }
+.gk-award__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-award__fact + .gk-award__fact { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-award__fact > dd,
+.gk-award__fact > :last-child { margin: 0; text-align: right; font-weight: 700; color: var(--gk-ink); }
+.gk-award__fact > .gk-award__owners { color: var(--gk-gold); }
+.gk-award__how {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-award__how > .gk-award__fact { padding: 0; }
+.gk-award__rule {
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  color: var(--gk-ink);
+}
+.gk-award__next { display: grid; gap: 4px; }
+.gk-award__count {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-award__done {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-award__moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+/* the piece's plinth room: a dark frame in the kit's metal, a finger may turn the piece */
+.gk-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+}
+
+/* ── the reveal of a won piece (G10, C33): the light show stays legacy.css's, the words are the kit's ── */
+
+.gk-reveal__counter {
+  position: relative;
+  margin-bottom: var(--gk-s2);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reveal__name {
+  margin-top: 4px;
+  font-size: var(--gk-t-head);
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.gk-reveal__chips { justify-content: center; margin-top: var(--gk-s2); }
+.gk-reveal__goal {
+  max-width: 30ch;
+  margin-top: var(--gk-s2);
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--gk-ink-2);
+}
+.gk-reveal__tile {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 4px 8px;
+  border-radius: var(--gk-r-sm);
+  text-align: center;
+}
+.gk-reveal__tilename {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  padding: 1px 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.gk-reveal__placed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-reveal__placed .gk-glyph { width: 16px; height: 16px; }

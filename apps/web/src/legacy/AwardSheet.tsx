@@ -8,9 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { LEGACY_CATALOGUE, type LegacyDefinition } from '@astera/rules';
 import type { LegacyAward, LegacyProfile } from '../api/legacySchemas.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { durationPrecise } from '../lib/time.js';
-import { Button, Note } from '../v2/kit/Surface.js';
+import { Banner, GameButton, Glyph, ProgressBar, artIconSrc } from '../game-ui/index.js';
 import { AwardStage } from './AwardStage.js';
 import { legacyDate } from './AwardTile.js';
 import { legacyAwardTitle, legacyEditionLabel, legacyGoalText, legacyNextGoal, legacyProgressValue } from './presentation.js';
@@ -56,71 +55,70 @@ export function AwardSheet({ profile, award, live = true, onClose }: {
   if (detail?.season) facts.push([t('legacy.award.season'), `${t('legacy.seasons.ordinal', { ordinal: detail.season.ordinal })} · ${detail.season.galaxy}`]);
   if (award.rank !== null) facts.push([t('legacy.award.place'), `#${String(award.rank)}`]);
 
+  const shelfFull = !onShelf && shelfIds.length >= 6;
+
   return (
-    <Sheet placement="dialog" detents={['full']} headerArt={ATMOSPHERE.legacy} eyebrow={t(`legacy.category.${award.category}`)} title={name} onClose={onClose}>
-      <div ref={focus} tabIndex={-1} data-legacy-award className="flex flex-col gap-3 pb-4 font-v2-ui text-v2-ink outline-none">
+    <Sheet placement="dialog" detents={['full']} kit={{ art: artIconSrc('trophy') }} eyebrow={t(`legacy.category.${award.category}`)} title={name} onClose={onClose}>
+      <div ref={focus} tabIndex={-1} data-legacy-award className="gk-legacy gk-award">
         <AwardStage award={award} live={live} />
-        <div className="flex flex-wrap items-center gap-1.5 text-micro" data-rarity={award.rarity}>
-          <span className="legacy-tile legacy-rarity-text inline-flex items-center gap-1 rounded-chip px-2 py-0.5 font-semibold" data-rarity={award.rarity}>
-            <span className="legacy-rarity-dot size-1.5 rounded-full" />{t(`legacy.rarity.${award.rarity}`)}
+        <div className="gk-award__chips" data-rarity={award.rarity}>
+          <span className="legacy-tile legacy-rarity-text gk-award__chip" data-rarity={award.rarity}>
+            <span className="legacy-rarity-dot" />{t(`legacy.rarity.${award.rarity}`)}
           </span>
-          {edition && <span className="rounded-chip border border-v2-line-hi px-2 py-0.5 font-v2-mono text-v2-ink-2">{edition}</span>}
+          {edition && <span className="gk-award__chip gk-num">{edition}</span>}
           {definition && definition.goals.length > 1 && (
-            <span className="rounded-chip border border-v2-line-hi px-2 py-0.5 text-v2-ink-2">{t('legacy.award.tier', { tier: award.tier, count: definition.goals.length })}</span>
+            <span className="gk-award__chip">{t('legacy.award.tier', { tier: award.tier, count: definition.goals.length })}</span>
           )}
-          {isTitle && <span className="rounded-chip border border-v2-premium/50 px-2 py-0.5 font-semibold text-v2-premium">{t(profile.self ? 'legacy.award.activeTitle' : 'legacy.award.activeTitleOther')}</span>}
+          {isTitle && <span className="gk-legacy__title"><Glyph id="star" /><span>{t(profile.self ? 'legacy.award.activeTitle' : 'legacy.award.activeTitleOther')}</span></span>}
         </div>
 
-        <dl className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel text-caption">
+        <dl className="gk-well gk-award__facts">
           {facts.map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-3 px-3 py-2">
-              <dt className="text-v2-ink-2">{label}</dt><dd className="text-right font-semibold">{value}</dd>
+            <div key={label} className="gk-award__fact">
+              <dt>{label}</dt><dd>{value}</dd>
             </div>
           ))}
           {detail && (
-            <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-              <dt className="text-v2-ink-2">{t('legacy.award.owners', { count: detail.owners })}</dt>
-              <dd aria-hidden="true" className="font-v2-mono font-semibold text-v2-premium">{detail.owners}</dd>
+            <div className="gk-award__fact">
+              <dt>{t('legacy.award.owners', { count: detail.owners })}</dt>
+              <dd aria-hidden="true" className="gk-award__owners gk-num">{detail.owners}</dd>
             </div>
           )}
         </dl>
-        {detailQuery.isPending && <p role="status" className="text-label text-v2-ink-2">{t('legacy.award.loading')}</p>}
-        {detailQuery.isError && <div className="flex items-center justify-between gap-2">
-          <p role="alert" className="text-label text-v2-hostile">{t('legacy.award.detailFailed')}</p>
-          <Button size="sm" disabled={detailQuery.isFetching} onClick={() => { void detailQuery.refetch(); }}>{t('surface.retry')}</Button>
-        </div>}
+        {detailQuery.isPending && <p role="status" className="gk-legacy__note">{t('legacy.award.loading')}</p>}
+        {detailQuery.isError && <Banner tone="hostile" role="alert" title={t('legacy.award.detailFailed')}
+          action={<GameButton size="sm" glyph="refresh" pending={detailQuery.isFetching} onPress={() => { void detailQuery.refetch(); }}>{t('surface.retry')}</GameButton>} />}
 
         {definition && goal !== undefined && (
-          <section aria-label={t('legacy.award.howTo')} className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-panel p-3">
-            <h3 className="v2-legend">{t('legacy.award.howTo')}</h3>
-            <p className="text-caption leading-snug">{legacyGoalText(definition, goal)}</p>
+          <section aria-label={t('legacy.award.howTo')} className="gk-well gk-award__how">
+            <h3 className="gk-label">{t('legacy.award.howTo')}</h3>
+            <p className="gk-award__rule">{legacyGoalText(definition, goal)}</p>
             {ladder && own !== undefined && (
               next ? (
-                <div className="mt-1 flex flex-col gap-1">
-                  <p className="text-label text-v2-ink-2">{t('legacy.award.next')} · {legacyGoalText(ladder, next.goal)}</p>
-                  <span className="block h-1.5 overflow-hidden rounded-full bg-v2-line">
-                    <span className="block h-full rounded-full bg-v2-premium" style={{ width: `${String(Math.min(100, (own / next.goal) * 100))}%` }} />
-                  </span>
-                  <span className="font-v2-mono text-micro text-v2-ink-3">{t('legacy.award.progress')} {legacyProgressValue(ladder, own)}/{legacyProgressValue(ladder, next.goal)}</span>
+                <div className="gk-award__next">
+                  <p className="gk-legacy__note">{t('legacy.award.next')} · {legacyGoalText(ladder, next.goal)}</p>
+                  <ProgressBar value={own} max={next.goal} tone="warn" />
+                  <span className="gk-award__count gk-num">{t('legacy.award.progress')} {legacyProgressValue(ladder, own)}/{legacyProgressValue(ladder, next.goal)}</span>
                 </div>
-              ) : <p className="text-label font-semibold text-v2-premium">{t('legacy.collection.complete')}</p>
+              ) : <p className="gk-award__done">{t('legacy.collection.complete')}</p>
             )}
           </section>
         )}
 
         {profile.self && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant={onShelf ? 'default' : 'primary'} disabled={busy || (!onShelf && shelfIds.length >= 6)} onClick={toggleShelf}>
+          <div className="gk-award__moves">
+            <GameButton tone={onShelf ? 'steel' : 'action'} glyph={shelfFull ? 'lock' : onShelf ? 'down' : 'up'} pending={busy}
+              disabledReason={shelfFull ? t('legacy.award.shelfFullShort') : null} onPress={toggleShelf}>
               {onShelf ? t('legacy.award.removeFromShelf') : t('legacy.award.showOnShelf')}
-            </Button>
-            <Button disabled={busy} onClick={() => { run(() => title.mutateAsync(isTitle ? null : award.id)); }}>
+            </GameButton>
+            <GameButton glyph="star" pending={busy} onPress={() => { run(() => title.mutateAsync(isTitle ? null : award.id)); }}>
               {isTitle ? t('legacy.award.clearTitle') : t('legacy.award.setTitle')}
-            </Button>
+            </GameButton>
           </div>
         )}
-        {profile.self && !onShelf && shelfIds.length >= 6 && <p className="text-label text-v2-ink-3">{t('legacy.award.shelfFull')}</p>}
-        {failed && <p role="alert" className="text-label text-v2-hostile">{t('legacy.award.failed')}</p>}
-        <Note>{t('legacy.award.cosmetic')}</Note>
+        {profile.self && shelfFull && <p className="gk-legacy__note">{t('legacy.award.shelfFull')}</p>}
+        {failed && <Banner tone="hostile" role="alert" title={t('legacy.award.failed')} />}
+        <p className="gk-legacy__fine">{t('legacy.award.cosmetic')}</p>
       </div>
     </Sheet>
   );
@@ -139,25 +137,22 @@ export function LockedAwardSheet({ award, definition, goal, value, live = true, 
     ? t('legacy.award.remainingTime', { duration: durationPrecise(remaining / 60) })
     : t('legacy.award.remaining', { count: remaining });
   return (
-    <Sheet placement="dialog" detents={['full']} headerArt={ATMOSPHERE.legacy}
+    <Sheet placement="dialog" detents={['full']} kit={{ art: artIconSrc('lock') }}
       eyebrow={t('legacy.award.locked')} title={legacyAwardTitle(award)} onClose={onClose}>
-      <div ref={focus} tabIndex={-1} data-legacy-locked className="flex flex-col gap-3 pb-4 font-v2-ui text-v2-ink outline-none">
+      <div ref={focus} tabIndex={-1} data-legacy-locked className="gk-legacy gk-award">
         <AwardStage award={award} live={live} />
-        <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3">
-          <h3 className="v2-legend">{t('legacy.award.howTo')}</h3>
-          <p className="text-caption leading-snug">{legacyGoalText(definition, goal)}</p>
-          <div className="flex items-baseline justify-between gap-2 text-label">
-            <span className="text-v2-ink-2">{t('legacy.award.progress')}</span>
-            <span className="font-v2-mono font-semibold text-v2-premium">{current}/{target}</span>
+        <section className="gk-well gk-award__how">
+          <h3 className="gk-label">{t('legacy.award.howTo')}</h3>
+          <p className="gk-award__rule">{legacyGoalText(definition, goal)}</p>
+          <div className="gk-award__fact">
+            <span>{t('legacy.award.progress')}</span>
+            <span className="gk-award__owners gk-num">{current}/{target}</span>
           </div>
-          <div role="progressbar" aria-label={t('legacy.award.progress')} aria-valuenow={value} aria-valuemin={0} aria-valuemax={goal}
-            className="h-1.5 overflow-hidden rounded-full bg-v2-line">
-            <span className="block h-full rounded-full bg-v2-premium" style={{ width: `${String(Math.min(100, value / goal * 100))}%` }} />
-          </div>
-          <p className="text-label text-v2-ink-2">{remainingLabel}</p>
-          <p className="text-caption leading-snug text-v2-ink-2">{t('legacy.award.unlock')}</p>
+          <ProgressBar value={value} max={goal} tone="warn" label={t('legacy.award.progress')} />
+          <p className="gk-legacy__note">{remainingLabel}</p>
+          <p className="gk-legacy__note">{t('legacy.award.unlock')}</p>
         </section>
-        <Note>{t('legacy.award.cosmetic')}</Note>
+        <p className="gk-legacy__fine">{t('legacy.award.cosmetic')}</p>
       </div>
     </Sheet>
   );

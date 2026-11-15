@@ -95,6 +95,7 @@ export const legacy = {
     activeTitleOther: '使用中の称号',
     detailFailed: '報酬の詳細を読み込めませんでした。',
     shelfFull: 'ショーケースは満杯です。先にエディターで1点外してください。',
+    shelfFullShort: '棚が満杯',
     failed: '変更を保存できませんでした。もう一度お試しください。',
     loading: '品を読み込み中…',
     cosmetic: '見た目のみ。ゲーム上の有利はありません。',
