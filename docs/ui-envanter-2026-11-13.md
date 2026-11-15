@@ -1546,6 +1546,13 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-honor`): puan 287→0 (Honor), 81→0 (Hâkimiyet); 12 px altı 155→0, kontrast 9→0, 44 px altı 30→0, tepkisiz 30→0, kesilen 32→0. Honor ekranında kelime/ekran 104→127 (satırlar sıklaştı, daha çok komutan sığıyor). `reports/ui-audit/c19-leaderboard-after-2026-11-15.md`.
 - **Kalan:** `HonorBenefitsSection` (Honor kademesi kartı, galeri verisinde yok) hâlâ v2; arşiv tarafıyla (C20) birlikte bakılacak.
 
+**C20 Sezon arşivi: sezon şeridi, biten sezonun sıralaması, galaksi kaydı ✅ (2026-11-15, yardımcı oturum).** G9 #1 ve #3.
+- **An:** "Geçen sezon kim kazandı, ben neredeydim, kimin karnesine bakayım?" Hangi sezonların listelendiği, sağa kaydırınca eskilerin gelmesi, Honor/Hâkimiyet sırası, arama ve açılan karne değişmedi.
+- **Değişen:** Sezon şeridi kitin çipleri (ses ve titreşimi çip veriyor; ekranın kendi `haptic` çağrısı silindi, çift titreşim yok). Başlık kitin etiketi (komutan sayısı yanında). Galaksi Kaydı kitin camında; kısa bilgiler (şampiyon altın, klan podyumu) telefonda yan yana, cümleler tam satır (tek sütuna göre ~355 → ~305 px). Arama kitin cam alanı, listenin hemen üstünde ve yapışkan. Her komutan C19'un defter satırı; satırın tamamı karneye giden kapı (`useOwnPress`, ses, titreşim); senin satırın yeşil kenarlı.
+- **Kaldırılan:** `v2-segmented`, `plate`/`legend`/`name`/`num` ve v2 renk sınıfları, sigilin madalya halkası (madalya zaten sırada).
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeri `leaderboard-archive` görünümüne galaksi kaydı eklendi): puan 56→0; 12 px altı 35/74→0, kontrast 2→0, 44 px altı 2→0, tepkisiz 11→0, kesilen 7→0. `reports/ui-audit/c20-season-archive-after-2026-11-15.md`.
+- **Kalan:** arşivdeki komutan karnesi (C21); `HonorBenefitsSection` hâlâ v2 (canlı sıralamada, galeri verisinde yok).
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

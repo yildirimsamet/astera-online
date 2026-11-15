@@ -15,6 +15,11 @@ import {
 import { full, signed } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { artIconSrc } from '../game-ui/art.js';
+import { Chip } from '../game-ui/buttons.js';
+import { EmptyState as KitEmptyState, SectionTag } from '../game-ui/surfaces.js';
 import { hullLabel } from '../i18n/names.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
@@ -87,18 +92,15 @@ export function SeasonArchiveScreen({
     .filter((galaxy) => galaxy.status === 'frozen' || galaxy.status === 'wiped')
     .map((galaxy) => ({ ...galaxy, ordinal: cycle.ordinal })));
 
+  /* The chip answers the press itself (sound + haptic); this only moves the page. */
   const selectSeason = (next: string | null): void => {
-    haptic('tap');
     setResultId(null);
     setSeasonId(next);
   };
 
   return (
-    <div data-v2-season-archive className="font-v2-ui text-v2-ink">
-      <nav
-        aria-label={t('leaderboard.archive.selectorLabel')}
-        className="border-b border-v2-line bg-v2-void px-2 py-2"
-      >
+    <div data-v2-season-archive className="gk gk-arch">
+      <nav aria-label={t('leaderboard.archive.selectorLabel')} className="gk-arch__strip">
         {/*
           THE STRIP FETCHES ITSELF. Owner instruction: no "load older seasons"
           button — the seasons simply keep arriving as the reader scrolls right.
@@ -106,7 +108,7 @@ export function SeasonArchiveScreen({
           and on a horizontal rail the gesture IS the request.
         */}
         <div
-          className="v2-segmented flex gap-1 overflow-x-auto [scrollbar-width:none]"
+          className="gk-arch__seasons"
           onScroll={(event) => {
             const strip = event.currentTarget;
             const remaining = strip.scrollWidth - strip.scrollLeft - strip.clientWidth;
@@ -115,32 +117,20 @@ export function SeasonArchiveScreen({
             }
           }}
         >
-          <ArchiveChoice
-            active={seasonId === null}
-            label={t('leaderboard.archive.live')}
-            onClick={() => { selectSeason(null); }}
-          />
+          <Chip on={seasonId === null} onPress={() => { selectSeason(null); }}>
+            {t('leaderboard.archive.live')}
+          </Chip>
           {completed.map((season) => (
-            <ArchiveChoice
-              key={season.seasonId}
-              active={seasonId === season.seasonId}
-              label={t('leaderboard.archive.seasonChoice', {
-                ordinal: season.ordinal,
-                galaxy: season.shard,
-              })}
-              onClick={() => { selectSeason(season.seasonId); }}
-            />
+            <Chip key={season.seasonId} on={seasonId === season.seasonId} onPress={() => { selectSeason(season.seasonId); }}>
+              {t('leaderboard.archive.seasonChoice', { ordinal: season.ordinal, galaxy: season.shard })}
+            </Chip>
           ))}
         </div>
         {archive.isFetchingNextPage ? (
-          <p className="legend mt-1 text-faint" role="status">
-            {t('leaderboard.archive.loadingOlder')}
-          </p>
+          <p className="gk-report__label gk-arch__status" role="status">{t('leaderboard.archive.loadingOlder')}</p>
         ) : null}
         {archive.isPending ? (
-          <p className="legend mt-1 text-faint" role="status">
-            {t('leaderboard.archive.waitingArchive')}
-          </p>
+          <p className="gk-report__label gk-arch__status" role="status">{t('leaderboard.archive.waitingArchive')}</p>
         ) : null}
       </nav>
 
@@ -174,27 +164,6 @@ export function SeasonArchiveScreen({
   );
 }
 
-function ArchiveChoice({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className="v2-segmented-option min-h-10 flex-1 shrink-0 whitespace-nowrap px-3"
-    >
-      {label}
-    </button>
-  );
-}
-
 function ArchivedLeaderboard({
   seasonId,
   onOpen,
@@ -220,25 +189,16 @@ function ArchivedLeaderboard({
   }
   if (!board.data) return <Waiting>{t('leaderboard.archive.waitingBoard')}</Waiting>;
   if (board.data.ladder.length === 0) {
-    return <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.emptyBoard')} /></div>;
+    return <div className="gk-lb"><KitEmptyState art={artIconSrc('menu-ranking')} title={t('leaderboard.archive.emptyBoard')} body="" /></div>;
   }
 
   return (
-    <div>
-      <header className="border-b border-line-soft px-2 py-3">
-        <p className="legend flex items-center gap-1.5 text-crystal">
-          <LeaderboardIcon className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {t('leaderboard.archive.seasonHeading', {
-              ordinal: board.data.season.ordinal,
-              galaxy: board.data.season.shard,
-            })}
-          </span>
-          <span className="rail-soft flex-1" />
-          <span className="num shrink-0 text-micro text-faint">
-            {t('leaderboard.archive.fieldSize', { count: board.data.ladder.length })}
-          </span>
-        </p>
+    <div className="gk-lb">
+      <SectionTag as="h2" aside={<span className="gk-num">{t('leaderboard.archive.fieldSize', { count: board.data.ladder.length })}</span>}>
+        {t('leaderboard.archive.seasonHeading', { ordinal: board.data.season.ordinal, galaxy: board.data.season.shard })}
+      </SectionTag>
+      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} honorPrimary={board.data.ladder.some(row => row.honorRank != null)} />}
+      <div className="gk-lb__search">
         <input
           type="search"
           name="season-archive-search"
@@ -247,62 +207,66 @@ function ArchivedLeaderboard({
           onChange={(event) => { setQuery(event.currentTarget.value); }}
           aria-label={t('leaderboard.archive.searchLabel')}
           placeholder={t('leaderboard.archive.searchPlaceholder')}
-          className="field mt-2 min-h-11 w-full"
+          className="gk-field__input"
         />
-      </header>
-      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} honorPrimary={board.data.ladder.some(row => row.honorRank != null)} />}
+      </div>
       {rows.length === 0 ? (
-        <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.noMatch')} /></div>
+        <KitEmptyState art={artIconSrc('menu-ranking')} title={t('leaderboard.archive.noMatch')} body="" />
       ) : (
-        <ol className="divide-y divide-line-soft" aria-label={t('leaderboard.archive.completedBoard')}>
+        <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.archive.completedBoard')}>
           {rows.map((row) => (
-            <li key={row.resultId} aria-current={row.self ? 'true' : undefined}>
-              <button
-                type="button"
-                aria-label={t('leaderboard.archive.openCommander', { commander: row.commanderName })}
-                onClick={() => {
-                  haptic('tap');
-                  onOpen(row.resultId);
-                }}
-                className={`grid min-h-16 w-full grid-cols-[2rem_2.25rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 text-left focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-crystal ${row.self ? 'bg-crystal/8' : 'hover:bg-raised/60'}`}
-              >
-                {/* An object for the podium, a numeral for everybody else. */}
-                {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0) ? (
-                  <Medal place={row.rank} size={26} className="mx-auto text-crystal/70" />
-                ) : (
-                  <span className={`num text-center text-body ${row.self ? 'text-crystal' : 'text-faint'}`}>
-                    {row.rank}
-                  </span>
-                )}
-                {/*
-                  A FACE FOR A NAME. The live ladder gives every commander their
-                  world's emblem and the archive gave them a line of text — so the
-                  permanent record, the one people scroll through looking for
-                  somebody, was the surface with the least identity on it. Seeded
-                  from the result id, which is stable for that commander in that
-                  season for ever.
-                */}
-                <span
-                  className={`inline-block rounded-full ${
-                    (row.honorScore == null || row.honorScore > 0) && medalOf(row.rank) ? `ring-1 ${medalOf(row.rank)?.ring ?? ''}` : ''
-                  }`}
-                >
-                  <PlanetSigil seed={row.resultId} size={36} />
-                </span>
-                <span className="min-w-0">
-                  <strong className="name flex items-center gap-1.5 truncate text-bone">
-                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-                    <span className="truncate">{row.commanderName}</span>
-                  </strong>
-                  <span className="mt-1 block truncate text-label text-faint">{row.title}</span>
-                </span>
-                <RankingScores honor={row.honorScore} dominion={row.dominion} />
-              </button>
+            <li key={row.resultId} aria-current={row.self ? 'true' : undefined} className="gk-lb__item">
+              <ArchivedRow row={row} onOpen={onOpen} />
             </li>
           ))}
         </ol>
       )}
     </div>
+  );
+}
+
+/**
+ * ONE COMMANDER IN A FINISHED SEASON (C20): the live ladder's line, and the whole line is the
+ * door to their season record. The podium is an object, everybody else a numeral; the
+ * reader's own line is lit.
+ */
+function ArchivedRow({ row, onOpen }: {
+  row: SeasonArchiveLeaderboard['ladder'][number];
+  onOpen: (resultId: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const open = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    onOpen(row.resultId);
+  });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      aria-label={t('leaderboard.archive.openCommander', { commander: row.commanderName })}
+      onPointerDown={open.onPointerDown}
+      onClick={open.onClick}
+      className="gk-lb__row gk-lb__door gk-arch__row"
+      {...(row.self ? { 'data-self': '' } : {})}
+    >
+      {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0)
+        ? <Medal place={row.rank} size={26} className="gk-lb__medal" />
+        : <span className="gk-lb__rank gk-num">{row.rank}</span>}
+      {/*
+        A FACE FOR A NAME, seeded from the result id — stable for that commander in that
+        season for ever.
+      */}
+      <PlanetSigil seed={row.resultId} size={36} />
+      <span className="gk-lb__words">
+        <span className="gk-lb__flagline">
+          <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+          <span className="gk-lb__name">{row.commanderName}</span>
+        </span>
+        <span className="gk-arch__title">{row.title}</span>
+      </span>
+      <RankingScores honor={row.honorScore} dominion={row.dominion} />
+    </button>
   );
 }
 
@@ -315,80 +279,70 @@ function GalaxyRecordPanel({
 }) {
   const { t } = useTranslation();
   return (
-    <section
-      role="region"
-      aria-label={t('leaderboard.archive.galaxyRecord.title')}
-      className="border-b border-line-soft bg-raised/35 px-2 py-3"
-    >
-      <div className="plate plate-cut overflow-hidden border border-opportunity/25">
-        <header className="flex items-center gap-2 border-b border-line-soft px-3 py-2.5">
-          <Trophy won size={24} />
-          <div>
-            <h3 className="legend text-opportunity">{t('leaderboard.archive.galaxyRecord.title')}</h3>
-            <p className="text-micro text-faint">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
-          </div>
-        </header>
-        <div className="grid gap-px bg-line-soft sm:grid-cols-2">
-          {record.champion === null ? null : (
-            <RecordFact label={`${honorPrimary ? t('leaderboard.score') + ' · ' : ''}${t('leaderboard.archive.galaxyRecord.champion')}`}>
-              <strong className="name text-bone">{record.champion.commanderName}</strong>
-              <span className="num text-caption font-normal text-v2-ink-2">{signed(record.champion.dominion)}</span>
-            </RecordFact>
-          )}
-          {record.clanPodium.length === 0 ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.clans')}>
-              {record.clanPodium.map((clan) => (
-                <span key={clan.rank} className="block truncate text-label text-bone">
-                  <span className="num mr-1 text-faint">{clan.rank}.</span>
-                  [{clan.tag}] {clan.name}
-                </span>
-              ))}
-            </RecordFact>
-          )}
-          {record.biggestBattle === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.biggestBattle')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.battleLine', {
-                  attacker: record.biggestBattle.attackerName,
-                  defender: record.biggestBattle.defenderName,
-                  planet: record.biggestBattle.planetName,
-                  value: full(record.biggestBattle.totalLossValue),
-                })}
+    <section role="region" aria-label={t('leaderboard.archive.galaxyRecord.title')} className="gk-well gk-arch__record">
+      <header className="gk-arch__recordhead">
+        <Trophy won size={28} />
+        <span>
+          <h3 className="gk-report__subhead">{t('leaderboard.archive.galaxyRecord.title')}</h3>
+          <p className="gk-report__label">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
+        </span>
+      </header>
+      <dl className="gk-arch__facts">
+        {record.champion === null ? null : (
+          <RecordFact label={`${honorPrimary ? t('leaderboard.score') + ' · ' : ''}${t('leaderboard.archive.galaxyRecord.champion')}`}>
+            <span className="gk-arch__champion">
+              <strong>{record.champion.commanderName}</strong>
+              <span className="gk-num gk-arch__fig">{signed(record.champion.dominion)}</span>
+            </span>
+          </RecordFact>
+        )}
+        {record.clanPodium.length === 0 ? null : (
+          <RecordFact label={t('leaderboard.archive.galaxyRecord.clans')}>
+            {record.clanPodium.map((clan) => (
+              <span key={clan.rank}>
+                <span className="gk-num gk-arch__clanrank">{clan.rank}.</span>
+                [{clan.tag}] {clan.name}
               </span>
-            </RecordFact>
-          )}
-          {record.sharpestDominionSwing === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.dominionSwing')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.swingLine', {
-                  attacker: record.sharpestDominionSwing.attackerName,
-                  defender: record.sharpestDominionSwing.defenderName,
-                  amount: signed(record.sharpestDominionSwing.amount),
-                })}
-              </span>
-            </RecordFact>
-          )}
-          {record.mostContestedWorld === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.contestedWorld')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.worldLine', {
-                  planet: record.mostContestedWorld.planetName,
-                  count: record.mostContestedWorld.events,
-                })}
-              </span>
-            </RecordFact>
-          )}
-        </div>
-      </div>
+            ))}
+          </RecordFact>
+        )}
+        {record.biggestBattle === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.biggestBattle')}>
+            {t('leaderboard.archive.galaxyRecord.battleLine', {
+              attacker: record.biggestBattle.attackerName,
+              defender: record.biggestBattle.defenderName,
+              planet: record.biggestBattle.planetName,
+              value: full(record.biggestBattle.totalLossValue),
+            })}
+          </RecordFact>
+        )}
+        {record.sharpestDominionSwing === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.dominionSwing')}>
+            {t('leaderboard.archive.galaxyRecord.swingLine', {
+              attacker: record.sharpestDominionSwing.attackerName,
+              defender: record.sharpestDominionSwing.defenderName,
+              amount: signed(record.sharpestDominionSwing.amount),
+            })}
+          </RecordFact>
+        )}
+        {record.mostContestedWorld === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.contestedWorld')}>
+            {t('leaderboard.archive.galaxyRecord.worldLine', {
+              planet: record.mostContestedWorld.planetName,
+              count: record.mostContestedWorld.events,
+            })}
+          </RecordFact>
+        )}
+      </dl>
     </section>
   );
 }
 
-function RecordFact({ label, children }: { label: string; children: ReactNode }) {
+function RecordFact({ label, wide = false, children }: { label: string; wide?: boolean; children: ReactNode }) {
   return (
-    <div className="min-w-0 bg-void/80 px-3 py-2.5">
-      <span className="legend mb-1 block text-faint">{label}</span>
-      {children}
+    <div className="gk-arch__fact" {...(wide ? { 'data-wide': '' } : {})}>
+      <dt className="gk-report__label">{label}</dt>
+      <dd>{children}</dd>
     </div>
   );
 }

@@ -736,7 +736,15 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
           closedAt: new Date(NOW - 24 * 60 * MIN),
           endReason: 'SCHEDULED_END',
         },
-        record: null,
+        // The galaxy's own record (C20): who won it, the clan podium and the fights it is remembered by.
+        record: {
+          version: 1,
+          champion: { commanderName: 'Samet', dominion: 420 },
+          clanPodium: [{ rank: 1, name: 'Nova Pact', tag: 'NOVA', dominion: 1_900 }, { rank: 2, name: 'Iron Choir', tag: 'IRON', dominion: 1_240 }],
+          biggestBattle: { attackerName: 'Commander 2', defenderName: 'Samet', planetName: 'Kestrel', totalLossValue: 48_200, occurredAt: new Date(NOW - 3 * 24 * 60 * MIN) },
+          sharpestDominionSwing: { attackerName: 'Commander 3', defenderName: 'Commander 5', amount: 186, occurredAt: new Date(NOW - 5 * 24 * 60 * MIN) },
+          mostContestedWorld: { planetName: 'Tharsis', events: 14 },
+        },
         ladder: Array.from({ length: 8 }, (_, index) => ({
           resultId: `22222222-2222-4222-8222-${String(index + 1).padStart(12, '0')}`,
           rank: index + 1,

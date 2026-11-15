@@ -9856,6 +9856,76 @@ button.gk-probe__head:active {
   color: var(--gk-ink-2);
 }
 
+/* ── the season archive: the season strip, a finished ladder, the galaxy's record (C20, 2026-11-15) ── */
+.gk-arch__strip {
+  padding: var(--gk-s2) var(--gk-gutter);
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+  background: var(--gk-void);
+}
+/* the seasons keep arriving as the reader scrolls right */
+.gk-arch__seasons {
+  display: flex;
+  gap: var(--gk-s1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gk-arch__seasons > .gk-hit { flex: none; }
+.gk-arch__seasons .gk-chip { white-space: nowrap; }
+.gk-arch__status { padding-top: var(--gk-s1); }
+.gk-arch__row {
+  width: 100%;
+  text-align: left;
+}
+.gk-arch__title {
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-arch__record {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-arch__recordhead {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+/* short facts sit two to a line; a sentence takes the whole line on a phone */
+.gk-arch__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2) var(--gk-s3);
+}
+@media (max-width: 639px) {
+  .gk-arch__fact[data-wide] { grid-column: 1 / -1; }
+}
+.gk-arch__fact {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 40%, transparent);
+}
+.gk-arch__fact dd {
+  display: grid;
+  gap: 2px;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-arch__champion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gk-s2);
+}
+.gk-arch__champion strong { font-weight: 700; color: var(--gk-gold); }
+.gk-arch__fig { color: var(--gk-ink-2); }
+.gk-arch__clanrank { margin-right: 4px; color: var(--gk-ink-3); }
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {
