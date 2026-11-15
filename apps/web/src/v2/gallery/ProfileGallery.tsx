@@ -4,6 +4,11 @@
  *   ?view=vacation           the vacation sheet, ready: two worlds priced, the store covers it
  *   ?view=vacation-blocked   the same with flights away and the store short
  *   ?view=vacation-active    on vacation: protected until, the early return
+ *   ?view=account-security       a username account adding its recovery email
+ *   ?view=account-security-code  the code step of the same, the mail sent
+ *   ?view=account-deletion       the deletion request: password, the understanding, the final hold
+ *   ?view=account-deletion-sent  the request received, its reference
+ *   ?view=password-reset         the forgotten password, from the front door
  */
 import { useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -12,6 +17,10 @@ import { keys } from '../../api/keys.js';
 import { WorldProvider } from '../../api/world.js';
 import { ProfilePage } from '../../shell/ProfilePage.js';
 import { VacationSheet } from '../../screens/VacationSheet.js';
+import { AccountSecuritySheet } from '../../screens/AccountSecuritySheet.js';
+import { AccountDeletionSheet } from '../../screens/AccountDeletionSheet.js';
+import { PasswordResetSheet } from '../../screens/PasswordResetSheet.js';
+import type { AccountSecurityStatus } from '../../api/schemas.js';
 import type { vacationSchema } from '../../api/schemas.js';
 import type { z } from 'zod';
 import { createCosmeticTrialClient } from './CosmeticTrialGallery.js';
@@ -19,7 +28,10 @@ import { legacyGalleryApi } from './LegacyGallery.js';
 
 const HOUR = 3_600_000;
 
-const PROFILE_VIEWS = ['profile', 'vacation', 'vacation-blocked', 'vacation-active'] as const;
+const PROFILE_VIEWS = [
+  'profile', 'vacation', 'vacation-blocked', 'vacation-active',
+  'account-security', 'account-security-code', 'account-deletion', 'account-deletion-sent', 'password-reset',
+] as const;
 export type ProfileView = (typeof PROFILE_VIEWS)[number];
 export const isProfileView = (view: string | null): view is ProfileView => PROFILE_VIEWS.some((id) => id === view);
 
@@ -60,11 +72,22 @@ function vacationQuote(view: ProfileView, days: number): Vacation {
   };
 }
 
+/** A username account; on the code step its bind challenge is out, the mail sent, the resend a minute away. */
+function securityStatus(view: ProfileView): AccountSecurityStatus {
+  const now = Date.now();
+  const pending = view === 'account-security-code'
+    ? { challengeId: '11111111-1111-4111-8111-111111111111', purpose: 'bind' as const, expiresAt: new Date(now + 600_000).toISOString(),
+      resendAvailableAt: new Date(now + 45_000).toISOString(), target: 'kestrel@example.com', deliveryStatus: 'sent' as const }
+    : null;
+  return { enabled: true, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null, pending };
+}
+
 function profileApi(view: ProfileView) {
   const api = legacyGalleryApi(true);
-  api.security = () => Promise.resolve({ enabled: true, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null, pending: null });
-  api.accountDeletion = () => Promise.resolve({ request: null });
-  api.vacation = (days) => Promise.resolve(vacationQuote(view, days));
+  api.security = () => Promise.resolve(securityStatus(view));
+  api.accountDeletion = () => Promise.resolve({ request: view === 'account-deletion-sent'
+    ? { requestId: '5b2f0c1e-7a44-4d0e-9a51-3c8e2f6d9b10', requestedAt: new Date().toISOString(), status: 'requested' as const } : null });
+  api.vacation = (days) => Promise.resolve(vacationQuote(view, days ?? 1));
   return api;
 }
 
@@ -75,8 +98,11 @@ export function ProfileGallery({ view }: { view: ProfileView }) {
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
         <WorldProvider>
-          {view === 'profile'
-            ? <ProfilePage name="Kestrel Sable" country="TR" onCountryChange={() => Promise.resolve()} onSignOut={() => undefined} onBack={() => undefined} />
+          {view === 'profile' ? <ProfilePage name="Kestrel Sable" country="TR" onCountryChange={() => Promise.resolve()} onSignOut={() => undefined} onBack={() => undefined} />
+            : view === 'account-security' || view === 'account-security-code'
+              ? <AccountSecuritySheet status={securityStatus(view)} onClose={() => undefined} refresh={() => Promise.resolve()} />
+            : view === 'account-deletion' || view === 'account-deletion-sent' ? <AccountDeletionSheet onClose={() => undefined} />
+            : view === 'password-reset' ? <PasswordResetSheet onClose={() => undefined} />
             : <VacationSheet onClose={() => undefined} />}
         </WorldProvider>
       </ApiProvider>

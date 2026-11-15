@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "Je comprends que mon compte commun et ma progression seront supprimés définitivement.",
   "password": "Mot de passe actuel",
   "submit": "Demander la suppression du compte",
+  "needPassword": "Saisis d’abord ton mot de passe",
+  "needConfirm": "Confirme d’abord que tu as compris",
   "received": "Demande de suppression reçue",
   "pending": "Ton compte n’est pas encore supprimé. L’équipe examinera la demande avant de fermer l’accès et de terminer la suppression.",
   "receipt": "Référence de la demande",

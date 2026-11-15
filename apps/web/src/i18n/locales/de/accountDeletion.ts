@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "Ich verstehe, dass mein gemeinsames Konto und mein Fortschritt dauerhaft gelöscht werden.",
   "password": "Aktuelles Passwort",
   "submit": "Kontolöschung beantragen",
+  "needPassword": "Gib zuerst dein Passwort ein",
+  "needConfirm": "Bestätige zuerst, dass du es verstehst",
   "received": "Löschanfrage erhalten",
   "pending": "Dein Konto wurde noch nicht gelöscht. Das Team prüft die Anfrage, bevor der Zugang gesperrt und die sichere Löschung abgeschlossen wird.",
   "receipt": "Anfragenummer",

@@ -100,3 +100,43 @@ describe('account email surfaces', () => {
     expect(sessionStorage.getItem('astera:password-reset')).toBeNull();
   });
 });
+
+/** C25 (2026-11-15): the recovery email and the password reset on the kit. */
+describe('account email surfaces on the kit', () => {
+  it('draws the security sheet in the game kit', async () => {
+    setup('account');
+    fireEvent.click(await screen.findByRole('button', { name: /add email/i }));
+    const form = document.querySelector('[data-security-sheet]');
+    expect(form?.closest('.gk-sheet')).not.toBeNull();
+    const names = [form!, ...form!.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/));
+    expect(names.filter((name) => /(^|-)v2(-|$)/.test(name))).toEqual([]);
+  });
+
+  it('says the code it waits for instead of a dead button', async () => {
+    setup('pending');
+    fireEvent.click(await screen.findByRole('button', { name: /add email/i }));
+    expect(screen.getByRole('button', { name: 'Enter the 6-digit code' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Verification code'), { target: { value: '012345' } });
+    expect(screen.getByRole('button', { name: 'Verify email' })).toBeEnabled();
+  });
+
+  it('shows and hides a password from a press beside the field', async () => {
+    setup('account');
+    fireEvent.click(await screen.findByRole('button', { name: /add email/i }));
+    const field = screen.getByLabelText('Current password');
+    expect(field).toHaveAttribute('type', 'password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(field).toHaveAttribute('type', 'text');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(field).toHaveAttribute('type', 'password');
+  });
+
+  it('still sends the reset request from the Enter key', async () => {
+    const { requested } = setup('reset');
+    const field = screen.getByLabelText('Email address');
+    fireEvent.change(field, { target: { value: 'pilot@example.com' } });
+    fireEvent.submit(field);
+    await screen.findByLabelText('Verification code');
+    expect(requested.some(r => r.path.endsWith('/request'))).toBe(true);
+  });
+});

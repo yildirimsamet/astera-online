@@ -4,11 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../api/context.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Button } from '../v2/kit/Surface.js';
 import { SecurityField, useSecurityError } from './securityFields.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { matchLanguage } from '../i18n/languages.js';
-import { DoorRow } from '../game-ui/index.js';
+import { Banner, DoorRow, GameButton, GameHold, Toggle, Well } from '../game-ui/index.js';
 
 const deletionKey = ['account-deletion'] as const;
 
@@ -21,7 +20,13 @@ export function AccountDeletionEntry() {
   </>;
 }
 
-function AccountDeletionSheet({ onClose }: { onClose: () => void }) {
+/**
+ * DELETING THE ACCOUNT (G10, C25 2026-11-15): "what goes, when, and is this really what I want?"
+ * What is deleted and when is said first; the steps before the request stay — the current
+ * password and the switch that says the commander understands — and the request itself is the
+ * kit's final hold (1.5 s, red), since it cannot be undone. No key press sends it.
+ */
+export function AccountDeletionSheet({ onClose }: { onClose: () => void }) {
   const api = useApi(); const queries = useQueryClient(); const { t, i18n } = useTranslation(); const describe = useSecurityError();
   const query = useQuery({ queryKey: deletionKey, queryFn: () => api.accountDeletion(), retry: false, staleTime: 0 });
   const [password, setPassword] = useState(''); const [confirmed, setConfirmed] = useState(false);
@@ -36,27 +41,29 @@ function AccountDeletionSheet({ onClose }: { onClose: () => void }) {
     } catch (error) { setProblem(describe(error)); }
     finally { active.current = false; setBusy(false); }
   };
+  const waiting = busy ? t('accountDeletion.loading') : !password ? t('accountDeletion.needPassword') : !confirmed ? t('accountDeletion.needConfirm') : null;
   return createPortal(<div className="[--v2-dock-h:0px]">
-    <Sheet placement="dialog" title={t('accountDeletion.title')} onBack={onClose} onClose={onClose} detents={['full']}>
-      <div className="flex flex-col gap-4 pb-4">
-        <p className="text-caption leading-relaxed text-v2-ink">{t('accountDeletion.scope')}</p>
-        <p className="rounded-control border border-v2-warn/30 bg-v2-warn/5 p-3 text-caption leading-relaxed text-v2-ink-2">{t('accountDeletion.timing')}</p>
-        <a className="min-h-11 text-caption text-v2-self underline underline-offset-4" href={publisherUrl('accountDeletion', i18n.resolvedLanguage)}>{t('accountDeletion.details')}</a>
-        {query.isPending ? <p className="text-caption text-v2-ink-2">{t('accountDeletion.loading')}</p> : query.isError ? <>
-          <p role="alert" className="text-caption text-v2-ink-2">{t('accountDeletion.unavailable')}</p>
-          <Button onClick={() => { void query.refetch(); }}>{t('accountDeletion.retry')}</Button>
-        </> : request ? <div className="rounded-control border border-v2-self/30 bg-v2-self/5 p-3">
-          <p role="status" className="text-caption font-semibold text-v2-self">{t('accountDeletion.received')}</p>
-          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('accountDeletion.pending')}</p>
-          <p className="mt-3 text-micro text-v2-ink-2">{t('accountDeletion.receipt')}</p>
-          <p className="break-all select-all font-v2-mono text-micro text-v2-ink">{request.requestId}</p>
-        </div> : <form className="flex flex-col gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
+    <Sheet placement="dialog" title={t('accountDeletion.title')} onBack={onClose} onClose={onClose} detents={['full']} kit={{ tone: 'hostile' }}>
+      <div data-deletion-sheet className="gk-acctsheet">
+        <p className="gk-copy">{t('accountDeletion.scope')}</p>
+        <Banner tone="warn" glyph="clock" title={t('accountDeletion.timing')} />
+        <a className="gk-acct__link" href={publisherUrl('accountDeletion', i18n.resolvedLanguage)}>{t('accountDeletion.details')}</a>
+        {query.isPending ? <p role="status" className="gk-acct__note">{t('accountDeletion.loading')}</p> : query.isError ? <>
+          <Banner tone="hostile" role="alert" title={t('accountDeletion.unavailable')} />
+          <GameButton wide onPress={() => { void query.refetch(); }}>{t('accountDeletion.retry')}</GameButton>
+        </> : request ? <>
+          <Banner tone="good" role="status" title={t('accountDeletion.received')} body={t('accountDeletion.pending')} />
+          <Well className="gk-acctsheet__mail">
+            <span className="gk-label">{t('accountDeletion.receipt')}</span>
+            <span className="gk-acctsheet__address gk-acctsheet__receipt gk-num">{request.requestId}</span>
+          </Well>
+        </> : <div className="gk-acctsheet__form">
           <SecurityField label={t('accountDeletion.password')} kind="password" value={password} onChange={setPassword} autoComplete="current-password" disabled={busy} />
-          <label className="flex min-h-11 items-start gap-3 text-caption leading-relaxed text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" checked={confirmed} disabled={busy} onChange={event => { setConfirmed(event.target.checked); }} />{t('accountDeletion.confirm')}</label>
-          {problem ? <p role="alert" className="text-caption text-v2-hostile">{problem}</p> : null}
-          <Button type="submit" full disabled={busy || !confirmed || !password} variant="primary">{t('accountDeletion.submit')}</Button>
-        </form>}
-        <Button full variant="ghost" onClick={onClose}>{t('accountDeletion.close')}</Button>
+          <Toggle checked={confirmed} label={t('accountDeletion.confirm')} locked={busy} onChange={setConfirmed} />
+          {problem ? <Banner tone="hostile" role="alert" title={problem} /> : null}
+          <GameHold weight="final" tone="danger" glyph="block" label={t('accountDeletion.submit')} disabledReason={waiting} onCommit={() => { void submit(); }} />
+        </div>}
+        <GameButton wide tone="ghost" onPress={onClose}>{t('accountDeletion.close')}</GameButton>
       </div>
     </Sheet>
   </div>, document.body);

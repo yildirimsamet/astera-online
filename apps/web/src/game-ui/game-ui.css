@@ -13033,3 +13033,49 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 700;
   color: var(--gk-ink);
 }
+
+/* ── the account's sheets: recovery email, password reset, deletion (G10, C25) ─────── */
+
+.gk-acctsheet {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s3);
+}
+.gk-acctsheet__form {
+  display: grid;
+  gap: var(--gk-s3);
+}
+/* the mailbox a code went to, or a request's reference: read from glass */
+.gk-acctsheet__mail {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3);
+}
+.gk-acctsheet__address {
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-acctsheet__receipt {
+  font-size: var(--gk-t-small);
+  user-select: all;
+}
+.gk-acctsheet__fine {
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-3);
+}
+/* a field and the eye beside it */
+.gk-secfield {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+/* a code is read digit by digit: large and spaced */
+.gk-field__input--code {
+  text-align: center;
+  font-size: var(--gk-t-head);
+  letter-spacing: 0.3em;
+}

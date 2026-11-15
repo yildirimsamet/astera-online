@@ -15,6 +15,7 @@ export const accountSecurity = {
   "currentPassword": "Mevcut parola",
   "send": "Kod gönder",
   "code": "Doğrulama kodu",
+  "codeNeeded": "6 haneli kodu yaz",
   "verify": "E-postayı doğrula",
   "confirmOld": "Eski e-postayı onayla",
   "newCode": "Yeni e-postana gönderilen kodu gir.",

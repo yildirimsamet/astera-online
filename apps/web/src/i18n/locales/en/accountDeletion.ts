@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "I understand that deleting my shared account and progress is permanent.",
   "password": "Current password",
   "submit": "Request account deletion",
+  "needPassword": "Enter your current password first",
+  "needConfirm": "Confirm that you understand first",
   "received": "Deletion request received",
   "pending": "Your account has not been deleted yet. The team will review your request before closing access and completing safe deletion.",
   "receipt": "Request reference",

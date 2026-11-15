@@ -1691,6 +1691,14 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Galeri:** `vacation`, `vacation-blocked`, `vacation-active`.
 - **Ölçüm** (tr; telefon, dar, masaüstü): puan 49→3, 49→3, 7→0; 12 px altı 23–26→0, kontrast 5→0, tepkisiz 6–7→1. Kalan 3: sayfa arkalığı (G1). `reports/ui-audit/c24-vacation-after-2026-11-15.md`.
 
+**C25 Hesap güvenliği, şifre sıfırlama, hesap silme ✅ (2026-11-15, yardımcı oturum).** G10 #6 (şifre sıfırlama G13 ön kapıda açılır).
+- **An:** "Şifremi unutursam hesabım geri gelir mi?" ve "Hesabımı silersem ne gider, ne zaman, gerçekten istiyor muyum?" Sunucu adımları, kod süresi, yeniden gönderme beklemesi, oturumun kapanması ve silmenin ek adımları değişmedi.
+- **Değişen:** Üç sayfa kitin sheet'i (silme kırmızı kenarlı). Açıklamalar kitin şeritleri (e-posta yoksa bilgi, geçiş uyarısı sarı, hata kırmızı ve `alert`). Alanlar kitin cam yuvası; kod büyük ve aralıklı; parola yanında kitin göz düğmesi (açıkken yanar). Kodun gittiği posta kutusu ve talep numarası camda. Düğmeler kitin; ölü düğme sebebini söylüyor ("6 haneli kodu yaz", "44 saniye sonra…").
+- **Hesap silme:** parola ve "anlıyorum" (artık kitin şalteri) korunuyor; talep **1,5 sn kırmızı final tutma**; eksik adımı tutmanın yüzü söylüyor ("Önce mevcut parolanı yaz" / "Önce anladığını onayla"). Enter artık silme göndermiyor (form yok).
+- **Kit:** `GameButton submit` (formun gönder düğmesi; alanda Enter basışla aynı işi yapar). Yeni metinler 6 dilde: `accountSecurity.codeNeeded`, `accountDeletion.needPassword`, `accountDeletion.needConfirm`. Kullanıcısı kalmayan `securityInputClass` silindi.
+- **Galeri:** `account-security`, `account-security-code`, `account-deletion`, `account-deletion-sent`, `password-reset`.
+- **Ölçüm** (tr; telefon, dar, masaüstü): güvenlik 13→0, kod adımı 20→0, silme 20→0, talep alındı 12→0, şifre sıfırlama 7→0; 12 px altı 7–9→0, 44 px altı 1–3→0, tepkisiz 2–6→0. `reports/ui-audit/c25-account-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

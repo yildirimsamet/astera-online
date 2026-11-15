@@ -15,6 +15,7 @@ export const accountSecurity = {
   "currentPassword": "Contraseña actual",
   "send": "Enviar código",
   "code": "Código de verificación",
+  "codeNeeded": "Escribe el código de 6 dígitos",
   "verify": "Verificar correo",
   "confirmOld": "Confirmar correo anterior",
   "newCode": "Introduce el código enviado a tu nuevo correo.",
