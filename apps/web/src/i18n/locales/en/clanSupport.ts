@@ -70,6 +70,7 @@ export const clanSupport = {
   recallRule: 'Turn it back in flight, or call it home any time after it lands.',
   noOrigin: 'Choose one of your worlds.',
   noFleet: 'Pick at least one ship.',
+  lineShips: 'Your line',
   noShips: 'No ships at home on this world.',
   quoting: 'Pricing the route…',
   sending: 'Sending…',

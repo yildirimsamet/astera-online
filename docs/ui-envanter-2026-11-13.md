@@ -1506,7 +1506,7 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | ✅ aşağıda |
 | G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | ✅ aşağıda |
 | G7-h | Bağış sheet'i | "Hazineye ne kadar, hangi dünyadan?" | ✅ aşağıda |
-| G7-i | Destek gönder + savunma duruşu | | |
+| G7-i | Destek gönder | "Gemilerim klan arkadaşımın dünyasını tutabilir mi?" | ✅ aşağıda (duruş kartı Üs yüzeyinde, zaten kitte) |
 | G7-j | Klan bayrağı | | |
 
 **G7-a Yardım ✅ (2026-11-15).**
@@ -1579,6 +1579,15 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Yeni metinler: `clanWar.donatePick`, `clanWar.donateNeed` (6 dil). Galeri: `clan-donate`.
 - Envanter düzeltmesi: G7-g'de eklenen `ClanConfirmation.tsx` klan yüzeyine yazıldı (envanter testi kırmızıydı).
 - Audit (yalnız sonrası; sayfa önce galeride yoktu): 0.
+
+**G7-i Destek gönder ✅ (2026-11-15).**
+- **An:** "Gemilerim klan arkadaşımın dünyasını tutabilir mi, hangi şartla?"
+- Kit sheet'i, bizim renkte. Alarma cevapsa üstte kırmızı nabız atan şerit: "Klan alarmına cevap" ve saldırının inişine kalan süre; fiyatlanınca yeşil "zamanında" / sarı "geç" notu.
+- Gemiler Konvoy/dalga sayfasının kit satırlarında ("Hattın"), komutan gemisi eşliği aynı yerde. Uçuş kit rakamlarında (yakıt, varış, ev sahibinin yeri, rampalar); bağlayan kurallar tutuştan önce kuyuda ikonlu notlar (kalış süresi, sezon kesmesi, kademe bandı, geri çekilememe, sıralama payı).
+- Gönder kitin harcama tutuşu (1 sn; yakıt yanar, hat eve çağrılabilir), ilk ret yüzünde.
+- Duruş kartı (`DefencePostureCard`) Üs yüzeyinin `ClanSupportBay.tsx` dosyasında ve zaten kitte; bu birimde değişmedi.
+- Yeni metin: `clanSupport.lineShips` (6 dil). Silinen: kimsenin kullanmadığı `v2/kit/ChoiceChips.tsx`.
+- Audit: 71 → 0.
 
 ## G8. İletişim
 

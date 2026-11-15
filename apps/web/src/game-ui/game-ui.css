@@ -15893,3 +15893,11 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 
 /* ── G7-h: a gift to the treasury — the aid page's resource rows, what the treasury still needs at the right ── */
 .gk-donate__need { margin-left: auto; }
+
+/* ── G7-i: sending clan support — the call it answers in a red pulse, the binding rules in a well ── */
+.gk-support__rules { display: grid; gap: 6px; margin: 0; padding: var(--gk-s2) var(--gk-s3); list-style: none; }
+.gk-support__alarm { position: relative; overflow: hidden; display: grid; gap: 4px; padding: var(--gk-s2) var(--gk-s3) var(--gk-s2) calc(var(--gk-s3) + 4px); border-color: color-mix(in srgb, var(--gk-hostile) 50%, var(--gk-glass-edge)); background: linear-gradient(90deg, color-mix(in srgb, var(--gk-hostile) 14%, transparent), transparent 70%), var(--gk-glass); }
+.gk-support__alarm::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--gk-hostile); box-shadow: 0 0 10px var(--gk-hostile); animation: gk-war-pulse 1.8s var(--gk-ease) infinite; }
+.gk-support__alarmhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--gk-s2); margin: 0; }
+.gk-support__alarmhead .gk-label { color: var(--gk-hostile-hi); }
+.gk-support__alarmhead .gk-num { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }

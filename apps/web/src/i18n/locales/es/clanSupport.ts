@@ -64,6 +64,7 @@ export const clanSupport = {
   recallRule: 'Hazla volver en vuelo, o llámala a casa en cualquier momento tras aterrizar.',
   noOrigin: 'Elige uno de tus mundos.',
   noFleet: 'Elige al menos una nave.',
+  lineShips: 'Tu línea',
   noShips: 'No hay naves en casa en este mundo.',
   quoting: 'Calculando la ruta…',
   sending: 'Enviando…',
