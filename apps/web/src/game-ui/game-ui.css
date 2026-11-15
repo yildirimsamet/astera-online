@@ -15811,3 +15811,82 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-guild__left { justify-self: end; font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
 .gk-clan__request > .gk-btn { justify-self: start; }
 .gk-clan__request .gk-crewlist__chip[data-tone='warn'] { color: var(--gk-warn); }
+
+/* ── G7-g: the war room — the target and its line, five seats, the hangar, the leader's strike; the wave page ── */
+.gk-war { display: grid; gap: var(--gk-s3); min-width: 0; padding-bottom: var(--gk-s4); }
+.gk-war__state, .gk-war__lead, .gk-war__crew, .gk-war__hangar, .gk-war__target { display: grid; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3); }
+.gk-war__target { border-color: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-glass-edge)); }
+.gk-war__head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: var(--gk-s2); }
+.gk-war__world { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--gk-hostile) 50%, transparent), 0 0 12px color-mix(in srgb, var(--gk-hostile) 30%, transparent); }
+.gk-war__mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--gk-r-sm); border: 1px solid color-mix(in srgb, var(--gk-hostile) 50%, transparent); color: var(--gk-hostile); }
+.gk-war__mark .gk-glyph { width: 24px; height: 24px; }
+.gk-war__who { display: grid; gap: 1px; min-width: 0; }
+.gk-war__name { margin: 0; overflow-wrap: anywhere; font-family: var(--gk-font-display); font-weight: var(--gk-display-weight); font-stretch: var(--gk-display-stretch); font-size: var(--gk-t-body); color: var(--gk-ink); }
+.gk-crewlist__chip[data-tone='hostile'] { color: var(--gk-hostile-hi); }
+.gk-crewlist__chip[data-tone='warn'] { color: var(--gk-warn); }
+
+/* The line: the waves' names above, the track through the gathering point to the target, the two ends named below. */
+.gk-war__line { position: relative; height: 76px; font-size: var(--gk-t-floor); }
+.gk-war__tag, .gk-war__end { position: absolute; display: flex; align-items: center; gap: 4px; white-space: nowrap; line-height: 1; color: var(--gk-ink-2); }
+.gk-war__tag { top: 0; }
+.gk-war__tag[data-row='1'] { top: 15px; }
+.gk-war__tag b { font-weight: 700; color: var(--gk-ink); }
+.gk-war__tag .gk-num { color: var(--gk-ink-3); }
+.gk-war__ready { font-weight: 700; color: var(--gk-info); }
+.gk-war__end { top: 50px; }
+.gk-war__end[data-end] { right: 0; color: var(--gk-hostile); font-weight: 700; }
+.gk-war__line [data-anchor='mid'] { transform: translateX(-50%); }
+.gk-war__line [data-anchor='end'] { transform: translateX(-100%); }
+.gk-war__track, .gk-war__run { position: absolute; top: 36px; left: 4px; height: 2px; border-radius: 1px; transform: translateY(-50%); }
+.gk-war__track { right: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--gk-info) 35%, transparent), color-mix(in srgb, var(--gk-hostile) 50%, transparent)); }
+.gk-war__run { background: color-mix(in srgb, var(--gk-info) 75%, transparent); box-shadow: 0 0 6px color-mix(in srgb, var(--gk-info) 50%, transparent); }
+.gk-war__node { position: absolute; top: 36px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--gk-info); background: var(--gk-void); transform: translate(-50%, -50%); }
+.gk-war__node[data-end] { right: 0; left: auto; border-color: var(--gk-hostile); transform: translateY(-50%); box-shadow: 0 0 10px color-mix(in srgb, var(--gk-hostile) 55%, transparent); animation: gk-war-pulse 1.8s var(--gk-ease) infinite; }
+.gk-war__dot { position: absolute; top: 36px; width: 8px; height: 8px; border-radius: 50%; background: var(--gk-info); box-shadow: 0 0 0 2px var(--gk-void), 0 0 8px var(--gk-info); transform: translate(-50%, -50%); }
+@keyframes gk-war-pulse { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--gk-hostile) 80%, transparent); } }
+
+/* The five seats: initials on a plate, the share of the strike under it, the name. */
+.gk-war__seats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gk-s1); }
+.gk-warseat { display: grid; justify-items: center; gap: 4px; min-width: 0; min-height: var(--gk-hit); padding: 2px 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.gk-warseat:disabled { cursor: default; }
+.gk-warseat:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; border-radius: var(--gk-r-sm); }
+.gk-warseat__face { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--gk-r-sm); border: 1px solid var(--gk-metal-edge); background: linear-gradient(180deg, var(--gk-steel), var(--gk-steel-lo)); font-size: var(--gk-t-small); font-weight: 800; color: var(--gk-ink); transition: transform var(--gk-quick) var(--gk-ease); }
+.gk-warseat:active .gk-warseat__face { transform: translateY(1px) scale(0.97); }
+.gk-warseat[data-self] .gk-warseat__face { border-color: color-mix(in srgb, var(--gk-self) 70%, transparent); color: var(--gk-self); }
+.gk-warseat[aria-pressed='true'] .gk-warseat__face { box-shadow: 0 0 0 2px color-mix(in srgb, var(--gk-ink) 45%, transparent), 0 0 10px color-mix(in srgb, var(--gk-self) 30%, transparent); }
+.gk-warseat[data-empty] .gk-warseat__face { border-style: dashed; border-color: var(--gk-ink-3); background: none; color: var(--gk-ink-3); }
+.gk-warseat__face .gk-glyph { width: 16px; height: 16px; }
+.gk-warseat__share { display: block; width: 36px; height: 4px; overflow: hidden; border-radius: 2px; background: color-mix(in srgb, var(--gk-info) 15%, transparent); }
+.gk-warseat__share > span { display: block; height: 100%; background: var(--gk-info); }
+.gk-warseat__share > span[data-tone='self'] { background: var(--gk-self); }
+.gk-warseat__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.gk-warseat[data-self] .gk-warseat__name { color: var(--gk-self); }
+.gk-warseat[data-empty] .gk-warseat__name { color: var(--gk-ink-3); }
+
+.gk-war__waves { display: grid; gap: var(--gk-s2); padding-top: var(--gk-s2); border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
+.gk-war__wave { display: grid; gap: 6px; }
+.gk-war__wave > .gk-hold { justify-self: start; }
+.gk-war__hulls { display: flex; flex-wrap: wrap; gap: 2px var(--gk-s2); margin: 0; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.gk-war__hulls > span { display: inline-flex; align-items: center; gap: 4px; }
+.gk-war__hulls b { color: var(--gk-ink); }
+.gk-war__hullmark { width: 14px; height: 14px; color: var(--gk-ink-3); }
+.gk-war__health { display: grid; gap: 4px; padding: 6px var(--gk-s2); border-radius: var(--gk-r-sm); background: color-mix(in srgb, var(--gk-void) 55%, transparent); }
+.gk-war__healthline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--gk-s2); margin: 0; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.gk-war__health[data-tone='warn'] .gk-war__healthline { color: var(--gk-warn); }
+.gk-war__bar { display: flex; height: 4px; overflow: hidden; border-radius: 2px; background: color-mix(in srgb, var(--gk-ink) 12%, transparent); }
+.gk-war__bar > span { display: block; height: 100%; background: var(--gk-self); }
+.gk-war__health[data-tone='warn'] .gk-war__bar > span { background: var(--gk-warn); }
+.gk-war__bar--hangar { height: 6px; background: color-mix(in srgb, var(--gk-info) 15%, transparent); }
+.gk-war__bar--hangar > .gk-war__used { background: var(--gk-info); box-shadow: 0 0 6px color-mix(in srgb, var(--gk-info) 50%, transparent); }
+.gk-war__bar--hangar > .gk-war__reserved { background: color-mix(in srgb, var(--gk-info) 42%, transparent); }
+.gk-war__hangarhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--gk-s2); margin: 0; }
+.gk-war__hangarhead b { margin-left: auto; font-size: var(--gk-t-small); color: var(--gk-ink); }
+
+.gk-war__send { display: grid; gap: var(--gk-s2); }
+.gk-war__pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--gk-s2); }
+.gk-war__lead { border-color: color-mix(in srgb, var(--gk-action) 30%, var(--gk-glass-edge)); }
+.gk-war__leadhead { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--gk-action); }
+.gk-war__leadhead .gk-glyph { width: 16px; height: 16px; }
+.gk-war__shield { display: grid; gap: var(--gk-s1); padding: var(--gk-s2); border-radius: var(--gk-r-sm); border: 1px solid color-mix(in srgb, var(--gk-hostile) 40%, transparent); background: color-mix(in srgb, var(--gk-hostile) 6%, transparent); }
+.gk-war__cancel { justify-self: start; }
+.gk-war__status { font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-self); }

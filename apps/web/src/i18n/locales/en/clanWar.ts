@@ -94,6 +94,7 @@ export const clanWar = {
   noShipsHere: 'No ships at home on this world.',
   figFuel: 'Fuel',
   figOf: 'of {{total}}',
+  waveShips: 'Your wave',
   figThisOne: 'this wave takes 1',
   figArrive: 'At the gathering',
   figPersonal: 'Your Hangar',

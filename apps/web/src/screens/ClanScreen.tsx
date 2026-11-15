@@ -73,6 +73,7 @@ import { artIconSrc, CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, Se
 import { RulesRow } from '../ui/RulesRow.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
+import { ClanConfirmation } from './ClanConfirmation.js';
 import { ClanWarPanel } from './ClanWarPanel.js';
 
 type ClanTab = 'overview' | 'strength' | 'members' | 'aid' | 'war';
@@ -403,7 +404,7 @@ function ClanOutside({
                     </GameButton>
                   ) : null}
                   {hostileRequest === request.id ? (
-                    <Confirmation
+                    <ClanConfirmation
                       title={t('clan.requests.hostileTitle')}
                       body={t('clan.requests.hostileBody')}
                       confirm={t('clan.requests.hostileConfirm')}
@@ -1160,7 +1161,7 @@ function ClanMembers({
           })}
         </ol>
         {confirm?.member ? (
-          <Confirmation
+          <ClanConfirmation
             title={confirm.kind === 'kick'
               ? t('clan.members.removeConfirmTitle', { name: confirm.member.username })
               : t('clan.members.transferConfirmTitle', { name: confirm.member.username })}
@@ -1199,7 +1200,7 @@ function ClanMembers({
                     </GameButton>
                   </div>
                   {hostileRequest === request.id ? (
-                    <Confirmation
+                    <ClanConfirmation
                       title={t('clan.requests.hostileTitle')}
                       body={t('clan.requests.hostileBody')}
                       confirm={t('clan.requests.hostileConfirm')}
@@ -1270,7 +1271,7 @@ function ClanMembers({
             {home.clan.role === 'LEADER' ? t('clan.danger.disband') : t('clan.danger.leave')}
           </GameButton>
           {confirm && !confirm.member ? (
-            <Confirmation
+            <ClanConfirmation
               title={confirm.kind === 'disband' ? t('clan.danger.disbandTitle') : t('clan.danger.leaveTitle')}
               body={confirm.kind === 'disband'
                 ? treasury.isError
@@ -1665,33 +1666,6 @@ function describeClanEvent(event: ClanEvent, t: TFunction): string {
  * and the move itself on the kit's hold — owner 2026-11-14: a former confirm holds 0.6 s. Cancel is
  * a plain press beside it.
  */
-function Confirmation({
-  title,
-  body,
-  confirm,
-  onCancel,
-  onConfirm,
-  busy,
-}: {
-  title: string;
-  body: string;
-  confirm: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-  busy: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <aside className="gk-well gk-clan__confirm">
-      <p className="gk-inote" data-tone="hostile"><Glyph id="warn" />{title}</p>
-      <p className="gk-sub">{body}</p>
-      <GameHold weight="reversible" tone="danger" size="md" glyph="warn" label={confirm}
-        disabledReason={busy ? confirm : null} onCommit={onConfirm} />
-      <GameButton size="sm" glyph="back" onPress={onCancel}>{t('clan.cancel')}</GameButton>
-    </aside>
-  );
-}
-
 function ResourceFigures({
   resources,
   label,

@@ -93,6 +93,7 @@ export const clanWar = {
   noShipsHere: 'No hay naves en casa en este mundo.',
   figFuel: 'Combustible',
   figOf: 'de {{total}}',
+  waveShips: 'Tu oleada',
   figThisOne: 'esta oleada ocupa 1',
   figArrive: 'En la reunión',
   figPersonal: 'Tu hangar',

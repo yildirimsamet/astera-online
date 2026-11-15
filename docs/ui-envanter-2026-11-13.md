@@ -1504,7 +1504,7 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | G7-d | Güç | "Ne kadar güçlüyüz?" | |
 | G7-e | Üyeler | "Kim aktif, kimi yöneteyim?" | `Confirmation` → kit basılı tutma |
 | G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | ✅ aşağıda |
-| G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | `ClanWarPanel` içindeki v1 `Button` geri çağırma → kit tutuş |
+| G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | ✅ aşağıda |
 | G7-h | Bağış sheet'i | | |
 | G7-i | Destek gönder + savunma duruşu | | |
 | G7-j | Klan bayrağı | | |
@@ -1561,6 +1561,16 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Galeri: `clan-outside` (davet, bekleyen başvuru, eski ganimet, dört klan, profil). Envanterde "dışarıda" artık ulaşılamayan değil.
 - Audit (yalnız sonrası; görünüm önce galeride yoktu): 3 (kalan: ortak sheet karartması). Taşma 0, kontrast 0. Kelime yükü 77/ekran: tanıtımın fayda kartları (G7-c kararı).
 - Not: topluluk sözleşmesi kapısı (`CommunityPolicyGate`) sohbetle ortak; içindeki v2 kalıntıları ve yerli onay kutusu G8'de.
+
+**G7-g Savaş odası + dalga sayfası ✅ (2026-11-15).**
+- **An:** "Hedefe dalga gönderelim mi, lider saldırıyı başlatsın mı?"
+- Hedef kırmızı kenarlı kuyuda: gezegen (kırmızı hale), rakip çipi, ad, kalan süre, durum çipi. Hat: toplanmaya uçan dalgalar adları ve süreleriyle üstte, mavi iz toplanma noktasına, oradan kırmızı nabız atan hedefe. 320'de "Toplanma · Mira" ile "Hedef" çakışıyordu: toplanma adı artık düğümün soluna biter.
+- Beş koltuk kit plakaları (baş harfler, payı gösteren çubuk, ad; Sen kendi renginde, boş koltuk kesik çizgi). Seçilen komutanın dalgası: gemiler, sağlık çubukları (kritik sarı), "Filomu geri çağır" kitin 0,6 sn tutuşu (eski v1 düğme). Hangar kuyuda mavi çubuk; seviye kapasite satırına indi (boş satır gitti).
+- Gönder satırı: Klan sohbeti + "Gemi ekle" kit düğmeleri; basılamıyorsa yüzünde nedeni. Liderin bölümü: varış, hız, radyasyon, kit şalterleri; ortak saldırı kitin kesin tutuşu (1,5 sn, her dalga savaşa girer). "Hedefi iptal et" artık açılan pencere değil: yerinde kırmızı kuyu + 0,6 sn tutuş + Geri dön (owner 2026-11-14 kararı). Bu soru kalıbı `ClanConfirmation.tsx`'e taşındı; klanın bütün onayları onu kullanıyor.
+- "Neden bu oda?" açıklaması `RulesRow` katında.
+- Dalga sayfası kit sheet'i, saldırı rengi: köken kit seçenekleri, gemiler Konvoy'un kit satırlarında (seçilen / evdeki), teklif kit rakamlarında, kurallar notlarda, gönder kitin harcama tutuşu (1 sn). Yeni metin: `clanWar.waveShips` (6 dil).
+- Silinen: savaş odasındaki `Plate`/`Button`/v2 `Toggle`/`HoldButton`/`Confirm`/`Icon`/`ClassEmblem` kullanımı; artık kimsenin kullanmadığı `v2/kit/Toggle.tsx`.
+- Audit: 196 → 110. Kalan bulguların hepsi sancakta (9 px basamaklar, küçük basamak hedefleri; G7-j). Rakip çipi kontrastı düzeltildi. Teklifli dalga sayfası galeride fiyatlanamıyor; testlerle doğrulandı.
 
 ## G8. İletişim
 

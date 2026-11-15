@@ -93,6 +93,7 @@ export const clanWar = {
   noShipsHere: 'Bu dünyada evde gemi yok.',
   figFuel: 'Yakıt',
   figOf: '{{total}} içinden',
+  waveShips: 'Dalgan',
   figThisOne: 'bu dalga 1 yuva',
   figArrive: 'Toplanmaya varış',
   figPersonal: 'Senin hangarın',

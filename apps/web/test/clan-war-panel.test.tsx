@@ -105,21 +105,20 @@ describe('clan war decision surface', () => {
     const { api } = show(launchReady);
     const cancel = vi.spyOn(api, 'cancelClanWar');
     await userEvent.setup().click(screen.getByRole('button', { name: /^cancel target$/i }));
-    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    const modal = screen.getByRole('complementary', { name: /cancel the clan target/i });
     expect(modal).toHaveTextContent(/staged and inbound fleets.*home worlds/i);
     expect(modal).toHaveTextContent(/cannot be undone/i);
     expect(cancel).not.toHaveBeenCalled();
   });
 
-  it.each(['back', 'close', 'escape'] as const)('dismisses the cancellation with %s without returning any fleet', async (dismissal) => {
+  it('dismisses the cancellation with Go back without returning any fleet', async () => {
     const { api } = show(launchReady);
     const cancel = vi.spyOn(api, 'cancelClanWar');
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
-    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
-    if (dismissal === 'escape') await user.keyboard('{Escape}');
-    else await user.click(within(modal).getByRole('button', { name: dismissal === 'back' ? /^go back$/i : /close/i }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    const modal = screen.getByRole('complementary', { name: /cancel the clan target/i });
+    await user.click(within(modal).getByRole('button', { name: /^go back$/i }));
+    expect(screen.queryByRole('complementary', { name: /cancel the clan target/i })).toBeNull();
     expect(cancel).not.toHaveBeenCalled();
   });
 
@@ -129,13 +128,16 @@ describe('clan war decision surface', () => {
     const cancel = vi.spyOn(api, 'cancelClanWar').mockReturnValue(new Promise(resolve => { finish = resolve; }));
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
-    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    const modal = screen.getByRole('complementary', { name: /cancel the clan target/i });
     const commit = within(modal).getByRole('button', { name: /yes, cancel target/i });
+    // A tap is not the hold: nothing is cancelled until the press is held.
     await user.dblClick(commit);
-    expect(cancel).toHaveBeenCalledTimes(1);
-    expect(commit).toBeDisabled();
+    expect(cancel).not.toHaveBeenCalled();
+    hold(commit);
+    await waitFor(() => { expect(cancel).toHaveBeenCalledTimes(1); });
+    expect(within(modal).getByRole('button', { name: /yes, cancel target/i })).toBeDisabled();
     finish?.({ operation: { ...launchReady.operation!, status: 'RETURNING', closeReason: 'LEADER_CANCEL' } });
-    await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull(); });
+    await waitFor(() => { expect(screen.queryByRole('complementary', { name: /cancel the clan target/i })).toBeNull(); });
   });
 
   it('keeps a failed cancellation in the modal and lets the leader retry', async () => {
@@ -145,22 +147,22 @@ describe('clan war decision surface', () => {
       .mockReturnValue(new Promise<never>(() => undefined));
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
-    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
-    await user.click(within(modal).getByRole('button', { name: /yes, cancel target/i }));
+    const modal = screen.getByRole('complementary', { name: /cancel the clan target/i });
+    hold(within(modal).getByRole('button', { name: /yes, cancel target/i }));
     expect(await within(modal).findByRole('alert')).toHaveTextContent(i18n.t('errors.unreachable'));
-    await user.click(within(modal).getByRole('button', { name: /yes, cancel target/i }));
-    expect(cancel).toHaveBeenCalledTimes(2);
+    hold(within(modal).getByRole('button', { name: /yes, cancel target/i }));
+    await waitFor(() => { expect(cancel).toHaveBeenCalledTimes(2); });
   });
 
   it.each(['replaced', 'started', 'removed'] as const)('dismisses stale confirmation when the operation is %s', async (change) => {
     const { api, rerenderWar } = show(launchReady);
     const cancel = vi.spyOn(api, 'cancelClanWar');
     await userEvent.setup().click(screen.getByRole('button', { name: /^cancel target$/i }));
-    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(screen.getByRole('complementary', { name: /cancel the clan target/i })).toBeVisible();
     rerenderWar(clanWarSchema.parse({ ...launchReady, operation: change === 'removed' ? null : {
       ...launchReady.operation!, ...(change === 'replaced' ? { id: 'next-operation' } : { status: 'ATTACKING' }),
     } }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('complementary', { name: /cancel the clan target/i })).toBeNull();
     expect(cancel).not.toHaveBeenCalled();
   });
 
@@ -183,15 +185,15 @@ describe('clan war decision surface', () => {
     await openWave();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    const accept = await screen.findByRole('checkbox', { name: /accept the radiation losses/i });
+    const accept = await screen.findByRole('switch', { name: /accept the radiation losses/i });
     expect(send()).toBeDisabled();
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/100(?:\.00)? HP per ship/i);
     await user.click(accept);
     expect(send()).toBeEnabled();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    await waitFor(() => { expect(screen.getByRole('checkbox', { name: /accept the radiation losses/i })).not.toBeChecked(); });
+    await waitFor(() => { expect(screen.getByRole('switch', { name: /accept the radiation losses/i })).not.toBeChecked(); });
     expect(send()).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /accept the radiation losses/i }));
+    await user.click(screen.getByRole('switch', { name: /accept the radiation losses/i }));
     hold(send());
     await waitFor(() => { expect(contribute).toHaveBeenCalledWith({ originPlanetId: 'origin-a', fleet: { DART: 2 },
       acknowledgeShieldLoss: false, acknowledgeRadiationLoss: true }); });
@@ -213,7 +215,7 @@ describe('clan war decision surface', () => {
     const { api } = show(war);
     const start = vi.spyOn(api, 'startClanWar').mockReturnValue(new Promise<never>(() => undefined));
     expect(strike()).toBeDisabled();
-    await userEvent.setup().click(screen.getByRole('checkbox', { name: /accept the radiation losses/i }));
+    await userEvent.setup().click(screen.getByRole('switch', { name: /accept the radiation losses/i }));
     expect(strike()).toBeEnabled();
     hold(strike());
     await waitFor(() => { expect(start).toHaveBeenCalledWith(false, 1, true); });
@@ -269,7 +271,7 @@ describe('clan war decision surface', () => {
 
     await waitFor(() => { expect(send()).toHaveTextContent(/confirm the shield/i); });
     expect(send()).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /shield will end/i }));
+    await user.click(screen.getByRole('switch', { name: /shield will end/i }));
     expect(send()).toBeEnabled();
     expect(send()).toHaveAttribute('data-hold');
 
@@ -353,7 +355,7 @@ describe('clan war decision surface', () => {
   it('does not ask an unprotected leader to acknowledge shield loss', () => {
     show(launchReady, 'LEADER', [origin]);
 
-    expect(screen.queryByRole('checkbox', { name: /shield will end/i })).toBeNull();
+    expect(screen.queryByRole('switch', { name: /shield will end/i })).toBeNull();
     expect(strike()).toBeEnabled();
     expect(strike()).toHaveTextContent(/start joint attack/i);
   });
@@ -366,7 +368,7 @@ describe('clan war decision surface', () => {
     show(protectedWar, 'LEADER', [origin]);
 
     expect(strike()).toBeDisabled();
-    await userEvent.setup().click(screen.getByRole('checkbox', { name: /shield will end/i }));
+    await userEvent.setup().click(screen.getByRole('switch', { name: /shield will end/i }));
     expect(strike()).toBeEnabled();
   });
 });
@@ -499,7 +501,8 @@ describe('the war room at a glance', () => {
     const share = (seat: HTMLElement) => seat.querySelector<HTMLElement>('[data-seat-share]')?.style.width;
     expect(seats.slice(0, 4).map(share)).toEqual(['0%', '25%', '75%', '0%']);
     expect(seats[0]).toHaveAttribute('data-self');
-    expect(seats[1]!.querySelector('[data-seat-share]')).toHaveClass('bg-v2-ally');
+    expect(seats[1]!.querySelector('[data-seat-share]')).toHaveAttribute('data-tone', 'ally');
+    expect(seats[0]!.querySelector('[data-seat-share]')).toHaveAttribute('data-tone', 'self');
   });
 
   it('opens a commander’s wave from their seat, and says so when they have sent none', async () => {
@@ -518,7 +521,7 @@ describe('the war room at a glance', () => {
   it('draws the clan hangar in the allies’ colour, used then reserved', () => {
     show(twoWaves, 'LEADER', [], four);
     const hangar = document.querySelector<HTMLElement>('[data-clan-hangar]')!;
-    expect(hangar.querySelector('[data-part="used"]')).toHaveClass('bg-v2-ally');
+    expect(hangar.querySelector('[data-part="used"]')).toHaveClass('gk-war__used');
     expect(hangar.querySelector<HTMLElement>('[data-part="used"]')!.style.width).toBe('75%');
     expect(hangar.querySelector<HTMLElement>('[data-part="reserved"]')!.style.width).toBe('25%');
   });
@@ -555,4 +558,56 @@ it('shows staged health, blocks critical waves from striking and keeps their own
   await userEvent.setup().click(seats[0]!);
   expect(document.querySelector('[data-seat-waves]')).toHaveTextContent(/2.*5%/);
   expect(within(document.querySelector<HTMLElement>('[data-seat-waves]')!).getByRole('button', { name: /recall my wave/i })).toBeEnabled();
+});
+
+/**
+ * G7-g (2026-11-15): THE WAR ROOM AND ITS WAVE PAGE ON THE GAME KIT. "Do we send a wave at the target,
+ * and does the leader strike?" The target and its line in a kit well, the five seats as kit plates,
+ * the hangar as a kit bar, the leader's strike on the kit's FINAL hold (every wave flies into battle),
+ * the wave page as a kit sheet in the colour of harm with the kit's hull rows and the spend hold.
+ */
+const V2_LOOK = /(^|\s)(text|bg|border|font|ring)-v2-|rounded-(control|cell|chip)|(^|\s)text-(micro|body|caption|label|title)(\s|$)/;
+const oldPaint = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+
+describe('the war room on the kit', () => {
+  const room = clanWarSchema.parse({ ...launchReady, operation: { ...launchReady.operation!, contributions: [
+    ...launchReady.operation!.contributions,
+    { id: 'mine', playerId: 'leader', username: 'Vantage', originPlanetId: 'origin-a', originPlanetName: 'Origin A',
+      sourceKind: 'PHYSICAL', status: 'STAGED', fleet: { DART: 2 }, bulk: 2, fuelPaid: 9, sentAt: '2026-09-20T12:01:00Z',
+      arrivesAt: null, mine: true, canRecall: true, damage: [{ hull: 'DART', count: 1, damageBp: 4000 }] },
+  ] } });
+
+  it('draws the room with none of the old look, the strike on the final hold', async () => {
+    show(room, 'LEADER', [origin]);
+    // The banner and its treasury are their own unit (G7-j); every other part of the room is on the kit.
+    const parts = () => [...document.querySelector<HTMLElement>('[data-war-target]')!.parentElement!.children]
+      .filter((part) => part.querySelector('[data-banner]') === null);
+    expect(parts().flatMap(oldPaint)).toEqual([]);
+    expect(strike()).toHaveClass('gk-hold');
+    expect(strike().style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^cancel target$/i }));
+    expect(parts().flatMap(oldPaint)).toEqual([]);
+  });
+
+  it('recalls my wave on the kit’s light hold', () => {
+    show(room, 'LEADER', [origin]);
+    const recall = within(document.querySelector<HTMLElement>('[data-seat-waves]')!).getByRole('button', { name: /recall my wave/i });
+    expect(recall).toHaveClass('gk-hold');
+    expect(recall.style.getPropertyValue('--gk-hold-ms')).toBe('600ms');
+  });
+
+  it('opens the wave page as a kit sheet with the kit’s hull rows and the spend hold', async () => {
+    const { api } = show(active, 'MEMBER', [origin, other]);
+    vi.spyOn(api, 'quoteClanWar').mockResolvedValue(shieldQuote);
+    await openWave();
+    const dialog = screen.getByRole('dialog', { name: /vega/i });
+    expect(dialog).toHaveClass('gk-sheet');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    await user.click(await screen.findByRole('switch', { name: /shield will end/i }));
+    expect(oldPaint(dialog)).toEqual([]);
+    expect(document.querySelector('[data-hull-row="DART"]')).toHaveClass('gk-lrow');
+    expect(send().style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
 });

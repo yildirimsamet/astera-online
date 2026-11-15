@@ -114,6 +114,7 @@ export const clanWar = {
   noShipsHere: 'この惑星に船はありません。',
   figFuel: '燃料',
   figOf: '/ {{total}}',
+  waveShips: 'あなたの攻撃隊',
   figThisOne: 'この攻撃隊の使用枠は1',
   figArrive: '集結地点まで',
   figPersonal: '自分の格納庫',
