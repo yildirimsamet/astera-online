@@ -202,10 +202,3 @@
 @keyframes legacy-reveal-name { from { opacity: 0; letter-spacing: 0.3em; } }
 @keyframes legacy-reveal-pop { from { opacity: 0; scale: 0.5; } }
 
-.legacy-entry {
-  background:
-    linear-gradient(100deg, var(--color-v2-deep) 35%, color-mix(in srgb, var(--color-v2-deep) 70%, transparent) 70%, transparent),
-    var(--legacy-entry-art) 70% 40% / cover no-repeat;
-  box-shadow: 0 0 22px color-mix(in srgb, var(--color-v2-premium) 10%, transparent);
-}
-.legacy-entry:hover { border-color: color-mix(in srgb, var(--color-v2-premium) 60%, transparent); }

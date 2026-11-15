@@ -1702,6 +1702,28 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 | 7 | Sessiz Uzay dönüşü | `shell/SilentSpaceNotice` (90) | 30 saat emir yok: geri dön | | **v1** | `return` paneli |
 | 8 | Galaksi seçimi | `screens/ServersScreen` (247) | hangi galaksiye gireyim | geçen sezon sonucu, hata | **v1** | uygulama katmanı 11 |
 
+**C23 Profil sayfası ve komutan kartı ✅ (2026-11-15, yardımcı oturum).** G10 #1 ve #2.
+- **An:** "Ben kimim, nerede duruyorum, hesabımla ne yapabilirim?" Gösterilen bilgiler, hesap kuralları ve açılan sayfalar değişmedi.
+- **Değişen:** Sayfa kitin sheet'i. Komutan kartı kitin kesik plakası: gözlem odası arkada, üst çubuğun madalyonu büyük, ad görüntü harfiyle, klan etiketi metal rengini koruyor; Honor/Hâkimiyet şeridi; sıra, dünyalar, kalkan camda üç hücre (simge üstte; kalkan sürerken yeşil). Miras kapısı altın kenarlı plaka (yazı solda, sahnenin karanlık yanında). Galaksi ve sezon kitin iki sahne kartı. Tatil, kurtarma e-postası ve ülke kitin yeni **kapı satırı** (`DoorRow`): işaret, ad, durum, ok; e-posta yoksa sarı (kapatılabilir eksik), doğrulanmışsa yeşil. Yasal bağlantılar 44 px. Çıkış kitin düğmesi; **hesap silme en altta**, kırmızı kenarlı kapı.
+- **Kaldırılan:** v2 `Button`/`Section`/`Note`/`Icon`, `.menu-account-scene` ve `.legacy-entry` CSS'i (kullanıcısı kalmadı), güvenlik girişindeki `ChevronIcon`.
+- **Galeri:** `profile` (yeni `ProfileGallery.tsx`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 78→3; 12 px altı 32/47→0, kontrast 9→0, 44 px altı 5→1, tepkisiz 9→1. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c23-profile-after-2026-11-15.md`.
+
+**C24 Tatil ✅ (2026-11-15, yardımcı oturum).** G10 #5.
+- **An:** "Bir süre yokum: çıkabilir miyim, kaç gün, bana neye mal olur, ne engelliyor?" Kurallar, fiyat, engel listesi, istek kimliği (aynı teklif = aynı istek) değişmedi.
+- **Değişen:** Sayfa kitin sheet'i. Kapsam kitin yeşil şeridi. Engeller sarı kenarlı camda, her biri ayrı satır. Gün seçimi kitin çipleri (tavan üstü günler sönük). Her dünya satırı ad, tür, kuralın rakamları ve döteryum resmiyle ücret. Toplam camında büyük rakam ve **harcama çubuğu** (`SpendBar`): toplam / kullanılabilir döteryum, yetmezse kırmızı. Formül kitin "?" açıklamasında.
+- **Tutmalar:** tatile çıkış döteryum harcar → `GameHold` 1 sn (eskiden tek basış), yanında ücret; çıkamıyorsa tutma sebebini söyler (kontrol ediliyor / engeller / gönderiliyor). Erken dönüş eski onay penceresiydi → 0,6 sn tutma; "koruma hemen kalkar, ücret iade edilmez" tutmanın üstünde yazılı. `Confirm` kalktı; boşa düşen `vacation.endConfirm` ve `vacation.back` 6 dilden silindi.
+- **Galeri:** `vacation`, `vacation-blocked`, `vacation-active`.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 49→3, 49→3, 7→0; 12 px altı 23–26→0, kontrast 5→0, tepkisiz 6–7→1. Kalan 3: sayfa arkalığı (G1). `reports/ui-audit/c24-vacation-after-2026-11-15.md`.
+
+**C25 Hesap güvenliği, şifre sıfırlama, hesap silme ✅ (2026-11-15, yardımcı oturum).** G10 #6 (şifre sıfırlama G13 ön kapıda açılır).
+- **An:** "Şifremi unutursam hesabım geri gelir mi?" ve "Hesabımı silersem ne gider, ne zaman, gerçekten istiyor muyum?" Sunucu adımları, kod süresi, yeniden gönderme beklemesi, oturumun kapanması ve silmenin ek adımları değişmedi.
+- **Değişen:** Üç sayfa kitin sheet'i (silme kırmızı kenarlı). Açıklamalar kitin şeritleri (e-posta yoksa bilgi, geçiş uyarısı sarı, hata kırmızı ve `alert`). Alanlar kitin cam yuvası; kod büyük ve aralıklı; parola yanında kitin göz düğmesi (açıkken yanar). Kodun gittiği posta kutusu ve talep numarası camda. Düğmeler kitin; ölü düğme sebebini söylüyor ("6 haneli kodu yaz", "44 saniye sonra…").
+- **Hesap silme:** parola ve "anlıyorum" (artık kitin şalteri) korunuyor; talep **1,5 sn kırmızı final tutma**; eksik adımı tutmanın yüzü söylüyor ("Önce mevcut parolanı yaz" / "Önce anladığını onayla"). Enter artık silme göndermiyor (form yok).
+- **Kit:** `GameButton submit` (formun gönder düğmesi; alanda Enter basışla aynı işi yapar). Yeni metinler 6 dilde: `accountSecurity.codeNeeded`, `accountDeletion.needPassword`, `accountDeletion.needConfirm`. Kullanıcısı kalmayan `securityInputClass` silindi.
+- **Galeri:** `account-security`, `account-security-code`, `account-deletion`, `account-deletion-sent`, `password-reset`.
+- **Ölçüm** (tr; telefon, dar, masaüstü): güvenlik 13→0, kod adımı 20→0, silme 20→0, talep alındı 12→0, şifre sıfırlama 7→0; 12 px altı 7–9→0, 44 px altı 1–3→0, tepkisiz 2–6→0. `reports/ui-audit/c25-account-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

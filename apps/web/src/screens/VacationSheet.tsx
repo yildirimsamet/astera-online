@@ -5,15 +5,22 @@ import { useEndVacation, useStartVacation, useVacation } from '../api/vacation.j
 import { describe } from '../ui/Toast.js';
 import { full } from '../lib/format.js';
 import { useNow } from '../lib/time.js';
-import { Confirm } from '../ui/kit/Confirm.js';
-import { ShieldIcon } from '../ui/icons/index.js';
-import { Button, Note, Section } from '../v2/kit/Surface.js';
+import { RESOURCE_ART } from '../ui/assets.js';
+import { Banner, Chip, GameButton, GameHold, InfoPeek, SectionTag, SpendBar, Well } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 
+const DAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+/**
+ * VACATION (G10, C24 2026-11-15): "I will be away — can I go, for how long, and what does it
+ * cost?" The rule and the price are said where the choice is made: every world's line, the
+ * total against what the capital holds, what stands in the way. Starting spends the capital's
+ * deuterium, so it is the kit's spending hold (1 s); the early return keeps no refund and was a
+ * confirm window, so it is the shortest hold (0.6 s, owner 2026-11-14) with the rule above it.
+ */
 export function VacationSheet({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const [days, setDays] = useState(1);
-  const [returnConfirm, setReturnConfirm] = useState(false);
   const query = useVacation(days);
   const start = useStartVacation();
   const end = useEndVacation();
@@ -36,26 +43,38 @@ export function VacationSheet({ onClose }: { onClose: () => void }) {
     });
   };
   const error = start.error ?? end.error;
+  // A hold that cannot go names the one thing in its way; the list above names them all.
+  const startReason = start.isPending ? t('vacation.submitting') : query.isError ? t('vacation.loadError')
+    : checking ? t('vacation.checking') : reasons.length > 0 ? t('vacation.blockersTitle') : null;
+  const total = q?.price?.total ?? 0;
+  const available = q === undefined ? 0 : q.store + q.buffer;
+  const footer = q === undefined ? undefined : active
+    ? <GameHold weight="reversible" tone="steel" glyph="recall" label={t('vacation.end')}
+      disabledReason={end.isPending ? t('vacation.submitting') : active.endsAt.getTime() <= now ? t('vacation.until', { time: time(active.endsAt) }) : null}
+      onCommit={() => { end.mutate(active.id); }} />
+    : <GameHold weight="spends" glyph="shield" label={t('vacation.start', { count: days })} detail={<Price amount={total} />}
+      disabledReason={startReason} onCommit={submit} />;
   // The body portal sits outside the shell; the shell publishes the top bar on the document.
   return createPortal(<div>
-    <Sheet placement="dialog" title={t('vacation.title')} onClose={onClose} detents={['full']}
-      footer={q ? active ? <Button size="lg" full variant="commit" disabled={pending || active.endsAt.getTime() <= now}
-        onClick={() => { setReturnConfirm(true); }}>{t('vacation.end')}</Button>
-        : <Button size="lg" full variant="primary" disabled={blocked} onClick={submit}>
-          {t('vacation.start', { count: days })}</Button> : undefined}>
-      <div data-vacation-sheet className="flex flex-col gap-4 pb-3">
-        <div className="flex items-start gap-3 rounded-control border border-v2-self/25 bg-v2-self/5 p-3">
-          <ShieldIcon className="mt-0.5 size-6 shrink-0 text-v2-self" />
-          <div className="flex flex-col gap-1"><p className="font-semibold text-v2-ink">{t('vacation.coverage')}</p>
-            <p className="text-caption leading-relaxed text-v2-ink-2">{t('vacation.summary')}</p></div>
-        </div>
-        {!q ? <Note>{query.isPending ? t('vacation.loading') : t('vacation.loadError')}</Note> : active ? <>
-          <p className="font-v2-mono text-body text-v2-self">{t('vacation.until', { time: time(active.endsAt) })}</p>
-          <Note>{t('vacation.paused')}</Note>
+    <Sheet placement="dialog" title={t('vacation.title')} onClose={onClose} detents={['full']} kit={{ tone: 'self' }} footer={footer}>
+      <div data-vacation-sheet className="gk-vac">
+        <Banner tone="good" glyph="shield" title={t('vacation.coverage')} body={t('vacation.summary')} />
+        {!q ? <>
+          <p role="status" className="gk-acct__note">{query.isPending ? t('vacation.loading') : t('vacation.loadError')}</p>
+          {!query.isPending && <GameButton onPress={() => { void query.refetch(); }}>{t('vacation.retry')}</GameButton>}
+        </> : active ? <>
+          <Well className="gk-vac__until">
+            <span className="gk-acct__note">{t('vacation.paused')}</span>
+            <span className="gk-vac__untilvalue gk-display gk-num gk-outlined">{t('vacation.until', { time: time(active.endsAt) })}</span>
+          </Well>
+          <section className="gk-vac__return" aria-label={t('vacation.endTitle')}>
+            <h3 className="gk-vac__ask">{t('vacation.endTitle')}</h3>
+            <p className="gk-acct__note">{t('vacation.endBody')}</p>
+          </section>
         </> : <>
-          {blocked && <section aria-labelledby={blockersTitleId} className="rounded-control border border-v2-warn/30 bg-v2-warn/5 p-3">
-            <h3 id={blockersTitleId} className="text-body font-semibold text-v2-warn">{t('vacation.blockersTitle')}</h3>
-            <ul className="mt-2 flex list-disc flex-col gap-2 pl-4 text-caption leading-relaxed text-v2-ink-2">
+          {blocked && <section aria-labelledby={blockersTitleId} className="gk-vac__blockers gk-well">
+            <h3 id={blockersTitleId} className="gk-vac__blockerstitle">{t('vacation.blockersTitle')}</h3>
+            <ul className="gk-vac__reasons">
               {reasons.map(reason => <li key={reason}>{reason === 'VACATION_FUNDS' && q.price && q.price.total > q.store + q.buffer
                 ? t('vacation.missing', { amount: full(Math.ceil(q.price.total - q.store - q.buffer)) })
                 : reason === 'SEASON_FROZEN' ? t('errors.SEASON_FROZEN')
@@ -64,47 +83,55 @@ export function VacationSheet({ onClose }: { onClose: () => void }) {
               {pending && <li>{t('vacation.submitting')}</li>}
               {query.isError && <li>{t('vacation.loadError')}</li>}
             </ul>
-            {query.isError && <Button className="mt-3" disabled={query.isFetching} onClick={() => { void query.refetch(); }}>{t('vacation.retry')}</Button>}
+            {query.isError && <GameButton size="sm" pending={query.isFetching} onPress={() => { void query.refetch(); }}>{t('vacation.retry')}</GameButton>}
           </section>}
-          <Section label={t('vacation.days')}>
-            <div className="grid grid-cols-4 gap-2" role="group" aria-label={t('vacation.days')}>
-              {[1, 2, 3, 4, 5, 6, 7].map(n => <button type="button" key={n} aria-pressed={n === days}
-                disabled={n > q.maxDays || pending} onClick={() => { setDays(n); }}
-                className={`min-h-11 rounded-control border px-2 py-2 font-v2-mono text-caption transition-colors disabled:opacity-30 ${n === days ? 'border-v2-self/60 bg-v2-self/10 text-v2-self' : 'border-v2-line bg-v2-panel text-v2-ink-2'}`}>
-                {t('vacation.dayOption', { count: n })}</button>)}
+          <section className="gk-vac__days" aria-label={t('vacation.days')}>
+            <SectionTag as="h3">{t('vacation.days')}</SectionTag>
+            <div className="gk-vac__chips" role="group" aria-label={t('vacation.days')}>
+              {DAYS.map(n => <Chip key={n} on={n === days} disabled={n > q.maxDays || pending} onPress={() => { setDays(n); }}>
+                {t('vacation.dayOption', { count: n })}</Chip>)}
             </div>
-            <p className="text-caption leading-relaxed text-v2-ink-3">{t('vacation.seasonRule')}</p>
-          </Section>
-          <div className="divide-y divide-v2-line rounded-control border border-v2-line bg-v2-panel px-3">
-            {q.price?.worlds.map(line => <div key={line.id} className="flex items-center gap-3 py-3">
-              <div className="min-w-0 flex-1"><p className="break-words text-body font-semibold">{q.worlds.find(w => w.id === line.id)?.name}</p>
-                <p className="text-micro text-v2-ink-3">{t(line.capital ? 'vacation.capital' : 'vacation.colony')}</p>
-                <p className="mt-1 text-caption text-v2-ink-2">{t('vacation.line', { core: line.coreLevel, level: line.referenceLevel, hours: line.hours })}</p></div>
-              <span className="shrink-0 font-v2-mono text-body text-v2-self">{new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(line.cost)}</span>
-            </div>)}
-          </div>
-          <div className="rounded-control border border-v2-self/30 bg-v2-self/5 p-3">
-            <div className="flex items-baseline justify-between gap-3"><span className="text-body font-semibold">{t('vacation.total')}</span>
-              <strong className="font-v2-mono text-title text-v2-self">{full(q.price?.total ?? 0)}</strong></div>
-            <p className="mt-1 text-micro text-v2-ink-3">{t('vacation.rounding')}</p>
-            <dl className="mt-3 flex flex-col gap-1 text-caption text-v2-ink-2">
-              {[[t('vacation.store'), q.store], [t('vacation.buffer'), q.buffer], [t('vacation.available'), q.store + q.buffer]].map(([label, value]) =>
-                <div key={label} className="flex justify-between gap-3"><dt>{label}</dt><dd className="font-v2-mono">{full(Number(value))}</dd></div>)}
+            <p className="gk-acct__note">{t('vacation.seasonRule')}</p>
+          </section>
+          <ul className="gk-vac__worlds gk-well">
+            {q.price?.worlds.map(line => <li key={line.id} className="gk-vac__world">
+              <span className="gk-vac__worldtext">
+                <span className="gk-vac__worldname">{q.worlds.find(w => w.id === line.id)?.name}</span>
+                <span className="gk-label">{t(line.capital ? 'vacation.capital' : 'vacation.colony')}</span>
+                <span className="gk-vac__line">{t('vacation.line', { core: line.coreLevel, level: line.referenceLevel, hours: line.hours })}</span>
+              </span>
+              <Price amount={line.cost} exact />
+            </li>)}
+          </ul>
+          <Well className="gk-vac__total">
+            <div className="gk-vac__totalhead">
+              <span className="gk-vac__totallabel">{t('vacation.total')}</span>
+              <Price amount={total} big />
+            </div>
+            <p className="gk-vac__fine">{t('vacation.rounding')}</p>
+            <SpendBar spend={total} stock={available} label={t('vacation.available')} art={RESOURCE_ART.deuterium}
+              text={`${full(total)} / ${full(available)}`} />
+            <dl className="gk-vac__sums">
+              {([[t('vacation.store'), q.store], [t('vacation.buffer'), q.buffer]] as const).map(([label, value]) =>
+                <div key={label}><dt>{label}</dt><dd className="gk-num">{full(value)}</dd></div>)}
             </dl>
-          </div>
-          <details className="rounded-control border border-v2-line p-3 text-caption text-v2-ink-2">
-            <summary className="cursor-pointer font-semibold text-v2-ink">{t('vacation.formulaTitle')}</summary>
-            <p className="mt-2 leading-relaxed">{t('vacation.formula')}</p>
-          </details>
+          </Well>
+          <InfoPeek fact={t('vacation.formulaTitle')} rule={<p className="gk-acct__note">{t('vacation.formula')}</p>} about={t('vacation.formulaTitle')} />
         </>}
-        {error && <Note>{describe(error)}</Note>}
-        {!q && !query.isPending && <Button onClick={() => { void query.refetch(); }}>{t('vacation.retry')}</Button>}
+        {error && <Banner tone="hostile" title={describe(error)} role="alert" />}
       </div>
     </Sheet>
-    {returnConfirm && active && <Confirm eyebrow={t('vacation.title')} title={t('vacation.endTitle')}
-      confirmLabel={t('vacation.endConfirm')} backLabel={t('vacation.back')} pending={end.isPending}
-      onClose={() => { setReturnConfirm(false); }} onConfirm={() => {
-        end.mutate(active.id, { onSuccess: () => { setReturnConfirm(false); } });
-      }}><p className="text-body leading-relaxed text-v2-ink-2">{t('vacation.endBody')}</p></Confirm>}
   </div>, document.body);
+}
+
+/** Deuterium, as the game draws it: its picture and the figure — whole, or with the two decimals a line carries. */
+function Price({ amount, exact = false, big = false }: { amount: number; exact?: boolean; big?: boolean }) {
+  const { i18n } = useTranslation();
+  const figure = exact ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(amount) : full(amount);
+  return (
+    <span className={`gk-vac__price gk-num${big ? ' gk-vac__price--big gk-display' : ''}`}>
+      <img src={RESOURCE_ART.deuterium} alt="" draggable={false} />
+      {figure}
+    </span>
+  );
 }

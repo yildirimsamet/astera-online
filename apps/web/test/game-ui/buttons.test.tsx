@@ -53,6 +53,20 @@ describe('the game button', () => {
   });
 });
 
+/** C25 (2026-11-15): a form's button submits it, so Enter in a field does what the press does. */
+describe('the submit button', () => {
+  it('is the form\'s submit, and a press still answers', () => {
+    const onSubmit = vi.fn((event: Event) => { event.preventDefault(); });
+    const onPress = vi.fn();
+    render(<form onSubmit={(event) => { onSubmit(event.nativeEvent); }}><input aria-label="Email" /><GameButton submit onPress={onPress}>Send</GameButton></form>);
+    const button = screen.getByRole('button', { name: 'Send' });
+    expect(button).toHaveAttribute('type', 'submit');
+    press(button);
+    expect(onPress).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+});
+
 describe('the hold action', () => {
   it('does not commit a hold whose action became impossible halfway', () => {
     const onCommit = vi.fn();

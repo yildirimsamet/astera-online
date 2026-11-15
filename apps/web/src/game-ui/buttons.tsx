@@ -43,6 +43,8 @@ export interface GameButtonProps {
   spoken?: string;
   /** Marks a surface outside it points at: the tutorial's pointer, the onboarding gate. */
   marks?: Record<`data-${string}`, string>;
+  /** Its form's submit (C25): the form's own submit acts, so Enter in a field does what the press does. */
+  submit?: boolean;
 }
 
 /**
@@ -52,7 +54,7 @@ export interface GameButtonProps {
  */
 export function GameButton({
   children, onPress, tone: look = 'steel', size = 'md', wide = false, glyph, cost, detail,
-  disabledReason = null, pending = false, className = '', heavy = false, spoken, marks,
+  disabledReason = null, pending = false, className = '', heavy = false, spoken, marks, submit = false,
 }: GameButtonProps) {
   const own = useOwnPress(() => {
     if (pending || disabledReason !== null) return;
@@ -65,7 +67,7 @@ export function GameButton({
   const sizing = size === 'md' ? '' : ` gk-btn--${size}`;
   return (
     <button
-      type="button"
+      type={submit ? 'submit' : 'button'}
       {...OWN_SOUND}
       className={`gk-btn${tone(look)}${sizing}${wide ? ' gk-btn--wide' : ''} ${className}`}
       disabled={disabledReason !== null}

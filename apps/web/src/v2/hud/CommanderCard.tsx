@@ -7,6 +7,7 @@ import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import { Flag } from '../identity/Flag.js';
 import { RankingScores } from '../../ui/RankingScores.js';
+import { Glyph, artIconSrc, type GlyphId } from '../../game-ui/index.js';
 
 const DAY_MS = 86_400_000;
 
@@ -65,44 +66,43 @@ export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, ran
     .filter((part): part is string => part !== null)
     .join(' · ');
 
-  const cells: readonly (readonly [string, string])[] = [
-    [t(honor ? 'leaderboard.honorRank' : 'menu.profile.rank'), rank === null ? '—' : `${String(rank.place)} / ${String(rank.of)}`],
-    [t('menu.profile.worlds'), `${String(worlds.held)} / ${String(worlds.max)}`],
-    [t('menu.profile.shield'), shieldLeft > 0 ? duration(shieldLeft / 60_000) : t('menu.profile.shieldNone')],
+  const cells: readonly { glyph: GlyphId; label: string; value: string; on?: boolean }[] = [
+    { glyph: 'ranking', label: t(honor ? 'leaderboard.honorRank' : 'menu.profile.rank'), value: rank === null ? '—' : `${String(rank.place)} / ${String(rank.of)}` },
+    { glyph: 'colony', label: t('menu.profile.worlds'), value: `${String(worlds.held)} / ${String(worlds.max)}` },
+    { glyph: 'shield', label: t('menu.profile.shield'), value: shieldLeft > 0 ? duration(shieldLeft / 60_000) : t('menu.profile.shieldNone'), on: shieldLeft > 0 },
   ];
 
+  // The kit's cut plate (C23): the observation room behind, the medallion of the top bar, the readings in glass.
   return (
-    <section aria-label={t('menu.profile.label')} data-commander-card className="scene-panel commander-observation flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui">
+    <section aria-label={t('menu.profile.label')} data-commander-card className="gk-cut gk-cut--self gk-cmdr">
       <AtmosphereImage art={ATMOSPHERE.commanderRoom} />
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-self/70 bg-v2-raise text-body font-bold text-v2-ink">
-          {initials(name)}
+      <div className="gk-cmdr__id">
+        <span className="gk-medal gk-cmdr__medal" aria-hidden="true">
+          <span className="gk-medal__face gk-display">{initials(name)}</span>
+          <img className="gk-medal__ring" src={artIconSrc('hud-medallion')} alt="" draggable={false} />
         </span>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="flex min-w-0 items-center gap-1.5">
-            {country && <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} />}
-            <span className="truncate text-caption font-medium text-v2-ink">{name}</span>
+        <div className="gk-cmdr__who">
+          <span className="gk-cmdr__name">
+            {country && <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} className="gk-cmdr__flag" />}
+            <span className="gk-display gk-outlined">{name}</span>
           </span>
           {clan === null ? (
-            <span className="text-caption text-v2-ink-3">{t('menu.profile.noClan')}</span>
+            <span className="gk-cmdr__clan gk-cmdr__clan--none">{t('menu.profile.noClan')}</span>
           ) : (
-            <span className="flex min-w-0 items-center gap-1.5">
-              <ClanTag tag={clan.tag} tier={clan.tier} bracket={false}
-                className="shrink-0 rounded-chip border border-current/60 px-1 font-v2-mono text-micro font-semibold text-v2-ally" />
-            <span className="truncate text-caption font-medium text-v2-ink">{clan.name}</span>
+            <span className="gk-cmdr__clan">
+              <ClanTag tag={clan.tag} tier={clan.tier} bracket={false} className="gk-cmdr__tag" />
+              <span className="gk-cmdr__clanname">{clan.name}</span>
             </span>
           )}
-          {where.length > 0 && <span className="truncate text-caption text-v2-ink-3">{where}</span>}
+          {where.length > 0 && <span className="gk-cmdr__where">{where}</span>}
         </div>
       </div>
-      {honor ? <div className="flex justify-end border-y border-v2-self/20 bg-v2-self/5 px-2 py-2">
-        <RankingScores honor={honor.score} dominion={honor.dominion} />
-      </div> : null}
-      <dl className="grid grid-cols-3 gap-1.5">
-        {cells.map(([label, value]) => (
-          <div key={label} className="flex min-w-0 flex-col gap-0.5 rounded-control bg-v2-deep/60 px-2 py-1.5">
-            <dt className="truncate text-micro text-v2-ink-3">{label}</dt>
-            <dd className="truncate font-v2-mono text-caption font-medium text-v2-ink">{value}</dd>
+      {honor ? <div className="gk-cmdr__scores"><RankingScores honor={honor.score} dominion={honor.dominion} /></div> : null}
+      <dl className="gk-cmdr__cells gk-well">
+        {cells.map(({ glyph, label, value, on = false }) => (
+          <div key={label} data-cell="" className="gk-cmdr__cell" {...(on ? { 'data-on': '' } : {})}>
+            <dt className="gk-label gk-cmdr__label"><Glyph id={glyph} />{label}</dt>
+            <dd className="gk-cmdr__value gk-display gk-num">{value}</dd>
           </div>
         ))}
       </dl>

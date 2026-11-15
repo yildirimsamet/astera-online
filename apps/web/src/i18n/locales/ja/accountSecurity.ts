@@ -15,6 +15,7 @@ export const accountSecurity = {
   "currentPassword": "現在のパスワード",
   "send": "コードを送信",
   "code": "確認コード",
+  "codeNeeded": "6桁のコードを入力",
   "verify": "メールを確認",
   "confirmOld": "現在のメールを確認",
   "newCode": "新しいメールに届いたコードを入力してください。",

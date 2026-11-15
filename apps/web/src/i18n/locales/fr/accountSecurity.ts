@@ -15,6 +15,7 @@ export const accountSecurity = {
   "currentPassword": "Mot de passe actuel",
   "send": "Envoyer le code",
   "code": "Code de confirmation",
+  "codeNeeded": "Saisis le code à 6 chiffres",
   "verify": "Confirmer l’adresse",
   "confirmOld": "Confirmer l’ancienne adresse",
   "newCode": "Saisis le code envoyé à ta nouvelle adresse.",

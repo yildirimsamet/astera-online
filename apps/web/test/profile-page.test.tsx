@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { ProfilePage } from '../src/shell/ProfilePage.js';
@@ -66,4 +66,44 @@ it('opens the commander Legacy from the top of the account page', async () => {
   expect(legacy).toBeVisible();
   expect(within(legacy).getByText('Orion', { selector: 'span' })).toBeInTheDocument();
   expect(screen.getByText(i18n.t('legacy.shelf.emptySelf'))).toBeInTheDocument();
+});
+
+/** The tokens in every class attribute under a node. */
+const classes = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/)).filter(Boolean);
+
+/** C23 (2026-11-15): the account page is a sheet of the game kit, not the old surface. */
+describe('the account page on the kit', () => {
+  it('is a kit sheet whose page wears none of the old surface language', async () => {
+    show();
+    await screen.findByRole('button', { name: i18n.t('legacy.profile.mine') });
+    const page = document.querySelector('[data-profile-page]');
+    expect(page?.closest('.gk-sheet')).not.toBeNull();
+    expect(classes(page!).filter((name) => /(^|-)v2(-|$)/.test(name))).toEqual([]);
+  });
+
+  it('opens vacation from a door that says what it does', () => {
+    show();
+    const door = screen.getByRole('button', { name: /^Vacation mode\./ });
+    expect(door).toHaveClass('gk-door');
+    fireEvent.pointerDown(door, { button: 0 });
+    fireEvent.click(door, { detail: 1 });
+    expect(screen.getByRole('dialog', { name: i18n.t('vacation.title') })).toBeVisible();
+  });
+
+  /** What ends the session or the account sits at the foot, the account's deletion last of all. */
+  it('keeps sign out and deletion at the foot, deletion last', () => {
+    show();
+    const buttons = screen.getAllByRole('button');
+    const signOut = buttons.indexOf(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') }));
+    const deletion = buttons.indexOf(screen.getByRole('button', { name: new RegExp(i18n.t('accountDeletion.title')) }));
+    expect(signOut).toBeGreaterThan(-1);
+    expect(deletion).toBe(buttons.length - 1);
+    expect(deletion).toBeGreaterThan(signOut);
+  });
+
+  it('gives each publisher link a thumb-sized target', () => {
+    show();
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveClass('gk-acct__link');
+  });
 });

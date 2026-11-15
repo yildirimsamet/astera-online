@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "Entiendo que mi cuenta compartida y mi progreso se eliminarán permanentemente.",
   "password": "Contraseña actual",
   "submit": "Solicitar eliminación de cuenta",
+  "needPassword": "Primero escribe tu contraseña",
+  "needConfirm": "Primero confirma que lo entiendes",
   "received": "Solicitud de eliminación recibida",
   "pending": "Tu cuenta aún no se ha eliminado. El equipo revisará la solicitud antes de cerrar el acceso y completar la eliminación segura.",
   "receipt": "Referencia de la solicitud",

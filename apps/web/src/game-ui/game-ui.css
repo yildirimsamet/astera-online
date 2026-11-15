@@ -3262,6 +3262,88 @@ button.gk-trow:focus-visible {
   height: 16px;
 }
 
+/* A way in (C23): a plate row with its mark, its name and where it stands, and the arrow. The
+   tone lights the rim and the mark, never the words, so a warning row stays as readable. */
+.gk-door {
+  --gk-door-tone: var(--gk-ink-3);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px 8px 12px;
+  text-align: left;
+  color: var(--gk-ink);
+  border: 1px solid var(--gk-metal-edge);
+  border-left: 3px solid color-mix(in srgb, var(--gk-door-tone) 70%, var(--gk-metal-edge));
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-door[data-tone='self'] { --gk-door-tone: var(--gk-self); }
+.gk-door[data-tone='warn'] { --gk-door-tone: var(--gk-warn); }
+.gk-door[data-tone='hostile'] { --gk-door-tone: var(--gk-hostile); }
+.gk-door[data-tone='gold'] { --gk-door-tone: var(--gk-gold); }
+.gk-door:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--gk-outline);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-metal-2));
+}
+.gk-door:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+.gk-door__mark {
+  display: grid;
+  place-items: center;
+  color: var(--gk-door-tone);
+}
+.gk-door__mark .gk-glyph {
+  width: 24px;
+  height: 24px;
+}
+.gk-door__mark img {
+  width: 28px;
+  height: 21px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--gk-outline);
+}
+.gk-door__words {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-door__title {
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.gk-door__sub {
+  font-size: var(--gk-t-small);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+  overflow-wrap: anywhere;
+}
+.gk-door__value {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+  text-align: right;
+}
+.gk-door__go {
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-3);
+}
+.gk-door__go .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+
 /* ── the desk outline: a wide screen's column of what is mine (G1-g2) ───────────── */
 
 .gk-desk {
@@ -13017,4 +13099,531 @@ button.gk-fact__head:active .gk-fact__line {
   text-overflow: ellipsis;
   padding-block: 0.14em;
   margin-block: -0.14em;
+}
+
+/* ── the account page (G10, C23) ─────────────────────────────────────────────── */
+
+/* The page: the commander first, then the doors of the account, the galaxy, the way out. */
+.gk-acct {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s4);
+  outline: none;
+}
+.gk-acct__doors {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* the galaxy and the season left in it, side by side */
+.gk-acct__season {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-acct__note {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-acct__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--gk-s2);
+  padding-top: var(--gk-s1);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+}
+.gk-acct__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s2);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--gk-ink-3) 60%, transparent);
+  text-underline-offset: 4px;
+}
+.gk-acct__link:first-child { padding-left: 0; }
+.gk-acct__link:hover { color: var(--gk-ink); }
+.gk-acct__link:active {
+  color: var(--gk-ink);
+  background: color-mix(in srgb, var(--gk-self) 14%, transparent);
+}
+.gk-acct__link:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: -2px;
+}
+
+/* The commander's plate: the observation room behind, the top bar's medallion grown, the name in
+   the display face, then what they stand on — place, worlds, shield — in a strip of glass. */
+.gk-cmdr {
+  display: grid;
+  gap: 10px;
+  padding: var(--gk-s3);
+  overflow: hidden;
+}
+.gk-cmdr > .atmosphere-image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+}
+.gk-cmdr::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-metal-2) 92%, transparent) 30%, color-mix(in srgb, var(--gk-metal-2) 45%, transparent));
+}
+.gk-cmdr__id {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  min-width: 0;
+}
+.gk-cmdr__medal {
+  width: 60px;
+  height: 60px;
+  cursor: default;
+}
+.gk-cmdr__medal .gk-medal__face {
+  width: 42px;
+  height: 42px;
+  font-size: var(--gk-t-lead);
+}
+.gk-cmdr__medal .gk-medal__ring {
+  width: 60px;
+  height: 60px;
+}
+.gk-cmdr__who {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.gk-cmdr__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-cmdr__flag {
+  flex: none;
+  width: 20px;
+  height: 15px;
+  box-shadow: 0 0 0 1px var(--gk-outline);
+}
+.gk-cmdr__clan {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-cmdr__clan--none { color: var(--gk-ink-3); }
+.gk-cmdr__tag {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: var(--gk-r-sm);
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.04em;
+}
+/* below clan level 3 the tag has no metal yet: it wears the colour of the self */
+.gk-cmdr__tag:not([data-tier]) { color: var(--gk-self); }
+.gk-cmdr__clanname {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gk-cmdr__where {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-cmdr__scores {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-self) 30%, transparent);
+}
+.gk-cmdr__cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: var(--gk-s2) 0;
+}
+.gk-cmdr__cell {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 6px;
+  text-align: center;
+}
+.gk-cmdr__cell + .gk-cmdr__cell {
+  border-left: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent);
+}
+/* the mark above its name, so a long word ("Dünyalar") keeps the cell's whole width */
+.gk-cmdr__label {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  letter-spacing: 0.06em;
+  hyphens: auto;
+}
+.gk-cmdr__label .gk-glyph {
+  width: 16px;
+  height: 16px;
+  color: var(--gk-ink-3);
+}
+.gk-cmdr__value {
+  margin: 0;
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  color: var(--gk-ink);
+}
+.gk-cmdr__cell[data-on] .gk-cmdr__value,
+.gk-cmdr__cell[data-on] .gk-glyph { color: var(--gk-self); }
+/* a place: the painted scene on the right, melting into the plate where the words stand */
+.gk-acct__place {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 10px var(--gk-s3);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  box-shadow: 0 2px 0 var(--gk-outline);
+}
+.gk-acct__place > .atmosphere-image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gk-acct__place::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-metal-2) 88%, transparent), color-mix(in srgb, var(--gk-metal-2) 40%, transparent));
+}
+.gk-acct__placevalue {
+  font-size: var(--gk-t-number);
+  line-height: 1.15;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-acct__placesub {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+
+/* The Legacy's door at the head of the account (C23): a gold-rimmed plate over the commander's
+   hall, the title worn, the six pieces on their lit shelf, and the way into the whole Legacy. */
+.gk-legacydoor {
+  display: grid;
+  gap: var(--gk-s2);
+  width: 100%;
+  padding: var(--gk-s3);
+  text-align: left;
+  color: var(--gk-ink);
+  border: 1px solid color-mix(in srgb, var(--gk-gold) 45%, var(--gk-metal-edge));
+  border-radius: var(--gk-r-sm);
+  background:
+    linear-gradient(100deg, var(--gk-metal-2) 35%, color-mix(in srgb, var(--gk-metal-2) 70%, transparent) 70%, transparent),
+    var(--legacy-entry-art) 70% 40% / cover no-repeat,
+    var(--gk-metal-2);
+  box-shadow: 0 2px 0 var(--gk-outline), 0 0 22px color-mix(in srgb, var(--gk-gold) 10%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear, border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-legacydoor:hover { border-color: color-mix(in srgb, var(--gk-gold) 70%, var(--gk-metal-edge)); }
+.gk-legacydoor:active { transform: translateY(1px); }
+.gk-legacydoor:focus-visible {
+  outline: 2px solid var(--gk-self);
+  outline-offset: 2px;
+}
+/* the words stand on the left, on the veil; the hall's lit right side carries no text */
+.gk-legacydoor__head {
+  display: grid;
+  gap: 2px;
+}
+.gk-legacydoor__eyebrow {
+  display: block;
+  color: var(--gk-gold);
+}
+.gk-legacydoor__title {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gk-legacydoor__title--none {
+  font-weight: 500;
+  color: var(--gk-ink-2);
+}
+.gk-legacydoor__count {
+  flex: none;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-legacydoor__shelf {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+  gap: 4px;
+  padding: 8px 6px 10px;
+  border-radius: var(--gk-r-sm);
+}
+.gk-legacydoor__slot {
+  position: relative;
+  display: grid;
+  aspect-ratio: 4 / 5;
+  place-items: end center;
+}
+.gk-legacydoor__piece {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: end center;
+}
+.gk-legacydoor__art {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+.gk-legacydoor__socket {
+  width: 60%;
+  height: 4px;
+  margin-bottom: 2px;
+  border-radius: 2px;
+}
+.gk-legacydoor__go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-legacydoor__go .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── vacation (G10, C24) ─────────────────────────────────────────────────────── */
+
+.gk-vac {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s3);
+}
+.gk-vac__days {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-vac__chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 var(--gk-s1);
+}
+.gk-vac__chips .gk-hit { width: 100%; }
+.gk-vac__chips .gk-chip {
+  width: 100%;
+  justify-content: center;
+}
+.gk-vac__chips .gk-hit:disabled { opacity: 0.4; }
+/* what stands in the way: a warning rim, each reason its own line */
+.gk-vac__blockers {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  border-color: color-mix(in srgb, var(--gk-warn) 55%, var(--gk-glass-edge));
+}
+.gk-vac__blockerstitle {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-vac__reasons {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-vac__reasons li::marker { color: var(--gk-warn); }
+/* every world's line: its name and kind, the rule's figures, what it costs a day */
+.gk-vac__worlds {
+  display: grid;
+  padding: 0 var(--gk-s3);
+}
+.gk-vac__world {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: 10px 0;
+}
+.gk-vac__world + .gk-vac__world {
+  border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent);
+}
+.gk-vac__worldtext {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-vac__worldname {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-vac__line {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-vac__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-deut);
+  white-space: nowrap;
+}
+.gk-vac__price img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.gk-vac__price--big {
+  font-size: var(--gk-t-head);
+}
+.gk-vac__price--big img {
+  width: 28px;
+  height: 28px;
+}
+.gk-vac__total {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-vac__totalhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-vac__totallabel {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-vac__fine {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+.gk-vac__sums {
+  display: grid;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-vac__sums > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-vac__sums dd { color: var(--gk-ink); }
+.gk-vac__until {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3);
+}
+.gk-vac__untilvalue {
+  font-size: var(--gk-t-lead);
+  color: var(--gk-self);
+}
+.gk-vac__return {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* on the hold's lit face the price takes the face's own ink */
+.gk-hold__aside .gk-vac__price { color: inherit; }
+.gk-vac__ask {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+
+/* ── the account's sheets: recovery email, password reset, deletion (G10, C25) ─────── */
+
+.gk-acctsheet {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s3);
+}
+.gk-acctsheet__form {
+  display: grid;
+  gap: var(--gk-s3);
+}
+/* the mailbox a code went to, or a request's reference: read from glass */
+.gk-acctsheet__mail {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3);
+}
+.gk-acctsheet__address {
+  font-size: var(--gk-t-body);
+  font-weight: 600;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-acctsheet__receipt {
+  font-size: var(--gk-t-small);
+  user-select: all;
+}
+.gk-acctsheet__fine {
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-3);
+}
+/* a field and the eye beside it */
+.gk-secfield {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+/* a code is read digit by digit: large and spaced */
+.gk-field__input--code {
+  text-align: center;
+  font-size: var(--gk-t-head);
+  letter-spacing: 0.3em;
 }

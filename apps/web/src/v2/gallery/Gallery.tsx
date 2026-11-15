@@ -43,6 +43,7 @@ import { GalleryReports } from './GalleryReports.js';
 import { GalleryChat } from './GalleryChat.js';
 import { GalleryCommunity } from './GalleryCommunity.js';
 import { GalleryReplay } from './GalleryReplay.js';
+import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -1301,6 +1302,7 @@ function Views({ view }: { view: string }) {
   if (view === 'leaderboard-archive-career') return <GalleryCommander page="leaderboard-archive-career" />;
   if (view === 'leaderboard-honor') return <GalleryCommander page="leaderboard-honor" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
+  if (isProfileView(view)) return <ProfileGallery view={view} />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
   if (view === 'ufo-probe-flight') return <UfoProbeGallery />;
   if (view === 'cosmetic-fleet-titan') return <CosmeticFleetGallery engineId="engine-titan" />;
