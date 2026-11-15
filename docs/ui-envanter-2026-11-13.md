@@ -1279,6 +1279,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - `gk-rate` bildirim merkeziyle çakışıyordu, `gk-par` oldu. FocusPanel'in eski `BTN`/`BTN_PRIMARY` sabitleri artık kullanılmadığı için silindi.
 - **Ölçüm** `g4i2-before/after-2026-11-15.md`: konvoy 154 → 3, ticaret kartı 12 → 0, konvoy kartı 6 → 0.
 
+### G4-j — iki vuruş (Ölüm Yıldızı, radyasyon) kitte (2026-11-15)
+
+- Ortak katlanır baş `StrikeFold`: silahın işareti, adı, hedef, "N hazır" çipi, ok. Ölüm Yıldızı kırmızı, radyasyon sarı tonda; açıkken işaret nabız atar.
+- Gerçekler kit kuyusunda (`gk-strike__facts`), Honor kuralı Honor kutusunda (`gk-honor`), fırlatma kitin kesin basılı tutuşunda (1,5 sn, tehlike tonu). Sayfa hâli de (`StrikeSheet`) kit sayfası.
+- Radyasyon: seviye plakaları kit sesi/titreşimiyle; koloni yükü yüzde, uzun koloni kuralı "?" arkasında; kalkan onayı kit şalteri; hata uyarı notu.
+- `GameHold` `marks` aldı (`data-death-star`). Eski `strike-launch`/`radiation-launch`/`honor-note` CSS'i ve 11 kullanılmayan radyasyon token'ı silindi.
+- Galeri: `focus-strike` (iki vuruş açık). Audit: strike 37 → 0, focus-strike 0; envanterden "Ölüm Yıldızı bölümü" ulaşılamazı kalktı.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

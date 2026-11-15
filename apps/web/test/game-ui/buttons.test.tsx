@@ -91,6 +91,14 @@ describe('the hold action', () => {
     expect(screen.getByRole('button', { name: /Launch/ })).toHaveAttribute('data-hold');
   });
 
+  // G4-j: a surface's own mark rides the hold, live or refused (the Death Star's `data-death-star`).
+  it('carries a surface’s marks, live and refused', () => {
+    const { rerender } = render(<GameHold label="Launch" onCommit={vi.fn()} weight="final" marks={{ 'data-death-star': '' }} />);
+    expect(screen.getByRole('button', { name: /Launch/ })).toHaveAttribute('data-death-star');
+    rerender(<GameHold label="Launch" onCommit={vi.fn()} weight="final" marks={{ 'data-death-star': '' }} disabledReason="No charge" />);
+    expect(screen.getByRole('button', { name: /No charge/ })).toHaveAttribute('data-death-star');
+  });
+
   it('commits after a held press and shows its detail', () => {
     const onCommit = vi.fn();
     render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} />);

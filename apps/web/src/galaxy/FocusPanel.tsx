@@ -92,16 +92,14 @@ import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { HonorIcon } from '../ui/icons/index.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { Choices, CostLine, GameButton, GameHold, Glyph, RoundButton, SectionTag, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { Choices, CostLine, GameButton, GameHold, Glyph, RoundButton, SectionTag, StrikeFold, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { useNativeBack } from '../platform/nativeBack.js';
@@ -1303,67 +1301,68 @@ function StrikeDetails({ target, report, origin }: {
 
   return (
     <>
-    <p className="text-caption leading-snug text-v2-ink">{t('focus.planet.strikeConfirm.lead')}</p>
-    {origin && (
-      <div data-strike-origin className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="shrink-0 text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.origin')}</span>
-        <span className="min-w-0 truncate text-right text-caption font-semibold text-v2-ink">
-          {t('focus.planet.strikeConfirm.originRead', { world: origin.planet.name, ready })}
-        </span>
+    <p className="gk-strike__lead">{t('focus.planet.strikeConfirm.lead')}</p>
+    <dl className="gk-well gk-strike__facts">
+      {origin && (
+        <div data-strike-origin className="gk-strike__fact">
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.origin')}</dt>
+          <dd>{t('focus.planet.strikeConfirm.originRead', { world: origin.planet.name, ready })}</dd>
+        </div>
+      )}
+      <div className="gk-strike__fact">
+        <dt className="gk-label">{t('focus.planet.strikeConfirm.outage')}</dt>
+        <dd className="gk-num">{duration(DEATH_STAR.empMinutes)}</dd>
       </div>
-    )}
-    <div className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
-      <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
-    </div>
-    {colony && (
-      <div data-strike-loyalty className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.loyalty')}</span>
-        <span className={`text-right text-caption font-semibold ${hits === 1 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-          {report?.loyalty === undefined || hits === null
-            ? t('focus.planet.strikeConfirm.loyaltyUnknown')
-            : t('focus.planet.strikeConfirm.loyaltyRead', {
-              value: report.loyalty,
-              hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
-            })}
-        </span>
-      </div>
-    )}
-    {report?.interceptors !== undefined && (
-      <div data-strike-charges className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.charges')}</span>
-        <span className="text-right text-caption font-semibold text-v2-ink">
-          {report.interceptors > 0
-            ? t('focus.planet.strikeConfirm.chargesRead', {
-              count: report.interceptors,
-              needed: report.interceptors + 1,
-            })
-            : t('focus.planet.strikeConfirm.chargesNone')}
-        </span>
-      </div>
-    )}
+      {colony && (
+        <div data-strike-loyalty className="gk-strike__fact" {...(hits === 1 ? { 'data-tone': 'hostile' } : {})}>
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.loyalty')}</dt>
+          <dd>
+            {report?.loyalty === undefined || hits === null
+              ? t('focus.planet.strikeConfirm.loyaltyUnknown')
+              : t('focus.planet.strikeConfirm.loyaltyRead', {
+                value: report.loyalty,
+                hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
+              })}
+          </dd>
+        </div>
+      )}
+      {report?.interceptors !== undefined && (
+        <div data-strike-charges className="gk-strike__fact">
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.charges')}</dt>
+          <dd>
+            {report.interceptors > 0
+              ? t('focus.planet.strikeConfirm.chargesRead', { count: report.interceptors, needed: report.interceptors + 1 })
+              : t('focus.planet.strikeConfirm.chargesNone')}
+          </dd>
+        </div>
+      )}
+    </dl>
     {/* Both readings come from one look, so its age is said once, under them. */}
     {age !== null && ((colony && report?.loyalty !== undefined) || report?.interceptors !== undefined) && (
-      <p data-strike-probe-age className="-mt-1 text-right text-micro text-v2-ink-3">
-        {t('focus.planet.strikeConfirm.probeAge', { age })}
-      </p>
+      <p data-strike-probe-age className="gk-sub gk-strike__age">{t('focus.planet.strikeConfirm.probeAge', { age })}</p>
     )}
     {/* And what it does NOT do, because D179 took the teeth out and a commander
         about to spend twenty thousand alloy should know what they are buying. */}
-    <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
-    {colony && (
-      <p className="text-micro leading-snug text-v2-ink-3">
-        {t('focus.planet.strikeConfirm.keepsColony', { loss, hits: hitsToTakeLoyalColony })}
-      </p>
-    )}
-    <section data-honor-weapon-rule className="grid gap-1.5 rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2.5">
-      <p className="flex items-center gap-1.5 text-caption font-semibold text-v2-ink"><HonorIcon className="size-3.5 text-v2-self" />{t('leaderboard.honorTitle')}</p>
+    <p className="gk-sub">{t('focus.planet.strikeConfirm.keeps')}</p>
+    {colony && <p className="gk-sub">{t('focus.planet.strikeConfirm.keepsColony', { loss, hits: hitsToTakeLoyalColony })}</p>}
+    <WeaponHonor credit={origin?.honorTacticalCredit === true}>
       {origin?.honorTacticalCredit ? <>
-        <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpGain')}</p>
-        <p className="text-micro leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpRisk')}</p>
-      </> : <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorWeaponsInactive')}</p>}
-    </section>
+        <p className="gk-sub">{t('leaderboard.honorEmpGain')}</p>
+        <p className="gk-sub">{t('leaderboard.honorEmpRisk')}</p>
+      </> : <p className="gk-sub">{t('leaderboard.honorWeaponsInactive')}</p>}
+    </WeaponHonor>
     </>
+  );
+}
+
+/** A weapon's Honor rule, in the launch's Honor box (G4-e3): the same for the Death Star and the radiation strike. */
+function WeaponHonor({ credit, children }: { credit: boolean; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <section data-honor-weapon-rule className="gk-well gk-honor" data-kind={credit ? 'credit' : 'none'}>
+      <p className="gk-label gk-honor__title"><Glyph id="ranking" />{t('leaderboard.honorTitle')}</p>
+      {children}
+    </section>
   );
 }
 
@@ -1386,25 +1385,13 @@ export function DeathStarSection({ target, origin, report, disabledReason, onLau
   const world = target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name;
   const ready = deathStarsOf(origin).filter((asset) => asset.status === 'READY').length;
   return (
-    <details data-strike-section className="strike-launch strike-launch--death-star">
-      <summary className="strike-launch__summary">
-        <span className="strike-launch__heading">
-          <span className="strike-launch__title">{t('focus.planet.deathStarSection.title')}</span>
-          <span className="strike-launch__target">{t('planet.radiationBomb.target', { target: world })}</span>
-        </span>
-        <span className="strike-launch__ready">{t('focus.planet.strikeReady', { ready })}</span>
-      </summary>
-      <div className="strike-launch__body flex flex-col gap-2.5 font-v2-ui">
-        <StrikeDetails target={target} report={report} origin={origin} />
-        <HoldButton
-          marker="death-star"
-          label={t('focus.planet.deathStarSection.hold')}
-          tone="hostile"
-          disabledReason={disabledReason}
-          onCommit={onLaunch}
-        />
-      </div>
-    </details>
+    <StrikeFold data-strike-section="" data-weapon="death-star" glyph="target" title={t('focus.planet.deathStarSection.title')}
+      target={t('planet.radiationBomb.target', { target: world })} ready={t('focus.planet.strikeReady', { ready })}>
+      <StrikeDetails target={target} report={report} origin={origin} />
+      {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
+      <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" marks={{ 'data-death-star': '' }}
+        label={t('focus.planet.deathStarSection.hold')} disabledReason={disabledReason} onCommit={onLaunch} />
+    </StrikeFold>
   );
 }
 
@@ -1435,14 +1422,19 @@ export function StrikeSheet({
   // paint the strip and the toasts over this sheet's scrim (the confirm's old fault).
   return createPortal(
     <V2Sheet
-      detents={['half']}
+      detents={['full']}
+      kit={{ tone: 'hostile' }}
       eyebrow={t('focus.planet.strikeConfirm.eyebrow')}
       title={t('focus.planet.strikeConfirm.title', { world })}
       onClose={onClose}
+      footer={(
+        <div className="gk gk-launch__commit">
+          <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} />
+        </div>
+      )}
     >
-      <div data-strike-sheet className="flex flex-col gap-2.5 pt-1 font-v2-ui">
+      <div data-strike-sheet className="gk gk-strike__body">
         <StrikeDetails target={target} report={report} origin={origin} />
-        <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} tone="hostile" />
       </div>
     </V2Sheet>,
     document.body,

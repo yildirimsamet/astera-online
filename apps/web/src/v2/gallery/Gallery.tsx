@@ -849,6 +849,37 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
 }
 
 /**
+ * G4-j: THE TWO STRIKES ON THE FOCUS RAIL, OPENED — a probed colony, a Death Star ready on the
+ * pad and two radiation bombs in stock, so the camera sees both folds' heads and bodies.
+ */
+function GalleryStrikes() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  useEffect(() => {
+    document.querySelectorAll('details.gk-strike').forEach((fold) => { if (fold instanceof HTMLDetailsElement) fold.open = true; });
+  }, []);
+  const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
+  const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
+  const armed: PlanetView = {
+    ...launchWorld,
+    deathStars: [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
+    radiationBombsAvailable: true,
+    radiationBombs: [
+      { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
+      { id: 'rb-3', level: 3, status: 'READY', readyAt: null, remainingSeconds: 0 },
+    ],
+  };
+  return (
+    <PlanetFocus target={colony} planet={armed} intel={{ ...launchIntel, probeReports: [read] }} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onDeathStar={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+  );
+}
+
+/**
  * RADYASYON ON THE SURFACES THAT QUOTE IT (plan F10): a cloud seeded into the galaxy the
  * sheets read, so the launch line, its lethal form, the transfer line and the focus
  * sheet's line can be photographed. The sheets say nothing until a ship is picked, so
@@ -1334,6 +1365,7 @@ function Views({ view }: { view: string }) {
   if (view === 'launch-radiation-lethal') return <GalleryRadiation surface="launch-lethal" />;
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
+  if (view === 'focus-strike') return <GalleryStrikes />;
   if (view === 'focus-band') return <GalleryBand />;
   if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
   if (view === 'focus-own') return <GalleryFocusClosed own />;

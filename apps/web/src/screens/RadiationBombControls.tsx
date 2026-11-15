@@ -8,13 +8,12 @@ import type { PlanetView, PublicMonument } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { countdown, useNow } from '../lib/time.js';
 import { decimal } from '../lib/format.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { useToast } from '../ui/Toast.js';
 import { useSeasonLocked } from '../session/seasonLock.js';
-import { Toggle } from '../v2/kit/Toggle.js';
 import { ArmCard, ArmSpecs, ArmStatus, Cells, type Cell } from '../ui/ArmCard.js';
-import { CostLine, GameHold, Glyph, InfoPeek, Lever } from '../game-ui/index.js';
-import { HonorIcon } from '../ui/icons/index.js';
+import { CostLine, GameHold, Glyph, InfoPeek, Lever, StrikeFold, Toggle } from '../game-ui/index.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { haptic } from '../lib/haptics.js';
 
 const LEVELS = [1, 2, 3] as const;
 type Asset = PlanetView['radiationBombs'][number];
@@ -161,41 +160,41 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
   const title = t('planet.radiationBomb.launchTitle');
   const aimed = t('planet.radiationBomb.target', { target: targetName });
   const body = <>
-    <div className="radiation-launch__levels" role="radiogroup" aria-label={t('planet.radiationBomb.title')}>{LEVELS.map(value => {
+    <div className="gk-strike__levels" role="radiogroup" aria-label={t('planet.radiationBomb.title')} {...OWN_SOUND}>{LEVELS.map(value => {
       const stocked = origin.radiationBombs.find(item => item.level === value && item.status === 'READY');
-      return <button key={value} type="button" role="radio" aria-checked={value === level} disabled={!stocked || pending}
-        onClick={() => { setLevel(value); }}><b>L{value}</b><span>{t('planet.radiationBomb.rate', { rate: decimal(RADIATION_LEVEL_HP_PER_MINUTE[value]) })}</span></button>;
+      return <button key={value} type="button" role="radio" className="gk-strike__level" aria-checked={value === level} disabled={!stocked || pending}
+        onClick={() => { if (value === level) return; playSound('tab'); haptic('tap'); setLevel(value); }}>
+        <b className="gk-num">L{value}</b><span className="gk-num">{t('planet.radiationBomb.rate', { rate: decimal(RADIATION_LEVEL_HP_PER_MINUTE[value]) })}</span>
+      </button>;
     })}</div>
-    <p>{t('planet.radiationBomb.effect')}</p>
-    {target.kind === 'PLANET' && <><p data-colony-payload>{t('planet.radiationBomb.colonyEffects', {
-      loyalty: RADIATION_BOMB.levels[level].colonyLoyaltyLoss, faults: RADIATION_BOMB.levels[level].colonyFaults,
-    })}</p><p>{t('planet.radiationBomb.colonyRules')}</p></>}
-    {flightMs !== null && <p className="radiation-launch__flight">{t('planet.radiationBomb.flight', { time: countdown(flightMs) })}</p>}
-    <p>{t('planet.radiationBomb.noRecall')}</p>
+    <p className="gk-sub">{t('planet.radiationBomb.effect')}</p>
+    {/* What a colony loses stays on the face; the rule behind it waits one press away. */}
+    {target.kind === 'PLANET' && <InfoPeek about={t('itemSheet.howItWorks')} lead={<Glyph id="colony" />}
+      fact={<span className="gk-tone-hostile" data-colony-payload>{t('planet.radiationBomb.colonyEffects', {
+        loyalty: RADIATION_BOMB.levels[level].colonyLoyaltyLoss, faults: RADIATION_BOMB.levels[level].colonyFaults,
+      })}</span>}
+      rule={<p className="gk-sub">{t('planet.radiationBomb.colonyRules')}</p>} />}
+    {flightMs !== null && <p className="gk-inote" data-tone="self"><Glyph id="clock" />{t('planet.radiationBomb.flight', { time: countdown(flightMs) })}</p>}
+    <p className="gk-inote" data-tone="warn">{t('planet.radiationBomb.noRecall')}</p>
     {/* The same Honor box the Death Star's section carries (owner, 2026-10-16), on the season's policy. */}
-    <section data-honor-weapon-rule className="honor-note grid gap-1.5 rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2.5">
-      <p className="honor-note__title flex items-center gap-1.5"><HonorIcon className="size-3.5 text-v2-self" />{t('leaderboard.honorTitle')}</p>
-      <p className="honor-note__body">{t(origin.honorTacticalCredit ? 'planet.radiationBomb.honor' : 'leaderboard.honorWeaponsInactive')}</p>
+    <section data-honor-weapon-rule className="gk-well gk-honor" data-kind={origin.honorTacticalCredit ? 'credit' : 'none'}>
+      <p className="gk-label gk-honor__title"><Glyph id="ranking" />{t('leaderboard.honorTitle')}</p>
+      <p className="gk-sub">{t(origin.honorTacticalCredit ? 'planet.radiationBomb.honor' : 'leaderboard.honorWeaponsInactive')}</p>
     </section>
-    {shieldRequired && <Toggle checked={shield} onChange={setShield}>{t('monument.shield')}</Toggle>}
-    {error && <p role="alert" className="text-v2-warn">{describeError(error)}</p>}
-    <HoldButton label={t('planet.radiationBomb.launch', { level })} disabledReason={refusal} tone="hostile"
-      onCommit={() => { onLaunch(level, confirmation.current.key, shield); }} />
+    {shieldRequired && <Toggle checked={shield} onChange={setShield} label={t('monument.shield')} />}
+    {error && <p role="alert" className="gk-inote" data-tone="warn">{describeError(error)}</p>}
+    {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
+    <GameHold weight="final" tone="danger" glyph="radiation" commitSound="impact" label={t('planet.radiationBomb.launch', { level })}
+      disabledReason={refusal} onCommit={() => { onLaunch(level, confirmation.current.key, shield); }} />
   </>;
   if (collapsible) {
     const ready = origin.radiationBombs.filter(item => item.status === 'READY').length;
-    return <details className="radiation-launch strike-launch" data-testid="radiation-launch">
-      <summary className="strike-launch__summary">
-        <span className="strike-launch__heading"><span className="strike-launch__title">{title}</span>
-          <span className="strike-launch__target">{aimed}</span></span>
-        <span className="strike-launch__ready">{t('focus.planet.strikeReady', { ready })}</span>
-      </summary>
-      <div className="strike-launch__body">{body}</div>
-    </details>;
+    return <StrikeFold data-testid="radiation-launch" data-weapon="radiation" glyph="radiation" title={title} target={aimed}
+      ready={t('focus.planet.strikeReady', { ready })}>{body}</StrikeFold>;
   }
-  return <section className="radiation-launch" data-testid="radiation-launch">
-    <h3>{title}</h3><p className="radiation-launch__target">{aimed}</p>
-    {body}
+  return <section className="gk gk-strike gk-strike--open" data-weapon="radiation" data-testid="radiation-launch">
+    <h3 className="gk-label gk-strike__title">{title}</h3><p className="gk-sub gk-strike__target">{aimed}</p>
+    <div className="gk-strike__body">{body}</div>
   </section>;
 }
 

@@ -195,6 +195,8 @@ export interface GameHoldProps {
   size?: 'lg' | 'md';
   /** How heavy the action is; a heavier one holds longer. No default: each action picks its own (stage 4). */
   weight: HoldWeight;
+  /** Marks a surface outside it finds the hold by (the Death Star's `data-death-star`), live or refused. */
+  marks?: Record<`data-${string}`, string>;
 }
 
 /**
@@ -210,7 +212,7 @@ const HOLD_WEIGHT_MS: Record<HoldWeight, number> = { reversible: HOLD_MS, spends
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight, size = 'lg',
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight, size = 'lg', marks,
 }: GameHoldProps) {
   const holdMs = HOLD_WEIGHT_MS[weight];
   const { t } = useTranslation();
@@ -237,7 +239,7 @@ export function GameHold({
   const face = `gk-btn gk-btn--${look} ${size === 'lg' ? 'gk-btn--lg' : 'gk-hold--md'} gk-hold`;
   if (disabledReason !== null) {
     return (
-      <button type="button" disabled data-hold-refused="" className={face}>
+      <button type="button" disabled data-hold-refused="" className={face} {...marks}>
         <span className="gk-hold__dial"><Glyph id="lock" /></span>
         <span className="gk-hold__words"><span className="gk-btn__detail">{disabledReason}</span></span>
       </button>
@@ -254,6 +256,7 @@ export function GameHold({
         type="button"
         {...OWN_SOUND}
         data-hold=""
+        {...marks}
         className={face}
         style={style}
         aria-describedby={hintId}

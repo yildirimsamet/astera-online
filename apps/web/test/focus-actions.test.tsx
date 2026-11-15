@@ -372,9 +372,9 @@ describe('the focus rail’s two commitments', () => {
     expect(document.querySelector('[data-strike-sheet]')).toBeNull();
 
     const hold = sheet.querySelector<HTMLElement>('[data-hold]')!;
-    expect(hold).toHaveTextContent(/hold · launch death star/i);
-    // The strategic weapon is the one launch drawn in the colour of harm (`HoldButton` tones).
-    expect(hold.className).toMatch(/border-v2-hostile/);
+    expect(hold).toHaveTextContent(/launch death star/i);
+    // The strategic weapon is the one launch drawn in the colour of harm, on the kit's final hold (G4-j).
+    expect(hold).toHaveClass('gk-hold', 'gk-btn--danger');
     fireEvent.click(hold);
     expect(onDeathStar).not.toHaveBeenCalled();
     fireEvent.keyDown(hold, { key: 'Enter' });

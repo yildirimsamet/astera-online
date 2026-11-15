@@ -15,7 +15,7 @@ export {
   SpendBar, StatPlaque, StatusChip, StoreGauge, Timer, TimerPlate, TimerRow, type BarTone, type HudResource, type SlotState, type StatTone, type StatusTone,
   type TimerTone,
 } from './readouts.js';
-export { Banner, CoachMark, ContextCard, ContextStrip, CutPlate, Dialog, EmptyState, Plate, SectionTag, SheetFrame, Well } from './surfaces.js';
+export { Banner, CoachMark, ContextCard, ContextStrip, CutPlate, Dialog, EmptyState, Plate, SectionTag, SheetFrame, StrikeFold, Well } from './surfaces.js';
 export { DropGroup, DropPanel, PickRow, Tally, type TallyPaint } from './finder.js';
 export { NewsList, NewsRow, type NewsOutcome, type NewsTone } from './news.js';
 export { MenuTile, TileGrid, type TileTone } from './menu.js';

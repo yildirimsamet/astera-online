@@ -423,13 +423,14 @@ describe('both confirmations are the same object', () => {
   /**
    * UNTIL K4 SPLIT THEM BY WHAT THEY DO. Destroying something — a cancelled order burns
    * half of it — stays on `Confirm`, which can say what is lost; a launch, the Death
-   * Star's included, is held (B9). Each kind is still one component.
+   * Star's included, is held (B9). Each kind is still one component — since G4-j the kit's hold.
    */
   it('confirms a destruction and holds a launch', () => {
     const queue = readFileSync('src/ui/QueueStrip.tsx', 'utf8');
     const focus = readFileSync('src/galaxy/FocusPanel.tsx', 'utf8');
     expect(queue).toContain('Confirm');
-    expect(focus).toMatch(/<HoldButton\b/);
+    expect(focus).toMatch(/<GameHold\b/);
+    expect(focus).not.toMatch(/<HoldButton\b/);
     expect(focus).not.toMatch(/<Confirm\b/);
   });
 });
