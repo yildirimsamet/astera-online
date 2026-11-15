@@ -1386,7 +1386,7 @@ function Views({ view }: { view: string }) {
   }
   if (view === 'donate') {
     return (
-      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} onClose={noop}>
+      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} kit={{ art: artIconSrc('star') }} onClose={noop}>
         <DonateScreen />
       </Sheet>
     );

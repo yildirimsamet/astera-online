@@ -2229,6 +2229,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={t('community.donate.menuLabel')}
+          kit={{ art: artIconSrc('star') }}
           onClose={() => { onPanel(null); }}
         >
           <DonateScreen />

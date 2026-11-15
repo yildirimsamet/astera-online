@@ -1273,6 +1273,11 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Silinen:** iki dosya, `test/shop-showcase.test.tsx`, `native-surfaces` içindeki vitrin testi, CSS'te `.menu-shop-*`, `.shop-showcase-*`, `.inventory-scene`, `--menu-art-shade`, iki `--color-v2-store-*` rengi; yalnız onun okuduğu `skins.showcaseDescription`, `menu.navigation.shopHint/inventoryHint` (6 dil). Bozuk kalmış araçlar: `tools/shop-showcase-visual.mjs` ve `visual.mjs --shop-showcase`, `ufo-probe-visual.mjs` içindeki menü adımı.
 - **Kalan:** `shop-showcase-static.webp` resmi (Mağaza karosu kullanıyor).
 
+**C41 Destek ol ✅ (2026-11-15, yardımcı oturum).** G6 #8 `DonateScreen` (+ galaksideki ve galerideki sac).
+- **An:** "Oyuna nasıl destek olurum, zorunlu mu?" Dört Shopier bağlantısı, iki cüzdan adresi (harfi harfine, seçilebilir) ve kopyalama kuralı (pano reddederse "Kopyalandı" demez) değişmedi.
+- **Değişen:** Bölümler kitin etiketiyle; dava camda, "Geliştiriciden bir not" 44 px katlama satırı (ses + titreşim, ok döner). Dört kart resmi yine düğmenin kendisi; basınca ses, titreşim ve hafif çökme. Cüzdanlar camda, "Kopyala" kitin küçük düğmesi; kopyalanınca yeşile döner, tik gelir, adı değişir. Notlar kitin dipnotu. Sac kitin (yıldız resmi).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 39 → 3 (kalan 3 arkalık); 12 px altı 15→0, kontrast 5→0. `reports/ui-audit/c41-donate-after-2026-11-15.md` (önce: `g6-shop-before`).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
