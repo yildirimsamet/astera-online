@@ -14619,3 +14619,58 @@ button.gk-fact__head:active .gk-fact__line {
   border-radius: var(--gk-r-sm);
   background: var(--gk-void);
 }
+
+/* ── the reveal of a won piece (G10, C33): the light show stays legacy.css's, the words are the kit's ── */
+
+.gk-reveal__counter {
+  position: relative;
+  margin-bottom: var(--gk-s2);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reveal__name {
+  margin-top: 4px;
+  font-size: var(--gk-t-head);
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.gk-reveal__chips { justify-content: center; margin-top: var(--gk-s2); }
+.gk-reveal__goal {
+  max-width: 30ch;
+  margin-top: var(--gk-s2);
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--gk-ink-2);
+}
+.gk-reveal__tile {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 4px 8px;
+  border-radius: var(--gk-r-sm);
+  text-align: center;
+}
+.gk-reveal__tilename {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  padding: 1px 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.gk-reveal__placed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-reveal__placed .gk-glyph { width: 16px; height: 16px; }

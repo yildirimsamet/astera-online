@@ -1799,6 +1799,12 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Değişen:** Kitin sacı (kupa; kilitli hedefte kilit resmi). Nadirlik, sezon ve kademe kit etiketleri; aktif unvan altın rozet; bilgiler camda satır satır, sahip sayısı altın; "Nasıl kazanılır" camda, sıradaki kademe kitin çubuğunda. Vitrin ve unvan kitin düğmeleri; vitrin doluyken düğme kilit ikonuyla "Vitrin dolu" diyor (yeni kısa anahtar `legacy.award.shelfFullShort`, 6 dil), uzun açıklama altında. Hatalar banner, yeniden dene banner'ın içinde. Sahne çerçevesi kitin metali (`gk-stage`).
 - **Ölçüm** (tr; telefon, dar, masaüstü): 27→3 (arkalık); 12 px altı 12→0, kontrast 3→0. `reports/ui-audit/c32-legacy-award-after-2026-11-15.md`.
 
+**C33 Ödül açılış sahnesi ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 4: `AwardReveal`.
+- **An:** "Bir parça kazandım!" Karanlık oda, ışık çekirdeği, parlama, kıvılcımlar ve 3D parçanın yükselişi aynen kaldı (`legacy.css`); sıra, görüldü işareti, Escape, odak ve dokununca girişi bitirme değişmedi.
+- **Değişen:** Yazılar kitin: sayaç kalın, göz-çizgisi kitin etiketi, ad görüntü yazısıyla 24 px, nadirlik/sezon/kategori ödül sayfasıyla aynı etiketler, kazanma kuralı 14 px. Sonraki / kalanları aç / kapat kitin ana düğmesi (ikonlu), vitrine koy kitin düğmesi; vitrinde ise altın tikli satır. Toplu açılışta parça adları 13 px.
+- **Ölçüm** (tr; telefon, dar, masaüstü): 14→0; 12 px altı 8→0. `reports/ui-audit/c33-legacy-reveal-after-2026-11-15.md`.
+- **Grup sonu, 6 dil (telefon; profil, küçük vitrin, ödül, açılış):** kesilme ve kırpılma 0. Kalan tek not: üç kelimelik büyük harf göz-çizgileri ("Yeni parça kazandın", "How to earn it") — kutlamanın bilinçli görünüşü, dokunulmadı. `reports/ui-audit/g10b-langs-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
