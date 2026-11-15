@@ -14827,3 +14827,22 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-crew__name { font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
 .gk-crew__count { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
 [data-tone='hostile'] .gk-crew__hull { border-color: color-mix(in srgb, var(--gk-hostile) 35%, var(--gk-metal-edge)); }
+
+/* ── G4-i1 the merchant's sheet: the offer in lots, the split between two goods, both legs ── */
+.gk-trade { display: grid; gap: var(--gk-s3); padding-top: 2px; }
+.gk-trade .gk-cargo__row { grid-template-columns: minmax(0, 1fr) auto; }
+.gk-trade__amount { font-size: var(--gk-t-lead); font-weight: 700; color: var(--gk-ink); }
+.gk-trade__wide { grid-column: 1 / -1; }
+.gk-trade__split { display: grid; gap: 8px; padding: var(--gk-s2) var(--gk-s3); }
+.gk-trade__ends { display: flex; justify-content: space-between; gap: 8px; }
+.gk-trade__end { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gk-trade__end:last-child { flex-direction: row-reverse; text-align: right; }
+.gk-trade__end img { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+.gk-trade__endwords { display: grid; gap: 1px; min-width: 0; }
+.gk-trade__take { font-size: var(--gk-t-lead); font-weight: 700; color: var(--gk-ink); }
+.gk-trade__toward { display: flex; justify-content: space-between; gap: 8px; }
+.gk-trade__legs { display: grid; gap: 6px; padding: var(--gk-s2) var(--gk-s3); }
+.gk-trade__legfigs { padding-top: 0; border-top: 0; }
+.gk-trade__legfigs .gk-figure:not([data-binding]) .gk-figure__value { color: var(--gk-ink-2); }
+.gk-trade__legfigs .gk-figure[data-binding] .gk-label { color: var(--gk-ink); }
+.gk-trade__warning { display: grid; gap: 2px; }

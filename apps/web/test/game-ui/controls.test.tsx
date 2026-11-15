@@ -140,6 +140,35 @@ describe('the slider', () => {
     expect(level.tagName).toBe('OUTPUT');
     expect(screen.getByRole('slider', { name: 'Müzik ses düzeyi' })).toHaveAttribute('aria-valuenow', '35');
   });
+
+  /**
+   * G4-i1, 2026-11-15: a trade offers in whole lots (64 alloy buys a deuterium) and its split
+   * has a floor below which the merchant would keep a unit — so a slider can start above zero
+   * and move in steps, and every way of moving it lands on a step inside its ends.
+   */
+  it('can start above zero and move in steps', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Alloy" value={128} min={64} max={640} step={64} onChange={onChange} />);
+    const slider = screen.getByRole('slider', { name: 'Alloy' });
+    expect(slider).toHaveAttribute('aria-valuemin', '64');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenLastCalledWith(192);
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(onChange).toHaveBeenLastCalledWith(64);
+    fireEvent.pointerDown(slider, { button: 0, clientX: 0 });
+    fireEvent.pointerUp(slider, { clientX: 0 });
+    expect(onChange).toHaveBeenLastCalledWith(64);
+    fireEvent.pointerDown(screen.getByRole('button', { name: /fewer Alloy/i }), { button: 0 });
+    fireEvent.pointerUp(screen.getByRole('button', { name: /fewer Alloy/i }));
+    expect(onChange).toHaveBeenLastCalledWith(64);
+  });
+
+  it('never reports a value off its steps', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Alloy" value={0} max={100} step={64} onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith(64);
+  });
 });
 
 /**

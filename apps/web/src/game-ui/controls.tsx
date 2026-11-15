@@ -157,40 +157,47 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 
 /**
  * A SLIDER FOR A COUNT: drag the knob, nudge with − and + (hold to run), or send
- * everything with MAX. Ticks as it moves.
+ * everything with MAX. Ticks as it moves. It may start above zero and move in lots
+ * (G4-i1: a trade offers whole lots, and its split has a floor): every way of moving it
+ * lands on a step between `min` and the last step that fits under `max`.
  */
-export function Slider({ label, value, max, onChange, readout }: {
+export function Slider({ label, value, max, onChange, readout, min = 0, step = 1 }: {
   label: string;
   value: number;
   max: number;
   onChange: (next: number) => void;
   /** A level (a volume) says where it stands in place of the max button: "all of it" means nothing there. */
   readout?: string;
+  min?: number;
+  step?: number;
 }) {
   const { t } = useTranslation();
   const dragging = useRef(false);
   const start = useRef<number | null>(null);
+  const top = min + Math.max(0, Math.floor((max - min) / step)) * step;
   const set = (next: number): void => {
-    const clamped = Math.min(max, Math.max(0, next));
+    const clamped = Math.min(top, Math.max(min, min + Math.round((next - min) / step) * step));
     if (clamped === value) return;
     playSound('tick');
-    if (clamped === 0 || clamped === max) haptic('thunk');
+    if (clamped === min || clamped === top) haptic('thunk');
     onChange(clamped);
   };
-  const fewer = useRepeatPress((n) => { set(value - n); }, value > 0, max);
-  const more = useRepeatPress((n) => { set(value + n); }, value < max, max);
+  const lots = Math.max(1, Math.floor((top - min) / step));
+  const fewer = useRepeatPress((n) => { set(value - n * step); }, value > min, lots);
+  const more = useRepeatPress((n) => { set(value + n * step); }, value < top, lots);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const page = Math.max(1, Math.round(max / 10));
+    const page = Math.max(1, Math.round(lots / 10)) * step;
     const moves: Record<string, number> = {
-      ArrowRight: value + 1, ArrowUp: value + 1, ArrowLeft: value - 1, ArrowDown: value - 1,
-      PageUp: value + page, PageDown: value - page, Home: 0, End: max,
+      ArrowRight: value + step, ArrowUp: value + step, ArrowLeft: value - step, ArrowDown: value - step,
+      PageUp: value + page, PageDown: value - page, Home: min, End: top,
     };
     const next = moves[event.key];
     if (next === undefined) return;
     event.preventDefault();
     set(next);
   };
-  const share = max <= 0 ? 0 : (value / max) * 100;
+  const fromTrack = (fraction: number): number => min + sliderValue(fraction, top - min);
+  const share = top <= min ? 0 : ((value - min) / (top - min)) * 100;
   return (
     <div className="gk-slider" {...OWN_SOUND}>
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.fewer', { name: label })} {...fewer}>
@@ -200,8 +207,8 @@ export function Slider({ label, value, max, onChange, readout }: {
         role="slider"
         tabIndex={0}
         aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemin={min}
+        aria-valuemax={top}
         aria-valuenow={value}
         className="gk-slider__track"
         onKeyDown={onKeyDown}
@@ -212,10 +219,10 @@ export function Slider({ label, value, max, onChange, readout }: {
           if (start.current === null) return;
           if (!dragging.current && Math.abs(event.clientX - start.current) < 6) return;
           if (!dragging.current) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }
-          set(sliderValue(along(event), max));
+          set(fromTrack(along(event)));
         }}
         onPointerUp={(event) => {
-          if (start.current !== null && !dragging.current) set(sliderValue(along(event), max));
+          if (start.current !== null && !dragging.current) set(fromTrack(along(event)));
           start.current = null;
           dragging.current = false;
         }}
@@ -228,7 +235,7 @@ export function Slider({ label, value, max, onChange, readout }: {
         <span className="gk-round__face"><Glyph id="plus" /></span>
       </button>
       {readout === undefined
-        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(max); }} disabled={value === max}>{t('launch.maxShort')}</Chip>
+        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(top); }} disabled={value === top}>{t('launch.maxShort')}</Chip>
         : <output className="gk-slider__level gk-num">{readout}</output>}
     </div>
   );

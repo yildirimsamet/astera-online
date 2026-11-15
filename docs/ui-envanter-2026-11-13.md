@@ -1264,6 +1264,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Geri çağırma artık kitin hafif basılı tutması (0,6 sn). Bir kez yapılır ve geri alınamaz, ama harcamaz. Bekleyen şeritteki geri çağırma hâlâ dokunma; kendi biriminde gelecek. **Owner sorusu açık.**
 - **Ölçüm** `g4h2-before/after-2026-11-15.md`: korsan 30 → 0, temas 19 → 0, tam filo 15 → 0, uçuş 7 → 0, korsan uçuşu 3 → 0, sefer 0 → 0.
 
+**G4-i1 ticaret sayfası ✅ (2026-11-15).** Oyuncunun anı: "tüccarla takas edeyim mi, neyi neye?"
+- Kit sayfası, benim rengimde. Üstte garnizon çubuğu (transfer'deki gibi). Konvoy kitin gemi satırlarında, ambar ve uçuş yatağı kit notları.
+- Veriyorum: kitin seçim plakaları ve kit kaydırıcısı; tüccarın lotlarıyla adım adım ilerliyor, tavan ve sebebi altında.
+- Alıyorum: iki uç (ucuz solda, pahalı sağda) ve tek kit kaydırıcı. Taban değerin altına inmiyor, böylece tüccara bir birim bile kalmıyor. Bacaklar ve uçuş kit kuyularında; bağlayan bacak parlak.
+- Kit Slider'a `min` ve `step` eklendi (test: her hareket kendi adımında, uçlar içinde). Yerli `range`, `Segmented` ve eski HoldButton bu ekrandan çıktı. Gönder: kitin basılı tutması, 1 sn.
+- Açık not: "Gidiş" iki kuyuda iki ayrı şey (hacim / süre). Eskiden de böyleydi; owner bakışında ele alınabilir.
+- **Ölçüm** `g4i1-before/after-2026-11-15.md`: `trade` 147 → 3 (kalan: sayfa arka planı).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
