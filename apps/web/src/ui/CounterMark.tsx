@@ -94,12 +94,6 @@ const verdictOf = (attacker: HullClass, defender: HullClass): Verdict => {
   return 'even';
 };
 
-const VERDICT_TONE: Record<Verdict, string> = {
-  strong: 'text-opportunity',
-  weak: 'text-threat-ink',
-  even: 'text-faint',
-  none: 'text-faint',
-};
 
 /**
  * ✓ · = · ✗ — the judgement as a shape, so the colour is never doing it alone. Never a triangle or a
@@ -148,7 +142,7 @@ export function MatchupMark({
     <span
       data-testid="matchup"
       data-matchup={verdict}
-      className={`num inline-flex shrink-0 items-center gap-1 text-micro ${VERDICT_TONE[verdict]}`}
+      className="gk-num gk-mark"
       aria-label={t('counter.matchupLabel', {
         attacker: combatClassLabel(attacker),
         defender: combatClassLabel(defender),

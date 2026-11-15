@@ -22,18 +22,17 @@ import { EscortRow } from '../ui/EscortRow.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { SalvageIcon } from '../ui/icons/index.js';
 import { MatchupMark } from '../ui/CounterMark.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Figure, Figures } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
+import { GameHold, Glyph } from '../game-ui/index.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -125,55 +124,49 @@ export function LaunchSheet({
     const art = HULL_ART[hull];
     const carries = HULLS[hull].atk <= 0 ? fleetCargo({ [hull]: 1 }, mods.tech) : 0;
     return (
-      <div
-        key={hull}
-        data-hull-row={hull}
-        className={`grid gap-1 border-b border-v2-line/70 px-1 py-1.5 last:border-b-0 ${chosen > 0 ? 'bg-v2-self/5' : ''}`}
-      >
-        <div className="flex items-center gap-2">
-          <div data-art className="grid size-8 shrink-0 place-items-center">
-            {art ? (
-              <img src={art} alt="" aria-hidden className="size-8 object-contain" width={32} height={32} loading="lazy" />
-            ) : (
-              <HullMark hull={hull} className="size-6 text-v2-ink-3" />
+      <div key={hull} data-hull-row={hull} className="gk-lrow" {...(chosen > 0 ? { 'data-chosen': '' } : {})}>
+        <span data-art className="gk-lrow__art">
+          {art ? (
+            <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" />
+          ) : (
+            <HullMark hull={hull} className="gk-lrow__mark" />
+          )}
+        </span>
+        <span className="gk-lrow__words">
+          <span className="gk-lrow__name">
+            {hullLabel(hull)}
+            {/*
+              THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
+              emblem, named for a reader; the matchup line above names it in words.
+            */}
+            <ClassEmblem cls={HULLS[hull].cls} className="gk-lrow__cls" />
+            {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
+            {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
+          </span>
+          <span className="gk-sub gk-num">
+            {t('launch.atHome', { count: available })}
+            {carries > 0 && (
+              <span className="gk-lrow__carry">
+                {' · '}
+                {chosen > 0
+                  ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
+                  : t('launch.cargoEach', { amount: compact(carries) })}
+              </span>
             )}
-          </div>
-          <div className="grid min-w-0 flex-1">
-            <p className="flex min-w-0 items-center gap-1 text-caption font-semibold text-v2-ink">
-              <span className="truncate">{hullLabel(hull)}</span>
-              {/*
-                THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
-                emblem, named for a reader; the matchup line above names it in words.
-              */}
-              <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 shrink-0 text-v2-ink-2" />
-              {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
-              {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
-            </p>
-            <span className="truncate font-v2-mono text-micro text-v2-ink-3">
-              {t('launch.atHome', { count: available })}
-              {carries > 0 && (
-                <span className="text-v2-ink-2">
-                  {' · '}
-                  {chosen > 0
-                    ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
-                    : t('launch.cargoEach', { amount: compact(carries) })}
-                </span>
-              )}
-            </span>
-          </div>
-          <QuantityStepper
-            look="v2"
-            value={chosen}
-            min={0}
-            max={roomFor(hull)}
-            onChange={(value) => { set(hull, value); }}
-            decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
-            increaseLabel={t('launch.more', { name: hullLabel(hull) })}
-            valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
-            maxLabel={t('launch.max', { name: hullLabel(hull) })}
-            maxText={t('launch.maxShort')}
-          />
-        </div>
+          </span>
+        </span>
+        <QuantityStepper
+          look="kit"
+          value={chosen}
+          min={0}
+          max={roomFor(hull)}
+          onChange={(value) => { set(hull, value); }}
+          decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
+          increaseLabel={t('launch.more', { name: hullLabel(hull) })}
+          valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+          maxLabel={t('launch.max', { name: hullLabel(hull) })}
+          maxText={t('launch.maxShort')}
+        />
       </div>
     );
   };
@@ -223,6 +216,7 @@ export function LaunchSheet({
   return (
     <Sheet
       detents={['full']}
+      kit={{ tone: 'hostile' }}
       /*
         THE VERB, WHERE FROM AND HOW FAR — then what this reading is and how old. A world's
         provenance is its record age (D151); a pirate's orbit and roster are current
@@ -232,10 +226,10 @@ export function LaunchSheet({
       {...(owned ? {
         lead: (
           <>
-            <span aria-hidden className="text-v2-ink-3">→</span>
+            <Glyph id="next" />
             <span
               data-launch-owner
-              className="max-w-[8rem] shrink-0 truncate rounded-chip border border-v2-line px-1.5 py-0.5 text-micro font-semibold text-v2-ink-2"
+              className="gk-chip gk-launch__owner"
               {...(rivalSlot === null ? {} : { style: { color: rivalColour(rivalSlot), borderColor: rivalColour(rivalSlot) } })}
             >
               {owned.owner}
@@ -253,35 +247,39 @@ export function LaunchSheet({
           : target.world.name}
       onClose={onClose}
       footer={
-        <div data-launch-commit className="grid gap-2">
+        <div data-launch-commit className="gk gk-launch__commit">
           {/*
             THE PRICE, BEFORE THE BUTTON. What stays home while the fleet is out, and —
             since K8 — whether it can be turned: a raid at a world once, a pirate raid
             never. Nothing is said while nothing is picked: a price for no fleet is noise.
           */}
           {total > 0 && !choosing && (
-            <div className="grid gap-1">
+            <div className="gk-launch__price">
               {/* The mock's "Başkent 2 sa 52 dk zayıf kalır": the world and how long; the count is a figure above. */}
-              <p data-launch-warning className="text-caption leading-snug text-v2-warn">
+              <p data-launch-warning className="gk-launch__warn">
                 {exposure === null
                   ? t(pirate ? 'launch.warningPirateOpen' : 'launch.warningWorldOpen', { world: planet.planet.name })
                   : t(pirate ? 'launch.warningPirate' : 'launch.warningWorld', { world: planet.planet.name, duration: exposure })}
               </p>
               {spendsShield && (
-                <p data-shield-warning className="text-caption leading-snug text-v2-warn">
+                <p data-shield-warning className="gk-launch__warn">
                   {season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldWarning') : t('launch.shieldWarning')}
                 </p>
               )}
               {/* Radyasyon (D10): what the route takes from every ship, or how many it finishes. */}
               <RadiationPreview radiation={radiation} combat />
-              <p className="text-micro leading-snug text-v2-ink-3">
+              <p className="gk-sub">
                 {!pirate && !lesson && <span data-launch-recall>{t('launch.recallNote')} </span>}
                 {/* Fleetsave (D28): a launch is a risk to the world AND the only way to make the fleet safe. */}
                 {planet.vessel ? t('starter.launchFleetsave') : t('launch.fleetsave')}
               </p>
             </div>
           )}
-          <HoldButton
+          {/* A launch spends fuel and uncovers the world: the kit's spend weight, one second. */}
+          <GameHold
+            weight="spends"
+            glyph={pirate ? 'pirate' : 'attack'}
+            commitSound="impact"
             label={pirate ? t('launch.holdPirate', { count: total }) : t('launch.holdWorld', { count: total })}
             disabledReason={busy ? t('launch.launching') : refusal}
             onCommit={() => { commit(() => undefined); }}
@@ -289,7 +287,7 @@ export function LaunchSheet({
         </div>
       }
     >
-      <div className="flex flex-col gap-3 pt-1">
+      <div className="gk gk-launch">
         {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
         {honorTarget.isFetching && !honorTarget.data && <p className="text-caption text-v2-ink-2">{t('leaderboard.honorTarget.loading')}</p>}
         {honorTarget.isError && <div className="flex flex-wrap items-center gap-2 text-caption">
@@ -304,7 +302,7 @@ export function LaunchSheet({
           figures a wing is adjusted against move on the same "+", so they travel
           together while the ships scroll under them.
         */}
-        {!choosing && <div className={`${school ? '' : 'sticky top-0 z-10'} -mx-3 border-b border-v2-line bg-v2-panel px-3 pb-2.5`}>
+        {!choosing && <div className="gk-launch__ruler" {...(school ? {} : { 'data-sticky': '' })}>
           <ForceRuler
             power={power}
             theirs={opposing}
@@ -325,30 +323,30 @@ export function LaunchSheet({
           has it — and out of the sticky header, which keeps only what a "+" moves: the
           two strips and the tank. The ships scroll under those, not under a paragraph.
         */}
-        {!choosing && classReading && <div className="px-1"><MatchupLine wing={sending} reading={classReading} /></div>}
-        {!choosing && <div className="px-1"><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
+        {!choosing && classReading && <MatchupLine wing={sending} reading={classReading} />}
+        {!choosing && <div><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
 
-        <section data-launch-fleet className="grid gap-1.5">
+        <section data-launch-fleet className="gk-launch__fleet">
           {/*
             WHAT IS ALREADY IN THE AIR, DRAWN AS THE SHIPS THEMSELVES. Absent and
             accounted for, which is a different thing from gone.
           */}
           {away.length > 0 && (
-            <div data-away className="flex flex-wrap items-center gap-1.5 px-1">
+            <div data-away className="gk-launch__away">
               {away.map((entry) => {
                 const art = HULL_ART[entry.hull];
                 return (
                   <span
                     key={entry.hull}
-                    className="flex items-center gap-1 rounded-chip border border-dashed border-v2-line px-1.5 py-0.5"
+                    className="gk-launch__gone"
                     title={hullLabel(entry.hull)}
                   >
                     {art ? (
-                      <img src={art} alt="" aria-hidden className="size-5 object-contain opacity-40 grayscale" loading="lazy" />
+                      <img src={art} alt="" aria-hidden loading="lazy" />
                     ) : (
-                      <HullMark hull={entry.hull} className="size-4 text-v2-ink-3" />
+                      <HullMark hull={entry.hull} className="gk-launch__gonemark" />
                     )}
-                    <span className="font-v2-mono text-micro text-v2-ink-3">
+                    <span className="gk-num">
                       {t('launch.awayHull', { count: entry.count, name: hullLabel(entry.hull) })}
                     </span>
                   </span>
@@ -364,8 +362,8 @@ export function LaunchSheet({
             </div>
           )}
           {/* A lesson reads in the order the lesson means; the ordinary picker in the shipyard's. */}
-          <div>{(lessonOrder ?? order).map(row)}</div>
-          {atHome === 0 && <p className="px-1 text-caption text-v2-ink-3">{t('launch.noShips')}</p>}
+          <div className="gk-ledger gk-launch__rows">{(lessonOrder ?? order).map(row)}</div>
+          {atHome === 0 && <p className="gk-sub">{t('launch.noShips')}</p>}
         </section>
 
         {pirate && !lesson && <PirateProfitCard forecast={pirateProfit} state={pirateProfitState}
@@ -373,13 +371,14 @@ export function LaunchSheet({
 
         {/* WHAT THE COLLECTORS WILL LIFT, IF THEY LIVE (D200), and a pirate's one handicap (D124). */}
         {salvageRoom > 0 && (
-          <p data-testid="launch-salvage" className="flex items-center gap-2 px-1 text-caption leading-snug text-v2-alloy">
-            <SalvageIcon className="size-4 shrink-0" />
+          <p data-testid="launch-salvage" className="gk-inote" data-tone="warn">
+            <Glyph id="debris" />
             {t('launch.salvage', { amount: compact(salvageRoom) })}
           </p>
         )}
         {pirate?.damageMult !== undefined && (
-          <p className="border-l-2 border-v2-crystal/60 pl-2.5 text-caption leading-snug text-v2-crystal">
+          <p className="gk-inote" data-tone="self">
+            <Glyph id="pirate" />
             {t('pirate.damagePenalty', { percent: Math.round((1 - pirate.damageMult) * 100) })}
           </p>
         )}

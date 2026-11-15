@@ -58,6 +58,9 @@ describe('one hull against one known enemy class', () => {
     render(<MatchupMark attacker="SKIRMISHER" defender="BULWARK" />);
     const mark = screen.getByTestId('matchup');
     expect(mark).toHaveAttribute('data-matchup', 'strong');
+    // G4-e1: the kit's mark, at the kit's floor size, never the old 9 px micro text
+    expect(mark).toHaveClass('gk-mark');
+    expect(mark.className).not.toMatch(/text-micro/);
     expect(mark).toHaveTextContent(String(COMBAT.strongMult));
   });
 

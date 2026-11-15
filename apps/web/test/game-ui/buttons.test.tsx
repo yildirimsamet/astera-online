@@ -64,6 +64,19 @@ describe('the hold action', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  // G4-e1: the refused hold carries the same mark the v2 hold did, so a surface can find its reason.
+  it('marks a refused hold and says why on its face', () => {
+    render(<GameHold label="Launch" onCommit={vi.fn()} weight="spends" disabledReason="Not enough deuterium" />);
+    const refused = screen.getByRole('button', { name: /Not enough deuterium/ });
+    expect(refused).toBeDisabled();
+    expect(refused).toHaveAttribute('data-hold-refused');
+  });
+
+  it('marks a live hold as a hold, so a surface can find it', () => {
+    render(<GameHold label="Launch" onCommit={vi.fn()} weight="spends" />);
+    expect(screen.getByRole('button', { name: /Launch/ })).toHaveAttribute('data-hold');
+  });
+
   it('commits after a held press and shows its detail', () => {
     const onCommit = vi.fn();
     render(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} />);
