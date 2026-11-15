@@ -15901,3 +15901,89 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-support__alarmhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--gk-s2); margin: 0; }
 .gk-support__alarmhead .gk-label { color: var(--gk-hostile-hi); }
 .gk-support__alarmhead .gk-num { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+
+/* ── G7-j: the clan banner — ten notches on a cloth that turns gold, the rung in a well, the purse, the ledger ── */
+.gk-standard { display: grid; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3) var(--gk-s3); }
+.gk-standard__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px var(--gk-s2); margin: 0; }
+.gk-crewlist__chip[data-tone='gold'] { color: var(--gk-gold); border-color: color-mix(in srgb, var(--gk-gold) 60%, var(--gk-metal-edge)); }
+.gk-standard__cloth {
+  position: relative;
+  padding: 10px var(--gk-s2) 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-info) 26%, transparent), color-mix(in srgb, var(--gk-info) 6%, transparent));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 14px), 0 100%);
+}
+.gk-standard__cloth[data-gold='true'] { background: linear-gradient(180deg, color-mix(in srgb, var(--gk-gold) 34%, transparent), color-mix(in srgb, var(--gk-gold) 8%, transparent)); }
+.gk-standard__pole { position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--gk-steel-hi), var(--gk-ink-3), var(--gk-steel-hi)); }
+.gk-standard__cloth[data-gold='true'] .gk-standard__pole { background: linear-gradient(90deg, var(--gk-gold-lo), var(--gk-gold), var(--gk-gold-lo)); }
+.gk-standard__rungs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gk-standard__rung {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: var(--gk-hit);
+  border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--gk-ink) 18%, transparent);
+  background: color-mix(in srgb, var(--gk-void) 55%, transparent);
+  font-size: var(--gk-t-small);
+  font-weight: 800;
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  transition: transform var(--gk-quick) var(--gk-ease), box-shadow var(--gk-quick) var(--gk-ease);
+}
+.gk-standard__rung:active { transform: translateY(1px) scale(0.97); }
+.gk-standard__rung:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-standard__rung[data-state='open'] { border-color: transparent; background: linear-gradient(180deg, color-mix(in srgb, var(--gk-info) 85%, white 10%), var(--gk-info)); color: var(--gk-void); box-shadow: 0 0 8px color-mix(in srgb, var(--gk-info) 60%, transparent); }
+.gk-standard__cloth[data-gold='true'] .gk-standard__rung[data-state='open'] { background: linear-gradient(180deg, var(--gk-gold), var(--gk-gold-lo)); box-shadow: 0 0 10px color-mix(in srgb, var(--gk-gold) 60%, transparent); }
+.gk-standard__rung[data-state='next'] { border-color: var(--gk-self); color: var(--gk-self); animation: gk-standard-next 1.6s var(--gk-ease) infinite; }
+.gk-standard__rung[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--gk-ink), 0 0 10px color-mix(in srgb, var(--gk-self) 35%, transparent); }
+.gk-standard__rung[data-raised] { animation: gk-standard-raised 0.9s var(--gk-ease) 2; }
+@keyframes gk-standard-next { 50% { background: color-mix(in srgb, var(--gk-self) 22%, transparent); } }
+@keyframes gk-standard-raised { 50% { transform: scale(1.12); box-shadow: 0 0 18px var(--gk-info); } }
+.gk-standard__card { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3); }
+.gk-standard__art { width: 48px; height: 48px; }
+.gk-standard__card[data-state='locked'] .gk-standard__art { opacity: 0.45; filter: grayscale(1); }
+.gk-standard__art--gold { width: 56px; height: 56px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gk-gold) 70%, transparent)); }
+.gk-standard__all { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--gk-s2); margin: 0; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-gold); }
+.gk-standard__words { display: grid; gap: 2px; min-width: 0; }
+.gk-standard__state { font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-ink-3); }
+.gk-standard__card[data-state='open'] .gk-standard__state { color: var(--gk-info); }
+.gk-standard__card[data-state='next'] .gk-standard__state, .gk-standard__purse { color: var(--gk-self); }
+.gk-standard__purse { margin: 0; font-size: var(--gk-t-floor); font-weight: 700; }
+.gk-standard__open { margin: 0; }
+.gk-standard__open b { color: var(--gk-ink-2); }
+.gk-standard__purses { display: grid; gap: 6px; }
+.gk-standard__res { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: var(--gk-s2); }
+.gk-standard__res img { width: 18px; height: 18px; object-fit: contain; }
+.gk-standard__bar { display: block; height: 6px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--gk-ink) 10%, transparent); }
+.gk-standard__bar > span { display: block; height: 100%; border-radius: 3px; }
+.gk-standard__bar[data-resource='alloy'] > span { background: var(--gk-alloy); }
+.gk-standard__bar[data-resource='crystal'] > span { background: var(--gk-crystal); }
+.gk-standard__bar[data-resource='deuterium'] > span { background: var(--gk-deut); }
+.gk-standard__have { font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-ink); }
+.gk-standard__have > span { font-weight: 500; color: var(--gk-ink-3); }
+.gk-standard__split { display: flex; height: 6px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--gk-ink) 10%, transparent); }
+.gk-standard__split > span { height: 100%; background: var(--gk-info); }
+.gk-standard__split > span[data-shade='1'] { background: color-mix(in srgb, var(--gk-info) 55%, transparent); }
+.gk-standard__acts { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--gk-s2); }
+.gk-standard__acts > [data-banner-raise] { min-width: 0; }
+.gk-standard__acts > [data-banner-raise] .gk-hold { width: 100%; }
+
+.gk-ledgerbook { display: grid; gap: 4px; padding-top: var(--gk-s2); border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
+.gk-ledgerbook__rows { display: grid; margin: 0; padding: 0; list-style: none; }
+.gk-ledgerbook__row { display: grid; grid-template-columns: minmax(0, 1fr) 56px; align-items: start; gap: var(--gk-s2); padding: 6px 4px; border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
+.gk-ledgerbook__row:first-child { border-top: 0; }
+.gk-ledgerbook__row[data-self='true'] { border-radius: var(--gk-r-sm); background: color-mix(in srgb, var(--gk-self) 10%, transparent); }
+.gk-ledgerbook__who { display: grid; gap: 1px; min-width: 0; }
+.gk-ledgerbook__who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-ledgerbook__row[data-self='true'] .gk-ledgerbook__who strong { color: var(--gk-self); }
+/* What they gave sits under the name, so the deeds keep the row's width. */
+.gk-ledgerbook__given { grid-column: 1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 0 6px; font-size: var(--gk-t-floor); }
+.gk-ledgerbook__given b { color: var(--gk-ink); }
+.gk-ledgerbook__given span { color: var(--gk-ink-3); }
+.gk-ledgerbook__day { grid-column: 2; grid-row: 1 / span 2; display: grid; justify-items: end; gap: 2px; }
+.gk-ledgerbook__spark { width: 56px; height: 20px; }
+.gk-ledgerbook__spark rect { fill: var(--gk-info); }
+.gk-ledgerbook__spark rect[data-tone='self'] { fill: var(--gk-self); }
+.gk-ledgerbook__spark rect[data-tone='quiet'] { fill: color-mix(in srgb, var(--gk-ink) 18%, transparent); }
+.gk-ledgerbook__count { font-size: var(--gk-t-floor); line-height: 1; color: var(--gk-ink-2); }

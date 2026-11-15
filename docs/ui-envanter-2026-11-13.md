@@ -1507,7 +1507,7 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | ✅ aşağıda |
 | G7-h | Bağış sheet'i | "Hazineye ne kadar, hangi dünyadan?" | ✅ aşağıda |
 | G7-i | Destek gönder | "Gemilerim klan arkadaşımın dünyasını tutabilir mi?" | ✅ aşağıda (duruş kartı Üs yüzeyinde, zaten kitte) |
-| G7-j | Klan bayrağı | | |
+| G7-j | Klan sancağı | "Klanımız sırada neyi açıyor, kim taşıyor?" | ✅ aşağıda |
 
 **G7-a Yardım ✅ (2026-11-15).**
 - **An:** "Klan arkadaşıma gemi ya da kaynak gönderebilir miyim, ne kadar, ne zaman varır?"
@@ -1588,6 +1588,15 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Duruş kartı (`DefencePostureCard`) Üs yüzeyinin `ClanSupportBay.tsx` dosyasında ve zaten kitte; bu birimde değişmedi.
 - Yeni metin: `clanSupport.lineShips` (6 dil). Silinen: kimsenin kullanmadığı `v2/kit/ChoiceChips.tsx`.
 - Audit: 71 → 0.
+
+**G7-j Klan sancağı ✅ (2026-11-15).**
+- **An:** "Klanımız sırada neyi açıyor, hazine ne kadar dolu, kim taşıyor?"
+- On basamak artık 20 px'lik çentik değil: kumaş üzerinde iki sıra (1–5 etekte, 6–10 direkte), her biri 44 px. Açık basamaklar mavi parlar, sıradaki nabız atar, seçilen halkalı, yükselen basamak iki kez atar; en üstte kumaş ve basamaklar altın.
+- Basamak kartı tam genişlik kuyuda (kilitli olanın resmi gri); "Klanında olanlar" satırı; kese kaynak çubukları ve bağışçılara bölünmüş çubuk.
+- Bağışla kit düğmesi; lider yükseltmesi kitin harcama tutuşu (1 sn; hazine harcanır), nedeni yüzünde.
+- Katkı Defteri kit satırları: ad (kendi satırın renkli), eylemler tam genişlik, bağış adın altında, son 24 saat kit renklerinde.
+- Sınıf çakışması önlendi: `gk-banner` kitin bildirim şeridi; bunlar `gk-standard`.
+- Audit: sancak 126 → 0, altın 70 → 0, savaş odası 107 → 3 (kalan: ortak sheet karartması). G7 böylece kapanmaya hazır; 6 dilde telefon ölçümü sırada.
 
 ## G8. İletişim
 

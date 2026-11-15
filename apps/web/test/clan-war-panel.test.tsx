@@ -588,9 +588,8 @@ describe('the war room on the kit', () => {
 
   it('draws the room with none of the old look, the strike on the final hold', async () => {
     show(room, 'LEADER', [origin]);
-    // The banner and its treasury are their own unit (G7-j); every other part of the room is on the kit.
-    const parts = () => [...document.querySelector<HTMLElement>('[data-war-target]')!.parentElement!.children]
-      .filter((part) => part.querySelector('[data-banner]') === null);
+    // Every part of the room, the banner and its treasury included (G7-j), is on the kit.
+    const parts = () => [...document.querySelector<HTMLElement>('[data-war-target]')!.parentElement!.children];
     expect(parts().flatMap(oldPaint)).toEqual([]);
     expect(strike()).toHaveClass('gk-hold');
     expect(strike().style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
