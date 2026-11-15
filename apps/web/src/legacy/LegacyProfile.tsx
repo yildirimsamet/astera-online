@@ -2,17 +2,20 @@
  * KOMUTAN MİRASI — the permanent profile. Your own under /profile, anyone else's one tap from
  * where you met them. The shelf is what a commander chose to be seen with; under it, the
  * seasons they lived through; one tab over, everything they hold and what is still ahead.
+ * On the kit since C27 (2026-11-15): the commander's plate, kit tabs, seasons on cut plates.
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { legacyAwardRarity, LEGACY_CATALOGUE, LEGACY_SHOWCASE_SLOTS, type LegacyDefinition } from '@astera/rules';
 import type { LegacyAward, LegacyCollectedAward, LegacyProfile as Profile, LegacySeason } from '../api/legacySchemas.js';
-import { Segmented } from '../v2/kit/Segmented.js';
-import { ChoiceChips } from '../v2/kit/ChoiceChips.js';
-import { Button, SectionHead } from '../v2/kit/Surface.js';
+import { Banner, Chip, GameButton, GameTabs, Glyph, SectionTag, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { Medal, isPlace } from '../ui/Medal.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { haptic } from '../lib/haptics.js';
 import { full } from '../lib/format.js';
 import { ShowcaseShelf } from './ShowcaseShelf.js';
 import { AwardPicture, AwardTile, legacyDate } from './AwardTile.js';
@@ -44,24 +47,29 @@ export function LegacyProfileView({ profile, account, live = true }: {
     ...(account ? [{ id: 'account' as const, label: t('legacy.tabs.account') }] : []),
   ];
   return (
-    <div data-legacy-profile className="flex flex-col gap-4 font-v2-ui text-v2-ink">
+    <div data-legacy-profile className="gk-legacy">
       <LegacyHeader profile={profile} />
-      <Segmented label={t('legacy.title')} options={tabs} value={tab} onChange={setTab} tabId={id => `legacy-tab-${id}`} />
-      <div role="tabpanel" aria-labelledby={`legacy-tab-${tab}`} className="flex flex-col gap-4">
+      <GameTabs label={t('legacy.title')} tabs={tabs} value={tab} onChange={setTab} ids={{ tab: id => `legacy-tab-${id}`, panel: id => `legacy-panel-${id}` }} />
+      <div role="tabpanel" id={`legacy-panel-${tab}`} aria-labelledby={`legacy-tab-${tab}`} className="gk-legacy__panel">
         {tab === 'legacy' && <>
-          <section className="flex flex-col gap-2" aria-label={t('legacy.shelf.heading')}>
-            <SectionHead label={t('legacy.shelf.heading')}
-              aside={profile.self ? <Button size="sm" disabled={!collection.isSuccess} onClick={() => { setEditing(true); }}>{t('legacy.shelf.edit')}</Button> : undefined} />
+          <section className="gk-legacy__part" aria-label={t('legacy.shelf.heading')}>
+            {/* A dead edit says why: the shelf can only be chosen from a collection that has arrived. */}
+            <SectionTag as="h3" aside={profile.self ? (
+              <GameButton size="sm" glyph="settings" onPress={() => { setEditing(true); }}
+                disabledReason={collection.isSuccess ? null : t(collection.isError ? 'legacy.collection.failed' : 'legacy.collection.loading')}>
+                {t('legacy.shelf.edit')}
+              </GameButton>
+            ) : undefined}>{t('legacy.shelf.heading')}</SectionTag>
             <ShowcaseShelf live={live}
               slots={Array.from({ length: LEGACY_SHOWCASE_SLOTS }, (_, slot) => profile.showcase.find(row => row.slot === slot)?.award ?? null)}
               onOpen={setOpen} {...(profile.self && collection.isSuccess ? { onEmpty: () => { setEditing(true); } } : {})} />
             {profile.showcase.length === 0 && (
-              <p className="text-label text-v2-ink-2">{profile.self ? t('legacy.shelf.emptySelf') : t('legacy.shelf.emptyOther')}</p>
+              <p className="gk-legacy__note">{profile.self ? t('legacy.shelf.emptySelf') : t('legacy.shelf.emptyOther')}</p>
             )}
-            {collection.isError && <p role="alert" className="text-label text-v2-hostile">{t('legacy.collection.failed')}</p>}
+            {collection.isError && <Banner tone="hostile" role="alert" title={t('legacy.collection.failed')} />}
           </section>
           <SeasonHistory publicId={profile.publicId} awards={awards} onOpen={setOpen} />
-          {profile.self && <p className="text-label leading-snug text-v2-ink-3">{t('legacy.permanence')}</p>}
+          {profile.self && <p className="gk-legacy__fine">{t('legacy.permanence')}</p>}
         </>}
         {tab === 'collection' && <CollectionPanel profile={profile} awards={awards} loading={collection.isPending} failed={collection.isError} onOpen={setOpen} live={live} />}
         {tab === 'account' && account}
@@ -72,40 +80,44 @@ export function LegacyProfileView({ profile, account, live = true }: {
   );
 }
 
-/** Two letters of the name on the brass ring, the name, the flag and the chosen title. */
+/**
+ * The commander's plate, as the account page draws it (C23): the medallion with two letters,
+ * the name and flag, the title they wear in gold, and four lifetime readings in glass.
+ */
 function LegacyHeader({ profile }: { profile: Profile }) {
   const { t, i18n } = useTranslation();
   const monogram = Array.from(profile.commanderName).slice(0, 2).join('').toLocaleUpperCase(i18n.resolvedLanguage);
   const best = (rank: number | null) => rank === null ? t('legacy.stats.none') : `#${String(rank)}`;
+  const cells: readonly { glyph: GlyphId; label: string; value: string }[] = [
+    { glyph: 'history', label: t('legacy.stats.seasons'), value: full(profile.career.seasons) },
+    { glyph: 'ranking', label: t('legacy.stats.bestHonor'), value: best(profile.career.bestHonorRank) },
+    { glyph: 'colony', label: t('legacy.stats.bestDominion'), value: best(profile.career.bestDominionRank) },
+    { glyph: 'star', label: t('legacy.stats.pieces'), value: full(profile.collection.count) },
+  ];
   return (
-    <header className="flex flex-col gap-3">
-      <div className="legacy-hero relative -mx-1 flex min-h-[132px] items-end gap-3 overflow-hidden rounded-control border border-v2-line px-3 pb-3 pt-10"
-        style={{ ['--legacy-hero-art' as string]: `url(${ATMOSPHERE.commander.src})` }}>
-        <span aria-hidden="true" className="legacy-monogram grid size-16 shrink-0 place-items-center rounded-full font-v2-ui text-title font-semibold text-v2-ink">{monogram}</span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            {profile.country && <Flag code={profile.country} language={i18n.resolvedLanguage ?? 'en'} />}
-            <span className="min-w-0 break-words text-body font-semibold leading-tight">{profile.commanderName}</span>
+    <header className="gk-cut gk-cmdr gk-legacy__hero">
+      <AtmosphereImage art={ATMOSPHERE.commander} />
+      <div className="gk-cmdr__id">
+        <span className="gk-medal gk-cmdr__medal" aria-hidden="true">
+          <span className="gk-medal__face gk-display">{monogram}</span>
+          <img className="gk-medal__ring" src={artIconSrc('hud-medallion')} alt="" draggable={false} />
+        </span>
+        <div className="gk-cmdr__who">
+          <span className="gk-cmdr__name">
+            {profile.country && <Flag code={profile.country} language={i18n.resolvedLanguage ?? 'en'} className="gk-cmdr__flag" />}
+            <span className="gk-display gk-outlined">{profile.commanderName}</span>
           </span>
           {profile.activeTitle ? (
-            <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-chip border border-v2-premium/45 bg-v2-void/55 px-2 py-0.5 text-micro font-semibold text-v2-premium">
-              <svg aria-hidden="true" viewBox="0 0 12 12" className="size-3"><path fill="currentColor" d="M6 .8l1.5 3.3 3.6.4-2.7 2.4.8 3.5L6 8.6 2.8 10.4l.8-3.5L.9 4.5l3.6-.4z" /></svg>
-              <span className="truncate">{legacyAwardTitle(profile.activeTitle)}</span>
-            </span>
-          ) : profile.self ? <span className="mt-1 block text-micro text-v2-ink-3">{t('legacy.noTitle')}</span> : null}
-          <span className="mt-1 block text-micro text-v2-ink-2">{t('legacy.profile.member', { date: legacyDate(profile.joinedAt) })}</span>
-        </span>
+            <span className="gk-legacy__title"><Glyph id="star" /><span>{legacyAwardTitle(profile.activeTitle)}</span></span>
+          ) : profile.self ? <span className="gk-cmdr__where">{t('legacy.noTitle')}</span> : null}
+          <span className="gk-cmdr__where">{t('legacy.profile.member', { date: legacyDate(profile.joinedAt) })}</span>
+        </div>
       </div>
-      <dl className="grid grid-cols-4 divide-x divide-v2-line rounded-control border border-v2-line bg-v2-panel py-2 text-center">
-        {([
-          [t('legacy.stats.seasons'), full(profile.career.seasons)],
-          [t('legacy.stats.bestHonor'), best(profile.career.bestHonorRank)],
-          [t('legacy.stats.bestDominion'), best(profile.career.bestDominionRank)],
-          [t('legacy.stats.pieces'), full(profile.collection.count)],
-        ] as const).map(([label, value]) => (
-          <div key={label} className="flex min-w-0 flex-col-reverse items-center gap-0.5 px-1">
-            <dt className="text-micro leading-tight text-v2-ink-3">{label}</dt>
-            <dd className="font-v2-mono text-body font-semibold text-v2-ink">{value}</dd>
+      <dl className="gk-cmdr__cells gk-legacy__cells gk-well">
+        {cells.map(({ glyph, label, value }) => (
+          <div key={label} className="gk-cmdr__cell">
+            <dt className="gk-label gk-cmdr__label"><Glyph id={glyph} />{label}</dt>
+            <dd className="gk-cmdr__value gk-display gk-num">{value}</dd>
           </div>
         ))}
       </dl>
@@ -119,18 +131,18 @@ function SeasonHistory({ publicId, awards, onOpen }: { publicId: string; awards:
   const seasons = useLegacySeasons(publicId);
   const rows = seasons.data?.pages.flatMap(page => page.seasons) ?? [];
   return (
-    <section className="flex flex-col gap-2" aria-label={t('legacy.seasons.heading')}>
-      <SectionHead label={t('legacy.seasons.heading')} />
-      {seasons.isPending && <p role="status" className="text-label text-v2-ink-2">{t('legacy.seasons.loading')}</p>}
-      {seasons.isError && <p role="alert" className="text-label text-v2-hostile">{t('legacy.seasons.failed')}</p>}
-      {seasons.isSuccess && rows.length === 0 && <p className="text-label text-v2-ink-2">{t('legacy.seasons.empty')}</p>}
-      <ol className="flex flex-col gap-2">
+    <section className="gk-legacy__part" aria-label={t('legacy.seasons.heading')}>
+      <SectionTag as="h3">{t('legacy.seasons.heading')}</SectionTag>
+      {seasons.isPending && <p role="status" className="gk-legacy__note">{t('legacy.seasons.loading')}</p>}
+      {seasons.isError && <Banner tone="hostile" role="alert" title={t('legacy.seasons.failed')} />}
+      {seasons.isSuccess && rows.length === 0 && <p className="gk-legacy__note">{t('legacy.seasons.empty')}</p>}
+      <ol className="gk-legacy__seasons">
         {rows.map(season => (
           <li key={season.resultId}><SeasonCard season={season} awards={awards.filter(award => award.sourceSeasonId === season.seasonId)} onOpen={onOpen} /></li>
         ))}
       </ol>
       {seasons.hasNextPage && (
-        <Button variant="ghost" disabled={seasons.isFetchingNextPage} onClick={() => { void seasons.fetchNextPage(); }}>{t('legacy.seasons.more')}</Button>
+        <GameButton tone="ghost" wide pending={seasons.isFetchingNextPage} onPress={() => { void seasons.fetchNextPage(); }}>{t('legacy.seasons.more')}</GameButton>
       )}
     </section>
   );
@@ -149,50 +161,70 @@ export function PodiumPlace({ rank, label }: { rank: number | null; label: strin
   );
 }
 
+/** A place on one ladder: its medal when it is a podium, the number in the display face. */
+function SeasonPlace({ rank, label }: { rank: number | null; label: string }) {
+  const { t } = useTranslation();
+  return (
+    <span className="gk-legacy__place">
+      {rank !== null && isPlace(rank) ? <Medal place={rank} size={24} /> : null}
+      <span className="gk-legacy__placewords">
+        <span className="gk-label">{label}</span>
+        <span className="gk-display gk-num gk-legacy__rank">{rank === null ? t('legacy.seasons.noPlace') : `#${String(rank)}`}</span>
+      </span>
+    </span>
+  );
+}
+
+/** A piece a season left behind: one press opens it on its stage. */
+function SeasonPiece({ award, onOpen }: { award: LegacyCollectedAward; onOpen: () => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  return (
+    <button type="button" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick} aria-label={legacyAwardTitle(award)}
+      data-rarity={award.rarity} className="legacy-tile gk-legacy__piece">
+      <AwardPicture award={award} className="gk-legacy__pieceart" />
+    </button>
+  );
+}
+
 function SeasonCard({ season, awards, onOpen }: { season: LegacySeason; awards: readonly LegacyCollectedAward[]; onOpen: (award: LegacyAward) => void }) {
   const { t } = useTranslation();
   const stats = season.stats;
   const shown = sortLegacyAwards(awards).slice(0, 5);
   const honorRank = season.honorScore !== null && season.honorScore > 0 ? season.honorRank : null;
   return (
-    <article data-legacy-season className="legacy-season-card flex flex-col gap-2.5 rounded-control border border-v2-line p-3"
-      style={{ ['--legacy-season-art' as string]: `url(${ATMOSPHERE.season.src})` }}>
-      <header className="flex items-start justify-between gap-2">
+    <article data-legacy-season className="gk-cut gk-legacy__season">
+      <AtmosphereImage art={ATMOSPHERE.season} />
+      <header className="gk-legacy__seasonhead">
         <span className="min-w-0">
-          <span className="block text-body font-semibold leading-tight">{t('legacy.seasons.ordinal', { ordinal: season.ordinal })}</span>
-          <span className="mt-0.5 block truncate text-micro text-v2-ink-2">
+          <h4 className="gk-legacy__seasonname gk-display gk-outlined">{t('legacy.seasons.ordinal', { ordinal: season.ordinal })}</h4>
+          <span className="gk-legacy__when">
             {season.galaxy} · {legacyDate(season.startsAt)}{season.closedAt ? ` – ${legacyDate(season.closedAt)}` : ''}
           </span>
         </span>
-        {season.endReason === 'FORCED_WIPE' && <span className="shrink-0 rounded-chip border border-v2-line-hi px-1.5 py-0.5 text-micro text-v2-ink-2">{t('legacy.seasons.forced')}</span>}
+        {season.endReason === 'FORCED_WIPE' && <span className="gk-legacy__flag">{t('legacy.seasons.forced')}</span>}
       </header>
-      <div className="grid grid-cols-2 gap-2">
-        <PodiumPlace rank={honorRank} label={t('legacy.seasons.honor')} />
-        <PodiumPlace rank={season.dominion > 0 ? season.dominionRank : null} label={t('legacy.seasons.dominion')} />
+      <div className="gk-legacy__places">
+        <SeasonPlace rank={honorRank} label={t('legacy.seasons.honor')} />
+        <SeasonPlace rank={season.dominion > 0 ? season.dominionRank : null} label={t('legacy.seasons.dominion')} />
       </div>
       {stats ? (
-        <dl className="grid grid-cols-3 gap-1 text-center">
+        <dl className="gk-cmdr__cells gk-well">
           {([
             [t('legacy.seasons.battles'), stats.competition.battles],
             [t('legacy.seasons.shipsBuilt'), stats.competition.shipsBuilt],
             [t('legacy.seasons.asteroidRuns'), stats.exploration.asteroidRuns],
           ] as const).map(([label, value]) => (
-            <div key={label} className="flex flex-col-reverse rounded-chip bg-v2-void/45 px-1 py-1">
-              <dt className="text-micro leading-tight text-v2-ink-3">{label}</dt>
-              <dd className="font-v2-mono text-caption font-semibold">{full(value)}</dd>
+            <div key={label} className="gk-cmdr__cell">
+              <dt className="gk-label gk-cmdr__label">{label}</dt>
+              <dd className="gk-cmdr__value gk-display gk-num">{full(value)}</dd>
             </div>
           ))}
         </dl>
-      ) : <p className="text-micro text-v2-ink-3">{t('legacy.seasons.noStats')}</p>}
+      ) : <p className="gk-legacy__fine">{t('legacy.seasons.noStats')}</p>}
       {shown.length > 0 && (
-        <div className="flex items-center gap-1.5" aria-label={t('legacy.seasons.pieces')} role="group">
-          {shown.map(award => (
-            <button key={award.id} type="button" onClick={() => { onOpen(award); }} aria-label={legacyAwardTitle(award)}
-              data-rarity={award.rarity} className="legacy-tile grid size-11 place-items-center rounded-control focus-visible:outline-2 focus-visible:outline-v2-self">
-              <AwardPicture award={award} className="size-10" />
-            </button>
-          ))}
-          {awards.length > shown.length && <span className="font-v2-mono text-micro text-v2-ink-3">+{awards.length - shown.length}</span>}
+        <div className="gk-legacy__pieces" aria-label={t('legacy.seasons.pieces')} role="group">
+          {shown.map(award => <SeasonPiece key={award.id} award={award} onOpen={() => { onOpen(award); }} />)}
+          {awards.length > shown.length && <span className="gk-legacy__more gk-num">+{awards.length - shown.length}</span>}
         </div>
       )}
     </article>
@@ -210,19 +242,22 @@ function CollectionPanel({ profile, awards, loading, failed, onOpen, live }: {
   const categories = useMemo(() => [...new Set(awards.map(award => award.category))], [awards]);
   const shown = sortLegacyAwards(filter === 'ALL' ? awards : awards.filter(award => award.category === filter));
   return (
-    <section className="flex flex-col gap-3" aria-label={t('legacy.collection.heading')}>
-      <SectionHead label={t('legacy.collection.heading')} aside={<span className="font-v2-mono text-micro text-v2-ink-2">{t('legacy.collection.count', { count: awards.length })}</span>} />
+    <section className="gk-legacy__part" aria-label={t('legacy.collection.heading')}>
+      <SectionTag as="h3" aside={<span className="gk-legacy__count gk-num">{t('legacy.collection.count', { count: awards.length })}</span>}>{t('legacy.collection.heading')}</SectionTag>
       {categories.length > 1 && (
-        <ChoiceChips label={t('legacy.collection.heading')} value={filter} onChange={setFilter}
-          options={[{ id: 'ALL', label: t('legacy.collection.all') }, ...categories.map(id => ({ id, label: t(`legacy.category.${id}`) }))]} />
+        <div role="group" aria-label={t('legacy.collection.heading')} className="gk-legacy__chips">
+          {[{ id: 'ALL' as const, label: t('legacy.collection.all') }, ...categories.map(id => ({ id, label: t(`legacy.category.${id}`) }))].map(option => (
+            <Chip key={option.id} on={filter === option.id} onPress={() => { setFilter(option.id); }}>{option.label}</Chip>
+          ))}
+        </div>
       )}
-      {loading && <p className="text-label text-v2-ink-2">{t('legacy.collection.loading')}</p>}
-      {failed && <p role="alert" className="text-label text-v2-hostile">{t('legacy.collection.failed')}</p>}
+      {loading && <p className="gk-legacy__note">{t('legacy.collection.loading')}</p>}
+      {failed && <Banner tone="hostile" role="alert" title={t('legacy.collection.failed')} />}
       {!loading && !failed && awards.length === 0 && (
-        <p className="text-label text-v2-ink-2">{profile.self ? t('legacy.collection.emptySelf') : t('legacy.collection.emptyOther')}</p>
+        <p className="gk-legacy__note">{profile.self ? t('legacy.collection.emptySelf') : t('legacy.collection.emptyOther')}</p>
       )}
       {shown.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 min-[520px]:grid-cols-4">
+        <div className="gk-legacy__grid">
           {shown.map(award => <AwardTile key={award.id} award={award} onOpen={() => { onOpen(award); }} />)}
         </div>
       )}
@@ -248,10 +283,10 @@ function NextGoals({ live }: { live: boolean }) {
   if (open.length === 0) return null;
   const rows = all ? open : open.slice(0, PREVIEW_GOALS);
   return (
-    <section className="mt-1 flex flex-col gap-2" aria-label={t('legacy.collection.next')}>
-      <SectionHead label={t('legacy.collection.next')} />
-      <p className="text-label text-v2-ink-3">{t('legacy.collection.nextHint')}</p>
-      <div className="grid grid-cols-3 gap-2 min-[520px]:grid-cols-4">
+    <section className="gk-legacy__part" aria-label={t('legacy.collection.next')}>
+      <SectionTag as="h3">{t('legacy.collection.next')}</SectionTag>
+      <p className="gk-legacy__note">{t('legacy.collection.nextHint')}</p>
+      <div className="gk-legacy__grid">
         {rows.map(({ definition, next, value }) => {
           const placeholder: LegacyAward = {
             id: `next:${definition.id}`, definitionId: definition.id, tier: next.tier, edition: 'career', category: definition.category,
@@ -263,7 +298,7 @@ function NextGoals({ live }: { live: boolean }) {
         })}
       </div>
       {open.length > PREVIEW_GOALS && (
-        <Button variant="ghost" onClick={() => { setAll(!all); }}>{all ? t('legacy.collection.next') : `${t('legacy.collection.all')} · ${String(open.length)}`}</Button>
+        <GameButton tone="ghost" wide glyph={all ? 'up' : 'down'} onPress={() => { setAll(!all); }}>{all ? t('legacy.collection.next') : `${t('legacy.collection.all')} · ${String(open.length)}`}</GameButton>
       )}
       {opened && <LockedAwardSheet {...opened} live={live} onClose={() => { setOpened(null); }} />}
     </section>

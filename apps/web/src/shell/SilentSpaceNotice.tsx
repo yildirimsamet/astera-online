@@ -3,10 +3,16 @@ import { useTranslation } from 'react-i18next';
 import type { ReturnStatus } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { full } from '../lib/format.js';
-import { Button } from '../ui/kit/index.js';
-import { useNativeBack } from '../platform/nativeBack.js';
+import { Banner, Dialog, GameButton, Glyph, Well } from '../game-ui/index.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
 
-/** One explanation per verified placement on this device; the menu can always reopen it. */
+/**
+ * SILENT SPACE (G10, C28 2026-11-15): "I gave no order for 30 hours — where am I, what is shut,
+ * and how do I get home?" The room is drawn first (its scene and why the commander is here), then
+ * what it withholds, then the way back: the application and its place in the queue. One
+ * explanation per verified placement on this device; the menu can always reopen it.
+ */
 export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply }: {
   data: ReturnStatus;
   open: boolean;
@@ -35,7 +41,6 @@ export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply
     try { localStorage.setItem(storageKey, 'seen'); } catch { /* Session state still dismisses it. */ }
     onClose();
   };
-  useNativeBack(dialog, dismiss, visible);
   if (!visible) return null;
   const apply = (): void => {
     if (busy || !data.canApply || data.application) return;
@@ -44,47 +49,47 @@ export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply
     void onApply().catch((cause: unknown) => { setError(describeError(cause)); }).finally(() => { setBusy(false); });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 px-4">
-      <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="silent-space-title" aria-describedby="silent-space-body"
-        className="plate plate-cut w-full max-w-sm p-4 shadow-2xl"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') { event.stopPropagation(); dismiss(); }
-          if (event.key !== 'Tab') return;
-          const buttons = dialog.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
-          const first = buttons?.[0];
-          const last = buttons?.[buttons.length - 1];
-          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-        }}>
-        <p className="legend mb-2">{t('silentSpace.menu')}</p>
-        <h2 id="silent-space-title" className="text-title font-semibold text-bone">
-          {t(data.application ? 'silentSpace.queued' : 'silentSpace.title')}
-        </h2>
-        <p id="silent-space-body" className="mt-3 text-body leading-relaxed text-bone/80">{t('silentSpace.body')}</p>
-        {/* D212: what this room withholds, before the player finds out from a refused launch. */}
-        <ul className="mt-2 list-disc space-y-1 pl-4 text-label leading-relaxed text-bone/80">
-          <li>{t('silentSpace.closed')}</li>
-          <li>{t('silentSpace.production')}</li>
-        </ul>
-        {data.application ? (
-          <div className="mt-3 space-y-2">
-            <p role="status" className="text-body font-semibold text-bone">{t('silentSpace.position', { galaxy: data.homeShard, position: full(data.application.position) })}</p>
-            <p className="text-label leading-relaxed text-bone/70">{t('silentSpace.queueHint')}</p>
-            <p className="text-label text-bone/70">{t('silentSpace.expiry')}</p>
-          </div>
-        ) : (
-          <p className="mt-3 text-body leading-relaxed text-bone/80">{data.canApply
-            ? t('silentSpace.returnTo', { galaxy: data.homeShard }) : t('silentSpace.unavailable')}</p>
-        )}
-        {error && <p role="alert" className="mt-3 text-body text-threat">{error}</p>}
-        <div className="mt-4 flex flex-col gap-2">
-          {!data.application && data.canApply && <Button variant="primary" full disabled={busy} onClick={apply}>
+    <div ref={dialog} className="gk-silent fixed inset-0 z-50"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') { event.stopPropagation(); dismiss(); }
+        if (event.key !== 'Tab') return;
+        const buttons = dialog.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+        const first = buttons?.[0];
+        const last = buttons?.[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}>
+      <Dialog ribbon={t(data.application ? 'silentSpace.queued' : 'silentSpace.title')} onBack={dismiss}
+        actions={<>
+          {!data.application && data.canApply && <GameButton tone="action" size="lg" wide glyph="recall" pending={busy} onPress={apply}>
             {t(busy ? 'silentSpace.applying' : 'silentSpace.apply')}
-          </Button>}
-          <Button variant="ghost" full onClick={dismiss}>{t('silentSpace.later')}</Button>
+          </GameButton>}
+          <GameButton tone="ghost" wide onPress={dismiss}>{t('silentSpace.later')}</GameButton>
+        </>}>
+        <div className="gk-silent__body">
+          <div className="gk-silent__scene">
+            <AtmosphereImage art={ATMOSPHERE.galaxyAccount} />
+            <span className="gk-label">{t('silentSpace.menu')}</span>
+          </div>
+          <p className="gk-copy">{t('silentSpace.body')}</p>
+          {/* D212: what this room withholds, before the player finds out from a refused launch. */}
+          <ul className="gk-silent__shut">
+            <li><Glyph id="lock" />{t('silentSpace.closed')}</li>
+            <li><Glyph id="clock" />{t('silentSpace.production')}</li>
+          </ul>
+          {data.application ? (
+            <Well className="gk-silent__queue">
+              <p role="status" className="gk-silent__place">{t('silentSpace.position', { galaxy: data.homeShard, position: full(data.application.position) })}</p>
+              <p className="gk-acct__note">{t('silentSpace.queueHint')}</p>
+              <p className="gk-acct__note">{t('silentSpace.expiry')}</p>
+            </Well>
+          ) : (
+            <p className="gk-silent__way">{data.canApply ? t('silentSpace.returnTo', { galaxy: data.homeShard }) : t('silentSpace.unavailable')}</p>
+          )}
+          {error && <Banner tone="hostile" role="alert" title={error} />}
+          {!data.application && <p className="gk-acctsheet__fine">{t('silentSpace.reminder')}</p>}
         </div>
-        {!data.application && <p className="mt-2 text-label leading-relaxed text-bone/60">{t('silentSpace.reminder')}</p>}
-      </div>
+      </Dialog>
     </div>
   );
 }

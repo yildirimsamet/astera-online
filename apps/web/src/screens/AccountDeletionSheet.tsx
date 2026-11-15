@@ -48,7 +48,7 @@ export function AccountDeletionSheet({ onClose }: { onClose: () => void }) {
         <p className="gk-copy">{t('accountDeletion.scope')}</p>
         <Banner tone="warn" glyph="clock" title={t('accountDeletion.timing')} />
         <a className="gk-acct__link" href={publisherUrl('accountDeletion', i18n.resolvedLanguage)}>{t('accountDeletion.details')}</a>
-        {query.isPending ? <p role="status" className="gk-acct__note">{t('accountDeletion.loading')}</p> : query.isError ? <>
+        {query.isPending ? <p className="gk-acct__note">{t('accountDeletion.loading')}</p> : query.isError ? <>
           <Banner tone="hostile" role="alert" title={t('accountDeletion.unavailable')} />
           <GameButton wide onPress={() => { void query.refetch(); }}>{t('accountDeletion.retry')}</GameButton>
         </> : request ? <>

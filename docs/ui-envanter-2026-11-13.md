@@ -1753,6 +1753,35 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Galeri:** `account-security`, `account-security-code`, `account-deletion`, `account-deletion-sent`, `password-reset`.
 - **Ölçüm** (tr; telefon, dar, masaüstü): güvenlik 13→0, kod adımı 20→0, silme 20→0, talep alındı 12→0, şifre sıfırlama 7→0; 12 px altı 7–9→0, 44 px altı 1–3→0, tepkisiz 2–6→0. `reports/ui-audit/c25-account-after-2026-11-15.md`.
 
+**C26 Ülke seçici ✅ (2026-11-15, yardımcı oturum).** G10 #4 (kayıttaki `ClaimDialog` de aynı seçiciyi açıyor).
+- **An:** "Hangi bayrağı taşıyorum?" Seçim yalnız onayla gönderiliyor; arama (Türkçe i/ı katlaması) ve seçilenin listenin başında durması değişmedi.
+- **Değişen:** Seçici kitin cıvatalı plakası; başta seçilen ülke bayrağıyla büyük; arama kitin cam yuvası; liste camda, her satır 44 px (önce 40), seçilen yeşil yanıyor ve tik taşıyor; kapatma kitin yuvarlak düğmesi, onay kitin ana düğmesi. Satır basışı `useOwnPress` + ses + titreşim. `Flag`'in bayraksız yedeği kit sınıfında (`gk-flagcode`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 2005→1; 12 px altı 501→0, kontrast 250→0, 44 px altı 251→0, tepkisiz 252→1 (arkalık). `reports/ui-audit/c26-country-after-2026-11-15.md`.
+
+**C27 Komutan Mirası profili ✅ (2026-11-15, yardımcı oturum).** G10 #3: `LegacyProfile`, `ShowcaseEditor`, `ShowcaseShelf`, `AwardTile`, `LegacyProfileSheet`.
+- **An:** "Ne kazandım, kime ne gösteriyorum?" Vitrin, sezon geçmişi, koleksiyon ve sıradaki hedefler; kurallar ve veri değişmedi.
+- **Değişen:** Sayfa kitin sacı (kupa resimli başlık). Komutan plakası hesap sayfasındaki gibi (C23): madalyon, bayrak, altın unvan rozeti, dört ömür değeri camda (ikonlu, büyük harfsiz ki "En iyi Hâkimiyet" sığsın). `Segmented` → `GameTabs`; bölüm başlıkları `SectionTag`; sezonlar resimli kesik plaka, dereceler madalyayla, sayılar camda, parçalar 48 px; filtre kit çipleri; koleksiyon/hedef kutuları kitin ilerleme çubuğuyla. Vitrini düzenle ölü iken nedenini söylüyor ("Koleksiyon açılıyor…"). Düzenleyici: sayaç altın, uyarılar banner, "Hepsini kaldır" yalnız seçim varken, kaydet kitin ana düğmesi. Raftaki boş kaide 44 px altın halka (önce 32), isim levhaları 12 px (önce 9), basışta levha iniyor. Her basış `useOwnPress` + ses + titreşim.
+- **Düzeltme:** `.gk-cmdr` resmi kesik plakanın yüzünün altında kalıyordu (z −2); artık görünüyor — C23 komutan kartında da.
+- **Kalan:** Sayfa başlığındaki göz-çizgisi/başlık kırpılması kit sacının başlığı (G1); `LegacyPeek` (küçük vitrin) v2'de, bu birimin dışında.
+- **Ölçüm** (tr; telefon, dar, masaüstü): profil 145→6 (arkalık ve sac başlığı), raf 14→0; 12 px altı 57→0, kesilen 7→1. `reports/ui-audit/c27-legacy-after-2026-11-15.md`.
+
+**C28 Sessiz Uzay bildirimi ✅ (2026-11-15, yardımcı oturum).** G10 #6 `shell/SilentSpaceNotice` (v1 → kit).
+- **An:** "30 saattir emir vermedim — neredeyim, ne kapalı, eve nasıl dönerim?" Kural (D212), bir kez gösterme, menüden açma, odak tuzağı, Escape ve telefonun Geri tuşu değişmedi.
+- **Değişen:** Kitin pencere (`Dialog`) kurdelesi başlık; altında Sessiz Uzay'ın galaksi sahnesi; kapalı olanlar kilit, yarı hızdaki üretim saat işaretiyle; dönüş cümlesi kalın; sıradaki başvuru camda (sıra numarası durum olarak okunuyor); hata banner; başvur kitin ana düğmesi (dönüş ikonu, bekleme dönüşü), "Oynamaya devam et" hayalet düğme. Basışlar `useOwnPress` + ses + titreşim.
+- **Kit:** `Dialog` artık `onBack` alıyor: verilirse telefonun Geri tuşu pencereyi kapatıyor (`useNativeBack`); verilmezse dokunmuyor. Testi `test/game-ui/dialog-back.test.tsx`.
+- **Galeri:** `silent-space`, `silent-space-queued` (ve C29 için `servers`) `ProfileGallery`'de; envanterde erişim olarak eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 7→0 (ilk bildirim), 10→0 (sırada); 12 px altı 4–5→0, kontrast 1→0. `reports/ui-audit/c28-silent-after-2026-11-15.md`.
+
+**C29 Galaksi seçimi ✅ (2026-11-15, yardımcı oturum).** G10 #7 `screens/ServersScreen` (v1 → kit).
+- **An:** "Hangi galaksiye giriyorum?" Sıralı dolum kuralı, tek katılım, son sezon sonucunun açılışı ve "yeni galaksi açılıyor" sayacı değişmedi.
+- **Değişen:** Ekran kitin karanlığında; komutan adı görüntü yazısıyla, çıkış hayalet düğme. Her galaksi kesik plaka: ad + kod, koltuklar kitin çubuğunda (dolu ise alaşım rengi) ve sayıyla, çevrimiçi sayısı yeşil; açık kapı yeşil kenarlı, "Katıl" kitin ana düğmesi (roket), basılınca beklemeye geçiyor ve ikinci basışı yutuyor. Kilitli galaksi soluk değil, yalnız adı geri çekiliyor (kontrast). Son sezon sonucu altın kapı satırı (`DoorRow`). Hatalar banner (ulaşılamıyor artık `alert`), yeniden dene düğmesi. Hesap güvenliği ve silme ekranın sonunda (önce galaksilerin üstündeydi): ekranın işi galaksi seçmek.
+- **Test düzeltmesi:** `account-deletion-ui` sahte `/servers` yanıtı şemaya uymuyordu (`placement` yoktu); ekran bu testte hep "ulaşılamıyor" gösteriyormuş. Yanıta `placement: null` eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 43→0; 12 px altı 15→0, kontrast 8→0, 44 px altı 2→0. `reports/ui-audit/c29-servers-after-2026-11-15.md`.
+
+**G10 altı dil ölçümü (2026-11-15, telefon; tr, en, fr, de, es, ja).** `reports/ui-audit/g10-langs-2026-11-15.md`.
+- Raftaki uzun ödül adları (fr "Vice-champion de Domination", es "Guardián de monumentos IV") iki satıra sığmıyordu: levha artık üç satır alıyor. İngilizcede sezon kartının "Season ends in" etiketi resmin aydınlık yerine düşüp 3,5:1'e iniyordu: kartın perdesi sağ kenarda %60'a çıktı. İkisi de yeniden ölçüldü, 0.
+- Kalan: kit sacının başlığında göz-çizgisi ve başlık birkaç piksel kırpılıyor (bütün dillerde, G1 sac başlığı); "Season ends in" üç kelimelik büyük harf etiket (T2, yalnız en; metin menüde de kullanılıyor, kısaltılmadı). `LegacyPeek` (61), ödül sayfası (27) ve açılış sahnesi (14) bu partinin dışında, v2'de.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

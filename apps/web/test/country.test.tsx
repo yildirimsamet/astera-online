@@ -113,7 +113,23 @@ describe('country identity', () => {
 describe('the country picker', () => {
   it('keeps its search field at a comfortable touch height', () => {
     render(<CountryPicker value="TR" onSelect={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByRole('searchbox')).toHaveClass('min-h-12', 'shrink-0');
+    expect(screen.getByRole('searchbox')).toHaveClass('gk-field__input');
+  });
+
+  /** C26 (2026-11-15): the picker is a kit plate — rows a thumb's height, the chosen one lit and ticked. */
+  it('is drawn in the game kit, the chosen country lit and ticked', async () => {
+    render(<CountryPicker value="TR" onSelect={vi.fn()} onClose={vi.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'Choose your country' });
+    const names = [dialog, ...dialog.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/));
+    expect(names.filter((name) => /(^|-)v2(-|$)/.test(name))).toEqual([]);
+    const list = screen.getByRole('list', { name: 'Countries' });
+    const chosen = within(list).getByRole('button', { name: /Türkiye/ });
+    expect(chosen).toHaveAttribute('aria-pressed', 'true');
+    expect(chosen.querySelector('.gk-glyph')).not.toBeNull();
+    await userEvent.setup().click(within(list).getByRole('button', { name: /Japan/ }));
+    expect(within(list).getByRole('button', { name: /Japan/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(chosen).toHaveAttribute('aria-pressed', 'false');
+    expect(within(dialog).getByText('Japan', { selector: '.gk-cpick__now span' })).toBeInTheDocument();
   });
 
   it('opens above the game dock when launched from a sheet', async () => {

@@ -10,6 +10,10 @@ import { useTranslation } from 'react-i18next';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { LegacyAward } from '../api/legacySchemas.js';
+import { Glyph } from '../game-ui/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { legacyAwardTitle, legacyEditionLabel } from './presentation.js';
 import { PlinthAward, StudioLight, TurntableFrames } from './AwardScene.js';
 
@@ -40,7 +44,7 @@ export function ShowcaseShelf({ slots, onOpen, onEmpty, live = true }: {
   const { t } = useTranslation();
   const aspect = ART.height / ART.width;
   return (
-    <div data-legacy-shelf className="relative w-full overflow-hidden rounded-control border border-v2-line bg-v2-void"
+    <div data-legacy-shelf className="gk-shelf"
       style={{ aspectRatio: `${String(ART.width)} / ${String(ART.height)}` }}>
       <img src={SHELF_ART} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 size-full select-none object-cover" draggable={false} />
       {live && slots.some(Boolean) && (
@@ -78,34 +82,47 @@ export function ShowcaseShelf({ slots, onOpen, onEmpty, live = true }: {
       )}
       {SHELF_PLINTHS.map((plinth, slot) => {
         const award = slots[slot] ?? null;
-        const left = pct(plinth.x - 165, ART.width);
-        const width = pct(330, ART.width);
         // The hit area is the compartment above the plinth; the plate hangs on the shelf lip.
-        const top = pct(plinth.y - 430, ART.height);
-        const height = pct(470, ART.height);
-        if (!award) {
-          return onEmpty ? (
-            <button key={slot} type="button" onClick={onEmpty} aria-label={t('legacy.shelf.edit')}
-              className="group absolute grid place-items-center focus-visible:outline-2 focus-visible:outline-v2-self"
-              style={{ left, width, top, height }}>
-              <span aria-hidden="true" className="mt-[40%] grid size-8 place-items-center rounded-full border border-v2-premium/30 text-v2-premium/60 transition group-hover:border-v2-premium/70 group-hover:text-v2-premium">+</span>
-            </button>
-          ) : null;
-        }
-        const title = legacyAwardTitle(award);
-        const edition = legacyEditionLabel(award);
-        return (
-          <button key={slot} type="button" onClick={() => { onOpen(award); }}
-            aria-label={t('legacy.shelf.open', { name: edition ? `${title} · ${edition}` : title })}
-            className="absolute flex flex-col items-center justify-end rounded-control focus-visible:outline-2 focus-visible:outline-v2-self"
-            style={{ left, width, top, height }}>
-            <span data-legacy-plate data-rarity={award.rarity} className="legacy-plate legacy-rarity-text mb-[-3%] flex max-w-full flex-col items-center rounded-cell px-1 py-0.5 text-center font-v2-ui text-micro font-semibold leading-[1.15]">
-              <span className="line-clamp-2 break-words">{title}</span>
-              {edition && <span className="font-v2-mono text-micro font-medium text-v2-ink-2">{edition}</span>}
-            </span>
-          </button>
-        );
+        const place = {
+          left: pct(plinth.x - 165, ART.width),
+          width: pct(330, ART.width),
+          top: pct(plinth.y - 430, ART.height),
+          height: pct(470, ART.height),
+        };
+        if (!award) return onEmpty ? <EmptyPlinth key={slot} place={place} label={t('legacy.shelf.edit')} onPress={onEmpty} /> : null;
+        return <PlinthPiece key={slot} place={place} award={award} onOpen={() => { onOpen(award); }} />;
       })}
     </div>
+  );
+}
+
+interface Place { left: string; width: string; top: string; height: string }
+
+/** An empty plinth on your own shelf: a lit ring with a plus, a thumb's 44 px, opening the editor. */
+function EmptyPlinth({ place, label, onPress }: { place: Place; label: string; onPress: () => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick} aria-label={label}
+      className="gk-shelf__slot gk-shelf__slot--empty" style={place}>
+      <span aria-hidden="true" className="gk-shelf__add"><Glyph id="plus" /></span>
+    </button>
+  );
+}
+
+/** A piece on its plinth: the whole compartment opens it; its name plate hangs on the lip. */
+function PlinthPiece({ place, award, onOpen }: { place: Place; award: LegacyAward; onOpen: () => void }) {
+  const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  const title = legacyAwardTitle(award);
+  const edition = legacyEditionLabel(award);
+  return (
+    <button type="button" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}
+      aria-label={t('legacy.shelf.open', { name: edition ? `${title} · ${edition}` : title })}
+      className="gk-shelf__slot" style={place}>
+      <span data-legacy-plate data-rarity={award.rarity} className="legacy-plate legacy-rarity-text gk-shelf__plate">
+        <span className="gk-shelf__name">{title}</span>
+        {edition && <span className="gk-shelf__edition gk-num">{edition}</span>}
+      </span>
+    </button>
   );
 }

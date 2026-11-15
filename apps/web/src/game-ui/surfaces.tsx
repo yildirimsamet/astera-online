@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import { RoundButton } from './buttons.js';
 import { Glyph, type GlyphId } from './icons.js';
 import { Timer, type TimerTone } from './readouts.js';
@@ -97,7 +98,7 @@ export function SheetFrame({
 
 /** A centred window over a scrim, with a ribbon title. `rays` turns slow light behind a reward. */
 export function Dialog({
-  ribbon, tone = 'info', children, actions, rays = false, sound,
+  ribbon, tone = 'info', children, actions, rays = false, sound, onBack,
 }: {
   ribbon: ReactNode;
   tone?: 'good' | 'hostile' | 'info';
@@ -106,12 +107,15 @@ export function Dialog({
   rays?: boolean;
   /** The moment's own sound, once as it opens: `rankup` for a new rank, clan level or medal. */
   sound?: SoundCue;
+  /** Its way out: the phone's Back takes it (C28). Without one, Back passes the dialog by. */
+  onBack?: () => void;
 }) {
   const titleId = useId();
   const rang = useRef(false);
   const box = useRef<HTMLDivElement>(null);
   // Focus starts inside, so a keyboard or a reader is in the dialog it was shown.
   useEffect(() => { box.current?.focus(); }, []);
+  useNativeBack(box, onBack, onBack !== undefined);
   useEffect(() => {
     if (sound === undefined || rang.current) return;
     rang.current = true;
