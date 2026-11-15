@@ -13845,3 +13845,32 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-lrow__of { color: var(--gk-ink-3); }
 .gk-figures--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .gk-figure__sub[data-tone='self'] { color: var(--gk-self); }
+
+/* G4-f2: A TRANSFER'S CARGO — each store on the kit's slider, its loss on the kit's bar */
+.gk-cargo { display: grid; gap: 8px; }
+.gk-cargo__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+  padding: var(--gk-s2) var(--gk-s3);
+}
+/* One line for the store — its name, the store losing what leaves, the figure — and the slider under it. */
+.gk-cargo__row > .gk-slider { grid-column: 1 / -1; }
+.gk-cargo__row .gk-fuel { grid-template-columns: minmax(0, 1fr) auto; }
+.gk-cargo__row .gk-fuel > .gk-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.gk-cargo__head { display: flex; align-items: center; gap: 6px; }
+.gk-cargo__head img { width: 18px; height: 18px; object-fit: contain; }
+.gk-cargo__fuel {
+  display: grid;
+  gap: 6px;
+  padding: var(--gk-s2) var(--gk-s3);
+}

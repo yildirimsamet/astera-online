@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HULLS,
@@ -36,13 +36,12 @@ import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
-import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
 import { serverNow } from '../lib/clock.js';
-import { Choices, GameHold, SectionTag } from '../game-ui/index.js';
+import { Choices, GameHold, Glyph, RoomGauge, SectionTag, Slider } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { sumFleets } from '../lib/fleetPage.js';
@@ -482,81 +481,70 @@ export function TransferSheet({
           </div>
         </dl>
 
-        <section className="grid gap-1.5">
-          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.cargo')}</h3>
+        <section className="gk-launch__fleet">
+          <SectionTag as="h3">{t('transfer.cargo')}</SectionTag>
           {/*
             PERMANENT, AND IT CHANGES WHAT IT SAYS: which of the three hold states this mission is in.
             Warn, not red: red is for an attack, and a missing carrier is an absence.
           */}
-          <p className={`px-1 text-caption ${capacity > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
+          <p className="gk-inote" {...(capacity > 0 ? {} : { 'data-tone': 'warn' })}>
             {capacity > 0
               ? t('transfer.holdReady', { capacity: compact(capacity) })
               : ownsHold
                 ? t('transfer.holdNeedsLoad')
                 : t('transfer.holdNoCarrier')}
           </p>
-          <div className="grid gap-2">
+          <div className="gk-cargo">
             {RESOURCE_ORDER.map((resource) => {
               const stock = Math.floor(planet.planet[resource]);
               const otherCargo = loaded - cargo[resource];
               const max = loadCeiling(resource, { stock, capacity, otherCargo, fuel });
-              const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
               return (
-                <label key={resource} className="block rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-                  <span className="flex items-center gap-2">
-                    <img src={RESOURCE_ART[resource]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
-                    <span className="flex-1 text-micro uppercase tracking-wide text-v2-ink-3">{t(`transfer.${resource}`)}</span>
+                <div key={resource} data-cargo-row={resource} className="gk-well gk-cargo__row">
+                  <span className="gk-cargo__head">
+                    <img src={RESOURCE_ART[resource]} alt="" aria-hidden />
+                    <span className="gk-label">{t(`transfer.${resource}`)}</span>
                   </span>
                   {/* What leaves the store, drawn as the store losing it — the fuel line's own shape. */}
-                  <span className="mt-2 block">
-                    <SpendBar
-                      stock={stock}
-                      spend={cargo[resource]}
-                      tone={resource}
-                      label={t('transfer.cargoSending')}
-                      compactSize
-                    />
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={max}
-                    step={1}
+                  <SpendBar inline stock={stock} spend={cargo[resource]} tone={resource} label={t('transfer.cargoSending')} />
+                  <Slider
+                    label={t(`transfer.${resource}`)}
                     value={cargo[resource]}
-                    onChange={(event) => {
-                      const value = Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0));
+                    max={max}
+                    onChange={(value) => {
                       setCargoAdjustment(null);
-                      setCargo((current) => ({ ...current, [resource]: value }));
+                      setCargo((current) => ({ ...current, [resource]: Math.max(0, Math.floor(value)) }));
                     }}
-                    style={{ '--slider-fill': `${String(fill)}%` } as CSSProperties}
-                    className={`slider slider-${resource} mt-2 w-full`}
                   />
-                </label>
+                </div>
               );
             })}
           </div>
-          {cargoAdjustment && <p data-transfer-cargo-adjusted role="status" className="px-1 text-micro leading-snug text-v2-warn">
+          {cargoAdjustment && <p data-transfer-cargo-adjusted role="status" className="gk-inote" data-tone="warn">
             {t('transfer.cargoFuelAdjusted', { before: full(cargoAdjustment.before), after: full(cargoAdjustment.after) })}
           </p>}
         </section>
 
-
         {fuel > 0 && (
-          <div data-transfer-fuel className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+          <div data-transfer-fuel className="gk-well gk-cargo__fuel">
             {/*
               THE TANK, MINUS WHAT THE FLIGHT BURNS, measured against what is left AFTER the hold takes
               its deuterium — the exact sum the server's guard uses.
             */}
-            <SpendBar stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('transfer.fuel')} />
+            <SpendBar inline stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('transfer.fuel')} />
             {/* Why this is smaller than the raid sheet's: the rule and its boundary, where the figure is. */}
-            <p className="mt-1.5 text-micro text-v2-ink-3">{t('transfer.homewardFuel')}</p>
+            <p className="gk-sub">{t('transfer.homewardFuel')}</p>
           </div>
         )}
 
         {destinationTotal !== undefined && destinationUsed !== undefined && (
-          <div data-transfer-destination>
-            {/* The destination's room in the bar the build sheet taught; the order's segment grows as ships are added. */}
-            <CapacityBar total={destinationTotal} used={destinationUsed} incoming={incomingRoom} label={t('transfer.destinationLabel')} />
+          <div data-transfer-destination {...(destinationUsed + incomingRoom >= destinationTotal ? { 'data-full': '' } : {})}>
+            {/* The destination's room in the gauge the Base's hangar taught; the order's segment grows as ships are added. */}
+            <RoomGauge label={t('transfer.destinationLabel')} total={destinationTotal} home={destinationUsed} away={0} queued={0}
+              incoming={incomingRoom} />
+            {destinationUsed + incomingRoom >= destinationTotal && (
+              <p className="gk-inote" data-tone="warn"><Glyph id="warn" />{t('capacity.full')}</p>
+            )}
           </div>
         )}
       </div>

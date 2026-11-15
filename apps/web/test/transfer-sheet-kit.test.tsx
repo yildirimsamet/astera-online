@@ -67,6 +67,41 @@ describe('a transfer on the kit', () => {
   });
 });
 
+describe('the cargo of a transfer on the kit (G4-f2)', () => {
+  const loaded = () => {
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'More Courier' }));
+  };
+
+  it('loads each store on the kit’s slider, the store’s loss on the kit’s bar', () => {
+    loaded();
+    const alloy = screen.getByRole('slider', { name: /Alloy/i });
+    expect(alloy).toHaveClass('gk-slider__track');
+    const row = alloy.closest<HTMLElement>('[data-cargo-row]')!;
+    expect(row.querySelector('.gk-fuel')).not.toBeNull();
+    fireEvent.keyDown(alloy, { key: 'End' });
+    expect(Number(alloy.getAttribute('aria-valuenow'))).toBeGreaterThan(0);
+    expect(oldPaint(row.closest('section')!)).toEqual([]);
+  });
+
+  it('reads the tank the flight draws on in a kit well', () => {
+    loaded();
+    const fuel = document.querySelector<HTMLElement>('[data-transfer-fuel]')!;
+    expect(fuel).toHaveClass('gk-well');
+    expect(oldPaint(fuel)).toEqual([]);
+  });
+
+  it('weighs the destination’s room on the kit’s room gauge', () => {
+    render(<ToastProvider><TransferSheet target={target}
+      planet={planetView({ fleet: { COURIER: 2, DART: 2 } }, { id: 'capital-1', deuterium: 50_000 })}
+      targetPlanet={planetView({ fleet: { DART: 3 } }, { id: 'colony-1' })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+    const room = document.querySelector<HTMLElement>('[data-transfer-destination]')!;
+    expect(room.querySelector('.gk-room')).not.toBeNull();
+    expect(oldPaint(room)).toEqual([]);
+  });
+});
+
 describe('the kit’s choice plates', () => {
   it('may name a plate fully for a reader while its face stays short', async () => {
     const onChange = vi.fn();

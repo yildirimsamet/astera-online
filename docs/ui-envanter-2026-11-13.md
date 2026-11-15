@@ -1233,6 +1233,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Varış ve yük kit rakamlarında. Gönder: kitin basılı tutma düğmesi, 1 sn (yakıt harcar).
 - **Ölçüm** `g4f1-before/after-2026-11-15.md`: `transfer` 201 → 38. Kalanlar kargo kaydırıcıları, yakıt ve hedefteki yer (G4-f2).
 
+**G4-f2 aktarma: kargo, yakıt, hedefteki yer ✅ (2026-11-15).** Oyuncunun anı: "gemilerin ambarına ne kadar kaynak koyayım?"
+- Ambar durumu kit notunda (hazır / gemi yükle / ambarlı gemi yok; son ikisi sarı).
+- Her kaynak bir kit kuyusu, satır ~92 px: üstte ikon, ad, depodan giden kısmı parlak çizen çubuk ve rakam tek satırda; altta kitin kaydırıcısı (−/+, Maks, klavye). "Gönderiyorsun" yalnız okuyucuya söylenir.
+- Uçuş yakıtı aynı çubuk dilinde, "yarı fiyat" kuralı altında. Hedefteki hangar, Üs'ün öğrettiği yer göstergesinde (RoomGauge); dolunca sarı not.
+- Eski CapacityBar ve tarayıcı range input'u bu ekrandan çıktı.
+- **Ölçüm** `g4f2-after-2026-11-15.md`: `transfer` 38 → 3 (kalan: paylaşılan sayfa arka planı düğmesi).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
