@@ -14564,3 +14564,19 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-ending[data-tone='warn'] { --ending-c: var(--gk-warn); }
 .gk-ending > .gk-label { color: var(--ending-c); }
 .gk-ending__body { display: grid; gap: 4px; }
+
+/* ── G4-h1 the mining cards: how many go, whether they catch it, what comes home ── */
+.gk-mine { display: grid; gap: 8px; }
+.gk-mine__pick { display: grid; gap: 6px; }
+.gk-mine__pick .gk-choices > .gk-tab { flex: 1; min-width: 0; }
+.gk-mine__fleet { margin-top: -2px; }
+.gk-mine__notes { display: grid; gap: 4px; }
+.gk-mine__notes b { font-weight: 700; color: var(--gk-ink); }
+.gk-mine__notes b.gk-tone-self { color: var(--gk-self); }
+.gk-mine .gk-figures--two,
+.gk-mine .gk-figures { margin: 0; }
+.gk-inote[data-tone='deut'] { color: var(--gk-deut); }
+.gk-haulhome { align-items: center; }
+.gk-haulhome > img { flex-shrink: 0; width: 16px; height: 16px; object-fit: contain; }
+.gk-haulhome > p { flex: 1; min-width: 0; }
+.gk-haulhome > .gk-btn { flex-shrink: 0; }

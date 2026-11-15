@@ -99,9 +99,8 @@ const wreckPanel = (
     />,
   );
 
-/** The picker's own buttons: one per craft the planet has at home. */
-const options = (): HTMLElement[] =>
-  screen.getAllByRole('button').filter((b) => /^[1-9]$/.test(b.textContent.trim()));
+/** The picker's own plates (the kit's choices since G4-h1): one per craft the planet has at home. */
+const options = (): HTMLElement[] => screen.queryAllByRole('radio');
 
 const sendButton = (): HTMLElement => screen.getByRole('button', { name: /^Send \d/ });
 
@@ -129,7 +128,7 @@ describe.each([
     panel(3, onSend);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('radio', { name: '1' }));
     expect(sendButton()).toHaveTextContent('Send 1');
 
     await user.click(sendButton());
@@ -139,10 +138,10 @@ describe.each([
   it('marks the chosen option, so the state is visible before committing', async () => {
     panel(3, vi.fn());
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('radio', { name: '2' }));
 
-    expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: '1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('radio', { name: '2' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: '1' })).toHaveAttribute('aria-checked', 'false');
   });
 
   /** The default is still the sensible one — the change adds a choice, not a chore. */

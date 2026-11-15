@@ -29,7 +29,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { AsteroidFocus, DebrisFocus, MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -909,6 +909,38 @@ function GalleryMonumentFocus() {
     emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
 }
 
+/**
+ * G4-h1: the two mining cards as a player meets them. The rock: an isotope-rich one, a craft already
+ * out on it and one resting, the Derrick still to buy. The wreck: a haul whose crystal will not
+ * fit, with something waiting to collect.
+ */
+function GalleryMining({ kind }: { kind: 'asteroid' | 'debris' }) {
+  const rest = [{ runId: 'rest-1', craft: 1, readyAt: new Date(NOW + 7 * MIN) }];
+  if (kind === 'asteroid') {
+    return (
+      <AsteroidFocus
+        rock={{ id: 'rock-7', level: 3, ore: 40_000, oreRemaining: 31_500, crystalShare: 0.35, radius: 400, period: 30, phase: 0.2,
+          inclination: 1, ascendingNode: 0.8, speed: 9.2, appearsAt: 0, expiresAt: 999, active: true, isotopeRich: true, deuteriumShare: 0.2 }}
+        isotopeAccess craftAvailable={3} craftHold={300} derrick={false} derrickHold={780} minutesLeft={140} reachMinutes={12}
+        atHome={() => ({ room: 12_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
+        run={{ id: 'run-1', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'outbound', craft: 1,
+          departAt: new Date(NOW - 4 * MIN), arriveAt: new Date(NOW + 5 * MIN), homeAt: null, intercept: { x: 0, y: 0, z: 0 },
+          minedAlloy: 0, minedCrystal: 0, minedDeuterium: 0 }}
+        craftReadyAt={null} craftCooldowns={rest}
+        onClose={noop} onSend={noop} busy={false} open onToggle={noop}
+      />
+    );
+  }
+  return (
+    <DebrisFocus
+      field={{ id: 'wreck-2', alloy: 9_000, crystal: 3_400, deuterium: 600, minutesLeft: 24 }}
+      planetName="Grimhold" craftAvailable={2} craftHold={300} reachMinutes={9}
+      atHome={() => ({ room: 420, lost: { alloy: 0, crystal: 63, deuterium: 0 } })} onCollect={noop}
+      run={undefined} craftReadyAt={null} onSend={noop} onClose={noop} busy={false} open onToggle={noop}
+    />
+  );
+}
+
 /** G2-k: the queue sheet, and a cancel opened in its row as a player opens it. */
 function GalleryQueue({ ask }: { ask: boolean }) {
   useEffect(() => {
@@ -1290,6 +1322,7 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-own-open') return <GalleryFocusClosed own open />;
   if (view === 'focus-neutral') return <GalleryFocusNeutral />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
+  if (view === 'focus-asteroid' || view === 'focus-debris') return <GalleryMining kind={view === 'focus-asteroid' ? 'asteroid' : 'debris'} />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;

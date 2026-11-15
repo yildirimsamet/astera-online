@@ -98,7 +98,7 @@ import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { CostLine, GameButton, Glyph, RoundButton, SectionTag, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { Choices, CostLine, GameButton, Glyph, RoundButton, SectionTag, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
@@ -2467,10 +2467,10 @@ export function AsteroidFocus({
           <Trans
             i18nKey={rock.isotopeRich ? 'focus.asteroid.summaryAnomaly' : 'focus.asteroid.summaryOre'}
             values={{ amount: compact(rock.oreRemaining) }}
-            components={[<span key="n" className="text-v2-self" />]}
+            components={[<span key="n" className="gk-tone-self" />]}
           />
           {' · '}
-          <span className={minutesLeft < 60 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 60 ? 'gk-tone-warn' : ''}>{duration(minutesLeft)}</span>
         </span>
       }
       actions={
@@ -2484,127 +2484,80 @@ export function AsteroidFocus({
          * which the button itself already says.
          */
         <>
-        {run && <MiningCommitments run={run} lane="asteroid" />}
-          <button
-            type="button"
-            data-primary
-            data-guide="mine"
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-            disabled={
-              busy || launchBlock !== undefined || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
-            }
-            onClick={() => {
-              onSend(sending);
-            }}
-          >
-            {launchBlock !== undefined
+          {run && <MiningCommitments run={run} lane="asteroid" />}
+          {/* Whether the craft catch it, said beside the press: speed is the rock's, the race is mine. */}
+          {reach !== null && !tooLate && (
+            <p className="gk-inote gk-focus__wide" data-tone="self"><Glyph id="timed" />
+              {t('focus.asteroid.intercept', { reach: duration(reach), spare: duration(minutesLeft - reach) })}
+            </p>
+          )}
+          <GameButton tone="action" wide glyph="mine" className="gk-focus__wide" marks={{ 'data-primary': '', 'data-guide': 'mine' }}
+            pending={busy}
+            disabledReason={launchBlock !== undefined
               ? t(`faults.launchBlock.${launchBlock}`)
               : needsSpectrometry
-              ? t('focus.asteroid.researchNeeded')
-              : resting !== null
-                ? t('focus.asteroid.resting', { duration: countdown(resting) })
-                : craftAvailable < 1
-                  ? t('focus.asteroid.noCraft')
-                  : tooLate
-                    ? t('focus.asteroid.tooLate')
-                    : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
-          </button>
+                ? t('focus.asteroid.researchNeeded')
+                : resting !== null
+                  ? t('focus.asteroid.resting', { duration: countdown(resting) })
+                  : craftAvailable < 1
+                    ? t('focus.asteroid.noCraft')
+                    : tooLate ? t('focus.asteroid.tooLate') : null}
+            onPress={() => { onSend(sending); }}>
+            {t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
+          </GameButton>
         </>
       }
     >
-      {!needsSpectrometry && (
-        <CraftPicker
-          available={craftAvailable}
-          value={sending}
-          onPick={setCraft}
-        />
-      )}
-      <CraftRests cooldowns={craftCooldowns} now={now} lane="asteroid" />
-
-      <div className="grid grid-cols-2 gap-2">
-        <Figure
-          label={t('focus.asteroid.oreLeft')}
-          value={compact(rock.oreRemaining)}
-          tone="crystal"
-        />
-        <Figure
-          label={t('focus.asteroid.leavesIn')}
-          value={duration(minutesLeft)}
-          tone={minutesLeft < 60 ? 'threat' : undefined}
-        />
-        <Figure
-          label={t('focus.asteroid.composition')}
-          value={
-            rock.isotopeRich
-              ? rock.deuteriumShare === null
-                ? t('focus.asteroid.compositionUnknown')
-                : t('focus.asteroid.compositionIsotope', {
-                    crystal,
-                    deuterium,
-                  })
-              : t('focus.asteroid.compositionValue', { percent: crystal })
-          }
-        />
-        <Figure
-          label={t('focus.asteroid.speed')}
-          value={t('focus.asteroid.speedValue', { rate: rock.speed.toFixed(1) })}
-        />
-      </div>
-
-      {rock.isotopeRich && (
-        <p className="mt-3 border-l border-deuterium/60 pl-3 text-caption leading-snug text-v2-deut">
-          {t('focus.asteroid.deuteriumRoute')}
+      <div className="gk-mine">
+        {!needsSpectrometry && <CraftPicker available={craftAvailable} value={sending} onPick={setCraft} />}
+        <p className="gk-sub gk-num gk-mine__fleet">
+          {t('focus.asteroid.fleetLine', { count: craftAvailable, hold: compact(craftHold), total: compact(canCarry) })}
         </p>
-      )}
+        <CraftRests cooldowns={craftCooldowns} now={now} lane="asteroid" />
 
-      {/*
-        Said BEFORE the commitment, not after it. A squadron is a real decision and the
-        works filling up while it is away is the one thing that can make it worse without
-        the player doing anything wrong — so it is stated here, with the fix.
-      */}
-      {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
-
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
-        {rock.oreRemaining < rock.ore
-          ? t('focus.asteroid.taken', { amount: compact(rock.ore - rock.oreRemaining) })
-          : t('focus.asteroid.untouched')}
-      </p>
-
-      <p className="font-v2-mono mt-2 text-label text-v2-ink-3">
-        {t('focus.asteroid.fleetLine', {
-          count: craftAvailable,
-          hold: compact(craftHold),
-          total: compact(canCarry),
-        })}
-      </p>
-
-      {/* The one thing a Derrick changes about this trip, priced as a reason. */}
-      {!derrick && derrickHold > craftHold && (
-        <p className="mt-1 text-label leading-snug text-v2-ink-3">
-          <Trans
-            i18nKey="focus.asteroid.derrickPitch"
-            values={{ name: satelliteLabel('DERRICK'), hold: compact(derrickHold) }}
-            components={[
-              <span key="n" className="text-v2-ink" />,
-              <span key="h" className="font-v2-mono text-v2-self" />,
-            ]}
+        <div className="gk-well gk-figures gk-figures--well gk-figures--two">
+          <Figure label={t('focus.asteroid.oreLeft')} value={compact(rock.oreRemaining)} tone="crystal" />
+          <Figure label={t('focus.asteroid.leavesIn')} value={duration(minutesLeft)} tone={minutesLeft < 60 ? 'threat' : undefined} />
+          <Figure
+            label={t('focus.asteroid.composition')}
+            value={
+              rock.isotopeRich
+                ? rock.deuteriumShare === null
+                  ? t('focus.asteroid.compositionUnknown')
+                  : t('focus.asteroid.compositionIsotope', { crystal, deuterium })
+                : t('focus.asteroid.compositionValue', { percent: crystal })
+            }
           />
-        </p>
-      )}
+          <Figure label={t('focus.asteroid.speed')} value={t('focus.asteroid.speedValue', { rate: rock.speed.toFixed(1) })} />
+        </div>
 
-      {/*
-        Speed is a fact about the ROCK, not about the trip. Stating the flight time
-        beside it is what turns "9.2 a minute" into a decision, because the only
-        question that matters is whether the craft gets there first.
-      */}
-      {reach !== null && !tooLate && (
-        <p className="mt-1 text-label leading-snug text-v2-ink-3">
-          {t('focus.asteroid.intercept', {
-            reach: duration(reach),
-            spare: duration(minutesLeft - reach),
-          })}
-        </p>
-      )}
+        {rock.isotopeRich && <p className="gk-inote" data-tone="deut"><Glyph id="fuel" />{t('focus.asteroid.deuteriumRoute')}</p>}
+
+        {/*
+          Said BEFORE the commitment, not after it. A squadron is a real decision and the
+          works filling up while it is away is the one thing that can make it worse without
+          the player doing anything wrong — so it is stated here, with the fix.
+        */}
+        {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
+
+        <div className="gk-mine__notes">
+          <p className="gk-sub">
+            {rock.oreRemaining < rock.ore
+              ? t('focus.asteroid.taken', { amount: compact(rock.ore - rock.oreRemaining) })
+              : t('focus.asteroid.untouched')}
+          </p>
+          {/* The one thing a Derrick changes about this trip, priced as a reason. */}
+          {!derrick && derrickHold > craftHold && (
+            <p className="gk-sub">
+              <Trans
+                i18nKey="focus.asteroid.derrickPitch"
+                values={{ name: satelliteLabel('DERRICK'), hold: compact(derrickHold) }}
+                components={[<b key="n" />, <b key="h" className="gk-num gk-tone-self" />]}
+              />
+            </p>
+          )}
+        </div>
+      </div>
     </Shell>
   );
 }
@@ -3687,8 +3640,10 @@ function MiningCommitments({ run, lane }: {
         { count: run.returningCraft, status: 'returning' as const },
       ].filter((batch) => batch.count > 0);
 
+  // What is already out on this target, in the lane's colour: a rock is mine to work, a wreck a scramble.
   return batches.map((batch) => (
-    <p key={batch.status} className={`font-v2-mono text-caption ${lane === 'asteroid' ? 'text-v2-self' : 'text-v2-warn'}`}>
+    <p key={batch.status} className="gk-inote gk-focus__wide" data-tone={lane === 'asteroid' ? 'self' : 'warn'}>
+      <Glyph id={batch.status === 'returning' ? 'home' : 'rocket'} />
       {t(lane === 'asteroid' ? 'focus.asteroid.working' : 'focus.debris.working', {
         count: batch.count,
         state: t(
@@ -3721,7 +3676,7 @@ function CraftRests({ cooldowns, now, lane }: {
 }) {
   const { t } = useTranslation();
   return cooldowns?.filter((rest) => rest.readyAt.getTime() > now).map((rest) => (
-    <p key={rest.runId} className="font-v2-mono text-caption text-v2-ink-2">
+    <p key={rest.runId} className="gk-inote"><Glyph id="timed" />
       {rest.craft} × {t(lane === 'asteroid' ? 'focus.asteroid.resting' : 'focus.debris.resting', {
         duration: countdown(rest.readyAt.getTime() - now),
       })}
@@ -3739,7 +3694,7 @@ function CraftRests({ cooldowns, now, lane }: {
  * took the whole available squadron and the second target was unreachable until they came home.
  *
  * The ceiling is two, or three once Prospector Holds reaches its third rung (D170),
- * so this is a handful of buttons and never a stepper — it reads `craftAvailable`
+ * so this is a handful of plates and never a stepper — it reads `craftAvailable`
  * rather than the constant, which is why the third berth needed nothing here.
  * The default stays `worthSending`, so the common case is still one tap.
  */
@@ -3754,29 +3709,13 @@ function CraftPicker({
 }) {
   const { t } = useTranslation();
   if (available < 2) return null;
+  // The kit's plates (G4-h1): the chosen count lit and raised, as every choice in the game.
+  const options = Array.from({ length: available }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }));
   return (
-    <div className="mt-3">
-      <p className="v2-legend mb-2">{t('focus.craftPicker.label')}</p>
-      <div className="flex items-center gap-2 mb-2">
-        {/* The chosen count is LIT AND RAISED, the same grammar every other
-            segmented control in the game uses. It used to be cyan text plus a
-            `border-v2-self/60` that never drew, because `.btn` sets no border
-            width — so on a picker whose whole job is to say which number is
-            selected, half the answer was a declaration the browser dropped. */}
-        {Array.from({ length: available }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-pressed={value === n}
-            className={`${BTN} flex-1 ${value === n ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'border border-v2-line text-v2-ink-3'}`}
-            onClick={() => {
-              onPick(n);
-            }}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
+    <div className="gk-mine__pick">
+      <p className="gk-label">{t('focus.craftPicker.label')}</p>
+      <Choices label={t('focus.craftPicker.label')} options={options} value={String(value)}
+        onChange={(next) => { onPick(Number(next)); }} />
     </div>
   );
 }
@@ -3793,17 +3732,15 @@ function HaulHomeLine({ home, onCollect, storeFull }: { home: HaulHome; onCollec
   const what = new Intl.ListFormat(i18n.language, { type: 'conjunction' })
     .format(short.map((resource) => t(`focus.haul.amount.${resource}`, { value: compact(home.lost[resource]) })));
   return (
-    <div data-testid="haul-home" data-lost={lost} className={`mt-3 flex items-start gap-2 text-caption leading-snug ${lost ? 'text-v2-warn' : 'text-v2-ink-3'}`}>
-      <img src={RESOURCE_ART.alloy} alt="" aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 object-contain opacity-80" />
-      <p className="min-w-0 flex-1">
+    <div data-testid="haul-home" data-lost={lost} className="gk-inote gk-haulhome" {...(lost ? { 'data-tone': 'warn' } : {})}>
+      <img src={RESOURCE_ART.alloy} alt="" aria-hidden="true" />
+      <p>
         {lost ? t('focus.haul.spill', { room: compact(home.room), what, count: short.length }) : t('focus.haul.fits', { room: compact(home.room) })}
         {/* Collecting into a full store moves nothing: the way out is to spend first. */}
         {lost && !onCollect && storeFull && ` ${t('focus.haul.storeFull')}`}
       </p>
       {lost && onCollect && (
-        <button type="button" onClick={onCollect} className="min-h-8 shrink-0 rounded-control border border-v2-warn/60 bg-v2-warn/10 px-2.5 text-micro font-semibold text-v2-warn">
-          {t('focus.haul.collectFirst')}
-        </button>
+        <GameButton size="sm" glyph="crate" onPress={onCollect}>{t('focus.haul.collectFirst')}</GameButton>
       )}
     </div>
   );
@@ -3898,71 +3835,52 @@ export function DebrisFocus({
           <Trans
             i18nKey="focus.debris.summarySalvage"
             values={{ amount: compact(left) }}
-            components={[<span key="n" className="text-v2-warn" />]}
+            components={[<span key="n" className="gk-tone-warn" />]}
           />
           {' · '}
-          <span className={field.minutesLeft < 30 ? 'text-v2-hostile' : ''}>
+          <span className={field.minutesLeft < 30 ? 'gk-tone-hostile' : ''}>
             {duration(field.minutesLeft)}
           </span>
         </span>
       }
       actions={
         <>
-        {field.hasPart && <div className="basis-full"><PartHere /></div>}
+        {field.hasPart && <div className="gk-focus__wide"><PartHere /></div>}
         {probe && !field.hasPart && <ProbeControl target={{ id: field.id, name: planetName ?? '' }} intel={probe.intel} onLaunched={probe.onLaunched} />}
         {run && <MiningCommitments run={run} lane="debris" />}
-          <button
-            type="button"
-            data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-            disabled={busy || launchBlock !== undefined || craftAvailable < 1 || measuring || tooLate || resting !== null}
-            onClick={() => {
-              onSend(sending);
-            }}
-          >
-            {launchBlock !== undefined
+          <GameButton tone="action" wide glyph="debris" className="gk-focus__wide" marks={{ 'data-primary': '' }}
+            pending={busy}
+            disabledReason={launchBlock !== undefined
               ? t(`faults.launchBlock.${launchBlock}`)
               : resting !== null
-              ? t('focus.debris.resting', { duration: countdown(resting) })
-              : craftAvailable < 1
-                ? t('focus.debris.noCraft')
-                : measuring
-                  ? t('focus.debris.measuring')
-                  : tooLate
-                    ? t('focus.debris.tooLate')
-                    : t('focus.debris.send', { count: sending, duration: duration(reach) })}
-          </button>
+                ? t('focus.debris.resting', { duration: countdown(resting) })
+                : craftAvailable < 1
+                  ? t('focus.debris.noCraft')
+                  : measuring
+                    ? t('focus.debris.measuring')
+                    : tooLate ? t('focus.debris.tooLate') : null}
+            onPress={() => { onSend(sending); }}>
+            {t('focus.debris.send', { count: sending, duration: duration(reach) })}
+          </GameButton>
         </>
       }
     >
-      <CraftPicker available={craftAvailable} value={sending} onPick={setCraft} />
-      <CraftRests cooldowns={craftCooldowns} now={now} lane="debris" />
+      <div className="gk-mine">
+        <CraftPicker available={craftAvailable} value={sending} onPick={setCraft} />
+        <CraftRests cooldowns={craftCooldowns} now={now} lane="debris" />
 
-      <div className="grid grid-cols-2 gap-2">
-        <Figure label={t('focus.debris.alloyLeft')} value={compact(field.alloy)} tone="alloy" />
-        <Figure
-          label={t('focus.debris.crystalLeft')}
-          value={compact(field.crystal)}
-          tone="crystal"
-        />
-        {field.deuterium > 0 && (
-          <Figure
-            label={t('focus.debris.deuteriumLeft')}
-            value={compact(field.deuterium)}
-            tone="opportunity"
-          />
-        )}
-        <Figure
-          label={t('focus.debris.goneIn')}
-          value={duration(field.minutesLeft)}
-          tone={field.minutesLeft < 30 ? 'threat' : undefined}
-        />
-        <Figure label={t('focus.debris.yourHold')} value={compact(canCarry)} />
+        <div className="gk-well gk-figures gk-figures--well gk-figures--two">
+          <Figure label={t('focus.debris.alloyLeft')} value={compact(field.alloy)} tone="alloy" />
+          <Figure label={t('focus.debris.crystalLeft')} value={compact(field.crystal)} tone="crystal" />
+          {field.deuterium > 0 && <Figure label={t('focus.debris.deuteriumLeft')} value={compact(field.deuterium)} tone="opportunity" />}
+          <Figure label={t('focus.debris.goneIn')} value={duration(field.minutesLeft)} tone={field.minutesLeft < 30 ? 'threat' : undefined} />
+          <Figure label={t('focus.debris.yourHold')} value={compact(canCarry)} />
+        </div>
+
+        {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
+
+        <p className="gk-sub gk-mine__notes">{t('focus.debris.body')}</p>
       </div>
-
-      {home && !run && <HaulHomeLine home={home} onCollect={onCollect} storeFull={storeFull} />}
-
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('focus.debris.body')}</p>
     </Shell>
   );
 }

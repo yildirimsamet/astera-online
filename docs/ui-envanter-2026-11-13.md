@@ -1248,6 +1248,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Gönder: kitin kesin basılı tutması, 1,5 sn. Türkçede "2 Şileb" → "2 Kurye" (üç yer); de/es'te varış ve bitiş etiketleri düzeltildi.
 - **Ölçüm** `g4g-before/after-2026-11-15.md`: `settlement` 32 → 0, öncelikli 32 → 0. Odak kartındaki koloni yolu G4-b3'te zaten kitteydi (2 ve 9; kalan, kapalı "Koloni kur" düğmesi).
 
+**G4-h1 madencilik kartları: asteroit ve enkaz ✅ (2026-11-15).** Oyuncunun anı: "kazayım mı / toplayayım mı, kaç araç gitsin, yetişir mi, eve sığar mı?"
+- Galeride ilk kez görünüyorlar: `focus-asteroid` (izotoplu kaya, biri yolda biri dinlenen araç, Matkap teklifi) ve `focus-debris` (kristali sığmayan yük + "Önce topla").
+- Kaç araç: kitin seçim plakaları (CraftPicker); altında evdeki araçlar ve taşıma. Dinlenen araç ve yoldaki araç kit notları (kum saati / roket).
+- "Yetişir mi" gönder düğmesinin hemen üstünde mavi not; gönder kitin ana düğmesi (madencilik / enkaz ikonu, sayı ve süre; engelde sebep yazar).
+- Rakamlar kit kuyusunda, iki sütun. Döteryum yolu yeşil not. Sığmayan yük sarı not ve kitin "Önce topla" düğmesi; sığarsa sessiz.
+- **Ölçüm** `g4h1-before/after-2026-11-15.md`: `focus-asteroid` 47 → 0, `focus-debris` 25 → 0.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
