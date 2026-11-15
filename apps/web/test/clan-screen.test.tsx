@@ -333,6 +333,12 @@ describe('clan command surface', () => {
     expect(screen.getByText('73')).toBeInTheDocument();
     expect(screen.getByText('Vantage')).toBeInTheDocument();
     expect(screen.getByText('Ada')).toBeInTheDocument();
+    // G7-d: the forces on the kit — the two headline figures and the totals in kit wells, no old look.
+    const panel = screen.getByRole('tabpanel');
+    const old = [panel, ...panel.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '')
+      .filter((name) => /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|body|caption|label)(\s|$)/.test(name));
+    expect(old).toEqual([]);
+    expect(panel.querySelectorAll('.gk-well .gk-figure').length).toBeGreaterThanOrEqual(7);
   });
 
   it('counts the watches each clan stood for its members on the ladder (F2 E3)', async () => {

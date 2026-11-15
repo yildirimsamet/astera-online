@@ -15642,3 +15642,35 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-clanlog__row { display: grid; gap: 1px; padding: var(--gk-s2) 0; border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
 .gk-clanlog__row:first-child { border-top: 0; }
 .gk-clanlog__row > p:first-child { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink); }
+
+/* ── G7-d: the clan's forces — two headline figures, totals in a well, hulls and members as bars ── */
+.gk-might { display: grid; gap: var(--gk-s1); padding: var(--gk-s3); border-color: color-mix(in srgb, var(--gk-self) 30%, var(--gk-glass-edge));
+  background: radial-gradient(ellipse at 90% 0%, color-mix(in srgb, var(--gk-self) 14%, transparent), transparent 60%), linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass)); }
+.gk-might > .gk-label { margin: 0; }
+.gk-might__title { margin: 0; font-family: var(--gk-font-display); font-weight: var(--gk-display-weight); font-stretch: var(--gk-display-stretch); font-size: var(--gk-t-lead); color: var(--gk-ink); }
+.gk-might__head { margin-top: var(--gk-s2); }
+.gk-might__head .gk-figure__value { font-size: var(--gk-t-lead); }
+.gk-might__totals { padding: var(--gk-s2) var(--gk-s3); border-top: 1px solid var(--gk-glass-edge); }
+.gk-figures .gk-figure[data-wide] { grid-column: 1 / -1; }
+.gk-figure__value[data-tone='self'] { color: var(--gk-self); }
+.gk-figure__value[data-tone='crystal'] { color: var(--gk-crystal); }
+.gk-figure__value[data-tone='alloy'] { color: var(--gk-alloy-hi); }
+.gk-might__list { display: grid; margin: 0; padding: 0 var(--gk-s3); list-style: none; }
+.gk-might__hull, .gk-might__member {
+  display: grid;
+  align-items: center;
+  gap: 2px var(--gk-s2);
+  padding: var(--gk-s2) 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+}
+.gk-might__hull:first-child, .gk-might__member:first-child { border-top: 0; }
+.gk-might__hull { grid-template-columns: 32px minmax(0, 1fr) auto; }
+.gk-might__hull > .gk-might__bar { grid-column: 2 / -1; }
+.gk-might__member { grid-template-columns: minmax(0, 1fr) auto; }
+.gk-might__member > .gk-might__bar, .gk-might__member > .gk-sub { grid-column: 1 / -1; }
+.gk-might__art { grid-row: span 2; display: grid; place-items: center; width: 32px; height: 32px; }
+.gk-might__art img { width: 32px; height: 32px; object-fit: contain; }
+.gk-might__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-might__count { font-size: var(--gk-t-small); font-weight: 800; color: var(--gk-self); }
+.gk-might__bar { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--gk-ink) 12%, transparent); overflow: hidden; }
+.gk-might__bar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 60%, transparent), var(--gk-self)); }

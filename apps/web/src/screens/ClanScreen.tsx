@@ -80,7 +80,6 @@ import {
   Plate,
   PriceTag,
   Section,
-  Stat,
 } from '../v2/kit/Surface.js';
 import { ClanWarPanel } from './ClanWarPanel.js';
 
@@ -956,150 +955,88 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
    */
   const strongest = Math.max(1, ...strength.members.map((member) => member.dominion));
 
+  const figure = (label: string, value: string, tone?: string, hint?: string, wide = false) => (
+    <div className="gk-figure" {...(wide ? { 'data-wide': '' } : {})}>
+      <dt className="gk-label">{label}</dt>
+      <dd className="gk-num gk-figure__value" {...(tone ? { 'data-tone': tone } : {})}>{value}</dd>
+      {hint !== undefined && <dd className="gk-figure__sub">{hint}</dd>}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-7">
-      <Plate tone="opportunity" cut="lg" className="relative overflow-hidden px-2 py-5">
-        <div className="pointer-events-none absolute inset-0" />
-        <div className="relative">
-          <p className="text-micro font-semibold uppercase tracking-wide text-v2-self">[{strength.clan.tag}] {strength.clan.name}</p>
-          <h2 className="font-semibold mt-2 max-w-[18ch] text-body font-semibold text-v2-ink">
-            {t('clan.strength.title')}
-          </h2>
-          <p className="mt-2 max-w-[44ch] text-caption leading-relaxed text-v2-ink-2">
-            {t('clan.strength.body')}
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <Plate sunk className="px-3 py-2">
-              <Stat
-                label={t('clan.strength.memberDominion')}
-                value={full(strength.totals.memberDominion)}
-                detail={t('clan.strength.memberDominionHint')}
-                tone="opportunity"
-                size="lg"
-              />
-            </Plate>
-            <Plate sunk className="px-3 py-2">
-              <Stat
-                label={t('clan.strength.ships')}
-                value={full(strength.totals.ships)}
-                detail={t('clan.strength.shipsHint')}
-                tone="crystal"
-                size="lg"
-              />
-            </Plate>
-          </div>
-        </div>
-      </Plate>
+    <div className="gk-clan__parts">
+      <section className="gk-well gk-might">
+        <p className="gk-label gk-tone-self">[{strength.clan.tag}] {strength.clan.name}</p>
+        <h2 className="gk-might__title">{t('clan.strength.title')}</h2>
+        <p className="gk-sub">{t('clan.strength.body')}</p>
+        <dl className="gk-figures gk-figures--two gk-might__head">
+          {figure(t('clan.strength.memberDominion'), full(strength.totals.memberDominion), 'self', t('clan.strength.memberDominionHint'))}
+          {figure(t('clan.strength.ships'), full(strength.totals.ships), 'crystal', t('clan.strength.shipsHint'))}
+        </dl>
+      </section>
 
-      <Section label={t('clan.strength.totalsHeading')}>
-        <div className="grid grid-cols-2 gap-2">
-          <Plate sunk className="px-3 py-3">
-            <Stat
-              label={t('clan.strength.clanDominion')}
-              value={strength.totals.clanDominion === 0
-                ? full(0)
-                : signed(strength.totals.clanDominion)}
-              detail={t('clan.strength.clanDominionHint')}
-              tone={strength.totals.clanDominion > 0 ? 'opportunity' : 'dim'}
-              size="sm"
-            />
-          </Plate>
-          <Plate sunk className="px-3 py-3">
-            <Stat label={t('clan.strength.worlds')} value={full(strength.totals.worlds)} size="sm" />
-          </Plate>
-          <Plate sunk className="px-3 py-3">
-            <Stat label={t('clan.strength.fleetValue')} value={full(strength.totals.fleetValue)} size="sm" tone="alloy" />
-          </Plate>
-          <Plate sunk className="px-3 py-3">
-            <Stat label={t('clan.strength.groundDefences')} value={full(strength.totals.groundDefences)} size="sm" />
-          </Plate>
-          <Plate sunk className="col-span-2 px-3 py-3">
-            <Stat
-              label={t('clan.strength.activeFlights')}
-              value={full(strength.totals.activeFlights)}
-              detail={t('clan.strength.activeFlightsHint')}
-              size="sm"
-              tone={strength.totals.activeFlights > 0 ? 'crystal' : 'dim'}
-            />
-          </Plate>
-        </div>
-      </Section>
+      <section className="gk-clan__part">
+        <SectionTag as="h3">{t('clan.strength.totalsHeading')}</SectionTag>
+        <dl className="gk-well gk-figures gk-figures--two gk-might__totals">
+          {figure(t('clan.strength.clanDominion'),
+            strength.totals.clanDominion === 0 ? full(0) : signed(strength.totals.clanDominion),
+            strength.totals.clanDominion > 0 ? 'self' : undefined, t('clan.strength.clanDominionHint'))}
+          {figure(t('clan.strength.worlds'), full(strength.totals.worlds))}
+          {figure(t('clan.strength.fleetValue'), full(strength.totals.fleetValue), 'alloy')}
+          {figure(t('clan.strength.groundDefences'), full(strength.totals.groundDefences))}
+          {figure(t('clan.strength.activeFlights'), full(strength.totals.activeFlights),
+            strength.totals.activeFlights > 0 ? 'crystal' : undefined, t('clan.strength.activeFlightsHint'), true)}
+        </dl>
+      </section>
 
-      <Section label={t('clan.strength.compositionHeading')} aside={t('clan.strength.shipsCount', { count: strength.totals.ships })}>
+      <section className="gk-clan__part">
+        <SectionTag as="h3" aside={t('clan.strength.shipsCount', { count: strength.totals.ships })}>{t('clan.strength.compositionHeading')}</SectionTag>
         {strength.composition.length === 0 ? (
-          <EmptyState title={t('clan.strength.noShips')} />
+          <p className="gk-sub">{t('clan.strength.noShips')}</p>
         ) : (
-          <ol className="space-y-2">
-            {strength.composition.map((entry) => (
-              <li key={entry.hull} className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep px-3 py-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold text-v2-ink">{hullName(entry.hull) ?? entry.hull}</span>
-                  <span className="font-v2-mono tabular-nums text-body text-v2-self">{full(entry.count)}</span>
-                </div>
-                <div className="mt-2 flex h-1.5 gap-px" aria-hidden="true">
-                  {Array.from({ length: 10 }, (_, index) => (
-                    <span
-                      key={index}
-                      className={`flex-1 rounded-cell ${index < Math.ceil((entry.count / largest) * 10) ? 'bg-v2-self' : 'bg-v2-line'}`}
-                    />
-                  ))}
-                </div>
-              </li>
-            ))}
+          <ol className="gk-well gk-might__list">
+            {strength.composition.map((entry) => {
+              const art = HULL_ART[entry.hull];
+              return (
+                <li key={entry.hull} className="gk-might__hull">
+                  <span className="gk-might__art" aria-hidden="true">
+                    {art ? <img src={art} alt="" width={32} height={32} loading="lazy" /> : <HullMark hull={entry.hull} />}
+                  </span>
+                  <span className="gk-might__name">{hullName(entry.hull) ?? entry.hull}</span>
+                  <span className="gk-num gk-might__count">{full(entry.count)}</span>
+                  <span className="gk-might__bar" aria-hidden="true">
+                    <span style={{ width: `${String((entry.count / largest) * 100)}%` }} />
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
-      </Section>
+      </section>
 
       {/*
-        WHO IS PULLING THEIR WEIGHT, ANSWERED BY EYE. Owner instruction.
-
-        This roster printed three figures per member — dominion, ships, worlds —
-        so a full clan was fifteen numbers a reader had to compare across five
-        rows to answer the one question anybody opens this list holding. Each
-        member's Dominion is now a bar against the clan's strongest, so the
-        pecking order is the shape of the column and the figures beside it are
-        there to be checked rather than scanned.
-
-        DOMINION IS THE BAR because Dominion is the score (invariants: score is
-        Dominion, not net worth). Ships and worlds stay as figures: they are the
-        working, not the standing.
+        WHO IS PULLING THEIR WEIGHT, ANSWERED BY EYE (owner). Each member's Dominion is a bar against
+        the clan's strongest, so the pecking order is the shape of the column; ships and worlds stay
+        as figures, the working rather than the standing.
       */}
-      <Section label={t('clan.strength.membersHeading')} aside={t('clan.strength.membersCount', { count: strength.members.length })}>
-        <ol className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-deep/60">
-          {strength.members.map((member) => (
-            <li key={member.playerId} className="px-3 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold min-w-0 truncate text-v2-ink">{member.username}</span>
-                {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
-              </div>
-              <div
-                className="rounded-control bg-v2-deep mt-2 h-2 w-full overflow-hidden rounded-full"
-                role="img"
-                aria-label={t('clan.strength.memberLine', {
-                  dominion: full(member.dominion),
-                  ships: full(member.ships),
-                  worlds: full(member.worlds),
-                })}
-              >
-                <span
-                  data-member-share
-                  className="block h-full rounded-full bg-v2-self"
-                  style={{
-                    width: `${String(Math.max(0, Math.min(100, (member.dominion / strongest) * 100)))}%`,
-                  }}
-                />
-              </div>
-              <p className="mt-1.5 text-caption text-v2-ink-2">
-                {t('clan.strength.memberLine', {
-                  dominion: full(member.dominion),
-                  ships: full(member.ships),
-                  worlds: full(member.worlds),
-                })}
-              </p>
-            </li>
-          ))}
+      <section className="gk-clan__part">
+        <SectionTag as="h3" aside={t('clan.strength.membersCount', { count: strength.members.length })}>{t('clan.strength.membersHeading')}</SectionTag>
+        <ol className="gk-well gk-might__list">
+          {strength.members.map((member) => {
+            const line = t('clan.strength.memberLine', { dominion: full(member.dominion), ships: full(member.ships), worlds: full(member.worlds) });
+            return (
+              <li key={member.playerId} className="gk-might__member">
+                <span className="gk-might__name">{member.username}</span>
+                {member.role === 'LEADER' ? <span className="gk-chip gk-clan__role">{t('clan.leader')}</span> : null}
+                <span className="gk-might__bar" role="img" aria-label={line}>
+                  <span data-member-share style={{ width: `${String(Math.max(0, Math.min(100, (member.dominion / strongest) * 100)))}%` }} />
+                </span>
+                <span className="gk-sub gk-num">{line}</span>
+              </li>
+            );
+          })}
         </ol>
-      </Section>
+      </section>
     </div>
   );
 }

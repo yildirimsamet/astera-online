@@ -1534,6 +1534,13 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Silinen: `SmallRule`, `ResourceFigure`, `RESOURCE_INK`, v2 fayda ikonları. Sınıf çakışması önlendi: `gk-event`/`gk-res` başkasının, bunlar `gk-clanlog`/`gk-depot`.
 - Audit: genel 113 → 3 (kalan: ortak sheet karartması).
 
+**G7-d Güç sekmesi ✅ (2026-11-15).**
+- **An:** "Birlikte ne kadar güçlüyüz, kim ne katıyor?"
+- Kahraman kuyu: klan etiketi, başlık, açıklama, iki büyük rakam (ekip Hâkimiyeti, toplam filo) ipucu alt satırlarıyla. Toplamlar tek kuyuda kit rakamları (havadaki uçuşlar tam satır).
+- Filo dağılımı gemi görseli + sayı + çubuk; üye katkısı Hâkimiyet çubuğu (en güçlüye göre) + satır. Lider çipi altın.
+- Sınıf çakışması önlendi: `gk-force` savaş raporunun, bunlar `gk-might`. Silinen: `Stat` kullanımı.
+- Audit: güç görünümü 3 (kalan: ortak sheet karartması; eski ölçümde sekme ayrı ölçülmemişti, G0'da klanın bütünü 472'nin parçasıydı).
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.
