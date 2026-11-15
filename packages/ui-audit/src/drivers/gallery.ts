@@ -45,6 +45,14 @@ export const GALLERY_STEPS: Partial<Record<string, (page: Page, lang: string) =>
     await page.getByRole('tab').last().click();
     await page.waitForTimeout(600);
   },
+  /** The monument's priced flight is what one picked Citadel brings up (C22). */
+  'monument-sheet-quote': async (page) => {
+    // the first count is the held wave's recall; the second is the first hull to send
+    const count = page.locator('[data-sheet-body] input').nth(1);
+    await count.fill('2');
+    await count.blur();
+    await page.waitForTimeout(1800);
+  },
   /** The reading's counts are presses; the monuments' list is what one opens. */
   readout: async (page) => {
     await page.locator('[data-testid="view-caption"] [aria-expanded]').last().click();

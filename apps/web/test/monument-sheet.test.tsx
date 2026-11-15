@@ -171,8 +171,8 @@ describe('monument decision surface, through the real client and cache', () => {
       .toContain('"CITADEL":1'); });
     expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).toContain('CITADEL');
     const user = userEvent.setup();
-    await user.click(screen.getByRole('checkbox', { name: /shield/i }));
-    await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
+    await user.click(screen.getByRole('switch', { name: /shield/i }));
+    await user.click(screen.getByRole('switch', { name: /radiation/i }));
     await waitFor(() => expect(send()).toBeEnabled());
     hold(send());
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body)
@@ -232,8 +232,8 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(screen.getByRole('textbox', { name: /argosy.*argosy quantity/i })).toBeDisabled();
     expect(send()).toBeDisabled();
     fireEvent.change(recall, { target: { value: '1' } });
-    await waitFor(() => expect(within(card).getByRole('button', { name: /hold.*recall/i })).toBeEnabled());
-    hold(within(card).getByRole('button', { name: /hold.*recall/i }));
+    await waitFor(() => expect(within(card).getByRole('button', { name: /recall.*hold/i })).toBeEnabled());
+    hold(within(card).getByRole('button', { name: /recall.*hold/i }));
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/recall'))?.body)
       .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
     expect(requests.some(request => request.path.endsWith('/send'))).toBe(false);
@@ -290,7 +290,7 @@ describe('monument decision surface, through the real client and cache', () => {
     show({ ...catalog, waves: [held] }, 0, true);
     await screen.findByText(/7,270/);
     const probe = screen.getByTestId('monument-probe');
-    expect(within(probe).getByRole('button', { name: /hold.*probe/i })).toBeDisabled();
+    expect(within(probe).getByRole('button', { name: /probe.*hold/i })).toBeDisabled();
     expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
     expect(screen.getByRole('textbox', { name: /argosy.*recall/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /close/i })).toBeEnabled();
@@ -311,9 +311,9 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(send()).toBeDisabled();
     expect(screen.getByText(/1.*ship.*lost.*outbound/i)).toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('checkbox', { name: /shield/i }));
+    await user.click(screen.getByRole('switch', { name: /shield/i }));
     expect(send()).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
+    await user.click(screen.getByRole('switch', { name: /radiation/i }));
     expect(send()).toBeEnabled();
     hold(send());
     await waitFor(() => { expect(requests.filter((request) => request.path.endsWith('/send'))).toHaveLength(1); });
@@ -339,7 +339,7 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(card).toHaveTextContent(/75.*%/);
     fireEvent.change(within(card).getByRole('textbox', { name: /argosy.*recall/i }), { target: { value: '1' } });
     await waitFor(() => { expect(within(card).getByTestId('monument-recall-forecast')).toHaveTextContent(/150/); });
-    hold(within(card).getByRole('button', { name: /hold.*recall/i }));
+    hold(within(card).getByRole('button', { name: /recall.*hold/i }));
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/recall'))?.body)
       .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
     expect(requests.find((entry) => entry.path.endsWith('/recall'))?.key).toBeTruthy();
@@ -351,7 +351,7 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(probe).toHaveTextContent(/75%/);
     expect(probe).toHaveTextContent(/65/);
     expect(probe).toHaveTextContent(/40/);
-    hold(within(probe).getByRole('button', { name: /hold.*probe/i }));
+    hold(within(probe).getByRole('button', { name: /probe.*hold/i }));
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/probe'))?.body)
       .toBe(JSON.stringify({ originPlanetId: 'home' })); });
   });
@@ -365,7 +365,7 @@ describe('monument decision surface, through the real client and cache', () => {
   it('gives a second intentional probe a new confirmation identity', async () => {
     const { requests } = show();
     await screen.findByText(/7,270/);
-    const button = within(screen.getByTestId('monument-probe')).getByRole('button', { name: /hold.*probe/i });
+    const button = within(screen.getByTestId('monument-probe')).getByRole('button', { name: /probe.*hold/i });
     hold(button);
     await waitFor(() => { expect(requests.filter((request) => request.path.endsWith('/probe'))).toHaveLength(1); });
     await waitFor(() => { expect(button).toBeEnabled(); });
