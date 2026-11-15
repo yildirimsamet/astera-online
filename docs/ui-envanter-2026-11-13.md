@@ -1704,6 +1704,13 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Değişen:** Seçici kitin cıvatalı plakası; başta seçilen ülke bayrağıyla büyük; arama kitin cam yuvası; liste camda, her satır 44 px (önce 40), seçilen yeşil yanıyor ve tik taşıyor; kapatma kitin yuvarlak düğmesi, onay kitin ana düğmesi. Satır basışı `useOwnPress` + ses + titreşim. `Flag`'in bayraksız yedeği kit sınıfında (`gk-flagcode`).
 - **Ölçüm** (tr; telefon, dar, masaüstü): puan 2005→1; 12 px altı 501→0, kontrast 250→0, 44 px altı 251→0, tepkisiz 252→1 (arkalık). `reports/ui-audit/c26-country-after-2026-11-15.md`.
 
+**C27 Komutan Mirası profili ✅ (2026-11-15, yardımcı oturum).** G10 #3: `LegacyProfile`, `ShowcaseEditor`, `ShowcaseShelf`, `AwardTile`, `LegacyProfileSheet`.
+- **An:** "Ne kazandım, kime ne gösteriyorum?" Vitrin, sezon geçmişi, koleksiyon ve sıradaki hedefler; kurallar ve veri değişmedi.
+- **Değişen:** Sayfa kitin sacı (kupa resimli başlık). Komutan plakası hesap sayfasındaki gibi (C23): madalyon, bayrak, altın unvan rozeti, dört ömür değeri camda (ikonlu, büyük harfsiz ki "En iyi Hâkimiyet" sığsın). `Segmented` → `GameTabs`; bölüm başlıkları `SectionTag`; sezonlar resimli kesik plaka, dereceler madalyayla, sayılar camda, parçalar 48 px; filtre kit çipleri; koleksiyon/hedef kutuları kitin ilerleme çubuğuyla. Vitrini düzenle ölü iken nedenini söylüyor ("Koleksiyon açılıyor…"). Düzenleyici: sayaç altın, uyarılar banner, "Hepsini kaldır" yalnız seçim varken, kaydet kitin ana düğmesi. Raftaki boş kaide 44 px altın halka (önce 32), isim levhaları 12 px (önce 9), basışta levha iniyor. Her basış `useOwnPress` + ses + titreşim.
+- **Düzeltme:** `.gk-cmdr` resmi kesik plakanın yüzünün altında kalıyordu (z −2); artık görünüyor — C23 komutan kartında da.
+- **Kalan:** Sayfa başlığındaki göz-çizgisi/başlık kırpılması kit sacının başlığı (G1); `LegacyPeek` (küçük vitrin) v2'de, bu birimin dışında.
+- **Ölçüm** (tr; telefon, dar, masaüstü): profil 145→6 (arkalık ve sac başlığı), raf 14→0; 12 px altı 57→0, kesilen 7→1. `reports/ui-audit/c27-legacy-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

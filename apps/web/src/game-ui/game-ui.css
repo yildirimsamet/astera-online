@@ -12617,7 +12617,7 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-cmdr > .atmosphere-image {
   position: absolute;
   inset: 0;
-  z-index: -2;
+  z-index: -1; /* over the cut's face (::before), under its veil (::after) */
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -13187,5 +13187,325 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-flagcode {
   font-size: var(--gk-t-floor);
   font-weight: 700;
+  color: var(--gk-ink-2);
+}
+
+/* ── the commander's legacy (G10, C27) ────────────────────────────────────────── */
+
+.gk-legacy {
+  display: grid;
+  gap: var(--gk-s4);
+  color: var(--gk-ink);
+}
+.gk-legacy__panel,
+.gk-legacy__part {
+  display: grid;
+  gap: var(--gk-s3);
+}
+.gk-legacy__note {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-legacy__fine {
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-3);
+}
+/* the commander's plate wears the gold of what it has won */
+.gk-legacy__hero {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+}
+.gk-legacy__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: start;
+  max-width: 100%;
+  padding: 1px 8px 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--gk-gold) 50%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-void) 55%, transparent);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-legacy__title > span { min-width: 0; overflow-wrap: anywhere; }
+.gk-legacy__title .gk-glyph { flex: none; width: 14px; height: 14px; }
+.gk-legacy__cells { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gk-legacy__cells .gk-cmdr__cell { padding: 0 4px; }
+/* four lifetime readings side by side: their names keep their own case, so "En iyi Hâkimiyet" fits a quarter */
+.gk-legacy__cells .gk-cmdr__label { text-transform: none; letter-spacing: 0.01em; }
+/* a season: its galaxy painted on the right, melting into the plate where the words stand */
+.gk-legacy__seasons {
+  display: grid;
+  gap: var(--gk-s3);
+}
+.gk-legacy__season {
+  display: grid;
+  gap: 10px;
+  padding: var(--gk-s3);
+  overflow: hidden;
+}
+.gk-legacy__season > .atmosphere-image {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+}
+.gk-legacy__season::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--gk-metal-2) 94%, transparent) 40%, color-mix(in srgb, var(--gk-metal-2) 50%, transparent));
+}
+.gk-legacy__seasonhead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-legacy__seasonname {
+  margin: 0;
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+}
+.gk-legacy__when {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-legacy__flag {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--gk-warn) 55%, transparent);
+  border-radius: var(--gk-r-sm);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-legacy__places {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-legacy__place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.gk-legacy__placewords {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.gk-legacy__rank {
+  font-size: var(--gk-t-lead);
+  line-height: 1.1;
+  color: var(--gk-ink);
+}
+.gk-legacy__pieces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gk-legacy__piece {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: var(--gk-r-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-legacy__piece:active { transform: translateY(1px) scale(0.97); }
+.gk-legacy__pieceart { width: 42px; height: 42px; }
+.gk-legacy__more {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-legacy__count {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-legacy__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+.gk-legacy__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+@media (min-width: 520px) {
+  .gk-legacy__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* one piece: its picture on its rarity's glow, the name, then its rarity or how far the goal is */
+.gk-legacy__tile {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 6px 8px;
+  border-radius: var(--gk-r-sm);
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-legacy__tile:active { transform: translateY(1px) scale(0.98); }
+.gk-legacy__tile[data-picked] { outline: 2px solid var(--gk-self); outline-offset: 1px; }
+.gk-legacy__tile:focus-visible,
+.gk-legacy__piece:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-legacy__tileart {
+  position: relative;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+}
+.gk-legacy__tilepic { width: 92%; height: 92%; }
+.gk-legacy__order {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gk-self);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-void);
+}
+.gk-legacy__lock {
+  position: absolute;
+  display: grid;
+  color: var(--gk-ink-3);
+}
+.gk-legacy__lock .gk-glyph { width: 20px; height: 20px; }
+.gk-legacy__tilename {
+  display: -webkit-box;
+  min-height: 2.3em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  color: var(--gk-ink);
+}
+.gk-legacy__tile[data-locked] .gk-legacy__tilename { color: var(--gk-ink-2); }
+.gk-legacy__tileprogress {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-legacy__rarity {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2px 4px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-legacy__rarity .legacy-rarity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.gk-legacy__editor { gap: var(--gk-s3); padding-bottom: var(--gk-s3); outline: none; }
+.gk-legacy__picked {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-legacy__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+
+/* the painted cabinet: a plinth is a whole compartment to press, its name plate on the lip */
+.gk-shelf {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+}
+.gk-shelf__slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: var(--gk-r-sm);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-shelf__plate { transition: transform var(--gk-press) linear, filter var(--gk-quick) var(--gk-ease); }
+.gk-shelf__slot:active .gk-shelf__plate { transform: translateY(1px); filter: brightness(1.25); }
+.gk-shelf__slot:focus-visible { outline: 2px solid var(--gk-self); outline-offset: -2px; }
+.gk-shelf__slot--empty { justify-content: center; }
+.gk-shelf__add {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-top: 40%;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--gk-gold) 55%, transparent);
+  border-radius: 50%;
+  color: var(--gk-gold);
+  background: color-mix(in srgb, var(--gk-void) 45%, transparent);
+  transition: transform var(--gk-press) linear, border-color var(--gk-quick) var(--gk-ease);
+}
+.gk-shelf__add .gk-glyph { width: 18px; height: 18px; }
+.gk-shelf__slot--empty:hover .gk-shelf__add { border-color: var(--gk-gold); }
+.gk-shelf__slot--empty:active .gk-shelf__add { transform: scale(0.94); }
+.gk-shelf__plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: -3%;
+  padding: 2px 5px;
+  border-radius: 3px;
+  text-align: center;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.gk-shelf__name {
+  /* the display face's ascent reaches past a 1.25 line: a pixel each side keeps İ and Ş whole */
+  padding: 1px 0;
+  line-height: 1.25;
+  text-wrap: balance;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+.gk-shelf__edition {
+  font-weight: 500;
   color: var(--gk-ink-2);
 }

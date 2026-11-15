@@ -19,7 +19,7 @@ import { LegacyProfileView, PodiumPlace } from './LegacyProfile.js';
 import { legacyAwardTitle, legacyEditionLabel } from './presentation.js';
 import { useLegacyProfile, useLegacySeasons, type LegacySource } from './queries.js';
 import { useLegacyDialogFocus } from './useLegacyDialogFocus.js';
-import { Glyph } from '../game-ui/index.js';
+import { Banner, Glyph, artIconSrc } from '../game-ui/index.js';
 import type { CssVars } from '../game-ui/style.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
@@ -133,11 +133,11 @@ export function LegacyProfileSheet({ source, name, onClose }: { source: LegacySo
   const focus = useLegacyDialogFocus();
   const profile = useLegacyProfile(source);
   return (
-    <Sheet detents={['full']} headerArt={ATMOSPHERE.legacy} eyebrow={profile.data?.commanderName ?? name} title={t('legacy.title')} onClose={onClose}>
+    <Sheet detents={['full']} kit={{ art: artIconSrc('trophy') }} eyebrow={profile.data?.commanderName ?? name} title={t('legacy.title')} onClose={onClose}>
       <div ref={focus} tabIndex={-1} className="outline-none">
       {profile.data ? <LegacyProfileView profile={profile.data} />
-        : profile.isError ? <p role="alert" className="text-caption text-v2-hostile">{t('legacy.profile.failed')}</p>
-        : <p role="status" className="text-caption text-v2-ink-2">{t('legacy.profile.loading')}</p>}
+        : profile.isError ? <Banner tone="hostile" role="alert" title={t('legacy.profile.failed')} />
+        : <p role="status" className="gk-legacy__note">{t('legacy.profile.loading')}</p>}
       </div>
     </Sheet>
   );
