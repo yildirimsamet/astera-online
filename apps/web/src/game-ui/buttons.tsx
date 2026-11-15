@@ -237,7 +237,7 @@ export function GameHold({
   const face = `gk-btn gk-btn--${look} ${size === 'lg' ? 'gk-btn--lg' : 'gk-hold--md'} gk-hold`;
   if (disabledReason !== null) {
     return (
-      <button type="button" disabled className={face}>
+      <button type="button" disabled data-hold-refused="" className={face}>
         <span className="gk-hold__dial"><Glyph id="lock" /></span>
         <span className="gk-hold__words"><span className="gk-btn__detail">{disabledReason}</span></span>
       </button>
@@ -253,6 +253,7 @@ export function GameHold({
       <button
         type="button"
         {...OWN_SOUND}
+        data-hold=""
         className={face}
         style={style}
         aria-describedby={hintId}

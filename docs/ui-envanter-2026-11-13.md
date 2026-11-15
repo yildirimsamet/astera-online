@@ -1186,6 +1186,31 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Galeriye `focus-neutral` (açık hak, rota üçüncü adımda) eklendi.
 - **Ölçüm** `g4b3-after-2026-11-15.md`: rehberden bulgu yok. `focus-neutral` 66, `focus-band` 85 — kalanların hepsi `TargetDossier`'ın (G4-d): güç cetveli, dağılım, "Bu nedir?" 22 px.
 
+**G4-c kendi dünyam ✅ (2026-11-15).** Oyuncunun anı: "buraya bir şey taşıyayım."
+- Başlıktaki "KOLONİN / KOLONİ" tekrarı gitti: üst satır kimin olduğunu söyler, alt satır yalnız nereden.
+- Rota tek kit kuyusu: Çıkış → Hedef plakaları (hedef mavi), altında üç rakam, sonra tek cümle ipucu.
+- Paylaşılan `Figure` kite geçti (`gk-figure`, 25 yer): etiket üstte, sayı tabanda; etiket iki satıra insede bir satırdaki sayılar aynı hizada.
+- "Gemi ve kaynak seç" kitin ana düğmesi (kasa simgesi); çıkış toparlanıyor ya da tersane isyanda ise düğmenin yüzü nedeni söyler.
+- Galeriye `focus-own-open` eklendi.
+- **Ölçüm** `g4c-before` / `g4c-after-2026-11-15.md`: `focus-own` 0 → 0, `focus-own-open` 0; kesilme ve taşma yok (telefon, 320, masaüstü).
+
+**G4-d hedef dosyası ✅ (2026-11-15).** Oyuncunun anı: "bu akına değer mi, ne götürmeliyim?"
+- Baş: kit çipleri, cümle düzeninde (telefonda 2 satır). "Rakip olarak işaretle" ve kademe çipi 44 px basış, kitin sesi ve titreşimiyle.
+- Sondanın bakışı cam kuyuda (göz, yaş, Teleskop çubukları); hiç bakılmadıysa uyarı renginde.
+- Güç cetveli (fırlatma sayfasıyla ortak) kitte: "Bu nedir?" bağlantısı yerine kitin yuvarlak "?" düğmesi, kural cam kuyuda; şerit, eşit çizgisi ve kaçış işareti kit renklerinde.
+- Okunan dağılım, ganimet, Bildirim Merkezi, koloni kuralı kitin bölüm etiketiyle; kaynak etiketi sağda.
+- Eşleşme satırları telefonda sağdan kesiliyordu: artık her sınıf kendi satırında ve satırlar sarılıyor.
+- Ganimet çubuğu, savaş raporundaki `.gk-loot` adıyla çakışınca görünmüyordu; ad `gk-haul` yapıldı.
+- **Ölçüm** `g4d-before` / `g4d-after-2026-11-15.md`: `focus-band` 85 → 7, `focus-radiation` 76 → 0, `focus-neutral` 66 → 2. Kalanlar Ölüm Yıldızı bölümünde (G4-j).
+
+**G4-e1 fırlatma: çerçeve, gemiler, rakamlar, gönder ✅ (2026-11-15).** Oyuncunun anı: "kanadı topla, bedeli oku, gönder."
+- Kit sayfası, düşman renginde; sahibin adı kit çipinde. Yapışkan güç cetveli artık gövdenin kenarına oturuyor; kayan içerik üstünde görünmüyor.
+- Her gemi kit satırı (resim, ad, sınıf, evde kaç tane) ve kitin sayacı; seçilen satır mavi ışık alıyor. Yoldaki gemiler kesik çerçeveli kit işaretleri.
+- Uçuş beş kit rakamında, cam kuyuda (`v2/kit/Figure` kitte; klan dalgası da kullanıyor).
+- Gönder: kitin basılı tutma düğmesi, harcama ağırlığı 1 sn, darbe sesiyle. Kapalıyken yüzü nedeni söylüyor. Kit düğmesi `data-hold` ve `data-hold-refused` işaretlerini taşıyor.
+- Eşleşme işareti (✓ ×1,6) 9 px'ten kitin 12 px tabanına çıktı. Kit sayfa başlığı "İ/Ş" işaretleri için yer bırakıyor. Üst satır (korsanın "3 sa içinde gidiyor" süresi) artık kesilmiyor, sarılıyor.
+- **Ölçüm** `g4e1-before` / `g4e1-after-2026-11-15.md`: `launch` 123 → 9, `launch-pirate` 143 → 8, `support-launch` 119 → 9. Kalanlar yakıt çubuğu, hız satırı (G4-e2) ve Onur satırı (G4-e3).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

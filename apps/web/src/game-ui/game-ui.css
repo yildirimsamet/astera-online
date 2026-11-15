@@ -4549,9 +4549,9 @@ button:active > .gk-sheet__grab {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--gk-ink-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* it carries deadlines ("leaves in 3 h"): a second line, never an ellipsis over the fact */
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .gk-sheet__title {
   font-size: var(--gk-t-head);
@@ -12551,6 +12551,554 @@ button.gk-fact__head:active .gk-fact__line {
   text-align: left;
   color: var(--gk-ink);
   animation: gk-rise var(--gk-settle) var(--gk-pop);
+}
+
+/* G4-c: A WORLD OF MINE — the route to it in one well: two ends, the arrow, what goes along */
+.gk-ferry {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3) var(--gk-s3);
+}
+.gk-ferry__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+.gk-ferry__end {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.gk-ferry__end[data-end='to'] { text-align: right; }
+.gk-ferry__name {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  line-height: 1.15;
+  color: var(--gk-ink);
+  overflow-wrap: break-word;
+}
+.gk-ferry__end[data-end='to'] .gk-ferry__name {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 14%, var(--gk-metal-1)), var(--gk-metal-2));
+}
+.gk-ferry__arrow {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  color: var(--gk-self);
+}
+.gk-ferry__arrow .gk-glyph { width: 18px; height: 18px; }
+.gk-ferry .gk-sub { color: var(--gk-ink-2); line-height: 1.35; }
+
+/* a fact in a row of three: what it is over its number, the number in the tone it means */
+.gk-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-figure {
+  display: grid;
+  /* a label that wraps pushes nothing: the numbers of a row share one baseline */
+  align-content: space-between;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-figure .gk-label { overflow-wrap: anywhere; }
+.gk-figure__value {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-figure__value[data-tone='self'] { color: var(--gk-self); }
+.gk-figure__value[data-tone='warn'] { color: var(--gk-warn); }
+.gk-figure__value[data-tone='hostile'] { color: var(--gk-hostile); }
+
+/* G4-d: THE TARGET FILE — chips to frame it, the look in glass, then power, shape and haul */
+.gk-dossier {
+  display: grid;
+  gap: var(--gk-s3);
+  color: var(--gk-ink);
+}
+.gk-dossier__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* the chips' 44 px presses overlap their neighbours' margins, never their faces */
+  gap: 0 4px;
+  margin: -8px 0;
+}
+.gk-dossier__chips > .gk-chip { margin: 8px 0; }
+/* facts, not labels: sentence case, so five fit on two rows at 350 px */
+.gk-dossier__chip {
+  padding: 0 7px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-dossier__chip .gk-glyph { width: 12px; height: 12px; }
+.gk-dossier__chip[data-mark='none'] { color: var(--gk-ink-2); }
+.gk-dossier__fold .gk-glyph { transition: transform var(--gk-quick) var(--gk-ease); }
+[aria-expanded='true'] > .gk-dossier__fold .gk-glyph { transform: rotate(180deg); }
+.gk-dossier__note {
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+  animation: gk-open var(--gk-quick) var(--gk-ease);
+}
+.gk-dossier__look {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  padding: 6px var(--gk-s3);
+}
+.gk-dossier__look > .gk-glyph { width: 16px; height: 16px; flex-shrink: 0; color: var(--gk-self); }
+.gk-dossier__look[data-blind] > .gk-glyph,
+.gk-dossier__look[data-blind] .gk-dossier__lookname { color: var(--gk-warn); }
+.gk-dossier__lookname {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-dossier__age {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-dossier__bars { margin-left: auto; flex-shrink: 0; }
+.gk-dossier__part {
+  display: grid;
+  gap: 6px;
+  padding-top: var(--gk-s3);
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-dossier__text {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-dossier__reading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+}
+.gk-dossier__reading .gk-glyph { width: 15px; height: 15px; color: var(--gk-ink-2); }
+
+/* the Telescope's five bars: how sharp a look was */
+.gk-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+.gk-bars__bar {
+  width: 3px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--gk-ink) 18%, transparent);
+}
+.gk-bars__bar[data-lit] { background: var(--gk-self); }
+
+/* THE FORCE RULER: both sides' power, their ratio on a strip from a quarter to four times */
+.gk-ruler {
+  display: grid;
+  gap: 8px;
+}
+.gk-ruler__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* the "?" keeps its 44 px press without pushing the heading down */
+  margin: -8px -8px -8px 0;
+}
+.gk-ruler__title {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gk-ruler__rule {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  line-height: 1.45;
+  color: var(--gk-ink-2);
+  animation: gk-open var(--gk-quick) var(--gk-ease);
+}
+.gk-ruler__sides { display: grid; gap: 2px; }
+.gk-ruler__side {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--gk-t-small);
+}
+.gk-ruler__who { min-width: 0; color: var(--gk-ink-2); }
+.gk-ruler__src { margin-left: 4px; color: var(--gk-ink-3); }
+.gk-ruler__power {
+  flex-shrink: 0;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-ruler__power[data-tone='self'] { color: var(--gk-self); }
+.gk-ruler__unknown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px var(--gk-s3);
+  border: 1px dashed color-mix(in srgb, var(--gk-warn) 45%, transparent);
+  border-radius: var(--gk-r-sm);
+}
+.gk-ruler__gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-ruler__gap .gk-glyph { width: 14px; height: 14px; }
+.gk-ruler__weigh { display: grid; gap: 4px; }
+.gk-ruler__strip {
+  position: relative;
+  height: 10px;
+  margin-top: 14px;
+}
+.gk-ruler__half {
+  position: absolute;
+  inset-block: 0;
+  width: 50%;
+}
+.gk-ruler__half[data-side='theirs'] {
+  left: 0;
+  border-radius: 5px 0 0 5px;
+  background: color-mix(in srgb, var(--gk-hostile) 16%, transparent);
+}
+.gk-ruler__half[data-side='yours'] {
+  right: 0;
+  border-radius: 0 5px 5px 0;
+  background: color-mix(in srgb, var(--gk-self) 16%, transparent);
+}
+.gk-ruler__band {
+  position: absolute;
+  inset-block: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--gk-hostile), var(--gk-self));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gk-self) 35%, transparent);
+}
+.gk-ruler__band[data-tone='self'] { background: var(--gk-self); }
+.gk-ruler__band[data-tone='hostile'] {
+  background: var(--gk-hostile);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gk-hostile) 35%, transparent);
+}
+.gk-ruler__band--dot {
+  width: 6px;
+  transform: translateX(-50%);
+}
+.gk-ruler__tick {
+  position: absolute;
+  inset-block: -4px;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--gk-ink-2);
+}
+.gk-ruler__escape {
+  position: absolute;
+  inset-block: -4px;
+  border-left: 1px dashed var(--gk-warn);
+}
+.gk-ruler__escapeat {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding-bottom: 1px;
+  transform: translateX(-50%);
+  font-size: var(--gk-t-floor);
+  line-height: 1;
+  color: var(--gk-warn);
+}
+.gk-ruler__axis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  color: var(--gk-ink-3);
+}
+.gk-ruler__axis > :nth-child(2) { text-align: center; }
+.gk-ruler__axis > :nth-child(3) { text-align: right; }
+.gk-ruler__ratio {
+  padding-top: 2px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.gk-ruler__verdict {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+
+/* THE COUNTER LINES: a class's emblem, then its words; the lines wrap, never run off */
+.gk-mline {
+  display: grid;
+  gap: 3px;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+}
+.gk-mline__wall { color: var(--gk-ink-2); }
+.gk-mline__wing {
+  display: grid;
+  gap: 1px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.45;
+  color: var(--gk-ink-3);
+}
+.gk-mline__class { color: var(--gk-ink); }
+.gk-mline__class[data-tone='self'] { color: var(--gk-self); font-weight: 700; }
+.gk-mline__class[data-tone='quiet'] { color: var(--gk-ink-2); }
+.gk-mline [data-tone='warn'] { color: var(--gk-warn); }
+.gk-mline__emblem {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* THE PROBE'S CLASS READING AS ONE BAR: the largest share brightest, the unread hatched */
+.gk-share {
+  display: flex;
+  gap: 1px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+.gk-share__part {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  background: var(--gk-ink);
+}
+.gk-share__part[data-rank='1'] { background: var(--gk-ink-2); }
+.gk-share__part[data-rank='2'] { background: var(--gk-ink-3); }
+.gk-share__emblem { width: 10px; height: 10px; color: var(--gk-void); }
+.gk-share__unread {
+  flex: 1;
+  height: 100%;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-ink) 22%, transparent) 0 3px, transparent 3px 6px);
+}
+
+/* THE HAUL, RESOURCE BY RESOURCE: the band in its own colour, the hold a teal tick on it */
+.gk-haul { display: grid; gap: 4px; }
+.gk-haul__row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.gk-haul__art { display: flex; align-items: center; }
+.gk-haul__art img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.gk-haul__art img + img { margin-left: -5px; }
+.gk-haul__line {
+  position: relative;
+  display: block;
+  height: 10px;
+}
+.gk-haul__line::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--gk-ink) 22%, transparent);
+}
+.gk-haul__band {
+  position: absolute;
+  inset-block: 2px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--gk-alloy), var(--gk-crystal));
+}
+.gk-haul__band[data-fill='deuterium'] { background: var(--gk-deut); }
+.gk-haul__hold {
+  position: absolute;
+  inset-block: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: var(--gk-self);
+  box-shadow: 0 0 4px var(--gk-self);
+}
+.gk-haul__figure {
+  min-width: 64px;
+  text-align: right;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-haul__key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-haul__key[data-short] { color: var(--gk-warn); }
+.gk-haul__keytick {
+  flex-shrink: 0;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--gk-self);
+}
+
+/* G4-e1: THE LAUNCH — the ruler held at the top, one ledger of hulls, the flight in figures, the hold */
+.gk-launch {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-top: 4px;
+}
+.gk-launch__ruler {
+  /* edge to edge across the sheet body, its top reaching into the body's own padding */
+  margin: calc(-1 * var(--gk-s3)) calc(-1 * var(--gk-gutter)) 0;
+  padding: var(--gk-s3) var(--gk-gutter) 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-launch__ruler[data-sticky] {
+  position: sticky;
+  /* stuck at the body's edge, not under its padding, so nothing scrolls into view above it */
+  top: calc(-1 * var(--gk-s3));
+  z-index: 10;
+  box-shadow: 0 6px 10px -6px var(--gk-outline);
+}
+.gk-launch__owner {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.04em;
+}
+.gk-launch__fleet { display: grid; gap: 6px; }
+.gk-launch__away {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gk-launch__gone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px 0 4px;
+  border: 1px dashed color-mix(in srgb, var(--gk-ink) 22%, transparent);
+  border-radius: var(--gk-r-sm);
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+.gk-launch__gone img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.gk-launch__gonemark { width: 16px; height: 16px; }
+.gk-launch__rows > .gk-lrow + .gk-lrow {
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-launch__commit { display: grid; gap: 8px; }
+.gk-launch__price { display: grid; gap: 4px; }
+.gk-launch__warn {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--gk-warn);
+}
+
+/* a hull in the launch: its picture, name and class, how many stand home, the kit counter */
+.gk-lrow {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: 6px var(--gk-s2);
+  transition: background-color var(--gk-quick) var(--gk-ease);
+}
+.gk-lrow[data-chosen] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 12%, transparent), transparent 70%);
+}
+.gk-lrow__art { display: grid; place-items: center; width: 36px; height: 36px; }
+.gk-lrow__art img { width: 36px; height: 36px; object-fit: contain; }
+.gk-lrow__mark { width: 24px; height: 24px; color: var(--gk-ink-3); }
+.gk-lrow__words { display: grid; gap: 1px; min-width: 0; }
+.gk-lrow__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-lrow__cls { width: 11px; height: 11px; color: var(--gk-ink-2); }
+.gk-lrow__carry { color: var(--gk-ink-2); }
+
+/* the figures in a well of their own (the launch's flight, the clan wave's) */
+.gk-figures--well {
+  gap: 10px 12px;
+  padding: var(--gk-s2) var(--gk-s3);
+  border-top: 0;
+}
+.gk-figure__sub {
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-3);
+}
+
+/* one hull against the class the probe named: ✓ · = · ✗ and the factor, the shape never the colour alone */
+.gk-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-3);
+}
+.gk-mark[data-matchup='strong'] { color: var(--gk-self); }
+.gk-mark[data-matchup='weak'] { color: var(--gk-hostile-hi); }
+
+/* a sheet title beside a lead chip: one line, ellipsised, with room above for İ and Ş marks */
+.gk-sheet__titleline {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-block: 0.14em;
+  margin-block: -0.14em;
 }
 
 /* ── the account page (G10, C23) ─────────────────────────────────────────────── */

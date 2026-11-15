@@ -1266,7 +1266,7 @@ describe('how much of a wall the wing takes', () => {
     expect(screen.queryByTestId('ruler-lines')).toBeNull();
     expect(document.body.textContent).not.toMatch(/estimated loss|none of your ships may return|full success if/i);
     const footer = document.querySelector<HTMLElement>('[data-launch-commit]')!;
-    expect(within(footer).getByRole('button', { name: /^launch 20 ships$/i })).toBeVisible();
+    expect(within(footer).getByRole('button', { name: /^launch 20 ships/i })).toBeVisible();
   });
 
   /**
@@ -1531,7 +1531,7 @@ describe('what the sheet promises about turning a raid back', () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'world', world: target }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships/i })).toBeVisible();
     expect(screen.getByText(/recalled once while in flight/i)).toBeVisible();
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });
@@ -1540,7 +1540,7 @@ describe('what the sheet promises about turning a raid back', () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'pirate', pirate: pirateTarget }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships/i })).toBeVisible();
     expect(screen.getByText(/call this raid back once before its engagement/i)).toBeVisible();
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });

@@ -171,7 +171,7 @@ describe('the target dossier, as the mock draws it', () => {
     expect(rows[1]).toHaveTextContent(`${compact(1_000)}–${compact(2_000)}`);
     for (const row of rows) {
       expect(row.querySelector('[data-loot-band]')).not.toBeNull();
-      expect(row.querySelector('[data-cargo-mark]')).toHaveClass('bg-v2-self');
+      expect(row.querySelector('[data-cargo-mark]')).toHaveClass('gk-haul__hold');
     }
   });
 

@@ -261,7 +261,7 @@ export function Sheet({
                 {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
                 <div className={titleAction ? 'flex min-w-0 items-center gap-2' : undefined}>
                   <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>
-                    {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="truncate">{title}</span></span> : title}
+                    {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="gk-sheet__titleline">{title}</span></span> : title}
                   </h2>
                   {titleAction !== undefined && <span data-title-action="" className="relative z-20 flex shrink-0 items-center gap-2">{titleAction}</span>}
                 </div>

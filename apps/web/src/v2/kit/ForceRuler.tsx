@@ -1,7 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCAPE, type EscapeVerdict, type PowerRange, type PowerSpan } from '@astera/rules';
+import { GameButton, Glyph } from '../../game-ui/index.js';
 import { compact, decimal } from '../../lib/format.js';
+import { haptic } from '../../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { ratioAt, type ForceReading } from '../../lib/ruler.js';
 import { staleness } from '../../lib/time.js';
 
@@ -69,6 +73,7 @@ export function ForceRuler({
 }: ForceRulerProps) {
   const { t } = useTranslation();
   const [explained, setExplained] = useState(false);
+  const why = useOwnPress(() => { playSound('tap'); haptic('tap'); setExplained((open) => !open); });
   const join = t('units.rangeJoin');
   const span = (s: PowerSpan): string =>
     compact(s.low) === compact(s.high) ? compact(s.high) : `${compact(s.low)}${join}${compact(s.high)}`;
@@ -89,7 +94,8 @@ export function ForceRuler({
 
   const left = weighed ? ratioAt(power.ratio.low) : 0;
   const width = weighed ? ratioAt(power.ratio.high) - left : 0;
-  const tone = !weighed ? '' : tenths(power.ratio.low) >= 1 ? 'bg-v2-self' : tenths(power.ratio.high) <= 1 ? 'bg-v2-hostile' : '';
+  const tone = !weighed ? 'open' : tenths(power.ratio.low) >= 1 ? 'self' : tenths(power.ratio.high) <= 1 ? 'hostile' : 'open';
+  const dot = width < 1.5;
 
   return (
     <section
@@ -98,23 +104,26 @@ export function ForceRuler({
         yours: power ? span(power.mine) : compact(0),
         theirs: weighed ? span(power.theirs) : t('counter.compareUnknown'),
       })}
-      className="flex flex-col gap-2 font-v2-ui"
+      className="gk-ruler"
     >
       <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-caption font-semibold text-v2-ink">{heading ?? t('counter.compareHeading')}</p>
+        <div className="gk-ruler__head">
+          <span className="gk-ruler__title">{heading ?? t('counter.compareHeading')}</span>
           <button
             type="button"
+            {...OWN_SOUND}
+            className="gk-round gk-round--small"
+            aria-label={t('counter.compareRuleToggle')}
             aria-expanded={explained}
-            onClick={() => { setExplained((open) => !open); }}
-            className="shrink-0 py-1 text-caption text-v2-self underline decoration-dotted underline-offset-2"
+            onPointerDown={why.onPointerDown}
+            onClick={why.onClick}
           >
-            {t('counter.compareRuleToggle')}
+            <span className="gk-round__face"><Glyph id="help" /></span>
           </button>
         </div>
-        {heading === undefined && <p data-testid="ruler-meaning" className="text-micro text-v2-ink-3">{t('counter.compareMeaning')}</p>}
+        {heading === undefined && <p data-testid="ruler-meaning" className="gk-sub">{t('counter.compareMeaning')}</p>}
         {explained && (
-          <div data-testid="ruler-rule" className="mt-1 flex flex-col gap-1.5 text-caption leading-relaxed text-v2-ink-2">
+          <div data-testid="ruler-rule" className="gk-well gk-ruler__rule">
             {heading !== undefined && <p>{t('counter.compareMeaning')}</p>}
             <p>{t('counter.compareRule')}</p>
             {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance, ratio: decimal(ESCAPE.ratio) })}
@@ -124,97 +133,86 @@ export function ForceRuler({
       </div>
 
       {power === null ? (
-        <p data-testid="ruler-pick" className="text-caption text-v2-ink-3">{t('counter.comparePick')}</p>
+        <p data-testid="ruler-pick" className="gk-sub">{t('counter.comparePick')}</p>
       ) : (
-        <div className="flex flex-col gap-0.5 text-caption">
+        <div className="gk-ruler__sides">
           {/* ── the wing: its own ships, read against what was read of theirs ── */}
-          <div data-part="yours" className="flex items-baseline justify-between gap-2">
-            <span className="text-v2-ink-2">{yoursLabel ?? t('counter.compareYours')}</span>
-            <span data-testid="ruler-mine" className="shrink-0 font-v2-mono font-semibold text-v2-self">{span(power.mine)}</span>
+          <div data-part="yours" className="gk-ruler__side">
+            <span className="gk-ruler__who">{yoursLabel ?? t('counter.compareYours')}</span>
+            <span data-testid="ruler-mine" className="gk-num gk-ruler__power" data-tone="self">{span(power.mine)}</span>
           </div>
           {/* ── theirs: a reading, with its source and its age on it ── */}
           {theirs && (
-            <div data-part="theirs" className="flex items-baseline justify-between gap-2">
-              <span className="min-w-0 truncate text-v2-ink-2">
+            <div data-part="theirs" className="gk-ruler__side">
+              <span className="gk-ruler__who">
                 {t('counter.compareTheirs')}
-                <span className="ml-1 text-v2-ink-3">
+                <span className="gk-ruler__src">
                   {theirs.ageMinutes === null
                     ? t('counter.compareLive', { source: theirs.source })
                     : t('counter.compareRecord', { source: theirs.source, age: staleness(theirs.ageMinutes) })}
                 </span>
               </span>
-              <span data-testid="ruler-theirs" className="shrink-0 font-v2-mono font-semibold text-v2-ink">{span(power.theirs)}</span>
+              <span data-testid="ruler-theirs" className="gk-num gk-ruler__power">{span(power.theirs)}</span>
             </div>
           )}
         </div>
       )}
 
       {theirs === null && (
-        <div
-          data-part="unknown"
-          className="flex items-center justify-between gap-2 rounded-control border border-dashed border-v2-line px-2 py-1.5"
-        >
-          <span className="text-caption text-v2-warn">{t('ruler.unknown')}</span>
+        <div data-part="unknown" className="gk-ruler__unknown">
+          <span className="gk-ruler__gap"><Glyph id="warn" />{t('ruler.unknown')}</span>
           {onProbe && (
-            <button
-              type="button"
-              onClick={onProbe}
-              className="shrink-0 rounded-control border border-v2-self/60 bg-v2-self/10 px-2 py-1 text-caption font-semibold text-v2-ink"
-            >
-              {t('ruler.probe')}
-            </button>
+            <GameButton size="sm" glyph="eye" onPress={onProbe}>{t('ruler.probe')}</GameButton>
           )}
         </div>
       )}
 
       {weighed && (
-        <div className="flex flex-col gap-1">
+        <div className="gk-ruler__weigh">
           {/*
             THE RATIO STRIP: a quarter to four times on a log scale, so "twice as strong" reads
             as far from even as "half". Their half is tinted theirs, yours yours; the band is the
             range the reading allows, and the ticks are even and the fleet escape.
           */}
-          <div aria-hidden="true" className="relative mt-3 h-2.5">
-            <span className="absolute inset-y-0 left-0 w-1/2 rounded-l-full bg-v2-hostile/12" />
-            <span className="absolute inset-y-0 right-0 w-1/2 rounded-r-full bg-v2-self/12" />
+          <div aria-hidden="true" className="gk-ruler__strip">
+            <span className="gk-ruler__half" data-side="theirs" />
+            <span className="gk-ruler__half" data-side="yours" />
             <span
               data-part="ratio-band"
-              className={`absolute inset-y-0 rounded-full ${tone} ${width < 1.5 ? '-translate-x-1/2' : ''}`}
+              data-tone={tone}
+              className={`gk-ruler__band${dot ? ' gk-ruler__band--dot' : ''}`}
               style={{
-                left: `${String(width < 1.5 ? left + width / 2 : left)}%`,
-                width: width < 1.5 ? '0.375rem' : `${String(width)}%`,
-                ...(tone === '' ? { backgroundImage: 'linear-gradient(90deg, var(--color-v2-hostile), var(--color-v2-self))' } : {}),
+                left: `${String(dot ? left + width / 2 : left)}%`,
+                ...(dot ? {} : { width: `${String(width)}%` }),
               }}
             />
-            <span data-part="even" className="absolute -inset-y-1 w-px -translate-x-1/2 bg-v2-ink-2" style={{ left: '50%' }} />
+            <span data-part="even" className="gk-ruler__tick" style={{ left: '50%' }} />
             {escape && (
               <span
                 data-part="escape"
-                className="absolute -inset-y-1 w-0 border-l border-dashed border-v2-warn"
+                className="gk-ruler__escape"
                 style={{ left: `${String(ratioAt(ESCAPE.ratio))}%` }}
               >
-                <span className="absolute bottom-full left-0 -translate-x-1/2 pb-0.5 font-v2-mono text-micro leading-none text-v2-warn">
-                  {`${decimal(ESCAPE.ratio)}×`}
-                </span>
+                <span className="gk-num gk-ruler__escapeat">{`${decimal(ESCAPE.ratio)}×`}</span>
               </span>
             )}
           </div>
-          <div aria-hidden="true" className="grid grid-cols-3 text-micro leading-none text-v2-ink-3">
+          <div aria-hidden="true" className="gk-ruler__axis">
             <span>{t('counter.axisTheirs')}</span>
-            <span className="text-center">{t('counter.axisEven')}</span>
-            <span className="text-right">{t('counter.axisYours')}</span>
+            <span>{t('counter.axisEven')}</span>
+            <span>{t('counter.axisYours')}</span>
           </div>
-          <p data-testid="ruler-ratio" className="pt-0.5 text-caption font-semibold leading-snug text-v2-ink">{sentence}</p>
+          <p data-testid="ruler-ratio" className="gk-ruler__ratio">{sentence}</p>
         </div>
       )}
 
       {escape?.verdict != null && (
-        <p data-testid="ruler-verdict" className="text-caption leading-snug text-v2-ink-2">
+        <p data-testid="ruler-verdict" className="gk-ruler__verdict">
           {t(VERDICT[escape.verdict], { ratio: decimal(ESCAPE.ratio) })}
         </p>
       )}
 
-      {notes.length > 0 && <p data-testid="ruler-notes" className="text-micro text-v2-ink-3">{notes.join(t('counter.lineJoin'))}</p>}
+      {notes.length > 0 && <p data-testid="ruler-notes" className="gk-sub">{notes.join(t('counter.lineJoin'))}</p>}
 
       {children}
     </section>

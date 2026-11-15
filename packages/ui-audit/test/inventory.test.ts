@@ -29,7 +29,12 @@ const listed = new Set([...SURFACES.flatMap((s) => s.files), ...Object.keys(OUT_
 const gallerySource = ['v2/gallery/main.tsx', 'v2/gallery/Gallery.tsx', 'v2/gallery/GallerySupport.tsx'].map((file) => readFileSync(join(WEB, file), 'utf8')).join('\n');
 const found = (pattern: RegExp) => [...gallerySource.matchAll(pattern)].map((m) => m[1] ?? '');
 /** `view === 'launch'`, and main.tsx's `params.get('view') === 'planet-card'`. */
-const exactViews = new Set(found(/(?:view|get\('view'\)) === '([a-z0-9-]+)'/g));
+/** The account pages route their own views (`PROFILE_VIEWS` in ProfileGallery.tsx, C23). */
+const profileSource = /PROFILE_VIEWS = \[([^\]]+)\]/.exec(readFileSync(join(WEB, 'v2/gallery/ProfileGallery.tsx'), 'utf8'))?.[1] ?? '';
+const exactViews = new Set([
+  ...found(/(?:view|get\('view'\)) === '([a-z0-9-]+)'/g),
+  ...[...profileSource.matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1] ?? ''),
+]);
 /** `view.startsWith('rewards')`: one branch, many views. */
 const prefixViews = [...new Set(found(/view\??\.startsWith\('([a-z0-9:-]+)'\)/g))];
 const reachedViews = new Set(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:')).map((r) => r.slice('gallery:'.length)));
