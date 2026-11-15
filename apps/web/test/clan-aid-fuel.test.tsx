@@ -345,3 +345,19 @@ describe('the clan’s head and tabs on the kit', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(5);
   });
 });
+
+/**
+ * G7-c (2026-11-15): THE OVERVIEW ON THE KIT. "How is my clan doing?" Five seats as kit coins,
+ * the adaptation as a note, what the clan does folded one press away for a member who already
+ * knows it, the standings as kit rows with a bar off the centre line, the loot depot in a well
+ * with the kit's press, the record as kit rows.
+ */
+describe('the clan overview on the kit', () => {
+  it('draws the overview with none of the old look, the seats as a kit list and the benefits folded', async () => {
+    show(5_000);
+    const panel = await screen.findByRole('tabpanel');
+    expect(oldPaint(panel)).toEqual([]);
+    expect(screen.getByRole('list', { name: /clan seats/i })).toHaveClass('gk-seats');
+    expect(panel.querySelector('details.gk-rules')).not.toBeNull();
+  });
+});

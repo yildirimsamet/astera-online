@@ -21,7 +21,6 @@ import {
   useState,
   lazy,
   Suspense,
-  type ReactNode,
   type SyntheticEvent,
 } from 'react';
 import type { UseMutationResult } from '@tanstack/react-query';
@@ -68,17 +67,9 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { Cells, type Cell } from '../ui/ArmCard.js';
-import { CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle } from '../game-ui/index.js';
-import {
-  ClanIcon,
-  AegisIcon,
-  AttackIcon,
-  ChatIcon,
-  ClockIcon,
-  CoreIcon,
-  GalaxyIcon,
-  LeaderboardIcon,
-} from '../ui/icons/index.js';
+import { CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle, type GlyphId } from '../game-ui/index.js';
+import { RulesRow } from '../ui/RulesRow.js';
+import { ClanIcon, CoreIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import {
@@ -709,34 +700,34 @@ function ClanProfile({
 
 function ClanBenefits({ member = false }: { member?: boolean }) {
   const { t } = useTranslation();
-  return (
-    <Section label={t(member ? 'clan.benefits.activeHeading' : 'clan.benefits.heading')}>
-      <div className="flex flex-col gap-1.5">
-        <Benefit featured icon={<AegisIcon />} title={t('clan.benefits.supportTitle')} body={t('clan.benefits.supportBody')} />
-        <Benefit featured icon={<AttackIcon />} title={t('clan.benefits.warTitle')} body={t('clan.benefits.warBody')} />
-        <Benefit featured icon={<GalaxyIcon />} title={t('clan.benefits.monumentTitle')} body={t('clan.benefits.monumentBody')} />
+  const list = (
+    <div className="gk-benefits">
+      <Benefit featured glyph="support" title={t('clan.benefits.supportTitle')} body={t('clan.benefits.supportBody')} />
+      <Benefit featured glyph="attack" title={t('clan.benefits.warTitle')} body={t('clan.benefits.warBody')} />
+      <Benefit featured glyph="banner" title={t('clan.benefits.monumentTitle')} body={t('clan.benefits.monumentBody')} />
+      <div className="gk-benefits__small">
+        <Benefit glyph="speed" title={t('clan.benefits.aidTitle')} body={t('clan.benefits.aidBody')} />
+        <Benefit glyph="crate" title={t('clan.benefits.lootTitle')} body={t('clan.benefits.lootBody')} />
+        <Benefit glyph="chat" title={t('clan.benefits.chatTitle')} body={t('clan.benefits.chatBody')} />
+        <Benefit glyph="shield" title={t('clan.benefits.safeTitle')} body={t('clan.benefits.safeBody')} />
+        <Benefit glyph="history" title={t('clan.benefits.recordTitle')} body={t('clan.benefits.recordBody')} />
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
-        <Benefit icon={<ClockIcon />} title={t('clan.benefits.aidTitle')} body={t('clan.benefits.aidBody')} />
-        <Benefit icon={<LeaderboardIcon />} title={t('clan.benefits.lootTitle')} body={t('clan.benefits.lootBody')} />
-        <Benefit icon={<ChatIcon />} title={t('clan.benefits.chatTitle')} body={t('clan.benefits.chatBody')} />
-        <Benefit icon={<ClanIcon />} title={t('clan.benefits.safeTitle')} body={t('clan.benefits.safeBody')} />
-        <div className="col-span-2">
-          <Benefit icon={<LeaderboardIcon />} title={t('clan.benefits.recordTitle')} body={t('clan.benefits.recordBody')} />
-        </div>
-      </div>
-      <p className="text-micro leading-snug text-v2-ink-3">{t('clan.benefits.waitingNote', { hours: CLAN.adaptationMinutes / 60 })}</p>
-    </Section>
+      <p className="gk-sub">{t('clan.benefits.waitingNote', { hours: CLAN.adaptationMinutes / 60 })}</p>
+    </div>
   );
+  // A member already has these; they wait one press away. Outside, they are the pitch, so they stand open.
+  return member
+    ? <RulesRow glyph="help" title={t('clan.benefits.activeHeading')}>{list}</RulesRow>
+    : <section className="gk-clan__part"><SectionTag as="h3">{t('clan.benefits.heading')}</SectionTag>{list}</section>;
 }
 
-function Benefit({ icon, title, body, featured = false }: { icon: ReactNode; title: string; body: string; featured?: boolean }) {
+function Benefit({ glyph, title, body, featured = false }: { glyph: GlyphId; title: string; body: string; featured?: boolean }) {
   return (
-    <article className={`flex gap-2 rounded-control border px-2.5 py-2 ${featured ? 'border-v2-ally/30 bg-gradient-to-r from-v2-ally/10 to-v2-panel' : 'border-v2-line bg-v2-panel'}`}>
-      <span className={`mt-0.5 shrink-0 text-v2-ally [&>svg]:size-4 ${featured ? 'grid size-9 place-items-center rounded-control border border-v2-ally/25 bg-v2-ally/10 [&>svg]:size-5' : ''}`}>{icon}</span>
-      <div className="min-w-0">
-        <h4 className="text-caption font-semibold leading-tight text-v2-ink">{title}</h4>
-        <p className={`mt-1 leading-snug text-v2-ink-2 ${featured ? 'text-caption' : 'text-micro'}`}>{body}</p>
+    <article className="gk-benefit" {...(featured ? { 'data-featured': '' } : {})}>
+      <span className="gk-benefit__mark" aria-hidden="true"><Glyph id={glyph} /></span>
+      <div className="gk-benefit__words">
+        <h4>{title}</h4>
+        <p className="gk-sub">{body}</p>
       </div>
     </article>
   );
@@ -867,85 +858,70 @@ function ClanOverview({
   const history = events.data?.pages.flatMap((page) => page.events) ?? [];
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="gk-clan__parts">
       <ClanSeats members={home.members} now={now} />
 
       {!home.clan.mature ? (
-        <Plate tone="lit" cut className="px-2 py-2">
-          <div className="flex items-start gap-2">
-            <ClockIcon className="mt-0.5 size-5 shrink-0 text-v2-self" />
-            <div>
-              <p className="font-semibold text-v2-ink">{t('clan.adaptation.title')}</p>
-              <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
-                {t('clan.adaptation.openNow')}
-              </p>
-              <p className="mt-2 text-caption leading-relaxed text-v2-self">
-                {t('clan.adaptation.opensLater', {
-                  duration: duration(minutesUntil(home.clan.matureAt, now)),
-                })}
-              </p>
-            </div>
-          </div>
-        </Plate>
+        <div className="gk-well gk-clan__state">
+          <p className="gk-inote" data-tone="self"><Glyph id="clock" />{t('clan.adaptation.title')}</p>
+          <p className="gk-sub">{t('clan.adaptation.openNow')}</p>
+          <p className="gk-sub gk-tone-self">{t('clan.adaptation.opensLater', { duration: duration(minutesUntil(home.clan.matureAt, now)) })}</p>
+        </div>
       ) : (
-        <Plate tone="opportunity" className="px-2 py-2">
-          <p className="font-semibold text-v2-self">{t('clan.adaptation.readyTitle')}</p>
-          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('clan.adaptation.readyBody')}</p>
-        </Plate>
+        <div className="gk-well gk-clan__state" data-tone="good">
+          <p className="gk-inote" data-tone="good"><Glyph id="check" />{t('clan.adaptation.readyTitle')}</p>
+          <p className="gk-sub">{t('clan.adaptation.readyBody')}</p>
+        </div>
       )}
 
       <ClanBenefits member />
-      <SmallRule title={t('clan.rules.limitTitle')} body={t('clan.rules.limitBody')} />
+      <p className="gk-inote" data-tone="warn"><Glyph id="attack" /><span><b>{t('clan.rules.limitTitle')}</b> {t('clan.rules.limitBody')}</span></p>
 
       <ClanStandings home={home} standings={standings} />
 
-      <Section label={t('clan.depot.heading')}>
+      <section className="gk-clan__part">
+        <SectionTag as="h3">{t('clan.depot.heading')}</SectionTag>
         {depot.isError ? (
           <Unreachable what={t('clan.depot.heading')} onRetry={() => { void depot.refetch(); }} />
         ) : !depot.data ? (
           <Waiting>{t('clan.depot.waiting')}</Waiting>
         ) : (
-          <Plate className="px-2 py-2">
-            <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.depot.body')}</p>
-            <ResourceFigures resources={depot.data.resources} className="mt-2" />
-            <Button
-              full
-              className="mt-2"
-              variant="primary"
-              disabled={resourceTotal(depot.data.resources) <= 0 || actions.claimDepot.isPending}
-              onClick={() => { actions.claimDepot.mutate(); }}
-            >
+          <div className="gk-well gk-clan__depot">
+            <p className="gk-sub">{t('clan.depot.body')}</p>
+            <ResourceFigures resources={depot.data.resources} />
+            <GameButton tone="action" wide glyph="crate"
+              disabledReason={resourceTotal(depot.data.resources) <= 0 ? t('clan.depot.claim') : null}
+              pending={actions.claimDepot.isPending}
+              onPress={() => { actions.claimDepot.mutate(); }}>
               {t('clan.depot.claim')}
-            </Button>
-            <Note>{t('clan.depot.claimHint')}</Note>
-            <MutationError mutation={actions.claimDepot} />
-          </Plate>
+            </GameButton>
+            <p className="gk-sub">{t('clan.depot.claimHint')}</p>
+            {actions.claimDepot.isError ? <p role="alert" className="gk-inote" data-tone="warn">{describeError(actions.claimDepot.error)}</p> : null}
+          </div>
         )}
-      </Section>
+      </section>
 
-      <Section label={t('clan.history.heading')}>
+      <section className="gk-clan__part">
+        <SectionTag as="h3">{t('clan.history.heading')}</SectionTag>
         {!home.clan.mature ? (
-          <Plate sunk className="px-2 py-5 text-center">
-            <ClockIcon className="mx-auto size-5 text-v2-ink-3" />
-            <p className="mt-2 text-caption text-v2-ink-2">{t('clan.history.adapting')}</p>
-          </Plate>
+          <p className="gk-inote"><Glyph id="clock" />{t('clan.history.adapting')}</p>
         ) : events.isError ? (
           <Unreachable what={t('clan.history.heading')} onRetry={() => { void events.refetch(); }} />
         ) : !events.data ? (
           <Waiting>{t('clan.history.waiting')}</Waiting>
         ) : history.length === 0 ? (
-          <EmptyState title={t('clan.history.empty')} />
+          <p className="gk-sub">{t('clan.history.empty')}</p>
         ) : (
-          <ol className="divide-y divide-v2-line rounded-control border border-v2-line bg-deep/60">
+          <ol className="gk-well gk-clanlog">
             {history.map((event) => <ClanEventRow key={event.id} event={event} now={now} />)}
           </ol>
         )}
         {events.hasNextPage ? (
-          <Button size="sm" variant="ghost" disabled={events.isFetchingNextPage} onClick={() => { void events.fetchNextPage(); }}>
+          <GameButton size="sm" glyph="history" pending={events.isFetchingNextPage} onPress={() => { void events.fetchNextPage(); }}>
             {events.isFetchingNextPage ? t('clan.history.loadingOlder') : t('clan.history.older')}
-          </Button>
+          </GameButton>
         ) : null}
-      </Section>
+      </section>
     </div>
   );
 }
@@ -1131,53 +1107,37 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
 function ClanSeats({ members, now }: { members: readonly Member[]; now: number }) {
   const { t } = useTranslation();
   return (
-    <Section
-      label={t('clan.seats.heading')}
-      aside={t('clan.seats.count', { members: members.length })}
-    >
-      <div className="grid grid-cols-5 gap-2" role="list" aria-label={t('clan.seats.heading')}>
+    <section className="gk-clan__part">
+      <SectionTag as="h3" aside={t('clan.seats.count', { members: members.length })}>{t('clan.seats.heading')}</SectionTag>
+      <ul className="gk-seats" aria-label={t('clan.seats.heading')}>
         {Array.from({ length: CLAN.maxMembers }, (_, slot) => {
           const member = members.find((candidate) => candidate.slot === slot);
           if (!member) {
             return (
-              <div
-                key={slot}
-                role="listitem"
-                aria-label={t('clan.seats.openLabel', { slot: slot + 1 })}
-                data-clan-seat
-                className="grid min-w-0 place-items-center rounded-control border border-dashed border-v2-line px-1 py-3"
-              >
-                <span className="grid size-8 place-items-center rounded-full border border-v2-line text-caption text-v2-ink-3">+</span>
-                <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-2 truncate text-micro">{t('clan.seats.open')}</span>
-              </div>
+              <li key={slot} aria-label={t('clan.seats.openLabel', { slot: slot + 1 })} data-clan-seat data-open="" className="gk-seat">
+                <span className="gk-seat__coin" aria-hidden="true"><Glyph id="plus" /></span>
+                <span className="gk-seat__state">{t('clan.seats.open')}</span>
+              </li>
             );
           }
           const initial = Array.from(member.username)[0]?.toLocaleUpperCase() ?? '•';
           return (
-            <div
-              key={slot}
-              role="listitem"
-              aria-label={t('clan.seats.memberLabel', { slot: slot + 1, name: member.username })}
-              data-clan-seat
-              title={member.username}
-              className="min-w-0 rounded-control border border-v2-self/20 bg-v2-self/5 px-1 py-3 text-center"
-            >
-              <span className="rounded-control bg-v2-deep mx-auto grid size-8 place-items-center rounded-full text-caption text-v2-self">
-                {initial}
-              </span>
-              <span className="font-semibold mt-2 block truncate text-micro text-v2-ink">{member.username}</span>
-              <span className={`mt-1 block truncate text-micro ${member.mature ? 'text-v2-self' : 'text-v2-ink-3'}`}>
+            <li key={slot} aria-label={t('clan.seats.memberLabel', { slot: slot + 1, name: member.username })} data-clan-seat
+              title={member.username} className="gk-seat" {...(member.role === 'LEADER' ? { 'data-leader': '' } : {})}>
+              <span className="gk-seat__coin gk-num" aria-hidden="true">{initial}</span>
+              <span className="gk-seat__name">{member.username}</span>
+              <span className="gk-seat__state" data-tone={member.mature ? 'self' : 'plain'}>
                 {member.role === 'LEADER'
                   ? t('clan.seats.leader')
                   : member.mature
                     ? t('clan.seats.ready')
                     : duration(minutesUntil(member.matureAt, now))}
               </span>
-            </div>
+            </li>
           );
         })}
-      </div>
-    </Section>
+      </ul>
+    </section>
   );
 }
 
@@ -1193,98 +1153,47 @@ function ClanStandings({
   const mine = standings.data?.clans.find((clan) => clan.id === home.clan.id);
   const rows = mine && !leaders.some((clan) => clan.id === mine.id) ? [...leaders, mine] : leaders;
   /**
-   * The widest score on the board, so every bar shares one scale.
-   *
-   * ABSOLUTE, because a clan's score can be negative — Dominion is zero-sum and a
-   * clan that has been raided harder than it has raided sits below the line. The
-   * bar for one of those grows LEFT from the centre, so "behind" is a direction
-   * rather than a minus sign to notice.
+   * The widest score on the board, so every bar shares one scale. ABSOLUTE, because Dominion is
+   * zero-sum and a clan can sit below the line: its bar grows LEFT of the centre, so "behind" is a
+   * direction rather than a minus sign to notice. A ladder is a comparison, so it is drawn as one.
    */
   const widest = Math.max(1, ...rows.map((clan) => Math.abs(clan.score)));
 
   return (
-    <Section label={t('clan.standings.heading')} aside={t('clan.standings.aside')}>
+    <section className="gk-clan__part">
+      <SectionTag as="h3" aside={t('clan.standings.aside')}>{t('clan.standings.heading')}</SectionTag>
       {standings.isError ? (
         <Unreachable what={t('clan.standings.heading')} onRetry={() => { void standings.refetch(); }} />
       ) : !standings.data ? (
         <Waiting>{t('clan.standings.waiting')}</Waiting>
       ) : rows.length === 0 ? (
-        <EmptyState title={t('clan.standings.empty')} />
+        <p className="gk-sub">{t('clan.standings.empty')}</p>
       ) : (
-        <ol className="divide-y divide-v2-line rounded-control border border-v2-line bg-deep/60">
-          {rows.map((clan, index) => {
-            const separated = index === 5;
-            return (
-              <li
-                key={clan.id}
-                aria-current={clan.self ? 'true' : undefined}
-                className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 ${
-                  clan.self ? 'bg-v2-self/10' : ''
-                } ${separated ? 'border-t-2 border-v2-self/25' : ''}`}
-              >
-                <span className={`font-v2-mono tabular-nums text-center text-body ${clan.self ? 'text-v2-self' : 'text-v2-ink-3'}`}>
-                  {clan.rank}
+        <ol className="gk-well gk-standings">
+          {rows.map((clan, index) => (
+            <li key={clan.id} aria-current={clan.self ? 'true' : undefined} className="gk-standing"
+              {...(clan.self ? { 'data-self': '' } : {})} {...(index === 5 ? { 'data-apart': '' } : {})}>
+              <span className="gk-standing__rank gk-num">{clan.rank}</span>
+              <span className="gk-standing__who">
+                <span className="gk-standing__name"><ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} className="gk-standing__tag" /> {clan.name}</span>
+                <span className="gk-sub">
+                  {t('clan.standings.crew', { members: clan.memberCount })}
+                  {clan.watches ? ` · ${t('clan.standings.watches', { count: clan.watches })}` : ''}
+                  {clan.self ? ` · ${t('clan.you')}` : ''}
                 </span>
-                <span className="min-w-0">
-                  <span className="font-semibold block truncate text-v2-ink">
-                    <ClanTag tag={clan.tag} tier={clanTagTier(clan.level)} className="text-v2-self" /> {clan.name}
-                  </span>
-                  <span className="mt-1 block truncate text-micro text-v2-ink-3">
-                    {t('clan.standings.crew', { members: clan.memberCount })}
-                    {clan.watches ? ` · ${t('clan.standings.watches', { count: clan.watches })}` : ''}
-                    {clan.self ? ` · ${t('clan.you')}` : ''}
-                  </span>
-                </span>
-                {/*
-                  A LADDER IS A COMPARISON, SO IT IS DRAWN AS ONE. Owner
-                  instruction.
-
-                  Six signed figures in a column is a table a reader sorts in
-                  their head to answer "how far behind are we". A bar off a centre
-                  line answers it without being read: length is the gap, and the
-                  SIDE is whether the clan is up or down on the season. The figure
-                  keeps its place beside the bar, because a standing is eventually
-                  something you quote.
-                */}
-                <span className="flex shrink-0 items-center gap-2">
-                  <span
-                    aria-hidden
-                    /*
-                      ALWAYS DRAWN, and narrow enough to survive a 390px row
-                      beside a rank, a name and a signed figure. Tailwind v4 has
-                      no `xs` breakpoint, so hiding it below one would have hidden
-                      it on every phone the game is played on.
-                    */
-                    className="relative block h-2 w-12 shrink-0 overflow-hidden rounded-full bg-v2-line"
-                  >
-                    <span
-                      data-clan-score
-                      className={`absolute inset-y-0 ${
-                        clan.score < 0 ? 'right-1/2 bg-v2-hostile/70' : 'left-1/2 bg-v2-self'
-                      }`}
-                      style={{ width: `${String((Math.abs(clan.score) / widest) * 50)}%` }}
-                    />
-                    <span className="absolute inset-y-0 left-1/2 w-px bg-v2-self" />
-                  </span>
-                  <span className={`font-v2-mono tabular-nums text-body ${clan.score > 0 ? 'text-v2-self' : clan.score < 0 ? 'text-v2-hostile' : 'text-v2-ink-2'}`}>
-                    {clan.score === 0 ? full(0) : signed(clan.score)}
-                  </span>
-                </span>
-              </li>
-            );
-          })}
+              </span>
+              <span className="gk-standing__bar" aria-hidden="true">
+                <span data-clan-score className="gk-standing__fill" data-side={clan.score < 0 ? 'down' : 'up'}
+                  style={{ width: `${String((Math.abs(clan.score) / widest) * 50)}%` }} />
+              </span>
+              <span className="gk-standing__score gk-num" data-tone={clan.score > 0 ? 'self' : clan.score < 0 ? 'hostile' : 'plain'}>
+                {clan.score === 0 ? full(0) : signed(clan.score)}
+              </span>
+            </li>
+          ))}
         </ol>
       )}
-    </Section>
-  );
-}
-
-function SmallRule({ title, body }: { title: string; body: string }) {
-  return (
-    <Plate sunk className="px-3 py-3">
-      <p className="font-semibold text-v2-ink">{title}</p>
-      <p className="mt-1 text-label leading-relaxed text-v2-ink-3">{body}</p>
-    </Plate>
+    </section>
   );
 }
 
@@ -1887,9 +1796,9 @@ function ClanAidPanel({
 function ClanEventRow({ event, now }: { event: ClanEvent; now: number }) {
   const { t } = useTranslation();
   return (
-    <li className="px-2 py-3">
-      <p className="text-body text-v2-ink">{describeClanEvent(event, t)}</p>
-      <p className="mt-1 text-micro text-v2-ink-3">{chatRelativeTime(event.occurredAt, now, t)}</p>
+    <li className="gk-clanlog__row">
+      <p>{describeClanEvent(event, t)}</p>
+      <p className="gk-sub">{chatRelativeTime(event.occurredAt, now, t)}</p>
     </li>
   );
 }
@@ -1941,7 +1850,6 @@ function Confirmation({
 
 function ResourceFigures({
   resources,
-  className = '',
   label,
 }: {
   resources: Resources;
@@ -1950,42 +1858,17 @@ function ResourceFigures({
 }) {
   const { t } = useTranslation();
   return (
-    <div className={className}>
-      {label ? <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-2">{label}</p> : null}
-      <div className="grid grid-cols-3 gap-2">
-        <ResourceFigure of="alloy" label={t('clan.resources.alloy')} value={resources.alloy} />
-        <ResourceFigure of="crystal" label={t('clan.resources.crystal')} value={resources.crystal} />
-        <ResourceFigure of="deuterium" label={t('clan.resources.deuterium')} value={resources.deuterium} />
+    <div className="gk-depot">
+      {label ? <p className="gk-label">{label}</p> : null}
+      <div className="gk-depot__row">
+        {(['alloy', 'crystal', 'deuterium'] as const).map((of) => (
+          <div key={of} className="gk-depot__cell" data-resource={of}>
+            <img src={RESOURCE_ART[of]} alt="" aria-hidden />
+            <span className="gk-num gk-depot__value">{full(resources[of])}</span>
+            <span className="gk-label">{t(`clan.resources.${of}`)}</span>
+          </div>
+        ))}
       </div>
-    </div>
-  );
-}
-
-const RESOURCE_INK = {
-  alloy: 'text-v2-alloy',
-  crystal: 'text-v2-crystal',
-  deuterium: 'text-v2-deut',
-} as const;
-
-function ResourceFigure({
-  of,
-  label,
-  value,
-}: {
-  of: 'alloy' | 'crystal' | 'deuterium';
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep min-w-0 px-2 py-3 text-center">
-      <img
-        src={RESOURCE_ART[of]}
-        alt=""
-        aria-hidden
-        className="mx-auto size-5 object-contain"
-      />
-      <p className={`font-v2-mono mt-1 truncate text-body ${RESOURCE_INK[of]}`}>{full(value)}</p>
-      <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-1 truncate text-micro">{label}</p>
     </div>
   );
 }

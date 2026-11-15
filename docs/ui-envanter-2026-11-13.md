@@ -1525,6 +1525,15 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Beş sekme v2 `Segmented` yerine Üs'ün iki katlı kit çubuğu: işaret (ev, çubuklar, kalkan, paylaş, kırmızı saldırı) üstte, kısa ad altta; okuyucu tam adı duyar.
 - Audit: yardım görünümü 30 → 3 (kalan: ortak sheet karartması). Genel sekmesinin 113 puanı içerikten (G7-c).
 
+**G7-c Genel sekmesi ✅ (2026-11-15).**
+- **An:** "Klanım ne durumda, payım ne, kim neredeyiz?"
+- Beş koltuk kit madalyonları (lider altın, boş koltuk kesik çizgi, 12 px taban). Uyum durumu kit kuyusunda not.
+- "Klanın ne yapıyor?" faydaları üye için `RulesRow` katında (üye bunları biliyor; her açılışta 8 kart kaydırmıyor); dışarıdakine açık durur (G7-f). Fayda işaretleri kit glyph'leri.
+- 5 klan saldırısı kuralı tek satırlık uyarı notu. Sıralama kit satırları: sıra, etiket + ad, merkez çizgisinden çubuk (geride olan sola, kırmızı), işaretli puan.
+- Ganimet payı kuyuda: üç kaynak hücresi, "Ana gezegene al" kit düğmesi. Kayıt kit satırları, "daha eskiler" kit düğmesi.
+- Silinen: `SmallRule`, `ResourceFigure`, `RESOURCE_INK`, v2 fayda ikonları. Sınıf çakışması önlendi: `gk-event`/`gk-res` başkasının, bunlar `gk-clanlog`/`gk-depot`.
+- Audit: genel 113 → 3 (kalan: ortak sheet karartması).
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.
