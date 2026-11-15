@@ -1736,6 +1736,13 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Kalan:** Sayfa başlığındaki göz-çizgisi/başlık kırpılması kit sacının başlığı (G1); `LegacyPeek` (küçük vitrin) v2'de, bu birimin dışında.
 - **Ölçüm** (tr; telefon, dar, masaüstü): profil 145→6 (arkalık ve sac başlığı), raf 14→0; 12 px altı 57→0, kesilen 7→1. `reports/ui-audit/c27-legacy-after-2026-11-15.md`.
 
+**C28 Sessiz Uzay bildirimi ✅ (2026-11-15, yardımcı oturum).** G10 #6 `shell/SilentSpaceNotice` (v1 → kit).
+- **An:** "30 saattir emir vermedim — neredeyim, ne kapalı, eve nasıl dönerim?" Kural (D212), bir kez gösterme, menüden açma, odak tuzağı, Escape ve telefonun Geri tuşu değişmedi.
+- **Değişen:** Kitin pencere (`Dialog`) kurdelesi başlık; altında Sessiz Uzay'ın galaksi sahnesi; kapalı olanlar kilit, yarı hızdaki üretim saat işaretiyle; dönüş cümlesi kalın; sıradaki başvuru camda (sıra numarası durum olarak okunuyor); hata banner; başvur kitin ana düğmesi (dönüş ikonu, bekleme dönüşü), "Oynamaya devam et" hayalet düğme. Basışlar `useOwnPress` + ses + titreşim.
+- **Kit:** `Dialog` artık `onBack` alıyor: verilirse telefonun Geri tuşu pencereyi kapatıyor (`useNativeBack`); verilmezse dokunmuyor. Testi `test/game-ui/dialog-back.test.tsx`.
+- **Galeri:** `silent-space`, `silent-space-queued` (ve C29 için `servers`) `ProfileGallery`'de; envanterde erişim olarak eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 7→0 (ilk bildirim), 10→0 (sırada); 12 px altı 4–5→0, kontrast 1→0. `reports/ui-audit/c28-silent-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

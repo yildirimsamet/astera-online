@@ -77,7 +77,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'view-sheet', what: 'Görünüm ayarları sayfası', files: ['v2/hud/ViewSheet.tsx'], reach: ['gallery:view'], group: 'G3' },
   { id: 'queue', what: 'İnşa ve tersane kuyruğu', files: ['v2/kit/QueueSheet.tsx'], reach: ['gallery:queue', 'gallery:queue-cancel'], group: 'G2' },
   { id: 'peek', what: 'Gezegene hızlı bakış', files: [], reach: ['gallery:peek'], group: 'G4', unreached: ['gerçek odak kartının göz atma bölümü (galeri yer tutucu çiziyor)'] },
-  { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['client:return'], group: 'G10' },
+  { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['gallery:silent-space', 'gallery:silent-space-queued', 'client:return'], group: 'G10' },
   { id: 'worlds', what: 'Dünyalar paneli', files: ['screens/WorldsPanel.tsx'], reach: ['client:worlds', 'gallery:worlds', 'gallery:worlds-one'], group: 'G2' },
   { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide', 'gallery:events-guide-tokyo'], group: 'G3' },
   { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal'], group: 'G4', unreached: ['sonuç: korsan', 'sonuç: kaplama', 'gemi yok, üretime yönlendirme'] },
@@ -185,7 +185,7 @@ export const SURFACES: GameSurface[] = [
     group: 'G10',
   },
   { id: 'season-recap', what: 'Sezon özeti', files: ['screens/SeasonRecap.tsx'], reach: ['gallery:season-recap', 'gallery:season-recap-quiet', 'client:recap'], group: 'G9' },
-  { id: 'servers', what: 'Galaksi seçimi', files: ['screens/ServersScreen.tsx'], reach: ['client:servers'], group: 'G10' },
+  { id: 'servers', what: 'Galaksi seçimi', files: ['screens/ServersScreen.tsx'], reach: ['gallery:servers', 'client:servers'], group: 'G10' },
 
   // Before the game: front door, training, loading, faults.
   {

@@ -9,6 +9,9 @@
  *   ?view=account-deletion       the deletion request: password, the understanding, the final hold
  *   ?view=account-deletion-sent  the request received, its reference
  *   ?view=password-reset         the forgotten password, from the front door
+ *   ?view=silent-space           30 hours without an order: the waiting room, the way home
+ *   ?view=silent-space-queued    the same, the application in the queue
+ *   ?view=servers                choosing a galaxy: one open and filling, one locked behind it
  */
 import { useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -21,6 +24,8 @@ import { AccountSecuritySheet } from '../../screens/AccountSecuritySheet.js';
 import { AccountDeletionSheet } from '../../screens/AccountDeletionSheet.js';
 import { PasswordResetSheet } from '../../screens/PasswordResetSheet.js';
 import type { AccountSecurityStatus } from '../../api/schemas.js';
+import { SilentSpaceNotice } from '../../shell/SilentSpaceNotice.js';
+import { ServersScreen } from '../../screens/ServersScreen.js';
 import type { vacationSchema } from '../../api/schemas.js';
 import type { z } from 'zod';
 import { createCosmeticTrialClient } from './CosmeticTrialGallery.js';
@@ -31,6 +36,7 @@ const HOUR = 3_600_000;
 const PROFILE_VIEWS = [
   'profile', 'vacation', 'vacation-blocked', 'vacation-active',
   'account-security', 'account-security-code', 'account-deletion', 'account-deletion-sent', 'password-reset',
+  'silent-space', 'silent-space-queued', 'servers',
 ] as const;
 export type ProfileView = (typeof PROFILE_VIEWS)[number];
 export const isProfileView = (view: string | null): view is ProfileView => PROFILE_VIEWS.some((id) => id === view);
@@ -49,6 +55,10 @@ function profileClient() {
     you: { rank: 14, playerId: 'trial-commander', username: 'Kestrel Sable', country: 'TR', planetId: 'trial-home', planetName: 'Kestrel',
       skinId: 'planet-ice', score: 12_500_000, honor: 12_500_000, dominion: 400, clan: { id: 'c1', name: 'Nova Kolektif', tag: 'NOVA', tier: 'SILVER' }, isBot: false },
   }, later);
+  client.setQueryData(keys.servers, { placement: null, servers: [
+    { code: 'EU-1', name: 'Vantage', ordinal: 1, planets: 38, capacity: 50, online: 6, status: 'open', endsAt: null, yours: false },
+    { code: 'EU-2', name: 'Kestrel', ordinal: 2, planets: 0, capacity: 50, online: 0, status: 'locked', endsAt: null, yours: false },
+  ] }, later);
   return client;
 }
 
@@ -103,6 +113,10 @@ export function ProfileGallery({ view }: { view: ProfileView }) {
               ? <AccountSecuritySheet status={securityStatus(view)} onClose={() => undefined} refresh={() => Promise.resolve()} />
             : view === 'account-deletion' || view === 'account-deletion-sent' ? <AccountDeletionSheet onClose={() => undefined} />
             : view === 'password-reset' ? <PasswordResetSheet onClose={() => undefined} />
+            : view === 'silent-space' || view === 'silent-space-queued' ? <SilentSpaceNotice open allowAutomatic={false} onClose={() => undefined} onApply={() => Promise.resolve()}
+              data={{ placement: { playerId: 'trial-commander', version: 1, role: 'WAITING' }, homeShard: 'EU-1', canApply: true,
+                application: view === 'silent-space-queued' ? { id: 'application-1', position: 4 } : null }} />
+            : view === 'servers' ? <ServersScreen displayName="Kestrel Sable" onChoose={() => undefined} onSignOut={() => undefined} />
             : <VacationSheet onClose={() => undefined} />}
         </WorldProvider>
       </ApiProvider>

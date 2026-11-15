@@ -14057,3 +14057,73 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 500;
   color: var(--gk-ink-2);
 }
+
+/* ── Silent Space (G10, C28) ──────────────────────────────────────────────────── */
+
+/* a long body scrolls inside the scrim on a short phone, the ribbon kept clear of the top */
+.gk-silent .gk-scrim {
+  overflow-y: auto;
+  padding-top: var(--gk-s6);
+}
+.gk-silent__body {
+  display: grid;
+  gap: var(--gk-s3);
+}
+/* the room itself: the galaxy at a distance, its name over it */
+.gk-silent__scene {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: 72px;
+  padding: var(--gk-s2) var(--gk-s3);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+}
+.gk-silent__scene > .atmosphere-image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gk-silent__scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-metal-3) 85%, transparent), transparent);
+}
+.gk-silent__scene .gk-label { color: var(--gk-ink); }
+/* what the room withholds, each with its mark */
+.gk-silent__shut {
+  display: grid;
+  gap: 6px;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-silent__shut li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--gk-s2);
+}
+.gk-silent__shut .gk-glyph {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--gk-warn);
+}
+.gk-silent__queue {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3);
+}
+.gk-silent__place,
+.gk-silent__way {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
