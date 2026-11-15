@@ -89,4 +89,12 @@ describe('the matchup line', () => {
     expect(container.querySelector('[data-matchup-wing]')?.textContent).toBe('Your Bulwark: strong vs 50% of their wall · weak vs 0%');
     expect(wall(container)).toContain('Your wing is single-class — its counter may be in the unread part');
   });
+
+  // G4-d (2026-11-15): one class a line, so a phone never runs three into one paragraph.
+  it('gives each class the wing carries its own line', () => {
+    const { container } = render(<MatchupLine wing={{ RAMPART: 10, DART: 10 }} reading={split} />);
+    const rows = [...container.querySelectorAll('[data-matchup-wing] > li')];
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => !row.textContent.includes(' · Your'))).toBe(true);
+  });
 });

@@ -1194,6 +1194,15 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Galeriye `focus-own-open` eklendi.
 - **Ölçüm** `g4c-before` / `g4c-after-2026-11-15.md`: `focus-own` 0 → 0, `focus-own-open` 0; kesilme ve taşma yok (telefon, 320, masaüstü).
 
+**G4-d hedef dosyası ✅ (2026-11-15).** Oyuncunun anı: "bu akına değer mi, ne götürmeliyim?"
+- Baş: kit çipleri, cümle düzeninde (telefonda 2 satır). "Rakip olarak işaretle" ve kademe çipi 44 px basış, kitin sesi ve titreşimiyle.
+- Sondanın bakışı cam kuyuda (göz, yaş, Teleskop çubukları); hiç bakılmadıysa uyarı renginde.
+- Güç cetveli (fırlatma sayfasıyla ortak) kitte: "Bu nedir?" bağlantısı yerine kitin yuvarlak "?" düğmesi, kural cam kuyuda; şerit, eşit çizgisi ve kaçış işareti kit renklerinde.
+- Okunan dağılım, ganimet, Bildirim Merkezi, koloni kuralı kitin bölüm etiketiyle; kaynak etiketi sağda.
+- Eşleşme satırları telefonda sağdan kesiliyordu: artık her sınıf kendi satırında ve satırlar sarılıyor.
+- Ganimet çubuğu, savaş raporundaki `.gk-loot` adıyla çakışınca görünmüyordu; ad `gk-haul` yapıldı.
+- **Ölçüm** `g4d-before` / `g4d-after-2026-11-15.md`: `focus-band` 85 → 7, `focus-radiation` 76 → 0, `focus-neutral` 66 → 2. Kalanlar Ölüm Yıldızı bölümünde (G4-j).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

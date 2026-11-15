@@ -23,8 +23,10 @@ import { duration } from '../../lib/time.js';
 import { useTargetReading } from '../../lib/useTargetReading.js';
 import { capabilities } from '../../platform/runtime.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
-import { BroadcastIcon } from '../../ui/icons/index.js';
-import { Icon } from '../icons.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
+import { Glyph, SectionTag } from '../../game-ui/index.js';
+import { haptic } from '../../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { AgeStamp } from '../kit/Freshness.js';
 import { ForceRuler } from '../kit/ForceRuler.js';
@@ -54,13 +56,14 @@ export interface TargetDossierProps {
   ownPeakCore?: number | null;
 }
 
-const SECTION = 'flex flex-col gap-1.5 border-t border-v2-line pt-3';
-const HEADING = 'flex items-center gap-1.5 text-caption font-semibold text-v2-ink';
-const TAG = 'rounded-chip border border-v2-line px-1 text-micro font-normal text-v2-ink-3';
-const CHIP = 'inline-flex items-center gap-1 rounded-chip border border-v2-line bg-v2-raise px-1.5 py-0.5 text-micro tabular-nums text-v2-ink-2';
-
 /** The mark's own colour, on the chip that states or toggles it (D183). */
 const marked = (slot: number): CSSProperties => ({ color: rivalColour(slot), borderColor: rivalColour(slot) });
+
+/** The kit's answer to a press in the file's head: the tap, felt and heard. */
+const answer = (): void => {
+  playSound('tap');
+  haptic('tap');
+};
 
 /**
  * THE TARGET DOSSIER. Spec E2 (docs/ui-v2/gozlemevi.md), the mock's "Hedef dosyası".
@@ -79,6 +82,8 @@ const marked = (slot: number): CSSProperties => ({ color: rivalColour(slot), bor
 export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, rival, ownPeakCore = null }: TargetDossierProps) {
   const { t } = useTranslation();
   const [bandOpen, setBandOpen] = useState(false);
+  const markPress = useOwnPress(() => { answer(); rival?.onToggle(); });
+  const bandPress = useOwnPress(() => { answer(); setBandOpen((open) => !open); });
   const mods = flightModifiers(planet);
   const available = useMemo(() => partitionCombatFleet(planet.fleet, planet.fleetDamage), [planet.fleet, planet.fleetDamage]);
   const wing = available.eligible;
@@ -118,62 +123,70 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
     ? []
     : loot.metal && loot.deuterium
       ? [
-        { key: 'metal', art: ['alloy', 'crystal'], of: loot.metal, fill: METAL },
-        { key: 'deuterium', art: ['deuterium'], of: loot.deuterium, fill: DEUT },
+        { key: 'metal', art: ['alloy', 'crystal'], of: loot.metal, fill: 'metal' },
+        { key: 'deuterium', art: ['deuterium'], of: loot.deuterium, fill: 'deuterium' },
       ]
-      : [{ key: 'total', art: ['alloy', 'crystal', 'deuterium'], of: loot.decisive, fill: METAL }];
+      : [{ key: 'total', art: ['alloy', 'crystal', 'deuterium'], of: loot.decisive, fill: 'metal' }];
   // One line for every row, so the hold lands at the same place on each.
   const lootReach = Math.max(0, ...lootRows.map((row) => row.of.high));
 
   return (
-    <div data-target-dossier className="flex flex-col gap-3 font-v2-ui">
-      <div className="flex flex-wrap gap-1.5">
+    <div data-target-dossier className="gk gk-dossier">
+      {/* THE FILE'S HEAD: the mark a thumb can set, then the facts that frame the rest. */}
+      <div className="gk-dossier__chips">
         {rival ? (
           <button
             type="button"
+            {...OWN_SOUND}
+            className="gk-hit"
             aria-pressed={rivalSlot !== null}
             disabled={rival.pending}
-            onClick={rival.onToggle}
-            className={`${CHIP} ${rivalSlot === null ? 'text-v2-ink-3' : ''} disabled:opacity-60`}
-            {...(rivalSlot === null ? {} : { style: marked(rivalSlot) })}
+            onPointerDown={markPress.onPointerDown}
+            onClick={markPress.onClick}
           >
-            <Icon id={rivalSlot === null ? 'i-mark' : 'i-close'} className="size-3 shrink-0" />
-            {rivalSlot === null ? t('focus.planet.markRival') : t('dossier.page.rival', { n: rivalSlot + 1 })}
+            <span className="gk-chip gk-dossier__chip" data-mark={rivalSlot === null ? 'none' : 'set'} {...(rivalSlot === null ? {} : { style: marked(rivalSlot) })}>
+              <Glyph id={rivalSlot === null ? 'flag' : 'close'} />
+              {rivalSlot === null ? t('focus.planet.markRival') : t('dossier.page.rival', { n: rivalSlot + 1 })}
+            </span>
           </button>
         ) : rivalSlot !== null && (
-          <span className={CHIP} style={marked(rivalSlot)}>
+          <span className="gk-chip gk-dossier__chip" style={marked(rivalSlot)}>
             {t('dossier.page.rival', { n: rivalSlot + 1 })}
           </span>
         )}
-        <span className={CHIP}>{t('dossier.page.range', { d: range })}</span>
+        <span className="gk-chip gk-dossier__chip gk-num">{t('dossier.page.range', { d: range })}</span>
         {/* No wing at home is all a null says here, and a ship can build one: not "out of reach". */}
-        {(reach !== null || planet.vessel === undefined) && <span className={CHIP}>{reach === null ? t('dossier.page.unreachable') : t('dossier.page.flight', { time: duration(reach) })}</span>}
-        <span className={CHIP}>{t('dossier.page.known', { have: read.facts.length, total: read.facts.length + read.gaps.length })}</span>
+        {(reach !== null || planet.vessel === undefined) && <span className="gk-chip gk-dossier__chip gk-num">{reach === null ? t('dossier.page.unreachable') : t('dossier.page.flight', { time: duration(reach) })}</span>}
+        <span className="gk-chip gk-dossier__chip gk-num">{t('dossier.page.known', { have: read.facts.length, total: read.facts.length + read.gaps.length })}</span>
         {tierBand && (
           <button
             type="button"
+            {...OWN_SOUND}
             data-dossier-band
+            className="gk-hit"
             aria-expanded={bandOpen}
-            onClick={() => { setBandOpen((open) => !open); }}
-            className={CHIP}
+            onPointerDown={bandPress.onPointerDown}
+            onClick={bandPress.onClick}
           >
-            {tierBand.value}
-            <Icon id="i-chev" className={`size-3 shrink-0 transition-transform ${bandOpen ? '-rotate-90' : 'rotate-90'}`} />
+            <span className="gk-chip gk-dossier__chip gk-dossier__fold">
+              {tierBand.value}
+              <Glyph id="down" />
+            </span>
           </button>
         )}
       </div>
       {tierBand && bandOpen && (
-        <p data-dossier-band-note className="-mt-1.5 text-micro leading-snug text-v2-ink-3">{tierBand.note}</p>
+        <p data-dossier-band-note className="gk-well gk-dossier__note">{tierBand.note}</p>
       )}
 
       {/* WHAT BOUGHT THE READING, HOW OLD IT IS AND HOW SHARP: most of the fact, in an information game. */}
-      <div data-dossier-look className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+      <div data-dossier-look className="gk-well gk-dossier__look" {...(report ? {} : { 'data-blind': '' })}>
         {report && probedAgo !== null ? (
           <>
-            <Icon id="i-probe" className="size-3.5 shrink-0 text-v2-ink-2" />
-            <span className="text-caption font-semibold text-v2-ink">{t('dossier.page.lookProbe')}</span>
-            <AgeStamp minutes={probedAgo} />
-            <span className="ml-auto shrink-0">
+            <Glyph id="eye" />
+            <span className="gk-dossier__lookname">{t('dossier.page.lookProbe')}</span>
+            <AgeStamp minutes={probedAgo} className="gk-num gk-dossier__age" />
+            <span className="gk-dossier__bars">
               <SignalBars
                 accuracy={report.accuracy}
                 label={t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
@@ -183,11 +196,14 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
             </span>
           </>
         ) : (
-          <span className="text-caption text-v2-warn">{t('dossier.page.lookNone')}</span>
+          <>
+            <Glyph id="warn" />
+            <span className="gk-dossier__lookname">{t('dossier.page.lookNone')}</span>
+          </>
         )}
       </div>
 
-      <div className={SECTION}>
+      <div className="gk-dossier__part">
         <ForceRuler
           power={reading.power}
           theirs={reading.opposing}
@@ -198,54 +214,47 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
       </div>
 
       {reading.classReading && reading.classReading.kind !== 'NONE' && (
-        <section data-dossier-shape className={SECTION}>
-          <h3 className={HEADING}>
-            {t('dossier.page.shape')}
-            <span className={TAG}>{sourceLabel('probe')}</span>
-          </h3>
+        <section data-dossier-shape className="gk-dossier__part">
+          <SectionTag as="h3" aside={sourceLabel('probe')}>{t('dossier.page.shape')}</SectionTag>
           <ShareBar wing={wing} reading={reading.classReading} />
           <MatchupLine wing={wing} reading={reading.classReading} />
         </section>
       )}
 
       {loot && (
-        <section data-dossier-loot className={SECTION}>
-          <h3 className={HEADING}>
-            {t('dossier.page.loot')}
-            <span className={TAG}>{t('dossier.page.lootTag')}</span>
-          </h3>
-          <p className="text-micro leading-snug text-v2-ink-3">{t('dossier.page.lootMeaning')}</p>
-          <div className="flex flex-col gap-1">
+        <section data-dossier-loot className="gk-dossier__part">
+          <SectionTag as="h3" aside={t('dossier.page.lootTag')}>{t('dossier.page.loot')}</SectionTag>
+          <p className="gk-sub">{t('dossier.page.lootMeaning')}</p>
+          <div className="gk-haul">
             {lootRows.map((row) => (
               <LootRow key={row.key} line={row} cargo={loot.cargo} reach={lootReach} />
             ))}
           </div>
-          <p className="text-micro text-v2-ink-3">{`${t('dossier.page.lootPartial')} ${band(loot.partial.low, loot.partial.high)}`}</p>
-          <p className={`flex items-center gap-1.5 text-caption leading-snug ${loot.cargoShort ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
+          <p className="gk-sub gk-num">{`${t('dossier.page.lootPartial')} ${band(loot.partial.low, loot.partial.high)}`}</p>
+          <p className="gk-haul__key" {...(loot.cargoShort ? { 'data-short': '' } : {})}>
             {/* The key to the teal tick on the lines above: that is this hold. */}
-            <span aria-hidden className="h-3 w-0.5 shrink-0 rounded-full bg-v2-self" />
+            <span aria-hidden="true" className="gk-haul__keytick" />
             {t(loot.cargoShort ? 'dossier.page.lootShort' : 'dossier.page.lootHold', { cargo: compact(loot.cargo) })}
           </p>
         </section>
       )}
 
       {report?.notificationCenter !== undefined && capabilities().notificationCenter && (
-        <section data-dossier-center className={SECTION}>
-          <h3 className={HEADING}>
-            <BroadcastIcon className="size-3.5 shrink-0 text-v2-ink-2" />
-            {t('notificationCenter.title')}
-            <span className={TAG}>{sourceLabel('probe')}</span>
-            <span className="ml-auto font-v2-mono text-caption text-v2-ink">{t(`notificationCenter.reading.${report.notificationCenter}`)}</span>
-          </h3>
-          <p className="text-caption leading-snug text-v2-ink-2">{t(`notificationCenter.readingMeaning.${report.notificationCenter}`)}</p>
-          <p className="text-micro text-v2-ink-3">{t('notificationCenter.readingRule')}</p>
+        <section data-dossier-center className="gk-dossier__part">
+          <SectionTag as="h3" aside={sourceLabel('probe')}>{t('notificationCenter.title')}</SectionTag>
+          <p className="gk-dossier__reading">
+            <Glyph id="bell" />
+            <span className="gk-num">{t(`notificationCenter.reading.${report.notificationCenter}`)}</span>
+          </p>
+          <p className="gk-dossier__text">{t(`notificationCenter.readingMeaning.${report.notificationCenter}`)}</p>
+          <p className="gk-sub">{t('notificationCenter.readingRule')}</p>
         </section>
       )}
 
       {target.kind === 'COLONY' && (
-        <section data-dossier-colony className={SECTION}>
-          <h3 className={HEADING}>{t('dossier.page.colony')}</h3>
-          <p className="text-caption leading-snug text-v2-ink-2">
+        <section data-dossier-colony className="gk-dossier__part">
+          <SectionTag as="h3">{t('dossier.page.colony')}</SectionTag>
+          <p className="gk-dossier__text">
             {t('dossier.page.colonyRule', {
               decisive: FAULT.battleLoyaltyLoss.DECISIVE,
               partial: FAULT.battleLoyaltyLoss.PARTIAL,
@@ -263,13 +272,9 @@ interface LootLine {
   key: string;
   art: readonly Resource[];
   of: { low: number; high: number };
-  fill: CSSProperties;
+  /** The band's paint: the two metals' blend, or deuterium's own green. */
+  fill: 'metal' | 'deuterium';
 }
-
-const METAL: CSSProperties = {
-  backgroundImage: 'linear-gradient(90deg, var(--color-v2-alloy), var(--color-v2-crystal))',
-};
-const DEUT: CSSProperties = { backgroundColor: 'var(--color-v2-deut)' };
 
 /**
  * ONE RESOURCE'S HAUL ON A LINE FROM ZERO, WITH YOUR HOLD ON IT. The band is the probe's
@@ -284,38 +289,31 @@ function LootRow({ line, cargo, reach }: { line: LootLine; cargo: number; reach:
   const label = art.map((resource) => t(`vocabulary.resource.${resource}`)).join(' + ');
   const figure = of.low === of.high ? compact(of.low) : `${compact(of.low)}${t('units.rangeJoin')}${compact(of.high)}`;
   return (
-    <div data-loot-row={key} className="grid grid-cols-[2.5rem_minmax(0,1fr)_5.5rem] items-center gap-2">
-      <span className="flex items-center -space-x-1">
+    <div data-loot-row={key} className="gk-haul__row">
+      <span className="gk-haul__art">
         {art.map((resource) => (
-          <img key={resource} src={RESOURCE_ART[resource]} alt="" draggable={false} className="size-4 shrink-0 object-contain" />
+          <img key={resource} src={RESOURCE_ART[resource]} alt="" draggable={false} />
         ))}
       </span>
       <span
         role="img"
         aria-label={t('dossier.page.lootRow', { label, band: figure, cargo: compact(cargo) })}
-        className="relative block h-2.5"
+        className="gk-haul__line"
       >
-        <span aria-hidden className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-v2-line-hi" />
         <span
           data-loot-band=""
-          className="absolute inset-y-0.5 rounded-full"
-          style={{ left: `${String(start)}%`, width: `${String(width)}%`, ...fill }}
+          data-fill={fill}
+          className="gk-haul__band"
+          style={{ left: `${String(start)}%`, width: `${String(width)}%` }}
         />
         {you !== null && (
-          <span
-            data-cargo-mark=""
-            className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-v2-self"
-            style={{ left: `${String(you)}%` }}
-          />
+          <span data-cargo-mark="" className="gk-haul__hold" style={{ left: `${String(you)}%` }} />
         )}
       </span>
-      <span className="truncate text-right font-v2-mono text-caption font-semibold text-v2-ink">{figure}</span>
+      <span className="gk-num gk-haul__figure">{figure}</span>
     </div>
   );
 }
-
-/** Lightest first: the largest share reads brightest, as on the mock. */
-const SHARE_TONE = ['bg-v2-ink', 'bg-v2-ink-2', 'bg-v2-ink-3'] as const;
 
 /**
  * THE PROBE'S CLASS READING AS ONE BAR (the mock's "Okunan dağılım"). A full split is
@@ -336,21 +334,22 @@ function ShareBar({ wing, reading }: { wing: Fleet; reading: ClassReading }) {
       key={row.cls}
       data-share={row.cls}
       title={shareTitle(row.cls, row.share)}
-      className={`flex h-full items-center justify-center ${SHARE_TONE[Math.min(index, SHARE_TONE.length - 1)]}`}
+      data-rank={Math.min(index, 2)}
+      className="gk-share__part"
       style={{ width: width(row.share) }}
     >
-      <ClassEmblem cls={row.cls} decorative className="size-2.5 text-v2-void" />
+      <ClassEmblem cls={row.cls} decorative className="gk-share__emblem" />
     </span>
   ));
   return (
     <div
       role="img"
       aria-label={matchups.wallShares.map((row) => shareTitle(row.cls, row.share)).join(t('counter.lineJoin'))}
-      className="flex h-3 w-full gap-px overflow-hidden rounded-cell bg-v2-line"
+      className="gk-share"
     >
       {parts}
       {matchups.unknownShare > 0 && (
-        <span data-share-unread="" title={t('dossier.page.shareUnread')} className="v2-hatch h-full flex-1" />
+        <span data-share-unread="" title={t('dossier.page.shareUnread')} className="gk-share__unread" />
       )}
     </div>
   );

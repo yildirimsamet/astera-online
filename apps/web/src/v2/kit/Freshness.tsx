@@ -64,11 +64,15 @@ export function ClarityMark({ state }: { state: ClarityState }) {
 }
 
 /** How old a probe or report fact is: "live", "18m ago", "4h 00m ago". */
-export function AgeStamp({ minutes }: { minutes: number }) {
+export function AgeStamp({ minutes, className = 'font-v2-mono text-body text-v2-ink-2' }: {
+  minutes: number;
+  /** The paint: the v2 default, or the kit's where the stamp sits on a kit surface. */
+  className?: string;
+}) {
   // `staleness` reads i18n directly; subscribing here re-words the stamp when the language changes.
   useTranslation();
   // One readable tone at every age (C7): the picture's grain says how old, the words must stay legible.
-  return <span data-age={ageTier(minutes)} className="font-v2-mono text-body text-v2-ink-2">{staleness(minutes)}</span>;
+  return <span data-age={ageTier(minutes)} className={className}>{staleness(minutes)}</span>;
 }
 
 export interface AgedThumbProps {
