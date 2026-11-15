@@ -374,6 +374,7 @@ export const focus = {
     probeCoolingShort: "{{duration}} sonra",
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",
+    attackNeutralAgainShort: "Tekrar akın",
     attackOriginRecovering: "Saldırı · ana dünya toparlanıyor",
     attackSilentSpace: "Saldırılamaz · Sessiz Uzay’da kapalı",
     attackSilentSpaceShort: "Sessiz Uzay",

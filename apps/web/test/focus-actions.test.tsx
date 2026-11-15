@@ -1315,25 +1315,25 @@ describe('the focus rail’s two commitments', () => {
   };
 
   /** The reach chip specifically — several other rows on this panel say "arrives". */
-  const reachChip = () => {
-    const chip = [...document.querySelectorAll('button.rounded-chip')]
+  // a requirement is the kit's need chip on a door (G4-b3): met wears data-met, unmet the warning
+  const reachMet = () => {
+    const chip = [...document.querySelectorAll('button.gk-need-door')]
       .find((el) => /arrives/i.test(el.textContent));
     expect(chip, 'the settlement reach requirement is not rendered at all').toBeDefined();
-    return chip!.className;
+    return chip!.querySelector('.gk-need-chip')!.hasAttribute('data-met');
   };
 
   it('accepts the widest crossing the disc allows as reachable before a claim opens', () => {
     // The far rim: the longest settlement flight the map can produce. Under the
     // old thirty-minute window this read as unreachable and the route was a lie.
     settlementRig(neutralAt(GALAXY_SPAN, null));
-    expect(reachChip()).toContain('text-v2-self');
-    expect(reachChip()).not.toContain('text-v2-warn');
+    expect(reachMet()).toBe(true);
   });
 
   it('still refuses a settlement the open window cannot contain', () => {
     // Same distance, but only ten minutes of the window are left.
     settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
-    expect(reachChip()).toContain('text-v2-warn');
+    expect(reachMet()).toBe(false);
     expect(screen.getByRole('button', { name: /found colony.*arrives too late/i })).toBeDisabled();
   });
 
@@ -1362,7 +1362,7 @@ describe('the focus rail’s two commitments', () => {
     );
     expect(fuel).toBeGreaterThan(0);
 
-    const chip = [...document.querySelectorAll('button.rounded-chip')]
+    const chip = [...document.querySelectorAll('button.gk-need-door')]
       .find((el) => el.querySelector('img[src*="deuterium"]'));
     expect(chip, 'the founding never says what it burns').toBeDefined();
     expect(chip).toHaveTextContent(compact(fuel));

@@ -1178,6 +1178,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - "Diğer okumalar" ve "Bu sezonki hikâyen" kitin bölüm başlığı; rakip geçmişinin sayıları kit kuyusunda.
 - **Ölçüm** `g4b2-after-2026-11-15.md`: açık dosyalar 117–131 → 88–90, 44 px altı hedef 8 → 2–4. Kalanlar `TargetDossier` (G4-d), Ölüm Yıldızı (G4-j) ve strateji rehberi (G4-b3).
 
+**G4-b3 bir dünyaya giden rota ✅ (2026-11-15).** Oyuncunun anı: "bu dünyayı nasıl alırım, ne eksik?"
+- Strateji rehberi kit kuyusu: başkent kuralı (kalkan işareti), tarafsız dünyanın koloni rotası, Ölüm Yıldızı rotası; sana açılan pencere (EMP, açık hak) mavi, işaretli rakip uyarı tonunda.
+- Rota adımları kit adımları: halkada numara (bitince tik), ad, katlama; sıradaki adım mavi, vuruş adımıysa uyarı renginde. Katlama kitin sesiyle.
+- Yerleşme gereksinimleri kitin gereksinim çipi (G2-e) 44 px kapıda: karşılanan sessiz ve tikli, eksik uyarıda ve kilitli, bilinmeyen soru işaretli. Basınca nedeni 2 sn kitin ipucunda.
+- Şerit: "Koloni kur" kendi satırında; sonda ve saldırı kapalı karttaki gibi aynı ızgarada, sondanın fiyatı her genişlikte yığılı. Hak açıkken saldırının yüzü kısa: "Tekrar akın" (cümlenin tamamı okuyucu adında; 6 dilde kısa kelime).
+- Galeriye `focus-neutral` (açık hak, rota üçüncü adımda) eklendi.
+- **Ölçüm** `g4b3-after-2026-11-15.md`: rehberden bulgu yok. `focus-neutral` 66, `focus-band` 85 — kalanların hepsi `TargetDossier`'ın (G4-d): güç cetveli, dağılım, "Bu nedir?" 22 px.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

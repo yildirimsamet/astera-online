@@ -387,6 +387,7 @@ export const focus = {
     probeCoolingShort: "dans {{duration}}",
     attack: "Préparer une attaque",
     attackNeutralAgain: "Attaquer à nouveau · revendication inchangée",
+    attackNeutralAgainShort: "Nouveau raid",
     attackOriginRecovering: "Attaque · planète capitale en récupération",
     attackSilentSpace: "Attaque impossible · fermé dans l’Espace Silencieux",
     attackSilentSpaceShort: "Espace Silencieux",

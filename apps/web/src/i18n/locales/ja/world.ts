@@ -398,6 +398,7 @@ export const focus = {
     probeCoolingShort: "{{duration}} のプローブ",
     attack: "攻撃を計画する",
     attackNeutralAgain: "再びレイド · 主張は変更されていない",
+    attackNeutralAgainShort: "再レイド",
     attackOriginRecovering: "攻撃・原点回復",
     attackSilentSpace: "攻撃不可・サイレントスペースでは使用不可",
     attackSilentSpaceShort: "サイレントスペース",

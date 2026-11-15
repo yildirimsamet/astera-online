@@ -935,6 +935,21 @@ function GalleryFocusClosed({ own }: { own: boolean }) {
   );
 }
 
+/** G4-b3: a neutral world in its claim window, the route open on its third step. */
+function GalleryFocusNeutral() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  return (
+    <PlanetFocus target={claimWorld(true)} planet={{ ...launchWorld, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+      intel={launchIntel} reports={[]} now={NOW} onSettle={noop}
+      onClose={noop} onAttack={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+  );
+}
+
 function GalleryBand() {
   const client = useQueryClient();
   useState(() => {
@@ -1269,6 +1284,7 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-band') return <GalleryBand />;
   if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
   if (view === 'focus-own') return <GalleryFocusClosed own />;
+  if (view === 'focus-neutral') return <GalleryFocusNeutral />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;

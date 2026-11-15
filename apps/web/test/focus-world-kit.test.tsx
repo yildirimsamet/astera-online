@@ -143,3 +143,64 @@ describe('a foreign world’s readings on the kit', () => {
     expect(oldPaint(history)).toEqual([]);
   });
 });
+
+/**
+ * G4-b3 (2026-11-15): THE ROUTE TO A WORLD, ON THE KIT. A neutral world's three steps (raid,
+ * claim, settle) as kit steps, the current one lit; what the settlement needs as the kit's
+ * need chips on a 44 px door, each explaining itself on a press.
+ */
+describe('a world’s route on the kit', () => {
+  const neutral = () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={world({ kind: 'NEUTRAL', controller: { kind: 'NEUTRAL', tier: 1 }, neutral: {
+            tier: 1, threat: 'UNGUARDED', reserve: 'RICH', claimUntil: null, nextReinforcementAt: null } })}
+          planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          intel={intel} reports={[]} now={0}
+          onClose={vi.fn()} onAttack={vi.fn()} onSettle={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+  };
+
+  it('draws the guide and its steps with none of the old look', () => {
+    neutral();
+    const guide = document.querySelector<HTMLElement>('.gk-guide')!;
+    expect(guide).not.toBeNull();
+    expect(oldPaint(guide)).toEqual([]);
+    const step = document.querySelector<HTMLElement>('[data-colony-step="1"]')!;
+    expect(step).toHaveClass('gk-step');
+    expect(step.querySelector('button[aria-expanded]')).toHaveAttribute('data-own-sound');
+  });
+
+  it('makes each requirement a kit need chip on a door that answers its press', () => {
+    neutral();
+    const door = screen.getByRole('button', { name: '2 Couriers' });
+    expect(door).toHaveClass('gk-need-door');
+    expect(door).toHaveAttribute('data-own-sound');
+    expect(door.querySelector('.gk-need-chip')).not.toBeNull();
+  });
+});
+
+describe('a world in its claim window', () => {
+  it('pairs the probe and the attack in the strip, the attack’s face a short verb and its name the sentence', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={world({ kind: 'NEUTRAL', owner: '', controller: { kind: 'NEUTRAL', tier: 1 }, neutral: {
+            tier: 1, threat: 'UNGUARDED', reserve: 'RICH', nextReinforcementAt: null, claimUntil: new Date(72 * 60_000) } })}
+          planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          intel={intel} reports={[]} now={0}
+          onClose={vi.fn()} onAttack={vi.fn()} onSettle={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    const attack = rail().querySelector<HTMLElement>('.gk-focus__acts [data-attack]')!;
+    expect(attack.closest('.gk-focus__pair')).not.toBeNull();
+    expect(attack).toHaveTextContent(/^Raid again$/);
+    expect(attack).toHaveAccessibleName('Raid again · claim unchanged');
+  });
+});

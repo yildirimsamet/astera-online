@@ -397,6 +397,7 @@ export const focus = {
     probeCoolingShort: "Sonde in {{duration}}",
     attack: "Angriff planen",
     attackNeutralAgain: "Erneuter Überfall · Anspruch unverändert",
+    attackNeutralAgainShort: "Neuer Überfall",
     attackOriginRecovering: "-Angriff · Ursprung wird wiederhergestellt",
     attackSilentSpace: "Kann nicht angreifen · im Stillen Raum geschlossen",
     attackSilentSpaceShort: "Stiller Raum",

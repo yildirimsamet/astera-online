@@ -87,7 +87,7 @@ export const SURFACES: GameSurface[] = [
     id: 'focus',
     what: 'Odak paneli: hedef dosyası, iplik, radyasyon, bant, anıt',
     files: ['v2/hud/TargetDossier.tsx', 'starter/OutpostReading.tsx', 'starter/PartHere.tsx', 'screens/RadiationBombControls.tsx'],
-    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:support-focus', 'client:focus'],
+    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-neutral', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:support-focus', 'client:focus'],
     group: 'G4', unreached: ['keşfedilmemiş dünya', 'kalkanlı / tatildeki hedef', 'Ölüm Yıldızı bölümü', 'asteroit (madencilik)', 'enkaz', 'korsan', 'ticaret gemisi', 'galaksiler arası konvoy', 'temas'],
   },
   { id: 'launch', what: 'Saldırı/gönderme sayfası', files: ['screens/LaunchSheet.tsx', 'starter/TempoNote.tsx'], reach: ['gallery:launch', 'gallery:launch-pirate', 'gallery:launch-radiation', 'gallery:launch-radiation-lethal', 'gallery:support-launch'], group: 'G4' },

@@ -400,6 +400,7 @@ export const focus = {
     probeCoolingShort: "Probe in {{duration}}",
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",
+    attackNeutralAgainShort: "Raid again",
     attackOriginRecovering: "Attack · origin recovering",
     attackSilentSpace: "Cannot attack · closed in Silent Space",
     attackSilentSpaceShort: "Silent Space",

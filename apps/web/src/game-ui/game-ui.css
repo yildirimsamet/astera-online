@@ -11999,14 +11999,14 @@ button.gk-rcard__door:active {
   border-color: color-mix(in srgb, var(--gk-warn) 45%, transparent);
   background: color-mix(in srgb, var(--gk-warn) 10%, transparent);
 }
-/* a 320 px phone: the probe's price stacks, so the attack keeps its words whole beside it */
+/* the probe's price stacks, so the attack keeps its words whole beside it */
+.gk-focus__pair .gk-focus__half .gk-cost {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
 @media (max-width: 339px) {
-  :is(.gk-focus__pair, .gk-focus__acts) .gk-focus__half .gk-cost {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
-  :is(.gk-focus__pair, .gk-focus__acts) .gk-btn {
+  .gk-focus__pair .gk-btn {
     letter-spacing: 0.04em;
   }
 }
@@ -12159,4 +12159,202 @@ button.gk-fact__head:active .gk-fact__line {
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+
+/* ── the route to a world (G4-b3, 2026-11-15) ───────────────────────────────────
+   A rule about a world in a kit well; its steps numbered in rings, the one under way lit;
+   what the settlement needs as need chips on 44 px doors that explain themselves. */
+.gk-guide {
+  --guide-c: var(--gk-ink-2);
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-3) 70%, transparent);
+}
+.gk-guide[data-tone='self'] {
+  --guide-c: var(--gk-self);
+  border-color: color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  background: color-mix(in srgb, var(--gk-self) 8%, var(--gk-metal-3));
+}
+.gk-guide[data-tone='warn'] {
+  --guide-c: var(--gk-warn);
+  border-color: color-mix(in srgb, var(--gk-warn) 40%, var(--gk-metal-edge));
+}
+.gk-guide__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.gk-guide__head > .gk-glyph {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--guide-c);
+}
+.gk-guide__text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-guide__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-guide__title.gk-label {
+  font-size: var(--gk-t-floor);
+  color: var(--guide-c);
+}
+.gk-guide__aside {
+  flex-shrink: 0;
+  font-size: var(--gk-t-small);
+  color: var(--guide-c);
+}
+.gk-guide__lead {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--gk-ink);
+}
+.gk-guide__clock {
+  font-size: var(--gk-t-body);
+  text-align: center;
+  color: var(--gk-self);
+}
+.gk-guide__foot {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-self) 20%, transparent);
+}
+.gk-steps {
+  display: grid;
+  gap: 6px;
+}
+.gk-steps--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.gk-step {
+  --step-c: var(--gk-ink-3);
+  display: grid;
+  gap: 6px;
+  padding: 2px 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: color-mix(in srgb, var(--gk-metal-1) 60%, transparent);
+}
+.gk-step[data-status='complete'] { --step-c: var(--gk-good); }
+.gk-step[data-status='current'] {
+  --step-c: var(--gk-self);
+  border-color: color-mix(in srgb, var(--gk-self) 45%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 8%, transparent);
+}
+.gk-step[data-status='current'][data-danger] {
+  --step-c: var(--gk-warn);
+  border-color: color-mix(in srgb, var(--gk-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--gk-warn) 8%, transparent);
+}
+.gk-step__fold {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-step__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.gk-step__fold .gk-step__head {
+  min-height: var(--gk-hit);
+}
+.gk-step__fold:active .gk-step__head {
+  transform: translateY(1px);
+}
+.gk-step__n {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--step-c);
+  border-radius: 50%;
+  font-size: var(--gk-t-floor);
+  color: var(--step-c);
+}
+.gk-step__n .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-step__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--step-c);
+  overflow-wrap: break-word;
+}
+.gk-step[data-status='upcoming'] .gk-step__name {
+  color: var(--gk-ink-2);
+}
+.gk-step__chev {
+  display: inline-grid;
+  flex-shrink: 0;
+  color: var(--gk-ink-3);
+}
+.gk-step__chev .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-step__detail {
+  padding-left: 32px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-step__reqs {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  padding-left: 32px;
+}
+.gk-req {
+  position: relative;
+  display: inline-flex;
+}
+.gk-req__art {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+.gk-need-chip[data-open] {
+  border-color: color-mix(in srgb, var(--gk-self) 45%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 10%, transparent);
+  color: var(--gk-self);
+}
+/* why a step needs it, for two seconds, over everything */
+.gk-tip {
+  z-index: 100;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-3);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  text-align: left;
+  color: var(--gk-ink);
+  animation: gk-rise var(--gk-settle) var(--gk-pop);
 }

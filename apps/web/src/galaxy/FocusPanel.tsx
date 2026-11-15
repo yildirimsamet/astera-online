@@ -92,7 +92,7 @@ import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { AttackIcon, ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
+import { ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
@@ -925,7 +925,7 @@ export function PlanetFocus({
         onPress={onAttack}
       >
         {t(colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-          ? 'focus.planet.attackNeutralAgain'
+          ? 'focus.planet.attackNeutralAgainShort'
           : 'focus.planet.attackShort')}
       </GameButton>
   ));
@@ -1040,7 +1040,7 @@ export function PlanetFocus({
             </p>
           )}
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
-            <GameButton glyph="colony" size="sm" className="gk-focus__half" onPress={onSettle}
+            <GameButton glyph="colony" size="sm" wide className="gk-focus__wide" onPress={onSettle}
               disabledReason={settlementReady ? null : (settlementBlockLabel ?? t('focus.planet.settle'))}>
               {settlementBlockLabel ?? t('focus.planet.settle')}
             </GameButton>
@@ -1071,7 +1071,6 @@ export function PlanetFocus({
             A probe at a clanmate is `CLAN_FRIENDLY_FIRE` before it is anything
             else, so both are hidden there rather than offered and refused.
           */}
-          {probeControl}
           {/*
             KLAN SAVUNMA DESTEĞİ. A clanmate's world is the one place a fleet can be sent to
             stand in somebody else's line; the sentence says what that means before the tap.
@@ -1097,7 +1096,12 @@ export function PlanetFocus({
             </GameButton>
             {clanTargetRefusal && <p className="gk-sub">{clanTargetRefusal}</p>}
           </div>}
-          {attackControl}
+          {(probeControl || attackControl) && (
+            <div className="gk-focus__pair gk-focus__wide">
+              {probeControl}
+              {attackControl}
+            </div>
+          )}
           </>
         )}
     >
@@ -1617,34 +1621,33 @@ function Requirement({
     }, 2_000);
   };
 
-  const tone = ok === null
-    ? 'border-v2-self/35 bg-v2-self/10 text-v2-self'
-    : ok
-      ? 'border-v2-self/35 bg-v2-self/10 text-v2-self'
-      : 'border-v2-warn/40 bg-v2-warn/10 text-v2-warn';
+  const press = useOwnPress(() => { playSound('tap'); haptic('tap'); explain(); });
 
+  /*
+    THE KIT'S NEED CHIP ON A 44 px DOOR (G4-b3, 2026-11-15): met is quiet with a tick, unmet
+    in warning with an open ring, a state not yet known with a question mark. A press says
+    why the step needs it, for two seconds, over everything.
+  */
   return (
-    <span className="relative inline-flex">
+    <span className="gk-req">
       <button
         id={`${tooltipId}-button`}
         type="button"
+        {...OWN_SOUND}
         aria-label={label}
         aria-describedby={explaining ? tooltipId : undefined}
         aria-expanded={explaining}
-        className={`flex min-h-8 touch-manipulation items-center gap-2 rounded-chip border px-2 text-micro hover:brightness-125 focus-visible:ring-2 focus-visible:ring-crystal/70 ${tone}`}
-        onClick={explain}
+        className="gk-need-door"
+        onPointerDown={press.onPointerDown}
+        onClick={press.onClick}
       >
-        <span aria-hidden className="text-micro">{ok === null ? '?' : ok ? '●' : '○'}</span>
-        {children}
+        <span className="gk-need-chip" {...(ok === true ? { 'data-met': '' } : {})} {...(ok === null ? { 'data-open': '' } : {})}>
+          <Glyph id={ok === null ? 'help' : ok ? 'check' : 'lock'} />
+          {children}
+        </span>
       </button>
       {explaining && createPortal(
-        <span
-          id={tooltipId}
-          role="tooltip"
-          aria-live="polite"
-          className="fixed z-[100] rounded-chip border border-v2-self/45 bg-v2-deep px-3 py-2 text-left text-label leading-snug text-v2-ink shadow-[0_0_20px_rgba(98,215,232,0.18)]"
-          style={tooltipPosition}
-        >
+        <span id={tooltipId} role="tooltip" aria-live="polite" className="gk fixed gk-tip" style={tooltipPosition}>
           {explanation}
         </span>,
         document.body,
@@ -1732,21 +1735,15 @@ function StrategicWorldGuide({
 
   if (target.isOwned) {
     return (
-      <div className="mb-3 flex items-center gap-2 rounded-chip border border-v2-self/35 bg-v2-self/8 px-3 py-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-self/50 text-v2-self">
-          {target.kind === 'CAPITAL' ? '◆' : '▲'}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="v2-legend text-v2-self">
+      <div className="gk-guide" data-tone="self">
+        <div className="gk-guide__head">
+          <Glyph id={target.kind === 'CAPITAL' ? 'home' : 'colony'} />
+          <p className="gk-label gk-guide__title">
             {t(target.kind === 'CAPITAL' ? 'focus.planet.yourCapital' : 'focus.planet.yourColony')}
           </p>
-          <p className="mt-1 text-label text-v2-ink-2">{t('focus.planet.transferHint')}</p>
+          {standing && <span className="gk-num gk-guide__aside">{standing.colonies + standing.reservations}/{standing.capacity}</span>}
         </div>
-        {standing && (
-          <span className="font-v2-mono shrink-0 text-micro text-v2-self">
-            {standing.colonies + standing.reservations}/{standing.capacity}
-          </span>
-        )}
+        <p className="gk-sub">{t('focus.planet.transferHint')}</p>
       </div>
     );
   }
@@ -1759,11 +1756,11 @@ function StrategicWorldGuide({
         a stranger's capital was boxed in it. Neutral and one line tall, as the dossier's
         other rules are; only the EMP window — an opening for you — keeps the teal edge.
       */
-      <div className={`mb-3 rounded-control border px-3 py-2 ${emp ? 'border-v2-self/55 bg-v2-self/10' : 'border-v2-line bg-v2-deep/40'}`}>
-        <div className="flex items-start gap-2">
-          <span aria-hidden className={`mt-0.5 shrink-0 text-caption ${emp ? 'text-v2-self' : 'text-v2-ink-3'}`}>◆</span>
-          <div className="min-w-0 flex-1">
-            <p className={`text-caption font-semibold ${emp ? 'text-v2-self' : 'text-v2-ink'}`}>
+      <div className="gk-guide" {...(emp ? { 'data-tone': 'self' } : {})}>
+        <div className="gk-guide__head">
+          <Glyph id="shield" />
+          <div className="gk-guide__text">
+            <p className="gk-guide__title">
               {t(emp ? 'focus.planet.capitalEmp' : 'focus.planet.capitalProtected')}
             </p>
             {/*
@@ -1778,7 +1775,7 @@ function StrategicWorldGuide({
               as a rule. The flag-off line states the rule that IS live: raids take
               resources here and control never moves.
             */}
-            <p className="mt-0.5 text-micro leading-snug text-v2-ink-2">
+            <p className="gk-sub">
               {t(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
                 ? 'focus.planet.capitalRaidOnlyHint'
                 : emp
@@ -1786,11 +1783,7 @@ function StrategicWorldGuide({
                   : 'focus.planet.capitalProtectedHint')}
             </p>
           </div>
-          {emp && (
-            <span className="font-v2-mono shrink-0 text-caption text-v2-self">
-              {duration((emp.until.getTime() - now) / 60_000)}
-            </span>
-          )}
+          {emp && <span className="gk-num gk-guide__aside">{duration((emp.until.getTime() - now) / 60_000)}</span>}
         </div>
       </div>
     );
@@ -1806,11 +1799,10 @@ function StrategicWorldGuide({
     const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.charge.alloy;
     const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.charge.crystal;
     return (
-      <div className={`mb-3 rounded-control border px-3 py-2.5 ${
-        claimActive ? 'border-v2-self/40 bg-v2-self/5' : 'border-v2-line bg-v2-panel'
-      }`}>
-        <div className="flex items-center gap-2">
-          <p className={`v2-legend ${ claimActive ? 'text-v2-self' : 'text-v2-ink' }`}>
+      <div className="gk-guide" {...(claimActive ? { 'data-tone': 'self' } : {})}>
+        <div className="gk-guide__head">
+          <Glyph id="colony" />
+          <p className="gk-label gk-guide__title">
             {t(phase === 'SETTLEMENT_IN_FLIGHT'
               ? 'focus.planet.settlementInFlight'
               : !claimActive
@@ -1820,7 +1812,7 @@ function StrategicWorldGuide({
                   : priority.mine ? 'focus.planet.claimPriorityMineTitle' : 'focus.planet.claimPriorityOtherTitle')}
           </p>
         </div>
-        <ol className="mt-2 flex flex-col gap-1">
+        <ol className="gk-steps">
           <RouteStep
             status={phase === 'NEUTRAL_PREP' ? 'current' : 'complete'}
             open={isOpen('colony-1', phase === 'NEUTRAL_PREP')}
@@ -1895,7 +1887,7 @@ function StrategicWorldGuide({
                     amount: compact(MULTI_WORLD.settlement.charge.alloy),
                   })}
                 >
-                  <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-3.5 object-contain" />
+                  <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="gk-req__art" />
                   {compact(MULTI_WORLD.settlement.charge.alloy)}
                 </Requirement>
                 <Requirement
@@ -1907,7 +1899,7 @@ function StrategicWorldGuide({
                     amount: compact(MULTI_WORLD.settlement.charge.crystal),
                   })}
                 >
-                  <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
+                  <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="gk-req__art" />
                   {compact(MULTI_WORLD.settlement.charge.crystal)}
                 </Requirement>
                 <Requirement
@@ -1917,7 +1909,7 @@ function StrategicWorldGuide({
                     amount: compact(settlementFuel),
                   })}
                 >
-                  <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-3.5 object-contain" />
+                  <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="gk-req__art" />
                   {compact(settlementFuel)}
                 </Requirement>
                 <Requirement
@@ -1934,7 +1926,7 @@ function StrategicWorldGuide({
           </RouteStep>
         </ol>
         {claimActive && (
-          <p className="mt-2 text-center text-body text-v2-ink">
+          <p className="gk-guide__lead">
             {priority === null
               ? t('focus.planet.claimRaceExplain')
               : t(priority.mine ? 'focus.planet.claimPriorityMineExplain' : 'focus.planet.claimPriorityOtherExplain', {
@@ -1943,7 +1935,7 @@ function StrategicWorldGuide({
           </p>
         )}
         {claimActive && until && (
-          <p className="font-v2-mono mt-2 text-center text-body text-v2-self">
+          <p className="gk-num gk-guide__clock">
             {priority === null
               ? t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })
               : t('focus.planet.claimPriorityCloses', {
@@ -1953,12 +1945,10 @@ function StrategicWorldGuide({
           </p>
         )}
         {claimActive && (
-          <div className="mt-2 grid gap-1 border-t border-v2-self/20 pt-2 text-label leading-snug text-v2-ink-2">
-            <p className="flex items-start gap-2">
-              <AttackIcon className="mt-1 size-3.5 shrink-0 text-v2-warn" />
-              <span>{t('focus.planet.claimRaidStillOpen')}</span>
-            </p>
-          </div>
+          <p className="gk-inote gk-guide__foot" data-tone="warn">
+            <Glyph id="attack" />
+            <span>{t('focus.planet.claimRaidStillOpen')}</span>
+          </p>
         )}
       </div>
     );
@@ -1987,27 +1977,24 @@ function StrategicWorldGuide({
    */
   if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && protectedUntil === null) return null;
   return (
-    <div className={`mb-3 rounded-chip border px-3 py-3 ${
-      emp
-        ? 'border-v2-self/55 bg-v2-self/12'
-        : isRival ? 'border-alloy-glow/45 bg-alloy-glow/8' : 'border-v2-line/70 bg-deep/65'
-    }`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className={`v2-legend ${emp ? 'text-v2-self' : 'text-v2-ink'}`}>
+    <div className="gk-guide" {...(emp ? { 'data-tone': 'self' } : isRival ? { 'data-tone': 'warn' } : {})}>
+      <div className="gk-guide__head">
+        <Glyph id={protectedUntil ? 'shield' : 'target'} />
+        <p className="gk-label gk-guide__title">
           {t(emp
             ? 'focus.planet.empBreach'
             : protectedUntil
               ? 'focus.planet.occupationProtected'
               : 'focus.planet.deathStarRoute')}
         </p>
-        {emp && <span className="font-v2-mono text-label text-v2-self">{duration((emp.until.getTime() - now) / 60_000)}</span>}
+        {emp && <span className="gk-num gk-guide__aside">{duration((emp.until.getTime() - now) / 60_000)}</span>}
       </div>
       {protectedUntil ? (
-        <p className="mt-1 text-label text-v2-ink-2">
+        <p className="gk-sub">
           {t('focus.planet.protectedFor', { duration: duration((protectedUntil.getTime() - now) / 60_000) })}
         </p>
       ) : (
-        <ol className="mt-2 grid grid-cols-2 items-start gap-2 text-center">
+        <ol className="gk-steps gk-steps--two">
           <RouteStep
             status={emp ? 'complete' : 'current'}
             open={isOpen('strike-1', !emp)}
@@ -2040,7 +2027,7 @@ function StrategicWorldGuide({
         out to put a ship on it, and nobody has to fire anything for it to fall.
       */}
       {emp && (
-        <p className="mt-2 text-label leading-snug text-v2-self">
+        <p className="gk-inote" data-tone="self">
           {t('focus.planet.empWarning', {
             duration: duration((emp.until.getTime() - now) / 60_000),
           })}
@@ -2089,67 +2076,39 @@ function RouteStep({
   onToggle: () => void;
   children?: ReactNode;
 }) {
-  const tone = status === 'current'
-    ? danger ? 'border-v2-warn/40 bg-v2-warn/8 text-v2-warn' : 'border-v2-self/40 bg-v2-self/8 text-v2-self'
-    : status === 'complete'
-      ? 'border-v2-line bg-v2-deep/50 text-v2-self'
-      : 'border-v2-line bg-v2-deep/35 text-v2-ink-3';
-  /**
-   * ONLY THE PROSE FOLDS. THE REQUIREMENTS NEVER DO.
-   *
-   * The first cut of this folded `children` too, and `focus-actions.test.tsx`
-   * caught what that costs: the founding requirements — two Couriers, the alloy,
-   * the crystal — sit on step THREE, and a commander standing on step one would
-   * not have seen them until the race was already open. That test is named "so the
-   * claim cannot reveal a surprise cost", and hiding a cost behind a tap is the
-   * Decision-support failure `interface.md` lists third.
-   *
-   * The prose is the bulk of the height anyway — two or three lines per step
-   * against one row of chips — so folding it is where the screen is won, and
-   * folding the chips would have bought almost nothing for a real regression.
-   */
   const hasDetail = description !== undefined;
+  const fold = useOwnPress(() => { playSound('tap'); haptic('tap'); onToggle(); });
 
+  /*
+    A STEP OF THE ROUTE (G4-b3, 2026-11-15): its number in a ring (a tick once done), its name,
+    the fold; the step under way lit in your colour — in warning when it is a strike.
+  */
   const header = (
-    <span className="flex w-full items-center gap-2 text-left">
-      <span className="grid size-6 shrink-0 place-items-center rounded-full border border-current font-v2-mono text-micro">
-        {status === 'complete' ? '✓' : number}
-      </span>
-      <span className="v2-legend block min-w-0 flex-1 leading-tight">{label}</span>
-      {hasDetail && (
-        <svg
-          aria-hidden
-          viewBox="0 0 20 20"
-          className={`size-3.5 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        >
-          <path d="M7 4.5 12.5 10 7 15.5" />
-        </svg>
-      )}
+    <span className="gk-step__head">
+      <span className="gk-step__n gk-num">{status === 'complete' ? <Glyph id="check" /> : number}</span>
+      <span className="gk-step__name">{label}</span>
+      {hasDetail && <span className="gk-step__chev" aria-hidden="true"><Glyph id={open ? 'up' : 'down'} /></span>}
     </span>
   );
 
   return (
     <li
-      className={`relative rounded-control border px-2.5 py-1.5 text-left ${tone}`}
+      className="gk-step"
+      data-status={status}
+      {...(danger ? { 'data-danger': '' } : {})}
       aria-current={status === 'current' ? 'step' : undefined}
       data-colony-step={dataStep}
       data-open={open ? 'true' : 'false'}
     >
       {hasDetail ? (
-        <button type="button" aria-expanded={open} className="w-full" onClick={onToggle}>
+        <button type="button" {...OWN_SOUND} aria-expanded={open} className="gk-step__fold"
+          onPointerDown={fold.onPointerDown} onClick={fold.onClick}>
           {header}
         </button>
       ) : header}
 
-      {open && description !== undefined && (
-        <span data-step-detail className="mt-1.5 block pl-8 text-micro leading-snug text-v2-ink-2">
-          {description}
-        </span>
-      )}
-      {children && <span className="mt-1.5 flex flex-wrap gap-1 pl-8">{children}</span>}
+      {open && description !== undefined && <span data-step-detail className="gk-step__detail">{description}</span>}
+      {children && <span className="gk-step__reqs">{children}</span>}
     </li>
   );
 }
