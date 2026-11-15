@@ -15468,3 +15468,12 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 /* the strike's name and its ready chip read on their own red wash: the bright end of the tone (G4 close, contrast) */
 .gk-strike__title, .gk-strike__ready { color: color-mix(in srgb, var(--gk-strike-tone) 45%, var(--gk-hostile-hi)); }
 .gk-strike[data-weapon='radiation'] .gk-strike__title, .gk-strike[data-weapon='radiation'] .gk-strike__ready { color: var(--gk-warn); }
+.gk-aid__chips .gk-chip[data-tone='self'], .gk-aid__bays .gk-chip[data-tone='self'] { color: var(--gk-self); }
+.gk-aid__chips .gk-chip[data-tone='good'], .gk-aid__bays .gk-chip[data-tone='good'] { color: var(--gk-good); }
+.gk-aid__bays .gk-chip[data-tone='hostile'] { color: var(--gk-hostile); }
+/* the aid's three facts are labels, not presses: small, in sentence case, on one or two lines */
+.gk-aid__chips .gk-chip { min-height: 24px; padding: 0 8px; font-size: var(--gk-t-floor); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.gk-aid__quote > .gk-figures { padding-top: 0; border-top: 0; }
+.gk-aid__quote .gk-figure__value[data-tone='good'] { color: var(--gk-good); }
+.gk-aid__quote .gk-figure__value[data-tone='hostile'] { color: var(--gk-hostile); }
+.gk-aid__quote .gk-figure__value[data-tone='self'] { color: var(--gk-self); }

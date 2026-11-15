@@ -578,7 +578,7 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war' }) {
+function GalleryClan({ tab, quote = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
@@ -653,16 +653,29 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
         pool: { combatHulls: 98, waves: 3, participants: 3 },
       },
     }));
-    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
+    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [],
+      // G7-a: where each clanmate can be sent aid, so the route's third picker names a world.
+      clanPresence: { clan, members: [
+        { playerId: 'mira', username: 'Mira', worlds: [{ planetId: 'p-mira', name: 'Lantern', position: { x: 900, y: 0, z: 300 } }, { planetId: 'p-mira-2', name: 'Halcyon', position: { x: 1400, y: 0, z: -200 } }] },
+        { playerId: 'orin', username: 'Orin', worlds: [{ planetId: 'p-orin', name: 'Brask', position: { x: -700, y: 0, z: 500 } }] },
+      ] } });
     return null;
   });
-  return (
+  // G7-a: a server that prices any aid flight, so the quote can be photographed after "Check flight".
+  const [api] = useState(() => new Api({ fetch: () => Promise.resolve(new Response(JSON.stringify({
+    clanId: 'c-nova', canLand: true, withinAllowance: true, bay: { used: 1, total: 3, available: true }, cargoCapacity: 4_000,
+    value: { alloy: 600, crystal: 0, deuterium: 0 }, remaining: { alloy: 9_000, crystal: 4_000, deuterium: 900 },
+    nextReleaseAt: new Date(NOW + 140 * MIN).toISOString(), arriveAt: new Date(NOW + 22 * MIN).toISOString(),
+    possibleReturnAt: new Date(NOW + 44 * MIN).toISOString(), canFinishBeforeSeasonEnd: true, travelMinutes: 22,
+  }), { status: 200, headers: { 'content-type': 'application/json' } })) }));
+  const screen = (
     <Sheet title="Clan" headerArt={ATMOSPHERE.clan} eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
         <ClanScreen initialTab={tab} onOpenClanChat={noop} />
       </WorldProvider>
     </Sheet>
   );
+  return quote ? <ApiProvider api={api}>{screen}</ApiProvider> : screen;
 }
 
 /** The commander surface and live ladder, staged together so their v2 density can be inspected. */
@@ -1440,6 +1453,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
+  if (view === 'clan-aid-quote') return <GalleryClan tab="aid" quote />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;

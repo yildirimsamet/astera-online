@@ -312,6 +312,7 @@ export const clan = {
     ships: "Vaisseaux offerts",
     transportShips: "Flotte de transport qui reviendra",
     available: "{{count}} disponibles",
+    noShips: "Aucun vaisseau à quai sur ce monde.",
     fewer: "Envoyer moins de {{name}}",
     more: "Envoyer plus de {{name}}",
     shipCount: "Nombre de {{name}}",
@@ -343,8 +344,6 @@ export const clan = {
     remainingLimit: "Limite restante du destinataire avant ce vol",
     nextLimit:
       "La limite du destinataire commencera à se rétablir dans {{duration}}.",
-    launch: "Envoyer — aucun rappel possible",
-    launchDelivery: "Envoyer les ressources — la flotte de transport reviendra",
     launched: "L’aide est en route.",
     transfersHeading: "Vols d’aide",
     transfersWaiting: "Chargement des vols d’aide",

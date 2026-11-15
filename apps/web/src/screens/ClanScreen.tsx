@@ -64,10 +64,11 @@ import { full, signed } from '../lib/format.js';
 import { duration, minutesUntil, useNow } from '../lib/time.js';
 import { useWorld } from '../api/world.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
-import { Tally } from '../ui/Tally.js';
-import { RESOURCE_ART } from '../ui/assets.js';
+import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
+import { HullMark } from '../ui/icons/hulls.js';
+import { Cells, type Cell } from '../ui/ArmCard.js';
+import { CostLine, GameButton, GameHold, Glyph, Picker, SectionTag, Slider, Toggle } from '../game-ui/index.js';
 import {
   ClanIcon,
   AegisIcon,
@@ -91,7 +92,6 @@ import {
   Section,
   Stat,
 } from '../v2/kit/Surface.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { ClanWarPanel } from './ClanWarPanel.js';
 
 type ClanTab = 'overview' | 'strength' | 'members' | 'aid' | 'war';
@@ -1665,281 +1665,229 @@ function ClanAidPanel({
 
   if (!home.clan.mature) {
     return (
-      <Plate tone="lit" cut className="px-5 py-6 text-center">
-        <ClockIcon className="mx-auto size-7 text-v2-self" />
-        <h3 className="font-semibold mt-3 text-body font-semibold text-v2-ink">{t('clan.aid.adaptingTitle')}</h3>
-        <p className="mx-auto mt-2 max-w-[38ch] text-caption leading-relaxed text-v2-ink-2">
-          {t('clan.aid.adaptingBody', { duration: duration(minutesUntil(home.clan.matureAt, now)) })}
-        </p>
-      </Plate>
+      <div data-clan-aid className="gk gk-aid">
+        <div className="gk-well gk-aid__quote">
+          <p className="gk-inote" data-tone="self"><Glyph id="clock" />{t('clan.aid.adaptingTitle')}</p>
+          <p className="gk-sub">{t('clan.aid.adaptingBody', { duration: duration(minutesUntil(home.clan.matureAt, now)) })}</p>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-7">
-      <Section label={t('clan.aid.receiveHeading')}>
-        <Plate className="flex items-center gap-2 px-2 py-2">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-v2-ink">{home.clan.aidEnabled ? t('clan.aid.receiving') : t('clan.aid.paused')}</p>
-            <p className="mt-1 text-caption leading-relaxed text-v2-ink-3">{t('clan.aid.receiveHint')}</p>
-          </div>
-          <Button
-            size="sm"
-            variant={home.clan.aidEnabled ? 'ghost' : 'primary'}
-            disabled={actions.aidPolicy.isPending}
-            onClick={() => { actions.aidPolicy.mutate(!home.clan.aidEnabled); }}
-          >
-            {home.clan.aidEnabled ? t('clan.aid.pause') : t('clan.aid.resume')}
-          </Button>
-        </Plate>
-        <MutationError mutation={actions.aidPolicy} />
-      </Section>
+  // The verb on the hold is short; whether the transport comes home is the chip above the route.
+  const sendLabel = t('clan.aid.sendHeading');
+  const atHome = CLAN_TRANSFERABLE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0);
+  const aidError = (mutation: Pick<UseMutationResult, 'isError' | 'error'>) => mutation.isError
+    ? <p role="alert" className="gk-inote" data-tone="warn">{describeError(mutation.error)}</p>
+    : null;
+  const bays: Cell[] = quote
+    ? Array.from({ length: quote.bay.total }, (_unused, index): Cell => (index < quote.bay.used ? 'flight' : 'ready'))
+    : [];
 
-      <Section label={t('clan.aid.sendHeading')}>
-        <Plate tone="lit" className="px-2 py-2">
-          <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.aid.explainer')}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Chip tone="crystal">{t('clan.aid.speed')}</Chip>
-            <Chip tone="opportunity">{t('clan.aid.extraBay')}</Chip>
-            <Chip>{t(resourceDelivery ? 'clan.aid.returns' : 'clan.aid.noRecall')}</Chip>
-          </div>
-        </Plate>
+  return (
+    <div data-clan-aid className="gk gk-aid">
+      <section className="gk-aid__part">
+        {/* Receiving is a state the commander throws, so it is a switch, not a button that renames itself. */}
+        <Toggle checked={home.clan.aidEnabled} label={t('clan.aid.receiveHeading')}
+          sub={home.clan.aidEnabled ? t('clan.aid.receiving') : t('clan.aid.paused')}
+          onChange={(next) => { if (!actions.aidPolicy.isPending) actions.aidPolicy.mutate(next); }} />
+        <p className="gk-sub">{t('clan.aid.receiveHint')}</p>
+        {aidError(actions.aidPolicy)}
+      </section>
+
+      <section className="gk-aid__part">
+        <SectionTag as="h3">{t('clan.aid.sendHeading')}</SectionTag>
+        <p className="gk-sub">{t('clan.aid.explainer')}</p>
+        <div className="gk-aid__chips">
+          <span className="gk-chip" data-tone="self">{t('clan.aid.speed')}</span>
+          <span className="gk-chip" data-tone="good">{t('clan.aid.extraBay')}</span>
+          <span className="gk-chip">{t(resourceDelivery ? 'clan.aid.returns' : 'clan.aid.noRecall')}</span>
+        </div>
 
         {worlds.length === 0 ? (
-          <EmptyState title={t('clan.aid.noOrigin')} />
+          <p className="gk-inote" data-tone="warn">{t('clan.aid.noOrigin')}</p>
         ) : recipients.length === 0 ? (
-          <EmptyState title={t('clan.aid.noRecipient')}>
-            {t('clan.aid.noRecipientHint')}
-          </EmptyState>
+          <div className="gk-well gk-aid__quote">
+            <p className="gk-inote" data-tone="warn">{t('clan.aid.noRecipient')}</p>
+            <p className="gk-sub">{t('clan.aid.noRecipientHint')}</p>
+          </div>
         ) : (
-          <Plate className="px-2 py-2">
-            <div className="grid gap-2 sm:grid-cols-3">
-              <SelectField
-                label={t('clan.aid.origin')}
-                value={origin?.planet.id ?? ''}
+          <>
+            <div className="gk-aid__route">
+              <Picker label={t('clan.aid.origin')} value={origin?.planet.id ?? ''}
                 onChange={(value) => { setOriginId(value); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); setLaunched(false); }}
-                options={worlds.map((world) => ({ value: world.planet.id, label: world.planet.name }))}
-              />
-              <SelectField
-                label={t('clan.aid.recipient')}
-                value={recipient?.playerId ?? ''}
+                options={worlds.map((world) => ({ id: world.planet.id, label: world.planet.name }))} />
+              <Picker label={t('clan.aid.recipient')} value={recipient?.playerId ?? ''}
                 onChange={(value) => { setRecipientId(value); setTargetId(''); setQuotedKey(null); setLaunched(false); }}
-                options={recipients.map((member) => ({ value: member.playerId, label: member.username }))}
-              />
-              <SelectField
-                label={t('clan.aid.target')}
-                value={target?.planetId ?? ''}
+                options={recipients.map((member) => ({ id: member.playerId, label: member.username }))} />
+              <Picker label={t('clan.aid.target')} value={target?.planetId ?? ''}
                 onChange={(value) => { setTargetId(value); setQuotedKey(null); setLaunched(false); }}
-                options={targets.map((world) => ({ value: world.planetId, label: world.name }))}
-              />
+                options={targets.map((world) => ({ id: world.planetId, label: world.name }))} />
             </div>
 
-            <div className="mt-5 border-t border-v2-line pt-2">
-              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
-              <div className="mt-3 flex flex-col gap-2">
-                {CLAN_TRANSFERABLE_HULLS.map((hull) => {
-                  const available = origin?.fleet[hull] ?? 0;
+            <section className="gk-aid__part">
+              <p className="gk-label">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
+              {/* A hull with none at home is not a choice, so it takes no row. */}
+              {atHome.length === 0 && <p className="gk-inote" data-tone="warn">{t('clan.aid.noShips')}</p>}
+              {atHome.map((hull) => {
+                const available = origin?.fleet[hull] ?? 0;
+                const name = hullName(hull) ?? hull;
+                const art = HULL_ART[hull];
+                const packed = fleet[hull] ?? 0;
+                return (
+                  <div key={hull} data-hull-row={hull} className="gk-lrow" {...(packed > 0 ? { 'data-chosen': '' } : {})}>
+                    <span data-art className="gk-lrow__art" {...(available > 0 ? {} : { 'data-none': '' })}>
+                      {art ? <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" /> : <HullMark hull={hull} className="gk-lrow__mark" />}
+                    </span>
+                    <span className="gk-lrow__name">{name}</span>
+                    <span className="gk-sub gk-num gk-lrow__info">{t('clan.aid.available', { count: available })}</span>
+                    <QuantityStepper
+                      look="kit"
+                      value={packed}
+                      min={0}
+                      max={available}
+                      onChange={(value) => { updateFleet(hull, value); }}
+                      decreaseLabel={t('clan.aid.fewer', { name })}
+                      increaseLabel={t('clan.aid.more', { name })}
+                      valueLabel={t('clan.aid.shipCount', { name })}
+                      maxLabel={t('clan.aid.allShips', { name })}
+                      maxText={t('clan.aid.max')}
+                    />
+                  </div>
+                );
+              })}
+            </section>
+
+            <section className="gk-aid__part">
+              <p className="gk-label">{t('clan.aid.cargo')}</p>
+              {/* The hold as a figure that moves while it is loaded: overfilling shows while it happens. */}
+              <p className="gk-inote" {...(cargoUsed > cargoCapacity ? { 'data-tone': 'hostile' } : cargoCapacity > 0 ? {} : { 'data-tone': 'warn' })}>
+                <Glyph id="crate" />{t('clan.aid.cargoUse', { used: full(cargoUsed), capacity: full(cargoCapacity) })}
+              </p>
+              <p className="gk-sub">{t('clan.aid.transportOnly')}</p>
+              <div className="gk-cargo">
+                {(['alloy', 'crystal', 'deuterium'] as const).map((kind) => {
+                  const stock = Math.floor(origin?.planet[kind] ?? 0);
+                  const room = Math.max(0, cargoCapacity - (cargoUsed - cargo[kind]));
                   return (
-                    <div key={hull} className="flex items-center gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold truncate text-v2-ink">{hullName(hull) ?? hull}</p>
-                        <p className="mt-1 text-label text-v2-ink-3">{t('clan.aid.available', { count: available })}</p>
-                      </div>
-                      <QuantityStepper
-                        value={fleet[hull] ?? 0}
-                        min={0}
-                        max={available}
-                        onChange={(value) => { updateFleet(hull, value); }}
-                        decreaseLabel={t('clan.aid.fewer', { name: hullName(hull) ?? hull })}
-                        increaseLabel={t('clan.aid.more', { name: hullName(hull) ?? hull })}
-                        valueLabel={t('clan.aid.shipCount', { name: hullName(hull) ?? hull })}
-                        maxLabel={t('clan.aid.allShips', { name: hullName(hull) ?? hull })}
-                        maxText={t('clan.aid.max')}
-                      />
+                    <div key={kind} data-cargo-row={kind} className="gk-well gk-cargo__row">
+                      <span className="gk-cargo__head">
+                        <img src={RESOURCE_ART[kind]} alt="" aria-hidden />
+                        <span className="gk-label">{t(`clan.resources.${kind}`)}</span>
+                      </span>
+                      <SpendBar inline stock={stock} spend={cargo[kind]} tone={kind} label={t('clan.aid.cargo')} />
+                      <Slider label={t(`clan.resources.${kind}`)} value={cargo[kind]} max={Math.min(stock, room)}
+                        onChange={(value) => { updateCargo(kind, value); }} />
                     </div>
                   );
                 })}
               </div>
-            </div>
-
-            <div className="mt-5 border-t border-v2-line pt-2">
-              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clan.aid.cargo')}</p>
-              {/*
-                THE HOLD, IN THE BAR THE BUILD SHEET AND THE TRANSFER SHEET BOTH
-                DRAW. "1,200 / 4,000" is a fraction the player converts into the
-                thing they wanted, which is whether the next thousand fits — and
-                the segment for THIS load grows as the numbers are typed, so
-                overfilling is visible while it happens rather than at the moment
-                the button refuses.
-              */}
-              <div className="mt-2">
-                <CapacityBar
-                  total={cargoCapacity}
-                  used={0}
-                  incoming={cargoUsed}
-                  label={t('clan.aid.cargo')}
-                />
-              </div>
-              <p className="mt-1 text-label text-v2-ink-3">{t('clan.aid.transportOnly')}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {(['alloy', 'crystal', 'deuterium'] as const).map((kind) => (
-                  <label key={kind}>
-                    <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block truncate">{t(`clan.resources.${kind}`)}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={origin?.planet[kind] ?? 0}
-                      step={1}
-                      value={cargo[kind]}
-                      onChange={(event) => { updateCargo(kind, event.currentTarget.valueAsNumber); }}
-                      className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self min-h-11 px-2 text-right font-v2-mono tabular-nums"
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
+            </section>
 
             {fuel > 0 && (
-              <div data-aid-fuel className="mt-5 rounded-control border border-v2-line px-3 py-3">
-                {/*
-                  THE TANK, MINUS WHAT THE FLIGHT BURNS — measured against what is
-                  left AFTER the hold takes its deuterium, which is the exact sum
-                  `assertFuel` uses on the server. Loading the last of the tank as
-                  a delivery now visibly eats the fuel bar instead of producing a
-                  refusal on commit with nothing on screen to explain it.
-                */}
-                <SpendBar
-                  stock={Math.max(0, spendableDeuterium)}
-                  spend={fuel}
-                  tone="deuterium"
-                  label={t('clan.aid.fuel')}
-                />
+              <div data-aid-fuel className="gk-well gk-cargo__fuel">
+                {/* The tank minus what the flight burns, after the hold takes its deuterium: the server's own sum. */}
+                <SpendBar inline stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('clan.aid.fuel')} />
               </div>
             )}
-            <Button
-              full
-              className="mt-5"
-              variant="primary"
-              disabled={!validPayload || actions.quoteAid.isPending}
-              onClick={() => {
+            <GameButton tone="action" wide glyph="eye" disabledReason={validPayload ? null : t('clan.aid.check')}
+              pending={actions.quoteAid.isPending}
+              onPress={() => {
                 if (!payload) return;
                 actions.quoteAid.mutate(payload, { onSuccess: () => { setQuotedKey(payloadKey); } });
-              }}
-            >
+              }}>
               {t('clan.aid.check')}
-            </Button>
-            <MutationError mutation={actions.quoteAid} />
+            </GameButton>
+            {aidError(actions.quoteAid)}
 
             {quote ? (
-              <Plate sunk className="mt-2 px-2 py-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Stat label={t('clan.aid.arrival')} value={duration(quote.travelMinutes)} size="sm" tone="crystal" />
-                  <Stat label={t('clan.aid.receiverRoom')} value={quote.withinAllowance ? t('clan.aid.fits') : t('clan.aid.overLimit')} size="sm" tone={quote.withinAllowance ? 'opportunity' : 'threat'} />
-                </div>
-                {/*
-                  THE RECEIVER'S BAYS, AS THE SAME RACK THE HEADER AND THE WORLDS
-                  LIST DRAW. A shipment needs a free bay at the far end, and "1 / 3"
-                  is the one figure in this quote a sender reads to find out
-                  whether it can land at all.
-                */}
-                <div className="mt-3 flex items-center justify-between gap-2 rounded-control border border-v2-line px-3 py-2">
-                  <Tally
-                    used={quote.bay.used}
-                    total={quote.bay.total}
-                    tone={quote.bay.available ? 'crystal' : 'threat'}
-                    label={t('clan.aid.bayUse', { used: quote.bay.used, total: quote.bay.total })}
-                  />
-                  <Chip tone={quote.bay.available ? 'opportunity' : 'threat'}>
+              <div data-aid-quote className="gk-well gk-aid__quote">
+                <dl className="gk-figures gk-figures--two">
+                  <div className="gk-figure">
+                    <dt className="gk-label">{t('clan.aid.arrival')}</dt>
+                    <dd className="gk-num gk-figure__value" data-tone="self">{duration(quote.travelMinutes)}</dd>
+                  </div>
+                  <div className="gk-figure">
+                    <dt className="gk-label">{t('clan.aid.receiverRoom')}</dt>
+                    <dd className="gk-num gk-figure__value" data-tone={quote.withinAllowance ? 'good' : 'hostile'}>
+                      {quote.withinAllowance ? t('clan.aid.fits') : t('clan.aid.overLimit')}
+                    </dd>
+                  </div>
+                </dl>
+                {/* The receiver's bays: a shipment needs a free one at the far end to land at all. */}
+                <div className="gk-aid__bays">
+                  <Cells cells={bays} label={t('clan.aid.bayUse', { used: quote.bay.used, total: quote.bay.total })} />
+                  <span className="gk-chip" data-tone={quote.bay.available ? 'good' : 'hostile'}>
                     {quote.bay.available ? t('clan.aid.bayReady') : t('clan.aid.bayFull')}
-                  </Chip>
+                  </span>
                 </div>
-                {!quote.canLand ? <p className="mt-3 text-caption text-v2-hostile">{t('clan.aid.cannotLand')}</p> : null}
-                {!quote.canFinishBeforeSeasonEnd ? <p className="mt-3 text-caption text-v2-hostile">{t('clan.aid.tooLate')}</p> : null}
-                {/* Said here, before the button, rather than as a refusal on commit. R4, 2026-09-23. */}
+                {!quote.canLand ? <p className="gk-inote" data-tone="hostile">{t('clan.aid.cannotLand')}</p> : null}
+                {!quote.canFinishBeforeSeasonEnd ? <p className="gk-inote" data-tone="hostile">{t('clan.aid.tooLate')}</p> : null}
+                {/* Said here, before the hold, rather than as a refusal on commit. R4, 2026-09-23. */}
                 {shieldedUntil !== null ? (
-                  <p data-aid-shielded className="mt-3 text-caption text-v2-hostile">
+                  <p data-aid-shielded className="gk-inote" data-tone="hostile">
                     {t('clan.aid.senderShielded', { duration: duration(minutesUntil(shieldedUntil, now)) })}
                   </p>
                 ) : null}
-                <p className="mt-3 text-label text-v2-ink-3">
+                <p className="gk-sub">
                   {t(resourceDelivery ? 'clan.aid.plannedReturn' : 'clan.aid.possibleReturn', {
                     duration: duration(minutesUntil(quote.possibleReturnAt, now)),
                   })}
                 </p>
-                <ResourceFigures resources={quote.remaining} className="mt-2" label={t('clan.aid.remainingLimit')} />
-                <ResourceFigures resources={quote.value} className="mt-2" label={t('clan.aid.limitValue')} />
+                <div className="gk-aid__limit"><span>{t('clan.aid.remainingLimit')}</span><CostLine cost={quote.remaining} /></div>
+                <div className="gk-aid__limit"><span>{t('clan.aid.limitValue')}</span><CostLine cost={quote.value} /></div>
                 {quote.nextReleaseAt ? (
-                  <p className="mt-3 text-label text-v2-ink-3">
-                    {t('clan.aid.nextLimit', {
-                      duration: duration(minutesUntil(quote.nextReleaseAt, now)),
-                    })}
-                  </p>
+                  <p className="gk-sub">{t('clan.aid.nextLimit', { duration: duration(minutesUntil(quote.nextReleaseAt, now)) })}</p>
                 ) : null}
                 {/*
-                  A GIFT CANNOT BE CALLED BACK, SO IT IS HELD (K4). D5: the same hold every
-                  irreversible commit in the game asks for; the reasons it is refused are
-                  stated above it, so the refused face keeps the verb.
-                  `fuelled` is the live read of the sender's own store; the quote's
-                  `hasFuel` is a snapshot of the same sum taken one round trip ago, and the
-                  launch refuses on the live one.
+                  A GIFT CANNOT BE CALLED BACK: the kit's FINAL hold, 1.5 s (K4, D5). The reasons it is
+                  refused are stated above it, so the refused face keeps the verb. `fuelled` is the live
+                  read of the sender's own store, which is what the launch refuses on.
                 */}
-                <div className="mt-2">
-                  <HoldButton
-                    label={t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
-                    disabledReason={launchBlocked
-                      ? t('faults.launchBlock.SHIPYARD_REVOLT')
-                      : shieldedUntil !== null || !quote.canLand || !quote.withinAllowance || !quote.bay.available
-                        || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending
-                        ? t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')
-                        : null}
-                    onCommit={() => {
-                      if (!payload) return;
-                      actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
-                    }}
-                  />
-                </div>
-              </Plate>
+                <GameHold weight="final" glyph="share" commitSound="launch" label={sendLabel}
+                  disabledReason={launchBlocked
+                    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+                    : shieldedUntil !== null || !quote.canLand || !quote.withinAllowance || !quote.bay.available
+                      || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending
+                      ? sendLabel
+                      : null}
+                  onCommit={() => {
+                    if (!payload) return;
+                    actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
+                  }} />
+              </div>
             ) : null}
-            {launched ? <p role="status" className="mt-3 text-caption text-v2-self">{t('clan.aid.launched')}</p> : null}
-            <MutationError mutation={actions.launchAid} />
-          </Plate>
+            {launched ? <p role="status" className="gk-inote" data-tone="good">{t('clan.aid.launched')}</p> : null}
+            {aidError(actions.launchAid)}
+          </>
         )}
-      </Section>
+      </section>
 
-      <Section label={t('clan.aid.transfersHeading')}>
+      <section className="gk-aid__part">
+        <SectionTag as="h3">{t('clan.aid.transfersHeading')}</SectionTag>
         {loading ? (
-          <Waiting>{t('clan.aid.transfersWaiting')}</Waiting>
+          <p role="status" className="gk-sub">{t('clan.aid.transfersWaiting')}</p>
         ) : transfers.length === 0 ? (
-          <EmptyState title={t('clan.aid.transfersEmpty')} />
+          <p className="gk-sub">{t('clan.aid.transfersEmpty')}</p>
         ) : (
-          <ol className="flex flex-col gap-2">
+          <ol className="gk-aid__transfers">
             {transfers.map((transfer) => (
-              <li key={transfer.id}>
-                <Plate className="px-2 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate text-v2-ink">
-                        {transfer.direction === 'OUTGOING'
-                          ? t('clan.aid.toCommander', { name: transfer.counterpart.username })
-                          : t('clan.aid.fromCommander', { name: transfer.counterpart.username })}
-                      </p>
-                      <p className="mt-1 text-label text-v2-ink-3">
-                        {transfer.origin.name} → {transfer.target.name}
-                      </p>
-                    </div>
-                    <Chip tone={transfer.status === 'DELIVERED' ? 'opportunity' : transfer.status === 'RETURNING' ? 'threat' : 'crystal'}>
-                      {t(`clan.aid.status.${transfer.status}`)}
-                    </Chip>
-                  </div>
-                  <p className="mt-3 text-caption text-v2-ink-2">
-                    {t('clan.aid.manifest', { ships: fleetCount(transfer.fleet), cargo: full(resourceTotal(transfer.cargo)) })}
-                  </p>
-                </Plate>
+              <li key={transfer.id} className="gk-well gk-aid__transfer">
+                <span className="gk-aid__who">
+                  {transfer.direction === 'OUTGOING'
+                    ? t('clan.aid.toCommander', { name: transfer.counterpart.username })
+                    : t('clan.aid.fromCommander', { name: transfer.counterpart.username })}
+                </span>
+                <span className="gk-chip" data-tone={transfer.status === 'DELIVERED' ? 'good' : transfer.status === 'RETURNING' ? 'hostile' : 'self'}>
+                  {t(`clan.aid.status.${transfer.status}`)}
+                </span>
+                <span className="gk-sub">{transfer.origin.name} → {transfer.target.name}</span>
+                <span className="gk-sub gk-num">{t('clan.aid.manifest', { ships: fleetCount(transfer.fleet), cargo: full(resourceTotal(transfer.cargo)) })}</span>
               </li>
             ))}
           </ol>
         )}
-      </Section>
+      </section>
     </div>
   );
 }
@@ -1999,37 +1947,6 @@ function Confirmation({
   );
 }
 
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly { value: string; label: string }[];
-}) {
-  return (
-    <label>
-      <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{label}</span>
-      <select value={value} onChange={(event) => { onChange(event.currentTarget.value); }} className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10">
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
-  );
-}
-
-/**
- * THE THREE SUBSTANCES, WEARING THE FACES THE HEADER TAUGHT. Owner instruction.
- *
- * Alloy and Crystal had line glyphs here and deuterium had the LETTER D in a
- * green that belongs to opportunity, on the one screen where a commander is
- * deciding how much of each to hand to somebody else. Every other surface in the
- * game — the header, a price, a cargo slider, a build sheet — identifies these by
- * their render, so this was the only place a player had to read a label to know
- * which pile they were looking at.
- */
 function ResourceFigures({
   resources,
   className = '',

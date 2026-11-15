@@ -1494,6 +1494,31 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 
 **G7 için ilk gözlemler:** owner'ın tarifi kodda doğrulandı: kart içinde kart, form alanları yerli `select`, uzun metin blokları. Yardım sekmesi kendi içinde en az üç iş taşıyor (istek, bağış, limit); sekme ya da adım gerekecek.
 
+**G7 birim planı (2026-11-15):**
+
+| Birim | Yüzey | Oyuncu anı | İş |
+|---|---|---|---|
+| G7-a | Yardım | "Klan arkadaşıma ne gönderebilirim?" | ✅ aşağıda |
+| G7-b | Klan başlığı + sekmeler + sayfa çerçevesi | "Klanım kim, neredeyim?" | 9 px "Klan Hâkimiyeti", v2 sekmeler → kit sekmeleri |
+| G7-c | Genel | "Klan ne durumda?" | koltuklar, sıralama, olaylar, arena takım paneli |
+| G7-d | Güç | "Ne kadar güçlüyüz?" | |
+| G7-e | Üyeler | "Kim aktif, kimi yöneteyim?" | `Confirmation` → kit basılı tutma |
+| G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | tanıtım, klan kur formu, profiller, katıl; galeride ulaşılamıyor |
+| G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | `ClanWarPanel` içindeki v1 `Button` geri çağırma → kit tutuş |
+| G7-h | Bağış sheet'i | | |
+| G7-i | Destek gönder + savunma duruşu | | |
+| G7-j | Klan bayrağı | | |
+
+**G7-a Yardım ✅ (2026-11-15).**
+- **An:** "Klan arkadaşıma gemi ya da kaynak gönderebilir miyim, ne kadar, ne zaman varır?"
+- Yardım almak kit şalteri (adı sabit, durumu alt satırda); 12 saatlik bekleme kuralı altında.
+- Üç yerli `<select>` yerine kitin yeni `Picker`'ı: yüzünde alan adı ve seçim, basınca kit listesi düşer, seçince kapanır; tek seçenek kesik çizgili bir gerçek olarak durur. G8 ve G10'da da kullanılacak.
+- Gemiler kit gövde satırlarında; evde olmayan gövde satır kaplamıyor (yoksa "evde gemi yok" notu). Kargo, Aktar sayfasının satırlarında (stoktan düşen çubuk + kit kaydırıcı, sayı kutusu yok); ambar dolu/taşma satırı canlı.
+- "Uçuşu kontrol et" kit düğmesi; teklif kit kuyusunda: süre ve alıcı sınırı rakamları, alıcının uçuş rampaları hücre olarak, uyarılar notlarda, sınırlar kit maliyet satırında. Hediye geri alınamaz → kitin kesin tutuşu (1,5 sn), etiketi kısa "Yardım gönder" (eski uzun etiket 350 px'te kırpılıyordu); dönüş bilgisi üstteki çipte.
+- Silinen: `SelectField`, panelin `Plate`/`Section`/`Stat`/`Tally`/`CapacityBar`/`HoldButton` kullanımı, kullanılmayan `launch`/`launchDelivery` metinleri (6 dil). Yeni: `noShips` (6 dil).
+- Galeri: `clan-aid-quote` (teklifi cevaplayan sahte sunucu); `clan-aid`'e alıcı dünyaları eklendi.
+- Audit: 472 → 30. Kalan: klan başlığı ve sekmeler (G7-b), devre dışı "−" düğmesinin soluk çizgisi.
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.
