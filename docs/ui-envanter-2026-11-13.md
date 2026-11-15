@@ -1269,6 +1269,10 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Galeri:** yeni görünüm `cosmetic-trial-bar` (iki dünya); envanter erişimine eklendi.
 - **Ölçüm** (tr; telefon, dar, masaüstü): `cosmetic-trial-bar` 17 → 0. Akış görünümü `cosmetic-trial` 42 → 22: açıldığı mağazayı ölçüyor, mağaza C35'te. `reports/ui-audit/c39-trial-bar-before/after-2026-11-15.md`, `g6-shop-before-2026-11-15.md`.
 
+**C40 Menüdeki mağaza vitrini 🗑 (2026-11-15, yardımcı oturum).** G6 #7 `shell/ShopShowcase` + `ShopShowcasePoster`. G1-f2'den beri hiçbir yer çizmiyordu (menü Mağaza/Envanter karolarını `MenuTile` ile çiziyor); owner'ın 2026-11-14 "hiç kullanılmıyorsa sil" onayıyla silindi.
+- **Silinen:** iki dosya, `test/shop-showcase.test.tsx`, `native-surfaces` içindeki vitrin testi, CSS'te `.menu-shop-*`, `.shop-showcase-*`, `.inventory-scene`, `--menu-art-shade`, iki `--color-v2-store-*` rengi; yalnız onun okuduğu `skins.showcaseDescription`, `menu.navigation.shopHint/inventoryHint` (6 dil). Bozuk kalmış araçlar: `tools/shop-showcase-visual.mjs` ve `visual.mjs --shop-showcase`, `ufo-probe-visual.mjs` içindeki menü adımı.
+- **Kalan:** `shop-showcase-static.webp` resmi (Mağaza karosu kullanıyor).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

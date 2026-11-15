@@ -394,12 +394,6 @@ if (process.argv.includes('--event-chips')) {
   process.exit(0);
 }
 
-if (process.argv.includes('--shop-showcase')) {
-  const { verifyShopShowcase } = await import('./shop-showcase-visual.mjs');
-  await verifyShopShowcase(process.argv[2] ?? 'out/shop-showcase-static/visuals');
-  process.exit(0);
-}
-
 if (process.argv.includes('--chat-media')) {
   const { verifyChatMedia } = await import('./chat-media-visual.mjs');
   await verifyChatMedia(process.argv[2] ?? 'out/chat-media');

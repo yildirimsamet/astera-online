@@ -43,11 +43,7 @@
 }
 .sheet-art-head .gk-sheet__head::before { content: none; }
 
-.commander-menu {
-  --menu-art-shade: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-deep) 90%, transparent), transparent);
-}
 .commander-menu .atmosphere-image { filter: none; }
-.commander-menu .inventory-scene::before { background: var(--menu-art-shade); }
 /* The menu's foot: the app's own controls, a thumb's size and answering a press (G1-f2). */
 .commander-menu [data-menu-foot] button {
   min-height: 44px;
@@ -146,7 +142,6 @@
 /* The card's top inset belongs inside the painted header, so no empty strip remains. */
 [data-sheet-panel][data-placement='card']:has(> .sheet-art-head) { padding-top: 0; }
 [data-sheet-panel][data-placement='card'] > .sheet-art-head { padding-top: 8px; }
-.inventory-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 90%), rgb(8 13 24 / 60%)); }
 
 
 /* A ship's complete silhouette wins over a full-card crop. Match its source ratio. */

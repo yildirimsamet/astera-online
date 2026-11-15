@@ -152,7 +152,7 @@ export const SURFACES: GameSurface[] = [
   },
 
   // Menu, commander and meta.
-  { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx', 'shell/ShopShowcase.tsx', 'shell/ShopShowcasePoster.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
+  { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
   { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-honor', 'gallery:leaderboard-archive', 'gallery:leaderboard-archive-profile', 'gallery:leaderboard-archive-career'], group: 'G9' },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },

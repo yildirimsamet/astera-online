@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: '価格を取得できません',
   retryPrices: '価格を再読み込み',
   checkoutStarting: '支払い画面を開いています…',
-  showcaseDescription: '惑星や艦船の外観とエフェクト。',
   "productengine-titan": "タイタン・ドライブ",
   "storytitanENGINE": "青白い点火核から乱流する橙色の燃焼へ。余熱の尾が静かに消える。",
   "shipFits": "{{hull}}用",

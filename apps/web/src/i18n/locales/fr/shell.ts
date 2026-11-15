@@ -183,8 +183,6 @@ export const menu = {
     account: "Profil du commandant",
     back: "Retour au menu",
     resume: "Reprendre le jeu",
-    shopHint: "Choisir votre style",
-    inventoryHint: "Équiper votre collection",
     rewardsReady_one: "{{count}} récompense prête",
     rewardsReady_other: "{{count}} récompenses prêtes",
   },

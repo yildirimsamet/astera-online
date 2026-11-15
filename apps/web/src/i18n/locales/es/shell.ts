@@ -230,8 +230,6 @@ export const menu = {
     account: "Perfil del comandante",
     back: "Volver al menú",
     resume: "Volver al juego",
-    shopHint: "Elige tu estilo",
-    inventoryHint: "Equipa tu colección",
     rewardsReady_one: "{{count}} recompensa lista",
     rewardsReady_other: "{{count}} recompensas listas",
   },
