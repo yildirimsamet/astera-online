@@ -43,7 +43,7 @@ describe('Honor is the primary player-visible race', () => {
 
   it('shows Honor first, preserves micro precision and explains the competition and prize cap', async () => {
     await show();
-    expect(screen.getByRole('button', { name: 'Honor', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Honor', selected: true })).toBeInTheDocument();
     expect(screen.getAllByText('1.234567').length).toBeGreaterThan(0);
     expect(screen.getByText('-0.000001')).toBeInTheDocument();
     expect(screen.getByText(/61.25 Honor/)).toBeInTheDocument();
@@ -74,12 +74,12 @@ describe('Honor is the primary player-visible race', () => {
 
   it('keeps Dominion available as a separate ranking', async () => {
     await show();
-    const honorTab = screen.getByRole('button', { name: 'Honor' });
-    const dominionTab = screen.getByRole('button', { name: 'Dominion' });
+    const honorTab = screen.getByRole('tab', { name: 'Honor' });
+    const dominionTab = screen.getByRole('tab', { name: 'Dominion' });
     expect(dominionTab.querySelector('svg')).toBeInTheDocument();
     expect(dominionTab.querySelector('svg')?.innerHTML).not.toBe(honorTab.querySelector('svg')?.innerHTML);
-    await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
-    expect(screen.getByRole('button', { name: 'Dominion', pressed: true })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Dominion' }));
+    expect(screen.getByRole('tab', { name: 'Dominion', selected: true })).toBeInTheDocument();
     expect(screen.getByText('+900')).toBeInTheDocument();
     expect(screen.getByText('+900').closest('[data-dominion-score]')?.querySelector('svg')).toBeInTheDocument();
   });
@@ -99,14 +99,14 @@ describe('Honor is the primary player-visible race', () => {
   });
   it('keeps the promised Dominion prize visible on its own tab and explains the single payout', async () => {
     await show();
-    await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Dominion' }));
     expect(screen.getByText('End of season prize')).toBeVisible();
     expect(screen.getByText('Rank 1 · you are winning this')).toBeVisible();
     expect(within(screen.getByRole('region', { name: 'End of season prize' })).getByText('1,000')).toBeVisible();
     expect(screen.getByText(/more valuable package once/)).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(2);
-    await userEvent.click(screen.getByRole('button', { name: 'Honor' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Honor' }));
     expect(screen.getByText('End of season prize')).toBeVisible();
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
     expect(screen.getByText('Honor season prize')).toBeVisible();

@@ -14,7 +14,7 @@ import { outpostReportLines } from '../starter/outpostReport.js';
 import { vesselToPlanetView } from '../starter/adapter.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullLabel, monumentName } from '../i18n/names.js';
+import { buildingNameOf, hullLabel, hullName, instrumentName, monumentName, satelliteNameOf } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
 import { factorLabel } from '../lib/supportFactor.js';
 import { duration, staleness, useNow } from '../lib/time.js';
@@ -32,6 +32,7 @@ import { ReportScene } from '../v2/hud/ReportScene.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
@@ -497,17 +498,17 @@ function LoyaltyHit({ loyalty, attacking }: {
   const { t } = useTranslation();
   const seceded = loyalty.after <= 0;
   return (
-    <div data-report-loyalty className="mt-2 rounded-control border border-v2-line bg-v2-deep/40 p-3">
-      <p className="flex items-baseline justify-between gap-2 text-caption">
-        <span className="text-v2-ink-2">{t('reports.strategicLoyalty')}</span>
-        <span className="font-v2-mono tabular-nums text-v2-hostile">
+    <div data-report-loyalty className="gk-well gk-report__why">
+      <p className="gk-report__tallyrow">
+        <span className="gk-report__label">{t('reports.strategicLoyalty')}</span>
+        <span className="gk-num" data-tone="threat">
           {t('reports.strategicLoyaltyChange', {
             before: Math.ceil(loyalty.before),
             after: Math.ceil(Math.max(0, loyalty.after)),
           })}
         </span>
       </p>
-      <p className={`mt-1 text-micro leading-snug ${seceded ? 'font-semibold text-v2-hostile' : 'text-v2-ink-3'}`}>
+      <p className="gk-report__copy" {...(seceded ? { 'data-tone': 'threat', 'data-strong': '' } : {})}>
         {seceded
           ? t(attacking ? 'reports.strategicSecededAttacker' : 'reports.strategicSecededDefender')
           : t('reports.strategicLoyaltyNext', { count: Math.max(1, Math.ceil(loyalty.after / DEATH_STAR.colonyLoyaltyLoss)) })}
@@ -516,7 +517,33 @@ function LoyaltyHit({ loyalty, attacking }: {
   );
 }
 
-/** Exported for the v2 gallery's camera, as `StrikeSheet` is. */
+/** A building, instrument, hull or satellite id off the wire, in the player's words; the id only for one this build does not know. */
+const strategicSubject = (kind: StrategicReport['destroyedOrders'][number]['kind'], id: string): string =>
+  (kind === 'BUILDING' ? buildingNameOf(id) : kind === 'INSTRUMENT' ? instrumentName(id) : kind === 'HULL' ? hullName(id) : satelliteNameOf(id))
+  ?? id.replaceAll('_', ' ');
+
+/**
+ * WHOSE GOOD NEWS IT IS (C17). A weapon that landed is a gain for the one who sent it and a
+ * loss for the world it hit; one stopped in flight, the other way round; one that did nothing,
+ * a shrug for both.
+ */
+const strategicTone = (report: StrategicReport): 'good' | 'partial' | 'threat' => {
+  if (report.outcome === 'INEFFECTIVE') return 'partial';
+  const landed = report.outcome !== 'INTERCEPTED';
+  return landed === report.attacking ? 'good' : 'threat';
+};
+
+/**
+ * THE DEATH STAR'S AND THE RADIATION BOMB'S RESULT, ON THE KIT (C17, G5 #4).
+ *
+ * The moment: a weapon you sent, or one sent at you, has landed — what did it break, and is
+ * the colony still mine? The route first (both worlds are doors), then one plate in the
+ * colour of whose news it is with the figures that answer it, the Honor it moved, and below,
+ * each kind of loss under its own tag. How a bomb works is one rules row away, closed: the
+ * report states what happened, the rules wait for the reader who asks why.
+ *
+ * Exported for the v2 gallery's camera, as `StrikeSheet` is.
+ */
 export function StrategicReportSheet({
   report,
   onClose,
@@ -539,126 +566,138 @@ export function StrategicReportSheet({
     0,
   );
   const emp = !report.radiation && report.outcome === 'FIRST_STRIKE' && report.damage === 0;
+  const tone = strategicTone(report);
+  // What it destroyed is the defender's loss and the attacker's gain: the figures wear that colour.
+  const figureTone = report.attacking ? 'good' : 'threat';
+  const struck = report.radiation && report.outcome === 'FIRST_STRIKE';
 
   return (
     <V2Sheet
       detents={['full']}
       eyebrow={`${actorLabel}${report.opponentName}`}
       title={t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
+      kit={{ tone: tone === 'threat' ? 'hostile' : 'self', ...(report.radiation ? {} : { art: artIconSrc('deathstar') }) }}
       onClose={onClose}
     >
-      {ownName ? (
-        <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
-          {report.yourPlanetId && onFocusPlanet ? (
-            <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {ownName}
-            </button>
-          ) : <span className="text-v2-ink">{ownName}</span>}
-          <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-          {report.opponentPlanetId && onFocusPlanet ? (
-            <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {targetName}
-            </button>
-          ) : <span>{targetName}</span>}
-        </p>
-      ) : null}
-
-      {report.honor && <div className="mb-3"><HonorBattleSummary receipt={report.honor} /></div>}
-      {report.outcome === 'INTERCEPTED' ? (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-          <p className="text-caption font-semibold text-v2-self">{t('reports.strategicDestroyedInFlight')}</p>
-          <p className="mt-2 text-caption text-v2-ink-2">
-            {t(report.trigger === 'TELESCOPE'
-              ? 'reports.strategicTelescopeTrigger'
-              : 'reports.strategicRadarTrigger')}
-          </p>
-        </div>
-      ) : report.radiation ? (
-        <div className="space-y-2 rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink-2">
-          <p className="font-semibold text-v2-ink">{t('planet.radiationBomb.title')} · {t('planet.radiationBomb.level', { level: report.radiation.level })}</p>
-          {report.outcome === 'FIRST_STRIKE' ? <><p>{t('planet.radiationBomb.effect')}</p><p>{t('planet.radiationBomb.workshop')}</p></> : <p>{t('reports.strategicIneffective')}</p>}
-          {report.outcome === 'FIRST_STRIKE' && report.loyalty && <div data-report-loyalty className="rounded-control border border-v2-line p-3">
-            <p className="font-v2-mono text-v2-hostile">{t('planet.radiationBomb.colonyResult', {
-              before: Math.ceil(report.loyalty.before), after: Math.ceil(Math.max(0, report.loyalty.after)),
-            })}</p>
-            {report.loyalty.after <= 0 && <p>{t('planet.radiationBomb.colonySeceded')}</p>}
-          </div>}
-          {report.outcome === 'FIRST_STRIKE' && (report.radiation.faults?.length ?? 0) > 0 && <p>{t('planet.radiationBomb.faultResult', {
-            faults: report.radiation.faults?.map(fault => t(`faults.name.${fault}`)).join(', '),
-          })}</p>}
-          {report.honor && <p>{t('planet.radiationBomb.honor')}</p>}
-        </div>
-      ) : emp ? (
-        <>
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink">
-            {t('reports.strategicEmpEffect')}
+      <div data-strategic-report className="gk-report gk-strike">
+        {ownName ? (
+          <div data-report-route="" className="gk-route">
+            <RouteEnd id={report.yourPlanetId ?? null} name={ownName} onFocusPlanet={onFocusPlanet} />
+            <span data-route-arrow="" data-dir={report.attacking ? 'out' : 'in'} className="gk-route__arrow" aria-hidden="true">
+              <Glyph id="next" />
+            </span>
+            <RouteEnd id={report.opponentPlanetId} name={targetName} onFocusPlanet={onFocusPlanet} />
           </div>
-          {report.loyalty && <LoyaltyHit loyalty={report.loyalty} attacking={report.attacking} />}
-        </>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 grid grid-cols-2 gap-2 p-3">
-            <StrategicMetric label={t('reports.strategicTotalDamage')} value={full(report.damage)} />
-            <StrategicMetric label={t('reports.strategicShieldLost')} value={full(report.shieldDestroyed)} />
-            <StrategicMetric label={t('reports.strategicResourcesLost')} value={full(resourcesLost)} />
-            <StrategicMetric label={t('reports.strategicOrdersLost')} value={full(ordersLost)} />
-          </div>
+        ) : null}
 
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicResourceBreakdown')}</p>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-micro text-v2-ink-2">
-              <span>{t('vocabulary.resource.alloy')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.alloy)}</b></span>
-              <span>{t('vocabulary.resource.crystal')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.crystal)}</b></span>
-              <span>{t('vocabulary.resource.deuterium')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.deuterium)}</b></span>
-            </div>
-          </div>
-
-          <Losses
-            fleet={report.destroyedFleet}
-            tone="threat"
-            empty={t('reports.strategicNoFleetLost')}
-          />
-
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicLevelLosses')}</p>
-            {report.levelChanges.length === 0 ? (
-              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoLevelLoss')}</p>
-            ) : (
-              <div className="mt-2 space-y-1">
-                {report.levelChanges.map((change, index) => (
-                  <p key={`${change.kind}-${change.id}-${index}`} className="flex justify-between text-caption text-v2-ink-2">
-                    <span>{change.id.replaceAll('_', ' ')}</span>
-                    <span className="font-v2-mono tabular-nums text-v2-hostile">L{change.before} → L{change.after}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicDestroyedOrders')}</p>
-            {report.destroyedOrders.length === 0 ? (
-              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoOrdersLost')}</p>
-            ) : report.destroyedOrders.map((order, index) => (
-              <p key={`${order.subject}-${index}`} className="mt-2 flex justify-between text-caption text-v2-ink-2">
-                <span>{order.subject.replaceAll('_', ' ')} ×{order.count}</span>
-                <span className="font-v2-mono tabular-nums text-v2-hostile">
-                  {full(order.cost.alloy + order.cost.crystal + order.cost.deuterium)}
-                </span>
+        <section data-strategic-verdict="" data-tone={tone} className="gk-well gk-report__verdict">
+          {report.outcome === 'INTERCEPTED' ? (
+            <>
+              <h3 className="gk-report__subhead">{t('reports.strategicDestroyedInFlight')}</h3>
+              <p className="gk-report__copy">
+                {t(report.trigger === 'TELESCOPE' ? 'reports.strategicTelescopeTrigger' : 'reports.strategicRadarTrigger')}
               </p>
-            ))}
-          </div>
-        </div>
-      )}
+            </>
+          ) : report.radiation ? (
+            <>
+              <h3 className="gk-report__subhead">{t('planet.radiationBomb.title')} · {t('planet.radiationBomb.level', { level: report.radiation.level })}</h3>
+              {!struck && <p className="gk-report__copy">{t('reports.strategicIneffective')}</p>}
+              {struck && report.loyalty && (
+                <p data-report-loyalty="" className="gk-report__note" data-tone="threat">
+                  {t('planet.radiationBomb.colonyResult', {
+                    before: Math.ceil(report.loyalty.before), after: Math.ceil(Math.max(0, report.loyalty.after)),
+                  })}
+                  {report.loyalty.after <= 0 && <> {t('planet.radiationBomb.colonySeceded')}</>}
+                </p>
+              )}
+              {struck && (report.radiation.faults?.length ?? 0) > 0 && (
+                <p className="gk-report__note" data-tone="threat">{t('planet.radiationBomb.faultResult', {
+                  faults: report.radiation.faults?.map(fault => t(`faults.name.${fault}`)).join(', '),
+                })}</p>
+              )}
+            </>
+          ) : emp ? (
+            <p className="gk-report__copy" data-strong="">{t('reports.strategicEmpEffect')}</p>
+          ) : (
+            <div className="gk-report__metrics" data-cols="2">
+              <StrategicFigure label={t('reports.strategicTotalDamage')} value={report.damage} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicShieldLost')} value={report.shieldDestroyed} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicResourcesLost')} value={resourcesLost} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicOrdersLost')} value={ordersLost} tone={figureTone} />
+            </div>
+          )}
+        </section>
+
+        {emp && report.loyalty && <LoyaltyHit loyalty={report.loyalty} attacking={report.attacking} />}
+        {report.honor && <HonorBattleSummary receipt={report.honor} />}
+
+        {report.radiation && struck && (
+          <RulesRow glyph="help" title={t('reports.strategicBombRules')}>
+            <p>{t('planet.radiationBomb.effect')}</p>
+            <p>{t('planet.radiationBomb.workshop')}</p>
+            {report.honor && <p>{t('planet.radiationBomb.honor')}</p>}
+          </RulesRow>
+        )}
+
+        {!report.radiation && !emp && report.outcome !== 'INTERCEPTED' && (
+          <>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicResourceBreakdown')}</SectionTag>
+              <p className="gk-haul__row gk-num">
+                {(['alloy', 'crystal', 'deuterium'] as const).map((res) => (
+                  <span key={res} className="gk-haul__res" data-res={res}>
+                    <img src={RESOURCE_ART[res]} alt={t(`vocabulary.resource.${res}`)} />
+                    {full(report.destroyedResources[res])}
+                  </span>
+                ))}
+              </p>
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicFleetLost')}</SectionTag>
+              <Losses fleet={report.destroyedFleet} tone="threat" empty={t('reports.strategicNoFleetLost')} />
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicLevelLosses')}</SectionTag>
+              {report.levelChanges.length === 0 ? (
+                <p className="gk-report__copy">{t('reports.strategicNoLevelLoss')}</p>
+              ) : (
+                <dl className="gk-well gk-report__sum">
+                  {report.levelChanges.map((change, index) => (
+                    <Fragment key={`${change.kind}-${change.id}-${String(index)}`}>
+                      <dt>{strategicSubject(change.kind, change.id)}</dt>
+                      <dd className="gk-num" data-tone="threat">L{change.before} → L{change.after}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              )}
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicDestroyedOrders')}</SectionTag>
+              {report.destroyedOrders.length === 0 ? (
+                <p className="gk-report__copy">{t('reports.strategicNoOrdersLost')}</p>
+              ) : (
+                <dl className="gk-well gk-report__sum">
+                  {report.destroyedOrders.map((order, index) => (
+                    <Fragment key={`${order.subject}-${String(index)}`}>
+                      <dt>{strategicSubject(order.kind, order.subject)} ×{order.count}</dt>
+                      <dd className="gk-num" data-tone="threat">{full(order.cost.alloy + order.cost.crystal + order.cost.deuterium)}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </V2Sheet>
   );
 }
 
-function StrategicMetric({ label, value }: { label: string; value: string }) {
+function StrategicFigure({ label, value, tone }: { label: string; value: number; tone: 'good' | 'threat' }) {
   return (
-    <div>
-      <p className="v2-legend text-v2-ink-3">{label}</p>
-      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{value}</p>
+    <div className="gk-report__metric">
+      <p className="gk-report__label">{label}</p>
+      <p className="gk-report__figure gk-num" {...(value > 0 ? { 'data-tone': tone } : {})}>{full(value)}</p>
     </div>
   );
 }
@@ -1614,19 +1653,6 @@ function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirat
   );
 }
 
-/** A rule a reader opens when they want the arithmetic: the kit's rules row, closed until pressed. */
-function RulesRow({ glyph, title, children }: { glyph: GlyphId; title: string; children: ReactNode }) {
-  return (
-    <details className="gk-rules">
-      <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
-        <Glyph id={glyph} />
-        <span className="flex-1">{title}</span>
-        <span className="gk-rules__chev"><Glyph id="down" /></span>
-      </summary>
-      <div className="gk-rules__body">{children}</div>
-    </details>
-  );
-}
 
 /**
  * THE HULL A RAID TOWED HOME. D133 · D150.

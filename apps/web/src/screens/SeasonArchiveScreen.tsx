@@ -13,41 +13,27 @@ import {
   useSeasonCommanderProfile,
 } from '../api/queries.js';
 import { full, signed } from '../lib/format.js';
+import { honorScore } from '../lib/honor.js';
 import { duration } from '../lib/time.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { artIconSrc } from '../game-ui/art.js';
+import { Chip, GameButton } from '../game-ui/buttons.js';
+import { GameTabs } from '../game-ui/controls.js';
+import { Glyph, type GlyphId } from '../game-ui/icons.js';
+import { StatPlaque } from '../game-ui/readouts.js';
+import { Banner, EmptyState, SectionTag } from '../game-ui/surfaces.js';
 import { hullLabel } from '../i18n/names.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Medal, Trophy, isPlace } from '../ui/Medal.js';
-import {
-  AttackIcon, CargoIcon, ClockIcon, DrillIcon, GalaxyIcon, HangarIcon,
-  LeaderboardIcon, RaidedIcon, RefineryIcon, RewardIcon, SalvageIcon, ShieldIcon,
-  SkullIcon, WarBannerIcon, WorldLostIcon,
-} from '../ui/icons/index.js';
 import { LeaderboardScreen } from './LeaderboardScreen.js';
-import { ArtWell, EmptyState, Section, Segmented, Stat, Unreachable, Waiting } from '../ui/kit/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { RankingScores } from '../ui/RankingScores.js';
-import { HonorIcon } from '../ui/icons/index.js';
 
 type ProfileView = 'season' | 'overall';
-
-/**
- * A PLACE IS A MEDAL BEFORE IT IS A NUMBER.
- *
- * Every competitive surface in this game now colours the first three the same
- * way — the archive ladder, the reward table, the career row and the record's own
- * hero figure. One vocabulary, so a player learns it once and reads it everywhere:
- * gold is first, and the two behind it are the podium. Everything else is quiet
- * on purpose, because a podium that has fifty colours has none.
- */
-const MEDAL: Record<1 | 2 | 3, { text: string; ring: string; glow: string }> = {
-  1: { text: 'text-opportunity', ring: 'ring-opportunity/60', glow: 'shadow-[0_0_18px_-4px_var(--color-opportunity)]' },
-  2: { text: 'text-crystal', ring: 'ring-crystal/50', glow: 'shadow-[0_0_14px_-5px_var(--color-crystal)]' },
-  3: { text: 'text-alloy', ring: 'ring-alloy/50', glow: '' },
-};
-const medalOf = (place: number): { text: string; ring: string; glow: string } | null =>
-  place === 1 || place === 2 || place === 3 ? MEDAL[place] : null;
 
 /**
  * WHERE A RANK SITS IN ITS FIELD, as the share a player would say out loud.
@@ -87,18 +73,15 @@ export function SeasonArchiveScreen({
     .filter((galaxy) => galaxy.status === 'frozen' || galaxy.status === 'wiped')
     .map((galaxy) => ({ ...galaxy, ordinal: cycle.ordinal })));
 
+  /* The chip answers the press itself (sound + haptic); this only moves the page. */
   const selectSeason = (next: string | null): void => {
-    haptic('tap');
     setResultId(null);
     setSeasonId(next);
   };
 
   return (
-    <div data-v2-season-archive className="font-v2-ui text-v2-ink">
-      <nav
-        aria-label={t('leaderboard.archive.selectorLabel')}
-        className="border-b border-v2-line bg-v2-void px-2 py-2"
-      >
+    <div data-v2-season-archive className="gk gk-arch">
+      <nav aria-label={t('leaderboard.archive.selectorLabel')} className="gk-arch__strip">
         {/*
           THE STRIP FETCHES ITSELF. Owner instruction: no "load older seasons"
           button — the seasons simply keep arriving as the reader scrolls right.
@@ -106,7 +89,7 @@ export function SeasonArchiveScreen({
           and on a horizontal rail the gesture IS the request.
         */}
         <div
-          className="v2-segmented flex gap-1 overflow-x-auto [scrollbar-width:none]"
+          className="gk-arch__seasons"
           onScroll={(event) => {
             const strip = event.currentTarget;
             const remaining = strip.scrollWidth - strip.scrollLeft - strip.clientWidth;
@@ -115,32 +98,20 @@ export function SeasonArchiveScreen({
             }
           }}
         >
-          <ArchiveChoice
-            active={seasonId === null}
-            label={t('leaderboard.archive.live')}
-            onClick={() => { selectSeason(null); }}
-          />
+          <Chip on={seasonId === null} onPress={() => { selectSeason(null); }}>
+            {t('leaderboard.archive.live')}
+          </Chip>
           {completed.map((season) => (
-            <ArchiveChoice
-              key={season.seasonId}
-              active={seasonId === season.seasonId}
-              label={t('leaderboard.archive.seasonChoice', {
-                ordinal: season.ordinal,
-                galaxy: season.shard,
-              })}
-              onClick={() => { selectSeason(season.seasonId); }}
-            />
+            <Chip key={season.seasonId} on={seasonId === season.seasonId} onPress={() => { selectSeason(season.seasonId); }}>
+              {t('leaderboard.archive.seasonChoice', { ordinal: season.ordinal, galaxy: season.shard })}
+            </Chip>
           ))}
         </div>
         {archive.isFetchingNextPage ? (
-          <p className="legend mt-1 text-faint" role="status">
-            {t('leaderboard.archive.loadingOlder')}
-          </p>
+          <p className="gk-report__label gk-arch__status" role="status">{t('leaderboard.archive.loadingOlder')}</p>
         ) : null}
         {archive.isPending ? (
-          <p className="legend mt-1 text-faint" role="status">
-            {t('leaderboard.archive.waitingArchive')}
-          </p>
+          <p className="gk-report__label gk-arch__status" role="status">{t('leaderboard.archive.waitingArchive')}</p>
         ) : null}
       </nav>
 
@@ -174,27 +145,6 @@ export function SeasonArchiveScreen({
   );
 }
 
-function ArchiveChoice({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className="v2-segmented-option min-h-10 flex-1 shrink-0 whitespace-nowrap px-3"
-    >
-      {label}
-    </button>
-  );
-}
-
 function ArchivedLeaderboard({
   seasonId,
   onOpen,
@@ -220,25 +170,16 @@ function ArchivedLeaderboard({
   }
   if (!board.data) return <Waiting>{t('leaderboard.archive.waitingBoard')}</Waiting>;
   if (board.data.ladder.length === 0) {
-    return <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.emptyBoard')} /></div>;
+    return <div className="gk-lb"><EmptyState art={artIconSrc('menu-ranking')} title={t('leaderboard.archive.emptyBoard')} body="" /></div>;
   }
 
   return (
-    <div>
-      <header className="border-b border-line-soft px-2 py-3">
-        <p className="legend flex items-center gap-1.5 text-crystal">
-          <LeaderboardIcon className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {t('leaderboard.archive.seasonHeading', {
-              ordinal: board.data.season.ordinal,
-              galaxy: board.data.season.shard,
-            })}
-          </span>
-          <span className="rail-soft flex-1" />
-          <span className="num shrink-0 text-micro text-faint">
-            {t('leaderboard.archive.fieldSize', { count: board.data.ladder.length })}
-          </span>
-        </p>
+    <div className="gk-lb">
+      <SectionTag as="h2" aside={<span className="gk-num">{t('leaderboard.archive.fieldSize', { count: board.data.ladder.length })}</span>}>
+        {t('leaderboard.archive.seasonHeading', { ordinal: board.data.season.ordinal, galaxy: board.data.season.shard })}
+      </SectionTag>
+      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} honorPrimary={board.data.ladder.some(row => row.honorRank != null)} />}
+      <div className="gk-lb__search">
         <input
           type="search"
           name="season-archive-search"
@@ -247,62 +188,66 @@ function ArchivedLeaderboard({
           onChange={(event) => { setQuery(event.currentTarget.value); }}
           aria-label={t('leaderboard.archive.searchLabel')}
           placeholder={t('leaderboard.archive.searchPlaceholder')}
-          className="field mt-2 min-h-11 w-full"
+          className="gk-field__input"
         />
-      </header>
-      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} honorPrimary={board.data.ladder.some(row => row.honorRank != null)} />}
+      </div>
       {rows.length === 0 ? (
-        <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.noMatch')} /></div>
+        <EmptyState art={artIconSrc('menu-ranking')} title={t('leaderboard.archive.noMatch')} body="" />
       ) : (
-        <ol className="divide-y divide-line-soft" aria-label={t('leaderboard.archive.completedBoard')}>
+        <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.archive.completedBoard')}>
           {rows.map((row) => (
-            <li key={row.resultId} aria-current={row.self ? 'true' : undefined}>
-              <button
-                type="button"
-                aria-label={t('leaderboard.archive.openCommander', { commander: row.commanderName })}
-                onClick={() => {
-                  haptic('tap');
-                  onOpen(row.resultId);
-                }}
-                className={`grid min-h-16 w-full grid-cols-[2rem_2.25rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 text-left focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-crystal ${row.self ? 'bg-crystal/8' : 'hover:bg-raised/60'}`}
-              >
-                {/* An object for the podium, a numeral for everybody else. */}
-                {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0) ? (
-                  <Medal place={row.rank} size={26} className="mx-auto text-crystal/70" />
-                ) : (
-                  <span className={`num text-center text-body ${row.self ? 'text-crystal' : 'text-faint'}`}>
-                    {row.rank}
-                  </span>
-                )}
-                {/*
-                  A FACE FOR A NAME. The live ladder gives every commander their
-                  world's emblem and the archive gave them a line of text — so the
-                  permanent record, the one people scroll through looking for
-                  somebody, was the surface with the least identity on it. Seeded
-                  from the result id, which is stable for that commander in that
-                  season for ever.
-                */}
-                <span
-                  className={`inline-block rounded-full ${
-                    (row.honorScore == null || row.honorScore > 0) && medalOf(row.rank) ? `ring-1 ${medalOf(row.rank)?.ring ?? ''}` : ''
-                  }`}
-                >
-                  <PlanetSigil seed={row.resultId} size={36} />
-                </span>
-                <span className="min-w-0">
-                  <strong className="name flex items-center gap-1.5 truncate text-bone">
-                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-                    <span className="truncate">{row.commanderName}</span>
-                  </strong>
-                  <span className="mt-1 block truncate text-label text-faint">{row.title}</span>
-                </span>
-                <RankingScores honor={row.honorScore} dominion={row.dominion} />
-              </button>
+            <li key={row.resultId} aria-current={row.self ? 'true' : undefined} className="gk-lb__item">
+              <ArchivedRow row={row} onOpen={onOpen} />
             </li>
           ))}
         </ol>
       )}
     </div>
+  );
+}
+
+/**
+ * ONE COMMANDER IN A FINISHED SEASON (C20): the live ladder's line, and the whole line is the
+ * door to their season record. The podium is an object, everybody else a numeral; the
+ * reader's own line is lit.
+ */
+function ArchivedRow({ row, onOpen }: {
+  row: SeasonArchiveLeaderboard['ladder'][number];
+  onOpen: (resultId: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const open = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    onOpen(row.resultId);
+  });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      aria-label={t('leaderboard.archive.openCommander', { commander: row.commanderName })}
+      onPointerDown={open.onPointerDown}
+      onClick={open.onClick}
+      className="gk-lb__row gk-lb__door gk-arch__row"
+      {...(row.self ? { 'data-self': '' } : {})}
+    >
+      {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0)
+        ? <Medal place={row.rank} size={26} className="gk-lb__medal" />
+        : <span className="gk-lb__rank gk-num">{row.rank}</span>}
+      {/*
+        A FACE FOR A NAME, seeded from the result id — stable for that commander in that
+        season for ever.
+      */}
+      <PlanetSigil seed={row.resultId} size={36} />
+      <span className="gk-lb__words">
+        <span className="gk-lb__flagline">
+          <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+          <span className="gk-lb__name">{row.commanderName}</span>
+        </span>
+        <span className="gk-arch__title">{row.title}</span>
+      </span>
+      <RankingScores honor={row.honorScore} dominion={row.dominion} />
+    </button>
   );
 }
 
@@ -315,80 +260,70 @@ function GalaxyRecordPanel({
 }) {
   const { t } = useTranslation();
   return (
-    <section
-      role="region"
-      aria-label={t('leaderboard.archive.galaxyRecord.title')}
-      className="border-b border-line-soft bg-raised/35 px-2 py-3"
-    >
-      <div className="plate plate-cut overflow-hidden border border-opportunity/25">
-        <header className="flex items-center gap-2 border-b border-line-soft px-3 py-2.5">
-          <Trophy won size={24} />
-          <div>
-            <h3 className="legend text-opportunity">{t('leaderboard.archive.galaxyRecord.title')}</h3>
-            <p className="text-micro text-faint">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
-          </div>
-        </header>
-        <div className="grid gap-px bg-line-soft sm:grid-cols-2">
-          {record.champion === null ? null : (
-            <RecordFact label={`${honorPrimary ? t('leaderboard.score') + ' · ' : ''}${t('leaderboard.archive.galaxyRecord.champion')}`}>
-              <strong className="name text-bone">{record.champion.commanderName}</strong>
-              <span className="num text-caption font-normal text-v2-ink-2">{signed(record.champion.dominion)}</span>
-            </RecordFact>
-          )}
-          {record.clanPodium.length === 0 ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.clans')}>
-              {record.clanPodium.map((clan) => (
-                <span key={clan.rank} className="block truncate text-label text-bone">
-                  <span className="num mr-1 text-faint">{clan.rank}.</span>
-                  [{clan.tag}] {clan.name}
-                </span>
-              ))}
-            </RecordFact>
-          )}
-          {record.biggestBattle === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.biggestBattle')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.battleLine', {
-                  attacker: record.biggestBattle.attackerName,
-                  defender: record.biggestBattle.defenderName,
-                  planet: record.biggestBattle.planetName,
-                  value: full(record.biggestBattle.totalLossValue),
-                })}
+    <section role="region" aria-label={t('leaderboard.archive.galaxyRecord.title')} className="gk-well gk-arch__record">
+      <header className="gk-arch__recordhead">
+        <Trophy won size={28} />
+        <span>
+          <h3 className="gk-report__subhead">{t('leaderboard.archive.galaxyRecord.title')}</h3>
+          <p className="gk-report__label">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
+        </span>
+      </header>
+      <dl className="gk-arch__facts">
+        {record.champion === null ? null : (
+          <RecordFact label={`${honorPrimary ? t('leaderboard.score') + ' · ' : ''}${t('leaderboard.archive.galaxyRecord.champion')}`}>
+            <span className="gk-arch__champion">
+              <strong>{record.champion.commanderName}</strong>
+              <span className="gk-num gk-arch__fig">{signed(record.champion.dominion)}</span>
+            </span>
+          </RecordFact>
+        )}
+        {record.clanPodium.length === 0 ? null : (
+          <RecordFact label={t('leaderboard.archive.galaxyRecord.clans')}>
+            {record.clanPodium.map((clan) => (
+              <span key={clan.rank}>
+                <span className="gk-num gk-arch__clanrank">{clan.rank}.</span>
+                [{clan.tag}] {clan.name}
               </span>
-            </RecordFact>
-          )}
-          {record.sharpestDominionSwing === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.dominionSwing')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.swingLine', {
-                  attacker: record.sharpestDominionSwing.attackerName,
-                  defender: record.sharpestDominionSwing.defenderName,
-                  amount: signed(record.sharpestDominionSwing.amount),
-                })}
-              </span>
-            </RecordFact>
-          )}
-          {record.mostContestedWorld === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.contestedWorld')}>
-              <span className="text-label leading-snug text-bone">
-                {t('leaderboard.archive.galaxyRecord.worldLine', {
-                  planet: record.mostContestedWorld.planetName,
-                  count: record.mostContestedWorld.events,
-                })}
-              </span>
-            </RecordFact>
-          )}
-        </div>
-      </div>
+            ))}
+          </RecordFact>
+        )}
+        {record.biggestBattle === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.biggestBattle')}>
+            {t('leaderboard.archive.galaxyRecord.battleLine', {
+              attacker: record.biggestBattle.attackerName,
+              defender: record.biggestBattle.defenderName,
+              planet: record.biggestBattle.planetName,
+              value: full(record.biggestBattle.totalLossValue),
+            })}
+          </RecordFact>
+        )}
+        {record.sharpestDominionSwing === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.dominionSwing')}>
+            {t('leaderboard.archive.galaxyRecord.swingLine', {
+              attacker: record.sharpestDominionSwing.attackerName,
+              defender: record.sharpestDominionSwing.defenderName,
+              amount: signed(record.sharpestDominionSwing.amount),
+            })}
+          </RecordFact>
+        )}
+        {record.mostContestedWorld === null ? null : (
+          <RecordFact wide label={t('leaderboard.archive.galaxyRecord.contestedWorld')}>
+            {t('leaderboard.archive.galaxyRecord.worldLine', {
+              planet: record.mostContestedWorld.planetName,
+              count: record.mostContestedWorld.events,
+            })}
+          </RecordFact>
+        )}
+      </dl>
     </section>
   );
 }
 
-function RecordFact({ label, children }: { label: string; children: ReactNode }) {
+function RecordFact({ label, wide = false, children }: { label: string; wide?: boolean; children: ReactNode }) {
   return (
-    <div className="min-w-0 bg-void/80 px-3 py-2.5">
-      <span className="legend mb-1 block text-faint">{label}</span>
-      {children}
+    <div className="gk-arch__fact" {...(wide ? { 'data-wide': '' } : {})}>
+      <dt className="gk-report__label">{label}</dt>
+      <dd>{children}</dd>
     </div>
   );
 }
@@ -413,7 +348,9 @@ function CommanderProfile({
   const selected = { ...stored, rank: stored.honorRank ?? stored.rank,
     commanders: stored.honorRank != null ? stored.honorCommanders : stored.commanders };
   const meritsMedal = selected.honorScore == null || selected.honorScore > 0;
+  const podium = meritsMedal && isPlace(selected.rank);
   const standing = meritsMedal ? percentile(selected.rank, selected.commanders ?? 0) : null;
+  const dominion = selected.dominion === 0 ? full(0) : signed(selected.dominion);
   const openResult = (nextResultId: string): void => {
     if (nextResultId === selected.resultId) {
       setView('season');
@@ -423,98 +360,67 @@ function CommanderProfile({
   };
 
   return (
-    <div className="px-2 pb-5 pt-3">
-      <button type="button" onClick={onBack} className="legend min-h-11 text-crystal">
-        ← {t('leaderboard.archive.back')}
-      </button>
+    <div className="gk-prof">
+      <div className="gk-prof__back">
+        <GameButton glyph="back" size="sm" onPress={onBack}>{t('leaderboard.archive.back')}</GameButton>
+      </div>
       {/*
-        A RECORD SOMEBODY WOULD SHOW SOMEBODY ELSE.
-
-        This was a bare plate with three lines of text on it, and a season a player
-        spent a month on read like a receipt. The recap screen already knows what
-        the ceremony looks like — a lit ground, the world itself, the title before
-        the numbers — and a commander's permanent record deserves the same. The
-        glow is two radial washes behind the plate, the same pair `SeasonRecap`
-        uses, so the two surfaces are recognisably the same moment.
+        A RECORD SOMEBODY WOULD SHOW SOMEBODY ELSE (C21): the season's last screen and a
+        commander's permanent record are the same moment, so they share its pieces — the
+        lit ground, the world with the medal hung on it, the two numbers on plaques.
       */}
-      <header className="plate plate-cut relative overflow-hidden px-3 py-5 text-center">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(89,200,255,0.18),transparent_55%),radial-gradient(circle_at_18%_100%,rgba(90,211,155,0.10),transparent_45%)]"
-        />
-        <div className="relative">
-          {/*
-            THE WORLD, AND THE MEDAL HUNG ON IT.
-
-            The sigil is who; the medal is what they took. Overlapped rather than
-            placed side by side, because a medal beside a picture is a legend and
-            a medal ON it is an award.
-          */}
-          <span className="relative inline-block">
-            <span
-              className={`inline-block rounded-full ${
-                meritsMedal && medalOf(selected.rank)
-                  ? `ring-2 ${medalOf(selected.rank)?.ring ?? ''} ${medalOf(selected.rank)?.glow ?? ''}`
-                  : ''
-              }`}
-            >
-              <PlanetSigil seed={selected.seasonId + selected.commanderName} size={64} />
-            </span>
-            {isPlace(selected.rank) && meritsMedal ? (
-              <Medal
-                place={selected.rank}
-                size={34}
-                className="absolute -bottom-2 -right-2 text-crystal/70 drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
-              />
-            ) : null}
-          </span>
-          <p className="legend mt-3 text-crystal">
-            {t('leaderboard.archive.seasonHeading', { ordinal: selected.ordinal, galaxy: selected.shard })}
-          </p>
-          <h2 className="headline mt-2 flex items-center justify-center gap-2 text-title text-bone">
-            <Flag code={selected.country} language={i18n.resolvedLanguage ?? 'en'} />
-            <span>{selected.commanderName}</span>
-          </h2>
-          <p className="mt-1 text-label text-faint">{selected.title} · {selected.planetName}</p>
-          {/*
-            THE LINE A PLAYER QUOTES. A rank without its field is not a boast —
-            first of four and first of three hundred read identically — so the
-            share comes first and the raw position follows it.
-          */}
-          {standing === null ? null : (
-            <p className={`legend mt-3 ${medalOf(selected.rank)?.text ?? 'text-crystal'}`}>
-              {t('leaderboard.archive.percentile', {
-                share: standing,
-                rank: full(selected.rank),
-                commanders: full(selected.commanders ?? 0),
-              })}
-            </p>
-          )}
+      <header className="gk-well gk-prof__head">
+        <span className="gk-prof__sky" aria-hidden="true" />
+        <span className="gk-prof__crest">
+          {podium ? <span className="gk-rays" aria-hidden="true" /> : null}
+          <PlanetSigil seed={selected.seasonId + selected.commanderName} size={64} />
+          {podium && isPlace(selected.rank) ? <Medal place={selected.rank} size={30} className="gk-prof__medal" /> : null}
+        </span>
+        <p className="gk-label gk-prof__eyebrow">
+          {t('leaderboard.archive.seasonHeading', { ordinal: selected.ordinal, galaxy: selected.shard })}
+        </p>
+        <div className="gk-prof__name">
+          <Flag code={selected.country} language={i18n.resolvedLanguage ?? 'en'} />
+          <h2 className="gk-display gk-prof__title">{selected.commanderName}</h2>
         </div>
-        <div className="relative mt-4 grid grid-cols-2 gap-2">
-          <HeroFigure
-            icon={selected.honorRank != null ? <HonorIcon className="size-4" /> : <LeaderboardIcon className="size-4" />}
+        <p className="gk-prof__who">{selected.title} · {selected.planetName}</p>
+        {/*
+          THE LINE A PLAYER QUOTES. A rank without its field is not a boast — first of four
+          and first of three hundred read identically — so the share comes first.
+        */}
+        {standing === null ? null : (
+          <p className="gk-prof__standing" {...(podium ? { 'data-place': String(selected.rank) } : {})}>
+            {t('leaderboard.archive.percentile', {
+              share: standing,
+              rank: full(selected.rank),
+              commanders: full(selected.commanders ?? 0),
+            })}
+          </p>
+        )}
+        <div className="gk-prof__heroes">
+          <StatPlaque
+            {...(selected.honorRank != null ? { glyph: 'ranking' as const } : { art: artIconSrc('trophy') })}
             label={t(selected.honorRank != null ? 'leaderboard.honorRank' : 'leaderboard.archive.metrics.finalRank')}
             value={`#${full(selected.rank)}`}
-            tone={!meritsMedal ? 'bone' : selected.rank === 1 ? 'opportunity' : selected.rank <= 3 ? 'crystal' : 'bone'}
+            tone={podium ? 'good' : 'neutral'}
           />
-          {selected.honorScore != null ? <div className="flex items-center justify-end rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2">
-            <RankingScores honor={selected.honorScore} dominion={selected.dominion} />
-          </div> : <HeroFigure
-            icon={<GalaxyIcon className="size-4" />}
-            label={t('leaderboard.score')}
-            value={selected.dominion === 0 ? full(0) : signed(selected.dominion)}
-            tone={selected.dominion > 0 ? 'opportunity' : 'bone'}
-          />}
+          {selected.honorScore != null ? (
+            <StatPlaque
+              glyph="star"
+              label={t('leaderboard.honorTitle')}
+              value={honorScore(selected.honorScore)}
+              sub={<>{t('leaderboard.score')} <span className="gk-num">{dominion}</span></>}
+            />
+          ) : (
+            <StatPlaque glyph="colony" label={t('leaderboard.score')} value={dominion} tone={selected.dominion > 0 ? 'good' : 'neutral'} />
+          )}
         </div>
       </header>
-      <Segmented
-        role="tablist"
-        className="mt-3"
+      <GameTabs
         label={t('leaderboard.archive.profileViews')}
         value={view}
-        onSelect={setView}
-        segments={[
+        onChange={setView}
+        tabs={[
           { id: 'season', label: t('leaderboard.archive.seasonTab', { ordinal: selected.ordinal }) },
           { id: 'overall', label: t('leaderboard.archive.overall') },
         ]}
@@ -580,7 +486,7 @@ type RatioId = keyof typeof RATIO_LABEL;
 
 interface Ratio {
   id: RatioId;
-  icon: ReactNode;
+  glyph: GlyphId;
   /** Already formatted: these are multiples, shares and rates, not totals. */
   value: string;
   mine: number;
@@ -593,14 +499,14 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   const ratio = (a: number, b: number): number | null => (b > 0 ? a / b : null);
   const add = (
     id: RatioId,
-    icon: ReactNode,
+    glyph: GlyphId,
     mine: number | null,
     theirs: number | null,
     format: (value: number) => string,
     praise = true,
   ): void => {
     if (mine === null || theirs === null) return;
-    out.push({ id, icon, value: format(mine), mine, theirs, praise });
+    out.push({ id, glyph, value: format(mine), mine, theirs, praise });
   };
   const times = (value: number): string => `×${value.toFixed(1)}`;
   const percent = (value: number): string =>
@@ -609,7 +515,7 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   // What you did to them against what they did to you.
   add(
     'trade',
-    <SkullIcon className="size-3.5" />,
+    'target',
     ratio(stats.competition.damageDealt, stats.competition.damageTaken),
     ratio(averages.competition.damageDealt, averages.competition.damageTaken),
     times,
@@ -617,7 +523,7 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   // What one raid was worth, which is the difference between raiding and flailing.
   add(
     'haul',
-    <SalvageIcon className="size-3.5" />,
+    'crate',
     ratio(resourceValue(stats.competition.playerLoot), stats.competition.attacks),
     ratio(resourceValue(averages.competition.playerLoot), averages.competition.attacks),
     (value) => full(value),
@@ -627,7 +533,7 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
     built > 0 ? Math.max(0, 1 - lost / built) : null;
   add(
     'kept',
-    <HangarIcon className="size-3.5" />,
+    'hull',
     kept(stats.competition.shipsLost, stats.competition.shipsBuilt),
     kept(averages.competition.shipsLost, averages.competition.shipsBuilt),
     percent,
@@ -635,7 +541,7 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   // Whether the merchant was a plan or a gamble.
   add(
     'convoy',
-    <CargoIcon className="size-3.5" />,
+    'rocket',
     ratio(stats.exploration.convoySuccesses, stats.exploration.convoyAttempts),
     ratio(averages.exploration.convoySuccesses, averages.exploration.convoyAttempts),
     percent,
@@ -643,7 +549,7 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   // What an hour of your works was actually worth.
   add(
     'hourly',
-    <RefineryIcon className="size-3.5" />,
+    'clock',
     ratio(resourceValue(stats.economy.produced), stats.economy.productiveSeconds / 3_600),
     ratio(resourceValue(averages.economy.produced), averages.economy.productiveSeconds / 3_600),
     (value) => full(value),
@@ -651,13 +557,14 @@ function ratios(stats: Stats, averages: Averages): Ratio[] {
   // What one asteroid run brought back.
   add(
     'perRun',
-    <DrillIcon className="size-3.5" />,
+    'asteroid',
     ratio(resourceValue(stats.exploration.asteroidMined), stats.exploration.asteroidRuns),
     ratio(resourceValue(averages.exploration.asteroidMined), averages.exploration.asteroidRuns),
     (value) => full(value),
   );
   return out;
 }
+
 
 function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
   const { t } = useTranslation();
@@ -667,23 +574,13 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
       return <LegacySeasonStats selected={selected} />;
     }
     /*
-      AN HONEST GAP, DRESSED AS ONE.
-
-      Seasons played before the galaxy kept telemetry have a rank, a title and a
-      story and no figures — and the first draft answered that with a bare error
-      box, which reads as "something is broken" rather than "this is how far the
-      record goes". The world and the title stay; only the numbers are missing,
-      and the card says exactly that.
+      AN HONEST GAP, DRESSED AS ONE. Seasons played before the galaxy kept telemetry
+      have a rank, a title and a story and no figures: "this is how far the record
+      goes", not "something is broken".
     */
     return (
-      <div className="plate plate-sunk mt-3 flex items-center gap-3 px-3 py-4">
-        <ArtWell src={BUILDING_ART.VAULT} alt="" size="sm" />
-        <div className="min-w-0">
-          <p className="name text-bone">{t('leaderboard.archive.statsUnavailable')}</p>
-          <p className="mt-1 text-label leading-snug text-faint">
-            {t('leaderboard.archive.statsUnavailableHint')}
-          </p>
-        </div>
+      <div className="gk-prof__body">
+        <Banner glyph="history" title={t('leaderboard.archive.statsUnavailable')} body={t('leaderboard.archive.statsUnavailableHint')} />
       </div>
     );
   }
@@ -691,138 +588,93 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
   const averages = selected.averages;
   const signature = signatureHull(stats.competition.shipsBuiltByHull);
   const best = ratios(stats, averages);
+  const produced = stats.economy.produced;
+  const mined = stats.exploration.asteroidMined;
   return (
-    <div className="mt-4 space-y-5">
+    <div className="gk-prof__body">
       <RecordNotices selected={selected} />
-      <p className="text-label text-faint">
-        {t('leaderboard.archive.cohort', { count: averages.cohortSize })}
-      </p>
+      <p className="gk-report__label">{t('leaderboard.archive.cohort', { count: averages.cohortSize })}</p>
       {best.length === 0 ? null : (
-        <Section icon={<RewardIcon className="size-3.5" />} label={t('leaderboard.archive.sections.form')}>
-          <div className="grid grid-cols-2 gap-2">
+        <section className="gk-prof__part">
+          <SectionTag as="h3">{t('leaderboard.archive.sections.form')}</SectionTag>
+          <div className="gk-cmp-grid">
             {best.map((item) => (
-              <div key={item.id} className="plate plate-sunk px-3 py-3">
-                <p className="legend flex items-center gap-1.5 text-crystal">
-                  <span className="shrink-0">{item.icon}</span>
-                  <span className="truncate">{t(RATIO_LABEL[item.id])}</span>
-                </p>
-                <p className="mt-2 flex items-baseline justify-between gap-2">
-                  <span className="num truncate text-body text-bone">{item.value}</span>
-                  {item.theirs > 0 ? (
-                    <span
-                      className={`num shrink-0 text-label ${
-                        item.praise && item.mine >= item.theirs ? 'text-opportunity' : 'text-faint'
-                      }`}
-                    >
-                      {t('leaderboard.archive.multiple', {
-                        value: (item.mine / item.theirs).toFixed(1),
-                      })}
-                    </span>
-                  ) : null}
-                </p>
-                <Bar
-                  share={shares(item.mine, item.theirs).mine}
-                  tone={item.praise && item.mine >= item.theirs ? 'ahead' : 'plain'}
-                />
-                <p className="mt-2 truncate text-micro text-faint">
-                  {t('leaderboard.archive.averageShort', {
-                    value: item.id === 'kept' || item.id === 'convoy'
-                      ? t('leaderboard.archive.share', { value: Math.round(item.theirs * 100) })
-                      : item.id === 'trade'
-                        ? `×${item.theirs.toFixed(1)}`
-                        : full(item.theirs),
-                  })}
-                </p>
-                <Bar share={shares(item.mine, item.theirs).theirs} tone="field" />
-              </div>
+              <CompareCard
+                key={item.id}
+                glyph={item.glyph}
+                label={t(RATIO_LABEL[item.id])}
+                value={item.value}
+                mine={item.mine}
+                theirs={item.theirs}
+                multiple={item.theirs > 0 ? item.mine / item.theirs : null}
+                ahead={item.praise && item.mine >= item.theirs}
+                others={item.id === 'kept' || item.id === 'convoy'
+                  ? t('leaderboard.archive.share', { value: Math.round(item.theirs * 100) })
+                  : item.id === 'trade' ? `×${item.theirs.toFixed(1)}` : full(item.theirs)}
+              />
             ))}
           </div>
-        </Section>
+        </section>
       )}
       <RecapStories recap={selected.recap} />
-      <Section icon={<WarBannerIcon className="size-3.5" />} label={t('leaderboard.archive.sections.competition')}>
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.sections.competition')}</SectionTag>
         {signature === null ? null : (
-          <div className="plate plate-cut flex items-center gap-3 px-3 py-3">
-            {/*
-              THE GAME'S OWN RENDER, AT THE SIZE IT WAS PAINTED FOR. `ArtWell` is
-              the lit socket the rest of the game shows a hull in; a season record
-              that drew ships at 24px in a list was the one surface treating this
-              project's most expensive art as a favicon.
-            */}
-            <ArtWell src={HULL_ART[signature.hull]} alt="" size="sm" />
-            <div className="min-w-0">
-              <p className="legend text-crystal">{t('leaderboard.archive.signature')}</p>
-              <p className="name mt-1 truncate text-bone">{hullLabel(signature.hull)}</p>
-              <p className="num mt-0.5 text-label text-faint">
-                {t('leaderboard.archive.signatureCount', { count: signature.count })}
-              </p>
-            </div>
-          </div>
+          <LeadCard
+            art={HULL_ART[signature.hull]}
+            label={t('leaderboard.archive.signature')}
+            value={hullLabel(signature.hull)}
+            note={t('leaderboard.archive.signatureCount', { count: signature.count })}
+          />
         )}
-        <div className="grid grid-cols-2 gap-2">
-          <ComparedStat icon={<WarBannerIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.battles')} value={stats.competition.battles} average={averages.competition.battles} />
-          <ComparedStat icon={<AttackIcon className="size-3.5" />} label={t('seasonRecap.attacks')} value={stats.competition.attacks} average={averages.competition.attacks} />
-          <ComparedStat icon={<ShieldIcon className="size-3.5" />} label={t('seasonRecap.defences')} value={stats.competition.defences} average={averages.competition.defences} />
-          <ComparedStat icon={<SkullIcon className="size-3.5" />} label={t('seasonRecap.damageDealt')} value={stats.competition.damageDealt} average={averages.competition.damageDealt} />
-          <ComparedStat icon={<RaidedIcon className="size-3.5" />} label={t('seasonRecap.damageTaken')} value={stats.competition.damageTaken} average={averages.competition.damageTaken} praise={false} />
-          <ComparedStat icon={<HangarIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.shipsBuilt')} value={stats.competition.shipsBuilt} average={averages.competition.shipsBuilt} />
-          <ComparedStat icon={<WorldLostIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.shipsLost')} value={stats.competition.shipsLost} average={averages.competition.shipsLost} praise={false} />
+        <div className="gk-cmp-grid">
+          <ComparedStat glyph="banner" label={t('leaderboard.archive.metrics.battles')} value={stats.competition.battles} average={averages.competition.battles} />
+          <ComparedStat glyph="attack" label={t('seasonRecap.attacks')} value={stats.competition.attacks} average={averages.competition.attacks} />
+          <ComparedStat glyph="shield" label={t('seasonRecap.defences')} value={stats.competition.defences} average={averages.competition.defences} />
+          <ComparedStat glyph="target" label={t('seasonRecap.damageDealt')} value={stats.competition.damageDealt} average={averages.competition.damageDealt} />
+          <ComparedStat glyph="damaged" label={t('seasonRecap.damageTaken')} value={stats.competition.damageTaken} average={averages.competition.damageTaken} praise={false} />
+          <ComparedStat glyph="bay" label={t('leaderboard.archive.metrics.shipsBuilt')} value={stats.competition.shipsBuilt} average={averages.competition.shipsBuilt} />
+          <ComparedStat glyph="critical" label={t('leaderboard.archive.metrics.shipsLost')} value={stats.competition.shipsLost} average={averages.competition.shipsLost} praise={false} />
         </div>
-        <ResourceStats icon={<SalvageIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.playerLoot')} value={stats.competition.playerLoot} average={averages.competition.playerLoot} />
-        <div className="grid grid-cols-2 gap-2">
-          <HullBreakdown
-            label={t('leaderboard.archive.metrics.shipsBuiltByHull')}
-            fleet={stats.competition.shipsBuiltByHull}
-          />
-          <HullBreakdown
-            label={t('leaderboard.archive.metrics.shipsLostByHull')}
-            fleet={stats.competition.shipsLostByHull}
-          />
+        <ResourceStats glyph="crate" label={t('leaderboard.archive.metrics.playerLoot')} value={stats.competition.playerLoot} average={averages.competition.playerLoot} />
+        <div className="gk-cmp-grid">
+          <HullBreakdown label={t('leaderboard.archive.metrics.shipsBuiltByHull')} fleet={stats.competition.shipsBuiltByHull} />
+          <HullBreakdown label={t('leaderboard.archive.metrics.shipsLostByHull')} fleet={stats.competition.shipsLostByHull} />
         </div>
-      </Section>
-      <Section icon={<RefineryIcon className="size-3.5" />} label={t('leaderboard.archive.sections.economy')}>
-        {/*
-          THE WORKS THAT MADE IT, at the size they were painted for. The three
-          sections now open the same way — a render, a name, a headline figure —
-          so the card has a rhythm a reader can ride instead of a wall to climb.
-        */}
+      </section>
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.sections.economy')}</SectionTag>
+        {/* Each section opens the same way — a render, a name, a headline figure — so the card has a rhythm. */}
         <LeadCard
           art={BUILDING_ART.CORE}
           label={t('leaderboard.archive.leadWorks')}
-          value={full(
-            stats.economy.produced.alloy
-            + stats.economy.produced.crystal
-            + stats.economy.produced.deuterium,
-          )}
+          value={full(produced.alloy + produced.crystal + produced.deuterium)}
           note={t('leaderboard.archive.leadProduced')}
         />
         <ComparedStat
-          icon={<ClockIcon className="size-3.5" />}
+          glyph="clock"
           label={t('leaderboard.archive.metrics.productiveTime')}
           value={duration(stats.economy.productiveSeconds / 60)}
           average={duration(averages.economy.productiveSeconds / 60)}
         />
-        <ResourceStats icon={<RefineryIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.produced')} value={stats.economy.produced} average={averages.economy.produced} />
-      </Section>
-      <Section icon={<DrillIcon className="size-3.5" />} label={t('leaderboard.archive.sections.exploration')}>
+        <ResourceStats glyph="colony" label={t('leaderboard.archive.metrics.produced')} value={produced} average={averages.economy.produced} />
+      </section>
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.sections.exploration')}</SectionTag>
         <LeadCard
           art={HULL_ART.PROSPECTOR}
           label={t('leaderboard.archive.metrics.asteroidMined')}
-          value={full(
-            stats.exploration.asteroidMined.alloy
-            + stats.exploration.asteroidMined.crystal
-            + stats.exploration.asteroidMined.deuterium,
-          )}
+          value={full(mined.alloy + mined.crystal + mined.deuterium)}
           note={t('leaderboard.archive.leadRuns', { count: stats.exploration.asteroidRuns })}
         />
-        <div className="grid grid-cols-2 gap-2">
-          <ComparedStat icon={<DrillIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.asteroidRuns')} value={stats.exploration.asteroidRuns} average={averages.exploration.asteroidRuns} />
-          <ComparedStat icon={<CargoIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.convoyAttempts')} value={stats.exploration.convoyAttempts} average={averages.exploration.convoyAttempts} />
-          <ComparedStat icon={<CargoIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.convoySuccesses')} value={stats.exploration.convoySuccesses} average={averages.exploration.convoySuccesses} />
+        <div className="gk-cmp-grid">
+          <ComparedStat glyph="asteroid" label={t('leaderboard.archive.metrics.asteroidRuns')} value={stats.exploration.asteroidRuns} average={averages.exploration.asteroidRuns} />
+          <ComparedStat glyph="rocket" label={t('leaderboard.archive.metrics.convoyAttempts')} value={stats.exploration.convoyAttempts} average={averages.exploration.convoyAttempts} />
+          <ComparedStat glyph="check" label={t('leaderboard.archive.metrics.convoySuccesses')} value={stats.exploration.convoySuccesses} average={averages.exploration.convoySuccesses} />
         </div>
-        <ResourceStats icon={<DrillIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.asteroidMined')} value={stats.exploration.asteroidMined} average={averages.exploration.asteroidMined} />
-        <ResourceStats icon={<CargoIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.convoyDelivered')} value={stats.exploration.convoyDelivered} average={averages.exploration.convoyDelivered} />
-      </Section>
+        <ResourceStats glyph="asteroid" label={t('leaderboard.archive.metrics.asteroidMined')} value={mined} average={averages.exploration.asteroidMined} />
+        <ResourceStats glyph="rocket" label={t('leaderboard.archive.metrics.convoyDelivered')} value={stats.exploration.convoyDelivered} average={averages.exploration.convoyDelivered} />
+      </section>
     </div>
   );
 }
@@ -832,30 +684,12 @@ function RecordNotices({ selected }: { selected: SelectedRecord }) {
   return (
     <>
       {selected.endReason === 'FORCED_WIPE' ? (
-        <ArchiveNotice
-          title={t('leaderboard.archive.forcedEnd.title')}
-          hint={t('leaderboard.archive.forcedEnd.hint')}
-        />
+        <Banner tone="warn" title={t('leaderboard.archive.forcedEnd.title')} body={t('leaderboard.archive.forcedEnd.hint')} />
       ) : null}
       {selected.stats?.coverage?.reason === 'TELEMETRY_CUTOVER' ? (
-        <ArchiveNotice
-          title={t('leaderboard.archive.partialStats.title')}
-          hint={t('leaderboard.archive.partialStats.hint')}
-        />
+        <Banner glyph="history" title={t('leaderboard.archive.partialStats.title')} body={t('leaderboard.archive.partialStats.hint')} />
       ) : null}
     </>
-  );
-}
-
-function ArchiveNotice({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div className="plate plate-sunk flex items-center gap-3 px-3 py-4">
-      <ArtWell src={BUILDING_ART.VAULT} alt="" size="sm" />
-      <div className="min-w-0">
-        <p className="name text-bone">{title}</p>
-        <p className="mt-1 text-label leading-snug text-faint">{hint}</p>
-      </div>
-    </div>
   );
 }
 
@@ -865,28 +699,21 @@ function LegacySeasonStats({ selected }: { selected: SelectedRecord }) {
   const averages = selected.legacyAverages;
   if (!legacy || !averages) return null;
   return (
-    <div className="mt-4 space-y-5">
-      <ArchiveNotice
-        title={t('leaderboard.archive.legacyStats.title')}
-        hint={t('leaderboard.archive.legacyStats.hint')}
-      />
+    <div className="gk-prof__body">
+      <Banner glyph="history" title={t('leaderboard.archive.legacyStats.title')} body={t('leaderboard.archive.legacyStats.hint')} />
       <RecordNotices selected={selected} />
-      <p className="text-label text-faint">
-        {t('leaderboard.archive.cohort', { count: averages.cohortSize })}
-      </p>
+      <p className="gk-report__label">{t('leaderboard.archive.cohort', { count: averages.cohortSize })}</p>
       <RecapStories recap={selected.recap} />
-      <Section
-        icon={<WarBannerIcon className="size-3.5" />}
-        label={t('leaderboard.archive.sections.competition')}
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <ComparedStat icon={<WarBannerIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.battles')} value={legacy.competition.battles} average={averages.competition.battles} />
-          <ComparedStat icon={<AttackIcon className="size-3.5" />} label={t('seasonRecap.attacks')} value={legacy.competition.attacks} average={averages.competition.attacks} />
-          <ComparedStat icon={<ShieldIcon className="size-3.5" />} label={t('seasonRecap.defences')} value={legacy.competition.defences} average={averages.competition.defences} />
-          <ComparedStat icon={<SkullIcon className="size-3.5" />} label={t('seasonRecap.damageDealt')} value={legacy.competition.damageDealt} average={averages.competition.damageDealt} />
-          <ComparedStat icon={<RaidedIcon className="size-3.5" />} label={t('seasonRecap.damageTaken')} value={legacy.competition.damageTaken} average={averages.competition.damageTaken} praise={false} />
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.sections.competition')}</SectionTag>
+        <div className="gk-cmp-grid">
+          <ComparedStat glyph="banner" label={t('leaderboard.archive.metrics.battles')} value={legacy.competition.battles} average={averages.competition.battles} />
+          <ComparedStat glyph="attack" label={t('seasonRecap.attacks')} value={legacy.competition.attacks} average={averages.competition.attacks} />
+          <ComparedStat glyph="shield" label={t('seasonRecap.defences')} value={legacy.competition.defences} average={averages.competition.defences} />
+          <ComparedStat glyph="target" label={t('seasonRecap.damageDealt')} value={legacy.competition.damageDealt} average={averages.competition.damageDealt} />
+          <ComparedStat glyph="damaged" label={t('seasonRecap.damageTaken')} value={legacy.competition.damageTaken} average={averages.competition.damageTaken} praise={false} />
         </div>
-      </Section>
+      </section>
     </div>
   );
 }
@@ -895,26 +722,20 @@ function RecapStories({ recap }: { recap: SelectedRecord['recap'] }) {
   const { t } = useTranslation();
   if (recap.biggestRaid === null && recap.rival === null) return null;
   return (
-    <div className="grid grid-cols-1 gap-2">
+    <div className="gk-prof__stories">
       {recap.biggestRaid === null ? null : (
-        <div className="plate plate-cut px-3 py-3">
-          <p className="legend text-opportunity">{t('seasonRecap.biggestHeading')}</p>
-          <p className="mt-1 text-body text-bone">
-            {t('seasonRecap.biggestRaid', {
-              name: recap.biggestRaid.opponentName,
-              value: full(recap.biggestRaid.value),
-            })}
+        <div className="gk-well gk-report__why">
+          <p className="gk-label gk-prof__storyhead" data-tone="gold">{t('seasonRecap.biggestHeading')}</p>
+          <p className="gk-report__copy" data-strong="">
+            {t('seasonRecap.biggestRaid', { name: recap.biggestRaid.opponentName, value: full(recap.biggestRaid.value) })}
           </p>
         </div>
       )}
       {recap.rival === null ? null : (
-        <div className="plate plate-cut px-3 py-3">
-          <p className="legend text-crystal">{t('seasonRecap.rivalHeading')}</p>
-          <p className="mt-1 text-body text-bone">
-            {t('seasonRecap.rival', {
-              name: recap.rival.commanderName,
-              count: recap.rival.battles,
-            })}
+        <div className="gk-well gk-report__why">
+          <p className="gk-label gk-prof__storyhead">{t('seasonRecap.rivalHeading')}</p>
+          <p className="gk-report__copy" data-strong="">
+            {t('seasonRecap.rival', { name: recap.rival.commanderName, count: recap.rival.battles })}
           </p>
         </div>
       )}
@@ -922,38 +743,22 @@ function RecapStories({ recap }: { recap: SelectedRecord['recap'] }) {
   );
 }
 
-function HullBreakdown({
-  label,
-  fleet,
-}: {
-  label: string;
-  fleet: Stats['competition']['shipsBuiltByHull'];
-}) {
+function HullBreakdown({ label, fleet }: { label: string; fleet: Stats['competition']['shipsBuiltByHull'] }) {
   const { t } = useTranslation();
   const entries = fleetEntries(fleet);
   return (
-    <div className="plate plate-sunk min-w-0 px-3 py-3">
-      <p className="legend text-crystal">{label}</p>
+    <div className="gk-well gk-cmp">
+      <p className="gk-cmp__label">{label}</p>
       {entries.length === 0 ? (
-        <p className="mt-2 text-label text-faint">{t('leaderboard.archive.none')}</p>
+        <p className="gk-report__label">{t('leaderboard.archive.none')}</p>
       ) : (
-        <ul className="mt-2 space-y-1.5">
+        <ul className="gk-prof__hulls">
           {entries.map(([hull, count]) => (
-            <li key={hull} className="flex min-w-0 items-center gap-2 text-label">
-              {/*
-                THE HULL'S OWN RENDER. A list of ship NAMES asks the reader to
-                remember what a Dart looks like; the card the player bought it
-                from showed them, and this is the same picture.
-              */}
-              {HULL_ART[hull] === null ? null : (
-                <img
-                  src={HULL_ART[hull]}
-                  alt=""
-                  className="size-6 shrink-0 object-contain"
-                />
-              )}
-              <span className="min-w-0 flex-1 truncate text-dim">{hullLabel(hull)}</span>
-              <span className="num shrink-0 text-bone">{full(count)}</span>
+            <li key={hull}>
+              {/* The hull's own render: the card the player bought it from showed them the same picture. */}
+              {HULL_ART[hull] === null ? <span /> : <img src={HULL_ART[hull]} alt="" />}
+              <span className="gk-prof__hullname">{hullLabel(hull)}</span>
+              <span className="gk-num">{full(count)}</span>
             </li>
           ))}
         </ul>
@@ -972,198 +777,138 @@ function CareerStats({
   const { t } = useTranslation();
   const { career } = profile;
   return (
-    <div className="mt-4 space-y-5">
-      <div className="plate plate-cut grid grid-cols-2 gap-4 px-3 py-4">
-        {/*
-          A CAREER IS A SHELF, NOT A TABLE. Championships and podiums are the two
-          figures a commander would point at, so they carry the medal colours the
-          rest of the game uses for the same places — and a shelf with nothing on
-          it still shows its empty places, because those are what the next season
-          is for.
-        */}
-        <Stat label={t('leaderboard.archive.career.completed')} value={full(career.completedSeasons)} />
-        <Stat
+    <div className="gk-prof__body">
+      {/*
+        A CAREER IS A SHELF, NOT A TABLE. Championships and podiums carry the medal colours
+        the rest of the game uses for the same places, and an empty shelf still shows its
+        places, because those are what the next season is for.
+      */}
+      <div className="gk-well gk-prof__shelf">
+        <ShelfFigure label={t('leaderboard.archive.career.completed')} value={full(career.completedSeasons)} />
+        <ShelfFigure
           label={t('leaderboard.archive.career.bestRank')}
           value={career.bestRank === null ? '—' : `#${full(career.bestRank)}`}
-          tone={career.bestRank === null ? 'dim' : career.bestRank === 1 ? 'opportunity' : career.bestRank <= 3 ? 'crystal' : 'bone'}
+          tone={career.bestRank === null ? 'quiet' : career.bestRank <= 3 ? 'gold' : undefined}
         />
-        <div className="min-w-0">
-          <p className="legend flex items-center gap-1.5 truncate">
-            <Trophy won={career.championships > 0} size={16} />
-            <span className="truncate">{t('leaderboard.archive.career.championships')}</span>
-          </p>
-          <p className={`num mt-2 text-figure ${career.championships > 0 ? 'text-opportunity' : 'text-dim'}`}>
-            {full(career.championships)}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="legend flex items-center gap-1 truncate">
-            {/* The podium, stated as the three metals it is made of. */}
-            <span className="flex shrink-0 -space-x-1">
-              <Medal place={1} size={13} plain />
-              <Medal place={2} size={13} plain />
-              <Medal place={3} size={13} plain />
-            </span>
-            <span className="truncate">{t('leaderboard.archive.career.podiums')}</span>
-          </p>
-          <p className={`num mt-2 text-figure ${career.podiums > 0 ? 'text-crystal' : 'text-dim'}`}>
-            {full(career.podiums)}
-          </p>
-        </div>
-        <Stat label={t('leaderboard.archive.career.topTen')} value={full(career.topTen)} />
+        <ShelfFigure label={t('leaderboard.archive.career.topTen')} value={full(career.topTen)} />
+        <ShelfFigure
+          mark={<Trophy won={career.championships > 0} size={16} />}
+          label={t('leaderboard.archive.career.championships')}
+          value={full(career.championships)}
+          tone={career.championships > 0 ? 'gold' : 'quiet'}
+        />
+        <ShelfFigure
+          mark={<span className="gk-prof__podium"><Medal place={1} size={13} plain /><Medal place={2} size={13} plain /><Medal place={3} size={13} plain /></span>}
+          label={t('leaderboard.archive.career.podiums')}
+          value={full(career.podiums)}
+          tone={career.podiums > 0 ? 'crystal' : 'quiet'}
+        />
       </div>
-      <Section
-        label={t('leaderboard.archive.career.recordedCombatTotals')}
-        aside={t('leaderboard.archive.career.covered', {
-          count: career.competitionTotals.seasonsCovered,
-        })}
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <Stat label={t('leaderboard.archive.metrics.battles')} value={full(career.competitionTotals.battles)} />
-          <Stat label={t('seasonRecap.attacks')} value={full(career.competitionTotals.attacks)} />
-          <Stat label={t('seasonRecap.damageDealt')} value={full(career.competitionTotals.damageDealt)} />
-          <Stat label={t('seasonRecap.damageTaken')} value={full(career.competitionTotals.damageTaken)} />
-        </div>
-      </Section>
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.career.recordedCombatTotals')}</SectionTag>
+        <p className="gk-report__label">{t('leaderboard.archive.career.covered', { count: career.competitionTotals.seasonsCovered })}</p>
+        <dl className="gk-well gk-report__sum gk-prof__totals">
+          <dt>{t('leaderboard.archive.metrics.battles')}</dt><dd className="gk-num">{full(career.competitionTotals.battles)}</dd>
+          <dt>{t('seasonRecap.attacks')}</dt><dd className="gk-num">{full(career.competitionTotals.attacks)}</dd>
+          <dt>{t('seasonRecap.damageDealt')}</dt><dd className="gk-num">{full(career.competitionTotals.damageDealt)}</dd>
+          <dt>{t('seasonRecap.damageTaken')}</dt><dd className="gk-num">{full(career.competitionTotals.damageTaken)}</dd>
+        </dl>
+      </section>
       {career.totals === null ? (
-        <EmptyState title={t('leaderboard.archive.career.noTelemetry')} />
+        <Banner glyph="history" title={t('leaderboard.archive.career.noTelemetry')} />
       ) : (
-        <Section
-          label={t('leaderboard.archive.career.recordedTotals')}
-          aside={career.totals.partialSeasons > 0
-            ? t('leaderboard.archive.career.coveredWithPartial', {
-              count: career.totals.seasonsCovered,
-              partial: career.totals.partialSeasons,
-            })
-            : t('leaderboard.archive.career.covered', { count: career.totals.seasonsCovered })}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label={t('leaderboard.archive.metrics.battles')} value={full(career.totals.stats.competition.battles)} />
-            <Stat label={t('leaderboard.archive.metrics.shipsBuilt')} value={full(career.totals.stats.competition.shipsBuilt)} />
-            <Stat label={t('leaderboard.archive.metrics.asteroidRuns')} value={full(career.totals.stats.exploration.asteroidRuns)} />
-            <Stat label={t('leaderboard.archive.metrics.convoySuccesses')} value={full(career.totals.stats.exploration.convoySuccesses)} />
-          </div>
-        </Section>
+        <section className="gk-prof__part">
+          <SectionTag as="h3">{t('leaderboard.archive.career.recordedTotals')}</SectionTag>
+          <p className="gk-report__label">
+            {career.totals.partialSeasons > 0
+              ? t('leaderboard.archive.career.coveredWithPartial', { count: career.totals.seasonsCovered, partial: career.totals.partialSeasons })
+              : t('leaderboard.archive.career.covered', { count: career.totals.seasonsCovered })}
+          </p>
+          <dl className="gk-well gk-report__sum gk-prof__totals">
+            <dt>{t('leaderboard.archive.metrics.battles')}</dt><dd className="gk-num">{full(career.totals.stats.competition.battles)}</dd>
+            <dt>{t('leaderboard.archive.metrics.shipsBuilt')}</dt><dd className="gk-num">{full(career.totals.stats.competition.shipsBuilt)}</dd>
+            <dt>{t('leaderboard.archive.metrics.asteroidRuns')}</dt><dd className="gk-num">{full(career.totals.stats.exploration.asteroidRuns)}</dd>
+            <dt>{t('leaderboard.archive.metrics.convoySuccesses')}</dt><dd className="gk-num">{full(career.totals.stats.exploration.convoySuccesses)}</dd>
+          </dl>
+        </section>
       )}
-      <Section label={t('leaderboard.archive.career.seasons')}>
-        <ol className="divide-y divide-line-soft rounded-plate border border-line-soft">
+      <section className="gk-prof__part">
+        <SectionTag as="h3">{t('leaderboard.archive.career.seasons')}</SectionTag>
+        <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.archive.career.seasons')}>
           {career.seasons.map(season => ({ ...season, rank: season.honorRank ?? season.rank })).map((season) => (
-            <li key={season.resultId}>
-              <button
-                type="button"
-                aria-label={t('leaderboard.archive.openSeasonRecord', {
-                  ordinal: season.ordinal,
-                  galaxy: season.shard,
-                })}
-                onClick={() => {
-                  haptic('tap');
-                  onOpenResult(season.resultId);
-                }}
-                className="flex min-h-16 w-full items-center gap-3 px-3 py-3 text-left hover:bg-raised/60 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-crystal"
-              >
-                {/*
-                  THE SHELF, READ AT A GLANCE. A career is scanned for its medals,
-                  not for its rows, so a podium finish carries its object and
-                  everything else carries a quiet numeral — the same vocabulary as
-                  the ladder it came from.
-                */}
-                {isPlace(season.rank) && (season.honorScore == null || season.honorScore > 0) ? (
-                  <Medal place={season.rank} size={26} className="text-crystal/70" />
-                ) : (
-                  <span className="num w-7 shrink-0 text-center text-body text-faint">
-                    #{full(season.rank)}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <strong className="name block truncate text-bone">
-                    {t('leaderboard.archive.seasonNumber', { ordinal: season.ordinal })}
-                  </strong>
-                  <span className="block truncate text-label text-faint">
-                    {season.shard} · {season.title}
-                  </span>
-                </span>
-                <RankingScores honor={season.honorScore} dominion={season.dominion} />
-              </button>
+            <li key={season.resultId} className="gk-lb__item">
+              <CareerSeasonRow season={season} onOpen={onOpenResult} />
             </li>
           ))}
         </ol>
-      </Section>
+      </section>
     </div>
   );
 }
 
-/**
- * THE HERO FIGURE OF A RECORD — the two numbers the whole season comes down to.
- */
-function HeroFigure({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: ReactNode;
+/** One figure on the career shelf: the number over its name, a medal's colour when it earned one. */
+function ShelfFigure({ label, value, mark, tone }: {
   label: string;
   value: string;
-  tone: 'opportunity' | 'crystal' | 'bone';
+  mark?: ReactNode;
+  tone?: 'gold' | 'crystal' | 'quiet' | undefined;
 }) {
   return (
-    <div className="plate plate-sunk px-3 py-3 text-left">
-      <p className="legend flex items-center gap-1.5 text-crystal">
-        <span className="shrink-0">{icon}</span>
-        <span className="truncate">{label}</span>
-      </p>
-      <p className={`num mt-2 text-figure text-${tone}`}>{value}</p>
+    <div className="gk-prof__fig">
+      <span className="gk-display gk-num gk-prof__figval" {...(tone === undefined ? {} : { 'data-tone': tone })}>{value}</span>
+      <span className="gk-report__label gk-prof__figlabel">{mark}{label}</span>
     </div>
   );
 }
 
 /**
- * ABOVE OR BELOW, ANSWERED WITHOUT ARITHMETIC. Owner instruction: *"istatistik
- * karşılaştırmaları hiç bir halt yok"*.
- *
- * Two numbers side by side is not a comparison — it is two numbers, and the
- * reader has to do the division themselves on every row of a long card. The bar
- * does it: the fill is this commander, the notch is the cohort, and whether the
- * fill has passed the notch is the entire question. Scaled off the LARGER of the
- * two so both are always on the bar and neither can run off the end.
- *
- * The figures stay printed above it. A bar alone is a feeling; the record has to
- * be quotable, and "50.000 karşı 27.000" is what gets said out loud.
+ * ONE SEASON ON THE SHELF, read at a glance: a podium finish carries its object and
+ * everything else a quiet numeral — the ladder's own vocabulary — and the line is a door.
  */
+function CareerSeasonRow({ season, onOpen }: {
+  season: SeasonCommanderProfile['career']['seasons'][number];
+  onOpen: (resultId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const open = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    onOpen(season.resultId);
+  });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      aria-label={t('leaderboard.archive.openSeasonRecord', { ordinal: season.ordinal, galaxy: season.shard })}
+      onPointerDown={open.onPointerDown}
+      onClick={open.onClick}
+      className="gk-lb__row gk-lb__door gk-arch__row gk-prof__season"
+    >
+      {isPlace(season.rank) && (season.honorScore == null || season.honorScore > 0)
+        ? <Medal place={season.rank} size={26} className="gk-lb__medal" />
+        : <span className="gk-lb__rank gk-num">#{full(season.rank)}</span>}
+      <span className="gk-lb__words">
+        <span className="gk-lb__name">{t('leaderboard.archive.seasonNumber', { ordinal: season.ordinal })}</span>
+        <span className="gk-arch__title">{season.shard} · {season.title}</span>
+      </span>
+      <RankingScores honor={season.honorScore} dominion={season.dominion} />
+    </button>
+  );
+}
+
 /**
- * ONE BAR. Two of these stacked ARE the comparison.
- *
- * The first draft drew the cohort as a notch standing inside the reader's own bar,
- * and the owner's verdict was the only one that matters: *"dikey çizgiler neyi
- * ifade ediyor anlaşılmıyor"*. A mark that needs a legend has already failed, and
- * there is no room for a legend on twenty-six cards.
- *
- * So each figure gets its own bar directly beneath the number that names it: the
- * reader's own, bright, then the field's, thinner and dimmer. Which is longer is
- * the whole answer, and nothing has to be decoded to see it.
+ * ONE BAR. Two of these stacked ARE the comparison (owner: "dikey çizgiler neyi ifade
+ * ediyor anlaşılmıyor"): the reader's own, bright, then the field's, thinner and dimmer.
+ * Which is longer is the whole answer.
  */
 function Bar({ share, tone }: { share: number; tone: 'ahead' | 'plain' | 'field' }) {
-  const height = tone === 'field' ? 'h-1' : 'h-2';
-  const fill = tone === 'ahead'
-    ? 'bg-gradient-to-r from-crystal/70 to-opportunity shadow-[0_0_10px_-1px_var(--color-opportunity)]'
-    : tone === 'plain'
-      ? 'bg-gradient-to-r from-line to-crystal/70'
-      : 'bg-bone/35';
   return (
-    <span aria-hidden className={`relative mt-1 block w-full ${height}`}>
-      <span
-        className={`absolute inset-0 rounded-full bg-void/70 ring-1 ring-inset ${
-          tone === 'field' ? 'ring-line/25' : 'ring-line/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.55)]'
-        }`}
-      />
-      <span
-        data-bar={tone}
-        className={`absolute inset-y-0 left-0 rounded-full ${fill}`}
-        style={{ width: `${String(Math.max(0, Math.min(100, share)))}%` }}
-      />
+    <span aria-hidden="true" className="gk-cmp__bar" data-tone={tone}>
+      <span data-bar={tone} style={{ width: `${String(Math.max(0, Math.min(100, share)))}%` }} />
     </span>
   );
 }
+
 
 /** The two shares one comparison is drawn from, on one shared scale. */
 const shares = (value: number, average: number): { mine: number; theirs: number } => {
@@ -1174,147 +919,115 @@ const shares = (value: number, average: number): { mine: number; theirs: number 
   };
 };
 
+
 /**
- * A SECTION'S OPENING LINE: the render, the headline, and what it was made of.
- *
- * One shape for all three sections, so the card reads as a designed object rather
- * than as three tables stacked. The art is the subject and the number is the
- * boast; the note underneath is the only place a qualifier is allowed.
+ * A SECTION'S OPENING LINE: the render, the headline, and what it was made of. One shape
+ * for all three sections; the art is the subject and the number is the boast.
  */
-function LeadCard({
-  art,
-  label,
-  value,
-  note,
-}: {
-  art: string | null;
-  label: string;
-  value: string;
-  note: string;
-}) {
+function LeadCard({ art, label, value, note }: { art: string | null; label: string; value: string; note: string }) {
   return (
-    <div className="plate plate-cut flex items-center gap-3 px-3 py-3">
-      <ArtWell src={art} alt="" size="sm" />
-      <div className="min-w-0">
-        <p className="legend truncate text-crystal">{label}</p>
-        <p className="num mt-1 truncate text-figure text-bone">{value}</p>
-        <p className="mt-0.5 truncate text-label text-faint">{note}</p>
-      </div>
+    <div className="gk-well gk-prof__lead">
+      {art === null ? <span /> : <img className="gk-prof__leadart" src={art} alt="" />}
+      <span className="gk-prof__leadwords">
+        <span className="gk-label">{label}</span>
+        <span className="gk-report__figure gk-num">{value}</span>
+        <span className="gk-report__label">{note}</span>
+      </span>
     </div>
   );
 }
 
-function ComparedStat({
-  icon,
-  label,
-  value,
-  average,
-  praise = true,
-}: {
-  icon?: ReactNode;
+/**
+ * ABOVE OR BELOW, ANSWERED WITHOUT ARITHMETIC (owner: "istatistik karşılaştırmaları hiç bir
+ * halt yok"). The figure, the multiple a player says out loud ("×2.3"), and the two bars —
+ * the figures stay printed, because the record has to be quotable.
+ */
+function CompareCard({ glyph, label, value, mine, theirs, multiple, ahead, others }: {
+  glyph: GlyphId;
+  label: string;
+  value: string;
+  /** Null for a figure that is not a count (a duration): no bars then. */
+  mine: number | null;
+  theirs: number | null;
+  multiple: number | null;
+  ahead: boolean;
+  others: string;
+}) {
+  const { t } = useTranslation();
+  const bars = mine !== null && theirs !== null ? shares(mine, theirs) : null;
+  return (
+    <div className="gk-well gk-cmp" data-compare="">
+      <p className="gk-cmp__label"><Glyph id={glyph} />{label}</p>
+      <p className="gk-cmp__line">
+        <span className="gk-cmp__value gk-num">{value}</span>
+        {multiple === null ? null : (
+          <span className="gk-cmp__times gk-num" {...(ahead && multiple >= 1 ? { 'data-ahead': '' } : {})}>
+            {t('leaderboard.archive.multiple', { value: multiple.toFixed(1) })}
+          </span>
+        )}
+      </p>
+      {bars === null ? null : <Bar share={bars.mine} tone={ahead ? 'ahead' : 'plain'} />}
+      <p className="gk-cmp__others gk-num">{t('leaderboard.archive.averageShort', { value: others })}</p>
+      {bars === null ? null : <Bar share={bars.theirs} tone="field" />}
+    </div>
+  );
+}
+
+function ComparedStat({ glyph, label, value, average, praise = true }: {
+  glyph: GlyphId;
   label: string;
   value: number | string;
   average: number | string;
   praise?: boolean;
 }) {
-  const { t } = useTranslation();
   const numeric = typeof value === 'number' && typeof average === 'number';
-  // Nothing to say about a commander who did none of this: "x0.0" reads as a fault.
+  // Nothing to say about a commander who did none of this: "×0.0" reads as a fault.
   const multiple = numeric && average > 0 && value > 0 ? value / average : null;
-  const ahead = praise && numeric && value >= average;
   return (
-    <div className="plate plate-sunk px-3 py-3">
-      <p className="legend flex items-center gap-1.5 text-crystal">
-        {icon === undefined ? null : <span className="shrink-0">{icon}</span>}
-        <span className="truncate">{label}</span>
-      </p>
-      <p className="mt-2 flex items-baseline justify-between gap-2">
-        <span className="num truncate text-body text-bone">
-          {typeof value === 'number' ? full(value) : value}
-        </span>
-        {/*
-          "×2,3" IS THE PART THAT GETS SAID OUT LOUD. Two raw figures make the
-          reader do the division on every row; the multiple is the comparison
-          already made, and it is the shape of a boast rather than of a report.
-          Hidden when the cohort did nothing at all, because dividing by zero is
-          not an achievement.
-        */}
-        {multiple === null ? null : (
-          <span
-            className={`num shrink-0 text-label ${
-              praise && multiple >= 1 ? 'text-opportunity' : 'text-faint'
-            }`}
-          >
-            {t('leaderboard.archive.multiple', { value: multiple.toFixed(1) })}
-          </span>
-        )}
-      </p>
-      {numeric ? <Bar share={shares(value, average).mine} tone={ahead ? 'ahead' : 'plain'} /> : null}
-      <p className="mt-2 truncate text-micro text-faint">
-        {t('leaderboard.archive.averageShort', {
-          value: typeof average === 'number' ? full(average) : average,
-        })}
-      </p>
-      {numeric ? <Bar share={shares(value, average).theirs} tone="field" /> : null}
-    </div>
+    <CompareCard
+      glyph={glyph}
+      label={label}
+      value={typeof value === 'number' ? full(value) : value}
+      mine={numeric ? value : null}
+      theirs={numeric ? average : null}
+      multiple={multiple}
+      ahead={praise && numeric && value >= average}
+      others={typeof average === 'number' ? full(average) : average}
+    />
   );
 }
 
-function ResourceStats({
-  icon,
-  label,
-  value,
-  average,
-}: {
-  icon?: ReactNode;
+/**
+ * ONE RESOURCE PER LINE, NOT THREE TO A LINE: three columns on a 350px screen cut the
+ * field's figure ("Diğerleri: 1.2…"), the one number the comparison exists to show.
+ */
+function ResourceStats({ glyph, label, value, average }: {
+  glyph: GlyphId;
   label: string;
   value: Stats['economy']['produced'];
   average: Averages['economy']['produced'];
 }) {
   const { t } = useTranslation();
   return (
-    <div className="plate plate-sunk px-3 py-3">
-      <p className="legend mb-3 flex items-center gap-1.5 text-crystal">
-        {icon === undefined ? null : <span className="shrink-0">{icon}</span>}
-        <span className="truncate">{label}</span>
-      </p>
-      {/*
-        ONE RESOURCE PER ROW, NOT THREE TO A ROW.
-
-        Three columns on a 350px screen leaves about ninety pixels each, and the
-        line that names the field — "Diğerleri: 1.250.000" — does not fit in ninety
-        pixels. It was being truncated to "Diğerleri: 1.2…", which cut off the one
-        figure the comparison exists to show. A row per pile gives the full width
-        to both numbers and stacks the two bars where they can actually be compared.
-      */}
-      <div className="space-y-3">
-        {(['alloy', 'crystal', 'deuterium'] as const).map((resource) => {
-          const share = shares(value[resource], average[resource]);
-          return (
-            <div key={resource} className="min-w-0">
-              <p className="flex min-w-0 items-baseline gap-2">
-                <img
-                  src={RESOURCE_ART[resource]}
-                  alt=""
-                  className="size-4 shrink-0 self-center object-contain"
-                />
-                <span className="legend min-w-0 flex-1 truncate">
-                  {t(`leaderboard.archive.resources.${resource}`)}
-                </span>
-                <span className="num shrink-0 text-body text-bone">{full(value[resource])}</span>
-              </p>
-              <Bar
-                share={share.mine}
-                tone={value[resource] >= average[resource] ? 'ahead' : 'plain'}
-              />
-              <p className="mt-2 truncate text-micro text-faint">
-                {t('leaderboard.archive.averageShort', { value: full(average[resource]) })}
-              </p>
-              <Bar share={share.theirs} tone="field" />
-            </div>
-          );
-        })}
-      </div>
+    <div className="gk-well gk-cmp" data-compare="">
+      <p className="gk-cmp__label"><Glyph id={glyph} />{label}</p>
+      {(['alloy', 'crystal', 'deuterium'] as const).map((resource) => {
+        const share = shares(value[resource], average[resource]);
+        return (
+          <div key={resource} className="gk-cmp__res">
+            <p className="gk-cmp__line">
+              <span className="gk-cmp__resname">
+                <img src={RESOURCE_ART[resource]} alt="" />
+                {t(`leaderboard.archive.resources.${resource}`)}
+              </span>
+              <span className="gk-cmp__value gk-num">{full(value[resource])}</span>
+            </p>
+            <Bar share={share.mine} tone={value[resource] >= average[resource] ? 'ahead' : 'plain'} />
+            <p className="gk-cmp__others gk-num">{t('leaderboard.archive.averageShort', { value: full(average[resource]) })}</p>
+            <Bar share={share.theirs} tone="field" />
+          </div>
+        );
+      })}
     </div>
   );
 }

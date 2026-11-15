@@ -117,6 +117,7 @@ export const SURFACES: GameSurface[] = [
     reach: [
       'gallery:report', 'gallery:report-defend', 'gallery:support-report', 'gallery:support-report-supporter', 'gallery:intel-battles',
       'gallery:report-sheet', 'gallery:report-sheet-defend', 'gallery:report-sheet-pirate',
+      'gallery:report-sheet-strike', 'gallery:report-sheet-bomb', 'gallery:report-sheet-monument',
     ],
     group: 'G5', unreached: ['boş savaş listesi'],
   },
@@ -153,7 +154,7 @@ export const SURFACES: GameSurface[] = [
   // Menu, commander and meta.
   { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx', 'shell/ShopShowcase.tsx', 'shell/ShopShowcasePoster.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
-  { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-archive'], group: 'G9', unreached: ['komutan profili (arşiv)'] },
+  { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-honor', 'gallery:leaderboard-archive', 'gallery:leaderboard-archive-profile', 'gallery:leaderboard-archive-career'], group: 'G9' },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },
   { id: 'announcements', what: 'Duyurular', files: ['screens/AnnouncementsScreen.tsx'], reach: ['gallery:announcements', 'gallery:announcements-empty', 'client:announcements'], group: 'G8' },
   { id: 'feedback', what: 'Geri bildirim formu', files: ['screens/FeedbackScreen.tsx'], reach: ['gallery:feedback', 'client:feedback'], group: 'G8' },
@@ -182,7 +183,7 @@ export const SURFACES: GameSurface[] = [
     reach: ['gallery:legacy-award', 'gallery:legacy-shelf', 'gallery:legacy-shelf-new', 'gallery:legacy-shelf-b', 'gallery:legacy-shelf-c', 'gallery:legacy-reveal', 'gallery:legacy-peek', 'gallery:legacy-profile'],
     group: 'G10',
   },
-  { id: 'season-recap', what: 'Sezon özeti', files: ['screens/SeasonRecap.tsx'], reach: ['client:recap'], group: 'G9' },
+  { id: 'season-recap', what: 'Sezon özeti', files: ['screens/SeasonRecap.tsx'], reach: ['gallery:season-recap', 'gallery:season-recap-quiet', 'client:recap'], group: 'G9' },
   { id: 'servers', what: 'Galaksi seçimi', files: ['screens/ServersScreen.tsx'], reach: ['client:servers'], group: 'G10' },
 
   // Before the game: front door, training, loading, faults.

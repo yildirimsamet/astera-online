@@ -351,7 +351,7 @@ describe('season archive surface', () => {
     expect(screen.getByText('Rank 10')).toBeVisible();
     const prizeList = screen.getByRole('list', { name: 'Prize by place' });
     expect(prizeList.children).toHaveLength(10);
-    expect(prizeList).toHaveClass('md:grid-cols-2');
+    expect(prizeList).toHaveClass('gk-lb__tierlist');
     for (const row of Array.from(prizeList.children).slice(0, 3)) {
       const medal = row.querySelector('svg');
       expect(medal).toHaveAttribute('width', '16');

@@ -42,8 +42,8 @@ describe('season prizes at the point of competition', () => {
 
   it('keeps ranking tabs and Honor prizes visible when a galaxy has no commanders', () => {
     show('HONOR', [], false);
-    expect(screen.getByRole('button', { name: 'Honor', pressed: true })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Dominion' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Honor', selected: true })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Dominion' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
     expect(screen.getByText('No commanders have joined this galaxy yet.')).toBeVisible();

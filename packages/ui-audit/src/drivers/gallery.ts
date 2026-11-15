@@ -33,6 +33,18 @@ export const GALLERY_STEPS: Partial<Record<string, (page: Page, lang: string) =>
     await page.locator('[data-cosmetic-trial]').waitFor();
     await page.waitForTimeout(1200);
   },
+  /** A finished season's record is what a ladder line opens (C21). */
+  'leaderboard-archive-profile': async (page) => {
+    await page.locator('.gk-arch__row').first().click();
+    await page.getByRole('tablist').first().waitFor();
+    await page.waitForTimeout(600);
+  },
+  /** …and the career is the record's second tab. */
+  'leaderboard-archive-career': async (page) => {
+    await page.locator('.gk-arch__row').first().click();
+    await page.getByRole('tab').last().click();
+    await page.waitForTimeout(600);
+  },
   /** The reading's counts are presses; the monuments' list is what one opens. */
   readout: async (page) => {
     await page.locator('[data-testid="view-caption"] [aria-expanded]').last().click();

@@ -1288,6 +1288,15 @@ Kalan: ekran başına kelime 56 / 55. Bunlar hikâyenin kendisi (üç satır ve 
 - **Ölçüm** (tr; telefon, dar, masaüstü; 7 rapor + 2 kabuk görünümü): C16a sonrasına göre 12 px altı 18→4, kontrast 2→0, tepkisiz 6→0; kesilme ve taşma 0. Kabuk görünümleri 12 ve 16 puan. Kalan 12 px altı 4 metin G9'un sayı göstergesi. `reports/ui-audit/c16b-replay-door-after-2026-11-15.md`.
 - **Açık soru:** yok. de/fr/es'de iki düğme 350 px'te iki satıra iner (izle tam satır, dene altında); grup sonu 6 dil turunda daha kısa söz bakılacak.
 
+**C17 Stratejik rapor ve anıt raporu ✅ (2026-11-15, yardımcı oturum).** G5 #4 ve G9 #8.
+- **An:** Ölüm Yıldızı ya da radyasyon bombası düştü (senin ya da sana) — ne kırdı, koloni hâlâ benim mi? Anıta dalga gitti — anıt kimin, neye mal oldu?
+- **Değişen:** iki sayfa kitin çerçevesinde (Ölüm Yıldızı resmi, kimin haberiyse o renk). Rota iki 44 px dünya kapısı (önce 12 px altı çizili ad). Stratejik: sonucun rengindeki plakada 2×2 rakam, altında kitin etiketleriyle madenler (resimli), gemi/savunma, düşen seviyeler, kuyruk; adlar artık oyuncunun dilinde (`SHIPYARD` → Tersane, `DEUTERIUM_PLANT` → Döteryum Rafinerisi). Bomba: plakada yalnız olanlar (sadakat, arızalar); bombanın kuralları kapalı "Bomba nasıl işler" satırında. Anıt: plaka (tarih · tur, kontrol, derece, karşı taraf), kendi gövdeleri hayatta kalan çubuğuyla, turlar ve savaş kuralları kitin kural satırlarında, "Anıta bak" kitin düğmesi. Yeni anahtar ×6: `reports.strategicFleetLost`, `reports.strategicBombRules`. `RulesRow` paylaşılan parça oldu (`ui/RulesRow.tsx`).
+- **Kaldırılan:** `StrategicMetric` (v2 legend), `battleTone` (v2 renk tablosu), anıt raporundaki bütün v2 sınıfları.
+- **Ölçüm** (tr; telefon, dar, masaüstü; 4 görünüm, galeriye `report-sheet-strike/-bomb/-monument` eklendi): puan 59→0 (Ölüm Yıldızı), 20→0 (bomba), 33→5 (anıt), 13→0 (EMP koloni); 12 px altı 77→2, kontrast 10→0, tepkisiz 6→1; bomba ekranı 110→55 kelime. Anıtta kalanlar `RankingScores` (C19) ve sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c17-strategic-monument-after-2026-11-15.md`.
+- **Açık soru:** yok. Anıt raporunda "Kurtardığın döteryum: 17,000" ve "%68,0000 sağlık" ondalıkları (eski, `decimal(…, 3/4)`) Türkçede binlik gibi okunuyor; G9 sonunda kısaltılabilir.
+
+**G5 kapanışı (2026-11-15, yardımcı oturum).** 6 dil, telefon, 7 rapor görünümü (`reports/ui-audit/g5-close-6lang-2026-11-15.md`): taşma ve kırpılma 0; kesilen 3 → 0 (stratejik raporun başlık üstü satırı de/fr/es'de Ölüm Yıldızı resminin yanında kesiliyordu, artık iki satıra iner). Tekrar kapısı de/fr/es'de tek satır: "Ansehen / Simulieren", "Regarder / Simuler", "Ver / Simular". ja hüküm sözleri: 自軍, 残存, 撃破, 敵ユニット撃破, 自陣営/敵陣営 ("あなたの力", "立っている" gibi düz çeviriler gitti). Kalan 12 px altı: G9'un `RankingScores` göstergesi (C19). Geniş rapor test grubu (90 dosya) yeşil.
+
 ## G6. Ödüller, mağaza, envanter, kozmetik
 
 Okundu: `screens/RewardsScreen.tsx` iskelet; `SkinsScreen`, `SkinInventoryScreen`, `DonateScreen` iskelet; dil sayımı (v1/v2/kit) aşağıdaki tablodaki her dosya için.
@@ -1595,6 +1604,34 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 | 6 | Sonraki sezon | `ui/NextSeason` (39) | sezon dondu, sıradaki ne zaman | | v1 | galaksi katmanı |
 | 7 | Anıt sheet'i | `MonumentSheet` (280) + `MonumentBattleRules` (21), `MonumentRoutePreview` (36) | anıta dalga gönder | zor / kolay; dalga beklemede | v2 | 4 basılı tutma |
 | 8 | Anıt raporu | `MonumentReportSheet` (88) | | | v2 | |
+
+**C18 Sezon özeti ve sonraki sezon ✅ (2026-11-15, yardımcı oturum).** G9 #5 ve #6.
+- **An:** galaksi dondu; komutanın sezon kaydı ekranı kaplar ("ne yaptım, nerede bitirdim?"), sonra yeni galaksinin ne zaman açılacağını görür ve son galaksiye döner. Unvan, sıra, hikâye seçimi ve ne zaman açıldığı değişmedi.
+- **Değişen:** v1'den kite. Tepede arma: kayıtta kupa, kürsüde taç (1. altın, 2–3 gümüş) ve arkasında dönen ışık; açılırken kürsüde `rankup`, değilse onay sesi (bir kez). İki rakam kitin plakasında (sıra; Honor ve altında Hâkimiyet), sayımlar tek camda, hasarlar renkli iki satır, klan kitin amblemi ve "İlk 3 mührü" altın çerçevede, hikâyeler camda. Kapat kitin yuvarlak düğmesi, çıkış tek turuncu `GameButton` (lg). `NextSeason` kitin bilgi şeridi (saat, süre başlıkta, neden altta); galaksi katmanında ve galaksi seçiminde de aynı.
+- **Kopya:** sıra plakasının etiketi kısa "Sıra" (`seasonRecap.place` ×6), "50 komutan arasında 41. sıra" altında; `seasonRecap.rankAlone` kullanılmaz oldu, silindi. Çıkış düğmesi iki satıra iniyordu: tr "Son galaksiyi gez", de "Letzte Galaxie ansehen", fr "Voir la galaxie finale", ja "最後の銀河を見る".
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `season-recap`, `season-recap-quiet`): puan 45→0, 34→0; 12 px altı 32→0, kontrast 15→0, tepkisiz 2→0. `reports/ui-audit/c18-season-recap-after-2026-11-15.md`.
+- **Açık soru:** yok.
+
+**C19 Canlı sıralama, ödül tahtası ve puan göstergesi ✅ (2026-11-15, yardımcı oturum).** G9 #2 (+ C16a'dan kalan `RankingScores`).
+- **An:** "Neredeyim, kimi geçebilirim, ne kazanırım?" Sıra, ödül hesabı (eşitlikte paylaşım dahil), aradaki puan ve arama mantığı değişmedi.
+- **Değişen:** Honor/Hâkimiyet kitin sekmeleri (ses, titreşim). Kendi sıran ve Honor'un tek camda büyük rakamla, altında "X'e yetişmek için" satırı; sezon ödülü camda (kazanılan / tam paket, resimli); kurallar kapalı "Honor nasıl kazanılır?" satırında. Ödül tahtası kitin etiketiyle (kalan süre yanında), sıra tablosu 44 px'lik defter satırı. Her komutan tek defter satırı (sıra/madalya, dünya, bayrak · dünya adı, ad, puan çubuğu ve puanlar; ödül altında): satır ~200 → ~87 px. Başka komutanın adı dünyasına giden 44 px kapı (önce altı çizili ad); senin satırın yeşil kenarlı ve "SEN". Arama kitin cam alanı. `RankingScores` kitte: Honor gövde boyunda, Hâkimiyet 12 px tabanda (önce 10 px). Önceki sezon makbuzu kitin camında.
+- **Kaldırılan:** `Segmented`, v1/v2 sınıfları, satır adının iki satır kırpması.
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-honor`): puan 287→0 (Honor), 81→0 (Hâkimiyet); 12 px altı 155→0, kontrast 9→0, 44 px altı 30→0, tepkisiz 30→0, kesilen 32→0. Honor ekranında kelime/ekran 104→127 (satırlar sıklaştı, daha çok komutan sığıyor). `reports/ui-audit/c19-leaderboard-after-2026-11-15.md`.
+- **Kalan:** `HonorBenefitsSection` (Honor kademesi kartı, galeri verisinde yok) hâlâ v2; arşiv tarafıyla (C20) birlikte bakılacak.
+
+**C20 Sezon arşivi: sezon şeridi, biten sezonun sıralaması, galaksi kaydı ✅ (2026-11-15, yardımcı oturum).** G9 #1 ve #3.
+- **An:** "Geçen sezon kim kazandı, ben neredeydim, kimin karnesine bakayım?" Hangi sezonların listelendiği, sağa kaydırınca eskilerin gelmesi, Honor/Hâkimiyet sırası, arama ve açılan karne değişmedi.
+- **Değişen:** Sezon şeridi kitin çipleri (ses ve titreşimi çip veriyor; ekranın kendi `haptic` çağrısı silindi, çift titreşim yok). Başlık kitin etiketi (komutan sayısı yanında). Galaksi Kaydı kitin camında; kısa bilgiler (şampiyon altın, klan podyumu) telefonda yan yana, cümleler tam satır (tek sütuna göre ~355 → ~305 px). Arama kitin cam alanı, listenin hemen üstünde ve yapışkan. Her komutan C19'un defter satırı; satırın tamamı karneye giden kapı (`useOwnPress`, ses, titreşim); senin satırın yeşil kenarlı.
+- **Kaldırılan:** `v2-segmented`, `plate`/`legend`/`name`/`num` ve v2 renk sınıfları, sigilin madalya halkası (madalya zaten sırada).
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeri `leaderboard-archive` görünümüne galaksi kaydı eklendi): puan 56→0; 12 px altı 35/74→0, kontrast 2→0, 44 px altı 2→0, tepkisiz 11→0, kesilen 7→0. `reports/ui-audit/c20-season-archive-after-2026-11-15.md`.
+- **Kalan:** arşivdeki komutan karnesi (C21); `HonorBenefitsSection` hâlâ v2 (canlı sıralamada, galeri verisinde yok).
+
+**C21 Arşivde komutan karnesi ve kariyer ✅ (2026-11-15, yardımcı oturum).** G9 #4.
+- **An:** "Bu komutan o sezon ne yaptı, herkese göre nasıldı, kariyeri ne?" Karşılaştırmalar (oranlar, ortalamalar, çubuk ölçeği), eski sezon/eksik kayıt/erken bitiş ayrımı ve sezonlar arası geçiş değişmedi.
+- **Değişen:** Baş, sezon sonu ekranıyla (C18) aynı an: ışıklı zemin, dünyanın üstünde madalya (kürsüde dönen ışık), ad büyük, "İlk %1" satırı, sıra ve Hâkimiyet/Honor kitin plakalarında. Görünümler kitin sekmeleri; geri dönüş kitin düğmesi. Her rakam kitin camında tek kart (ikon, ad, rakam, "×2,6 kat", iki çubuk, "Diğerleri"); ad artık kesilmiyor ("Sefer başına as…" gitti). Bildirimler (erken bitiş, eksik kayıt, eski sezon) kitin şeridi. Kariyer rafı tek camda beş rakam; toplamlar kitin defter tablosu; sezonlar C19/C20'nin kapı satırı. Bölüm başlarındaki v2 ikonları yerine kitin glifleri.
+- **Kaldırılan:** `Segmented`, `Section`, `Stat`, `ArtWell`, v2 ikonları, `MEDAL`/`medalOf` (Tailwind halka/gölge tablosu) ve bütün v1/v2 sınıfları.
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-archive-profile` ve `-career` eklendi, ui-audit'e satıra basıp sekmeye geçen iki adım; envanterdeki "komutan profili (arşiv)" artık ulaşılıyor): puan 141→0 (sezon), 65→0 (kariyer); 12 px altı 113/161→0 ve 34/72→0, kontrast 12→0, 44 px altı 4→0, tepkisiz 9→0, kesilen 2→0. Sezon sayfası 3290→3192 px (içerik aynı). `reports/ui-audit/c21-commander-record-after-2026-11-15.md`.
+- **Kalan:** yok.
 
 ## G10. Hesap
 

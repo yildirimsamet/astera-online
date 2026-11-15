@@ -441,6 +441,8 @@ export const reports = {
   strategicNoLevelLoss: 'No building or instrument level was lost.',
   strategicDestroyedOrders: 'Construction destroyed',
   strategicNoOrdersLost: 'No active construction order was destroyed.',
+  strategicFleetLost: "Ships and defences destroyed",
+  strategicBombRules: "How the bomb works",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: 'an unclaimed world',

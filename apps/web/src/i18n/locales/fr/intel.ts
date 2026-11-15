@@ -446,6 +446,8 @@ export const reports = {
     "Aucun niveau de bâtiment ou d’instrument n’a été perdu.",
   strategicDestroyedOrders: "Constructions détruites",
   strategicNoOrdersLost: "Aucun ordre de construction actif n’a été détruit.",
+  strategicFleetLost: "Vaisseaux et défenses détruits",
+  strategicBombRules: "Comment agit la bombe",
   neutralHolder: "un monde sans propriétaire",
   /**
    * Le jeu explique ici pour la première fois ce que signifie le verdict placé

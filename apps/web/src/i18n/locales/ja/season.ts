@@ -2,7 +2,7 @@ export const seasonRecap = {
   eyebrow: "シーズン完了",
   finalRecord: "最終記録・{{galaxy}}",
   rank: "{{players}}人中{{rank}}位",
-  rankAlone: "最終順位{{rank}}位",
+  place: '順位',
   dominion: "ドミニオン",
   planet: "{{planet}}の司令官{{commander}}",
   titles: {
@@ -31,7 +31,7 @@ export const seasonRecap = {
   biggestRaid: "{{name}}から{{value}}を略奪",
   quietHeading: "静かな辺境",
   quietBody: "今シーズンは、ほかの司令官との戦闘がありませんでした。",
-  explore: "シーズン終了時の銀河を見る",
+  explore: "最後の銀河を見る",
   close: "閉じる",
   nextIn: "あと{{duration}}で新しい銀河が開きます",
   nextNow: "新しい銀河がまもなく開きます",

@@ -295,9 +295,9 @@ describe('what a battle report explains', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
     expect(screen.getByText('Destroyed resources')).toBeVisible();
-    expect(screen.getByText('CORE')).toBeVisible();
+    expect(screen.getByText('Command Core')).toBeVisible();
     expect(screen.getByText('L6 → L5')).toBeVisible();
-    expect(screen.getByText('REFINERY ×1')).toBeVisible();
+    expect(screen.getByText('Alloy Refinery ×1')).toBeVisible();
     expect(screen.getByText('Shield destroyed')).toBeVisible();
     expect(screen.getByText('Bastion')).toBeVisible();
   });

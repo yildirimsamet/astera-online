@@ -2,20 +2,18 @@ import { COMBAT } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { percent } from '../lib/format.js';
 import { fireRule } from '../ui/DistributedFireRules.js';
+import { RulesRow } from '../ui/RulesRow.js';
 
-/** Public rules only: never derive an opponent roster or HP from a report. */
+/** Public rules only: never derive an opponent roster or HP from a report. On the kit since C17: the round rule stated, the rest one rules row away. */
 export function MonumentBattleRules({ targetLimit = COMBAT.targetsPerShot }: { targetLimit?: number | null }) {
   const { t } = useTranslation();
-  return <div className="grid gap-1.5 text-micro leading-snug text-v2-ink-2">
-    <p>{t('monument.battleResult.roundRule', { rounds: COMBAT.rounds })}</p>
-    <details className="rounded-control border border-v2-line/60 px-2.5 py-2">
-      <summary className="cursor-pointer font-semibold text-v2-ink">{t('monument.battleResult.rulesTitle')}</summary>
-      <div className="mt-2 grid gap-2">
-        <p>{fireRule(t, targetLimit ?? undefined)}</p>
-        <p>{t('monument.battleResult.captureRule')}</p>
-        <p>{t('monument.battleResult.retreatRule', { lastRound: COMBAT.rounds - 1 })}</p>
-        <p>{t('monument.battleResult.partialRule', { threshold: percent(COMBAT.partialThreshold) })}</p>
-      </div>
-    </details>
+  return <div className="grid gap-2">
+    <p className="gk-report__note" data-tone="plain">{t('monument.battleResult.roundRule', { rounds: COMBAT.rounds })}</p>
+    <RulesRow glyph="help" title={t('monument.battleResult.rulesTitle')}>
+      <p>{fireRule(t, targetLimit ?? undefined)}</p>
+      <p>{t('monument.battleResult.captureRule')}</p>
+      <p>{t('monument.battleResult.retreatRule', { lastRound: COMBAT.rounds - 1 })}</p>
+      <p>{t('monument.battleResult.partialRule', { threshold: percent(COMBAT.partialThreshold) })}</p>
+    </RulesRow>
   </div>;
 }

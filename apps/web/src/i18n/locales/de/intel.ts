@@ -440,6 +440,8 @@ export const reports = {
   strategicNoLevelLoss: 'Es ging keine Gebäude- oder Instrumentenebene verloren.',
   strategicDestroyedOrders: 'Bau zerstört',
   strategicNoOrdersLost: 'Es wurde kein aktiver Bauauftrag vernichtet.',
+  strategicFleetLost: "Zerstörte Schiffe und Abwehr",
+  strategicBombRules: "So wirkt die Bombe",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: 'eine nicht beanspruchte Welt',

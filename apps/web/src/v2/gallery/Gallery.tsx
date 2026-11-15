@@ -78,6 +78,7 @@ import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
 import { LeaderboardScreen } from '../../screens/LeaderboardScreen.js';
 import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
+import { SeasonRecap } from '../../screens/SeasonRecap.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
 import { useTranslation } from 'react-i18next';
@@ -662,7 +663,9 @@ const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
 
 type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' | 'menu-ended';
 
-function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-archive' }) {
+type GalleryArchive = 'leaderboard-archive' | 'leaderboard-archive-profile' | 'leaderboard-archive-career';
+
+function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-honor' | GalleryArchive }) {
   const [client] = useState(() => {
     const next = new QueryClient();
     next.setQueryData(keys.rewards, { chains: [], claimable: 2 });
@@ -676,7 +679,27 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       })),
       you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', score: 420, clan: null, isBot: false },
     });
-    if (page === 'leaderboard-archive') {
+    if (page === 'leaderboard-honor') {
+      // The live Honor race (C19): the reader 12th, three rivals close, a prize below full, a season ten days from its end.
+      const honorRow = (index: number) => ({
+        rank: index + 1, playerId: `gallery-${String(index)}`, username: index === 11 ? 'Samet' : `Commander ${String(index + 1)}`,
+        country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${String(index)}`, planetName: `World ${String(index + 1)}`,
+        skinId: index === 11 ? 'planet-ice' : null, score: 98_400_000 - index * 6_300_000, honor: 98_400_000 - index * 6_300_000,
+        dominion: 2_400 - index * 150, clan: index === 1 || index === 11 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
+      });
+      const ladder = Array.from({ length: 16 }, (_, index) => honorRow(index));
+      next.setQueryData(keys.leaderboard, {
+        ranking: 'HONOR', honorEnabled: true, honorSoloCredit: false, honorStartsAt: null, ladder, you: { ...ladder[11], isBot: false },
+        honorReward: { rank: 12, honor: 29_100_000, nominal: { alloy: 1_750, crystal: 1_250, deuterium: 250 },
+          reward: { alloy: 820, crystal: 590, deuterium: 118 }, fullThreshold: 61_250_000 },
+      });
+      next.setQueryData(keys.season, {
+        seasonId: ARCHIVE_ID, shard: 'EU-1', shardName: 'Vantage', seed: 11, status: 'live',
+        startsAt: new Date(NOW - 4 * 24 * 60 * MIN), endsAt: new Date(NOW + 10 * 24 * 60 * MIN), playerCap: 1_000, players: 188,
+        rivals: [], shieldUntil: null, shieldKind: null,
+      });
+    }
+    if (page.startsWith('leaderboard-archive')) {
       next.setQueryData(keys.season, {
         seasonId: ARCHIVE_ID,
         shard: 'EU-1',
@@ -716,7 +739,15 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
           closedAt: new Date(NOW - 24 * 60 * MIN),
           endReason: 'SCHEDULED_END',
         },
-        record: null,
+        // The galaxy's own record (C20): who won it, the clan podium and the fights it is remembered by.
+        record: {
+          version: 1,
+          champion: { commanderName: 'Samet', dominion: 420 },
+          clanPodium: [{ rank: 1, name: 'Nova Pact', tag: 'NOVA', dominion: 1_900 }, { rank: 2, name: 'Iron Choir', tag: 'IRON', dominion: 1_240 }],
+          biggestBattle: { attackerName: 'Commander 2', defenderName: 'Samet', planetName: 'Kestrel', totalLossValue: 48_200, occurredAt: new Date(NOW - 3 * 24 * 60 * MIN) },
+          sharpestDominionSwing: { attackerName: 'Commander 3', defenderName: 'Commander 5', amount: 186, occurredAt: new Date(NOW - 5 * 24 * 60 * MIN) },
+          mostContestedWorld: { planetName: 'Tharsis', events: 14 },
+        },
         ladder: Array.from({ length: 8 }, (_, index) => ({
           resultId: `22222222-2222-4222-8222-${String(index + 1).padStart(12, '0')}`,
           rank: index + 1,
@@ -727,6 +758,56 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
           self: index === 0,
           reward: null,
         })),
+      });
+      // The first commander's season record (C21): opened from the ladder by the audit's press step.
+      const seasonStats = {
+        version: 1 as const,
+        competition: {
+          battles: 31, attacks: 22, defences: 9, damageDealt: 184_000, damageTaken: 61_000,
+          playerLoot: { alloy: 42_000, crystal: 17_500, deuterium: 3_100 }, shipsBuilt: 96, shipsLost: 28,
+          shipsBuiltByHull: { DART: 48, PIKE: 30, PROSPECTOR: 18 }, shipsLostByHull: { DART: 21, PIKE: 7 },
+        },
+        economy: { produced: { alloy: 1_250_000, crystal: 610_000, deuterium: 92_000 }, productiveSeconds: 410_000 },
+        exploration: {
+          asteroidRuns: 14, asteroidMined: { alloy: 88_000, crystal: 31_000, deuterium: 6_200 },
+          convoyAttempts: 6, convoySuccesses: 5, convoyDelivered: { alloy: 12_000, crystal: 4_800, deuterium: 900 },
+        },
+      };
+      const firstId = '22222222-2222-4222-8222-000000000001';
+      const seasonOf = (ordinal: number, rank: number, resultId: string) => ({
+        resultId, seasonId: ARCHIVE_ID, ordinal, shard: 'EU-1', shardName: 'Vantage', status: 'frozen',
+        startsAt: new Date(NOW - 14 * 24 * 60 * MIN), endsAt: new Date(NOW - 24 * 60 * MIN),
+        commanderName: 'Samet', rank, dominion: 420 - rank * 20, title: rank === 1 ? 'The Cartographer' : 'Frontier Hand', statsAvailable: true,
+      });
+      next.setQueryData(keys.seasonCommanderProfile(firstId), {
+        selected: {
+          ...seasonOf(11, 1, firstId), closedAt: new Date(NOW - 24 * 60 * MIN), endReason: 'SCHEDULED_END',
+          country: 'TR', planetName: 'Kestrel', commanders: 188, honorScore: null, honorRank: null, dominion: 420,
+          recap: {
+            commanderName: 'Samet', planetName: 'Kestrel', battles: 31, attacks: 22, defences: 9,
+            rival: { commanderName: 'Commander 2', battles: 7 }, biggestRaid: { value: 18_400, opponentName: 'Commander 4' }, clan: null,
+          },
+          stats: seasonStats,
+          averages: {
+            cohortSize: 188,
+            competition: {
+              battles: 12, attacks: 7, defences: 5, damageDealt: 61_000, damageTaken: 58_000,
+              playerLoot: { alloy: 14_000, crystal: 6_000, deuterium: 900 }, shipsBuilt: 40, shipsLost: 19,
+            },
+            economy: { produced: { alloy: 720_000, crystal: 300_000, deuterium: 40_000 }, productiveSeconds: 300_000 },
+            exploration: {
+              asteroidRuns: 6, asteroidMined: { alloy: 30_000, crystal: 11_000, deuterium: 2_000 },
+              convoyAttempts: 3, convoySuccesses: 2, convoyDelivered: { alloy: 5_000, crystal: 2_000, deuterium: 300 },
+            },
+          },
+          reward: null,
+        },
+        career: {
+          completedSeasons: 3, bestRank: 1, championships: 1, podiums: 2, topTen: 3,
+          competitionTotals: { seasonsCovered: 3, battles: 64, attacks: 41, defences: 23, damageDealt: 352_000, damageTaken: 140_000 },
+          totals: { seasonsCovered: 2, partialSeasons: 1, stats: seasonStats },
+          seasons: [seasonOf(11, 1, firstId), seasonOf(10, 3, '22222222-2222-4222-8222-000000000010'), seasonOf(9, 8, '22222222-2222-4222-8222-000000000009')],
+        },
       });
     }
     return next;
@@ -749,7 +830,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
               />
             </div>
           </Sheet>
-        ) : page === 'leaderboard' ? (
+        ) : page === 'leaderboard' || page === 'leaderboard-honor' ? (
           <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
@@ -1197,6 +1278,9 @@ function Views({ view }: { view: string }) {
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
+  if (view === 'leaderboard-archive-profile') return <GalleryCommander page="leaderboard-archive-profile" />;
+  if (view === 'leaderboard-archive-career') return <GalleryCommander page="leaderboard-archive-career" />;
+  if (view === 'leaderboard-honor') return <GalleryCommander page="leaderboard-honor" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
   if (view === 'ufo-probe-flight') return <UfoProbeGallery />;
@@ -1485,6 +1569,32 @@ function Views({ view }: { view: string }) {
           }}
         />
       </Sheet>
+    );
+  }
+  if (view === 'season-recap' || view === 'season-recap-quiet') {
+    // The season's last screen (C18): a podium Honor place with a clan seal, or a quiet frontier.
+    const quiet = view === 'season-recap-quiet';
+    return (
+      <SeasonRecap
+        galaxy="Vantage"
+        players={50}
+        endsAt={new Date(NOW - 2 * MIN)}
+        onClose={noop}
+        result={{
+          seasonId: 'season-86', accountId: 'account-7', finalRank: quiet ? 41 : 4, dominion: quiet ? 0 : 1_840,
+          ...(quiet ? {} : { honorRank: 2, honorScore: 120_500_000 }),
+          damageDealt: quiet ? 0 : 124_500, damageTaken: quiet ? 0 : 82_000, rivalName: null, biggestRaid: 0, title: 'Vanguard',
+          recap: quiet
+            ? { commanderName: 'İzci', planetName: 'Kestrel-12', battles: 0, attacks: 0, defences: 0, rival: null, biggestRaid: null }
+            : {
+              commanderName: 'İzci', planetName: 'Kestrel-12', battles: 38, attacks: 24, defences: 14,
+              rival: { commanderName: 'VEX', battles: 9 }, biggestRaid: { value: 48_000, opponentName: 'Rook' },
+              support: { stood: 7, held: 3 },
+              clan: { tag: 'NOVA', name: 'Nova Pact', finalRank: 3, dominion: 9_200, topThree: true },
+            },
+          createdAt: new Date(NOW - 2 * MIN),
+        }}
+      />
     );
   }
   if (view === 'report-strike-colony') {

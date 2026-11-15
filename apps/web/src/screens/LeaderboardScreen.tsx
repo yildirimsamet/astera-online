@@ -1,6 +1,6 @@
 import { ClanTag } from '../ui/ClanTag.js';
 import { honorRankRewards, type Resources } from '@astera/rules';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLeaderboard, useSeason } from '../api/queries.js';
 import { full } from '../lib/format.js';
@@ -8,16 +8,21 @@ import { honorScore } from '../lib/honor.js';
 import { HonorSoloPolicy } from '../ui/HonorSoloNotice.js';
 import { HonorBenefitsSection } from '../ui/HonorBenefits.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Medal, isPlace } from '../ui/Medal.js';
-import { EmptyState, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
-import { DominionIcon, HonorIcon, RewardIcon } from '../ui/icons/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { SeasonRewardReceipt } from '../ui/SeasonRewardReceipt.js';
 import { RankingScores } from '../ui/RankingScores.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Flag } from '../v2/identity/Flag.js';
+import { artIconSrc } from '../game-ui/art.js';
+import { GameTabs } from '../game-ui/controls.js';
+import { EmptyState, SectionTag } from '../game-ui/surfaces.js';
 
 /** The current season's Honor race, with the independent Dominion ladder alongside. */
 export function LeaderboardScreen({ onFocusPlanet }: {
@@ -84,59 +89,71 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     : [];
 
   return (
-    <div data-v2-leaderboard className="font-v2-ui text-v2-ink">
+    <div data-v2-leaderboard className="gk-lb">
       <SeasonRewardReceipt receipt={season.data?.seasonReward} />
-      {board.data.honorEnabled ? <section className="border-b border-v2-line bg-linear-to-br from-v2-self/8 via-v2-panel to-v2-deep px-3 py-3">
-        <Segmented<'HONOR' | 'DOMINION'> segments={[
-          { id: 'HONOR', label: <span className="inline-flex items-center justify-center gap-1.5 text-body font-bold text-v2-ink"><HonorIcon className="size-4 text-v2-self" />{t('leaderboard.honorTitle')}</span> },
-          { id: 'DOMINION', label: <span className="inline-flex items-center justify-center gap-1.5 text-caption font-normal text-v2-ink-2"><DominionIcon className="size-4" />{t('leaderboard.score')}</span> },
-        ]}
-          value={board.data.ranking} onSelect={setRanking} label={t('leaderboard.rankingChoice')} />
+      {board.data.honorEnabled ? <section className="gk-lb__race">
+        <GameTabs<'HONOR' | 'DOMINION'>
+          label={t('leaderboard.rankingChoice')}
+          value={board.data.ranking}
+          onChange={setRanking}
+          tabs={[
+            { id: 'HONOR', label: t('leaderboard.honorTitle'), glyph: { id: 'star', tone: 'self' } },
+            { id: 'DOMINION', label: t('leaderboard.score'), glyph: { id: 'colony' } },
+          ]}
+        />
         {honor ? <>
-          <p className="mt-3 text-label font-semibold text-v2-ink">{t('leaderboard.honorPrimary')}</p>
-          <p className="mt-1 text-caption text-v2-ink-2">{t('leaderboard.honorLead')}</p>
-          {board.data.honorSoloCredit && <div className="mt-2"><HonorSoloPolicy /></div>}
-          {board.data.honorStartsAt ? <div data-testid="honor-opening" className="mt-2 border-l-2 border-v2-self/60 pl-2.5">
-            <p className="text-micro font-semibold text-v2-ink">
-              {t('leaderboard.honorOpened')} <time className="num text-v2-self" dateTime={board.data.honorStartsAt.toISOString()}>
+          <div className="gk-lb__lead">
+            <p className="gk-report__subhead">{t('leaderboard.honorPrimary')}</p>
+            <p className="gk-report__copy">{t('leaderboard.honorLead')}</p>
+          </div>
+          {board.data.honorSoloCredit && <HonorSoloPolicy look="kit" />}
+          {board.data.honorStartsAt ? <div data-testid="honor-opening" className="gk-report__note" data-tone="good">
+            <p>
+              {t('leaderboard.honorOpened')} <time className="gk-num" dateTime={board.data.honorStartsAt.toISOString()}>
                 {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(board.data.honorStartsAt)}
               </time>
             </p>
-            <p className="mt-0.5 text-micro leading-relaxed text-v2-ink-2">{t('leaderboard.honorOpeningRule')}</p>
+            <p>{t('leaderboard.honorOpeningRule')}</p>
           </div> : null}
-          {board.data.you ? <div className="mt-2 flex items-baseline justify-between gap-2">
-            <span className="text-micro text-v2-ink-2">{t('leaderboard.honorYourRank')} <strong className="num text-v2-ink">#{board.data.you.rank}</strong></span>
-            <strong className="num flex max-w-[75%] flex-wrap items-baseline justify-end gap-x-1.5 text-figure font-bold text-v2-ink"><HonorIcon className="size-5 shrink-0 self-center text-v2-self" /><span className="break-all">{honorScore(board.data.you.score)}</span><span className="text-body">{t('leaderboard.honorTitle')}</span></strong>
+          {board.data.you ? <div data-honor-mine="" className="gk-well gk-lb__mine">
+            <span className="gk-lb__place">
+              <span className="gk-label">{t('leaderboard.honorYourRank')}</span>
+              <span className="gk-display gk-num gk-lb__placefig">#{board.data.you.rank}</span>
+            </span>
+            <span className="gk-lb__honor">
+              <span className="gk-display gk-num gk-lb__honorfig">{honorScore(board.data.you.score)}</span>
+              <span className="gk-label">{t('leaderboard.honorTitle')}</span>
+            </span>
+            {next ? <p className="gk-lb__next">{t('leaderboard.honorNext', {
+              amount: honorScore(BigInt(next.score) - BigInt(board.data.you.score)), commander: next.username,
+            })}</p> : null}
           </div> : null}
-          {next && board.data.you ? <p className="mt-1 text-micro text-v2-ink-2">{t('leaderboard.honorNext', {
-            amount: honorScore(BigInt(next.score) - BigInt(board.data.you.score)), commander: next.username,
-          })}</p> : null}
-          {board.data.honorBenefits ? <div className="mt-3"><HonorBenefitsSection value={board.data.honorBenefits} /></div> : null}
-          {prize ? <div className="mt-3 border-t border-v2-line pt-2">
-            <p className="flex items-center justify-between gap-2 text-caption font-semibold text-v2-ink"><span className="inline-flex items-center gap-1.5"><RewardIcon className="size-4 text-v2-self" />{t('leaderboard.honorPrize')}</span><span className="shrink-0 rounded-chip border border-v2-self/30 bg-v2-self/8 px-1.5 py-0.5 text-micro text-v2-self">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span></p>
-            <p className="mt-1 text-micro text-v2-ink-2">{t('leaderboard.honorPayment')}</p>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="flex items-center gap-1 text-caption">
-                <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} className="size-5 object-contain" />
-                <strong className="num text-v2-ink">{full(prize.reward[resource])}</strong>
-                <span className="num text-micro text-v2-ink-2">/ {full(prize.nominal[resource])}</span>
+          {board.data.honorBenefits ? <HonorBenefitsSection value={board.data.honorBenefits} /> : null}
+          {prize ? <div data-honor-prize="" className="gk-well gk-lb__prize">
+            <p className="gk-lb__prizehead">
+              <span className="gk-report__subhead">{t('leaderboard.honorPrize')}</span>
+              <span className="gk-lb__chip">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span>
+            </p>
+            <p className="gk-report__label">{t('leaderboard.honorPayment')}</p>
+            <p className="gk-haul__row gk-num">
+              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-haul__res" data-res={resource}>
+                <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
+                {full(prize.reward[resource])}
+                <span className="gk-lb__of">/ {full(prize.nominal[resource])}</span>
               </span>)}
-            </div>
-            <p className="mt-2 text-micro text-v2-ink-2">{t('leaderboard.honorThreshold', { amount: honorScore(prize.fullThreshold) })}</p>
+            </p>
+            <p className="gk-report__copy">{t('leaderboard.honorThreshold', { amount: honorScore(prize.fullThreshold) })}</p>
           </div> : null}
-          <details className="mt-2 text-micro text-v2-ink-2">
-            <summary className="cursor-pointer py-1 text-v2-ink underline decoration-v2-line-hi underline-offset-4">{t('leaderboard.honorRules')}</summary>
-            <div className="mt-1 space-y-2 leading-relaxed">
-              <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleBands')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
-              <p>{t('leaderboard.honorRuleRepeat')}</p><p>{t('leaderboard.honorPrizeHint')}</p><p>{t('leaderboard.honorPackageOnce')}</p>
-            </div>
-          </details>
+          <RulesRow glyph="help" title={t('leaderboard.honorRules')}>
+            <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleBands')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
+            <p>{t('leaderboard.honorRuleRepeat')}</p><p>{t('leaderboard.honorPrizeHint')}</p><p>{t('leaderboard.honorPackageOnce')}</p>
+          </RulesRow>
         </> : null}
       </section> : null}
       <SeasonRewardBoard season={season.data} board={board.data} />
-      {board.data.honorEnabled ? <p className="border-b border-v2-line px-3 py-2 text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorPackageOnce')}</p> : null}
-      {showPrizes ? <p className="border-b border-v2-line px-3 py-2 text-micro text-v2-ink-2">{t('leaderboard.rewards.rowExplain')}</p> : null}
-      <div className="sticky top-0 z-10 border-b border-v2-line bg-v2-void px-2 py-3">
+      {board.data.honorEnabled ? <p className="gk-report__copy">{t('leaderboard.honorPackageOnce')}</p> : null}
+      {showPrizes ? <p className="gk-report__label">{t('leaderboard.rewards.rowExplain')}</p> : null}
+      <div className="gk-lb__search">
         <input
           type="search"
           name="leaderboard-search"
@@ -145,112 +162,30 @@ export function LeaderboardScreen({ onFocusPlanet }: {
           onChange={(event) => { setQuery(event.currentTarget.value); }}
           aria-label={t('leaderboard.searchLabel')}
           placeholder={t('leaderboard.searchPlaceholder')}
-          className="h-10 w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink outline-none focus:border-v2-self"
+          className="gk-field__input"
         />
       </div>
       {nearby.length === 0 ? null : (
-        <section
-          role="region"
-          aria-label={t('leaderboard.nearby')}
-          className="border-b border-v2-line bg-v2-raise/45 px-2 py-2"
-        >
-          <p className="mb-1.5 text-micro font-semibold uppercase tracking-wide text-v2-self">{t('leaderboard.nearby')}</p>
-          <div className="grid gap-1">
+        <section role="region" aria-label={t('leaderboard.nearby')} className="gk-lb__nearby">
+          <SectionTag>{t('leaderboard.nearby')}</SectionTag>
+          <div className="gk-ledger">
             {nearby.map((row) => (
-              <NearbyRival
-                key={row.playerId}
-                row={row}
-                honor={honor}
-                self={row.playerId === mine}
-                onFocusPlanet={onFocusPlanet}
-              />
+              <LadderRow key={row.playerId} row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet} />
             ))}
           </div>
         </section>
       )}
       {rows.length === 0 ? (
-        <div className="px-2 py-6"><EmptyState title={t(board.data.ladder.length === 0 ? 'leaderboard.empty' : 'leaderboard.noMatch')} /></div>
+        <EmptyState art={artIconSrc('menu-ranking')} title={t(board.data.ladder.length === 0 ? 'leaderboard.empty' : 'leaderboard.noMatch')} body="" />
       ) : (
-    <ol className="divide-y divide-v2-line" aria-label={t('leaderboard.title')}>
-      {rows.map((row) => {
-        const self = row.playerId === mine;
-        const identity = <>{row.clan ? <span title={row.clan.name}><ClanTag tag={row.clan.tag} tier={row.clan.tier} className="text-crystal" /></span> : null}{row.clan ? ' ' : null}{row.username}</>;
-        return (
-          <li
-            key={row.playerId}
-            aria-current={self ? 'true' : undefined}
-            className={`grid grid-cols-[2rem_2.5rem_minmax(0,1fr)] items-center gap-2 px-2 py-2 ${self ? 'bg-v2-self/8' : ''}`}
-            style={{ contentVisibility: 'auto', containIntrinsicSize: '88px' }}
-          >
-            {/* The podium is an object; everybody else is a numeral. */}
-            {isPlace(row.rank) && (!honor || row.score > 0) ? (
-              <Medal place={row.rank} size={26} className="mx-auto" />
-            ) : (
-              <span className={`num text-center text-body ${self ? 'text-crystal' : 'text-faint'}`}>
-                {row.rank}
-              </span>
-            )}
-            <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={40} />
-            <span className="block min-w-0">
-              <span className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 leading-none">
-                <span className="block"><Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} /></span>
-                {showPrizes ? <RowPrize reward={prizes.get(row.playerId)} /> : null}
-              </span>
-              <span className="flex min-w-0 items-baseline gap-1.5">
-                {self ? (
-                  <strong
-                    className="name min-w-0 flex-1 line-clamp-2 break-words text-bone"
-                    aria-label={commanderLabel(row.username, row.clan?.tag)}
-                  >
-                    {identity}
-                  </strong>
-                ) : row.planetId !== undefined ? (
-                  <button
-                    type="button"
-                    aria-label={commanderLabel(row.username, row.clan?.tag)}
-                    onClick={() => {
-                      const planetId = row.planetId;
-                      if (planetId === undefined) return;
-                      haptic('tap');
-                      onFocusPlanet(planetId);
-                    }}
-                    className="name w-full min-w-0 flex-1 line-clamp-2 break-words text-left text-bone underline decoration-bone/35 underline-offset-2"
-                  >
-                    {identity}
-                  </button>
-                ) : (
-                  <span
-                    className="name min-w-0 flex-1 line-clamp-2 break-words text-bone"
-                    aria-label={commanderLabel(row.username, row.clan?.tag)}
-                  >
-                    {identity}
-                  </span>
-                )}
-                {self ? <span className="legend shrink-0 text-crystal">{t('leaderboard.you')}</span> : null}
-              </span>
-              <span className="mt-1 flex min-w-0 items-center gap-1.5">
-                <span data-leaderboard-meta className="flex min-w-0 flex-1 items-center gap-1.5 text-micro text-faint">
-                  {/* The world, never its tier: the raid band reads a commander's MOST
-                      developed world, and a capital's tier here invited the wrong comparison. */}
-                  {row.planetName !== undefined ? <span className="truncate">{row.planetName}</span> : null}
-                </span>
-                <span data-leaderboard-score className="flex min-w-24 max-w-[75%] shrink-0 flex-col items-end gap-1 text-right">
-                    <span aria-hidden className="relative block h-1 w-10 overflow-hidden rounded-full bg-line/50">
-                      <span
-                        data-score-bar
-                        className={`absolute inset-y-0 ${row.score < 0 ? `right-1/2 ${honor ? 'bg-v2-line-hi' : 'bg-threat/70'}` : `left-1/2 ${honor ? 'bg-v2-self/70' : 'bg-opportunity/70'}`}`}
-                        style={{ width: `${String((Math.abs(row.score) / widest) * 50)}%` }}
-                      />
-                      <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
-                    </span>
-                  <RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} />
-                </span>
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+        <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.title')}>
+          {rows.map((row) => (
+            <li key={row.playerId} aria-current={row.playerId === mine ? 'true' : undefined} className="gk-lb__item">
+              <LadderRow row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet}
+                prize={showPrizes ? <RowPrize reward={prizes.get(row.playerId)} /> : null} />
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );
@@ -258,58 +193,66 @@ export function LeaderboardScreen({ onFocusPlanet }: {
 
 type LeaderboardRow = NonNullable<ReturnType<typeof useLeaderboard>['data']>['ladder'][number];
 
-/** Three dense lines: enough to compare the immediate race without duplicating the full table. */
-function NearbyRival({
-  row,
-  self,
-  honor,
-  onFocusPlanet,
-}: {
+/**
+ * ONE COMMANDER ON THE LADDER (C19): place, world, who, score — one 56 px line, not a card.
+ * The podium is an object, everybody else a numeral; another commander's name is a door to
+ * their world in the galaxy; the reader's own line is lit and says so.
+ */
+function LadderRow({ row, self, honor, widest, onFocusPlanet, prize = null }: {
   row: LeaderboardRow;
   self: boolean;
   honor: boolean;
+  widest: number;
   onFocusPlanet: (planetId: string) => void;
+  prize?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
-  const identity = (
-    <span className="flex min-w-0 flex-col">
-      <span className="block leading-none"><Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} /></span>
-      <span className="mt-1 line-clamp-2 break-words">
-        {row.clan ? <ClanTag tag={row.clan.tag} tier={row.clan.tier} className="text-crystal" /> : null}
-        {row.clan ? ' ' : null}{row.username}
-        {self ? <span className="ml-1.5 text-crystal">{t('leaderboard.you')}</span> : null}
+  const planetId = row.planetId;
+  const go = useOwnPress(() => {
+    if (planetId === undefined) return;
+    playSound('tap');
+    haptic('tap');
+    onFocusPlanet(planetId);
+  });
+  const identity = <>
+    {row.clan ? <span title={row.clan.name}><ClanTag tag={row.clan.tag} tier={row.clan.tier} className="gk-lb__tag" /></span> : null}
+    {row.clan ? ' ' : null}{row.username}
+  </>;
+  const who = (
+    <span className="gk-lb__words">
+      <span className="gk-lb__flagline">
+        <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+        {row.planetName !== undefined ? <span data-leaderboard-meta="" className="gk-lb__world">{row.planetName}</span> : null}
       </span>
+      <span className="gk-lb__name">{identity}</span>
     </span>
   );
-
   return (
-    <div
-      aria-current={self ? 'true' : undefined}
-      className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 rounded-chip px-2 py-1.5 ${
-        self ? 'border border-crystal/30 bg-crystal/10' : 'border border-line-soft bg-void/35'
-      }`}
-    >
-      <span className={`num text-center text-label ${self ? 'text-crystal' : 'text-faint'}`}>
-        {row.rank}
-      </span>
-      {self || row.planetId === undefined ? (
-        <span className="name min-w-0 text-label text-bone">
-          {identity}
+    <div className="gk-lb__row" {...(self ? { 'data-self': '' } : {})}>
+      {/* The podium is an object; everybody else is a numeral. */}
+      {isPlace(row.rank) && (!honor || row.score > 0)
+        ? <Medal place={row.rank} size={26} className="gk-lb__medal" />
+        : <span className="gk-lb__rank gk-num">{row.rank}</span>}
+      <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={36} />
+      {self || planetId === undefined ? (
+        <span className="gk-lb__who" aria-label={commanderLabel(row.username, row.clan?.tag)}>
+          {who}
+          {self ? <span className="gk-lb__you">{t('leaderboard.you')}</span> : null}
         </span>
       ) : (
-        <button
-          type="button"
-          aria-label={commanderLabel(row.username, row.clan?.tag)}
-          className="name min-w-0 text-left text-label text-bone underline decoration-bone/35 underline-offset-2"
-          onClick={() => {
-            haptic('tap');
-            onFocusPlanet(row.planetId!);
-          }}
-        >
-          {identity}
+        <button type="button" {...OWN_SOUND} className="gk-lb__who gk-lb__door" aria-label={commanderLabel(row.username, row.clan?.tag)}
+          onPointerDown={go.onPointerDown} onClick={go.onClick}>
+          {who}
         </button>
       )}
-      <span data-leaderboard-score><RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} /></span>
+      <span data-leaderboard-score="" className="gk-lb__score">
+        <span aria-hidden className="gk-lb__bar">
+          <span data-score-bar="" data-dir={row.score < 0 ? 'back' : 'ahead'} data-ranking={honor ? 'honor' : 'dominion'}
+            style={{ width: `${String((Math.abs(row.score) / widest) * 50)}%` }} />
+        </span>
+        <RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} />
+      </span>
+      {prize === null ? null : <span className="gk-lb__prizeline">{prize}</span>}
     </div>
   );
 }
@@ -318,13 +261,12 @@ function NearbyRival({
 function RowPrize({ reward }: { reward: Resources | undefined }) {
   const { t } = useTranslation();
   if (!reward || (reward.alloy === 0 && reward.crystal === 0 && reward.deuterium === 0)) {
-    return <span className="text-micro text-v2-ink-3">{t('leaderboard.rewards.noPrize')}</span>;
+    return <span className="gk-lb__noprize">{t('leaderboard.rewards.noPrize')}</span>;
   }
-  return <span role="group" aria-label={t('leaderboard.rewards.currentPrize')} className="ml-auto inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-micro text-v2-ink-2">
-    <RewardIcon aria-hidden className="size-3 shrink-0 text-v2-self" />
-    {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="inline-flex items-center gap-0.5 whitespace-nowrap">
-      <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} className="size-3.5 shrink-0 object-contain" />
-      <span className="num">{full(reward[resource])}</span>
+  return <span role="group" aria-label={t('leaderboard.rewards.currentPrize')} className="gk-haul__row gk-num gk-lb__rowprize">
+    {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-haul__res" data-res={resource}>
+      <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
+      {full(reward[resource])}
     </span>)}
   </span>;
 }
