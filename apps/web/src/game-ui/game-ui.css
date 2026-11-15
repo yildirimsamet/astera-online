@@ -14455,3 +14455,94 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 700;
   color: var(--gk-self);
 }
+
+/* ── the small showcase over the galaxy (G10, C31) ─────────────────────────────── */
+
+.gk-peek { gap: var(--gk-s3); padding-bottom: 4px; outline: none; }
+.gk-peek__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--gk-s2);
+}
+.gk-peek__shelf {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--gk-s3) var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s2) var(--gk-s3);
+  border-radius: var(--gk-r-sm);
+}
+.gk-peek__slot {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: end center;
+}
+.gk-peek__piece {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--gk-r-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-peek__piece:active { transform: translateY(1px) scale(0.97); }
+.gk-peek__piece:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-peek__art {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+}
+.gk-peek__pic { position: relative; z-index: 1; width: 100%; height: 100%; }
+.gk-peek__name {
+  display: -webkit-box;
+  min-height: 2.5em;
+  padding: 1px 2px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.gk-peek__edition {
+  min-height: 1.2em;
+  font-size: var(--gk-t-floor);
+  line-height: 1.2;
+  color: var(--gk-ink-2);
+}
+.gk-peek__empty {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+}
+.gk-peek__empty .legacy-peek-socket {
+  width: 60%;
+  height: 4px;
+  border-radius: 2px;
+}
+.gk-peek__best { padding: var(--gk-s2) var(--gk-s3); }
+.gk-peek__seasons { display: grid; }
+.gk-peek__season {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+}
+.gk-peek__season + .gk-peek__season { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-peek__seasonname { min-width: 0; color: var(--gk-ink); }
+.gk-peek__seasonname > span { color: var(--gk-ink-2); }
+.gk-peek__seasonplaces { font-weight: 700; color: var(--gk-ink-2); }
+/* a place's ladder keeps its own case: "En iyi Hâkimiyet" reads on one line beside its medal */
+.gk-legacy__placewords .gk-label { text-transform: none; letter-spacing: 0.01em; }

@@ -1788,6 +1788,12 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Not:** `FleetTowingGallery` ve `CommanderPresenceGallery` aynı çerçeveyi kullanıyor; ölçümlerinde sac varsa aynı sahte kırpılma çıkar.
 - **Ölçüm** (legacy-profile; 6 dil, telefon ve dar): kırpılan 10→0. `reports/ui-audit/c30-sheet-head-after-2026-11-15.md`.
 
+**C31 Küçük vitrin (`LegacyPeek`) ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 2.
+- **An:** Haritada bir isme dokunan oyuncu "bu kim?" diye bakıyor: unvan, raftaki altı parça, en iyi dereceler, son iki sezon, sonra tüm miras. Okunan veri ve akış değişmedi.
+- **Değişen:** Kitin kart sacı (kupa resimli başlık). Unvan altın rozet (profille aynı), sayaç kalın; raf pirinç rafta kaldı, parça adları 12 px (önce 9), adı nadirlik renginde, sezon etiketi altında; en iyi dereceler camda madalyalı; son sezonlar camda satır satır; "Tüm mirası gör" kitin ana düğmesi. Parça basışı `useOwnPress` + ses + titreşim.
+- **Ortak:** `PodiumPlace` artık tek kit derecesi (profildeki sezon kartları da onu kullanıyor; kopya `SeasonPlace` silindi). Derece etiketleri büyük harfsiz, "En iyi Hâkimiyet" madalyanın yanına sığsın diye.
+- **Ölçüm** (tr; telefon, dar, masaüstü): küçük vitrin 61→1 (arkalık), profil 6→3; 12 px altı 27→0, kontrast 8→0. `reports/ui-audit/c31-legacy-peek-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
