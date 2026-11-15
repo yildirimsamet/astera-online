@@ -1699,6 +1699,11 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Galeri:** `account-security`, `account-security-code`, `account-deletion`, `account-deletion-sent`, `password-reset`.
 - **Ölçüm** (tr; telefon, dar, masaüstü): güvenlik 13→0, kod adımı 20→0, silme 20→0, talep alındı 12→0, şifre sıfırlama 7→0; 12 px altı 7–9→0, 44 px altı 1–3→0, tepkisiz 2–6→0. `reports/ui-audit/c25-account-after-2026-11-15.md`.
 
+**C26 Ülke seçici ✅ (2026-11-15, yardımcı oturum).** G10 #4 (kayıttaki `ClaimDialog` de aynı seçiciyi açıyor).
+- **An:** "Hangi bayrağı taşıyorum?" Seçim yalnız onayla gönderiliyor; arama (Türkçe i/ı katlaması) ve seçilenin listenin başında durması değişmedi.
+- **Değişen:** Seçici kitin cıvatalı plakası; başta seçilen ülke bayrağıyla büyük; arama kitin cam yuvası; liste camda, her satır 44 px (önce 40), seçilen yeşil yanıyor ve tik taşıyor; kapatma kitin yuvarlak düğmesi, onay kitin ana düğmesi. Satır basışı `useOwnPress` + ses + titreşim. `Flag`'in bayraksız yedeği kit sınıfında (`gk-flagcode`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 2005→1; 12 px altı 501→0, kontrast 250→0, 44 px altı 251→0, tepkisiz 252→1 (arkalık). `reports/ui-audit/c26-country-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
