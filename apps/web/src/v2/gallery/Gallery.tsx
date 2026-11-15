@@ -84,6 +84,7 @@ import { useTranslation } from 'react-i18next';
 import { useSoundEffects } from '../../lib/sound.js';
 import { PremiumSpaceGallery } from './PremiumSpaceGallery.js';
 import { ResearchPanel } from '../../screens/ResearchPanel.js';
+import { WorldsPanel } from '../../screens/WorldsPanel.js';
 import { WikiScreen } from '../../screens/WikiScreen.js';
 import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
@@ -908,6 +909,18 @@ function GalleryEscort() {
   return null;
 }
 
+/** THE WORLDS PANEL (G2-j): a capital and two colonies, or a commander with one world. */
+function GalleryWorlds({ one = false }: { one?: boolean }) {
+  const capital = planetView({ fleet: { DART: 14, COURIER: 2 }, ground: { THORN: 6 }, flight: { used: 1, total: 3 } },
+    { id: 'capital-1', name: 'Kestrel-12', alloy: 38_400, crystal: 12_100, deuterium: 2_060, alloyCap: 60_000, crystalCap: 30_000, deuteriumCap: 8_000, alloyPerHour: 2_200, crystalPerHour: 860, deuteriumPerHour: 40 });
+  const haven = planetView({ fleet: { DART: 4 }, ground: {}, flight: { used: 0, total: 2 } },
+    { id: 'colony-1', name: 'Haven', alloy: 3_300, crystal: 980, deuterium: 0, alloyCap: 20_000, crystalCap: 10_000, deuteriumCap: 4_000, alloyPerHour: 640, crystalPerHour: 210 });
+  const orlo = planetView({ fleet: {}, ground: { THORN: 2 }, flight: { used: 2, total: 2 } },
+    { id: 'colony-2', name: 'Orlo Prime', alloy: 18_000, crystal: 400, deuterium: 120, alloyCap: 18_000, crystalCap: 10_000, deuteriumCap: 4_000, alloyPerHour: 420, crystalPerHour: 160 });
+  const worlds = one ? [capital] : [capital, haven, orlo];
+  return <WorldsPanel worlds={worlds} activePlanetId="capital-1" capitalPlanetId="capital-1" onSelect={noop} onTransfer={noop} onClose={noop} />;
+}
+
 /**
  * RESEARCH (G2-i): the map with the card; `sheet` opens Ship Armor's Details, `locked` shows a
  * card whose door is a missing prerequisite, `paused` a lane stopped by a vacation.
@@ -1125,6 +1138,8 @@ function Views({ view }: { view: string }) {
   if (view === 'build-sheet-special') return <GalleryBuild hull="NULLIFIER" />;
   if (view === 'build-sheet-gun') return <GalleryBuild hull="THORN" />;
   if (view === 'base-research') return <GalleryResearch />;
+  if (view === 'worlds') return <GalleryWorlds />;
+  if (view === 'worlds-one') return <GalleryWorlds one />;
   if (view === 'base-research-sheet') return <GalleryResearch variant="sheet" />;
   if (view === 'base-research-locked') return <GalleryResearch variant="locked" />;
   if (view === 'base-research-paused') return <GalleryResearch variant="paused" />;

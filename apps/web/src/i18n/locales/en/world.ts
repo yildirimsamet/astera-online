@@ -149,6 +149,8 @@ export const worlds = {
    */
   sendFrom: "From",
   sendTo: "To",
+  /** The round button between the route's two ends: from becomes to (G2-j). */
+  swap: "Swap ends",
   send: "Transfer",
   /** Screen-reader readings for the two pictures on a row. */
   store: "{{resource}}: {{amount}} of {{cap}}",

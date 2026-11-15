@@ -148,6 +148,7 @@ export const worlds = {
    */
   sendFrom: "Desde",
   sendTo: "Para",
+  swap: "Invertir",
   send: "Transferencia",
   /** Screen-reader readings for the two pictures on a row. */
   store: "{{resource}}: {{amount}} de {{cap}}",

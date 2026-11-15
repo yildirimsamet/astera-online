@@ -880,6 +880,17 @@ Kalanlar ve nedeni:
 - **Galeri:** `base-research-sheet`, `base-research-locked`, `base-research-paused`. Envanterde ulaşılamayan iki durum ("proje sheet'i", "tatilde duraklatılmış") kapandı.
 - **Ölçüm** (Türkçe; telefon, 320, masaüstü; dört görünüm): `reports/ui-audit/g2i2-after-2026-11-15.md`. 12 px altı, kontrast, 44 px altı ve tepkisiz hepsi 0. Puan 0/0/0/3; kalan 3, "Durdu" düzeltmesinden önceki kesilmeydi. Düzeltmeden sonra duraklatılmış görünüm yeniden ölçüldü: 0.
 
+**G2-j Dünyalar paneli ✅ (2026-11-15).**
+- **An:** "Hangi dünyamda ne var, oraya git ya da birinden ötekine kaynak aktar."
+- **Değişen:**
+  - Panel kit sheet'i oldu. Her dünya, oraya götüren bir kit kartı. Kartta isim, başkent/koloni çipi ve etkin işareti var; etkin dünyanın kenarı teal. Üs'ün depo göstergeleri burada da var: dolu/tavan, kasa payı, saatlik üretim. Altında araç sayısı ve uçuş rampaları (yanan = kalkışa boş).
+  - Kolay Aktarım tek satırlık bir rota: [Nereden ▾] ⇄ [Nereye ▾]. Her uç basınca kit dünya listesi açıyor; yerli `<select>` kalmadı. Ortadaki yuvarlak düğme yönü çeviriyor (iki dünyalı komutan için tek gereken hareket). Altında ana turuncu "Aktar".
+  - "Aktar" kaynak harcamıyor, yalnız aktarma sayfasını açıyor. Bu yüzden envanterdeki "aktarma basılı tutma" maddesi G4'teki `TransferSheet`'e taşındı.
+- **Silinen:** v1 `Sheet`, `Meter`, `Chip`, `Tally` ve `plate/legend/slab/field` kullanımı.
+- **Galeri:** `worlds` ve `worlds-one` (tek dünya, aktarma yok). Envanterde ulaşılamayan "tek dünya" durumu kapandı.
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü): eski panel geçici bir kopyadan ölçüldü (`g2j-before`) → `g2j-after-2026-11-15.md`. 12 px altı metin 21/34 → 0 (en küçük 9 → 12 px). Kontrast 2 → 0. 44 px altı hedef 6/14 → 0. Tepkisiz 8 → 0. Puan 47 → 0/0.
+- **Açık:** ölçüm sheet'in arkasındaki karartmayı "adsız dokunma alanı" sayıyor. Bu bütün yarım boy sheet'lerin ortak çerçeve davranışı (G1 çerçevesi).
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.

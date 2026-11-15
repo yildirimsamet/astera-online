@@ -10726,3 +10726,200 @@ button.gk-rcard__door:active {
   justify-content: space-between;
   gap: 4px var(--gk-s2);
 }
+
+/* ── G2-j: the worlds — a card per world that goes there, and the route of a transfer ── */
+.gk-worlds {
+  display: grid;
+  gap: var(--gk-s3);
+}
+.gk-route {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3) var(--gk-s3);
+}
+.gk-route__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+.gk-route__line > .gk-round {
+  margin-bottom: 2px;
+}
+/* an end of the route: which end, then the world on a plate that drops the list */
+.gk-route__end {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-route__world {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--gk-hit);
+  padding: 4px 6px 4px 5px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  transition: transform var(--gk-press) linear;
+}
+.gk-route__end:active .gk-route__world {
+  transform: translateY(1px);
+}
+.gk-route__end[aria-expanded='true'] .gk-route__world {
+  border-color: var(--gk-self);
+  box-shadow: 0 0 0 1px var(--gk-self), 0 2px 0 var(--gk-outline);
+}
+.gk-route__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gk-route__label .gk-glyph {
+  width: 13px;
+  height: 13px;
+  color: var(--gk-ink-2);
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-route__end[aria-expanded='true'] .gk-route__label .gk-glyph {
+  transform: rotate(180deg);
+  color: var(--gk-self);
+}
+.gk-route__coin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--gk-self) 55%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gk-self) 14%, var(--gk-void));
+  color: var(--gk-self-hi);
+}
+.gk-route__coin[data-capital] {
+  border-color: color-mix(in srgb, var(--gk-gold) 60%, transparent);
+  background: color-mix(in srgb, var(--gk-gold) 14%, var(--gk-void));
+  color: var(--gk-gold);
+}
+.gk-route__coin .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-route__name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
+/* the list an end drops: each world a 44 px row, the chosen one ticked */
+.gk-route__list {
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  animation: gk-drop var(--gk-quick) var(--gk-ease);
+}
+.gk-route__pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--gk-hit);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--gk-r-sm);
+  background: none;
+  text-align: left;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gk-route__pick:active,
+.gk-route__pick[aria-selected='true'] {
+  background: color-mix(in srgb, var(--gk-self) 12%, transparent);
+}
+.gk-route__pick > .gk-glyph:last-child {
+  width: 16px;
+  height: 16px;
+  color: var(--gk-self);
+}
+/* a world as a card that goes there */
+.gk-worlds__list {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-wcard {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 10px var(--gk-s3) var(--gk-s3);
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: 0 2px 0 var(--gk-outline);
+  text-align: left;
+  color: var(--gk-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--gk-press) linear;
+}
+.gk-wcard:active {
+  transform: translateY(1px) scale(0.99);
+}
+.gk-wcard[data-active] {
+  border-color: color-mix(in srgb, var(--gk-self) 60%, transparent);
+  box-shadow: inset 3px 0 0 var(--gk-self), 0 2px 0 var(--gk-outline);
+}
+.gk-wcard__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.gk-wcard__name {
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.gk-wcard__head .gk-chip .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-wcard__head .gk-chip[data-tone='gold'] {
+  color: var(--gk-gold);
+}
+.gk-wcard__go {
+  margin-left: auto;
+  color: var(--gk-ink-2);
+}
+.gk-wcard__go .gk-glyph {
+  width: 18px;
+  height: 18px;
+}
+.gk-wcard__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--gk-s2);
+}
+.gk-wcard__bays {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

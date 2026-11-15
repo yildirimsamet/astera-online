@@ -144,6 +144,7 @@ export const worlds = {
   /** Tek cümlenin iki ucu ve onu işleyen düğme. Etiketler yalnızca ekran okuyucu için. D163. */
   sendFrom: "Nereden",
   sendTo: "Nereye",
+  swap: "Yönü çevir",
   send: "Aktar",
   /** Satırdaki iki resmin ekran okuyucu karşılığı. */
   store: "{{resource}}: {{cap}} kapasitenin {{amount}} kadarı",

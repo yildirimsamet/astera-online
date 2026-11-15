@@ -149,6 +149,7 @@ export const worlds = {
   /** Les deux extrémités de la phrase et son bouton. Les libellés servent au lecteur d’écran. D163. */
   sendFrom: "Depuis",
   sendTo: "Vers",
+  swap: "Inverser",
   send: "Transférer",
   /** Équivalent lecteur d’écran des deux visuels de la ligne. */
   store: "{{resource}} : {{amount}} sur {{cap}} de capacité",
