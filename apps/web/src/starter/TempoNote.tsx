@@ -9,8 +9,8 @@ export function TempoNote({ aboard, beforeLaunch = false }: { aboard: boolean; b
   if (!aboard) return null;
   return (
     <>
-      <p role="note" data-starter-tempo className="text-micro leading-snug text-v2-ink-3">{t('starter.tempoNote')}</p>
-      {beforeLaunch && <p data-testid="ship-shield-note" className="text-micro leading-snug text-v2-ink-3">{t('starter.shieldNote')}</p>}
+      <p role="note" data-starter-tempo className="gk-sub">{t('starter.tempoNote')}</p>
+      {beforeLaunch && <p data-testid="ship-shield-note" className="gk-sub">{t('starter.shieldNote')}</p>}
     </>
   );
 }

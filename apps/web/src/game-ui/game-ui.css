@@ -13735,3 +13735,86 @@ button.gk-fact__head:active .gk-fact__line {
 }
 .gk-dose__lead[data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-dose__lot { display: grid; gap: 1px; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+
+/* G4-e3: WHAT A LAUNCH EARNS — the Honor a target pays, a pirate's return after expenses */
+.gk-launch__retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gk-honor {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-honor__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+}
+.gk-honor__head .gk-glyph { width: 16px; height: 16px; color: var(--gk-self); }
+.gk-honor__dot { color: var(--gk-ink-3); }
+.gk-honor[data-kind='WEAK'] .gk-honor__kind { color: var(--gk-warn); }
+.gk-honor__line {
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-honor__line[data-tone='self'] { color: var(--gk-self); }
+.gk-honor__line[data-tone='warn'] { color: var(--gk-warn); }
+.gk-honor__line[data-tone='ink'] { color: var(--gk-ink); }
+
+.gk-profit {
+  display: grid;
+  gap: 6px;
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-profit[data-verdict='profit'] { border-color: color-mix(in srgb, var(--gk-self) 40%, var(--gk-glass-edge)); }
+.gk-profit[data-verdict='loss'] { border-color: color-mix(in srgb, var(--gk-hostile) 40%, var(--gk-glass-edge)); }
+.gk-profit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-profit__verdict { font-size: var(--gk-t-body); font-weight: 700; }
+.gk-profit[data-verdict='profit'] .gk-profit__verdict { color: var(--gk-self); }
+.gk-profit[data-verdict='loss'] .gk-profit__verdict { color: var(--gk-hostile-hi); }
+.gk-profit__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--gk-t-floor);
+}
+.gk-profit__labels { width: 32%; }
+.gk-profit__table th,
+.gk-profit__table td {
+  padding: 3px 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+  color: var(--gk-ink-2);
+}
+.gk-profit__table th[scope='row'] { padding-right: 4px; text-align: left; color: var(--gk-ink-3); }
+.gk-profit__res {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  color: var(--gk-ink-2);
+}
+.gk-profit__res img { width: 16px; height: 16px; object-fit: contain; }
+.gk-profit__net th[scope='row'] { color: var(--gk-ink-2); font-size: var(--gk-t-small); }
+.gk-profit__net .gk-num { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-profit__net .gk-num[data-tone='hostile'] { color: var(--gk-hostile-hi); }
+.gk-profit__range td { color: var(--gk-ink-3); }
+.gk-profit__row { border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
+.gk-profit__risk { display: grid; gap: 3px; }

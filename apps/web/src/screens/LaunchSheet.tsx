@@ -32,7 +32,7 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
-import { GameHold, Glyph } from '../game-ui/index.js';
+import { GameButton, GameHold, Glyph } from '../game-ui/index.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -287,11 +287,10 @@ export function LaunchSheet({
     >
       <div className="gk gk-launch">
         {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
-        {honorTarget.isFetching && !honorTarget.data && <p className="text-caption text-v2-ink-2">{t('leaderboard.honorTarget.loading')}</p>}
-        {honorTarget.isError && <div className="flex flex-wrap items-center gap-2 text-caption">
-          <p className="text-v2-ink-2">{t('leaderboard.honorTarget.unavailable')}</p>
-          <button type="button" className="min-h-9 text-v2-self underline underline-offset-4"
-            onClick={() => { void honorTarget.refetch(); }}>{t('leaderboard.honorTarget.retry')}</button>
+        {honorTarget.isFetching && !honorTarget.data && <p className="gk-sub">{t('leaderboard.honorTarget.loading')}</p>}
+        {honorTarget.isError && <div className="gk-launch__retry">
+          <p className="gk-sub">{t('leaderboard.honorTarget.unavailable')}</p>
+          <GameButton size="sm" glyph="refresh" onPress={() => { void honorTarget.refetch(); }}>{t('leaderboard.honorTarget.retry')}</GameButton>
         </div>}
         {/*
           WHAT YOU ARE FLYING AT, ON THE SAME AXIS AS WHAT YOU ARE SENDING (B5), with

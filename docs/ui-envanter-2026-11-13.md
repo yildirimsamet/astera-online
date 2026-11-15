@@ -1219,6 +1219,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Ölçüm** `g4e2-before/after-*-2026-11-15.md`: `launch` 9 → 4. Aktarma (G4-f) ve anıt değişmedi. Kalan: Onur satırı (G4-e3).
 - **Owner'a not:** gemiler seçilince yapışkan cetvel ile bedel/düğme arasında telefonda ~290 px kalıyor. Bedel metni K4 gereği düğmeden önce; değiştirmedim.
 
+**G4-e3 fırlatmanın kazancı ✅ (2026-11-15).** Oyuncunun anı: "değer mi?"
+- Onur kartı cam kuyuda: hedefin türü başlıkta (zayıf hedef uyarı renginde), kurallar 13 px satırlar, tek başına Onur kuralı kitin bandında. Galeride Onur verisi gelen bir görünüm yok; kart yalnız testlerle doğrulandı.
+- Onur okuması gelmezse "Yeniden dene" kitin küçük düğmesi (sesli, 44 px); eskiden altı çizili 36 px bir yazıydı.
+- Korsan kâr kartı cam kuyuda: kâr/zarar kenar renginde, net kazanç kalın, riskler uyarı notu. 320 px'te tablo sığıyor.
+- Tempo notu (başlangıç galaksisi) kit alt satırı; savaş raporunda da aynı.
+- **Ölçüm** `g4e3-after-2026-11-15.md`: `launch` 4 → 3, `launch-pirate` 8 → 3. Kalan: sayfanın adsız arka plan perdesi (bütün sayfalarda ortak, Sheet birimi) ve kapalı düğmeler.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

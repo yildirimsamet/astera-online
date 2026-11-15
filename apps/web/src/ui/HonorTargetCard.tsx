@@ -1,34 +1,35 @@
 import { useTranslation } from 'react-i18next';
 import type { HonorTarget } from '../api/schemas.js';
-import { HonorIcon } from './icons/index.js';
+import { Glyph } from '../game-ui/index.js';
 import { HonorSoloPolicy } from './HonorSoloNotice.js';
 
 /** Coarse current guidance; the committed battle keeps its own authoritative references. */
 export function HonorTargetCard({ value }: { value: HonorTarget }) {
   const { t } = useTranslation();
   if (!value.enabled || !value.eligible) return null;
-  return <section data-honor-target aria-label={t('leaderboard.honorTarget.title')}
-    className="grid gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 font-v2-ui">
-    <div className="flex items-center gap-2 text-body font-semibold text-v2-ink">
-      <HonorIcon className="size-4 shrink-0 text-v2-self" />
-      <span>Honor</span><span aria-hidden className="text-v2-ink-3">·</span>
-      <span>{t(value.kind === 'PEER' && value.militaryReturn === 'NONE' ? 'leaderboard.honorTarget.noReturn' : `leaderboard.honorTarget.${value.kind}`)}</span>
-    </div>
-    {value.topTierPeer && <p className="text-caption leading-relaxed text-v2-self">
+  return <section data-honor-target aria-label={t('leaderboard.honorTarget.title')} className="gk-well gk-honor"
+    data-kind={value.kind}>
+    <p className="gk-honor__head">
+      <Glyph id="ranking" />
+      <span>Honor</span><span aria-hidden className="gk-honor__dot">·</span>
+      <span className="gk-honor__kind">{t(value.kind === 'PEER' && value.militaryReturn === 'NONE' ? 'leaderboard.honorTarget.noReturn' : `leaderboard.honorTarget.${value.kind}`)}</span>
+    </p>
+    {value.topTierPeer && <p className="gk-honor__line" data-tone="self">
       {t('leaderboard.honorTarget.topTierPeer')}
     </p>}
-    {(value.kind === 'WEAK' || (!value.related && value.militaryReturn !== 'NONE')) && <p className="text-caption leading-relaxed text-v2-ink-2">
+    {(value.kind === 'WEAK' || (!value.related && value.militaryReturn !== 'NONE')) && <p className="gk-honor__line"
+      {...(value.kind === 'WEAK' ? { 'data-tone': 'warn' } : {})}>
       {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? value.repeatRaid ? 'repeatRaid' : 'weakWarning' : 'eligible'}`)}
     </p>}
-    {value.related ? <p className="text-caption leading-relaxed text-v2-ink">{t('leaderboard.honorReason.RELATED')}</p>
-      : value.kind !== 'WEAK' && <p className="text-caption leading-relaxed text-v2-ink-2">
+    {value.related ? <p className="gk-honor__line" data-tone="ink">{t('leaderboard.honorReason.RELATED')}</p>
+      : value.kind !== 'WEAK' && <p className="gk-honor__line">
         {t(`leaderboard.honorTarget.${value.militaryReturn}`)}
       </p>}
-    {value.repeated && <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorTarget.repeated')}</p>}
-    {value.retaliation && <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorTarget.retaliation', {
+    {value.repeated && <p className="gk-honor__line">{t('leaderboard.honorTarget.repeated')}</p>}
+    {value.retaliation && <p className="gk-honor__line">{t('leaderboard.honorTarget.retaliation', {
       percent: value.retaliationLootPercent ?? 20,
     })}</p>}
-    {value.soloCredit && <HonorSoloPolicy />}
-    <p className="text-micro leading-relaxed text-v2-ink-3">{t('leaderboard.honorTarget.estimate')}</p>
+    {value.soloCredit && <HonorSoloPolicy look="kit" />}
+    <p className="gk-sub">{t('leaderboard.honorTarget.estimate')}</p>
   </section>;
 }
