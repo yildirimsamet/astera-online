@@ -5,12 +5,12 @@ import { Trans, useTranslation } from 'react-i18next';
 import { SERVERS } from '@astera/rules';
 import { useServers } from '../api/queries.js';
 import type { HistoricalSeasonResult, ServerRow } from '../api/schemas.js';
-import { Button } from '../ui/kit/index.js';
+import { Banner, DoorRow, GameButton, ProgressBar } from '../game-ui/index.js';
 import { SeasonRecap, useSeasonRecapOpening } from './SeasonRecap.js';
 import { NextSeason } from '../ui/NextSeason.js';
 
 /**
- * CHOOSING A GALAXY. D21.
+ * CHOOSING A GALAXY. D21. On the kit since C29 (2026-11-15).
  *
  * Two galaxies, `SERVERS.capacity` commander seats each, and exactly one of them will take you. The list
  * could therefore have been a single button — and it deliberately is not.
@@ -61,83 +61,57 @@ export function ServersScreen({
   const settling = rows.find((s) => s.status === 'closed' && s.endsAt !== null);
 
   return (
-    <main className="min-h-dvh bg-void px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <p className="legend">{t('servers.commanderLabel')}</p>
-          <h1 className="headline text-figure mt-1 text-bone">
-            {displayName}
-          </h1>
+    <main className="gk gk-servers">
+      <div className="gk-servers__column">
+        <header className="gk-servers__head">
+          <div className="min-w-0">
+            <p className="gk-label">{t('servers.commanderLabel')}</p>
+            <h1 className="gk-servers__name gk-display gk-outlined">{displayName}</h1>
+          </div>
+          <GameButton size="sm" tone="ghost" glyph="back" onPress={onSignOut}>{t('servers.signOut')}</GameButton>
+        </header>
+
+        <p className="gk-copy">{t('servers.rule', { seats: SERVERS.capacity })}</p>
+
+        {latestResult && (
+          <DoorRow glyph="ranking" tone="gold" title={t('seasonRecap.latestLabel')} sub={t('seasonRecap.latestHint')} onPress={openRecord} />
+        )}
+
+        {error !== undefined && <Banner tone="hostile" role="alert" title={error} />}
+
+        {servers.isPending && <p className="gk-acct__note">{t('servers.loading')}</p>}
+
+        {servers.isError && <>
+          <Banner tone="hostile" role="alert" title={t('servers.unreachable')} />
+          <GameButton wide pending={servers.isFetching} onPress={() => { void servers.refetch(); }}>{t('servers.retry')}</GameButton>
+        </>}
+
+        <ul className="gk-servers__list" aria-label={t('servers.listLabel')}>
+          {rows.map((server) => (
+            <ServerCard
+              key={server.code}
+              server={server}
+              busy={chosen === server.code}
+              disabled={chosen !== null}
+              onChoose={() => {
+                setChosen(server.code);
+                onChoose(server.code);
+              }}
+            />
+          ))}
+        </ul>
+
+        {servers.isSuccess && rows.length === 0 && <p className="gk-acct__note">{t('servers.noneOpen')}</p>}
+
+        {servers.isSuccess && !open && settling?.endsAt && <NextSeason endsAt={settling.endsAt} />}
+
+        {servers.isSuccess && rows.length > 0 && !open && !settling && <p className="gk-acct__note">{t('servers.allFull')}</p>}
+
+        <div className="gk-acct__doors">
+          <AccountSecurityEntry />
+          <AccountDeletionEntry />
         </div>
-        <Button size="sm" variant="ghost" onClick={onSignOut}>
-          {t('servers.signOut')}
-        </Button>
-      </header>
-      <div className="mt-4 flex max-w-md flex-col gap-2"><AccountSecurityEntry /><AccountDeletionEntry /></div>
-
-      <p className="mt-6 max-w-md text-body leading-relaxed text-dim">{t('servers.rule', { seats: SERVERS.capacity })}</p>
-
-      {latestResult && (
-        <button
-          type="button"
-          className="plate plate-cut plate-cut-sm mt-2 w-full max-w-md px-2 py-3 text-left transition-[filter] hover:brightness-125"
-          onClick={openRecord}
-        >
-          <span className="name block text-bone">
-            {t('seasonRecap.latestLabel')}
-          </span>
-          <span className="mt-1 block text-label text-faint">{t('seasonRecap.latestHint')}</span>
-        </button>
-      )}
-
-      {error !== undefined && (
-        <p className="mt-2 text-body text-threat-ink" role="alert">
-          {error}
-        </p>
-      )}
-
-      {servers.isPending && <p className="legend mt-8 animate-pulse">{t('servers.loading')}</p>}
-
-      {servers.isError && (
-        <div className="mt-8">
-          <p className="text-body text-threat-ink">{t('servers.unreachable')}</p>
-          <Button
-            className="mt-3"
-            onClick={() => {
-              void servers.refetch();
-            }}
-          >
-            {t('servers.retry')}
-          </Button>
-        </div>
-      )}
-
-      <ul className="mt-6 flex flex-col gap-2" aria-label={t('servers.listLabel')}>
-        {rows.map((server) => (
-          <ServerCard
-            key={server.code}
-            server={server}
-            busy={chosen === server.code}
-            disabled={chosen !== null}
-            onChoose={() => {
-              setChosen(server.code);
-              onChoose(server.code);
-            }}
-          />
-        ))}
-      </ul>
-
-      {servers.isSuccess && rows.length === 0 && (
-        <p className="mt-8 text-body text-dim">{t('servers.noneOpen')}</p>
-      )}
-
-      {servers.isSuccess && !open && settling?.endsAt && (
-        <NextSeason endsAt={settling.endsAt} className="mt-6" />
-      )}
-
-      {servers.isSuccess && rows.length > 0 && !open && !settling && (
-        <p className="mt-6 text-body text-faint">{t('servers.allFull')}</p>
-      )}
+      </div>
 
       {recordOpen && latestResult && (
         <SeasonRecap
@@ -180,47 +154,34 @@ function ServerCard({
 }) {
   const { t } = useTranslation();
   const joinable = server.status === 'open' && !server.yours;
-  const fill = server.capacity > 0 ? Math.min(1, server.planets / server.capacity) : 0;
+  const full = server.capacity > 0 && server.planets >= server.capacity;
 
   return (
     <li>
-      <div
-        className={`plate plate-cut plate-cut-sm flex items-center gap-4 p-4 ${
-          server.yours ? 'plate-opportunity' : joinable ? 'plate-lit' : ''
-        } ${server.status === 'locked' || server.status === 'closed' ? 'opacity-55' : ''}`}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <h2 className="headline text-bone">
-              {server.name}
-            </h2>
+      <div data-galaxy={server.code} data-status={server.status} className={`gk-cut gk-galaxy${server.yours || joinable ? ' gk-cut--self' : ''}`}>
+        <div className="gk-galaxy__text">
+          <div className="gk-galaxy__title">
+            <h2 className="gk-galaxy__name gk-display gk-outlined">{server.name}</h2>
             {/* A galaxy opened outside `bootstrapServers` has no name and falls
                 back to its code, and "EU-1  EU-1" reads as a rendering bug. */}
-            {server.name !== server.code && <span className="legend">{server.code}</span>}
+            {server.name !== server.code && <span className="gk-label">{server.code}</span>}
           </div>
 
           {/* The population bar. Fifty is a number a player can hold in their head,
               so the figure is exact and the bar is only there to be read at a
               glance — not the other way round. */}
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-well">
-              <div
-                className={`h-full rounded-full ${fill >= 1 ? 'bg-alloy' : 'bg-crystal'}`}
-                style={{ width: `${String(Math.round(fill * 100))}%` }}
-              />
-            </div>
-            <span className="readout shrink-0 text-caption text-dim">
-              {server.planets}/{server.capacity}
-            </span>
+          <div className="gk-galaxy__seats">
+            <ProgressBar value={server.planets} max={server.capacity} tone={full ? 'alloy' : 'crystal'} />
+            <span className="gk-galaxy__count gk-num">{server.planets}/{server.capacity}</span>
           </div>
 
-          <p className="mt-2 text-label text-faint">
+          <p className="gk-galaxy__state">
             {server.online > 0 ? (
               <>
                 <Trans
                   i18nKey="servers.online"
                   values={{ amount: server.online }}
-                  components={[<span key="n" className="text-opportunity" />]}
+                  components={[<span key="n" className="gk-galaxy__online" />]}
                 />
                 {' · '}
               </>
@@ -237,9 +198,9 @@ function ServerCard({
          * joining a galaxy you are already in returns the planet you already have.
          */}
         {(server.yours || joinable) && (
-          <Button size="sm" variant="primary" disabled={disabled} onClick={onChoose}>
+          <GameButton tone="action" glyph="rocket" pending={disabled} onPress={onChoose}>
             {busy ? t('servers.joining') : server.yours ? t('servers.enter') : t('servers.join')}
-          </Button>
+          </GameButton>
         )}
       </div>
     </li>

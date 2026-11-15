@@ -14127,3 +14127,82 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 700;
   color: var(--gk-ink);
 }
+
+/* ── choosing a galaxy (G10, C29) ─────────────────────────────────────────────── */
+
+.gk-servers {
+  min-height: 100dvh;
+  padding: calc(var(--gk-s5) + env(safe-area-inset-top)) var(--gk-s4) calc(var(--gk-s6) + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--gk-info) 10%, transparent), transparent 70%),
+    var(--gk-void);
+}
+.gk-servers__column {
+  display: grid;
+  gap: var(--gk-s3);
+  max-width: 32rem;
+  margin: 0 auto;
+}
+.gk-servers__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+}
+.gk-servers__name {
+  margin-top: 2px;
+  font-size: var(--gk-t-head);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-servers__list {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* a galaxy: its name, the seats taken against all of them, who is there; the open door lit */
+.gk-galaxy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+}
+/* a door not yours to take keeps its words readable: only its name steps back */
+.gk-galaxy[data-status='locked'] .gk-galaxy__name,
+.gk-galaxy[data-status='closed'] .gk-galaxy__name { color: var(--gk-ink-2); }
+.gk-galaxy__text {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.gk-galaxy__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gk-s2);
+}
+.gk-galaxy__name {
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-galaxy__seats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+}
+.gk-galaxy__count {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-galaxy__state {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-galaxy__online {
+  font-weight: 700;
+  color: var(--gk-self);
+}

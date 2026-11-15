@@ -14,7 +14,7 @@ function show(options: { pending?: boolean; fail?: boolean; delay?: boolean } = 
     const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
     requests.push({ method, path, body });
     if (path.endsWith('/account-deletion') && method === 'POST' && options.delay) return new Promise(() => undefined);
-    const result = path.endsWith('/servers') ? { servers: [] } : path.endsWith('/security') ? { enabled: false, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null, pending: null }
+    const result = path.endsWith('/servers') ? { servers: [], placement: null } : path.endsWith('/security') ? { enabled: false, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null, pending: null }
       : { request: method === 'POST' || options.pending ? receipt : null };
     return Promise.resolve(new Response(JSON.stringify(options.fail && method === 'POST' ? { error: 'BAD_CREDENTIALS', message: 'Fixture' } : result), { status: options.fail && method === 'POST' ? 401 : 200 }));
   };

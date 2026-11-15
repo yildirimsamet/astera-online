@@ -1743,6 +1743,12 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Galeri:** `silent-space`, `silent-space-queued` (ve C29 için `servers`) `ProfileGallery`'de; envanterde erişim olarak eklendi.
 - **Ölçüm** (tr; telefon, dar, masaüstü): puan 7→0 (ilk bildirim), 10→0 (sırada); 12 px altı 4–5→0, kontrast 1→0. `reports/ui-audit/c28-silent-after-2026-11-15.md`.
 
+**C29 Galaksi seçimi ✅ (2026-11-15, yardımcı oturum).** G10 #7 `screens/ServersScreen` (v1 → kit).
+- **An:** "Hangi galaksiye giriyorum?" Sıralı dolum kuralı, tek katılım, son sezon sonucunun açılışı ve "yeni galaksi açılıyor" sayacı değişmedi.
+- **Değişen:** Ekran kitin karanlığında; komutan adı görüntü yazısıyla, çıkış hayalet düğme. Her galaksi kesik plaka: ad + kod, koltuklar kitin çubuğunda (dolu ise alaşım rengi) ve sayıyla, çevrimiçi sayısı yeşil; açık kapı yeşil kenarlı, "Katıl" kitin ana düğmesi (roket), basılınca beklemeye geçiyor ve ikinci basışı yutuyor. Kilitli galaksi soluk değil, yalnız adı geri çekiliyor (kontrast). Son sezon sonucu altın kapı satırı (`DoorRow`). Hatalar banner (ulaşılamıyor artık `alert`), yeniden dene düğmesi. Hesap güvenliği ve silme ekranın sonunda (önce galaksilerin üstündeydi): ekranın işi galaksi seçmek.
+- **Test düzeltmesi:** `account-deletion-ui` sahte `/servers` yanıtı şemaya uymuyordu (`placement` yoktu); ekran bu testte hep "ulaşılamıyor" gösteriyormuş. Yanıta `placement: null` eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 43→0; 12 px altı 15→0, kontrast 8→0, 44 px altı 2→0. `reports/ui-audit/c29-servers-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
