@@ -14983,3 +14983,40 @@ button.gk-fact__head:active .gk-fact__line {
 }
 .gk-reward__after .gk-glyph { flex: none; width: 16px; height: 16px; margin-top: 1px; }
 .gk-reward__after[data-on] .gk-glyph { color: var(--gk-self); }
+
+/* ── trying a look over the galaxy (G6, C39) ─────────────────────────────────── */
+
+.gk-trial {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  /* it stands on the dock, whatever height the dock has */
+  bottom: var(--v2-dock-h, 0px);
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  color: var(--gk-ink);
+}
+.gk-trial__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+}
+.gk-trial__eyebrow { color: var(--gk-gold); }
+.gk-trial__name {
+  margin-top: 2px;
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.gk-trial__hint {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-trial__moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+/* the cut plate is relative by default; over the galaxy the bar stands on the dock */
+.gk-cut.gk-trial { position: absolute; }

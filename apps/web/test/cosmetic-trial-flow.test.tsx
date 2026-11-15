@@ -29,7 +29,11 @@ it('tries a store ring on either owned world, compares, returns to the same prod
   const worlds = () => screen.getByTestId('worlds');
   await waitFor(() => { expect(worlds()).toHaveTextContent('ring-singularity'); });
   expect(screen.getByTestId('inspection')).toHaveTextContent('trial-home');
-  fireEvent.change(screen.getByRole('combobox', { name: 'World to try on' }), { target: { value: 'trial-colony' } });
+  // C39: the world is a kit choice; the second world of mine is the colony.
+  const choice = screen.getByRole('radiogroup', { name: 'World to try on' });
+  const colony = choice.querySelectorAll('[role="radio"]')[1];
+  if (!colony) throw new Error('no second world');
+  fireEvent.click(colony);
   expect(screen.getByTestId('inspection')).toHaveTextContent('trial-colony');
   expect(worlds().textContent).toBe('[{"id":"trial-home","skin":"planet-ice","ring":"ring-helios"},{"id":"trial-colony","skin":"planet-lava","ring":"ring-singularity"}]');
   fireEvent.click(screen.getByRole('button', { name: 'Show equipped look' }));

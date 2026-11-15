@@ -1262,6 +1262,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Yeni anahtar:** `rewards.openPod` (6 dil).
 - **Ölçüm** (tr; telefon, dar, masaüstü): 378/376/247/9 → 3/3/3/0 (kalan 3 arkalık); 12 px altı 167→0, kontrast 57→0, 44 px altı 10→1. `reports/ui-audit/c34-rewards-after-2026-11-15.md`.
 
+**C39 Deneme şeridi ✅ (2026-11-15, yardımcı oturum).** G6 #6 `CosmeticTrialBar`.
+- **An:** "Bu görünüm gezegenimde nasıl durur?" Deneme kuralı (süre, hangi dünya, gerçek satın almaya dokunmama) değişmedi.
+- **Değişen:** Şerit kitin kesik plakası (altın kenar, dock'un üstünde). Üstte küçük etiket + ürün adı görüntü yüzünde, sağda kapatma yuvarlağı (dar ekranda kaydırmasın diye uzun düğme yerine; adı "Denemeyi bitir"). Dünya seçimi yerli `select` yerine kitin seçim çipleri. "Karşılaştır/Göster" ve "Mağazaya dön" kitin düğmeleri.
+- **Test:** iki testteki combobox değişimi radyo seçimine çevrildi; kit testi eklendi.
+- **Galeri:** yeni görünüm `cosmetic-trial-bar` (iki dünya); envanter erişimine eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): `cosmetic-trial-bar` 17 → 0. Akış görünümü `cosmetic-trial` 42 → 22: açıldığı mağazayı ölçüyor, mağaza C35'te. `reports/ui-audit/c39-trial-bar-before/after-2026-11-15.md`, `g6-shop-before-2026-11-15.md`.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

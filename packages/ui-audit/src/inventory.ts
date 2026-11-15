@@ -67,7 +67,7 @@ export const SURFACES: GameSurface[] = [
     reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:context-suggestion', 'gallery:context-selected', 'gallery:readout', 'gallery:toast', 'gallery:toast-warn', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
     group: 'G1',
   },
-  { id: 'cosmetic-trial', what: 'Kozmetik deneme şeridi, galaksi üzerinde', files: ['screens/CosmeticTrialBar.tsx'], reach: ['gallery:cosmetic-trial'], group: 'G6' },
+  { id: 'cosmetic-trial', what: 'Kozmetik deneme şeridi, galaksi üzerinde', files: ['screens/CosmeticTrialBar.tsx'], reach: ['gallery:cosmetic-trial', 'gallery:cosmetic-trial-bar'], group: 'G6' },
   { id: 'now-line', what: 'Şimdi satırı ve zamanlayıcılar', files: ['v2/hud/NowLine.tsx'], reach: ['gallery:timers'], group: 'G1' },
   { id: 'outline', what: 'Üs ve filo özeti katmanı', files: ['v2/hud/Outline.tsx', 'v2/shell/OutlineHost.tsx'], reach: ['client:outline'], group: 'G1' },
   { id: 'fleet', what: 'Filo sayfası: havada, evde, oda', files: ['v2/hud/FleetPage.tsx', 'v2/shell/FleetHost.tsx'], reach: ['gallery:fleet', 'gallery:fleet-home', 'gallery:fleet-room', 'gallery:support-fleet'], group: 'G2', unreached: ['Havada: anıtta bekleyen dalga satırları'] },
