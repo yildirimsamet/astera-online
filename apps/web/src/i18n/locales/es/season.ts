@@ -2,7 +2,7 @@ export const seasonRecap = {
   eyebrow: 'Temporada completa',
   finalRecord: 'Registro final · {{galaxy}}',
   rank: 'Rango {{rank}} de {{players}}',
-  rankAlone: 'Clasificación final {{rank}}',
+  place: 'Puesto',
   dominion: 'Dominio',
   planet: '{{commander}} de {{planet}}',
   titles: {

@@ -2,7 +2,7 @@ export const seasonRecap = {
   eyebrow: "Saison terminée",
   finalRecord: "Bilan final · {{galaxy}}",
   rank: "{{rank}}e sur {{players}} commandants",
-  rankAlone: "Classement final · {{rank}}e",
+  place: 'Place',
   dominion: "Domination",
   planet: "{{commander}} de la planète {{planet}}",
   titles: {
@@ -32,7 +32,7 @@ export const seasonRecap = {
   biggestRaid: "{{value}} pillés sur {{name}}",
   quietHeading: "Une frontière tranquille",
   quietBody: "Cette saison, aucun combat ne t’a opposé à un autre commandant.",
-  explore: "Explorer l’état final de la galaxie",
+  explore: "Voir la galaxie finale",
   close: "Fermer",
   nextIn: "La nouvelle galaxie ouvre dans {{duration}}",
   nextNow: "La nouvelle galaxie ouvre maintenant",

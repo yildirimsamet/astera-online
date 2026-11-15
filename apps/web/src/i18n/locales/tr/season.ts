@@ -2,7 +2,7 @@ export const seasonRecap = {
   eyebrow: 'Sezon tamamlandı',
   finalRecord: 'Son kayıt · {{galaxy}}',
   rank: '{{players}} komutan arasında {{rank}}. sıra',
-  rankAlone: 'Son sıra · {{rank}}',
+  place: 'Sıra',
   dominion: 'Hâkimiyet',
   planet: '{{planet}} gezegeninden {{commander}}',
   titles: {
@@ -31,7 +31,7 @@ export const seasonRecap = {
   biggestRaid: '{{name}} üzerinden {{value}} yağma',
   quietHeading: 'Sessiz bir sınır',
   quietBody: 'Bu sezon adını başka bir komutana bağlayan bir savaş olmadı.',
-  explore: 'Galaksinin son hâlini keşfet',
+  explore: 'Son galaksiyi gez',
   close: 'Kapat',
   nextIn: 'Yeni galaksi {{duration}} sonra açılıyor',
   nextNow: 'Yeni galaksi şimdi açılıyor',

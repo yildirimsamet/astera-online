@@ -78,6 +78,7 @@ import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
 import { LeaderboardScreen } from '../../screens/LeaderboardScreen.js';
 import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
+import { SeasonRecap } from '../../screens/SeasonRecap.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
 import { useTranslation } from 'react-i18next';
@@ -1405,6 +1406,32 @@ function Views({ view }: { view: string }) {
           }}
         />
       </Sheet>
+    );
+  }
+  if (view === 'season-recap' || view === 'season-recap-quiet') {
+    // The season's last screen (C18): a podium Honor place with a clan seal, or a quiet frontier.
+    const quiet = view === 'season-recap-quiet';
+    return (
+      <SeasonRecap
+        galaxy="Vantage"
+        players={50}
+        endsAt={new Date(NOW - 2 * MIN)}
+        onClose={noop}
+        result={{
+          seasonId: 'season-86', accountId: 'account-7', finalRank: quiet ? 41 : 4, dominion: quiet ? 0 : 1_840,
+          ...(quiet ? {} : { honorRank: 2, honorScore: 120_500_000 }),
+          damageDealt: quiet ? 0 : 124_500, damageTaken: quiet ? 0 : 82_000, rivalName: null, biggestRaid: 0, title: 'Vanguard',
+          recap: quiet
+            ? { commanderName: 'İzci', planetName: 'Kestrel-12', battles: 0, attacks: 0, defences: 0, rival: null, biggestRaid: null }
+            : {
+              commanderName: 'İzci', planetName: 'Kestrel-12', battles: 38, attacks: 24, defences: 14,
+              rival: { commanderName: 'VEX', battles: 9 }, biggestRaid: { value: 48_000, opponentName: 'Rook' },
+              support: { stood: 7, held: 3 },
+              clan: { tag: 'NOVA', name: 'Nova Pact', finalRank: 3, dominion: 9_200, topThree: true },
+            },
+          createdAt: new Date(NOW - 2 * MIN),
+        }}
+      />
     );
   }
   if (view === 'report-strike-colony') {

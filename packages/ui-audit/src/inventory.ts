@@ -183,7 +183,7 @@ export const SURFACES: GameSurface[] = [
     reach: ['gallery:legacy-award', 'gallery:legacy-shelf', 'gallery:legacy-shelf-new', 'gallery:legacy-shelf-b', 'gallery:legacy-shelf-c', 'gallery:legacy-reveal', 'gallery:legacy-peek', 'gallery:legacy-profile'],
     group: 'G10',
   },
-  { id: 'season-recap', what: 'Sezon özeti', files: ['screens/SeasonRecap.tsx'], reach: ['client:recap'], group: 'G9' },
+  { id: 'season-recap', what: 'Sezon özeti', files: ['screens/SeasonRecap.tsx'], reach: ['gallery:season-recap', 'gallery:season-recap-quiet', 'client:recap'], group: 'G9' },
   { id: 'servers', what: 'Galaksi seçimi', files: ['screens/ServersScreen.tsx'], reach: ['client:servers'], group: 'G10' },
 
   // Before the game: front door, training, loading, faults.

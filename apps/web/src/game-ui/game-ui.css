@@ -9432,6 +9432,168 @@ button.gk-probe__head:active {
   border-top: 0;
 }
 
+/* ── C18: the season's last screen and the wait for the next galaxy (G9 #5, #6) ── */
+.gk-recap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--gk-void) 96%, transparent);
+}
+/* the frozen galaxy's last light, behind everything */
+.gk-recap__sky {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 16%, color-mix(in srgb, var(--gk-crystal) 18%, transparent), transparent 36%),
+    radial-gradient(circle at 18% 74%, color-mix(in srgb, var(--gk-self) 9%, transparent), transparent 32%);
+}
+.gk-recap__main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gk-s3);
+  width: 100%;
+  max-width: 36rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(var(--gk-s5) + env(safe-area-inset-top, 0px)) var(--gk-gutter) calc(var(--gk-s5) + env(safe-area-inset-bottom, 0px));
+}
+.gk-recap__close {
+  position: absolute;
+  top: calc(var(--gk-s3) + env(safe-area-inset-top, 0px));
+  right: var(--gk-gutter);
+  z-index: 1;
+}
+.gk-recap__head {
+  display: grid;
+  justify-items: center;
+  gap: var(--gk-s1);
+  text-align: center;
+}
+/* the crest: a trophy for every record, a crown on the podium with light turning behind it */
+.gk-recap__crest {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: var(--gk-s1);
+}
+.gk-recap__crest img {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px color-mix(in srgb, var(--gk-action-hi) 35%, transparent));
+  animation: gk-recap-land 600ms var(--gk-ease) both;
+}
+.gk-recap__crest .gk-rays {
+  top: 50%;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+}
+@keyframes gk-recap-land {
+  from { opacity: 0; transform: translateY(-10px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+.gk-recap__eyebrow { color: var(--gk-crystal); }
+.gk-recap__galaxy {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-recap__title {
+  margin-top: var(--gk-s2);
+  font-size: var(--gk-t-hero);
+  line-height: 1.05;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-recap__who {
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink-2);
+}
+.gk-recap__heroes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+  margin-top: var(--gk-s3);
+}
+/* three counts side by side, a rule between them */
+.gk-recap__figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: var(--gk-s3) 0;
+}
+.gk-recap__figures[data-cols='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0;
+}
+.gk-recap__figure {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 var(--gk-s2);
+  text-align: center;
+}
+.gk-recap__figure + .gk-recap__figure {
+  border-left: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+}
+.gk-recap__value {
+  font-size: var(--gk-t-number);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--gk-ink);
+}
+.gk-recap__clan {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3);
+}
+.gk-recap__clanhead {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+}
+.gk-recap__clanhead .gk-label { display: block; }
+.gk-recap__clanname {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-recap__seal {
+  flex: none;
+  padding: 4px var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-action-hi) 60%, transparent);
+  border-radius: var(--gk-r-md);
+  background: color-mix(in srgb, var(--gk-action-hi) 12%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-action-hi);
+}
+.gk-recap__stories {
+  display: grid;
+  gap: var(--gk-s2);
+}
+@media (min-width: 640px) {
+  .gk-recap__stories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.gk-recap__storyhead { color: var(--gk-action-hi); }
+.gk-recap__story {
+  font-size: var(--gk-t-body);
+  line-height: 1.45;
+  color: var(--gk-ink);
+}
+.gk-recap__go {
+  margin-top: auto;
+  padding-top: var(--gk-s3);
+}
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {

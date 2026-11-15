@@ -141,7 +141,7 @@ describe('the personal season ending', () => {
     render(<SeasonRecap result={result()} galaxy="Vantage" players={50} onClose={vi.fn()} />);
 
     const close = screen.getByRole('button', { name: 'Close' });
-    expect(close).toHaveClass('border-line', 'bg-raised', 'text-bone', 'focus-visible:ring-2');
+    expect(close).toHaveClass('gk-round');
   });
 
   it('opens once when the live season freezes and stays quiet after acknowledgement', async () => {

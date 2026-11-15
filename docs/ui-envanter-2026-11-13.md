@@ -1532,6 +1532,13 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 | 7 | Anıt sheet'i | `MonumentSheet` (280) + `MonumentBattleRules` (21), `MonumentRoutePreview` (36) | anıta dalga gönder | zor / kolay; dalga beklemede | v2 | 4 basılı tutma |
 | 8 | Anıt raporu | `MonumentReportSheet` (88) | | | v2 | |
 
+**C18 Sezon özeti ve sonraki sezon ✅ (2026-11-15, yardımcı oturum).** G9 #5 ve #6.
+- **An:** galaksi dondu; komutanın sezon kaydı ekranı kaplar ("ne yaptım, nerede bitirdim?"), sonra yeni galaksinin ne zaman açılacağını görür ve son galaksiye döner. Unvan, sıra, hikâye seçimi ve ne zaman açıldığı değişmedi.
+- **Değişen:** v1'den kite. Tepede arma: kayıtta kupa, kürsüde taç (1. altın, 2–3 gümüş) ve arkasında dönen ışık; açılırken kürsüde `rankup`, değilse onay sesi (bir kez). İki rakam kitin plakasında (sıra; Honor ve altında Hâkimiyet), sayımlar tek camda, hasarlar renkli iki satır, klan kitin amblemi ve "İlk 3 mührü" altın çerçevede, hikâyeler camda. Kapat kitin yuvarlak düğmesi, çıkış tek turuncu `GameButton` (lg). `NextSeason` kitin bilgi şeridi (saat, süre başlıkta, neden altta); galaksi katmanında ve galaksi seçiminde de aynı.
+- **Kopya:** sıra plakasının etiketi kısa "Sıra" (`seasonRecap.place` ×6), "50 komutan arasında 41. sıra" altında; `seasonRecap.rankAlone` kullanılmaz oldu, silindi. Çıkış düğmesi iki satıra iniyordu: tr "Son galaksiyi gez", de "Letzte Galaxie ansehen", fr "Voir la galaxie finale", ja "最後の銀河を見る".
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `season-recap`, `season-recap-quiet`): puan 45→0, 34→0; 12 px altı 32→0, kontrast 15→0, tepkisiz 2→0. `reports/ui-audit/c18-season-recap-after-2026-11-15.md`.
+- **Açık soru:** yok.
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
