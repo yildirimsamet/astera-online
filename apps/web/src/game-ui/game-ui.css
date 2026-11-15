@@ -13325,7 +13325,8 @@ button.gk-fact__head:active .gk-fact__line {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-metal-2) 88%, transparent), color-mix(in srgb, var(--gk-metal-2) 40%, transparent));
+  /* the words reach further right in some languages ("Season ends in"): the veil holds 60 % to the edge */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-metal-2) 88%, transparent) 30%, color-mix(in srgb, var(--gk-metal-2) 60%, transparent));
 }
 .gk-acct__placevalue {
   font-size: var(--gk-t-number);
@@ -14050,7 +14051,7 @@ button.gk-fact__head:active .gk-fact__line {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3; /* a long name in French or Spanish takes a third line */
   overflow-wrap: anywhere;
 }
 .gk-shelf__edition {

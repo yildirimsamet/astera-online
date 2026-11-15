@@ -1749,6 +1749,10 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Test düzeltmesi:** `account-deletion-ui` sahte `/servers` yanıtı şemaya uymuyordu (`placement` yoktu); ekran bu testte hep "ulaşılamıyor" gösteriyormuş. Yanıta `placement: null` eklendi.
 - **Ölçüm** (tr; telefon, dar, masaüstü): puan 43→0; 12 px altı 15→0, kontrast 8→0, 44 px altı 2→0. `reports/ui-audit/c29-servers-after-2026-11-15.md`.
 
+**G10 altı dil ölçümü (2026-11-15, telefon; tr, en, fr, de, es, ja).** `reports/ui-audit/g10-langs-2026-11-15.md`.
+- Raftaki uzun ödül adları (fr "Vice-champion de Domination", es "Guardián de monumentos IV") iki satıra sığmıyordu: levha artık üç satır alıyor. İngilizcede sezon kartının "Season ends in" etiketi resmin aydınlık yerine düşüp 3,5:1'e iniyordu: kartın perdesi sağ kenarda %60'a çıktı. İkisi de yeniden ölçüldü, 0.
+- Kalan: kit sacının başlığında göz-çizgisi ve başlık birkaç piksel kırpılıyor (bütün dillerde, G1 sac başlığı); "Season ends in" üç kelimelik büyük harf etiket (T2, yalnız en; metin menüde de kullanılıyor, kısaltılmadı). `LegacyPeek` (61), ödül sayfası (27) ve açılış sahnesi (14) bu partinin dışında, v2'de.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
