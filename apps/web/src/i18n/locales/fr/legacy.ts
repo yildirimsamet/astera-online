@@ -95,6 +95,7 @@ export const legacy = {
     activeTitleOther: 'Titre actif',
     detailFailed: 'Impossible de charger les détails de la récompense.',
     shelfFull: 'Ta vitrine est pleine. Retire d’abord une pièce dans l’éditeur.',
+    shelfFullShort: 'Vitrine pleine',
     failed: 'La modification n’a pas été enregistrée. Réessaie.',
     loading: 'Chargement de la pièce…',
     cosmetic: 'Purement esthétique. Aucun avantage en jeu.',

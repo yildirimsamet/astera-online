@@ -1794,6 +1794,11 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Ortak:** `PodiumPlace` artık tek kit derecesi (profildeki sezon kartları da onu kullanıyor; kopya `SeasonPlace` silindi). Derece etiketleri büyük harfsiz, "En iyi Hâkimiyet" madalyanın yanına sığsın diye.
 - **Ölçüm** (tr; telefon, dar, masaüstü): küçük vitrin 61→1 (arkalık), profil 6→3; 12 px altı 27→0, kontrast 8→0. `reports/ui-audit/c31-legacy-peek-after-2026-11-15.md`.
 
+**C32 Ödül sayfası ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 3: `AwardSheet`, `LockedAwardSheet`, `AwardStage` çerçevesi.
+- **An:** "Bu parça ne, ne zaman kazandım, kaç kişide var, nasıl kazanılır; vitrine mi koyayım, unvan mı yapayım?" Kurallar ve istekler değişmedi.
+- **Değişen:** Kitin sacı (kupa; kilitli hedefte kilit resmi). Nadirlik, sezon ve kademe kit etiketleri; aktif unvan altın rozet; bilgiler camda satır satır, sahip sayısı altın; "Nasıl kazanılır" camda, sıradaki kademe kitin çubuğunda. Vitrin ve unvan kitin düğmeleri; vitrin doluyken düğme kilit ikonuyla "Vitrin dolu" diyor (yeni kısa anahtar `legacy.award.shelfFullShort`, 6 dil), uzun açıklama altında. Hatalar banner, yeniden dene banner'ın içinde. Sahne çerçevesi kitin metali (`gk-stage`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 27→3 (arkalık); 12 px altı 12→0, kontrast 3→0. `reports/ui-audit/c32-legacy-award-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

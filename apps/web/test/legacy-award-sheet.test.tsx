@@ -61,3 +61,41 @@ describe('the piece opened from another commander', () => {
     expect(screen.getByRole('button', { name: i18n.t('legacy.award.clearTitle') })).toBeEnabled();
   });
 });
+
+/** C32 (2026-11-15): one piece on the kit — its metal named in chips, the facts in glass, the owner's two moves. */
+describe('the piece on the kit', () => {
+  const oldLook = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].flatMap(node => (node.getAttribute('class') ?? '').split(/\s+/))
+      .filter(name => /(^|-)v2(-|$)/.test(name) || ['text-micro', 'text-label', 'text-caption', 'text-body'].includes(name));
+
+  it('wears none of the old surface language on a kit sheet', async () => {
+    const { show } = await context(true);
+    show();
+    await screen.findByText('Season 12 · Andromeda');
+    const award = document.querySelector('[data-legacy-award]');
+    expect(screen.getByRole('dialog')).toHaveClass('gk-sheet');
+    expect(oldLook(award ?? document.body)).toEqual([]);
+    expect(screen.getByRole('button', { name: i18n.t('legacy.award.clearTitle') })).toHaveClass('gk-btn');
+  });
+
+  it('says on the button why a full shelf takes no more', async () => {
+    const { api, profile } = await context(true);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const spare = (await api.legacyCollection(profile.publicId)).awards.find(row => !profile.showcase.some(slot => slot.awardId === row.id));
+    if (!spare || profile.showcase.length < 6) throw new Error('fixture needs a full shelf and a spare piece');
+    render(<QueryClientProvider client={client}><ApiProvider api={api}><AwardSheet profile={profile} award={spare} live={false} onClose={() => undefined} /></ApiProvider></QueryClientProvider>);
+    expect(screen.getByRole('button', { name: i18n.t('legacy.award.shelfFullShort') })).toBeDisabled();
+  });
+
+  it('draws a locked goal on the kit with its progress as a bar', async () => {
+    const { LockedAwardSheet } = await import('../src/legacy/AwardSheet.js');
+    const { LEGACY_CATALOGUE } = await import('@astera/rules');
+    const { fixtureAward } = await import('../src/v2/gallery/LegacyGallery.js');
+    const definition = LEGACY_CATALOGUE.find(row => row.id === 'pirate-hunter');
+    if (!definition) throw new Error('no pirate hunter');
+    render(<LockedAwardSheet award={fixtureAward('pirate-hunter')} definition={definition} goal={10} value={7} live={false} onClose={() => undefined} />);
+    const locked = document.querySelector('[data-legacy-locked]');
+    expect(oldLook(locked ?? document.body)).toEqual([]);
+    expect(screen.getByRole('progressbar', { name: i18n.t('legacy.award.progress') }).closest('.gk-bar, [class*="gk-bar"]')).not.toBeNull();
+  });
+});

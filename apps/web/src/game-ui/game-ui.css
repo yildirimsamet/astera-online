@@ -14546,3 +14546,76 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-peek__seasonplaces { font-weight: 700; color: var(--gk-ink-2); }
 /* a place's ladder keeps its own case: "En iyi Hâkimiyet" reads on one line beside its medal */
 .gk-legacy__placewords .gk-label { text-transform: none; letter-spacing: 0.01em; }
+
+/* ── one piece, one tap deeper (G10, C32) ─────────────────────────────────────── */
+
+.gk-award { gap: var(--gk-s3); padding-bottom: var(--gk-s4); outline: none; }
+.gk-award__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gk-award__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-award__chip .legacy-rarity-dot { width: 6px; height: 6px; border-radius: 50%; }
+.gk-award__facts { display: grid; margin: 0; }
+.gk-award__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-award__fact + .gk-award__fact { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-award__fact > dd,
+.gk-award__fact > :last-child { margin: 0; text-align: right; font-weight: 700; color: var(--gk-ink); }
+.gk-award__fact > .gk-award__owners { color: var(--gk-gold); }
+.gk-award__how {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-award__how > .gk-award__fact { padding: 0; }
+.gk-award__rule {
+  font-size: var(--gk-t-body);
+  line-height: 1.4;
+  color: var(--gk-ink);
+}
+.gk-award__next { display: grid; gap: 4px; }
+.gk-award__count {
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-award__done {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-gold);
+}
+.gk-award__moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+/* the piece's plinth room: a dark frame in the kit's metal, a finger may turn the piece */
+.gk-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+}

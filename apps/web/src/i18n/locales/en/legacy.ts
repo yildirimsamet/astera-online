@@ -95,6 +95,7 @@ export const legacy = {
     activeTitleOther: 'Active title',
     detailFailed: 'Award details could not be loaded.',
     shelfFull: 'Your showcase is full. Remove a piece in the editor first.',
+    shelfFullShort: 'Shelf full',
     failed: 'The change was not saved. Try again.',
     loading: 'Loading the piece…',
     cosmetic: 'Cosmetic only. It gives no advantage in play.',

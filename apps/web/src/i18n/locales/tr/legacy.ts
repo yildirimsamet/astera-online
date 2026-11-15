@@ -95,6 +95,7 @@ export const legacy = {
     activeTitleOther: 'Aktif unvan',
     detailFailed: 'Ödül bilgileri yüklenemedi.',
     shelfFull: 'Vitrinin dolu. Önce düzenleyicide bir parçayı çıkar.',
+    shelfFullShort: 'Vitrin dolu',
     failed: 'Değişiklik kaydedilmedi. Tekrar dene.',
     loading: 'Parça yükleniyor…',
     cosmetic: 'Yalnız görünümdür. Oyunda avantaj vermez.',

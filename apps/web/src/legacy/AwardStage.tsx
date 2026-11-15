@@ -34,7 +34,7 @@ export function AwardStage({ award, live = true }: { award: LegacyAward; live?: 
   const drag = useRef<Drag>({ active: false, x: 0, angle: 0, velocity: 0 });
   const end = () => { drag.current.active = false; };
   return (
-    <div data-legacy-stage className="relative w-full touch-pan-y overflow-hidden rounded-control border border-v2-line bg-v2-void"
+    <div data-legacy-stage className="gk-stage"
       style={{ aspectRatio: `${String(ART.width)} / ${String(ART.height)}` }}
       onPointerDown={event => { drag.current.active = true; drag.current.x = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={event => {
