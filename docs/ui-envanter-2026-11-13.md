@@ -1171,6 +1171,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Kit düğmesi `marks` aldı: dışarıdaki yüzeylerin bulduğu `data-*` işaretleri.
 - **Ölçüm** `g4b1-after-2026-11-15.md`: kapalı yabancı dünya 15 → 0. Açık dosyalar 130–141 → 117–131; kalan `TargetDossier` (G4-d) ile bilinenler/boşluklar (G4-b2).
 
+**G4-b2 bilinenler, boşluklar, rakip geçmişi ✅ (2026-11-15).** Oyuncunun anı: "ne biliyorum, neyi bilmiyorum, nasıl öğrenirim?"
+- Her kaynak (herkese açık, teleskop, sonda, savaş) kitin katlanır bandı; bant artık kitin sesiyle ve titreşimiyle açılıyor (bütün `Band` kullanımları).
+- Her okuma bir kit satırı: etiket ve değer aynı satırda (13 px), altında yaşı ve ne kadar keskin olduğu (12 px, bayatsa uyarı renginde), anlamı bir basış derinde. Fırsat satırı mavi kenarlı.
+- Boşluk aynı satır, kesik uyarı kenarlı; neden önemli olduğu katlı, eksik bilgi ve onu kapatan düğme hiç katlanmıyor. Teleskop kur / izleme yuvası kitin düğmeleri.
+- "Diğer okumalar" ve "Bu sezonki hikâyen" kitin bölüm başlığı; rakip geçmişinin sayıları kit kuyusunda.
+- **Ölçüm** `g4b2-after-2026-11-15.md`: açık dosyalar 117–131 → 88–90, 44 px altı hedef 8 → 2–4. Kalanlar `TargetDossier` (G4-d), Ölüm Yıldızı (G4-j) ve strateji rehberi (G4-b3).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

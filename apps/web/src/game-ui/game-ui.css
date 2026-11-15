@@ -12010,3 +12010,153 @@ button.gk-rcard__door:active {
     letter-spacing: 0.04em;
   }
 }
+
+/* ── what the file knows and does not (G4-b2, 2026-11-15) ───────────────────────
+   A reading: the label and the figure on one line, how old and how sharp under it, its
+   meaning one press deeper. A gap is the same row, dashed in warning, with its close. */
+.gk-facts {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.gk-facts__rows {
+  display: grid;
+  gap: 6px;
+}
+.gk-fact {
+  display: grid;
+  gap: 4px;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--gk-ink) 18%, transparent);
+}
+.gk-fact[data-tone='self'] {
+  border-left-color: var(--gk-self);
+}
+.gk-fact--gap {
+  border-left: 2px dashed color-mix(in srgb, var(--gk-warn) 60%, transparent);
+}
+.gk-fact__head {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 40px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+button.gk-fact__head {
+  min-height: var(--gk-hit);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.gk-fact__head:active .gk-fact__line {
+  transform: translateY(1px);
+}
+.gk-fact__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gk-fact__label {
+  flex-shrink: 0;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-fact__value {
+  min-width: 0;
+  text-align: right;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-fact[data-tone='self'] .gk-fact__value {
+  color: var(--gk-self);
+}
+.gk-fact--gap .gk-fact__value {
+  color: var(--gk-warn);
+}
+.gk-fact__stamp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+.gk-fact__stamp[data-stale] {
+  color: var(--gk-warn);
+}
+.gk-fact__chev {
+  display: inline-grid;
+  margin-left: auto;
+  color: var(--gk-ink-3);
+}
+.gk-fact__chev .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-fact__note {
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-fact__note[data-tone='warn'] {
+  color: var(--gk-warn);
+}
+.gk-fact__act {
+  margin-top: 2px;
+}
+.gk-focus__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* the season's story with a marked commander */
+.gk-rival {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.gk-rival__mark {
+  justify-self: start;
+  border-color: color-mix(in srgb, var(--gk-hostile) 55%, var(--gk-metal-edge));
+  color: var(--gk-hostile-hi);
+}
+.gk-rival__story {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-rival__counts {
+  display: grid;
+  gap: 6px;
+}
+.gk-rival__cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.gk-rival__cell {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.gk-rival__cell .gk-label {
+  overflow-wrap: anywhere;
+}
+.gk-rival__cell .gk-num,
+.gk-rival__dominion .gk-num {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.gk-rival__dominion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}

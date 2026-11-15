@@ -918,8 +918,10 @@ export function Band({
   return (
     <button
       type="button"
+      {...OWN_SOUND}
       aria-expanded={open === true}
       onClick={() => {
+        playSound('tap');
         haptic('tap');
         onToggle();
       }}

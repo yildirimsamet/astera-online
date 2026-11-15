@@ -88,3 +88,58 @@ describe('a foreign world’s commitments on the kit', () => {
     expect(oldPaint(rail().querySelector('.gk-focus__acts')!)).toEqual([]);
   });
 });
+
+/**
+ * G4-b2 (2026-11-15): WHAT THE FILE KNOWS AND DOES NOT, ON THE KIT. Each source a kit fold
+ * that says how many readings it holds; each reading a row with its age and how sharp it is;
+ * each gap the same row, dashed in warning, with the press that would close it.
+ */
+describe('a foreign world’s readings on the kit', () => {
+  const probed: IntelView = {
+    ...intel,
+    probeReports: [{
+      targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+      at: new Date(-3 * 60 * 60_000), accuracy: 0.6, detected: false,
+      stock: { low: 400, high: 900 }, deuteriumStock: { low: 20, high: 50 },
+      defence: { low: 0, high: 0 }, fleetSize: { low: 3, high: 7 }, fleetHome: true,
+      classReading: { kind: 'UNREAD' },
+    }],
+  };
+  const showFile = (data: IntelView = intel, extra: Partial<Parameters<typeof PlanetFocus>[0]> = {}) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus target={world()} planet={mine} intel={data} reports={[]} now={0}
+          onClose={vi.fn()} onAttack={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open onToggle={vi.fn()} {...extra} />
+      </Wrapper>,
+    );
+  };
+
+  it('folds each source under a kit press that counts what it holds', () => {
+    window.localStorage.setItem('astera.accordion.dossier', JSON.stringify(['public', 'telescope', 'probe', 'battle']));
+    showFile(probed);
+    const bands = [...document.querySelectorAll('[data-fact-source]')];
+    expect(bands.length).toBeGreaterThan(0);
+    for (const band of bands) {
+      const fold = band.querySelector('[aria-expanded]')!;
+      expect(fold).toHaveAttribute('data-own-sound');
+      expect(fold).toHaveClass('gk-band--fold');
+      expect(oldPaint(band)).toEqual([]);
+    }
+    expect(document.querySelector('[data-fact]')).toHaveClass('gk-fact');
+  });
+
+  it('draws a gap as the same row, its fold a kit press, its close a kit press', () => {
+    showFile();
+    const gap = document.querySelector<HTMLElement>('[data-gap]')!;
+    expect(gap).toHaveClass('gk-fact', 'gk-fact--gap');
+    expect(gap.querySelector('button[aria-expanded]')).toHaveAttribute('data-own-sound');
+    for (const row of document.querySelectorAll('[data-gap]')) expect(oldPaint(row)).toEqual([]);
+  });
+
+  it('tells a marked rival’s story in the kit’s language', () => {
+    showFile(probed, { rivalSlot: 0 });
+    const history = screen.getByRole('region', { name: 'Your story this season' });
+    expect(oldPaint(history)).toEqual([]);
+  });
+});

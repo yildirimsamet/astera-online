@@ -98,11 +98,10 @@ import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { CostLine, GameButton, Glyph, RoundButton, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { CostLine, GameButton, Glyph, RoundButton, SectionTag, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
-import { Icon } from '../v2/icons.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { useNativeBack } from '../platform/nativeBack.js';
@@ -184,7 +183,6 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
  */
 const BTN = 'flex min-h-10 items-center justify-center gap-1.5 rounded-control px-3 text-center font-v2-ui text-caption font-semibold leading-tight transition-colors disabled:cursor-not-allowed';
 const BTN_PRIMARY = `${BTN} bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3`;
-const BTN_GHOST = `${BTN} border border-v2-line-hi bg-v2-raise/60 text-v2-ink disabled:text-v2-ink-3`;
 
 /**
  * FOCUS OPENS CLOSED. Owner decision.
@@ -347,6 +345,7 @@ const SOURCE_ORDER: readonly Source[] = ['public', 'telescope', 'probe', 'battle
 
 function FactRow({ fact }: { fact: Fact }) {
   const [noted, setNoted] = useState(false);
+  const fold = useOwnPress(() => { playSound('tap'); haptic('tap'); setNoted((open) => !open); });
   const stale = isStale(fact.ageMinutes);
   const stamp = [
     fact.ageMinutes === null ? null : staleness(fact.ageMinutes),
@@ -360,39 +359,28 @@ function FactRow({ fact }: { fact: Fact }) {
   */
   const head = (
     <>
-      <span className="flex items-baseline justify-between gap-3">
-        <span className="shrink-0 text-caption text-v2-ink-2">{fact.label}</span>
-        <span className={`min-w-0 text-right text-caption font-semibold tabular-nums ${fact.opportunity ? 'text-v2-self' : 'text-v2-ink'}`}>
-          {fact.value}
-        </span>
+      <span className="gk-fact__line">
+        <span className="gk-fact__label">{fact.label}</span>
+        <span className="gk-fact__value gk-num">{fact.value}</span>
       </span>
       {(stamp !== '' || fact.note) && (
-        <span className="mt-0.5 flex items-center gap-1 text-micro">
-          <span className={stale ? 'text-v2-warn' : 'text-v2-ink-3'}>{stamp}</span>
-          {fact.note && (
-            <Icon id="i-chev" className={`ml-auto size-3 shrink-0 text-v2-ink-3 transition-transform ${noted ? '-rotate-90' : 'rotate-90'}`} />
-          )}
+        <span className="gk-fact__stamp" {...(stale ? { 'data-stale': '' } : {})}>
+          <span>{stamp}</span>
+          {fact.note && <span className="gk-fact__chev" aria-hidden="true"><Glyph id={noted ? 'up' : 'down'} /></span>}
         </span>
       )}
     </>
   );
 
   return (
-    <div
-      data-fact={factId(fact)}
-      className={`border-l-2 py-1.5 pl-2.5 ${fact.opportunity ? 'border-v2-self' : 'border-v2-line'}`}
-    >
+    <div data-fact={factId(fact)} className="gk-fact" {...(fact.opportunity ? { 'data-tone': 'self' } : {})}>
       {fact.note ? (
-        <button
-          type="button"
-          aria-expanded={noted}
-          onClick={() => { setNoted((open) => !open); }}
-          className="block w-full text-left"
-        >
+        <button type="button" {...OWN_SOUND} aria-expanded={noted} onPointerDown={fold.onPointerDown} onClick={fold.onClick}
+          className="gk-fact__head">
           {head}
         </button>
-      ) : head}
-      {noted && fact.note && <p data-fact-note className="mt-1 text-micro leading-snug text-v2-ink-3">{fact.note}</p>}
+      ) : <div className="gk-fact__head">{head}</div>}
+      {noted && fact.note && <p data-fact-note className="gk-fact__note">{fact.note}</p>}
     </div>
   );
 }
@@ -430,36 +418,31 @@ function GapRow({
 }) {
   const { t } = useTranslation();
   const [showWhy, setShowWhy] = useState(false);
+  const fold = useOwnPress(() => { playSound('tap'); haptic('tap'); setShowWhy((open) => !open); });
 
   /*
     THE SAME ROW AS A READING (M2), dashed and in warn because it is a gap you can close
     (K2): the label and what is missing on one line, "unknown" and the fold under it.
   */
   return (
-    <div data-gap className="border-l-2 border-dashed border-v2-warn/50 py-1.5 pl-2.5">
-      <button
-        type="button"
-        aria-expanded={showWhy}
-        className="block w-full text-left"
-        onClick={() => { setShowWhy((open) => !open); }}
-      >
-        <span className="flex items-baseline justify-between gap-3">
-          <span className="shrink-0 text-caption text-v2-ink-2">{label}</span>
+    <div data-gap className="gk-fact gk-fact--gap">
+      <button type="button" {...OWN_SOUND} aria-expanded={showWhy} className="gk-fact__head"
+        onPointerDown={fold.onPointerDown} onClick={fold.onClick}>
+        <span className="gk-fact__line">
+          <span className="gk-fact__label">{label}</span>
           {/* The FACT is never folded: it is the reading, not the argument. */}
-          <span data-gap-missing className="min-w-0 text-right text-caption font-semibold text-v2-warn">{missing}</span>
+          <span data-gap-missing className="gk-fact__value">{missing}</span>
         </span>
-        <span className="mt-0.5 flex items-center gap-1 text-micro text-v2-ink-3">
-          {t('focus.unknown')}
-          <Icon id="i-chev" className={`ml-auto size-3 shrink-0 transition-transform ${showWhy ? '-rotate-90' : 'rotate-90'}`} />
+        <span className="gk-fact__stamp">
+          <span>{t('focus.unknown')}</span>
+          <span className="gk-fact__chev" aria-hidden="true"><Glyph id={showWhy ? 'up' : 'down'} /></span>
         </span>
       </button>
 
-      {showWhy && (
-        <p data-gap-why className="mt-1 text-micro leading-snug text-v2-ink-2">{why}</p>
-      )}
+      {showWhy && <p data-gap-why className="gk-fact__note">{why}</p>}
       {/* A refusal is not a pitch — it is why the control below will not work. */}
-      {blocked && <p className="mt-1 text-micro leading-snug text-v2-warn">{blocked}</p>}
-      {action && <div className="mt-1.5">{action}</div>}
+      {blocked && <p className="gk-fact__note" data-tone="warn">{blocked}</p>}
+      {action && <div className="gk-fact__act">{action}</div>}
     </div>
   );
 }
@@ -1204,15 +1187,13 @@ export function PlanetFocus({
         probe brought home sat at the same weight as the world's public position.
       */}
       {others.length > 0 && (
-        <h3 className="mb-1.5 border-t border-v2-line pt-3 text-caption font-semibold text-v2-ink">
-          {t('dossier.page.others')}
-        </h3>
+        <SectionTag as="h3">{t('dossier.page.others')}</SectionTag>
       )}
       {SOURCE_ORDER.map((source) => {
         const rows = others.filter((fact) => fact.source === source);
         if (rows.length === 0) return null;
         return (
-          <section key={source} data-fact-source={source} className="mb-2">
+          <section key={source} data-fact-source={source} className="gk-facts">
             <Band
               label={sourceLabel(source)}
               count={rows.length}
@@ -1220,7 +1201,7 @@ export function PlanetFocus({
               onToggle={() => { dossierBands.toggle(source); }}
             />
             {dossierBands.isOpen(source) && (
-              <div className="mt-2 space-y-2">
+              <div className="gk-facts__rows">
                 {rows.map((fact) => <FactRow key={fact.key} fact={fact} />)}
               </div>
             )}
@@ -1228,7 +1209,7 @@ export function PlanetFocus({
         );
       })}
 
-      <div className="space-y-2">
+      <div className="gk-facts__rows">
         {read.gaps.map((gap) => (
           <GapRow
             key={gap.key}
@@ -2207,41 +2188,29 @@ function RivalHistory({
     the dominion, the one pair of figures, gets the line under them.
   */
   const cell = (label: string, value: string) => (
-    <div className="flex min-w-0 flex-col">
-      <dt className="truncate text-micro text-v2-ink-3">{label}</dt>
-      <dd className="font-v2-mono text-caption font-semibold text-v2-ink">{value}</dd>
+    <div className="gk-rival__cell">
+      <dt className="gk-label">{label}</dt>
+      <dd className="gk-num">{value}</dd>
     </div>
   );
   return (
-    <section
-      className="mb-3 flex flex-col gap-1.5 border-t border-v2-line pt-3"
-      aria-label={t('focus.planet.rivalHeading')}
-    >
-      <div className="flex items-baseline gap-2">
-        <h3 className="text-caption font-semibold text-v2-ink">{t('focus.planet.rivalHeading')}</h3>
-        {marked && (
-          <span className="rounded-chip border border-v2-rival/60 px-1 text-micro text-v2-rival">
-            {t('focus.planet.rivalMarkedBadge')}
-          </span>
-        )}
-        {lastAt > 0 && (
-          <span className="ml-auto shrink-0 text-micro text-v2-ink-3">
-            {t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) })}
-          </span>
-        )}
-      </div>
-      <p className="text-caption leading-snug text-v2-ink-2">{story}</p>
-      {marked && <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.rivalPurpose')}</p>}
+    <section className="gk-rival" aria-label={t('focus.planet.rivalHeading')}>
+      <SectionTag as="h3" aside={lastAt > 0 ? t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) }) : undefined}>
+        {t('focus.planet.rivalHeading')}
+      </SectionTag>
+      {marked && <span className="gk-chip gk-rival__mark">{t('focus.planet.rivalMarkedBadge')}</span>}
+      <p className="gk-rival__story">{story}</p>
+      {marked && <p className="gk-sub">{t('focus.planet.rivalPurpose')}</p>}
       {summary && (
-        <dl className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-deep/40 px-2.5 py-2">
-          <div className="grid grid-cols-3 gap-2">
+        <dl className="gk-well gk-rival__counts">
+          <div className="gk-rival__cells">
             {cell(t('focus.planet.rivalEncounters'), String(summary.battles))}
             {cell(t('focus.planet.rivalYourRaids'), String(summary.attacks))}
             {cell(t('focus.planet.rivalTheirRaids'), String(summary.defences))}
           </div>
-          <div className="flex items-baseline justify-between gap-2 border-t border-v2-line/60 pt-1.5">
-            <dt className="text-micro text-v2-ink-3">{t('focus.planet.rivalDominion')}</dt>
-            <dd className="font-v2-mono text-caption font-semibold text-v2-ink">
+          <div className="gk-rival__dominion">
+            <dt className="gk-label">{t('focus.planet.rivalDominion')}</dt>
+            <dd className="gk-num">
               {t('focus.planet.rivalDominionValue', {
                 gained: compact(summary.dominionGained),
                 lost: compact(summary.dominionLost),
@@ -2254,7 +2223,6 @@ function RivalHistory({
   );
 }
 
-/** The collapsed rail's single line. Never claims ignorance the player does not have. */
 function Headline({ of }: { of: HeadlineKind }) {
   const { t } = useTranslation();
   switch (of.kind) {
@@ -2312,40 +2280,29 @@ function CloseGap({
   if (gap.closes === 'telescope') {
     if (telescope === 0) {
       return (
-        <button type="button" className={BTN_GHOST} onClick={onInstallTelescope}>
-          {t('focus.planet.installTelescope')}
-        </button>
+        <GameButton size="sm" glyph="eye" onPress={onInstallTelescope}>{t('focus.planet.installTelescope')}</GameButton>
       );
     }
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="gk-focus__slots">
         {Array.from({ length: telescopeSlots(telescope) }, (_, slot) => {
           const current = intel?.watching.find((w) =>
             w.slot === slot && (!w.observerPlanetId || w.observerPlanetId === observerPlanetId));
           return (
-            <button
-              key={slot}
-              type="button"
-              className={BTN_GHOST}
-              disabled={watch.isPending}
-              onClick={() => {
+            <GameButton key={slot} size="sm" glyph="eye" pending={watch.isPending}
+              onPress={() => {
                 watch.mutate(
                   { targetPlanetId: target.id, slot },
                   {
-                    onSuccess: () => {
-                      say(t('focus.planet.watching', { target: target.name }));
-                    },
-                    onError: (err) => {
-                      say(describe(err), 'error');
-                    },
+                    onSuccess: () => { say(t('focus.planet.watching', { target: target.name })); },
+                    onError: (err) => { say(describe(err), 'error'); },
                   },
                 );
-              }}
-            >
+              }}>
               {current
                 ? t('focus.planet.replaceSlot', { slot: slot + 1, target: current.targetName })
                 : t('focus.planet.watchSlot', { slot: slot + 1 })}
-            </button>
+            </GameButton>
           );
         })}
       </div>
