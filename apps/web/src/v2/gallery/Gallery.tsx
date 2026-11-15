@@ -662,7 +662,7 @@ const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
 
 type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' | 'menu-ended';
 
-function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-archive' }) {
+function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-honor' | 'leaderboard-archive' }) {
   const [client] = useState(() => {
     const next = new QueryClient();
     next.setQueryData(keys.rewards, { chains: [], claimable: 2 });
@@ -676,6 +676,26 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       })),
       you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', score: 420, clan: null, isBot: false },
     });
+    if (page === 'leaderboard-honor') {
+      // The live Honor race (C19): the reader 12th, three rivals close, a prize below full, a season ten days from its end.
+      const honorRow = (index: number) => ({
+        rank: index + 1, playerId: `gallery-${String(index)}`, username: index === 11 ? 'Samet' : `Commander ${String(index + 1)}`,
+        country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${String(index)}`, planetName: `World ${String(index + 1)}`,
+        skinId: index === 11 ? 'planet-ice' : null, score: 98_400_000 - index * 6_300_000, honor: 98_400_000 - index * 6_300_000,
+        dominion: 2_400 - index * 150, clan: index === 1 || index === 11 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
+      });
+      const ladder = Array.from({ length: 16 }, (_, index) => honorRow(index));
+      next.setQueryData(keys.leaderboard, {
+        ranking: 'HONOR', honorEnabled: true, honorSoloCredit: false, honorStartsAt: null, ladder, you: { ...ladder[11], isBot: false },
+        honorReward: { rank: 12, honor: 29_100_000, nominal: { alloy: 1_750, crystal: 1_250, deuterium: 250 },
+          reward: { alloy: 820, crystal: 590, deuterium: 118 }, fullThreshold: 61_250_000 },
+      });
+      next.setQueryData(keys.season, {
+        seasonId: ARCHIVE_ID, shard: 'EU-1', shardName: 'Vantage', seed: 11, status: 'live',
+        startsAt: new Date(NOW - 4 * 24 * 60 * MIN), endsAt: new Date(NOW + 10 * 24 * 60 * MIN), playerCap: 1_000, players: 188,
+        rivals: [], shieldUntil: null, shieldKind: null,
+      });
+    }
     if (page === 'leaderboard-archive') {
       next.setQueryData(keys.season, {
         seasonId: ARCHIVE_ID,
@@ -749,7 +769,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
               />
             </div>
           </Sheet>
-        ) : page === 'leaderboard' ? (
+        ) : page === 'leaderboard' || page === 'leaderboard-honor' ? (
           <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
@@ -1116,6 +1136,7 @@ function Views({ view }: { view: string }) {
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
+  if (view === 'leaderboard-honor') return <GalleryCommander page="leaderboard-honor" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
   if (view === 'ufo-probe-flight') return <UfoProbeGallery />;

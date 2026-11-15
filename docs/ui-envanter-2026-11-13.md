@@ -1539,6 +1539,13 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `season-recap`, `season-recap-quiet`): puan 45→0, 34→0; 12 px altı 32→0, kontrast 15→0, tepkisiz 2→0. `reports/ui-audit/c18-season-recap-after-2026-11-15.md`.
 - **Açık soru:** yok.
 
+**C19 Canlı sıralama, ödül tahtası ve puan göstergesi ✅ (2026-11-15, yardımcı oturum).** G9 #2 (+ C16a'dan kalan `RankingScores`).
+- **An:** "Neredeyim, kimi geçebilirim, ne kazanırım?" Sıra, ödül hesabı (eşitlikte paylaşım dahil), aradaki puan ve arama mantığı değişmedi.
+- **Değişen:** Honor/Hâkimiyet kitin sekmeleri (ses, titreşim). Kendi sıran ve Honor'un tek camda büyük rakamla, altında "X'e yetişmek için" satırı; sezon ödülü camda (kazanılan / tam paket, resimli); kurallar kapalı "Honor nasıl kazanılır?" satırında. Ödül tahtası kitin etiketiyle (kalan süre yanında), sıra tablosu 44 px'lik defter satırı. Her komutan tek defter satırı (sıra/madalya, dünya, bayrak · dünya adı, ad, puan çubuğu ve puanlar; ödül altında): satır ~200 → ~87 px. Başka komutanın adı dünyasına giden 44 px kapı (önce altı çizili ad); senin satırın yeşil kenarlı ve "SEN". Arama kitin cam alanı. `RankingScores` kitte: Honor gövde boyunda, Hâkimiyet 12 px tabanda (önce 10 px). Önceki sezon makbuzu kitin camında.
+- **Kaldırılan:** `Segmented`, v1/v2 sınıfları, satır adının iki satır kırpması.
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-honor`): puan 287→0 (Honor), 81→0 (Hâkimiyet); 12 px altı 155→0, kontrast 9→0, 44 px altı 30→0, tepkisiz 30→0, kesilen 32→0. Honor ekranında kelime/ekran 104→127 (satırlar sıklaştı, daha çok komutan sığıyor). `reports/ui-audit/c19-leaderboard-after-2026-11-15.md`.
+- **Kalan:** `HonorBenefitsSection` (Honor kademesi kartı, galeri verisinde yok) hâlâ v2; arşiv tarafıyla (C20) birlikte bakılacak.
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

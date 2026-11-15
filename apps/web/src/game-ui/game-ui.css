@@ -9594,6 +9594,268 @@ button.gk-probe__head:active {
   padding-top: var(--gk-s3);
 }
 
+/* ── C19: the live ladder, its prize board, and the Honor/Dominion figures (G9 #1–#2) ── */
+/* Honor first in ink at body size, Dominion under it at the floor; each with its mark */
+.gk-scores {
+  display: inline-grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+}
+.gk-scores__line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0 6px;
+  max-width: 100%;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-scores__line[data-rank='honor'] {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-scores__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gk-scores__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.gk-scores__line[data-rank='honor'] .gk-scores__icon { color: var(--gk-self); }
+.gk-scores__fig { overflow-wrap: anywhere; }
+
+.gk-lb {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s3) var(--gk-gutter) var(--gk-s5);
+}
+.gk-lb__race,
+.gk-lb__board,
+.gk-lb__nearby {
+  display: grid;
+  gap: var(--gk-s3);
+}
+.gk-lb__lead { display: grid; gap: 4px; }
+/* the reader's place and Honor: the two numbers the page is opened for */
+.gk-lb__mine {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  gap: var(--gk-s2) var(--gk-s3);
+  padding: var(--gk-s3);
+}
+.gk-lb__place,
+.gk-lb__honor {
+  display: grid;
+  gap: 2px;
+}
+.gk-lb__honor { justify-items: end; text-align: right; }
+.gk-lb__placefig,
+.gk-lb__honorfig {
+  font-size: var(--gk-t-hero);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-lb__honorfig { color: var(--gk-self); }
+.gk-lb__next {
+  grid-column: 1 / -1;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-lb__prize,
+.gk-lb__standing {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-lb__prizehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-lb__chip {
+  padding: 2px var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 45%, transparent);
+  border-radius: var(--gk-r-md);
+  background: color-mix(in srgb, var(--gk-self) 10%, transparent);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-self);
+}
+.gk-lb__of {
+  font-size: var(--gk-t-floor);
+  font-weight: 400;
+  color: var(--gk-ink-2);
+}
+.gk-lb__holding {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-alloy-hi);
+}
+.gk-lb__tiers { width: 100%; text-align: left; touch-action: manipulation; }
+.gk-lb__tiers:active { background: linear-gradient(90deg, color-mix(in srgb, var(--gk-ink) 7%, transparent), transparent 85%); }
+.gk-ledger__mark[data-tone='alloy'] { color: var(--gk-alloy-hi); }
+.gk-rules__chev[data-open] { transform: rotate(180deg); }
+.gk-lb__tierlist { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+/* a desk has room to read the ten places as two columns */
+@media (min-width: 768px) {
+  .gk-lb__tierlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gk-lb__tier:nth-child(2) { border-top: 0; }
+}
+.gk-lb__tier {
+  display: grid;
+  grid-template-columns: 32px auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-lb__tier + .gk-lb__tier { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 40%, transparent); }
+.gk-lb__piles { gap: var(--gk-s2) var(--gk-s3); justify-content: flex-end; }
+.gk-lb__search {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--gk-s2) 0;
+  background: var(--gk-void);
+}
+.gk-lb__search .gk-field__input { width: 100%; }
+/* one commander, one line: place, world, who, score; the prize below when places pay */
+.gk-lb__list { display: grid; }
+.gk-lb__item { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+.gk-lb__item + .gk-lb__item { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+.gk-lb__row {
+  display: grid;
+  grid-template-columns: 28px 36px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--gk-s2);
+  min-height: 56px;
+  padding: 6px var(--gk-s2);
+}
+.gk-ledger > .gk-lb__row + .gk-lb__row { border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 60%, transparent); }
+.gk-lb__row[data-self] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 16%, transparent), transparent 80%);
+  box-shadow: inset 3px 0 0 var(--gk-self);
+}
+.gk-lb__rank {
+  justify-self: center;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-lb__medal { justify-self: center; }
+.gk-lb__who {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-width: 0;
+  min-height: var(--gk-hit);
+  text-align: left;
+}
+.gk-lb__door {
+  border-radius: var(--gk-r-md);
+  touch-action: manipulation;
+}
+.gk-lb__door:active { background: color-mix(in srgb, var(--gk-ink) 7%, transparent); }
+.gk-lb__words {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.gk-lb__flagline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.gk-lb__world {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-lb__name {
+  overflow-wrap: anywhere;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gk-ink);
+}
+.gk-lb__door .gk-lb__name { color: var(--gk-crystal); }
+.gk-lb__tag { color: var(--gk-crystal); }
+.gk-lb__you {
+  flex: none;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gk-self);
+}
+.gk-lb__score {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  max-width: 9.5rem;
+}
+@media (max-width: 340px) {
+  .gk-lb__score { max-width: 7.5rem; }
+}
+/* how far ahead (or, in Dominion, behind) on one scale for the whole ladder */
+.gk-lb__bar {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-metal-edge) 60%, transparent);
+}
+.gk-lb__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--gk-ink) 40%, transparent);
+}
+.gk-lb__bar [data-score-bar] {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  background: var(--gk-self);
+}
+.gk-lb__bar [data-score-bar][data-dir='back'] {
+  right: 50%;
+  left: auto;
+  background: var(--gk-hostile);
+}
+.gk-lb__bar [data-score-bar][data-ranking='honor'][data-dir='back'] { background: var(--gk-ink-3); }
+.gk-lb__prizeline {
+  grid-column: 3 / -1;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+.gk-lb__rowprize { gap: var(--gk-s2); font-size: var(--gk-t-floor); }
+.gk-lb__rowprize img { width: 14px; height: 14px; }
+.gk-lb__noprize {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+
 /* ── the shipyard's order sheet: the hull card, its figures, the matchup and the room (G2-e, 2026-11-14) ── */
 
 .gk-build {

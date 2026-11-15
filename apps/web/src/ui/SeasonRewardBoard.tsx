@@ -6,8 +6,12 @@ import { full } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { RESOURCE_ART } from './assets.js';
-import { ChevronIcon, RewardIcon } from './icons/index.js';
 import { Medal, isPlace } from './Medal.js';
+import { Glyph } from '../game-ui/icons.js';
+import { SectionTag } from '../game-ui/surfaces.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from './kit/useOwnPress.js';
 
 /**
  * WHY A COMMANDER IS STILL HERE IN WEEK TWO.
@@ -46,6 +50,7 @@ export function SeasonRewardBoard({
   // Hooks stay above the early return: pre-program cycles still render this
   // component and must not change the hook order when a refetch resolves.
   const tiers = useAccordion('season-reward-tiers', []);
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); tiers.toggle('tiers'); });
   const honor = board?.ranking === 'HONOR';
   // Honor is frozen to the v1 basis, independently of the current Dominion program.
   const basis = honor ? seasonRankRewardProgram(1) : null;
@@ -82,74 +87,42 @@ export function SeasonRewardBoard({
     : null;
 
   return (
-    <section
-      className="border-b border-line-soft px-2 py-3"
-      aria-label={t('leaderboard.rewards.title')}
-    >
-      <header className="flex items-baseline gap-2">
-        <RewardIcon className="size-4 shrink-0 text-opportunity" />
-        <h2 className="legend text-opportunity">{t('leaderboard.rewards.title')}</h2>
-        <span className="rail-soft flex-1" />
-        {left === null ? null : (
-          <span className="num shrink-0 text-micro text-faint">
-            {t('leaderboard.rewards.left', { duration: duration(left) })}
-          </span>
-        )}
-      </header>
+    <section className="gk-lb__board" aria-label={t('leaderboard.rewards.title')}>
+      <SectionTag as="h2" aside={left === null ? undefined : <span className="gk-num">{t('leaderboard.rewards.left', { duration: duration(left) })}</span>}>
+        {t('leaderboard.rewards.title')}
+      </SectionTag>
 
-      <p className="mt-2 text-label leading-snug text-dim">
+      <p className="gk-report__copy">
         {honor ? t('leaderboard.rewards.honorExplain', { places }) : t('leaderboard.rewards.explain', { places, minimum: full(program.minimumDominion) })}
       </p>
 
-      <div className="plate plate-cut mt-3 overflow-hidden">
+      <div className="gk-ledger">
         <button
           type="button"
+          {...OWN_SOUND}
           aria-expanded={tableOpen}
           aria-controls="season-reward-tier-list"
-          onClick={() => { tiers.toggle('tiers'); }}
-          className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-crystal"
+          onPointerDown={toggle.onPointerDown}
+          onClick={toggle.onClick}
+          className="gk-ledger__row gk-lb__tiers"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-opportunity/30 bg-opportunity/8 text-opportunity">
-            <RewardIcon className="size-4" />
+          <span className="gk-ledger__mark" data-tone="alloy" aria-hidden="true"><Glyph id="crate" /></span>
+          <span className="gk-ledger__words">
+            <span className="gk-ledger__title">{t('leaderboard.rewards.table')}</span>
+            <span className="gk-ledger__sub">{t('leaderboard.rewards.tableCount', { places })}</span>
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="legend block text-bone">{t('leaderboard.rewards.table')}</span>
-            <span className="mt-0.5 block text-micro text-faint">
-              {t('leaderboard.rewards.tableCount', { places })}
-            </span>
-          </span>
-          <ChevronIcon
-            className={`size-4 shrink-0 text-faint transition-transform ${tableOpen ? 'rotate-90' : ''}`}
-          />
+          <span className="gk-rules__chev" {...(tableOpen ? { 'data-open': '' } : {})} aria-hidden="true"><Glyph id="down" /></span>
         </button>
 
         {tableOpen ? (
-          <ol
-            id="season-reward-tier-list"
-            aria-label={t('leaderboard.rewards.table')}
-            className="grid border-t border-line-soft bg-void/35 md:grid-cols-2"
-          >
+          <ol id="season-reward-tier-list" aria-label={t('leaderboard.rewards.table')} className="gk-lb__tierlist">
             {program.tiers.map((tier) => (
-              <li
-                key={tier.place}
-                className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 border-b border-line-soft px-3 py-2 md:odd:border-r"
-              >
-                {isPlace(tier.place) ? (
-                  <Medal place={tier.place} size={16} className="mx-auto" />
-                ) : (
-                  <span className="num text-center text-label text-faint">#{tier.place}</span>
-                )}
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="legend w-16 shrink-0 text-dim">
-                    {t('leaderboard.rewards.place', { place: tier.place })}
-                  </span>
-                  <Prize
-                    alloy={tier.alloy}
-                    crystal={tier.crystal}
-                    deuterium={tier.deuterium}
-                    size="sm"
-                  />
-                </span>
+              <li key={tier.place} className="gk-lb__tier">
+                {isPlace(tier.place)
+                  ? <Medal place={tier.place} size={16} className="gk-lb__medal" />
+                  : <span className="gk-lb__rank gk-num">#{tier.place}</span>}
+                <span className="gk-report__label">{t('leaderboard.rewards.place', { place: tier.place })}</span>
+                <Prize alloy={tier.alloy} crystal={tier.crystal} deuterium={tier.deuterium} />
               </li>
             ))}
           </ol>
@@ -158,28 +131,24 @@ export function SeasonRewardBoard({
 
       {/* THE READER'S OWN LINE, STILL ABOVE THE LIVE LADDER. */}
       {!honor || yours === null ? <div
-        className={`plate mt-3 px-3 py-3 ${winning ? 'plate-cut' : 'plate-sunk'}`}
+        className="gk-well gk-lb__standing"
         data-reward-standing={winning ? 'paid' : 'unpaid'}
       >
         {yours === null ? (
-          <p className="text-label text-faint">{t('leaderboard.rewards.unranked')}</p>
+          <p className="gk-report__copy">{t('leaderboard.rewards.unranked')}</p>
         ) : winning && mine ? (
           <>
-            <p className="legend flex items-center gap-2 text-opportunity">
-              {isPlace(yours) ? <Medal place={yours} size={22} className="text-crystal/70" /> : null}
-              <span className="truncate">{t('leaderboard.rewards.holding', { place: yours })}</span>
+            <p className="gk-lb__holding">
+              {isPlace(yours) ? <Medal place={yours} size={22} className="gk-lb__medal" /> : null}
+              <span>{t('leaderboard.rewards.holding', { place: yours })}</span>
             </p>
-            <Prize alloy={mine.alloy} crystal={mine.crystal} deuterium={mine.deuterium} size="lg" />
-            <p className="mt-2 text-label leading-snug text-dim">
-              {t('leaderboard.rewards.paidWhen')}
-            </p>
+            <Prize alloy={mine.alloy} crystal={mine.crystal} deuterium={mine.deuterium} />
+            <p className="gk-report__copy">{t('leaderboard.rewards.paidWhen')}</p>
           </>
         ) : (
           <>
-            <p className="legend text-crystal">
-              {t('leaderboard.rewards.standing', { place: yours })}
-            </p>
-            <p className="mt-1 text-body leading-snug text-bone">
+            <p className="gk-label">{t('leaderboard.rewards.standing', { place: yours })}</p>
+            <p className="gk-report__copy" data-strong="">
               {board?.you?.isBot === true
                 ? t('leaderboard.rewards.botIneligible')
                 : minimumNeeded > 0
@@ -191,40 +160,19 @@ export function SeasonRewardBoard({
           </>
         )}
       </div> : null}
-
     </section>
   );
 }
 
 /** The three piles, always in the same order and always with their own art. */
-function Prize({
-  alloy,
-  crystal,
-  deuterium,
-  size,
-}: {
-  alloy: number;
-  crystal: number;
-  deuterium: number;
-  size: 'sm' | 'lg';
-}) {
+function Prize({ alloy, crystal, deuterium }: { alloy: number; crystal: number; deuterium: number }) {
   const { t } = useTranslation();
-  const art = size === 'lg' ? 'size-5' : 'size-3.5';
-  const text = size === 'lg' ? 'text-body text-bone' : 'text-label text-dim';
   return (
-    <span className={`flex min-w-0 flex-1 items-center gap-3 ${size === 'lg' ? 'mt-2' : ''}`}>
-      {([
-        ['alloy', alloy],
-        ['crystal', crystal],
-        ['deuterium', deuterium],
-      ] as const).map(([resource, amount]) => (
-        <span key={resource} className="flex min-w-0 items-center gap-1">
-          <img
-            src={RESOURCE_ART[resource]}
-            alt={t(`vocabulary.resource.${resource}`)}
-            className={`${art} shrink-0 object-contain`}
-          />
-          <span className={`num truncate ${text}`}>{full(amount)}</span>
+    <span className="gk-haul__row gk-num gk-lb__piles">
+      {([['alloy', alloy], ['crystal', crystal], ['deuterium', deuterium]] as const).map(([resource, amount]) => (
+        <span key={resource} className="gk-haul__res" data-res={resource}>
+          <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
+          {full(amount)}
         </span>
       ))}
     </span>
