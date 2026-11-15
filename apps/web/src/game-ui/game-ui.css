@@ -15674,3 +15674,29 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-might__count { font-size: var(--gk-t-small); font-weight: 800; color: var(--gk-self); }
 .gk-might__bar { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--gk-ink) 12%, transparent); overflow: hidden; }
 .gk-might__bar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 60%, transparent), var(--gk-self)); }
+
+/* ── G7-e: the crew — a lamp for who is active, names with their chips, a leader's two moves on each row ── */
+.gk-crewlist { display: grid; margin: 0; padding: 0 var(--gk-s3); list-style: none; }
+.gk-crewlist__row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px var(--gk-s2);
+  padding: var(--gk-s2) 0;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent);
+}
+.gk-crewlist__row:first-child { border-top: 0; }
+.gk-crewlist__lamp { width: 8px; height: 8px; border-radius: 50%; background: var(--gk-ink-3); }
+.gk-crewlist__lamp[data-on='true'] { background: var(--gk-self); box-shadow: 0 0 6px var(--gk-self); }
+.gk-crewlist__who { display: grid; gap: 1px; min-width: 0; }
+.gk-crewlist__name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin: 0; min-width: 0; font-size: var(--gk-t-small); color: var(--gk-ink); }
+.gk-crewlist__name strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.gk-crewlist__chip { min-height: 22px; padding: 0 6px; }
+.gk-crewlist__chip[data-tone='self'] { color: var(--gk-self); }
+.gk-crewlist__acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--gk-s1); }
+.gk-clan__request, .gk-clan__danger, .gk-clan__confirm { display: grid; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3); }
+.gk-clan__confirm { border-color: color-mix(in srgb, var(--gk-hostile) 45%, var(--gk-glass-edge)); }
+.gk-clan__confirm > .gk-btn:last-child { justify-self: start; }
+.gk-clan__danger { border-color: color-mix(in srgb, var(--gk-hostile) 30%, var(--gk-glass-edge)); }
+.gk-clan__pair { display: flex; flex-wrap: wrap; gap: var(--gk-s1); }
+.gk-field__area { min-height: 88px; padding-block: var(--gk-s2); resize: none; line-height: 1.4; }

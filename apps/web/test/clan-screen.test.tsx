@@ -1,7 +1,7 @@
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -377,7 +377,12 @@ describe('clan command surface', () => {
 
     expect(kick).not.toHaveBeenCalled();
     expect(screen.getByText('Remove Ada from the clan?')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Yes, remove Ada' }));
+    // G7-e: the second press is the kit's hold (owner 2026-11-14: a former confirm holds 0.6 s).
+    const hold = screen.getByRole('button', { name: /Yes, remove Ada/ });
+    expect(hold).toHaveClass('gk-hold');
+    expect(hold.style.getPropertyValue('--gk-hold-ms')).toBe('600ms');
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     await waitFor(() => { expect(kick).toHaveBeenCalledWith('player-ada'); });
   });
 
@@ -385,6 +390,8 @@ describe('clan command surface', () => {
     show({ ...member, clan: { ...member.clan, mature: true, matureAt: now } });
 
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Members' }));
+    // G7-e: the kit's picker, not a browser select: its list drops on a press.
+    await userEvent.setup().click(screen.getByRole('button', { name: /Choose a commander/ }));
 
     expect(screen.getByRole('option', { name: 'Nova' })).toBeInTheDocument();
   });
@@ -401,6 +408,12 @@ describe('clan command surface', () => {
     expect(screen.queryByRole('button', { name: 'Leave clan' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove Ada' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Transfer leadership to Ada' })).toBeInTheDocument();
+    // G7-e: the members tab on the kit, no browser select or checkbox, none of the old look.
+    const panel = screen.getByRole('tabpanel');
+    expect(panel.querySelector('select, input[type="checkbox"]')).toBeNull();
+    const old = [panel, ...panel.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '')
+      .filter((name) => /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|body|caption|label)(\s|$)/.test(name));
+    expect(old).toEqual([]);
   });
 
   it('names the treasury that disbanding burns and sends explicit acknowledgement', async () => {
@@ -419,7 +432,9 @@ describe('clan command surface', () => {
     await user.click(screen.getByRole('button', { name: 'Disband clan' }));
     expect(screen.getByText(/100 alloy.*20 crystal.*3 deuterium/i)).toBeInTheDocument();
     expect(disband).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Yes, disband clan' }));
+    const hold = screen.getByRole('button', { name: /Yes, disband clan/ });
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     await waitFor(() => { expect(disband).toHaveBeenCalledWith(true); });
   });
 

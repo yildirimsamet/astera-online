@@ -1541,6 +1541,14 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Sınıf çakışması önlendi: `gk-force` savaş raporunun, bunlar `gk-might`. Silinen: `Stat` kullanımı.
 - Audit: güç görünümü 3 (kalan: ortak sheet karartması; eski ölçümde sekme ayrı ölçülmemişti, G0'da klanın bütünü 472'nin parçasıydı).
 
+**G7-e Üyeler sekmesi ✅ (2026-11-15).**
+- **An:** "Kim aktif, kimi yöneteyim, kimi davet edeyim?"
+- Ekip listesi tek kuyuda: aktiflik lambası (yeşil parlar / gri), ad, Sen ve Lider çipleri, durum satırı; liderin iki hamlesi (Lider yap, Çıkar) her satırda kit düğmesi.
+- `Confirmation` kitte: kırmızı kenarlı kuyuda ne olacağı, hamlenin kendisi kitin 0,6 sn tutuşu (owner 2026-11-14: eski onaylar 0,6 sn), yanında İptal. Çıkarma, liderlik devri, ayrılma, dağıtma ve düşman uçuşlu üye kabulü hepsi bunu kullanıyor.
+- Başvurular kuyuda, Kabul / Reddet kit düğmeleri. Davet: yerli `<select>` yerine kit `Picker` (aday yoksa kesik çizgili gerçek). Ayarlar: kit metin alanı, işe alım kit şalteri, Kaydet kit düğmesi.
+- Silinen: üyeler panelindeki `Plate`/`Section`/`Chip`/`Button`/`Note`/`EmptyState` ve yerli `select`/checkbox.
+- Audit: üyeler 3 (kalan: ortak sheet karartması).
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.

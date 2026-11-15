@@ -1184,51 +1184,45 @@ function ClanMembers({
     }
   };
 
+  const kitError = (mutation: Pick<UseMutationResult, 'isError' | 'error'>) => mutation.isError
+    ? <p role="alert" className="gk-inote" data-tone="warn">{describeError(mutation.error)}</p>
+    : null;
+  const applications = home.requests.filter((request) => request.kind === 'APPLICATION');
+
   return (
-    <div className="flex flex-col gap-7">
-      <Section label={t('clan.members.heading')} aside={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}>
-        <ol className="flex flex-col gap-2">
+    <div className="gk-clan__parts">
+      <section className="gk-clan__part">
+        <SectionTag as="h3" aside={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}>{t('clan.members.heading')}</SectionTag>
+        <ol className="gk-well gk-crewlist">
           {home.members.map((member) => {
             const self = member.playerId === selfPlayerId;
             return (
-              <li key={member.playerId}>
-                <Plate className="px-2 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <strong className="font-semibold truncate text-v2-ink">{member.username}</strong>
-                        {self ? <Chip tone="crystal">{t('clan.you')}</Chip> : null}
-                        {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
-                      </div>
-                      <p className="mt-1 text-label text-v2-ink-3">
-                        {member.mature ? t('clan.members.ready') : t('clan.members.adapting')}
-                        {' · '}
-                        {member.activeRecently ? t('clan.members.active') : t('clan.members.away')}
-                      </p>
-                    </div>
-                    <span className={`size-2 shrink-0 rounded-full ${member.activeRecently ? 'bg-v2-self' : 'bg-v2-line-hi'}`} aria-hidden />
-                  </div>
-                  {home.clan.role === 'LEADER' && !self ? (
-                    <div className="mt-3 flex flex-wrap gap-2 border-t border-v2-line pt-3">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        ariaLabel={t('clan.members.transferTo', { name: member.username })}
-                        onClick={() => { setConfirm({ kind: 'leadership', member }); }}
-                      >
-                        {t('clan.members.transfer')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        ariaLabel={t('clan.members.removeName', { name: member.username })}
-                        onClick={() => { setConfirm({ kind: 'kick', member }); }}
-                      >
-                        {t('clan.members.remove')}
-                      </Button>
-                    </div>
-                  ) : null}
-                </Plate>
+              <li key={member.playerId} className="gk-crewlist__row">
+                <span className="gk-crewlist__lamp" data-on={member.activeRecently ? 'true' : 'false'} aria-hidden />
+                <span className="gk-crewlist__who">
+                  <span className="gk-crewlist__name">
+                    <strong>{member.username}</strong>
+                    {self ? <span className="gk-chip gk-crewlist__chip" data-tone="self">{t('clan.you')}</span> : null}
+                    {member.role === 'LEADER' ? <span className="gk-chip gk-clan__role">{t('clan.leader')}</span> : null}
+                  </span>
+                  <span className="gk-sub">
+                    {member.mature ? t('clan.members.ready') : t('clan.members.adapting')}
+                    {' · '}
+                    {member.activeRecently ? t('clan.members.active') : t('clan.members.away')}
+                  </span>
+                </span>
+                {home.clan.role === 'LEADER' && !self ? (
+                  <span className="gk-crewlist__acts">
+                    <GameButton size="sm" glyph="up" spoken={t('clan.members.transferTo', { name: member.username })}
+                      onPress={() => { setConfirm({ kind: 'leadership', member }); }}>
+                      {t('clan.members.transfer')}
+                    </GameButton>
+                    <GameButton size="sm" glyph="close" spoken={t('clan.members.removeName', { name: member.username })}
+                      onPress={() => { setConfirm({ kind: 'kick', member }); }}>
+                      {t('clan.members.remove')}
+                    </GameButton>
+                  </span>
+                ) : null}
               </li>
             );
           })}
@@ -1249,27 +1243,28 @@ function ClanMembers({
             busy={actions.kick.isPending || actions.leadership.isPending}
           />
         ) : null}
-        <MutationError mutation={actions.kick} />
-        <MutationError mutation={actions.leadership} />
-      </Section>
+        {kitError(actions.kick)}
+        {kitError(actions.leadership)}
+      </section>
 
       {home.clan.role === 'LEADER' ? (
         <>
-          <Section label={t('clan.applications.heading')} aside={`${String(home.requests.filter((request) => request.kind === 'APPLICATION').length)} / ${String(CLAN.maxClanApplications)}`}>
-            {home.requests.filter((request) => request.kind === 'APPLICATION').length === 0 ? (
-              <EmptyState title={t('clan.applications.empty')} />
+          <section className="gk-clan__part">
+            <SectionTag as="h3" aside={`${String(applications.length)} / ${String(CLAN.maxClanApplications)}`}>{t('clan.applications.heading')}</SectionTag>
+            {applications.length === 0 ? (
+              <p className="gk-sub">{t('clan.applications.empty')}</p>
             ) : (
-              home.requests.filter((request) => request.kind === 'APPLICATION').map((request) => (
-                <Plate key={request.id} className="px-2 py-2">
-                  <p className="font-semibold text-v2-ink">{request.username}</p>
-                  <p className="mt-1 text-label text-v2-ink-3">{t('clan.applications.expires', { duration: duration(minutesUntil(request.expiresAt, now)) })}</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button size="sm" variant="primary" disabled={actions.accept.isPending} onClick={() => { accept(request.id, false); }}>
+              applications.map((request) => (
+                <div key={request.id} className="gk-well gk-clan__request">
+                  <p className="gk-crewlist__name"><strong>{request.username}</strong></p>
+                  <p className="gk-sub">{t('clan.applications.expires', { duration: duration(minutesUntil(request.expiresAt, now)) })}</p>
+                  <div className="gk-clan__pair">
+                    <GameButton size="sm" tone="action" glyph="check" pending={actions.accept.isPending} onPress={() => { accept(request.id, false); }}>
                       {t('clan.requests.accept')}
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={actions.reject.isPending} onClick={() => { actions.reject.mutate(request.id); }}>
+                    </GameButton>
+                    <GameButton size="sm" glyph="close" pending={actions.reject.isPending} onPress={() => { actions.reject.mutate(request.id); }}>
                       {t('clan.requests.decline')}
-                    </Button>
+                    </GameButton>
                   </div>
                   {hostileRequest === request.id ? (
                     <Confirmation
@@ -1281,91 +1276,67 @@ function ClanMembers({
                       busy={actions.accept.isPending}
                     />
                   ) : null}
-                </Plate>
+                </div>
               ))
             )}
-            <MutationError mutation={actions.accept} />
-            <MutationError mutation={actions.reject} />
-          </Section>
+            {kitError(actions.accept)}
+            {kitError(actions.reject)}
+          </section>
 
-          <Section label={t('clan.invite.heading')}>
-            <Plate className="px-2 py-2">
-              <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.invite.body')}</p>
-              <label className="mt-3 block">
-                <span className="sr-only">{t('clan.invite.choose')}</span>
-                <select value={invitee} onChange={(event) => { setInvitee(event.currentTarget.value); }} className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10">
-                  <option value="">{t('clan.invite.choose')}</option>
-                  {candidates.map((candidate) => <option key={candidate.playerId} value={candidate.playerId}>{candidate.username}</option>)}
-                </select>
-              </label>
-              <Button
-                full
-                className="mt-3"
-                variant="primary"
-                disabled={!invitee || actions.invite.isPending || home.members.length >= CLAN.maxMembers}
-                onClick={() => { actions.invite.mutate(invitee, { onSuccess: () => { setInvitee(''); } }); }}
-              >
-                {t('clan.invite.send')}
-              </Button>
-              <Note>{t('clan.invite.limit')}</Note>
-              <MutationError mutation={actions.invite} />
-            </Plate>
-          </Section>
+          <section className="gk-clan__part">
+            <SectionTag as="h3">{t('clan.invite.heading')}</SectionTag>
+            <p className="gk-sub">{t('clan.invite.body')}</p>
+            <Picker label={t('clan.invite.choose')} value={invitee} onChange={setInvitee}
+              options={[{ id: '', label: t('clan.invite.choose') }, ...candidates.map((candidate) => ({ id: candidate.playerId, label: candidate.username }))]} />
+            <GameButton tone="action" wide glyph="mail" pending={actions.invite.isPending}
+              disabledReason={!invitee || home.members.length >= CLAN.maxMembers ? t('clan.invite.send') : null}
+              onPress={() => { actions.invite.mutate(invitee, { onSuccess: () => { setInvitee(''); } }); }}>
+              {t('clan.invite.send')}
+            </GameButton>
+            <p className="gk-sub">{t('clan.invite.limit')}</p>
+            {kitError(actions.invite)}
+          </section>
 
-          <Section label={t('clan.settings.heading')}><CommunityPolicyGate policy={policy}>
-            <Plate className="px-2 py-2">
-              <label>
-                <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.settings.description')}</span>
-                <textarea
-                  value={description}
-                  rows={3}
-                  onChange={(event) => {
-                    setDescription(Array.from(event.currentTarget.value).slice(0, CLAN.descriptionMaxChars).join(''));
-                    setSaved(false);
-                  }}
-                  className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self resize-none"
-                />
-              </label>
-              <label className="mt-3 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={recruiting}
-                  onChange={(event) => { setRecruiting(event.currentTarget.checked); setSaved(false); }}
-                  className="size-4 accent-[var(--color-v2-self)]"
-                />
-                <span className="font-semibold text-v2-ink">{t('clan.settings.recruiting')}</span>
-              </label>
-              <Button
-                className="mt-2"
-                variant="primary"
-                disabled={actions.settings.isPending || (description === home.clan.description && recruiting === home.clan.recruiting)}
-                onClick={() => {
-                  actions.settings.mutate({ description, recruiting }, { onSuccess: () => { setSaved(true); } });
-                }}
-              >
-                {t('clan.settings.save')}
-              </Button>
-              {saved ? <p role="status" className="mt-2 text-caption text-v2-self">{t('clan.settings.saved')}</p> : null}
-              <Note>{t('clan.settings.identityLocked')}</Note>
-              <MutationError mutation={actions.settings} />
-            </Plate>
-          </CommunityPolicyGate></Section>
+          <section className="gk-clan__part">
+            <SectionTag as="h3">{t('clan.settings.heading')}</SectionTag>
+            <CommunityPolicyGate policy={policy}>
+              <div className="gk-clan__part">
+                <div className="gk-field">
+                  <label htmlFor="clan-settings-description" className="gk-label">{t('clan.settings.description')}</label>
+                  <textarea
+                    id="clan-settings-description"
+                    value={description}
+                    rows={3}
+                    onChange={(event) => {
+                      setDescription(Array.from(event.currentTarget.value).slice(0, CLAN.descriptionMaxChars).join(''));
+                      setSaved(false);
+                    }}
+                    className="gk-field__input gk-field__area"
+                  />
+                </div>
+                <Toggle checked={recruiting} label={t('clan.settings.recruiting')} onChange={(next) => { setRecruiting(next); setSaved(false); }} />
+                <GameButton tone="action" glyph="check" pending={actions.settings.isPending}
+                  disabledReason={description === home.clan.description && recruiting === home.clan.recruiting ? t('clan.settings.save') : null}
+                  onPress={() => { actions.settings.mutate({ description, recruiting }, { onSuccess: () => { setSaved(true); } }); }}>
+                  {t('clan.settings.save')}
+                </GameButton>
+                {saved ? <p role="status" className="gk-inote" data-tone="good">{t('clan.settings.saved')}</p> : null}
+                <p className="gk-sub">{t('clan.settings.identityLocked')}</p>
+                {kitError(actions.settings)}
+              </div>
+            </CommunityPolicyGate>
+          </section>
         </>
       ) : null}
 
-      <Section label={t('clan.danger.heading')}>
-        <Plate tone="threat" className="px-2 py-2">
-          <p className="text-caption leading-relaxed text-v2-ink-2">
-            {home.clan.role === 'LEADER' ? t('clan.danger.leaderBody') : t('clan.danger.memberBody')}
-          </p>
-          <Button
-            full
-            className="mt-2"
-            variant="ghost"
-            onClick={() => { setConfirm({ kind: home.clan.role === 'LEADER' ? 'disband' : 'leave' }); }}
-          >
+      <section className="gk-clan__part">
+        <SectionTag as="h3">{t('clan.danger.heading')}</SectionTag>
+        <div className="gk-well gk-clan__danger">
+          <p className="gk-sub">{home.clan.role === 'LEADER' ? t('clan.danger.leaderBody') : t('clan.danger.memberBody')}</p>
+          <GameButton tone="danger" wide glyph={home.clan.role === 'LEADER' ? 'close' : 'back'}
+            onPress={() => { setConfirm({ kind: home.clan.role === 'LEADER' ? 'disband' : 'leave' }); }}>
             {home.clan.role === 'LEADER' ? t('clan.danger.disband') : t('clan.danger.leave')}
-          </Button>
+          </GameButton>
           {confirm && !confirm.member ? (
             <Confirmation
               title={confirm.kind === 'disband' ? t('clan.danger.disbandTitle') : t('clan.danger.leaveTitle')}
@@ -1386,10 +1357,10 @@ function ClanMembers({
                 || (confirm.kind === 'disband' && !treasury.data)}
             />
           ) : null}
-          <MutationError mutation={actions.disband} />
-          <MutationError mutation={actions.leave} />
-        </Plate>
-      </Section>
+          {kitError(actions.disband)}
+          {kitError(actions.leave)}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1757,6 +1728,11 @@ function describeClanEvent(event: ClanEvent, t: TFunction): string {
   }
 }
 
+/**
+ * A SECOND STEP BEFORE A MOVE THAT TOUCHES SOMEONE ELSE (G7-e): what happens, in a red-edged well,
+ * and the move itself on the kit's hold — owner 2026-11-14: a former confirm holds 0.6 s. Cancel is
+ * a plain press beside it.
+ */
 function Confirmation({
   title,
   body,
@@ -1774,14 +1750,13 @@ function Confirmation({
 }) {
   const { t } = useTranslation();
   return (
-    <Plate tone="threat" className="mt-2 px-2 py-2" as="aside">
-      <p className="font-semibold text-v2-hostile">{title}</p>
-      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{body}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy} onClick={onConfirm}>{confirm}</Button>
-        <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>{t('clan.cancel')}</Button>
-      </div>
-    </Plate>
+    <aside className="gk-well gk-clan__confirm">
+      <p className="gk-inote" data-tone="hostile"><Glyph id="warn" />{title}</p>
+      <p className="gk-sub">{body}</p>
+      <GameHold weight="reversible" tone="danger" size="md" glyph="warn" label={confirm}
+        disabledReason={busy ? confirm : null} onCommit={onConfirm} />
+      <GameButton size="sm" glyph="back" onPress={onCancel}>{t('clan.cancel')}</GameButton>
+    </aside>
   );
 }
 
