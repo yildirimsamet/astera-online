@@ -96,7 +96,7 @@ export const SURFACES: GameSurface[] = [
   { id: 'trade', what: 'Ticaret', files: ['screens/TradeSheet.tsx'], reach: ['gallery:trade'], group: 'G4' },
   { id: 'settlement', what: 'Koloni kurma ve sahiplenme', files: ['screens/SettlementSheet.tsx'], reach: ['gallery:settlement', 'gallery:settlement-priority', 'gallery:claim-mine', 'gallery:claim-other'], group: 'G4' },
   { id: 'strike', what: 'Stratejik saldırı ve raporu', files: [], reach: ['gallery:strike', 'gallery:report-strike-colony'], group: 'G4', unreached: ['engelli vuruş (menzil, kalkan, köken toparlanıyor, yuva)'] },
-  { id: 'monument', what: 'Anıt sayfası, rota ve savaş kuralları', files: ['screens/MonumentSheet.tsx', 'screens/MonumentRoutePreview.tsx', 'screens/MonumentBattleRules.tsx'], reach: ['client:monument'], group: 'G9', unreached: ['dalga beklemede'] },
+  { id: 'monument', what: 'Anıt sayfası, rota ve savaş kuralları', files: ['screens/MonumentSheet.tsx', 'screens/MonumentRoutePreview.tsx', 'screens/MonumentBattleRules.tsx'], reach: ['gallery:monument-sheet', 'gallery:monument-sheet-quote', 'client:monument'], group: 'G9' },
 
   // The planet and what is built on it.
   {

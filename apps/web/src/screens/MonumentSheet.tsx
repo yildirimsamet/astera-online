@@ -21,10 +21,10 @@ import { decimal, full, percent } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { HULL_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Button, Plate } from '../v2/kit/Surface.js';
-import { Toggle } from '../v2/kit/Toggle.js';
+import { GameButton, GameHold } from '../game-ui/buttons.js';
+import { Toggle } from '../game-ui/controls.js';
+import { Banner, SectionTag } from '../game-ui/surfaces.js';
 import { GameActions, useSeasonLocked } from '../session/seasonLock.js';
 import { useCommanderShip } from '../api/commanderShip.js';
 import { escortOf } from '../lib/admiralEscort.js';
@@ -110,111 +110,123 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
     : target?.controller.kind === 'CLAN' ? `[${target.controller.tag}] ${target.controller.name}` : t(target?.emptySince ? 'monument.empty' : 'monument.neutral');
   const change = (hull: HullId, count: number): void => { setFleet((previous) => ({ ...previous, [hull]: count })); setShield(false); setRadiation(false); };
 
-  return <Sheet title={monumentName(target?.ordinal)} eyebrow={controller}
-    placement="page" detents={['fit']} onClose={onClose} footer={<GameActions><div data-testid="monument-send">
-      <HoldButton label={t('monument.send', { count: picked })} disabledReason={refusal}
+  const kitFrame = friendly ? { tone: 'self' as const } : target && target.controller.kind !== 'NEUTRAL' ? { tone: 'hostile' as const } : {};
+
+  return <Sheet title={monumentName(target?.ordinal)} eyebrow={controller} kit={kitFrame}
+    placement="page" detents={['fit']} onClose={onClose} footer={<GameActions><div data-testid="monument-send" className="gk-mon__send">
+      <GameHold weight="spends" glyph={friendly ? 'support' : 'attack'} commitSound="launch"
+        label={t('monument.send', { count: picked })} disabledReason={refusal}
         onCommit={() => { actions.send.mutate({ monumentId, input, key: sendKey }, { onSuccess: () => { setFleet({}); setShield(false); setRadiation(false); setEscortWanted(false); } }); }} />
-      {actions.send.error && <p role="alert" className="mt-1 text-caption text-v2-warn">{describeError(actions.send.error)}</p>}
+      {actions.send.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(actions.send.error)}</p>}
     </div></GameActions>}>
-    <GameActions><div className="flex min-w-0 flex-col gap-3">
+    <GameActions><div className="gk-mon">
       <HonorSoloNotice />
-      {view.isPending && <p className="text-caption text-v2-ink-2">{t('monument.loading')}</p>}
-      {view.error && <p role="alert" className="text-caption text-v2-warn">{describeError(view.error)}</p>}
-      {target && <Plate className="p-3">
-        {target.motion && <p className="mb-2 text-micro text-v2-ink-2">{t('monument.motionRule')}</p>}
-        {target.difficulty !== 'LEGACY' && <p className={`mb-2 text-caption font-semibold ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
+      {view.isPending && <p className="gk-report__label">{t('monument.loading')}</p>}
+      {view.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(view.error)}</p>}
+      {target && <section data-testid="monument-target" className="gk-well gk-mon__facts">
+        {target.motion && <p className="gk-report__label">{t('monument.motionRule')}</p>}
+        {target.difficulty !== 'LEGACY' && <p className="gk-mon__access" data-tone={target.difficulty === 'HARD' ? 'threat' : 'good'}>
           {t(target.difficulty === 'EASY' ? 'monument.easyAccess' : 'monument.hardAccess')}</p>}
-        <p className="font-v2-mono text-caption text-v2-ink">{t('monument.capacity', { used: full(target.used), reserved: full(target.reserved), total: full(target.capacity) })}</p>
-        <p className="mt-1 text-caption font-semibold text-v2-deut">{t('monument.production', { rate: decimal(target.productionPerMinute) })}</p>
-        <p className="mt-1 text-micro text-v2-warn">{target.difficulty === 'LEGACY'
+        <p className="gk-mon__fact gk-num">{t('monument.capacity', { used: full(target.used), reserved: full(target.reserved), total: full(target.capacity) })}</p>
+        <p className="gk-mon__fact" data-tone="deut">{t('monument.production', { rate: decimal(target.productionPerMinute) })}</p>
+        <p className="gk-mon__fact" data-tone="warn">{target.difficulty === 'LEGACY'
           ? t('monument.radiationRate', { rate: decimal(target.radiationHpPerMinute) })
           : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[target.difficulty].radiationLevel, rate: decimal(target.radiationHpPerMinute) })}</p>
-        {target.emptySince && target.controller.kind === 'NEUTRAL' && <p className="mt-1 text-micro text-v2-ink-2">{t('monument.emptySince', { time: duration(Math.max(0, (now - target.emptySince.getTime()) / 60_000)) })}</p>}
-        {target.respawnAt && target.controller.kind === 'NEUTRAL' && <p className="mt-1 text-micro text-v2-ink-2">{target.respawnAt.getTime() > now
+        {target.emptySince && target.controller.kind === 'NEUTRAL' && <p className="gk-report__label">{t('monument.emptySince', { time: duration(Math.max(0, (now - target.emptySince.getTime()) / 60_000)) })}</p>}
+        {target.respawnAt && target.controller.kind === 'NEUTRAL' && <p className="gk-report__label">{target.respawnAt.getTime() > now
           ? t('monument.respawnAt', { time: countdown(target.respawnAt.getTime() - now) }) : t('monument.respawnDue')}</p>}
-        <p className="mt-2 text-micro leading-snug text-v2-ink-2">{t('monument.purpose')}</p>
-        {monumentHonoree(target.ordinal) !== null && <p className="mt-1 text-micro text-v2-ink-3">
+        <p className="gk-report__copy">{t('monument.purpose')}</p>
+        {monumentHonoree(target.ordinal) !== null && <p className="gk-report__label">
           {t('monument.honouredNote', { name: monumentHonoree(target.ordinal), rank: target.ordinal })}</p>}
-        {onClanTarget && !friendly && <Button size="sm" className="mt-2" onClick={() => { onClanTarget(monumentId); }}>{t('monument.clanTarget')}</Button>}
-      </Plate>}
+        {onClanTarget && !friendly && <div><GameButton size="sm" glyph="target" onPress={() => { onClanTarget(monumentId); }}>{t('monument.clanTarget')}</GameButton></div>}
+      </section>}
       {target && <TargetRadiationInstrument target={{ kind: 'MONUMENT', id: target.id }} tech={techOf(origin)} />}
       {target && !friendly && origin.radiationBombsAvailable && <RadiationBombControl origin={origin}
         target={{ kind: 'MONUMENT', id: target.id }} targetName={monumentName(target.ordinal)}
         position={target.position} motion={target.motion} disabledReason={silentSpace ? t('faults.launchBlock.SILENT_SPACE') : null} />}
-      {incoming && <p role="alert" className="text-caption text-v2-hostile">{t('monument.incoming')}</p>}
-      <p className="text-micro text-v2-ink-2">{t('monument.fog')}</p>
-      {waves.length > 0 && <section className="flex flex-col gap-2">
-        <h3 className="text-caption font-semibold text-v2-ink">{t('monument.yourWaves')}</h3>
+      {incoming && <Banner tone="hostile" role="alert" title={t('monument.incoming')} />}
+      <p className="gk-report__label">{t('monument.fog')}</p>
+      {waves.length > 0 && <section className="gk-mon__part">
+        <SectionTag as="h3">{t('monument.yourWaves')}</SectionTag>
         {waves.map((wave) => <MonumentWaveCard key={wave.id} wave={wave}
           arrival={target && wave.status === 'OUTBOUND' ? arrivalOutcome(target, friendly, wave.arriveAt) : null} />)}
       </section>}
-      <section className="flex flex-col gap-2">
-        <h3 className="text-caption font-semibold text-v2-ink">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</h3>
-        {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className={`text-micro leading-snug ${tierBlocked ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
+      <section className="gk-mon__part">
+        <SectionTag as="h3">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</SectionTag>
+        {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className="gk-report__copy" {...(tierBlocked ? { 'data-tone': 'warn' } : {})}>
           {tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
             : t('monument.initialFleetRule')}</p>}
-        {MOBILE_HULLS.filter((hull) => (available[hull] ?? 0) > 0).map((hull) => <div key={hull} className="flex min-w-0 items-center gap-2 border-b border-v2-line py-2">
-          <img src={HULL_ART[hull] ?? undefined} alt="" className="size-8 shrink-0 object-contain" />
-          <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</p>
-            <p className="text-micro text-v2-ink-3">{t('launch.atHome', { count: available[hull] ?? 0 })}</p></div>
-          <fieldset disabled={tierBlocked} className="min-w-0 border-0 p-0 disabled:opacity-50">
-            <QuantityStepper key={hull} look="v2"
-              min={0} max={available[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
-              valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
-              decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
-              maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
-          </fieldset>
-        </div>)}
+        <div className="gk-ledger gk-mon__hulls">
+          {MOBILE_HULLS.filter((hull) => (available[hull] ?? 0) > 0).map((hull) => <div key={hull} data-testid={`monument-hull-${hull}`} className="gk-mon__hull">
+            <img src={HULL_ART[hull] ?? undefined} alt="" />
+            <span className="gk-mon__hullwords"><span className="gk-mon__hullname">{hullName(hull)}</span>
+              <span className="gk-report__label">{t('launch.atHome', { count: available[hull] ?? 0 })}</span></span>
+            <fieldset disabled={tierBlocked} className="gk-mon__count">
+              <QuantityStepper key={hull} look="kit"
+                min={0} max={available[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
+                valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
+                decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
+                maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
+            </fieldset>
+          </div>)}
+        </div>
         <EscortRow escort={escort} on={escorted} onChange={setEscortWanted} monument />
         {picked > 0 && quote.data && target?.motion && <MonumentRoutePreview from={origin.planet.position} motion={target.motion} arriveAt={quote.data.arriveAt.getTime()} now={now} />}
-        {picked > 0 && quoteReady && quote.data && <Plate className="flex flex-col gap-1 p-3">
-          <p className="text-micro text-v2-ink-2">{t('monument.selectedBulk', { bulk: full(pickedBulk) })}</p>
-          <p className="text-caption text-v2-ink">{t('monument.fuel', { amount: full(quote.data.fuel) })}</p>
+        {picked > 0 && quoteReady && quote.data && <div data-testid="monument-quote" className="gk-well gk-mon__quote">
+          <p className="gk-report__label">{t('monument.selectedBulk', { bulk: full(pickedBulk) })}</p>
+          <p className="gk-mon__fact">{t('monument.fuel', { amount: full(quote.data.fuel) })}</p>
           {quote.data.returnFuelReserve !== undefined && <>
-            <p className="text-micro text-v2-ink-2">{t('monument.fuelBreakdown', { outbound: full(quote.data.outboundFuel ?? 0), reserve: full(quote.data.returnFuelReserve) })}</p>
-            <p className="text-micro leading-snug text-v2-ink-3">{t('monument.fuelReserveRule')}</p>
+            <p className="gk-report__label">{t('monument.fuelBreakdown', { outbound: full(quote.data.outboundFuel ?? 0), reserve: full(quote.data.returnFuelReserve) })}</p>
+            <p className="gk-report__note" data-tone="plain">{t('monument.fuelReserveRule')}</p>
           </>}
-          <p className="text-caption text-v2-ink">{t('monument.arrival', { time: countdown(quote.data.arriveAt.getTime() - now) })}</p>
-          <p className="text-micro text-v2-ink-2">{t('monument.bays', { used: quote.data.bays.used, total: quote.data.bays.total })}</p>
-          {friendly && <p className="text-micro text-v2-ink-2">{t('monument.room', { after: full(quote.data.room.after), total: full(quote.data.room.total) })}</p>}
-          {friendly && <p className="text-micro leading-snug text-v2-ink-3">{t('monument.reinforceRule')}</p>}
-          {friendly && quote.data.holdForecast && <p className="text-micro text-v2-deut">{t('monument.holdForecast', {
+          <p className="gk-mon__fact">{t('monument.arrival', { time: countdown(quote.data.arriveAt.getTime() - now) })}</p>
+          <p className="gk-report__label">{t('monument.bays', { used: quote.data.bays.used, total: quote.data.bays.total })}</p>
+          {friendly && <p className="gk-report__label">{t('monument.room', { after: full(quote.data.room.after), total: full(quote.data.room.total) })}</p>}
+          {friendly && <p className="gk-report__note" data-tone="plain">{t('monument.reinforceRule')}</p>}
+          {friendly && quote.data.holdForecast && <p className="gk-mon__fact" data-tone="deut">{t('monument.holdForecast', {
             rate: decimal(quote.data.holdForecast.productionPerMinute),
             time: quote.data.holdForecast.nextLossAt ? countdown(quote.data.holdForecast.nextLossAt.getTime() - now) : t('monument.noLoss'),
           })}</p>}
-          {!friendly && <><p className="text-micro leading-snug text-v2-ink-2">{t('monument.attackOutcome')}</p><MonumentBattleRules /></>}
+          {!friendly && <><p className="gk-report__copy">{t('monument.attackOutcome')}</p><MonumentBattleRules /></>}
           {quote.data.radiationProtection && <>
-            <p className="font-v2-mono text-micro text-v2-warn">{t('monument.dispatchProtection', {
+            <p className="gk-report__copy" data-tone="warn">{t('monument.dispatchProtection', {
               level: quote.data.radiationProtection.level, rate: decimal(quote.data.radiationProtection.hpPerMinute, 2),
             })}</p>
-            <p className="text-micro leading-snug text-v2-ink-3">{t('monument.shieldingSnapshot')}</p>
-            {quote.data.radiationProtection.nextLossAt && <p className="text-micro text-v2-warn">{t('monument.radiationLossForecast', {
+            <p className="gk-report__label">{t('monument.shieldingSnapshot')}</p>
+            {quote.data.radiationProtection.nextLossAt && <p className="gk-report__copy" data-tone="warn">{t('monument.radiationLossForecast', {
               time: countdown(quote.data.radiationProtection.nextLossAt.getTime() - now),
             })}</p>}
-            {quote.data.radiationProtection.cargoLossAt && <p className="text-micro text-v2-warn">{t('monument.radiationCargoForecast', {
+            {quote.data.radiationProtection.cargoLossAt && <p className="gk-report__copy" data-tone="warn">{t('monument.radiationCargoForecast', {
               time: countdown(quote.data.radiationProtection.cargoLossAt.getTime() - now),
             })}</p>}
           </>}
-          <p className="text-caption text-v2-warn">{t('monument.dose', { dose: decimal(quote.data.outboundForecast.doseHp) })}</p>
-          {quote.data.outboundForecast.health.map((health) => <p key={health.hull} className="text-micro text-v2-ink-2">{t('monument.health', { name: hullName(health.hull), remaining: decimal(health.remainingHp), max: decimal(health.maxHp) })}</p>)}
-          {quote.data.outboundForecast.destroyed > 0 && <><p className="text-caption text-v2-hostile">{t('monument.losses', { count: quote.data.outboundForecast.destroyed })}</p>
-            <Toggle tone="hostile" checked={radiation} onChange={setRadiation}>{t('monument.radiation')}</Toggle></>}
-          {quote.data.shieldWouldDrop && <Toggle tone="hostile" checked={shield} onChange={setShield}>{t('monument.shield')}</Toggle>}
-        </Plate>}
+          <p className="gk-mon__fact" data-tone="warn">{t('monument.dose', { dose: decimal(quote.data.outboundForecast.doseHp) })}</p>
+          {quote.data.outboundForecast.health.map((health) => <p key={health.hull} className="gk-report__label">{t('monument.health', { name: hullName(health.hull), remaining: decimal(health.remainingHp), max: decimal(health.maxHp) })}</p>)}
+          {quote.data.outboundForecast.destroyed > 0 && <><p className="gk-mon__fact" data-tone="threat">{t('monument.losses', { count: quote.data.outboundForecast.destroyed })}</p>
+            <Toggle checked={radiation} onChange={setRadiation} label={t('monument.radiation')} /></>}
+          {quote.data.shieldWouldDrop && <Toggle checked={shield} onChange={setShield} label={t('monument.shield')} />}
+        </div>}
       </section>
-      <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3" data-testid="monument-probe">
-        <p className="text-micro text-v2-warn">{t('monument.probeRisk', { chance: percent(MONUMENT_PROBE_LOSS_CHANCE) })}</p>
-        <p className="text-caption text-v2-ink">{t('monument.probePrice', { alloy: full(PROBE.alloy), crystal: full(PROBE.crystal) })}</p>
-        <HoldButton label={t('monument.probe')} disabledReason={probeRefusal} onCommit={() => { actions.probe.mutate({ monumentId, originPlanetId: origin.planet.id, key: probeKey },
-          { onSuccess: () => { setProbeConfirmation((value) => value + 1); } }); }} />
-        {actions.probe.error && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.probe.error)}</p>}
-        {probes.map((probe) => <p key={probe.id} className="text-micro text-v2-ink-2">{t('monument.probeArrival', { status: t(`monument.status.${probe.status === 'OUTBOUND' ? 'OUTBOUND' : 'RETURNING'}`), time: countdown((probe.homeAt ?? probe.arriveAt).getTime() - now) })}</p>)}
+      <section data-testid="monument-probe" className="gk-well gk-mon__probe">
+        <p className="gk-report__copy" data-tone="warn">{t('monument.probeRisk', { chance: percent(MONUMENT_PROBE_LOSS_CHANCE) })}</p>
+        <p className="gk-mon__fact">{t('monument.probePrice', { alloy: full(PROBE.alloy), crystal: full(PROBE.crystal) })}</p>
+        <GameHold weight="spends" size="md" tone="steel" glyph="eye" label={t('monument.probe')} disabledReason={probeRefusal}
+          onCommit={() => { actions.probe.mutate({ monumentId, originPlanetId: origin.planet.id, key: probeKey },
+            { onSuccess: () => { setProbeConfirmation((value) => value + 1); } }); }} />
+        {actions.probe.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(actions.probe.error)}</p>}
+        {probes.map((probe) => <p key={probe.id} className="gk-report__label">{t('monument.probeArrival', { status: t(`monument.status.${probe.status === 'OUTBOUND' ? 'OUTBOUND' : 'RETURNING'}`), time: countdown((probe.homeAt ?? probe.arriveAt).getTime() - now) })}</p>)}
       </section>
-      {report && <Plate className="p-3"><h3 className="text-caption font-semibold text-v2-ink">{t('monument.snapshot')}</h3>
-        <p className="text-micro text-v2-ink-3">{t('monument.observed', { time: report.observedAt.toLocaleString() })}</p>
-        <p className="text-micro text-v2-ink-3">{t('monument.delivered', { time: report.deliveredAt.toLocaleString() })}</p>
-        {fleetEntries(report.fleet).map(([hull, count]) => <p key={hull} className="text-caption text-v2-ink">{hullName(hull)} × {full(count)}</p>)}
-      </Plate>}
+      {report && <section data-testid="monument-report" className="gk-well gk-mon__report">
+        <h3 className="gk-report__subhead">{t('monument.snapshot')}</h3>
+        <p className="gk-report__label">{t('monument.observed', { time: report.observedAt.toLocaleString() })}</p>
+        <p className="gk-report__label">{t('monument.delivered', { time: report.deliveredAt.toLocaleString() })}</p>
+        <ul className="gk-mon__seen">
+          {fleetEntries(report.fleet).map(([hull, count]) => <li key={hull}>
+            {HULL_ART[hull] === null ? <span /> : <img src={HULL_ART[hull]} alt="" />}
+            <span>{hullName(hull)}</span><span className="gk-num">× {full(count)}</span>
+          </li>)}
+        </ul>
+      </section>}
     </div></GameActions>
   </Sheet>;
 }
@@ -238,43 +250,44 @@ export function MonumentWaveCard({ wave, arrival = null }: { wave: MonumentWave;
   const key = useConfirmationKey(JSON.stringify({ waveId: wave.id, selections }));
   const refusal = selections.length === 0 ? t('monument.recallChoose') : actions.recall.isPending ? t('monument.recalling')
     : !quoteReady || !quote.data || quote.isError ? (quoteReady && quote.error ? describeError(quote.error) : t('monument.quoting')) : null;
-  return <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3" data-testid={`monument-wave-${wave.id}`}>
-    <div className="flex items-center justify-between gap-2"><span className="text-caption font-semibold text-v2-self">{t(`monument.status.${wave.status}`)}</span>
-      {wave.arriveAt && <span className="font-v2-mono text-micro text-v2-ink-2">{countdown(wave.arriveAt.getTime() - now)}</span>}</div>
-    {arrival && <p className={`text-micro leading-snug ${arrival === 'JOIN' ? 'text-v2-self' : arrival === 'CAPTURE' ? 'text-v2-ink' : 'text-v2-hostile'}`}>
+  return <section className="gk-well gk-mon__wave" data-testid={`monument-wave-${wave.id}`}>
+    <div className="gk-mon__wavehead"><span className="gk-mon__status" data-status={wave.status}>{t(`monument.status.${wave.status}`)}</span>
+      {wave.arriveAt && <span className="gk-num gk-report__label">{countdown(wave.arriveAt.getTime() - now)}</span>}</div>
+    {arrival && <p className="gk-report__copy" {...(arrival === 'CAPTURE' ? {} : { 'data-tone': arrival === 'JOIN' ? 'good' : 'threat' })}>
       {t(`monument.arrivalOutcome.${arrival}`)}</p>}
-    <p className="text-caption text-v2-deut">{t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}</p>
-    <p className="text-micro text-v2-ink-2">{t('monument.firepower', { power: full(combatValue(wave.fleet)) })}</p>
-    {wave.status === 'RETURNING' && wave.returnReason && <p className="text-micro text-v2-warn">{t(`monument.returnReason.${wave.returnReason}`)}</p>}
-    {wave.status === 'HOLD' && <><p className="text-micro text-v2-deut">{t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}</p>
-      {wave.radiationHpPerMinute !== undefined && <p className="font-v2-mono text-micro text-v2-warn">{t('monument.protectedRate', {
+    <p className="gk-mon__fact" data-tone="deut">{t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}</p>
+    <p className="gk-report__label">{t('monument.firepower', { power: full(combatValue(wave.fleet)) })}</p>
+    {wave.status === 'RETURNING' && wave.returnReason && <p className="gk-report__copy" data-tone="warn">{t(`monument.returnReason.${wave.returnReason}`)}</p>}
+    {wave.status === 'HOLD' && <><p className="gk-mon__fact" data-tone="deut">{t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}</p>
+      {wave.radiationHpPerMinute !== undefined && <p className="gk-report__copy" data-tone="warn">{t('monument.protectedRate', {
         level: wave.tech.RADIATION_SHIELDING ?? 0, rate: decimal(wave.radiationHpPerMinute, 2),
       })}</p>}
-      {wave.fillsAt && <p className="text-micro text-v2-ink-2">{t('monument.fills', { time: countdown(wave.fillsAt.getTime() - now) })}</p>}
-      {wave.cargoLossAt && <p className="text-micro text-v2-hostile">{t('monument.cargoLossAt', { time: countdown(wave.cargoLossAt.getTime() - now) })}</p>}
-      {wave.nextLossAt && <p className="text-micro text-v2-hostile">{t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) })}</p>}</>}
-    {wave.lots.map((lot) => <div key={lot.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-v2-line pt-2">
-      <div className="min-w-0"><p className="text-caption text-v2-ink">{hullName(lot.hull)} × {full(lot.count)}</p>
-        <p className="text-micro text-v2-ink-2">{t('monument.hp', { percent: decimal(lot.remainingHp / lot.maxHp * 100), remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</p></div>
-      {canRecall && <QuantityStepper look="v2" min={0} max={lot.count} value={counts[lot.id] ?? 0} onChange={(count) => { setCounts((previous) => ({ ...previous, [lot.id]: count })); }}
+      {wave.fillsAt && <p className="gk-report__label">{t('monument.fills', { time: countdown(wave.fillsAt.getTime() - now) })}</p>}
+      {wave.cargoLossAt && <p className="gk-report__copy" data-tone="threat">{t('monument.cargoLossAt', { time: countdown(wave.cargoLossAt.getTime() - now) })}</p>}
+      {wave.nextLossAt && <p className="gk-report__copy" data-tone="threat">{t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) })}</p>}</>}
+    {wave.lots.map((lot) => <div key={lot.id} className="gk-mon__lot">
+      <span className="gk-mon__hullwords"><span className="gk-mon__hullname">{hullName(lot.hull)} × {full(lot.count)}</span>
+        <span className="gk-report__label">{t('monument.hp', { percent: decimal(lot.remainingHp / lot.maxHp * 100), remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</span></span>
+      {canRecall && <QuantityStepper look="kit" min={0} max={lot.count} value={counts[lot.id] ?? 0} onChange={(count) => { setCounts((previous) => ({ ...previous, [lot.id]: count })); }}
         valueLabel={t('monument.recallQuantity', { name: hullName(lot.hull) })} decreaseLabel={t('monument.recallLess', { name: hullName(lot.hull) })}
         increaseLabel={t('monument.recallMore', { name: hullName(lot.hull) })} maxLabel={t('monument.recallMax', { name: hullName(lot.hull) })} maxText={t('launch.maxShort')} />}
     </div>)}
-    <p className="text-micro font-semibold text-v2-ink">{t('monument.returnAll')}</p>
-    <p className="text-micro text-v2-ink-2">{t('monument.returnSummary', { time: duration(wave.returnForecast.minutes), cargo: decimal(wave.returnForecast.deuterium), loss: wave.returnForecast.destroyed })}</p>
-    {(wave.returnForecast.fuelRefund ?? 0) > 0 && <p className="text-micro text-v2-deut">{t('monument.fuelRefund', { amount: decimal(wave.returnForecast.fuelRefund ?? 0, 3) })}</p>}
-    <p className="text-micro text-v2-ink-3">{t('monument.currentFleet')}</p>
+    <p className="gk-report__subhead">{t('monument.returnAll')}</p>
+    <p className="gk-report__label">{t('monument.returnSummary', { time: duration(wave.returnForecast.minutes), cargo: decimal(wave.returnForecast.deuterium), loss: wave.returnForecast.destroyed })}</p>
+    {(wave.returnForecast.fuelRefund ?? 0) > 0 && <p className="gk-mon__fact" data-tone="deut">{t('monument.fuelRefund', { amount: decimal(wave.returnForecast.fuelRefund ?? 0, 3) })}</p>}
+    <p className="gk-report__label">{t('monument.currentFleet')}</p>
     {canRecall && <>
-      {selections.length > 0 && quoteReady && quote.data && <div data-testid="monument-recall-forecast" className="flex flex-col gap-1 rounded-control border border-v2-line p-2 text-micro text-v2-ink-2">
-        <p className="font-semibold text-v2-self">{t('monument.returnSelected', { count: fleetCount(quote.data.fleet) })}</p>
-        <p>{t('monument.recallCargo', { cargo: decimal(quote.data.deuterium), arrives: decimal(quote.data.arrivalDeuterium) })}</p>
-        <p>{t('monument.returnSummary', { time: duration(quote.data.minutes), cargo: decimal(quote.data.arrivalDeuterium), loss: quote.data.destroyed })}</p>
-        {quote.data.arrivalLots.map(lot => <p key={lot.id}>{t('monument.health', { name: `${hullName(lot.hull)} × ${full(lot.count)}`, remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</p>)}
-        {quote.data.returnFuel !== undefined && <p>{t('monument.returnFuel', { amount: full(quote.data.returnFuel) })}</p>}
-        {(quote.data.fuelRefund ?? 0) > 0 && <p className="text-v2-deut">{t('monument.fuelRefund', { amount: decimal(quote.data.fuelRefund ?? 0, 3) })}</p>}
+      {selections.length > 0 && quoteReady && quote.data && <div data-testid="monument-recall-forecast" className="gk-report__summary gk-mon__forecast">
+        <p className="gk-report__subhead" data-tone="good">{t('monument.returnSelected', { count: fleetCount(quote.data.fleet) })}</p>
+        <p className="gk-report__label">{t('monument.recallCargo', { cargo: decimal(quote.data.deuterium), arrives: decimal(quote.data.arrivalDeuterium) })}</p>
+        <p className="gk-report__label">{t('monument.returnSummary', { time: duration(quote.data.minutes), cargo: decimal(quote.data.arrivalDeuterium), loss: quote.data.destroyed })}</p>
+        {quote.data.arrivalLots.map(lot => <p key={lot.id} className="gk-report__label">{t('monument.health', { name: `${hullName(lot.hull)} × ${full(lot.count)}`, remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</p>)}
+        {quote.data.returnFuel !== undefined && <p className="gk-report__label">{t('monument.returnFuel', { amount: full(quote.data.returnFuel) })}</p>}
+        {(quote.data.fuelRefund ?? 0) > 0 && <p className="gk-mon__fact" data-tone="deut">{t('monument.fuelRefund', { amount: decimal(quote.data.fuelRefund ?? 0, 3) })}</p>}
       </div>}
-      <HoldButton label={t('monument.recall')} disabledReason={refusal} onCommit={() => { actions.recall.mutate({ waveId: wave.id, selections, key }, { onSuccess: () => { setCounts({}); } }); }} />
-      {actions.recall.error && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.recall.error)}</p>}
+      <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('monument.recall')} disabledReason={refusal}
+        onCommit={() => { actions.recall.mutate({ waveId: wave.id, selections, key }, { onSuccess: () => { setCounts({}); } }); }} />
+      {actions.recall.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(actions.recall.error)}</p>}
     </>}
   </section>;
 }

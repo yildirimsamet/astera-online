@@ -1655,6 +1655,13 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `leaderboard-archive-profile` ve `-career` eklendi, ui-audit'e satıra basıp sekmeye geçen iki adım; envanterdeki "komutan profili (arşiv)" artık ulaşılıyor): puan 141→0 (sezon), 65→0 (kariyer); 12 px altı 113/161→0 ve 34/72→0, kontrast 12→0, 44 px altı 4→0, tepkisiz 9→0, kesilen 2→0. Sezon sayfası 3290→3192 px (içerik aynı). `reports/ui-audit/c21-commander-record-after-2026-11-15.md`.
 - **Kalan:** yok.
 
+**C22 Anıt sayfası ve tutmaları ✅ (2026-11-15, yardımcı oturum).** G9 #7.
+- **An:** "Bu anıtta ne var, oraya ne gönderirim, ne öderim, ne kaybederim?" Fiyat sorusu, iki onay, sunucuya giden istek ve kimlik anahtarları değişmedi.
+- **Değişen:** Sayfa kitin çerçevesinde (rakibin anıtı kırmızı, senin anıtın yeşil kenarlı). Anıtın bilgileri kitin camında; karar rakamları (hacim, üretim, radyasyon) 13 px kalın, ikincil satırlar etiket boyunda. Gemi seçimi kitin defter satırları ve kitin sayacı. Fiyat camı: yakıt, varış, doz; kurallar ince notta; iki onay kitin şalteri. Dalga kartı, sonda ve sonda raporu kitin camında (rapor gemileri resimli). Klan hedefi kitin düğmesi; yaklaşan saldırı kitin şeridi.
+- **Tutmalar:** gönder `GameHold` lg, harcar (1 sn); sonda md, harcar (1 sn); geri çağır md, geri alınabilir (0,6 sn). Eski v2 `HoldButton`, `Plate`, `Button`, `Toggle` kalktı.
+- **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `monument-sheet` ve `monument-sheet-quote`, ui-audit'e sayaç dolduran adım; envanterdeki "dalga beklemede" artık ulaşılıyor): puan 114→3, 142→3; 12 px altı 49/74→0 ve 64/95→0, kontrast 14→0, 44 px altı 36→2, tepkisiz 29→2. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). Sayfa uzadı (1561→2161 px): 10 px metinler 12–13 px'e çıktı.
+- **Kalan:** kitin sayacında devre dışı "−" ikonu 2,4:1 (G2-f'nin parçası); çocuk parçalar (`TargetRadiationInstrument`, `EscortRow`, `MonumentRoutePreview`) kendi birimlerinde.
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

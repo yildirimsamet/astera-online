@@ -38,6 +38,7 @@ import { PlanetModelsGallery } from './PlanetModelsGallery.js';
 import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
+import { GalleryMonument } from './GalleryMonument.js';
 import { GalleryReports } from './GalleryReports.js';
 import { GalleryChat } from './GalleryChat.js';
 import { GalleryCommunity } from './GalleryCommunity.js';
@@ -1222,6 +1223,7 @@ function Views({ view }: { view: string }) {
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view.startsWith('report-sheet')) return <GalleryReports view={view} />;
+  if (view.startsWith('monument-sheet')) return <GalleryMonument />;
   if (view.startsWith('replay-')) return <GalleryReplay view={view} />;
   if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
