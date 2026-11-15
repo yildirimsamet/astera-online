@@ -402,14 +402,16 @@ describe('the Repair Station menu', () => {
     expect(mixed).toHaveTextContent(/26% damaged/i);
   });
 
-  it('cancels a job only after the confirm that names the refund', async () => {
+  it('cancels a job only after the short hold under the refund it names', async () => {
     show();
     const station = await openStation();
     await openQueue(station);
     const running = within(station).getAllByTestId('repair-job')[0]!;
     await userEvent.click(within(running).getByRole('button', { name: /cancel/i }));
     expect(cancelRepair).not.toHaveBeenCalled();
-    await userEvent.click(await screen.findByTestId('confirm-commit'));
+    expect(within(running).getByText('Returned')).toBeInTheDocument();
+    within(running).getByRole('button', { name: /Cancel the order/ }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(cancelRepair).toHaveBeenCalledWith({ planetId: 'p1', orderId: 'r-1' }, expect.any(Object));
   });
 

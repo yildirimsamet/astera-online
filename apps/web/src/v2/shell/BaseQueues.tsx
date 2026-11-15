@@ -3,23 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { BUILD } from '@astera/rules';
 import { useCancelBuildOrder } from '../../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../../api/schemas.js';
-import { FreeSlot, Glyph, QueueSlot, type SlotState } from '../../game-ui/index.js';
+import { FreeSlot, Glyph, QueueSlot } from '../../game-ui/index.js';
 import { full } from '../../lib/format.js';
 import { haptic } from '../../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../../lib/sound.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
-import { buildOrderArt, buildOrderLabel, orderProgress, orderWaiting, repairSubject } from '../../lib/orders.js';
+import { buildOrderArt, buildOrderLabel, orderProgress, repairSubject } from '../../lib/orders.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
-import { orderLeft } from '../kit/QueueLane.js';
+import { orderLeft, slotState } from '../kit/QueueLane.js';
 import { QueueSheet } from '../kit/QueueSheet.js';
-
-/** Where an order stands, for its slot: a vacation stops it, only the head runs. */
-const slotState = (order: BuildOrderView, now: number): SlotState => {
-  if ('pausedAt' in order && order.pausedAt) return 'paused';
-  if (orderWaiting(order, now)) return 'waiting';
-  return order.finishesAt ? 'running' : 'staged';
-};
 
 /**
  * ONE LANE OF THE KIT'S SLOTS (stage 4.1): an order is a ring round its picture that

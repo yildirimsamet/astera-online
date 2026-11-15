@@ -826,6 +826,34 @@ function GalleryMonumentFocus() {
     emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
 }
 
+/** G2-k: the queue sheet, and a cancel opened in its row as a player opens it. */
+function GalleryQueue({ ask }: { ask: boolean }) {
+  useEffect(() => {
+    if (!ask) return undefined;
+    const timer = window.setTimeout(() => {
+      const first = document.querySelector('.gk-qrow__ask');
+      if (first instanceof HTMLElement) first.click();
+    }, 300);
+    return () => { window.clearTimeout(timer); };
+  }, [ask]);
+  return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
+}
+
+/** G4-a: the focus frame closed, over a rival's world and over one of mine. */
+function GalleryFocusClosed({ own }: { own: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  const target: GalaxyPlanet = own ? { ...rival, name: 'Haven', kind: 'COLONY', isOwned: true } : rival;
+  return (
+    <PlanetFocus target={target} planet={launchWorld} intel={launchIntel} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onTransfer={noop} onInstallTelescope={noop} onLaunched={noop} open={false} onToggle={noop} />
+  );
+}
+
 function GalleryBand() {
   const client = useQueryClient();
   useState(() => {
@@ -1158,6 +1186,8 @@ function Views({ view }: { view: string }) {
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
   if (view === 'focus-band') return <GalleryBand />;
+  if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
+  if (view === 'focus-own') return <GalleryFocusClosed own />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
@@ -1249,9 +1279,7 @@ function Views({ view }: { view: string }) {
         minutesRemaining={8} onClose={noop} open onToggle={noop} />
     );
   }
-  if (view === 'queue') {
-    return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
-  }
+  if (view === 'queue' || view === 'queue-cancel') return <GalleryQueue ask={view === 'queue-cancel'} />;
   if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
   if (view === 'chronicle' || view === 'chronicle-empty') return <GalleryChronicle empty={view === 'chronicle-empty'} />;
   if (view === 'events-guide') return <GalleryEventsGuide />;

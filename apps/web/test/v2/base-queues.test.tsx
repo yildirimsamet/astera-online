@@ -106,7 +106,7 @@ describe('the Base queues', () => {
     expect(screen.queryByRole('group', { name: /repair/i })).toBeNull();
   });
 
-  it('opens the queue sheet on a tap, and cancels only after Confirm', async () => {
+  it('opens the queue sheet on a tap, and cancels only after the short hold', async () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} />, { wrapper: wrap });
     const user = userEvent.setup();
     await user.click(document.querySelector<HTMLElement>('.gk-qslot[data-state]')!);
@@ -115,7 +115,10 @@ describe('the Base queues', () => {
     const ask = within(sheet).getAllByRole('button').find((button) => /cancel/i.test(button.getAttribute('aria-label') ?? button.textContent));
     expect(ask).toBeDefined();
     await user.click(ask!);
-    await user.click(await screen.findByTestId('confirm-commit'));
+    expect(cancel).not.toHaveBeenCalled();
+    // G2-k: the row opens what burns, and the cancel is the kit's shortest hold
+    within(sheet).getByRole('button', { name: /Cancel the order/ }).focus();
+    await user.keyboard('{Enter}{Enter}');
     expect(cancel).toHaveBeenCalledWith('o1', expect.anything());
   });
 });

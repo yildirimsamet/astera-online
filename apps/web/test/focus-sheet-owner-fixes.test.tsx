@@ -207,10 +207,12 @@ describe('the strike essay is not part of looking at a world', () => {
 });
 
 describe('the sheet is given the height it was already using', () => {
-  const source = readFileSync('src/galaxy/FocusPanel.tsx', 'utf8');
+  // the frame is the kit's since G4-a (2026-11-15): its file's height is in the kit's sheet
+  const source = readFileSync('src/game-ui/game-ui.css', 'utf8');
+  const height = /\.gk-focus__file \{[^}]*max-height: (\d+)dvh/;
 
   it('opens taller than half the screen', () => {
-    const found = /max-h-\[(\d+)dvh\]/.exec(source);
+    const found = height.exec(source);
     expect(found, 'the focus body no longer states a height').not.toBeNull();
     // 65 is the owner's deliberate height (2026-09-13): still well over half the screen.
     expect(Number(found?.[1])).toBeGreaterThanOrEqual(65);
@@ -222,7 +224,7 @@ describe('the sheet is given the height it was already using', () => {
    * deciding. A full-height rail is a page with extra steps.
    */
   it('never takes the whole screen', () => {
-    const found = /max-h-\[(\d+)dvh\]/.exec(source);
+    const found = height.exec(source);
     expect(Number(found?.[1])).toBeLessThanOrEqual(78);
   });
 });

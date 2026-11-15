@@ -891,6 +891,20 @@ Kalanlar ve nedeni:
 - **Ölçüm** (Türkçe; telefon, 320, masaüstü): eski panel geçici bir kopyadan ölçüldü (`g2j-before`) → `g2j-after-2026-11-15.md`. 12 px altı metin 21/34 → 0 (en küçük 9 → 12 px). Kontrast 2 → 0. 44 px altı hedef 6/14 → 0. Tepkisiz 8 → 0. Puan 47 → 0/0.
 - **Açık:** ölçüm sheet'in arkasındaki karartmayı "adsız dokunma alanı" sayıyor. Bu bütün yarım boy sheet'lerin ortak çerçeve davranışı (G1 çerçevesi).
 
+**G2 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 39 görünüm × 6 dil = 234 ölçüm, 0 hata → `g2-langs-2026-11-15.md`. Yana taşma 0.
+- Üç noktayla kesilen: duraklatılmış araştırma yuvasında "En pause / En pausa" → fr "Pause", es "Pausa" (aynı anlam, kısa kelime). Yuvadaki uzun araştırma adı (Blindage…) şeridin tasarımı: tam ad hemen altındaki satırda.
+- Kırpılan: ja'da yalnız galerinin sabit Türkçe başlığı "Araştırma" (oyunda yok).
+- Ölçüm, G2'de atlanmış bir yüzey buldu: kuyruk sayfası (`QueueSheet`, puan 36). G2-k olarak kapandı (aşağıda).
+
+**G2-k Kuyruk sayfası ve iptal ✅ (2026-11-15).**
+- **An:** şeritte bir halkaya dokundu; "bunu iptal edeyim mi, neyi kaybederim?"
+- **Değişen:** sayfa kit sheet'i. Her şerit kit bölüm başlığı, yanında "09:15'te biter". Her sipariş bir satır: şeridin kendi halkası (`SlotRing`, yuvadan ortak bileşen; sırada bekleyen sarı kum saati, tatilde kilit), ad, kalan süre, 44 px "İptal".
+- **İptal artık modal onay değil:** "İptal" satırın içinde yok olacak payı ve iki toplamı açıyor ("Yok olan" kırmızı, "Geri gelen"), altında "Vazgeç" ve 0,6 sn kırmızı basılı tutma "Siparişi iptal et" (sahip: eski onay = en kısa tutma). Escape önce açık iptali katlıyor, sonra sayfayı.
+- Tamir istasyonunun kuyruk sekmesi aynı paneli (`CancelUndo`) kullanıyor; eski v1 `CancelConfirm` penceresi oyunda kalmadı.
+- **Önceden var olan ölü kod (silinmedi):** `ui/QueueStrip.tsx` (`QueueStrip`, `CancelConfirm`) uygulamada kullanılmıyor, yalnız iki test dosyası okuyor.
+- **Galeri:** `queue-cancel` (ilk satırın iptali açık).
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü): kuyruk 36 → 0, açık iptal 0. Satırdaki kırmızı tutmanın yazısı 4,49:1 ölçüldü; yüz bir ton koyulaştı → 4,5 üstü. Tamir kuyruğu 0 kaldı.
+
 ## G3. İstihbarat
 
 Okundu: `screens/IntelScreen.tsx` 60–260 (gövde, raflar), 274–940 iskelet (raf bileşenleri); `v2/hud/ViewSheet.tsx` iskelet.
@@ -1140,6 +1154,15 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 | G4-i | Ticaret ve konvoy | "Takas edeyim mi, konvoya baskın?" | `TradeSheet` (iki `range`, `Segmented`) ve konvoy sheet'i kitte. |
 | G4-j | Ölüm Yıldızı vuruşu | "Vurayım mı?" | `DeathStarSection`, `StrikeSheet` kitte; engeller düğmenin sebebinde. |
 | G4-k | Bilinmeyen sinyal | "Sinyale gemi göndereyim mi?" | Yerli `<select>` yerine kit dünya seçici (G2-j'nin rotası); gönder basılı tutma; üç sonuç durumu galeride. |
+
+**G4-a odak çerçevesi ✅ (2026-11-15).** Oyuncunun anı: galakside bir şeye dokundu; "bu ne, açayım mı?" Bütün odak kartları (dünya, kendi dünyam, asteroit, enkaz, korsan, uçuş, konvoy, ticaret, anıt, temas) aynı çerçeveden geçiyor.
+- Kapalıyken kitin bağlam kartı dili: kesik köşeli plaka, şeyin işareti (portresi, yoksa halka içinde glifi), 12 px üst etiket, 16 px ad, 12 px tek satır. Aç ve temizle kitin basışı (ses + titreşim); temizle kitin yuvarlak düğmesi, öğretici hâlâ `data-focus-close` ile buluyor.
+- Ton sahibinin rengi: kendi dünyam ve kendi uçuşlarım mavi, korsan kırmızı, gerisi çelik.
+- Açıkken aynı baş dosyanın üstünde; yalnız üst köşeler kesik, dock'a oturuyor. Eylem şeridi kitin yapışkan şeridi.
+- Özet artık sola yaslı (tür çipi adın altında); eski sağa yaslı düzen gezegen özetinde ortada kalıyordu.
+- Kartların kendi düğmeleri (Saldırı planla, Sonda, Geri çağır, Topla…) kendi birimlerinde kite geçecek (G4-b…i). Kendi dünyamda "KOLONİN / KOLONİ" tekrarı G4-c'de.
+- Galeriye `focus-closed` ve `focus-own` eklendi.
+- **Ölçüm** (Türkçe; telefon, 320, masaüstü) `g4a-before` → `g4a-after-2026-11-15.md`: kendi dünyam 0, anıt 12 → 1, uçuş 24 → 15, korsan uçuşu 20 → 11. Açık dosyalar (130–141) ve kapalı yabancı dünya (15) kartların içeriğinden: değer satırı, Sonda/Saldırı düğmeleri, radyasyon çubuğu (9–10 px); G4-b, G4-d, G4-h'de.
 
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 

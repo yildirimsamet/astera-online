@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView } from '../../src/api/schemas.js';
 import { QueueSheet } from '../../src/v2/kit/QueueSheet.js';
@@ -9,7 +8,8 @@ import { QueueSheet } from '../../src/v2/kit/QueueSheet.js';
  *
  * Both lanes, every order with its time, and the only cancel control in the new
  * interface. Cancelling burns half of what the order cost, so it never happens on
- * the tap: it opens `Confirm`, which states what is destroyed before it is.
+ * the tap: the row opens what is destroyed and what comes back, and the cancel is
+ * the kit's shortest hold (G2-k, 2026-11-15; owner: a former confirm is a 0.6 s hold).
  */
 
 const NOW = Date.parse('2026-09-23T12:00:00Z');
@@ -51,33 +51,53 @@ describe('the queue sheet', () => {
     expect(within(screen.getByRole('group', { name: 'Construction' })).getByText('Nothing building')).toBeInTheDocument();
   });
 
-  it('opens Confirm on cancel and cancels nothing until it is answered', async () => {
+  it('is a kit sheet whose lanes and rows carry none of the old look', () => {
+    render(<QueueSheet queues={queues} now={NOW} onCancel={vi.fn()} onClose={vi.fn()} />);
+    const sheet = screen.getByRole('dialog', { name: 'Build queues' });
+    expect(sheet).toHaveClass('gk-sheet');
+    const V2_LOOK = /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|caption)(\s|$)/;
+    const old = [...sheet.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+    expect(old).toEqual([]);
+    expect(within(screen.getByRole('group', { name: 'Yard' })).getByRole('listitem')).toHaveClass('gk-qrow');
+  });
+
+  it('opens what a cancel destroys inside the row, and cancels nothing until it is held', () => {
     const onCancel = vi.fn();
     render(<QueueSheet queues={queues} now={NOW} onCancel={onCancel} onClose={vi.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel Dart' }));
-    const confirm = screen.getByRole('dialog', { name: 'Dart' });
-    expect(within(confirm).getByText('Destroyed')).toBeInTheDocument();
+    const ask = screen.getByRole('button', { name: 'Cancel Dart' });
+    expect(ask).toHaveAttribute('data-own-sound');
+    fireEvent.click(ask);
+    expect(ask).toHaveAttribute('aria-expanded', 'true');
+    // no dialog over the sheet: the loss is said where the order is
+    expect(screen.queryByRole('dialog', { name: 'Dart' })).toBeNull();
+    const row = screen.getAllByRole('listitem')[0]!;
+    expect(within(row).getByText('Destroyed')).toBeInTheDocument();
+    expect(within(row).getByText('Returned')).toBeInTheDocument();
     expect(onCancel).not.toHaveBeenCalled();
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel the order' }));
+    // a confirm dialog once: the shortest hold (owner, 2026-11-14)
+    const commit = within(row).getByRole('button', { name: /Cancel the order/ });
+    expect(commit).toHaveClass('gk-hold', 'gk-btn--danger');
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
     expect(onCancel).toHaveBeenCalledWith(queues.YARD[0]);
-    expect(screen.queryByRole('dialog', { name: 'Dart' })).toBeNull();
+    expect(within(row).queryByText('Destroyed')).toBeNull();
   });
 
-  it('keeps the order when Confirm is refused', async () => {
+  it('keeps the order when the player steps back', () => {
     const onCancel = vi.fn();
     render(<QueueSheet queues={queues} now={NOW} onCancel={onCancel} onClose={vi.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel Dart' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Dart' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
     expect(onCancel).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog', { name: 'Dart' })).toBeNull();
+    expect(screen.queryByText('Destroyed')).toBeNull();
   });
 
-  it('closes only the Confirm on Escape, not the sheet under it', async () => {
+  it('folds the open cancel on Escape, and closes the sheet only on the next', () => {
     const onClose = vi.fn();
     render(<QueueSheet queues={queues} now={NOW} onCancel={vi.fn()} onClose={onClose} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel Dart' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Dart' }));
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'Dart' })).toBeNull();
+    expect(screen.queryByText('Destroyed')).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);

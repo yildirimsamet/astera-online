@@ -1,10 +1,14 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BUILD, cancelRefund } from '@astera/rules';
 import type { BuildOrderView } from '../../api/schemas.js';
-import { buildOrderLabel } from '../../lib/orders.js';
+import { CostLine, GameButton, GameHold, Glyph, SectionTag, SlotRing, slotMark } from '../../game-ui/index.js';
+import { haptic } from '../../lib/haptics.js';
+import { buildOrderArt, buildOrderLabel, orderProgress } from '../../lib/orders.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
 import { clockTime } from '../../lib/time.js';
-import { CancelConfirm } from '../../ui/QueueStrip.js';
-import { OrderLeft, OrderName, OrderRing } from './QueueLane.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
+import { orderLeft, slotState } from './QueueLane.js';
 import { Sheet } from './Sheet.js';
 
 type Lanes = Record<'CONSTRUCTION' | 'YARD', readonly BuildOrderView[]> & {
@@ -33,50 +37,42 @@ export interface QueueSheetProps {
  *
  * Both lanes, each order with its ring and its time, and when the whole lane is
  * done — the figure that decides whether to queue a fourth thing. It holds the
- * only cancel in the new interface, and a cancel never happens on the tap: it
- * opens `Confirm` (`CancelConfirm`), which leads with what is destroyed.
+ * only cancel in the interface, and a cancel never happens on the tap: the row opens
+ * what is destroyed and what comes back, and the cancel is the kit's shortest hold
+ * (G2-k, 2026-11-15; owner 2026-11-14: a former confirm is a 0.6 s hold).
  *
- * ESCAPE CLOSES ONE THING. With the Confirm open, Escape answers the Confirm and
- * leaves this sheet where it was.
+ * ESCAPE CLOSES ONE THING. With a cancel open, Escape folds it and leaves this sheet
+ * where it was.
  */
 export function QueueSheet({ queues, now, cancelling, onCancel, onClose }: QueueSheetProps) {
   const { t } = useTranslation();
-  const [asking, setAsking] = useState<BuildOrderView | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
 
   return (
-    <>
-      <Sheet
-        title={t('planet.queue.title')}
-        onClose={() => {
-          if (asking === null) onClose();
-        }}
-      >
-        <div className="flex flex-col gap-3">
-          {LANES.filter(([lane]) => lane !== 'REPAIR' || (queues.REPAIR?.length ?? 0) > 0).map(([lane, label]) => (
-            <Lane
-              key={lane}
-              label={t(label)}
-              orders={queues[lane] ?? []}
-              now={now}
-              cancelling={cancelling}
-              onAsk={setAsking}
-            />
-          ))}
-        </div>
-      </Sheet>
-      {asking && (
-        <CancelConfirm
-          order={asking}
-          pending={cancelling !== undefined}
-          onClose={() => { setAsking(null); }}
-          onConfirm={() => {
-            const order = asking;
-            setAsking(null);
-            onCancel(order);
-          }}
-        />
-      )}
-    </>
+    <Sheet
+      title={t('planet.queue.title')}
+      detents={['fit']}
+      kit={{ tone: 'self' }}
+      onClose={() => {
+        if (asking === null) onClose();
+        else setAsking(null);
+      }}
+    >
+      <div className="gk-qsheet">
+        {LANES.filter(([lane]) => lane !== 'REPAIR' || (queues.REPAIR?.length ?? 0) > 0).map(([lane, label]) => (
+          <Lane
+            key={lane}
+            label={t(label)}
+            orders={queues[lane] ?? []}
+            now={now}
+            cancelling={cancelling}
+            asking={asking}
+            onAsk={setAsking}
+            onCancel={(order) => { setAsking(null); onCancel(order); }}
+          />
+        ))}
+      </div>
+    </Sheet>
   );
 }
 
@@ -85,57 +81,127 @@ function Lane({
   orders,
   now,
   cancelling,
+  asking,
   onAsk,
+  onCancel,
 }: {
   label: string;
   orders: readonly BuildOrderView[];
   now: number;
   cancelling: string | undefined;
-  onAsk: (order: BuildOrderView) => void;
+  asking: string | null;
+  onAsk: (id: string | null) => void;
+  onCancel: (order: BuildOrderView) => void;
 }) {
   const { t } = useTranslation();
-  const labelId = useId();
   const ends = orders.reduce<Date | null>(
     (latest, order) => (order.finishesAt && (!latest || order.finishesAt > latest) ? order.finishesAt : latest),
     null,
   );
 
   return (
-    <section role="group" aria-labelledby={labelId} className="flex flex-col">
-      <div className="flex items-baseline justify-between gap-2 border-b border-v2-line pb-1">
-        <p id={labelId} className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
-        {ends && (
-          <span data-lane-ends className="font-v2-mono text-micro text-v2-ink-3">
-            {t('planet.queue.ends', { time: clockTime(ends) })}
-          </span>
-        )}
-      </div>
+    <section role="group" aria-label={label} className="gk-qsheet__lane">
+      <SectionTag aside={ends ? <span data-lane-ends className="gk-num">{t('planet.queue.ends', { time: clockTime(ends) })}</span> : undefined}>
+        {label}
+      </SectionTag>
       {orders.length === 0 ? (
-        <p className="py-2 text-caption text-v2-ink-3">{t('planet.queue.idle')}</p>
+        <p className="gk-sub">{t('planet.queue.idle')}</p>
       ) : (
-        <ul>
+        <ul className="gk-qsheet__rows">
           {orders.map((order) => (
-            <li key={order.id} className="flex items-center gap-2 border-b border-v2-line/60 py-1.5 last:border-b-0">
-              <OrderRing order={order} now={now} />
-              <span className="grid min-w-0 flex-1">
-                <OrderName order={order} />
-                <span className="font-v2-mono text-micro text-v2-ink-2"><OrderLeft order={order} now={now} /></span>
-              </span>
-              {order.finishesAt && (
-                <button
-                  type="button"
-                  disabled={cancelling !== undefined || ('pausedAt' in order && order.pausedAt !== undefined)}
-                  aria-label={t('planet.queue.cancelOne', { name: buildOrderLabel(order) })}
-                  onClick={() => { onAsk(order); }}
-                  className="shrink-0 rounded-control border border-v2-line-hi px-2.5 py-1 text-caption text-v2-ink-2 disabled:opacity-40"
-                >
-                  {t(cancelling === order.id ? 'planet.queue.cancelling' : 'planet.queue.cancel')}
-                </button>
-              )}
-            </li>
+            <Row
+              key={order.id}
+              order={order}
+              now={now}
+              cancelling={cancelling}
+              open={asking === order.id}
+              onAsk={() => { onAsk(asking === order.id ? null : order.id); }}
+              onKeep={() => { onAsk(null); }}
+              onCancel={() => { onCancel(order); }}
+            />
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function Row({ order, now, cancelling, open, onAsk, onKeep, onCancel }: {
+  order: BuildOrderView;
+  now: number;
+  cancelling: string | undefined;
+  open: boolean;
+  onAsk: () => void;
+  onKeep: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const name = buildOrderLabel(order);
+  const state = slotState(order, now);
+  const mark = slotMark(state);
+  const ask = useOwnPress(() => { playSound('tap'); haptic('tap'); onAsk(); });
+  const paused = 'pausedAt' in order && order.pausedAt !== undefined;
+
+  return (
+    <li className="gk-qrow" data-state={state} {...(open ? { 'data-asking': '' } : {})}>
+      <SlotRing art={buildOrderArt(order)} count={order.kind === 'RESEARCH' ? 1 : order.count} progress={orderProgress(order, now)} />
+      <span className="gk-qrow__text">
+        <span className="gk-qrow__name">{name}</span>
+        <span className="gk-qrow__left gk-num">
+          {mark !== undefined && <Glyph id={mark} />}
+          <span>{orderLeft(order, now)}</span>
+        </span>
+      </span>
+      {order.finishesAt && (
+        <button
+          type="button"
+          {...OWN_SOUND}
+          disabled={cancelling !== undefined || paused}
+          aria-label={t('planet.queue.cancelOne', { name })}
+          aria-expanded={open}
+          onPointerDown={ask.onPointerDown}
+          onClick={ask.onClick}
+          className="gk-btn gk-btn--sm gk-qrow__ask"
+        >
+          {t(cancelling === order.id ? 'planet.queue.cancelling' : 'planet.queue.cancel')}
+        </button>
+      )}
+      {open && <CancelUndo order={order} onKeep={onKeep} onCancel={onCancel} />}
+    </li>
+  );
+}
+
+/**
+ * WHAT A CANCEL BURNS, SAID UNDER THE ORDER IT WOULD DESTROY. The share that is lost, the
+ * two sums side by side, and the way back before the commitment: the kit's shortest hold,
+ * a confirm dialog once (owner, 2026-11-14). The Repair Station's jobs open the same.
+ */
+export function CancelUndo({ order, onKeep, onCancel }: { order: BuildOrderView; onKeep: () => void; onCancel: () => void }) {
+  const { t } = useTranslation();
+  const back = cancelRefund(order.cost);
+  const lost = {
+    alloy: order.cost.alloy - back.alloy,
+    crystal: order.cost.crystal - back.crystal,
+    deuterium: order.cost.deuterium - back.deuterium,
+  };
+  return (
+    <div className="gk-qrow__undo">
+      <p className="gk-qrow__lead">{t('planet.queue.confirm.lead', { share: Math.round((1 - BUILD.cancelRefund) * 100) })}</p>
+      <div className="gk-qrow__sums">
+        <span className="gk-qrow__sum" data-tone="lost">
+          <span className="gk-label">{t('planet.queue.confirm.lost')}</span>
+          <CostLine cost={lost} />
+        </span>
+        <span className="gk-qrow__sum">
+          <span className="gk-label">{t('planet.queue.confirm.kept')}</span>
+          <CostLine cost={back} />
+        </span>
+      </div>
+      <div className="gk-qrow__acts">
+        <GameButton size="sm" onPress={onKeep}>{t('planet.queue.confirm.back')}</GameButton>
+        <GameHold weight="reversible" tone="danger" size="md" glyph="close" commitSound="impact"
+          label={t('planet.queue.confirm.commit')} onCommit={onCancel} />
+      </div>
+    </div>
   );
 }

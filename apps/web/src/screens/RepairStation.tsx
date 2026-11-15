@@ -20,7 +20,7 @@ import {
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { countdown, durationPrecise, useNow } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { CancelConfirm } from '../ui/QueueStrip.js';
+import { CancelUndo } from '../v2/kit/QueueSheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Sheet } from '../v2/kit/Sheet.js';
@@ -171,6 +171,8 @@ function JobRow({ order, lots, busy, onCancel }: {
   const left = order.finishesAt ? Math.max(0, order.finishesAt.getTime() - now) : 0;
   // A job of one lot names its wound in its title; a job of several lists its lots.
   const only = lots.length === 1 ? lots[0] : undefined;
+  // a cancel opens on the job itself: what burns, what comes back, then the short hold (G2-k)
+  const [asking, setAsking] = useState(false);
   return (
     <li data-testid="repair-job" className="gk-job" data-state={started ? 'running' : 'waiting'}>
       <div className="gk-job__main">
@@ -188,9 +190,10 @@ function JobRow({ order, lots, busy, onCancel }: {
           )}
         </span>
         {order.finishesAt && (
-          <GameButton size="sm" tone="ghost" pending={busy} onPress={onCancel}>{t('repairStation.cancel')}</GameButton>
+          <GameButton size="sm" tone="ghost" pending={busy} onPress={() => { setAsking(!asking); }}>{t('repairStation.cancel')}</GameButton>
         )}
       </div>
+      {asking && <CancelUndo order={order} onKeep={() => { setAsking(false); }} onCancel={() => { setAsking(false); onCancel(); }} />}
       {lots.length > 1 && (
         <ul className="gk-job__lots">
           {lots.map((lot) => (
@@ -273,7 +276,6 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
   const [view, setView] = useState<View>(() => opening(planet));
   const [mode, setMode] = useState<Work>(() => workFor(view));
   const [quantities, setQuantities] = useState<Readonly<Record<string, number>>>({});
-  const [asking, setAsking] = useState<BuildOrderView | null>(null);
   const intent = useRef<{ fingerprint: string; key: string } | null>(null);
   const intentKey = (action: MaintenanceAction | 'REPAIR', selection: MaintenanceSelection | RepairRequest): string => {
     const fingerprint = JSON.stringify({ planetId: planet.planet.id, action, selection });
@@ -325,6 +327,14 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
     const request = { ...choice.repair, ...(planet.honorBenefits ? { expectedHonorTier: planet.honorBenefits.tier } : {}) };
     start.mutate({ planetId: planet.planet.id, request, key: intentKey('REPAIR', request) }, {
       onSuccess: () => { intent.current = null; setQuantities({}); say(t('repairStation.started')); },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  };
+
+  const cancelJob = (order: BuildOrderView): void => {
+    cancel.mutate({ planetId: planet.planet.id, orderId: order.id }, {
+      onSuccess: (result) => { say(t('planet.queue.cancelled', { alloy: full(result.refund.alloy),
+        crystal: full(result.refund.crystal), deuterium: full(result.refund.deuterium) })); },
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
@@ -406,7 +416,7 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
           repairs.length === 0 ? <p className="gk-sub">{t('repairStation.queueEmpty')}</p> : (
             <ul className="gk-jobs">
               {repairs.map((order) => (
-                <JobRow key={order.id} order={order} lots={jobLots(order, lots)} busy={busy} onCancel={() => { setAsking(order); }} />
+                <JobRow key={order.id} order={order} lots={jobLots(order, lots)} busy={busy} onCancel={() => { cancelJob(order); }} />
               ))}
             </ul>
           )
@@ -443,15 +453,5 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
         )}
       </div>
     </div>
-    {asking && <CancelConfirm order={asking} pending={cancel.isPending} onClose={() => { setAsking(null); }}
-      onConfirm={() => {
-        const order = asking;
-        setAsking(null);
-        cancel.mutate({ planetId: planet.planet.id, orderId: order.id }, {
-          onSuccess: (result) => { say(t('planet.queue.cancelled', { alloy: full(result.refund.alloy),
-            crystal: full(result.refund.crystal), deuterium: full(result.refund.deuterium) })); },
-          onError: (error) => { say(describe(error), 'error'); },
-        });
-      }} />}
   </Sheet>;
 }

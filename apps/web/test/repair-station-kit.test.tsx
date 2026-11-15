@@ -129,6 +129,23 @@ describe('the Repair Station sheet on the kit', () => {
     expect(screen.queryByTestId('health-group')).toBeNull();
   });
 
+  it('opens a cancel inside the job, what burns beside what comes back, and only a short hold cancels', async () => {
+    open(planetView({ fleet: {}, dock: dock([lot({ id: 'lot-2', hull: 'BALLISTA', repairing: true, orderId: 'r-1', count: 1 })]), queues: queues([job()]) }));
+    await userEvent.click(screen.getByRole('tab', { name: /^Queue/ }));
+    const running = screen.getByTestId('repair-job');
+    await userEvent.click(within(running).getByRole('button', { name: /^Cancel/ }));
+    // no second dialog over the station (G2-k): the loss is said on the job
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(within(running).getByText('Destroyed')).toBeInTheDocument();
+    expect(within(running).getByText('Returned')).toBeInTheDocument();
+    expect(mutations.cancel).not.toHaveBeenCalled();
+    const commit = within(running).getByRole('button', { name: /Cancel the order/ });
+    expect(commit).toHaveClass('gk-hold', 'gk-btn--danger');
+    commit.focus();
+    await userEvent.keyboard('{Enter}{Enter}');
+    expect(mutations.cancel).toHaveBeenCalledWith(expect.objectContaining({ orderId: 'r-1' }), expect.anything());
+  });
+
   it('turns between repair and scrap with a lever', async () => {
     open(planetView({ fleet: { DART: 4 }, fleetDamage: [{ hull: 'DART', count: 1, damageBp: 5000 }], dock: dock([]), queues: queues([]) }));
     expect(screen.getByRole('radio', { name: 'Repair' })).toHaveAttribute('aria-checked', 'true');

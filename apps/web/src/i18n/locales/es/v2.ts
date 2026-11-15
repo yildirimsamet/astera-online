@@ -13,7 +13,7 @@ export const hold = {
 export const lane = {
   /** Un hueco vacío en la cola. */
   free: '+ Hueco libre',
-  paused: 'En pausa',
+  paused: 'Pausa',
 };
 
 /** B1: un medidor de recurso en la barra superior. */

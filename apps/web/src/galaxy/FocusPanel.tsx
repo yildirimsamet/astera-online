@@ -99,6 +99,9 @@ import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
+import { Glyph, RoundButton, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Icon } from '../v2/icons.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
@@ -164,7 +167,7 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
   const { t } = useTranslation();
   const controller = monument.controller.kind === 'PLAYER' ? monument.controller.name
     : monument.controller.kind === 'CLAN' ? `[${monument.controller.tag}] ${monument.controller.name}` : t(monument.emptySince ? 'monument.empty' : 'monument.neutral');
-  return <Shell title={monumentName(monument.ordinal)} eyebrow={controller}
+  return <Shell glyph="flag" title={monumentName(monument.ordinal)} eyebrow={controller}
     summary={<><span className="block">{t('monument.capacityShort', { used: full(monument.used), total: full(monument.capacity) })}</span>
       <span className="block text-v2-deut">{t('monument.production', { rate: decimal(monument.productionPerMinute) })}</span>
       <span className="block text-v2-warn">{monument.difficulty === 'LEGACY'
@@ -200,6 +203,8 @@ const BTN_GHOST = `${BTN} border border-v2-line-hi bg-v2-raise/60 text-v2-ink di
  */
 function Shell({
   art,
+  glyph = 'target',
+  tone,
   eyebrow,
   title,
   summary,
@@ -211,6 +216,10 @@ function Shell({
   onClose,
 }: {
   art?: ReactNode;
+  /** The thing's mark when it has no portrait: in a ring, the context card's way. */
+  glyph?: GlyphId;
+  /** Whose it is: mine wears my colour, a threat the enemy's; anything else the steel. */
+  tone?: TimerTone;
   eyebrow: string;
   title: string;
   /** The one line worth seeing without asking. Shown collapsed. */
@@ -233,13 +242,12 @@ function Shell({
    * rendered, lands on whichever of these two controls is beneath it. One of them
    * EXPANDS the rail, which contradicts the owner's rule that focus opens closed;
    * the other is CLEAR, which deselects the world the player just chose. Both on
-   * the same gesture that chose it.
+   * the same gesture that chose it. The kit's round press guards its own the same way.
    *
    * Same shape as the sheet scrim, same answer: a press belongs to the surface it
    * started on.
    */
-  const toggle = useOwnPress(onToggle);
-  const clear = useOwnPress(onClose);
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); onToggle(); });
   const panel = useRef<HTMLElement>(null);
   useNativeBack(panel, open ? onToggle : onClose);
 
@@ -254,56 +262,35 @@ function Shell({
       ref={panel}
       data-native-back-layer="context"
       data-open={open ? 'true' : 'false'}
+      {...(tone === undefined ? {} : { 'data-tone': tone })}
       /*
-        THE MOCK'S TWO SHAPES (image.png, image copy 5). Closed, the context card: inset,
-        rounded, over the galaxy, which stays the screen (I5). Open, the dossier: a sheet
-        from the dock up, rounded at the top, 65dvh at most — the missing third is the
-        world being decided about.
+        THE MOCK'S TWO SHAPES (G4-a, 2026-11-15). Closed, the context card: a cut plate inset
+        over the galaxy, which stays the screen (I5). Open, the file: the same plate from the
+        dock up, 65dvh at most — the missing third is the world being decided about.
       */
-      className={`pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 font-v2-ui v2-split:left-auto v2-split:w-80 ${open ? '' : 'px-2.5 pb-2'}`}
+      className="gk gk-focus pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 v2-split:left-auto v2-split:w-80"
       aria-label={t('focus.shellLabel', { title })}
     >
-      <div
-        className={open
-          ? 'mx-auto max-w-xl overflow-hidden border border-b-0 border-v2-line bg-v2-panel shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
-          : 'mx-auto max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/95 shadow-[0_8px_24px_rgb(0_0_0/40%)]'}
-      >
+      <div className={`gk-focus__plate gk-cut${tone === undefined ? '' : ` gk-cut--${tone}`}`}>
         {/* The header. Always present, and the whole control when closed. */}
-        <div className="flex items-center gap-2 py-2 pl-3 pr-1.5">
-          <button
-            type="button"
-            {...toggle}
-            aria-expanded={open}
-            className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-          >
-            {art}
-            <span className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
-              <span className="min-w-0 flex-1">
-                <span className="block break-words text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</span>
-                <span className="block break-words text-body font-semibold text-v2-ink">{title}</span>
-              </span>
-              <span className="min-w-0 break-words text-left text-micro leading-tight text-v2-ink-2">
-                {summary}
-              </span>
+        <div className="gk-focus__head">
+          <button type="button" {...OWN_SOUND} {...toggle} aria-expanded={open} className="gk-focus__toggle">
+            {art ?? <span className="gk-focus__coin" aria-hidden="true"><Glyph id={glyph} /></span>}
+            <span className="gk-focus__heading">
+              <span className="gk-label gk-focus__eyebrow">{eyebrow}</span>
+              <span className="gk-focus__title">{title}</span>
+              <span className="gk-focus__summary">{summary}</span>
             </span>
-            <span aria-hidden className="grid size-7 shrink-0 place-items-center text-v2-ink-3">
-              <Icon id="i-chev" className={`size-3.5 transition-transform ${open ? 'rotate-90' : '-rotate-90'}`} />
-            </span>
+            <span aria-hidden="true" className="gk-focus__chev"><Glyph id={open ? 'down' : 'up'} /></span>
           </button>
-          <button
-            type="button"
-            aria-label={t('focus.clear')}
-            data-focus-close=""
-            {...clear}
-            className="grid size-9 shrink-0 place-items-center rounded-control text-v2-ink-3 hover:bg-v2-raise hover:text-v2-ink"
-          >
-            <Icon id="i-close" className="size-4" />
-          </button>
+          <span data-focus-close="" className="gk-focus__clear">
+            <RoundButton small glyph="close" label={t('focus.clear')} onPress={onClose} />
+          </span>
         </div>
 
         {!open && peek && (
           <GameActions>
-            <div className="flex flex-col gap-2 border-t border-v2-line/60 px-3 pb-2.5 pt-2">{peek}</div>
+            <div className="gk-focus__peek">{peek}</div>
           </GameActions>
         )}
 
@@ -315,7 +302,7 @@ function Shell({
             decision from one taken over one (`interface.md`'s fourth question). It goes
             no further: what is left above is the world being decided about (I5).
           */
-          <div className="max-h-[65dvh] overflow-y-auto overscroll-contain border-t border-v2-line">
+          <div className="gk-focus__file">
             {/*
               Every focus card goes through this shell, so wrapping it here is what
               stops a frozen season offering launches, probes and settlements it
@@ -323,18 +310,14 @@ function Shell({
               around the final galaxy is the one thing still on offer.
             */}
             <GameActions>
-              <div className="px-3 py-3">{children}</div>
+              <div className="gk-focus__body">{children}</div>
               {/*
                 THE ACTIONS WRAP, AND A COMMITMENT GETS A ROW TO ITSELF. A refusal
                 rides a control's label ("Death Star · origin recovering"), and wrapping
                 costs one row where squeezing four across set it below the size anything
                 else on screen may be.
               */}
-              {actions && (
-                <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-v2-line bg-v2-panel px-3 py-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
-                  {actions}
-                </div>
-              )}
+              {actions && <div className="gk-focus__acts">{actions}</div>}
             </GameActions>
           </div>
         )}
@@ -1048,9 +1031,9 @@ export function PlanetFocus({
       onToggle={onToggle}
       onClose={onClose}
       summary={(
-        <span className="flex flex-col items-end gap-1">
+        <span className="flex flex-col items-start gap-0.5">
           {target.body === 'OUTPOST'
-            ? <span className="v2-legend text-v2-warn">{t('starter.readout.level', { level: Math.max(1, target.coreLevel) })}</span>
+            ? <span className="gk-label" data-tone="warn">{t('starter.readout.level', { level: Math.max(1, target.coreLevel) })}</span>
             // A ship travels with the CAPITAL kind, and is not a world's capital (player test).
             : !unsurveyed && target.body !== 'VESSEL' && <WorldKind target={target} rivalSlot={rivalSlot} />}
           <Headline of={known} />
@@ -1565,6 +1548,7 @@ function OwnedPlanetFocus({
 
   return (
     <Shell
+      tone="self"
       art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} />}
       eyebrow={t(target.kind === 'CAPITAL'
         ? 'focus.planet.yourCapital'
@@ -1574,7 +1558,7 @@ function OwnedPlanetFocus({
       onToggle={onToggle}
       onClose={onClose}
       summary={(
-        <span className="flex flex-col items-end gap-1">
+        <span className="flex flex-col items-start gap-0.5">
           <WorldKind target={target} rivalSlot={null} />
           <span>{t('focus.planet.transferFrom', { origin: origin.planet.name })}</span>
         </span>
@@ -1640,10 +1624,8 @@ function WorldKind({
 }) {
   const { t } = useTranslation();
   return (
-    <span className="v2-legend flex items-center gap-1">
-      <span className={target.kind === 'CAPITAL'
-        ? 'text-v2-self'
-        : target.kind === 'COLONY' ? 'text-v2-self' : 'text-v2-ink-2'}>
+    <span className="gk-label gk-focus__kind">
+      <span {...(target.kind === 'CAPITAL' || target.kind === 'COLONY' ? { 'data-tone': 'self' } : {})}>
         {t(`focus.planet.${worldKindKey(target)}`)}
       </span>
       {rivalSlot !== null && (
@@ -2318,25 +2300,25 @@ function Headline({ of }: { of: HeadlineKind }) {
   const { t } = useTranslation();
   switch (of.kind) {
     case 'fleet-away':
-      return <span className="text-v2-self">{t('focus.planet.headlineFleetAway')}</span>;
+      return <span data-tone="self">{t('focus.planet.headlineFleetAway')}</span>;
     case 'fleet-home':
       return <span>{t('focus.planet.headlineFleetHome')}</span>;
     case 'veiled':
-      return <span className="text-v2-ink-2">{t('focus.planet.headlineVeiled')}</span>;
+      return <span>{t('focus.planet.headlineVeiled')}</span>;
     case 'probed':
       return (
-        <span className="text-v2-ink-2">
+        <span>
           {t('focus.planet.headlineProbed', { age: staleness(of.ageMinutes) })}
         </span>
       );
     case 'fought':
       return (
-        <span className="text-v2-ink-2">
+        <span>
           {t('focus.planet.headlineFought', { age: staleness(of.ageMinutes) })}
         </span>
       );
     case 'none':
-      return <span className="text-v2-ink-3">{t('focus.planet.headlineNone')}</span>;
+      return <span>{t('focus.planet.headlineNone')}</span>;
   }
 }
 
@@ -2636,6 +2618,7 @@ export function AsteroidFocus({
 
   return (
     <Shell
+      glyph="asteroid"
       eyebrow={t('focus.asteroid.eyebrow', { level: rock.level })}
       title={t('focus.asteroid.title')}
       open={open}
@@ -2865,6 +2848,8 @@ export function PirateFocus({
 
   return (
     <Shell
+      glyph="pirate"
+      tone="hostile"
       /*
         A RADAR RETURN HAS NO LEVEL, AND MAY NOT BE GIVEN ONE. D123.
 
@@ -3086,6 +3071,7 @@ export function IntergalacticConvoyFocus({
 
   return (
     <Shell
+      glyph="crate"
       eyebrow={t('convoy.eyebrow')}
       title={t('convoy.title')}
       open={open}
@@ -3192,6 +3178,7 @@ export function TradeFocus({
 
   return (
     <Shell
+      glyph="crate"
       eyebrow={t('trade.eyebrow')}
       title={t('trade.title')}
       open={open}
@@ -3364,6 +3351,8 @@ export function RunFocus({
 
   return (
     <Shell
+      glyph="mine"
+      tone="self"
       eyebrow={t(
         returning
           ? 'focus.run.eyebrowHome'
@@ -3468,6 +3457,8 @@ export function ThreadFocus({
 
   return (
     <Shell
+      glyph={thread.kind === 'probe' ? 'eye' : 'rocket'}
+      tone="self"
       eyebrow={t(
         thread.kind === 'probe'
           ? thread.leg === 'return'
@@ -4054,6 +4045,7 @@ export function DebrisFocus({
 
   return (
     <Shell
+      glyph="debris"
       eyebrow={t('focus.debris.eyebrow')}
       title={
         planetName === undefined

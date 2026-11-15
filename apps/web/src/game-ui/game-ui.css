@@ -2117,7 +2117,7 @@ button.gk-trow:focus-visible {
   color: var(--gk-ink);
 }
 /* the head is at work: a slow light runs round its ring, so a running slot never sits still */
-.gk-qslot[data-state='running'] .gk-qslot__ring::after {
+:is(.gk-qslot, .gk-qrow)[data-state='running'] .gk-qslot__ring::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -2172,10 +2172,10 @@ button.gk-trow:focus-visible {
   color: var(--gk-warn);
 }
 /* a vacation stops the clock: what was built stays drawn, in grey */
-.gk-qslot[data-state='paused'] .gk-qslot__arc {
+:is(.gk-qslot, .gk-qrow)[data-state='paused'] .gk-qslot__arc {
   stroke: var(--gk-ink-3);
 }
-.gk-qslot:is([data-state='waiting'], [data-state='paused'], [data-state='staged']) .gk-qslot__art {
+:is(.gk-qslot, .gk-qrow):is([data-state='waiting'], [data-state='paused'], [data-state='staged']) .gk-qslot__art {
   opacity: 0.6;
   filter: saturate(0.4);
 }
@@ -9950,6 +9950,10 @@ button.gk-probe__head:active {
 .gk-hold--md.gk-btn--steel {
   --face: color-mix(in srgb, var(--gk-steel) 70%, var(--gk-steel-lo));
 }
+/* and a row's red hold the same: its verb measured 4.49:1 on the lit top (audit, G2-k) */
+.gk-hold--md.gk-btn--danger {
+  --face: color-mix(in srgb, var(--gk-hostile) 22%, var(--gk-hostile-lo));
+}
 .gk-hold--md .gk-hold__dial {
   width: 30px;
   height: 30px;
@@ -10921,4 +10925,241 @@ button.gk-rcard__door:active {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ── the focus frame (G4-a, 2026-11-15) ─────────────────────────────────────────
+   Every focus card goes through it. Closed, the context card's language: a cut plate inset
+   over the galaxy, the thing's mark, a 12 px eyebrow, the name and one line, open and clear.
+   Open, the same head over the file, the actions on a strip at its foot. */
+.gk-focus {
+  --focus-c: var(--gk-info);
+}
+.gk-focus[data-tone='self'] { --focus-c: var(--gk-self); }
+.gk-focus[data-tone='hostile'] { --focus-c: var(--gk-hostile-hi); }
+.gk-focus[data-tone='warn'] { --focus-c: var(--gk-warn); }
+.gk-focus[data-open='false'] {
+  padding: 0 10px 8px;
+}
+.gk-focus__plate {
+  --cut: 10px;
+  max-width: 36rem;
+  margin-inline: auto;
+  color: var(--gk-ink);
+  animation: gk-rise var(--gk-settle) var(--gk-pop);
+}
+/* Open, it stands on the dock: only its top corners are cut. */
+.gk-focus[data-open='true'] .gk-focus__plate,
+.gk-focus[data-open='true'] .gk-focus__plate::before {
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%, 0 var(--cut));
+}
+.gk-focus[data-open='true'] .gk-focus__plate::before {
+  inset: 1px 1px 0;
+}
+.gk-focus__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 2px;
+  padding: 4px 4px 4px 8px;
+}
+.gk-focus__toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 22px;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 52px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gk-focus__toggle:active .gk-focus__heading,
+.gk-focus__toggle:active > :first-child {
+  transform: translateY(1px);
+}
+.gk-focus__coin {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--focus-c);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--gk-metal-1), var(--gk-metal-3));
+  color: var(--focus-c);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-focus__coin .gk-glyph {
+  width: 20px;
+  height: 20px;
+}
+.gk-focus__heading {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  transition: transform var(--gk-settle) var(--gk-ease);
+}
+.gk-focus__eyebrow {
+  color: var(--focus-c);
+  overflow-wrap: anywhere;
+}
+.gk-focus__title {
+  font-size: var(--gk-t-lead);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+.gk-focus__summary {
+  /* the rail stays short enough to frame what it names: the floor, not the body */
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+  overflow-wrap: break-word;
+}
+.gk-focus__kind {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gk-focus__summary [data-tone='self'] { color: var(--gk-self); }
+.gk-focus__summary [data-tone='warn'] { color: var(--gk-warn); }
+.gk-focus__chev {
+  display: grid;
+  place-items: center;
+  color: var(--gk-ink-3);
+}
+.gk-focus__chev .gk-glyph {
+  width: 14px;
+  height: 14px;
+}
+.gk-focus__clear {
+  display: inline-grid;
+}
+.gk-focus__peek {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-focus__file {
+  max-height: 65dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-focus__body {
+  padding: 12px;
+}
+/* The commitments stay under the thumb while the file scrolls above them. */
+.gk-focus__acts {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* inside the plate's 1 px edge, so the frame's colour runs down past the strip */
+  margin-inline: 1px;
+  padding: 10px 11px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--gk-outline);
+  background: var(--gk-metal-2);
+}
+
+/* ── the queue sheet (G2-k, 2026-11-15) ─────────────────────────────────────────
+   Each lane a section, each order a row with the lane's own ring; a cancel opens in the
+   row what burns and what comes back, and is the kit's shortest hold. */
+.gk-qsheet {
+  display: grid;
+  gap: 14px;
+}
+.gk-qsheet__lane {
+  display: grid;
+  gap: 6px;
+}
+.gk-qsheet__rows {
+  display: grid;
+  gap: 6px;
+}
+.gk-qrow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 6px 6px 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+}
+.gk-qrow[data-asking] {
+  border-color: color-mix(in srgb, var(--gk-hostile) 55%, var(--gk-metal-edge));
+}
+.gk-qrow__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.gk-qrow__name {
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+.gk-qrow__left {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-qrow__left .gk-glyph {
+  width: 12px;
+  height: 12px;
+}
+.gk-qrow[data-state='running'] .gk-qrow__left { color: var(--gk-ink); }
+.gk-qrow[data-state='waiting'] .gk-qrow__left { color: var(--gk-warn); }
+.gk-qrow__ask {
+  min-height: 44px;
+}
+.gk-qrow__ask[aria-expanded='true'] {
+  --face: color-mix(in srgb, var(--gk-steel) 70%, var(--gk-steel-lo));
+}
+/* the cancel, opened under the order it would destroy */
+.gk-qrow__undo {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+  animation: gk-rise var(--gk-settle) var(--gk-pop);
+}
+.gk-qrow__lead {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-qrow__sums {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.gk-qrow__sum {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.gk-qrow__sum[data-tone='lost'] .gk-label {
+  color: var(--gk-hostile-hi);
+}
+.gk-qrow__acts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
 }

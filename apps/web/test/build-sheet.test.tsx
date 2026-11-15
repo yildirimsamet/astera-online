@@ -405,7 +405,9 @@ describe('the two build queues', () => {
     await userEvent.click(cancel!);
     expect(cancelOrder, 'the first press cancelled without asking').not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByTestId('confirm-commit'));
+    // G2-k: the row says what burns, and the cancel is the kit's shortest hold
+    within(sheet).getByRole('button', { name: /Cancel the order/ }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(cancelOrder).toHaveBeenCalledOnce();
     expect(cancelOrder.mock.calls[0]?.[0]).toBe('construction-1');
     expectMutationCallbacks(cancelOrder.mock.calls[0]?.[1]);

@@ -598,19 +598,10 @@ export function QueueSlot({ art, name, count = 1, progress, left, state, label, 
   onPress: () => void;
 }) {
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
-  const length = 2 * Math.PI * 16;
-  const built = Math.min(1, Math.max(0, progress));
   const mark = SLOT_MARK[state];
   return (
     <button type="button" {...OWN_SOUND} className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
-      <span className="gk-qslot__ring" aria-hidden="true">
-        <svg viewBox="0 0 38 38">
-          <circle className="gk-qslot__track" cx="19" cy="19" r="16" />
-          <circle className="gk-qslot__arc" cx="19" cy="19" r="16" strokeDasharray={length} strokeDashoffset={length * (1 - built)} />
-        </svg>
-        {art !== null && <img className="gk-qslot__art" src={art} alt="" draggable={false} />}
-        {count > 1 && <span className="gk-qslot__count gk-num">×{count}</span>}
-      </span>
+      <SlotRing art={art} count={count} progress={progress} />
       <span className="gk-qslot__text">
         <span className="gk-qslot__name">{name}</span>
         <span className="gk-qslot__left gk-num">
@@ -621,6 +612,25 @@ export function QueueSlot({ art, name, count = 1, progress, left, state, label, 
     </button>
   );
 }
+
+/** The slot's ring: how far the order has built, round its picture, the batch on its corner. */
+export function SlotRing({ art, count = 1, progress }: { art: string | null; count?: number; progress: number }) {
+  const length = 2 * Math.PI * 16;
+  const built = Math.min(1, Math.max(0, progress));
+  return (
+    <span className="gk-qslot__ring" aria-hidden="true">
+      <svg viewBox="0 0 38 38">
+        <circle className="gk-qslot__track" cx="19" cy="19" r="16" />
+        <circle className="gk-qslot__arc" cx="19" cy="19" r="16" strokeDasharray={length} strokeDashoffset={length * (1 - built)} />
+      </svg>
+      {art !== null && <img className="gk-qslot__art" src={art} alt="" draggable={false} />}
+      {count > 1 && <span className="gk-qslot__count gk-num">×{count}</span>}
+    </span>
+  );
+}
+
+/** The mark beside a slot's time: why no clock runs. */
+export const slotMark = (state: SlotState): GlyphId | undefined => SLOT_MARK[state];
 
 /** An empty slot, said in words: the room left must be seen without counting. */
 export function FreeSlot({ text }: { text: string }) {
