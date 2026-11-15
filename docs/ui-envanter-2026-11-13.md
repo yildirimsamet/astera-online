@@ -1255,6 +1255,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Rakamlar kit kuyusunda, iki sütun. Döteryum yolu yeşil not. Sığmayan yük sarı not ve kitin "Önce topla" düğmesi; sığarsa sessiz.
 - **Ölçüm** `g4h1-before/after-2026-11-15.md`: `focus-asteroid` 47 → 0, `focus-debris` 25 → 0.
 
+**C34 Ödüller ✅ (2026-11-15, yardımcı oturum).** G6 #1 `RewardsScreen` (+ galaksideki ve galerideki sac).
+- **An:** "Ne kazandım, al." Sunucu ilerlemesi, kademe kimlikleri, tek istek kuralı ve taşma uyarısı değişmedi.
+- **Değişen:** Alınabilir ödül varsa listenin üstünde kitin **ikmal kapsülü** (`RewardPod`): dokun, sarsılır, kapak açılır, içindeki alaşım/kristal görünür ve sıradaki alınabilir kademe alınır; 1,8 sn sonra sıradaki kapsül gelir. Her kademe yine kendi "Al" düğmesini taşıyor (kitin ana düğmesi, ağır basış, bekleyişte döner). Özet camda iki değer; her hedef kesik plaka (bekleyen yeşil kenarlı), kademe şeridi, kademeler camda, kalan yol kitin çubuğunda, "Tüm kademeler" katlama kitin basışıyla. Topluluk ödülü: ödül camda, adımlar numaralı, komutan adı seçilebilir kutuda, X bağlantısı kit satırı. Hata ve taşma banner; boş durum kitin boş-durum çizimi. Sac kitin (hediye resmi).
+- **Test:** eski "beklerken gri" iddiası kitin bekleme basışına (`aria-busy`, ikinci dokunuşu yutar) çevrildi.
+- **Yeni anahtar:** `rewards.openPod` (6 dil).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 378/376/247/9 → 3/3/3/0 (kalan 3 arkalık); 12 px altı 167→0, kontrast 57→0, 44 px altı 10→1. `reports/ui-audit/c34-rewards-after-2026-11-15.md`.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

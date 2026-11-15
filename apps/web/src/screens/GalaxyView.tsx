@@ -2164,7 +2164,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('rewards.eyebrow')}
-          headerArt={ATMOSPHERE.rewards}
+          kit={{ art: artIconSrc('gift') }}
           title={t('rewards.title')}
           onClose={() => {
             onPanel(null);

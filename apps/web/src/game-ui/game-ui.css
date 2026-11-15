@@ -14800,3 +14800,186 @@ button.gk-fact__head:active .gk-fact__line {
   color: var(--gk-gold);
 }
 .gk-reveal__placed .gk-glyph { width: 16px; height: 16px; }
+
+/* ── the reward panel (G6, C34): the next payout a pod to open, every goal a cut plate ── */
+
+.gk-rewards {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) 0 var(--gk-s5);
+  color: var(--gk-ink);
+}
+.gk-rewards--state { padding-top: var(--gk-s3); }
+.gk-rewards__ghost { height: 92px; opacity: 0.6; }
+.gk-rewards__pod { display: grid; justify-items: center; }
+.gk-rewards__sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gk-rewards__list { display: grid; gap: var(--gk-s3); }
+.gk-reward {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-reward[data-done] .gk-reward__name { color: var(--gk-ink-2); }
+.gk-reward__head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--gk-s3);
+}
+.gk-reward__mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+  color: var(--gk-ink-3);
+}
+.gk-reward__mark[data-on] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  color: var(--gk-self);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gk-self) 25%, transparent);
+}
+.gk-reward__mark .gk-glyph { width: 22px; height: 22px; }
+.gk-reward__words { display: grid; gap: 3px; min-width: 0; }
+.gk-reward__titleline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.gk-reward__name {
+  margin: 0;
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.gk-reward__standing {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__standing[data-on] { color: var(--gk-self); }
+.gk-reward__tag {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-reward__steps {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+}
+.gk-reward__steps > span {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+.gk-reward__steps > span[data-state='claimed'] { background: var(--gk-self); }
+.gk-reward__steps > span[data-state='claimable'] {
+  background: color-mix(in srgb, var(--gk-self) 40%, transparent);
+  box-shadow: 0 0 0 1px var(--gk-self);
+}
+.gk-reward__tiers { display: grid; margin: 0; }
+.gk-reward__tier {
+  display: grid;
+  gap: 6px;
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-reward__tier + .gk-reward__tier { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-reward__tier[data-state='claimed'] { color: var(--gk-ink-3); }
+.gk-reward__tier[data-state='claimed'] .gk-cost { opacity: 0.55; }
+.gk-reward__tierline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--gk-s2);
+}
+.gk-reward__target { font-size: var(--gk-t-body); }
+.gk-reward__state {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__state[data-on] { color: var(--gk-self); }
+.gk-reward__reach { display: block; }
+.gk-reward__fold {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s1);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-reward__fold:active { color: var(--gk-ink); }
+.gk-reward__fold:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-reward__fold .gk-glyph { width: 16px; height: 16px; }
+.gk-reward__foldcount { margin-left: var(--gk-s2); color: var(--gk-ink-3); }
+.gk-reward__prize { padding: var(--gk-s3); font-size: var(--gk-t-lead); }
+.gk-reward__how { display: grid; gap: var(--gk-s2); }
+.gk-reward__step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-reward__stepno {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 50%;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__name-copy {
+  display: block;
+  margin-top: 6px;
+  padding: 6px var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.gk-reward__link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-reward__link:active { transform: translateY(1px); }
+.gk-reward__link:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-reward__link .gk-glyph { width: 16px; height: 16px; }
+.gk-reward__after {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-reward__after .gk-glyph { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+.gk-reward__after[data-on] .gk-glyph { color: var(--gk-self); }

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
 import { useClaimReward, usePlanet, useRewards } from '../api/queries.js';
@@ -7,15 +7,19 @@ import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
 import { useAccordion } from '../lib/accordion.js';
 import { haptic } from '../lib/haptics.js';
-import { Icon, type IconId } from '../v2/icons.js';
-import { Button, EmptyState, Plate, PriceTag } from '../v2/kit/Surface.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { Banner, CostLine, EmptyState, GameButton, Glyph, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
-const CHAIN_ICON: Record<RewardChainId, IconId> = {
-  PROBE: 'i-probe', RAID: 'i-attack', CORE: 'i-base', SHIPYARD: 'i-fleet',
-  REFINERY: 'i-collect', EXTRACTOR: 'i-mine', SHIPS: 'i-fleet', AEGIS: 'i-shield',
-  VAULT: 'i-lock', PIRATE: 'm-pirate', MINE: 'm-rock', SALVAGE: 'm-debris', SOCIAL: 'i-gift',
+const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
+  PROBE: 'eye', RAID: 'attack', CORE: 'home', SHIPYARD: 'rocket',
+  REFINERY: 'fuel', EXTRACTOR: 'mine', SHIPS: 'rocket', AEGIS: 'shield',
+  VAULT: 'lock', PIRATE: 'pirate', MINE: 'asteroid', SALVAGE: 'debris', SOCIAL: 'crate',
 };
+
+/** How long an opened pod keeps what was in it on show before the next one stands in its place. */
+const LOOT_MS = 1800;
 
 type KnownChain = RewardChainView & { id: RewardChainId };
 const known = (chain: RewardChainView): chain is KnownChain =>
@@ -40,24 +44,24 @@ export function RewardsScreen({ commander }: { commander: string }) {
       ...goals.filter((chain) => !chain.tiers.some((tier) => tier.state === 'claimable'))];
   }, [data]);
 
-  if (isError) return <div role="alert" className="py-5 font-v2-ui">
-    <Plate className="p-4">
-      <Icon id="i-warn" className="mb-3 size-6 text-v2-warn" />
-      <p className="text-caption leading-relaxed text-v2-ink-2">{t('surface.unreachable', { what: t('surface.whatRewards') })}</p>
-      <Button className="mt-3" onClick={() => { void refetch(); }}>{t('surface.retry')}</Button>
-    </Plate>
+  // The pod just opened keeps its loot on show for a moment, whatever the list says meanwhile.
+  const [opened, setOpened] = useState<RewardTierView | null>(null);
+  useEffect(() => {
+    if (opened === null) return;
+    const timer = window.setTimeout(() => { setOpened(null); }, LOOT_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [opened]);
+
+  if (isError) return <div role="alert" className="gk-rewards gk-rewards--state">
+    <Banner tone="hostile" title={t('surface.unreachable', { what: t('surface.whatRewards') })}
+      action={<GameButton size="sm" glyph="refresh" onPress={() => { void refetch(); }}>{t('surface.retry')}</GameButton>} />
   </div>;
-  if (isPending) return <div aria-busy="true" aria-label={t('rewards.title')} className="grid gap-3 py-3">
-    {[0, 1, 2].map((index) => <Plate key={index} className="grid gap-3 p-4">
-      <span className="h-3 w-1/3 animate-pulse rounded-chip bg-v2-raise" />
-      <span className="h-10 animate-pulse rounded-control bg-v2-raise/60" />
-    </Plate>)}
+  if (isPending) return <div aria-busy="true" aria-label={t('rewards.title')} className="gk-rewards gk-rewards--state">
+    {[0, 1, 2].map((index) => <div key={index} className="gk-well gk-rewards__ghost" />)}
   </div>;
-  if (chains.length === 0) return <div data-v2-rewards className="py-3 font-v2-ui">
-    <EmptyState icon={<Icon id="i-gift" className="size-6" />} title={t('rewards.empty')}
-      action={<Button className="mt-2" onClick={() => { void refetch(); }}>{t('surface.retry')}</Button>}>
-      {t('rewards.emptyHint')}
-    </EmptyState>
+  if (chains.length === 0) return <div data-v2-rewards className="gk-rewards gk-rewards--state">
+    <EmptyState art={artIconSrc('gift')} title={t('rewards.empty')} body={t('rewards.emptyHint')}
+      action={<GameButton glyph="refresh" onPress={() => { void refetch(); }}>{t('surface.retry')}</GameButton>} />
   </div>;
 
   // Credits go to the capital even while a colony is selected. Overflow is per single claim.
@@ -76,24 +80,28 @@ export function RewardsScreen({ commander }: { commander: string }) {
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
+  const pod = opened ?? ready[0];
 
-  return <div data-v2-rewards className="flex flex-col gap-3 pb-5 pt-2 font-v2-ui text-v2-ink">
-    <div className="reward-summary grid grid-cols-2 divide-x divide-v2-line rounded-control border border-v2-line bg-v2-deep">
-      <div className="p-3">
-        <p className="text-micro text-v2-ink-3">{t('rewards.summaryReady')}</p>
-        <p className={`mt-1 text-readout font-semibold leading-none tabular-nums ${ready.length > 0 ? 'text-v2-self' : 'text-v2-ink-2'}`}>{full(ready.length)}</p>
-      </div>
-      <div className="p-3">
-        <p className="text-micro text-v2-ink-3">{t('rewards.summaryClaimed')}</p>
-        <p className="mt-1 text-readout font-semibold leading-none tabular-nums">{full(taken)}<span className="ml-1 text-body font-normal text-v2-ink-3">/ {full(tiers.length)}</span></p>
-      </div>
-    </div>
-    <p className="text-caption leading-relaxed text-v2-ink-2">{t('rewards.intro')}</p>
-    {overflowing && <div className="flex items-start gap-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 p-3">
-      <Icon id="i-warn" className="mt-0.5 size-4 shrink-0 text-v2-warn" />
-      <p className="text-caption leading-relaxed text-v2-ink-2">{t('rewards.overCap')}</p>
+  return <div data-v2-rewards className="gk-rewards">
+    {pod && <div className="gk-rewards__pod">
+      <RewardPod key={pod.id} label={t('rewards.openPod')} opened={opened !== null}
+        onOpen={() => { setOpened(pod); onClaim(pod.id); }}>
+        <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />
+      </RewardPod>
     </div>}
-    <ul className="grid gap-3">
+    <dl className="gk-cmdr__cells gk-well gk-rewards__sum">
+      <div className="gk-cmdr__cell" {...(ready.length > 0 ? { 'data-on': '' } : {})}>
+        <dt className="gk-label gk-cmdr__label"><Glyph id="crate" />{t('rewards.summaryReady')}</dt>
+        <dd className="gk-cmdr__value gk-display gk-num">{full(ready.length)}</dd>
+      </div>
+      <div className="gk-cmdr__cell">
+        <dt className="gk-label gk-cmdr__label"><Glyph id="check" />{t('rewards.summaryClaimed')}</dt>
+        <dd className="gk-cmdr__value gk-display gk-num">{full(taken)} / {full(tiers.length)}</dd>
+      </div>
+    </dl>
+    <p className="gk-copy">{t('rewards.intro')}</p>
+    {overflowing && <Banner tone="warn" title={t('rewards.overCap')} />}
+    <ul className="gk-rewards__list">
         {chains.map((chain) => chain.metric === 'grant'
           ? <SocialCard key={chain.id} chain={chain} commander={commander} busy={claim.isPending} onClaim={onClaim} />
           : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} busy={claim.isPending} onClaim={onClaim} />)}
@@ -116,34 +124,33 @@ function GoalCard({ chain, expanded, onToggle, busy, onClaim }: {
   // Every earned payout stays pressable; only history and later locked tiers fold away.
   const visible = expanded ? chain.tiers : chain.tiers.filter((tier) => tier.state === 'claimable' || tier === next);
   const panelId = `reward-tiers-${chain.id}`;
+  const fold = useOwnPress(() => { playSound('tab'); haptic('tap'); onToggle(); });
 
   return <li data-reward-chain={chain.id}>
-    <Plate className="overflow-hidden">
-      <div className={`flex items-start gap-3 p-3 ${waiting ? 'border-t-2 border-v2-self' : 'border-t-2 border-transparent'}`}>
-        <span className={`grid size-10 shrink-0 place-items-center rounded-control border bg-v2-deep ${waiting ? 'border-v2-self/25 text-v2-self' : 'border-v2-line text-v2-ink-3'}`}>
-          <Icon id={CHAIN_ICON[chain.id]} className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-            <h3 className="text-body font-semibold leading-snug">{name}</h3>
-            <span className={`text-caption font-semibold tabular-nums ${waiting ? 'text-v2-self' : 'text-v2-ink-2'}`}>{standing}</span>
+    <article className={`gk-cut gk-reward${waiting ? ' gk-cut--self' : ''}`} {...(done ? { 'data-done': '' } : {})}>
+      <div className="gk-reward__head">
+        <span className="gk-reward__mark" {...(waiting ? { 'data-on': '' } : {})}><Glyph id={CHAIN_GLYPH[chain.id]} /></span>
+        <div className="gk-reward__words">
+          <div className="gk-reward__titleline">
+            <h3 className="gk-reward__name gk-display">{name}</h3>
+            <span className="gk-reward__standing gk-num" {...(waiting ? { 'data-on': '' } : {})}>{standing}</span>
           </div>
-          <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t(`rewards.chains.${chain.id}.tag`)}</p>
-          <div className="mt-3 flex gap-1" role="img" aria-label={`${t('rewards.summaryClaimed')}: ${taken} / ${chain.tiers.length}`}>
-            {chain.tiers.map((tier) => <span key={tier.id} aria-hidden="true" className={`h-1 flex-1 rounded-full ${tier.state === 'claimed' ? 'bg-v2-self' : tier.state === 'claimable' ? 'bg-v2-self/40 ring-1 ring-v2-self/50' : 'bg-v2-line'}`} />)}
+          <p className="gk-reward__tag">{t(`rewards.chains.${chain.id}.tag`)}</p>
+          <div className="gk-reward__steps" role="img" aria-label={`${t('rewards.summaryClaimed')}: ${String(taken)} / ${String(chain.tiers.length)}`}>
+            {chain.tiers.map((tier) => <span key={tier.id} aria-hidden="true" data-state={tier.state} />)}
           </div>
         </div>
       </div>
-      <ul id={panelId} className="divide-y divide-v2-line border-t border-v2-line bg-v2-deep/60">
+      <ul id={panelId} className="gk-well gk-reward__tiers">
         {visible.map((tier) => <TierRow key={tier.id} tier={tier} metric={chain.metric} progress={chain.progress} busy={busy} onClaim={onClaim} />)}
       </ul>
-      {visible.length < chain.tiers.length || expanded ? <button type="button" onClick={onToggle}
+      {visible.length < chain.tiers.length || expanded ? <button type="button" {...OWN_SOUND} onPointerDown={fold.onPointerDown} onClick={fold.onClick}
         aria-expanded={expanded} aria-controls={panelId} aria-label={`${t('rewards.allMilestones')} · ${name}`}
-        className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-v2-line px-3 text-caption text-v2-ink-2 transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self">
-        <span>{t('rewards.allMilestones')}<span className="ml-2 text-micro tabular-nums text-v2-ink-3">{taken} / {chain.tiers.length}</span></span>
-        <Icon id="i-chev" className={`size-4 transition-transform duration-200 ${expanded ? '-rotate-90' : 'rotate-90'}`} />
+        className="gk-reward__fold">
+        <span>{t('rewards.allMilestones')}<span className="gk-reward__foldcount gk-num">{taken} / {chain.tiers.length}</span></span>
+        <Glyph id={expanded ? 'up' : 'down'} />
       </button> : null}
-    </Plate>
+    </article>
   </li>;
 }
 
@@ -158,45 +165,37 @@ function SocialCard({ chain, commander, busy, onClaim }: {
   const forever = taken && chain.scope === 'account';
 
   return <li data-reward-chain={chain.id}>
-    <Plate className="overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-v2-line p-3">
-        <span className={`grid size-10 shrink-0 place-items-center rounded-control border bg-v2-deep ${ready ? 'border-v2-self/30 text-v2-self' : 'border-v2-line-hi text-v2-ink-2'}`}><Icon id="i-gift" className="size-6" /></span>
-        <div className="min-w-0">
-          <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('rewards.social.eyebrow')}</p>
-          <h3 className="mt-1 text-body font-semibold leading-snug">{t('rewards.chains.SOCIAL.name')}</h3>
-          {!taken && chain.scope === 'account' && <p className="mt-1 text-micro text-v2-ink-3">{t('rewards.chains.SOCIAL.tag')}</p>}
+    <article className={`gk-cut gk-reward gk-reward--social${ready ? ' gk-cut--self' : ''}`}>
+      <div className="gk-reward__head">
+        <span className="gk-reward__mark" {...(ready ? { 'data-on': '' } : {})}><Glyph id="crate" /></span>
+        <div className="gk-reward__words">
+          <p className="gk-label">{t('rewards.social.eyebrow')}</p>
+          <h3 className="gk-reward__name gk-display">{t('rewards.chains.SOCIAL.name')}</h3>
+          {!taken && chain.scope === 'account' && <p className="gk-reward__tag">{t('rewards.chains.SOCIAL.tag')}</p>}
         </div>
       </div>
-      <div className="grid gap-3 p-3">
-        <div className="grid grid-cols-2 gap-2">
-          {(['alloy', 'crystal'] as const).map((resource) => <div key={resource} className="rounded-control border border-v2-line bg-v2-deep p-2.5">
-            <p className="text-micro text-v2-ink-3">{t(`vocabulary.resource.${resource}`)}</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1"><PriceTag exact {...(resource === 'alloy' ? { alloy: tier.alloy } : { crystal: tier.crystal })} className="[&_img]:size-5 [&_span]:text-title" /></div>
-          </div>)}
-        </div>
-        {!taken && <ol className="grid gap-2.5">
-          <Step n={1}>{t('rewards.social.step1')}</Step>
-          <Step n={2}>{t('rewards.social.step2')}<span className="mt-1.5 block break-all rounded-control border border-v2-line-hi bg-v2-deep px-2 py-1.5 font-v2-mono text-caption text-v2-ink">{commander}</span></Step>
-          <Step n={3}>{t('rewards.social.step3')}</Step>
-        </ol>}
-        {!taken && <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener"
-          className="flex min-h-11 items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 py-2 text-caption text-v2-ink transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self">
-          {t('rewards.social.open')}<Icon id="i-share" className="size-4 shrink-0" />
-        </a>}
-        {ready ? <span data-reward-claim={tier.id}><Button full variant="primary" size="lg" disabled={busy} onClick={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</Button></span>
-          : <div className="flex items-start gap-2 border-t border-v2-line pt-3 text-caption leading-relaxed text-v2-ink-3">
-            <Icon id={taken ? 'i-check' : 'i-clock'} className={`mt-0.5 size-4 shrink-0 ${taken ? 'text-v2-self' : ''}`} />
-            <p>{forever ? t('rewards.social.forever') : taken ? t('rewards.claimed') : t('rewards.social.pending')}</p>
-          </div>}
-      </div>
-    </Plate>
+      <div className="gk-well gk-reward__prize"><CostLine cost={{ alloy: tier.alloy, crystal: tier.crystal }} /></div>
+      {!taken && <ol className="gk-reward__how">
+        <Step n={1}>{t('rewards.social.step1')}</Step>
+        <Step n={2}>{t('rewards.social.step2')}<span className="gk-reward__name-copy gk-num">{commander}</span></Step>
+        <Step n={3}>{t('rewards.social.step3')}</Step>
+      </ol>}
+      {!taken && <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener" className="gk-reward__link">
+        {t('rewards.social.open')}<Glyph id="share" />
+      </a>}
+      {ready ? <span data-reward-claim={tier.id}><GameButton tone="action" size="lg" wide heavy glyph="crate" pending={busy} onPress={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</GameButton></span>
+        : <p className="gk-reward__after" {...(taken ? { 'data-on': '' } : {})}>
+          <Glyph id={taken ? 'check' : 'clock'} />
+          <span>{forever ? t('rewards.social.forever') : taken ? t('rewards.claimed') : t('rewards.social.pending')}</span>
+        </p>}
+    </article>
   </li>;
 }
 
 function Step({ n, children }: { n: number; children: ReactNode }) {
-  return <li className="flex items-start gap-2.5">
-    <span className="grid size-5 shrink-0 place-items-center rounded-full border border-v2-line-hi font-v2-mono text-micro text-v2-ink-3">{n}</span>
-    <div className="min-w-0 text-caption leading-relaxed text-v2-ink-2">{children}</div>
+  return <li className="gk-reward__step">
+    <span className="gk-reward__stepno gk-num">{n}</span>
+    <div className="min-w-0">{children}</div>
   </li>;
 }
 
@@ -209,17 +208,17 @@ function TierRow({ tier, metric, progress, busy, onClaim }: {
   const target = metric === 'level' ? t('rewards.goalLevel', { n: tier.goal }) : t('rewards.goalCount', { n: tier.goal });
   const reach = tier.goal > 0 ? Math.max(0, Math.min(1, progress / tier.goal)) : 1;
 
-  return <li data-reward-tier={tier.id} className={`relative grid gap-1.5 px-3 py-2.5 ${claimed ? 'text-v2-ink-3' : ''}`}>
-    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-      <span className="text-caption font-semibold tabular-nums">{target}</span>
-      <span className={`text-micro tabular-nums ${ready ? 'text-v2-self' : 'text-v2-ink-3'}`}>
+  return <li data-reward-tier={tier.id} data-state={tier.state} className="gk-reward__tier">
+    <div className="gk-reward__tierline">
+      <span className="gk-reward__target gk-display gk-num">{target}</span>
+      <span className="gk-reward__state gk-num" {...(ready ? { 'data-on': '' } : {})}>
         {ready ? t('rewards.waiting', { count: 1 }) : claimed ? t('rewards.claimed') : t('rewards.toGo', { count: Math.max(0, tier.goal - progress) })}
       </span>
     </div>
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <PriceTag alloy={tier.alloy} crystal={tier.crystal} exact className={`flex-wrap ${claimed ? 'opacity-50' : ''}`} />
-      {ready && <span data-reward-claim={tier.id}><Button size="md" variant="primary" disabled={busy} onClick={() => { onClaim(tier.id); }}>{t('rewards.claim')}</Button></span>}
+    <div className="gk-reward__tierline">
+      <CostLine cost={{ alloy: tier.alloy, crystal: tier.crystal }} />
+      {ready && <span data-reward-claim={tier.id}><GameButton size="sm" tone="action" heavy glyph="crate" pending={busy} onPress={() => { onClaim(tier.id); }}>{t('rewards.claim')}</GameButton></span>}
     </div>
-    {!claimed && !ready && <div aria-hidden="true" className="mt-1 h-0.5 overflow-hidden rounded-full bg-v2-line"><span data-tier-reach className="block h-full origin-left bg-v2-ink-3/60" style={{ transform: `scaleX(${String(reach)})` }} /></div>}
+    {!claimed && !ready && <span data-tier-reach className="gk-reward__reach"><ProgressBar value={reach} max={1} tone="crystal" /></span>}
   </li>;
 }

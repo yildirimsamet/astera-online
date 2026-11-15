@@ -75,6 +75,7 @@ import { QueueSheet } from '../kit/QueueSheet.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { artIconSrc } from '../../game-ui/index.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -1049,7 +1050,7 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     return next;
   });
-  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} headerArt={ATMOSPHERE.rewards} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
+  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
     <RewardsScreen commander="Samet_The_Long_Commander_Name" />
   </Sheet></div></QueryClientProvider>;
 }

@@ -26,6 +26,8 @@ export const rewards = {
   allTaken: "現在受け取れる報酬はありません。銀河での行動を続けると、次の報酬が開放されます。",
 
   claim: "受け取る",
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'ポッドを開ける',
   claimed: "受取済み",
   /** What is still between the player and this tier. Never a scolding. */
   toGo: "あと{{count}}",

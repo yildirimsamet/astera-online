@@ -26,6 +26,8 @@ export const rewards = {
   allTaken: 'Everything on offer has been taken. More arrives as the galaxy does.',
 
   claim: 'Claim',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Open the pod',
   claimed: 'Taken',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: '{{count}} to go',

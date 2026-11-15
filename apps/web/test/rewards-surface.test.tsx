@@ -97,12 +97,13 @@ describe('the concise reward ladder', () => {
     render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
     const button = await screen.findByRole('button', { name: /^claim$/i });
     await userEvent.setup().click(button);
-    expect(button).toBeDisabled();
+    // The kit's pending press (C34): it spins and swallows a second tap rather than greying out.
+    expect(button).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText(/\+200 alloy/i)).not.toBeInTheDocument();
     await userEvent.setup().click(button);
     expect(claim).toHaveBeenCalledTimes(1);
     refuse?.(new Error('offline'));
-    await waitFor(() => { expect(button).toBeEnabled(); });
+    await waitFor(() => { expect(button).not.toHaveAttribute('aria-busy'); });
     expect(screen.queryByText(/\+200 alloy/i)).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/offline|could not|try again/i);
   });
@@ -479,5 +480,50 @@ describe('claiming into a full store', () => {
 
     await screen.findAllByRole('button', { name: /^claim$/i });
     expect(screen.queryByText(/nothing is lost/i)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * C34 (2026-11-15): THE REWARD PANEL ON THE KIT. The next ready payout is a supply pod to open;
+ * every payout keeps its own claim on the kit's button; nothing of the old plate language stays.
+ */
+describe('the reward panel on the kit', () => {
+  const oldLook = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/))
+      .filter((name) => /(^|-)v2(-|$)/.test(name) || ['text-micro', 'text-label', 'text-caption', 'text-body', 'text-title', 'text-readout'].includes(name));
+
+  it('wears none of the old surface language, the community bonus included', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([social('locked'), probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    const claims = await screen.findAllByRole('button', { name: /^claim$/i });
+    expect(claims[0]).toHaveClass('gk-btn');
+    const panel = document.querySelector('[data-v2-rewards]');
+    expect(panel).toHaveClass('gk-rewards');
+    expect(oldLook(panel ?? document.body)).toEqual([]);
+  });
+
+  it('opens the next ready payout as a pod, claiming that tier once', async () => {
+    const { wrapper: Wrapper, queries, api } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
+    const claim = vi.spyOn(api, 'claimReward').mockResolvedValue({
+      granted: { alloy: 200, crystal: 70 },
+      rewards: rewards([probeChain(3, ['claimed', 'claimable', 'locked'])], 1),
+      planet: planetView(),
+    } as never);
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    const pod = await screen.findByRole('button', { name: 'Open the pod' });
+    expect(pod.closest('.gk-pod')).not.toBeNull();
+    await userEvent.setup().click(pod);
+    await waitFor(() => { expect(claim).toHaveBeenCalledWith('PROBE:1'); });
+    expect(claim).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws no pod when nothing is ready', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(0, ['locked', 'locked', 'locked'])], 0));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    await screen.findByText('Probes sent');
+    expect(document.querySelector('.gk-pod')).toBeNull();
   });
 });
