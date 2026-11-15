@@ -1211,6 +1211,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Eşleşme işareti (✓ ×1,6) 9 px'ten kitin 12 px tabanına çıktı. Kit sayfa başlığı "İ/Ş" işaretleri için yer bırakıyor. Üst satır (korsanın "3 sa içinde gidiyor" süresi) artık kesilmiyor, sarılıyor.
 - **Ölçüm** `g4e1-before` / `g4e1-after-2026-11-15.md`: `launch` 123 → 9, `launch-pirate` 143 → 8, `support-launch` 119 → 9. Kalanlar yakıt çubuğu, hız satırı (G4-e2) ve Onur satırı (G4-e3).
 
+**G4-e2 fırlatma kontrolleri ✅ (2026-11-15).** Oyuncunun anı: "ne hızla, kiminle, hangi bedelle?"
+- Uçuş hızı kitin seçim plakaları (Tam · 75 · 50 · 25 · 10 %), 320 px'te tek satır. Yakıt/süre karşılaştırması cam kuyuda, tasarruf mavi.
+- Komutan gemisi eskortu kitin şalteri: geminin sınıf işareti kendi renginde, verdiği bonus şalterin altında. Tamirdeki gemi kilitli; basınca ret sesi verir ve saatini gösterir (eskiden ölü bir düğmeydi). Kit şaltere okuyucu adı (`spoken`) eklendi.
+- Cetveldeki yakıt çubuğu kit renklerinde; eksik yakıt kırmızı ve miktarı yazılı. Radyasyon önizlemesi kit notları (uyarı / ölümcül).
+- Gemi satırı iki katlı: ad ve sayaç üstte, "evde 6 · kargo" tam genişlikte altta. 320 px'te ad artık beş satıra bölünmüyor.
+- **Ölçüm** `g4e2-before/after-*-2026-11-15.md`: `launch` 9 → 4. Aktarma (G4-f) ve anıt değişmedi. Kalan: Onur satırı (G4-e3).
+- **Owner'a not:** gemiler seçilince yapışkan cetvel ile bedel/düğme arasında telefonda ~290 px kalıyor. Bedel metni K4 gereği düğmeden önce; değiştirmedim.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

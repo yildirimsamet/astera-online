@@ -132,28 +132,26 @@ export function LaunchSheet({
             <HullMark hull={hull} className="gk-lrow__mark" />
           )}
         </span>
-        <span className="gk-lrow__words">
-          <span className="gk-lrow__name">
-            {hullLabel(hull)}
-            {/*
-              THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
-              emblem, named for a reader; the matchup line above names it in words.
-            */}
-            <ClassEmblem cls={HULLS[hull].cls} className="gk-lrow__cls" />
-            {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
-            {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
-          </span>
-          <span className="gk-sub gk-num">
-            {t('launch.atHome', { count: available })}
-            {carries > 0 && (
-              <span className="gk-lrow__carry">
-                {' · '}
-                {chosen > 0
-                  ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
-                  : t('launch.cargoEach', { amount: compact(carries) })}
-              </span>
-            )}
-          </span>
+        <span className="gk-lrow__name">
+          {hullLabel(hull)}
+          {/*
+            THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
+            emblem, named for a reader; the matchup line above names it in words.
+          */}
+          <ClassEmblem cls={HULLS[hull].cls} className="gk-lrow__cls" />
+          {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
+          {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
+        </span>
+        <span className="gk-sub gk-num gk-lrow__info">
+          {t('launch.atHome', { count: available })}
+          {carries > 0 && (
+            <span className="gk-lrow__carry">
+              {' · '}
+              {chosen > 0
+                ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
+                : t('launch.cargoEach', { amount: compact(carries) })}
+            </span>
+          )}
         </span>
         <QuantityStepper
           look="kit"

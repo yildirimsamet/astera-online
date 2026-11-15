@@ -87,11 +87,25 @@ export function SpendBar({
   );
 
   if (inline) {
+    // On the kit's ruler (G4-e2): the tank in its resource's colour, what the trip burns lit, any shortfall red.
     return (
-      <div data-spend-bar data-short={short > 0 ? 'true' : 'false'} className="flex w-full items-center gap-2">
-        <span className="shrink-0 text-caption text-faint">{label}</span>
-        {bar}
-        {figure}
+      <div data-spend-bar data-short={short > 0 ? 'true' : 'false'} className="gk-fuel">
+        <span className="gk-label">{label}</span>
+        <div className="gk-fuel__bar" data-tone={tone} role="img" aria-label={short > 0 ? `${reading}; ${shortage}` : reading}>
+          <span data-part="spent" className="gk-fuel__spent" style={{ width: `${String(share(covered))}%` }} />
+          <span data-part="left" className="gk-fuel__left" style={{ width: `${String(share(left))}%` }} />
+          {short > 0 && (
+            <>
+              {/* The line the spend ran past. Without it the red reads as more tank. */}
+              <span aria-hidden className="gk-fuel__edge" />
+              <span data-part="short" className="gk-fuel__short" style={{ width: `${String(share(short))}%` }} />
+            </>
+          )}
+        </div>
+        <span className="gk-fuel__figure">
+          <span data-spend-amount className="gk-num gk-fuel__amount" {...(short > 0 ? { 'data-short': '' } : {})}>{compact(spend)}</span>
+          {short > 0 && <span data-spend-short className="gk-num gk-fuel__lack">({shortage})</span>}
+        </span>
       </div>
     );
   }

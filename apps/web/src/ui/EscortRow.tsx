@@ -5,6 +5,7 @@ import { clockText } from '../arena/hangarDesk.js';
 import { SHIP_TONE } from '../arena/shipTone.js';
 import type { Escort } from '../lib/admiralEscort.js';
 import { useNow } from '../lib/time.js';
+import { Toggle } from '../game-ui/index.js';
 
 /** What each class lends, as one glyph on the Gözlemevi grid: the strike, the shield, the route. */
 const MARKS: Record<ShipClass, React.ReactNode> = {
@@ -44,39 +45,30 @@ export function EscortRow({ escort, on, onChange, now, defence = false, monument
       ? t('launch.escortBonusMuhafiz', { pct: pct(escort.bonuses.hull) })
       : t('launch.escortBonusKilavuz', { time: pct(escort.bonuses.time), fuel: pct(escort.bonuses.fuel) });
   return (
-    <div data-launch-escort={escort.kind} className="grid gap-1 font-v2-ui" style={{ '--ship': SHIP_TONE[escort.ship] } as React.CSSProperties}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={lit}
-        aria-label={t('launch.escort')}
-        disabled={!ready}
-        onClick={() => { onChange(!on); }}
-        className="flex w-full items-center gap-2.5 rounded-control border border-v2-line bg-v2-panel/60 px-2 py-1.5 text-left disabled:cursor-default"
-        style={lit ? { borderColor: 'color-mix(in srgb, var(--ship) 45%, transparent)' } : undefined}
-      >
-        <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border"
-          style={{ color: ready ? 'var(--ship)' : undefined, borderColor: 'color-mix(in srgb, var(--ship) 35%, transparent)' }}>
-          <svg viewBox="0 0 24 24" className={`size-3.5 ${ready ? '' : 'text-v2-ink-3'}`} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">{MARKS[escort.ship]}</svg>
-        </span>
-        <span className="grid min-w-0 flex-1">
-          <span className="text-micro uppercase leading-tight tracking-label text-v2-ink-3">{t('launch.escortLabel')}</span>
-          <span className="flex items-baseline gap-1.5 text-caption">
-            <span className="font-semibold text-v2-ink">{c.classes[escort.ship].name}</span>
-            <span className="font-v2-mono text-micro tabular-nums text-v2-ink-3">{c.level(escort.level)}</span>
+    <div data-launch-escort={escort.kind} className="gk-escort" style={{ '--ship': SHIP_TONE[escort.ship] } as React.CSSProperties}>
+      <Toggle
+        checked={lit}
+        onChange={onChange}
+        locked={!ready}
+        spoken={t('launch.escort')}
+        label={(
+          <span className="gk-escort__who">
+            <span aria-hidden className="gk-escort__mark" {...(ready ? {} : { 'data-busy': '' })}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">{MARKS[escort.ship]}</svg>
+            </span>
+            <span className="gk-escort__name">
+              <span className="gk-label">{t('launch.escortLabel')}</span>
+              <span>{c.classes[escort.ship].name} <span className="gk-num gk-escort__level">{c.level(escort.level)}</span></span>
+            </span>
           </span>
-          {escort.kind === 'ready'
-            ? <span data-escort-bonus className="font-v2-mono text-micro tabular-nums" style={{ color: 'var(--ship)' }}>{gives}</span>
-            : <span data-escort-busy className="font-v2-mono text-micro tabular-nums text-v2-warn"><BusyLine escort={escort} now={now} /></span>}
-        </span>
-        <span aria-hidden className={`relative h-5 w-9 shrink-0 rounded-full border ${lit ? '' : 'border-v2-line bg-v2-raise'} ${ready ? '' : 'opacity-40'}`}
-          style={lit ? { borderColor: 'color-mix(in srgb, var(--ship) 60%, transparent)', background: 'color-mix(in srgb, var(--ship) 22%, transparent)' } : undefined}>
-          <span className={`absolute top-0.5 size-3.5 rounded-full ${lit ? 'right-0.5' : 'left-0.5 bg-v2-ink-3'}`} style={lit ? { background: 'var(--ship)' } : undefined} />
-        </span>
-      </button>
-      {ready && <p className="px-1 text-micro leading-snug text-v2-ink-3">{t(defence ? 'launch.escortRuleDefence' : 'launch.escortRule', { minutes: ADMIRAL_WAIT.repairMinutes })}</p>}
+        )}
+        sub={escort.kind === 'ready'
+          ? <span data-escort-bonus className="gk-num gk-escort__gives">{gives}</span>
+          : <span data-escort-busy className="gk-num gk-escort__busy"><BusyLine escort={escort} now={now} /></span>}
+      />
+      {ready && <p className="gk-sub">{t(defence ? 'launch.escortRuleDefence' : 'launch.escortRule', { minutes: ADMIRAL_WAIT.repairMinutes })}</p>}
       {/* F23: what it earns, beside what it risks, and the service every return costs. */}
-      {ready && <p data-escort-gain className="px-1 text-micro leading-snug text-v2-ink-2">
+      {ready && <p data-escort-gain className="gk-sub gk-escort__gain">
         {monument && `${t('launch.escortMonument')} `}{t('launch.escortGain', { min: ADMIRAL_XP.min, max: ADMIRAL_XP.max, idle: ADMIRAL_XP.idle, service: ADMIRAL_WAIT.serviceMinutes })}</p>}
     </div>
   );

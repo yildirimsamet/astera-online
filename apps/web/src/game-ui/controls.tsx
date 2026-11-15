@@ -22,13 +22,15 @@ const along = (event: PointerEvent<HTMLElement>): number => {
  * lamp that lights teal when it is on; it clacks and thunks.
  */
 export function Toggle({
-  checked, onChange, label, sub, art, locked = false,
+  checked, onChange, label, sub, art, locked = false, spoken,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: ReactNode;
   sub?: ReactNode;
   art?: string;
+  /** The name a reader hears, where the face carries more than the name (the escort's ship and bonus). */
+  spoken?: string;
   /** It cannot move yet (G2-h3): a press answers with a refusal, and `sub` says why. */
   locked?: boolean;
 }) {
@@ -44,6 +46,7 @@ export function Toggle({
   });
   return (
     <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
       {...(locked ? { 'aria-disabled': true, 'data-locked': '' } : {})} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {art && <img className="gk-toggle__art" src={art} alt="" />}
       <span className="gk-toggle__words">
