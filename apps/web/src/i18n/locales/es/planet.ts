@@ -379,7 +379,7 @@ export const planet = {
     synthesisName: "Síntesis de deuterio",
     synthesisTag: "Eleva el techo de la Refinería",
     synthesisRole:
-      "Cada peldaño abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
+      "Cada nivel de investigación abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
     researchNeedCore: "Elevar el núcleo de comando a L{{level}}",
     researchAct: "Investigación",
     researchComplete: "investigado",

@@ -864,7 +864,7 @@ Kalanlar ve nedeni:
   - Kart kit'te (`gk-rcard`): sahne sağda, isim ve kit seviye noktaları, kazanç satırı, önkoşul ✓ çipi, açtığı gemiler çip olarak, fiyat ve süre tek satırda. "Ayrıntılar" çelik, "Araştır" ağır turuncu basış. Kaynak yetmezse düğme sebebini söylüyor. Önkoşul eksikse kapı sarı kesikli bir şerit; basınca o yıldıza gidiyor.
   - Şerit, Üs'ün kit halka şeridi (`Lane` dışa açıldı). Araştırma seviye saydığı için halkada "×2" yok.
 - **Silinen:** gemideki alçak harita (`compact`, iki satırlık isimlerle sığmıyordu; gemiye özel harita G15'te). atmosphere.css'teki eski kart ve bölge kuralları; bunlar yeni kartı eski renge boyuyordu. Galeri sheet'i artık gerçek uygulamadaki gibi kenar boşluklu.
-- **Ayrıca:** tavan satırındaki çift nokta ("%10 · · tavan") giderildi. Yanlış çeviriler düzeltildi: de "Prospektor hält" → "Prospektor-Laderäume", "Yard-Automatisierung" → "Werftautomatik"; es "Retenciones del prospector" → "Bodegas del prospector".
+- **Ayrıca:** araştırma metinlerindeki birebir "basamak" çevirileri kalktı: de "Sprosse" → "Stufe"/"Forschungsstufe", es "peldaño" → "nivel" (klan savaşındaki gerçek merdiven "peldaños" kaldı). Tavan satırındaki çift nokta ("%10 · · tavan") giderildi. Yanlış çeviriler düzeltildi: de "Prospektor hält" → "Prospektor-Laderäume", "Yard-Automatisierung" → "Werftautomatik"; es "Retenciones del prospector" → "Bodegas del prospector".
 - **Ölçüm** (Türkçe; telefon, 320, masaüstü): `reports/ui-audit/g2i-before-2026-11-15.md` → `g2i-after-2026-11-15.md`.
   - 12 px altı metin 45/54 → 0. Kontrast 13 → 0. 44 px altı hedef 17/26 → 0. Kesilen 10 → 0.
   - Puan 168 → 1. Kalan 1, seçili yıldızın basış tepkisiydi; düzeltildi (seçiliyken basınca halka küçülüyor).

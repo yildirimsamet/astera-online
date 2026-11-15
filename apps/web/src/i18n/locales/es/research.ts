@@ -111,9 +111,9 @@ export const research = {
   synthesisName: "Síntesis de deuterio",
   synthesisTag: "Eleva el techo de la Refinería",
   synthesisRole:
-    "Cada peldaño abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
+    "Cada nivel de investigación abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
   synthesisDetail:
-    "Cada peldaño de investigación eleva el techo de la Refinería de Deuterio en tres niveles en cada mundo. Aún construyes esos niveles de Refinería por separado donde necesitas producción de combustible.",
+    "Cada nivel de investigación eleva el techo de la Refinería de Deuterio en tres niveles en cada mundo. Aún construyes esos niveles de Refinería por separado donde necesitas producción de combustible.",
   yardName: "Automatización de astilleros",
   yardTag: "Construye naves más rápido",
   yardRole:
@@ -136,7 +136,7 @@ export const research = {
   holdsTag: "Las naves mineras llevan más",
   holdsRole: "Aumenta todas las reservas del Prospector; La bonificación por capacidad de la torre de perforación se aplica en la parte superior.",
   holdsDetail:
-    "Cada peldaño aumenta la cantidad con la que cada prospector puede regresar. La bonificación se multiplica con el satélite Derrick y el tercer peldaño abre una tercera ranura de Prospector en cada mundo.",
+    "Cada nivel aumenta la cantidad con la que cada prospector puede regresar. La bonificación se multiplica con el satélite Derrick y el tercer nivel abre una tercera ranura de Prospector en cada mundo.",
   cargoName: "Bodegas de carga",
   cargoTag: "Cada bodega lleva más",
   cargoRole: "Aumenta el botín de incursiones, las transferencias mundiales y los convoyes comerciales por igual · La minería de asteroides es su propia escalera",

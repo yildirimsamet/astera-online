@@ -111,7 +111,7 @@ export const research = {
   synthesisName: "Deuteriumsynthese",
   synthesisTag: "Erhöht die Raffinerie-Obergrenze",
   synthesisRole:
-    "Jede Sprosse öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
+    "Jede Forschungsstufe öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
   synthesisDetail:
     "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Die Raffinerie baust du weiterhin auf jeder Welt einzeln aus, auf der du Treibstoff brauchst.",
   yardName: "Werftautomatik",
@@ -136,7 +136,7 @@ export const research = {
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
   holdsDetail:
-    "Jede Sprosse erhöht die Menge, mit der jeder Prospektor zurückkehren kann. Der Bonus vervielfacht sich mit dem Derrick-Satelliten und die dritte Sprosse öffnet einen dritten Prospektor-Slot auf jeder Welt.",
+    "Jede Stufe erhöht die Menge, mit der jeder Prospektor zurückkehren kann. Der Bonus vervielfacht sich mit dem Derrick-Satelliten und die dritte Stufe öffnet einen dritten Prospektor-Slot auf jeder Welt.",
   cargoName: "Frachträume",
   cargoTag: "Jeder Laderaum trägt mehr",
   cargoRole: "Erhöht Überfall-Beute, Welttransfers und Handelskonvois gleichermaßen. Der Asteroidenabbau ist eine eigene Leiter",
