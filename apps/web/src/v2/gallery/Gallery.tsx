@@ -669,7 +669,7 @@ function GalleryClan({ tab, quote = false }: { tab: 'overview' | 'strength' | 'm
     possibleReturnAt: new Date(NOW + 44 * MIN).toISOString(), canFinishBeforeSeasonEnd: true, travelMinutes: 22,
   }), { status: 200, headers: { 'content-type': 'application/json' } })) }));
   const screen = (
-    <Sheet title="Clan" headerArt={ATMOSPHERE.clan} eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
+    <Sheet title="Klan" headerArt={ATMOSPHERE.clan} kit={{ art: artIconSrc('menu-clan'), tone: 'self' }} eyebrow="Sezonluk klanlar" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
         <ClanScreen initialTab={tab} onOpenClanChat={noop} />
       </WorldProvider>

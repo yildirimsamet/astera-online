@@ -68,7 +68,7 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { Cells, type Cell } from '../ui/ArmCard.js';
-import { CostLine, GameButton, GameHold, Glyph, Picker, SectionTag, Slider, Toggle } from '../game-ui/index.js';
+import { CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle } from '../game-ui/index.js';
 import {
   ClanIcon,
   AegisIcon,
@@ -80,7 +80,6 @@ import {
   LeaderboardIcon,
 } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
-import { Segmented } from '../v2/kit/Segmented.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import {
   Button,
@@ -191,27 +190,29 @@ export function ClanScreen({ initialTab = 'overview', onOpenClanChat, arena }: {
    */
   const inside = liveHome;
 
+  // The Base's two-storey bar: the mark over the short name; a reader hears the whole name.
   const tabs = [
-    { id: 'overview' as const, label: t('clan.tabs.overview') },
-    { id: 'strength' as const, label: t('clan.tabs.strength') },
-    { id: 'members' as const, label: t('clan.tabs.members') },
-    { id: 'aid' as const, label: t('clan.tabs.aid') },
-    { id: 'war' as const, label: t('clanWar.tab') },
+    { id: 'overview' as const, label: t('clan.tabs.compact.overview'), spoken: t('clan.tabs.overview'), glyph: { id: 'home' as const } },
+    { id: 'strength' as const, label: t('clan.tabs.compact.strength'), spoken: t('clan.tabs.strength'), glyph: { id: 'ranking' as const } },
+    { id: 'members' as const, label: t('clan.tabs.compact.members'), spoken: t('clan.tabs.members'), glyph: { id: 'support' as const } },
+    { id: 'aid' as const, label: t('clan.tabs.compact.aid'), spoken: t('clan.tabs.aid'), glyph: { id: 'share' as const } },
+    { id: 'war' as const, label: t('clanWar.tab'), glyph: { id: 'attack' as const, tone: 'hostile' as const } },
   ];
 
   return (
-    <div className="flex flex-col">
+    <div className="gk gk-clan">
       <ClanHeader home={inside} />
-      {arena && tab === 'overview' && <div className="border-y border-v2-line bg-v2-void px-3 py-3">
+      {arena && tab === 'overview' && <div className="gk-clan__arena">
         <Suspense fallback={null}><ArenaTeamPanel credential={arena.credential} onEnter={arena.onEnter} prepareOnly /></Suspense>
       </div>}
-      <div className="sticky top-0 z-10 border-y border-v2-line bg-v2-void px-3 py-2">
-        <Segmented
-          options={tabs}
+      <div className="gk-clan__tabs">
+        <GameTabs
+          label={t('clan.tabs.label')}
+          tabs={tabs}
           value={tab}
           onChange={setTab}
-          label={t('clan.tabs.label')}
-          tabId={(id) => `clan-tab-${id}`}
+          ids={{ tab: (id) => `clan-tab-${id}`, panel: (id) => `clan-panel-${id}` }}
+          stacked
         />
       </div>
 
@@ -219,7 +220,7 @@ export function ClanScreen({ initialTab = 'overview', onOpenClanChat, arena }: {
         id={`clan-panel-${tab}`}
         role="tabpanel"
         aria-labelledby={`clan-tab-${tab}`}
-        className="px-2 py-2"
+        className="gk-clan__panel"
       >
         {tab === 'overview' ? (
           <ClanOverview
@@ -270,31 +271,22 @@ function ClanHeader({ home }: { home: ClanMemberHome }) {
     crew is and what the clan has won together.
   */
   return (
-    <header className="clan-command-head mx-3 mt-1 flex items-center gap-3 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+    <header data-testid="clan-head" className="gk-clan__head">
       <AtmosphereImage art={ATMOSPHERE.clan} />
-      <span className="grid size-12 shrink-0 place-items-center rounded-control border border-v2-ally/60 bg-v2-ally/10 px-1 text-center font-v2-mono text-micro font-bold text-v2-ally">
-        {home.clan.tag}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <h3 className="min-w-0 break-words text-body font-semibold text-v2-ink">{home.clan.name}</h3>
-          {home.clan.role === 'LEADER' ? <Chip tone="alloy">{t('clan.leader')}</Chip> : null}
+      <span className="gk-clan__tag gk-num">{home.clan.tag}</span>
+      <div className="gk-clan__who">
+        <div className="gk-clan__name">
+          <h3>{home.clan.name}</h3>
+          {home.clan.role === 'LEADER' ? <span className="gk-chip gk-clan__role">{t('clan.leader')}</span> : null}
         </div>
-        <p className="mt-0.5 text-micro leading-snug text-v2-ink-2">
-          {home.clan.description || t('clan.noDescription')}
-        </p>
-        <p className="mt-1 flex flex-wrap gap-x-3 text-micro text-v2-ink-3">
-          <span>
-            {t('clan.membersCountLabel')}{' '}
-            <span className="font-v2-mono text-v2-ink">{`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}</span>
-          </span>
-          <span>
-            {t('clan.scoreLabel')}{' '}
-            <span className={`font-v2-mono ${home.clan.score > 0 ? 'text-v2-self' : home.clan.score < 0 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+        <p className="gk-sub">{home.clan.description || t('clan.noDescription')}</p>
+        <dl className="gk-clan__facts">
+          <div><dt>{t('clan.membersCountLabel')}</dt><dd className="gk-num">{`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}</dd></div>
+          <div><dt>{t('clan.scoreLabel')}</dt>
+            <dd className="gk-num" data-tone={home.clan.score > 0 ? 'self' : home.clan.score < 0 ? 'hostile' : 'plain'}>
               {home.clan.score === 0 ? full(0) : signed(home.clan.score)}
-            </span>
-          </span>
-        </p>
+            </dd></div>
+        </dl>
       </div>
     </header>
   );

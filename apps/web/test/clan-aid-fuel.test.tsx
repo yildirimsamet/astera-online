@@ -328,3 +328,20 @@ describe('the aid tab on the kit', () => {
     expect(oldPaint(document.querySelector('[data-clan-aid]')!)).toEqual([]);
   });
 });
+
+/**
+ * G7-b (2026-11-15): THE CLAN'S HEAD AND ITS FIVE TABS ON THE KIT. "Which clan is mine, where am
+ * I in it?" The tag as a badge, the name, my role, the motto, the crew and what the clan has won,
+ * at the kit's type floor; the five tabs as the Base's two-storey kit bar with their short names.
+ */
+describe('the clan’s head and tabs on the kit', () => {
+  it('draws the head with none of the old look and the tabs as the kit’s bar', async () => {
+    show(5_000);
+    const head = await screen.findByTestId('clan-head');
+    expect(oldPaint(head)).toEqual([]);
+    const tabs = screen.getByRole('tablist');
+    expect(tabs).toHaveClass('gk-tabs', 'gk-tabs--stacked');
+    expect(screen.getByRole('tab', { name: /Aid/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
+  });
+});

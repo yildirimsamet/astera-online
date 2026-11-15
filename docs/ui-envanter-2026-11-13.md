@@ -1519,6 +1519,12 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Galeri: `clan-aid-quote` (teklifi cevaplayan sahte sunucu); `clan-aid`'e alıcı dünyaları eklendi.
 - Audit: 472 → 30. Kalan: klan başlığı ve sekmeler (G7-b), devre dışı "−" düğmesinin soluk çizgisi.
 
+**G7-b Klan başlığı, sekmeler, çerçeve ✅ (2026-11-15).**
+- **An:** "Klanım hangisi, ben neredeyim?"
+- Sayfa çerçevesi kit başlığı aldı (klan sancağı ikonu + atmosfer resmi). Klan kartı kitte: etiket rozeti, ad (kırpılmaz, her yerden kırılır), Lider çipi altın, slogan, ekip ve Klan Hâkimiyeti 12 px tabanda (eski 9 px).
+- Beş sekme v2 `Segmented` yerine Üs'ün iki katlı kit çubuğu: işaret (ev, çubuklar, kalkan, paylaş, kırmızı saldırı) üstte, kısa ad altta; okuyucu tam adı duyar.
+- Audit: yardım görünümü 30 → 3 (kalan: ortak sheet karartması). Genel sekmesinin 113 puanı içerikten (G7-c).
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.

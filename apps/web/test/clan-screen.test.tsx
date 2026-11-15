@@ -422,7 +422,8 @@ describe('clan command surface', () => {
     show({ ...member, clan: { ...member.clan, name } });
 
     const heading = screen.getByRole('heading', { name });
-    expect(heading).toHaveClass('break-words');
+    // G7-b: the kit's head wraps the name anywhere (`.gk-clan__name h3`), never cuts it.
+    expect(heading.closest('.gk-clan__name')).not.toBeNull();
     expect(heading).not.toHaveClass('truncate');
   });
 

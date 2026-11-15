@@ -2300,6 +2300,7 @@ export function GalaxyView({
           placement="page"
           eyebrow={t('clan.outside.eyebrow')}
           headerArt={ATMOSPHERE.clan}
+          kit={{ art: artIconSrc('menu-clan'), tone: 'self' }}
           title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >

@@ -15477,3 +15477,74 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-aid__quote .gk-figure__value[data-tone='good'] { color: var(--gk-good); }
 .gk-aid__quote .gk-figure__value[data-tone='hostile'] { color: var(--gk-hostile); }
 .gk-aid__quote .gk-figure__value[data-tone='self'] { color: var(--gk-self); }
+
+/* ── G7-b: the clan's head (who we are) and its five tabs on the Base's two-storey bar ── */
+.gk-clan { display: flex; flex-direction: column; }
+.gk-clan__head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  margin: 4px var(--gk-s3) 0;
+  padding: var(--gk-s2) var(--gk-s3);
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-glass);
+}
+.gk-clan__head > .atmosphere-image { z-index: -2; }
+.gk-clan__head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-void) 95%, transparent), color-mix(in srgb, var(--gk-void) 65%, transparent) 60%, color-mix(in srgb, var(--gk-void) 35%, transparent));
+}
+.gk-clan__tag {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 2px;
+  border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 60%, transparent);
+  background: color-mix(in srgb, var(--gk-self) 12%, var(--gk-void));
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+  color: var(--gk-self);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.gk-clan__who { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.gk-clan__name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.gk-clan__name h3 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-body);
+  color: var(--gk-ink);
+}
+.gk-clan__role { min-height: 22px; padding: 0 6px; color: var(--gk-gold); }
+.gk-clan__facts { display: flex; flex-wrap: wrap; gap: 0 var(--gk-s3); margin: 0; font-size: var(--gk-t-floor); }
+.gk-clan__facts > div { display: flex; gap: 4px; }
+.gk-clan__facts dt { color: var(--gk-ink-2); }
+.gk-clan__facts dd { margin: 0; font-weight: 700; color: var(--gk-ink); }
+.gk-clan__facts dd[data-tone='self'] { color: var(--gk-self); }
+.gk-clan__facts dd[data-tone='hostile'] { color: var(--gk-hostile); }
+.gk-clan__arena { padding: var(--gk-s3); border-block: 1px solid var(--gk-glass-edge); background: var(--gk-void); }
+.gk-clan__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin-top: var(--gk-s2);
+  padding: var(--gk-s1) var(--gk-s3);
+  border-block: 1px solid var(--gk-glass-edge);
+  background: var(--gk-void);
+}
+.gk-clan__panel { padding: var(--gk-s2) var(--gk-s3) var(--gk-s4); }
