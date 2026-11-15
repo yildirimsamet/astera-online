@@ -83,8 +83,11 @@ const sweep = async (): Promise<Shut[]> => {
       if (row.querySelector('[data-summary="hull"]')) {
         await user.click(within(row).getByRole('button', { name: /about/i }));
         const detail = screen.getByRole('dialog');
-        const gate = detail.querySelector<HTMLButtonElement>('[data-lock-state="closed"]');
-        shut.push({ tab, id: row.id.slice('row-'.length), reason: gate?.textContent.trim() ?? '', fix: gate !== null && !gate.disabled });
+        // the kit's need chips (G2-e): each unmet need a chip, a door where it can be closed
+        const gates = [...detail.querySelectorAll<HTMLElement>('[data-act] [data-met="false"]')];
+        const reason = gates.map((gate) => gate.textContent.trim()).join(' · ')
+          || (detail.querySelector('[data-act] .gk-inote')?.textContent.trim() ?? '');
+        shut.push({ tab, id: row.id.slice('row-'.length), reason, fix: detail.querySelector('[data-act] button.gk-need-door') !== null });
         await user.click(within(detail).getByRole('button', { name: 'Close' }));
         continue;
       }
@@ -158,7 +161,7 @@ describe('pressing the reason', () => {
     const row = view.container.querySelector<HTMLElement>('#row-COURIER')!;
     await userEvent.click(within(row).getByRole('button', { name: /about/i }));
     const detail = screen.getByRole('dialog', { name: 'Courier' });
-    const fix = detail.querySelector<HTMLElement>('[data-lock-state="closed"]');
+    const fix = detail.querySelector<HTMLElement>('[data-act] button.gk-need-door');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
     expect(screen.queryByRole('dialog', { name: 'Courier' })).toBeNull();
@@ -195,7 +198,7 @@ describe('pressing the reason', () => {
     const row = view.container.querySelector<HTMLElement>('#row-TEMPEST')!;
     await userEvent.click(within(row).getByRole('button', { name: /about/i }));
     const detail = screen.getByRole('dialog', { name: 'Tempest' });
-    const fix = detail.querySelector<HTMLElement>('[data-lock-state="closed"]');
+    const fix = detail.querySelector<HTMLElement>('[data-act] button.gk-need-door');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
     expect(screen.queryByRole('dialog', { name: 'Tempest' })).toBeNull();

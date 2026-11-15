@@ -1127,6 +1127,20 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 
 **G4 için ilk gözlemler:** gönderme sheet'leri zaten basılı tutmayla onaylanıyor (iyi), ama v2 `HoldButton` görünümünde; kit `GameHold` ağırlıkları (harcayan 1 sn, kesin 1,5 sn) uygulanacak. Gezegen odağı bir yüzeyde 10'dan fazla bölüm taşıyor; dosya içinde sekme/bölüm düzeni karar notunda. `FocusPanel.tsx` 4191 satır: yeniden tasarımda bileşenlere bölünmesi bakım için de gerekli.
 
+| # | Birim | Oyuncu anı | Ne değişir |
+|---|---|---|---|
+| G4-a | Odak çerçevesi (`Shell`) | "Neye dokundum, açayım mı?" | Kapalı ray ve açık dosya kitte (`ContextCard` dili): halka işaret, 12 px üst etiket, kit kapat/aç. Yapışkan eylem şeridi kit düğmeleri. Bütün odak kartları bunu kullanır. |
+| G4-b | Yabancı dünya odağı | "Saldırayım mı, sonda mı, yerleşeyim mi?" | Olgular (`FactRow`), boşluklar (`GapRow` + `CloseGap`), rehber ve pencere kitte; `PlanetFocus` dosyadan ayrılır. Oyunun ana karar yüzeyi. |
+| G4-c | Kendi dünyam, klan üyesi, engelli durumlar | "Burası benim / dokunamam: neden?" | `OwnedPlanetFocus`, kalkan/tatil/menzil/Sessiz Uzay notları kitte. |
+| G4-d | Hedef dosyası | "Ne biliyorum, ne kadar emin?" | `TargetDossier` tahmin aralıkları kit okumalarıyla. |
+| G4-e | Saldırı gönder | "Hangi gemilerle?" | `LaunchSheet` kitte; sayıcılar kit; gönder 1 sn `GameHold`. |
+| G4-f | Aktar | "Ne kadar, nereye?" | `TransferSheet` kitte; `range` yerine kit kaydırıcı; aktar basılı tutma (G2-j'den taşındı). |
+| G4-g | Yerleş ve sahiplen | "Koloni kurayım mı?" | `SettlementSheet` kitte; kesin eylem 1,5 sn. |
+| G4-h | Asteroit, enkaz, korsan, uçuş, temas | "Kazayım / toplayayım / saldırayım / geri çağırayım" | Odak kartlarının gövdeleri kitte; `CraftPicker` kit seçici. |
+| G4-i | Ticaret ve konvoy | "Takas edeyim mi, konvoya baskın?" | `TradeSheet` (iki `range`, `Segmented`) ve konvoy sheet'i kitte. |
+| G4-j | Ölüm Yıldızı vuruşu | "Vurayım mı?" | `DeathStarSection`, `StrikeSheet` kitte; engeller düğmenin sebebinde. |
+| G4-k | Bilinmeyen sinyal | "Sinyale gemi göndereyim mi?" | Yerli `<select>` yerine kit dünya seçici (G2-j'nin rotası); gönder basılı tutma; üç sonuç durumu galeride. |
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

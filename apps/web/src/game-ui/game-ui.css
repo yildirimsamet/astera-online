@@ -8804,7 +8804,7 @@ button.gk-probe__head:active {
 .gk-survivor__part[data-part='alive'] { background: var(--gk-self); }
 .gk-survivor__part[data-part='lost'] {
   background: color-mix(in srgb, var(--gk-hostile) 82%, transparent);
-  background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgb(255 255 255 / 20%) 4px 6px);
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--gk-ink) 20%, transparent) 4px 6px);
 }
 .gk-survivor[data-side='theirs'] .gk-survivor__part[data-part='alive'] { background: color-mix(in srgb, var(--gk-hostile) 72%, transparent); }
 .gk-survivor[data-side='theirs'] .gk-survivor__part[data-part='lost'] { background-color: color-mix(in srgb, var(--gk-good) 72%, transparent); }
@@ -9126,8 +9126,8 @@ button.gk-probe__head:active {
   object-fit: cover;
   opacity: 0.9;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at 40% 60%, #000 55%, transparent 75%);
-  mask-image: radial-gradient(circle at 40% 60%, #000 55%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at 40% 60%, black 55%, transparent 75%);
+  mask-image: radial-gradient(circle at 40% 60%, black 55%, transparent 75%);
 }
 .gk-debrief__head {
   position: relative;
@@ -9156,7 +9156,7 @@ button.gk-probe__head:active {
   font-family: var(--gk-font-display);
   font-weight: var(--gk-display-weight);
   font-stretch: var(--gk-display-stretch);
-  font-size: 24px;
+  font-size: var(--gk-t-head);
   line-height: 1.05;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -9460,8 +9460,7 @@ button.gk-probe__head:active {
   padding: 2px 8px;
   border: 1px solid color-mix(in srgb, var(--gk-ink) 14%, var(--gk-outline));
   border-radius: 2px;
-  background: color-mix(in srgb, var(--gk-metal-2) 84%, transparent);
-  backdrop-filter: blur(3px);
+  background: color-mix(in srgb, var(--gk-metal-2) 94%, transparent);
   font-size: var(--gk-t-small);
   font-weight: 700;
   color: var(--gk-ink);
@@ -9954,7 +9953,7 @@ button.gk-probe__head:active {
 .gk-hold--md .gk-hold__dial {
   width: 30px;
   height: 30px;
-  font-size: 15px;
+  font-size: var(--gk-t-body);
 }
 .gk-hold--md .gk-hold__ring {
   inset: -3px;
