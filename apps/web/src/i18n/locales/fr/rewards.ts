@@ -25,6 +25,8 @@ export const rewards = {
   waiting: "{{count}} récompenses t’attendent",
   allTaken: "Tu as récupéré les récompenses de tous les objectifs.",
   claim: "Récupérer",
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Ouvrir la capsule',
   claimed: "Récupérée",
   /** Indique ce qu’il reste, sans réprimander. */
   toGo: "Encore {{count}}",

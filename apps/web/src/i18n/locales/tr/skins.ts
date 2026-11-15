@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: 'Fiyat alınamadı',
   retryPrices: 'Fiyatları yenile',
   checkoutStarting: 'Ödeme ekranı açılıyor…',
-  showcaseDescription: 'Gezegen, gemi ve efekt görünümleri.',
   "productengine-titan": "Titan İtkisi",
   "storytitanENGINE": "Mavi-beyaz ateşleme, türbülanslı turuncu yanma gövdesi ve kor gibi sönen bir iz.",
   "shipFits": "{{hull}} için",

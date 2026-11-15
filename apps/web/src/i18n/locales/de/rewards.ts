@@ -26,6 +26,8 @@ export const rewards = {
   allTaken: 'Du hast alle verfügbaren Belohnungen abgeholt. Mit deinem Fortschritt kommen weitere dazu.',
 
   claim: 'Abholen',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Kapsel öffnen',
   claimed: 'Abgeholt',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: 'Noch {{count}}',

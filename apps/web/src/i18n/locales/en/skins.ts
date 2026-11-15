@@ -1,5 +1,4 @@
 export const skins = {
-  showcaseDescription: 'Planet looks, ship skins and effects.',
   priceLoading: 'Loading prices…',
   pricingError: 'Prices could not be loaded. Retry to see the current prices.',
   priceUnavailable: 'Price unavailable',

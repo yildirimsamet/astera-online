@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InstallButton, InstallProvider } from '../src/brand/Install.js';
 import { BrandMasthead } from '../src/brand/Identity.js';
 import { FullscreenButton } from '../src/brand/FullscreenButton.js';
-import { ShopShowcase } from '../src/shell/ShopShowcase.js';
 import SkinsScreen from '../src/screens/SkinsScreen.js';
 import { DonateScreen } from '../src/screens/DonateScreen.js';
 import { ConsentNotice } from '../src/shell/ConsentNotice.js';
@@ -55,15 +54,6 @@ describe.each(['android', 'ios'])('%s native surfaces', platform => {
     expect(screen.queryByRole('button')).toBeNull();
     expect(events.mock.calls.map(([event]) => event)).not.toContain('fullscreenchange');
     expect(document.querySelector('.brand-masthead-actions')).toBeNull();
-  });
-
-  it('retains the inventory entrance without a shop promotion', () => {
-    native();
-    const inventory = vi.fn();
-    render(<ShopShowcase onShop={vi.fn()} onInventory={inventory} />);
-    expect(screen.queryByRole('button', { name: /^Shop\./ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /^Inventory\./ }));
-    expect(inventory).toHaveBeenCalledOnce();
   });
 
   it('routes a stale shop entry to owned cosmetics without calling web purchase hooks', () => {

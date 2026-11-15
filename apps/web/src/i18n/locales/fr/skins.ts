@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: 'Prix indisponible',
   retryPrices: 'Recharger les prix',
   checkoutStarting: 'Ouverture du paiement…',
-  showcaseDescription: 'Apparences de planètes, de vaisseaux et effets.',
   "productengine-titan": "Propulsion Titan",
   "storytitanENGINE": "Un allumage bleu-blanc, une combustion orange turbulente et une traînée de braises.",
   "shipFits": "Pour {{hull}}",

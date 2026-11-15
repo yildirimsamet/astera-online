@@ -1296,6 +1296,29 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Sonuçlar: korsan (kırmızı kafatası halesi), kaplama kartı, enkaz gemi — her biri kendi tonunda kit kuyusunda, buluntu görseli açılırken büyür.
 - Galeri: `signal`, `signal-noship`, `signal-pirates`, `signal-skin`, `signal-derelict`; envanterdeki üç ulaşılamaz durum kapandı. Audit: 191 → 3 (kalan: ortak sheet karartması).
 
+**C34 Ödüller ✅ (2026-11-15, yardımcı oturum).** G6 #1 `RewardsScreen` (+ galaksideki ve galerideki sac).
+- **An:** "Ne kazandım, al." Sunucu ilerlemesi, kademe kimlikleri, tek istek kuralı ve taşma uyarısı değişmedi.
+- **Değişen:** Alınabilir ödül varsa listenin üstünde kitin **ikmal kapsülü** (`RewardPod`): dokun, sarsılır, kapak açılır, içindeki alaşım/kristal görünür ve sıradaki alınabilir kademe alınır; 1,8 sn sonra sıradaki kapsül gelir. Her kademe yine kendi "Al" düğmesini taşıyor (kitin ana düğmesi, ağır basış, bekleyişte döner). Özet camda iki değer; her hedef kesik plaka (bekleyen yeşil kenarlı), kademe şeridi, kademeler camda, kalan yol kitin çubuğunda, "Tüm kademeler" katlama kitin basışıyla. Topluluk ödülü: ödül camda, adımlar numaralı, komutan adı seçilebilir kutuda, X bağlantısı kit satırı. Hata ve taşma banner; boş durum kitin boş-durum çizimi. Sac kitin (hediye resmi).
+- **Test:** eski "beklerken gri" iddiası kitin bekleme basışına (`aria-busy`, ikinci dokunuşu yutar) çevrildi.
+- **Yeni anahtar:** `rewards.openPod` (6 dil).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 378/376/247/9 → 3/3/3/0 (kalan 3 arkalık); 12 px altı 167→0, kontrast 57→0, 44 px altı 10→1. `reports/ui-audit/c34-rewards-after-2026-11-15.md`.
+
+**C39 Deneme şeridi ✅ (2026-11-15, yardımcı oturum).** G6 #6 `CosmeticTrialBar`.
+- **An:** "Bu görünüm gezegenimde nasıl durur?" Deneme kuralı (süre, hangi dünya, gerçek satın almaya dokunmama) değişmedi.
+- **Değişen:** Şerit kitin kesik plakası (altın kenar, dock'un üstünde). Üstte küçük etiket + ürün adı görüntü yüzünde, sağda kapatma yuvarlağı (dar ekranda kaydırmasın diye uzun düğme yerine; adı "Denemeyi bitir"). Dünya seçimi yerli `select` yerine kitin seçim çipleri. "Karşılaştır/Göster" ve "Mağazaya dön" kitin düğmeleri.
+- **Test:** iki testteki combobox değişimi radyo seçimine çevrildi; kit testi eklendi.
+- **Galeri:** yeni görünüm `cosmetic-trial-bar` (iki dünya); envanter erişimine eklendi.
+- **Ölçüm** (tr; telefon, dar, masaüstü): `cosmetic-trial-bar` 17 → 0. Akış görünümü `cosmetic-trial` 42 → 22: açıldığı mağazayı ölçüyor, mağaza C35'te. `reports/ui-audit/c39-trial-bar-before/after-2026-11-15.md`, `g6-shop-before-2026-11-15.md`.
+
+**C40 Menüdeki mağaza vitrini 🗑 (2026-11-15, yardımcı oturum).** G6 #7 `shell/ShopShowcase` + `ShopShowcasePoster`. G1-f2'den beri hiçbir yer çizmiyordu (menü Mağaza/Envanter karolarını `MenuTile` ile çiziyor); owner'ın 2026-11-14 "hiç kullanılmıyorsa sil" onayıyla silindi.
+- **Silinen:** iki dosya, `test/shop-showcase.test.tsx`, `native-surfaces` içindeki vitrin testi, CSS'te `.menu-shop-*`, `.shop-showcase-*`, `.inventory-scene`, `--menu-art-shade`, iki `--color-v2-store-*` rengi; yalnız onun okuduğu `skins.showcaseDescription`, `menu.navigation.shopHint/inventoryHint` (6 dil). Bozuk kalmış araçlar: `tools/shop-showcase-visual.mjs` ve `visual.mjs --shop-showcase`, `ufo-probe-visual.mjs` içindeki menü adımı.
+- **Kalan:** `shop-showcase-static.webp` resmi (Mağaza karosu kullanıyor).
+
+**C41 Destek ol ✅ (2026-11-15, yardımcı oturum).** G6 #8 `DonateScreen` (+ galaksideki ve galerideki sac).
+- **An:** "Oyuna nasıl destek olurum, zorunlu mu?" Dört Shopier bağlantısı, iki cüzdan adresi (harfi harfine, seçilebilir) ve kopyalama kuralı (pano reddederse "Kopyalandı" demez) değişmedi.
+- **Değişen:** Bölümler kitin etiketiyle; dava camda, "Geliştiriciden bir not" 44 px katlama satırı (ses + titreşim, ok döner). Dört kart resmi yine düğmenin kendisi; basınca ses, titreşim ve hafif çökme. Cüzdanlar camda, "Kopyala" kitin küçük düğmesi; kopyalanınca yeşile döner, tik gelir, adı değişir. Notlar kitin dipnotu. Sac kitin (yıldız resmi).
+- **Ölçüm** (tr; telefon, dar, masaüstü): 39 → 3 (kalan 3 arkalık); 12 px altı 15→0, kontrast 5→0. `reports/ui-audit/c41-donate-after-2026-11-15.md` (önce: `g6-shop-before`).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

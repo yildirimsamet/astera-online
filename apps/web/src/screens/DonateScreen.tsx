@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Note, Section } from '../v2/kit/Surface.js';
-import { Icon } from '../v2/icons.js';
+import { GameButton, Glyph, SectionTag } from '../game-ui/index.js';
 import { HeartIcon } from '../ui/icons/index.js';
 import { copyText } from '../lib/clipboard.js';
 import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { capabilities } from '../platform/runtime.js';
 
 /** Support is optional: explain its purpose before payment, with the full developer note one tap deeper. */
@@ -50,25 +50,26 @@ function WebDonateScreen({ cards }: { cards: readonly SupportCard[] }) {
   const { t } = useTranslation();
 
   return (
-    <div data-support-page className="flex w-full flex-col gap-4 pb-4 font-v2-ui text-v2-ink">
-      <Section label={t('community.donate.aboutHeading')}>
-        <div className="support-introduction rounded-control border border-v2-line bg-v2-deep p-3">
-          <div className="flex items-start gap-3">
-            <HeartIcon className="mt-0.5 size-5 shrink-0 text-v2-self" />
-            <p className="text-caption leading-relaxed text-v2-ink">{t('community.donate.impact')}</p>
+    <div data-support-page className="gk gk-donate">
+      <section className="gk-donate__part">
+        <SectionTag as="h3">{t('community.donate.aboutHeading')}</SectionTag>
+        <div className="gk-well gk-donate__case">
+          <div className="gk-donate__impact">
+            <HeartIcon className="gk-donate__heart" />
+            <p>{t('community.donate.impact')}</p>
           </div>
-          <details className="group mt-3 border-t border-v2-line pt-2">
-            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 text-label font-semibold text-v2-ink-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-              {t('community.donate.developerNote')}<Icon id="i-chev" className="size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+          <details className="gk-donate__note">
+            <summary {...OWN_SOUND} className="gk-donate__more" onClick={() => { playSound('tab'); haptic('tap'); }}>
+              {t('community.donate.developerNote')}<span className="gk-donate__chev"><Glyph id="next" /></span>
             </summary>
-            <div className="flex flex-col gap-2 pt-2 text-caption leading-relaxed text-v2-ink-2">
+            <div className="gk-donate__letter">
               <p>{t('community.donate.intro')}</p>
               <p>{t('community.donate.costs')}</p>
-              <p className="text-v2-ink">{t('community.donate.appeal')}</p>
+              <p className="gk-donate__appeal">{t('community.donate.appeal')}</p>
             </div>
           </details>
         </div>
-      </Section>
+      </section>
 
       {/*
         FOUR ACROSS, AND SMALL. Owner report: two columns drew them "kocaman". The art is
@@ -76,24 +77,24 @@ function WebDonateScreen({ cards }: { cards: readonly SupportCard[] }) {
         quarter of a 350px sheet each card is about seventy-five pixels wide and the figure
         still reads — and one row states the choice as four options, not a block.
       */}
-      <Section label={t('community.donate.cardHeading')}>
-        <div className="grid grid-cols-4 gap-1.5">
+      <section className="gk-donate__part">
+        <SectionTag as="h3">{t('community.donate.cardHeading')}</SectionTag>
+        <div className="gk-donate__cards">
           {cards.map((card) => (
             <SupportCardButton key={card.amount} card={card} />
           ))}
         </div>
-        <Note>{t('community.donate.cardNote')}</Note>
-      </Section>
+        <p className="gk-note">{t('community.donate.cardNote')}</p>
+      </section>
 
-      <Section label={t('community.donate.cryptoHeading')}>
-        <div className="flex flex-col gap-1.5">
-          {CRYPTO.map((row) => (
-            <AddressRow key={row.id} label={t(`community.donate.${row.labelKey}`)} address={row.address} />
-          ))}
-        </div>
-      </Section>
+      <section className="gk-donate__part">
+        <SectionTag as="h3">{t('community.donate.cryptoHeading')}</SectionTag>
+        {CRYPTO.map((row) => (
+          <AddressRow key={row.id} label={t(`community.donate.${row.labelKey}`)} address={row.address} />
+        ))}
+      </section>
 
-      <Note>{t('community.donate.noPressure')}</Note>
+      <p className="gk-note">{t('community.donate.noPressure')}</p>
     </div>
   );
 }
@@ -133,31 +134,26 @@ function AddressRow({ label, address }: { label: string; address: string }) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</p>
+    <div className="gk-well gk-donate__wallet">
+      <div className="gk-donate__walletline">
+        <p className="gk-label">{label}</p>
         {/*
           THE PRESS ANSWERS, VISIBLY. Owner instruction: the glyph becomes a tick, the
-          slab takes your colour, and the word changes — three changes at once, because a
-          thumb over the label hides a one-word change. The name changes with them.
+          slab takes the action colour, and the word changes — three changes at once,
+          because a thumb over the label hides a one-word change. The name changes with them.
         */}
-        <Button
+        <GameButton
           size="sm"
-          variant={copied ? 'primary' : 'default'}
-          icon={copied ? <Icon id="i-check" className="size-3.5" /> : undefined}
-          ariaLabel={
-            copied
-              ? t('community.donate.copiedLabel', { label })
-              : t('community.donate.copyLabel', { label })
-          }
-          onClick={() => {
+          tone={copied ? 'action' : 'steel'}
+          glyph={copied ? 'check' : undefined}
+          spoken={copied ? t('community.donate.copiedLabel', { label }) : t('community.donate.copyLabel', { label })}
+          onPress={() => {
             void (async () => {
               // False means every path was refused — an insecure context AND no
               // legacy copy. The address is on screen and selectable, which is the
               // way out; claiming "Copied" over an empty clipboard would send a
               // player away believing they had it.
               if (!(await copyText(address))) return;
-              haptic('tap');
               setCopied(true);
               if (settle.current !== null) clearTimeout(settle.current);
               settle.current = setTimeout(() => { setCopied(false); }, 2_000);
@@ -165,9 +161,9 @@ function AddressRow({ label, address }: { label: string; address: string }) {
           }}
         >
           {copied ? t('community.donate.copied') : t('community.donate.copy')}
-        </Button>
+        </GameButton>
       </div>
-      <p className="selectable break-all font-v2-mono text-caption leading-snug text-v2-ink">{address}</p>
+      <p className="selectable gk-donate__address">{address}</p>
     </div>
   );
 }
@@ -196,13 +192,13 @@ function SupportCardButton({ card }: { card: SupportCard }) {
       src={card.art}
       alt={label}
       loading="lazy"
-      className="h-auto w-full object-contain"
+      className="gk-donate__art"
     />
   );
 
   if (card.href === null) {
     return (
-      <button type="button" disabled aria-label={label} className="rounded-control">
+      <button type="button" disabled aria-label={label} className="gk-donate__card">
         {art}
       </button>
     );
@@ -213,8 +209,9 @@ function SupportCardButton({ card }: { card: SupportCard }) {
       target="_blank"
       rel="noreferrer noopener"
       aria-label={label}
-      className="rounded-control transition-transform duration-150 ease-v2 hover:-translate-y-0.5 active:scale-[0.97]"
-      onClick={() => { haptic('tap'); }}
+      {...OWN_SOUND}
+      className="gk-donate__card"
+      onClick={() => { playSound('tap'); haptic('tap'); }}
     >
       {art}
     </a>

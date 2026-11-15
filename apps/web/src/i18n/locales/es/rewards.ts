@@ -26,6 +26,8 @@ export const rewards = {
   allTaken: 'Ya has recogido todas las recompensas disponibles. Habrá más cuando avances en la galaxia.',
 
   claim: 'Recoger',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Abrir la cápsula',
   claimed: 'Recogida',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: 'Faltan {{count}}',

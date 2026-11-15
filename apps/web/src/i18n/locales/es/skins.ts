@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: 'Precio no disponible',
   retryPrices: 'Recargar precios',
   checkoutStarting: 'Abriendo el pago…',
-  showcaseDescription: 'Aspectos de planetas, naves y efectos.',
   "productengine-titan": "Impulso Titán",
   "storytitanENGINE": "Encendido blanco azulado, combustión naranja turbulenta y una estela de brasas.",
   "shipFits": "Para {{hull}}",

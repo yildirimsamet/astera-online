@@ -15081,3 +15081,304 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-signal__courier { flex-wrap: wrap; }
 .gk-signal__courier .gk-sub { white-space: nowrap; }
 .gk-signal__courier > .gk-btn { margin-left: auto; }
+
+/* ── the reward panel (G6, C34): the next payout a pod to open, every goal a cut plate ── */
+
+.gk-rewards {
+  display: grid;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) 0 var(--gk-s5);
+  color: var(--gk-ink);
+}
+.gk-rewards--state { padding-top: var(--gk-s3); }
+.gk-rewards__ghost { height: 92px; opacity: 0.6; }
+.gk-rewards__pod { display: grid; justify-items: center; }
+.gk-rewards__sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gk-rewards__list { display: grid; gap: var(--gk-s3); }
+.gk-reward {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-reward[data-done] .gk-reward__name { color: var(--gk-ink-2); }
+.gk-reward__head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--gk-s3);
+}
+.gk-reward__mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+  color: var(--gk-ink-3);
+}
+.gk-reward__mark[data-on] {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  color: var(--gk-self);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gk-self) 25%, transparent);
+}
+.gk-reward__mark .gk-glyph { width: 22px; height: 22px; }
+.gk-reward__words { display: grid; gap: 3px; min-width: 0; }
+.gk-reward__titleline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.gk-reward__name {
+  margin: 0;
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.gk-reward__standing {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__standing[data-on] { color: var(--gk-self); }
+.gk-reward__tag {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-reward__steps {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+}
+.gk-reward__steps > span {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-ink) 12%, transparent);
+}
+.gk-reward__steps > span[data-state='claimed'] { background: var(--gk-self); }
+.gk-reward__steps > span[data-state='claimable'] {
+  background: color-mix(in srgb, var(--gk-self) 40%, transparent);
+  box-shadow: 0 0 0 1px var(--gk-self);
+}
+.gk-reward__tiers { display: grid; margin: 0; }
+.gk-reward__tier {
+  display: grid;
+  gap: 6px;
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-reward__tier + .gk-reward__tier { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.gk-reward__tier[data-state='claimed'] { color: var(--gk-ink-3); }
+.gk-reward__tier[data-state='claimed'] .gk-cost { opacity: 0.55; }
+.gk-reward__tierline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--gk-s2);
+}
+.gk-reward__target { font-size: var(--gk-t-body); }
+.gk-reward__state {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__state[data-on] { color: var(--gk-self); }
+.gk-reward__reach { display: block; }
+.gk-reward__fold {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s1);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-reward__fold:active { color: var(--gk-ink); }
+.gk-reward__fold:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-reward__fold .gk-glyph { width: 16px; height: 16px; }
+.gk-reward__foldcount { margin-left: var(--gk-s2); color: var(--gk-ink-3); }
+.gk-reward__prize { padding: var(--gk-s3); font-size: var(--gk-t-lead); }
+.gk-reward__how { display: grid; gap: var(--gk-s2); }
+.gk-reward__step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-reward__stepno {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 50%;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.gk-reward__name-copy {
+  display: block;
+  margin-top: 6px;
+  padding: 6px var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.gk-reward__link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gk-s2);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-reward__link:active { transform: translateY(1px); }
+.gk-reward__link:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-reward__link .gk-glyph { width: 16px; height: 16px; }
+.gk-reward__after {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-reward__after .gk-glyph { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+.gk-reward__after[data-on] .gk-glyph { color: var(--gk-self); }
+
+/* ── trying a look over the galaxy (G6, C39) ─────────────────────────────────── */
+
+.gk-trial {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  /* it stands on the dock, whatever height the dock has */
+  bottom: var(--v2-dock-h, 0px);
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  color: var(--gk-ink);
+}
+.gk-trial__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+}
+.gk-trial__eyebrow { color: var(--gk-gold); }
+.gk-trial__name {
+  margin-top: 2px;
+  font-size: var(--gk-t-lead);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.gk-trial__hint {
+  font-size: var(--gk-t-small);
+  line-height: 1.35;
+  color: var(--gk-ink-2);
+}
+.gk-trial__moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+/* the cut plate is relative by default; over the galaxy the bar stands on the dock */
+.gk-cut.gk-trial { position: absolute; }
+
+/* ── C41 (2026-11-15): the support page. The case in glass, the developer's letter one
+   thumb-sized row deeper, the four card paintings as the presses, the wallets in glass. */
+.gk-donate {
+  display: grid;
+  gap: var(--gk-s4);
+  padding-bottom: var(--gk-s4);
+  color: var(--gk-ink);
+}
+.gk-donate__part { display: grid; gap: var(--gk-s2); }
+.gk-donate__case { display: grid; gap: var(--gk-s2); padding: var(--gk-s3) var(--gk-s3) 0; }
+.gk-donate__impact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--gk-s3);
+  align-items: start;
+  font-size: var(--gk-t-body);
+  line-height: 1.45;
+}
+.gk-donate__heart { width: 20px; height: 20px; margin-top: 2px; color: var(--gk-self); }
+.gk-donate__note { border-top: 1px solid var(--gk-metal-edge); }
+.gk-donate__more {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-donate__more::-webkit-details-marker { display: none; }
+.gk-donate__more:active { color: var(--gk-ink); }
+.gk-donate__more:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-donate__chev { display: inline-flex; transition: transform 160ms ease-out; }
+.gk-donate__chev .gk-glyph { width: 16px; height: 16px; }
+.gk-donate__note[open] .gk-donate__chev { transform: rotate(90deg); }
+.gk-donate__letter {
+  display: grid;
+  gap: var(--gk-s2);
+  padding-bottom: var(--gk-s1);
+  font-size: var(--gk-t-small);
+  line-height: 1.5;
+  color: var(--gk-ink-2);
+}
+.gk-donate__appeal { color: var(--gk-ink); }
+.gk-donate__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+.gk-donate__card {
+  display: block;
+  min-height: 44px;
+  border-radius: 4px;
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+a.gk-donate__card:hover { transform: translateY(-2px); }
+a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
+.gk-donate__card:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-donate__art { display: block; width: 100%; height: auto; object-fit: contain; }
+.gk-donate__wallet { display: grid; gap: var(--gk-s1); padding: var(--gk-s2) var(--gk-s2) var(--gk-s2) var(--gk-s3); }
+.gk-donate__walletline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-donate__address {
+  font-family: var(--font-v2-mono);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: var(--gk-ink);
+}

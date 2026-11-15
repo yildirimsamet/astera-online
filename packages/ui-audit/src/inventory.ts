@@ -67,7 +67,7 @@ export const SURFACES: GameSurface[] = [
     reach: ['gallery:store-discovery', 'gallery:hud-protected', 'gallery:hud-vacation', 'gallery:context-attack', 'gallery:context-event', 'gallery:context-events', 'gallery:context-suggestion', 'gallery:context-selected', 'gallery:readout', 'gallery:toast', 'gallery:toast-warn', 'gallery:toast-error', 'client:galaxy-new', 'client:galaxy-mid', 'client:galaxy-late'],
     group: 'G1',
   },
-  { id: 'cosmetic-trial', what: 'Kozmetik deneme şeridi, galaksi üzerinde', files: ['screens/CosmeticTrialBar.tsx'], reach: ['gallery:cosmetic-trial'], group: 'G6' },
+  { id: 'cosmetic-trial', what: 'Kozmetik deneme şeridi, galaksi üzerinde', files: ['screens/CosmeticTrialBar.tsx'], reach: ['gallery:cosmetic-trial', 'gallery:cosmetic-trial-bar'], group: 'G6' },
   { id: 'now-line', what: 'Şimdi satırı ve zamanlayıcılar', files: ['v2/hud/NowLine.tsx'], reach: ['gallery:timers'], group: 'G1' },
   { id: 'outline', what: 'Üs ve filo özeti katmanı', files: ['v2/hud/Outline.tsx', 'v2/shell/OutlineHost.tsx'], reach: ['client:outline'], group: 'G1' },
   { id: 'fleet', what: 'Filo sayfası: havada, evde, oda', files: ['v2/hud/FleetPage.tsx', 'v2/shell/FleetHost.tsx'], reach: ['gallery:fleet', 'gallery:fleet-home', 'gallery:fleet-room', 'gallery:support-fleet'], group: 'G2', unreached: ['Havada: anıtta bekleyen dalga satırları'] },
@@ -152,7 +152,7 @@ export const SURFACES: GameSurface[] = [
   },
 
   // Menu, commander and meta.
-  { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx', 'shell/ShopShowcase.tsx', 'shell/ShopShowcasePoster.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
+  { id: 'menu', what: 'Menü (Komutan sayfası), ayarlar, mağaza vitrini', files: ['shell/MenuPanel.tsx'], reach: ['gallery:menu', 'gallery:menu-settings', 'gallery:menu-academy', 'gallery:menu-community', 'gallery:menu-ended', 'client:menu'], group: 'G1' },
   { id: 'notifications', what: 'Bildirim Merkezi', files: ['screens/NotificationCenterSheet.tsx'], reach: ['gallery:notification-center', 'gallery:notification-center-new', 'gallery:notification-center-late'], group: 'G8' },
   { id: 'leaderboard', what: 'Sıralama ve sezon arşivi', files: ['screens/LeaderboardScreen.tsx', 'screens/SeasonArchiveScreen.tsx'], reach: ['gallery:leaderboard', 'gallery:leaderboard-honor', 'gallery:leaderboard-archive', 'gallery:leaderboard-archive-profile', 'gallery:leaderboard-archive-career'], group: 'G9' },
   { id: 'rewards', what: 'Ödüller', files: ['screens/RewardsScreen.tsx'], reach: ['gallery:rewards', 'gallery:rewards-ready', 'gallery:rewards-complete', 'gallery:rewards-empty', 'client:rewards'], group: 'G6' },

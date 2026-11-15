@@ -185,8 +185,6 @@ export const menu = {
     account: "Komutan profili",
     back: "Menüye dön",
     resume: "Oyuna dön",
-    shopHint: "Görünümünü seç",
-    inventoryHint: "Koleksiyonunu kuşan",
     rewardsReady_one: "{{count}} ödül hazır",
     rewardsReady_other: "{{count}} ödül hazır",
   },

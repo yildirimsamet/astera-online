@@ -230,8 +230,6 @@ export const menu = {
     account: "司令官プロフィール",
     back: "メニューに戻る",
     resume: "ゲームに戻る",
-    shopHint: "外観を選ぶ",
-    inventoryHint: "コレクションを装備",
     rewardsReady_one: "報酬{{count}}件を受取可能",
     rewardsReady_other: "報酬{{count}}件を受取可能",
   },

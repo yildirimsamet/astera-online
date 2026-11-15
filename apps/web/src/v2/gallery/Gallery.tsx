@@ -78,6 +78,8 @@ import { QueueSheet } from '../kit/QueueSheet.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { artIconSrc } from '../../game-ui/index.js';
+import { CosmeticTrialBar } from '../../screens/CosmeticTrialBar.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -1122,7 +1124,7 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     return next;
   });
-  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} headerArt={ATMOSPHERE.rewards} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
+  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
     <RewardsScreen commander="Samet_The_Long_Commander_Name" />
   </Sheet></div></QueryClientProvider>;
 }
@@ -1495,7 +1497,7 @@ function Views({ view }: { view: string }) {
   }
   if (view === 'donate') {
     return (
-      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} onClose={noop}>
+      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} kit={{ art: artIconSrc('star') }} onClose={noop}>
         <DonateScreen />
       </Sheet>
     );
@@ -1854,6 +1856,13 @@ export function Gallery({ view }: { view: string | null }) {
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;
   if (view === 'hud-protected' || view === 'hud-vacation') return <StoreDiscoveryGallery hud={view === 'hud-protected' ? 'protected' : 'vacation'} />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
+  // C39: the trial bar itself, as it stands on the dock over a world of mine, with two worlds to choose from.
+  if (view === 'cosmetic-trial-bar') {
+    return <div className="relative h-dvh overflow-hidden bg-v2-void">
+      <CosmeticTrialBar trial={{ planetId: 'home', cosmeticId: 'ring-aurora', enabled: true }}
+        worlds={[{ id: 'home', name: 'Kestrel' }, { id: 'colony', name: 'Vega' }]} onSelect={noop} onCompare={noop} onEnd={noop} onShop={noop} />
+    </div>;
+  }
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {

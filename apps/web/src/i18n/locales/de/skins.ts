@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: 'Preis nicht verfügbar',
   retryPrices: 'Preise neu laden',
   checkoutStarting: 'Zahlungsseite wird geöffnet…',
-  showcaseDescription: 'Planetenlooks, Schiffskins und Effekte.',
   "productengine-titan": "Titanschub",
   "storytitanENGINE": "Blauweiße Zündung, turbulente orange Verbrennung und eine ausglühende Spur.",
   "shipFits": "Für {{hull}}",

@@ -326,3 +326,31 @@ describe('community surfaces', () => {
     expect(screen.getByText('3z84BrV8nzzbZkGuDmWczjn6vd6Z1tKis9PHimZSae9J')).toBeInTheDocument();
   });
 });
+
+/**
+ * C41 (2026-11-15): THE SUPPORT PAGE ON THE KIT. The same case, the same four cards and two
+ * wallets; the parts are the kit's: tagged sections, glass for the case, the kit's copy press.
+ */
+describe('the support page on the kit', () => {
+  const oldLook = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/))
+      .filter((name) => /(^|-)v2(-|$)/.test(name) || ['text-micro', 'text-label', 'text-caption', 'text-body', 'text-title', 'text-readout'].includes(name));
+
+  it('wears none of the old surface language', () => {
+    render(<DonateScreen />);
+    const page = document.querySelector('[data-support-page]');
+    expect(page).toHaveClass('gk');
+    expect(oldLook(page ?? document.body)).toEqual([]);
+  });
+
+  it('tags each part, folds the note behind a thumb-sized row and copies on the kit press', async () => {
+    const user = userEvent.setup();
+    render(<DonateScreen />);
+    expect(screen.getByRole('heading', { name: i18n.t('community.donate.cardHeading') })).toHaveClass('gk-tag');
+    expect(screen.getByText(i18n.t('community.donate.developerNote')).closest('summary')).toHaveClass('gk-donate__more');
+    const copy = screen.getByRole('button', { name: 'Copy SOLANA address' });
+    expect(copy).toHaveClass('gk-btn');
+    await user.click(copy);
+    expect(await screen.findByRole('button', { name: 'SOLANA address copied' })).toHaveClass('gk-btn--action');
+  });
+});

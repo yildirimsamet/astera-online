@@ -1,46 +1,7 @@
 @layer components {
-  .menu-shop-tile {
-    background: linear-gradient(120deg, var(--color-v2-panel) 25%, color-mix(in srgb, var(--color-v2-premium) 8%, var(--color-v2-deep)));
-  }
-  .menu-shop-tile::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background: var(--menu-art-shade);
-  }
-  .menu-shop-art {
-    z-index: -2;
-    mask-image: linear-gradient(to right, transparent, black 45%);
-  }
-  .menu-shop-art .shop-showcase-poster {
-    object-position: right top;
-  }
   .profile-page {
     padding-bottom: env(safe-area-inset-bottom);
     background-image: radial-gradient(ellipse at 80% 0%, color-mix(in srgb, var(--color-v2-self) 4%, transparent), transparent 55%);
-  }
-  .shop-showcase-hero {
-    background: linear-gradient(115deg, var(--color-v2-deep) 28%, var(--color-v2-store-ground));
-  }
-  .shop-showcase-light {
-    background: radial-gradient(ellipse at 90% 40%, color-mix(in srgb, var(--color-v2-store-glow) 14.12%, transparent), transparent 65%);
-  }
-  .shop-showcase-art {
-    width: 56%;
-    height: 100%;
-    right: 0;
-    top: 0;
-    padding: 6px 4px 6px 0;
-  }
-  .shop-showcase-copy { width: 48%; }
-  .shop-showcase-poster {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: right center;
   }
 }
 
