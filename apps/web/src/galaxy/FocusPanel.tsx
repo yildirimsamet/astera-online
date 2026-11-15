@@ -92,14 +92,13 @@ import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { AttackIcon, EyeIcon, ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
-import { Price } from '../ui/Action.js';
+import { AttackIcon, ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { Glyph, RoundButton, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { CostLine, GameButton, Glyph, RoundButton, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
@@ -869,7 +868,7 @@ export function PlanetFocus({
   const anonymous = unsurveyed && !target.clanmate;
 
   const probeControl = !target.clanmate && (
-    target.vacation ? <span className="text-caption text-v2-self">{t('vacation.title')}</span> : <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
+    target.vacation ? <span className="gk-inote gk-inote--plate gk-focus__half" data-tone="self">{t('vacation.title')}</span> : <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
   );
   /*
     THE RIVAL MARK, A CHIP IN THE DOSSIER'S HEADER (M2, the mock) rather than a slab among
@@ -906,73 +905,46 @@ export function PlanetFocus({
   /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
   const attackControl = !target.clanmate && (!gate.open(outpostTarget ? 'fleet' : 'attack')
     // A closed attack says why and how it opens (player test A-05, owner K1 2026-11-05).
-    ? <p data-testid="attack-locked" className="basis-full text-micro leading-snug text-v2-ink-3">{t(outpostTarget ? 'starter.outpostLocked' : 'starter.attackLocked')}</p>
+    ? <p data-testid="attack-locked" className="gk-inote gk-focus__wide">{t(outpostTarget ? 'starter.outpostLocked' : 'starter.attackLocked')}</p>
     : (
-          <button
-            type="button"
-            // Marked so a surface outside this panel can point at the commitment.
-            // The onboarding opens exactly this path and refuses the rest of the
-            // rail, because nothing else on it is affordable out of the opening
-            // grant — a probe alone needs crystal the mandatory upgrades spent.
-            data-attack
-            data-primary
-            className={`${BTN_PRIMARY} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
-            /*
-              THE BAND IS ORDERED FIRST, AND THAT MATCHES THE SERVER. `canAttack`
-              raises the two tier codes ahead of `BASH_LIMIT` because a permanent
-              refusal outranks a temporary one — telling a commander to wait out a
-              window that will not make the fight legal sends them away and back
-              for the same no. The same argument puts it ahead of a shield clock
-              here: the shield expires, the development gap does not.
-            */
-            aria-label={target.vacation ? t('errors.TARGET_VACATION') : t(originSilentSpace
-              ? 'focus.planet.attackSilentSpace'
-              : originShipyardRevolt
-              ? 'focus.planet.attackShipyardRevolt'
-              : outOfBand
-              ? 'focus.planet.attackOutOfBand'
-              : shieldedUntil !== null
-                ? 'focus.planet.attackProtected'
-                : originRecovering
-                  ? 'focus.planet.attackOriginRecovering'
-                  : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                    ? 'focus.planet.attackNeutralAgain'
-                    : 'focus.planet.attack')}
-            disabled={(target.vacation ?? false) || originSilentSpace || originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
-            onClick={onAttack}
-          >
-            {/*
-              THE ONE IRREVERSIBLE CONTROL IN THE GAME NOW CARRIES A MARK.
-
-              The primary — your colour, one per surface (K2) — is the launch's and
-              nothing else's, and the glyph is the second half of that argument: on
-              a card where the other controls share one size and weight, shape is
-              what a thumb recognises before the word is read. `BTN` is already a
-              flex row with a gap, so the icon needs no layout of its own.
-            */}
-            {/*
-              THE REASON RIDES THE LABEL, and it names the CLOCK rather than the
-              rule: "protected for 4h" is a fact a commander can plan against,
-              where "that commander is new" is trivia about somebody else.
-            */}
-            {originSilentSpace
-              ? t('focus.planet.attackSilentSpaceShort')
-              : originShipyardRevolt
-              ? t('focus.planet.attackShipyardRevoltShort')
-              : outOfBand
-              ? t('focus.planet.attackOutOfBandShort')
-              : shieldedUntil !== null
-              ? t('focus.planet.attackProtectedShort', {
-                duration: countdown(shieldedUntil.getTime() - now),
-              })
-              : t(originRecovering
-                ? 'focus.planet.attackOriginRecovering'
-                : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                  ? 'focus.planet.attackNeutralAgain'
-                  : 'focus.planet.attackShort')}
-            {/* It opens the plan, not the attack: the mock's pointer says there is a step after. */}
-            <Icon id="i-chev" className="size-3.5 shrink-0" />
-          </button>
+      /*
+        Marked so a surface outside this panel can point at the commitment: the onboarding
+        opens exactly this path and refuses the rest of the rail. THE BAND IS ORDERED FIRST,
+        as on the server (`canAttack`): a permanent refusal outranks a temporary one, and the
+        development gap does not expire where a shield does. A refusal rides the face and
+        names the CLOCK ("protected for 4h"), a fact to plan against (G4-b1, 2026-11-15).
+      */
+      <GameButton
+        tone="action"
+        glyph="attack"
+        size="sm" className="gk-focus__grow"
+        marks={{ 'data-attack': '', 'data-primary': '' }}
+        spoken={target.vacation ? t('errors.TARGET_VACATION') : t(originSilentSpace
+          ? 'focus.planet.attackSilentSpace'
+          : originShipyardRevolt
+          ? 'focus.planet.attackShipyardRevolt'
+          : outOfBand
+          ? 'focus.planet.attackOutOfBand'
+          : shieldedUntil !== null
+            ? 'focus.planet.attackProtected'
+            : originRecovering
+              ? 'focus.planet.attackOriginRecovering'
+              : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+                ? 'focus.planet.attackNeutralAgain'
+                : 'focus.planet.attack')}
+        disabledReason={target.vacation ? t('vacation.title')
+          : originSilentSpace ? t('focus.planet.attackSilentSpaceShort')
+          : originShipyardRevolt ? t('focus.planet.attackShipyardRevoltShort')
+          : outOfBand ? t('focus.planet.attackOutOfBandShort')
+          : shieldedUntil !== null ? t('focus.planet.attackProtectedShort', { duration: countdown(shieldedUntil.getTime() - now) })
+          : originRecovering ? t('focus.planet.attackOriginRecovering')
+          : null}
+        onPress={onAttack}
+      >
+        {t(colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+          ? 'focus.planet.attackNeutralAgain'
+          : 'focus.planet.attackShort')}
+      </GameButton>
   ));
 
   /*
@@ -1000,7 +972,7 @@ export function PlanetFocus({
   const outpostLines = target.body === 'OUTPOST' ? (
     <>
       {target.hasPart && <PartHere />}
-      <p data-testid="outpost-rule" className="text-micro leading-snug text-v2-ink-2">
+      <p data-testid="outpost-rule" className="gk-sub">
         {t('starter.outpost.rule', {
           amount: full(STARTER.sites.outposts.stock[Math.min(STARTER.sites.outposts.stock.length, Math.max(1, target.coreLevel)) - 1] ?? 0),
           carry: full(carry),
@@ -1043,11 +1015,11 @@ export function PlanetFocus({
         <>
           {outpostLines}
           {/* The ships' price, not the dossier's power range: one name, one measure (player test B-04). */}
-          <p data-testid="peek-value" className="flex items-baseline justify-between gap-2 text-micro">
-            <span className="v2-legend">{t('dossier.page.value')}</span>
-            <span className="truncate font-v2-mono text-v2-ink-2">{peekPower}</span>
+          <p data-testid="peek-value" className="gk-focus__value">
+            <span className="gk-label">{t('dossier.page.value')}</span>
+            <span className="gk-num">{peekPower}</span>
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="gk-focus__pair">
             {probeControl}
             {attackControl}
           </div>
@@ -1066,7 +1038,7 @@ export function PlanetFocus({
       */
       actions={(
           <>
-          {open && outpostLines && <div className="flex basis-full flex-col gap-1">{outpostLines}</div>}
+          {open && outpostLines && <div className="gk-focus__wide gk-focus__stack">{outpostLines}</div>}
           {/*
             AND YOU CANNOT MARK WHAT YOU CANNOT SEE. Owner's instruction. This
             tested `kind !== 'NEUTRAL'`, a field an unsurveyed world does not
@@ -1080,23 +1052,15 @@ export function PlanetFocus({
             || (colonyPhase === 'NEUTRAL_PREP'
               && (settleBlock?.code === 'COLONY_CORE' || settleBlock?.code === 'COLONY_MAX'))
           ) && (
-            <p
-              data-settle-reason
-              role="note"
-              className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 basis-full px-2 py-1 text-label leading-snug text-v2-ink-2"
-            >
+            <p data-settle-reason role="note" className="gk-inote gk-inote--plate gk-focus__wide">
               {settlementBlockReason}
             </p>
           )}
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
-            <button
-              type="button"
-              className={`${BTN_GHOST} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
-              disabled={!settlementReady}
-              onClick={onSettle}
-            >
+            <GameButton glyph="colony" size="sm" className="gk-focus__half" onPress={onSettle}
+              disabledReason={settlementReady ? null : (settlementBlockLabel ?? t('focus.planet.settle'))}>
               {settlementBlockLabel ?? t('focus.planet.settle')}
-            </button>
+            </GameButton>
           )}
           {/*
             NO DEVELOPMENT GATE ON THE LAUNCH ANY MORE. D127.
@@ -1130,26 +1094,25 @@ export function PlanetFocus({
             stand in somebody else's line; the sentence says what that means before the tap.
           */}
           {target.clanmate && onSendSupport && clanDefenseApplies(planet.rulesetVersion ?? 0) && (
-            <div className="basis-full">
+            <div className="gk-focus__wide gk-focus__stack">
               {/* A world closed to support says so here, before a ship is picked on the sheet. */}
-              <button type="button" data-send-support className={`${BTN_GHOST} w-full`}
-                disabled={target.supportOpen === false} onClick={onSendSupport}>
+              <GameButton wide glyph="support" marks={{ 'data-send-support': '' }} onPress={onSendSupport}
+                disabledReason={target.supportOpen === false ? t('clanSupport.sendAction') : null}>
                 {t('clanSupport.sendAction')}
-              </button>
-              <p className="mt-1 text-caption text-v2-ink-2">
+              </GameButton>
+              <p className="gk-sub">
                 {target.supportOpen === false
                   ? t('clanSupport.closedHint', { name: target.owner })
                   : t('clanSupport.sendActionHint')}
               </p>
             </div>
           )}
-          {showClanTargetAction && <div className="basis-full">
-            <button type="button" className={`${BTN_GHOST} w-full`}
-              disabled={clanTargetRefusal !== null || clanTargetPending}
-              onClick={onMarkClanTarget}>
+          {showClanTargetAction && onMarkClanTarget && <div className="gk-focus__wide gk-focus__stack">
+            <GameButton wide glyph="flag" pending={clanTargetPending} onPress={onMarkClanTarget}
+              disabledReason={clanTargetRefusal === null ? null : t('clanWar.markTarget')}>
               {t('clanWar.markTarget')}
-            </button>
-            {clanTargetRefusal && <p className="mt-1 text-caption text-v2-ink-2">{clanTargetRefusal}</p>}
+            </GameButton>
+            {clanTargetRefusal && <p className="gk-sub">{clanTargetRefusal}</p>}
           </div>}
           {attackControl}
           </>
@@ -1185,17 +1148,13 @@ export function PlanetFocus({
       />
       )}
       {away && (
-        <p className="mb-3 rounded-chip border border-v2-self/40 bg-v2-self/10 px-3 py-2 text-body text-v2-self">
+        <p className="gk-inote gk-inote--plate gk-focus__note" data-tone="self">
           {t('focus.planet.windowOpen')}
         </p>
       )}
       {radiation && (
-        <p
-          data-radiation-here
-          className={`mb-3 rounded-chip border px-3 py-2 text-caption leading-snug ${radiation.sheltered
-            ? 'border-v2-line text-v2-ink-2'
-            : 'border-v2-radiation/50 bg-v2-radiation/10 text-v2-radiation'}`}
-        >
+        <p data-radiation-here className="gk-inote gk-inote--plate gk-focus__note" {...(radiation.sheltered ? {} : { 'data-tone': 'warn' })}>
+          <Glyph id={radiation.sheltered ? 'shield' : 'radiation'} />
           {radiation.sheltered
             ? t('focus.planet.radiationShelter')
             : t('focus.planet.radiationHere', {
@@ -2444,49 +2403,31 @@ function ProbeControl({
     (row) => row.targetPlanetId === target.id,
   )?.readyAt;
   /*
-    HALF A ROW, BECAUSE IT SHARES ONE WITH THE ATTACK. Owner instruction.
-    `min-w` keeps the pair from collapsing into slivers on a narrow phone: below
-    that the flex row wraps and each takes a line again, which is the right
-    degradation.
+    HALF A ROW, BECAUSE IT SHARES ONE WITH THE ATTACK (owner). The verb is the face, the
+    price rides beside it — a spend the player cannot see before pressing is a worse failure
+    than a wide button — and the whole sentence is the name a reader hears. A probe cannot be
+    recalled, so its press lands with the weight of a spend (G4-b1, 2026-11-15).
   */
-  const shape = 'min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]';
-
   if (readyAt !== undefined && readyAt.getTime() > now) {
+    const left = duration((readyAt.getTime() - now) / 60_000);
     return (
-      <button
-        type="button"
-        className={`${BTN_GHOST} ${shape}`}
-        disabled
-        /*
-          THE WHOLE SENTENCE SURVIVES FOR ANYONE WHO CANNOT SEE THE LAYOUT.
-          Pairing the controls shortened the visible label to a verb; the
-          accessible name keeps what the label used to say, because a compact
-          button is a visual saving and must not become an information loss.
-        */
-        aria-label={t('focus.planet.probeCooling', {
-          duration: duration((readyAt.getTime() - now) / 60_000),
-        })}
-      >
-        <EyeIcon className="size-4 shrink-0" />
+      <GameButton glyph="eye" size="sm" className="gk-focus__half" onPress={() => undefined}
+        spoken={t('focus.planet.probeCooling', { duration: left })}
+        disabledReason={`${t('focus.planet.probeShort')} · ${left}`}>
         {t('focus.planet.probeShort')}
-        <span className="font-v2-mono text-micro text-v2-ink-3">
-          {duration((readyAt.getTime() - now) / 60_000)}
-        </span>
-      </button>
+      </GameButton>
     );
   }
   return (
-    <button
-      type="button"
-      data-guide="probe"
-      className={`${BTN_GHOST} ${shape}`}
-      // The verb is the label; the sentence — cost and all — is the accessible name.
-      aria-label={t('focus.planet.sendProbe', {
-        alloy: compact(PROBE.alloy),
-        crystal: compact(PROBE.crystal),
-      })}
-      disabled={probe.isPending}
-      onClick={() => {
+    <GameButton
+      glyph="eye"
+      heavy
+      size="sm" className="gk-focus__half"
+      marks={{ 'data-guide': 'probe' }}
+      spoken={t('focus.planet.sendProbe', { alloy: compact(PROBE.alloy), crystal: compact(PROBE.crystal) })}
+      pending={probe.isPending}
+      cost={<CostLine cost={{ alloy: PROBE.alloy, crystal: PROBE.crystal }} />}
+      onPress={() => {
         probe.mutate(target.id, {
           onSuccess: (r) => {
             say(t('focus.planet.probeAway', { duration: duration(r.flightMinutes) }));
@@ -2501,23 +2442,8 @@ function ProbeControl({
         });
       }}
     >
-      {/* An eye, deliberately — see `EyeIcon`. A probe looks at somebody else's
-          world and that world is told, which is the opposite of the aperture the
-          Intel centre wears. */}
-      <EyeIcon className="size-4 shrink-0" />
       {t('focus.planet.probeShort')}
-      {/*
-        THE COST STAYS ON THE CONTROL, AND ON THE SAME LINE AS THE VERB.
-
-        Pairing the commitments cost the label its sentence, and the one part of
-        that sentence that may not be dropped is the SPEND — a price the player
-        cannot see before pressing is a worse failure than a button that was too
-        wide. Stacked under the verb it made the button two lines tall, which is the
-        thing the pairing was for; inline it costs nothing but width the resource
-        marks already fit in.
-      */}
-      <Price cost={{ alloy: PROBE.alloy, crystal: PROBE.crystal }} layout="row" />
-    </button>
+    </GameButton>
   );
 }
 

@@ -1164,6 +1164,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Galeriye `focus-closed` ve `focus-own` eklendi.
 - **Ölçüm** (Türkçe; telefon, 320, masaüstü) `g4a-before` → `g4a-after-2026-11-15.md`: kendi dünyam 0, anıt 12 → 1, uçuş 24 → 15, korsan uçuşu 20 → 11. Açık dosyalar (130–141) ve kapalı yabancı dünya (15) kartların içeriğinden: değer satırı, Sonda/Saldırı düğmeleri, radyasyon çubuğu (9–10 px); G4-b, G4-d, G4-h'de.
 
+**G4-b1 yabancı dünyanın taahhütleri ✅ (2026-11-15).** Oyuncunun anı: "sonda mı göndereyim, saldırı mı planlayayım?"
+- Sonda ve saldırı kitin basışları, aynı satırda. Saldırı tek turuncu eylem (`data-attack`, `data-primary`, öğretici hâlâ buluyor). Sonda çelik; fiyatı yüzünde; geri çağrılamadığı için basışı harcama ağırlığında (onay sesi + titreşim). Sonda kendi genişliğinde, saldırı kalan yerde; 320 px'te sondanın fiyatı iki satıra yığılıyor, iki düğme de tam okunuyor.
+- Reddedilen saldırı sebebini yüzünde söylüyor (koruma süresi, gelişmişlik, isyan, Sessiz Uzay); tam cümle okuyucu adında.
+- Değer satırı 9 px'ten 12 px'e; yerleş, destek gönder ve klan hedefi kit düğmeleri; yerleşme sebebi, pencere açık ve radyasyon notları kitin not plakası (radyasyon uyarı tonunda, işaretli).
+- Kit düğmesi `marks` aldı: dışarıdaki yüzeylerin bulduğu `data-*` işaretleri.
+- **Ölçüm** `g4b1-after-2026-11-15.md`: kapalı yabancı dünya 15 → 0. Açık dosyalar 130–141 → 117–131; kalan `TargetDossier` (G4-d) ile bilinenler/boşluklar (G4-b2).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

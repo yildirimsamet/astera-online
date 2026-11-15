@@ -214,7 +214,8 @@ describe('the control carries it', () => {
   const source = readFileSync('src/galaxy/FocusPanel.tsx', 'utf8');
 
   it('disables the attack when the band already refuses', () => {
-    expect(source).toMatch(/disabled=\{[^}]*outOfBand/);
+    // a kit press is dead exactly when it has a reason, and the band is one (G4-b1)
+    expect(source).toMatch(/disabledReason=\{[^}]*outOfBand \? t\('focus\.planet\.attackOutOfBandShort'\)/);
   });
 
   it('states it on the label and in the accessible name', () => {

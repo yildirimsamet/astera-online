@@ -11944,3 +11944,69 @@ button.gk-rcard__door:active {
   gap: 8px;
   align-items: center;
 }
+
+/* ── a foreign world's commitments (G4-b1, 2026-11-15) ──────────────────────────
+   The probe and the attack share a row; a commitment that needs a sentence takes its own. */
+/* one row: the probe at its own width, its price whole; the attack takes the rest */
+.gk-focus__pair {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+.gk-focus__pair > :only-child {
+  grid-column: 1 / -1;
+}
+.gk-focus__pair .gk-btn {
+  padding-inline: 10px;
+}
+.gk-focus__pair .gk-btn__cost {
+  padding-left: 7px;
+}
+/* in the open file's strip the commitments wrap, a commitment with a sentence on a row of its own */
+.gk-focus__acts .gk-focus__half {
+  flex: 0 1 auto;
+}
+.gk-focus__acts .gk-focus__grow {
+  flex: 1 1 0;
+  min-width: 7.5rem;
+}
+.gk-focus__wide {
+  flex-basis: 100%;
+}
+.gk-focus__stack {
+  display: grid;
+  gap: 4px;
+}
+.gk-focus__value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2);
+}
+.gk-focus__value .gk-num {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.gk-focus__note {
+  margin-bottom: 12px;
+  justify-content: flex-start;
+  text-align: left;
+}
+.gk-focus__note[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--gk-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--gk-warn) 10%, transparent);
+}
+/* a 320 px phone: the probe's price stacks, so the attack keeps its words whole beside it */
+@media (max-width: 339px) {
+  :is(.gk-focus__pair, .gk-focus__acts) .gk-focus__half .gk-cost {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  :is(.gk-focus__pair, .gk-focus__acts) .gk-btn {
+    letter-spacing: 0.04em;
+  }
+}

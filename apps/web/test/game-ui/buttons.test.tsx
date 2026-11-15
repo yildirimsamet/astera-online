@@ -36,6 +36,13 @@ describe('the game button', () => {
     expect(button).toHaveTextContent('Unblock');
   });
 
+  it('carries the marks a surface outside it points at (the tutorial, the gate)', () => {
+    render(<GameButton onPress={vi.fn()} marks={{ 'data-attack': '', 'data-guide': 'probe' }}>Attack</GameButton>);
+    const button = screen.getByRole('button', { name: 'Attack' });
+    expect(button).toHaveAttribute('data-attack', '');
+    expect(button).toHaveAttribute('data-guide', 'probe');
+  });
+
   it('is busy, not pressable, while its action is pending', () => {
     const onPress = vi.fn();
     render(<GameButton onPress={onPress} pending>Upgrade</GameButton>);
