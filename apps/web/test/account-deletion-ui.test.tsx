@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -24,10 +24,20 @@ function show(options: { pending?: boolean; fail?: boolean; delay?: boolean } = 
   return { requests, ended };
 }
 async function open() { fireEvent.click(screen.getByRole('button', { name: 'Delete account' })); await screen.findByLabelText('Current password'); }
-function confirm() {
+/** The request is the kit's final hold (C25): 1.5 s on the red face. */
+async function holdDelete(): Promise<void> {
+  const hold = screen.getByRole('button', { name: /Request account deletion/ });
+  vi.useFakeTimers();
+  try {
+    fireEvent.pointerDown(hold, { button: 0 });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
+    fireEvent.pointerUp(hold);
+  } finally { vi.useRealTimers(); }
+}
+async function confirm() {
   fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'fixture-current-password' } });
-  fireEvent.click(screen.getByRole('checkbox'));
-  fireEvent.click(screen.getByRole('button', { name: 'Request account deletion' }));
+  fireEvent.click(screen.getByRole('switch'));
+  await holdDelete();
 }
 
 it('offers deletion even without a recovery email and explains the shared-account consequence', async () => {
@@ -35,10 +45,10 @@ it('offers deletion even without a recovery email and explains the shared-accoun
   expect(screen.getByText(/web, Android and iOS/i)).toBeInTheDocument();
   expect(screen.getByText(/when the request is approved/i)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Deletion details and retained data' })).toHaveAttribute('href', '/account-deletion.html');
-  expect(screen.getByRole('button', { name: 'Request account deletion' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Enter your current password first/ })).toBeDisabled();
 });
 it('records a request using only the password and locale, and does not claim completion or sign out', async () => {
-  const fixture = show(); await open(); confirm();
+  const fixture = show(); await open(); await confirm();
   expect(await screen.findByRole('status')).toHaveTextContent('Deletion request received');
   expect(screen.getByText(receipt.requestId)).toBeInTheDocument();
   expect(screen.queryByLabelText('Current password')).toBeNull();
@@ -53,15 +63,16 @@ it('shows the existing durable request after reopening without submitting a seco
   expect(fixture.requests.some(request => request.method === 'POST')).toBe(false);
 });
 it('keeps a failed request editable with a useful error instead of showing success', async () => {
-  show({ fail: true }); await open(); confirm();
+  show({ fail: true }); await open(); await confirm();
   expect(await screen.findByRole('alert')).toHaveTextContent('The current password does not match');
   expect(screen.getByLabelText('Current password')).toBeEnabled();
   expect(screen.queryByRole('status')).toBeNull();
 });
 it('coalesces repeated taps while a request is in flight', async () => {
-  const fixture = show({ delay: true }); await open(); confirm();
-  const submit = screen.getByRole('button', { name: 'Request account deletion' });
-  fireEvent.click(submit); fireEvent.click(submit);
+  const fixture = show({ delay: true }); await open(); await confirm();
   await waitFor(() => { expect(fixture.requests.filter(request => request.method === 'POST')).toHaveLength(1); });
-  expect(submit).toBeDisabled();
+  const busy = screen.getByRole('button', { name: /Checking your deletion request/ });
+  expect(busy).toBeDisabled();
+  fireEvent.pointerDown(busy, { button: 0 });
+  expect(fixture.requests.filter(request => request.method === 'POST')).toHaveLength(1);
 });
