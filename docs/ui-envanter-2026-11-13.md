@@ -1684,6 +1684,13 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - **Galeri:** `profile` (yeni `ProfileGallery.tsx`).
 - **Ölçüm** (tr; telefon, dar, masaüstü): puan 78→3; 12 px altı 32/47→0, kontrast 9→0, 44 px altı 5→1, tepkisiz 9→1. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c23-profile-after-2026-11-15.md`.
 
+**C24 Tatil ✅ (2026-11-15, yardımcı oturum).** G10 #5.
+- **An:** "Bir süre yokum: çıkabilir miyim, kaç gün, bana neye mal olur, ne engelliyor?" Kurallar, fiyat, engel listesi, istek kimliği (aynı teklif = aynı istek) değişmedi.
+- **Değişen:** Sayfa kitin sheet'i. Kapsam kitin yeşil şeridi. Engeller sarı kenarlı camda, her biri ayrı satır. Gün seçimi kitin çipleri (tavan üstü günler sönük). Her dünya satırı ad, tür, kuralın rakamları ve döteryum resmiyle ücret. Toplam camında büyük rakam ve **harcama çubuğu** (`SpendBar`): toplam / kullanılabilir döteryum, yetmezse kırmızı. Formül kitin "?" açıklamasında.
+- **Tutmalar:** tatile çıkış döteryum harcar → `GameHold` 1 sn (eskiden tek basış), yanında ücret; çıkamıyorsa tutma sebebini söyler (kontrol ediliyor / engeller / gönderiliyor). Erken dönüş eski onay penceresiydi → 0,6 sn tutma; "koruma hemen kalkar, ücret iade edilmez" tutmanın üstünde yazılı. `Confirm` kalktı; boşa düşen `vacation.endConfirm` ve `vacation.back` 6 dilden silindi.
+- **Galeri:** `vacation`, `vacation-blocked`, `vacation-active`.
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 49→3, 49→3, 7→0; 12 px altı 23–26→0, kontrast 5→0, tepkisiz 6–7→1. Kalan 3: sayfa arkalığı (G1). `reports/ui-audit/c24-vacation-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

@@ -38,8 +38,6 @@ export const vacation = {
   "end": "Terminer les vacances",
   "endTitle": "Revenir sur tes mondes ?",
   "endBody": "La protection de tous tes mondes cesse immédiatement. Production et files reprennent. Le temps restant ne sera pas remboursé.",
-  "endConfirm": "Terminer les vacances",
-  "back": "Rester en vacances",
   "until": "Protégé jusqu’au {{time}}",
   "paused": "En pause — mode vacances",
   "loading": "Chargement des vacances…",

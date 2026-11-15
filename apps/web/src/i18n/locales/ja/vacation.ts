@@ -38,8 +38,6 @@ export const vacation = {
   "end": "休暇を終了",
   "endTitle": "惑星に復帰しますか？",
   "endBody": "すべての惑星の保護が直ちに解除され、生産と注文が再開します。残り期間の返金はありません。",
-  "endConfirm": "休暇を終了",
-  "back": "休暇を続ける",
   "until": "保護終了：{{time}}",
   "paused": "一時停止中 — 休暇モード",
   "loading": "休暇情報を読み込み中…",

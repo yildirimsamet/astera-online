@@ -12885,3 +12885,151 @@ button.gk-fact__head:active .gk-fact__line {
   width: 16px;
   height: 16px;
 }
+
+/* ── vacation (G10, C24) ─────────────────────────────────────────────────────── */
+
+.gk-vac {
+  display: grid;
+  gap: var(--gk-s3);
+  padding-bottom: var(--gk-s3);
+}
+.gk-vac__days {
+  display: grid;
+  gap: var(--gk-s2);
+}
+.gk-vac__chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 var(--gk-s1);
+}
+.gk-vac__chips .gk-hit { width: 100%; }
+.gk-vac__chips .gk-chip {
+  width: 100%;
+  justify-content: center;
+}
+.gk-vac__chips .gk-hit:disabled { opacity: 0.4; }
+/* what stands in the way: a warning rim, each reason its own line */
+.gk-vac__blockers {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+  border-color: color-mix(in srgb, var(--gk-warn) 55%, var(--gk-glass-edge));
+}
+.gk-vac__blockerstitle {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-warn);
+}
+.gk-vac__reasons {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-vac__reasons li::marker { color: var(--gk-warn); }
+/* every world's line: its name and kind, the rule's figures, what it costs a day */
+.gk-vac__worlds {
+  display: grid;
+  padding: 0 var(--gk-s3);
+}
+.gk-vac__world {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: 10px 0;
+}
+.gk-vac__world + .gk-vac__world {
+  border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent);
+}
+.gk-vac__worldtext {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-vac__worldname {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-vac__line {
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-vac__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-deut);
+  white-space: nowrap;
+}
+.gk-vac__price img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.gk-vac__price--big {
+  font-size: var(--gk-t-head);
+}
+.gk-vac__price--big img {
+  width: 28px;
+  height: 28px;
+}
+.gk-vac__total {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-vac__totalhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-vac__totallabel {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-vac__fine {
+  font-size: var(--gk-t-floor);
+  color: var(--gk-ink-3);
+}
+.gk-vac__sums {
+  display: grid;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-vac__sums > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+.gk-vac__sums dd { color: var(--gk-ink); }
+.gk-vac__until {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s3);
+}
+.gk-vac__untilvalue {
+  font-size: var(--gk-t-lead);
+  color: var(--gk-self);
+}
+.gk-vac__return {
+  display: grid;
+  gap: var(--gk-s2);
+}
+/* on the hold's lit face the price takes the face's own ink */
+.gk-hold__aside .gk-vac__price { color: inherit; }
+.gk-vac__ask {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
