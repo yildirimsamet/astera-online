@@ -1677,6 +1677,13 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 | 7 | Sessiz Uzay dönüşü | `shell/SilentSpaceNotice` (90) | 30 saat emir yok: geri dön | | **v1** | `return` paneli |
 | 8 | Galaksi seçimi | `screens/ServersScreen` (247) | hangi galaksiye gireyim | geçen sezon sonucu, hata | **v1** | uygulama katmanı 11 |
 
+**C23 Profil sayfası ve komutan kartı ✅ (2026-11-15, yardımcı oturum).** G10 #1 ve #2.
+- **An:** "Ben kimim, nerede duruyorum, hesabımla ne yapabilirim?" Gösterilen bilgiler, hesap kuralları ve açılan sayfalar değişmedi.
+- **Değişen:** Sayfa kitin sheet'i. Komutan kartı kitin kesik plakası: gözlem odası arkada, üst çubuğun madalyonu büyük, ad görüntü harfiyle, klan etiketi metal rengini koruyor; Honor/Hâkimiyet şeridi; sıra, dünyalar, kalkan camda üç hücre (simge üstte; kalkan sürerken yeşil). Miras kapısı altın kenarlı plaka (yazı solda, sahnenin karanlık yanında). Galaksi ve sezon kitin iki sahne kartı. Tatil, kurtarma e-postası ve ülke kitin yeni **kapı satırı** (`DoorRow`): işaret, ad, durum, ok; e-posta yoksa sarı (kapatılabilir eksik), doğrulanmışsa yeşil. Yasal bağlantılar 44 px. Çıkış kitin düğmesi; **hesap silme en altta**, kırmızı kenarlı kapı.
+- **Kaldırılan:** v2 `Button`/`Section`/`Note`/`Icon`, `.menu-account-scene` ve `.legacy-entry` CSS'i (kullanıcısı kalmadı), güvenlik girişindeki `ChevronIcon`.
+- **Galeri:** `profile` (yeni `ProfileGallery.tsx`).
+- **Ölçüm** (tr; telefon, dar, masaüstü): puan 78→3; 12 px altı 32/47→0, kontrast 9→0, 44 px altı 5→1, tepkisiz 9→1. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). `reports/ui-audit/c23-profile-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.

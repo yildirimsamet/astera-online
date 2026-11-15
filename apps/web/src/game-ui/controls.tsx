@@ -305,6 +305,40 @@ export function SettingLink({ label, name, value, onPress }: {
   );
 }
 
+/**
+ * A WAY IN (C23, 2026-11-15): a page of its own — vacation, the recovery email, the country —
+ * as one row. Its mark, what it is, where it stands in its tone (`warn` a gap you can close),
+ * and the arrow that says the press opens somewhere.
+ */
+export function DoorRow({ glyph, lead, title, sub, value, tone, spoken, onPress }: {
+  glyph?: GlyphId;
+  /** A picture of its own in place of the glyph (a flag). */
+  lead?: ReactNode;
+  title: ReactNode;
+  /** Where it stands or what it does, under the name. */
+  sub?: ReactNode;
+  /** A short reading at the end of the row ("Türkiye"). */
+  value?: ReactNode;
+  tone?: 'self' | 'warn' | 'hostile' | 'gold';
+  /** The whole name for a reader, when the row's words are not enough. */
+  spoken?: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} className="gk-door" {...(tone === undefined ? {} : { 'data-tone': tone })}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-door__mark" aria-hidden="true">{lead ?? (glyph === undefined ? null : <Glyph id={glyph} />)}</span>
+      <span className="gk-door__words">
+        <span className="gk-door__title">{title}</span>
+        {sub !== undefined && <span className="gk-door__sub">{sub}</span>}
+      </span>
+      {value !== undefined && <span className="gk-door__value">{value}</span>}
+      <span className="gk-door__go" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
 export interface TabItem<T extends string = string> {
   id: T;
   label: string;

@@ -146,8 +146,6 @@
 /* The card's top inset belongs inside the painted header, so no empty strip remains. */
 [data-sheet-panel][data-placement='card']:has(> .sheet-art-head) { padding-top: 0; }
 [data-sheet-panel][data-placement='card'] > .sheet-art-head { padding-top: 8px; }
-.menu-account-scene { min-height: 88px; }
-.menu-account-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 85%), rgb(8 13 24 / 50%)); }
 .inventory-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 90%), rgb(8 13 24 / 60%)); }
 
 

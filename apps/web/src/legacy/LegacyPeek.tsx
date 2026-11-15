@@ -19,6 +19,11 @@ import { LegacyProfileView, PodiumPlace } from './LegacyProfile.js';
 import { legacyAwardTitle, legacyEditionLabel } from './presentation.js';
 import { useLegacyProfile, useLegacySeasons, type LegacySource } from './queries.js';
 import { useLegacyDialogFocus } from './useLegacyDialogFocus.js';
+import { Glyph } from '../game-ui/index.js';
+import type { CssVars } from '../game-ui/style.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 
 /** Seasons shown under the shelf; the whole history is one tap away. */
 const RECENT_SEASONS = 2;
@@ -149,41 +154,40 @@ export function CommanderLegacy({ source, name, onClose }: { source: LegacySourc
 /**
  * YOUR OWN LEGACY, AT THE TOP OF THE ACCOUNT PAGE: the title you wear, the six pieces on your
  * shelf in a row and one tap into the whole profile. Empty sockets are drawn, because an empty
- * shelf is the reason to go and fill it.
+ * shelf is the reason to go and fill it. On the kit since C23: a gold-rimmed plate, one press.
  */
 export function LegacyEntryCard({ onOpen }: { onOpen: () => void }) {
   const { t } = useTranslation();
   const data = useLegacyProfile({ kind: 'me' }).data;
   const slots = Array.from({ length: LEGACY_SHOWCASE_SLOTS }, (_, slot) => data?.showcase.find(row => row.slot === slot)?.award ?? null);
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  const art: CssVars = { '--legacy-entry-art': `url(${ATMOSPHERE.commander.src})` };
   return (
-    <button type="button" onClick={onOpen} aria-label={t('legacy.profile.mine')} data-legacy-entry
-      className="legacy-entry relative flex flex-col gap-2 overflow-hidden rounded-control border border-v2-premium/35 p-3 text-left focus-visible:outline-2 focus-visible:outline-v2-self"
-      style={{ ['--legacy-entry-art' as string]: `url(${ATMOSPHERE.commander.src})` }}>
-      <span className="flex items-start justify-between gap-2">
-        <span className="min-w-0">
-          <span className="v2-legend block text-v2-premium">{t('legacy.title')}</span>
-          {data?.activeTitle
-            ? <span className="mt-0.5 block truncate text-caption font-semibold">{legacyAwardTitle(data.activeTitle)}</span>
-            : <span className="mt-0.5 block text-label text-v2-ink-2">{t('legacy.noTitle')}</span>}
-        </span>
+    <button type="button" {...OWN_SOUND} aria-label={t('legacy.profile.mine')} data-legacy-entry className="gk-legacydoor" style={art}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-legacydoor__head">
+        <span className="gk-label gk-legacydoor__eyebrow">{t('legacy.title')}</span>
+        {data?.activeTitle
+          ? <span className="gk-legacydoor__title">{legacyAwardTitle(data.activeTitle)}</span>
+          : <span className="gk-legacydoor__title gk-legacydoor__title--none">{t('legacy.noTitle')}</span>}
         {data && (
-          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">
+          <span className="gk-legacydoor__count gk-num">
             {t('legacy.peek.summary', { seasons: full(data.career.seasons), pieces: full(data.collection.count) })}
           </span>
         )}
       </span>
-      <span aria-hidden="true" className="legacy-peek-shelf grid grid-cols-6 items-end gap-1 rounded-control px-1.5 pb-2.5 pt-2">
+      <span aria-hidden="true" className="legacy-peek-shelf gk-legacydoor__shelf">
         {slots.map((award, slot) => (
-          <span key={award?.id ?? `empty-${String(slot)}`} className="relative grid aspect-[4/5] place-items-end justify-items-center">
+          <span key={award?.id ?? `empty-${String(slot)}`} className="gk-legacydoor__slot">
             {award
-              ? <span data-rarity={award.rarity} className="legacy-peek-piece grid size-full place-items-end justify-items-center"><AwardPicture award={award} className="relative z-[1] size-full" /></span>
-              : <span className="legacy-peek-socket mb-0.5 h-1 w-3/5 rounded-full" />}
+              ? <span data-rarity={award.rarity} className="legacy-peek-piece gk-legacydoor__piece"><AwardPicture award={award} className="gk-legacydoor__art" /></span>
+              : <span className="legacy-peek-socket gk-legacydoor__socket" />}
           </span>
         ))}
       </span>
-      <span className="flex items-center justify-between text-label font-semibold text-v2-premium">
+      <span className="gk-legacydoor__go">
         {t('legacy.profile.mine')}
-        <svg aria-hidden="true" viewBox="0 0 12 12" className="size-3"><path fill="none" stroke="currentColor" strokeWidth="1.6" d="M4.5 2.5 8 6l-3.5 3.5" /></svg>
+        <Glyph id="next" />
       </span>
     </button>
   );

@@ -8,6 +8,7 @@ import { Button } from '../v2/kit/Surface.js';
 import { SecurityField, useSecurityError } from './securityFields.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { matchLanguage } from '../i18n/languages.js';
+import { DoorRow } from '../game-ui/index.js';
 
 const deletionKey = ['account-deletion'] as const;
 
@@ -15,7 +16,7 @@ const deletionKey = ['account-deletion'] as const;
 export function AccountDeletionEntry() {
   const { t } = useTranslation(); const [open, setOpen] = useState(false);
   return <>
-    <button type="button" onClick={() => { setOpen(true); }} className="min-h-11 w-full rounded-control border border-v2-line bg-v2-panel px-3 text-left text-caption text-v2-ink-2 hover:border-v2-line-hi focus-visible:outline-2 focus-visible:outline-v2-self">{t('accountDeletion.title')}</button>
+    <DoorRow glyph="block" tone="hostile" title={t('accountDeletion.title')} onPress={() => { setOpen(true); }} />
     {open ? <AccountDeletionSheet onClose={() => { setOpen(false); }} /> : null}
   </>;
 }

@@ -173,7 +173,7 @@ export const SURFACES: GameSurface[] = [
     id: 'profile',
     what: 'Profil: komutan kartı, ülke, tatil, hesap güvenliği ve silme',
     files: ['shell/ProfileHost.tsx', 'shell/ProfilePage.tsx', 'v2/shell/CommanderHost.tsx', 'v2/hud/CommanderCard.tsx', 'screens/VacationSheet.tsx', 'screens/AccountSecuritySheet.tsx', 'screens/AccountDeletionSheet.tsx', 'screens/securityFields.tsx'],
-    reach: ['gallery:country-picker', 'client:profile'],
+    reach: ['gallery:profile', 'gallery:country-picker', 'client:profile'],
     group: 'G10', unreached: ["tatil sheet'i", 'hesap güvenliği', 'hesap silme'],
   },
   {

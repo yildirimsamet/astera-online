@@ -7,8 +7,9 @@ import type { AccountSecurityStatus, SecurityChallenge } from '../api/schemas.js
 import { securityChallengeSchema } from '../api/schemas.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { Button, Note } from '../v2/kit/Surface.js';
-import { ShieldIcon, ChevronIcon } from '../ui/icons/index.js';
+import { ShieldIcon } from '../ui/icons/index.js';
 import { useNow } from '../lib/time.js';
+import { DoorRow } from '../game-ui/index.js';
 import { SecurityField, useSecurityError } from './securityFields.js';
 
 const securityKey = ['account-security'] as const;
@@ -17,19 +18,14 @@ export function AccountSecurityEntry() {
   const query = useQuery({ queryKey: securityKey, queryFn: () => api.security(), retry: false, staleTime: 15_000,
     refetchInterval: query => open && query.state.data?.pending ? 5000 : false });
   const status = query.data;
-  if (!status) return <button type="button" className="w-full rounded-control border border-v2-line px-3 py-2 text-left text-caption text-v2-ink-2"
-    onClick={() => { void query.refetch(); }}>{query.isPending ? t('accountSecurity.loading') : t('accountSecurity.unavailable')}</button>;
+  if (!status) return <DoorRow glyph="shield" title={query.isPending ? t('accountSecurity.loading') : t('accountSecurity.unavailable')}
+    onPress={() => { void query.refetch(); }} />;
   if (!status.enabled && status.loginMethod === 'username') return null;
   const verified = status.loginMethod === 'email';
   return <>
-    <button type="button" onClick={() => { setOpen(true); }}
-      className={`flex min-h-16 w-full items-center gap-3 rounded-control border px-3 py-3 text-left ${verified ? 'border-v2-self/30 bg-v2-self/5' : 'border-v2-hostile/50 bg-v2-hostile/10'}`}>
-      <ShieldIcon className={`size-6 shrink-0 ${verified ? 'text-v2-self' : 'text-v2-hostile'}`} />
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className={`text-caption font-semibold ${verified ? 'text-v2-self' : 'text-v2-hostile'}`}>{verified ? status.maskedEmail : status.pending ? t('accountSecurity.pending') : t('accountSecurity.missing')}</span>
-        <span className="text-micro text-v2-ink-2">{verified ? t('accountSecurity.change') : t('accountSecurity.add')}</span>
-      </span><ChevronIcon className="size-4 text-v2-ink-3" />
-    </button>
+    <DoorRow glyph="shield" tone={verified ? 'self' : 'warn'}
+      title={verified ? status.maskedEmail : status.pending ? t('accountSecurity.pending') : t('accountSecurity.missing')}
+      sub={verified ? t('accountSecurity.change') : t('accountSecurity.add')} onPress={() => { setOpen(true); }} />
     {open ? <AccountSecuritySheet status={status} onClose={() => { setOpen(false); }} refresh={() => query.refetch()} /> : null}
   </>;
 }
