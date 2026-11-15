@@ -14455,3 +14455,112 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 700;
   color: var(--gk-self);
 }
+
+/* ── G4-g founding a colony: the race and whether I land in time, what leaves, both endings ── */
+.gk-race {
+  --race-c: var(--gk-ink-2);
+  display: grid;
+  gap: 8px;
+  padding: var(--gk-s3);
+}
+.gk-race[data-tone='self'] {
+  --race-c: var(--gk-self);
+  border-color: color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  background: color-mix(in srgb, var(--gk-self) 8%, var(--gk-metal-3));
+}
+.gk-race[data-tone='warn'] {
+  --race-c: var(--gk-warn);
+  border-color: color-mix(in srgb, var(--gk-warn) 45%, var(--gk-metal-edge));
+  background: color-mix(in srgb, var(--gk-warn) 7%, var(--gk-metal-3));
+}
+.gk-race__lead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--gk-ink);
+}
+.gk-race__lead .gk-glyph { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; color: var(--race-c); }
+/* Now on the left, the race's end on the right; the Couriers' run lit to where they land. */
+.gk-race__line {
+  position: relative;
+  height: 10px;
+  margin: 8px 0 2px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--gk-void) 60%, transparent);
+}
+.gk-race__run {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 6px;
+}
+/* The run fills from now to the landing as the sheet opens; the ship rides its tip. */
+.gk-race__run::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 35%, transparent), var(--gk-self));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gk-self) 55%, transparent);
+  transform-origin: left center;
+  animation: gk-race-run 1.2s var(--gk-ease) both;
+}
+.gk-race__run .gk-glyph {
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--gk-metal-1);
+  color: var(--gk-self-hi);
+  box-shadow: 0 0 0 1.5px var(--gk-self);
+  transform: translateY(-50%);
+}
+.gk-race__mark {
+  position: absolute;
+  inset: -4px auto -4px 0;
+  border-right: 2px dashed var(--race-c);
+  pointer-events: none;
+}
+@keyframes gk-race-run { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.gk-race__ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gk-race__ends > div { display: grid; gap: 1px; min-width: 0; }
+.gk-race__ends > div:last-child { text-align: right; }
+.gk-race__ends [data-end='priority'] { text-align: center; }
+.gk-race__ends [data-end='priority'] dt { color: var(--race-c); }
+.gk-race__ends dd { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-race__fixed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-race__fixed .gk-glyph { flex-shrink: 0; width: 14px; height: 14px; color: var(--gk-warn); }
+.gk-race + .gk-figures { margin-top: var(--gk-s2); }
+.gk-endings {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--gk-s2);
+}
+.gk-ending {
+  display: grid;
+  gap: 3px;
+  padding: var(--gk-s2) var(--gk-s3);
+  border-left: 3px solid var(--ending-c, var(--gk-ink-3));
+  border-radius: 0 var(--gk-r-sm, 6px) var(--gk-r-sm, 6px) 0;
+  background: color-mix(in srgb, var(--ending-c, var(--gk-ink-3)) 7%, transparent);
+}
+.gk-ending[data-tone='self'] { --ending-c: var(--gk-self); }
+.gk-ending[data-tone='warn'] { --ending-c: var(--gk-warn); }
+.gk-ending > .gk-label { color: var(--ending-c); }
+.gk-ending__body { display: grid; gap: 4px; }

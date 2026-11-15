@@ -1240,6 +1240,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Eski CapacityBar ve tarayıcı range input'u bu ekrandan çıktı.
 - **Ölçüm** `g4f2-after-2026-11-15.md`: `transfer` 38 → 3 (kalan: paylaşılan sayfa arka planı düğmesi).
 
+**G4-g koloni kurma ✅ (2026-11-15).** Oyuncunun anı: "koloni kurayım mı, zamanında iner miyim?"
+- Kit sayfası, benim rengimde, tam boy; başlık yalnız dünyanın adı (fiil basılı tutma düğmesinde).
+- Yarış önde, bir kuyuda: kural, şimdiden yarışın sonuna uzanan çizgi ve Kuryelerin indiği yer (açılışta dolar), kendi önceliğim varsa bitişi kesik çizgiyle; altında varış / öncelik / bitiş. Öncelikte yetişirsem kuyu mavi, yetişemezsem sarı.
+- Gidenler kitin rakamlarında: gemiler, kuruluş bedeli ve yakıt deponun resimleriyle; yetmeyen kaynak sarı ve noktalı.
+- İki son düğmeden önce: "Kazanırsan" (bedel harcanır, koloni şu stokla açılır) ve "Kaybedersen" (Kuryeler ve bedel döner, yakıt dönmez). Uzun paragraf bu iki satıra bölündü (6 dil).
+- Gönder: kitin kesin basılı tutması, 1,5 sn. Türkçede "2 Şileb" → "2 Kurye" (üç yer); de/es'te varış ve bitiş etiketleri düzeltildi.
+- **Ölçüm** `g4g-before/after-2026-11-15.md`: `settlement` 32 → 0, öncelikli 32 → 0. Odak kartındaki koloni yolu G4-b3'te zaten kitteydi (2 ve 9; kalan, kapalı "Koloni kur" düğmesi).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.

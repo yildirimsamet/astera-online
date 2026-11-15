@@ -5,13 +5,19 @@ import { full } from '../lib/format.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
 import { countdown, duration } from '../lib/time.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
+import type { CSSProperties } from 'react';
+import { CostLine, GameHold, Glyph } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 
 /**
  * Settlement is an irreversible launch into a public race. The focus rail
  * explains how to get here; this sheet says exactly what leaves, what it costs,
  * when it arrives and what happens if somebody else wins first.
+ *
+ * ON THE KIT (G4-g, 2026-11-15): the race leads in a well — its rule, then a line from now to
+ * the race's end with where the Couriers land on it (and where my own hour ends), so the
+ * player sees whether they land in time; what leaves in the store's own pictures; the two
+ * endings as two lines; the launch on the kit's final hold, 1.5 s.
  */
 export function SettlementSheet({
   target,
@@ -63,39 +69,65 @@ export function SettlementSheet({
   const tier = target.neutral?.tier;
   const opening = tier === undefined ? null : MULTI_WORLD.neutral[tier].captureStock;
 
+  const arrivalMs = travelMinutes * 60_000;
+  const priorityMs = ownHour ? priorityUntil - now : null;
+  // The line runs to whichever comes last, so a landing after the race's end still sits on it.
+  const lineMs = Math.max(closesIn, arrivalMs, priorityMs ?? 0, 1);
+  const at = (ms: number): CSSProperties => ({ width: `${String(Math.min(100, Math.max(1.5, (ms / lineMs) * 100)))}%` });
+  const tone = !ownHour ? undefined : raceLine === 'focus.planet.settlementConfirm.priorityMineFirst' ? 'self' : 'warn';
+  const arrives = duration(travelMinutes);
+  const closes = countdown(closesIn);
+  const priority = priorityMs === null ? null : countdown(priorityMs);
+  const charge = MULTI_WORLD.settlement.charge;
+
   return (
     <Sheet
+      detents={['full']}
+      kit={{ tone: 'self' }}
       eyebrow={t('focus.planet.settlementConfirm.eyebrow')}
-      title={target.intel === 'UNKNOWN'
-        ? t('focus.planet.settlementConfirm.unsurveyedTitle')
-        : t('focus.planet.settlementConfirm.title', { world: target.name })}
+      // The verb is the hold's; the head names the world the race is for.
+      title={target.intel === 'UNKNOWN' ? t('focus.planet.settlementConfirm.unsurveyedTitle') : target.name}
       onClose={onClose}
       footer={
-        // A spend that cannot be undone is held, not tapped (B9, K4).
-        <HoldButton
-          label={t('focus.planet.settlementConfirm.confirm')}
-          disabledReason={launchBlocked
-            ? t('faults.launchBlock.SHIPYARD_REVOLT')
-            : pending ? t('focus.planet.settlementConfirm.confirming') : null}
-          onCommit={onConfirm}
-        />
+        <div className="gk gk-launch__commit">
+          {/* A launch that cannot be called back: the kit's final weight, 1.5 s (B9, K4). */}
+          <GameHold
+            weight="final"
+            glyph="colony"
+            label={t('focus.planet.settlementConfirm.confirm')}
+            disabledReason={launchBlocked
+              ? t('faults.launchBlock.SHIPYARD_REVOLT')
+              : pending ? t('focus.planet.settlementConfirm.confirming') : null}
+            onCommit={onConfirm}
+          />
+        </div>
       }
     >
-      {/* The race and the price of losing it, before any figure: this is what the press decides. */}
-      <div className="mt-1 rounded-control border border-v2-self/40 bg-v2-self/10 px-3 py-2.5">
-        <p className="text-caption font-semibold text-v2-ink">
-          {t(raceLine)}
-        </p>
-        <p className="mt-1.5 text-caption leading-snug text-v2-ink-2">
-          {t('focus.planet.settlementConfirm.noRecall')}
-        </p>
-      </div>
+      {/* The race and whether I land in time, before any figure: this is what the press decides. */}
+      <section data-race className="gk-well gk-race" {...(tone ? { 'data-tone': tone } : {})}>
+        <p className="gk-race__lead"><Glyph id="flag" />{t(raceLine)}</p>
+        <div className="gk-race__line" role="img" aria-label={priority === null
+          ? t('focus.planet.settlementConfirm.line', { arrives, closes })
+          : t('focus.planet.settlementConfirm.linePriority', { arrives, priority, closes })}>
+          <span data-part="arrival" className="gk-race__run" style={at(arrivalMs)}><Glyph id="colony" /></span>
+          {priorityMs !== null && <span data-part="priority" className="gk-race__mark" style={at(priorityMs)} />}
+        </div>
+        <dl className="gk-race__ends">
+          <div><dt className="gk-label">{t('focus.planet.settlementConfirm.arrives')}</dt><dd className="gk-num">{arrives}</dd></div>
+          {priority !== null && (
+            <div data-end="priority"><dt className="gk-label">{t('focus.planet.settlementConfirm.priorityEnds')}</dt><dd className="gk-num">{priority}</dd></div>
+          )}
+          <div data-end="close"><dt className="gk-label">{t('focus.planet.settlementConfirm.closes')}</dt><dd className="gk-num">{closes}</dd></div>
+        </dl>
+        <p className="gk-sub gk-race__fixed"><Glyph id="lock" />{t('focus.planet.settlementConfirm.noRecall')}</p>
+      </section>
 
-      <dl className="mt-2 grid grid-cols-2 gap-1.5">
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.transports')}
-          value={String(MULTI_WORLD.settlement.transports)}
-        />
+      {/* What leaves, in the store's own pictures; what the store cannot pay yet wears the warning. */}
+      <dl className="gk-well gk-figures gk-figures--well">
+        <div className="gk-figure">
+          <dt className="gk-label">{t('focus.planet.settlementConfirm.transports')}</dt>
+          <dd className="gk-num gk-figure__value">{String(MULTI_WORLD.settlement.transports)}</dd>
+        </div>
         {/*
           ONE COST AND ONE OPENING. D209, owner instruction.
           The cargo and the fee used to be two rows because the cargo landed as the
@@ -103,46 +135,38 @@ export function SettlementSheet({
           the world opens on its tier's `captureStock`, which is only stated for a
           tier this commander can actually read.
         */}
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.foundingCost')}
-          value={t('focus.planet.settlementConfirm.cargoValue', {
-            alloy: full(MULTI_WORLD.settlement.charge.alloy),
-            crystal: full(MULTI_WORLD.settlement.charge.crystal),
-          })}
-        />
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.fuel')}
-          value={full(fuel)}
-        />
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.arrives')}
-          value={duration(travelMinutes)}
-        />
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.closes')}
-          value={countdown(closesIn)}
-        />
-        {opening && (
-          <SettlementFact
-            wide
-            label={t('focus.planet.settlementConfirm.opensWith')}
-            value={t('focus.planet.settlementConfirm.stockValue', {
-              alloy: full(opening.alloy),
-              crystal: full(opening.crystal),
-              deuterium: full(opening.deuterium),
-            })}
-          />
-        )}
+        <div className="gk-figure">
+          <dt className="gk-label">{t('focus.planet.settlementConfirm.foundingCost')}</dt>
+          <dd className="gk-figure__value">
+            <span className="sr-only">{t('focus.planet.settlementConfirm.cargoValue', { alloy: full(charge.alloy), crystal: full(charge.crystal) })}</span>
+            <span aria-hidden><CostLine cost={charge} held={planet.planet} /></span>
+          </dd>
+        </div>
+        <div className="gk-figure">
+          <dt className="gk-label">{t('focus.planet.settlementConfirm.fuel')}</dt>
+          <dd className="gk-figure__value"><CostLine cost={{ alloy: 0, crystal: 0, deuterium: fuel }} held={planet.planet} /></dd>
+        </div>
       </dl>
-    </Sheet>
-  );
-}
 
-function SettlementFact({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
-  return (
-    <div className={`rounded-control border border-v2-line bg-v2-panel px-2.5 py-1.5${wide ? ' col-span-2' : ''}`}>
-      <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</dt>
-      <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{value}</dd>
-    </div>
+      {/* Both endings before the press: what the win opens with, what the loss gives back. */}
+      <ul className="gk-endings">
+        <li data-ending="win" className="gk-ending" data-tone="self">
+          <span className="gk-label">{t('focus.planet.settlementConfirm.ifWin')}</span>
+          {opening ? (
+            <span className="gk-ending__body">
+              <span className="gk-sub">{t('focus.planet.settlementConfirm.winSpent')}</span>
+              <span className="sr-only">{t('focus.planet.settlementConfirm.stockValue', {
+                alloy: full(opening.alloy), crystal: full(opening.crystal), deuterium: full(opening.deuterium),
+              })}</span>
+              <span aria-hidden><CostLine cost={opening} /></span>
+            </span>
+          ) : <span className="gk-sub gk-ending__body">{t('focus.planet.settlementConfirm.winUnread')}</span>}
+        </li>
+        <li data-ending="loss" className="gk-ending" data-tone="warn">
+          <span className="gk-label">{t('focus.planet.settlementConfirm.ifLose')}</span>
+          <span className="gk-sub gk-ending__body">{t('focus.planet.settlementConfirm.loseBack')}</span>
+        </li>
+      </ul>
+    </Sheet>
   );
 }
