@@ -1501,58 +1501,54 @@ function OwnedPlanetFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
-      summary={(
-        <span className="flex flex-col items-start gap-0.5">
-          <WorldKind target={target} rivalSlot={null} />
-          <span>{t('focus.planet.transferFrom', { origin: origin.planet.name })}</span>
-        </span>
-      )}
+      summary={t('focus.planet.transferFrom', { origin: origin.planet.name })}
     >
       <TargetRadiationInstrument target={{ kind: 'PLANET', id: target.id }} tech={techOf(origin)} />
-      <div className="rounded-chip border border-v2-self/35 bg-v2-self/8 px-3 py-3">
-        <p className="v2-legend text-v2-self">{t('focus.planet.transferRoute')}</p>
-        <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div className="min-w-0">
-            <p className="v2-legend text-v2-ink-3">{t('focus.planet.transferOrigin')}</p>
-            <p className="v2-name mt-1 truncate text-v2-ink">{origin.planet.name}</p>
-          </div>
-          <span aria-hidden className="text-title text-v2-self">→</span>
-          <div className="min-w-0 text-right">
-            <p className="v2-legend text-v2-ink-3">{t('focus.planet.transferTarget')}</p>
-            <p className="v2-name mt-1 truncate text-v2-ink">{target.name}</p>
-          </div>
+      {/*
+        ONE LINE, TWO ENDS, AND WHAT CAN GO ALONG IT. The worlds panel's route, read-only
+        here: the ends are fixed by what was touched, so they are plates, not doors.
+      */}
+      <section aria-label={t('focus.planet.transferRoute')} className="gk-well gk-ferry">
+        <SectionTag>{t('focus.planet.transferRoute')}</SectionTag>
+        <div className="gk-ferry__line">
+          <span className="gk-ferry__end">
+            <span className="gk-label">{t('focus.planet.transferOrigin')}</span>
+            <span className="gk-ferry__name">{origin.planet.name}</span>
+          </span>
+          <span aria-hidden="true" className="gk-ferry__arrow"><Glyph id="next" /></span>
+          <span className="gk-ferry__end" data-end="to">
+            <span className="gk-label">{t('focus.planet.transferTarget')}</span>
+            <span className="gk-ferry__name">{target.name}</span>
+          </span>
         </div>
-        <p className="mt-3 text-label leading-snug text-v2-ink-2">
-          {t('focus.planet.transferHint')}
-        </p>
-      </div>
-
-      <div className="my-3 grid grid-cols-3 gap-2">
-        <Figure
-          label={t('focus.planet.transferCraft')}
-          value={compact(fleetCount(origin.fleet))}
-        />
-        <Figure label={t('focus.planet.distance')} value={String(Math.round(routeDistance))} />
-        <Figure
-          label={t('focus.planet.reach')}
-          value={reach === null ? t('focus.planet.reachUnknown') : duration(reach)}
-        />
-      </div>
+        <div className="gk-figures">
+          <Figure
+            label={t('focus.planet.transferCraft')}
+            value={compact(fleetCount(origin.fleet))}
+          />
+          <Figure label={t('focus.planet.distance')} value={String(Math.round(routeDistance))} />
+          <Figure
+            label={t('focus.planet.reach')}
+            value={reach === null ? t('focus.planet.reachUnknown') : duration(reach)}
+          />
+        </div>
+        <p className="gk-sub">{t('focus.planet.transferHint')}</p>
+      </section>
 
       {onTransfer && (
-        <button
-          type="button"
-          data-primary
-          className={`${BTN_PRIMARY} w-full whitespace-normal`}
-          disabled={originRecovering || originShipyardRevolt}
-          onClick={onTransfer}
-        >
-          {originShipyardRevolt
+        <GameButton
+          tone="action"
+          wide
+          glyph="crate"
+          className="gk-focus__wide"
+          marks={{ 'data-primary': '' }}
+          disabledReason={originShipyardRevolt
             ? t('faults.launchBlock.SHIPYARD_REVOLT')
-            : t(originRecovering
-              ? 'focus.planet.transferRecovering'
-              : 'focus.planet.transferPrepare')}
-        </button>
+            : originRecovering ? t('focus.planet.transferRecovering') : null}
+          onPress={onTransfer}
+        >
+          {t('focus.planet.transferPrepare')}
+        </GameButton>
       )}
     </Shell>
   );
@@ -4000,22 +3996,11 @@ function Figure({
   /** A handle for the one figure a test needs to find among several. */
   testId?: string;
 }) {
-  const colour =
-    tone === 'crystal'
-      ? 'text-v2-self'
-      : tone === 'alloy'
-        ? 'text-v2-warn'
-        : tone === 'opportunity'
-          ? 'text-v2-self'
-        : tone === 'threat'
-          ? 'text-v2-hostile'
-          : 'text-v2-ink';
+  const kitTone = tone === 'alloy' ? 'warn' : tone === 'threat' ? 'hostile' : tone === undefined ? undefined : 'self';
   return (
-    <div {...(testId ? { 'data-testid': testId } : {})}>
-      <p className="v2-legend">{label}</p>
-      <p className={`font-v2-mono mt-1 text-body ${colour}`}>
-        {value}
-      </p>
+    <div className="gk-figure" {...(testId ? { 'data-testid': testId } : {})}>
+      <span className="gk-label">{label}</span>
+      <span className="gk-num gk-figure__value" {...(kitTone ? { 'data-tone': kitTone } : {})}>{value}</span>
     </div>
   );
 }

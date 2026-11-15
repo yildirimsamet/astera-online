@@ -204,3 +204,49 @@ describe('a world in its claim window', () => {
     expect(attack).toHaveAccessibleName('Raid again · claim unchanged');
   });
 });
+
+/**
+ * G4-c (2026-11-15): A WORLD OF MINE, ON THE KIT. "Move something there." The eyebrow already
+ * says whose and what it is, so the line under the name only says where from; the route, its
+ * three figures and the one press that opens the transfer are the kit's.
+ */
+describe('a world of mine on the kit', () => {
+  const ownWorld = (open: boolean) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus target={world({ isOwned: true, kind: 'COLONY', name: 'Haven' })} planet={mine} intel={intel} reports={[]} now={0}
+          onClose={vi.fn()} onAttack={vi.fn()} onTransfer={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open={open} onToggle={vi.fn()} />
+      </Wrapper>,
+    );
+  };
+
+  it('says whose it is once: the eyebrow, never again under the name', () => {
+    ownWorld(false);
+    expect(rail().querySelector('.gk-focus__summary .gk-focus__kind')).toBeNull();
+    expect(rail().querySelector('.gk-focus__summary')).toHaveTextContent(/from/i);
+  });
+
+  it('opens on a kit route, kit figures and the kit’s one action', () => {
+    ownWorld(true);
+    expect(oldPaint(rail().querySelector('.gk-focus__file')!)).toEqual([]);
+    expect(rail().querySelectorAll('.gk-figure')).toHaveLength(3);
+    const prepare = within(rail()).getByRole('button', { name: /choose craft and resources/i });
+    expect(prepare).toHaveClass('gk-btn', 'gk-btn--action');
+    expect(prepare).toHaveAttribute('data-primary');
+  });
+
+  it('says on the press itself why it is shut while the origin recovers', () => {
+    const Wrapper = harness();
+    const recovering = { ...mine, planet: { ...mine.planet, recoveryUntil: new Date(60_000) } };
+    render(
+      <Wrapper>
+        <PlanetFocus target={world({ isOwned: true, kind: 'COLONY', name: 'Haven' })} planet={recovering} intel={intel} reports={[]} now={0}
+          onClose={vi.fn()} onAttack={vi.fn()} onTransfer={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open onToggle={vi.fn()} />
+      </Wrapper>,
+    );
+    const shut = rail().querySelector('[data-primary]')!;
+    expect(shut).toBeDisabled();
+    expect(shut).toHaveTextContent(/origin world is recovering/i);
+  });
+});

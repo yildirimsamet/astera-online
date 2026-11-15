@@ -921,8 +921,8 @@ function GalleryQueue({ ask }: { ask: boolean }) {
   return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
 }
 
-/** G4-a: the focus frame closed, over a rival's world and over one of mine. */
-function GalleryFocusClosed({ own }: { own: boolean }) {
+/** G4-a: the focus frame closed, over a rival's world and over one of mine; G4-c opens mine. */
+function GalleryFocusClosed({ own, open = false }: { own: boolean; open?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
@@ -932,7 +932,7 @@ function GalleryFocusClosed({ own }: { own: boolean }) {
   const target: GalaxyPlanet = own ? { ...rival, name: 'Haven', kind: 'COLONY', isOwned: true } : rival;
   return (
     <PlanetFocus target={target} planet={launchWorld} intel={launchIntel} reports={[]} now={NOW}
-      onClose={noop} onAttack={noop} onTransfer={noop} onInstallTelescope={noop} onLaunched={noop} open={false} onToggle={noop} />
+      onClose={noop} onAttack={noop} onTransfer={noop} onInstallTelescope={noop} onLaunched={noop} open={open} onToggle={noop} />
   );
 }
 
@@ -1286,6 +1286,7 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-band') return <GalleryBand />;
   if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
   if (view === 'focus-own') return <GalleryFocusClosed own />;
+  if (view === 'focus-own-open') return <GalleryFocusClosed own open />;
   if (view === 'focus-neutral') return <GalleryFocusNeutral />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'clan') return <GalleryClan tab="overview" />;

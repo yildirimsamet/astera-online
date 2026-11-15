@@ -12470,3 +12470,74 @@ button.gk-fact__head:active .gk-fact__line {
   color: var(--gk-ink);
   animation: gk-rise var(--gk-settle) var(--gk-pop);
 }
+
+/* G4-c: A WORLD OF MINE — the route to it in one well: two ends, the arrow, what goes along */
+.gk-ferry {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3) var(--gk-s3);
+}
+.gk-ferry__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+.gk-ferry__end {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.gk-ferry__end[data-end='to'] { text-align: right; }
+.gk-ferry__name {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  font-family: var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-body);
+  line-height: 1.15;
+  color: var(--gk-ink);
+  overflow-wrap: break-word;
+}
+.gk-ferry__end[data-end='to'] .gk-ferry__name {
+  border-color: color-mix(in srgb, var(--gk-self) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 14%, var(--gk-metal-1)), var(--gk-metal-2));
+}
+.gk-ferry__arrow {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  color: var(--gk-self);
+}
+.gk-ferry__arrow .gk-glyph { width: 18px; height: 18px; }
+.gk-ferry .gk-sub { color: var(--gk-ink-2); line-height: 1.35; }
+
+/* a fact in a row of three: what it is over its number, the number in the tone it means */
+.gk-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: var(--gk-s2);
+  border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-figure {
+  display: grid;
+  /* a label that wraps pushes nothing: the numbers of a row share one baseline */
+  align-content: space-between;
+  gap: 2px;
+  min-width: 0;
+}
+.gk-figure .gk-label { overflow-wrap: anywhere; }
+.gk-figure__value {
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.gk-figure__value[data-tone='self'] { color: var(--gk-self); }
+.gk-figure__value[data-tone='warn'] { color: var(--gk-warn); }
+.gk-figure__value[data-tone='hostile'] { color: var(--gk-hostile); }

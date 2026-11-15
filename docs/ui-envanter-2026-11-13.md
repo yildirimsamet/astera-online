@@ -1186,6 +1186,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Galeriye `focus-neutral` (açık hak, rota üçüncü adımda) eklendi.
 - **Ölçüm** `g4b3-after-2026-11-15.md`: rehberden bulgu yok. `focus-neutral` 66, `focus-band` 85 — kalanların hepsi `TargetDossier`'ın (G4-d): güç cetveli, dağılım, "Bu nedir?" 22 px.
 
+**G4-c kendi dünyam ✅ (2026-11-15).** Oyuncunun anı: "buraya bir şey taşıyayım."
+- Başlıktaki "KOLONİN / KOLONİ" tekrarı gitti: üst satır kimin olduğunu söyler, alt satır yalnız nereden.
+- Rota tek kit kuyusu: Çıkış → Hedef plakaları (hedef mavi), altında üç rakam, sonra tek cümle ipucu.
+- Paylaşılan `Figure` kite geçti (`gk-figure`, 25 yer): etiket üstte, sayı tabanda; etiket iki satıra insede bir satırdaki sayılar aynı hizada.
+- "Gemi ve kaynak seç" kitin ana düğmesi (kasa simgesi); çıkış toparlanıyor ya da tersane isyanda ise düğmenin yüzü nedeni söyler.
+- Galeriye `focus-own-open` eklendi.
+- **Ölçüm** `g4c-before` / `g4c-after-2026-11-15.md`: `focus-own` 0 → 0, `focus-own-open` 0; kesilme ve taşma yok (telefon, 320, masaüstü).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
