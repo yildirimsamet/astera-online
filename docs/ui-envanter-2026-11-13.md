@@ -1782,6 +1782,12 @@ Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.
 - Raftaki uzun ödül adları (fr "Vice-champion de Domination", es "Guardián de monumentos IV") iki satıra sığmıyordu: levha artık üç satır alıyor. İngilizcede sezon kartının "Season ends in" etiketi resmin aydınlık yerine düşüp 3,5:1'e iniyordu: kartın perdesi sağ kenarda %60'a çıktı. İkisi de yeniden ölçüldü, 0.
 - Kalan: kit sacının başlığında göz-çizgisi ve başlık birkaç piksel kırpılıyor (bütün dillerde, G1 sac başlığı); "Season ends in" üç kelimelik büyük harf etiket (T2, yalnız en; metin menüde de kullanılıyor, kısaltılmadı). `LegacyPeek` (61), ödül sayfası (27) ve açılış sahnesi (14) bu partinin dışında, v2'de.
 
+**C30 Sac başlığındaki kırpılma ✅ (2026-11-15, yardımcı oturum).** G10 açık maddesi 1.
+- **Kök neden:** Kitin sac başlığı değil, galerinin çerçevesi. `LegacyGallery` sahneyi galeri çubuğunun altından başlayan `relative h-dvh overflow-hidden` bir kutuya koyuyordu; sabit konumlu sac o kutunun üstüne taşınca başlığın üst pikselleri kutunun dışında kalıp "kırpılan" sayılıyordu. Gerçek oyunda sac böyle bir kutunun içinde değil.
+- **Değişen:** Galeri çerçevesi ekranın tamamı (`fixed inset-0`), oyundaki galaksi gibi. Ürün kodu değişmedi; göz-çizgisinin iki satıra inmesi master'da zaten vardı.
+- **Not:** `FleetTowingGallery` ve `CommanderPresenceGallery` aynı çerçeveyi kullanıyor; ölçümlerinde sac varsa aynı sahte kırpılma çıkar.
+- **Ölçüm** (legacy-profile; 6 dil, telefon ve dar): kırpılan 10→0. `reports/ui-audit/c30-sheet-head-after-2026-11-15.md`.
+
 ## G11. Wiki, Akademi, simülatör
 
 Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası gelince.
